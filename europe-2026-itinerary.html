@@ -1,0 +1,1400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Europe 2026 — Trip Planner</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f7f3ec; --panel:#ffffff; --panel-alt:#fbf8f2;
+    --ink:#241f19; --ink-soft:#4a4238; --sub:#7c7063; --sub2:#a89c8c;
+    --line:#e9e0d2; --line-soft:#f1eade;
+    --accent:#b3481e; --accent-ink:#8a3818; --accent-soft:#f6e4d8;
+    --accent2:#2c6358; --accent2-soft:#dcece6;
+    --sight:#b3481e; --food:#2c6358; --night:#5c3a8e; --suggest:#a9781a; --trip:#2461a3; --transit:#6d7d8c;
+    --danger:#a8382f; --danger-bg:#fbeae8; --danger-line:#f0c3bd;
+    --radius:16px; --radius-sm:10px; --radius-pill:999px;
+    --shadow-sm:0 1px 2px rgba(40,25,10,.05), 0 1px 1px rgba(40,25,10,.04);
+    --shadow-md:0 10px 30px -12px rgba(40,25,10,.18);
+    --shadow-lg:0 18px 45px -18px rgba(40,25,10,.28);
+    color-scheme:light;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    background:
+      radial-gradient(1200px 500px at 15% -10%, #fdf0e0 0%, transparent 60%),
+      radial-gradient(900px 500px at 100% 0%, #e7f0ec 0%, transparent 55%),
+      var(--bg);
+    color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3{font-family:"Fraunces",Georgia,serif;letter-spacing:.1px;}
+  a{color:var(--accent2);}
+
+  /* ---------- Header ---------- */
+  header{padding:30px 32px 0;}
+  .header-inner{max-width:1320px;margin:0 auto;}
+  .eyebrow{display:flex;align-items:center;gap:8px;color:var(--accent-ink);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;margin-bottom:8px;}
+  .eyebrow .line{height:1px;width:26px;background:var(--accent);display:inline-block;}
+  header h1{margin:0 0 10px;font-size:clamp(28px,4vw,40px);font-weight:700;}
+  .route-trail{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:13.5px;color:var(--sub);margin-bottom:18px;}
+  .route-trail .stop-chip{background:var(--panel);border:1px solid var(--line);padding:4px 11px;border-radius:var(--radius-pill);font-weight:600;color:var(--ink);box-shadow:var(--shadow-sm);}
+  .route-trail .arrow{color:var(--sub2);}
+  .stats-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius-sm);padding:12px 16px;box-shadow:var(--shadow-sm);}
+  .stat .num{font-family:"Fraunces",serif;font-size:22px;font-weight:700;color:var(--accent-ink);line-height:1.1;}
+  .stat .lbl{font-size:11.5px;color:var(--sub);text-transform:uppercase;letter-spacing:.6px;font-weight:600;margin-top:2px;}
+  @media (max-width:720px){.stats-strip{grid-template-columns:repeat(2,1fr);}}
+
+  .nightsbar-wrap{max-width:1320px;margin:22px auto 0;padding:0 0 22px;}
+  .nightsbar-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--sub);margin-bottom:8px;}
+  .nightsbar{display:flex;height:14px;border-radius:var(--radius-pill);overflow:hidden;box-shadow:inset 0 0 0 1px var(--line);}
+  .nightsbar .seg{height:100%;}
+  .nightsbar-legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:10px;font-size:12px;color:var(--sub);}
+  .nightsbar-legend span{display:inline-flex;align-items:center;gap:6px;}
+  .nightsbar-legend .sw{width:9px;height:9px;border-radius:3px;display:inline-block;}
+
+  /* ---------- Sidebar: one spine for cities AND days ---------- */
+  .shell{display:grid;grid-template-columns:262px minmax(0,1fr);gap:30px;max-width:1320px;margin:0 auto;padding:26px 32px 70px;align-items:start;}
+  #sidebar{position:sticky;top:18px;max-height:calc(100vh - 36px);overflow-y:auto;overscroll-behavior:contain;
+    background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:12px;box-shadow:var(--shadow-md);scrollbar-width:thin;}
+  #sidebar::-webkit-scrollbar{width:6px;} #sidebar::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px;}
+  .sb-label{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--sub2);padding:10px 10px 6px;}
+  .sb-item{display:flex;align-items:center;gap:9px;width:100%;text-align:left;border:none;background:transparent;
+    padding:9px 11px;border-radius:9px;font-size:13.5px;font-weight:600;color:var(--ink);cursor:pointer;transition:background .13s;font-family:inherit;}
+  .sb-item:hover{background:var(--panel-alt);}
+  .sb-item.active{background:var(--ink);color:#fff;}
+  .sb-item .flag{font-size:15px;}
+  .sb-item .range{margin-left:auto;font-size:10.5px;font-weight:700;color:var(--sub2);letter-spacing:.2px;}
+  .sb-item.active .range{color:rgba(255,255,255,.65);}
+  .sb-city{border-top:1px solid var(--line-soft);padding-top:4px;margin-top:4px;}
+  .sb-city:first-of-type{border-top:none;}
+  .sb-days{padding:2px 0 6px 12px;margin-left:11px;border-left:2px solid var(--line-soft);}
+  .sb-day{display:grid;grid-template-columns:34px 1fr;gap:8px;align-items:center;width:100%;text-align:left;border:none;background:transparent;
+    padding:7px 9px;border-radius:8px;cursor:pointer;font-family:inherit;transition:background .13s;position:relative;}
+  .sb-day:hover{background:var(--panel-alt);}
+  .sb-day.active{background:var(--accent-soft);}
+  .sb-day .dnum{font-family:"Fraunces",serif;font-size:15px;font-weight:700;color:var(--ink);line-height:1;}
+  .sb-day .dnum small{display:block;font-family:"Inter",sans-serif;font-size:9px;font-weight:700;color:var(--sub2);text-transform:uppercase;letter-spacing:.5px;margin-top:1px;}
+  .sb-day .dttl{font-size:11.5px;color:var(--sub);line-height:1.35;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
+  .sb-day.active .dttl{color:var(--accent-ink);font-weight:600;}
+  .sb-day.flag::after{content:"";position:absolute;right:7px;top:8px;width:6px;height:6px;border-radius:50%;background:var(--danger);}
+  .sb-day:focus-visible,.sb-item:focus-visible{outline:2.5px solid var(--accent);outline-offset:1px;}
+  .sb-badge{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;background:var(--accent-soft);color:var(--accent-ink);padding:1px 5px;border-radius:4px;margin-left:auto;}
+
+  @media (max-width:900px){
+    .shell{grid-template-columns:1fr;gap:18px;padding:20px 18px 60px;}
+    #sidebar{position:static;max-height:320px;}
+  }
+  .tab{display:none;}
+  .tab.active{display:block;animation:fadein .25s ease;}
+  .subtab{display:none;}
+  .subtab.active{display:block;animation:fadein .2s ease;}
+  @keyframes fadein{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:none;}}
+
+  /* ---------- City head ---------- */
+  .cityhead{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:6px;}
+  .cityhead h2{margin:0 0 3px;font-size:28px;font-weight:600;display:flex;align-items:center;gap:10px;}
+  .cityhead .flagbig{font-size:26px;}
+  .cityhead .sub{color:var(--sub);font-size:14px;font-style:italic;}
+  .datebadge{background:var(--ink);color:#fff;font-size:12.5px;font-weight:700;padding:7px 15px;border-radius:var(--radius-pill);white-space:nowrap;}
+  .facts{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 22px;}
+  .fact{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius-pill);padding:6px 13px;font-size:12.5px;font-weight:500;box-shadow:var(--shadow-sm);}
+
+  .subnav{display:inline-flex;gap:2px;margin-bottom:20px;background:var(--panel-alt);border:1px solid var(--line);padding:4px;border-radius:var(--radius-pill);}
+  .subnav button{border:none;background:transparent;padding:8px 18px;border-radius:var(--radius-pill);font-size:13px;cursor:pointer;color:var(--sub);font-weight:600;transition:all .15s;}
+  .subnav button.active{background:var(--ink);color:#fff;box-shadow:var(--shadow-sm);}
+
+  /* ---------- Map ---------- */
+  .leaflet-map{height:460px;border-radius:var(--radius);border:1px solid var(--line);box-shadow:var(--shadow-md);}
+  .legend{display:flex;flex-wrap:wrap;gap:16px;margin:0 0 14px;font-size:12.5px;color:var(--sub);font-weight:500;}
+  .legend span{display:inline-flex;align-items:center;gap:7px;}
+  .dot{width:11px;height:11px;border-radius:50%;display:inline-block;flex-shrink:0;box-shadow:0 0 0 3px #fff, 0 0 0 4px var(--line);}
+  .note{background:#fdf6e6;border:1px solid #ecdba8;border-radius:var(--radius-sm);padding:13px 16px;font-size:13.5px;color:#6b5320;margin:16px 0;line-height:1.55;}
+  .note.blue{background:#eaf3fb;border-color:#c7dcef;color:#264b6c;}
+  .note.danger{background:var(--danger-bg);border-color:var(--danger-line);color:#7a2620;}
+
+  /* numbered route pins */
+  .numpin{background:var(--accent2);color:#fff;font:700 12px/26px "Inter",sans-serif;text-align:center;
+    width:26px;height:26px;border-radius:50%;box-shadow:0 0 0 3px #fff, 0 2px 6px rgba(0,0,0,.28);}
+  .numpin.hot{background:var(--accent);transform:scale(1.25);transition:transform .12s;}
+
+  /* ---------- Booking pill ---------- */
+  .book{display:inline-flex;align-items:center;gap:5px;margin-top:7px;font-size:11.5px;font-weight:700;
+    padding:5px 11px;border-radius:var(--radius-pill);text-decoration:none;
+    background:var(--accent2);color:#fff;transition:filter .15s,transform .1s;}
+  .book:hover{filter:brightness(1.12);transform:translateY(-1px);}
+  .book.ghost{background:transparent;color:var(--accent2);border:1.5px solid var(--accent2-soft);}
+  .book.ghost:hover{background:var(--accent2-soft);}
+  .book.warn{background:var(--danger);}
+  .booklist{display:flex;flex-wrap:wrap;gap:7px;}
+
+  /* ---------- Itinerary day cards ---------- */
+  .day{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:22px 24px 18px;margin-bottom:18px;box-shadow:var(--shadow-sm);}
+  .day.flagged{border:1.5px solid var(--danger-line);background:linear-gradient(180deg,var(--danger-bg) 0%, var(--panel) 90px);}
+  .day.dim{opacity:.84;}
+  .day h3{margin:0 0 3px;font-size:18.5px;font-weight:600;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .daynum{flex-shrink:0;width:30px;height:30px;border-radius:50%;background:var(--ink);color:#fff;font-family:"Inter",sans-serif;font-size:13px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;}
+  .day.flagged .daynum{background:var(--danger);}
+  .day.dim .daynum{background:var(--sub2);}
+  .day .daysub{color:var(--sub);font-size:13.5px;margin:2px 0 14px 40px;line-height:1.5;}
+  .day.flagged .daysub{color:#8a3129;font-weight:500;}
+  .stop{display:flex;gap:13px;padding:12px 0;border-top:1px solid var(--line-soft);}
+  .stop:first-of-type{border-top:none;}
+  .tag{flex-shrink:0;width:11px;height:11px;border-radius:50%;margin-top:5px;box-shadow:0 0 0 3px #fff, 0 0 0 4px var(--line-soft);}
+  .stop-body b{font-size:14.5px;font-weight:600;}
+  .stop-body .meta{color:var(--sub);font-size:12.8px;margin-top:3px;line-height:1.5;}
+  .stoptime{font-size:11.5px;font-weight:700;color:var(--sub2);letter-spacing:.4px;margin-right:2px;}
+  .badge{display:inline-block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:2px 7px;border-radius:5px;margin-left:8px;position:relative;top:-1px;}
+  .badge.suggested{background:#f7ecd2;color:#8a6c14;}
+  .badge.daytrip{background:#dfebf9;color:#1d5488;}
+  .badge.free{background:var(--accent2-soft);color:var(--accent2);}
+
+  /* ---------- Cards / tables ---------- */
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px 22px;box-shadow:var(--shadow-sm);}
+  .card h3{margin:0 0 12px;font-size:16px;font-weight:600;display:flex;align-items:center;gap:8px;}
+  .card.warn{background:linear-gradient(180deg,#fdf3f2 0%,#fff 140px);border-color:var(--danger-line);}
+  .card.warn h3{color:var(--danger);}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;}
+  table th{text-align:left;padding:8px 6px;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--sub);font-weight:700;border-bottom:2px solid var(--line);}
+  table td{text-align:left;padding:10px 6px;border-bottom:1px solid var(--line-soft);vertical-align:top;}
+  table tr:last-child td{border-bottom:none;}
+  table tbody tr:hover td{background:var(--panel-alt);}
+  .pill{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;padding:3px 10px;border-radius:var(--radius-pill);white-space:nowrap;}
+  .pill-ok{background:var(--accent2-soft);color:var(--accent2);}
+  .pill-you{background:#eee6f7;color:#5c3a8e;}
+  .pill-warn{background:var(--danger-bg);color:var(--danger);}
+
+  .stub-card{background:var(--panel-alt);border:1.5px dashed var(--line);border-radius:var(--radius);padding:34px 28px;text-align:center;color:var(--sub);}
+  .stub-card .icon{font-size:34px;margin-bottom:10px;}
+  .stub-card h3{color:var(--ink);margin:0 0 10px;font-size:19px;}
+  .stub-card p{max-width:620px;margin:0 auto;line-height:1.6;font-size:14px;}
+  .stub-card p + p{margin-top:10px;}
+
+  /* ================= CALENDAR / DAY VIEW ================= */
+  .dayview{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:22px;align-items:start;}
+  @media (max-width:960px){.dayview{grid-template-columns:1fr;}}
+  .dayhead{margin-bottom:16px;}
+  .dayhead h2{margin:0 0 4px;font-size:26px;font-weight:600;}
+  .dayhead .dsub{color:var(--sub);font-size:13.5px;line-height:1.55;}
+  .daymeta{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
+  .daymeta .m{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius-pill);padding:5px 12px;font-size:12px;font-weight:600;color:var(--ink-soft);box-shadow:var(--shadow-sm);}
+
+  .timeline{position:relative;}
+  .tl-stop{display:grid;grid-template-columns:52px 1fr;gap:12px;background:var(--panel);border:1px solid var(--line);
+    border-radius:14px;padding:14px 16px;box-shadow:var(--shadow-sm);cursor:pointer;transition:all .14s;}
+  .tl-stop:hover,.tl-stop.hot{border-color:var(--accent);box-shadow:var(--shadow-md);transform:translateX(2px);}
+  .tl-idx{display:flex;flex-direction:column;align-items:center;gap:5px;}
+  .tl-idx .n{width:26px;height:26px;border-radius:50%;background:var(--accent2);color:#fff;font-size:12px;font-weight:700;
+    display:flex;align-items:center;justify-content:center;}
+  .tl-stop:hover .tl-idx .n,.tl-stop.hot .tl-idx .n{background:var(--accent);}
+  .tl-idx .tm{font-size:10.5px;font-weight:700;color:var(--sub2);letter-spacing:.3px;}
+  /* logistics rows sit back so the actual sights carry the page */
+  .tl-stop[data-kind="logistics"]{background:var(--panel-alt);border-style:dashed;padding:11px 16px;}
+  .tl-stop[data-kind="logistics"] .tl-name{font-size:13.5px;font-weight:600;color:var(--ink-soft);}
+  .tl-stop[data-kind="logistics"] .tl-idx .n{background:var(--sub2);width:22px;height:22px;font-size:11px;}
+  .tl-stop[data-kind="anchor"]{border-left:3px solid var(--accent);}
+  .tl-name{font-size:15px;font-weight:600;display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
+  .tl-cat{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+  .tl-note{font-size:12.8px;color:var(--sub);margin-top:4px;line-height:1.5;}
+  .tl-cost{font-size:12px;font-weight:700;color:var(--accent-ink);margin-top:5px;}
+
+  .leg{display:flex;align-items:center;gap:9px;margin:0 0 0 26px;padding:7px 0 7px 0;position:relative;}
+  .leg::before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:repeating-linear-gradient(to bottom,var(--line) 0 4px,transparent 4px 8px);}
+  .leg .li{margin-left:14px;display:inline-flex;align-items:center;gap:6px;background:var(--panel-alt);border:1px solid var(--line);
+    border-radius:var(--radius-pill);padding:3px 11px;font-size:11.5px;font-weight:600;color:var(--sub);}
+  .leg .li .ic{font-size:13px;}
+  .tl-gap{margin:6px 0 6px 26px;padding-left:14px;font-size:11.5px;color:var(--sub2);font-style:italic;}
+
+  .maprail{position:sticky;top:18px;}
+  .maprail .leaflet-map{height:520px;}
+  .mapctl{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+  .mapctl button{border:1.5px solid var(--line);background:var(--panel);border-radius:var(--radius-pill);padding:6px 13px;
+    font-size:11.5px;font-weight:700;color:var(--ink-soft);cursor:pointer;font-family:inherit;transition:all .13s;}
+  .mapctl button:hover{border-color:var(--accent);color:var(--accent-ink);}
+  .mapctl button.on{background:var(--ink);border-color:var(--ink);color:#fff;}
+  .mapscope{font-size:12px;color:var(--sub);margin-top:9px;line-height:1.5;}
+  @media (max-width:960px){.maprail{position:static;}.maprail .leaflet-map{height:380px;}}
+  .maplegend{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:10px;font-size:12px;color:var(--sub);flex-wrap:wrap;}
+
+  @media (max-width:720px){
+    header{padding:22px 18px 0;}
+    .grid{grid-template-columns:1fr;}
+    .cityhead{flex-direction:column;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="eyebrow"><span class="line"></span>Two-week trip · planned with Claude</div>
+    <h1>Europe 2026</h1>
+    <div class="route-trail">
+      <span class="stop-chip">🏠 LA</span><span class="arrow">→</span>
+      <span class="stop-chip">🇦🇹 Vienna</span><span class="arrow">→</span>
+      <span class="stop-chip">🇭🇷 Dubrovnik</span><span class="arrow">→</span>
+      <span class="stop-chip">🇭🇷 Split</span><span class="arrow">→</span>
+      <span class="stop-chip">🇨🇿 Prague</span><span class="arrow">→</span>
+      <span class="stop-chip">🇭🇺 Budapest</span><span class="arrow">→</span>
+      <span class="stop-chip">🇬🇧 London</span><span class="arrow">→</span>
+      <span class="stop-chip">🏠 LA</span>
+    </div>
+    <div class="stats-strip">
+      <div class="stat"><div class="num" id="countdown-num">—</div><div class="lbl">Days to go</div></div>
+      <div class="stat"><div class="num">6</div><div class="lbl">Cities</div></div>
+      <div class="stat"><div class="num">8</div><div class="lbl">Flights &amp; buses</div></div>
+      <div class="stat"><div class="num">3</div><div class="lbl">Currencies</div></div>
+    </div>
+  </div>
+  <div class="nightsbar-wrap">
+    <div class="nightsbar-title">Where the 15 nights go</div>
+    <div class="nightsbar">
+      <div class="seg" style="width:13.3%;background:var(--sight)" title="Vienna — 2 nights"></div>
+      <div class="seg" style="width:13.3%;background:#c96b3f" title="Dubrovnik — 2 nights"></div>
+      <div class="seg" style="width:20%;background:var(--trip)" title="Split — 3 nights"></div>
+      <div class="seg" style="width:20%;background:var(--transit)" title="Prague — 3 nights"></div>
+      <div class="seg" style="width:20%;background:var(--night)" title="Budapest — 3 nights"></div>
+      <div class="seg" style="width:6.7%;background:var(--suggest)" title="London — ~1 night"></div>
+      <div class="seg" style="width:6.7%;background:var(--sub2)" title="In transit"></div>
+    </div>
+    <div class="nightsbar-legend">
+      <span><i class="sw" style="background:var(--sight)"></i>Vienna · 2</span>
+      <span><i class="sw" style="background:#c96b3f"></i>Dubrovnik · 2</span>
+      <span><i class="sw" style="background:var(--trip)"></i>Split · 3</span>
+      <span><i class="sw" style="background:var(--transit)"></i>Prague · 3</span>
+      <span><i class="sw" style="background:var(--night)"></i>Budapest · 3</span>
+      <span><i class="sw" style="background:var(--suggest)"></i>London · ~1</span>
+      <span><i class="sw" style="background:var(--sub2)"></i>Transit / flights</span>
+    </div>
+  </div>
+</header>
+
+<div class="shell">
+
+<aside id="sidebar"></aside>
+
+<main>
+
+  <!-- ============ OVERVIEW ============ -->
+  <section id="tab-overview" class="tab active">
+    <div class="cityhead">
+      <div><h2>Trip Overview</h2><div class="sub">Aug 7 – Aug 22, 2026 · 8 legs, 6 cities, 3 currencies</div></div>
+    </div>
+
+    <div id="overview-map" class="leaflet-map" style="margin:18px 0 14px;"></div>
+    <div class="note blue">🗺️ Click a city pin to jump to that city's tab. For a single day's route with travel times, use the <b>Calendar</b> tab.</div>
+
+    <div class="grid">
+      <div class="card" style="grid-column:1/-1;">
+        <h3>✈️ Flights &amp; buses <span style="font-weight:400;color:var(--sub);font-size:12.5px;">— manage-booking links included</span></h3>
+        <table>
+          <thead><tr><th>Date</th><th>Route</th><th>Details</th><th>Status</th><th>Manage</th></tr></thead>
+          <tbody>
+          <tr><td>Fri Aug 7</td><td>LAX → Frankfurt</td><td>Condor DE2081, 16:45 → 13:00 (+1). Ref 17097157-01</td><td><span class="pill pill-ok">✓ Confirmed</span></td><td><a class="book ghost" href="https://www.condor.com/uk/" target="_blank" rel="noopener">Condor ↗</a></td></tr>
+          <tr><td>Sat Aug 8</td><td>Frankfurt → Vienna</td><td>Condor DE4345, 14:30 → 15:50. $439.99 total</td><td><span class="pill pill-ok">✓ Confirmed</span></td><td><a class="book ghost" href="https://www.condor.com/uk/" target="_blank" rel="noopener">Condor ↗</a></td></tr>
+          <tr><td>Mon Aug 10</td><td>Vienna → Dubrovnik</td><td>Ryanair, dep 06:55. Ref IU1TUY</td><td><span class="pill pill-you">From you</span></td><td><a class="book ghost" href="https://www.ryanair.com/gb/en/check-in" target="_blank" rel="noopener">Ryanair ↗</a></td></tr>
+          <tr><td>Wed Aug 12</td><td>Dubrovnik → Split (bus)</td><td>FlixBus 07:15 → 11:20. #3379864687</td><td><span class="pill pill-ok">✓ Confirmed</span></td><td><a class="book ghost" href="https://global.flixbus.com/" target="_blank" rel="noopener">FlixBus ↗</a></td></tr>
+          <tr><td>Sat Aug 15</td><td>Split → Prague</td><td>Smartwings QS1083, 14:40 → 16:15. Ref YZGDTS — <b>reissued Aug 4</b>, moved up from Aug 18</td><td><span class="pill pill-ok">✓ Confirmed</span></td><td><a class="book ghost" href="https://www.smartwings.com/en/" target="_blank" rel="noopener">Smartwings ↗</a></td></tr>
+          <tr><td>Tue Aug 18</td><td>Prague → Budapest</td><td>Ryanair, dep ~19:30. Ref I54C9A</td><td><span class="pill pill-you">From you</span></td><td><a class="book ghost" href="https://www.ryanair.com/gb/en/check-in" target="_blank" rel="noopener">Ryanair ↗</a></td></tr>
+          <tr><td>Fri Aug 21</td><td>Budapest → London</td><td>BA863, 12:55 → 14:40. Conf AS67UA</td><td><span class="pill pill-ok">✓ Confirmed</span></td><td><a class="book ghost" href="https://www.britishairways.com/travel/managebooking/public/en_gb" target="_blank" rel="noopener">BA ↗</a></td></tr>
+          <tr><td>Sat Aug 22</td><td>London → LAX</td><td>Virgin Atlantic VS23, 18:15 → 21:25, direct. Ref D8WQHO</td><td><span class="pill pill-ok">✓ Confirmed</span></td><td><a class="book ghost" href="https://www.virginatlantic.com/" target="_blank" rel="noopener">Virgin ↗</a></td></tr>
+          </tbody>
+        </table>
+        <div class="note" style="margin-top:16px;">IU1TUY and I54C9A came from you directly and still aren't in either inbox after exhaustive searching — worth a final check in the Ryanair app before you fly, but treat the dates/times as confirmed since you've verified them yourself.</div>
+      </div>
+
+      <div class="card warn" style="grid-column:1/-1;">
+        <h3>🚨 Still open — Split, Prague, Budapest &amp; London lodging</h3>
+        <p style="font-size:13.5px;margin:0 0 12px;color:var(--ink);">Vienna and Dubrovnik are booked (found in Gmail, see below). Split, Prague, Budapest and London are still unbooked as of Aug 6. Search links are pre-filled with your actual dates.</p>
+        <table>
+          <thead><tr><th>City</th><th>Nights</th><th>Rough range</th><th>Search</th></tr></thead>
+          <tbody>
+          <tr><td>Split</td><td>3 (Aug 12–15)</td><td>€75–105pp dorm — back to your sheet's original 3 nights now that the flight moved</td><td><a class="book warn" href="https://www.booking.com/searchresults.html?ss=Split&checkin=2026-08-12&checkout=2026-08-15" target="_blank" rel="noopener">Find a room ↗</a></td></tr>
+          <tr><td>Prague</td><td><span class="pill pill-warn">3 — new, wasn't in the plan</span></td><td>Not confirmed in either inbox</td><td><a class="book warn" href="https://www.booking.com/searchresults.html?ss=Prague&checkin=2026-08-15&checkout=2026-08-18" target="_blank" rel="noopener">Find a room ↗</a></td></tr>
+          <tr><td>Budapest</td><td>3 (Aug 18–21)</td><td>Not confirmed in either inbox</td><td><a class="book warn" href="https://www.booking.com/searchresults.html?ss=Budapest&checkin=2026-08-18&checkout=2026-08-21" target="_blank" rel="noopener">Find a room ↗</a></td></tr>
+          <tr><td>London</td><td>1 (Aug 21–22)</td><td>Not confirmed in either inbox</td><td><a class="book warn" href="https://www.booking.com/searchresults.html?ss=London&checkin=2026-08-21&checkout=2026-08-22" target="_blank" rel="noopener">Find a room ↗</a></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card" style="grid-column:1/-1;background:linear-gradient(180deg,#eef7f3 0%,#fff 90px);border-color:var(--accent2-soft);">
+        <h3 style="color:var(--accent2);">✅ Resolved — the Aug 15 conflict, and Vienna/Dubrovnik lodging</h3>
+        <p style="font-size:13.5px;margin:0 0 8px;color:var(--ink);line-height:1.6;">Your sheet planned <b>Sat Aug 15</b>: meet your girlfriend's family in the morning, then fly out at 2pm. The Smartwings ticket was reissued on Aug 4 — Split→Prague now departs <b>14:40 on Aug 15</b> instead of Aug 18. Same date, same time your sheet had, just routed through Prague instead of direct. Split reverts to the 3 nights your sheet always planned; the family meetup morning fits Aug 15 exactly as written.</p>
+        <p style="font-size:13.5px;margin:0 0 8px;color:var(--ink);line-height:1.6;"><b>You confirmed Prague→Budapest is Tue Aug 18 at ~19:30</b> — not the same day as the Smartwings arrival, as I'd assumed. That makes Prague a real 3-night stay (Aug 15–18), and Budapest goes back to its original 3 nights (Aug 18–21), not 6. Prague's tab is rebuilt from scratch below since it didn't exist in any plan before now.</p>
+        <p style="font-size:13.5px;margin:0;color:var(--ink);line-height:1.6;">Also found in Gmail: <b>Habyt Vienna</b> (Aug 8–10, conf 5814731574) and <b>Hostel Petra Marina</b> in Dubrovnik (Aug 10–12, conf 5175904714) are both booked and confirmed — details on their city tabs.</p>
+      </div>
+
+      <div class="card">
+        <h3>🕒 Time in each place</h3>
+        <table><tbody>
+          <tr><td>🇦🇹 Vienna</td><td>2 nights (Aug 8–10)</td></tr>
+          <tr><td>🇭🇷 Dubrovnik</td><td>2 nights (Aug 10–12)</td></tr>
+          <tr><td>🇭🇷 Split</td><td>3 nights (Aug 12–15)</td></tr>
+          <tr><td>🇨🇿 Prague</td><td><span class="pill pill-warn">3 nights — new, all my draft</span></td></tr>
+          <tr><td>🇭🇺 Budapest</td><td>3 nights (Aug 18–21)</td></tr>
+          <tr><td>🇬🇧 London</td><td><span class="pill pill-warn">~27 hrs, no hotel yet</span></td></tr>
+        </tbody></table>
+      </div>
+      <div class="card">
+        <h3>💶 Currency &amp; money heads-up</h3>
+        <table><tbody>
+          <tr><td>Austria</td><td>Euro (€)</td></tr>
+          <tr><td>Croatia</td><td>Euro (€) — joined 2023</td></tr>
+          <tr><td>Czechia</td><td><span class="pill pill-warn">Koruna (CZK)</span></td></tr>
+          <tr><td>Hungary</td><td><span class="pill pill-warn">Forint (HUF)</span></td></tr>
+          <tr><td>UK</td><td>Pound Sterling (£)</td></tr>
+        </tbody></table>
+      </div>
+
+      <div class="card" style="grid-column:1/-1;">
+        <h3>🧭 Planner's flags — worth deciding on</h3>
+        <table><tbody>
+          <tr><td style="width:26%;"><b>Prague is a new 3-night city, entirely my draft</b></td><td>Turned out to be a real stay once you confirmed the Aug 18 Ryanair date, not the 3-hour connection the Aug 15 Smartwings arrival alone would suggest. Castle, Charles Bridge, Jewish Quarter, Vyšehrad — none of it was in any version of your plan, so treat all of it as a starting point to cut from.</td></tr>
+          <tr><td><b>Budapest is back to 3 nights (Aug 18–21)</b></td><td>My earlier draft had extended it to 6 nights on the assumption the Ryanair leg moved to Aug 15 with the Smartwings change. It didn't — you confirmed Aug 18 — so Budapest reverts to exactly what it was before that assumption.</td></tr>
+          <tr><td><b>London is a full day, not a layover</b></td><td>Land 14:40 Aug 21, fly out 18:15 Aug 22 — ~27 hours. I've drafted a one-day plan; it needs a hotel to anchor it.</td></tr>
+          <tr><td><b>Aug 10 is a 4:45am wake-up</b></td><td>6:55am Ryanair out of Vienna. Aug 9 is deliberately kept light because of it.</td></tr>
+        </tbody></table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CALENDAR ============ -->
+  <section id="tab-calendar" class="tab">
+    <div class="dayview">
+      <div>
+        <div class="dayhead" id="dayhead"></div>
+        <div class="timeline" id="timeline"></div>
+      </div>
+      <div class="maprail">
+        <div id="day-map" class="leaflet-map"></div>
+        <div class="mapctl" id="mapctl"></div>
+        <div class="mapscope" id="mapscope"></div>
+        <div class="note" style="margin-top:12px;font-size:12.5px;">Travel times are straight-line estimates with a detour factor — good for pacing, not for catching a specific train. Fixed legs (flights, the FlixBus, tour pickups) use the real scheduled times.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CITY TABS (rendered by JS) ============ -->
+  <section id="tab-vienna" class="tab">
+    <div class="cityhead">
+      <div><h2><span class="flagbig">🇦🇹</span>Vienna</h2><div class="sub">Innere Stadt &amp; Schönbrunn</div></div>
+      <div class="datebadge">📅 Aug 8 – Aug 10</div>
+    </div>
+    <div class="facts">
+      <span class="fact">💶 Euro (€)</span><span class="fact">🚊 Wiener Linien day pass ~€8</span>
+      <span class="fact">🙌 Tip: round up or ~10%</span><span class="fact">✅ Habyt Vienna booked</span>
+    </div>
+    <div class="subnav">
+      <button class="active" data-sub="vienna-map">Map</button>
+      <button data-sub="vienna-itin">Itinerary</button>
+    </div>
+    <div id="sub-vienna-map" class="subtab active">
+      <div class="legend" id="legend-vienna"></div>
+      <div id="map-vienna" class="leaflet-map"></div>
+      <div class="note">📍 Click any pin for a note, the price, and a direct link to book or open it in Google Maps.</div>
+    </div>
+    <div id="sub-vienna-itin" class="subtab"><div id="itin-vienna"></div></div>
+  </section>
+
+  <section id="tab-dubrovnik" class="tab">
+    <div class="cityhead">
+      <div><h2><span class="flagbig">🇭🇷</span>Dubrovnik</h2><div class="sub">Old Town, walls &amp; Adriatic sunsets</div></div>
+      <div class="datebadge">📅 Aug 10 – Aug 12</div>
+    </div>
+    <div class="facts">
+      <span class="fact">💶 Euro (€)</span><span class="fact">🚶 Old Town is pedestrian-only</span>
+      <span class="fact">🏰 City Walls €35 — book timed entry</span><span class="fact">✅ Petra Marina booked</span>
+    </div>
+    <div class="subnav">
+      <button class="active" data-sub="dubrovnik-map">Map</button>
+      <button data-sub="dubrovnik-itin">Itinerary</button>
+    </div>
+    <div id="sub-dubrovnik-map" class="subtab active">
+      <div class="legend" id="legend-dubrovnik"></div>
+      <div id="map-dubrovnik" class="leaflet-map"></div>
+      <div class="note">Old Town is compact — most of this is walkable in under 15 minutes. Lokrum is a 10-min boat from the Old Port.</div>
+    </div>
+    <div id="sub-dubrovnik-itin" class="subtab"><div id="itin-dubrovnik"></div></div>
+  </section>
+
+  <section id="tab-split" class="tab">
+    <div class="cityhead">
+      <div><h2><span class="flagbig">🇭🇷</span>Split</h2><div class="sub">Diocletian's Palace + island &amp; national-park day trips</div></div>
+      <div class="datebadge">📅 Aug 12 – Aug 15</div>
+    </div>
+    <div class="facts">
+      <span class="fact">💶 Euro (€)</span><span class="fact">✅ Back to your original 3-night plan</span>
+      <span class="fact">🏛️ Best palace hours: 7–9am</span><span class="fact">🚨 Lodging not booked</span>
+    </div>
+    <div class="subnav">
+      <button class="active" data-sub="split-map">Map</button>
+      <button data-sub="split-itin">Itinerary</button>
+    </div>
+    <div id="sub-split-map" class="subtab active">
+      <div class="legend" id="legend-split"></div>
+      <div id="map-split" class="leaflet-map"></div>
+      <div class="note">Day-trip pins (Trogir, Hvar, Krka, Blue Cave) are shown at true distance — the map auto-zooms to fit them.</div>
+    </div>
+    <div id="sub-split-itin" class="subtab"><div id="itin-split"></div></div>
+  </section>
+
+  <section id="tab-prague" class="tab">
+    <div class="cityhead">
+      <div><h2><span class="flagbig">🇨🇿</span>Prague</h2><div class="sub">Castle, Charles Bridge &amp; the Old Town</div></div>
+      <div class="datebadge">📅 Aug 15 – Aug 18</div>
+    </div>
+    <div class="facts">
+      <span class="fact">💴 Czech Koruna (CZK) — not euro</span><span class="fact">🏰 Castle grounds free, buildings ~450 CZK</span>
+      <span class="fact">🚊 24-hr transit ticket ~120 CZK</span><span class="fact">🚨 Lodging not booked</span>
+    </div>
+    <div class="note blue">You corrected me on this one — Prague→Budapest is Tue Aug 18 at ~19:30, not the same day as the Smartwings arrival. That makes this a real 3-night stay, not a connection. Rebuilt from scratch below; all of it is my draft since it didn't exist in your plan at all until now.</div>
+    <div class="subnav">
+      <button class="active" data-sub="prague-map">Map</button>
+      <button data-sub="prague-itin">Itinerary</button>
+    </div>
+    <div id="sub-prague-map" class="subtab active">
+      <div class="legend" id="legend-prague"></div>
+      <div id="map-prague" class="leaflet-map"></div>
+      <div class="note">📍 Click any pin for a note and a direct link to book or open it in Google Maps.</div>
+    </div>
+    <div id="sub-prague-itin" class="subtab"><div id="itin-prague"></div></div>
+  </section>
+
+  <section id="tab-budapest" class="tab">
+    <div class="cityhead">
+      <div><h2><span class="flagbig">🇭🇺</span>Budapest</h2><div class="sub">Thermal baths, ruin bars, the Danube</div></div>
+      <div class="datebadge">📅 Aug 18 – Aug 21</div>
+    </div>
+    <div class="facts">
+      <span class="fact">💴 Forint (HUF) — not euro</span><span class="fact">🛁 Book baths online, skip the queue</span>
+      <span class="fact">🌉 Buda = hills &amp; castle · Pest = flat &amp; nightlife</span><span class="fact">🚨 Lodging not booked</span>
+    </div>
+    <div class="subnav">
+      <button class="active" data-sub="budapest-map">Map</button>
+      <button data-sub="budapest-itin">Itinerary</button>
+    </div>
+    <div id="sub-budapest-map" class="subtab active">
+      <div class="legend" id="legend-budapest"></div>
+      <div id="map-budapest" class="leaflet-map"></div>
+      <div class="note">Everything here is my draft — you hadn't planned Budapest yet. Treat it as a starting point and cut what doesn't appeal.</div>
+    </div>
+    <div id="sub-budapest-itin" class="subtab"><div id="itin-budapest"></div></div>
+  </section>
+
+  <section id="tab-london" class="tab">
+    <div class="cityhead">
+      <div><h2><span class="flagbig">🇬🇧</span>London</h2><div class="sub">One full day before the flight home</div></div>
+      <div class="datebadge">📅 Aug 21 – Aug 22</div>
+    </div>
+    <div class="facts">
+      <span class="fact">💷 Pound (£)</span><span class="fact">📱 Contactless tap = cheapest tube fare</span>
+      <span class="fact">🕐 ~27 hrs on the ground</span><span class="fact">🚨 No hotel booked</span>
+    </div>
+    <div class="note danger">This plan assumes a central hotel (Zone 1). Book one and tell me where — the route below shifts a lot depending on whether you're near Westminster or near the Tower.
+      <div class="booklist" style="margin-top:10px;"><a class="book warn" href="https://www.booking.com/searchresults.html?ss=London&checkin=2026-08-21&checkout=2026-08-22" target="_blank" rel="noopener">Find a London hotel ↗</a></div>
+    </div>
+    <div class="subnav">
+      <button class="active" data-sub="london-map">Map</button>
+      <button data-sub="london-itin">Itinerary</button>
+    </div>
+    <div id="sub-london-map" class="subtab active">
+      <div class="legend" id="legend-london"></div>
+      <div id="map-london" class="leaflet-map"></div>
+    </div>
+    <div id="sub-london-itin" class="subtab"><div id="itin-london"></div></div>
+  </section>
+
+</main>
+</div>
+
+<script>
+/* =========================================================
+   1. CONSTANTS
+   ========================================================= */
+const COLORS = {sight:"#b3481e", food:"#2c6358", night:"#5c3a8e", suggest:"#a9781a", trip:"#2461a3", transit:"#6d7d8c", stay:"#a8382f"};
+const CAT_LABEL = {sight:"Sight / Landmark", food:"Food & Drink", night:"Nightlife / View", suggest:"Suggested add", trip:"Day trip", transit:"Transport", stay:"Lodging"};
+const MODES = {
+  walk:{i:"🚶",l:"Walk"}, transit:{i:"🚊",l:"Tram / metro"}, metro:{i:"🚇",l:"Metro"},
+  taxi:{i:"🚗",l:"Taxi / drive"}, bus:{i:"🚌",l:"Bus"}, coach:{i:"🚐",l:"Tour coach"},
+  boat:{i:"⛴️",l:"Boat"}, speedboat:{i:"🚤",l:"Speedboat"}, flight:{i:"✈️",l:"Flight"},
+  train:{i:"🚆",l:"Train"}, funicular:{i:"🚡",l:"Funicular"}
+};
+const CITY_META = {
+  vienna:{name:"Vienna", flag:"🇦🇹", color:"#b3481e"},
+  dubrovnik:{name:"Dubrovnik", flag:"🇭🇷", color:"#c96b3f"},
+  split:{name:"Split", flag:"🇭🇷", color:"#2461a3"},
+  prague:{name:"Prague", flag:"🇨🇿", color:"#6d7d8c"},
+  budapest:{name:"Budapest", flag:"🇭🇺", color:"#5c3a8e"},
+  london:{name:"London", flag:"🇬🇧", color:"#a9781a"},
+  transit:{name:"In transit", flag:"✈️", color:"#a89c8c"}
+};
+
+/* =========================================================
+   2. TRIP DATA — one source for calendar + city itineraries
+      stop: {t:time, n:name, cat, lat, lng, note, cost:"display", c:[lo,hi],
+             book:{l:label,u:url}, move:{mode,mins,label}, sug:true, badge:""}
+   ========================================================= */
+const DAYS = [
+{ id:"08-07", dow:"Fri", d:7, city:"transit", cities:["transit"], title:"Wheels up",
+  sub:"Long-haul day. Condor DE2081 out of LAX — nothing to plan but sleep strategy.",
+  stops:[
+    {t:"14:45", n:"Arrive LAX — Tom Bradley International", cat:"transit", lat:33.9425, lng:-118.4081, note:"Condor check-in opens ~3 hrs before. Aim to be airside by 15:30.", book:{l:"Condor check-in ↗", u:"https://www.condor.com/uk/"}},
+    {t:"16:45", n:"Condor DE2081 → Frankfurt", cat:"transit", lat:50.0379, lng:8.5622, note:"~11 hrs. Lands 13:00 next day. Ref 17097157-01. Sleep on this leg — Vienna evening depends on it.", move:{mode:"flight", mins:660}}
+  ]},
+
+{ id:"08-08", dow:"Sat", d:8, city:"vienna", cities:["vienna"], title:"Land, then the Innere Stadt core",
+  sub:"Arrival day. Your booked hotel is actually in Leopoldstadt (Nordbahnviertel), not Innere Stadt — a newer development ~10 min by tram O/12 from Stephansplatz, not walking distance. Budget an extra tram hop into tonight.",
+  stops:[
+    {t:"13:00", n:"Frankfurt (FRA) — connect", cat:"transit", lat:50.0379, lng:8.5622, note:"90 min on the ground. Schengen-internal, so no second passport control."},
+    {t:"14:30", n:"Condor DE4345 → Vienna (VIE)", cat:"transit", lat:48.1103, lng:16.5697, note:"Lands 15:50. Same booking as the LAX leg, $439.99 total.", move:{mode:"flight", mins:80}},
+    {t:"16:20", n:"City Airport Train → Wien Mitte", cat:"transit", lat:48.2062, lng:16.3850, note:"16 min nonstop. ~€15 single at the machine, but CAT is running 10% off online bookings from Jul 31–Aug 31 2026 — that's your window. The S7 city train is ~€4 and 25 min if you'd rather save it.", cost:"€4–15", c:[4,15], move:{mode:"train", mins:16}, book:{l:"Book CAT ↗", u:"https://www.cityairporttrain.com/en/home"}},
+    {t:"16:50", n:"Check in — Habyt Vienna", cat:"stay", lat:48.2205, lng:16.3945, note:"Bruno-Marek-Allee 26, 1020 (Nordbahnviertel, Leopoldstadt) — booked, conf 5814731574, PIN 0754, 2 nights. Not Innere Stadt as originally assumed; tram O/12 run right on the street, ~10 min to Praterstern/Stephansplatz. Check-in window 3–11pm.", move:{mode:"transit", mins:12}, book:{l:"Hotel page ↗", u:"https://www.booking.com/hotel/at/habyt-vienna-green-cube.html"}},
+    {t:"18:40", n:"Maria-Theresien-Platz & Volksgarten", cat:"sight", lat:48.2038, lng:16.3610, note:"Rose garden, free, always open. Volksgarten is also a well-known club at night if you want to come back later.", badge:"free"},
+    {t:"19:45", n:"Stephansplatz + dinner at a Beisl", cat:"food", lat:48.2085, lng:16.3731, note:"Classic Viennese tavern. No reservation needed, low effort, right thing for night one.", cost:"€20–35", c:[20,35]},
+    {t:"21:15", n:"Café Central — coffee & Sachertorte", cat:"food", lat:48.2103, lng:16.3663, note:"Herrengasse 14. Reserve ahead or expect a queue; Demel is the fallback two minutes away.", cost:"€8–12", c:[8,12], book:{l:"Reserve ↗", u:"https://www.cafecentral.wien/en/"}}
+  ]},
+
+{ id:"08-09", dow:"Sun", d:9, city:"vienna", cities:["vienna"], title:"Schönbrunn, kept deliberately light",
+  sub:"Your only full Vienna day — but tomorrow starts at 4:45am, and your own plan flagged that. Gardens over palace interiors, early night, bags packed before bed.",
+  stops:[
+    {t:"08:30", n:"Schönbrunn gardens & Gloriette", cat:"sight", lat:48.1858, lng:16.3122, note:"Gardens are free and open from 6:30am. Go early — by 11 it's coach-tour territory. The Gloriette climb is the best view in the city.", cost:"Gardens free · palace €15–24", c:[0,24], move:{mode:"metro", mins:22}, book:{l:"Palace tickets ↗", u:"https://www.schoenbrunn.at/en/tickets-prices"}},
+    {t:"11:30", n:"Austrian National Library — State Hall", cat:"sight", lat:48.2065, lng:16.3661, note:"Josefsplatz 1. Moved here from Saturday — the flea market took that slot and the State Hall is open Sun 9–18 in August (year-round Fri–Sun 9–18, Thu till 21:00, only closed Mondays Oct–May). Same €12 ticket either day.", cost:"€12", c:[12,12], move:{mode:"metro", mins:25}, book:{l:"Tickets ↗", u:"https://www.onb.ac.at/en/museums/state-hall"}},
+    {t:"14:30", n:"Mariahilfer Straße + coffeehouse stop", cat:"food", lat:48.1977, lng:16.3474, note:"Main shopping street, pedestrianised. Low-effort afternoon on purpose.", cost:"€8–12", c:[8,12], move:{mode:"metro", mins:14}},
+    {t:"16:30", n:"Back to hotel — pack tonight, not at 5am", cat:"stay", lat:48.2082, lng:16.3738, note:"Ryanair bag rules are strict. Weigh and sort now while you're not panicking."},
+    {t:"19:30", n:"IKEA Rooftop, Westbahnhof — golden hour", cat:"night", lat:48.1975, lng:16.3372, note:"Free public rooftop terrace over the city, right off Mariahilfer Straße. Genuinely one of the best free views in Vienna. Wrap up by 21:00.", badge:"free", move:{mode:"metro", mins:12}},
+    {t:"21:30", n:"Early night — 4:45am alarm", cat:"stay", lat:48.2082, lng:16.3738, note:"Non-negotiable if you want Dubrovnik day one to be any good.", move:{mode:"metro", mins:14}}
+  ]},
+
+{ id:"08-10", dow:"Mon", d:10, city:"dubrovnik", cities:["vienna","dubrovnik"], title:"Vienna out at dawn, Dubrovnik by breakfast",
+  sub:"6:55am Ryanair, lands 8:15am — you get a near-full Dubrovnik day out of it, which is why the early start is worth it. Check-in isn't until afternoon, so the morning is built around luggage storage.",
+  stops:[
+    {t:"05:00", n:"Leave for Vienna Airport (VIE)", cat:"transit", lat:48.1103, lng:16.5697, note:"CAT/S7 run early. Low-cost carrier bag drop closes 40 min before departure — don't cut it fine.", cost:"€12–15", c:[12,15], move:{mode:"train", mins:16}},
+    {t:"06:55", n:"Ryanair VIE → DBV", cat:"transit", lat:42.5614, lng:18.2683, note:"1h20 nonstop, lands 08:15. Ref IU1TUY — this is one of the two I couldn't verify against an email.", move:{mode:"flight", mins:80}, book:{l:"Manage booking ↗", u:"https://www.ryanair.com/gb/en/check-in"}},
+    {t:"08:45", n:"Airport bus → Pile Gate, drop bags", cat:"transit", lat:42.6440, lng:18.1091, note:"Atlas shuttle meets arrivals, ~30 min to Pile. Luggage storage right by the gate.", cost:"Bus ~€12 · storage €5–10", c:[17,22], move:{mode:"bus", mins:32}},
+    {t:"09:45", n:"Sveti Jakov Beach", cat:"food", lat:42.6338, lng:18.1223, note:"20–25 min walk with a stair descent. Far fewer people than Banje, and the best skyline view of the walls from the water. Free, café on site.", badge:"free", move:{mode:"walk", mins:24}},
+    {t:"13:30", n:"Check in — Hostel Petra Marina", cat:"stay", lat:42.6558, lng:18.0762, note:"Obala Stjepana Radića 25, Gruž — booked, conf 5175904714, PIN 4809, 1 dorm bed, 2 nights. This is in Gruž near the ferry port, not Old Town — a bus or ~20-min walk from the Stradun each way, so budget that into every day here.", move:{mode:"bus", mins:18}, book:{l:"Hostel page ↗", u:"https://www.booking.com/hotel/hr/hostel-petra-marina.html"}},
+    {t:"19:30", n:"Stradun wander + dinner", cat:"food", lat:42.6412, lng:18.1105, note:"Easy first night. Anything one street off the Stradun is cheaper and better than the Stradun itself.", cost:"€25–40", c:[25,40]}
+  ]},
+
+{ id:"08-11", dow:"Tue", d:11, city:"dubrovnik", cities:["dubrovnik"], title:"City Walls at opening, Lokrum in the afternoon",
+  sub:"Your only full day here. The walls are 2km of unshaded stone — 8am or you'll regret it. Cruise-ship crowds peak 10am–4pm.",
+  stops:[
+    {t:"08:00", n:"Dubrovnik City Walls", cat:"sight", lat:42.6435, lng:18.1098, note:"€35, includes Fort Lovrijenac. Full circuit takes 1.5–2 hrs. Buy a timed slot online — the Pile ticket queue in August is brutal. Bring water; there's almost no shade.", cost:"€35", c:[35,35], book:{l:"Book walls ↗", u:"https://citywallsdubrovnik.hr/"}},
+    {t:"11:00", n:"Old Town wander + lunch", cat:"food", lat:42.6404, lng:18.1101, note:"Rector's Palace and the Cathedral are both right here — courtyards and exteriors are free to walk through.", cost:"€15–20", c:[15,20], move:{mode:"walk", mins:5}},
+    {t:"14:00", n:"Lokrum Island", cat:"sight", lat:42.6265, lng:18.1214, note:"10-min boat from the Old Port. €27 covers boat + island entry. Botanical gardens, peacocks, the Dead Sea saltwater lake. Check the last return time when you board — it's earlier than you'd expect.", cost:"€27", c:[27,27], move:{mode:"boat", mins:12}, book:{l:"Lokrum info & tickets ↗", u:"https://www.lokrum.hr/en"}},
+    {t:"17:30", n:"Buža Bar for sunset", cat:"night", lat:42.6398, lng:18.1082, note:"Cliffside bar cut into the seaward wall. Cash-friendly, no sign, just a hole in the wall marked 'cold drinks'.", cost:"€8–15", c:[8,15], sug:true, move:{mode:"boat", mins:12}},
+    {t:"19:30", n:"Dinner, then early night", cat:"food", lat:42.6412, lng:18.1105, note:"Bus tomorrow is 07:15 — pack tonight.", cost:"€25–40", c:[25,40]}
+  ]},
+
+{ id:"08-12", dow:"Wed", d:12, city:"split", cities:["dubrovnik","split"], title:"Coastal bus to Split, palace at night",
+  sub:"FlixBus 07:15 → 11:20. One of the best coastal drives in Europe — sit on the right side for the sea. Two short Bosnia border crossings, passport out.",
+  stops:[
+    {t:"06:40", n:"Dubrovnik bus terminal (Gruž)", cat:"transit", lat:42.6600, lng:18.0731, note:"20 min from Old Town. Booking #3379864687 — have the QR ready.", move:{mode:"taxi", mins:12}, book:{l:"Manage FlixBus ↗", u:"https://global.flixbus.com/"}},
+    {t:"07:15", n:"FlixBus → Split", cat:"transit", lat:43.5045, lng:16.4406, note:"~4 hrs, arrives 11:20. Snacks on board are grim — buy something at Gruž first.", move:{mode:"bus", mins:245}},
+    {t:"12:00", n:"Check in, drop bags", cat:"stay", lat:43.5081, lng:16.4402, note:"Not booked. Staying inside or just north of the palace walls means you walk everywhere for three days.", move:{mode:"walk", mins:6}, book:{l:"Find a room ↗", u:"https://www.booking.com/searchresults.html?ss=Split&checkin=2026-08-12&checkout=2026-08-15"}},
+    {t:"18:00", n:"Riva waterfront, early dinner", cat:"food", lat:43.5074, lng:16.4384, note:"Palm-lined promenade. Overpriced for food, perfect for a drink at sunset.", cost:"€20–35", c:[20,35], move:{mode:"walk", mins:4}},
+    {t:"20:30", n:"Diocletian's Palace & Peristyle at night", cat:"sight", lat:43.5081, lng:16.4402, note:"Free, open 24/7, and much better after dark once the day crowds clear. Klapa singers perform in the Peristyle most summer evenings — the acoustics are the whole point.", badge:"free", move:{mode:"walk", mins:4}}
+  ]},
+
+{ id:"08-13", dow:"Thu", d:13, city:"split", cities:["split"], title:"Blue Cave, Hvar & the 5-island speedboat run",
+  sub:"From your sheet — the big-ticket day. 7am pickup, ~11 hrs on the water. This tour departs Split/Trogir, not Dubrovnik, which is why it lands here.",
+  flag:false,
+  stops:[
+    {t:"07:00", n:"Speedboat pickup — Split harbour", cat:"trip", lat:43.5060, lng:16.4400, note:"€90–113pp. Confirm the exact meeting point the night before; operators use different jetties.", cost:"€90–113", c:[90,113], book:{l:"Book the tour ↗", u:"https://www.getyourguide.com/s/?q=Blue%20Cave%20Hvar%205%20Islands%20Split"}},
+    {t:"08:45", n:"Blue Cave, Biševo", cat:"trip", lat:43.0264, lng:16.0114, note:"The light only works mid-morning on a calm sea — this is why the tour leaves at 7. Separate small-boat transfer inside, sometimes a queue.", move:{mode:"speedboat", mins:105}},
+    {t:"10:30", n:"Stiniva Cove, Vis", cat:"trip", lat:43.0322, lng:16.2306, note:"Cliff-walled pebble cove, reachable only by boat or a steep hike. Regularly voted the best beach in Europe.", move:{mode:"speedboat", mins:45}},
+    {t:"12:15", n:"Budikovac / Blue Lagoon — snorkel stop", cat:"trip", lat:43.0433, lng:16.2790, note:"Shallow turquoise water, snorkelling gear included on most operators.", move:{mode:"speedboat", mins:25}},
+    {t:"14:30", n:"Hvar Town", cat:"trip", lat:43.1729, lng:16.4414, note:"Usually 1.5–2 hrs free. Enough for the Fortica fortress climb or a harbour lunch — not both.", cost:"€15–25 lunch", c:[15,25], move:{mode:"speedboat", mins:50}},
+    {t:"18:30", n:"Back in Split — light dinner", cat:"food", lat:43.5074, lng:16.4384, note:"You'll be sunburnt and salty. Keep it close to the hotel.", cost:"€20–30", c:[20,30], move:{mode:"speedboat", mins:75}}
+  ]},
+
+{ id:"08-14", dow:"Fri", d:14, city:"split", cities:["split"], title:"Krka National Park",
+  sub:"From your sheet. Coach day trip, back mid-afternoon — much gentler than yesterday.",
+  stops:[
+    {t:"07:30", n:"Coach pickup — Split", cat:"trip", lat:43.5090, lng:16.4390, note:"€31–35pp including park entry and transport. Roughly 1 hr each way.", cost:"€31–35", c:[31,35], book:{l:"Book Krka trip ↗", u:"https://www.getyourguide.com/s/?q=Krka%20Waterfalls%20from%20Split"}},
+    {t:"09:00", n:"Skradinski Buk waterfalls", cat:"trip", lat:43.8060, lng:15.9700, note:"Boardwalk loop over and around the falls, ~2 hrs at a relaxed pace. Swimming below the main falls has been banned since 2021 — don't plan a swim day around it.", move:{mode:"coach", mins:65}, book:{l:"Park info ↗", u:"https://np-krka.hr/en"}},
+    {t:"13:00", n:"Lunch in Skradin", cat:"food", lat:43.8175, lng:15.9236, note:"Small riverside town, the boat drop-off point. Skradinski rižot is the local thing.", cost:"€15–20", c:[15,20], move:{mode:"boat", mins:25}},
+    {t:"15:30", n:"Back in Split — free evening", cat:"food", lat:43.5081, lng:16.4402, note:"Good night for a proper sit-down dinner since you're not up early tomorrow.", cost:"€25–40", c:[25,40], move:{mode:"coach", mins:70}}
+  ]},
+
+{ id:"08-15", dow:"Sat", d:15, city:"prague", cities:["split","prague"], title:"Family morning, then Split → Prague",
+  sub:"Your morning plan stays exactly as written — the Smartwings ticket was reissued Aug 4 for this same date and 2pm departure. What's changed since the last version: Prague→Budapest is actually Tue Aug 18, not today, so tonight is the start of three real nights in Prague, not a connection.",
+  stops:[
+    {t:"09:00", n:"Morning with your girlfriend's family", cat:"food", lat:43.5081, lng:16.4402, note:"From your own sheet, kept exactly as planned. Nothing ticketed scheduled around it on purpose."},
+    {t:"12:15", n:"Split Airport (SPU), Kaštela", cat:"transit", lat:43.5389, lng:16.2981, note:"~30 min from the centre by shuttle bus from the Riva, ~€6. Small airport, but August queues are real.", cost:"~€6", c:[6,6], move:{mode:"bus", mins:35}},
+    {t:"14:40", n:"Smartwings QS1083 → Prague", cat:"transit", lat:50.1008, lng:14.2600, note:"Lands 16:15. Ref YZGDTS, reissued 04Aug2026 — this ticket used to say Aug 18.", move:{mode:"flight", mins:95}, book:{l:"Manage booking ↗", u:"https://www.smartwings.com/en/"}},
+    {t:"17:00", n:"Airport Express bus → city centre", cat:"transit", lat:50.0875, lng:14.4210, note:"AE bus to Prague main station, ~40 min, ~100 CZK. Ordinary public transit tickets are valid on it — no special fare needed.", cost:"~100 CZK", c:[4,4], move:{mode:"bus", mins:40}},
+    {t:"18:00", n:"Check in — Old Town", cat:"stay", lat:50.0875, lng:14.4210, note:"Not booked. Anywhere in Old Town or Josefov keeps everything below walkable.", move:{mode:"walk", mins:8}, book:{l:"Find a room ↗", u:"https://www.booking.com/searchresults.html?ss=Prague&checkin=2026-08-15&checkout=2026-08-18"}},
+    {t:"19:30", n:"Old Town Square + dinner", cat:"food", lat:50.0870, lng:14.4208, note:"Easy first night. Catch the Astronomical Clock's hourly show if you're passing on the hour — free, always a little anticlimactic, worth seeing once anyway.", cost:"€15–25", c:[15,25]}
+  ]},
+
+{ id:"08-16", dow:"Sun", d:16, city:"prague", cities:["prague"], title:"Prague Castle & the Vltava crossing",
+  sub:"My draft — this city wasn't in your plan at all until the Ryanair correction. Castle early before the tour buses, Charles Bridge at its best in the morning light.",
+  sugDay:true,
+  stops:[
+    {t:"08:30", n:"Prague Castle complex", cat:"sight", lat:50.0910, lng:14.4016, note:"Grounds free and open 6am–10pm; the Main Circuit ticket (St. Vitus Cathedral, Old Royal Palace, St. George's Basilica, Golden Lane) is ~450 CZK (~€18) and covers buildings open 9–17 in summer. Go right at opening — this is Prague's single biggest tour-bus magnet.", cost:"~450 CZK", c:[18,18], book:{l:"Tickets ↗", u:"https://www.hrad.cz/en"}},
+    {t:"12:00", n:"Lesser Town (Malá Strana) wander", cat:"sight", lat:50.0875, lng:14.4045, note:"Downhill from the castle — Baroque palaces and quiet lanes, worth the meander instead of a direct route to the bridge.", move:{mode:"walk", mins:12}},
+    {t:"13:00", n:"Lunch near Kampa Island", cat:"food", lat:50.0838, lng:14.4072, note:"Kampa's a small park island right by the bridge — good spot to eat before the crowds on Charles Bridge peak.", cost:"€15–25", c:[15,25], move:{mode:"walk", mins:5}},
+    {t:"14:30", n:"Lennon Wall", cat:"sight", lat:50.0866, lng:14.4058, note:"Free. Continuously repainted graffiti wall since the 1980s — still going.", badge:"free", move:{mode:"walk", mins:3}},
+    {t:"15:00", n:"Charles Bridge crossing", cat:"sight", lat:50.0865, lng:14.4114, note:"Free, open 24/7. Genuinely crowded midday in August — you're crossing it now because you already did the castle at opening, not because this time is quiet.", badge:"free", move:{mode:"walk", mins:8}},
+    {t:"19:30", n:"Dinner, Old Town", cat:"food", lat:50.0875, lng:14.4210, note:"Plenty of options right around the square — no need to book.", cost:"€20–30", c:[20,30], move:{mode:"walk", mins:10}}
+  ]},
+
+{ id:"08-17", dow:"Mon", d:17, city:"prague", cities:["prague"], title:"Jewish Quarter & Vyšehrad",
+  sub:"My draft. History in the morning, the quiet fortress most tourists skip in the afternoon.",
+  sugDay:true,
+  stops:[
+    {t:"09:30", n:"Jewish Quarter (Josefov)", cat:"sight", lat:50.0904, lng:14.4198, note:"Combined ticket covering Pinkas Synagogue, Maisel Synagogue, Spanish Synagogue, Ceremonial Hall and the Old Jewish Cemetery is ~550 CZK (~€22); the Old-New Synagogue is a separate ~200 CZK. Closed Saturdays for Shabbat — you're fine on a Monday, but double-check current hours before you go.", cost:"~550 CZK", c:[22,22], book:{l:"Tickets ↗", u:"https://www.jewishmuseum.cz/en/"}},
+    {t:"13:00", n:"Lunch, Old Town", cat:"food", lat:50.0875, lng:14.4210, note:"Central and easy — no reservation needed.", cost:"€15–20", c:[15,20], move:{mode:"walk", mins:10}},
+    {t:"15:00", n:"Vyšehrad", cat:"sight", lat:50.0653, lng:14.4188, note:"Free fortress grounds on a bluff over the Vltava, a fraction of the crowd of the main castle. The cemetery here holds Dvořák and Mucha. Best sunset river view in the city that isn't also full of tour groups.", badge:"free", move:{mode:"metro", mins:20}},
+    {t:"19:00", n:"Náplavka riverside", cat:"night", lat:50.0736, lng:14.4145, note:"Houseboat bars along the embankment below Vyšehrad — a good wind-down after the climb.", cost:"€10–20", c:[10,20], move:{mode:"walk", mins:15}}
+  ]},
+
+{ id:"08-18", dow:"Tue", d:18, city:"budapest", cities:["prague","budapest"], title:"Petřín Hill, then Prague → Budapest",
+  sub:"Last morning in Prague, easy pace, then the Ryanair leg to Budapest that evening. The date this whole rebuild hinged on.",
+  stops:[
+    {t:"09:30", n:"Petřín Hill funicular & lookout tower", cat:"sight", lat:50.0836, lng:14.3955, note:"Funicular is ~60 CZK each way (or use a transit day ticket). The mini Eiffel Tower lookout at the top is ~150 CZK — nice, not essential if you're short on time.", cost:"~60–150 CZK", c:[3,6], move:{mode:"walk", mins:10}},
+    {t:"12:00", n:"Check out, last lunch in Old Town", cat:"food", lat:50.0875, lng:14.4210, note:"Keep it light — long travel afternoon ahead.", cost:"€15–20", c:[15,20], move:{mode:"metro", mins:20}},
+    {t:"16:30", n:"Airport Express bus → Václav Havel Airport (PRG)", cat:"transit", lat:50.1008, lng:14.2600, note:"~40 min, ~100 CZK. Low-cost carrier bag drop closes 40 min before departure.", cost:"~100 CZK", c:[4,4], move:{mode:"bus", mins:40}},
+    {t:"19:30", n:"Ryanair PRG → Budapest", cat:"transit", lat:47.4298, lng:19.2611, note:"Lands ~20:45. Ref I54C9A.", move:{mode:"flight", mins:75}, book:{l:"Manage booking ↗", u:"https://www.ryanair.com/gb/en/check-in"}},
+    {t:"21:30", n:"100E airport bus → city, check in", cat:"stay", lat:47.4979, lng:19.0402, note:"Direct to Deák Ferenc tér, ~40 min, ~2700 HUF. Runs late. Lodging not booked.", cost:"~€7", c:[7,7], move:{mode:"bus", mins:40}, book:{l:"Find a room ↗", u:"https://www.booking.com/searchresults.html?ss=Budapest&checkin=2026-08-18&checkout=2026-08-21"}}
+  ]},
+
+{ id:"08-19", dow:"Wed", d:19, city:"budapest", cities:["budapest"], title:"Buda hill, then the baths",
+  sub:"My draft — you hadn't planned Budapest. Castle district in the morning while it's cool, thermal bath in the afternoon, Parliament lit up at night.",
+  sugDay:true,
+  stops:[
+    {t:"09:00", n:"Fisherman's Bastion & Matthias Church", cat:"sight", lat:47.5025, lng:19.0347, note:"Lower terraces are free and open 24/7; the upper turrets are ~€4 and only ticketed 09:00–19:00 in summer. Matthias Church interior ~€6.", cost:"~€4 + €6", c:[4,10], book:{l:"Matthias Church ↗", u:"https://www.matyas-templom.hu/en"}},
+    {t:"11:00", n:"Buda Castle district & funicular down", cat:"sight", lat:47.4960, lng:19.0396, note:"Castle grounds free to walk. The Sikló funicular down to the Chain Bridge is ~€6 one way — touristy but a genuinely nice descent.", cost:"~€6", c:[6,6], move:{mode:"walk", mins:12}},
+    {t:"13:00", n:"Lunch, Chain Bridge crossing", cat:"food", lat:47.4988, lng:19.0435, note:"Walk across into Pest. The bridge reopened after its full restoration — worth doing on foot.", cost:"€15–25", c:[15,25], move:{mode:"funicular", mins:5}},
+    {t:"15:00", n:"Széchenyi Thermal Bath", cat:"sight", lat:47.5187, lng:19.0831, note:"~€35 with a cabin, cheaper with a locker. Book online — the walk-up queue in August is long. Outdoor pools are the famous ones; go late afternoon as the light drops.", cost:"~€35", c:[30,40], move:{mode:"metro", mins:18}, book:{l:"Book Széchenyi ↗", u:"https://www.szechenyibath.hu/en"}},
+    {t:"19:30", n:"Parliament from Batthyány tér", cat:"night", lat:47.5060, lng:19.0384, note:"Free. The classic across-the-water view, and it's on the Buda side so the light is behind you. Best about 30 min after sunset.", badge:"free", move:{mode:"metro", mins:22}},
+    {t:"21:30", n:"Szimpla Kert — the original ruin bar", cat:"night", lat:47.4966, lng:19.0632, note:"Jewish Quarter. Free entry, gets rammed after 22:00. Go for the building as much as the drinks.", cost:"€15–25", c:[15,25], move:{mode:"metro", mins:16}}
+  ]},
+
+{ id:"08-20", dow:"Thu", d:20, city:"budapest", cities:["budapest"], title:"Pest side, Parliament inside, night cruise",
+  sub:"My draft. Flat walking day on the Pest side, ending on the water.",
+  sugDay:true,
+  stops:[
+    {t:"09:30", n:"St Stephen's Basilica + panorama", cat:"sight", lat:47.5008, lng:19.0537, note:"~€6 for the church, a bit more with the dome panorama. The dome walkway is the best rooftop view in Pest.", cost:"~€6–12", c:[6,12], book:{l:"Tickets ↗", u:"https://www.bazilika.biz/en/"}},
+    {t:"11:00", n:"Shoes on the Danube Bank", cat:"sight", lat:47.5045, lng:19.0446, note:"Free, open air. Holocaust memorial on the embankment — 60 iron pairs of shoes. Takes five minutes and stays with you.", badge:"free", move:{mode:"walk", mins:12}},
+    {t:"12:30", n:"Hungarian Parliament — interior tour", cat:"sight", lat:47.5072, lng:19.0455, note:"~€12–20 for EU citizens vs non-EU. Timed English tours sell out days ahead in August — book this one early or skip it entirely.", cost:"€12–20", c:[12,20], move:{mode:"walk", mins:6}, book:{l:"Book tour ↗", u:"https://www.parlament.hu/en/web/house-of-the-national-assembly"}},
+    {t:"14:30", n:"Great Market Hall", cat:"food", lat:47.4869, lng:19.0587, note:"Free to enter. Ground floor is produce and paprika, upstairs is lángos and souvenirs. Closes 15:00 Saturdays, closed Sundays — Thursday is fine.", cost:"€10–15", c:[10,15], move:{mode:"transit", mins:16}},
+    {t:"16:30", n:"Andrássy út & the Opera House", cat:"sight", lat:47.5029, lng:19.0578, note:"Budapest's Champs-Élysées, UNESCO-listed. Opera House tours run most afternoons if you want inside.", move:{mode:"metro", mins:14}},
+    {t:"19:30", n:"Danube evening cruise", cat:"night", lat:47.4995, lng:19.0460, note:"~€20–30 for an hour with a drink. Cheesy on paper, but the lit Parliament and Buda Castle from the water is the postcard shot of the whole trip.", cost:"€20–30", c:[20,30], move:{mode:"walk", mins:14}, book:{l:"Book a cruise ↗", u:"https://www.getyourguide.com/s/?q=Budapest%20Danube%20night%20cruise"}},
+    {t:"21:30", n:"Ruin bar crawl — Jewish Quarter", cat:"night", lat:47.4977, lng:19.0620, note:"Instant-Fogas, Mazel Tov, Púder. All within four blocks of each other.", cost:"€20–35", c:[20,35], move:{mode:"walk", mins:16}}
+  ]},
+
+{ id:"08-21", dow:"Fri", d:21, city:"london", cities:["budapest","london"], title:"Budapest morning, London by evening",
+  sub:"BA863 at 12:55 means a real morning in Budapest first. You land at Heathrow 14:40 with an entire evening ahead — this isn't a layover.",
+  stops:[
+    {t:"07:30", n:"Gellért Hill & Citadella at sunrise", cat:"sight", lat:47.4869, lng:19.0466, note:"Free. 25-min climb, the best single panorama of the city. Worth the early alarm since the flight isn't until midday.", badge:"free", sug:true},
+    {t:"10:00", n:"100E bus → Budapest Airport (BUD)", cat:"transit", lat:47.4298, lng:19.2611, note:"~40 min from Deák Ferenc tér. BA is Terminal 2A.", cost:"~€7", c:[7,7], move:{mode:"bus", mins:40}},
+    {t:"12:55", n:"British Airways BA863 → London Heathrow", cat:"transit", lat:51.4700, lng:-0.4543, note:"Lands 14:40 local (1 hr back). Chase Travel Trip 1020543417, conf AS67UA.", move:{mode:"flight", mins:165}, book:{l:"Manage booking ↗", u:"https://www.britishairways.com/travel/managebooking/public/en_gb"}},
+    {t:"16:00", n:"Piccadilly line / Heathrow Express → central", cat:"transit", lat:51.5074, lng:-0.1278, note:"Express is 15 min to Paddington but pricey; Piccadilly line is ~50 min and covered by a contactless tap. Tap in with the card, don't buy paper tickets.", cost:"£5.60–25", c:[6,25], move:{mode:"train", mins:50}, book:{l:"Heathrow Express ↗", u:"https://www.heathrowexpress.com/"}},
+    {t:"17:00", n:"Hotel check-in — Zone 1", cat:"stay", lat:51.5074, lng:-0.1278, note:"Not booked. This is the one thing that decides whether tomorrow works.", book:{l:"Find a hotel ↗", u:"https://www.booking.com/searchresults.html?ss=London&checkin=2026-08-21&checkout=2026-08-22"}},
+    {t:"18:30", n:"Westminster & South Bank evening walk", cat:"sight", lat:51.5007, lng:-0.1246, note:"Free. Big Ben → Westminster Bridge → South Bank along the river. Golden hour in late August is around 19:45.", badge:"free", move:{mode:"metro", mins:12}},
+    {t:"20:30", n:"Dinner — Borough Market area", cat:"food", lat:51.5055, lng:-0.0905, note:"Market stalls shut in the evening but the surrounding pubs and restaurants are the good version of a London night out.", cost:"£25–45", c:[28,52], move:{mode:"walk", mins:22}}
+  ]},
+
+{ id:"08-22", dow:"Sat", d:22, city:"london", cities:["london"], title:"One London morning, then home",
+  sub:"VS23 leaves 18:15, so you want to be at Heathrow by ~15:15. That gives you a real half-day — enough for one sight cluster, not two.",
+  stops:[
+    {t:"09:00", n:"Tower of London", cat:"sight", lat:51.5081, lng:-0.0759, note:"~£35. Opens 09:00 — being there at opening is the difference between seeing the Crown Jewels and queueing for them. Budget 2 hrs.", cost:"~£35", c:[40,40], book:{l:"Book tickets ↗", u:"https://www.hrp.org.uk/tower-of-london/"}},
+    {t:"11:30", n:"Tower Bridge & the river walk", cat:"sight", lat:51.5055, lng:-0.0754, note:"Crossing the bridge is free; the glass-floor walkway exhibition is ~£13 if you want it.", badge:"free", move:{mode:"walk", mins:8}},
+    {t:"12:30", n:"Lunch — St Katharine Docks or Bermondsey", cat:"food", lat:51.5065, lng:-0.0703, note:"Quiet marina right behind the Tower, far better value than anything directly on the tourist strip.", cost:"£18–30", c:[21,35], move:{mode:"walk", mins:10}},
+    {t:"14:00", n:"Collect bags, head to Heathrow", cat:"transit", lat:51.4700, lng:-0.4543, note:"Give yourself 3 hrs for a long-haul out of LHR in August. Virgin flies from Terminal 3.", cost:"£5.60–25", c:[6,25], move:{mode:"train", mins:55}},
+    {t:"18:15", n:"Virgin Atlantic VS23 → Los Angeles", cat:"transit", lat:33.9425, lng:-118.4081, note:"Direct, lands 21:25 the same day. Ref D8WQHO. Home.", move:{mode:"flight", mins:670}, book:{l:"Manage booking ↗", u:"https://www.virginatlantic.com/"}}
+  ]}
+];
+
+/* Extra ideas per city — shown at the bottom of each city itinerary, not on any day */
+const OPTIONAL = {
+  vienna:{title:"Optional add-ons — swap in if energy allows", note:"These didn't make Day 1/2 because of the 4:45am Day 3 alarm.", stops:[
+    {n:"Belvedere Palace", cat:"suggest", note:"Klimt's The Kiss. ~€17.", book:{l:"Tickets ↗",u:"https://www.belvedere.at/en"}},
+    {n:"Stephansdom — south tower climb", cat:"suggest", note:"343 steps, ~€6. Right next to Das Loft.", book:{l:"Info ↗",u:"https://www.stephanskirche.at/"}},
+    {n:"Das Loft Sky Bar", cat:"night", note:"18th floor of the Sofitel. No reservation for the bar, but go before 20:00 for a window seat.", book:{l:"Site ↗",u:"https://www.dasloftwien.at/en/"}},
+    {n:"Vienna State Opera", cat:"suggest", note:"Standing-room tickets from ~€13, sold 80 min before curtain. Season may not have started in early August — check.", book:{l:"What's on ↗",u:"https://www.wiener-staatsoper.at/en/"}},
+    {n:"Prater & Riesenrad", cat:"suggest", note:"Giant wheel ~€14, park itself free to walk.", book:{l:"Tickets ↗",u:"https://www.wienerriesenrad.com/en/"}},
+    {id:"vn-naschmarkt", n:"Naschmarkt", cat:"suggest", lat:48.1974, lng:16.3652, note:"The Saturday flea market (Flohmarkt) runs 6:30am–2pm — you land at 15:50, so you'll miss it entirely, no matter how the day is arranged. The regular food market stays open till 6pm Saturdays though, so a quick visit right after check-in still works for the 120+ food stalls, just not the flea market.", addHint:{day:"08-08", t:"17:15"}},
+    {id:"vn-donaukanal", n:"Donaukanal", cat:"sight", lat:48.2113, lng:16.3778, note:"Canal walk near Schwedenplatz. Street art, summer beach bars — good as a late add after Café Central since it's a 10-min walk from Herrengasse.", addHint:{day:"08-08", t:"22:00"}},
+    {id:"vn-brasserie", n:"Brasserie Palmenhaus", cat:"food", lat:48.2043, lng:16.3654, note:"Burggarten 1 — glasshouse restaurant in the palace gardens, a 5-min walk from the National Library. Good sit-down lunch slot right after the State Hall.", addHint:{day:"08-09", t:"12:30"}}
+  ]},
+  dubrovnik:{title:"Optional extras", note:"Good spots that didn't fit the 2-day plan.", stops:[
+    {n:"Dubrovnik Cable Car → Srđ Hill", cat:"sight", note:"~€27 return. Panorama over the whole Old Town. Sunset is the slot everyone wants.", book:{l:"Buy tickets ↗",u:"https://www.dubrovnikcablecar.com/buy-tickets"}},
+    {n:"Rector's Palace", cat:"suggest", note:"Part of the Dubrovnik Museums combined ticket.", book:{l:"Museums ↗",u:"https://www.dumus.hr/en/"}},
+    {n:"Fort Lovrijenac", cat:"sight", note:"Already included in your €35 City Walls ticket — don't pay twice."},
+    {n:"Banje Beach", cat:"food", note:"Main beach just outside the walls. Busier and pricier than Sveti Jakov."}
+  ]},
+  split:{title:"Optional extras", note:"Split is back to its original 3 nights (Aug 12–15) now that the flight moved — these didn't fit, but would if a day frees up.", stops:[
+    {n:"Blue Lagoon half-day from Trogir", cat:"suggest", note:"Shorter, cheaper alternative to the full 5-island run.", book:{l:"Options ↗",u:"https://www.getyourguide.com/s/?q=Blue%20Lagoon%20Trogir"}},
+    {n:"Klis Fortress", cat:"suggest", note:"20 min inland, ~€10. Meereen in Game of Thrones, and a genuinely great fortress independent of that."},
+    {n:"Game of Thrones walking tour", cat:"suggest", note:"~€25. Split's cellars and Klis both feature.", book:{l:"Tours ↗",u:"https://www.getyourguide.com/s/?q=Game%20of%20Thrones%20Split"}}
+  ]},
+  budapest:{title:"Alternatives & swaps", note:"Budapest is entirely my draft — here's what I'd swap in if something doesn't appeal. (Gellért Thermal Bath is closed for renovation until 2028 — dropped from this list for that reason, not by choice.)", stops:[
+    {n:"Rudas Baths — night bathing", cat:"suggest", note:"Fri/Sat 10pm–3am, mixed. A different vibe from the Aug 16 afternoon session.", book:{l:"Prices ↗",u:"https://www.rudasfurdo.hu/en/prices-2026"}},
+    {n:"Hungarian State Opera tour", cat:"suggest", note:"Recently restored, tours most afternoons."},
+    {n:"Great Market Hall upstairs stalls", cat:"suggest", note:"Already on Aug 20 — if that day gets cut, this is the one thing worth keeping."}
+  ]},
+  london:{title:"Alternative half-day, if you'd rather", note:"Pick one cluster — trying to do both is how you miss the flight.", stops:[
+    {n:"British Museum", cat:"suggest", note:"Free, opens 10:00. Two hours is enough for the highlights.", book:{l:"Free ticket ↗",u:"https://www.britishmuseum.org/"}},
+    {n:"Westminster Abbey", cat:"suggest", note:"~£30. Closed to tourists on Sundays — Aug 22 is a Saturday, so fine."},
+    {n:"Covent Garden & Soho wander", cat:"suggest", note:"Free, no tickets, easy to abandon when it's time to leave for LHR."}
+  ]}
+};
+
+/* Curated map pins per city (superset of itinerary stops) */
+const CITY_PLACES = {
+  vienna:[
+    {n:"Austrian National Library",cat:"sight",lat:48.2065,lng:16.3661,note:"Baroque State Hall, €12",book:{l:"Tickets",u:"https://www.onb.ac.at/en/museums/state-hall"}},
+    {n:"Café Central",cat:"food",lat:48.2103,lng:16.3663,note:"Herrengasse 14",book:{l:"Reserve",u:"https://www.cafecentral.wien/en/"}},
+    {n:"Schönbrunn Palace",cat:"sight",lat:48.1858,lng:16.3122,note:"Gardens free · palace €15–24",book:{l:"Tickets",u:"https://www.schoenbrunn.at/en/tickets-prices"}},
+    {n:"IKEA Rooftop",cat:"night",lat:48.1975,lng:16.3372,note:"Free public terrace, Westbahnhof"},
+    {n:"Mariahilfer Straße",cat:"sight",lat:48.1977,lng:16.3474,note:"Main shopping street"},
+    {n:"Volksgarten",cat:"sight",lat:48.2088,lng:16.3628,note:"Rose garden by day, club by night"},
+    {n:"Maria-Theresien-Platz",cat:"sight",lat:48.2038,lng:16.3610,note:"Between the two big museums"},
+    {n:"Stephansdom",cat:"sight",lat:48.2085,lng:16.3731,note:"Tower climb ~€6",book:{l:"Info",u:"https://www.stephanskirche.at/"}},
+    {n:"Vienna State Opera",cat:"suggest",lat:48.2035,lng:16.3691,note:"Standing room from ~€13",book:{l:"What's on",u:"https://www.wiener-staatsoper.at/en/"}},
+    {n:"Das Loft Sky Bar",cat:"night",lat:48.2131,lng:16.3789,note:"Sofitel, 18th floor",book:{l:"Site",u:"https://www.dasloftwien.at/en/"}},
+    {n:"Brasserie Palmenhaus",cat:"food",lat:48.2043,lng:16.3654,note:"Burggarten 1, glasshouse dining"},
+    {n:"Donaukanal",cat:"sight",lat:48.2113,lng:16.3778,note:"Canal bars near Schwedenplatz"},
+    {n:"Naschmarkt",cat:"suggest",lat:48.1974,lng:16.3652,note:"Food market, Sat flea market"},
+    {n:"Belvedere Palace",cat:"suggest",lat:48.1912,lng:16.3803,note:"Klimt's The Kiss, ~€17",book:{l:"Tickets",u:"https://www.belvedere.at/en"}},
+    {n:"Prater / Riesenrad",cat:"suggest",lat:48.2165,lng:16.3958,note:"Giant wheel ~€14",book:{l:"Tickets",u:"https://www.wienerriesenrad.com/en/"}}
+  ],
+  dubrovnik:[
+    {n:"City Walls entrance (Pile)",cat:"sight",lat:42.6435,lng:18.1098,note:"€35, includes Fort Lovrijenac",book:{l:"Book",u:"https://citywallsdubrovnik.hr/"}},
+    {n:"Pile Gate",cat:"sight",lat:42.6440,lng:18.1091,note:"Main Old Town entrance, luggage storage nearby"},
+    {n:"Stradun",cat:"sight",lat:42.6412,lng:18.1105,note:"Main limestone promenade"},
+    {n:"Sveti Jakov Beach",cat:"food",lat:42.6338,lng:18.1223,note:"Quiet, best skyline view, free"},
+    {n:"Lokrum Island",cat:"sight",lat:42.6265,lng:18.1214,note:"€27 boat + entry",book:{l:"Tickets",u:"https://www.lokrum.hr/en"}},
+    {n:"Old Port (Lokrum ferry)",cat:"sight",lat:42.6410,lng:18.1145,note:"Boats depart here"},
+    {n:"Buža Bar",cat:"night",lat:42.6398,lng:18.1082,note:"Cliffside bar in the walls"},
+    {n:"Fort Lovrijenac",cat:"sight",lat:42.6408,lng:18.1052,note:"Included in the walls ticket"},
+    {n:"Cable Car (base station)",cat:"sight",lat:42.6444,lng:18.1148,note:"~€27 return to Srđ Hill",book:{l:"Buy",u:"https://www.dubrovnikcablecar.com/buy-tickets"}},
+    {n:"Rector's Palace",cat:"suggest",lat:42.6404,lng:18.1101,note:"Dubrovnik Museums ticket",book:{l:"Museums",u:"https://www.dumus.hr/en/"}},
+    {n:"Banje Beach",cat:"food",lat:42.6408,lng:18.1170,note:"Main beach, busier"},
+    {n:"Gruž bus terminal",cat:"transit",lat:42.6600,lng:18.0731,note:"FlixBus to Split departs here",book:{l:"FlixBus",u:"https://global.flixbus.com/"}}
+  ],
+  split:[
+    {n:"Diocletian's Palace / Peristyle",cat:"sight",lat:43.5081,lng:16.4402,note:"Free, open 24/7"},
+    {n:"Bell Tower of St Domnius",cat:"sight",lat:43.5083,lng:16.4406,note:"~€6 climb",book:{l:"Tickets",u:"https://www.getyourguide.com/s/?q=Diocletian%20Palace%20Split"}},
+    {n:"Palace substructures",cat:"sight",lat:43.5077,lng:16.4400,note:"~€5.50, the Roman cellars"},
+    {n:"Riva Waterfront",cat:"sight",lat:43.5074,lng:16.4384,note:"Promenade, boat departures"},
+    {n:"Marjan Hill",cat:"night",lat:43.5117,lng:16.4256,note:"Free sunset viewpoint"},
+    {n:"Bačvice Beach",cat:"food",lat:43.5054,lng:16.4485,note:"City beach, free"},
+    {n:"Varoš",cat:"food",lat:43.5088,lng:16.4340,note:"Old quarter — best-value dinners"},
+    {n:"Split Airport (SPU)",cat:"transit",lat:43.5389,lng:16.2981,note:"Smartwings to Prague, Aug 15"},
+    {n:"Trogir Old Town",cat:"trip",lat:43.5147,lng:16.2515,note:"~50 min by bus 37",book:{l:"Tours",u:"https://www.getyourguide.com/s/?q=Trogir%20from%20Split"}},
+    {n:"Hvar Town",cat:"trip",lat:43.1729,lng:16.4414,note:"On the 5-island speedboat tour"},
+    {n:"Blue Cave, Biševo",cat:"trip",lat:43.0264,lng:16.0114,note:"€90–113 tour",book:{l:"Book",u:"https://www.getyourguide.com/s/?q=Blue%20Cave%20Hvar%205%20Islands%20Split"}},
+    {n:"Stiniva Cove, Vis",cat:"trip",lat:43.0322,lng:16.2306,note:"Boat-access only cove"},
+    {n:"Krka — Skradinski Buk",cat:"trip",lat:43.8060,lng:15.9700,note:"€31–35 incl. entry",book:{l:"Book",u:"https://www.getyourguide.com/s/?q=Krka%20Waterfalls%20from%20Split"}},
+    {n:"Klis Fortress",cat:"suggest",lat:43.5573,lng:16.5228,note:"~€10, 20 min inland"}
+  ],
+  budapest:[
+    {n:"Fisherman's Bastion",cat:"sight",lat:47.5025,lng:19.0347,note:"Lower terraces free, turrets ~€4"},
+    {n:"Matthias Church",cat:"sight",lat:47.5020,lng:19.0341,note:"~€6",book:{l:"Tickets",u:"https://www.matyas-templom.hu/en"}},
+    {n:"Buda Castle",cat:"sight",lat:47.4960,lng:19.0396,note:"Grounds free, funicular ~€6"},
+    {n:"Chain Bridge",cat:"sight",lat:47.4988,lng:19.0435,note:"Free, restored 2023"},
+    {n:"Széchenyi Thermal Bath",cat:"sight",lat:47.5187,lng:19.0831,note:"~€35, book online",book:{l:"Book",u:"https://www.szechenyibath.hu/en"}},
+    {n:"Gellért Thermal Bath",cat:"suggest",lat:47.4834,lng:19.0526,note:"Closed for renovation until 2028 — don't plan around this one"},
+    {n:"Rudas Baths",cat:"sight",lat:47.4926,lng:19.0466,note:"Ottoman bath, mixed/men/women days vary — check schedule",book:{l:"Prices",u:"https://www.rudasfurdo.hu/en/prices-2026"}},
+    {n:"Margaret Island",cat:"sight",lat:47.5389,lng:19.0472,note:"Car-free park island, free"},
+    {n:"Heroes' Square / Vajdahunyad Castle",cat:"sight",lat:47.5147,lng:19.0776,note:"Free, City Park"},
+    {n:"New York Café",cat:"food",lat:47.5011,lng:19.0709,note:"Erzsébet krt. 9–11, ornate 1894 coffeehouse"},
+    {n:"Dohány Street Synagogue",cat:"sight",lat:47.4952,lng:19.0596,note:"Europe's largest, closed Saturdays",book:{l:"Tickets",u:"https://www.dohanystreetsynagogue.hu/"}},
+    {n:"House of Terror",cat:"sight",lat:47.5064,lng:19.0653,note:"Andrássy út 60, closed Mondays",book:{l:"Tickets",u:"https://www.houseofterror.hu/en"}},
+    {n:"Memento Park",cat:"trip",lat:47.4295,lng:18.9585,note:"Communist statue park, ~10km out",book:{l:"Tickets",u:"https://mementopark.hu/en/"}},
+    {n:"Hungarian Parliament",cat:"sight",lat:47.5072,lng:19.0455,note:"Tours €12–20, book ahead",book:{l:"Book",u:"https://www.parlament.hu/en/web/house-of-the-national-assembly"}},
+    {n:"Shoes on the Danube Bank",cat:"sight",lat:47.5045,lng:19.0446,note:"Free memorial"},
+    {n:"St Stephen's Basilica",cat:"sight",lat:47.5008,lng:19.0537,note:"~€6–12 with panorama",book:{l:"Tickets",u:"https://www.bazilika.biz/en/"}},
+    {n:"Great Market Hall",cat:"food",lat:47.4869,lng:19.0587,note:"Free entry, closed Sundays"},
+    {n:"Szimpla Kert",cat:"night",lat:47.4966,lng:19.0632,note:"The original ruin bar"},
+    {n:"Hungarian State Opera",cat:"suggest",lat:47.5029,lng:19.0578,note:"Andrássy út, tours available"},
+    {n:"Gellért Hill / Citadella",cat:"night",lat:47.4869,lng:19.0466,note:"Free, best panorama"},
+    {n:"Danube cruise dock",cat:"night",lat:47.4995,lng:19.0460,note:"€20–30 evening cruise",book:{l:"Book",u:"https://www.getyourguide.com/s/?q=Budapest%20Danube%20night%20cruise"}}
+  ],
+  london:[
+    {n:"Tower of London",cat:"sight",lat:51.5081,lng:-0.0759,note:"~£35, opens 09:00",book:{l:"Book",u:"https://www.hrp.org.uk/tower-of-london/"}},
+    {n:"Tower Bridge",cat:"sight",lat:51.5055,lng:-0.0754,note:"Crossing free, walkway ~£13"},
+    {n:"Westminster / Big Ben",cat:"sight",lat:51.5007,lng:-0.1246,note:"Free to walk"},
+    {n:"South Bank",cat:"night",lat:51.5060,lng:-0.1150,note:"Riverside walk, free"},
+    {n:"Borough Market area",cat:"food",lat:51.5055,lng:-0.0905,note:"Dinner, £25–45"},
+    {n:"St Katharine Docks",cat:"food",lat:51.5065,lng:-0.0703,note:"Quiet marina behind the Tower"},
+    {n:"British Museum",cat:"suggest",lat:51.5194,lng:-0.1270,note:"Free, opens 10:00",book:{l:"Free ticket",u:"https://www.britishmuseum.org/"}},
+    {n:"Westminster Abbey",cat:"suggest",lat:51.4994,lng:-0.1273,note:"~£30"},
+    {n:"Heathrow (LHR)",cat:"transit",lat:51.4700,lng:-0.4543,note:"VS23 to LAX, T3",book:{l:"Heathrow Express",u:"https://www.heathrowexpress.com/"}}
+  ],
+  prague:[
+    {n:"Prague Castle",cat:"sight",lat:50.0910,lng:14.4016,note:"Grounds free, Main Circuit ~450 CZK",book:{l:"Tickets",u:"https://www.hrad.cz/en"}},
+    {n:"St. Vitus Cathedral",cat:"sight",lat:50.0909,lng:14.4008,note:"Inside the castle complex"},
+    {n:"Charles Bridge",cat:"sight",lat:50.0865,lng:14.4114,note:"Free, 24/7, crowded midday"},
+    {n:"Old Town Square & Astronomical Clock",cat:"sight",lat:50.0870,lng:14.4208,note:"Free, hourly show"},
+    {n:"Lennon Wall",cat:"sight",lat:50.0866,lng:14.4058,note:"Free, near Kampa Island"},
+    {n:"Kampa Island",cat:"food",lat:50.0838,lng:14.4072,note:"Small park island by the bridge"},
+    {n:"Jewish Quarter (Josefov)",cat:"sight",lat:50.0904,lng:14.4198,note:"Combined ticket ~550 CZK, closed Saturdays",book:{l:"Tickets",u:"https://www.jewishmuseum.cz/en/"}},
+    {n:"Vyšehrad",cat:"sight",lat:50.0653,lng:14.4188,note:"Free fortress grounds, quiet river views"},
+    {n:"Náplavka riverside",cat:"night",lat:50.0736,lng:14.4145,note:"Houseboat bars on the embankment"},
+    {n:"Petřín Hill",cat:"sight",lat:50.0836,lng:14.3955,note:"Funicular ~60 CZK, mini Eiffel Tower lookout"},
+    {n:"Václav Havel Airport (PRG)",cat:"transit",lat:50.1008,lng:14.2600,note:"Ryanair to Budapest, Aug 18"}
+  ]
+};
+
+/* =========================================================
+   2b. OPTIONALITY — add a suggestion into the real plan, or
+   subtract one back out. Adding pulls an idea out of OPTIONAL[city]
+   and inserts it at an explicit addHint {day,t} if the item has one,
+   otherwise at the least-packed day in that city and a category
+   default time. Removing reverses this: it demotes a suggested stop
+   from DAYS back into the OPTIONAL pool, remembering its slot so
+   re-adding restores it exactly rather than losing it.
+   ========================================================= */
+let _optAutoId = 1;
+Object.keys(OPTIONAL).forEach(city=>{
+  OPTIONAL[city].stops.forEach(s=>{ if(!s.id) s.id = city+"-auto"+(_optAutoId++); });
+});
+const CAT_DEFAULT_TIME = {sight:"11:00", food:"13:00", night:"21:00", suggest:"11:00", trip:"09:00", transit:"10:00", stay:"15:00"};
+
+function findPlace(cityKey, name){
+  const list = CITY_PLACES[cityKey] || [];
+  return list.find(p=>p.n===name);
+}
+function timeVal(t){
+  if(!t || t==="—") return 99999;
+  const m = /^(\d{1,2}):(\d{2})/.exec(t);
+  return m ? (+m[1])*60+(+m[2]) : 99999;
+}
+function insertStopSorted(day, stop){
+  let idx = day.stops.findIndex(s=>timeVal(s.t) > timeVal(stop.t));
+  if(idx===-1) idx = day.stops.length;
+  day.stops.splice(idx, 0, stop);
+}
+function pickDay(cityKey){
+  const days = DAYS.filter(d=>d.cities.includes(cityKey) && !d.flag);
+  if(!days.length) return null;
+  return days.slice().sort((a,b)=>a.stops.length-b.stops.length)[0];
+}
+function addOptional(cityKey, optId, opts){
+  const pool = OPTIONAL[cityKey];
+  if(!pool) return;
+  const idx = pool.stops.findIndex(s=>s.id===optId);
+  if(idx===-1) return;
+  const item = pool.stops[idx];
+  const hint = item.addHint || {};
+  const day = hint.day ? DAYS.find(d=>d.id===hint.day) : pickDay(cityKey);
+  if(!day) return;
+  const place = findPlace(cityKey, item.n);
+  const stop = {
+    t: hint.t || CAT_DEFAULT_TIME[item.cat] || "12:00",
+    n: item.n, cat: item.cat,
+    lat: item.lat!=null ? item.lat : (place ? place.lat : undefined),
+    lng: item.lng!=null ? item.lng : (place ? place.lng : undefined),
+    note: item.note, cost: item.cost, c: item.c, book: item.book,
+    sug: true, _optId: item.id, _city: cityKey
+  };
+  insertStopSorted(day, stop);
+  pool.stops.splice(idx, 1);
+  if(!opts || !opts.silent) renderAll(cityKey, day.id);
+}
+function removeSuggestion(dayId, idx){
+  const day = DAYS.find(d=>d.id===dayId);
+  if(!day) return;
+  const stop = day.stops[idx];
+  if(!stop || !stop.sug) return;
+  day.stops.splice(idx, 1);
+  const cityKey = stop._city || day.city;
+  if(!OPTIONAL[cityKey]) OPTIONAL[cityKey] = {title:"Optional add-ons", note:"Removed from your plan — add back anytime.", stops:[]};
+  OPTIONAL[cityKey].stops.push({
+    id: stop._optId || (cityKey+"-auto"+(_optAutoId++)),
+    n: stop.n, cat: stop.cat, note: stop.note, cost: stop.cost, c: stop.c, book: stop.book,
+    lat: stop.lat, lng: stop.lng,
+    addHint: {day: dayId, t: stop.t}
+  });
+  renderAll(cityKey, dayId);
+}
+function renderAll(cityKey, dayId){
+  renderCityItinerary(cityKey);
+  if(typeof currentDay!=="undefined" && currentDay===dayId) selectDay(dayId);
+}
+
+/* =========================================================
+   3. HELPERS
+   ========================================================= */
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function haversine(a, b){
+  const R=6371, toR=x=>x*Math.PI/180;
+  const dLat=toR(b.lat-a.lat), dLng=toR(b.lng-a.lng);
+  const h=Math.sin(dLat/2)**2 + Math.cos(toR(a.lat))*Math.cos(toR(b.lat))*Math.sin(dLng/2)**2;
+  return 2*R*Math.asin(Math.sqrt(h));
+}
+function legBetween(prev, s){
+  if(s.move) return Object.assign({}, s.move, {km: prev ? haversine(prev,s) : null});
+  if(!prev || prev.lat==null || s.lat==null) return null;
+  const km = haversine(prev, s);
+  if(km < 0.12) return null;
+  if(km <= 1.6) return {mode:"walk", mins: Math.max(2, Math.round(km*1.35/4.8*60)), km};
+  if(km <= 9)  return {mode:"transit", mins: Math.max(8, Math.round(km*1.25/17*60)+6), km};
+  return {mode:"taxi", mins: Math.round(km*1.2/50*60)+5, km};
+}
+function fmtMins(m){
+  if(m < 60) return m + " min";
+  const h=Math.floor(m/60), r=m%60;
+  return r ? h+"h "+r+"m" : h+" hr";
+}
+function mapsUrl(name, city){
+  return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(name + " " + (city||""));
+}
+function dayCost(day){
+  let lo=0, hi=0, any=false;
+  day.stops.forEach(s=>{ if(s.c){ lo+=s.c[0]; hi+=s.c[1]; any=true; } });
+  if(!any) return null;
+  const r=n=>Math.round(n);
+  return lo===hi ? "≈ €"+r(lo) : "≈ €"+r(lo)+"–"+r(hi);
+}
+
+/* =========================================================
+   4. POPUPS + MAP BUILDERS
+   ========================================================= */
+function popupHtml(p, city){
+  const bk = p.book ? `<a href="${p.book.u}" target="_blank" rel="noopener" style="display:inline-block;background:#2c6358;color:#fff;font-size:11.5px;font-weight:700;padding:5px 11px;border-radius:999px;text-decoration:none;margin-right:6px;">${esc(p.book.l)} ↗</a>` : "";
+  return `<div style="min-width:200px;font-family:'Inter',sans-serif;">
+      <div style="font-weight:700;font-size:14px;margin-bottom:2px;">${esc(p.n)}</div>
+      <div style="font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:${COLORS[p.cat]};font-weight:700;margin-bottom:5px;">${CAT_LABEL[p.cat]||""}</div>
+      <div style="font-size:12.5px;color:#4a4238;margin-bottom:9px;line-height:1.45;">${esc(p.note||"")}</div>
+      <div>${bk}<a href="${mapsUrl(p.n, city)}" target="_blank" rel="noopener" style="font-size:11.5px;color:#2c6358;font-weight:700;text-decoration:none;">Maps ↗</a></div>
+    </div>`;
+}
+
+const mapInstances = {};
+const mapBounds = {};
+function buildCityMap(id, places, cityName){
+  const map = L.map(id, {scrollWheelZoom:false});
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19, attribution:'&copy; OpenStreetMap'}).addTo(map);
+  places.forEach(p=>{
+    L.circleMarker([p.lat,p.lng],{radius:8, fillColor:COLORS[p.cat], color:"#fff", weight:2, fillOpacity:.95})
+      .addTo(map).bindPopup(popupHtml(p, cityName));
+  });
+  const b = L.latLngBounds(places.map(p=>[p.lat,p.lng]));
+  map.fitBounds(b, {padding:[28,28]});
+  return map;
+}
+function refitCity(key){
+  if(!mapInstances[key] || !CITY_PLACES[key]) return;
+  mapInstances[key].fitBounds(L.latLngBounds(CITY_PLACES[key].map(p=>[p.lat,p.lng])), {padding:[28,28]});
+}
+function refitOverview(){
+  if(mapInstances.overview) mapInstances.overview.fitBounds(L.latLngBounds(cityStops.map(c=>[c.lat,c.lng])), {padding:[30,30]});
+}
+
+/* Group a day's stops into geographic clusters, then default the map to the
+   cluster you'll actually spend the day in rather than the whole flight path. */
+function clusterStops(stops, thresholdKm){
+  const pts = stops.filter(s=>s.lat!=null);
+  const groups = [];
+  pts.forEach(p=>{
+    const g = groups.find(gr=>gr.some(q=>haversine(q,p) < (thresholdKm||90)));
+    if(g) g.push(p); else groups.push([p]);
+  });
+  return groups;
+}
+function focusCluster(stops){
+  const pts = stops.filter(s=>s.lat!=null);
+  const groups = clusterStops(pts);
+  if(groups.length < 2) return {pts, split:false, groups};
+  const last = groups.find(g=>g.includes(pts[pts.length-1]));
+  const biggest = groups.slice().sort((a,b)=>b.length-a.length)[0];
+  let pick = (last && last.length >= biggest.length-1) ? last : biggest;
+  if(pick.length < 2) pick = biggest.length>1 ? biggest : pts;
+  return {pts:pick, split:true, groups};
+}
+
+/* =========================================================
+   5. CITY ITINERARY RENDERING (from DAYS)
+   ========================================================= */
+function stopRowHtml(s, cityName, ctl){
+  const bk = s.book ? `<a class="book ghost" href="${s.book.u}" target="_blank" rel="noopener">${esc(s.book.l)}</a>` : "";
+  const mp = s.lat!=null ? `<a class="book ghost" href="${mapsUrl(s.n, cityName)}" target="_blank" rel="noopener">Maps ↗</a>` : "";
+  let badge = "";
+  if(s.sug) badge = '<span class="badge suggested">suggested</span>';
+  else if(s.badge==="free") badge = '<span class="badge free">free</span>';
+  else if(s.cat==="trip") badge = '<span class="badge daytrip">day trip</span>';
+  let action = "";
+  if(ctl && ctl.type==="day" && s.sug){
+    action = `<a class="book warn" href="#" onclick="removeSuggestion('${ctl.dayId}',${ctl.idx});return false;">➖ Remove from plan</a>`;
+  } else if(ctl && ctl.type==="opt"){
+    action = `<a class="book" href="#" onclick="addOptional('${ctl.cityKey}','${s.id}');return false;">➕ Add to plan</a>`;
+  }
+  return `<div class="stop">
+      <span class="tag" style="background:${COLORS[s.cat]}"></span>
+      <div class="stop-body">
+        <b>${s.t && s.t!=="—" ? `<span class="stoptime">${esc(s.t)}</span> ` : ""}${esc(s.n)}</b>${badge}
+        <div class="meta">${esc(s.note||"")}${s.cost?` · <b style="color:var(--accent-ink)">${esc(s.cost)}</b>`:""}</div>
+        <div class="booklist">${action}${bk}${mp}</div>
+      </div>
+    </div>`;
+}
+
+function renderCityItinerary(key){
+  const meta = CITY_META[key];
+  const days = DAYS.filter(d => d.cities.includes(key));
+  let html = "";
+  days.forEach((d,i)=>{
+    const cls = d.flag ? "day flagged" : (d.sugDay ? "day dim" : "day");
+    const cost = dayCost(d);
+    html += `<div class="${cls}">
+        <h3><span class="daynum">${d.flag?"!":(d.sugDay?"+":i+1)}</span>${esc(d.dow)} Aug ${d.d} · ${esc(d.title)}</h3>
+        <div class="daysub">${esc(d.sub)}${cost?` <b style="color:var(--accent-ink)">· ${cost} in tickets & food</b>`:""}</div>
+        ${d.stops.map((s,idx)=>stopRowHtml(s, meta.name, {type:"day", dayId:d.id, idx})).join("")}
+        <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line-soft);">
+          <a class="book" href="#" onclick="goToDay('${d.id}');return false;">See this day on the map →</a>
+        </div>
+      </div>`;
+  });
+  const opt = OPTIONAL[key];
+  if(opt && opt.stops.length){
+    html += `<div class="day dim">
+        <h3><span class="daynum">+</span>${esc(opt.title)}</h3>
+        <div class="daysub">${esc(opt.note)}</div>
+        ${opt.stops.map(s=>stopRowHtml(s, meta.name, {type:"opt", cityKey:key})).join("")}
+      </div>`;
+  }
+  const el = document.getElementById("itin-"+key);
+  if(el) el.innerHTML = html;
+}
+
+function renderLegend(key){
+  const el = document.getElementById("legend-"+key);
+  if(!el || !CITY_PLACES[key]) return;
+  const cats = [...new Set(CITY_PLACES[key].map(p=>p.cat))];
+  el.innerHTML = cats.map(c=>`<span><i class="dot" style="background:${COLORS[c]}"></i>${CAT_LABEL[c]}</span>`).join("");
+}
+
+/* =========================================================
+   6. CALENDAR / DAY VIEW
+   ========================================================= */
+let dayMap = null, dayLayer = null, dayMarkers = [];
+let dayFocus = [], dayAll = [], dayScope = "focus";
+let currentDay = DAYS[1].id;
+
+/* Re-applied every time the day view becomes visible. Leaflet cannot compute a
+   sensible zoom against a display:none container, which is what produced the
+   "zoomed into a random field in Bavaria" bug. */
+function applyDayFit(){
+  if(!dayMap) return;
+  const pts = (dayScope==="all" ? dayAll : dayFocus);
+  if(!pts || !pts.length) return;
+  dayMap.invalidateSize();
+  if(pts.length===1){ dayMap.setView(pts[0], 15); return; }
+  // widest gap between any two stops — fitBounds on near-identical points
+  // pins the map at max zoom, which is useless for a day spent on one street
+  let span = 0;
+  for(let i=0;i<pts.length;i++) for(let j=i+1;j<pts.length;j++)
+    span = Math.max(span, haversine({lat:pts[i][0],lng:pts[i][1]},{lat:pts[j][0],lng:pts[j][1]}));
+  if(span < 0.6){
+    const la = pts.reduce((a,p)=>a+p[0],0)/pts.length, ln = pts.reduce((a,p)=>a+p[1],0)/pts.length;
+    dayMap.setView([la,ln], 16);
+  } else {
+    dayMap.fitBounds(L.latLngBounds(pts), {padding:[38,38], maxZoom:16});
+  }
+}
+
+function renderScopeNote(foc, dist){
+  const el = $("#mapscope");
+  if(!el) return;
+  const km = dist ? `≈ ${dist<1000?dist.toFixed(1):Math.round(dist)} km covered across the day.` : "";
+  if(!foc.split){
+    el.innerHTML = `Numbered in order of your day · dashed line is the route between stops. ${km}`;
+    return;
+  }
+  const hubs = foc.groups.map(g=>g.length===1 ? g[0].n : (g.length+" stops")).join(" → ");
+  el.innerHTML = dayScope==="all"
+    ? `Showing the full journey — ${esc(hubs)}. ${km} Switch back to <b>Where you'll be</b> for a usable street-level view.`
+    : `This day spans more than one place, so the map is zoomed to where you actually spend it. ${km} Use <b>Whole day's journey</b> to see the full hop.`;
+}
+
+const CITY_ORDER = ["vienna","dubrovnik","split","prague","budapest","london"];
+const CITY_RANGE = {vienna:"Aug 8–10", dubrovnik:"Aug 10–12", split:"Aug 12–15", prague:"Aug 15–18", budapest:"Aug 18–21", london:"Aug 21–22"};
+
+function renderSidebar(){
+  let h = `<div class="sb-label">The trip</div>
+    <button class="sb-item" data-tab="overview">📋 <span>Trip overview</span></button>`;
+
+  const travelDays = DAYS.filter(d=>d.city==="transit");
+  if(travelDays.length){
+    h += `<div class="sb-city"><div class="sb-days" style="margin-left:0;padding-left:12px;">` +
+      travelDays.map(d=>dayBtnHtml(d)).join("") + `</div></div>`;
+  }
+
+  CITY_ORDER.forEach(k=>{
+    const c = CITY_META[k];
+    const days = DAYS.filter(d=>d.city===k);
+    h += `<div class="sb-city">
+        <button class="sb-item" data-tab="${k}"><span class="flag">${c.flag}</span><span>${esc(c.name)}</span><span class="range">${CITY_RANGE[k]||""}</span></button>
+        ${days.length ? `<div class="sb-days">${days.map(d=>dayBtnHtml(d)).join("")}</div>` : ""}
+      </div>`;
+  });
+
+  const sb = $("#sidebar");
+  sb.innerHTML = h;
+
+  sb.querySelectorAll(".sb-item[data-tab]").forEach(el=>{
+    el.addEventListener("click", ()=> activateTab(el.dataset.tab));
+  });
+  sb.querySelectorAll(".sb-day").forEach(el=>{
+    el.addEventListener("click", ()=> goToDay(el.dataset.day));
+  });
+}
+
+function dayBtnHtml(d){
+  return `<button class="sb-day${d.id===currentDay?" active":""}${d.flag?" flag":""}" data-day="${d.id}"
+      aria-label="August ${d.d} — ${esc(d.title)}">
+      <span class="dnum">${d.d}<small>${d.dow}</small></span>
+      <span class="dttl">${esc(d.title.replace(/^⚠️\s*/,""))}</span>
+    </button>`;
+}
+
+function syncSidebar(){
+  const d = DAYS.find(x=>x.id===currentDay);
+  document.querySelectorAll(".sb-day").forEach(el=>el.classList.toggle("active", el.dataset.day===currentDay));
+  document.querySelectorAll(".sb-item[data-tab]").forEach(el=>{
+    el.classList.toggle("active", el.dataset.tab===currentTab && currentTab!=="calendar");
+  });
+  // when viewing a day, light up its city row subtly via the day highlight only
+  if(currentTab==="calendar" && d){
+    const cityBtn = document.querySelector('.sb-item[data-tab="'+d.city+'"]');
+    if(cityBtn) cityBtn.classList.remove("active");
+  }
+}
+
+function selectDay(id){
+  currentDay = id;
+  const d = DAYS.find(x=>x.id===id);
+  if(!d) return;
+
+  syncSidebar();
+  const c = CITY_META[d.city];
+  const cost = dayCost(d);
+  let totalMove = 0;
+  const legs = d.stops.map((s,i)=>{ const l = legBetween(i?d.stops[i-1]:null, s); if(l&&l.mins) totalMove+=l.mins; return l; });
+
+  $("#dayhead").innerHTML = `
+    <h2>${c.flag} ${esc(d.dow)}, August ${d.d}</h2>
+    <div class="dsub"><b>${esc(d.title)}</b><br>${esc(d.sub)}</div>
+    <div class="daymeta">
+      <span class="m">📍 ${d.stops.length} stops</span>
+      <span class="m">🕘 ${fmtMins(totalMove)} moving</span>
+      ${cost?`<span class="m">💶 ${cost}</span>`:""}
+      <span class="m">🏙️ ${esc(d.cities.map(k=>CITY_META[k].name).join(" → "))}</span>
+    </div>
+    <div class="booklist" style="margin-top:12px;">
+      ${d.cities.filter(k=>k!=="transit").map(k=>`<a class="book ghost" href="#" onclick="activateTab('${k}');return false;">Open the ${CITY_META[k].name} tab →</a>`).join("")}
+    </div>`;
+
+  // keep the selected day visible in the sidebar
+  const chip = document.querySelector('.sb-day[data-day="'+id+'"]');
+  if(chip && chip.scrollIntoView) chip.scrollIntoView({behavior:"smooth", block:"nearest"});
+
+  // timeline
+  let tl = "";
+  d.stops.forEach((s,i)=>{
+    const leg = legs[i];
+    if(leg){
+      const m = MODES[leg.mode] || MODES.walk;
+      const km = leg.km ? ` · ${leg.km<1?Math.round(leg.km*1000)+" m":leg.km.toFixed(1)+" km"}` : "";
+      tl += `<div class="leg"><span class="li"><span class="ic">${m.i}</span>${m.l} · ${fmtMins(leg.mins)}${km}</span></div>`;
+    } else if(i>0){
+      tl += `<div class="tl-gap">same spot / no travel</div>`;
+    }
+    const bk = s.book ? `<a class="book" href="${s.book.u}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${esc(s.book.l)}</a>` : "";
+    const mp = s.lat!=null ? `<a class="book ghost" href="${mapsUrl(s.n, c.name)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Maps ↗</a>` : "";
+    const rm = s.sug ? `<a class="book warn" href="#" onclick="event.stopPropagation();removeSuggestion('${d.id}',${i});return false;">➖ Remove</a>` : "";
+    let badge = "";
+    if(s.sug) badge = '<span class="badge suggested">suggested</span>';
+    else if(s.badge==="free") badge = '<span class="badge free">free</span>';
+    const kind = (s.cat==="transit"||s.cat==="stay") ? "logistics" : (s.book && s.c ? "anchor" : "normal");
+    tl += `<div class="tl-stop" data-i="${i}" data-kind="${kind}">
+        <div class="tl-idx"><div class="n">${i+1}</div><div class="tm">${esc(s.t||"")}</div></div>
+        <div>
+          <div class="tl-name"><span class="tl-cat" style="background:${COLORS[s.cat]}"></span>${esc(s.n)}${badge}</div>
+          <div class="tl-note">${esc(s.note||"")}</div>
+          ${s.cost?`<div class="tl-cost">${esc(s.cost)}</div>`:""}
+          <div class="booklist" style="margin-top:2px;">${rm}${bk}${mp}</div>
+        </div>
+      </div>`;
+  });
+  $("#timeline").innerHTML = tl;
+
+  // map
+  if(!dayMap){
+    dayMap = L.map("day-map", {scrollWheelZoom:false});
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19, attribution:'&copy; OpenStreetMap'}).addTo(dayMap);
+    dayLayer = L.layerGroup().addTo(dayMap);
+  }
+  dayLayer.clearLayers();
+  dayMarkers = [];
+  const pts = d.stops.filter(s=>s.lat!=null).map(s=>[s.lat,s.lng]);
+  if(pts.length>1){
+    L.polyline(pts,{color:"#2c6358", weight:2.5, opacity:.65, dashArray:"7,7"}).addTo(dayLayer);
+  }
+  d.stops.forEach((s,i)=>{
+    if(s.lat==null) return;
+    const mk = L.marker([s.lat,s.lng], {icon: L.divIcon({className:"", html:`<div class="numpin">${i+1}</div>`, iconSize:[26,26], iconAnchor:[13,13]})})
+      .addTo(dayLayer).bindPopup(popupHtml(s, c.name));
+    dayMarkers[i] = mk;
+    mk.on("mouseover", ()=> hotStop(i, true));
+    mk.on("mouseout",  ()=> hotStop(i, false));
+  });
+  // work out what the map should actually be looking at
+  const foc = focusCluster(d.stops);
+  dayFocus = foc.pts.map(s=>[s.lat,s.lng]);
+  dayAll = pts;
+  dayScope = "focus";
+  applyDayFit();
+
+  // total straight-line distance
+  let dist=0;
+  for(let i=1;i<pts.length;i++) dist += haversine({lat:pts[i-1][0],lng:pts[i-1][1]},{lat:pts[i][0],lng:pts[i][1]});
+
+  // map controls — only offer the toggle when the day genuinely spans places
+  if(foc.split){
+    const names = foc.groups.map(g=>g[0]).map(s=>s.n);
+    $("#mapctl").innerHTML = `
+      <button data-scope="focus" class="on">📍 Where you'll be</button>
+      <button data-scope="all">🌍 Whole day's journey</button>`;
+    $("#mapctl").querySelectorAll("button").forEach(b=>{
+      b.addEventListener("click", ()=>{
+        dayScope = b.dataset.scope;
+        $("#mapctl").querySelectorAll("button").forEach(x=>x.classList.toggle("on", x===b));
+        applyDayFit();
+        renderScopeNote(foc, dist);
+      });
+    });
+  } else {
+    $("#mapctl").innerHTML = "";
+  }
+  renderScopeNote(foc, dist);
+
+  // hover sync
+  $("#timeline").querySelectorAll(".tl-stop").forEach(el=>{
+    const i = +el.dataset.i;
+    el.addEventListener("mouseenter", ()=> hotStop(i, true));
+    el.addEventListener("mouseleave", ()=> hotStop(i, false));
+    el.addEventListener("click", ()=>{ if(dayMarkers[i]){ dayMap.panTo(dayMarkers[i].getLatLng()); dayMarkers[i].openPopup(); } });
+  });
+}
+
+function hotStop(i, on){
+  const row = $("#timeline").querySelector('.tl-stop[data-i="'+i+'"]');
+  if(row) row.classList.toggle("hot", on);
+  const mk = dayMarkers[i];
+  if(mk){
+    const el = mk.getElement() && mk.getElement().querySelector(".numpin");
+    if(el) el.classList.toggle("hot", on);
+  }
+}
+
+function goToDay(id){
+  selectDay(id);
+  activateTab("calendar");
+  window.scrollTo({top:0, behavior:"smooth"});
+}
+
+/* =========================================================
+   7. TABS
+   ========================================================= */
+let currentTab = "overview";
+function activateTab(tabId){
+  currentTab = tabId;
+  document.querySelectorAll("main > .tab").forEach(t=>t.classList.remove("active"));
+  const sec = document.getElementById("tab-"+tabId);
+  if(sec) sec.classList.add("active");
+  syncSidebar();
+  setTimeout(()=>{
+    // a Leaflet map sized while hidden picks a nonsense zoom — always re-fit on reveal
+    if(tabId==="calendar" && dayMap){ dayMap.invalidateSize(); applyDayFit(); }
+    if(tabId==="overview" && mapInstances.overview){ mapInstances.overview.invalidateSize(); refitOverview(); }
+    ensureCityMap(tabId);
+    if(mapInstances[tabId]){ mapInstances[tabId].invalidateSize(); refitCity(tabId); }
+  }, 70);
+}
+document.querySelectorAll(".subnav").forEach(nav=>{
+  nav.querySelectorAll("button").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      nav.querySelectorAll("button").forEach(b=>b.classList.remove("active"));
+      btn.classList.add("active");
+      const parent = nav.parentElement;
+      parent.querySelectorAll(".subtab").forEach(s=>s.classList.remove("active"));
+      document.getElementById("sub-"+btn.dataset.sub).classList.add("active");
+      const key = btn.dataset.sub.split("-")[0];
+      setTimeout(()=>{ ensureCityMap(key); if(mapInstances[key]) mapInstances[key].invalidateSize(); }, 60);
+    });
+  });
+});
+function ensureCityMap(key){
+  if(mapInstances[key] || !CITY_PLACES[key]) return;
+  if(!document.getElementById("map-"+key)) return;
+  mapInstances[key] = buildCityMap("map-"+key, CITY_PLACES[key], CITY_META[key].name);
+}
+
+/* =========================================================
+   8. OVERVIEW MAP
+   ========================================================= */
+const cityStops = [
+  {name:"Vienna", tab:"vienna", lat:48.2082, lng:16.3738, note:"Aug 8–10"},
+  {name:"Dubrovnik", tab:"dubrovnik", lat:42.6507, lng:18.0944, note:"Aug 10–12"},
+  {name:"Split", tab:"split", lat:43.5081, lng:16.4402, note:"Aug 12–15"},
+  {name:"Prague", tab:"prague", lat:50.0755, lng:14.4378, note:"Aug 15–18"},
+  {name:"Budapest", tab:"budapest", lat:47.4979, lng:19.0402, note:"Aug 18–21"},
+  {name:"London", tab:"london", lat:51.5072, lng:-0.1276, note:"Aug 21–22"}
+];
+(function(){
+  const m = L.map("overview-map", {scrollWheelZoom:false}).setView([47,10],4);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19, attribution:'&copy; OpenStreetMap'}).addTo(m);
+  L.polyline(cityStops.map(c=>[c.lat,c.lng]),{color:"#2461a3", weight:2.5, dashArray:"6,6", opacity:.7}).addTo(m);
+  cityStops.forEach((c,i)=>{
+    L.marker([c.lat,c.lng],{icon:L.divIcon({className:"",html:`<div class="numpin">${i+1}</div>`,iconSize:[26,26],iconAnchor:[13,13]})})
+      .addTo(m)
+      .bindPopup(`<div style="min-width:160px;font-family:'Inter',sans-serif;"><b>${i+1}. ${c.name}</b><br><span style="font-size:12.5px;color:#4a4238;">${c.note}</span><br><a href="#" style="font-size:12.5px;color:#2c6358;font-weight:700;" onclick="activateTab('${c.tab}');return false;">Open ${c.name} →</a></div>`);
+  });
+  m.fitBounds(L.latLngBounds(cityStops.map(c=>[c.lat,c.lng])),{padding:[30,30]});
+  mapInstances.overview = m;
+})();
+
+/* =========================================================
+   9. INIT
+   ========================================================= */
+(function(){
+  const days = Math.max(0, Math.ceil((new Date("2026-08-07T00:00:00") - new Date())/86400000));
+  document.getElementById("countdown-num").textContent = days;
+})();
+/* Pre-seed the three Vienna adds Jacob asked for — same code path as the
+   ➕ Add to plan button, just run once, quietly, before the first render. */
+addOptional("vienna", "vn-naschmarkt", {silent:true});
+addOptional("vienna", "vn-donaukanal", {silent:true});
+addOptional("vienna", "vn-brasserie", {silent:true});
+
+["vienna","dubrovnik","split","budapest","london","prague"].forEach(k=>{ renderCityItinerary(k); renderLegend(k); });
+renderSidebar();
+selectDay(currentDay);
+syncSidebar();
+// any map built while its tab was hidden needs a re-fit once it's actually on screen
+window.addEventListener("resize", ()=>{
+  if(currentTab==="calendar") applyDayFit();
+  else if(currentTab==="overview") refitOverview();
+});
+</script>
+
+</body>
+</html>
