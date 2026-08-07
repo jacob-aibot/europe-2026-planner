@@ -116,9 +116,12 @@
     #mobile-topbar .mt-sub{display:block;font-family:"Inter",sans-serif;font-weight:600;font-size:10.5px;
       color:var(--sub);text-transform:uppercase;letter-spacing:.5px;}
 
-    /* Off-canvas drawer: the same #sidebar content, now a slide-in panel */
+    /* Off-canvas drawer: the same #sidebar content, now a slide-in panel.
+       z-index has to clear Leaflet's own controls (.leaflet-top/.leaflet-bottom
+       sit at 1000 by default), or the day map's zoom buttons/popups punch
+       straight through the drawer and backdrop. */
     #sidebar{
-      position:fixed;top:0;left:0;bottom:0;z-index:100;
+      position:fixed;top:0;left:0;bottom:0;z-index:2000;
       width:min(85vw,340px);max-height:none;border-radius:0;
       padding:calc(env(safe-area-inset-top,0px) + 14px) 12px calc(env(safe-area-inset-bottom,0px) + 14px);
       transform:translateX(-105%);transition:transform .28s cubic-bezier(.32,.72,0,1);
@@ -126,7 +129,7 @@
     }
     #sidebar.open{transform:translateX(0);}
     #sidebar-backdrop{
-      display:block;position:fixed;inset:0;z-index:90;background:rgba(24,17,10,.4);
+      display:block;position:fixed;inset:0;z-index:1900;background:rgba(24,17,10,.4);
       opacity:0;pointer-events:none;transition:opacity .25s ease;
     }
     #sidebar-backdrop.open{opacity:1;pointer-events:auto;}
