@@ -757,7 +757,7 @@ const DAYS = [
     {t:"16:50", n:"Check in — Habyt Vienna", cat:"stay", lat:48.2205, lng:16.3945, note:"Bruno-Marek-Allee 26, 1020 (Nordbahnviertel, Leopoldstadt) — booked, conf 5814731574, PIN 0754, 2 nights. Not Innere Stadt as originally assumed; tram O/12 run right on the street, ~10 min to Praterstern/Stephansplatz. Check-in window 3–11pm.", move:{mode:"transit", mins:12}, book:{l:"Hotel page ↗", u:"https://www.booking.com/hotel/at/habyt-vienna-green-cube.html"}},
     {t:"18:40", n:"Maria-Theresien-Platz & Volksgarten", cat:"sight", lat:48.2038, lng:16.3610, note:"Rose garden, free, always open. Volksgarten is also a well-known club at night if you want to come back later.", badge:"free"},
     {t:"19:45", n:"Stephansplatz + dinner at a Beisl", cat:"food", lat:48.2085, lng:16.3731, note:"Classic Viennese tavern. No reservation needed, low effort, right thing for night one.", cost:"€20–35", c:[20,35]},
-    {t:"20:45", n:"DECENTRAL — coffee & Sachertorte", cat:"food", lat:48.2113, lng:16.3654, note:"Freyung 3. Café Central itself is closed for renovation from Mar 16, 2026 (its 150th-anniversary refurb) until autumn 2026 — DECENTRAL is their own pop-up, same team, a 5-min walk from Herrengasse. Open Tue–Sat 07:30–21:30, so it's fine for Saturday, but arrive by 20:45 — any later and there's not enough time before close for an actual sit-down.", cost:"€8–12", c:[8,12], book:{l:"Site ↗", u:"https://decentral.wien/en/"}}
+    {t:"20:45", n:"DECENTRAL — Sachertorte nightcap", cat:"food", lat:48.2113, lng:16.3654, note:"Freyung 3. Café Central itself is closed for renovation from Mar 16, 2026 (its 150th-anniversary refurb) until autumn 2026 — DECENTRAL is their own pop-up, same team, a 5-min walk from Herrengasse. Open Tue–Sat 07:30–21:30, so it's fine for Saturday, but arrive by 20:45 — any later and there's not enough time before close for a proper sit-down. Skip the coffee this close to bed — order the Sachertorte with a glass of dessert wine or Grüner Veltliner instead, it's the better pairing anyway.", cost:"€9–14", c:[9,14], book:{l:"Site ↗", u:"https://decentral.wien/en/"}}
   ]},
 
 { id:"08-09", dow:"Sun", d:9, city:"vienna", cities:["vienna"], title:"Schönbrunn, kept deliberately light",
@@ -1079,7 +1079,11 @@ function insertStopSorted(day, stop){
   day.stops.splice(idx, 0, stop);
 }
 function pickDay(cityKey){
-  const days = DAYS.filter(d=>d.cities.includes(cityKey) && !d.flag);
+  // Prefer days where this city is the primary one — a transit day that merely
+  // passes through (cities includes it but city !== it) shouldn't soak up adds
+  // meant for the city itself, e.g. Prater landing on the Vienna->Dubrovnik day.
+  const primary = DAYS.filter(d=>d.city===cityKey && !d.flag);
+  const days = primary.length ? primary : DAYS.filter(d=>d.cities.includes(cityKey) && !d.flag);
   if(!days.length) return null;
   return days.slice().sort((a,b)=>a.stops.length-b.stops.length)[0];
 }
