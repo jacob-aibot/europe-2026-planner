@@ -1,0 +1,17 @@
+{
+  "name": "Europe 2026 Trip Planner",
+  "short_name": "Europe 2026",
+  "description": "Aug 7–22, 2026 Europe itinerary — LA, Vienna, Dubrovnik, Split, Prague, Budapest, London.",
+  "start_url": "./europe-2026-itinerary.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f7f3ec",
+  "theme_color": "#b3481e",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

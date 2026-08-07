@@ -4,6 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Europe 2026 — Trip Planner</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#b3481e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Europe 2026">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png" type="image/png">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -22,8 +29,28 @@
     --shadow-sm:0 1px 2px rgba(40,25,10,.05), 0 1px 1px rgba(40,25,10,.04);
     --shadow-md:0 10px 30px -12px rgba(40,25,10,.18);
     --shadow-lg:0 18px 45px -18px rgba(40,25,10,.28);
-    color-scheme:light;
+    --tabbar-h:0px;
+    color-scheme:light dark;
   }
+  /* ---------- Dark mode: follows the phone's system setting ---------- */
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#171310; --panel:#231e19; --panel-alt:#1c1712;
+      --ink:#f2ece1; --ink-soft:#d8cfc0; --sub:#a89a86; --sub2:#7c6f5e;
+      --line:#382f26; --line-soft:#2c251e;
+      --accent:#e08152; --accent-ink:#f0a578; --accent-soft:#3a2418;
+      --accent2:#5fae9c; --accent2-soft:#1e332d;
+      --danger:#e2685c; --danger-bg:#3a201c; --danger-line:#5a2c24;
+      --shadow-sm:0 1px 2px rgba(0,0,0,.3), 0 1px 1px rgba(0,0,0,.24);
+      --shadow-md:0 10px 30px -12px rgba(0,0,0,.5);
+      --shadow-lg:0 18px 45px -18px rgba(0,0,0,.6);
+    }
+  }
+  /* Selector overrides that can't be expressed as a variable (gradients,
+     hardcoded hex, or fixed light-on-dark text) live in one block at the
+     very end of this stylesheet — see "DARK MODE — SELECTOR OVERRIDES"
+     below. CSS cascade order means an earlier copy of these rules would
+     just lose to the plain light-mode rule that comes after it. */
   *{box-sizing:border-box;}
   body{
     margin:0;
@@ -94,6 +121,7 @@
   /* ---------- Mobile top bar + off-canvas drawer ---------- */
   #mobile-topbar{display:none;}
   #sidebar-backdrop{display:none;}
+  #bottom-tabbar{display:none;}
 
   @media (max-width:900px){
     .shell{grid-template-columns:minmax(0,1fr);gap:18px;padding:14px 16px 60px;}
@@ -106,15 +134,29 @@
       background:rgba(247,243,236,.92);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
       border-bottom:1px solid var(--line);
     }
-    #mobile-topbar .hamburger{
-      flex-shrink:0;width:40px;height:40px;border-radius:11px;border:1px solid var(--line);
-      background:var(--panel);display:flex;align-items:center;justify-content:center;
-      font-size:18px;cursor:pointer;color:var(--ink);touch-action:manipulation;
-    }
     #mobile-topbar .mt-title{font-family:"Fraunces",serif;font-weight:600;font-size:16.5px;color:var(--ink);
       overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
     #mobile-topbar .mt-sub{display:block;font-family:"Inter",sans-serif;font-weight:600;font-size:10.5px;
       color:var(--sub);text-transform:uppercase;letter-spacing:.5px;}
+
+    /* Bottom tab bar: the primary phone nav. Sits under the thumb instead of
+       requiring a reach to a top-left hamburger. */
+    :root{--tabbar-h:64px;}
+    #bottom-tabbar{
+      display:flex;position:fixed;left:0;right:0;bottom:0;z-index:1500;
+      background:rgba(247,243,236,.96);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+      border-top:1px solid var(--line);
+      padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px));
+      box-shadow:0 -6px 20px rgba(40,25,10,.08);
+    }
+    #bottom-tabbar button{
+      flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;
+      border:none;background:transparent;padding:7px 4px;border-radius:12px;
+      font-family:inherit;font-size:10.5px;font-weight:700;color:var(--sub);
+      cursor:pointer;touch-action:manipulation;
+    }
+    #bottom-tabbar button .bt-ic{font-size:20px;line-height:1;}
+    #bottom-tabbar button.active{color:var(--accent-ink);background:var(--accent-soft);}
 
     /* Off-canvas drawer: the same #sidebar content, now a slide-in panel.
        z-index has to clear Leaflet's own controls (.leaflet-top/.leaflet-bottom
@@ -216,6 +258,7 @@
   .card h3{margin:0 0 12px;font-size:16px;font-weight:600;display:flex;align-items:center;gap:8px;}
   .card.warn{background:linear-gradient(180deg,#fdf3f2 0%,#fff 140px);border-color:var(--danger-line);}
   .card.warn h3{color:var(--danger);}
+  .card.resolved{background:linear-gradient(180deg,#eef7f3 0%,#fff 90px);border-color:var(--accent2-soft);}
   table{width:100%;border-collapse:collapse;font-size:13.5px;}
   table th{text-align:left;padding:8px 6px;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--sub);font-weight:700;border-bottom:2px solid var(--line);}
   table td{text-align:left;padding:10px 6px;border-bottom:1px solid var(--line-soft);vertical-align:top;}
@@ -280,7 +323,7 @@
 
   @media (max-width:720px){
     header{padding:16px 16px 0;}
-    .grid{grid-template-columns:1fr;}
+    .grid{grid-template-columns:minmax(0,1fr);}
     .cityhead{flex-direction:column;}
     .leaflet-map{height:300px;}
     .maprail .leaflet-map{height:300px;}
@@ -293,7 +336,48 @@
   a,button{-webkit-tap-highlight-color:transparent;}
   .sb-item,.sb-day,.subnav button,.book,.mapctl button,.stop-chip{touch-action:manipulation;}
   #sidebar{-webkit-overflow-scrolling:touch;}
-  body{padding-bottom:env(safe-area-inset-bottom,0px);}
+  body{padding-bottom:calc(env(safe-area-inset-bottom,0px) + var(--tabbar-h));}
+
+  /* ---------- "Up next" card (Today view) ---------- */
+  #upnext{display:none;}
+  #upnext.show{display:block;background:linear-gradient(135deg,var(--accent) 0%,var(--accent-ink) 100%);
+    color:#fff;border-radius:var(--radius);padding:16px 18px;margin-bottom:18px;box-shadow:var(--shadow-md);}
+  #upnext .un-lbl{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:1px;opacity:.85;}
+  #upnext .un-name{font-family:"Fraunces",serif;font-size:19px;font-weight:600;margin:3px 0 4px;}
+  #upnext .un-note{font-size:12.8px;line-height:1.5;opacity:.92;margin-bottom:10px;}
+  #upnext .book{background:rgba(255,255,255,.18);}
+  #upnext .book.ghost{border-color:rgba(255,255,255,.5);color:#fff;}
+  #upnext.done{background:var(--accent2-soft);color:var(--accent2);}
+  #upnext.done .un-name{font-family:"Inter",sans-serif;font-size:14px;font-weight:700;margin:0;}
+
+  /* ---------- Collapsible stop detail (Today view timeline) ---------- */
+  .tl-toggle{margin-top:6px;background:none;border:none;padding:0;font-size:12px;font-weight:700;
+    color:var(--accent2);cursor:pointer;display:inline-flex;align-items:center;gap:3px;font-family:inherit;touch-action:manipulation;}
+  .tl-toggle .chev{display:inline-block;transition:transform .2s ease;font-size:10px;}
+  .tl-stop.expanded .tl-toggle .chev{transform:rotate(180deg);}
+  .tl-more{max-height:0;overflow:hidden;opacity:0;transition:max-height .25s ease,opacity .2s ease;}
+  .tl-stop.expanded .tl-more{max-height:600px;opacity:1;margin-top:6px;}
+
+  /* ---------- Dark mode — selector overrides ----------
+     Placed last on purpose: same-specificity rules earlier in this sheet
+     (.note, .card.warn, .badge.suggested, etc.) would otherwise win the
+     cascade regardless of the media query. */
+  @media (prefers-color-scheme: dark){
+    body{background:radial-gradient(1200px 500px at 15% -10%, #241b12 0%, transparent 60%),
+      radial-gradient(900px 500px at 100% 0%, #142420 0%, transparent 55%), var(--bg);}
+    .datebadge,.sb-item.active,.subnav button.active,.mapctl button.on,.daynum{color:#1a140f;}
+    .note{background:#332913;border-color:#4d3f1c;color:#e8cf8f;}
+    .note.blue{background:#152735;border-color:#264257;color:#a9cbe0;}
+    .badge.suggested{background:#3a2f10;color:#e2b955;}
+    .badge.daytrip{background:#152735;color:#8fb9dd;}
+    .pill-you{background:#2a2038;color:#c6a8f0;}
+    .card.resolved{background:linear-gradient(180deg,#152420 0%, var(--panel) 90px);}
+    .card.warn{background:linear-gradient(180deg,#2c1815 0%, var(--panel) 140px);}
+    .leaflet-popup-content-wrapper,.leaflet-popup-tip{background:var(--panel);color:var(--ink);}
+    #mobile-topbar{background:rgba(23,19,16,.88);}
+    #bottom-tabbar{background:rgba(23,19,16,.94);}
+    #upnext .book.ghost{color:#fff;}
+  }
 </style>
 </head>
 <body>
@@ -343,7 +427,6 @@
 </header>
 
 <div id="mobile-topbar">
-  <button class="hamburger" onclick="openDrawer()" aria-label="Open menu">☰</button>
   <div style="min-width:0;">
     <span class="mt-sub" id="mt-sub">Europe 2026</span>
     <div class="mt-title" id="mt-title">Trip overview</div>
@@ -358,7 +441,7 @@
 <main>
 
   <!-- ============ OVERVIEW ============ -->
-  <section id="tab-overview" class="tab active">
+  <section id="tab-overview" class="tab">
     <div class="cityhead">
       <div><h2>Trip Overview</h2><div class="sub">Aug 7 – Aug 22, 2026 · 8 legs, 6 cities, 3 currencies</div></div>
     </div>
@@ -399,7 +482,7 @@
         </table>
       </div>
 
-      <div class="card" style="grid-column:1/-1;background:linear-gradient(180deg,#eef7f3 0%,#fff 90px);border-color:var(--accent2-soft);">
+      <div class="card resolved" style="grid-column:1/-1;">
         <h3 style="color:var(--accent2);">✅ Resolved — the Aug 15 conflict, and Vienna/Dubrovnik lodging</h3>
         <p style="font-size:13.5px;margin:0 0 8px;color:var(--ink);line-height:1.6;">Your sheet planned <b>Sat Aug 15</b>: meet your girlfriend's family in the morning, then fly out at 2pm. The Smartwings ticket was reissued on Aug 4 — Split→Prague now departs <b>14:40 on Aug 15</b> instead of Aug 18. Same date, same time your sheet had, just routed through Prague instead of direct. Split reverts to the 3 nights your sheet always planned; the family meetup morning fits Aug 15 exactly as written.</p>
         <p style="font-size:13.5px;margin:0 0 8px;color:var(--ink);line-height:1.6;"><b>You confirmed Prague→Budapest is Tue Aug 18 at ~19:30</b> — not the same day as the Smartwings arrival, as I'd assumed. That makes Prague a real 3-night stay (Aug 15–18), and Budapest goes back to its original 3 nights (Aug 18–21), not 6. Prague's tab is rebuilt from scratch below since it didn't exist in any plan before now.</p>
@@ -441,9 +524,10 @@
   </section>
 
   <!-- ============ CALENDAR ============ -->
-  <section id="tab-calendar" class="tab">
+  <section id="tab-calendar" class="tab active">
     <div class="dayview">
-      <div>
+      <div class="daycol">
+        <div id="upnext"></div>
         <div class="dayhead" id="dayhead"></div>
         <div class="timeline" id="timeline"></div>
       </div>
@@ -588,6 +672,12 @@
 
 </main>
 </div>
+
+<nav id="bottom-tabbar">
+  <button data-bt="today" onclick="goToday()"><span class="bt-ic">📍</span>Today</button>
+  <button data-bt="trip" onclick="openDrawer()"><span class="bt-ic">🧭</span>Trip</button>
+  <button data-bt="map" onclick="activateTab('overview')"><span class="bt-ic">🗺️</span>Map</button>
+</nav>
 
 <script>
 /* =========================================================
@@ -1163,7 +1253,24 @@ function renderLegend(key){
    ========================================================= */
 let dayMap = null, dayLayer = null, dayMarkers = [];
 let dayFocus = [], dayAll = [], dayScope = "focus";
-let currentDay = DAYS[1].id;
+
+/* Which DAYS entry counts as "today" on the phone opening the app. During
+   the actual trip (Aug 2026) this is the real calendar date; outside that
+   window it snaps to the nearer edge so the app still opens on something
+   sensible while testing or browsing ahead of the trip. */
+function computeTodayId(){
+  const now = new Date();
+  if(now.getFullYear()===2026){
+    const id = String(now.getMonth()+1).padStart(2,"0")+"-"+String(now.getDate()).padStart(2,"0");
+    const match = DAYS.find(d=>d.id===id);
+    if(match) return match.id;
+    const first = DAYS[0], last = DAYS[DAYS.length-1];
+    if(now < new Date(`2026-${first.id}T00:00:00`)) return first.id;
+    if(now > new Date(`2026-${last.id}T23:59:59`)) return last.id;
+  }
+  return DAYS[1].id;
+}
+let currentDay = computeTodayId();
 
 /* Re-applied every time the day view becomes visible. Leaflet cannot compute a
    sensible zoom against a display:none container, which is what produced the
@@ -1254,6 +1361,16 @@ function syncSidebar(){
     if(cityBtn) cityBtn.classList.remove("active");
   }
   syncMobileTitle();
+  syncBottomTabs();
+}
+
+function syncBottomTabs(){
+  const bar = $("#bottom-tabbar");
+  if(!bar) return;
+  bar.querySelectorAll("button[data-bt]").forEach(b=>{
+    const on = (b.dataset.bt==="today" && currentTab==="calendar") || (b.dataset.bt==="map" && currentTab==="overview");
+    b.classList.toggle("active", on);
+  });
 }
 
 /* ---------- Mobile drawer ---------- */
@@ -1261,11 +1378,28 @@ function openDrawer(){
   $("#sidebar").classList.add("open");
   $("#sidebar-backdrop").classList.add("open");
   document.body.style.overflow = "hidden";
+  const tripBtn = document.querySelector('#bottom-tabbar button[data-bt="trip"]');
+  if(tripBtn) tripBtn.classList.add("active");
+  // the drawer is a full-height overlay above the bottom bar's z-index —
+  // hide the bar while it's open so it isn't sitting there un-tappable
+  const bar = $("#bottom-tabbar");
+  if(bar) bar.style.display = "none";
 }
 function closeDrawer(){
   $("#sidebar").classList.remove("open");
   $("#sidebar-backdrop").classList.remove("open");
   document.body.style.overflow = "";
+  const tripBtn = document.querySelector('#bottom-tabbar button[data-bt="trip"]');
+  if(tripBtn) tripBtn.classList.remove("active");
+  const bar = $("#bottom-tabbar");
+  if(bar) bar.style.display = "";
+}
+/* Bottom-tab "Today": always snaps back to the real current day, regardless
+   of what's being browsed, and closes the drawer if it was open. */
+function goToday(){
+  closeDrawer();
+  selectDay(computeTodayId());
+  activateTab("calendar");
 }
 function syncMobileTitle(){
   const titleEl = $("#mt-title"), subEl = $("#mt-sub");
@@ -1281,6 +1415,29 @@ function syncMobileTitle(){
   if(currentTab==="overview"){ subEl.textContent = "Europe 2026"; titleEl.textContent = "Trip overview"; return; }
   const c = CITY_META[currentTab];
   if(c){ subEl.textContent = "Europe 2026"; titleEl.textContent = c.flag+" "+c.name; }
+}
+
+/* Pinned "what's next" card — only meaningful on the real current day, so
+   it stays hidden while browsing other days via swipe or the sidebar. */
+function renderUpNext(d){
+  const el = $("#upnext");
+  if(!el) return;
+  const isToday = d.id === computeTodayId() && new Date().getFullYear()===2026;
+  if(!isToday || !d.stops.length){ el.className = ""; el.innerHTML = ""; return; }
+  const nowMins = new Date().getHours()*60 + new Date().getMinutes();
+  const next = d.stops.find(s => s.t && s.t!=="—" && timeVal(s.t) >= nowMins);
+  if(!next){
+    el.className = "show done";
+    el.innerHTML = `<div class="un-name">✅ Today's plan is done — nice work.</div>`;
+    return;
+  }
+  const mp = next.lat!=null ? mapsUrl(next.n, CITY_META[d.city].name) : null;
+  el.className = "show";
+  el.innerHTML = `
+    <div class="un-lbl">Up next · ${esc(next.t||"")}</div>
+    <div class="un-name">${esc(next.n)}</div>
+    ${next.note?`<div class="un-note">${esc(next.note)}</div>`:""}
+    <div class="booklist">${mp?`<a class="book ghost" href="${mp}" target="_blank" rel="noopener">Directions ↗</a>`:""}${next.book?`<a class="book ghost" href="${next.book.u}" target="_blank" rel="noopener">${esc(next.book.l)}</a>`:""}</div>`;
 }
 
 function selectDay(id){
@@ -1329,17 +1486,25 @@ function selectDay(id){
     if(s.sug) badge = '<span class="badge suggested">suggested</span>';
     else if(s.badge==="free") badge = '<span class="badge free">free</span>';
     const kind = (s.cat==="transit"||s.cat==="stay") ? "logistics" : (s.book && s.c ? "anchor" : "normal");
+    // Name/time/cost/primary booking link stay visible so a stop reads at a
+    // glance; the note prose and secondary links (Maps, Remove) tuck behind
+    // a tap — fewer pixels per stop means less scrolling to see the rest of the day.
     tl += `<div class="tl-stop" data-i="${i}" data-kind="${kind}">
         <div class="tl-idx"><div class="n">${i+1}</div><div class="tm">${esc(s.t||"")}</div></div>
-        <div>
+        <div style="min-width:0;">
           <div class="tl-name"><span class="tl-cat" style="background:${COLORS[s.cat]}"></span>${esc(s.n)}${badge}</div>
-          <div class="tl-note">${esc(s.note||"")}</div>
           ${s.cost?`<div class="tl-cost">${esc(s.cost)}</div>`:""}
-          <div class="booklist" style="margin-top:2px;">${rm}${bk}${mp}</div>
+          ${bk?`<div class="booklist" style="margin-top:4px;">${bk}</div>`:""}
+          <div class="tl-more">
+            <div class="tl-note">${esc(s.note||"")}</div>
+            ${(rm||mp)?`<div class="booklist" style="margin-top:6px;">${rm}${mp}</div>`:""}
+          </div>
+          ${s.note?`<button class="tl-toggle" onclick="event.stopPropagation();this.closest('.tl-stop').classList.toggle('expanded');">Details <span class="chev">⌄</span></button>`:""}
         </div>
       </div>`;
   });
   $("#timeline").innerHTML = tl;
+  renderUpNext(d);
 
   // map — guarded so a failed/blocked Leaflet load (flaky travel wifi) can't
   // take the rest of the day view down with it
@@ -1421,12 +1586,13 @@ function goToDay(id){
 /* =========================================================
    7. TABS
    ========================================================= */
-let currentTab = "overview";
+let currentTab = "calendar";
 function activateTab(tabId){
   currentTab = tabId;
   document.querySelectorAll("main > .tab").forEach(t=>t.classList.remove("active"));
   const sec = document.getElementById("tab-"+tabId);
   if(sec) sec.classList.add("active");
+  window.scrollTo(0,0);
   syncSidebar();
   setTimeout(()=>{
     // a Leaflet map sized while hidden picks a nonsense zoom — always re-fit on reveal
@@ -1505,6 +1671,29 @@ window.addEventListener("resize", ()=>{
   if(currentTab==="calendar") applyDayFit();
   else if(currentTab==="overview") refitOverview();
 });
+
+/* Swipe left/right on the day column to move a day forward/back, without
+   a round-trip through the drawer. Ignores touches starting on the day map
+   so panning it still works normally. */
+(function(){
+  const zone = document.querySelector(".dayview .daycol");
+  if(!zone) return;
+  let sx=0, sy=0, tracking=false;
+  zone.addEventListener("touchstart", e=>{
+    if(e.target.closest(".leaflet-map") || e.target.closest(".tl-toggle")){ tracking=false; return; }
+    const t = e.touches[0]; sx=t.clientX; sy=t.clientY; tracking=true;
+  }, {passive:true});
+  zone.addEventListener("touchend", e=>{
+    if(!tracking) return;
+    tracking=false;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - sx, dy = t.clientY - sy;
+    if(Math.abs(dx) < 60 || Math.abs(dy) > 50) return;
+    const idx = DAYS.findIndex(x=>x.id===currentDay);
+    if(dx < 0 && idx < DAYS.length-1) selectDay(DAYS[idx+1].id);
+    else if(dx > 0 && idx > 0) selectDay(DAYS[idx-1].id);
+  }, {passive:true});
+})();
 </script>
 
 </body>
