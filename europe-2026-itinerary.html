@@ -15,7 +15,7 @@
 })();
 </script>
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#b3481e">
+<meta name="theme-color" content="#c9862a">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Europe 2026">
@@ -25,21 +25,24 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders:wght@600;700;800&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#f7f3ec; --panel:#ffffff; --panel-alt:#fbf8f2;
-    --ink:#241f19; --ink-soft:#4a4238; --sub:#7c7063; --sub2:#a89c8c;
-    --line:#e9e0d2; --line-soft:#f1eade;
-    --accent:#b3481e; --accent-ink:#8a3818; --accent-soft:#f6e4d8;
-    --accent2:#2c6358; --accent2-soft:#dcece6;
-    --sight:#b3481e; --food:#2c6358; --night:#5c3a8e; --suggest:#a9781a; --trip:#2461a3; --transit:#6d7d8c;
-    --danger:#a8382f; --danger-bg:#fbeae8; --danger-line:#f0c3bd;
-    --radius:16px; --radius-sm:10px; --radius-pill:999px;
-    --shadow-sm:0 1px 2px rgba(40,25,10,.05), 0 1px 1px rgba(40,25,10,.04);
-    --shadow-md:0 10px 30px -12px rgba(40,25,10,.18);
-    --shadow-lg:0 18px 45px -18px rgba(40,25,10,.28);
+    --bg:#f0f1ee; --panel:#ffffff; --panel-alt:#e7e9e4;
+    --ink:#1b1f27; --ink-soft:#454b57; --sub:#6d7482; --sub2:#9aa0ab;
+    --line:#d7dad5; --line-soft:#e3e5e0;
+    --accent:#c9862a; --accent-ink:#8f5e15; --accent-soft:#f3e2c2;
+    --accent2:#2c5f8a; --accent2-soft:#dce8f0;
+    --sight:#c9862a; --food:#3e7d5c; --night:#6b4a9e; --suggest:#8b6d1e; --trip:#2c5f8a; --transit:#5c6570; --stay:#a8382f;
+    --danger:#b13d29; --danger-bg:#f7e6e2; --danger-line:#e3b7ab;
+    --radius:6px; --radius-sm:4px; --radius-pill:5px;
+    --shadow-sm:0 1px 0 rgba(20,20,15,.06);
+    --shadow-md:0 2px 8px rgba(20,20,15,.10);
+    --shadow-lg:0 10px 26px rgba(20,20,15,.18);
     --tabbar-h:0px;
+    --font-display:"Big Shoulders",sans-serif;
+    --font-body:"Public Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    --font-mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,monospace;
     color-scheme:light dark;
   }
   /* ---------- Dark mode: toggle-controlled, defaults to system setting ----------
@@ -47,15 +50,15 @@
      first paint — "dark" either because the toggle saved that choice, or
      because it wasn't saved and the system preference was dark at load. */
   :root[data-theme="dark"]{
-    --bg:#171310; --panel:#231e19; --panel-alt:#1c1712;
-    --ink:#f2ece1; --ink-soft:#d8cfc0; --sub:#a89a86; --sub2:#7c6f5e;
-    --line:#382f26; --line-soft:#2c251e;
-    --accent:#e08152; --accent-ink:#f0a578; --accent-soft:#3a2418;
-    --accent2:#5fae9c; --accent2-soft:#1e332d;
-    --danger:#e2685c; --danger-bg:#3a201c; --danger-line:#5a2c24;
-    --shadow-sm:0 1px 2px rgba(0,0,0,.3), 0 1px 1px rgba(0,0,0,.24);
-    --shadow-md:0 10px 30px -12px rgba(0,0,0,.5);
-    --shadow-lg:0 18px 45px -18px rgba(0,0,0,.6);
+    --bg:#12151c; --panel:#1b1f29; --panel-alt:#171b23;
+    --ink:#ededea; --ink-soft:#c7ccd3; --sub:#8b93a3; --sub2:#5f6675;
+    --line:#2a2f3b; --line-soft:#232833;
+    --accent:#f0ab4c; --accent-ink:#f7c581; --accent-soft:#382a12;
+    --accent2:#6fa8d8; --accent2-soft:#182533;
+    --danger:#e2685c; --danger-bg:#301b17; --danger-line:#4d2a24;
+    --shadow-sm:0 1px 0 rgba(0,0,0,.4);
+    --shadow-md:0 2px 10px rgba(0,0,0,.4);
+    --shadow-lg:0 12px 30px rgba(0,0,0,.55);
   }
   /* Selector overrides that can't be expressed as a variable (gradients,
      hardcoded hex, or fixed light-on-dark text) live in one block near the
@@ -66,41 +69,39 @@
   *{box-sizing:border-box;}
   body{
     margin:0;
-    font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
-    background:
-      radial-gradient(1200px 500px at 15% -10%, #fdf0e0 0%, transparent 60%),
-      radial-gradient(900px 500px at 100% 0%, #e7f0ec 0%, transparent 55%),
-      var(--bg);
+    font-family:var(--font-body);
+    background:var(--bg);
     color:var(--ink);
     -webkit-font-smoothing:antialiased;
   }
-  h1,h2,h3{font-family:"Fraunces",Georgia,serif;letter-spacing:.1px;}
+  h1,h2,h3{font-family:var(--font-display);font-weight:800;letter-spacing:.2px;text-wrap:balance;}
   a{color:var(--accent2);}
 
   /* ---------- Header ---------- */
   header{padding:calc(env(safe-area-inset-top,0px) + 30px) 32px 0;}
   .header-inner{max-width:1320px;margin:0 auto;}
-  .eyebrow{display:flex;align-items:center;gap:8px;color:var(--accent-ink);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;margin-bottom:8px;}
-  .eyebrow .line{height:1px;width:26px;background:var(--accent);display:inline-block;}
-  header h1{margin:0 0 10px;font-size:clamp(28px,4vw,40px);font-weight:700;}
-  .route-trail{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:13.5px;color:var(--sub);margin-bottom:18px;}
-  .route-trail .stop-chip{background:var(--panel);border:1px solid var(--line);padding:4px 11px;border-radius:var(--radius-pill);font-weight:600;color:var(--ink);box-shadow:var(--shadow-sm);}
-  .route-trail a.stop-chip{cursor:pointer;text-decoration:none;transition:transform .12s ease,box-shadow .12s ease;}
-  .route-trail a.stop-chip:hover{transform:translateY(-1px);box-shadow:var(--shadow-md,0 4px 10px rgba(0,0,0,.12));border-color:var(--sub2);}
-  .route-trail .arrow{color:var(--sub2);}
-  .stats-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
-  .stat{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius-sm);padding:12px 16px;box-shadow:var(--shadow-sm);}
-  .stat .num{font-family:"Fraunces",serif;font-size:22px;font-weight:700;color:var(--accent-ink);line-height:1.1;}
-  .stat .lbl{font-size:11.5px;color:var(--sub);text-transform:uppercase;letter-spacing:.6px;font-weight:600;margin-top:2px;}
+  .eyebrow{display:flex;align-items:center;gap:9px;color:var(--sub);font-family:var(--font-mono);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1.6px;margin-bottom:10px;}
+  .eyebrow .line{height:2px;width:22px;background:var(--accent);display:inline-block;}
+  header h1{margin:0 0 14px;font-size:clamp(30px,5vw,44px);text-transform:uppercase;letter-spacing:.5px;}
+  .route-trail{display:flex;overflow-x:auto;gap:0;font-size:13.5px;margin-bottom:20px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--panel);}
+  .route-stub{flex:0 0 auto;display:flex;flex-direction:column;padding:8px 14px;text-decoration:none;color:var(--ink);cursor:pointer;transition:background .12s ease;}
+  .route-stub:not(:last-child){border-right:1px dashed var(--line);}
+  .route-stub:hover{background:var(--panel-alt);}
+  .route-stub .code{font-family:var(--font-mono);font-weight:700;font-size:14px;letter-spacing:.5px;}
+  .route-stub .name{font-size:10px;color:var(--sub);text-transform:uppercase;letter-spacing:.4px;margin-top:1px;white-space:nowrap;}
+  .stats-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--radius-sm);overflow:hidden;}
+  .stat{background:var(--panel);padding:13px 14px;}
+  .stat .num{font-family:var(--font-mono);font-size:24px;font-weight:700;color:var(--accent-ink);line-height:1.1;font-variant-numeric:tabular-nums;}
+  .stat .lbl{font-size:10.5px;color:var(--sub);text-transform:uppercase;letter-spacing:.6px;font-weight:600;margin-top:3px;}
   @media (max-width:720px){.stats-strip{grid-template-columns:repeat(2,1fr);}}
 
   .nightsbar-wrap{max-width:1320px;margin:22px auto 0;padding:0 0 22px;}
-  .nightsbar-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--sub);margin-bottom:8px;}
-  .nightsbar{display:flex;height:14px;border-radius:var(--radius-pill);overflow:hidden;box-shadow:inset 0 0 0 1px var(--line);}
+  .nightsbar-title{font-family:var(--font-mono);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--sub);margin-bottom:8px;}
+  .nightsbar{display:flex;height:8px;border-radius:2px;overflow:hidden;box-shadow:inset 0 0 0 1px var(--line);}
   .nightsbar .seg{height:100%;}
   .nightsbar-legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:10px;font-size:12px;color:var(--sub);}
   .nightsbar-legend span{display:inline-flex;align-items:center;gap:6px;}
-  .nightsbar-legend .sw{width:9px;height:9px;border-radius:3px;display:inline-block;}
+  .nightsbar-legend .sw{width:8px;height:8px;border-radius:1px;display:inline-block;}
 
   /* ---------- Sidebar: one spine for cities AND days ---------- */
   .shell{display:grid;grid-template-columns:262px minmax(0,1fr);gap:30px;max-width:1320px;margin:0 auto;padding:26px 32px 70px;align-items:start;}
@@ -122,8 +123,8 @@
     padding:7px 9px;border-radius:8px;cursor:pointer;font-family:inherit;transition:background .13s;position:relative;}
   .sb-day:hover{background:var(--panel-alt);}
   .sb-day.active{background:var(--accent-soft);}
-  .sb-day .dnum{font-family:"Fraunces",serif;font-size:15px;font-weight:700;color:var(--ink);line-height:1;}
-  .sb-day .dnum small{display:block;font-family:"Inter",sans-serif;font-size:9px;font-weight:700;color:var(--sub2);text-transform:uppercase;letter-spacing:.5px;margin-top:1px;}
+  .sb-day .dnum{font-family:var(--font-mono);font-size:15px;font-weight:700;color:var(--ink);line-height:1;}
+  .sb-day .dnum small{display:block;font-family:var(--font-body);font-size:9px;font-weight:700;color:var(--sub2);text-transform:uppercase;letter-spacing:.5px;margin-top:1px;}
   .sb-day .dttl{font-size:11.5px;color:var(--sub);line-height:1.35;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
   .sb-day.active .dttl{color:var(--accent-ink);font-weight:600;}
   .sb-day.flag::after{content:"";position:absolute;right:7px;top:8px;width:6px;height:6px;border-radius:50%;background:var(--danger);}
@@ -143,32 +144,33 @@
       display:flex;align-items:center;gap:12px;
       position:sticky;top:0;z-index:60;
       padding:calc(env(safe-area-inset-top,0px) + 10px) 16px 10px;
-      background:rgba(247,243,236,.92);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+      background:rgba(240,241,238,.92);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
       border-bottom:1px solid var(--line);
     }
-    #mobile-topbar .mt-title{font-family:"Fraunces",serif;font-weight:600;font-size:16.5px;color:var(--ink);
-      overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-    #mobile-topbar .mt-sub{display:block;font-family:"Inter",sans-serif;font-weight:600;font-size:10.5px;
-      color:var(--sub);text-transform:uppercase;letter-spacing:.5px;}
+    #mobile-topbar .mt-title{font-family:var(--font-display);font-weight:700;font-size:17px;color:var(--ink);
+      overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-transform:uppercase;letter-spacing:.3px;}
+    #mobile-topbar .mt-sub{display:block;font-family:var(--font-mono);font-weight:600;font-size:10px;
+      color:var(--sub);text-transform:uppercase;letter-spacing:.8px;}
 
     /* Bottom tab bar: the primary phone nav. Sits under the thumb instead of
-       requiring a reach to a top-left hamburger. */
+       requiring a reach to a top-left hamburger. Active state reads like a
+       platform indicator strip — a top rule, not a filled pill. */
     :root{--tabbar-h:64px;}
     #bottom-tabbar{
       display:flex;position:fixed;left:0;right:0;bottom:0;z-index:1500;
-      background:rgba(247,243,236,.96);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+      background:rgba(240,241,238,.96);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
       border-top:1px solid var(--line);
-      padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px));
-      box-shadow:0 -6px 20px rgba(40,25,10,.08);
+      padding:0 0 env(safe-area-inset-bottom,0px);
+      box-shadow:0 -2px 8px rgba(20,20,15,.06);
     }
     #bottom-tabbar button{
-      flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;
-      border:none;background:transparent;padding:7px 4px;border-radius:12px;
-      font-family:inherit;font-size:10.5px;font-weight:700;color:var(--sub);
+      flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
+      border:none;border-top:2px solid transparent;background:transparent;padding:10px 4px 8px;
+      font-family:var(--font-mono);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--sub);
       cursor:pointer;touch-action:manipulation;
     }
-    #bottom-tabbar button .bt-ic{font-size:20px;line-height:1;}
-    #bottom-tabbar button.active{color:var(--accent-ink);background:var(--accent-soft);}
+    #bottom-tabbar button .bt-ic{font-size:16px;line-height:1;font-family:var(--font-mono);}
+    #bottom-tabbar button.active{color:var(--accent-ink);border-top-color:var(--accent);background:var(--panel-alt);}
 
     /* Off-canvas drawer: the same #sidebar content, now a slide-in panel.
        z-index has to clear Leaflet's own controls (.leaflet-top/.leaflet-bottom
@@ -211,9 +213,9 @@
   .cityhead h2{margin:0 0 3px;font-size:28px;font-weight:600;display:flex;align-items:center;gap:10px;}
   .cityhead .flagbig{font-size:26px;}
   .cityhead .sub{color:var(--sub);font-size:14px;font-style:italic;}
-  .datebadge{background:var(--ink);color:#fff;font-size:12.5px;font-weight:700;padding:7px 15px;border-radius:var(--radius-pill);white-space:nowrap;}
-  .facts{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 22px;}
-  .fact{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius-pill);padding:6px 13px;font-size:12.5px;font-weight:500;box-shadow:var(--shadow-sm);}
+  .datebadge{background:var(--ink);color:#fff;font-family:var(--font-mono);font-size:12px;font-weight:600;padding:7px 14px;border-radius:var(--radius-pill);white-space:nowrap;letter-spacing:.3px;}
+  .facts{display:flex;flex-wrap:wrap;gap:7px;margin:14px 0 22px;}
+  .fact{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius-sm);padding:5px 11px;font-size:12px;font-weight:500;color:var(--ink-soft);}
 
   .subnav{display:inline-flex;gap:2px;margin-bottom:20px;background:var(--panel-alt);border:1px solid var(--line);padding:4px;border-radius:var(--radius-pill);}
   .subnav button{border:none;background:transparent;padding:8px 18px;border-radius:var(--radius-pill);font-size:13px;cursor:pointer;color:var(--sub);font-weight:600;transition:all .15s;}
@@ -224,12 +226,12 @@
   .legend{display:flex;flex-wrap:wrap;gap:16px;margin:0 0 14px;font-size:12.5px;color:var(--sub);font-weight:500;}
   .legend span{display:inline-flex;align-items:center;gap:7px;}
   .dot{width:11px;height:11px;border-radius:50%;display:inline-block;flex-shrink:0;box-shadow:0 0 0 3px #fff, 0 0 0 4px var(--line);}
-  .note{background:#fdf6e6;border:1px solid #ecdba8;border-radius:var(--radius-sm);padding:13px 16px;font-size:13.5px;color:#6b5320;margin:16px 0;line-height:1.55;}
-  .note.blue{background:#eaf3fb;border-color:#c7dcef;color:#264b6c;}
-  .note.danger{background:var(--danger-bg);border-color:var(--danger-line);color:#7a2620;}
+  .note{background:#f7ecd4;border:1px solid #e3cb98;border-radius:var(--radius-sm);padding:13px 16px;font-size:13.5px;color:#6b4f14;margin:16px 0;line-height:1.55;}
+  .note.blue{background:#dce8f0;border-color:#b9d0e0;color:#1f4260;}
+  .note.danger{background:var(--danger-bg);border-color:var(--danger-line);color:#7a2b1e;}
 
   /* numbered route pins */
-  .numpin{background:var(--accent2);color:#fff;font:700 12px/26px "Inter",sans-serif;text-align:center;
+  .numpin{background:var(--accent2);color:#fff;font:700 12px/26px var(--font-mono);text-align:center;
     width:26px;height:26px;border-radius:50%;box-shadow:0 0 0 3px #fff, 0 2px 6px rgba(0,0,0,.28);}
   .numpin.hot{background:var(--accent);transform:scale(1.25);transition:transform .12s;}
 
@@ -237,6 +239,7 @@
   .book{display:inline-flex;align-items:center;gap:5px;margin-top:7px;font-size:11.5px;font-weight:700;
     padding:5px 11px;border-radius:var(--radius-pill);text-decoration:none;
     background:var(--accent2);color:#fff;transition:filter .15s,transform .1s;}
+  .book:focus-visible,.route-stub:focus-visible,#theme-toggle:focus-visible,#bottom-tabbar button:focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
   .book:hover{filter:brightness(1.12);transform:translateY(-1px);}
   .book.ghost{background:transparent;color:var(--accent2);border:1.5px solid var(--accent2-soft);}
   .book.ghost:hover{background:var(--accent2-soft);}
@@ -248,37 +251,38 @@
   .day.flagged{border:1.5px solid var(--danger-line);background:linear-gradient(180deg,var(--danger-bg) 0%, var(--panel) 90px);}
   .day.dim{opacity:.84;}
   .day h3{margin:0 0 3px;font-size:18.5px;font-weight:600;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
-  .daynum{flex-shrink:0;width:30px;height:30px;border-radius:50%;background:var(--ink);color:#fff;font-family:"Inter",sans-serif;font-size:13px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;}
+  .daynum{flex-shrink:0;width:30px;height:30px;border-radius:50%;background:var(--ink);color:#fff;font-family:var(--font-mono);font-size:13px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;}
   .day.flagged .daynum{background:var(--danger);}
   .day.dim .daynum{background:var(--sub2);}
   .day .daysub{color:var(--sub);font-size:13.5px;margin:2px 0 14px 40px;line-height:1.5;}
-  .day.flagged .daysub{color:#8a3129;font-weight:500;}
+  .day.flagged .daysub{color:#8a2e1c;font-weight:500;}
   .stop{display:flex;gap:13px;padding:12px 0;border-top:1px solid var(--line-soft);}
   .stop:first-of-type{border-top:none;}
-  .tag{flex-shrink:0;width:11px;height:11px;border-radius:50%;margin-top:5px;box-shadow:0 0 0 3px #fff, 0 0 0 4px var(--line-soft);}
+  .tag{flex-shrink:0;width:9px;height:9px;border-radius:2px;margin-top:6px;}
   .stop-body b{font-size:14.5px;font-weight:600;}
   .stop-body .meta{color:var(--sub);font-size:12.8px;margin-top:3px;line-height:1.5;}
-  .stoptime{font-size:11.5px;font-weight:700;color:var(--sub2);letter-spacing:.4px;margin-right:2px;}
-  .badge{display:inline-block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:2px 7px;border-radius:5px;margin-left:8px;position:relative;top:-1px;}
-  .badge.suggested{background:#f7ecd2;color:#8a6c14;}
-  .badge.daytrip{background:#dfebf9;color:#1d5488;}
-  .badge.free{background:var(--accent2-soft);color:var(--accent2);}
+  .stoptime{font-family:var(--font-mono);font-size:11.5px;font-weight:600;color:var(--sub2);letter-spacing:.2px;margin-right:2px;}
+  .badge{display:inline-block;font-family:var(--font-mono);font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;
+    padding:1px 6px;border-radius:3px;border:1px solid currentColor;margin-left:8px;position:relative;top:-1px;background:transparent;}
+  .badge.suggested{color:var(--suggest);}
+  .badge.daytrip{color:var(--trip);}
+  .badge.free{color:var(--accent2);}
 
   /* ---------- Cards / tables ---------- */
   .grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
   .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px 22px;box-shadow:var(--shadow-sm);}
   .card h3{margin:0 0 12px;font-size:16px;font-weight:600;display:flex;align-items:center;gap:8px;}
-  .card.warn{background:linear-gradient(180deg,#fdf3f2 0%,#fff 140px);border-color:var(--danger-line);}
+  .card.warn{background:linear-gradient(180deg,#f7e6e2 0%,#fff 140px);border-color:var(--danger-line);}
   .card.warn h3{color:var(--danger);}
-  .card.resolved{background:linear-gradient(180deg,#eef7f3 0%,#fff 90px);border-color:var(--accent2-soft);}
+  .card.resolved{background:linear-gradient(180deg,#e3f0e8 0%,#fff 90px);border-color:#bcdccb;}
   table{width:100%;border-collapse:collapse;font-size:13.5px;}
-  table th{text-align:left;padding:8px 6px;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--sub);font-weight:700;border-bottom:2px solid var(--line);}
+  table th{text-align:left;padding:8px 6px;font-family:var(--font-mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--sub);font-weight:600;border-bottom:2px solid var(--line);}
   table td{text-align:left;padding:10px 6px;border-bottom:1px solid var(--line-soft);vertical-align:top;}
   table tr:last-child td{border-bottom:none;}
   table tbody tr:hover td{background:var(--panel-alt);}
-  .pill{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;padding:3px 10px;border-radius:var(--radius-pill);white-space:nowrap;}
+  .pill{display:inline-flex;align-items:center;gap:5px;font-family:var(--font-mono);font-size:11px;font-weight:600;padding:3px 9px;border-radius:var(--radius-pill);white-space:nowrap;}
   .pill-ok{background:var(--accent2-soft);color:var(--accent2);}
-  .pill-you{background:#eee6f7;color:#5c3a8e;}
+  .pill-you{background:#e6e0f2;color:#5a3f8a;}
   .pill-warn{background:var(--danger-bg);color:var(--danger);}
 
   .stub-card{background:var(--panel-alt);border:1.5px dashed var(--line);border-radius:var(--radius);padding:34px 28px;text-align:center;color:var(--sub);}
@@ -298,27 +302,27 @@
 
   .timeline{position:relative;}
   .tl-stop{display:grid;grid-template-columns:52px 1fr;gap:12px;background:var(--panel);border:1px solid var(--line);
-    border-radius:14px;padding:14px 16px;box-shadow:var(--shadow-sm);cursor:pointer;transition:all .14s;}
+    border-radius:var(--radius-sm);padding:14px 16px;box-shadow:var(--shadow-sm);cursor:pointer;transition:all .14s;}
   .tl-stop:hover,.tl-stop.hot{border-color:var(--accent);box-shadow:var(--shadow-md);transform:translateX(2px);}
   .tl-idx{display:flex;flex-direction:column;align-items:center;gap:5px;}
-  .tl-idx .n{width:26px;height:26px;border-radius:50%;background:var(--accent2);color:#fff;font-size:12px;font-weight:700;
+  .tl-idx .n{width:26px;height:26px;border-radius:50%;background:var(--accent2);color:#fff;font-family:var(--font-mono);font-size:12px;font-weight:700;
     display:flex;align-items:center;justify-content:center;}
   .tl-stop:hover .tl-idx .n,.tl-stop.hot .tl-idx .n{background:var(--accent);}
-  .tl-idx .tm{font-size:10.5px;font-weight:700;color:var(--sub2);letter-spacing:.3px;}
+  .tl-idx .tm{font-family:var(--font-mono);font-size:10px;font-weight:600;color:var(--sub2);letter-spacing:.2px;}
   /* logistics rows sit back so the actual sights carry the page */
   .tl-stop[data-kind="logistics"]{background:var(--panel-alt);border-style:dashed;padding:11px 16px;}
   .tl-stop[data-kind="logistics"] .tl-name{font-size:13.5px;font-weight:600;color:var(--ink-soft);}
   .tl-stop[data-kind="logistics"] .tl-idx .n{background:var(--sub2);width:22px;height:22px;font-size:11px;}
   .tl-stop[data-kind="anchor"]{border-left:3px solid var(--accent);}
-  .tl-name{font-size:15px;font-weight:600;display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
-  .tl-cat{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+  .tl-name{font-size:15px;font-weight:700;display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
+  .tl-cat{width:8px;height:8px;border-radius:2px;flex-shrink:0;}
   .tl-note{font-size:12.8px;color:var(--sub);margin-top:4px;line-height:1.5;}
-  .tl-cost{font-size:12px;font-weight:700;color:var(--accent-ink);margin-top:5px;}
+  .tl-cost{font-family:var(--font-mono);font-size:12px;font-weight:600;color:var(--accent-ink);margin-top:5px;}
 
   .leg{display:flex;align-items:center;gap:9px;margin:0 0 0 26px;padding:7px 0 7px 0;position:relative;}
   .leg::before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:repeating-linear-gradient(to bottom,var(--line) 0 4px,transparent 4px 8px);}
   .leg .li{margin-left:14px;display:inline-flex;align-items:center;gap:6px;background:var(--panel-alt);border:1px solid var(--line);
-    border-radius:var(--radius-pill);padding:3px 11px;font-size:11.5px;font-weight:600;color:var(--sub);}
+    border-radius:var(--radius-pill);padding:3px 11px;font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--sub);}
   .leg .li .ic{font-size:13px;}
   .tl-gap{margin:6px 0 6px 26px;padding-left:14px;font-size:11.5px;color:var(--sub2);font-style:italic;}
 
@@ -326,7 +330,7 @@
   .maprail .leaflet-map{height:520px;}
   .mapctl{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
   .mapctl button{border:1.5px solid var(--line);background:var(--panel);border-radius:var(--radius-pill);padding:6px 13px;
-    font-size:11.5px;font-weight:700;color:var(--ink-soft);cursor:pointer;font-family:inherit;transition:all .13s;}
+    font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--ink-soft);cursor:pointer;transition:all .13s;}
   .mapctl button:hover{border-color:var(--accent);color:var(--accent-ink);}
   .mapctl button.on{background:var(--ink);border-color:var(--ink);color:#fff;}
   .mapscope{font-size:12px;color:var(--sub);margin-top:9px;line-height:1.5;}
@@ -350,35 +354,47 @@
   #sidebar{-webkit-overflow-scrolling:touch;}
   body{padding-bottom:calc(env(safe-area-inset-bottom,0px) + var(--tabbar-h));}
 
-  /* ---------- "Up next" card (Today view) ---------- */
+  /* ---------- "Up next" card (Today view) ----------
+     Deliberately breaks the light/dark theme rule: a real departure board
+     is always lit, whatever time of day it is, so this card stays dark-
+     ground-and-amber regardless of which mode the rest of the app is in. */
   #upnext{display:none;}
-  #upnext.show{display:block;background:linear-gradient(135deg,var(--accent) 0%,var(--accent-ink) 100%);
-    color:#fff;border-radius:var(--radius);padding:16px 18px;margin-bottom:18px;box-shadow:var(--shadow-md);}
-  #upnext .un-lbl{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:1px;opacity:.85;}
-  #upnext .un-name{font-family:"Fraunces",serif;font-size:19px;font-weight:600;margin:3px 0 4px;}
-  #upnext .un-note{font-size:12.8px;line-height:1.5;opacity:.92;margin-bottom:10px;}
-  #upnext .book{background:rgba(255,255,255,.18);}
-  #upnext .book.ghost{border-color:rgba(255,255,255,.5);color:#fff;}
+  #upnext.show{display:block;background:#14181f;color:#f3e4c4;
+    border-radius:var(--radius-sm);padding:16px 18px;margin-bottom:18px;box-shadow:var(--shadow-md);}
+  #upnext .un-lbl{font-family:var(--font-mono);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;color:#db9a2e;}
+  #upnext .un-name{font-family:var(--font-display);font-size:22px;font-weight:800;text-transform:uppercase;letter-spacing:.3px;margin:4px 0 5px;}
+  #upnext .un-note{font-size:12.8px;line-height:1.5;color:#b9c2d0;margin-bottom:10px;}
+  #upnext .book{background:rgba(219,154,46,.22);color:#f3e4c4;}
+  #upnext .book.ghost{border-color:rgba(219,154,46,.55);color:#db9a2e;}
   #upnext.done{background:var(--accent2-soft);color:var(--accent2);}
-  #upnext.done .un-name{font-family:"Inter",sans-serif;font-size:14px;font-weight:700;margin:0;}
+  #upnext.done .un-name{font-family:var(--font-body);font-size:14px;font-weight:700;text-transform:none;letter-spacing:0;margin:0;}
 
   /* ---------- Collapsible stop detail (Today view timeline) ---------- */
-  .tl-toggle{margin-top:6px;background:none;border:none;padding:0;font-size:12px;font-weight:700;
-    color:var(--accent2);cursor:pointer;display:inline-flex;align-items:center;gap:3px;font-family:inherit;touch-action:manipulation;}
+  .tl-toggle{margin-top:6px;background:none;border:none;padding:0;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;
+    color:var(--accent2);cursor:pointer;display:inline-flex;align-items:center;gap:3px;font-family:var(--font-mono);touch-action:manipulation;}
   .tl-toggle .chev{display:inline-block;transition:transform .2s ease;font-size:10px;}
   .tl-stop.expanded .tl-toggle .chev{transform:rotate(180deg);}
   .tl-more{max-height:0;overflow:hidden;opacity:0;transition:max-height .25s ease,opacity .2s ease;}
-  .tl-stop.expanded .tl-more{max-height:600px;opacity:1;margin-top:6px;}
+  .tl-stop.expanded .tl-more{max-height:900px;opacity:1;margin-top:6px;}
+
+  /* ---------- Move / reorder controls ---------- */
+  .tl-move{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);}
+  .mv-btn{border:1px solid var(--line);background:var(--panel-alt);border-radius:var(--radius-sm);
+    font-family:var(--font-mono);font-size:10.5px;font-weight:600;color:var(--ink-soft);
+    padding:5px 9px;cursor:pointer;touch-action:manipulation;}
+  .mv-btn:disabled{opacity:.35;cursor:default;}
+  .mv-btn:not(:disabled):hover{border-color:var(--accent);color:var(--accent-ink);}
+  .mv-select{border:1px solid var(--line);background:var(--panel-alt);border-radius:var(--radius-sm);
+    font-family:var(--font-mono);font-size:10.5px;font-weight:600;color:var(--ink-soft);
+    padding:5px 7px;cursor:pointer;flex:1;min-width:0;max-width:100%;}
 
   /* ---------- Dark mode — selector overrides ----------
      Prefixed with :root[data-theme="dark"] rather than living inside a
      media query, so the same rules serve both the system-default case and
      the manual toggle (see #theme-toggle below) — the attribute selector's
      specificity beats a bare class selector regardless of source order. */
-  :root[data-theme="dark"] body{background:radial-gradient(1200px 500px at 15% -10%, #241b12 0%, transparent 60%),
-    radial-gradient(900px 500px at 100% 0%, #142420 0%, transparent 55%), var(--bg);}
   :root[data-theme="dark"] .datebadge,:root[data-theme="dark"] .sb-item.active,:root[data-theme="dark"] .subnav button.active,
-  :root[data-theme="dark"] .mapctl button.on,:root[data-theme="dark"] .daynum{color:#1a140f;}
+  :root[data-theme="dark"] .mapctl button.on,:root[data-theme="dark"] .daynum{color:#14181f;}
   :root[data-theme="dark"] .note{background:#332913;border-color:#4d3f1c;color:#e8cf8f;}
   :root[data-theme="dark"] .note.blue{background:#152735;border-color:#264257;color:#a9cbe0;}
   :root[data-theme="dark"] .badge.suggested{background:#3a2f10;color:#e2b955;}
@@ -387,15 +403,14 @@
   :root[data-theme="dark"] .card.resolved{background:linear-gradient(180deg,#152420 0%, var(--panel) 90px);}
   :root[data-theme="dark"] .card.warn{background:linear-gradient(180deg,#2c1815 0%, var(--panel) 140px);}
   :root[data-theme="dark"] .leaflet-popup-content-wrapper,:root[data-theme="dark"] .leaflet-popup-tip{background:var(--panel);color:var(--ink);}
-  :root[data-theme="dark"] #mobile-topbar{background:rgba(23,19,16,.88);}
-  :root[data-theme="dark"] #bottom-tabbar{background:rgba(23,19,16,.94);}
-  :root[data-theme="dark"] #upnext .book.ghost{color:#fff;}
+  :root[data-theme="dark"] #mobile-topbar{background:rgba(18,21,28,.88);}
+  :root[data-theme="dark"] #bottom-tabbar{background:rgba(18,21,28,.94);}
 
   /* ---------- Theme toggle button (mobile top bar) ---------- */
   #theme-toggle{
-    flex-shrink:0;width:40px;height:40px;border-radius:11px;border:1px solid var(--line);
+    flex-shrink:0;width:38px;height:38px;border-radius:var(--radius-sm);border:1px solid var(--line);
     background:var(--panel);display:flex;align-items:center;justify-content:center;
-    font-size:17px;cursor:pointer;touch-action:manipulation;
+    font-size:16px;cursor:pointer;touch-action:manipulation;
   }
 </style>
 </head>
@@ -406,14 +421,14 @@
     <div class="eyebrow"><span class="line"></span>Two-week trip · planned with Claude</div>
     <h1>Europe 2026</h1>
     <div class="route-trail">
-      <a class="stop-chip" href="#" onclick="activateTab('overview');return false;">🏠 LA</a><span class="arrow">→</span>
-      <a class="stop-chip" href="#" onclick="activateTab('vienna');return false;">🇦🇹 Vienna</a><span class="arrow">→</span>
-      <a class="stop-chip" href="#" onclick="activateTab('dubrovnik');return false;">🇭🇷 Dubrovnik</a><span class="arrow">→</span>
-      <a class="stop-chip" href="#" onclick="activateTab('split');return false;">🇭🇷 Split</a><span class="arrow">→</span>
-      <a class="stop-chip" href="#" onclick="activateTab('prague');return false;">🇨🇿 Prague</a><span class="arrow">→</span>
-      <a class="stop-chip" href="#" onclick="activateTab('budapest');return false;">🇭🇺 Budapest</a><span class="arrow">→</span>
-      <a class="stop-chip" href="#" onclick="activateTab('london');return false;">🇬🇧 London</a><span class="arrow">→</span>
-      <a class="stop-chip" href="#" onclick="activateTab('overview');return false;">🏠 LA</a>
+      <a class="route-stub" href="#" onclick="activateTab('overview');return false;"><span class="code">LAX</span><span class="name">Home</span></a>
+      <a class="route-stub" href="#" onclick="activateTab('vienna');return false;"><span class="code">VIE</span><span class="name">🇦🇹 Vienna</span></a>
+      <a class="route-stub" href="#" onclick="activateTab('dubrovnik');return false;"><span class="code">DBV</span><span class="name">🇭🇷 Dubrovnik</span></a>
+      <a class="route-stub" href="#" onclick="activateTab('split');return false;"><span class="code">SPU</span><span class="name">🇭🇷 Split</span></a>
+      <a class="route-stub" href="#" onclick="activateTab('prague');return false;"><span class="code">PRG</span><span class="name">🇨🇿 Prague</span></a>
+      <a class="route-stub" href="#" onclick="activateTab('budapest');return false;"><span class="code">BUD</span><span class="name">🇭🇺 Budapest</span></a>
+      <a class="route-stub" href="#" onclick="activateTab('london');return false;"><span class="code">LHR</span><span class="name">🇬🇧 Windsor</span></a>
+      <a class="route-stub" href="#" onclick="activateTab('overview');return false;"><span class="code">LAX</span><span class="name">Home</span></a>
     </div>
     <div class="stats-strip">
       <div class="stat"><div class="num" id="countdown-num">—</div><div class="lbl">Days to go</div></div>
@@ -426,7 +441,7 @@
     <div class="nightsbar-title">Where the 15 nights go</div>
     <div class="nightsbar">
       <div class="seg" style="width:13.3%;background:var(--sight)" title="Vienna — 2 nights"></div>
-      <div class="seg" style="width:13.3%;background:#c96b3f" title="Dubrovnik — 2 nights"></div>
+      <div class="seg" style="width:13.3%;background:#b5622f" title="Dubrovnik — 2 nights"></div>
       <div class="seg" style="width:20%;background:var(--trip)" title="Split — 3 nights"></div>
       <div class="seg" style="width:20%;background:var(--transit)" title="Prague — 3 nights"></div>
       <div class="seg" style="width:20%;background:var(--night)" title="Budapest — 3 nights"></div>
@@ -435,7 +450,7 @@
     </div>
     <div class="nightsbar-legend">
       <span><i class="sw" style="background:var(--sight)"></i>Vienna · 2</span>
-      <span><i class="sw" style="background:#c96b3f"></i>Dubrovnik · 2</span>
+      <span><i class="sw" style="background:#b5622f"></i>Dubrovnik · 2</span>
       <span><i class="sw" style="background:var(--trip)"></i>Split · 3</span>
       <span><i class="sw" style="background:var(--transit)"></i>Prague · 3</span>
       <span><i class="sw" style="background:var(--night)"></i>Budapest · 3</span>
@@ -467,29 +482,29 @@
     </div>
 
     <div id="overview-map" class="leaflet-map" style="margin:18px 0 14px;"></div>
-    <div class="note blue">🗺️ Click a city pin to jump to that city's tab. For a single day's route with travel times, use the <b>Calendar</b> tab.</div>
+    <div class="note blue">Click a city pin to jump to that city's tab. For a single day's route with travel times, use the <b>Calendar</b> tab.</div>
 
     <div class="grid">
       <div class="card" style="grid-column:1/-1;">
-        <h3>✈️ Flights &amp; buses <span style="font-weight:400;color:var(--sub);font-size:12.5px;">— manage-booking links included</span></h3>
+        <h3>Flights &amp; buses <span style="font-weight:400;color:var(--sub);font-size:12.5px;">— manage-booking links included</span></h3>
         <table>
           <thead><tr><th>Date</th><th>Route</th><th>Details</th><th>Status</th><th>Manage</th></tr></thead>
           <tbody>
-          <tr><td>Fri Aug 7</td><td>LAX → Frankfurt</td><td>Condor DE2081, 16:45 → 13:00 (+1). Ref 17097157-01</td><td><span class="pill pill-ok">✓ Confirmed</span></td><td><a class="book ghost" href="https://www.condor.com/uk/" target="_blank" rel="noopener">Condor ↗</a></td></tr>
-          <tr><td>Sat Aug 8</td><td>Frankfurt → Vienna</td><td>Condor DE4345, 14:30 → 15:50. $439.99 total</td><td><span class="pill pill-ok">✓ Confirmed</span></td><td><a class="book ghost" href="https://www.condor.com/uk/" target="_blank" rel="noopener">Condor ↗</a></td></tr>
+          <tr><td>Fri Aug 7</td><td>LAX → Frankfurt</td><td>Condor DE2081, 16:45 → 13:00 (+1). Ref 17097157-01</td><td><span class="pill pill-ok">Confirmed</span></td><td><a class="book ghost" href="https://www.condor.com/uk/" target="_blank" rel="noopener">Condor ↗</a></td></tr>
+          <tr><td>Sat Aug 8</td><td>Frankfurt → Vienna</td><td>Condor DE4345, 14:30 → 15:50. $439.99 total</td><td><span class="pill pill-ok">Confirmed</span></td><td><a class="book ghost" href="https://www.condor.com/uk/" target="_blank" rel="noopener">Condor ↗</a></td></tr>
           <tr><td>Mon Aug 10</td><td>Vienna → Dubrovnik</td><td>Ryanair, dep 06:55. Ref IU1TUY</td><td><span class="pill pill-you">From you</span></td><td><a class="book ghost" href="https://www.ryanair.com/gb/en/check-in" target="_blank" rel="noopener">Ryanair ↗</a></td></tr>
-          <tr><td>Wed Aug 12</td><td>Dubrovnik → Split (bus)</td><td>FlixBus 07:15 → 11:20. #3379864687</td><td><span class="pill pill-ok">✓ Confirmed</span></td><td><a class="book ghost" href="https://global.flixbus.com/" target="_blank" rel="noopener">FlixBus ↗</a></td></tr>
-          <tr><td>Sat Aug 15</td><td>Split → Prague</td><td>Smartwings QS1083, 14:40 → 16:15. Ref YZGDTS — <b>reissued Aug 4</b>, moved up from Aug 18</td><td><span class="pill pill-ok">✓ Confirmed</span></td><td><a class="book ghost" href="https://www.smartwings.com/en/" target="_blank" rel="noopener">Smartwings ↗</a></td></tr>
+          <tr><td>Wed Aug 12</td><td>Dubrovnik → Split (bus)</td><td>FlixBus 07:15 → 11:20. #3379864687</td><td><span class="pill pill-ok">Confirmed</span></td><td><a class="book ghost" href="https://global.flixbus.com/" target="_blank" rel="noopener">FlixBus ↗</a></td></tr>
+          <tr><td>Sat Aug 15</td><td>Split → Prague</td><td>Smartwings QS1083, 14:40 → 16:15. Ref YZGDTS — <b>reissued Aug 4</b>, moved up from Aug 18</td><td><span class="pill pill-ok">Confirmed</span></td><td><a class="book ghost" href="https://www.smartwings.com/en/" target="_blank" rel="noopener">Smartwings ↗</a></td></tr>
           <tr><td>Tue Aug 18</td><td>Prague → Budapest</td><td>Ryanair, dep ~19:30. Ref I54C9A</td><td><span class="pill pill-you">From you</span></td><td><a class="book ghost" href="https://www.ryanair.com/gb/en/check-in" target="_blank" rel="noopener">Ryanair ↗</a></td></tr>
-          <tr><td>Fri Aug 21</td><td>Budapest → London</td><td>BA863, 12:55 → 14:40. Conf AS67UA</td><td><span class="pill pill-ok">✓ Confirmed</span></td><td><a class="book ghost" href="https://www.britishairways.com/travel/managebooking/public/en_gb" target="_blank" rel="noopener">BA ↗</a></td></tr>
-          <tr><td>Sat Aug 22</td><td>London → LAX</td><td>Virgin Atlantic VS23, 18:15 → 21:25, direct. Ref D8WQHO</td><td><span class="pill pill-ok">✓ Confirmed</span></td><td><a class="book ghost" href="https://www.virginatlantic.com/" target="_blank" rel="noopener">Virgin ↗</a></td></tr>
+          <tr><td>Fri Aug 21</td><td>Budapest → London</td><td>BA863, 12:55 → 14:40. Conf AS67UA</td><td><span class="pill pill-ok">Confirmed</span></td><td><a class="book ghost" href="https://www.britishairways.com/travel/managebooking/public/en_gb" target="_blank" rel="noopener">BA ↗</a></td></tr>
+          <tr><td>Sat Aug 22</td><td>London → LAX</td><td>Virgin Atlantic VS23, 18:15 → 21:25, direct. Ref D8WQHO</td><td><span class="pill pill-ok">Confirmed</span></td><td><a class="book ghost" href="https://www.virginatlantic.com/" target="_blank" rel="noopener">Virgin ↗</a></td></tr>
           </tbody>
         </table>
         <div class="note" style="margin-top:16px;">IU1TUY and I54C9A came from you directly and still aren't in either inbox after exhaustive searching — worth a final check in the Ryanair app before you fly, but treat the dates/times as confirmed since you've verified them yourself.</div>
       </div>
 
       <div class="card warn" style="grid-column:1/-1;">
-        <h3>🚨 Still open — Split, Prague, Budapest &amp; London lodging</h3>
+        <h3>Still open — Split, Prague, Budapest &amp; London lodging</h3>
         <p style="font-size:13.5px;margin:0 0 12px;color:var(--ink);">Vienna and Dubrovnik are booked (found in Gmail, see below). Split, Prague, Budapest and London are still unbooked as of Aug 6. Search links are pre-filled with your actual dates.</p>
         <table>
           <thead><tr><th>City</th><th>Nights</th><th>Rough range</th><th>Search</th></tr></thead>
@@ -503,14 +518,14 @@
       </div>
 
       <div class="card resolved" style="grid-column:1/-1;">
-        <h3 style="color:var(--accent2);">✅ Resolved — the Aug 15 conflict, and Vienna/Dubrovnik lodging</h3>
+        <h3 style="color:var(--accent2);">Resolved — the Aug 15 conflict, and Vienna/Dubrovnik lodging</h3>
         <p style="font-size:13.5px;margin:0 0 8px;color:var(--ink);line-height:1.6;">Your sheet planned <b>Sat Aug 15</b>: meet your girlfriend's family in the morning, then fly out at 2pm. The Smartwings ticket was reissued on Aug 4 — Split→Prague now departs <b>14:40 on Aug 15</b> instead of Aug 18. Same date, same time your sheet had, just routed through Prague instead of direct. Split reverts to the 3 nights your sheet always planned; the family meetup morning fits Aug 15 exactly as written.</p>
         <p style="font-size:13.5px;margin:0 0 8px;color:var(--ink);line-height:1.6;"><b>You confirmed Prague→Budapest is Tue Aug 18 at ~19:30</b> — not the same day as the Smartwings arrival, as I'd assumed. That makes Prague a real 3-night stay (Aug 15–18), and Budapest goes back to its original 3 nights (Aug 18–21), not 6. Prague's tab is rebuilt from scratch below since it didn't exist in any plan before now.</p>
         <p style="font-size:13.5px;margin:0;color:var(--ink);line-height:1.6;">Also found in Gmail: <b>Habyt Vienna</b> (Aug 8–10, conf 5814731574) and <b>Hostel Petra Marina</b> in Dubrovnik (Aug 10–12, conf 5175904714) are both booked and confirmed — details on their city tabs.</p>
       </div>
 
       <div class="card">
-        <h3>🕒 Time in each place</h3>
+        <h3>Time in each place</h3>
         <table><tbody>
           <tr><td>🇦🇹 Vienna</td><td>2 nights (Aug 8–10)</td></tr>
           <tr><td>🇭🇷 Dubrovnik</td><td>2 nights (Aug 10–12)</td></tr>
@@ -521,7 +536,7 @@
         </tbody></table>
       </div>
       <div class="card">
-        <h3>💶 Currency &amp; money heads-up</h3>
+        <h3>Currency &amp; money heads-up</h3>
         <table><tbody>
           <tr><td>Austria</td><td>Euro (€)</td></tr>
           <tr><td>Croatia</td><td>Euro (€) — joined 2023</td></tr>
@@ -532,7 +547,7 @@
       </div>
 
       <div class="card" style="grid-column:1/-1;">
-        <h3>🧭 Planner's flags — worth deciding on</h3>
+        <h3>Planner's flags — worth deciding on</h3>
         <table><tbody>
           <tr><td style="width:26%;"><b>Prague is a new 3-night city, entirely my draft</b></td><td>Turned out to be a real stay once you confirmed the Aug 18 Ryanair date, not the 3-hour connection the Aug 15 Smartwings arrival alone would suggest. Castle, Charles Bridge, Jewish Quarter, Vyšehrad — none of it was in any version of your plan, so treat all of it as a starting point to cut from.</td></tr>
           <tr><td><b>Budapest is back to 3 nights (Aug 18–21)</b></td><td>My earlier draft had extended it to 6 nights on the assumption the Ryanair leg moved to Aug 15 with the Smartwings change. It didn't — you confirmed Aug 18 — so Budapest reverts to exactly what it was before that assumption.</td></tr>
@@ -564,11 +579,11 @@
   <section id="tab-vienna" class="tab">
     <div class="cityhead">
       <div><h2><span class="flagbig">🇦🇹</span>Vienna</h2><div class="sub">Innere Stadt &amp; Schönbrunn</div></div>
-      <div class="datebadge">📅 Aug 8 – Aug 10</div>
+      <div class="datebadge">Aug 8 – Aug 10</div>
     </div>
     <div class="facts">
-      <span class="fact">💶 Euro (€)</span><span class="fact">🚊 Wiener Linien day pass ~€8</span>
-      <span class="fact">🙌 Tip: round up or ~10%</span><span class="fact">✅ Habyt Vienna booked</span>
+      <span class="fact">Euro (€)</span><span class="fact">Wiener Linien day pass ~€8</span>
+      <span class="fact">Tip: round up or ~10%</span><span class="fact">Habyt Vienna booked</span>
     </div>
     <div class="subnav">
       <button class="active" data-sub="vienna-map">Map</button>
@@ -577,7 +592,7 @@
     <div id="sub-vienna-map" class="subtab active">
       <div class="legend" id="legend-vienna"></div>
       <div id="map-vienna" class="leaflet-map"></div>
-      <div class="note">📍 Click any pin for a note, the price, and a direct link to book or open it in Google Maps.</div>
+      <div class="note">Click any pin for a note, the price, and a direct link to book or open it in Google Maps.</div>
     </div>
     <div id="sub-vienna-itin" class="subtab"><div id="itin-vienna"></div></div>
   </section>
@@ -585,11 +600,11 @@
   <section id="tab-dubrovnik" class="tab">
     <div class="cityhead">
       <div><h2><span class="flagbig">🇭🇷</span>Dubrovnik</h2><div class="sub">Old Town, walls &amp; Adriatic sunsets</div></div>
-      <div class="datebadge">📅 Aug 10 – Aug 12</div>
+      <div class="datebadge">Aug 10 – Aug 12</div>
     </div>
     <div class="facts">
-      <span class="fact">💶 Euro (€)</span><span class="fact">🚶 Old Town is pedestrian-only</span>
-      <span class="fact">🏰 City Walls €35 — book timed entry</span><span class="fact">✅ Petra Marina booked</span>
+      <span class="fact">Euro (€)</span><span class="fact">Old Town is pedestrian-only</span>
+      <span class="fact">City Walls €35 — book timed entry</span><span class="fact">Petra Marina booked</span>
     </div>
     <div class="subnav">
       <button class="active" data-sub="dubrovnik-map">Map</button>
@@ -606,11 +621,11 @@
   <section id="tab-split" class="tab">
     <div class="cityhead">
       <div><h2><span class="flagbig">🇭🇷</span>Split</h2><div class="sub">Diocletian's Palace + island &amp; national-park day trips</div></div>
-      <div class="datebadge">📅 Aug 12 – Aug 15</div>
+      <div class="datebadge">Aug 12 – Aug 15</div>
     </div>
     <div class="facts">
-      <span class="fact">💶 Euro (€)</span><span class="fact">✅ Back to your original 3-night plan</span>
-      <span class="fact">🏛️ Best palace hours: 7–9am</span><span class="fact">🚨 Lodging not booked</span>
+      <span class="fact">Euro (€)</span><span class="fact">Back to your original 3-night plan</span>
+      <span class="fact">Best palace hours: 7–9am</span><span class="fact">Lodging not booked</span>
     </div>
     <div class="subnav">
       <button class="active" data-sub="split-map">Map</button>
@@ -627,11 +642,11 @@
   <section id="tab-prague" class="tab">
     <div class="cityhead">
       <div><h2><span class="flagbig">🇨🇿</span>Prague</h2><div class="sub">Castle, Charles Bridge &amp; the Old Town</div></div>
-      <div class="datebadge">📅 Aug 15 – Aug 18</div>
+      <div class="datebadge">Aug 15 – Aug 18</div>
     </div>
     <div class="facts">
-      <span class="fact">💴 Czech Koruna (CZK) — not euro</span><span class="fact">🏰 Castle grounds free, buildings ~450 CZK</span>
-      <span class="fact">🚊 24-hr transit ticket ~120 CZK</span><span class="fact">🚨 Lodging not booked</span>
+      <span class="fact">Czech Koruna (CZK) — not euro</span><span class="fact">Castle grounds free, buildings ~450 CZK</span>
+      <span class="fact">24-hr transit ticket ~120 CZK</span><span class="fact">Lodging not booked</span>
     </div>
     <div class="note blue">You corrected me on this one — Prague→Budapest is Tue Aug 18 at ~19:30, not the same day as the Smartwings arrival. That makes this a real 3-night stay, not a connection. Rebuilt from scratch below; all of it is my draft since it didn't exist in your plan at all until now.</div>
     <div class="subnav">
@@ -641,7 +656,7 @@
     <div id="sub-prague-map" class="subtab active">
       <div class="legend" id="legend-prague"></div>
       <div id="map-prague" class="leaflet-map"></div>
-      <div class="note">📍 Click any pin for a note and a direct link to book or open it in Google Maps.</div>
+      <div class="note">Click any pin for a note and a direct link to book or open it in Google Maps.</div>
     </div>
     <div id="sub-prague-itin" class="subtab"><div id="itin-prague"></div></div>
   </section>
@@ -649,11 +664,11 @@
   <section id="tab-budapest" class="tab">
     <div class="cityhead">
       <div><h2><span class="flagbig">🇭🇺</span>Budapest</h2><div class="sub">Thermal baths, ruin bars, the Danube</div></div>
-      <div class="datebadge">📅 Aug 18 – Aug 21</div>
+      <div class="datebadge">Aug 18 – Aug 21</div>
     </div>
     <div class="facts">
-      <span class="fact">💴 Forint (HUF) — not euro</span><span class="fact">🛁 Book baths online, skip the queue</span>
-      <span class="fact">🌉 Buda = hills &amp; castle · Pest = flat &amp; nightlife</span><span class="fact">🚨 Lodging not booked</span>
+      <span class="fact">Forint (HUF) — not euro</span><span class="fact">Book baths online, skip the queue</span>
+      <span class="fact">Buda = hills &amp; castle · Pest = flat &amp; nightlife</span><span class="fact">Lodging not booked</span>
     </div>
     <div class="subnav">
       <button class="active" data-sub="budapest-map">Map</button>
@@ -670,11 +685,11 @@
   <section id="tab-london" class="tab">
     <div class="cityhead">
       <div><h2><span class="flagbig">🇬🇧</span>London</h2><div class="sub">Based in Windsor, not central London — Heathrow is 20–30 min away</div></div>
-      <div class="datebadge">📅 Aug 21 – Aug 22</div>
+      <div class="datebadge">Aug 21 – Aug 22</div>
     </div>
     <div class="facts">
-      <span class="fact">💷 Pound (£)</span><span class="fact">🏰 Windsor Castle, ~20 min from LHR</span>
-      <span class="fact">🕐 ~27 hrs on the ground</span><span class="fact">🚨 No hotel booked</span>
+      <span class="fact">Pound (£)</span><span class="fact">Windsor Castle, ~20 min from LHR</span>
+      <span class="fact">~27 hrs on the ground</span><span class="fact">No hotel booked</span>
     </div>
     <div class="note danger">Staying in Windsor instead of central London — book a Windsor hotel and this plan is locked in. Being that close to Heathrow means more actual sightseeing time than the old Zone 1 plan had, not less.
       <div class="booklist" style="margin-top:10px;"><a class="book warn" href="https://www.booking.com/searchresults.html?ss=Windsor%2C+UK&checkin=2026-08-21&checkout=2026-08-22" target="_blank" rel="noopener">Find a Windsor hotel ↗</a></div>
@@ -694,16 +709,16 @@
 </div>
 
 <nav id="bottom-tabbar">
-  <button data-bt="today" onclick="goToday()"><span class="bt-ic">📍</span>Today</button>
-  <button data-bt="trip" onclick="openDrawer()"><span class="bt-ic">🧭</span>Trip</button>
-  <button data-bt="map" onclick="activateTab('overview')"><span class="bt-ic">🗺️</span>Map</button>
+  <button data-bt="today" onclick="goToday()"><span class="bt-ic">◆</span>Today</button>
+  <button data-bt="trip" onclick="openDrawer()"><span class="bt-ic">▤</span>Trip</button>
+  <button data-bt="map" onclick="activateTab('overview')"><span class="bt-ic">⬡</span>Map</button>
 </nav>
 
 <script>
 /* =========================================================
    1. CONSTANTS
    ========================================================= */
-const COLORS = {sight:"#b3481e", food:"#2c6358", night:"#5c3a8e", suggest:"#a9781a", trip:"#2461a3", transit:"#6d7d8c", stay:"#a8382f"};
+const COLORS = {sight:"#c9862a", food:"#3e7d5c", night:"#6b4a9e", suggest:"#8b6d1e", trip:"#2c5f8a", transit:"#5c6570", stay:"#a8382f"};
 const CAT_LABEL = {sight:"Sight / Landmark", food:"Food & Drink", night:"Nightlife / View", suggest:"Suggested add", trip:"Day trip", transit:"Transport", stay:"Lodging"};
 const MODES = {
   walk:{i:"🚶",l:"Walk"}, transit:{i:"🚊",l:"Tram / metro"}, metro:{i:"🚇",l:"Metro"},
@@ -713,7 +728,7 @@ const MODES = {
 };
 const CITY_META = {
   vienna:{name:"Vienna", flag:"🇦🇹", color:"#b3481e"},
-  dubrovnik:{name:"Dubrovnik", flag:"🇭🇷", color:"#c96b3f"},
+  dubrovnik:{name:"Dubrovnik", flag:"🇭🇷", color:"#b5622f"},
   split:{name:"Split", flag:"🇭🇷", color:"#2461a3"},
   prague:{name:"Prague", flag:"🇨🇿", color:"#6d7d8c"},
   budapest:{name:"Budapest", flag:"🇭🇺", color:"#5c3a8e"},
@@ -1111,6 +1126,62 @@ function renderAll(cityKey, dayId){
   renderCityItinerary(cityKey);
   if(typeof currentDay!=="undefined" && currentDay===dayId) selectDay(dayId);
 }
+function renderCities(cityKeys){
+  cityKeys.filter(k=>k!=="transit").forEach(k=>renderCityItinerary(k));
+}
+
+/* =========================================================
+   2c. MOVE / REORDER — resequence a stop within its day, or move it
+   to a different day entirely. Mutates DAYS in place (same pattern as
+   addOptional/removeSuggestion above) and persists the result so it
+   survives a reload, since this is meant for adjusting the plan
+   on the actual trip, not just experimenting in one sitting.
+   ========================================================= */
+function savePlanOrder(){
+  const snap = {};
+  DAYS.forEach(d=>{ snap[d.id] = d.stops.map(s=>s.n); });
+  try{ localStorage.setItem("planOrder", JSON.stringify(snap)); }catch(e){}
+}
+function applySavedPlanOrder(){
+  let saved;
+  try{ saved = JSON.parse(localStorage.getItem("planOrder")||"null"); }catch(e){ saved = null; }
+  if(!saved) return;
+  const byName = new Map();
+  DAYS.forEach(d=>d.stops.forEach(s=>{ if(!byName.has(s.n)) byName.set(s.n, {stop:s, home:d, used:false}); }));
+  DAYS.forEach(d=>{ d.stops = []; });
+  Object.keys(saved).forEach(dayId=>{
+    const day = DAYS.find(d=>d.id===dayId);
+    if(!day) return;
+    saved[dayId].forEach(name=>{
+      const entry = byName.get(name);
+      if(entry && !entry.used){ day.stops.push(entry.stop); entry.used = true; }
+    });
+  });
+  // anything not covered by the saved snapshot (new content added since it was
+  // taken) goes back to wherever it was authored, so nothing silently vanishes
+  byName.forEach(entry=>{ if(!entry.used) entry.home.stops.push(entry.stop); });
+}
+function moveStop(dayId, idx, delta){
+  const day = DAYS.find(d=>d.id===dayId);
+  if(!day) return;
+  const newIdx = idx + delta;
+  if(newIdx < 0 || newIdx >= day.stops.length) return;
+  const [s] = day.stops.splice(idx, 1);
+  day.stops.splice(newIdx, 0, s);
+  savePlanOrder();
+  renderCities(day.cities);
+  selectDay(currentDay);
+}
+function moveStopToDay(dayId, idx, targetDayId){
+  const day = DAYS.find(d=>d.id===dayId);
+  const target = DAYS.find(d=>d.id===targetDayId);
+  if(!day || !target || day===target) return;
+  const [s] = day.stops.splice(idx, 1);
+  insertStopSorted(target, s);
+  savePlanOrder();
+  renderCities([...new Set([...day.cities, ...target.cities])]);
+  selectDay(currentDay);
+}
 
 /* =========================================================
    3. HELPERS
@@ -1153,12 +1224,12 @@ function dayCost(day){
    4. POPUPS + MAP BUILDERS
    ========================================================= */
 function popupHtml(p, city){
-  const bk = p.book ? `<a href="${p.book.u}" target="_blank" rel="noopener" style="display:inline-block;background:#2c6358;color:#fff;font-size:11.5px;font-weight:700;padding:5px 11px;border-radius:999px;text-decoration:none;margin-right:6px;">${esc(p.book.l)} ↗</a>` : "";
-  return `<div style="min-width:200px;font-family:'Inter',sans-serif;">
+  const bk = p.book ? `<a href="${p.book.u}" target="_blank" rel="noopener" style="display:inline-block;background:#2c5f8a;color:#fff;font-size:11.5px;font-weight:700;padding:5px 11px;border-radius:5px;text-decoration:none;margin-right:6px;">${esc(p.book.l)} ↗</a>` : "";
+  return `<div style="min-width:200px;font-family:'Public Sans',sans-serif;">
       <div style="font-weight:700;font-size:14px;margin-bottom:2px;">${esc(p.n)}</div>
       <div style="font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:${COLORS[p.cat]};font-weight:700;margin-bottom:5px;">${CAT_LABEL[p.cat]||""}</div>
-      <div style="font-size:12.5px;color:#4a4238;margin-bottom:9px;line-height:1.45;">${esc(p.note||"")}</div>
-      <div>${bk}<a href="${mapsUrl(p.n, city)}" target="_blank" rel="noopener" style="font-size:11.5px;color:#2c6358;font-weight:700;text-decoration:none;">Maps ↗</a></div>
+      <div style="font-size:12.5px;color:#454b57;margin-bottom:9px;line-height:1.45;">${esc(p.note||"")}</div>
+      <div>${bk}<a href="${mapsUrl(p.n, city)}" target="_blank" rel="noopener" style="font-size:11.5px;color:#2c5f8a;font-weight:700;text-decoration:none;">Maps ↗</a></div>
     </div>`;
 }
 
@@ -1333,7 +1404,7 @@ const CITY_RANGE = {vienna:"Aug 8–10", dubrovnik:"Aug 10–12", split:"Aug 12�
 
 function renderSidebar(){
   let h = `<div class="sb-label">The trip</div>
-    <button class="sb-item" data-tab="overview">📋 <span>Trip overview</span></button>`;
+    <button class="sb-item" data-tab="overview"><span>Trip overview</span></button>`;
 
   const travelDays = DAYS.filter(d=>d.city==="transit");
   if(travelDays.length){
@@ -1448,7 +1519,7 @@ function renderUpNext(d){
   const next = d.stops.find(s => s.t && s.t!=="—" && timeVal(s.t) >= nowMins);
   if(!next){
     el.className = "show done";
-    el.innerHTML = `<div class="un-name">✅ Today's plan is done — nice work.</div>`;
+    el.innerHTML = `<div class="un-name">Today's plan is done — nice work.</div>`;
     return;
   }
   const mp = next.lat!=null ? mapsUrl(next.n, CITY_META[d.city].name) : null;
@@ -1475,10 +1546,10 @@ function selectDay(id){
     <h2>${c.flag} ${esc(d.dow)}, August ${d.d}</h2>
     <div class="dsub"><b>${esc(d.title)}</b><br>${esc(d.sub)}</div>
     <div class="daymeta">
-      <span class="m">📍 ${d.stops.length} stops</span>
-      <span class="m">🕘 ${fmtMins(totalMove)} moving</span>
-      ${cost?`<span class="m">💶 ${cost}</span>`:""}
-      <span class="m">🏙️ ${esc(d.cities.map(k=>CITY_META[k].name).join(" → "))}</span>
+      <span class="m">${d.stops.length} stops</span>
+      <span class="m">${fmtMins(totalMove)} moving</span>
+      ${cost?`<span class="m">${cost}</span>`:""}
+      <span class="m">${esc(d.cities.map(k=>CITY_META[k].name).join(" → "))}</span>
     </div>
     <div class="booklist" style="margin-top:12px;">
       ${d.cities.filter(k=>k!=="transit").map(k=>`<a class="book ghost" href="#" onclick="activateTab('${k}');return false;">Open the ${CITY_META[k].name} tab →</a>`).join("")}
@@ -1516,10 +1587,18 @@ function selectDay(id){
           ${s.cost?`<div class="tl-cost">${esc(s.cost)}</div>`:""}
           ${bk?`<div class="booklist" style="margin-top:4px;">${bk}</div>`:""}
           <div class="tl-more">
-            <div class="tl-note">${esc(s.note||"")}</div>
+            ${s.note?`<div class="tl-note">${esc(s.note)}</div>`:""}
             ${(rm||mp)?`<div class="booklist" style="margin-top:6px;">${rm}${mp}</div>`:""}
+            <div class="tl-move" onclick="event.stopPropagation()">
+              <button class="mv-btn" ${i===0?"disabled":""} onclick="moveStop('${d.id}',${i},-1)">▲ Earlier</button>
+              <button class="mv-btn" ${i===d.stops.length-1?"disabled":""} onclick="moveStop('${d.id}',${i},1)">▼ Later</button>
+              <select class="mv-select" onchange="if(this.value){moveStopToDay('${d.id}',${i},this.value);}">
+                <option value="">Move to day…</option>
+                ${DAYS.filter(x=>x.id!==d.id).map(x=>`<option value="${x.id}">${esc(x.dow)} Aug ${x.d} — ${esc(x.title.replace(/^⚠️\s*/,""))}</option>`).join("")}
+              </select>
+            </div>
           </div>
-          ${s.note?`<button class="tl-toggle" onclick="event.stopPropagation();this.closest('.tl-stop').classList.toggle('expanded');">Details <span class="chev">⌄</span></button>`:""}
+          <button class="tl-toggle" onclick="event.stopPropagation();this.closest('.tl-stop').classList.toggle('expanded');">Details <span class="chev">⌄</span></button>
         </div>
       </div>`;
   });
@@ -1538,7 +1617,7 @@ function selectDay(id){
     dayLayer.clearLayers();
     dayMarkers = [];
     if(pts.length>1){
-      L.polyline(pts,{color:"#2c6358", weight:2.5, opacity:.65, dashArray:"7,7"}).addTo(dayLayer);
+      L.polyline(pts,{color:"#2c5f8a", weight:2.5, opacity:.65, dashArray:"7,7"}).addTo(dayLayer);
     }
     d.stops.forEach((s,i)=>{
       if(s.lat==null) return;
@@ -1564,8 +1643,8 @@ function selectDay(id){
   if(foc.split){
     const names = foc.groups.map(g=>g[0]).map(s=>s.n);
     $("#mapctl").innerHTML = `
-      <button data-scope="focus" class="on">📍 Where you'll be</button>
-      <button data-scope="all">🌍 Whole day's journey</button>`;
+      <button data-scope="focus" class="on">Where you'll be</button>
+      <button data-scope="all">Whole day's journey</button>`;
     $("#mapctl").querySelectorAll("button").forEach(b=>{
       b.addEventListener("click", ()=>{
         dayScope = b.dataset.scope;
@@ -1658,11 +1737,11 @@ const cityStops = [
   try{
     const m = L.map("overview-map", {scrollWheelZoom:false}).setView([47,10],4);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19, attribution:'&copy; OpenStreetMap'}).addTo(m);
-    L.polyline(cityStops.map(c=>[c.lat,c.lng]),{color:"#2461a3", weight:2.5, dashArray:"6,6", opacity:.7}).addTo(m);
+    L.polyline(cityStops.map(c=>[c.lat,c.lng]),{color:"#2c5f8a", weight:2.5, dashArray:"6,6", opacity:.7}).addTo(m);
     cityStops.forEach((c,i)=>{
       L.marker([c.lat,c.lng],{icon:L.divIcon({className:"",html:`<div class="numpin">${i+1}</div>`,iconSize:[26,26],iconAnchor:[13,13]})})
         .addTo(m)
-        .bindPopup(`<div style="min-width:160px;font-family:'Inter',sans-serif;"><b>${i+1}. ${c.name}</b><br><span style="font-size:12.5px;color:#4a4238;">${c.note}</span><br><a href="#" style="font-size:12.5px;color:#2c6358;font-weight:700;" onclick="activateTab('${c.tab}');return false;">Open ${c.name} →</a></div>`);
+        .bindPopup(`<div style="min-width:160px;font-family:'Public Sans',sans-serif;"><b>${i+1}. ${c.name}</b><br><span style="font-size:12.5px;color:#454b57;">${c.note}</span><br><a href="#" style="font-size:12.5px;color:#2c5f8a;font-weight:700;" onclick="activateTab('${c.tab}');return false;">Open ${c.name} →</a></div>`);
     });
     m.fitBounds(L.latLngBounds(cityStops.map(c=>[c.lat,c.lng])),{padding:[30,30]});
     mapInstances.overview = m;
@@ -1705,6 +1784,9 @@ if(window.matchMedia){
 addOptional("vienna", "vn-naschmarkt", {silent:true});
 addOptional("vienna", "vn-donaukanal", {silent:true});
 addOptional("vienna", "vn-brasserie", {silent:true});
+// any saved reordering/move from a previous visit gets replayed on top of
+// the freshly-authored data before the first render
+applySavedPlanOrder();
 
 ["vienna","dubrovnik","split","budapest","london","prague"].forEach(k=>{ renderCityItinerary(k); renderLegend(k); });
 renderSidebar();
