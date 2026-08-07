@@ -323,7 +323,7 @@
           <tr><td>Split</td><td>3 (Aug 12–15)</td><td>€75–105pp dorm — back to your sheet's original 3 nights now that the flight moved</td><td><a class="book warn" href="https://www.booking.com/searchresults.html?ss=Split&checkin=2026-08-12&checkout=2026-08-15" target="_blank" rel="noopener">Find a room ↗</a></td></tr>
           <tr><td>Prague</td><td><span class="pill pill-warn">3 — new, wasn't in the plan</span></td><td>Not confirmed in either inbox</td><td><a class="book warn" href="https://www.booking.com/searchresults.html?ss=Prague&checkin=2026-08-15&checkout=2026-08-18" target="_blank" rel="noopener">Find a room ↗</a></td></tr>
           <tr><td>Budapest</td><td>3 (Aug 18–21)</td><td>Not confirmed in either inbox</td><td><a class="book warn" href="https://www.booking.com/searchresults.html?ss=Budapest&checkin=2026-08-18&checkout=2026-08-21" target="_blank" rel="noopener">Find a room ↗</a></td></tr>
-          <tr><td>London</td><td>1 (Aug 21–22)</td><td>Not confirmed in either inbox</td><td><a class="book warn" href="https://www.booking.com/searchresults.html?ss=London&checkin=2026-08-21&checkout=2026-08-22" target="_blank" rel="noopener">Find a room ↗</a></td></tr>
+          <tr><td>Windsor (not central London)</td><td>1 (Aug 21–22)</td><td>Not confirmed in either inbox — staying in Windsor, ~20–30 min from LHR</td><td><a class="book warn" href="https://www.booking.com/searchresults.html?ss=Windsor%2C+UK&checkin=2026-08-21&checkout=2026-08-22" target="_blank" rel="noopener">Find a room ↗</a></td></tr>
           </tbody>
         </table>
       </div>
@@ -362,7 +362,7 @@
         <table><tbody>
           <tr><td style="width:26%;"><b>Prague is a new 3-night city, entirely my draft</b></td><td>Turned out to be a real stay once you confirmed the Aug 18 Ryanair date, not the 3-hour connection the Aug 15 Smartwings arrival alone would suggest. Castle, Charles Bridge, Jewish Quarter, Vyšehrad — none of it was in any version of your plan, so treat all of it as a starting point to cut from.</td></tr>
           <tr><td><b>Budapest is back to 3 nights (Aug 18–21)</b></td><td>My earlier draft had extended it to 6 nights on the assumption the Ryanair leg moved to Aug 15 with the Smartwings change. It didn't — you confirmed Aug 18 — so Budapest reverts to exactly what it was before that assumption.</td></tr>
-          <tr><td><b>London is a full day, not a layover</b></td><td>Land 14:40 Aug 21, fly out 18:15 Aug 22 — ~27 hours. I've drafted a one-day plan; it needs a hotel to anchor it.</td></tr>
+          <tr><td><b>London leg is based in Windsor, not central London</b></td><td>Land 14:40 Aug 21, fly out 18:15 Aug 22 — ~27 hours. Plan is built around Windsor Castle and Eton rather than central London sights, since Windsor sits 20–30 min from Heathrow — a shorter transfer than a Zone 1 hotel would give you. Still needs a Windsor hotel to anchor it.</td></tr>
           <tr><td><b>Aug 10 is a 4:45am wake-up</b></td><td>6:55am Ryanair out of Vienna. Aug 9 is deliberately kept light because of it.</td></tr>
         </tbody></table>
       </div>
@@ -494,15 +494,15 @@
 
   <section id="tab-london" class="tab">
     <div class="cityhead">
-      <div><h2><span class="flagbig">🇬🇧</span>London</h2><div class="sub">One full day before the flight home</div></div>
+      <div><h2><span class="flagbig">🇬🇧</span>London</h2><div class="sub">Based in Windsor, not central London — Heathrow is 20–30 min away</div></div>
       <div class="datebadge">📅 Aug 21 – Aug 22</div>
     </div>
     <div class="facts">
-      <span class="fact">💷 Pound (£)</span><span class="fact">📱 Contactless tap = cheapest tube fare</span>
+      <span class="fact">💷 Pound (£)</span><span class="fact">🏰 Windsor Castle, ~20 min from LHR</span>
       <span class="fact">🕐 ~27 hrs on the ground</span><span class="fact">🚨 No hotel booked</span>
     </div>
-    <div class="note danger">This plan assumes a central hotel (Zone 1). Book one and tell me where — the route below shifts a lot depending on whether you're near Westminster or near the Tower.
-      <div class="booklist" style="margin-top:10px;"><a class="book warn" href="https://www.booking.com/searchresults.html?ss=London&checkin=2026-08-21&checkout=2026-08-22" target="_blank" rel="noopener">Find a London hotel ↗</a></div>
+    <div class="note danger">Staying in Windsor instead of central London — book a Windsor hotel and this plan is locked in. Being that close to Heathrow means more actual sightseeing time than the old Zone 1 plan had, not less.
+      <div class="booklist" style="margin-top:10px;"><a class="book warn" href="https://www.booking.com/searchresults.html?ss=Windsor%2C+UK&checkin=2026-08-21&checkout=2026-08-22" target="_blank" rel="noopener">Find a Windsor hotel ↗</a></div>
     </div>
     <div class="subnav">
       <button class="active" data-sub="london-map">Map</button>
@@ -620,13 +620,17 @@ const DAYS = [
     {t:"18:30", n:"Back in Split — light dinner", cat:"food", lat:43.5074, lng:16.4384, note:"You'll be sunburnt and salty. Keep it close to the hotel.", cost:"€20–30", c:[20,30], move:{mode:"speedboat", mins:75}}
   ]},
 
-{ id:"08-14", dow:"Fri", d:14, city:"split", cities:["split"], title:"Krka National Park",
-  sub:"From your sheet. Coach day trip, back mid-afternoon — much gentler than yesterday.",
+{ id:"08-14", dow:"Fri", d:14, city:"split", cities:["split"], title:"Krka National Park — self-drive & hike loop",
+  sub:"Replaces the guided coach-tour version — you drive yourself exactly once, then two short shuttle hops out to the trailhead, then a hike that loops back to the car. Needs a rental car; nothing else in this plan books one, so confirm that's sorted before this day.",
   stops:[
-    {t:"07:30", n:"Coach pickup — Split", cat:"trip", lat:43.5090, lng:16.4390, note:"€31–35pp including park entry and transport. Roughly 1 hr each way.", cost:"€31–35", c:[31,35], book:{l:"Book Krka trip ↗", u:"https://www.getyourguide.com/s/?q=Krka%20Waterfalls%20from%20Split"}},
-    {t:"09:00", n:"Skradinski Buk waterfalls", cat:"trip", lat:43.8060, lng:15.9700, note:"Boardwalk loop over and around the falls, ~2 hrs at a relaxed pace. Swimming below the main falls has been banned since 2021 — don't plan a swim day around it.", move:{mode:"coach", mins:65}, book:{l:"Park info ↗", u:"https://np-krka.hr/en"}},
-    {t:"13:00", n:"Lunch in Skradin", cat:"food", lat:43.8175, lng:15.9236, note:"Small riverside town, the boat drop-off point. Skradinski rižot is the local thing.", cost:"€15–20", c:[15,20], move:{mode:"boat", mins:25}},
-    {t:"15:30", n:"Back in Split — free evening", cat:"food", lat:43.5081, lng:16.4402, note:"Good night for a proper sit-down dinner since you're not up early tomorrow.", cost:"€25–40", c:[25,40], move:{mode:"coach", mins:70}}
+    {t:"06:45", n:"Depart Split by car", cat:"transit", lat:43.5081, lng:16.4402, note:"~1h15 to Lozovac via the A1. Leave with enough margin to be walking the boardwalks by 8 — that margin is what makes the 12:45 shuttle later actually work."},
+    {t:"08:00", n:"Skradinski Buk — Lozovac entrance", cat:"sight", lat:43.7975, lng:15.9515, note:"Walk the boardwalks past the cascades while it's still quiet — tour buses build up from ~10am. Viewing only; swimming's been banned here since 2021. Buy the all-localities park ticket here, not the cheaper Roški Slap-only pass, which excludes Skradinski Buk entirely.", book:{l:"Full self-drive route & map ↗", u:"https://claude.ai/code/artifact/8498b073-8668-4788-8ae5-54b87f4105f8"}, move:{mode:"taxi", mins:75}},
+    {t:"11:00", n:"Drive to Bogatić, park for the day", cat:"transit", lat:43.8550, lng:16.0850, note:"~45 min drive — the only driving you do all day. Not a random parking choice: the hike ends at this exact spot later, so you walk straight back to the car.", move:{mode:"taxi", mins:45}},
+    {t:"12:00", n:"Shuttle: Bogatić → Roški Slap", cat:"transit", lat:43.8608, lng:16.0879, note:"Short, hourly hop from the parking lot to the falls/reception hub. No timing pressure on this one.", move:{mode:"bus", mins:20}},
+    {t:"12:45", n:"Shuttle: Roški Slap → Stinice", cat:"transit", lat:43.8968, lng:16.1533, note:"The connection to actually plan around — this bus runs only twice a day, 12:45 and 15:45. Miss both and the hike's end pushes past 7pm.", move:{mode:"bus", mins:20}},
+    {t:"13:15", n:"Hike: Stinice → Roški Slap → Oziđana Pećina → Bogatići", cat:"trip", lat:43.8700, lng:16.1100, note:"8.5km, ~2.5–3 hrs, entirely on foot — no more buses from here. Past the Kamičak fortress ruins, back along Roški Slap and the Ogrlica cascades, up 517 steps to the cave, then down into Bogatići. Swim at Stinice or Roški Slap along the way.", move:{mode:"walk", mins:135}},
+    {t:"16:00", n:"Bogatići — back at the car", cat:"transit", lat:43.8550, lng:16.0850, note:"Loop closed — you're back exactly where you parked at 11am. No return shuttle needed.", move:{mode:"walk", mins:30}},
+    {t:"17:15", n:"Drive back to Split — free evening", cat:"food", lat:43.5081, lng:16.4402, note:"~1h15 back via the A1. Good night for a low-effort dinner — you've just hiked 8.5km.", cost:"€20–35", c:[20,35], move:{mode:"taxi", mins:75}}
   ]},
 
 { id:"08-15", dow:"Sat", d:15, city:"prague", cities:["split","prague"], title:"Family morning, then Split → Prague",
@@ -697,25 +701,25 @@ const DAYS = [
     {t:"21:30", n:"Ruin bar crawl — Jewish Quarter", cat:"night", lat:47.4977, lng:19.0620, note:"Instant-Fogas, Mazel Tov, Púder. All within four blocks of each other.", cost:"€20–35", c:[20,35], move:{mode:"walk", mins:16}}
   ]},
 
-{ id:"08-21", dow:"Fri", d:21, city:"london", cities:["budapest","london"], title:"Budapest morning, London by evening",
-  sub:"BA863 at 12:55 means a real morning in Budapest first. You land at Heathrow 14:40 with an entire evening ahead — this isn't a layover.",
+{ id:"08-21", dow:"Fri", d:21, city:"london", cities:["budapest","london"], title:"Budapest morning, Windsor by evening",
+  sub:"BA863 at 12:55 means a real morning in Budapest first. You land at Heathrow 14:40 and Windsor is only 20–30 min from the terminal — a shorter transfer than most central London hotels get.",
   stops:[
     {t:"07:30", n:"Gellért Hill & Citadella at sunrise", cat:"sight", lat:47.4869, lng:19.0466, note:"Free. 25-min climb, the best single panorama of the city. Worth the early alarm since the flight isn't until midday.", badge:"free", sug:true},
     {t:"10:00", n:"100E bus → Budapest Airport (BUD)", cat:"transit", lat:47.4298, lng:19.2611, note:"~40 min from Deák Ferenc tér. BA is Terminal 2A.", cost:"~€7", c:[7,7], move:{mode:"bus", mins:40}},
     {t:"12:55", n:"British Airways BA863 → London Heathrow", cat:"transit", lat:51.4700, lng:-0.4543, note:"Lands 14:40 local (1 hr back). Chase Travel Trip 1020543417, conf AS67UA.", move:{mode:"flight", mins:165}, book:{l:"Manage booking ↗", u:"https://www.britishairways.com/travel/managebooking/public/en_gb"}},
-    {t:"16:00", n:"Piccadilly line / Heathrow Express → central", cat:"transit", lat:51.5074, lng:-0.1278, note:"Express is 15 min to Paddington but pricey; Piccadilly line is ~50 min and covered by a contactless tap. Tap in with the card, don't buy paper tickets.", cost:"£5.60–25", c:[6,25], move:{mode:"train", mins:50}, book:{l:"Heathrow Express ↗", u:"https://www.heathrowexpress.com/"}},
-    {t:"17:00", n:"Hotel check-in — Zone 1", cat:"stay", lat:51.5074, lng:-0.1278, note:"Not booked. This is the one thing that decides whether tomorrow works.", book:{l:"Find a hotel ↗", u:"https://www.booking.com/searchresults.html?ss=London&checkin=2026-08-21&checkout=2026-08-22"}},
-    {t:"18:30", n:"Westminster & South Bank evening walk", cat:"sight", lat:51.5007, lng:-0.1246, note:"Free. Big Ben → Westminster Bridge → South Bank along the river. Golden hour in late August is around 19:45.", badge:"free", move:{mode:"metro", mins:12}},
-    {t:"20:30", n:"Dinner — Borough Market area", cat:"food", lat:51.5055, lng:-0.0905, note:"Market stalls shut in the evening but the surrounding pubs and restaurants are the good version of a London night out.", cost:"£25–45", c:[28,52], move:{mode:"walk", mins:22}}
+    {t:"15:15", n:"Bus 8 or taxi → Windsor", cat:"transit", lat:51.4816, lng:-0.6079, note:"First Bus service 8 runs Heathrow T5 → Staines → Windsor up to every 30 min, 7 days a week — no change needed. A taxi is faster (~20–25 min) if you'd rather not wait for the bus after a long travel day.", move:{mode:"bus", mins:35}, book:{l:"First Bus route 8 ↗", u:"https://www.firstbus.co.uk/berkshire-thames-valley/plan-journey/airport-services"}},
+    {t:"16:00", n:"Hotel check-in — Windsor", cat:"stay", lat:51.4816, lng:-0.6079, note:"Not booked. This is the one thing that decides whether tomorrow works.", book:{l:"Find a hotel ↗", u:"https://www.booking.com/searchresults.html?ss=Windsor%2C+UK&checkin=2026-08-21&checkout=2026-08-22"}},
+    {t:"17:00", n:"Windsor riverside & Eton Bridge evening walk", cat:"sight", lat:51.4870, lng:-0.6090, note:"Free. Thames-side path below the castle walls, across into Eton over the footbridge. Golden hour in late August is around 19:45 and the castle floodlights up after dark.", badge:"free", move:{mode:"walk", mins:15}},
+    {t:"19:30", n:"Dinner — Windsor town centre", cat:"food", lat:51.4816, lng:-0.6079, note:"Plenty of riverside pubs and restaurants around the High Street and Thames-side Promenade — a quieter, cheaper night out than anything in central London.", cost:"£20–35", c:[23,40], move:{mode:"walk", mins:10}}
   ]},
 
-{ id:"08-22", dow:"Sat", d:22, city:"london", cities:["london"], title:"One London morning, then home",
-  sub:"VS23 leaves 18:15, so you want to be at Heathrow by ~15:15. That gives you a real half-day — enough for one sight cluster, not two.",
+{ id:"08-22", dow:"Sat", d:22, city:"london", cities:["london"], title:"One Windsor morning, then home",
+  sub:"VS23 leaves 18:15 from Terminal 3. Windsor's transfer is short enough that you can leave for the airport at ~14:30 and still land there with hours to spare — noticeably more castle time than a central London base would give you.",
   stops:[
-    {t:"09:00", n:"Tower of London", cat:"sight", lat:51.5081, lng:-0.0759, note:"~£35. Opens 09:00 — being there at opening is the difference between seeing the Crown Jewels and queueing for them. Budget 2 hrs.", cost:"~£35", c:[40,40], book:{l:"Book tickets ↗", u:"https://www.hrp.org.uk/tower-of-london/"}},
-    {t:"11:30", n:"Tower Bridge & the river walk", cat:"sight", lat:51.5055, lng:-0.0754, note:"Crossing the bridge is free; the glass-floor walkway exhibition is ~£13 if you want it.", badge:"free", move:{mode:"walk", mins:8}},
-    {t:"12:30", n:"Lunch — St Katharine Docks or Bermondsey", cat:"food", lat:51.5065, lng:-0.0703, note:"Quiet marina right behind the Tower, far better value than anything directly on the tourist strip.", cost:"£18–30", c:[21,35], move:{mode:"walk", mins:10}},
-    {t:"14:00", n:"Collect bags, head to Heathrow", cat:"transit", lat:51.4700, lng:-0.4543, note:"Give yourself 3 hrs for a long-haul out of LHR in August. Virgin flies from Terminal 3.", cost:"£5.60–25", c:[6,25], move:{mode:"train", mins:55}},
+    {t:"10:00", n:"Windsor Castle", cat:"sight", lat:51.4839, lng:-0.6044, note:"From £32 (booking online in advance saves ~£4/adult). Opens 10:00, open Tue–Sun in summer. Covers the State Apartments, Queen Mary's Dolls' House, and St George's Chapel (closed to visitors Sundays). Budget 2 hrs.", cost:"~£32", c:[32,32], book:{l:"Official tickets ↗", u:"https://www.rct.uk/visit/windsor-castle"}},
+    {t:"12:00", n:"Walk over to Eton", cat:"sight", lat:51.4923, lng:-0.6086, note:"Free. Cross the pedestrian bridge to Eton's High Street — Eton College's redbrick buildings and a much quieter alternative to Windsor's tourist strip.", badge:"free", move:{mode:"walk", mins:12}},
+    {t:"13:00", n:"Lunch — Windsor or Eton riverside", cat:"food", lat:51.4870, lng:-0.6090, note:"Riverside pubs on either bank of the Thames — better value and a lot less crowded than anything near the castle gates.", cost:"£18–28", c:[20,32], move:{mode:"walk", mins:10}},
+    {t:"14:30", n:"Collect bags, head to Heathrow", cat:"transit", lat:51.4700, lng:-0.4543, note:"Bus 8 back to T5 (up to every 30 min) or a taxi (~20–25 min) — either way this is a far shorter transfer than the central-London version of this day. Still leaves 3+ hrs for a long-haul check-in out of LHR in August. Virgin flies from Terminal 3.", cost:"£5–20", c:[5,20], move:{mode:"bus", mins:35}},
     {t:"18:15", n:"Virgin Atlantic VS23 → Los Angeles", cat:"transit", lat:33.9425, lng:-118.4081, note:"Direct, lands 21:25 the same day. Ref D8WQHO. Home.", move:{mode:"flight", mins:670}, book:{l:"Manage booking ↗", u:"https://www.virginatlantic.com/"}}
   ]}
 ];
@@ -747,10 +751,10 @@ const OPTIONAL = {
     {n:"Hungarian State Opera tour", cat:"suggest", note:"Recently restored, tours most afternoons."},
     {n:"Great Market Hall upstairs stalls", cat:"suggest", note:"Already on Aug 20 — if that day gets cut, this is the one thing worth keeping."}
   ]},
-  london:{title:"Alternative half-day, if you'd rather", note:"Pick one cluster — trying to do both is how you miss the flight.", stops:[
-    {n:"British Museum", cat:"suggest", note:"Free, opens 10:00. Two hours is enough for the highlights.", book:{l:"Free ticket ↗",u:"https://www.britishmuseum.org/"}},
-    {n:"Westminster Abbey", cat:"suggest", note:"~£30. Closed to tourists on Sundays — Aug 22 is a Saturday, so fine."},
-    {n:"Covent Garden & Soho wander", cat:"suggest", note:"Free, no tickets, easy to abandon when it's time to leave for LHR."}
+  london:{title:"Alternative half-day, if you'd rather", note:"Windsor is small — these are easy to swap in for the castle or Eton without blowing the schedule.", stops:[
+    {n:"Windsor Great Park & the Long Walk", cat:"suggest", note:"Free. A 4.8km tree-lined avenue running south from the castle — good for a shorter, ticket-free morning."},
+    {n:"French Brothers river cruise", cat:"suggest", note:"40-min round trip on the Thames past the castle, or a longer 2-hr option. Check current price online.", book:{l:"Book ↗",u:"https://www.frenchbrothers.co.uk/public-trips/windsor-40-minute-round-trip"}},
+    {n:"Legoland Windsor", cat:"suggest", note:"~3km from town, needs a full day to be worth it — only fits if you skip the castle entirely."}
   ]}
 };
 
@@ -827,15 +831,13 @@ const CITY_PLACES = {
     {n:"Danube cruise dock",cat:"night",lat:47.4995,lng:19.0460,note:"€20–30 evening cruise",book:{l:"Book",u:"https://www.getyourguide.com/s/?q=Budapest%20Danube%20night%20cruise"}}
   ],
   london:[
-    {n:"Tower of London",cat:"sight",lat:51.5081,lng:-0.0759,note:"~£35, opens 09:00",book:{l:"Book",u:"https://www.hrp.org.uk/tower-of-london/"}},
-    {n:"Tower Bridge",cat:"sight",lat:51.5055,lng:-0.0754,note:"Crossing free, walkway ~£13"},
-    {n:"Westminster / Big Ben",cat:"sight",lat:51.5007,lng:-0.1246,note:"Free to walk"},
-    {n:"South Bank",cat:"night",lat:51.5060,lng:-0.1150,note:"Riverside walk, free"},
-    {n:"Borough Market area",cat:"food",lat:51.5055,lng:-0.0905,note:"Dinner, £25–45"},
-    {n:"St Katharine Docks",cat:"food",lat:51.5065,lng:-0.0703,note:"Quiet marina behind the Tower"},
-    {n:"British Museum",cat:"suggest",lat:51.5194,lng:-0.1270,note:"Free, opens 10:00",book:{l:"Free ticket",u:"https://www.britishmuseum.org/"}},
-    {n:"Westminster Abbey",cat:"suggest",lat:51.4994,lng:-0.1273,note:"~£30"},
-    {n:"Heathrow (LHR)",cat:"transit",lat:51.4700,lng:-0.4543,note:"VS23 to LAX, T3",book:{l:"Heathrow Express",u:"https://www.heathrowexpress.com/"}}
+    {n:"Windsor Castle",cat:"sight",lat:51.4839,lng:-0.6044,note:"From £32, opens 10:00",book:{l:"Book",u:"https://www.rct.uk/visit/windsor-castle"}},
+    {n:"Eton College / High Street",cat:"sight",lat:51.4923,lng:-0.6086,note:"Free to walk, across the footbridge"},
+    {n:"Windsor riverside & Thames Promenade",cat:"sight",lat:51.4870,lng:-0.6090,note:"Free walk below the castle walls"},
+    {n:"Windsor Great Park / Long Walk",cat:"suggest",note:"Free, 4.8km avenue south from the castle"},
+    {n:"Windsor town centre",cat:"food",lat:51.4816,lng:-0.6079,note:"Pubs & restaurants around the High Street, £20–35"},
+    {n:"French Brothers river cruise",cat:"suggest",lat:51.4870,lng:-0.6090,note:"40-min round trip past the castle",book:{l:"Book",u:"https://www.frenchbrothers.co.uk/public-trips/windsor-40-minute-round-trip"}},
+    {n:"Heathrow (LHR)",cat:"transit",lat:51.4700,lng:-0.4543,note:"VS23 to LAX, T3 — bus 8 from Windsor",book:{l:"First Bus route 8",u:"https://www.firstbus.co.uk/berkshire-thames-valley/plan-journey/airport-services"}}
   ],
   prague:[
     {n:"Prague Castle",cat:"sight",lat:50.0910,lng:14.4016,note:"Grounds free, Main Circuit ~450 CZK",book:{l:"Tickets",u:"https://www.hrad.cz/en"}},
@@ -1358,7 +1360,7 @@ const cityStops = [
   {name:"Split", tab:"split", lat:43.5081, lng:16.4402, note:"Aug 12–15"},
   {name:"Prague", tab:"prague", lat:50.0755, lng:14.4378, note:"Aug 15–18"},
   {name:"Budapest", tab:"budapest", lat:47.4979, lng:19.0402, note:"Aug 18–21"},
-  {name:"London", tab:"london", lat:51.5072, lng:-0.1276, note:"Aug 21–22"}
+  {name:"London (Windsor)", tab:"london", lat:51.4839, lng:-0.6044, note:"Aug 21–22"}
 ];
 (function(){
   const m = L.map("overview-map", {scrollWheelZoom:false}).setView([47,10],4);

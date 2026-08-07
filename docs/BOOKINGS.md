@@ -47,9 +47,9 @@ As of Aug 6, nothing booked for Split, Prague, Budapest, or London. The Overview
 
 Turned out to be a real stay (Aug 15–18) once Jacob confirmed the Aug 18 Ryanair date — not the 3-hour connection the Smartwings arrival alone would have suggested. Castle, Charles Bridge, Jewish Quarter, Vyšehrad are all new content, drafted from nothing.
 
-### 3. London needs a hotel before its plan means anything
+### 3. London leg needs a hotel — now based in Windsor, not central London
 
-~27 hours on the ground, no booking found in either inbox. A one-day plan is drafted assuming a Zone 1 hotel, but the route shifts materially depending on whether he's near Westminster or near the Tower.
+~27 hours on the ground, no booking found in either inbox. Jacob confirmed (Aug 6) he'll be based in Windsor rather than central London — Windsor is 20–30 min from Heathrow (bus 8 or taxi), so the plan is now built around Windsor Castle, Eton, and the riverside rather than Tower/Westminster. Still needs an actual hotel booked in Windsor to lock in.
 
 ---
 
@@ -62,7 +62,7 @@ Turned out to be a real stay (Aug 15–18) once Jacob confirmed the Aug 18 Ryana
 | Split | Aug 12–15 from his sheet, unchanged by this pass |
 | Prague | Now a full 3-night city (Aug 15–18) — entirely my draft, didn't exist before this pass |
 | Budapest | Back to its original 3 nights (Aug 18–21, Aug 19–20 content from the earlier pass) — he'd planned nothing here |
-| London | Complete but **my draft**, contingent on a hotel |
+| London (Windsor) | Complete but **my draft**, contingent on a hotel — rebuilt Aug 6 around Windsor per Jacob, not central London |
 
 ## Pricing verified Aug 6, 2026
 
