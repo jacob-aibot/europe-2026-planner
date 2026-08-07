@@ -4,6 +4,16 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Europe 2026 — Trip Planner</title>
+<script>
+/* Resolve the effective theme before first paint, so there's no flash of
+   the wrong colors. A saved choice (from the toggle) wins; otherwise this
+   follows the phone's system setting. */
+(function(){
+  var saved = localStorage.getItem("theme");
+  var theme = saved || (window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  document.documentElement.setAttribute("data-theme", theme);
+})();
+</script>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#b3481e">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -32,25 +42,27 @@
     --tabbar-h:0px;
     color-scheme:light dark;
   }
-  /* ---------- Dark mode: follows the phone's system setting ---------- */
-  @media (prefers-color-scheme: dark){
-    :root{
-      --bg:#171310; --panel:#231e19; --panel-alt:#1c1712;
-      --ink:#f2ece1; --ink-soft:#d8cfc0; --sub:#a89a86; --sub2:#7c6f5e;
-      --line:#382f26; --line-soft:#2c251e;
-      --accent:#e08152; --accent-ink:#f0a578; --accent-soft:#3a2418;
-      --accent2:#5fae9c; --accent2-soft:#1e332d;
-      --danger:#e2685c; --danger-bg:#3a201c; --danger-line:#5a2c24;
-      --shadow-sm:0 1px 2px rgba(0,0,0,.3), 0 1px 1px rgba(0,0,0,.24);
-      --shadow-md:0 10px 30px -12px rgba(0,0,0,.5);
-      --shadow-lg:0 18px 45px -18px rgba(0,0,0,.6);
-    }
+  /* ---------- Dark mode: toggle-controlled, defaults to system setting ----------
+     data-theme is set on <html> by the early inline script in <head>, before
+     first paint — "dark" either because the toggle saved that choice, or
+     because it wasn't saved and the system preference was dark at load. */
+  :root[data-theme="dark"]{
+    --bg:#171310; --panel:#231e19; --panel-alt:#1c1712;
+    --ink:#f2ece1; --ink-soft:#d8cfc0; --sub:#a89a86; --sub2:#7c6f5e;
+    --line:#382f26; --line-soft:#2c251e;
+    --accent:#e08152; --accent-ink:#f0a578; --accent-soft:#3a2418;
+    --accent2:#5fae9c; --accent2-soft:#1e332d;
+    --danger:#e2685c; --danger-bg:#3a201c; --danger-line:#5a2c24;
+    --shadow-sm:0 1px 2px rgba(0,0,0,.3), 0 1px 1px rgba(0,0,0,.24);
+    --shadow-md:0 10px 30px -12px rgba(0,0,0,.5);
+    --shadow-lg:0 18px 45px -18px rgba(0,0,0,.6);
   }
   /* Selector overrides that can't be expressed as a variable (gradients,
-     hardcoded hex, or fixed light-on-dark text) live in one block at the
-     very end of this stylesheet — see "DARK MODE — SELECTOR OVERRIDES"
-     below. CSS cascade order means an earlier copy of these rules would
-     just lose to the plain light-mode rule that comes after it. */
+     hardcoded hex, or fixed light-on-dark text) live in one block near the
+     end of this stylesheet — see "DARK MODE — SELECTOR OVERRIDES" below.
+     They're prefixed with :root[data-theme="dark"], which outranks a bare
+     class selector on specificity alone, so unlike the old media-query
+     version this one doesn't care where it sits in source order. */
   *{box-sizing:border-box;}
   body{
     margin:0;
@@ -359,24 +371,31 @@
   .tl-stop.expanded .tl-more{max-height:600px;opacity:1;margin-top:6px;}
 
   /* ---------- Dark mode — selector overrides ----------
-     Placed last on purpose: same-specificity rules earlier in this sheet
-     (.note, .card.warn, .badge.suggested, etc.) would otherwise win the
-     cascade regardless of the media query. */
-  @media (prefers-color-scheme: dark){
-    body{background:radial-gradient(1200px 500px at 15% -10%, #241b12 0%, transparent 60%),
-      radial-gradient(900px 500px at 100% 0%, #142420 0%, transparent 55%), var(--bg);}
-    .datebadge,.sb-item.active,.subnav button.active,.mapctl button.on,.daynum{color:#1a140f;}
-    .note{background:#332913;border-color:#4d3f1c;color:#e8cf8f;}
-    .note.blue{background:#152735;border-color:#264257;color:#a9cbe0;}
-    .badge.suggested{background:#3a2f10;color:#e2b955;}
-    .badge.daytrip{background:#152735;color:#8fb9dd;}
-    .pill-you{background:#2a2038;color:#c6a8f0;}
-    .card.resolved{background:linear-gradient(180deg,#152420 0%, var(--panel) 90px);}
-    .card.warn{background:linear-gradient(180deg,#2c1815 0%, var(--panel) 140px);}
-    .leaflet-popup-content-wrapper,.leaflet-popup-tip{background:var(--panel);color:var(--ink);}
-    #mobile-topbar{background:rgba(23,19,16,.88);}
-    #bottom-tabbar{background:rgba(23,19,16,.94);}
-    #upnext .book.ghost{color:#fff;}
+     Prefixed with :root[data-theme="dark"] rather than living inside a
+     media query, so the same rules serve both the system-default case and
+     the manual toggle (see #theme-toggle below) — the attribute selector's
+     specificity beats a bare class selector regardless of source order. */
+  :root[data-theme="dark"] body{background:radial-gradient(1200px 500px at 15% -10%, #241b12 0%, transparent 60%),
+    radial-gradient(900px 500px at 100% 0%, #142420 0%, transparent 55%), var(--bg);}
+  :root[data-theme="dark"] .datebadge,:root[data-theme="dark"] .sb-item.active,:root[data-theme="dark"] .subnav button.active,
+  :root[data-theme="dark"] .mapctl button.on,:root[data-theme="dark"] .daynum{color:#1a140f;}
+  :root[data-theme="dark"] .note{background:#332913;border-color:#4d3f1c;color:#e8cf8f;}
+  :root[data-theme="dark"] .note.blue{background:#152735;border-color:#264257;color:#a9cbe0;}
+  :root[data-theme="dark"] .badge.suggested{background:#3a2f10;color:#e2b955;}
+  :root[data-theme="dark"] .badge.daytrip{background:#152735;color:#8fb9dd;}
+  :root[data-theme="dark"] .pill-you{background:#2a2038;color:#c6a8f0;}
+  :root[data-theme="dark"] .card.resolved{background:linear-gradient(180deg,#152420 0%, var(--panel) 90px);}
+  :root[data-theme="dark"] .card.warn{background:linear-gradient(180deg,#2c1815 0%, var(--panel) 140px);}
+  :root[data-theme="dark"] .leaflet-popup-content-wrapper,:root[data-theme="dark"] .leaflet-popup-tip{background:var(--panel);color:var(--ink);}
+  :root[data-theme="dark"] #mobile-topbar{background:rgba(23,19,16,.88);}
+  :root[data-theme="dark"] #bottom-tabbar{background:rgba(23,19,16,.94);}
+  :root[data-theme="dark"] #upnext .book.ghost{color:#fff;}
+
+  /* ---------- Theme toggle button (mobile top bar) ---------- */
+  #theme-toggle{
+    flex-shrink:0;width:40px;height:40px;border-radius:11px;border:1px solid var(--line);
+    background:var(--panel);display:flex;align-items:center;justify-content:center;
+    font-size:17px;cursor:pointer;touch-action:manipulation;
   }
 </style>
 </head>
@@ -427,10 +446,11 @@
 </header>
 
 <div id="mobile-topbar">
-  <div style="min-width:0;">
+  <div style="min-width:0;flex:1;">
     <span class="mt-sub" id="mt-sub">Europe 2026</span>
     <div class="mt-title" id="mt-title">Trip overview</div>
   </div>
+  <button id="theme-toggle" onclick="toggleTheme()" aria-label="Toggle dark mode">🌙</button>
 </div>
 <div id="sidebar-backdrop" onclick="closeDrawer()"></div>
 
@@ -1648,6 +1668,30 @@ const cityStops = [
     mapInstances.overview = m;
   }catch(e){ console.warn("Overview map failed to load (offline or CDN blocked):", e); }
 })();
+
+/* =========================================================
+   8b. THEME TOGGLE
+   The <head> script already set data-theme before first paint (saved
+   choice, or system preference as a fallback). This just wires up the
+   button and keeps it live: if the user has never overridden it, the app
+   keeps following the system setting even while it's open.
+   ========================================================= */
+function setTheme(theme, {save} = {save:true}){
+  document.documentElement.setAttribute("data-theme", theme);
+  if(save) localStorage.setItem("theme", theme);
+  const btn = $("#theme-toggle");
+  if(btn) btn.textContent = theme==="dark" ? "☀️" : "🌙";
+}
+function toggleTheme(){
+  const current = document.documentElement.getAttribute("data-theme");
+  setTheme(current==="dark" ? "light" : "dark");
+}
+setTheme(document.documentElement.getAttribute("data-theme"), {save:false});
+if(window.matchMedia){
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", e=>{
+    if(!localStorage.getItem("theme")) setTheme(e.matches ? "dark" : "light", {save:false});
+  });
+}
 
 /* =========================================================
    9. INIT
