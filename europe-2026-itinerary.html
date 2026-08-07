@@ -46,6 +46,8 @@
   header h1{margin:0 0 10px;font-size:clamp(28px,4vw,40px);font-weight:700;}
   .route-trail{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:13.5px;color:var(--sub);margin-bottom:18px;}
   .route-trail .stop-chip{background:var(--panel);border:1px solid var(--line);padding:4px 11px;border-radius:var(--radius-pill);font-weight:600;color:var(--ink);box-shadow:var(--shadow-sm);}
+  .route-trail a.stop-chip{cursor:pointer;text-decoration:none;transition:transform .12s ease,box-shadow .12s ease;}
+  .route-trail a.stop-chip:hover{transform:translateY(-1px);box-shadow:var(--shadow-md,0 4px 10px rgba(0,0,0,.12));border-color:var(--sub2);}
   .route-trail .arrow{color:var(--sub2);}
   .stats-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
   .stat{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius-sm);padding:12px 16px;box-shadow:var(--shadow-sm);}
@@ -239,14 +241,14 @@
     <div class="eyebrow"><span class="line"></span>Two-week trip · planned with Claude</div>
     <h1>Europe 2026</h1>
     <div class="route-trail">
-      <span class="stop-chip">🏠 LA</span><span class="arrow">→</span>
-      <span class="stop-chip">🇦🇹 Vienna</span><span class="arrow">→</span>
-      <span class="stop-chip">🇭🇷 Dubrovnik</span><span class="arrow">→</span>
-      <span class="stop-chip">🇭🇷 Split</span><span class="arrow">→</span>
-      <span class="stop-chip">🇨🇿 Prague</span><span class="arrow">→</span>
-      <span class="stop-chip">🇭🇺 Budapest</span><span class="arrow">→</span>
-      <span class="stop-chip">🇬🇧 London</span><span class="arrow">→</span>
-      <span class="stop-chip">🏠 LA</span>
+      <a class="stop-chip" href="#" onclick="activateTab('overview');return false;">🏠 LA</a><span class="arrow">→</span>
+      <a class="stop-chip" href="#" onclick="activateTab('vienna');return false;">🇦🇹 Vienna</a><span class="arrow">→</span>
+      <a class="stop-chip" href="#" onclick="activateTab('dubrovnik');return false;">🇭🇷 Dubrovnik</a><span class="arrow">→</span>
+      <a class="stop-chip" href="#" onclick="activateTab('split');return false;">🇭🇷 Split</a><span class="arrow">→</span>
+      <a class="stop-chip" href="#" onclick="activateTab('prague');return false;">🇨🇿 Prague</a><span class="arrow">→</span>
+      <a class="stop-chip" href="#" onclick="activateTab('budapest');return false;">🇭🇺 Budapest</a><span class="arrow">→</span>
+      <a class="stop-chip" href="#" onclick="activateTab('london');return false;">🇬🇧 London</a><span class="arrow">→</span>
+      <a class="stop-chip" href="#" onclick="activateTab('overview');return false;">🏠 LA</a>
     </div>
     <div class="stats-strip">
       <div class="stat"><div class="num" id="countdown-num">—</div><div class="lbl">Days to go</div></div>
@@ -582,7 +584,7 @@ const DAYS = [
     {t:"08:45", n:"Airport bus → Pile Gate, drop bags", cat:"transit", lat:42.6440, lng:18.1091, note:"Atlas shuttle meets arrivals, ~30 min to Pile. Luggage storage right by the gate.", cost:"Bus ~€12 · storage €5–10", c:[17,22], move:{mode:"bus", mins:32}},
     {t:"09:45", n:"Sveti Jakov Beach", cat:"food", lat:42.6338, lng:18.1223, note:"20–25 min walk with a stair descent. Far fewer people than Banje, and the best skyline view of the walls from the water. Free, café on site.", badge:"free", move:{mode:"walk", mins:24}},
     {t:"13:30", n:"Check in — Hostel Petra Marina", cat:"stay", lat:42.6558, lng:18.0762, note:"Obala Stjepana Radića 25, Gruž — booked, conf 5175904714, PIN 4809, 1 dorm bed, 2 nights. This is in Gruž near the ferry port, not Old Town — a bus or ~20-min walk from the Stradun each way, so budget that into every day here.", move:{mode:"bus", mins:18}, book:{l:"Hostel page ↗", u:"https://www.booking.com/hotel/hr/hostel-petra-marina.html"}},
-    {t:"19:15", n:"Dubrovnik Cable Car → Srđ Hill, sunset", cat:"sight", lat:42.6444, lng:18.1148, note:"€27 return. Runs till midnight in August, but go up 30–45 min before sunset (~20:00 in mid-August) to beat the queue and get a spot at the top rail — this is the slot everyone wants, and it fills fast. A full travel day behind you already, but it's just standing in a gondola, not another activity.", cost:"€27", c:[27,27], move:{mode:"bus", mins:18}, book:{l:"Buy tickets ↗", u:"https://www.dubrovnikcablecar.com/buy-tickets"}},
+    {t:"19:15", n:"Dubrovnik Cable Car → Srđ Hill, sunset", cat:"sight", lat:42.6444, lng:18.1148, note:"€27 return. Runs till midnight in August, but go up 30–45 min before sunset (~20:00 in mid-August) to beat the queue and get a spot at the top rail — this is the slot everyone wants, and it fills fast. Booking online through ulaznice.hr (the official partner) won't ask for a date — the ticket is open-dated, valid till 31 Mar 2027, and you just show up whenever; no timed slot to pick like the City Walls ticket. A full travel day behind you already, but it's just standing in a gondola, not another activity.", cost:"€27", c:[27,27], move:{mode:"bus", mins:18}, book:{l:"Buy tickets ↗", u:"https://www.ulaznice.hr/web/event/52/6489"}},
     {t:"21:00", n:"Stradun wander + dinner", cat:"food", lat:42.6412, lng:18.1105, note:"Easy first night. Anything one street off the Stradun is cheaper and better than the Stradun itself.", cost:"€25–40", c:[25,40], move:{mode:"walk", mins:15}}
   ]},
 
