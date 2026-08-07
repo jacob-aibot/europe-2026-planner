@@ -724,7 +724,7 @@ const MODES = {
   walk:{i:"🚶",l:"Walk"}, transit:{i:"🚊",l:"Tram / metro"}, metro:{i:"🚇",l:"Metro"},
   taxi:{i:"🚗",l:"Taxi / drive"}, bus:{i:"🚌",l:"Bus"}, coach:{i:"🚐",l:"Tour coach"},
   boat:{i:"⛴️",l:"Boat"}, speedboat:{i:"🚤",l:"Speedboat"}, flight:{i:"✈️",l:"Flight"},
-  train:{i:"🚆",l:"Train"}, funicular:{i:"🚡",l:"Funicular"}
+  train:{i:"🚆",l:"Train"}, funicular:{i:"🚡",l:"Funicular"}, bike:{i:"🚲",l:"Bike share"}
 };
 const CITY_META = {
   vienna:{name:"Vienna", flag:"🇦🇹", color:"#b3481e"},
@@ -928,7 +928,7 @@ const OPTIONAL = {
     {n:"Das Loft Sky Bar", cat:"night", note:"18th floor of the Sofitel. No reservation for the bar, but go before 20:00 for a window seat.", book:{l:"Site ↗",u:"https://www.dasloftwien.at/en/"}},
     {n:"Vienna State Opera", cat:"suggest", note:"Standing-room tickets from ~€13, sold 80 min before curtain. Season may not have started in early August — check.", book:{l:"What's on ↗",u:"https://www.wiener-staatsoper.at/en/"}},
     {n:"Prater & Riesenrad", cat:"suggest", note:"Giant wheel ~€14, park itself free to walk.", book:{l:"Tickets ↗",u:"https://www.wienerriesenrad.com/en/"}},
-    {id:"vn-naschmarkt", n:"Naschmarkt", cat:"suggest", lat:48.1974, lng:16.3652, note:"The Saturday flea market (Flohmarkt) runs 6:30am–2pm — you land at 15:50, so you'll miss it entirely, no matter how the day is arranged. The regular food market stays open till 6pm Saturdays. Checking in first means this is genuinely tight: Nordbahnviertel to Kettenbrückengasse is a real cross-town trip (tram to Praterstern, U1 to Karlsplatz, transfer to U4 — roughly 25 min each way), so after checking in you're looking at maybe 20–25 minutes at the market before it shuts. Enough to grab something from 2–3 stalls, not a real browse. Closed Sundays, so Saturday is the only day this works at all — worth it if a quick bite sounds good, easy to cut if not.", addHint:{day:"08-08", t:"17:35"}},
+    {id:"vn-naschmarkt", n:"Naschmarkt", cat:"suggest", lat:48.1974, lng:16.3652, note:"Free to walk in — it's a public market, no entry ticket, you only pay for what you buy at the stalls. The Saturday flea market (Flohmarkt) runs 6:30am–2pm — you land at 15:50, so you'll miss it regardless. The regular food market stays open till 6pm Saturdays. Bike share is genuinely the move here: there's a WienMobil Rad station right in the Nordbahnviertel (Lassallestraße 9b, by the U1 entrance) and another at Kettenbrückengasse by the market, ~16 min direct with no transfers — first 30 min are free, so each leg likely costs nothing. Beats the transit option (tram+U1+U4 transfer, ~25 min) on both time and price. Either way, you're looking at maybe 25–30 minutes at the market before it shuts — enough for 2–3 stalls, not a real browse. Closed Sundays, so Saturday is the only day this works at all.", move:{mode:"bike", mins:16}, addHint:{day:"08-08", t:"17:35"}},
     {id:"vn-donaukanal", n:"Donaukanal", cat:"sight", lat:48.2113, lng:16.3778, note:"Canal walk near Schwedenplatz. Street art, summer beach bars — good as a late add after Café Central since it's a 10-min walk from Herrengasse.", addHint:{day:"08-08", t:"22:00"}},
     {id:"vn-brasserie", n:"Brasserie Palmenhaus", cat:"food", lat:48.2043, lng:16.3654, note:"Burggarten 1 — glasshouse restaurant in the palace gardens, a 5-min walk from the National Library. Good sit-down lunch slot right after the State Hall.", addHint:{day:"08-09", t:"12:30"}}
   ]},
@@ -1099,7 +1099,7 @@ function addOptional(cityKey, optId, opts){
     n: item.n, cat: item.cat,
     lat: item.lat!=null ? item.lat : (place ? place.lat : undefined),
     lng: item.lng!=null ? item.lng : (place ? place.lng : undefined),
-    note: item.note, cost: item.cost, c: item.c, book: item.book,
+    note: item.note, cost: item.cost, c: item.c, book: item.book, move: item.move,
     sug: true, _optId: item.id, _city: cityKey
   };
   insertStopSorted(day, stop);
