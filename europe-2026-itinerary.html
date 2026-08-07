@@ -7,11 +7,10 @@
 <script>
 /* Resolve the effective theme before first paint, so there's no flash of
    the wrong colors. A saved choice (from the toggle) wins; otherwise this
-   follows the phone's system setting. */
+   defaults to light regardless of the phone's system setting. */
 (function(){
   var saved = localStorage.getItem("theme");
-  var theme = saved || (window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
-  document.documentElement.setAttribute("data-theme", theme);
+  document.documentElement.setAttribute("data-theme", saved || "light");
 })();
 </script>
 <link rel="manifest" href="manifest.json">
@@ -1751,9 +1750,9 @@ const cityStops = [
 /* =========================================================
    8b. THEME TOGGLE
    The <head> script already set data-theme before first paint (saved
-   choice, or system preference as a fallback). This just wires up the
-   button and keeps it live: if the user has never overridden it, the app
-   keeps following the system setting even while it's open.
+   choice, or "light" as the default — the app does not follow the
+   phone's system dark-mode setting unless the toggle below has been
+   used to explicitly choose dark).
    ========================================================= */
 function setTheme(theme, {save} = {save:true}){
   document.documentElement.setAttribute("data-theme", theme);
@@ -1766,11 +1765,6 @@ function toggleTheme(){
   setTheme(current==="dark" ? "light" : "dark");
 }
 setTheme(document.documentElement.getAttribute("data-theme"), {save:false});
-if(window.matchMedia){
-  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", e=>{
-    if(!localStorage.getItem("theme")) setTheme(e.matches ? "dark" : "light", {save:false});
-  });
-}
 
 /* =========================================================
    9. INIT
