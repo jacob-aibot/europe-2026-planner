@@ -1235,8 +1235,10 @@ function fmtMins(m){
   const h=Math.floor(m/60), r=m%60;
   return r ? h+"h "+r+"m" : h+" hr";
 }
-function mapsUrl(name, city){
-  return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(name + " " + (city||""));
+function mapsUrl(name, city, lat, lng){
+  const q = encodeURIComponent(name + " " + (city||""));
+  if(lat!=null && lng!=null) return `https://maps.apple.com/?ll=${lat},${lng}&q=${q}`;
+  return "https://maps.apple.com/?q=" + q;
 }
 function dayCost(day){
   let lo=0, hi=0, any=false;
@@ -1255,7 +1257,7 @@ function popupHtml(p, city){
       <div style="font-weight:700;font-size:14px;margin-bottom:2px;">${esc(p.n)}</div>
       <div style="font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:${COLORS[p.cat]};font-weight:700;margin-bottom:5px;">${CAT_LABEL[p.cat]||""}</div>
       <div style="font-size:12.5px;color:#454b57;margin-bottom:9px;line-height:1.45;">${esc(p.note||"")}</div>
-      <div>${bk}<a href="${mapsUrl(p.n, city)}" target="_blank" rel="noopener" style="font-size:11.5px;color:#2c5f8a;font-weight:700;text-decoration:none;">Maps ↗</a></div>
+      <div>${bk}<a href="${mapsUrl(p.n, city, p.lat, p.lng)}" target="_blank" rel="noopener" style="font-size:11.5px;color:#2c5f8a;font-weight:700;text-decoration:none;">Maps ↗</a></div>
     </div>`;
 }
 
@@ -1309,7 +1311,7 @@ function focusCluster(stops){
    ========================================================= */
 function stopRowHtml(s, cityName, ctl){
   const bk = s.book ? `<a class="book ghost" href="${s.book.u}" target="_blank" rel="noopener">${esc(s.book.l)}</a>` : "";
-  const mp = s.lat!=null ? `<a class="book ghost" href="${mapsUrl(s.n, cityName)}" target="_blank" rel="noopener">Maps ↗</a>` : "";
+  const mp = s.lat!=null ? `<a class="book ghost" href="${mapsUrl(s.n, cityName, s.lat, s.lng)}" target="_blank" rel="noopener">Maps ↗</a>` : "";
   let badge = "";
   if(s.sug) badge = '<span class="badge suggested">suggested</span>';
   else if(s.badge==="free") badge = '<span class="badge free">free</span>';
@@ -1548,7 +1550,7 @@ function renderUpNext(d){
     el.innerHTML = `<div class="un-name">Today's plan is done — nice work.</div>`;
     return;
   }
-  const mp = next.lat!=null ? mapsUrl(next.n, CITY_META[d.city].name) : null;
+  const mp = next.lat!=null ? mapsUrl(next.n, CITY_META[d.city].name, next.lat, next.lng) : null;
   el.className = "show";
   el.innerHTML = `
     <div class="un-lbl">Up next · ${esc(next.t||"")}</div>
@@ -1597,7 +1599,7 @@ function selectDay(id){
       tl += `<div class="tl-gap">same spot / no travel</div>`;
     }
     const bk = s.book ? `<a class="book" href="${s.book.u}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${esc(s.book.l)}</a>` : "";
-    const mp = s.lat!=null ? `<a class="book ghost" href="${mapsUrl(s.n, c.name)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Maps ↗</a>` : "";
+    const mp = s.lat!=null ? `<a class="book ghost" href="${mapsUrl(s.n, c.name, s.lat, s.lng)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Maps ↗</a>` : "";
     const rm = s.sug ? `<a class="book warn" href="#" onclick="event.stopPropagation();removeSuggestion('${d.id}',${i});return false;">➖ Remove</a>` : "";
     let badge = "";
     if(s.sug) badge = '<span class="badge suggested">suggested</span>';
