@@ -512,13 +512,17 @@
         <p style="font-size:13.5px;margin:0;color:var(--ink);line-height:1.6;">Your UK Electronic Travel Authorisation is approved — ref <b>2020-0000-5923-3855</b>, valid until 7 Aug 2028, tied to the passport ending 2770. Nothing to print or show; UK Border Force checks it against your passport automatically at Heathrow.</p>
       </div>
 
+      <div class="card resolved" style="grid-column:1/-1;">
+        <h3 style="color:var(--accent2);">Split lodging — booked</h3>
+        <p style="font-size:13.5px;margin:0;color:var(--ink);line-height:1.6;"><b>Guest House Lana</b> — Hektorovićeva 53, Lučac (~15 min walk from the palace/Riva). €331 for 3 nights, Aug 12–15. No confirmation number/PIN on file yet.</p>
+      </div>
+
       <div class="card warn" style="grid-column:1/-1;">
-        <h3>Still open — Split, Prague, Budapest &amp; London lodging</h3>
-        <p style="font-size:13.5px;margin:0 0 12px;color:var(--ink);">Vienna and Dubrovnik are booked (found in Gmail, see below). Split, Prague, Budapest and London are still unbooked as of Aug 7. Search links are pre-filled with your actual dates.</p>
+        <h3>Still open — Prague, Budapest &amp; London lodging</h3>
+        <p style="font-size:13.5px;margin:0 0 12px;color:var(--ink);">Vienna, Dubrovnik and Split are booked (see above). Prague, Budapest and London are still unbooked as of Aug 9. Search links are pre-filled with your actual dates.</p>
         <table>
           <thead><tr><th>City</th><th>Nights</th><th>Rough range</th><th>Search</th></tr></thead>
           <tbody>
-          <tr><td>Split</td><td>3 (Aug 12–15)</td><td>€75–105pp dorm — back to your sheet's original 3 nights now that the flight moved</td><td><a class="book warn" href="https://www.booking.com/searchresults.html?ss=Split&checkin=2026-08-12&checkout=2026-08-15" target="_blank" rel="noopener">Find a room ↗</a></td></tr>
           <tr><td>Prague</td><td><span class="pill pill-warn">3 — new, wasn't in the plan</span></td><td>Not confirmed in either inbox</td><td><a class="book warn" href="https://www.booking.com/searchresults.html?ss=Prague&checkin=2026-08-15&checkout=2026-08-18" target="_blank" rel="noopener">Find a room ↗</a></td></tr>
           <tr><td>Budapest</td><td>3 (Aug 18–21)</td><td>Not confirmed in either inbox</td><td><a class="book warn" href="https://www.booking.com/searchresults.html?ss=Budapest&checkin=2026-08-18&checkout=2026-08-21" target="_blank" rel="noopener">Find a room ↗</a></td></tr>
           <tr><td>Windsor (not central London)</td><td>1 (Aug 21–22)</td><td>Not confirmed in either inbox — staying in Windsor, ~20–30 min from LHR</td><td><a class="book warn" href="https://www.booking.com/searchresults.html?ss=Windsor%2C+UK&checkin=2026-08-21&checkout=2026-08-22" target="_blank" rel="noopener">Find a room ↗</a></td></tr>
@@ -827,7 +831,7 @@ const DAYS = [
   stops:[
     {t:"06:40", n:"Dubrovnik bus terminal (Gruž)", cat:"transit", lat:42.6600, lng:18.0731, note:"20 min from Old Town. Booking #3379864687 — have the QR ready.", move:{mode:"taxi", mins:12}, book:{l:"Manage FlixBus ↗", u:"https://global.flixbus.com/"}},
     {t:"07:15", n:"FlixBus → Split", cat:"transit", lat:43.5045, lng:16.4406, note:"~4 hrs, arrives 11:20. Snacks on board are grim — buy something at Gruž first.", move:{mode:"bus", mins:245}},
-    {t:"12:00", n:"Check in, drop bags", cat:"stay", lat:43.5081, lng:16.4402, note:"Not booked. Staying inside or just north of the palace walls means you walk everywhere for three days.", move:{mode:"walk", mins:6}, book:{l:"Find a room ↗", u:"https://www.booking.com/searchresults.html?ss=Split&checkin=2026-08-12&checkout=2026-08-15"}},
+    {t:"12:00", n:"Check in — Guest House Lana", cat:"stay", lat:43.5063, lng:16.4535, note:"Hektorovićeva 53, Lučac — booked, €331 for 3 nights. ~15 min walk from the palace/Riva (pin approximate, confirm exact placement against your confirmation email), closer to Bačvice beach than Old Town. Budget that walk into evenings.", move:{mode:"walk", mins:15}},
     {t:"18:00", n:"Riva waterfront, early dinner", cat:"food", lat:43.5074, lng:16.4384, note:"Palm-lined promenade. Overpriced for food, perfect for a drink at sunset.", cost:"€20–35", c:[20,35], move:{mode:"walk", mins:4}},
     {t:"20:30", n:"Diocletian's Palace & Peristyle at night", cat:"sight", lat:43.5081, lng:16.4402, note:"Free, open 24/7, and much better after dark once the day crowds clear. Klapa singers perform in the Peristyle most summer evenings — the acoustics are the whole point.", badge:"free", move:{mode:"walk", mins:4}}
   ]},

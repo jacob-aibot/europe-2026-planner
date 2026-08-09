@@ -37,6 +37,10 @@ Found via `search_threads`/`get_message` on booking.com confirmation emails in j
 - **Habyt Vienna** — Bruno-Marek-Allee 26, 1020 Vienna (Leopoldstadt/Nordbahnviertel, *not* Innere Stadt as originally assumed). Conf 5814731574, PIN 0754. Check-in Aug 8, 2 nights.
 - **Hostel Petra Marina** — Obala Stjepana Radića 25, Gruž, Dubrovnik (near the ferry port, not Old Town). Conf 5175904714, PIN 4809. Check-in Aug 10, 1 dorm bed, 2 nights.
 
+### Split lodging — booked
+
+**Guest House Lana** — Hektorovićeva 53, Split (Lučac, ~15 min walk from the palace/Riva, not inside Old Town). €331 for 3 nights (Aug 12–15), booked by Jacob directly — no confirmation number or PIN on hand yet, and the map pin in the itinerary is an approximate street-level placement pending the confirmation email. Chosen over a pricier apartment option (~€410, closer in but self-catering) on price.
+
 ### Three tickets purchased Aug 7 — now booked
 
 Found in the Aug 7 sweep, all same-day purchases:
@@ -51,9 +55,9 @@ Ref 2020-0000-5923-3855, approved Aug 7, valid until 7 Aug 2028, tied to the pas
 
 ## Open items — only Jacob can resolve these
 
-### 1. Split, Prague, Budapest, and London lodging still unbooked
+### 1. Prague, Budapest, and London lodging still unbooked
 
-As of Aug 7, nothing booked for Split, Prague, Budapest, or London. The Overview tab carries Booking.com search links pre-filled with the correct dates for all four.
+Split is now booked (Guest House Lana, see Resolved above). Still nothing booked for Prague, Budapest, or London. The Overview tab carries Booking.com search links pre-filled with the correct dates for the remaining three.
 
 ### 1b. Tickets/tours still unpurchased — the Overview tab has the full punch list
 
@@ -75,7 +79,7 @@ Turned out to be a real stay (Aug 15–18) once Jacob confirmed the Aug 18 Ryana
 |---|---|
 | Vienna | Complete — merged from his spreadsheet, lodging booked |
 | Dubrovnik | Complete — merged from his spreadsheet, lodging booked |
-| Split | Aug 12–15 from his sheet, unchanged by this pass |
+| Split | Aug 12–15 from his sheet, lodging now booked (Guest House Lana) |
 | Prague | Now a full 3-night city (Aug 15–18) — entirely my draft, didn't exist before this pass |
 | Budapest | Back to its original 3 nights (Aug 18–21, Aug 19–20 content from the earlier pass) — he'd planned nothing here |
 | London (Windsor) | Complete but **my draft**, contingent on a hotel — rebuilt Aug 6 around Windsor per Jacob, not central London |
