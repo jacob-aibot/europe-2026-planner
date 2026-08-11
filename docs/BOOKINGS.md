@@ -47,7 +47,9 @@ Found in the Aug 7 sweep, all same-day purchases:
 
 ### FlixBus seat reassigned (found Aug 11 check)
 
-FlixBus emailed on Aug 6 that booking #3379864687 (Dubrovnik → Split) got reseated: **seat 12A**, previously unassigned. The direct PDF/QR ticket link is now embedded in the app on the Aug 12 "Dubrovnik bus terminal" stop (`ticket:true`) — no need to dig through email. Pulled from the reservation's structured ticket data since FlixBus's own "View your ticket" button link is broken (malformed query string in their template).
+FlixBus emailed on Aug 6 that booking #3379864687 (Dubrovnik → Split) got reseated: **seat 12A**, previously unassigned.
+
+**Correction:** I initially embedded a direct "pdfqr" ticket link scraped from the confirmation email's structured data — it 404s, doesn't work. Don't reuse it. There's no reliable direct ticket URL for this booking; the real boarding QR only exists as a PDF/PNG attachment on the FlixBus emails, and there's no attachment-download tool to pull it out. The app now links to the generic FlixBus manage-booking page instead and tells Jacob to open the PDF attachment in Gmail directly.
 
 ### UK ETA — approved
 

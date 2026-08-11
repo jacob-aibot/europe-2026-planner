@@ -74,7 +74,7 @@ When Jacob says "check email" (or equivalent), don't re-scan the whole inbox —
 
 - Add/update it in the relevant `docs/BOOKINGS.md` section (table row, seat/ref changes, new "Resolved" entry).
 - Reflect it in the matching `DAYS` stop in the HTML (ref, price, seat, booking link).
-- **Embed the actual ticket in the app, not just a manage-booking page.** Set `ticket:true` and point `book.u` at the real ticket/QR/boarding-pass link (pull it from the confirmation email's structured data if the visible "view ticket" button is broken — FlixBus's has been). Same pattern already used for the CAT and City Walls tickets. Only fall back to a generic manage-booking link when no direct ticket link exists.
+- **Embed the actual ticket in the app when there's a real, working link for it** — set `ticket:true` and point `book.u` at it, same pattern as the CAT and City Walls tickets. **Load the URL and confirm it actually resolves before adding it — no exceptions, including links pulled from an email's structured/JSON-LD data.** A link sitting in structured data next to a broken visible button (FlixBus's "view ticket" button was malformed) is not evidence the structured one works either — it 404'd when tried. If nothing verifiable turns up, don't guess: use the generic manage-booking link and say plainly in the stop's note that the real ticket is a PDF/PNG attachment in Gmail (no attachment-download tool exists to pull it out automatically — see below).
 - Bump the "Last verified against Gmail" date to today once done.
 
 If nothing new turns up, still bump the date — that's what makes the next check incremental instead of a full re-scan.
