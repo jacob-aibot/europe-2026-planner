@@ -74,6 +74,7 @@ When Jacob says "check email" (or equivalent), don't re-scan the whole inbox —
 
 - Add/update it in the relevant `docs/BOOKINGS.md` section (table row, seat/ref changes, new "Resolved" entry).
 - Reflect it in the matching `DAYS` stop in the HTML (ref, price, seat, booking link).
+- **Embed the actual ticket in the app, not just a manage-booking page.** Set `ticket:true` and point `book.u` at the real ticket/QR/boarding-pass link (pull it from the confirmation email's structured data if the visible "view ticket" button is broken — FlixBus's has been). Same pattern already used for the CAT and City Walls tickets. Only fall back to a generic manage-booking link when no direct ticket link exists.
 - Bump the "Last verified against Gmail" date to today once done.
 
 If nothing new turns up, still bump the date — that's what makes the next check incremental instead of a full re-scan.

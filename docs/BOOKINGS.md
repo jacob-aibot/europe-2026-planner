@@ -47,7 +47,7 @@ Found in the Aug 7 sweep, all same-day purchases:
 
 ### FlixBus seat reassigned (found Aug 11 check)
 
-FlixBus emailed on Aug 6 that booking #3379864687 (Dubrovnik → Split) got reseated: **seat 12A**, previously unassigned. Ticket/QR is on the boarding pass attached to the original "Booking Confirmation #3379864687" email — open it on the phone that has that inbox.
+FlixBus emailed on Aug 6 that booking #3379864687 (Dubrovnik → Split) got reseated: **seat 12A**, previously unassigned. The direct PDF/QR ticket link is now embedded in the app on the Aug 12 "Dubrovnik bus terminal" stop (`ticket:true`) — no need to dig through email. Pulled from the reservation's structured ticket data since FlixBus's own "View your ticket" button link is broken (malformed query string in their template).
 
 ### UK ETA — approved
 
