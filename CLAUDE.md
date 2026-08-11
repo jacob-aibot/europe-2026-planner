@@ -79,9 +79,11 @@ When Jacob says "check email" (or equivalent), don't re-scan the whole inbox —
 
 If nothing new turns up, still bump the date — that's what makes the next check incremental instead of a full re-scan.
 
+**When there's no verifiable direct link** (the common case — see the attachment-download constraint below): ask Jacob to open the attachment on his own phone and send it back in chat. Once he does, save it under `tickets/` (e.g. `tickets/<operator>-<route>-<bookingref>.pdf`) and point `book.u` at that local path instead of any external URL. A file committed alongside the app can't 404 or expire the way a vendor's auth-token link can — this is the reliable option, not a fallback.
+
 ## Constraints worth not rediscovering
 
 - The Gmail connector holds **one account at a time** — reconnecting swaps rather than adds. Ryanair mail is in `jacobierules@gmail.com`, everything else in `jacobseemann1@gmail.com`.
-- There is **no attachment-download tool**. `get_message`/`get_thread` return attachment metadata only, never bytes.
+- There is **no attachment-download tool**. `get_message`/`get_thread` return attachment metadata only, never bytes. Jacob can get the bytes to us by opening the attachment himself and sending it in chat — see the "check email" routine above.
 - The Ryanair confirmations (`IU1TUY`, `I54C9A`) are **not in either inbox**. Exhaustively searched. Don't re-run those queries.
 - `Croatia Itinerary.xlsx` — Jacob's source spreadsheet — is merged into the HTML but not in this repo. It only ever existed as a chat upload. If you need the original, ask him to re-attach it.
