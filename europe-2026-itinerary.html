@@ -636,13 +636,20 @@
     <div class="subnav">
       <button class="active" data-sub="dubrovnik-map">Map</button>
       <button data-sub="dubrovnik-itin">Itinerary</button>
+      <button data-sub="lokrum-map">Lokrum</button>
     </div>
     <div id="sub-dubrovnik-map" class="subtab active">
       <div class="legend" id="legend-dubrovnik"></div>
       <div id="map-dubrovnik" class="leaflet-map"></div>
-      <div class="note">Old Town is compact — most of this is walkable in under 15 minutes. Lokrum is a 10-min boat from the Old Port.</div>
+      <div class="note">Old Town is compact — most of this is walkable in under 15 minutes. Lokrum is a 10-min boat from the Old Port — see the Lokrum tab for the island's own map and suggested route.</div>
     </div>
     <div id="sub-dubrovnik-itin" class="subtab"><div id="itin-dubrovnik"></div></div>
+    <div id="sub-lokrum-map" class="subtab">
+      <div class="legend" id="legend-lokrum"></div>
+      <div id="map-lokrum" class="leaflet-map"></div>
+      <div class="note">Numbered pins are the suggested loop, in visiting order — dashed line is the route. Unnumbered pins are optional detours, not on the direct path back to the dock.</div>
+      <div id="lokrum-guide" style="margin-top:16px;"></div>
+    </div>
   </section>
 
   <section id="tab-split" class="tab">
@@ -817,7 +824,7 @@ const DAYS = [
   stops:[
     {t:"08:00", n:"Dubrovnik City Walls", cat:"sight", lat:42.6435, lng:18.1098, note:"Booked — order DUB26M6CVTSWMF, €40 (adult walls + Lovrijenac). Full circuit takes 1.5–2 hrs. Bring water; there's almost no shade.", cost:"€40", c:[40,40], ticket:true, book:{l:"Show ticket ↗", u:"https://shop.citywallsdubrovnik.hr/webshop/order-status"}},
     {t:"11:00", n:"Old Town wander + lunch", cat:"food", lat:42.6404, lng:18.1101, note:"Rector's Palace and the Cathedral are both right here — courtyards and exteriors are free to walk through.", cost:"€15–20", c:[15,20], move:{mode:"walk", mins:5}},
-    {t:"14:00", n:"Lokrum Island", cat:"sight", lat:42.6265, lng:18.1214, note:"10-min boat from the Old Port. €27 covers boat + island entry. Botanical gardens, peacocks, the Dead Sea saltwater lake. Check the last return time when you board — it's earlier than you'd expect.", cost:"€27", c:[27,27], move:{mode:"boat", mins:12}, book:{l:"Lokrum info & tickets ↗", u:"https://www.lokrum.hr/en"}},
+    {t:"14:00", n:"Lokrum Island", cat:"sight", lat:42.6265, lng:18.1214, note:"10-min boat from the Old Port. €27 covers boat + island entry. Botanical gardens, peacocks, the Dead Sea saltwater lake. Check the last return time when you board — it's earlier than you'd expect. Full island map, sights, and a suggested walking loop are under the Dubrovnik tab → Lokrum.", cost:"€27", c:[27,27], move:{mode:"boat", mins:12}, book:{l:"Lokrum info & tickets ↗", u:"https://www.lokrum.hr/en"}},
     {t:"19:30", n:"Buža Bar for sunset", cat:"night", lat:42.6398, lng:18.1082, note:"Cliffside bar cut into the seaward wall. Cash-friendly, no sign, just a hole in the wall marked 'cold drinks'. Sunset's ~20:00 in mid-August — get there a little before.", cost:"€8–15", c:[8,15], sug:true, move:{mode:"boat", mins:12}},
     {t:"21:00", n:"Dinner, then early night", cat:"food", lat:42.6412, lng:18.1105, note:"Bus tomorrow is 07:15 — pack tonight.", cost:"€25–40", c:[25,40], move:{mode:"walk", mins:15}}
   ]},
@@ -1078,6 +1085,28 @@ const CITY_PLACES = {
   ]
 };
 
+/* Lokrum island detail — a real place, not a "city", so it gets its own
+   small dataset and map builder instead of slotting into CITY_PLACES.
+   `order` gives the suggested loop sequence; entries without it are
+   optional spurs (shown unnumbered, not connected by the route line). */
+const LOKRUM_PLACES = [
+  {n:"Ferry dock — Portoč Bay", cat:"transit", lat:42.6293, lng:18.1176, order:1,
+    note:"Boats from Dubrovnik's Old Port land here, roughly every 30 min in high season. This is also your return point — check the kiosk board for the actual last departure the day you arrive, not just the printed summer schedule."},
+  {n:"Benedictine Monastery & Botanical Garden", cat:"sight", lat:42.6272, lng:18.1204, order:2,
+    note:"About 5 min from the dock. Peacocks and rabbits roam the cloister and gardens freely — don't feed them. Walking through is covered by the boat+entry ticket, no separate charge."},
+  {n:"Iron Throne (Game of Thrones prop)", cat:"sight", lat:42.6270, lng:18.1207,
+    note:"HBO donated the original Iron Throne prop to Croatia after filming wrapped — Lokrum played Qarth, seat of the Warlocks, in Season 2. It sits in the monastery cloister, a few steps from the garden entrance. Free, no line."},
+  {n:"Dead Sea (Mrtvo More)", cat:"sight", lat:42.6252, lng:18.1197, order:3,
+    note:"A calm, enclosed saltwater lake linked to the open Adriatic by underground channels — noticeably calmer and saltier than the sea. Entry rocks are sharp; water shoes help. The best swim stop on the island."},
+  {n:"Fort Royal", cat:"sight", lat:42.6238, lng:18.1230, order:4,
+    note:"The island's highest point (96m), a French fort from 1806. Reached via the cypress-lined 'Path of Paradise' — a steady 15–20 min climb from the monastery, mostly shaded. Best panorama of Dubrovnik's Old Town walls you'll get all trip."},
+  {n:"FKK beach (naturist)", cat:"suggest", lat:42.6288, lng:18.1225,
+    note:"Rocky beach on the island's east side, ladder access into open sea. Optional detour off the direct loop — signposted left from the dock, or reachable heading down from Fort Royal. Adds ~20–25 min round trip."},
+  {n:"Portoč swimming rocks", cat:"suggest", lat:42.6290, lng:18.1170,
+    note:"Easiest sea access, right by the dock. Good for a last quick swim before the return boat if you're tight on time."}
+];
+const LOKRUM_LOOP = ["Ferry dock — Portoč Bay","Benedictine Monastery & Botanical Garden","Dead Sea (Mrtvo More)","Fort Royal","Ferry dock — Portoč Bay"];
+
 /* =========================================================
    2b. OPTIONALITY — add a suggestion into the real plan, or
    subtract one back out. Adding pulls an idea out of OPTIONAL[city]
@@ -1290,6 +1319,47 @@ function buildCityMap(id, places, cityName){
     map.fitBounds(b, {padding:[28,28]});
     return map;
   }catch(e){ console.warn("Map failed to load (offline or CDN blocked):", e); return null; }
+}
+/* Lokrum's map adds a numbered, dashed route line on top of the plain
+   circle-marker pattern above — the "ideal path" the user asked for. */
+function buildLokrumMap(){
+  try{
+    const map = L.map("map-lokrum", {scrollWheelZoom:false});
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19, attribution:'&copy; OpenStreetMap'}).addTo(map);
+    const loopPts = LOKRUM_LOOP.map(n => { const p = LOKRUM_PLACES.find(x=>x.n===n); return [p.lat,p.lng]; });
+    L.polyline(loopPts, {color:"#2c5f8a", weight:2.5, opacity:.7, dashArray:"7,7"}).addTo(map);
+    LOKRUM_PLACES.forEach(p=>{
+      if(p.order){
+        L.marker([p.lat,p.lng], {icon: L.divIcon({className:"", html:`<div class="numpin">${p.order}</div>`, iconSize:[26,26], iconAnchor:[13,13]})})
+          .addTo(map).bindPopup(popupHtml(p, "Lokrum"));
+      } else {
+        L.circleMarker([p.lat,p.lng], {radius:8, fillColor:COLORS[p.cat], color:"#fff", weight:2, fillOpacity:.95})
+          .addTo(map).bindPopup(popupHtml(p, "Lokrum"));
+      }
+    });
+    map.fitBounds(L.latLngBounds(LOKRUM_PLACES.map(p=>[p.lat,p.lng])), {padding:[28,28]});
+    return map;
+  }catch(e){ console.warn("Lokrum map failed to load (offline or CDN blocked):", e); return null; }
+}
+function renderLokrumLegend(){
+  const el = document.getElementById("legend-lokrum");
+  if(!el) return;
+  const cats = [...new Set(LOKRUM_PLACES.map(p=>p.cat))];
+  el.innerHTML = cats.map(c=>`<span><i class="dot" style="background:${COLORS[c]}"></i>${CAT_LABEL[c]}</span>`).join("");
+}
+function renderLokrumGuide(){
+  const el = document.getElementById("lokrum-guide");
+  if(!el) return;
+  const onLoop = LOKRUM_PLACES.filter(p=>p.order).sort((a,b)=>a.order-b.order);
+  const spurs = LOKRUM_PLACES.filter(p=>!p.order);
+  const row = (label, p) => `<div class="stop">
+      <span class="tag" style="background:${COLORS[p.cat]}"></span>
+      <div class="stop-body">
+        <b>${esc(label)}${esc(p.n)}</b>
+        <div class="meta">${esc(p.note||"")}</div>
+      </div>
+    </div>`;
+  el.innerHTML = onLoop.map(p=>row(p.order+". ", p)).join("") + spurs.map(p=>row("Optional — ", p)).join("");
 }
 function refitCity(key){
   if(!mapInstances[key] || !CITY_PLACES[key]) return;
@@ -1758,7 +1828,13 @@ document.querySelectorAll(".subnav").forEach(nav=>{
   });
 });
 function ensureCityMap(key){
-  if(mapInstances[key] || !CITY_PLACES[key]) return;
+  if(mapInstances[key]) return;
+  if(key==="lokrum"){
+    if(!document.getElementById("map-lokrum")) return;
+    mapInstances.lokrum = buildLokrumMap();
+    return;
+  }
+  if(!CITY_PLACES[key]) return;
   if(!document.getElementById("map-"+key)) return;
   mapInstances[key] = buildCityMap("map-"+key, CITY_PLACES[key], CITY_META[key].name);
 }
@@ -1827,6 +1903,8 @@ addOptional("vienna", "vn-brasserie", {silent:true});
 applySavedPlanOrder();
 
 ["vienna","dubrovnik","split","budapest","london","prague"].forEach(k=>{ renderCityItinerary(k); renderLegend(k); });
+renderLokrumLegend();
+renderLokrumGuide();
 renderSidebar();
 selectDay(currentDay);
 syncSidebar();
