@@ -308,11 +308,15 @@
   .tl-stop{display:grid;grid-template-columns:52px 1fr;gap:12px;background:var(--panel);border:1px solid var(--line);
     border-radius:var(--radius-sm);padding:14px 16px;box-shadow:var(--shadow-sm);cursor:pointer;transition:all .14s;}
   .tl-stop:hover,.tl-stop.hot{border-color:var(--accent);box-shadow:var(--shadow-md);transform:translateX(2px);}
+  .tl-stop.dragging{opacity:.6;box-shadow:var(--shadow-md);cursor:grabbing;}
   .tl-idx{display:flex;flex-direction:column;align-items:center;gap:5px;}
+  .tl-drag{color:var(--sub2);font-size:15px;line-height:1;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;padding:2px 6px;}
+  .tl-drag:hover{color:var(--accent-ink);}
   .tl-idx .n{width:26px;height:26px;border-radius:50%;background:var(--accent2);color:#fff;font-family:var(--font-mono);font-size:12px;font-weight:700;
     display:flex;align-items:center;justify-content:center;}
   .tl-stop:hover .tl-idx .n,.tl-stop.hot .tl-idx .n{background:var(--accent);}
-  .tl-idx .tm{font-family:var(--font-mono);font-size:10px;font-weight:600;color:var(--sub2);letter-spacing:.2px;}
+  .tl-idx .tm{font-family:var(--font-mono);font-size:10px;font-weight:600;color:var(--sub2);letter-spacing:.2px;cursor:pointer;border-bottom:1px dotted var(--sub2);}
+  .tl-idx .tm:hover{color:var(--accent-ink);border-color:var(--accent-ink);}
   /* logistics rows sit back so the actual sights carry the page */
   .tl-stop[data-kind="logistics"]{background:var(--panel-alt);border-style:dashed;padding:11px 16px;}
   .tl-stop[data-kind="logistics"] .tl-name{font-size:13.5px;font-weight:600;color:var(--ink-soft);}
@@ -752,6 +756,12 @@
 /* =========================================================
    1. CONSTANTS
    ========================================================= */
+// Bump this on any edit to DAYS. applySavedPlanOrder() discards a saved
+// on-device reorder/time-edit snapshot whose version doesn't match, so a
+// content update always wins over a stale local override instead of the
+// two silently fighting (this is how Walls ended up rendering before
+// Lokrum on Aug 11 despite the data itself being chronological).
+const CONTENT_VERSION = "2026-08-11b";
 const COLORS = {sight:"#c9862a", food:"#3e7d5c", night:"#6b4a9e", suggest:"#8b6d1e", trip:"#2c5f8a", transit:"#5c6570", stay:"#a8382f"};
 const CAT_LABEL = {sight:"Sight / Landmark", food:"Food & Drink", night:"Nightlife / View", suggest:"Suggested add", trip:"Day trip", transit:"Transport", stay:"Lodging"};
 const MODES = {
@@ -1208,23 +1218,29 @@ function renderCities(cityKeys){
    on the actual trip, not just experimenting in one sitting.
    ========================================================= */
 function savePlanOrder(){
-  const snap = {};
-  DAYS.forEach(d=>{ snap[d.id] = d.stops.map(s=>s.n); });
+  const snap = {v: CONTENT_VERSION, days: {}};
+  DAYS.forEach(d=>{ snap.days[d.id] = d.stops.map(s=>({n:s.n, t:s.t})); });
   try{ localStorage.setItem("planOrder", JSON.stringify(snap)); }catch(e){}
 }
 function applySavedPlanOrder(){
   let saved;
   try{ saved = JSON.parse(localStorage.getItem("planOrder")||"null"); }catch(e){ saved = null; }
   if(!saved) return;
+  // A content edit (new CONTENT_VERSION) always wins over an on-device
+  // reorder/time-edit made against the previous version — otherwise a
+  // stale local snapshot silently overrides freshly-authored order/times
+  // with no visible sign why, on that one device only.
+  if(saved.v !== CONTENT_VERSION){ try{ localStorage.removeItem("planOrder"); }catch(e){} return; }
+  const saved_days = saved.days || {};
   const byName = new Map();
   DAYS.forEach(d=>d.stops.forEach(s=>{ if(!byName.has(s.n)) byName.set(s.n, {stop:s, home:d, used:false}); }));
   DAYS.forEach(d=>{ d.stops = []; });
-  Object.keys(saved).forEach(dayId=>{
+  Object.keys(saved_days).forEach(dayId=>{
     const day = DAYS.find(d=>d.id===dayId);
     if(!day) return;
-    saved[dayId].forEach(name=>{
-      const entry = byName.get(name);
-      if(entry && !entry.used){ day.stops.push(entry.stop); entry.used = true; }
+    saved_days[dayId].forEach(rec=>{
+      const entry = byName.get(rec.n);
+      if(entry && !entry.used){ if(rec.t) entry.stop.t = rec.t; day.stops.push(entry.stop); entry.used = true; }
     });
   });
   // anything not covered by the saved snapshot (new content added since it was
@@ -1238,6 +1254,85 @@ function moveStop(dayId, idx, delta){
   if(newIdx < 0 || newIdx >= day.stops.length) return;
   const [s] = day.stops.splice(idx, 1);
   day.stops.splice(newIdx, 0, s);
+  savePlanOrder();
+  renderCities(day.cities);
+  selectDay(currentDay);
+}
+function reorderStopTo(dayId, fromIdx, toIdx){
+  const day = DAYS.find(d=>d.id===dayId);
+  if(!day || fromIdx===toIdx) return;
+  const [s] = day.stops.splice(fromIdx, 1);
+  day.stops.splice(toIdx, 0, s);
+  savePlanOrder();
+  renderCities(day.cities);
+  selectDay(currentDay);
+}
+/* Long-press + drag reordering. A short tap on the handle does nothing (so
+   it doesn't fight normal scrolling); holding for ~350ms without moving
+   arms the drag, after which vertical motion swaps the row past whichever
+   neighbor it's crossed the midpoint of. The live DOM move is just visual
+   feedback — the actual array splice (and persistence) happens once, in
+   reorderStopTo, when the finger/mouse lifts. */
+function initDragReorder(dayId){
+  const container = $("#timeline");
+  if(!container) return;
+  container.querySelectorAll(".tl-drag").forEach(handle=>{
+    const row = handle.closest(".tl-stop");
+    handle.addEventListener("pointerdown", e=>{
+      if(e.pointerType==="mouse" && e.button!==0) return;
+      const startX = e.clientX, startY = e.clientY;
+      const startIdx = +row.dataset.i;
+      let armed = false;
+      const armTimer = setTimeout(()=>{ armed = true; beginDrag(e, row, dayId, startIdx); }, 350);
+      const cancelArm = moveEv=>{
+        if(!armed && (Math.abs(moveEv.clientX-startX)>10 || Math.abs(moveEv.clientY-startY)>10)){
+          clearTimeout(armTimer);
+        }
+      };
+      const clear = ()=>{ clearTimeout(armTimer); handle.removeEventListener("pointermove", cancelArm); };
+      handle.addEventListener("pointermove", cancelArm);
+      handle.addEventListener("pointerup", clear, {once:true});
+      handle.addEventListener("pointercancel", clear, {once:true});
+    });
+  });
+}
+function beginDrag(e, row, dayId, startIdx){
+  const container = $("#timeline");
+  try{ row.setPointerCapture(e.pointerId); }catch(err){}
+  row.classList.add("dragging");
+  let curIdx = startIdx;
+  const onMove = moveEv=>{
+    moveEv.preventDefault();
+    const y = moveEv.clientY;
+    const siblings = [...container.querySelectorAll(".tl-stop")].filter(el=>el!==row);
+    for(const sib of siblings){
+      const r = sib.getBoundingClientRect();
+      const mid = r.top + r.height/2;
+      const sibIdx = +sib.dataset.i;
+      if(y < mid && sibIdx < curIdx){ container.insertBefore(row, sib); curIdx = sibIdx; break; }
+      if(y > mid && sibIdx > curIdx){ container.insertBefore(row, sib.nextSibling); curIdx = sibIdx; break; }
+    }
+  };
+  const onUp = upEv=>{
+    row.classList.remove("dragging");
+    document.removeEventListener("pointermove", onMove);
+    document.removeEventListener("pointerup", onUp);
+    if(curIdx!==startIdx) reorderStopTo(dayId, startIdx, curIdx);
+    else selectDay(dayId);
+  };
+  document.addEventListener("pointermove", onMove);
+  document.addEventListener("pointerup", onUp, {once:true});
+}
+function editStopTime(dayId, idx){
+  const day = DAYS.find(d=>d.id===dayId);
+  if(!day) return;
+  const s = day.stops[idx];
+  const input = prompt("New time for “"+s.n+"” (24h, e.g. 17:15):", s.t);
+  if(input==null) return;
+  const m = input.trim().match(/^([01]?\d|2[0-3]):([0-5]\d)$/);
+  if(!m){ alert("Use 24h HH:MM, e.g. 09:05 or 17:15."); return; }
+  s.t = m[1].padStart(2,"0")+":"+m[2];
+  day.stops.sort((a,b)=> a.t.localeCompare(b.t));
   savePlanOrder();
   renderCities(day.cities);
   selectDay(currentDay);
@@ -1694,7 +1789,11 @@ function selectDay(id){
     // glance; the note prose and secondary links (Maps, Remove) tuck behind
     // a tap — fewer pixels per stop means less scrolling to see the rest of the day.
     tl += `<div class="tl-stop" data-i="${i}" data-kind="${kind}">
-        <div class="tl-idx"><div class="n">${i+1}</div><div class="tm">${esc(fmtTime12(s.t))}</div></div>
+        <div class="tl-idx">
+          <div class="tl-drag" title="Hold and drag to reorder">⠿</div>
+          <div class="n">${i+1}</div>
+          <div class="tm" onclick="event.stopPropagation();editStopTime('${d.id}',${i});" title="Tap to edit time">${esc(fmtTime12(s.t))}</div>
+        </div>
         <div style="min-width:0;">
           <div class="tl-name"><span class="tl-cat" style="background:${COLORS[s.cat]}"></span>${esc(s.n)}${badge}</div>
           ${s.cost?`<div class="tl-cost">${esc(s.cost)}</div>`:""}
@@ -1717,6 +1816,7 @@ function selectDay(id){
   });
   $("#timeline").innerHTML = tl;
   renderUpNext(d);
+  initDragReorder(d.id);
 
   // map — guarded so a failed/blocked Leaflet load (flaky travel wifi) can't
   // take the rest of the day view down with it
