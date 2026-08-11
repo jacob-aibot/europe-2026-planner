@@ -68,6 +68,17 @@ Also worth checking after data edits: every `lat`/`lng` should sit within ~35 km
 - **Prompt for actions rather than mentioning them.** Standing instruction from Jacob: when something needs his input, ask directly instead of burying it in prose.
 - **Be concise.** No preamble, no restating the request.
 
+## The "check email" routine
+
+When Jacob says "check email" (or equivalent), don't re-scan the whole inbox — search Gmail for anything **newer than the "Last verified against Gmail" date at the top of `docs/BOOKINGS.md`**. For each new ticket, booking, or confirmation found:
+
+- Add/update it in the relevant `docs/BOOKINGS.md` section (table row, seat/ref changes, new "Resolved" entry).
+- Reflect it in the matching `DAYS` stop in the HTML (ref, price, seat, booking link).
+- **Embed the actual ticket in the app, not just a manage-booking page.** Set `ticket:true` and point `book.u` at the real ticket/QR/boarding-pass link (pull it from the confirmation email's structured data if the visible "view ticket" button is broken — FlixBus's has been). Same pattern already used for the CAT and City Walls tickets. Only fall back to a generic manage-booking link when no direct ticket link exists.
+- Bump the "Last verified against Gmail" date to today once done.
+
+If nothing new turns up, still bump the date — that's what makes the next check incremental instead of a full re-scan.
+
 ## Constraints worth not rediscovering
 
 - The Gmail connector holds **one account at a time** — reconnecting swaps rather than adds. Ryanair mail is in `jacobierules@gmail.com`, everything else in `jacobseemann1@gmail.com`.

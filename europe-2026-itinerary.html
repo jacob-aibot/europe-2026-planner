@@ -842,8 +842,8 @@ const DAYS = [
 { id:"08-12", dow:"Wed", d:12, city:"split", cities:["dubrovnik","split"], title:"Coastal bus to Split, palace at night",
   sub:"FlixBus 07:15 → 11:20. One of the best coastal drives in Europe — sit on the right side for the sea. Two short Bosnia border crossings, passport out.",
   stops:[
-    {t:"06:40", n:"Dubrovnik bus terminal (Gruž)", cat:"transit", lat:42.6600, lng:18.0731, note:"20 min from Old Town. Booking #3379864687 — have the QR ready.", move:{mode:"taxi", mins:12}, book:{l:"Manage FlixBus ↗", u:"https://global.flixbus.com/"}},
-    {t:"07:15", n:"FlixBus → Split", cat:"transit", lat:43.5045, lng:16.4406, note:"~4 hrs, arrives 11:20. Snacks on board are grim — buy something at Gruž first.", move:{mode:"bus", mins:245}},
+    {t:"06:50", n:"Dubrovnik bus terminal (Gruž)", cat:"transit", lat:42.6600, lng:18.0731, note:"Obala pape Ivana Pavla II 44A — an ~8–10 min walk along the harbor front from Petra Marina, no taxi needed. FlixBus doesn't have a separate curbside stop; check the departure board inside for your platform (peron). Booking #3379864687, seat 12A (reassigned Aug 6).", ticket:true, move:{mode:"walk", mins:9}, book:{l:"Show ticket ↗", u:"https://shop.global.flixbus.com/pdfqr/3381996947/nc7msxmpo5xl8qr4uwoqmya9u18iz9c7218toi1u4ktjbr5f18?mfb_source=email"}},
+    {t:"07:15", n:"FlixBus → Split", cat:"transit", lat:43.5045, lng:16.4406, note:"~4 hrs, arrives 11:20. Seat 12A (FlixBus reassigned it Aug 6 — was unassigned). Snacks on board are grim — buy something at Gruž first.", move:{mode:"bus", mins:245}},
     {t:"12:00", n:"Check in, drop bags", cat:"stay", lat:43.5081, lng:16.4402, note:"Not booked. Staying inside or just north of the palace walls means you walk everywhere for three days.", move:{mode:"walk", mins:6}, book:{l:"Find a room ↗", u:"https://www.booking.com/searchresults.html?ss=Split&checkin=2026-08-12&checkout=2026-08-15"}},
     {t:"18:00", n:"Riva waterfront, early dinner", cat:"food", lat:43.5074, lng:16.4384, note:"Palm-lined promenade. Overpriced for food, perfect for a drink at sunset.", cost:"€20–35", c:[20,35], move:{mode:"walk", mins:4}},
     {t:"20:30", n:"Diocletian's Palace & Peristyle at night", cat:"sight", lat:43.5081, lng:16.4402, note:"Free, open 24/7, and much better after dark once the day crowds clear. Klapa singers perform in the Peristyle most summer evenings — the acoustics are the whole point.", badge:"free", move:{mode:"walk", mins:4}}
@@ -1030,7 +1030,7 @@ const CITY_PLACES = {
     {n:"Cable Car (base station)",cat:"sight",lat:42.6444,lng:18.1148,note:"~€27 return to Srđ Hill",book:{l:"Buy",u:"https://www.dubrovnikcablecar.com/buy-tickets"}},
     {n:"Rector's Palace",cat:"suggest",lat:42.6404,lng:18.1101,note:"Dubrovnik Museums ticket",book:{l:"Museums",u:"https://www.dumus.hr/en/"}},
     {n:"Banje Beach",cat:"food",lat:42.6408,lng:18.1170,note:"Main beach, busier"},
-    {n:"Gruž bus terminal",cat:"transit",lat:42.6600,lng:18.0731,note:"FlixBus to Split departs here",book:{l:"FlixBus",u:"https://global.flixbus.com/"}}
+    {n:"Gruž bus terminal",cat:"transit",lat:42.6600,lng:18.0731,note:"Obala pape Ivana Pavla II 44A. FlixBus to Split departs here — 8–10 min walk from Petra Marina, check the departure board for your platform",book:{l:"FlixBus",u:"https://global.flixbus.com/"}}
   ],
   split:[
     {n:"Diocletian's Palace / Peristyle",cat:"sight",lat:43.5081,lng:16.4402,note:"Free, open 24/7"},

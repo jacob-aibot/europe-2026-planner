@@ -1,7 +1,7 @@
 # Bookings & Open Items
 
 Traveller: Jacob — jacobseemann1@gmail.com (Ryanair mail lives in jacobierules@gmail.com)
-Last verified against Gmail: **Aug 7, 2026**
+Last verified against Gmail: **Aug 11, 2026**
 
 ## Confirmed transport
 
@@ -44,6 +44,10 @@ Found in the Aug 7 sweep, all same-day purchases:
 - **City Airport Train** (Aug 8, Vienna) — order 843249, €13.41.
 - **Dubrovnik City Walls** (Aug 11) — order DUB26M6CVTSWMF, €40 (adult walls + Lovrijenac combined, matches what was already budgeted as one ticket).
 - **Dubrovnik Cable Car** (Aug 10) — order 2665250 via ulaznice.hr, open-dated through 31 Mar 2027.
+
+### FlixBus seat reassigned (found Aug 11 check)
+
+FlixBus emailed on Aug 6 that booking #3379864687 (Dubrovnik → Split) got reseated: **seat 12A**, previously unassigned. The direct PDF/QR ticket link is now embedded in the app on the Aug 12 "Dubrovnik bus terminal" stop (`ticket:true`) — no need to dig through email. Pulled from the reservation's structured ticket data since FlixBus's own "View your ticket" button link is broken (malformed query string in their template).
 
 ### UK ETA — approved
 
