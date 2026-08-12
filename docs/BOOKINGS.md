@@ -56,7 +56,9 @@ I initially tried a direct "pdfqr" ticket link scraped from the confirmation ema
 
 Booked directly by Jacob via GetYourGuide. "5 Islands Full-Day Tour to Blue Cave, Vis & Hvar" (t490898), operator **Salty Experience**: Blue Cave, Stiniva, Budikovac Lagoon swim, Hvar Town (~2 hrs) on a small-group speedboat with a sun deck (not a bare RIB). Picked over two alternatives — a Brač-added tour with an extra unincluded Blue Cave fee, and a closer-to-Split Šolta/Drvenik/Čiovo tour that skips Blue Cave and Hvar entirely.
 
-Confirmation landed Aug 12, 8:20am (`GYGG45MLA9Q9`, PIN `BGXw#EW8`, confirmed via `search_threads`/`get_message`): **$159.98 total, not the $132 listing price** shown pre-checkout — taxes/fees on top. Meeting point is the "SPLIT" letters sign on the Riva, arrive 6:45am for the 7:00am departure. Blue Cave entrance fee is separate and cash-only. Booking is non-refundable/non-reschedulable. No PDF ticket exists — GetYourGuide's model here is an in-app mobile ticket tied to the booking ref, unlike FlixBus's downloadable boarding pass, so there's nothing to embed as a local file this time; the app itself is the ticket.
+Confirmation landed Aug 12, 8:20am (`GYGG45MLA9Q9`, PIN `BGXw#EW8`, confirmed via `search_threads`/`get_message`): **$159.98 total, not the $132 listing price** shown pre-checkout — taxes/fees on top. Meeting point is the "SPLIT" letters sign on the Riva, arrive 6:45am for the 7:00am departure. Blue Cave entrance fee is separate and cash-only. Booking is non-refundable/non-reschedulable.
+
+Real ticket link is now embedded (`ticket:true`): `https://gyg.me/4Cz3oaO3`, GetYourGuide's own short link. Unlike the FlixBus PDF, this isn't a static file — I couldn't fetch or verify it myself (getyourguide.com and gyg.me are both blocked by this session's network proxy), so it's linked on the strength of Jacob opening it on his own phone and confirming it shows the actual QR ticket for GYGG45MLA9Q9, Aug 13 7:00 AM, marked "Available offline."
 
 ### UK ETA — approved
 
