@@ -52,6 +52,14 @@ FlixBus emailed on Aug 6 that booking #3379864687 (Dubrovnik → Split) got rese
 
 I initially tried a direct "pdfqr" ticket link scraped from the confirmation email's structured data — it 404'd. There's no attachment-download tool, so I can't pull the actual PDF out of Gmail myself. Jacob downloaded the real boarding pass on his own phone and sent it back; it's now committed at `tickets/flixbus-dubrovnik-split-3379864687.pdf` and linked from the Aug 12 stop (`ticket:true`). This sidesteps FlixBus's auth-token links entirely — it's a static file served alongside the app, nothing to expire or 404.
 
+### Blue Cave/Hvar speedboat tour — booked (Aug 13)
+
+Booked directly by Jacob via GetYourGuide. "5 Islands Full-Day Tour to Blue Cave, Vis & Hvar" (t490898), operator **Salty Experience**: Blue Cave, Stiniva, Budikovac Lagoon swim, Hvar Town (~2 hrs) on a small-group speedboat with a sun deck (not a bare RIB). Picked over two alternatives — a Brač-added tour with an extra unincluded Blue Cave fee, and a closer-to-Split Šolta/Drvenik/Čiovo tour that skips Blue Cave and Hvar entirely.
+
+Confirmation landed Aug 12, 8:20am (`GYGG45MLA9Q9`, PIN `BGXw#EW8`, confirmed via `search_threads`/`get_message`): **$159.98 total, not the $132 listing price** shown pre-checkout — taxes/fees on top. Meeting point is the "SPLIT" letters sign on the Riva, arrive 6:45am for the 7:00am departure. Blue Cave entrance fee is separate and cash-only. Booking is non-refundable/non-reschedulable.
+
+Real ticket link is now embedded (`ticket:true`): `https://gyg.me/4Cz3oaO3`, GetYourGuide's own short link. Unlike the FlixBus PDF, this isn't a static file — I couldn't fetch or verify it myself (getyourguide.com and gyg.me are both blocked by this session's network proxy), so it's linked on the strength of Jacob opening it on his own phone and confirming it shows the actual QR ticket for GYGG45MLA9Q9, Aug 13 7:00 AM, marked "Available offline."
+
 ### UK ETA — approved
 
 Ref 2020-0000-5923-3855, approved Aug 7, valid until 7 Aug 2028, tied to the passport ending 2770. Paid $27.98. Needed for the London/Windsor leg — nothing to print, checked automatically against the passport at the border.
@@ -64,7 +72,7 @@ Nothing booked for Prague, Budapest, or London. The Overview tab carries Booking
 
 ### 1b. Tickets/tours still unpurchased — the Overview tab has the full punch list
 
-Most urgent: the **Hungarian Parliament tour** (Aug 20) sells out days ahead in August and is the only item here that can go to zero. Also worth doing before he lands: **Blue Cave/Hvar speedboat** (Aug 13, popular operators fill up), **Széchenyi** (skips the walk-up queue), **Prague Castle Main Circuit** (Aug 15, biggest tour-bus magnet), **Windsor Castle** (saves ~£4pp booked ahead). Lower-urgency: Jewish Quarter combined ticket, Danube cruise, Austrian National Library State Hall.
+Most urgent: the **Hungarian Parliament tour** (Aug 20) sells out days ahead in August and is the only item here that can go to zero. Also worth doing before he lands: **Széchenyi** (skips the walk-up queue), **Prague Castle Main Circuit** (Aug 15, biggest tour-bus magnet), **Windsor Castle** (saves ~£4pp booked ahead). Lower-urgency: Jewish Quarter combined ticket, Danube cruise, Austrian National Library State Hall. (Blue Cave/Hvar speedboat is booked — see Resolved, below.)
 
 ### 2. Prague is a brand-new 3-night city, entirely undrafted before this pass
 
