@@ -54,7 +54,9 @@ I initially tried a direct "pdfqr" ticket link scraped from the confirmation ema
 
 ### Blue Cave/Hvar speedboat tour — booked (Aug 13)
 
-Booked directly by Jacob via GetYourGuide, not found via email. "5 Islands Full-Day Tour to Blue Cave, Vis & Hvar" (t490898): Blue Cave, Stiniva, Budikovac Lagoon swim, Hvar Town (~2 hrs) on a small-group speedboat. $132pp — higher than the €90–113 range priced in the pricing-verified pass below; that range was for a different/generic operator. Picked over two alternatives (a Brač-added tour with an extra unincluded Blue Cave fee, and a closer-to-Split Šolta/Drvenik/Čiovo tour that skips Blue Cave and Hvar entirely) specifically for boat comfort — this one's listing calls out plush seating and a sun deck rather than a bare RIB. No e-ticket/QR link available yet; the GetYourGuide tour page is linked as the booking reference until a confirmation with a scannable voucher shows up.
+Booked directly by Jacob via GetYourGuide. "5 Islands Full-Day Tour to Blue Cave, Vis & Hvar" (t490898), operator **Salty Experience**: Blue Cave, Stiniva, Budikovac Lagoon swim, Hvar Town (~2 hrs) on a small-group speedboat with a sun deck (not a bare RIB). Picked over two alternatives — a Brač-added tour with an extra unincluded Blue Cave fee, and a closer-to-Split Šolta/Drvenik/Čiovo tour that skips Blue Cave and Hvar entirely.
+
+Confirmation landed Aug 12, 8:20am (`GYGG45MLA9Q9`, PIN `BGXw#EW8`, confirmed via `search_threads`/`get_message`): **$159.98 total, not the $132 listing price** shown pre-checkout — taxes/fees on top. Meeting point is the "SPLIT" letters sign on the Riva, arrive 6:45am for the 7:00am departure. Blue Cave entrance fee is separate and cash-only. Booking is non-refundable/non-reschedulable. No PDF ticket exists — GetYourGuide's model here is an in-app mobile ticket tied to the booking ref, unlike FlixBus's downloadable boarding pass, so there's nothing to embed as a local file this time; the app itself is the ticket.
 
 ### UK ETA — approved
 
