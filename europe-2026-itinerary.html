@@ -520,12 +520,11 @@
       </div>
 
       <div class="card warn" style="grid-column:1/-1;">
-        <h3>Still open — Split, Prague, Budapest &amp; London lodging</h3>
-        <p style="font-size:13.5px;margin:0 0 12px;color:var(--ink);">Vienna and Dubrovnik are booked (found in Gmail, see below). Split, Prague, Budapest and London are still unbooked as of Aug 7. Search links are pre-filled with your actual dates.</p>
+        <h3>Still open — Prague, Budapest &amp; London lodging</h3>
+        <p style="font-size:13.5px;margin:0 0 12px;color:var(--ink);">Vienna, Dubrovnik and Split are booked (found in Gmail, see below). Prague, Budapest and London are still unbooked. Search links are pre-filled with your actual dates.</p>
         <table>
           <thead><tr><th>City</th><th>Nights</th><th>Rough range</th><th>Search</th></tr></thead>
           <tbody>
-          <tr><td>Split</td><td>3 (Aug 12–15)</td><td>€75–105pp dorm — back to your sheet's original 3 nights now that the flight moved</td><td><a class="book warn" href="https://www.booking.com/searchresults.html?ss=Split&checkin=2026-08-12&checkout=2026-08-15" target="_blank" rel="noopener">Find a room ↗</a></td></tr>
           <tr><td>Prague</td><td><span class="pill pill-warn">3 — new, wasn't in the plan</span></td><td>Not confirmed in either inbox</td><td><a class="book warn" href="https://www.booking.com/searchresults.html?ss=Prague&checkin=2026-08-15&checkout=2026-08-18" target="_blank" rel="noopener">Find a room ↗</a></td></tr>
           <tr><td>Budapest</td><td>3 (Aug 18–21)</td><td>Not confirmed in either inbox</td><td><a class="book warn" href="https://www.booking.com/searchresults.html?ss=Budapest&checkin=2026-08-18&checkout=2026-08-21" target="_blank" rel="noopener">Find a room ↗</a></td></tr>
           <tr><td>Windsor (not central London)</td><td>1 (Aug 21–22)</td><td>Not confirmed in either inbox — staying in Windsor, ~20–30 min from LHR</td><td><a class="book warn" href="https://www.booking.com/searchresults.html?ss=Windsor%2C+UK&checkin=2026-08-21&checkout=2026-08-22" target="_blank" rel="noopener">Find a room ↗</a></td></tr>
@@ -555,7 +554,7 @@
         <h3 style="color:var(--accent2);">Resolved — the Aug 15 conflict, and Vienna/Dubrovnik lodging</h3>
         <p style="font-size:13.5px;margin:0 0 8px;color:var(--ink);line-height:1.6;">Your sheet planned <b>Sat Aug 15</b>: meet your girlfriend's family in the morning, then fly out at 2pm. The Smartwings ticket was reissued on Aug 4 — Split→Prague now departs <b>14:40 on Aug 15</b> instead of Aug 18. Same date, same time your sheet had, just routed through Prague instead of direct. Split reverts to the 3 nights your sheet always planned; the family meetup morning fits Aug 15 exactly as written.</p>
         <p style="font-size:13.5px;margin:0 0 8px;color:var(--ink);line-height:1.6;"><b>You confirmed Prague→Budapest is Tue Aug 18 at ~19:30</b> — not the same day as the Smartwings arrival, as I'd assumed. That makes Prague a real 3-night stay (Aug 15–18), and Budapest goes back to its original 3 nights (Aug 18–21), not 6. Prague's tab is rebuilt from scratch below since it didn't exist in any plan before now.</p>
-        <p style="font-size:13.5px;margin:0;color:var(--ink);line-height:1.6;">Also found in Gmail: <b>Habyt Vienna</b> (Aug 8–10, conf 5814731574) and <b>Hostel Petra Marina</b> in Dubrovnik (Aug 10–12, conf 5175904714) are both booked and confirmed — details on their city tabs.</p>
+        <p style="font-size:13.5px;margin:0;color:var(--ink);line-height:1.6;">Also found in Gmail: <b>Habyt Vienna</b> (Aug 8–10, conf 5814731574), <b>Hostel Petra Marina</b> in Dubrovnik (Aug 10–12, conf 5175904714), and <b>Guest House Lana</b> in Split (Aug 12–15, conf 6381031260) are all booked and confirmed — details on their city tabs.</p>
       </div>
 
       <div class="card">
@@ -666,7 +665,7 @@
     </div>
     <div class="facts">
       <span class="fact">Euro (€)</span><span class="fact">Back to your original 3-night plan</span>
-      <span class="fact">Best palace hours: 7–9am</span><span class="fact">Lodging not booked</span>
+      <span class="fact">Best palace hours: 7–9am</span><span class="fact">Guest House Lana booked</span>
     </div>
     <div class="subnav">
       <button class="active" data-sub="split-map">Map</button>
@@ -847,7 +846,7 @@ const DAYS = [
   stops:[
     {t:"06:50", n:"Dubrovnik bus terminal (Gruž)", cat:"transit", lat:42.6600, lng:18.0731, note:"Obala pape Ivana Pavla II 44A — an ~8–10 min walk along the harbor front from Petra Marina, no taxi needed. FlixBus doesn't have a separate curbside stop; check the departure board inside for your platform (peron). Booking #3379864687, seat 12A (reassigned Aug 6).", ticket:true, move:{mode:"walk", mins:9}, book:{l:"Show boarding pass ↗", u:"tickets/flixbus-dubrovnik-split-3379864687.pdf"}},
     {t:"07:15", n:"FlixBus → Split", cat:"transit", lat:43.5045, lng:16.4406, note:"~4 hrs, arrives 11:20. Seat 12A (FlixBus reassigned it Aug 6 — was unassigned). Snacks on board are grim — buy something at Gruž first.", move:{mode:"bus", mins:245}},
-    {t:"12:00", n:"Check in, drop bags", cat:"stay", lat:43.5081, lng:16.4402, note:"Not booked. Staying inside or just north of the palace walls means you walk everywhere for three days.", move:{mode:"walk", mins:6}, book:{l:"Find a room ↗", u:"https://www.booking.com/searchresults.html?ss=Split&checkin=2026-08-12&checkout=2026-08-15"}},
+    {t:"12:00", n:"Check in — Guest House Lana", cat:"stay", lat:43.5045, lng:16.4530, note:"Hektorovićeva 53, Split — booked, conf 6381031260, PIN 4200, Double/Twin room, 3 nights. Non-refundable, dates can't be changed. Near Bačvice Beach, ~15 min walk to Diocletian's Palace — not inside the walls. Check-in window 3–8pm.", move:{mode:"walk", mins:15}, book:{l:"Hotel page ↗", u:"https://www.booking.com/hotel/hr/rooms-lana.html"}},
     {t:"18:00", n:"Riva waterfront, early dinner", cat:"food", lat:43.5074, lng:16.4384, note:"Palm-lined promenade. Overpriced for food, perfect for a drink at sunset.", cost:"€20–35", c:[20,35], move:{mode:"walk", mins:4}},
     {t:"20:30", n:"Diocletian's Palace & Peristyle at night", cat:"sight", lat:43.5081, lng:16.4402, note:"Free, open 24/7, and much better after dark once the day crowds clear. Klapa singers perform in the Peristyle most summer evenings — the acoustics are the whole point.", badge:"free", move:{mode:"walk", mins:4}}
   ]},
