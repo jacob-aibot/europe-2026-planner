@@ -841,7 +841,7 @@ const DAYS = [
     {t:"20:30", n:"Dinner at Dubrovnik 186", cat:"food", lat:42.6412, lng:18.1105, note:"Logged from the day itself. Bus tomorrow is 07:15 — pack tonight.", cost:"€25–40", c:[25,40], move:{mode:"walk", mins:15}}
   ]},
 
-{ id:"08-12", dow:"Wed", d:12, city:"split", cities:["dubrovnik","split"], title:"Coastal bus to Split, Marjan hike & Kasjuni swim, palace at night",
+{ id:"08-12", dow:"Wed", d:12, city:"split", cities:["dubrovnik","split"], title:"Coastal bus to Split, Marjan hike & Kasjuni swim",
   sub:"FlixBus 07:15 → 11:20. One of the best coastal drives in Europe — sit on the right side for the sea. Two short Bosnia border crossings, passport out. Bags drop at Lana on arrival since the room isn't ready till 3 — Marjan and Kasjuni fill the gap.",
   stops:[
     {t:"06:50", n:"Dubrovnik bus terminal (Gruž)", cat:"transit", lat:42.6600, lng:18.0731, note:"Obala pape Ivana Pavla II 44A — an ~8–10 min walk along the harbor front from Petra Marina, no taxi needed. FlixBus doesn't have a separate curbside stop; check the departure board inside for your platform (peron). Booking #3379864687, seat 12A (reassigned Aug 6).", ticket:true, move:{mode:"walk", mins:9}, book:{l:"Show boarding pass ↗", u:"tickets/flixbus-dubrovnik-split-3379864687.pdf"}},
@@ -851,8 +851,7 @@ const DAYS = [
     {t:"13:15", n:"Marjan Hill — Vidilica viewpoint & ridge walk", cat:"sight", lat:43.5127, lng:16.4270, note:"Steps up from Varoš to the Vidilica viewpoint over the harbour and islands, then the shaded pine-forest path along the ridge past the hillside chapels and the old Jewish cemetery. The real climb is over within 15 minutes — the rest is an easy shaded walk.", badge:"free", move:{mode:"walk", mins:25}},
     {t:"14:15", n:"Kasjuni Beach — swim", cat:"food", lat:43.5057, lng:16.3985, note:"Pebble beach at the western tip of the Marjan peninsula — the payoff at the end of the ridge path. Beach bar on site for a drink after. Bus 12 runs back to the centre from here if you don't want to retrace the path on foot.", cost:"€10–20 loungers/drinks", c:[10,20], move:{mode:"bus", mins:30}},
     {t:"15:45", n:"Check in — Guest House Lana", cat:"stay", lat:43.5045, lng:16.4530, note:"Bags already dropped this morning — this is just the room becoming ready. Near Bačvice Beach, ~15 min walk to Diocletian's Palace, not inside the walls. Shower off the beach before heading back out.", move:{mode:"walk", mins:15}, book:{l:"Hotel page ↗", u:"https://www.booking.com/hotel/hr/rooms-lana.html"}},
-    {t:"20:00", n:"Dinner — Smash Burger", cat:"food", lat:43.5081, lng:16.4402, note:"What actually happened — swapped out the planned Riva sunset dinner.", move:{mode:"walk", mins:4}},
-    {t:"20:30", n:"Diocletian's Palace & Peristyle at night", cat:"sight", lat:43.5081, lng:16.4402, note:"Free, open 24/7, and much better after dark once the day crowds clear. Klapa singers perform in the Peristyle most summer evenings — the acoustics are the whole point.", badge:"free", move:{mode:"walk", mins:4}}
+    {t:"20:00", n:"Dinner — Smash Burger", cat:"food", lat:43.5081, lng:16.4402, note:"What actually happened — swapped out the planned Riva sunset dinner.", move:{mode:"walk", mins:4}}
   ]},
 
 { id:"08-13", dow:"Thu", d:13, city:"split", cities:["split"], title:"Blue Cave, Hvar & the 5-island speedboat run",
@@ -864,7 +863,8 @@ const DAYS = [
     {t:"10:30", n:"Stiniva Cove, Vis", cat:"trip", lat:43.0322, lng:16.2306, note:"Cliff-walled pebble cove, reachable only by boat or a steep hike. Regularly voted the best beach in Europe.", move:{mode:"speedboat", mins:45}},
     {t:"12:15", n:"Budikovac / Blue Lagoon — snorkel stop", cat:"trip", lat:43.0433, lng:16.2790, note:"Shallow turquoise water, snorkelling gear included on most operators.", move:{mode:"speedboat", mins:25}},
     {t:"14:30", n:"Hvar Town", cat:"trip", lat:43.1729, lng:16.4414, note:"Usually 1.5–2 hrs free. Enough for the Fortica fortress climb or a harbour lunch — not both.", cost:"€15–25 lunch", c:[15,25], move:{mode:"speedboat", mins:50}},
-    {t:"18:30", n:"Back in Split — light dinner", cat:"food", lat:43.5074, lng:16.4384, note:"You'll be sunburnt and salty. Keep it close to the hotel.", cost:"€20–30", c:[20,30], move:{mode:"speedboat", mins:75}}
+    {t:"18:30", n:"Back in Split — light dinner", cat:"food", lat:43.5074, lng:16.4384, note:"You'll be sunburnt and salty. Keep it close to the hotel.", cost:"€20–30", c:[20,30], move:{mode:"walk", mins:10}},
+    {t:"20:30", n:"Diocletian's Palace & Peristyle at night", cat:"sight", lat:43.5081, lng:16.4402, note:"Moved from Aug 12 — didn't make it that night. Free, open 24/7, and much better after dark once the day crowds clear. Klapa singers perform in the Peristyle most summer evenings — the acoustics are the whole point. A slower way to close out a long boat day than another night out.", badge:"free"}
   ]},
 
 { id:"08-14", dow:"Fri", d:14, city:"split", cities:["split"], title:"Krka National Park — self-drive & hike loop",
