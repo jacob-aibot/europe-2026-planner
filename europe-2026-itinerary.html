@@ -135,6 +135,19 @@
   .sb-day:focus-visible,.sb-item:focus-visible{outline:2.5px solid var(--accent);outline-offset:1px;}
   .sb-badge{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;background:var(--accent-soft);color:var(--accent-ink);padding:1px 5px;border-radius:4px;margin-left:auto;}
 
+  /* ---------- Ticket modal (in-app PDF viewer with an explicit way back) ----------
+     PWAs in standalone mode have no browser chrome, so a plain target="_blank"
+     link to a local ticket PDF leaves no way back to the day. This renders the
+     PDF in-app instead, with its own close/back button. */
+  #ticket-modal{display:none;position:fixed;inset:0;z-index:2100;background:rgba(24,17,10,.55);}
+  #ticket-modal.open{display:flex;flex-direction:column;}
+  .ticket-modal-bar{flex:0 0 auto;display:flex;align-items:center;gap:10px;
+    padding:calc(env(safe-area-inset-top,0px) + 10px) 14px 10px;background:var(--panel);border-bottom:1px solid var(--line);}
+  .ticket-modal-back{display:inline-flex;align-items:center;gap:6px;background:var(--accent);color:#fff;
+    border:none;border-radius:var(--radius-pill);padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;}
+  .ticket-modal-title{font-size:13px;font-weight:700;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .ticket-modal-frame{flex:1 1 auto;border:none;width:100%;background:#fff;}
+
   /* ---------- Mobile top bar + off-canvas drawer ---------- */
   #mobile-topbar{display:none;}
   #sidebar-backdrop{display:none;}
@@ -479,6 +492,14 @@
   <button id="theme-toggle" onclick="toggleTheme()" aria-label="Toggle dark mode">🌙</button>
 </div>
 <div id="sidebar-backdrop" onclick="closeDrawer()"></div>
+
+<div id="ticket-modal" role="dialog" aria-modal="true" aria-label="Ticket">
+  <div class="ticket-modal-bar">
+    <button class="ticket-modal-back" onclick="closeTicketModal()">← Back to day</button>
+    <span class="ticket-modal-title" id="ticket-modal-title"></span>
+  </div>
+  <iframe id="ticket-modal-frame" class="ticket-modal-frame"></iframe>
+</div>
 
 <div class="shell">
 
@@ -1677,6 +1698,31 @@ function syncBottomTabs(){
     b.classList.toggle("active", on);
   });
 }
+
+/* ---------- Ticket modal ----------
+   Only intercepts links to our own committed ticket PDFs (relative "tickets/..."
+   paths) — external ticket links (e.g. GetYourGuide) keep opening normally,
+   since those aren't ours to embed and may block iframing anyway. */
+function openTicketModal(url, label){
+  $("#ticket-modal-frame").src = url;
+  $("#ticket-modal-title").textContent = label || "Ticket";
+  $("#ticket-modal").classList.add("open");
+  document.body.style.overflow = "hidden";
+}
+function closeTicketModal(){
+  $("#ticket-modal").classList.remove("open");
+  $("#ticket-modal-frame").src = "";
+  document.body.style.overflow = "";
+}
+document.addEventListener("click", e=>{
+  const a = e.target.closest("a.ticket");
+  if(!a) return;
+  const href = a.getAttribute("href") || "";
+  if(href.startsWith("tickets/")){
+    e.preventDefault();
+    openTicketModal(href, a.textContent.trim());
+  }
+});
 
 /* ---------- Mobile drawer ---------- */
 function openDrawer(){
