@@ -52,6 +52,12 @@ FlixBus emailed on Aug 6 that booking #3379864687 (Dubrovnik → Split) got rese
 
 I initially tried a direct "pdfqr" ticket link scraped from the confirmation email's structured data — it 404'd. There's no attachment-download tool, so I can't pull the actual PDF out of Gmail myself. Jacob downloaded the real boarding pass on his own phone and sent it back; it's now committed at `tickets/flixbus-dubrovnik-split-3379864687.pdf` and linked from the Aug 12 stop (`ticket:true`). This sidesteps FlixBus's auth-token links entirely — it's a static file served alongside the app, nothing to expire or 404.
 
+### Aug 14 replanned — Krka by FlixBus + boat excursion, not self-drive (Aug 13)
+
+Dropped the self-drive/rental-car version of Aug 14 (needed a car nobody was planning to rent, and put the whole hike in peak August heat). Replaced with a round-trip FlixBus, Split ↔ Skradin — booking 338 441 5948, €37.47 total (€14.49 out, €22.98 back), seats 9C outbound / 18A return, route 942a. Boarding pass PDF sent by Jacob and committed at `tickets/flixbus-split-skradin-3384415948.pdf`, linked from both Aug 14 stops (`ticket:true`). Jacob also sent a CloudFront-hosted copy of the same ticket, but the network here couldn't reach that domain to verify it resolves — used the committed PDF instead per the usual rule (a file in the repo can't 404 or expire).
+
+The day itself: boat transfer to Skradinski Buk (included in park entry), then the park's on-site Visovac + Roški Slap boat excursion (~€20, no advance booking, ~4hrs round trip) instead of the long self-drive hike to Oziđana Pećina — that hike doesn't connect to any public-transit-reachable trailhead on a schedule that actually works (the one bus route to the Roški Slap/Laškovica entrance only runs 4x/day from Šibenik, starting at 11:15, which would've put the hike in the hottest, most crowded part of the day anyway).
+
 ### UK ETA — approved
 
 Ref 2020-0000-5923-3855, approved Aug 7, valid until 7 Aug 2028, tied to the passport ending 2770. Paid $27.98. Needed for the London/Windsor leg — nothing to print, checked automatically against the passport at the border.
