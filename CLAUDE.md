@@ -66,6 +66,8 @@ Also worth checking after data edits: every `lat`/`lng` should sit within ~35 km
 - **Write like an expert travel planner.** Opening hours, crowd timing, which entrance, what's already included in which ticket, what's a tourist trap. Not a list of attractions.
 - **Every ticketed thing gets a booking link.** Official operator site where one exists, GetYourGuide for tours, airline manage-booking pages for flights. Verify a URL resolves before adding it.
 - **Prompt for actions rather than mentioning them.** Standing instruction from Jacob: when something needs his input, ask directly instead of burying it in prose.
+- **"Add" means add it to the app.** When Jacob says to add something, put it in the HTML (`DAYS`/`CITY_PLACES`/`OPTIONAL`) so he can see it on the page — don't just answer in chat. Commit and push straight to `master` without a second confirmation; only ask first if the day/city/placement is genuinely ambiguous.
+- **No feature branches, no PRs.** Jacob only wants `master` — work directly on it and push there. Don't create a `claude/...` working branch for edits unless he explicitly asks for one.
 - **Be concise.** No preamble, no restating the request.
 
 ## The "check email" routine
