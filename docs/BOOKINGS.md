@@ -76,6 +76,8 @@ Ref 2020-0000-5923-3855, approved Aug 7, valid until 7 Aug 2028, tied to the pas
 
 Nothing booked for Prague, Budapest, or London. The Overview tab carries Booking.com search links pre-filled with the correct dates for all three. (Split is booked — see Resolved, above.)
 
+**Prague — Jacob's picked an Airbnb**, in Prague 2 (Nové Město/New Town), near the river between U Fleků brewery and the Náplavka embankment market — not Old Town/Josefov as originally sketched. Reflected in the Aug 15 check-in and Aug 18 check-out stops with an approximate pin (Airbnb hides the exact address pre-booking). Still need: the actual listing link and, once booked, the confirmation ref — send those over and this gets a real address + booking link, same as Vienna/Dubrovnik/Split.
+
 ### 1b. Tickets/tours still unpurchased — the Overview tab has the full punch list
 
 Most urgent: the **Hungarian Parliament tour** (Aug 20) sells out days ahead in August and is the only item here that can go to zero. Also worth doing before he lands: **Széchenyi** (skips the walk-up queue), **Prague Castle Main Circuit** (Aug 15, biggest tour-bus magnet), **Windsor Castle** (saves ~£4pp booked ahead). Lower-urgency: Jewish Quarter combined ticket, Danube cruise, Austrian National Library State Hall. (Blue Cave/Hvar speedboat is booked — see Resolved, below.)
