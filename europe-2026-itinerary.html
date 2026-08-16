@@ -942,14 +942,14 @@ const DAYS = [
     {t:"19:30", n:"Dinner, Old Town", cat:"food", lat:50.0875, lng:14.4210, note:"Plenty of options right around the square — no need to book.", cost:"€20–30", c:[20,30], move:{mode:"walk", mins:10}}
   ]},
 
-{ id:"08-18", dow:"Tue", d:18, city:"budapest", cities:["prague","budapest"], title:"Petřín Hill, then Prague → Budapest",
-  sub:"Last morning in Prague, easy pace, then the Ryanair leg to Budapest that evening. The date this whole rebuild hinged on.",
+{ id:"08-18", dow:"Tue", d:18, city:"budapest", cities:["prague","budapest"], title:"Early flight: Prague → Budapest",
+  sub:"Corrected Aug 16 — this is a 7:30am departure, not 7:30pm as the app previously had it. That kills the leisurely last morning in Prague: pack the night before, no time for Petřín Hill or a sit-down lunch. You land with almost the whole day still ahead of you in Budapest — nothing built for the afternoon yet.",
+  flag:true,
   stops:[
-    {t:"09:30", n:"Petřín Hill funicular & lookout tower", cat:"sight", lat:50.0836, lng:14.3955, note:"Funicular is ~60 CZK each way (or use a transit day ticket). The mini Eiffel Tower lookout at the top is ~150 CZK — nice, not essential if you're short on time.", cost:"~60–150 CZK", c:[3,6], move:{mode:"walk", mins:10}},
-    {t:"12:00", n:"Check out, last lunch in Old Town", cat:"food", lat:50.0875, lng:14.4210, note:"Keep it light — long travel afternoon ahead.", cost:"€15–20", c:[15,20], move:{mode:"metro", mins:20}},
-    {t:"16:30", n:"Airport Express bus → Václav Havel Airport (PRG)", cat:"transit", lat:50.1008, lng:14.2600, note:"~40 min, ~100 CZK. Low-cost carrier bag drop closes 40 min before departure.", cost:"~100 CZK", c:[4,4], move:{mode:"bus", mins:40}},
-    {t:"19:30", n:"Ryanair PRG → Budapest", cat:"transit", lat:47.4298, lng:19.2611, note:"Lands ~20:45. Ref I54C9A.", move:{mode:"flight", mins:75}, book:{l:"Manage booking ↗", u:"https://www.ryanair.com/gb/en/check-in"}},
-    {t:"21:30", n:"100E airport bus → city, check in", cat:"stay", lat:47.4979, lng:19.0402, note:"Direct to Deák Ferenc tér, ~40 min, ~2700 HUF. Runs late. Lodging not booked.", cost:"~€7", c:[7,7], move:{mode:"bus", mins:40}, book:{l:"Find a room ↗", u:"https://www.booking.com/searchresults.html?ss=Budapest&checkin=2026-08-18&checkout=2026-08-21"}}
+    {t:"05:00", n:"Check out — pack the night before", cat:"stay", lat:50.0757, lng:14.4133, note:"Early flight means no relaxed last morning. Have bags ready before you sleep on Aug 17.", move:{mode:"metro", mins:20}},
+    {t:"05:30", n:"Airport Express bus → Václav Havel Airport (PRG)", cat:"transit", lat:50.1008, lng:14.2600, note:"~40 min, ~100 CZK. Low-cost carrier bag drop closes 40 min before departure — this timing is tight for a 7:30 flight, don't linger.", cost:"~100 CZK", c:[4,4], move:{mode:"bus", mins:40}},
+    {t:"07:30", n:"Ryanair PRG → Budapest", cat:"transit", lat:47.4298, lng:19.2611, note:"Lands ~08:45. Ref I54C9A. Corrected Aug 16 — this was 19:30 in the app before; Jacob confirmed it's actually 07:30.", move:{mode:"flight", mins:75}, book:{l:"Manage booking ↗", u:"https://www.ryanair.com/gb/en/check-in"}},
+    {t:"09:30", n:"100E airport bus → city, check in", cat:"stay", lat:47.4979, lng:19.0402, note:"Direct to Deák Ferenc tér, ~40 min, ~2700 HUF. Lodging not booked.", cost:"~€7", c:[7,7], move:{mode:"bus", mins:40}, book:{l:"Find a room ↗", u:"https://www.booking.com/searchresults.html?ss=Budapest&checkin=2026-08-18&checkout=2026-08-21"}}
   ]},
 
 { id:"08-19", dow:"Wed", d:19, city:"budapest", cities:["budapest"], title:"Buda hill, then the baths",

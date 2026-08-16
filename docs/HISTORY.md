@@ -61,6 +61,12 @@ That flipped the whole downstream shape: Prague goes from a 3-hour stub to a rea
 
 The tell in hindsight: two unconfirmed data points (an unverifiable Ryanair ref, and an inference about what "must" be true for a connection to work) don't add up to a confirmed one just because they'd be convenient together. Should have surfaced it as an open question rather than building a full itinerary on top of it.
 
+## Pass 6 — the 7:30 on I54C9A was am, not pm
+
+Pass 5 had Jacob confirming Prague→Budapest departs Aug 18 at 7:30pm, and Aug 18 got built around that: an easy last morning in Prague (Petřín Hill, a sit-down lunch) before an evening flight. Jacob corrected it again (Aug 16): it's 7:30am, not 7:30pm. Same date, wrong half of the clock.
+
+That kills the leisurely morning — bag drop for a low-cost carrier closes ~40min before departure, so the day now opens with an early checkout and a pre-dawn airport bus instead. It also means Jacob lands in Budapest around 08:45 instead of after 21:00, so Aug 18 goes from "arrival day, nothing planned" to "most of a full day in Budapest, nothing planned" — Aug 18's afternoon is now open and hasn't been filled in.
+
 ## Bugs caught by verification, not by looking
 
 Worth knowing these were found by scripted checks, because none of them were visible in the rendered page:
