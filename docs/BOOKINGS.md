@@ -72,9 +72,11 @@ Ref 2020-0000-5923-3855, approved Aug 7, valid until 7 Aug 2028, tied to the pas
 
 ## Open items — only Jacob can resolve these
 
-### 1. Prague, Budapest, and London lodging still unbooked
+### 1. Budapest and London lodging still unbooked; Prague's location is known but unconfirmed as booked
 
-Nothing booked for Prague, Budapest, or London. The Overview tab carries Booking.com search links pre-filled with the correct dates for all three. (Split is booked — see Resolved, above.)
+Nothing booked for Budapest or London — the Overview tab carries Booking.com search links pre-filled with the correct dates for both. (Split is booked — see Resolved, above.)
+
+**Prague:** Jacob gave the address directly (Aug 16) — **Jiráskovo náměstí 1775/4, 120 00 Prague 2** (New Town, on the square with the Dancing House, east end of Palackého most). This is *not* Old Town/Josefov, which the app's Aug 15 check-in stop originally assumed — updated to the real coordinates and reworked the nearby notes (dinner walk, Glass Bar) accordingly. Nothing about this address has turned up in either inbox, so whether it's an actual paid reservation or a different kind of arrangement (family/friend's place, already-booked Airbnb, etc.) is still unconfirmed — ask Jacob directly rather than guessing further.
 
 ### 1b. Tickets/tours still unpurchased — the Overview tab has the full punch list
 
