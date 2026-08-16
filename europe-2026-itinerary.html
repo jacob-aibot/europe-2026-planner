@@ -1714,6 +1714,10 @@ function closeTicketModal(){
   $("#ticket-modal-frame").src = "";
   document.body.style.overflow = "";
 }
+// Capture phase, not bubble: some ticket links carry their own
+// onclick="event.stopPropagation()" (to stop a tap from also triggering the
+// row underneath, e.g. in the timeline view) which would otherwise stop this
+// listener from ever seeing the click if it were on the bubble phase.
 document.addEventListener("click", e=>{
   const a = e.target.closest("a.ticket");
   if(!a) return;
@@ -1722,7 +1726,7 @@ document.addEventListener("click", e=>{
     e.preventDefault();
     openTicketModal(href, a.textContent.trim());
   }
-});
+}, true);
 
 /* ---------- Mobile drawer ---------- */
 function openDrawer(){
