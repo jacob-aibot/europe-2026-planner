@@ -30,6 +30,10 @@ Last verified against Gmail: **Aug 11, 2026**
 
 Jacob's spreadsheet always planned **Sat Aug 15**: morning with his girlfriend's family, then a 2pm flight out. The Smartwings reissue puts Split → Prague at exactly 14:40 on Aug 15 — same date, same time as his sheet, just routed through Prague instead of direct to Budapest. Built the Aug 15 day around his original morning plan; only the flight routing changed. Split reverts to its original 3 nights (Aug 12–15) as a direct consequence — the 6-night extension is gone.
 
+### Prague lodging — confirmed
+
+**Jiráskovo náměstí 1775/4, 120 00 Prague 2** (New Town, on the square with the Dancing House, east end of Palackého most) — Jacob gave the address directly (Aug 16) and confirmed it's a real, paid booking, not just a location he's considering. Still hasn't turned up in either inbox (not a Gmail find), so no confirmation number on file here. Updated the Aug 15 check-in stop to these coordinates — this is New Town, not Old Town/Josefov, which the app had assumed by default before this.
+
 ### Vienna, Dubrovnik & Split lodging — booked
 
 Found via `search_threads`/`get_message` on booking.com confirmation emails in jacobseemann1@gmail.com:
@@ -72,9 +76,9 @@ Ref 2020-0000-5923-3855, approved Aug 7, valid until 7 Aug 2028, tied to the pas
 
 ## Open items — only Jacob can resolve these
 
-### 1. Prague, Budapest, and London lodging still unbooked
+### 1. Budapest and London lodging still unbooked
 
-Nothing booked for Prague, Budapest, or London. The Overview tab carries Booking.com search links pre-filled with the correct dates for all three. (Split is booked — see Resolved, above.)
+Nothing booked for Budapest or London — the Overview tab carries Booking.com search links pre-filled with the correct dates for both. (Vienna, Dubrovnik, Split and Prague are all booked — see Resolved, above.)
 
 ### 1b. Tickets/tours still unpurchased — the Overview tab has the full punch list
 

@@ -541,12 +541,11 @@
       </div>
 
       <div class="card warn" style="grid-column:1/-1;">
-        <h3>Still open — Prague, Budapest &amp; London lodging</h3>
-        <p style="font-size:13.5px;margin:0 0 12px;color:var(--ink);">Vienna, Dubrovnik and Split are booked (found in Gmail, see below). Prague, Budapest and London are still unbooked. Search links are pre-filled with your actual dates.</p>
+        <h3>Still open — Budapest &amp; London lodging</h3>
+        <p style="font-size:13.5px;margin:0 0 12px;color:var(--ink);">Vienna, Dubrovnik, Split and Prague are booked. Budapest and London are still unbooked — search links pre-filled with your actual dates.</p>
         <table>
           <thead><tr><th>City</th><th>Nights</th><th>Rough range</th><th>Search</th></tr></thead>
           <tbody>
-          <tr><td>Prague</td><td><span class="pill pill-warn">3 — new, wasn't in the plan</span></td><td>Not confirmed in either inbox</td><td><a class="book warn" href="https://www.booking.com/searchresults.html?ss=Prague&checkin=2026-08-15&checkout=2026-08-18" target="_blank" rel="noopener">Find a room ↗</a></td></tr>
           <tr><td>Budapest</td><td>3 (Aug 18–21)</td><td>Not confirmed in either inbox</td><td><a class="book warn" href="https://www.booking.com/searchresults.html?ss=Budapest&checkin=2026-08-18&checkout=2026-08-21" target="_blank" rel="noopener">Find a room ↗</a></td></tr>
           <tr><td>Windsor (not central London)</td><td>1 (Aug 21–22)</td><td>Not confirmed in either inbox — staying in Windsor, ~20–30 min from LHR</td><td><a class="book warn" href="https://www.booking.com/searchresults.html?ss=Windsor%2C+UK&checkin=2026-08-21&checkout=2026-08-22" target="_blank" rel="noopener">Find a room ↗</a></td></tr>
           </tbody>
@@ -906,21 +905,24 @@ const DAYS = [
     {t:"09:00", n:"Morning with your girlfriend's family", cat:"food", lat:43.5081, lng:16.4402, note:"From your own sheet, kept exactly as planned. Nothing ticketed scheduled around it on purpose."},
     {t:"12:15", n:"Split Airport (SPU), Kaštela", cat:"transit", lat:43.5389, lng:16.2981, note:"~30 min from the centre by shuttle bus from the Riva, ~€6. Small airport, but August queues are real.", cost:"~€6", c:[6,6], move:{mode:"bus", mins:35}},
     {t:"14:40", n:"Smartwings QS1083 → Prague", cat:"transit", lat:50.1008, lng:14.2600, note:"Lands 16:15. Ref YZGDTS, reissued 04Aug2026 — this ticket used to say Aug 18.", move:{mode:"flight", mins:95}, book:{l:"Manage booking ↗", u:"https://www.smartwings.com/en/"}},
-    {t:"17:00", n:"Airport Express bus → city centre", cat:"transit", lat:50.0875, lng:14.4210, note:"AE bus to Prague main station, ~40 min, ~100 CZK. Ordinary public transit tickets are valid on it — no special fare needed.", cost:"~100 CZK", c:[4,4], move:{mode:"bus", mins:40}},
-    {t:"18:00", n:"Check in — Old Town", cat:"stay", lat:50.0875, lng:14.4210, note:"Not booked. Anywhere in Old Town or Josefov keeps everything below walkable.", move:{mode:"walk", mins:8}, book:{l:"Find a room ↗", u:"https://www.booking.com/searchresults.html?ss=Prague&checkin=2026-08-15&checkout=2026-08-18"}},
-    {t:"19:30", n:"Old Town Square + dinner", cat:"food", lat:50.0870, lng:14.4208, note:"Easy first night. Catch the Astronomical Clock's hourly show if you're passing on the hour — free, always a little anticlimactic, worth seeing once anyway.", cost:"€15–25", c:[15,25]}
+    {t:"17:00", n:"Airport Express bus → city centre", cat:"transit", lat:50.0830, lng:14.4357, note:"AE bus to Prague main station (Hlavní nádraží), ~40 min, ~100 CZK. Ordinary public transit tickets are valid on it — no special fare needed.", cost:"~100 CZK", c:[4,4], move:{mode:"bus", mins:40}},
+    {t:"18:00", n:"Check in — Jiráskovo náměstí", cat:"stay", lat:50.0757, lng:14.4133, note:"Jiráskovo náměstí 1775/4, Prague 2 — right on the square by the Dancing House, at the east end of Palackého most on the New Town side of the river. This is further from Old Town Square than the earlier 'stay in Old Town/Josefov' assumption (~25 min walk, or Metro C from the main station to I.P. Pavlova plus an 8-min walk) — but it puts you close to Vyšehrad (10–15 min walk south) and right along the Náplavka embankment. From the main station: Metro C southbound 2 stops to I.P. Pavlova, then walk.", move:{mode:"metro", mins:20}},
+    {t:"19:30", n:"Old Town Square + dinner", cat:"food", lat:50.0870, lng:14.4208, note:"A tram or short metro+walk from Jiráskovo náměstí, not a stroll — worth it for the first night. Catch the Astronomical Clock's hourly show if you're passing on the hour — free, always a little anticlimactic, worth seeing once anyway.", cost:"€15–25", c:[15,25]}
   ]},
 
 { id:"08-16", dow:"Sun", d:16, city:"prague", cities:["prague"], title:"Prague Castle & the Vltava crossing",
-  sub:"My draft — this city wasn't in your plan at all until the Ryanair correction. Castle early before the tour buses, Charles Bridge at its best in the morning light.",
+  sub:"Adjusted for an 11am start today (Aug 16) — you're arriving midday, not at opening, so the queue-skip framing is gone and Letná Park got cut to make the rest fit. Castle circuit, Lesser Town, Charles Bridge, dinner. Charles Bridge is still worth crossing even at midday brightness since you're already out.",
   sugDay:true,
   stops:[
-    {t:"08:30", n:"Prague Castle complex", cat:"sight", lat:50.0910, lng:14.4016, note:"Grounds free and open 6am–10pm; the Main Circuit ticket (St. Vitus Cathedral, Old Royal Palace, St. George's Basilica, Golden Lane) is ~450 CZK (~€18) and covers buildings open 9–17 in summer. Go right at opening — this is Prague's single biggest tour-bus magnet.", cost:"~450 CZK", c:[18,18], book:{l:"Tickets ↗", u:"https://www.hrad.cz/en"}},
-    {t:"12:00", n:"Lesser Town (Malá Strana) wander", cat:"sight", lat:50.0875, lng:14.4045, note:"Downhill from the castle — Baroque palaces and quiet lanes, worth the meander instead of a direct route to the bridge.", move:{mode:"walk", mins:12}},
-    {t:"13:00", n:"Lunch near Kampa Island", cat:"food", lat:50.0838, lng:14.4072, note:"Kampa's a small park island right by the bridge — good spot to eat before the crowds on Charles Bridge peak.", cost:"€15–25", c:[15,25], move:{mode:"walk", mins:5}},
-    {t:"14:30", n:"Lennon Wall", cat:"sight", lat:50.0866, lng:14.4058, note:"Free. Continuously repainted graffiti wall since the 1980s — still going.", badge:"free", move:{mode:"walk", mins:3}},
-    {t:"15:00", n:"Charles Bridge crossing", cat:"sight", lat:50.0865, lng:14.4114, note:"Free, open 24/7. Genuinely crowded midday in August — you're crossing it now because you already did the castle at opening, not because this time is quiet.", badge:"free", move:{mode:"walk", mins:8}},
-    {t:"19:30", n:"Dinner, Old Town", cat:"food", lat:50.0875, lng:14.4210, note:"Plenty of options right around the square — no need to book.", cost:"€20–30", c:[20,30], move:{mode:"walk", mins:10}}
+    {t:"11:00", n:"Prague Castle grounds & ticket queue", cat:"sight", lat:50.0910, lng:14.4016, note:"Grounds free and open 6am–10pm; the Main Circuit ticket (St. Vitus Cathedral, Old Royal Palace, St. George's Basilica, Golden Lane) is ~450 CZK (~€18), buildings open 9:00–17:00 in summer, so you're well inside the window. Starting at 11 means real midday crowds, not the opening-rush skip the earlier plan banked on — buy online via hrad.cz before you arrive if you can, it saves standing in the on-site ticket line.", cost:"~450 CZK", c:[18,18], book:{l:"Tickets ↗", u:"https://www.hrad.cz/en"}},
+    {t:"11:30", n:"St Vitus Cathedral", cat:"sight", lat:50.0908, lng:14.4009, note:"Included in the Main Circuit ticket. The Gothic centerpiece of the complex, nearly 600 years in the building — expect a real line for the cathedral itself even with ticket in hand, it's the single biggest draw in the complex.", move:{mode:"walk", mins:2}},
+    {t:"12:15", n:"St George's Basilica", cat:"sight", lat:50.0906, lng:14.4023, note:"Also included, no extra charge. Prague's best-preserved Romanesque church, founded around 920 AD — a plain Romanesque interior behind a Baroque terracotta façade added centuries later.", move:{mode:"walk", mins:3}},
+    {t:"12:35", n:"Golden Lane", cat:"sight", lat:50.0913, lng:14.4034, note:"Also included. Tiny cottages built into the castle's north wall — Kafka rented No. 22 briefly in 1916–17.", move:{mode:"walk", mins:3}},
+    {t:"13:00", n:"Lesser Town (Malá Strana) wander", cat:"sight", lat:50.0875, lng:14.4045, note:"Downhill from the castle — Baroque palaces and quiet lanes, worth the meander instead of a direct route to the bridge.", move:{mode:"walk", mins:15}},
+    {t:"14:00", n:"Lunch near Kampa Island", cat:"food", lat:50.0838, lng:14.4072, note:"Kampa's a small park island right by the bridge — good spot to eat before the crowds on Charles Bridge peak.", cost:"€15–25", c:[15,25], move:{mode:"walk", mins:5}},
+    {t:"15:00", n:"Lennon Wall", cat:"sight", lat:50.0866, lng:14.4058, note:"Free. Continuously repainted graffiti wall since the 1980s — still going.", badge:"free", move:{mode:"walk", mins:3}},
+    {t:"15:30", n:"Charles Bridge crossing", cat:"sight", lat:50.0865, lng:14.4114, note:"Free, open 24/7. Genuinely crowded at this hour — you're crossing it now because that's when you're here, not because it's quiet.", badge:"free", move:{mode:"walk", mins:8}},
+    {t:"19:30", n:"Dinner, Old Town", cat:"food", lat:50.0875, lng:14.4210, note:"Plenty of options right around the square — no need to book. You'll have a few free hours between the bridge and dinner — good buffer if the castle line ran long, or just rest before the evening.", cost:"€20–30", c:[20,30], move:{mode:"walk", mins:10}}
   ]},
 
 { id:"08-17", dow:"Mon", d:17, city:"prague", cities:["prague"], title:"Jewish Quarter & Vyšehrad",
@@ -1022,6 +1024,20 @@ const OPTIONAL = {
     {n:"Windsor Great Park & the Long Walk", cat:"suggest", note:"Free. A 4.8km tree-lined avenue running south from the castle — good for a shorter, ticket-free morning."},
     {n:"French Brothers river cruise", cat:"suggest", note:"40-min round trip on the Thames past the castle, or a longer 2-hr option. Check current price online.", book:{l:"Book ↗",u:"https://www.frenchbrothers.co.uk/public-trips/windsor-40-minute-round-trip"}},
     {n:"Legoland Windsor", cat:"suggest", note:"~3km from town, needs a full day to be worth it — only fits if you skip the castle entirely."}
+  ]},
+  prague:{title:"Optional add-ons — from your saved posts", note:"Pulled from the Trip.com Prague route, a Stará čistírna reel, and a Prague bars roundup you sent. Not in your plan. Prague Castle, St Vitus Cathedral, St George's Basilica and Golden Lane are on Aug 16, and Charles Bridge, Old Town Square and the Astronomical Clock are already on Aug 15–16 — skip those five, they're not repeated here. Letná Park was briefly on Aug 16 too but got cut for the 11am start; it's back here as an easy evening add. You're staying at Jiráskovo náměstí 4 (New Town, by the Dancing House) — everything below except Glass Bar is on the Old Town side, a tram or metro ride away, not a walk from your door.", stops:[
+    {n:"Letná Park", cat:"sight", lat:50.0958, lng:14.4172, note:"Free, always open. Hilltop viewpoint over Charles Bridge and the red rooftops, with a beer garden if you want to linger — good as a post-dinner add tonight since it's a ~15–20 min walk from Old Town Square and stays light past 20:00 in mid-August. Not urgent; only do it if you've got the legs left after the castle."},
+    {n:"Powder Tower (Prašná brána)", cat:"sight", lat:50.0871, lng:14.4266, note:"~200 CZK adult / ~130 CZK reduced, 50% off in the first opening hour. 186 spiral stone steps to a 44m viewing gallery, right at náměstí Republiky next to the Municipal House. It's a smaller-scale version of the view you already get from Petřín or the castle towers — only worth adding if you're already standing there. Official tickets are through prague.eu (Prague City Tourism); I couldn't load the page to confirm it resolves in this session — check before booking."},
+    {n:"Franz Kafka Rotating Head", cat:"sight", lat:50.0822, lng:14.4178, note:"Free, no ticket, viewable any time. David Černý's 11m kinetic bust outside the Quadrio building on Spálená — 42 stainless-steel layers rotate on a slow cycle. A 2-minute photo stop on the way somewhere else, not a destination on its own."},
+    {n:"Žižkov Television Tower", cat:"sight", lat:50.0793, lng:14.4472, note:"~350 CZK adult, observation deck open 9:00–24:00. The best 360° skyline view in the city, with David Černý's crawling-baby sculptures climbing the tower's exterior. It's out in Žižkov, a tram or metro ride from the historic core — worth the trip only if you want a genuinely different elevated view rather than another old-town rooftop shot. Official tickets are through towerpark.cz; I couldn't load the page to confirm it resolves in this session — check before booking."},
+    {n:"Stará čistírna (Old Wastewater Treatment Plant)", cat:"sight", lat:50.1027, lng:14.4008, note:"Guided tour only — book ahead online, no walk-ups. A working 1906 steam-powered sewage plant turned industrial museum: underground tunnels, the original pump hall, still-functional 1903 engines. It's out in Bubeneč, a tram ride north of the castle — pair it with Stromovka park if you're already headed that way. This is the genuine hidden-gem pick of the five. Official site is staracistirna.cz; I couldn't load the page to confirm it resolves in this session — check before booking."},
+    {n:"Anonymous Bar", cat:"night", lat:50.0857, lng:14.4194, note:"Michalská 12, Old Town. Speakeasy styled on V for Vendetta — the door is marked only by a small mask, and the cocktail menu is read with a UV light. Reservations recommended; it's small and gets busy after 21:00. Official site anonymousbar.cz; I couldn't load the page to confirm it resolves in this session — check before booking."},
+    {n:"Anonymous Shrink's Office", cat:"night", lat:50.0819, lng:14.4213, note:"Jungmannova 11, hidden cellar down a spiral staircase. Sister bar to Anonymous Bar — no menu, instead you pick a Rorschach inkblot and the bartender crafts a \"prescription\" cocktail based on it. Book ahead, it's popular and seating is limited. Official site shrinksoffice.cz; I couldn't load the page to confirm it resolves in this session — check before booking."},
+    {n:"The Alchemist Bar", cat:"night", lat:50.0847, lng:14.4213, note:"Provaznická 1, Old Town. Cocktails built around a house alchemist legend — pick your drink with tarot cards rather than a menu. Open Sun–Thu 19:00–02:00, Fri–Sat 17:00–03:00. Official site thealchemistbar.cz; I couldn't load the page to confirm it resolves in this session — check before booking."},
+    {n:"Green Flamingo Absinth Bar", cat:"night", lat:50.0838, lng:14.4190, note:"Jilská 22, Old Town. Casual, three-room absinthe bar — good if you want to actually learn about the Green Fairy rather than just do a shot of it. No booking link found; walk-in."},
+    {n:"Tutti Wine Bar", cat:"night", lat:50.0862, lng:14.4204, note:"Kamzíková 8, Old Town. Small, candlelit wine bar tucked on a side street off Melantrichova — a quiet wind-down option a couple minutes from Old Town Square rather than a destination to plan around."},
+    {n:"Terasa U Prince", cat:"night", lat:50.0871, lng:14.4207, note:"Staroměstské náměstí 29 — 5th-floor rooftop of Hotel U Prince, open 9:00–23:30, direct view over the Astronomical Clock and Old Town Square. Reserve ahead for a rail-side table, especially around sunset. Official site terasauprince.com; I couldn't load the page to confirm it resolves in this session — check before booking."},
+    {n:"Glass Bar", cat:"night", lat:50.0755, lng:14.4136, note:"Jiráskovo náměstí 6 — on the roof of the Dancing House (Tančící dům), open daily 10:00–22:00. Steps from where you're staying at Jiráskovo náměstí 4 — literally the same square — so this is the easiest one on the whole list, not a special trip. Café-style by day, bar in the evening; the view runs up the river toward Prague Castle and the National Theatre rather than over Old Town like the other rooftops here. Official site glassbar.cz; I couldn't load the page to confirm it resolves in this session — check before booking."}
   ]}
 };
 
@@ -1118,7 +1134,19 @@ const CITY_PLACES = {
     {n:"Vyšehrad",cat:"sight",lat:50.0653,lng:14.4188,note:"Free fortress grounds, quiet river views"},
     {n:"Náplavka riverside",cat:"night",lat:50.0736,lng:14.4145,note:"Houseboat bars on the embankment"},
     {n:"Petřín Hill",cat:"sight",lat:50.0836,lng:14.3955,note:"Funicular ~60 CZK, mini Eiffel Tower lookout"},
-    {n:"Václav Havel Airport (PRG)",cat:"transit",lat:50.1008,lng:14.2600,note:"Ryanair to Budapest, Aug 18"}
+    {n:"Václav Havel Airport (PRG)",cat:"transit",lat:50.1008,lng:14.2600,note:"Ryanair to Budapest, Aug 18"},
+    {n:"Letná Park",cat:"sight",lat:50.0958,lng:14.4172,note:"Free, metronome viewpoint over Charles Bridge"},
+    {n:"Powder Tower",cat:"sight",lat:50.0871,lng:14.4266,note:"~200 CZK, náměstí Republiky"},
+    {n:"Franz Kafka Rotating Head",cat:"sight",lat:50.0822,lng:14.4178,note:"Free kinetic sculpture, Quadrio building"},
+    {n:"Žižkov Television Tower",cat:"sight",lat:50.0793,lng:14.4472,note:"~350 CZK, best 360° view in the city"},
+    {n:"Stará čistírna",cat:"sight",lat:50.1027,lng:14.4008,note:"Guided-tour-only industrial museum, Bubeneč"},
+    {n:"Anonymous Bar",cat:"night",lat:50.0857,lng:14.4194,note:"Michalská 12, V for Vendetta speakeasy"},
+    {n:"Anonymous Shrink's Office",cat:"night",lat:50.0819,lng:14.4213,note:"Jungmannova 11, inkblot cocktail menu"},
+    {n:"The Alchemist Bar",cat:"night",lat:50.0847,lng:14.4213,note:"Provaznická 1, tarot-card cocktail menu"},
+    {n:"Green Flamingo Absinth Bar",cat:"night",lat:50.0838,lng:14.4190,note:"Jilská 22, absinthe bar"},
+    {n:"Tutti Wine Bar",cat:"night",lat:50.0862,lng:14.4204,note:"Kamzíková 8, candlelit wine bar"},
+    {n:"Terasa U Prince",cat:"night",lat:50.0871,lng:14.4207,note:"Staroměstské náměstí 29, rooftop over the clock"},
+    {n:"Glass Bar",cat:"night",lat:50.0755,lng:14.4136,note:"Jiráskovo náměstí 6, rooftop of the Dancing House — same square as your stay"}
   ]
 };
 
