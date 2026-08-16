@@ -1547,7 +1547,7 @@ function renderCityItinerary(key){
     const cls = d.flag ? "day flagged" : (d.sugDay ? "day dim" : "day");
     const cost = dayCost(d);
     html += `<div class="${cls}">
-        <h3><span class="daynum">${d.flag?"!":(d.sugDay?"+":i+1)}</span>${esc(d.dow)} Aug ${d.d} · ${esc(d.title)}</h3>
+        <h3><span class="daynum">${d.flag?"!":(d.sugDay?"+":i+1)}</span>${esc(d.dow)} Aug ${d.d} · ${esc(d.title)}${d.sugDay?' <span class="badge suggested">suggested day</span>':""}</h3>
         <div class="daysub">${esc(d.sub)}${cost?` <b style="color:var(--accent-ink)">· ${cost} in tickets & food</b>`:""}</div>
         ${d.stops.map((s,idx)=>stopRowHtml(s, meta.name, {type:"day", dayId:d.id, idx})).join("")}
         <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line-soft);">
