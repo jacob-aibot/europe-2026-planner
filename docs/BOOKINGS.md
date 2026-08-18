@@ -1,7 +1,7 @@
 # Bookings & Open Items
 
 Traveller: Jacob — jacobseemann1@gmail.com (Ryanair mail lives in jacobierules@gmail.com)
-Last verified against Gmail: **Aug 11, 2026**
+Last verified against Gmail: **Aug 18, 2026**
 
 ## Confirmed transport
 
@@ -72,6 +72,25 @@ Dropped the self-drive/rental-car version of Aug 14 (needed a car nobody was pla
 
 The day itself: boat transfer to Skradinski Buk (included in park entry), then the park's on-site Visovac + Roški Slap boat excursion (~€20, no advance booking, ~4hrs round trip) instead of the long self-drive hike to Oziđana Pećina — that hike doesn't connect to any public-transit-reachable trailhead on a schedule that actually works (the one bus route to the Roški Slap/Laškovica entrance only runs 4x/day from Šibenik, starting at 11:15, which would've put the hike in the hottest, most crowded part of the day anyway).
 
+### Budapest Danube dinner cruise — booked (Aug 19)
+
+Found via `search_threads`/`get_thread` on the GetYourGuide confirmation in `jacobseemann1@gmail.com`, sent Aug 18. **"Budapest: Dinner Cruise with Live Music & Unlimited Drinks"** (BBQ buffet), 5 adults, 2.5 hrs — **Aug 19, 2026, departs 19:30**, $573.25 total. Booking ref `GYGFWV28229K`, PIN `&GH#8tZQ` (the PIN came through the confirmation email in an odd format — worth double-checking against the GYG app rather than trusting the raw text here).
+
+**Meeting point:** Akadémia 3 Dock, Széchenyi rakpart 2, 1054 Budapest — right by the Chain Bridge, boat is the *River Diva*. Follow the map pin on the voucher, not just the street address; arrive 20–30 min before departure (~19:10). Operator Duna-Weser Kft., +36 70 595 5045.
+
+Couldn't verify a direct ticket link — `getyourguide.com` is blocked by this session's network proxy (same constraint hit on the Blue Cave booking). Not marked `ticket:true`; the app entry points Jacob to the GYG app/confirmation email for the actual QR ticket instead of guessing at a link.
+
+This replaces the Aug 20 placeholder "Danube evening cruise" suggestion (removed — see below) and the free Batthyány tér Parliament viewpoint that was on Aug 19 at the same time (removed as redundant — the cruise passes the lit Parliament from the water).
+
+### Aug 18–20 rescheduled around Jacob's Aug 18 updates
+
+Jacob confirmed in chat (Aug 18): tonight (Aug 18) is a ruin bar crawl, the Aug 19 baths move to ~2pm ("most likely"), the Danube cruise above is booked for Aug 19 evening, and **Aug 20 is Hungary's national holiday (St. Stephen's Day)** with a citywide festival he'll spend most of the day at.
+
+- **Aug 18:** added Szimpla Kert (the flagship "original" ruin bar) tonight at 21:30, moved from its old Aug 19 slot.
+- **Aug 19:** baths retimed to 14:00; cruise added at 19:30 (see above); Batthyány tér viewpoint removed (redundant with the cruise).
+- **Aug 20:** rebuilt from scratch around the festival, pulled from a festival guide Jacob sent (screenshot, Aug 18) — state ceremony + air parade at Kossuth tér (8–9am), Festival of Folk Arts at Buda Castle, food at Várkert Bazaar, fireworks over the Danube (~21:00), then the multi-bar "Ruin bar crawl" (Instant-Fogas/Mazel Tov/Púder) retimed to follow the fireworks. **Dropped** the Hungarian Parliament interior tour, Great Market Hall, and the Andrássy út walk — moved to the Budapest OPTIONAL list instead of deleted outright. Couldn't confirm holiday hours for the Market Hall or whether the Parliament's paid timed tour runs its normal format on the holiday itself; flagged in the app rather than guessing. The festival guide also mentions a free Parliament "Open Day" Aug 20–22 — noted in the app as unverified, worth confirming on the day.
+- This makes **item #1b below partially moot**: the Parliament tour is no longer scheduled for Aug 20, so it's not the time-pressured booking it was — see the updated note there.
+
 ### UK ETA — approved
 
 Ref 2020-0000-5923-3855, approved Aug 7, valid until 7 Aug 2028, tied to the passport ending 2770. Paid $27.98. Needed for the London/Windsor leg — nothing to print, checked automatically against the passport at the border.
@@ -84,7 +103,9 @@ Nothing booked for Budapest or London — the Overview tab carries Booking.com s
 
 ### 1b. Tickets/tours still unpurchased — the Overview tab has the full punch list
 
-Most urgent: the **Hungarian Parliament tour** (Aug 20) sells out days ahead in August and is the only item here that can go to zero. Also worth doing before he lands: **Széchenyi** (skips the walk-up queue), **Prague Castle Main Circuit** (Aug 15, biggest tour-bus magnet), **Windsor Castle** (saves ~£4pp booked ahead). Lower-urgency: Jewish Quarter combined ticket, Danube cruise, Austrian National Library State Hall. (Blue Cave/Hvar speedboat is booked — see Resolved, below.)
+**Update Aug 18:** the Parliament interior tour is no longer scheduled on Aug 20 — that day got rebuilt around the St. Stephen's Day festival (see Resolved, above), so the "sells out days ahead" urgency no longer applies to a fixed date. It's still in the Budapest OPTIONAL list if Jacob wants it slotted into Aug 18 or 19 instead — worth booking ahead if so, same reasoning as before. The Danube cruise item below is now booked (Aug 19, see Resolved) and can be dropped from this list.
+
+Also worth doing before he lands: **Széchenyi** (skips the walk-up queue), **Prague Castle Main Circuit** (Aug 15, biggest tour-bus magnet), **Windsor Castle** (saves ~£4pp booked ahead). Lower-urgency: Jewish Quarter combined ticket, Austrian National Library State Hall. (Blue Cave/Hvar speedboat and the Budapest Danube cruise are booked — see Resolved, above.)
 
 ### 2. Prague is a brand-new 3-night city, entirely undrafted before this pass
 
