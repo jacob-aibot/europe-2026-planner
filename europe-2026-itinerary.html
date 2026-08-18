@@ -16,6 +16,33 @@
   document.documentElement.setAttribute("data-theme", saved || "light");
 })();
 </script>
+<script>
+/* Self-healing cache: a PWA added to the home screen (iOS especially) tends
+   to resume its last-loaded DOM instead of re-fetching on reopen, so a
+   deployed content change can sit invisible until the app is force-killed.
+   This checks the server's real Last-Modified header whenever the app
+   becomes visible again and, if it's newer than what's on screen, forces a
+   cache-busted hard reload. No manual version bump required anywhere. */
+(function(){
+  var KEY = "lastSeenModified";
+  function checkForUpdate(){
+    fetch(location.pathname, {method:"HEAD", cache:"no-store"}).then(function(res){
+      var lm = res.headers.get("last-modified");
+      if(!lm) return;
+      var seen = sessionStorage.getItem(KEY);
+      sessionStorage.setItem(KEY, lm);
+      if(seen && seen !== lm){
+        location.replace(location.pathname + "?_v=" + Date.now());
+      }
+    }).catch(function(){});
+  }
+  document.addEventListener("visibilitychange", function(){
+    if(document.visibilityState === "visible") checkForUpdate();
+  });
+  window.addEventListener("pageshow", function(e){ if(e.persisted) checkForUpdate(); });
+  checkForUpdate();
+})();
+</script>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#c9862a">
 <meta name="apple-mobile-web-app-capable" content="yes">

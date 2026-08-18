@@ -53,6 +53,10 @@ Everything renders from a single `DAYS` array in the `<script>` block at the bot
 
 Supporting structures, same script block: `OPTIONAL` (per-city extras), `CITY_PLACES` (curated map pins, a superset of itinerary stops), `CITY_META`, `CITY_ORDER`, `CITY_RANGE`, `MODES`, `COLORS`.
 
+### Staying current on Jacob's phone
+
+Jacob has this added to his home screen as a PWA (`manifest.json`, `display: standalone`). Home-screen web apps on iOS tend to resume their last-loaded DOM instead of re-fetching when reopened, so a deployed content change can sit invisible until the app is force-killed — this bit us once (07:30/19:30 flight-time fix deployed and confirmed live, but his phone kept showing the stale page). Fixed with a small self-check script at the top of `<head>`: whenever the app becomes visible again, it HEADs its own URL, compares the server's real `Last-Modified` against what it saw last time, and force-reloads with a cache-busting query string if they differ. No manual version bump required — don't remove this thinking `CONTENT_VERSION` (further down, used only to invalidate the on-device drag-order cache) already covers it. It doesn't; that constant isn't reliably bumped on every edit and was stale for a week before this was added.
+
 ### Two things that will bite you
 
 1. **Maps must be re-fit when their tab becomes visible.** Leaflet cannot compute a zoom against a `display:none` container — it picks a nonsense zoom and never recovers. This produced a real bug where the Aug 8 map opened onto empty Bavarian farmland. `applyDayFit()`, `refitCity()` and `refitOverview()` run on tab activation. Don't remove those calls.
