@@ -1,0 +1,1639 @@
+{
+  "$generatedBy": "cairn/tools/gen-golden.mjs",
+  "$source": "europe-2026-itinerary.html (read-only)",
+  "$sourceSha256": "40955ca0b182dddcc33540accadf2a65a329bc20b9e6ca109c9884e776bb06d2",
+  "$what": "importLegacyDays() report: counts, the CITY_RANGE parity check and every import warning.",
+  "counts": {
+    "days": 16,
+    "scheduledStops": 112,
+    "poolStops": 31,
+    "places": 95,
+    "bookings": 21,
+    "ticketStops": 7,
+    "bundledTicketStops": 3,
+    "arrivalOverrides": 81,
+    "costedStops": 49,
+    "suggestedStops": 21,
+    "candidateDays": 3
+  },
+  "cityRangeCheck": [
+    {
+      "cityKey": "vienna",
+      "derived": "Aug 8–10",
+      "legacy": "Aug 8–10",
+      "ok": true
+    },
+    {
+      "cityKey": "dubrovnik",
+      "derived": "Aug 10–12",
+      "legacy": "Aug 10–12",
+      "ok": true
+    },
+    {
+      "cityKey": "split",
+      "derived": "Aug 12–15",
+      "legacy": "Aug 12–15",
+      "ok": true
+    },
+    {
+      "cityKey": "prague",
+      "derived": "Aug 15–18",
+      "legacy": "Aug 15–18",
+      "ok": true
+    },
+    {
+      "cityKey": "budapest",
+      "derived": "Aug 18–21",
+      "legacy": "Aug 18–21",
+      "ok": true
+    },
+    {
+      "cityKey": "london",
+      "derived": "Aug 21–22",
+      "legacy": "Aug 21–22",
+      "ok": true
+    }
+  ],
+  "issues": [
+    {
+      "level": "warn",
+      "code": "lat_lng_out_of_range",
+      "ref": {
+        "kind": "place",
+        "id": "place-92"
+      },
+      "message": "Curated place \"Windsor Great Park / Long Walk\" (london) has no coordinates in the source.",
+      "params": {
+        "name": "Windsor Great Park / Long Walk",
+        "cityKey": "london"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-1"
+      },
+      "message": "\"Arrive LAX — Tom Bradley International\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Arrive LAX — Tom Bradley International",
+        "dayId": "2026-08-07"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-2"
+      },
+      "message": "\"Condor DE2081 → Frankfurt\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Condor DE2081 → Frankfurt",
+        "dayId": "2026-08-07"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-3"
+      },
+      "message": "\"Frankfurt (FRA) — connect\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Frankfurt (FRA) — connect",
+        "dayId": "2026-08-08"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-4"
+      },
+      "message": "\"Condor DE4345 → Vienna (VIE)\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Condor DE4345 → Vienna (VIE)",
+        "dayId": "2026-08-08"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-5"
+      },
+      "message": "\"City Airport Train → Wien Mitte\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "City Airport Train → Wien Mitte",
+        "dayId": "2026-08-08"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-6"
+      },
+      "message": "\"Check in — Habyt Vienna\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Check in — Habyt Vienna",
+        "dayId": "2026-08-08"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-7"
+      },
+      "message": "\"Maria-Theresien-Platz & Volksgarten\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Maria-Theresien-Platz & Volksgarten",
+        "dayId": "2026-08-08"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-8"
+      },
+      "message": "\"Stephansplatz + dinner at a Beisl\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Stephansplatz + dinner at a Beisl",
+        "dayId": "2026-08-08"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-9"
+      },
+      "message": "\"DECENTRAL — Sachertorte nightcap\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "DECENTRAL — Sachertorte nightcap",
+        "dayId": "2026-08-08"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-10"
+      },
+      "message": "\"Filmfestival Rathausplatz — open-air screening\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Filmfestival Rathausplatz — open-air screening",
+        "dayId": "2026-08-08"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-11"
+      },
+      "message": "\"Schönbrunn gardens & Gloriette\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Schönbrunn gardens & Gloriette",
+        "dayId": "2026-08-09"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-12"
+      },
+      "message": "\"Austrian National Library — State Hall\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Austrian National Library — State Hall",
+        "dayId": "2026-08-09"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-13"
+      },
+      "message": "\"Mariahilfer Straße + coffeehouse stop\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Mariahilfer Straße + coffeehouse stop",
+        "dayId": "2026-08-09"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-14"
+      },
+      "message": "\"Back to hotel — pack tonight, not at 5am\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Back to hotel — pack tonight, not at 5am",
+        "dayId": "2026-08-09"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-15"
+      },
+      "message": "\"IKEA Rooftop, Westbahnhof — golden hour\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "IKEA Rooftop, Westbahnhof — golden hour",
+        "dayId": "2026-08-09"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-16"
+      },
+      "message": "\"Early night — 4:45am alarm\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Early night — 4:45am alarm",
+        "dayId": "2026-08-09"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-17"
+      },
+      "message": "\"Leave for Vienna Airport (VIE)\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Leave for Vienna Airport (VIE)",
+        "dayId": "2026-08-10"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-18"
+      },
+      "message": "\"Ryanair VIE → DBV\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Ryanair VIE → DBV",
+        "dayId": "2026-08-10"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-19"
+      },
+      "message": "\"Airport bus → Pile Gate, drop bags\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Airport bus → Pile Gate, drop bags",
+        "dayId": "2026-08-10"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-21"
+      },
+      "message": "\"Check in — Hostel Petra Marina\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Check in — Hostel Petra Marina",
+        "dayId": "2026-08-10"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-22"
+      },
+      "message": "\"Dubrovnik Cable Car → Srđ Hill, sunset\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Dubrovnik Cable Car → Srđ Hill, sunset",
+        "dayId": "2026-08-10"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-23"
+      },
+      "message": "\"Stradun wander + dinner\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Stradun wander + dinner",
+        "dayId": "2026-08-10"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-24"
+      },
+      "message": "\"Old Town wander + quick lunch\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Old Town wander + quick lunch",
+        "dayId": "2026-08-11"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-26"
+      },
+      "message": "\"Dubrovnik City Walls\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Dubrovnik City Walls",
+        "dayId": "2026-08-11"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-27"
+      },
+      "message": "\"Buža Bar for sunset\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Buža Bar for sunset",
+        "dayId": "2026-08-11"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-28"
+      },
+      "message": "\"Dinner at Dubrovnik 186\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Dinner at Dubrovnik 186",
+        "dayId": "2026-08-11"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-29"
+      },
+      "message": "\"Dubrovnik bus terminal (Gruž)\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Dubrovnik bus terminal (Gruž)",
+        "dayId": "2026-08-12"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-30"
+      },
+      "message": "\"FlixBus → Split\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "FlixBus → Split",
+        "dayId": "2026-08-12"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-31"
+      },
+      "message": "\"Drop bags — Guest House Lana\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Drop bags — Guest House Lana",
+        "dayId": "2026-08-12"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-32"
+      },
+      "message": "\"Lunch, Old Town\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Lunch, Old Town",
+        "dayId": "2026-08-12"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-33"
+      },
+      "message": "\"Marjan Hill — Vidilica viewpoint & ridge walk\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Marjan Hill — Vidilica viewpoint & ridge walk",
+        "dayId": "2026-08-12"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-34"
+      },
+      "message": "\"Kasjuni Beach — swim\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Kasjuni Beach — swim",
+        "dayId": "2026-08-12"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-35"
+      },
+      "message": "\"Check in — Guest House Lana\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Check in — Guest House Lana",
+        "dayId": "2026-08-12"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-36"
+      },
+      "message": "\"Dinner — Smash Burger\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Dinner — Smash Burger",
+        "dayId": "2026-08-12"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-37"
+      },
+      "message": "\"Speedboat pickup — Split harbour\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Speedboat pickup — Split harbour",
+        "dayId": "2026-08-13"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "cost_basis_mixed",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-37"
+      },
+      "message": "\"Speedboat pickup — Split harbour\" displays USD but the legacy numeric cost was recorded in EUR at an unrecorded rate; keeping the displayed currency.",
+      "params": {
+        "display": "$159.98pp",
+        "currencies": "USD",
+        "legacyLo": 160,
+        "legacyHi": 160
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-40"
+      },
+      "message": "\"Budikovac / Blue Lagoon — snorkel stop\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Budikovac / Blue Lagoon — snorkel stop",
+        "dayId": "2026-08-13"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-42"
+      },
+      "message": "\"Dinner — Cicibela Food & Wine Bar\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Dinner — Cicibela Food & Wine Bar",
+        "dayId": "2026-08-13"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-43"
+      },
+      "message": "\"Diocletian's Palace & Peristyle at night\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Diocletian's Palace & Peristyle at night",
+        "dayId": "2026-08-13"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-44"
+      },
+      "message": "\"FlixBus → Skradin\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "FlixBus → Skradin",
+        "dayId": "2026-08-14"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-45"
+      },
+      "message": "\"Arrive Skradin — buy park entrance ticket\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Arrive Skradin — buy park entrance ticket",
+        "dayId": "2026-08-14"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-46"
+      },
+      "message": "\"Boat to Skradinski Buk\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Boat to Skradinski Buk",
+        "dayId": "2026-08-14"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-47"
+      },
+      "message": "\"Buy the Visovac + Roški Slap boat excursion\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Buy the Visovac + Roški Slap boat excursion",
+        "dayId": "2026-08-14"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-48"
+      },
+      "message": "\"Roški Slap — mills, cascades & swim\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Roški Slap — mills, cascades & swim",
+        "dayId": "2026-08-14"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-49"
+      },
+      "message": "\"Boat back to Skradinski Buk, then Skradin\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Boat back to Skradinski Buk, then Skradin",
+        "dayId": "2026-08-14"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-50"
+      },
+      "message": "\"FlixBus → Split\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "FlixBus → Split",
+        "dayId": "2026-08-14"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-51"
+      },
+      "message": "\"Morning with your girlfriend's family\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Morning with your girlfriend's family",
+        "dayId": "2026-08-15"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-52"
+      },
+      "message": "\"Split Airport (SPU), Kaštela\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Split Airport (SPU), Kaštela",
+        "dayId": "2026-08-15"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-53"
+      },
+      "message": "\"Smartwings QS1083 → Prague\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Smartwings QS1083 → Prague",
+        "dayId": "2026-08-15"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-54"
+      },
+      "message": "\"Airport Express bus → city centre\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Airport Express bus → city centre",
+        "dayId": "2026-08-15"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "cost_basis_mixed",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-54"
+      },
+      "message": "\"Airport Express bus → city centre\" displays CZK but the legacy numeric cost was recorded in EUR at an unrecorded rate; keeping the displayed currency.",
+      "params": {
+        "display": "~100 CZK",
+        "currencies": "CZK",
+        "legacyLo": 4,
+        "legacyHi": 4
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-55"
+      },
+      "message": "\"Check in — Jiráskovo náměstí\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Check in — Jiráskovo náměstí",
+        "dayId": "2026-08-15"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-56"
+      },
+      "message": "\"Old Town Square + dinner\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Old Town Square + dinner",
+        "dayId": "2026-08-15"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "cost_basis_mixed",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-57"
+      },
+      "message": "\"Jewish Quarter (Josefov)\" displays CZK but the legacy numeric cost was recorded in EUR at an unrecorded rate; keeping the displayed currency.",
+      "params": {
+        "display": "~550 CZK",
+        "currencies": "CZK",
+        "legacyLo": 22,
+        "legacyHi": 22
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-59"
+      },
+      "message": "\"Idiom — the Infinity Book Tower\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Idiom — the Infinity Book Tower",
+        "dayId": "2026-08-16"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-60"
+      },
+      "message": "\"Lunch, Old Town\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Lunch, Old Town",
+        "dayId": "2026-08-16"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-61"
+      },
+      "message": "\"Astronomical Clock\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Astronomical Clock",
+        "dayId": "2026-08-16"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-63"
+      },
+      "message": "\"Anonymous Shrink's Office (walk-in attempt)\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Anonymous Shrink's Office (walk-in attempt)",
+        "dayId": "2026-08-16"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-67"
+      },
+      "message": "\"Prague Castle grounds & ticket queue\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Prague Castle grounds & ticket queue",
+        "dayId": "2026-08-17"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "cost_basis_mixed",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-67"
+      },
+      "message": "\"Prague Castle grounds & ticket queue\" displays CZK but the legacy numeric cost was recorded in EUR at an unrecorded rate; keeping the displayed currency.",
+      "params": {
+        "display": "~450 CZK",
+        "currencies": "CZK",
+        "legacyLo": 18,
+        "legacyHi": 18
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-68"
+      },
+      "message": "\"St Vitus Cathedral\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "St Vitus Cathedral",
+        "dayId": "2026-08-17"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-69"
+      },
+      "message": "\"St George's Basilica\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "St George's Basilica",
+        "dayId": "2026-08-17"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-70"
+      },
+      "message": "\"Golden Lane\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Golden Lane",
+        "dayId": "2026-08-17"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-72"
+      },
+      "message": "\"Lesser Town (Malá Strana) wander\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Lesser Town (Malá Strana) wander",
+        "dayId": "2026-08-17"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-74"
+      },
+      "message": "\"Charles Bridge crossing\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Charles Bridge crossing",
+        "dayId": "2026-08-17"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-75"
+      },
+      "message": "\"Bernard Beer Spa — Karoliny Světlé 20\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Bernard Beer Spa — Karoliny Světlé 20",
+        "dayId": "2026-08-17"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-76"
+      },
+      "message": "\"Late lunch, Old Town\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Late lunch, Old Town",
+        "dayId": "2026-08-17"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-77"
+      },
+      "message": "\"Dinner, Old Town\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Dinner, Old Town",
+        "dayId": "2026-08-17"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-78"
+      },
+      "message": "\"Check out — pack the night before\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Check out — pack the night before",
+        "dayId": "2026-08-18"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-79"
+      },
+      "message": "\"Airport Express bus → Václav Havel Airport (PRG)\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Airport Express bus → Václav Havel Airport (PRG)",
+        "dayId": "2026-08-18"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "cost_basis_mixed",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-79"
+      },
+      "message": "\"Airport Express bus → Václav Havel Airport (PRG)\" displays CZK but the legacy numeric cost was recorded in EUR at an unrecorded rate; keeping the displayed currency.",
+      "params": {
+        "display": "~100 CZK",
+        "currencies": "CZK",
+        "legacyLo": 4,
+        "legacyHi": 4
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-80"
+      },
+      "message": "\"Ryanair PRG → Budapest\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Ryanair PRG → Budapest",
+        "dayId": "2026-08-18"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-81"
+      },
+      "message": "\"100E airport bus → city, check in\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "100E airport bus → city, check in",
+        "dayId": "2026-08-18"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-82"
+      },
+      "message": "\"St Stephen's Basilica + panorama\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "St Stephen's Basilica + panorama",
+        "dayId": "2026-08-18"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-83"
+      },
+      "message": "\"Lunch, Basilica square\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Lunch, Basilica square",
+        "dayId": "2026-08-18"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-85"
+      },
+      "message": "\"Rest — you've been up since before dawn\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Rest — you've been up since before dawn",
+        "dayId": "2026-08-18"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-86"
+      },
+      "message": "\"Dinner, Pest side\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Dinner, Pest side",
+        "dayId": "2026-08-18"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-87"
+      },
+      "message": "\"Szimpla Kert — the original ruin bar\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Szimpla Kert — the original ruin bar",
+        "dayId": "2026-08-18"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-88"
+      },
+      "message": "\"Brunch — Twenty6\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Brunch — Twenty6",
+        "dayId": "2026-08-19"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-89"
+      },
+      "message": "\"Hungarian Parliament — interior tour (same-day, walk-up)\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Hungarian Parliament — interior tour (same-day, walk-up)",
+        "dayId": "2026-08-19"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-91"
+      },
+      "message": "\"Free time — head back and get ready for the cruise\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Free time — head back and get ready for the cruise",
+        "dayId": "2026-08-19"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-92"
+      },
+      "message": "\"Board the Danube dinner cruise — Akadémia 3 Dock\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Board the Danube dinner cruise — Akadémia 3 Dock",
+        "dayId": "2026-08-19"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "cost_basis_mixed",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-92"
+      },
+      "message": "\"Board the Danube dinner cruise — Akadémia 3 Dock\" displays USD but the legacy numeric cost was recorded in EUR at an unrecorded rate; keeping the displayed currency.",
+      "params": {
+        "display": "$573.25 total",
+        "currencies": "USD",
+        "legacyLo": 573,
+        "legacyHi": 573
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-93"
+      },
+      "message": "\"St. Stephen's Day state ceremony\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "St. Stephen's Day state ceremony",
+        "dayId": "2026-08-20"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-94"
+      },
+      "message": "\"Air Parade over the Danube\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Air Parade over the Danube",
+        "dayId": "2026-08-20"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-95"
+      },
+      "message": "\"Festival of Folk Arts — Buda Castle\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Festival of Folk Arts — Buda Castle",
+        "dayId": "2026-08-20"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-96"
+      },
+      "message": "\"Street of Hungarian Flavours — Várkert Bazaar\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Street of Hungarian Flavours — Várkert Bazaar",
+        "dayId": "2026-08-20"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-97"
+      },
+      "message": "\"Rest / flex time\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Rest / flex time",
+        "dayId": "2026-08-20"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-98"
+      },
+      "message": "\"Stake out a fireworks spot\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Stake out a fireworks spot",
+        "dayId": "2026-08-20"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-99"
+      },
+      "message": "\"Fireworks over the Danube\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Fireworks over the Danube",
+        "dayId": "2026-08-20"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-100"
+      },
+      "message": "\"Ruin bar crawl — Jewish Quarter\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Ruin bar crawl — Jewish Quarter",
+        "dayId": "2026-08-20"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-101"
+      },
+      "message": "\"Gellért Hill & Citadella at sunrise\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Gellért Hill & Citadella at sunrise",
+        "dayId": "2026-08-21"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-102"
+      },
+      "message": "\"100E bus → Budapest Airport (BUD)\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "100E bus → Budapest Airport (BUD)",
+        "dayId": "2026-08-21"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-103"
+      },
+      "message": "\"British Airways BA863 → London Heathrow\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "British Airways BA863 → London Heathrow",
+        "dayId": "2026-08-21"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-104"
+      },
+      "message": "\"Bus 8 or taxi → Windsor\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Bus 8 or taxi → Windsor",
+        "dayId": "2026-08-21"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-105"
+      },
+      "message": "\"Hotel check-in — Windsor\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Hotel check-in — Windsor",
+        "dayId": "2026-08-21"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-106"
+      },
+      "message": "\"Windsor riverside & Eton Bridge evening walk\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Windsor riverside & Eton Bridge evening walk",
+        "dayId": "2026-08-21"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-107"
+      },
+      "message": "\"Dinner — Windsor town centre\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Dinner — Windsor town centre",
+        "dayId": "2026-08-21"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "cost_basis_mixed",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-107"
+      },
+      "message": "\"Dinner — Windsor town centre\" displays GBP but the legacy numeric cost was recorded in EUR at an unrecorded rate; keeping the displayed currency.",
+      "params": {
+        "display": "£20–35",
+        "currencies": "GBP",
+        "legacyLo": 23,
+        "legacyHi": 40
+      }
+    },
+    {
+      "level": "warn",
+      "code": "cost_basis_mixed",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-108"
+      },
+      "message": "\"Windsor Castle\" displays GBP but the legacy numeric cost was recorded in EUR at an unrecorded rate; keeping the displayed currency.",
+      "params": {
+        "display": "~£32",
+        "currencies": "GBP",
+        "legacyLo": 32,
+        "legacyHi": 32
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-109"
+      },
+      "message": "\"Walk over to Eton\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Walk over to Eton",
+        "dayId": "2026-08-22"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-110"
+      },
+      "message": "\"Lunch — Windsor or Eton riverside\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Lunch — Windsor or Eton riverside",
+        "dayId": "2026-08-22"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "cost_basis_mixed",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-110"
+      },
+      "message": "\"Lunch — Windsor or Eton riverside\" displays GBP but the legacy numeric cost was recorded in EUR at an unrecorded rate; keeping the displayed currency.",
+      "params": {
+        "display": "£18–28",
+        "currencies": "GBP",
+        "legacyLo": 20,
+        "legacyHi": 32
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-111"
+      },
+      "message": "\"Collect bags, head to Heathrow\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Collect bags, head to Heathrow",
+        "dayId": "2026-08-22"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "cost_basis_mixed",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-111"
+      },
+      "message": "\"Collect bags, head to Heathrow\" displays GBP but the legacy numeric cost was recorded in EUR at an unrecorded rate; keeping the displayed currency.",
+      "params": {
+        "display": "£5–20",
+        "currencies": "GBP",
+        "legacyLo": 5,
+        "legacyHi": 20
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-112"
+      },
+      "message": "\"Virgin Atlantic VS23 → Los Angeles\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Virgin Atlantic VS23 → Los Angeles",
+        "dayId": "2026-08-22"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-114"
+      },
+      "message": "\"Stephansdom — south tower climb\" has no coordinates and matched no curated place.",
+      "params": {
+        "name": "Stephansdom — south tower climb",
+        "dayId": "pool:vienna"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-117"
+      },
+      "message": "\"Prater & Riesenrad\" has no coordinates and matched no curated place.",
+      "params": {
+        "name": "Prater & Riesenrad",
+        "dayId": "pool:vienna"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-121"
+      },
+      "message": "\"Blue Lagoon half-day from Trogir\" has no coordinates and matched no curated place.",
+      "params": {
+        "name": "Blue Lagoon half-day from Trogir",
+        "dayId": "pool:split"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-123"
+      },
+      "message": "\"Game of Thrones walking tour\" has no coordinates and matched no curated place.",
+      "params": {
+        "name": "Game of Thrones walking tour",
+        "dayId": "pool:split"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-124"
+      },
+      "message": "\"Rudas Baths — night bathing\" has no coordinates and matched no curated place.",
+      "params": {
+        "name": "Rudas Baths — night bathing",
+        "dayId": "pool:budapest"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-125"
+      },
+      "message": "\"Hungarian State Opera tour\" has no coordinates and matched no curated place.",
+      "params": {
+        "name": "Hungarian State Opera tour",
+        "dayId": "pool:budapest"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-127"
+      },
+      "message": "\"Andrássy út & the Opera House\" has no coordinates and matched no curated place.",
+      "params": {
+        "name": "Andrássy út & the Opera House",
+        "dayId": "pool:budapest"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-128"
+      },
+      "message": "\"Fisherman's Bastion & Matthias Church\" has no coordinates and matched no curated place.",
+      "params": {
+        "name": "Fisherman's Bastion & Matthias Church",
+        "dayId": "pool:budapest"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-129"
+      },
+      "message": "\"Buda Castle district & funicular\" has no coordinates and matched no curated place.",
+      "params": {
+        "name": "Buda Castle district & funicular",
+        "dayId": "pool:budapest"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-130"
+      },
+      "message": "\"Windsor Great Park & the Long Walk\" has no coordinates and matched no curated place.",
+      "params": {
+        "name": "Windsor Great Park & the Long Walk",
+        "dayId": "pool:london"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-132"
+      },
+      "message": "\"Legoland Windsor\" has no coordinates and matched no curated place.",
+      "params": {
+        "name": "Legoland Windsor",
+        "dayId": "pool:london"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-133"
+      },
+      "message": "\"Powder Tower (Prašná brána)\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Powder Tower (Prašná brána)",
+        "dayId": "pool:prague"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "place_ref_dangling",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-135"
+      },
+      "message": "\"Stará čistírna (Old Wastewater Treatment Plant)\" matched no curated place; kept as an inline pin.",
+      "params": {
+        "name": "Stará čistírna (Old Wastewater Treatment Plant)",
+        "dayId": "pool:prague"
+      }
+    }
+  ]
+}

@@ -1,0 +1,357 @@
+{
+  "$comment": "Transcribed ONCE from docs/BOOKINGS.md (ARCHITECTURE §2.11). docs/BOOKINGS.md is prose and cannot be parsed reliably, so this file is hand-written and a test asserts every `reference` still appears verbatim in that document — drift is detected without parsing prose. Nothing here is copied from europe-2026-itinerary.html.",
+  "sourceDoc": "docs/BOOKINGS.md",
+  "transcribedAt": "2026-08-24",
+  "bookings": [
+    {
+      "key": "condor-lax-fra",
+      "kind": "flight",
+      "operator": "Condor",
+      "reference": "17097157-02",
+      "route": { "fromName": "Los Angeles (LAX)", "toName": "Frankfurt (FRA)" },
+      "startsAt": { "date": "2026-08-07", "time": "16:45" },
+      "endsAt": { "date": "2026-08-08", "time": "13:00" },
+      "price": null,
+      "party": 1,
+      "status": "active",
+      "ticket": null,
+      "sourceDoc": "docs/BOOKINGS.md",
+      "linkTo": [{ "day": "08-07", "nameStartsWith": "Condor DE2081" }]
+    },
+    {
+      "key": "condor-fra-vie",
+      "kind": "flight",
+      "operator": "Condor",
+      "reference": "17097157-02",
+      "route": { "fromName": "Frankfurt (FRA)", "toName": "Vienna (VIE)" },
+      "startsAt": { "date": "2026-08-08", "time": "14:30" },
+      "endsAt": { "date": "2026-08-08", "time": "15:50" },
+      "price": {
+        "amounts": [{ "lo": 549.99, "hi": 549.99, "currency": "USD", "basis": "per_person" }],
+        "display": "$549.99 for both legs",
+        "note": "was $439.99; booking changed 7 Aug 2026, ref went 01 -> 02"
+      },
+      "party": 1,
+      "status": "active",
+      "ticket": null,
+      "sourceDoc": "docs/BOOKINGS.md",
+      "linkTo": [{ "day": "08-08", "nameStartsWith": "Condor DE4345" }]
+    },
+    {
+      "key": "ryanair-vie-dbv",
+      "kind": "flight",
+      "operator": "Ryanair",
+      "reference": "IU1TUY",
+      "route": { "fromName": "Vienna (VIE)", "toName": "Dubrovnik (DBV)" },
+      "startsAt": { "date": "2026-08-10", "time": "06:55" },
+      "endsAt": { "date": "2026-08-10", "time": "08:15" },
+      "price": null,
+      "party": 1,
+      "status": "active",
+      "ticket": null,
+      "sourceDoc": "docs/BOOKINGS.md",
+      "provenance": { "confidence": "asserted" },
+      "linkTo": [{ "day": "08-10", "nameStartsWith": "Ryanair VIE" }]
+    },
+    {
+      "key": "flixbus-dbv-spu",
+      "kind": "bus",
+      "operator": "FlixBus",
+      "reference": "3379864687",
+      "route": { "fromName": "Dubrovnik", "toName": "Split" },
+      "startsAt": { "date": "2026-08-12", "time": "07:15" },
+      "endsAt": { "date": "2026-08-12", "time": "11:20" },
+      "price": null,
+      "party": 1,
+      "seat": "12A",
+      "status": "active",
+      "ticket": {
+        "kind": "bundled",
+        "path": "tickets/flixbus-dubrovnik-split-3379864687.pdf",
+        "label": "FlixBus boarding pass"
+      },
+      "sourceDoc": "docs/BOOKINGS.md",
+      "linkTo": [{ "day": "08-12", "nameStartsWith": "FlixBus → Split" }]
+    },
+    {
+      "key": "flixbus-split-skradin-out",
+      "kind": "bus",
+      "operator": "FlixBus",
+      "reference": "3384415948",
+      "route": { "fromName": "Split", "toName": "Skradin" },
+      "startsAt": { "date": "2026-08-14", "time": "08:00" },
+      "price": {
+        "amounts": [{ "lo": 14.49, "hi": 14.49, "currency": "EUR", "basis": "per_person" }],
+        "display": "€14.49",
+        "note": "seat 9C, route 942a; €37.47 for the round trip"
+      },
+      "party": 1,
+      "seat": "9C",
+      "status": "active",
+      "issuedAt": "2026-08-11",
+      "ticket": {
+        "kind": "bundled",
+        "path": "tickets/flixbus-split-skradin-3384415948.pdf",
+        "label": "FlixBus boarding pass"
+      },
+      "sourceDoc": "docs/BOOKINGS.md",
+      "linkTo": [{ "day": "08-14", "nameStartsWith": "FlixBus → Skradin" }]
+    },
+    {
+      "key": "flixbus-skradin-split",
+      "kind": "bus",
+      "operator": "FlixBus",
+      "reference": "3384415948",
+      "route": { "fromName": "Skradin", "toName": "Split" },
+      "startsAt": { "date": "2026-08-14", "time": "17:15" },
+      "price": {
+        "amounts": [{ "lo": 22.98, "hi": 22.98, "currency": "EUR", "basis": "per_person" }],
+        "display": "€22.98",
+        "note": "seat 18A, route 942a; return half of booking 3384415948"
+      },
+      "party": 1,
+      "seat": "18A",
+      "status": "active",
+      "issuedAt": "2026-08-11",
+      "ticket": {
+        "kind": "bundled",
+        "path": "tickets/flixbus-split-skradin-3384415948.pdf",
+        "label": "FlixBus boarding pass"
+      },
+      "sourceDoc": "docs/BOOKINGS.md",
+      "linkTo": [{ "day": "08-14", "nameStartsWith": "FlixBus → Split" }]
+    },
+    {
+      "key": "smartwings-original",
+      "kind": "flight",
+      "operator": "Smartwings",
+      "reference": "YZGDTS",
+      "route": { "fromName": "Split (SPU)", "toName": "Prague (PRG)" },
+      "startsAt": { "date": "2026-08-18", "time": null },
+      "price": null,
+      "party": 1,
+      "status": "superseded",
+      "issuedAt": "2026-07-16",
+      "ticket": null,
+      "sourceDoc": "docs/BOOKINGS.md"
+    },
+    {
+      "key": "smartwings-reissue",
+      "kind": "flight",
+      "operator": "Smartwings",
+      "reference": "YZGDTS",
+      "route": { "fromName": "Split (SPU)", "toName": "Prague (PRG)" },
+      "startsAt": { "date": "2026-08-15", "time": "14:40" },
+      "endsAt": { "date": "2026-08-15", "time": "16:15" },
+      "price": null,
+      "party": 1,
+      "status": "active",
+      "issuedAt": "2026-08-04",
+      "supersedesKey": "smartwings-original",
+      "ticket": null,
+      "sourceDoc": "docs/BOOKINGS.md",
+      "linkTo": [{ "day": "08-15", "nameStartsWith": "Smartwings QS1083" }]
+    },
+    {
+      "key": "ryanair-prg-bud",
+      "kind": "flight",
+      "operator": "Ryanair",
+      "reference": "I54C9A",
+      "route": { "fromName": "Prague (PRG)", "toName": "Budapest (BUD)" },
+      "startsAt": { "date": "2026-08-18", "time": "07:30" },
+      "price": null,
+      "party": 1,
+      "status": "active",
+      "ticket": null,
+      "sourceDoc": "docs/BOOKINGS.md",
+      "provenance": { "confidence": "asserted" },
+      "linkTo": [{ "day": "08-18", "nameStartsWith": "Ryanair PRG" }]
+    },
+    {
+      "key": "ba-bud-lhr",
+      "kind": "flight",
+      "operator": "British Airways",
+      "reference": "AS67UA",
+      "route": { "fromName": "Budapest (BUD)", "toName": "London Heathrow (LHR)" },
+      "startsAt": { "date": "2026-08-21", "time": "12:55" },
+      "endsAt": { "date": "2026-08-21", "time": "14:40" },
+      "price": null,
+      "party": 1,
+      "status": "active",
+      "ticket": null,
+      "sourceDoc": "docs/BOOKINGS.md",
+      "linkTo": [{ "day": "08-21", "nameStartsWith": "British Airways BA863" }]
+    },
+    {
+      "key": "vs-lhr-lax",
+      "kind": "flight",
+      "operator": "Virgin Atlantic",
+      "reference": "D8WQHO",
+      "route": { "fromName": "London Heathrow (LHR)", "toName": "Los Angeles (LAX)" },
+      "startsAt": { "date": "2026-08-22", "time": "18:15" },
+      "endsAt": { "date": "2026-08-22", "time": "21:25" },
+      "price": null,
+      "party": 1,
+      "status": "active",
+      "ticket": null,
+      "sourceDoc": "docs/BOOKINGS.md",
+      "linkTo": [{ "day": "08-22", "nameStartsWith": "Virgin Atlantic VS23" }]
+    },
+    {
+      "key": "lodging-vienna",
+      "kind": "lodging",
+      "operator": "Habyt Vienna (Booking.com)",
+      "reference": "5814731574",
+      "startsAt": { "date": "2026-08-08", "time": null },
+      "endsAt": { "date": "2026-08-10", "time": null },
+      "price": null,
+      "party": 1,
+      "status": "active",
+      "ticket": null,
+      "sourceDoc": "docs/BOOKINGS.md",
+      "linkTo": [{ "day": "08-08", "nameStartsWith": "Check in — Habyt Vienna" }]
+    },
+    {
+      "key": "lodging-dubrovnik",
+      "kind": "lodging",
+      "operator": "Hostel Petra Marina (Booking.com)",
+      "reference": "5175904714",
+      "startsAt": { "date": "2026-08-10", "time": null },
+      "endsAt": { "date": "2026-08-12", "time": null },
+      "price": null,
+      "party": 1,
+      "status": "active",
+      "ticket": null,
+      "sourceDoc": "docs/BOOKINGS.md",
+      "linkTo": [{ "day": "08-10", "nameStartsWith": "Check in — Hostel Petra Marina" }]
+    },
+    {
+      "key": "lodging-split",
+      "kind": "lodging",
+      "operator": "Guest House Lana (Booking.com)",
+      "reference": "6381031260",
+      "startsAt": { "date": "2026-08-12", "time": null },
+      "endsAt": { "date": "2026-08-15", "time": null },
+      "price": {
+        "amounts": [{ "lo": 325, "hi": 325, "currency": "EUR", "basis": "per_party" }],
+        "display": "€325 total",
+        "note": "non-refundable, dates cannot be changed"
+      },
+      "party": 2,
+      "status": "active",
+      "ticket": null,
+      "sourceDoc": "docs/BOOKINGS.md",
+      "linkTo": [{ "day": "08-12", "nameStartsWith": "Check in — Guest House Lana" }]
+    },
+    {
+      "key": "lodging-prague",
+      "kind": "lodging",
+      "operator": "Jiráskovo náměstí 1775/4",
+      "reference": null,
+      "startsAt": { "date": "2026-08-15", "time": null },
+      "endsAt": { "date": "2026-08-18", "time": null },
+      "price": null,
+      "party": 1,
+      "status": "active",
+      "ticket": null,
+      "sourceDoc": "docs/BOOKINGS.md",
+      "provenance": { "confidence": "asserted" },
+      "linkTo": [{ "day": "08-15", "nameStartsWith": "Check in — Jiráskovo" }]
+    },
+    {
+      "key": "cat-vienna",
+      "kind": "ticket",
+      "operator": "City Airport Train",
+      "reference": "843249",
+      "startsAt": { "date": "2026-08-08", "time": "16:20" },
+      "price": {
+        "amounts": [{ "lo": 13.41, "hi": 13.41, "currency": "EUR", "basis": "per_person" }],
+        "display": "€13.41"
+      },
+      "party": 1,
+      "status": "active",
+      "ticket": null,
+      "sourceDoc": "docs/BOOKINGS.md",
+      "linkTo": [{ "day": "08-08", "nameStartsWith": "City Airport Train" }]
+    },
+    {
+      "key": "dubrovnik-cable-car",
+      "kind": "ticket",
+      "operator": "Dubrovnik Cable Car (ulaznice.hr)",
+      "reference": "2665250",
+      "startsAt": { "date": "2026-08-10", "time": "19:15" },
+      "price": null,
+      "party": 1,
+      "status": "active",
+      "ticket": null,
+      "sourceDoc": "docs/BOOKINGS.md",
+      "linkTo": [{ "day": "08-10", "nameStartsWith": "Dubrovnik Cable Car" }]
+    },
+    {
+      "key": "dubrovnik-city-walls",
+      "kind": "ticket",
+      "operator": "Dubrovnik City Walls",
+      "reference": "DUB26M6CVTSWMF",
+      "startsAt": { "date": "2026-08-11", "time": "17:15" },
+      "price": {
+        "amounts": [{ "lo": 40, "hi": 40, "currency": "EUR", "basis": "per_person" }],
+        "display": "€40"
+      },
+      "party": 1,
+      "status": "active",
+      "ticket": null,
+      "sourceDoc": "docs/BOOKINGS.md",
+      "linkTo": [{ "day": "08-11", "nameStartsWith": "Dubrovnik City Walls" }]
+    },
+    {
+      "key": "gyg-blue-cave",
+      "kind": "tour",
+      "operator": "GetYourGuide / Salty Experience",
+      "reference": "GYGG45MLA9Q9",
+      "startsAt": { "date": "2026-08-13", "time": "07:00" },
+      "price": {
+        "amounts": [{ "lo": 159.98, "hi": 159.98, "currency": "USD", "basis": "per_party" }],
+        "display": "$159.98 total",
+        "note": "listing price was $132 before taxes/fees; non-refundable"
+      },
+      "party": 1,
+      "status": "active",
+      "ticket": null,
+      "sourceDoc": "docs/BOOKINGS.md",
+      "linkTo": [{ "day": "08-13", "nameStartsWith": "Speedboat pickup" }]
+    },
+    {
+      "key": "gyg-danube-cruise",
+      "kind": "tour",
+      "operator": "GetYourGuide / Duna-Weser Kft.",
+      "reference": "GYGFWV28229K",
+      "startsAt": { "date": "2026-08-19", "time": "19:30" },
+      "price": {
+        "amounts": [{ "lo": 573.25, "hi": 573.25, "currency": "USD", "basis": "per_party" }],
+        "display": "$573.25 total",
+        "note": "5 adults, 2.5 hrs, River Diva, Akadémia 3 Dock"
+      },
+      "party": 5,
+      "status": "active",
+      "ticket": null,
+      "sourceDoc": "docs/BOOKINGS.md",
+      "linkTo": [{ "day": "08-19", "nameStartsWith": "Board the Danube dinner cruise" }]
+    },
+    {
+      "key": "uk-eta",
+      "kind": "other",
+      "operator": "UK Electronic Travel Authorisation",
+      "reference": "2020-0000-5923-3855",
+      "startsAt": { "date": "2026-08-21", "time": null },
+      "endsAt": { "date": "2028-08-07", "time": null },
+      "price": {
+        "amounts": [{ "lo": 27.98, "hi": 27.98, "currency": "USD", "basis": "per_person" }],
+        "display": "$27.98"
+      },
+      "party": 1,
+      "status": "active",
+      "ticket": null,
+      "sourceDoc": "docs/BOOKINGS.md"
+    }
+  ]
+}

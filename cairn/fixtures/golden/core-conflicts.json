@@ -1,0 +1,633 @@
+{
+  "$generatedBy": "cairn/tools/gen-golden.mjs",
+  "$source": "europe-2026-itinerary.html (read-only)",
+  "$sourceSha256": "40955ca0b182dddcc33540accadf2a65a329bc20b9e6ca109c9884e776bb06d2",
+  "$what": "detectConflicts() with today=2026-08-01. No live-app counterpart exists.",
+  "today": "2026-08-01",
+  "conflicts": [
+    {
+      "id": "legacy_flag-4f3015c956de81ed",
+      "ruleId": "legacy_flag",
+      "severity": "blocker",
+      "subjects": [
+        {
+          "kind": "day",
+          "id": "2026-08-20"
+        }
+      ],
+      "summary": "Rebuilt Aug 18 per Jacob: Aug 20 is Hungary's national holiday (St. Stephen's Day) and most of it is spent at the citywide festival, not the earlier sightseeing draft. Dropped the Parliament interior tour, Great Market Hall, and the Andrássy út walk — the Parliament tour in particular likely doesn't run its normal paid/timed format on the holiday itself, and the Market Hall is likely closed or on reduced hours (couldn't confirm holiday hours online — worth a quick check closer to the day). Pulled straight from the festival guide Jacob sent (Aug 18); exact timings can shift, so treat as approximate. Expect heavy crowds and road/transit closures around Kossuth tér and the river all day, worst right after the fireworks.",
+      "params": {
+        "dayId": "2026-08-20",
+        "date": "2026-08-20",
+        "title": "St. István's Day — national holiday & Danube festival"
+      }
+    },
+    {
+      "id": "legacy_flag-6896e7640ba84df8",
+      "ruleId": "legacy_flag",
+      "severity": "blocker",
+      "subjects": [
+        {
+          "kind": "day",
+          "id": "2026-08-18"
+        }
+      ],
+      "summary": "Corrected Aug 16 — this is a 7:30am departure, not 7:30pm as the app previously had it. That kills the leisurely last morning in Prague: pack the night before, no time for Petřín Hill or a sit-down lunch. It also means a near-full afternoon in Budapest instead of a bare arrival — the stops after check-in are my draft, pulled forward from what was originally Aug 20, since you've been up since before dawn and a light Pest-side afternoon beats a packed one.",
+      "params": {
+        "dayId": "2026-08-18",
+        "date": "2026-08-18",
+        "title": "Early flight: Prague → Budapest"
+      }
+    },
+    {
+      "id": "impossible_transfer-266f0b218cef8165",
+      "ruleId": "impossible_transfer",
+      "severity": "blocker",
+      "subjects": [
+        {
+          "kind": "stop",
+          "id": "stop-29"
+        },
+        {
+          "kind": "stop",
+          "id": "stop-30"
+        },
+        {
+          "kind": "day",
+          "id": "2026-08-12"
+        }
+      ],
+      "summary": "2026-08-12: “FlixBus → Split” is 245 min by bus from “Dubrovnik bus terminal (Gruž)”, but only 25 min separates 06:50 and 07:15.",
+      "params": {
+        "dayId": "2026-08-12",
+        "fromName": "Dubrovnik bus terminal (Gruž)",
+        "toName": "FlixBus → Split",
+        "mode": "bus",
+        "legMins": 245,
+        "gapMins": 25,
+        "fromTime": "06:50",
+        "toTime": "07:15"
+      }
+    },
+    {
+      "id": "impossible_transfer-30a4eb38d9d55b34",
+      "ruleId": "impossible_transfer",
+      "severity": "blocker",
+      "subjects": [
+        {
+          "kind": "stop",
+          "id": "stop-111"
+        },
+        {
+          "kind": "stop",
+          "id": "stop-112"
+        },
+        {
+          "kind": "day",
+          "id": "2026-08-22"
+        }
+      ],
+      "summary": "2026-08-22: “Virgin Atlantic VS23 → Los Angeles” is 670 min by flight from “Collect bags, head to Heathrow”, but only 225 min separates 14:30 and 18:15.",
+      "params": {
+        "dayId": "2026-08-22",
+        "fromName": "Collect bags, head to Heathrow",
+        "toName": "Virgin Atlantic VS23 → Los Angeles",
+        "mode": "flight",
+        "legMins": 670,
+        "gapMins": 225,
+        "fromTime": "14:30",
+        "toTime": "18:15"
+      }
+    },
+    {
+      "id": "impossible_transfer-5c49fe0fc0df47ab",
+      "ruleId": "impossible_transfer",
+      "severity": "blocker",
+      "subjects": [
+        {
+          "kind": "stop",
+          "id": "stop-1"
+        },
+        {
+          "kind": "stop",
+          "id": "stop-2"
+        },
+        {
+          "kind": "day",
+          "id": "2026-08-07"
+        }
+      ],
+      "summary": "2026-08-07: “Condor DE2081 → Frankfurt” is 660 min by flight from “Arrive LAX — Tom Bradley International”, but only 120 min separates 14:45 and 16:45.",
+      "params": {
+        "dayId": "2026-08-07",
+        "fromName": "Arrive LAX — Tom Bradley International",
+        "toName": "Condor DE2081 → Frankfurt",
+        "mode": "flight",
+        "legMins": 660,
+        "gapMins": 120,
+        "fromTime": "14:45",
+        "toTime": "16:45"
+      }
+    },
+    {
+      "id": "impossible_transfer-d084b8e694fbea32",
+      "ruleId": "impossible_transfer",
+      "severity": "blocker",
+      "subjects": [
+        {
+          "kind": "stop",
+          "id": "stop-78"
+        },
+        {
+          "kind": "stop",
+          "id": "stop-79"
+        },
+        {
+          "kind": "day",
+          "id": "2026-08-18"
+        }
+      ],
+      "summary": "2026-08-18: “Airport Express bus → Václav Havel Airport (PRG)” is 40 min by bus from “Check out — pack the night before”, but only 30 min separates 05:00 and 05:30.",
+      "params": {
+        "dayId": "2026-08-18",
+        "fromName": "Check out — pack the night before",
+        "toName": "Airport Express bus → Václav Havel Airport (PRG)",
+        "mode": "bus",
+        "legMins": 40,
+        "gapMins": 30,
+        "fromTime": "05:00",
+        "toTime": "05:30"
+      }
+    },
+    {
+      "id": "geo_outlier-160c988e8a0cfe22",
+      "ruleId": "geo_outlier",
+      "severity": "blocker",
+      "subjects": [
+        {
+          "kind": "stop",
+          "id": "stop-47"
+        },
+        {
+          "kind": "day",
+          "id": "2026-08-14"
+        }
+      ],
+      "summary": "“Buy the Visovac + Roški Slap boat excursion” on 2026-08-14 is 51 km from the centre of split, and nothing on the stop says how you get there.",
+      "params": {
+        "stopName": "Buy the Visovac + Roški Slap boat excursion",
+        "date": "2026-08-14",
+        "cityKey": "split",
+        "km": 51,
+        "lat": 43.7975,
+        "lng": 15.9515
+      }
+    },
+    {
+      "id": "geo_outlier-2a780bd670f5a1da",
+      "ruleId": "geo_outlier",
+      "severity": "blocker",
+      "subjects": [
+        {
+          "kind": "stop",
+          "id": "stop-48"
+        },
+        {
+          "kind": "day",
+          "id": "2026-08-14"
+        }
+      ],
+      "summary": "“Roški Slap — mills, cascades & swim” on 2026-08-14 is 48 km from the centre of split, and nothing on the stop says how you get there.",
+      "params": {
+        "stopName": "Roški Slap — mills, cascades & swim",
+        "date": "2026-08-14",
+        "cityKey": "split",
+        "km": 48,
+        "lat": 43.8608,
+        "lng": 16.0879
+      }
+    },
+    {
+      "id": "geo_outlier-36852a0a54a278b6",
+      "ruleId": "geo_outlier",
+      "severity": "blocker",
+      "subjects": [
+        {
+          "kind": "stop",
+          "id": "stop-45"
+        },
+        {
+          "kind": "day",
+          "id": "2026-08-14"
+        }
+      ],
+      "summary": "“Arrive Skradin — buy park entrance ticket” on 2026-08-14 is 54 km from the centre of split, and nothing on the stop says how you get there.",
+      "params": {
+        "stopName": "Arrive Skradin — buy park entrance ticket",
+        "date": "2026-08-14",
+        "cityKey": "split",
+        "km": 54,
+        "lat": 43.8172,
+        "lng": 15.9186
+      }
+    },
+    {
+      "id": "geo_outlier-a87e3e658871a1a1",
+      "ruleId": "geo_outlier",
+      "severity": "blocker",
+      "subjects": [
+        {
+          "kind": "stop",
+          "id": "stop-51"
+        },
+        {
+          "kind": "day",
+          "id": "2026-08-15"
+        }
+      ],
+      "summary": "“Morning with your girlfriend's family” on 2026-08-15 is 746 km from the centre of prague, and nothing on the stop says how you get there.",
+      "params": {
+        "stopName": "Morning with your girlfriend's family",
+        "date": "2026-08-15",
+        "cityKey": "prague",
+        "km": 746,
+        "lat": 43.5081,
+        "lng": 16.4402
+      }
+    },
+    {
+      "id": "geo_outlier-b1646822fcdd00ce",
+      "ruleId": "geo_outlier",
+      "severity": "blocker",
+      "subjects": [
+        {
+          "kind": "stop",
+          "id": "stop-101"
+        },
+        {
+          "kind": "day",
+          "id": "2026-08-21"
+        }
+      ],
+      "summary": "“Gellért Hill & Citadella at sunrise” on 2026-08-21 is 1482 km from the centre of london, and nothing on the stop says how you get there.",
+      "params": {
+        "stopName": "Gellért Hill & Citadella at sunrise",
+        "date": "2026-08-21",
+        "cityKey": "london",
+        "km": 1482,
+        "lat": 47.4869,
+        "lng": 19.0466
+      }
+    },
+    {
+      "id": "geo_outlier-c8cef1c224ec647e",
+      "ruleId": "geo_outlier",
+      "severity": "blocker",
+      "subjects": [
+        {
+          "kind": "stop",
+          "id": "stop-3"
+        },
+        {
+          "kind": "day",
+          "id": "2026-08-08"
+        }
+      ],
+      "summary": "“Frankfurt (FRA) — connect” on 2026-08-08 is 603 km from the centre of vienna, and nothing on the stop says how you get there.",
+      "params": {
+        "stopName": "Frankfurt (FRA) — connect",
+        "date": "2026-08-08",
+        "cityKey": "vienna",
+        "km": 603,
+        "lat": 50.0379,
+        "lng": 8.5622
+      }
+    },
+    {
+      "id": "unverified_reference-4ff156d65ce14eca",
+      "ruleId": "unverified_reference",
+      "severity": "warning",
+      "subjects": [
+        {
+          "kind": "booking",
+          "id": "booking-9"
+        }
+      ],
+      "summary": "Ryanair I54C9A on 2026-08-18 is recorded from memory — there is no confirmation email or ticket behind it.",
+      "params": {
+        "operator": "Ryanair",
+        "reference": "I54C9A",
+        "date": "2026-08-18",
+        "confidence": "asserted"
+      }
+    },
+    {
+      "id": "unverified_reference-6e487a7025858c7c",
+      "ruleId": "unverified_reference",
+      "severity": "warning",
+      "subjects": [
+        {
+          "kind": "booking",
+          "id": "booking-3"
+        }
+      ],
+      "summary": "Ryanair IU1TUY on 2026-08-10 is recorded from memory — there is no confirmation email or ticket behind it.",
+      "params": {
+        "operator": "Ryanair",
+        "reference": "IU1TUY",
+        "date": "2026-08-10",
+        "confidence": "asserted"
+      }
+    },
+    {
+      "id": "missing_lodging-480b4d5423ca0530",
+      "ruleId": "missing_lodging",
+      "severity": "warning",
+      "subjects": [
+        {
+          "kind": "day",
+          "id": "2026-08-21"
+        }
+      ],
+      "summary": "1 night in London (2026-08-21 → 2026-08-22) with no lodging booking on file.",
+      "params": {
+        "cityKey": "london",
+        "cityName": "London",
+        "nights": 1,
+        "from": "2026-08-21",
+        "to": "2026-08-22"
+      }
+    },
+    {
+      "id": "missing_lodging-878b3974f99396e0",
+      "ruleId": "missing_lodging",
+      "severity": "warning",
+      "subjects": [
+        {
+          "kind": "day",
+          "id": "2026-08-18"
+        },
+        {
+          "kind": "day",
+          "id": "2026-08-19"
+        },
+        {
+          "kind": "day",
+          "id": "2026-08-20"
+        }
+      ],
+      "summary": "3 nights in Budapest (2026-08-18 → 2026-08-21) with no lodging booking on file.",
+      "params": {
+        "cityKey": "budapest",
+        "cityName": "Budapest",
+        "nights": 3,
+        "from": "2026-08-18",
+        "to": "2026-08-21"
+      }
+    },
+    {
+      "id": "superseded_booking-4b206ddf14e34eeb",
+      "ruleId": "superseded_booking",
+      "severity": "note",
+      "subjects": [
+        {
+          "kind": "booking",
+          "id": "booking-7"
+        },
+        {
+          "kind": "booking",
+          "id": "booking-8"
+        }
+      ],
+      "summary": "Smartwings YZGDTS was reissued: the 2026-07-16 version said 2026-08-18, the 2026-08-04 version says 2026-08-15 14:40.",
+      "params": {
+        "operator": "Smartwings",
+        "reference": "YZGDTS",
+        "oldIssued": "2026-07-16",
+        "newIssued": "2026-08-04",
+        "oldDate": "2026-08-18",
+        "newDate": "2026-08-15"
+      }
+    },
+    {
+      "id": "unbooked_ticketed-0dcb7d0249c6f996",
+      "ruleId": "unbooked_ticketed",
+      "severity": "note",
+      "subjects": [
+        {
+          "kind": "stop",
+          "id": "stop-11"
+        },
+        {
+          "kind": "day",
+          "id": "2026-08-09"
+        }
+      ],
+      "summary": "“Schönbrunn gardens & Gloriette” on 2026-08-09 costs Gardens free · palace €15–24 and has a booking link, but nothing is booked (8 days out).",
+      "params": {
+        "stopName": "Schönbrunn gardens & Gloriette",
+        "date": "2026-08-09",
+        "cost": "Gardens free · palace €15–24",
+        "daysOut": 8
+      }
+    },
+    {
+      "id": "unbooked_ticketed-3a2bdf9f9232b2bb",
+      "ruleId": "unbooked_ticketed",
+      "severity": "note",
+      "subjects": [
+        {
+          "kind": "stop",
+          "id": "stop-81"
+        },
+        {
+          "kind": "day",
+          "id": "2026-08-18"
+        }
+      ],
+      "summary": "“100E airport bus → city, check in” on 2026-08-18 costs ~€7 and has a booking link, but nothing is booked (17 days out).",
+      "params": {
+        "stopName": "100E airport bus → city, check in",
+        "date": "2026-08-18",
+        "cost": "~€7",
+        "daysOut": 17
+      }
+    },
+    {
+      "id": "unbooked_ticketed-45295980902335ec",
+      "ruleId": "unbooked_ticketed",
+      "severity": "note",
+      "subjects": [
+        {
+          "kind": "stop",
+          "id": "stop-82"
+        },
+        {
+          "kind": "day",
+          "id": "2026-08-18"
+        }
+      ],
+      "summary": "“St Stephen's Basilica + panorama” on 2026-08-18 costs ~€6–12 and has a booking link, but nothing is booked (17 days out).",
+      "params": {
+        "stopName": "St Stephen's Basilica + panorama",
+        "date": "2026-08-18",
+        "cost": "~€6–12",
+        "daysOut": 17
+      }
+    },
+    {
+      "id": "unbooked_ticketed-67e7ff95c0f44319",
+      "ruleId": "unbooked_ticketed",
+      "severity": "note",
+      "subjects": [
+        {
+          "kind": "stop",
+          "id": "stop-25"
+        },
+        {
+          "kind": "day",
+          "id": "2026-08-11"
+        }
+      ],
+      "summary": "“Lokrum Island” on 2026-08-11 costs €27 and has a booking link, but nothing is booked (10 days out).",
+      "params": {
+        "stopName": "Lokrum Island",
+        "date": "2026-08-11",
+        "cost": "€27",
+        "daysOut": 10
+      }
+    },
+    {
+      "id": "unbooked_ticketed-764ad8eec691094a",
+      "ruleId": "unbooked_ticketed",
+      "severity": "note",
+      "subjects": [
+        {
+          "kind": "stop",
+          "id": "stop-9"
+        },
+        {
+          "kind": "day",
+          "id": "2026-08-08"
+        }
+      ],
+      "summary": "“DECENTRAL — Sachertorte nightcap” on 2026-08-08 costs €9–14 and has a booking link, but nothing is booked (7 days out).",
+      "params": {
+        "stopName": "DECENTRAL — Sachertorte nightcap",
+        "date": "2026-08-08",
+        "cost": "€9–14",
+        "daysOut": 7
+      }
+    },
+    {
+      "id": "unbooked_ticketed-89bd6c32e2bd680e",
+      "ruleId": "unbooked_ticketed",
+      "severity": "note",
+      "subjects": [
+        {
+          "kind": "stop",
+          "id": "stop-12"
+        },
+        {
+          "kind": "day",
+          "id": "2026-08-09"
+        }
+      ],
+      "summary": "“Austrian National Library — State Hall” on 2026-08-09 costs €12 and has a booking link, but nothing is booked (8 days out).",
+      "params": {
+        "stopName": "Austrian National Library — State Hall",
+        "date": "2026-08-09",
+        "cost": "€12",
+        "daysOut": 8
+      }
+    },
+    {
+      "id": "unbooked_ticketed-d002cc4fad84089b",
+      "ruleId": "unbooked_ticketed",
+      "severity": "note",
+      "subjects": [
+        {
+          "kind": "stop",
+          "id": "stop-108"
+        },
+        {
+          "kind": "day",
+          "id": "2026-08-22"
+        }
+      ],
+      "summary": "“Windsor Castle” on 2026-08-22 costs ~£32 and has a booking link, but nothing is booked (21 days out).",
+      "params": {
+        "stopName": "Windsor Castle",
+        "date": "2026-08-22",
+        "cost": "~£32",
+        "daysOut": 21
+      }
+    },
+    {
+      "id": "unbooked_ticketed-e738d5ff2ac4fc33",
+      "ruleId": "unbooked_ticketed",
+      "severity": "note",
+      "subjects": [
+        {
+          "kind": "stop",
+          "id": "stop-90"
+        },
+        {
+          "kind": "day",
+          "id": "2026-08-19"
+        }
+      ],
+      "summary": "“Széchenyi Thermal Bath” on 2026-08-19 costs ~€35 and has a booking link, but nothing is booked (18 days out).",
+      "params": {
+        "stopName": "Széchenyi Thermal Bath",
+        "date": "2026-08-19",
+        "cost": "~€35",
+        "daysOut": 18
+      }
+    },
+    {
+      "id": "unbooked_ticketed-e78c4d0d0b3e3be1",
+      "ruleId": "unbooked_ticketed",
+      "severity": "note",
+      "subjects": [
+        {
+          "kind": "stop",
+          "id": "stop-67"
+        },
+        {
+          "kind": "day",
+          "id": "2026-08-17"
+        }
+      ],
+      "summary": "“Prague Castle grounds & ticket queue” on 2026-08-17 costs ~450 CZK and has a booking link, but nothing is booked (16 days out).",
+      "params": {
+        "stopName": "Prague Castle grounds & ticket queue",
+        "date": "2026-08-17",
+        "cost": "~450 CZK",
+        "daysOut": 16
+      }
+    },
+    {
+      "id": "unbooked_ticketed-e7f6e719d02349c5",
+      "ruleId": "unbooked_ticketed",
+      "severity": "note",
+      "subjects": [
+        {
+          "kind": "stop",
+          "id": "stop-57"
+        },
+        {
+          "kind": "day",
+          "id": "2026-08-16"
+        }
+      ],
+      "summary": "“Jewish Quarter (Josefov)” on 2026-08-16 costs ~550 CZK and has a booking link, but nothing is booked (15 days out).",
+      "params": {
+        "stopName": "Jewish Quarter (Josefov)",
+        "date": "2026-08-16",
+        "cost": "~550 CZK",
+        "daysOut": 15
+      }
+    }
+  ]
+}

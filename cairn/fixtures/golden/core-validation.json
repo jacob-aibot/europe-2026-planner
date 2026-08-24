@@ -1,0 +1,472 @@
+{
+  "$generatedBy": "cairn/tools/gen-golden.mjs",
+  "$source": "europe-2026-itinerary.html (read-only)",
+  "$sourceSha256": "40955ca0b182dddcc33540accadf2a65a329bc20b9e6ca109c9884e776bb06d2",
+  "$what": "validateTrip() on the unmodified fixture. No live-app counterpart exists.",
+  "issues": [
+    {
+      "level": "warn",
+      "code": "stop_far_from_city",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-3"
+      },
+      "message": "\"Frankfurt (FRA) — connect\" is 603 km from vienna, on a vienna day.",
+      "params": {
+        "stopId": "stop-3",
+        "km": 603,
+        "cityKey": "vienna",
+        "date": "2026-08-08"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "stop_far_from_city",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-17"
+      },
+      "message": "\"Leave for Vienna Airport (VIE)\" is 619 km from dubrovnik, on a dubrovnik day.",
+      "params": {
+        "stopId": "stop-17",
+        "km": 619,
+        "cityKey": "dubrovnik",
+        "date": "2026-08-10"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "stop_far_from_city",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-29"
+      },
+      "message": "\"Dubrovnik bus terminal (Gruž)\" is 163 km from split, on a split day.",
+      "params": {
+        "stopId": "stop-29",
+        "km": 163,
+        "cityKey": "split",
+        "date": "2026-08-12"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "cost_basis_mixed",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-37"
+      },
+      "message": "\"Speedboat pickup — Split harbour\" is priced in USD on a trip kept in EUR; core will not convert it.",
+      "params": {
+        "stopId": "stop-37",
+        "currencies": "USD",
+        "homeCurrency": "EUR",
+        "display": "$159.98pp"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "stop_far_from_city",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-38"
+      },
+      "message": "\"Blue Cave, Biševo\" is 64 km from split, on a split day.",
+      "params": {
+        "stopId": "stop-38",
+        "km": 64,
+        "cityKey": "split",
+        "date": "2026-08-13"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "stop_far_from_city",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-39"
+      },
+      "message": "\"Stiniva Cove, Vis\" is 56 km from split, on a split day.",
+      "params": {
+        "stopId": "stop-39",
+        "km": 56,
+        "cityKey": "split",
+        "date": "2026-08-13"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "stop_far_from_city",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-40"
+      },
+      "message": "\"Budikovac / Blue Lagoon — snorkel stop\" is 53 km from split, on a split day.",
+      "params": {
+        "stopId": "stop-40",
+        "km": 53,
+        "cityKey": "split",
+        "date": "2026-08-13"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "stop_far_from_city",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-41"
+      },
+      "message": "\"Hvar Town\" is 37 km from split, on a split day.",
+      "params": {
+        "stopId": "stop-41",
+        "km": 37,
+        "cityKey": "split",
+        "date": "2026-08-13"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "stop_far_from_city",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-45"
+      },
+      "message": "\"Arrive Skradin — buy park entrance ticket\" is 54 km from split, on a split day.",
+      "params": {
+        "stopId": "stop-45",
+        "km": 54,
+        "cityKey": "split",
+        "date": "2026-08-14"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "stop_far_from_city",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-46"
+      },
+      "message": "\"Boat to Skradinski Buk\" is 51 km from split, on a split day.",
+      "params": {
+        "stopId": "stop-46",
+        "km": 51,
+        "cityKey": "split",
+        "date": "2026-08-14"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "stop_far_from_city",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-47"
+      },
+      "message": "\"Buy the Visovac + Roški Slap boat excursion\" is 51 km from split, on a split day.",
+      "params": {
+        "stopId": "stop-47",
+        "km": 51,
+        "cityKey": "split",
+        "date": "2026-08-14"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "stop_far_from_city",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-48"
+      },
+      "message": "\"Roški Slap — mills, cascades & swim\" is 48 km from split, on a split day.",
+      "params": {
+        "stopId": "stop-48",
+        "km": 48,
+        "cityKey": "split",
+        "date": "2026-08-14"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "stop_far_from_city",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-49"
+      },
+      "message": "\"Boat back to Skradinski Buk, then Skradin\" is 51 km from split, on a split day.",
+      "params": {
+        "stopId": "stop-49",
+        "km": 51,
+        "cityKey": "split",
+        "date": "2026-08-14"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "stop_far_from_city",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-50"
+      },
+      "message": "\"FlixBus → Split\" is 54 km from split, on a split day.",
+      "params": {
+        "stopId": "stop-50",
+        "km": 54,
+        "cityKey": "split",
+        "date": "2026-08-14"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "stop_far_from_city",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-51"
+      },
+      "message": "\"Morning with your girlfriend's family\" is 746 km from prague, on a prague day.",
+      "params": {
+        "stopId": "stop-51",
+        "km": 746,
+        "cityKey": "prague",
+        "date": "2026-08-15"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "stop_far_from_city",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-52"
+      },
+      "message": "\"Split Airport (SPU), Kaštela\" is 740 km from prague, on a prague day.",
+      "params": {
+        "stopId": "stop-52",
+        "km": 740,
+        "cityKey": "prague",
+        "date": "2026-08-15"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "cost_basis_mixed",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-54"
+      },
+      "message": "\"Airport Express bus → city centre\" is priced in CZK on a trip kept in EUR; core will not convert it.",
+      "params": {
+        "stopId": "stop-54",
+        "currencies": "CZK",
+        "homeCurrency": "EUR",
+        "display": "~100 CZK"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "cost_basis_mixed",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-57"
+      },
+      "message": "\"Jewish Quarter (Josefov)\" is priced in CZK on a trip kept in EUR; core will not convert it.",
+      "params": {
+        "stopId": "stop-57",
+        "currencies": "CZK",
+        "homeCurrency": "EUR",
+        "display": "~550 CZK"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "cost_basis_mixed",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-67"
+      },
+      "message": "\"Prague Castle grounds & ticket queue\" is priced in CZK on a trip kept in EUR; core will not convert it.",
+      "params": {
+        "stopId": "stop-67",
+        "currencies": "CZK",
+        "homeCurrency": "EUR",
+        "display": "~450 CZK"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "stop_far_from_city",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-78"
+      },
+      "message": "\"Check out — pack the night before\" is 444 km from budapest, on a budapest day.",
+      "params": {
+        "stopId": "stop-78",
+        "km": 444,
+        "cityKey": "budapest",
+        "date": "2026-08-18"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "stop_far_from_city",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-79"
+      },
+      "message": "\"Airport Express bus → Václav Havel Airport (PRG)\" is 454 km from budapest, on a budapest day.",
+      "params": {
+        "stopId": "stop-79",
+        "km": 454,
+        "cityKey": "budapest",
+        "date": "2026-08-18"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "cost_basis_mixed",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-79"
+      },
+      "message": "\"Airport Express bus → Václav Havel Airport (PRG)\" is priced in CZK on a trip kept in EUR; core will not convert it.",
+      "params": {
+        "stopId": "stop-79",
+        "currencies": "CZK",
+        "homeCurrency": "EUR",
+        "display": "~100 CZK"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "cost_basis_mixed",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-92"
+      },
+      "message": "\"Board the Danube dinner cruise — Akadémia 3 Dock\" is priced in USD on a trip kept in EUR; core will not convert it.",
+      "params": {
+        "stopId": "stop-92",
+        "currencies": "USD",
+        "homeCurrency": "EUR",
+        "display": "$573.25 total"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "stop_far_from_city",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-101"
+      },
+      "message": "\"Gellért Hill & Citadella at sunrise\" is 1482 km from london, on a london day.",
+      "params": {
+        "stopId": "stop-101",
+        "km": 1482,
+        "cityKey": "london",
+        "date": "2026-08-21"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "stop_far_from_city",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-102"
+      },
+      "message": "\"100E bus → Budapest Airport (BUD)\" is 1500 km from london, on a london day.",
+      "params": {
+        "stopId": "stop-102",
+        "km": 1500,
+        "cityKey": "london",
+        "date": "2026-08-21"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "cost_basis_mixed",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-107"
+      },
+      "message": "\"Dinner — Windsor town centre\" is priced in GBP on a trip kept in EUR; core will not convert it.",
+      "params": {
+        "stopId": "stop-107",
+        "currencies": "GBP",
+        "homeCurrency": "EUR",
+        "display": "£20–35"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "cost_basis_mixed",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-108"
+      },
+      "message": "\"Windsor Castle\" is priced in GBP on a trip kept in EUR; core will not convert it.",
+      "params": {
+        "stopId": "stop-108",
+        "currencies": "GBP",
+        "homeCurrency": "EUR",
+        "display": "~£32"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "cost_basis_mixed",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-110"
+      },
+      "message": "\"Lunch — Windsor or Eton riverside\" is priced in GBP on a trip kept in EUR; core will not convert it.",
+      "params": {
+        "stopId": "stop-110",
+        "currencies": "GBP",
+        "homeCurrency": "EUR",
+        "display": "£18–28"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "cost_basis_mixed",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-111"
+      },
+      "message": "\"Collect bags, head to Heathrow\" is priced in GBP on a trip kept in EUR; core will not convert it.",
+      "params": {
+        "stopId": "stop-111",
+        "currencies": "GBP",
+        "homeCurrency": "EUR",
+        "display": "£5–20"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "stop_far_from_city",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-112"
+      },
+      "message": "\"Virgin Atlantic VS23 → Los Angeles\" is 8751 km from london, on a london day.",
+      "params": {
+        "stopId": "stop-112",
+        "km": 8751,
+        "cityKey": "london",
+        "date": "2026-08-22"
+      }
+    },
+    {
+      "level": "error",
+      "code": "lat_lng_out_of_range",
+      "ref": {
+        "kind": "place",
+        "id": "place-92"
+      },
+      "message": "Place \"Windsor Great Park / Long Walk\" has no coordinates at all.",
+      "params": {
+        "placeId": "place-92",
+        "name": "Windsor Great Park / Long Walk",
+        "cityKey": "london"
+      }
+    }
+  ]
+}
