@@ -49,6 +49,25 @@ Two mechanical rewrites, so upstream diffs stay readable:
 2. `docs/superpowers/plans/` and `docs/superpowers/specs/` → `cairn/docs/plans/` and `cairn/docs/specs/`.
    The root `docs/` holds the live trip planner's `BOOKINGS.md` and `HISTORY.md`; Cairn's planning output
    does not belong there. `.superpowers/` (the subagent ledger) is gitignored.
+3. Two descriptions rewritten (bodies untouched): `taste`'s was 1,299 characters of trigger examples, paid
+   for on **every** session in this directory; `design-taste-frontend`'s now states the scope limit its own
+   body declares, so it stops firing on product UI it is not built for.
+
+## What these cost
+
+Descriptions load eagerly — every session here pays for all of them. Bodies load only on invocation.
+
+| | ≈ tokens |
+|---|---|
+| All 18 descriptions, every session | ~1.1k |
+| `design-taste-frontend` body, when invoked | 22k |
+| `subagent-driven-development` body | 8k |
+| `writing-skills` / `taste` / `ui-ux-pro-max` / `brainstorming` bodies | 4–7k each |
+| `test-driven-development`, `systematic-debugging` | ~2k each |
+| `cairn-constraints`, `verification-before-completion` | ~1.5k each |
+
+The three you want firing most often are also the three cheapest. That is not a coincidence — it is why
+`design-taste-frontend` got its scope line promoted into its description.
 
 `brainstorming` ships an optional local visual companion that hotlinks a logo from `primeradiant.com`. Set
 `SUPERPOWERS_DISABLE_TELEMETRY=1` to suppress it. Nothing else here makes a network call.

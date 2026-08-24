@@ -3,11 +3,31 @@
 Stage 1 output. Inputs: `cairn/docs/BRIEF.md`, Jacob's answers to the open questions (2026-08-24),
 the root `CLAUDE.md`, and `europe-2026-itinerary.html` — the working proof of the format.
 
-Read §1 for the stack and the verified constraints behind it, §2 for the core domain model, §3 for module
-boundaries, §4 for the Phase 1 client, §5 for the four hard subsystems, §6 for privacy, authorization and
-the deletion cascade, §7 for what is deliberately deferred.
-
 **Phase 1 is §2 and §4.** Everything else is the shape those two must not foreclose. See `ROADMAP.md`.
+
+## Read only your sections
+
+This document is ~15k tokens. Nothing needs all of it, and a fresh agent that reads it whole starts a third
+of the way into its context before writing a line. Pull what you need:
+
+```bash
+cairn/tools/doc-section ARCHITECTURE 2 4     # prints §2 and §4 only
+cairn/tools/doc-section ARCHITECTURE         # lists the sections and their sizes
+```
+
+| § | Contents | ≈ cost | Who needs it |
+|---|---|---|---|
+| 0 | Four positions, stated up front | <1k | everyone — read it, it is 15 lines |
+| 1 | Stack decision and the capability checks behind it | 3k | architect. Settled; do not re-litigate |
+| 2 | **Domain model — the builder's contract** | 6k | builder, breaker |
+| 3 | Module boundaries | <1k | builder |
+| 4 | **The Phase 1 client** | 2k | builder |
+| 5 | The four hard subsystems | 1k | breaker; builder from Phase 3 on |
+| 6 | Privacy, authorization, deletion cascade | 2k | breaker, manager; builder for §6.2 |
+| 7 | Explicitly deferred | <1k | anyone about to build something not in the roadmap |
+
+Read the whole document when you are the manager, when you are changing the design, or when a change
+crosses a section boundary. Otherwise this table is the contract.
 
 ---
 

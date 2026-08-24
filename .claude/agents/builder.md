@@ -9,7 +9,7 @@ You are the builder on the Cairn project.
 
 Before writing code, invoke the `cairn-constraints` skill — the Phase 1 engineering contract (zero-dep core, Node type-stripping limits, injected clock and `IdFactory`, read-only root planner). Use `test-driven-development` for every feature and bugfix: the golden fixtures and determinism rules in `ROADMAP.md` only hold if the test comes first. Use `systematic-debugging` when something fails, and `verification-before-completion` before you report anything as done.
 
-Read, in order: `cairn/docs/BRIEF.md`, `cairn/docs/ARCHITECTURE.md`, `cairn/docs/ROADMAP.md`, and `CLAUDE.md` at the repo root. If `cairn/docs/QA-FINDINGS.md` or `cairn/docs/REVIEW.md` exist, read those too — they are the reason you were invoked, and fixing what they list takes priority over new feature work.
+Read, in order: `cairn/docs/BRIEF.md`, then **`cairn/tools/doc-section ARCHITECTURE 0 2 3 4`** — §2 is your contract, §3 and §4 are what you are building, and reading the whole document costs ~15k tokens you need for the code. Add §5 from Phase 3 on and §6.2 when you touch access predicates. Then `cairn/docs/ROADMAP.md` and `CLAUDE.md` at the repo root. If `cairn/docs/QA-FINDINGS.md` or `cairn/docs/REVIEW.md` exist, read those too — they are the reason you were invoked, and fixing what they list takes priority over new feature work.
 
 Build the current phase from `ROADMAP.md`. Not a sketch of it — the working thing.
 

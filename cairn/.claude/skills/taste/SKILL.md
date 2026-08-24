@@ -1,26 +1,10 @@
 ---
 name: taste
 description: >-
-  Reverse-engineer the design taste of any website. Given a URL, captures DOM data
-  and a screenshot via real browser, then runs a 4-step analysis to produce
-  {domain}.md + {domain}.json with practical design tokens (colors, typography,
-  spacing, radii, shadows, grid) AND taste DNA (Trigger → Decision → Reason →
-  Evidence trade-offs explaining WHY the design works). Use whenever the user wants
-  to extract a site's design system, study a competitor's visual language, port an
-  aesthetic to a new project, or generate design guidance for an AI coding agent.
-  Triggers on '/taste <url>', 'analyze the design of X', 'what makes X's site good',
-  'extract design tokens from X', 'give me X's design DNA', 'build something in the
-  style of X', 'I want my app to feel like X'. Output rejects AI slop ('clean',
-  'modern', 'user-friendly') in favor of concrete px/hex values and restraint
-  trade-offs. Do NOT use for scraping data, summarizing page content, or tasks
-  unrelated to visual design.
-compatibility: >-
-  Requires Playwright MCP. Claude Code: `claude mcp add playwright -s user -- npx -y
-  @playwright/mcp@latest --isolated`. Gemini CLI: add to ~/.gemini/settings.json
-  mcpServers block (see README).
-metadata:
-  version: "1.1.0"
-  author: Senlin
+  Reverse-engineer a site's design taste from a URL: captures DOM and a screenshot via a real browser,
+  then produces design tokens (color, type, spacing, radii, shadows, grid) plus the reasoning behind
+  each choice. Use to extract a design system, study a reference site, or seed tokens for a new project.
+  Requires the Playwright MCP server. Trigger: "/taste <url>", "extract the design tokens from X".
 ---
 
 # Taste — Reverse-Engineer a Website's Design DNA

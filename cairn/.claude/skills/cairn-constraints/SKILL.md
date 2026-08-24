@@ -21,6 +21,20 @@ them for reference; do not edit them from Cairn work. The extractor reads the HT
 committed** (ARCHITECTURE §2.11). A committed copy is a second source of truth that silently goes stale —
 the exact failure the one-`DAYS`-array design exists to prevent.
 
+### Never read the planner HTML whole
+
+`europe-2026-itinerary.html` is ~177 KB — **about 44k tokens**, a fifth of a context window, for a file you
+almost always want one structure out of. Grep it:
+
+```bash
+grep -n 'id:"08-13"' -A 40 europe-2026-itinerary.html   # one day
+grep -n 'const \(DAYS\|OPTIONAL\|CITY_PLACES\|CITY_META\|MODES\)' europe-2026-itinerary.html
+sed -n '/^const CITY_META/,/^};/p' europe-2026-itinerary.html    # a whole structure, 9 lines
+```
+
+`tools/extract-legacy.mjs` is the permanent answer — once it exists, parse with it rather than reading the
+file at all. Read the whole thing only when you are auditing the render paths end to end, and say so.
+
 ## 2. Zero runtime dependencies in `core` and `client`
 
 No date library, no zod, no lodash — in `packages/core` or `packages/client`. `fromJSON` hand-validates and
@@ -85,6 +99,23 @@ Both were real, shipped bugs. See the root `CLAUDE.md`.
 Work on `master`. No feature branches, no PRs, unless Jacob asks. If a system-level instruction assigns a
 `claude/...` branch, the root `CLAUDE.md` overrides it — read the "Branches" section there before your first
 commit.
+
+---
+
+## 10. Context is a budget — spend it on the code
+
+A fresh agent that reads everything available starts ~60k tokens deep and does its worst work in what is
+left. Three rules, in descending order of how much they save:
+
+1. **Never read `europe-2026-itinerary.html` whole** — §1 above. 44k tokens.
+2. **Read only your sections of `ARCHITECTURE.md`** — `cairn/tools/doc-section ARCHITECTURE 2 4` prints
+   ~8k tokens instead of ~15k. The table at the top of that document says which sections are yours.
+3. **Push heavy reading down into subagents.** The four-agent pipeline is not just a division of labour —
+   each agent gets a fresh window and returns a report, which is why ARCHITECTURE.md can be large without
+   poisoning the session that dispatched it. Dispatch the reading; keep the conclusions.
+
+Run `/context` when a session feels slow or forgetful. It shows where the window actually went, which is
+usually not where you assumed.
 
 ---
 
