@@ -1,0 +1,10 @@
+{
+  "name": "@waypoint/client",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Trip store, ports and selectors. Platform-agnostic: no DOM, no React, no network.",
+  "exports": { ".": "./src/index.ts" },
+  "main": "./src/index.ts",
+  "dependencies": { "@waypoint/core": "*" }
+}

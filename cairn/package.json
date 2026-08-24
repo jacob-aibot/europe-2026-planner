@@ -1,0 +1,27 @@
+{
+  "name": "waypoint",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Waypoint — multi-trip itinerary planner. Phase 1: core engine + local-first client.",
+  "workspaces": [
+    "packages/*",
+    "apps/web"
+  ],
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --test packages/core/test/*.test.ts packages/client/test/*.test.ts",
+    "golden": "node tools/gen-golden.mjs",
+    "cli": "node cli.ts",
+    "serve": "node tools/serve.mjs",
+    "web:dev": "npm --prefix apps/web run dev",
+    "web:build": "npm --prefix apps/web run build"
+  },
+  "devDependencies": {
+    "@types/node": "^26.3.0",
+    "typescript": "^5.9.3"
+  }
+}
