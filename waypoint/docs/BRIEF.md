@@ -94,20 +94,30 @@ Two design positions to take a view on explicitly:
 ## Phasing principle
 
 Every phase ships something usable on its own, and the earliest phases must be runnable and attackable
-in a plain Node environment with no device and no cloud account. Phase 1 is therefore expected to be the
-core engine plus a real trip loaded through it — with the Europe 2026 data as the fixture, since it is
-the only real trip we have and it exercises overnight legs, multi-city days, and unresolved conflicts.
+in a plain Node environment with no device and no cloud account. Phase 1 is the core engine **plus a
+working multi-trip client** — with the Europe 2026 data as the fixture, since it is the only real trip we
+have and it exercises overnight legs, multi-city days, and unresolved conflicts. Core and the client's
+state machine must both stay attackable in plain Node; see `ROADMAP.md` for the acceptance criteria.
 
 ## Non-goals for now
 
 Booking or payments. Chat. Recommendation ML. Offline map tiles. Anything multi-tenant-enterprise.
 
-## Assumptions in force until Jacob says otherwise
+## Decisions Jacob has confirmed
 
-- Ends up native (Expo/React Native), but Phase 1 is platform-agnostic TypeScript.
-- Lives in this repo under `waypoint/` for now; splitting it out later is a `git subtree split`.
-- Audience is Jacob and his friends first — tens of users, not a public launch.
-- Working name is "Waypoint".
+Settled. Do not relitigate these; raise a flag if the design forces one open.
+
+- **Native app with a web companion.** Expo/React Native owns the phone — background location, photo
+  library, offline travel. A web app covers desktop planning and share links friends can open without
+  installing anything.
+- **Lives in this repo under `waypoint/`.** Splitting it out later is a `git subtree split`.
+- **Eventually public, launching with friends.** The posture is **public-grade on what is expensive to
+  retrofit, friends-grade on everything else.** Public-grade from day one: authorization on every read
+  path, ownership traceable on every row, deletion and export as a designed cascade (including location
+  traces, cached copies of friends' trips, ticket blobs, and parsed mail candidates), and narrow mailbox
+  handling that stores candidates rather than messages. Explicitly deferred until strangers arrive:
+  moderation, rate limiting, billing, admin tooling, scaling, i18n.
+- **Working name is "Waypoint"** — placeholder, not yet chosen.
 
 ## Working rules
 
