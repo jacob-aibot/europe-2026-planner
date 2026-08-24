@@ -32,8 +32,14 @@ grep -n 'const \(DAYS\|OPTIONAL\|CITY_PLACES\|CITY_META\|MODES\)' europe-2026-it
 sed -n '/^const CITY_META/,/^};/p' europe-2026-itinerary.html    # a whole structure, 9 lines
 ```
 
-`tools/extract-legacy.mjs` is the permanent answer — once it exists, parse with it rather than reading the
-file at all. Read the whole thing only when you are auditing the render paths end to end, and say so.
+`cairn/tools/extract-legacy.mjs` now exists and is the right answer for anything structural — it parses the
+constant block and reports counts without putting 44k tokens in your window:
+
+```bash
+node cairn/tools/extract-legacy.mjs        # sha + days/scheduled/pool/places counts
+```
+
+Read the file whole only when you are auditing the render paths end to end, and say so when you do.
 
 ## 2. Zero runtime dependencies in `core` and `client`
 
