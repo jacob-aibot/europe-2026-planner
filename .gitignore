@@ -2,3 +2,6 @@
 Thumbs.db
 *.tmp
 node_modules/
+
+# superpowers scratch state (subagent-driven-development ledger)
+.superpowers/

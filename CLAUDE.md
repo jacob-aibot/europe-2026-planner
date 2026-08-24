@@ -15,9 +15,24 @@ This has already gone wrong more than once: fixes landed on an orphaned `claude/
 europe-2026-itinerary.html   the entire app — one file, no build step
 docs/BOOKINGS.md             flights, prices, and the unresolved open items
 docs/HISTORY.md              why things are the way they are
+cairn/                       the Cairn app — this planner, generalised into a product
 ```
 
 Open the HTML by double-clicking it. There is no dev server, no package.json, nothing to install.
+
+### Cairn
+
+`cairn/` is a separate, in-progress product: many trips, many people, social sharing, mailbox ingestion,
+a live location path, photos. It is built by the four agents in `.claude/agents/` (architect → builder →
+breaker → manager) from the contract in `cairn/docs/BRIEF.md`, `ARCHITECTURE.md` and `ROADMAP.md`.
+
+**The trip planner at the repo root is read-only from Cairn's side.** `europe-2026-itinerary.html`,
+`docs/` and `tickets/` are the live app on Jacob's phone; Cairn reads them, never edits them, and commits
+no copy of `DAYS`.
+
+Cairn development skills live in `cairn/.claude/skills/` — deliberately scoped to that directory so a
+TDD/planning methodology does not fire on a two-line trip-planner edit. See the README there before
+adding, moving or trusting one.
 
 ## Before you change anything
 

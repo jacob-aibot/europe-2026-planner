@@ -1,4 +1,4 @@
-# Waypoint — product brief
+# Cairn — product brief
 
 The contract every agent on this project works from. The architect refines the *shape*; nothing here
 about *intent* changes without Jacob.
@@ -11,7 +11,7 @@ The Europe 2026 planner (`europe-2026-itinerary.html` at the repo root) proved t
 itinerary that knows where each stop is, what it costs, how long the hop takes, and which ticket you need
 — dense enough to actually travel from. It is single-trip, single-user, and its data is hardcoded.
 
-Waypoint is that, generalised into a product:
+Cairn is that, generalised into a product:
 
 1. **Many trips, many people.** Create an itinerary per trip, in the shape the Europe planner uses.
 2. **Social.** Add friends, browse their itineraries, pull a whole trip or a single stop into your own.
@@ -110,14 +110,14 @@ Settled. Do not relitigate these; raise a flag if the design forces one open.
 - **Native app with a web companion.** Expo/React Native owns the phone — background location, photo
   library, offline travel. A web app covers desktop planning and share links friends can open without
   installing anything.
-- **Lives in this repo under `waypoint/`.** Splitting it out later is a `git subtree split`.
+- **Lives in this repo under `cairn/`.** Splitting it out later is a `git subtree split`.
 - **Eventually public, launching with friends.** The posture is **public-grade on what is expensive to
   retrofit, friends-grade on everything else.** Public-grade from day one: authorization on every read
   path, ownership traceable on every row, deletion and export as a designed cascade (including location
   traces, cached copies of friends' trips, ticket blobs, and parsed mail candidates), and narrow mailbox
   handling that stores candidates rather than messages. Explicitly deferred until strangers arrive:
   moderation, rate limiting, billing, admin tooling, scaling, i18n.
-- **Working name is "Waypoint"** — placeholder, not yet chosen.
+- **Working name is "Cairn"** — placeholder, not yet chosen.
 
 ## Working rules
 

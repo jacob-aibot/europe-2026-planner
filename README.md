@@ -29,4 +29,11 @@ CLAUDE.md                    project memory — read automatically by Claude Cod
 europe-2026-itinerary.html   the entire app
 docs/BOOKINGS.md             flights, prices, open items
 docs/HISTORY.md              why things are the way they are
+cairn/                       Cairn — this planner generalised into a product (in progress)
 ```
+
+## Cairn
+
+`cairn/` holds the brief, architecture and roadmap for turning this single-trip planner into a
+multi-trip, multi-person product. Nothing in it changes the planner above, which stays a single
+self-contained HTML file. See `cairn/docs/BRIEF.md`.

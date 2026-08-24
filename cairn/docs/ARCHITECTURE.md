@@ -1,6 +1,6 @@
-# Waypoint — Architecture
+# Cairn — Architecture
 
-Stage 1 output. Inputs: `waypoint/docs/BRIEF.md`, Jacob's answers to the open questions (2026-08-24),
+Stage 1 output. Inputs: `cairn/docs/BRIEF.md`, Jacob's answers to the open questions (2026-08-24),
 the root `CLAUDE.md`, and `europe-2026-itinerary.html` — the working proof of the format.
 
 Read §1 for the stack and the verified constraints behind it, §2 for the core domain model, §3 for module
@@ -508,7 +508,7 @@ london 3) and **95 `CITY_PLACES`** (vienna 15, dubrovnik 12, split 15, prague 25
 - `tools/extract-legacy.mjs` reads `../europe-2026-itinerary.html` **read-only** at test time and evaluates
   the constant block. No copy of `DAYS` is committed. Committed instead: `fixtures/europe2026.sha256`
   (the source file's hash) and `fixtures/golden/*.json` (expected derived outputs). If the live planner
-  changes, the tests fail loudly with "source changed — re-baseline", which is desirable: it keeps Waypoint
+  changes, the tests fail loudly with "source changed — re-baseline", which is desirable: it keeps Cairn
   honest to the real trip instead of quietly diverging from it.
   *Trap, from `HISTORY.md`:* use `lastIndexOf('<script>')`, not `indexOf` — the first match is the Leaflet CDN tag.
 - `docs/BOOKINGS.md` is prose and cannot be parsed reliably, so the 8 transport bookings, 4 lodgings and the
@@ -516,7 +516,7 @@ london 3) and **95 `CITY_PLACES`** (vienna 15, dubrovnik 12, split 15, prague 25
   `sourceDoc: "docs/BOOKINGS.md"`. A test asserts every `reference` string in that fixture still appears
   verbatim in `docs/BOOKINGS.md` — drift detected without parsing prose. Includes **YZGDTS twice**
   (16 Jul → Aug 18, 04 Aug → Aug 15, the second superseding the first) and IU1TUY/I54C9A as `asserted`.
-- Ticket PDFs under `tickets/` are referenced by repo-relative path. Never copied into `waypoint/`.
+- Ticket PDFs under `tickets/` are referenced by repo-relative path. Never copied into `cairn/`.
 
 **Known fixture warts, which are features for the tester** — `validateTrip` and `detectConflicts` are
 expected to report these on the unmodified fixture, and the expected output is a committed golden file:
@@ -528,7 +528,7 @@ currencies, two unverifiable booking references, no lodging in Budapest or Londo
 ## 3. Module boundaries
 
 ```
-waypoint/
+cairn/
   packages/
     core/          pure domain. zero runtime deps. no DOM, no fetch, no fs,
                    no Date.now() and no randomness in logic (injected clock + IdFactory).

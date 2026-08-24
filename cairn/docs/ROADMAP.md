@@ -1,4 +1,4 @@
-# Waypoint — Roadmap
+# Cairn — Roadmap
 
 Phased delivery. Every phase ships something usable on its own. Phase 1 needs no device, no cloud account,
 no API keys and no network. Later phases may assume all of them.
@@ -28,7 +28,7 @@ him. It is also the tool that would have caught the Fisherman's Bastion typo.
 ### Deliverables
 
 ```
-waypoint/
+cairn/
   package.json                  type:module; no runtime deps in core/client; devDep: typescript
   tsconfig.json                 strict, "erasableSyntaxOnly": true, "verbatimModuleSyntax": true
   packages/core/src/
@@ -242,5 +242,5 @@ pass (the one surface where a mistake is publicly visible); a trip-level cost re
    tester's brief includes grepping for coordinates and mailbox content in logs, requests and database rows,
    and running the access conformance matrix.
 4. **The live planner stays untouched throughout.** `europe-2026-itinerary.html`, `docs/` and `tickets/` at
-   the repo root are Jacob's working app; Waypoint reads them and never writes them, in any phase, until
+   the repo root are Jacob's working app; Cairn reads them and never writes them, in any phase, until
    Jacob says the replacement is better.
