@@ -1,5 +1,5 @@
 /**
- * `@waypoint/core` — the public surface of ARCHITECTURE §2.10 and nothing else.
+ * `@cairn/core` — the public surface of ARCHITECTURE §2.10 and nothing else.
  *
  * Zero runtime dependencies. No DOM, no fetch, no fs, no `Date.now()`, no randomness:
  * a clock and an `IdFactory` are injected so every output is reproducible and golden files

@@ -1,5 +1,5 @@
 /**
- * Waypoint CLI — reports on a real trip with no browser and no install.
+ * Cairn CLI — reports on a real trip with no browser and no install.
  *
  *   node cli.ts trip                 headline counts and the city ranges
  *   node cli.ts day 2026-08-13       one day: stops, legs, costs, badges
@@ -10,7 +10,7 @@
  *   node cli.ts export [file]        the trip as JSON on stdout, or to a file
  *
  * With no `--file`, it loads the Europe 2026 fixture by reading the live planner
- * READ-ONLY. `--file trip.json` reads a Waypoint document instead.
+ * READ-ONLY. `--file trip.json` reads a Cairn document instead.
  */
 import { readFileSync, writeFileSync } from 'node:fs';
 import * as core from './packages/core/src/index.ts';

@@ -1,5 +1,5 @@
 /**
- * `@waypoint/tokens` — presentation constants lifted out of the live planner.
+ * `@cairn/tokens` — presentation constants lifted out of the live planner.
  *
  * No logic lives here, and core does not import it: core keeps only the `TravelMode` and
  * `StopCategory` unions, so a colour change can never alter a computation.

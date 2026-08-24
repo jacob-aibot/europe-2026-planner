@@ -1,9 +1,9 @@
 {
-  "name": "waypoint",
+  "name": "cairn",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Waypoint — multi-trip itinerary planner. Phase 1: core engine + local-first client.",
+  "description": "Cairn — multi-trip itinerary planner. Phase 1: core engine + local-first client.",
   "workspaces": [
     "packages/*",
     "apps/web"

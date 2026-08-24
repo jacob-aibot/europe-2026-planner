@@ -88,7 +88,7 @@ function round6(n) {
 
 mkdirSync(GOLDEN, { recursive: true });
 const header = (what) => ({
-  $generatedBy: 'waypoint/tools/gen-golden.mjs',
+  $generatedBy: 'cairn/tools/gen-golden.mjs',
   $source: 'europe-2026-itinerary.html (read-only)',
   $sourceSha256: sha256,
   $what: what,

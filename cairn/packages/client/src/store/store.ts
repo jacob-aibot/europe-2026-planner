@@ -235,7 +235,7 @@ export function createStore(opts: StoreOptions) {
     async exportActive(): Promise<string> {
       if (!state.doc) throw new Error('exportActive: no active trip');
       const text = core.toJSON(state.doc);
-      const name = `${state.doc.title.replace(/[^\w-]+/g, '-').toLowerCase()}.waypoint.json`;
+      const name = `${state.doc.title.replace(/[^\w-]+/g, '-').toLowerCase()}.cairn.json`;
       if (ports.file) await ports.file.exportDoc(name, new TextEncoder().encode(text));
       return text;
     },

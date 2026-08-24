@@ -33,7 +33,7 @@ export type Action =
 export type ActionType = Action['type'];
 
 export type ActionSpec = {
-  /** The name of the single `@waypoint/core` export this action calls. */
+  /** The name of the single `@cairn/core` export this action calls. */
   coreFn: string;
   /** Arguments AFTER the trip. Marshalling only — no domain decisions. */
   args: (a: Action, ctx: BuildCtx) => unknown[];

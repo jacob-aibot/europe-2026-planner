@@ -122,7 +122,7 @@ test('every stop with coordinates sits within 35 km of one of its day\'s cities'
 
 test('the source hash is committed and still matches the live planner', () => {
   const { sha256 } = europe2026();
-  const committed = repoFile('waypoint/fixtures/europe2026.sha256').trim().split(/\s+/)[0];
+  const committed = repoFile('cairn/fixtures/europe2026.sha256').trim().split(/\s+/)[0];
   assert.equal(
     sha256,
     committed,

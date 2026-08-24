@@ -1,5 +1,5 @@
 /**
- * `@waypoint/client` — the trip store, ports and selectors.
+ * `@cairn/client` — the trip store, ports and selectors.
  *
  * Platform-agnostic by construction: no DOM, no React, no network. `apps/web` and (later)
  * `apps/mobile` differ only in port implementations and view components.
