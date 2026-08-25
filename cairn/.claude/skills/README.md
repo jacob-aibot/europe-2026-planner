@@ -20,15 +20,6 @@ version. Updating means re-copying from upstream, deliberately.
 | `test-driven-development` | [obra/superpowers](https://github.com/obra/superpowers) | RED-GREEN-REFACTOR. The enforcement mechanism for the golden-fixture and determinism rules in `ROADMAP.md`. |
 | `systematic-debugging` | obra/superpowers | Root-cause before fix. |
 | `verification-before-completion` | obra/superpowers | Evidence before "it works". Directly answers what the `manager` agent checks. |
-| `brainstorming`, `writing-plans`, `executing-plans` | obra/superpowers | Design-then-plan-then-build. |
-| `subagent-driven-development`, `dispatching-parallel-agents` | obra/superpowers | Parallel work across the pipeline agents. |
-| `requesting-code-review`, `receiving-code-review` | obra/superpowers | |
-| `using-git-worktrees`, `finishing-a-development-branch` | obra/superpowers | Note: the root `CLAUDE.md` says `master`, no feature branches. Where these disagree, `CLAUDE.md` wins. |
-| `writing-skills` | obra/superpowers | For editing the skills in this directory. |
-| `design-taste-frontend` | [Leonxlnx/taste-skill](https://github.com/Leonxlnx/taste-skill) | Anti-slop frontend. **Read its scope line**: it targets landing pages, portfolios and redesigns, and says explicitly it is *not* for dashboards, data tables or multi-step product UI — which is most of `apps/web`. Best fit is Cairn's public share pages. |
-| `redesign-existing-projects` | Leonxlnx/taste-skill | Audit-and-upgrade an existing UI. The better of the two for product screens. |
-| `taste` | [senlindesign/taste-skill](https://github.com/senlindesign/taste-skill) | Reverse-engineers a site's design tokens + the reasoning behind them. Intended use here: point it at the existing planner to seed `packages/tokens`. **Requires the Playwright MCP server** — it is inert until that is connected (`claude mcp list \| grep playwright`). Upstream `docs/` (10 MB of images) was not vendored. |
-| `ui-ux-pro-max` | [nextlevelbuilder/ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) | Searchable local design database (styles, palettes, font pairings, UX guidelines, chart types, 22 stacks incl. React Native). A lookup table, not judgement. Its Python scripts are stdlib-only and local; its own test suite was not vendored. |
 
 ## Deliberately not installed
 
@@ -69,5 +60,17 @@ Descriptions load eagerly — every session here pays for all of them. Bodies lo
 The three you want firing most often are also the three cheapest. That is not a coincidence — it is why
 `design-taste-frontend` got its scope line promoted into its description.
 
-`brainstorming` ships an optional local visual companion that hotlinks a logo from `primeradiant.com`. Set
-`SUPERPOWERS_DISABLE_TELEMETRY=1` to suppress it. Nothing else here makes a network call.
+---
+
+## What was removed, and why
+
+Four skill sets were vendored here in one commit; Jacob trimmed them the same day. Only the three
+`obra/superpowers` skills that serve this pipeline were kept, plus the project-written `cairn-constraints`.
+
+Dropped: `ui-ux-pro-max` (3.5 MB design lookup database), both `taste-skill` repos (one needs a Playwright
+MCP server that is not connected; the other scopes itself to landing pages, explicitly not product UI),
+and the `superpowers` skills covering planning, parallel agents, code review and git worktrees — the
+four-agent pipeline in `.claude/agents/` already does that work, and `using-git-worktrees` /
+`finishing-a-development-branch` contradict the root `CLAUDE.md` master-only rule outright.
+
+4.2 MB to 136 KB. Re-vendor from upstream if a specific one earns its place.
