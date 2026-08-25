@@ -1,644 +1,530 @@
-# Cairn — QA findings, Phase 1
+# Cairn — QA findings, Phase 1 **round 2**
 
-Tester: breaker. Run date 2026-08-25, against `master` @ `ae5cabe`.
-Environment: Node v22.22.2, Chromium via Playwright (`PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers`),
-real elapsed time — **not** `--virtual-time-budget`, which hangs the app at "Opening your
-trips…" because virtual time does not advance while IndexedDB work is pending. That is an
-environment trap, not a defect, and is not logged as one.
+Tester, stage 3. Attacked `master` @ `fcceb56`, 2026-08-25. Node v22.22.2, Chromium via the
+system Playwright driven over **real elapsed time** (no `--virtual-time-budget`).
 
-All work was done from a **clean `git clone`** into a scratch directory, plus a live browser
-against `npm run web:build && npm run serve`. Every finding below was reproduced by running
-something. Nothing is labelled UNVERIFIED.
+This is a **fresh pass and it overwrites round 1's file.** Round 1's numbering (`F-n`) is kept
+only for cross-reference; round 2's new findings are numbered `R2-n`. Every finding here was
+run. Reproduction scripts are committed under `cairn/qa/r2-*.mjs` and named per finding.
 
-**Result: 2 BLOCKERS, 8 MAJOR, 11 MINOR.**
+**Result: 3 BLOCKER · 8 MAJOR · 11 MINOR.**
 
----
-
-## Part 1 — the builder's claims, re-verified
-
-Every number in `BUILD-NOTES.md` was re-derived independently (my own harness, not the
-builder's tests). Summary: **the numbers are true. The conclusions drawn from some of them
-are not.**
-
-| Claim | Verdict | Evidence |
-|---|---|---|
-| 69 tests pass | **TRUE** | clean clone, `npm test` → `# pass 69 # fail 0` |
-| both tsconfig projects typecheck clean | **TRUE, but not from a clean clone** | see F-3 |
-| `web:build` clean | **TRUE** | exit 0, 561 kB bundle |
-| 16 days / 112 scheduled / 31 pooled / 95 places / 21 bookings | **TRUE** | re-counted off `importLegacyDays` directly |
-| pool split 8/3/3/8/6/3, places split 15/12/15/25/21/7 | **TRUE** | re-counted |
-| six `CITY_RANGE` strings reproduced | **TRUE** | all six `ok:true` |
-| 5 multi-city days, exactly the five named | **TRUE** | re-counted |
-| 3 candidate days, 21 suggested stops, 7 tickets (2 bundled), 81 arrivals, 49 costed | **TRUE** | re-counted |
-| 12 blockers / 4 warnings / 11 notes | **TRUE as a count, misleading as a result** | see F-4: 9 of the 12 blockers are false positives the builder knew about |
-| validation 1 error / 30 warnings | **TRUE** | the one error is `place-92` Windsor Great Park, no coordinates |
-| `toJSON(fromJSON(toJSON))` byte-identical | **TRUE** | also byte-identical with emoji/RTL/NUL/5000-char names |
-| conflict ids stable across a no-op re-import | **TRUE** | verified with a genuine second `loadEurope2026()`, not just a second `detectConflicts` call |
-| conflict ids **change** when the Aug 18 flight time is edited | **FALSE** | see F-9 |
-| nothing un-accepted and non-user returns `displayStatus() === 'own'` | **TRUE for the 36-cell provenance matrix**; **but reachable through `updateStop`** | see F-7 |
-| drove `apps/web` in real Chromium, 17 steps | **TRUE** — I drove it myself and it works | all 16 days reachable, timeline/legs/costs/badges render, map mounts with pins + polyline, save indicator reaches "Saved", edits survive reload |
-| Aug 8 map opens on a 19.5 km Vienna cluster, not the 621 km span | **TRUE, exactly** | whole-day raw span 621.0 km; focus span 19.5 km; centre 48.196, 16.400; 7 of 7 focus pins inside the viewport in the browser |
-
-### The two things I was specifically asked to check
-
-**1a. Clean-clone command order.** Confirmed broken — F-3.
-
-**1b. Were the goldens derived from the live planner, or from the code they check?**
-**Genuinely from the live planner.** `tools/gen-golden.mjs` slices `haversine`, `legBetween`,
-`dayCost`, `clusterStops`, `focusCluster` out of the page's own `<script>` text and runs them
-in a `node:vm` context seeded with nothing but the page's own `DAYS`/`CITY_PLACES`/`OPTIONAL`.
-`packages/core` is not in scope for any `legacy-*.json`. I regenerated all eight goldens from
-scratch in the clean clone: **byte-identical to the committed files** (`git status` clean).
-The `core-*.json` files *are* snapshots of the implementation, and `gen-golden.mjs` says so in
-its header — which is why F-4 matters: "12 blockers" is a self-snapshot, not a result.
-
-**2. The read-only boundary.** Clean. `npm install && npm test && cli trip/conflicts/validate/export
-&& npm run golden && npm run web:build` leaves all 17 root files **byte-identical** (sha256 of
-every file outside `cairn/`, before and after). `extract-legacy.mjs` and `gen-sample.mjs` do a
-single `readFileSync` of the planner and never open it for writing. No copy of `DAYS` is
-committed — `git ls-files` shows only `europe2026.sha256`, `europe2026.bookings.json` and eight
-goldens (120 KB of derived output). Drift detection works: appending one comment line to the
-planner in the clean clone made exactly one test fail, with the right message
-(`europe-2026-itinerary.html changed — re-baseline`). One gap: F-16.
-
-**3. The provenance rule.** Two real holes, F-6 and F-7.
+Round 1's two blockers: **F-1 is half closed** (the sequential two-tab case is genuinely
+fixed; two tabs saving *at the same time* still lose an edit silently — R2-1). **F-2 is
+closed.** The "a friend's trip displays as Jacob's own" defect (F-6) is **closed in core and
+in the day view**, and re-opens in two places the contract also covers: the pool panel drops
+the credit line (R2-8), and the copy carries the friend's credentials in free text (R2-3).
 
 ---
 
-## BLOCKER
+## How to reproduce anything here
 
-### F-1 — Two browser tabs on the same trip: one tab's edits are silently destroyed
-**Severity: BLOCKER (data loss). Routing: builder (implementation), with an architect note.**
-
-**Reproduce** (`cairn/qa/browser5.mjs`, run against `npm run serve`):
-1. Tab A: open the app, *Load Europe 2026*, go to 08-13, edit a stop's name to `TAB A EDIT`, wait for "Saved".
-2. Tab B: open the app in a second tab, open the same trip from the library.
-3. Tab B: go to 08-19, edit a stop's name to `TAB B EDIT`, wait for "Saved".
-4. Read IndexedDB `cairn.docs['trip-europe-2026']`.
-
-**Observed:** the stored document contains `TAB B EDIT` and **not** `TAB A EDIT`. Tab A's save
-indicator still reads **"Saved"**. Reloading tab A shows the edit is gone.
-
-**Expected:** either the second save is refused with a visible conflict, or the two edits merge.
-At minimum the losing tab must not claim "Saved".
-
-**Root cause:** `store.save()` (`packages/client/src/store/store.ts:82`) writes the *whole*
-document (`ports.storage.save(doc.id, core.toJSON(doc), summary)`) with no compare-and-set
-against the stored revision. The store already tracks `persistence.savedRevision`, so the guard
-material exists and is unused. `ARCHITECTURE.md` §2.2 promises "last-writer-wins per stop with
-a revision guard" — Phase 1 has neither the per-stop granularity nor the guard, and the roadmap
-does not list this as stubbable.
-
----
-
-### F-2 — `importDoc`'s "never overwrites" guard reads the wrong source of truth, and destroys a stored trip
-**Severity: BLOCKER (data loss). Routing: builder (implementation).**
-
-`store.importDoc` says in its own doc comment: *"A fresh id is minted when the incoming id
-already exists, so an import never overwrites an existing trip."* It checks
-`state.library` — an in-memory snapshot taken at boot — not storage.
-
-**Reproduce, no devtools, two tabs** (`cairn/qa/browser4.mjs`):
-1. Open tab B first, on an empty library. Leave it sitting there.
-2. In tab A: *Load Europe 2026*, edit a stop to `JACOBS REAL PLAN — do not lose this`, wait for "Saved". Confirm it is in IndexedDB.
-3. In tab B (library snapshot still empty): *Import JSON* → any earlier export of that trip.
-
-**Observed:** doc keys in IndexedDB are still `["trip-europe-2026"]` — no new id was minted —
-and `JACOBS REAL PLAN` is gone. Tab A after reload shows the pre-edit trip. No warning, no
-error banner; the app says "Saved".
-
-**Expected:** the import either mints a fresh id (as documented) or refuses with a visible
-prompt. It must never silently replace a stored trip.
-
-Also reproduced headless in Node (`cairn/qa/client1.mjs`, last block) with two stores over
-one `memoryStorage`, so the defect is in `packages/client`, not in the React layer.
-
-**Root cause:** `packages/client/src/store/store.ts` — `if (state.library.some(r => r.id === doc.id))`.
-The check must be against `ports.storage.load(doc.id)`.
-
----
-
-## MAJOR
-
-### F-3 — `npm run typecheck` fails from a clean clone in the documented order
-**Severity: MAJOR. Routing: builder.**
-
-**Reproduce:**
+```bash
+cd cairn && npm install && npm run web:build     # dist is needed by two of the probes
+node tools/serve.mjs &                            # http://localhost:4173
+node qa/r2-copy.mjs qa/r2-copy2.mjs …             # headless probes, one per area
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r2-race.mjs      # browser probes
 ```
-git clone <repo> clean && cd clean/cairn
-npm install
-npm test          # 69 pass
-npm run typecheck # exit 2
-```
-**Observed:** `apps/web/src/sample.ts(8,17): error TS2307: Cannot find module './sample/europe2026.json'`.
-It passes only after `npm run web:build` (or `npm --prefix apps/web run presample`) has
-generated the gitignored `apps/web/src/sample/europe2026.json`.
 
-**Expected:** BUILD-NOTES' documented command sequence works on a fresh checkout. This is the
-single most likely first thing anyone does with the repo, and it fails.
-
-**Fix belongs to the builder:** make `typecheck` depend on `presample`, or a `prepare` script,
-or commit a `.d.ts` shim for the generated module.
-
----
-
-### F-4 — 9 of the 12 "blocker" conflicts on the reference trip are false positives, and BUILD-NOTES does not say so
-**Severity: MAJOR. Routing: architect (rule specifications), builder (disclosure).**
-
-**Reproduce:** `npm run cli -- conflicts`, or `cairn/qa/probe1.mjs`.
-
-The 12 blockers are 6 × `geo_outlier` + 4 × `impossible_transfer` + 2 × `legacy_flag`.
-
-`geo_outlier` — **all six are wrong**:
-| Stop | Why it is not a defect |
+| script | area |
 |---|---|
-| Buy the Visovac boat excursion (08-14, 51 km) | Krka day trip from Split; `cat:'trip'` → already flagged `daytrip` |
-| Roški Slap (08-14, 48 km) | same |
-| Arrive Skradin (08-14, 54 km) | same |
-| Morning with your girlfriend's family (08-15, 746 km from Prague) | 08-15 is `cities:["split","prague"]`, `primaryCity:"prague"`. The stop is in Split, which is on the day. |
-| Gellért Hill at sunrise (08-21, 1482 km from London) | 08-21 is `cities:["budapest","london"]` |
-| Frankfurt (FRA) — connect (08-08, 603 km from Vienna) | a real connection on the inbound long-haul |
-
-`impossible_transfer` — three of four are wrong (Aug 7 Condor, Aug 12 FlixBus, Aug 22 Virgin).
-Only the Aug 18 `05:00 checkout → 05:30 airport bus` case is real. See **F-4a**, which is the
-full adjudication: three is the count *today*, and it is not the interesting number.
-
-**Observed:** a conflicts panel whose highest severity is 75 % noise. The two genuinely
-hand-flagged days (Aug 18, Aug 20) are buried among nine cries of wolf.
-
-**Expected:** blockers are things Jacob must act on.
-
-**The aggravating factor is disclosure.** `geoOutlier.ts:10` and `impossibleTransfer.ts:8` both
-say *"See BUILD-NOTES for the objection"*. `BUILD-NOTES.md` contains **no mention** of either —
-its "Objections to the design" section lists only `TripSummaryRow` timestamps and the `transit`
-pseudo-city. Six source files under `packages/core/src` point at BUILD-NOTES for context it
-does not carry. The builder found these and then reported "12 blockers" as an achievement.
-
-**Architect decisions needed:** (a) should `geo_outlier` measure against the *nearest* of
-`day.cities` rather than `primaryCity` — the builder's own suggested fix, in the file; (b)
-should a `daytrip`-flagged stop be exempt; (c) F-4a.
+| `qa/r2-copy.mjs` | `copyStopInto` provenance: every escape path, credentials, chains |
+| `qa/r2-copy2.mjs` | the copy through the client store: undo/redo, place copy, browse read-only |
+| `qa/r2-browser.mjs` | Browse & copy driven in Chromium |
+| `qa/r2-poolloss.mjs` | **R2-2** — a stop returned to the pool from a transit day disappears |
+| `qa/r2-race.mjs` | **R2-1** — two tabs, same instant, one edit lost, both say "Saved" |
+| `qa/r2-tabs.mjs` | the revision guard's sequential case + merge |
+| `qa/r2-redact.mjs` | **R2-4** — the credential set derived from the trip, greped against `dist/` |
+| `qa/r2-access.mjs` | **R2-6** — F-13 re-check and the share-date fail-open |
+| `qa/r2-resolutions.mjs` | **R2-7** — `syncResolutions` has no caller |
+| `qa/r2-data.mjs` | real-trip shapes; travelRole × geoCheck × copy interactions |
+| `qa/r2-constraints.mjs` | `cairn-constraints`: determinism, DOM, zero-dep, coordinates in params |
+| `qa/r2-import.mjs` | `importDoc` (F-2/F-6), storage failure, quota, corrupt documents |
 
 ---
 
-### F-4a — `impossible_transfer` on vehicle stops: the model cannot say "this time is a departure"
-**Severity: MAJOR. Routing: ARCHITECT — this is a design defect, not an implementation defect.**
+## Does it even run?
 
-Raised by the coordinator; this is the adjudication, with the counts run rather than reasoned.
-**Reproduce:** `cairn/qa/vehicles.mjs`.
-
-**The builder's account is accurate and its judgement was correct.** `impossibleTransfer.ts:8`
-documents the artifact before anyone found it, names three cases, and says it implemented
-§2.7 as written rather than silently patching it. That is the right call and nothing here
-contradicts it. What follows is the part the builder correctly declined to decide.
-
-**Q1 — is three the true count?** Three is the count *today*. It is three out of **31**, and
-the silence of the other 28 is arithmetic luck, not correctness.
-
-```
-vehicle-journey stops in the trip (arrival.mode in flight|bus|train|boat|speedboat) : 31
-  currently firing                                                                  :  4
-    of which the departure-time artifact                                            :  3
-    of which a real transfer defect (Aug 18, 05:00 checkout -> 05:30 bus, 40 min)   :  1
-  silent because they are the day's first stop                                      :  2
-  silent ONLY because the printed clock gap happens to exceed the journey time      : 25
-```
-
-The rule is not "correct except for three known cases". It is **semantically wrong on all 31**
-— every one of them compares a vehicle's whole journey against the gap between two departure
-times — and quiet on 25 of them by coincidence. How thin the coincidence is:
-
-| Day | Stop | Journey | Gap | Margin before it fires |
-|---|---|---|---|---|
-| 08-13 | Blue Cave, Biševo | speedboat 105 min | 105 min | **1 min** |
-| 08-14 | Boat to Skradinski Buk | boat 20 min | 20 min | **1 min** |
-| 08-08 | Condor DE4345 → Vienna | flight 80 min | 90 min | 11 min |
-| 08-21 | British Airways BA863 → Heathrow | flight 165 min | 175 min | 11 min |
-| 08-12 | Kasjuni Beach — swim | bus 30 min | 60 min | 31 min |
-| 08-10 | Ryanair VIE → DBV | flight 80 min | 115 min | 36 min |
-
-Nudging any previous stop later by those margins — an ordinary edit, and exactly what the
-planner is for — converts a silent stop into a **blocker**. Six of the seven flights in the
-trip are within 51 minutes of firing. So the honest statement is not "three artifacts": it is
-*"`impossible_transfer` produces a blocker for any vehicle stop whose predecessor sits closer
-to it than the vehicle's journey time, which is a property of the display, not of the plan."*
-
-**Q2 — does "12 blockers" overstate the real conflicts?** Yes, by **nine**, not three.
-12 = 2 `legacy_flag` + 4 `impossible_transfer` + 6 `geo_outlier`. Real: the two hand-flagged
-days and the one genuine Aug 18 transfer. **3 of 12 blockers are actionable; 9 are noise.**
-The `impossible_transfer` share is also unstable — a single time edit can add more without
-anything in the plan getting worse. Agreed that this is a product defect even though the code
-matches the spec: `BRIEF.md` makes conflicts a first-class entity precisely so Jacob acts on
-them, and a panel that flags every long-haul flight trains him to ignore the panel. That is
-the failure this rule was written to prevent, arrived at from the other direction.
-
-**Q3 — routing. Agreed: DESIGN defect, architect.** Stated plainly, because the distinction is
-the fix:
-
-> The model has no way to express that a stop's `time` is a **departure** and its `arrival`
-> override describes **the vehicle's own journey**, not the transfer into the stop.
-> `ARCHITECTURE.md` §2.5 defines `arrival` as "the leg *into* this stop" and §2.11 deliberately
-> maps legacy `move` onto it — but the legacy `move` field carries both meanings, and so
-> therefore does `Stop.arrival`. Every rule that reasons about time inherits the ambiguity.
-> The correct fix is a field in the model that the rules consume. It is not a special case in
-> `impossibleTransfer.ts`, and it is not a tolerance constant.
-
-Two constraints on whatever the architect chooses:
-
-1. **It must be additive.** `computeLegs` is a contracted byte-exact port of `legBetween`
-   (§2.5, "do not improve it") and is checked against `fixtures/golden/legacy-legs.json`, which
-   is generated from the live page's own functions. Any change to how `arrival` feeds the leg
-   calculation breaks golden parity on all 16 days. The new field must be read by the conflict
-   rules only.
-2. **The importer has to be able to derive it.** 31 of the 81 legacy `move` overrides are
-   vehicle journeys. `s.cat === 'transit'` plus a vehicle `move.mode` covers most of them, but
-   not all — Aug 13's speedboat hops are `cat:'trip'`, and Aug 10's "Check in — Hostel Petra
-   Marina" carries `move:{mode:'bus'}` describing the transfer, not a vehicle it *is*. If the
-   distinction cannot be derived reliably, the honest alternative is to downgrade
-   `impossible_transfer` from `blocker` to `warning` for vehicle-mode arrivals until the model
-   can tell them apart — surfacing the doubt rather than asserting a defect, which is the same
-   principle as *flag conflicts, don't resolve them by guessing*.
-
-I did not find a fourth artifact class: `walk` (36), `metro` (10), `transit` (3) and `bike` (1)
-arrivals are all genuine transfers and none fires.
+Yes. From a **clean `git clone` into a scratch directory**, in BUILD-NOTES' documented order:
+`npm install` → `npm test` **231 pass / 0 fail** → `npm run typecheck` **clean, both projects**
+(F-3 confirmed fixed: `pretypecheck` generates the sample) → `npm run web:build` clean →
+`npm run cli -- trip` prints 16 days · 112 stops · 2 blockers. A full run modifies **0 tracked
+files**; `europe-2026-itinerary.html` is byte-identical afterwards (`md5 7c69df32…`).
 
 ---
 
-### F-5 — `geo_outlier` and `validateTrip` cannot catch the Fisherman's Bastion typo they were built for
-**Severity: MAJOR. Routing: builder (validate coverage), architect (rule scope).**
+# BLOCKER
 
-`ROADMAP.md` Phase 1: *"It is also the tool that would have caught the Fisherman's Bastion
-typo."* It is not.
+## R2-1 — Two tabs editing at the same moment still lose an edit, and both say "Saved"
 
-**Reproduce** (`cairn/qa/attack5.mjs`):
+**Routing: builder, with an architect decision on `StoragePort`.** Round 1's F-1, half closed.
+Repro: `qa/r2-race.mjs` (3 rounds; **2 of 3 lost an edit**), `qa/r2-tabs.mjs` for the case that
+does work.
+
+The sequential case is genuinely fixed and I verified it end to end: tab B's write is refused,
+tab B's indicator reads **"Not saved — edited elsewhere"**, the banner explains it, *Merge and
+save* preserves both tabs' work. That is the contract, met.
+
+The race is not. `store.save()` is `load → compare → save` with nothing transactional around
+it, so two tabs that edit at about the same time both read revision *R*, both pass the compare,
+and the second `put` destroys the first.
+
 ```
-# A. the real historical bug: the Place "Fisherman's Bastion" lat 47.5025 -> 48.5025 (111 km north)
-#    conflicts: 27 -> 27.   validateTrip issues: 31 -> 31.  Nothing fires.
-# B. the pool stop "Fisherman's Bastion & Matthias Church" moved 1 degree
-#    conflicts: 27 -> 27.   issues: 31 -> 31.  Nothing fires.
-# C. a scheduled stop that carries an `arrival` override, moved 1 degree
-#    geo_outlier: silent (validateTrip's stop_far_from_city does fire)
+{"round":1,"A in tab A screen":true,"B in tab B screen":true,
+ "A in storage":true,"B in storage":false,"tab A says":"Saved","tab B says":"Saved"}
+{"round":2, … same …}
+{"round":3, … "tab B says":"Not saved"}
+2 of 3 rounds lost an edit silently
 ```
 
-**Coverage measured on the real trip: `geo_outlier` examines 31 of 238 coordinate-bearing records.**
+**Observed:** an edit visible on tab B's screen is absent from IndexedDB and tab B displays
+"Saved". **Expected:** §2.2's revision guard, and ROADMAP F's criterion — *the losing tab MUST
+NOT display "Saved"*.
 
-| Record class | Count | `geo_outlier` | `validateTrip` distance check |
-|---|---|---|---|
-| Scheduled stop, no `arrival` | 31 | yes | yes |
-| Scheduled stop **with** `arrival` | **81** | no (`if (stop.arrival) continue`) | yes |
-| Pool stop | **31** | no (only walks `trip.days`) | **no** — `stop_far_from_city` requires a `dayId`, and pool stops have `dayId: null` |
-| `Place` | **95** | no | **no** — places get only `inRange` (±90/±180) and `unknown_city_key` |
+BUILD-NOTES §6 discloses the mechanism ("two tabs writing inside one event-loop turn can still
+interleave… the window is far smaller and the guard catches the case Jacob will hit"). The
+disclosure is honest about the mechanism and wrong about the frequency: this is not an
+interleave measured in microseconds, it is two people (or one person and a second window)
+typing at the same time, and it fails two times in three. It is the same user-visible symptom
+as the round-1 blocker.
 
-Every `Place` carries `cityKey` **and** `at`, so the check is one `haversine` away.
-`CLAUDE.md`'s own scripted check — *"every lat/lng should sit within ~35 km of its city
-centre"* — was applied to `CITY_PLACES`; the generalisation dropped it.
+The fix is not in the client: `StoragePort` has no transaction and no write token, so
+compare-and-set cannot be implemented above it. Either the port gains a
+`saveIfRevision(id, expected, text)` that IndexedDB executes in one transaction, or documents
+carry an opaque write token instead of a per-document counter. Note that `revision` cannot
+serve as the token by itself — two divergent tabs both produce `R+1`.
 
-A secondary hole: `geo_outlier` skips any day whose `primaryCity` is `transit` (Aug 7), because
-it has no anchor centre. A coordinate typo on a transit day is invisible.
+## R2-2 — A stop returned to the pool from a `transit` day disappears from the app entirely
+
+**Routing: builder (the view), architect (the `transit` pseudo-city).** Repro:
+`qa/r2-poolloss.mjs`, in Chromium, on the reference trip, in three clicks from a cold start.
+
+```
+stops on 08-07:            ["Arrive LAX — Tom Bradley International","Condor [redacted] → Frankfurt"]
+stops on 08-07 after ⇩:    ["Condor [redacted] → Frankfurt"]
+city groups:               ["✈️","🇦🇹","🇭🇷","🇭🇷","🇨🇿","🇭🇺","🇬🇧"]
+→ the stop is in NO Optional panel, under any group
+Optional tab reads:        "Optional 32"      (it was 31)
+IndexedDB pool entries filed under "transit":  [["Arrive LAX — Tom Bradley International"]]
+Validation panel:          1 error, 10 warnings — nothing about it
+```
+
+Root cause, traced: `blankDay`/`ensureDays` give a day with no city `primaryCity: 'transit'`;
+`returnToPool(trip, stopId)` with no `cityKey` files the stop under `day.primaryCity`, i.e.
+`'transit'`; `PoolPanel` renders `poolFor(trip, ui.activeCityKey ?? trip.cities[0].key)` and
+`'transit'` is never in `trip.cities`, so it can never be the active city key. The document is
+intact — `scheduleFromPool` restores the stop to 2026-08-07 from its stored hint — but no UI
+path reaches it, and `validateTrip` has no code for a pool stop filed under a city the trip
+does not have (`unknown_city_key` covers days and places only).
+
+**Observed:** the user's stop vanishes; a counter says it exists; nothing explains it and
+nothing brings it back. **Expected:** a stop is never unreachable from the surface that put it
+there. This is the same class as F-1/F-2 — the planner quietly discarding the plan — and it
+also hits **every brand-new trip**, whose days are all `transit` until the user assigns cities
+(reproduced separately in `qa/r2-browser.mjs`: a stop copied from another trip and then pooled
+is unreachable).
+
+BUILD-NOTES §8 already asks the architect to decide whether `cities:['transit']` should be a
+real city. This is what the open question costs.
+
+## R2-3 — `copyStopInto` carries the source's credentials across the trip boundary in free text
+
+**Routing: architect.** Repro: `qa/r2-copy.mjs`, section H.
+
+§2.14 rule 3 drops `bookingId` and refuses to let a `Ticket` travel, with the reason stated:
+*"A friend's booking reference is not yours, and their ticket URL is an access credential
+(§6.6)."* Rule 5 then copies `note` **verbatim** — and on the only real trip we have, the
+credentials live in the notes:
+
+```
+FAIL "Check in — Habyt Vienna"      note: "…booked, conf 5814731574, PIN 0754, 2 nights…"
+FAIL "Check in — Hostel Petra Marina" note: "…booked, conf 5175904714, PIN 4809…"
+FAIL "Speedboat pickup — Split harbour" note: "…Booking ref GYGG45MLA9Q9, PIN BGXw#EW8…"
+FAIL "Dubrovnik City Walls"         note: "…order DUB26M6CVTSWMF, €40…"
+FAIL "City Airport Train → Wien Mitte" note: "…order 843249…"
+5 of the 7 ticketed stops copy a credential; 8 stops in total carry a PIN or a 6+ digit run.
+```
+
+Two `Stop.links` hrefs also travel (`Place.note` and `Place.links` copy with the place).
+
+**Observed:** copying one stop moves a hotel door PIN and a booking confirmation number into
+another document, another tenancy and every later export of it. **Expected:** §6.6 defines this
+exact class — *"a keyword followed by an alphanumeric token (`PIN`, `code`, `conf`, `ref`,
+`order`, `booking`, `seat`), any run of 6+ digits…"* — as *"an access credential"*, and applies
+it only to the build artifact. The copy path is the *only* place in the design where data
+crosses a person boundary and it applies nothing.
+
+**No exposure exists today**: Phase 1 copies between two of the same user's trips. That is
+exactly the position §6.6 was in when Jacob was asked and answered it, and the decision is due
+on the same basis — the primitive ships now, and §5.2's revocation model
+("a revoked share renders an error, never stale content") is silently defeated for anything
+the copier already pulled into their own document.
+
+The architect owns this because §2.14 rule 5 *says* to copy the note verbatim. The options are
+(a) run copied free text through the §6.6 redactor, (b) copy the note but strip credential
+tokens and say so on the stop, or (c) accept it and write down why. Related, and cheap to fix
+in the same decision: §2.14 rule 4 says a copied `Place` gets "the same provenance stamp", and
+`Place` has no `provenance` field at all — a friend's place lands in your trip indistinguishable
+from your own (`qa/r2-copy2.mjs`).
 
 ---
 
-### F-6 — A friend's trip, imported as JSON, is presented as Jacob's own plan — and keeps the friend's `ownerId`
-**Severity: MAJOR (provenance rule + ownership traceability). Routing: architect (design), builder (implementation).**
+# MAJOR
 
-**Reproduce** (`cairn/qa/prov.mjs`, last-but-one block):
+## R2-4 — The redaction guarantee is a scrub of six strings, not a rule; I put a door PIN in the bundle and every test passed
+
+**Routing: builder (implement), architect (restate the criterion).** Repro: `qa/r2-redact.mjs`,
+plus the mutation below.
+
+§6.6 says the enforcement is: *"When `apps/web/dist/` exists, every emitted asset is grepped
+**for the same patterns** and for a literal list of the five known strings."* The shipped test
+(`test/redact.test.ts`, "the built bundle carries none of the five known strings") greps the
+assets for `KNOWN_LEAKS` — six literals — and **never applies `redactionHits`**:
+
 ```
-Marta exports her trip (ownerId: "user:marta"); Jacob imports the file via the Library's
-"Import JSON" button.
-observed: 91 of 112 stops render displayStatus() === 'own'.  0 render 'imported'.
-observed: the stored document's ownerId is still "user:marta".
-observed: canEdit(local:self, that trip) === false, and nothing in the app calls it.
+does the shipped bundle check apply the PATTERNS to the bundle?
+  redactionHits used on bundle text?  false
+  KNOWN_LEAKS used on bundle text?    true
 ```
 
-**Expected**, per `BRIEF.md` and §2.8: *"Never present a suggestion as the user's own plan…
-a friend's stop is visibly marked as such until the user accepts it"*, and per §6.2
-*"ownership traceable on every row"*.
+Mutation check (the file was restored immediately; `git status` clean afterwards). I put this
+in `packages/core/src/derive/display.ts` line 1 — an ordinary bundled source file — and rebuilt:
 
-`ARCHITECTURE.md` §5.2 defines `forkTrip` to mark every copied stop
-`{source:'friend', state:'candidate', origin.sourceTripId}` — but that is Phase 2, while raw
-JSON import ships in Phase 1 as a **"may not be stubbed"** deliverable. So Phase 1 ships the
-one import path that has no provenance story, and it is the path a friend's trip actually
-arrives through.
-
-This is the retrofit Jacob explicitly asked to avoid: every trip imported before Phase 2 lands
-in the database with a stranger's `ownerId` and 112 unbadged rows.
-
-**Architect decision needed:** does `importDoc` (a) adopt ownership and mark every entity
-`source:'friend'` when the incoming `ownerId` is not the local user, (b) refuse a foreign
-`ownerId`, or (c) is `importDoc` contractually "re-import my own export" and the UI must not
-offer it as a way to receive someone else's trip? Any of the three is fine; none is currently
-chosen.
-
----
-
-### F-7 — `acceptCandidate` is an optional gate: `updateStop` will rewrite provenance wholesale
-**Severity: MAJOR. Routing: builder (narrow the patch type at runtime), architect (confirm the invariant).**
-
-**Reproduce** (`cairn/qa/prov.mjs` / `attack8.mjs`):
 ```js
-// a system suggestion, displayStatus() === 'suggested'
-updateStop(trip, sug.id, { provenance: {
-  source:'user', state:'accepted', confidence:'confirmed',
-  addedAt:'2026-01-01', acceptedAt:'2026-01-02', actorUserId:'u1' } })
-// -> displayStatus() === 'own'.  No actor check, no acceptance record, no revision of origin.
-```
-and
-```js
-updateStop(trip, stop.id, { id: 'HIJACKED' })   // -> the stop's id is rewritten
-updateStop(trip, stop.id, { totallyUnknownKey: 'x' })  // -> written onto the stop
+// Marta's apartment door code is PIN 8842 and her booking ref is QX7T4M9 — kept here
+// to explain the fixture case below.
 ```
 
-`StopPatch = Partial<Omit<Stop,'id'|'placement'>>` is a **compile-time** constraint only; at
-runtime `updateStop` does `{...s, ...rest}`. `Omit<…,'id'>` does not stop `{id:…}` at runtime,
-and rewriting a stop id dangles its `bookingId` links and any `ConflictResolution` naming it.
-The client's `updateStop` action forwards the patch verbatim, so this is reachable from the
-state machine, not just from core.
+```
+leaked into apps/web/dist/assets/index-*.js.map: 1
+npm test: 231 pass, 0 fail
+```
 
-**Observed:** the one function `ARCHITECTURE.md` §2.8 designates as the gate for "email-derived
-data is never a silent write" can be bypassed by the general-purpose editor. Phase 3's ingest
-worker is exactly the caller that must not be able to do this.
+A door PIN and a booking reference ship in the build artifact and the suite is green.
+KD-18 claims *"the test greps maps as well as scripts so a fourth cannot creep back"* — it
+greps maps for six strings, so a fourth can and **already has**: `packages/core/src/model/types.ts:111`
+carries `Condor DE4345 → Vienna` in a doc comment, `DE4345` is exactly the token class
+`alnum_reference` exists to catch (the redactor strips it from the sample data), and it is in
+`dist/assets/index-*.js.map` on this delivery.
 
-**Expected:** `updateStop` refuses `provenance` and `id` (throw — it is programmer error);
-provenance transitions go through `acceptCandidate`/`rejectCandidate` only.
+**Observed:** the guarantee holds for the five strings someone found by hand. **Expected:**
+§6.6's own words — *"a rule with a test, not a scrub of the five strings we happened to find"*.
 
-The good news, verified: **no other path breaks it.** `moveStop`, `returnToPool` +
-`scheduleFromPool`, `reorderStop`, `linkBooking`, `setDayMeta`, a JSON round-trip, and
-undo/redo across an accept all preserve `{source:'system', state:'candidate'}` exactly, and the
-full 4×3×3 provenance matrix never yields `'own'` for a non-user un-accepted item.
+Note for the architect: applying `REDACTION_PATTERNS` literally to a minified JS bundle is not
+implementable — `url` and `alnum_reference` match hundreds of ordinary tokens (`OPTIONAL`,
+`DECENTRAL`, every CDN URL). The mechanical version that *is* implementable, and which found
+`DE4345` in twenty lines, is in `qa/r2-redact.mjs`: derive the credential set from the
+unredacted trip by running the redactor over it, then assert none of those tokens appears in
+any emitted asset. That is a rule (it grows with the data) rather than a list.
+
+## R2-5 — The `cli export` guard is lexical: a symlink inside `cairn/` writes anywhere, and any existing file inside `cairn/` is overwritten without asking
+
+**Routing: builder.** Repro, both run:
+
+```bash
+ln -sf /tmp/scratch/victim.txt cairn/qa/escape-link.json
+node cli.ts export qa/escape-link.json
+→ wrote /home/user/europe-2026-planner/cairn/qa/escape-link.json (233801 bytes)
+→ /tmp/scratch/victim.txt is now the trip JSON.        # the guard said yes
+
+ln -sfn /tmp/scratch/outdir cairn/qa/outdir
+node cli.ts export qa/outdir/leak.json                  # same, via a symlinked directory
+
+node cli.ts export qa/README.md                         # tracked file, silently clobbered
+```
+
+`safeWritePath` is `resolve(cwd, target).startsWith(CAIRN_ROOT + sep)` and the doc comment
+admits the limit ("any **symlink-free** traversal"). Every lexical attack is correctly refused —
+`../europe-2026-itinerary.html`, `../docs/BOOKINGS.md`, `../tickets/x.pdf`, `/etc/passwd`, the
+same paths from a different cwd — but a symlink anywhere under `cairn/` (a directory symlink is
+the realistic one) turns the guard off. F-16 asked for structurally impossible; this is
+lexically impossible. One `realpathSync(dirname(abs))` before the prefix test closes it.
+
+Second half: there is no "this file exists" check at all, so `export` overwrites tracked
+sources inside `cairn/` with no prompt and exit code 0. The read-only boundary at the repo root
+is protected; nothing protects the repo.
+
+## R2-6 — The expired-share fail-open moved one field over: a malformed `expiresAt` still grants access
+
+**Routing: builder (guard), architect (what an invalid expiry means).** Repro: `qa/r2-access.mjs`.
+
+F-13 is fixed for `now`: all eleven bad clocks throw, including `''`, `undefined`,
+`'2026-13-45'` and `'2026-02-30'`. The share's own dates got no such treatment:
+
+```
+expiresAt="2026-08-01"  -> canView=false     (correct)
+expiresAt="2026-13-45"  -> canView=true
+expiresAt="tomorrow"    -> canView=true
+expiresAt="never"       -> canView=true
+expiresAt=""            -> canView=true
+expiresAt="9999-99-99"  -> canView=true
+revokedAt=""            -> canView=true
+```
+
+`effectiveRole` does `if (s.expiresAt && s.expiresAt < now) continue` — a lexical compare
+against an unvalidated string. Anything that is not a well-formed date compares as
+"not yet expired". §6.2.4 makes these predicates *the definition the Phase 2 RLS policies are
+generated from and tested against*; a definition that treats junk as "live" generates a policy
+that does. Same reasoning F-13 was fixed under, same function, one field over.
+
+The rest of the matrix is correct and I re-ran all of it: owner and member get everything;
+friend-with-no-share, stranger, anonymous, unknown token, expired link and revoked link get
+nothing on all five operations; a crafted `__proto__` principal gets nothing. One design note
+for the architect: a share whose principal is `{kind:'anonymous'}` matches **every** anonymous
+caller (`canEdit(anonymous) === true`), which is fine only as long as nothing ever writes such
+a row.
+
+## R2-7 — `syncResolutions` has no caller, so F-10 is still live in the product
+
+**Routing: builder.** Repro: `qa/r2-resolutions.mjs`.
+
+```
+2. the user dismisses an overlap warning            resolution attached: dismissed
+3. the user retimes the stop                        overlap conflicts now: 0
+                                                    stored resolutions: [["dismissed",null]]   ← not retired
+4. the user puts the time back
+   conflict id identical to the dismissed one:      true
+   resolution attached:                             dismissed        ← with no user action
+5. calling store.syncResolutions() by hand first:   retiredAt ["2026-08-25"], then "none (correct)"
+6. call sites in apps/web + packages/client:        only its own definition, store.ts:317
+```
+
+The core function is correct and the store method is correct. Nothing calls it — not the
+reducer, not `App.tsx`, not the conflicts panel. §2.7 is explicit that this is *"a build
+function the client calls whenever it recomputes the derived conflict set"*, and the client
+never does. A dismissed **blocker** re-arming with no user action is the thing §2.7 exists to
+prevent, and BUILD-NOTES §5 lists F-10 as fixed with core-level proof only. Same shape as the
+builder's own F-15 note: the fix was applied to the place they were looking at.
+
+## R2-8 — §2.14 rule 7's credit contract is not honoured outside the day view
+
+**Routing: builder.** Repro: `qa/r2-browser.mjs` (Chromium) and code.
+
+Rule 7: *"any view that renders a record with a non-null `attribution` renders the credit."*
+`DayTimeline.tsx` does (verified in the browser: badge `from a friend`, credit
+`From "Europe 2026"`, both surviving a reload out of IndexedDB). `Panels.tsx` `PoolPanel`
+renders `STATUS_BADGE[displayStatus(s.provenance)]` and never calls `attribution`; `StopEditor`
+renders neither. Copy a stop, press ⇩, and the record renders with a badge and no credit — and
+if it is ever accepted (`acceptCandidate` makes `displayStatus` `'own'`, by design) the pool row
+becomes indistinguishable from the user's own idea, which is the exact convention F-6 was sent
+back for. There is no accept control in `apps/web` today, which is the only reason this is MAJOR
+and not a BLOCKER.
+
+(In the reference trip the pooled copy is also unreachable — see R2-2 — so the two must be fixed
+together or the second will hide the first.)
+
+## R2-9 — Copying a stop manufactures a `geo_outlier` **blocker**
+
+**Routing: architect.** Repro: `qa/r2-data.mjs`.
+
+```
+copy "Arrive LAX" from Marta's trip into a Lisbon trip (homeBase Lisbon):
+  geoCheck:   dstop-1 9140km certain
+  conflicts:  blocker:geo_outlier
+```
+
+§2.13's principle is *"a coordinate far from everything the trip knows about is a coordinate to
+look at"*, and a just-copied stop is far from everything **by construction**. But the model is
+not in the dark here: `provenance.origin.sourceTripId` says exactly where the coordinate came
+from and that a human chose it two seconds ago. §0.5 is the governing rule — *a rule that cannot
+distinguish "the data says something impossible" from "the data is shaped oddly" degrades to a
+warning rather than asserting a defect* — and this is the "shaped oddly" case, asserted as a
+blocker.
+
+It also punctures the count promise: §2.7 says the reference trip carries exactly two blockers
+and *"a third can only appear if somebody can write down why he must act on it"*. The social
+primitive produces a third on first use with nobody writing anything. The fix is a line in
+§2.13's anchor table (a `source:'friend'` stop anchors on nothing, or copies are `unanchored`
+until scheduled next to something), not code the builder should guess at.
+
+## R2-10 — `travelRole` is not rendered anywhere in `apps/web`, and it is not in the KD list
+
+**Routing: builder; disclosure gap.** Verified by grep and in the browser.
+
+§2.12's consumer table has a row for the view: *"the day view — Renders it. A `'journey'` stop
+shows 'departs 14:30 · 1 h 20 · arrives 15:50'; a `'transfer'` stop shows today's '20 min by
+metro'. `'unknown'` renders with a one-tap control to set it, which is the only new editing
+affordance this field needs."*
+
+`grep -rn travelRole apps/web/src packages/tokens/src` matches only the generated sample JSON.
+The Aug 8 Condor stop still renders as `14:30 · ✈️ Flight · 1 h 20` — a time with a leg drawn
+*into* it, which is precisely the reading §2.12 was written to correct. The 10 `'unknown'`
+stops have no affordance to resolve them, so the field can never improve from the app.
+
+The model half is real and I re-derived every number in KD-1 independently: **21 journey / 81
+transfer / 10 unknown**, `impossible_transfer` **0 blockers 0 warnings**, tightest genuine
+transfer margin **7 min** (Aug 14, Skradin bus stop → ticket office), and the role is
+load-bearing — relabelling all 21 journeys as `transfer` produces 4 blockers, as `unknown`
+produces 4 warnings. The defect is that the user cannot see any of it.
+
+Not disclosed: KD-13 lists `apps/web`'s stubs (duplicate, rename, city map, drag-reorder,
+new-trip wizard) and this is not among them, so the manager has no way to know a §2 row shipped
+unbuilt.
+
+## R2-11 — The §2.14 invariant the tester was told to attack is falsifiable in one call
+
+**Routing: architect, then builder.** Repro: `qa/r2-copy.mjs`, section B.
+
+The invariant: *for every record `r` with `attribution(r) !== null`, `displayStatus(r) !== 'own'`
+unless state is accepted **and** `acceptedAt !== null` **and**
+`r.provenance.actorUserId === trip.ownerId`.*
+
+```
+acceptCandidate(trip, ref, "user:someone-else", "2026-08-26") -> displayStatus own, actorUserId user:someone-else, trip.ownerId local:self
+acceptCandidate(trip, ref, null,                "2026-08-26") -> displayStatus own, actorUserId null
+validateTrip on both: no issue.
+```
+
+Nothing in core enforces the third clause and no `Issue` code covers it. In Phase 1 the client
+always passes the owner, so this is not reachable from the UI — but these are the semantics
+Phase 2's server will implement against, and the invariant is either wrong (a co-owner or
+editor accepting is legitimate, in which case §2.14's last paragraph should say
+`actorUserId ∈ members`) or unenforced. Decide which, then enforce it in `validateTrip`.
 
 ---
 
-### F-8 — The `closed` rule can never fire on real data; its documented fixture case does not exist
-**Severity: MAJOR. Routing: architect (the fixture case named in §2.7 is not in the source data).**
+# MINOR
 
-**Reproduce** (`cairn/qa/rules.mjs`):
-```
-places carrying opening hours after import: 0 / 95
-Naschmarkt stop in the trip: not found
-detectConflicts(...).filter(ruleId==='closed').length === 0
-```
+## R2-12 — KD-19's per-symbol justification is wrong for 42 of 62 symbols
+**Routing: builder.** KD-19 says the export gap is enumerated and that *"the other 56 are things
+the client, the CLI or the views demonstrably call"*. Mechanically: of the 62 `BEYOND_2_10`
+entries, **20** are referenced outside `packages/core/src`; **42** are referenced only by core's
+own tests. Named reasons that do not hold include
+`statusLabel: 'packages/tokens and apps/web render the provenance badge text'` (both use
+`STATUS_BADGE`; tokens may not import core at all under §3),
+`pickDay: 'apps/web PoolPanel defaults the day when scheduling from the pool'` (PoolPanel
+dispatches `scheduleFromPool`), `isIsoDate: 'apps/web NewTrip validates a typed date'`, and
+`userProvenance: 'apps/web stamps a hand-added stop'`. The *test* is sound and non-vacuous
+(§2.10 ⊆ exports asserted, dead entries fail, gap capped at 65); the prose the manager is meant
+to decide from is not. The real shape of ROADMAP E's gap is: 50 contracted, 20 more genuinely
+used, 42 exported for testability.
 
-`ARCHITECTURE.md` §2.7 names the fixture case: *"Naschmarkt flea market ends 14:00, arrival
-15:50"*. `CITY_PLACES` carries no hours, `§2.11`'s mapping table has no `hours` row, and no stop
-in the imported trip is called Naschmarkt. The rule is exercised only by a synthetic test that
-hand-builds a `Place` with `hours`.
+## R2-13 — Redaction eats the sample's flight numbers, and KD-17's "0 strings" is measured on prose only
+**Routing: architect/builder.** The shipped sample renders `Condor [redacted] → Frankfurt`,
+`Condor [redacted] → Vienna`, `[redacted]-01` (for `Ref 17097157-01`), and 20 of 112 notes carry
+a `[redacted]`. `alnum_reference` (`\b[A-Z0-9]{6,}\b`) cannot tell `DE2081` from `YZGDTS`.
+KD-17 measures the collateral as "0 strings" against six prose fixtures; against the data it is
+not zero, and the demo trip reads worse for it. Either accept it in writing or exclude a
+flight-designator shape.
 
-Four of the eleven rules (`booking_vs_plan`, `overlap`, `closed`, `duplicate_booking`) are
-silent on the reference trip. Three of those are correct — the fixture genuinely has no such
-problem, and I confirmed each fires when provoked. `closed` is different: it *cannot* fire,
-because no data path produces `Place.hours`.
+## R2-14 — `detectConflicts` accepts a missing or garbage `today` and silently drops ten rules
+**Routing: builder/architect.** `today: '2026-08-01'` → 17 conflicts including 10
+`unbooked_ticketed`; `today: 'garbage'` → 8; `today` absent → 7, no throw. The horizon rules
+just stop firing. Core now throws on exactly this input class in `access/predicates.ts`
+(F-13's fix, correctly) and shrugs at it here. Pick one discipline.
 
-**Architect decision needed:** either drop `closed` from Phase 1 and the §2.7 table, or add an
-hours source. Shipping a rule with a fictional fixture case in the contract is the kind of thing
-that reads as coverage and is not.
+## R2-15 — `fromJSON` rejects a document with no `ownerId`, which §2.14 rule 1 says is allowed
+**Routing: architect/builder.** §2.14: *"If `doc.ownerId` is present and is neither the local
+user … nor absent, `importDoc` rejects."* In practice `fromJSON` fails first with
+`TripParseError: expected a string (at $.ownerId)`, so an export predating `ownerId` cannot be
+restored at all. No such export exists yet; the spec and the parser should agree before one does.
+
+## R2-16 — `"99:99"` is a valid time
+**Routing: builder.** `clockOrNull` checks `^\d{1,2}:\d{2}$` only, `validateTrip` has no clock
+check, and a stop at `99:99` sorts and renders. Same class as F-11's `2026-02-30`, one field over.
+
+## R2-17 — `Issue.params` carries raw coordinates on the fault path
+**Routing: builder.** F-18 is fixed for conflicts: no coordinate-shaped float appears in any
+`Conflict.params` or in any committed golden (`qa/r2-constraints.mjs` asserts it). But
+`validateTrip`'s `lat_lng_out_of_range` puts `lat` and `lng` into `Issue.params`, and §6.1's
+cross-cutting rule — *"no coordinates in any log line, ever; log `stopId`, never `lat/lng`"* —
+does not distinguish the two structures. It fires only on bad data, which is the data most
+likely to be logged. Adjacent: the reference trip's one validation error is *Place "Windsor
+Great Park / Long Walk" has no coordinates at all* reported under a code that says
+out-of-range, and `Place.at` is nullable in the code while §2.2 types it `LatLng`.
+
+## R2-18 — The determinism grep does not cover the reducer, which the constraint names
+**Routing: builder.** `cairn-constraints` §4: *"No `Date.now()`, `Math.random()` or
+`crypto.randomUUID()` inside `packages/core` **or the reducer**"*. `test/boundaries.test.ts`
+walks `packages/core/src` only. `packages/client` is clean today (I grepped it), so this is a
+missing guard rather than a live defect. Behavioural determinism holds: two processes produce
+identical conflicts/issues/geo output, two CLI runs are byte-identical, `gen-sample` is
+byte-stable.
+
+## R2-19 — Redacted links render as live-looking dead links
+**Routing: builder (cosmetic).** §6.6 keeps the label and drops the href, so the sample shows
+`Palace tickets ↗` and `Tickets ↗` as `<a href="">`. Clicking does nothing (verified — no
+navigation, no state loss). A disabled-looking affordance would read better in the demo.
+
+## R2-20 — The CLI dies with an EPIPE stack trace when its stdout closes
+**Routing: builder.** `node cli.ts export ../docs/BOOKINGS.md | head -1` prints the refusal and
+then throws an unhandled `EPIPE` with a 20-line trace. Cosmetic, but it makes every piped CLI
+check noisy.
+
+## R2-21 — `computeLegs(day, trip)` vs §2.5's `computeLegs(day, ctx: TripCtx)`
+**Routing: architect (doc).** The implementation takes the trip; the spec says a context object.
+Harmless, but §2.5 is the section a native port will be written from.
 
 ---
 
-### F-9 — The Aug 18 conflict-id acceptance criterion is not met, and the test that "proves" it passes vacuously
-**Severity: MAJOR. Routing: builder (the test), architect (the invariant's real shape).**
+## Round 1 findings: what is closed
 
-`ROADMAP.md`: *"conflict ids are stable across a no-op re-import and **change** when the Aug 18
-flight time is edited"*. `ARCHITECTURE.md` §2.7: *"If the Ryanair time changes from 19:30 to
-07:30 the id changes, so a previous 'acknowledged' does **not** silently carry over. That is
-`HISTORY.md` Pass 5's lesson, mechanised."*
-
-**Reproduce** (`cairn/qa/confid.mjs`):
-```
-Aug 18 conflicts BEFORE (flight 07:30):
-   legacy_flag-6896e764…  impossible_transfer-d084b8e6…  missing_lodging-878b3974…  unbooked_ticketed ×2
-Aug 18 conflicts AFTER  (flight 19:30):
-   legacy_flag-6896e764…  impossible_transfer-d084b8e6…  impossible_transfer-1bcfdbc0…  booking_vs_plan-7c94…  missing_lodging-878b3974…  unbooked_ticketed ×2
-
-ids that disappeared: 0
-ids that appeared:   2
-```
-And the invariant that matters:
-```
-acknowledge impossible_transfer-d084b8e6 (the Aug 18 blocker) at 07:30
-move the flight to 19:30
--> that acknowledgement is STILL APPLIED
-```
-
-**Why the builder's test passes:** `conflict.test.ts:158` asserts
-`notDeepEqual(transferIdsAfter, transferIdsBefore)` where before is `[X]` and after is `[Y, X]`
-— different arrays, but `X` (the conflict a user would have acknowledged) is untouched. The
-criterion "ids change" is never actually asserted. Same test's "no-op re-import" half calls
-`detectConflicts` twice on one trip object, which tests purity, not re-import. (I ran a genuine
-second `loadEurope2026()` and ids do match, so that half of the criterion is met in fact.)
-
-**The mechanism itself is sound** where a conflict's own values change — I verified that
-rewriting a `legacy_flag` day's subtitle changes its id, and that a `booking_vs_plan` id changes
-when the time behind it changes. The defect is that the acceptance criterion picked an edit
-that does not touch any existing conflict, and the test was written to pass rather than to
-check.
-
-**Expected:** an assertion that a *specific* acknowledged conflict id is absent after the edit.
-
----
-
-## MINOR
-
-### F-10 — A dismissed conflict silently comes back to life when the data returns to its old value
-**Routing: architect.** (`cairn/qa/confid2.mjs`)
-```
-flight 19:30 -> booking_vs_plan-7c94…   user dismisses it, note "I checked, it is fine"
-flight 20:30 -> booking_vs_plan-74dc…   resolution null  (correct)
-flight 19:30 -> booking_vs_plan-7c94…   resolution = the old dismissal, re-applied automatically
-```
-Content-addressing gives ids no revocation-on-revert story. Related: `trip.resolutions`
-accumulates dead rows forever — 5 edit-and-acknowledge cycles leave 5 rows of which 1 is live;
-nothing garbage-collects them, `validateTrip` does not mention them, and each is a re-armed
-decision. Not data loss, but a dismissed **blocker** returning without a user action is the
-class of thing §2.7 exists to prevent.
-
-### F-11 — `createTrip` accepts impossible calendar dates and produces a zero-day trip that validates clean
-**Routing: builder.** (`cairn/qa/attack1.mjs`)
-```
-createTrip({startDate:'2026-13-45', endDate:'2026-13-46'}) -> 2 days starting 2027-02-14; validateTrip: []
-createTrip({startDate:'2026-02-30', endDate:'2026-03-01'}) -> 0 days;                      validateTrip: []
-```
-The date guard is a `YYYY-MM-DD` regex; `Date.UTC` then rolls over silently. `trip.startDate`
-keeps the impossible string while `days[0].date` is something else. `validateTrip` is consistent
-with itself (it recomputes the expected span the same wrong way) so `days_not_dense` never fires.
-Everything else about density is solid — a gap in the middle, a truncated tail, zero days over a
-real range, and a shifted `startDate` are all caught correctly.
-The web app's *New trip* form is guarded by `<input type="date">` + `endDate >= startDate`, so
-this is reachable through core/CLI/import, not the wizard. A zero-day trip imported into the UI
-degrades correctly ("This trip has no days.").
-
-### F-12 — `fromJSON` accepts unknown enum values and non-numeric coordinates
-**Routing: builder.** `ROADMAP.md` lists "unknown enum values" as an attack. (`cairn/qa/attack7.mjs`)
-```
-ACCEPTED  "category":"nuclear"
-ACCEPTED  "source":"nsa"            (provenance)
-ACCEPTED  "kind":"telepathic"       (placement)
-ACCEPTED  "lat":"33.9425"           (string)
-ACCEPTED  "lat":1e999               (Infinity)
-```
-Structural validation is good — every malformed/truncated/`schemaVersion 99`/`days:null`/
-`stops:{}` case is rejected as `TripParseError` with a JSON path, and `__proto__` payloads do
-not pollute `Object.prototype`. Enum and numeric-domain validation is missing. An unknown
-`provenance.source` fails safe today (`displayStatus` → `'suggested'`, not `'own'`), which is
-the right direction, but it is luck rather than design.
-
-### F-13 — `canView(p, rel, undefined)` fails **open** on an expired share
-**Routing: builder.** (`cairn/qa/access.mjs`)
-`effectiveRole` does `if (s.expiresAt && s.expiresAt < now) continue;` — with `now === undefined`,
-`'2026-07-01' < undefined` is `false`, so every expired share becomes live. These predicates are
-the definition Phase 2's RLS policies are generated from; a caller that forgets the clock silently
-grants access. Should throw on a missing/invalid `now`.
-
-Everything else in the access surface is **correct** — I ran the full matrix (12 principals ×
-5 operations: owner, co-owner, editor, commenter, viewer, friend, revoked editor, stranger,
-anonymous, live link, expired link, revoked link). A friend gets nothing by itself; a revoked
-share grants nothing; an anonymous principal cannot match a link share and vice versa; a viewer
-link cannot edit. No cell is wrong.
-
-### F-14 — `packages/core/src/index.ts` exports 64 symbols beyond §2.10
-**Routing: architect.** §2.10 says the index *"re-exports exactly this and nothing else"*. It
-re-exports 102 runtime symbols, 64 of which are not in the list — including things the client
-genuinely needs (`sequentialIds`, `LOCAL_OWNER`, `TripParseError`, `mapBounds`, `stopPoints`,
-`needsBadge`, `formatRange`, `reorderStop`) and things it does not (`digest`, `canonical`,
-`makeConflict`, `blankDay`). Either §2.10 is under-specified or the surface is leaking; only the
-architect can say which.
-
-### F-15 — `rollUpCost` is never told the trip's home currency, so the UI says "No conversion rate for EUR"
-**Routing: builder.** `packages/client/src/store/derived.ts:39,51` calls `core.rollUpCost(day.stops)`
-with no `opts.target`. With no target, `missingRates` lists **every** currency present, including
-`EUR` on a `homeCurrency: 'EUR'` trip. `DayTimeline.tsx:40` then renders
-*"No conversion rate for EUR, CZK …"*. Pass `{ target: trip.homeCurrency }`.
-The underlying money model is otherwise correct: `converted` is always `null`, CZK/GBP/USD are
-kept separate, and the Danube cruise's `$573.25 per_party` produces a real `basisWarning` naming
-the stop rather than being summed with per-person amounts.
-
-### F-16 — `cli.ts export <path>` has no path guard and can write into the read-only root
-**Routing: builder.** `cmdExport` does `writeFileSync(argv[1], text)` with no normalisation or
-prefix check. `npm run cli -- export ../europe-2026-itinerary.html` would overwrite the live app
-on Jacob's phone. I verified there is no guard by exporting to an absolute path outside `cairn/`
-(228 691 bytes written, no complaint); I did not aim it at the planner. `tools/serve.mjs` does
-have a prefix check for reads — the same discipline is missing on the one write path.
-
-### F-17 — `accepted_without_timestamp` is validated for stops but not for bookings
-**Routing: builder.** (`cairn/qa/prov.mjs`, last block)
-A `Booking` with `{state:'accepted', acceptedAt:null}` renders `displayStatus() === 'own'` and
-`validateTrip` says nothing. That is precisely the shape an email-ingest bug would produce.
-The stop-level check works.
-
-### F-18 — `Conflict.params` carries raw coordinates, which land in committed files
-**Routing: architect.** `geoOutlier.ts` puts `lat`/`lng` into `params` and `values`. Six precise
-coordinates are consequently committed in `fixtures/golden/core-conflicts.json`. These are
-itinerary pins, not location traces, so §6.1's "never transmitted" table is not violated today —
-but §6.1's cross-cutting assertion is *"No coordinates in any log line, ever. Log `stopId`,
-never `lat/lng`"*, and `Conflict.params` is the structure that will be logged, alerted on and
-shipped to the server in Phase 2. `stopId` is already in `subjects`. Decide now.
-
-### F-19 — `npm run web:build` bakes personal ticket tokens into the JS bundle
-**Routing: architect.** The generated sample embeds live, unauthenticated ticket URLs, e.g.
-`cityairporttrain.com/en/account/order/9zuskFnJPD8oOm5hGTJX54VCS_hmSZu7` and
-`ulaznice.hr/web/confirmFromMailGuest/2665250/52/88193/fcvbimxq`. Nothing is committed
-(`dist/` and the generated sample are gitignored) and the same URLs are already in the root
-planner, so this is not a new exposure *today*. It becomes one the moment `apps/web/dist` is
-deployed as the public share-page host in Phase 2. The sample trip should ship with tickets
-redacted, or not ship in a public build.
-
-### F-20 — Six source files point at BUILD-NOTES for content it does not contain
-**Routing: builder.** `impossibleTransfer.ts`, `geoOutlier.ts`, `bookingVsPlan.ts`, `closed.ts`,
-`stops.ts` and `cluster.ts` all say "See BUILD-NOTES". `BUILD-NOTES.md` discusses none of them.
-This is how F-4 stayed invisible: the builder wrote the caveat down in the place nobody reads
-and omitted it from the place everybody reads.
+| # | Round 1 | Round 2 verdict |
+|---|---|---|
+| F-1 | two tabs destroy each other's edits, loser says "Saved" | **half closed** — sequential case fixed and verified in Chromium; simultaneous case still loses an edit 2 runs in 3 → **R2-1** |
+| F-2 | `importDoc` overwrote a stored trip | **closed** — collision check reads storage, a fresh id is minted, the stored edit survives (`qa/r2-import.mjs`) |
+| F-3 | `typecheck` failed on a clean clone | **closed** — verified from a scratch clone |
+| F-4 / F-4a | `impossible_transfer` artifacts | **closed in the model** — 0 blockers, 0 warnings, 21/81/10 split and the 7-minute margin all re-derived independently. The view half is **not built** → R2-10 |
+| F-5 | `geo_outlier` could not see the Fisherman's Bastion typo | **closed** — injecting `place-68 lat +1°` produces exactly one new blocker naming `place-68`, 109 km, `anchorKind: city_stop`; 17 conflicts → 18. Sub-threshold sweep behaves as §2.13 documents (invisible at ≤33 km, caught from 37 km) |
+| F-6 | a friend's trip renders as Jacob's own | **closed on the copy path** — `imported` from the instant the stop exists, and it survives 16 mutation paths, undo/redo, a 70-deep history unwind, a save+reopen, and a JSON round trip. Re-opens in the pool view (R2-8) and in free text (R2-3) |
+| F-7 | `updateStop` rewrote provenance | **closed** — `id`, `placement`, `provenance` all throw; the other 13 patch keys keep the badge and the credit |
+| F-8 | the `closed` rule could not fire | **closed** — rule deleted |
+| F-9 | the vacuous conflict-id assertion | **closed** — restated; the mechanism is sound |
+| F-10 | a dismissed conflict comes back still dismissed | **not closed in the product** — the fix exists and has no caller → **R2-7** |
+| F-11 | `createTrip` accepted `2026-13-45` | **closed** — throws; `fromJSON`'s date domain is still open and is disclosed in KD-12 |
+| F-12 | `fromJSON` accepts unknown enums / bad coordinates | **withdrawn — my error.** `qa/attack7.mjs` searched for `"category":"sight"` in output that `toJSON` pretty-prints as `"category": "sight"`, so five "ACCEPTED" lines were unmodified documents. With the right needles all five are rejected with a JSON path. The builder was right and said so more cautiously than the evidence required |
+| F-13 | `canView` failed open with no clock | **closed for `now`**, open for the share's own dates → **R2-6** |
+| F-14 | 64 symbols beyond §2.10 | **enumerated, not closed** — 112 vs 50, honestly reported as partial; the enumeration's reasons are wrong for 42 of 62 → R2-12 |
+| F-15 | "No conversion rate for EUR" | **closed** — CLI verified by hand, call sites grepped by a test |
+| F-16 | `cli export` could overwrite the live planner | **closed for lexical paths**, open for symlinks → **R2-5** |
+| F-17 | `accepted_without_timestamp` skipped bookings | **closed** |
+| F-18 | coordinates in `Conflict.params` and a golden | **closed** for conflicts and goldens; `Issue.params` still carries them → R2-17 |
+| F-19 | the bundle embedded a PIN, refs and ticket URLs | **closed for those six strings, open as a rule** → **R2-4** |
+| F-20 / M-1 / M-2 | source comments citing a section that did not exist | **closed and mutation-checked** — I added an undisclosed trigger comment (fails), a `KD-99` citation (fails), and a divergence written without a trigger word (passes, the known limit) |
 
 ---
 
 ## What I attacked and could not break
 
-Listed because "no finding" only means something with the attack list attached.
+- **`copyStopInto`'s provenance stamp.** 16 individual `updateStop` patches; copy→accept→export→
+  import; undo, redo, a 60-edit history unwound 70 times; save and reopen out of storage;
+  copying the same stop twice (distinct ids, place reused, validation clean); copying a copy
+  (credit flattens to the intermediary, as §2.14 specifies, and Marta is not recoverable from
+  Sam's document — documented, not a defect); copying into the pool and scheduling back out.
+  Provenance is rebuilt from scratch every time and `attribution` never depends on
+  `displayStatus`. This is solid work.
+- **The browsed document is genuinely read-only.** Dispatching against a browsed stop id throws
+  `no such stop`; the stored source is byte-identical afterwards; `browsing` is cleared on trip
+  switch; the browse pane never dispatches.
+- **Storage failure and quota.** `failAll` during a save → `status: 'error'`, the edit stays in
+  memory, nothing claims to be saved, and a later flush recovers cleanly.
+- **Corrupt documents.** A truncated stored document is refused by `openTrip` *and* `browseTrip`
+  with a `TripParseError` carrying a JSON path; the library still lists it, clicking it shows
+  the error rather than a blank app.
+- **Hostile `fromJSON` input.** Unknown enums, non-numeric and infinite coordinates, `null`
+  days, `{}` stops, `schemaVersion` 0/99/"1"/absent, 2000-deep nesting, `__proto__` payloads —
+  all rejected with a path, no prototype pollution. Unicode, emoji, a 5000-char name, a nul
+  byte, an RTL override and `</script>` all round-trip byte-identically.
+- **Privacy paths.** There is no ingest and no location code in Phase 1, and nothing to leak
+  from: zero `console.*`, zero `fetch`/`XMLHttpRequest`/`sendBeacon` in `packages/*` and
+  `apps/web/src`. No third-party analytics. No coordinates in any conflict output or committed
+  golden.
+- **Constraint compliance.** No DOM globals anywhere in `packages/client` (checked as globals,
+  not just imports); zero third-party runtime dependencies in core, client and tokens;
+  determinism holds across processes.
+- **Maps.** Aug 8 opens on Vienna with all focus pins inside the viewport, and re-fits to
+  identical pin positions after a hidden/shown tab round trip.
+- **Duplicate bookings.** The two FlixBus legs sharing reference `3384415948` do **not** produce
+  a false duplicate; the YZGDTS pair produces exactly one `superseded_booking` note.
+- **The read-only boundary.** A full test run, three web builds, two CLI export attacks and six
+  browser sessions later, `git status` shows only my own `qa/r2-*.mjs` files and
+  `europe-2026-itinerary.html` is byte-identical.
 
-**Constraints (`cairn-constraints`), all clean:**
-- **Determinism.** No `Date.now()`, `Math.random()` or `crypto.randomUUID()` anywhere in
-  `packages/core` or `packages/client`. The two `new Date(Date.UTC(...))` uses in `summary.ts`
-  and `closed.ts` are pure calendar arithmetic on injected values. `Date`/`crypto` are called in
-  exactly one file, `apps/web/src/ports/env.ts`, as designed.
-- **Zero runtime dependencies** in core and client. Client's only dependency is `@cairn/core`.
-  No `node:` imports in either package (`conflict/id.ts` hand-rolls FNV-1a rather than reaching
-  for `node:crypto`).
-- **No DOM/React in `packages/client`.** No `document`, `window`, `localStorage`, `indexedDB`,
-  `navigator`, `require`, or React import. The entire state machine ran under plain Node for
-  every test in this report.
-- **Type stripping.** All 69 tests run directly on Node 22.22.2 with no build step. (Note:
-  ROADMAP specifies Node 24; this environment is 22.22.2, so Node-24-specific behaviour is
-  untested — the builder flagged this and it is fair.)
-- **Read-only root.** Byte-identical before and after a full run; no `DAYS` copy committed;
-  the extractor is `readFileSync`-only. Drift detection fails loudly and correctly.
+## What I could not test
 
-**Correctness under the real trip's shape:**
-- Overnight LAX 16:45 → FRA 13:00+1 belongs to Aug 7; the FRA connect stop is on Aug 8.
-- Aug 12's FlixBus leg is 245 min *arriving at Split*, `source:'override'`, on the arriving stop.
-- All 16 days reproduce the live page's `legBetween` mode, minutes and kilometres exactly.
-- All 16 days reproduce `focusCluster`'s split flag, group sizes and focus membership exactly.
-- `fitSpanKm` never drops below `MIN_SPAN_KM` on any day; two pins 40 m apart still clamp to a
-  usable box; `mapBounds([])` returns `empty:true` rather than inventing one.
-- A day with zero stops, a stop with `PlaceLink {kind:'none'}`, two stops at the same time, and
-  a stop whose neighbour has no coordinates all pass through legs, clusters, cost and validation
-  without a throw and without a guessed value.
-- `returnToPool` → `scheduleFromPool` is lossless at position 0, mid-day and last.
-- `duplicate_booking` fires for two references on one route; `superseded_booking` fires for
-  YZGDTS and `duplicate_booking` does **not**; `booking_vs_plan` stays silent for the agreeing
-  Aug 15 Smartwings and fires as soon as the booking really disagrees; `overlap` never fires
-  without `durationMins` and fires with one; `unverified_reference` names exactly IU1TUY and
-  I54C9A; `missing_lodging` names exactly Budapest and London.
-- All 21 booking references in `europe2026.bookings.json` still appear verbatim in
-  `docs/BOOKINGS.md`; YZGDTS is present twice with the right supersede direction.
-- Unicode, emoji, RTL-override, NUL-byte and 5 000-character names all survive a round-trip
-  byte-identically.
-- `haversine` stays finite on out-of-range input; NaN coordinates do not crash legs or clusters.
-
-**Client state machine (no browser):**
-- `ui` state appears nowhere in the persisted bytes.
-- Two trips do not leak: `createTrip`, `adoptTrip`, `openTrip` and `importDoc` all reset ui,
-  history and the derived cache; undo after a switch cannot resurrect the previous trip.
-- Undo/redo is exactly 50 deep, byte-exact, and a no-op at both ends.
-- A failing `StoragePort.save` sets `status:'error'`, keeps the edit in memory, keeps `isDirty()`
-  true, and both edits persist once storage recovers. Quota exhaustion behaves the same.
-- Every one of the 15 actions bumps `revision`; the derived cache is keyed on `(tripId, revision)`
-  and two different trips sharing revision 7 do not share derived data.
-- The reducer contains no domain logic — it is a table lookup to one core function per action.
-
-**Browser (Chromium, production build):**
-- All 16 dates reachable from the spine, including the `cities:['transit']` Aug 7.
-- 21 `suggested` badges, 21 `free`, 7 `ticket`, 7 `daytrip` render across the days — every
-  system suggestion I inspected carries a visible marker in its row.
-- Aug 8 map: 7 of 7 focus pins inside the visible container; "Whole day's journey" toggle present.
-- Map re-fit after navigating away and back is **pixel-identical** — the `display:none` fit bug
-  does not reproduce.
-- With all tile requests aborted, the map still mounts and renders pins and the polyline; the
-  app does not collapse.
-- A corrupt document in the library produces a readable error banner
-  (`not valid JSON: Unexpected end of JSON input (at $)`) and the app stays usable.
-- A zero-day trip imported through the file picker renders "This trip has no days." rather than
-  a blank shell.
-- Network egress from the built app: `localhost` + `*.tile.openstreetmap.org` only. No
-  analytics, no crash reporter, no `fetch` anywhere in `packages/*` or `apps/web/src`. No
-  `console.log` in any shipped file.
-
-**Sensitive paths (ARCHITECTURE §5, §6):** there is no email, location or photo code in Phase 1
-— no `services/`, no `apps/mobile`, no mailbox or coordinate persistence beyond itinerary pins.
-Nothing to leak yet. The Phase 1 hooks that will matter later are F-7 (the ingest write gate),
-F-18 (coordinates in `Conflict.params`) and F-6 (ownership on import).
-
----
-
-## Routing summary
-
-| To the builder | To the architect |
-|---|---|
-| F-1 revision guard on save | F-4 `geo_outlier` rule shape |
-| F-2 `importDoc` collision check against storage | F-5 should `Place` and pool stops get a distance check |
-| F-3 `typecheck` from a clean clone | F-6 what `importDoc` does with a foreign `ownerId` |
-| F-7 lock down `updateStop`'s patch | **F-4a `arrival` cannot say "departure" — a model field, not a rule patch** |
-| F-9 make the conflict-id test actually assert | F-8 drop `closed` or give it an hours source |
-| F-11 calendar-valid dates | F-10 revert-resurrection and `resolutions` GC |
-| F-12 enum + numeric validation in `fromJSON` | F-14 §2.10's export list |
-| F-13 fail closed on a missing clock | F-18 coordinates in `Conflict.params` |
-| F-15 pass `target` to `rollUpCost` | F-19 personal ticket tokens in a public build |
-| F-16 path guard on `cli export` | |
-| F-17 `accepted_without_timestamp` for bookings | |
-| F-20 write the objections into BUILD-NOTES | |
+- **A real second user.** There is no server, so every "friend" here is a hand-built `ownerId`.
+  R2-3's severity rests on the Phase 2 path being the same code, which the design says it is.
+- **Safari, iOS, and a real IndexedDB quota wall.** Chromium only, in-memory quota simulation.
+- **Map tiles.** No route to `tile.openstreetmap.org` from this sandbox; pins, polylines and
+  bounds render, nobody has seen a tile.
+- **Node 24.** This environment is 22.22.2, as the builder also reported.

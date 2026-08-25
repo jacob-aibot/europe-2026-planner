@@ -34,3 +34,33 @@ PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node browser5.mjs   # F-1 two tabs, on
 
 A "FAIL" line in this directory means the probe found what it was looking for. Read the
 finding in `../docs/QA-FINDINGS.md` before assuming a script is broken.
+
+---
+
+## Round 2 (2026-08-25, `master` @ `fcceb56`)
+
+Written against the re-delivery. `cairn/docs/QA-FINDINGS.md` names the finding each one
+backs. Headless probes run from `cairn/`:
+
+```bash
+node qa/r2-copy.mjs         # copyStopInto: every provenance escape path; credentials in notes (R2-3)
+node qa/r2-copy2.mjs        # the copy through the client store: undo/redo, Place copy, browse read-only
+node qa/r2-import.mjs       # importDoc F-2/F-6 re-check; storage failure, quota, corrupt documents
+node qa/r2-resolutions.mjs  # R2-7: syncResolutions has no caller, so a dismissal still resurrects
+node qa/r2-access.mjs       # R2-6: F-13 re-check, and the share's own dates failing open
+node qa/r2-data.mjs         # real-trip shapes; travelRole x geoCheck x copy interactions (R2-9)
+node qa/r2-constraints.mjs  # cairn-constraints: determinism, DOM, zero-dep, coordinates in params
+node qa/r2-redact.mjs       # R2-4: the credential set derived from the trip, greped against dist/
+```
+
+`r2-redact.mjs` needs `npm run web:build` first. Browser probes need
+`npm run web:build && node tools/serve.mjs` in one shell, then:
+
+```bash
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r2-browser.mjs    # Browse & copy, badges, credit line
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r2-poolloss.mjs   # R2-2: a pooled transit stop vanishes
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r2-tabs.mjs       # the revision guard's sequential case
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r2-race.mjs       # R2-1: two tabs at once, an edit lost
+```
+
+`r2-race.mjs` is timing-dependent by nature: it lost an edit in 2 of 3 rounds when filed.
