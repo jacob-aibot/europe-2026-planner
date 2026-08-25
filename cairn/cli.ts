@@ -82,7 +82,7 @@ function cmdDay() {
     const t = s.placement.kind === 'scheduled' ? (s.placement.time ?? '  —  ') : '  —  ';
     out(`  ${t.padEnd(6)} ${s.name}${s.cost?.display ? `  [${s.cost.display}]` : ''}${badges.length ? `  {${badges.join(' ')}}` : ''}`);
   });
-  const roll = core.rollUpCost(day.stops);
+  const roll = core.rollUpCost(day.stops, { target: trip.homeCurrency });
   out(`\n  moving ${core.fmtMins(core.dayMovingMinutes(day, trip))} · ${core.dayDistanceKm(day, trip).toFixed(1)} km · cost ${money(roll)}`);
   if (roll.missingRates.length) out(`  no rate table for: ${roll.missingRates.join(', ')} — core will not convert`);
   for (const w of roll.basisWarnings) out(`  ⚠ ${w}`);
@@ -105,10 +105,10 @@ function cmdConflicts() {
 
 function cmdCost() {
   for (const day of trip.days) {
-    const roll = core.rollUpCost(day.stops);
+    const roll = core.rollUpCost(day.stops, { target: trip.homeCurrency });
     out(`${day.date}  ${money(roll).padEnd(24)} ${roll.basisWarnings.length ? '⚠ mixed basis' : ''}`);
   }
-  const total = core.rollUpCost(trip);
+  const total = core.rollUpCost(trip, { target: trip.homeCurrency });
   out(`\nTRIP TOTAL  ${money(total)}`);
   if (total.missingRates.length) out(`unconvertible without a rate table: ${total.missingRates.join(', ')}`);
   for (const w of total.basisWarnings) out(`⚠ ${w}`);

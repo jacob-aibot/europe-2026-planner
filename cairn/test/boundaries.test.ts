@@ -161,3 +161,21 @@ test('core is deterministic at the source level: no clock, no randomness, no IO'
   }
   assert.deepEqual(offenders, []);
 });
+
+test('every rollUpCost call outside core passes { target: homeCurrency } — F-15', () => {
+  // Without a target, `missingRates` lists EVERY currency including the trip's own, and a
+  // `homeCurrency:'EUR'` trip renders "No conversion rate for EUR". That was the first
+  // thing Jacob would have seen. It was fixed in the client and missed in the CLI, which is
+  // exactly why this is a grep and not a code review.
+  const roots = ['packages/client/src', 'apps/web/src'].map((d) => resolve(CAIRN, d));
+  const files = [...roots.flatMap(walk), resolve(CAIRN, 'cli.ts')];
+  const offenders: string[] = [];
+  for (const file of files) {
+    const src = readFileSync(file, 'utf8');
+    src.split('\n').forEach((line, i) => {
+      if (!/\brollUpCost\s*\(/.test(line)) return;
+      if (!/target\s*:/.test(line)) offenders.push(`${relative(CAIRN, file)}:${i + 1}  ${line.trim()}`);
+    });
+  }
+  assert.deepEqual(offenders, [], `\n  ${offenders.join('\n  ')}\n`);
+});

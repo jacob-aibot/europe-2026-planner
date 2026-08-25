@@ -355,7 +355,7 @@ partially met.**
 ```bash
 cd cairn
 npm install
-npm test          # 230 tests. Plain node, no browser, no network.
+npm test          # 231 tests. Plain node, no browser, no network.
 npm run typecheck # generates the sample first (see F-3 below), then both TS projects
 npm run cli -- trip           # headline counts and city ranges
 npm run cli -- day 2026-08-13 # one day: stops, legs, costs, badges
@@ -404,7 +404,7 @@ footnote.
 
 | What | Number | Command | Caveat |
 |---|---|---|---|
-| Tests | **230 pass, 0 fail** | `npm test` | Was 69 at the first delivery. |
+| Tests | **231 pass, 0 fail** | `npm test` | Was 69 at the first delivery. |
 | Typecheck | clean, both projects | `npm run typecheck` | From a **clean clone**, in the documented order. Previously failed (F-3). |
 | Web build | clean | `npm run web:build` | The bundle now carries **none** of the five known strings — asserted, including `.js.map`. See KD-18. |
 | Import | 16 days · 112 scheduled stops · 31 pooled · 95 places · 21 bookings | `npm run cli -- import`, `-- trip` | Unchanged since the first delivery. |
@@ -455,7 +455,7 @@ library.
 | F-11 | `createTrip` accepted `2026-13-45` and `2026-02-30` | `core/src/model/ids.ts` `isIsoDate` | `build.test.ts` ×3, `serialize.test.ts` |
 | F-12 | `fromJSON` was reported to accept unknown enums and non-numeric coordinates | **it does not** | `serialize.test.ts` ×14 — see §6 |
 | F-13 | `canView` returned `true` on an expired share when `now` was `undefined` or `''` | `core/src/access/predicates.ts` | `access.test.ts` ×27 |
-| F-15 | `rollUpCost` called with no target, so a EUR trip rendered "No conversion rate for EUR" | `client/src/store/derived.ts` | see §6 |
+| F-15 | `rollUpCost` called with no target, so a EUR trip said "No conversion rate for EUR" | `client/src/store/derived.ts`, `cli.ts` | `boundaries.test.ts` greps every call site — see §6 |
 | F-16 | `cli export` could overwrite the live planner | `cli.ts` | `test/cli.test.ts` ×6 |
 | F-17 | `accepted_without_timestamp` was checked for stops and not bookings | `core/src/validate/validateTrip.ts` | `copyStop.test.ts` |
 | F-18 | `geo_outlier` put raw `lat`/`lng` into `Conflict.params` and into a committed golden | `core/src/conflict/rules/geoOutlier.ts` | `conflict.test.ts` greps for float pairs |
@@ -469,10 +469,15 @@ than narrowed, KD-19.
 
 ## 6. Not verified, and why
 
-- **F-15 has no automated test.** The fix is one argument in `derived.ts` and I confirmed by
-  reading `cost.ts` that `missingRates` excludes the target, but nothing in this repo renders
-  React outside a browser and I did not add a harness for one string. **Treat F-15 as
-  fixed-by-inspection, not fixed-by-test.**
+- **F-15's rendering is still unverified, though the call sites are not.** The fix is one
+  argument, and it was applied to `derived.ts` and **missed in `cli.ts`** — where
+  `npm run cli -- day 2026-08-13` on a EUR trip printed *"no rate table for: USD, EUR"* right
+  through the clean-clone check at the end of this round. `boundaries.test.ts` now greps
+  every `rollUpCost` call outside core for a `target:`, which is the guard that would have
+  caught it. What is still not tested is the rendered string in `DayTimeline`: nothing in
+  this repo renders React outside a browser. **Treat the React half of F-15 as
+  fixed-by-inspection.** The lesson is the one this whole section exists for — a one-line fix
+  applied to the place you were looking at is not a fixed defect.
 - **F-12 disagrees with the review and I could not reconcile it.** The review reports
   `fromJSON` accepting `category:'nuclear'`, `source:'nsa'`, `kind:'telepathic'`,
   `lat:'33.9425'` and `lat:1e999`. I ran all five against `master` and all five are rejected
@@ -497,7 +502,7 @@ than narrowed, KD-19.
   `copyStop.test.ts`. There is no server and no second user, so nobody has copied a stop
   across an account boundary.
 - **`node --test` on Node 24.** ROADMAP specifies Node 24; this environment is Node 22.22.2,
-  where type stripping is already unflagged and all 230 tests run. `engines` says `>=22.18`.
+  where type stripping is already unflagged and all 231 tests run. `engines` says `>=22.18`.
 - **The boundary and disclosure tests were mutation-checked**, which is the only reason I
   trust tests that passed the first time they ran: adding `node:fs`, `@cairn/tokens` and an
   `apps/web` import to `core/src/derive/geo.ts` produced all three expected violations, and
