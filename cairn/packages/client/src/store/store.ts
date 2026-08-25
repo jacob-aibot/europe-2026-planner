@@ -170,12 +170,13 @@ export function createStore(opts: StoreOptions) {
     /** Creates a trip and makes it active. */
     async createTrip(init: core.TripInit): Promise<AppState> {
       const doc = core.createTrip(init, ctx());
+      cache = null;
       set({
         ...initialState(),
         library: state.library,
         activeTripId: doc.id,
         doc,
-        ui: { ...state.ui, activeDayId: doc.days[0]?.id ?? null, activeCityKey: doc.cities[0]?.key ?? null },
+        ui: { ...initialState().ui, activeDayId: doc.days[0]?.id ?? null, activeCityKey: doc.cities[0]?.key ?? null },
       });
       await save();
       return state;
@@ -183,12 +184,13 @@ export function createStore(opts: StoreOptions) {
 
     /** Adds an already-built trip (the Europe 2026 sample, or an import). */
     async adoptTrip(doc: Trip): Promise<AppState> {
+      cache = null;
       set({
         ...initialState(),
         library: state.library,
         activeTripId: doc.id,
         doc,
-        ui: { ...state.ui, activeDayId: doc.days[0]?.id ?? null, activeCityKey: doc.cities[0]?.key ?? null },
+        ui: { ...initialState().ui, activeDayId: doc.days[0]?.id ?? null, activeCityKey: doc.cities[0]?.key ?? null },
       });
       await save();
       return state;
