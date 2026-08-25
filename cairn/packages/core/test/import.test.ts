@@ -8,7 +8,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { europe2026, golden, repoFile } from './fixture.ts';
-import { cityRange, displayStatus, validateTrip } from '../src/index.ts';
+import { cityRange, displayStatus, geoCheck, validateTrip } from '../src/index.ts';
 
 test('16 days, dense 2026-08-07 → 2026-08-22, Day.id === Day.date throughout', () => {
   const { trip } = europe2026();
@@ -55,11 +55,48 @@ test('5 multi-city days, exactly the documented ones', () => {
   ]);
 });
 
-test('3 candidate days and 21 suggested stops', () => {
+test('3 candidate days and 21 suggested stops, and every one of the 21 carries source:system', () => {
   const { trip } = europe2026();
   assert.equal(trip.days.filter((d) => d.provenance.state === 'candidate').length, 3);
   const suggested = trip.days.flatMap((d) => d.stops).filter((s) => displayStatus(s) === 'suggested');
   assert.equal(suggested.length, 21);
+  // The count alone does not distinguish a suggestion from a mis-stamped import.
+  assert.deepEqual([...new Set(suggested.map((s) => s.provenance.source))], ['system']);
+});
+
+test('travelRole splits 21 journey / 81 transfer / 10 unknown, and every unknown is genuinely ambiguous', () => {
+  const { trip } = europe2026();
+  const scheduled = trip.days.flatMap((d) => d.stops);
+  const tally = (xs: typeof scheduled) => {
+    const t: Record<string, number> = { transfer: 0, journey: 0, unknown: 0 };
+    for (const s of xs) t[s.travelRole]++;
+    return t;
+  };
+  assert.deepEqual(tally(scheduled), { transfer: 81, journey: 21, unknown: 10 });
+  assert.equal(scheduled.length, 112);
+
+  // A pool stop has no `move` in the legacy data, so all 31 are 'transfer' by §2.11's
+  // first clause — not by accident.
+  assert.deepEqual(tally(trip.pool), { transfer: 31, journey: 0, unknown: 0 });
+
+  // Every 'unknown' is a vehicle mode on a non-transit category — the case §2.12 says the
+  // data genuinely cannot resolve. None of them is a walk, and none is a cat:'transit'.
+  for (const s of scheduled.filter((x) => x.travelRole === 'unknown')) {
+    assert.ok(s.arrival, `${s.name} is 'unknown' with no arrival`);
+    assert.notEqual(s.category, 'transit', `${s.name} is cat:transit and should be 'journey'`);
+  }
+  // And every 'journey' is a vehicle mode on a transit stop.
+  for (const s of scheduled.filter((x) => x.travelRole === 'journey')) {
+    assert.equal(s.category, 'transit');
+    assert.ok(s.arrival);
+  }
+});
+
+test('81 stops carry an arrival and 49 a non-null cost', () => {
+  const { trip } = europe2026();
+  const scheduled = trip.days.flatMap((d) => d.stops);
+  assert.equal(scheduled.filter((s) => s.arrival).length, 81);
+  assert.equal(scheduled.filter((s) => s.cost).length, 49);
 });
 
 test('7 stops carry a Ticket — 3 of them bundled, over 2 distinct repo files', () => {
@@ -95,30 +132,16 @@ test('cityRange() reproduces the six hardcoded CITY_RANGE strings exactly', () =
   assert.ok(cityRangeCheck.every((c) => c.ok), 'importer asserted parity too');
 });
 
-test('every stop with coordinates sits within 35 km of one of its day\'s cities', () => {
-  // The root CLAUDE.md scripted check, generalised. Deliberate long-haul stops carry an
-  // `arrival` override; anything else within 35 km of no city on its day is a typo.
+test('every coordinate in the trip is anchored — the CLAUDE.md scripted check, generalised', () => {
+  // Was: "within 35 km of one of its day's cities", read out of
+  // `validateTrip.stop_far_from_city`. That code is deleted (§2.9); the check now lives in
+  // `geoCheck` and is measured against the trip's own declared geography, so a Krka day
+  // trip 50 km outside Split is not a finding and a one-digit latitude typo is.
+  // The detection census is in `geoCheck.test.ts`.
   const { trip } = europe2026();
-  const unexplained = validateTrip(trip)
-    .filter((i) => i.code === 'stop_far_from_city')
-    .map((i) => i.params.stopId as string);
-  const stops = new Map(trip.days.flatMap((d) => d.stops).map((s) => [s.id, s]));
-  for (const id of unexplained) {
-    const s = stops.get(id);
-    assert.ok(s, `unknown stop ${id}`);
-  }
-  // Every far stop is either a travel leg (has an arrival override) or a known day trip.
-  const withoutExplanation = unexplained.filter((id) => !stops.get(id)?.arrival);
   assert.deepEqual(
-    withoutExplanation.map((id) => stops.get(id)?.name).sort(),
-    [
-      'Arrive Skradin — buy park entrance ticket',
-      'Buy the Visovac + Roški Slap boat excursion',
-      "Gellért Hill & Citadella at sunrise",
-      'Morning with your girlfriend\'s family',
-      'Roški Slap — mills, cascades & swim',
-      'Frankfurt (FRA) — connect',
-    ].sort(),
+    geoCheck(trip).filter((f) => f.confidence === 'certain').map((f) => `${f.ref.kind}:${f.ref.id}`),
+    [],
   );
 });
 

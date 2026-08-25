@@ -1,63 +1,86 @@
 /**
- * `geo_outlier` — a stop more than 35 km from its day's primary city centre with no
- * `arrival` override explaining how it got there. Blocker.
+ * `geo_outlier` — a coordinate far from everything the trip knows about. Blocker.
+ *
+ * This rule holds no geography of its own. It is a thin publisher over `geoCheck`
+ * (§2.13), which is the single implementation of coordinate-to-anchor distance in
+ * `packages/core`. Revision 1 had two implementations of that idea — this rule and
+ * `validateTrip.stop_far_from_city` — both anchored on `day.primaryCity`, both producing
+ * false positives on legitimate stops, and neither able to see the bug they existed for.
  *
  * This is the rule that would have caught Fisherman's Bastion sitting 111 km north of
- * Budapest because of a single-digit latitude typo, with nothing visibly broken.
+ * Budapest because of a single-digit latitude typo, with nothing visibly broken — and now
+ * it does: `geoCheck.test.ts` injects that exact fault and asserts exactly one blocker
+ * naming `place-68`.
  *
- * Measured against the PRIMARY city, per §2.7. On the Europe 2026 fixture that also flags
- * the deliberate first-stop-of-a-travel-day cases (a Split morning on a Prague day, a
- * Budapest sunrise on a London day), and it does NOT look at the record type the historical
- * typo actually lived on. Both the anchor objection and the coverage gap are BUILD-NOTES §1,
- * KD-2 — with the measurement showing the obvious fix removes only 3 of the 6.
+ * `confidence:'unanchored'` findings are NOT published. A record whose trip offers it no
+ * anchor at all is a property of an almost-empty trip, not a defect.
+ *
+ * **No coordinate goes into `params` or `values`** (§2.7, §6.1): `Conflict.params` is what
+ * gets logged, alerted on, committed to a golden and shipped to a server in Phase 2. The
+ * record id is in `subjects`; `params` carries `km`, `limitKm`, `anchorKind` and `cityKey`.
  */
-import type { Conflict } from '../../model/types.ts';
-import { haversine, stopLatLng } from '../../derive/geo.ts';
+import type { Conflict, Trip } from '../../model/types.ts';
+import { geoCheck } from '../../derive/geoCheck.ts';
+import type { GeoAnchor } from '../../derive/geoCheck.ts';
 import { makeConflict } from '../id.ts';
 import type { Rule } from './types.ts';
 
-export const GEO_OUTLIER_KM = 35;
+function anchorCity(anchor: GeoAnchor | null): string {
+  return anchor && anchor.kind === 'city' ? anchor.cityKey : '';
+}
+
+function nameOf(trip: Trip, kind: string, id: string): string {
+  if (kind === 'place') return trip.places.find((p) => p.id === id)?.name ?? id;
+  for (const d of trip.days) {
+    const s = d.stops.find((x) => x.id === id);
+    if (s) return s.name;
+  }
+  return trip.pool.find((x) => x.id === id)?.name ?? id;
+}
+
+function whereOf(trip: Trip, kind: string, id: string): string {
+  if (kind === 'place') return `the ${trip.places.find((p) => p.id === id)?.cityKey ?? '?'} map`;
+  for (const d of trip.days) if (d.stops.some((x) => x.id === id)) return d.date;
+  const pooled = trip.pool.find((x) => x.id === id);
+  if (pooled && pooled.placement.kind === 'pool') return `the ${pooled.placement.cityKey} optional list`;
+  return 'this trip';
+}
 
 export const geoOutlier: Rule = {
   id: 'geo_outlier',
-  description: 'A stop is far outside the city its day belongs to.',
+  description: 'A coordinate sits far outside everything else in the trip.',
   run(ctx) {
     const out: Conflict[] = [];
-    const centres = new Map(ctx.trip.cities.map((c) => [c.key, c.centre]));
-    for (const day of ctx.trip.days) {
-      const centre = centres.get(day.primaryCity);
-      if (!centre) continue; // 'transit' days and unknown cities have no anchor
-      for (const stop of day.stops) {
-        if (stop.arrival) continue;
-        const at = stopLatLng(stop, ctx.trip);
-        if (!at) continue;
-        const km = haversine(centre, at);
-        if (km <= GEO_OUTLIER_KM) continue;
-        out.push(
-          makeConflict({
-            ruleId: 'geo_outlier',
-            kind: 'geography',
-            severity: 'blocker',
-            subjects: [
-              { kind: 'stop', id: stop.id },
-              { kind: 'day', id: day.id },
-            ],
-            summary:
-              `“${stop.name}” on ${day.date} is ${Math.round(km)} km from the centre of ` +
-              `${day.primaryCity}, and nothing on the stop says how you get there.`,
-            params: {
-              stopName: stop.name,
-              date: day.date,
-              cityKey: day.primaryCity,
-              km: Math.round(km),
-              lat: at.lat,
-              lng: at.lng,
-            },
-            detail: 'Either the coordinates are wrong, or the stop needs a travel override.',
-            values: { lat: at.lat, lng: at.lng, city: day.primaryCity },
-          }),
-        );
-      }
+    for (const f of geoCheck(ctx.trip)) {
+      if (f.confidence !== 'certain') continue;
+      const name = nameOf(ctx.trip, f.ref.kind, f.ref.id);
+      const where = whereOf(ctx.trip, f.ref.kind, f.ref.id);
+      out.push(
+        makeConflict({
+          ruleId: 'geo_outlier',
+          kind: 'geography',
+          severity: 'blocker',
+          subjects: [f.ref],
+          summary:
+            `“${name}” on ${where} is ${f.km} km from the nearest place this trip knows about — ` +
+            `more than the ${f.limitKm} km this check allows. A single wrong digit in a latitude ` +
+            `looks exactly like this.`,
+          params: {
+            km: f.km,
+            limitKm: f.limitKm,
+            anchorKind: f.nearest ? f.nearest.kind : 'none',
+            cityKey: anchorCity(f.nearest),
+            name,
+            where,
+          },
+          detail:
+            f.nearest && f.nearest.kind === 'city'
+              ? 'Measured to a city centre, because no stop on a relevant day was nearer.'
+              : 'Measured to the nearest other point in the trip, not to a city centre — a day trip ' +
+                'is allowed to be far from its city.',
+          values: { km: f.km, anchorKind: f.nearest ? f.nearest.kind : 'none' },
+        }),
+      );
     }
     return out;
   },

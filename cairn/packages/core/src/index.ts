@@ -11,7 +11,7 @@ export type {
   Trip, City, Day, Stop, StopPlacement, Place, PlaceLink, Booking, BookingKind, Ticket,
   CostEstimate, Money, MoneyBasis, Provenance, ProvenanceSource, ProvenanceState,
   ProvenanceConfidence, Conflict, ConflictKind, ConflictResolution, ConflictSeverity,
-  Leg, Issue, IssueCode, Ref, RefKind, LatLng, StopCategory, StopFlag, TravelMode,
+  Leg, Issue, IssueCode, Ref, RefKind, LatLng, StopCategory, StopFlag, TravelMode, TravelRole,
   MoveOverride, CostRollUp, DisplayStatus, OpeningHours, Link, TripCtx, TripMeta,
 } from './model/types.ts';
 export { SCHEMA_VERSION, LOCAL_OWNER } from './model/types.ts';
@@ -38,6 +38,8 @@ export { acceptCandidate, rejectCandidate } from './build/candidates.ts';
 // ---- derive -----------------------------------------------------------------
 export { computeLegs, legBetween, dayMovingMinutes, dayDistanceKm, timeVal, fmtMins } from './derive/legs.ts';
 export { haversine, resolvePlaceLink, stopLatLng, inRange, EARTH_RADIUS_KM } from './derive/geo.ts';
+export { geoCheck, GEO_LIMIT_KM } from './derive/geoCheck.ts';
+export type { GeoFinding, GeoAnchor } from './derive/geoCheck.ts';
 export {
   clusterStops, focusCluster, fitSpanKm, rawSpanKm, mapBounds, stopPoints,
   MIN_SPAN_KM, DEFAULT_CLUSTER_THRESHOLD_KM,
@@ -59,7 +61,7 @@ export { resolveConflict, unresolveConflict } from './conflict/resolve.ts';
 export { conflictId, makeConflict, digest, canonical } from './conflict/id.ts';
 
 // ---- validate ---------------------------------------------------------------
-export { validateTrip, issueCounts, FAR_FROM_CITY_KM } from './validate/validateTrip.ts';
+export { validateTrip, issueCounts } from './validate/validateTrip.ts';
 
 // ---- merge -------------------------------------------------------------------
 // NOT on §2.10's list. Added to implement §2.2's "last-writer-wins per stop with a

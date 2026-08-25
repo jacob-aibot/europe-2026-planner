@@ -139,16 +139,51 @@ writeJson('core-daycost.json', {
   days: coreCost,
 });
 
+/**
+ * ROADMAP rule 1: a blocker in this file MUST carry one line saying why Jacob has to act on
+ * it. Revision 1 recorded "12 blockers" as a bare count; nine of them were noise, and nine
+ * cries of wolf would not have survived writing this line nine times. A blocker whose id is
+ * absent from this table fails `npm test` — see `conflict.test.ts`.
+ */
+const BLOCKER_JUSTIFICATIONS = {
+  legacy_flag:
+    'Jacob hand-flagged this day red in his own planner and wrote why. The flag is his, not ours; ' +
+    'it stays a blocker until he clears it.',
+  geo_outlier:
+    'A coordinate more than 35 km from everything else this trip knows about. The historical ' +
+    'Fisherman\u2019s Bastion bug \u2014 one digit of latitude, 111 km north, nothing visibly broken \u2014 ' +
+    'looks exactly like this, and a map that opens on the wrong country is not recoverable in the field.',
+  impossible_transfer:
+    'The journey into this stop takes longer than the gap before it, and the stop\u2019s travelRole says ' +
+    'its time is an ARRIVAL. Jacob cannot be in two places, so the plan has to change.',
+  booking_vs_plan:
+    'A ticket he holds says something different from the plan. This is the class of disagreement that ' +
+    'put a wrong flight time in front of him twice.',
+};
+
+const conflicts = core.detectConflicts(trip, { today: FIXTURE_TODAY });
+for (const c of conflicts) {
+  if (c.severity === 'blocker' && !BLOCKER_JUSTIFICATIONS[c.ruleId]) {
+    throw new Error(
+      `gen-golden: blocker "${c.ruleId}" has no justification line. ROADMAP rule 1: a blocker Jacob is ` +
+        `asked to act on must come with one line saying why. Write it in BLOCKER_JUSTIFICATIONS, or ` +
+        `work out why the rule fired and stop it.`,
+    );
+  }
+}
+
 writeJson('core-conflicts.json', {
   ...header(`detectConflicts() with today=${FIXTURE_TODAY}. No live-app counterpart exists.`),
   today: FIXTURE_TODAY,
-  conflicts: core.detectConflicts(trip, { today: FIXTURE_TODAY }).map((c) => ({
+  blockerCount: conflicts.filter((c) => c.severity === 'blocker').length,
+  conflicts: conflicts.map((c) => ({
     id: c.id,
     ruleId: c.ruleId,
     severity: c.severity,
     subjects: c.subjects,
     summary: c.summary,
     params: c.params,
+    ...(c.severity === 'blocker' ? { whyJacobMustAct: BLOCKER_JUSTIFICATIONS[c.ruleId] } : {}),
   })),
 });
 

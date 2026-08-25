@@ -68,6 +68,15 @@ export function App() {
         </div>
       )}
 
+      {state.persistence.status === 'conflict' && (
+        <div className="banner banner--error" role="alert">
+          {state.persistence.lastError}
+          <button onClick={() => run(store.mergeWithStored())} aria-label="Merge and save">
+            Merge and save
+          </button>
+        </div>
+      )}
+
       {state.persistence.lastMerge && (
         <div className="banner" role="status">
           {state.persistence.lastMerge.message}
@@ -95,6 +104,9 @@ function SaveState() {
   const { status, lastError } = state.persistence;
   const dirty = store.isDirty();
 
+  if (status === 'conflict') {
+    return <span className="savestate savestate--error" title={lastError}>Not saved — edited elsewhere</span>;
+  }
   if (status === 'error') {
     return (
       <button className="savestate savestate--error" onClick={() => void store.flush()} title={lastError}>

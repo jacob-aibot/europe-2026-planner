@@ -98,20 +98,19 @@ export function createStore(opts: StoreOptions) {
 
   /**
    * Writes the whole document, behind a **compare-and-set on the stored revision**
-   * (ARCHITECTURE §2.2: "last-writer-wins per stop with a revision guard").
+   * (ARCHITECTURE §2.2's revision guard; ROADMAP F's two-tab criterion).
    *
-   * Phase 1 shipped with neither half, so two tabs on one trip silently destroyed each
+   * Phase 1 shipped with no guard at all, so two tabs on one trip silently destroyed each
    * other's edits and the losing tab still displayed "Saved" (F-1). Now:
    *
-   *   - storage untouched since we last agreed → plain write, as before;
-   *   - storage moved and we have a common ancestor → `core.mergeTrips` three-way merges,
-   *     the merged document becomes what this tab holds, and the decisions are reported on
-   *     `persistence.lastMerge`;
-   *   - storage moved and we have NO common ancestor → the write is refused,
-   *     `status = 'error'`, the edit stays in memory and the tab does not say "Saved".
+   *   - storage untouched since we last agreed → write, as before;
+   *   - storage moved → the write is **REFUSED**. `status` becomes `'conflict'`, the edit
+   *     stays in memory, the stored document keeps the other writer's work, and the
+   *     indicator does not say "Saved". Resolving it is `mergeWithStored()`, which is a
+   *     button the user presses — never something a save does behind their back.
    *
-   * A failure of any kind sets `persistence.status = 'error'` and keeps the edit in
-   * memory — it is never dropped, and never fails silently.
+   * A storage failure is separate: `status = 'error'` with `lastError`. Either way the edit
+   * is never dropped and nothing ever fails silently.
    */
   async function save(): Promise<void> {
     const doc = state.doc;
@@ -123,44 +122,22 @@ export function createStore(opts: StoreOptions) {
         const storedText = await ports.storage.load(doc.id);
         const storedRevision = storedText === null ? null : storedRevisionOf(storedText);
 
-        let toWrite = doc;
-        let merge: { message: string; report: core.MergeReport } | null = null;
-
         if (storedText !== null && storedRevision !== expectedRevision) {
-          if (!baseDoc || baseDoc.id !== doc.id) {
-            throw new Error(
-              `This trip changed in another tab or window since it was opened here, and there is ` +
-                `no common version to merge against. Your edits are still on screen — open the ` +
-                `trip again from the library, or export this copy first. (stored revision ` +
-                `${String(storedRevision)}, this tab expected ${expectedRevision})`,
-            );
-          }
-          const remote = core.fromJSON(storedText);
-          const merged = core.mergeTrips(baseDoc, doc, remote);
-          toWrite = merged.trip;
-          merge = { message: core.describeMerge(merged.report), report: merged.report };
+          set({
+            ...state,
+            persistence: {
+              ...state.persistence,
+              status: 'conflict',
+              lastError:
+                `This trip was saved somewhere else — another tab, or another window — while you ` +
+                `were editing. Nothing has been overwritten and your changes are still here. ` +
+                `(stored revision ${String(storedRevision)}, this tab expected ${expectedRevision})`,
+            },
+          });
+          return;
         }
 
-        const summary = core.tripSummary(toWrite);
-        await ports.storage.save(toWrite.id, core.toJSON(toWrite), summary);
-        baseDoc = toWrite;
-
-        // The user may have kept typing while the write was in flight. Only adopt the
-        // merged document when the in-memory doc is still the one we started from.
-        const stillOurs = state.doc === doc;
-        set({
-          ...state,
-          ...(stillOurs ? { doc: toWrite } : {}),
-          library: upsertSummary(state.library, summary),
-          persistence: {
-            savedRevision: toWrite.revision,
-            status: 'idle',
-            // A merge notice survives later clean saves; only closing or switching trips
-            // clears it. A notice that vanishes on the next keystroke is not a disclosure.
-            ...(merge ?? state.persistence.lastMerge ? { lastMerge: merge ?? state.persistence.lastMerge } : {}),
-          },
-        });
-        if (!stillOurs) scheduleSave();
+        await writeAndSettle(doc, doc, null);
       } catch (err) {
         set({
           ...state,
@@ -173,6 +150,37 @@ export function createStore(opts: StoreOptions) {
       }
     })();
     return saving;
+  }
+
+  /**
+   * Persists `toWrite`, updates the library row and marks the store clean.
+   *
+   * `startedFrom` is the in-memory document the write began from: the user may have kept
+   * typing while it was in flight, and a merged document may only replace `state.doc` when
+   * it is still the one we started with.
+   */
+  async function writeAndSettle(
+    startedFrom: Trip,
+    toWrite: Trip,
+    merge: { message: string; report: core.MergeReport } | null,
+  ): Promise<void> {
+    const summary = core.tripSummary(toWrite);
+    await ports.storage.save(toWrite.id, core.toJSON(toWrite), summary);
+    baseDoc = toWrite;
+    const stillOurs = state.doc === startedFrom;
+    set({
+      ...state,
+      ...(stillOurs ? { doc: toWrite } : {}),
+      library: upsertSummary(state.library, summary),
+      persistence: {
+        savedRevision: toWrite.revision,
+        status: 'idle',
+        // A merge notice survives later clean saves; only closing or switching trips clears
+        // it. A notice that vanishes on the next keystroke is not a disclosure.
+        ...(merge ?? state.persistence.lastMerge ? { lastMerge: merge ?? state.persistence.lastMerge } : {}),
+      },
+    });
+    if (!stillOurs) scheduleSave();
   }
 
   function upsertSummary(list: core.TripSummaryRow[], row: core.TripSummaryRow): core.TripSummaryRow[] {
@@ -220,7 +228,56 @@ export function createStore(opts: StoreOptions) {
     },
 
     /**
-     * Dismisses the "this trip was edited elsewhere" notice left by a merged save (F-1).
+     * Resolves a `'conflict'` — the user's explicit answer to "this trip was saved somewhere
+     * else". Three-way merges the in-memory document with the stored one against the last
+     * version this store and storage agreed about, then writes the result.
+     *
+     * This is a **button, not a behaviour**: ROADMAP F requires the automatic save path to
+     * refuse, and §2.2's "last-writer-wins per stop" is what happens once the user asks for
+     * it. Per-entity: disjoint edits both survive; a genuine collision resolves to this
+     * tab's value and is listed in `persistence.lastMerge.report.overwritten`.
+     *
+     * @throws {Error} if there is no active trip, or no common ancestor to merge against —
+     *         in which case the only safe options are "open it again" or "export this copy",
+     *         and the store will not choose between them.
+     */
+    async mergeWithStored(): Promise<AppState> {
+      const doc = state.doc;
+      if (!doc) throw new Error('mergeWithStored: no active trip');
+      const storedText = await ports.storage.load(doc.id);
+      if (storedText === null) {
+        await save();
+        await saving;
+        return state;
+      }
+      if (!baseDoc || baseDoc.id !== doc.id) {
+        throw new Error(
+          'This tab never agreed with storage about this trip, so there is no common version ' +
+            'to merge against. Export this copy, then open the trip again from the library.',
+        );
+      }
+      const remote = core.fromJSON(storedText);
+      const merged = core.mergeTrips(baseDoc, doc, remote);
+      set({ ...state, persistence: { ...state.persistence, status: 'saving' } });
+      saving = (async () => {
+        try {
+          await writeAndSettle(doc, merged.trip, {
+            message: core.describeMerge(merged.report),
+            report: merged.report,
+          });
+        } catch (err) {
+          set({
+            ...state,
+            persistence: { ...state.persistence, status: 'error', lastError: (err as Error).message },
+          });
+        }
+      })();
+      await saving;
+      return state;
+    },
+
+    /**
+     * Dismisses the "this trip was edited elsewhere" notice left by `mergeWithStored`.
      * Touches persistence bookkeeping only; never the document, never a save.
      */
     clearMergeNotice(): AppState {

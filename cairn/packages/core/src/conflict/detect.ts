@@ -9,7 +9,6 @@
 import type { Conflict, Trip, TripCtx } from '../model/types.ts';
 import type { IsoDate } from '../model/ids.ts';
 import { bookingVsPlan } from './rules/bookingVsPlan.ts';
-import { closed } from './rules/closed.ts';
 import { duplicateBooking } from './rules/duplicateBooking.ts';
 import { geoOutlier } from './rules/geoOutlier.ts';
 import { impossibleTransfer } from './rules/impossibleTransfer.ts';
@@ -28,7 +27,6 @@ export const RULES: Rule[] = [
   geoOutlier,
   bookingVsPlan,
   overlap,
-  closed,
   supersededBooking,
   duplicateBooking,
   unverifiedReference,

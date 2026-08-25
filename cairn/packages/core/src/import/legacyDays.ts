@@ -13,6 +13,7 @@ import type {
 } from '../model/types.ts';
 import type { CityKey, IdFactory, IsoDate } from '../model/ids.ts';
 import { LOCAL_OWNER, SCHEMA_VERSION } from '../model/types.ts';
+import type { TravelRole } from '../model/types.ts';
 import { costFromDisplay, currenciesOf } from '../model/money.ts';
 import { systemSuggestion, userProvenance } from '../model/provenance.ts';
 import { cityRange } from '../derive/summary.ts';
@@ -51,6 +52,8 @@ export type ImportOpts = {
   title?: string;
   ownerId?: string;
   homeCurrency?: string;
+  /** §2.13 — hand-supplied exactly as `countryCode` already is. */
+  homeBase?: { name: string; at: { lat: number; lng: number } } | null;
   party?: { adults: number; children: number };
   /** ISO country codes per city key; missing keys import with an empty code. */
   countryCodes?: Record<string, string>;
@@ -114,6 +117,33 @@ function makeTicket(s: LegacyStop): Ticket | null {
  *
  * Pure apart from id generation. Never throws for data reasons.
  */
+/**
+ * Vehicle modes — the ones where `move.mins` is the vehicle's own run rather than a
+ * transfer to it. `ferry` is not in `TravelMode` today; it is listed because §2.11 names it
+ * and a mode added later must not silently fall through to `'transfer'`.
+ */
+const VEHICLE_MODES = new Set(['flight', 'train', 'bus', 'coach', 'boat', 'speedboat', 'ferry']);
+
+/**
+ * §2.11's `move.mode` + `cat` → `Stop.travelRole` mapping. Pure, total, and it says
+ * `'unknown'` rather than guessing.
+ *
+ * No `move` at all → `'transfer'`: with no travel information, the stop's time is when you
+ * are there. A non-vehicle mode (walk, metro, transit, bike, taxi, funicular) → `'transfer'`:
+ * you walk TO a place. A vehicle mode on a `cat:'transit'` stop → `'journey'`: the stop is
+ * the vehicle. A vehicle mode on any other category is genuinely ambiguous — Aug 13's
+ * `cat:'trip'` speedboat hops, the Dubrovnik cable-car bus, a bus that is half a transfer
+ * and half a check-in — so it is `'unknown'`, and `'unknown'` degrades every rule that
+ * reads it rather than manufacturing a blocker.
+ *
+ * Measured on the live file: 21 journey · 81 transfer · 10 unknown.
+ */
+export function deriveTravelRole(mode: string | undefined, cat: string | undefined): TravelRole {
+  if (!mode) return 'transfer';
+  if (!VEHICLE_MODES.has(mode)) return 'transfer';
+  return cat === 'transit' ? 'journey' : 'unknown';
+}
+
 export function importLegacyDays(legacy: LegacyConstants, opts: ImportOpts): ImportResult {
   const issues: Issue[] = [];
   const unmatchedNames: string[] = [];
@@ -248,6 +278,7 @@ export function importLegacyDays(legacy: LegacyConstants, opts: ImportOpts): Imp
       note: s.note ?? '',
       cost,
       arrival: s.move ? ({ mode: s.move.mode, mins: s.move.mins } as NonNullable<Stop['arrival']>) : null,
+      travelRole: deriveTravelRole(s.move?.mode, s.cat),
       bookingId: null,
       flags,
       provenance,
@@ -301,6 +332,7 @@ export function importLegacyDays(legacy: LegacyConstants, opts: ImportOpts): Imp
     startDate: days[0]?.date ?? `${opts.year}-01-01`,
     endDate: days[days.length - 1]?.date ?? `${opts.year}-01-01`,
     homeCurrency: opts.homeCurrency ?? 'EUR',
+    homeBase: opts.homeBase ?? null,
     party: opts.party ?? { adults: 1, children: 0 },
     cities,
     days,

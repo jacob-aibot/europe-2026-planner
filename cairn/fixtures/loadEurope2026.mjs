@@ -57,6 +57,9 @@ export function loadEurope2026() {
     tripId: 'trip-europe-2026',
     title: 'Europe 2026',
     homeCurrency: 'EUR',
+    // The trip starts and ends at LAX. A geoCheck anchor (ARCHITECTURE 2.13): without it,
+    // "Arrive LAX" is 9,321 km from anything else in the trip and reads as a typo.
+    homeBase: { name: 'Los Angeles (LAX)', at: { lat: 33.9425, lng: -118.4081 } },
     party: { adults: 1, children: 0 },
     countryCodes: COUNTRY_CODES,
     bookings: loadBookingFixture(),

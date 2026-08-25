@@ -21,12 +21,17 @@ export type UiState = {
 
 export type PersistenceState = {
   savedRevision: number;
-  status: 'idle' | 'saving' | 'error';
+  /**
+   * `'conflict'` is ROADMAP F's fourth status: storage moved under us, so the write was
+   * REFUSED. It is not `'error'` — storage is fine, somebody else edited the trip — and it
+   * is emphatically not `'idle'`, because the indicator must not say "Saved".
+   */
+  status: 'idle' | 'saving' | 'error' | 'conflict';
   lastError?: string;
   /**
-   * Set when a save found that storage had moved under us and merged instead of clobbering
-   * (§2.2's revision guard, F-1). Additive to §4.2's `persistence` shape: a merge is not an
-   * error and must not be reported as one, but it may never be silent either.
+   * Set by `store.mergeWithStored()` — the explicit, user-initiated resolution of a
+   * `'conflict'`. Never set by an automatic save: ROADMAP F requires the automatic path to
+   * refuse, so merging is a button, not a behaviour.
    * See BUILD-NOTES §1 "Known divergences from the contract", KD-10.
    */
   lastMerge?: { message: string; report: core.MergeReport };

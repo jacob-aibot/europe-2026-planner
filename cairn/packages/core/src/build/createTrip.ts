@@ -34,6 +34,7 @@ export type TripInit = {
   endDate: IsoDate;
   ownerId?: UserId;
   homeCurrency?: Currency;
+  homeBase?: { name: string; at: { lat: number; lng: number } } | null;
   party?: { adults: number; children: number };
   cities?: CityInit[];
   meta?: TripMeta;
@@ -73,6 +74,7 @@ export function createTrip(init: TripInit, ctx: BuildCtx): Trip {
     startDate: init.startDate,
     endDate: init.endDate,
     homeCurrency: init.homeCurrency ?? 'EUR',
+    homeBase: init.homeBase ?? null,
     party: init.party ?? { adults: 1, children: 0 },
     cities,
     days: [],
@@ -88,7 +90,7 @@ export function createTrip(init: TripInit, ctx: BuildCtx): Trip {
 }
 
 export type TripMetaPatch = Partial<
-  Pick<Trip, 'title' | 'startDate' | 'endDate' | 'homeCurrency' | 'party' | 'cities' | 'ownerId' | 'meta'>
+  Pick<Trip, 'title' | 'startDate' | 'endDate' | 'homeCurrency' | 'homeBase' | 'party' | 'cities' | 'ownerId' | 'meta'>
 >;
 
 /**

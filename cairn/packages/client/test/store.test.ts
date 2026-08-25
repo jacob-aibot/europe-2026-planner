@@ -470,24 +470,56 @@ async function twoTabs() {
   return { storage, a, b, tripId };
 }
 
-test('two tabs editing different days: both edits survive', async () => {
-  const { storage, a, b, tripId } = await twoTabs();
+test('two tabs, one trip: the second save is REFUSED, not silently applied', async () => {
+  // ROADMAP F, verbatim: "Tab A saves, tab B saves, tab A saves again -> tab A's write is
+  // refused, status is 'conflict', tab A's indicator does not say 'Saved', and the stored
+  // document still contains tab B's edit."
+  const storage = memoryStorage();
+  const a = createStore({ ports: ports(storage) });
+  await a.createTrip(TRIP_INIT);
+  const tripId = a.getState().activeTripId as string;
   const dayA = a.getState().doc?.days[0].id as string;
   const dayB = a.getState().doc?.days[1].id as string;
 
-  a.dispatch({ type: 'setDayMeta', dayId: dayA, patch: { title: 'TAB A EDIT' } } as Action);
+  // Tab A saves.
+  a.dispatch({ type: 'setDayMeta', dayId: dayA, patch: { title: 'TAB A FIRST' } } as Action);
   await a.flush();
+  assert.equal(a.getState().persistence.status, 'idle');
+
+  // Tab B opens on that state and saves.
+  const b = createStore({ ports: ports(storage) });
+  await b.refreshLibrary();
+  await b.openTrip(tripId);
   b.dispatch({ type: 'setDayMeta', dayId: dayB, patch: { title: 'TAB B EDIT' } } as Action);
   await b.flush();
+  assert.equal(b.getState().persistence.status, 'idle');
+
+  // Tab A saves again, against a revision that has moved.
+  a.dispatch({ type: 'setDayMeta', dayId: dayA, patch: { title: 'TAB A SECOND' } } as Action);
+  await a.flush();
+
+  assert.equal(a.getState().persistence.status, 'conflict');
+  assert.equal(a.isDirty(), true, 'the refused edit must still be known unsaved');
+  assert.match(a.getState().persistence.lastError ?? '', /saved somewhere else/i);
 
   const stored = core.fromJSON(storage.docs.get(tripId) as string);
-  assert.equal(stored.days[0].title, 'TAB A EDIT', "tab A's edit was destroyed");
-  assert.equal(stored.days[1].title, 'TAB B EDIT', "tab B's edit was destroyed");
-  assert.equal(b.getState().persistence.status, 'idle');
-  assert.equal(b.isDirty(), false, 'tab B is genuinely saved');
+  assert.equal(stored.days[1].title, 'TAB B EDIT', "tab B's edit was clobbered");
+  assert.equal(stored.days[0].title, 'TAB A FIRST', "tab A's refused write reached storage anyway");
+  assert.equal(a.getState().doc?.days[0].title, 'TAB A SECOND', 'the edit was dropped from memory');
 });
 
-test('the merged document is what tab B now holds, so its next save is not stale again', async () => {
+test("a refused save is 'conflict', never 'error' — storage is not broken", async () => {
+  const { a, b } = await twoTabs();
+  const day = a.getState().doc?.days[0].id as string;
+  b.dispatch({ type: 'setDayMeta', dayId: day, patch: { title: 'B' } } as Action);
+  await b.flush();
+  a.dispatch({ type: 'setDayMeta', dayId: day, patch: { title: 'A' } } as Action);
+  await a.flush();
+  assert.equal(a.getState().persistence.status, 'conflict');
+  assert.notEqual(a.getState().persistence.status, 'error');
+});
+
+test('mergeWithStored resolves a conflict: disjoint edits from both tabs survive', async () => {
   const { storage, a, b, tripId } = await twoTabs();
   const dayA = a.getState().doc?.days[0].id as string;
   const dayB = a.getState().doc?.days[1].id as string;
@@ -496,24 +528,25 @@ test('the merged document is what tab B now holds, so its next save is not stale
   await a.flush();
   b.dispatch({ type: 'setDayMeta', dayId: dayB, patch: { title: 'TAB B EDIT' } } as Action);
   await b.flush();
-  assert.equal(b.getState().doc?.days[0].title, 'TAB A EDIT', 'tab B did not take on the merged state');
+  assert.equal(b.getState().persistence.status, 'conflict');
 
-  b.dispatch({ type: 'setDayMeta', dayId: dayB, patch: { title: 'TAB B AGAIN' } } as Action);
-  await b.flush();
+  await b.mergeWithStored();
   assert.equal(b.getState().persistence.status, 'idle');
   const stored = core.fromJSON(storage.docs.get(tripId) as string);
   assert.equal(stored.days[0].title, 'TAB A EDIT');
-  assert.equal(stored.days[1].title, 'TAB B AGAIN');
+  assert.equal(stored.days[1].title, 'TAB B EDIT');
+  assert.equal(b.getState().doc?.days[0].title, 'TAB A EDIT', 'the merged document is what tab B now holds');
+  assert.equal(b.isDirty(), false);
 });
 
-test('two tabs editing the SAME thing: the last writer wins and the loss is reported, never silent', async () => {
+test('mergeWithStored on a genuine collision keeps this tab\'s value and reports the loss', async () => {
   const { storage, a, b, tripId } = await twoTabs();
   const day = a.getState().doc?.days[0].id as string;
-
   a.dispatch({ type: 'setDayMeta', dayId: day, patch: { title: 'A' } } as Action);
   await a.flush();
   b.dispatch({ type: 'setDayMeta', dayId: day, patch: { title: 'B' } } as Action);
   await b.flush();
+  await b.mergeWithStored();
 
   assert.equal(core.fromJSON(storage.docs.get(tripId) as string).days[0].title, 'B');
   const merge = b.getState().persistence.lastMerge;
@@ -522,7 +555,7 @@ test('two tabs editing the SAME thing: the last writer wins and the loss is repo
   assert.deepEqual(merge.report.overwritten, [{ entity: 'day', id: day, field: 'title' }]);
 });
 
-test('a save with no common ancestor refuses, and the losing tab does NOT say "Saved"', async () => {
+test('mergeWithStored refuses when there is no common ancestor rather than guessing', async () => {
   const storage = memoryStorage();
   const a = createStore({ ports: ports(storage) });
   await a.createTrip(TRIP_INIT);
@@ -531,16 +564,13 @@ test('a save with no common ancestor refuses, and the losing tab does NOT say "S
   a.dispatch({ type: 'setDayMeta', dayId: day, patch: { title: 'REAL PLAN' } } as Action);
   await a.flush();
 
-  // A store that mints a trip onto an id storage already holds: no common ancestor, so
-  // there is nothing to merge against and the write must be refused outright.
   const b = createStore({ ports: ports(storage) });
   await b.createTrip({ ...TRIP_INIT, id: tripId } as Parameters<typeof b.createTrip>[0]);
   b.dispatch({ type: 'setDayMeta', dayId: day, patch: { title: 'CLOBBER' } } as Action);
   await b.flush();
+  assert.equal(b.getState().persistence.status, 'conflict');
 
-  assert.equal(b.getState().persistence.status, 'error', 'a stale writer reported success');
-  assert.equal(b.isDirty(), true, 'the edit must still be in memory and known unsaved');
-  assert.match(b.getState().persistence.lastError ?? '', /changed|stale|elsewhere/i);
+  await assert.rejects(() => b.mergeWithStored(), /no common version/i);
   assert.equal(core.fromJSON(storage.docs.get(tripId) as string).days[0].title, 'REAL PLAN');
 });
 

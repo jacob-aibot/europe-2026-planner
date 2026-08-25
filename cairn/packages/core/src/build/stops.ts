@@ -12,7 +12,7 @@
  * destructively to an existing day, because that would silently undo a drag that
  * contradicts the times. See BUILD-NOTES §1, KD-6.
  */
-import type { Day, MoveOverride, Place, PlaceLink, Stop, StopPlacement, Trip } from '../model/types.ts';
+import type { Day, MoveOverride, Place, PlaceLink, Stop, StopPlacement, TravelRole, Trip } from '../model/types.ts';
 import type { CityKey, ClockTime, DayId, StopId } from '../model/ids.ts';
 import { timeVal } from '../derive/legs.ts';
 import type { BuildCtx } from './createTrip.ts';
@@ -65,6 +65,7 @@ export type StopInit = {
   note?: string;
   cost?: Stop['cost'];
   arrival?: MoveOverride | null;
+  travelRole?: TravelRole;
   bookingId?: string | null;
   flags?: string[];
   provenance?: Stop['provenance'];
@@ -84,6 +85,7 @@ export function makeStop(init: StopInit, placement: StopPlacement, ctx: BuildCtx
     note: init.note ?? '',
     cost: init.cost ?? null,
     arrival: init.arrival ?? null,
+    travelRole: init.travelRole ?? 'transfer',
     bookingId: init.bookingId ?? null,
     flags: init.flags ?? [],
     provenance: init.provenance ?? userProvenance(ctx.now, ctx.actorUserId ?? null),

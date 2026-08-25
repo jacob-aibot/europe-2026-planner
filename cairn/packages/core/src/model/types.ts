@@ -104,6 +104,29 @@ export type StopPlacement =
 
 export type MoveOverride = { mode: TravelMode; mins: number; label?: string };
 
+/**
+ * What `Stop.arrival` describes, and therefore what `placement.time` means (§2.12).
+ *
+ * The legacy `move` field carried two different meanings and always has: on Aug 8 "Condor
+ * DE4345 → Vienna" sits at 14:30 with `move:{flight, 80}` — 14:30 is when the aircraft
+ * LEAVES Frankfurt and 80 minutes is the flight, not the walk to the gate. Every rule that
+ * reasoned about time inherited the ambiguity.
+ *
+ * Purely additive: `computeLegs` MUST NOT read it, which is what keeps `legacy-legs.json`
+ * parity on all 16 days. Only conflict rules and the view layer read it.
+ */
+export type TravelRole =
+  /** `arrival` is the journey INTO this stop; `time` is when you arrive. The default. */
+  | 'transfer'
+  /**
+   * This stop IS a vehicle run: `arrival` is the vehicle's own journey, `time` is when it
+   * DEPARTS, and the coordinate is one endpoint of that run — the model does not claim to
+   * know which end.
+   */
+  | 'journey'
+  /** Travel information is present and its role could not be established. Degrades rules. */
+  | 'unknown';
+
 export type StopFlag = 'free' | 'daytrip' | string;
 
 export type Stop = {
@@ -116,6 +139,8 @@ export type Stop = {
   cost: CostEstimate | null;
   /** Describes the leg INTO this stop (§2.5). */
   arrival: MoveOverride | null;
+  /** What `arrival` and `placement.time` mean (§2.12). Default `'transfer'`. */
+  travelRole: TravelRole;
   bookingId: BookingId | null;
   flags: StopFlag[];
   provenance: Provenance;
@@ -200,11 +225,16 @@ export type Conflict = {
 
 // ----------------------------------------------------------- validation (§2.9)
 
+/**
+ * §2.9. `stop_far_from_city` is DELETED, not renamed: coordinate distance is a conflict
+ * (`geo_outlier` over `derive/geoCheck.ts`), not a structural validity problem.
+ */
 export type IssueCode =
   | 'days_not_dense' | 'day_id_mismatch' | 'duplicate_id' | 'primary_city_not_in_cities'
-  | 'unknown_city_key' | 'place_ref_dangling' | 'stop_far_from_city' | 'lat_lng_out_of_range'
+  | 'unknown_city_key' | 'place_ref_dangling' | 'lat_lng_out_of_range'
   | 'pool_stop_has_day' | 'scheduled_stop_has_no_day' | 'booking_ref_orphan'
-  | 'cost_basis_mixed' | 'provenance_missing' | 'accepted_without_timestamp' | 'owner_missing';
+  | 'cost_basis_mixed' | 'provenance_missing' | 'accepted_without_timestamp' | 'owner_missing'
+  | 'origin_stripped' | 'stale_resolutions' | 'invalid_calendar_date';
 
 export type Issue = {
   level: 'error' | 'warn';
@@ -251,6 +281,12 @@ export type Trip = {
   startDate: IsoDate;
   endDate: IsoDate;
   homeCurrency: Currency;
+  /**
+   * Where the trip starts and ends from (§2.13). Nullable. It is a `geoCheck` anchor — it
+   * is why "Arrive LAX", 9,321 km from anything else in the Europe trip, is not an outlier
+   * — and it is real modelling rather than a patch: a trip starts and ends somewhere.
+   */
+  homeBase: { name: string; at: LatLng } | null;
   party: { adults: number; children: number };
   cities: City[];
   days: Day[];

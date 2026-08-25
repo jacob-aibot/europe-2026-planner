@@ -72,6 +72,7 @@ function clockOrNull(v: unknown, path: string): string | null {
 }
 
 const CATEGORIES = ['sight', 'food', 'night', 'trip', 'transit', 'stay', 'suggest'] as const;
+const TRAVEL_ROLES = ['transfer', 'journey', 'unknown'] as const;
 const MODES = ['walk', 'transit', 'metro', 'taxi', 'bus', 'coach', 'boat', 'speedboat', 'flight', 'train', 'funicular', 'bike'] as const;
 const SOURCES = ['user', 'email', 'friend', 'system'] as const;
 const STATES = ['candidate', 'accepted', 'rejected'] as const;
@@ -217,6 +218,8 @@ function parseStop(v: unknown, path: string): Stop {
               ...(a.label !== undefined ? { label: str(a.label, `${path}.arrival.label`) } : {}),
             };
           })(),
+    // Absent means a document written before §2.12; 'transfer' is the specified default.
+    travelRole: o.travelRole === undefined ? 'transfer' : oneOf(o.travelRole, TRAVEL_ROLES, `${path}.travelRole`),
     bookingId: strOrNull(o.bookingId, `${path}.bookingId`),
     flags: arr(o.flags, `${path}.flags`).map((f, i) => str(f, `${path}.flags[${i}]`)),
     provenance: parseProvenance(o.provenance, `${path}.provenance`),
@@ -350,6 +353,18 @@ export function fromJSON(input: string | unknown): Trip {
     startDate: isoDate(o.startDate, '$.startDate'),
     endDate: isoDate(o.endDate, '$.endDate'),
     homeCurrency: str(o.homeCurrency, '$.homeCurrency'),
+    // Absent means a document written before §2.13. `null` is a legal value, not a defect.
+    homeBase:
+      o.homeBase === null || o.homeBase === undefined
+        ? null
+        : (() => {
+            const h = obj(o.homeBase, '$.homeBase');
+            const at = obj(h.at, '$.homeBase.at');
+            return {
+              name: str(h.name, '$.homeBase.name'),
+              at: { lat: numOf(at.lat, '$.homeBase.at.lat'), lng: numOf(at.lng, '$.homeBase.at.lng') },
+            };
+          })(),
     party: { adults: numOf(party.adults, '$.party.adults'), children: numOf(party.children, '$.party.children') },
     cities: arr(o.cities, '$.cities').map((c, i) => parseCity(c, `$.cities[${i}]`)),
     days: arr(o.days, '$.days').map((d, i) => parseDay(d, `$.days[${i}]`)),

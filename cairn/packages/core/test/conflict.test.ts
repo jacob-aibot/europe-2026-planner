@@ -7,15 +7,23 @@ import assert from 'node:assert/strict';
 import { europe2026, FIXTURE_TODAY, golden } from './fixture.ts';
 import {
   detectConflicts, resolveConflict, updateStop, RULES, sequentialIds, createTrip, addStop,
-  upsertBooking, linkBooking, LOCAL_OWNER,
+  upsertBooking, linkBooking, setDayMeta, LOCAL_OWNER,
+  computeLegs as computeLegsForTest, timeVal as timeValForTest,
 } from '../src/index.ts';
 import type { Booking, BuildCtx } from '../src/index.ts';
 
 const ctx = (): BuildCtx => ({ ids: sequentialIds('t'), now: '2026-01-01', actorUserId: LOCAL_OWNER });
 
+type GoldenConflict = { id: string; ruleId: string; severity: string; summary: string; whyJacobMustAct?: string };
+
+/**
+ * `[snapshot]` — this golden is our own output and proves only that nothing changed
+ * (ROADMAP "How a criterion is written", rule 2). It is paired with the `[stated]`
+ * criterion in the next test and with the injected-fault criteria in `geoCheck.test.ts`.
+ */
 test('the golden conflict list is reproduced exactly', () => {
   const { trip } = europe2026();
-  const g = golden<{ conflicts: Array<{ id: string; ruleId: string; severity: string; summary: string }> }>('core-conflicts.json');
+  const g = golden<{ conflicts: GoldenConflict[]; blockerCount: number }>('core-conflicts.json');
   const actual = detectConflicts(trip, { today: FIXTURE_TODAY });
   assert.equal(actual.length, g.conflicts.length);
   for (let i = 0; i < actual.length; i++) {
@@ -24,6 +32,54 @@ test('the golden conflict list is reproduced exactly', () => {
     assert.equal(actual[i].severity, g.conflicts[i].severity, `conflict ${i} severity`);
     assert.equal(actual[i].summary, g.conflicts[i].summary, `conflict ${i} summary`);
   }
+});
+
+/**
+ * ROADMAP C, `[stated]`: exactly 2 blockers on the unmodified reference trip — the
+ * `legacy_flag` days Aug 18 and Aug 20 — and nothing else. Revision 1 shipped 12, of which
+ * 3 were actionable. This is a CEILING, not a floor (rule 4).
+ */
+test('exactly 2 blockers on the unmodified trip, and each carries its line saying why Jacob must act', () => {
+  const { trip } = europe2026();
+  const blockers = detectConflicts(trip, { today: FIXTURE_TODAY }).filter((c) => c.severity === 'blocker');
+  assert.deepEqual(blockers.map((c) => c.ruleId), ['legacy_flag', 'legacy_flag']);
+  assert.deepEqual(
+    blockers.flatMap((c) => c.subjects.filter((s) => s.kind === 'day').map((s) => s.id)).sort(),
+    ['2026-08-18', '2026-08-20'],
+  );
+
+  const g = golden<{ conflicts: GoldenConflict[]; blockerCount: number }>('core-conflicts.json');
+  assert.equal(g.blockerCount, 2);
+  const goldenBlockers = g.conflicts.filter((c) => c.severity === 'blocker');
+  assert.equal(goldenBlockers.length, 2);
+  for (const c of goldenBlockers) {
+    assert.ok(
+      c.whyJacobMustAct && c.whyJacobMustAct.length > 40,
+      `blocker ${c.id} (${c.ruleId}) has no line in the golden saying why Jacob must act on it`,
+    );
+  }
+});
+
+test('no rule puts a coordinate in Conflict.params — §2.7 and §6.1', () => {
+  const { trip } = europe2026();
+  // The clean trip plus every geography fault, so the rule that would leak one is exercised.
+  const faulted = { ...trip, places: trip.places.map((p, i) => (i === 0 && p.at ? { ...p, at: { ...p.at, lat: p.at.lat + 1 } } : p)) };
+  const suspicious: string[] = [];
+  for (const t of [trip, faulted]) {
+    for (const c of detectConflicts(t, { today: FIXTURE_TODAY })) {
+      for (const [k, v] of Object.entries(c.params)) {
+        if (typeof v !== 'number') continue;
+        // A coordinate: in [-180,180] with three or more decimals.
+        if (Math.abs(v) <= 180 && /\.\d{3,}/.test(String(v))) suspicious.push(`${c.ruleId}.params.${k} = ${v}`);
+      }
+    }
+  }
+  assert.deepEqual(suspicious, []);
+
+  const raw = golden<Record<string, unknown>>('core-conflicts.json');
+  const text = JSON.stringify(raw);
+  const floats = [...text.matchAll(/-?\d{1,3}\.\d{3,}/g)].map((m) => m[0]);
+  assert.deepEqual(floats, [], 'a coordinate reached the committed golden');
 });
 
 test('the two legacy_flag blockers are Aug 18 and Aug 20, with the day subtitle as the summary', () => {
@@ -75,14 +131,19 @@ test('booking_vs_plan DOES fire when a booking and its stop disagree', () => {
   assert.match(fired[0].summary, /09:00/);
 });
 
-test('impossible_transfer catches the Aug 18 05:30 airport bus', () => {
+test('the Aug 18 05:30 airport bus does NOT fire — it is a departure, not an arrival', () => {
+  // §2.7's revision-1 table named this as the rule's fixture case, and the review, the QA
+  // pass and the note to Jacob all called it the one real transfer defect. §2.12 revises
+  // that: the bus DEPARTS 05:30, runs 40 minutes, reaches PRG at 06:10, and the flight is
+  // 07:30. What the data says about the hotel-to-bus-stop transfer is nothing.
   const { trip } = europe2026();
-  const fired = detectConflicts(trip, { today: FIXTURE_TODAY }).filter((c) => c.ruleId === 'impossible_transfer');
-  const aug18 = fired.find((c) => c.params.dayId === '2026-08-18');
-  assert.ok(aug18, 'the named fixture case must fire');
-  assert.equal(aug18.params.legMins, 40);
-  assert.equal(aug18.params.gapMins, 30);
-  assert.equal(aug18.severity, 'blocker');
+  const day = trip.days.find((d) => d.id === '2026-08-18')!;
+  const bus = day.stops.find((s) => s.name.startsWith('Airport Express bus'))!;
+  assert.equal(bus.travelRole, 'journey');
+  const fired = detectConflicts(trip, { today: FIXTURE_TODAY }).filter(
+    (c) => c.ruleId === 'impossible_transfer' && c.params.dayId === '2026-08-18',
+  );
+  assert.deepEqual(fired.map((c) => c.summary), []);
 });
 
 test('missing_lodging covers Budapest and London and nothing else', () => {
@@ -107,18 +168,6 @@ test('unbooked_ticketed returns nothing when no clock is injected', () => {
   assert.equal(detectConflicts(trip).filter((c) => c.ruleId === 'unbooked_ticketed').length, 0);
 });
 
-test('geo_outlier fires on a ±1° latitude typo — the Fisherman\'s Bastion class', () => {
-  const { trip } = europe2026();
-  const day = trip.days.find((d) => d.id === '2026-08-19')!;
-  const stop = day.stops.find((s) => s.name.startsWith('Széchenyi'))!;
-  const before = detectConflicts(trip, { today: FIXTURE_TODAY }).filter((c) => c.ruleId === 'geo_outlier').length;
-  const broken = updateStop(trip, stop.id, { place: { kind: 'inline', at: { lat: 48.5025, lng: 19.0819 } } });
-  const after = detectConflicts(broken, { today: FIXTURE_TODAY }).filter((c) => c.ruleId === 'geo_outlier');
-  assert.equal(after.length, before + 1);
-  assert.ok(after.some((c) => String(c.params.stopName).startsWith('Széchenyi')));
-  assert.equal(after.find((c) => String(c.params.stopName).startsWith('Széchenyi'))?.severity, 'blocker');
-});
-
 test('overlap never fires without a duration, and does fire with one', () => {
   const { trip } = europe2026();
   assert.equal(detectConflicts(trip, { today: FIXTURE_TODAY }).filter((c) => c.ruleId === 'overlap').length, 0);
@@ -141,20 +190,6 @@ test('duplicate_booking fires for two different references on the same route and
   assert.match(String(fired[0].params.references), /ZZ99XX/);
 });
 
-test('closed fires only when the place has hours that say so', () => {
-  const { trip } = europe2026();
-  assert.equal(detectConflicts(trip, { today: FIXTURE_TODAY }).filter((c) => c.ruleId === 'closed').length, 0);
-  // Naschmarkt's flea market ends at 14:00; schedule a stop against it at 15:50.
-  const place = { id: 'place-naschmarkt', cityKey: 'vienna', name: 'Naschmarkt flea market', at: { lat: 48.1974, lng: 16.3628 }, category: 'sight' as const, hours: { weekly: [null, null, null, null, null, null, { day: 6, open: '06:00', close: '14:00' }] } };
-  const withPlace = { ...trip, places: [...trip.places, place] };
-  const day = withPlace.days.find((d) => d.id === '2026-08-08')!; // a Saturday
-  const target = day.stops[day.stops.length - 1];
-  const scheduled = updateStop({ ...withPlace }, target.id, { place: { kind: 'place', placeId: place.id }, time: '15:50' });
-  const fired = detectConflicts(scheduled, { today: FIXTURE_TODAY }).filter((c) => c.ruleId === 'closed');
-  assert.equal(fired.length, 1);
-  assert.equal(fired[0].params.close, '14:00');
-});
-
 test('conflict ids are stable across a no-op re-import', () => {
   const a = europe2026().trip;
   const before = detectConflicts(a, { today: FIXTURE_TODAY });
@@ -163,29 +198,21 @@ test('conflict ids are stable across a no-op re-import', () => {
 });
 
 /**
- * The acceptance criterion behind this test is wrong, and the test now says which part.
+ * ROADMAP C: "Acknowledgement follows the value, in both directions", asserted on specific
+ * ids rather than on array inequality. Revision 1's test asserted
+ * `notDeepEqual([Y, X], [X])`, which is true and proves nothing — it passes on an id list
+ * that merely GREW.
  *
- * ROADMAP asks that "conflict ids change when the Aug 18 flight time is edited". They do
- * not, and they must not: moving the 07:30 Ryanair departure to 19:30 does not touch the
- * 05:00-checkout → 05:30-bus pair, so that conflict's content — and therefore its
- * content-addressed id — is unchanged, and an acknowledgement of it correctly survives. The
- * previous version of this test asserted `notDeepEqual([Y, X], [X])`, which is true and
- * proves nothing: it passes on an id list that merely GREW.
- *
- * What the criterion is reaching for is the HISTORY pass-5 lesson: an acknowledgement must
- * not silently carry over to a conflict whose facts have changed. That is tested here
- * directly, against an edit that changes a value INSIDE the conflict.
+ * The second half matters as much as the first: an edit that does NOT touch a conflict's
+ * inputs correctly leaves its acknowledgement standing. That is the content-addressing
+ * mechanism working, and revision 1's criterion mistook it for a failure.
  */
-test('an acknowledgement does not survive an edit to a value inside the acknowledged conflict', () => {
+test('acknowledging Aug 20, then editing that day, retires the acknowledgement with the id', () => {
   const a = europe2026().trip;
-  const day = a.days.find((d) => d.id === '2026-08-18')!;
-  const bus = day.stops.find((s) => s.name.startsWith('Airport Express bus'))!;
-  const checkout = day.stops[day.stops.indexOf(bus) - 1];
-
   const target = detectConflicts(a, { today: FIXTURE_TODAY }).find(
-    (c) => c.ruleId === 'impossible_transfer' && c.params.dayId === '2026-08-18',
+    (c) => c.ruleId === 'legacy_flag' && c.subjects.some((s) => s.id === '2026-08-20'),
   )!;
-  assert.ok(target, 'the Aug 18 checkout → bus conflict is the fixture case for this rule');
+  assert.ok(target, 'Aug 20 is one of the two legacy_flag blockers');
 
   const acked = resolveConflict(a, {
     conflictId: target.id, state: 'acknowledged', at: '2026-08-01', by: 'local:self',
@@ -195,24 +222,20 @@ test('an acknowledgement does not survive an edit to a value inside the acknowle
     'acknowledged',
   );
 
-  // Move the checkout 05:00 → 05:10. Still impossible (20 min for a 40 min bus), so the
-  // rule still fires — but with different facts, so it is a different conflict.
-  const edited = updateStop(acked, checkout.id, { time: '05:10' });
+  const edited = setDayMeta(acked, '2026-08-20', { subtitle: 'A different explanation entirely' });
   const after = detectConflicts(edited, { today: FIXTURE_TODAY });
 
-  assert.equal(after.some((c) => c.id === target.id), false,
-    'the acknowledged id survived an edit to a value inside it');
-  const successor = after.find((c) => c.ruleId === 'impossible_transfer' && c.params.dayId === '2026-08-18');
-  assert.ok(successor, 'the transfer is still impossible, so a conflict must still be reported');
+  assert.equal(after.some((c) => c.id === target.id), false, 'the acknowledged id survived an edit to its inputs');
+  const successor = after.find((c) => c.ruleId === 'legacy_flag' && c.subjects.some((s) => s.id === '2026-08-20'))!;
+  assert.ok(successor, 'the day is still flagged, so the blocker must still be reported');
   assert.notEqual(successor.id, target.id);
-  assert.ok(!successor.resolution,
-    `the acknowledgement carried over to a conflict whose facts changed: ${JSON.stringify(successor.resolution)}`);
+  assert.ok(!successor.resolution, `acknowledgement carried over: ${JSON.stringify(successor.resolution)}`);
 });
 
-test('an acknowledgement DOES survive an edit that does not touch it — and that is correct', () => {
+test('acknowledging Aug 20, then editing the Aug 18 flight time, leaves it acknowledged — and that is correct', () => {
   const a = europe2026().trip;
   const target = detectConflicts(a, { today: FIXTURE_TODAY }).find(
-    (c) => c.ruleId === 'impossible_transfer' && c.params.dayId === '2026-08-18',
+    (c) => c.ruleId === 'legacy_flag' && c.subjects.some((s) => s.id === '2026-08-20'),
   )!;
   const acked = resolveConflict(a, {
     conflictId: target.id, state: 'acknowledged', at: '2026-08-01', by: 'local:self',
@@ -221,7 +244,7 @@ test('an acknowledgement DOES survive an edit that does not touch it — and tha
   const edited = updateStop(acked, flight.id, { time: '19:30' });
   const still = detectConflicts(edited, { today: FIXTURE_TODAY }).find((c) => c.id === target.id);
   assert.equal(still?.resolution?.state, 'acknowledged',
-    'moving the flight does not touch the checkout → bus pair, so the acknowledgement must stand');
+    'moving an Aug 18 flight does not touch an Aug 20 day flag, so the acknowledgement must stand');
 });
 
 test('resolveConflict records a resolution and changes nothing else', () => {
@@ -236,6 +259,13 @@ test('resolveConflict records a resolution and changes nothing else', () => {
   assert.equal(after.find((c) => c.id === first.id)?.resolution?.state, 'acknowledged');
 });
 
+/**
+ * `geo_outlier`'s own tests moved to `geoCheck.test.ts` when §2.13 made the rule a thin
+ * publisher over one shared mechanism. `closed` is deleted from Phase 1 (§2.7): 0 of 95
+ * places carry `hours`, §2.11 has no `hours` row, and the fixture case it named
+ * ("Naschmarkt flea market ends 14:00") is not a stop in the trip. A rule with a fictional
+ * fixture case reads as coverage and is not.
+ */
 test('every rule has a unique id and survives an empty trip', () => {
   const ids = RULES.map((r) => r.id);
   assert.equal(new Set(ids).size, ids.length);
@@ -256,4 +286,118 @@ test('a linked booking that vanishes does not crash detection', () => {
   trip = linkBooking(trip, trip.days[0].stops[0].id, 'b1');
   const orphaned = { ...trip, bookings: [] };
   assert.doesNotThrow(() => detectConflicts(orphaned, { today: '2026-01-01' }));
+});
+
+// ---------------------------------------------------------------------------
+// §2.12 — travelRole, and the departure-time defect it closes
+// ---------------------------------------------------------------------------
+
+test('impossible_transfer returns 0 blockers and 0 warnings on the unmodified trip', () => {
+  const { trip } = europe2026();
+  const fired = detectConflicts(trip, { today: FIXTURE_TODAY }).filter((c) => c.ruleId === 'impossible_transfer');
+  assert.deepEqual(
+    fired.map((c) => `${c.severity}: ${c.summary}`),
+    [],
+    'all four of Phase 1\'s hits were departure-time artifacts, Aug 18 included',
+  );
+});
+
+test('the tightest remaining margin on any transfer stop is 7 minutes — Aug 14, Skradin', () => {
+  const { trip } = europe2026();
+  let tightest = { margin: Infinity, name: '', day: '' };
+  for (const day of trip.days) {
+    const legs = computeLegsForTest(day, trip);
+    for (let i = 1; i < day.stops.length; i++) {
+      const leg = legs[i];
+      const prev = day.stops[i - 1];
+      const cur = day.stops[i];
+      if (!leg || cur.travelRole !== 'transfer') continue;
+      if (prev.placement.kind !== 'scheduled' || cur.placement.kind !== 'scheduled') continue;
+      const t0 = timeValForTest(prev.placement.time);
+      const t1 = timeValForTest(cur.placement.time);
+      if (t0 >= 99999 || t1 >= 99999) continue;
+      const margin = t1 - t0 - leg.mins;
+      if (margin < tightest.margin) tightest = { margin, name: cur.name, day: day.id };
+    }
+  }
+  assert.equal(tightest.margin, 7, `tightest was ${tightest.margin} min at ${tightest.day} “${tightest.name}”`);
+  assert.equal(tightest.day, '2026-08-14');
+  assert.match(tightest.name, /Skradin/);
+});
+
+/**
+ * ROADMAP C's injected-fault criterion for the departure model names "the Aug 8 Condor
+ * DE4345 stop". **That stop cannot demonstrate the fault**: it departs 14:30 against a
+ * 13:00 previous stop and runs 80 minutes, so the gap already exceeds the journey by 10
+ * minutes and `impossible_transfer` is silent whichever role it carries. It is one of the
+ * 25 stops §2.12 describes as "silent only because the printed clock gap happens to exceed
+ * the journey time". The criterion names a stop with no observable flip; the mechanism it
+ * is reaching for is real and is asserted here on a stop where the flip IS observable —
+ * the Aug 7 Condor DE2081, 660 minutes into a 120-minute gap. Both halves are checked, so
+ * the criterion's own stop is covered too. BUILD-NOTES §1, KD-16.
+ */
+test('injected fault: a vehicle journey fires as a blocker only if its time is called an arrival', () => {
+  const { trip } = europe2026();
+
+  const flip = (dayId: string, nameFragment: string, role: 'transfer' | 'journey' | 'unknown') => {
+    const day = trip.days.find((d) => d.id === dayId)!;
+    const target = day.stops.find((s) => s.name.includes(nameFragment))!;
+    assert.ok(target, `${nameFragment} not found on ${dayId}`);
+    const stops = day.stops.map((s) => (s.id === target.id ? { ...s, travelRole: role } : s));
+    const days = trip.days.map((d) => (d.id === day.id ? { ...d, stops } : d));
+    return detectConflicts({ ...trip, days }, { today: FIXTURE_TODAY }).filter(
+      (c) => c.ruleId === 'impossible_transfer' && c.subjects.some((x) => x.id === target.id),
+    );
+  };
+
+  // The observable case: Aug 7, Condor DE2081, a 660-minute flight in a 120-minute gap.
+  assert.deepEqual(flip('2026-08-07', 'Condor DE2081', 'journey'), [],
+    "'journey' must not fire: a vehicle's own run is not a transfer");
+  const asTransfer = flip('2026-08-07', 'Condor DE2081', 'transfer');
+  assert.equal(asTransfer.length, 1);
+  assert.equal(asTransfer[0].severity, 'blocker');
+  const asUnknown = flip('2026-08-07', 'Condor DE2081', 'unknown');
+  assert.equal(asUnknown.length, 1);
+  assert.equal(asUnknown[0].severity, 'warning', "'unknown' degrades to a warning, it does not go silent");
+  assert.match(asUnknown[0].detail ?? '', /departure|cannot tell/i);
+
+  // The criterion's own stop, and why it proves nothing either way.
+  const de4345 = trip.days.find((d) => d.id === '2026-08-08')!.stops.find((s) => s.name.includes('Condor DE4345'))!;
+  assert.equal(de4345.travelRole, 'journey', 'the importer must classify a cat:transit flight as a journey');
+  for (const role of ['transfer', 'journey', 'unknown'] as const) {
+    assert.deepEqual(flip('2026-08-08', 'Condor DE4345', role), [],
+      `Aug 8 DE4345 has a 10-minute margin, so role ${role} changes nothing — see the header`);
+  }
+});
+
+test('a journey stop occupies its own run for overlap, even with durationMins null', () => {
+  const { trip } = europe2026();
+  const day = trip.days.find((d) => d.id === '2026-08-08')!;
+  const condor = day.stops.find((s) => s.name.includes('Condor DE4345'))!;
+  assert.equal(condor.durationMins, null);
+  assert.ok(condor.arrival && condor.arrival.mins > 0);
+
+  const t = condor.placement.kind === 'scheduled' ? condor.placement.time! : '';
+  const mid = `${String(Number(t.slice(0, 2)) + 1).padStart(2, '0')}:${t.slice(3)}`;
+  const intruder = {
+    ...condor,
+    id: 'stop-intruder',
+    name: 'Something scheduled mid-flight',
+    travelRole: 'transfer' as const,
+    arrival: null,
+    durationMins: 10,
+    placement: { kind: 'scheduled' as const, dayId: day.id, time: mid, order: 99 },
+  };
+  const days = trip.days.map((d) => (d.id === day.id ? { ...d, stops: [...d.stops, intruder] } : d));
+  const fired = detectConflicts({ ...trip, days }, { today: FIXTURE_TODAY }).filter(
+    (c) => c.ruleId === 'overlap' && c.subjects.some((s) => s.id === 'stop-intruder'),
+  );
+  assert.equal(fired.length, 1, 'a flight does overlap the thing you scheduled during it');
+});
+
+test('a journey does NOT overlap the stop that immediately follows it — the Aug 21 timezone artifact', () => {
+  const { trip } = europe2026();
+  const fired = detectConflicts(trip, { today: FIXTURE_TODAY }).filter((c) => c.ruleId === 'overlap');
+  assert.deepEqual(fired.map((c) => c.summary), [],
+    'BA863 12:55 + 165 min vs Windsor 15:15 is CEST -> BST, not an overlap (KD-15)');
 });

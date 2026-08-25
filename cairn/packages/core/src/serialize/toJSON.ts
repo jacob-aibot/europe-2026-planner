@@ -69,6 +69,7 @@ function stop(s: Stop) {
         })
       : null,
     arrival: s.arrival ? omitUndef({ mode: s.arrival.mode, mins: s.arrival.mins, label: s.arrival.label }) : null,
+    travelRole: s.travelRole,
     bookingId: s.bookingId,
     flags: s.flags,
     provenance: provenance(s.provenance),
@@ -152,6 +153,7 @@ export function toDoc(trip: Trip): Record<string, unknown> {
     startDate: trip.startDate,
     endDate: trip.endDate,
     homeCurrency: trip.homeCurrency,
+    homeBase: trip.homeBase ? { name: trip.homeBase.name, at: { lat: trip.homeBase.at.lat, lng: trip.homeBase.at.lng } } : null,
     party: { adults: trip.party.adults, children: trip.party.children },
     cities: trip.cities.map(city),
     days: trip.days.map(day),

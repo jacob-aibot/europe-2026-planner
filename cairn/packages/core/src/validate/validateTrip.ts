@@ -9,10 +9,9 @@
  */
 import type { Issue, Stop, Trip } from '../model/types.ts';
 import { addDays, dayNumber } from '../derive/summary.ts';
-import { haversine, inRange, stopLatLng } from '../derive/geo.ts';
+import { inRange, stopLatLng } from '../derive/geo.ts';
 import { currenciesOf, mixesBasis } from '../model/money.ts';
 
-export const FAR_FROM_CITY_KM = 35;
 
 /** Pure. Returns every problem found, in a deterministic order; never throws. */
 export function validateTrip(trip: Trip): Issue[] {
@@ -126,7 +125,6 @@ export function validateTrip(trip: Trip): Issue[] {
 
   const placeIds = new Set(trip.places.map((p) => p.id));
   const bookingIds = new Set(trip.bookings.map((b) => b.id));
-  const centres = new Map(trip.cities.map((c) => [c.key, c.centre]));
 
   for (const { stop, dayId } of allStops) {
     const ref = { kind: 'stop' as const, id: stop.id };
@@ -203,22 +201,14 @@ export function validateTrip(trip: Trip): Issue[] {
         message: `"${stop.name}" has coordinates outside the legal range (${at.lat}, ${at.lng}).`,
         params: { stopId: stop.id, lat: at.lat, lng: at.lng },
       });
-    } else if (at && dayId) {
-      const day = trip.days.find((d) => d.id === dayId);
-      const centre = day ? centres.get(day.primaryCity) : undefined;
-      if (centre) {
-        const km = haversine(centre, at);
-        if (km > FAR_FROM_CITY_KM) {
-          push({
-            level: 'warn',
-            code: 'stop_far_from_city',
-            ref,
-            message: `"${stop.name}" is ${Math.round(km)} km from ${day?.primaryCity}, on a ${day?.primaryCity} day.`,
-            params: { stopId: stop.id, km: Math.round(km), cityKey: day ? day.primaryCity : '', date: dayId },
-          });
-        }
-      }
     }
+    // `stop_far_from_city` was here. DELETED, not folded (§2.9): it was a second
+    // implementation of `geo_outlier` with the same primaryCity-only defect and twice the
+    // noise — 20 of 31 issues, 13 of them explained by another city on the same day or a
+    // `daytrip` flag. A coordinate outlier is a CONFLICT, a thing to act on with both sides
+    // stated, not a structural validity problem. `lat_lng_out_of_range` stays: |lat| > 90 is
+    // genuine structural invalidity and is not a distance at all. There is now exactly one
+    // implementation of coordinate-to-anchor distance in core, `derive/geoCheck.ts`.
 
     if (mixesBasis(stop.cost)) {
       push({
