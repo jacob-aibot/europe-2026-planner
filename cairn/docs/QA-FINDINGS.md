@@ -1,13 +1,16 @@
 # Cairn — QA findings, Phase 1
 
 Tester: breaker. Run date 2026-08-25, against `master` @ `ae5cabe`.
-Environment: Node v22.22.2, Chromium via Playwright (`PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers`).
+Environment: Node v22.22.2, Chromium via Playwright (`PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers`),
+real elapsed time — **not** `--virtual-time-budget`, which hangs the app at "Opening your
+trips…" because virtual time does not advance while IndexedDB work is pending. That is an
+environment trap, not a defect, and is not logged as one.
 
 All work was done from a **clean `git clone`** into a scratch directory, plus a live browser
 against `npm run web:build && npm run serve`. Every finding below was reproduced by running
 something. Nothing is labelled UNVERIFIED.
 
-**Result: 2 BLOCKERS, 7 MAJOR, 11 MINOR.**
+**Result: 2 BLOCKERS, 8 MAJOR, 11 MINOR.**
 
 ---
 
@@ -156,10 +159,9 @@ The 12 blockers are 6 × `geo_outlier` + 4 × `impossible_transfer` + 2 × `lega
 | Gellért Hill at sunrise (08-21, 1482 km from London) | 08-21 is `cities:["budapest","london"]` |
 | Frankfurt (FRA) — connect (08-08, 603 km from Vienna) | a real connection on the inbound long-haul |
 
-`impossible_transfer` — three of four are wrong (Aug 12 FlixBus, Aug 7 Condor, Aug 22 Virgin):
-`arrival` on those stops holds *the vehicle's own journey time* and the stop's `time` is a
-**departure**, so the rule subtracts a departure from a departure. Only the Aug 18
-`05:00 checkout → 05:30 airport bus` case is real.
+`impossible_transfer` — three of four are wrong (Aug 7 Condor, Aug 12 FlixBus, Aug 22 Virgin).
+Only the Aug 18 `05:00 checkout → 05:30 airport bus` case is real. See **F-4a**, which is the
+full adjudication: three is the count *today*, and it is not the interesting number.
 
 **Observed:** a conflicts panel whose highest severity is 75 % noise. The two genuinely
 hand-flagged days (Aug 18, Aug 20) are buried among nine cries of wolf.
@@ -174,9 +176,90 @@ does not carry. The builder found these and then reported "12 blockers" as an ac
 
 **Architect decisions needed:** (a) should `geo_outlier` measure against the *nearest* of
 `day.cities` rather than `primaryCity` — the builder's own suggested fix, in the file; (b)
-should a `daytrip`-flagged stop be exempt; (c) does `impossible_transfer` need a way to
-distinguish "transfer between two stops" from "this stop *is* a vehicle journey", which is a
-model question (`arrival` currently means both).
+should a `daytrip`-flagged stop be exempt; (c) F-4a.
+
+---
+
+### F-4a — `impossible_transfer` on vehicle stops: the model cannot say "this time is a departure"
+**Severity: MAJOR. Routing: ARCHITECT — this is a design defect, not an implementation defect.**
+
+Raised by the coordinator; this is the adjudication, with the counts run rather than reasoned.
+**Reproduce:** `cairn/qa/vehicles.mjs`.
+
+**The builder's account is accurate and its judgement was correct.** `impossibleTransfer.ts:8`
+documents the artifact before anyone found it, names three cases, and says it implemented
+§2.7 as written rather than silently patching it. That is the right call and nothing here
+contradicts it. What follows is the part the builder correctly declined to decide.
+
+**Q1 — is three the true count?** Three is the count *today*. It is three out of **31**, and
+the silence of the other 28 is arithmetic luck, not correctness.
+
+```
+vehicle-journey stops in the trip (arrival.mode in flight|bus|train|boat|speedboat) : 31
+  currently firing                                                                  :  4
+    of which the departure-time artifact                                            :  3
+    of which a real transfer defect (Aug 18, 05:00 checkout -> 05:30 bus, 40 min)   :  1
+  silent because they are the day's first stop                                      :  2
+  silent ONLY because the printed clock gap happens to exceed the journey time      : 25
+```
+
+The rule is not "correct except for three known cases". It is **semantically wrong on all 31**
+— every one of them compares a vehicle's whole journey against the gap between two departure
+times — and quiet on 25 of them by coincidence. How thin the coincidence is:
+
+| Day | Stop | Journey | Gap | Margin before it fires |
+|---|---|---|---|---|
+| 08-13 | Blue Cave, Biševo | speedboat 105 min | 105 min | **1 min** |
+| 08-14 | Boat to Skradinski Buk | boat 20 min | 20 min | **1 min** |
+| 08-08 | Condor DE4345 → Vienna | flight 80 min | 90 min | 11 min |
+| 08-21 | British Airways BA863 → Heathrow | flight 165 min | 175 min | 11 min |
+| 08-12 | Kasjuni Beach — swim | bus 30 min | 60 min | 31 min |
+| 08-10 | Ryanair VIE → DBV | flight 80 min | 115 min | 36 min |
+
+Nudging any previous stop later by those margins — an ordinary edit, and exactly what the
+planner is for — converts a silent stop into a **blocker**. Six of the seven flights in the
+trip are within 51 minutes of firing. So the honest statement is not "three artifacts": it is
+*"`impossible_transfer` produces a blocker for any vehicle stop whose predecessor sits closer
+to it than the vehicle's journey time, which is a property of the display, not of the plan."*
+
+**Q2 — does "12 blockers" overstate the real conflicts?** Yes, by **nine**, not three.
+12 = 2 `legacy_flag` + 4 `impossible_transfer` + 6 `geo_outlier`. Real: the two hand-flagged
+days and the one genuine Aug 18 transfer. **3 of 12 blockers are actionable; 9 are noise.**
+The `impossible_transfer` share is also unstable — a single time edit can add more without
+anything in the plan getting worse. Agreed that this is a product defect even though the code
+matches the spec: `BRIEF.md` makes conflicts a first-class entity precisely so Jacob acts on
+them, and a panel that flags every long-haul flight trains him to ignore the panel. That is
+the failure this rule was written to prevent, arrived at from the other direction.
+
+**Q3 — routing. Agreed: DESIGN defect, architect.** Stated plainly, because the distinction is
+the fix:
+
+> The model has no way to express that a stop's `time` is a **departure** and its `arrival`
+> override describes **the vehicle's own journey**, not the transfer into the stop.
+> `ARCHITECTURE.md` §2.5 defines `arrival` as "the leg *into* this stop" and §2.11 deliberately
+> maps legacy `move` onto it — but the legacy `move` field carries both meanings, and so
+> therefore does `Stop.arrival`. Every rule that reasons about time inherits the ambiguity.
+> The correct fix is a field in the model that the rules consume. It is not a special case in
+> `impossibleTransfer.ts`, and it is not a tolerance constant.
+
+Two constraints on whatever the architect chooses:
+
+1. **It must be additive.** `computeLegs` is a contracted byte-exact port of `legBetween`
+   (§2.5, "do not improve it") and is checked against `fixtures/golden/legacy-legs.json`, which
+   is generated from the live page's own functions. Any change to how `arrival` feeds the leg
+   calculation breaks golden parity on all 16 days. The new field must be read by the conflict
+   rules only.
+2. **The importer has to be able to derive it.** 31 of the 81 legacy `move` overrides are
+   vehicle journeys. `s.cat === 'transit'` plus a vehicle `move.mode` covers most of them, but
+   not all — Aug 13's speedboat hops are `cat:'trip'`, and Aug 10's "Check in — Hostel Petra
+   Marina" carries `move:{mode:'bus'}` describing the transfer, not a vehicle it *is*. If the
+   distinction cannot be derived reliably, the honest alternative is to downgrade
+   `impossible_transfer` from `blocker` to `warning` for vehicle-mode arrivals until the model
+   can tell them apart — surfacing the doubt rather than asserting a defect, which is the same
+   principle as *flag conflicts, don't resolve them by guessing*.
+
+I did not find a fourth artifact class: `walk` (36), `metro` (10), `transit` (3) and `bike` (1)
+arrivals are all genuine transfers and none fires.
 
 ---
 
@@ -547,15 +630,15 @@ F-18 (coordinates in `Conflict.params`) and F-6 (ownership on import).
 
 | To the builder | To the architect |
 |---|---|
-| F-1 revision guard on save | F-4 `geo_outlier` / `impossible_transfer` rule shape |
+| F-1 revision guard on save | F-4 `geo_outlier` rule shape |
 | F-2 `importDoc` collision check against storage | F-5 should `Place` and pool stops get a distance check |
 | F-3 `typecheck` from a clean clone | F-6 what `importDoc` does with a foreign `ownerId` |
-| F-7 lock down `updateStop`'s patch | F-8 drop `closed` or give it an hours source |
-| F-9 make the conflict-id test actually assert | F-10 revert-resurrection and `resolutions` GC |
-| F-11 calendar-valid dates | F-14 §2.10's export list |
-| F-12 enum + numeric validation in `fromJSON` | F-18 coordinates in `Conflict.params` |
-| F-13 fail closed on a missing clock | F-19 personal ticket tokens in a public build |
-| F-15 pass `target` to `rollUpCost` | |
+| F-7 lock down `updateStop`'s patch | **F-4a `arrival` cannot say "departure" — a model field, not a rule patch** |
+| F-9 make the conflict-id test actually assert | F-8 drop `closed` or give it an hours source |
+| F-11 calendar-valid dates | F-10 revert-resurrection and `resolutions` GC |
+| F-12 enum + numeric validation in `fromJSON` | F-14 §2.10's export list |
+| F-13 fail closed on a missing clock | F-18 coordinates in `Conflict.params` |
+| F-15 pass `target` to `rollUpCost` | F-19 personal ticket tokens in a public build |
 | F-16 path guard on `cli export` | |
 | F-17 `accepted_without_timestamp` for bookings | |
 | F-20 write the objections into BUILD-NOTES | |
