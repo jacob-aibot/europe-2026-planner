@@ -21,8 +21,14 @@
  *   4. **A referenced `Place` is copied with it**, new id — otherwise the link dangles. An
  *      existing place in the target with the same name and coordinates in the same city is
  *      reused instead of duplicated.
- *   5. `flags`, `name`, `note`, `category`, `durationMins`, `arrival` and `travelRole` copy
- *      verbatim. They describe a place and a journey, not a claim about the user.
+ *   5. `flags`, `name`, `category`, `durationMins`, `arrival` and `travelRole` copy verbatim
+ *      — they describe a place and a journey, not a claim about the user. `note` does NOT
+ *      copy verbatim: it is prose, and prose is exactly where a door code or a booking
+ *      confirmation number ends up. It is passed through `redactText` — the same pattern
+ *      set §6.6 applies to a build artifact — before it crosses the trip boundary.
+ *      BUILD-NOTES §1, KD-20 and KD-21 (KD-21: this file is why the example strings in
+ *      `redactText.ts` had to stop being example strings — a docstring here is source that
+ *      ships in a sourcemap the moment this module is part of `apps/web`'s build graph).
  *   6. **Accepting is a separate, explicit act** — `acceptCandidate` — and it preserves
  *      `origin`. `validateTrip` emits the error `origin_stripped` if anything removes it.
  *   7. **Credit survives acceptance.** `displayStatus` governs the badge; `attribution`
@@ -34,6 +40,7 @@ import type { Place, Provenance, ProvenanceConfidence, Stop, StopPlacement, Trip
 import type { IdFactory, IsoDate, StopId, UserId } from '../model/ids.ts';
 import { addStop } from './stops.ts';
 import type { StopInit } from './stops.ts';
+import { redactText } from './redactText.ts';
 
 export type CopyStopSource = { trip: Trip; stopId: StopId };
 export type CopyStopCtx = { ids: IdFactory; today: IsoDate; actorUserId: UserId };
@@ -120,7 +127,10 @@ export function copyStopInto(
     name: src.name,
     category: src.category,
     place,
-    note: src.note,
+    // Rule 5 amended, BUILD-NOTES §1 KD-20: free text is where the leak was. `note` is prose
+    // someone typed, and prose is exactly where a door PIN or a booking confirmation ends up.
+    // Run it through the same pattern set §6.6 uses.
+    note: redactText(src.note) as string,
     // Rule 3 — the money is a description of the world; the booking and the ticket are not.
     cost: src.cost ? { ...src.cost, amounts: src.cost.amounts.map((a) => ({ ...a })) } : null,
     arrival: src.arrival ? { ...src.arrival } : null,

@@ -1,6 +1,11 @@
 /**
  * `redactForSample` — what may not reach a build artifact (ARCHITECTURE §6.6).
  *
+ * The pattern set itself (`REDACTION_PATTERNS`, `redactText`, `redactionHits`) lives in
+ * `packages/core/src/build/redactText.ts` and is re-exported here, not redefined — it is
+ * also used by `copyStopInto` on a stop's `note` (BUILD-NOTES §1, KD-20). One definition of
+ * "credential-shaped" for both the build artifact and the trip-to-trip copy boundary.
+ *
  * `npm run web:build` embedded Jacob's hotel door PIN (`PIN 0754`), booking confirmation
  * `5814731574`, flight references `YZGDTS` and `IU1TUY`, and two live unauthenticated
  * ticket URLs in `apps/web/dist/assets/index-*.js`. Nothing was committed and nothing was
@@ -29,83 +34,9 @@
  * (the three source comments that were shipping references, and the dropped `sourceDoc`).
  */
 
-/**
- * The pattern array. **One place, exported, and every pattern is exercised by a fixture
- * string in `tools/redact.test.ts`** — a pattern that catches nothing is itself a failure.
- * That is the `closed`-rule lesson applied to redaction: a rule with no reachable input
- * reads as coverage and is not.
- *
- * Ordering matters: URLs and emails are consumed before the bare-token patterns, so a
- * reference inside a URL inside a sentence is redacted once as a URL rather than shredded.
- */
-/**
- * The keyword alternation, spelled letter-by-letter so it is case-insensitive WITHOUT the
- * `i` flag. That matters: `i` would also make `[A-Z0-9]` match lowercase, which silently
- * turned "the booking is done" into a match on "is".
- */
-const KEYWORD = ['pin', 'code', 'conf', 'confirmation', 'ref', 'reference', 'order', 'booking', 'seat']
-  .map((w) => [...w].map((c) => `[${c.toUpperCase()}${c}]`).join(''))
-  .join('|');
+import { REDACTION_PATTERNS, REDACTED, redactText, redactionHits } from '../packages/core/src/build/redactText.ts';
 
-export const REDACTION_PATTERNS = [
-  {
-    id: 'url',
-    why: 'A ticket URL is an access credential — ulaznice.hr and cityairporttrain.com both open with no login.',
-    re: /https?:\/\/[^\s"'<>)\]]+/gi,
-  },
-  {
-    id: 'email',
-    why: 'A mailbox address is a login identifier and a spam target.',
-    re: /\b[\w.+-]+@[\w-]+\.[\w.-]+\b/gi,
-  },
-  {
-    id: 'keyword_token',
-    why: 'A keyword followed by one credential-shaped token: "PIN 0754", "PIN BGXw", "ref D8WQHO", "seat 9C".',
-    // "Credential-shaped" means the token carries an uppercase letter or a digit. That is
-    // what keeps this off ordinary prose — "booking recommended" and "the booking is done"
-    // are left alone, "PIN BGXw" is not — without needing a digit, which would have let an
-    // alphabetic door code straight through.
-    // The separator excludes a bare hyphen on purpose: `booking-16` is a structural id.
-    re: new RegExp(`\\b(?:${KEYWORD})\\b[\\s:#]+(?=[A-Za-z0-9]*[A-Z0-9])[A-Za-z0-9]{2,}`, 'g'),
-  },
-  {
-    id: 'keyword_digits',
-    why: 'A keyword followed by a spaced digit run: "Booking 338 441 5948".',
-    re: new RegExp(`\\b(?:${KEYWORD})\\b[\\s:#]+(?=[A-Za-z0-9 -]{0,20}\\d)[A-Za-z0-9][A-Za-z0-9 -]{0,20}[A-Za-z0-9]`, 'g'),
-  },
-  {
-    id: 'long_digits',
-    why: 'Any run of 6+ digits, with optional spacing: "338 441 5948", "5814731574".',
-    re: /\b\d[\d ]{4,}\d\b/g,
-  },
-  {
-    id: 'alnum_reference',
-    // §6.6 words this as "containing both letters and digits" and then gives YZGDTS as an
-    // example, which contains no digits. The examples win: a 6-character all-caps booking
-    // reference is exactly the shape being protected, and requiring a digit would have let
-    // YZGDTS — one of the five strings the review found in the bundle — straight through.
-    // The cost is that a 6+ letter ALL-CAPS word in prose is redacted too; on the reference
-    // trip that is 0 strings, asserted in `tools/redact.test.ts`.
-    why: 'A 6+ character all-caps alphanumeric token: YZGDTS, IU1TUY, D8WQHO, 3379864687.',
-    re: /\b[A-Z0-9]{6,}\b/g,
-  },
-];
-
-export const REDACTED = '[redacted]';
-
-/** Applies every pattern to one string. Pure. */
-export function redactText(text) {
-  if (typeof text !== 'string' || text.length === 0) return text;
-  let out = text;
-  for (const p of REDACTION_PATTERNS) out = out.replace(new RegExp(p.re.source, p.re.flags), REDACTED);
-  return out;
-}
-
-/** Every pattern that still matches somewhere in `text`. Pure. Used by the tests. */
-export function redactionHits(text) {
-  if (typeof text !== 'string') return [];
-  return REDACTION_PATTERNS.filter((p) => new RegExp(p.re.source, p.re.flags).test(text)).map((p) => p.id);
-}
+export { REDACTION_PATTERNS, REDACTED, redactText, redactionHits };
 
 /** Walks any JSON-ish value and collects every string. Pure. */
 export function allStrings(value, out = []) {

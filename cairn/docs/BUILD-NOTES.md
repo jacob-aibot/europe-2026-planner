@@ -348,6 +348,61 @@ leak that cannot grow silently — and leaves the cut as one mechanical change a
 that already knows the answer. **This is a criterion partially met, and it is reported as
 partially met.**
 
+### KD-20 — `copyStopInto` was redacting the structured credentials and copying the same class of credential as prose
+
+`packages/core/src/build/copyStop.ts`, `packages/core/src/build/redactText.ts` (new — moved
+out of `tools/redact.mjs`, which now imports it), `packages/core/test/copyStop.test.ts`
+
+QA round 2's worst finding, confirmed by the coordinator independently before routing here.
+Rule 3 already drops `bookingId` and refuses to let a `Ticket` travel, in as many words
+because a booking reference and a ticket URL are access credentials (§6.6). Rule 5 then
+copied `note` verbatim — and Jacob's door PINs and booking confirmations live as prose
+inside notes, not in structured fields, so the exact class of information rule 3 protects
+crossed the trip boundary through rule 5. Reproduced by `qa/r2-copy.mjs` section H: copying
+the Habyt Vienna stop carried `"conf 5814731574, PIN 0754"` into the target trip's note.
+
+**Fix:** the pattern set that already existed for build-artifact redaction (§6.6) is the
+right tool — a booking confirmation and a door PIN are exactly what it was written to catch.
+It has moved to `packages/core/src/build/redactText.ts` so both callers share one
+definition of "credential-shaped": `tools/redact.mjs` now imports and re-exports it rather
+than defining its own copy, and `copyStopInto` runs a copied stop's `note` through it before
+the stop exists in the target trip. `name`, `category`, `flags`, `durationMins`, `arrival`
+and `travelRole` are unchanged — they describe a place and a journey, not a claim about the
+user, and are not where the leak was.
+
+No exposure existed — Phase 1 has no second user, so there was nobody to leak to — but this
+is the mechanism Phase 2's real sharing runs on unchanged, which is why round 2 routed it as
+a blocker rather than a note for later.
+
+**Not addressed here, and worth the architect's attention regardless:** round 2 also found
+`PoolPanel` renders a copied stop's badge without calling `attribution()`, which is rule 7
+("every view that renders one renders the other") failing on its own terms — a display gap,
+not a leak, and out of scope for this fix. And the redaction pattern set is still the fixed
+list KD-17/KD-18 describe, not a broader mechanism; sharing the definition closes the
+note-field leak specifically without closing that gap.
+
+### KD-21 — moving `redactText` into core shipped its own rationale strings to the browser
+
+`packages/core/src/build/redactText.ts`
+
+Caught in the same pass as KD-20, before it was pushed, by rebuilding and grepping the
+bundle the way QA round 2 did. Each pattern in `REDACTION_PATTERNS` originally carried a
+`why: '...'` string for documentation — one of them was `'A 6+ character all-caps
+alphanumeric token: YZGDTS, IU1TUY, D8WQHO, 3379864687.'`, using the real leaked references
+as the example. That was harmless while the module lived only in `tools/redact.mjs`, a
+build-time-only script never bundled for the browser. Moving it into `packages/core` for
+KD-20 changed that: `apps/web` bundles core, so the string became runtime data shipped to
+every visitor, and `npm run web:build` proved it — `YZGDTS`, `IU1TUY` and `5814731574` were
+all present in `dist/assets/index-*.js`, none of them inside a comment.
+
+**Fix:** `why` is a comment on each pattern now, not a field. Nothing reads `.why` at
+runtime (checked — zero references outside this file before the change), so nothing was
+lost by making it non-data; minification strips comments, so it does not reach the bundle.
+The lesson generalises past this one file: **a rationale string is exempt from bundle
+scrutiny only while its module is provably build-time-only, and that exemption silently
+expires the moment something in `packages/core` or `apps/web` imports it.**
+
+
 ---
 
 ## 2. How to run it

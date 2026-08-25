@@ -166,6 +166,30 @@ test('rule 5: descriptions of a place and a journey copy verbatim', () => {
   assert.equal(stop.travelRole, 'transfer');
 });
 
+test('rule 5 amended: a credential in the note does not survive the copy (QA round 2, the note-field leak)', () => {
+  // The exact shape the tester found live: rule 3 already drops `bookingId` and the
+  // `Ticket` because a reference and a URL are credentials — this is the same class of
+  // information sitting in prose instead of a structured field.
+  const t = jacobsTrip();
+  const withMarta = (() => {
+    let m = martasTrip();
+    m = updateStop(m, 'stop-marta-1', { note: 'Check in — Habyt Vienna: booked, conf 5814731574, PIN 0754, 2 nights' });
+    return m;
+  })();
+  const target = copyStopInto(
+    t,
+    { trip: withMarta, stopId: 'stop-marta-1' },
+    { kind: 'scheduled', dayId: '2026-08-08', time: '11:00', order: 0 },
+    COPY_CTX('c2'),
+  );
+  const stop = target.days.find((d) => d.id === '2026-08-08')!.stops[0];
+  assert.doesNotMatch(stop.note ?? '', /5814731574/, 'the booking confirmation must not cross the trip boundary');
+  assert.doesNotMatch(stop.note ?? '', /\b0754\b/, 'the door PIN must not cross the trip boundary');
+  assert.match(stop.note ?? '', /\[redacted\]/, 'redaction should be visible, not a silently emptied note');
+  // Ordinary prose is untouched — this is a credential filter, not a note-stripper.
+  assert.match(stop.note ?? '', /Check in — Habyt Vienna/);
+});
+
 test('rule 6: accepting is a separate act, and it preserves origin', () => {
   const { trip, stop } = copied();
   const accepted = acceptCandidate(trip, { kind: 'stop', id: stop.id }, 'user:jacob', '2026-08-26');
