@@ -15,5 +15,9 @@
     "forceConsistentCasingInFileNames": true,
     "types": ["node"]
   },
-  "include": ["packages/*/src/**/*.ts", "packages/*/test/**/*.ts", "cli.ts", "apps/web/src/**/*.ts", "apps/web/src/**/*.tsx"]
+  // apps/web is NOT here on purpose. core, client, the tests and the CLI must typecheck as
+  // Node ESM under NodeNext — that is the property that lets `node --test` run the .ts files
+  // with no build step. apps/web is bundler-resolved with JSX and has its own tsconfig;
+  // sharing one config would mean weakening this one to accommodate it.
+  "include": ["packages/*/src/**/*.ts", "packages/*/test/**/*.ts", "cli.ts", "tools/**/*.ts"]
 }

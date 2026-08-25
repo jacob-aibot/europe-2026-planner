@@ -12,7 +12,7 @@
     "node": ">=22.18"
   },
   "scripts": {
-    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p apps/web/tsconfig.json --noEmit",
     "test": "node --test packages/core/test/*.test.ts packages/client/test/*.test.ts",
     "golden": "node tools/gen-golden.mjs",
     "cli": "node cli.ts",
