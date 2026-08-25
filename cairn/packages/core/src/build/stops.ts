@@ -10,7 +10,7 @@
  * round-trip through JSON and through the pool. `compareStops` implements §2.4's
  * `(timeVal, order)` rule and is used when *inserting* a new stop; it is never applied
  * destructively to an existing day, because that would silently undo a drag that
- * contradicts the times. See BUILD-NOTES.
+ * contradicts the times. See BUILD-NOTES §1, KD-6.
  */
 import type { Day, MoveOverride, Place, PlaceLink, Stop, StopPlacement, Trip } from '../model/types.ts';
 import type { CityKey, ClockTime, DayId, StopId } from '../model/ids.ts';
@@ -35,8 +35,13 @@ export function insertionIndex(stops: readonly Stop[], time: ClockTime | null): 
   return idx === -1 ? stops.length : idx;
 }
 
-/** Rewrites `placement.order` to match array position. Pure. */
-function reindex(stops: readonly Stop[], dayId: DayId): Stop[] {
+/**
+ * Rewrites `placement.order` to match array position. Pure.
+ *
+ * Exported (module-internal, not on §2.10's surface) so `merge/mergeTrips.ts` reindexes a
+ * merged day through this function rather than growing a second copy of the rule.
+ */
+export function reindex(stops: readonly Stop[], dayId: DayId): Stop[] {
   return stops.map((s, i) =>
     s.placement.kind === 'scheduled' && s.placement.dayId === dayId && s.placement.order === i
       ? s
@@ -113,15 +118,46 @@ export function addStop(trip: Trip, placement: StopPlacement, init: StopInit, ct
   return { ...next, revision: trip.revision + 1 };
 }
 
-export type StopPatch = Partial<Omit<Stop, 'id' | 'placement'>> & { time?: ClockTime | null };
+export type StopPatch = Partial<Omit<Stop, 'id' | 'placement' | 'provenance'>> & { time?: ClockTime | null };
+
+/**
+ * Keys a patch may never carry. `StopPatch` excludes them at compile time, but every caller
+ * that matters is `any`-shaped at its boundary — a JSON action, an import, and in Phase 3
+ * the ingest worker §5.1 says must have no path to forge provenance.
+ *
+ * - `id` rewrites the stop's identity and dangles its `bookingId` and any
+ *   `ConflictResolution` naming it.
+ * - `placement` is `moveStop`'s job; §2.10 makes that ONE function on purpose.
+ * - `provenance` turns a system suggestion into the user's own plan, which is the one
+ *   convention `CLAUDE.md` calls absolute. Use `acceptCandidate` / `rejectCandidate`.
+ */
+const FORBIDDEN_PATCH_KEYS = ['id', 'placement', 'provenance'] as const;
+
+/** @throws {Error} on any forbidden key, present even with an `undefined` value. */
+function assertPatchable(patch: object): void {
+  for (const k of FORBIDDEN_PATCH_KEYS) {
+    if (Object.prototype.hasOwnProperty.call(patch, k)) {
+      throw new Error(
+        `updateStop: "${k}" may not be patched — ` +
+          (k === 'placement'
+            ? 'use moveStop'
+            : k === 'provenance'
+              ? 'use acceptCandidate / rejectCandidate'
+              : 'a stop id is immutable'),
+      );
+    }
+  }
+}
 
 /**
  * Patches a stop wherever it lives (a day or the pool). Passing `time` retimes a scheduled
  * stop without moving it — use `moveStop` to change position. Pure.
  *
- * @throws {Error} if no stop with that id exists.
+ * @throws {Error} if no stop with that id exists, or if the patch carries `id`,
+ *         `placement` or `provenance` — programmer error per §2.1.
  */
 export function updateStop(trip: Trip, stopId: StopId, patch: StopPatch): Trip {
+  assertPatchable(patch);
   const { time, ...rest } = patch;
   let found = false;
   const days = trip.days.map((day) => {

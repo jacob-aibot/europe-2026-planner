@@ -5,8 +5,9 @@
  * cannot express is UNKNOWN, and unknown NEVER produces a conflict. A rule that guesses
  * seasonal hours would cry wolf every third stop and get switched off.
  *
- * NOTE: the legacy data carries no hours at all, so this rule finds nothing on the imported
- * Europe 2026 fixture; it is covered by a synthetic test instead. See BUILD-NOTES.
+ * NOTE: the legacy data carries no hours at all — 0 of 95 places — so this rule finds
+ * nothing on the imported Europe 2026 fixture and is covered by a synthetic test instead.
+ * §2.7 names a fixture case (Naschmarkt) that is not in the data. BUILD-NOTES §1, KD-5.
  */
 import type { Conflict, OpeningHours } from '../../model/types.ts';
 import { timeVal } from '../../derive/legs.ts';

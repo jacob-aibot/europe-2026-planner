@@ -7,12 +7,14 @@
  *   node cli.ts cost                 per-day and whole-trip roll-ups
  *   node cli.ts validate             validateTrip issues
  *   node cli.ts import               the legacy import report
- *   node cli.ts export [file]        the trip as JSON on stdout, or to a file
+ *   node cli.ts export [file]        the trip as JSON on stdout, or to a file inside cairn/
  *
  * With no `--file`, it loads the Europe 2026 fixture by reading the live planner
  * READ-ONLY. `--file trip.json` reads a Cairn document instead.
  */
 import { readFileSync, writeFileSync } from 'node:fs';
+import { dirname, resolve, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import * as core from './packages/core/src/index.ts';
 import { loadEurope2026, FIXTURE_TODAY } from './fixtures/loadEurope2026.mjs';
 
@@ -135,12 +137,42 @@ function cmdImport() {
   }
 }
 
+/**
+ * `cairn/` — the only directory this CLI may ever write into.
+ *
+ * `europe-2026-itinerary.html`, `docs/` and `tickets/` at the repo root are the live app on
+ * Jacob's phone; Cairn reads them and never writes them (CLAUDE.md, sequencing rule 4).
+ * `cmdExport` used to be `writeFileSync(argv[1], text)`, so
+ * `npm run cli -- export ../europe-2026-itinerary.html` overwrote the planner (F-16).
+ * `tools/serve.mjs` already has the equivalent guard on its read path.
+ */
+const CAIRN_ROOT = resolve(dirname(fileURLToPath(import.meta.url)));
+
+/**
+ * The absolute path to write to, or `null` if it escapes `cairn/`.
+ *
+ * `resolve` normalises `..`, a leading `/` and any symlink-free traversal; the trailing
+ * separator on the prefix is what stops `/…/cairn-backup/x` passing as `/…/cairn/x`.
+ * Pure.
+ */
+function safeWritePath(target: string): string | null {
+  const abs = resolve(process.cwd(), target);
+  return abs.startsWith(CAIRN_ROOT + sep) ? abs : null;
+}
+
 function cmdExport() {
   const text = core.toJSON(trip);
   const target = argv[1];
   if (target && !target.startsWith('--')) {
-    writeFileSync(target, text);
-    out(`wrote ${target} (${text.length} bytes)`);
+    const abs = safeWritePath(target);
+    if (abs === null) {
+      out(`refusing to write outside ${CAIRN_ROOT}: ${target}`);
+      out('Cairn never writes to the live planner, docs/ or tickets/. Pick a path inside cairn/.');
+      process.exitCode = 2;
+      return;
+    }
+    writeFileSync(abs, text);
+    out(`wrote ${abs} (${text.length} bytes)`);
   } else process.stdout.write(`${text}\n`);
 }
 

@@ -8,6 +8,7 @@
 import type { City, Trip, TripMeta } from '../model/types.ts';
 import type { CityKey, Currency, IdFactory, IsoDate, UserId } from '../model/ids.ts';
 import { LOCAL_OWNER, SCHEMA_VERSION } from '../model/types.ts';
+import { isIsoDate } from '../model/ids.ts';
 import { ensureDays } from './days.ts';
 
 export type BuildCtx = {
@@ -45,8 +46,14 @@ export type TripInit = {
  * @throws {Error} programmer error only: a malformed date, or `endDate` before `startDate`.
  */
 export function createTrip(init: TripInit, ctx: BuildCtx): Trip {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(init.startDate) || !/^\d{4}-\d{2}-\d{2}$/.test(init.endDate)) {
-    throw new Error('createTrip: startDate and endDate must be YYYY-MM-DD');
+  // The calendar, not the shape: `2026-13-45` matches /^\d{4}-\d{2}-\d{2}$/ and rolls over
+  // through Date.UTC into a 2-day trip starting 2027-02-14 that validates clean (F-11).
+  // `fromJSON` is NOT guarded the same way — BUILD-NOTES §1, KD-12.
+  if (!isIsoDate(init.startDate) || !isIsoDate(init.endDate)) {
+    throw new Error(
+      `createTrip: startDate and endDate must be real calendar dates in YYYY-MM-DD, got ` +
+        `${JSON.stringify(init.startDate)} and ${JSON.stringify(init.endDate)}`,
+    );
   }
   if (init.endDate < init.startDate) {
     throw new Error(`createTrip: endDate ${init.endDate} precedes startDate ${init.startDate}`);
@@ -92,6 +99,12 @@ export type TripMetaPatch = Partial<
  */
 export function setTripMeta(trip: Trip, patch: TripMetaPatch, ctx: BuildCtx): Trip {
   const next: Trip = { ...trip, ...patch, revision: trip.revision + 1 };
+  if (!isIsoDate(next.startDate) || !isIsoDate(next.endDate)) {
+    throw new Error(
+      `setTripMeta: startDate and endDate must be real calendar dates in YYYY-MM-DD, got ` +
+        `${JSON.stringify(next.startDate)} and ${JSON.stringify(next.endDate)}`,
+    );
+  }
   if (next.endDate < next.startDate) {
     throw new Error(`setTripMeta: endDate ${next.endDate} precedes startDate ${next.startDate}`);
   }

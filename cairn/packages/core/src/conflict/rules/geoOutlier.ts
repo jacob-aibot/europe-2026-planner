@@ -7,8 +7,9 @@
  *
  * Measured against the PRIMARY city, per §2.7. On the Europe 2026 fixture that also flags
  * the deliberate first-stop-of-a-travel-day cases (a Split morning on a Prague day, a
- * Budapest sunrise on a London day). See BUILD-NOTES for the objection: measuring against
- * the nearest of `day.cities` removes those two without weakening the typo check.
+ * Budapest sunrise on a London day), and it does NOT look at the record type the historical
+ * typo actually lived on. Both the anchor objection and the coverage gap are BUILD-NOTES §1,
+ * KD-2 — with the measurement showing the obvious fix removes only 3 of the 6.
  */
 import type { Conflict } from '../../model/types.ts';
 import { haversine, stopLatLng } from '../../derive/geo.ts';

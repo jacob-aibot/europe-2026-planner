@@ -9,6 +9,7 @@
  * passed in so expiry is testable.
  */
 import type { TripId, UserId, IsoDate } from '../model/ids.ts';
+import { isIsoDate } from '../model/ids.ts';
 
 export type Role = 'viewer' | 'commenter' | 'editor';
 
@@ -37,8 +38,31 @@ function samePrincipal(a: Principal, b: Principal): boolean {
   return a.kind === 'anonymous';
 }
 
-/** The live (unexpired, unrevoked) role a principal holds on a trip, or null. Pure. */
+/**
+ * `now` is the only thing standing between an expired link and the trip, so a caller that
+ * cannot supply one is a programmer error and MUST NOT be answered.
+ *
+ * Before this guard, `s.expiresAt < now` with `now` `undefined` or `''` was false for every
+ * share, so an EXPIRED viewer share returned `canView === true` — a predicate that fails
+ * open. Per §2.1 core throws only on programmer error; a missing clock is exactly that.
+ *
+ * @throws {Error} if `now` is not a real calendar date in `YYYY-MM-DD`.
+ */
+function requireNow(now: IsoDate): void {
+  if (!isIsoDate(now)) {
+    throw new Error(
+      `access: "now" must be a calendar date in YYYY-MM-DD, got ${JSON.stringify(now)} — ` +
+        'refusing to evaluate access without a clock',
+    );
+  }
+}
+
+/**
+ * The live (unexpired, unrevoked) role a principal holds on a trip, or null. Pure.
+ * @throws {Error} if `now` is missing or not a `YYYY-MM-DD` calendar date.
+ */
 export function effectiveRole(p: Principal, rel: Relationship, now: IsoDate): Role | 'owner' | null {
+  requireNow(now);
   if (p.kind === 'user') {
     if (p.userId === rel.ownerId) return 'owner';
     if ((rel.memberIds ?? []).includes(p.userId)) return 'owner';

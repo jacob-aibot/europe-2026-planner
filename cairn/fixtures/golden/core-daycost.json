@@ -2,7 +2,7 @@
   "$generatedBy": "cairn/tools/gen-golden.mjs",
   "$source": "europe-2026-itinerary.html (read-only)",
   "$sourceSha256": "40955ca0b182dddcc33540accadf2a65a329bc20b9e6ca109c9884e776bb06d2",
-  "$what": "rollUpCost() per day, compared with the live dayCost() string. \"divergent\" days are explained in BUILD-NOTES: they are the four money defects ARCHITECTURE §2.6 lists.",
+  "$what": "rollUpCost() per day, compared with the live dayCost() string. \"divergent\" days are explained in BUILD-NOTES §1 KD-3: they are the four money defects ARCHITECTURE §2.6 lists. NOTE: core-*.json files are SELF-SNAPSHOTS of this code, not independent goldens — KD-14.",
   "days": {
     "2026-08-07": {
       "byCurrency": {},

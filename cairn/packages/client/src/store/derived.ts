@@ -3,6 +3,10 @@
  *
  * Derived data is never stored and is invalidated WHOLESALE on `doc.revision`. No partial
  * invalidation: it is cheap at 112 stops and it removes a class of stale-view bugs outright.
+ *
+ * `rollUpCost` is always called with `{ target: trip.homeCurrency }`. Without it,
+ * `missingRates` lists every currency INCLUDING the trip's own, and a EUR trip renders
+ * "No conversion rate for EUR" (F-15).
  */
 import * as core from '../deps.ts';
 import type { Conflict, Issue, Leg, Trip } from '../deps.ts';
@@ -36,7 +40,7 @@ export function computeDerived(trip: Trip, today: string): DerivedCache {
       legs: core.computeLegs(day, trip),
       movingMinutes: core.dayMovingMinutes(day, trip),
       distanceKm: core.dayDistanceKm(day, trip),
-      cost: core.rollUpCost(day.stops),
+      cost: core.rollUpCost(day.stops, { target: trip.homeCurrency }),
       focus,
       focusBounds: core.mapBounds(core.stopPoints(focus.focus, trip)),
       allBounds: core.mapBounds(core.stopPoints(day.stops, trip)),
@@ -48,7 +52,7 @@ export function computeDerived(trip: Trip, today: string): DerivedCache {
     days,
     conflicts: core.detectConflicts(trip, { today }),
     issues: core.validateTrip(trip),
-    tripCost: core.rollUpCost(trip),
+    tripCost: core.rollUpCost(trip, { target: trip.homeCurrency }),
     summary: core.tripSummary(trip),
   };
 }

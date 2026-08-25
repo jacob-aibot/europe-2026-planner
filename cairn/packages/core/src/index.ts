@@ -16,7 +16,7 @@ export type {
 } from './model/types.ts';
 export { SCHEMA_VERSION, LOCAL_OWNER } from './model/types.ts';
 export type { TripId, DayId, StopId, PlaceId, BookingId, ConflictId, UserId, CityKey, RuleId, IsoDate, ClockTime, Currency, IdFactory, ClockPort } from './model/ids.ts';
-export { sequentialIds, fixedClock } from './model/ids.ts';
+export { sequentialIds, fixedClock, isIsoDate } from './model/ids.ts';
 export { parseCostDisplay, costFromDisplay, currenciesOf, mixesBasis, formatRange } from './model/money.ts';
 export { userProvenance, systemSuggestion, emailCandidate, friendImport, accept, reject } from './model/provenance.ts';
 
@@ -60,6 +60,12 @@ export { conflictId, makeConflict, digest, canonical } from './conflict/id.ts';
 
 // ---- validate ---------------------------------------------------------------
 export { validateTrip, issueCounts, FAR_FROM_CITY_KM } from './validate/validateTrip.ts';
+
+// ---- merge -------------------------------------------------------------------
+// NOT on §2.10's list. Added to implement §2.2's "last-writer-wins per stop with a
+// revision guard", which Phase 1 shipped with neither half. BUILD-NOTES §1, KD-9.
+export { mergeTrips, mergeLostData, describeMerge } from './merge/mergeTrips.ts';
+export type { MergeReport, MergeNote, MergeResult } from './merge/mergeTrips.ts';
 
 // ---- access (defined now, enforced in Phase 2 — §6.2) ------------------------
 export { canView, canComment, canEdit, canShare, canDelete, can, effectiveRole } from './access/predicates.ts';

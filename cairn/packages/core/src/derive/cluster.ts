@@ -103,7 +103,9 @@ export function rawSpanKm(points: readonly LatLng[]): number {
  *
  * The live app expressed this as `span < 0.6 ? setView(centre, 16) : fitBounds(...)`;
  * a zoom-16 window is ≈1.2 km wide, so clamping the span is the same guard expressed as
- * data instead of as a Leaflet call. See BUILD-NOTES for the arithmetic.
+ * data instead of as a Leaflet call. The returned box is ALREADY widened to `MIN_SPAN_KM`
+ * and says so via `clamped`; a port that adds its own minimum double-clamps.
+ * BUILD-NOTES §1, KD-7.
  */
 export function fitSpanKm(points: readonly LatLng[]): number {
   return Math.max(rawSpanKm(points), MIN_SPAN_KM);

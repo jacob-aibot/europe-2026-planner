@@ -17,7 +17,10 @@ import type { Rule } from './types.ts';
  * A stop is often timed for boarding or check-in rather than departure — the Danube cruise
  * boards at 19:10 for a 19:30 sailing, and the voucher says to arrive 20–30 min early. A
  * rule that called that a blocker would be switched off within a day, so times within this
- * many minutes of each other agree. Dates never get a tolerance. See BUILD-NOTES.
+ * many minutes of each other agree. Dates never get a tolerance.
+ *
+ * §2.7 does not specify a tolerance; this number is a builder's judgement. BUILD-NOTES §1,
+ * KD-8.
  */
 export const BOOKING_TIME_TOLERANCE_MINS = 30;
 

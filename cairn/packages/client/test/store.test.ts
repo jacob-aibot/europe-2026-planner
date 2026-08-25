@@ -448,3 +448,165 @@ test('undo/redo on the pure reducer are no-ops without a document', () => {
   assert.equal(undo(s), s);
   assert.equal(redo(s), s);
 });
+
+// ---------------------------------------------------------------------------
+// F-1 — the revision guard. Two tabs on one trip.
+//
+// `save()` used to write the whole document with no compare-and-set, so the
+// second tab's write destroyed the first tab's edits and the LOSING tab still
+// displayed "Saved". §2.2 promises "last-writer-wins per stop with a revision
+// guard"; these tests are that sentence, both halves.
+// ---------------------------------------------------------------------------
+
+/** Two independent stores over ONE storage — the in-Node equivalent of two browser tabs. */
+async function twoTabs() {
+  const storage = memoryStorage();
+  const a = createStore({ ports: ports(storage) });
+  await a.createTrip(TRIP_INIT);
+  const tripId = a.getState().activeTripId as string;
+  const b = createStore({ ports: ports(storage) });
+  await b.refreshLibrary();
+  await b.openTrip(tripId);
+  return { storage, a, b, tripId };
+}
+
+test('two tabs editing different days: both edits survive', async () => {
+  const { storage, a, b, tripId } = await twoTabs();
+  const dayA = a.getState().doc?.days[0].id as string;
+  const dayB = a.getState().doc?.days[1].id as string;
+
+  a.dispatch({ type: 'setDayMeta', dayId: dayA, patch: { title: 'TAB A EDIT' } } as Action);
+  await a.flush();
+  b.dispatch({ type: 'setDayMeta', dayId: dayB, patch: { title: 'TAB B EDIT' } } as Action);
+  await b.flush();
+
+  const stored = core.fromJSON(storage.docs.get(tripId) as string);
+  assert.equal(stored.days[0].title, 'TAB A EDIT', "tab A's edit was destroyed");
+  assert.equal(stored.days[1].title, 'TAB B EDIT', "tab B's edit was destroyed");
+  assert.equal(b.getState().persistence.status, 'idle');
+  assert.equal(b.isDirty(), false, 'tab B is genuinely saved');
+});
+
+test('the merged document is what tab B now holds, so its next save is not stale again', async () => {
+  const { storage, a, b, tripId } = await twoTabs();
+  const dayA = a.getState().doc?.days[0].id as string;
+  const dayB = a.getState().doc?.days[1].id as string;
+
+  a.dispatch({ type: 'setDayMeta', dayId: dayA, patch: { title: 'TAB A EDIT' } } as Action);
+  await a.flush();
+  b.dispatch({ type: 'setDayMeta', dayId: dayB, patch: { title: 'TAB B EDIT' } } as Action);
+  await b.flush();
+  assert.equal(b.getState().doc?.days[0].title, 'TAB A EDIT', 'tab B did not take on the merged state');
+
+  b.dispatch({ type: 'setDayMeta', dayId: dayB, patch: { title: 'TAB B AGAIN' } } as Action);
+  await b.flush();
+  assert.equal(b.getState().persistence.status, 'idle');
+  const stored = core.fromJSON(storage.docs.get(tripId) as string);
+  assert.equal(stored.days[0].title, 'TAB A EDIT');
+  assert.equal(stored.days[1].title, 'TAB B AGAIN');
+});
+
+test('two tabs editing the SAME thing: the last writer wins and the loss is reported, never silent', async () => {
+  const { storage, a, b, tripId } = await twoTabs();
+  const day = a.getState().doc?.days[0].id as string;
+
+  a.dispatch({ type: 'setDayMeta', dayId: day, patch: { title: 'A' } } as Action);
+  await a.flush();
+  b.dispatch({ type: 'setDayMeta', dayId: day, patch: { title: 'B' } } as Action);
+  await b.flush();
+
+  assert.equal(core.fromJSON(storage.docs.get(tripId) as string).days[0].title, 'B');
+  const merge = b.getState().persistence.lastMerge;
+  assert.ok(merge, 'the overwrite was silent');
+  assert.match(merge.message, /edited elsewhere/i);
+  assert.deepEqual(merge.report.overwritten, [{ entity: 'day', id: day, field: 'title' }]);
+});
+
+test('a save with no common ancestor refuses, and the losing tab does NOT say "Saved"', async () => {
+  const storage = memoryStorage();
+  const a = createStore({ ports: ports(storage) });
+  await a.createTrip(TRIP_INIT);
+  const tripId = a.getState().activeTripId as string;
+  const day = a.getState().doc?.days[0].id as string;
+  a.dispatch({ type: 'setDayMeta', dayId: day, patch: { title: 'REAL PLAN' } } as Action);
+  await a.flush();
+
+  // A store that mints a trip onto an id storage already holds: no common ancestor, so
+  // there is nothing to merge against and the write must be refused outright.
+  const b = createStore({ ports: ports(storage) });
+  await b.createTrip({ ...TRIP_INIT, id: tripId } as Parameters<typeof b.createTrip>[0]);
+  b.dispatch({ type: 'setDayMeta', dayId: day, patch: { title: 'CLOBBER' } } as Action);
+  await b.flush();
+
+  assert.equal(b.getState().persistence.status, 'error', 'a stale writer reported success');
+  assert.equal(b.isDirty(), true, 'the edit must still be in memory and known unsaved');
+  assert.match(b.getState().persistence.lastError ?? '', /changed|stale|elsewhere/i);
+  assert.equal(core.fromJSON(storage.docs.get(tripId) as string).days[0].title, 'REAL PLAN');
+});
+
+test('adoptTrip opens the stored trip rather than overwriting it', async () => {
+  const storage = memoryStorage();
+  const a = createStore({ ports: ports(storage) });
+  await a.createTrip(TRIP_INIT);
+  const tripId = a.getState().activeTripId as string;
+  const day = a.getState().doc?.days[0].id as string;
+  a.dispatch({ type: 'setDayMeta', dayId: day, patch: { title: 'REAL PLAN' } } as Action);
+  await a.flush();
+
+  const original = core.fromJSON(storage.docs.get(tripId) as string);
+  const b = createStore({ ports: ports(storage) });
+  await b.adoptTrip({ ...original, days: original.days.map((d, i) => (i === 0 ? { ...d, title: 'STALE' } : d)) });
+  assert.equal(b.getState().doc?.days[0].title, 'REAL PLAN', 'adoptTrip clobbered a stored trip');
+  assert.equal(core.fromJSON(storage.docs.get(tripId) as string).days[0].title, 'REAL PLAN');
+});
+
+// ---------------------------------------------------------------------------
+// F-2 — import is backup/restore of the user's OWN exports.
+//
+// The guard used to read the boot-time in-memory `state.library`, so an import
+// from a tab that booted before a trip existed wrote straight over it.
+// ---------------------------------------------------------------------------
+
+test('import checks storage, not the boot-time library snapshot', async () => {
+  const storage = memoryStorage();
+  const a = createStore({ ports: ports(storage) });
+  await a.createTrip(TRIP_INIT);
+  const tripId = a.getState().activeTripId as string;
+  const day = a.getState().doc?.days[0].id as string;
+  const stale = await a.exportActive();
+  a.dispatch({ type: 'setDayMeta', dayId: day, patch: { title: 'JACOBS REAL PLAN — do not lose this' } } as Action);
+  await a.flush();
+
+  // b never called refreshLibrary: its in-memory library is the empty boot snapshot.
+  const b = createStore({ ports: ports(storage) });
+  assert.deepEqual(b.getState().library, []);
+  await b.importDoc(stale);
+  await b.flush();
+
+  const stored = core.fromJSON(storage.docs.get(tripId) as string);
+  assert.equal(stored.days[0].title, 'JACOBS REAL PLAN — do not lose this', 'the import destroyed a stored trip');
+  assert.notEqual(b.getState().activeTripId, tripId, 'the import kept the colliding id');
+  assert.equal(storage.docs.size, 2);
+});
+
+test('import refuses a document owned by somebody else', async () => {
+  const storage = memoryStorage();
+  const s = createStore({ ports: ports(storage) });
+  await s.createTrip(TRIP_INIT);
+  const mine = core.fromJSON(await s.exportActive());
+  const theirs = core.toJSON({ ...mine, id: 'trip-marta', ownerId: 'user:marta' });
+
+  await assert.rejects(() => s.importDoc(theirs), /another person|not yours|owned by/i);
+  assert.equal(storage.docs.has('trip-marta'), false);
+  assert.equal(s.getState().activeTripId, mine.id, 'the active trip changed on a refused import');
+});
+
+test('import accepts a document owned by this store\'s own owner id', async () => {
+  const storage = memoryStorage();
+  const s = createStore({ ports: ports(storage), ownerId: 'user:jacob' });
+  await s.createTrip({ ...TRIP_INIT, ownerId: 'user:jacob' } as Parameters<typeof s.createTrip>[0]);
+  const text = await s.exportActive();
+  await s.deleteTrip(s.getState().activeTripId as string);
+  await s.importDoc(text);
+  assert.equal(s.getState().doc?.ownerId, 'user:jacob');
+});

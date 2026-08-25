@@ -155,19 +155,73 @@ test('closed fires only when the place has hours that say so', () => {
   assert.equal(fired[0].params.close, '14:00');
 });
 
-test('conflict ids are stable across a no-op re-import and change when the Aug 18 flight time is edited', () => {
+test('conflict ids are stable across a no-op re-import', () => {
   const a = europe2026().trip;
   const before = detectConflicts(a, { today: FIXTURE_TODAY });
   const again = detectConflicts(a, { today: FIXTURE_TODAY });
   assert.deepEqual(again.map((c) => c.id), before.map((c) => c.id));
+});
 
+/**
+ * The acceptance criterion behind this test is wrong, and the test now says which part.
+ *
+ * ROADMAP asks that "conflict ids change when the Aug 18 flight time is edited". They do
+ * not, and they must not: moving the 07:30 Ryanair departure to 19:30 does not touch the
+ * 05:00-checkout → 05:30-bus pair, so that conflict's content — and therefore its
+ * content-addressed id — is unchanged, and an acknowledgement of it correctly survives. The
+ * previous version of this test asserted `notDeepEqual([Y, X], [X])`, which is true and
+ * proves nothing: it passes on an id list that merely GREW.
+ *
+ * What the criterion is reaching for is the HISTORY pass-5 lesson: an acknowledgement must
+ * not silently carry over to a conflict whose facts have changed. That is tested here
+ * directly, against an edit that changes a value INSIDE the conflict.
+ */
+test('an acknowledgement does not survive an edit to a value inside the acknowledged conflict', () => {
+  const a = europe2026().trip;
   const day = a.days.find((d) => d.id === '2026-08-18')!;
-  const flight = day.stops.find((s) => s.name.startsWith('Ryanair PRG'))!;
-  const edited = updateStop(a, flight.id, { time: '19:30' });
+  const bus = day.stops.find((s) => s.name.startsWith('Airport Express bus'))!;
+  const checkout = day.stops[day.stops.indexOf(bus) - 1];
+
+  const target = detectConflicts(a, { today: FIXTURE_TODAY }).find(
+    (c) => c.ruleId === 'impossible_transfer' && c.params.dayId === '2026-08-18',
+  )!;
+  assert.ok(target, 'the Aug 18 checkout → bus conflict is the fixture case for this rule');
+
+  const acked = resolveConflict(a, {
+    conflictId: target.id, state: 'acknowledged', at: '2026-08-01', by: 'local:self',
+  });
+  assert.equal(
+    detectConflicts(acked, { today: FIXTURE_TODAY }).find((c) => c.id === target.id)?.resolution?.state,
+    'acknowledged',
+  );
+
+  // Move the checkout 05:00 → 05:10. Still impossible (20 min for a 40 min bus), so the
+  // rule still fires — but with different facts, so it is a different conflict.
+  const edited = updateStop(acked, checkout.id, { time: '05:10' });
   const after = detectConflicts(edited, { today: FIXTURE_TODAY });
-  const transferIdsBefore = before.filter((c) => c.ruleId === 'impossible_transfer' && c.params.dayId === '2026-08-18').map((c) => c.id);
-  const transferIdsAfter = after.filter((c) => c.ruleId === 'impossible_transfer' && c.params.dayId === '2026-08-18').map((c) => c.id);
-  assert.notDeepEqual(transferIdsAfter, transferIdsBefore, 'a time change must not carry an acknowledgement over');
+
+  assert.equal(after.some((c) => c.id === target.id), false,
+    'the acknowledged id survived an edit to a value inside it');
+  const successor = after.find((c) => c.ruleId === 'impossible_transfer' && c.params.dayId === '2026-08-18');
+  assert.ok(successor, 'the transfer is still impossible, so a conflict must still be reported');
+  assert.notEqual(successor.id, target.id);
+  assert.ok(!successor.resolution,
+    `the acknowledgement carried over to a conflict whose facts changed: ${JSON.stringify(successor.resolution)}`);
+});
+
+test('an acknowledgement DOES survive an edit that does not touch it — and that is correct', () => {
+  const a = europe2026().trip;
+  const target = detectConflicts(a, { today: FIXTURE_TODAY }).find(
+    (c) => c.ruleId === 'impossible_transfer' && c.params.dayId === '2026-08-18',
+  )!;
+  const acked = resolveConflict(a, {
+    conflictId: target.id, state: 'acknowledged', at: '2026-08-01', by: 'local:self',
+  });
+  const flight = a.days.find((d) => d.id === '2026-08-18')!.stops.find((s) => s.name.startsWith('Ryanair PRG'))!;
+  const edited = updateStop(acked, flight.id, { time: '19:30' });
+  const still = detectConflicts(edited, { today: FIXTURE_TODAY }).find((c) => c.id === target.id);
+  assert.equal(still?.resolution?.state, 'acknowledged',
+    'moving the flight does not touch the checkout → bus pair, so the acknowledgement must stand');
 });
 
 test('resolveConflict records a resolution and changes nothing else', () => {

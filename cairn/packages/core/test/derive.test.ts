@@ -117,24 +117,114 @@ test('rollUpCost: badge-only "free" stops contribute nothing', () => {
   assert.deepEqual(roll.byCurrency, {});
 });
 
-test('rollUpCost matches the live dayCost for every EUR-only day, and diverges only where §2.6 says it must', () => {
+/**
+ * Day-cost parity with the live page, day by day, with every divergence NAMED.
+ *
+ * ROADMAP's acceptance criterion says "`rollUpCost(day)` reproduces the live app's
+ * `dayCost()` string for all 16 days". **It does not, and it must not.** The real figure is
+ * **6 of 16 exact, 10 divergent**, and the criterion contradicts ARCHITECTURE §2.6, which
+ * is the section that exists precisely to stop the live page's four money defects being
+ * carried forward. Where the two disagree, §2.6 wins and the criterion is wrong.
+ *
+ * The previous version of this test asserted `exact === 6` and waved the other ten through
+ * as "divergent — see BUILD-NOTES", where BUILD-NOTES said nothing. A count with no reason
+ * behind it is not an assertion. So: each of the ten is classified below, and the test
+ * proves the classification against the data rather than taking it on trust. `exact === 6`
+ * is now a CONSEQUENCE (16 − 10), not the claim. BUILD-NOTES §1, KD-3.
+ *
+ * The four §2.6 defects, and which days they land on:
+ *
+ *   `multi_currency`    — the live page hand-converted "~450 CZK" to `c:[18,18]` and
+ *                         "$159.98pp" to `c:[160,160]` at an unrecorded rate on an
+ *                         unrecorded date. Core keeps each currency separate and refuses to
+ *                         invent a rate, so its EUR subtotal is legitimately smaller.
+ *   `per_party_basis`   — "$573.25 total" is a party total for 5 adults; the live page adds
+ *                         it to per-person amounts. Core keeps the basis and warns.
+ *   `split_product`     — "Gardens free · palace €15–24" is two products in one string;
+ *                         `c:[0,24]` encodes it as one €0–24 range. Core splits it, so the
+ *                         low end is the palace's €15, not €0.
+ *   `c_pair_vs_display` — the hand-written `c` pair disagrees with its own display string
+ *                         (Aug 14's €14.49 FlixBus fare carries `c:[14,15]`). Core reads
+ *                         the display string, which is the number on the ticket.
+ */
+type Divergence = 'multi_currency' | 'per_party_basis' | 'split_product' | 'c_pair_vs_display';
+
+const DIVERGENT: Record<string, { why: Divergence; note: string }> = {
+  '2026-08-09': { why: 'split_product', note: 'Schönbrunn "Gardens free · palace €15–24" — legacy c:[0,24], core €15–24 + a free item' },
+  '2026-08-13': { why: 'multi_currency', note: '$159.98pp speedboat kept in USD, not folded into EUR at a made-up rate' },
+  '2026-08-14': { why: 'c_pair_vs_display', note: 'FlixBus €14.49 carries c:[14,15]; core reads the €14.49 on the ticket' },
+  '2026-08-15': { why: 'multi_currency', note: '~100 CZK airport bus kept in CZK' },
+  '2026-08-16': { why: 'multi_currency', note: '~550 CZK Josefov combined ticket kept in CZK' },
+  '2026-08-17': { why: 'multi_currency', note: '~450 CZK Prague Castle main circuit kept in CZK' },
+  '2026-08-18': { why: 'multi_currency', note: '~100 CZK transfer kept in CZK' },
+  '2026-08-19': { why: 'per_party_basis', note: '$573.25 Danube cruise is a party total in USD, on both counts not summable' },
+  '2026-08-21': { why: 'multi_currency', note: 'London GBP kept in GBP' },
+  '2026-08-22': { why: 'multi_currency', note: 'London GBP kept in GBP; the day has no EUR amount at all' },
+};
+
+test('day-cost parity with the live app is 6 of 16 exact, and each of the other 10 is a §2.6 money defect the live page had', () => {
   const { trip } = europe2026();
   const legacy = golden<{ dayCost: Record<string, string | null> }>('legacy-daycost.json').dayCost;
   const expected = golden<{ days: Record<string, { parity: string; legacyString: string | null }> }>('core-daycost.json').days;
-  let exact = 0;
+
+  const exactDays: string[] = [];
+  const divergentDays: string[] = [];
+
   for (const day of trip.days) {
     const roll = rollUpCost(day.stops);
     const eur = roll.byCurrency.EUR;
     const coreString = eur ? `≈ ${formatRange('EUR', eur.lo, eur.hi)}` : null;
+
+    // The golden must still be the live page's own output, not ours.
     assert.equal(legacy[day.date.slice(5)], expected[day.id].legacyString, `${day.id}: golden legacy string drifted`);
+
     if (coreString === expected[day.id].legacyString) {
-      exact++;
-      assert.equal(expected[day.id].parity, 'exact', `${day.id}`);
+      exactDays.push(day.id);
+      assert.equal(expected[day.id].parity, 'exact', day.id);
+      assert.equal(DIVERGENT[day.id], undefined, `${day.id} is listed as divergent but matches exactly`);
+      continue;
+    }
+
+    divergentDays.push(day.id);
+    assert.equal(expected[day.id].parity, 'divergent', day.id);
+    const claim = DIVERGENT[day.id];
+    assert.ok(claim, `${day.id} diverges from the live app and NOTHING here says why. Classify it or fix it.`);
+
+    // Prove the stated reason against the data, so the table cannot rot into a comment.
+    const currencies = Object.keys(roll.byCurrency);
+    const amounts = day.stops.flatMap((s) => s.cost?.amounts ?? []);
+    const bases = new Set(amounts.map((a) => a.basis));
+    const splitProducts = day.stops.filter((s) => (s.cost?.amounts.length ?? 0) > 1);
+
+    if (claim.why === 'multi_currency') {
+      assert.ok(currencies.some((c) => c !== 'EUR'),
+        `${day.id}: claimed multi_currency but the day is EUR-only (${currencies.join(',')})`);
+      // Against a EUR target, every non-EUR currency is unconvertible — which is exactly
+      // what the live page papered over with a hand-picked rate.
+      assert.ok(rollUpCost(day.stops, { target: 'EUR' }).missingRates.length > 0,
+        `${day.id}: claimed multi_currency but nothing is unconvertible against EUR`);
+    } else if (claim.why === 'per_party_basis') {
+      assert.ok(bases.has('per_party') && bases.has('per_person'),
+        `${day.id}: claimed per_party_basis but the bases are ${[...bases].join(',')}`);
+    } else if (claim.why === 'split_product') {
+      assert.equal(splitProducts.length > 0, true, `${day.id}: claimed split_product but no stop carries two amounts`);
     } else {
-      assert.equal(expected[day.id].parity, 'divergent', `${day.id} unexpectedly diverges — see BUILD-NOTES`);
+      // c_pair_vs_display: single currency, single basis, no split product — the ONLY
+      // remaining explanation is that the legacy numeric pair contradicted its own string.
+      assert.deepEqual(currencies, ['EUR'], `${day.id}: claimed c_pair_vs_display but is multi-currency`);
+      assert.deepEqual([...bases], ['per_person'], `${day.id}: claimed c_pair_vs_display but mixes basis`);
+      assert.equal(splitProducts.length, 0, `${day.id}: claimed c_pair_vs_display but has a split product`);
+      assert.ok(amounts.some((a) => !Number.isInteger(a.lo) || !Number.isInteger(a.hi)),
+        `${day.id}: claimed c_pair_vs_display but every amount is a whole number`);
     }
   }
-  assert.equal(exact, 6, 'the six EUR-only, single-product days must match the live app exactly');
+
+  assert.deepEqual(divergentDays, Object.keys(DIVERGENT), 'the set of divergent days moved');
+  assert.equal(divergentDays.length, 10);
+  assert.equal(exactDays.length, 6,
+    'ROADMAP asks for 16/16. It is 6/16 by design — see the header above and BUILD-NOTES §1, ' +
+    'KD-3. If this number moves, one of the ten explanations changed.');
+  assert.equal(exactDays.length + divergentDays.length, 16);
 });
 
 test('CZK and GBP costs are reported per currency and never silently converted', () => {

@@ -48,3 +48,31 @@ export function sequentialIds(prefix = ''): IdFactory {
 export function fixedClock(date: IsoDate): ClockPort {
   return { today: () => date };
 }
+
+const ISO_DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+/** Days in a month. Proleptic Gregorian, no `Date`. Pure. */
+function daysInMonth(year: number, month: number): number {
+  if (month === 2) return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0 ? 29 : 28;
+  return month === 4 || month === 6 || month === 9 || month === 11 ? 30 : 31;
+}
+
+/**
+ * True for a real calendar date in `YYYY-MM-DD`. Pure.
+ *
+ * The shape check alone is not enough: `2026-13-45` and `2026-02-30` both match
+ * `/^\d{4}-\d{2}-\d{2}$/` and both roll over silently through `Date.UTC`, which produced a
+ * 2-day trip starting 2027-02-14 and a 0-day trip that validated clean (F-11). This is the
+ * ONE date validator in core — `createTrip`, `validateTrip` and the access predicates all
+ * call it, so there is no second implementation to disagree with.
+ */
+export function isIsoDate(v: unknown): v is IsoDate {
+  if (typeof v !== 'string') return false;
+  const m = ISO_DATE_RE.exec(v);
+  if (!m) return false;
+  const year = Number(m[1]);
+  const month = Number(m[2]);
+  const day = Number(m[3]);
+  if (month < 1 || month > 12) return false;
+  return day >= 1 && day <= daysInMonth(year, month);
+}

@@ -51,7 +51,16 @@ export function createStore(opts: StoreOptions) {
   let cache: DerivedCache | null = null;
   let cancelPending: (() => void) | null = null;
   let saving: Promise<void> = Promise.resolve();
+  /**
+   * The last document this store and storage agreed about — the common ancestor a
+   * three-way merge needs when the revision guard fires. `null` means "we have never
+   * agreed", and a write onto an id storage already holds is then refused outright rather
+   * than guessed at.
+   */
+  let baseDoc: Trip | null = null;
   const listeners = new Set<(s: AppState) => void>();
+
+  const localOwner = () => opts.ownerId ?? core.LOCAL_OWNER;
 
   const ctx = (): BuildCtx => ({
     ids: { newId: (kind: string) => ports.ids.newId(kind) },
@@ -77,25 +86,81 @@ export function createStore(opts: StoreOptions) {
     }, debounceMs);
   }
 
+  /** The `revision` of a stored document without paying for a full `fromJSON`. */
+  function storedRevisionOf(text: string): number | null {
+    try {
+      const r = (JSON.parse(text) as { revision?: unknown }).revision;
+      return typeof r === 'number' && Number.isFinite(r) ? r : null;
+    } catch {
+      return null;
+    }
+  }
+
   /**
-   * Writes the whole document. A failure sets `persistence.status = 'error'` and keeps the
-   * edit in memory — it is never dropped, and never fails silently.
+   * Writes the whole document, behind a **compare-and-set on the stored revision**
+   * (ARCHITECTURE §2.2: "last-writer-wins per stop with a revision guard").
+   *
+   * Phase 1 shipped with neither half, so two tabs on one trip silently destroyed each
+   * other's edits and the losing tab still displayed "Saved" (F-1). Now:
+   *
+   *   - storage untouched since we last agreed → plain write, as before;
+   *   - storage moved and we have a common ancestor → `core.mergeTrips` three-way merges,
+   *     the merged document becomes what this tab holds, and the decisions are reported on
+   *     `persistence.lastMerge`;
+   *   - storage moved and we have NO common ancestor → the write is refused,
+   *     `status = 'error'`, the edit stays in memory and the tab does not say "Saved".
+   *
+   * A failure of any kind sets `persistence.status = 'error'` and keeps the edit in
+   * memory — it is never dropped, and never fails silently.
    */
   async function save(): Promise<void> {
     const doc = state.doc;
     if (!doc) return;
-    const revision = doc.revision;
     set({ ...state, persistence: { ...state.persistence, status: 'saving' } });
-    const summary = core.tripSummary(doc);
-    const text = core.toJSON(doc);
     saving = (async () => {
+      const expectedRevision = state.persistence.savedRevision;
       try {
-        await ports.storage.save(doc.id, text, summary);
+        const storedText = await ports.storage.load(doc.id);
+        const storedRevision = storedText === null ? null : storedRevisionOf(storedText);
+
+        let toWrite = doc;
+        let merge: { message: string; report: core.MergeReport } | null = null;
+
+        if (storedText !== null && storedRevision !== expectedRevision) {
+          if (!baseDoc || baseDoc.id !== doc.id) {
+            throw new Error(
+              `This trip changed in another tab or window since it was opened here, and there is ` +
+                `no common version to merge against. Your edits are still on screen — open the ` +
+                `trip again from the library, or export this copy first. (stored revision ` +
+                `${String(storedRevision)}, this tab expected ${expectedRevision})`,
+            );
+          }
+          const remote = core.fromJSON(storedText);
+          const merged = core.mergeTrips(baseDoc, doc, remote);
+          toWrite = merged.trip;
+          merge = { message: core.describeMerge(merged.report), report: merged.report };
+        }
+
+        const summary = core.tripSummary(toWrite);
+        await ports.storage.save(toWrite.id, core.toJSON(toWrite), summary);
+        baseDoc = toWrite;
+
+        // The user may have kept typing while the write was in flight. Only adopt the
+        // merged document when the in-memory doc is still the one we started from.
+        const stillOurs = state.doc === doc;
         set({
           ...state,
+          ...(stillOurs ? { doc: toWrite } : {}),
           library: upsertSummary(state.library, summary),
-          persistence: { savedRevision: revision, status: 'idle' },
+          persistence: {
+            savedRevision: toWrite.revision,
+            status: 'idle',
+            // A merge notice survives later clean saves; only closing or switching trips
+            // clears it. A notice that vanishes on the next keystroke is not a disclosure.
+            ...(merge ?? state.persistence.lastMerge ? { lastMerge: merge ?? state.persistence.lastMerge } : {}),
+          },
         });
+        if (!stillOurs) scheduleSave();
       } catch (err) {
         set({
           ...state,
@@ -154,6 +219,18 @@ export function createStore(opts: StoreOptions) {
       return state;
     },
 
+    /**
+     * Dismisses the "this trip was edited elsewhere" notice left by a merged save (F-1).
+     * Touches persistence bookkeeping only; never the document, never a save.
+     */
+    clearMergeNotice(): AppState {
+      if (!state.persistence.lastMerge) return state;
+      const { lastMerge, ...rest } = state.persistence;
+      void lastMerge;
+      set({ ...state, persistence: rest });
+      return state;
+    },
+
     /** UI state only. Never touches the document and never schedules a save. */
     setUi(patch: Partial<UiState>): AppState {
       set(setUi(state, patch));
@@ -171,6 +248,7 @@ export function createStore(opts: StoreOptions) {
     async createTrip(init: core.TripInit): Promise<AppState> {
       const doc = core.createTrip(init, ctx());
       cache = null;
+      baseDoc = null;
       set({
         ...initialState(),
         library: state.library,
@@ -182,9 +260,18 @@ export function createStore(opts: StoreOptions) {
       return state;
     },
 
-    /** Adds an already-built trip (the Europe 2026 sample, or an import). */
+    /**
+     * Adds an already-built trip (the Europe 2026 sample, or an import).
+     *
+     * If storage ALREADY holds that id, the stored document wins and is opened instead.
+     * Adopting is how the sample is loaded, and re-loading the sample must never overwrite
+     * the copy Jacob has been editing — the same class of loss as F-2.
+     */
     async adoptTrip(doc: Trip): Promise<AppState> {
+      const existing = await ports.storage.load(doc.id);
+      if (existing !== null) return this.openTrip(doc.id);
       cache = null;
+      baseDoc = null;
       set({
         ...initialState(),
         library: state.library,
@@ -206,6 +293,7 @@ export function createStore(opts: StoreOptions) {
       if (text === null) throw new Error(`openTrip: no trip ${id} in storage`);
       const doc = core.fromJSON(text);
       cache = null;
+      baseDoc = doc;
       set({
         ...initialState(),
         library: state.library,
@@ -219,6 +307,7 @@ export function createStore(opts: StoreOptions) {
 
     async closeTrip(): Promise<AppState> {
       cache = null;
+      baseDoc = null;
       set({ ...initialState(), library: state.library });
       return state;
     },
@@ -228,6 +317,7 @@ export function createStore(opts: StoreOptions) {
       const library = state.library.filter((r) => r.id !== id);
       if (state.activeTripId === id) {
         cache = null;
+        baseDoc = null;
         set({ ...initialState(), library });
       } else set({ ...state, library });
       return state;
@@ -243,16 +333,49 @@ export function createStore(opts: StoreOptions) {
     },
 
     /**
-     * Imports a document. @throws {TripParseError} with a JSON path for a malformed file.
-     * A fresh id is minted when the incoming id already exists, so an import never
-     * overwrites an existing trip.
+     * Imports a document — **backup/restore of this user's own exports, and nothing else**.
+     *
+     * Two guards, both because Phase 1 lost data here (F-2):
+     *
+     *   1. A document whose `ownerId` is not this user's is REFUSED. Receiving a friend's
+     *      itinerary is not what this button is for; friends build their own trip and copy
+     *      individual activities across, which is Phase 2 work. Adopting a stranger's
+     *      document would also put a trip with someone else's `ownerId` and 112 unbadged
+     *      rows into storage, which §6.2 designs ownership now specifically to prevent.
+     *   2. The collision check reads **storage**, not `state.library` — the library is a
+     *      boot-time snapshot, and a tab that booted before a trip existed used to import
+     *      straight over it. When the id is already stored, a fresh id is minted, so an
+     *      import can never overwrite an existing trip.
+     *
+     * BUILD-NOTES §1, KD-11 — the architect is writing the formal contract into §2.10/§4.5
+     * and it may supersede the refusal with adopt-and-badge.
+     *
+     * @throws {TripParseError} with a JSON path for a malformed file.
+     * @throws {Error} for a document owned by another person.
      */
     async importDoc(text: string): Promise<AppState> {
       let doc = core.fromJSON(text);
-      if (state.library.some((r) => r.id === doc.id)) {
-        doc = { ...doc, id: ports.ids.newId('trip'), title: `${doc.title} (imported)` };
+      const owner = localOwner();
+      if (doc.ownerId !== owner) {
+        throw new Error(
+          `This trip is owned by another person (${doc.ownerId}). Import is for restoring ` +
+            `your own exported trips; it will not adopt somebody else's itinerary.`,
+        );
+      }
+      if ((await ports.storage.load(doc.id)) !== null) {
+        // The injected `IdFactory` is deterministic (it must be, for goldens), so a fresh
+        // id can itself collide with a stored one. Keep minting until it does not.
+        let fresh = ports.ids.newId('trip');
+        for (let i = 0; i < 100 && (await ports.storage.load(fresh)) !== null; i++) {
+          fresh = ports.ids.newId('trip');
+        }
+        if ((await ports.storage.load(fresh)) !== null) {
+          throw new Error('Import could not mint a free trip id; nothing was written.');
+        }
+        doc = { ...doc, id: fresh, title: `${doc.title} (imported)` };
       }
       cache = null;
+      baseDoc = null;
       set({
         ...initialState(),
         library: state.library,

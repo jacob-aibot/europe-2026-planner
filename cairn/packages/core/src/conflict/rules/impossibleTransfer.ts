@@ -5,11 +5,12 @@
  * Fixture case named in ARCHITECTURE §2.7: Aug 18, a 05:30 airport bus with a 40-minute
  * override leaving from a 05:00 checkout — 40 minutes of travel into a 30-minute gap.
  *
- * SEE BUILD-NOTES. The same arithmetic also fires on three vehicle stops (the LAX and LHR
- * long-hauls and the Dubrovnik→Split coach) where `arrival` holds the vehicle's own journey
- * time rather than a transfer, and the stop's time is a DEPARTURE. Those three are
- * artifacts of the legacy data shape, not real defects; the rule is implemented exactly as
- * specified and the objection is recorded rather than silently patched.
+ * The same arithmetic also fires on three vehicle stops (the LAX and LHR long-hauls and the
+ * Dubrovnik→Split coach) where `arrival` holds the vehicle's own journey time rather than a
+ * transfer, and the stop's time is a DEPARTURE. Those three are artifacts of the legacy data
+ * shape, not real defects; the rule is implemented exactly as specified and the objection is
+ * recorded rather than silently patched. BUILD-NOTES §1, KD-1 — including the 25 further
+ * stops that stay silent only by coincidence, and the two constraints on any fix.
  */
 import type { Conflict } from '../../model/types.ts';
 import { computeLegs, timeVal } from '../../derive/legs.ts';

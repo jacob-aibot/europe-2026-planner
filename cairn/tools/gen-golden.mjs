@@ -133,7 +133,8 @@ for (const day of trip.days) {
 writeJson('core-daycost.json', {
   ...header(
     'rollUpCost() per day, compared with the live dayCost() string. "divergent" days are ' +
-      'explained in BUILD-NOTES: they are the four money defects ARCHITECTURE §2.6 lists.',
+      'explained in BUILD-NOTES \u00a71 KD-3: they are the four money defects ARCHITECTURE \u00a72.6 lists. ' +
+      'NOTE: core-*.json files are SELF-SNAPSHOTS of this code, not independent goldens \u2014 KD-14.',
   ),
   days: coreCost,
 });

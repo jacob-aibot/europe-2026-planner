@@ -3,7 +3,7 @@
  *
  * "New trip" takes a title, a date range and a list of cities and produces a dense day
  * skeleton (§4.5). Duplicate and rename are the two things the roadmap allows to be
- * stubbed, and they are — see BUILD-NOTES.
+ * stubbed, and they are — BUILD-NOTES §1, KD-13, which lists all four Phase 1 stubs.
  */
 import { useState } from 'react';
 import type { AppState } from '@cairn/client';

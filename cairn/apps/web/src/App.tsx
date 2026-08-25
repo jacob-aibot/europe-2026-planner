@@ -61,6 +61,20 @@ export function App() {
         </div>
       )}
 
+      {state.persistence.status === 'error' && state.persistence.lastError && (
+        <div className="banner banner--error" role="alert">
+          Not saved. {state.persistence.lastError}
+          <button onClick={() => void store.flush()} aria-label="Retry">Retry</button>
+        </div>
+      )}
+
+      {state.persistence.lastMerge && (
+        <div className="banner" role="status">
+          {state.persistence.lastMerge.message}
+          <button onClick={() => store.clearMergeNotice()} aria-label="Dismiss">×</button>
+        </div>
+      )}
+
       {booting ? (
         <p className="empty">Opening your trips…</p>
       ) : state.doc ? (

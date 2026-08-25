@@ -1,7 +1,8 @@
 /**
  * The acceptance criteria of ROADMAP "Phase 1 — the numbers the tester will check".
  *
- * Where a number here disagrees with the roadmap, BUILD-NOTES says which is right and why.
+ * Where a number here disagrees with the roadmap, BUILD-NOTES §1 says which is right and
+ * why — KD-3 for day-cost parity, KD-4 for the ticket census.
  * Nothing in this file was adjusted to make code pass.
  */
 import { test } from 'node:test';
@@ -65,7 +66,8 @@ test('7 stops carry a Ticket — 3 of them bundled, over 2 distinct repo files',
   // ROADMAP says "2 of them kind:'bundled'". The live page has THREE stops pointing at
   // bundled PDFs (Aug 12 Gruž, Aug 14 → Skradin, Aug 14 → Split) because the Split↔Skradin
   // round trip is one PDF linked from both legs. 2 is the count of distinct FILES.
-  // See BUILD-NOTES; this expectation is the source of truth, not the roadmap's figure.
+  // BUILD-NOTES §1, KD-4. This expectation is the source of truth, not the roadmap's figure:
+  // 3 stops carry a bundled ticket, over 2 distinct files.
   const { trip } = europe2026();
   const ticketed = trip.days.flatMap((d) => d.stops).filter((s) => s.ticket);
   assert.equal(ticketed.length, 7);
