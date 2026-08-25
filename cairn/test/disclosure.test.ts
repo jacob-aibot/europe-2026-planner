@@ -182,8 +182,16 @@ test('the review\'s two corrected numbers carry their caveat next to them, not i
   assert.ok(ticketRow, 'the ticket census is not in the verified table');
   assert.match(ticketRow, /3 bundled/i, 'the ticket row still reports the wrong bundled count');
   assert.match(ticketRow, /KD-\d/, 'the ticket row does not carry its caveat');
-  const conflictRow = verified.split('\n').find((l) => /blockers/i.test(l) && /\|/.test(l));
+  // The blocker count may be reported as a RESULT only if the row says what backs it.
+  // Revision 1 reported "12 blockers" off `core-conflicts.json`, which is a self-snapshot
+  // (`gen-golden.mjs` says so in its own header) — a number that was satisfiable while nine
+  // of the twelve were noise. Either the row admits it is a snapshot, or it points at the
+  // per-blocker justification that ROADMAP rule 1 now requires in the golden. Both are
+  // honest; a bare count is not.
+  const conflictRow = verified.split('\n').find((l) => /blocker/i.test(l) && /\|/.test(l));
   assert.ok(conflictRow, 'the conflict count is not in the verified table');
-  assert.match(conflictRow, /self-snapshot/i, 'the blocker count is still reported as a result');
-  assert.match(conflictRow, /KD-\d/, 'the blocker row does not carry its caveat');
+  assert.ok(
+    /self-snapshot/i.test(conflictRow) || /one line per blocker/i.test(conflictRow),
+    'the blocker count is reported with nothing behind it: say it is a snapshot, or name the justification',
+  );
 });

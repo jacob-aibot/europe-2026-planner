@@ -355,7 +355,7 @@ partially met.**
 ```bash
 cd cairn
 npm install
-npm test          # 150 tests. Plain node, no browser, no network.
+npm test          # 230 tests. Plain node, no browser, no network.
 npm run typecheck # generates the sample first (see F-3 below), then both TS projects
 npm run cli -- trip           # headline counts and city ranges
 npm run cli -- day 2026-08-13 # one day: stops, legs, costs, badges
@@ -383,13 +383,14 @@ golden does and does not prove.
 
 | Piece | State |
 |---|---|
-| `packages/core` | Model, build, derive, conflict (11 rules), validate, access, serialize, legacy import, **merge**. |
-| `packages/client` | Store, reducer, ports, selectors, derived cache, **revision guard + merge on save**. |
+| `packages/core` | Model, build, derive (incl. **`geoCheck`**), conflict (**10 rules** — `closed` deleted), validate, access, serialize, legacy import, merge, **`copyStopInto`**. |
+| `packages/client` | Store, reducer, ports, selectors, derived cache, revision guard (refuse + explicit merge), **browse-another-trip**, `syncResolutions`. |
 | `packages/tokens` | Colours, category labels, mode icons, status badges. **No test of its own.** |
-| `apps/web` | Library, day view, day map, conflicts, validation, pool, places, import/export. |
+| `apps/web` | Library, day view, day map, conflicts, validation, pool, places, export, **restore-from-backup**, **Browse & copy** with the credit line. |
 | `cli.ts` | Complete. Export is path-guarded. |
 | `tools/extract-legacy.mjs` | Reads the live planner READ-ONLY. |
-| `tools/gen-sample.mjs` | Builds the web app's sample trip at build time. Output is gitignored. See KD-14 and F-19. |
+| `tools/gen-sample.mjs` | Builds the web app's sample trip at build time, **through `redactForSample`**, and fails the build if a credential survives. Output is gitignored. KD-14, KD-17, KD-18. |
+| `tools/redact.mjs` | The §6.6 pattern array and `redactForSample`. Never imported by `packages/core`. |
 | `tools/serve.mjs` | Zero-dependency static server for `apps/web/dist`. |
 | `tools/doc-section` | Prints one section of a docs file. |
 
@@ -397,93 +398,110 @@ golden does and does not prove.
 
 ## 4. Verified, by running it
 
-Every number below was produced by a command in this repo on this delivery. Where a number
-is misleading, the caveat is **next to the number**, not in a footnote.
+Every number below was produced by a command in this repo on this delivery, from a clean
+`git clone`. Where a number is misleading, the caveat is **next to the number**, not in a
+footnote.
 
 | What | Number | Command | Caveat |
 |---|---|---|---|
-| Tests | **150 pass, 0 fail** | `npm test` | Was 69. +81 this round: merge (14), access (27), build invariants (9), boundaries (7), disclosure (5), CLI export guard (9), store F-1/F-2 (8), the rewritten cost-parity test, and two replacing the vacuous conflict-id assertion (F-9). |
-| Typecheck | clean, both projects | `npm run typecheck` | From a clean clone, in the documented order. Previously failed (F-3). |
-| Web build | clean | `npm run web:build` | Bundle embeds the real trip — see F-19; **not committed, not deployed**. |
-| Import | 16 days · 112 scheduled stops · 31 pooled · 95 places · 21 bookings | `npm run cli -- import`, `-- trip` | Unchanged from last round. |
-| Tickets | **7 ticketed stops: 3 bundled over 2 files, 4 url** | ticket census through `importLegacyDays` | ROADMAP says "2 bundled". It is 3 stops / 2 files — **see KD-4**. The previous report said 2 and was wrong. |
-| Conflicts | **12 blockers, 4 warnings, 11 notes** | `npm run cli -- conflicts` | **This is a self-snapshot, not a result (KD-14), and 9 of the 12 blockers are noise.** Breakdown below. |
-| Validation | 1 error, 30 warnings | `npm run cli -- validate` | 20 of the 30 are `stop_far_from_city`; 13 of those 20 are the KD-2 false-positive class. |
-| Leg parity | 16 of 16 days exact | `npm test` (`derive.test.ts`) | Against the live page's own `legBetween`, run in a `node:vm`. This one is a real check. |
-| Day-cost parity | **6 of 16 exact, 10 divergent** | `npm test` (`derive.test.ts`) | ROADMAP asks for 16/16. **See KD-3** — every divergence is required by §2.6 and each is now classified and proved in the test. |
+| Tests | **230 pass, 0 fail** | `npm test` | Was 69 at the first delivery. |
+| Typecheck | clean, both projects | `npm run typecheck` | From a **clean clone**, in the documented order. Previously failed (F-3). |
+| Web build | clean | `npm run web:build` | The bundle now carries **none** of the five known strings — asserted, including `.js.map`. See KD-18. |
+| Import | 16 days · 112 scheduled stops · 31 pooled · 95 places · 21 bookings | `npm run cli -- import`, `-- trip` | Unchanged since the first delivery. |
+| Tickets | **7 ticketed stops: 3 bundled over 2 files, 4 url** | ticket census through `importLegacyDays` | ROADMAP now says 3/2 too; revision 1 said "2 bundled" and this report repeated it — **KD-4**. |
+| `travelRole` | **21 journey · 81 transfer · 10 unknown** of 112 | `import.test.ts` | Every `unknown` is a vehicle mode on a non-transit category, asserted individually, not just counted. |
+| Blockers | **2** | `npm run cli -- conflicts` | Was 12, of which 3 were actionable. Both remaining are Jacob's own `legacy_flag` days, and the golden carries one line per blocker saying why he must act — a third cannot appear without someone writing that line. |
+| `impossible_transfer` | **0 blockers, 0 warnings** | `conflict.test.ts` | Was 4. All four were departure-time artifacts — **including Aug 18**, which four reports called the one real defect. KD-1. Tightest remaining transfer margin: **7 min**, asserted. |
+| `geoCheck` clean run | **0 findings** — 0/112 stops, 0/94 places | `geoCheck.test.ts` | Was 6 false blockers + 20 validation warnings across two implementations. |
+| `geoCheck` injected fault | **112/112 stops, 92/94 places** caught at +1° latitude | `geoCheck.test.ts` | The two misses are `Blue Cave, Biševo` and `Stiniva Cove, Vis`, named in §2.13 and named in the test, so a third fails the run. |
+| Fisherman's Bastion typo | **1 blocker, `place-68`, 109 km** | `geoCheck.test.ts` | Revision 1: 27 conflicts before the typo, 27 after. This is the criterion that would have caught the old rule. |
+| Validation | **1 error, 10 warnings** | `npm run cli -- validate` | Was 1 and 30; 20 of those 30 were `stop_far_from_city`, which is deleted. |
+| Leg parity | **16 of 16 days** exact | `derive.test.ts` | Against the live page's own `legBetween`, run in a `node:vm`. Mode and minutes exact, km within 1e-6. Byte-identical before and after `travelRole` — `npm run golden` produces no diff. |
+| Day-cost parity | **6 of 16 exact, 10 divergent** | `derive.test.ts` | ROADMAP now says 6/16 too. Each of the ten is classified AND the classification is proved against the data — **KD-3**. |
+| Export surface | **112 runtime symbols against §2.10's 50** | `surface.test.ts` | **Enumerated, not narrowed — KD-19.** Every extra symbol is listed with the caller that needs it. This criterion is partially met and is reported as partially met. |
+| Redaction | 6/6 known leaks gone; every pattern exercised; 6 prose strings survive | `test/redact.test.ts` | `importLegacyDays` output is unchanged, so cost and leg parity are untouched — asserted. KD-17, KD-18. |
 | Read-only boundary | 0 modified tracked files | full run then `git status --porcelain` | See §7. |
 
-**The 12 blockers, line by line — 3 you would act on, 9 you would not:**
+**The 2 blockers, line by line.** Revision 1's table needed twelve rows and nine of them
+said "no". This is the whole table now:
 
 | # | Rule | Subject | Act on it? |
 |---|---|---|---|
-| 1 | `legacy_flag` | Aug 18 — Jacob's own rebuild note | **Yes** — his flag |
-| 2 | `legacy_flag` | Aug 20 — the 7:30am/7:30pm correction | **Yes** — his flag |
-| 3 | `impossible_transfer` | Aug 18, 05:00 checkout → 05:30 bus, 40 min | **Yes** — genuinely impossible |
-| 4 | `impossible_transfer` | Aug 07, Condor DE2081 | No — KD-1 departure-time artifact |
-| 5 | `impossible_transfer` | Aug 12, FlixBus → Split | No — KD-1 |
-| 6 | `impossible_transfer` | Aug 22, Virgin VS23 | No — KD-1 |
-| 7 | `geo_outlier` | Aug 15, Vienna morning on a prague day | No — KD-2, another same-day city |
-| 8 | `geo_outlier` | Aug 21, Budapest sunrise on a london day | No — KD-2, another same-day city |
-| 9 | `geo_outlier` | Aug 08, FRA connect | No — KD-2, unexplained by the proposed fix |
-| 10 | `geo_outlier` | Aug 14, Arrive Skradin | No — KD-2, a Krka day trip |
-| 11 | `geo_outlier` | Aug 14, Roški Slap | No — KD-2, a Krka day trip |
-| 12 | `geo_outlier` | Aug 14, Visovac/Roški Slap excursion | No — KD-2, a Krka day trip |
+| 1 | `legacy_flag` | Aug 18 — Jacob's own rebuild note | **Yes** — his flag, his words |
+| 2 | `legacy_flag` | Aug 20 — the 7:30am/7:30pm correction | **Yes** — his flag, his words |
 
-I could not write that table nine times without concluding the rules need the architect's
-decision. That is what KD-1 and KD-2 are for.
+**Driven in real Chromium, over CDP with real elapsed time** (not `--virtual-time-budget`,
+which stalls the app at "Opening your trips…" because virtual time does not advance while
+IndexedDB is pending): the sample loads and still reads properly after redaction; a second
+trip is created; "Browse & copy" lists the other trip's 112 stops read-only without
+switching the active trip; copying one produces a stop that is badged *from a friend*,
+carries a credit line, and **still carries both after a reload out of IndexedDB**; the
+served bundle contains none of the five known strings; and restoring a document owned by
+`user:marta` is refused with *"This trip belongs to someone else"* and does not enter the
+library.
 
----
-
-## 5. Defects fixed this round
+## 5. Defects fixed, across both rounds of this re-delivery
 
 | # | What | Where | Proof |
 |---|---|---|---|
-| F-1 | `save()` had no compare-and-set; two tabs destroyed each other's edits and the loser said "Saved" | `client/src/store/store.ts` | `store.test.ts` ×4, `merge.test.ts` ×14, `qa/browser5.mjs` |
-| F-2 | `importDoc` checked the in-memory library, not storage; and now refuses a foreign `ownerId` | `client/src/store/store.ts` | `store.test.ts` ×3, `qa/client1.mjs`, `qa/browser4.mjs` |
-| F-3 | `npm run typecheck` failed on a clean clone | `package.json` | run from a scratch clone |
+| F-1 | `save()` had no compare-and-set; two tabs destroyed each other's edits and the loser said "Saved" | `client/src/store/store.ts` | `store.test.ts` ×5, `merge.test.ts` ×14, `qa/browser5.mjs` |
+| F-2 | `importDoc` checked the in-memory library, not storage | `client/src/store/store.ts` | `store.test.ts` ×3, `qa/client1.mjs`, `qa/browser4.mjs` |
+| F-6 | a friend's trip arrived unbadged, keeping their `ownerId` | `core/src/build/copyStop.ts`, `client/src/store/store.ts` | `copyStop.test.ts` ×20, `serialize.test.ts`, real Chromium |
+| F-3 | `npm run typecheck` failed on a clean clone | `package.json` | run from a scratch clone of `master` |
 | F-7 | `updateStop` accepted `id`, `placement` and `provenance` at runtime | `core/src/build/stops.ts` | `build.test.ts` ×5 |
-| F-11 | `createTrip` accepted `2026-13-45` and `2026-02-30` | `core/src/model/ids.ts`, `build/createTrip.ts` | `build.test.ts` ×3, `access.test.ts` | 
+| F-8 | the `closed` rule could not fire — 0 of 95 places carry hours | rule **deleted** | KD-5 |
+| F-9 | `conflict.test.ts:158` asserted `notDeepEqual([Y,X],[X])`, which passes on a list that merely grew | `core/test/conflict.test.ts` | two tests, one per direction |
+| F-10 | a dismissed conflict returned still dismissed when the data reverted | `core/src/conflict/resolve.ts` `syncResolutions` | `conflict.test.ts` ×3 |
+| F-11 | `createTrip` accepted `2026-13-45` and `2026-02-30` | `core/src/model/ids.ts` `isIsoDate` | `build.test.ts` ×3, `serialize.test.ts` |
+| F-12 | `fromJSON` was reported to accept unknown enums and non-numeric coordinates | **it does not** | `serialize.test.ts` ×14 — see §6 |
 | F-13 | `canView` returned `true` on an expired share when `now` was `undefined` or `''` | `core/src/access/predicates.ts` | `access.test.ts` ×27 |
-| F-15 | `rollUpCost` called with no target, so a EUR trip rendered "No conversion rate for EUR" | `client/src/store/derived.ts` | — see §6 |
+| F-15 | `rollUpCost` called with no target, so a EUR trip rendered "No conversion rate for EUR" | `client/src/store/derived.ts` | see §6 |
 | F-16 | `cli export` could overwrite the live planner | `cli.ts` | `test/cli.test.ts` ×6 |
-| M-6 | §3's dependency-direction test did not exist | `test/boundaries.test.ts` | mutation-checked (see §6) |
-| F-9 | `conflict.test.ts:158` asserted `notDeepEqual([Y,X],[X])`, which passes on a list that merely grew | `core/test/conflict.test.ts` | two tests: an edit INSIDE the conflict drops the acknowledgement; an edit outside it does not |
+| F-17 | `accepted_without_timestamp` was checked for stops and not bookings | `core/src/validate/validateTrip.ts` | `copyStop.test.ts` |
+| F-18 | `geo_outlier` put raw `lat`/`lng` into `Conflict.params` and into a committed golden | `core/src/conflict/rules/geoOutlier.ts` | `conflict.test.ts` greps for float pairs |
+| F-19 | the built bundle embedded a door PIN, refs and live ticket URLs | `tools/redact.mjs` | `test/redact.test.ts` ×10, real Chromium |
+| F-4/F-5 | `impossible_transfer` and `geo_outlier` crying wolf | §2.12 `travelRole`, §2.13 `geoCheck` | KD-1, KD-2 |
+| M-6 | §3's dependency-direction test did not exist | `test/boundaries.test.ts` | mutation-checked — see §6 |
 | M-1/M-2 | source comments cited a BUILD-NOTES section that did not exist | §1 above, `test/disclosure.test.ts` | `npm test` |
 
-Also fixed last round and still true: UI state leaking across a trip switch; the unreachable
-`cities:['transit']` day; `fixtures/loadEurope2026.mjs` having no declarations.
-
----
+**Not fixed, and named as not fixed:** F-14 / the §2.10 export surface — enumerated rather
+than narrowed, KD-19.
 
 ## 6. Not verified, and why
 
 - **F-15 has no automated test.** The fix is one argument in `derived.ts` and I confirmed by
-  reading `cost.ts` that `missingRates` excludes the target, but I did not add a test that
-  renders `DayTimeline` and asserts the string is gone, because nothing in this repo renders
-  React outside a browser. **Treat F-15 as fixed-by-inspection, not fixed-by-test.**
-- **`qa/browser4.mjs` and `qa/browser5.mjs`.** See the report accompanying this delivery for
-  exactly which browser probes ran and which did not.
+  reading `cost.ts` that `missingRates` excludes the target, but nothing in this repo renders
+  React outside a browser and I did not add a harness for one string. **Treat F-15 as
+  fixed-by-inspection, not fixed-by-test.**
+- **F-12 disagrees with the review and I could not reconcile it.** The review reports
+  `fromJSON` accepting `category:'nuclear'`, `source:'nsa'`, `kind:'telepathic'`,
+  `lat:'33.9425'` and `lat:1e999`. I ran all five against `master` and all five are rejected
+  with a `TripParseError` carrying a JSON path, and `oneOf`/`numOf` have been there since the
+  first delivery. `serialize.test.ts` now pins fourteen such cases so the question cannot
+  come back unanswered — but I do not know what the review ran, and "the finding does not
+  reproduce" is a weaker statement than "the finding was wrong".
+- **The merge under a real IndexedDB race.** `store.save()` does `load` → compare → `save`
+  with no transaction around it, because `StoragePort` has none. Two tabs writing inside one
+  event-loop turn can still interleave. The window is far smaller and the guard catches the
+  case Jacob will hit, but this is **not** a compare-and-swap at the storage layer and should
+  not be described as one. Phase 2's `SyncPort` is where that belongs.
 - **Map tiles.** This sandbox has no route to `tile.openstreetmap.org`; every tile request
-  fails with `ERR_TUNNEL_CONNECTION_FAILED`. Leaflet mounts, pins and the polyline render,
+  fails with `ERR_TUNNEL_CONNECTION_FAILED`. Leaflet mounts, pins and the polyline render and
   bounds are applied — nobody has seen a tile behind them.
 - **Safari and iOS.** Everything was driven in Chromium. The storage-eviction and
   installed-web-app behaviour in §1.1 is unverified on a device.
 - **Real IndexedDB under quota exhaustion.** Covered through the in-memory port's `failAll`;
   not provoked against a real browser quota.
-- **The merge under a real IndexedDB race.** `store.save()` does `load` → merge → `save` with
-  no transaction around it, because `StoragePort` has no transaction. Two tabs writing within
-  the same event-loop turn can still interleave. The window is much smaller than before and
-  the guard catches the common case, but this is **not** a compare-and-swap at the storage
-  layer and should not be described as one. Phase 2's `SyncPort` is where that belongs.
+- **`copyStopInto` from a genuinely foreign trip.** Exercised over two local trips, which is
+  the Phase 1 path, and over a hand-built `ownerId:'user:marta'` document in
+  `copyStop.test.ts`. There is no server and no second user, so nobody has copied a stop
+  across an account boundary.
 - **`node --test` on Node 24.** ROADMAP specifies Node 24; this environment is Node 22.22.2,
-  where type stripping is already unflagged and all 150 tests run. `engines` says `>=22.18`.
-- **The boundary test was mutation-checked**, which is the only reason I trust a test that
-  passed the first time it ran: adding `node:fs`, `@cairn/tokens` and a
-  `../../../../apps/web/src/store.ts` import to `core/src/derive/geo.ts` produced all three
-  expected violations, and the file was restored.
-
----
+  where type stripping is already unflagged and all 230 tests run. `engines` says `>=22.18`.
+- **The boundary and disclosure tests were mutation-checked**, which is the only reason I
+  trust tests that passed the first time they ran: adding `node:fs`, `@cairn/tokens` and an
+  `apps/web` import to `core/src/derive/geo.ts` produced all three expected violations, and
+  the file was restored.
 
 ## 7. The read-only boundary
 
