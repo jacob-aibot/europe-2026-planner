@@ -81,8 +81,12 @@ collapses most of the sharing-permission surface into declarative policy instead
 For a project this size that trade may be worth more than stack purity.
 
 Data model to design against, at minimum: `User`, `Trip`, `TripMember`, `Stop`, `Place`, `Booking`,
-`Ticket`, `MailAccount`, `IngestCandidate`, `Friendship`, `TripShare`, `TripFork`/`StopImport`,
+`Ticket`, `MailAccount`, `IngestCandidate`, `Friendship`, `TripShare`, `StopImport`,
 `Conflict`, `LocationPoint`/`LocationSegment`, `PhotoAsset`.
+
+*(`TripFork` was in this list and is cut — see Jacob's decision on sharing below. Sharing is
+stop-level. `StopImport` is not a table either; it is the `origin` block on a copied stop's
+provenance. ARCHITECTURE §2.14.)*
 
 Two design positions to take a view on explicitly:
 - Are **days** stored, or derived from a date range plus stops? (Today they are stored.)
@@ -118,6 +122,34 @@ Settled. Do not relitigate these; raise a flag if the design forces one open.
   handling that stores candidates rather than messages. Explicitly deferred until strangers arrive:
   moderation, rate limiting, billing, admin tooling, scaling, i18n.
 - **Working name is "Cairn"** — placeholder, not yet chosen.
+
+### 2026-08-25, after the Phase 1 review — two answers that change the design
+
+**1. The demo trip stays Europe 2026, but credentials never reach a build.** The Phase 1 build baked
+Jacob's hotel door PIN, booking confirmation numbers and live unauthenticated ticket URLs into
+`apps/web/dist`. His answer: keep the real trip as the sample — it is the only trip that exercises
+overnight legs, multi-city days and real conflicts — and **redact door PINs, booking references and
+ticket URLs before anything is written to a build artifact**. This is a *rule applied by the sample
+generator*, covered by a test, not a one-off scrub. ARCHITECTURE §6.6.
+
+**2. "Import JSON" is not how friends share. Stop-level copy is.** In Jacob's words:
+
+> *"They wouldn't import their trip — they would build it on this app. This is a space for them to
+> create their own itinerary — they could even look at mine and just add a certain activity."*
+
+So, settled:
+
+- **`importDoc` is backup/restore of the user's own exports.** It refuses a document owned by
+  someone else, visibly. It is not a sharing channel and the Library must not present it as one.
+- **The social primitive is in-app and stop-level:** browse someone else's trip read-only, copy one
+  stop into yours, with provenance preserved. That is `copyStopInto`, and it ships in Phase 1 —
+  copying between two of your own trips — so the provenance rule is exercised long before a friend
+  exists to break it.
+- **`TripFork` is cut.** Copying a whole trip is `copyStopInto` in a loop plus a credit edge nobody
+  asked for. If it comes back it is a loop over the primitive, not a new one.
+
+The rule *"never present a suggestion as the user's own plan"* is now enforced **on the copy path**,
+which is where it will actually be exercised. ARCHITECTURE §2.14.
 
 ## Working rules
 
