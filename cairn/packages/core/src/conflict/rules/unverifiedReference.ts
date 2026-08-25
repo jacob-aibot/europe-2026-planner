@@ -1,7 +1,7 @@
 /**
  * `unverified_reference` — a booking asserted by a human with no document behind it.
  *
- * `confidence === 'asserted'` and no `origin.messageId`. Fixture cases: IU1TUY and I54C9A,
+ * `confidence === 'asserted'` and no `origin.messageId`. Fixture cases: the two Ryanair refs,
  * both given verbally and never found in either inbox. `BOOKINGS.md` records what happened
  * the last time software inferred around one of them.
  */

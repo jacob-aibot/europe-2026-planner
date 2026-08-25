@@ -4,7 +4,11 @@
  * build time").
  *
  * Adjacent, not copied: this reads `../europe-2026-itinerary.html` READ-ONLY at build time
- * and writes a generated file that is **gitignored**. No copy of `DAYS` is committed. If
+ * and writes a generated file that is **gitignored**. The written trip is passed through
+ * `redactForSample` (§6.6) first — booking references, seats, tickets, link hrefs and any
+ * credential-shaped token in free text are stripped, because §7 puts the public share-page
+ * host on this same build in Phase 2. The check below fails the build, not a review.
+ * BUILD-NOTES §1, KD-17 and KD-18. No copy of `DAYS` is committed. If
  * the live planner is missing — someone cloned only `cairn/` — it writes `null` and the app
  * simply offers no sample trip rather than failing to build.
  */
@@ -26,13 +30,34 @@ if (!existsSync(SOURCE)) {
 }
 
 const { loadEurope2026 } = await import('../fixtures/loadEurope2026.mjs');
-const { toJSON } = await import('../packages/core/src/index.ts');
+const { toJSON, fromJSON } = await import('../packages/core/src/index.ts');
+const { redactForSample, redactionHits, allStrings } = await import('./redact.mjs');
 
 const { trip, issues, sha256 } = loadEurope2026();
-writeFileSync(OUT, `${toJSON(trip)}\n`);
+
+// ARCHITECTURE §6.6. Redaction happens HERE, between `importLegacyDays` and the JSON
+// write — never inside `packages/core`. `importLegacyDays` output is unchanged, so the
+// CLI, the tests and every golden keep reading the real trip and cost and leg parity are
+// untouched. Redaction is a property of the build artifact, not of the model. KD-18.
+const redacted = fromJSON(toJSON(redactForSample(trip)));
+
+// Fail the BUILD, not a review. A sample that still carries a credential does not ship.
+const leaks = [];
+for (const str of allStrings(JSON.parse(toJSON(redacted)))) {
+  const hits = redactionHits(str);
+  if (hits.length) leaks.push(`${hits.join(',')}: ${str.slice(0, 80)}`);
+}
+if (leaks.length) {
+  console.error(`gen-sample: ${leaks.length} redaction failures — refusing to write the sample:`);
+  for (const l of leaks.slice(0, 10)) console.error(`  ${l}`);
+  process.exit(1);
+}
+
+writeFileSync(OUT, `${toJSON(redacted)}\n`);
 console.log(
   `gen-sample: ${trip.days.length} days, ` +
     `${trip.days.reduce((n, d) => n + d.stops.length, 0)} stops, ` +
     `${trip.pool.length} pool, ${trip.places.length} places, ` +
-    `${issues.length} import issues → src/sample/europe2026.json (source ${sha256.slice(0, 12)})`,
+    `${issues.length} import issues → src/sample/europe2026.json ` +
+    `(source ${sha256.slice(0, 12)}, REDACTED per ARCHITECTURE §6.6)`,
 );

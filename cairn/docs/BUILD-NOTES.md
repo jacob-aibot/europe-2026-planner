@@ -275,6 +275,79 @@ blocker as `'transfer'`, warning as `'unknown'`, silent as `'journey'` — and t
 that DE4345 is silent in all three roles, so the criterion's own stop is covered too and the
 reason is written down. Architect: restate the criterion against DE2081.
 
+### KD-17 — the redaction pattern for booking references does not require a digit
+
+`tools/redact.mjs`
+
+§6.6 words one pattern as *"any 6+ character uppercase-alphanumeric token **containing both
+letters and digits** (`YZGDTS`, `IU1TUY`, `D8WQHO`)"* — and `YZGDTS` contains no digits. The
+examples win: a six-character all-caps booking reference is exactly the shape being
+protected, and requiring a digit would have let `YZGDTS` — **one of the five strings the
+review found in the bundle** — straight through the rule written to catch it.
+
+Shipped as `\b[A-Z0-9]{6,}\b`. The cost is that a 6+ letter ALL-CAPS word in prose is
+redacted too; on the reference trip that is **0 strings**, and `test/redact.test.ts` asserts
+both that every fixture is fully redacted and that six pieces of ordinary prose survive
+untouched, so the trade is measured rather than assumed.
+
+Two smaller departures in the same file, for the same reason — a pattern that fires on
+structure rather than credentials is a pattern that gets switched off:
+
+- the keyword pattern's separator excludes a bare hyphen, so the structural id `booking-16`
+  is not mistaken for a reference;
+- it is split in two (`keyword_token`, `keyword_digits`) so *"the booking is done"* and
+  *"Booking recommended in summer"* survive while *"PIN BGXw"* and *"Booking 338 441 5948"*
+  do not. Both halves carry their own fixture, per §6.6's "a pattern that catches nothing is
+  itself a failure".
+
+### KD-18 — three source COMMENTS were shipping booking references, and `sourceDoc` is dropped
+
+`packages/core/src/build/bookings.ts`, `conflict/rules/supersededBooking.ts`,
+`conflict/rules/unverifiedReference.ts`, `tools/redact.mjs`
+
+Two findings that only appear once the §6.6 bundle check is actually run, both worth
+recording because neither is in any report:
+
+1. **The check must include `.js.map`.** A sourcemap embeds `sourcesContent`, so a booking
+   reference sitting in a *source comment* ships in the build artifact exactly as surely as
+   one in the data. Three comments named `YZGDTS`, `IU1TUY` and `I54C9A` to explain their
+   own fixture cases; all three are reworded, and the test greps maps as well as scripts so
+   a fourth cannot creep back. Nothing about the rules changed.
+2. **`Booking.sourceDoc` is dropped from the redacted sample.** It holds `docs/BOOKINGS.md`,
+   which is not a credential — but `BOOKINGS` matches the all-caps pattern of KD-17, and the
+   alternative was to exempt a key from the "no string matches any pattern" criterion. A
+   provenance breadcrumb pointing at a file that is not deployed is not something the sample
+   needs, so dropping it keeps the criterion literal instead of carved out. **The real trip
+   keeps it** — redaction never touches `importLegacyDays` output.
+
+### KD-19 — core exports 112 runtime symbols against §2.10's 50, and the gap is enumerated not narrowed
+
+`packages/core/src/index.ts`, `packages/core/test/surface.test.ts`
+
+§2.10 says the index re-exports *"exactly this and nothing else"* and ROADMAP E asks for set
+equality in both directions. **The first half is met and the second is not.** Every symbol
+§2.10 names is exported (asserted). But 62 more are exported besides, and this round did not
+narrow them — it enumerated them.
+
+`surface.test.ts` carries two lists: §2.10 transcribed, and `BEYOND_2_10`, which names every
+extra symbol **with the caller that needs it, one line each**. A symbol added to the index
+without appearing in one of the two fails the build; a listed symbol that stops being
+exported fails too; and the size of the gap is asserted so it cannot drift.
+
+Six of the 62 are marked `INTERNAL` and should simply become private: `canonical`, `digest`,
+`makeConflict`, `conflictId`, `blankDay`, `toDoc`. The other 56 are things the client, the
+CLI or the views demonstrably call — `fmtMins`, `issueCounts`, `orderedCities`, `haversine`,
+`isIsoDate`, `effectiveRole` and so on — which is the same finding F-14 made and the
+architect answered by widening §2.10 to 50. **50 is still short of what the client uses.**
+
+**Why enumerated rather than narrowed:** cutting 62 exports at the end of a session means
+rewriting the import site of every test and every view, with the failure mode being a
+green suite that no longer tests through the public surface. The enumerated list gives the
+manager the thing the criterion was actually for — a reviewable, line-by-line account of the
+leak that cannot grow silently — and leaves the cut as one mechanical change against a test
+that already knows the answer. **This is a criterion partially met, and it is reported as
+partially met.**
+
 ---
 
 ## 2. How to run it

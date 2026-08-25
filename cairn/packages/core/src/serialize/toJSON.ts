@@ -161,7 +161,7 @@ export function toDoc(trip: Trip): Record<string, unknown> {
     places: trip.places.map(place),
     bookings: trip.bookings.map(booking),
     resolutions: trip.resolutions.map((r) =>
-      omitUndef({ conflictId: r.conflictId, state: r.state, by: r.by, at: r.at, note: r.note }),
+      omitUndef({ conflictId: r.conflictId, state: r.state, by: r.by, at: r.at, note: r.note, retiredAt: r.retiredAt ?? null }),
     ),
     revision: trip.revision,
     meta: trip.meta,

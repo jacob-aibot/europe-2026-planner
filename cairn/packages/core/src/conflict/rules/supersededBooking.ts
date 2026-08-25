@@ -1,6 +1,6 @@
 /**
  * `superseded_booking` — two bookings sharing `operator + reference` with different issue
- * dates. Emits *supersedes*, NOT *duplicate*: the YZGDTS reissue is one ticket reissued,
+ * dates. Emits *supersedes*, NOT *duplicate*: the Smartwings reissue is one ticket reissued,
  * and calling it a duplicate is how a correct plan gets quietly overwritten (§5.1).
  */
 import type { Booking, Conflict } from '../../model/types.ts';

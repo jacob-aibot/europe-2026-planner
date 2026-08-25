@@ -362,6 +362,46 @@ export function createStore(opts: StoreOptions) {
       return state;
     },
 
+    /**
+     * Opens another stored trip READ-ONLY beside the active one, for copying stops across
+     * (§2.14). It does **not** become the active document, is never dispatched against and
+     * is never written back.
+     *
+     * @throws {Error} if the id is not in storage or the stored document is corrupt.
+     */
+    async browseTrip(id: string): Promise<Trip> {
+      const text = await ports.storage.load(id);
+      if (text === null) throw new Error(`browseTrip: no trip ${id} in storage`);
+      const doc = core.fromJSON(text);
+      set({ ...state, browsing: doc });
+      return doc;
+    },
+
+    async closeBrowse(): Promise<AppState> {
+      set({ ...state, browsing: null });
+      return state;
+    },
+
+    /**
+     * Retires every stored resolution whose conflict is no longer reported (§2.7).
+     *
+     * The client calls this after recomputing the derived conflict set — it is the one
+     * build function driven by derived data. Without it, content-addressing lets a
+     * dismissed blocker come back still dismissed as soon as the data reverts, which is
+     * exactly what §2.7 exists to prevent.
+     */
+    syncResolutions(): AppState {
+      const doc = state.doc;
+      if (!doc) return state;
+      const derived = derivedFor(cache, doc, ports.clock.today());
+      cache = derived;
+      const next = core.syncResolutions(doc, derived?.conflicts ?? [], ports.clock.today());
+      if (next === doc) return state;
+      set({ ...state, doc: next });
+      scheduleSave();
+      return state;
+    },
+
     async closeTrip(): Promise<AppState> {
       cache = null;
       baseDoc = null;
@@ -413,12 +453,7 @@ export function createStore(opts: StoreOptions) {
     async importDoc(text: string): Promise<AppState> {
       let doc = core.fromJSON(text);
       const owner = localOwner();
-      if (doc.ownerId !== owner) {
-        throw new Error(
-          `This trip is owned by another person (${doc.ownerId}). Import is for restoring ` +
-            `your own exported trips; it will not adopt somebody else's itinerary.`,
-        );
-      }
+      if (doc.ownerId !== owner) throw new core.ForeignDocumentError(doc.ownerId, owner);
       if ((await ports.storage.load(doc.id)) !== null) {
         // The injected `IdFactory` is deterministic (it must be, for goldens), so a fresh
         // id can itself collide with a stored one. Keep minting until it does not.

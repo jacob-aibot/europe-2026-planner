@@ -34,6 +34,8 @@ export { scheduleFromPool, returnToPool, pickDay, poolFor, CAT_DEFAULT_TIME } fr
 export type { ScheduleHint } from './build/pool.ts';
 export { upsertBooking, linkBooking, supersedeBooking, stopsForBooking } from './build/bookings.ts';
 export { acceptCandidate, rejectCandidate } from './build/candidates.ts';
+export { copyStopInto } from './build/copyStop.ts';
+export type { CopyStopSource, CopyStopCtx } from './build/copyStop.ts';
 
 // ---- derive -----------------------------------------------------------------
 export { computeLegs, legBetween, dayMovingMinutes, dayDistanceKm, timeVal, fmtMins } from './derive/legs.ts';
@@ -47,7 +49,7 @@ export {
 export type { FocusResult, MapBounds } from './derive/cluster.ts';
 export { rollUpCost, dayCost } from './derive/cost.ts';
 export type { RollUpScope, RollUpOpts } from './derive/cost.ts';
-export { displayStatus, needsBadge, statusLabel } from './derive/display.ts';
+export { displayStatus, needsBadge, statusLabel, attribution } from './derive/display.ts';
 export {
   cityRange, tripSummary, daysForCity, orderedCities, addDays, dayNumber, dateSpan,
   parseIsoDate, fromDayNumber, weekdayOf,
@@ -57,11 +59,12 @@ export type { TripSummaryRow } from './derive/summary.ts';
 // ---- conflict ---------------------------------------------------------------
 export { detectConflicts, conflictsFor, RULES } from './conflict/detect.ts';
 export type { DetectOpts } from './conflict/detect.ts';
-export { resolveConflict, unresolveConflict } from './conflict/resolve.ts';
+export { resolveConflict, unresolveConflict, syncResolutions } from './conflict/resolve.ts';
+export type { ResolutionInit } from './conflict/resolve.ts';
 export { conflictId, makeConflict, digest, canonical } from './conflict/id.ts';
 
 // ---- validate ---------------------------------------------------------------
-export { validateTrip, issueCounts } from './validate/validateTrip.ts';
+export { validateTrip, issueCounts, STALE_RESOLUTION_LIMIT } from './validate/validateTrip.ts';
 
 // ---- merge -------------------------------------------------------------------
 // NOT on §2.10's list. Added to implement §2.2's "last-writer-wins per stop with a
@@ -75,7 +78,7 @@ export type { Principal, Relationship, Role, Operation } from './access/predicat
 
 // ---- serialize --------------------------------------------------------------
 export { toJSON, toDoc } from './serialize/toJSON.ts';
-export { fromJSON, TripParseError } from './serialize/fromJSON.ts';
+export { fromJSON, TripParseError, ForeignDocumentError } from './serialize/fromJSON.ts';
 export { migrateDoc } from './serialize/migrate.ts';
 
 // ---- import -----------------------------------------------------------------

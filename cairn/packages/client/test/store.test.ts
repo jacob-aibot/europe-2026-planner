@@ -626,7 +626,12 @@ test('import refuses a document owned by somebody else', async () => {
   const mine = core.fromJSON(await s.exportActive());
   const theirs = core.toJSON({ ...mine, id: 'trip-marta', ownerId: 'user:marta' });
 
-  await assert.rejects(() => s.importDoc(theirs), /another person|not yours|owned by/i);
+  await assert.rejects(() => s.importDoc(theirs), (e: Error) => {
+    assert.equal(e.name, 'ForeignDocumentError');
+    assert.equal((e as { ownerId?: string }).ownerId, 'user:marta');
+    assert.match(e.message, /belongs to someone else/i);
+    return true;
+  });
   assert.equal(storage.docs.has('trip-marta'), false);
   assert.equal(s.getState().activeTripId, mine.id, 'the active trip changed on a refused import');
 });
@@ -639,4 +644,83 @@ test('import accepts a document owned by this store\'s own owner id', async () =
   await s.deleteTrip(s.getState().activeTripId as string);
   await s.importDoc(text);
   assert.equal(s.getState().doc?.ownerId, 'user:jacob');
+});
+
+// ---------------------------------------------------------------------------
+// §2.14 — browse another trip, copy one stop across
+// ---------------------------------------------------------------------------
+
+test('browseTrip loads another stored trip READ-ONLY, without switching the active trip', async () => {
+  const p = ports();
+  const store = createStore({ ports: p });
+  await store.createTrip({ ...TRIP_INIT, title: 'Source' } as Parameters<typeof store.createTrip>[0]);
+  const sourceId = store.getState().activeTripId as string;
+  const sourceDay = store.getState().doc?.days[0].id as string;
+  store.dispatch(addStopAction(sourceDay, 'A café worth stealing'));
+  await store.flush();
+
+  await store.createTrip({ ...TRIP_INIT, title: 'Mine' } as Parameters<typeof store.createTrip>[0]);
+  const mineId = store.getState().activeTripId as string;
+  await store.refreshLibrary();
+
+  const browsed = await store.browseTrip(sourceId);
+  assert.equal(browsed.id, sourceId);
+  assert.equal(store.getState().activeTripId, mineId, 'browsing must not switch trips');
+  assert.equal(store.getState().doc?.id, mineId);
+  assert.equal(store.getState().browsing?.id, sourceId);
+
+  await store.closeBrowse();
+  assert.equal(store.getState().browsing, null);
+});
+
+test('copying a stop from a browsed trip badges and credits it, and never says "own"', async () => {
+  const p = ports();
+  const store = createStore({ ports: p, ownerId: 'user:jacob' });
+  await store.createTrip({ ...TRIP_INIT, title: 'Marta', ownerId: 'user:marta' } as Parameters<typeof store.createTrip>[0]);
+  const sourceId = store.getState().activeTripId as string;
+  const sourceDay = store.getState().doc?.days[0].id as string;
+  store.dispatch(addStopAction(sourceDay, 'Naschmarkt'));
+  await store.flush();
+  const sourceStopId = store.getState().doc?.days[0].stops[0].id as string;
+
+  await store.createTrip({ ...TRIP_INIT, title: 'Jacob' } as Parameters<typeof store.createTrip>[0]);
+  const myDay = store.getState().doc?.days[0].id as string;
+  await store.refreshLibrary();
+  const source = await store.browseTrip(sourceId);
+
+  store.dispatch({
+    type: 'copyStopInto',
+    source: { trip: source, stopId: sourceStopId },
+    placement: { kind: 'scheduled', dayId: myDay, time: '10:00', order: 0 },
+  } as Action);
+  await store.flush();
+
+  const copiedStop = store.getState().doc?.days[0].stops[0];
+  assert.ok(copiedStop);
+  assert.notEqual(copiedStop.id, sourceStopId);
+  assert.equal(core.displayStatus(copiedStop), 'imported');
+  assert.deepEqual(core.attribution(copiedStop), {
+    friendUserId: 'user:marta', sourceTripId: sourceId, sourceStopId,
+  });
+
+  // and it survives the round trip through storage
+  const stored = core.fromJSON(p.storage.docs.get(store.getState().activeTripId as string) as string);
+  const persisted = stored.days[0].stops[0];
+  assert.equal(core.displayStatus(persisted), 'imported');
+  assert.ok(core.attribution(persisted));
+});
+
+test('the derived cache retires resolutions whose conflicts are gone', async () => {
+  const p = ports();
+  const store = createStore({ ports: p });
+  await store.createTrip(TRIP_INIT);
+  store.dispatch({
+    type: 'resolveConflict',
+    resolution: { conflictId: 'never-existed', state: 'dismissed', by: 'local:self', at: TODAY },
+  } as Action);
+  assert.equal(store.getState().doc?.resolutions[0].retiredAt, null);
+
+  store.syncResolutions();
+  assert.equal(store.getState().doc?.resolutions[0].retiredAt, TODAY,
+    'a resolution answering a conflict nobody reports any more must be retired');
 });

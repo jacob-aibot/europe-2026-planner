@@ -1,5 +1,10 @@
 /**
- * The trip library: create, open, delete, import, export, and load the Europe 2026 sample.
+ * The trip library: create, open, delete, restore from a backup, export, and load the
+ * Europe 2026 sample.
+ *
+ * The restore control is **not** called "Import" (§2.14): it is backup and restore of the
+ * user's own exports, and a document owned by somebody else is refused. Receiving a
+ * friend's itinerary is the "Browse & copy" pane, one stop at a time.
  *
  * "New trip" takes a title, a date range and a list of cities and produces a dense day
  * skeleton (§4.5). Duplicate and rename are the two things the roadmap allows to be
@@ -30,7 +35,13 @@ export function Library({ state, onError, sample }: Props) {
       try {
         await store.importDoc(await f.text());
       } catch (e) {
-        onError(`That file is not a Cairn trip: ${(e as Error).message}`);
+        // Two different sentences with two different next actions, which is why
+        // `ForeignDocumentError` is a named class and not a bare Error (§2.14).
+        onError(
+          (e as Error).name === 'ForeignDocumentError'
+            ? (e as Error).message
+            : `That file is not a Cairn trip: ${(e as Error).message}`,
+        );
       }
     };
     input.click();
@@ -50,7 +61,14 @@ export function Library({ state, onError, sample }: Props) {
       <div className="library__head">
         <h1>Your trips</h1>
         <div className="row">
-          <button className="btn" onClick={() => onImport()}>Import JSON</button>
+          <button
+            className="btn"
+            aria-label="Restore from a backup (Import JSON)"
+            title="Re-open a trip you exported from Cairn. It will not adopt somebody else's itinerary — §2.14."
+            onClick={() => onImport()}
+          >
+            Restore from a backup
+          </button>
           {sample && <button className="btn" onClick={() => void loadSample()}>Load Europe 2026</button>}
           <button className="btn btn--primary" onClick={() => setCreating(true)}>New trip</button>
         </div>

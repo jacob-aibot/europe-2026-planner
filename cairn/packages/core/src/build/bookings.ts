@@ -23,7 +23,7 @@ export function upsertBooking(trip: Trip, booking: Booking): Trip {
 }
 
 /**
- * Records that `newId` supersedes `oldId` — the Smartwings YZGDTS reissue case.
+ * Records that `newId` supersedes `oldId` — the Smartwings reissue case.
  * Both bookings stay in the trip; the older one is marked, never deleted. Pure.
  * @throws {Error} if either booking is missing.
  */

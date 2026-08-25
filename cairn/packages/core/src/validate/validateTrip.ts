@@ -10,6 +10,7 @@
 import type { Issue, Stop, Trip } from '../model/types.ts';
 import { addDays, dayNumber } from '../derive/summary.ts';
 import { inRange, stopLatLng } from '../derive/geo.ts';
+import { isIsoDate } from '../model/ids.ts';
 import { currenciesOf, mixesBasis } from '../model/money.ts';
 
 
@@ -191,6 +192,18 @@ export function validateTrip(trip: Trip): Issue[] {
         params: { stopId: stop.id },
       });
     }
+    // §2.9 / §2.14 rule 6: the credit link is what makes "never present a friend's idea as
+    // your own plan" mechanical, and acceptance is allowed to change the badge but never the
+    // credit. A `source:'friend'` record with no `origin.sourceTripId` has lost it.
+    if (stop.provenance && stop.provenance.source === 'friend' && !stop.provenance.origin?.sourceTripId) {
+      push({
+        level: 'error',
+        code: 'origin_stripped',
+        ref,
+        message: `"${stop.name}" came from someone else but no longer says who — the credit link is gone.`,
+        params: { stopId: stop.id },
+      });
+    }
 
     const at = stopLatLng(stop, trip);
     if (at && !inRange(at)) {
@@ -266,8 +279,83 @@ export function validateTrip(trip: Trip): Issue[] {
     }
   }
 
+  // --- bookings ----------------------------------------------------------------
+  for (const b of trip.bookings) {
+    const ref = { kind: 'booking' as const, id: b.id };
+    if (!b.provenance) {
+      push({
+        level: 'error',
+        code: 'provenance_missing',
+        ref,
+        message: `Booking ${b.operator} ${b.reference ?? ''} has no provenance.`.replace(/\s+/g, ' ').trim(),
+        params: { bookingId: b.id },
+      });
+      continue;
+    }
+    // §2.9: this applies to bookings as well as stops. `{state:'accepted', acceptedAt:null}`
+    // on a Booking renders 'own' and is precisely the shape a Phase 3 ingest bug produces.
+    if (b.provenance.state === 'accepted' && !b.provenance.acceptedAt) {
+      push({
+        level: 'warn',
+        code: 'accepted_without_timestamp',
+        ref,
+        message: `Booking ${b.operator} ${b.reference ?? b.id} is accepted with no acceptance date.`,
+        params: { bookingId: b.id, operator: b.operator },
+      });
+    }
+    if (b.provenance.source === 'friend' && !b.provenance.origin?.sourceTripId) {
+      push({
+        level: 'error',
+        code: 'origin_stripped',
+        ref,
+        message: `Booking ${b.operator} ${b.reference ?? b.id} came from someone else but no longer says who.`,
+        params: { bookingId: b.id, operator: b.operator },
+      });
+    }
+  }
+
+  // --- resolutions ---------------------------------------------------------------
+  // §2.7: `trip.resolutions` accumulates retired rows forever with nothing collecting them.
+  const retired = trip.resolutions.filter((r) => r.retiredAt).length;
+  if (retired > STALE_RESOLUTION_LIMIT) {
+    push({
+      level: 'warn',
+      code: 'stale_resolutions',
+      ref: { kind: 'trip', id: trip.id },
+      message: `${retired} retired conflict resolutions are still stored; nothing collects them.`,
+      params: { tripId: trip.id, retired, limit: STALE_RESOLUTION_LIMIT },
+    });
+  }
+
+  // --- the calendar, not the shape -----------------------------------------------
+  for (const [label, value] of [['startDate', trip.startDate], ['endDate', trip.endDate]] as const) {
+    if (!isIsoDate(value)) {
+      push({
+        level: 'error',
+        code: 'invalid_calendar_date',
+        ref: { kind: 'trip', id: trip.id },
+        message: `Trip ${label} "${value}" is not a real calendar date.`,
+        params: { tripId: trip.id, field: label, value },
+      });
+    }
+  }
+  for (const d of trip.days) {
+    if (!isIsoDate(d.date)) {
+      push({
+        level: 'error',
+        code: 'invalid_calendar_date',
+        ref: { kind: 'day', id: d.id },
+        message: `Day "${d.date}" is not a real calendar date.`,
+        params: { dayId: d.id, value: d.date },
+      });
+    }
+  }
+
   return out;
 }
+
+/** §2.7 — beyond this many retired resolutions, say so rather than growing forever. */
+export const STALE_RESOLUTION_LIMIT = 50;
 
 /** Convenience split for a UI. Pure. */
 export function issueCounts(issues: readonly Issue[]): { error: number; warn: number } {

@@ -209,6 +209,15 @@ export type ConflictResolution = {
   by: UserId;
   at: IsoDate;
   note?: string;
+  /**
+   * Set by `syncResolutions` when the conflict this answers stops existing (§2.7).
+   *
+   * Content-addressing alone lets a dismissed conflict come back still dismissed when the
+   * data reverts to its old value — 19:30 → 20:30 → 19:30 restores the original id and the
+   * original dismissal. A dismissed BLOCKER re-arming with no user action is exactly what
+   * §2.7 exists to prevent. Retirement is one-way; nothing un-retires.
+   */
+  retiredAt: IsoDate | null;
 };
 
 export type Conflict = {

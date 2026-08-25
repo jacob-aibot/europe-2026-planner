@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { europe2026, FIXTURE_TODAY, golden } from './fixture.ts';
 import {
   detectConflicts, resolveConflict, updateStop, RULES, sequentialIds, createTrip, addStop,
-  upsertBooking, linkBooking, setDayMeta, LOCAL_OWNER,
+  upsertBooking, linkBooking, setDayMeta, syncResolutions, validateTrip, STALE_RESOLUTION_LIMIT, LOCAL_OWNER,
   computeLegs as computeLegsForTest, timeVal as timeValForTest,
 } from '../src/index.ts';
 import type { Booking, BuildCtx } from '../src/index.ts';
@@ -400,4 +400,66 @@ test('a journey does NOT overlap the stop that immediately follows it — the Au
   const fired = detectConflicts(trip, { today: FIXTURE_TODAY }).filter((c) => c.ruleId === 'overlap');
   assert.deepEqual(fired.map((c) => c.summary), [],
     'BA863 12:55 + 165 min vs Windsor 15:15 is CEST -> BST, not an overlap (KD-15)');
+});
+
+// ---------------------------------------------------------------------------
+// §2.7 — resolutions are retired, not resurrected
+// ---------------------------------------------------------------------------
+
+test('a dismissal does not resurrect when the data reverts to its old value', () => {
+  const a = europe2026().trip;
+  const day = a.days.find((d) => d.id === '2026-08-20')!;
+
+  const original = detectConflicts(a, { today: FIXTURE_TODAY }).find(
+    (c) => c.ruleId === 'legacy_flag' && c.subjects.some((s) => s.id === '2026-08-20'),
+  )!;
+  const dismissed = resolveConflict(a, {
+    conflictId: original.id, state: 'dismissed', at: '2026-08-12', by: 'local:self',
+  });
+
+  // X -> Y: the conflict's content changes, so the id changes and the old row is retired.
+  const toY = setDayMeta(dismissed, '2026-08-20', { subtitle: 'A different subtitle' });
+  const atY = detectConflicts(toY, { today: FIXTURE_TODAY });
+  assert.equal(atY.some((c) => c.id === original.id), false);
+  const syncedAtY = syncResolutions(toY, atY, '2026-08-13');
+  assert.equal(syncedAtY.resolutions.find((r) => r.conflictId === original.id)?.retiredAt, '2026-08-13');
+
+  // Y -> X: the original id comes back. It must come back UNRESOLVED.
+  const backToX = setDayMeta(syncedAtY, '2026-08-20', { subtitle: day.subtitle });
+  const atX = detectConflicts(backToX, { today: FIXTURE_TODAY });
+  const returned = atX.find((c) => c.id === original.id);
+  assert.ok(returned, 'the conflict must come back — the data is what it was');
+  assert.equal(returned.resolution, null, 'a dismissed blocker re-armed itself with no user action');
+  assert.match(returned.detail ?? '', /dismissed this on 2026-08-12/,
+    'the returning conflict must say it was dismissed before');
+});
+
+test('syncResolutions is one-way and is a no-op when nothing changed', () => {
+  const a = europe2026().trip;
+  const conflicts = detectConflicts(a, { today: FIXTURE_TODAY });
+  const resolved = resolveConflict(a, {
+    conflictId: conflicts[0].id, state: 'acknowledged', at: '2026-08-01', by: 'local:self',
+  });
+  assert.equal(syncResolutions(resolved, conflicts, '2026-08-13'), resolved, 'must not churn the document');
+
+  const retired = syncResolutions(resolved, [], '2026-08-13');
+  assert.equal(retired.resolutions[0].retiredAt, '2026-08-13');
+  assert.equal(retired.revision, resolved.revision + 1);
+  // and nothing un-retires
+  const again = syncResolutions(retired, conflicts, '2026-08-20');
+  assert.equal(again.resolutions[0].retiredAt, '2026-08-13');
+});
+
+test('validateTrip reports retired resolutions once they pile up, and stays quiet below the limit', () => {
+  const a = europe2026().trip;
+  const rows = Array.from({ length: STALE_RESOLUTION_LIMIT + 1 }, (_, i) => ({
+    conflictId: `gone-${i}`, state: 'dismissed' as const, by: 'local:self', at: '2026-08-01', retiredAt: '2026-08-02',
+  }));
+  assert.deepEqual(
+    validateTrip({ ...a, resolutions: rows.slice(0, STALE_RESOLUTION_LIMIT) }).filter((i) => i.code === 'stale_resolutions'),
+    [],
+  );
+  const over = validateTrip({ ...a, resolutions: rows }).filter((i) => i.code === 'stale_resolutions');
+  assert.equal(over.length, 1);
+  assert.equal(over[0].params.retired, STALE_RESOLUTION_LIMIT + 1);
 });

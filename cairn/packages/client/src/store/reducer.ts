@@ -15,7 +15,7 @@ export type UiState = {
   activeCityKey: string | null;
   mapScope: 'focus' | 'all';
   selectedStopId: string | null;
-  panel: 'timeline' | 'conflicts' | 'validation' | 'pool' | 'places';
+  panel: 'timeline' | 'conflicts' | 'validation' | 'pool' | 'places' | 'browse';
   ruleFilter: string | null;
 };
 
@@ -43,6 +43,16 @@ export type AppState = {
   library: core.TripSummaryRow[];
   activeTripId: string | null;
   doc: Trip | null;
+  /**
+   * Another trip, open READ-ONLY beside the active one (§2.14's "Browse another trip").
+   *
+   * It is never dispatched against and never saved — the only thing it feeds is
+   * `copyStopInto`. In Phase 1 its source is the local library, which is genuinely useful
+   * on its own (a second trip reusing the first one's stops) and means the provenance rule
+   * is exercised by a real user path months before there is a friend to break it. In Phase
+   * 2 the source list gains shared trips and nothing else changes.
+   */
+  browsing: Trip | null;
   ui: UiState;
   history: HistoryState;
   persistence: PersistenceState;
@@ -64,6 +74,7 @@ export function initialState(): AppState {
     library: [],
     activeTripId: null,
     doc: null,
+    browsing: null,
     ui: { ...INITIAL_UI },
     history: { past: [], future: [], limit: HISTORY_LIMIT },
     persistence: { savedRevision: -1, status: 'idle' },

@@ -51,7 +51,10 @@ export type DetectOpts = {
  */
 export function detectConflicts(trip: Trip, opts: DetectOpts = {}): Conflict[] {
   const ctx: TripCtx = { trip, ...(opts.today ? { today: opts.today } : {}) };
-  const byId = new Map(trip.resolutions.map((r) => [r.conflictId, r]));
+  // Retired rows never resolve a conflict again (§2.7) — but they are read below, so a
+  // conflict that comes back after a dismissal says so instead of returning silently.
+  const byId = new Map(trip.resolutions.filter((r) => !r.retiredAt).map((r) => [r.conflictId, r]));
+  const retiredById = new Map(trip.resolutions.filter((r) => r.retiredAt).map((r) => [r.conflictId, r]));
   const found: Array<{ c: Conflict; rank: number }> = [];
   RULES.forEach((rule, rank) => {
     if (opts.only && !opts.only.includes(rule.id)) return;
@@ -72,7 +75,15 @@ export function detectConflicts(trip: Trip, opts: DetectOpts = {}): Conflict[] {
         },
       ];
     }
-    for (const c of produced) found.push({ c: { ...c, resolution: byId.get(c.id) ?? null }, rank });
+    for (const c of produced) {
+      const live = byId.get(c.id) ?? null;
+      const retired = live ? null : retiredById.get(c.id);
+      const detail = retired
+        ? `${c.detail ? `${c.detail} ` : ''}You ${retired.state === 'dismissed' ? 'dismissed' : 'answered'} ` +
+          `this on ${retired.at} and it went away; it has come back.`
+        : c.detail;
+      found.push({ c: { ...c, resolution: live, ...(detail !== undefined ? { detail } : {}) }, rank });
+    }
   });
   return found
     .sort(

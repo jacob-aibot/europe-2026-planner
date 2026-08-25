@@ -8,7 +8,7 @@ import { useState } from 'react';
 import type { AppState, DayDerived } from '@cairn/client';
 import { conflictsForStop, core } from '@cairn/client';
 import type { Day, Leg, Stop } from '@cairn/core';
-import { displayStatus, fmtMins, formatRange } from '@cairn/core';
+import { attribution, displayStatus, fmtMins, formatRange } from '@cairn/core';
 import { costLabel } from '../format.ts';
 import { CAT_LABEL, COLORS, MODES, STATUS_BADGE } from '@cairn/tokens';
 import { store } from '../store.ts';
@@ -75,6 +75,23 @@ export function DayTimeline({ state, day, dayDerived: dd, onError }: Props) {
   );
 }
 
+/**
+ * The credit line's text. Names the person where there is one, and falls back to the source
+ * trip's title — which is the Phase 1 case, where both trips are owned by the `local:self`
+ * sentinel and "From local:self's trip" would tell nobody anything. The credit is still
+ * structurally intact either way; this only decides how it reads.
+ */
+function creditLabel(
+  credit: { friendUserId: string; sourceTripId: string },
+  state: AppState,
+): string {
+  const title = state.library.find((r) => r.id === credit.sourceTripId)?.title;
+  if (credit.friendUserId && !credit.friendUserId.startsWith('local:')) {
+    return `${credit.friendUserId.replace(/^user:/, '')}${title ? ` · ${title}` : '’s trip'}`;
+  }
+  return title ? `“${title}”` : 'another trip';
+}
+
 function StopRow({
   state, day, stop, index, leg, editing, onEdit, onError,
 }: {
@@ -82,6 +99,7 @@ function StopRow({
   editing: boolean; onEdit: () => void; onError: (m: string) => void;
 }) {
   const status = displayStatus(stop.provenance);
+  const credit = attribution(stop.provenance);
   const badge = STATUS_BADGE[status];
   const conflicts = conflictsForStop(store.getDerived(), stop.id).filter((c) => !c.resolution);
   const time = stop.placement.kind === 'scheduled' ? stop.placement.time : null;
@@ -117,6 +135,14 @@ function StopRow({
             {costLabel(stop.cost) && ` · ${costLabel(stop.cost)}`}
             {stop.durationMins ? ` · ${fmtMins(stop.durationMins)} there` : ''}
           </p>
+          {credit && (
+            // §2.14 rule 7, as a contract: any view that renders a record with a non-null
+            // `attribution` renders the credit. `displayStatus` governs the badge and
+            // acceptance changes it; the credit line is separate and never goes away.
+            <p className="stop__credit" data-credit={credit.friendUserId} title={`${credit.sourceTripId} · ${credit.sourceStopId}`}>
+              From {creditLabel(credit, state)}
+            </p>
+          )}
           {stop.note && <p className="stop__note">{stop.note}</p>}
           {conflicts.map((c) => (
             <p key={c.id} className={`stop__conflict sev--${c.severity}`}>{c.summary}</p>

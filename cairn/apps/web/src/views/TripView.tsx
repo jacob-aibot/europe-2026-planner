@@ -11,6 +11,7 @@ import { Sidebar } from './Sidebar.tsx';
 import { DayTimeline } from './DayTimeline.tsx';
 import { DayMap } from './DayMap.tsx';
 import { ConflictsPanel, PlacesPanel, PoolPanel, ValidationPanel } from './Panels.tsx';
+import { BrowsePane } from './BrowsePane.tsx';
 
 type Props = { state: AppState; derived: DerivedCache | null; onError: (m: string) => void };
 
@@ -20,6 +21,7 @@ const PANELS = [
   { key: 'validation', label: 'Validation' },
   { key: 'pool', label: 'Optional' },
   { key: 'places', label: 'Places' },
+  { key: 'browse', label: 'Browse & copy' },
 ] as const;
 
 export function TripView({ state, derived, onError }: Props) {
@@ -69,7 +71,9 @@ export function TripView({ state, derived, onError }: Props) {
                     ? trip.pool.length
                     : p.key === 'places'
                       ? trip.places.length
-                      : 0;
+                      : p.key === 'browse'
+                        ? (state.browsing ? 1 : 0)
+                        : 0;
             return (
               <button
                 key={p.key}
@@ -100,6 +104,7 @@ export function TripView({ state, derived, onError }: Props) {
         {state.ui.panel === 'validation' && <ValidationPanel derived={derived} />}
         {state.ui.panel === 'pool' && <PoolPanel state={state} onError={onError} />}
         {state.ui.panel === 'places' && <PlacesPanel trip={trip} />}
+        {state.ui.panel === 'browse' && <BrowsePane state={state} onError={onError} />}
       </section>
     </main>
   );

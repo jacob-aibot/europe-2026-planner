@@ -10,7 +10,7 @@
  * `spec.args` is argument marshalling ONLY. It may reorder and default; it may not decide
  * anything about a trip.
  */
-import type { Booking, BuildCtx, ConflictResolution, DayMetaPatch, Ref, StopInit, StopPatch, StopPlacement, Trip, TripMetaPatch } from '../deps.ts';
+import type { Booking, BuildCtx, DayMetaPatch, Ref, ResolutionInit, StopInit, StopPatch, StopPlacement, Trip, TripMetaPatch } from '../deps.ts';
 
 export type Action =
   | { type: 'setTripMeta'; patch: TripMetaPatch }
@@ -27,8 +27,9 @@ export type Action =
   | { type: 'rejectCandidate'; ref: Ref }
   | { type: 'upsertBooking'; booking: Booking }
   | { type: 'linkBooking'; stopId: string; bookingId: string | null }
-  | { type: 'resolveConflict'; resolution: ConflictResolution }
-  | { type: 'unresolveConflict'; conflictId: string };
+  | { type: 'resolveConflict'; resolution: ResolutionInit }
+  | { type: 'unresolveConflict'; conflictId: string }
+  | { type: 'copyStopInto'; source: { trip: Trip; stopId: string }; placement: StopPlacement };
 
 export type ActionType = Action['type'];
 
@@ -78,8 +79,17 @@ export const ACTION_SPECS: Record<ActionType, ActionSpec> = {
     coreFn: 'linkBooking',
     args: (a) => [(a as { stopId: string }).stopId, (a as { bookingId: string | null }).bookingId],
   },
-  resolveConflict: { coreFn: 'resolveConflict', args: (a) => [(a as { resolution: ConflictResolution }).resolution] },
+  resolveConflict: { coreFn: 'resolveConflict', args: (a) => [(a as { resolution: ResolutionInit }).resolution] },
   unresolveConflict: { coreFn: 'unresolveConflict', args: (a) => [(a as { conflictId: string }).conflictId] },
+  // §2.14's social primitive. The reducer holds no domain logic: this maps 1:1 onto
+  // `core.copyStopInto`, which is where the provenance stamp is built.
+  copyStopInto: {
+    coreFn: 'copyStopInto',
+    args: (a, ctx) => {
+      const x = a as { source: { trip: Trip; stopId: string }; placement: StopPlacement };
+      return [x.source, x.placement, { ids: ctx.ids, today: ctx.now, actorUserId: ctx.actorUserId ?? '' }];
+    },
+  },
 };
 
 /** Human label for an action, used by the undo indicator. Pure. */
@@ -101,6 +111,8 @@ export function describeAction(a: Action): string {
       return 'return a stop to the pool';
     case 'resolveConflict':
       return 'resolve a conflict';
+    case 'copyStopInto':
+      return 'copy a stop from another trip';
     default:
       return a.type;
   }

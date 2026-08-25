@@ -283,3 +283,13 @@ textarea { resize: vertical; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 .spine__cityhead--static { cursor: default; margin: 0; }
+
+/* §2.14 rule 7 — the credit line. Separate from the badge on purpose: acceptance changes
+   the badge and must never change the credit. */
+.stop__credit { margin: .15rem 0 0; font-size: .78rem; color: var(--ink-dim, #5c6570); font-style: italic; }
+.browse { border-top: 1px solid var(--line); padding: .75rem 1rem; }
+.browse__head { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; margin-bottom: .5rem; }
+.browse__list { list-style: none; margin: 0; padding: 0; display: grid; gap: .35rem; }
+.browse__row { display: flex; gap: .5rem; align-items: center; font-size: .88rem; }
+.browse__row b { font-weight: 600; }
+.browse__day { font-size: .78rem; color: var(--ink-dim, #5c6570); }

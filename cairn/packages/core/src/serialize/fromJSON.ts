@@ -319,6 +319,8 @@ function parseResolution(v: unknown, path: string): ConflictResolution {
     by: str(o.by, `${path}.by`),
     at: str(o.at, `${path}.at`),
     ...(o.note !== undefined ? { note: str(o.note, `${path}.note`) } : {}),
+    // Absent means a document written before §2.7's retirement rule — a live resolution.
+    retiredAt: o.retiredAt === undefined || o.retiredAt === null ? null : str(o.retiredAt, `${path}.retiredAt`),
   };
 }
 
@@ -376,4 +378,29 @@ export function fromJSON(input: string | unknown): Trip {
     schemaVersion: SCHEMA_VERSION,
     ...(o.meta !== undefined ? { meta: obj(o.meta, '$.meta') } : {}),
   };
+}
+
+/**
+ * Thrown by `store.importDoc` for a document owned by somebody else (ARCHITECTURE §2.14).
+ *
+ * A named class rather than a bare `Error` because the Library has to tell those two cases
+ * apart: "that file is not a Cairn trip" and "that trip belongs to someone else — open it
+ * from their share instead" are different sentences with different next actions.
+ *
+ * It lives here, beside `TripParseError`, because it is a fact about a *document*.
+ */
+export class ForeignDocumentError extends Error {
+  /** The `ownerId` on the incoming document. */
+  ownerId: string;
+  /** The local user the document was checked against. */
+  localOwnerId: string;
+  constructor(ownerId: string, localOwnerId: string) {
+    super(
+      `This trip belongs to someone else (${ownerId}) — open it from their share instead. ` +
+        `Restore is for your own exported trips.`,
+    );
+    this.name = 'ForeignDocumentError';
+    this.ownerId = ownerId;
+    this.localOwnerId = localOwnerId;
+  }
 }
