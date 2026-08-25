@@ -115,7 +115,9 @@ test('the six divergences the review named by hand are all present in the sectio
     ['the impossible_transfer departure-time artifact', /impossible_transfer/],
     ['day-cost parity is 6/16, not 16/16', /6\s*(of|\/)\s*16/i],
     ['3 bundled tickets over 2 files, not 2 bundled', /3\s+bundled|bundled over 2 files/i],
-    ['the closed rule having no data path', /`?closed`?[^\n]*\b(no data path|never fire|0 of 95)/i],
+    // Spans lines: the KD-5 prose wraps between "`closed`" and its evidence, so this
+    // deliberately reaches across newlines. Same-line adjacency is layout, not disclosure.
+    ['the closed rule having no data path', /`?closed`?[\s\S]{0,600}?\b(no data path|never fire|0 of 95)/i],
     ['the cluster.ts caveat', /cluster\.ts|MIN_SPAN_KM/],
     ['the stops.ts caveat', /stops\.ts|compareStops/],
   ];
