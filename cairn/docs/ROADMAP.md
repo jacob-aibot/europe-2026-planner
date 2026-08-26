@@ -287,9 +287,47 @@ not decoration.
 - undo/redo restores the previous `Trip` exactly, to a depth of 50 `[stated]`
 - a failing `StoragePort.save` puts `persistence.status = 'error'` and never drops the edit silently
   `[stated]`
-- **two tabs, one trip: the second save is refused, not silently applied.** Tab A saves, tab B saves, tab A
-  saves again → tab A's write is refused, `status` is `'conflict'`, tab A's indicator does **not** say
-  "Saved", and the stored document still contains tab B's edit `[stated]`
+- **two tabs, one trip, SEQUENTIALLY: the second save is refused, not silently applied.** Tab A saves, tab B
+  saves, tab A saves again → tab A's write is refused, `status` is `'conflict'`, tab A's indicator does
+  **not** say "Saved", and the stored document still contains tab B's edit `[stated]`
+- **two tabs, one trip, CONCURRENTLY — both saves in flight at once.** The criterion above is satisfiable
+  by a `load` → compare → `save` that has an interleaving point in the middle, and was: it passed for the
+  whole of revision 2 while the same two tabs saving *at the same moment* lost an edit two runs in three
+  and **both** displayed "Saved" (QA R2-1). So this criterion is written so that a sequential
+  implementation cannot meet it:
+
+  > Two stores over one `StoragePort`, both holding revision *R*, both editing, and **both writes issued
+  > before either is awaited** — `await Promise.all([a.flush(), b.flush()])`, never `await a.flush(); await
+  > b.flush()`. Then, asserted on named stores rather than on a count: **exactly one** store's edit is in
+  > storage; the winner is `'idle'` and not dirty; the loser is `'conflict'`, is still dirty, still holds
+  > its edit in memory, and **its indicator string is not "Saved"**; and `mergeWithStored()` carries the
+  > loser's edit through. A run in which both stores agree, or in which neither wins, fails. `[stated]`
+
+  The compare **must** happen inside `StoragePort.saveIfRevision(id, expectedRevision, doc, summary)`,
+  atomically with the write. A guard in the client above two awaits does not satisfy this and cannot: the
+  port is the only place the two steps can be made indivisible. The port contract carries its own
+  criterion, because `apps/mobile`'s SQLite port and Phase 2's `SyncPort` must meet it too — **N
+  concurrent `saveIfRevision` calls at the same expected revision yield exactly one `ok:true`**, and a
+  refusal reports the revision actually found `[stated]`
+- **A store does not race itself.** Autosave and an explicit `flush()` overlapping must not put a tab into
+  `'conflict'` against its own write — there is no other writer to merge with, so that state is
+  unresolvable. Three overlapping `flush()` calls on one store end `'idle'`, with the last edit stored
+  `[stated]`
+- **NO SILENT LOSS, as a criterion rather than a hope.** *A user's edit is never discarded, overwritten, or
+  made unreachable without the app saying so, on screen, at the moment it happens.* Every write path is
+  checked against it, and each of the four blockers this phase has produced — F-1, F-2, R2-1, R2-2 — is one
+  violation of this one sentence. Testable form, and the shape every future write path inherits:
+
+  > For each of: a refused concurrent save, a refused sequential save, a failing `StoragePort`, a restore
+  > over an existing id, and a stop returned to the pool from a day belonging to no city — **the edit is
+  > still in memory, some surface still reaches it, and the indicator does not read "Saved".** Assert the
+  > *indicator string the view renders*, not `persistence.status`: a criterion that reads the enum keeps
+  > passing when the view stops reading it. `[stated]`
+- **Every pooled stop is reachable from some rendered group.** `poolFor(trip, city)` over `trip.cities`
+  plus the catch-all equals `trip.pool.length`, on a brand-new trip with no cities, on a trip whose day
+  belongs to no city, and on the reference trip. A pool key that is neither a trip city nor the transit
+  group is `validateTrip` error `pool_stop_unknown_city` — and, as a ceiling, the transit group itself
+  never reports one, or every new trip carries a false error `[stated]`
 - two trips in the library do not leak state into each other when switching `[stated]`
 - **`canView(principal, rel, now)` throws on a missing or non-`YYYY-MM-DD` `now`.** An expired share must
   not become live because a caller forgot the clock; these predicates are what Phase 2's RLS policies are

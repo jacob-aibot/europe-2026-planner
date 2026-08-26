@@ -15,8 +15,9 @@ export type { DerivedCache, DayDerived } from './store/derived.ts';
 export * from './selectors/index.ts';
 export type {
   StoragePort, FilePort, MapPort, MapHandle, MapPoint, MapBoundsLike, ClockPort, IdPort,
-  SchedulerPort, Ports, TripDoc,
+  SchedulerPort, Ports, TripDoc, SaveOutcome,
 } from './ports/types.ts';
+export { revisionOf } from './ports/types.ts';
 export {
   memoryStorage, memoryFile, fixedClockPort, sequentialIdPort, manualScheduler, immediateScheduler,
 } from './ports/memory.ts';

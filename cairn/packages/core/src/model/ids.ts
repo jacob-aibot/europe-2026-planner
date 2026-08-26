@@ -16,6 +16,20 @@ export type UserId = string;
 export type CityKey = string;
 export type RuleId = string;
 
+/**
+ * The pseudo-city a day carries when it belongs to no city on the trip — a pure travel day
+ * (Aug 7 of Europe 2026 is `cities: ['transit']`), or any day of a trip that has no cities
+ * yet. It is deliberately NOT a member of `Trip.cities`: it is the absence of a city, not
+ * a city, and `blankDay`/`ensureDays` mint it for every day the user has not placed.
+ *
+ * It is a named constant because four files compared against the bare string `'transit'`
+ * and a fifth forgot to, which is how a pooled stop filed under it became unreachable from
+ * every surface (QA R2-2). Not exported from `index.ts` — it is not part of §2.10's
+ * surface, and a caller outside core should ask "is this key one of `trip.cities`?"
+ * rather than know this value.
+ */
+export const TRANSIT_CITY_KEY = 'transit';
+
 /** `YYYY-MM-DD`. */
 export type IsoDate = string;
 /** `HH:MM`, 24h, wall-clock at the stop's location. */

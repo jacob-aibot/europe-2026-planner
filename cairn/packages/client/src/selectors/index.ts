@@ -32,6 +32,24 @@ export function cityTabs(trip: Trip): Array<{ key: string; name: string; range: 
 }
 
 /** Pool stops for a city, with the section heading the legacy `OPTIONAL` list carried. */
+/**
+ * Pooled stops that no city tab can show: their `cityKey` is not one of `trip.cities`.
+ *
+ * The pool panel lists one city at a time, so a stop filed under a key the trip does not
+ * have is in the document, counted by the pool total, and rendered by nothing — the user's
+ * stop simply vanishes (QA R2-2). `Sidebar` already solved the identical problem for days
+ * with a catch-all group; this is that group's contents for the pool.
+ *
+ * Two real ways to land here: a stop pooled from a pure travel day (`TRANSIT_CITY_KEY`),
+ * and a trip with no cities at all, which "New trip" allows. Both are legitimate states,
+ * so this is a rendering concern, not an error — `validateTrip` separately reports a key
+ * that is neither a trip city nor the transit group, which is a broken document.
+ */
+export function unfiledPool(trip: Trip): Stop[] {
+  const known = new Set(trip.cities.map((c) => c.key));
+  return trip.pool.filter((s) => s.placement.kind === 'pool' && !known.has(s.placement.cityKey));
+}
+
 export function poolSection(trip: Trip, cityKey: string): { title: string; note: string; stops: Stop[] } {
   const notes = (trip.meta?.poolNotes as Record<string, { title: string; note: string }> | undefined)?.[cityKey];
   return {

@@ -6,8 +6,9 @@
  * lossless, and the live app's `removeSuggestion`/`addOptional` pair only remembered
  * day + time.
  */
-import type { Stop, Trip } from '../model/types.ts';
+import type { Day, Stop, Trip } from '../model/types.ts';
 import type { CityKey, ClockTime, DayId, StopId } from '../model/ids.ts';
+import { TRANSIT_CITY_KEY } from '../model/ids.ts';
 import { findStop, moveStop } from './stops.ts';
 
 /** Category → the default time the live app used when a pool item had no hint. */
@@ -35,6 +36,26 @@ export function pickDay(trip: Trip, cityKey: CityKey): DayId | null {
 }
 
 /**
+ * The city a stop pooled from `day` should be filed under, when the caller names none.
+ *
+ * It must be a key the surfaces can actually reach, which means a key in `trip.cities` if
+ * one applies. Taking `day.primaryCity` unconditionally did not: a pure travel day carries
+ * `TRANSIT_CITY_KEY`, the pool panel lists `trip.cities`, and a stop pooled from Aug 7
+ * therefore left the plan and appeared nowhere — the counter said 32, every panel showed
+ * 31, and `validateTrip` said nothing (QA R2-2).
+ *
+ * So: the day's primary city if the trip has it, else the first city the day lists that
+ * the trip has, else the transit key — which is now a rendered group rather than a hole,
+ * and is the honest answer for a stop that genuinely belongs to no city. Pure.
+ */
+function poolCityFor(trip: Trip, day: Day | undefined): CityKey {
+  if (!day) return TRANSIT_CITY_KEY;
+  const known = new Set(trip.cities.map((c) => c.key));
+  if (known.has(day.primaryCity)) return day.primaryCity;
+  return day.cities.find((k) => known.has(k)) ?? TRANSIT_CITY_KEY;
+}
+
+/**
  * Moves a scheduled stop into its city's pool, remembering where it came from. Pure.
  * @throws {Error} if the stop is missing or already pooled.
  */
@@ -45,7 +66,7 @@ export function returnToPool(trip: Trip, stopId: StopId, cityKey?: CityKey): Tri
   const dayId = stop.placement.dayId;
   const day = trip.days.find((d) => d.id === dayId);
   const order = day ? day.stops.findIndex((s) => s.id === stopId) : stop.placement.order;
-  const city = cityKey ?? (day ? day.primaryCity : 'transit');
+  const city = cityKey ?? poolCityFor(trip, day);
   return moveStop(trip, stopId, {
     kind: 'pool',
     cityKey: city,

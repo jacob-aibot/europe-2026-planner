@@ -10,7 +10,7 @@
 import type { Issue, Stop, Trip } from '../model/types.ts';
 import { addDays, dayNumber } from '../derive/summary.ts';
 import { inRange, stopLatLng } from '../derive/geo.ts';
-import { isIsoDate } from '../model/ids.ts';
+import { TRANSIT_CITY_KEY, isIsoDate } from '../model/ids.ts';
 import { currenciesOf, mixesBasis } from '../model/money.ts';
 
 
@@ -71,7 +71,7 @@ export function validateTrip(trip: Trip): Issue[] {
       });
     }
     for (const key of d.cities) {
-      if (key === 'transit') continue;
+      if (key === TRANSIT_CITY_KEY) continue;
       if (!trip.cities.some((c) => c.key === key)) {
         push({
           level: 'error',
@@ -129,7 +129,8 @@ export function validateTrip(trip: Trip): Issue[] {
 
   for (const { stop, dayId } of allStops) {
     const ref = { kind: 'stop' as const, id: stop.id };
-    if (stop.placement.kind === 'scheduled') {
+    const placement = stop.placement;
+    if (placement.kind === 'scheduled') {
       if (dayId === null) {
         push({
           level: 'error',
@@ -138,13 +139,13 @@ export function validateTrip(trip: Trip): Issue[] {
           message: `"${stop.name}" is in the pool but claims to be scheduled.`,
           params: { stopId: stop.id, name: stop.name },
         });
-      } else if (stop.placement.dayId !== dayId) {
+      } else if (placement.dayId !== dayId) {
         push({
           level: 'error',
           code: 'scheduled_stop_has_no_day',
           ref,
-          message: `"${stop.name}" sits on ${dayId} but its placement says ${stop.placement.dayId}.`,
-          params: { stopId: stop.id, name: stop.name, actual: dayId, claimed: stop.placement.dayId },
+          message: `"${stop.name}" sits on ${dayId} but its placement says ${placement.dayId}.`,
+          params: { stopId: stop.id, name: stop.name, actual: dayId, claimed: placement.dayId },
         });
       }
     } else if (dayId !== null) {
@@ -154,6 +155,22 @@ export function validateTrip(trip: Trip): Issue[] {
         ref,
         message: `"${stop.name}" is on ${dayId} but its placement says it is pooled.`,
         params: { stopId: stop.id, name: stop.name, dayId },
+      });
+    } else if (
+      placement.cityKey !== TRANSIT_CITY_KEY &&
+      !trip.cities.some((c) => c.key === placement.cityKey)
+    ) {
+      // A pooled stop is reached through its city. A key that is neither one of
+      // `trip.cities` nor the transit group is reached through nothing: the stop is in the
+      // document, counted by the pool total, and absent from every panel. That is how a
+      // user loses a stop with no error and no way back (QA R2-2), so it is an error, not
+      // a warning — the stop needs re-filing before it can be found again.
+      push({
+        level: 'error',
+        code: 'pool_stop_unknown_city',
+        ref,
+        message: `"${stop.name}" is pooled under city "${placement.cityKey}", which this trip does not have — nothing can show it.`,
+        params: { stopId: stop.id, name: stop.name, cityKey: placement.cityKey },
       });
     }
 

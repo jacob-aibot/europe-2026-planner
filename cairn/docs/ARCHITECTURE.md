@@ -527,12 +527,18 @@ type Issue = { level: 'error'|'warn'; code: string; ref: Ref; message: string; p
 ```
 
 Codes: `days_not_dense`, `day_id_mismatch`, `duplicate_id`, `primary_city_not_in_cities`, `unknown_city_key`,
-`place_ref_dangling`, `lat_lng_out_of_range`, `pool_stop_has_day`, `scheduled_stop_has_no_day`,
+`place_ref_dangling`, `lat_lng_out_of_range`, `pool_stop_has_day`, `pool_stop_unknown_city`, `scheduled_stop_has_no_day`,
 `booking_ref_orphan`, `cost_basis_mixed`, `provenance_missing`, `accepted_without_timestamp`,
 `owner_missing`, `origin_stripped`, `stale_resolutions`, `invalid_calendar_date`.
 
-Three changes from revision 1, each with a reason:
+Four changes from revision 1, each with a reason:
 
+- **`pool_stop_unknown_city`** (level `error`): a pooled stop whose `cityKey` is neither one of
+  `trip.cities` nor the transit pseudo-city. The pool is reached *through* a city, so such a stop is in the
+  document, counted in the pool total, and rendered by nothing — the user's stop is gone with no error and
+  no way back (QA R2-2). The transit key is deliberately **exempt**: it is a rendered catch-all group, not
+  a hole, and a rule that fired on every brand-new trip would be noise. `returnToPool` will not mint an
+  unreachable key, so this rule exists to catch a hand-edited document, a deleted city, and the next bug.
 - **`stop_far_from_city` is deleted outright.** It was a second implementation of `geo_outlier` with the
   same primaryCity-only defect and twice the noise — 20 of 31 issues, 13 of them explained by another city
   on the same day or a `daytrip` flag. Sequencing rule 1 calls a second implementation a design defect, and
@@ -976,18 +982,33 @@ Five rules, each of which exists because of a specific failure:
    — cheap at 112 stops, and it removes a class of stale-view bugs outright.
 4. **Autosave** writes the whole document, debounced 400 ms. `savedRevision` drives the dirty indicator.
    A failed write puts `persistence.status = 'error'` and says so on screen; it never fails silently.
-   **The write is compare-and-set**, which §2.2's "last-writer-wins per stop with a revision guard" always
-   promised and Phase 1 had neither half of: `save()` loads the stored document's `revision` first, and if
-   it has moved since `persistence.savedRevision` the write is refused, `status` becomes `'conflict'`, and
-   the indicator says so. **A tab whose write was refused MUST NOT display "Saved."** Two tabs on one trip
-   is not an exotic case; it is Jacob with a second window open.
+   **The write is compare-and-set, and the compare happens inside the port.** `StoragePort` exposes
+   `saveIfRevision(id, expectedRevision, doc, summary)` and nothing else that writes: the comparison and
+   the write are one indivisible step (one IndexedDB `readwrite` transaction; one synchronous block in the
+   in-memory port). If the stored revision has moved, the write is refused, `status` becomes `'conflict'`,
+   and the indicator says so. **A tab whose write was refused MUST NOT display "Saved."**
+
+   It is worth being explicit about why the compare cannot live in the store, because the first fix put it
+   there and it did not hold. `load()` → compare → `save()` is two awaits with an interleaving point in
+   the middle: two tabs both read revision *R*, both passed the compare, and the second write destroyed
+   the first while **both** displayed "Saved" (QA R2-1, two runs in three). No amount of checking above
+   the port closes that window. Two tabs on one trip is not an exotic case; it is Jacob with a second
+   window open.
+
+   The store also serializes its **own** saves, chaining each attempt onto the last, so an autosave and an
+   explicit `flush()` cannot overlap. A tab that conflicts with itself has no other writer to merge with,
+   which makes it an unresolvable state rather than a recoverable one.
 5. **Undo/redo is snapshot-based** over the immutable `Trip`, limit 50. Structural sharing makes this cheap.
 
 ### 4.3 Ports — the honesty-to-native mechanism
 
 ```ts
 interface StoragePort { listTrips(): Promise<TripSummaryRow[]>; load(id): Promise<TripDoc|null>;
-                        save(doc: TripDoc): Promise<void>; delete(id): Promise<void> }
+                        // ATOMIC compare-and-set. `expectedRevision: null` means "nothing stored yet".
+                        // A refusal is `{ok:false, storedRevision}`, not a throw — storage is healthy.
+                        saveIfRevision(id, expectedRevision: number|null, doc: TripDoc,
+                                       summary: TripSummaryRow): Promise<SaveOutcome>;
+                        delete(id): Promise<void> }
 interface FilePort    { exportDoc(name: string, bytes: Uint8Array): Promise<void>;
                         importDoc(): Promise<{ name: string; bytes: Uint8Array } | null> }
 interface MapPort     { mount(el, points, bounds): MapHandle; refit(handle, bounds): void;

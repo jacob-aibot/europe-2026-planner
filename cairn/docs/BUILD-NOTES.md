@@ -524,9 +524,15 @@ library.
 | F-4/F-5 | `impossible_transfer` and `geo_outlier` crying wolf | §2.12 `travelRole`, §2.13 `geoCheck` | KD-1, KD-2 |
 | M-6 | §3's dependency-direction test did not exist | `test/boundaries.test.ts` | mutation-checked — see §6 |
 | M-1/M-2 | source comments cited a BUILD-NOTES section that did not exist | §1 above, `test/disclosure.test.ts` | `npm test` |
+| **R2-1** | `save()` was `load` → compare → `save`: two awaits with an interleaving point, so two tabs saving at the same moment both passed the compare and the second write destroyed the first — **both** displaying "Saved". The compare now happens **inside** `StoragePort.saveIfRevision`, atomically (one IndexedDB `readwrite` transaction; one synchronous block in the memory port), and a store no longer races itself. | `client/src/ports/types.ts`, `client/src/ports/memory.ts`, `client/src/store/store.ts`, `apps/web/src/ports/storage.ts` | `store.test.ts` ×3 new (concurrent tabs, self-overlap, port contract) — each **verified to fail against the pre-fix code**; `qa/r2-race.mjs` in real Chromium: **0 of 3 rounds lost an edit** (was 2 of 3) |
+| **R2-2** | a stop returned to the pool from a day belonging to no city was filed under the transit pseudo-city, which is never in `trip.cities` and so was never a key the pool panel could show: the stop was in the document, in the count, and rendered by nothing. `returnToPool` now resolves to a real trip city when the day has one; the panel renders an always-visible catch-all group for the rest; `validateTrip` reports `pool_stop_unknown_city` for a key that is neither. | `core/src/build/pool.ts`, `core/src/model/ids.ts`, `core/src/validate/validateTrip.ts`, `client/src/selectors/index.ts`, `apps/web/src/views/Panels.tsx` | `build.test.ts` ×4, `store.test.ts` ×2; `qa/r2-poolloss.mjs` in real Chromium: **"the stop is reachable again"** (was "in NO Optional panel, under any group") |
 
 **Not fixed, and named as not fixed:** F-14 / the §2.10 export surface — enumerated rather
-than narrowed, KD-19.
+than narrowed, KD-19. **And R2-4 through R2-21 of round 2, which this pass did not touch** —
+only the two blockers were routed here. `qa/r2-access.mjs` (R2-6, a malformed `expiresAt`
+still fails open), `qa/r2-copy.mjs` (R2-11) and `qa/r2-constraints.mjs` (R2-18) still report
+their findings, unchanged, and were re-run to confirm this pass neither fixed nor worsened
+them.
 
 ## 6. Not verified, and why
 

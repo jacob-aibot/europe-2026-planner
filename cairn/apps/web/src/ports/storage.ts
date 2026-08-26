@@ -6,7 +6,8 @@
  * the frame. An *installed* web app keeps its storage across the 7-day eviction rule
  * (ARCHITECTURE §1.1); a plain tab may not, which is why export exists.
  */
-import type { StoragePort, TripDoc } from '@cairn/client';
+import type { SaveOutcome, StoragePort, TripDoc } from '@cairn/client';
+import { revisionOf } from '@cairn/client';
 import type { TripSummaryRow } from '@cairn/core';
 
 const DB_NAME = 'cairn';
@@ -58,13 +59,37 @@ export function indexedDbStorage(): StoragePort {
       const doc = await run<TripDoc | undefined>(DOCS, 'readonly', (s) => s.get(id) as IDBRequest<TripDoc | undefined>);
       return doc ?? null;
     },
-    async save(id: string, doc: TripDoc, summary: TripSummaryRow): Promise<void> {
+    /**
+     * The compare and the write share **one `readwrite` transaction**, which is what makes
+     * this atomic: IndexedDB serializes overlapping `readwrite` transactions on the same
+     * object stores, so a second tab's transaction cannot start until this one commits or
+     * aborts. Issuing the `put` from the `get`'s own `onsuccess` keeps the transaction
+     * alive across the two requests — returning to the event loop in between would end it,
+     * which would put the interleaving gap right back where R2-1 found it.
+     */
+    async saveIfRevision(
+      id: string,
+      expectedRevision: number | null,
+      doc: TripDoc,
+      summary: TripSummaryRow,
+    ): Promise<SaveOutcome> {
       const db = await open();
-      await new Promise<void>((resolve, reject) => {
+      return new Promise<SaveOutcome>((resolve, reject) => {
         const tx = db.transaction([DOCS, SUMMARIES], 'readwrite');
-        tx.objectStore(DOCS).put(doc, id);
-        tx.objectStore(SUMMARIES).put(summary, id);
-        tx.oncomplete = () => resolve();
+        let outcome: SaveOutcome = { ok: true };
+        const read = tx.objectStore(DOCS).get(id) as IDBRequest<TripDoc | undefined>;
+        read.onsuccess = () => {
+          const existing = read.result;
+          const storedRevision = existing === undefined ? null : revisionOf(existing);
+          const matches = existing === undefined ? expectedRevision === null : storedRevision === expectedRevision;
+          if (!matches) {
+            outcome = { ok: false, storedRevision };
+            return; // no put — the transaction commits having changed nothing
+          }
+          tx.objectStore(DOCS).put(doc, id);
+          tx.objectStore(SUMMARIES).put(summary, id);
+        };
+        tx.oncomplete = () => resolve(outcome);
         tx.onerror = () => reject(tx.error ?? new Error('save failed'));
         tx.onabort = () => reject(tx.error ?? new Error('save aborted — storage quota?'));
       }).finally(() => db.close());

@@ -8,6 +8,7 @@
  */
 import type { IsoDate, TripSummaryRow } from '../deps.ts';
 import type { ClockPort, FilePort, IdPort, SchedulerPort, StoragePort, TripDoc } from './types.ts';
+import { revisionOf } from './types.ts';
 
 export type MemoryStorage = StoragePort & {
   docs: Map<string, TripDoc>;
@@ -35,7 +36,12 @@ export function memoryStorage(seed?: Record<string, TripDoc>): MemoryStorage {
     async load(id) {
       return docs.get(id) ?? null;
     },
-    async save(id, doc, summary) {
+    /**
+     * Atomic by construction: everything below runs in one synchronous block, so no other
+     * task can observe or interleave between the compare and the write. There is
+     * deliberately **no `await` in this method** — adding one reopens R2-1 here.
+     */
+    async saveIfRevision(id, expectedRevision, doc, summary) {
       port.saveCount++;
       if (port.failAll) throw new Error(port.failAll);
       if (port.failNextSave) {
@@ -43,8 +49,13 @@ export function memoryStorage(seed?: Record<string, TripDoc>): MemoryStorage {
         port.failNextSave = null;
         throw new Error(msg);
       }
+      const existing = docs.get(id);
+      const storedRevision = existing === undefined ? null : revisionOf(existing);
+      const matches = existing === undefined ? expectedRevision === null : storedRevision === expectedRevision;
+      if (!matches) return { ok: false, storedRevision };
       docs.set(id, doc);
       summaries.set(id, summary);
+      return { ok: true };
     },
     async delete(id) {
       docs.delete(id);

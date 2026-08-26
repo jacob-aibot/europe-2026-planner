@@ -11,6 +11,7 @@ import {
   createStore, ACTION_SPECS, HISTORY_LIMIT, computeDerived, derivedFor,
   initialState, reduce, undo, redo, setUi,
   memoryStorage, memoryFile, fixedClockPort, sequentialIdPort, manualScheduler, immediateScheduler,
+  poolSection, unfiledPool,
   core,
 } from '../src/index.ts';
 import type { Action } from '../src/index.ts';
@@ -458,6 +459,21 @@ test('undo/redo on the pure reducer are no-ops without a document', () => {
 // guard"; these tests are that sentence, both halves.
 // ---------------------------------------------------------------------------
 
+/**
+ * The save indicator exactly as `apps/web/src/App.tsx` renders it.
+ *
+ * The criterion is about the words on the screen — *"the losing tab MUST NOT display
+ * Saved"* — so the test asserts the words, not the enum behind them. Asserting
+ * `status === 'conflict'` alone would keep passing if the view stopped reading `status`.
+ */
+function saveIndicator(store: ReturnType<typeof createStore>): string {
+  const { status } = store.getState().persistence;
+  if (status === 'conflict') return 'Not saved — edited elsewhere';
+  if (status === 'error') return 'Not saved — retry';
+  if (status === 'saving') return 'Saving…';
+  return store.isDirty() ? 'Unsaved changes' : 'Saved';
+}
+
 /** Two independent stores over ONE storage — the in-Node equivalent of two browser tabs. */
 async function twoTabs() {
   const storage = memoryStorage();
@@ -506,6 +522,132 @@ test('two tabs, one trip: the second save is REFUSED, not silently applied', asy
   assert.equal(stored.days[1].title, 'TAB B EDIT', "tab B's edit was clobbered");
   assert.equal(stored.days[0].title, 'TAB A FIRST', "tab A's refused write reached storage anyway");
   assert.equal(a.getState().doc?.days[0].title, 'TAB A SECOND', 'the edit was dropped from memory');
+  assert.notEqual(saveIndicator(a), 'Saved', 'the losing tab displayed "Saved"');
+});
+
+// ---------------------------------------------------------------------------
+// R2-1 — the CONCURRENT case. The sequential test above passed for eight weeks
+// while this one failed two runs in three in a real browser, because the
+// criterion it was written from ("tab A saves, tab B saves, tab A saves again")
+// describes three separate saves and the defect needs two overlapping ones.
+//
+// `save()` was `load()` -> compare -> `save()`: two awaits with an interleaving
+// point between them, so both tabs read revision R, both passed the compare,
+// and the second write destroyed the first while BOTH displayed "Saved".
+// The compare now happens inside `StoragePort.saveIfRevision`, atomically.
+//
+// Deterministic, and in plain Node: no browser, no timers, no elapsed time.
+// ---------------------------------------------------------------------------
+
+test('two tabs saving AT THE SAME MOMENT: exactly one wins and the loser is told', async () => {
+  const { storage, a, b, tripId } = await twoTabs();
+  const dayA = a.getState().doc?.days[0].id as string;
+
+  // Both tabs hold the same revision. This is the precondition the race needs;
+  // if it ever stops being true the test is no longer testing anything.
+  const startRevision = a.getState().doc?.revision as number;
+  assert.equal(b.getState().doc?.revision, startRevision, 'tabs did not start from one revision');
+  assert.equal(a.getState().persistence.savedRevision, startRevision);
+  assert.equal(b.getState().persistence.savedRevision, startRevision);
+
+  a.dispatch({ type: 'setDayMeta', dayId: dayA, patch: { title: 'TAB A' } } as Action);
+  b.dispatch({ type: 'setDayMeta', dayId: dayA, patch: { title: 'TAB B' } } as Action);
+
+  // Overlapping, not sequential: both writes are issued before either is awaited.
+  // `await a.flush(); await b.flush()` is the shape that hid this defect.
+  await Promise.all([a.flush(), b.flush()]);
+
+  const tabs = [
+    { name: 'A', store: a, edit: 'TAB A' },
+    { name: 'B', store: b, edit: 'TAB B' },
+  ];
+  const stored = core.fromJSON(storage.docs.get(tripId) as string);
+
+  // Exactly one mutation won — not zero, not both-agreeing-by-luck.
+  const winners = tabs.filter((t) => stored.days[0].title === t.edit);
+  assert.equal(winners.length, 1, `expected exactly one winner, storage holds ${stored.days[0].title}`);
+  const losers = tabs.filter((t) => t !== winners[0]);
+  assert.equal(losers.length, 1);
+
+  // The winner is settled and its edit is intact on screen and in storage.
+  const w = winners[0];
+  assert.equal(w.store.getState().persistence.status, 'idle', `winner ${w.name} did not settle`);
+  assert.equal(w.store.getState().doc?.days[0].title, w.edit);
+  assert.equal(w.store.isDirty(), false, `winner ${w.name} still reports unsaved work`);
+  assert.equal(saveIndicator(w.store), 'Saved');
+
+  // The loser is TOLD, keeps its edit, and does not claim to be saved. This is
+  // the whole finding: before the fix this assertion read 'Saved'.
+  const l = losers[0];
+  assert.equal(l.store.getState().persistence.status, 'conflict', `loser ${l.name} was not told`);
+  assert.notEqual(saveIndicator(l.store), 'Saved', `loser ${l.name} displayed "Saved"`);
+  assert.equal(saveIndicator(l.store), 'Not saved — edited elsewhere');
+  assert.equal(l.store.isDirty(), true, `loser ${l.name} lost track of its unsaved edit`);
+  assert.equal(l.store.getState().doc?.days[0].title, l.edit, `loser ${l.name}'s edit vanished from memory`);
+  assert.match(l.store.getState().persistence.lastError ?? '', /saved somewhere else/i);
+
+  // NO SILENT LOSS: the loser's edit is recoverable, and pressing the button recovers it.
+  await l.store.mergeWithStored();
+  assert.equal(l.store.getState().persistence.status, 'idle', 'the merge did not settle');
+  const after = core.fromJSON(storage.docs.get(tripId) as string);
+  assert.equal(after.days[0].title, l.edit, 'the merge did not carry the losing edit through');
+});
+
+test('a store never races ITSELF: overlapping saves from one tab do not self-conflict', async () => {
+  // The atomic port refuses a stale expectation, and an autosave overlapping an explicit
+  // flush WAS one. A tab must not be able to put itself into 'conflict' against its own
+  // write — that would be an unresolvable state with no other writer to merge with.
+  const p = ports();
+  const store = await storeWithTrip(p);
+  const dayId = store.getState().doc?.days[0].id as string;
+
+  store.dispatch({ type: 'setDayMeta', dayId, patch: { title: 'ONE' } } as Action);
+  store.dispatch({ type: 'setDayMeta', dayId, patch: { title: 'TWO' } } as Action);
+  await Promise.all([store.flush(), store.flush(), store.flush()]);
+
+  assert.equal(store.getState().persistence.status, 'idle');
+  assert.equal(saveIndicator(store), 'Saved');
+  const stored = core.fromJSON(p.storage.docs.get(store.getState().activeTripId as string) as string);
+  assert.equal(stored.days[0].title, 'TWO');
+});
+
+// ---------------------------------------------------------------------------
+// The port contract itself, independent of the store. `apps/mobile`'s SQLite
+// port and Phase 2's SyncPort have to satisfy this too, and a port that cannot
+// will fail here rather than in a browser two phases later.
+// ---------------------------------------------------------------------------
+
+test('StoragePort.saveIfRevision is atomic: concurrent writers, exactly one winner', async () => {
+  const storage = memoryStorage();
+  const summary = {
+    id: 't1', title: 'T', startDate: '2026-08-07', endDate: '2026-08-08',
+    cityCount: 0, dayCount: 2, stopCount: 0, poolCount: 0, revision: 7,
+  };
+  await storage.saveIfRevision('t1', null, JSON.stringify({ id: 't1', revision: 7, who: 'seed' }), summary);
+
+  // Five writers, all holding revision 7, all firing before any of them is awaited.
+  const attempts = ['a', 'b', 'c', 'd', 'e'].map((who) =>
+    storage.saveIfRevision('t1', 7, JSON.stringify({ id: 't1', revision: 8, who }), summary),
+  );
+  const outcomes = await Promise.all(attempts);
+
+  assert.equal(outcomes.filter((o) => o.ok).length, 1, 'more than one writer was allowed to win');
+  for (const o of outcomes.filter((o) => !o.ok)) {
+    assert.equal(o.ok, false);
+    // A refusal names what it actually FOUND, not what the caller hoped for — so the
+    // message a user sees ("stored revision 8, this tab expected 7") is true. Every
+    // loser here ran after the winner committed, so all of them see 8.
+    assert.equal((o as { storedRevision: number | null }).storedRevision, 8);
+  }
+  assert.equal(JSON.parse(storage.docs.get('t1') as string).revision, 8);
+
+  // Expect-absent is the same guard: only the first creator of an id may win.
+  const creators = await Promise.all(
+    ['x', 'y'].map((who) =>
+      storage.saveIfRevision('t2', null, JSON.stringify({ id: 't2', revision: 0, who }), { ...summary, id: 't2' }),
+    ),
+  );
+  assert.equal(creators.filter((o) => o.ok).length, 1, 'two writers both created the same id');
 });
 
 test("a refused save is 'conflict', never 'error' — storage is not broken", async () => {
@@ -723,4 +865,47 @@ test('the derived cache retires resolutions whose conflicts are gone', async () 
   store.syncResolutions();
   assert.equal(store.getState().doc?.resolutions[0].retiredAt, TODAY,
     'a resolution answering a conflict nobody reports any more must be retired');
+});
+
+// ---------------------------------------------------------------------------
+// R2-2, at the surface. Core files the stop under a reachable key; this is the
+// other half — that the panel actually renders every pooled stop, so the count
+// the user sees and the stops the user can reach are the same number.
+// ---------------------------------------------------------------------------
+
+test('R2-2: every pooled stop is rendered by some group, on a trip with no cities', async () => {
+  const store = createStore({ ports: ports() });
+  await store.createTrip({ title: 'New trip', startDate: '2026-08-07', endDate: '2026-08-08' });
+  const doc0 = store.getState().doc as core.Trip;
+  store.dispatch(addStopAction(doc0.days[0].id, 'Arrive LAX'));
+  const stopId = (store.getState().doc as core.Trip).days[0].stops[0].id;
+  store.dispatch({ type: 'returnToPool', stopId } as Action);
+  await store.flush();
+
+  const trip = store.getState().doc as core.Trip;
+  assert.equal(trip.pool.length, 1, 'the stop left the document');
+
+  // What the panel would render: the active city's section, plus the catch-all.
+  const cityKey = store.getState().ui.activeCityKey ?? trip.cities[0]?.key ?? '';
+  const shown = poolSection(trip, cityKey).stops.length + unfiledPool(trip).length;
+  assert.equal(shown, trip.pool.length, 'the pool count and the rendered stops disagree — a stop is unreachable');
+
+  // And it goes back. R2-2's document was intact the whole time; the defect was
+  // that no path reached it, which is the same loss from where the user sits.
+  store.dispatch({ type: 'scheduleFromPool', stopId } as Action);
+  assert.equal((store.getState().doc as core.Trip).days[0].stops.length, 1);
+  assert.equal((store.getState().doc as core.Trip).pool.length, 0);
+});
+
+test('R2-2: a stop pooled from a city day stays under that city, not the catch-all', async () => {
+  const store = await storeWithTrip();
+  const trip0 = store.getState().doc as core.Trip;
+  store.dispatch({ type: 'setDayMeta', dayId: trip0.days[1].id, patch: { primaryCity: 'vienna', cities: ['vienna'] } } as Action);
+  store.dispatch(addStopAction((store.getState().doc as core.Trip).days[1].id, 'Belvedere'));
+  const stopId = (store.getState().doc as core.Trip).days[1].stops[0].id;
+  store.dispatch({ type: 'returnToPool', stopId } as Action);
+
+  const trip = store.getState().doc as core.Trip;
+  assert.equal(poolSection(trip, 'vienna').stops.length, 1);
+  assert.equal(unfiledPool(trip).length, 0, 'a stop with a perfectly good city fell into the catch-all');
 });

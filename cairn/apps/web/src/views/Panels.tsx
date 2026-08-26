@@ -6,8 +6,8 @@
  * root CLAUDE.md — flag conflicts, don't resolve them by guessing — made into UI.
  */
 import type { AppState, DerivedCache } from '@cairn/client';
-import { poolSection } from '@cairn/client';
-import type { Conflict, Trip } from '@cairn/core';
+import { poolSection, unfiledPool } from '@cairn/client';
+import type { Conflict, Stop, Trip } from '@cairn/core';
 import { LOCAL_OWNER, displayStatus } from '@cairn/core';
 import { costLabel } from '../format.ts';
 import { systemClock } from '../ports/env.ts';
@@ -108,42 +108,67 @@ export function PoolPanel({ state, onError }: { state: AppState; onError: (m: st
   const section = poolSection(trip, cityKey);
   const act = (fn: () => void) => { try { fn(); } catch (e) { onError((e as Error).message); } };
 
+  /**
+   * Every pooled stop must be reachable. The panel lists one city at a time, so a stop
+   * filed under a key the trip does not have — pooled from a pure travel day, or from any
+   * day of a trip with no cities yet — was rendered by nothing at all while the tab's
+   * counter still included it (QA R2-2). `Sidebar` already carries the same catch-all for
+   * days; this is its counterpart, and it is always rendered, never behind a tab.
+   */
+  const unfiled = unfiledPool(trip);
+
+  const item = (s: Stop) => {
+    const badge = STATUS_BADGE[displayStatus(s.provenance)];
+    return (
+      <li key={s.id} className="pool__item">
+        <div>
+          <p className="stop__line">
+            <span className="stop__name">{s.name}</span>
+            {badge.label && <span className="pill" style={{ background: badge.color }}>{badge.label}</span>}
+          </p>
+          <p className="stop__meta">
+            {CAT_LABEL[s.category] ?? s.category}
+            {costLabel(s.cost) && ` · ${costLabel(s.cost)}`}
+          </p>
+          {s.note && <p className="stop__note">{s.note}</p>}
+        </div>
+        <button
+          className="btn btn--quiet"
+          title="Put it back where it came from, or on the open day"
+          onClick={() => act(() => store.dispatch({
+            type: 'scheduleFromPool',
+            stopId: s.id,
+            hint: state.ui.activeDayId ? { dayId: state.ui.activeDayId } : undefined,
+          }))}
+        >
+          Add to the plan
+        </button>
+      </li>
+    );
+  };
+
   return (
     <div className="panel">
       <h3>{section.title}</h3>
       {section.note && <p className="hint">{section.note}</p>}
       {section.stops.length === 0 && <p className="empty">Nothing optional listed for this city.</p>}
-      <ul className="pool">
-        {section.stops.map((s) => {
-          const badge = STATUS_BADGE[displayStatus(s.provenance)];
-          return (
-            <li key={s.id} className="pool__item">
-              <div>
-                <p className="stop__line">
-                  <span className="stop__name">{s.name}</span>
-                  {badge.label && <span className="pill" style={{ background: badge.color }}>{badge.label}</span>}
-                </p>
-                <p className="stop__meta">
-                  {CAT_LABEL[s.category] ?? s.category}
-                  {costLabel(s.cost) && ` · ${costLabel(s.cost)}`}
-                </p>
-                {s.note && <p className="stop__note">{s.note}</p>}
-              </div>
-              <button
-                className="btn btn--quiet"
-                title="Put it back where it came from, or on the open day"
-                onClick={() => act(() => store.dispatch({
-                  type: 'scheduleFromPool',
-                  stopId: s.id,
-                  hint: state.ui.activeDayId ? { dayId: state.ui.activeDayId } : undefined,
-                }))}
-              >
-                Add to the plan
-              </button>
-            </li>
-          );
-        })}
-      </ul>
+      <ul className="pool">{section.stops.map(item)}</ul>
+
+      {unfiled.length > 0 && (
+        <section>
+          <h3>
+            <span aria-hidden="true">✈️ </span>
+            {trip.cities.length === 0 ? 'Optional' : 'Not filed under a city'}
+            <span className="spine__range">{unfiled.length}</span>
+          </h3>
+          <p className="hint">
+            {trip.cities.length === 0
+              ? 'This trip has no cities yet, so nothing is filed under one.'
+              : 'Taken off a travel day, so it belongs to no city on this trip. Add it back to any day.'}
+          </p>
+          <ul className="pool">{unfiled.map(item)}</ul>
+        </section>
+      )}
     </div>
   );
 }

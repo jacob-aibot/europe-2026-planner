@@ -13,10 +13,55 @@ import type { IsoDate, TripSummaryRow } from '../deps.ts';
 
 export type TripDoc = string;
 
+/**
+ * The `revision` of a serialized document, without paying for a full `fromJSON`.
+ *
+ * It lives here rather than in the store because the compare half of compare-and-set now
+ * happens *inside* a storage implementation (see `saveIfRevision`), and two implementations
+ * reading the same field two ways is how a guard drifts open. `null` means "no readable
+ * revision" — a corrupt or truncated record, which never compares equal to anything.
+ */
+export function revisionOf(doc: TripDoc): number | null {
+  try {
+    const r = (JSON.parse(doc) as { revision?: unknown }).revision;
+    return typeof r === 'number' && Number.isFinite(r) ? r : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The result of an attempted write. A refusal is **not an error**: storage is healthy and
+ * the document is intact, someone else just got there first. The store turns `ok:false`
+ * into `persistence.status = 'conflict'` and a rejected promise into `'error'`.
+ */
+export type SaveOutcome =
+  | { ok: true }
+  | { ok: false; storedRevision: number | null };
+
 export interface StoragePort {
   listTrips(): Promise<TripSummaryRow[]>;
   load(id: string): Promise<TripDoc | null>;
-  save(id: string, doc: TripDoc, summary: TripSummaryRow): Promise<void>;
+  /**
+   * **Atomic** compare-and-set: writes `doc` only if the stored document's revision is
+   * exactly `expectedRevision`, and reports a refusal rather than throwing.
+   * `expectedRevision: null` means "nothing may be stored under this id yet".
+   *
+   * The comparison and the write MUST happen without an interleaving point between them.
+   * This is the whole contract, and it is the reason this method exists at all: the store
+   * used to do `load()` -> compare -> `save()`, which is two awaits with a gap in the
+   * middle, so two tabs that both read revision R both passed the compare and the second
+   * write destroyed the first while the losing tab displayed "Saved" (QA R2-1). A guard
+   * above the port cannot fix that; only the port can.
+   *
+   * An implementation that cannot be atomic must reject, never write optimistically.
+   */
+  saveIfRevision(
+    id: string,
+    expectedRevision: number | null,
+    doc: TripDoc,
+    summary: TripSummaryRow,
+  ): Promise<SaveOutcome>;
   delete(id: string): Promise<void>;
 }
 

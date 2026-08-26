@@ -86,22 +86,19 @@ export function createStore(opts: StoreOptions) {
     }, debounceMs);
   }
 
-  /** The `revision` of a stored document without paying for a full `fromJSON`. */
-  function storedRevisionOf(text: string): number | null {
-    try {
-      const r = (JSON.parse(text) as { revision?: unknown }).revision;
-      return typeof r === 'number' && Number.isFinite(r) ? r : null;
-    } catch {
-      return null;
-    }
+  /**
+   * `savedRevision` as the storage port wants it: `null` means "this store has never agreed
+   * with storage about this document, so nothing may be there yet". `initialState()` uses
+   * `-1` for that, and passing `-1` down as a revision would compare equal to nothing and
+   * refuse a legitimate first write.
+   */
+  function expectedRevision(): number | null {
+    return state.persistence.savedRevision < 0 ? null : state.persistence.savedRevision;
   }
 
   /**
-   * Writes the whole document, behind a **compare-and-set on the stored revision**
+   * Writes the whole document, behind the storage port's **atomic compare-and-set**
    * (ARCHITECTURE §2.2's revision guard; ROADMAP F's two-tab criterion).
-   *
-   * Phase 1 shipped with no guard at all, so two tabs on one trip silently destroyed each
-   * other's edits and the losing tab still displayed "Saved" (F-1). Now:
    *
    *   - storage untouched since we last agreed → write, as before;
    *   - storage moved → the write is **REFUSED**. `status` becomes `'conflict'`, the edit
@@ -109,51 +106,51 @@ export function createStore(opts: StoreOptions) {
    *     indicator does not say "Saved". Resolving it is `mergeWithStored()`, which is a
    *     button the user presses — never something a save does behind their back.
    *
+   * The compare deliberately does **not** happen here. It used to: `load()` -> compare ->
+   * `save()` is two awaits with an interleaving point between them, so two tabs saving at
+   * the same moment both read revision R, both passed, and the second write destroyed the
+   * first while the loser displayed "Saved" (QA R2-1). No amount of checking on this side
+   * of the port closes that window — the port has to do the compare and the write as one
+   * indivisible step, which is what `saveIfRevision` is for.
+   *
    * A storage failure is separate: `status = 'error'` with `lastError`. Either way the edit
    * is never dropped and nothing ever fails silently.
    */
   async function save(): Promise<void> {
+    // One store never races ITSELF. Autosave and an explicit `flush()` can both be in
+    // flight at once, and before the port became atomic that was invisible: the second
+    // save read storage from before the first one's write, compared its stale snapshot
+    // against a stale expectation, and agreed with itself. `saveIfRevision` refuses that
+    // — correctly — so the overlap has to stop happening rather than be tolerated.
+    // Chaining also means each attempt computes `expectedRevision()` *after* the previous
+    // one has settled, which is the only point at which it is true.
+    const run = saving.catch(() => {}).then(() => attemptSave());
+    saving = run;
+    return run;
+  }
+
+  async function attemptSave(): Promise<void> {
     const doc = state.doc;
     if (!doc) return;
     set({ ...state, persistence: { ...state.persistence, status: 'saving' } });
-    saving = (async () => {
-      const expectedRevision = state.persistence.savedRevision;
-      try {
-        const storedText = await ports.storage.load(doc.id);
-        const storedRevision = storedText === null ? null : storedRevisionOf(storedText);
-
-        if (storedText !== null && storedRevision !== expectedRevision) {
-          set({
-            ...state,
-            persistence: {
-              ...state.persistence,
-              status: 'conflict',
-              lastError:
-                `This trip was saved somewhere else — another tab, or another window — while you ` +
-                `were editing. Nothing has been overwritten and your changes are still here. ` +
-                `(stored revision ${String(storedRevision)}, this tab expected ${expectedRevision})`,
-            },
-          });
-          return;
-        }
-
-        await writeAndSettle(doc, doc, null);
-      } catch (err) {
-        set({
-          ...state,
-          persistence: {
-            ...state.persistence,
-            status: 'error',
-            lastError: (err as Error).message || String(err),
-          },
-        });
-      }
-    })();
-    return saving;
+    try {
+      await writeAndSettle(doc, doc, null, expectedRevision());
+    } catch (err) {
+      set({
+        ...state,
+        persistence: {
+          ...state.persistence,
+          status: 'error',
+          lastError: (err as Error).message || String(err),
+        },
+      });
+    }
   }
 
   /**
-   * Persists `toWrite`, updates the library row and marks the store clean.
+   * Persists `toWrite` if and only if storage still holds `expected`, updates the library
+   * row and marks the store clean. A refusal leaves the document and the in-memory edit
+   * completely untouched and reports `'conflict'`.
    *
    * `startedFrom` is the in-memory document the write began from: the user may have kept
    * typing while it was in flight, and a merged document may only replace `state.doc` when
@@ -163,9 +160,24 @@ export function createStore(opts: StoreOptions) {
     startedFrom: Trip,
     toWrite: Trip,
     merge: { message: string; report: core.MergeReport } | null,
+    expected: number | null,
   ): Promise<void> {
     const summary = core.tripSummary(toWrite);
-    await ports.storage.save(toWrite.id, core.toJSON(toWrite), summary);
+    const outcome = await ports.storage.saveIfRevision(toWrite.id, expected, core.toJSON(toWrite), summary);
+    if (!outcome.ok) {
+      set({
+        ...state,
+        persistence: {
+          ...state.persistence,
+          status: 'conflict',
+          lastError:
+            `This trip was saved somewhere else — another tab, or another window — while you ` +
+            `were editing. Nothing has been overwritten and your changes are still here. ` +
+            `(stored revision ${String(outcome.storedRevision)}, this tab expected ${String(expected)})`,
+        },
+      });
+      return;
+    }
     baseDoc = toWrite;
     const stillOurs = state.doc === startedFrom;
     set({
@@ -246,7 +258,21 @@ export function createStore(opts: StoreOptions) {
       if (!doc) throw new Error('mergeWithStored: no active trip');
       const storedText = await ports.storage.load(doc.id);
       if (storedText === null) {
-        await save();
+        // The trip was deleted while this tab held a conflict. Writing it back is what the
+        // user asked for by pressing the button, and `null` is the honest expectation:
+        // "nothing is stored under this id" — if that stops being true before we commit,
+        // the port refuses and the conflict stands rather than clobbering the newcomer.
+        set({ ...state, persistence: { ...state.persistence, status: 'saving' } });
+        saving = (async () => {
+          try {
+            await writeAndSettle(doc, doc, null, null);
+          } catch (err) {
+            set({
+              ...state,
+              persistence: { ...state.persistence, status: 'error', lastError: (err as Error).message },
+            });
+          }
+        })();
         await saving;
         return state;
       }
@@ -261,10 +287,15 @@ export function createStore(opts: StoreOptions) {
       set({ ...state, persistence: { ...state.persistence, status: 'saving' } });
       saving = (async () => {
         try {
-          await writeAndSettle(doc, merged.trip, {
-            message: core.describeMerge(merged.report),
-            report: merged.report,
-          });
+          // The merge is only valid against the `remote` we just read, so that is the
+          // revision the write must still find. A third writer landing in between makes
+          // this merge stale, and the port refusing is the correct outcome.
+          await writeAndSettle(
+            doc,
+            merged.trip,
+            { message: core.describeMerge(merged.report), report: merged.report },
+            remote.revision,
+          );
         } catch (err) {
           set({
             ...state,
