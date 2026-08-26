@@ -529,3 +529,129 @@ test('R2-11: a source:user record with a null actor is outside the rule by desig
   };
   assert.deepEqual(validateTrip(withNullActor).filter((i) => i.code === 'accepted_by_non_member'), []);
 });
+
+// ---------------------------------------------------------------------------
+// QA R5-2 — `accepted_by_non_member` exempted a MISSING actor as well as a wrong one.
+//
+// §2.9's predicate has three conjuncts: a non-null `attribution()`, `state === 'accepted'`,
+// and an `actorUserId` that is **not a member of the trip**. `null`, `undefined` and `''` are
+// members of nothing, so all three shapes satisfy it — and the implementation's `!actor`
+// short-circuit added an unstated fourth conjunct ("the actor must be truthy") that let an
+// "accepted by nobody" credited record validate clean and render as the user's own plan.
+//
+// The exemption §2.14 *does* state is scoped by `attribution()`, not by nullness — which is
+// what the `source:'user'` test above holds down, and it must keep passing.
+// ---------------------------------------------------------------------------
+
+/** A trip with one credited, accepted stop whose actor is whatever the caller passes. */
+function faultedWithActor(actor: unknown): { trip: Trip; stopId: string } {
+  const clean = { ...copied().trip, ownerId: 'local:self' };
+  const stopId = clean.days.find((d) => d.id === '2026-08-08')!.stops[0].id;
+  const trip: Trip = {
+    ...clean,
+    days: clean.days.map((d) => ({
+      ...d,
+      stops: d.stops.map((s) =>
+        s.id === stopId
+          ? {
+              ...s,
+              provenance: {
+                ...s.provenance,
+                source: 'friend' as const,
+                state: 'accepted' as const,
+                acceptedAt: '2026-08-26',
+                actorUserId: actor as string | null,
+              },
+            }
+          : s,
+      ),
+    })),
+  };
+  return { trip, stopId };
+}
+
+test('R5-2: an accepted, credited record with NO actor is an error, for all three missing shapes', () => {
+  for (const [label, actor] of MISSING_ACTORS) {
+    const { trip, stopId } = faultedWithActor(actor);
+    const stop = trip.days.find((d) => d.id === '2026-08-08')!.stops.find((s) => s.id === stopId)!;
+    // The shape really is the rule's subject: credited, and rendering as the user's own.
+    assert.ok(attribution(stop), `${label}: the fixture is not credited, so the test proves nothing`);
+    assert.equal(displayStatus(stop), 'own', `${label}: the fixture does not render as 'own'`);
+
+    const issues = validateTrip(trip).filter((i) => i.code === 'accepted_by_non_member');
+    assert.equal(issues.length, 1, `actorUserId=${label} was not flagged (${issues.length} issues)`);
+    assert.equal(issues[0].level, 'error');
+    assert.deepEqual(issues[0].ref, { kind: 'stop', id: stopId });
+    // §2.1: structured params beside the string, and `params` is Record<string, string|number>
+    // — a `null` actor must not leak through as a non-string.
+    assert.equal(typeof issues[0].params.actorUserId, 'string', `${label}: params.actorUserId is not a string`);
+    assert.equal(issues[0].params.actorUserId, '');
+    assert.equal(issues[0].params.ownerId, 'local:self');
+    assert.equal(issues[0].params.tripId, trip.id);
+    assert.doesNotMatch(issues[0].message, /null|undefined/, `${label}: the message reads "${issues[0].message}"`);
+  }
+});
+
+test('R5-2: a real non-member string is still flagged, and the trip OWNER is still not', () => {
+  const stranger = faultedWithActor('user:someone-else');
+  const strangerIssues = validateTrip(stranger.trip).filter((i) => i.code === 'accepted_by_non_member');
+  assert.equal(strangerIssues.length, 1);
+  assert.equal(strangerIssues[0].params.actorUserId, 'user:someone-else');
+  assert.match(strangerIssues[0].message, /user:someone-else/);
+
+  const owner = faultedWithActor('local:self');
+  assert.deepEqual(
+    validateTrip(owner.trip).filter((i) => i.code === 'accepted_by_non_member'),
+    [],
+    'the trip owner accepting a credited record is legitimate and must never be flagged',
+  );
+});
+
+test('R5-2 ceiling: the widened rule adds nothing to the unmodified reference trip', () => {
+  // The finding's own stated invariant. It holds because the Europe 2026 reference trip
+  // carries zero attributed records — asserted here rather than assumed, so that the day a
+  // credited record enters the sample this test says so instead of quietly measuring nothing.
+  const { trip } = europe2026();
+  const issues = validateTrip(trip);
+  assert.deepEqual(issues.filter((i) => i.code === 'accepted_by_non_member'), []);
+
+  const attributed = [...trip.days, ...trip.days.flatMap((d) => d.stops), ...trip.pool, ...trip.bookings]
+    .filter((x) => attribution(x));
+  assert.deepEqual(attributed, [], 'a credited record appeared in the reference trip');
+
+  const accepted = [...trip.days, ...trip.days.flatMap((d) => d.stops), ...trip.pool, ...trip.bookings]
+    .filter((x) => x.provenance.state === 'accepted');
+  assert.ok(accepted.length > 100, `the ceiling is vacuous: only ${accepted.length} accepted records in the sample`);
+
+  // And the widened rule is not silently absent for a different reason: the same document with
+  // ONE record credited and its actor removed does fire, on the same call path.
+  const first = trip.days.find((d) => d.stops.length > 0)!;
+  const faulted: Trip = {
+    ...trip,
+    days: trip.days.map((d) =>
+      d.id !== first.id ? d : {
+        ...d,
+        stops: d.stops.map((s, i) => i !== 0 ? s : {
+          ...s,
+          provenance: {
+            ...s.provenance,
+            source: 'friend' as const,
+            state: 'accepted' as const,
+            origin: { friendUserId: 'user:marta', sourceTripId: 'trip-marta', sourceStopId: s.id },
+            actorUserId: null,
+          },
+        }),
+      },
+    ),
+  };
+  assert.equal(
+    validateTrip(faulted).filter((i) => i.code === 'accepted_by_non_member').length,
+    1,
+    'the rule does not fire on the reference document at all — the ceiling proves nothing',
+  );
+  assert.equal(
+    validateTrip(faulted).length,
+    issues.length + 1,
+    'exactly one additional issue, not a cascade',
+  );
+});

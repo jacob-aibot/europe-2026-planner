@@ -18,7 +18,12 @@ export { SCHEMA_VERSION, LOCAL_OWNER } from './model/types.ts';
 export type { TripId, DayId, StopId, PlaceId, BookingId, ConflictId, UserId, CityKey, RuleId, IsoDate, ClockTime, Currency, IdFactory, ClockPort } from './model/ids.ts';
 export { sequentialIds, fixedClock, isIsoDate } from './model/ids.ts';
 export { parseCostDisplay, costFromDisplay, currenciesOf, mixesBasis, formatRange } from './model/money.ts';
-export { userProvenance, systemSuggestion, emailCandidate, friendImport, accept, reject } from './model/provenance.ts';
+// `accept` and `reject` are deliberately NOT here (QA R5-5). They take `UserId | null` and
+// check nothing, so exporting them published a bypass around §2.14's gate — an acceptance
+// with no accepter, mintable in one public call. The checked wrappers `acceptCandidate` and
+// `rejectCandidate` are the public way to accept, and they call `requireActor` first. The
+// primitives stay module-internal to `packages/core` and are called only from `build/`.
+export { userProvenance, systemSuggestion, emailCandidate, friendImport } from './model/provenance.ts';
 
 // ---- build ------------------------------------------------------------------
 export { createTrip, setTripMeta } from './build/createTrip.ts';

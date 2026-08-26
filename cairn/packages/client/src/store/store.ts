@@ -26,6 +26,21 @@ import { derivedFor } from './derived.ts';
 export const AUTOSAVE_DEBOUNCE_MS = 400;
 
 /**
+ * How many times `flushForTransition` will write before it gives up (QA R5-1).
+ *
+ * A transition flushes, and an edit that lands *during* that flush leaves the document dirty
+ * again the instant the write returns — so the flush has to be re-asserted against `dirty()`
+ * and repeated, not decided from the status enum. Repeating it needs a bound: a user typing
+ * continuously for the whole of every write would otherwise keep the transition in flight
+ * forever, which trades silent data loss for a hang and is not an improvement.
+ *
+ * Five is sized for what it actually has to drain — the keystrokes a person can land inside
+ * one storage write's latency, not a workload. Two writes settle the realistic case (the
+ * in-flight document, then the one that arrived behind it); the rest is headroom.
+ */
+export const FLUSH_MAX_ATTEMPTS = 5;
+
+/**
  * What a refused write says, and the only place it is worded.
  *
  * §4.2 rule 6b requires the screen to name **both** things the user can actually do — merge
@@ -240,27 +255,53 @@ export function createStore(opts: StoreOptions) {
    * banner that is already there; this is not a new mechanism.
    */
   async function flushForTransition(): Promise<boolean> {
-    // §4.2 rule 6a′ (QA R4-1). The skip that avoids rewriting a 176 KB document on every
-    // navigation is where the whole of rule 6 was lost: it compared `doc.revision` against
-    // the revision last written, and undo makes that counter non-injective over content, so a
-    // fresh different edit landing on a number an earlier edit already used made the store report
-    // "nothing to write", skip the write, complete the switch, and display "Saved" over a
-    // document storage did not hold.
+    // §4.2 rule 6a″ (QA R5-1). The loop is the fix, and the reason it is a loop rather than
+    // one pass is that a flush is not a moment — it is a `await` long enough for the user to
+    // type into. Revision 3 flushed once and then decided from `persistence.status`, which is
+    // a fact about *the write that just finished*, not about *the document about to be
+    // abandoned*. When an edit landed while the write was in flight, `writeAndSettle`
+    // correctly recorded `savedDoc` as the document it wrote — the old one — left `state.doc`
+    // on the new one, and the status still read `'idle'`, so the transition proceeded and
+    // `attemptSave`'s early return dropped the re-armed write against a `state.doc` that was
+    // by then `null` or another trip. R4-1's error (a fact read somewhere other than where the
+    // resource states it) inside the function §2.2b F1 was written to fix.
     //
-    // The skip now requires ALL THREE. `doc === savedDoc` is the real condition — reference
-    // identity against the document storage agreed with us about (§2.2b F2). The other two
-    // are belt and braces and are stated as such: each can only ever cause MORE writing,
-    // never less, which is what F2's check requires of any conjunct.
-    const timerPending = cancelPending !== null;
-    cancelTimer();
-    const idle = state.persistence.status === 'idle';
-    const skip = idle && !timerPending && !dirty();
-    if (state.doc && !skip) {
+    // So the exit condition is `dirty()` — the thing the guarantee is actually about — and it
+    // is re-asserted AFTER every write, never sampled before one. `FLUSH_MAX_ATTEMPTS` bounds
+    // it, because a user typing through every write could otherwise keep a transition in
+    // flight forever, and a hang is not an improvement on data loss.
+    for (let attempt = 0; ; attempt++) {
+      // §4.2 rule 6a′ (QA R4-1). The skip that avoids rewriting a 176 KB document on every
+      // navigation is where the whole of rule 6 was lost: it compared `doc.revision` against
+      // the revision last written, and undo makes that counter non-injective over content, so a
+      // fresh different edit landing on a number an earlier edit already used made the store report
+      // "nothing to write", skip the write, complete the switch, and display "Saved" over a
+      // document storage did not hold.
+      //
+      // The skip requires ALL THREE. `doc === savedDoc` is the real condition — reference
+      // identity against the document storage agreed with us about (§2.2b F2). The other two
+      // are belt and braces and are stated as such: each can only ever cause MORE writing,
+      // never less, which is what F2's check requires of any conjunct.
+      //
+      // `cancelTimer()` runs on every pass, not just the first: a write that finished while
+      // the document had moved on re-arms the debounce, and that timer must not outlive this
+      // loop either.
+      const timerPending = cancelPending !== null;
+      cancelTimer();
+      const idle = state.persistence.status === 'idle';
+      const skip = idle && !timerPending && !dirty();
+      if (!state.doc || skip) return true;
+      // The bound is spent. Nothing has been discarded — the document is still active and
+      // still dirty — but a store that cannot land a stable write must not be allowed to
+      // proceed as though it had (rule 6b's spirit: a flush that did not succeed aborts the
+      // transition). The caller returns `state` unchanged and the user is still on the trip
+      // holding the edit, with `isDirty()` telling the indicator so.
+      if (attempt >= FLUSH_MAX_ATTEMPTS) return false;
       await save();
       await saving;
+      const { status } = state.persistence;
+      if (status === 'conflict' || status === 'error') return false;
     }
-    const { status } = state.persistence;
-    return status !== 'conflict' && status !== 'error';
   }
 
   /**

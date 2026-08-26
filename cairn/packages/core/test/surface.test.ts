@@ -87,8 +87,6 @@ const BEYOND_2_10: Record<string, string> = {
   systemSuggestion: 'the importer and the tests build a suggestion stamp',
   emailCandidate: 'Phase 3 ingest; shipped now so the shape is fixed, §2.8',
   friendImport: 'the provenance stamp copyStopInto builds, §2.14',
-  accept: 'the primitive behind acceptCandidate; used by the client for optimistic UI',
-  reject: 'the primitive behind rejectCandidate',
   fixedClock: 'tests and the CLI inject a clock, §2.1',
   CAT_DEFAULT_TIME: 'apps/web PoolPanel defaults a time by category',
   DEFAULT_CLUSTER_THRESHOLD_KM: 'apps/web DayMap "whole day\'s journey" toggle',
@@ -154,6 +152,36 @@ test('the size of the gap is reported, not hidden', () => {
     `${beyond.length} symbols beyond §2.10; BEYOND_2_10 lists ${Object.keys(BEYOND_2_10).length}`,
   );
   assert.ok(beyond.length <= 65, `the gap grew to ${beyond.length}; narrow the index or widen §2.10 (KD-19)`);
+});
+
+/**
+ * QA R5-5 — `accept`/`reject` are OFF the public surface.
+ *
+ * §2.14's invariant ("an acceptance with no accepter can never be traced to anyone") is
+ * enforced by `requireActor` inside `acceptCandidate`, `rejectCandidate` and `copyStopInto`.
+ * The primitives underneath them take `UserId | null` and check nothing, so exporting them
+ * published a bypass around the gate — and BEYOND_2_10's justification for the export
+ * ("used by the client for optimistic UI") was false: nothing in `packages/client`,
+ * `apps/web`, `cli.ts` or the tests ever called them.
+ *
+ * They stay module-internal to `packages/core`, called only by the two build functions that
+ * have already checked the actor. The alternative — routing them through `requireActor` —
+ * would have made `model/` depend on `build/`, inverting the layering for a symbol with no
+ * caller.
+ */
+test('R5-5: the unchecked accept/reject primitives are not exported', () => {
+  const exported = new Set(runtimeExports());
+  for (const name of ['accept', 'reject']) {
+    assert.equal(
+      exported.has(name),
+      false,
+      `core.${name} is public again — it takes UserId | null and does not call requireActor, ` +
+        'which is §2.14\'s gate with a public bypass (QA R5-5)',
+    );
+  }
+  // The checked wrappers are still there — this is a narrowing, not a removal of capability.
+  assert.equal(typeof core.acceptCandidate, 'function');
+  assert.equal(typeof core.rejectCandidate, 'function');
 });
 
 test('the six named internals are the only INTERNAL entries', () => {

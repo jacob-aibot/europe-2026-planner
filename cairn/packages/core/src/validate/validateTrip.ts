@@ -48,19 +48,34 @@ export function validateTrip(trip: Trip): Issue[] {
    *
    * Scoped to records with a non-null `attribution()`, which is exactly §2.14's subject:
    * `source:'user'` records carrying `actorUserId: null` assert no acceptance of anyone
-   * else's content and stay outside the rule by design.
+   * else's content and stay outside the rule by design. That exemption is scoped by
+   * ATTRIBUTION, not by nullness — which is the whole of QA R5-2.
+   *
+   * R5-2: the guard used to read `if (!actor || memberIds.has(actor)) return`, adding an
+   * unstated fourth conjunct — "the actor must be truthy" — to §2.9's three. `null`,
+   * `undefined` and `''` are members of nothing, so a credited, `state:'accepted'` record
+   * with no accepter at all satisfied the rule as written and was exempted by the code: it
+   * rendered as the user's own plan with nobody nameable as having accepted it, and
+   * `''` is not even absent, it is a present non-member value of type `UserId` that
+   * `requireActor` already refuses at construction. A missing actor is now flagged the same
+   * as a wrong one; only a member short-circuits.
    */
   const checkActor = (p: Provenance | undefined, ref: Ref, label: string) => {
     if (!p || p.state !== 'accepted') return;
     if (!attribution(p)) return;
-    const actor = p.actorUserId;
-    if (!actor || memberIds.has(actor)) return;
+    // `undefined` reaches here from a hand-built record; `params` is Record<string, string |
+    // number> (§2.1), so the absent case is carried as `''` rather than leaking a non-string.
+    const actor = typeof p.actorUserId === 'string' && p.actorUserId !== '' ? p.actorUserId : null;
+    if (actor !== null && memberIds.has(actor)) return;
     push({
       level: 'error',
       code: 'accepted_by_non_member',
       ref,
-      message: `${label} was accepted by ${actor}, who is not a member of this trip.`,
-      params: { actorUserId: actor, ownerId: trip.ownerId ?? '', tripId: trip.id },
+      message:
+        actor === null
+          ? `${label} is marked accepted, but records nobody as having accepted it.`
+          : `${label} was accepted by ${actor}, who is not a member of this trip.`,
+      params: { actorUserId: actor ?? '', ownerId: trip.ownerId ?? '', tripId: trip.id },
     });
   };
 
