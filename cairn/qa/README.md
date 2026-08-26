@@ -64,3 +64,35 @@ PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r2-race.mjs       # R2-1: two 
 ```
 
 `r2-race.mjs` is timing-dependent by nature: it lost an edit in 2 of 3 rounds when filed.
+
+---
+
+## Round 3 (2026-08-26, `master` @ `a746d75`)
+
+Re-verification of the R2-1 / R2-2 fix. `cairn/docs/QA-FINDINGS.md` names the finding each one
+backs. Headless probes run from `cairn/`:
+
+```bash
+node qa/r3-cas.mjs      # the atomic saveIfRevision: 3-way race, self-race, in-flight trip switch,
+                        # storage failure mid-chain, ABA, corrupt records, rapid-fire dispatches
+node qa/r3-cas2.mjs     # R3-4/R3-5/R3-8/R3-9 — ABA in a user-shaped sequence, corrupt records x6,
+                        # the catch-all's double render, the transcribed save indicator
+node qa/r3-undo.mjs     # R3-1 (BLOCKER) — undo lowers the stored revision and reopens R2-1
+node qa/r3-loss.mjs     # R3-2 (BLOCKER) — the 400 ms debounce vs closeTrip / openTrip
+node qa/r3-merge.mjs    # R3-3 — mergeWithStored assigns `saving` instead of chaining onto it
+node qa/r3-pool.mjs     # R2-2's fix: poolCityFor, pool_stop_unknown_city, the catch-all round trip
+```
+
+Browser probes need `npm run web:build && node tools/serve.mjs` in one shell, then:
+
+```bash
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r3-browser.mjs   # R3-1 and R3-2 in real IndexedDB
+```
+
+`r3-browser.mjs` is **not** timing-dependent: both cases are deterministic sequences, not races.
+R2-6, R2-11 and R2-18 were re-confirmed with the unmodified round-2 scripts (`r2-access.mjs`,
+`r2-copy.mjs`, `r2-constraints.mjs`) and are unchanged by `a746d75`.
+
+Note: `r3-pool.mjs` was corrected in this round — it was calling `addStop(trip, dayId, …)` and
+`setDayMeta(trip, id, patch, ctx)`, and the real signatures are `addStop(trip, placement, init,
+ctx)` and `setDayMeta(trip, id, patch)`. It aborted at section 2 before the fix.

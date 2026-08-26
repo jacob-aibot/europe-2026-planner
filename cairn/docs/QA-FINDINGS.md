@@ -1,11 +1,20 @@
-# Cairn — QA findings, Phase 1 **round 2**
+# Cairn — QA findings, Phase 1 **rounds 2 and 3**
 
-> **Status (as of `master` @ `b5c742b`):** **R2-3 fixed** (the `copyStopInto` credential leak —
-> see `BUILD-NOTES.md` KD-20/21). **R2-1 and R2-2 are still open** — no fix commit exists for
-> either; `git log -- packages/client/src/store/store.ts` shows nothing after the round-1 fix
-> that predates this round's QA pass. Every other finding below (R2-4 through R2-21) has not
-> been re-verified since this file was written — treat this document as the record of what was
-> found, not of what has since been fixed.
+> **Status (as of `master` @ `a746d75`, re-verified 2026-08-26):**
+>
+> | | |
+> |---|---|
+> | **Fixed and verified closed** | **R2-3** (`copyStopInto` credential leak, `b5c742b`). **R2-2** (the vanishing pool stop) — genuinely closed; re-run `qa/r2-poolloss.mjs` reports *"the stop is reachable again"* in Chromium, and `qa/r3-pool.mjs` finds every pooled stop reachable on the reference trip, on a city-less trip and on a transit day. |
+> | **Fixed for the case it was filed under, then reopened by another path** | **R2-1.** The atomic `saveIfRevision` closes the concurrent-save race exactly as claimed (`qa/r3-cas.mjs` H, `qa/r2-race.mjs`). **Ctrl-Z reopens it** — `undo()` restores a prior `Trip` snapshot including its lower `revision`, that revision is written to storage, and a tab that was correctly in `'conflict'` is let straight back in. Both tabs then read "Saved" over different documents. That is **R3-1**, and it is the same symptom sentence R2-1 was filed under. |
+> | **Still open, re-verified unchanged by this pass** | **R2-6** (malformed `expiresAt` fails open — `qa/r2-access.mjs`), **R2-11** (accept by a non-owner and `actorUserId:null` both read `'own'` — `qa/r2-copy.mjs`), **R2-18** (the determinism grep does not walk `packages/client` — `qa/r2-constraints.mjs`). Confirmed neither fixed, worsened nor masked. |
+> | **New in round 3** | **R3-1** and **R3-2** are BLOCKERs; **R3-3** … **R3-9** below. |
+> | **Not re-verified** | R2-4, R2-5, R2-7 through R2-10, R2-12 through R2-17, R2-19 through R2-21. Out of scope for this pass; treat them as the record of what was found. |
+>
+> `npm run typecheck` clean (both projects) and `npm test` **241 pass / 0 fail** at `a746d75`,
+> re-run from clean — the commit's number is accurate. **BUILD-NOTES §6 is now stale:** it still
+> says *"`store.save()` does `load` → compare → `save` with no transaction … this is **not** a
+> compare-and-swap at the storage layer"*, which this commit made untrue, and its Status note
+> still says "232 pass".
 
 Tester, stage 3. Attacked `master` @ `fcceb56`, 2026-08-25. Node v22.22.2, Chromium via the
 system Playwright driven over **real elapsed time** (no `--virtual-time-budget`).
@@ -535,3 +544,212 @@ Harmless, but §2.5 is the section a native port will be written from.
 - **Map tiles.** No route to `tile.openstreetmap.org` from this sandbox; pins, polylines and
   bounds render, nobody has seen a tile.
 - **Node 24.** This environment is 22.22.2, as the builder also reported.
+
+---
+
+# Round 3 — re-verification of `a746d75` (the R2-1 / R2-2 fix)
+
+Tester, 2026-08-26. Attacked `master` @ `a746d75`, Node v22.22.2, Chromium over real elapsed
+time. Scope: the changed files plus a confirmation pass on R2-6 / R2-11 / R2-18. Round 2's
+untouched findings were not re-litigated.
+
+**Result: 2 BLOCKER · 2 MAJOR · 5 MINOR.**
+
+```bash
+cd cairn && npm run typecheck && npm test        # 241 pass / 0 fail, typecheck clean
+node qa/r3-cas.mjs        # the atomic CAS: 3-way race, self-race, storage failure, ABA, corrupt records
+node qa/r3-cas2.mjs       # ABA in a user-shaped sequence, corrupt records ×6, catch-all double render
+node qa/r3-undo.mjs       # R3-1 — undo lowers the stored revision and reopens R2-1
+node qa/r3-loss.mjs       # R3-2 — the debounce window vs closeTrip / openTrip
+node qa/r3-merge.mjs      # R3-3 — mergeWithStored does not chain onto `saving`
+node qa/r3-pool.mjs       # the pool/validation path: poolCityFor, the new error code, the round trip
+node qa/r2-access.mjs     # R2-6, unchanged
+node qa/r2-copy.mjs       # R2-11, unchanged
+node qa/r2-constraints.mjs # R2-18, unchanged
+
+npm run web:build && node tools/serve.mjs &
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r3-browser.mjs   # R3-1 and R3-2 in real IndexedDB
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r2-poolloss.mjs  # R2-2, now passing
+```
+
+---
+
+## BLOCKER
+
+### R3-1 — Ctrl-Z lowers the stored `revision`, which lets a conflicting tab back in; both tabs then say "Saved"
+
+**Routing: builder** for `packages/client/src/store/reducer.ts:115` (`undo`) and `:123` (`redo`);
+**architect** for whether `Trip.revision` is the right compare-and-set token at all (see R3-4).
+**Repro: `node qa/r3-undo.mjs`, and in a real browser `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers
+node qa/r3-browser.mjs` §1.**
+
+The fix is right about the mechanism it replaced. `saveIfRevision` really is atomic, the
+three-way race resolves to exactly one winner and two told losers (`qa/r3-cas.mjs` H), and a
+store no longer races itself on the `save()` path. None of that is in question.
+
+What is in question is the **token**. §2.2 declares `revision: number; monotonic; bumped by
+every build function`, and the whole guard rests on that word. `reducer.undo()` does not go
+through a build function — it restores a previously captured immutable `Trip`, `revision` and
+all — and `store.undo()` then calls `scheduleSave()`, which writes that snapshot. So the stored
+revision moves **backwards**, and a revision the guard has already handed out is issued a second
+time to a different document.
+
+`qa/r3-undo.mjs` §1, plain Node:
+
+```
+  stored revision: 2 -> 3 -> 2 after undo (title now "ONE")
+  FAIL §2.2: `revision` is monotonic — it went 3 -> 2
+```
+
+That alone is a broken invariant. §2 is the exploit, and it is the R2-1 symptom sentence
+verbatim. In real Chromium against real IndexedDB (`qa/r3-browser.mjs` §1):
+
+```
+  both tabs opened at stored revision 0
+  after B is refused: tab B says "Not saved — edited elsewhere … (stored revision 1, this tab expected 0)"
+  after tab A pressed Ctrl-Z: stored revision 0 (tab B still expects 0)
+  FAIL the stored revision never goes backwards — 0 -> 0
+  storage now contains: A EDIT=false B EDIT AGAIN=true
+  tab A says "Saved"; tab B says "Saved"
+  FAIL two tabs do not both display "Saved" over different documents
+```
+
+Read that sequence as a user: tab A renames a day and it saves. Tab B, open since before, is
+correctly refused and correctly told. Tab A presses Ctrl-Z — an undo of its *own* edit, an
+action with no cross-tab meaning whatever. Tab B's next keystroke now passes the compare,
+because the revision it has been holding since it opened has been re-issued. Tab B's document
+lands. Tab A is still showing `08-16 A EDIT`, `isDirty()` is `false` because
+`doc.revision === savedRevision`, and its indicator says **"Saved"** over a document that is not
+in storage. Tab B says "Saved" too. Nothing anywhere says an edit was lost.
+
+Ctrl-Z is bound in `apps/web/src/App.tsx:28-33` and there are Undo buttons in
+`views/TripView.tsx:51` and `views/Panels.tsx:64`, so this needs one keystroke, not a
+contrived sequence.
+
+The narrow fix is in the client: `undo`/`redo` must produce a *forward* revision rather than
+replaying an old one (the snapshot's content with `revision: state.doc.revision + 1`), which
+also restores §2.2's stated invariant. The wider question belongs to the architect and is
+R3-4: a per-document counter that any client can rewind is not a version token, and the same
+weakness is what makes delete-and-recreate invisible to the guard.
+
+### R3-2 — An edit made inside the 400 ms autosave debounce is discarded, silently, when the trip is closed or switched
+
+**Routing: builder** for `packages/client/src/store/store.ts:80` (`scheduleSave` — nothing
+cancels or flushes `cancelPending`) and `:132` (`attemptSave` reads `state.doc` at *execution*
+time, not the document the save was scheduled for); **architect** for the NO SILENT LOSS
+criterion, whose enumerated list does not include this case. **Repro: `node qa/r3-loss.mjs`,
+and `qa/r3-browser.mjs` §2 in a real browser.**
+
+`dispatch()` schedules a debounced save 400 ms out. **No** path that changes the active
+document — `closeTrip`, `openTrip`, `createTrip`, `adoptTrip`, `importDoc`, `deleteTrip` —
+cancels that timer, flushes it, or warns. When it fires, `attemptSave()` reads whatever
+`state.doc` *now* is, so the pending write for trip A is silently executed against trip B (a
+no-op) or against nothing at all. There is also **no `beforeunload`, `pagehide` or
+`visibilitychange` handler anywhere in `apps/web/src`** (`qa/r3-cas2.mjs` §4), so closing the
+tab inside the same window has the same result.
+
+`qa/r3-loss.mjs`, with the **real** default scheduler and real timers (§3), not the manual one:
+
+```
+  1. edit, then click "Cairn" (App.tsx:46 → closeTrip) inside the debounce window
+     indicator right after the edit: Unsaved changes
+     indicator after closing: Saved | stored day title: ""
+     FAIL the edit is gone from storage and the indicator reads "Saved"
+
+  2. edit trip A, then open trip B (Library.tsx:88) inside the debounce window
+     FAIL A's edit is gone; the pending save wrote trip B (revision 1 -> 1) instead
+
+  3. same, with real timers rather than the manual scheduler
+     FAIL the edit survived — discarded, silently
+```
+
+And in Chromium, typing a day title and clicking the "Cairn" brand button (`App.tsx:46`)
+immediately after (`qa/r3-browser.mjs` §2):
+
+```
+  after closing: the library is shown = true
+  the edit is in storage = false
+  anything on screen about an unsaved edit = NOTHING
+```
+
+This is not a race and needs no second tab. It is one click, inside a window the app itself
+chose to be 400 ms long, and it is a direct violation of the sentence `a746d75` added to
+ROADMAP Phase 1 F: *"no edit is ever discarded or made unreachable without the app saying so,
+on screen, at the moment it happens."* The criterion's **testable** form enumerates five cases
+— refused concurrent save, refused sequential save, failing `StoragePort`, restore over an
+existing id, pool stop from a city-less day — and every one of them is a case where the edit
+stays in memory. It does not enumerate the case where the edit's *container* goes away, which
+is why a criterion written in the same commit as the fix still passes over it. That half is the
+architect's: the enumeration needs a sixth row, "the active document is replaced or closed
+while a write is pending".
+
+---
+
+## MAJOR
+
+| id | severity | file:line | defect | repro | routing |
+|---|---|---|---|---|---|
+| **R3-3** | MAJOR | `packages/client/src/store/store.ts:266`, `:288` | `mergeWithStored()` does `saving = (async …)()` — an assignment, not `saving = saving.then(…)` like `save()` at `:127` — so a pending autosave and the merge are both in flight from **one** store, breaking the "one store never races ITSELF" invariant the same commit added. The merge lands correctly, then the orphaned autosave is refused against its now-stale expectation and sets `status='conflict'`. The user is left reading **"Not saved — edited elsewhere"** with `isDirty() === false` over a document that is fully and correctly saved, and it does not clear until the next edit. No data is lost; the indicator lies in the safe direction, which is still the indicator lying. | `node qa/r3-merge.mjs` (`writes in flight at the latch: 2  <-- two, from ONE store`; `after: status=conflict indicator="Not saved — edited elsewhere"` with both tabs' edits in storage) | **builder** |
+| **R3-4** | MAJOR | `packages/client/src/ports/types.ts:41` (`SaveOutcome` / `saveIfRevision` contract) | The guard's token is a bare per-document counter, so it cannot see a document being **deleted and recreated** under the same id at the same revision (ABA): a writer holding revision 4 of the old document writes straight over a different document that also happens to be at revision 4, `ok:true`, indicator "Saved". `importDoc` keeps the original id when the id is free, which is exactly the export → delete → restore sequence. I could **not** build a user-shaped sequence where the two documents differ in content — within one lineage `(id, revision)` does identify a state — so this is filed on the port contract, not as a demonstrated loss, and it is the same root weakness as R3-1, where the revision *is* recycled with different content. | `node qa/r3-cas2.mjs` §2 (`outcome: {"ok":true}`, stored `STALE WRITER`); `node qa/r3-cas.mjs` E; the negative result is `qa/r3-cas2.mjs` §1, which correctly reports `conflict` | **architect** — the token, not the transaction, is what needs deciding; `apps/mobile`'s SQLite port and Phase 2's `SyncPort` inherit whatever it is |
+
+---
+
+## MINOR
+
+| id | severity | file:line | defect | repro | routing |
+|---|---|---|---|---|---|
+| **R3-5** | MINOR | `packages/client/src/ports/memory.ts:52`, `apps/web/src/ports/storage.ts:83` (identical comparison) | `expectedRevision: null` compares **equal** to a stored record with no readable revision, so an expect-absent write silently overwrites it — for `{"id":"x","revision":` (truncated), `not json`, `{"id":"x"}` (no revision field), `{"revision":"7"}` (string), `{"revision":null}` and `{"revision":1e999}`. `ports/types.ts:24` states the opposite in terms — *"`null` means 'no readable revision' — a corrupt or truncated record, **which never compares equal to anything**"* — and `:47` says `null` means *"nothing may be stored under this id yet"*. Not reachable in `apps/web` today (ids are `crypto.randomUUID`, so `createTrip` cannot collide, and `adoptTrip`/`importDoc` check `load() !== null` first), which is the only reason this is not MAJOR. Undisclosed: no `KD-` entry. | `node qa/r3-cas2.mjs` §3 (6 shapes, all `ok:true`) | **builder** |
+| **R3-6** | MINOR | `packages/core/src/build/pool.ts:70` | `returnToPool(trip, stopId, cityKey)` with an explicit `cityKey` bypasses `poolCityFor` entirely and mints a key the trip does not have, contradicting ARCHITECTURE §2.9's *"`returnToPool` will not mint an unreachable key"*. Reachable from the client as `dispatch({type:'returnToPool', stopId, cityKey})`. The stop is **not** lost — the new catch-all renders it and `pool_stop_unknown_city` fires — so this is a doc-vs-code divergence, not a repeat of R2-2. | `node qa/r3-pool.mjs` §2 (`pooled under: atlantis`) | **builder** (validate the argument) or **architect** (soften the sentence) |
+| **R3-7** | MINOR | `packages/core/src/build/pool.ts:92` | `scheduleFromPool` throws `no such day` instead of falling back to `pickDay` when the stop's remembered `hint.dayId` names a day that no longer exists. Reachable without any hand-editing: pool the last stop off a day (the day is now empty) then shorten the trip with `setTripMeta` — `ensureDays` keeps days that still have stops but drops empty ones, so the hint is left dangling. Masked in `apps/web` because `PoolPanel`'s button always passes `hint:{dayId: activeDayId}`; not masked for the CLI, a test, or any future caller. | `node qa/r3-cas2.mjs` §5 (`FAIL … scheduleFromPool: no such day 2026-08-10`); `node qa/r3-pool.mjs` §5 | **builder** |
+| **R3-8** | MINOR | `apps/web/src/views/Panels.tsx:106` + `packages/client/src/selectors/index.ts:48` | On a trip with **no cities**, `PoolPanel` computes `cityKey = activeCityKey ?? cities[0]?.key ?? ''` and renders `poolSection(trip, '')` *and* `unfiledPool(trip)`. A stop pooled under the empty-string key satisfies both, so it renders twice with the same React `key`. The panel also prints *"Nothing optional listed for this city"* immediately above a catch-all group that has contents. Not reachable from the web UI today (nothing in `apps/web` dispatches `addStop` with a `kind:'pool'` placement), only via the client API/CLI. | `node qa/r3-cas2.mjs` §6 (`pool=2 \| poolSection('')=1 \| unfiled=2 \| rendered=3`) | **builder** |
+| **R3-9** | MINOR | `packages/client/test/store.test.ts:469` | The concurrent criterion requires the assertion be made *"against the indicator string the view renders, not `persistence.status` — a criterion that reads the enum keeps passing when the view stops reading it"*. The test's `saveIndicator()` is a **hand transcription** of `apps/web/src/App.tsx:102`'s `SaveState()`, and `packages/client` cannot import `apps/web` (the dependency-direction test forbids it), so the criterion is not satisfiable where it is asserted. Changing `App.tsx` alone cannot fail the test — the same failure mode the criterion was written against, one level up. The fix is a shared `saveIndicator(state)` in `packages/client` that `SaveState()` renders. | `node qa/r3-cas2.mjs` §7 | **architect** (restate against a shared function) then **builder** |
+
+---
+
+## What held up under attack
+
+Everything below was attacked and did **not** break. Listed so the next reader knows what was
+tried rather than assumed.
+
+- **`saveIfRevision` atomicity.** Three tabs at one revision → exactly one winner, two told
+  (`r3-cas.mjs` H). Five concurrent writers at one revision → one `ok:true`, four refusals each
+  naming the revision actually found. Twenty rapid-fire dispatches during a held-open write →
+  the last edit is stored, `status: 'idle'`, not dirty (`r3-cas.mjs` F). A save issued in the
+  same turn as `openTrip` on a different trip → the other trip is not overwritten
+  (`r3-cas.mjs` I). A `flush()` held open while the user switches trips → persistence still
+  describes the trip that is open, no bogus conflict (`r3-cas.mjs` B). A storage failure
+  mid-chain → `'error'`, and the next save recovers and stores the edit (`r3-cas.mjs` G).
+- **Flakiness of the new concurrent test.** `--test-name-pattern="SAME MOMENT"` run 25 times:
+  25 × `ok=1 notok=0`. It is deterministic, not scheduling-lucky — the memory port's
+  `saveIfRevision` contains no `await`, so microtask order is fixed. The criterion's *prose* is
+  met on every point except the indicator one (R3-9): both writes are issued before either is
+  awaited, the assertions are on named stores, and `mergeWithStored()` carries the loser's edit
+  through.
+- **R2-2, genuinely closed.** Reference trip: `pool=31`, reachable through the city sections
+  plus the catch-all `=31`, and **zero** false `pool_stop_unknown_city`. A brand-new trip with
+  no cities carries no false error (the stated ceiling holds). `poolCityFor` picks correctly
+  when the day's `primaryCity` has been deleted from `trip.cities` (falls back to the other
+  real city on the day, not to the transit key) and when `day.cities` lists a second real city
+  that is not primary (primary wins — the Aug 12 Dubrovnik→Split shape). A trip whose city is
+  literally keyed `transit` renders each pooled stop exactly once. The injected fault
+  (`cityKey: 'praha-typo'` through `fromJSON`) produces exactly one `error`, with no coordinate
+  in `params`. The catch-all round-trips: `returnToPool` → catch-all → *Add to the plan* →
+  back on the day. `qa/r2-poolloss.mjs` in Chromium: *"the stop is reachable again."*
+- **Privacy.** The eight changed source files contain zero `console.*`, `fetch`,
+  `XMLHttpRequest`, `navigator.*` or `localStorage` uses. The new `pool_stop_unknown_city`
+  `params` carry `stopId`, `name`, `cityKey` and no coordinate; the new conflict `lastError`
+  string carries two integers. No new sink for mailbox content or coordinates exists in this
+  diff.
+- **The read-only boundary.** After a full test run, a web build, six browser sessions and
+  eleven probe runs, `git status` shows only `cairn/qa/r3-*.mjs` and this file;
+  `europe-2026-itinerary.html` and the root `docs/` are untouched.
+
+## What I could not test
+
+- **A real IndexedDB quota wall or a transaction that aborts mid-write.** `apps/web`'s
+  `saveIfRevision` rejects on `tx.onabort`, which the store turns into `'error'`; I provoked
+  that through the in-memory port's `failAll`, not against a real browser quota.
+- **Whether R3-4's ABA is exploitable with *differing* content.** I built the export → delete →
+  restore sequence and it came out correct (the tab was told). The port-level statement stands;
+  a user-shaped loss does not.
+- **Safari, iOS, Node 24.** Chromium and Node 22.22.2 only, as in previous rounds.
