@@ -8,7 +8,7 @@
  *
  * `store.ts` still has a second bare counter doing a load-bearing job:
  *
- *     function dirty() { return state.doc.revision !== state.persistence.savedRevision; }
+ *     function dirty() { return state.doc.revision !== <the revision last written>; }
  *
  * and `flushForTransition()` uses it to decide whether to write at all:
  *
@@ -67,19 +67,18 @@ line('1. BLOCKER candidate: undo, then a DIFFERENT edit, then close the trip');
   store.dispatch({ type: 'setDayMeta', dayId, patch: { title: 'EDIT A' } });
   await store.flush();
   const revAfterA = store.getState().doc.revision;
-  const savedAfterA = store.getState().persistence.savedRevision;
-  console.log(`  after "EDIT A" saved: doc.revision=${revAfterA} savedRevision=${savedAfterA} stored="${titleOf(storage, id)}"`);
+  console.log(`  after "EDIT A" saved: doc.revision=${revAfterA} doc===savedDoc=${store.getState().doc === store.getState().persistence.savedDoc} stored="${titleOf(storage, id)}"`);
 
   // Ctrl-Z. The snapshot carries its OWN, lower revision back in.
   store.undo();
-  console.log(`  after Ctrl-Z:         doc.revision=${store.getState().doc.revision} savedRevision=${store.getState().persistence.savedRevision} isDirty=${store.isDirty()}`);
+  console.log(`  after Ctrl-Z:         doc.revision=${store.getState().doc.revision} doc===savedDoc=${store.getState().doc === store.getState().persistence.savedDoc} isDirty=${store.isDirty()}`);
 
   // ...and the user types something else inside the 400 ms debounce window.
   store.dispatch({ type: 'setDayMeta', dayId, patch: { title: 'EDIT B — THE ONE THAT MATTERS' } });
   const st = store.getState();
-  console.log(`  after "EDIT B":       doc.revision=${st.doc.revision} savedRevision=${st.persistence.savedRevision} isDirty=${store.isDirty()} indicator="${indicator(store)}"`);
+  console.log(`  after "EDIT B":       doc.revision=${st.doc.revision} doc===savedDoc=${st.doc === st.persistence.savedDoc} isDirty=${store.isDirty()} indicator="${indicator(store)}"`);
   ok('the store knows there is an unwritten edit', store.isDirty(),
-     `revision ${st.doc.revision} === savedRevision ${st.persistence.savedRevision}, so dirty() says clean while the content differs`);
+     `doc.revision ${st.doc.revision} matches the revision already written, so a counter-based dirty() says clean while the content differs`);
   ok('the indicator does not read "Saved" over an unwritten edit', indicator(store) !== 'Saved',
      `it reads "${indicator(store)}"`);
 
@@ -91,7 +90,7 @@ line('1. BLOCKER candidate: undo, then a DIFFERENT edit, then close the trip');
   ok('EDIT B survived the trip switch', stored === 'EDIT B — THE ONE THAT MATTERS',
      `storage still holds "${stored}" — the edit is gone, with nothing on screen`);
   ok('the pending timer was not simply dropped', storage.saveCount - savesBefore > 0,
-     'flushForTransition skipped the write because dirty() said clean');
+     'flushForTransition skipped the write because the dirty predicate said clean');
 }
 
 // ---------------------------------------------------------------------------
@@ -356,10 +355,14 @@ line('9. three tabs, save/undo/switch cycled in different orders');
 }
 
 // ---------------------------------------------------------------------------
-line('10. §2.2a rule 1\'s invariant, stated as an invariant and tested as one');
+line('10. §2.2a rule 1, as revision 4 restates it: revision may prove difference, never sameness');
 {
-  // "Non-decreasing along a chain of build-function applications, and WITHIN ONE DOCUMENT IN
-  //  ONE STORE, EQUAL `revision` IMPLIES IDENTICAL CONTENT."  — ARCHITECTURE §2.2a rule 1.
+  // Revision 3 claimed "within one document in one store, equal `revision` implies identical
+  // content". This six-line sequence falsified it, and revision 4 STRUCK the clause: what
+  // survives is non-decrease along a chain of build-function applications and nothing else.
+  // The check below is therefore inverted from how round 4 wrote it — the sequence must still
+  // produce two different documents on one number (or the repro has stopped reproducing), and
+  // nothing in the store may rely on the struck clause any more.
   const storage = mem.memoryStorage();
   const store = createStore({ ports: mkPorts(storage, mem.manualScheduler()) });
   await store.createTrip(INIT);
@@ -371,9 +374,12 @@ line('10. §2.2a rule 1\'s invariant, stated as an invariant and tested as one')
   const two = store.getState().doc;
   console.log(`  revision ${one.revision}: "${one.days[0].title}"`);
   console.log(`  revision ${two.revision}: "${two.days[0].title}"`);
-  ok('equal revision implies identical content, in one document in one store',
-     !(one.revision === two.revision) || core.toJSON(one) === core.toJSON(two),
-     `both are revision ${one.revision} and they are different documents — the invariant §2.2a asserts is false, and store.ts:258 relies on it`);
+  ok('equal revision over different content is still reachable, so the struck clause stays struck',
+     one.revision === two.revision && core.toJSON(one) !== core.toJSON(two),
+     'the sequence no longer produces two documents on one revision — this repro has stopped reproducing');
+  // And the store answers "unwritten edit" by identity, which this sequence cannot fool.
+  ok('the store still knows there is an unwritten edit', store.isDirty(),
+     'the dirty predicate was fooled by two documents wearing one revision');
 }
 
 console.log('\ndone.');

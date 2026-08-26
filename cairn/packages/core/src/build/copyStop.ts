@@ -41,6 +41,7 @@ import type { IdFactory, IsoDate, StopId, UserId } from '../model/ids.ts';
 import { addStop } from './stops.ts';
 import type { StopInit } from './stops.ts';
 import { redactText } from './redactText.ts';
+import { requireActor } from './candidates.ts';
 
 export type CopyStopSource = { trip: Trip; stopId: StopId };
 export type CopyStopCtx = { ids: IdFactory; today: IsoDate; actorUserId: UserId };
@@ -74,6 +75,7 @@ function samePlace(a: Place, b: { cityKey: string; name: string; at: Place['at']
  * not at the head of a chain** — if Marta's stop reached Jacob and Sam copies it from
  * Jacob, Sam's credit says Jacob, because Jacob is who Sam got it from.
  *
+ * @throws {TypeError} if `ctx.actorUserId` is missing (`null`, `undefined` or `''`) — §2.14, R2-11.
  * @throws {Error} if the stop or the target day does not exist — programmer error, §2.1.
  */
 export function copyStopInto(
@@ -82,6 +84,10 @@ export function copyStopInto(
   placement: StopPlacement,
   ctx: CopyStopCtx,
 ): Trip {
+  // R2-11 (§2.14, revision 4): `ctx.actorUserId` was already non-nullable in the TYPE and
+  // unchecked at runtime, and R2-11 went straight through it. Checked first, before anything
+  // is copied, so nothing is partially mutated behind the exception.
+  const actorUserId = requireActor('copyStopInto', ctx.actorUserId);
   const src = findAnywhere(source.trip, source.stopId);
   if (!src) throw new Error(`copyStopInto: no such stop ${source.stopId} in ${source.trip.id}`);
   if (placement.kind === 'scheduled' && !target.days.some((d) => d.id === placement.dayId)) {
@@ -100,7 +106,7 @@ export function copyStopInto(
     },
     addedAt: ctx.today,
     acceptedAt: null,
-    actorUserId: ctx.actorUserId,
+    actorUserId,
   };
 
   // Rule 4 — the place travels, or an equivalent one in the target is reused.

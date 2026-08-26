@@ -143,7 +143,7 @@ line('B. a save in flight for trip A, then openTrip(B): whose revision lands in 
      st.activeTripId === idB && st.persistence.savedVersion === storage.versions.get(idB),
      `savedVersion ${st.persistence.savedVersion} != B's ${storage.versions.get(idB)}`);
   ok('the store does not falsely claim B has unsaved work', !store.isDirty(),
-     `doc.revision=${st.doc.revision} savedRevision=${st.persistence.savedRevision}`);
+     `doc.revision=${st.doc.revision} doc===savedDoc=${st.doc === st.persistence.savedDoc}`);
   ok('no bogus "edited elsewhere" conflict on a trip nobody else touched',
      st.persistence.status !== 'conflict', st.persistence.lastError ?? '');
 }
@@ -336,7 +336,7 @@ line('I. a save issued BEFORE openTrip finishes');
      seedDoc.title === 'SEED SAVED', `seed is now "${seedDoc.title}"`);
   ok('the open trip is described by persistence',
      !store.isDirty() || st.persistence.status !== 'idle',
-     `savedRevision=${st.persistence.savedRevision} doc.revision=${st.doc.revision} status=${st.persistence.status}`);
+     `doc===savedDoc=${st.doc === st.persistence.savedDoc} doc.revision=${st.doc.revision} status=${st.persistence.status}`);
 }
 
 console.log('');

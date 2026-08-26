@@ -29,11 +29,16 @@ export function useAppState(): AppState {
 }
 
 /**
- * Derived data for the active trip. Read through the store so the `(tripId, revision)`
- * cache is shared with everything else — never recomputed per component.
+ * Derived data for the active trip. Read through the store so the
+ * `(document identity, today)` cache is shared with everything else — never recomputed per
+ * component.
+ *
+ * The `void` reads exist so this hook is re-evaluated whenever React re-renders on a new
+ * `AppState`; they are deliberately on the *document* and not on `doc.revision`, because a
+ * revision is a content counter and `===` on one cannot prove sameness (§2.2b F2).
  */
 export function useDerived(state: AppState): DerivedCache | null {
-  void state.doc?.revision;
+  void state.doc;
   void state.activeTripId;
   return store.getDerived();
 }

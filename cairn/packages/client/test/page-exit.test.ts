@@ -100,7 +100,11 @@ test('beforeunload calls preventDefault only while there are unsaved edits', () 
     const { win } = harness({ dirty });
     let prevented = false;
     win.fire('beforeunload', { preventDefault: () => { prevented = true; } });
-    assert.equal(prevented, dirty, `beforeunload with isDirty()=${dirty} was wrong`);
+    // `dirty` here is INJECTED into the harness, not read from a store: this test is about
+    // `registerPageExit` wiring, not about the dirty predicate itself. R4-1's own criterion
+    // ("no test proves a write with the dirty predicate") is asserted in `dirty.test.ts`, on
+    // the port's stored bytes.
+    assert.equal(prevented, dirty, `beforeunload with an unsaved edit = ${dirty} was wrong`);
   }
 });
 

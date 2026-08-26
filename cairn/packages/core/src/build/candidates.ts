@@ -39,17 +39,44 @@ function mapRef(trip: Trip, ref: Ref, f: ProvFn): Trip {
 }
 
 /**
+ * The R2-11 ruling (ARCHITECTURE §2.14, revision 4). An acceptance is a record of *who took
+ * this on*; one with no accepter is unfalsifiable forever after, and §6.2's "ownership
+ * traceable on every row" is on the brief's day-one list precisely because it is the
+ * expensive retrofit. `null`, `undefined` and `''` are all programmer error, per §2.1 — the
+ * same decision §2.1 already took for `updateStop`'s patch allowlist, and for the same
+ * reason: a non-nullable TYPE is a compile-time comment, and R2-11 went straight through
+ * `copyStopInto`'s.
+ *
+ * It is checked **before anything is copied**, so there is no partially-mutated document
+ * behind the exception and `revision` has not moved.
+ *
+ * @throws {TypeError} if the actor is missing.
+ */
+export function requireActor(fn: string, actorUserId: UserId | null | undefined): UserId {
+  if (typeof actorUserId !== 'string' || actorUserId === '') {
+    throw new TypeError(
+      `${fn}: actorUserId is required — an acceptance with no actor can never be traced to anyone.`,
+    );
+  }
+  return actorUserId;
+}
+
+/**
  * Marks a day, stop or booking as the user's own. Pure.
+ * @throws {TypeError} if `actorUserId` is missing (`null`, `undefined` or `''`) — §2.14.
  * @throws {Error} if the ref does not resolve, or its kind cannot carry provenance.
  */
-export function acceptCandidate(trip: Trip, ref: Ref, actorUserId: UserId | null, at: IsoDate): Trip {
-  return mapRef(trip, ref, (p) => accept(p, at, actorUserId));
+export function acceptCandidate(trip: Trip, ref: Ref, actorUserId: UserId, at: IsoDate): Trip {
+  const actor = requireActor('acceptCandidate', actorUserId);
+  return mapRef(trip, ref, (p) => accept(p, at, actor));
 }
 
 /**
  * Marks a day, stop or booking rejected. It stays in the document, badged. Pure.
+ * @throws {TypeError} if `actorUserId` is missing (`null`, `undefined` or `''`) — §2.14.
  * @throws {Error} if the ref does not resolve.
  */
-export function rejectCandidate(trip: Trip, ref: Ref, actorUserId: UserId | null, at: IsoDate): Trip {
-  return mapRef(trip, ref, (p) => reject(p, at, actorUserId));
+export function rejectCandidate(trip: Trip, ref: Ref, actorUserId: UserId, at: IsoDate): Trip {
+  const actor = requireActor('rejectCandidate', actorUserId);
+  return mapRef(trip, ref, (p) => reject(p, at, actor));
 }

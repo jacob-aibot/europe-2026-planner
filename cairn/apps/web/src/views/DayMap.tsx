@@ -43,8 +43,17 @@ export function DayMap({ trip, day, derived, scope }: Props) {
   useEffect(() => {
     if (!mounted || !handle.current) return;
     port.update(handle.current, points, bounds);
-    // Re-run when the day, the scope or the underlying revision changes.
-  }, [mounted, day.id, scope, derived?.revision, points.length, bounds.north, bounds.south, bounds.east, bounds.west]);
+    // Re-run when the day, the scope or the underlying DOCUMENT changes.
+    //
+    // This array used to carry `derived?.revision`, and a dependency array is `===`
+    // suppressing work — exactly what §2.2a rule 1 forbids and what §2.2b F2's check greps
+    // for. Undo restores a snapshot verbatim, so a *different* document can wear a revision
+    // an earlier one already wore, and this effect would then leave the map drawn from the
+    // pre-undo stops. §4.2 rule 3 says how to fix it: depend on the cache object, not on a
+    // number inside it. The cache is recomputed (a new object) whenever the document or the
+    // date changes, and reused by identity otherwise, so this is strictly more work than the
+    // old key and never less.
+  }, [mounted, day.id, scope, derived, points.length, bounds.north, bounds.south, bounds.east, bounds.west]);
 
   // The tab that owns this map became visible again — §4.4's contract.
   useEffect(() => {

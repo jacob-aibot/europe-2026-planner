@@ -14,10 +14,12 @@ import assert from 'node:assert/strict';
 
 import {
   acceptCandidate, addPlace, addStop, attribution, copyStopInto, createTrip, displayStatus,
-  moveStop, needsBadge, removeStop, returnToPool, scheduleFromPool, sequentialIds, toJSON, fromJSON,
+  moveStop, needsBadge, rejectCandidate, removeStop, returnToPool, scheduleFromPool, sequentialIds,
+  toJSON, fromJSON,
   updateStop, upsertBooking, validateTrip,
 } from '../src/index.ts';
 import type { BuildCtx, Stop, Trip } from '../src/index.ts';
+import { europe2026 } from './fixture.ts';
 
 const CTX = (prefix: string): BuildCtx => ({ ids: sequentialIds(prefix), now: '2026-08-25', actorUserId: 'user:jacob' });
 const COPY_CTX = (prefix: string) => ({ ids: sequentialIds(prefix), today: '2026-08-25', actorUserId: 'user:jacob' });
@@ -350,4 +352,180 @@ test('a removed copy leaves no orphan place behind that dangles anything', () =>
   const { trip, stop } = copied();
   const after = removeStop(trip, stop.id);
   assert.deepEqual(validateTrip(after).filter((i) => i.code === 'place_ref_dangling'), []);
+});
+
+// ---------------------------------------------------------------------------
+// The R2-11 ruling (ARCHITECTURE revision 4, §2.14 + §2.9; ROADMAP Phase 1 §D).
+//
+// §2.14's invariant — a credited record is never `'own'` unless the accepter is a member of
+// the trip — was stated and enforced nowhere. It is enforced in exactly two places, and
+// `displayStatus` is deliberately not one of them: it is a pure function of one `Provenance`,
+// cannot see the trip, and must not learn to.
+//
+//   1. the CALL throws: `acceptCandidate` / `rejectCandidate` / `copyStopInto` refuse a
+//      missing actor, because an acceptance with no accepter is unfalsifiable forever after;
+//   2. the DOCUMENT is an error: `validateTrip`'s `accepted_by_non_member`, because a wrong
+//      actor arrives inside a document (a restored backup, a hand-edited record, a Phase 2
+//      sync) and throwing there means an unopenable trip.
+// ---------------------------------------------------------------------------
+
+/** The three values §D names, over the full ref matrix. */
+const MISSING_ACTORS: Array<[string, unknown]> = [
+  ['null', null],
+  ['undefined', undefined],
+  ["the empty string", ''],
+];
+
+function tripWithEveryRefKind(): Trip {
+  const { trip, stop } = copied();
+  return upsertBooking(trip, {
+    id: 'bk-jacob', tripId: trip.id, kind: 'tour', operator: 'Tours', reference: 'X1',
+    startsAt: { date: '2026-08-08', time: '10:00' }, price: null, party: null, status: 'active',
+    ticket: null,
+    provenance: {
+      source: 'friend', state: 'candidate', confidence: 'asserted',
+      origin: { friendUserId: 'user:marta', sourceTripId: 'trip-marta', sourceStopId: stop.id },
+      addedAt: '2026-08-25', acceptedAt: null, actorUserId: 'user:jacob',
+    },
+  });
+}
+
+test('R2-11: acceptCandidate and rejectCandidate throw on a missing actor, over the full ref matrix', () => {
+  const base = tripWithEveryRefKind();
+  const stopId = base.days.find((d) => d.id === '2026-08-08')!.stops[0].id;
+  const refs = [
+    { kind: 'stop' as const, id: stopId },
+    { kind: 'day' as const, id: '2026-08-08' },
+    { kind: 'booking' as const, id: 'bk-jacob' },
+  ];
+  const before = toJSON(base);
+
+  for (const ref of refs) {
+    for (const [label, actor] of MISSING_ACTORS) {
+      for (const [name, fn] of [['acceptCandidate', acceptCandidate], ['rejectCandidate', rejectCandidate]] as const) {
+        assert.throws(
+          () => fn(base, ref, actor as string, '2026-08-26'),
+          /actor/i,
+          `${name}(${ref.kind}) accepted ${label} as an actor`,
+        );
+        // The ceiling: no partially-mutated document behind the exception.
+        assert.equal(toJSON(base), before, `${name}(${ref.kind}) mutated the trip before throwing (${label})`);
+      }
+    }
+  }
+  assert.equal(base.revision, fromJSON(before).revision, 'revision moved behind a throw');
+});
+
+test('R2-11: copyStopInto throws on a missing actor — the type was already right and R2-11 went straight through it', () => {
+  const target = jacobsTrip();
+  const source = martasTrip();
+  const before = toJSON(target);
+  for (const [label, actor] of MISSING_ACTORS) {
+    assert.throws(
+      () => copyStopInto(
+        target,
+        { trip: source, stopId: 'stop-marta-1' },
+        { kind: 'scheduled', dayId: '2026-08-08', time: '11:00', order: 0 },
+        { ids: sequentialIds('z'), today: '2026-08-25', actorUserId: actor as string },
+      ),
+      /actor/i,
+      `copyStopInto accepted ${label} as an actor`,
+    );
+    assert.equal(toJSON(target), before, `copyStopInto mutated the target before throwing (${label})`);
+  }
+  assert.equal(target.revision, fromJSON(before).revision, 'revision moved behind a throw');
+});
+
+test('R2-11 injected fault: an accepted, credited record whose actor is not a member is an error', () => {
+  // ROADMAP §D, near-verbatim: "Hand-build a stop with source:'friend', a valid origin,
+  // state:'accepted', acceptedAt set, and actorUserId:'user:someone-else', on a trip with
+  // ownerId:'local:self'."
+  const clean = { ...copied().trip, ownerId: 'local:self' };
+  const stopId = clean.days.find((d) => d.id === '2026-08-08')!.stops[0].id;
+  const baseline = validateTrip(clean);
+  assert.deepEqual(
+    baseline.filter((i) => i.code === 'accepted_by_non_member'),
+    [],
+    'the unfaulted trip already reports the fault',
+  );
+
+  const faulted: Trip = {
+    ...clean,
+    days: clean.days.map((d) => ({
+      ...d,
+      stops: d.stops.map((s) =>
+        s.id === stopId
+          ? {
+              ...s,
+              provenance: {
+                ...s.provenance,
+                source: 'friend' as const,
+                state: 'accepted' as const,
+                acceptedAt: '2026-08-26',
+                actorUserId: 'user:someone-else',
+              },
+            }
+          : s,
+      ),
+    })),
+  };
+
+  const issues = validateTrip(faulted);
+  const added = issues.filter((i) => !baseline.some((b) => b.code === i.code && b.ref.id === i.ref.id));
+  assert.equal(added.length, 1, `expected exactly one additional issue, got ${added.map((i) => i.code).join(', ')}`);
+  const issue = added[0];
+  assert.equal(issue.code, 'accepted_by_non_member');
+  assert.equal(issue.level, 'error');
+  assert.deepEqual(issue.ref, { kind: 'stop', id: stopId });
+  assert.equal(issue.params.actorUserId, 'user:someone-else');
+  assert.equal(issue.params.ownerId, 'local:self');
+
+  // `displayStatus` still says 'own' — on purpose. It is a pure function of one Provenance,
+  // it cannot see the trip, and the invariant is a claim about which DOCUMENTS may exist.
+  const faultedStop = faulted.days.find((d) => d.id === '2026-08-08')!.stops[0];
+  assert.equal(displayStatus(faultedStop), 'own');
+  assert.ok(attribution(faultedStop), 'the credit must still be there');
+});
+
+test('R2-11: the owner accepting is not an error, and a day or a booking is checked the same way', () => {
+  const clean = { ...tripWithEveryRefKind(), ownerId: 'user:jacob' };
+  const accepted = acceptCandidate(clean, { kind: 'booking', id: 'bk-jacob' }, 'user:jacob', '2026-08-26');
+  assert.deepEqual(validateTrip(accepted).filter((i) => i.code === 'accepted_by_non_member'), []);
+
+  const byStranger = acceptCandidate(clean, { kind: 'booking', id: 'bk-jacob' }, 'user:someone-else', '2026-08-26');
+  const issues = validateTrip(byStranger).filter((i) => i.code === 'accepted_by_non_member');
+  assert.equal(issues.length, 1);
+  assert.deepEqual(issues[0].ref, { kind: 'booking', id: 'bk-jacob' });
+});
+
+test('R2-11 ceiling: the new rule adds nothing to the unmodified reference trip', () => {
+  // ROADMAP §D: "zero additional issues on the unmodified reference trip — source:'user'
+  // records with actorUserId:null are outside the rule's subject by design (§2.14) and a run
+  // in which the reference trip's issue count moves at all fails."
+  const { trip } = europe2026();
+  const issues = validateTrip(trip);
+  assert.deepEqual(issues.filter((i) => i.code === 'accepted_by_non_member'), []);
+
+  // The reference trip is full of accepted rows, so the ceiling is not vacuous.
+  const accepted = [...trip.days, ...trip.days.flatMap((d) => d.stops), ...trip.pool, ...trip.bookings]
+    .filter((x) => x.provenance?.state === 'accepted');
+  assert.ok(accepted.length > 100, 'the reference trip no longer carries accepted records');
+  assert.deepEqual(accepted.filter((x) => attribution(x)), [],
+    'a credited record appeared in the reference trip — the ceiling is now measuring something else');
+});
+
+test('R2-11: a source:user record with a null actor is outside the rule by design (§2.14)', () => {
+  // §2.14, "Explicitly out of scope in Phase 1, named rather than left silent": those records
+  // assert no acceptance of anyone ELSE's content, `attribution()` on them is null, and that
+  // is what puts them outside the invariant's subject. Phase 2's `BuildCtx.actorUserId`
+  // becoming required is the trigger that changes this, not a later reinterpretation.
+  const trip = jacobsTrip();
+  const withNullActor: Trip = {
+    ...trip,
+    days: trip.days.map((d) => ({
+      ...d,
+      provenance: { ...d.provenance, source: 'user' as const, state: 'accepted' as const, actorUserId: null },
+    })),
+  };
+  assert.deepEqual(validateTrip(withNullActor).filter((i) => i.code === 'accepted_by_non_member'), []);
 });

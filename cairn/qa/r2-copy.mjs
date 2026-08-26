@@ -84,7 +84,11 @@ for (const [label, patch] of Object.entries(patches)) {
 }
 
 line('B. copy then accept (acceptCandidate), several actors');
-for (const actor of ['local:self', 'user:someone-else', null, '']) {
+// R2-11's ruling, ARCHITECTURE revision 4 §2.14: `displayStatus` is a pure function of one
+// `Provenance`, cannot see the trip, and does NOT learn to. The invariant is enforced at the
+// two places documents come from — the call throws on a missing actor, and a non-member actor
+// is `validateTrip`'s `accepted_by_non_member` error on the document.
+for (const actor of ['local:self', 'user:someone-else']) {
   const after = core.acceptCandidate(t, { kind: 'stop', id: copied.id }, actor, '2026-08-26');
   const s = find(after, copied.id);
   const iss = core.validateTrip(after).filter((i) => i.ref.id === copied.id);
@@ -93,21 +97,24 @@ for (const actor of ['local:self', 'user:someone-else', null, '']) {
       ` acceptedAt=${s.provenance.acceptedAt} issues=[${iss.map((i) => i.code).join(',')}]`,
   );
 }
-console.log('  §2.14 invariant: displayStatus may be "own" only when accepted AND acceptedAt AND actorUserId === trip.ownerId');
+for (const actor of [null, undefined, '']) {
+  let threw = null;
+  try { core.acceptCandidate(t, { kind: 'stop', id: copied.id }, actor, '2026-08-26'); }
+  catch (e) { threw = e; }
+  ok(`acceptCandidate refuses actor=${JSON.stringify(actor)}`, threw !== null && /actor/i.test(threw.message),
+     'an acceptance with no accepter is unfalsifiable forever after — §2.14');
+}
+console.log('  §2.14 invariant: a credited record may read "own" only when accepted AND acceptedAt AND actorUserId is a member');
 const acceptedByStranger = core.acceptCandidate(t, { kind: 'stop', id: copied.id }, 'user:someone-else', '2026-08-26');
 const sB = find(acceptedByStranger, copied.id);
+const strangerIssues = core.validateTrip(acceptedByStranger).filter((i) => i.code === 'accepted_by_non_member');
+console.log(`  accepted by a stranger -> displayStatus=${core.displayStatus(sB)} (a badge function cannot see the trip)`);
 ok(
-  'accept by a non-owner does NOT read as own',
-  !(core.displayStatus(sB) === 'own' && sB.provenance.actorUserId !== acceptedByStranger.ownerId),
-  `status=own, actor=${sB.provenance.actorUserId}, trip.ownerId=${acceptedByStranger.ownerId}`,
+  'accept by a non-member is an error ON THE DOCUMENT',
+  strangerIssues.length === 1 && strangerIssues[0].level === 'error' && strangerIssues[0].ref.id === copied.id,
+  `validateTrip reported [${strangerIssues.map((i) => i.code).join(',')}] for actor=${sB.provenance.actorUserId} owner=${acceptedByStranger.ownerId}`,
 );
-const acceptedNull = core.acceptCandidate(t, { kind: 'stop', id: copied.id }, null, '2026-08-26');
-const sN = find(acceptedNull, copied.id);
-ok(
-  'accept with actorUserId=null does NOT read as own',
-  !(core.displayStatus(sN) === 'own' && sN.provenance.actorUserId === null),
-  `status=${core.displayStatus(sN)} actor=null ownerId=${acceptedNull.ownerId}`,
-);
+ok('and the credit is still there', !!core.attribution(sB));
 
 line('C. JSON export/import round trip of a copied stop');
 const json = core.toJSON(t);

@@ -21,8 +21,27 @@ export type UiState = {
 };
 
 export type PersistenceState = {
-  /** CONTENT bookkeeping — drives the dirty indicator and nothing else (§4.2, §2.2a rule 1). */
-  savedRevision: number;
+  /**
+   * **The document storage last agreed with us about** (ARCHITECTURE §2.2b F2).
+   *
+   * One pointer answering both questions that need it: "is there an unwritten edit"
+   * (`doc !== savedDoc`, reference identity, exact because `Trip` is immutable) and "what is
+   * the merge's common ancestor". `null` means "we have never agreed", and a write onto an id
+   * storage already holds is then refused outright rather than guessed at.
+   *
+   * It replaces the revision counter this field used to hold, which is **deleted** rather
+   * than corrected (QA R4-1): a content counter cannot answer "unchanged", because `undo()`
+   * restores a snapshot verbatim and makes `revision` non-injective over content — and a
+   * field that exists is a field the next person compares.
+   *
+   * Like `savedVersion` it is **assigned from a port result and from nowhere else** — the
+   * exact document a successful `saveIfVersion()` carried, or `load()`'s — and **never touched
+   * by the reducer**, including by `undo`/`redo`: undo changes the document, not what storage
+   * holds. Living in `persistence` rather than in a module-level `let` means it moves only
+   * inside a `set()`, so no subscriber can render an indicator computed against a pointer the
+   * state it was handed does not contain.
+   */
+  savedDoc: Trip | null;
   /**
    * The WRITE FENCE (ARCHITECTURE §2.2a). `null` = "nothing is stored under this id yet".
    *
@@ -89,7 +108,7 @@ export function initialState(): AppState {
     browsing: null,
     ui: { ...INITIAL_UI },
     history: { past: [], future: [], limit: HISTORY_LIMIT },
-    persistence: { savedRevision: -1, savedVersion: null, status: 'idle' },
+    persistence: { savedDoc: null, savedVersion: null, status: 'idle' },
   };
 }
 
@@ -111,7 +130,7 @@ export function applyAction(doc: Trip, action: Action, ctx: BuildCtx): Trip {
 
 /**
  * The pure state transition for an edit: apply, push history, invalidate nothing (derived
- * data is keyed on `doc.revision` and recomputed wholesale — §4.2 rule 3). Pure.
+ * data is keyed on `(document identity, today)` and recomputed wholesale — §4.2 rule 3). Pure.
  */
 export function reduce(state: AppState, action: Action, ctx: BuildCtx): AppState {
   if (!state.doc) throw new Error('reducer: no active trip');

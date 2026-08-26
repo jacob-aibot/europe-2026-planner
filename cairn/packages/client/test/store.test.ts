@@ -143,7 +143,7 @@ test('setUi never schedules a save', async () => {
 // 3. derived is recomputed on doc.revision change and never read stale
 // ---------------------------------------------------------------------------
 
-test('derived is cached per revision and recomputed when the revision moves', async () => {
+test('derived is cached per document and recomputed when the document changes', async () => {
   const store = await storeWithTrip();
   const dayId = firstDayId(store);
 
@@ -155,11 +155,11 @@ test('derived is cached per revision and recomputed when the revision moves', as
   const second = store.getDerived();
   assert.ok(second);
   assert.notEqual(second, first, 'derived was not recomputed after an edit');
-  assert.equal(second.revision, store.getState().doc?.revision);
+  assert.equal(second.doc, store.getState().doc, 'the cache does not name the document it came from');
   assert.equal(second.days[dayId].legs.length, 1);
 });
 
-test('derivedFor keys on (tripId, revision), not revision alone', () => {
+test('derivedFor keys on document identity, so two trips at one revision cannot share a cache', () => {
   const ctx = { ids: sequentialIdPort(), now: TODAY, actorUserId: core.LOCAL_OWNER };
   const a = core.createTrip({ ...TRIP_INIT, id: 'trip-a', title: 'A' }, ctx);
   const b = core.createTrip({ ...TRIP_INIT, id: 'trip-b', title: 'B' }, ctx);
@@ -168,7 +168,7 @@ test('derivedFor keys on (tripId, revision), not revision alone', () => {
   const cacheA = computeDerived(a, TODAY);
   const got = derivedFor(cacheA, b, TODAY);
   assert.ok(got);
-  assert.equal(got.tripId, 'trip-b', 'trip B read trip A’s derived data');
+  assert.equal(got.doc, b, 'trip B read trip A’s derived data');
 });
 
 test('derived never goes stale across undo', async () => {
@@ -250,6 +250,11 @@ test('a failing save surfaces as an error and keeps the edit in memory', async (
   assert.match(state.persistence.lastError ?? '', /QuotaExceeded/);
   assert.equal(state.doc?.days[0].stops[0].name, 'Naschmarkt', 'the edit was dropped');
   assert.ok(store.isDirty(), 'a failed save must leave the store dirty');
+  // Checked against the oracle, never against the predicate alone (§2.2b F2): the bytes the
+  // port holds really do not contain the edit.
+  const id = store.getState().activeTripId as string;
+  assert.equal(p.storage.docs.get(id)?.includes('Naschmarkt') ?? false, false,
+    'the failed save reached storage after all');
 });
 
 test('a later successful save clears the error and marks the store clean', async () => {
@@ -319,7 +324,7 @@ test('switching trips resets doc, history, derived and ui selection', async () =
   assert.equal(a.doc?.days[0].stops[0].name, 'only in A');
   assert.equal(a.history.past.length, 0);
   assert.equal(a.ui.panel, 'timeline', 'ui panel survived a trip switch');
-  assert.equal(store.getDerived()?.tripId, idA, 'derived cache still points at the other trip');
+  assert.equal(store.getDerived()?.doc, a.doc, 'derived cache still points at the other trip');
 });
 
 test('openTrip on a missing id throws rather than blanking the app', async () => {
@@ -547,8 +552,12 @@ test('two tabs saving AT THE SAME MOMENT: exactly one wins and the loser is told
   // if it ever stops being true the test is no longer testing anything.
   const startRevision = a.getState().doc?.revision as number;
   assert.equal(b.getState().doc?.revision, startRevision, 'tabs did not start from one revision');
-  assert.equal(a.getState().persistence.savedRevision, startRevision);
-  assert.equal(b.getState().persistence.savedRevision, startRevision);
+  // And both agree with storage about the same DOCUMENT — §2.2b F2 — so neither is dirty
+  // before the race starts.
+  assert.equal(a.getState().persistence.savedDoc, a.getState().doc);
+  assert.equal(b.getState().persistence.savedDoc, b.getState().doc);
+  assert.equal(a.isDirty(), false);
+  assert.equal(b.isDirty(), false);
   // And on the same FENCE, which is what the port actually compares — §2.2a. The revisions
   // above are content bookkeeping and carry no authority over the write.
   const startVersion = a.getState().persistence.savedVersion;

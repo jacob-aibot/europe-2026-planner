@@ -1,11 +1,13 @@
 /**
  * Three-way document merge — the resolution half of ARCHITECTURE §2.2's
- * "last-writer-wins per stop with a revision guard".
+ * "last-writer-wins per stop behind the storage-version guard".
  *
- * The guard is in the client (`store.save` compares the stored revision against
- * `persistence.savedRevision` before writing). This is what happens when the guard fires:
- * rather than picking one whole document and destroying the other, the two documents are
- * merged entity by entity against their common ancestor.
+ * The guard is in the storage port, not here and not in the client: `saveIfVersion` compares
+ * the opaque `StorageVersion` the client holds (`persistence.savedVersion`) against the one
+ * storage actually has, atomically with the write (§2.2a). This is what happens when the
+ * guard fires: rather than picking one whole document and destroying the other, the two
+ * documents are merged entity by entity against their common ancestor, which the client
+ * holds as `persistence.savedDoc` (§2.2b F2).
  *
  * Rules, in the order they are applied to each entity:
  *

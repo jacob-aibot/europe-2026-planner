@@ -243,7 +243,7 @@ export type IssueCode =
   | 'unknown_city_key' | 'place_ref_dangling' | 'lat_lng_out_of_range'
   | 'pool_stop_has_day' | 'pool_stop_unknown_city' | 'scheduled_stop_has_no_day' | 'booking_ref_orphan'
   | 'cost_basis_mixed' | 'provenance_missing' | 'accepted_without_timestamp' | 'owner_missing'
-  | 'origin_stripped' | 'stale_resolutions' | 'invalid_calendar_date';
+  | 'origin_stripped' | 'accepted_by_non_member' | 'stale_resolutions' | 'invalid_calendar_date';
 
 export type Issue = {
   level: 'error' | 'warn';

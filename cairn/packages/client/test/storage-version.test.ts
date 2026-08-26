@@ -13,7 +13,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 
 import {
   createStore, memoryStorage, memoryFile, fixedClockPort, sequentialIdPort, immediateScheduler,
@@ -86,11 +86,36 @@ test('every successful write mints a version storage has never returned before',
   assert.equal(seen.size, 200);
 });
 
-test('a version issued by one storage is never issued by another (the epoch)', async () => {
+test('R4-2: 100 construct/write/discard cycles mint 100 distinct tokens', async () => {
+  // ROADMAP F.1, revision 4: "construct the port, write, discard it, construct a SECOND port
+  // over a fresh backing store, write again, 100 cycles — pool every token ever returned and
+  // assert ZERO duplicates in the pool. A fixed default `epoch` passes part 1 and fails this,
+  // which is R4-2 in one line."
+  //
+  // The port is constructed with no arguments — exactly the way every other test and the CLI
+  // construct it. That is the point: the old scheme's uniqueness across instances depended on
+  // a caller remembering to pass a distinct epoch, and nobody ever did.
+  const pool = new Set<StorageVersion>();
+  for (let i = 0; i < 100; i++) {
+    const storage = memoryStorage();
+    for (let j = 0; j < 2; j++) {
+      const held = j === 0 ? null : (storage.versions.get('t') ?? null);
+      const outcome = await storage.saveIfVersion('t', held, `{"id":"t","revision":${j}}`, summaryFor('t', j));
+      assert.equal(outcome.ok, true, `cycle ${i} write ${j} was refused`);
+      if (!outcome.ok) return;
+      assert.equal(pool.has(outcome.version), false, `cycle ${i} reissued a token from an earlier instance`);
+      pool.add(outcome.version);
+    }
+  }
+  assert.equal(pool.size, 200);
+});
+
+test('R4-2: a token from one storage instance is refused by another', async () => {
   // §2.2a: "clearing site data resets the counter while a tab holding an old token
-  // survives, and that is the same ABA one level up."
-  const first = memoryStorage(undefined, 'epoch-one');
-  const second = memoryStorage(undefined, 'epoch-two');
+  // survives, and that is the same ABA one level up." A second `memoryStorage()` models the
+  // recreated database; the surviving tab still holds the dead one's token.
+  const first = memoryStorage();
+  const second = memoryStorage();
   const a = await first.saveIfVersion('t', null, '{"id":"t","revision":0}', summaryFor('t', 0));
   const b = await second.saveIfVersion('t', null, '{"id":"t","revision":0}', summaryFor('t', 0));
   assert.equal(a.ok, true);
@@ -101,6 +126,20 @@ test('a version issued by one storage is never issued by another (the epoch)', a
   // And a token from the first database matches nothing in the second.
   const stale = await second.saveIfVersion('t', a.version, '{"id":"t","revision":1}', summaryFor('t', 1));
   assert.equal(stale.ok, false, "a token from another database was accepted");
+});
+
+test('R4-2: a test that wants a collision has to inject a mint function to get one', async () => {
+  // §2.2a: "A test that wants to model a collision injects a mint function explicitly."
+  // The default construction cannot be talked into repeating; a deliberate one can, which is
+  // what keeps the ABA cases above provable without making the real port predictable.
+  const constant = () => 'COLLIDE';
+  const first = memoryStorage(undefined, constant);
+  const second = memoryStorage(undefined, constant);
+  const a = await first.saveIfVersion('t', null, '{"id":"t","revision":0}', summaryFor('t', 0));
+  const b = await second.saveIfVersion('t', null, '{"id":"t","revision":0}', summaryFor('t', 0));
+  assert.equal(a.ok && b.ok, true);
+  if (!a.ok || !b.ok) return;
+  assert.equal(a.version, b.version, 'the injected mint was ignored');
 });
 
 test('saveIfVersion is atomic: N concurrent writers at one version, exactly one wins', async () => {
@@ -523,7 +562,9 @@ test('savedVersion is only ever assigned from a StoragePort result', () => {
     assert.ok(allowed.has(rhs), `savedVersion is assigned from "${rhs}", which is not a port result`);
   }
 
-  const reducer = readFileSync(new URL('store/reducer.ts', CLIENT_SRC), 'utf8');
+  const reducerSrc = readFileSync(new URL('store/reducer.ts', CLIENT_SRC), 'utf8');
+  // Comments are not code; a docstring on the field beside it is not an assignment.
+  const reducer = reducerSrc.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
   const reducerRefs = [...reducer.matchAll(/savedVersion/g)];
   // Only the type declaration and `initialState()`'s "nothing stored yet" null may name it.
   assert.equal(reducerRefs.length, 2, `the reducer names savedVersion ${reducerRefs.length} times`);
@@ -532,4 +573,75 @@ test('savedVersion is only ever assigned from a StoragePort result', () => {
   // And no reducer FUNCTION touches it: undo/redo/reduce/setUi bodies must be clean.
   const bodies = reducer.slice(reducer.indexOf('export function applyAction'));
   assert.equal(/savedVersion/.test(bodies), false, 'a reducer function moves the write fence');
+});
+
+test('no test, golden or fixture contains a StorageVersion literal', () => {
+  // §2.2a rule 3's corollary, added after R4-2: a test that pins a token literal is a test
+  // that will be "fixed" by making the token predictable again.
+  //
+  // Mechanically: a `StorageVersion` this build can mint is `${instance}.${n}` for the
+  // in-memory port and 22 base64url characters for `apps/web`. The second cannot appear in a
+  // source file by accident; the first can, so every token the in-memory port could plausibly
+  // mint in a run is generated and searched for as a quoted literal. The old `'mem.N'` shape
+  // is searched for by name, because that is the one that was actually in this suite.
+  const roots = ['../test/', '../../core/test/', '../../../test/', '../../../fixtures/golden/'];
+  const sources: Array<[string, string]> = [];
+  for (const root of roots) {
+    const dir = new URL(root, CLIENT_SRC);
+    for (const name of readdirSync(dir)) {
+      if (!/\.(ts|mjs|json)$/.test(name)) continue;
+      sources.push([root + name, readFileSync(new URL(name, dir), 'utf8')]);
+    }
+  }
+  assert.ok(sources.length > 8, `only found ${sources.length} files to scan`);
+
+  const candidates: string[] = [];
+  for (let instance = 1; instance <= 60; instance++) {
+    for (let n = 1; n <= 6; n++) candidates.push(`${instance}.${n}`);
+  }
+  for (let n = 1; n <= 6; n++) candidates.push(`mem.${n}`);
+
+  for (const [name, src] of sources) {
+    for (const token of candidates) {
+      for (const quoted of [`'${token}'`, `"${token}"`, `\`${token}\``]) {
+        assert.equal(src.includes(quoted), false, `${name} pins the StorageVersion literal ${quoted}`);
+      }
+    }
+  }
+});
+
+test('the fence path has no Math.random() fallback — a fence fails closed', () => {
+  // ROADMAP F.5: "Assert there is no Math.random() fallback on the fence path: a fence fails
+  // closed, and the store shows 'error'." Asserted on the web port's source, because that is
+  // the only implementation with a CSPRNG to fall back from.
+  const web = readFileSync(new URL('../../../apps/web/src/ports/storage.ts', CLIENT_SRC), 'utf8');
+  const code = web.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  assert.equal(/Math\.random/.test(code), false, 'the web storage port falls back to Math.random for a fence');
+  assert.equal(/Date\.now/.test(code), false, 'the web storage port falls back to Date.now for a fence');
+  assert.equal(/randomUUID/.test(code), false,
+    'randomUUID is secure-context-only and is undefined over plain HTTP on a LAN address');
+  assert.match(code, /getRandomValues\s*\(\s*new Uint8Array\(\s*16\s*\)\s*\)/);
+  // And nothing cached: no `epoch`, no counter, no `meta` store.
+  for (const gone of [/\bepoch\b/i, /versionCounter/, /\bMETA\b/]) {
+    assert.equal(gone.test(code), false, `the web storage port still carries ${gone}`);
+  }
+});
+
+test('F3: nothing the token is built from is declared in the port factory closure', () => {
+  // ROADMAP F.5 / §2.2b F3's check, in the form it can be run mechanically: read the body of
+  // `saveIfVersion` and assert every identifier it mints from is a parameter, a local, or read
+  // inside the transaction. `ensureReady`'s memoised `Promise<void>` is explicitly permitted —
+  // it carries no value and cannot be wrong about one.
+  const web = readFileSync(new URL('../../../apps/web/src/ports/storage.ts', CLIENT_SRC), 'utf8');
+  const factory = web.slice(web.indexOf('export function indexedDbStorage'));
+  const closureDecls = [...factory.slice(0, factory.indexOf('return {')).matchAll(/^\s{2}(?:let|const|var)\s+(\w+)/gm)]
+    .map((m) => m[1]);
+  assert.deepEqual(closureDecls, ['ready'], `the port factory holds closure state: ${closureDecls.join(', ')}`);
+
+  const save = factory.slice(factory.indexOf('async saveIfVersion('));
+  const body = save.slice(0, save.indexOf('\n    /**', 1));
+  for (const name of closureDecls) {
+    if (name === 'ready') continue;
+    assert.equal(new RegExp(`\\b${name}\\b`).test(body), false, `saveIfVersion reads closure state "${name}"`);
+  }
 });

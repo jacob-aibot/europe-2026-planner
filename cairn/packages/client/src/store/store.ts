@@ -6,7 +6,7 @@
  * The six rules it enforces, each because of a specific failure:
  *   1. every mutation is `dispatch(action)` and every action is one core build function;
  *   2. `ui` is never written into the trip document;
- *   3. derived data is recomputed wholesale on `doc.revision`;
+ *   3. derived data is recomputed wholesale on `(document identity, today)`;
  *   4. autosave writes the whole document, debounced, behind the port's atomic
  *      compare-and-set against an opaque `StorageVersion` (§2.2a), and NEVER fails silently;
  *   5. undo/redo is snapshot-based over the immutable `Trip`, limit 50, and carries no
@@ -68,13 +68,10 @@ export function createStore(opts: StoreOptions) {
   let cache: DerivedCache | null = null;
   let cancelPending: (() => void) | null = null;
   let saving: Promise<void> = Promise.resolve();
-  /**
-   * The last document this store and storage agreed about — the common ancestor a
-   * three-way merge needs when the revision guard fires. `null` means "we have never
-   * agreed", and a write onto an id storage already holds is then refused outright rather
-   * than guessed at.
-   */
-  let baseDoc: Trip | null = null;
+  // `baseDoc` used to live here as a module-level `let`. It is now
+  // `persistence.savedDoc` (§2.2b F2): exactly one pointer to "the last document this store
+  // and storage agreed about", answering both the merge's common-ancestor question and
+  // "is there an unwritten edit", moving only inside a `set()`, and assertable by a test.
   const listeners = new Set<(s: AppState) => void>();
 
   const localOwner = () => opts.ownerId ?? core.LOCAL_OWNER;
@@ -205,14 +202,17 @@ export function createStore(opts: StoreOptions) {
       });
       return;
     }
-    baseDoc = toWrite;
     const stillOurs = state.doc === startedFrom;
     set({
       ...state,
       ...(stillOurs ? { doc: toWrite } : {}),
       library: upsertSummary(state.library, summary),
       persistence: {
-        savedRevision: toWrite.revision,
+        // Both are port results, and `savedDoc` is the EXACT document this write carried —
+        // §2.2b F2. `stillOurs` is the other half of the same fact: if the user kept typing
+        // while the write was in flight, `state.doc` has moved on and `doc !== savedDoc`
+        // correctly reports the store as dirty rather than clean.
+        savedDoc: toWrite,
         savedVersion: outcome.version,
         status: 'idle',
         // A merge notice survives later clean saves; only closing or switching trips clears
@@ -240,13 +240,22 @@ export function createStore(opts: StoreOptions) {
    * banner that is already there; this is not a new mechanism.
    */
   async function flushForTransition(): Promise<boolean> {
+    // §4.2 rule 6a′ (QA R4-1). The skip that avoids rewriting a 176 KB document on every
+    // navigation is where the whole of rule 6 was lost: it compared `doc.revision` against
+    // the revision last written, and undo makes that counter non-injective over content, so a
+    // fresh different edit landing on a number an earlier edit already used made the store report
+    // "nothing to write", skip the write, complete the switch, and display "Saved" over a
+    // document storage did not hold.
+    //
+    // The skip now requires ALL THREE. `doc === savedDoc` is the real condition — reference
+    // identity against the document storage agreed with us about (§2.2b F2). The other two
+    // are belt and braces and are stated as such: each can only ever cause MORE writing,
+    // never less, which is what F2's check requires of any conjunct.
+    const timerPending = cancelPending !== null;
     cancelTimer();
-    // Nothing pending and nothing wrong: there is no edit to lose, so do not re-write a
-    // 176 KB document (and burn a StorageVersion) on every navigation. `dirty` is content
-    // bookkeeping — `savedRevision` — which is exactly what "is there an unwritten edit"
-    // means; a write that FAILED leaves `status` non-idle, so this cannot skip past one.
     const idle = state.persistence.status === 'idle';
-    if (state.doc && !(idle && !dirty())) {
+    const skip = idle && !timerPending && !dirty();
+    if (state.doc && !skip) {
       await save();
       await saving;
     }
@@ -254,9 +263,20 @@ export function createStore(opts: StoreOptions) {
     return status !== 'conflict' && status !== 'error';
   }
 
-  /** Content bookkeeping only — `Trip.revision` vs the last revision written (§2.2a rule 1). */
+  /**
+   * "Is there an unwritten edit" — the whole predicate (ARCHITECTURE §2.2b F2).
+   *
+   * Reference identity against the last document storage agreed with us about. It is exact,
+   * not approximate: `Trip` is immutable by §2.1 and every build function is asserted pure,
+   * so the only way this can report a false "clean" is a `Trip` mutated in place, which would
+   * have corrupted the undo stack and the derived cache long before it reached here.
+   *
+   * A false "dirty" costs one extra write. A false "clean" is silent data loss, and the
+   * previous answer — `===` on a content revision — reached it in six lines (QA R4-1).
+   * The failure profiles are not symmetric, and that is the whole argument.
+   */
   function dirty(): boolean {
-    return !!state.doc && state.doc.revision !== state.persistence.savedRevision;
+    return !!state.doc && state.doc !== state.persistence.savedDoc;
   }
 
   function upsertSummary(list: core.TripSummaryRow[], row: core.TripSummaryRow): core.TripSummaryRow[] {
@@ -273,7 +293,7 @@ export function createStore(opts: StoreOptions) {
       return state;
     },
 
-    /** Derived data for the active trip, recomputed only when `doc.revision` changes. */
+    /** Derived data for the active trip, recomputed when the document or the date changes. */
     getDerived(): DerivedCache | null {
       cache = derivedFor(cache, state.doc, ports.clock.today());
       return cache;
@@ -340,14 +360,15 @@ export function createStore(opts: StoreOptions) {
         await saving;
         return state;
       }
-      if (!baseDoc || baseDoc.id !== doc.id) {
+      const ancestor = state.persistence.savedDoc;
+      if (!ancestor || ancestor.id !== doc.id) {
         throw new Error(
           'This tab never agreed with storage about this trip, so there is no common version ' +
             'to merge against. Export this copy, then open the trip again from the library.',
         );
       }
       const remote = core.fromJSON(stored.doc);
-      const merged = core.mergeTrips(baseDoc, doc, remote);
+      const merged = core.mergeTrips(ancestor, doc, remote);
       set({ ...state, persistence: { ...state.persistence, status: 'saving' } });
       saving = (async () => {
         try {
@@ -407,7 +428,6 @@ export function createStore(opts: StoreOptions) {
       if (!(await flushForTransition())) return state;
       const doc = core.createTrip(init, ctx());
       cache = null;
-      baseDoc = null;
       set({
         ...initialState(),
         library: state.library,
@@ -433,7 +453,6 @@ export function createStore(opts: StoreOptions) {
       const existing = await ports.storage.load(doc.id);
       if (existing !== null) return this.openTrip(doc.id);
       cache = null;
-      baseDoc = null;
       set({
         ...initialState(),
         library: state.library,
@@ -461,14 +480,13 @@ export function createStore(opts: StoreOptions) {
       if (stored === null) throw new Error(`openTrip: no trip ${id} in storage`);
       const doc = core.fromJSON(stored.doc);
       cache = null;
-      baseDoc = doc;
       set({
         ...initialState(),
         library: state.library,
         activeTripId: doc.id,
         doc,
-        // The fence comes from the port result and from nowhere else — §2.2a rule 1.
-        persistence: { savedRevision: doc.revision, savedVersion: stored.version, status: 'idle' },
+        // Both come from the port result and from nowhere else — §2.2a rule 1, §2.2b F2.
+        persistence: { savedDoc: doc, savedVersion: stored.version, status: 'idle' },
         ui: { ...initialState().ui, activeDayId: doc.days[0]?.id ?? null, activeCityKey: doc.cities[0]?.key ?? null },
       });
       return state;
@@ -521,7 +539,6 @@ export function createStore(opts: StoreOptions) {
     async closeTrip(): Promise<AppState> {
       if (!(await flushForTransition())) return state;
       cache = null;
-      baseDoc = null;
       set({ ...initialState(), library: state.library });
       return state;
     },
@@ -540,7 +557,6 @@ export function createStore(opts: StoreOptions) {
       const library = state.library.filter((r) => r.id !== id);
       if (state.activeTripId === id) {
         cache = null;
-        baseDoc = null;
         set({ ...initialState(), library });
       } else set({ ...state, library });
       return state;
@@ -597,7 +613,6 @@ export function createStore(opts: StoreOptions) {
         doc = { ...doc, id: fresh, title: `${doc.title} (imported)` };
       }
       cache = null;
-      baseDoc = null;
       set({
         ...initialState(),
         library: state.library,

@@ -7,17 +7,62 @@
  * Structural problems are `error`. Things that are probably wrong but might be deliberate
  * are `warn`. Nothing here throws and nothing here mutates.
  */
-import type { Issue, Stop, Trip } from '../model/types.ts';
+import type { Issue, Provenance, Ref, Stop, Trip } from '../model/types.ts';
 import { addDays, dayNumber } from '../derive/summary.ts';
+import { attribution } from '../derive/display.ts';
 import { inRange, stopLatLng } from '../derive/geo.ts';
 import { TRANSIT_CITY_KEY, isIsoDate } from '../model/ids.ts';
 import { currenciesOf, mixesBasis } from '../model/money.ts';
+
+/**
+ * Who may accept content on this trip's behalf — §2.14's `members(trip)`.
+ *
+ * Written membership-shaped rather than as `=== trip.ownerId` on purpose: a co-owner or an
+ * editor accepting is legitimate the moment `TripMember` exists, so the narrow clause would
+ * already be wrong in Phase 2. Phase 1 has no member list, so the set degenerates to the
+ * owner and the two readings coincide. Pure.
+ */
+function members(trip: Trip): Set<string> {
+  return new Set(trip.ownerId ? [trip.ownerId] : []);
+}
 
 
 /** Pure. Returns every problem found, in a deterministic order; never throws. */
 export function validateTrip(trip: Trip): Issue[] {
   const out: Issue[] = [];
   const push = (i: Issue) => out.push(i);
+  const memberIds = members(trip);
+
+  /**
+   * `accepted_by_non_member` (§2.9, added in revision 4 — QA R2-11).
+   *
+   * §2.14's invariant is that a **credited** record never renders as the user's own plan
+   * unless a member of the trip accepted it. `displayStatus` cannot enforce that — it is a
+   * pure function of one `Provenance`, it does not receive the trip, and a badge function
+   * that needs the whole document is a badge function that gets called with the wrong
+   * document. So the invariant is enforced here, as a claim about which documents may exist.
+   *
+   * It is an `Issue` and not a throw because this shape arrives from *inside* a document —
+   * a restored backup, a hand-edited record, a Phase 2 sync — where throwing means an
+   * unopenable trip. The *call* that would create one throws instead (§2.14, `requireActor`).
+   *
+   * Scoped to records with a non-null `attribution()`, which is exactly §2.14's subject:
+   * `source:'user'` records carrying `actorUserId: null` assert no acceptance of anyone
+   * else's content and stay outside the rule by design.
+   */
+  const checkActor = (p: Provenance | undefined, ref: Ref, label: string) => {
+    if (!p || p.state !== 'accepted') return;
+    if (!attribution(p)) return;
+    const actor = p.actorUserId;
+    if (!actor || memberIds.has(actor)) return;
+    push({
+      level: 'error',
+      code: 'accepted_by_non_member',
+      ref,
+      message: `${label} was accepted by ${actor}, who is not a member of this trip.`,
+      params: { actorUserId: actor, ownerId: trip.ownerId ?? '', tripId: trip.id },
+    });
+  };
 
   if (!trip.ownerId) {
     push({
@@ -99,6 +144,7 @@ export function validateTrip(trip: Trip): Issue[] {
         params: { dayId: d.id },
       });
     }
+    checkActor(d.provenance, { kind: 'day', id: d.id }, d.date);
   }
 
   // --- ids unique across the document -----------------------------------------
@@ -221,6 +267,7 @@ export function validateTrip(trip: Trip): Issue[] {
         params: { stopId: stop.id },
       });
     }
+    checkActor(stop.provenance, ref, `"${stop.name}"`);
 
     const at = stopLatLng(stop, trip);
     if (at && !inRange(at)) {
@@ -329,6 +376,7 @@ export function validateTrip(trip: Trip): Issue[] {
         params: { bookingId: b.id, operator: b.operator },
       });
     }
+    checkActor(b.provenance, ref, `Booking ${b.operator} ${b.reference ?? b.id}`);
   }
 
   // --- resolutions ---------------------------------------------------------------

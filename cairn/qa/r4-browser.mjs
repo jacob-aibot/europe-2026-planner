@@ -1,10 +1,12 @@
 /**
  * Round 4, real Chromium against real IndexedDB.
  *
- *   1. R4-1 — Ctrl-Z, then a DIFFERENT edit, then "Cairn" (closeTrip). `dirty()` compares
- *      `Trip.revision` against `savedRevision`; undo rewinds the revision and the next
- *      edit re-issues it, so `flushForTransition()` skips the write and the edit is gone
- *      with "Saved" on screen. R3-2's symptom, through the counter §2.2a left in place.
+ *   1. R4-1 — Ctrl-Z, then a DIFFERENT edit, then "Cairn" (closeTrip). The finding:
+ *      `dirty()` compared `Trip.revision` against the revision last written; undo rewinds
+ *      the revision and the next edit re-issues it, so `flushForTransition()` skipped the
+ *      write and the edit was gone with "Saved" on screen. R3-2's symptom, through the
+ *      counter §2.2a left in place. Revision 4 replaces the predicate with reference
+ *      identity against `persistence.savedDoc` (§2.2b F1/F2), so this run should now pass.
  *   2. R4-2 — the page-exit leg BUILD-NOTES §6 says was never run in a browser: hide the
  *      tab (`visibilitychange` -> hidden) inside the debounce window and look for the edit
  *      in IndexedDB.

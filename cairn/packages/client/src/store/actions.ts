@@ -68,11 +68,11 @@ export const ACTION_SPECS: Record<ActionType, ActionSpec> = {
   },
   acceptCandidate: {
     coreFn: 'acceptCandidate',
-    args: (a, ctx) => [(a as { ref: Ref }).ref, ctx.actorUserId ?? null, ctx.now],
+    args: (a, ctx) => [(a as { ref: Ref }).ref, ctx.actorUserId, ctx.now],
   },
   rejectCandidate: {
     coreFn: 'rejectCandidate',
-    args: (a, ctx) => [(a as { ref: Ref }).ref, ctx.actorUserId ?? null, ctx.now],
+    args: (a, ctx) => [(a as { ref: Ref }).ref, ctx.actorUserId, ctx.now],
   },
   upsertBooking: { coreFn: 'upsertBooking', args: (a) => [(a as { booking: Booking }).booking] },
   linkBooking: {
@@ -87,7 +87,7 @@ export const ACTION_SPECS: Record<ActionType, ActionSpec> = {
     coreFn: 'copyStopInto',
     args: (a, ctx) => {
       const x = a as { source: { trip: Trip; stopId: string }; placement: StopPlacement };
-      return [x.source, x.placement, { ids: ctx.ids, today: ctx.now, actorUserId: ctx.actorUserId ?? '' }];
+      return [x.source, x.placement, { ids: ctx.ids, today: ctx.now, actorUserId: ctx.actorUserId }];
     },
   },
 };

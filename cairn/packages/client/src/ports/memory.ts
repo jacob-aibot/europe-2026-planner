@@ -28,21 +28,39 @@ export type MemoryStorage = StoragePort & {
 };
 
 /**
+ * A process-wide instance counter. Never rewinds within one Node process, and no caller can
+ * reset it — which is the whole of §2.2a rule 2 for this port. §2.2b F3 permits it because it
+ * is not a *cached fact about storage*: it is a fresh value drawn at construction, and the
+ * thing it makes unique is "which port instance", which cannot go stale the way a remembered
+ * `epoch` did (a wipe destroys the database, not this counter's monotonicity).
+ */
+let instanceCounter = 0;
+
+/**
  * Impure only in that it holds state.
  *
- * `epoch` is the in-memory equivalent of the persisted epoch `apps/web` mints with
- * `crypto.randomUUID()`: it defaults to a fixed string so tests stay deterministic, and a
- * test models "two different databases" by passing two epochs. Together with the
- * storage-wide counter it makes a version unique across every storage that ever existed —
- * §2.2a rule 2, which is what closes R3-4.
+ * `packages/client` may not touch ambient randomness (the zero-nondeterminism rule), so the
+ * in-memory port stays deterministic where `apps/web` uses a CSPRNG: it mints
+ * `` `${instance}.${n}` `` from a per-instance prefix and its own counter. Deterministic
+ * across runs, **distinct across every port instance in a run** — so "the database was
+ * recreated" (a second `memoryStorage()`) does not silently reissue the first one's tokens,
+ * which is exactly what a fixed default `epoch` did (R4-2). Nothing above the port can tell
+ * this construction and `apps/web`'s apart, which is §2.2a rule 3.
+ *
+ * `mintVersion` is the deliberate way to model a collision: a test that wants two storages to
+ * agree on a token passes one in. It is the only way to get one.
  */
-export function memoryStorage(seed?: Record<string, TripDoc>, epoch = 'mem'): MemoryStorage {
+export function memoryStorage(
+  seed?: Record<string, TripDoc>,
+  mintVersion?: () => StorageVersion,
+): MemoryStorage {
   const docs = new Map<string, TripDoc>(Object.entries(seed ?? {}));
   const summaries = new Map<string, TripSummaryRow>();
   const versions = new Map<string, StorageVersion>();
+  const instance = ++instanceCounter;
   /** Storage-wide, never per-record, and it never rewinds — not even on `delete()`. */
   let counter = 0;
-  const mint = (): StorageVersion => `${epoch}.${++counter}`;
+  const mint: () => StorageVersion = mintVersion ?? (() => `${instance}.${++counter}`);
   // The one-time upcast of §2.2a: a seeded record predates the fence, so it is stamped
   // before any read is served rather than being served versionless.
   for (const id of docs.keys()) versions.set(id, mint());

@@ -5,11 +5,13 @@
 > round 1's re-delivery ("231 pass") and was not regenerated. Don't read §4's numbers as
 > current without re-running the commands in them.
 >
-> **§5 (Defects fixed) is current as of the round-3 persistence pass** — R3-1, R3-4 and R3-2
-> are added and the **R2-1 row is corrected**, because that fix is now known to have been
-> incomplete. Test count at that pass: **`npm test` 287 pass / 0 fail** (was 241), typecheck
-> clean on both projects. §6's third bullet ("this is **not** a compare-and-swap at the
-> storage layer") has been stale since `a746d75` and is now struck in place.
+> **§5 (Defects fixed) is current as of the round-4 freshness pass** — R4-1, R4-2, the two
+> other F2 violations and the R2-11 ruling are added; the R3-4 row is **corrected**, because
+> the `epoch` half of that fix is what R4-2 then falsified. Test count at this pass:
+> **`npm test` 318 pass / 0 fail** (was 288 at `98ec06a`), typecheck clean on both projects.
+> The round-3 note it replaces read "287 pass"; §6's third bullet ("this is **not** a
+> compare-and-swap at the storage layer") has been stale since `a746d75` and is struck in
+> place.
 
 For the breaker and the manager. What is built, how to run it, what is stubbed, what I
 could not verify, and — first, because it is the thing that went wrong last round —
@@ -441,7 +443,7 @@ and the test goes with it — but then the criterion loses its test and should s
 ```bash
 cd cairn
 npm install
-npm test          # 287 tests. Plain node, no browser, no network.
+npm test          # 318 tests. Plain node, no browser, no network.
 npm run typecheck # generates the sample first (see F-3 below), then both TS projects
 npm run cli -- trip           # headline counts and city ranges
 npm run cli -- day 2026-08-13 # one day: stops, legs, costs, badges
@@ -463,14 +465,20 @@ golden does and does not prove.
 `cairn/test/cli.test.ts` runs the real CLI against `../europe-2026-itinerary.html`,
 `../docs/BOOKINGS.md`, `../tickets/…` and `/etc/passwd` and asserts all four are refused.
 
-**The persistence probes**, for anyone re-checking R2-1 / R3-1 / R3-4 / R3-2. Plain node:
+**The persistence probes**, for anyone re-checking R2-1 / R3-1 / R3-4 / R3-2 / R4-1. Plain node:
 
 ```bash
 node qa/r3-undo.mjs      # the fence vs. Ctrl-Z            (all probes ok)
 node qa/r3-loss.mjs      # flush-before-switch, real timers (all probes ok)
 node qa/r3-cas2.mjs      # ABA, corrupt records, page exit  (probes 1-4 ok; 5-7 are R3-5+)
 node qa/r3-cas.mjs       # the save chain                   (all ok except A, which is R3-3)
+node qa/r4-switch.mjs    # R4-1's ten probes                (all ok since the round-4 pass)
+node qa/r2-copy.mjs      # R2-11's ruling, §B               (all ok since the round-4 pass)
 ```
+
+The 200-step walk in `packages/client/test/dirty.test.ts` takes a seed, so a failing run is
+replayable: `CAIRN_WALK_SEED=12345 node --test packages/client/test/dirty.test.ts`. The
+default is `20260826` and the failure message prints whichever seed was used.
 
 Real Chromium, against real IndexedDB — needs the build and the server first:
 
@@ -479,7 +487,9 @@ npm run web:build && node tools/serve.mjs &
 PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r2-race.mjs      # 0 of 3 rounds lose an edit
 PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r2-tabs.mjs
 PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r3-browser.mjs   # R3-1 and R3-2, both closed
-PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r3-upcast.mjs    # the §2.2a upcast, new
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r3-upcast.mjs    # the §2.2a upcast
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r4-browser.mjs   # R4-1, 4 probes, all ok
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r4-epoch.mjs     # R4-2, 6 probes, all ok
 ```
 
 `qa/r3-upcast.mjs` is new: it seeds a genuine **version-1** `cairn` database — `docs` +
@@ -576,15 +586,23 @@ library.
 | **R2-2** | a stop returned to the pool from a day belonging to no city was filed under the transit pseudo-city, which is never in `trip.cities` and so was never a key the pool panel could show: the stop was in the document, in the count, and rendered by nothing. `returnToPool` now resolves to a real trip city when the day has one; the panel renders an always-visible catch-all group for the rest; `validateTrip` reports `pool_stop_unknown_city` for a key that is neither. | `core/src/build/pool.ts`, `core/src/model/ids.ts`, `core/src/validate/validateTrip.ts`, `client/src/selectors/index.ts`, `apps/web/src/views/Panels.tsx` | `build.test.ts` ×4, `store.test.ts` ×2; `qa/r2-poolloss.mjs` in real Chromium: **"the stop is reachable again"** (was "in NO Optional panel, under any group") |
 
 | **R3-1** | `Trip.revision` was doing two incompatible jobs: content counter **and** write fence. `undo()` restores a snapshot verbatim, revision included, and autosaves it — so a revision the compare-and-set had already spent refusing another tab came back around, and the refused tab's next keystroke walked straight through the guard. Both tabs then read "Saved" over different documents, which is R2-1's symptom sentence verbatim. **Split, per §2.2a:** `Trip.revision` is unchanged and stays content; the fence is a new opaque `StorageVersion` minted by storage inside the atomic write step, held in the record's *envelope* beside the document and never inside it. `revisionOf()` is deleted — nothing above the port derives a version from parsed bytes. `undo`/`redo` cannot move it because the reducer never names it. `undo` does **not** synthesise `revision + 1`; §2.2a supersedes that. | `client/src/ports/types.ts`, `client/src/ports/memory.ts`, `client/src/store/store.ts`, `client/src/store/reducer.ts`, `apps/web/src/ports/storage.ts` | `storage-version.test.ts` ×17 — **red-green verified**: reverting the port to revision 2's scheme (`version = epoch.revision`) fails "undo cannot readmit a refused write" with `'idle' !== 'conflict'`, the exact defect. `qa/r3-undo.mjs` all probes ok; `qa/r3-browser.mjs` probe 1 in real Chromium: fence `…3268…ca.1 → …ca.3` while `Trip.revision` went `1 → 0` on Ctrl-Z, tab B still refused |
-| **R3-4** | the same root defect from the other side: a per-document counter cannot tell "this document, unchanged" from "a different document that happens to sit on the same number" after a delete and recreate under the same id (the export → delete → restore path `importDoc` permits). Closed **by construction**, with no ABA-specific code: the counter is storage-wide and never rewinds on `delete()`, and an `epoch` minted with `crypto.randomUUID()` and persisted with the database covers the same ABA one level up (clearing site data resets the counter while a tab holding an old token survives). | `client/src/ports/memory.ts`, `apps/web/src/ports/storage.ts` | `storage-version.test.ts`: zero repeats over 200 writes across 3 ids interleaved with `delete()`; ABA at the *same* `Trip.revision` refused; export→delete→restore-under-the-same-id refused through the store. Red-green verified. `qa/r3-cas2.mjs` probes 1–3 ok |
+| **R3-4** | the same root defect from the other side: a per-document counter cannot tell "this document, unchanged" from "a different document that happens to sit on the same number" after a delete and recreate under the same id (the export → delete → restore path `importDoc` permits). Closed **by construction**, with no ABA-specific code: the counter is storage-wide and never rewinds on `delete()`, and ~~an `epoch` minted with `crypto.randomUUID()` and persisted with the database covers the same ABA one level up~~ — **that half was wrong and R4-2 is the bill: the epoch was cached in the port's closure, so a tab surviving the wipe minted against a dead one. Superseded by R4-2's fresh-CSPRNG-per-mint below; the ABA fix itself stands.** | `client/src/ports/memory.ts`, `apps/web/src/ports/storage.ts` | `storage-version.test.ts`: zero repeats over 200 writes across 3 ids interleaved with `delete()`; ABA at the *same* `Trip.revision` refused; export→delete→restore-under-the-same-id refused through the store. Red-green verified. `qa/r3-cas2.mjs` probes 1–3 ok |
 | **R3-2** | a 400 ms debounced autosave was still pending when the active document was replaced, closed or deleted; `attemptSave` read `state.doc` at fire time, so trip A's write executed against trip B and the edit was gone with **nothing on screen**. One click, no second tab. §4.2 rule 6: all six document-changing transitions (`closeTrip`, `openTrip`, `createTrip`, `adoptTrip`, `importDoc`, `deleteTrip` — a closed list, asserted as a ceiling) now `await flushForTransition()` first; a refused (`'conflict'`) or failed (`'error'`) flush **aborts the transition** and the banner names both recoveries; `deleteTrip` of the *active* trip is the one exception and cancels the timer without writing. Belt and braces: a scheduled save captures its trip id and is **dropped, not retargeted**, if `state.doc` moved. Page exit registers `visibilitychange`→`hidden` + `pagehide` (deduped) → `flush()` and `beforeunload` → `preventDefault()` while dirty. | `client/src/store/store.ts`, `client/src/store/pageExit.ts` (new), `apps/web/src/App.tsx` | `switch.test.ts` ×22, `page-exit.test.ts` ×8 — **red-green verified**: removing the flush calls and the trip-id capture fails **19 of 22**. `qa/r3-loss.mjs` all 4 probes ok (including the real-timer one); `qa/r3-browser.mjs` probe 2 in real Chromium: the edit typed inside the debounce window survives clicking "Cairn" |
 
+| **R4-1** | "is there an unwritten edit" was `doc.revision !== savedRevision` — a *content counter* being asked whether an edit would be lost. `undo()` restores a snapshot verbatim, revision included, so a fresh, **different** edit landing on a number an earlier edit already used made the store report "nothing to write"; `flushForTransition` skipped the write, the switch completed, and the screen read "Saved" over a document storage did not hold. One click, no second tab. **`persistence.savedRevision` is deleted** — not corrected, deleted — and `persistence.savedDoc: Trip \| null` replaces it, absorbing the store's module-level `baseDoc` so exactly one pointer answers both "is there an unwritten edit" and "what is the merge's common ancestor". `dirty()` is now `!!state.doc && state.doc !== state.persistence.savedDoc` — reference identity, exact because `Trip` is immutable. `savedDoc` is assigned only from a port result (the exact document a successful `saveIfVersion` carried, or `load()`'s) and the reducer never names it. `flushForTransition`'s skip now needs **all three** of `status === 'idle'`, no pending debounce timer, and `doc === savedDoc`; `flush()` stays unconditional. §2.2b F1/F2, §4.2 rules 4 and 6a′. | `client/src/store/reducer.ts`, `client/src/store/store.ts` | `dirty.test.ts` ×15 (new), incl. the **inconclusive-not-pass** precondition and the **200-step seeded walk** asserting `isDirty() === (toJSON(doc) !== the port's bytes)` at every step — **red-green verified**: restoring the revision comparison and the two-conjunct skip fails 8 of them, the walk failing at step 9 with "the dirty predicate and the bytes disagree". `qa/r4-switch.mjs` all probes ok (was FAIL); `qa/r4-browser.mjs` §1 in real Chromium: Ctrl-Z + one ↓ reorder + the brand button, and the reorder **is** in IndexedDB (`stop-57,stop-58…` → `stop-58,stop-57…`) |
+| **R4-2** | the `StorageVersion` was `` `${epoch}.${n}` `` with `epoch` read once at open and **remembered in the port's closure**. A tab alive across a site-data clear (or §1.1's 7-day eviction) kept minting against a dead epoch while the counter had genuinely reset to zero, and reproduced a token it had already issued — verified in Chromium, byte for byte. The `epoch`, the storage-wide counter and the `meta` object store are **deleted** (`DB_VERSION` 2 → 3, which drops `meta`), and every mint is **16 bytes of fresh `crypto.getRandomValues`, base64url-encoded, derived from nothing**. Not `crypto.randomUUID`: it is secure-context-only and `undefined` over plain HTTP from a LAN address, which is exactly how `tools/serve.mjs` would be used from a phone. **No `Math.random()`/`Date.now()` fallback** — a fence fails closed and the store shows `'error'`. The one-time upcast stamps pre-fence records with the same mint. The in-memory port stays deterministic (`packages/client` may not touch ambient randomness): `` `${instance}.${n}` `` from a process-wide instance counter, with an injectable `mintVersion` as the only way to model a collision. §2.2a rules 2/5, §2.2b F3. | `apps/web/src/ports/storage.ts`, `client/src/ports/memory.ts` | `storage-version.test.ts` ×5 new: 100 construct/write/discard cycles with **zero duplicates in the pooled 200 tokens**; a token from one instance refused by another; no `StorageVersion` literal in any test, golden or fixture; no `Math.random`/`Date.now`/`randomUUID` on the fence path; F3's closure-state scan (`ready` is the only closure variable and `saveIfVersion` does not read it). **Red-green verified** against the true pre-fix port from `98ec06a`: 4 fail. `qa/r4-epoch.mjs` in real Chromium: `V=OSL3-…`, `deleteDatabase`, restore → `V2=ZE4W…`, `V2 !== V`, the pre-wipe token **refused**, storage still holds the restorer's document, tab B reads *"Not saved — edited elsewhere"* |
+| **R4-3** | the same F2 violation in the derived cache: `cache.revision === trip.revision && cache.tripId === trip.id`, so undo-then-a-different-edit served the pre-undo document's legs, costs, clusters and conflicts. Through `store.syncResolutions()` that does not merely render — it **writes the document**, retiring resolutions against conflicts the current document does not have. The key is now `(document identity, today)`; `revision` leaves the cache entirely, `tripId` is subsumed (two trips cannot be the same object), and `today` closes a smaller pre-existing hole where date-sensitive conflict rules went stale across midnight. `DayMap.tsx`'s effect dependency array carried `derived?.revision` — a dependency array is `===` suppressing work — and now depends on the cache object, per §4.2 rule 3's "depend on the cache object, not on a number inside it". `apps/web/src/store.ts`'s `useDerived` read `state.doc?.revision`; it reads `state.doc`. | `client/src/store/derived.ts`, `apps/web/src/views/DayMap.tsx`, `apps/web/src/store.ts` | `derived-cache.test.ts` ×4 (new) — **red-green verified**: restoring the revision key fails 3 of 4, including the `syncResolutions` one, which retires a live resolution. Plus the 200-step walk's ceiling (`getDerived()` deep-equals `computeDerived(doc, today)` at **every** step) and a grep test asserting no dependency array or memo key in `apps/web/src` contains a revision |
+| **R2-11** | §2.14's invariant — a credited record never reads as the user's own plan unless a **member** accepted it — was stated and enforced nowhere. `copyStopInto`'s `ctx.actorUserId` was already non-nullable in the type and unchecked at runtime, and R2-11 went straight through it. Enforced now at the two places documents come from: `acceptCandidate`, `rejectCandidate` and `copyStopInto` **throw** (`TypeError`, via a shared `requireActor`) on `null`, `undefined` or `''`, checked before anything is copied so the input trip is unchanged and `revision` has not moved; and a non-member actor on an attributed record is `validateTrip`'s new `accepted_by_non_member` (`level:'error'`, `params` carrying the actor and the owner), written membership-shaped (`members(trip)`, which degenerates to `{ownerId}` in Phase 1) rather than as `=== ownerId`. **`displayStatus` is untouched** and still returns `'own'` on a faulted record, deliberately: it is a pure function of one `Provenance`, cannot see the trip, and must not learn to. | `core/src/build/candidates.ts`, `core/src/build/copyStop.ts`, `core/src/validate/validateTrip.ts`, `core/src/model/types.ts`, `client/src/store/actions.ts` | `copyStop.test.ts` ×6 new: the throw over the full ref matrix (`day`/`stop`/`booking` × `null`/`undefined`/`''`) with the unchanged-trip ceiling after each; the injected fault producing **exactly one** additional issue with the right code/level/ref/params; **zero additional issues on the unmodified reference trip**; and a `source:'user'`/`actorUserId:null` record staying outside the rule. `qa/r2-copy.mjs` §B now reports ok instead of two FAILs |
+
 **Not fixed, and named as not fixed:** F-14 / the §2.10 export surface — enumerated rather
-than narrowed, KD-19. **And R2-4 through R2-21 of round 2, which this pass did not touch** —
-only the two blockers were routed here. `qa/r2-access.mjs` (R2-6, a malformed `expiresAt`
-still fails open), `qa/r2-copy.mjs` (R2-11) and `qa/r2-constraints.mjs` (R2-18) still report
-their findings, unchanged, and were re-run to confirm this pass neither fixed nor worsened
-them.
+than narrowed, KD-19. **And R2-4 through R2-21 of round 2, apart from R2-11 above** — only
+the routed findings were touched. `qa/r2-access.mjs` (R2-6, a malformed `expiresAt` still
+fails open) and `qa/r2-constraints.mjs` (R2-18) still report their findings, unchanged. So do
+`qa/r3-cas2.mjs` probes 5–7, `qa/r3-merge.mjs`, `qa/r3-pool.mjs`, `qa/r2-copy2.mjs`,
+`qa/r2-import.mjs`, `qa/r2-resolutions.mjs` and `qa/r2-browser.mjs`'s PoolPanel credit-line
+probe — **all of them were captured before and after the round-4 pass and the two outputs are
+byte-identical apart from `qa/r2-copy.mjs`'s R2-11 lines**, which is the finding that was
+routed.
 
 **And R3-3 and R3-5 … R3-9, which the round-3 persistence pass did not touch** — only R3-1,
 R3-4 and R3-2 were routed. `qa/r3-merge.mjs` still FAILs its static probe (R3-3:
@@ -644,6 +662,28 @@ untrue since `a746d75`.
   installed-web-app behaviour in §1.1 is unverified on a device.
 - **Real IndexedDB under quota exhaustion.** Covered through the in-memory port's `failAll`;
   not provoked against a real browser quota.
+
+**Added by the round-4 freshness pass:**
+
+- **Browser-initiated eviction is still not reproducible here.** `qa/r4-epoch.mjs` fires
+  `indexedDB.deleteDatabase('cairn')`, which is the same mechanism §1.1's 7-day eviction uses,
+  with a trigger we can pull. Chromium cannot be made to evict on demand, and the criterion
+  says so rather than pretending. What is verified is the whole sequence with `deleteDatabase`
+  as the trigger.
+- **The `meta` object store's deletion is verified on a database that had one.**
+  `qa/r4-epoch.mjs` boots against whatever the profile holds and asserts `meta` is absent
+  after the upgrade. A profile carrying a *populated* revision-2 `meta` (Jacob's actual
+  browser) was not available to test against; the upgrade path is `deleteObjectStore` inside
+  `onupgradeneeded`, which is not conditional on the contents.
+- **`crypto.getRandomValues` over plain HTTP was reasoned about, not measured.** The design's
+  claim — `randomUUID` is secure-context-only, `getRandomValues` is not — is what drove the
+  choice, and `qa/r4-epoch.mjs` runs over `http://localhost:4173`, which browsers treat as a
+  *secure* context. **The case that matters (`http://<LAN-ip>:4173` from a phone) was not
+  run.** If the claim is wrong, the fence throws and the store shows `'error'` — it fails
+  closed, which is the deliberate design — but it would fail closed *on every write*.
+- **`qa/r2-browser.mjs` still FAILs its PoolPanel credit-line probe** (§2.14 rule 7: the pool
+  item renders the badge but not `attribution`). Pre-existing, unrouted, untouched by this
+  pass, and unchanged before and after it.
 - **`copyStopInto` from a genuinely foreign trip.** Exercised over two local trips, which is
   the Phase 1 path, and over a hand-built `ownerId:'user:marta'` document in
   `copyStop.test.ts`. There is no server and no second user, so nobody has copied a stop
@@ -678,10 +718,32 @@ who is trying to protect it. The test now snapshots the file, restores it if it 
 - **`cities: ['transit']` is a pseudo-city in the data.** The view copes, but the import
   arguably ought to materialise a real `transit` city from `CITY_META` — the live planner has
   one, with a name and a flag. That changes golden files, so it is an architect call.
-- **`PersistenceState.status` has no `'conflict'`.** A refused stale write is reported as
-  `'error'` with an explanatory `lastError`, which is in-contract but conflates "storage is
-  broken" with "someone else edited this". If §4.2 gains a fourth status, this is the case
-  for it.
+- **`PersistenceState.status` has no `'conflict'`.** ~~A refused stale write is reported as
+  `'error'`~~ — **stale, resolved in revision 3: `'conflict'` exists and is what a refusal
+  sets.**
+
+### Round 4 — two readings I had to choose between, both flagged rather than settled
+
+Neither blocked the work and neither is a redesign, but both are places where the design
+admits two readings and I picked one. If the breaker disagrees with either, the disagreement
+is with a sentence in ARCHITECTURE, not with the code.
+
+- **`accepted_by_non_member` fires on a *set* actor who is not a member; a `null` actor on an
+  attributed, accepted record does not fire it.** §2.9 says "whose `provenance.actorUserId`
+  is not a member of the trip", and `null ∉ members(trip)`, so a literal reading would fire.
+  §2.14 reads the other way: the null-actor half is what the **throw** at the call site is
+  for, and `accepted_by_non_member` is described as "a **wrong** (non-member) actor". I took
+  the second reading — the issue's `params` carries "both the actor and the owner", and there
+  is no actor to carry when it is `null`. Consequence if it is wrong: a hand-edited or
+  Phase 2-synced document with `{source:'friend', state:'accepted', actorUserId:null}` passes
+  validation. It cannot be produced by any call in this codebase.
+- **The rule is scoped to records with a non-null `attribution()`, not to
+  `source !== 'user'`.** §2.9 states the scope as "a record with a non-null `attribution()`"
+  and gives the reason ("that is exactly §2.14's subject — the credited copy"), so that is
+  what is implemented. The practical difference: a `source:'system'` suggestion accepted by a
+  non-member is **not** flagged. That follows from the design as written; it is worth an
+  architect's eye anyway, because "a stranger accepted our suggestion on your behalf" is the
+  same category of claim.
 
 ## 9. Why two tsconfigs
 
