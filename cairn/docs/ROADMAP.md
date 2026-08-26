@@ -114,6 +114,23 @@ ruling finally made.
 | 9 | The `StorageVersion` becomes **16 bytes of fresh CSPRNG per mint**. The `epoch`, the storage-wide counter and the `meta` store are deleted — there is no longer anything a port has to remember, so there is nothing to go stale. `crypto.getRandomValues`, never `crypto.randomUUID` (secure-context-only; verified). | R4-2 | 2.2a rules 2/5, 4.3 |
 | 10 | **The R2-11 ruling.** `acceptCandidate`/`rejectCandidate`/`copyStopInto` throw on a missing actor (`actorUserId: UserId`, not nullable). A non-member actor on an attributed record is `validateTrip`'s new `accepted_by_non_member` error. §2.14's invariant reads `actorUserId ∈ members(trip)`. | R2-11 (`displayStatus` half) | 2.9, 2.10, 2.14 |
 
+### Revision 5 — the four rulings the Phase 1 gate review routed to the architect
+
+The gate review (`REVIEW.md`, SEND BACK) sent four questions here. None is a redesign; three change client
+behaviour on paths QA reached and one closes an acceptance criterion that has been "partially met" for three
+rounds. The engine still does not move.
+
+| # | Change | Closes | § |
+|---|---|---|---|
+| 11 | **A record `copyStopInto` produced anchors on nothing.** `geoCheck` gives any stop with `attribution(r) !== null` `confidence:'unanchored'`, so `geo_outlier` never publishes it, and such a stop is not an *anchor* for other records until it is accepted. Copying a stop from a distant trip is the feature working, not a defect (§0.5). | R2-9 | 2.13 |
+| 12 | **The serialization chain's subject is every `StoragePort` mutation, not every write.** `delete()` becomes a link on the chain — drain, delete, forget — so a queued expect-absent write can no longer land behind a delete and resurrect the trip. Rule 6c's exception is about not *writing* on delete, not about not *ordering*. | R7-3 | 4.2 rule 6c, 4.3 |
+| 13 | **`FLUSH_MAX_ATTEMPTS = 5` is blessed and named in the design**, with the reasoning that it is a bound and not a timeout. Exhausting it is a refusal *for display too*: `status:'error'` with a message, through the banner that already exists. And the debounce is re-armed on that exit while the document is dirty — the loop cancelled a timer the user's edit had scheduled. | R6-1, R6-2 | 4.2 rule 6a″ |
+| 14 | **§2.10's export surface is settled at 69 runtime symbols**, derived by a stated principle (a caller outside `packages/core`, or a numbered section naming it) instead of enumerated against itself. 45 symbols come off the index. Criterion E below is rewritten to one list and real set equality. | R2-12, KD-19 | 2.10 |
+
+*(Doc tidy in the same pass, no ruling: §2.2 gains `Stop.links` and `Stop.ticket` and corrects `Place.at` to
+`LatLng | null`; §2.5's `computeLegs(day, ctx: TripCtx)` is corrected to the shipped `computeLegs(day, trip)`
+— QA R2-21; §2.14 rule 5 gains `links`, which does copy.)*
+
 ### Deliverables
 
 ```
@@ -247,6 +264,29 @@ not decoration.
   one additional blocker, `geo_outlier`, naming `place-68`, with `km ≈ 110`** `[stated]`
 - **`geoCheck` returns 0 findings on the unmodified trip** — 0 of 112 scheduled stops, 0 of 94
   coordinate-bearing places `[stated]`
+- **Injected fault — the copy path must not mint a blocker** (rule 3; QA R2-9, §2.13's copied-record row).
+  Two faults, one criterion, because the rule has to catch the bug it exists for *and* stop causing the one
+  it caused:
+
+  > **(a) The false blocker is gone.** Build a Lisbon-based trip (`homeBase` Lisbon, one city, ≥1 own stop),
+  > `copyStopInto` the reference trip's **"Arrive LAX"** stop onto one of its days, then run `geoCheck` and
+  > `detectConflicts`. The copied stop's finding has `confidence:'unanchored'` with `km ≈ 9140` and
+  > `nearest !== null` (the distance is still measured; §2.13), and `detectConflicts` returns **zero**
+  > `geo_outlier` conflicts — a ceiling, not a floor. Repeat after `acceptCandidate` on that stop: still zero.
+  > A run producing one `geo_outlier` is the R2-9 defect; a run producing a finding with `nearest === null`
+  > has implemented "skip the record" rather than "measure it and decline to publish".
+  >
+  > **(b) The un-accepted copy cannot suppress a real blocker.** On that same trip, copy a stop and place it
+  > on a day, then inject a +1° latitude fault into an **own** stop on that day such that the faulted stop
+  > lands within 35 km of the copied one and >35 km from every other anchor. `detectConflicts` returns
+  > **exactly one** additional blocker, naming the faulted own stop. Then `acceptCandidate` the copied stop
+  > and re-run: **zero** blockers, because acceptance adds an anchor. Assert both halves — the first is the
+  > suppression the symmetric clause exists to prevent, the second is the stated consequence of accepting,
+  > and a run where acceptance *creates* a blocker fails outright.
+  >
+  > **Ceiling on the reference trip:** it contains no record with `attribution(r) !== null`, so all of
+  > §2.13's existing numbers must be unchanged by this row — 0/112 and 0/94 clean, 112/112 and 92/94 under
+  > +1°, and the Fisherman's Bastion blocker still fires. A run in which any of those moves fails `[stated]`
 - **`geoCheck` detection rate under a +1° latitude fault, injected on each record in turn: 112/112 scheduled
   stops and 92/94 places.** The two permitted misses are `Blue Cave, Biševo` and `Stiniva Cove, Vis`,
   named in §2.13 `[stated]`
@@ -341,8 +381,29 @@ not decoration.
 - **`cli export` refuses any path that normalises outside `cairn/`** `[stated]`
 - **The dependency-direction test exists and passes**, including "nothing under `apps/` imports
   `tools/extract-legacy.mjs`" `[stated]`
-- **`packages/core/src/index.ts`'s runtime exports equal §2.10's list exactly**, asserted as set equality in
-  both directions against a literal list in the test file `[stated]`
+- **`packages/core/src/index.ts`'s runtime exports equal §2.10's list exactly — 69 symbols, one list, set
+  equality in both directions** `[stated]`. Rewritten in revision 5, because the criterion as met was
+  satisfied by construction: the test asserted equality against the **union** of `SECTION_2_10` (50) and
+  `BEYOND_2_10` (60), which is 110 = 110 for any 110 exports, and QA found 42 of the 60 per-symbol
+  justifications did not hold (R2-12, KD-19). So, mechanically:
+
+  > `surface.test.ts` contains **exactly one** array of symbol names. Grep the file: zero occurrences of a
+  > second list, of the identifier `BEYOND_2_10`, and of the string `INTERNAL` — a symbol the test itself
+  > calls internal is a symbol that is not exported. The assertion is
+  > `setEquals(Object.keys(runtimeExportsOf(index)), THE_LIST)` in both directions, and `THE_LIST` is §2.10's
+  > list transcribed, **69 entries**. Type-only exports are excluded from the set by construction (they do
+  > not exist at runtime) and the criterion says so rather than leaving a tester to discover it.
+  >
+  > **Plus the two ceilings that stop the list drifting back:** (1) grep `packages/client/src`,
+  > `apps/web/src`, `cli.ts`, `fixtures/` and `tools/` for any import from a `packages/core/src/**` path
+  > **other than** `index.ts` (or, for `packages/client`, its single `deps.ts` re-export of it) — expect
+  > **zero**, which is what makes `tools/redact.mjs`'s deep import into `build/redactText.ts` fail until the
+  > redaction four are on the index; (2) every name in `THE_LIST` satisfies §2.10's derivation — it is either
+  > called from outside `packages/core` or named in a numbered section of `ARCHITECTURE.md`. The second half
+  > is checkable by grep and is the *principle* being asserted, not 69 hand-written justifications; a symbol
+  > that satisfies neither is removed from the index, not annotated. `cairn/test/` and `cairn/qa/` are
+  > exempt from ceiling (1) by design: tests may import a module path directly, because tests do not create
+  > surface `[stated]`
 
 #### F. The client, without a browser
 
@@ -449,6 +510,42 @@ not decoration.
   `'conflict'` against its own write — there is no other writer to merge with, so that state is
   unresolvable. Three overlapping `flush()` calls on one store end `'idle'`, with the last edit stored
   `[stated]`
+- **Every `StoragePort` mutation is on the serialization chain, `delete()` included** (revision 5, §4.3,
+  §4.2 rule 6c; QA R7-3). Two halves, structural and behavioural, because either alone has already been
+  passed by a store that had the hole:
+
+  > **Structural:** every `ports.storage.*` call in `packages/client/src` that is not `listTrips` or `load`
+  > appears lexically inside a `chainOntoSaving` callback. Grep-asserted, expected count of violations
+  > **zero**. This is the same shape as the R3-3 assertion (one `saveIfVersion` call site, all
+  > `writeAndSettle` call sites inside the chain) and it now covers `delete`.
+  >
+  > **Injected fault — the delete that came undone:** queue a write for trip *T* on a `StoragePort` whose
+  > `saveIfVersion` resolves on a latch you control, call `deleteTrip(T)`, then release the latch. Assert,
+  > after everything settles: *T* is **absent from storage** and **absent from `library`**, and no
+  > `saveIfVersion` for *T* returned `ok:true` after the delete. `qa/r7-chain.mjs` §10 is the shape and
+  > currently reports `in storage=true in library=true`. Run it in both orders — write queued before the
+  > delete, and a write attempted after it — and assert the same end state for both `[stated]`
+  >
+  > **And the exception survives:** `deleteTrip` of the *active* trip with `status:'conflict'` still
+  > succeeds. A conflicted trip must not become undeletable, which is the whole reason rule 6c exists
+  > `[stated]`
+- **The flush loop's bound is a refusal the user can see, and it re-arms the debounce** (revision 5, §4.2
+  rule 6a″; QA R6-1, R6-2). With a `StoragePort` that always leaves the document dirty after a write (or a
+  scheduler that lands an edit inside every write's latency), so the loop reaches `FLUSH_MAX_ATTEMPTS`:
+
+  > After `closeTrip()` returns: the transition **did not happen** (`activeTripId` unchanged, edit still in
+  > `doc`, `isDirty()` true); `persistence.status` is `'error'` with a non-empty `lastError`; **the rendered
+  > banner text is asserted, not the enum** — it names what happened and offers retry and export, per the NO
+  > SILENT LOSS criterion's rule that a test reading the enum keeps passing when the view stops reading it.
+  > A run in which the rendered output is unchanged from before the click fails.
+  >
+  > **And the write is rescheduled:** immediately after that same call, a debounce timer is pending, and with
+  > real timers and a port that now succeeds, the edit reaches storage **with no further user input** —
+  > assert the stored bytes, and assert that `status` returns to `'idle'` when it lands. Today: no write in
+  > 200 ms with the user idle. As a ceiling, assert the two exits that must **not** re-arm — after a
+  > `'conflict'` exit and after a port-failure `'error'` exit, **no timer is pending** — so a builder cannot
+  > satisfy this by re-arming unconditionally and spinning against a fence that will refuse every 400 ms
+  > `[stated]`
 - **NO SILENT LOSS, as a criterion rather than a hope.** *A user's edit is never discarded, overwritten, or
   made unreachable without the app saying so, on screen, at the moment it happens.* Every write path is
   checked against it, and each of the four blockers this phase has produced — F-1, F-2, R2-1, R2-2 — is one

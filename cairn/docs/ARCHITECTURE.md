@@ -17,11 +17,20 @@ patch them where they surfaced for the third round running, the rule is now stat
 §4.2 and §4.3 are amended to it. §2.14 also carries the ruling on R2-11's `displayStatus` half, which had
 been left to silence for two rounds.
 
+**Revision 5, 2026-08-26.** The Phase 1 gate review (`REVIEW.md`, verdict SEND BACK) routed four rulings
+here, none of them a redesign. What changed, and where: the copy path gets its row in the geography anchor
+table and copied records stop producing blockers (§2.13, QA R2-9); the serialization chain's subject becomes
+every `StoragePort` *mutation* rather than every *write*, so `delete()` goes on the chain too (§4.2 rule 6c,
+§4.3, QA R7-3); the flush loop's bound is blessed at 5, named in the design, and its exhausted exit becomes a
+refusal that shows on screen and re-arms the debounce (§4.2 rule 6a″, QA R6-1/R6-2); and §2.10's export
+surface is settled at **69 runtime symbols**, derived by a stated principle rather than enumerated against
+itself (QA R2-12, KD-19). §2.2 and §2.5 pick up three documented-shape drifts in the same pass.
+
 **Phase 1 is §2 and §4.** Everything else is the shape those two must not foreclose. See `ROADMAP.md`.
 
 ## Read only your sections
 
-This document is ~34k tokens. Nothing needs all of it, and a fresh agent that reads it whole starts a sixth
+This document is ~39k tokens. Nothing needs all of it, and a fresh agent that reads it whole starts a sixth
 of the way into its context before writing a line. Pull what you need:
 
 ```bash
@@ -33,9 +42,9 @@ cairn/tools/doc-section ARCHITECTURE         # lists the sections and their size
 |---|---|---|---|
 | 0 | Six positions, stated up front | <1k | everyone — read it, it is 20 lines |
 | 1 | Stack decision and the capability checks behind it | 3k | architect. Settled; do not re-litigate |
-| 2 | **Domain model — the builder's contract.** §2.12 `travelRole`, §2.13 geography and §2.14 import/copy are new in revision 2 and are where the Phase 1 rework lives; **§2.2a (the `StorageVersion` write fence, revision 3) and §2.2b (the freshness rule it turned out to be one instance of, revision 4) are read together with §4.2 and §4.3, never alone** | 19k | builder, breaker |
+| 2 | **Domain model — the builder's contract.** §2.12 `travelRole`, §2.13 geography and §2.14 import/copy are new in revision 2 and are where the Phase 1 rework lives; **§2.2a (the `StorageVersion` write fence, revision 3) and §2.2b (the freshness rule it turned out to be one instance of, revision 4) are read together with §4.2 and §4.3, never alone**; §2.10 (the export surface) and §2.13's copied-record row are settled in revision 5 | 22k | builder, breaker |
 | 3 | Module boundaries | <1k | builder |
-| 4 | **The Phase 1 client.** §4.2 rule 6 (a pending write is never outlived by its document) is new in revision 3 — QA R3-2; rule 6a′ and the `savedDoc` predicate are revision 4 — QA R4-1 | 3k | builder |
+| 4 | **The Phase 1 client.** §4.2 rule 6 (a pending write is never outlived by its document) is new in revision 3 — QA R3-2; rule 6a′ and the `savedDoc` predicate are revision 4 — QA R4-1; **rule 6a″ (the flush bound and its exits) and rule 6c's "delete goes on the chain" are revision 5** — QA R6-1/R6-2/R7-3 | 6k | builder |
 | 5 | The four hard subsystems | 1k | breaker; builder from Phase 3 on |
 | 6 | Privacy, authorization, deletion cascade | 2k | breaker, manager; builder for §6.2 |
 | 7 | Explicitly deferred | <1k | anyone about to build something not in the roadmap |
@@ -266,6 +275,11 @@ type Stop = {
   flags: StopFlag[];             // 'free' | 'daytrip' | ... — display badges only
   provenance: Provenance;
   durationMins: number | null;   // null = unknown; never guessed
+  links?: Link[];                // reference links (the legacy `book:` field where it is not a ticket) —
+                                 // §2.11. Descriptive, so it copies across trips (§2.14 rule 5).
+  ticket?: Ticket | null;        // a ticket attached to the STOP rather than to a Booking — §2.11.
+                                 // Absent and null both mean "none". NEVER copies across trips: a ticket
+                                 // is an access credential (§2.14 rule 3, §6.6).
 };
 
 type StopPlacement =
@@ -277,8 +291,11 @@ type PlaceLink =
   | { kind: 'inline'; at: LatLng }
   | { kind: 'none' };            // MUST be supported end-to-end
 
-type Place = { id: PlaceId; cityKey: CityKey; name: string; at: LatLng;
+type Place = { id: PlaceId; cityKey: CityKey; name: string; at: LatLng | null;
                category: StopCategory; note?: string; links?: Link[]; hours?: OpeningHours };
+// `at: null` means the source had no coordinates. The live planner has exactly one ("Windsor
+// Great Park / Long Walk"); importing it honestly and letting `validateTrip` report it is the
+// point, and `geoCheck` skips it (§2.13, last row of the anchor table).
 
 type Booking = {
   id: BookingId; tripId: TripId;
@@ -616,9 +633,17 @@ exists because Jacob can drag stops into an order that contradicts their times, 
 ### 2.5 Legs, clusters and cost — all derived
 
 ```ts
-computeLegs(day: Day, ctx: TripCtx): (Leg | null)[]   // index-aligned with day.stops
+computeLegs(day: Day, trip: Trip): (Leg | null)[]   // index-aligned with day.stops
 type Leg = { mode: TravelMode; mins: number; km: number | null; source: 'override' | 'estimate' };
 ```
+
+**The second parameter is the `Trip`, not a `TripCtx`** (revision 5, QA R2-21). Revisions 2–4 of this section
+wrote `ctx: TripCtx` and the code has always taken `trip: Trip`; the doc was wrong and is corrected here
+rather than the code, because the only thing `computeLegs` needs the second argument for is
+`trip.places` — resolving a `PlaceLink {kind:'place'}` to a coordinate. `TripCtx` is the *conflict engine's*
+per-run context (`{ trip, today? }`, §2.7) and it has no business in a derive function that must not know
+what day it is. §2.5 is the section a Phase 4 native port is written from, so the signatures here are the
+shipped ones, verbatim: a name that only reads right is the drift this revision exists to remove.
 
 A **byte-exact port** of `legBetween`. The tester will diff against the running page; do not improve it:
 
@@ -853,45 +878,112 @@ This generalises the scripted checks in `CLAUDE.md` — the ones that caught bug
 
 ### 2.10 The public API surface
 
-```
-packages/core/src/index.ts re-exports exactly this and nothing else:
+**Settled in revision 5 (QA R2-12, KD-19).** The list below is the whole contract: **69 runtime symbols**,
+one list, asserted as set equality in both directions against the runtime exports of
+`packages/core/src/index.ts`. It replaces a two-list arrangement — 50 "in §2.10" plus 60 "beyond §2.10, each
+with a justification" — that made the criterion true by construction against 110 exports. A boundary the
+Phase 2 server and the Phase 4 native app are written against cannot be "110 against 50, enumerated".
 
-  model      Trip, City, Day, Stop, StopPlacement, TravelRole, Place, PlaceLink, Booking, Ticket,
-             CostEstimate, Money, Provenance, Conflict, ConflictResolution, Leg, Issue, Ref, …
-             LOCAL_OWNER · TripParseError · ForeignDocumentError · sequentialIds
-  build      createTrip(init) · ensureDays(trip) · setTripMeta(trip, patch) · setDayMeta(trip, dayId, patch)
-             addStop(trip, placement, stop) · updateStop(trip, stopId, patch) · removeStop(trip, stopId)
-             moveStop(trip, stopId, placement)          // day↔day, day↔pool, reorder — ONE function
-             reorderStop(trip, stopId, order)
-             scheduleFromPool(trip, stopId, hint?) · returnToPool(trip, stopId)
-             acceptCandidate / rejectCandidate(trip, ref, actorUserId: UserId, at)   // NOT nullable — §2.14
-             copyStopInto(target, source, placement, ctx)          // §2.14 — the social primitive
-             upsertBooking · linkBooking · resolveConflict · syncResolutions
-  derive     computeLegs · dayMovingMinutes · clusterStops · focusCluster · fitSpanKm · MIN_SPAN_KM
-             mapBounds · stopPoints
-             rollUpCost · displayStatus · attribution · needsBadge · cityRange · formatRange · tripSummary
-             geoCheck                                              // §2.13 — one implementation
-  conflict   detectConflicts · RULES
-  validate   validateTrip
-  access     canView · canEdit · canShare · canDelete   (pure predicates; §6.2)
-  serialize  toJSON · fromJSON · SCHEMA_VERSION · migrateDoc
-  import     importLegacyDays
+#### How the list was derived — the principle, so the next change does not need a ruling
+
+A symbol is on the surface if **either**:
+
+**(P1) a consumer outside `packages/core` calls it today** — `packages/client`, `apps/web`, `cli.ts`,
+`fixtures/`, `tools/`. Measured, not assumed: 50 symbols, counting the reducer's string-keyed
+`ACTION_SPECS[…].coreFn` dispatch as a call site, because it is one.
+
+**(P2) a numbered section of this document specifies it by name as a callable or a constant.** 19 symbols —
+things Phase 1 has no caller for yet but Phase 2 or Phase 4 is being written against: the access predicates
+(§6.2), `geoCheck`/`GEO_LIMIT_KM` (§2.13), `clusterStops`/`MIN_SPAN_KM` (§2.5), `SCHEMA_VERSION`/`migrateDoc`
+(serialization), `TripParseError`, `RULES`, and the redaction four (§6.6).
+
+Everything else is internal, whether or not it is currently exported. **Tests do not create surface.**
+`packages/core`'s own tests, `cairn/test/` and `cairn/qa/` may import a module path directly
+(`packages/core/src/derive/geo.ts`) — attacking internals is their job, and routing that through the index
+would make every internal public. The un-export pass therefore rewrites some probe import lines from the
+index to the module path; that is the expected shape of the change, not a regression.
+
+```
+packages/core/src/index.ts re-exports exactly this and nothing else — 69 runtime symbols:
+
+  model (7)      LOCAL_OWNER · SCHEMA_VERSION · sequentialIds · formatRange · costFromDisplay
+                 TripParseError · ForeignDocumentError
+  build (17)     createTrip(init) · ensureDays(trip) · setTripMeta(trip, patch) · setDayMeta(trip, dayId, patch)
+                 addStop(trip, placement, stop) · updateStop(trip, stopId, patch) · removeStop(trip, stopId)
+                 moveStop(trip, stopId, placement)      // day↔day, day↔pool, reorder — ONE function
+                 reorderStop(trip, stopId, delta)
+                 scheduleFromPool(trip, stopId, hint?) · returnToPool(trip, stopId) · poolFor(trip, cityKey)
+                 acceptCandidate / rejectCandidate(trip, ref, actorUserId: UserId, at)  // NOT nullable — §2.14
+                 copyStopInto(target, source, placement, ctx)        // §2.14 — the social primitive
+                 upsertBooking · linkBooking
+  derive (21)    computeLegs(day, trip) · dayMovingMinutes(day, trip) · dayDistanceKm(day, trip) · fmtMins
+                 clusterStops · focusCluster · fitSpanKm · MIN_SPAN_KM · mapBounds · stopPoints · stopLatLng
+                 rollUpCost · displayStatus · attribution
+                 cityRange · daysForCity · orderedCities · weekdayOf · tripSummary
+                 geoCheck · GEO_LIMIT_KM                             // §2.13 — one implementation
+  conflict (5)   detectConflicts · RULES · resolveConflict · unresolveConflict · syncResolutions
+  validate (2)   validateTrip · issueCounts
+  merge (2)      mergeTrips · describeMerge                          // §4.2 rule 6b's "merge with the stored copy"
+  access (7)     canView · canComment · canEdit · canShare · canDelete · can · effectiveRole   // §6.2
+  serialize (3)  toJSON · fromJSON · migrateDoc
+  import (1)     importLegacyDays
+  redact (4)     REDACTION_PATTERNS · REDACTED · redactText · redactionHits                     // §6.6
+
+  types          exported freely and NOT part of the set-equality assertion: types are erased at runtime,
+                 `tsc` already fails on a missing one, and a type cannot leak an implementation the way a
+                 function can.
 ```
 
-**"Exactly this" is now mechanical.** Phase 1 exported 102 runtime symbols against a list of 38, which is
-not a leak the manager can be expected to notice by eye. The list above is widened to include the eight
-things the client genuinely needs and was reaching past the boundary for; the internals it was also getting
-— `digest`, `canonical`, `makeConflict`, `blankDay` — stay private. **A test asserts set equality in both
-directions** between the runtime exports of `index.ts` and a literal list checked into the test file, and
-that list is the one above. A symbol added to the index without being added here fails the build; a symbol
-listed here and not exported fails too.
+#### The 45 that come off, and why
+
+`CAT_DEFAULT_TIME` · `DEFAULT_CLUSTER_THRESHOLD_KM` · `EARTH_RADIUS_KM` · `STALE_RESOLUTION_LIMIT` ·
+`addDays` · `addPlace` · `blankDay` · `canonical` · `cityOfStop` · `compareStops` · `conflictId` ·
+`conflictsFor` · `currenciesOf` · `dateSpan` · `dayCost` · `dayNumber` · `digest` · `emailCandidate` ·
+`findDay` · `findStop` · `fixedClock` · `friendImport` · `fromDayNumber` · `haversine` · `inRange` ·
+`insertionIndex` · `isIsoDate` · `legBetween` · `makeConflict` · `makeStop` · `mergeLostData` · `mixesBasis` ·
+`needsBadge` · `parseCostDisplay` · `parseIsoDate` · `pickDay` · `rawSpanKm` · `resolvePlaceLink` ·
+`statusLabel` · `stopsForBooking` · `supersedeBooking` · `systemSuggestion` · `timeVal` · `toDoc` ·
+`userProvenance`
+
+They fall into four groups, and the group is the reason — no per-symbol justification list, because a
+per-symbol justification list is what let 42 wrong justifications through:
+
+1. **Internals of a public function** (`legBetween`, `haversine`, `resolvePlaceLink`, `inRange`,
+   `rawSpanKm`, `dayCost`, `parseCostDisplay`, `currenciesOf`, `mixesBasis`, `timeVal`, `insertionIndex`,
+   `compareStops`, `conflictsFor`, `mergeLostData`, `blankDay`, `makeStop`, `findDay`, `findStop`,
+   `cityOfStop`, `pickDay`, `addPlace`, `stopsForBooking`, `supersedeBooking`, `addDays`, `dateSpan`,
+   `dayNumber`, `fromDayNumber`, `parseIsoDate`, `isIsoDate`, `statusLabel`, `needsBadge`). Exporting the
+   halves of a function alongside the function invites a caller to assemble its own version of it — which is
+   how two implementations of one geography rule came to exist (§2.13).
+2. **Tuning constants a caller must not read or reproduce** (`CAT_DEFAULT_TIME`,
+   `DEFAULT_CLUSTER_THRESHOLD_KM`, `EARTH_RADIUS_KM`, `STALE_RESOLUTION_LIMIT`). Contrast `MIN_SPAN_KM` and
+   `GEO_LIMIT_KM`, which are on the surface because §2.5 and §2.13 state their values as part of the contract
+   and a consumer explains a finding with them.
+3. **Identity and canonicalisation** (`conflictId`, `makeConflict`, `digest`, `canonical`, `toDoc`) — the
+   six the builder's own test already tagged `INTERNAL`. A conflict id is a value core mints and consumers
+   compare; a consumer that can *mint* one can mint a resolution for a conflict that never existed.
+4. **Provenance constructors** (`userProvenance`, `systemSuggestion`, `emailCandidate`, `friendImport`) and
+   the test-only `fixedClock`. These are the same class as `accept`/`reject`, which QA R5-5 already took off
+   the surface for the same reason: they stamp provenance with no gate, so exporting them publishes a way to
+   mint an attributed record without going through `copyStopInto` and its seven rules (§2.14).
+
+**Enforcement.** One list in `surface.test.ts`, set equality in both directions against `index.ts`'s runtime
+exports, **no union and no second list**. A symbol added to the index without being added to §2.10 fails; a
+symbol in §2.10 that is not exported fails. Widening the surface is a documentation change first — add the
+caller or add the section that names it, then add the line.
 
 `moveStop` covering day↔day, day↔pool and reorder is deliberate: today those are three functions with three
 chances to disagree about what happens to `sug`/`_optId`/`addHint`.
 
 `access` predicates ship in Phase 1 even though nothing enforces them yet — they are the definition the
 Phase 2 RLS policies are generated from and tested against. Writing them later is the retrofit Jacob
-specifically asked to avoid.
+specifically asked to avoid. All seven are on the surface, `can` and `effectiveRole` included: the module is a
+*definition*, and a definition with a private half is a definition Phase 2 will re-derive.
+
+The redaction four move onto the index in this revision because `tools/redact.mjs` reaches into
+`packages/core/src/build/redactText.ts` by module path today. §6.6 makes redaction a rule with a test behind
+it; a rule enforced through a deep import into another package is the boundary erosion this section exists to
+prevent.
 
 ### 2.11 Migration: `DAYS` → core, exactly
 
@@ -1045,30 +1137,88 @@ type GeoAnchor =
 type GeoFinding = {
   ref: Ref;                       // { kind:'stop'|'place', id }
   km: number;                     // distance to the NEAREST anchor, rounded
-  limitKm: number;                // 35
+  limitKm: number;                // GEO_LIMIT_KM — 35
   nearest: GeoAnchor | null;      // null when the record has no anchor at all
   confidence: 'certain' | 'unanchored';
 };
 ```
+
+`'unanchored'` carries **two** cases and a consumer tells them apart by `nearest` (revision 5): `nearest ===
+null` is *"this trip offered the record no anchor"*; `nearest !== null` is *"anchors exist and this record is
+deliberately not measured against them"* — the copied-record row below. Both mean the same thing to
+`geo_outlier`, which publishes neither. There is no third `confidence` value, because a consumer that wants
+the distinction already has it in a field it must read anyway.
 
 **The principle, stated once:** *every coordinate is measured to the nearest point in the trip's own
 declared geography, and a coordinate far from everything the trip knows about is a coordinate to look at.*
 Not "far from its city" — a day trip is supposed to be far from its city, and a flight lands wherever it
 lands.
 
-The anchor set, by record class. The limit is a flat **35 km** everywhere; there is no second radius, no
-`daytrip` exemption constant and no travel-mode exemption.
+The anchor set, by record class. The limit is a flat **35 km** everywhere — the constant is `GEO_LIMIT_KM`
+and it is on §2.10's surface, so the number in this paragraph and the number in the code cannot disagree
+quietly. There is no second radius, no `daytrip` exemption constant and no travel-mode exemption.
 
 | Record | Anchors |
 |---|---|
 | **Scheduled stop** on day `D` | centres of every city in `D.cities` · `Trip.homeBase` · every *other* coordinate-bearing stop on `D` · the last coordinate-bearing stop of `D−1` · the first of `D+1` |
 | **Pool stop** filed under city `c` | centre of `c` · every coordinate-bearing scheduled stop on a day whose `cities` include `c` |
 | **Place** filed under city `c` | the same set, minus any stop that resolves its `PlaceLink` **through this place** (or the record would anchor itself) |
+| **Any stop with `attribution(stop) !== null`** — a record `copyStopInto` produced (revision 5) | **none.** `confidence: 'unanchored'`, always. `km` and `nearest` are still measured against the row above so a view can say how far it is, but `geo_outlier` never publishes it |
 | any record with no resolvable coordinate | not checked — `place_ref_dangling` and the `PlaceLink {kind:'none'}` path already cover it |
 
-`geo_outlier` publishes `confidence:'certain'` findings as blockers. `'unanchored'` — a record whose trip
-offers it no anchor at all — is not published as a conflict at all in Phase 1; it is a property of an
-almost-empty trip, not a defect.
+`geo_outlier` publishes `confidence:'certain'` findings as blockers. `'unanchored'` is not published as a
+conflict at all in Phase 1 — neither the empty-trip case nor the copied-record case.
+
+#### The copied-record row, and why it anchors on nothing (revision 5, QA R2-9)
+
+Copying *"Arrive LAX"* out of the reference trip into a Lisbon-based trip produced `geo_outlier: dstop-1,
+9140 km, certain` — **a blocker, on the phase's newest primitive, seconds after a human deliberately asked
+for exactly that record to be there.** §0.5 governs and settles it: a rule that cannot distinguish *"the data
+says something impossible"* from *"the data is shaped oddly by design"* degrades to a warning rather than
+asserting a defect. A stop copied from another trip being far from this trip's geography is not odd, it is
+**the point of the feature**, and ROADMAP C's promise that a third blocker appears only when somebody writes
+down why Jacob must act on it cannot survive a primitive that mints blockers by being used.
+
+**The choice, stated as a choice.** The alternative was to give the copied record an anchor inherited from
+its origin trip. Rejected, on three counts, in order of how decisive they are:
+
+1. **It is not computable.** `geoCheck(trip: Trip)` is a pure function of *one document*. The origin trip is
+   not in it; `provenance.origin` holds ids, not coordinates. Inheriting an anchor means persisting the
+   origin's geography inside the copy — new cross-document state, copied without the user asking, going stale
+   from the moment it is written, and directly against §0.6.
+2. **It would check the wrong claim.** The anchor set means *"the trip's own declared geography"*. A copied
+   stop makes no claim about the destination trip's geography until the user accepts it; measuring it against
+   the origin's geography would only re-run, against a snapshot, a check that already ran against the live
+   document in the trip the record came from.
+3. **The detection it appears to buy is already spent.** A copy is byte-identical in position to a record
+   that `geoCheck` already examined in its own trip, where the anchors are meaningful. Copying does not
+   create a new opportunity to catch a coordinate typo; it creates a new opportunity to *false-positive* on
+   one that was already cleared.
+
+**Symmetrically, and this half matters more than it looks: a copied stop is not an anchor for other records
+while `provenance.state !== 'accepted'`.** An anchor asserts *"the trip's geography includes this point"*,
+and an un-accepted candidate is by construction not yet part of the user's plan (§2.14). Letting one into the
+anchor set would let a stop the user has not accepted **suppress a real blocker** on a stop they wrote
+themselves. Once `acceptCandidate` runs, it joins the anchor set like any other stop — and note the direction
+that moves in: acceptance can only ever *add* anchors, so it can only ever *remove* a blocker, never create
+one. A transition that can mint a blocker is exactly what this ruling exists to stop.
+
+**Places need no row of their own, and here is why the table does not grow.** A `Place` carries no
+`provenance` (§2.2), so a copied place is not identifiable as one — and it does not need to be.
+`copyStopInto` rule 4 copies the place with its `cityKey` verbatim, so in the destination trip it is either
+filed under a city that trip *does* have — in which case its anchors are that city's centre and that city's
+stops, which is a meaningful measurement and should run — or under a city key that trip has never heard of,
+in which case the existing Place row already yields no anchor, `nearest === null`, and `'unanchored'`. Both
+outcomes are correct under the rules already written. Adding `Place.provenance` to serve this rule would be
+new persisted state bought for nothing.
+
+**A third honest limitation, alongside the two below**: a
+coordinate typed *into* a copied stop after it was copied is invisible to this rule, because the row keys on
+`attribution(stop) !== null` and not on `provenance.state`. That is deliberate. Keying on state would make
+the same document produce different conflicts either side of a provenance transition — accepting a stop could
+*create* a blocker, with nobody writing down why — and §0.5 rates a rule that mints unexplained blockers as
+worse than a rule with a named blind spot. The blind spot is one field on records the user has already been
+told came from somewhere else.
 
 **Measured, on the live planner, before specifying it.** Each element of the anchor set is load-bearing and
 was kept only because removing it reintroduced a specific false positive:
@@ -1098,6 +1248,12 @@ Two honest limitations, written down rather than discovered later:
 2. **A whole day of wrong coordinates is invisible**, because the day's stops anchor each other. The bug
    class this exists for — one digit, one record, `HISTORY.md` and `CLAUDE.md` both — is a single outlier.
    A bulk error is a different problem and it is not this rule's job to pretend otherwise.
+3. A coordinate edited into a copied stop after the copy — the copied-record row above.
+
+**None of the numbers above move under revision 5.** The reference trip contains no record with
+`attribution(r) !== null`, so the clean run is still 0/112 and 0/94, the +1° detection rate is still 112/112
+and 92/94, and the Fisherman's Bastion blocker is untouched. The new row changes what happens to records the
+*copy path* creates and nothing else — which is why it is a row and not a rewrite.
 
 `Trip.homeBase` is the one new field the mechanism needs. It is real modelling, not a patch: a trip starts
 and ends somewhere, and the Europe trip starts and ends at LAX. It is nullable, the importer takes it from
@@ -1159,8 +1315,9 @@ Pure, in core, and it ships in Phase 1. Seven rules, and rules 2 and 7 are the o
    ticket URL is an access credential (§6.6). `cost` is copied, with `confidence` demoted to `'inferred'`.
 4. **A referenced `Place` is copied with it**, new id, same provenance stamp — otherwise the link dangles.
    An existing place in the target with the same name and coordinates in the same city is reused instead.
-5. `flags`, `name`, `note`, `category`, `durationMins`, `arrival` and `travelRole` copy verbatim. They are
-   descriptions of a place and a journey, not claims about the user.
+5. `flags`, `name`, `note`, `category`, `durationMins`, `arrival`, `travelRole` and `links` copy verbatim
+   (`note` through `redactText` — BUILD-NOTES KD-20). They are descriptions of a place and a journey, not
+   claims about the user. **`ticket` is not on this list and never joins it** — see rule 3.
 6. **Accepting is a separate, explicit act.** `acceptCandidate` sets `state:'accepted'` and `acceptedAt`,
    which by §2.8 makes `displayStatus()` return `'own'` — that is the brief's rule, *"marked as such **until
    the user accepts it**"*. But it **preserves `origin`**, and preserving it is not optional:
@@ -1374,6 +1531,54 @@ Six rules, each of which exists because of a specific failure:
    `state.doc === state.persistence.savedDoc`; the third is the real condition and the other two can only
    ever cause more writing. `flush()` stays unconditional and must never consult the predicate.
 
+   **6a″ (revision 3, QA R5-1; the bound blessed and its exits ruled in revision 5, QA R6-1/R6-2). The flush
+   is a loop, bounded by `FLUSH_MAX_ATTEMPTS = 5`.** A flush is not a moment — it is an `await` long enough
+   for the user to type into — so the exit condition is `dirty()`, re-asserted *after* every write and never
+   sampled before one. The loop needs a bound because a user typing through every write could otherwise hold
+   a transition open forever, and a hang is not an improvement on data loss.
+
+   **Five is right, and the reason is that the bound is not a timeout.** Each pass awaits its own write, so
+   slow storage makes the loop *take longer*, it does not make it exhaust; the bound is only reached by a
+   document that will not settle. Convergence in the realistic worst case takes two passes — the in-flight
+   document, then the one that arrived behind it — and a transition is a *click*, not a typing session, so a
+   third pass already means something unusual is happening. Five is two plus three of headroom, and it does
+   not need to grow with document size, device speed or trip length. If a future phase finds it exhausted in
+   the field, that is a defect report about what will not settle, not a reason to raise the number.
+
+   **Exhausting the bound is a refusal, for display as well as for control flow.** It was the one path that
+   aborted a transition without telling anyone: `flushForTransition` returned `false`, the caller returned
+   `state` unchanged, `status` was still `'idle'`, and no banner reads `'idle'` — so the click did nothing
+   and said nothing. Rule 6b's sentence is *"aborts the transition **and tells the user**"*, and this exit
+   owes the same debt as the other two. Concretely, the give-up path sets `persistence.status = 'error'` with
+   a `lastError` that names what happened — *"Couldn't finish saving before switching. Your edit is still
+   here."* — so the **existing** error banner renders, offering the two recoveries it already offers (retry,
+   export this copy). Not `'conflict'`: nothing refused the write and there is no other writer to merge with,
+   so offering a merge would be a lie about what went wrong. No new UI mechanism; §4.2 rule 6b's refusal path
+   already reaches the screen this way and this exit joins it.
+
+   **And the debounce is re-armed when the loop gives up while the document is dirty.** The loop cancels the
+   pending timer on every pass (`cancelTimer()`), including the pass on which it gives up — so before this
+   ruling the store was left dirty, `'idle'`, and with **no scheduled write at all** until the user's next
+   keystroke. Cancelling work the user's own edit had scheduled and not putting it back is a bug on its own
+   terms, independent of the banner. So: on the bound-exhausted exit, if `dirty()`, re-arm the ordinary
+   debounce.
+
+   Re-arming automatically is the right shape, and the alternatives are worse for stated reasons. A
+   "Retry" button alone leaves a dirty document with nothing scheduled, which is the defect. A dedicated
+   retry loop with backoff is a second scheduler on the write path, and §4.2 has one. What is re-armed is the
+   **ordinary** debounced `attemptSave`, not another `flushForTransition`, so it cannot recurse into the loop;
+   if that write also leaves the document dirty it re-arms only through the normal `scheduleSave` path, which
+   is what typing does anyway. When it lands, `status` returns to `'idle'` and the banner clears — the message
+   is honestly transient. **The transition is never retried automatically**: the user clicks again. An app
+   that navigates by itself some seconds after a click the user has already given up on is worse than one
+   that does nothing.
+
+   **The other two exits do not re-arm, and this is a three-way rule the builder must not flatten.** On
+   `'conflict'`, a re-armed autosave would spin against a fence that will refuse it every 400 ms; the user
+   must merge or export. On `'error'`, the port is failing and the banner's Retry is the deliberate act. Only
+   the bound-exhausted exit re-arms, because it is the only one where nothing has actually refused anything.
+   In all three, `isDirty()` stays true, the indicator does not read "Saved", and the edit is still in `doc`.
+
    **6b. If the flush cannot succeed, the transition does not happen.** A refusal (`'conflict'`) or a storage
    failure (`'error'`) aborts the switch: the old document stays active, still holds the edit, the indicator
    does not read "Saved", and the screen names the two things the user can actually do — merge with the
@@ -1386,7 +1591,31 @@ Six rules, each of which exists because of a specific failure:
    **6c. `deleteTrip` of the active trip is the one exception, and it is explicit.** The pending timer is
    cancelled *without* writing and the transition proceeds — the user asked for that document to be
    destroyed, and 6b would otherwise make a conflicted trip undeletable. The delete confirmation names the
-   trip. (A stray timer surviving a delete would be harmless anyway: its expectation matches no record.)
+   trip.
+
+   **The exception is about not *writing*. It is not about not *ordering*** (revision 5, QA R7-3). The
+   parenthetical this rule used to end on — *"a stray timer surviving a delete would be harmless anyway: its
+   expectation matches no record"* — was wrong, and wrong in the direction that costs data. A write already
+   queued on the store's serialization chain can settle *after* `ports.storage.delete(id)` returns; an
+   expect-absent write (`expectedVersion: null`) is then **satisfied** by the record's absence, so it
+   succeeds, `upsertSummary` puts the library row back, and the trip is resurrected with the delete silently
+   undone. QA measured it: `in storage=true in library=true`. It is not reachable through the shipped UI
+   today, and that is luck, not design.
+
+   So: **`delete()` goes on the serialization chain, as a link of its own** — §4.3. `deleteTrip` does not
+   merely `await saving` and then call the port. `await saving; ports.storage.delete(id)` is a check-then-act
+   with an interleaving point in the middle, which is §0.6's error one level up from where §2.2a found it:
+   between the await resolving and the call, another link can be appended and land concurrently with the
+   delete. Putting the delete *on* the chain gives the store one total order over every mutation it issues,
+   which is the property `chainOntoSaving` already exists to provide. The link is *"drain, delete, forget"*
+   and all three happen inside it: the port delete, the library row removal, and — when the deleted trip was
+   the active one — the reset of `doc`, `savedDoc` and `savedVersion`, so that no later link can observe a
+   half-deleted store or write against a fence pointer for a trip that no longer exists.
+
+   None of that reopens the exception: the *active* trip's pending timer is still cancelled without writing,
+   so the queue the delete link drains contains only writes the store had **already committed to** before the
+   user asked for the deletion, and a conflicted trip is still deletable — a refused write ahead of the delete
+   in the chain reports its own failure and the delete still runs behind it.
 
    Belt and braces, because a timer that fires late must not be able to hurt anything: **a scheduled save
    captures the trip id it was scheduled for**, and if `state.doc` is no longer that trip when it fires, it
@@ -1414,6 +1643,8 @@ type SaveOutcome    = { ok: true;  version: StorageVersion }        // the versi
                     | { ok: false; storedVersion: StorageVersion | null };  // null = nothing stored
 
 interface StoragePort { listTrips(): Promise<TripSummaryRow[]>; load(id): Promise<StoredDoc|null>;
+                        // EVERY mutation below is issued from inside the store's serialization
+                        // chain — `saveIfVersion` and `delete` alike. §4.2 rule 6c, QA R7-3.
                         // ATOMIC compare-and-set. `expectedVersion: null` means "nothing stored yet".
                         // A refusal is `{ok:false, storedVersion}`, not a throw — storage is healthy.
                         // MUST mint a fresh, never-reused version on every success (§2.2a rules 1-2).
@@ -1427,6 +1658,15 @@ interface MapPort     { mount(el, points, bounds): MapHandle; refit(handle, boun
 interface ClockPort   { today(): IsoDate }
 interface IdPort      { newId(): string }
 ```
+
+**The chain's subject is every `StoragePort` mutation, not every write** (revision 5, QA R7-3). `store.ts`'s
+`chainOntoSaving` is the sole gateway for **all** storage mutations — `saveIfVersion` *and* `delete()` — so
+the store issues at most one mutation at a time and in a single total order. A mutation that reaches the port
+without going through it is a defect, and the criterion greps for it: every `ports.storage.*` call that is
+not `listTrips` or `load` appears lexically inside a `chainOntoSaving` callback. The reason it must be the
+port and not "the writes" is that the two kinds of mutation contradict each other — a delete makes a record
+absent, and an expect-absent write is *satisfied* by absence, so the only thing standing between them is
+their order.
 
 **The port no longer parses the document to run the guard.** `revisionOf(doc)` is deleted: the fence is the
 envelope version, so a truncated or corrupt record no longer decides its own refusal behaviour. Every
