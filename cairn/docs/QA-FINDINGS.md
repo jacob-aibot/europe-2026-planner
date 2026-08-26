@@ -1,5 +1,12 @@
 # Cairn — QA findings, Phase 1 **round 2**
 
+> **Status (as of `master` @ `b5c742b`):** **R2-3 fixed** (the `copyStopInto` credential leak —
+> see `BUILD-NOTES.md` KD-20/21). **R2-1 and R2-2 are still open** — no fix commit exists for
+> either; `git log -- packages/client/src/store/store.ts` shows nothing after the round-1 fix
+> that predates this round's QA pass. Every other finding below (R2-4 through R2-21) has not
+> been re-verified since this file was written — treat this document as the record of what was
+> found, not of what has since been fixed.
+
 Tester, stage 3. Attacked `master` @ `fcceb56`, 2026-08-25. Node v22.22.2, Chromium via the
 system Playwright driven over **real elapsed time** (no `--virtual-time-budget`).
 

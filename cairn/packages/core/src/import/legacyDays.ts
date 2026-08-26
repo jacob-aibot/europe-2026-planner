@@ -90,7 +90,7 @@ const BUNDLED_PREFIX = 'tickets/';
 /**
  * Ticket links whose target was fetched and confirmed by an earlier session (recorded in
  * `docs/BOOKINGS.md`), versus the one Jacob confirmed by hand because the proxy blocked it.
- * Verification provenance is data, per the root `CLAUDE.md`.
+ * Verification provenance is data, per `docs/EMAIL-ROUTINE.md` at the repo root.
  */
 const USER_VERIFIED_HOSTS = ['gyg.me', 'getyourguide.com'];
 

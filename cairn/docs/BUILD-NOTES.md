@@ -1,5 +1,11 @@
 # Cairn — build notes, Phase 1
 
+> **Status:** §1 (Known divergences) is current through **KD-21**, which includes the round-2
+> fix for R2-3 (`b5c742b`). **§4 (Verified) and §5 (Defects fixed) predate round 2 QA** — they
+> record the state after round 1's re-delivery ("231 pass") and were not regenerated after the
+> round-2 fix commit ("232 pass" as of `b5c742b`; run `npm test` for the current number). Don't
+> read §4/§5's numbers as current without re-running the commands in them.
+
 For the breaker and the manager. What is built, how to run it, what is stubbed, what I
 could not verify, and — first, because it is the thing that went wrong last round —
 **every known divergence from the contract**.

@@ -98,7 +98,7 @@ These come from the root `CLAUDE.md` and cost real trust when broken:
 - A day spanning two cities **must cluster before it fits**, with a min-span guard so a day spent on one
   street doesn't slam into max zoom.
 
-Both were real, shipped bugs. See the root `CLAUDE.md`.
+Both were real, shipped bugs. See `docs/PLANNER.md` at the repo root.
 
 ## 9. Branch and workflow
 
@@ -115,7 +115,7 @@ left. Three rules, in descending order of how much they save:
 
 1. **Never read `europe-2026-itinerary.html` whole** — §1 above. 44k tokens.
 2. **Read only your sections of `ARCHITECTURE.md`** — `cairn/tools/doc-section ARCHITECTURE 2 4` prints
-   ~8k tokens instead of ~15k. The table at the top of that document says which sections are yours.
+   ~14k tokens instead of ~24k. The table at the top of that document says which sections are yours.
 3. **Push heavy reading down into subagents.** The four-agent pipeline is not just a division of labour —
    each agent gets a fresh window and returns a report, which is why ARCHITECTURE.md can be large without
    poisoning the session that dispatched it. Dispatch the reading; keep the conclusions.

@@ -203,11 +203,16 @@ Next failing test for next feature.
 | **Clear** | Name describes behavior | `test('test1')` |
 | **Shows intent** | Demonstrates desired API | Obscures what code should do |
 
-When writing or changing any test, read [writing-good-tests.md](writing-good-tests.md) for the rules that keep tests honest:
+The rules that keep tests honest, every time:
 - Name the production change that would make the test fail — before writing it
 - Assert on real behavior, never on mock behavior
 - Keep test-only code in test utilities, out of production classes
 - Understand a dependency's side effects before mocking it
+
+Read the full [writing-good-tests.md](writing-good-tests.md) (~2k tokens) when you're writing a **new
+test file**, or a test that **mocks or stubs a dependency** — that's where the bullets above are easiest
+to violate without noticing. A one-line assertion change to an existing, unmocked test doesn't need it;
+the four bullets above already cover what changes.
 
 ## Common Rationalizations
 

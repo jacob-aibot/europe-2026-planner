@@ -1,8 +1,8 @@
 /**
  * `validateTrip` (ARCHITECTURE §2.9).
  *
- * This generalises the scripted checks in the root `CLAUDE.md` — the ones that caught bugs
- * nothing visible was showing, like Fisherman's Bastion 111 km north of Budapest.
+ * This generalises the scripted checks in `docs/PLANNER.md` at the repo root — the ones that
+ * caught bugs nothing visible was showing, like Fisherman's Bastion 111 km north of Budapest.
  *
  * Structural problems are `error`. Things that are probably wrong but might be deliberate
  * are `warn`. Nothing here throws and nothing here mutates.

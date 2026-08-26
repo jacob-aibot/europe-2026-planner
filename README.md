@@ -17,10 +17,11 @@ cd europe-2026
 claude
 ```
 
-`CLAUDE.md` loads automatically and explains the data model, the two
-non-obvious map behaviours, and the project conventions. Read
-`docs/BOOKINGS.md` before changing trip content — it holds the confirmed
-flight refs and two deliberately unresolved conflicts.
+`CLAUDE.md` loads automatically and covers the repo-wide rules (branches, the
+read-only boundary, conventions). It points to `docs/PLANNER.md` for the data
+model and the two non-obvious map behaviours. Read `docs/BOOKINGS.md` before
+changing trip content — it holds the confirmed flight refs and two
+deliberately unresolved conflicts.
 
 ## Layout
 
@@ -29,6 +30,7 @@ CLAUDE.md                    project memory — read automatically by Claude Cod
 europe-2026-itinerary.html   the entire app
 docs/BOOKINGS.md             flights, prices, open items
 docs/HISTORY.md              why things are the way they are
+docs/PLANNER.md              the DAYS data model and the two map bugs
 cairn/                       Cairn — this planner generalised into a product (in progress)
 ```
 

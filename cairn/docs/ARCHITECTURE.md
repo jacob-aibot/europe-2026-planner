@@ -14,7 +14,7 @@ reasoned about; the measurements are in the sections themselves.
 
 ## Read only your sections
 
-This document is ~15k tokens. Nothing needs all of it, and a fresh agent that reads it whole starts a third
+This document is ~24k tokens. Nothing needs all of it, and a fresh agent that reads it whole starts a third
 of the way into its context before writing a line. Pull what you need:
 
 ```bash

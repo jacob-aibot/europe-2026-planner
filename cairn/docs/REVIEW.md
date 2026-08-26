@@ -1,5 +1,13 @@
 # Cairn — Phase 1 review
 
+> **Status: SUPERSEDED, no fresh verdict issued.** This review covers round 1 (`master` @
+> `0c68d6f`) and its verdict below is **SEND BACK** — unchanged, not re-decided. Since then: an
+> architecture revision (rev 2), a builder re-delivery, a round-2 QA pass (`QA-FINDINGS.md`,
+> 3 blockers found), and one fix commit (`b5c742b`, closes R2-3 — see `BUILD-NOTES.md` KD-20/21).
+> R2-1 and R2-2 have **no fix commit** as of `master` @ `b5c742b`. **No manager verdict exists
+> for the current state of `master`.** The Phase 1 SHIP gate is not granted by this document —
+> read it for the routing history, not as a statement about `master` today.
+
 Manager, stage 4. Reviewed `master` @ `0c68d6f`, 2026-08-25.
 Everything below was run from a **clean `git clone`** into a scratch directory, Node v22.22.2,
 Chromium via the system Playwright. Commands and their output are in **Verified** at the end.
