@@ -199,3 +199,51 @@ non-string actors, which is an observation rather than a filed defect — see QA
 `qa/r5-freshness.mjs` still crashes at `:602` on `core.accept`, which is the R5-5 fix taking
 effect. It was **not** patched, deliberately, same ruling as `r2-copy2.mjs` / `r2-import.mjs`
 above; §1–§5 still run and were used this round.
+
+---
+
+## Round 7 (2026-08-26, `master` @ `32a3839`)
+
+Independent verification of the R3-3 fix (`chainOntoSaving`). Headless, from `cairn/`:
+
+```bash
+node qa/r7-chain.mjs      # the chain, attacked: a THREE-way pile-up (autosave + flush() +
+                          # mergeWithStored) measured at the port; a genuine third writer
+                          # landing mid-queue; a link that really rejects (the `.catch(() => {})`
+                          # claim); the merge branch rejecting; R5-1's drain loop x the chain;
+                          # merge LATENCY and what is on screen for it; the button pressed twice;
+                          # the deleted-trip branch; a stalled chain; deleteTrip off the chain;
+                          # and the structural claim (one saveIfVersion call site, three
+                          # writeAndSettle, all inside chainOntoSaving)
+node qa/r7-r6recheck.mjs  # R6-1/R6-2's SEVERITY re-derived independently of r6-flush.mjs:
+                          # the bound-exhausted abort, then all three backstops — the next
+                          # keystroke, registerPageExit (visibilitychange AND pagehide), and
+                          # beforeunload's preventDefault
+```
+
+Browser probe needs `npm run web:build && node tools/serve.mjs` in one shell, then:
+
+```bash
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r7-browser.mjs   # R3-3 end to end through
+                                                                  # the shipped UI, and R7-1's
+                                                                  # reachability swept at
+                                                                  # 0/30/80/150 ms
+```
+
+`r7-chain.mjs` is an **oracle, not a confirmation**: against the parent commit `584c218` (in a
+scratch `git worktree`, never in `cairn/`) it reports **10 FAIL**; at `32a3839` it reports **3**,
+and all three of those also FAIL at `584c218`, so nothing it still reports is a regression.
+`r7-r6recheck.mjs` reports **0 FAIL** — a FAIL there would mean R6-1/R6-2 are worse than MINOR.
+`r7-browser.mjs` is timing-*shaped* but not flaky: §2 sweeps four inter-click gaps and the
+second press fails to land at all four.
+
+**Probe rot found this round and deliberately not patched** (same ruling as rounds 5 and 6):
+
+- `qa/r6-flush.mjs` §6's static check is `/^\s*saving = (?!saving)/gm`, which now matches
+  `chainOntoSaving`'s own `saving = run;` and falsely reports R3-3 open. `qa/r3-merge.mjs`'s
+  check (`/^\s*saving = \(async/`) is the correct one. One of `r6-flush.mjs`'s three FAILs is
+  stale; R6-1/R6-2 account for the other two.
+- `qa/r2-constraints.mjs`'s zero-dep check counts `packages/client`'s workspace-internal
+  `{"@cairn/core": "*"}` as a runtime dependency. The root workspace declares none at all.
+  Only R2-18 is a real FAIL in that probe.
+- `qa/r5-freshness.mjs:602`, `qa/r2-copy2.mjs:86`, `qa/r2-import.mjs:51` remain rotten.

@@ -1,4 +1,19 @@
-# Cairn — QA findings, Phase 1 **rounds 2, 3, 4, 5 and 6**
+# Cairn — QA findings, Phase 1 **rounds 2, 3, 4, 5, 6 and 7**
+
+> **Status (as of `master` @ `32a3839`, independently verified 2026-08-26 — round 7):**
+>
+> | | |
+> |---|---|
+> | **Fixed — verified closed on my own evidence, not the builder's** | **R3-3** (MAJOR) — `chainOntoSaving` is the only assignment to `saving` (`store.ts:185`, one hit in statement position, three call sites) and, structurally, `ports.storage.saveIfVersion` has **one** call site and `writeAndSettle` **three**, all inside it: no write path can opt out. Max writes in flight from one store is **1** (was **2**) in a three-way pile-up, in both merge branches and on the double-press path. In real Chromium the R3-3 sequence now ends with both tabs' edits in IndexedDB and the chip reading **"Saved"**. `qa/r7-chain.mjs` (**oracle: 10 FAIL at `584c218` → 3 at `32a3839`**), `qa/r7-browser.mjs` §1, `qa/r3-merge.mjs` 0 FAIL, `qa/r3-cas.mjs` A 0 FAIL. |
+> | **NEW in round 7 — MINOR (3), all pre-existing at `584c218`, none a regression** | **R7-1** — `mergeWithStored()` re-entered before it settles leaves `status='conflict'` over a correctly merged document; **not reachable through the UI** (Chromium sweep at 0/30/80/150 ms: the second press never lands). **R7-2** — `emit()` has no per-listener error isolation and `scheduleSave`'s `void save(...)` turns a throwing subscriber into an **unhandled promise rejection**. **R7-3** — `deleteTrip` calls `ports.storage.delete` off the chain, so a queued expect-absent write resurrects a just-deleted trip; **not reachable through the UI** (Delete lives only in `Library.tsx`, which needs `state.doc === null`). All three → **builder**. |
+> | **R6-1 / R6-2 — re-derived, not assumed** | Both reproduce exactly as filed (`qa/r7-r6recheck.mjs`, written this round, independent of `r6-flush.mjs`). **Both confirmed MINOR on my own evidence:** three backstops each run and each clean — the next keystroke re-arms and the edit lands; `registerPageExit`'s `visibilitychange`→`hidden` **and** `pagehide` both flush the disarmed edit; `beforeunload` still calls `preventDefault()` while dirty. The chip reads **"Unsaved changes"**, never "Saved". **No data-loss path.** |
+> | **Still open, re-run and unchanged by `32a3839`** | **R3-6/R3-7/R3-8** (`qa/r3-pool.mjs`, 3 FAIL). **R3-9 + `qa/r3-cas2.mjs` §5–§7** (3 FAIL). **R2-6** (`qa/r2-access.mjs`, 1 FAIL). **R2-7** (`qa/r2-resolutions.mjs`, 1). **R2-9** (`qa/r2-data.mjs`, 1). **R2-18** (`qa/r2-constraints.mjs`). **R2-4** (`qa/r2-redact.mjs`, 7 hits). **R5-2 residual + R5-3** (`qa/r5-freshness.mjs`, 4 FAIL). **R5-4**. **R5-5/R5-2** (`qa/r6-actor.mjs`, 5 FAIL). **R6-1/R6-2**. **R3-1, R3-2, R3-4, R4-1, R2-11 stay closed** (0 FAIL each). |
+> | **Round-7 numbers, my own runs** | `npm test` **333 pass / 0 fail** (counted with `--test-reporter=tap`), `npm run typecheck` clean on both projects, `npm run web:build` clean. The commit's and BUILD-NOTES' numbers are **accurate**. |
+> | **Probe rot found this round, documented not patched** | `qa/r6-flush.mjs` §6's static check (`/^\s*saving = (?!saving)/`) now matches `chainOntoSaving`'s own `saving = run;` and falsely reports R3-3 open — one of its three FAILs is stale, the real R6-1/R6-2 count is **2**. `qa/r2-constraints.mjs`'s zero-dep check counts the workspace-internal `@cairn/core`; the root workspace declares no runtime dependencies at all, so `cairn-constraints` §2 is met and only R2-18 is real there. |
+> | **Gate verdict** | **No open BLOCKER and no open MAJOR anywhere in the write/persistence path.** Everything still open there is MINOR, two of them UI-unreachable, and R2-6 is Phase-2-scoped by ROADMAP's own deliverables line (`access/ predicates.ts — defined now, enforced in Phase 2 — §6.2`), verified against that text this round. **Recommended for the manager's Phase 1 gate review.** |
+>
+> **The round-6 status note below is superseded by this one** and is kept as the record of what
+> was true at `5f92145`.
 
 > **Status (as of `master` @ `5f92145`, independently verified 2026-08-26 — round 6):**
 >
@@ -1564,3 +1579,197 @@ Every line here was run, not skimmed.
   real IndexedDB writes through the UI is not something I could stage reliably.
 - **Two devices, a real server, Safari, iOS, a real quota wall.** Unchanged from every previous
   round.
+
+---
+
+# Round 7 — `master` @ `32a3839`, 2026-08-26
+
+Tester, independent verification of the **R3-3** fix (`chainOntoSaving`). Node v22.22.2, and
+real Chromium over CDP with real elapsed time. Scope as routed: confirm or overturn R3-3 on my
+own evidence, hunt regressions the builder's two new tests would not catch, re-check every
+previously-open finding, and answer the Phase 1 gate question for the write/persistence path.
+
+**Result: 0 new BLOCKER · 0 new MAJOR · 3 new MINOR, all three pre-existing at `584c218` and
+none reachable through the shipped UI.**
+
+## R3-3 — CLOSED, on my own evidence
+
+The builder's claim is that `chainOntoSaving(work)` is now the only place `saving` is assigned
+and all three write paths route through it. **Verified, independently:**
+
+- `store.ts:185` is the only `saving = ` in statement position in the file (round 6 counted
+  three). `chainOntoSaving` has exactly three call sites — `save()` at `:160`, the deleted-trip
+  branch at `:409`, the merge branch at `:436`. `qa/r7-chain.mjs` static §.
+- **Structurally, no write path can opt out.** `ports.storage.saveIfVersion` has exactly **one**
+  call site in the whole store (`:225`, inside `writeAndSettle`), and `writeAndSettle` has
+  exactly **three**, all inside a `chainOntoSaving` work function. So the invariant is not
+  "three places remembered to chain", it is "there is one door". `qa/r7-chain.mjs` §11.
+
+I wrote my own probe rather than re-run the builder's. `qa/r7-chain.mjs` is an **oracle, not a
+confirmation**: against `584c218` (the parent commit, in a scratch worktree, never in `cairn/`)
+it reports **10 FAIL**; at `32a3839` it reports **3**, and all three of those also FAIL at
+`584c218` — i.e. every one of the seven that flipped is attributable to this commit, and
+nothing regressed.
+
+What I attacked, and what it showed:
+
+| | |
+|---|---|
+| **§1 three-way pile-up** — a debounced autosave, an explicit `flush()` and `mergeWithStored()` all issued from **one** store inside one latch, with a fourth edit dispatched mid-pile-up. Concurrency measured at the port (max simultaneous callers), not from the status enum. | **max in flight 1** (was **2**). All four edits end in storage — `d1=MINE-B d2=OTHER-D2 d3=MINE-C` — `status=idle`, chip `"Saved"`, `isDirty()=false`. Nothing dropped, nothing reordered into a lost write. |
+| **§2 a genuine third writer** lands in the window while the merge sits in the now-serialized queue. This is the case serializing could plausibly have swallowed. | **Still surfaced.** The third tab's work is not clobbered (`d2=OTHER-2`), the merge's write is refused against `stored.version`, `status='conflict'`, the in-memory edit is still held, and the chip reads `"Not saved — edited elsewhere"` — correctly this time, because the document really is unwritten. |
+| **§3 the `.catch(() => {})` claim** — "swallows the PREVIOUS link's rejection only". Constructed a genuinely rejecting link by throwing from a subscriber on `attemptSave`'s pre-`try` `set({status:'saving'})`, which is the one statement on the write path outside a `try`. | **Behaves exactly as documented.** Of three queued `flush()`es, `p2` rejects **with its own error** (`rejected: BOOM from a subscriber`), `p1` and `p3` fulfil, the fourth link still ran at the port, the edit reached storage, and a later save still works. The queue is not poisoned and the failure is not swallowed twice. |
+| **§4 a rejection from the merge branch's own work.** | The caller is told (`mergeWithStored()` rejects), nothing claims "Saved" over an unmerged document, and the chain still accepts writes afterwards. |
+| **§5 R5-1's drain loop × the chain** (`flushForTransition`'s `await save(); await saving;`) with an edit landing mid-flush. | **R5-1 stays closed.** `EDIT-2` reaches storage before the trip is abandoned, and max in flight is **1** for the whole transition. |
+| **§7 / §8 the two paths the builder's tests do cover, attacked differently** — the merge button pressed twice, and the deleted-trip branch queued behind a parked write. | max in flight **1** on both (was **2**). §8 additionally flipped from `status=conflict, dirty=false` (the deleted-trip branch's own R3-3 indicator lie) to `status=idle`, `restored d1=MINE-2` — a closure the builder's report did not claim. |
+| **Real Chromium, end to end** (`qa/r7-browser.mjs` §1) — two tabs on the real Europe fixture, tab B refused, one more keystroke to arm its 400 ms autosave, then "Merge and save" pressed 120 ms in. | Both edits in IndexedDB (`A EDIT=true`, `B EDIT AGAIN=true`) and the chip reads **`"Saved"`**. R3-3's filed symptom — `"Not saved — edited elsewhere"` with `isDirty()===false` over a fully saved document — does not occur through the shipped UI. |
+
+**Verdict: R3-3 is closed.** Both halves — the concurrency invariant and the indicator lie —
+are fixed, on evidence I generated, in Node and in a real browser.
+
+## Regressions hunted, and what serializing actually changed
+
+- **Latency (`qa/r7-chain.mjs` §6).** With a port where every write takes 40 ms,
+  `mergeWithStored()` takes **40 ms alone and 79 ms queued behind one write** — serialization is
+  real and roughly doubles the worst case. There is **no spinner gap**: the statuses emitted
+  across the whole wait are `saving → conflict → idle`, so `SaveState` shows `"Saving…"` for the
+  duration. Nothing times out anywhere in the write path, so nothing can time out *because of*
+  this.
+- **A new coupling, recorded not filed (§9).** Before `32a3839`, a stalled write could not hold
+  up the merge button; it queues now, so it can. With the port parked indefinitely, the merge
+  does not resolve, the chip reads `"Saving…"`, and the in-memory edit is still held — it
+  degrades honestly and loses nothing. Worth knowing that `FLUSH_MAX_ATTEMPTS` bounds
+  `flushForTransition` but **nothing bounds the chain**. Not a defect: the alternative is
+  writing past a pending write, which is the bug that was just fixed.
+- **`flushForTransition`'s `await save(); await saving;` is still correct** under the chain —
+  `saving` may have grown a later link by then, so the flush waits for *more*, never less (§5).
+
+## New findings — all MINOR, all pre-existing at `584c218`, none a regression
+
+| id | sev | file:line | defect | repro | routing |
+|---|---|---|---|---|---|
+| **R7-1** | MINOR | `apps/web/src/App.tsx:96`, `packages/client/src/store/store.ts:398` | `mergeWithStored()` re-entered before the first call settles loads `stored` twice at the same version, so the second write is refused against a now-stale expectation and leaves `status='conflict'` — chip `"Not saved — edited elsewhere"` with `isDirty()===false` over a document that merged correctly. R3-3's symptom class reached by a second trigger the fix does not cover, and *deterministic* now rather than racy. **Not reachable through the shipped UI:** `qa/r7-browser.mjs` §2 sweeps the gap between two real clicks at 0/30/80/150 ms and the second press never lands at any of them — the banner unmounts as soon as `set({status:'saving'})` emits. Store-API-level only. | `node qa/r7-chain.mjs` §7; `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r7-browser.mjs` §2 (the reachability bound) | **builder** — one in-flight guard on the button, or an early return in `mergeWithStored` while a merge is already queued. Implementation defect. |
+| **R7-2** | MINOR | `packages/client/src/store/store.ts:101` (`emit`), `:124` (`void save(forTripId)`) | `emit()` calls listeners with no error isolation, and `attemptSave`'s opening `set({status:'saving'})` is the one statement on the write path outside a `try`. A subscriber that throws therefore rejects the chained link, and on the **debounce** path that link is launched as `void save(...)` — an **unhandled promise rejection** (observed: `unhandledRejection: BOOM in a subscriber`). A throwing subscriber also stops every later subscriber being notified. Low reachability: `apps/web` has exactly one subscriber (`apps/web/src/store.ts:26`, `useSyncExternalStore`'s callback). | `node qa/r7-chain.mjs` §3b | **builder** — `try/catch` per listener in `emit`, or `.catch` on the `void save()`. Implementation defect. |
+| **R7-3** | MINOR | `packages/client/src/store/store.ts:618` | `deleteTrip` calls `ports.storage.delete(id)` directly — the one storage mutation not on the chain — and for the *active* trip §4.2 rule 6c deliberately does not flush, only `cancelTimer()`, which cannot recall a write already issued. A queued **expect-absent** write (the merge's deleted-trip branch, expectation `null`) therefore lands *after* the delete and `writeAndSettle`'s `upsertSummary` puts the row back in the library: the trip is resurrected in storage and in the library, and the delete is silently undone. **Not reachable through the shipped UI:** the only Delete button is `apps/web/src/views/Library.tsx:101`, which renders only when `state.doc === null`, and a conflicted trip cannot be closed to get there (R5-3). Store-API-level only. | `node qa/r7-chain.mjs` §10 | **builder** — `await saving` before `ports.storage.delete`. Implementation defect; rule 6c's exception is about not *writing*, not about not *waiting*. |
+
+None of the three is a regression: all three FAIL identically at `584c218`.
+
+## R6-1 / R6-2 — re-verified properly, and still MINOR
+
+Round 6 filed both from `qa/r6-flush.mjs` §3 and no instance of me had re-derived them since.
+`qa/r7-r6recheck.mjs` drives the bound-exhausted abort independently (a port that dispatches a
+keystroke on every completed write, a real scheduler, `debounceMs: 20`) and then asks the one
+question that decides severity: **is any edit lost, on any exit the app actually has?**
+
+Both reproduce, exactly as filed: the drain stops at `FLUSH_MAX_ATTEMPTS` (5 writes), the
+transition aborts with `status='idle'` so `App.tsx` renders no banner (**R6-1**), and no
+autosave fires in the following 200 ms — ten debounce periods with the user idle (**R6-2**),
+leaving memory at `"typing 5"` and storage at `"typing 4"`.
+
+**Three independent backstops, each run, each clean — `qa/r7-r6recheck.mjs`, 0 FAIL:**
+
+1. **The next keystroke re-arms.** One more dispatch and the edit lands: `stored="AFTER THE
+   ABORT"`, `isDirty()=false`.
+2. **`registerPageExit` flushes it.** Both legs — `visibilitychange`→`hidden` and `pagehide` —
+   drive the disarmed edit to storage: `mem="typing 5"` → `stored="typing 5"`, `dirty=false`.
+3. **`beforeunload` still prompts.** `preventDefault()` is called while the aborted-transition
+   edit is unwritten, so the browser's own "Leave site?" dialog stands between the user and the
+   loss.
+
+And the indicator does not lie while any of that is pending: the `SaveState` chip reads
+**`"Unsaved changes"`**, not `"Saved"`, and `isDirty()` is `true`. **R6-1 and R6-2 are confirmed
+MINOR on my own evidence — cosmetic and recovery-affordance defects, no data-loss path.** Both
+remain open and correctly routed to the **builder**.
+
+## Every other previously-open finding, re-run this round
+
+`32a3839`'s diff is three files — `store.ts`, `merge-race.test.ts`, `BUILD-NOTES.md` — so
+nothing in `packages/core` can have moved; that is checked with `git show --stat`, not assumed.
+Every number below is from my own run at `32a3839`.
+
+| finding | probe | result |
+|---|---|---|
+| **R3-3** | `qa/r3-merge.mjs`, `qa/r3-cas.mjs` A, `qa/r7-chain.mjs`, `qa/r7-browser.mjs` | **0 FAIL / 0 FAIL / oracle 10→3 / 0 FAIL — CLOSED** |
+| R6-1, R6-2 | `qa/r6-flush.mjs` §3, `qa/r7-r6recheck.mjs` | 2 FAIL / 0 FAIL — open, **confirmed MINOR** |
+| R3-6, R3-7, R3-8 | `qa/r3-pool.mjs` | 3 FAIL — open, unchanged |
+| R3-9 and §5–§7 | `qa/r3-cas2.mjs` | 3 FAIL — open, unchanged |
+| R2-6 | `qa/r2-access.mjs` | 1 FAIL — open, unchanged |
+| R2-7 | `qa/r2-resolutions.mjs` | 1 FAIL — open, unchanged |
+| R2-9 | `qa/r2-data.mjs` | 1 FAIL — open, unchanged |
+| R2-18 | `qa/r2-constraints.mjs` | 2 FAIL (R2-18 + the zero-dep line, see probe rot) — open, unchanged |
+| R2-4 | `qa/r2-redact.mjs` | 7 hits — the same `DE4345` / `Booking 338 441 5948` / `OPTIONAL` / `BOOKINGS` doc-comment leak into `.js.map` — open, unchanged |
+| R5-2 residual, R5-3 | `qa/r5-freshness.mjs` §1–§5 | 4 FAIL — identical count at `584c218`, unchanged |
+| R5-4 | `grep` for timers in `apps/web/src` | still zero — open |
+| R5-5, R5-2 | `qa/r6-actor.mjs` | 5 FAIL — identical count at `584c218`, unchanged |
+| R3-1, R3-2, R3-4 | `qa/r3-undo.mjs`, `qa/r3-loss.mjs` | 0 FAIL — closed |
+| R4-1 | `qa/r4-switch.mjs` | 0 FAIL — closed |
+| R2-11 | `qa/r2-copy.mjs` | 0 FAIL — closed |
+
+**Round-7 numbers, my own runs, not taken from the commit message:** `npm test` **333 pass /
+0 fail** (counted with `--test-reporter=tap`, not the dot reporter), `npm run typecheck` clean
+on **both** projects from the documented order, `npm run web:build` clean. The commit's and
+BUILD-NOTES' reported numbers are **accurate**.
+
+**The Phase-2 deferral claim, checked against ROADMAP rather than accepted.** ROADMAP's Phase 1
+deliverables list reads `access/  predicates.ts  (defined now, enforced in Phase 2 — §6.2)`,
+and its narrative repeats that the `core/access` predicates "ship in this phase even though
+nothing enforces them". **R2-6 is genuinely Phase-2-scoped by ROADMAP's own text**, not by
+convenience. R2-11's `displayStatus` half — the one that *is* in a Phase 1 criterion — is
+closed (`qa/r2-copy.mjs`, 0 FAIL).
+
+## Probe rot found this round — documented, not patched
+
+Same ruling as rounds 5 and 6: repairing a probe inside a QA commit hides what changed.
+
+- **`qa/r6-flush.mjs` §6 now false-positives.** Its static check is
+  `/^\s*saving = (?!saving)/gm`, which matches `chainOntoSaving`'s own `saving = run;` and
+  reports "1 bare assignments — R3-3 is still open". It is not. `qa/r3-merge.mjs`'s check
+  (`/^\s*saving = \(async/`) is the correct one and passes. One of `r6-flush.mjs`'s three FAILs
+  is therefore stale; the real count for R6-1/R6-2 is **2**.
+- **`qa/r2-constraints.mjs`'s zero-dep check counts `@cairn/core`.** `packages/client`'s only
+  dependency is the workspace-internal `{"@cairn/core": "*"}`, which is what the layering
+  requires; the root workspace declares **no** runtime dependencies at all, only `@types/node`
+  and `typescript` as dev. `cairn-constraints` §2 is met. One of that probe's two FAILs is
+  therefore not a defect; R2-18 is the real one.
+- `qa/r5-freshness.mjs:602`, `qa/r2-copy2.mjs:86`, `qa/r2-import.mjs:51` — rotten since rounds
+  5 and 2 respectively, unchanged, still not patched.
+
+## What I attacked and could not break
+
+Every line was run.
+
+- **No write path can reach storage off the chain.** Enumerated structurally (§11) and attacked
+  behaviourally (§1, §5, §7, §8): one `saveIfVersion` call site, three `writeAndSettle` call
+  sites, all three inside `chainOntoSaving`. Max in flight is 1 in every shape I could build.
+- **Serializing did not swallow a refusal** (§2) and did not swallow a rejection (§3, §4).
+- **A failed link cannot poison the queue** — proved with a link that genuinely rejects, not by
+  reading the comment.
+- **A stalled chain loses nothing** (§9) — the edit is held, the chip says `"Saving…"`.
+- **R5-1 still closed under the chain** (§5), and R3-1/R3-2/R3-4/R4-1/R2-11 all re-run at 0 FAIL.
+- Shapes that did not produce a lost or wrong write: three-way pile-up from one store; an edit
+  dispatched *during* the pile-up; a third tab writing mid-queue; the deleted-trip branch behind
+  a parked write; a merge behind a stalled write; two "Merge and save" presses.
+
+## What I could not test
+
+- **Two devices, a real server, Safari, iOS, a real quota wall.** Unchanged from every round.
+- **The bound exhausted through a real browser UI.** Unchanged from round 6 — five keystrokes
+  landing inside five consecutive real IndexedDB writes is not stageable reliably.
+- **R7-2 through a real React error.** I forced a throwing subscriber directly; whether React's
+  `useSyncExternalStore` callback can be made to throw in production is not something I could
+  establish, which is why R7-2 is MINOR and its reachability is stated as unestablished rather
+  than assumed.
+
+## Phase 1 gate — the write/persistence path
+
+**There is no open BLOCKER and no open MAJOR anywhere in the write/persistence path.** R3-3 was
+the last one and it is closed on independent evidence, in Node and in Chromium. Everything still
+open against `store.ts` / persistence is MINOR (R6-1, R6-2, R5-3, R5-4, R7-1, R7-2, R7-3), and
+of those, R7-1 and R7-3 are not reachable through the shipped UI at all, while R6-1/R6-2 have
+three verified backstops between them and any data loss. Everything open in `packages/core`'s
+access layer (R2-6) is Phase-2-scoped by ROADMAP's own deliverables list, verified against that
+text this round.
+
+That is a sixth consecutive adversarial pass on the persistence spine with the previous round's
+finding closed and no new BLOCKER or MAJOR raised. **My recommendation is that this goes to the
+manager for the Phase 1 gate review.** The decision is the manager's and the routing is
+Jacob's; this is a tester's recommendation and nothing more.
