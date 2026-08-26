@@ -172,3 +172,30 @@ the unmodified round-2/3 scripts and are unchanged by `c3c79b3`.
 `qa/r2-copy2.mjs:86` and `qa/r2-import.mjs:51` both do `JSON.parse(await storage.load(id))`, and
 `StoragePort.load()` has returned `{doc, version}` since `3a124a2` (ARCHITECTURE §2.2a rule 4).
 They have not executed since round 2; anyone re-running them needs `.doc` first.
+
+---
+
+## Round 6 (2026-08-26, `master` @ `5f92145`)
+
+Independent verification of the R5-1 / R5-2 / R5-5 fix pass. Headless, from `cairn/`:
+
+```bash
+node qa/r6-flush.mjs   # the R5-1 drain loop, attacked: mid-flush edits on the same and on
+                       # another trip, the bound exhausted with a REAL scheduler, a refusal
+                       # arriving mid-loop, all six transitions propagating false, R3-3 x the
+                       # loop, deleteTrip(active) racing a parked flush
+node qa/r6-actor.mjs   # accepted_by_non_member over ten actor shapes x four ref kinds, the
+                       # §2.14 exemptions, the reference-trip ceiling re-derived, and R5-5's
+                       # export surface
+```
+
+Both are **oracles, not confirmations**: against the pre-fix code (`flushForTransition` reverted
+to `d97feed`'s single pass, `if (!actor || …)` restored, `accept`/`reject` re-exported, all in a
+scratch copy) they report 12 FAIL and 17 FAIL respectively, versus 3 and 5 at `5f92145`. The
+FAILs that remain at `5f92145` are R6-1/R6-2 (`r6-flush.mjs` §3), R3-3's static probe
+(`r6-flush.mjs` §6, a known-open finding restated) and `r6-actor.mjs`'s params-fidelity note on
+non-string actors, which is an observation rather than a filed defect — see QA-FINDINGS round 6.
+
+`qa/r5-freshness.mjs` still crashes at `:602` on `core.accept`, which is the R5-5 fix taking
+effect. It was **not** patched, deliberately, same ruling as `r2-copy2.mjs` / `r2-import.mjs`
+above; §1–§5 still run and were used this round.

@@ -1,4 +1,18 @@
-# Cairn — QA findings, Phase 1 **rounds 2, 3, 4 and 5**
+# Cairn — QA findings, Phase 1 **rounds 2, 3, 4, 5 and 6**
+
+> **Status (as of `master` @ `5f92145`, independently verified 2026-08-26 — round 6):**
+>
+> | | |
+> |---|---|
+> | **Fixed — verified closed on my own evidence, not the builder's** | **R5-1** (BLOCKER) — `flushForTransition` now re-asserts `dirty()` after every write and loops; the mid-flush edit reaches **storage** in all five affected transitions, in Node (`qa/r6-flush.mjs` §1–§2) and in real Chromium (`qa/r5-browser.mjs`, my own run: **0 of 5 delays lose the reorder**, was 5 of 5). **R5-2** (MAJOR) — `accepted_by_non_member` fires on all three missing-actor shapes plus seven more I constructed (`0`, `12345`, `true`, `{}`, `[…]`, `' '`, a real non-member), across **all four** ref kinds the rule claims (day, scheduled stop, pool stop, booking), with the reference-trip ceiling re-derived from the real fixture: **0 issues, 180 provenance records, 156 accepted, 0 attributed** (`qa/r6-actor.mjs`). **R5-5** (MINOR) — `core.accept`/`core.reject` are gone from the runtime surface (`typeof === 'undefined'`), the checked wrappers survive, nothing else references them; runtime export count 112 → 110. |
+> | **NEW in round 6 — MINOR** | **R6-1** — exhausting `FLUSH_MAX_ATTEMPTS` returns `false` with `persistence.status === 'idle'`, and `App.tsx` renders a banner only for `'conflict'` and `'error'`: the click aborts the transition and **says nothing**. **R6-2** — the same path cancels the debounce timer on its final pass and never re-arms it, leaving a dirty document with **no scheduled autosave** (verified: no further write in 200 ms = ten debounce periods with the user idle). Both `qa/r6-flush.mjs` §3, both **builder**. |
+> | **Independently red-green verified** | I reverted all three fixes in a scratch copy of the tree (never in `cairn/`) and re-ran the suite: **12 tests fail** — 7 R5-1, 2 R5-2, 3 R5-5. My own probes go from 3 FAIL → 12 FAIL (`r6-flush`) and 5 → 17 (`r6-actor`) against the same mutation. The tests are not passing for the wrong reason. |
+> | **Still open, re-confirmed unchanged by `5f92145`** | **R3-3** (MAJOR — `qa/r3-merge.mjs` 2 FAIL, `qa/r3-cas.mjs` A, and three bare `saving =` assignments still in `store.ts`). **R3-6/R3-7/R3-8** (`qa/r3-pool.mjs`, 3 FAIL). **R3-9 + `qa/r3-cas2.mjs` §5–§7** (3 FAIL). **R2-6** (`qa/r2-access.mjs`, the malformed `expiresAt` still fails open). **R2-7** (`qa/r2-resolutions.mjs`). **R2-9** (`qa/r2-data.mjs`). **R2-18** (`qa/r2-constraints.mjs`). **R2-4** (`qa/r2-redact.mjs` — 7 hits, the same `DE4345` / `Booking 338 441 5948` doc-comment leak into `.js.map`). **R5-3** (`qa/r5-freshness.mjs` §2.4 still FAILs — the drain loop does not change it). **R5-4** (no timer in `apps/web`). All re-run this round; none fixed, worsened or masked. **R3-1, R3-2, R3-4, R4-1, R2-11 stay closed** (`qa/r3-undo.mjs`, `qa/r3-loss.mjs`, `qa/r4-switch.mjs`, `qa/r2-copy.mjs` — 0 FAIL each). |
+> | **Round-6 numbers, my own runs** | `npm test` **331 pass / 0 fail** and `npm run typecheck` clean on both projects at `5f92145` — the commit's and BUILD-NOTES §5's reported numbers are **accurate**. `dirty.test.ts`'s 200-step walk re-run under five seeds (1, 7, 99, 20260827, 424242): 15/15 each. |
+> | **Probe rot, untouched by design** | `qa/r5-freshness.mjs:602` still crashes on `core.accept` — that is the R5-5 fix taking effect, it is documented in BUILD-NOTES, and it was **not** patched. Everything before the crash (§1–§5) still runs and was used. `qa/r2-copy2.mjs` and `qa/r2-import.mjs` remain rotten from round 5. |
+>
+> **The round-5 status note below is superseded by this one** and is kept as the record of what
+> was true at `c3c79b3`.
 
 > **Status (as of `master` @ `c3c79b3`, re-verified 2026-08-26 — round 5):**
 >
@@ -1360,3 +1374,193 @@ Every item below is an attack that was **run**, not an area that was skimmed.
   claim were wrong the fence fails closed on every write, which is loud rather than silent.
 - **R5-1 with a *slow* real IndexedDB** (a large trip, a loaded disk). The window I measured in
   Chromium is a few milliseconds wide; on a phone it is wider, not narrower.
+
+---
+
+# Round 6 — independent verification of `5f92145`
+
+Tester, stage 3. Attacked `master` @ `5f92145`, 2026-08-26. Node v22.22.2, Chromium via the
+system Playwright over **real elapsed time**. Scope: verify R5-1, R5-2 and R5-5 on my own
+evidence, hunt adjacent regressions, and re-confirm the open findings are where round 5 left
+them. Two new probes, both committed: `qa/r6-flush.mjs` and `qa/r6-actor.mjs`.
+
+**Result: 0 BLOCKER · 0 MAJOR · 2 MINOR (both new, both in one code path).**
+
+## The verdicts
+
+### R5-1 — **CONFIRMED FIXED**, with two MINOR loose ends on the abort path (R6-1, R6-2)
+
+I read `flushForTransition` (`packages/client/src/store/store.ts:257`–`:305`) rather than
+taking §5's account: the loop recomputes `timerPending`, `cancelTimer()`, `idle`, `skip` and
+`dirty()` **at the top of every pass**, and there is no `await` between `await saving` and the
+next pass's `dirty()`, so no dispatch can interleave between the check and the decision. The
+exit is `dirty()`; `persistence.status` now only ever causes an *early abort*
+(`'conflict'`/`'error'`), never a "done". That is the right direction under §2.2b F1 — the
+status can only make the loop write more, never less.
+
+Then I attacked it, and every one of these was **run** (`qa/r6-flush.mjs`):
+
+| Attack | Result |
+|---|---|
+| An edit landing mid-flush, `closeTrip` | both edits in **stored bytes**, store clean, transition completed (§1) |
+| An edit landing mid-flush addressing a **different trip** | not constructible: `dispatch` always addresses `state.doc`, and `state.doc` is provably still the *outgoing* trip for the whole flush — asserted, not reasoned (§2). Trip A's record is byte-untouched by trip B's flush. |
+| `FLUSH_MAX_ATTEMPTS` exhausted while the user is still typing, **with a real scheduler** (the builder's own bound test uses a dead one) | the transition aborts, the trip stays open, `isDirty()` is `true`, exactly 5 writes — and the two new findings below (§3) |
+| Recovery after the bound is spent | one more `closeTrip()` once typing stops completes it and the **last** keystroke reaches storage (§3) |
+| A genuine two-tab refusal arriving **during** the retry loop, not before it | aborts on that pass, `status:'conflict'`, edit in memory, `CONFLICT_MESSAGE` on state so `App.tsx` renders the banner (§4) |
+| A storage **error** (`failAll`) during the loop | aborts on the first failure — no five-fold retry of a dead disk — `status:'error'`, `lastError` set, and the retry banner recovers it |
+| All six transitions propagating `false` | `closeTrip`, `openTrip`, `createTrip`, `adoptTrip`, `importDoc`, `deleteTrip(other)` — all six abort with the edit held and `status:'conflict'`; `deleteTrip(other)` also leaves the other trip undeleted (§5) |
+| `deleteTrip(activeId)` firing while another transition's flush is parked | the deleted record is **not** resurrected by the in-flight write (the port refuses a non-null expectation against an absent record), library clean, no dangling active id (§7) |
+| Double-click on "Back to all trips" during a parked write, with an edit in the gap | both edits stored, one clean transition, `status:'idle'` |
+| `closeTrip` and `openTrip(other)` racing with an edit in the gap | no edit lost; the outgoing trip's bytes carry both edits |
+
+Real Chromium, my own run, after `npm run web:build && node tools/serve.mjs`:
+
+```
+delay=0/1/2/4/8ms · edit THREE reached the UI = true · storage ends up holding what the user last saw = true
+  ok  the edit dispatched during the transition's flush survives it (5/5 runs exercised the window)
+      — 0 of 5 runs lost the reorder with nothing on screen saying so
+```
+
+### R5-2 — **CONFIRMED FIXED**, no caveat
+
+I built my own cases (`qa/r6-actor.mjs`), not the builder's. `checkActor`
+(`packages/core/src/validate/validateTrip.ts:63`–`:80`) normalises the actor to
+`typeof === 'string' && !== ''` and then short-circuits **only** on membership, which is §2.9's
+predicate with no fourth conjunct.
+
+- **Ten actor shapes** on a credited, `state:'accepted'` stop: `null`, `undefined`, `''`, `0`,
+  `12345`, `true`, `{}`, `['user:marta']`, `' '`, `'user:marta'`. **All ten produce exactly one
+  `accepted_by_non_member` error**, `level:'error'`, `ref.kind:'stop'`, `params` entirely
+  `string|number` per §2.1, and the message never prints `null`, `undefined` or `[object`.
+- **All four ref kinds** the finding named: `Day.provenance` (`:162`), a scheduled stop
+  (`:285`), a **pool** stop (same loop — `allStops` is days-then-pool, `:183`–`:185`), and a
+  `Booking` (`:394`). One issue each, with the right `ref.kind`.
+- **The exemptions §2.14 actually states survive**: `source:'user'`/`actorUserId:null` → 0
+  issues; the owner accepting → 0; an unaccepted candidate with no actor → 0.
+- **The reference-trip ceiling, re-derived**: `validateTrip(Europe 2026)` = **1 error, 10 warn**
+  (matching BUILD-NOTES §4) with **zero** `accepted_by_non_member`, over **180 provenance
+  records, 156 accepted, 0 attributed** — I counted the attributed records rather than
+  believing the claim. The ceiling is not vacuous: one injected fault on that same document
+  produces exactly one extra issue.
+- **Non-string actors cannot reach here from a document**: `fromJSON` rejects
+  `actorUserId: 12345` with `TripParseError` *"expected a string (at
+  $.days[0].provenance.actorUserId)"*, so the non-string cases are hand-built-`Trip`-only.
+  Noted, not filed: for those, `params.actorUserId` is `''` and the message reads *"records
+  nobody as having accepted it"*, so a **present but non-string** wrong actor loses its value
+  in the report. The issue is still raised at the right level and ref, the shape is
+  unreachable from any document source, and §2.1 constrains `params` to `string|number`, so
+  this is diagnostic fidelity in an unreachable case — an observation, not a defect.
+
+### R5-5 — **CONFIRMED FIXED**
+
+`typeof core.accept === 'undefined'` and `typeof core.reject === 'undefined'` at runtime;
+`acceptCandidate`/`rejectCandidate` are still functions and still throw on `null`, `undefined`,
+`''` **and** on `0`, `{}`, `true`; no other export matches `/^(accept|reject)$/`. Runtime export
+count is **110** (was 112), consistent with §2.10's gap dropping 62 → 60. Nothing outside core
+references the primitives — a `grep -rnE "\.(accept|reject)\("` over `packages/client/src`,
+`apps/web/src`, `cli.ts`, `test/`, `packages/*/test` and `qa/` returns only
+`qa/r5-freshness.mjs:588`/`:602` (the already-documented rotten probe, left alone) and
+`apps/web/src/ports/storage.ts`'s `Promise` `reject` callbacks, which are unrelated.
+The suite and the typecheck are clean, so nothing was broken that nobody accounted for.
+
+`addStop(StopInit.provenance)` still mints the R5-2 shape in one public call and
+`displayStatus` still returns `'own'` for it — **both by design** (§2.14: `displayStatus` is a
+pure function of one `Provenance` and "must not learn to" see the trip; the document-level
+claim is `validateTrip`'s job). The difference from round 5 is that `validateTrip` now catches
+it, which is what R5-2 asked for. Not re-filed.
+
+## MINOR
+
+| id | severity | file:line | defect | repro | routing |
+|---|---|---|---|---|---|
+| **R6-1** | MINOR | `packages/client/src/store/store.ts:299`, `apps/web/src/App.tsx:85`, `:93` | Exhausting `FLUSH_MAX_ATTEMPTS` returns `false` with `persistence.status === 'idle'`, and `App.tsx` renders a banner only for `'conflict'` and `'error'`. The user clicks "Back to all trips", the transition aborts, and **nothing on screen explains it** — the click simply does nothing. The store's own comment at `:250`–`:255` states the contract this breaks: *"The refusal reaches the screen through the conflict/error banner that is already there"*. It is MINOR and not worse because no data is lost (the edit is held, `isDirty()` is `true`) and `SaveState` does read *"Unsaved changes"*, so the user is not told a falsehood about the save — only about the click. Reachable only by five consecutive keystrokes each landing inside a write; no dispatch-on-render path exists in `apps/web` (every `store.dispatch` is in an `onClick`), so it cannot be reached without real sustained typing. | `node qa/r6-flush.mjs` §3 — *"an aborted transition is visible: status is conflict or error"* FAILs with `status='idle' lastError=null` | **builder** |
+| **R6-2** | MINOR | `packages/client/src/store/store.ts:290`, `:299` | The same path calls `cancelTimer()` at the top of the pass that gives up and returns without re-arming, so the store is left **dirty, idle, and with no scheduled autosave**. A user whose last keystroke landed inside the final write holds an edit that no timer will ever write; only another dispatch or another explicit action re-arms one. Verified rather than reasoned: after the abort, **no further write in 200 ms** (ten debounce periods) with the user idle, storage holding `["typing 4","typing 1","typing 2","typing 3"]` while memory held `typing 5`. `beforeunload` still guards a desktop tab close and `pagehide` still calls `flush()`, which is why this is MINOR and not MAJOR. New at `5f92145`: before it, an abort implied `'conflict'`/`'error'`, where a re-armed timer would have been refused anyway. | `node qa/r6-flush.mjs` §3 — *"autosave is still armed after the bound is spent"* FAILs | **builder** |
+
+Both are one code path and plausibly one fix (surface the exhausted bound the way a refusal is
+surfaced, and leave the debounce armed when the loop gives up while dirty). Neither is a design
+defect: §4.2 rule 6b already says an unsuccessful flush aborts the transition, and the loop does
+exactly that — what is missing is the *telling*, which rule 6b also already requires.
+
+## Adjacent regressions — what I looked for and what I found
+
+- **Red-green, done myself.** I copied the tree to a scratch directory (never editing
+  `cairn/`), reverted `flushForTransition` to `d97feed`'s single-pass form, restored
+  `if (!actor || memberIds.has(actor)) return`, and re-exported `accept`/`reject`. **12 tests
+  fail**: 7 in `flush-race.test.ts` (all five transitions, the `autosave:false` control, the
+  bound), 2 in `copyStop.test.ts` (the three missing-actor shapes; the ceiling), 3 in
+  `surface.test.ts`. My own probes go 3 → 12 FAIL and 5 → 17 FAIL against the same mutation, so
+  they are oracles and not confirmations.
+- **R3-3 (`mergeWithStored` assigns `saving`) × the drain loop: unaffected, not worsened.**
+  Three bare `saving =` assignments remain (`:391`, `:414`, plus the merge branch's inner
+  one) — the static probe still FAILs, as round 5 reported. Behaviourally, `flushForTransition`
+  is insulated: it `await save()`s the promise it created, so a merge reassigning `saving`
+  underneath it cannot make the loop return early. I ran the collision — press "Merge and save"
+  while a transition's flush is parked — and the edit survives, storage ends up holding it, and
+  the store does not end `'idle'` while dirty (`qa/r6-flush.mjs` §6). The loop does widen the
+  *window* in which a merge can be pressed (up to five write latencies instead of one), so
+  R3-3 gets more reachable, not more severe.
+- **R4-1/R4-2 not passing for the wrong reason.** `qa/r4-switch.mjs` and `qa/r3-undo.mjs` are
+  0 FAIL; `dirty.test.ts`'s 200-step byte-oracle walk passes under five seeds (1, 7, 99,
+  20260827, 424242), so the loop has not made the walk seed-lucky. `qa/r3-loss.mjs` (real
+  timers) is 0 FAIL.
+- **The sensitive paths (§5, §6).** The `5f92145` diff introduces no logging sink, no network
+  call, no `localStorage`, no coordinate-bearing string. The one new user-facing structure is
+  `accepted_by_non_member`'s `params` — `{actorUserId, ownerId, tripId}`, identifiers only, no
+  coordinates and no credentials, asserted over all ten actor shapes.
+  `qa/r2-constraints.mjs`'s logging-discipline section still reports zero coordinate-shaped
+  floats in `Conflict.params`, `Issue.params` and all three goldens.
+- **`cairn-constraints`.** Determinism (two processes byte-identical; two CLI runs; `gen-sample`
+  stable), zero-dep core, no DOM in `packages/client` — unchanged. `qa/r2-constraints.mjs` FAILs
+  exactly the two it has FAILed since round 2 (R2-18's grep scope; the `@cairn/core` workspace
+  reference already ruled not a runtime dependency).
+- **The read-only boundary.** After the full suite, a web build, a Chromium session, a mutation
+  run in scratch and ~20 probe runs, `git status` shows only `cairn/docs/QA-FINDINGS.md`,
+  `cairn/qa/README.md` and the two new `cairn/qa/r6-*.mjs`. Nothing at the repo root moved, and
+  no product file changed.
+
+## Re-confirmed unchanged (existing probes, not fresh investigations)
+
+| Finding | Probe | This round |
+|---|---|---|
+| R3-3 | `qa/r3-merge.mjs`, `qa/r3-cas.mjs` | 2 FAIL / 1 FAIL — open, unchanged |
+| R3-6, R3-7, R3-8 | `qa/r3-pool.mjs` | 3 FAIL — open, unchanged |
+| R3-9 and §5–§7 | `qa/r3-cas2.mjs` | 3 FAIL — open, unchanged |
+| R2-6 | `qa/r2-access.mjs` | 1 FAIL (malformed `expiresAt` fails open) — open |
+| R2-7 | `qa/r2-resolutions.mjs` | 1 FAIL — open |
+| R2-9 | `qa/r2-data.mjs` | 1 FAIL — open |
+| R2-18 | `qa/r2-constraints.mjs` | 1 FAIL (+ the zero-dep workspace line) — open |
+| R2-4 | `qa/r2-redact.mjs` | 7 hits, same shapes as round 2 — open |
+| R5-3 | `qa/r5-freshness.mjs` §2.4 | 2 FAIL — open, and the drain loop does not change it |
+| R5-4 | `grep` for timers in `apps/web/src` | still zero — open |
+| R3-1, R3-2, R3-4 | `qa/r3-undo.mjs`, `qa/r3-loss.mjs` | 0 FAIL — closed |
+| R4-1 | `qa/r4-switch.mjs` | 0 FAIL — closed |
+| R2-11 | `qa/r2-copy.mjs` | 0 FAIL — closed |
+
+## What I attacked and could not break
+
+Every line here was run, not skimmed.
+
+- The loop's bound cannot be reached by anything but sustained human typing: there is no
+  `store.dispatch` outside an `onClick` in `apps/web/src`, and no subscriber dispatches on
+  `emit()`, so a render loop cannot hold a transition open.
+- The loop cannot write to the wrong record: `save()` inside it passes `forTripId: null` and
+  `attemptSave` reads `state.doc`, which §2's probe shows is still the outgoing trip for the
+  whole flush.
+- A parked write cannot resurrect a trip deleted under it (port refuses a non-null expectation
+  against an absent record — checked in `memory.ts` and behaviourally in §7).
+- Concurrency shapes that did **not** lose an edit: double-click on the brand button;
+  `closeTrip` racing `openTrip(other)`; `deleteTrip(active)` racing a parked `closeTrip` flush;
+  `mergeWithStored` racing a transition flush.
+- `acceptCandidate`'s `requireActor` refuses `0`, `{}` and `true` as well as the three named
+  shapes, so a non-string actor cannot be minted through the checked wrapper either.
+
+## What I could not test
+
+- **A slow real IndexedDB on a phone.** Unchanged from round 5: the mid-flush window I measure
+  in desktop Chromium is a few milliseconds; on a device it is wider, which makes R6-1/R6-2
+  slightly more reachable there, not less.
+- **The bound exhausted in a real browser.** `qa/r6-flush.mjs` §3 drives it deterministically
+  in Node by dispatching from inside the port. Landing five keystrokes inside five consecutive
+  real IndexedDB writes through the UI is not something I could stage reliably.
+- **Two devices, a real server, Safari, iOS, a real quota wall.** Unchanged from every previous
+  round.
