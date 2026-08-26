@@ -1,20 +1,25 @@
-# Cairn — QA findings, Phase 1 **rounds 2 and 3**
+# Cairn — QA findings, Phase 1 **rounds 2, 3 and 4**
 
-> **Status (as of `master` @ `a746d75`, re-verified 2026-08-26):**
+> **Status (as of `master` @ `3a124a2`, re-verified 2026-08-26 — round 4):**
 >
 > | | |
 > |---|---|
-> | **Fixed and verified closed** | **R2-3** (`copyStopInto` credential leak, `b5c742b`). **R2-2** (the vanishing pool stop) — genuinely closed; re-run `qa/r2-poolloss.mjs` reports *"the stop is reachable again"* in Chromium, and `qa/r3-pool.mjs` finds every pooled stop reachable on the reference trip, on a city-less trip and on a transit day. |
-> | **Fixed for the case it was filed under, then reopened by another path** | **R2-1.** The atomic `saveIfRevision` closes the concurrent-save race exactly as claimed (`qa/r3-cas.mjs` H, `qa/r2-race.mjs`). **Ctrl-Z reopens it** — `undo()` restores a prior `Trip` snapshot including its lower `revision`, that revision is written to storage, and a tab that was correctly in `'conflict'` is let straight back in. Both tabs then read "Saved" over different documents. That is **R3-1**, and it is the same symptom sentence R2-1 was filed under. |
-> | **Still open, re-verified unchanged by this pass** | **R2-6** (malformed `expiresAt` fails open — `qa/r2-access.mjs`), **R2-11** (accept by a non-owner and `actorUserId:null` both read `'own'` — `qa/r2-copy.mjs`), **R2-18** (the determinism grep does not walk `packages/client` — `qa/r2-constraints.mjs`). Confirmed neither fixed, worsened nor masked. |
-> | **New in round 3** | **R3-1** and **R3-2** are BLOCKERs; **R3-3** … **R3-9** below. |
-> | **Not re-verified** | R2-4, R2-5, R2-7 through R2-10, R2-12 through R2-17, R2-19 through R2-21. Out of scope for this pass; treat them as the record of what was found. |
+> | **Fixed and verified closed** | **R2-3** (`copyStopInto` credential leak, `b5c742b`). **R2-2** (the vanishing pool stop, `a746d75`). **R2-1** (the concurrent-save race) — closed by `a746d75` and no longer reopenable through undo. **R3-1**, **R3-4**, **R3-2** — closed by `3a124a2`'s §2.2a `StorageVersion` fence and flush-before-transition; all re-run, all clean. **R3-5** — closed *incidentally*: the fence no longer parses the stored record, so an expect-absent write can no longer match a corrupt one (`qa/r3-cas2.mjs` §3, 6/6 now `ok:false`). The builder reported R3-5 as untouched; it is in fact fixed. |
+> | **NEW in round 4 — BLOCKERs** | **R4-1** — `dirty()` compares `Trip.revision` against `savedRevision`, and undo-then-a-different-edit re-issues a revision the store already wrote, so `flushForTransition()` skips the write and the trip switch proceeds over an unsaved edit with "Saved" on screen. R3-2, through the counter §2.2a left in place. **R4-2** — the §2.2a `epoch` is cached in the port closure and never re-read, so a tab surviving a storage wipe stamps the *recreated* database with the *dead* one's epoch against a counter that has rewound to 0; a token minted by a database that no longer exists is then accepted by its replacement, and the writer reads "Saved". R3-4's ABA, one level up, in the mechanism written to prevent it. |
+> | **Still open, re-verified unchanged by round 4** | **R3-3** (`mergeWithStored` assigns `saving` instead of chaining — MAJOR), **R3-6**, **R3-7**, **R3-8**, **R3-9** (MINOR). **R2-6** (malformed `expiresAt` fails open), **R2-11** (`acceptCandidate` by a non-owner reads `'own'`), **R2-18** (the determinism grep skips `packages/client`). All re-run; neither fixed, worsened nor masked by `3a124a2`. `access/predicates.ts` and `build/copyStop.ts` are untouched since `1628ed4` / `b5c742b` — verified by `git log`, not assumed. |
+> | **Deferred by contract, not by omission** | **R2-6** and **R2-11** are in `packages/core/src/access` and the provenance predicates. ROADMAP Phase 1's deliverables list `access/predicates.ts` as *"defined now, enforced in Phase 2 — §6.2"*, and no Phase 1 acceptance criterion asserts `canView` behaviour. R2-11's `displayStatus()==='own'` half **is** in a Phase 1 criterion (§D, *"nothing un-accepted and non-user ever returns `own`"*) and is genuinely unmet — see the round-4 classification below. |
+> | **Not re-verified** | R2-4, R2-5, R2-7 through R2-10, R2-12 through R2-17, R2-19 through R2-21. Out of scope for rounds 3 and 4; treat them as the record of what was found. |
 >
-> `npm run typecheck` clean (both projects) and `npm test` **241 pass / 0 fail** at `a746d75`,
-> re-run from clean — the commit's number is accurate. **BUILD-NOTES §6 is now stale:** it still
-> says *"`store.save()` does `load` → compare → `save` with no transaction … this is **not** a
-> compare-and-swap at the storage layer"*, which this commit made untrue, and its Status note
-> still says "232 pass".
+> **Round 4 numbers, run rather than taken on faith:** `npm test` **288 pass / 0 fail**,
+> `npm run typecheck` clean on both projects, at `3a124a2` — the commit's reported numbers are
+> accurate. `packages/core/src/build/pool.ts` is **not** in `3a124a2`'s diff (confirmed), so
+> R3-6/R3-7/R3-8 cannot have moved. **BUILD-NOTES §6's Chromium gap is now closed by round 4,
+> not by the builder:** the never-run "hide the tab, find the edit in IndexedDB" leg was run
+> (`qa/r4-browser.mjs` §2, §3) and **passes** for both `visibilitychange`→`hidden` and
+> `pagehide`.
+>
+> **The round-3 status note below is superseded by this one** and is kept only as the record of
+> what was true at `a746d75`.
 
 Tester, stage 3. Attacked `master` @ `fcceb56`, 2026-08-25. Node v22.22.2, Chromium via the
 system Playwright driven over **real elapsed time** (no `--virtual-time-budget`).
@@ -753,3 +758,267 @@ tried rather than assumed.
   restore sequence and it came out correct (the tab was told). The port-level statement stands;
   a user-shaped loss does not.
 - **Safari, iOS, Node 24.** Chromium and Node 22.22.2 only, as in previous rounds.
+
+---
+
+# Round 4 — phase-gate re-verification of `3a124a2` (the §2.2a fence + flush-before-switch)
+
+Tester, 2026-08-26. Attacked `master` @ `3a124a2`, Node v22.22.2, Chromium over real elapsed
+time. Scope: re-verify R3-3 / R2-6 / R2-11, confirm R3-5…R3-9 unmoved, and hunt for regressions
+the builder's own tests could not have caught — the builder wrote both the implementation and
+its 22 `switch.test.ts` cases, which is a structural conflict of interest, not a slur.
+
+**Result: 2 BLOCKER (both NEW) · 0 new MAJOR · 0 new MINOR.** Everything routed for
+re-verification behaves exactly as reported, with one correction in the builder's favour
+(R3-5 is fixed, not untouched) and one against (the `switch.test.ts` suite never crosses
+undo with a transition, which is precisely where R4-1 lives).
+
+```bash
+cd cairn && npm run typecheck && npm test        # 288 pass / 0 fail, typecheck clean
+node qa/r4-switch.mjs      # R4-1 §1-3; multi-tab, delete-under-a-tab, merge-vs-switch; §10 the invariant
+node qa/r3-merge.mjs       # R3-3 — still FAILs, unchanged
+node qa/r2-access.mjs      # R2-6 — still FAILs, unchanged
+node qa/r2-copy.mjs        # R2-11 — still FAILs, unchanged
+node qa/r3-cas.mjs qa/r3-cas2.mjs qa/r3-undo.mjs qa/r3-loss.mjs qa/r3-pool.mjs
+
+npm run web:build && node tools/serve.mjs &
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r4-browser.mjs   # R4-1 in real IndexedDB; the page-exit leg
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r4-epoch.mjs     # R4-2 in real IndexedDB
+```
+
+---
+
+## BLOCKER
+
+### R4-1 — undo, then one more edit, re-issues a spent `revision`; the trip switch then walks over the edit saying "Saved"
+
+**Severity: BLOCKER** (silent data loss; ROADMAP Phase 1 F "NO SILENT LOSS", sixth case,
+clause (b) — *"a run in which the switch proceeds over an unsaved edit fails, regardless of
+what is on screen"*).
+**`packages/client/src/store/store.ts:258` (`dirty()`) and `:248-252` (`flushForTransition`),
+with `packages/client/src/store/reducer.ts:127-132` (`undo`) supplying the mechanism.**
+**Routing: architect first, then builder.** The architect owns §2.2a rule 1, whose stated
+invariant is false; the builder owns the two lines that rely on it.
+**Repro: `node qa/r4-switch.mjs` §1, §2, §3, §10; in a real browser
+`PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r4-browser.mjs` §1.**
+
+§2.2a is right about the fence and the fix is right about the fence. `StorageVersion` is
+opaque, storage-issued, outside the document, and the reducer genuinely cannot name it — I
+re-ran `qa/r3-undo.mjs`, `qa/r3-cas.mjs` and `qa/r3-cas2.mjs` probes 1–4 and every one is
+clean. R3-1 really is structurally unreachable. **The write fence is not the only bare counter
+in this file.**
+
+`flushForTransition()` — the whole of rule 6a — decides whether to write at all like this:
+
+```ts
+const idle = state.persistence.status === 'idle';
+if (state.doc && !(idle && !dirty())) { await save(); await saving; }
+```
+
+and `dirty()` is:
+
+```ts
+function dirty(): boolean {
+  return !!state.doc && state.doc.revision !== state.persistence.savedRevision;
+}
+```
+
+That is a *content* counter being asked "is there an edit that would be lost". §2.2a rule 1
+licenses it, in terms:
+
+> **Non-decreasing along a chain of build-function applications, and within one document in
+> one store, equal `revision` implies identical content.**
+
+**The second half of that sentence is false, and `qa/r4-switch.mjs` §10 falsifies it in six
+lines.** `undo()` restores a snapshot verbatim, `revision` included; the next `dispatch()`
+bumps from *that* number. So a document at revision N can be undone to N−1 and pushed forward
+to a *different* revision N. One document, one store, equal revision, different content —
+R3-1's exact mechanism, aimed at the dirty test instead of at the fence.
+
+The consequence, run in Chromium against real IndexedDB (`qa/r4-browser.mjs` §1):
+
+```
+  after EDIT A saved: stored revision 1 | indicator "Saved" | stored has EDIT A = true
+  [Ctrl-Z, then one click on DayTimeline.tsx:161's ↓ reorder, then the "Cairn" brand button]
+  library shown = true
+  stop order before = stop-57,stop-58,stop-59,stop-60,stop-61,...
+  stop order after  = stop-57,stop-58,stop-59,stop-60,stop-61,...
+  stored revision now 1
+  anything on screen about an unsaved edit = NOTHING
+  FAIL the reorder survived the click, or the user was told it did not
+```
+
+Both the undo *and* the reorder are gone. Storage still holds the pre-undo document. Nothing
+is on screen. This is R3-2's symptom sentence — *one click, no second tab, nothing on screen* —
+and it is reachable through `closeTrip` (§1), through `openTrip` (§2), and it defeats the
+`beforeunload` "Leave site?" prompt too (§3), because that handler is also gated on
+`isDirty()`.
+
+The exploit window is the 400 ms debounce that follows the undo: the second edit has to be a
+single dispatch inside it, which is why the browser repro uses the ↑/↓ reorder buttons rather
+than the rename dialog. "Undo, then immediately nudge a stop, then go back to the library" is
+an ordinary thirty seconds of editing.
+
+**Why the builder's own suite is green.** `packages/client/test/switch.test.ts` — the 22 tests
+written for this fix — contains **zero** occurrences of `undo` or `redo` (grep it). Every
+undo/redo case lives in `storage-version.test.ts`, which tests the *fence* and never performs
+a transition. The two halves of `3a124a2` were tested separately and never crossed. Worse,
+`switch.test.ts` uses `isDirty() === false` as its *proof of success* at ten call sites
+(`:145`, `:169`, `:181`, `:197`, `:213`, `:230`, `:406`, `:428`, …) — exactly as ROADMAP F
+clause (a) words it — so the broken oracle is what the suite asserts against. This is not a
+missing test; it is a test suite built on the predicate that fails.
+
+**What the architect has to decide, not the builder.** §2.2a rule 1's invariant needs
+restating — snapshot undo/redo makes `revision` non-injective over content, so *nothing* may
+infer "unchanged" from equal revision, which is a slightly stronger sentence than the one that
+struck "monotonic". The obvious client-side answer is to compare the document *identity*
+(`state.doc !== lastWrittenDoc`, cheap and exact, because build functions are immutable and
+`writeAndSettle` already keeps `baseDoc`), not its revision. That is a design call because
+`Trip.revision` also keys the derived cache (§4.2 rule 3), which has the same non-injectivity
+and a much smaller blast radius.
+
+---
+
+### R4-2 — a `StorageVersion` minted by a database that no longer exists is accepted by its replacement
+
+**Severity: BLOCKER** (silent overwrite of another writer's document with "Saved" on screen —
+the R2-1/R3-1 symptom sentence; ARCHITECTURE §2.2a rule 2 and ROADMAP Phase 1 F "Freshness"
+clause 1 both violated in terms).
+**`apps/web/src/ports/storage.ts:86-135` (`ensureReady` memoises `ready` and assigns the
+closure variable `epoch` exactly once) and `:205` (`saveIfVersion` mints from that cached
+value against a counter it re-reads from a database that has rewound to 0).**
+**Routing: builder.** The design is right; the implementation caches the one thing the design
+says must be re-read. §2.2a needs no change.
+**Repro: `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r4-epoch.mjs`.**
+
+§2.2a rule 2 is unambiguous:
+
+> **It never repeats within one storage, ever** — not after a `delete()`, not after the record
+> is recreated under the same id, **not after the whole database is recreated.**
+
+and names the mechanism for the third clause:
+
+> the epoch is there because **clearing site data resets the counter while a tab holding an old
+> token survives**, and that is the same ABA one level up.
+
+The epoch does not cover that case, because the surviving tab is exactly the one that never
+re-reads it. `ensureReady()` resolves once per port instance and caches `epoch` in the
+closure. A tab that was alive before the wipe keeps minting `${deadEpoch}.${n}` — and `n` now
+comes from a `meta` store that was destroyed with the database, so it restarts at 1.
+
+Run, in Chromium against real IndexedDB:
+
+```
+  epoch="50748ca0-…-d75ea7d87587"  fence="50748ca0-…-d75ea7d87587.1"
+  tab B is open on the trip, holding "50748ca0-…-d75ea7d87587.1"
+  database deleted. docs record = null
+  after the restore: epoch=null fence="50748ca0-…-d75ea7d87587.1" (pre-wipe fence was the same)
+  FAIL the recreated database issues a token it has never issued before
+  FAIL the recreated database records an epoch at all
+  tab B says "Saved"
+  storage holds tab B's edit = true
+  FAIL tab B was refused
+```
+
+The user-shaped sequence is: two tabs open; storage is evicted or cleared; one tab restores
+the backup through *Restore from a backup* (`importDoc` keeps the original id, correctly,
+because the id is free); the other tab — which has been sitting there the whole time — types
+one character. Its pre-wipe token matches the post-wipe fence, the write is accepted, the
+restored document is destroyed, and the indicator reads **"Saved"**. This is the case R3-4 was
+filed on, one level up, in the mechanism written to close it.
+
+Two things make this worse than "the user pressed Clear site data": ARCHITECTURE §1.1 records
+that a **non-installed tab's storage may be evicted by the browser after 7 days**, which is the
+same event with nobody pressing anything; and the recreated database ends up with
+`meta.epoch === null`, because only `ensureReady` ever writes `EPOCH_KEY` and it has already
+run — so versions are being minted against an epoch that nothing has persisted.
+
+The precondition is rarer than R4-1's, and I have said so rather than levelling them. It is
+still an explicit contract clause failing, producing a silent overwrite, on the third
+consecutive round of the same root pattern. Cheap fixes exist (re-read the epoch when a write
+finds a counter lower than one this port has already issued; or mint a per-port-session nonce
+and use `${epoch}.${session}.${n}`); which one is the builder's call.
+
+---
+
+## Re-verified and unchanged — the three findings this round was routed to confirm
+
+| # | Verdict | Evidence |
+|---|---|---|
+| **R3-3** | **Still open, exactly as filed. Neither fixed, worsened nor masked.** `store.ts` now has **three** bare `saving = …` assignments where R3-3 named two — `:156` is `save()`'s own chain-and-assign, which is correct; `:330` (the deleted-trip branch) and `:352` (the merge branch) are the two the finding is about, and both are unchanged in substance. The behavioural half still reproduces: two writes in flight from one store, ending `status='conflict'` with `lastMerge` shown over a document that is fully and correctly saved. | `node qa/r3-merge.mjs` — static FAIL *"every write path chains onto `saving`"* (3 assignments listed) and behavioural FAIL *"the store settled and the merge notice is shown — status=conflict"*; `node qa/r3-cas.mjs` A agrees |
+| **R2-6** | **Still open, unchanged, and genuinely untouched.** `git log -- packages/core/src/access/predicates.ts` shows its last commit is `1628ed4`, three commits before round 2 even ran. Six malformed `expiresAt` values still return `canView=true`. | `node qa/r2-access.mjs` — `expiresAt="2026-13-45"/"tomorrow"/"never"/""/"9999-99-99"` all `-> canView=true` |
+| **R2-11** | **Still open, unchanged, and genuinely untouched.** `build/copyStop.ts` last changed at `b5c742b` (R2-3's fix); `model/provenance.ts` has not changed since the first delivery. `acceptCandidate` with `actorUserId:"user:someone-else"` and with `actorUserId:null` both produce `displayStatus() === 'own'` on a trip owned by `local:self`. | `node qa/r2-copy.mjs` §B — two FAIL lines, `status=own, actor=user:someone-else, trip.ownerId=local:self` |
+
+## R3-5 … R3-9 — the quick pass, with one correction
+
+`3a124a2` touches `store.ts`, `reducer.ts`, `pool.ts`? — **no.** `git show --stat 3a124a2`
+lists 19 files and `packages/core/src/build/pool.ts` is not among them. `store.ts` and
+`reducer.ts` are. So:
+
+- **R3-5 (MINOR) — now CLOSED, and the builder's report says otherwise.** BUILD-NOTES §5 says
+  *"`qa/r3-cas2.mjs` probes 5, 6 and 7 likewise still FAIL, unchanged"*, which is true, and
+  §5's "not fixed" list implies R3-5 with them. Probe **3** — R3-5's probe — now reports
+  **6 of 6 `ok:false`**: the fence never parses the stored record, so `expectedVersion: null`
+  can no longer compare equal to a corrupt one. Fixed by construction, as a side effect of
+  §2.2a. Worth recording because an under-claimed fix is still an inaccurate report.
+- **R3-6, R3-7 (MINOR)** — `packages/core/src/build/pool.ts:70`, `:92`. File untouched;
+  `qa/r3-pool.mjs` §2/§5 and `qa/r3-cas2.mjs` §5 FAIL identically. Unchanged.
+- **R3-8 (MINOR)** — `apps/web/src/views/Panels.tsx:106`. File untouched; `qa/r3-cas2.mjs` §6
+  FAILs identically (`pool=2 | poolSection('')=1 | unfiled=2 | rendered=3`). Unchanged.
+- **R3-9 (MINOR)** — `packages/client/test/store.test.ts:469`. That file **is** in the diff
+  (+48), but the transcription is still a transcription: `qa/r3-cas2.mjs` §7 FAILs identically
+  (*"the literal lives in BOTH store.test.ts and App.tsx: true; the test imports the view:
+  false"*). And `switch.test.ts:54` and `page-exit.test.ts` now carry a **third and fourth**
+  copy of the same transcribed `SaveState()` — the finding's blast radius grew even though its
+  status did not.
+- **R2-18 (MINOR)** — `qa/r2-constraints.mjs` still FAILs the determinism grep on
+  `packages/client`. Unchanged.
+
+## What held up under attack
+
+Attacked and did **not** break. Listed so the next reader knows what was tried.
+
+- **Three and four concurrent tabs**, not just two (`qa/r4-switch.mjs` §4). Four stores at one
+  `savedVersion`, all four writes issued before any is awaited: exactly one `'idle'`, three
+  `'conflict'`, and no losing tab renders "Saved" over a document storage does not hold.
+- **A trip deleted in one tab while another tab holds a pending edit on *that* trip** — the
+  case R3-2 did not cover, because R3-2's sixth case is about the *active* document in the
+  *same* store (§5). The surviving tab's write is refused (`expectedVersion` matches nothing
+  under a deleted id), it reads *"Not saved — edited elsewhere"*, and it does **not** resurrect
+  the trip the user deleted.
+- **`importDoc` onto an id another tab currently has open** (§8). A fresh id is minted, the
+  live trip's bytes are untouched, and the tab holding it can still write afterwards — its
+  fence was not disturbed by the neighbouring mint.
+- **`mergeWithStored` racing a fresh autosave from the same store immediately after a switch**
+  (§6) and **`flushForTransition` called while `saving` is still resolving a previous merge**
+  (§7). Neither loses a document, neither leaves the store on trip B holding trip A's
+  persistence, and `savedVersion` still describes the trip that is open. R3-3's indicator lie
+  is the only symptom, and it is already filed.
+- **Three tabs cycling save / undo / switch in six different orders** (§9). No tab ends up
+  rendering "Saved" over a document storage does not hold.
+- **The page-exit leg BUILD-NOTES §6 says was never run.** `qa/r4-browser.mjs` §2 and §3, in
+  Chromium: type a day title, fire `visibilitychange`→`hidden` (and separately `pagehide`)
+  inside the 400 ms debounce, then read IndexedDB directly. **The edit is there, both times.**
+  ROADMAP F's "plus one Chromium run" clause is now genuinely met. §4 additionally confirms
+  that `flush()` is unconditional — it does *not* consult `dirty()` — so R4-1 is scoped to
+  `flushForTransition`, not to every write path.
+- **Determinism, zero-dep, no DOM in `packages/client`.** `packages/client/src` and
+  `apps/web/src` contain zero `console.*`, `fetch`, `sendBeacon` or `Sentry`; no `Date.now()`,
+  `Math.random()` or `randomUUID` outside `apps/web`'s port (where §2.2a explicitly permits
+  it) and doc comments. The new `pageExit.ts` takes structural `{addEventListener,
+  removeEventListener}` targets and names no DOM type — KD-22's claim checks out.
+- **The sensitive paths (§5, §6).** Phase 1 ships no ingest and no location code, so there is
+  nothing there to leak; the persistence diff introduces no logging sink, no network call and
+  no coordinate-bearing string. `npm test`'s redaction and bundle checks pass at 288/0.
+- **The read-only boundary.** After a full test run, a web build, five browser sessions and
+  fourteen probe runs, `git status` shows only `cairn/qa/r4-*.mjs` and this file.
+
+## What I could not test
+
+- **Two devices, or a real server.** Phase 2's `SyncPort` does not exist.
+- **Safari, iOS, Node 24, a real quota wall.** Chromium and Node 22.22.2 only, as in every
+  previous round.
+- **Whether R4-2 is reachable through browser-initiated eviction** rather than through an
+  explicit `indexedDB.deleteDatabase`. The mechanism is identical — the database goes away
+  under a live tab — but I could not make Chromium evict on demand, so the *trigger* is
+  simulated and the *defect* is not.

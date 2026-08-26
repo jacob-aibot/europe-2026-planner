@@ -96,3 +96,38 @@ R2-6, R2-11 and R2-18 were re-confirmed with the unmodified round-2 scripts (`r2
 Note: `r3-pool.mjs` was corrected in this round — it was calling `addStop(trip, dayId, …)` and
 `setDayMeta(trip, id, patch, ctx)`, and the real signatures are `addStop(trip, placement, init,
 ctx)` and `setDayMeta(trip, id, patch)`. It aborted at section 2 before the fix.
+
+---
+
+## Round 4 (2026-08-26, `master` @ `3a124a2`) — the phase-gate re-verification
+
+Written against the §2.2a `StorageVersion` / flush-before-switch delivery. Headless probes
+run from `cairn/`:
+
+```bash
+node qa/r4-switch.mjs   # R4-1 (BLOCKER) §1-3; 3 and 4 concurrent tabs; a trip deleted under
+                        # another tab; mergeWithStored vs a switch; importDoc onto a live id;
+                        # §10 falsifies ARCHITECTURE §2.2a rule 1's "equal revision implies
+                        # identical content" in six lines
+```
+
+Browser probes need `npm run web:build && node tools/serve.mjs` in one shell, then:
+
+```bash
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r4-browser.mjs  # R4-1 in real IndexedDB, and
+                                                                  # the visibilitychange/pagehide
+                                                                  # leg BUILD-NOTES §6 never ran
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r4-epoch.mjs    # R4-2 (BLOCKER) — a token from
+                                                                  # a destroyed database accepted
+                                                                  # by its replacement
+```
+
+Neither is timing-dependent: both are deterministic sequences, not races. `r4-browser.mjs` §1
+does depend on the second edit landing inside the 400 ms debounce that follows the undo, which
+is why it uses `DayTimeline`'s ↑/↓ reorder button (one click, one dispatch) rather than the
+rename dialog.
+
+R3-3, R2-6, R2-11 and R2-18 were re-confirmed with the unmodified scripts (`r3-merge.mjs`,
+`r2-access.mjs`, `r2-copy.mjs`, `r2-constraints.mjs`) and are unchanged by `3a124a2`.
+`r3-cas2.mjs` probe **3** now passes — R3-5 is closed as a side effect of the fence redesign,
+which the builder's report did not claim.
