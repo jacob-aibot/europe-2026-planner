@@ -549,6 +549,11 @@ test('two tabs saving AT THE SAME MOMENT: exactly one wins and the loser is told
   assert.equal(b.getState().doc?.revision, startRevision, 'tabs did not start from one revision');
   assert.equal(a.getState().persistence.savedRevision, startRevision);
   assert.equal(b.getState().persistence.savedRevision, startRevision);
+  // And on the same FENCE, which is what the port actually compares — §2.2a. The revisions
+  // above are content bookkeeping and carry no authority over the write.
+  const startVersion = a.getState().persistence.savedVersion;
+  assert.ok(startVersion, 'tab A never agreed with storage');
+  assert.equal(b.getState().persistence.savedVersion, startVersion, 'tabs did not start from one version');
 
   a.dispatch({ type: 'setDayMeta', dayId: dayA, patch: { title: 'TAB A' } } as Action);
   b.dispatch({ type: 'setDayMeta', dayId: dayA, patch: { title: 'TAB B' } } as Action);
@@ -611,44 +616,11 @@ test('a store never races ITSELF: overlapping saves from one tab do not self-con
   assert.equal(stored.days[0].title, 'TWO');
 });
 
-// ---------------------------------------------------------------------------
-// The port contract itself, independent of the store. `apps/mobile`'s SQLite
-// port and Phase 2's SyncPort have to satisfy this too, and a port that cannot
-// will fail here rather than in a browser two phases later.
-// ---------------------------------------------------------------------------
-
-test('StoragePort.saveIfRevision is atomic: concurrent writers, exactly one winner', async () => {
-  const storage = memoryStorage();
-  const summary = {
-    id: 't1', title: 'T', startDate: '2026-08-07', endDate: '2026-08-08',
-    cityCount: 0, dayCount: 2, stopCount: 0, poolCount: 0, revision: 7,
-  };
-  await storage.saveIfRevision('t1', null, JSON.stringify({ id: 't1', revision: 7, who: 'seed' }), summary);
-
-  // Five writers, all holding revision 7, all firing before any of them is awaited.
-  const attempts = ['a', 'b', 'c', 'd', 'e'].map((who) =>
-    storage.saveIfRevision('t1', 7, JSON.stringify({ id: 't1', revision: 8, who }), summary),
-  );
-  const outcomes = await Promise.all(attempts);
-
-  assert.equal(outcomes.filter((o) => o.ok).length, 1, 'more than one writer was allowed to win');
-  for (const o of outcomes.filter((o) => !o.ok)) {
-    assert.equal(o.ok, false);
-    // A refusal names what it actually FOUND, not what the caller hoped for — so the
-    // message a user sees ("stored revision 8, this tab expected 7") is true. Every
-    // loser here ran after the winner committed, so all of them see 8.
-    assert.equal((o as { storedRevision: number | null }).storedRevision, 8);
-  }
-  assert.equal(JSON.parse(storage.docs.get('t1') as string).revision, 8);
-
-  // Expect-absent is the same guard: only the first creator of an id may win.
-  const creators = await Promise.all(
-    ['x', 'y'].map((who) =>
-      storage.saveIfRevision('t2', null, JSON.stringify({ id: 't2', revision: 0, who }), { ...summary, id: 't2' }),
-    ),
-  );
-  assert.equal(creators.filter((o) => o.ok).length, 1, 'two writers both created the same id');
-});
+// The port contract itself — "N concurrent saveIfVersion calls at one expected
+// version yield exactly one ok:true", freshness, ABA and opacity — moved to
+// `storage-version.test.ts` when the fence stopped being `Trip.revision`
+// (ARCHITECTURE §2.2a). It is stated there against the port `apps/mobile`'s
+// SQLite implementation and Phase 2's SyncPort must also satisfy.
 
 test("a refused save is 'conflict', never 'error' — storage is not broken", async () => {
   const { a, b } = await twoTabs();

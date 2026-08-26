@@ -1,10 +1,15 @@
 # Cairn — build notes, Phase 1
 
 > **Status:** §1 (Known divergences) is current through **KD-21**, which includes the round-2
-> fix for R2-3 (`b5c742b`). **§4 (Verified) and §5 (Defects fixed) predate round 2 QA** — they
-> record the state after round 1's re-delivery ("231 pass") and were not regenerated after the
-> round-2 fix commit ("232 pass" as of `b5c742b`; run `npm test` for the current number). Don't
-> read §4/§5's numbers as current without re-running the commands in them.
+> fix for R2-3 (`b5c742b`). **§4 (Verified) predates round 2 QA** — it records the state after
+> round 1's re-delivery ("231 pass") and was not regenerated. Don't read §4's numbers as
+> current without re-running the commands in them.
+>
+> **§5 (Defects fixed) is current as of the round-3 persistence pass** — R3-1, R3-4 and R3-2
+> are added and the **R2-1 row is corrected**, because that fix is now known to have been
+> incomplete. Test count at that pass: **`npm test` 287 pass / 0 fail** (was 241), typecheck
+> clean on both projects. §6's third bullet ("this is **not** a compare-and-swap at the
+> storage layer") has been stale since `a746d75` and is now struck in place.
 
 For the breaker and the manager. What is built, how to run it, what is stubbed, what I
 could not verify, and — first, because it is the thing that went wrong last round —
@@ -408,6 +413,26 @@ The lesson generalises past this one file: **a rationale string is exempt from b
 scrutiny only while its module is provably build-time-only, and that exemption silently
 expires the moment something in `packages/core` or `apps/web` imports it.**
 
+### KD-22 — the page-exit handlers live in `packages/client`, not `apps/web`
+
+`packages/client/src/store/pageExit.ts`, `apps/web/src/App.tsx`
+
+§4.2 rule 6 says *"`apps/web` registers `visibilitychange` → `hidden` and `pagehide` … and
+registers a `beforeunload` handler"*. It does — `App.tsx` calls `registerPageExit({ win:
+window, doc: document, … })` — but the handler *logic* sits in `packages/client`, taking its
+two event targets as arguments and touching no DOM type.
+
+Why, in one sentence: **§3's dependency-direction test forbids anything importing `apps/web`,
+so a module that lives there cannot be tested**, and ROADMAP F asks for exactly that test
+("assert the listeners are registered and that the visibility handler calls `flush()`"). The
+first attempt did put it in `apps/web/src/pageExit.ts` with a root-level test, and
+`test/boundaries.test.ts` correctly failed the run.
+
+**Cost:** none that I can see — it does not violate "`packages/client` never touches the DOM
+or React" (there is no DOM type in the file, only a two-method structural type), and
+`apps/mobile` will want the same dedupe logic against `AppState` rather than
+`visibilitychange`. **If the architect disagrees, the move back is one file and one import**,
+and the test goes with it — but then the criterion loses its test and should say so.
 
 ---
 
@@ -416,7 +441,7 @@ expires the moment something in `packages/core` or `apps/web` imports it.**
 ```bash
 cd cairn
 npm install
-npm test          # 231 tests. Plain node, no browser, no network.
+npm test          # 287 tests. Plain node, no browser, no network.
 npm run typecheck # generates the sample first (see F-3 below), then both TS projects
 npm run cli -- trip           # headline counts and city ranges
 npm run cli -- day 2026-08-13 # one day: stops, legs, costs, badges
@@ -438,6 +463,29 @@ golden does and does not prove.
 `cairn/test/cli.test.ts` runs the real CLI against `../europe-2026-itinerary.html`,
 `../docs/BOOKINGS.md`, `../tickets/…` and `/etc/passwd` and asserts all four are refused.
 
+**The persistence probes**, for anyone re-checking R2-1 / R3-1 / R3-4 / R3-2. Plain node:
+
+```bash
+node qa/r3-undo.mjs      # the fence vs. Ctrl-Z            (all probes ok)
+node qa/r3-loss.mjs      # flush-before-switch, real timers (all probes ok)
+node qa/r3-cas2.mjs      # ABA, corrupt records, page exit  (probes 1-4 ok; 5-7 are R3-5+)
+node qa/r3-cas.mjs       # the save chain                   (all ok except A, which is R3-3)
+```
+
+Real Chromium, against real IndexedDB — needs the build and the server first:
+
+```bash
+npm run web:build && node tools/serve.mjs &
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r2-race.mjs      # 0 of 3 rounds lose an edit
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r2-tabs.mjs
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r3-browser.mjs   # R3-1 and R3-2, both closed
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r3-upcast.mjs    # the §2.2a upcast, new
+```
+
+`qa/r3-upcast.mjs` is new: it seeds a genuine **version-1** `cairn` database — `docs` +
+`summaries`, no envelope version, the shape Jacob's browser actually holds — then boots the
+app over it and checks the record is stamped at open, opens, edits and saves.
+
 ---
 
 ## 3. What actually runs
@@ -445,7 +493,7 @@ golden does and does not prove.
 | Piece | State |
 |---|---|
 | `packages/core` | Model, build, derive (incl. **`geoCheck`**), conflict (**10 rules** — `closed` deleted), validate, access, serialize, legacy import, merge, **`copyStopInto`**. |
-| `packages/client` | Store, reducer, ports, selectors, derived cache, revision guard (refuse + explicit merge), **browse-another-trip**, `syncResolutions`. |
+| `packages/client` | Store, reducer, ports, selectors, derived cache, the **`StorageVersion` write fence** (refuse + explicit merge — §2.2a), **flush-before-switch** (§4.2 rule 6) and `pageExit`, **browse-another-trip**, `syncResolutions`. |
 | `packages/tokens` | Colours, category labels, mode icons, status badges. **No test of its own.** |
 | `apps/web` | Library, day view, day map, conflicts, validation, pool, places, export, **restore-from-backup**, **Browse & copy** with the credit line. |
 | `cli.ts` | Complete. Export is path-guarded. |
@@ -524,8 +572,12 @@ library.
 | F-4/F-5 | `impossible_transfer` and `geo_outlier` crying wolf | §2.12 `travelRole`, §2.13 `geoCheck` | KD-1, KD-2 |
 | M-6 | §3's dependency-direction test did not exist | `test/boundaries.test.ts` | mutation-checked — see §6 |
 | M-1/M-2 | source comments cited a BUILD-NOTES section that did not exist | §1 above, `test/disclosure.test.ts` | `npm test` |
-| **R2-1** | `save()` was `load` → compare → `save`: two awaits with an interleaving point, so two tabs saving at the same moment both passed the compare and the second write destroyed the first — **both** displaying "Saved". The compare now happens **inside** `StoragePort.saveIfRevision`, atomically (one IndexedDB `readwrite` transaction; one synchronous block in the memory port), and a store no longer races itself. | `client/src/ports/types.ts`, `client/src/ports/memory.ts`, `client/src/store/store.ts`, `apps/web/src/ports/storage.ts` | `store.test.ts` ×3 new (concurrent tabs, self-overlap, port contract) — each **verified to fail against the pre-fix code**; `qa/r2-race.mjs` in real Chromium: **0 of 3 rounds lost an edit** (was 2 of 3) |
+| **R2-1** ⚠️ **incomplete — see R3-1** | `save()` was `load` → compare → `save`: two awaits with an interleaving point, so two tabs saving at the same moment both passed the compare and the second write destroyed the first — **both** displaying "Saved". The compare was moved **inside** `StoragePort.saveIfRevision`, atomically, and a store no longer races itself. **That closed the concurrent race and nothing else.** The token was `Trip.revision`, which `undo()` rewinds, so the guard could re-issue a revision it had already spent on a refusal and readmit the tab it had refused. The row above claimed R2-1 closed; it was closed *for the case it was filed under*. The fence is now a separate opaque `StorageVersion` — R3-1. | `client/src/ports/types.ts`, `client/src/ports/memory.ts`, `client/src/store/store.ts`, `apps/web/src/ports/storage.ts` | `store.test.ts` ×3 new (concurrent tabs, self-overlap, port contract) — each **verified to fail against the pre-fix code**; `qa/r2-race.mjs` in real Chromium: **0 of 3 rounds lost an edit** (was 2 of 3) |
 | **R2-2** | a stop returned to the pool from a day belonging to no city was filed under the transit pseudo-city, which is never in `trip.cities` and so was never a key the pool panel could show: the stop was in the document, in the count, and rendered by nothing. `returnToPool` now resolves to a real trip city when the day has one; the panel renders an always-visible catch-all group for the rest; `validateTrip` reports `pool_stop_unknown_city` for a key that is neither. | `core/src/build/pool.ts`, `core/src/model/ids.ts`, `core/src/validate/validateTrip.ts`, `client/src/selectors/index.ts`, `apps/web/src/views/Panels.tsx` | `build.test.ts` ×4, `store.test.ts` ×2; `qa/r2-poolloss.mjs` in real Chromium: **"the stop is reachable again"** (was "in NO Optional panel, under any group") |
+
+| **R3-1** | `Trip.revision` was doing two incompatible jobs: content counter **and** write fence. `undo()` restores a snapshot verbatim, revision included, and autosaves it — so a revision the compare-and-set had already spent refusing another tab came back around, and the refused tab's next keystroke walked straight through the guard. Both tabs then read "Saved" over different documents, which is R2-1's symptom sentence verbatim. **Split, per §2.2a:** `Trip.revision` is unchanged and stays content; the fence is a new opaque `StorageVersion` minted by storage inside the atomic write step, held in the record's *envelope* beside the document and never inside it. `revisionOf()` is deleted — nothing above the port derives a version from parsed bytes. `undo`/`redo` cannot move it because the reducer never names it. `undo` does **not** synthesise `revision + 1`; §2.2a supersedes that. | `client/src/ports/types.ts`, `client/src/ports/memory.ts`, `client/src/store/store.ts`, `client/src/store/reducer.ts`, `apps/web/src/ports/storage.ts` | `storage-version.test.ts` ×17 — **red-green verified**: reverting the port to revision 2's scheme (`version = epoch.revision`) fails "undo cannot readmit a refused write" with `'idle' !== 'conflict'`, the exact defect. `qa/r3-undo.mjs` all probes ok; `qa/r3-browser.mjs` probe 1 in real Chromium: fence `…3268…ca.1 → …ca.3` while `Trip.revision` went `1 → 0` on Ctrl-Z, tab B still refused |
+| **R3-4** | the same root defect from the other side: a per-document counter cannot tell "this document, unchanged" from "a different document that happens to sit on the same number" after a delete and recreate under the same id (the export → delete → restore path `importDoc` permits). Closed **by construction**, with no ABA-specific code: the counter is storage-wide and never rewinds on `delete()`, and an `epoch` minted with `crypto.randomUUID()` and persisted with the database covers the same ABA one level up (clearing site data resets the counter while a tab holding an old token survives). | `client/src/ports/memory.ts`, `apps/web/src/ports/storage.ts` | `storage-version.test.ts`: zero repeats over 200 writes across 3 ids interleaved with `delete()`; ABA at the *same* `Trip.revision` refused; export→delete→restore-under-the-same-id refused through the store. Red-green verified. `qa/r3-cas2.mjs` probes 1–3 ok |
+| **R3-2** | a 400 ms debounced autosave was still pending when the active document was replaced, closed or deleted; `attemptSave` read `state.doc` at fire time, so trip A's write executed against trip B and the edit was gone with **nothing on screen**. One click, no second tab. §4.2 rule 6: all six document-changing transitions (`closeTrip`, `openTrip`, `createTrip`, `adoptTrip`, `importDoc`, `deleteTrip` — a closed list, asserted as a ceiling) now `await flushForTransition()` first; a refused (`'conflict'`) or failed (`'error'`) flush **aborts the transition** and the banner names both recoveries; `deleteTrip` of the *active* trip is the one exception and cancels the timer without writing. Belt and braces: a scheduled save captures its trip id and is **dropped, not retargeted**, if `state.doc` moved. Page exit registers `visibilitychange`→`hidden` + `pagehide` (deduped) → `flush()` and `beforeunload` → `preventDefault()` while dirty. | `client/src/store/store.ts`, `client/src/store/pageExit.ts` (new), `apps/web/src/App.tsx` | `switch.test.ts` ×22, `page-exit.test.ts` ×8 — **red-green verified**: removing the flush calls and the trip-id capture fails **19 of 22**. `qa/r3-loss.mjs` all 4 probes ok (including the real-timer one); `qa/r3-browser.mjs` probe 2 in real Chromium: the edit typed inside the debounce window survives clicking "Cairn" |
 
 **Not fixed, and named as not fixed:** F-14 / the §2.10 export surface — enumerated rather
 than narrowed, KD-19. **And R2-4 through R2-21 of round 2, which this pass did not touch** —
@@ -533,6 +585,14 @@ only the two blockers were routed here. `qa/r2-access.mjs` (R2-6, a malformed `e
 still fails open), `qa/r2-copy.mjs` (R2-11) and `qa/r2-constraints.mjs` (R2-18) still report
 their findings, unchanged, and were re-run to confirm this pass neither fixed nor worsened
 them.
+
+**And R3-3 and R3-5 … R3-9, which the round-3 persistence pass did not touch** — only R3-1,
+R3-4 and R3-2 were routed. `qa/r3-merge.mjs` still FAILs its static probe (R3-3:
+`mergeWithStored` assigns `saving` instead of chaining onto it) and `qa/r3-cas.mjs` probe A
+says the same; both were run against `HEAD` *before* this pass and report identically, so the
+pass neither fixed nor worsened them. `qa/r3-cas2.mjs` probes 5, 6 and 7 likewise still FAIL,
+unchanged. §6's "not a compare-and-swap at the storage layer" bullet is struck: it has been
+untrue since `a746d75`.
 
 ## 6. Not verified, and why
 
@@ -552,11 +612,31 @@ them.
   first delivery. `serialize.test.ts` now pins fourteen such cases so the question cannot
   come back unanswered — but I do not know what the review ran, and "the finding does not
   reproduce" is a weaker statement than "the finding was wrong".
-- **The merge under a real IndexedDB race.** `store.save()` does `load` → compare → `save`
-  with no transaction around it, because `StoragePort` has none. Two tabs writing inside one
-  event-loop turn can still interleave. The window is far smaller and the guard catches the
-  case Jacob will hit, but this is **not** a compare-and-swap at the storage layer and should
-  not be described as one. Phase 2's `SyncPort` is where that belongs.
+- ~~**The merge under a real IndexedDB race.** `store.save()` does `load` → compare → `save`
+  with no transaction around it … this is **not** a compare-and-swap at the storage layer.~~
+  **Struck — untrue since `a746d75`.** The compare, the write and (since the round-3 pass) the
+  minting of the new `StorageVersion` all happen inside one IndexedDB `readwrite` transaction,
+  and inside one synchronous block in the memory port. What replaces this bullet, honestly:
+  - **Two tabs against one real IndexedDB is verified** — `qa/r2-race.mjs`, 0 of 3 rounds lost
+    an edit; `qa/r2-tabs.mjs`; `qa/r3-browser.mjs`. What is *not* verified is more than two
+    real tabs, or two tabs across two devices, which is Phase 2's `SyncPort`.
+  - **A passively stale tab still reads "Saved".** A tab that has not written since storage
+    moved holds an older document and its indicator says "Saved", because nothing notifies it.
+    No edit is at risk — its next write is refused — but the ROADMAP ceiling "no moment at
+    which two stores both render Saved while holding different documents" is only true of
+    stores that have *written*. `storage-version.test.ts` asserts it in that form and says so
+    in a comment. Closing it properly needs cross-tab notification, which Phase 1 has not got.
+  - **A trip switch now blocks on the in-flight write** (§4.2 rule 6a). In the app that write
+    always completes, but there is **no spinner or disabled state** while it does — the button
+    just takes as long as the write takes. Not a defect against the spec; worth a UI pass.
+- **The page-exit guarantee is deliberately weaker than it sounds.** `visibilitychange`→
+  `hidden` and `pagehide` call `store.flush()`, and `beforeunload` calls `preventDefault()`
+  while dirty. **An unload handler cannot await an asynchronous IndexedDB write**, and
+  `pagehide`/`beforeunload`/`unload` are unreliable on mobile. Nothing here claims an edit
+  survives an arbitrary tab close, and `page-exit.test.ts` deliberately does not assert it.
+  The listener registration and the flush call are tested with fake targets in plain Node; the
+  Chromium leg (hide the tab, find the edit in IndexedDB) is **not run** — `qa/r3-browser.mjs`
+  covers the in-app `closeTrip` case instead, which is the one with a real guarantee.
 - **Map tiles.** This sandbox has no route to `tile.openstreetmap.org`; every tile request
   fails with `ERR_TUNNEL_CONNECTION_FAILED`. Leaflet mounts, pins and the polyline render and
   bounds are applied — nobody has seen a tile behind them.

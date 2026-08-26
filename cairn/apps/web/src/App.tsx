@@ -4,6 +4,7 @@
  * No domain logic. Every mutation goes through `store.dispatch` — §4.2 rule 1.
  */
 import { useEffect, useState } from 'react';
+import { registerPageExit } from '@cairn/client';
 import { store, useAppState, useDerived } from './store.ts';
 import { Library } from './views/Library.tsx';
 import { TripView } from './views/TripView.tsx';
@@ -36,7 +37,22 @@ export function App() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  // §4.2 rule 6, the page-exit half. See `pageExit.ts` in @cairn/client for what this does
+  // promise — an unload handler cannot await an IndexedDB write, and that is stated, not
+  // papered over. The in-app guarantee is the store's flush-before-switch.
+  useEffect(
+    () =>
+      registerPageExit({
+        win: window as unknown as Parameters<typeof registerPageExit>[0]['win'],
+        doc: document as unknown as Parameters<typeof registerPageExit>[0]['doc'],
+        flush: () => store.flush(),
+        isDirty: () => store.isDirty(),
+      }),
+    [],
+  );
+
   const run = (p: Promise<unknown>) => p.catch((e: Error) => setError(e.message));
+  const exportCopy = () => run(store.exportActive());
 
   return (
     <div className="app">
@@ -61,10 +77,16 @@ export function App() {
         </div>
       )}
 
+      {/*
+        A refused or failed write blocks every trip switch (§4.2 rule 6b), so these two
+        banners are also what a refused *transition* says — the same mechanism, not a new
+        one. Both name the two recoveries the user actually has.
+      */}
       {state.persistence.status === 'error' && state.persistence.lastError && (
         <div className="banner banner--error" role="alert">
           Not saved. {state.persistence.lastError}
           <button onClick={() => void store.flush()} aria-label="Retry">Retry</button>
+          {state.doc && <button onClick={exportCopy} aria-label="Export this copy">Export this copy</button>}
         </div>
       )}
 
@@ -74,6 +96,7 @@ export function App() {
           <button onClick={() => run(store.mergeWithStored())} aria-label="Merge and save">
             Merge and save
           </button>
+          <button onClick={exportCopy} aria-label="Export this copy">Export this copy</button>
         </div>
       )}
 

@@ -14,54 +14,78 @@ import type { IsoDate, TripSummaryRow } from '../deps.ts';
 export type TripDoc = string;
 
 /**
- * The `revision` of a serialized document, without paying for a full `fromJSON`.
+ * The write fence (ARCHITECTURE §2.2a). **Opaque. Compared for equality only.**
  *
- * It lives here rather than in the store because the compare half of compare-and-set now
- * happens *inside* a storage implementation (see `saveIfRevision`), and two implementations
- * reading the same field two ways is how a guard drifts open. `null` means "no readable
- * revision" — a corrupt or truncated record, which never compares equal to anything.
+ * Four rules, and they are the entire contract:
+ *
+ *   1. Storage issues it, on every successful write, inside the same atomic step as the
+ *      write. Nothing above the port computes, derives, increments or forges one — the
+ *      client's only sources are `load()` and a successful `saveIfVersion()`.
+ *   2. It never repeats within one storage, ever: not after a `delete()`, not after the
+ *      record is recreated under the same id, not after the whole database is recreated.
+ *      That is what closes R3-4's ABA.
+ *   3. No ordering, no arithmetic, no parsing, no inference of recency. This discipline is
+ *      what lets an HTTP `ETag`, a Postgres `xmin` and a SQLite counter all be dropped in
+ *      without touching a line above the port.
+ *   4. It is **not part of `Trip`**. It lives in the storage record's envelope beside the
+ *      serialized document, never inside it — so `toJSON`/`fromJSON` are untouched, an
+ *      export carries no storage state, and no in-memory document operation (undo included)
+ *      can rewind it. R3-1 is structurally unreachable rather than fixed.
+ *
+ * `Trip.revision` is a CONTENT counter and MUST NOT be used as a compare-and-set token, an
+ * ETag, a sync cursor, or evidence that one document is newer than another.
  */
-export function revisionOf(doc: TripDoc): number | null {
-  try {
-    const r = (JSON.parse(doc) as { revision?: unknown }).revision;
-    return typeof r === 'number' && Number.isFinite(r) ? r : null;
-  } catch {
-    return null;
-  }
-}
+export type StorageVersion = string;
+
+/** What `load()` returns: the document beside the envelope version that fences it. */
+export type StoredDoc = { doc: TripDoc; version: StorageVersion };
 
 /**
  * The result of an attempted write. A refusal is **not an error**: storage is healthy and
  * the document is intact, someone else just got there first. The store turns `ok:false`
  * into `persistence.status = 'conflict'` and a rejected promise into `'error'`.
+ *
+ * `ok:true` carries the freshly minted version now in storage; `ok:false` carries the
+ * version actually found (`null` = nothing is stored under that id).
  */
 export type SaveOutcome =
-  | { ok: true }
-  | { ok: false; storedRevision: number | null };
+  | { ok: true; version: StorageVersion }
+  | { ok: false; storedVersion: StorageVersion | null };
 
 export interface StoragePort {
   listTrips(): Promise<TripSummaryRow[]>;
-  load(id: string): Promise<TripDoc | null>;
   /**
-   * **Atomic** compare-and-set: writes `doc` only if the stored document's revision is
-   * exactly `expectedRevision`, and reports a refusal rather than throwing.
-   * `expectedRevision: null` means "nothing may be stored under this id yet".
+   * Reads a record and the version fencing it. MUST NOT write — with one exception, the
+   * one-time upcast of §2.2a: an implementation stamps every pre-existing versionless
+   * record at open, once, before serving any read, so no caller ever sees one.
+   */
+  load(id: string): Promise<StoredDoc | null>;
+  /**
+   * **Atomic** compare-and-set: writes `doc` only if the version in the record's envelope
+   * is exactly `expectedVersion`, and reports a refusal rather than throwing.
+   * `expectedVersion: null` means "nothing may be stored under this id yet".
    *
-   * The comparison and the write MUST happen without an interleaving point between them.
-   * This is the whole contract, and it is the reason this method exists at all: the store
-   * used to do `load()` -> compare -> `save()`, which is two awaits with a gap in the
-   * middle, so two tabs that both read revision R both passed the compare and the second
-   * write destroyed the first while the losing tab displayed "Saved" (QA R2-1). A guard
-   * above the port cannot fix that; only the port can.
+   * The comparison, the write and the minting of the new version MUST happen without an
+   * interleaving point between them. This is the whole contract, and it is the reason this
+   * method exists at all: the store used to do `load()` -> compare -> `save()`, which is two
+   * awaits with a gap in the middle, so two tabs that both read revision R both passed the
+   * compare and the second write destroyed the first while the losing tab displayed "Saved"
+   * (QA R2-1). A guard above the port cannot fix that; only the port can.
+   *
+   * The port no longer parses the document to run the guard, either: a truncated or corrupt
+   * record does not get to decide its own refusal behaviour (§2.2a, "a guard that depends on
+   * parsing user-controlled bytes is a guard whose refusal behaviour is decided by an
+   * attacker's JSON").
    *
    * An implementation that cannot be atomic must reject, never write optimistically.
    */
-  saveIfRevision(
+  saveIfVersion(
     id: string,
-    expectedRevision: number | null,
+    expectedVersion: StorageVersion | null,
     doc: TripDoc,
     summary: TripSummaryRow,
   ): Promise<SaveOutcome>;
+  /** Removes the record. MUST NOT rewind the version counter — §2.2a rule 2. */
   delete(id: string): Promise<void>;
 }
 

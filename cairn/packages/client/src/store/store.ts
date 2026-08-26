@@ -3,16 +3,20 @@
  *
  * Runs in plain Node with the in-memory ports. No DOM, no React, no network.
  *
- * The five rules it enforces, each because of a specific failure:
+ * The six rules it enforces, each because of a specific failure:
  *   1. every mutation is `dispatch(action)` and every action is one core build function;
  *   2. `ui` is never written into the trip document;
  *   3. derived data is recomputed wholesale on `doc.revision`;
- *   4. autosave writes the whole document, debounced, and NEVER fails silently;
- *   5. undo/redo is snapshot-based over the immutable `Trip`, limit 50.
+ *   4. autosave writes the whole document, debounced, behind the port's atomic
+ *      compare-and-set against an opaque `StorageVersion` (§2.2a), and NEVER fails silently;
+ *   5. undo/redo is snapshot-based over the immutable `Trip`, limit 50, and carries no
+ *      authority over the write fence;
+ *   6. a pending write is never outlived by its document — every one of the six transitions
+ *      that changes `state.doc` flushes first, and a refused flush aborts the transition.
  */
 import * as core from '../deps.ts';
 import type { BuildCtx, Trip } from '../deps.ts';
-import type { Ports, SchedulerPort } from '../ports/types.ts';
+import type { Ports, SchedulerPort, StorageVersion } from '../ports/types.ts';
 import type { Action } from './actions.ts';
 import type { AppState, UiState } from './reducer.ts';
 import { initialState, redo, reduce, setUi, undo } from './reducer.ts';
@@ -20,6 +24,19 @@ import type { DerivedCache } from './derived.ts';
 import { derivedFor } from './derived.ts';
 
 export const AUTOSAVE_DEBOUNCE_MS = 400;
+
+/**
+ * What a refused write says, and the only place it is worded.
+ *
+ * §4.2 rule 6b requires the screen to name **both** things the user can actually do — merge
+ * with the stored copy, or export this copy — because blocking a trip switch on a refused
+ * flush is only tolerable if the way out is stated. It deliberately does not print the
+ * `StorageVersion`s: they are opaque tokens (§2.2a rule 3) and mean nothing to a reader.
+ */
+export const CONFLICT_MESSAGE =
+  'This trip was saved somewhere else — another tab, or another window — while you were ' +
+  'editing. Nothing has been overwritten and your changes are still here. You can merge ' +
+  'with the stored copy, or export this copy and sort it out by hand.';
 
 const defaultScheduler: SchedulerPort = {
   schedule(fn, ms) {
@@ -77,28 +94,36 @@ export function createStore(opts: StoreOptions) {
     emit();
   }
 
+  /**
+   * Schedules the debounced autosave, **captured to the trip it was scheduled for**.
+   *
+   * Belt and braces for §4.2 rule 6: 6a/6b mean a pending write is flushed before the
+   * active document can change at all, but a timer that fires late must not be able to hurt
+   * anything either. Revision 2's `attemptSave` read `state.doc` at execution time, which is
+   * how trip A's pending write came to be executed against trip B (QA R3-2). A save that
+   * finds a different document is **dropped, never retargeted**.
+   */
   function scheduleSave() {
     if (!autosave) return;
-    if (cancelPending) cancelPending();
+    cancelTimer();
+    const forTripId = state.doc?.id ?? null;
     cancelPending = scheduler.schedule(() => {
       cancelPending = null;
-      void save();
+      void save(forTripId);
     }, debounceMs);
   }
 
-  /**
-   * `savedRevision` as the storage port wants it: `null` means "this store has never agreed
-   * with storage about this document, so nothing may be there yet". `initialState()` uses
-   * `-1` for that, and passing `-1` down as a revision would compare equal to nothing and
-   * refuse a legitimate first write.
-   */
-  function expectedRevision(): number | null {
-    return state.persistence.savedRevision < 0 ? null : state.persistence.savedRevision;
+  /** Cancels the pending debounced write WITHOUT performing it. §4.2 rule 6c's exception. */
+  function cancelTimer() {
+    if (cancelPending) {
+      cancelPending();
+      cancelPending = null;
+    }
   }
 
   /**
    * Writes the whole document, behind the storage port's **atomic compare-and-set**
-   * (ARCHITECTURE §2.2's revision guard; ROADMAP F's two-tab criterion).
+   * (ARCHITECTURE §2.2a's `StorageVersion` fence; ROADMAP F's two-tab criterion).
    *
    *   - storage untouched since we last agreed → write, as before;
    *   - storage moved → the write is **REFUSED**. `status` becomes `'conflict'`, the edit
@@ -111,30 +136,35 @@ export function createStore(opts: StoreOptions) {
    * the same moment both read revision R, both passed, and the second write destroyed the
    * first while the loser displayed "Saved" (QA R2-1). No amount of checking on this side
    * of the port closes that window — the port has to do the compare and the write as one
-   * indivisible step, which is what `saveIfRevision` is for.
+   * indivisible step, which is what `saveIfVersion` is for.
    *
    * A storage failure is separate: `status = 'error'` with `lastError`. Either way the edit
    * is never dropped and nothing ever fails silently.
+   *
+   * `forTripId` is the trip the write was scheduled for; `null` means "whatever is active
+   * now", which is what an explicit `flush()` asks for.
    */
-  async function save(): Promise<void> {
+  async function save(forTripId: string | null = null): Promise<void> {
     // One store never races ITSELF. Autosave and an explicit `flush()` can both be in
     // flight at once, and before the port became atomic that was invisible: the second
     // save read storage from before the first one's write, compared its stale snapshot
-    // against a stale expectation, and agreed with itself. `saveIfRevision` refuses that
+    // against a stale expectation, and agreed with itself. `saveIfVersion` refuses that
     // — correctly — so the overlap has to stop happening rather than be tolerated.
-    // Chaining also means each attempt computes `expectedRevision()` *after* the previous
-    // one has settled, which is the only point at which it is true.
-    const run = saving.catch(() => {}).then(() => attemptSave());
+    // Chaining also means each attempt reads `savedVersion` *after* the previous one has
+    // settled, which is the only point at which it is true.
+    const run = saving.catch(() => {}).then(() => attemptSave(forTripId));
     saving = run;
     return run;
   }
 
-  async function attemptSave(): Promise<void> {
+  async function attemptSave(forTripId: string | null): Promise<void> {
     const doc = state.doc;
     if (!doc) return;
+    // §4.2 rule 6, belt and braces: a late timer is dropped, never retargeted.
+    if (forTripId !== null && doc.id !== forTripId) return;
     set({ ...state, persistence: { ...state.persistence, status: 'saving' } });
     try {
-      await writeAndSettle(doc, doc, null, expectedRevision());
+      await writeAndSettle(doc, doc, null, state.persistence.savedVersion);
     } catch (err) {
       set({
         ...state,
@@ -160,20 +190,17 @@ export function createStore(opts: StoreOptions) {
     startedFrom: Trip,
     toWrite: Trip,
     merge: { message: string; report: core.MergeReport } | null,
-    expected: number | null,
+    expected: StorageVersion | null,
   ): Promise<void> {
     const summary = core.tripSummary(toWrite);
-    const outcome = await ports.storage.saveIfRevision(toWrite.id, expected, core.toJSON(toWrite), summary);
+    const outcome = await ports.storage.saveIfVersion(toWrite.id, expected, core.toJSON(toWrite), summary);
     if (!outcome.ok) {
       set({
         ...state,
         persistence: {
           ...state.persistence,
           status: 'conflict',
-          lastError:
-            `This trip was saved somewhere else — another tab, or another window — while you ` +
-            `were editing. Nothing has been overwritten and your changes are still here. ` +
-            `(stored revision ${String(outcome.storedRevision)}, this tab expected ${String(expected)})`,
+          lastError: CONFLICT_MESSAGE,
         },
       });
       return;
@@ -186,6 +213,7 @@ export function createStore(opts: StoreOptions) {
       library: upsertSummary(state.library, summary),
       persistence: {
         savedRevision: toWrite.revision,
+        savedVersion: outcome.version,
         status: 'idle',
         // A merge notice survives later clean saves; only closing or switching trips clears
         // it. A notice that vanishes on the next keystroke is not a disclosure.
@@ -193,6 +221,42 @@ export function createStore(opts: StoreOptions) {
       },
     });
     if (!stillOurs) scheduleSave();
+  }
+
+  /**
+   * §4.2 rule 6a — **a pending write is never outlived by its document.**
+   *
+   * Every transition that changes the active document begins here: the debounce timer is
+   * cancelled and the write it was going to do is performed and awaited, *before* anything
+   * touches `state.doc`. QA R3-2: a 400 ms debounced write was still pending when the user
+   * clicked "Back to all trips", the timer fired against a document that was no longer
+   * there, and the edit was gone with nothing on screen. One click, no second tab.
+   *
+   * Returns **false** when the transition must not happen (rule 6b): the flush was refused
+   * (`'conflict'`) or failed (`'error'`), so the old document stays active and still holds
+   * the edit. Discarding it with a notice would satisfy the letter of "the app says so" and
+   * violate the product — the user's content is authoritative and conflicts are surfaced,
+   * not resolved by guessing. The refusal reaches the screen through the conflict/error
+   * banner that is already there; this is not a new mechanism.
+   */
+  async function flushForTransition(): Promise<boolean> {
+    cancelTimer();
+    // Nothing pending and nothing wrong: there is no edit to lose, so do not re-write a
+    // 176 KB document (and burn a StorageVersion) on every navigation. `dirty` is content
+    // bookkeeping — `savedRevision` — which is exactly what "is there an unwritten edit"
+    // means; a write that FAILED leaves `status` non-idle, so this cannot skip past one.
+    const idle = state.persistence.status === 'idle';
+    if (state.doc && !(idle && !dirty())) {
+      await save();
+      await saving;
+    }
+    const { status } = state.persistence;
+    return status !== 'conflict' && status !== 'error';
+  }
+
+  /** Content bookkeeping only — `Trip.revision` vs the last revision written (§2.2a rule 1). */
+  function dirty(): boolean {
+    return !!state.doc && state.doc.revision !== state.persistence.savedRevision;
   }
 
   function upsertSummary(list: core.TripSummaryRow[], row: core.TripSummaryRow): core.TripSummaryRow[] {
@@ -256,8 +320,8 @@ export function createStore(opts: StoreOptions) {
     async mergeWithStored(): Promise<AppState> {
       const doc = state.doc;
       if (!doc) throw new Error('mergeWithStored: no active trip');
-      const storedText = await ports.storage.load(doc.id);
-      if (storedText === null) {
+      const stored = await ports.storage.load(doc.id);
+      if (stored === null) {
         // The trip was deleted while this tab held a conflict. Writing it back is what the
         // user asked for by pressing the button, and `null` is the honest expectation:
         // "nothing is stored under this id" — if that stops being true before we commit,
@@ -282,19 +346,21 @@ export function createStore(opts: StoreOptions) {
             'to merge against. Export this copy, then open the trip again from the library.',
         );
       }
-      const remote = core.fromJSON(storedText);
+      const remote = core.fromJSON(stored.doc);
       const merged = core.mergeTrips(baseDoc, doc, remote);
       set({ ...state, persistence: { ...state.persistence, status: 'saving' } });
       saving = (async () => {
         try {
-          // The merge is only valid against the `remote` we just read, so that is the
-          // revision the write must still find. A third writer landing in between makes
-          // this merge stale, and the port refusing is the correct outcome.
+          // The merge is only valid against the exact `remote` we just read, so the write
+          // carries **that same version** as its expectation — never one recomputed from
+          // the document (§2.2a, the merge case). A third writer landing in between moves
+          // the version, the port refuses, the conflict stands unmerged and the edit stays
+          // in memory.
           await writeAndSettle(
             doc,
             merged.trip,
             { message: core.describeMerge(merged.report), report: merged.report },
-            remote.revision,
+            stored.version,
           );
         } catch (err) {
           set({
@@ -332,8 +398,13 @@ export function createStore(opts: StoreOptions) {
       return state;
     },
 
-    /** Creates a trip and makes it active. */
+    /**
+     * Creates a trip and makes it active.
+     * §4.2 rule 6a: the outgoing document's pending write is flushed first, and rule 6b:
+     * if that flush cannot succeed the new trip is not created.
+     */
     async createTrip(init: core.TripInit): Promise<AppState> {
+      if (!(await flushForTransition())) return state;
       const doc = core.createTrip(init, ctx());
       cache = null;
       baseDoc = null;
@@ -354,8 +425,11 @@ export function createStore(opts: StoreOptions) {
      * If storage ALREADY holds that id, the stored document wins and is opened instead.
      * Adopting is how the sample is loaded, and re-loading the sample must never overwrite
      * the copy Jacob has been editing — the same class of loss as F-2.
+     *
+     * §4.2 rule 6a/6b: the outgoing document is flushed first, and a refused flush aborts.
      */
     async adoptTrip(doc: Trip): Promise<AppState> {
+      if (!(await flushForTransition())) return state;
       const existing = await ports.storage.load(doc.id);
       if (existing !== null) return this.openTrip(doc.id);
       cache = null;
@@ -374,12 +448,18 @@ export function createStore(opts: StoreOptions) {
     /**
      * Switches trips. History, derived data and UI selection are all reset — two trips must
      * not leak state into each other.
+     *
+     * §4.2 rule 6a/6b: the outgoing document is flushed first, and a refused flush aborts —
+     * revision 2's pending write was executed against whatever `state.doc` had become, so
+     * trip A's edit landed in trip B (QA R3-2).
+     *
      * @throws {Error} if the id is not in storage or the stored document is corrupt.
      */
     async openTrip(id: string): Promise<AppState> {
-      const text = await ports.storage.load(id);
-      if (text === null) throw new Error(`openTrip: no trip ${id} in storage`);
-      const doc = core.fromJSON(text);
+      if (!(await flushForTransition())) return state;
+      const stored = await ports.storage.load(id);
+      if (stored === null) throw new Error(`openTrip: no trip ${id} in storage`);
+      const doc = core.fromJSON(stored.doc);
       cache = null;
       baseDoc = doc;
       set({
@@ -387,7 +467,8 @@ export function createStore(opts: StoreOptions) {
         library: state.library,
         activeTripId: doc.id,
         doc,
-        persistence: { savedRevision: doc.revision, status: 'idle' },
+        // The fence comes from the port result and from nowhere else — §2.2a rule 1.
+        persistence: { savedRevision: doc.revision, savedVersion: stored.version, status: 'idle' },
         ui: { ...initialState().ui, activeDayId: doc.days[0]?.id ?? null, activeCityKey: doc.cities[0]?.key ?? null },
       });
       return state;
@@ -401,9 +482,9 @@ export function createStore(opts: StoreOptions) {
      * @throws {Error} if the id is not in storage or the stored document is corrupt.
      */
     async browseTrip(id: string): Promise<Trip> {
-      const text = await ports.storage.load(id);
-      if (text === null) throw new Error(`browseTrip: no trip ${id} in storage`);
-      const doc = core.fromJSON(text);
+      const stored = await ports.storage.load(id);
+      if (stored === null) throw new Error(`browseTrip: no trip ${id} in storage`);
+      const doc = core.fromJSON(stored.doc);
       set({ ...state, browsing: doc });
       return doc;
     },
@@ -433,14 +514,28 @@ export function createStore(opts: StoreOptions) {
       return state;
     },
 
+    /**
+     * "Back to all trips" (App.tsx's brand button). §4.2 rule 6a/6b: the pending write is
+     * flushed and awaited first, and a refused flush leaves the trip open with its edit.
+     */
     async closeTrip(): Promise<AppState> {
+      if (!(await flushForTransition())) return state;
       cache = null;
       baseDoc = null;
       set({ ...initialState(), library: state.library });
       return state;
     },
 
+    /**
+     * Deletes a trip. §4.2 **rule 6c is the one exception to 6a/6b**: deleting the *active*
+     * trip cancels the pending timer WITHOUT writing and proceeds anyway — the user asked
+     * for that document to be destroyed, and blocking on a refused flush would make a
+     * conflicted trip undeletable. Deleting some *other* trip is an ordinary transition and
+     * flushes the active document first.
+     */
     async deleteTrip(id: string): Promise<AppState> {
+      if (state.activeTripId === id) cancelTimer();
+      else if (!(await flushForTransition())) return state;
       await ports.storage.delete(id);
       const library = state.library.filter((r) => r.id !== id);
       if (state.activeTripId === id) {
@@ -478,10 +573,14 @@ export function createStore(opts: StoreOptions) {
      * BUILD-NOTES §1, KD-11 — the architect is writing the formal contract into §2.10/§4.5
      * and it may supersede the refusal with adopt-and-badge.
      *
+     * §4.2 rule 6a/6b: the outgoing document is flushed first, and a refused flush aborts
+     * the import rather than replacing an unsaved trip with the restored one.
+     *
      * @throws {TripParseError} with a JSON path for a malformed file.
      * @throws {Error} for a document owned by another person.
      */
     async importDoc(text: string): Promise<AppState> {
+      if (!(await flushForTransition())) return state;
       let doc = core.fromJSON(text);
       const owner = localOwner();
       if (doc.ownerId !== owner) throw new core.ForeignDocumentError(doc.ownerId, owner);
@@ -510,12 +609,9 @@ export function createStore(opts: StoreOptions) {
       return state;
     },
 
-    /** Forces a save now and waits for it. */
+    /** Forces a save now and waits for it. Cancels the debounce timer and does its work. */
     async flush(): Promise<AppState> {
-      if (cancelPending) {
-        cancelPending();
-        cancelPending = null;
-      }
+      cancelTimer();
       await save();
       await saving;
       return state;
@@ -523,7 +619,7 @@ export function createStore(opts: StoreOptions) {
 
     /** True when there are unsaved edits. */
     isDirty(): boolean {
-      return !!state.doc && state.doc.revision !== state.persistence.savedRevision;
+      return dirty();
     },
   };
 }

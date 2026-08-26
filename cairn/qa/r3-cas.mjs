@@ -22,7 +22,7 @@ const mkPorts = (storage, sched, prefix) => ({
   scheduler: sched ?? mem.immediateScheduler(),
 });
 
-/** A storage port whose saveIfRevision can be held open, so a real in-flight window exists. */
+/** A storage port whose saveIfVersion can be held open, so a real in-flight window exists. */
 function latchable(base) {
   const gates = [];
   return {
@@ -31,11 +31,11 @@ function latchable(base) {
     gates,
     /** Hold the next N saves open until released. */
     hold: false,
-    async saveIfRevision(id, exp, doc, summary) {
+    async saveIfVersion(id, exp, doc, summary) {
       if (this.hold) {
         await new Promise((res) => gates.push(res));
       }
-      return base.saveIfRevision(id, exp, doc, summary);
+      return base.saveIfVersion(id, exp, doc, summary);
     },
     release() { const g = gates.splice(0); for (const r of g) r(); },
   };
@@ -125,19 +125,24 @@ line('B. a save in flight for trip A, then openTrip(B): whose revision lands in 
   storage.hold = true;
   store.dispatch({ type: 'setDayMeta', dayId: dayA, patch: { title: 'A EDIT' } });
   const inflight = store.flush();          // held open
-  await store.openTrip(idB);               // user switches trips mid-save
-  const savedAfterOpen = store.getState().persistence.savedRevision;
+  // §4.2 rule 6a: openTrip now AWAITS the pending write before switching, so this probe
+  // has to let the latch go while the switch is in flight rather than after it — holding
+  // both open deadlocks the PROBE, not the app.
+  const switching = store.openTrip(idB);   // user switches trips mid-save
+  await new Promise((r) => setTimeout(r, 5));
   storage.hold = false; storage.release();
+  await switching;
+  const savedAfterOpen = store.getState().persistence.savedVersion;
   await inflight.catch(() => {});
   await new Promise((r) => setTimeout(r, 5));
 
   const st = store.getState();
-  console.log(`  active=${st.activeTripId} (B=${idB}) savedRevision=${st.persistence.savedRevision}` +
-              ` (B stored revision=${revB}, at openTrip=${savedAfterOpen}) status=${st.persistence.status}`);
+  console.log(`  active=${st.activeTripId} (B=${idB}) savedVersion=${st.persistence.savedVersion}` +
+              ` (B stored version=${storage.versions.get(idB)}, at openTrip=${savedAfterOpen}) status=${st.persistence.status}`);
   ok('persistence still describes the trip that is actually open',
-     st.activeTripId === idB && st.persistence.savedRevision === revB,
-     `savedRevision ${st.persistence.savedRevision} != B's ${revB}`);
-  ok('the store does not falsely claim B has unsaved work', st.doc.revision === st.persistence.savedRevision,
+     st.activeTripId === idB && st.persistence.savedVersion === storage.versions.get(idB),
+     `savedVersion ${st.persistence.savedVersion} != B's ${storage.versions.get(idB)}`);
+  ok('the store does not falsely claim B has unsaved work', !store.isDirty(),
      `doc.revision=${st.doc.revision} savedRevision=${st.persistence.savedRevision}`);
   ok('no bogus "edited elsewhere" conflict on a trip nobody else touched',
      st.persistence.status !== 'conflict', st.persistence.lastError ?? '');
@@ -169,7 +174,7 @@ line('C. a DEBOUNCED autosave for trip A fires after openTrip(B)');
 }
 
 // ---------------------------------------------------------------------------
-line('D. revisionOf(): "a corrupt record never compares equal to anything" (ports/types.ts:24)');
+line('D. §2.2a: the fence no longer PARSES the record — a corrupt record still refuses');
 {
   const storage = mem.memoryStorage();
   // A truncated / corrupt record already in storage under the id the store will mint.
@@ -183,13 +188,13 @@ line('D. revisionOf(): "a corrupt record never compares equal to anything" (port
   console.log('  stored before:', JSON.stringify(before).slice(0, 40));
   console.log('  stored after :', JSON.stringify(after).slice(0, 60));
   ok('a corrupt record is NOT silently overwritten by an expect-absent write',
-     before === after, 'expectedRevision null compared EQUAL to a corrupt record');
+     before === after, 'expectedVersion null compared EQUAL to a corrupt record');
 
   // Direct port-level statement of the same thing.
   const s2 = mem.memoryStorage();
   s2.docs.set('x', 'not json at all');
-  const out = await s2.saveIfRevision('x', null, '{"id":"x","revision":0}', { id: 'x', title: 'x', startDate: '2026-01-01', endDate: '2026-01-01', cityCount: 0, dayCount: 1, stopCount: 0, poolCount: 0, revision: 0 });
-  ok('saveIfRevision(id, null, ...) refuses when SOMETHING is stored under id', out.ok === false,
+  const out = await s2.saveIfVersion('x', null, '{"id":"x","revision":0}', { id: 'x', title: 'x', startDate: '2026-01-01', endDate: '2026-01-01', cityCount: 0, dayCount: 1, stopCount: 0, poolCount: 0, revision: 0 });
+  ok('saveIfVersion(id, null, ...) refuses when SOMETHING is stored under id', out.ok === false,
      `it returned ok:${out.ok} and clobbered the record`);
 }
 
@@ -203,7 +208,8 @@ line('E. delete-and-recreate: a coincidentally equal revision passes the compare
   const dayId = a.getState().doc.days[0].id;
   a.dispatch({ type: 'setDayMeta', dayId, patch: { title: 'A' } });
   await a.flush();
-  const revAtAgreement = a.getState().persistence.savedRevision;
+  const revAtAgreement = a.getState().doc.revision;
+  const versionAtAgreement = a.getState().persistence.savedVersion;
 
   // Tab B deletes the trip and restores a DIFFERENT document under the same id, which
   // importDoc permits once the id is free. Its revision happens to match.
@@ -329,7 +335,7 @@ line('I. a save issued BEFORE openTrip finishes');
   ok('the seed trip was not overwritten by the other trip\'s in-flight save',
      seedDoc.title === 'SEED SAVED', `seed is now "${seedDoc.title}"`);
   ok('the open trip is described by persistence',
-     st.persistence.savedRevision === st.doc.revision || st.persistence.status !== 'idle',
+     !store.isDirty() || st.persistence.status !== 'idle',
      `savedRevision=${st.persistence.savedRevision} doc.revision=${st.doc.revision} status=${st.persistence.status}`);
 }
 

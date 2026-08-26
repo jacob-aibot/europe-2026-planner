@@ -49,9 +49,9 @@ line('behavioural: an autosave in flight when the user presses "Merge and save"'
   const latched = {
     ...storage,
     docs: storage.docs,
-    async saveIfRevision(...a) {
+    async saveIfVersion(...a) {
       if (hold) await new Promise((r) => gates.push(r));
-      return storage.saveIfRevision(...a);
+      return storage.saveIfVersion(...a);
     },
   };
   const sched = mem.manualScheduler();

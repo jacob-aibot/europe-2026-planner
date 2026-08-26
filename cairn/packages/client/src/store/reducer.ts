@@ -9,6 +9,7 @@ import * as core from '../deps.ts';
 import type { BuildCtx, Trip } from '../deps.ts';
 import type { Action } from './actions.ts';
 import { ACTION_SPECS } from './actions.ts';
+import type { StorageVersion } from '../ports/types.ts';
 
 export type UiState = {
   activeDayId: string | null;
@@ -20,7 +21,18 @@ export type UiState = {
 };
 
 export type PersistenceState = {
+  /** CONTENT bookkeeping — drives the dirty indicator and nothing else (§4.2, §2.2a rule 1). */
   savedRevision: number;
+  /**
+   * The WRITE FENCE (ARCHITECTURE §2.2a). `null` = "nothing is stored under this id yet".
+   *
+   * **Assigned from a port result and from nowhere else** — `load()`'s version, or a
+   * successful `saveIfVersion()`'s. It is never computed from the document, never copied out
+   * of `Trip`, and **never touched by the reducer**, including by `undo`/`redo`. That one
+   * sentence is what makes R3-1 structurally unreachable: no in-memory document operation
+   * can advance or rewind the fence.
+   */
+  savedVersion: StorageVersion | null;
   /**
    * `'conflict'` is ROADMAP F's fourth status: storage moved under us, so the write was
    * REFUSED. It is not `'error'` — storage is fine, somebody else edited the trip — and it
@@ -77,7 +89,7 @@ export function initialState(): AppState {
     browsing: null,
     ui: { ...INITIAL_UI },
     history: { past: [], future: [], limit: HISTORY_LIMIT },
-    persistence: { savedRevision: -1, status: 'idle' },
+    persistence: { savedRevision: -1, savedVersion: null, status: 'idle' },
   };
 }
 

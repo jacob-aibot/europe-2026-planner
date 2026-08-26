@@ -30,6 +30,14 @@ const rev = async (page) => {
   const t = await stored(page);
   try { return JSON.parse(t).revision; } catch { return null; }
 };
+/** The §2.2a envelope fence, read straight out of the `versions` object store. */
+const fence = (page) => page.evaluate(() => new Promise((res) => {
+  const r = indexedDB.open('cairn');
+  r.onsuccess = () => {
+    const g = r.result.transaction('versions').objectStore('versions').get('trip-europe-2026');
+    g.onsuccess = () => res(String(g.result ?? ''));
+  };
+}));
 const rename = async (page, dayLabel, text) => {
   await page.locator('button').filter({ hasText: dayLabel }).first().click();
   await page.waitForTimeout(300);
@@ -58,8 +66,8 @@ line('1. Ctrl-Z lowers the stored revision and lets a conflicting tab back in');
   await b.waitForTimeout(900);
   await b.locator('button').filter({ hasText: /Europe 2026/ }).first().click();
   await b.waitForTimeout(1200);
-  const agreed = await rev(a);
-  console.log('  both tabs opened at stored revision', agreed);
+  const agreed = await fence(a);
+  console.log('  both tabs opened at stored revision', await rev(a), '| fence', JSON.stringify(agreed));
 
   // Tab A edits and saves; tab B, which was already open, then edits and is refused.
   await rename(a, /^08-16/, 'A EDIT');
@@ -73,9 +81,12 @@ line('1. Ctrl-Z lowers the stored revision and lets a conflicting tab back in');
   // Tab A presses Ctrl-Z.
   await a.keyboard.press('Control+z');
   await a.waitForTimeout(1500);
-  const afterUndo = await rev(a);
-  console.log('  after tab A pressed Ctrl-Z: stored revision', afterUndo, '(tab B still expects', agreed + ')');
-  ok('the stored revision never goes backwards', afterUndo > agreed, `${agreed} -> ${afterUndo}`);
+  const afterUndo = await fence(a);
+  console.log('  after tab A pressed Ctrl-Z: stored revision', await rev(a), '| fence', JSON.stringify(afterUndo),
+              '(tab B still expects', JSON.stringify(agreed) + ')');
+  // §2.2a: `Trip.revision` may rewind — it is content. The FENCE may not be re-issued.
+  ok('the StorageVersion fence is never re-issued', afterUndo !== agreed && afterUndo !== '',
+     `${agreed} -> ${afterUndo}`);
 
   // Tab B types again — every keystroke reschedules its autosave.
   await rename(b, /^08-17/, 'B EDIT AGAIN');

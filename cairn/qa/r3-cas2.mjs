@@ -70,22 +70,23 @@ line('1. ABA: export, delete, restore-from-backup — a stale tab clobbers the r
 }
 
 // ---------------------------------------------------------------------------
-line('2. the same, minimal: does saveIfRevision see delete+recreate at all?');
+line('2. the same, minimal: does saveIfVersion see delete+recreate at all?');
 {
   const s = mem.memoryStorage();
   const sum = (rev) => ({ id: 'x', title: 'x', startDate: '2026-01-01', endDate: '2026-01-01',
     cityCount: 0, dayCount: 1, stopCount: 0, poolCount: 0, revision: rev });
-  await s.saveIfRevision('x', null, JSON.stringify({ id: 'x', revision: 4, body: 'ORIGINAL' }), sum(4));
+  const first = await s.saveIfVersion('x', null, JSON.stringify({ id: 'x', revision: 4, body: 'ORIGINAL' }), sum(4));
   await s.delete('x');
-  await s.saveIfRevision('x', null, JSON.stringify({ id: 'x', revision: 4, body: 'A DIFFERENT DOCUMENT' }), sum(4));
-  const out = await s.saveIfRevision('x', 4, JSON.stringify({ id: 'x', revision: 5, body: 'STALE WRITER' }), sum(5));
+  await s.saveIfVersion('x', null, JSON.stringify({ id: 'x', revision: 4, body: 'A DIFFERENT DOCUMENT' }), sum(4));
+  const out = await s.saveIfVersion('x', first.version, JSON.stringify({ id: 'x', revision: 5, body: 'STALE WRITER' }), sum(5));
+  console.log(`  held version=${first.version} now stored=${s.versions.get('x')}`);
   console.log('  outcome:', JSON.stringify(out), '| stored:', s.docs.get('x'));
-  ok('a writer holding revision 4 of the OLD document is refused', out.ok === false,
-     'the guard is revision-only, so it cannot see a delete-and-recreate (ABA)');
+  ok('a writer holding the DELETED record\'s version is refused', out.ok === false,
+     'the counter rewound, so a recreated id re-entered a version it had already used (ABA)');
 }
 
 // ---------------------------------------------------------------------------
-line('3. expectedRevision:null vs a corrupt stored record (ports/types.ts:24 says never equal)');
+line('3. expectedVersion:null vs a corrupt stored record — §2.2a: the fence never parses');
 {
   const s = mem.memoryStorage();
   const sum = { id: 'x', title: 'x', startDate: '2026-01-01', endDate: '2026-01-01',
@@ -93,26 +94,32 @@ line('3. expectedRevision:null vs a corrupt stored record (ports/types.ts:24 say
   for (const bad of ['{"id":"x","revision":', 'not json', '{"id":"x"}', '{"id":"x","revision":"7"}',
                      '{"id":"x","revision":null}', '{"id":"x","revision":1e999}']) {
     s.docs.set('x', bad);
-    const out = await s.saveIfRevision('x', null, '{"id":"x","revision":0,"body":"CLOBBER"}', sum);
+    const out = await s.saveIfVersion('x', null, '{"id":"x","revision":0,"body":"CLOBBER"}', sum);
     console.log(`  stored=${JSON.stringify(bad).padEnd(34)} expected=null -> ok:${out.ok}`);
-    ok(`a record with no readable revision is not overwritten by an expect-absent write (${bad.slice(0, 18)})`,
-       out.ok === false, 'revisionOf() returned null and null === null passed the compare');
+    ok(`a corrupt record is not overwritten by an expect-absent write (${bad.slice(0, 18)})`,
+       out.ok === false, 'the record exists, so expectedVersion:null must not match it');
   }
   // And the apps/web IndexedDB port makes the identical comparison, verbatim:
   const web = fs.readFileSync(new URL('../apps/web/src/ports/storage.ts', import.meta.url), 'utf8');
-  const same = /existing === undefined \? expectedRevision === null : storedRevision === expectedRevision/.test(web);
+  const same = /exists \? storedVersion !== null && storedVersion === expectedVersion : expectedVersion === null/.test(web);
   console.log('  apps/web/src/ports/storage.ts uses the same comparison:', same);
+  ok('apps/web makes the same comparison as the in-memory port', same, 'the two implementations have drifted');
 }
 
 // ---------------------------------------------------------------------------
 line('4. no beforeunload: closing the tab inside the debounce window');
 {
-  const hits = ['beforeunload', 'pagehide', 'visibilitychange'].filter((ev) =>
-    fs.readdirSync(new URL('../apps/web/src/', import.meta.url), { recursive: true })
-      .filter((f) => String(f).endsWith('.tsx') || String(f).endsWith('.ts'))
-      .some((f) => fs.readFileSync(new URL('../apps/web/src/' + f, import.meta.url), 'utf8').includes(ev)));
-  console.log('  unload-ish handlers found in apps/web/src:', hits.length ? hits.join(', ') : 'NONE');
-  ok('an edit inside the 400 ms debounce survives the tab closing', hits.length > 0,
+  // The handlers live in `packages/client/src/store/pageExit.ts` (platform-free, so it is
+  // testable in plain Node) and are registered from `apps/web/src/App.tsx`. Scan both.
+  const roots = ['../apps/web/src/', '../packages/client/src/'];
+  const read = (root) => fs.readdirSync(new URL(root, import.meta.url), { recursive: true })
+    .filter((f) => String(f).endsWith('.tsx') || String(f).endsWith('.ts'))
+    .map((f) => fs.readFileSync(new URL(root + f, import.meta.url), 'utf8'));
+  const sources = roots.flatMap(read);
+  const hits = ['beforeunload', 'pagehide', 'visibilitychange'].filter((ev) => sources.some((s) => s.includes(ev)));
+  const registered = sources.some((s) => /registerPageExit\s*\(\s*\{/.test(s));
+  console.log('  unload-ish handlers found:', hits.length ? hits.join(', ') : 'NONE', '| registered by apps/web:', registered);
+  ok('an edit inside the 400 ms debounce is flushed at the last point the platform offers', hits.length === 3 && registered,
      'nothing flushes or warns on unload, so the last 400 ms of typing is discarded silently');
 }
 
