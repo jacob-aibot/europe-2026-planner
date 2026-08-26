@@ -157,14 +157,31 @@ export function createStore(opts: StoreOptions) {
    * now", which is what an explicit `flush()` asks for.
    */
   async function save(forTripId: string | null = null): Promise<void> {
-    // One store never races ITSELF. Autosave and an explicit `flush()` can both be in
-    // flight at once, and before the port became atomic that was invisible: the second
-    // save read storage from before the first one's write, compared its stale snapshot
-    // against a stale expectation, and agreed with itself. `saveIfVersion` refuses that
-    // — correctly — so the overlap has to stop happening rather than be tolerated.
-    // Chaining also means each attempt reads `savedVersion` *after* the previous one has
-    // settled, which is the only point at which it is true.
-    const run = saving.catch(() => {}).then(() => attemptSave(forTripId));
+    return chainOntoSaving(() => attemptSave(forTripId));
+  }
+
+  /**
+   * **The only place `saving` is ever assigned.** Every write path queues here.
+   *
+   * One store never races ITSELF. Autosave and an explicit `flush()` can both be in
+   * flight at once, and before the port became atomic that was invisible: the second
+   * save read storage from before the first one's write, compared its stale snapshot
+   * against a stale expectation, and agreed with itself. `saveIfVersion` refuses that
+   * — correctly — so the overlap has to stop happening rather than be tolerated.
+   * Chaining also means each attempt reads `savedVersion` *after* the previous one has
+   * settled, which is the only point at which it is true.
+   *
+   * It is a function rather than three copies of one expression because two of those
+   * copies were written as `saving = (async () => …)()` — an assignment, which *replaces*
+   * the chain instead of extending it — and reopened the self-race in `mergeWithStored`,
+   * the one path a user reaches while a conflict is on screen (QA R3-3). The invariant
+   * now has one home, and a write path can only opt out of it by not calling this.
+   *
+   * `.catch(() => {})` swallows the PREVIOUS link's rejection only, so one failed write
+   * cannot poison the queue; each `work` still reports its own failure for itself.
+   */
+  function chainOntoSaving(work: () => Promise<void>): Promise<void> {
+    const run = saving.catch(() => {}).then(work);
     saving = run;
     return run;
   }
@@ -388,7 +405,8 @@ export function createStore(opts: StoreOptions) {
         // "nothing is stored under this id" — if that stops being true before we commit,
         // the port refuses and the conflict stands rather than clobbering the newcomer.
         set({ ...state, persistence: { ...state.persistence, status: 'saving' } });
-        saving = (async () => {
+        // Queued behind whatever is already in flight — never in parallel with it (R3-3).
+        await chainOntoSaving(async () => {
           try {
             await writeAndSettle(doc, doc, null, null);
           } catch (err) {
@@ -397,8 +415,7 @@ export function createStore(opts: StoreOptions) {
               persistence: { ...state.persistence, status: 'error', lastError: (err as Error).message },
             });
           }
-        })();
-        await saving;
+        });
         return state;
       }
       const ancestor = state.persistence.savedDoc;
@@ -411,7 +428,12 @@ export function createStore(opts: StoreOptions) {
       const remote = core.fromJSON(stored.doc);
       const merged = core.mergeTrips(ancestor, doc, remote);
       set({ ...state, persistence: { ...state.persistence, status: 'saving' } });
-      saving = (async () => {
+      // Queued behind whatever is already in flight — never in parallel with it (R3-3). An
+      // autosave still unsettled when the button was pressed used to run alongside this
+      // write; the merge landed, the orphaned autosave was then refused against its stale
+      // expectation, and the banner read "Not saved — edited elsewhere" over a document that
+      // was fully and correctly saved.
+      await chainOntoSaving(async () => {
         try {
           // The merge is only valid against the exact `remote` we just read, so the write
           // carries **that same version** as its expectation — never one recomputed from
@@ -430,8 +452,7 @@ export function createStore(opts: StoreOptions) {
             persistence: { ...state.persistence, status: 'error', lastError: (err as Error).message },
           });
         }
-      })();
-      await saving;
+      });
       return state;
     },
 
