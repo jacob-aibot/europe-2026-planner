@@ -85,6 +85,16 @@ The engine from the first delivery stands. Five design changes land on top of it
 | 4 | Sample-data redaction as a rule with a test, in `tools/redact.mjs`. | 6.6 |
 | 5 | `closed` is dropped; `syncResolutions` is added; runtime patch allowlists; no coordinates in `Conflict.params`; the export surface is widened and pinned by a set-equality test. | 2.7, 2.1, 2.10 |
 
+### Revision 3 — what QA round 3 changed in the design
+
+Two design changes, both in the persistence layer, both specified in `ARCHITECTURE.md`. Nothing in the
+engine moves.
+
+| # | Change | Closes | § |
+|---|---|---|---|
+| 6 | The compare-and-set fence stops being `Trip.revision` and becomes an opaque, storage-issued `StorageVersion` in the record envelope. `revision` keeps its content-counter meaning and loses the word "monotonic". `StoragePort.saveIfRevision` → `saveIfVersion`; `load()` returns `{doc, version}`; `revisionOf()` is deleted. **R3-1's narrow fix — `undo` synthesising `revision + 1` — is superseded and must not be built.** | R3-1, R3-4 | 2.2a, 4.2, 4.3 |
+| 7 | A pending debounced write is never outlived by its document: the six document-changing paths flush first, a flush that cannot land aborts the transition, and `deleteTrip` of the active trip is the one stated exception. | R3-2 | 4.2 rule 6 |
+
 ### Deliverables
 
 ```
@@ -284,7 +294,19 @@ not decoration.
 - every action dispatches to exactly one core build function; the reducer contains no domain logic `[stated]`
 - `ui` state never appears in a persisted document (assert on the saved bytes) `[stated]`
 - `derived` is recomputed on `doc.revision` change and never read stale `[stated]`
-- undo/redo restores the previous `Trip` exactly, to a depth of 50 `[stated]`
+- undo/redo restores the previous `Trip` exactly, to a depth of 50 — **byte-identical, `revision` included**,
+  because §2.2a makes `revision` content and not a fence `[stated]`
+- **Undo cannot readmit a refused write** (injected fault for §2.2a, QA R3-1). Two stores at the same
+  starting point; A saves; B saves and is refused; **A presses undo and its autosave completes**; then B
+  dispatches another edit and saves. B MUST still be `'conflict'`, B's indicator string MUST NOT be "Saved",
+  and storage MUST contain A's document. As a ceiling: across the whole sequence there is **no moment at
+  which two stores both render "Saved" while holding different documents** — assert both indicator strings
+  and both `doc` values at each step, not just at the end. The same run repeated in Chromium against real
+  IndexedDB (`qa/r3-browser.mjs` is the shape) `[stated]`
+- **`persistence.savedVersion` is only ever assigned from a `StoragePort` result.** Grep the store for
+  assignments to it and assert every one traces to a `load()` or a successful `saveIfVersion()`; **the
+  reducer contains no reference to it at all**, so no `undo`, `redo` or `set()` can move the fence. A
+  criterion on behaviour alone would keep passing the day someone recomputes it from `doc` `[stated]`
 - a failing `StoragePort.save` puts `persistence.status = 'error'` and never drops the edit silently
   `[stated]`
 - **two tabs, one trip, SEQUENTIALLY: the second save is refused, not silently applied.** Tab A saves, tab B
@@ -296,19 +318,32 @@ not decoration.
   and **both** displayed "Saved" (QA R2-1). So this criterion is written so that a sequential
   implementation cannot meet it:
 
-  > Two stores over one `StoragePort`, both holding revision *R*, both editing, and **both writes issued
+  > Two stores over one `StoragePort`, both holding the same `savedVersion`, both editing, and **both writes issued
   > before either is awaited** — `await Promise.all([a.flush(), b.flush()])`, never `await a.flush(); await
   > b.flush()`. Then, asserted on named stores rather than on a count: **exactly one** store's edit is in
   > storage; the winner is `'idle'` and not dirty; the loser is `'conflict'`, is still dirty, still holds
   > its edit in memory, and **its indicator string is not "Saved"**; and `mergeWithStored()` carries the
   > loser's edit through. A run in which both stores agree, or in which neither wins, fails. `[stated]`
 
-  The compare **must** happen inside `StoragePort.saveIfRevision(id, expectedRevision, doc, summary)`,
+  The compare **must** happen inside `StoragePort.saveIfVersion(id, expectedVersion, doc, summary)`,
   atomically with the write. A guard in the client above two awaits does not satisfy this and cannot: the
   port is the only place the two steps can be made indivisible. The port contract carries its own
   criterion, because `apps/mobile`'s SQLite port and Phase 2's `SyncPort` must meet it too — **N
-  concurrent `saveIfRevision` calls at the same expected revision yield exactly one `ok:true`**, and a
-  refusal reports the revision actually found `[stated]`
+  concurrent `saveIfVersion` calls at the same expected version yield exactly one `ok:true`**, and a
+  refusal reports the version actually found `[stated]`
+- **The write fence is an opaque `StorageVersion`, never `Trip.revision`** (§2.2a). Three parts, all on the
+  port, all runnable against the in-memory port in plain Node:
+  1. **Freshness.** Every `ok:true` returns a version not equal to any version that storage has ever
+     returned before, for any id. Assert over 200 writes across 3 ids interleaved with a `delete()` — as a
+     ceiling, **zero repeats**, not "mostly distinct".
+  2. **ABA, injected fault** (QA R3-4): store a document, keep its version, `delete()` the id, write a
+     *different* document under the same id, then attempt the held write. It MUST be refused, and the
+     stored document MUST still be the newcomer's. Run it with the recreated document at the *same*
+     `Trip.revision` as the deleted one — that exact case returned `ok:true` in revision 2.
+  3. **Opacity.** `packages/client` contains no comparison of two `StorageVersion`s other than `===`/`!==`,
+     no arithmetic on one, and no `JSON.parse` of one; and `revisionOf()` no longer exists. Grep-asserted.
+     This is what lets Phase 2 substitute a server `ETag` and Phase 4 a SQLite counter without touching the
+     store `[stated]`
 - **A store does not race itself.** Autosave and an explicit `flush()` overlapping must not put a tab into
   `'conflict'` against its own write — there is no other writer to merge with, so that state is
   unresolvable. Three overlapping `flush()` calls on one store end `'idle'`, with the last edit stored
@@ -323,6 +358,44 @@ not decoration.
   > still in memory, some surface still reaches it, and the indicator does not read "Saved".** Assert the
   > *indicator string the view renders*, not `persistence.status`: a criterion that reads the enum keeps
   > passing when the view stops reading it. `[stated]`
+
+  **Sixth case — the edit's container goes away** (QA R3-2, §4.2 rule 6). The five above all keep the edit
+  in memory. This is the one where the *document* is replaced, closed or deleted while a debounced write is
+  still pending, so there is no memory left to keep it in. It is one click and needs no second tab.
+
+  > **The list is closed and asserted as a ceiling first:** `closeTrip`, `openTrip`, `createTrip`,
+  > `adoptTrip`, `importDoc`, `deleteTrip` are the only store methods that assign `state.doc` to a
+  > different document. Grep the store and fail the run on a seventh — a path added later without this
+  > guarantee is the same bug again.
+  >
+  > Then, for **each of the six by name**, with an edit dispatched and the debounce timer still pending:
+  > **(a)** the pending write completes *before* the active document changes — after the call returns, the
+  > stored bytes for the outgoing trip contain the edit and `isDirty()` is false; **(b)** if that write is
+  > refused (`'conflict'`) or fails (`'error'`), **the transition does not happen** — the outgoing trip is
+  > still `activeTripId`, still holds the edit in `doc`, the rendered indicator does not read "Saved", and
+  > the rendered text offers both recoveries by name (merge with the stored copy; export this copy). A run
+  > in which the switch proceeds over an unsaved edit **fails, regardless of what is on screen**;
+  > **(c)** `deleteTrip` of the *active* trip is the one exception and is asserted as one: the timer is
+  > cancelled without writing, the transition proceeds, no write reaches the deleted id, and the
+  > confirmation names the trip. `[stated]`
+
+  **Injected fault for the sixth case** (rule 3 above): dispatch an edit and call `closeTrip()` inside the
+  debounce window **with the real scheduler and real timers, not the manual one** — `qa/r3-loss.mjs` is the
+  shape, and the manual scheduler is precisely what let this through. Storage MUST contain the edit and
+  `isDirty()` MUST be false. Repeat with `openTrip` to a second trip and assert **trip A's** stored bytes,
+  not trip B's — revision 2's pending write was executed against whatever `state.doc` had become. Then
+  repeat both with a `StoragePort` whose `saveIfVersion` refuses, and assert the transition was **refused**.
+  A test that only exercises the manual scheduler does not satisfy this criterion `[stated]`
+
+  **Leaving the page is the same case, with a stated ceiling on what the platform allows.** `apps/web`
+  registers `visibilitychange`→`hidden` and `pagehide` (deduped, both calling `store.flush()`) and a
+  `beforeunload` that calls `preventDefault()` while `isDirty()`. Assert the listeners are registered and
+  that the visibility handler calls `flush()` (jsdom or a spy is enough), plus one Chromium run: type a day
+  title, hide the tab, and find the edit in IndexedDB. **The criterion explicitly does not claim the edit
+  survives an arbitrary tab close** — an unload handler cannot await an asynchronous IndexedDB write, and
+  `pagehide`/`beforeunload` are unreliable on mobile. The guarantee is the in-app one above plus a native
+  "Leave site?" prompt when the user leaves dirty; a test asserting more than that would be asserting a
+  platform behaviour that does not exist `[stated]`
 - **Every pooled stop is reachable from some rendered group.** `poolFor(trip, city)` over `trip.cities`
   plus the catch-all equals `trip.pool.length`, on a brand-new trip with no cities, on a trip whose day
   belongs to no city, and on the reference trip. A pool key that is neither a trip city nor the transit
@@ -352,7 +425,11 @@ reference and different dates (`superseded`, not `duplicate`) · malformed JSON,
 `schemaVersion: 99`, unknown enum values · unicode and emoji names (Vyšehrad, Széchenyi, Jiráskovo náměstí)
 surviving a round-trip · `displayStatus` — assert **nothing un-accepted and non-user ever returns `'own'`** ·
 input immutability after every build function · storage port failures, quota-exceeded, and a corrupted
-document in the library · **a foreign-owned document through every entry point** — `importDoc`, a
+document in the library · **every ordering of an edit, an undo, a redo, a trip switch and a tab close inside
+the 400 ms debounce window, with real timers** — nothing may be lost without the screen saying so, and no
+sequence may advance `savedVersion` without a port result behind it · **a stored record whose envelope
+version is missing** (the pre-§2.2a upcast) and one whose envelope version is a number, an object, or the
+empty string · **a foreign-owned document through every entry point** — `importDoc`, a
 hand-edited stored record, `migrateDoc` from `schemaVersion` 0 — none may yield an unbadged stop ·
 **`copyStopInto` with a source stop that is itself imported** (the credit must point at the trip it was
 copied *from*, not chase the chain) · **`copyStopInto` from a trip into itself** · a copied stop whose

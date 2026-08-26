@@ -26,9 +26,9 @@ cairn/tools/doc-section ARCHITECTURE         # lists the sections and their size
 |---|---|---|---|
 | 0 | Five positions, stated up front | <1k | everyone — read it, it is 20 lines |
 | 1 | Stack decision and the capability checks behind it | 3k | architect. Settled; do not re-litigate |
-| 2 | **Domain model — the builder's contract.** §2.12 `travelRole`, §2.13 geography and §2.14 import/copy are new in revision 2 and are where the Phase 1 rework lives | 12k | builder, breaker |
+| 2 | **Domain model — the builder's contract.** §2.12 `travelRole`, §2.13 geography and §2.14 import/copy are new in revision 2 and are where the Phase 1 rework lives; **§2.2a — `Trip.revision` vs the `StorageVersion` write fence — is new in revision 3 (QA R3-1/R3-4) and is read with §4.2 and §4.3, never alone** | 13k | builder, breaker |
 | 3 | Module boundaries | <1k | builder |
-| 4 | **The Phase 1 client** | 2k | builder |
+| 4 | **The Phase 1 client.** §4.2 rule 6 (a pending write is never outlived by its document) is new in revision 3 — QA R3-2 | 3k | builder |
 | 5 | The four hard subsystems | 1k | breaker; builder from Phase 3 on |
 | 6 | Privacy, authorization, deletion cascade | 2k | breaker, manager; builder for §6.2 |
 | 7 | Explicitly deferred | <1k | anyone about to build something not in the roadmap |
@@ -38,7 +38,7 @@ crosses a section boundary. Otherwise this table is the contract.
 
 ---
 
-## 0. Five positions, stated up front
+## 0. Six positions, stated up front
 
 1. **The brief's two hard constraints hold, and one is worse than the brief says.** They force a native
    shell for pillars 4 and 5 — not a native-first architecture. Jacob has confirmed the end state:
@@ -57,6 +57,12 @@ crosses a section boundary. Otherwise this table is the contract.
    warning rather than asserting a defect, and every rule ships with an **injected-fault criterion** —
    the exact fault it exists to catch, and the exact output it must produce. `ROADMAP.md` "How a criterion
    is written".
+6. **A property of the document may never fence writes to a resource, and no edit may outlive its own
+   container.** `Trip.revision` counts content and is rewound by undo and asserted by any imported file;
+   the compare-and-set token is a separate opaque `StorageVersion` that only storage issues and nothing
+   above the port can forge. Separately, a debounced write is flushed before the document it belongs to is
+   replaced, and if it cannot land, the switch does not happen. Added after QA round 3 (R3-1, R3-2, R3-4)
+   found both halves of this by pressing Ctrl-Z and by clicking a logo. §2.2a, §4.2 rules 4 and 6.
 
 ---
 
@@ -215,7 +221,7 @@ type Trip = {
   places: Place[];               // the map-pin superset — generalisation of CITY_PLACES
   bookings: Booking[];
   resolutions: ConflictResolution[];
-  revision: number;              // monotonic; bumped by every build function
+  revision: number;              // CONTENT revision. Bumped by every build function. NOT a write fence — §2.2a
   schemaVersion: 1;
 };
 
@@ -292,13 +298,94 @@ Server-authoritative vs client-local:
 | Entity | Authority | Note |
 |---|---|---|
 | `User`, `Friendship`, `TripShare`, `TripMember` | **Server only.** | Permissions are not enforceable client-side. Clients cache read-only and MUST revalidate. |
-| `Trip`, `Day`, `Stop`, `Place`, `Booking` | Server-authoritative from Phase 2; client-replicated and offline-editable. In Phase 1 the client *is* the authority. | Last-writer-wins per stop with a revision guard. |
+| `Trip`, `Day`, `Stop`, `Place`, `Booking` | Server-authoritative from Phase 2; client-replicated and offline-editable. In Phase 1 the client *is* the authority. | Last-writer-wins per stop behind the **storage-version guard** — §2.2a, not `Trip.revision`. |
 | `Ticket` bytes | Server object storage, private bucket, keyed `trip/{tripId}/…` | Bundled tickets are repo files today; that pattern survives as "an asset we host". |
 | `Conflict` | **Derived. Never stored.** | Only `ConflictResolution` is stored. §2.7. |
 | `Leg`, cost roll-ups, clusters, `CITY_RANGE` | **Derived. Never stored.** | §2.5. |
 | `MailAccount`, `IngestCandidate` | Server only. | §5.1. |
 | `LocationFix`, `LocationSegment`, `PhotoAsset` | **Device only. No server table exists.** | §6.1. |
 | `SharedTrace` | Server, opt-in per day. | The only location data ever transmitted. |
+
+### 2.2a `Trip.revision` is a content counter. The write fence is a separate opaque `StorageVersion`
+
+Revision 2 used one number for two jobs and they are not the same job. QA R3-1 is the bill: `undo()` restores
+a previously captured `Trip` — `revision` and all — that snapshot gets autosaved, the stored revision moves
+*backwards*, and a revision the compare-and-set guard had already spent on refusing another tab is re-issued
+to different content. The refused tab's next keystroke passes the compare and lands. Both tabs then display
+"Saved" over different documents, which is the R2-1 symptom sentence verbatim. R3-4 is the same root defect
+seen from the other side: a bare per-document counter cannot distinguish "this document, unchanged" from "a
+different document that happens to sit on the same number" after a delete and recreate under the same id.
+
+The mistake was not the counter. It was asking a **property of the document** to fence **writes to a
+resource**. Those are split, permanently:
+
+**1. `Trip.revision` — content revision. Semantics unchanged, wording corrected.** Bumped by every build
+function. Restored verbatim by undo/redo, because a snapshot restore is supposed to reproduce the document
+exactly. It keys the derived cache (§4.2 rule 3) and drives the dirty indicator. The invariant that is
+actually true and actually load-bearing is:
+
+> **Non-decreasing along a chain of build-function applications, and within one document in one store, equal
+> `revision` implies identical content.** Snapshot undo/redo replay earlier values, so the sequence a store
+> *observes* is not monotonic. A revision from another store, another device, an imported file or a
+> hand-edited record carries no ordering meaning at all.
+
+"Monotonic" in revision 2 was a claim about a number any client can rewind and any file can assert. It is
+struck. **`Trip.revision` MUST NOT be used as a compare-and-set token, an ETag, a sync cursor, or evidence
+that one document is newer than another,** anywhere, in any phase.
+
+**2. `StorageVersion` — the write fence. Opaque, storage-issued, outside the document.**
+
+```ts
+type StorageVersion = string;                              // opaque. Compared for EQUALITY only.
+type StoredDoc = { doc: TripDoc; version: StorageVersion }; // what load() returns
+```
+
+Four rules define it, and they are the entire contract:
+
+1. **Storage issues it, on every successful write, inside the same atomic step as the write.** Nothing above
+   the port ever computes, derives, increments or forges one. The client's only sources are `load()` and a
+   successful `saveIfVersion()`.
+2. **It never repeats within one storage, ever** — not after a `delete()`, not after the record is recreated
+   under the same id, not after the whole database is recreated. This is what closes R3-4's ABA.
+3. **It is opaque and equality-only.** No ordering, no arithmetic, no parsing, no inference of recency. This
+   is the discipline that lets an HTTP `ETag`, a Postgres `xmin` and a SQLite counter all be dropped in
+   without touching a line above the port.
+4. **It is not part of `Trip`.** It lives in the storage record's envelope beside the serialized document,
+   never inside it. `toJSON`/`fromJSON` round-trip is untouched, an exported backup carries no storage state
+   (correct — an export is content), and — the point — no in-memory document operation can rewind it. R3-1 is
+   structurally unreachable rather than fixed.
+
+**The Phase 1 construction.** `version = "${epoch}.${n}"`. `epoch` is minted once when the database is first
+created and persisted with it; `n` is a storage-wide counter, persisted in the same object store and
+incremented inside the same `readwrite` transaction as every successful write. The counter is storage-wide
+rather than per-record so that a deleted-and-recreated id cannot re-enter a number it has already used; the
+epoch is there because clearing site data resets the counter while a tab holding an old token survives, and
+that is the same ABA one level up. `apps/web`'s port mints the epoch with `crypto.randomUUID()` — port code,
+not core or the reducer, so constraint 4 is not engaged. The in-memory port takes the epoch from a
+constructor argument defaulting to a fixed string, so tests stay deterministic and a test can model "two
+different databases" by passing two epochs.
+
+**Records written before this design existed** (they exist in Jacob's IndexedDB) carry no envelope version.
+The port stamps every such record with a fresh version in one `readwrite` transaction at open, once, before
+serving any read — so `load()` stays `readonly` and no code path above the port ever sees a versionless
+record.
+
+**What the fence does not see.** A record edited out of band — devtools, a hand-written IndexedDB entry —
+does not advance the version, so a stale writer will overwrite it. Revision 2's scheme would have caught that
+by accident, if the hand edit happened to change `revision`. This is a deliberate trade and it is the right
+one: the guard's subject is *writes through the port*, and a guard that depends on parsing user-controlled
+bytes is a guard whose refusal behaviour is decided by an attacker's JSON.
+
+**The six cases this has to survive.**
+
+| Case | What happens |
+|---|---|
+| **Two tabs, concurrent** (R2-1) | Both hold `V0`, both issue `saveIfVersion(id,'V0',…)` before either awaits. Inside one atomic step exactly one finds `V0`, writes, and gets back a fresh `V1`; the other finds `V1 ≠ V0` and gets `{ok:false, storedVersion:'V1'}`. Winner `'idle'`, loser `'conflict'` with its edit in memory and an indicator that does not read "Saved". Unchanged behaviour; the token is simply no longer forgeable. |
+| **Undo / redo** (R3-1) | The reducer restores the snapshot verbatim, `revision` and all, and **does not touch `persistence.savedVersion`** — that field is bookkeeping about *storage*, not about the document. The autosave that follows therefore still expects whatever storage last agreed with this store. A tab already refused still expects `V0` and is refused again; a tab in good standing writes its undone content forward and legitimately says "Saved", because that content really is in storage. The narrow client fix R3-1 proposes — making `undo` synthesise `revision + 1` — is **superseded and MUST NOT be built**: it would make the counter look like a version while an imported file could still assert any number it liked. |
+| **Merge** (`mergeWithStored`) | `load()` returns `{doc, version}`. The merge is only valid against that exact `remote`, so the merged write carries **that same `version`** as its expectation. A third writer landing in between moves the version, the port refuses, the conflict stands unmerged and the edit stays in memory. On success the merged write mints a new version, which becomes `savedVersion`, and `baseDoc` becomes the merged document. The deleted-trip branch expects `null` — "nothing is stored under this id" — so a newcomer appearing in the gap is refused rather than clobbered. (This reinforces rather than replaces the R3-3 fix: the merged write must go through the store's own save chain, because an expectation computed before an in-flight autosave settles is stale by construction.) |
+| **Delete then recreate under one id** (R3-4, ABA) | `delete()` removes the record; the counter does not rewind. The recreated record gets a strictly fresh version, so a writer holding the dead record's version matches nothing and is refused. `importDoc`'s "keep the original id when it is free" path — the export → delete → restore sequence — is therefore safe by construction, and so is the within-lineage recycle R3-1 exploited. One mechanism, both findings. |
+| **Phase 2, server-authoritative** | The token becomes server-issued: an `ETag` on the trip resource, `If-Match` on the write, or a `version` column with `UPDATE … WHERE version = $expected`. Because the client only ever compares for equality and only ever obtains a token from a port result, **nothing above the port changes** — same `persistence.savedVersion`, same refusal → `'conflict'`, same `mergeWithStored`. A synced device's local record carries **two** envelope fields, and they are never conflated: `version` fences local writers (two tabs on one device) and `serverVersion` records the last version the server acknowledged, fencing the sync push. Two fences over two resources. Phase 2 adds a field; it does not redesign this. |
+| **Phase 4, `apps/mobile` over SQLite** | Identical contract, no SQLite-specific concept. `UPDATE trips SET doc=?,summary=?,version=? WHERE id=? AND version=?` (or an insert guarded on absence when the expectation is `null`) inside one `BEGIN IMMEDIATE` transaction, with `changes() === 0` meaning refused; re-read and return `storedVersion`. The counter is a one-row `meta` table bumped in the same transaction. `expo-sqlite` exposes `withExclusiveTransactionAsync()` for exactly this, and `BEGIN IMMEDIATE` is the documented way to avoid a mid-transaction `SQLITE_BUSY` — *verified against Expo's SQLite docs and expo/expo#13552, but the isolation actually delivered across two JS contexts must be re-verified on a device before Phase 4 ships.* The token being an opaque **string** rather than a number is what makes all three backings free. |
 
 ### 2.3 Position: days are stored; stop→day is an explicit edge
 
@@ -964,11 +1051,20 @@ type AppState = {
   derived: DerivedCache;       // legs, roll-ups, clusters, conflicts, issues — keyed by doc.revision
   ui: UiState;                 // activeDay, activeCity, mapScope, selection, panels — NEVER in the doc
   history: { past: Trip[]; future: Trip[]; limit: 50 };
-  persistence: { savedRevision: number; status: 'idle'|'saving'|'error'; lastError?: string };
+  persistence: {
+    savedRevision: number;                 // content bookkeeping: drives the dirty indicator
+    savedVersion: StorageVersion | null;   // the WRITE FENCE — §2.2a. `null` = nothing stored yet.
+    status: 'idle'|'saving'|'error'|'conflict'; lastError?: string;
+  };
 };
 ```
 
-Five rules, each of which exists because of a specific failure:
+**`savedVersion` is assigned from a port result and from nowhere else** — `load()`'s version, or a successful
+`saveIfVersion()`'s. It is never computed from the document, never copied out of `Trip`, and **never touched
+by the reducer**, including by `undo`/`redo`. That one sentence is what makes R3-1 structurally unreachable:
+no in-memory document operation can advance or rewind the fence.
+
+Six rules, each of which exists because of a specific failure:
 
 1. **Every mutation is `dispatch(action)`, and every action maps 1:1 onto a core build function.** The
    reducer holds no domain logic — it is `doc = core[action.fn](doc, ...args)` plus history and persistence
@@ -983,9 +1079,10 @@ Five rules, each of which exists because of a specific failure:
 4. **Autosave** writes the whole document, debounced 400 ms. `savedRevision` drives the dirty indicator.
    A failed write puts `persistence.status = 'error'` and says so on screen; it never fails silently.
    **The write is compare-and-set, and the compare happens inside the port.** `StoragePort` exposes
-   `saveIfRevision(id, expectedRevision, doc, summary)` and nothing else that writes: the comparison and
+   `saveIfVersion(id, expectedVersion, doc, summary)` and nothing else that writes: the comparison and
    the write are one indivisible step (one IndexedDB `readwrite` transaction; one synchronous block in the
-   in-memory port). If the stored revision has moved, the write is refused, `status` becomes `'conflict'`,
+   in-memory port). The expectation is `persistence.savedVersion` — the opaque storage token of §2.2a, **not
+   `doc.revision`**. If the stored version has moved, the write is refused, `status` becomes `'conflict'`,
    and the indicator says so. **A tab whose write was refused MUST NOT display "Saved."**
 
    It is worth being explicit about why the compare cannot live in the store, because the first fix put it
@@ -999,15 +1096,64 @@ Five rules, each of which exists because of a specific failure:
    explicit `flush()` cannot overlap. A tab that conflicts with itself has no other writer to merge with,
    which makes it an unresolvable state rather than a recoverable one.
 5. **Undo/redo is snapshot-based** over the immutable `Trip`, limit 50. Structural sharing makes this cheap.
+   The restored snapshot is byte-identical to the document it captured, `revision` included; it carries no
+   authority over `savedVersion` (rule 4, §2.2a).
+6. **A pending write is never outlived by its document.** The five NO-SILENT-LOSS cases the criterion
+   enumerated all keep the edit in memory; QA R3-2 found the sixth, where the edit's *container* goes away —
+   a 400 ms debounced write is still pending and the active document is replaced, closed or deleted, so the
+   timer fires against a document that is no longer there and the edit is gone with nothing on screen. One
+   click, no second tab, inside a window the app chose. Three rules close it:
+
+   **6a. Every transition that changes the active document flushes first.** `closeTrip`, `openTrip`,
+   `createTrip`, `adoptTrip`, `importDoc`, `deleteTrip` — that is the complete list, and it is a **closed
+   list**: a seventh path that assigns `state.doc` is a defect. Each begins with `await flush()`, which
+   cancels the pending timer and awaits the write.
+
+   **6b. If the flush cannot succeed, the transition does not happen.** A refusal (`'conflict'`) or a storage
+   failure (`'error'`) aborts the switch: the old document stays active, still holds the edit, the indicator
+   does not read "Saved", and the screen names the two things the user can actually do — merge with the
+   stored copy, or export this copy. *Discarding the edit with a notice would satisfy the letter of "the app
+   says so" and violate the product: this is a local-first, single-owner app whose stated conventions are
+   that the user's content is authoritative and that conflicts are surfaced rather than resolved by guessing.
+   Blocking is only tolerable because it is rare — it fires when a write genuinely cannot land, not on every
+   navigation, which is why "flush" and not "prompt" is the default path.*
+
+   **6c. `deleteTrip` of the active trip is the one exception, and it is explicit.** The pending timer is
+   cancelled *without* writing and the transition proceeds — the user asked for that document to be
+   destroyed, and 6b would otherwise make a conflicted trip undeletable. The delete confirmation names the
+   trip. (A stray timer surviving a delete would be harmless anyway: its expectation matches no record.)
+
+   Belt and braces, because a timer that fires late must not be able to hurt anything: **a scheduled save
+   captures the trip id it was scheduled for**, and if `state.doc` is no longer that trip when it fires, it
+   is dropped rather than retargeted at whatever is now open. Revision 2's `attemptSave` read `state.doc` at
+   execution time, which is how trip A's pending write came to be executed against trip B.
+
+   **Leaving the page is the same case, and the platform will not fully cooperate.** `apps/web` registers
+   `visibilitychange` → `hidden` *and* `pagehide` (deduped) and calls `store.flush()` from both, and
+   registers a `beforeunload` handler that calls `preventDefault()` while `isDirty()` so the browser shows
+   its own "Leave site?" prompt. Verified, and stated as the limitation it is: `hidden` is the last state
+   transition a page can reliably observe, `pagehide`/`beforeunload`/`unload` are *not* reliable on mobile,
+   Safari does not always fire `visibilitychange` when the user clicks a link away, and the `beforeunload`
+   dialog requires sticky activation — satisfied here by construction, since the user typed the edit.
+   Crucially, an unload handler **cannot await an asynchronous IndexedDB write**, so the page-exit guarantee
+   is "flushed at the last point the platform reliably offers, plus a native prompt if the user leaves
+   dirty" — nothing stronger, and the criterion says so rather than pretending. The real guarantee is 6a/6b,
+   which covers every in-app transition and needs no cooperation from the browser at all.
 
 ### 4.3 Ports — the honesty-to-native mechanism
 
 ```ts
-interface StoragePort { listTrips(): Promise<TripSummaryRow[]>; load(id): Promise<TripDoc|null>;
-                        // ATOMIC compare-and-set. `expectedRevision: null` means "nothing stored yet".
-                        // A refusal is `{ok:false, storedRevision}`, not a throw — storage is healthy.
-                        saveIfRevision(id, expectedRevision: number|null, doc: TripDoc,
-                                       summary: TripSummaryRow): Promise<SaveOutcome>;
+type StorageVersion = string;                               // opaque; equality only — §2.2a
+type StoredDoc      = { doc: TripDoc; version: StorageVersion };
+type SaveOutcome    = { ok: true;  version: StorageVersion }        // the version now in storage
+                    | { ok: false; storedVersion: StorageVersion | null };  // null = nothing stored
+
+interface StoragePort { listTrips(): Promise<TripSummaryRow[]>; load(id): Promise<StoredDoc|null>;
+                        // ATOMIC compare-and-set. `expectedVersion: null` means "nothing stored yet".
+                        // A refusal is `{ok:false, storedVersion}`, not a throw — storage is healthy.
+                        // MUST mint a fresh, never-reused version on every success (§2.2a rules 1-2).
+                        saveIfVersion(id, expectedVersion: StorageVersion|null, doc: TripDoc,
+                                      summary: TripSummaryRow): Promise<SaveOutcome>;
                         delete(id): Promise<void> }
 interface FilePort    { exportDoc(name: string, bytes: Uint8Array): Promise<void>;
                         importDoc(): Promise<{ name: string; bytes: Uint8Array } | null> }
@@ -1016,6 +1162,11 @@ interface MapPort     { mount(el, points, bounds): MapHandle; refit(handle, boun
 interface ClockPort   { today(): IsoDate }
 interface IdPort      { newId(): string }
 ```
+
+**The port no longer parses the document to run the guard.** `revisionOf(doc)` is deleted: the fence is the
+envelope version, so a truncated or corrupt record no longer decides its own refusal behaviour. Every
+implementation is also responsible for the one-time upcast of §2.2a — stamp a fresh version onto any record
+that lacks one, at open, before serving a read.
 
 `apps/web` implements them with IndexedDB, download + file input (the File System Access API is Chromium-only
 — §1.1), and Leaflet. `apps/mobile` implements the same interfaces later with `expo-sqlite`,
@@ -1325,7 +1476,7 @@ bundle, and the dependency-direction test of §3 asserts it.
   query over provenance, not a new entity.
 - **The `closed` rule.** Dropped from Phase 1 (§2.7): no data path produces `Place.hours`, so it cannot
   fire. It returns in the phase that has an hours source — Phase 3 at the earliest.
-- **Real-time collaboration / CRDTs.** Phase 2 is last-writer-wins per stop with a revision guard. Two people
+- **Real-time collaboration / CRDTs.** Phase 2 is last-writer-wins per stop behind the §2.2a version guard. Two people
   editing one stop at once is not a problem tens of users have.
 - **Sub-maps of a single stop** (`LOKRUM_PLACES`/`LOKRUM_LOOP`). A curated walking loop *inside* one stop is
   a second nesting level in the model; it stays hand-authored in the old app until something else needs it.
