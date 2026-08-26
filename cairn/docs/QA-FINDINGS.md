@@ -1,4 +1,19 @@
-# Cairn — QA findings, Phase 1 **rounds 2, 3 and 4**
+# Cairn — QA findings, Phase 1 **rounds 2, 3, 4 and 5**
+
+> **Status (as of `master` @ `c3c79b3`, re-verified 2026-08-26 — round 5):**
+>
+> | | |
+> |---|---|
+> | **Fixed and verified closed in round 5** | **R4-1** — `dirty()` is now reference identity against `persistence.savedDoc`; `savedRevision` is gone from `AppState`; the undo-then-a-different-edit sequence writes, in Node and in real Chromium (`qa/r4-browser.mjs` 4/4). **R4-2** — the port mints 16 fresh CSPRNG bytes per write, the `epoch`/counter/`meta` store are gone, and a token from a destroyed database is refused by its replacement (`qa/r4-epoch.mjs` 6/6). **The two other F2 instances** — `derived.ts` re-keys on `(document identity, today)` and `DayMap.tsx` depends on the cache object; both verified, and neither moves the bug elsewhere. **The R2-11 ruling's first half** — `acceptCandidate`/`rejectCandidate`/`copyStopInto` throw on `null`/`undefined`/`''` over the full ref matrix, with the input trip byte-identical and `revision` unmoved after every throw. |
+> | **NEW in round 5 — BLOCKER** | **R5-1** — `flushForTransition()` decides the transition may proceed from `persistence.status` alone, sampled *after* its own flush. An edit dispatched while that flush is in flight is silently discarded by five of the six document-changing transitions, `isDirty()` then reads `false` because there is no document left to be dirty about, and the indicator reads "Saved". R4-1's category (a write that is never attempted for a document that differs from storage — §2.2b F1) surviving in the function the F1 fix was written for. Reproduced deterministically in Node **and 5/5 in real Chromium** with two clicks. |
+> | **NEW in round 5 — MAJOR** | **R5-2** — `validateTrip`'s `accepted_by_non_member` excludes a falsy actor (`if (!actor \|\| …) return`), so an attributed, `state:'accepted'` record with `actorUserId` of `null`, `undefined` or `''` is never flagged; §2.9's own predicate has three conjuncts and this shape satisfies all three. **Classified (b), an implementation defect inside the approved design** — see the classification section. Not import-only: `addStop` copies `StopInit.provenance` verbatim and `accept()` is publicly exported with an unchecked `UserId \| null`, so two public calls mint it. |
+> | **NEW in round 5 — MINOR** | **R5-3** — a store in `'conflict'` with **nothing** unwritten can never leave the trip: every transition re-flushes, is refused again, and aborts. **R5-4** — nothing in `apps/web` re-renders on a date change, so the derived cache's new `today` key is correct but is not consulted across midnight in an idle tab. **R5-5** — `core.accept`/`core.reject` are on the public export surface with `actorUserId: UserId \| null` and no runtime check, which is the R2-11 ruling's gate with a public bypass. |
+> | **Still open, re-verified unchanged by round 5** | **R3-3** (MAJOR, `qa/r3-merge.mjs`, `qa/r3-cas.mjs` A — now **three** bare `saving =` assignments). **R3-6**, **R3-7**, **R3-8**, **R3-9** (MINOR, `qa/r3-pool.mjs`, `qa/r3-cas2.mjs` §5-§7). **R2-6** (`qa/r2-access.mjs`, six malformed `expiresAt` still `canView=true`). **R2-7** (`qa/r2-resolutions.mjs` — nothing in `apps/web` calls `store.syncResolutions()`). **R2-18** (`qa/r2-constraints.mjs`). **R2-9** (`qa/r2-data.mjs`). All re-run this round; none fixed, worsened or masked by `c3c79b3`. |
+> | **Round-5 numbers, run rather than taken on faith** | `npm test` **318 pass / 0 fail**, `npm run typecheck` clean on both projects, at `c3c79b3` — the commit's and BUILD-NOTES' reported numbers are **accurate**. `qa/r4-browser.mjs` 4/4 ok, `qa/r4-epoch.mjs` 6/6 ok, `qa/r2-copy.mjs` 36/0 — all three re-run in Chromium/Node by the tester, matching the builder's report. |
+> | **Probe rot, not a product defect** | `qa/r2-copy2.mjs:86` and `qa/r2-import.mjs:51` crash on `JSON.parse(await storage.load(id))`: `load()` has returned `{doc, version}` since `3a124a2` (§2.2a rule 4). They have not run since round 2. Left as-is — fixing them is not a product change and should not be smuggled into a QA commit. |
+>
+> **The round-4 status note below is superseded by this one** and is kept as the record of what
+> was true at `3a124a2`.
 
 > **Status (as of `master` @ `3a124a2`, re-verified 2026-08-26 — round 4):**
 >
@@ -1022,3 +1037,326 @@ Attacked and did **not** break. Listed so the next reader knows what was tried.
   explicit `indexedDB.deleteDatabase`. The mechanism is identical — the database goes away
   under a live tab — but I could not make Chromium evict on demand, so the *trigger* is
   simulated and the *defect* is not.
+
+---
+
+# Round 5 — verification of `c3c79b3` (ARCHITECTURE §2.2b, the freshness rule)
+
+Tester, 2026-08-26. Attacked `master` @ `c3c79b3`, Node v22.22.2, Chromium over real elapsed
+time. Scope: confirm §2.2b F1/F2/F3 are *implemented* and not merely compiled, hunt regressions
+the builder's own tests cannot catch, re-run every previously-open finding, and classify one
+finding the coordinating session raised that the builder's report did not surface.
+
+**Result: 1 BLOCKER (new) · 1 MAJOR (new) · 3 MINOR (new).** Everything `c3c79b3` claims to
+fix is genuinely fixed and verified independently, including the two Chromium legs. The new
+BLOCKER is the same root cause one step further along the same function.
+
+```bash
+cd cairn && npm run typecheck && npm test        # 318 pass / 0 fail, typecheck clean
+node qa/r5-freshness.mjs   # §1 the dirty oracle across the transitions the builder's walk skips
+                           # §2 every way to fool the three-conjunct skip   §3 the token mint
+                           # §4 the derived cache   §5 the R2-11 ruling   §6 R5-1 (BLOCKER)
+node qa/r4-switch.mjs qa/r3-loss.mjs qa/r3-undo.mjs qa/r3-pool.mjs qa/r3-cas.mjs qa/r3-cas2.mjs
+node qa/r3-merge.mjs qa/r2-copy.mjs qa/r2-access.mjs qa/r2-constraints.mjs qa/r2-resolutions.mjs
+
+npm run web:build && node tools/serve.mjs &
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r5-browser.mjs   # R5-1 in real IndexedDB
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r4-browser.mjs   # R4-1, 4/4 ok
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r4-epoch.mjs     # R4-2, 6/6 ok
+```
+
+## BLOCKER
+
+### R5-1 — an edit typed while a trip switch is flushing is discarded, silently, by five of the six transitions
+
+**Severity: BLOCKER** (silent data loss; ROADMAP Phase 1 F "NO SILENT LOSS", sixth case clause
+(a) — *"after the call returns, the stored bytes for the outgoing trip contain the edit and
+`isDirty()` is false"* — and §2.2b F1's check, *"enumerate every branch that can cause
+`saveIfVersion` not to be called for a document that differs from what storage holds"*).
+**`packages/client/src/store/store.ts:263`** (`flushForTransition`'s return), with
+**`:223`** (`if (!stillOurs) scheduleSave()`) and **`:159`/`:161`** (`attemptSave`'s two early
+returns) supplying the mechanism.
+**Routing: builder.** The design already says what must be true here; the code samples the
+wrong fact to decide it. No new architectural judgement is required, though the architect may
+want to look at the second-order question in "What the fix is not", below.
+
+**The sequence, which is two clicks.** With trip A open and one unwritten edit pending:
+
+1. The user clicks "Cairn" (`closeTrip`). `flushForTransition()` cancels the debounce timer,
+   sees `dirty()`, and awaits `save()`. `attemptSave` captures `doc = state.doc` (call it
+   *D2*), sets `status:'saving'` and hands *D2* to `saveIfVersion`.
+2. **While that write is awaiting IndexedDB, the user nudges a stop with ↓.** One dispatch.
+   `state.doc` becomes *D3*. BUILD-NOTES §6 names this window itself — *"there is no spinner
+   or disabled state while it does — the button just takes as long as the write takes"* — so
+   every control in the app is live for the whole of the write.
+3. The write of *D2* succeeds. `writeAndSettle` correctly notices `stillOurs === false`, sets
+   `savedDoc = D2` (which is true: that is what storage holds), leaves `state.doc` at *D3*,
+   and re-arms the 400 ms debounce for *D3*.
+4. Control returns to `flushForTransition`, which reads **`persistence.status`** — `'idle'` —
+   and returns `true`. It never re-asks `dirty()`, which at that instant is `true`.
+5. `closeTrip` proceeds: `set({...initialState(), library})`. `state.doc` becomes `null` and
+   the re-armed timer is orphaned. When it fires, `attemptSave` hits `if (!doc) return`
+   (`:159`) and drops the write. For `openTrip` it hits `if (forTripId !== null && doc.id !==
+   forTripId) return` (`:161`) instead. Same outcome.
+6. `isDirty()` is now `false` — not because the edit was written but because
+   `!!state.doc` is `false`. Every downstream consumer (the save indicator, the `beforeunload`
+   gate) reads clean. Nothing appears on screen.
+
+**Root cause, stated once.** `flushForTransition` exists to guarantee "a pending write is
+never outlived by its document" (§4.2 rule 6a) and it verifies that guarantee by checking a
+*status enum sampled after the fact* rather than by checking the *thing the guarantee is
+about*. That is R4-1's error — a fact about a resource read somewhere other than where the
+resource stated it (§2.2b's principle) — surviving inside the very function §2.2b F1 was
+written to fix. F1's check names the branch: `attemptSave`'s two early returns cause
+`saveIfVersion` not to be called for a document that differs from what storage holds, and
+neither is justified by F2 nor is the one stated exception (rule 6c).
+
+**It is not the debounce timer.** With `autosave:false` — no timer exists to orphan — the edit
+is lost identically. The timer is a symptom; the decision at `:263` is the defect. Verified:
+`qa/r5-freshness.mjs` §6 runs both.
+
+**Scope, measured not reasoned.** Five of the six transitions lose it: `closeTrip`,
+`openTrip`, `createTrip`, `adoptTrip`, `importDoc`. `deleteTrip(otherId)` is **safe** — it
+does not replace `state.doc`, so the re-armed timer still finds its document.
+`deleteTrip(activeId)` losing it is §4.2 rule 6c's stated exception and is asserted as one.
+
+**Reproduction.**
+
+```bash
+node qa/r5-freshness.mjs                                           # §6 — five FAILs, one per transition
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r5-browser.mjs   # real Chromium, real IndexedDB
+```
+
+`qa/r5-freshness.mjs` §6 is deterministic: real timers, the real debounce, and a storage port
+that parks the write inside `saveIfVersion` — which is what a real IndexedDB write does, only
+for longer. `qa/r5-browser.mjs` is the same sequence through the shipped UI and reproduces at
+**5 delays out of 5** (0, 1, 2, 4 and 8 ms between the brand click and the ↓ click):
+
+```
+delay=0ms · edit THREE reached the UI = true · storage ends up holding what the user last saw = false
+      position 4 — last seen "Astronomical Clock", storage holds "Lunch, Old Town"
+   anything on screen about an unsaved edit = NOTHING
+```
+
+**What the fix is not.** "Cancel the timer harder" does not touch it — the timer is not the
+carrier. Re-asserting `!dirty()` before returning `true`, and flushing again while dirty (with
+a bound, because a user typing fast can keep it dirty forever), is the shape that follows from
+F1. If the builder would rather close the window than drain it — disable the app while a
+transition's flush is in flight, which BUILD-NOTES §6 already suggests for unrelated reasons —
+that is a UI decision worth one line from the architect, not a redesign. Either way the
+criterion the fix must satisfy already exists: ROADMAP F's sixth case, clause (a), asserted on
+**bytes**.
+
+## MAJOR
+
+### R5-2 — `accepted_by_non_member` exempts a missing actor, so an "accepted by nobody" credited record validates clean
+
+**Severity: MAJOR** (a validation rule that does not fire on a shape its own specification
+covers; no Phase 1 data loss and no cross-user leak, because Phase 1 has one user and
+`attribution()` still names the source).
+**`packages/core/src/validate/validateTrip.ts:57`** — `if (!actor || memberIds.has(actor)) return;`
+**Routing: builder.** Classification **(b)** — see below; the design already answers this and
+the fix is one operator.
+
+The rule's subject and predicate are stated in ARCHITECTURE §2.9: *"a record with a non-null
+`attribution()` whose `provenance.state === 'accepted'` and whose `provenance.actorUserId` is
+**not a member of the trip**"*. A `source:'friend'` stop with a valid `origin`,
+`state:'accepted'`, `acceptedAt` set and `actorUserId` of `null`, `undefined` **or `''`**
+satisfies all three conjuncts — `members(trip)` is `{trip.ownerId}` in Phase 1 and contains
+none of those three — and produces **zero** issues. `displayStatus()` returns `'own'` and
+`needsBadge()` is `false`, so the record renders as the user's own plan with nobody nameable
+as having accepted it.
+
+**Reproduction:** `node qa/r5-freshness.mjs` §5.3–§5.7 (eight FAILs).
+
+```
+FAIL actorUserId=null:      issues added: [none] · displayStatus=own · attribution=true
+FAIL actorUserId=undefined: issues added: [none] · displayStatus=own · attribution=true
+FAIL actorUserId="":        issues added: [none] · displayStatus=own · attribution=true
+FAIL fromJSON REJECTS an accepted, credited record with no actor — it parsed clean
+FAIL store.importDoc refuses a backup carrying the shape — it restored clean into the library
+FAIL core.accept(p, at, null) — it produced state=accepted actorUserId=null, displayStatus=own
+FAIL the shape cannot be minted through the public build API without a hand edit or an import
+FAIL ...nor through the client store's own addStop action
+```
+
+## The classification the coordinating session asked for: **(b)**, not (a) and not (c)
+
+*(a) a Phase 1 criterion violation · (b) an implementation defect inside the approved design ·
+(c) a genuinely ambiguous edge case needing a design decision.* **It is (b)**, and here is why,
+tied to the text rather than to a preference.
+
+**1. §2.9's predicate already answers it, conjunct for conjunct.** The rule is defined as
+*"a record with a non-null `attribution()` whose `provenance.state === 'accepted'` and whose
+`provenance.actorUserId` is not a member of the trip"*, followed immediately by *"In Phase 1
+`members(trip) === {trip.ownerId}`"*. `trip.ownerId` is a non-null string (`LOCAL_OWNER` in
+Phase 1), so `null ∉ members(trip)` for every trip that exists. Applying the sentence
+mechanically produces the issue. The implementation adds a **fourth, unstated conjunct** — the
+actor must be truthy — and that conjunct appears in no sentence of §2.9, §2.14 or ROADMAP.
+
+**2. The one null-actor exemption the design states is scoped by `attribution`, not by
+nullness.** §2.14, *"Explicitly out of scope in Phase 1, named rather than left silent"*:
+`source:'user'` records *"carry `actorUserId: null` today … They assert no acceptance of anyone
+else's content, so nothing is being presented as the user's own that was not; `attribution()`
+on them is `null`, **which puts them outside the invariant's subject**."* The design named the
+exact null-actor case that stays legal and gave the reason — it is unattributed. The reason
+does not extend to an attributed record; it is the sentence that distinguishes the two.
+
+**3. The `''` case removes the last ambiguity.** `!actor` also exempts `actorUserId: ''`, and
+`''` is a *present* value of type `UserId`. §2.14's own `requireActor` classifies `''` as a
+missing actor and throws on it at construction, so the design already holds a position on it.
+There is no reading of *"wrong (non-member)"* under which `'' ∈ members(trip)`. Whatever one
+thinks about whether "no actor at all" is a *kind* of wrong actor, `''` is unarguably a
+non-member, and the implementation lets it through. Verified above.
+
+**4. §2.14's prose and §2.9's formula point the same way, which is what forecloses (c).**
+§2.14 clause 2 reads *"**A wrong (non-member) actor** is `validateTrip`'s
+`accepted_by_non_member`, §2.9"*. The parenthetical *defines* "wrong" as "non-member" and the
+clause *delegates to §2.9* for the predicate. Two texts agreeing is not two texts in conflict.
+(c) requires the design to be silent or self-contradictory on this question; it is neither.
+
+**5. §2.9's stated reason for making it an `Issue` rather than a throw transfers verbatim.**
+*"It is an `Issue` and not a throw because a wrong actor arrives inside a document (a restored
+backup, a hand-edited record, a Phase 2 sync), where throwing means an unopenable trip."* A
+null actor arrives by exactly those three routes: `fromJSON.ts:106` parses `actorUserId` as
+`strOrNull`, and `store.importDoc` restores such a document into the library as a live trip —
+both verified. §2.14's framing — *"The invariant is a claim about which documents may exist,
+so it is enforced at the two places documents come from"* — makes catching documents that
+could not be freshly created but can arrive from outside explicitly `validateTrip`'s job.
+
+**6. And it is not import-only, which removes the strongest argument for leniency.** The
+premise that the throw at construction is the only gate is **false in the shipped code**:
+`build/stops.ts:71` and `:91` copy `StopInit.provenance` verbatim, and `accept` is on the
+public export surface (`index.ts:21`) with `actorUserId: UserId | null`, unchecked. Two public
+calls mint the shape with no hand edit and no import, and the same two are reachable from the
+client as `store.dispatch({type:'addStop', stop:{provenance}})`:
+
+```js
+core.addStop(trip, placement, { name, category,
+  provenance: core.accept(core.friendImport(today, {friendUserId, sourceTripId, sourceStopId}), today, null) }, ctx)
+// → displayStatus=own · needsBadge=false · attribution=non-null · accepted_by_non_member=0
+```
+
+**7. ROADMAP has already ruled on the substance, so (c) would be relitigating it.** ROADMAP
+§D: *"That does not make the behaviour acceptable, and calling it a Phase 2 deferral would be
+wrong … a genuine unmet Phase 1 obligation, mine … **Whether a second user exists is beside the
+point for the null-actor half** — an acceptance with no accepter is a row whose ownership can
+never be established afterwards."* The architect has already decided the null-actor half is in
+scope for Phase 1 and said why. The remedy chosen was criterion 1 (the throw); this finding is
+that criterion 1 is not the only construction path, and criterion 2's predicate as stated in
+§2.9 already covers the remainder.
+
+**Why not (a).** Both `[stated]` criteria in ROADMAP §D pass as literally written, and I ran
+both: the throw fires over the full ref matrix with the input trip byte-identical and
+`revision` unmoved, and the injected fault with `actorUserId:'user:someone-else'` produces
+**exactly one** additional issue with both the actor and the owner in `params`, and zero
+additional issues on the unmodified reference trip. No acceptance-criterion sentence is
+falsified. What is falsified is ARCHITECTURE §2.9's definition of the rule's own predicate —
+and §2 opens with *"This section is the builder's contract. Where it says MUST, the tester will
+check it."* Code that does not implement the spec it was handed is an implementation defect.
+Calling it a criterion violation would be inflating it; calling it ambiguous would be worse.
+
+**The fix, and why it needs no new design decision.** `validate/validateTrip.ts:57`:
+
+```ts
+- if (!actor || memberIds.has(actor)) return;
++ if (actor && memberIds.has(actor)) return;
+```
+
+plus `params: { actorUserId: actor ?? '', … }` and a message that reads sensibly when there is
+no actor. Everything else is already specified: the subject (non-null `attribution()`), the
+level (`error`), the `ref`, the `params` contents, and `members(trip)`. **The ROADMAP ceiling
+survives untouched** — *"zero additional issues on the unmodified reference trip"* — because
+the Europe 2026 reference trip contains **zero attributed records at all**, so no
+`source:'user'` record can be caught by the widened rule. That is measured, not assumed
+(`qa/r5-freshness.mjs` §5.6). The only genuinely open point is the wording of the message when
+there is no actor, which §2.1's *"structured `params` beside the string"* rule already shapes.
+
+**R5-5 is the same ruling's other loose end** and is filed separately below, because it is a
+different file and a different fix.
+
+## MINOR
+
+| id | severity | file:line | defect | repro | routing |
+|---|---|---|---|---|---|
+| **R5-3** | MINOR | `packages/client/src/store/store.ts:257`, `:263` | A store in `'conflict'` that holds **no** unwritten edit can never leave the trip: the three-conjunct skip is disabled by `status !== 'idle'`, so every transition re-flushes, is refused again on the same stale expectation, and aborts. Reachable with **zero edits** — the `visibilitychange`/`pagehide` handlers call `store.flush()` unconditionally, so another tab writing while this one is backgrounded is enough. "Back to all trips" then does nothing at all; only *Merge and save* or deleting the trip gets out. The conflict banner is on screen throughout, and §4.2 rule 6b is written unconditionally, so the **implementation matches the text** — the text has no not-dirty exception. | `node qa/r5-freshness.mjs` §2.4 (`closeTrip is refused even though there is nothing to lose`; `...and openTrip is refused too`) | **architect** (rule 6b's scope), then builder |
+| **R5-4** | MINOR | `apps/web/src/store.ts:40`, `packages/client/src/store/derived.ts:89` | The derived cache's new `today` key is correct — a changed date invalidates it, verified — but nothing in `apps/web` re-renders when the date changes (zero `setInterval`/`setTimeout` outside `ports/file.ts`), so an idle tab open across midnight never consults it. §2.2b's claim that adding `today` *"closes a smaller pre-existing hole"* is true of the cache and not yet true of the screen. | `node qa/r5-freshness.mjs` §4 (`the clock moving invalidates it` — ok) plus `grep -rnE "setInterval\|setTimeout" apps/web/src` (zero hits; the only timer at all is a `requestAnimationFrame` revoking a blob URL in `ports/file.ts:23`) | **builder** (a visibility/interval nudge) or **architect** (scope the claim) |
+| **R5-5** | MINOR | `packages/core/src/model/provenance.ts:75`, `:80`, exported at `packages/core/src/index.ts:21` | `accept(p, at, actorUserId: UserId \| null)` and `reject(...)` are on the public export surface with the nullable parameter and **no** `requireActor` check, so §2.14's *"`actorUserId` stops being `UserId \| null`"* holds for the three named build functions and not for the primitive underneath them. `surface.test.ts:90` justifies the export as *"used by the client for optimistic UI"*; nothing in `packages/client`, `apps/web` or `cli.ts` calls it. Combined with `StopInit.provenance` this is R5-2's construction path. | `node qa/r5-freshness.mjs` §5.5, §5.7 | **builder** (route through `requireActor`, or drop the export) |
+
+## What I attacked and could not break
+
+Every item below is an attack that was **run**, not an area that was skimmed.
+
+- **`dirty()`/`savedDoc` against §2.2b F1/F2.** `savedRevision` is gone from `AppState`
+  entirely; `savedDoc` is assigned in exactly three places and all three are port results or
+  `initialState()` (`writeAndSettle:215`, `openTrip:489`, `reducer.ts:111`); the reducer never
+  names it. The F2 grep is clean: **zero** occurrences of `revision` in a comparison, a
+  dependency array or a memoisation key anywhere in `packages/client/src` or `apps/web/src`
+  (the only two hits are a sample-JSON field and a comment). `core` has no `===` on `revision`
+  at all.
+- **The dirty oracle across the transitions the builder's own 200-step walk never visits.**
+  `dirty.test.ts` walks `dispatch`/`undo`/`redo`/`flush`/`closeTrip`+`openTrip`.
+  `qa/r5-freshness.mjs` §1 adds `mergeWithStored`, `createTrip`, `deleteTrip`, `importDoc` and
+  `syncResolutions` and checks `isDirty()` against the byte oracle at every step: **11/11
+  single-writer checkpoints agree.** The twelfth is the disclosed passively-stale-tab case
+  (BUILD-NOTES §6) and is a different question, not a disagreement.
+- **Fooling the three-conjunct skip.** Undo back to the *identical object* storage holds
+  (clean, correctly, and the oracle agrees); autosave disabled so the skip rests on
+  `doc === savedDoc` alone; a store in `'error'` (self-heals — the retry writes); `openTrip`
+  onto the already-active trip while dirty; `adoptTrip` onto a stored id, which flushes twice
+  and writes once. All correct. §6 is where it finally broke, and it broke **after** the skip,
+  not through it.
+- **The token mint.** 1 200 tokens across 200 memory-port instances with interleaved deletes,
+  zero repeats. 300 000 mints of the shipped `apps/web` construction under a real CSPRNG in one
+  tight loop, **zero collisions**, every token 22 chars of base64url — there is no time
+  component and no counter, so "two mints in the same millisecond" is not a category that
+  exists here. Static: nothing on the path from entering `saveIfVersion` to producing
+  `version` is a closure identifier, no `Date.now`/`Math.random`/`randomUUID`, and the port
+  throws rather than degrading. Opacity: no ordering, arithmetic, `split`, `slice` or
+  `JSON.parse` of a `StorageVersion` above the port; `revisionOf()` is gone; **no test, golden
+  or fixture pins a token literal.**
+- **The derived cache moving the bug elsewhere.** It does not. Identity subsumes `tripId`
+  correctly (two different trips at the same revision recompute); a *different document at the
+  same revision* recomputes, which is the R4-1 shape; the clock invalidates it; both call sites
+  read `ports.clock.today()` inline, so `today` cannot itself go stale in the cache (R5-4 is
+  about the screen, not the cache); and over a walk of dispatch/undo/redo/flush/syncResolutions
+  `getDerived()` **never** returns a cache whose `.doc` disagrees with `state.doc`.
+- **`DayMap.tsx:56`.** The dependency array carries the cache **object** plus `day.id`, `scope`
+  and four bound scalars. Every one of those changes at least as often as `derived.revision`
+  did, and `derived` is a fresh object whenever the document or the date moves, so the new key
+  is strictly more work than the old one and never less — which is what F2's check demands of a
+  replacement.
+- **The R2-11 ruling's throw half.** `null`, `undefined` and `''` throw `TypeError` across
+  `acceptCandidate` × `rejectCandidate` × {day, stop} and across `copyStopInto`, with the input
+  trip **byte-identical** and `revision` unmoved after every throw.
+- **The `accepted_by_non_member` injected fault, exactly as ROADMAP §D words it.** Exactly one
+  additional issue, `level:'error'`, the right `ref`, both the actor and the owner in `params`,
+  `displayStatus()` still `'own'` on the faulted record, and **zero** movement in the reference
+  trip's issue count.
+- **The three Chromium legs the builder reported, re-run by me rather than believed.**
+  `qa/r4-browser.mjs` 4/4 (R4-1's reorder now survives the brand click; `visibilitychange` and
+  `pagehide` both land the edit in IndexedDB). `qa/r4-epoch.mjs` 6/6 (the fence is a
+  22-character token, `meta` is gone, the recreated database issues a token it has never issued,
+  the pre-wipe token is refused, and the screen reads *"Not saved — edited elsewhere"*).
+  `qa/r2-copy.mjs` 36 ok / 0 FAIL.
+- **The sensitive paths (§5, §6).** Phase 1 still ships no ingest and no location code. The
+  `c3c79b3` diff introduces no logging sink, no network call, no `localStorage` and no
+  coordinate-bearing string outside test fixtures; the redaction and bundle-scan tests pass
+  inside the 318.
+- **`cairn-constraints`.** Determinism, zero-dep and no-DOM-in-`packages/client` are unchanged;
+  `qa/r2-constraints.mjs` FAILs exactly the two it FAILed in rounds 2–4 (R2-18's grep scope, and
+  the `@cairn/core` workspace reference that round 4 already ruled is not a runtime dependency).
+- **The read-only boundary.** After a full test run, a web build, seven Chromium sessions and
+  eighteen probe runs, `git status` shows only `cairn/qa/r5-*.mjs`, `cairn/qa/README.md` and
+  this file. Nothing at the repo root moved.
+
+## What I could not test
+
+- **Two devices, a real server, Safari, iOS, Node 24, a real quota wall.** Unchanged from every
+  previous round.
+- **Browser-initiated eviction** as R4-2's trigger, rather than `deleteDatabase`. Unchanged.
+- **`crypto.getRandomValues` over plain HTTP from a LAN address** — BUILD-NOTES flags this as
+  reasoned rather than measured and it still is; `localhost:4173` is a secure context. If the
+  claim were wrong the fence fails closed on every write, which is loud rather than silent.
+- **R5-1 with a *slow* real IndexedDB** (a large trip, a loaded disk). The window I measured in
+  Chromium is a few milliseconds wide; on a phone it is wider, not narrower.

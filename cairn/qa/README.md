@@ -131,3 +131,44 @@ R3-3, R2-6, R2-11 and R2-18 were re-confirmed with the unmodified scripts (`r3-m
 `r2-access.mjs`, `r2-copy.mjs`, `r2-constraints.mjs`) and are unchanged by `3a124a2`.
 `r3-cas2.mjs` probe **3** now passes — R3-5 is closed as a side effect of the fence redesign,
 which the builder's report did not claim.
+
+---
+
+## Round 5 (2026-08-26, `master` @ `c3c79b3`) — verification of the §2.2b freshness rule
+
+Written against the R4-1 / R4-2 / R2-11 delivery. Headless probe runs from `cairn/`:
+
+```bash
+node qa/r5-freshness.mjs   # §1 the dirty oracle over mergeWithStored / createTrip / importDoc /
+                           #    deleteTrip / syncResolutions — the transitions dirty.test.ts's
+                           #    200-step walk never visits
+                           # §2 every way to fool flushForTransition's three-conjunct skip,
+                           #    including R5-3 (the not-dirty 'conflict' trap)
+                           # §3 the token mint: 200 port instances, 300k CSPRNG mints, opacity,
+                           #    and the no-token-literal ceiling
+                           # §4 the derived cache's (doc identity, today) key
+                           # §5 the R2-11 ruling — requireActor, accepted_by_non_member, and
+                           #    R5-2's null / undefined / '' actor (the classification finding)
+                           # §6 R5-1 (BLOCKER) — an edit dispatched during a transition's own
+                           #    flush, across all six transitions by name
+```
+
+Browser probe needs `npm run web:build && node tools/serve.mjs` in one shell, then:
+
+```bash
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r5-browser.mjs   # R5-1 through the shipped UI
+```
+
+`r5-browser.mjs` is **not** a race in the flaky sense — it sweeps the delay between the "Cairn"
+click and the ↓ click across 0/1/2/4/8 ms and reproduced at all five when filed. It is timing-
+*shaped* by nature (the window is the length of one real IndexedDB write), so `r5-freshness.mjs`
+§6 is the deterministic form and is what a fix should be verified against first.
+
+R4-1 and R4-2 were re-verified with the unmodified `qa/r4-browser.mjs` (4/4 ok) and
+`qa/r4-epoch.mjs` (6/6 ok). R3-3, R3-6…R3-9, R2-6, R2-7, R2-9, R2-11 and R2-18 were re-run with
+the unmodified round-2/3 scripts and are unchanged by `c3c79b3`.
+
+**Two round-2 probes no longer run at all** and were left alone rather than quietly repaired:
+`qa/r2-copy2.mjs:86` and `qa/r2-import.mjs:51` both do `JSON.parse(await storage.load(id))`, and
+`StoragePort.load()` has returned `{doc, version}` since `3a124a2` (ARCHITECTURE §2.2a rule 4).
+They have not executed since round 2; anyone re-running them needs `.doc` first.
