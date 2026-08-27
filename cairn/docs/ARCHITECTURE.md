@@ -35,7 +35,11 @@ row of their own"* paragraph is **withdrawn** — its premise (an unrecognised `
 null`) is false for any trip with a `homeBase`, which is the field §2.13 itself added, so a copied `Place`
 mints a blocker. A place whose only referents are copied stops is now exempt, derived at evaluation time
 with **no change to `Place`'s shape**. §2.10 moves 69 → 70 runtime symbols as a mechanical consequence of
-A-5, and for no other reason.
+A-5, and for no other reason. **A-5a** (§2.7, BUILD-NOTES KD-36) is an addendum to A-5, not a new ruling: the
+builder objected — with a reproduction — that A-5's absorb step re-acquires a released id from the retired row
+the document still carries, which makes a *second* dismissal stillborn. Upheld. The ledger may now acquire a
+`conflictId` from a document only when that document holds no live row for it, at **both** the reseed and the
+absorb, and everything else about A-5 stands.
 
 **Phase 1 is §2 and §4.** Everything else is the shape those two must not foreclose. See `ROADMAP.md`.
 
@@ -890,6 +894,87 @@ on load from the stored document's own `retiredAt` fields — there is no new st
 `toJSON`/`fromJSON`, the §6.3 cascade or `importDoc`. If the process dies before the retirement's autosave
 lands, the retirement is lost together with the edit that triggered it, which is the same guarantee every
 other edit in §4.2 has and no weaker.
+
+#### A-5a — the ledger never *acquires* an id the document already holds a live answer for (revision 6 addendum, BUILD-NOTES KD-36)
+
+**The objection is upheld.** KD-36 is right: A-5's release deletes the key and step 4's absorb puts it back
+from the *surviving* retired row in the same document, so a second dismissal of a conflict that has come back
+is stamped retired the instant it is made. The builder reproduced it, declined to work around it, and that
+was the correct call. A-5 as written is defective in one clause; the fix is to that clause and nothing else.
+The five steps, the release, `reassertRetirements`, the per-trip scoping and the reseeding list all stand.
+
+**The ruling, as one rule a builder can apply without interpretation:**
+
+> **The retirement ledger may record a `conflictId` from a document only if that same document contains no
+> resolution row for that `conflictId` with `retiredAt === null`. This test governs every point at which the
+> ledger reads marks out of a document — step 2/3's reseed *and* step 4's absorb, with no exception for
+> either. Nothing else about the ledger changes: marks are still first-write-wins, are still removed only by
+> `dispatch`'s release, and are still never removed by absorb.**
+
+Say it as an invariant, because that is what makes it checkable: **the ledger acquires an id only from a
+document that has no live answer for it, and loses an id only through release.** Acquisition is vetoed;
+retention is not.
+
+That is KD-36's option 1 — *corrected*, because option 1 as literally stated is not sufficient. Option 1 puts
+the test only in step 4. But steps 2 and 3 build the ledger from the arriving document too, and the document
+persisted after a second dismissal is exactly `[retired row, live row]`. Reload it, and the reseed at
+`openTrip` records the id from the retired row; the next ordinary edit then re-asserts it onto the live row.
+The second dismissal survives the click and dies at the next reload — the same defect through a third door,
+with no `dispatch` and no release anywhere in the trace. One predicate, both sites, or the fix is half a fix.
+
+**Why the veto is safe: what a coexisting live row actually means.** Within one document, a live row and a
+retired row for the same `conflictId` arise from exactly one sequence — the user answered the conflict again
+after a previous answer of theirs had been retired. `resolveConflict` is the only writer that appends a row,
+and it drops any existing *live* row for the id while keeping the retired ones (that pairing is the whole
+point of the retained row); `syncResolutions` and `reassertRetirements` only stamp rows in place and never
+append; `unresolveConflict` drops every row for the id; and `mergeTrips` merges resolutions by `conflictId`,
+so a merged document holds at most one row per id and cannot manufacture the pair. There is no other
+legitimate state that looks like this. The veto is a set-membership test over the rows actually present, not
+an assertion that the pair is unique — a hand-edited or corrupt stored document with two live rows declines
+the id and is otherwise unremarkable.
+
+**Why this does not weaken A-5's two requirements.**
+
+- *Never un-retires with no user action.* The R8-1 trace is untouched. The document that follows a
+  retirement carries the retired row and **no** live row for that id, so the ledger acquires the id exactly as
+  before; the snapshot undo then restores a document whose only row for that id is live, and re-assertion
+  stamps it. Acquisition already happened, and the veto never takes a mark away. The corner that looks
+  dangerous — undo restoring `[retired, live]` after that live row had itself been retired — is safe for the
+  same reason: at the moment that second row was retired the document had no live row for the id, so the mark
+  was acquired then and is still held now.
+- *Retirement is not an undo-stack entry.* Nothing here touches the reducer, `history`, or where `retiredAt`
+  is written. The change lives entirely in how the client-side ledger is populated.
+
+**The release stays.** It is not made redundant by the veto and must not be removed: marks are sticky, so
+without `dispatch`'s release the pre-existing mark for that id would still be re-asserted onto the row the
+user just created. Release removes the stale mark; the veto stops absorb from immediately restoring it. Both,
+or neither works.
+
+**Why not option 2 (a release that survives one `set`).** It is wrong, not merely fragile. Suppression that
+expires after one cycle defers the defect by one keystroke: the document still holds the retired row, so the
+*next* `set` from any cause absorbs the id again and re-asserts it onto the still-live second answer. Making
+the suppression permanent-for-the-session would be a third structure to carry and would still not cover the
+reload path, which has no release in it at all. Its expiry trigger is also unspecifiable in a way that
+survives review — "the next `set`" and "the `set` this `dispatch` produces" happen to coincide today only
+because `dispatch` runs `releaseRetirement`, `reduce` and `set` in one synchronous statement sequence with no
+intervening store call, and a rule whose correctness rests on that is a rule the next `getDerived()` call site
+can silently break. The corrected option 1 carries no timing state: it is a function of the document in hand,
+so it holds under any call order, any number of intervening `set`s, and a reload.
+
+**Accepted and named: the date, not the fact, can be early.** First-write-wins means a mark holds the
+*earliest* retirement observed for that id, so a live row re-asserted after a later retirement is stamped with
+the earlier date. A-5 chose first-write-wins deliberately so the recorded date does not drift; the visible
+consequence is confined to `retiredAt`, which no view renders — `detectConflicts` renders `resolution.at`
+("you dismissed this on …") and reads `retiredAt` only as a boolean. Not worth a second field.
+
+**What the builder must assert** (three tests, all at the store level, no product redesign):
+
+1. Dismiss → edit away (retire) → edit back → dismiss again: the conflict renders **resolved**, the document
+   holds `[retiredAt: <date>, retiredAt: null]`, and it stays that way across a further unrelated edit.
+2. The same document round-tripped through storage and reopened (`reseed`), then one unrelated edit: still
+   resolved. This is the case option 1 as stated would have missed.
+3. R8-1 itself, unchanged: dismiss → retire → Ctrl+Z restores the pre-retirement snapshot → the row is
+   re-stamped retired and the blocker does **not** read "Marked dismissed".
 
 ### 2.8 Provenance
 
