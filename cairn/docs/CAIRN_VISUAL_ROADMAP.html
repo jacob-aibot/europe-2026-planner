@@ -103,6 +103,27 @@
   .pill.red{background:var(--red-bg);color:var(--red-ink);border-color:var(--red-line);}
   .pill.grey{background:var(--grey-bg);color:var(--grey-ink);border-color:var(--grey-line);}
 
+  /* ---- Decision callout ---- */
+  .callout{
+    background:var(--amber-bg);
+    border:1px solid var(--amber-line);
+    color:var(--amber-ink);
+    border-radius:16px;
+    padding:16px 18px;
+    margin-bottom:18px;
+    font-size:0.92rem;
+  }
+  .callout .label{
+    font-weight:800;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    font-size:0.75rem;
+    margin-bottom:6px;
+    display:block;
+  }
+  .callout p{margin:0 0 8px;}
+  .callout p:last-child{margin-bottom:0;}
+
   /* ---- Hero "where we are" card ---- */
   .hero{
     background:var(--card);
@@ -191,6 +212,22 @@
     border-radius:12px;
   }
   .step.done .dot{background:var(--green-ink);color:#fff;border-color:var(--green-ink);}
+  .step.done .dot::before{content:"✓";}
+  .step.done{
+    background:var(--green-bg);
+    margin:0 -10px 18px;
+    padding:10px 10px 18px;
+    border-radius:12px;
+  }
+  .step.done .body .name::after{
+    content:"shipped";
+    font-size:0.7rem;
+    font-weight:700;
+    color:var(--green-ink);
+    margin-left:8px;
+    text-transform:uppercase;
+    letter-spacing:0.05em;
+  }
 
   /* ---- Collapsible sections ---- */
   details{
@@ -258,6 +295,7 @@
     display:flex;align-items:center;justify-content:center;font-weight:800;font-size:0.85rem;
   }
   .journey-row.now .badge{background:var(--accent);color:var(--accent-ink);}
+  .journey-row.done .badge{background:var(--green-ink);color:#fff;}
   .journey-row .txt .name{font-weight:700;font-size:0.9rem;}
   .journey-row .txt .outcome{font-size:0.85rem;color:var(--ink-dim);margin-top:2px;}
 
@@ -286,40 +324,47 @@
   <div class="brand">
     <h1>CAIRN</h1>
     <div class="tagline">"You are here"</div>
-    <div class="updated">Updated 2026-08-27 · against <code>master @ 0a58c81</code></div>
+    <div class="updated">Updated 2026-08-27 · against <code>master @ b32ef9a</code></div>
+  </div>
+
+  <!-- ============ DECISION CALLOUT ============ -->
+  <div class="callout">
+    <span class="label">⚠️ Waiting on Jacob, not on the pipeline</span>
+    <p><strong>Want an "accept" button for copied stops before Phase 2?</strong> Today a copied
+      activity stays badged "from a friend" forever — there's no control to say "this is mine
+      now." Safe, but you'll notice it. Cheap to add now; otherwise it ships with the Phase 2
+      accounts work. No rush — nothing else is blocked on this.</p>
   </div>
 
   <!-- ============ HERO: 10-second read ============ -->
   <div class="hero">
     <div class="phase-tag">Phase 1 of 6 — the core engine &amp; multi-trip planner</div>
-    <h2>The fixes just landed. Not yet independently checked.</h2>
+    <h2>Phase 1 shipped. Phase 2 is next.</h2>
     <div class="pills">
-      <span class="pill amber">🟡 IN PROGRESS</span>
-      <span class="pill red">🔴 GATE NOT OPEN</span>
+      <span class="pill green">🟢 PHASE 1 COMPLETE</span>
+      <span class="pill green">🟢 GATE OPEN</span>
     </div>
-    <p><strong>The invisible, hard part — your edits never silently vanishing —</strong> is built
-      and has survived 7 rounds of someone actively trying to break it.</p>
-    <p><strong>The part you'd actually look at</strong> had 3 named gaps between what the engine
-      already knew and what the screen showed you. The builder just fixed all three (plus 4
-      smaller items) in one pass — its own tests pass, but nobody independent has tried to break
-      that pass yet.</p>
-    <p class="assess">Sent back once by the project's own gate review. Design questions answered,
-      code fixes now built. What's left is an independent check, then the manager looks again.</p>
+    <p><strong>The manager signed off.</strong> Built, independently attacked across 11 rounds,
+      and the very last fix was re-verified by the manager itself, on its own probe, before
+      recording SHIP.</p>
+    <p>The one thing that held it back — a merge landing at the same instant as an edit could
+      silently overwrite another tab's saved work — is fixed and proven fixed, the hard way.</p>
+    <p class="assess">Phase 2 (accounts, sync, sharing) is unlocked. Nobody has started it yet.</p>
   </div>
 
   <!-- ============ VERTICAL PHASE STEPPER ============ -->
   <div class="stepper">
     <h3>The six phases</h3>
 
-    <div class="step current">
-      <div class="rail"><div class="dot">1</div><div class="track"></div></div>
+    <div class="step done">
+      <div class="rail"><div class="dot"></div><div class="track"></div></div>
       <div class="body">
         <div class="name">Core planner</div>
         <div class="outcome">Plan trips like the old app, but many of them, safely.</div>
       </div>
     </div>
 
-    <div class="step">
+    <div class="step current">
       <div class="rail"><div class="dot">2</div><div class="track"></div></div>
       <div class="body">
         <div class="name">Accounts &amp; sharing</div>
@@ -359,24 +404,29 @@
       </div>
     </div>
   </div>
+  <p style="text-align:center;font-size:0.78rem;color:var(--ink-dim);margin-top:-10px;margin-bottom:18px;">
+    Phase 2 shows "current" because it's unlocked — nobody has started the work yet.
+  </p>
 
   <!-- ============ 1. WHERE WE ARE ============ -->
   <details open>
     <summary><span><span class="num">1</span>Where we are</span><span class="chev">▾</span></summary>
     <div class="details-body">
       <h4>Current phase</h4>
-      <p>Phase 1 of 6. <span class="pill amber">🟡 IN PROGRESS</span></p>
+      <p>Phase 1 of 6: <span class="pill green">🟢 COMPLETE — SHIPPED</span><br>
+        Phase 2 of 6: <span class="pill grey">⚪ NOT STARTED</span> (unlocked)</p>
       <h4>Current gate status</h4>
-      <p><span class="pill red">🔴 BLOCKED</span> — the manager (the role whose job is deciding
-        SHIP vs. SEND BACK) sent Phase 1 back once. The design questions that review raised have
-        been answered, and the code fixes that follow from those answers just landed in one pass.
-        An independent check of that pass — and a fresh manager look — haven't happened yet.</p>
+      <p><span class="pill green">🟢 OPEN</span> — the manager sent Phase 1 back once, the
+        builder and architect closed every routed item across several more rounds, and the
+        manager's final gate review re-derived the last fix's correctness on its own probe before
+        recording <strong>SHIP</strong>. Nothing is routed back to any role for Phase 1.</p>
       <h4>Plain-English assessment</h4>
-      <p>The foundation — never silently losing an edit, even under a crash, a closed tab, or two
-        tabs fighting over the same trip — is done and has held up under 7 rounds of someone
-        actively trying to break it. The 3 specific, named places where the screen didn't match
-        what the engine already knew are now, per the builder's own report, fixed. Nobody
-        independent has tried to break that fix yet — that's the one remaining step.</p>
+      <p>Phase 1 is done, by this project's own standard: built, independently attacked, and
+        signed off by the role whose job is exactly that. The manager was explicit about the one
+        shortcut it took — verifying the very last fix itself rather than ordering a full extra
+        breaker round — and named exactly where it wants Phase 2's first QA round to look:
+        the merge/write code that produced five of Phase 1's bugs. That's a disclosed trigger for
+        next steps, not a loose end.</p>
     </div>
   </details>
 
@@ -384,21 +434,22 @@
   <details>
     <summary><span><span class="num">2</span>What is already built</span><span class="chev">▾</span></summary>
     <div class="details-body">
+      <p>Everything below is not just built — it's <strong>shipped</strong>, per the manager's SHIP verdict.</p>
       <ul>
         <li><strong>The trip engine</strong> — days, stops, legs, cost roll-up, map clustering,
-          conflict detection, validation, import/export, and provenance tracking (who a piece of
-          data belongs to). No external dependencies, fully deterministic.</li>
+          conflict detection, validation, import/export, and provenance tracking. No external
+          dependencies, fully deterministic.</li>
         <li><strong>The save/persistence layer</strong> — decides when an edit is safe to write,
-          refuses to overwrite a concurrent edit, never silently drops something you typed. This
-          is the part that took 7 adversarial rounds to get right (see §6).</li>
-        <li><strong>The web app</strong> — opens in a browser, loads your real trip, supports
-          multiple trips, day editing, a day map, a conflicts panel, and copying one stop from
-          another trip with credit attached.</li>
+          refuses to overwrite a concurrent edit, never silently drops something you typed —
+          <strong>including two tabs merging and editing at the same instant</strong>, which took
+          11 rounds total to close (see §6).</li>
+        <li><strong>The web app</strong> — opens in a browser, loads your real trip, supports any
+          number of trips, day editing, a day map, a conflicts panel, correct travel-time display,
+          and copying a stop with a credit line that shows up everywhere.</li>
         <li><strong>A command-line tool</strong> for inspecting a trip, its conflicts and costs
-          with no browser at all — what QA uses to check the engine directly.</li>
-        <li><strong>387 automated tests, all passing</strong> (up from 333 as of the latest
-          builder pass), plus a separate stack of adversarial probe scripts built specifically to
-          try to break named claims.</li>
+          with no browser at all.</li>
+        <li><strong>432 automated tests, all passing</strong> (up from 333 last update), plus a
+          wide stack of adversarial probe scripts built to try to break named claims.</li>
       </ul>
     </div>
   </details>
@@ -407,73 +458,66 @@
   <details>
     <summary><span><span class="num">3</span>What I can actually do today</span><span class="chev">▾</span></summary>
     <div class="details-body">
-      <h4>Works right now</h4>
+      <h4>Shipped — verified, not just built</h4>
       <ul>
         <li>Open the app and see the real Europe 2026 trip, loaded read-only from the live planner.</li>
-        <li>Create a second trip and switch between them without them bleeding into each other.</li>
+        <li>Create any number of trips and switch between them without them bleeding into each other.</li>
         <li>Edit a day's stops and see them on a map, without losing the edit on tab close, a trip
-          switch, or two tabs open at once.</li>
+          switch, two tabs open at once, <strong>or two tabs merging and saving at the same
+          instant</strong> — the exact thing that held Phase 1 back until this pass.</li>
         <li>See a conflicts panel flagging exactly the two real red-flag days — nothing invented.</li>
-        <li>Browse another trip and copy one stop into this one, badged and credited, with any
-          door PIN or booking number redacted.</li>
+        <li>See a flight/train stop rendered correctly: "departs 14:30 · arrives 15:50," not a
+          misleading single time.</li>
+        <li>Dismiss a conflict and have it stay dismissed, even after an edit-away-and-back.</li>
+        <li>Browse another trip and copy one stop into this one, badged and credited everywhere,
+          with any door PIN or booking number redacted.</li>
         <li>Export a trip to a JSON file and restore it later.</li>
       </ul>
-      <h4>Just fixed, not yet independently checked (see §4)</h4>
+      <h4>Known, disclosed, not fixed on purpose (see §4)</h4>
       <ul>
-        <li>A flight/train stop now reads "departs · arrives" instead of a single misleading time.</li>
-        <li>Dismissing a conflict now stays dismissed even after an edit-away-and-back.</li>
-        <li>The "copied from" credit now shows on every screen that renders a copied stop.</li>
+        <li>No "accept as mine" control yet for a copied stop — Jacob's call, see the banner above.</li>
+        <li>Two narrow bugs exist but aren't reachable through anything currently in the app.</li>
       </ul>
       <h4>Not built yet — later phases</h4>
       <ul>
-        <li>Accounts, cross-device sync, friends, share links (Phase 2).</li>
+        <li>Accounts, cross-device sync, friends, share links (Phase 2 — next).</li>
         <li>Email-derived bookings (Phase 3).</li>
         <li>Phone app, offline mode, live path (Phase 4). Photos (Phase 5).</li>
       </ul>
     </div>
   </details>
 
-  <!-- ============ 4. WHAT IS LEFT FOR PHASE 1 ============ -->
+  <!-- ============ 4. WHAT CARRIES FORWARD ============ -->
   <details>
-    <summary><span><span class="num">4</span>What is left for Phase 1</span><span class="chev">▾</span></summary>
+    <summary><span><span class="num">4</span>What carries forward</span><span class="chev">▾</span></summary>
     <div class="details-body">
-      <p>Seven items routed by the last gate review, plus three architecture rulings — <strong>all
-        built in one pass.</strong> Every row below is "built, not yet independently verified,"
-        which is the actual remaining gap, not unwritten code.</p>
+      <p><strong>Nothing is routed back for Phase 1 — it's closed.</strong> Below is the
+        disclosed list of small items and one decision the next phase inherits.</p>
       <div class="card-list">
         <div class="item">
-          <div class="row1"><span class="title">Show departure vs. arrival correctly</span><span class="pill amber">🟡 built, unverified</span></div>
-          <div class="why">The single thing most likely to mislead you on a travel day — the exact bug the old planner had.</div>
+          <div class="row1"><span class="title">Accept control for copied stops?</span><span class="pill amber">⚠️ Jacob's call</span></div>
+          <div class="why">Cheap either way; only changes what you see the first time you copy something.</div>
         </div>
         <div class="item">
-          <div class="row1"><span class="title">Make "dismiss conflict" actually stick</span><span class="pill amber">🟡 built, unverified</span></div>
-          <div class="why">It used to be pointless — a dismissal could silently come back.</div>
+          <div class="row1"><span class="title">R8-3 — copy-acceptance can mint a false conflict</span><span class="pill grey">⏸ entry item</span></div>
+          <div class="why">Unreachable until an accept control exists. Next: Architect rules on it first.</div>
         </div>
         <div class="item">
-          <div class="row1"><span class="title">Show credit for copied stops everywhere</span><span class="pill amber">🟡 built, unverified</span></div>
-          <div class="why">"Never let a copied thing look unattributed" — two screens used to break that rule.</div>
+          <div class="row1"><span class="title">R8-4 — a merge can resurrect a just-deleted trip</span><span class="pill grey">⏸ entry item</span></div>
+          <div class="why">Narrow window, not reachable today. Next: Architect, when delete/sync makes it reachable.</div>
         </div>
         <div class="item">
-          <div class="row1"><span class="title">Tell the user when autosave gives up</span><span class="pill amber">🟡 built, unverified</span></div>
-          <div class="why">It used to fail silently after retrying, with no further attempt until you typed again.</div>
+          <div class="row1"><span class="title">R10-1 — a double-undo edge case</span><span class="pill grey">⏸ entry item</span></div>
+          <div class="why">Cosmetic-only; screen looks identical either way. Low priority.</div>
         </div>
         <div class="item">
-          <div class="row1"><span class="title">Fix the sample-data redaction rule</span><span class="pill amber">🟡 built, unverified</span></div>
-          <div class="why">A real booking reference leaked into a build file once — the rule that shipped wasn't the rule that was asked for.</div>
-        </div>
-        <div class="item">
-          <div class="row1"><span class="title">Close three narrow save-logic holes</span><span class="pill amber">🟡 built, unverified</span></div>
-          <div class="why">Not reachable by a user — "not reachable yet" isn't the same as "safe."</div>
-        </div>
-        <div class="item">
-          <div class="row1"><span class="title">Fix a file-export symlink trick &amp; a date-check gap</span><span class="pill amber">🟡 built, unverified</span></div>
-          <div class="why">Both small, both exactly the kind of thing that turns into a real bug once Phase 2 adds real users.</div>
+          <div class="row1"><span class="title">Stale QA probes and doc numbers</span><span class="pill grey">⏸ entry item</span></div>
+          <div class="why">Housekeeping — a few probes/figures need repair before they mislead a future round.</div>
         </div>
       </div>
-      <p style="margin-top:12px;"><strong>What's actually next is process, not code</strong>
-        (unless the breaker finds something): an independent Breaker round — driving B-1/B-2/B-3
-        as a user in a real browser, not just re-running the builder's own probe — then the
-        Manager re-gates against the real product, not the test count.</p>
+      <p style="margin-top:12px;"><strong>The one standing trigger:</strong> Phase 2's first
+        Breaker round is pre-committed to attack <code>doMerge</code>/<code>writeAndSettle</code>
+        — the code behind 5 of Phase 1's bugs. The manager's own call, written down explicitly.</p>
     </div>
   </details>
 
@@ -482,12 +526,12 @@
     <summary><span><span class="num">5</span>The journey</span><span class="chev">▾</span></summary>
     <div class="details-body">
       <p>Each phase as what you'll actually be able to do — not as an engineering task.</p>
-      <div class="journey-row now">
+      <div class="journey-row done">
         <div class="badge">1</div>
-        <div class="txt"><div class="name">Core planner</div>
+        <div class="txt"><div class="name">Core planner — SHIPPED</div>
           <div class="outcome">Plan trips like the old app, but many of them, safely — nothing you type silently vanishes.</div></div>
       </div>
-      <div class="journey-row">
+      <div class="journey-row now">
         <div class="badge">2</div>
         <div class="txt"><div class="name">Accounts &amp; sharing</div>
           <div class="outcome">Your trips follow you across devices, and friends can see them and copy a stop into their own.</div></div>
@@ -513,32 +557,34 @@
           <div class="outcome">A clean public share page, and a real cost report across a trip.</div></div>
       </div>
       <p style="margin-top:10px;">A phase only starts once the one before it gets a manager
-        verdict of <strong>SHIP</strong> (see §10).</p>
+        verdict of <strong>SHIP</strong> (see §10). Phase 1 is the first to clear that bar.</p>
     </div>
   </details>
 
   <!-- ============ 6. RECENT PROGRESS ============ -->
   <details>
-    <summary><span><span class="num">6</span>Recent progress (R2–R7)</span><span class="chev">▾</span></summary>
+    <summary><span><span class="num">6</span>Recent progress (R2–R11)</span><span class="chev">▾</span></summary>
     <div class="details-body">
-      <p>Short version: <strong>seven rounds of one QA tester repeatedly trying to break the
-        save/persistence layer</strong> — and finding a real way to lose data almost every round,
-        until round 6.</p>
+      <p>Short version: <strong>eleven rounds</strong> of one QA tester trying to break the
+        save/persistence layer, four design rulings, and a manager who verified the very last fix
+        personally before signing off.</p>
       <ul>
-        <li><strong>R2</strong> — closed a lost-edit race, a stop that could vanish, and a leaked credential in a copied note.</li>
-        <li><strong>R3</strong> — found the "is this still safe to save" check could be spoofed by delete-then-recreate.</li>
-        <li><strong>R4</strong> — found the R3 fix had the same bug one layer upstream (undo + a new edit could skip a write while showing "Saved").</li>
-        <li><strong>R5</strong> — found an edit made mid-check could be silently discarded, and a blank "who did this" field slipping past a check.</li>
-        <li><strong>R6</strong> — verified R5's fixes by deliberately breaking them again and watching tests fail correctly; found a silent give-up-after-retrying path.</li>
-        <li><strong>R7</strong> — verified everything again, closed the last serious save-path bug, found three narrow issues not reachable by a user yet.</li>
-        <li><strong>Gate review</strong> — looked at the actual screens for the first time in five rounds and sent Phase 1 back for 3 disclosed-but-unfixed gaps.</li>
-        <li><strong>SEND-BACK pass</strong> — the builder just fixed all 3 gaps plus 4 smaller items in one pass, 387 tests passing. Independent verification of this pass hasn't happened yet.</li>
+        <li><strong>R2–R7</strong> — closed a lost-edit race, a vanishing pool stop, a leaked credential, an ABA save-check spoof, an undo that could skip a write while showing "Saved," a mid-transition data loss with no error, and a silent give-up-after-retries path.</li>
+        <li><strong>Gate review</strong> — looked at the actual screens for the first time in five rounds; sent Phase 1 back for 3 disclosed gaps (a misleading travel time, a conflict dismissal that didn't stick, a missing credit line).</li>
+        <li><strong>SEND-BACK pass</strong> — builder fixed all 3, plus 4 smaller items, in one pass.</li>
+        <li><strong>R8</strong> — verified that pass closed; found 4 new MAJOR issues one layer over, routed to the architect.</li>
+        <li><strong>R9</strong> — those rulings implemented and verified; 2 MAJOR remained, both narrow.</li>
+        <li><strong>R10</strong> — both closed; found one more BLOCKER, adjacent: <strong>R11-1</strong>.</li>
+        <li><strong>R11</strong> — the final one: a merge landing at the same instant as an edit could silently overwrite another tab's saved work, screen still saying "Saved." Routed to the architect.</li>
+        <li><strong>Architecture revision 8 (A-7)</strong> ruled: the save-fence only ever advances to a document the store still holds or wrote itself.</li>
+        <li><strong>Builder implemented A-7</strong> — 6 tests proving the defect, 2 proving the fix doesn't over-refuse.</li>
+        <li><strong>Manager's final gate review</strong> re-derived the fix's correctness itself, attacked 5 adjacent paths by hand, all clean. <strong>Verdict: SHIP.</strong></li>
       </ul>
-      <p><strong>Why so much verification before Phase 1 counted as close to ready:</strong> each
-        of these was a way an edit could be silently lost or corrupted — the worst thing a trip
-        planner can do. Each fix was immediately attacked rather than trusted, which is why
-        several "closed" bugs reopened one layer up. That's expensive, and it's the only way to
-        actually trust the result.</p>
+      <p><strong>Why eleven rounds before Phase 1 counted as shippable:</strong> every one of these
+        was a way an edit could be silently lost, corrupted, or overwritten — the worst thing a
+        trip planner can do. Each fix was immediately attacked rather than trusted, which is why
+        the very last bug (R11-1) surfaced only after ten rounds had already passed. Expensive,
+        and the only way to actually trust the result.</p>
     </div>
   </details>
 
@@ -548,7 +594,7 @@
     <div class="details-body">
       <table class="tools">
         <tr><td class="tool">Persistence safety</td><td class="why">your edits don't silently disappear, ever</td></tr>
-        <tr><td class="tool">Merge/save serialization</td><td class="why">two things happening at once can't corrupt the trip</td></tr>
+        <tr><td class="tool">Merge/save serialization</td><td class="why">two things happening at the exact same instant can't silently overwrite each other — the app refuses and tells you instead</td></tr>
         <tr><td class="tool">Provenance</td><td class="why">you always know where a copied piece of data came from</td></tr>
         <tr><td class="tool">Validation</td><td class="why">bad or contradictory trip data gets caught, not silently accepted</td></tr>
       </table>
@@ -560,16 +606,17 @@
     <summary><span><span class="num">8</span>What happens next</span><span class="chev">▾</span></summary>
     <div class="details-body">
       <p style="text-align:center;font-weight:700;font-size:1rem;letter-spacing:0.02em;">
-        Breaker&nbsp;→&nbsp;Manager
+        Architect&nbsp;→&nbsp;Builder&nbsp;→&nbsp;Breaker&nbsp;→&nbsp;Manager
       </p>
+      <p style="text-align:center;color:var(--ink-dim);font-size:0.85rem;margin-top:-4px;">Phase 2 kickoff — nobody has started this yet</p>
       <ul>
-        <li><strong>Architect</strong> already did its part this cycle — the four design
-          questions from the last gate review are answered.</li>
-        <li><strong>Builder</strong> also already did its part — all 7 routed fixes plus 3
-          architecture rulings landed in one pass.</li>
-        <li><strong>Breaker</strong> is next: an independent round on that specific pass, focused
-          on the app screens.</li>
-        <li><strong>Manager</strong> makes the SHIP / SEND BACK call. Only this role can open Phase 2.</li>
+        <li><strong>Architect</strong> goes first: turns ROADMAP's Phase 2 sketch (server,
+          accounts, sync, sharing) into a buildable design, and rules on the 3 small items carried
+          from Phase 1 plus Jacob's accept-control decision, if pulled forward.</li>
+        <li><strong>Builder</strong> implements against that design.</li>
+        <li><strong>Breaker</strong>'s first round has a standing target already written down:
+          the merge/write code that caused 5 of Phase 1's bugs.</li>
+        <li><strong>Manager</strong> makes the next SHIP / SEND BACK call. Only this role can open Phase 3.</li>
       </ul>
     </div>
   </details>
@@ -583,8 +630,8 @@
         <tr><td class="tool">superpowers</td><td class="why">✅ Useful now — already in active use (TDD, systematic debugging, verification-before-completion)</td></tr>
         <tr><td class="tool">skill-creator</td><td class="why">⏸ Useful later — worth it once there's a 3rd/4th recurring workflow to package</td></tr>
         <tr><td class="tool">agent-browser</td><td class="why">⛔ Not needed — QA's own browser scripts already do this job</td></tr>
-        <tr><td class="tool">gstack</td><td class="why">⏸ Useful later — no deployment stack until Phase 2</td></tr>
-        <tr><td class="tool">ui-ux-pro-max</td><td class="why">⏸ Useful later — current gaps are correctness bugs, not design ones</td></tr>
+        <tr><td class="tool">gstack</td><td class="why">⏸ Useful soon — Phase 2 is where a real deployment stack stops being hypothetical</td></tr>
+        <tr><td class="tool">ui-ux-pro-max</td><td class="why">⏸ Useful later — Phase 1's gaps were correctness bugs, not design ones</td></tr>
         <tr><td class="tool">taste-skill</td><td class="why">⏸ Useful later — matters most at Phase 6 polish</td></tr>
         <tr><td class="tool">impeccable</td><td class="why">⛔ Not needed — no gap it would fill right now</td></tr>
         <tr><td class="tool">claude-hud</td><td class="why">⏸ Useful later — one task per session today, nothing to dashboard yet</td></tr>
@@ -606,11 +653,11 @@
         <li>an adversarial tester tried specifically to break it, and it's written down, not assumed;</li>
         <li>the manager reviewed the actual product — not just the test count — and recorded a verdict of <strong>SHIP</strong>.</li>
       </ul>
-      <p>Phase 1's engine and save logic are <strong>built and verified</strong>, genuinely, by
-        that standard. The three screen gaps the manager sent back are now <strong>built</strong>
-        — that's not the same claim as <strong>verified</strong> (needs an independent breaker
-        round) or <strong>shippable</strong> (needs a manager verdict of SHIP). All three are
-        real, different claims, and this page tries to always say which one it means.</p>
+      <p><strong>Phase 1 has now cleared all three, genuinely.</strong> Not merely "built" (code
+        exists), not merely "verified" (a tester tried and found nothing) — the manager reviewed
+        the actual product, disclosed the one shortcut it took (verifying the last fix itself
+        instead of ordering a ceremonial extra round), and recorded SHIP. That's the first 🟢 in
+        this document. The same discipline applies to every phase after it, starting with Phase 2.</p>
     </div>
   </details>
 
