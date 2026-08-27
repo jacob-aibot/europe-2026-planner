@@ -24,7 +24,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 
 import {
-  createTrip, daysForCity, detectConflicts, fromJSON, sequentialIds, setDayMeta, toJSON,
+  addStop, createTrip, daysForCity, detectConflicts, fromJSON, sequentialIds, setDayMeta, toJSON,
   validateTrip, LOCAL_OWNER,
 } from '../src/index.ts';
 // Off §2.10's surface deliberately: the sentinel is core's, not a caller's. Tests import the
@@ -228,6 +228,158 @@ test('A-10: an unresolvable key still renders — the label helpers fall back to
     'no trip city for this key — show a legible phrase, not the raw opaque id',
   );
   assert.doesNotMatch(found[0].summary, /no-such-city/, 'the raw key must not leak into the summary string');
+});
+
+// ---------------------------------------------------------------------------
+// `validateTrip`'s six city-key messages (QA R13-7)
+// ---------------------------------------------------------------------------
+//
+// Same claim at every site, and it is `geoOutlier.ts`'s: `Issue.message` is the sentence a
+// person reads in the Issues panel, so a minted `CityKey` may not appear in it; `Issue.params`
+// is structured data and keeps the key verbatim (§2.1, §2.7). Where the trip HAS the city the
+// name is shown; where it does not, the caller composes a legible phrase — never the raw id.
+// Two of these six codes are A-10's own; the other four became opaque the day keys started
+// being minted, and `qa/r13-gate-citykey.mjs` §10's `R13-6b` reaches one of them by an
+// ordinary cross-trip copy rather than by a corrupt document.
+
+/** Every assertion these six tests share: the key is in `params` and out of the sentence. */
+function assertLegible(issue: { message: string; params: Record<string, unknown> }, key: string) {
+  assert.equal(issue.params.cityKey, key, 'params.cityKey must still carry the raw key');
+  assert.ok(
+    !issue.message.includes(key),
+    `the raw opaque key leaked into the sentence a person reads: ${issue.message}`,
+  );
+}
+
+test('R13-7: duplicate_city_key names both cities, not the key they share', () => {
+  const t = twoCityTrip();
+  const dup = 'zzdup-9';
+  const collapsed: Trip = {
+    ...t,
+    cities: t.cities.map((x) => ({ ...x, key: dup })),
+    days: t.days.map((d) => ({ ...d, primaryCity: dup, cities: [dup] })),
+  };
+  const issues = validateTrip(collapsed).filter((i) => i.code === 'duplicate_city_key');
+  assert.equal(issues.length, 1);
+  assertLegible(issues[0], dup);
+  assert.match(issues[0].message, /Tokyo/, 'the first city is named');
+  assert.match(issues[0].message, /Kyoto/, 'the colliding city is named');
+});
+
+test('R13-7: duplicate_city_key on an unnamed city says so rather than printing the key', () => {
+  const t = twoCityTrip();
+  const dup = 'zzdup-8';
+  const collapsed: Trip = {
+    ...t,
+    cities: [{ ...t.cities[0], key: dup, name: '  ' }, { ...t.cities[1], key: dup }],
+    days: t.days.map((d) => ({ ...d, primaryCity: dup, cities: [dup] })),
+  };
+  const issues = validateTrip(collapsed).filter((i) => i.code === 'duplicate_city_key');
+  assert.equal(issues.length, 1);
+  assertLegible(issues[0], dup);
+  assert.match(issues[0].message, /no name/, 'a blank name gets a phrase, not an id');
+  assert.match(issues[0].message, /Kyoto/);
+});
+
+test('R13-7: city_name_empty describes the city instead of quoting its id', () => {
+  const t = twoCityTrip();
+  const nameless: Trip = { ...t, cities: [{ ...t.cities[0], name: '' }, t.cities[1]] };
+  const issues = validateTrip(nameless).filter((i) => i.code === 'city_name_empty');
+  assert.equal(issues.length, 1);
+  assertLegible(issues[0], t.cities[0].key);
+  assert.match(issues[0].message, /no name/);
+});
+
+test('R13-7: primary_city_not_in_cities names the primary city when the trip has it', () => {
+  const t = twoCityTrip();
+  const [tokyo, kyoto] = t.cities;
+  const crossed: Trip = {
+    ...t,
+    days: t.days.map((d) => ({ ...d, primaryCity: tokyo.key, cities: [kyoto.key] })),
+  };
+  const issues = validateTrip(crossed).filter((i) => i.code === 'primary_city_not_in_cities');
+  assert.equal(issues.length, t.days.length);
+  assertLegible(issues[0], tokyo.key);
+  assert.match(issues[0].message, /"Tokyo"/, 'the primary city is named, not keyed');
+  assert.match(issues[0].message, /2019-03-01/, 'the date still leads the sentence');
+});
+
+test('R13-7: primary_city_not_in_cities falls back to a phrase when the key resolves to nothing', () => {
+  const t = twoCityTrip();
+  const ghost = 'zzghost-primary';
+  const orphaned: Trip = {
+    ...t,
+    days: t.days.map((d) => ({ ...d, primaryCity: ghost, cities: [t.cities[0].key] })),
+  };
+  const issues = validateTrip(orphaned).filter((i) => i.code === 'primary_city_not_in_cities');
+  assert.equal(issues.length, t.days.length);
+  assertLegible(issues[0], ghost);
+  assert.match(issues[0].message, /a city this trip does not have/);
+});
+
+test('R13-7: a transit primary city reads as the travel-day marker, not as a missing city', () => {
+  const t = twoCityTrip();
+  const transit: Trip = {
+    ...t,
+    days: t.days.map((d) => ({ ...d, primaryCity: TRANSIT_CITY_KEY, cities: [t.cities[0].key] })),
+  };
+  const issues = validateTrip(transit).filter((i) => i.code === 'primary_city_not_in_cities');
+  assert.equal(issues.length, t.days.length);
+  assert.equal(issues[0].params.cityKey, TRANSIT_CITY_KEY);
+  assert.match(issues[0].message, /travel-only/, 'the sentinel is not a city and must not read as one');
+  assert.doesNotMatch(issues[0].message, /a city this trip does not have/);
+});
+
+test('R13-7: unknown_city_key on a day reports a missing city, not its id', () => {
+  const t = twoCityTrip();
+  const ghost = 'zzghost-day';
+  const orphaned: Trip = {
+    ...t,
+    days: t.days.map((d) => ({ ...d, cities: [t.cities[0].key, ghost] })),
+  };
+  const issues = validateTrip(orphaned).filter((i) => i.code === 'unknown_city_key');
+  assert.equal(issues.length, t.days.length);
+  assertLegible(issues[0], ghost);
+  assert.match(issues[0].message, /a city this trip does not have/);
+  assert.match(issues[0].message, /2019-03-01/);
+});
+
+test('R13-7: pool_stop_unknown_city names the stop and describes the missing city', () => {
+  const t = twoCityTrip();
+  const ghost = 'zzghost-pool';
+  const c = ctx('p');
+  const withPool = addStop(
+    t,
+    { kind: 'pool', cityKey: t.cities[0].key },
+    { name: 'Belvedere', category: 'sight' },
+    c,
+  );
+  const broken: Trip = {
+    ...withPool,
+    pool: withPool.pool.map((s) => ({ ...s, placement: { kind: 'pool' as const, cityKey: ghost } })),
+  };
+  const issues = validateTrip(broken).filter((i) => i.code === 'pool_stop_unknown_city');
+  assert.equal(issues.length, 1);
+  assertLegible(issues[0], ghost);
+  assert.match(issues[0].message, /"Belvedere"/);
+  assert.match(issues[0].message, /a city this trip does not have/);
+  assert.match(issues[0].message, /nothing can show it/);
+});
+
+test('R13-7: unknown_city_key on a place names the place and describes the missing city', () => {
+  const t = twoCityTrip();
+  const ghost = 'zzghost-place';
+  const orphaned: Trip = {
+    ...t,
+    places: [
+      { id: 'place-1', cityKey: ghost, name: 'Belvedere', at: { lat: 48.19, lng: 16.38 }, category: 'sight' },
+    ],
+  };
+  const issues = validateTrip(orphaned).filter((i) => i.code === 'unknown_city_key');
+  assert.equal(issues.length, 1);
+  assertLegible(issues[0], ghost);
+  assert.match(issues[0].message, /Place "Belvedere"/);
+  assert.match(issues[0].message, /a city this trip does not have/);
 });
 
 // ---------------------------------------------------------------------------

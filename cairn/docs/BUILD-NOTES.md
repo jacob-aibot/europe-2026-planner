@@ -1,5 +1,20 @@
 # Cairn — build notes, Phase 1 (and Phase 2 in progress)
 
+> **Addendum, on `30d6288` — QA round 13's two routine MINORs, R13-7 and R13-8, both CLOSED.**
+> Scope was those two findings and nothing else; R13-1, R13-2, R13-3, R13-4, R13-5 and R13-6 were
+> not touched by this pass.
+>
+> | | |
+> |---|---|
+> | **R13-7 — six opaque keys out of six `Issue.message` strings** | `validateTrip.ts` only. `cityLabel` resolves a key to `City.name` where the trip has the city; each caller composes its own fallback where it does not. `Issue.params` unchanged at five sites and *added to* at one. Full reasoning and the two judgment calls: **KD-46**. |
+> | **R13-8 — three Chromium assertions repointed** | `qa/p2b-past.mjs` §1c, §2d, §3d measured the deleted name-derived slug. All three kept, none deleted: §1c and §2d look the city up by the name the user typed and read the minted key back off the persisted document; §3d is *inverted* — the 東京/京都 collapse it expected the app to report cannot happen after A-10, so it now asserts there is nothing to report, which is the claim that fails again if the collapse returns. One assertion **added** (§3d0), because "zero issues on screen" is only evidence if the Validation panel is the panel being read — it now proves that from the panel's own empty state. Same class as KD-43, same file family, `qa/` is outside the disclosure scan. |
+> | **Numbers, my own runs on this pass** | `npm run typecheck` clean (both projects). `npm run test:tap` **524 pass / 0 fail** (was 515; +9, all R13-7). `npm run web:build` clean. `qa/p2b-past.mjs` in real Chromium **3 FAIL → 0** (the three were §1c, §2d, §3d before; the run was done before and after). `qa/r13-gate-citykey.mjs` **13 FAIL → 12**. |
+> | **The one number that moved that the task did not predict** | `qa/r13-gate-citykey.mjs` was expected to stay at 13. It goes to 12, because its §10 assertion `R13-6b` — *"the issue a person reads does not print the raw opaque key"* — **is** an R13-7 assertion, filed under §10 because a cross-trip copy is how it is reached. The remaining 12 are R13-1 ×7, R13-2 ×2, R13-3 ×2 and R13-6's own first assertion; R13-6 itself is untouched and still fails. |
+> | **What I could not verify** | Node 24 (this environment is Node 22.22.2). Safari/iOS, a real second user: unchanged from previous passes. |
+>
+> The pre-existing status note below stands except for one line it now contradicts: it recorded
+> that `qa/p2b-past.mjs` had **not** been re-run in Chromium. It has been, twice, on this pass.
+
 > **Status: CURRENT — ROADMAP revision 11, increments I-3a and I-4a** (`master`, on `23f37b9`).
 > The two architect rulings QA round 12 routed — `ARCHITECTURE.md` §2.7 **A-9** (P2-1) and §2.2
 > **A-10** (P2-2) — built. Both were owed before I-6 and both are now in. **P2-5 and P2-8 were
@@ -1265,6 +1280,42 @@ scan's roots by design. `test/disclosure.test.ts` itself needed no change — th
 correct throughout; the document violated a convention the mechanism assumed but never asserted.
 Worth a `### KD-n` heading of its own rather than a silent fix, since the whole point of this
 section is that nothing gets corrected without a record of why it needed to be.
+
+### KD-46 — the same opaque-key legibility fix, applied to `validateTrip`'s six messages — CLOSED
+
+`packages/core/src/validate/validateTrip.ts` · **Phase 2.** Closes QA **R13-7**. KD-44's decision,
+applied to the six sites A-10's change table did not list.
+
+A-10's *"what this changes elsewhere — the complete list"* names exactly one string site,
+`geoOutlier.ts`. It missed six more, and R13-7 measured all of them: `duplicate_city_key` and
+`city_name_empty` (both codes A-10 itself added) plus four that had been legible until keys became
+minted ids — `primary_city_not_in_cities`, `unknown_city_key` on a day, `pool_stop_unknown_city`
+and `unknown_city_key` on a place. Every one printed a raw `CityKey` into `Issue.message`, which is
+the sentence the Issues panel shows: *"Place "Belvedere" references unknown city "acity-1""*. Two
+of them are reachable without a corrupt document at all — `qa/r13-gate-citykey.mjs` §10 reaches one
+by an ordinary cross-trip copy (R13-6).
+
+Fixed exactly as KD-44 fixed `geoOutlier.ts`, and deliberately not more cleverly: a private
+`cityLabel(trip, key)` returns `City.name` or `null`, each caller composes its own sentence, and
+`Issue.params` keeps the raw key untouched at all six sites — it is structured data and §2.1/§2.7
+require the id there. Only the human-readable string changed. Two details worth stating because a
+strict reading of the finding does not settle them:
+
+- **`cityLabel` treats a blank name as unresolvable** where `geoOutlier`'s copy does not. An issue
+  reading *"the day's primary city, "", is not listed"* is the illegibility this is fixing, and the
+  blank name is separately reported by `city_name_empty`.
+- **`primary_city_not_in_cities` gained `params.cityKey`.** Its params already carried the key, but
+  under the name `primaryCity`; `primaryCity` is kept verbatim and `cityKey` added, so all six
+  city-key issues expose the key under the one name `geoOutlier.ts` and the other five use. Purely
+  additive — no golden, fixture or test read that params object, verified by running.
+- **One new branch, not a shared phrase:** `primary_city_not_in_cities` can fire on the `transit`
+  sentinel, which is *not* a city, so the generic *"a city this trip does not have"* fallback would
+  have been a lie there. That case reads *"the day is marked travel-only, but the travel-only
+  marker is not listed among the day's cities."*
+
+Nine tests, all watched red first (`packages/core/test/cityKey.test.ts`); the reference trip's
+validation output is unchanged (`fixtures/golden/core-validation.json` carries only
+`cost_basis_mixed` and `lat_lng_out_of_range`, neither of which this touches).
 
 ---
 

@@ -14,6 +14,17 @@
  *
  * Needs `npm run web:build && node tools/serve.mjs` in one shell, then:
  *   PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/p2b-past.mjs
+ *
+ * **QA R13-8, and it is `qa/p2b-gate.mjs` §3.3's problem (KD-43) in the Chromium half.**
+ * §1c, §2d and §3d were written against the name-derived slug `PastTripForm.tsx` used to mint
+ * (`'Tokyo'` → `'tokyo'`). A-10 deleted that expression: a `CityKey` is now an opaque id from the
+ * injected factory, and the 東京/京都 collapse those assertions expected the app to *report* no
+ * longer happens. Left alone the three would fail forever while measuring nothing that ships.
+ * Every one is kept and repointed at what the app actually stores — the city is looked up by the
+ * NAME the user typed, which is a city's only human identity after A-10, and the minted key is
+ * read back off the persisted document. §3d is inverted rather than dropped: it now asserts there
+ * is nothing to report, which is exactly the claim that fails again if the collapse returns
+ * (a collapse re-lights `duplicate_city_key` in the Validation panel).
  */
 import pw from '/opt/node22/lib/node_modules/playwright/index.js';
 const { chromium } = pw;
@@ -122,9 +133,14 @@ line('§1 a STRADDLING trip, entered as a user, with a real city on every day');
   if (doc) {
     console.log(`  stored ${doc.startDate} → ${doc.endDate}, ${doc.days.length} days`);
     ok('b. 7 dense days', doc.days.length === 7, String(doc.days.length));
+    // R13-8: the key is minted, so it is read back off the document by the name that was typed.
+    const tokyo = (doc.cities || []).find((c) => c.name === 'Tokyo');
     ok('c. every day carries Tokyo, not the transit catch-all',
-      doc.days.every((d) => d.primaryCity === 'tokyo' && (d.cities || []).includes('tokyo')),
-      JSON.stringify(doc.days.filter((d) => d.primaryCity !== 'tokyo').map((d) => `${d.date}:${d.primaryCity}`)));
+      !!tokyo && tokyo.key !== 'transit' &&
+      doc.days.every((d) => d.primaryCity === tokyo.key && (d.cities || []).includes(tokyo.key)),
+      tokyo
+        ? JSON.stringify(doc.days.filter((d) => d.primaryCity !== tokyo.key).map((d) => `${d.date}:${d.primaryCity}`))
+        : `no city named Tokyo: ${JSON.stringify((doc.cities || []).map((c) => c.name))}`);
     const chip = await p.getByTestId('lifecycle-chip').first().getAttribute('data-stage');
     ok('d. the chip reads ACTIVE', chip === 'active', String(chip));
     // the conflicts panel, as a user sees it
@@ -152,9 +168,13 @@ line('§2 "a year" precision: 365 days and 366 dispatches behind one click');
   if (doc) {
     ok('b. 365 dense days', doc.days.length === 365, String(doc.days.length));
     ok('c. datePrecision year', doc.datePrecision === 'year', String(doc.datePrecision));
-    const unassigned = doc.days.filter((d) => d.primaryCity !== 'bangkok');
-    ok('d. EVERY one of the 365 days carries the city', unassigned.length === 0,
-      `${unassigned.length} days still on "${unassigned[0] ? unassigned[0].primaryCity : ''}"`);
+    // R13-8: same repoint as §1c — the city is found by its name, the key is whatever was minted.
+    const bangkok = (doc.cities || []).find((c) => c.name === 'Bangkok');
+    const unassigned = doc.days.filter((d) => !bangkok || d.primaryCity !== bangkok.key);
+    ok('d. EVERY one of the 365 days carries the city', !!bangkok && unassigned.length === 0,
+      bangkok
+        ? `${unassigned.length} days still on "${unassigned[0] ? unassigned[0].primaryCity : ''}"`
+        : `no city named Bangkok: ${JSON.stringify((doc.cities || []).map((c) => c.name))}`);
     ok('e. the click reaches IndexedDB inside 3 s', ms < 3000, `${ms} ms (polled, not slept)`);
     // one user action, one Ctrl+Z
     await p.keyboard.press('Control+z');
@@ -183,9 +203,28 @@ line('§3 the phase\'s own headline case, entered in the local script');
     await p.getByRole('tab', { name: /Validation/ }).first().click().catch(() => {});
     await p.waitForTimeout(600);
     const issues = await p.locator('li.issue, .issue__code').allInnerTexts().catch(() => []);
-    console.log('  validation issue codes on screen:', JSON.stringify(issues));
-    ok('d. the app reports that the two cities collapsed into one key', issues.length > 0,
-      'zero validation issues: the second city is unreachable and nothing says so');
+    // R13-8: "zero issues" is only evidence if the Validation panel is the one on screen.
+    // `ValidationPanel` renders exactly one of these two shapes, so this distinguishes
+    // "nothing to report" from "the tab click missed and the locator found nothing".
+    const emptyState = await p.locator('p.empty').allInnerTexts().catch(() => []);
+    const panelOpen = issues.length > 0 || emptyState.some((t) => /Nothing to report/.test(t));
+    console.log('  validation issue codes on screen:', JSON.stringify(issues),
+      '| panel empty-state:', JSON.stringify(emptyState));
+    ok('d0. the Validation panel is actually the one being read', panelOpen, JSON.stringify(emptyState));
+    // R13-8: inverted, not deleted. The collapse this asserted the app would REPORT cannot
+    // happen after A-10, so the surviving claim is the one that still has teeth — every day
+    // sits on a key the document actually declares, and the Validation panel is therefore
+    // empty. A collapse coming back fails this again: two cities under one key is
+    // `duplicate_city_key`, an error, and it renders in this same panel. (The form puts every
+    // day on `cities[0]` by design — `PastTripForm.tsx`'s own header calls that the simplest
+    // thing that makes the record — so this asserts no day fell to the transit catch-all, not
+    // that both cities got days.)
+    const keySet = new Set(keys);
+    const stray = doc.days.filter((d) => !keySet.has(d.primaryCity));
+    ok('d. no city collapsed, so the app has nothing to report: every day sits on a declared city key and the panel is empty',
+      panelOpen && issues.length === 0 && stray.length === 0,
+      `${issues.length} issue(s) ${JSON.stringify(issues)}; ${stray.length} day(s) on no declared city ` +
+      JSON.stringify(stray.slice(0, 3).map((d) => `${d.date}:${d.primaryCity}`)));
   }
 }
 

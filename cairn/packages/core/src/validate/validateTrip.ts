@@ -26,6 +26,40 @@ function members(trip: Trip): Set<string> {
   return new Set(trip.ownerId ? [trip.ownerId] : []);
 }
 
+/**
+ * A city key resolved for a person (§2.2 **A-10**, QA **R13-7**) — `geoOutlier.ts`'s
+ * `cityLabel`, with the same contract and the same reason for existing.
+ *
+ * A `CityKey` is a minted opaque id (`city-7`, not `vienna`), and `Issue.message` is the
+ * sentence shown in the Issues panel, so a key interpolated into one puts an id in front of
+ * the user. `City.name` is a city's only human identity. `null` means this trip has no name to
+ * show for the key — either the city is absent (which is itself what the issue reports) or its
+ * name is blank (`city_name_empty` reports that separately). The caller composes the fallback,
+ * because no one phrase fits every sentence grammatically.
+ *
+ * Blank names collapse to `null` here where `geoOutlier`'s version does not: an issue reading
+ * *"the day's primary city, "", is not listed"* is exactly the illegibility this fixes.
+ * `params.cityKey` keeps the raw key at every site — it is structured data (§2.1). Pure.
+ *
+ * BUILD-NOTES **KD-46** records this and the one `params` addition it required, as KD-44 records
+ * the same decision for `geoOutlier.ts`; A-10's change table pre-authorised only that one file.
+ */
+function cityLabel(trip: Trip, key: string): string | null {
+  const name = trip.cities.find((c) => c.key === key)?.name.trim();
+  return name ? name : null;
+}
+
+/** A city named for a person, or a phrase saying it has no name. Pure. */
+function namePhrase(name: string): string {
+  return name.trim() ? `"${name.trim()}"` : 'a city with no name';
+}
+
+/**
+ * The phrase every "this key resolves to nothing" message shares, so the six sites read as one
+ * voice and none of them prints the id. Deliberately the same words `geoOutlier.ts` uses.
+ */
+const NO_SUCH_CITY = 'a city this trip does not have';
+
 
 /** Pure. Returns every problem found, in a deterministic order; never throws. */
 export function validateTrip(trip: Trip): Issue[] {
@@ -99,19 +133,24 @@ export function validateTrip(trip: Trip): Issue[] {
    * make it unopenable, which is the harm QA P2-7 describes. `fromJSON` is not the place for
    * any of these and `createTrip` does not throw on them (§2.1: domain problems are data).
    */
-  const cityKeysSeen = new Set<string>();
+  // key -> the NAME of the first city that claimed it, so a collision can be reported as two
+  // cities a person can recognise rather than as the id they happen to share (R13-7).
+  const cityKeysSeen = new Map<string, string>();
   for (const c of trip.cities) {
-    if (cityKeysSeen.has(c.key)) {
+    const first = cityKeysSeen.get(c.key);
+    if (first !== undefined) {
       // Structurally broken, not merely untidy: `daysForCity` and `poolFor` return the same
       // rows for both entries, and a pooled stop under that key belongs to neither.
       push({
         level: 'error',
         code: 'duplicate_city_key',
         ref: { kind: 'trip', id: trip.id },
-        message: `Two cities share the key "${c.key}" — every day, place and pooled stop under it is ambiguous.`,
+        message:
+          `Two cities share one key — ${namePhrase(first)} and ${namePhrase(c.name)} — so every ` +
+          `day, place and pooled stop under it is ambiguous.`,
         params: { cityKey: c.key },
       });
-    } else cityKeysSeen.add(c.key);
+    } else cityKeysSeen.set(c.key, c.name);
     if (c.key === TRANSIT_CITY_KEY) {
       // A shadowed sentinel is silent corruption of `Day.primaryCity`'s meaning: the day
       // would claim to be a travel day and to be in this city at the same time.
@@ -130,7 +169,9 @@ export function validateTrip(trip: Trip): Issue[] {
         level: 'error',
         code: 'city_name_empty',
         ref: { kind: 'trip', id: trip.id },
-        message: `A city has no name, and its key "${c.key}" is an opaque id nobody can read.`,
+        message:
+          'A city on this trip has no name, so nothing can label it on a day, a map or the pool — ' +
+          'its key is an opaque id nobody can read.',
         params: { cityKey: c.key },
       });
     }
@@ -169,12 +210,24 @@ export function validateTrip(trip: Trip): Issue[] {
       });
     }
     if (!d.cities.includes(d.primaryCity)) {
+      // Three sentences, because one phrase cannot cover three different facts (R13-7): the
+      // trip has the city (name it), the trip does not (say so), or it is the transit sentinel,
+      // which is not a city at all and must not read as a missing one.
+      const label = cityLabel(trip, d.primaryCity);
       push({
         level: 'error',
         code: 'primary_city_not_in_cities',
         ref: { kind: 'day', id: d.id },
-        message: `${d.date}: primary city "${d.primaryCity}" is not listed in the day's cities.`,
-        params: { dayId: d.id, primaryCity: d.primaryCity, cities: d.cities.join(',') },
+        message:
+          d.primaryCity === TRANSIT_CITY_KEY
+            ? `${d.date}: the day is marked travel-only, but the travel-only marker is not listed among the day's cities.`
+            : label === null
+              ? `${d.date}: the day's primary city is ${NO_SUCH_CITY}, and it is not listed among the day's cities either.`
+              : `${d.date}: the day's primary city, "${label}", is not listed among the day's cities.`,
+        // `primaryCity` was already the key and stays, verbatim, for anything that reads this
+        // structurally; `cityKey` is added so all six city-key issues carry the key under the
+        // one name `geoOutlier.ts` and the other five use.
+        params: { dayId: d.id, primaryCity: d.primaryCity, cityKey: d.primaryCity, cities: d.cities.join(',') },
       });
     }
     for (const key of d.cities) {
@@ -184,7 +237,9 @@ export function validateTrip(trip: Trip): Issue[] {
           level: 'error',
           code: 'unknown_city_key',
           ref: { kind: 'day', id: d.id },
-          message: `${d.date} references unknown city "${key}".`,
+          // The key is unresolvable by construction here — that is the condition being
+          // reported — so there is no name to show and the phrase is the whole message (R13-7).
+          message: `${d.date} lists ${NO_SUCH_CITY}.`,
           params: { dayId: d.id, cityKey: key },
         });
       }
@@ -277,7 +332,7 @@ export function validateTrip(trip: Trip): Issue[] {
         level: 'error',
         code: 'pool_stop_unknown_city',
         ref,
-        message: `"${stop.name}" is pooled under city "${placement.cityKey}", which this trip does not have — nothing can show it.`,
+        message: `"${stop.name}" is pooled under ${NO_SUCH_CITY} — nothing can show it.`,
         params: { stopId: stop.id, name: stop.name, cityKey: placement.cityKey },
       });
     }
@@ -399,7 +454,7 @@ export function validateTrip(trip: Trip): Issue[] {
         level: 'error',
         code: 'unknown_city_key',
         ref: { kind: 'place', id: p.id },
-        message: `Place "${p.name}" references unknown city "${p.cityKey}".`,
+        message: `Place "${p.name}" references ${NO_SUCH_CITY}.`,
         params: { placeId: p.id, cityKey: p.cityKey },
       });
     }
