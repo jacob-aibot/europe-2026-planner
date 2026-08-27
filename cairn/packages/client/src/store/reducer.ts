@@ -87,6 +87,28 @@ export type AppState = {
   ui: UiState;
   history: HistoryState;
   persistence: PersistenceState;
+  /**
+   * **The retirement ledger** (ARCHITECTURE §2.7 A-5, revision 6, QA R8-1).
+   *
+   * `syncResolutions` writes `retiredAt` into the *document*, outside the reducer, because
+   * §2.7 forbids bookkeeping from consuming an undo slot — but §4.2 rule 5's undo is a
+   * snapshot restore over that same document, so Ctrl+Z restored `retiredAt: null` and a
+   * dismissed **blocker** came back reading *"Marked dismissed"* after a keystroke that
+   * acknowledged nothing.
+   *
+   * *Undo restores the plan. It does not restore the user's ignorance of what has already been
+   * retired.* One date per `conflictId`, per trip, re-asserted onto every restored snapshot.
+   *
+   * It is **not persisted, not exported and not in `history`**: it is reconstructed on load
+   * from the stored document's own `retiredAt` fields, so there is no new storage record and
+   * no change to `toJSON`/`fromJSON`, the §6.3 cascade or `importDoc`.
+   *
+   * There is **exactly one place it is maintained** — `store.set()` — plus the two-action
+   * release in `store.dispatch`. That is the R3-3 pattern: one assignment site, so no path can
+   * opt out, rather than a closed list of callers to keep in step. The reducer never touches
+   * it; `reduce`/`undo`/`redo`/`setUi` carry it through by spread and nothing more.
+   */
+  retired: { tripId: string; marks: ReadonlyMap<string, string> } | null;
 };
 
 export const INITIAL_UI: UiState = {
@@ -109,6 +131,7 @@ export function initialState(): AppState {
     ui: { ...INITIAL_UI },
     history: { past: [], future: [], limit: HISTORY_LIMIT },
     persistence: { savedDoc: null, savedVersion: null, status: 'idle' },
+    retired: null,
   };
 }
 

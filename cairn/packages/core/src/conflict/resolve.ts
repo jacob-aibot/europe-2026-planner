@@ -51,6 +51,51 @@ export function syncResolutions(trip: Trip, conflicts: readonly Conflict[], at: 
   return { ...trip, resolutions, revision: trip.revision + 1 };
 }
 
+/**
+ * Re-asserts an already-discovered retirement onto a document (§2.7 A-5, revision 6, QA R8-1).
+ *
+ * `syncResolutions` writes `retiredAt` into the **document**, outside the reducer — correctly,
+ * because retirement is bookkeeping and §2.7 forbids it from consuming an undo slot. But §4.2
+ * rule 5's undo is a snapshot restore over that same document, and `history.past` already
+ * holds the pre-retirement `Trip`: Ctrl+Z therefore restored `retiredAt: null` and a dismissed
+ * **blocker** rendered *"Marked dismissed on <date>"* after a keystroke that acknowledged
+ * nothing.
+ *
+ * The position: *undo restores the plan, not the user's ignorance of what has already been
+ * retired.* Retirement is not a step in the document's history; it is a **monotone fact about
+ * a `conflictId`**, discovered once and true from then on. It lives in the document because it
+ * has to survive a reload, and that storage location is what made it look like history.
+ *
+ * So: sets `retiredAt = retired.get(r.conflictId)` on every resolution row whose `retiredAt`
+ * is `null` and whose `conflictId` the ledger holds. It **changes no other field of any
+ * record, ever** — that sentence is the whole of §4.2 rule 5's carve-out. Returns the same
+ * reference when nothing changed and bumps `revision` when something did, exactly as
+ * `syncResolutions` does.
+ *
+ * Idempotent, and converges in one pass: it only ever moves `null` → a date the ledger already
+ * holds, so a caller's `set` → re-assert cannot recurse.
+ *
+ * The ledger itself is client state (`AppState.retired`), per trip, outside `history` and never
+ * persisted — it is reconstructed on load from the stored document's own `retiredAt` fields.
+ *
+ * Pure.
+ */
+export function reassertRetirements(trip: Trip, retired: ReadonlyMap<ConflictId, IsoDate>): Trip {
+  if (retired.size === 0) return trip;
+  let changed = false;
+  const resolutions = trip.resolutions.map((r) => {
+    // Never un-retires and never overwrites: an already-retired row keeps its own date,
+    // whatever the ledger says.
+    if (r.retiredAt) return r;
+    const at = retired.get(r.conflictId);
+    if (at === undefined) return r;
+    changed = true;
+    return { ...r, retiredAt: at };
+  });
+  if (!changed) return trip;
+  return { ...trip, resolutions, revision: trip.revision + 1 };
+}
+
 /** Drops a stored resolution, putting the conflict back to unresolved. Pure. */
 export function unresolveConflict(trip: Trip, conflictId: ConflictId): Trip {
   return {

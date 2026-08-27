@@ -74,10 +74,13 @@ export { displayStatus, attribution } from './derive/display.ts';
 export { cityRange, tripSummary, daysForCity, orderedCities, weekdayOf } from './derive/summary.ts';
 export type { TripSummaryRow } from './derive/summary.ts';
 
-// ---- conflict (5) ------------------------------------------------------------
+// ---- conflict (6) ------------------------------------------------------------
+// `reassertRetirements` joins in revision 6 (§2.7 A-5, QA R8-1): the retirement ledger lives
+// in `packages/client`'s `AppState` and the function that re-asserts it onto a restored undo
+// snapshot is a pure core build function, so the client has to be able to call it.
 export { detectConflicts, RULES } from './conflict/detect.ts';
 export type { DetectOpts } from './conflict/detect.ts';
-export { resolveConflict, unresolveConflict, syncResolutions } from './conflict/resolve.ts';
+export { reassertRetirements, resolveConflict, unresolveConflict, syncResolutions } from './conflict/resolve.ts';
 export type { ResolutionInit } from './conflict/resolve.ts';
 // `conflictId`, `makeConflict`, `digest` and `canonical` are internal: a conflict id is a
 // value core mints and consumers compare, and a consumer that can MINT one can mint a

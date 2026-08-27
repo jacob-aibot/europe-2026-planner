@@ -1,6 +1,23 @@
 # Cairn — build notes, Phase 1
 
-> **Status: CURRENT, gate-review SEND-BACK pass** (`master`, after `5bdd0dc`). This pass
+> **Status: CURRENT — the A-5 / A-6 pass** (`master`, after `6d336f1`). Two architect rulings
+> from ARCHITECTURE revision 6, closing the two **user-reachable** MAJORs of round 8, and
+> nothing else:
+>
+> | | |
+> |---|---|
+> | **A-5 — R8-1** | The retirement ledger. `reassertRetirements` is a new pure core function; `AppState.retired` is a per-trip, never-persisted, outside-`history` ledger; `set(next, {reseed})` is its one maintenance site; `resolveConflict`/`unresolveConflict` release the key. **KD-34.** |
+> | **A-6 — R8-2** | A copy-borne `Place` — ≥1 linking stop, **all** of them `attribution() !== null` — is measured but never `'certain'`. Derived in `geoCheck`; `Place`'s shape does not change. **KD-35.** |
+> | **Numbers, my own runs** | `npm run test:tap` **409 pass / 0 fail** (was **387 / 0** at `6d336f1`; +22 tests, all new). `npm run typecheck` clean on both projects. `npm run web:build` clean. |
+> | **QA probes, before → after, unedited** | `qa/r8-persist.mjs` **2 FAIL → 1** (§3/R8-1 closes; §1/R8-4 is out of scope and still FAILs). `qa/r8-geo.mjs` **2 FAIL → 1** (§1/R8-2 closes; §2/R8-3 is out of scope and still FAILs). `qa/r8-undo.mjs` in Chromium **1 FAIL → 0**. `qa/r8-views.mjs` **0 FAIL**, `qa/r7-browser.mjs` **0 FAIL**. No `qa/*.mjs` script was edited. |
+> | **Export surface** | **69 → 70.** `reassertRetirements` joins §2.10's conflict group; `surface.test.ts`'s one list and both length assertions are updated to match. |
+> | **Out of scope and NOT fixed** | **R8-3** (the `adjacent_day` anchor is one representative chosen by position, so acceptance can *replace* it) and **R8-4** (`doMerge`'s off-chain `load()` resurrects a deleted trip). Both are named open findings, both still reproduce, and neither was touched. Everything else open in QA-FINDINGS' round-8 note is likewise untouched. |
+> | **One objection to the ruling, reproduced and NOT worked around** | **KD-36** — A-5 as specified makes a *second* dismissal of a conflict that already carries a retired row stillborn. Read it before the next breaker pass; it is a behaviour change I chose to ship rather than redesign. |
+>
+> **The status note below is superseded by this one** and is kept as the record of what was
+> true at `6d336f1`. §3 through §8 are as of that pass and are unrevised.
+
+> **Status: superseded — gate-review SEND-BACK pass** (`master`, after `5bdd0dc`). This pass
 > implements the manager's `REVIEW.md` routing **B-1 … B-7** and the architect's revision-5
 > rulings **A-1, A-2, A-4**, and nothing else. Every one of the thirteen items has a `KD-`
 > entry in §1 — **KD-23 … KD-33** are new and each names the item it answers.
@@ -746,6 +763,105 @@ already records it as deliberately unpatched. This pass also takes `friendImport
 `needsBadge` off the index, which that same dead block references; nothing observable changes
 because it already crashes one line earlier. Probe repair is a commit of its own, and it is
 the breaker's.
+
+### KD-34 — the retirement ledger: five implementation calls A-5 did not spell out
+
+`packages/core/src/conflict/resolve.ts`, `packages/client/src/store/reducer.ts`,
+`packages/client/src/store/store.ts`
+
+A-5 is unusually precise and I followed it literally: `reassertRetirements(trip, retired)`
+next to `syncResolutions`, `AppState.retired`, the five-step `set(next, {reseed})`, the seven
+reseeding paths, the two-action release in `dispatch`, and `retireResolutions` keying
+`derivedFor` on `state.doc` rather than the local `next`. Five things the ruling left to the
+builder, each recorded because a reader should not have to infer them from the diff:
+
+1. **`writeAndSettle` gained a fifth parameter.** A-5 names *"`doMerge`'s result"* as the
+   seventh reseeding path, but `doMerge` does not call `set` — `writeAndSettle` does, and it
+   is shared with `attemptSave`. So `writeAndSettle(..., opts?: { reseed?: boolean })` forwards
+   to `set`, and the merge branch is the only caller that passes `{ reseed: true }`. The
+   alternative — reseeding after `await chainOntoSaving(...)` — is a second `set`, which is
+   the double-emit A-5's step 5 forbids in as many words.
+2. **A `null` incoming document takes the reseed branch.** Step 3's condition reads
+   `state.retired.tripId !== next.doc.id`, which has no meaning when `next.doc` is `null`.
+   Steps 2 and 3 agree on the answer for that case (`retired` becomes `null`), so the guard is
+   written to take the seed branch and both readings produce the same state. Under the closed
+   list a `null` document only ever arrives via `closeTrip`/`deleteTrip`, which reseed anyway;
+   the guard is there so an eighth path cannot crash.
+3. **The gate is `if (r.retiredAt)`, not `if (r.retiredAt === null)`.** Identical over the two
+   values `IsoDate | null` permits, and it matches `syncResolutions`' own idiom one function
+   up rather than introducing a second spelling of the same test.
+4. **The release replaces the map, it does not mutate it.** `retired.marks` is reachable from
+   an `AppState` a subscriber may still be holding, and §2.1's immutability discipline does not
+   stop at the document. It costs one `Map` copy on two action types.
+5. **`releaseRetirement` assigns `state` without emitting.** It runs *before* `set`, per the
+   ruling, and `set` emits for both. A-5's *"exactly one place it is read or written"* is
+   about the ledger's maintenance sequence; the release is the ruling's own named exception,
+   and it is a private helper called from exactly the two lines `dispatch` names.
+
+The reference trip is unaffected: it carries no resolutions, so `marksOf` returns an empty map
+and `reassertRetirements` returns the same reference on every `set`.
+
+### KD-35 — A-6 is derived at evaluation time, and `Place` keeps its shape
+
+`packages/core/src/derive/geoCheck.ts`
+
+The places loop builds a `placeId -> linking stops` index once — over
+`trip.days.flatMap(d => d.stops)` then `trip.pool`, in document order — and computes
+`copyBorne = linking.length > 0 && linking.every(isCopied)`, reusing the `isCopied` helper the
+copied-**stop** row already uses. `anchors` is computed exactly as before, so `km` and
+`nearest` stay real: §2.13's *"measure it and decline to publish"*, not *"skip the record"*.
+
+**No anchor-side change, deliberately, and A-6 says so:** `Place` is not a `GeoAnchor` kind, a
+place's coordinate enters the anchor set only through a stop that resolves via it, and that
+stop's eligibility is already governed by `anchorsOthers`. Accepting a copied stop therefore
+leaves the place exempt (the clause keys on `attribution()`, not `provenance.state`) while
+adding the stop to `anchorable` — anchors are added, so a blocker can only disappear.
+
+**Re-derived, not quoted, and none of §2.13's numbers moved:** 0 findings / 112 scheduled
+stops and 0 / 94 places on the clean reference trip; 112/112 and 92/94 under a +1° latitude
+fault with the two permitted misses still `Blue Cave, Biševo` and `Stiniva Cove, Vis`; the
+Fisherman's Bastion typo still one blocker naming `place-68`. That is `geoCheck.test.ts` 1–15,
+unchanged by this pass and re-run against it.
+
+**Limitation 4, restated where the code is:** a coordinate typo already present in a
+copy-borne `Place` in its *source* trip travels with the copy and is not re-reported here.
+§2.13 names it; it is not a surprise.
+
+### KD-36 — OBJECTION: A-5 makes a *second* dismissal stillborn, and I shipped it anyway
+
+`packages/client/src/store/store.ts` (`set` step 4 × `dispatch`'s release)
+
+**This is an objection to the ruling, not a deviation from it.** The code does exactly what
+A-5 specifies. The specification has a consequence I do not think the architect intended, I
+reproduced it, and I am not redesigning around it — that is an architect decision.
+
+A-5's release fires *before* `set`, and `set`'s step 4 then re-absorbs from `next.doc`'s own
+retired rows. `core.resolveConflict` **keeps** a retired row for the same `conflictId` (it is
+the record `detectConflicts` reads for *"you dismissed this on 12 Aug; it has come back"*) and
+appends the new live row beside it. So the release deletes the key and the absorb immediately
+puts it back from the surviving retired row, and step 5 stamps the brand-new live row.
+
+ROADMAP's stated criterion — `unresolveConflict` **then** `resolveConflict` — is unaffected and
+passes, because `unresolveConflict` drops *every* row for the id, so there is nothing left to
+absorb. The broken path is `resolveConflict` **alone**, which is what the Conflicts panel's
+*"Not a problem"* button does when a retired conflict has come back:
+
+```
+dismiss → edit away → getDerived() retires → edit back (conflict live, resolution null)
+→ press "Not a problem" again
+  before this pass: rows = [dismissed retiredAt=2026-08-01, dismissed retiredAt=null]  renders "dismissed"
+  after  this pass: rows = [dismissed retiredAt=2026-08-01, dismissed retiredAt=2026-08-01]  renders UNRESOLVED
+```
+
+Verified both ways by `git stash`ing this pass's `src` changes and re-running the same script.
+It is user-reachable in the shipped UI and it is A-5's own *"a ledger that re-stamps a fresh
+answer has implemented 'never un-retires' as 'never resolve again'"*, reached through the other
+door. **No test in this pass asserts the post-fix behaviour as correct**, precisely because I
+do not think it is.
+
+Two candidate one-line fixes, both of which are the architect's call and neither of which I
+made: skip a `conflictId` in step 4's absorb when `next.doc` also holds a **live** row for it;
+or have the release survive one `set` (a released-this-tick set the absorb consults).
 
 ---
 

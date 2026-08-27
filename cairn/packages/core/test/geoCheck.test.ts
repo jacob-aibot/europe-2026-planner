@@ -303,3 +303,177 @@ test('R2-9 ceiling: the reference trip has no attributed record, so none of §2.
   assert.equal(extra.length, 1, 'the Fisherman\'s Bastion blocker must still fire');
   assert.deepEqual(extra[0].subjects.map((s) => s.id), ['place-68']);
 });
+
+// ---------------------------------------------------------------------------
+// A-6 (revision 6, QA R8-2) — the COPY-BORNE PLACE.
+//
+// Revision 5's "Places need no row of their own" paragraph is withdrawn: its premise (an
+// unrecognised `cityKey` yields `nearest === null`) is false for any trip with a `homeBase`,
+// and the reference trip has one. One Browse-and-copy click therefore put a THIRD
+// `geo_outlier` blocker on the reference trip, naming a `Place` the user never typed a
+// coordinate into and never accepted.
+//
+// A `Place` is copy-borne iff at least one stop in this trip resolves through it AND every
+// one of them is `attribution(stop) !== null`. Copy-borne places are measured — `km` and
+// `nearest` are real — and never published.
+// ---------------------------------------------------------------------------
+
+/** A Lisbon trip with one own stop, plus a PLACE-LINKED stop copied in from the reference trip. */
+function lisbonWithCopiedPlaceStop(): {
+  trip: Trip; copiedStopId: string; copiedPlaceId: string; ownStopId: string; dayId: string;
+} {
+  const { trip: europe } = europe2026();
+  const ctx: BuildCtx = { ids: sequentialIds('d'), now: '2026-08-25', actorUserId: 'local:self' };
+  let t = createTrip(
+    {
+      id: 'trip-lisbon', title: 'Lisbon', ownerId: 'local:self',
+      startDate: '2026-09-01', endDate: '2026-09-03',
+      homeBase: { name: 'Lisbon', at: { lat: 38.7223, lng: -9.1393 } },
+      cities: [{ key: 'lisbon', name: 'Lisbon', countryCode: 'PT', centre: { lat: 38.7223, lng: -9.1393 } }],
+    },
+    ctx,
+  );
+  const dayId = t.days[0].id;
+  t = addStop(
+    t,
+    { kind: 'scheduled', dayId, time: '10:00', order: 0 },
+    { name: 'Jerónimos Monastery', category: 'sight', place: { kind: 'inline', at: { lat: 38.6979, lng: -9.2065 } } },
+    ctx,
+  );
+  const ownStopId = t.days[0].stops[0].id;
+
+  const src = europe.days.flatMap((d) => d.stops).find((s) => s.place.kind === 'place');
+  assert.ok(src, 'the reference trip must carry a place-linked stop or this proves nothing');
+  const before = new Set(t.places.map((p) => p.id));
+  t = copyStopInto(
+    t,
+    { trip: europe, stopId: src.id },
+    { kind: 'scheduled', dayId, time: null, order: 9 },
+    { ids: sequentialIds('c'), today: '2026-09-01', actorUserId: 'local:self' },
+  );
+  const copiedPlace = t.places.find((p) => !before.has(p.id));
+  assert.ok(copiedPlace, 'rule 4 must have dragged the Place across, or the scenario is not R8-2\'s');
+  const copied = t.days[0].stops.find((s) => attribution(s) !== null);
+  assert.ok(copied, 'the copy did not land with an attribution');
+  assert.equal(copied.place.kind, 'place', 'the copied stop must resolve through the copied Place');
+  return { trip: t, copiedStopId: copied.id, copiedPlaceId: copiedPlace.id, ownStopId, dayId };
+}
+
+test('A-6 (R8-2): the Place a copy drags in is measured but never certain, and mints no blocker', () => {
+  const { trip, copiedPlaceId } = lisbonWithCopiedPlaceStop();
+  const finding = geoCheck(trip).find((f) => f.ref.kind === 'place' && f.ref.id === copiedPlaceId);
+  assert.ok(finding, 'the copied place must still produce a finding — measured, not skipped');
+  assert.equal(finding.confidence, 'unanchored', 'a copy-borne Place may never be `certain`');
+  assert.notEqual(
+    finding.nearest,
+    null,
+    '`nearest === null` is "skip the record"; §2.13 asks for "measure it and decline to publish"',
+  );
+  assert.ok(finding.km > 35, `the distance must still be real, got ${finding.km}`);
+
+  assert.deepEqual(
+    detectConflicts(trip, { today: FIXTURE_TODAY }).filter((c) => c.ruleId === 'geo_outlier'),
+    [],
+    'one Browse-and-copy click may not mint a geo_outlier blocker — §0.5, ROADMAP C(c)',
+  );
+});
+
+test('A-6: accepting the copied stop does NOT make its place certain — the clause keys on attribution()', () => {
+  const { trip, copiedStopId, copiedPlaceId } = lisbonWithCopiedPlaceStop();
+  const accepted = acceptCandidate(trip, { kind: 'stop', id: copiedStopId }, 'local:self', '2026-09-02');
+  assert.deepEqual(
+    detectConflicts(accepted, { today: FIXTURE_TODAY }).filter((c) => c.ruleId === 'geo_outlier'),
+    [],
+    'acceptance must never CREATE a blocker — had A-6 keyed on provenance.state, it would here',
+  );
+  const finding = geoCheck(accepted).find((f) => f.ref.kind === 'place' && f.ref.id === copiedPlaceId);
+  assert.equal(finding?.confidence, 'unanchored',
+    'acceptance preserves attribution(), so the exemption is monotone across the transition');
+});
+
+test('A-6: `every`, not `some` — one stop the user wrote themselves ends the exemption', () => {
+  const { trip, copiedPlaceId, dayId } = lisbonWithCopiedPlaceStop();
+  const ctx: BuildCtx = { ids: sequentialIds('o'), now: '2026-08-25', actorUserId: 'local:self' };
+  const withOwn = addStop(
+    trip,
+    { kind: 'scheduled', dayId, time: '14:00', order: 5 },
+    { name: 'My own visit', category: 'sight', place: { kind: 'place', placeId: copiedPlaceId } },
+    ctx,
+  );
+  const finding = geoCheck(withOwn).find((f) => f.ref.kind === 'place' && f.ref.id === copiedPlaceId);
+  assert.equal(finding?.confidence, 'certain',
+    'the user\'s own plan now rests on this coordinate — this is the Fisherman\'s Bastion case');
+
+  const named = detectConflicts(withOwn, { today: FIXTURE_TODAY })
+    .filter((c) => c.ruleId === 'geo_outlier' && c.subjects.some((s) => s.kind === 'place' && s.id === copiedPlaceId));
+  assert.equal(named.length, 1, 'exactly one geo_outlier must name the place once a non-copied stop links it');
+  assert.equal(named[0].severity, 'blocker');
+});
+
+test('A-6 clause 1: a Place with NO linking stop is untouched — still measured at `certain`', () => {
+  const { trip, copiedPlaceId } = lisbonWithCopiedPlaceStop();
+  // Strip every stop that resolves through the copied place. `linking.length > 0` fails, so
+  // the place is an orphan the user keeps for its own sake and the rule does not touch it.
+  const orphaned: Trip = {
+    ...trip,
+    days: trip.days.map((d) => ({
+      ...d,
+      stops: d.stops.filter((s) => !(s.place.kind === 'place' && s.place.placeId === copiedPlaceId)),
+    })),
+  };
+  const finding = geoCheck(orphaned).find((f) => f.ref.kind === 'place' && f.ref.id === copiedPlaceId);
+  assert.ok(finding, 'the orphan place must still be measured');
+  assert.equal(finding.confidence, 'certain', 'clause 1: a place no stop points at is measured exactly as before');
+});
+
+test('A-6: a POOL stop counts as a linking stop too — the index spans days then pool', () => {
+  const { trip, copiedPlaceId, dayId } = lisbonWithCopiedPlaceStop();
+  const ctx: BuildCtx = { ids: sequentialIds('p'), now: '2026-08-25', actorUserId: 'local:self' };
+  // The user's own POOL stop links the copied place. `every(isCopied)` must be false.
+  const withPooled = addStop(
+    trip,
+    { kind: 'pool', cityKey: 'lisbon' },
+    { name: 'Maybe later', category: 'sight', place: { kind: 'place', placeId: copiedPlaceId } },
+    ctx,
+  );
+  void dayId;
+  const finding = geoCheck(withPooled).find((f) => f.ref.kind === 'place' && f.ref.id === copiedPlaceId);
+  assert.equal(finding?.confidence, 'certain', 'a pool stop the user wrote is still the user\'s own claim');
+});
+
+test('A-6, the four-click regression on the REAL fixture: 2 blockers, not 3', () => {
+  // QA R8-2's own sequence: Jacob's trip is the reference trip without Marta's island day
+  // and its places; he browses hers and copies one place-linked stop across.
+  const { trip: full } = europe2026();
+  const marta: Trip = { ...full, id: 'trip-marta', ownerId: 'user:marta', title: "Marta's Croatia" };
+  const islandDay = full.days.find((d) => d.date === '2026-08-13');
+  assert.ok(islandDay, 'the fixture lost the Aug 13 island day');
+  const jacob: Trip = {
+    ...full,
+    days: full.days.filter((d) => d.date !== '2026-08-13'),
+    places: full.places.filter((p) => !/Blue Cave|Stiniva|Hvar Town/i.test(p.name)),
+  };
+  assert.equal(
+    detectConflicts(jacob, { today: FIXTURE_TODAY }).filter((c) => c.severity === 'blocker').length,
+    2,
+    'precondition: the reference trip carries exactly two blockers, both Jacob\'s own flags',
+  );
+
+  const src = islandDay.stops.find((s) => s.place.kind === 'place' && /Blue Cave/i.test(s.name));
+  assert.ok(src, 'the fixture lost the Blue Cave stop');
+  const splitDay = jacob.days.find((d) => d.cities.includes('split'));
+  assert.ok(splitDay, 'the fixture lost its Split days');
+  const copied = copyStopInto(
+    jacob,
+    { trip: marta, stopId: src.id },
+    { kind: 'scheduled', dayId: splitDay.id, time: null, order: 99 },
+    { ids: sequentialIds('copy'), today: FIXTURE_TODAY, actorUserId: 'local:self' },
+  );
+  const after = detectConflicts(copied, { today: FIXTURE_TODAY });
+  assert.deepEqual(
+    after.filter((c) => c.ruleId === 'geo_outlier').map((c) => c.summary),
+    [],
+    'the copy path minted a geo_outlier — R8-2',
+  );
+  assert.equal(after.filter((c) => c.severity === 'blocker').length, 2, 'a third blocker appeared on one click');
+});

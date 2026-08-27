@@ -26,18 +26,29 @@
  * and no travel-mode exemption — §2.12's `travelRole` is deliberately NOT read here: two
  * independent defects, two independent fixes.
  *
- * One record class is exempt, both ways (§2.13 revision 5, QA R2-9): a stop `copyStopInto`
- * produced — `attribution(stop) !== null` — is measured but never `'certain'`, and it is not
- * an anchor for anything else until it is accepted. See `isCopied` and `anchorsOthers`.
- * **`Place` needs no equivalent and gets none**: a Place carries no `provenance` (§2.2), so
- * a copied place is not identifiable as one and does not need to be. `copyStopInto` rule 4
- * copies the place with its `cityKey` verbatim, so in the destination trip it is either
- * filed under a city that trip does have — meaningful anchors, the check should run — or
- * under a key that trip never heard of, in which case the existing Place row already yields
- * `nearest === null` and `'unanchored'`. Both outcomes are already correct.
+ * TWO record classes are exempt (§2.13, QA R2-9 and R8-2):
+ *
+ *   - a stop `copyStopInto` produced — `attribution(stop) !== null` — is measured but never
+ *     `'certain'`, and it is not an anchor for anything else until it is accepted (revision 5;
+ *     see `isCopied` and `anchorsOthers`);
+ *   - a **copy-borne `Place`** — at least one stop in this trip resolves through it and every
+ *     one of them is copied — gets the same treatment (revision 6, A-6; see the places loop).
+ *
+ * Revision 5's *"`Place` needs no equivalent and gets none"* paragraph stood here and is
+ * **withdrawn**. Its argument was that a place rule 4 drags across is filed either under a
+ * city the destination trip does have — meaningful anchors — or under a `cityKey` it never
+ * heard of, *"in which case the existing Place row already yields `nearest === null` and
+ * `'unanchored'`"*. That second disjunct is false, and this file's own `homeBase` anchor
+ * falsifies it: `homeBase` is appended unconditionally, so any trip with one offers the
+ * unrecognised place exactly one anchor, thousands of kilometres away — `nearest !== null`,
+ * `km > 35`, `'certain'`, and one Browse-and-copy click put a third `geo_outlier` blocker on
+ * the reference trip. `Place`'s shape does not change: the fact is derived here, at evaluation
+ * time, because rule 4 REUSES an equivalent existing place when `samePlace` matches, so a
+ * "copied" place can be literally the same row as one the user entered and a `provenance`
+ * field would have no honest answer for the reuse branch.
  *
  * BUILD-NOTES §1, KD-2 carries the measured detection census and the two permitted misses;
- * KD-23 carries the copied-record row.
+ * KD-23 carries the copied-record row; KD-35 carries this copy-borne-Place row.
  *
  * Pure. No clock, no ids, no IO.
  */
@@ -227,6 +238,16 @@ export function geoCheck(trip: Trip): GeoFinding[] {
   }
 
   // ---- places ---------------------------------------------------------------
+  // `placeId -> the stops whose PlaceLink names it`, built once, over the scheduled stops in
+  // document order and then the pool. §2.13 A-6 (revision 6, QA R8-2).
+  const linkedBy = new Map<string, Stop[]>();
+  for (const s of trip.days.flatMap((d) => d.stops).concat(trip.pool)) {
+    if (s.place.kind !== 'place') continue;
+    const list = linkedBy.get(s.place.placeId);
+    if (list) list.push(s);
+    else linkedBy.set(s.place.placeId, [s]);
+  }
+
   for (const p of trip.places as readonly Place[]) {
     if (!p.at || !Number.isFinite(p.at.lat) || !Number.isFinite(p.at.lng)) continue;
     const centre = centres.get(p.cityKey);
@@ -237,7 +258,25 @@ export function geoCheck(trip: Trip): GeoFinding[] {
       ...homeBase,
       ...stopsForCity(p.cityKey, (s) => s.place.kind === 'place' && s.place.placeId === p.id),
     ];
-    const f = finding({ kind: 'place', id: p.id }, p.at, anchors);
+    // A Place is COPY-BORNE iff at least one stop in this trip resolves through it AND every
+    // one of them is a copy. Four clauses, each load-bearing (§2.13 A-6):
+    //
+    //   1. `linking.length > 0` — a place no stop points at is one the user keeps for its own
+    //      sake, or an orphan. Measured at `'certain'` exactly as before.
+    //   2. `every`, not `some` — if even one stop the user wrote themselves resolves through
+    //      this place, the user's own plan rests on that coordinate and a blocker on it is
+    //      the Fisherman's Bastion case. The exemption is "the ONLY reason this record is here
+    //      is a copy".
+    //   3. `isCopied`, i.e. `attribution(stop) !== null` and NOT `provenance.state` — which is
+    //      what makes it monotone across acceptance. Had it keyed on state, `acceptCandidate`
+    //      would flip the place from exempt to measured and MINT a blocker at the moment of
+    //      acceptance, precisely the transition A-1 exists to forbid.
+    //   4. `anchors` is computed unchanged above, so `km` and `nearest` are still real —
+    //      "measure it and decline to publish". An implementation that `continue`d past the
+    //      record has implemented "skip" and is wrong.
+    const linking = linkedBy.get(p.id) ?? [];
+    const copyBorne = linking.length > 0 && linking.every(isCopied);
+    const f = finding({ kind: 'place', id: p.id }, p.at, anchors, copyBorne ? 'unanchored' : 'certain');
     if (f) out.push(f);
   }
 

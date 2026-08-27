@@ -130,9 +130,98 @@ export function createStore(opts: StoreOptions) {
     for (const l of [...listeners]) l(state);
   }
 
-  function set(next: AppState) {
-    state = next;
+  /** A trip's own retired rows, as a ledger. §2.7 A-5's "reconstructed on load". */
+  function marksOf(doc: Trip | null): ReadonlyMap<string, string> {
+    const marks = new Map<string, string>();
+    if (!doc) return marks;
+    for (const r of doc.resolutions) {
+      if (r.retiredAt && !marks.has(r.conflictId)) marks.set(r.conflictId, r.retiredAt);
+    }
+    return marks;
+  }
+
+  /**
+   * **The one place `state` is assigned, and the one place the retirement ledger is
+   * maintained** (ARCHITECTURE §2.7 A-5, revision 6, QA R8-1).
+   *
+   * Retirement is monotone metadata, not document history: `syncResolutions` writes
+   * `retiredAt` into the *document* — outside the reducer, because §2.7 forbids bookkeeping
+   * from consuming an undo slot — but §4.2 rule 5's undo is a snapshot restore over that same
+   * document, and `history.past` already holds the pre-retirement `Trip`. Ctrl+Z therefore
+   * restored `retiredAt: null` and a dismissed **blocker** rendered *"Marked dismissed on
+   * <date>"* after a keystroke that acknowledged nothing. *Undo restores the plan; it does not
+   * restore the user's ignorance of what has already been retired.*
+   *
+   * Five mechanical steps. One assignment site is the point — the R3-3 pattern — so no path
+   * can opt out by forgetting to call something:
+   *
+   *   1. `next.doc === state.doc` → assign and emit, unchanged. Every UI-only `set` takes this
+   *      branch and the cost is one comparison.
+   *   2. `opts.reseed` → the ledger becomes **exactly** the arriving document's own retired
+   *      rows (`null` when there is no document), and **no re-assertion runs**. A document
+   *      installed from outside this store's own edits is the authority.
+   *   3. No ledger, or a ledger for another trip → same as step 2. A ledger is per trip:
+   *      conflict ids are content-addressed over subject ids, which do not cross trips, and a
+   *      ledger that outlived its trip would only grow.
+   *   4. **Absorb** — record every retired row the arriving document carries, **first write
+   *      wins**, so the recorded date is the earliest retirement this session observed and does
+   *      not drift.
+   *   5. **Re-assert**, then assign and emit **ONCE**, with the corrected document. Never a
+   *      `set` for the restored snapshot followed by a second `set` for the fix, or subscribers
+   *      render the stale *"Marked dismissed"* for a frame — which is the defect.
+   *
+   * BUILD-NOTES KD-34 records the five implementation calls A-5 left to the builder, and
+   * **KD-36 is an objection to the ruling as specified** — read it before changing this.
+   */
+  function set(next: AppState, opts?: { reseed?: boolean }) {
+    // 1 — identity.
+    if (next.doc === state.doc) {
+      state = next;
+      emit();
+      return;
+    }
+    const doc = next.doc;
+    // 2 and 3 — the arriving document is the authority; a ledger never crosses a trip.
+    // A `null` document takes this branch too: both steps say the ledger becomes `null`.
+    if (opts?.reseed || doc === null || state.retired === null || state.retired.tripId !== doc.id) {
+      state = { ...next, retired: doc === null ? null : { tripId: doc.id, marks: marksOf(doc) } };
+      emit();
+      return;
+    }
+    // 4 — absorb.
+    const marks = new Map(state.retired.marks);
+    for (const r of doc.resolutions) {
+      if (r.retiredAt && !marks.has(r.conflictId)) marks.set(r.conflictId, r.retiredAt);
+    }
+    // 5 — re-assert, then one emit with the corrected document.
+    state = { ...next, doc: core.reassertRetirements(doc, marks), retired: { tripId: doc.id, marks } };
     emit();
+  }
+
+  /**
+   * Releases one conflict id from the ledger, so a fresh answer is not stillborn (§2.7 A-5).
+   *
+   * `unresolveConflict` followed by a new `resolveConflict` for the same `conflictId` would
+   * otherwise have its brand-new live row stamped retired by the ledger on the very next
+   * `set`. Called from `dispatch`, **before** `set`, for exactly two action types and nothing
+   * else. This does not weaken *"never un-retires"*: both are deliberate user acts on that
+   * exact conflict, which is the opposite of the bookkeeping-with-no-user-action §2.7 exists to
+   * stop. Undoing past a release restores a live row, and that is the user's own answer being
+   * undone.
+   *
+   * It replaces the map rather than mutating it: a subscriber may be holding the previous
+   * `AppState`, and `retired.marks` is reachable from it.
+   *
+   * **BUILD-NOTES KD-36**: releasing here and absorbing in `set` step 4 means a SECOND
+   * `resolveConflict` on a conflict that still carries a retired row is re-stamped retired.
+   * That is A-5 as written, it is reproduced in KD-36, and it is the architect's to settle.
+   */
+  function releaseRetirement(conflictId: string) {
+    const ledger = state.retired;
+    if (!ledger || !ledger.marks.has(conflictId)) return;
+    const marks = new Map(ledger.marks);
+    marks.delete(conflictId);
+    state = { ...state, retired: { tripId: ledger.tripId, marks } };
   }
 
   /**
@@ -257,6 +346,11 @@ export function createStore(opts: StoreOptions) {
     toWrite: Trip,
     merge: { message: string; report: core.MergeReport } | null,
     expected: StorageVersion | null,
+    // §2.7 A-5's seventh reseeding path. `doMerge` installs `merged.trip` as the active
+    // document through here, and a merged document is one storage and this tab have just
+    // JOINTLY AGREED on, at the user's explicit request. The ledger's job is to defend
+    // against this store's own undo stack — not to outvote a merge.
+    opts?: { reseed?: boolean },
   ): Promise<void> {
     const summary = core.tripSummary(toWrite);
     const outcome = await ports.storage.saveIfVersion(toWrite.id, expected, core.toJSON(toWrite), summary);
@@ -288,7 +382,7 @@ export function createStore(opts: StoreOptions) {
         // it. A notice that vanishes on the next keystroke is not a disclosure.
         ...(merge ?? state.persistence.lastMerge ? { lastMerge: merge ?? state.persistence.lastMerge } : {}),
       },
-    });
+    }, opts);
     if (!stillOurs) scheduleSave();
   }
 
@@ -431,7 +525,10 @@ export function createStore(opts: StoreOptions) {
     if (next === doc) return derived;
     set({ ...state, doc: next });
     scheduleSave();
-    return derivedFor(derived, next, ports.clock.today());
+    // **After `set()`, read `state.doc` — never the local we passed in** (§2.7 A-5). `next` is
+    // the PRE-re-assertion document, and keying the derived cache on it is §2.2b F2 in
+    // miniature: the cache would be served for a document the store does not hold.
+    return derivedFor(derived, state.doc, ports.clock.today());
   }
 
   /**
@@ -488,6 +585,7 @@ export function createStore(opts: StoreOptions) {
           merged.trip,
           { message: core.describeMerge(merged.report), report: merged.report },
           stored.version,
+          { reseed: true },
         );
       } catch (err) {
         set({
@@ -535,6 +633,10 @@ export function createStore(opts: StoreOptions) {
 
     /** Applies one action. @throws {Error} if there is no active trip or the action is unknown. */
     dispatch(action: Action): AppState {
+      // §2.7 A-5's release, and its whole closed list: exactly these two action types, both
+      // of which are a deliberate user act ON that exact conflict. Nothing else releases.
+      if (action.type === 'resolveConflict') releaseRetirement(action.resolution.conflictId);
+      else if (action.type === 'unresolveConflict') releaseRetirement(action.conflictId);
       set(reduce(state, action, ctx()));
       scheduleSave();
       return state;
@@ -620,7 +722,7 @@ export function createStore(opts: StoreOptions) {
         activeTripId: doc.id,
         doc,
         ui: { ...initialState().ui, activeDayId: doc.days[0]?.id ?? null, activeCityKey: doc.cities[0]?.key ?? null },
-      });
+      }, { reseed: true });
       await save();
       return state;
     },
@@ -645,7 +747,7 @@ export function createStore(opts: StoreOptions) {
         activeTripId: doc.id,
         doc,
         ui: { ...initialState().ui, activeDayId: doc.days[0]?.id ?? null, activeCityKey: doc.cities[0]?.key ?? null },
-      });
+      }, { reseed: true });
       await save();
       return state;
     },
@@ -674,7 +776,7 @@ export function createStore(opts: StoreOptions) {
         // Both come from the port result and from nowhere else — §2.2a rule 1, §2.2b F2.
         persistence: { savedDoc: doc, savedVersion: stored.version, status: 'idle' },
         ui: { ...initialState().ui, activeDayId: doc.days[0]?.id ?? null, activeCityKey: doc.cities[0]?.key ?? null },
-      });
+      }, { reseed: true });
       return state;
     },
 
@@ -719,7 +821,7 @@ export function createStore(opts: StoreOptions) {
     async closeTrip(): Promise<AppState> {
       if (!(await flushForTransition())) return state;
       cache = null;
-      set({ ...initialState(), library: state.library });
+      set({ ...initialState(), library: state.library }, { reseed: true });
       return state;
     },
 
@@ -755,7 +857,7 @@ export function createStore(opts: StoreOptions) {
         const library = state.library.filter((r) => r.id !== id);
         if (state.activeTripId === id) {
           cache = null;
-          set({ ...initialState(), library });
+          set({ ...initialState(), library }, { reseed: true });
         } else set({ ...state, library });
       });
       return state;
@@ -818,7 +920,7 @@ export function createStore(opts: StoreOptions) {
         activeTripId: doc.id,
         doc,
         ui: { ...initialState().ui, activeDayId: doc.days[0]?.id ?? null, activeCityKey: doc.cities[0]?.key ?? null },
-      });
+      }, { reseed: true });
       await save();
       return state;
     },

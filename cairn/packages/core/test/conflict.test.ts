@@ -6,7 +6,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { europe2026, FIXTURE_TODAY, golden } from './fixture.ts';
 import {
-  detectConflicts, resolveConflict, updateStop, RULES, sequentialIds, createTrip, addStop,
+  detectConflicts, reassertRetirements, resolveConflict, updateStop, RULES, sequentialIds,
+  createTrip, addStop,
   upsertBooking, linkBooking, setDayMeta, syncResolutions, validateTrip, LOCAL_OWNER,
   computeLegs as computeLegsForTest,
 } from '../src/index.ts';
@@ -466,4 +467,96 @@ test('validateTrip reports retired resolutions once they pile up, and stays quie
   const over = validateTrip({ ...a, resolutions: rows }).filter((i) => i.code === 'stale_resolutions');
   assert.equal(over.length, 1);
   assert.equal(over[0].params.retired, STALE_RESOLUTION_LIMIT + 1);
+});
+
+// ---------------------------------------------------------------------------
+// A-5 (revision 6, QA R8-1) — `reassertRetirements`. Retirement is monotone
+// metadata, so a client can re-assert it onto a restored undo snapshot. The
+// function is the whole of §4.2 rule 5's carve-out and it must touch NOTHING
+// but `resolutions[].retiredAt` on rows the ledger has a key for.
+// ---------------------------------------------------------------------------
+
+test('A-5: reassertRetirements returns the SAME reference when nothing changed', () => {
+  const a = europe2026().trip;
+  const conflicts = detectConflicts(a, { today: FIXTURE_TODAY });
+  const resolved = resolveConflict(a, {
+    conflictId: conflicts[0].id, state: 'dismissed', at: '2026-08-01', by: 'local:self',
+  });
+  assert.equal(reassertRetirements(resolved, new Map()), resolved, 'an empty ledger must not churn the document');
+  assert.equal(
+    reassertRetirements(resolved, new Map([['some-other-conflict', '2026-08-13']])),
+    resolved,
+    'a ledger with no key for any live row must not churn the document',
+  );
+  const retired = syncResolutions(resolved, [], '2026-08-13');
+  assert.equal(
+    reassertRetirements(retired, new Map([[conflicts[0].id, '2026-08-13']])),
+    retired,
+    'a row that is ALREADY retired is not rewritten',
+  );
+});
+
+test('A-5: reassertRetirements sets retiredAt from the ledger and bumps revision', () => {
+  const a = europe2026().trip;
+  const conflicts = detectConflicts(a, { today: FIXTURE_TODAY });
+  const resolved = resolveConflict(a, {
+    conflictId: conflicts[0].id, state: 'dismissed', at: '2026-08-01', by: 'local:self', note: 'not a problem',
+  });
+  const next = reassertRetirements(resolved, new Map([[conflicts[0].id, '2026-08-13']]));
+  assert.notEqual(next, resolved);
+  assert.equal(next.resolutions[0].retiredAt, '2026-08-13');
+  assert.equal(next.revision, resolved.revision + 1, '§2.2a: revision is content, and the content changed');
+});
+
+test('A-5: reassertRetirements changes NOTHING but resolutions[].retiredAt', () => {
+  // §4.2 rule 5's carve-out is exactly one field. Field-by-field equality over the whole
+  // document with `resolutions[].retiredAt` and `revision` excluded — a check that merely
+  // skipped `resolutions` would let `state`, `by`, `at` or `note` drift through the hole.
+  const a = europe2026().trip;
+  const conflicts = detectConflicts(a, { today: FIXTURE_TODAY });
+  let resolved = resolveConflict(a, {
+    conflictId: conflicts[0].id, state: 'dismissed', at: '2026-08-01', by: 'local:self', note: 'not a problem',
+  });
+  resolved = resolveConflict(resolved, {
+    conflictId: conflicts[1].id, state: 'acknowledged', at: '2026-08-02', by: 'user:marta',
+  });
+  const ledger = new Map([[conflicts[0].id, '2026-08-13']]);
+  const next = reassertRetirements(resolved, ledger);
+
+  const strip = (t: typeof a) => ({
+    ...t,
+    revision: 0,
+    resolutions: t.resolutions.map((r) => ({ ...r, retiredAt: null })),
+  });
+  assert.deepEqual(strip(next), strip(resolved), 'a field other than resolutions[].retiredAt moved');
+  assert.deepEqual(
+    next.resolutions.map((r) => r.retiredAt),
+    ['2026-08-13', null],
+    'only the row the ledger has a key for may move, and only from null to the ledger value',
+  );
+  // The un-keyed row keeps every one of its own fields.
+  assert.deepEqual(next.resolutions[1], resolved.resolutions[1]);
+});
+
+test('A-5: reassertRetirements never un-retires, and never overwrites an earlier date', () => {
+  const a = europe2026().trip;
+  const conflicts = detectConflicts(a, { today: FIXTURE_TODAY });
+  const resolved = resolveConflict(a, {
+    conflictId: conflicts[0].id, state: 'dismissed', at: '2026-08-01', by: 'local:self',
+  });
+  const retired = syncResolutions(resolved, [], '2026-08-13');
+  const later = reassertRetirements(retired, new Map([[conflicts[0].id, '2026-08-20']]));
+  assert.equal(later, retired, 'an already-retired row is untouched, whatever the ledger says');
+  assert.equal(later.resolutions[0].retiredAt, '2026-08-13');
+});
+
+test('A-5: reassertRetirements is idempotent and converges in one pass', () => {
+  const a = europe2026().trip;
+  const conflicts = detectConflicts(a, { today: FIXTURE_TODAY });
+  const resolved = resolveConflict(a, {
+    conflictId: conflicts[0].id, state: 'dismissed', at: '2026-08-01', by: 'local:self',
+  });
+  const ledger = new Map([[conflicts[0].id, '2026-08-13']]);
+  const once = reassertRetirements(resolved, ledger);
+  assert.equal(reassertRetirements(once, ledger), once, 'a second pass must be a no-op — `set` cannot recurse');
 });

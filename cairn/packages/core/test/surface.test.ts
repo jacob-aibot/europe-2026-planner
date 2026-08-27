@@ -12,7 +12,8 @@
  * against cannot be "110 against 50, enumerated". BUILD-NOTES KD-33, which supersedes
  * KD-19 — the entry that recorded the gap as enumerated rather than narrowed.
  *
- * So: one array, 69 entries, set equality both ways. A symbol added to `index.ts` without
+ * So: one array, 70 entries, set equality both ways. (69 in revision 5; `reassertRetirements`
+ * joins in revision 6 under §2.7 A-5.) A symbol added to `index.ts` without
  * being added to §2.10 fails; a symbol in §2.10 that is not exported fails. Widening the
  * surface is a documentation change first — add the caller or add the section that names
  * it, then add the line.
@@ -29,7 +30,7 @@ import * as core from '../src/index.ts';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CAIRN = resolve(HERE, '..', '..', '..');
 
-/** §2.10, transcribed. Runtime symbols only — 69 of them, grouped as the section groups them. */
+/** §2.10, transcribed. Runtime symbols only — 70 of them, grouped as the section groups them. */
 const THE_LIST = [
   // model (7)
   'LOCAL_OWNER', 'SCHEMA_VERSION', 'sequentialIds', 'formatRange', 'costFromDisplay',
@@ -45,8 +46,9 @@ const THE_LIST = [
   'rollUpCost', 'displayStatus', 'attribution',
   'cityRange', 'daysForCity', 'orderedCities', 'weekdayOf', 'tripSummary',
   'geoCheck', 'GEO_LIMIT_KM',
-  // conflict (5)
+  // conflict (6)
   'detectConflicts', 'RULES', 'resolveConflict', 'unresolveConflict', 'syncResolutions',
+  'reassertRetirements',
   // validate (2)
   'validateTrip', 'issueCounts',
   // merge (2)
@@ -64,9 +66,9 @@ const THE_LIST = [
 const runtimeExports = () =>
   Object.keys(core).filter((k) => typeof (core as Record<string, unknown>)[k] !== 'undefined');
 
-test('§2.10 is 69 symbols, and the list in this file is exactly that long', () => {
-  assert.equal(THE_LIST.length, 69, 'the transcribed list is no longer §2.10\'s stated size');
-  assert.equal(new Set(THE_LIST).size, 69, 'the list has a duplicate');
+test('§2.10 is 70 symbols, and the list in this file is exactly that long', () => {
+  assert.equal(THE_LIST.length, 70, 'the transcribed list is no longer §2.10\'s stated size');
+  assert.equal(new Set(THE_LIST).size, 70, 'the list has a duplicate');
 });
 
 test('the index exports exactly §2.10\'s list — set equality, both directions', () => {
