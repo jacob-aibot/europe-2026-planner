@@ -232,7 +232,8 @@ cairn/
   is committed. Ticket PDFs are referenced by repo-relative path. `europe-2026-itinerary.html`, `docs/` and
   `tickets/` at the repo root are **read-only** — the live app on Jacob's phone.
 - **`Trip.ownerId` and the `core/access` predicates ship in this phase** even though nothing enforces them
-  yet. They are the definition the Phase 2 RLS policies are generated from and tested against (§6.2).
+  yet. They are the definition the accounts phase's RLS policies (now Phase 3) are generated from and
+  tested against (§6.2).
 - Every exported function gets a doc comment stating whether it is pure and what it throws.
 
 ### Build order (spine first)
@@ -603,7 +604,7 @@ not decoration.
      `Trip.revision` as the deleted one — that exact case returned `ok:true` in revision 2.
   3. **Opacity.** `packages/client` contains no comparison of two `StorageVersion`s other than `===`/`!==`,
      no arithmetic on one, and no `JSON.parse` of one; and `revisionOf()` no longer exists. Grep-asserted.
-     This is what lets Phase 2 substitute a server `ETag` and Phase 4 a SQLite counter without touching the
+     This is what lets the accounts phase substitute a server `ETag` and the phone phase a SQLite counter without touching the
      store. Revision 4 adds a ceiling: **no test, golden or fixture contains a `StorageVersion` literal** —
      zero occurrences of a string matching a minted token's shape outside the ports themselves. A test that
      pins `'mem.1'` is a test that will be "fixed" by making the token predictable again `[stated]`
@@ -830,7 +831,7 @@ URL inside a sentence.
 
 No HTTP, no database, no accounts, no auth enforcement. No location, photo or email code — those directories
 do not exist yet. No timezone handling, and therefore **no `journey_overrun`** (§2.12 — the rule
-`travelRole` enables and a wall-clock model cannot support; Phase 4). No `closed` rule (§2.7 — no hours
+`travelRole` enables and a wall-clock model cannot support; the phone phase, now **5**). No `closed` rule (§2.7 — no hours
 source exists). No sub-maps (Lokrum). No currency conversion. No native app. **No `forkTrip` and no
 `TripFork`** — cut, not deferred (§2.14).
 
@@ -842,10 +843,11 @@ source exists). No sub-maps (Lokrum). No currency conversion. No native app. **N
 compounds. Still local-first: no server, no accounts, no device, no network. Everything in this phase is
 attackable in plain Node with the in-memory ports, exactly as Phase 1 is.
 
-**Independently useful:** Jacob enters the six trips he has already taken — dates, cities, who he went with
-— and gets a map of everywhere he has been, a count of countries and cities that is derived from real trips
-rather than typed, and a completed-trip view of Europe 2026 that is a record instead of an itinerary that
-has expired. It is also the phase that stops the app telling him his finished trip is missing a hotel.
+**Independently useful:** Jacob records the trips he has already taken — dates, cities, who he went with —
+and gets a map of everywhere he has been, a count of countries and cities derived from real trips rather
+than typed, and a completed-trip view of Europe 2026 that is a record instead of an itinerary that has
+expired. It is also the phase that stops the app telling him the trip he finished on 22 August is missing a
+hotel.
 
 Entry: Phase 1 shipped with a manager verdict of SHIP (`b32ef9a`) — done.
 
