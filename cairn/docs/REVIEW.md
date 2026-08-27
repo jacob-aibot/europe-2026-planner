@@ -1,364 +1,279 @@
 # Cairn — Phase 1 review
 
-> **Status: CURRENT.** Manager, stage 4. Reviewed `master` @ `8a65a53`, 2026-08-26, Node v22.22.2,
-> Chromium via the system Playwright over real elapsed time. **Verdict: SEND BACK** — a short,
-> closed list, not a restart. Every claim below has a command in **Verified** that I ran myself.
+> **Status: CURRENT.** Manager, stage 4. Reviewed `master` @ `82c1a4f`, 2026-08-27, Node v22.22.2,
+> Chromium via the system Playwright over real elapsed time. **Verdict: SEND BACK** — **one
+> blocker, one ruling, nothing else.** Every claim below has a command in **Verified** that I ran
+> myself.
 >
-> The previous `REVIEW.md` (round 1, `0c68d6f`, SEND BACK) is superseded by this document and is
-> preserved in git history. Its routing table is history, not instructions.
+> The previous `REVIEW.md` (round 2, `8a65a53`, SEND BACK) is superseded by this document and is
+> preserved in git history. Its routing table is closed: **B-1 … B-7 and A-1 … A-4 are all
+> verified done, by me, in this pass.** Nothing from it is re-opened here.
 
 ---
 
 ## Verdict: **SEND BACK**
 
-The engine is right and the persistence spine is, at last, sound. I re-derived every Section A
-count against the live planner, reproduced the Fisherman's Bastion blocker, ran the reference
-trip through the CLI, drove the app in a real browser, and cloned the repo from scratch to check
-the build claims. `npm test` really is 333/0, `npm run typecheck` really is clean on both
-projects from a fresh clone, and the two blockers on Jacob's trip really are his own two red-flag
-days. Seven adversarial rounds have closed every BLOCKER and every MAJOR in the write path, and
-the tester's round-7 numbers matched mine exactly. That is real work and it is not in question.
+Everything the last gate sent back has come back built, and I checked it as a user rather than
+as a diff. The three features that were named-but-absent are on the screen: Aug 8 now reads
+*"departs 14:30 · 1h 20m · arrives 15:50"*, the ten `unknown` stops carry a control that
+actually dispatches, a dismissed conflict comes back **live** through the app's own dispatch
+path, and the credit line renders in the Optional panel and the stop editor as well as the day
+view and the browse pane. `dist/` no longer carries Jacob's FlixBus reference. `cli export` no
+longer walks out of `cairn/` through a symlink. Four further adversarial rounds (8 → 11) closed
+a chain of six findings — A-5, A-5a, A-5b, A-6, A-6a, then R10-3 and R10-2 — and I re-ran every
+one of their probes unedited and unassisted: `qa/r10-mergeundo.mjs` **0 FAIL**,
+`qa/r10-prune.mjs` **ALL OK**, `qa/r9-geo.mjs` **ALL OK**, `qa/r8-views.mjs` **0 FAIL in
+Chromium with zero page errors**. `npm run test:tap` really is **426 / 0** and `npm run
+typecheck` really is clean. That is the real state and it is not in question.
 
-It goes back for one reason, and it is the reason this role exists:
+It goes back for exactly one thing.
 
-**Three features that `ARCHITECTURE.md` §2 and `ROADMAP.md` §4.5 name did not get built, are not
-disclosed as unbuilt, and two of them were reported in QA round 2 and survived five more rounds
-without ever being routed to anyone.** Rounds 3–7 were all scoped to `store.ts`. Nothing in that
-scope was wrong; the problem is that the product surface went unattended for five rounds while
-the persistence spine got six passes.
+### R11-1 blocks, and it blocks on the criterion the phase wrote for itself
 
-**1. `travelRole` is not rendered anywhere in `apps/web`.** I opened Aug 8 in Chromium at
-`8a65a53`. The Condor stop renders:
+**A merge can commit a document to storage that the store never installs, and then hand the
+write fence to it — after which the user's own next autosave overwrites another writer's saved
+edit, silently, with the chip reading *Saved*.**
 
-```
-14:30
-Condor [redacted] → Vienna (VIE)
-✈️ Flight · 1h 20m · 621 km
-```
+`doMerge` (`packages/client/src/store/store.ts:589`) captures `doc` at entry and passes it to
+`writeAndSettle` as `startedFrom`, with `merged.trip` as `toWrite`. The write commits. Then
+`stillOurs` (`:419`) finds `state.doc !== startedFrom` — the user dispatched something in the
+interval — so the merged document is **not** installed in memory (`:422`). But `savedDoc` and
+`savedVersion` are updated to the merged document and the version it just minted (`:429-431`)
+regardless, and `:437` re-arms the ordinary debounce. That debounced write then carries the
+**local, un-merged** document under a `savedVersion` minted by a document that is not its
+ancestor. The fence has nothing to object to, because this tab owns that version. The other
+tab's edit is gone from storage, unrecoverably, and `persistence.status` is `'idle'`.
 
-That is a leg drawn *into* the stop with 14:30 reading as an arrival — the exact misreading
-`ARCHITECTURE` §2.12 was written to correct. §2.12's consumer table says the day view *"renders
-it: a `'journey'` stop shows 'departs 14:30 · 1 h 20 · arrives 15:50'… `'unknown'` renders with a
-one-tap control to set it, which is the only new editing affordance this field needs."*
-`grep -rn travelRole apps/web/src packages/tokens/src` returns **nothing**. The model half is
-excellent — I re-derived 21 journey / 81 transfer / 10 unknown and `impossible_transfer` at 0/0 —
-and Jacob can see none of it. The 10 `'unknown'` stops have no affordance, so the field can never
-improve from the app. This is not on ROADMAP's closed stub list and it is not in `BUILD-NOTES`
-KD-13.
+This is the only one of `writeAndSettle`'s three call sites where `startedFrom !== toWrite`
+(`:373`, `:602`, `:634` — I checked all three). On the two autosave sites `!stillOurs` →
+`scheduleSave()` is correct: the newer document descends from the one just written, so writing
+it forward is right. On the merge site it is not, and that asymmetry is the whole defect.
 
-**2. `store.syncResolutions()` has no caller, so the conflicts panel resurrects dismissals.**
-The panel ships **Acknowledge** and **Not a problem** buttons (`Panels.tsx:69`, `:72`). §2.7 says
-`syncResolutions` is *"a build function the client calls whenever it recomputes the derived
-conflict set"*. Nothing calls it — not the reducer, not `App.tsx`, not the panel. I reproduced the
-consequence: dismiss a conflict, edit the value away, edit it back, and **the conflict returns
-already dismissed with no user action**. `BUILD-NOTES` §5 lists F-10 as fixed with core-level proof
-only, and `packages/client`'s own store method carries a doc comment describing a call that does
-not happen. The conflicts panel is the phase's headline feature and `ROADMAP` §4.5 puts it on the
-may-not-be-stubbed list.
+**I widened the finding.** The breaker recorded the window as *"the ~tens-of-milliseconds a
+merge write is in flight"*. It is not. `startedFrom` is captured at `:590`, **before** `await
+ports.storage.load(doc.id)` at `:592`, so the window is the whole of `doMerge`: a 234 KB
+IndexedDB read, `fromJSON`, `mergeTrips`, `toJSON`, whatever is already queued ahead of it on
+`chainOntoSaving`, and only then the write. I reproduced the loss with the **`load()`** gated
+and the write untouched, and again with the shipped 400 ms debounce and **no explicit flush at
+all** — the loss lands through the ordinary autosave with the user doing nothing after the one
+keystroke. CPU floor alone on the real fixture is 5.7 ms before either IndexedDB round trip; if
+an autosave was already queued when the button was pressed, the window is unbounded.
 
-**3. §2.14 rule 7's credit line is missing in two of the four views that render stops.** In
-Chromium I copied "Check in — Habyt Vienna" from Europe 2026 into a new trip. The day view is
-correct and impressive — badge *from a friend*, credit *From "Europe 2026"*, and the note's
-credentials redacted to `[redacted], [redacted]`. Then I pressed ⇩ and the same stop in the
-Optional panel renders the badge and **no credit line**. `StopEditor` renders neither.
-`ROADMAP` §4.5: *"May not be stubbed: … the copy path's provenance badge and credit line."*
+**Reachability, stated honestly.** I did not land it in Chromium either, and it is a race rather
+than a keystroke sequence. What I did establish: nothing in `apps/web` disables the editing
+surface during a save (`grep disabled apps/web/src` returns only form validity and the
+undo/redo/export buttons), the merge banner is not modal and sits above a fully live day view,
+and *one* dispatch is enough — a single ↑/↓ reorder click qualifies. The path is reached only
+while a *"Not saved — edited elsewhere"* banner is on screen, which is precisely the moment a
+user is most likely to keep working rather than sit still.
 
-Three secondary things travel with it, all cheap and all named below: a real booking reference of
-Jacob's is in a build artifact (§6.6's rule is still a six-string scrub), `cli export` can be
-walked out of `cairn/` through a symlink, and the copy path manufactures a false `geo_outlier`
-blocker on first use.
+**Why that is enough to block.** ROADMAP's NO SILENT LOSS criterion is one sentence — *"a user's
+edit is never discarded, overwritten, or made unreachable without the app saying so, on screen,
+at the moment it happens"* — and it is written as a property of the write path, not as a
+probability. Four of this phase's blockers (F-1, F-2, R2-1, R2-2) and both of round 10's are
+violations of that sentence, and every one of them was argued down to "narrow" at some point.
+I am not shipping a seventh over a window measured in milliseconds when the loss is another
+person's work, in storage, with the UI saying *Saved*.
 
-### And a governance finding, because this is the second time
+### Not a regression, and not the tester's fault
 
-`BUILD-NOTES` §1 exists because round 1 was sent back for exactly this. Its own contract is
-*"Every entry is a place where the shipped code does not do what `ARCHITECTURE.md` or `ROADMAP.md`
-says"*. None of the three features above has a `KD-` entry. Worse, §3 — the table a reviewer
-scans — reads `apps/web | … **Browse & copy with the credit line**` and `packages/client | …
-syncResolutions`, both of which are true of the code and false of the product. §6 does carry an
-honest one-line caveat about the PoolPanel probe; §3 contradicts it. A caveat that only appears in
-§6 while §3 says the feature shipped is the same disclosure failure with a new address.
+R11-1 reproduces byte-identically at `83627f7` — I take the breaker's word for that and the
+mechanism makes it obvious, since neither the R10-3 nor the R10-2 diff touches `:419-437`. It
+is a pre-existing hole in the original `mergeWithStored`/`writeAndSettle` design, found because
+round 11 went looking. The breaker did the right thing filing it and declining to patch it.
 
 ---
 
 ## Routing
 
-Everything here is closed and specific. Architect first (three rulings block the builder's pass),
-then builder, then breaker on the named surface.
+**Architect first, and the builder does not start until the ruling lands.** This is a design
+question — what a merge write owes a document the user has kept editing since the merge
+began — of exactly the class §2.2a's merge row already answered once.
 
-### Architect — four rulings, none of them a redesign
+### Architect — one ruling, `A-7`
 
-**A-1. Rule on the copy path × `geo_outlier`, and write the anchor row (QA R2-9).**
-Repro, run by me: `node qa/r2-data.mjs` → copying *"Arrive LAX"* into a Lisbon-based trip yields
-`geoCheck: dstop-1 9140km certain` → `blocker: geo_outlier`. §2.13's anchor table has no row for a
-record whose `provenance.origin.sourceTripId` says a human chose it seconds ago, and §0.5 governs:
-a rule that cannot tell *"the data says something impossible"* from *"the data is shaped oddly"*
-degrades to a warning. This also punctures §2.7's promise — *"the reference trip carries exactly
-two blockers… a third can only appear if somebody can write down why he must act on it"* — on the
-phase's own new primitive, with nobody writing anything. **Deliverable:** one row in §2.13's anchor
-table (a `source:'friend'` record either anchors on nothing and is `'unanchored'`, or gains an
-anchor from its origin trip — your call, state which), plus an injected-fault criterion in ROADMAP
-C per *How a criterion is written* rule 3.
+**A-7. Rule on the merge write whose document was never installed (QA R11-1).**
 
-**A-2. The serialization chain's subject is every `StoragePort` mutation, not every write
-(QA R7-3).** `store.ts:185`'s `chainOntoSaving` is a good invariant and I verified the tester's
-structural claim: one `saveIfVersion` call site, three `writeAndSettle` call sites, all inside it.
-But `deleteTrip` calls `ports.storage.delete(id)` off the chain (`store.ts:618`), so a queued
-expect-absent write lands after the delete and `upsertSummary` puts the row back in the library —
-the trip is resurrected and the delete is silently undone (`node qa/r7-chain.mjs` §10, which I ran:
-`in storage=true in library=true`). It is not reachable through the shipped UI today, and that is
-luck, not design. **Deliverable:** one sentence in §4.3 — *every `StoragePort` mutation, including
-`delete()`, goes on the store's serialization chain* — and the matching clause in §4.2 rule 6c
-(the exception is about not *writing*, not about not *waiting*). Then B-6 implements it.
+The defect in one sentence, for the ruling to reason from: `writeAndSettle` advances
+`persistence.savedDoc` and `persistence.savedVersion` to a document that `state.doc` is not,
+and is not descended from, and then re-arms a write that inherits that fence.
 
-**A-3. Bless or replace `FLUSH_MAX_ATTEMPTS = 5`.** The bound is a builder-chosen constant on the
-data-safety path with two user-visible consequences the design does not mention (R6-1: the
-transition aborts with `status === 'idle'` and `App.tsx` renders no banner, so the click does
-nothing and says nothing; R6-2: the loop cancels the debounce on its last pass and never re-arms,
-leaving a dirty document with no scheduled autosave). Same shape as KD-8's
-`BOOKING_TIME_TOLERANCE_MINS = 30`. §4.2 rule 6b says an unsuccessful flush aborts the transition
-*and tells the user*; the bound-exhausted exit is the one path that aborts without telling.
-**Deliverable:** name the bound in §4.2 rule 6a″, state that exhausting it is a refusal for
-*display* purposes as well as control-flow purposes, and state that the debounce is re-armed when
-the loop gives up while dirty. Then B-4 implements it.
+**Deliverable — all four, in `ARCHITECTURE.md` §4.2 (rule 4 or a new 4a) and §2.2a's *Merge*
+row, which today says only *"On success the merged write mints a new version, which becomes
+`savedVersion`, and `baseDoc` becomes the merged document"* and does not contemplate the branch
+where it does not:**
 
-**A-4. Settle the §2.10 export surface — the criterion has been "partially met" for three
-rounds.** I counted it: `packages/core/src/index.ts` exports **110** runtime symbols;
-`surface.test.ts`'s `SECTION_2_10` list is 50 and `BEYOND_2_10` is 60. ROADMAP E asks for set
-equality against §2.10's list; the test asserts set equality against the *union* of two lists, and
-KD-19 says so honestly. That is a criterion enumerated rather than met, and QA R2-12 found the
-per-symbol justifications wrong for 42 of them. Six are marked `INTERNAL` by the builder's own test
-(`blankDay`, `canonical`, `conflictId`, `digest`, `makeConflict`, `toDoc`). **Deliverable:** decide
-the real Phase 1 surface — widen §2.10 to what `client`/`cli`/`views` demonstrably call, and name
-the residue as private. This is a boundary the native app and the server will be written against;
-"110 against 50, enumerated" is not a boundary. It does not block Phase 1 shipping *behaviour*, but
-it blocks the phase's own acceptance criterion E, so it must be closed before the next gate.
+1. **State the invariant the code must satisfy**, not the patch. The shape I would expect, and
+   you may overrule it: *`savedDoc` and `savedVersion` may only be advanced together to a
+   document that is `state.doc` or an ancestor of `state.doc` along this store's own edit
+   chain.* Today they are advanced to `toWrite` unconditionally, which is true of the two
+   autosave sites and false of the merge site.
+2. **Decide what happens to the merge result.** Three options are on the table and the ruling
+   picks one and says why: re-queue the merge against the document the user now holds
+   (`mergeTrips(savedDoc, state.doc, merged.trip)` — cheap, 1.3 ms on the real fixture, but it
+   is a second merge the user did not press a button for); refuse — leave `status:'conflict'`
+   with the user's edit intact and make them press *Merge and save* again (honest, matches rule
+   6b's "the transition does not happen", costs a click); or install the merged document and
+   surface the loss of the in-flight keystroke (rejected on sight, I think — it discards the
+   user's content, which §4.2 rule 6b already refuses in the transition case for stated reasons).
+3. **Say what the fence does in the meantime**, explicitly. The failure is not the merge
+   result being discarded — it is `savedVersion` moving anyway. Whatever option 2 picks, state
+   whether the store may keep a version minted by a write whose document it declined to install.
+4. **Note the window's real width in the ruling**, because a future reader will otherwise
+   re-derive it wrong as the breaker and I both nearly did: `startedFrom` is captured before
+   `load()`, so the exposure is the whole of `doMerge`, not the write.
 
-*(Doc tidy, same pass, no ruling needed: `Stop` carries `ticket?: Ticket | null` and `links?:
-Link[]` in `types.ts:149-150`, neither of which is in §2.2's `Stop`. §2.11's mapping implies both.
-Add them to §2.2 or add a KD entry. And §2.5's `computeLegs(day, ctx: TripCtx)` vs the shipped
-`computeLegs(day, trip)` — QA R2-21 — is still open and §2.5 is the section a native port gets
-written from.)*
+**Second item on the same ruling, only if it falls out of it: R8-4.** `doMerge`'s off-chain
+`load()` at `:592` lets a merge already in flight resurrect a trip the delete link just removed
+— MAJOR, open since round 8, unreachable in the shipped UI (I confirmed: `deleteTrip` appears
+only at `Library.tsx:101`, and `App.tsx` renders `Library` only when `state.doc === null`).
+It is the same function and the same root shape — state read across `doMerge`'s three awaits —
+so if A-7's ruling naturally covers it, close it. **Do not widen A-7's scope to reach it if it
+does not.** R8-4 rides otherwise, on the reachability argument, unchanged.
 
-### Builder — one pass, seven items
+**Not routed to you, deliberately:** R8-3, R10-1, and everything on the *What rides* list below.
+Do not adjudicate them in this pass.
 
-**B-1. Render `travelRole` in the day view (QA R2-10, ARCHITECTURE §2.12).**
-`apps/web/src/views/DayTimeline.tsx`. A `'journey'` stop must render *"departs 14:30 · 1 h 20 ·
-arrives 15:50"* rather than today's `14:30 … ✈️ Flight · 1h 20m`; a `'transfer'` stop keeps today's
-string; an `'unknown'` stop renders a one-tap control that dispatches `updateStop` to set the role.
-That control is the only new editing affordance the field needs — §2.12 says so in as many words.
-Verify against Aug 8 (`Condor DE4345 → Vienna`, `journey`) and Aug 18 (`Airport Express bus →
-Václav Havel`, `journey`), and against the ten `'unknown'` stops the importer produces. **Add the
-KD entry that should have existed since round 2.**
+### Builder — nothing yet
 
-**B-2. Call `store.syncResolutions()` (QA R2-7, ARCHITECTURE §2.7).**
-`apps/web` never invokes it. Wire it where §2.7 says — after the derived conflict set is
-recomputed. Acceptance: the exact sequence in `node qa/r2-resolutions.mjs` §4 must flip from
-`FAIL a conflict the user dismissed once is LIVE again after the data returns to that value` to
-`resolution attached after revert: none (correct)`, **through the app's own dispatch path, not by
-calling the method by hand** (§5 of that probe already shows the by-hand call works — that is not
-the fix). Watch the interaction §2.2b F2 already warns about: `syncResolutions` reads the derived
-cache and *writes the document*, so it must not run against a stale cache; `derived.ts` is keyed on
-`(document identity, today)` now, which is the property that makes this safe.
+**Do not start.** When A-7 lands: implement it in `packages/client/src/store/store.ts`
+(`writeAndSettle` `:395-437` and `doMerge` `:589-649`), add a `KD-` entry, and write the
+regression **on the bytes the port holds**, not on `state` — the exact shape of
+`qa/r11-recheck.mjs` §1.3b, the control with **zero** undo calls, plus my `load()`-gated variant
+(gate `load` rather than `saveIfVersion`, type during the read; it loses the same edit and it is
+the wider window). The suite is 426/0 today; that is your baseline.
 
-**B-3. Render the credit line wherever an attributed record renders (QA R2-8, §2.14 rule 7).**
-`apps/web/src/views/Panels.tsx:121` (`PoolPanel`) calls `STATUS_BADGE[displayStatus(...)]` and never
-`attribution`; `StopEditor.tsx` renders neither badge nor credit. `DayTimeline.tsx:102` and
-`BrowsePane.tsx:96` do it correctly — copy that. Repro I ran: copy a stop, press ⇩, open Optional —
-the badge *from a friend* is there and *From "Europe 2026"* is not.
+### Breaker — three items, and two of them are on the finding you filed
 
-**B-4. Tell the user when a transition aborts on the exhausted bound, and re-arm the debounce
-(QA R6-1, R6-2).** After A-3's ruling. `store.ts:290`, `:299`; `App.tsx:85`, `:93`. Today the click
-does nothing and says nothing, and the store is left dirty, idle and with no scheduled autosave
-(verified: no further write in 200 ms with the user idle). The three backstops the tester found —
-next keystroke, `pageExit`, `beforeunload` — are why this is not data loss, and they are not a
-reason to leave it.
+1. **Correct R11-1's window claim in `QA-FINDINGS.md`.** The entry says the loss needs a
+   keystroke while *"the merge write is in flight"*. `doMerge:590` captures `startedFrom` before
+   `await ports.storage.load()` at `:592`, so the window is load + parse + merge + serialize +
+   queue + write. My probe gating `load()` instead of `saveIfVersion` loses the same edit. A
+   BLOCKER's own reachability paragraph understating its window by an IndexedDB read and a
+   234 KB parse is the kind of thing that gets a finding argued down; fix the row.
+2. **Attempt the browser leg you marked UNVERIFIED.** Two tabs, a real conflict, click *Merge
+   and save*, then a single ↓ reorder click in `DayTimeline` inside the window, then read
+   IndexedDB. `qa/r7-browser.mjs` already drives the merge sequence and `qa/r10-editdoor.mjs`
+   already reads the record back out — the two halves exist. If it will not land by hand, say
+   so with the number of attempts and the measured window, and the finding stands on the
+   mechanism as it does now.
+3. **After the fix, re-run the standing set against my counts** in **Verified** below, which are
+   my own runs at `82c1a4f`, not the builder's: `r10-mergeundo` 0, `r10-prune` ALL OK, `r9-geo`
+   ALL OK, `r8-views` 0 (Chromium), `r7-chain` 2, `r6-flush` 2, `r3-pool` 3, `r3-cas2` 3,
+   `r6-actor` 5, `r2-constraints` 2, `r10-redo` 3, `r9-ledger` 2, `r8-geo` 1, `r8-persist` 1,
+   and 0 for `r3-undo`, `r3-loss`, `r4-switch`, `r2-copy`, `r3-merge`, `r2-resolutions`,
+   `r2-data`, `r2-access`, `r2-redact`.
 
-**B-5. Make §6.6's bundle check a rule instead of a six-string scrub (QA R2-4).**
-`test/redact.test.ts` greps `apps/web/dist` for six literals and **never applies
-`redactionHits`**, which §6.6's enforcement clause 2 requires. I rebuilt and ran
-`node qa/r2-redact.mjs`: 7 hits, including **`Booking 338 441 5948` — Jacob's real FlixBus booking
-reference — in `dist/assets/index-*.js.map`**, put there by a comment the builder wrote at
-`packages/core/src/build/redactText.ts:52` as an example while implementing the redactor. `DE4345`
-leaks the same way from `packages/core/src/model/types.ts:111`. KD-18 claims *"the test greps maps
-as well as scripts so a fourth cannot creep back"*; a fourth crept back. **The implementable rule is
-already written and QA hands it to you:** derive the credential set by running the redactor over
-the *unredacted* trip, then assert none of those tokens appears in any emitted asset — that grows
-with the data instead of being a list. (`qa/r2-redact.mjs` does it in twenty lines.) Applying
-`REDACTION_PATTERNS` verbatim to a minified bundle is not implementable and QA says why; do not try.
-**No exposure exists today** — `dist/` is gitignored and nothing is deployed — but §6.6 is Jacob's
-own answer, written after the last review, and it says *"a rule applied by the sample generator,
-covered by a test, not a one-off scrub."*
+*(One framing note, not a routing. Round 11's gate row states the whole board, which is what
+round 8's review asked for and it is right. It stops short of a recommendation, where rounds 9
+and 10 gave one. Give one; a round that files a BLOCKER and does not say what it thinks the gate
+should do is making the manager guess.)*
 
-**B-6. Close the two write-path holes A-2 rules on, plus the unhandled rejection (R7-1, R7-2,
-R7-3).** `await saving` before `ports.storage.delete` (R7-3); an in-flight guard on
-`mergeWithStored` so a second entry before the first settles cannot leave `status='conflict'` over
-a correctly merged document (R7-1); `try/catch` per listener in `emit()` or a `.catch` on
-`scheduleSave`'s `void save(...)`, which today turns a throwing subscriber into an unhandled promise
-rejection (R7-2, observed: `unhandledRejection: BOOM in a subscriber`). All three reproduce with
-`node qa/r7-chain.mjs` §3b/§7/§10 and none is reachable through the shipped UI — fix them while the
-file is open, not because a user is hitting them.
-
-**B-7. Two one-line guards that protect stated boundaries.**
-- `cli.ts:158` `safeWritePath` is lexical. I reproduced the escape: `ln -s <outside> cairn/qa/
-  escape-link.json` then `node cli.ts export qa/escape-link.json` → *"wrote …/cairn/qa/
-  escape-link.json (233801 bytes)"* and the file **outside** `cairn/` was overwritten with the trip
-  JSON. One `realpathSync(dirname(abs))` before the prefix test closes it. Root `CLAUDE.md` calls the
-  read-only boundary *"the one rule that must never drift"*; a lexical guard on a symlinked path is
-  drift waiting to happen, and `BUILD-NOTES` §7 records that this boundary was already crossed once
-  by a test. While you are there: `export` overwrites an existing file inside `cairn/` with no
-  prompt and exit code 0 (QA R2-5, second half).
-- `packages/core/src/access/predicates.ts` — `effectiveRole`'s `if (s.expiresAt && s.expiresAt < now)`
-  is a lexical compare against an unvalidated string, so `expiresAt: "9999-99-99"`, `"tomorrow"` and
-  `"never"` all read as *not yet expired* and grant access (verified: `node qa/r2-access.mjs`,
-  1 FAIL). **I am overruling the tester's Phase-2 scoping on this one.** ROADMAP defers *enforcement*
-  to Phase 2; it does not defer the correctness of the definition, and §6.2.4 makes these predicates
-  *"the definition the Phase 2 RLS policies are generated from and tested against"*. A definition that
-  fails open generates a policy that fails open — the identical argument F-13 was fixed under, one
-  field over, in the same function. Validate `expiresAt` and `revokedAt` with `isIsoDate` and fail
-  closed on anything that is present and not a calendar date. (`null`/`""`/absent legitimately mean
-  "no expiry" and must keep meaning that.)
-
-**Disclosure, non-optional, applies to the whole pass:** every item above gets a `KD-` entry, and
-`BUILD-NOTES` §3's `apps/web` and `packages/client` rows are corrected so they do not claim a
-feature §6 caveats away. §4 ("Verified, by running it") still reports **231 pass**; regenerate it or
-delete it — a stale table under that heading is the thing round 1 was sent back for.
-
-### Breaker — one pass, and it is a surface you have not attacked
-
-Six rounds went into `store.ts` and they were worth it. **`apps/web/src/views/` has never had a
-systematic pass against §2.12, §2.14 and §4.5**, and all three of this review's blocking findings
-live there — two of them filed by you in round 2 and then carried forward as one-line "open,
-unchanged" rows for five rounds without a severity re-assessment against the phase gate. Round 8:
-
-1. **Verify B-1, B-2, B-3 as a user, in Chromium.** For B-2 specifically: the fix must hold through
-   the app's dispatch path, and the crossing nobody has made is `syncResolutions` × the derived
-   cache × undo — §2.2b F2 says a stale cache there *writes the document*. Cross them.
-2. **Walk §4.5's "what Jacob can do" list end to end and report each item as built / stubbed /
-   absent**, against `ROADMAP`'s closed stub list. That list is the phase's definition of done and
-   nobody has checked it item by item. Include: is `acceptCandidate` reachable from any control?
-   (It is not, today — an imported stop stays badged forever. That fails safe and I am not routing
-   it, but the next round should say so out loud rather than leave me to find it.)
-3. **Re-attack §2.14 rule 7 as a ceiling, not a spot check**: enumerate every view that renders a
-   `Stop` or a `Booking` and assert each one either renders the credit or cannot receive an
-   attributed record. A grep-shaped assertion beats four hand checks.
-4. **Re-run the standing set** (`r3-undo`, `r3-loss`, `r4-switch`, `r2-copy`, `r3-merge`,
-   `r7-chain`, `r6-flush`, `r6-actor`, `r5-freshness`, `r3-pool`, `r3-cas2`, `r2-access`,
-   `r2-redact`, `r2-constraints`) and confirm nothing regressed. My counts at `8a65a53` are in
-   **Verified** — use them as the baseline.
-5. **One framing change in `QA-FINDINGS.md`.** Round 7's gate paragraph is scoped correctly —
-   *"no open BLOCKER and no open MAJOR anywhere in the write/persistence path"* — and then
-   recommends the gate review. Five MAJORs outside that path were open the whole time. Future gate
-   recommendations state the whole board, not the scope of the round.
-6. **Patch the rotten probes** before round 8 rather than during it: `qa/r6-flush.mjs` §6's static
-   check false-positives on `chainOntoSaving`'s own `saving = run;`, and `qa/r5-freshness.mjs:602`,
-   `qa/r2-copy2.mjs:86` and `qa/r2-import.mjs:51` have been dead since rounds 5 and 2. Your ruling
-   that a probe repair does not belong in a QA commit is right; it belongs in a commit of its own,
-   before the round.
+**Probe repair, still owed and still not urgent:** `qa/r6-flush.mjs` §6's static check and
+`qa/r7-chain.mjs`'s hardcoded structural counts have been reporting stale assertions since
+rounds 7 and 8, and `qa/r5-freshness.mjs:602` / `qa/r2-copy2.mjs:86` / `qa/r2-import.mjs:51`
+have been dead for longer. Your ruling that this belongs in a commit of its own is right and
+still stands. It has now survived four rounds of being right; do it before the next round or
+strike the probes.
 
 ### What rides — accepted as Phase 1 residue, not to be worked
 
-I am not manufacturing work. These stay open, with the reason:
+I am not manufacturing work. These stay open, each with the reason, each already disclosed:
 
-- **R5-3** (a store in `'conflict'` with nothing unwritten cannot leave the trip) — the
-  implementation matches §4.2 rule 6b as written; the escape hatches (*Merge and save*, delete)
-  exist. Architect may fold a not-dirty exception into A-3's pass if it is free; otherwise Phase 2.
-- **R5-4** (no re-render across midnight) — the cache key is right, the screen is not consulted.
-  Cosmetic in a single-user local app.
-- **R3-6, R3-7, R3-8** (pool edge cases reachable only from the client API/CLI, not the web UI),
-  **R3-9** (the indicator string is transcribed in the test rather than shared — real, and the fix
-  is a shared `saveIndicator(state)`; take it whenever `App.tsx` is next open),
-  **R2-13** (redaction eats flight designators — the sample reads `Condor [redacted] → Vienna`;
-  ugly, honest, and cheaper than a second pattern class),
-  **R2-14, R2-15, R2-16, R2-17, R2-19, R2-20, R2-21**, and the five `r6-actor` residuals
-  (a non-string actor is flagged but `params.actorUserId` reads `""`). All MINOR, all disclosed,
-  none of them touching data safety or provenance.
-- **Everything explicitly Phase-2-scoped by ROADMAP** — RLS, sync, real friends, share revocation.
+- **R8-3** (MAJOR) — accepting a copied stop can *replace* the `adjacent_day` anchor and mint a
+  blocker on a stop the user wrote. Unreachable: `acceptCandidate` is dispatched by no control
+  in `apps/web` (my own grep). Real, and it violates A-1's monotonicity claim. **Its trigger is
+  explicit: it must be ruled on before any accept control ships.**
+- **R8-4** (MAJOR) — see the architect note above. Unreachable today (confirmed by me).
+- **R10-1** (MINOR) — two Ctrl+Z's make A-5b clause 2 decline; the render is identical to the one
+  the user was already looking at, and pressing *Not a problem* again works.
+- **`acceptCandidate` has no control in the app**, so a copied stop stays badged *from a friend*
+  forever. It fails safe, it is on BUILD-NOTES §3, and ROADMAP §4.5's may-not-be-stubbed list
+  does not name it. Not routed — but it is named to Jacob below, because he will notice it.
+- **The round-7 MINOR list** (R5-3, R5-4, R3-6…R3-9, R2-13…R2-21, the five `r6-actor`
+  residuals) and everything ROADMAP scopes to Phase 2 (RLS enforcement, sync, real friends,
+  share revocation).
+- **§6.6's stated cost:** the shipped sample is still recognisably Jacob's trip. Credentials are
+  stripped by rule; personal prose is not, deliberately. Already a Phase 2 exit condition.
 
 ---
 
 ## Verified — what I ran, and what happened
 
-All from `/home/user/europe-2026-planner`, `master` @ `8a65a53`. `git status --porcelain` was empty
-before and after; `md5sum europe-2026-itinerary.html` = `7c69df3208ef91c8be0fb59a56443188` before
-and after. The read-only boundary held through a full suite, two web builds, six Chromium sessions,
-a fresh clone and ~20 probe runs.
+All from `/home/user/europe-2026-planner`, `master` @ `82c1a4f`. `git status --porcelain` was
+empty before and after; `md5sum europe-2026-itinerary.html` = `7c69df3208ef91c8be0fb59a56443188`
+before and after. The read-only boundary held through the full suite, a web build, two Chromium
+sessions and ~25 probe runs.
 
 | # | Command | Result |
 |---|---|---|
-| 1 | `npm run test:tap \| grep '^# '` | `# tests 333 · # pass 333 · # fail 0` — **BUILD-NOTES and QA round 7 are accurate** |
+| 1 | `npm run test:tap \| grep '^# '` | `# tests 426 · # pass 426 · # fail 0` — **BUILD-NOTES and QA round 11 are accurate** |
 | 2 | `npm run typecheck` | exit 0, both projects, `pretypecheck` generates the sample first |
-| 3 | `git clone` to scratch → `npm install` → `npm run typecheck` → `npm run test:tap` | **fresh clone: typecheck exit 0, 333/333.** Criterion E's clean-clone clause is met |
-| 4 | `npm run web:build` | clean; `dist/assets/index-*.js` 583 kB |
-| 5 | `grep -rlF` on `dist/` for the six known strings | **all six CLEAN** — `PIN 0754`, `5814731574`, `YZGDTS`, `IU1TUY`, `cityairporttrain.com/en/account/order/`, `ulaznice.hr/web/confirmFromMailGuest/`. ROADMAP E's literal criterion is met |
-| 6 | `node qa/r2-redact.mjs` | **7 hits.** `dist/assets/index-*.js.map` carries `Booking 338 441 5948`, `338 441 5948`, `DE4345`, `OPTIONAL`, `BOOKINGS`. Sources: `packages/core/src/build/redactText.ts:52` (a comment) and `model/types.ts:111`. §6.6 enforcement clause 2 **not met** → B-5 |
-| 7 | walk the generated sample JSON for `ticket`/`href`/`reference`/`seat`/`https?://` | `0 / 0 / 0 / 0 / 0`; 45 `[redacted]`; `sourceDoc` absent. **The sample data itself is clean** |
-| 8 | `node cli.ts trip` | `16 days · 112 scheduled · 31 pooled · 95 places · 21 bookings`; `2 blockers, 4 warnings, 11 notes`; `1 error, 10 warnings` |
-| 9 | `node cli.ts conflicts` | both blockers are `legacy_flag`, Aug 18 and Aug 20, each carrying Jacob's own words. **No third blocker** |
-| 10 | independent re-derivation of Section A through `loadEurope2026()` | 16 days dense `2026-08-07`→`2026-08-22`, `Day.id===Day.date`; **travelRole 21 journey / 81 transfer / 10 unknown**; 81 `arrival`; 49 `cost`; pool `vienna 8, dubrovnik 3, split 3, prague 8, budapest 6, london 3`; places `15/12/15/25/21/7`; 5 multi-city days exactly as ROADMAP names them; 3 candidate days; 21 suggested, **all `source:'system'`**; `homeBase {Los Angeles (LAX), 33.9425, -118.4081}`; all six `cityRange()` strings exact. **Section A passes, every line** |
-| 11 | ticket census | 3 bundled stops over 2 files (`flixbus-dubrovnik-split-…`, `flixbus-split-skradin-…`) + 4 url = 7 ticketed. **Matches ROADMAP's corrected 7/3/2, not revision 1's "2 bundled"** |
-| 12 | `node qa/r2-data.mjs` | Fisherman's Bastion typo → **exactly one new blocker, `geo_outlier`, `place-68`, `km:109`, no coordinate in `params`.** The phase's headline claim holds. Same run: copying "Arrive LAX" into a Lisbon trip → **`blocker: geo_outlier`** → A-1 |
-| 13 | `node qa/{r3-undo,r3-loss,r4-switch,r2-copy,r3-merge}.mjs` | **0 FAIL each.** R3-1, R3-2, R3-4, R4-1, R2-11, R3-3 confirmed closed on my own run |
-| 14 | `node qa/{r3-pool,r3-cas2,r2-access,r5-freshness,r6-actor,r6-flush,r7-chain,r2-constraints}.mjs` | 3 / 3 / 1 / 4 / 5 / 3 / 3 / 2 FAIL — **identical to QA round 7's table**, including its note that one `r6-flush` FAIL and one `r2-constraints` FAIL are stale probes |
-| 15 | `node qa/r2-resolutions.mjs` | **FAIL reproduces at HEAD:** dismiss → edit away → edit back = *"resolution attached: dismissed"* with no user action. §5 shows a hand call to `syncResolutions` fixes it; §6 shows the only call sites are its own definition → B-2 |
-| 16 | `grep -rn travelRole apps/web/src packages/tokens/src` | **zero hits** → B-1 |
-| 17 | Chromium: load app → *Load Europe 2026* → Aug 8 | renders `14:30 / Condor [redacted] → Vienna (VIE) / ✈️ Flight · 1h 20m · 621 km`. **A `journey` stop rendered as a transfer** → B-1. Zero page errors across every session |
-| 18 | Chromium: new trip → *Browse & copy* → copy "Check in — Habyt Vienna" | day view: badge **from a friend**, credit **From "Europe 2026"**, note redacted to `booked, [redacted], [redacted], 2 nights`, no ticket, no booking. **The copy path is correct and KD-20's fix is real** |
-| 19 | …then ⇩ into the pool → *Optional* | badge **from a friend**, **credit line absent** → B-3 |
-| 20 | `ln -s <scratch>/victim.txt cairn/qa/escape-link.json; node cli.ts export qa/escape-link.json` | *"wrote …/cairn/qa/escape-link.json (233801 bytes)"* — **the file outside `cairn/` was overwritten with the trip JSON** → B-7. Symlink removed; `git status` clean |
-| 21 | `node cli.ts export` against `../europe-2026-itinerary.html`, `../docs/BOOKINGS.md`, `../tickets/x.pdf`, `/etc/passwd` | all four **refused**. The lexical half of the guard works |
-| 22 | `Object.keys(core)` on `packages/core/src/index.ts` | **110 runtime exports**; `surface.test.ts` holds 50 + 60 → A-4. `accept`/`reject` are confirmed gone (R5-5 closed) |
-| 23 | `grep -rn "acceptCandidate\|Accept" apps/web/src` | no view dispatches it — there is no accept control in the app. Fails safe; noted, not routed |
+| 3 | `git diff --stat 8a65a53..82c1a4f -- package.json tsconfig.json apps/web/tsconfig.json apps/web/package.json` | **empty** — no build-config drift since the fresh-clone check at `8a65a53`, so criterion E's clean-clone clause still holds by inspection |
+| 4 | `npm run web:build` | clean |
+| 5 | `node qa/r11-recheck.mjs` | **2 FAIL, both R11-1** (§1.3b the zero-undo CONTROL, §1.3c). Everything else in §1 and §2 ok. **The finding reproduces on my own run** |
+| 6 | my own probe: gate `load()` instead of `saveIfVersion`, one dispatch during the read, **400 ms debounce, no explicit flush** | `stored title=""` — tab B's saved title **destroyed**, `status: idle`. **The window is the whole of `doMerge`, not the write; and the loss lands through the ordinary autosave.** Wider than the breaker recorded |
+| 7 | measured `doMerge`'s CPU legs on the real fixture | document **233 801 bytes**; `toJSON` 1.4 ms, `fromJSON` 1.6 ms, `mergeTrips` 1.3 ms → **5.7 ms CPU floor before either IndexedDB round trip**, plus anything queued ahead on `chainOntoSaving` |
+| 8 | read `store.ts:395-437`, `:589-649`; `grep -n 'writeAndSettle('` | **three call sites**; only `:634` (the merge branch) has `startedFrom !== toWrite`. That asymmetry is R11-1, confirmed by reading, not by the doc |
+| 9 | `grep -rn disabled apps/web/src --include=*.tsx` | only form validity and the undo/redo/export buttons. **Nothing disables editing during a save** — the window is open in the shipped UI |
+| 10 | `node qa/r10-mergeundo.mjs` | **0 FAIL** — R10-3 closed on my own run; storage keeps `title="OTHER TAB"` after the merge + Ctrl+Z |
+| 11 | `node qa/r10-prune.mjs` | **ALL OK** — R10-2 closed; §5.1 on the real fixture reports **2 blockers**, both `legacy_flag` |
+| 12 | `node qa/r9-geo.mjs` | **ALL OK** — A-6a holds |
+| 13 | `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r8-views.mjs` | **0 FAIL, zero page errors**, my own Chromium run. Aug 8 renders `departs 14:30 · 1h 20m · arrives 15:50`; an `unknown` stop renders the control and one tap dispatches (4 → 3); the Optional panel and the stop editor both render *from a friend* **and** *From "Europe 2026"*; a dismissed conflict comes back **live**. **B-1, B-2, B-3 are real** |
+| 14 | probe board, my own runs | `r3-undo` `r3-loss` `r4-switch` `r2-copy` `r3-merge` `r2-resolutions` `r2-data` `r2-access` `r2-redact` = **0 FAIL each**; `r7-chain` 2, `r6-flush` 2, `r3-pool` 3, `r3-cas2` 3, `r6-actor` 5, `r2-constraints` 2, `r10-redo` 3 (R10-1), `r9-ledger` 2 (R10-1), `r8-geo` 1 (R8-3), `r8-persist` 1 (R8-4) — **identical to the disclosed board**, no undisclosed FAIL anywhere |
+| 15 | `npm run web:build && node qa/r2-redact.mjs` | **0 KNOWN_LEAKS.** 3 hits over 108 derived tokens, all `OPTIONAL` / `BOOKINGS` — the two named non-credentials of KD-27. **`Booking 338 441 5948` and `DE4345` are gone from `dist/`.** B-5 holds |
+| 16 | `Object.keys()` on `packages/core/src/index.ts` | **70 runtime symbols** — §2.10 and criterion E agree, one list. A-4 holds |
+| 17 | `node cli.ts trip` | `16 days · 112 scheduled · 31 pooled · 95 places · 21 bookings`; `2 blockers, 4 warnings, 11 notes`; `1 error, 10 warnings`. **Section A unmoved** |
+| 18 | `node cli.ts conflicts` | both blockers are `legacy_flag`, Aug 18 and Aug 20, each carrying Jacob's own words. **No third blocker after four rounds of copy-path rulings** |
+| 19 | `grep -n 'realpath\|safeWritePath' cli.ts`; `grep -n symlink test/cli.test.ts` | `realpathSync` on the parent **and** on an existing target; two symlink-escape tests in the suite that passed in run #1. B-7 holds |
+| 20 | `grep -rn 'deleteTrip\|acceptCandidate' apps/web/src --include=*.tsx` | `deleteTrip` only at `Library.tsx:101`; `acceptCandidate` **nowhere**. R8-3's and R8-4's unreachability claims are true, on my own evidence |
 
 ---
 
 ## For Jacob
 
-**Where this actually stands.** Cairn's engine is done and it is good. It reads your real Europe
-2026 trip out of the live planner without touching it, reproduces the old app's legs and distances
-exactly, and finds the two days you flagged yourself — and nothing else it can't justify. The old
-rule that cried wolf twelve times now cries twice, both times correctly. It also passes the test
-we set it: put the historical Fisherman's Bastion typo back in and it flags it, 109 km off, by
-name. The old app never would have.
+**Where this actually stands.** Everything that went back last time came back, and I checked it
+by using the app rather than by reading the diff. Open Aug 8 and the Condor flight now reads
+*"departs 14:30 · 1h 20m · arrives 15:50"* — it no longer looks like you land at 14:30. The ten
+stops where the app genuinely can't tell whether a time is a departure or an arrival now ask
+you, with two buttons, and answering sticks. Dismiss a conflict, change the plan so it goes
+away, change your mind back, and it returns **live** rather than pre-dismissed. Copy a stop
+between trips and the *"From Europe 2026"* credit follows it into every list it appears in. Your
+FlixBus booking reference is out of the build. And three more rounds of hard adversarial work
+went into the save path since you last saw this — six separate ways to lose an edit were found
+and closed, and I re-ran every one of those tests myself.
 
-The web app works. I opened it, loaded your trip, made a second one, browsed yours from inside it
-and copied a stop across; the copy arrived labelled *from a friend*, credited to *"Europe 2026"*,
-and — this is the good part — the door PIN and confirmation number in that stop's note were
-stripped out on the way. Save-and-lose-your-work has been hunted for seven rounds and I could not
-break it either.
+**Why it is going back, and it is one thing.** There is a specific, narrow moment where the app
+can throw away somebody else's saved work without telling anyone. It needs you to have the trip
+open in two places (two windows, or a laptop and a phone later on), for the app to notice they
+disagree, for you to press **Merge and save** — and then to keep typing during the fraction of a
+second the merge takes. If you do, the merge result gets written to disk and then immediately
+overwritten by what was on your screen, and the app says *Saved*. The other window's edit is
+gone and there is no way back to it.
 
-**Why it is going back.** Three things the plan names did not get built, and nobody wrote them
-down as missing:
+That window is milliseconds long and I could not reproduce it by hand in a browser — only by
+holding the save open artificially. But the reason I'm not letting it ship is that this is the
+exact thing we wrote a rule against at the start of this project — *"never lose a user's edit
+without saying so, on screen, at the moment it happens"* — and six of this phase's seven
+worst bugs have been that same rule broken in a different place. Every one of them looked
+narrow until somebody hit it. I would rather spend one design decision and a day than explain
+this to you after it eats a day of planning.
 
-1. Open Aug 8 and the Condor flight reads *"14:30 · Flight · 1h 20m"* — which looks like you
-   arrive at 14:30 after an 80-minute journey. You don't; 14:30 is when the plane leaves Frankfurt.
-   A whole design revision went into teaching the model the difference, and then the screen was
-   never taught it. That is the single thing most likely to mislead you on a travel day.
-2. The conflicts panel has a *Not a problem* button, and if you dismiss something, change the plan
-   so it goes away, then change your mind back — it comes back **already dismissed**, with no
-   action from you. The mechanism that prevents that exists and is simply never called.
-3. Copy a stop from one trip to another and push it into the Optional list, and the *"from Europe
-   2026"* credit disappears. It still carries the badge, so nothing of yours gets passed off as
-   someone else's or vice versa — but the rule you set says the credit shows wherever the stop shows.
+**Nothing needs a decision from you.** It is ours to fix; the design question is ours to answer;
+none of it changes anything you've settled.
 
-Plus one thing worth your knowing even though it is harmless today: your FlixBus booking reference
-is sitting in a build file, because whoever wrote the redaction rule used your real reference as
-the example in a code comment. Nothing is published and nothing is deployed, so there is no
-exposure — but the rule you asked for after the last review ("redact by rule, not by scrubbing the
-five strings we happened to find") is still, in that one place, a scrub of five strings. It's on
-the list.
+Two things worth *knowing* rather than deciding:
 
-**Nothing needs a decision from you right now.** All of the above is ours to fix and none of it
-changes anything you've already settled. Two things you may want to *know* rather than decide:
+- **You can't yet "accept" a copied stop.** Copy an activity from one of your trips into
+  another and it stays labelled *from a friend* forever — there's no button that says "yes, this
+  is mine now". That's deliberately the safe direction (nothing of anyone else's ever gets
+  presented as yours), it's written down, and it's cheap to add. Say the word if you'd like it
+  in before Phase 2 and we'll pull it forward; otherwise it goes with the accounts work.
+- **The demo trip is still recognisably yours.** Door PINs, booking references and ticket links
+  are stripped by rule and I re-verified that the build is clean. Your prose is not stripped —
+  on purpose, while this runs on our machines. The day it serves a public page it has to become
+  an invented trip, and that's already written down as a Phase 2 exit condition.
 
-- **The demo trip still reads as recognisably yours.** Credentials are stripped, personal prose is
-  not — deliberately, and the architecture says so. That's fine while the build runs on our laptop.
-  The day it serves a public page, the sample has to become an invented trip. That's already
-  written down as a Phase 2 exit condition; flag it now if you'd rather it happened sooner.
-- **The redaction currently eats flight numbers too** — the sample shows *"Condor [redacted] →
-  Vienna"* — because a six-character all-caps code looks the same whether it's `DE2081` or
-  `YZGDTS`. We chose safety over readability. Say the word if you'd rather the demo read properly
-  and we'll carve out flight designators specifically.
-
-The work left is small and specific: roughly a day for the builder, three short rulings for the
-architect, and one QA round pointed at the screens rather than the save path. I'd expect this back
-in front of you shipped, not rewritten.
+The work left is one architect ruling and one builder change with a regression test, then one
+QA round pointed at the merge path. Days, not weeks. I'd expect the next thing you hear about
+Phase 1 to be that it shipped.
