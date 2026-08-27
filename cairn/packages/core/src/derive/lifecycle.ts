@@ -16,6 +16,19 @@ import { dayNumber } from './summary.ts';
 export type Lifecycle = 'planned' | 'active' | 'completed';
 
 /**
+ * The only part of a trip `lifecycle` reads.
+ *
+ * §8.1 writes the signature as `lifecycle(trip: Trip, today)`, and a `Trip` satisfies this —
+ * every existing caller is unaffected. It is stated structurally so that `Library.tsx`, which
+ * renders `TripSummaryRow`s and never holds more than one `Trip` document in memory (§8.4),
+ * can call **this** function rather than growing a second implementation of it. Sequencing
+ * rule 1: a second implementation of trip state anywhere is a design defect.
+ *
+ * BUILD-NOTES **KD-37** records this as a divergence from §8.1's literal parameter type.
+ */
+export type DatedTrip = Pick<Trip, 'startDate' | 'endDate'>;
+
+/**
  * Which stage of its own life the trip is in on `today`.
  *
  * `endDate` is **inclusive**: a trip ending on the 22nd is still `'active'` on the 22nd and
@@ -31,7 +44,7 @@ export type Lifecycle = 'planned' | 'active' | 'completed';
  *         calendar date — programmer error per §2.1. A document cannot hold one:
  *         `createTrip`, `setTripMeta` and `fromJSON` all reject it before it gets here.
  */
-export function lifecycle(trip: Trip, today: IsoDate): Lifecycle {
+export function lifecycle(trip: DatedTrip, today: IsoDate): Lifecycle {
   const now = dayNumber(today);
   if (now < dayNumber(trip.startDate)) return 'planned';
   if (now > dayNumber(trip.endDate)) return 'completed';

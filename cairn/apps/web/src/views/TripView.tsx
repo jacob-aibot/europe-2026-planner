@@ -6,7 +6,9 @@
 import { useState } from 'react';
 import type { AppState, DerivedCache } from '@cairn/client';
 import { activeDay, conflictSummary, dayDerived } from '@cairn/client';
-import { store } from '../store.ts';
+import { clock, store } from '../store.ts';
+import { dateRangeLabel } from '../format.ts';
+import { LifecycleChip } from './Library.tsx';
 import { Sidebar } from './Sidebar.tsx';
 import { DayTimeline } from './DayTimeline.tsx';
 import { DayMap } from './DayMap.tsx';
@@ -48,6 +50,14 @@ export function TripView({ state, derived, onError }: Props) {
 
       <section className="pane">
         <div className="pane__actions">
+          {/*
+            §8.1: the open trip's stage, derived on every render from (dates, today). The
+            range beside it reads the way the user entered it — "March 2019", not
+            "2019-03-01 → 2019-03-31", when they told us they only knew the month.
+          */}
+          <LifecycleChip trip={trip} today={derived?.today ?? clock.today()} />
+          <span className="pane__range" data-testid="trip-range">{dateRangeLabel(trip)}</span>
+          <span className="topbar__spacer" />
           <button className="btn btn--quiet" onClick={() => store.undo()} disabled={state.history.past.length === 0}>
             Undo
           </button>

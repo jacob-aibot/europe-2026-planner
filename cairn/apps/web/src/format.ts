@@ -3,7 +3,7 @@
  * core; this only chooses how to print it.
  */
 import type { AppState } from '@cairn/client';
-import type { CostEstimate } from '@cairn/core';
+import type { CostEstimate, DatePrecision, Lifecycle } from '@cairn/core';
 import { formatRange } from '@cairn/core';
 
 /**
@@ -43,4 +43,37 @@ export function costLabel(cost: CostEstimate | null | undefined): string | null 
     byCurrency.set(a.currency, { lo: seen.lo + a.lo, hi: seen.hi + a.hi });
   }
   return [...byCurrency.entries()].map(([cur, v]) => formatRange(cur, v.lo, v.hi)).join(' + ');
+}
+
+/**
+ * The lifecycle chip's label — ARCHITECTURE §8.1, ROADMAP Phase 2 I-4.
+ *
+ * The **stage** comes from `core.lifecycle` and is never computed here; this only chooses the
+ * word. There is no stored status field and there must not be one: a stored status is a copy
+ * of a fact the dates already state and it goes stale at midnight with nothing to invalidate
+ * it (§0.6).
+ *
+ * Pure.
+ */
+export function lifecycleLabel(stage: Lifecycle): string {
+  return stage === 'planned' ? 'Upcoming' : stage === 'active' ? 'On this trip now' : 'Past trip';
+}
+
+/**
+ * How a date range reads given how sure the user was — §8.1's *"read by display and nothing
+ * else"*, and this is the display.
+ *
+ * `startDate`/`endDate` are always real calendar dates; when the user told us they only knew
+ * the month or the year, printing "1 March – 31 March" would state something they did not
+ * claim, which is the one convention `CLAUDE.md` calls absolute. Pure.
+ */
+export function dateRangeLabel(
+  trip: { startDate: string; endDate: string; datePrecision: DatePrecision },
+): string {
+  const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'];
+  const [y, m] = trip.startDate.split('-');
+  if (trip.datePrecision === 'year') return y;
+  if (trip.datePrecision === 'month') return `${MONTHS[Number(m) - 1] ?? m} ${y}`;
+  return `${trip.startDate} → ${trip.endDate}`;
 }

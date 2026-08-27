@@ -398,3 +398,46 @@ node qa/r11-recheck.mjs     # §1 R10-3 past the builder's test: a non-empty `fu
 All three round-10 probes re-run **unmodified** at `c6c6e2b`: `qa/r10-mergeundo.mjs` **0 FAIL**
 (was 2, R10-3 closed), `qa/r10-prune.mjs` **ALL OK** (was 1 FAIL, R10-2 closed),
 `qa/r10-editdoor.mjs` in Chromium **0 FAIL** (was 1). `npm run test:tap` 426/0.
+
+---
+
+## Phase 2, I-0 — probe repair and the measured baseline (`master`, after `a55634f`)
+
+Sixteen probes were dead or stale. **None was deleted**; each carries the reason for its repair
+at the call site, and BUILD-NOTES' current status note has the one-line-per-probe table.
+
+Seven had *crashed* and had not executed past their first bad line for several rounds:
+`attack3.mjs` (`updateStop({placement})` now throws), `attack8.mjs` / `confid.mjs` (both
+targeted an `impossible_transfer` §2.12 took to zero), `prov.mjs` (`importDoc` of a foreign
+document now throws by design), `r2-copy2.mjs` / `r2-import.mjs` (`load()` returns
+`{doc, version}`; `save()` became `saveIfVersion()`), and `r5-freshness.mjs` (`core.accept`,
+un-exported by R5-5).
+
+Nine asserted a contract the architecture had **deliberately changed** — a deleted issue code
+(`stop_far_from_city`), a retracted ROADMAP revision-1 criterion, a renamed `params` key
+(`stopName` → `name`), a dropped rule (`closed`), and three closed findings (R3-3, R7-3, R2-7)
+whose fixes the probes were still reporting as open.
+
+Two new probes:
+
+```bash
+node qa/baseline.mjs        # the six Phase 2 baseline numbers, derived by RUNNING:
+                            #   detectConflicts at FIXTURE_TODAY = 2 blockers / 4 warn / 11 notes
+                            #   geoCheck clean          = 0/112 stops, 0/94 places
+                            #   geoCheck under +1 deg   = 112/112 stops, 92/94 places
+```
+
+The browser probe needs `npm run web:build && node tools/serve.mjs` in one shell, then:
+
+```bash
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/p2-pasttrip.mjs
+                            # I-4 end to end: record a past trip, the persisted document,
+                            # the lifecycle chips, exit criterion 3 on screen, and the
+                            # injected fault with the browser's Date pinned mid-trip
+```
+
+**FAILs that are still real open findings and were left alone:** `r10-redo` 3 / `r9-ledger` 2
+(R10-1) · `r7-r6recheck` 3 / `r6-flush` 1 (R6-1/R6-2) · `r8-geo` 1 (R8-3) · `r8-persist` 1
+(R8-4) · `r6-actor` 5 · `r3-cas2` 3 / `r3-pool` 3 · `r5-freshness` 4 · `r2-constraints` 1 (its
+zero-dep false positive **is** repaired; the determinism-grep one is a genuine gap) ·
+`r2-import` 1 (**new** — `fromJSON` rejects an absent `ownerId` that §2.14 rule 1 permits).

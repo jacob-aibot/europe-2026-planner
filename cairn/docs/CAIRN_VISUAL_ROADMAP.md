@@ -19,8 +19,21 @@ update to this file added that instruction).
 > HTML twin, in the same pass — against the new phase order is a task of its own and has not
 > been done.**
 
-> **Last updated:** 2026-08-27, against `master` @ `340f17f` ("Cairn: roadmap revision 9
-> follow-ups"). Update this line every time you edit this file.
+
+> **⚙ PHASE 2 IS UNDERWAY — step 2a is built (not yet verified, not yet shipped).** As of
+> 2026-08-27, increments **I-0 … I-4** of the twelve in `ROADMAP.md` revision 10 are **built**:
+> the QA probe board is repaired and its baseline numbers re-measured (I-0); `lifecycle()` is in
+> core and in the CLI (I-1); `Trip.datePrecision` is a stored field (I-2); every conflict rule
+> declares whether it is about *feasibility* or *integrity*, and a feasibility rule no longer
+> fires about a day already past (I-3) — **this closes the live defect where the app kept telling
+> Jacob his finished trip was missing a hotel**; and there is a *"Record a past trip"* form plus
+> lifecycle chips in the app (I-4). **Built is not verified and not shippable**: no breaker round
+> has attacked any of it and no manager verdict exists. I-5 … I-11 (the lifetime map, travel
+> statistics, participants, and the phase gate) are ⚪ **NOT STARTED**. Numbers and caveats:
+> `BUILD-NOTES.md`'s current status note.
+
+> **Last updated:** 2026-08-27, against `master` after the Phase 2 I-0…I-4 builder pass
+> (previously `340f17f`). Update this line every time you edit this file.
 
 **Status vocabulary used throughout:** 🟢 COMPLETE · 🟡 IN PROGRESS · 🟠 NEXT / APPROVED ·
 🔴 BLOCKED · ⚪ NOT STARTED. Also: **built** (code exists) vs **verified** (an adversarial tester
@@ -44,8 +57,10 @@ buried in a paragraph.
 
 ## 1. Where we are
 
-**Phase:** 1 of 6 is 🟢 **COMPLETE — SHIPPED.** Phase 2 ("accounts, sync, sharing") is unlocked and
-⚪ **NOT STARTED** — nobody has opened a Phase 2 session yet.
+**Phase:** 1 of 6 is 🟢 **COMPLETE — SHIPPED.** Phase 2 — now *travel history*, not accounts (see
+the banner at the top) — is 🟡 **IN PROGRESS**: step **2a of 3 is built** (increments I-0…I-4),
+built but **not verified and not shipped**. Steps 2b (the lifetime map and travel identity) and
+2c (participants) are ⚪ **NOT STARTED**.
 
 **How Phase 1 closed.** The manager sent it back once for three disclosed screen gaps; the
 builder fixed all of them plus four smaller items in one pass; then an adversarial QA tester found
@@ -142,8 +157,8 @@ nobody has to re-derive them from git history.
 | R8-3 | A copied stop's acceptance can, in one specific case, replace a geographic anchor and mint a false conflict on a stop *you* wrote | Violates a stated invariant, but unreachable until an "accept" control exists in the app | **Architect** — must be ruled on before any accept control ships |
 | R8-4 | A merge already in flight can resurrect a trip that was just deleted, in one narrow window | Real, but the delete control isn't reachable with a trip still open today | **Architect** — rule on it when `deleteTrip` becomes reachable that way, or when Phase 2's sync gives loading a second source |
 | R10-1 | Two undos in a row can make one dismiss-rule clause decline instead of act; the screen looks identical either way | Cosmetic-only edge case | **Architect** — bless the current behavior or extend the rule, low priority |
-| — | Five dormant QA probe scripts report stale pass/fail counts, not real defects | A future QA round could waste real time chasing a false signal | **Breaker** — repair or retire them before Phase 2's first round |
-| — | `BUILD-NOTES.md` has two stale numbers (test count, export-surface count) | Cosmetic; the doc's own status note already says not to trust them without re-running the commands | **Builder** — fix in the next pass that touches the file anyway |
+| — | ~~Five dormant QA probe scripts report stale pass/fail counts~~ — **DONE** in Phase 2 I-0: sixteen probes repaired, none deleted, one line of reasoning each | Was: a QA round could waste real time chasing a false signal | **Closed.** `qa/README.md` and BUILD-NOTES' status note list every repair |
+| — | ~~`BUILD-NOTES.md` has two stale numbers~~ — **DONE** in Phase 2 I-0…I-4: the current status note carries measured figures (472 tests, 71 exported symbols) | Cosmetic | **Closed.** §4/§5 further down that file are still historical — its status note says so |
 
 **The one thing written down as a trigger, not just a residual:** Phase 2's **first breaker round**
 is pre-committed to attack `doMerge`/`writeAndSettle` specifically — the code that has produced

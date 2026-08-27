@@ -302,3 +302,19 @@ textarea { resize: vertical; }
 .browse__row { display: flex; gap: .5rem; align-items: center; font-size: .88rem; }
 .browse__row b { font-weight: 600; }
 .browse__day { font-size: .78rem; color: var(--ink-dim, #5c6570); }
+
+/* Lifecycle chips (ARCHITECTURE §8.1) and the past-trip form (ROADMAP Phase 2 I-4). */
+.chip--life {
+  cursor: default; margin-left: .5rem; font-size: .68rem; letter-spacing: .02em;
+  text-transform: uppercase; vertical-align: middle; padding: .12rem .5rem;
+}
+.chip--life-planned { border-color: var(--line); color: var(--ink-dim); }
+.chip--life-active { border-color: var(--ink); color: var(--ink); font-weight: 600; }
+.chip--life-completed { background: transparent; border-style: dashed; color: var(--ink-dim); }
+
+.chip--choice { display: inline-flex; align-items: center; gap: .35rem; }
+.chip--choice input { margin: 0; }
+
+.pane__range { font-size: .78rem; color: var(--ink-dim); }
+.pasttrip .precision { border: 0; padding: 0; margin: 0; display: grid; gap: .35rem; }
+.pasttrip .precision legend { font-size: .78rem; color: var(--ink-dim); padding: 0; }

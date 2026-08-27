@@ -1,6 +1,55 @@
-# Cairn — build notes, Phase 1
+# Cairn — build notes, Phase 1 (and Phase 2 in progress)
 
-> **Status: CURRENT — the A-7 pass.** One ruling (ARCHITECTURE §2.2a A-7, §4.2 rule 4a),
+> **Status: CURRENT — Phase 2, increments I-0 … I-4 (2a: past trips and the trip lifecycle).**
+> `master` @ `a55634f`+. Scope was exactly I-0 through I-4; nothing from I-5 onward was touched.
+>
+> | | |
+> |---|---|
+> | **I-0 — probe repair** | Sixteen `qa/` probes repaired in place, none deleted. Seven had **crashed** and had not executed past their first bad line for several rounds (`attack3` `updateStop({placement})`; `attack8`/`confid` a `tgt` that §2.12 removed; `prov` `importDoc` of a foreign document now throwing by design; `r2-copy2`/`r2-import` `load()` returning `{doc,version}`; `r5-freshness` `core.accept` un-exported by R5-5). Nine asserted a contract the architecture had **deliberately changed** — see the table below. Every repair carries its reason at the call site. |
+> | **I-0 — measured baseline** | `node qa/baseline.mjs` → **0 FAIL**, deriving all six numbers by running: `detectConflicts` at `FIXTURE_TODAY = 2026-08-01` is **2 blockers** (both `legacy_flag`, Aug 18 + Aug 20) / 4 warnings / 11 notes / 17 total; `geoCheck` clean is **0/112** scheduled stops and **0/94** places; under a +1° latitude fault injected one record at a time it is **112/112** and **92/94**, the two misses being `Blue Cave, Biševo` and `Stiniva Cove, Vis`. |
+> | **I-1 — `lifecycle()`** | `packages/core/src/derive/lifecycle.ts`, pure, derived from `(trip, today)`, **no stored status field**. `endDate` inclusive; zero-day trip active on exactly that day; calendar day numbers, not string comparison. `cli.ts trip --today 2026-08-27` prints `[completed]`. **Export surface 70 → 71, counted not quoted** — §2.10, ROADMAP criterion E and `surface.test.ts` all moved in the same commit. |
+> | **I-2 — `Trip.datePrecision`** | `'exact' \| 'month' \| 'year'`, default `'exact'`. `types.ts` + `createTrip` + `TripMetaPatch` + `toJSON` (fixed key order, always written) + `fromJSON` (rejects anything else, with a JSON path) + `migrateDoc` (absent → `'exact'`). **No `schemaVersion` bump.** No new action — it rides on the existing `setTripMeta`. The greppable ceiling is a test: `datePrecision` may not appear under `conflict/`, `derive/` or `validate/`, and must appear in the five files §8.1 names. |
+> | **I-3 — rule `class` + the feasibility gate** | All ten rules classified per §8.2's table. `subjectDate(trip, ref)` and the gate itself in `detect.ts`, **once** — a feasibility finding is dropped iff `ctx.today` is present and **every** subject resolves to a date strictly before it. §8.2 revision 10's three edge rulings each have a named test. |
+> | **I-4 — the past-trip flow, and 2a ships** | `apps/web/src/views/PastTripForm.tsx` (title, precision, dates, cities — no day-by-day required), lifecycle chips in `Library.tsx` and `TripView.tsx`, and a range label that reads *"March 2019"* rather than two exact days the user never claimed. Dispatches **`createTrip` + `setTripMeta` and nothing else**, asserted by grep. The closed list of six document-installing store methods is still six (`retirement-ledger.test.ts`'s existing ceiling, unchanged and green). |
+> | **Numbers, my own runs** | `npm run typecheck` clean (both projects). `npm run test:tap` **472 pass / 0 fail** (was 432 at `8df2ae6`; +40 new). `npm run web:build` clean. `node qa/baseline.mjs` 0 FAIL. `node qa/accept.mjs` **28 pass / 0 fail** (was 23/4). |
+> | **Browser leg, real Chromium** | `qa/p2-pasttrip.mjs` → **0 FAIL**, 30 assertions. Records "Japan, March 2019" as a user; asserts the **persisted IndexedDB document** (31 dense days over the stored range, `Day.id === Day.date`, zero stops, `datePrecision:'month'`, `schemaVersion` still 1, exactly one document installed); both lifecycle chips; criterion 3 on screen (Conflicts and Validation tabs both unbadged, both panels empty); and the injected fault on the real fixture — Europe 2026 at the real clock shows **no feasibility rule at all**, then with the browser's `Date` pinned to 2026-08-19 the same document shows `missing_lodging` ×2 and `unbooked_ticketed` ×2 back, with no wholly-past feasibility finding. |
+> | **Red/green, verified** | The I-3 gate: deleting the one gate line fails 3 of `ruleClass.test.ts`'s 10. The I-2 field: deleting `datePrecision` from `toJSON` fails 3 core and 1 client test. Both restored and re-run. **A first draft of the straddling test passed with the gate deleted** — `unbooked_ticketed`'s own 60-day horizon was doing the work — and was rewritten onto `missing_lodging`, which has no horizon. |
+> | **New KD entries** | **KD-37** (`lifecycle`'s parameter is `Pick<Trip,'startDate'\|'endDate'>`, not `Trip`, so `Library` can call it per summary row rather than growing a second implementation) and **KD-38** (criterion 3's zero is partly `ensureDays`' transit days, not only the gate — and the open question of whether the past-trip form should assign the trip's city to its days). Both need an architect's eye; neither is a behaviour change. |
+> | **Not touched** | I-5 … I-11. No country attribution, no `travelStats`, no `TripSummaryRow` widening, no Map/Profile, no participants. No `ARCHITECTURE.md` change beyond §2.10's export count. |
+>
+> ### I-0's probe board — one line per repair
+>
+> | Probe | Was | Repaired to | Reason |
+> |---|---|---|---|
+> | `r6-flush.mjs` §6 | 1 stale FAIL | PASS | `/^\s*saving = (?!saving)/` matched `chainOntoSaving`'s own `saving = run;` — it reported R3-3 open against the fix that closed it. Now: exactly one assignment, and it is that one. |
+> | `r7-chain.mjs` static + §11 | 2 FAIL | 0 FAIL | Two hardcoded counts. `chainOntoSaving(` also matched a doc comment, and the expected 3 became 4 when R7-3 put `deleteTrip` on the chain. `ports.storage.delete` likewise counted two comment mentions, and *"delete is NOT on the chain"* is now false — the claim is **inverted** to the one the product makes. |
+> | `r5-freshness.mjs` | crashed at `:602` | runs, 71 ok / 4 FAIL | §5.7 called `core.accept`/`friendImport`/`needsBadge`, all removed by R5-5 — the fix to the finding §5.7 filed. Reached by module path; §5.7a now asserts the un-export itself. The 4 FAILs are pre-existing (R5-2, and `fromJSON` accepting a null-actor accepted record — see below). |
+> | `r2-copy2.mjs`, `r2-import.mjs` | crashed | 0 FAIL | `load()` returns `{doc, version}` since `3a124a2`; `save()` became `saveIfVersion()`. `r2-copy2`'s *"a copied Place carries provenance"* also asserted a design §2.13 A-6 explicitly rejected — inverted to the ceiling (`Place`'s shape does **not** change; the credit is on the linking stops). |
+> | `attack3.mjs` | crashed at `:29` | 0 FAIL | `updateStop({placement})` now throws (§2.10: `moveStop` is the one function). Also `params.stopName` → `params.name`, and `stop_far_from_city` (DELETED, §2.9) → the ceiling that replaced it. |
+> | `attack8.mjs` | crashed at `:19` | 0 FAIL | Targeted an `impossible_transfer` §2.12 took to zero. Also `updateStop({id})` now throws, and `rollUpCost(..., {homeCurrency})` was a typo for `{target}` — the probe was measuring its own mistake. |
+> | `confid.mjs` | crashed at `:46` | 0 FAIL | Same `impossible_transfer` premise. Also asserted ROADMAP **revision 1**'s conflict-id criterion, which the current §C retracts **by name**; inverted. |
+> | `prov.mjs` | crashed at `:79` | 0 FAIL | `importDoc` of a foreign document now throws `ForeignDocumentError` — the fix to the finding this probe filed. The claim is now stronger: a friend's document cannot get in at all, and nothing is installed as a side effect. |
+> | `confid2.mjs` | 2 FAIL | 0 FAIL | Filed R2-7; R2-7 was fixed by `syncResolutions`, which the probe never called, so it reproduced the behaviour of a caller that opts out of the fix. Now recomputes the way `getDerived()` does. |
+> | `accept.mjs` | 4 FAIL | 0 FAIL | Four stale ROADMAP revision-1 numbers: `12 blockers` → **2**; `2 bundled` → **3** (sequencing rule 5's own worked example); `1 error 30 warn` → **1 error 10 warn** (the 20 that went were `stop_far_from_city`); and `pool split` compared `JSON.stringify` of an object, so it was comparing **key order**. |
+> | `attack2.mjs`, `attack5.mjs` | 2 + 4 FAIL | 0 FAIL | `stop_far_from_city` is DELETED not renamed (§2.9) and `params.stopName` became `params.name`. Inverted to the ceilings. |
+> | `rules.mjs` | 1 FAIL | 0 FAIL | Filed the `closed` rule's *"no data path"*; the rule was **dropped from Phase 1** as a result. Asserting it fires re-reports a closed finding forever. Now asserts it is gone **and** that the premise (0 of 95 places carry `hours`) still holds. |
+> | `r2-constraints.mjs` | 2 FAIL | 1 FAIL | The zero-dep check counted `packages/client`'s workspace-internal `{"@cairn/core":"*"}` — which installs nothing and is the dependency direction §3 **requires**. The remaining FAIL is real and **untouched**: `test/boundaries.test.ts`'s determinism grep walks `packages/core/src` only, and the constraint names *"core **or the reducer**"*. Disclosed, not in I-0–I-4's scope. |
+> | `baseline.mjs` | — | NEW, 0 FAIL | I-0's deliverable: the six numbers, derived by running. |
+> | `p2-pasttrip.mjs` | — | NEW, 0 FAIL | I-4's browser leg. |
+>
+> **FAILs that remain, and are real open findings — none of them mine, none repaired away:**
+> `r10-redo` 3 and `r9-ledger` 2 (**R10-1**, MINOR) · `r7-r6recheck` 3 and `r6-flush` 1 (**R6-1/R6-2**, MINOR) ·
+> `r8-geo` 1 (**R8-3**, MAJOR-but-unreachable) · `r8-persist` 1 (**R8-4**, MAJOR-but-unreachable) ·
+> `r6-actor` 5 (round 6's non-string-actor `params` observation) · `r3-cas2` 3 and `r3-pool` 3 (round 3 MINORs) ·
+> `r5-freshness` 4 (R5-2, plus two below) · `r2-constraints` 1 (above).
+>
+> **One NEW finding, surfaced by the repair and NOT fixed — it is outside I-0–I-4 and touches `importDoc`, which `cairn/CLAUDE.md` routes builder+breaker:**
+> `qa/r2-import.mjs` now reaches its own §"the spec says an ABSENT `ownerId` is allowed (§2.14 rule 1)" and reports **1 FAIL**: `fromJSON` throws `TripParseError: expected a string (at $.ownerId)` on a document with no `ownerId`, while §2.14 rule 1 says a document whose `ownerId` is *"neither the local user … nor absent"* is what gets refused. Either `fromJSON` is stricter than §2.14 intends, or §2.14's *"nor absent"* is stale. **An architect's call, not mine.** `qa/r5-freshness.mjs` §5's last two FAILs are the adjacent question (`fromJSON` accepts an `accepted`, credited record with a `null` actor; `validateTrip` flags it, the parser does not).
+>
+> **The status note below is superseded by this one** and is kept as the record of what was
+> true at `8df2ae6`.
+
+> **Status: superseded — the A-7 pass.** One ruling (ARCHITECTURE §2.2a A-7, §4.2 rule 4a),
 > implemented exactly as specified, for the one BLOCKER the Phase 1 gate re-review sent back
 > (R11-1):
 >
@@ -928,6 +977,51 @@ do not think it is.
 Two candidate one-line fixes, both of which are the architect's call and neither of which I
 made: skip a `conflictId` in step 4's absorb when `next.doc` also holds a **live** row for it;
 or have the release survive one `set` (a released-this-tick set the absorb consults).
+
+### KD-37 — `lifecycle`'s parameter is `Pick<Trip, 'startDate'|'endDate'>`, not `Trip`
+
+`packages/core/src/derive/lifecycle.ts` · **Phase 2 I-1/I-4.**
+
+§8.1 writes the signature as `lifecycle(trip: Trip, today: IsoDate)`. It ships as
+`lifecycle(trip: DatedTrip, today: IsoDate)` where `DatedTrip = Pick<Trip, 'startDate' |
+'endDate'>`. A `Trip` satisfies that, so **every caller §8.1 anticipated is unaffected** and no
+behaviour changes; the widening is a type change and nothing else.
+
+**Why.** I-4 requires a lifecycle chip in `Library.tsx`, and `Library` renders
+`TripSummaryRow`s. §8.4 says `AppState` holds **exactly one** trip document in memory, so the
+Library cannot hand `lifecycle` a `Trip` per row. The two options were: widen the parameter, or
+let `apps/web` compare `row.startDate`/`row.endDate` to `today` itself — which is a second
+implementation of trip state in a second place, and sequencing rule 1 calls that a design
+defect. I took the widening.
+
+**What the architect may want to change.** If the intent is that a `TripSummaryRow` should
+carry its own stage, that is a §8.4 decision (and it collides with §8.1's *"no stored status
+field"*, since a summary row is a cache written at save time and a stage goes stale at
+midnight). I did not make that call. `lifecycle` is on §2.10's list either way.
+
+### KD-38 — criterion 3's "zero findings" is partly `ensureDays`, not only the gate
+
+`packages/client/test/past-trip.test.ts` · **Phase 2 I-4.** Not a deviation — a measurement
+that changes what the criterion proves, recorded so the breaker does not have to rediscover it.
+
+`ensureDays` mints blank days as `primaryCity:'transit'` with `cities:['transit']`, and
+`missing_lodging` skips transit days by design. So the 21-day, one-city, zero-stop 2019 trip
+the criterion names is silent for **two** independent reasons — the §8.2 gate, and the fact
+that its days are not assigned to its city — and **criterion 3 alone still passes with the gate
+deleted.** Verified by deleting the gate line and re-running.
+
+The suite therefore carries a second test, *"the CEILING half: the silence is the GATE, not
+transit days"*, which takes the same document, assigns every day to Tokyo via `setDayMeta`, and
+asserts it is loud as a plan (20 uncovered nights, one `missing_lodging` run) and silent at
+`today`. That is the case §8.2 actually names — *"a 21-day memory trip in one city with no
+stops trips `missing_lodging` on every night of it"* — and it fails with the gate removed.
+
+**The open question, which is the architect's and not mine.** Should the past-trip form assign
+the trip's single city to its days? I-4's brief says the form dispatches `createTrip` +
+`setTripMeta` **and nothing else**, so it does not, and a recorded past trip's days are all
+`transit`. That is defensible (the user said nothing about which days were where) but it means
+a one-city past trip renders a spine of transit days, and I-6's `cityKeys` summary widening will
+find no city on any day. Worth a ruling before 2b.
 
 ---
 

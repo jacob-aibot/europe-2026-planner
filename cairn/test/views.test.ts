@@ -121,3 +121,60 @@ test('every exemption\'s justification holds: no Day can carry an attribution', 
     );
   }
 });
+
+// ---------------------------------------------------------------------------
+// ROADMAP Phase 2 I-4 — the past-trip flow and the lifecycle chips.
+
+/**
+ * §4.2 rule 1, as a grep rather than a promise: the past-trip form dispatches `createTrip`
+ * and `setTripMeta`, and invents no domain logic. Every store method and action it names is
+ * checked against a closed list, so a third one cannot appear silently.
+ */
+test('I-4: PastTripForm dispatches only createTrip + setTripMeta', () => {
+  const src = readFileSync(resolve(VIEWS, 'PastTripForm.tsx'), 'utf8');
+  const storeCalls = [...new Set([...src.matchAll(/store\.(\w+)\(/g)].map((m) => m[1]))].sort();
+  assert.deepEqual(storeCalls, ['createTrip', 'dispatch'], `store calls: ${storeCalls.join(', ')}`);
+  const actions = [...new Set([...src.matchAll(/type:\s*'(\w+)'/g)].map((m) => m[1]))].sort();
+  assert.deepEqual(actions, ['setTripMeta'], `dispatched actions: ${actions.join(', ')}`);
+});
+
+/**
+ * §8.1: there is no stored status field and a builder must not add one. The stage is derived
+ * from `(dates, today)` on every render, so the chip must reach `core.lifecycle` and must not
+ * read a field off the trip. `stage`/`status` as a *local* name is fine; `trip.status` is not.
+ */
+test('I-4: the lifecycle chip derives its stage and reads no stored status field', () => {
+  const src = readFileSync(resolve(VIEWS, 'Library.tsx'), 'utf8');
+  assert.match(src, /lifecycle\(/, 'the chip does not call core.lifecycle');
+  for (const banned of [/\.status\b/, /\bdatePrecision\b.*===/]) {
+    assert.ok(!banned.test(src), `Library.tsx matches ${banned} — a stored stage, or a branch on precision`);
+  }
+});
+
+/**
+ * Sequencing rule 1: a second implementation of trip state anywhere is a design defect. The
+ * chip is one component used by both surfaces, and nothing in `apps/web` re-derives a stage
+ * from dates by hand.
+ */
+test('I-4: one lifecycle implementation — no view compares dates to today itself', () => {
+  const offenders: string[] = [];
+  for (const f of readdirSync(VIEWS).filter((n) => n.endsWith('.tsx'))) {
+    const src = readFileSync(resolve(VIEWS, f), 'utf8');
+    // A view deriving a stage would have to compare a date to today somewhere.
+    if (/(startDate|endDate)\s*[<>]=?\s*(today|now)\b/.test(src)) offenders.push(f);
+    if (/(today|now)\s*[<>]=?\s*\w*\.(startDate|endDate)\b/.test(src)) offenders.push(f);
+  }
+  assert.deepEqual(offenders, [], 'a view re-derives the lifecycle instead of calling core.lifecycle');
+});
+
+/** §2.1: `Date` is read in `ports/env.ts` and nowhere else in `apps/web`. */
+test('I-4: no view calls new Date() — the clock comes from the port', () => {
+  const offenders: string[] = [];
+  for (const f of readdirSync(VIEWS).filter((n) => n.endsWith('.tsx'))) {
+    const src = readFileSync(resolve(VIEWS, f), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/(^|[^:])\/\/.*$/gm, '$1');
+    if (/\bnew Date\s*\(|\bDate\.now\s*\(/.test(src)) offenders.push(f);
+  }
+  assert.deepEqual(offenders, [], 'a view reads the ambient clock instead of the ClockPort');
+});

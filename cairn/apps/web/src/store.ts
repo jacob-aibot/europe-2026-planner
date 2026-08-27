@@ -12,11 +12,18 @@ import { indexedDbStorage } from './ports/storage.ts';
 import { downloadFile } from './ports/file.ts';
 import { browserIds, systemClock } from './ports/env.ts';
 
+/**
+ * The one clock in the web app. `ports/env.ts` is the only place `Date` is read (§2.1), and
+ * this is the only handle on it — views that need `today` (the lifecycle chips, §8.1) take it
+ * from here rather than calling `new Date()` themselves.
+ */
+export const clock = systemClock();
+
 export const store: Store = createStore({
   ports: {
     storage: indexedDbStorage(),
     file: downloadFile(),
-    clock: systemClock(),
+    clock,
     ids: browserIds(),
   },
 });

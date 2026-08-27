@@ -12,8 +12,27 @@
  */
 import { useState } from 'react';
 import type { AppState } from '@cairn/client';
-import type { Trip } from '@cairn/core';
-import { store } from '../store.ts';
+import type { Lifecycle, Trip } from '@cairn/core';
+import { lifecycle } from '@cairn/core';
+import { clock, store } from '../store.ts';
+import { lifecycleLabel } from '../format.ts';
+import { PastTripForm } from './PastTripForm.tsx';
+
+/**
+ * The lifecycle chip — ARCHITECTURE §8.1, ROADMAP Phase 2 I-4.
+ *
+ * The stage is **derived** from `(dates, today)` by `core.lifecycle` on every render. There is
+ * no stored status field, and there must not be one: it would be a copy of what the dates
+ * already say, going stale at midnight with nothing to invalidate it (§0.6).
+ */
+export function LifecycleChip({ trip, today }: { trip: { startDate: string; endDate: string }; today: string }) {
+  const stage: Lifecycle = lifecycle(trip, today);
+  return (
+    <span className={`chip chip--life chip--life-${stage}`} data-testid="lifecycle-chip" data-stage={stage}>
+      {lifecycleLabel(stage)}
+    </span>
+  );
+}
 
 type Props = {
   state: AppState;
@@ -23,6 +42,10 @@ type Props = {
 
 export function Library({ state, onError, sample }: Props) {
   const [creating, setCreating] = useState(false);
+  const [recording, setRecording] = useState(false);
+  // Read once per render, from the app's single clock port (`ports/env.ts` is the only place
+  // `Date` is called). Every chip below is derived against the same value.
+  const today = clock.today();
   const run = (p: Promise<unknown>) => p.catch((e: Error) => onError(e.message));
 
   async function onImport() {
@@ -70,13 +93,22 @@ export function Library({ state, onError, sample }: Props) {
             Restore from a backup
           </button>
           {sample && <button className="btn" onClick={() => void loadSample()}>Load Europe 2026</button>}
-          <button className="btn btn--primary" onClick={() => setCreating(true)}>New trip</button>
+          <button
+            className="btn"
+            data-testid="record-past-trip"
+            title="A trip you have already taken — dates only, no day-by-day required."
+            onClick={() => { setCreating(false); setRecording(true); }}
+          >
+            Record a past trip
+          </button>
+          <button className="btn btn--primary" onClick={() => { setRecording(false); setCreating(true); }}>New trip</button>
         </div>
       </div>
 
       {creating && <NewTrip onClose={() => setCreating(false)} onError={onError} />}
+      {recording && <PastTripForm onClose={() => setRecording(false)} onError={onError} />}
 
-      {state.library.length === 0 && !creating && (
+      {state.library.length === 0 && !creating && !recording && (
         <p className="empty">
           Nothing here yet. {sample ? 'Load Europe 2026 to see a real trip, or start' : 'Start'} a new one.
         </p>
@@ -86,7 +118,10 @@ export function Library({ state, onError, sample }: Props) {
         {state.library.map((row) => (
           <li key={row.id} className="tripcard">
             <button className="tripcard__open" onClick={() => run(store.openTrip(row.id))}>
-              <span className="tripcard__title">{row.title}</span>
+              <span className="tripcard__title">
+                {row.title}
+                <LifecycleChip trip={row} today={today} />
+              </span>
               <span className="tripcard__meta">
                 {row.startDate} → {row.endDate} · {row.cityCount} {row.cityCount === 1 ? 'city' : 'cities'}
               </span>
