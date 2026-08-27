@@ -1,5 +1,18 @@
 # Cairn — build notes, Phase 1 (and Phase 2 in progress)
 
+> **Addendum, on `be1ed01` — ARCHITECTURE revision 12 §2.14 **A-14** built; QA **R13-6** CLOSED.**
+> Scope was A-14 and nothing else. A-11/A-12/A-13 were built in a parallel pass over `conflict/`;
+> this one touched `build/copyStop.ts`, one new file, and three test files. R13-1…R13-5 were not
+> touched by *this* pass.
+>
+> | | |
+> |---|---|
+> | **What changed** | `copyStopInto` rule 4 now runs A-14's three-step decision before any reuse search: find the source's city by key, re-file by normalised name onto the target's own key (lowest `order`, then document position), or — if the target has no city of that name — the place does not travel and the stop keeps the raw coordinate (`{kind:'inline'}`, or `{kind:'none'}` when the source place had none). No `Place` row is added in the third case and `target.cities` is never touched. Full reasoning and the three judgment calls: **KD-47**. |
+> | **New file** | `packages/core/src/model/cityName.ts` — `normalizeCityName`, A-10's fold, in the lowest layer so `build/` and the later `derive/summary.ts` + `derive/travelStats.ts` import one copy. **Not** on `index.ts`: `Object.keys(core).length` is **71 before and 71 after**, run both ways. |
+> | **Numbers, my own runs on this pass** | `npm run typecheck` clean (both projects). `npm run test:tap` **539 pass / 0 fail** (was 524; +15 — 10 A-14 cases in `copyStop.test.ts`, 5 in the new `cityName.test.ts`). `qa/r13-gate-citykey.mjs` **§10: 1 FAIL → 0** (12 FAIL → 11 overall; the 11 are R13-1 ×7, R13-2 ×2 and R13-3 ×2, all in the parallel pass's scope, none in mine). `qa/r2-copy.mjs` and `qa/prov.mjs` **0 FAIL**. `npm run golden` regenerates byte-identically; the sample sha is unmoved at `40955ca0b182`. |
+> | **How those numbers were run** | A parallel builder was editing `conflict/` in the same working tree, so the full suite and the probes were run in a **detached `git worktree` at `be1ed01` carrying only this pass's five files** — otherwise the counts would have been measuring their in-flight work. The two files I iterated on were run in place. |
+> | **What I could not verify** | Node 24 (this environment is Node 22.22.2). Whether Hermes ships `String.prototype.normalize` — still unverified, still a Phase 5 check, and now guarded so its absence degrades to step 3 instead of throwing (A-14; test in `cityName.test.ts`). No browser run: nothing in `apps/web` changed. |
+
 > **Addendum, on `30d6288` — QA round 13's two routine MINORs, R13-7 and R13-8, both CLOSED.**
 > Scope was those two findings and nothing else; R13-1, R13-2, R13-3, R13-4, R13-5 and R13-6 were
 > not touched by this pass.
@@ -1316,6 +1329,105 @@ strict reading of the finding does not settle them:
 Nine tests, all watched red first (`packages/core/test/cityKey.test.ts`); the reference trip's
 validation output is unchanged (`fixtures/golden/core-validation.json` carries only
 `cost_basis_mixed` and `lat_lng_out_of_range`, neither of which this touches).
+
+### KD-47 — a copied `Place` is re-filed in the target trip's terms, or it does not travel — CLOSED
+
+`packages/core/src/build/copyStop.ts`, `packages/core/src/model/cityName.ts` (new) · **Phase 2.**
+Implements ARCHITECTURE §2.14 **A-14** (revision 12) and closes QA **R13-6**.
+
+Rule 4 copied the referenced `Place` with `{...original, id: newId('place')}`, carrying the
+**source** trip's minted `CityKey` into the target. After A-10 two independently created trips can
+never share a key, so every cross-trip copy of a place-linked stop left the recipient reporting
+`unknown_city_key` — an **error** no control in the UI can clear — and `samePlace`, which compares
+`cityKey` first, could never match across trips either, so the reuse branch silently duplicated
+places the target already had. Built exactly as A-14 specifies: a private `refileCityKey(source,
+target, cityKey)` runs steps 1 and 2 and returns the target's key or `null`, and `null` is step 3.
+
+`normalizeCityName` is its own module in `model/` — the lowest layer — so `build/copyStop.ts` and
+the `derive/summary.ts` / `derive/travelStats.ts` uses A-14 anticipates share one definition rather
+than growing two. It is importable by any `packages/core` module and is deliberately absent from
+`index.ts`; §2.10's runtime surface is 71 symbols before this pass and 71 after, measured by
+`Object.keys(core).length` both times.
+
+Three things a strict reading of A-14 did not settle, decided as follows:
+
+- **`geoCheck`'s A-6 fixture had to change, and that is a real consequence rather than a test
+  repair.** A-14 says A-6/A-6a *"apply unchanged to the step-2 case and simply have less to do in
+  the step-3 case"*. `lisbonWithCopiedPlaceStop` — the fixture 14 of the A-6/A-6a tests are built on
+  — copies a place-linked stop out of the reference trip into a **Lisbon-only** trip, which is now
+  step 3: no `Place` travels, so the copy-borne place those tests exist to measure no longer exists
+  and all 14 failed on their own precondition (*"rule 4 must have dragged the Place across"*). Not
+  one assertion was weakened and no production code was bent to fit: the fixture's trip now holds a
+  **second city named after the source place's own city, created with no coordinates** (which is
+  what `createTrip` does — `centre` defaults to `{lat:0,lng:0}`). That keeps the copy on step 2, so
+  the place travels and is re-filed, while leaving it far from every anchor the trip offers — which
+  is precisely the record §2.13 A-6 exempts. The fixture asserts the stub city does not join a day,
+  so it is filing and not itinerary.
+- **A `Place` already in the target that carries the *source's* key is not matched, and is
+  duplicated once.** The reuse search runs against the re-filed key only, as A-14 writes it. A
+  document that already contains such a row can only have got it from a copy made *before* this fix;
+  A-14 orders no migration and no `schemaVersion` bump, so this pass does not add a second search to
+  find those. The cost is bounded — one duplicate place row per pre-A-14 copy re-copied — and
+  `validateTrip` already reports the old row's `unknown_city_key` for as long as it is there.
+- **Step 3 clones the coordinate rather than aliasing it.** A-14 writes `place = {kind:'inline', at:
+  original.at}`; built as `{...original.at}`. `copyStopInto` is pure and the two documents must not
+  end up sharing one mutable `LatLng` object. Nothing in core mutates a `LatLng` today, which is the
+  only reason the literal reading is not already a defect.
+
+15 tests, all watched red first: 10 in `packages/core/test/copyStop.test.ts` covering A-14's own
+assertions 1–5 (re-filing, normalised/NFC name matching, cross-trip reuse, the no-match case, the
+`at: null` case, a blank source name, a source key the source itself cannot resolve, the two
+same-named-cities tie-break on `order` and then on document position, byte-identity across two
+identical runs, and copying within one trip being unchanged), and 5 in the new
+`packages/core/test/cityName.test.ts` — including one that removes `String.prototype.normalize` from
+the prototype and restores it, to hold down A-14's claim that a runtime without it degrades to step
+3 instead of throwing.
+
+### KD-48 — A-11 assertion 4 says `unbooked_ticketed` fires **three** times on the reference trip; it fires **ten** — CLOSED
+
+`packages/core/test/horizonGate.test.ts` · **Phase 2.**
+
+A-11's fourth builder assertion reads: *"At a clock 200 days before the reference trip,
+`detectConflicts` reports **no** `unbooked_ticketed` note and `detectUngated` reports **three**; at
+`FIXTURE_TODAY` both report three."* Measured, the rule fires **ten** times on the reference trip at
+`FIXTURE_TODAY`, un-gated and gated alike.
+
+"Three" is §2.7's rule table naming the three *fixture cases* — Széchenyi, Prague Castle, Windsor —
+which is also how `conflict.test.ts` asserts them (by name, never by count). Ten is what the shipped
+ceiling has always said and still says: **11 notes at `FIXTURE_TODAY`**, ten of them from this rule.
+So the number in the ruling is a slip about the fixture, not a claim the code fails; nothing about
+A-11's mechanism depends on it.
+
+The test keeps **A-11's shape** — no note at 200 days out in the gated set, every note in the
+un-gated set, both sets equal at `FIXTURE_TODAY` — with the measured count, and additionally asserts
+the three named cases are among the ten, so the fixture-case reading is checked too. A builder
+silently writing `10` where the architect wrote `3` is how a ceiling stops being one; this is that
+number, said out loud.
+
+### KD-49 — `qa/r13-gate-citykey.mjs` §3's first two assertions are retired by A-13, not fixed (doc-only: its home is `qa/`, which the disclosure scan does not cover)
+
+`qa/r13-gate-citykey.mjs` · **Phase 2.** Same class as KD-43 — a probe edit, recorded because a
+builder editing the probe that measures him is exactly the move that needs a reason attached.
+
+A-13 pre-authorises one of the two: *"§3's first assertion — 'extending `endDate` makes the conflict
+return' — is **retired by this ruling, not fixed**: it asserts a mechanism the model does not have,
+and the honest edit is to replace that line with the tripwire."* Done: §3's first line is now A-13's
+tripwire (*no feasibility finding resolves only through §8.2 ruling 2's `endDate` fallback*), run
+over the reference trip and §3's own document, and it fails loudly with the instruction to write
+A-9(4)'s literal test the day a rule makes it achievable.
+
+The **second** assertion — *"the substituted test's `setTripMeta` changes its outcome (i.e. it is
+load-bearing)"* — A-13 does not mention, and it measures a call the same ruling orders **deleted**.
+Left alone it would fail forever while measuring nothing that exists. It is replaced by the two
+things A-13 actually requires of `retirementGate.test.ts`, both read off the file: the inert call is
+gone (comments stripped first — the ruling deletes the *call*, and the test header is allowed to say
+why), and A-9(4)'s test name describes the **clock crossing** rather than an extended `endDate`. The
+third assertion — *"a clock crossing leaves the dismissal live and the finding un-accused"* — is kept
+verbatim, because A-13 says that is what the substitution does prove.
+
+Nothing else in the probe moved. §1, §4, §5 and §9 call `detectUngated` as an array and are
+untouched, deliberately: A-12 adds `detectUngatedChecked` beside it rather than changing its shape,
+precisely so round 13's assertions stay independent evidence that A-11 worked.
 
 ---
 

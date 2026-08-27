@@ -20,7 +20,10 @@
  *      with `confidence` demoted.
  *   4. **A referenced `Place` is copied with it**, new id — otherwise the link dangles. An
  *      existing place in the target with the same name and coordinates in the same city is
- *      reused instead of duplicated.
+ *      reused instead of duplicated. **Amended by A-14 (revision 12, QA R13-6):** the
+ *      place's `cityKey` is this document's filing, not part of the place, so it is re-filed
+ *      under the target's own city of that name — and if the target has no such city the
+ *      place does not travel and the stop keeps the raw coordinate. See `refileCityKey`.
  *   5. `flags`, `name`, `category`, `durationMins`, `arrival` and `travelRole` copy verbatim
  *      — they describe a place and a journey, not a claim about the user. `note` does NOT
  *      copy verbatim: it is prose, and prose is exactly where a door code or a booking
@@ -42,6 +45,7 @@ import { addStop } from './stops.ts';
 import type { StopInit } from './stops.ts';
 import { redactText } from './redactText.ts';
 import { requireActor } from './candidates.ts';
+import { normalizeCityName } from '../model/cityName.ts';
 
 export type CopyStopSource = { trip: Trip; stopId: StopId };
 export type CopyStopCtx = { ids: IdFactory; today: IsoDate; actorUserId: UserId };
@@ -65,6 +69,37 @@ function samePlace(a: Place, b: { cityKey: string; name: string; at: Place['at']
   if (a.name.trim().toLowerCase() !== b.name.trim().toLowerCase()) return false;
   if (a.at === null || b.at === null) return a.at === b.at;
   return Math.abs(a.at.lat - b.at.lat) < 1e-5 && Math.abs(a.at.lng - b.at.lng) < 1e-5;
+}
+
+/**
+ * A-14 (revision 12, QA R13-6) — steps 1 and 2 of rule 4's three-step decision.
+ *
+ * A `CityKey` answers *"which city **of this trip** is this filed under"*. It is minted by
+ * and meaningful only inside one document (A-10), so it does not travel with the record:
+ * when a place crosses a trip boundary it is **re-filed in the target's terms, or it does
+ * not cross**.
+ *
+ *   1. Find the source's city by key. No such city, or a name that folds to `''` (which is
+ *      not an identity), and there is nothing to match on → `null`, i.e. step 3.
+ *   2. Every city in the target whose folded name equals it is a candidate. The lowest
+ *      `order` wins, ties broken by position in `target.cities` — a trip may legitimately
+ *      hold two cities of the same name (A-10 blesses that) and the answer must not depend
+ *      on which one the scan happened to reach first.
+ *
+ * Returns the target's key, or `null` when the place must not travel. Pure.
+ */
+function refileCityKey(source: Trip, target: Trip, cityKey: string): string | null {
+  const sourceCity = source.cities.find((c) => c.key === cityKey);
+  if (!sourceCity) return null;
+  const wanted = normalizeCityName(sourceCity.name);
+  if (wanted === '') return null;
+
+  let best: { key: string; order: number } | null = null;
+  for (const c of target.cities) {
+    if (normalizeCityName(c.name) !== wanted) continue;
+    if (best === null || c.order < best.order) best = { key: c.key, order: c.order };
+  }
+  return best === null ? null : best.key;
 }
 
 /**
@@ -109,7 +144,8 @@ export function copyStopInto(
     actorUserId,
   };
 
-  // Rule 4 — the place travels, or an equivalent one in the target is reused.
+  // Rule 4 — the place travels RE-FILED under the target's own city, or an equivalent one in
+  // the target is reused, or it does not travel at all and the coordinate goes instead.
   let withPlace = target;
   let place = src.place;
   if (src.place.kind === 'place') {
@@ -117,13 +153,23 @@ export function copyStopInto(
     if (!original) {
       place = { kind: 'none' }; // the source's own link dangled; do not invent one
     } else {
-      const existing = target.places.find((p) => samePlace(p, original));
-      if (existing) {
-        place = { kind: 'place', placeId: existing.id };
+      const targetKey = refileCityKey(source.trip, target, original.cityKey);
+      if (targetKey === null) {
+        // A-14 step 3 — no city in the target answers to the source city's name, so there is
+        // nothing to file this place under and every alternative writes a guess into the
+        // document. The stop keeps the coordinate; no `Place` row is added and `cities` is
+        // untouched.
+        place = original.at === null ? { kind: 'none' } : { kind: 'inline', at: { ...original.at } };
       } else {
-        const copy: Place = { ...original, id: ctx.ids.newId('place') };
-        withPlace = { ...target, places: [...target.places, copy] };
-        place = { kind: 'place', placeId: copy.id };
+        const refiled = { ...original, cityKey: targetKey };
+        const existing = target.places.find((p) => samePlace(p, refiled));
+        if (existing) {
+          place = { kind: 'place', placeId: existing.id };
+        } else {
+          const copy: Place = { ...refiled, id: ctx.ids.newId('place') };
+          withPlace = { ...target, places: [...target.places, copy] };
+          place = { kind: 'place', placeId: copy.id };
+        }
       }
     }
   }

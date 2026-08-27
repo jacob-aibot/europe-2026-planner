@@ -318,22 +318,49 @@ test('R2-9 ceiling: the reference trip has no attributed record, so none of §2.
 // `nearest` are real — and never published.
 // ---------------------------------------------------------------------------
 
-/** A Lisbon trip with one own stop, plus a PLACE-LINKED stop copied in from the reference trip. */
+/**
+ * A Lisbon trip with one own stop, plus a PLACE-LINKED stop copied in from the reference trip.
+ *
+ * **Amended for A-14 (revision 12, QA R13-6).** Rule 4 no longer carries the source's
+ * `cityKey` across a trip boundary: a place travels only when the target holds a city of the
+ * same (normalised) name, and otherwise the stop keeps the raw coordinate and no `Place` is
+ * added. A-6's subject is a place that DID travel, so this trip now holds a second city
+ * named after the source place's own city — created the way `createTrip` creates one with no
+ * coordinates supplied, i.e. `centre` defaulting to `{lat:0, lng:0}`. That keeps the copy on
+ * A-14's step 2 (the place travels, re-filed under the target's key) while leaving it far
+ * from every anchor this trip offers, which is exactly the record §2.13 A-6 exempts. Without
+ * the second city the copy takes A-14 step 3, adds no place at all, and there is nothing for
+ * A-6 to be tested on. A-14 says A-6 "applies unchanged"; it does, but its FIXTURE could not —
+ * BUILD-NOTES §1, KD-47, which records why no assertion here was weakened to get there.
+ */
 function lisbonWithCopiedPlaceStop(): {
   trip: Trip; copiedStopId: string; copiedPlaceId: string; ownStopId: string; dayId: string;
 } {
   const { trip: europe } = europe2026();
   const ctx: BuildCtx = { ids: sequentialIds('d'), now: '2026-08-25', actorUserId: 'local:self' };
+
+  const src = europe.days.flatMap((d) => d.stops).find((s) => s.place.kind === 'place');
+  assert.ok(src, 'the reference trip must carry a place-linked stop or this proves nothing');
+  const srcPlace = europe.places.find((p) => p.id === (src.place as { placeId: string }).placeId);
+  assert.ok(srcPlace, 'the reference trip\'s place link dangles');
+  const srcCity = europe.cities.find((c) => c.key === srcPlace.cityKey);
+  assert.ok(srcCity, 'the reference place is filed under a city the reference trip has not got');
+
   let t = createTrip(
     {
       id: 'trip-lisbon', title: 'Lisbon', ownerId: 'local:self',
       startDate: '2026-09-01', endDate: '2026-09-03',
       homeBase: { name: 'Lisbon', at: { lat: 38.7223, lng: -9.1393 } },
-      cities: [{ key: 'lisbon', name: 'Lisbon', countryCode: 'PT', centre: { lat: 38.7223, lng: -9.1393 } }],
+      cities: [
+        { key: 'lisbon', name: 'Lisbon', countryCode: 'PT', centre: { lat: 38.7223, lng: -9.1393 } },
+        // A-14 step 2's target: same name, this trip's own key, no coordinates yet.
+        { key: 'stub', name: srcCity.name },
+      ],
     },
     ctx,
   );
   const dayId = t.days[0].id;
+  assert.deepEqual(t.days[0].cities, ['transit'], 'the stub city must not join a day — it is filing, not itinerary');
   t = addStop(
     t,
     { kind: 'scheduled', dayId, time: '10:00', order: 0 },
@@ -342,8 +369,6 @@ function lisbonWithCopiedPlaceStop(): {
   );
   const ownStopId = t.days[0].stops[0].id;
 
-  const src = europe.days.flatMap((d) => d.stops).find((s) => s.place.kind === 'place');
-  assert.ok(src, 'the reference trip must carry a place-linked stop or this proves nothing');
   const before = new Set(t.places.map((p) => p.id));
   t = copyStopInto(
     t,
