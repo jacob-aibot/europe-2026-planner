@@ -31,6 +31,15 @@ a ship gate on each step. The distance work is `ARCHITECTURE.md` **§8.10** and 
 one-line deliverable additions** — Phase 4, Phase 5b and Phase 7 — and **no new phase**. Nothing about
 distance is in Phase 2, and the "Explicitly not in Phase 2" list now says so.
 
+**Revision 12, 2026-08-27.** QA round 13 — the mandatory breaker pass over **I-3a** and **I-4a** — found
+both increments faithful to their rulings and **neither finished**: four findings are holes in the rulings
+themselves, and `ARCHITECTURE.md` revision 12 answers them as **A-11**, **A-12**, **A-13** (§2.7) and
+**A-14** (§2.14). This file changes in exactly one way: **I-3a's and I-4a's Built / Verification / Ship-gate
+lines**, so neither increment can be called shippable until the addenda land. **No new increment, no phase
+re-scoped and no change to the order** — I-5 and I-6 are unblocked by all four, with the single exception
+recorded under I-4a: no copy-heavy increment ships before A-14, because until it does every cross-trip copy
+of a place-linked stop leaves an error the user cannot clear.
+
 > **Phase numbers changed once, here.** Every heading below carries its old number, and every "Phase N"
 > written in `ARCHITECTURE.md` §1–§7, `BUILD-NOTES.md` or `QA-FINDINGS.md` before revision 9 means the
 > *named* phase it described: "Phase 2" = accounts/server (**now 3**), "Phase 3" = ingest (**now 4**),
@@ -1040,6 +1049,14 @@ two increments are where they get built. **Both are owed before I-6**, because I
 consumes exactly the day/city data A-10 governs. Everything else round 12 found (P2-3 through P2-8) is
 routed to a builder against the finding itself and is not an increment.
 
+**Both increments were re-opened at revision 12, and neither is closed by its first pass.** QA round 13 built
+them, attacked them and found the *rulings* incomplete in four places: `ARCHITECTURE.md` **A-11** (the
+far-future horizon is a second clock-driven suppression and the shipped clock is not monotone), **A-12** (a
+crashed rule retires the dismissals it owned), **A-13** (A-9 assertion 4 named a mechanism no Phase 1 rule
+can perform) and **A-14** (A-10's change table missed `copyStopInto`). The bullets below carry those
+additions; the follow-up builder pass **completes I-3a and I-4a** rather than opening I-3b/I-4b, because a
+half-built ruling is not a shipped increment.
+
 #### I-3a — Retirement stops answering to the clock (§2.7 A-9, QA P2-1)
 
 - **Built.** `detect.ts`'s body moves into one private `runRules(trip, opts, gate)` with
@@ -1048,6 +1065,14 @@ routed to a builder against the finding itself and is not an increment.
   two early returns (no live resolution row; no well-formed `at`). `store.ts`'s `retireResolutions` drops
   its conflict-set argument and runs only when `derivedFor` returned a **new** cache. `unbooked_ticketed`'s
   `delta < 0` guard — §8.2's gate, open-coded inside a rule — is deleted.
+  **Revision 12 adds, and none of it is optional for this increment:** `Rule` gains `horizonDays?: number`,
+  `unbooked_ticketed` declares it and deletes its `delta > 60` guard, and `detect.ts` applies it as
+  `beyondHorizon` — a **second suppression under the same `gate` conjunct**, so `detectUngated` disables it
+  (**A-11**); `detect.ts` gains one more internal function, `detectUngatedChecked`, returning
+  `{ conflicts, crashed }` so `syncResolutions` returns the trip unchanged when any rule threw — with
+  `detectUngated`'s array shape deliberately left alone so round 13's probe assertions keep running verbatim
+  (**A-12**); and the retirement-gate test's
+  inert `setTripMeta` call is deleted and the test renamed to the clock crossing it performs (**A-13**).
 - **User-visible outcome.** Opening a trip you have finished no longer silently throws away the answers you
   gave it while it was live, and no longer schedules a write to a document you only looked at. If the trip's
   dates are later extended, the finding you dismissed comes back **still dismissed**, instead of accusing
@@ -1060,15 +1085,35 @@ routed to a builder against the finding itself and is not an increment.
   signature changes and no symbol is added or removed.
 - **Verification.** A-9's six assertions in full — QA's `qa/p2b-gate.mjs` §1.10 and §1.11 re-expressed
   against the two-argument signature (the assertions are kept verbatim; only the calls change, and A-9 says
-  why no correct fix can avoid that); a genuine fix on a completed trip **does** still retire; the extended-
-  dates case renders dismissed with no *"it has come back"*; `detectConflicts` output byte-identical before
-  and after the `unbooked_ticketed` deletion at three clocks; and `syncResolutions(trip, '')` a no-op with
-  live rows present. **Greppable ceiling:** after this increment `ctx.today` appears in **exactly one** file
-  under `conflict/rules/`.
+  why no correct fix can avoid that); a genuine fix on a completed trip **does** still retire;
+  `detectConflicts` output byte-identical before and after the `unbooked_ticketed` deletion at three clocks;
+  and `syncResolutions(trip, '')` a no-op with live rows present. **Assertion 4 is A-13's rewrite, not A-9's
+  original**: the re-arming case is proven across the gate **boundary** (dismiss → clock past `endDate` →
+  clock back inside the trip → renders dismissed, carrying the user's live row, with no *"it has come
+  back"*), with a faithful pre-A-9 control that fails it, because extending `endDate` cannot un-gate any
+  Phase 1 rule and A-13 proves why.
+  **Revision 12 replaces this increment's greppable ceiling with the property it was standing in for.** The
+  ceiling is no longer *"`ctx.today` appears in exactly one rule file"* — R13-1 satisfied that grep and
+  broke anyway, because the surviving suppression was in the file the grep permits. It is now a **clock
+  sweep**: for one document, `detectUngated`'s sorted id list is identical at `2019-01-01`, `2026-08-01`,
+  `2026-08-24`, `2026-08-30`, `2027-08-30` and `2030-01-01`, run on the reference fixture **and** on each
+  injected-fault fixture, and **failing if any rule contributed no finding at any clock in the sweep** — a
+  sweep over a document that exercises three rules asserts nothing about the other seven. Plus: QA §1.1–§1.3
+  verbatim (a backwards clock step across the 60-day boundary retires nothing, in core and through the
+  store, and `isDirty()` stays false); the crash case, QA §4 verbatim (a throwing rule retires nothing, and
+  the restored rule renders the dismissal with no *"it has come back"*); and A-13's tripwire — **no
+  feasibility rule emits a subject that resolves through §8.2 ruling 2's fallback**, whose failure message
+  says that A-9 assertion 4's literal mechanism has just become achievable and must be written.
 - **Dependencies / blockers.** I-3 (the gate it adjudicates). None external.
 - **Ship gate.** Every Phase 1 and 2a conflict number re-derived unchanged — 2 blockers / 4 warnings / 11
   notes at `FIXTURE_TODAY`, and exactly two suppressed `missing_lodging` warnings on the reference trip at
   the real clock; the A-5a and A-5b test sequences pass untouched; `npm run test:tap` green.
+  **Added at revision 12:** `detectConflicts` is byte-identical at all six sweep clocks **and with no clock**
+  (the goldens are the oracle and do not move); the horizon still bites where it should — at a clock 200 days
+  before the trip, `detectConflicts` reports **no** `unbooked_ticketed` note while `detectUngated` reports
+  **three**; and `qa/r13-gate-citykey.mjs` §1 and §4 are at **0 FAIL**, with §3's first line replaced by the
+  tripwire rather than made to pass (A-13 — it asserts a mechanism the model does not have, and the
+  replacement is the honest edit; nothing else in that probe may be weakened to reach 0).
 
 #### I-4a — City keys become minted ids, and duplicates become visible (§2.2 A-10, QA P2-2)
 
@@ -1077,6 +1122,11 @@ routed to a builder against the finding itself and is not an increment.
   `PastTripForm.tsx` and `Library.tsx` (not repaired); `validateTrip` gains `duplicate_city_key`,
   `reserved_city_key` and `city_name_empty`, all `error`; `geoOutlier.ts`'s two label helpers resolve a key
   to `City.name` for display while `params.cityKey` keeps the id.
+  **Revision 12 adds (§2.14 A-14):** `copyStopInto`'s rule 4 **re-files** the copied `Place` against the
+  target's own cities by normalised name — reuse search included — and a place that cannot be filed **does
+  not travel**, the stop keeping its coordinate as `{kind:'inline'}` (or `{kind:'none'}` when the source had
+  none). `normalizeCityName` lands here, once, in `packages/core/src/model/cityName.ts`, **off** `index.ts`
+  (§2.10 stays at 71), and I-7 consumes that module instead of writing a second copy.
 - **User-visible outcome.** *"日本 2019 — 東京, 京都"* records as two cities instead of one, in any script,
   and a document that already collapsed two cities into `"-"` says so on screen instead of silently
   mis-attributing every day of the trip.
@@ -1092,10 +1142,22 @@ routed to a builder against the finding itself and is not an increment.
   unopenable). **Ceiling, measured not asserted:** the reference trip's validation issue count, conflict
   counts at every clock, and the round-trip goldens and sample JSON are byte-identical; the only expected
   string that moves in the repo is the injected-fault `geo_outlier` case, now reading *"the Vienna map"*.
+  **Added at revision 12, and it is the criterion this increment shipped without:** the ruling is exercised
+  on the one path where a record **crosses a document boundary**. Two independently created *Vienna* trips,
+  a place-linked stop copied between them → **zero `unknown_city_key` issues** and the copied place carries
+  the **target's** key; the same copy when the target already holds that place **reuses** it
+  (`places.length` unmoved — the cross-trip reuse A-10 silently disabled); a Croatian place-linked stop
+  copied into a Prague-only trip adds **no** place row, keeps a resolvable coordinate, and produces zero
+  issues and no `geo_outlier`; a target with two cities named *Vienna* re-files onto the lower `order`,
+  deterministically.
 - **Dependencies / blockers.** I-4 (the form it corrects). None external.
 - **Ship gate.** The slug expression appears **nowhere** in `apps/` or `packages/` (grep); no call site
   outside `packages/core` constructs a city key; each of the three new validation codes has an
   injected-fault test, because a rule with no injected-fault criterion does not ship.
+  **Added at revision 12:** `qa/r13-gate-citykey.mjs` §10 at **0 FAIL**, including its pre-A-10 control; and
+  **no copy-heavy increment ships ahead of this one** — until A-14 lands, every cross-trip copy of a
+  place-linked stop leaves a `validateTrip` **error** in the recipient's document that no control in the UI
+  can clear, on the primitive `BRIEF.md` calls the social one.
 
 ---
 

@@ -67,9 +67,23 @@ update to this file added that instruction).
 > Left open from round 12, unchanged: the undo that peels the city off a long recorded trip,
 > and the ownerless backup file adopted without marking its foreign content.
 
-> **Last updated:** 2026-08-27, against `master` after ROADMAP revision 11's I-3a and I-4a
-> (previously the round-12 P2-3/P2-4/P2-6/P2-7 fix pass). Update this line every time you edit
-> this file.
+> **Those two have now been attacked too** (QA round 13): **no blockers**, 2 major and 6 minor.
+> Both fixes do the thing they were meant to do — and **neither is finished**, because four of the
+> findings are holes in the *rulings*, not in the code, so they came back to the architect. In
+> plain terms: **(1)** the calendar can still throw away a dismissal, through a second door — the
+> *"book this within 60 days"* reminder reads your phone's local date, and flying **west** (or
+> correcting a wrong clock) can move that date **backwards** a day, which the app was reading as
+> *"you fixed it"*. **(2)** If a rule ever crashes, every dismissal that rule was holding is
+> thrown away with it. **(3)** Copying an activity between **two trips you made yourself** now
+> leaves the receiving trip with an error you cannot clear — the copied place is filed under the
+> *other* trip's internal city id, which the new minted-id scheme guarantees can never match. And
+> **(4)** one of the tests written to prove the fix could not prove what it claimed. The architect
+> has ruled on all four (`ARCHITECTURE.md` A-11 … A-14); a builder implements them next, and
+> **I-3a and I-4a stay open until then** rather than being counted as done.
+
+> **Last updated:** 2026-08-27, against `master` after ARCHITECTURE revision 12 (A-11 … A-14, the
+> four round-13 design findings) — previously ROADMAP revision 11's I-3a and I-4a. Update this
+> line every time you edit this file.
 
 **Status vocabulary used throughout:** 🟢 COMPLETE · 🟡 IN PROGRESS · 🟠 NEXT / APPROVED ·
 🔴 BLOCKED · ⚪ NOT STARTED. Also: **built** (code exists) vs **verified** (an adversarial tester

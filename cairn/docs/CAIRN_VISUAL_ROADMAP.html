@@ -368,6 +368,21 @@ day.</li>
 </ul>
 <p>Left open from round 12, unchanged: the undo that peels the city off a long recorded trip, and the
 ownerless backup file adopted without marking its foreign content.</p>
+<p><strong>Those two have now been attacked too</strong> (QA round 13): <strong>no blockers</strong>,
+2 major and 6 minor. Both fixes do the thing they were meant to do &mdash; and <strong>neither is
+finished</strong>, because four of the findings are holes in the <em>rulings</em>, not in the code, so
+they came back to the architect. In plain terms: <strong>(1)</strong> the calendar can still throw
+away a dismissal, through a second door &mdash; the &ldquo;book this within 60 days&rdquo; reminder
+reads your phone&rsquo;s local date, and flying <strong>west</strong> (or correcting a wrong clock) can
+move that date <strong>backwards</strong> a day, which the app was reading as &ldquo;you fixed
+it&rdquo;. <strong>(2)</strong> If a rule ever crashes, every dismissal that rule was holding is thrown
+away with it. <strong>(3)</strong> Copying an activity between <strong>two trips you made
+yourself</strong> now leaves the receiving trip with an error you cannot clear &mdash; the copied place
+is filed under the <em>other</em> trip&rsquo;s internal city id, which the new minted-id scheme
+guarantees can never match. And <strong>(4)</strong> one of the tests written to prove the fix could
+not prove what it claimed. The architect has ruled on all four (<code>ARCHITECTURE.md</code> A-11 …
+A-14); a builder implements them next, and <strong>I-3a and I-4a stay open until then</strong> rather
+than being counted as done.</p>
 </div>
 
 <div class="wrap">
@@ -375,7 +390,7 @@ ownerless backup file adopted without marking its foreign content.</p>
   <div class="brand">
     <h1>CAIRN</h1>
     <div class="tagline">"You are here"</div>
-    <div class="updated">Updated 2026-08-27 · against <code>master</code>, after ROADMAP revision 11&rsquo;s I-3a and I-4a</div>
+    <div class="updated">Updated 2026-08-27 · against <code>master</code>, after ARCHITECTURE revision 12 (A-11 … A-14, the four round-13 design findings)</div>
   </div>
 
   <!-- ============ DECISION CALLOUT ============ -->
