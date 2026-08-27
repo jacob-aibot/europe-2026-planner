@@ -6,6 +6,8 @@
  */
 const core = await import('../packages/core/src/index.ts');
 const { loadEurope2026 } = await import('../fixtures/loadEurope2026.mjs');
+// §2.10 revision 5 takes this symbol off the index; qa may import the module path directly.
+const prov = await import('../packages/core/src/model/provenance.ts');
 
 const ok = (n, c, x = '') => console.log((c ? '  ok   ' : '  FAIL ') + n + (x ? ' — ' + x : ''));
 const line = (s) => console.log('\n== ' + s + ' ==');
@@ -65,7 +67,7 @@ const patches = {
   place: { place: { kind: 'none' } },
   links: { links: [] },
   ticket: { ticket: null },
-  'provenance (forbidden)': { provenance: core.userProvenance('2026-08-25', 'local:self') },
+  'provenance (forbidden)': { provenance: prov.userProvenance('2026-08-25', 'local:self') },
   'id (forbidden)': { id: 'stop:hijack' },
   'placement (forbidden)': { placement: { kind: 'pool', cityKey: 'lisbon' } },
 };

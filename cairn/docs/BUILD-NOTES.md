@@ -1,5 +1,36 @@
 # Cairn — build notes, Phase 1
 
+> **Status: CURRENT, gate-review SEND-BACK pass** (`master`, after `5bdd0dc`). This pass
+> implements the manager's `REVIEW.md` routing **B-1 … B-7** and the architect's revision-5
+> rulings **A-1, A-2, A-4**, and nothing else. Every one of the thirteen items has a `KD-`
+> entry in §1 — **KD-23 … KD-33** are new and each names the item it answers.
+>
+> **§3 and §4 are regenerated.** §3's `apps/web` and `packages/client` rows claimed the credit
+> line and `syncResolutions` while §6 caveated them away; both are now true of the product as
+> well as of the code, and both rows say what changed. §4's *"231 pass"* table — stale since
+> before round 2 — is **replaced**, not annotated: `npm run test:tap` is **387 pass / 0 fail**
+> (was **333 / 0** at the reviewed `8a65a53`), `npm run typecheck` clean on both projects.
+>
+> **§5, §6, §7 and §8 are as of the earlier passes and are unrevised except where a bullet is
+> struck in place.** §6's PoolPanel caveat is closed by KD-26 and marked so.
+>
+> **Two QA probes now report a stale assertion rather than a defect, and §4's probe table says
+> which and why:** `qa/r6-flush.mjs` samples `status` 200 ms after the abort, by which time
+> §4.2 rule 6a″ says the banner has correctly cleared; `qa/r7-chain.mjs` §static and §11 carry
+> hardcoded counts of a structure that changed. Neither script was edited — probe repair is a
+> commit of its own and it belongs to the breaker.
+>
+> **`qa/r5-freshness.mjs` §5.7 stays rotten and is still deliberately unpatched.** It has
+> called the removed `core.accept` since round 5; §2.10 revision 5 also removes
+> `friendImport` and `needsBadge`, which the same dead block references. Nothing observable
+> changes — it already crashed one line earlier. KD-33.
+>
+> **Out of scope and NOT fixed, so nobody has to re-derive it:** everything on the review's
+> *"What rides"* list (R5-3, R5-4, R3-6…R3-9, R2-13…R2-21, the five `r6-actor` residuals), and
+> `acceptCandidate` is still reachable from no control in `apps/web` — an imported stop stays
+> badged forever. That fails safe; §3's row now says so out loud instead of leaving it to be
+> found.
+
 > **Status, R3-3 pass (`master`, after round 6):** one finding only — **R3-3** is fixed and its
 > row is appended to §5. `npm test` **333 pass / 0 fail** (was **331 / 0** at `584c218`; the two
 > new tests are `packages/client/test/merge-race.test.ts`), `npm run typecheck` clean on both
@@ -409,7 +440,7 @@ a blocker rather than a note for later.
 **Not addressed here, and worth the architect's attention regardless:** round 2 also found
 `PoolPanel` renders a copied stop's badge without calling `attribution()`, which is rule 7
 ("every view that renders one renders the other") failing on its own terms — a display gap,
-not a leak, and out of scope for this fix. And the redaction pattern set is still the fixed
+not a leak, and out of scope for this fix. *(Closed later, in the SEND-BACK pass — KD-26.)* And the redaction pattern set is still the fixed
 list KD-17/KD-18 describe, not a broader mechanism; sharing the definition closes the
 note-field leak specifically without closing that gap.
 
@@ -455,6 +486,267 @@ or React" (there is no DOM type in the file, only a two-method structural type),
 `visibilitychange`. **If the architect disagrees, the move back is one file and one import**,
 and the test goes with it — but then the criterion loses its test and should say so.
 
+### KD-23 — `geoCheck` gives a copied stop no anchors, in both directions
+
+`packages/core/src/derive/geoCheck.ts`
+
+§2.13's anchor table gained a row in revision 5 and this implements it. Two halves, and the
+second is the one that is easy to get backwards:
+
+1. **A record `copyStopInto` produced is measured but never `'certain'`.** Copying "Arrive
+   LAX" into a Lisbon trip produced `geo_outlier: 9140 km, certain` — a blocker on the
+   phase's newest primitive, seconds after a human deliberately asked for that record to be
+   there. §0.5 governs. `km` and `nearest` are still measured, so a view can say how far it
+   is; `geo_outlier` publishes neither `'unanchored'` case.
+2. **An un-accepted copy is not an anchor for anything else.** An anchor asserts *"the
+   trip's geography includes this point"*, and a candidate the user has not accepted is not
+   yet part of the plan — letting one in would let it **suppress a real blocker** on a stop
+   the user wrote themselves. Once accepted it joins the anchor set, and that direction
+   matters: acceptance only ever *adds* anchors, so it can only ever remove a blocker,
+   never create one.
+
+**The known blind spot, restated because it is deliberate:** a coordinate typed *into* a
+copied stop after the copy is invisible, because the row keys on `attribution(stop) !== null`
+and not on `provenance.state`. Keying on state would make the same document produce different
+conflicts either side of a provenance transition. §2.13 rates a named blind spot above a rule
+that mints unexplained blockers.
+
+**`Place` gets no row and needs none** — it carries no `provenance`, so a copied place is not
+identifiable as one, and both outcomes the existing Place row produces are already correct.
+No `Place.provenance` was added.
+
+**Ceiling, asserted:** the reference trip contains no record with a non-null `attribution`, so
+0/112 and 0/94 clean, 112/112 and 92/94 under +1°, and the Fisherman's Bastion blocker are all
+unchanged. `geoCheck.test.ts` asserts the "no attributed record" premise itself, so the day
+that stops being true the ceiling fails rather than quietly stops meaning anything.
+
+### KD-24 — `travelLine` re-parses `HH:MM` instead of calling core's `timeVal`
+
+`packages/client/src/selectors/index.ts`
+
+§2.12's day-view row needs "departs 14:30 · 1h 20m · **arrives 15:50**", and the arrival
+clock has to be computed from a time and a duration. Core has that arithmetic — `timeVal` —
+and **§2.10 revision 5 took `timeVal` off the public surface** in the same pass, as an
+internal of `computeLegs`; §2.10's own ceiling then forbids `packages/client` from reaching
+past the index into a core module path. So the selector carries four lines of `HH:MM`
+parsing of its own.
+
+That is a second implementation of something, and sequencing rule 1 is about exactly that, so
+it is written down rather than left to be found. **Why it is the cheaper wrong:** it decides
+nothing about the trip; it returns `null` on anything that is not a clock rather than
+guessing; and the alternative — widening §2.10 for a display helper — is a documentation
+change the builder does not get to make. **If the architect would rather have `timeVal` on the
+surface, this is four lines and one import.**
+
+Two related choices, stated: the shaping lives in `packages/client` and not in `apps/web` so
+it can be tested in plain Node (§3 forbids importing `apps/web` from anywhere) and so
+`apps/mobile` inherits it. And the arithmetic is **wall-clock with no timezone** — a run that
+crosses midnight reports `nextDay` and renders "(+1 day)"; a run that crosses a timezone is
+reported as the clock arithmetic it is and nothing more, which is why `journey_overrun` is
+still deferred to Phase 4 (KD-15).
+
+### KD-25 — `syncResolutions` is called from `getDerived()`, and one ROADMAP F test was rebuilt around that
+
+`packages/client/src/store/store.ts`, `packages/client/test/derived-cache.test.ts`
+
+§2.7 calls `syncResolutions` *"a build function the client calls whenever it recomputes the
+derived conflict set"*. Nothing called it (QA R2-7), so the conflicts panel's **Not a problem**
+button resurrected its own dismissals. The call now sits in `getDerived()`, immediately after
+`derivedFor` — the one place the conflict set is known to have been computed from the current
+`state.doc`, which is what §2.2b F2 requires of a function that reads derived data and
+**writes the document**.
+
+Two consequences worth naming:
+
+- **`getDerived()` can now change the document and schedule a save.** It is a read that
+  writes, which is unusual, and it is what §2.7 asks for. It converges in one pass —
+  retiring a resolution cannot make a conflict appear or disappear, only detach a
+  `resolution` from one — and the retirement is bookkeeping, so it does not go on the undo
+  stack, exactly as the pre-existing `store.syncResolutions()` method already did it.
+- **`derived-cache.test.ts`'s R4-1 test had to be rebuilt.** Its old setup acknowledged a
+  conflict, edited it away, and then undid — and with the call finally wired, the
+  intermediate `getDerived()` retires that acknowledgement *legitimately*, which made the
+  final assertion vacuous rather than wrong. The resolution is now created **after** the
+  cache has gone stale, which is the only way a live resolution and a stale conflict set can
+  coexist at all. The property under test is unchanged and still fails if the sync trusts
+  the cache instead of recomputing.
+
+### KD-26 — the credit line is one shared function, and the views ceiling carries one exemption
+
+`apps/web/src/format.ts`, `apps/web/src/views/Panels.tsx`, `apps/web/src/views/StopEditor.tsx`
+
+§2.14 rule 7: *"any view that renders a record with a non-null `attribution` renders the
+credit"*. Two of the four stop-rendering views did not — `PoolPanel` rendered the badge *from
+a friend* and no credit, `StopEditor` rendered neither (QA R2-8). Both now do, using the same
+`creditLabel` the day view used, **moved into `format.ts` rather than copied**: four
+hand-written versions of a rule is four chances for one of them to quietly not exist, which
+is how this defect happened.
+
+The ceiling is now a grep, not four hand checks (`test/views.test.ts`): a view that renders
+the provenance **badge** renders the **credit**, and the set of badge-rendering views is
+pinned so a fifth cannot appear silently. **One exemption, `Sidebar.tsx`**, which renders a
+`Day` chip and never a `Stop`. Its justification is not argued, it is asserted: the test
+proves at runtime that neither the reference trip nor a freshly copied stop produces a `Day`
+with a non-null `attribution`, so the day the exemption stops being true the run fails.
+
+**What this ceiling cannot do**, stated: `apps/web` cannot be imported from `cairn/test/` —
+§3's dependency test forbids it, and that is the boundary keeping the planner's data out of a
+bundle — so the views are read as *text*. The rendered strings are asserted separately, in
+Chromium, by `qa/r8-views.mjs` §2.
+
+### KD-27 — the bundle check is a derived rule now, with two named non-credentials
+
+`packages/core/src/build/redactText.ts`, `packages/core/src/model/types.ts`, `test/redact.test.ts`
+
+§6.6 enforcement clause 2 asks for *"a rule applied by the sample generator, covered by a
+test, not a one-off scrub"*. The shipped test grepped `apps/web/dist` for six hardcoded
+literals and never applied `redactionHits` at all, so a seventh credential was simply not
+looked for — and a seventh had crept in: a real FlixBus booking reference written as the
+example in a source comment, shipped through the sourcemap's `sourcesContent`, plus a real
+flight designator from `types.ts`. Both are replaced with invented placeholders.
+
+The rule now **derives** the credential set — run the redactor over the *unredacted* trip,
+keep every token it removes, assert none appears in any emitted asset — so it grows with the
+data. **`REDACTION_PATTERNS` is deliberately NOT applied to the bundle directly**: minified
+JS is wall-to-wall short uppercase identifiers and long digit runs, and QA already ruled that
+unimplementable. The patterns are applied to the DATA; the resulting tokens are what the
+bundle is grepped for.
+
+**The divergence: two tokens are excused, by name, with a checkable claim each.** `OPTIONAL`
+is an English word in Jacob's own day note, caught by the deliberately digit-free all-caps
+pattern (KD-17's stated cost), and in the bundle it is `LegacyConstants.OPTIONAL`, a property
+name of the importer's input type. `BOOKINGS` is part of the repo path `docs/BOOKINGS.md` on
+a dropped `sourceDoc` field, and in the bundle it is a doc comment naming that file. Both
+entries are asserted **live** — an excuse the derivation no longer produces is a dead line
+and fails — and asserted **disjoint from the known-leak list**, so a real credential can
+never be excused. The six-literal list stays as a floor beneath the rule, not as the rule.
+
+### KD-28 — the flush-exhausted exit reports and re-arms; the other two exits do neither
+
+`packages/client/src/store/store.ts`
+
+§4.2 rule 6a″ (revision 5, QA R6-1/R6-2). Exhausting `FLUSH_MAX_ATTEMPTS` was the one path
+that aborted a transition without telling anyone — `status` stayed `'idle'`, and no banner
+reads `'idle'`, so the click did nothing and said nothing — and it cancelled the timer the
+user's own edit had scheduled without putting it back. It now sets `status:'error'` with
+`FLUSH_EXHAUSTED_MESSAGE`, which renders through the **existing** error banner with its two
+recoveries, and re-arms the ordinary debounced `attemptSave`.
+
+**Deliberately not `'conflict'`:** nothing refused the write and there is no other writer to
+merge with, so offering a merge would be a lie about what went wrong. **Deliberately a
+three-way rule:** on `'conflict'` a re-armed autosave would spin against a fence that refuses
+it every 400 ms; on a port `'error'` the port is failing and the banner's Retry is the
+deliberate act. Only the bound-exhausted exit re-arms. All three are asserted, the last two
+as ceilings — behaviourally, by firing the scheduler and counting writes at the port, because
+`manualScheduler.pending` keeps cancelled jobs and is not an answer to "is a timer pending".
+
+### KD-29 — `expiresAt` and `revokedAt` fail closed on anything that is not a calendar date
+
+`packages/core/src/access/predicates.ts`
+
+`if (s.expiresAt && s.expiresAt < now)` is a lexical string compare, and a lexical compare on
+an unvalidated string is not a calendar comparison: `"9999-99-99"`, `"tomorrow"` and
+`"never"` all sort after a real `YYYY-MM-DD`, so all three read as *not yet expired* and
+granted access. That is F-13's argument one field over, and §6.2.4 is why it is not
+Phase-2 work: these predicates are *the definition the Phase 2 RLS policies are generated
+from and tested against*, and a definition that fails open generates a policy that fails open.
+
+Both fields are validated with `isIsoDate` and fail closed. **`null`, `''` and absent keep
+meaning "no expiry"** — asserted explicitly, in both directions, alongside a real past date
+still expiring and a real future date still granting.
+
+### KD-30 — `cli export` resolves symlinks, and refuses to clobber
+
+`cli.ts`
+
+Two holes in one command (QA R2-5). `safeWritePath` was lexical: `resolve()` normalises `..`
+and a leading `/` but does **not** follow symlinks, so `ln -s <outside>/victim.txt
+cairn/qa/escape-link.json` passed the prefix test and `writeFileSync` wrote *through* the
+link — the file outside `cairn/` was overwritten with the trip JSON and the CLI reported
+success. Root `CLAUDE.md` calls this boundary *"the one rule that must never drift"*. The
+guard now `realpathSync`es the containing directory (which catches a symlinked parent) and
+the target itself when it exists (which catches a symlinked file), and a missing parent
+directory is a refusal too.
+
+Second half: `export <existing file>` overwrote it with no prompt and exit code 0. **A CLI has
+no dialog to raise and a prompt would break every scripted use, so the answer is
+refuse-by-default with the way through named in the message** — exit 3, *"refusing to
+overwrite … Pass --force if you meant to replace it."* `--force` is a deliberate act and it
+still cannot cross the `cairn/` boundary, asserted. If the architect wants an interactive
+prompt on a TTY instead, that is a small addition on top of this, not a replacement for it.
+
+### KD-31 — `deleteTrip` is a link on the serialization chain
+
+`packages/client/src/store/store.ts`
+
+§4.2 rule 6c, revision 5 (QA R7-3). **The exception is about not *writing*. It is not about
+not *ordering*.** A write already queued can settle *after* `ports.storage.delete(id)`
+returns, and an expect-absent write is *satisfied* by the record's absence, so it succeeds,
+`upsertSummary` puts the library row back, and the trip is resurrected with the delete
+silently undone.
+
+`await saving; ports.storage.delete(id)` is **not** the fix and was not used — the architect
+identified it as its own race, a check-then-act with an interleaving point in the middle. The
+delete is a `chainOntoSaving` link of its own: *drain, delete, forget*, with the port delete,
+the library-row removal and (when the deleted trip was active) the reset of `doc`, `savedDoc`
+and `savedVersion` all inside the one link, so no later link can observe a half-deleted store.
+
+**The exception survives, and it is asserted**: the active trip's pending timer is still
+cancelled *without* writing, so the queue this link drains holds only writes the store had
+already committed to; a conflicted trip is still deletable.
+
+### KD-32 — the merge button has an in-flight guard, and the debounced save absorbs its own rejection
+
+`packages/client/src/store/store.ts`
+
+**R7-1.** `mergeWithStored` is `load()` … `mergeTrips` … `chainOntoSaving(write)`, three
+awaits with interleaving points between them, and `App.tsx` has no disabled state on the
+button. Two presses before the first settles both read the same `stored.version`, so the
+first write moved storage on and the second was refused against a version its own predecessor
+had spent — leaving `'conflict'` and *"Not saved — edited elsewhere"* over a document that was
+merged and written correctly. **Chaining does not close this**, which is why the guard is an
+in-flight slot and not a queue: serialising two merges still runs the second one's stale
+expectation. A second press joins the first press's promise. `finally` clears the slot
+whichever way the merge ends, so a failed merge never wedges the button.
+
+**R7-2.** The fix is the `.catch` on `scheduleSave`'s `void save(...)`, **not** a `try/catch`
+per listener in `emit()`. The two are not equivalent here: per-listener isolation would also
+swallow the rejection an explicit `flush()` owes its own caller, and `qa/r7-chain.mjs` §3
+asserts that a failing link still rejects for the caller that asked for it. The absorbing
+`.catch` is on the fire-and-forget path only — the one with no caller to reject to — and it is
+the same shape as `chainOntoSaving`'s existing `.catch(() => {})`, one level out. A *storage*
+failure is still reported: `attemptSave` turns that into `status:'error'`, and the only
+rejections reaching the swallowed line come from a subscriber throwing inside `set()`.
+
+### KD-33 — the export surface is 69 symbols, and 45 came off
+
+`packages/core/src/index.ts`, `packages/core/test/surface.test.ts`
+
+§2.10 revision 5 settled a criterion that had been "partially met" for three rounds: the test
+asserted set equality against the **union** of a 50-name list and a 60-name "beyond the
+section" list, which is 110 = 110 for any 110 exports, and QA R2-12 found 42 of the 60
+per-symbol justifications did not hold. It is now one list of 69, set equality both
+directions, plus ROADMAP E's two ceilings: no second list and neither banned identifier
+anywhere in the file (asserted by grepping the test's own source), and no consumer outside
+`packages/core` importing a core module path.
+
+**The expected shape of the change, per §2.10 itself: some tests and probes now import a
+module path directly.** Tests do not create surface, and attacking an internal is their job.
+Rewritten from the index to the module path: `access.test.ts` (`isIsoDate`), `build.test.ts`
+and `merge.test.ts` (`userProvenance`, `systemSuggestion`, `addPlace`), `conflict.test.ts`
+(`STALE_RESOLUTION_LIMIT`, `timeVal`), `copyStop.test.ts` (`addPlace`, `needsBadge`),
+`derive.test.ts` (`haversine`, `rawSpanKm`), and the probes `qa/attack2.mjs`,
+`qa/r2-copy.mjs`, `qa/r6-actor.mjs`, `qa/vehicles.mjs`. `tools/redact.mjs` moved the other
+way — its deep import into `build/redactText.ts` now goes **through** the index, which is why
+the redaction four are on the surface at all.
+
+**Not repaired, and disclosed:** `qa/r5-freshness.mjs` §5.7 calls `core.accept`, which QA
+R5-5 removed two rounds ago, so that block has been dead since round 5 and BUILD-NOTES
+already records it as deliberately unpatched. This pass also takes `friendImport` and
+`needsBadge` off the index, which that same dead block references; nothing observable changes
+because it already crashes one line earlier. Probe repair is a commit of its own, and it is
+the breaker's.
+
 ---
 
 ## 2. How to run it
@@ -462,7 +754,7 @@ and the test goes with it — but then the criterion loses its test and should s
 ```bash
 cd cairn
 npm install
-npm test          # 318 tests. Plain node, no browser, no network.
+npm test          # 387 tests. Plain node, no browser, no network.
 npm run typecheck # generates the sample first (see F-3 below), then both TS projects
 npm run cli -- trip           # headline counts and city ranges
 npm run cli -- day 2026-08-13 # one day: stops, legs, costs, badges
@@ -522,10 +814,10 @@ app over it and checks the record is stamped at open, opens, edits and saves.
 | Piece | State |
 |---|---|
 | `packages/core` | Model, build, derive (incl. **`geoCheck`**), conflict (**10 rules** — `closed` deleted), validate, access, serialize, legacy import, merge, **`copyStopInto`**. |
-| `packages/client` | Store, reducer, ports, selectors, derived cache, the **`StorageVersion` write fence** (refuse + explicit merge — §2.2a), **flush-before-switch** (§4.2 rule 6) and `pageExit`, **browse-another-trip**, `syncResolutions`. |
+| `packages/client` | Store, reducer, ports, selectors, derived cache, the **`StorageVersion` write fence** (refuse + explicit merge — §2.2a), **flush-before-switch** (§4.2 rule 6) and `pageExit`, **browse-another-trip**. `syncResolutions` is now *called*, from `getDerived()` — until this pass it existed with no caller and the row said so anyway (KD-25). Every `StoragePort` mutation, `delete()` included, is on the serialization chain (KD-31); the merge button has an in-flight guard (KD-32); the exhausted flush reports and re-arms (KD-28). `travelLine` shapes §2.12's day-view string (KD-24). |
 | `packages/tokens` | Colours, category labels, mode icons, status badges. **No test of its own.** |
-| `apps/web` | Library, day view, day map, conflicts, validation, pool, places, export, **restore-from-backup**, **Browse & copy** with the credit line. |
-| `cli.ts` | Complete. Export is path-guarded. |
+| `apps/web` | Library, day view, day map, conflicts, validation, pool, places, export, **restore-from-backup**, **Browse & copy**. The **credit line now renders in all four views that render a stop** — the day view and the browse pane always did; the Optional panel and the stop editor did not, and the row used to claim otherwise (KD-26). **`travelRole` is rendered**: a `journey` stop reads *"departs 14:30 · 1h 20m · arrives 15:50"*, and an `unknown` stop carries the one-tap control §2.12 asks for (KD-24). **`acceptCandidate` is still reachable from no control** — an imported stop stays badged forever. That fails safe and it is not fixed here; it is named so nobody has to find it again. |
+| `cli.ts` | Complete. `export` resolves symlinks before the boundary test and refuses to clobber an existing file without `--force` (KD-30). |
 | `tools/extract-legacy.mjs` | Reads the live planner READ-ONLY. |
 | `tools/gen-sample.mjs` | Builds the web app's sample trip at build time, **through `redactForSample`**, and fails the build if a credential survives. Output is gitignored. KD-14, KD-17, KD-18. |
 | `tools/redact.mjs` | The §6.6 pattern array and `redactForSample`. Never imported by `packages/core`. |
@@ -536,47 +828,72 @@ app over it and checks the record is stamped at open, opens, edits and saves.
 
 ## 4. Verified, by running it
 
-Every number below was produced by a command in this repo on this delivery, from a clean
-`git clone`. Where a number is misleading, the caveat is **next to the number**, not in a
-footnote.
+**Regenerated for the SEND-BACK pass** (round 8's builder pass, on `master` after `5bdd0dc`).
+The previous table under this heading reported *"231 pass"* and predated round 2; the review
+was explicit that a stale table here is what round 1 was sent back for. Every number below
+came out of a command in this repo, on this delivery, in this pass. Where a number is
+misleading, the caveat is **next to the number**, not in a footnote.
 
 | What | Number | Command | Caveat |
 |---|---|---|---|
-| Tests | **231 pass, 0 fail** | `npm test` | Was 69 at the first delivery. |
-| Typecheck | clean, both projects | `npm run typecheck` | From a **clean clone**, in the documented order. Previously failed (F-3). |
-| Web build | clean | `npm run web:build` | The bundle now carries **none** of the five known strings — asserted, including `.js.map`. See KD-18. |
-| Import | 16 days · 112 scheduled stops · 31 pooled · 95 places · 21 bookings | `npm run cli -- import`, `-- trip` | Unchanged since the first delivery. |
-| Tickets | **7 ticketed stops: 3 bundled over 2 files, 4 url** | ticket census through `importLegacyDays` | ROADMAP now says 3/2 too; revision 1 said "2 bundled" and this report repeated it — **KD-4**. |
-| `travelRole` | **21 journey · 81 transfer · 10 unknown** of 112 | `import.test.ts` | Every `unknown` is a vehicle mode on a non-transit category, asserted individually, not just counted. |
-| Blockers | **2** | `npm run cli -- conflicts` | Was 12, of which 3 were actionable. Both remaining are Jacob's own `legacy_flag` days, and the golden carries one line per blocker saying why he must act — a third cannot appear without someone writing that line. |
-| `impossible_transfer` | **0 blockers, 0 warnings** | `conflict.test.ts` | Was 4. All four were departure-time artifacts — **including Aug 18**, which four reports called the one real defect. KD-1. Tightest remaining transfer margin: **7 min**, asserted. |
-| `geoCheck` clean run | **0 findings** — 0/112 stops, 0/94 places | `geoCheck.test.ts` | Was 6 false blockers + 20 validation warnings across two implementations. |
-| `geoCheck` injected fault | **112/112 stops, 92/94 places** caught at +1° latitude | `geoCheck.test.ts` | The two misses are `Blue Cave, Biševo` and `Stiniva Cove, Vis`, named in §2.13 and named in the test, so a third fails the run. |
-| Fisherman's Bastion typo | **1 blocker, `place-68`, 109 km** | `geoCheck.test.ts` | Revision 1: 27 conflicts before the typo, 27 after. This is the criterion that would have caught the old rule. |
-| Validation | **1 error, 10 warnings** | `npm run cli -- validate` | Was 1 and 30; 20 of those 30 were `stop_far_from_city`, which is deleted. |
-| Leg parity | **16 of 16 days** exact | `derive.test.ts` | Against the live page's own `legBetween`, run in a `node:vm`. Mode and minutes exact, km within 1e-6. Byte-identical before and after `travelRole` — `npm run golden` produces no diff. |
-| Day-cost parity | **6 of 16 exact, 10 divergent** | `derive.test.ts` | ROADMAP now says 6/16 too. Each of the ten is classified AND the classification is proved against the data — **KD-3**. |
-| Export surface | **112 runtime symbols against §2.10's 50** | `surface.test.ts` | **Enumerated, not narrowed — KD-19.** Every extra symbol is listed with the caller that needs it. This criterion is partially met and is reported as partially met. |
-| Redaction | 6/6 known leaks gone; every pattern exercised; 6 prose strings survive | `test/redact.test.ts` | `importLegacyDays` output is unchanged, so cost and leg parity are untouched — asserted. KD-17, KD-18. |
-| Read-only boundary | 0 modified tracked files | full run then `git status --porcelain` | See §7. |
+| Tests | **387 pass, 0 fail** | `npm run test:tap` | Was **333 / 0** at `8a65a53` (the reviewed commit). +54, all of them this pass's regression coverage; one file is new (`packages/client/test/travel-line.test.ts`, `test/views.test.ts`) and one existing test was **rebuilt rather than added to** — see KD-25. |
+| Typecheck | clean, both projects | `npm run typecheck` | `pretypecheck` generates the sample first. Not re-checked from a fresh clone this pass; the review verified that clause at `8a65a53` and nothing here changes the install or the config. |
+| Web build | clean | `npm run web:build` | 583 kB `index-*.js`, unchanged in kind. |
+| Bundle credentials | **0 leaks of 108 derived tokens** | `npm run web:build && node qa/r2-redact.mjs` | Was **7**, including Jacob's real FlixBus reference in a `.js.map`. The three the probe still prints are `OPTIONAL` and `BOOKINGS`, which are an English word and a repo-path fragment — named, justified and asserted-live in `test/redact.test.ts`. **KD-27.** |
+| Import | 16 days · 112 scheduled · 31 pooled · 95 places · 21 bookings | `node cli.ts trip` | Unchanged. |
+| Tickets | **7 ticketed stops: 3 bundled over 2 files, 4 url** | ticket census through `importLegacyDays` | ROADMAP says 3/2 too; revision 1 said "2 bundled" and an earlier version of this report repeated it — **KD-4**. |
+| `travelRole` | **21 journey · 81 transfer · 10 unknown** of 112 | `import.test.ts`; `qa/r8-views.mjs` §1 | The model half was already right. **This pass put it on the screen** — Aug 8 renders *"departs 14:30 · 1h 20m · arrives 15:50"*, asserted in Chromium, and the ten `unknown` stops now carry a control that dispatches. KD-24. |
+| Blockers | **2** | `node cli.ts conflicts` | Both are Jacob's own `legacy_flag` days, and the golden carries one line per blocker saying why he must act — a third cannot appear without someone writing that line. **The copy path can no longer mint a third** (KD-23), which is what R2-9 was. |
+| `impossible_transfer` | **0 blockers, 0 warnings** | `conflict.test.ts` | Unchanged. Tightest remaining transfer margin **7 min**, asserted. KD-1. |
+| `geoCheck` clean run | **0 findings** — 0/112 stops, 0/94 places | `geoCheck.test.ts` | Unchanged by KD-23's new row, and the test now asserts the *premise* (the reference trip holds no attributed record) so the ceiling cannot go quietly vacuous. |
+| `geoCheck` injected fault | **112/112 stops, 92/94 places** at +1° latitude | `geoCheck.test.ts` | Unchanged. The two misses are the named ones. |
+| Fisherman's Bastion typo | **1 blocker, `place-68`, 109 km** | `geoCheck.test.ts`, `qa/r2-data.mjs` | Unchanged; re-derived independently by the probe in this pass. |
+| Copy path × `geo_outlier` | **`unanchored`, 9140 km, 0 conflicts** | `node qa/r2-data.mjs` | Was `certain` → `blocker: geo_outlier`. Both halves asserted: the false blocker is gone, **and** an un-accepted copy cannot suppress a real blocker on an own stop. KD-23. |
+| Validation | **1 error, 10 warnings** | `node cli.ts validate` | Unchanged. |
+| Leg parity | **16 of 16 days** exact | `derive.test.ts` | Against the live page's own `legBetween` in a `node:vm`. Untouched by this pass — `computeLegs` still does not read `travelRole`. |
+| Day-cost parity | **6 of 16 exact, 10 divergent** | `derive.test.ts` | Each of the ten is classified and the classification is proved against the data — **KD-3**. |
+| Export surface | **69 runtime symbols = §2.10's 69** | `surface.test.ts` | Was **110 against an enumerated 50 + 60**, which was 110 = 110 for any 110 exports. Set equality, both directions, one list, plus ROADMAP E's two ceilings. **KD-33 supersedes KD-19.** |
+| Redaction | every pattern exercised; 6 prose strings survive; `importLegacyDays` output unchanged | `test/redact.test.ts` | Plus the new derived rule and its red-green check: a planted credential the old six-literal grep would have missed is caught. KD-27. |
+| `cli export` boundary | 6 lexical escapes + **2 symlink escapes** refused; clobber refused | `test/cli.test.ts` | The symlink half is new. Reproduced first: the file outside `cairn/` really was overwritten. KD-30. |
+| Access predicates | 3 named malformed expiries fail closed; `null`/`""`/absent still mean "no expiry" | `packages/core/test/access.test.ts`, `node qa/r2-access.mjs` | `qa/r2-access.mjs` was **1 FAIL**, now **0**. KD-29. |
+| Read-only boundary | 0 modified tracked files at the repo root | full run, then `git status --porcelain` | `md5sum europe-2026-itinerary.html` = `7c69df3208ef91c8be0fb59a56443188` before and after, across the full suite, four web builds, six Chromium sessions and ~25 probe runs. See §7. |
 
-**The 2 blockers, line by line.** Revision 1's table needed twelve rows and nine of them
-said "no". This is the whole table now:
+**The 2 blockers, line by line.** Unchanged, and this is the whole table:
 
 | # | Rule | Subject | Act on it? |
 |---|---|---|---|
 | 1 | `legacy_flag` | Aug 18 — Jacob's own rebuild note | **Yes** — his flag, his words |
 | 2 | `legacy_flag` | Aug 20 — the 7:30am/7:30pm correction | **Yes** — his flag, his words |
 
-**Driven in real Chromium, over CDP with real elapsed time** (not `--virtual-time-budget`,
-which stalls the app at "Opening your trips…" because virtual time does not advance while
-IndexedDB is pending): the sample loads and still reads properly after redaction; a second
-trip is created; "Browse & copy" lists the other trip's 112 stops read-only without
-switching the active trip; copying one produces a stop that is badged *from a friend*,
-carries a credit line, and **still carries both after a reload out of IndexedDB**; the
-served bundle contains none of the five known strings; and restoring a document owned by
-`user:marta` is refused with *"This trip belongs to someone else"* and does not enter the
-library.
+**The QA probe board, as measured in this pass**, against the review's own counts at `8a65a53`:
+
+| Probe | Review @ `8a65a53` | This pass | What moved |
+|---|---|---|---|
+| `r2-access` | 1 FAIL | **0** | KD-29 |
+| `r2-resolutions` | FAIL at §4 | **0** | KD-25 — §4 flips **through the dispatch path**, not by a hand call |
+| `r2-data` | `geo_outlier` blocker on the copy | **0**, finding is `unanchored` | KD-23 |
+| `r2-redact` | 7 leaks | **0** (3 printed, 2 distinct, both named non-credentials) | KD-27 |
+| `r7-chain` | 3 FAIL | **2** | §3b, §7 and §10 all close (KD-31, KD-32). The two left are the probe's own hardcoded structural counts — *"three call sites route through it"* is now 5, and *"recorded: `ports.storage.delete` is NOT on the chain"* is a recording line that is now false. **Probe repair, not a defect.** |
+| `r6-flush` | 3 FAIL | **2** | R6-2's *"autosave is still armed after the bound is spent"* closes. The remaining R6-1 line samples `status` **200 ms after** the abort, by which time the re-armed write has landed and §4.2 rule 6a″ says the banner clears. Measured directly: immediately after `closeTrip()` returns, `status='error'`, `lastError="Couldn't finish saving before switching. Your edit is still here."`. **Probe sampling point, not a defect** — `packages/client/test/switch.test.ts` asserts the rendered banner at the right moment. |
+| `r3-undo` `r3-loss` `r4-switch` `r2-copy` `r3-merge` `r2-race` `r3-cas` `r4-epoch` | 0 FAIL | **0** | nothing regressed |
+| `r3-pool` `r3-cas2` `r6-actor` `r2-constraints` `r5-freshness` | 3 / 3 / 5 / 2 / 4 | **3 / 3 / 5 / 2 / 4** | identical — all accepted Phase 1 residue |
+
+**Driven in real Chromium over real elapsed time** (`npm run web:build && node tools/serve.mjs`,
+then `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r8-views.mjs` — a new probe, **0 FAIL**,
+zero page errors across five sessions):
+
+- **Aug 8 reads `departs 14:30 · 1h 20m · arrives 15:50`** and Aug 18 reads `departs 05:30 ·
+  40 min · arrives 06:10`. A `transfer` stop still renders the bare time. An `unknown` stop
+  renders *"This time — is it when you arrive, or when this leaves?"* with two buttons, and
+  one click dispatches `updateStop`, removes the control and re-renders the stop as a journey.
+- **Copy a stop, press ⇩, open Optional: badge *from a friend* AND credit *From "Europe
+  2026"*.** Open the stop editor on it: both again. Both were absent before this pass.
+- **A write that cannot land renders `Not saved. <reason>` with Retry and Export this copy**,
+  the indicator does not read "Saved", and the edit is still on screen. That is the banner the
+  exhausted-flush exit now reuses.
+- **Dismiss a `booking_vs_plan` blocker, move the stop back, move it away again** — the
+  conflict returns **live**, with *"you dismissed this…"* in its detail. That is §2.7's own
+  sentence, driven as a user.
 
 ## 5. Defects fixed, across both rounds of this re-delivery
 
@@ -706,9 +1023,12 @@ untrue since `a746d75`.
   *secure* context. **The case that matters (`http://<LAN-ip>:4173` from a phone) was not
   run.** If the claim is wrong, the fence throws and the store shows `'error'` — it fails
   closed, which is the deliberate design — but it would fail closed *on every write*.
-- **`qa/r2-browser.mjs` still FAILs its PoolPanel credit-line probe** (§2.14 rule 7: the pool
-  item renders the badge but not `attribution`). Pre-existing, unrouted, untouched by this
-  pass, and unchanged before and after it.
+- ~~**`qa/r2-browser.mjs` still FAILs its PoolPanel credit-line probe** (§2.14 rule 7: the
+  pool item renders the badge but not `attribution`). Pre-existing, unrouted, untouched by
+  this pass, and unchanged before and after it.~~ **CLOSED by KD-26** in the SEND-BACK pass:
+  `PoolPanel` and `StopEditor` both render the credit now, the shared `creditLabel` is the one
+  implementation, and `test/views.test.ts` holds the whole class as a grep-shaped ceiling
+  rather than four hand checks. Verified in Chromium — `qa/r8-views.mjs` §2.
 - **`copyStopInto` from a genuinely foreign trip.** Exercised over two local trips, which is
   the Phase 1 path, and over a hand-built `ownerId:'user:marta'` document in
   `copyStop.test.ts`. There is no server and no second user, so nobody has copied a stop
@@ -736,6 +1056,31 @@ who is trying to protect it. The test now snapshots the file, restores it if it 
 ---
 
 ## 8. Objections to the design — non-blocking
+
+### SEND-BACK pass — three objections, none blocking, all implemented as specified anyway
+
+- **§2.10's 69 does not include the arithmetic §2.12's own consumer row needs.** The day view
+  is specified to render *"arrives 15:50"*, and computing it needs `HH:MM + minutes`. Core has
+  that (`timeVal`), and revision 5 took it off the surface in the same document that asked for
+  the render. The result is four lines of clock parsing in `packages/client` — a second
+  implementation of something, which is what sequencing rule 1 is about. **KD-24** carries the
+  detail and the one-import fix if the architect would rather put `timeVal` back on the list.
+  I did not widen §2.10, because widening it is a documentation change and not mine to make.
+- **§6.6's derived credential rule cannot be made exception-free against a real bundle, and
+  the section does not say what to do about that.** The rule catches everything the redactor
+  removes, which on Jacob's own prose includes the English word `OPTIONAL` — and `OPTIONAL`
+  is also a property name of the importer's public input type, so it is in the bundle for a
+  reason that has nothing to do with him. **KD-27** ships the rule with two named, asserted,
+  live-checked exceptions. The alternative — a second pattern class that can tell an English
+  word from a booking reference — is the thing KD-17 already decided against.
+- **`getDerived()` now writes.** §2.7 says `syncResolutions` is called "whenever the client
+  recomputes the derived conflict set", and §2.2b F2 says it must not run against a stale one;
+  together those put the call inside `getDerived`, which makes a read into something that can
+  change the document, schedule a save, and notify subscribers. It converges in one pass and
+  it is what the two sections jointly ask for, but a reader who expects `getDerived()` to be
+  a pure read will be surprised, and one existing ROADMAP-F test had to be rebuilt around it
+  (**KD-25**). If the architect would rather the call sat on `dispatch`/`undo`/`redo` instead,
+  that is a smaller surprise for a slightly weaker guarantee, and it is a one-line move.
 
 - **`TripSummaryRow` has no timestamp.** The library cannot say "last edited" and sorts by
   start date. §2.10 is explicit about the export surface so I did not add one, but a trip

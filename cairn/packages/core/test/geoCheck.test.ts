@@ -14,8 +14,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { europe2026, FIXTURE_TODAY } from './fixture.ts';
-import { geoCheck, detectConflicts, validateTrip } from '../src/index.ts';
-import type { Place, Stop, Trip } from '../src/index.ts';
+import {
+  acceptCandidate, addStop, attribution, copyStopInto, createTrip, detectConflicts, geoCheck,
+  sequentialIds, validateTrip,
+} from '../src/index.ts';
+import type { BuildCtx, Place, Stop, Trip } from '../src/index.ts';
 
 const PERMITTED_PLACE_MISSES = ['Blue Cave, Biševo', 'Stiniva Cove, Vis'];
 
@@ -179,4 +182,124 @@ test('validateTrip no longer emits stop_far_from_city — the code does not exis
   for (const t of [trip, typo]) {
     assert.deepEqual(validateTrip(t).filter((i) => (i.code as string) === 'stop_far_from_city'), []);
   }
+});
+
+// ---------------------------------------------------------------------------
+// §2.13's copied-record row (revision 5, QA R2-9). Two faults, one criterion:
+// the rule has to stop causing the bug it caused, AND the fix must not open a
+// way for an un-accepted copy to SUPPRESS a real blocker.
+// ---------------------------------------------------------------------------
+
+/** A Lisbon trip with one own stop, plus "Arrive LAX" copied in from the reference trip. */
+function lisbonWithCopiedLax(): { trip: Trip; copiedId: string; ownStopId: string; dayId: string } {
+  const { trip: europe } = europe2026();
+  const ctx: BuildCtx = { ids: sequentialIds('d'), now: '2026-08-25', actorUserId: 'local:self' };
+  let t = createTrip(
+    {
+      id: 'trip-lisbon', title: 'Lisbon', ownerId: 'local:self',
+      startDate: '2026-09-01', endDate: '2026-09-03',
+      homeBase: { name: 'Lisbon', at: { lat: 38.7223, lng: -9.1393 } },
+      cities: [{ key: 'lisbon', name: 'Lisbon', countryCode: 'PT', centre: { lat: 38.7223, lng: -9.1393 } }],
+    },
+    ctx,
+  );
+  const dayId = t.days[0].id;
+  t = addStop(
+    t,
+    { kind: 'scheduled', dayId, time: '10:00', order: 0 },
+    { name: 'Jerónimos Monastery', category: 'sight', place: { kind: 'inline', at: { lat: 38.6979, lng: -9.2065 } } },
+    ctx,
+  );
+  const ownStopId = t.days[0].stops[0].id;
+
+  const lax = europe.days.flatMap((d) => d.stops).find((s) => /LAX/.test(s.name));
+  assert.ok(lax, 'the reference trip must carry an "Arrive LAX" stop or this proves nothing');
+  t = copyStopInto(
+    t,
+    { trip: europe, stopId: lax.id },
+    { kind: 'scheduled', dayId, time: null, order: 9 },
+    { ids: sequentialIds('c'), today: '2026-09-01', actorUserId: 'local:self' },
+  );
+  const copied = t.days[0].stops.find((s) => attribution(s) !== null);
+  assert.ok(copied, 'the copy did not land with an attribution');
+  return { trip: t, copiedId: copied.id, ownStopId, dayId };
+}
+
+test('R2-9 (a): a copied stop is measured but never certain, so the copy path mints no blocker', () => {
+  const { trip, copiedId } = lisbonWithCopiedLax();
+  const finding = geoCheck(trip).find((f) => f.ref.id === copiedId);
+  assert.ok(finding, 'the copied stop must still produce a finding — the distance is measured, not skipped');
+  assert.equal(finding.confidence, 'unanchored', 'a copied stop may never be `certain`');
+  assert.notEqual(
+    finding.nearest,
+    null,
+    'nearest === null means "skip the record"; §2.13 asks for "measure it and decline to publish"',
+  );
+  assert.ok(finding.km > 8000 && finding.km < 10000, `expected ~9140 km, got ${finding.km}`);
+
+  assert.deepEqual(
+    detectConflicts(trip, { today: FIXTURE_TODAY }).filter((c) => c.ruleId === 'geo_outlier'),
+    [],
+    'copying a stop from a distant trip is the feature working, not a defect (§0.5)',
+  );
+});
+
+test('R2-9 (a): accepting the copy still mints no blocker', () => {
+  const { trip, copiedId } = lisbonWithCopiedLax();
+  const accepted = acceptCandidate(trip, { kind: 'stop', id: copiedId }, 'local:self', '2026-09-02');
+  assert.deepEqual(
+    detectConflicts(accepted, { today: FIXTURE_TODAY }).filter((c) => c.ruleId === 'geo_outlier'),
+    [],
+    'acceptance must never CREATE a blocker — §2.13 makes that a monotonicity property',
+  );
+  const finding = geoCheck(accepted).find((f) => f.ref.id === copiedId);
+  assert.equal(finding?.confidence, 'unanchored',
+    'the row keys on attribution(), which acceptance preserves — not on provenance.state');
+});
+
+test('R2-9 (b): an UN-ACCEPTED copy cannot suppress a real blocker on the user\'s own stop', () => {
+  // The symmetric half of §2.13's ruling. An anchor asserts "the trip's geography includes
+  // this point", and an un-accepted candidate is by construction not yet part of the plan.
+  // Place the faulted own stop within 35 km of the copied one and >35 km from everything
+  // else, so the copy is the ONLY thing that could silence it.
+  const { trip, copiedId, dayId } = lisbonWithCopiedLax();
+  const copied = trip.days[0].stops.find((s) => s.id === copiedId);
+  assert.ok(copied && copied.place.kind === 'inline', 'the copied stop must carry an inline coordinate');
+  const at = copied.place.at;
+
+  const ctx: BuildCtx = { ids: sequentialIds('f'), now: '2026-08-25', actorUserId: 'local:self' };
+  const faulted = addStop(
+    trip,
+    { kind: 'scheduled', dayId, time: '15:00', order: 8 },
+    // ~11 km north of the copied stop, and an ocean away from Lisbon.
+    { name: 'Typo Beach', category: 'sight', place: { kind: 'inline', at: { lat: at.lat + 0.1, lng: at.lng } } },
+    ctx,
+  );
+  const faultedId = faulted.days[0].stops.find((s) => s.name === 'Typo Beach')!.id;
+
+  const blockers = detectConflicts(faulted, { today: FIXTURE_TODAY }).filter((c) => c.ruleId === 'geo_outlier');
+  assert.equal(blockers.length, 1, 'an un-accepted copy silenced a real blocker on the user\'s own stop');
+  assert.deepEqual(blockers[0].subjects.map((s) => s.id), [faultedId]);
+
+  // …and accepting the copy removes it, because acceptance only ever ADDS anchors.
+  const accepted = acceptCandidate(faulted, { kind: 'stop', id: copiedId }, 'local:self', '2026-09-02');
+  assert.deepEqual(
+    detectConflicts(accepted, { today: FIXTURE_TODAY }).filter((c) => c.ruleId === 'geo_outlier'),
+    [],
+    'once accepted, the copy joins the anchor set like any other stop',
+  );
+});
+
+test('R2-9 ceiling: the reference trip has no attributed record, so none of §2.13\'s numbers move', () => {
+  const { trip } = europe2026();
+  assert.equal(
+    trip.days.flatMap((d) => d.stops).concat(trip.pool).filter((s) => attribution(s) !== null).length,
+    0,
+    'the reference trip gained an attributed record; §2.13\'s census no longer applies as written',
+  );
+  assert.deepEqual(geoCheck(trip), [], '0 findings on the unmodified trip, unchanged by the new row');
+  const typo = withPlaceMoved(trip, 'place-68', 1);
+  const extra = detectConflicts(typo, { today: FIXTURE_TODAY }).filter((c) => c.ruleId === 'geo_outlier');
+  assert.equal(extra.length, 1, 'the Fisherman\'s Bastion blocker must still fire');
+  assert.deepEqual(extra[0].subjects.map((s) => s.id), ['place-68']);
 });

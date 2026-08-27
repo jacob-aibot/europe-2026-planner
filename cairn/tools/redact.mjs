@@ -34,7 +34,7 @@
  * (the three source comments that were shipping references, and the dropped `sourceDoc`).
  */
 
-import { REDACTION_PATTERNS, REDACTED, redactText, redactionHits } from '../packages/core/src/build/redactText.ts';
+import { REDACTION_PATTERNS, REDACTED, redactText, redactionHits } from '../packages/core/src/index.ts';
 
 export { REDACTION_PATTERNS, REDACTED, redactText, redactionHits };
 

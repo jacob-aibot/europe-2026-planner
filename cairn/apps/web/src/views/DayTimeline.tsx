@@ -6,10 +6,10 @@
  */
 import { useState } from 'react';
 import type { AppState, DayDerived } from '@cairn/client';
-import { conflictsForStop, core } from '@cairn/client';
+import { conflictsForStop, core, travelLine } from '@cairn/client';
 import type { Day, Leg, Stop } from '@cairn/core';
 import { attribution, displayStatus, fmtMins, formatRange } from '@cairn/core';
-import { costLabel } from '../format.ts';
+import { costLabel, creditLabel } from '../format.ts';
 import { CAT_LABEL, COLORS, MODES, STATUS_BADGE } from '@cairn/tokens';
 import { store } from '../store.ts';
 import { StopEditor } from './StopEditor.tsx';
@@ -75,23 +75,6 @@ export function DayTimeline({ state, day, dayDerived: dd, onError }: Props) {
   );
 }
 
-/**
- * The credit line's text. Names the person where there is one, and falls back to the source
- * trip's title — which is the Phase 1 case, where both trips are owned by the `local:self`
- * sentinel and "From local:self's trip" would tell nobody anything. The credit is still
- * structurally intact either way; this only decides how it reads.
- */
-function creditLabel(
-  credit: { friendUserId: string; sourceTripId: string },
-  state: AppState,
-): string {
-  const title = state.library.find((r) => r.id === credit.sourceTripId)?.title;
-  if (credit.friendUserId && !credit.friendUserId.startsWith('local:')) {
-    return `${credit.friendUserId.replace(/^user:/, '')}${title ? ` · ${title}` : '’s trip'}`;
-  }
-  return title ? `“${title}”` : 'another trip';
-}
-
 function StopRow({
   state, day, stop, index, leg, editing, onEdit, onError,
 }: {
@@ -104,10 +87,21 @@ function StopRow({
   const conflicts = conflictsForStop(store.getDerived(), stop.id).filter((c) => !c.resolution);
   const time = stop.placement.kind === 'scheduled' ? stop.placement.time : null;
   const days = state.doc!.days;
+  // §2.12's day-view row. `travelRole` says what this stop's time MEANS, and until this the
+  // screen never asked: a flight's departure time rendered identically to an arrival.
+  const travel = travelLine(stop);
 
   const act = (fn: () => void) => {
     try { fn(); } catch (e) { onError((e as Error).message); }
   };
+
+  /**
+   * §2.12's one-tap control, and the only new editing affordance the field needs. Ten stops
+   * on the reference trip are genuinely ambiguous on inspection and the importer refuses to
+   * guess them; without a control the field can never improve from the app.
+   */
+  const setRole = (travelRole: 'transfer' | 'journey') =>
+    act(() => store.dispatch({ type: 'updateStop', stopId: stop.id, patch: { travelRole } }));
 
   return (
     <li className={`stop ${status !== 'own' ? 'stop--dim' : ''} ${conflicts.length ? 'stop--flag' : ''}`}>
@@ -124,12 +118,25 @@ function StopRow({
         <span className="stop__num" style={{ background: COLORS[stop.category] ?? '#5c6570' }}>{index + 1}</span>
         <div className="stop__main">
           <p className="stop__line">
-            {time && <b className="stop__time">{time}</b>}
+            {travel.kind === 'journey'
+              ? travel.text && (
+                  <b className="stop__time stop__time--journey" data-travel-role="journey">{travel.text}</b>
+                )
+              : time && <b className="stop__time" data-travel-role={travel.kind}>{time}</b>}
             <span className="stop__name">{stop.name}</span>
             {badge.label && <span className="pill" style={{ background: badge.color }}>{badge.label}</span>}
             {stop.flags.map((f) => <span key={f} className="pill pill--quiet">{f}</span>)}
             {stop.ticket && <span className="pill pill--quiet">ticket</span>}
           </p>
+          {travel.kind === 'unknown' && (
+            // §2.12: travel information is present and its role could not be established, so
+            // every rule that reads it has degraded. Ask, once, in one tap — never guess.
+            <p className="stop__role" data-role-control="unknown">
+              This time — is it when you <b>arrive</b>, or when this leaves?
+              <button className="btn btn--quiet" onClick={() => setRole('transfer')}>I arrive then</button>
+              <button className="btn btn--quiet" onClick={() => setRole('journey')}>It departs then</button>
+            </p>
+          )}
           <p className="stop__meta">
             {CAT_LABEL[stop.category] ?? stop.category}
             {costLabel(stop.cost) && ` · ${costLabel(stop.cost)}`}

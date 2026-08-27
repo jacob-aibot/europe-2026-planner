@@ -49,7 +49,9 @@ export const REDACTION_PATTERNS = [
   },
   {
     id: 'keyword_digits',
-    // A keyword followed by a spaced digit run, e.g. "Booking 338 441 5948".
+    // A keyword followed by a spaced digit run, e.g. "Booking 000 000 0000". The example
+    // used to be a real FlixBus reference of Jacob's, which a sourcemap then shipped into
+    // `apps/web/dist` — BUILD-NOTES KD-27.
     re: new RegExp(`\\b(?:${KEYWORD})\\b[\\s:#]+(?=[A-Za-z0-9 -]{0,20}\\d)[A-Za-z0-9][A-Za-z0-9 -]{0,20}[A-Za-z0-9]`, 'g'),
   },
   // Any run of 6+ digits, with optional spacing — a booking or hotel confirmation number.

@@ -9,7 +9,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createTrip, updateStop, addStop, displayStatus, sequentialIds, systemSuggestion, userProvenance, LOCAL_OWNER, returnToPool, scheduleFromPool, poolFor, setDayMeta, validateTrip } from '../src/index.ts';
+import { createTrip, updateStop, addStop, displayStatus, sequentialIds, LOCAL_OWNER, returnToPool, scheduleFromPool, poolFor, setDayMeta, validateTrip } from '../src/index.ts';
+// The provenance constructors are off the surface in §2.10 revision 5 — they stamp
+// provenance with no gate. Tests reach the module path directly. BUILD-NOTES KD-33.
+import { systemSuggestion, userProvenance } from '../src/model/provenance.ts';
 import type { BuildCtx, Trip } from '../src/index.ts';
 
 const ctx = (): BuildCtx => ({ ids: sequentialIds('t'), now: '2026-08-01', actorUserId: LOCAL_OWNER });

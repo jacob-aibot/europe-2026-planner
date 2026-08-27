@@ -123,7 +123,10 @@ test('a day added by a remote date extension appears, and days stay dense and so
 });
 
 test('pool, places, bookings and resolutions merge by id too', async () => {
-  const { upsertBooking, addPlace, userProvenance } = await import('../src/index.ts');
+  const { upsertBooking } = await import('../src/index.ts');
+  // Off the surface in §2.10 revision 5; a test may import the module path. BUILD-NOTES KD-33.
+  const { addPlace } = await import('../src/build/stops.ts');
+  const { userProvenance } = await import('../src/model/provenance.ts');
   const b0 = base();
   const b1 = addStop(b0, { kind: 'pool', cityKey: 'vienna' }, { id: 'stop-p', name: 'Pooled', category: 'sight' }, ctx());
   const local = addPlace(b1, { id: 'place-l', cityKey: 'vienna', name: 'Local place', at: { lat: 48.2, lng: 16.3 }, category: 'sight' });

@@ -26,13 +26,25 @@
  * and no travel-mode exemption — §2.12's `travelRole` is deliberately NOT read here: two
  * independent defects, two independent fixes.
  *
- * BUILD-NOTES §1, KD-2 carries the measured detection census and the two permitted misses.
+ * One record class is exempt, both ways (§2.13 revision 5, QA R2-9): a stop `copyStopInto`
+ * produced — `attribution(stop) !== null` — is measured but never `'certain'`, and it is not
+ * an anchor for anything else until it is accepted. See `isCopied` and `anchorsOthers`.
+ * **`Place` needs no equivalent and gets none**: a Place carries no `provenance` (§2.2), so
+ * a copied place is not identifiable as one and does not need to be. `copyStopInto` rule 4
+ * copies the place with its `cityKey` verbatim, so in the destination trip it is either
+ * filed under a city that trip does have — meaningful anchors, the check should run — or
+ * under a key that trip never heard of, in which case the existing Place row already yields
+ * `nearest === null` and `'unanchored'`. Both outcomes are already correct.
+ *
+ * BUILD-NOTES §1, KD-2 carries the measured detection census and the two permitted misses;
+ * KD-23 carries the copied-record row.
  *
  * Pure. No clock, no ids, no IO.
  */
 import type { LatLng, Place, Ref, Stop, Trip } from '../model/types.ts';
 import type { CityKey, StopId } from '../model/ids.ts';
 import { haversine, resolvePlaceLink } from './geo.ts';
+import { attribution } from './display.ts';
 
 /** Flat, everywhere. §2.13. */
 export const GEO_LIMIT_KM = 35;
@@ -60,9 +72,49 @@ export type GeoFinding = {
    * `'certain'` — the trip offered anchors and this record is beyond the limit from all of
    * them. `'unanchored'` — the trip offered none, which is a property of an almost-empty
    * trip and not a defect; §2.13 says it is not published as a conflict in Phase 1.
+   *
+   * `'unanchored'` carries TWO cases and a consumer tells them apart by `nearest`
+   * (revision 5): `nearest === null` is *"this trip offered the record no anchor"*;
+   * `nearest !== null` is *"anchors exist and this record is deliberately not measured
+   * against them"* — the copied-record case below. Both mean the same thing to
+   * `geo_outlier`, which publishes neither.
    */
   confidence: 'certain' | 'unanchored';
 };
+
+/**
+ * A record `copyStopInto` produced — §2.13's copied-record row (revision 5, QA R2-9). Pure.
+ *
+ * Copying "Arrive LAX" into a Lisbon-based trip produced `geo_outlier: 9140 km, certain` —
+ * a blocker on the phase's newest primitive, seconds after a human deliberately asked for
+ * that record to be there. §0.5 governs: a rule that cannot tell *"the data says something
+ * impossible"* from *"the data is shaped oddly by design"* degrades to a warning rather than
+ * asserting a defect, and a stop copied from another trip being far from this trip's
+ * geography is not odd, it is the point of the feature.
+ *
+ * It keys on `attribution()` and NOT on `provenance.state`, deliberately: keying on state
+ * would make the same document produce different conflicts either side of a provenance
+ * transition, so accepting a stop could *create* a blocker with nobody writing down why. The
+ * stated cost is one blind spot — a coordinate typed INTO a copied stop after the copy —
+ * on records the user has already been told came from somewhere else.
+ */
+function isCopied(s: Stop): boolean {
+  return attribution(s.provenance) !== null;
+}
+
+/**
+ * May this stop stand as an anchor for other records? §2.13's symmetric clause.
+ *
+ * An anchor asserts *"the trip's geography includes this point"*, and an un-accepted
+ * candidate is by construction not yet part of the user's plan (§2.14). Letting one into
+ * the anchor set would let a stop the user has not accepted **suppress a real blocker** on
+ * a stop they wrote themselves. Once `acceptCandidate` runs it joins the set like any other
+ * stop — and note the direction that moves in: acceptance only ever ADDS anchors, so it can
+ * only ever remove a blocker, never create one. Pure.
+ */
+function anchorsOthers(s: Stop): boolean {
+  return !isCopied(s) || s.provenance.state === 'accepted';
+}
 
 type Anchored = { at: LatLng; anchor: GeoAnchor };
 
@@ -75,11 +127,22 @@ function nearestOf(at: LatLng, anchors: readonly Anchored[]): { km: number; anch
   return best;
 }
 
-function finding(ref: Ref, at: LatLng, anchors: readonly Anchored[]): GeoFinding | null {
+/**
+ * `never` forces `confidence: 'unanchored'` while still MEASURING `km` and `nearest`, which
+ * is §2.13's copied-record row in one word: *"km and nearest are still measured so a view
+ * can say how far it is, but `geo_outlier` never publishes it"*. An implementation that
+ * skips the record instead would return `nearest === null` and lose the distance.
+ */
+function finding(
+  ref: Ref,
+  at: LatLng,
+  anchors: readonly Anchored[],
+  confidence: 'certain' | 'unanchored' = 'certain',
+): GeoFinding | null {
   const near = nearestOf(at, anchors);
   if (!near) return { ref, km: 0, limitKm: GEO_LIMIT_KM, nearest: null, confidence: 'unanchored' };
   if (near.km <= GEO_LIMIT_KM) return null;
-  return { ref, km: Math.round(near.km), limitKm: GEO_LIMIT_KM, nearest: near.anchor, confidence: 'certain' };
+  return { ref, km: Math.round(near.km), limitKm: GEO_LIMIT_KM, nearest: near.anchor, confidence };
 }
 
 /**
@@ -95,17 +158,21 @@ export function geoCheck(trip: Trip): GeoFinding[] {
   /** Coordinates of a stop, resolved through `trip.places`. */
   const coordOf = (s: Stop): LatLng | null => resolvePlaceLink(s.place, trip.places);
 
-  // Per-day coordinate lists, computed once.
-  const dayCoords = trip.days.map((d) => ({
-    day: d,
-    located: d.stops.map((s) => ({ s, at: coordOf(s) })).filter((x): x is { s: Stop; at: LatLng } => x.at !== null),
-  }));
+  // Per-day coordinate lists, computed once. `anchorable` is the subset that may stand as
+  // an anchor for OTHER records — §2.13's symmetric clause drops un-accepted copies out of
+  // it, so a stop the user has not accepted cannot silence a blocker on one they wrote.
+  const dayCoords = trip.days.map((d) => {
+    const located = d.stops
+      .map((s) => ({ s, at: coordOf(s) }))
+      .filter((x): x is { s: Stop; at: LatLng } => x.at !== null);
+    return { day: d, located, anchorable: located.filter((x) => anchorsOthers(x.s)) };
+  });
 
   // ---- scheduled stops ------------------------------------------------------
   for (let i = 0; i < dayCoords.length; i++) {
     const { day, located } = dayCoords[i];
-    const prev = dayCoords[i - 1]?.located ?? [];
-    const next = dayCoords[i + 1]?.located ?? [];
+    const prev = dayCoords[i - 1]?.anchorable ?? [];
+    const next = dayCoords[i + 1]?.anchorable ?? [];
     const boundary: Anchored[] = [];
     if (prev.length) boundary.push({ at: prev[prev.length - 1].at, anchor: { kind: 'adjacent_day', stopId: prev[prev.length - 1].s.id } });
     if (next.length) boundary.push({ at: next[0].at, anchor: { kind: 'adjacent_day', stopId: next[0].s.id } });
@@ -121,10 +188,12 @@ export function geoCheck(trip: Trip): GeoFinding[] {
         ...cityAnchors,
         ...homeBase,
         ...boundary,
-        // every OTHER coordinate-bearing stop on this day
-        ...located.filter((x) => x.s.id !== s.id).map((x) => ({ at: x.at, anchor: { kind: 'same_day' as const, stopId: x.s.id } })),
+        // every OTHER coordinate-bearing stop on this day that may serve as an anchor
+        ...dayCoords[i].anchorable
+          .filter((x) => x.s.id !== s.id)
+          .map((x) => ({ at: x.at, anchor: { kind: 'same_day' as const, stopId: x.s.id } })),
       ];
-      const f = finding({ kind: 'stop', id: s.id }, at, anchors);
+      const f = finding({ kind: 'stop', id: s.id }, at, anchors, isCopied(s) ? 'unanchored' : 'certain');
       if (f) out.push(f);
     }
   }
@@ -132,9 +201,9 @@ export function geoCheck(trip: Trip): GeoFinding[] {
   /** Scheduled stops on any day that includes this city, as anchors. */
   const stopsForCity = (cityKey: CityKey, excludeVia?: (s: Stop) => boolean): Anchored[] => {
     const anchors: Anchored[] = [];
-    for (const { day, located } of dayCoords) {
+    for (const { day, anchorable } of dayCoords) {
       if (!day.cities.includes(cityKey)) continue;
-      for (const { s, at } of located) {
+      for (const { s, at } of anchorable) {
         if (excludeVia && excludeVia(s)) continue;
         anchors.push({ at, anchor: { kind: 'city_stop', stopId: s.id } });
       }
@@ -153,7 +222,7 @@ export function geoCheck(trip: Trip): GeoFinding[] {
       ...homeBase,
       ...stopsForCity(cityKey),
     ];
-    const f = finding({ kind: 'stop', id: s.id }, at, anchors);
+    const f = finding({ kind: 'stop', id: s.id }, at, anchors, isCopied(s) ? 'unanchored' : 'certain');
     if (f) out.push(f);
   }
 

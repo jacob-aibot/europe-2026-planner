@@ -890,3 +890,94 @@ test('R2-2: a stop pooled from a city day stays under that city, not the catch-a
   assert.equal(poolSection(trip, 'vienna').stops.length, 1);
   assert.equal(unfiledPool(trip).length, 0, 'a stop with a perfectly good city fell into the catch-all');
 });
+
+// ---------------------------------------------------------------------------
+// QA R2-7 / ARCHITECTURE §2.7 — `syncResolutions` has to be CALLED. The core
+// build function shipped and nothing invoked it, so the conflicts panel's
+// "Not a problem" button resurrected its own dismissals.
+// ---------------------------------------------------------------------------
+
+/** Two overlapping stops on one day, which is what `overlap` fires on. */
+async function overlappingDay() {
+  const store = await storeWithTrip();
+  const dayId = firstDayId(store);
+  const add = (name: string, time: string, durationMins: number) =>
+    store.dispatch({
+      type: 'addStop',
+      placement: { kind: 'scheduled', dayId, time, order: 99 },
+      stop: {
+        name, category: 'sight', durationMins,
+        place: { kind: 'inline', at: { lat: 48.2082, lng: 16.3738 } },
+      },
+    } as Action);
+  add('Museum', '10:00', 120);
+  add('Lunch', '10:30', 60);
+  const lunch = (store.getState().doc as core.Trip).days
+    .flatMap((d) => d.stops).find((s) => s.name === 'Lunch') as core.Stop;
+  const overlaps = () => (store.getDerived()?.conflicts ?? []).filter((c) => c.ruleId === 'overlap');
+  assert.equal(overlaps().length, 1, 'precondition: the overlap warning did not fire');
+  return { store, lunch, overlaps };
+}
+
+test('R2-7: a dismissal does not resurrect — through the store\'s own dispatch path', async () => {
+  const { store, lunch, overlaps } = await overlappingDay();
+  const target = overlaps()[0];
+
+  // The user presses "Not a problem".
+  store.dispatch({
+    type: 'resolveConflict',
+    resolution: { conflictId: target.id, state: 'dismissed', by: core.LOCAL_OWNER, at: TODAY },
+  } as Action);
+  assert.equal(overlaps()[0]?.resolution?.state, 'dismissed');
+
+  // They edit the value that made it a conflict, so the conflict goes away…
+  store.dispatch({ type: 'updateStop', stopId: lunch.id, patch: { time: '14:00' } } as Action);
+  assert.equal(overlaps().length, 0);
+
+  // …and then change their mind and put it back. Content-addressing restores the SAME
+  // conflict id, so without `syncResolutions` the dismissal comes back with it — a dismissed
+  // blocker re-arming with no user action, which is what §2.7 exists to prevent.
+  store.dispatch({ type: 'updateStop', stopId: lunch.id, patch: { time: '10:30' } } as Action);
+  const back = overlaps()[0];
+  assert.ok(back, 'the conflict did not come back at all');
+  assert.equal(back.id, target.id, 'INCONCLUSIVE: the id changed, so nothing could have carried over');
+  assert.equal(back.resolution, null,
+    'the conflict returned ALREADY DISMISSED with no user action — nothing called syncResolutions');
+
+  // And the retirement is recorded in the document, not just suppressed in the view.
+  const row = (store.getState().doc as core.Trip).resolutions.find((r) => r.conflictId === target.id);
+  assert.ok(row, 'the resolution row vanished entirely — it must be retired, not deleted');
+  assert.notEqual(row.retiredAt, null, '§2.7 retires resolutions; it never resurrects them');
+  assert.match(back.detail ?? '', /dismiss/i, 'the returning conflict does not record the earlier dismissal');
+});
+
+test('R2-7: the retirement reaches STORAGE, because syncResolutions writes the document', async () => {
+  const p = ports();
+  const store = createStore({ ports: p });
+  await store.createTrip(TRIP_INIT);
+  const dayId = firstDayId(store);
+  const add = (name: string, time: string, durationMins: number) =>
+    store.dispatch({
+      type: 'addStop',
+      placement: { kind: 'scheduled', dayId, time, order: 99 },
+      stop: { name, category: 'sight', durationMins, place: { kind: 'inline', at: { lat: 48.2, lng: 16.37 } } },
+    } as Action);
+  add('Museum', '10:00', 120);
+  add('Lunch', '10:30', 60);
+  const target = (store.getDerived()?.conflicts ?? []).find((c) => c.ruleId === 'overlap') as core.Conflict;
+  const lunch = (store.getState().doc as core.Trip).days
+    .flatMap((d) => d.stops).find((s) => s.name === 'Lunch') as core.Stop;
+
+  store.dispatch({
+    type: 'resolveConflict',
+    resolution: { conflictId: target.id, state: 'dismissed', by: core.LOCAL_OWNER, at: TODAY },
+  } as Action);
+  store.dispatch({ type: 'updateStop', stopId: lunch.id, patch: { time: '14:00' } } as Action);
+  void store.getDerived();
+  await store.flush();
+
+  const id = store.getState().activeTripId as string;
+  const stored = core.fromJSON(p.storage.docs.get(id) as string);
+  assert.equal(stored.resolutions.find((r) => r.conflictId === target.id)?.retiredAt, TODAY,
+    'the retirement never reached the stored bytes');
+});

@@ -6,6 +6,8 @@
  */
 const core = await import('../packages/core/src/index.ts');
 const { loadEurope2026, FIXTURE_TODAY } = await import('../fixtures/loadEurope2026.mjs');
+// §2.10 revision 5 takes this symbol off the index; qa may import the module path directly.
+const legsMod = await import('../packages/core/src/derive/legs.ts');
 const { trip } = loadEurope2026();
 const T = { today: FIXTURE_TODAY };
 
@@ -33,8 +35,8 @@ for (const day of trip.days) {
     candidates++;
     const prev = i > 0 ? day.stops[i - 1] : null;
     if (!prev) { silentFirstStop++; console.log(`  ${day.id}  ${s.arrival.mode.padEnd(10)} ${String(s.arrival.mins).padStart(5)}  first stop      —       ${s.name.slice(0, 40)}`); continue; }
-    const t0 = core.timeVal(prev.placement.time);
-    const t1 = core.timeVal(s.placement.time);
+    const t0 = legsMod.timeVal(prev.placement.time);
+    const t1 = legsMod.timeVal(s.placement.time);
     if (t0 >= 99999 || t1 >= 99999) { silentNoTime++; console.log(`  ${day.id}  ${s.arrival.mode.padEnd(10)} ${String(s.arrival.mins).padStart(5)}  no clock time   —       ${s.name.slice(0, 40)}`); continue; }
     const gap = t1 - t0;
     const f = fired.has(day.id + '|' + s.name);
@@ -72,8 +74,8 @@ for (const day of trip.days) {
   for (let i = 1; i < stops.length; i++) {
     const s = stops[i];
     if (!s.arrival || !VEHICLE_OWN_JOURNEY.has(s.arrival.mode)) continue;
-    const t0 = core.timeVal(stops[i - 1].placement.time);
-    const t1 = core.timeVal(s.placement.time);
+    const t0 = legsMod.timeVal(stops[i - 1].placement.time);
+    const t1 = legsMod.timeVal(s.placement.time);
     if (t0 >= 99999 || t1 >= 99999) continue;
     const gap = t1 - t0;
     if (s.arrival.mins <= gap) {

@@ -9,7 +9,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { can, canComment, canDelete, canEdit, canShare, canView, effectiveRole, isIsoDate } from '../src/index.ts';
+import { can, canComment, canDelete, canEdit, canShare, canView, effectiveRole } from '../src/index.ts';
+// §2.10 revision 5 takes `isIsoDate` off the public surface — it is an internal of the
+// validators that use it. Tests may import a core module path directly; tests do not create
+// surface. BUILD-NOTES KD-33.
+import { isIsoDate } from '../src/model/ids.ts';
 import type { Principal, Relationship } from '../src/index.ts';
 
 const NOW = '2026-08-25';
@@ -108,4 +112,56 @@ test('isIsoDate validates the calendar, not the shape', () => {
   assert.equal(isIsoDate('2026-04-30'), true);
   assert.equal(isIsoDate(undefined), false);
   assert.equal(isIsoDate(20260825), false);
+});
+
+// ---------------------------------------------------------------------------
+// The same argument as F-13, one field over: `expiresAt` and `revokedAt` are
+// compared lexically against `now`, and a lexical compare on an unvalidated
+// string is not a calendar comparison. `"9999-99-99"`, `"tomorrow"` and
+// `"never"` all sort after a real `YYYY-MM-DD`, so all three read as "not yet
+// expired" and GRANT access. §6.2.4 makes these predicates the definition the
+// Phase 2 RLS policies are generated from; a definition that fails open
+// generates a policy that fails open. BUILD-NOTES KD-29.
+// ---------------------------------------------------------------------------
+
+const MALFORMED_EXPIRY = ['9999-99-99', 'tomorrow', 'never', '2026-02-30', '25/08/2026', '2026-08-25T00:00:00Z'];
+
+for (const bad of MALFORMED_EXPIRY) {
+  test(`a share whose expiresAt is ${JSON.stringify(bad)} fails closed`, () => {
+    const rel: Relationship = {
+      tripId: 'trip-1',
+      ownerId: 'user:jacob',
+      shares: [{ principal: FRIEND, role: 'editor', expiresAt: bad }],
+    };
+    assert.equal(effectiveRole(FRIEND, rel, NOW), null, `expiresAt ${bad} granted a role`);
+    for (const op of ['view', 'comment', 'edit', 'share', 'delete'] as const) {
+      assert.equal(can(op, FRIEND, rel, NOW), false, `can(${op}) failed open on expiresAt ${bad}`);
+    }
+  });
+
+  test(`a share whose revokedAt is ${JSON.stringify(bad)} fails closed`, () => {
+    const rel: Relationship = {
+      tripId: 'trip-1',
+      ownerId: 'user:jacob',
+      shares: [{ principal: FRIEND, role: 'editor', revokedAt: bad }],
+    };
+    assert.equal(effectiveRole(FRIEND, rel, NOW), null, `revokedAt ${bad} granted a role`);
+  });
+}
+
+test('null, "" and absent still mean "no expiry" — the fix must not break the ordinary share', () => {
+  const mk = (patch: Record<string, unknown>): Relationship => ({
+    tripId: 'trip-1',
+    ownerId: 'user:jacob',
+    shares: [{ principal: FRIEND, role: 'viewer', ...patch }],
+  });
+  assert.equal(effectiveRole(FRIEND, mk({ expiresAt: null }), NOW), 'viewer');
+  assert.equal(effectiveRole(FRIEND, mk({ expiresAt: '' }), NOW), 'viewer');
+  assert.equal(effectiveRole(FRIEND, mk({}), NOW), 'viewer');
+  assert.equal(effectiveRole(FRIEND, mk({ expiresAt: undefined }), NOW), 'viewer');
+  assert.equal(effectiveRole(FRIEND, mk({ revokedAt: null }), NOW), 'viewer');
+  assert.equal(effectiveRole(FRIEND, mk({ revokedAt: '' }), NOW), 'viewer');
+  assert.equal(effectiveRole(FRIEND, mk({ expiresAt: '2026-09-01' }), NOW), 'viewer', 'a real future date still grants');
+  assert.equal(effectiveRole(FRIEND, mk({ expiresAt: '2026-08-24' }), NOW), null, 'a real past date still expires');
+  assert.equal(effectiveRole(FRIEND, mk({ expiresAt: NOW }), NOW), 'viewer', 'expiring today is not yet expired');
 });

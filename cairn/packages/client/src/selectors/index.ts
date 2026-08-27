@@ -105,4 +105,79 @@ export function cityMapPoints(trip: Trip, cityKey: string) {
   return { points, bounds: core.mapBounds(points.map((p) => ({ lat: p.lat, lng: p.lng }))) };
 }
 
+
+/**
+ * How a stop's time reads on screen — ARCHITECTURE §2.12's day-view row (QA R2-10).
+ *
+ * `travelRole` answers *what `placement.time` actually means*, and until this existed no
+ * view asked. Aug 8's Condor flight rendered `14:30 · ✈️ Flight · 1h 20m`, which reads as
+ * "arrives 14:30 after an 80-minute journey". It is the opposite: 14:30 is when the aircraft
+ * **leaves Frankfurt**. §2.12's consumer table: a `'journey'` stop shows *"departs 14:30 ·
+ * 1 h 20 · arrives 15:50"*; a `'transfer'` stop shows today's string; `'unknown'` renders
+ * with a one-tap control to set it, which is the only new editing affordance the field needs.
+ *
+ * The arithmetic is **wall-clock and display-only**. Core stores no UTC instants and does no
+ * timezone maths (§2.1, §7) — which is exactly why `journey_overrun` is deferred to Phase 4
+ * — so a run that crosses midnight is reported with `nextDay`, and a run that crosses a
+ * timezone is reported as the clock arithmetic it is and nothing more. Nothing here decides
+ * anything about the trip; it shapes three fields the model already holds. Pure.
+ */
+export type TravelLine = {
+  kind: core.TravelRole;
+  /** The whole phrase, ready to render. */
+  text: string;
+  /** `placement.time`, verbatim, or `null` for a pooled stop. */
+  departs: string | null;
+  /** `HH:MM`, or `null` when either half of the arithmetic is missing or not a clock. */
+  arrives: string | null;
+  /** True when `arrives` wrapped past midnight. Never implied — always stated. */
+  nextDay: boolean;
+};
+
+export function travelLine(stop: Stop): TravelLine {
+  const time = stop.placement.kind === 'scheduled' ? stop.placement.time : null;
+  const kind = stop.travelRole;
+  const mins = stop.arrival?.mins ?? null;
+
+  if (kind !== 'journey') {
+    // §2.12: a transfer keeps today's string, and `'unknown'` keeps it too — the model
+    // cannot tell whether that time is a departure, so the view must not claim it knows.
+    return { kind, text: time ?? '', departs: null, arrives: null, nextDay: false };
+  }
+
+  const clock = minutesOfDay(time);
+  const end = clock !== null && mins !== null ? clock + mins : null;
+  const arrives = end === null ? null : hhmm(end % (24 * 60));
+  const nextDay = end !== null && end >= 24 * 60;
+
+  const parts: string[] = [];
+  if (time !== null) parts.push(`departs ${time}`);
+  if (mins !== null) parts.push(core.fmtMins(mins));
+  if (arrives !== null) parts.push(`arrives ${arrives}${nextDay ? ' (+1 day)' : ''}`);
+
+  return { kind, text: parts.join(' · '), departs: time, arrives, nextDay };
+}
+
+/**
+ * `HH:MM` to minutes since midnight, or `null` for anything that is not a clock time.
+ *
+ * Deliberately local rather than core's `timeVal`: §2.10 revision 5 took `timeVal` off the
+ * public surface as an internal of `computeLegs`, and §2.10's ceiling forbids `packages/client`
+ * from reaching past the index into a core module path. Two lines of display parsing that
+ * returns `null` on anything malformed is the cheaper of the two wrongs — it decides nothing
+ * about the trip, and it fails to `null` rather than to a guess. BUILD-NOTES KD-24. Pure.
+ */
+function minutesOfDay(t: string | null): number | null {
+  if (t === null) return null;
+  const m = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(t);
+  return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+}
+
+/** Minutes-since-midnight to `HH:MM`. Pure. */
+function hhmm(total: number): string {
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
 export { core };

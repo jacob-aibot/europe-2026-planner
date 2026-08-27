@@ -104,47 +104,51 @@ test('R4-1 at the cache: syncResolutions does not retire a resolution whose conf
   // reads the derived conflict set and writes the DOCUMENT from it, so a stale cache retires
   // resolutions against conflicts the current document does not have — and, in this shape,
   // against one it *does*.
+  //
+  // The construction changed when `syncResolutions` was finally WIRED (QA R2-7, KD-25): it
+  // now runs inside `getDerived()`, so the old setup — acknowledge, then edit the conflict
+  // away, then undo — retires the acknowledgement legitimately at the edit, and the final
+  // assertion became vacuous rather than wrong. The resolution is therefore created AFTER
+  // the cache has gone stale, which is the only way a live resolution and a stale set can
+  // coexist at all. The property under test is unchanged: the sync must recompute against
+  // the current document rather than trust whatever the cache last held.
   const store = createStore({ ports: ports(), autosave: false });
   await store.createTrip(INIT);
   const dayA = (store.getState().doc as core.Trip).days[0].id;
   const dayB = (store.getState().doc as core.Trip).days[1].id;
 
-  // A flagged day is a `legacy_flag` blocker. Acknowledge it: that is a LIVE resolution.
-  store.dispatch({ type: 'setDayMeta', dayId: dayA, patch: { legacyFlag: true, subtitle: 'WHY IT IS FLAGGED' } } as Action);
-  const flagged = store.getDerived()?.conflicts.filter((c) => c.ruleId === 'legacy_flag') ?? [];
-  assert.equal(flagged.length, 1, 'precondition: the flagged day did not produce a blocker');
-  const conflictId = flagged[0].id;
-  store.dispatch({
-    type: 'resolveConflict',
-    resolution: { conflictId, state: 'acknowledged', at: TODAY, by: core.LOCAL_OWNER, note: '' },
-  } as Action);
-  assert.equal(store.getState().doc?.resolutions.filter((r) => !r.retiredAt).length, 1);
-
-  // Edit A rewrites the subtitle, so the conflict is content-addressed to a NEW id and the
-  // acknowledged one is absent from the set. Read the cache here.
-  store.dispatch({ type: 'setDayMeta', dayId: dayA, patch: { subtitle: 'REWORDED' } } as Action);
+  // A flagged day is a `legacy_flag` blocker. Read the cache here, for day A's document.
+  store.dispatch({ type: 'setDayMeta', dayId: dayA, patch: { legacyFlag: true, subtitle: 'WHY A IS FLAGGED' } } as Action);
   const staleCache = store.getDerived();
   assert.ok(staleCache);
-  assert.equal(staleCache.conflicts.some((c) => c.id === conflictId), false,
-    'precondition: edit A must make the acknowledged conflict disappear');
   const revisionAfterA = (store.getState().doc as core.Trip).revision;
 
-  // Ctrl-Z puts the original subtitle — and therefore the acknowledged conflict — back. Then
-  // a DIFFERENT edit, on another day, landing on the same revision. No getDerived() between.
+  // Ctrl-Z, then a DIFFERENT edit — on another day — landing on the same revision, with no
+  // `getDerived()` in between. The store's cache still describes the pre-undo document.
   store.undo();
-  store.dispatch(addStop(dayB, 'UNRELATED', { lat: 48.2082, lng: 16.3738 }, 0));
+  store.dispatch({ type: 'setDayMeta', dayId: dayB, patch: { legacyFlag: true, subtitle: 'WHY B IS FLAGGED' } } as Action);
   const doc = store.getState().doc as core.Trip;
   assert.equal(doc.revision, revisionAfterA, 'INCONCLUSIVE: the two edits did not land on one revision');
+
+  const liveB = computeDerived(doc, TODAY).conflicts.find((c) => c.ruleId === 'legacy_flag');
+  assert.ok(liveB, 'INCONCLUSIVE: day B produced no blocker');
   assert.equal(
-    computeDerived(doc, TODAY).conflicts.some((c) => c.id === conflictId),
-    true,
-    'INCONCLUSIVE: the acknowledged conflict is not in the current document, so nothing could be wrongly retired',
+    staleCache.conflicts.some((c) => c.id === liveB.id),
+    false,
+    'INCONCLUSIVE: the stale cache already holds day B\'s conflict, so nothing could be wrongly retired',
   );
+
+  // The user acknowledges day B's blocker. That is a LIVE resolution over a stale cache.
+  store.dispatch({
+    type: 'resolveConflict',
+    resolution: { conflictId: liveB.id, state: 'acknowledged', at: TODAY, by: core.LOCAL_OWNER, note: '' },
+  } as Action);
+  assert.equal((store.getState().doc as core.Trip).resolutions.filter((r) => !r.retiredAt).length, 1);
 
   store.syncResolutions();
 
   const after = store.getState().doc as core.Trip;
-  const row = after.resolutions.find((r) => r.conflictId === conflictId);
+  const row = after.resolutions.find((r) => r.conflictId === liveB.id);
   assert.ok(row, 'the resolution row vanished entirely');
   assert.equal(row.retiredAt, null,
     'a stale derived cache retired a resolution whose conflict is present in the current document');

@@ -3,9 +3,11 @@
  * form holds a draft, never a second copy of the domain rules.
  */
 import { useState } from 'react';
+import type { AppState } from '@cairn/client';
 import type { Stop, StopCategory } from '@cairn/core';
-import { costFromDisplay } from '@cairn/core';
-import { CAT_LABEL } from '@cairn/tokens';
+import { attribution, costFromDisplay, displayStatus } from '@cairn/core';
+import { CAT_LABEL, STATUS_BADGE } from '@cairn/tokens';
+import { creditLabel } from '../format.ts';
 import { store } from '../store.ts';
 
 const CATEGORIES: StopCategory[] = ['sight', 'food', 'night', 'trip', 'transit', 'stay', 'suggest'];
@@ -17,6 +19,32 @@ type Props = {
   onDone: () => void;
   onError: (m: string) => void;
 };
+
+/**
+ * The badge and the credit, at the top of the form — §2.14 rule 7 (QA R2-8).
+ *
+ * This view rendered NEITHER, which is the worst place for the rule to be missing: it is
+ * where a user changes a record's fields, and editing a stop that came from somebody else's
+ * trip while the screen says nothing about that is precisely *"presenting a suggestion as
+ * the user's own plan"*. `displayStatus` governs the badge and acceptance changes it; the
+ * credit is separate and never goes away.
+ */
+function Provenance({ stop }: { stop: Stop }) {
+  const badge = STATUS_BADGE[displayStatus(stop.provenance)];
+  const credit = attribution(stop.provenance);
+  if (!badge.label && !credit) return null;
+  const state: AppState = store.getState();
+  return (
+    <p className="editor__provenance">
+      {badge.label && <span className="pill" style={{ background: badge.color }}>{badge.label}</span>}
+      {credit && (
+        <span className="stop__credit" data-credit={credit.friendUserId} title={`${credit.sourceTripId} · ${credit.sourceStopId}`}>
+          From {creditLabel(credit, state)}
+        </span>
+      )}
+    </p>
+  );
+}
 
 export function StopEditor({ dayId, order, stop, onDone, onError }: Props) {
   const at = stop?.place.kind === 'inline' ? stop.place.at : null;
@@ -70,6 +98,7 @@ export function StopEditor({ dayId, order, stop, onDone, onError }: Props) {
 
   return (
     <form className="card editor" onSubmit={submit}>
+      {stop && <Provenance stop={stop} />}
       <div className="row">
         <label className="grow">
           Name

@@ -13,11 +13,14 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  acceptCandidate, addPlace, addStop, attribution, copyStopInto, createTrip, displayStatus,
-  moveStop, needsBadge, rejectCandidate, removeStop, returnToPool, scheduleFromPool, sequentialIds,
+  acceptCandidate, addStop, attribution, copyStopInto, createTrip, displayStatus,
+  moveStop, rejectCandidate, removeStop, returnToPool, scheduleFromPool, sequentialIds,
   toJSON, fromJSON,
   updateStop, upsertBooking, validateTrip,
 } from '../src/index.ts';
+// Internals of public functions, off the surface in §2.10 revision 5. BUILD-NOTES KD-33.
+import { addPlace } from '../src/build/stops.ts';
+import { needsBadge } from '../src/derive/display.ts';
 import type { BuildCtx, Stop, Trip } from '../src/index.ts';
 import { europe2026 } from './fixture.ts';
 

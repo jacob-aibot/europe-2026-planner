@@ -12,6 +12,8 @@
  */
 const core = await import('../packages/core/src/index.ts');
 const { loadEurope2026 } = await import('../fixtures/loadEurope2026.mjs');
+// §2.10 revision 5 takes this symbol off the index; qa may import the module path directly.
+const prov = await import('../packages/core/src/model/provenance.ts');
 
 let fails = 0;
 const ok = (n, c, x = '') => {
@@ -176,7 +178,7 @@ line('3 — the exemptions §2.14 actually states must survive');
   const tUser = {
     ...base,
     days: base.days.map((d, i) =>
-      i === 0 ? { ...d, provenance: { ...core.userProvenance('2026-09-01'), actorUserId: null } } : d,
+      i === 0 ? { ...d, provenance: { ...prov.userProvenance('2026-09-01'), actorUserId: null } } : d,
     ),
   };
   ok('source:"user" / actorUserId:null stays OUTSIDE the rule', codes(tUser).length === 0, `${codes(tUser).length}`);

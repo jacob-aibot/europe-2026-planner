@@ -7,13 +7,15 @@
  *   node cli.ts cost                 per-day and whole-trip roll-ups
  *   node cli.ts validate             validateTrip issues
  *   node cli.ts import               the legacy import report
- *   node cli.ts export [file]        the trip as JSON on stdout, or to a file inside cairn/
+ *   node cli.ts export [file] [--force]
+ *                                    the trip as JSON on stdout, or to a NEW file inside
+ *                                    cairn/. Refuses to overwrite without --force.
  *
  * With no `--file`, it loads the Europe 2026 fixture by reading the live planner
  * READ-ONLY. `--file trip.json` reads a Cairn document instead.
  */
-import { readFileSync, writeFileSync } from 'node:fs';
-import { dirname, resolve, sep } from 'node:path';
+import { existsSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import { basename, dirname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as core from './packages/core/src/index.ts';
 import { loadEurope2026, FIXTURE_TODAY } from './fixtures/loadEurope2026.mjs';
@@ -153,11 +155,42 @@ const CAIRN_ROOT = resolve(dirname(fileURLToPath(import.meta.url)));
  *
  * `resolve` normalises `..`, a leading `/` and any symlink-free traversal; the trailing
  * separator on the prefix is what stops `/…/cairn-backup/x` passing as `/…/cairn/x`.
- * Pure.
+ *
+ * **`resolve` does not follow symlinks, and the guard used to stop there** (QA R2-5). A link
+ * planted inside `cairn/` — `ln -s <outside>/victim.txt cairn/qa/escape-link.json` — passed
+ * the prefix test lexically, and `writeFileSync` then wrote *through* it: the file outside
+ * `cairn/` was overwritten with the trip JSON and the CLI reported success. So the real path
+ * is resolved before the prefix test:
+ *
+ *   - `realpathSync` on the containing DIRECTORY, which catches both a symlinked parent and
+ *     a symlinked final component (the link's own directory is real, so the check has to be
+ *     on where the link POINTS, below);
+ *   - `realpathSync` on the target itself when it already exists, which is the symlinked-file
+ *     case;
+ *   - and both results must still sit under `cairn/`.
+ *
+ * A missing parent directory is a refusal too: there is nothing to resolve, and the CLI does
+ * not create directories. BUILD-NOTES KD-30. Pure apart from the `realpath` reads.
  */
 function safeWritePath(target: string): string | null {
   const abs = resolve(process.cwd(), target);
-  return abs.startsWith(CAIRN_ROOT + sep) ? abs : null;
+  const inside = (p: string) => p.startsWith(CAIRN_ROOT + sep);
+  if (!inside(abs)) return null;
+  let realParent: string;
+  try {
+    realParent = realpathSync(dirname(abs));
+  } catch {
+    return null;   // the directory does not exist, or cannot be resolved
+  }
+  if (!inside(join(realParent, basename(abs)))) return null;
+  if (existsSync(abs)) {
+    try {
+      if (!inside(realpathSync(abs))) return null;
+    } catch {
+      return null;
+    }
+  }
+  return abs;
 }
 
 function cmdExport() {
@@ -169,6 +202,16 @@ function cmdExport() {
       out(`refusing to write outside ${CAIRN_ROOT}: ${target}`);
       out('Cairn never writes to the live planner, docs/ or tickets/. Pick a path inside cairn/.');
       process.exitCode = 2;
+      return;
+    }
+    // QA R2-5, second half: `export <existing file>` overwrote it with no prompt and exit 0.
+    // A CLI has no dialog to raise, and a prompt would break every scripted use, so the
+    // answer is refuse-by-default with the way through named in the message. Silent is the
+    // one thing it may not be.
+    if (existsSync(abs) && !has('force')) {
+      out(`refusing to overwrite: ${abs} already exists`);
+      out('Pick another path, or pass --force if you meant to replace it.');
+      process.exitCode = 3;
       return;
     }
     writeFileSync(abs, text);

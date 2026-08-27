@@ -58,6 +58,39 @@ function requireNow(now: IsoDate): void {
 }
 
 /**
+ * Is this share's `expiresAt` in the past — **failing closed on anything that is present and
+ * is not a real calendar date**?
+ *
+ * `s.expiresAt < now` is a lexical string compare, and a lexical compare on an unvalidated
+ * string is not a calendar comparison: `"9999-99-99"`, `"tomorrow"` and `"never"` all sort
+ * after a real `YYYY-MM-DD`, so all three read as *not yet expired* and grant access. That is
+ * F-13's argument one field over, and §6.2.4 is why it matters — these predicates are the
+ * definition the Phase 2 RLS policies are generated from and tested against, so a definition
+ * that fails open generates a policy that fails open.
+ *
+ * A value that is **absent, `null` or `''`** legitimately means "no expiry" and keeps meaning
+ * that. Anything else that is not a calendar date is treated as expired, because a share
+ * whose expiry cannot be read is a share whose expiry cannot be trusted. Pure.
+ */
+function expired(value: IsoDate | null | undefined, now: IsoDate): boolean {
+  if (value === undefined || value === null || value === '') return false;
+  if (!isIsoDate(value)) return true;
+  return value < now;
+}
+
+/**
+ * Has this share been revoked — **failing closed on a malformed `revokedAt`**?
+ *
+ * Any present, well-formed date means revoked (revocation is not dated into the future by
+ * this model; a row that carries one is revoked). A present value that is not a calendar
+ * date is also revoked, for the same reason as `expired`: an unreadable revocation is not an
+ * absent one. Absent, `null` and `''` mean "not revoked". Pure.
+ */
+function revoked(value: IsoDate | null | undefined): boolean {
+  return !(value === undefined || value === null || value === '');
+}
+
+/**
  * The live (unexpired, unrevoked) role a principal holds on a trip, or null. Pure.
  * @throws {Error} if `now` is missing or not a `YYYY-MM-DD` calendar date.
  */
@@ -71,8 +104,8 @@ export function effectiveRole(p: Principal, rel: Relationship, now: IsoDate): Ro
   const rank: Record<Role, number> = { viewer: 1, commenter: 2, editor: 3 };
   for (const s of rel.shares ?? []) {
     if (!samePrincipal(s.principal, p)) continue;
-    if (s.revokedAt) continue;
-    if (s.expiresAt && s.expiresAt < now) continue;
+    if (revoked(s.revokedAt)) continue;
+    if (expired(s.expiresAt, now)) continue;
     if (!best || rank[s.role] > rank[best]) best = s.role;
   }
   return best;

@@ -8,8 +8,8 @@
 import type { AppState, DerivedCache } from '@cairn/client';
 import { poolSection, unfiledPool } from '@cairn/client';
 import type { Conflict, Stop, Trip } from '@cairn/core';
-import { LOCAL_OWNER, displayStatus } from '@cairn/core';
-import { costLabel } from '../format.ts';
+import { LOCAL_OWNER, attribution, displayStatus } from '@cairn/core';
+import { costLabel, creditLabel } from '../format.ts';
 import { systemClock } from '../ports/env.ts';
 import { CAT_LABEL, SEVERITY_COLOR, STATUS_BADGE } from '@cairn/tokens';
 import { store } from '../store.ts';
@@ -119,6 +119,11 @@ export function PoolPanel({ state, onError }: { state: AppState; onError: (m: st
 
   const item = (s: Stop) => {
     const badge = STATUS_BADGE[displayStatus(s.provenance)];
+    // §2.14 rule 7: any view that renders a record with a non-null `attribution` renders the
+    // credit. This panel rendered the badge *from a friend* and stopped there, so pushing a
+    // copied stop into the Optional list silently dropped whose stop it was (QA R2-8). Same
+    // pattern as `DayTimeline`'s `StopRow` — deliberately the same, not a second version.
+    const credit = attribution(s.provenance);
     return (
       <li key={s.id} className="pool__item">
         <div>
@@ -130,6 +135,11 @@ export function PoolPanel({ state, onError }: { state: AppState; onError: (m: st
             {CAT_LABEL[s.category] ?? s.category}
             {costLabel(s.cost) && ` · ${costLabel(s.cost)}`}
           </p>
+          {credit && (
+            <p className="stop__credit" data-credit={credit.friendUserId} title={`${credit.sourceTripId} · ${credit.sourceStopId}`}>
+              From {creditLabel(credit, state)}
+            </p>
+          )}
           {s.note && <p className="stop__note">{s.note}</p>}
         </div>
         <button

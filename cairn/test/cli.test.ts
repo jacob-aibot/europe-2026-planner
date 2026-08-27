@@ -13,7 +13,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 
@@ -82,4 +83,104 @@ test('the live planner is not writable through any cli command', () => {
   const before = readFileSync(PLANNER);
   for (const cmd of ['trip', 'conflicts', 'validate', 'import']) cli(cmd);
   assert.deepEqual(readFileSync(PLANNER), before);
+});
+
+// ---------------------------------------------------------------------------
+// QA R2-5 — the guard was LEXICAL, and a symlink is not lexical.
+// ---------------------------------------------------------------------------
+
+test('cli export refuses a path that escapes cairn/ THROUGH A SYMLINK', () => {
+  // `resolve()` normalises `..` and a leading `/`. It does not follow symlinks, so a link
+  // planted inside `cairn/` passed the prefix test and `writeFileSync` then wrote through
+  // it — the reviewer reproduced exactly this and the file outside `cairn/` was overwritten
+  // with the trip JSON. `CLAUDE.md` calls the read-only boundary "the one rule that must
+  // never drift"; a lexical guard on a symlinked path is drift waiting to happen.
+  const outside = mkdtempSync(join(tmpdir(), 'cairn-escape-'));
+  const victim = join(outside, 'victim.txt');
+  writeFileSync(victim, 'DO NOT OVERWRITE ME');
+  const link = join(CAIRN, 'qa', 'escape-link.json');
+  rmSync(link, { force: true });
+  symlinkSync(victim, link);
+  try {
+    const r = cli('export', 'qa/escape-link.json');
+    assert.equal(readFileSync(victim, 'utf8'), 'DO NOT OVERWRITE ME',
+      'THE FILE OUTSIDE cairn/ WAS OVERWRITTEN through a symlink');
+    assert.notEqual(r.code, 0, `exit code was ${r.code}; the write was not refused`);
+    // Specifically the BOUNDARY refusal, not the no-clobber one: the no-clobber guard added
+    // in the same pass would also stop this write, and a test that cannot tell which guard
+    // fired would keep passing with the symlink hole open.
+    assert.match(r.out + r.err, /refusing to write outside/i,
+      'refused, but for the wrong reason — the boundary guard is not what stopped it');
+  } finally {
+    rmSync(link, { force: true });
+    rmSync(outside, { recursive: true, force: true });
+  }
+});
+
+test('cli export refuses a path whose PARENT DIRECTORY is a symlink out of cairn/', () => {
+  const outside = mkdtempSync(join(tmpdir(), 'cairn-escape-dir-'));
+  const link = join(CAIRN, 'qa', 'escape-dir');
+  rmSync(link, { force: true });
+  symlinkSync(outside, link);
+  try {
+    const r = cli('export', 'qa/escape-dir/trip.json');
+    assert.equal(existsSync(join(outside, 'trip.json')), false,
+      'the CLI wrote into a directory outside cairn/ reached through a symlinked parent');
+    assert.notEqual(r.code, 0, `exit code was ${r.code}`);
+  } finally {
+    rmSync(link, { force: true });
+    rmSync(outside, { recursive: true, force: true });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// QA R2-5, second half — `export <existing file>` overwrote it silently, exit 0.
+// ---------------------------------------------------------------------------
+
+test('cli export refuses to clobber an existing file, and says so', () => {
+  const dir = mkdtempSync(join(CAIRN, 'export-test-'));
+  try {
+    const target = join(dir, 'trip.cairn.json');
+    writeFileSync(target, 'SOMETHING THE USER ALREADY HAD');
+    const r = cli('export', target);
+    assert.equal(readFileSync(target, 'utf8'), 'SOMETHING THE USER ALREADY HAD',
+      'an existing file was overwritten with no prompt');
+    assert.notEqual(r.code, 0, `exit code was ${r.code}; a silent clobber must not report success`);
+    assert.match(r.out + r.err, /exists/i, 'the refusal does not say why');
+    assert.match(r.out + r.err, /--force/, 'the refusal does not name the way through');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('cli export --force overwrites deliberately', () => {
+  const dir = mkdtempSync(join(CAIRN, 'export-test-'));
+  try {
+    const target = join(dir, 'trip.cairn.json');
+    writeFileSync(target, 'STALE');
+    const r = cli('export', target, '--force');
+    assert.equal(r.code, 0, r.err);
+    assert.match(readFileSync(target, 'utf8').slice(0, 40), /^\{\s*"schemaVersion": 1/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('--force still cannot write outside cairn/, through a symlink or otherwise', () => {
+  const outside = mkdtempSync(join(tmpdir(), 'cairn-force-'));
+  const victim = join(outside, 'victim.txt');
+  writeFileSync(victim, 'SAFE');
+  const link = join(CAIRN, 'qa', 'escape-link.json');
+  rmSync(link, { force: true });
+  symlinkSync(victim, link);
+  try {
+    for (const target of ['qa/escape-link.json', '../europe-2026-itinerary.html']) {
+      const r = cli('export', target, '--force');
+      assert.notEqual(r.code, 0, `--force wrote to ${target}`);
+    }
+    assert.equal(readFileSync(victim, 'utf8'), 'SAFE');
+  } finally {
+    rmSync(link, { force: true });
+    rmSync(outside, { recursive: true, force: true });
+  }
 });

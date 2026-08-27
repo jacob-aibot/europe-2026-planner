@@ -193,3 +193,102 @@ test('R3-3: the deleted-trip merge branch chains too — one write at a time, an
   assert.equal(store.getState().persistence.status, 'idle', 'the write-back landed but the store still reports a conflict');
   assert.equal(store.isDirty(), false);
 });
+
+// ---------------------------------------------------------------------------
+// QA R7-1 — "Merge and save" pressed twice before the first press settles.
+// ---------------------------------------------------------------------------
+
+test('R7-1: two clicks on "Merge and save" do not leave a conflict over a correctly merged document', async () => {
+  const { g, store, id } = await conflictedStoreWithParkedAutosave();
+
+  const release = g.park();
+  const a = store.mergeWithStored().catch(() => undefined);
+  const b = store.mergeWithStored().catch(() => undefined);   // the second click
+  await tick();
+  release();
+  await Promise.allSettled([a, b]);
+  await tick();
+
+  const stored = core.fromJSON(g.inner.docs.get(id) as string);
+  const merged =
+    stored.days[0].title === 'MINE DAY 1' && stored.days[1].title === 'OTHER TAB DAY 2';
+  assert.equal(merged, true, `the merge did not land: ${stored.days.map((d) => d.title).join(' | ')}`);
+
+  // The indicator is the assertion, per this repo's standing rule: a store that has just
+  // written both sides' work correctly must not read "Not saved — edited elsewhere".
+  const { status } = store.getState().persistence;
+  const indicator =
+    status === 'conflict' ? 'Not saved — edited elsewhere'
+      : status === 'error' ? 'Not saved — retry'
+        : status === 'saving' ? 'Saving…'
+          : store.isDirty() ? 'Unsaved changes' : 'Saved';
+  assert.equal(
+    indicator,
+    'Saved',
+    `the second click\'s write was refused against the first click\'s own new version and the ` +
+      `banner lies about a fully-saved document (status=${status}, dirty=${store.isDirty()})`,
+  );
+  assert.equal(g.peak(), 1, 'never two writes in flight from one store');
+});
+
+test('R7-1: the second click does not issue a second write at all', async () => {
+  const { g, store } = await conflictedStoreWithParkedAutosave();
+  let writes = 0;
+  const real = g.port.saveIfVersion.bind(g.port);
+  g.port.saveIfVersion = async (a, b, c, d) => { writes++; return real(a, b, c, d); };
+
+  const p1 = store.mergeWithStored().catch(() => undefined);
+  const p2 = store.mergeWithStored().catch(() => undefined);
+  await Promise.allSettled([p1, p2]);
+  await tick();
+  assert.equal(writes, 1, 'the in-flight merge was entered twice; one press, one merge');
+});
+
+// ---------------------------------------------------------------------------
+// QA R7-2 — a throwing subscriber turns the DEBOUNCED autosave's `void save(...)`
+// into an unhandled promise rejection.
+// ---------------------------------------------------------------------------
+
+test('R7-2: a throwing subscriber does not produce an unhandled rejection from the debounce', async () => {
+  const g = gatedStorage();
+  const sched = manualScheduler();
+  const store = createStore({ ports: portsFor(g.port, sched) });
+  await store.createTrip(INIT('Throwing subscriber'));
+
+  const seen: string[] = [];
+  const onUnhandled = (e: unknown) => seen.push(String((e as Error)?.message));
+  process.on('unhandledRejection', onUnhandled);
+
+  let armed = false;
+  const unsub = store.subscribe(() => {
+    if (armed) { armed = false; throw new Error('BOOM in a subscriber'); }
+  });
+  store.dispatch({ type: 'setDayMeta', dayId: '2026-09-01', patch: { title: 'X' } });
+  armed = true;
+  sched.runAll();                     // the debounced `void save(...)` rejects
+  await tick();
+  await new Promise((r) => setTimeout(r, 30));
+  unsub();
+  process.off('unhandledRejection', onUnhandled);
+
+  assert.deepEqual(seen, [], 'the debounced autosave path emitted an unhandled rejection');
+});
+
+test('R7-2 ceiling: an EXPLICIT flush still reports its own failure to its caller', async () => {
+  // The fix must not become "swallow every rejection": `flush()` returns a promise the
+  // caller holds, and a link that fails still has to reject for that caller.
+  const g = gatedStorage();
+  const store = createStore({ ports: portsFor(g.port, immediateScheduler()), autosave: false });
+  await store.createTrip(INIT('Explicit flush'));
+  store.dispatch({ type: 'setDayMeta', dayId: '2026-09-01', patch: { title: 'Y' } });
+  await tick();
+
+  let armed = false;
+  const unsub = store.subscribe((s) => {
+    if (armed && s.persistence.status === 'saving') { armed = false; throw new Error('BOOM from a subscriber'); }
+  });
+  armed = true;
+  const outcome = await store.flush().then(() => 'fulfilled', (e: Error) => `rejected:${e.message}`);
+  unsub();
+  assert.equal(outcome, 'rejected:BOOM from a subscriber', 'the failing link stopped reporting for itself');
+});

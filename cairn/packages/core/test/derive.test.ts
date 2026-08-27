@@ -7,9 +7,12 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { europe2026, golden } from './fixture.ts';
 import {
-  computeLegs, focusCluster, fitSpanKm, rawSpanKm, mapBounds, MIN_SPAN_KM, stopPoints,
-  rollUpCost, formatRange, haversine, dayMovingMinutes,
+  computeLegs, focusCluster, fitSpanKm, mapBounds, MIN_SPAN_KM, stopPoints,
+  rollUpCost, formatRange, dayMovingMinutes,
 } from '../src/index.ts';
+// Internals of public functions, off the surface in §2.10 revision 5. BUILD-NOTES KD-33.
+import { rawSpanKm } from '../src/derive/cluster.ts';
+import { haversine } from '../src/derive/geo.ts';
 
 type LegacyLeg = { mode: string; mins: number; km: number | null } | null;
 

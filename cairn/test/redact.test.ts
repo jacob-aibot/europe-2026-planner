@@ -140,30 +140,151 @@ test('importLegacyDays output is UNCHANGED by redaction — parity is untouched'
   assert.ok(before.includes('YZGDTS'), 'the CLI and the goldens must still see the real trip');
 });
 
-test('the built bundle carries none of the five known strings', () => {
-  const dist = resolve(CAIRN, 'apps/web/dist');
-  if (!existsSync(dist)) {
-    // The criterion is conditional on the artifact existing; say so rather than passing quietly.
-    assert.ok(true, 'apps/web/dist is absent — run `npm run web:build` to exercise this');
-    return;
+// ---------------------------------------------------------------------------
+// §6.6 enforcement clause 2, as a RULE rather than a scrub (QA R2-4).
+//
+// The old check grepped `apps/web/dist` for six hardcoded literals and never applied
+// `redactionHits` at all, so a seventh credential simply was not looked for — and a
+// seventh had crept in: a real FlixBus booking reference written as the example in a
+// source comment, shipped through the sourcemap's `sourcesContent`.
+//
+// The rule instead DERIVES the credential set: run the redactor over the *unredacted*
+// trip, keep every token it removes, and assert none of them appears in any emitted
+// asset. That set grows with the data. Applying `REDACTION_PATTERNS` to a minified
+// bundle directly is not implementable — minified JS is wall-to-wall short uppercase
+// identifiers and long digit runs — which is why the patterns are applied to the DATA
+// and the resulting tokens are what the bundle is grepped for. BUILD-NOTES KD-27.
+// ---------------------------------------------------------------------------
+
+/**
+ * Every credential-shaped token the redactor removes from the real trip. Pure.
+ *
+ * Tokens shorter than six characters are dropped: below that they are not distinguishable
+ * from ordinary text and a `.js.map` will contain every one of them by chance.
+ */
+function credentialTokens(trip: unknown): Set<string> {
+  const out = new Set<string>();
+  for (const s of redact.allStrings(trip)) {
+    for (const p of redact.REDACTION_PATTERNS) {
+      for (const m of s.matchAll(new RegExp(p.re.source, p.re.flags))) {
+        const tok = m[0].trim();
+        if (tok.length >= 6) out.add(tok);
+      }
+    }
   }
+  return out;
+}
+
+/**
+ * Tokens the derivation picks up that are demonstrably not credentials, each with the
+ * claim a reviewer can check. Kept to the two the over-broad all-caps pattern produces —
+ * §6.6 accepts that cost explicitly (KD-17), and the alternative is a second pattern class.
+ *
+ * Both entries are asserted live below: an entry the derivation no longer produces is a
+ * dead line and fails, the same discipline the pattern fixtures are held to.
+ */
+const NOT_CREDENTIALS: Record<string, string> = {
+  OPTIONAL: 'an English word in Jacob\'s own day note ("still in the Budapest OPTIONAL list"), ' +
+    'caught by the deliberately digit-free all-caps pattern (KD-17). In the bundle it is ' +
+    '`LegacyConstants.OPTIONAL`, a property name of the importer\'s input type.',
+  BOOKINGS: 'part of the repo path `docs/BOOKINGS.md`, carried on the dropped `sourceDoc` ' +
+    'provenance field. In the bundle it is a doc comment naming that file.',
+};
+
+/** Every emitted build asset, or `null` when there is no build to check. */
+function distAssets(): Array<[string, string]> | null {
+  const dist = resolve(CAIRN, 'apps/web/dist');
+  if (!existsSync(dist)) return null;
   const files: string[] = [];
   const walk = (d: string) => {
     for (const n of readdirSync(d, { withFileTypes: true })) {
       const full = join(d, n.name);
       if (n.isDirectory()) walk(full);
+      // `.map` is included on purpose: a sourcemap embeds `sourcesContent`, so a booking
+      // reference sitting in a SOURCE COMMENT ships in the artifact just as surely as one
+      // in the data. That is exactly how the seventh leak got in.
       else if (/\.(js|css|html|json|map)$/.test(n.name)) files.push(full);
     }
   };
   walk(dist);
-  assert.ok(files.length > 0, 'no assets found in apps/web/dist');
-  // `.map` is included on purpose: a sourcemap embeds `sourcesContent`, so a booking
-  // reference sitting in a SOURCE COMMENT ships in the artifact just as surely as one in
-  // the data. Three such comments existed and were reworded; this is what found them.
+  return files.map((f) => [f, readFileSync(f, 'utf8')] as [string, string]);
+}
+
+/** Every derived credential token that appears verbatim in `text`. Pure. */
+function leaksIn(text: string, tokens: Iterable<string>): string[] {
+  const out: string[] = [];
+  for (const tok of tokens) {
+    if (tok in NOT_CREDENTIALS) continue;
+    if (text.includes(tok)) out.push(tok);
+  }
+  return out;
+}
+
+test('the credential set is derived from the data, and every token in it really is a redaction hit', () => {
+  const tokens = credentialTokens(sampleSource());
+  assert.ok(
+    tokens.size > redact.KNOWN_LEAKS.length,
+    `the derived set is ${tokens.size} tokens against ${redact.KNOWN_LEAKS.length} hardcoded ` +
+      'literals — if it is not bigger, the rule has degenerated back into the scrub it replaced',
+  );
+  // §6.6 clause 2 requires `redactionHits` to be the thing that decides, and this is where
+  // it decides: a token only enters the set because a pattern claims it, and every token is
+  // re-checked against the pattern array.
+  const notHits = [...tokens].filter((t) => redact.redactionHits(t).length === 0);
+  assert.deepEqual(notHits, [], 'a token in the credential set is not matched by any pattern');
+});
+
+test('the NOT_CREDENTIALS exceptions are live, justified and are not known leaks', () => {
+  const tokens = credentialTokens(sampleSource());
+  const dead = Object.keys(NOT_CREDENTIALS).filter((t) => !tokens.has(t));
+  assert.deepEqual(dead, [], 'an exception the derivation no longer produces — delete the line');
+  for (const [tok, why] of Object.entries(NOT_CREDENTIALS)) {
+    assert.ok(why.length > 40, `${tok} has no justification`);
+    assert.equal(
+      redact.KNOWN_LEAKS.some((l) => l.includes(tok)),
+      false,
+      `${tok} is on the known-leak list; it cannot also be excused`,
+    );
+  }
+});
+
+test('the derived rule catches a credential the six-literal grep would have missed', () => {
+  // Red-green, in one test. Pick a token the redactor removes from the real trip that is
+  // NOT one of the hardcoded literals, plant it in a synthetic asset, and check both rules.
+  const tokens = [...credentialTokens(sampleSource())].filter(
+    (t) => !(t in NOT_CREDENTIALS) && !redact.KNOWN_LEAKS.some((l) => l.includes(t) || t.includes(l)),
+  );
+  assert.ok(tokens.length > 0, 'no token outside the hardcoded list — the rule proves nothing');
+  const planted = tokens[0];
+  const asset = `/*! built asset */\nconst n="ref ${planted}";export{n};\n`;
+
+  assert.deepEqual(
+    redact.KNOWN_LEAKS.filter((l) => asset.includes(l)),
+    [],
+    'the OLD six-literal grep was supposed to miss this; pick a different planted token',
+  );
+  assert.deepEqual(
+    leaksIn(asset, credentialTokens(sampleSource())),
+    [planted],
+    'the derived rule failed to catch a planted credential',
+  );
+});
+
+test('the built bundle carries no token the redactor removes from the real trip', () => {
+  const assets = distAssets();
+  if (assets === null) {
+    // The criterion is conditional on the artifact existing; say so rather than passing quietly.
+    assert.ok(true, 'apps/web/dist is absent — run `npm run web:build` to exercise this');
+    return;
+  }
+  assert.ok(assets.length > 0, 'no assets found in apps/web/dist');
+  const tokens = credentialTokens(sampleSource());
 
   const offenders: string[] = [];
-  for (const f of files) {
-    const text = readFileSync(f, 'utf8');
+  for (const [f, text] of assets) {
+    for (const leak of leaksIn(text, tokens)) offenders.push(`${f.replace(`${CAIRN}/`, '')}: ${leak}`);
+    // The literal list stays as a floor. It is not the rule any more, but a regression on
+    // one of the six that the derivation somehow stopped producing must still be loud.
     for (const leak of redact.KNOWN_LEAKS) if (text.includes(leak)) offenders.push(`${f}: ${leak}`);
   }
   assert.deepEqual(offenders, [], 'the build artifact carries a credential');

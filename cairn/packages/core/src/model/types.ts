@@ -107,10 +107,15 @@ export type MoveOverride = { mode: TravelMode; mins: number; label?: string };
 /**
  * What `Stop.arrival` describes, and therefore what `placement.time` means (§2.12).
  *
- * The legacy `move` field carried two different meanings and always has: on Aug 8 "Condor
- * DE4345 → Vienna" sits at 14:30 with `move:{flight, 80}` — 14:30 is when the aircraft
- * LEAVES Frankfurt and 80 minutes is the flight, not the walk to the gate. Every rule that
- * reasoned about time inherited the ambiguity.
+ * The legacy `move` field carried two different meanings and always has: on Aug 8 the
+ * Frankfurt→Vienna flight stop sits at 14:30 with `move:{flight, 80}` — 14:30 is when the
+ * aircraft LEAVES Frankfurt and 80 minutes is the flight, not the walk to the gate. Every
+ * rule that reasoned about time inherited the ambiguity.
+ *
+ * The real flight designator used to be written out here as the example, and a sourcemap
+ * embeds `sourcesContent`, so it shipped in `apps/web/dist`. Illustrative values in this
+ * repo's comments are invented (`XX0000`), never transcribed from the live planner —
+ * BUILD-NOTES KD-27.
  *
  * Purely additive: `computeLegs` MUST NOT read it, which is what keeps `legacy-legs.json`
  * parity on all 16 days. Only conflict rules and the view layer read it.

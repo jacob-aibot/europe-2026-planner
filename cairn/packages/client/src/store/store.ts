@@ -53,6 +53,23 @@ export const CONFLICT_MESSAGE =
   'editing. Nothing has been overwritten and your changes are still here. You can merge ' +
   'with the stored copy, or export this copy and sort it out by hand.';
 
+/**
+ * What an exhausted `FLUSH_MAX_ATTEMPTS` says, and the only place it is worded (§4.2 rule
+ * 6a″, revision 5, QA R6-1).
+ *
+ * This was the one path that aborted a transition without telling anyone: the loop returned
+ * `false`, the caller returned `state` unchanged, `status` was still `'idle'`, and no banner
+ * reads `'idle'` — so the click did nothing and said nothing. Rule 6b's sentence is *"aborts
+ * the transition **and tells the user**"*, and this exit owes the same debt as the other two.
+ *
+ * It is deliberately **not** `'conflict'`: nothing refused the write and there is no other
+ * writer to merge with, so offering a merge would be a lie about what went wrong. `'error'`
+ * routes it through the banner that already exists and already offers the two recoveries it
+ * needs — retry, and export this copy. BUILD-NOTES KD-28.
+ */
+export const FLUSH_EXHAUSTED_MESSAGE =
+  "Couldn't finish saving before switching. Your edit is still here.";
+
 const defaultScheduler: SchedulerPort = {
   schedule(fn, ms) {
     const t = setTimeout(fn, ms);
@@ -83,6 +100,18 @@ export function createStore(opts: StoreOptions) {
   let cache: DerivedCache | null = null;
   let cancelPending: (() => void) | null = null;
   let saving: Promise<void> = Promise.resolve();
+  /**
+   * The merge currently in flight, or `null` — QA R7-1.
+   *
+   * `mergeWithStored` is `load()` … `mergeTrips` … `chainOntoSaving(write)`, three awaits
+   * with interleaving points between them. Two presses of "Merge and save" before the first
+   * settles both read the SAME `stored.version`, so the first write moves storage on and the
+   * second is refused against a version its own predecessor spent — leaving `status:
+   * 'conflict'` and *"Not saved — edited elsewhere"* over a document that was merged and
+   * written correctly (BUILD-NOTES KD-32). Chaining does not close it: serialising two merges still runs the
+   * second one's stale expectation. The second press must not be a second merge at all.
+   */
+  let merging: Promise<AppState> | null = null;
   // `baseDoc` used to live here as a module-level `let`. It is now
   // `persistence.savedDoc` (§2.2b F2): exactly one pointer to "the last document this store
   // and storage agreed about", answering both the merge's common-ancestor question and
@@ -121,7 +150,15 @@ export function createStore(opts: StoreOptions) {
     const forTripId = state.doc?.id ?? null;
     cancelPending = scheduler.schedule(() => {
       cancelPending = null;
-      void save(forTripId);
+      // QA R7-2. A timer has no caller to reject to, so an unhandled rejection here is a
+      // process-level crash in a browser and a hard failure under `node --test`. It is not
+      // silence: `attemptSave` already turns a *storage* failure into `status:'error'` with
+      // `lastError`, so the only rejections that reach this line come from a subscriber
+      // throwing inside `set()` — somebody else's error, in somebody else's callback, which
+      // this store can neither fix nor honestly report as a save failure. An explicit
+      // `flush()` still rejects for its own caller; only the fire-and-forget path absorbs.
+      // Same shape as `chainOntoSaving`'s `.catch(() => {})`, one level out.
+      void save(forTripId).catch(() => {});
     }, debounceMs);
   }
 
@@ -311,12 +348,40 @@ export function createStore(opts: StoreOptions) {
       // The bound is spent. Nothing has been discarded — the document is still active and
       // still dirty — but a store that cannot land a stable write must not be allowed to
       // proceed as though it had (rule 6b's spirit: a flush that did not succeed aborts the
-      // transition). The caller returns `state` unchanged and the user is still on the trip
-      // holding the edit, with `isDirty()` telling the indicator so.
-      if (attempt >= FLUSH_MAX_ATTEMPTS) return false;
+      // transition).
+      //
+      // §4.2 rule 6a″, revision 5 (QA R6-1, R6-2). This exit owes the user two things the
+      // other two exits already pay:
+      //
+      //   1. It is a refusal **for display as well as for control flow.** `'error'` with a
+      //      `lastError` that names what happened, so the banner that already exists renders
+      //      and offers retry and export. NOT `'conflict'`: nothing refused the write.
+      //   2. It **re-arms the debounce**, because the loop cancelled the timer the user's own
+      //      edit had scheduled — including on this pass — and cancelling scheduled work
+      //      without putting it back is a bug on its own terms. What is re-armed is the
+      //      ORDINARY debounced `attemptSave`, never another `flushForTransition`, so it
+      //      cannot recurse into this loop; if that write also leaves the document dirty it
+      //      re-arms only through the normal `scheduleSave` path, which is what typing does.
+      //
+      // The transition itself is never retried automatically: the user clicks again. An app
+      // that navigates by itself some seconds after a click the user has given up on is worse
+      // than one that does nothing.
+      if (attempt >= FLUSH_MAX_ATTEMPTS) {
+        set({
+          ...state,
+          persistence: { ...state.persistence, status: 'error', lastError: FLUSH_EXHAUSTED_MESSAGE },
+        });
+        if (dirty()) scheduleSave();
+        return false;
+      }
       await save();
       await saving;
       const { status } = state.persistence;
+      // The other two exits do NOT re-arm, and this is a three-way rule, not one behaviour.
+      // On `'conflict'` a re-armed autosave would spin against a fence that will refuse it
+      // every 400 ms; the user must merge or export. On `'error'` the port is failing and the
+      // banner's Retry is the deliberate act. Only the bound-exhausted exit above re-arms,
+      // because it is the only one where nothing has actually refused anything.
       if (status === 'conflict' || status === 'error') return false;
     }
   }
@@ -345,15 +410,121 @@ export function createStore(opts: StoreOptions) {
     return next;
   }
 
+  /**
+   * §2.7's `syncResolutions`, run against a conflict set that was **just** computed (QA R2-7).
+   *
+   * The retirement is dated with `derived.today` — the cache's own record of the day its
+   * conflict set was computed for — and not with a fresh clock read. §0.6: *a fact about a
+   * resource is only valid at the moment, and in the place, the resource itself stated it.*
+   * Retiring a row is bookkeeping, not a user edit: it does not go on the undo stack, exactly
+   * as the explicit `syncResolutions()` method has always done it. It does make the document
+   * dirty, which is correct — the retirement has to reach storage.
+   *
+   * Returns the cache for the document that now exists. This converges in one pass: retiring
+   * a resolution cannot make a conflict appear or disappear, only detach a `resolution` from
+   * one, so a second sync over the new set finds nothing left to retire.
+   */
+  function retireResolutions(derived: DerivedCache | null): DerivedCache | null {
+    const doc = state.doc;
+    if (!doc || !derived) return derived;
+    const next = core.syncResolutions(doc, derived.conflicts, derived.today);
+    if (next === doc) return derived;
+    set({ ...state, doc: next });
+    scheduleSave();
+    return derivedFor(derived, next, ports.clock.today());
+  }
+
+  /**
+   * The merge itself. Split out of `mergeWithStored` so the in-flight guard has one thing to
+   * guard and the body keeps its own shape — see `merging` above (QA R7-1).
+   */
+  async function doMerge(): Promise<AppState> {
+    const doc = state.doc;
+    if (!doc) throw new Error('mergeWithStored: no active trip');
+    const stored = await ports.storage.load(doc.id);
+    if (stored === null) {
+      // The trip was deleted while this tab held a conflict. Writing it back is what the
+      // user asked for by pressing the button, and `null` is the honest expectation:
+      // "nothing is stored under this id" — if that stops being true before we commit,
+      // the port refuses and the conflict stands rather than clobbering the newcomer.
+      set({ ...state, persistence: { ...state.persistence, status: 'saving' } });
+      // Queued behind whatever is already in flight — never in parallel with it (R3-3).
+      await chainOntoSaving(async () => {
+        try {
+          await writeAndSettle(doc, doc, null, null);
+        } catch (err) {
+          set({
+            ...state,
+            persistence: { ...state.persistence, status: 'error', lastError: (err as Error).message },
+          });
+        }
+      });
+      return state;
+    }
+    const ancestor = state.persistence.savedDoc;
+    if (!ancestor || ancestor.id !== doc.id) {
+      throw new Error(
+        'This tab never agreed with storage about this trip, so there is no common version ' +
+          'to merge against. Export this copy, then open the trip again from the library.',
+      );
+    }
+    const remote = core.fromJSON(stored.doc);
+    const merged = core.mergeTrips(ancestor, doc, remote);
+    set({ ...state, persistence: { ...state.persistence, status: 'saving' } });
+    // Queued behind whatever is already in flight — never in parallel with it (R3-3). An
+    // autosave still unsettled when the button was pressed used to run alongside this
+    // write; the merge landed, the orphaned autosave was then refused against its stale
+    // expectation, and the banner read "Not saved — edited elsewhere" over a document that
+    // was fully and correctly saved.
+    await chainOntoSaving(async () => {
+      try {
+        // The merge is only valid against the exact `remote` we just read, so the write
+        // carries **that same version** as its expectation — never one recomputed from
+        // the document (§2.2a, the merge case). A third writer landing in between moves
+        // the version, the port refuses, the conflict stands unmerged and the edit stays
+        // in memory.
+        await writeAndSettle(
+          doc,
+          merged.trip,
+          { message: core.describeMerge(merged.report), report: merged.report },
+          stored.version,
+        );
+      } catch (err) {
+        set({
+          ...state,
+          persistence: { ...state.persistence, status: 'error', lastError: (err as Error).message },
+        });
+      }
+    });
+    return state;
+  }
+
   return {
     /** The current state. Treat as immutable. */
     getState(): AppState {
       return state;
     },
 
-    /** Derived data for the active trip, recomputed when the document or the date changes. */
+    /**
+     * Derived data for the active trip, recomputed when the document or the date changes.
+     *
+     * **This is also where `syncResolutions` is called** (§2.7, QA R2-7). §2.7's own words:
+     * *"a build function the client calls whenever it recomputes the derived conflict set"*.
+     * The panel shipped **Acknowledge** and **Not a problem** and nothing ever called it, so
+     * a dismissed conflict came back **still dismissed** the moment the data reverted to its
+     * old value — content-addressing restores the same id, and the old resolution with it.
+     * A dismissed blocker re-arming with no user action is exactly what §2.7 exists to
+     * prevent, so the call belongs at the one place the conflict set is known to be current.
+     *
+     * §2.2b F2 is what makes calling it here safe: `syncResolutions` does not merely render,
+     * it **writes the document**, so a stale conflict set retires resolutions against
+     * conflicts the current document still has. `derivedFor` is keyed on `(document
+     * identity, today)` — not on a revision — so the set this reads was computed from
+     * `state.doc` itself, one statement earlier. BUILD-NOTES KD-25.
+     */
     getDerived(): DerivedCache | null {
       cache = derivedFor(cache, state.doc, ports.clock.today());
+      cache = retireResolutions(cache);
       return cache;
     },
 
@@ -395,66 +566,19 @@ export function createStore(opts: StoreOptions) {
      *         in which case the only safe options are "open it again" or "export this copy",
      *         and the store will not choose between them.
      */
-    async mergeWithStored(): Promise<AppState> {
-      const doc = state.doc;
-      if (!doc) throw new Error('mergeWithStored: no active trip');
-      const stored = await ports.storage.load(doc.id);
-      if (stored === null) {
-        // The trip was deleted while this tab held a conflict. Writing it back is what the
-        // user asked for by pressing the button, and `null` is the honest expectation:
-        // "nothing is stored under this id" — if that stops being true before we commit,
-        // the port refuses and the conflict stands rather than clobbering the newcomer.
-        set({ ...state, persistence: { ...state.persistence, status: 'saving' } });
-        // Queued behind whatever is already in flight — never in parallel with it (R3-3).
-        await chainOntoSaving(async () => {
-          try {
-            await writeAndSettle(doc, doc, null, null);
-          } catch (err) {
-            set({
-              ...state,
-              persistence: { ...state.persistence, status: 'error', lastError: (err as Error).message },
-            });
-          }
-        });
-        return state;
-      }
-      const ancestor = state.persistence.savedDoc;
-      if (!ancestor || ancestor.id !== doc.id) {
-        throw new Error(
-          'This tab never agreed with storage about this trip, so there is no common version ' +
-            'to merge against. Export this copy, then open the trip again from the library.',
-        );
-      }
-      const remote = core.fromJSON(stored.doc);
-      const merged = core.mergeTrips(ancestor, doc, remote);
-      set({ ...state, persistence: { ...state.persistence, status: 'saving' } });
-      // Queued behind whatever is already in flight — never in parallel with it (R3-3). An
-      // autosave still unsettled when the button was pressed used to run alongside this
-      // write; the merge landed, the orphaned autosave was then refused against its stale
-      // expectation, and the banner read "Not saved — edited elsewhere" over a document that
-      // was fully and correctly saved.
-      await chainOntoSaving(async () => {
-        try {
-          // The merge is only valid against the exact `remote` we just read, so the write
-          // carries **that same version** as its expectation — never one recomputed from
-          // the document (§2.2a, the merge case). A third writer landing in between moves
-          // the version, the port refuses, the conflict stands unmerged and the edit stays
-          // in memory.
-          await writeAndSettle(
-            doc,
-            merged.trip,
-            { message: core.describeMerge(merged.report), report: merged.report },
-            stored.version,
-          );
-        } catch (err) {
-          set({
-            ...state,
-            persistence: { ...state.persistence, status: 'error', lastError: (err as Error).message },
-          });
-        }
-      });
-      return state;
+    mergeWithStored(): Promise<AppState> {
+      // QA R7-1 — an in-flight guard, not a queue. A second press while the first is still
+      // running joins the first press's promise; it does not start a second merge against an
+      // expectation the first one is about to spend. `App.tsx` has no disabled state on the
+      // button and the button stays in the DOM until React re-renders, so a real double click
+      // reaches here. `finally` clears the slot whichever way the merge ends, so a failed
+      // merge never wedges the button.
+      if (merging) return merging;
+      const run = doMerge().finally(() => { merging = null; });
+      merging = run;
+      return run;
     },
+
 
     /**
      * Dismisses the "this trip was edited elsewhere" notice left by `mergeWithStored`.
@@ -583,14 +707,8 @@ export function createStore(opts: StoreOptions) {
      * exactly what §2.7 exists to prevent.
      */
     syncResolutions(): AppState {
-      const doc = state.doc;
-      if (!doc) return state;
-      const derived = derivedFor(cache, doc, ports.clock.today());
-      cache = derived;
-      const next = core.syncResolutions(doc, derived?.conflicts ?? [], ports.clock.today());
-      if (next === doc) return state;
-      set({ ...state, doc: next });
-      scheduleSave();
+      cache = derivedFor(cache, state.doc, ports.clock.today());
+      cache = retireResolutions(cache);
       return state;
     },
 
@@ -615,12 +733,31 @@ export function createStore(opts: StoreOptions) {
     async deleteTrip(id: string): Promise<AppState> {
       if (state.activeTripId === id) cancelTimer();
       else if (!(await flushForTransition())) return state;
-      await ports.storage.delete(id);
-      const library = state.library.filter((r) => r.id !== id);
-      if (state.activeTripId === id) {
-        cache = null;
-        set({ ...initialState(), library });
-      } else set({ ...state, library });
+      // §4.2 rule 6c, revision 5 (QA R7-3). **The exception is about not WRITING. It is not
+      // about not ORDERING.** A write already queued on the chain can settle *after*
+      // `ports.storage.delete(id)` returns, and an expect-absent write (`expectedVersion:
+      // null`) is *satisfied* by the record's absence — so it succeeds, `upsertSummary` puts
+      // the library row back, and the trip is resurrected with the delete silently undone.
+      //
+      // `await saving; ports.storage.delete(id)` does not fix it: that is a check-then-act
+      // with an interleaving point in the middle, which is §0.6's error one level up from
+      // where §2.2a found it. The delete goes ON the chain, as a link of its own — "drain,
+      // delete, forget", with all three inside the one link, so no later link can observe a
+      // half-deleted store or write against a fence pointer for a trip that no longer exists.
+      //
+      // None of this reopens the exception: the ACTIVE trip's pending timer is still
+      // cancelled without writing, so the queue this link drains holds only writes the store
+      // had already committed to before the user asked for the deletion, and a conflicted
+      // trip is still deletable (BUILD-NOTES KD-31) — a refused write ahead of the delete reports its own failure
+      // and the delete still runs behind it.
+      await chainOntoSaving(async () => {
+        await ports.storage.delete(id);
+        const library = state.library.filter((r) => r.id !== id);
+        if (state.activeTripId === id) {
+          cache = null;
+          set({ ...initialState(), library });
+        } else set({ ...state, library });
+      });
       return state;
     },
 

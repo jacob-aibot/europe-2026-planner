@@ -1,5 +1,7 @@
 const core=await import('../packages/core/src/index.ts');
 const {loadEurope2026}=await import('../fixtures/loadEurope2026.mjs');
+// §2.10 revision 5 takes this symbol off the index; qa may import the module path directly.
+const geo = await import('../packages/core/src/derive/geo.ts');
 const ok=(n,c,x='')=>console.log((c?'  ok   ':'  FAIL ')+n, c?'':x);
 const ctx=(p='x')=>({ids:core.sequentialIds(p), now:'2026-01-01', actorUserId:'u1'});
 const {trip}=loadEurope2026();
@@ -38,7 +40,7 @@ ok('+1deg typo -> geo_outlier conflict', bc.some(c=>c.ruleId==='geo_outlier'&&c.
 console.log('\n== out-of-range coords ==');
 const wild=core.updateStop(trip, inline.id, {place:{kind:'inline',at:{lat:999,lng:-4000}}}, ctx());
 ok('lat/lng out of range', core.validateTrip(wild).some(i=>i.code==='lat_lng_out_of_range'), JSON.stringify(core.validateTrip(wild).filter(i=>i.level==='error').map(i=>i.code)));
-ok('haversine on wild coords is finite', Number.isFinite(core.haversine({lat:999,lng:-4000},{lat:0,lng:0})), core.haversine({lat:999,lng:-4000},{lat:0,lng:0}));
+ok('haversine on wild coords is finite', Number.isFinite(geo.haversine({lat:999,lng:-4000},{lat:0,lng:0})), geo.haversine({lat:999,lng:-4000},{lat:0,lng:0}));
 ok('NaN coords do not crash legs', (()=>{try{const nan=core.updateStop(trip,inline.id,{place:{kind:'inline',at:{lat:NaN,lng:NaN}}},ctx());const dd=nan.days.find(x=>x.stops.some(s=>s.id===inline.id));core.computeLegs(dd,nan);core.focusCluster(dd.stops,nan);return true;}catch(e){return 'threw '+e.message}})()===true);
 
 console.log('\n== duplicate ids ==');

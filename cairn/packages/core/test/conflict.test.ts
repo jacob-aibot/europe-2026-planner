@@ -7,9 +7,13 @@ import assert from 'node:assert/strict';
 import { europe2026, FIXTURE_TODAY, golden } from './fixture.ts';
 import {
   detectConflicts, resolveConflict, updateStop, RULES, sequentialIds, createTrip, addStop,
-  upsertBooking, linkBooking, setDayMeta, syncResolutions, validateTrip, STALE_RESOLUTION_LIMIT, LOCAL_OWNER,
-  computeLegs as computeLegsForTest, timeVal as timeValForTest,
+  upsertBooking, linkBooking, setDayMeta, syncResolutions, validateTrip, LOCAL_OWNER,
+  computeLegs as computeLegsForTest,
 } from '../src/index.ts';
+// Off the surface in §2.10 revision 5: a tuning constant a caller must not reproduce, and an
+// internal of `computeLegs`. Tests import the module path. BUILD-NOTES KD-33.
+import { STALE_RESOLUTION_LIMIT } from '../src/validate/validateTrip.ts';
+import { timeVal as timeValForTest } from '../src/derive/legs.ts';
 import type { Booking, BuildCtx } from '../src/index.ts';
 
 const ctx = (): BuildCtx => ({ ids: sequentialIds('t'), now: '2026-01-01', actorUserId: LOCAL_OWNER });

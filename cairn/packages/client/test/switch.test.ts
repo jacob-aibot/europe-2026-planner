@@ -452,3 +452,378 @@ test('the conflict message names both recoveries', () => {
   assert.match(CONFLICT_MESSAGE, /merge with the stored copy/i);
   assert.match(CONFLICT_MESSAGE, /export this copy/i);
 });
+
+// ---------------------------------------------------------------------------
+// §4.2 rule 6a″, revision 5 (QA R6-1, R6-2). Exhausting `FLUSH_MAX_ATTEMPTS` is a
+// refusal for DISPLAY as well as for control flow, and it is the ONE exit that
+// re-arms the debounce — the other two must not, and this is a three-way rule.
+// ---------------------------------------------------------------------------
+
+/**
+ * A storage that lands an edit inside every write's latency, so the document is dirty again
+ * the instant `saveIfVersion` returns and the drain loop can never converge. ROADMAP names
+ * exactly this shape ("a StoragePort that always leaves the document dirty after a write").
+ */
+type NeverSettling = MemoryStorage & { settle(): void; writes: number; edit: (() => void) | null };
+
+function neverSettlingStorage(): NeverSettling {
+  const storage = memoryStorage() as NeverSettling;
+  const real = storage.saveIfVersion.bind(storage);
+  let settled = false;
+  storage.writes = 0;
+  storage.edit = null;
+  storage.settle = () => { settled = true; };
+  storage.saveIfVersion = async (id, expected, doc, summary): Promise<SaveOutcome> => {
+    storage.writes++;
+    const outcome = await real(id, expected, doc, summary);
+    if (!settled && storage.edit) storage.edit();
+    return outcome;
+  };
+  return storage;
+}
+
+async function exhaustedFlush() {
+  const storage = neverSettlingStorage();
+  const scheduler = manualScheduler();
+  const store = createStore({ ports: ports(storage, scheduler) });
+  await store.createTrip(INIT('Never settles'));
+  const id = store.getState().activeTripId as string;
+  const dayId = store.getState().doc?.days[0].id as string;
+  let n = 0;
+  storage.edit = () => {
+    store.dispatch({ type: 'setDayMeta', dayId, patch: { title: `TYPING ${++n}` } } as Action);
+  };
+  store.dispatch({ type: 'setDayMeta', dayId, patch: { title: 'THE EDIT' } } as Action);
+  await store.closeTrip();
+  return { store, storage, scheduler, id, dayId };
+}
+
+test('R6-1: exhausting the flush bound is an ERROR the banner renders, not a silent no-op', async () => {
+  const { store, storage, id } = await exhaustedFlush();
+
+  assert.equal(store.getState().activeTripId, id, 'the transition happened over an unsettled document');
+  assert.equal(store.isDirty(), true, 'the edit is not in memory any more');
+  // The stored bytes are the other half of "dirty" — the document storage holds is NOT the
+  // one in memory, which is exactly why the transition had to be refused.
+  assert.notEqual(storedTitle(storage, id), store.getState().doc?.days[0].title,
+    'storage already holds the in-memory document, so nothing was unsettled');
+  assert.equal(store.getState().persistence.status, 'error');
+  assert.notEqual(store.getState().persistence.lastError, undefined);
+
+  // The RENDERED output, not the enum — a test that reads the enum keeps passing the day
+  // the view stops reading it. It must name what happened and offer both recoveries.
+  assert.notEqual(banner(store), '', 'the click did nothing and said nothing');
+  assert.match(banner(store), /saving/i, 'the banner does not name what happened');
+  assert.match(banner(store), /Retry/);
+  assert.match(banner(store), /Export this copy/);
+  assert.equal(saveIndicator(store), 'Not saved — retry');
+  assert.notEqual(saveIndicator(store), 'Saved');
+});
+
+test('R6-1: the exhausted exit is NOT a conflict — nothing refused the write', async () => {
+  // §4.2 rule 6a" is explicit: offering a merge would be a lie about what went wrong, since
+  // nothing refused anything and there is no other writer to merge with.
+  const { store } = await exhaustedFlush();
+  assert.equal(store.getState().persistence.status, 'error');
+  assert.notEqual(store.getState().persistence.status, 'conflict');
+  assert.equal(banner(store).includes('Merge and save'), false);
+});
+
+test('R6-2: the exhausted exit RE-ARMS the debounce, and the edit lands with no further input', async () => {
+  const { store, storage, scheduler, id } = await exhaustedFlush();
+
+  // Behaviour, not the scheduler's bookkeeping (a cancelled job stays in `pending`): let the
+  // port settle, fire what is scheduled, and require a write with NO user input at all.
+  storage.settle();
+  const before = storage.writes;
+  scheduler.runAll();
+  await settle();
+
+  assert.ok(storage.writes > before,
+    'the loop cancelled the timer on its last pass and never put it back — the document is ' +
+      'dirty with no scheduled write until the user\'s next keystroke');
+  assert.equal(store.isDirty(), false);
+  assert.equal(store.getState().persistence.status, 'idle', 'the banner must clear when the write lands');
+  assert.match(storedTitle(storage, id), /TYPING|THE EDIT/, 'the re-armed write never reached storage');
+  assert.equal(saveIndicator(store), 'Saved');
+});
+
+test('R6-2 ceiling: a CONFLICT exit does not re-arm — it would spin against the fence', async () => {
+  const storage = refusingStorage();
+  const scheduler = manualScheduler();
+  const store = createStore({ ports: ports(storage, scheduler) });
+  await store.createTrip(INIT('Refused'));
+  const id = store.getState().activeTripId as string;
+  const dayId = store.getState().doc?.days[0].id as string;
+  store.dispatch({ type: 'setDayMeta', dayId, patch: { title: 'MINE' } } as Action);
+  (storage as MemoryStorage & { arm(): void }).arm();
+  await store.closeTrip();
+  assert.equal(store.getState().persistence.status, 'conflict');
+
+  // Behaviour, not the scheduler's bookkeeping: firing every scheduled job must produce no
+  // further write. A re-armed autosave here would be refused against the same fence every
+  // 400 ms forever; the user must merge or export.
+  const before = countWrites(storage);
+  scheduler.runAll();
+  await settle();
+  assert.equal(countWrites(storage), before, 'the conflict exit re-armed the autosave');
+  assert.equal(store.isDirty(), true);
+  assert.notEqual(storage.docs.get(id), undefined, 'precondition: the trip was never stored');
+  assert.notEqual(storedTitle(storage, id), 'MINE', 'the refused write reached storage after all');
+});
+
+test('R6-2 ceiling: a port-FAILURE exit does not re-arm either — Retry is the deliberate act', async () => {
+  const storage = memoryStorage();
+  const scheduler = manualScheduler();
+  const store = createStore({ ports: ports(storage, scheduler) });
+  await store.createTrip(INIT('Broken port'));
+  const id = store.getState().activeTripId as string;
+  const dayId = store.getState().doc?.days[0].id as string;
+  store.dispatch({ type: 'setDayMeta', dayId, patch: { title: 'MINE' } } as Action);
+  let attempts = 0;
+  storage.saveIfVersion = async () => { attempts++; throw new Error('disk is on fire'); };
+  await store.closeTrip();
+  assert.equal(store.getState().persistence.status, 'error');
+
+  const before = attempts;
+  scheduler.runAll();
+  await settle();
+  assert.equal(attempts, before, 'the port is failing; the banner\'s Retry is the deliberate act');
+  assert.equal(store.isDirty(), true);
+  assert.notEqual(storedTitle(storage, id), 'MINE', 'the failed write reached storage after all');
+});
+
+// ---------------------------------------------------------------------------
+// A-2 / QA R7-3 — `delete()` is a link on the serialization chain (§4.2 rule 6c,
+// §4.3, revision 5). The exception is about not WRITING, not about not ORDERING.
+// ---------------------------------------------------------------------------
+
+/**
+ * The store's source with every comment and string literal blanked out (spaces, so every
+ * offset is preserved). A structural claim about *code* that a doc comment can satisfy is
+ * not a structural claim — this file's own prose mentions `ports.storage.delete(id)` and
+ * `chainOntoSaving(` several times.
+ */
+function codeOnly(src: string): string {
+  let out = '';
+  let i = 0;
+  const blank = (n: number) => src.slice(i, i + n).replace(/[^\n]/g, ' ');
+  while (i < src.length) {
+    const two = src.slice(i, i + 2);
+    if (two === '//') {
+      const end = src.indexOf('\n', i);
+      const stop = end === -1 ? src.length : end;
+      out += blank(stop - i); i = stop; continue;
+    }
+    if (two === '/*') {
+      const end = src.indexOf('*/', i + 2);
+      const stop = end === -1 ? src.length : end + 2;
+      out += blank(stop - i); i = stop; continue;
+    }
+    const q = src[i];
+    if (q === "'" || q === '"' || q === '`') {
+      let j = i + 1;
+      while (j < src.length && src[j] !== q) j += src[j] === '\\' ? 2 : 1;
+      const stop = Math.min(j + 1, src.length);
+      out += blank(stop - i); i = stop; continue;
+    }
+    out += src[i]; i += 1;
+  }
+  return out;
+}
+
+/** Is `index` lexically inside the argument list of some `chainOntoSaving(` call? */
+function insideChain(code: string, index: number): boolean {
+  for (const m of code.matchAll(/chainOntoSaving\(/g)) {
+    const open = (m.index as number) + 'chainOntoSaving'.length;
+    if (open > index) continue;
+    let depth = 0;
+    for (let i = open; i < code.length; i++) {
+      if (code[i] === '(') depth++;
+      else if (code[i] === ')') { depth--; if (depth === 0) { if (index < i) return true; break; } }
+    }
+  }
+  return false;
+}
+
+/** The `[start, end)` character range of a named function's body in `code`, braces balanced. */
+function bodyRange(code: string, decl: RegExp): [number, number] {
+  const m = decl.exec(code);
+  assert.ok(m, `${decl} not found — re-derive this assertion against the store's new shape`);
+  // Step over the PARAMETER list first: an inline object type in a parameter (`merge: {
+  // message: string; … }`) puts a `{` before the body's own brace.
+  let i = (m.index as number) + m[0].length - 1;
+  let paren = 0;
+  for (; i < code.length; i++) {
+    if (code[i] === '(') paren++;
+    else if (code[i] === ')') { paren--; if (paren === 0) { i++; break; } }
+  }
+  const open = code.indexOf('{', i);
+  let depth = 0;
+  for (let j = open; j < code.length; j++) {
+    if (code[j] === '{') depth++;
+    else if (code[j] === '}') { depth--; if (depth === 0) return [open, j]; }
+  }
+  throw new Error(`unbalanced body for ${decl}`);
+}
+
+/**
+ * ROADMAP E's structural half of the `delete()`-on-the-chain criterion (§4.3, revision 5).
+ *
+ * *"Every `ports.storage.*` call that is not `listTrips` or `load` is issued from inside the
+ * store's serialization chain."* It is asserted as a composition rather than as one grep,
+ * because `saveIfVersion` is reached through two helpers rather than written out at each call
+ * site — which is the same shape QA's own `r7-chain` §11 uses. Expected violations: zero.
+ */
+test('structural: every ports.storage mutation is issued inside a chainOntoSaving callback', () => {
+  const code = codeOnly(readFileSync(new URL('../src/store/store.ts', import.meta.url), 'utf8'));
+  const lineOf = (i: number) => code.slice(0, i).split('\n').length;
+  const [wsStart, wsEnd] = bodyRange(code, /async function writeAndSettle\(/);
+  const [asStart, asEnd] = bodyRange(code, /async function attemptSave\(/);
+
+  // 1. Exactly one `saveIfVersion` call site, and it is inside `writeAndSettle`.
+  const saves = [...code.matchAll(/ports\.storage\.saveIfVersion\(/g)];
+  assert.equal(saves.length, 1, 'saveIfVersion must have exactly one call site');
+  const at = saves[0].index as number;
+  assert.ok(at > wsStart && at < wsEnd, 'the one saveIfVersion call site is not inside writeAndSettle');
+
+  const callSites = (name: string) =>
+    [...code.matchAll(new RegExp(`(?<![\\w.])${name}\\(`, 'g'))]
+      .map((m) => m.index as number)
+      .filter((i) => !/function\s*$/.test(code.slice(Math.max(0, i - 20), i)));
+
+  // 2. Every `writeAndSettle` call site is on the chain — directly, or through `attemptSave`.
+  const settles = callSites('writeAndSettle');
+  assert.ok(settles.length >= 3, `only ${settles.length} writeAndSettle call sites found`);
+  // 3. …and every `attemptSave` call site is directly inside a `chainOntoSaving` callback.
+  const attempts = callSites('attemptSave');
+  assert.ok(attempts.length >= 1, 'attemptSave is gone — re-derive this assertion');
+  // 4. …as is every `ports.storage.delete` call site (§4.2 rule 6c, revision 5).
+  const deletes = [...code.matchAll(/ports\.storage\.delete\(/g)].map((m) => m.index as number);
+  assert.ok(deletes.length >= 1, 'deleteTrip no longer calls the port');
+
+  const offenders: string[] = [];
+  for (const i of settles) {
+    if (insideChain(code, i) || (i > asStart && i < asEnd)) continue;
+    offenders.push(`writeAndSettle at line ${lineOf(i)}`);
+  }
+  for (const i of [...attempts, ...deletes]) {
+    if (insideChain(code, i)) continue;
+    offenders.push(`${code.slice(i, code.indexOf('(', i))} at line ${lineOf(i)}`);
+  }
+  assert.deepEqual(
+    offenders,
+    [],
+    'a storage mutation reaches the port without the serialization chain (§4.3) — a delete ' +
+      'makes a record absent and an expect-absent write is SATISFIED by absence, so the only ' +
+      'thing standing between the two kinds of mutation is their order',
+  );
+
+  // And the other half, so this cannot be satisfied by deleting the mutations: the port has
+  // no method this assertion has failed to classify.
+  const all = [...code.matchAll(/ports\.storage\.(\w+)\(/g)].map((m) => m[1]);
+  assert.deepEqual(
+    [...new Set(all)].sort(),
+    ['delete', 'listTrips', 'load', 'saveIfVersion'],
+    'the storage port grew a method this assertion does not classify',
+  );
+});
+
+/** Parks the port's next writes until `open()` is called. */
+function latch(storage: MemoryStorage): () => void {
+  const real = storage.saveIfVersion.bind(storage);
+  let open: () => void = () => {};
+  const gate = new Promise<void>((r) => { open = r; });
+  storage.saveIfVersion = async (a, b, c, d): Promise<SaveOutcome> => { await gate; return real(a, b, c, d); };
+  return () => open();
+}
+
+test('R7-3: a queued expect-absent write cannot resurrect a trip the user deleted', async () => {
+  // The dangerous shape is `mergeWithStored`'s DELETED-TRIP branch: its expectation is
+  // `null`, and an expect-absent write is SATISFIED by the record's absence — so a write
+  // still queued when the delete lands succeeds, `upsertSummary` puts the library row back,
+  // and the trip is resurrected with the delete silently undone.
+  const storage = memoryStorage();
+  const store = createStore({ ports: ports(storage), autosave: false });
+  await store.createTrip(INIT('Doomed'));
+  const id = store.getState().activeTripId as string;
+  await store.flush();
+
+  // Another writer destroyed it, which is what puts this tab in the deleted-trip branch.
+  storage.docs.delete(id);
+  storage.versions.delete(id);
+  const open = latch(storage);
+
+  const merging = store.mergeWithStored().catch(() => undefined);
+  await settle();
+  const deleting = store.deleteTrip(id);
+  await settle();
+  open();
+  await Promise.allSettled([merging, deleting]);
+  await settle();
+
+  assert.equal(storage.docs.has(id), false, 'the queued expect-absent write resurrected the trip');
+  assert.equal(store.getState().library.some((r) => r.id === id), false, 'the library row came back');
+});
+
+test('R7-3: a write queued BEFORE the delete settles first, and the delete still wins', async () => {
+  const storage = memoryStorage();
+  const store = createStore({ ports: ports(storage), autosave: false });
+  await store.createTrip(INIT('Doomed 2'));
+  const id = store.getState().activeTripId as string;
+  const dayId = store.getState().doc?.days[0].id as string;
+  await store.flush();
+
+  const open = latch(storage);
+  store.dispatch({ type: 'setDayMeta', dayId, patch: { title: 'LAST WORDS' } } as Action);
+  const writing = store.flush();
+  await settle();
+  const deleting = store.deleteTrip(id);
+  await settle();
+  open();
+  await Promise.allSettled([writing, deleting]);
+  await settle();
+
+  assert.equal(storage.docs.has(id), false, 'the trip is back in storage after an explicit delete');
+  assert.equal(store.getState().library.some((r) => r.id === id), false);
+  assert.equal(store.getState().doc, null, 'the active document survived its own deletion');
+  assert.equal(store.getState().persistence.savedDoc, null, 'savedDoc points at a trip that no longer exists');
+  assert.equal(store.getState().persistence.savedVersion, null, 'the fence pointer outlived the record');
+});
+
+test('6c survives A-2: a CONFLICTED active trip is still deletable', async () => {
+  const storage = refusingStorage();
+  const store = createStore({ ports: ports(storage), autosave: false });
+  await store.createTrip(INIT('Conflicted but deletable'));
+  const id = store.getState().activeTripId as string;
+  const dayId = store.getState().doc?.days[0].id as string;
+  store.dispatch({ type: 'setDayMeta', dayId, patch: { title: 'MINE' } } as Action);
+  (storage as MemoryStorage & { arm(): void }).arm();
+  await store.flush();
+  assert.equal(store.getState().persistence.status, 'conflict', 'precondition: not conflicted');
+
+  await store.deleteTrip(id);
+  assert.equal(storage.docs.has(id), false, '6b made a conflicted trip undeletable — that is what 6c exists to stop');
+  assert.equal(store.getState().doc, null);
+});
+
+/** Lets every already-queued microtask and resolved promise drain. */
+function settle(turns = 8): Promise<void> {
+  let p = Promise.resolve();
+  for (let i = 0; i < turns; i++) p = p.then(() => undefined);
+  return p;
+}
+
+/** How many times this storage's compare-and-set has been called. */
+function countWrites(storage: MemoryStorage): number {
+  const counted = storage as MemoryStorage & { __writes?: number };
+  if (counted.__writes === undefined) {
+    counted.__writes = 0;
+    const real = storage.saveIfVersion.bind(storage);
+    storage.saveIfVersion = async (a, b, c, d): Promise<SaveOutcome> => {
+      counted.__writes = (counted.__writes ?? 0) + 1;
+      return real(a, b, c, d);
+    };
+  }
+  return counted.__writes;
+}
