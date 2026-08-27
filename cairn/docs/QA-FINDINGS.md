@@ -1,4 +1,23 @@
-# Cairn — QA findings, Phase 1 **rounds 2, 3, 4, 5, 6, 7, 8, 9, 10 and 11**
+# Cairn — QA findings, Phase 1 **rounds 2–11** and Phase 2 **round 12 (2a)**
+
+> **Status (as of `master` @ `5a3c723`, independently verified 2026-08-27 — round 12, the
+> Phase 2 **2a** breaker pass: I-0…I-4 plus the KD-38 / absent-`ownerId` follow-up):**
+>
+> | | |
+> |---|---|
+> | **Scope** | Exactly the two commits `f26905d` and `5a3c723` and what they land: `lifecycle()`, `Trip.datePrecision`, `Rule.class` + the `detect.ts` feasibility gate, `PastTripForm.tsx` (incl. KD-38's city assignment), and the `fromJSON`/`importDoc` absent-`ownerId` fix (KD-40). Phase 1's open list (R8-3, R8-4, R10-1, R5-2, R6-1/2, the round-3 MINORs) was **not** re-litigated — the suite and the probe board were re-run to confirm no regression, and that is all. I-5…I-11 were not touched. |
+> | **BLOCKERS** | **0.** No data loss, no privacy leak, no wrong-person's-data path in this batch. |
+> | **The four angles** | **1. Feasibility gate — PASS**, with one MINOR (P2-4) and one design finding adjacent to it (P2-1). All ten classes match §8.2's table; integrity findings are byte-identical before and after `endDate`; `subjectDate` is correct for all seven ref shapes incl. the pool/place/trip/unknown-id fallbacks; ruling 1's asymmetry, ruling 3's no-clock case and `today:''` all behave. On the **real** trip at the **real** clock the gate suppresses exactly **2 warnings**, both `missing_lodging` (Budapest 3 nights, London 1 night) — the live defect, closed, with no blocker suppressed. **2. `datePrecision` — PARTIAL**: the greppable ceiling holds under my own walk (0 hits under `conflict/`, `derive/`, `validate/`, 0 in `packages/client`), 11 malformed values are refused with `$.datePrecision`, absent → `'exact'` both ways, undo/redo at depth 50 carries it — but **`mergeTrips` drops it** (P2-3, MAJOR) and `setTripMeta` does not runtime-guard it (P2-7). **3. The past-trip form — PARTIAL**: KD-38's fix is real and holds in Chromium (31/31 and 365/365 days carry the city, criterion 3 still reads zero on screen, a straddling trip with a real city behaves) — but the city **key** derivation breaks on the phase's own headline case (P2-2, MAJOR) and one Ctrl+Z peels the assignment (P2-5). **4. `ownerId` — PASS on the check that mattered**: a present foreign owner is still refused with `ForeignDocumentError`, nothing installed, nothing written; 8 non-string shapes still fail the parse at `$.ownerId`; absent, `null` and `''` are all adopted as the local owner, and `''` is not a legal `UserId` anywhere (`validateTrip` calls it `owner_missing`, an error). One design question remains (P2-8). |
+> | **NEW in round 12 — MAJOR (3), MINOR (5)** | **P2-1** (architect) the gate × §2.7: a dismissal is **retired by the clock alone**, and merely opening a finished trip dirties and rewrites it. **P2-2** (architect) `東京` and `京都` both become city key `"-"`; nothing validates duplicate city keys. **P2-3** (builder) `mergeTrips`' `TRIP_FIELDS` omits `datePrecision`, so the other tab's change is discarded *and unreported*. Plus **P2-4** (rule_error gated), **P2-5** (Ctrl+Z peels the day loop), **P2-6** (the Library states exact dates for a fuzzy trip), **P2-7** (`setTripMeta` accepts a value `fromJSON` refuses), **P2-8** (an ownerless foreign document is adopted unmarked). |
+> | **Numbers, my own runs at `5a3c723`** | `npm run test:tap` **479 pass / 0 fail** · `npm run typecheck` clean · `npm run web:build` clean · `qa/baseline.mjs` **0 FAIL** (2 blockers / 4 warn / 11 notes; geoCheck 0/112, 0/94, 112/112, 92/94) · `qa/accept.mjs` **28 pass / 0 fail** · `qa/r2-import.mjs` **0 FAIL** · `qa/prov.mjs` **0 FAIL** · `qa/p2-pasttrip.mjs` in real Chromium **0 FAIL**, 30 assertions · `qa/r2-constraints.mjs` **1 FAIL** (R2-18, the known determinism-grep gap). Every number the builder reported reproduces. |
+> | **`cairn-constraints`, re-checked directly** | Zero runtime dependencies (`core` `{}`, `client` `{"@cairn/core":"*"}` — workspace-internal); no `Date.now()`/`Math.random()`/`crypto.randomUUID()` anywhere in `packages/core/src` or the reducer (only doc comments naming them); no DOM, no `window`, no React import in `packages/client/src`. |
+> | **Read-only boundary** | `europe-2026-itinerary.html`, `docs/` and `tickets/` at the repo root: **untouched** (`git diff --stat HEAD --` on all three is empty; the only new files anywhere are `cairn/qa/p2b-*.mjs`). |
+> | **Gate verdict** | **2a is shippable-with-follow-ups, not clean.** 0 BLOCKER, 3 MAJOR. Nothing in the batch is a reason to stop 2b — but **P2-1 and P2-2 should go to the architect before I-6**, because I-6's `cityKeys` widening consumes exactly the day/city data P2-2 corrupts, and P2-1 is a rule about when a finding leaving the set means "fixed". P2-3 is a builder patch of one array literal. |
+>
+> **New probes this round:** `qa/p2b-gate.mjs` (headless, **19 FAIL by design** — §1.8 P2-4, §1.10/§1.11 P2-1, §2.5 P2-3, §2.6 P2-7, §2.7 P2-6, §3.3 P2-2, §4.6 P2-8; everything else in the file is a confirmation that must stay at 0) and `qa/p2b-past.mjs` (Chromium, **6 FAIL by design** — §2f P2-5, §3 P2-2, §4 P2-6). Neither is timing-dependent; both are deterministic call/click sequences.
+>
+> **The round-11 status note below is superseded by this one** and is kept as the record of
+> what was true at `c6c6e2b`.
 
 > **Status (as of `master` @ `c6c6e2b`, independently verified 2026-08-27 — round 11, the
 > final gate re-verification of the two R10 fixes, two items only):**
@@ -196,6 +215,136 @@ PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r2-race.mjs      # browser pro
 | `qa/r10-editdoor.mjs` | **R10-2** in Chromium — six user actions, and the copy-borne `Place` is orphaned in IndexedDB |
 | `qa/r10-mergeundo.mjs` | **R10-3** — one Ctrl+Z after a merge overwrites storage with a pre-merge snapshot |
 | `qa/r11-recheck.mjs` | **R10-3 / R10-2 after the fix** — a non-empty `future` at merge time, ten undos, typing through the merge write (**R11-1**); and every other shape of a place-changing patch, `moveStop`/`reorderStop`, the pool, the over-prune guard |
+| `qa/p2b-gate.mjs` | **Phase 2 2a, headless** — §1 the feasibility gate (classes, wholly-past, straddling, `subjectDate` × 7 ref shapes, ruling 1's asymmetry, no-clock, the `rule_error` claim, the retirement ledger, the Phase 1 ceiling); §2 `datePrecision` (own grep walk, 11 malformed values, migrate, round trip, undo/redo × 50, `mergeTrips`, `setTripMeta`, the summary row); §3 the form's document in Node; §4 `ownerId` absent / `null` / non-string × 8 / foreign / `''` / whitespace / the deleted-key bypass |
+| `qa/p2b-past.mjs` | **Phase 2 2a, Chromium** — a straddling trip recorded through the real form with a real city; "a year" precision (365 days, 366 dispatches, one Ctrl+Z); a trip to Japan named in Japanese; the Library's range label vs the open trip's |
+
+---
+
+# Round 12 — Phase 2, **2a**: past trips and the trip lifecycle (`8df2ae6..5a3c723`)
+
+Five commits, four increments plus one follow-up. **0 BLOCKER · 3 MAJOR · 5 MINOR.** The two
+things this round was told to scrutinise hardest — the feasibility gate and the `ownerId`
+change — are the two that came out cleanest; the damage is in the two places nobody was
+looking: what a *slug* does to a city name that is not written in ASCII, and what the gate
+does to a conflict a user had already dismissed.
+
+**Baseline, all my own runs at `5a3c723`:** `npm run test:tap` **479 pass / 0 fail**;
+`npm run typecheck` clean; `npm run web:build` clean; `qa/baseline.mjs` **0 FAIL**;
+`qa/accept.mjs` **28 pass / 0 fail**; `qa/r2-import.mjs` **0 FAIL**; `qa/prov.mjs` **0 FAIL**;
+`qa/p2-pasttrip.mjs` (the builder's own Chromium probe, re-run unmodified) **0 FAIL** across
+30 assertions; `qa/r2-constraints.mjs` **1 FAIL**, which is R2-18 and known. Every number in
+BUILD-NOTES' current status note reproduces.
+
+| id | severity | file:line | defect | repro | routing |
+|---|---|---|---|---|---|
+| **P2-1** | MAJOR | `packages/client/src/store/store.ts:595` × `packages/core/src/conflict/resolve.ts:46` × `detect.ts`'s gate | The feasibility gate gives a conflict a **second** way to leave the detected set — the clock — and `syncResolutions` reads "not in the set" as "fixed", so **merely opening a trip after it ends permanently retires every dismissal of a feasibility finding**, mutates the document (revision +1) and leaves the store dirty with no user action. | `node --experimental-strip-types qa/p2b-gate.mjs` §1.10, §1.11 | **architect** |
+| **P2-2** | MAJOR | `apps/web/src/views/PastTripForm.tsx:97` (identical expression in `Library.tsx`'s new-trip form) | `name.toLowerCase().replace(/[^a-z0-9]+/g,'-')` maps **every** non-ASCII city name to the single key `"-"`. Recording *"日本 2019, 東京, 京都"* stores two cities that are the **same key**, puts `primaryCity:"-"` on all 30 days, and `validateTrip` reports **nothing** — there is no duplicate-city-key check. §8.1's own worked example is a trip to Japan, and I-6's `cityKeys` widening reads exactly this field. | `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/p2b-past.mjs` §3; `qa/p2b-gate.mjs` §3.3 | **architect** (what a `CityKey` is), builder for the slug |
+| **P2-3** | MAJOR | `packages/core/src/merge/mergeTrips.ts:189` | `TRIP_FIELDS` omits `datePrecision`, so a two-tab merge **discards the other tab's precision change and does not report it** — `report.fromRemote` and `report.overwritten` are both empty. The control (`title`, which is on the list) survives. §8.1 stores this field precisely because retrofitting it later is the expensive migration; losing it silently is the same loss on a smaller scale. (`homeBase` is missing from the same list — pre-existing, Phase 1, out of scope, noted so it is not re-derived.) | `qa/p2b-gate.mjs` §2.5 | **builder** |
+| **P2-4** | MINOR | `packages/core/src/conflict/detect.ts` (the `for (const c of produced)` gate line) | `detect.ts`'s own comment says *"a `rule_error` note … is never gated"*. It is: the synthesised note's only subject is `{kind:'trip'}`, ruling 2 resolves that to `trip.endDate`, and the note inherits the **crashing rule's** class — so a crashing **feasibility** rule is silent on every past trip. Control: a crashing **integrity** rule reports correctly. §0.5's *"a rule that cannot catch its own bug does not ship"*, applied to the catcher. | `qa/p2b-gate.mjs` §1.8 | **builder** |
+| **P2-5** | MINOR | `apps/web/src/views/PastTripForm.tsx:121-123` | The form's city assignment is one `setDayMeta` **per day**, so one button press is N+2 undo entries. One Ctrl+Z after recording a 365-day trip leaves **364 of 365** days attributed and one on `transit`, silently; and since the history limit is 50, a year-long trip can never be undone back to before it was recorded. | `qa/p2b-past.mjs` §2f (real Chromium, real IndexedDB); `qa/p2b-gate.mjs` §3.4 | **builder** |
+| **P2-6** | MINOR | `packages/core/src/derive/summary.ts:60` + `apps/web/src/views/Library.tsx:126` | `TripSummaryRow` carries no `datePrecision`, so the **Library** — the screen a past trip mostly lives on — prints `2019-06-01 → 2019-06-30` for a trip the user recorded as *"June 2019"*. `dateRangeLabel` exists and is correct; it is wired only into `TripView.tsx:59`. This is I-2's own stated user-visible outcome, unmet on one of the two screens, and the convention it breaks is the absolute one. (The fix needs the row widened, which is I-6's job — so this may be a legitimate deferral, but nothing said so.) | `qa/p2b-past.mjs` §4; `qa/p2b-gate.mjs` §2.7 | **builder**, at I-6 |
+| **P2-7** | MINOR | `packages/core/src/build/createTrip.ts:109` (`setTripMeta`) | `setTripMeta(trip, {datePrecision:'fortnight'})` is accepted at runtime — `next = {...trip, ...patch}` with no enum guard, the same asymmetry KD-12 records for dates. The resulting document **serializes but cannot be parsed back** (`TripParseError @ $.datePrecision`), so a trip written that way is unopenable, and `validateTrip` reports nothing. Reachable only past the TypeScript types, which is why it is MINOR and not more. | `qa/p2b-gate.mjs` §2.6 | **builder** |
+| **P2-8** | MINOR | `packages/client/src/store/store.ts:1027-1028` | Deleting one key turns a refusal into an adoption: the same file that gets `ForeignDocumentError` with `"ownerId":"user:marta"` present is **adopted whole** with the key removed, carrying 91 stops whose `provenance.actorUserId` is still `user:marta`, and nothing marks it — `validateTrip` returns 0 ownership issues because `checkActor` short-circuits on `!attribution(p)`. §2.14 rule 1 does say absent is allowed and KD-40's reasoning is sound; the open question is whether "allowed" also means "adopt its foreign provenance unexamined". **The check that must not have weakened did not weaken** — see the confirmations below. | `qa/p2b-gate.mjs` §4.6 | **architect** |
+
+## P2-1 — the gate retires a dismissal by the clock (the one worth the prose)
+
+The mechanism, isolated rather than inferred. `getDerived()` (`store.ts:595`) calls
+`core.syncResolutions(doc, derived.conflicts, derived.today)` against a freshly-detected set.
+`syncResolutions` (`resolve.ts:45-48`) stamps `retiredAt` on **every** live resolution whose
+`conflictId` is not in that set, on the reading that a conflict which has gone away has been
+fixed. Before I-3 that reading was sound: a conflict left the set because the document changed.
+I-3 adds a second, document-independent reason — the clock passed the subject's date — and
+`syncResolutions` cannot tell the two apart.
+
+Measured (`qa/p2b-gate.mjs` §1.10, a five-day trip with a real city on every day):
+
+- user dismisses `missing_lodging` before the trip → `retiredAt: null`, correct;
+- day 1 of the trip, clock only → still `null`, correct;
+- the day after the trip ends, clock only, **no user action of any kind** →
+  `retiredAt: "2026-08-30"`, `revision 7 → 8`.
+
+Through the real store (§1.11): a second store opens the same stored document a fortnight
+later, calls `getDerived()` once — which is what rendering the conflicts panel does — and the
+document comes back with the dismissal retired and `isDirty() === true`, i.e. **viewing a
+finished trip schedules a write to it.**
+
+Why it matters beyond the write. Retirement is deliberately **monotone**: `reassertRetirements`
+never un-retires (§2.7 A-5, the R8-1 fix). So the retirement the clock caused is permanent, and
+if the same `conflictId` ever comes back — the user corrects an end date, re-plans the trip,
+edits the day the run was about — `detect.ts` renders it with *"You dismissed this on <date> and
+it went away; it has come back."* That sentence is now capable of being false: it did not go
+away because the user fixed it, and the user's dismissal no longer suppresses it. This is R8-1's
+harm class reached through a door §2.7 was not written against.
+
+Severity: **MAJOR, not BLOCKER.** The resolution row survives with its state and date; nothing
+in the itinerary is lost; the write is one bounded revision bump per trip (the second open finds
+nothing to change). It is filed **architect**, not builder, because the fix is a ruling —
+`syncResolutions` needs to distinguish "no longer detected because the data changed" from "not
+detected at this clock", and §8.2 does not say which one a gated finding is.
+
+## What I attacked and could **not** break
+
+- **The gate's classification.** All ten rules carry a class and all ten match §8.2's table
+  exactly. On a purpose-built loud trip, 6 findings as a plan → 2 as history, and the integrity
+  findings are **identical by id and by count**, not merely non-empty. No integrity rule goes
+  quiet on a past trip.
+- **`subjectDate`, every ref shape.** day → its own date; stop → its day's date; booking →
+  `startsAt.date`; pool stop, `place`, `trip`, an unknown day id and an unknown booking id all →
+  `trip.endDate`; an unrecognised `RefKind` does not throw. Ruling 2 is implemented, not claimed.
+- **Ruling 1's asymmetry.** A past `booking_vs_plan` against a future stop survives the gate with
+  one past and two non-past subjects — verified on the subjects themselves, not on the count.
+- **Ruling 3.** `today` omitted, `today: undefined` and `today: ''` all produce byte-identical
+  un-gated output; nothing throws and nothing invents a clock.
+- **The Phase 1 ceiling.** 2 blockers / 4 warnings / 11 notes at `FIXTURE_TODAY`, unmoved.
+- **The real defect, closed and quantified.** On Europe 2026 at the real clock the gate
+  suppresses exactly **two** findings, both `missing_lodging` warnings (Budapest 3 nights, London
+  1 night) — and **no blocker**. Measured by flipping every rule to `integrity` and diffing.
+- **`datePrecision`'s greppable ceiling**, walked myself over every `.ts`/`.tsx` under
+  `packages/core/src`: 0 occurrences under `conflict/`, `derive/`, `validate/`; 0 in
+  `packages/client/src`; present in all five files §8.1 names.
+- **`fromJSON` on `datePrecision`:** `'fortnight'`, `'EXACT'`, `'Exact'`, `''`, `'exact '`, `42`,
+  `true`, `{}`, `[]`, `['exact']` and `null` all refused with `$.datePrecision`. Absent → `'exact'`
+  through both `fromJSON` and `migrateDoc`; round-trip byte-identical with the field present and
+  absent. 50 edits, 50 undos and 50 redos all carry it.
+- **The `ownerId` refusal.** `user:marta` present → `ForeignDocumentError`, **nothing installed
+  and nothing written to storage**; a `local:self` document offered to a store constructed with
+  `ownerId: 'user:jacob'` → refused too (the Phase 3 shape). Eight non-string shapes (`42`, `0`,
+  `true`, `false`, `{}`, `[]`, `['user:marta']`, `{id:…}`) all fail the parse at `$.ownerId` — no
+  silent coercion. Absent and `null` behave identically. `''` is adopted, and `''` cannot be a
+  legitimate `UserId` anywhere: `createTrip({ownerId:''})` yields a trip `validateTrip` calls
+  `owner_missing` at level `error`. A single space `' '` is treated as a foreign owner and
+  refused — asymmetric, but the safe direction.
+- **KD-38's fix, in real Chromium.** 31 of 31 days on the month trip and **365 of 365** on a
+  year trip carry the city, not the `transit` catch-all; criterion 3 still reads zero conflicts
+  and zero validation issues **with** the city assigned, both in Node and on screen; the ceiling
+  half (the same document is loud before its start date) holds. A straddling trip entered as a
+  user with a real city on every day reads `active`, shows one `missing_lodging`, and nothing
+  wholly past is rendered. The click reaches IndexedDB in **277 ms** for 365 days and 366
+  dispatches — measured by polling, not by sleeping.
+- **`cairn-constraints`:** zero runtime dependencies in `core`/`client`; no ambient clock or
+  randomness in `packages/core/src` or the reducer; no DOM/`window`/React in `packages/client/src`.
+- **The read-only boundary:** `europe-2026-itinerary.html`, `docs/` and `tickets/` at the repo
+  root are untouched.
+
+## Confirmed by design, recorded so nobody re-derives them
+
+- **A `missing_lodging` run on a straddling trip names already-past nights.** One finding covers
+  the whole run and ruling 1 keeps it if *any* subject is non-past, so an active trip renders
+  *"6 nights in Tokyo (2026-08-24 → 2026-08-30) with no lodging booking"* including three nights
+  already slept. §8.2 ruling 1 says this explicitly and BUILD-NOTES KD-38 point 2 discloses it.
+  **ROADMAP I-3's verification wording** — *"feasibility fires on the future half and not the
+  past half"* — is the thing that is now inaccurate, not the code. Doc fix, architect.
+- **`booking_vs_plan` on a completed trip is silent everywhere.** A past trip whose booking says
+  4 March and whose plan says 2 March produces a blocker as a plan and **nothing at all** as
+  history — no conflict, no validation issue. §8.2 names this as a deliberate loss to be answered
+  in §8.5. Recorded with the number so the phase that owes the answer knows what it owes.
+
+## What I could not test
+
+- **Node 24.** This environment is Node 22.22.2; unchanged from Phase 1.
+- **A real second user.** There are no accounts, so `ForeignDocumentError` was exercised against
+  hand-built `user:marta` / `user:jacob` documents, exactly as Phase 1 was.
+- **Map tiles / Safari / iOS**, unchanged from BUILD-NOTES §6.
 
 ---
 

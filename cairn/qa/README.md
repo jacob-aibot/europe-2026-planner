@@ -441,3 +441,51 @@ PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/p2-pasttrip.mjs
 (R8-4) · `r6-actor` 5 · `r3-cas2` 3 / `r3-pool` 3 · `r5-freshness` 4 · `r2-constraints` 1 (its
 zero-dep false positive **is** repaired; the determinism-grep one is a genuine gap) ·
 `r2-import` 1 (**new** — `fromJSON` rejects an absent `ownerId` that §2.14 rule 1 permits).
+
+---
+
+## Round 12 (2026-08-27, `master` @ `5a3c723`) — the Phase 2 **2a** breaker pass
+
+Narrow: the diff `8df2ae6..5a3c723` only — `lifecycle()`, `Trip.datePrecision`, `Rule.class` +
+the `detect.ts` feasibility gate, `PastTripForm.tsx` (incl. KD-38's city assignment), and the
+`fromJSON`/`importDoc` absent-`ownerId` fix (KD-40). Phase 1's open list was **not**
+re-litigated. Headless, from `cairn/`:
+
+```bash
+node --experimental-strip-types qa/p2b-gate.mjs
+        # §1  the gate: the ten classes vs §8.2's table; a wholly-past trip (integrity
+        #     identical by id AND count, feasibility gone); a STRADDLING trip with a real
+        #     city on every day; `subjectDate` over all seven ref shapes incl. the pool /
+        #     place / trip / unknown-id fallbacks; ruling 1's asymmetry on the subjects
+        #     themselves; ruling 3 (`today` omitted / undefined / `''`); the un-padded
+        #     `today` the gate accepts and `lifecycle` rejects; the `rule_error` claim
+        #     (P2-4); the gate x the retirement ledger (P2-1); the Phase 1 ceiling
+        # §2  datePrecision: an independent grep walk of the ceiling; 11 malformed values;
+        #     absent -> 'exact' through fromJSON AND migrateDoc; round-trip parity both
+        #     ways; undo/redo x 50; mergeTrips (P2-3); setTripMeta (P2-7); the summary row
+        #     the Library renders (P2-6)
+        # §3  the form's document rebuilt through its own three dispatches; the city-key
+        #     slug (P2-2); the "a year" path at 365 days
+        # §4  ownerId: absent / null / non-string x 8 / a real foreign owner / `''` /
+        #     one space / the deleted-key bypass (P2-8)
+```
+
+The browser probe needs `npm run web:build && node tools/serve.mjs` in one shell, then:
+
+```bash
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/p2b-past.mjs
+        # §1 a straddling trip recorded through the real form with a real city on every day
+        # §2 "a year" precision — 365 days and 366 dispatches behind one click, timed by
+        #    POLLING IndexedDB rather than sleeping, then one Ctrl+Z (P2-5)
+        # §3 a trip to Japan named in Japanese — both cities become key "-" (P2-2)
+        # §4 the Library's range label vs the open trip's (P2-6)
+```
+
+`p2b-gate.mjs` reports **19 FAIL** and `p2b-past.mjs` **6 FAIL**, all by design; everything
+else in both files is a confirmation that must stay at 0. Neither is timing-dependent — both
+are deterministic call/click sequences.
+
+Re-run **unmodified** this round and unchanged by `5a3c723`: `qa/baseline.mjs` 0 FAIL,
+`qa/accept.mjs` 28/0, `qa/r2-import.mjs` 0 FAIL, `qa/prov.mjs` 0 FAIL, `qa/p2-pasttrip.mjs`
+in Chromium 0 FAIL (30 assertions), `qa/r2-constraints.mjs` 1 FAIL (R2-18, known).
+`npm run test:tap` 479/0, `npm run typecheck` clean, `npm run web:build` clean.
