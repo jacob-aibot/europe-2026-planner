@@ -379,3 +379,22 @@ Round-9 probes re-run **unmodified** at `9ced6e7`: `qa/r9-geo.mjs` **ALL OK** (w
 R9-2 closed), `qa/r9-redo.mjs` in Chromium **0 FAIL** (was 2, R9-1's user-visible repro
 closed), `qa/r9-ledger.mjs` **2 FAIL** (was 4; the two that remain are §1.2c/d = R10-1, a
 sequence A-5b clause 2 declines by construction). `npm run test:tap` 420/0.
+
+## Round 11 — after the R10-3 / R10-2 fixes (`c6c6e2b`)
+
+```bash
+node qa/r11-recheck.mjs     # §1 R10-3 past the builder's test: a non-empty `future` at merge
+                            #   time, ten undos after a merge, and typing THROUGH the merge
+                            #   write
+                            #   2 FAIL — §1.3b/§1.3c, R11-1 (BLOCKER, pre-existing race):
+                            #   `stillOurs` discards the merged document and the un-merged
+                            #   local one is autosaved over storage. No undo involved.
+                            # §2 R10-2 past it: place -> none, a re-point to a DIFFERENT
+                            #   place, a pooled copy, moveStop/reorderStop, the pool-side
+                            #   over-prune guard, the reducer action
+                            #   0 FAIL
+```
+
+All three round-10 probes re-run **unmodified** at `c6c6e2b`: `qa/r10-mergeundo.mjs` **0 FAIL**
+(was 2, R10-3 closed), `qa/r10-prune.mjs` **ALL OK** (was 1 FAIL, R10-2 closed),
+`qa/r10-editdoor.mjs` in Chromium **0 FAIL** (was 1). `npm run test:tap` 426/0.

@@ -1,4 +1,23 @@
-# Cairn — QA findings, Phase 1 **rounds 2, 3, 4, 5, 6, 7, 8, 9 and 10**
+# Cairn — QA findings, Phase 1 **rounds 2, 3, 4, 5, 6, 7, 8, 9, 10 and 11**
+
+> **Status (as of `master` @ `c6c6e2b`, independently verified 2026-08-27 — round 11, the
+> final gate re-verification of the two R10 fixes, two items only):**
+>
+> | | |
+> |---|---|
+> | **Scope** | Exactly two things: **R10-3** (the merge → Ctrl+Z → storage-overwrite BLOCKER) and **R10-2** (the `StopEditor` door past A-6a's prune), plus a full-suite/typecheck regression check. R10-1, R8-3, R8-4 and every round 2–7 open item were **not** investigated. |
+> | **R10-3 — FIXED, closed** | The exact original repro is closed. `qa/r10-mergeundo.mjs` is **0 FAIL** (was 2): after the merge `history.past` is 0, Ctrl+Z is a no-op, and **storage** (the bytes the port was handed, re-parsed) still reads `title="OTHER TAB"` with the chip on *Saved*. `store.test.ts`'s new `QA R10-3` test asserts on `core.fromJSON(storage.docs.get(tripId))` — genuinely the persisted payload, not in-memory state. Adversarially, past the builder's test (`qa/r11-recheck.mjs` §1): a **non-empty `future`** at merge time (two pending redos) is cleared too and three Ctrl+Shift+Z after the merge restore nothing; six pre-merge snapshots plus **ten** Ctrl+Z leave storage intact. |
+> | **R10-2 — FIXED, closed** | `qa/r10-prune.mjs` **ALL OK** (§5 was 1 FAIL) and `qa/r10-editdoor.mjs` in real Chromium **0 FAIL** (was 1) — six user actions, and the copy-borne `Place` is read back out of IndexedDB as *pruned*, 0 orphans, no third blocker. Adversarially (`qa/r11-recheck.mjs` §2): `place → {kind:'none'}` prunes; a re-point to a **different** place prunes the one it left; a **pooled** copy prunes; `moveStop` and `reorderStop` **cannot** change `place` at all (§2.10 holds — nothing to prune there); the over-prune guard survives a second linker **in the pool**; and the `updateStop` **action** (the one `StopEditor` dispatches) prunes through the reducer. |
+> | **Red/green, re-derived independently** | The six new tests were run against the **pre-fix** product code (worktree at `83627f7`): **4 fail / 73 pass**. The two that pass there are the two that assert *non*-pruning. The builder's red/green claim is accurate and the tests are aimed at the real defects. |
+> | **Numbers, my own runs** | `npm run test:tap` **426 pass / 0 fail**, `npm run typecheck` clean, `npm run web:build` clean. No regression anywhere in the Phase 1 persistence/geo suite (R2-1, R3-1…R3-4, R4-1/2, R5-1/2, R7-1…R7-3, R8-1/R8-2, A-1…A-6a are all covered by that suite and all still green). |
+> | **NEW in round 11 — BLOCKER (1), pre-existing, NOT the R10-3 mechanism** | **R11-1** — if the user types **while the merge write is in flight**, `writeAndSettle`'s `stillOurs` guard declines to install the merged document, and the un-merged local document is then autosaved over storage under the **post-merge** `savedVersion`. The other tab's edit is destroyed in storage, silently, chip on *Saved*. **No undo is involved** — the control run with zero keystrokes of undo loses it identically — and it reproduces byte-identically at `83627f7`, i.e. the R10-3 fix neither caused nor cures it. |
+> | **Gate verdict** | **Both items under test are CLOSED. 0 BLOCKER and 0 MAJOR among findings the gate has already routed.** R11-1 is new, is a race rather than a deterministic keystroke, and is a *design* question about what a merge owes a document the user has since typed into. Everything else open (R10-1 MINOR, R8-3/R8-4 MAJOR-but-unreachable, the round-7 MINOR list) is unchanged and disclosed. |
+>
+> **New probe this round:** `qa/r11-recheck.mjs` (headless — §1 R10-3 beyond the builder's
+> test, §2 R10-2 beyond it; **2 FAIL, both R11-1**, everything else 0 FAIL).
+>
+> **The round-10 status note below is superseded by this one** and is kept as the record of
+> what was true at `9ced6e7`.
 
 > **Status (as of `master` @ `9ced6e7`, independently verified 2026-08-27 — round 10, the
 > narrow A-5b / A-6a gate re-verification, two items only):**
@@ -176,6 +195,62 @@ PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r2-race.mjs      # browser pro
 | `qa/r10-prune.mjs` | **A-6a** past `geoCheck.test.ts` — the four clauses one at a time, the anti-sweep guards, dangling references, undo/redo, the real fixture at scale, and the `updateStop` door (**R10-2**) |
 | `qa/r10-editdoor.mjs` | **R10-2** in Chromium — six user actions, and the copy-borne `Place` is orphaned in IndexedDB |
 | `qa/r10-mergeundo.mjs` | **R10-3** — one Ctrl+Z after a merge overwrites storage with a pre-merge snapshot |
+| `qa/r11-recheck.mjs` | **R10-3 / R10-2 after the fix** — a non-empty `future` at merge time, ten undos, typing through the merge write (**R11-1**); and every other shape of a place-changing patch, `moveStop`/`reorderStop`, the pool, the over-prune guard |
+
+---
+
+# Round 11 — the final gate re-verification of the two R10 fixes (`83627f7..c6c6e2b`)
+
+Two items, both closed. One new finding, adjacent to R10-3's code but not its mechanism.
+
+**Baseline, all my own runs at `c6c6e2b`:** `node --test packages/client/test/store.test.ts
+packages/core/test/geoCheck.test.ts` **77 pass / 0 fail** (the six new R10-3/R10-2 tests among
+them); `npm run test:tap` **426 pass / 0 fail**; `npm run typecheck` clean; `npm run web:build`
+clean. The round-10 probes re-run **unmodified**: `qa/r10-mergeundo.mjs` **0 FAIL** (was 2),
+`qa/r10-prune.mjs` **ALL OK** (was 1 FAIL), `qa/r10-editdoor.mjs` in Chromium **0 FAIL**
+(was 1). Red check: the six new tests against the pre-fix product code (worktree at `83627f7`)
+**fail 4 / pass 73**.
+
+| id | severity | file:line | defect | repro | routing |
+|---|---|---|---|---|---|
+| **R11-1** | **BLOCKER** (race; pre-existing, not a regression) | `packages/client/src/store/store.ts:419` (`stillOurs`) × `:422` (the merged document is installed **only** if `stillOurs`) × `:437` (`if (!stillOurs) scheduleSave()`, which then writes the un-merged local document under the post-merge `savedVersion` set at `:431`) | One dispatch landing **while the merge write is in flight** makes `stillOurs` false, so the merged document is discarded from memory while it is already committed to storage; the debounced autosave then writes the local, un-merged document over it, and the fence agrees because this tab owns the version it just minted. The other tab's edit is destroyed in storage, silently, with the chip reading *Saved*. | `node qa/r11-recheck.mjs` §1.3b (the **control** — zero undos, loss happens anyway) and §1.3c | **architect** — what a merge owes a document the user has typed into since (re-queue the merge, refuse the write, or surface it) is the same class of ruling §2.2a's merge case already got; it is not a patch |
+
+**Why this is a BLOCKER and not a rough edge.** It is silent, permanent, cross-writer loss in
+storage — the same class as R10-3, through a different door and with no undo involved. The
+control run (`§1.3b`, no `undo()` call at all) loses tab B's title identically, which is what
+proves it is *not* R10-3 reopened: R10-3 was "undo restores a pre-merge snapshot", this is "the
+merge result is never installed and is then overwritten". `set`'s step-1 identity early-return
+(`store.ts:210-214`) means the R10-3 history clear does not run on this path either, but that
+is **correct and not the defect**: the merged document was never installed, so the surviving
+`past` is still linear with the document the store actually holds.
+
+**Why it does not change the gate verdict on R10-3.** It reproduces byte-identically in a
+worktree at `83627f7` (pre-fix): `withUndo=false ... storage after next autosave title=""` on
+both trees. The fix neither caused it nor was scoped to it.
+
+**What I could not do:** land it end to end in Chromium. The window is exactly the duration of
+the IndexedDB write, and nothing in `apps/web` disables input during a save (`grep disabled
+apps/web/src` — only form validity and the undo/redo/export buttons), so a keystroke inside it
+is reachable in principle; I reproduced the mechanism through the store's public API with a
+storage port that holds the write open. Browser-level reachability: **UNVERIFIED**.
+
+**Two things I tried against R10-3's fix that held.** A merge with **two redoable entries in
+`history.future`** — both stacks are cleared, and three Ctrl+Shift+Z afterwards restore nothing
+and leave storage correct. Six pre-merge snapshots and **ten** Ctrl+Z — `past` is 0, storage
+keeps both writers' edits, status `idle`.
+
+**Four things I tried against R10-2's fix that held.** `moveStop` and `reorderStop` cannot
+change `place` (both re-spread the existing stop; §2.10 holds), so there is no third door of
+that shape. `place → {kind:'none'}` and a re-point to a **different** `{kind:'place'}` both
+prune the orphan they leave. A **pooled** copy prunes through `updateStop`'s pool branch. And
+the over-prune guard still declines when a second linker sits in the **pool** rather than a day
+— after which the place is correctly re-measured `'certain'`, because its only remaining linker
+is user-authored.
+
+**One observation, not filed.** `Day` has no `note` field (`types.ts:158`), so
+`setDayMeta`'s `{note}` patch is dropped at `toJSON` — which is why `qa/r10-mergeundo.mjs`
+prints `note=undefined` for a persisted day even on a clean run. The probe only asserts on
+`title`, so it is sound; a future reader should not read that line as loss.
 
 ---
 
