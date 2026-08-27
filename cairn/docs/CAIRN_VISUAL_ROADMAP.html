@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cairn — Visual Roadmap</title>
+<style>
+  :root{
+    --bg:#f5f4f0;
+    --card:#ffffff;
+    --ink:#1c1b19;
+    --ink-dim:#5c5a54;
+    --line:#e2e0d8;
+    --accent:#2f6f4f;
+    --accent-ink:#ffffff;
+    --amber-bg:#fdf1d6;
+    --amber-ink:#7a5b06;
+    --amber-line:#f0d896;
+    --green-bg:#e4f3e8;
+    --green-ink:#1f6b3c;
+    --green-line:#bfe3cb;
+    --red-bg:#fbe6e6;
+    --red-ink:#a3312f;
+    --red-line:#f2c2c1;
+    --grey-bg:#eceae4;
+    --grey-ink:#77746c;
+    --grey-line:#dad7cd;
+    --orange-bg:#fde7d6;
+    --orange-ink:#a6480a;
+    --orange-line:#f3c79c;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#15140f;
+      --card:#211f19;
+      --ink:#f1efe8;
+      --ink-dim:#a8a598;
+      --line:#38352b;
+      --accent:#5fbf8a;
+      --accent-ink:#0c1a12;
+      --amber-bg:#3a2f10;
+      --amber-ink:#f0cd6e;
+      --amber-line:#5c4a18;
+      --green-bg:#173322;
+      --green-ink:#7fe0a7;
+      --green-line:#2a5138;
+      --red-bg:#3a1e1d;
+      --red-ink:#f2a19e;
+      --red-line:#5a2c2a;
+      --grey-bg:#26241d;
+      --grey-ink:#9a978a;
+      --grey-line:#3a3729;
+      --orange-bg:#3d2712;
+      --orange-ink:#f2a668;
+      --orange-line:#5c3a1a;
+    }
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.45;
+    padding-bottom:48px;
+  }
+  .wrap{max-width:640px;margin:0 auto;padding:20px 16px 8px;}
+
+  /* ---- Header ---- */
+  .brand{text-align:center;margin-bottom:18px;}
+  .brand h1{
+    font-size:2.1rem;
+    letter-spacing:0.14em;
+    margin:0;
+    font-weight:800;
+  }
+  .brand .tagline{
+    color:var(--ink-dim);
+    font-size:0.95rem;
+    margin-top:2px;
+  }
+  .brand .updated{
+    color:var(--ink-dim);
+    font-size:0.75rem;
+    margin-top:8px;
+  }
+
+  /* ---- Status pill ---- */
+  .pill{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    padding:5px 12px;
+    border-radius:999px;
+    font-size:0.85rem;
+    font-weight:700;
+    border:1px solid transparent;
+    white-space:nowrap;
+  }
+  .pill.green{background:var(--green-bg);color:var(--green-ink);border-color:var(--green-line);}
+  .pill.amber{background:var(--amber-bg);color:var(--amber-ink);border-color:var(--amber-line);}
+  .pill.orange{background:var(--orange-bg);color:var(--orange-ink);border-color:var(--orange-line);}
+  .pill.red{background:var(--red-bg);color:var(--red-ink);border-color:var(--red-line);}
+  .pill.grey{background:var(--grey-bg);color:var(--grey-ink);border-color:var(--grey-line);}
+
+  /* ---- Hero "where we are" card ---- */
+  .hero{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:18px;
+    padding:18px 18px 20px;
+    margin-bottom:18px;
+    box-shadow:0 1px 3px rgba(0,0,0,0.04);
+  }
+  .hero .phase-tag{
+    font-size:0.8rem;
+    font-weight:700;
+    color:var(--ink-dim);
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    margin-bottom:6px;
+  }
+  .hero h2{
+    margin:0 0 10px;
+    font-size:1.35rem;
+  }
+  .hero .pills{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;}
+  .hero p{margin:0 0 8px;font-size:0.97rem;}
+  .hero p:last-child{margin-bottom:0;}
+  .hero .assess{color:var(--ink-dim);}
+
+  /* ---- Vertical phase stepper ---- */
+  .stepper{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:18px;
+    padding:16px 16px 6px;
+    margin-bottom:18px;
+    box-shadow:0 1px 3px rgba(0,0,0,0.04);
+  }
+  .stepper h3{
+    margin:0 0 14px;
+    font-size:0.95rem;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    color:var(--ink-dim);
+  }
+  .step{
+    display:flex;
+    gap:12px;
+    position:relative;
+    padding-bottom:18px;
+  }
+  .step:last-child{padding-bottom:2px;}
+  .step .rail{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    width:26px;
+    flex:none;
+  }
+  .step .dot{
+    width:22px;height:22px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    font-size:0.7rem;font-weight:800;
+    background:var(--grey-bg);color:var(--grey-ink);border:2px solid var(--grey-line);
+    flex:none;
+  }
+  .step .track{
+    flex:1;width:2px;background:var(--line);margin-top:2px;
+  }
+  .step:last-child .track{display:none;}
+  .step .body{flex:1;padding-top:1px;}
+  .step .body .name{font-weight:700;font-size:0.95rem;}
+  .step .body .outcome{font-size:0.85rem;color:var(--ink-dim);margin-top:2px;}
+
+  .step.current .dot{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
+  .step.current .body .name::after{
+    content:"◀ you are here";
+    font-size:0.7rem;
+    font-weight:700;
+    color:var(--accent);
+    margin-left:8px;
+    text-transform:none;
+    letter-spacing:0;
+  }
+  .step.current{
+    background:var(--green-bg);
+    margin:0 -10px 18px;
+    padding:10px 10px 18px;
+    border-radius:12px;
+  }
+  .step.done .dot{background:var(--green-ink);color:#fff;border-color:var(--green-ink);}
+
+  /* ---- Collapsible sections ---- */
+  details{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:14px;
+    margin-bottom:12px;
+    box-shadow:0 1px 3px rgba(0,0,0,0.03);
+    overflow:hidden;
+  }
+  summary{
+    list-style:none;
+    cursor:pointer;
+    padding:16px 18px;
+    font-weight:700;
+    font-size:1rem;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    -webkit-tap-highlight-color:transparent;
+    min-height:24px;
+  }
+  summary::-webkit-details-marker{display:none;}
+  summary .num{color:var(--ink-dim);font-weight:700;margin-right:8px;}
+  summary .chev{
+    flex:none;
+    width:22px;height:22px;
+    border-radius:50%;
+    background:var(--grey-bg);
+    display:flex;align-items:center;justify-content:center;
+    font-size:0.8rem;
+    color:var(--ink-dim);
+    transition:transform 0.15s ease;
+  }
+  details[open] summary .chev{transform:rotate(180deg);}
+  .details-body{padding:0 18px 18px;font-size:0.93rem;}
+  .details-body p{margin:0 0 10px;}
+  .details-body ul{margin:0 0 10px;padding-left:20px;}
+  .details-body li{margin-bottom:6px;}
+  .details-body h4{
+    font-size:0.82rem;text-transform:uppercase;letter-spacing:0.05em;
+    color:var(--ink-dim);margin:14px 0 6px;
+  }
+  .details-body h4:first-child{margin-top:0;}
+
+  /* ---- Cards inside sections (todo items, tools) ---- */
+  .card-list{display:flex;flex-direction:column;gap:10px;}
+  .item{
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:12px 14px;
+  }
+  .item .row1{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:5px;}
+  .item .title{font-weight:700;font-size:0.92rem;}
+  .item .why{color:var(--ink-dim);font-size:0.85rem;}
+  .item .meta{color:var(--ink-dim);font-size:0.78rem;margin-top:5px;}
+
+  .journey-row{
+    display:flex;gap:10px;border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:8px;
+  }
+  .journey-row .badge{
+    flex:none;width:30px;height:30px;border-radius:8px;
+    background:var(--grey-bg);color:var(--ink-dim);
+    display:flex;align-items:center;justify-content:center;font-weight:800;font-size:0.85rem;
+  }
+  .journey-row.now .badge{background:var(--accent);color:var(--accent-ink);}
+  .journey-row .txt .name{font-weight:700;font-size:0.9rem;}
+  .journey-row .txt .outcome{font-size:0.85rem;color:var(--ink-dim);margin-top:2px;}
+
+  table.tools{width:100%;border-collapse:collapse;font-size:0.86rem;}
+  table.tools td{padding:8px 4px;border-bottom:1px solid var(--line);vertical-align:top;}
+  table.tools tr:last-child td{border-bottom:none;}
+  table.tools td.tool{font-weight:700;white-space:nowrap;padding-right:8px;}
+  table.tools td.why{color:var(--ink-dim);}
+
+  code{
+    background:var(--grey-bg);
+    padding:1px 5px;
+    border-radius:5px;
+    font-size:0.85em;
+  }
+
+  footer{
+    max-width:640px;margin:8px auto 0;padding:8px 16px 24px;
+    color:var(--ink-dim);font-size:0.78rem;text-align:center;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="brand">
+    <h1>CAIRN</h1>
+    <div class="tagline">"You are here"</div>
+    <div class="updated">Updated 2026-08-27 · against <code>master @ 0a58c81</code></div>
+  </div>
+
+  <!-- ============ HERO: 10-second read ============ -->
+  <div class="hero">
+    <div class="phase-tag">Phase 1 of 6 — the core engine &amp; multi-trip planner</div>
+    <h2>The fixes just landed. Not yet independently checked.</h2>
+    <div class="pills">
+      <span class="pill amber">🟡 IN PROGRESS</span>
+      <span class="pill red">🔴 GATE NOT OPEN</span>
+    </div>
+    <p><strong>The invisible, hard part — your edits never silently vanishing —</strong> is built
+      and has survived 7 rounds of someone actively trying to break it.</p>
+    <p><strong>The part you'd actually look at</strong> had 3 named gaps between what the engine
+      already knew and what the screen showed you. The builder just fixed all three (plus 4
+      smaller items) in one pass — its own tests pass, but nobody independent has tried to break
+      that pass yet.</p>
+    <p class="assess">Sent back once by the project's own gate review. Design questions answered,
+      code fixes now built. What's left is an independent check, then the manager looks again.</p>
+  </div>
+
+  <!-- ============ VERTICAL PHASE STEPPER ============ -->
+  <div class="stepper">
+    <h3>The six phases</h3>
+
+    <div class="step current">
+      <div class="rail"><div class="dot">1</div><div class="track"></div></div>
+      <div class="body">
+        <div class="name">Core planner</div>
+        <div class="outcome">Plan trips like the old app, but many of them, safely.</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="rail"><div class="dot">2</div><div class="track"></div></div>
+      <div class="body">
+        <div class="name">Accounts &amp; sharing</div>
+        <div class="outcome">Trips follow you across devices; friends can see them.</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="rail"><div class="dot">3</div><div class="track"></div></div>
+      <div class="body">
+        <div class="name">Email ingestion</div>
+        <div class="outcome">Forward a confirmation, get it filed and ticketed.</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="rail"><div class="dot">4</div><div class="track"></div></div>
+      <div class="body">
+        <div class="name">Phone app &amp; live path</div>
+        <div class="outcome">Offline on your phone; your real route drawn next to the plan.</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="rail"><div class="dot">5</div><div class="track"></div></div>
+      <div class="body">
+        <div class="name">Photos</div>
+        <div class="outcome">Photos land on the right day — often the right stop — by themselves.</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="rail"><div class="dot">6</div></div>
+      <div class="body">
+        <div class="name">Sharing polish &amp; cost reports</div>
+        <div class="outcome">A clean public share page and a real trip cost report.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 1. WHERE WE ARE ============ -->
+  <details open>
+    <summary><span><span class="num">1</span>Where we are</span><span class="chev">▾</span></summary>
+    <div class="details-body">
+      <h4>Current phase</h4>
+      <p>Phase 1 of 6. <span class="pill amber">🟡 IN PROGRESS</span></p>
+      <h4>Current gate status</h4>
+      <p><span class="pill red">🔴 BLOCKED</span> — the manager (the role whose job is deciding
+        SHIP vs. SEND BACK) sent Phase 1 back once. The design questions that review raised have
+        been answered, and the code fixes that follow from those answers just landed in one pass.
+        An independent check of that pass — and a fresh manager look — haven't happened yet.</p>
+      <h4>Plain-English assessment</h4>
+      <p>The foundation — never silently losing an edit, even under a crash, a closed tab, or two
+        tabs fighting over the same trip — is done and has held up under 7 rounds of someone
+        actively trying to break it. The 3 specific, named places where the screen didn't match
+        what the engine already knew are now, per the builder's own report, fixed. Nobody
+        independent has tried to break that fix yet — that's the one remaining step.</p>
+    </div>
+  </details>
+
+  <!-- ============ 2. WHAT IS ALREADY BUILT ============ -->
+  <details>
+    <summary><span><span class="num">2</span>What is already built</span><span class="chev">▾</span></summary>
+    <div class="details-body">
+      <ul>
+        <li><strong>The trip engine</strong> — days, stops, legs, cost roll-up, map clustering,
+          conflict detection, validation, import/export, and provenance tracking (who a piece of
+          data belongs to). No external dependencies, fully deterministic.</li>
+        <li><strong>The save/persistence layer</strong> — decides when an edit is safe to write,
+          refuses to overwrite a concurrent edit, never silently drops something you typed. This
+          is the part that took 7 adversarial rounds to get right (see §6).</li>
+        <li><strong>The web app</strong> — opens in a browser, loads your real trip, supports
+          multiple trips, day editing, a day map, a conflicts panel, and copying one stop from
+          another trip with credit attached.</li>
+        <li><strong>A command-line tool</strong> for inspecting a trip, its conflicts and costs
+          with no browser at all — what QA uses to check the engine directly.</li>
+        <li><strong>387 automated tests, all passing</strong> (up from 333 as of the latest
+          builder pass), plus a separate stack of adversarial probe scripts built specifically to
+          try to break named claims.</li>
+      </ul>
+    </div>
+  </details>
+
+  <!-- ============ 3. WHAT I CAN ACTUALLY DO TODAY ============ -->
+  <details>
+    <summary><span><span class="num">3</span>What I can actually do today</span><span class="chev">▾</span></summary>
+    <div class="details-body">
+      <h4>Works right now</h4>
+      <ul>
+        <li>Open the app and see the real Europe 2026 trip, loaded read-only from the live planner.</li>
+        <li>Create a second trip and switch between them without them bleeding into each other.</li>
+        <li>Edit a day's stops and see them on a map, without losing the edit on tab close, a trip
+          switch, or two tabs open at once.</li>
+        <li>See a conflicts panel flagging exactly the two real red-flag days — nothing invented.</li>
+        <li>Browse another trip and copy one stop into this one, badged and credited, with any
+          door PIN or booking number redacted.</li>
+        <li>Export a trip to a JSON file and restore it later.</li>
+      </ul>
+      <h4>Just fixed, not yet independently checked (see §4)</h4>
+      <ul>
+        <li>A flight/train stop now reads "departs · arrives" instead of a single misleading time.</li>
+        <li>Dismissing a conflict now stays dismissed even after an edit-away-and-back.</li>
+        <li>The "copied from" credit now shows on every screen that renders a copied stop.</li>
+      </ul>
+      <h4>Not built yet — later phases</h4>
+      <ul>
+        <li>Accounts, cross-device sync, friends, share links (Phase 2).</li>
+        <li>Email-derived bookings (Phase 3).</li>
+        <li>Phone app, offline mode, live path (Phase 4). Photos (Phase 5).</li>
+      </ul>
+    </div>
+  </details>
+
+  <!-- ============ 4. WHAT IS LEFT FOR PHASE 1 ============ -->
+  <details>
+    <summary><span><span class="num">4</span>What is left for Phase 1</span><span class="chev">▾</span></summary>
+    <div class="details-body">
+      <p>Seven items routed by the last gate review, plus three architecture rulings — <strong>all
+        built in one pass.</strong> Every row below is "built, not yet independently verified,"
+        which is the actual remaining gap, not unwritten code.</p>
+      <div class="card-list">
+        <div class="item">
+          <div class="row1"><span class="title">Show departure vs. arrival correctly</span><span class="pill amber">🟡 built, unverified</span></div>
+          <div class="why">The single thing most likely to mislead you on a travel day — the exact bug the old planner had.</div>
+        </div>
+        <div class="item">
+          <div class="row1"><span class="title">Make "dismiss conflict" actually stick</span><span class="pill amber">🟡 built, unverified</span></div>
+          <div class="why">It used to be pointless — a dismissal could silently come back.</div>
+        </div>
+        <div class="item">
+          <div class="row1"><span class="title">Show credit for copied stops everywhere</span><span class="pill amber">🟡 built, unverified</span></div>
+          <div class="why">"Never let a copied thing look unattributed" — two screens used to break that rule.</div>
+        </div>
+        <div class="item">
+          <div class="row1"><span class="title">Tell the user when autosave gives up</span><span class="pill amber">🟡 built, unverified</span></div>
+          <div class="why">It used to fail silently after retrying, with no further attempt until you typed again.</div>
+        </div>
+        <div class="item">
+          <div class="row1"><span class="title">Fix the sample-data redaction rule</span><span class="pill amber">🟡 built, unverified</span></div>
+          <div class="why">A real booking reference leaked into a build file once — the rule that shipped wasn't the rule that was asked for.</div>
+        </div>
+        <div class="item">
+          <div class="row1"><span class="title">Close three narrow save-logic holes</span><span class="pill amber">🟡 built, unverified</span></div>
+          <div class="why">Not reachable by a user — "not reachable yet" isn't the same as "safe."</div>
+        </div>
+        <div class="item">
+          <div class="row1"><span class="title">Fix a file-export symlink trick &amp; a date-check gap</span><span class="pill amber">🟡 built, unverified</span></div>
+          <div class="why">Both small, both exactly the kind of thing that turns into a real bug once Phase 2 adds real users.</div>
+        </div>
+      </div>
+      <p style="margin-top:12px;"><strong>What's actually next is process, not code</strong>
+        (unless the breaker finds something): an independent Breaker round — driving B-1/B-2/B-3
+        as a user in a real browser, not just re-running the builder's own probe — then the
+        Manager re-gates against the real product, not the test count.</p>
+    </div>
+  </details>
+
+  <!-- ============ 5. THE JOURNEY ============ -->
+  <details>
+    <summary><span><span class="num">5</span>The journey</span><span class="chev">▾</span></summary>
+    <div class="details-body">
+      <p>Each phase as what you'll actually be able to do — not as an engineering task.</p>
+      <div class="journey-row now">
+        <div class="badge">1</div>
+        <div class="txt"><div class="name">Core planner</div>
+          <div class="outcome">Plan trips like the old app, but many of them, safely — nothing you type silently vanishes.</div></div>
+      </div>
+      <div class="journey-row">
+        <div class="badge">2</div>
+        <div class="txt"><div class="name">Accounts &amp; sharing</div>
+          <div class="outcome">Your trips follow you across devices, and friends can see them and copy a stop into their own.</div></div>
+      </div>
+      <div class="journey-row">
+        <div class="badge">3</div>
+        <div class="txt"><div class="name">Email ingestion</div>
+          <div class="outcome">Forward a booking confirmation; Cairn finds it, files it on the right day, attaches the ticket.</div></div>
+      </div>
+      <div class="journey-row">
+        <div class="badge">4</div>
+        <div class="txt"><div class="name">Phone app &amp; live path</div>
+          <div class="outcome">Cairn on your phone, fully offline, quietly drawing the route you actually traveled next to the plan.</div></div>
+      </div>
+      <div class="journey-row">
+        <div class="badge">5</div>
+        <div class="txt"><div class="name">Photos</div>
+          <div class="outcome">Trip photos land on the right day — often the right stop — automatically.</div></div>
+      </div>
+      <div class="journey-row">
+        <div class="badge">6</div>
+        <div class="txt"><div class="name">Sharing polish &amp; cost reports</div>
+          <div class="outcome">A clean public share page, and a real cost report across a trip.</div></div>
+      </div>
+      <p style="margin-top:10px;">A phase only starts once the one before it gets a manager
+        verdict of <strong>SHIP</strong> (see §10).</p>
+    </div>
+  </details>
+
+  <!-- ============ 6. RECENT PROGRESS ============ -->
+  <details>
+    <summary><span><span class="num">6</span>Recent progress (R2–R7)</span><span class="chev">▾</span></summary>
+    <div class="details-body">
+      <p>Short version: <strong>seven rounds of one QA tester repeatedly trying to break the
+        save/persistence layer</strong> — and finding a real way to lose data almost every round,
+        until round 6.</p>
+      <ul>
+        <li><strong>R2</strong> — closed a lost-edit race, a stop that could vanish, and a leaked credential in a copied note.</li>
+        <li><strong>R3</strong> — found the "is this still safe to save" check could be spoofed by delete-then-recreate.</li>
+        <li><strong>R4</strong> — found the R3 fix had the same bug one layer upstream (undo + a new edit could skip a write while showing "Saved").</li>
+        <li><strong>R5</strong> — found an edit made mid-check could be silently discarded, and a blank "who did this" field slipping past a check.</li>
+        <li><strong>R6</strong> — verified R5's fixes by deliberately breaking them again and watching tests fail correctly; found a silent give-up-after-retrying path.</li>
+        <li><strong>R7</strong> — verified everything again, closed the last serious save-path bug, found three narrow issues not reachable by a user yet.</li>
+        <li><strong>Gate review</strong> — looked at the actual screens for the first time in five rounds and sent Phase 1 back for 3 disclosed-but-unfixed gaps.</li>
+        <li><strong>SEND-BACK pass</strong> — the builder just fixed all 3 gaps plus 4 smaller items in one pass, 387 tests passing. Independent verification of this pass hasn't happened yet.</li>
+      </ul>
+      <p><strong>Why so much verification before Phase 1 counted as close to ready:</strong> each
+        of these was a way an edit could be silently lost or corrupted — the worst thing a trip
+        planner can do. Each fix was immediately attacked rather than trusted, which is why
+        several "closed" bugs reopened one layer up. That's expensive, and it's the only way to
+        actually trust the result.</p>
+    </div>
+  </details>
+
+  <!-- ============ 7. TECHNICAL WORK -> WHY I CARE ============ -->
+  <details>
+    <summary><span><span class="num">7</span>Technical work → why I care</span><span class="chev">▾</span></summary>
+    <div class="details-body">
+      <table class="tools">
+        <tr><td class="tool">Persistence safety</td><td class="why">your edits don't silently disappear, ever</td></tr>
+        <tr><td class="tool">Merge/save serialization</td><td class="why">two things happening at once can't corrupt the trip</td></tr>
+        <tr><td class="tool">Provenance</td><td class="why">you always know where a copied piece of data came from</td></tr>
+        <tr><td class="tool">Validation</td><td class="why">bad or contradictory trip data gets caught, not silently accepted</td></tr>
+      </table>
+    </div>
+  </details>
+
+  <!-- ============ 8. WHAT HAPPENS NEXT ============ -->
+  <details>
+    <summary><span><span class="num">8</span>What happens next</span><span class="chev">▾</span></summary>
+    <div class="details-body">
+      <p style="text-align:center;font-weight:700;font-size:1rem;letter-spacing:0.02em;">
+        Breaker&nbsp;→&nbsp;Manager
+      </p>
+      <ul>
+        <li><strong>Architect</strong> already did its part this cycle — the four design
+          questions from the last gate review are answered.</li>
+        <li><strong>Builder</strong> also already did its part — all 7 routed fixes plus 3
+          architecture rulings landed in one pass.</li>
+        <li><strong>Breaker</strong> is next: an independent round on that specific pass, focused
+          on the app screens.</li>
+        <li><strong>Manager</strong> makes the SHIP / SEND BACK call. Only this role can open Phase 2.</li>
+      </ul>
+    </div>
+  </details>
+
+  <!-- ============ 9. TOOLS / SKILLS ============ -->
+  <details>
+    <summary><span><span class="num">9</span>Tools &amp; skills under consideration</span><span class="chev">▾</span></summary>
+    <div class="details-body">
+      <p>Nothing here is installed by this page — it's a status list.</p>
+      <table class="tools">
+        <tr><td class="tool">superpowers</td><td class="why">✅ Useful now — already in active use (TDD, systematic debugging, verification-before-completion)</td></tr>
+        <tr><td class="tool">skill-creator</td><td class="why">⏸ Useful later — worth it once there's a 3rd/4th recurring workflow to package</td></tr>
+        <tr><td class="tool">agent-browser</td><td class="why">⛔ Not needed — QA's own browser scripts already do this job</td></tr>
+        <tr><td class="tool">gstack</td><td class="why">⏸ Useful later — no deployment stack until Phase 2</td></tr>
+        <tr><td class="tool">ui-ux-pro-max</td><td class="why">⏸ Useful later — current gaps are correctness bugs, not design ones</td></tr>
+        <tr><td class="tool">taste-skill</td><td class="why">⏸ Useful later — matters most at Phase 6 polish</td></tr>
+        <tr><td class="tool">impeccable</td><td class="why">⛔ Not needed — no gap it would fill right now</td></tr>
+        <tr><td class="tool">claude-hud</td><td class="why">⏸ Useful later — one task per session today, nothing to dashboard yet</td></tr>
+        <tr><td class="tool">GSAP / Emil</td><td class="why">⛔ Not needed — would break the zero-dependency rule; no animation work planned before Phase 6</td></tr>
+      </table>
+    </div>
+  </details>
+
+  <!-- ============ 10. DEFINITION OF DONE ============ -->
+  <details>
+    <summary><span><span class="num">10</span>Definition of "done"</span><span class="chev">▾</span></summary>
+    <div class="details-body">
+      <p><strong>Code existing is not the same as a phase being shipped.</strong> There's a
+        four-stage pipeline — architect → builder → breaker → manager — precisely because "the
+        builder says it works" was never enough on its own.</p>
+      <p>A phase is complete only when:</p>
+      <ul>
+        <li>its acceptance criteria are met, written so they can't pass by accident;</li>
+        <li>an adversarial tester tried specifically to break it, and it's written down, not assumed;</li>
+        <li>the manager reviewed the actual product — not just the test count — and recorded a verdict of <strong>SHIP</strong>.</li>
+      </ul>
+      <p>Phase 1's engine and save logic are <strong>built and verified</strong>, genuinely, by
+        that standard. The three screen gaps the manager sent back are now <strong>built</strong>
+        — that's not the same claim as <strong>verified</strong> (needs an independent breaker
+        round) or <strong>shippable</strong> (needs a manager verdict of SHIP). All three are
+        real, different claims, and this page tries to always say which one it means.</p>
+    </div>
+  </details>
+
+  <footer>
+    Companion to <code>ARCHITECTURE.md</code> and <code>ROADMAP.md</code> — those are the
+    contract, this is the status board. Source: <code>cairn/docs/CAIRN_VISUAL_ROADMAP.md</code>.
+  </footer>
+
+</div>
+</body>
+</html>
