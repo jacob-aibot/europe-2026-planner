@@ -53,11 +53,22 @@ would delete two thirds of the rule's detection — and instead `removeStop` pru
 stop leaves with no referent. `Place`'s shape still does not change, `packages/client` does not change, and
 §2.10 stays at 70 runtime symbols.
 
+**Revision 8, 2026-08-27.** The Phase 1 gate re-review (`REVIEW.md`, SEND BACK) routed **one** ruling here
+and nothing else. **A-7** (§2.2a, §4.2 rule 4a, QA R11-1): a successful write whose document the store
+*declines to install* was still advancing `savedDoc` and `savedVersion` to it and re-arming the debounce, so
+the user's next autosave wrote an un-merged document over another writer's saved work with the fence's
+blessing and the chip on *Saved*. The fence and the document it stands for move **together or not at all**;
+the merged write is the one site in the system where they can come apart, the exposure is the whole of
+`doMerge` rather than the write, and the merge refuses rather than rebasing. No engine, no persisted shape,
+no export surface and no autosave behaviour moves. R8-3, R8-4 and R10-1 are **not** adjudicated by this
+revision.
+
 **Phase 1 is §2 and §4.** Everything else is the shape those two must not foreclose. See `ROADMAP.md`.
 
 ## Read only your sections
 
-This document is ~39k tokens. Nothing needs all of it, and a fresh agent that reads it whole starts a sixth
+This document is ~54k tokens (re-measured at revision 8 with `cairn/tools/doc-section ARCHITECTURE`; the
+per-section figures below were stale by a third before that). Nothing needs all of it, and a fresh agent that reads it whole starts a sixth
 of the way into its context before writing a line. Pull what you need:
 
 ```bash
@@ -69,11 +80,11 @@ cairn/tools/doc-section ARCHITECTURE         # lists the sections and their size
 |---|---|---|---|
 | 0 | Six positions, stated up front | <1k | everyone — read it, it is 20 lines |
 | 1 | Stack decision and the capability checks behind it | 3k | architect. Settled; do not re-litigate |
-| 2 | **Domain model — the builder's contract.** §2.12 `travelRole`, §2.13 geography and §2.14 import/copy are new in revision 2 and are where the Phase 1 rework lives; **§2.2a (the `StorageVersion` write fence, revision 3) and §2.2b (the freshness rule it turned out to be one instance of, revision 4) are read together with §4.2 and §4.3, never alone**; §2.10 (the export surface) and §2.13's copied-record row are settled in revision 5; **§2.7's retirement ledger (A-5) and §2.13's copy-borne `Place` rule (A-6) are revision 6** | 22k | builder, breaker |
+| 2 | **Domain model — the builder's contract.** §2.12 `travelRole`, §2.13 geography and §2.14 import/copy are new in revision 2 and are where the Phase 1 rework lives; **§2.2a (the `StorageVersion` write fence, revision 3) and §2.2b (the freshness rule it turned out to be one instance of, revision 4) are read together with §4.2 and §4.3, never alone**; §2.10 (the export surface) and §2.13's copied-record row are settled in revision 5; **§2.7's retirement ledger (A-5) and §2.13's copy-borne `Place` rule (A-6) are revision 6**; **§2.2a's A-7 (the fence a declined write may not move) is revision 8** and is read with §4.2 rule 4a | 35k | builder, breaker |
 | 3 | Module boundaries | <1k | builder |
-| 4 | **The Phase 1 client.** §4.2 rule 6 (a pending write is never outlived by its document) is new in revision 3 — QA R3-2; rule 6a′ and the `savedDoc` predicate are revision 4 — QA R4-1; **rule 6a″ (the flush bound and its exits) and rule 6c's "delete goes on the chain" are revision 5** — QA R6-1/R6-2/R7-3; **rule 5's retirement carve-out is revision 6** — QA R8-1, read with §2.7 | 6k | builder |
-| 5 | The four hard subsystems | 1k | breaker; builder from Phase 3 on |
-| 6 | Privacy, authorization, deletion cascade | 2k | breaker, manager; builder for §6.2 |
+| 4 | **The Phase 1 client.** §4.2 rule 6 (a pending write is never outlived by its document) is new in revision 3 — QA R3-2; rule 6a′ and the `savedDoc` predicate are revision 4 — QA R4-1; **rule 6a″ (the flush bound and its exits) and rule 6c's "delete goes on the chain" are revision 5** — QA R6-1/R6-2/R7-3; **rule 5's retirement carve-out is revision 6** — QA R8-1, read with §2.7; **rule 4a is revision 8** — QA R11-1, read with §2.2a A-7 | 7k | builder |
+| 5 | The four hard subsystems | 2k | breaker; builder from Phase 3 on |
+| 6 | Privacy, authorization, deletion cascade | 3k | breaker, manager; builder for §6.2 |
 | 7 | Explicitly deferred | <1k | anyone about to build something not in the roadmap |
 
 Read the whole document when you are the manager, when you are changing the design, or when a change
@@ -476,11 +487,184 @@ bytes is a guard whose refusal behaviour is decided by an attacker's JSON.
 |---|---|
 | **Two tabs, concurrent** (R2-1) | Both hold `V0`, both issue `saveIfVersion(id,'V0',…)` before either awaits. Inside one atomic step exactly one finds `V0`, writes, and gets back a fresh `V1`; the other finds `V1 ≠ V0` and gets `{ok:false, storedVersion:'V1'}`. Winner `'idle'`, loser `'conflict'` with its edit in memory and an indicator that does not read "Saved". Unchanged behaviour; the token is simply no longer forgeable. |
 | **Undo / redo** (R3-1) | The reducer restores the snapshot verbatim, `revision` and all, and **does not touch `persistence.savedVersion`** — that field is bookkeeping about *storage*, not about the document. The autosave that follows therefore still expects whatever storage last agreed with this store. A tab already refused still expects `V0` and is refused again; a tab in good standing writes its undone content forward and legitimately says "Saved", because that content really is in storage. The narrow client fix R3-1 proposes — making `undo` synthesise `revision + 1` — is **superseded and MUST NOT be built**: it would make the counter look like a version while an imported file could still assert any number it liked. |
-| **Merge** (`mergeWithStored`) | `load()` returns `{doc, version}`. The merge is only valid against that exact `remote`, so the merged write carries **that same `version`** as its expectation. A third writer landing in between moves the version, the port refuses, the conflict stands unmerged and the edit stays in memory. On success the merged write mints a new version, which becomes `savedVersion`, and `baseDoc` becomes the merged document. The deleted-trip branch expects `null` — "nothing is stored under this id" — so a newcomer appearing in the gap is refused rather than clobbered. (This reinforces rather than replaces the R3-3 fix: the merged write must go through the store's own save chain, because an expectation computed before an in-flight autosave settles is stale by construction.) |
+| **Merge** (`mergeWithStored`) | `load()` returns `{doc, version}`. The merge is only valid against that exact `remote`, so the merged write carries **that same `version`** as its expectation. A third writer landing in between moves the version, the port refuses, the conflict stands unmerged and the edit stays in memory. On success **and only while the store still holds the document the merge started from**, the merged write mints a new version, which becomes `savedVersion`, and `savedDoc` becomes the merged document. If the store has moved on — the user typed anywhere inside `doMerge`, which is a window spanning the load, the parse, the merge and the queue, not just the write — the merged document is not installed **and the fence does not move with it**: **A-7** below, QA R11-1. The deleted-trip branch expects `null` — "nothing is stored under this id" — so a newcomer appearing in the gap is refused rather than clobbered. (This reinforces rather than replaces the R3-3 fix: the merged write must go through the store's own save chain, because an expectation computed before an in-flight autosave settles is stale by construction.) |
 | **Delete then recreate under one id** (R3-4, ABA) | `delete()` removes the record; the counter does not rewind. The recreated record gets a strictly fresh version, so a writer holding the dead record's version matches nothing and is refused. `importDoc`'s "keep the original id when it is free" path — the export → delete → restore sequence — is therefore safe by construction, and so is the within-lineage recycle R3-1 exploited. One mechanism, both findings. |
 | **The whole database is destroyed under a live tab** (R4-2, ABA one level up) | Site data cleared, or §1.1's 7-day eviction of a non-installed tab. Tab A has been open the whole time and holds `V`. Tab B restores the backup into the freshly-created database and gets `V2`. `V2` is 128 fresh random bits, so `V2 ≠ V` — not because anything checked, but because there is no shared derivation for the two to collide through. A's next keystroke offers `V`, matches nothing, is refused, and A reads *"Not saved — edited elsewhere"* rather than "Saved". The old scheme produced `V2 === V` here, verified in Chromium. Note what the fix is *not*: it is not "re-read the epoch more often". Any cadence leaves a window, because the wipe is not an event the port is told about. |
 | **Phase 2, server-authoritative** | The token becomes server-issued: an `ETag` on the trip resource, `If-Match` on the write, or a `version` column with `UPDATE … WHERE version = $expected`. Because the client only ever compares for equality and only ever obtains a token from a port result, **nothing above the port changes** — same `persistence.savedVersion`, same refusal → `'conflict'`, same `mergeWithStored`. A synced device's local record carries **two** envelope fields, and they are never conflated: `version` fences local writers (two tabs on one device) and `serverVersion` records the last version the server acknowledged, fencing the sync push. Two fences over two resources. Phase 2 adds a field; it does not redesign this. |
 | **Phase 4, `apps/mobile` over SQLite** | Identical contract, no SQLite-specific concept. `UPDATE trips SET doc=?,summary=?,version=? WHERE id=? AND version=?` (or an insert guarded on absence when the expectation is `null`) inside one `BEGIN IMMEDIATE` transaction, with `changes() === 0` meaning refused; re-read and return `storedVersion`. The counter is a one-row `meta` table bumped in the same transaction. `expo-sqlite` exposes `withExclusiveTransactionAsync()` for exactly this, and `BEGIN IMMEDIATE` is the documented way to avoid a mid-transaction `SQLITE_BUSY` — *verified against Expo's SQLite docs and expo/expo#13552, but the isolation actually delivered across two JS contexts must be re-verified on a device before Phase 4 ships.* The token being an opaque **string** rather than a number is what makes all three backings free. |
+
+#### A-7 — a write the store declines to install may not move the fence (revision 8, QA R11-1)
+
+The **Merge** row above says what happens when the merged write succeeds. It never contemplated the branch
+where the write succeeds *and the store does not keep the document it wrote*, which is the branch a single
+keystroke reaches. This addendum rules on that branch. It changes no engine, no persisted shape, no export
+surface, and no behaviour at either autosave site.
+
+**The defect, verified against the code and not against the finding.** In
+`packages/client/src/store/store.ts`:
+
+- `doMerge:590` captures `const doc = state.doc` — call it **A** — **before** its first `await`,
+  `ports.storage.load(doc.id)` at `:592`.
+- `:620` computes `merged = mergeTrips(ancestor, A, remote)`; `:634-640` calls
+  `writeAndSettle(A, merged.trip, …, stored.version, {reseed:true})` inside a `chainOntoSaving` link
+  (`:627`), so the write also queues behind anything already on the chain.
+- `writeAndSettle:419` computes `stillOurs = state.doc === startedFrom`. `:422` installs `toWrite` **only**
+  if `stillOurs`. `:429-431` set `savedDoc = toWrite` and `savedVersion = outcome.version`
+  **unconditionally**, and `:437` re-arms the ordinary debounce precisely when `!stillOurs`.
+- So if the store advanced to any document **B** at any point between `:590` and the write settling, the
+  merged document is discarded from memory while sitting in storage, and the store keeps a fence minted by
+  a document it does not hold. The re-armed autosave then writes **B** — which never incorporated the merge —
+  under that fence. The port has nothing to object to: this tab really does own that version. The other
+  writer's saved edit is destroyed in storage, `status` is `'idle'`, and the chip reads *Saved*.
+
+**The window is the whole of `doMerge`, and a future reader must not re-derive it narrower.** It is not "the
+tens of milliseconds the merge write is in flight". `startedFrom` is captured at `:590`, so the exposure
+covers the IndexedDB `load()`, `fromJSON`, `mergeTrips`, `toJSON`, **and any write already queued ahead of
+this one on `chainOntoSaving`** — the manager measured 233 801 bytes and a 5.7 ms CPU floor on the reference
+trip *before* either storage round trip, and reproduced the loss with `load()` gated, the write untouched,
+the shipped 400 ms debounce and no explicit flush at all. With an autosave already queued when the button is
+pressed, the window is unbounded. This is why the fix cannot be a check taken once at the top of `doMerge`.
+
+**What is actually wrong is not that the merge was dropped.** Dropping it is `stillOurs` doing its job:
+`state.doc` is the user's own document and A-7 does not overwrite it. The defect is that three facts are
+recorded as one, and one of them is a lie:
+
+| Recorded | True after a non-installed merge write? |
+|---|---|
+| storage issued `outcome.version` for the bytes of `toWrite` | **yes** — a fact about storage, stated by storage |
+| `savedDoc` is *"the last document this store and storage agreed about"* (§2.2b F2's definition) | **no** — this store never held `merged.trip` |
+| therefore this store may write `state.doc` forward over what storage holds | **no** — `B` does not incorporate `merged.trip` |
+
+That third line is the loss, and it is §0.6 one level out from where §2.2a found it: *the write's success is a
+fact about `toWrite`, and it says nothing whatever about `state.doc`.* Advancing the pair converts a fact
+about one document into a licence to overwrite storage with another. **F1** names this write-path code —
+deciding to *keep* a fence is deciding to *permit* a later write, taken earlier and with less information, so
+it is subject to the same prohibition as deciding to skip one. **F2** is what breaks first: `savedDoc` is
+read by `dirty()` **and** by `doMerge:612` as the merge's common ancestor, and after this branch it is
+neither.
+
+**The invariant.** Stated as §4.2 **rule 4a**, and it is the whole ruling:
+
+> **`persistence.savedDoc` and `persistence.savedVersion` advance together, and only to a document this
+> store still holds or may legitimately write forward over.** Concretely, at the moment the write settles,
+> either the store still holds the document the write began from (`state.doc === startedFrom`), or the
+> write carried exactly that document (`toWrite === startedFrom`) — in which case whatever `state.doc` has
+> since become came from this store's own `dispatch`/`undo`/`redo` chain and legitimately supersedes it.
+> **A successful write whose document the store declines to install advances neither field, installs
+> nothing, re-arms nothing, and leaves `status: 'conflict'`.**
+
+The second disjunct is what makes this a two-line discrimination rather than a redesign: `toWrite ===
+startedFrom` holds at **both** autosave sites (`:373` and the deleted-trip merge branch at `:602`) and is
+false at exactly one site in the system, `:634`. That asymmetry — the one place `startedFrom !== toWrite` —
+*is* R11-1, and the invariant reads it directly instead of asking the call site to declare its intent.
+
+**Why "refuse", of the three options on the table.**
+
+| Option | Ruling |
+|---|---|
+| **Re-queue / rebase** — `mergeTrips(savedDoc, state.doc, merged.trip)` and write that | **Refused.** It is a second three-way merge the user never pressed a button for, and its ancestor is a fiction — `savedDoc` is the ancestor of *A* and of *remote*, not of a document that already incorporates both. It is also self-similar: the rebase write is raced by the same keystroke that caused it, so the honest form is a loop with a bound, i.e. a second `flushForTransition` on the merge path. ROADMAP F's sentence for this path is *"the automatic save path must refuse rather than guess"*, and per-stop last-writer-wins is the thing the user asks for by pressing a button (§4.2's own words: *"a button, not a behaviour"*). Guessing twice for one press is not that. |
+| **Install the merge and surface B's edits as a new notice** | **Refused, as the manager expected.** It discards the user's in-flight content, which §4.2 rule 6b already refuses in the transition case for stated reasons: the user's content is authoritative and conflicts are surfaced, not resolved by guessing. A notice does not make it not a discard. |
+| **Refuse: leave `'conflict'` standing, the user's edit intact, and the button where it already is** | **Chosen.** It matches rule 6b's shape verbatim (*the transition does not happen*), it matches R7-1's in-flight guard (a second press joins the first rather than starting a second merge), it costs one click, it invents no semantic model, and it is the only option whose failure mode is "the user presses a button again" rather than "the app wrote something nobody asked for". |
+
+**Not advancing `savedDoc` is required by the *merge*, not only by the fence — and this is what kills every
+half-measure.** Suppose the store kept `savedVersion` (a true fact about storage) and advanced `savedDoc` to
+`merged.trip`. The next press of *Merge and save* would compute `mergeTrips(merged.trip, B, remote′)` — a
+three-way merge asserting that **B** descends from a document containing the other tab's edits. It does not.
+The diff would read those edits as **deletions B performed**, and the merge would remove them on purpose.
+That is the same loss reached through the merge instead of through the autosave. So the pair moves together
+or not at all, which is why the invariant is written about the pair.
+
+**What the fence does in the meantime, explicitly.** The store keeps its **stale** `savedVersion` and knows
+it is stale. That is the honest state and it needs no new machinery:
+
+- `status` becomes `'conflict'` with the existing `CONFLICT_MESSAGE`. No new string, no new banner: the
+  situation genuinely *is* "storage holds a document your copy has not incorporated; merge it or export
+  this copy", which is what that message says and what the banner already offers.
+- The next autosave is **refused by the port**, against a version storage has moved past. That is the fence
+  doing exactly its job, and it is why this design fails safe even if the pre-write check below is defeated.
+- The debounce is **not** re-armed (`:437`), which is §4.2 rule 6a″'s standing three-way rule: a `'conflict'`
+  exit must not spin against a fence that will refuse it every 400 ms.
+- `library` **is** still upserted from the write's own `summary`. The write landed; the row is a true fact
+  about what storage now holds.
+- `persistence.lastMerge` is **not** set on this branch. The merge notice is a disclosure about the document
+  on screen; describing content the user cannot see would be the *inverse* of the rule it exists to serve.
+- Nothing is lost anywhere: storage holds a document that incorporates both sides, the user's later edit is
+  in `doc`, and the screen does not read *Saved*. Pressing *Merge and save* again converges in one step,
+  because `savedDoc` is still the true common ancestor **A**.
+
+**Two mechanisms, and neither substitutes for the other. A builder that ships one has not implemented A-7.**
+
+1. **A precondition inside the chained link** (`doMerge:627`, *before* `writeAndSettle`): if `state.doc !==
+   doc`, abandon the merge without writing and leave `'conflict'` standing. This closes the wide part of the
+   window — the load, the parse, the merge, the serialization, and the queue wait — at the cost of nothing.
+   It must be *inside* the link, after the queue has drained: checking before `chainOntoSaving` is a
+   check-then-act with an interleaving point in the middle, §0.6's error and R7-3's exact mistake.
+2. **The invariant in `writeAndSettle`**, applied when the write has already committed. This one is
+   load-bearing and cannot be replaced by any amount of checking above the port, because the last stretch of
+   the window is inside `saveIfVersion`'s own `await` — which is §2.2a's founding lesson (R2-1), reached
+   from the other side.
+
+**Where the fix goes, and the smallest change that enforces the invariant.** Two edits, both in
+`packages/client/src/store/store.ts`, no new function, no new state field, no new message constant, no
+change to `packages/core`, `apps/web` or any port:
+
+1. **`writeAndSettle`, immediately after `:419`** (`const stillOurs = …`), before the existing `set` at
+   `:420`. Everything below it stays exactly as it is:
+
+   ```ts
+   const stillOurs = state.doc === startedFrom;                    // :419, unchanged
+   // A-7 / §4.2 rule 4a. The write landed, and this store does not hold the document it wrote —
+   // true only of the merged write, where `toWrite !== startedFrom`. The fence may not move to a
+   // document `state.doc` neither is nor descends from, or the next autosave writes an un-merged
+   // document over another writer's work with the fence's blessing (QA R11-1).
+   if (!stillOurs && toWrite !== startedFrom) {
+     set({
+       ...state,
+       library: upsertSummary(state.library, summary),            // storage really does hold this
+       persistence: { ...state.persistence, status: 'conflict', lastError: CONFLICT_MESSAGE },
+     });
+     return;                                                       // no install, no fence, no re-arm
+   }
+   ```
+
+2. **`doMerge`'s merged-write link, at the top of the `chainOntoSaving` callback at `:627`**, before the
+   `try` that wraps `writeAndSettle`: if `state.doc !== doc`, `set` `status:'conflict'` with
+   `CONFLICT_MESSAGE` and `return` without writing. Inside the link, never before it.
+
+Both branches leave `merging` to `mergeWithStored`'s `finally` (R7-1), so the button is pressable again and
+a second press starts a fresh merge from the document the user now holds — which is the "re-queue" option
+arriving where it belongs, behind a user action.
+
+**The regression set — the smallest set that proves the invariant rather than one timing window.** Six
+tests. `packages/client/test/merge-race.test.ts` already owns the harness (`gatedStorage`,
+`conflictedStoreWithParkedAutosave`, `manualScheduler`); it needs one addition, a gate on `load` as well as
+on `saveIfVersion`, because the two gates open different halves of the window. **Every test asserts on the
+bytes the port holds** — `core.fromJSON(await storage.load(id))` — and no test proves a write with
+`isDirty()` alone (ROADMAP F's standing rule since R4-1):
+
+| # | Sequence | Must hold |
+|---|---|---|
+| 1 | **Ordinary case.** Two tabs, a real conflict, *Merge and save*, **no** interleaving dispatch | stored bytes contain **both** tabs' edits; `state.doc` **is** the merged document; `savedDoc === state.doc`; `savedVersion` advanced; `status:'idle'`; `isDirty()` false; `lastMerge` recorded. This is the test that fails if the fix over-refuses |
+| 2 | **Edit lands during the write.** Gate `saveIfVersion`, dispatch one edit, release — `qa/r11-recheck.mjs` §1.3b's shape, **zero undo calls** | the other tab's edit survives in storage; `status:'conflict'`; the local edit is still in `doc`; and then, **with the real 400 ms debounce and no explicit flush**, the bytes still contain it — the loss lands through the ordinary autosave, so the test must let that autosave run |
+| 3 | **Edit lands before the storage read completes.** Gate `load()`, dispatch during the read, release | no merged write is issued at all (count `saveIfVersion` calls); stored bytes are exactly the other tab's document; `status:'conflict'`; local edit intact |
+| 4 | **A write already queued ahead of the merge.** Dispatch, let the autosave park in the port, press *Merge and save*, dispatch again while the queue drains | same as 3 or 2 depending on where it lands, and in both: no document reaches storage that does not incorporate what storage held |
+| 5 | **The invariant directly, not a timing window.** After any non-installed merge write | `savedVersion` is **not** the version that write minted and `savedDoc` is **not** the merged document; the store's next autosave is **refused** by the port; and pressing `mergeWithStored()` a second time converges — stored bytes then contain the other tab's edit **and** both local edits |
+| 6 | **Ceiling: the autosave sites are unchanged.** Gate `saveIfVersion`, dispatch during an *ordinary* autosave, release | `savedDoc`/`savedVersion` **do** advance, the debounce **is** re-armed, and the newer document reaches storage with `status:'idle'`. A fix that turns this into a conflict has broken rule 4 to satisfy 4a |
+
+**Scope, stated so it is not read wider than it is.**
+
+- **Both autosave call sites are byte-identical after this ruling** (`:373`, `:602`): `toWrite ===
+  startedFrom`, so the fence advances exactly as today and `!stillOurs → scheduleSave()` still writes the
+  newer document forward, which is correct — it descends from the one just written.
+- **`{reseed:true}` stays where it is.** On the non-install branch the document does not change, so `set`
+  returns at its step-1 identity check and the R10-3 history clear does not run — correct, and deliberately
+  so: the surviving `history` is linear with the document the store still holds. Nothing here licenses
+  clearing history on a branch where `state.doc` did not move.
+- **R8-4 is untouched by this ruling.** Its harm is a *record resurrected by a write*, not a fence advanced
+  by one, and closing it means deciding whether `doMerge`'s off-chain `load()` at `:592` may be trusted at
+  all after a delete — a question about read ordering, not about `savedDoc`/`savedVersion`. The deleted-trip
+  branch (`:598-611`) is therefore **not** modified by A-7, and R8-4 rides unchanged on its own reachability
+  argument. A builder must not add the mechanism-1 precondition to that branch under cover of this ruling.
 
 ### 2.2b The freshness rule — three clauses, three mechanical checks
 
@@ -1964,6 +2148,25 @@ Six rules, each of which exists because of a specific failure:
    The store also serializes its **own** saves, chaining each attempt onto the last, so an autosave and an
    explicit `flush()` cannot overlap. A tab that conflicts with itself has no other writer to merge with,
    which makes it an unresolvable state rather than a recoverable one.
+
+   **4a. A write the store declines to install may not move the fence** (revision 8, QA R11-1; the ruling,
+   its alternatives and its reasoning are **§2.2a A-7**, and this rule is not implementable without it).
+
+   > `persistence.savedDoc` and `persistence.savedVersion` advance **together**, and only to a document this
+   > store still holds or may legitimately write forward over: at the moment the write settles, either
+   > `state.doc === startedFrom` or `toWrite === startedFrom`. A successful write whose document the store
+   > declines to install advances neither field, installs nothing, re-arms no debounce, and leaves
+   > `status: 'conflict'` with the user's edit in `doc` and the indicator not reading "Saved".
+
+   Rule 4 already says `savedVersion`/`savedDoc` come from a port result and nowhere else. That was
+   necessary and not sufficient: the port result is a fact about **the bytes that were written**, and
+   `writeAndSettle` was recording it as a fact about **the document the store holds**. When a merge writes a
+   document the user has since typed past, those are different documents, the store keeps a fence it has no
+   right to, and the next ordinary autosave writes an un-merged document over another writer's work with the
+   fence's blessing and the chip on *Saved* — §0.6 reached one level out from where §2.2a found it. The two
+   autosave call sites satisfy the second disjunct by construction and do not change; the merged write is
+   the only site in the system where `toWrite !== startedFrom`.
+
 5. **Undo/redo is snapshot-based** over the immutable `Trip`, limit 50. Structural sharing makes this cheap.
    The restored snapshot is byte-identical to the document it captured, `revision` included; it carries no
    authority over `savedVersion` (rule 4, §2.2a).

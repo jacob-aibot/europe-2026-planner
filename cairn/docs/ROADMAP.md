@@ -155,6 +155,19 @@ already made, not new rulings; neither moves an engine, an export surface or a p
 | 17 | **A-5b — `redo` releases the retirement ledger too.** A-5's *"nothing else releases"* closed list goes from two `dispatch` action types to **three sites**: `resolveConflict`, `unresolveConflict`, and `redo`. History holds `Trip` snapshots and no actions, so `redo`'s release keys off the **document delta** — release an id iff the redone document has a live row for it, the ledger holds it, and the row count for that id **rose**. A uniform veto rule cannot work: two reachable states have identical `(resolutions, marks)` and require opposite outcomes. **`undo` is not changed and must not be.** | R9-1 | 2.7 |
 | 18 | **A-6a — `removeStop` prunes the one `Place` a copied stop orphans.** A-6 clause 1 **stands** (60 of the fixture's 94 coordinate-bearing places are orphans and `place-68` is one of them; exempting orphans would cost two thirds of the rule's detection and the blocker ROADMAP C names). Instead the orphan is never created: `removeStop` deletes the removed stop's place iff the stop was a copy, nothing else links it, and it exists. One row, never a sweep. `Place`'s shape, `packages/client` and §2.10 are all unchanged (`removeStop`'s signature does not move). | R9-2 | 2.13 |
 
+### Revision 8 — the one ruling the Phase 1 gate re-review routed to the architect
+
+The gate re-review (`REVIEW.md`, SEND BACK) sent exactly one question here, and everything else it left
+standing. Not a redesign: no engine, no persisted shape, no export surface, and no change at either autosave
+call site. R8-3, R8-4 and R10-1 are **not** adjudicated by this revision.
+
+| # | Change | Closes | § |
+|---|---|---|---|
+| 19 | **A-7 — a write the store declines to install may not move the fence.** `savedDoc` and `savedVersion` advance **together**, and only to a document the store still holds (`state.doc === startedFrom`) or one it wrote itself (`toWrite === startedFrom`, true at both autosave sites and false only at the merged write). A successful write whose document is not installed advances neither, re-arms nothing, and leaves `'conflict'` — the merge **refuses** rather than rebasing, and the user presses the button they already have. The exposure is the whole of `doMerge`, not the write. | R11-1 | 2.2a A-7, 4.2 rule 4a |
+
+*(Criterion F below gains an **eighth case** as the direct consequence, with the two ceilings that stop the
+fix from becoming a regression. Nothing else in this document moves.)*
+
 ### Deliverables
 
 ```
@@ -699,6 +712,30 @@ not decoration.
   > click, then the "Cairn" brand button, then read IndexedDB directly. Plus the `beforeunload` leg:
   > immediately after edit B, `isDirty()` must be `true`, because that handler is gated on it and R4-1
   > defeated the "Leave site?" prompt through exactly that gate. `[stated]`
+
+  **Eighth case — the write the store declined to install** (QA R11-1, ARCHITECTURE §2.2a **A-7**, §4.2
+  rule 4a). The first seven cases are all about a write that did not happen, or happened to the wrong
+  document. This one is a write that **succeeded** and whose document the store then threw away, keeping the
+  fence it minted — after which the user's *own next autosave* destroys another writer's saved edit with the
+  chip reading *Saved*. It needs one dispatch inside `doMerge`, which spans a storage read, a parse, a merge,
+  a serialization and anything already queued on the save chain.
+
+  > Two tabs, a real conflict, *Merge and save*, and **one** dispatch landing inside the merge. Run it three
+  > ways — with `saveIfVersion` gated, with **`load()`** gated (the wider half of the window, and the one a
+  > reader will otherwise re-derive too narrow), and with an autosave already parked in the port when the
+  > button is pressed — and in **all three**, with **zero** undo calls: the other tab's edit is still in the
+  > **stored bytes** afterwards, `savedVersion` is not the version the merge minted, `savedDoc` is not the
+  > merged document, and the indicator does not read "Saved". **The trailing autosave must be allowed to
+  > run** — real 400 ms debounce, no explicit `flush()` — because that is the write that does the damage.
+  > Then press *Merge and save* again and assert convergence on the stored bytes: both tabs' edits present.
+  >
+  > **Two ceilings, and the criterion is not met without them.** (a) The ordinary merge — no interleaving
+  > dispatch — still installs the merged document, still advances both fields, still reads `'idle'` with
+  > `isDirty()` false and a `lastMerge` notice; a fix that refuses here has over-refused. (b) An edit landing
+  > during an **ordinary autosave** still advances `savedDoc`/`savedVersion` and still re-arms the debounce,
+  > and the newer document reaches storage — the two autosave call sites write their own document forward
+  > and that is correct. `qa/r11-recheck.mjs` §1.3b/§1.3c are the shape for the defect; the two ceilings are
+  > what stop the fix from being a regression. `[stated]`
 
   **The dirty predicate is checked against an oracle, not against itself.** R4-1 survived 22 purpose-written
   tests because ten of them used `isDirty() === false` as their *proof* that a write had happened — the
