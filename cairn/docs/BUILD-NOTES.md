@@ -1098,8 +1098,6 @@ carrying forward:
    a trip that straddles `today` survives the gate by §8.2 ruling 1 (all-subjects) and names
    past days, which is correct and would have made that test measure two things at once.
 
----
-
 ### KD-39 — a city's centre is `{0,0}` on both trip-creation screens
 
 `apps/web/src/views/PastTripForm.tsx`, `Library.tsx` · **Phase 2, the KD-38 fix.** Not a new
@@ -1193,7 +1191,7 @@ same-document consistency fix, not a ceiling being moved to match code, and squa
 documentation-accuracy correction within standing autonomy. Both `70`s corrected to `71` in
 `ARCHITECTURE.md` and `ROADMAP.md`, each with a note pointing here.
 
-### KD-43 — `qa/p2b-gate.mjs` §3.3 measures the product now, not a copy of the deleted slug
+### KD-43 — `qa/p2b-gate.mjs` §3.3 measures the product now, not a copy of the deleted slug (doc-only: its home is `qa/`, which the disclosure scan does not cover)
 
 `qa/p2b-gate.mjs` · **Phase 2.** The one probe edit A-10 did **not** pre-authorise, so the
 reasoning is here rather than assumed.
@@ -1231,11 +1229,42 @@ This is a single-line, user-facing UI string with no data-model or architectural
 `unknown_city_key` (in `validateTrip`) and `params.cityKey` already carry the real signal for
 anything structured or debuggable; this is only the sentence a person reads. Routine UX decision,
 resolved directly rather than round-tripped through another architect dispatch: `cityLabel` now
-returns `null` instead of the raw key, and both call sites in `whereOf` compose the fallback
-phrase *"a city this trip does not have"* as a complete phrase rather than interpolating it into
-`` `the ${label} map` `` (which would have read as "the a city this trip does not have map" —
-worse than the id it replaced). `cityKey.test.ts`'s A-10 fallback test updated to match; full
-suite re-verified green (515/515) after the change.
+returns `null` instead of the raw key.
+
+**Round 13 (QA R13-5) caught a second bug in the first fix.** The first pass had `cityLabel`
+return the fallback phrase itself, substituted straight into `` `the ${label} map` `` — which
+reads "on the a city this trip does not have map" and, worse, made both call sites (`map` and
+`optional list`) emit the identical string, losing the distinction `whereOf` exists to draw.
+Corrected: `whereOf` now composes the fallback per call site — *"the map for a city this trip
+does not have"* / *"the optional list for a city this trip does not have"* — so both read
+grammatically wherever they're embedded and stay distinguishable. `cityKey.test.ts`'s A-10
+fallback assertion still matches (the phrase is a substring of both forms). Full suite
+re-verified green (515/515) after each change.
+
+### KD-45 — `test/disclosure.test.ts` silently stopped reading past KD-38 — CLOSED (doc-only)
+
+`docs/BUILD-NOTES.md`, `test/disclosure.test.ts` · **Phase 2, doc-only.**
+
+`knownDivergenceIds()` finds this section's heading, then truncates at the first line matching
+`/^\n---\n/m` to find where it ends. Every other entry in this section is separated by a blank
+line only; the KD-38 entry (added earlier this phase) was followed by a stray `---` rule, which
+the parser read as the section's *close*. From that point on, `knownDivergenceIds()` returned a
+set missing KD-39 through KD-44 entirely — not "unrecognized", **absent** — so both disclosure
+tests that depend on it (the "cites a KD that exists" check and the "every KD is cited somewhere"
+check) were silently checking nothing for six entries. Neither test failed, because nothing in
+scanned source cited any of the six by name until this pass's own KD-42 citation tripped the
+first one and forced discovery of the rest.
+
+Not a defect in the checked code — every one of KD-39/40/41/43/44's claims independently held.
+The stray `---` is removed (the section now reads as one continuous list of blank-line-separated
+entries again, closing at the genuine `---` before "## 2. How to run it"), which surfaced five
+real citation gaps: KD-39, KD-40 and KD-41 now have a one-line `KD-n` pointer at their code's home
+(`PastTripForm.tsx`, `fromJSON.ts`, `derive/summary.ts`); KD-44 likewise in `geoOutlier.ts`; KD-43
+is marked doc-only in its own heading, since its only home (`qa/`) is outside the disclosure
+scan's roots by design. `test/disclosure.test.ts` itself needed no change — the mechanism was
+correct throughout; the document violated a convention the mechanism assumed but never asserted.
+Worth a `### KD-n` heading of its own rather than a silent fix, since the whole point of this
+section is that nothing gets corrected without a record of why it needed to be.
 
 ---
 

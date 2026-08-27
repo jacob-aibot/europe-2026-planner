@@ -57,21 +57,24 @@ function nameOf(trip: Trip, kind: string, id: string): string {
 
 // A raw, unresolvable cityKey never reaches the summary sentence — it composes as "the <id> map",
 // which reads as a real place name rather than a broken document. `params.cityKey` still carries
-// the id for anything structured; this is the sentence a person reads.
-const UNRESOLVED_CITY = 'a city this trip does not have';
-
+// the id for anything structured; this is the sentence a person reads. Each call site keeps its
+// own noun ("map" vs. "optional list") so the two stay distinguishable, and the fallback is
+// phrased to complete "on the ___" grammatically wherever `whereOf` is embedded. BUILD-NOTES
+// KD-44 records this fix and the grammar defect (QA R13-5) in the version it replaced.
 function whereOf(trip: Trip, kind: string, id: string): string {
   if (kind === 'place') {
     const key = trip.places.find((p) => p.id === id)?.cityKey;
     if (key === undefined) return 'the ? map';
     const label = cityLabel(trip, key);
-    return label === null ? UNRESOLVED_CITY : `the ${label} map`;
+    return label === null ? 'the map for a city this trip does not have' : `the ${label} map`;
   }
   for (const d of trip.days) if (d.stops.some((x) => x.id === id)) return d.date;
   const pooled = trip.pool.find((x) => x.id === id);
   if (pooled && pooled.placement.kind === 'pool') {
     const label = cityLabel(trip, pooled.placement.cityKey);
-    return label === null ? UNRESOLVED_CITY : `the ${label} optional list`;
+    return label === null
+      ? 'the optional list for a city this trip does not have'
+      : `the ${label} optional list`;
   }
   return 'this trip';
 }

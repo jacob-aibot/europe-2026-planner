@@ -189,7 +189,7 @@ export function detectConflicts(trip: Trip, opts: DetectOpts = {}): Conflict[] {
  * The same rules with §8.2's feasibility gate **disabled** (§2.7 A-9, QA P2-1).
  *
  * **Not exported from `index.ts`** — exactly as `TRANSIT_CITY_KEY`'s sentinel discipline, and
- * §2.10's runtime symbol count stays at 70. The only legitimate caller is `syncResolutions`.
+ * §2.10's runtime symbol count stays at 71 (KD-42). The only legitimate caller is `syncResolutions`.
  *
  * Why it exists: *retirement is a claim about the document; the gate is a claim about the
  * user's attention, taken at a clock, over a document that has not changed.* A conflict the

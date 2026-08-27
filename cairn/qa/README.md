@@ -489,3 +489,77 @@ Re-run **unmodified** this round and unchanged by `5a3c723`: `qa/baseline.mjs` 0
 `qa/accept.mjs` 28/0, `qa/r2-import.mjs` 0 FAIL, `qa/prov.mjs` 0 FAIL, `qa/p2-pasttrip.mjs`
 in Chromium 0 FAIL (30 assertions), `qa/r2-constraints.mjs` 1 FAIL (R2-18, known).
 `npm run test:tap` 479/0, `npm run typecheck` clean, `npm run web:build` clean.
+
+---
+
+## Round 13 (2026-08-27, `master` @ `4dd50d1`) — the I-3a / I-4a breaker pass
+
+Narrow: the diff `23f37b9..4dd50d1` only — §2.7 **A-9** (retirement vs the clock,
+`syncResolutions(trip, at)`, `detectUngated`, the deleted `delta < 0`), §2.2 **A-10** (`CityKey`
+is a minted opaque id, the three new `validateTrip` codes, the slug deletion in the two web
+forms), and the follow-ups **KD-42** (the 71 export count) and **KD-44** (`geoOutlier`'s
+city-label fallback). Phase 1's open list, P2-5 and P2-8 were **not** re-litigated.
+
+```bash
+node --experimental-strip-types qa/r13-gate-citykey.mjs
+        # §1  R13-1 — `unbooked_ticketed`'s SURVIVING `delta > 60` guard is a second
+        #     clock-driven suppression and `detectUngated` applies it, so one clock step
+        #     BACKWARDS across the 60-day boundary permanently retires a live dismissal.
+        #     Core (§1.2) and through the real store + storage port (§1.3).
+        # §2  the gate crossed in both directions, alone and combined with real edits; a
+        #     genuine fix still retires at any clock, in core and into storage   (0 FAIL)
+        # §3  R13-2 — A-9 assertion 4's substituted test: the `setTripMeta({endDate})` is
+        #     inert, and the literal A-9(4) is unachievable for `missing_lodging`
+        # §4  R13-3 — a crashed rule retires every dismissal it owned; plus the five content
+        #     routes into a crash that `fromJSON` refuses (why it stays MINOR)
+        # §5  `detectUngated` off `index.ts`, unnamed by client/web/cli, absent from the
+        #     built bundle, no deep module-path import anywhere              (0 FAIL)
+        # §6  A-10: 22 adversarial names -> 22 distinct keys; the three new codes; an
+        #     explicit `key:''`; `fromJSON`/`migrateDoc`/`importDoc` silence on a collapsed
+        #     pre-A-10 document; the reference trip's keys and its 11 issues   (0 FAIL)
+        # §7  KD-42 re-derived both ways (71 / 71) — and R13-4, the stale `70` left in
+        #     `detect.ts:192` by the same pass that corrected the docs
+        # §8  R13-5 — KD-44's phrase composed into the sentence a person reads, at both
+        #     label sites
+        # §9  the ceilings, by running: 2/4/11 at FIXTURE_TODAY; un-gated 17 vs gated 5 on
+        #     the completed trip; `ctx.today` in exactly one rule file          (0 FAIL)
+        # §10 R13-6 — A-10 x `copyStopInto`: a cross-trip copy imports the SOURCE trip's
+        #     minted CityKey on the copied `Place`, so the recipient's document reports
+        #     `unknown_city_key` (error). Control: the same copy under the pre-A-10 slug
+        #     is clean.
+```
+
+**16 FAIL by design**; everything else in the file is a confirmation that must stay at 0.
+Not timing-dependent — deterministic call sequences only, no races and no sleeps.
+
+The two **byte-identity** claims were re-derived rather than trusted, and the recipe is not in
+the probe because it needs a second checkout:
+
+```bash
+git worktree add /tmp/pre 23f37b9        # the commit before I-3a/I-4a
+# run the same dump script against both trees and diff — conflicts + issues + summary +
+# cities on the reference trip at FIXTURE_TODAY, 2026-08-10, -08-14, -08-27, 2027-01-01,
+# 2019-01-01 and with no clock: 52229 bytes, identical.
+cd /tmp/pre/cairn && npm run golden      # pre-change code
+diff -r /tmp/pre/cairn/fixtures/golden cairn/fixtures/golden   # identical
+cd cairn && npm run golden && npm run sample && git status --porcelain   # empty
+```
+
+Re-run this round: `qa/p2b-gate.mjs` **5 FAIL** (exactly the five the builder disclosed — P2-5,
+P2-8 ×2, the §1.7 un-padded-`today` crash, the §2.1 `summary.ts` ceiling), `qa/confid2.mjs`
+**0 FAIL**, `qa/r2-constraints.mjs` **1 FAIL** (R2-18, known). `npm run test:tap` 515/0,
+`npm run typecheck` clean, `npm run web:build` clean, `npm run cli -- trip|conflicts` run.
+
+Browser probe, needing `npm run web:build && node tools/serve.mjs` in one shell:
+
+```bash
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/p2b-past.mjs   # 3 FAIL, all probe rot
+```
+
+The builder disclosed that he had **not** re-run this one, so I did. Its §3 confirms A-10 end to
+end in a real browser — 東京 and 京都 get two distinct minted keys (`city_5f59852c43dc`,
+`city_f545e99a1ba1`), day 1 carries the first, 0 validation issues. Its 3 FAILs are **R13-8**:
+§1c and §2d still assert `primaryCity === 'tokyo'` (the deleted slug's output) and §3d still
+expects the app to *report* a collapse that no longer happens. Left unpatched, same ruling as
+rounds 5–10 — a probe that measures a deleted expression is a finding, not a repair job for the
+breaker.

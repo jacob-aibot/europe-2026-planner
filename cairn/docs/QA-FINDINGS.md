@@ -1,6 +1,144 @@
-# Cairn — QA findings, Phase 1 **rounds 2–11** and Phase 2 **round 12 (2a)**
+# Cairn — QA findings, Phase 1 **rounds 2–11** and Phase 2 **rounds 12 (2a) and 13 (I-3a / I-4a)**
 
-> **Status (as of `master` @ `5a3c723`, independently verified 2026-08-27 — round 12, the
+> **Status (as of `master` @ `4dd50d1`, independently verified 2026-08-27 — round 13, the
+> mandatory breaker pass over ROADMAP **I-3a** (§2.7 A-9) and **I-4a** (§2.2 A-10), plus the
+> two orchestrator follow-ups KD-42 and KD-44):**
+>
+> | | |
+> |---|---|
+> | **Scope** | Exactly `23f37b9..4dd50d1`: `conflict/detect.ts` (`runRules`/`detectUngated`), `conflict/resolve.ts` (`syncResolutions(trip, at)`), `rules/unbookedTicketed.ts` (the deleted `delta < 0`), `rules/geoOutlier.ts` (`cityLabel` + KD-44's fallback), `build/createTrip.ts` (`CityInit.key?`), `validate/validateTrip.ts` (three new codes), `store.ts`'s `retireResolutions`, and the slug deletion in `PastTripForm.tsx` / `Library.tsx`. The Phase 1 open list and P2-5 / P2-8 were **not** re-litigated. |
+> | **BLOCKERS** | **0.** No data loss, no privacy leak, no wrong-person's-data path in this batch. |
+> | **Fixed vs still open** | **CLOSED by this pass and re-verified independently:** P2-1's filed repro (`qa/p2b-gate.mjs` §1.10/§1.11 → 0 FAIL — a clock crossing §8.2's gate in *either* direction, swept over seven clocks, retires nothing and returns the same trip reference) and P2-2 (**including the Chromium half the builder disclosed he had not run** — I ran `qa/p2b-past.mjs` §3: 東京/京都 get two distinct minted keys, day 1 carries the first, 0 validation issues). **STILL OPEN, new this round:** R13-1 and R13-6 (MAJOR, both architect), R13-2…R13-5, R13-7, R13-8 (MINOR). **STILL OPEN, unchanged:** P2-5, P2-8, and the whole Phase 1 list (R10-1, R8-3, R8-4, R6-1/2, R5-2, R11-1). |
+> | **1. A-9's core claim — PARTIAL** | Retirement genuinely stops answering to §8.2's gate: seven clock steps forward and backward across `endDate` retire nothing and return the same reference; a genuine fix still retires at any clock, in core and through the store; an unrelated edit at a post-gate clock retires nothing. **But the gate is not the only clock-driven suppression left.** `unbooked_ticketed`'s surviving `delta > 60` half is a second one, and unlike §8.2's it is applied *inside* `detectUngated` — so one backwards clock step across that boundary permanently retires a live dismissal, bumps `revision`, dirties storage and re-arms the finding with *"it has come back"*. That is **R13-1**, P2-1's harm class through the door A-9 decided to leave open. |
+> | **2. `detectUngated` off the surface — PASS** | Not in `Object.keys(core)` (71, unchanged); named by no file under `packages/client/src`, `apps/web/src` or `cli.ts`; no consumer outside core deep-imports a core module path; and the string does not appear in the built `apps/web/dist` bundle. `subjectDate`, `UNBOOKED_HORIZON_DAYS` and `TRANSIT_CITY_KEY` are all internal too. |
+> | **3. A-9 assertion 4's substitution — PARTIAL (R13-2)** | The builder's disclosure is accurate: extending `endDate` cannot un-gate `missing_lodging` at a post-`endDate` clock (its subjects are its own days), and I reproduced that. What the substituted test actually runs is *the same document at a clock inside the trip* — and its `setTripMeta({endDate:'2026-09-30'})` is **inert**: byte-identical result with and without it. The harm A-9(4) names *is* proven (live resolution attached, no *"it has come back"*, with a faithful pre-A-9 control); the mechanism the test's name and comment claim is not exercised at all. |
+> | **4. A-10 attacked — PASS** | 22 adversarial names (`東京`, `京都`, `transit`/`Transit`/`TRANSIT`, `__proto__`, `constructor`, `{"key":"city-0"}`, `city-0`, `-`, a 4096-char name, `🇯🇵 Tokyo`, two `Zürich`s, two Parises) → **22 distinct keys**, none reserved, none `"-"`, and only the whitespace-only name reported (`city_name_empty`). All three new codes fire on the shapes only import/hand-edit can produce; a differently-cased `"Transit"` key is correctly *not* reserved. |
+> | **5. `fromJSON`'s silence — PASS** | A pre-A-10 document carrying the `"-"` collision **opens** through `fromJSON`, through `migrateDoc` and through the store's `importDoc`, and `validateTrip` is what reports it (`duplicate_city_key`, error). Reserved-key and blank-name documents parse too. Nothing upstream chokes on a previously-tolerated document. |
+> | **6. Byte-identity, re-derived independently** | Not trusted, re-run: `detectConflicts` + `validateTrip` + `tripSummary` + `trip.cities` on the reference trip at **six clocks and with no clock**, serialised and diffed against the **same script run in a `git worktree` at `23f37b9`** — 52 229 bytes, `diff` clean. `fixtures/golden/*` + `fixtures/europe2026.sha256` regenerated with **both** the pre-change and the post-change code and diffed against the committed files: identical, working tree stays clean. Source sha `40955ca0b182` both sides. |
+> | **7. KD-42 — verified** | `Object.keys(core).length === 71`; §2.10's own enumerated group counts sum to `7+17+22+6+2+2+7+3+1+4 = 71`. The claim holds exactly. One residue: `detect.ts:192`'s comment, written in the same pass, still says *"stays at 70"* (**R13-4**). |
+> | **8. KD-44 — the problem moved, it did not go** | The raw key is gone from the sentence, which was the fix. But the phrase is substituted where a noun phrase for a *place* belongs, so the reference trip's own injected fault now reads *"…on a city this trip does not have is 9030 km from…"*, and both label sites (`the X map` / `the X optional list`) collapse to the identical phrase — **R13-5**. Six other `validateTrip` messages still print a raw opaque key — **R13-7**. |
+> | **Numbers, my own runs at `4dd50d1`** | `npm run test:tap` **515 pass / 0 fail** · `npm run typecheck` clean · `npm run web:build` clean · `npm run cli -- trip` / `-- conflicts` / `-- day` all run · `qa/p2b-gate.mjs` **5 FAIL**, exactly the five the builder disclosed (P2-5, P2-8 ×2, the §1.7 un-padded-`today` crash, the §2.1 `summary.ts` ceiling) · `qa/confid2.mjs` **0 FAIL** · `qa/r2-constraints.mjs` **1 FAIL** (R2-18, known) · `qa/p2b-past.mjs` in real Chromium **3 FAIL**, all probe rot (**R13-8**). Every number in BUILD-NOTES' current status note reproduces. |
+> | **`cairn-constraints`, re-checked** | Determinism: the new `ctx.ids.newId('city')` is the injected factory, and the behavioural two-process byte-identity check passes; zero runtime deps in `core`/`client`; no DOM, `window` or React under `packages/client/src`; no coordinate reaches `Conflict.params`. |
+> | **Read-only boundary** | `europe-2026-itinerary.html`, `docs/` and `tickets/` at the repo root: untouched. The only file this round adds anywhere is `cairn/qa/r13-gate-citykey.mjs`. |
+> | **Gate verdict** | **I-3a and I-4a both do the thing they were contracted to do, and neither is finished.** 0 BLOCKER, 2 MAJOR — and both MAJORs are *design* gaps in the two rulings rather than build errors, so both go back to the architect. **I-5/I-6 are not blocked by them** (neither touches `TripSummaryRow`, `lifecycle` or the summary path), but **R13-6 must be answered before any copy-heavy increment ships**, because it makes every cross-trip copy between two product-created trips emit a `validateTrip` **error** the user cannot clear. |
+>
+> **New probe this round:** `qa/r13-gate-citykey.mjs` (headless, **16 FAIL by design** — §1 R13-1 ×7,
+> §3 R13-2 ×2, §4 R13-3 ×2, §7 R13-4, §8 R13-5 ×2, §10 R13-6 ×2; every other line in the file is
+> a confirmation that must stay at 0). Not timing-dependent — deterministic call sequences only.
+>
+> **The round-12 status note below is superseded by this one** and is kept as the record of what
+> was true at `5a3c723`.
+
+## Round 13 — I-3a / I-4a (`master` @ `4dd50d1`)
+
+Every row was produced by running the repro, not by reading the diff. Severity ranks data loss
+and wrong-person's-data above "feature does not work" above rough edges; the routing column says
+*builder* when the code diverges from the ruling and *architect* when the code is faithful to a
+ruling whose reasoning has a hole.
+
+| id | severity | file:line | defect | repro | routing |
+|---|---|---|---|---|---|
+| **R13-1** | MAJOR | `packages/core/src/conflict/rules/unbookedTicketed.ts:37` × §2.7 A-9's *"the far-future half stays and needs nothing"* | `delta > UNBOOKED_HORIZON_DAYS` is a **second** clock-driven suppression and it is applied inside `detectUngated`, so a clock step **backwards** across the 60-day boundary retires a live dismissal permanently, bumps `revision` and dirties storage with no edit — P2-1's exact harm, through the one door A-9 chose to leave open. | `node --experimental-strip-types qa/r13-gate-citykey.mjs` §1.1, §1.2, §1.3 | **architect** — A-9's *"as a clock advances `delta` only shrinks"* assumes a monotone clock |
+| **R13-6** | MAJOR | `packages/core/src/build/copyStop.ts:126` × §2.2 A-10's *"what this changes elsewhere — the complete list"* | `copyStopInto` copies a `Place` with `{...original}`, so it carries the **source trip's** minted `CityKey` into the target. Between two product-created trips the keys can never match, so every cross-trip copy of a place-linked stop leaves the recipient's document reporting `unknown_city_key` (**error**) with no UI able to repair it. Under the pre-A-10 slug two trips to Vienna both said `vienna` and the copy was clean — the control proves it. | `qa/r13-gate-citykey.mjs` §10 | **architect** — A-10's change table does not mention `copyStopInto`; whether the copied place re-points by normalised name is a §2.14 ruling, not a builder's call |
+| **R13-2** | MINOR | `packages/core/test/retirementGate.test.ts:103` | A-9(4)'s substituted test calls `setTripMeta(t2, { endDate: '2026-09-30' })` and the call is **inert** — the assertions produce a byte-identical result with it removed, because the clock it then reads (`2026-08-26`) is inside the *original* range. The harm is proven; the mechanism the test name claims is not exercised. | `qa/r13-gate-citykey.mjs` §3 | **builder** — either drop the inert call and rename the test to what it measures, or route the *literal* A-9(4) back to the architect as unachievable |
+| **R13-3** | MINOR | `packages/core/src/conflict/detect.ts:152` × A-9 point 1 | A-9 says a crash *"can never be the thing that retires a resolution"*. It can: the `catch` replaces a crashing rule's **whole output** with one `rule_error` note, so all of that rule's real findings leave the un-gated set and `syncResolutions` retires every live dismissal they carried — permanently, at the same clock, with no edit. The `!crashed` conjunct protects the note, not the findings. MINOR only because no content route into a crash survives `fromJSON` today (five tried, all refused). | `qa/r13-gate-citykey.mjs` §4 | **architect** — the sentence in A-9 point 1 is false as written |
+| **R13-4** | MINOR | `packages/core/src/conflict/detect.ts:192` | The comment written by this same pass still reads *"§2.10's runtime symbol count stays at 70"*. KD-42 corrected both prose sites in `ARCHITECTURE.md` and `ROADMAP.md` and missed the code. (KD-42's substance is correct — verified 71 both ways.) | `qa/r13-gate-citykey.mjs` §7 | **builder** — one word |
+| **R13-5** | MINOR | `packages/core/src/conflict/rules/geoOutlier.ts:61,68,74` | KD-44 moved the legibility problem rather than removing it. The phrase is substituted where a noun phrase for a place belongs, so the reference trip's own injected fault reads *"“Austrian National Library” **on a city this trip does not have** is 9030 km from…"*; and both label sites now emit the identical string, so a reader can no longer tell a city map from an optional list — the distinction `whereOf` exists to draw. The comment at `:58` also describes the behaviour the change deleted. | `qa/r13-gate-citykey.mjs` §8 | **builder** — same routine-UX class KD-44 was resolved under (e.g. *"a map for a city this trip does not have"* / *"an optional list for …"*) |
+| **R13-7** | MINOR | `packages/core/src/validate/validateTrip.ts:111,133,176,187,280,402` | Six `Issue.message` strings still interpolate a raw opaque `CityKey` — *"Place "Belvedere" references unknown city "acity-1""*, *"Two cities share the key "city-7""*. Two of those codes are A-10's own, and the other four became opaque the day keys started being minted. KD-44 fixed exactly one instance of this class and left six, all of them user-visible in the Issues panel. | `qa/r13-gate-citykey.mjs` §10 (`R13-6b`); direct: `validateTrip` on any cross-trip copy | **builder** |
+| **R13-8** | MINOR | `qa/p2b-past.mjs` §1c, §2d, §3d | Three Chromium assertions still measure the **deleted slug** — they expect `primaryCity === 'tokyo'` and expect the app to *report* the 東京/京都 collapse that no longer happens. 3 FAIL that describe nothing shipping. This is exactly what KD-43 identified and repaired for `p2b-gate` §3.3; the Chromium probe was left because the builder disclosed he did not re-run it. | `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/p2b-past.mjs` (needs `npm run web:build && node tools/serve.mjs`) | **builder** — repoint at the minted key, keep every assertion |
+
+### R13-1 — the clock still retires a dismissal, and A-9 named the door it left open
+
+Worth the prose because the reasoning is the evidence, and because it is the one finding that
+re-opens a closed one.
+
+A-9 deletes `unbooked_ticketed`'s `delta < 0` guard and keeps `delta > UNBOOKED_HORIZON_DAYS`,
+with an argument stated in the ruling itself: *"as a clock advances `delta` only shrinks, so the
+60-day horizon can only ever admit a finding, never withdraw one."* Every word of that is true
+**of a monotone clock**. `apps/web`'s `systemClock()` (`apps/web/src/ports/env.ts:12`) returns
+the device's **local** date — deliberately, because §2.1 is wall-clock. A local date is not
+monotone: it steps back by a day whenever the device moves far enough west, which is the second
+half of every itinerary this product exists to plan, including its own reference trip
+(Budapest UTC+2 → London UTC+1 → LA UTC−7). It also steps back when a user corrects a wrong
+device clock.
+
+Measured (`qa/r13-gate-citykey.mjs` §1.2 in core, §1.3 through the real store and a real
+`memoryStorage` port). One ticketed, priced, unbooked stop on a day exactly 60 days out:
+
+- dismissal recorded at `today = 2026-01-01`, `delta = 60` → the rule fires, the row is live;
+- the device date steps back one day to `2025-12-31`, `delta = 61` → **the rule withholds, and
+  `detectUngated` withholds it too** (§1.1: `detectUngated` returns 0, not 1). This is the whole
+  defect in one line — §8.2's gate is skipped for the un-gated set, but the rule's own horizon
+  is not, because it lives inside `rule.run`;
+- `syncResolutions(trip, '2025-12-31')` therefore reads *"not in the set"* as *"fixed"*:
+  `retiredAt = "2025-12-31"`, `revision 4 → 5`, a different trip reference;
+- through the store the same sequence writes the retirement to storage — one `getDerived()`
+  after the clock moves, no keystroke;
+- and because retirement is monotone (A-5, A-5a, A-5b), moving the clock back to `2026-01-01`
+  restores nothing. The finding returns carrying `resolution: null` and the detail line *"You
+  dismissed this on 2026-01-01 and it went away; it has come back."* — the sentence A-9 exists
+  to stop being false.
+
+What makes this a design finding rather than a build one: the builder implemented A-9 exactly,
+including the greppable invariant A-9 asked for (`ctx.today` appears in exactly one rule file —
+verified, §9). The invariant A-9 *claims* that grep establishes — *"§8.2's gate is the only
+clock-driven suppression in the system"* — is false, and the grep cannot see it, because the
+surviving suppression is in the one file the grep permits. The fix is a ruling: either the
+far-future horizon moves out of `rule.run` into something `detectUngated` can disable the way it
+disables the gate, or `syncResolutions` stops treating a horizon-withheld finding as evidence of
+a fix. Both are A-9-shaped decisions.
+
+### What I attacked on I-3a / I-4a and could **not** break
+
+- **§8.2's gate × retirement, both directions.** Seven clock steps — `2026-08-01`, `25`, `27`,
+  `30`, `2027-08-30`, `2019-01-01`, `2026-08-26` — applied in sequence to a document with a live
+  dismissed `missing_lodging`: **the same trip reference comes back every time**, `retiredAt`
+  stays `null`, `revision` never moves.
+- **The point of §2.7 is not lost.** A genuine fix (book the lodging) retires at a post-gate
+  clock, at a pre-trip clock, and through the store into storage (`retiredAt: "2026-09-10"`).
+  An *unrelated* edit at a post-gate clock retires nothing.
+- **`syncResolutions`' two early returns.** No live row → same reference (incl. a document whose
+  only rows are already retired). `''`, `'yesterday'`, `'2026-13-45'`, `'26-08-30'`, `undefined`
+  and `null` as `at` → same reference, live rows intact. This also closes the §1.7 un-padded-
+  `today` crash *for retirement*: `isIsoDate` refuses `'2019-3-5'` before `detectUngated` sees it.
+- **`detectUngated`'s containment.** Off `index.ts`, named by nothing outside `packages/core`,
+  no deep module-path import from `packages/client`/`apps/web`/`cli.ts`, and absent from the
+  built bundle.
+- **A-10 against hostile names.** 22 of them, listed above; 22 distinct keys, no collision, no
+  reserved shadow, no prototype mischief, and the document round-trips.
+- **A-10 against previously-tolerated documents.** The `"-"` collision opens through `fromJSON`,
+  `migrateDoc` and `importDoc`; the Library row renders (`cityCount: 2`); `validateTrip` is the
+  only thing that complains, which is exactly what A-10 specified.
+- **The reference trip.** Keys still `vienna,dubrovnik,split,prague,budapest,london`; validation
+  issues still 11; conflicts still 2 blockers / 4 warnings / 11 notes at `FIXTURE_TODAY`; the
+  un-gated set on the completed trip is strictly larger than the gated one (17 vs 5) and contains
+  every gated finding.
+- **Both byte-identity claims, re-derived rather than trusted** — the worktree diff and the
+  double golden regeneration described in the status note.
+- **`store.retireResolutions`' new `cache !== prev` cost control.** I could not find a sequence
+  where it skips a retirement that should have happened: `derivedFor`'s key is
+  `(document identity, today)`, and any document change produces a new identity, so a cache hit
+  genuinely means retirement already ran for that pair.
+
+### Confirmed by design, recorded so nobody re-derives them (round 13)
+
+- **`createTrip` honours an explicit `key: ''` verbatim and nothing reports it.** A-10 says
+  *"when it is present it is honoured verbatim"* and `createTrip.ts:96` says `''` is a key on
+  purpose. Equality-only consumers all behave (`poolFor`, `daysForCity`, `cityRange`,
+  `orderedCities`, `tripSummary`), and the document round-trips. Not filed.
+- **`createTrip` still accepts a non-string `key` (e.g. `5`) and produces a document `fromJSON`
+  refuses** at `$.cities[0].key` — P2-7's harm class. **Pre-existing, not I-4a's**: at `23f37b9`
+  `CityInit.key` was required and equally unvalidated. Reachable only past TypeScript.
+- **`PastTripForm` reads the minted key back off the created document** and guards with
+  `if (key)`, so an empty key would silently skip the whole day loop — unreachable while
+  `createTrip` mints, and correct as written.
+- **Two cities with the same name in one trip now get two keys** where the slug gave them one.
+  A-10's cross-trip identity is by normalised name, so this is the ruling working, not a defect.
+- **No CSS truncates a conflict summary** — `.stop__conflict` and `.conflict` wrap; the only
+  `text-overflow: ellipsis` in `apps/web` is on `.spine__daytitle`, which renders `day.title`.
+  So R13-5 is a grammar defect, not a layout one.
+
+
 > Phase 2 **2a** breaker pass: I-0…I-4 plus the KD-38 / absent-`ownerId` follow-up):**
 >
 > | | |

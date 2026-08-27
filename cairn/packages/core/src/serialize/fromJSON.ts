@@ -369,7 +369,8 @@ export function fromJSON(input: string | unknown): Trip {
     // either: it cannot know who is signed in, and stamping `LOCAL_OWNER` on an ownerless
     // file inside a pure function would make it the local user's silently. Absence is carried
     // as `''`, which `validateTrip` already reports as `owner_missing`; `store.importDoc` —
-    // the layer that knows the local user — is where absence becomes ownership.
+    // the layer that knows the local user — is where absence becomes ownership. BUILD-NOTES
+    // KD-40 records the reasoning; `store.ts`'s `importDoc` is the other half.
     ownerId: o.ownerId === undefined || o.ownerId === null ? '' : str(o.ownerId, '$.ownerId'),
     startDate: isoDate(o.startDate, '$.startDate'),
     endDate: isoDate(o.endDate, '$.endDate'),

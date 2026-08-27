@@ -89,7 +89,8 @@ export function PastTripForm({ onClose, onError }: Props) {
 
   const range = rangeFor(precision, { exactStart, exactEnd, month, year });
   // Same shape the new-trip form already uses: names, comma separated, in order. A city's
-  // centre is not asked for on either screen and `createTrip` supplies its default.
+  // centre is not asked for on either screen and `createTrip` supplies its default of
+  // `{0,0}` — pre-existing on both forms, not new here. See BUILD-NOTES KD-39.
   //
   // **No `key`** (ARCHITECTURE §2.2 A-10, QA P2-2). This form used to slug the name, which
   // deleted every character outside ASCII alphanumerics — so 東京 and 京都 both became `"-"`

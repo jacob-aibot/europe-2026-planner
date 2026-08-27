@@ -66,7 +66,8 @@ export type TripSummaryRow = {
    * Carried, never branched on — §8.1's *"read by display and nothing else"* holds, and this
    * module is what hands the row to display. The Library lists `TripSummaryRow`s read back
    * from storage rather than `Trip`s, so without this the trip the user recorded as
-   * *"March 2019"* was listed as `2019-03-01 → 2019-03-31` (QA P2-6).
+   * *"March 2019"* was listed as `2019-03-01 → 2019-03-31` (QA P2-6). This is the one
+   * exemption in §8.1's greppable ceiling — BUILD-NOTES KD-41 records why.
    */
   datePrecision: DatePrecision;
   cityCount: number;
