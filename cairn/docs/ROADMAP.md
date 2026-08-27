@@ -145,6 +145,16 @@ not adjudicated by it. Neither ruling is a redesign; the engine still does not m
 *(§2.10 moves 69 → 70 runtime symbols as a mechanical consequence of row 15 and for no other reason;
 criterion E's list and its set-equality assertion take the one line. No other section moved.)*
 
+### Revision 7 — the two addenda QA round 9 routed to the architect
+
+Round 9 verified rows 15 and 16 and found one adjacent door open on each. Both are addenda to the rulings
+already made, not new rulings; neither moves an engine, an export surface or a persisted shape.
+
+| # | Change | Closes | § |
+|---|---|---|---|
+| 17 | **A-5b — `redo` releases the retirement ledger too.** A-5's *"nothing else releases"* closed list goes from two `dispatch` action types to **three sites**: `resolveConflict`, `unresolveConflict`, and `redo`. History holds `Trip` snapshots and no actions, so `redo`'s release keys off the **document delta** — release an id iff the redone document has a live row for it, the ledger holds it, and the row count for that id **rose**. A uniform veto rule cannot work: two reachable states have identical `(resolutions, marks)` and require opposite outcomes. **`undo` is not changed and must not be.** | R9-1 | 2.7 |
+| 18 | **A-6a — `removeStop` prunes the one `Place` a copied stop orphans.** A-6 clause 1 **stands** (60 of the fixture's 94 coordinate-bearing places are orphans and `place-68` is one of them; exempting orphans would cost two thirds of the rule's detection and the blocker ROADMAP C names). Instead the orphan is never created: `removeStop` deletes the removed stop's place iff the stop was a copy, nothing else links it, and it exists. One row, never a sweep. `Place`'s shape, `packages/client` and §2.10 are all unchanged (`removeStop`'s signature does not move). | R9-2 | 2.13 |
+
 ### Deliverables
 
 ```
@@ -314,6 +324,17 @@ not decoration.
   > trip, browse a second trip, copy one place-linked stop across — leaves `detectConflicts` at **2**
   > blockers, not 3. `[stated]` A run reporting 3 is R8-2.
   >
+  > **(d) Deleting the copy takes its place with it** (revision 7, §2.13 A-6a, QA R9-2). Continue the same run
+  > one click further — `removeStop` on the copied stop — and assert all four of: `detectConflicts` still
+  > returns **2** blockers on the reference trip (a run reporting 3 is R9-2); `trip.places.length` is back to
+  > its pre-copy value and the copied place's id is absent; **undo** restores stop *and* place together, with
+  > `geoCheck` reporting that place `'unanchored'` again; and, the guard against a sweep, removing a stop the
+  > **user** authored whose place has no other link leaves that place in `trip.places` and still measured —
+  > inject +1° into it and get **exactly one** `geo_outlier` naming it. A run in which a user-authored place
+  > disappears, or in which the fixture's other orphaned places are pruned, fails outright. Also assert two
+  > copied stops on one place: the first removal leaves it present and `'unanchored'`, the second prunes it;
+  > and `rejectCandidate` prunes nothing, because the stop stays in the document.
+  >
   > **Ceiling on the reference trip:** it contains no record with `attribution(r) !== null`, so no place in it
   > can satisfy A-6's `every(isCopied)` either, and all of §2.13's existing numbers must be unchanged by both
   > rows — 0/112 and 0/94 clean, 112/112 and 92/94 under +1°, and the Fisherman's Bastion blocker still
@@ -359,6 +380,15 @@ not decoration.
   `unresolveConflict` then `resolveConflict` the same id → the new row's `retiredAt` is `null` and **stays**
   `null` across the next three `set()`s. A ledger that re-stamps a fresh answer has implemented "never
   un-retires" as "never resolve again".
+- **A *redone* re-answer is not stillborn either** (revision 7, §2.7 A-5b, QA R9-1) `[stated]`. QA's seven
+  actions, asserted in `packages/client` over the in-memory ports **and** in Chromium (`qa/r9-redo.mjs` is
+  the shape): dismiss → retire → undo → dismiss again → undo → **redo**. The redone row's `retiredAt` is
+  `null`, the conflict renders **resolved**, and both hold across three further `set()`s *and* across a
+  storage round trip and reopen. Two ceilings on the same run: a redo that does **not** raise any row count
+  releases nothing — with a mark held, the restored live row is still stamped (R8-1 at redo depth) — and
+  **`undo()` never releases**, asserted at six undo/redo depths. Assert the invariant on every step of all
+  three sequences: *for every id in `state.retired.marks`, `state.doc` holds no row for that id with
+  `retiredAt === null`.* That single assertion fails on both R9-1 and KD-36 and is the cheapest guard here.
 
 #### D. Provenance, import and copy
 

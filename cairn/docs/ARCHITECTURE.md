@@ -41,6 +41,18 @@ the document still carries, which makes a *second* dismissal stillborn. Upheld. 
 `conflictId` from a document only when that document holds no live row for it, at **both** the reseed and the
 absorb, and everything else about A-5 stands.
 
+**Revision 7, 2026-08-27.** QA round 9 verified A-5, A-5a and A-6 and found one adjacent door open on each,
+both user-reachable, both the same defect the ruling was written to close reached one action further along.
+Two addenda, no redesign, no change to any engine. **A-5b** (§2.7, QA R9-1): `redo` releases the ledger too —
+the release list goes from two `dispatch` action types to three sites, and because history stores snapshots
+and not actions, `redo`'s release keys off the document delta (a row count that rises for a `conflictId` is a
+redone `resolveConflict` and nothing else). A uniform veto rule *cannot* work here and the addendum proves
+it. `undo` is unchanged and must stay unchanged. **A-6a** (§2.13, QA R9-2): A-6 clause 1 stands — 60 of the
+reference trip's 94 coordinate-bearing places are orphans and `place-68` is one of them, so exempting orphans
+would delete two thirds of the rule's detection — and instead `removeStop` prunes the one `Place` a copied
+stop leaves with no referent. `Place`'s shape still does not change, `packages/client` does not change, and
+§2.10 stays at 70 runtime symbols.
+
 **Phase 1 is §2 and §4.** Everything else is the shape those two must not foreclose. See `ROADMAP.md`.
 
 ## Read only your sections
@@ -976,6 +988,98 @@ consequence is confined to `retiredAt`, which no view renders — `detectConflic
 3. R8-1 itself, unchanged: dismiss → retire → Ctrl+Z restores the pre-retirement snapshot → the row is
    re-stamped retired and the blocker does **not** read "Marked dismissed".
 
+#### A-5b — `redo` releases as well, and the release keys off the document delta (revision 7 addendum, QA R9-1)
+
+**The defect.** A-5's release list is a closed list of two `dispatch` action types. `redo()` is not a
+`dispatch` — §4.2 rule 5's history is `{ past: Trip[]; future: Trip[] }`, plain snapshots with no action
+recorded — so it calls `set()` with no release. QA's seven-action trace ends with a **stillborn** dismissal:
+the redone live row is stamped `retiredAt` inside the same `set()`, the blocker renders unresolved, and no
+later edit or reload brings it back.
+
+**Why A-5a's veto does not stop it, precisely.** The veto governs *acquisition*, not *retention* — A-5a's own
+sentence, *"acquisition is vetoed; retention is not"*. At the sixth step the document `undo` installs holds
+only the **retired** row for that id and no live row, so the veto passes and the ledger legitimately
+(re-)acquires the mark. At the seventh step `redo` installs `[retired, live]`: absorb correctly declines to
+re-acquire, and declining changes nothing, because the mark is **already held**. Step 5 re-asserts it onto the
+redone live row. The veto was never the mechanism that protected the second dismissal — the *release* was, and
+`redo` does not perform one.
+
+**Approach B — "make the veto uniform so no new release call is needed" — is not merely inelegant, it is
+impossible.** Two reachable states are indistinguishable to any predicate over `(the arriving document's
+resolutions, the ledger's marks)` and require opposite outcomes:
+
+| | document installed | ledger | required outcome |
+|---|---|---|---|
+| A-5a's blessed corner: dismiss → retire → undo → dismiss again → retire again → **undo** | `[retired₁, live₂]` | holds the id | **stamp** `live₂` — undo must not un-retire (A-5a says this corner is safe for exactly this reason) |
+| R9-1: dismiss → retire → undo → dismiss again → undo → **redo** | `[retired₁, live₂]` | holds the id | **do not stamp** `live₂` — it is the user's own answer being reinstated |
+
+Same rows, same marks, opposite answers. The only thing that differs is the direction history moved, and that
+is known at the call site and nowhere else. **So the fix is at the call site: `redo` releases.** No change to
+`marksOf`, to absorb, to the veto, to `reassertRetirements`, or to `dispatch`.
+
+**The rule, exactly, with no judgment left to the builder.** Because history stores documents and not actions,
+the release keys off the **document delta**, and the delta that identifies a redone `resolveConflict` is
+exact: `resolveConflict` is the only writer in the system that *appends* a resolution row (A-5a's writer
+analysis; `unresolveConflict` and the reducer's other 15 actions never do), so a redo step that raises the row
+count for a `conflictId` is a redone `resolveConflict` for that id and nothing else.
+
+> **`redo()` releases a `conflictId` from the ledger, before calling `set()`, exactly when all four hold:**
+> 1. the redo actually moves — `next.doc !== state.doc`, both non-null — and the ledger exists and is for
+>    this trip (`state.retired !== null && state.retired.tripId === next.doc.id`);
+> 2. `next.doc.resolutions` contains a row for that id with `retiredAt === null` (a **live** row);
+> 3. `state.retired.marks` currently holds that id;
+> 4. **the row count for that id increased**: `rowsFor(next.doc, id) > rowsFor(state.doc, id)`, counting live
+>    and retired rows alike.
+>
+> Release each such id with the existing `releaseRetirement()`, then call `set(next)` exactly as today. Order
+> matters and is the same as `dispatch`'s: release first, `set` second, one emit.
+
+Clause 4 is the one that is easy to drop and must not be. Without it the rule also fires when the *same* row
+appears live in the redone snapshot and retired in the current one — a document the store passed through
+without a `getDerived()` between two dispatches — and releasing there would un-retire a mark with no user act
+behind it, which is R8-1 rebuilt inside `redo`. With clause 4, the release fires if and only if the redone
+action was a `resolveConflict` on that id, which is precisely the act A-5 already blesses.
+
+**The closed list is now three sites, not two:** `dispatch`'s `resolveConflict`, `dispatch`'s
+`unresolveConflict`, and `redo`'s delta rule above. Nothing else releases. A redone `unresolveConflict` needs
+no entry: it drops every row for the id, so clause 2 fails, and with no live row there is nothing a mark can
+be stamped onto.
+
+**`undo()` does not get this, and a builder must not add it.** Three reasons, in order of how decisive they
+are:
+
+1. **It is the mechanism.** A-5 exists because undo is a snapshot restore that resurrects `retiredAt: null`.
+   Releasing on undo would delete the ledger's entire purpose, and R8-1 would come back on the first Ctrl+Z.
+2. **Undo moves away from the user's answer, never toward it.** Undoing a `resolveConflict` *removes* the row
+   — the row count falls, clause 4 fails, and there is nothing to protect. Undoing an unrelated action leaves
+   the count equal (R8-1's own case), clause 4 fails, and the restored live row is stamped, which is exactly
+   what §2.7 requires.
+3. **The one shape where the same rule *would* fire on undo is a shape where firing is wrong**: undoing an
+   `unresolveConflict` restores rows the unresolve dropped, raising the count with a live row present. A
+   release there would leave a live blocker reading *"Marked dismissed"* after a keystroke that acknowledged
+   nothing — R8-1's symptom sentence, verbatim. Undo's correct behaviour in every case is *stamp and stay
+   silent*.
+
+**One invariant makes all of this checkable, and it is cheap.** After every store operation:
+
+> **For every id in `state.retired.marks`, `state.doc` contains no resolution row for that id with
+> `retiredAt === null`.**
+
+It holds today at every branch of `set` (re-assert stamps any live row for a held mark; `marksOf` and absorb
+both refuse to acquire an id with a live row; release only removes marks), and it holds after `redo`'s
+release. A test asserting it after each step of the three sequences below is worth more than the sequences
+themselves — it is the property both R9-1 and KD-36 violate.
+
+**What the builder asserts** (store level, in-memory ports, plus the Chromium shape of `qa/r9-redo.mjs`):
+
+1. QA's seven actions: dismiss → retire → undo → dismiss again → undo → **redo** → the redone row's
+   `retiredAt` is `null`, the conflict renders **resolved**, and both stay so across the next three `set()`s
+   and across a storage round trip and reopen (the reseed, where A-5a's veto carries it).
+2. Redo of an unrelated action never releases: with a mark held and a redo step that does not raise any row
+   count, the restored live row is still stamped — R8-1 at redo depth, unchanged.
+3. `undo()` contains no release: the R8-1 sequence, at six undo/redo depths, still ends with the row stamped
+   and no rendered row reading *"Marked dismissed"* against a live blocker.
+
 ### 2.8 Provenance
 
 ```ts
@@ -1530,6 +1634,84 @@ still 0/112 and 0/94, the +1° detection rate is still 112/112 and 92/94, and th
 is untouched. Both rows change what happens to records the *copy path* creates and nothing else — which is
 why they are rows and not a rewrite. **The builder re-derives all four numbers rather than quoting them**;
 ROADMAP C states them as the ceiling.
+
+#### A-6a — the copy that brought a `Place` takes it away again (revision 7 addendum, QA R9-2)
+
+**The defect.** `copyStopInto` rule 4 adds a `Place` row to the destination trip; `removeStop` removes the
+stop and **not** the place (confirmed in `build/stops.ts` — `removeStop` never touches `trip.places`, and
+`Stop.place` is the only referent a `Place` has anywhere in the model). One `×` after a copy, the place has
+zero linking stops, A-6 clause 1 measures it at `'certain'`, and the reference trip carries a third
+`geo_outlier` **blocker** naming `place-copy-1` — a record the user never authored and has just thrown away.
+
+**Clause 1 is not the thing to change, and this is a measurement, not a preference.** On the reference trip,
+**60 of the 94 coordinate-bearing places have no linking stop at all** — the importer creates places for named
+things whether or not a stop resolves through them. Under the per-record +1° injection, 92 of 94 places are
+caught and **60 of those 92 are orphans**. `place-68`, *Fisherman's Bastion* — the single historical bug this
+entire section exists to catch — **is an orphan**. So every variant of *"an orphan is exempt"* or *"an orphan
+degrades to a warning"* costs this rule roughly two thirds of its detection surface and the one blocker
+ROADMAP C names by id. Refused on the number.
+
+For the same reason, QA's option (a) is refused twice over: it is also not computable. A place with zero
+linking stops carries no evidence of how it arrived — that is what "orphan" means — and A-6's refusal of
+`Place.provenance` stands unchanged (the `samePlace` reuse branch has no honest value to stamp, and it is new
+persisted state in `toJSON`/`fromJSON`, `migrateDoc`, the §6.3 cascade and `validateTrip`). Nothing about
+`Place`'s shape moves in this ruling either. *(The other alternative — having rule 4 inline the coordinate
+instead of copying a `Place` — would make the orphan impossible but would withdraw A-6 entirely and drop the
+place's name, city and address on every copy; refused as a larger change than the defect.)*
+
+**The ruling: the orphan is not created in the first place.** The `Place` entered the document as a side
+effect of a copy, to support the copied stop; when that support is removed and nothing else refers to it, it
+goes with it. This is the *action's* responsibility, exactly as QA's option (b) frames it, scoped so narrowly
+that it cannot reach a record the user is keeping for its own sake:
+
+> **`removeStop(trip, stopId)` deletes exactly one `Place`, and only when all four of these hold:**
+> 1. the removed stop's link is `{ kind: 'place', placeId: P }`;
+> 2. the removed stop is a copy — `attribution(stop.provenance) !== null`, the same predicate A-6 clause 3
+>    uses and `geoCheck`'s `isCopied` is defined as;
+> 3. **after** the removal, no stop anywhere in the trip (`days[].stops` ∪ `pool`) has
+>    `place.kind === 'place' && place.placeId === P`;
+> 4. `trip.places` contains a row with id `P`.
+>
+> The returned trip is then the same trip with that one row filtered out of `places`, and `revision` bumped
+> **once** for the whole operation. If any clause fails, `removeStop` behaves exactly as it does today.
+
+Four things that are load-bearing and must be stated so nobody infers them:
+
+1. **It prunes the removed stop's own place and nothing else. It is never a sweep.** A garbage collector over
+   `trip.places` would delete all 60 of the reference trip's orphans, `place-68` among them, and silently
+   remove the Fisherman's Bastion detection. At most one row leaves per call.
+2. **Clause 2 means removing a stop the *user* wrote never prunes anything.** Every existing path keeps its
+   current behaviour; the fixture contains no record with `attribution() !== null`, so §2.13's four numbers
+   are provably unmoved (0/112 and 0/94 clean, 112/112 and 92/94 under +1°, and the Fisherman's Bastion
+   blocker still fires).
+3. **There is no window in which the orphan is measured.** With two copied stops on one place, removing the
+   first leaves `linking.length === 1` and A-6's exemption intact; removing the second prunes. `geoCheck` is
+   never handed a zero-link copy-borne place, which is the state it has no evidence about.
+4. **The prune lives inside `core.removeStop`, not in the reducer or a second action.** §4.2 rule 1 —
+   one action, one core function, no domain logic in the reducer — so `packages/client` changes not at all,
+   and undo keeps working for free: history is a `Trip` snapshot, so Ctrl+Z restores stop and place together.
+
+**The cost, named rather than discovered later.** Because rule 4 *reuses* an equivalent existing place when
+`samePlace` matches, the pruned row can be one the user originally typed — in the one sequence where they had
+already deleted their own last stop linking it, leaving a copy as its only referent. That row is deleted. It
+is acceptable in Phase 1 and the reasons are checkable rather than aesthetic: at that moment the place is
+unreachable from every view (nothing in `apps/web` renders a place except through a stop), A-6 already
+classifies it as a record whose only reason to be here is a copy, undo restores it, and it is a description of
+the world, cheap to re-enter. **The trigger to revisit is explicit:** the moment `Place` gains a life of its
+own — a saved-places library, place-level notes or photos, or any second referent kind — clause 2's prune must
+become a reference-counted delete with a user-visible affordance, and this paragraph is the thing to reread.
+
+**What the builder asserts:**
+
+1. Browse → copy a place-linked stop → `×`. `detectConflicts` returns **2** blockers on the reference trip,
+   not 3, and `trip.places.length` is back to what it was before the copy.
+2. The user's own stop, own place, `×` → the place is **still there** and is still measured (inject +1° into
+   it and get exactly one `geo_outlier` naming it). This is the guard against the sweep.
+3. Two copied stops on one place: after the first `×` the place survives and is `'unanchored'`; after the
+   second it is gone.
+4. Ctrl+Z after the `×` restores both the stop and the place, and `geoCheck` reports the place
+   `'unanchored'` again.
+5. `rejectCandidate` on a copied stop prunes nothing — the stop stays in the document, so clause 3 fails.
 
 `Trip.homeBase` is the one new field the mechanism needs. It is real modelling, not a patch: a trip starts
 and ends somewhere, and the Europe trip starts and ends at LAX. It is nullable, the importer takes it from
