@@ -40,6 +40,17 @@ re-scoped and no change to the order** — I-5 and I-6 are unblocked by all four
 recorded under I-4a: no copy-heavy increment ships before A-14, because until it does every cross-trip copy
 of a place-linked stop leaves an error the user cannot clear.
 
+**Revision 13, 2026-08-27.** QA round 14 — the mandatory breaker pass over A-11…A-14 — closed **A-11, A-12
+and A-13** and found A-14's mechanism right and its *"what does not change"* claim wrong, plus a credential
+leak on the copy path that round 2 filed as a BLOCKER and only half-fixed. `ARCHITECTURE.md` revision 13
+answers all three as **A-15** and **A-16** (§2.14) and **A-17** (§2.7). This file changes in exactly the same
+one way revision 12 did: **I-3a's and I-4a's Built / Verification / Ship-gate lines**, so neither increment
+is shippable until the addenda land. **No new increment, no phase re-scoped and no change to the order.**
+The blocking relation moves rather than growing: I-3a's remaining work is A-17 and is documentation plus one
+test, while **I-4a now blocks any share, friend or public-share-link work outright** — A-15 is the only place
+in the design where data crosses a *person* boundary, and until it lands the copy hands a friend's door PIN,
+confirmation number and voucher URL to the recipient's document.
+
 > **Phase numbers changed once, here.** Every heading below carries its old number, and every "Phase N"
 > written in `ARCHITECTURE.md` §1–§7, `BUILD-NOTES.md` or `QA-FINDINGS.md` before revision 9 means the
 > *named* phase it described: "Phase 2" = accounts/server (**now 3**), "Phase 3" = ingest (**now 4**),
@@ -1057,6 +1068,15 @@ can perform) and **A-14** (A-10's change table missed `copyStopInto`). The bulle
 additions; the follow-up builder pass **completes I-3a and I-4a** rather than opening I-3b/I-4b, because a
 half-built ruling is not a shipped increment.
 
+**Revision 13 re-opens them once more, and for the last time on this evidence.** QA round 14 attacked the
+four revision-12 rulings as built: **A-11, A-12 and A-13 are done and verified** (434 clocks × 10 documents,
+ten simultaneous rule crashes, a tripwire forced red by a real increment), and A-14's mechanism is done. Two
+findings survive in the rulings themselves and one is a BLOCKER: `ARCHITECTURE.md` **A-15** (the copied
+`Place` carries `note` and `links` across the trip boundary unredacted — round 2's R2-3, half-fixed),
+**A-16** (A-14's *"copying within one trip is unchanged"* is false) and **A-17** (A-11 assertion 5's proof
+assumes a stop id is unique per document). The bullets below carry all three. **R14-3** is routed to a
+builder against the finding itself and is not an increment.
+
 #### I-3a — Retirement stops answering to the clock (§2.7 A-9, QA P2-1)
 
 - **Built.** `detect.ts`'s body moves into one private `runRules(trip, opts, gate)` with
@@ -1073,6 +1093,14 @@ half-built ruling is not a shipped increment.
   `detectUngated`'s array shape deliberately left alone so round 13's probe assertions keep running verbatim
   (**A-12**); and the retirement-gate test's
   inert `setTripMeta` call is deleted and the test renamed to the clock crossing it performs (**A-13**).
+  **Revision 13 adds one thing and it is not code (§2.7 A-17):** A-11 assertion 5 is narrowed to documents
+  `validateTrip` accepts, the `Rule` contract gains the obligation that a rule declaring `horizonDays` must
+  emit a subject whose `subjectDate` resolution does not depend on an id being unique, and
+  `horizonGate.test.ts` gains **one directional test** — every horizoned finding whose `params.daysOut` is
+  within the horizon survives the gate, swept over the existing clocks plus a `duplicate_id` document.
+  **`detect.ts`, `subjectDate`, `beyondHorizon` and every rule file are untouched**, deliberately: A-17
+  weighs the blast radius of threading a subject date through `Conflict` against a divergence that
+  over-reports only, on a document this system already reports as invalid, and refuses it.
 - **User-visible outcome.** Opening a trip you have finished no longer silently throws away the answers you
   gave it while it was live, and no longer schedules a write to a document you only looked at. If the trip's
   dates are later extended, the finding you dismissed comes back **still dismissed**, instead of accusing
@@ -1114,6 +1142,11 @@ half-built ruling is not a shipped increment.
   **three**; and `qa/r13-gate-citykey.mjs` §1 and §4 are at **0 FAIL**, with §3's first line replaced by the
   tripwire rather than made to pass (A-13 — it asserts a mechanism the model does not have, and the
   replacement is the honest edit; nothing else in that probe may be weakened to reach 0).
+  **Added at revision 13:** the directional test above is green on a `duplicate_id` document as well as on
+  the reference and fault fixtures; and `qa/r14-horizon-copy.mjs` §1.5's `ok()` is **retired by A-17, not
+  fixed** — replaced by the directional assertion with A-17 named in the comment, its measurement kept as a
+  `console.log`, and §1.4's `duplicate-stop-id` differential re-labelled as the measurement of a documented
+  divergence (123 of 435 clocks). Nothing else in that probe's §1 may be weakened.
 
 #### I-4a — City keys become minted ids, and duplicates become visible (§2.2 A-10, QA P2-2)
 
@@ -1127,6 +1160,13 @@ half-built ruling is not a shipped increment.
   not travel**, the stop keeping its coordinate as `{kind:'inline'}` (or `{kind:'none'}` when the source had
   none). `normalizeCityName` lands here, once, in `packages/core/src/model/cityName.ts`, **off** `index.ts`
   (§2.10 stays at 71), and I-7 consumes that module instead of writing a second copy.
+  **Revision 13 adds two more, and the first is a BLOCKER (§2.14 A-15, A-16):** rule 4 sanitises the copied
+  `Place` field by field through one module-private `placeForCopy` — `note` through `redactText`, `links`
+  **dropped entirely**, `hours.note` redacted, `at` cloned, `name`/`category`/`hours.weekly` verbatim — with
+  a **key-set assertion** so a ninth `Place` field cannot travel un-classified (**A-15**); and
+  `refileCityKey` gains one step, *the source's own key wins when `source.id === target.id` **and** the
+  target still holds that key*, ahead of the name fold and behind the source-resolves-its-own-key check
+  (**A-16**). Neither changes `Place`'s shape, `packages/client`, `tools/redact.mjs` or §2.10's 71.
 - **User-visible outcome.** *"日本 2019 — 東京, 京都"* records as two cities instead of one, in any script,
   and a document that already collapsed two cities into `"-"` says so on screen instead of silently
   mis-attributing every day of the trip.
@@ -1150,6 +1190,17 @@ half-built ruling is not a shipped increment.
   copied into a Prague-only trip adds **no** place row, keeps a resolvable coordinate, and produces zero
   issues and no `geo_outlier`; a target with two cities named *Vienna* re-files onto the lower `order`,
   deterministically.
+  **Added at revision 13, and the first of these is what the increment shipped without noticing:** a place
+  note reading *"Front door PIN 0754, conf 5814731574 — ask for jacob@example.com"* and a link
+  `https://vendor.example/booking/…` copied into a friend's trip leave **no** `redactionHits` on the copied
+  place, **no** `links` key at all, and none of the four credentials greppable anywhere in the recipient's
+  `toJSON` — while a place note that is *not* credential-shaped crosses **byte-identical**, because a rule
+  that redacts everything passes the first half and is wrong (**A-15**). And the within-trip cases: a copy on
+  a trip holding two same-named cities keeps the place's own key and adds **no** row; a copy under a
+  blank-named city keeps the place link; a copy of a place whose `cityKey` the source cannot resolve **still**
+  takes step 3; and a copy whose `source.trip` is the same document re-parsed through `fromJSON` (equal by
+  `.id`, a different object) is byte-identical to the same-object call — the assertion that fails under
+  `===` (**A-16**).
 - **Dependencies / blockers.** I-4 (the form it corrects). None external.
 - **Ship gate.** The slug expression appears **nowhere** in `apps/` or `packages/` (grep); no call site
   outside `packages/core` constructs a city key; each of the three new validation codes has an
@@ -1158,6 +1209,13 @@ half-built ruling is not a shipped increment.
   **no copy-heavy increment ships ahead of this one** — until A-14 lands, every cross-trip copy of a
   place-linked stop leaves a `validateTrip` **error** in the recipient's document that no control in the UI
   can clear, on the primitive `BRIEF.md` calls the social one.
+  **Added at revision 13:** `qa/r14-horizon-copy.mjs` §5.1, §5.2, §5.7, §5.9 and §5.10 at **0 FAIL**, with
+  §5.1 unmoved rather than adjusted — a ruling that makes A-14's cross-trip assertions fail is a wrong
+  ruling; and **no share, friend or public-share-link work of any kind ships ahead of A-15**, which is a
+  stronger bar than revision 12's. The copy is the one place in the design where data crosses a *person*
+  boundary; until A-15 lands it hands a friend's door PIN, confirmation number and voucher URL into the
+  recipient's document and every later export of it, on a record nothing badges (§2.14 A-6: a `Place` has no
+  provenance).
 
 ---
 

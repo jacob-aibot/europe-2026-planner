@@ -81,8 +81,25 @@ update to this file added that instruction).
 > has ruled on all four (`ARCHITECTURE.md` A-11 … A-14); a builder implements them next, and
 > **I-3a and I-4a stay open until then** rather than being counted as done.
 
-> **Last updated:** 2026-08-27, against `master` after ARCHITECTURE revision 12 (A-11 … A-14, the
-> four round-13 design findings) — previously ROADMAP revision 11's I-3a and I-4a. Update this
+> **All four were built, and then attacked** (QA round 14): **three of them are done and
+> verified** — the clock can no longer throw away a dismissal through either door (checked at 434
+> different dates across ten different trips), a crashing rule no longer takes your dismissals
+> with it, and copying between two trips of your own files the place under *your* city instead of
+> leaving an error you cannot clear. **One blocker came back, and it is the important one:** when
+> you copy an activity, the *place* it points at travels with it — and its note and its links were
+> travelling **unedited**. So a hotel's door PIN, a booking confirmation number, a voucher link
+> and an email address typed into a place note would all land in the other person's trip, on a
+> record nothing marks as somebody else's. The activity's own note has been scrubbed since
+> round 2; the place beside it never was. Two smaller design gaps came with it: copying **within
+> one trip** can duplicate a place under the wrong city when the trip visits two places with the
+> same name (a there-and-back through the same hub), and one proof about the 60-day reminder was
+> claimed more broadly than it holds. The architect has ruled on all three (`ARCHITECTURE.md`
+> **A-15**, **A-16**, **A-17**, revision 13). **Nothing about sharing with a friend ships until
+> A-15 is built** — the copy is the one place in the whole design where your data crosses to
+> another person.
+
+> **Last updated:** 2026-08-27, against `master` after ARCHITECTURE revision 13 (A-15/A-16/A-17,
+> the three round-14 design findings) — previously revision 12's A-11 … A-14. Update this
 > line every time you edit this file.
 
 **Status vocabulary used throughout:** 🟢 COMPLETE · 🟡 IN PROGRESS · 🟠 NEXT / APPROVED ·

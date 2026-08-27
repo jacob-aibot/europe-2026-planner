@@ -129,13 +129,39 @@ a place that cannot be filed **does not travel** — the stop keeps its coordina
 consequences in `ROADMAP.md` are I-3a's and I-4a's ship gates and nothing else: **no new increment, no change
 to the phase order.**
 
+**Revision 13, 2026-08-27.** QA round 14 — the mandatory breaker pass over A-11…A-14 — closed three of the
+four and routed **three** findings back here: one BLOCKER and two holes in revision 12's own reasoning.
+Three addenda; no redesign, no engine, no persisted shape, no `schemaVersion` bump, no movement on §2.10's
+export surface. **A-15** (§2.14, §6.6, QA **R14-4**): rule 4 hands the referenced `Place`'s `note` and
+`links` across the trip boundary **unredacted**, two lines after rule 5 redacts the *stop's* note — a door
+PIN, a confirmation number, a voucher URL and a mailbox address all land in the recipient's document. This
+is the unfixed half of round 2's BLOCKER R2-3, and the root cause is an asymmetry rather than a missed
+line: the sample path (§6.6) **fails closed** — a deep walk redacts every string not under a structural key
+— while the copy path is field-by-field with no default and therefore **fails open** on every field nobody
+listed. A copied `Place` is sanitised field by field against a table that names all eight of them, and the
+key set is asserted, so the next field added to `Place` cannot travel un-classified. **A-16** (§2.14, QA
+**R14-2**): A-14's closing claim *"copying within one trip is unchanged"* is false — `refileCityKey` re-files
+by name unconditionally, so on a trip legitimately holding two cities of the same name (A-10 blesses that) a
+within-trip copy silently re-files onto the wrong one and writes a duplicate place row. A-14 stands; what it
+missed is that **re-filing is a derivation, and a derivation is only for when the document has not already
+answered.** The source's own key wins when — and only when — the source *is* the target document and the
+target still holds that key. **A-17** (§2.7, QA **R14-1**): A-11 assertion 5's *"provably output-neutral"*
+proof assumes a stop id is unique per document; on a `duplicate_id` document (a `validateTrip` **error**
+that `fromJSON` still accepts) the horizon leaks. The claim is **narrowed to documents `validateTrip`
+accepts** rather than threading a subject date through the rule contract — the document is the resource that
+states when a stop is (§0.6), a rule carrying its own copy of that date is the category error §0.6 names,
+and the divergence is over-reporting only. The `Rule` contract gains one standing obligation that keeps that
+direction true for the *next* rule to declare a horizon, and one directional test. The mechanical
+consequences in `ROADMAP.md` are I-3a's and I-4a's Built/Verification/Ship-gate lines and nothing else:
+**no new increment, no change to the phase order.**
+
 **Phase 1 is §2 and §4. The next phase is §8.1–§8.4.** Everything else is the shape those must not
 foreclose. See `ROADMAP.md` for sequencing and `PRODUCT-VISION.md` for why this order and not another.
 
 ## Read only your sections
 
-This document is ~80k tokens (re-measured at revision 12 with `cairn/tools/doc-section ARCHITECTURE` — §2 is
-now ~49k of it and §8 ~12k; the per-section figures below were stale by a third before revision 11 and are
+This document is ~88k tokens (re-measured at revision 13 with `cairn/tools/doc-section ARCHITECTURE` — §2 is
+now ~56k of it and §8 ~12k; the per-section figures below were stale by a third before revision 11 and are
 re-measured, not estimated, whenever a revision lands). Nothing needs all of it, and a fresh agent that reads it whole starts a sixth
 of the way into its context before writing a line. Pull what you need:
 
@@ -148,11 +174,11 @@ cairn/tools/doc-section ARCHITECTURE         # lists the sections and their size
 |---|---|---|---|
 | 0 | Six positions, stated up front | <1k | everyone — read it, it is 20 lines |
 | 1 | Stack decision and the capability checks behind it | 3k | architect. Settled; do not re-litigate |
-| 2 | **Domain model — the builder's contract.** §2.12 `travelRole`, §2.13 geography and §2.14 import/copy are new in revision 2 and are where the Phase 1 rework lives; **§2.2a (the `StorageVersion` write fence, revision 3) and §2.2b (the freshness rule it turned out to be one instance of, revision 4) are read together with §4.2 and §4.3, never alone**; §2.10 (the export surface) and §2.13's copied-record row are settled in revision 5; **§2.7's retirement ledger (A-5) and §2.13's copy-borne `Place` rule (A-6) are revision 6**; **§2.2a's A-7 (the fence a declined write may not move) is revision 8** and is read with §4.2 rule 4a; **§2.2's A-10 (a `CityKey` is a minted opaque id) and §2.7's A-9 (retirement is decided against the un-gated set) are revision 11** — a Phase 2 builder needs both; **A-11, A-12 and A-13 (§2.7) and A-14 (§2.14) are revision 12** and are read *with* A-9 and A-10, never instead of them — A-11 replaces A-9's greppable invariant, A-12 narrows A-9 point 1, A-13 rewrites A-9 assertion 4, and A-14 corrects A-10's change table | 49k | builder, breaker |
+| 2 | **Domain model — the builder's contract.** §2.12 `travelRole`, §2.13 geography and §2.14 import/copy are new in revision 2 and are where the Phase 1 rework lives; **§2.2a (the `StorageVersion` write fence, revision 3) and §2.2b (the freshness rule it turned out to be one instance of, revision 4) are read together with §4.2 and §4.3, never alone**; §2.10 (the export surface) and §2.13's copied-record row are settled in revision 5; **§2.7's retirement ledger (A-5) and §2.13's copy-borne `Place` rule (A-6) are revision 6**; **§2.2a's A-7 (the fence a declined write may not move) is revision 8** and is read with §4.2 rule 4a; **§2.2's A-10 (a `CityKey` is a minted opaque id) and §2.7's A-9 (retirement is decided against the un-gated set) are revision 11** — a Phase 2 builder needs both; **A-11, A-12 and A-13 (§2.7) and A-14 (§2.14) are revision 12** and are read *with* A-9 and A-10, never instead of them — A-11 replaces A-9's greppable invariant, A-12 narrows A-9 point 1, A-13 rewrites A-9 assertion 4, and A-14 corrects A-10's change table; **A-15 and A-16 (§2.14) and A-17 (§2.7) are revision 13** — A-15 is the copy path's redaction rule and is read with §6.6, A-16 withdraws A-14's *"within one trip is unchanged"* paragraph, A-17 narrows A-11 assertion 5. **Anyone touching `copyStopInto` reads A-14, A-15 and A-16 as one rule 4** | 56k | builder, breaker |
 | 3 | Module boundaries | <1k | builder |
 | 4 | **The Phase 1 client.** §4.2 rule 6 (a pending write is never outlived by its document) is new in revision 3 — QA R3-2; rule 6a′ and the `savedDoc` predicate are revision 4 — QA R4-1; **rule 6a″ (the flush bound and its exits) and rule 6c's "delete goes on the chain" are revision 5** — QA R6-1/R6-2/R7-3; **rule 5's retirement carve-out is revision 6** — QA R8-1, read with §2.7; **rule 4a is revision 8** — QA R11-1, read with §2.2a A-7 | 7k | builder |
 | 5 | The four hard subsystems | 2k | breaker; builder from Phase 3 on |
-| 6 | Privacy, authorization, deletion cascade | 3k | breaker, manager; builder for §6.2 |
+| 6 | Privacy, authorization, deletion cascade. **§6.6 is the build-artifact threshold; the copy threshold is §2.14 A-15 (revision 13) and they differ deliberately — read them together or neither** | 4k | breaker, manager; builder for §6.2 |
 | 7 | Explicitly deferred | <1k | anyone about to build something not in the roadmap |
 | 8 | **The travel-history model** (revision 9) — trip lifecycle and past trips (§8.1), the feasibility/integrity rule class (§8.2), participants (§8.3), geography attribution, travel stats and the summary-row rule (§8.4); then the shapes the location, photo and social phases must land on (§8.5–§8.7) and what is refused (§8.8). **§8.10 is revision 10** — physical travel distance by mode and the four provenance bases that keep it honest; **it is not Phase 2 scope**, so a Phase 2 builder reads §8.1–§8.4 and stops. **Revision 11 amends §8.1, §8.2 and §8.4 by pointer only — the two rulings themselves live in §2.2 (A-10) and §2.7 (A-9), and a Phase 2 builder reads both; revision 12 amends §8.2 by pointer in the same way, and its four rulings live in §2.7 (A-11, A-12, A-13) and §2.14 (A-14)** | 12k | architect; the builder and breaker of the phase after Phase 1 (§8.1–§8.4 only). §8.10 is for the architect and for phases 4, 5 and 7. Read with `PRODUCT-VISION.md` |
 
@@ -1738,8 +1764,12 @@ Five mechanical points, and they are the whole change:
    the second disjunct is inert for the other nine rules.
 4. **Only a `feasibility` rule may declare `horizonDays`.** A horizon says *"this is premature"*, which is a
    feasibility claim by construction; an integrity finding is true whenever it is true. Asserted in the same
-   test as the invariant, not enforced by a type.
-5. **`detectConflicts` is provably output-neutral.** `unbooked_ticketed`'s two subjects are the stop and its
+   test as the invariant, not enforced by a type. **A-17 adds a second condition to the same assertion**: a
+   rule declaring a horizon must emit a subject whose `subjectDate` resolution does not depend on an id being
+   unique — in practice the `{kind:'day'}` ref of the day the finding is about.
+5. **`detectConflicts` is provably output-neutral** — **on every document `validateTrip` accepts; narrowed
+   by A-17 (revision 13, QA R14-1), which also states what happens on the documents it does not.**
+   `unbooked_ticketed`'s two subjects are the stop and its
    own day, both resolving through `subjectDate` to that day's date, so *"every subject more than 60 days
    after today"* and the deleted `delta > 60` are one predicate over one date. A suppressed finding never
    enters `found`, so ordering, ids, `detail` and bytes are identical at every clock — including no clock,
@@ -1940,6 +1970,93 @@ assertion — *"extending `endDate` makes the conflict return"* — is **retired
 asserts a mechanism the model does not have, and the honest edit is to replace that line with the tripwire.
 A builder may not make it pass by weakening anything else, and the reason it is being retired is written
 here rather than in a probe comment.
+
+#### A-17 — a horizon is only as sharp as the document's own answer to *when* (revision 13, QA R14-1)
+
+**The defect, and it is in a proof rather than in code.** A-11 assertion 5 says *"`detectConflicts` is
+provably output-neutral"*, on the argument that *"`unbooked_ticketed`'s two subjects are the stop and its own
+day, both resolving through `subjectDate` to that day's date, so 'every subject more than 60 days after
+today' and the deleted `delta > 60` are one predicate over one date."* `subjectDate` resolves a
+`{kind:'stop'}` ref by scanning `trip.days` for the **first** day holding that id
+(`conflict/detect.ts:133`), which is not the day the rule was iterating when the same stop id sits on two
+days. On such a document `detectConflicts` diverges from pre-A-11 at **123 of 435 clocks**, and the horizon
+leaks: a note **73 days out** survives a 60-day gate. `validateTrip` calls that document `duplicate_id`, an
+**error**, but `fromJSON` accepts it and `importDoc` is therefore a live route to one.
+
+The code is faithful — A-11 point 2 names `subjectDate` as the resolver, in those words. It is the proof
+that overreached.
+
+**The ruling: narrow the claim. The rule does not learn to carry its own subject date.** Three reasons, in
+the order that decides it:
+
+1. **§0.6.** *A fact about a resource is only valid at the moment, and in the place, the resource itself
+   stated it.* The date a stop happens on is a fact the **document** states, by putting the stop on a day. A
+   rule that carried its own copy of that date into its `Conflict` would be gating on a copy — and two rules
+   reasoning about the same day could then disagree about when that day is, which is strictly worse than one
+   resolver that is exactly as ambiguous as the document is. `subjectDate` is the right resolver, and on a
+   `duplicate_id` document there is **no correct answer** for it to return: the question *"which day is this
+   stop on"* has two answers in the document itself.
+2. **The blast radius is out of proportion to the harm.** Threading a subject date changes `Conflict`'s
+   shape, which is content-addressed (`values` decides the id) and persisted in every `Resolution` row — so
+   it risks conflict ids, the retirement ledger and the goldens — plus both gates in `detect.ts` and all ten
+   rules' return sites, to improve the behaviour of a document that is already invalid, already reported,
+   and whose only bad outcome is showing the user something true.
+3. **The direction is safe, and provably so rather than hopefully.** `beyondHorizon` suppresses only when
+   **every** subject resolves beyond the horizon (§8.2 ruling 1's asymmetry). `unbooked_ticketed` emits,
+   among its subjects, the `{kind:'day'}` ref of the day it iterated — and a day ref resolves through
+   `subjectDate` to that day's own `date`, with no scan and no ambiguity. So a duplicated stop id can only
+   ever make the conjunction *fail*: the gate can **keep** a finding the deleted `delta > 60` would have
+   withheld, and can never withhold one that guard would have kept. Over-reporting, never hiding something
+   actionable.
+
+**What changes, and it is three things.**
+
+1. **A-11 assertion 5 is narrowed.** Read it as: *"`detectConflicts` is provably output-neutral **on every
+   document `validateTrip` accepts**. On a document carrying a `duplicate_id` error — which `fromJSON`
+   accepts deliberately, because refusing to parse would make the document unopenable and hide the report
+   (A-10's precedent) — `subjectDate` resolves a `{kind:'stop'}` ref to the first day holding that id, which
+   need not be the day the rule reasoned about, and the gate may then keep a finding the deleted guard would
+   have withheld. The divergence is **over-reporting only**, by the horizon-subject rule below, and it is
+   bounded to documents this system already reports as invalid."* Assertions 1–4 are unchanged and A-11's
+   mechanism is unchanged.
+2. **The `Rule` contract gains one standing obligation**, so point 3 above stays true for the *next* rule to
+   declare a horizon rather than being a property of the one rule that has one today:
+
+   > **A rule that declares `horizonDays` must emit, among the subjects of every conflict it produces, at
+   > least one ref whose `subjectDate` resolution does not depend on an id being unique — in practice the
+   > `{kind:'day'}` ref for the day the finding is about. A rule that cannot do so may not declare a
+   > horizon.**
+
+   The case that rule excludes is real and A-13 already anticipated it: a finding about a **pool** stop,
+   whose only subject has no day of its own and falls through to §8.2 ruling 2's `endDate`. Excluding it is
+   the honest answer rather than a cost — a pool stop has no date, so *"more than 60 days out"* is a claim
+   about a date that does not exist, and the finding simply always shows. Asserted in the same test as
+   A-11's *"only a feasibility rule may declare a horizon"*, not enforced by a type, for the same reason.
+3. **One directional test**, in `packages/core/test/horizonGate.test.ts`, which is what stops this being a
+   doc edit that waves a finding through:
+
+   > For every clock in A-11's sweep, over the reference fixture, each injected-fault fixture **and** a
+   > `duplicate_id` document: every conflict in `detectUngated(t, {today})` whose rule declares a horizon and
+   > whose `params.daysOut <= horizonDays` is present, **by id**, in `detectConflicts(t, {today})`.
+
+   *"The gate never withholds a finding the deleted guard would have kept."* `params.daysOut` is the rule's
+   own reckoning, computed from the day it was iterating — prose, which A-11 permits a clock to influence —
+   so it is an oracle independent of `subjectDate`, which is exactly what makes the test worth writing. On a
+   well-formed document it is the full equivalence; on the `duplicate_id` document it is the safe half, and
+   the unsafe half is the one this ruling has decided not to buy.
+
+**No code in `detect.ts`, `subjectDate`, `beyondHorizon` or any rule file changes.** §2.10 stays at **71**.
+The goldens do not move.
+
+**Two probe lines stay red, and that is the ruling rather than an omission.**
+`qa/r14-horizon-copy.mjs` §1.5's assertion — *"no `unbooked_ticketed` note survives the gate more than 60
+days out"* — asserts the claim this addendum has just narrowed, so it is **retired by this ruling, not
+fixed**, on A-13's precedent. The honest edit is to keep the measurement (`console.log` of the surviving
+`daysOut` values, which is the interesting number) and replace the `ok()` with the directional assertion in
+point 3, naming A-17 in the comment; and to re-label §1.4's `duplicate-stop-id` differential as the
+**measurement** of a documented divergence (123 of 435 clocks), since a pre-A-11 differential on an invalid
+document is now expected to be non-zero. **Nothing else in that probe may be weakened**, and after A-15,
+A-16 and R14-3 land, its expected FAIL count is **0** with both worktrees present.
 
 ### 2.8 Provenance
 
@@ -2639,6 +2756,11 @@ Pure, in core, and it ships in Phase 1. Seven rules, and rules 2 and 7 are the o
    ticket URL is an access credential (§6.6). `cost` is copied, with `confidence` demoted to `'inferred'`.
 4. **A referenced `Place` is copied with it**, new id, same provenance stamp — otherwise the link dangles.
    An existing place in the target with the same name and coordinates in the same city is reused instead.
+   **Amended three times and never read on its own: A-14** (the `cityKey` is re-filed in the target's terms
+   or the place does not travel), **A-15** (what of the place may cross — `note` redacted, `links` dropped,
+   `at` cloned) and **A-16** (when the source *is* the target document, its own key is already the answer).
+   "Same provenance stamp" was never true and is withdrawn: A-6 refused provenance on `Place`, which is
+   precisely why A-15's redaction is not optional — nothing badges a `Place`.
 5. `flags`, `name`, `note`, `category`, `durationMins`, `arrival`, `travelRole` and `links` copy verbatim
    (`note` through `redactText` — BUILD-NOTES KD-20). They are descriptions of a place and a journey, not
    claims about the user. **`ticket` is not on this list and never joins it** — see rule 3.
@@ -2779,8 +2901,9 @@ a city onto the place:
 `coordOf` resolves it, `StopEditor` edits it, and `fromJSON` parses it. The stop still renders, still pins on
 the map, and §2.13's copied-stop row already gives it `confidence: 'unanchored'`, so it mints no blocker.
 
-**The named loss, stated rather than discovered.** In step 3 the *place-level* `note`, `links`, `hours` and
-`category` do not travel; the stop's own `name`, `note` (through `redactText`), `category`, `links`, `cost`,
+**The named loss, stated rather than discovered.** (**A-15 narrows what step 2 carries too**: the place's
+`links` never travel, on either step, and its `note` crosses redacted.) In step 3 the *place-level* `note`,
+`links`, `hours` and `category` do not travel; the stop's own `name`, `note` (through `redactText`), `category`, `links`, `cost`,
 `arrival`, `durationMins`, `travelRole` and `flags` all still do, per rule 5. What is lost is a curated
 record about a city the target trip does not have — and the user can create that city and re-copy, which is
 the act that makes the filing true.
@@ -2788,9 +2911,12 @@ the act that makes the filing true.
 **What does not change.** Rules 1, 2, 3, 5, 6 and 7 are untouched; `Place`'s shape is untouched; no
 `schemaVersion` bump, no migration, no persisted shape and no new export. `A-6`/`A-6a` (the copy-borne place
 exemption and `removeStop`'s prune) apply unchanged to the step-2 case and simply have less to do in the
-step-3 case, which adds no place. **Copying within one trip is unchanged**: the source city is found by key,
-its own name matches itself, the key comes back identical, and the reuse search matches the original place
-exactly as today.
+step-3 case, which adds no place. ~~**Copying within one trip is unchanged**: the source city is found by
+key, its own name matches itself, the key comes back identical, and the reuse search matches the original
+place exactly as today.~~ **That sentence is false and is withdrawn — see A-16 (revision 13, QA R14-2).**
+It holds only for a trip whose city names are distinct and non-blank; `refileCityKey` re-files by name even
+when the source *is* the target, so a trip holding two cities of the same name gets a duplicate place row
+under the wrong one. A-16 is the correction and everything else in A-14 stands.
 
 **What the builder asserts:**
 
@@ -2808,6 +2934,232 @@ exactly as today.
 5. **A blank source city name never matches a blank target city name** — it takes step 3.
 6. The reference trip's numbers, the goldens and the sample JSON are unmoved; `qa/r2-copy.mjs`,
    `qa/prov.mjs` and the §2.14 provenance suite stay green.
+
+#### A-15 — a copied `Place` crosses a person boundary, so §6.6 applies to it (revision 13, QA R14-4)
+
+**The defect.** Rule 4 builds the copied place as `{ ...refiled, id: ctx.ids.newId('place') }`
+(`build/copyStop.ts:169`). Two lines later rule 5 runs the copied **stop's** `note` through `redactText`.
+The **place's** own `note` and `links` go through nothing. A place note reading *"Front door PIN 0754, conf
+5814731574 — ask for jacob@example.com"* and a link `https://vendor.example/booking/GYGG45MLA9Q9` arrive
+intact in the recipient's document and in every later `toJSON` of it: five of `redactText`'s six patterns
+match the string that crossed. §6.6's free-text table **already names `Place.note`** as a string that must
+be redacted, and its Tickets row already calls a vendor URL an access credential. §2.14 rule 4 says only
+*"a referenced `Place` is copied with it"*. The two sections of this document disagree, which is why this is
+a ruling and not a builder's bug. It is also the unfixed half of round 2's BLOCKER **R2-3** — R2-3's own text
+named `Place.note` and `Place.links`, the fix (`b5c742b`) covered `Stop.note`, and the status table recorded
+the whole finding closed.
+
+**The root cause is a direction, not a missing line, and that is what makes it worth a ruling.** The two
+places in this system that decide what may leave a document fail in opposite directions:
+
+- **§6.6's sample path fails closed.** `redactStringsDeep` walks the whole document and redacts every string
+  **except** under a key in `STRUCTURAL_KEYS`, on top of the field-by-field rules. §6.6 says why in its own
+  words: *"a field added later is redacted by default rather than leaking by default."*
+- **The copy path fails open.** `copyStopInto` enumerates fields, and a field nobody enumerated travels
+  verbatim. `Place` grew `note`, `links` and `hours`; rule 4 spreads all of them.
+
+So the fix is not three lines of `redactText` — it is three lines *plus* a mechanical reason the fourth field
+cannot repeat this. Both are below.
+
+**The position.** *A string's classification does not change because of which record it is attached to.* A
+door PIN in `Place.note` is the same credential as a door PIN in `Stop.note`, and §6.6 has classified it
+since revision 2. If anything the copied place is the **worse** carrier of the two, for a reason A-6 settled
+deliberately: **a `Place` has no provenance.** The copied stop is stamped `source:'friend'`, badged
+`'imported'` by `displayStatus` from the instant it exists, and carries `attribution` that every view must
+render (rule 7). The place beside it is badged by nothing, credited to nobody, and — the recipient never
+chose it. It rode along. A credential filed there is unattributable and outlives every badge in the system.
+
+**The mechanism.** One module-private function in `build/copyStop.ts`, applied at the one site that pushes a
+row, with a row for every field `Place` has:
+
+```ts
+/** §2.14 A-15. What of a Place may cross a trip boundary. Pure. */
+function placeForCopy(p: Place, cityKey: string, id: PlaceId): Place { … }
+```
+
+| `Place` field | What crosses | Why |
+|---|---|---|
+| `id` | a fresh `ctx.ids.newId('place')` | rule 1, unchanged — ids never cross trips |
+| `cityKey` | the re-filed key (A-14 step 2, A-16) | unchanged |
+| `name` | **verbatim** | a place's name is a description of the world; rule 5 treats `Stop.name` identically, and §6.6 does not classify a name as free text |
+| `at` | **cloned** — `{ lat, lng }` rebuilt, or `null` | purity. Two documents may not end up sharing one mutable `LatLng`; this is KD-47's own argument for cloning in step 3, applied to the branch beside it |
+| `category` | **verbatim** | an enum |
+| `note` | `redactText(p.note)`, **and the key is present only if the source had one** | §6.6's free-text row, applied to the record §6.6 already names in it |
+| `links` | **dropped entirely — the key is absent from the copy**, not emptied and not redacted | rule 3's argument, below |
+| `hours` | key present only if the source had one; `weekly` cloned entry by entry; **`hours.note` through `redactText`** | opening times are a description of the world. The note beside them is free text that §6.6's deep pass already redacts and this document's field list never named — the same class of omission as `Place.note`, closed in the same pass rather than left for round 15 |
+
+At the call site, `refiled` stays exactly as A-14 left it — it is the *probe* the reuse search compares
+against (`samePlace(p, refiled)`), and it is no longer the thing that gets pushed. The one line that pushes
+a row becomes `const copy = placeForCopy(original, targetKey, ctx.ids.newId('place'));`, and **there is no
+remaining spread of a source `Place` into the target document**; a builder who leaves one has not landed
+this ruling.
+
+The **reuse** branch is untouched and needs nothing: when an equivalent place already exists in the target,
+no field of the source place crosses at all. `samePlace` compares `cityKey`, `name` and `at`, none of which
+this changes, so reuse decisions are bit-for-bit what A-14 left.
+
+**Why `links` are dropped rather than href-redacted.** Four reasons, and the first is the one that decides
+it:
+
+1. **A `Link` is `{ label, href }` and the href is the entire payload.** A link whose href is `''` or
+   `[redacted]` is a control that renders and navigates nowhere — a confident wrong answer where a hole is
+   honest. That is A-14's own preference, stated in A-14's own words about the transliteration table, and
+   `CLAUDE.md`'s oldest rule in the brief's words.
+2. **Rule 3 already decided this class.** *"Their ticket URL is an access credential"* is why no `Ticket`
+   travels. A vendor voucher URL filed on a place is the same URL; it does not become safe by being one
+   record further away from the stop.
+3. **Nothing badges it** — the provenance argument above. Rule 3 can drop `bookingId` and leave the stop
+   still marked as somebody else's; a place carries no such mark, so the only safe answer is that the
+   credential does not arrive.
+4. **It makes rule 4's two branches agree.** The reuse branch already gives the recipient no new links; the
+   new-row branch gave them all of them. Whether a friend's voucher URL reached you depended on whether your
+   trip happened to already hold that place — a security property decided by a deduplication match.
+
+**Why `Stop.links` still copy verbatim, which is not an inconsistency but is a disclosed residue.** §6.6 and
+§2.14 are two different thresholds and must not be collapsed: **§6.6 governs what may reach a build
+artifact** — published to anyone, with no user in the loop, which is why it drops every href it sees — and
+**§2.14 governs what may cross to one person who is looking at the record.** The stop is the record that
+person chose, badged, credited and reviewable; its links are the vendor pages that make the stop usable, and
+round 14 re-confirmed that decision deliberate (`qa/r2-copy.mjs` §H reports two order-shaped hrefs travelling
+and passes). The residue, named rather than discovered: **a `Stop.links` href can be voucher-shaped today.**
+It stays, and the trigger for reopening it is named — **the day anything writes `Stop.links` from a source
+the user did not type** (§5.1's ingest candidates, Phase 4), rule 5's link clause is re-ruled, because at
+that point a link is no longer *"a page the user pasted"* and the argument above stops holding.
+
+**And the fail-open direction gets a mechanical stop.** `copyStop.test.ts` asserts that the copied place's
+**key set** equals a literal list — built from a source place carrying every optional field populated. A
+field added to `Place` therefore fails that test until it has a row in the table above. This is the cheapest
+available form of §6.6's *"redacted by default rather than leaking by default"* inside a typed record, and it
+is the reason this addendum enumerates all eight fields instead of naming the two that leaked.
+
+**What does not change.** Rules 1, 2, 3, 5, 6 and 7; A-14's three-step decision; `Place`'s shape; the reuse
+search; `redactText` and `REDACTION_PATTERNS` (**this ruling adds no pattern** — it adds call sites);
+`tools/redact.mjs` and §6.6's sample rules (its deep pass already covers `hours.note`, so the sample is
+unmoved); no `schemaVersion` bump, no migration, no new export — `placeForCopy` is module-private and §2.10
+stays at **71** runtime symbols. The reference trip is unmoved: all 95 of its places carry a note, none is
+credential-shaped, and none carries `hours` at all, so the goldens and the sample sha do not move.
+
+**What the builder asserts:**
+
+1. **`qa/r14-horizon-copy.mjs` §5.9 at 0 FAIL**, all six lines — the copied place's `note` has no
+   `redactionHits`, its `links` carry no matching href, and none of the four credentials (`0754`,
+   `5814731574`, `GYGG45MLA9Q9`, `jacob@example.com`) is greppable anywhere in the recipient's `toJSON`.
+2. **Redaction is not a wipe.** A place note that is *not* credential-shaped (*"entrance is on the north
+   side"*) crosses **byte-identical**, and `name`, `category`, `hours.weekly` and a `null` `at` are unmoved.
+   A rule that redacts everything passes assertion 1 and is wrong.
+3. **`hours.note` is covered**: a source place with `hours: { weekly: […], note: 'code 4417' }` arrives with
+   the weekly array intact and the note redacted.
+4. **The key-set test** above, and it fails when a ninth field is added to `Place` and not classified.
+5. **No aliasing**: the copied place's `at` is not the source place's `at` object, and mutating the source
+   document's place after the copy changes nothing in the target.
+6. **The reuse branch is unmoved** — A-14 assertion 2 still holds (`target.places.length` unmoved) and the
+   reused row keeps the target's own `note`/`links`, not the source's.
+7. Ceilings: 71 exports, the reference trip's 2 blockers / 4 warnings / 11 notes at `FIXTURE_TODAY`, the
+   goldens and sample sha byte-identical, `qa/r2-copy.mjs` and `qa/prov.mjs` at 0 FAIL.
+
+#### A-16 — re-filing is a derivation, and the source document may already hold the answer (revision 13, QA R14-2)
+
+**The defect.** A-14's closing paragraph claimed *"copying within one trip is unchanged: the source city is
+found by key, its own name matches itself, the key comes back identical, and the reuse search matches the
+original place exactly as today."* `refileCityKey` (`build/copyStop.ts:91`–`103`) never looks at whether
+`source.trip` and `target` are the same document, so a within-trip copy is re-filed by name like any other.
+Three shapes fall out, and QA reproduced all three in core and two of them through the real store and
+reducer with one Copy click:
+
+1. **A trip holding two cities of the same name** — which A-10 explicitly blesses, and which is what a
+   there-and-back itinerary through a hub looks like. A place filed under the *second* Vienna re-files onto
+   the *first* (lowest `order`), `samePlace` then fails against the original row, and a **duplicate `Place`
+   row is written under the wrong city**. A-14 assertion 2's *"`places.length` is unmoved"* is false for
+   exactly this document.
+2. **A city whose name folds to `''`.** Step 1 returns `null`, the copy takes step 3, and the stop loses the
+   place link — inside one trip, where there is no cross-document identity to derive and nothing was at risk.
+3. **A place whose own `cityKey` the source document cannot resolve.** Also step 3 — and this one is
+   **correct**, see below.
+
+**The position, and it is a narrowing of A-14 rather than a reversal.** A-14's principle stands in full: *a
+`CityKey` answers "which city **of this trip** is this filed under", so it is re-filed in the target's terms
+or it does not cross.* What A-14 missed is that **re-filing by name is a *derivation of city identity across
+documents*, and a derivation is only ever for the case where the primary answer is missing.** When the
+source *is* the target document, the primary answer is right there: the place's `cityKey` already names a
+city of the target, because the target is the document that minted it. Deriving an identity from the display
+name at that point is not conservative — it discards a fact in favour of a guess, and A-10's own reason for
+minting opaque keys was that the display name is *not* an identity.
+
+Name matching is the fallback. The key is the answer.
+
+**The mechanism — `refileCityKey` becomes four steps, and step 2 is the only new one.** Nothing else in
+rule 4 moves.
+
+> 1. **The source must resolve its own key.** `const sourceCity = source.cities.find(c => c.key === cityKey);
+>    if (!sourceCity) return null;` — unchanged, and it stays **first**. A place filed under a key its own
+>    document cannot resolve has no city, and a copy may not invent one. This is a data-integrity gap
+>    (`validateTrip` reports it as `unknown_city_key`, an **error**) and re-filing must not paper over it —
+>    so shape 3 above takes step 3 **even within one trip**, deliberately, and `qa/r14-horizon-copy.mjs` §5.7
+>    pins it.
+> 2. **The source's own key wins when the source is the target document and the target still holds that
+>    key.** `if (source.id === target.id && target.cities.some(c => c.key === cityKey)) return cityKey;` — no
+>    name is consulted, so a blank name, a name that folds to `''`, a duplicate name and a `String.normalize`
+>    that Hermes may not have are all irrelevant on this path.
+> 3. **Otherwise fold the name.** `const wanted = normalizeCityName(sourceCity.name); if (wanted === '')
+>    return null;` — unchanged, now reached only when step 2 did not answer.
+> 4. **Otherwise match by folded name, lowest `order` first, then document position.** Unchanged, A-14
+>    verbatim.
+
+**Both conjuncts of step 2 are load-bearing, and so is `.id` rather than `===`.**
+
+- **`source.id === target.id`, not `source === target`.** The reducer applies the action to the store's
+  *current* document while the `source.trip` the UI passes is whatever object it rendered from — a different
+  object for the same document after any `openTrip` (which re-parses through `fromJSON`) and after any
+  dispatch since the render. Object identity would answer *"different trips"* for a copy the user experiences
+  as within one trip, intermittently, depending on what else they had clicked. `qa/r14-horizon-copy.mjs`
+  §5.10 happens to pass the same object today because `adoptTrip` installs the caller's object; that is an
+  accident of one code path and not a property to build on.
+- **`target.cities.some(c => c.key === cityKey)`, and it is not redundant.** `source.trip` is a **copy** of
+  the target document, and §0.6 is the rule that copies go stale: a snapshot taken before the user deleted
+  that city would otherwise file the place under a key the target does not have — reintroducing the exact
+  `unknown_city_key` A-14 exists to prevent, from the opposite direction. **The fact is read from `target`,
+  which is the resource that holds it**, and a stale source falls through to name matching and then, if the
+  name has gone too, to step 3. A hole, never a wrong filing.
+
+**Why not the simpler rule — "the source's key wins whenever the target holds it", with no same-document
+check.** It is one condition instead of two and it satisfies every test QA wrote. It is refused because **a
+`CityKey` means nothing outside the document that minted it (A-10), so two documents sharing a key is a
+coincidence, not an identity** — and it is a *reachable* coincidence: every deterministic `IdFactory` in this
+repo (`sequentialIds`, the fixtures, `tools/gen-sample.mjs`) mints `city-1` in every document it builds, and
+`importDoc`'s *"restore as a copy"* produces two documents with the same city keys by construction. Trusting
+a bare key match would file a Vienna place under whatever the target's `city-1` happens to be. The
+same-document conjunct is precisely what turns key equality from a coincidence into an identity.
+
+**What this changes, shape by shape.** Shape 1: the copy keeps the place's own `cityKey`, the reuse search
+matches the original row, and `places.length` is unmoved — A-14's withdrawn sentence becomes true because
+the mechanism now makes it true. Shape 2: a within-trip copy under a blank-named city **keeps the place
+link**, while a *cross-trip* copy between two blank-named cities still takes step 3 (A-14 assertion 5,
+unchanged) — and the two are not in tension, because only the second one is deriving an identity from a name
+that is not one. Shape 3: unchanged, and deliberately so.
+
+**What does not change.** A-14 steps 1, 3 and 4 and its entire argument for step 3; A-15's sanitisation
+(which applies to whatever row does get pushed); `normalizeCityName` and its Hermes guard; `samePlace`;
+`Place`'s shape; the cross-trip behaviour in every one of A-14's five assertions, including the three-city
+tie-break and the eight Unicode folding cases; no `schemaVersion` bump, no migration, no new export, §2.10
+at **71**. `packages/client` does not change — this is four lines in one core function.
+
+**What the builder asserts:**
+
+1. **`qa/r14-horizon-copy.mjs` §5.2, §5.7 and §5.10 at 0 FAIL**, verbatim as QA wrote them: a within-trip
+   copy on a two-Vienna trip keeps the place's own key and adds **no** row; a within-trip copy under a
+   blank-named city keeps `{kind:'place'}`; a within-trip copy of a place whose `cityKey` the source cannot
+   resolve **still** takes step 3 and mints no new `unknown_city_key`; and both store-level assertions hold
+   after one dispatch and a `flush`, read back through `storage.load` + `fromJSON`.
+2. **§5.1 is unmoved** — all of A-14's assertions 1–5, the five tie-break arrangements and assertion 5's
+   blank cross-trip case still pass unchanged.
+3. **The stale-source case, which no existing test covers:** copy within one trip from a `source.trip`
+   snapshot taken **before** the city holding that place was removed from the target → the copy adds no
+   `unknown_city_key`, and it lands on the target's city of that name if one exists, or on step 3 if not.
+4. **Same document, different object**: the same copy performed with `source.trip` re-parsed through
+   `fromJSON(toJSON(t))` (equal by `.id`, different object) produces a byte-identical result to the
+   same-object call. This is the assertion that would fail under `===`.
+5. Determinism and ceilings: the same copy run twice is byte-identical, the goldens and sample sha are
+   unmoved, `npm run test:tap` green.
 
 #### Why this ships in Phase 1, with no friends and no server
 
@@ -3435,6 +3787,17 @@ artifact*, not of the model.
 | **Tickets** | every `Ticket` → `null`, for all three kinds. A URL is an access credential; an `attachment` names a mailbox message; a `bundled` path points at `tickets/`, which is not deployed and would 404. The stop keeps `flags += 'ticketed'` so the badge still demonstrates. |
 | **Free text** — `Stop.note`, `Day.subtitle`, `Trip.title`, `Place.note`, `meta.poolNotes` | passed through a redactor whose patterns live in **one exported array** in `tools/redact.mjs`: a keyword followed by an alphanumeric token (`PIN`, `code`, `conf`, `ref`, `order`, `booking`, `seat`, case-insensitive), any run of 6+ digits with optional spacing (`338 441 5948`), any 6+ character uppercase-alphanumeric token containing both letters and digits (`YZGDTS`, `IU1TUY`, `D8WQHO`), any `https?://` URL, and any email address. Each replaced with `[redacted]`. |
 | **Links** | `Stop.links[].href` and any `book.u` survivor → dropped; the label is kept. |
+
+**This table is the *build-artifact* threshold. The *copy* threshold is §2.14 A-15, and the two differ
+deliberately (revision 13, QA R14-4).** A build artifact is published to anyone with no user in the loop, so
+it drops every href it sees; a copy crosses to one person who is looking at the record they chose, so the
+**stop's** links survive and the **place's** do not. Two things that are *not* differences, and that R14-4
+found by being treated as ones: this table's *"Free text"* row has named `Place.note` since revision 2 and it
+means it on **both** paths, and `OpeningHours.note` belongs in that row too — the sample path already
+redacts it, because `redactStringsDeep` redacts every string not under a `STRUCTURAL_KEYS` key, and A-15
+adds the field-by-field equivalent on the copy path, which has no such default. **That asymmetry is the
+finding**: the sample path fails closed, the copy path failed open, and A-15's key-set assertion is what
+makes the next field added to `Place` fail closed too.
 
 **What it does not cover, deliberately.** Personal prose — *"Morning with your girlfriend's family"* — is
 not a credential and is not redacted. The consequence, stated so nobody is surprised by it: the shipped
