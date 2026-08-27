@@ -337,6 +337,16 @@ past trip recorded through the form now <strong>names at least one city and puts
 its days</strong>, so the trips 2b&rsquo;s lifetime map is built from are attributable to a place
 instead of to the &ldquo;transit&rdquo; catch-all; and restoring a backup file that carries no owner
 no longer fails to load.</p>
+<p><strong>2a has now been attacked</strong> (QA round 12): <strong>no blockers</strong>, 3 major and
+5 minor findings. Four of the eight are <strong>fixed</strong>: two browser tabs editing the same trip
+no longer throw away a change to <em>how precisely you knew the dates</em>; a conflict rule that
+crashes is now reported on a finished trip instead of being silently swallowed; the trip list shows
+&ldquo;June 2019&rdquo; rather than two exact days for a trip you only remembered the month of; and a
+trip can no longer be written with a date-precision value that stops it loading again.
+<strong>Four remain open:</strong> two are with the architect (a dismissed warning being permanently
+retired by the calendar alone; a city name in a non-Latin alphabet collapsing to a meaningless key
+&mdash; the Japan case), and two are disclosed (one undo peels the city off a long recorded trip; a
+backup file with no owner is adopted without marking its foreign content).</p>
 </div>
 
 <div class="wrap">
@@ -344,7 +354,7 @@ no longer fails to load.</p>
   <div class="brand">
     <h1>CAIRN</h1>
     <div class="tagline">"You are here"</div>
-    <div class="updated">Updated 2026-08-27 · against <code>master</code>, after the KD-38 / absent-<code>ownerId</code> fix pass</div>
+    <div class="updated">Updated 2026-08-27 · against <code>master</code>, after the round-12 P2-3/P2-4/P2-6/P2-7 fix pass</div>
   </div>
 
   <!-- ============ DECISION CALLOUT ============ -->

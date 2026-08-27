@@ -112,6 +112,45 @@ test('day-level prose and trip-level metadata merge field by field', () => {
   assert.equal(trip.title, 'Europe');
 });
 
+/**
+ * QA P2-3. `datePrecision` is a trip-level scalar (§8.1) and it was missing from the field
+ * list `mergeTrips` walks, so the other tab's change was neither merged nor reported — the
+ * one failure mode §2.2 exists to prevent. `title` is the control: it was always on the list.
+ */
+test('QA P2-3: a remote-only datePrecision change survives a merge, alongside a local edit', () => {
+  const b = base();
+  const local = setTripMeta(b, { title: 'Renamed by tab B' }, ctx());
+  const remote = setTripMeta(b, { datePrecision: 'month' }, ctx());
+  const { trip, report } = mergeTrips(b, local, remote);
+  assert.equal(trip.datePrecision, 'month', "tab A's precision change was discarded");
+  assert.equal(trip.title, 'Renamed by tab B', "tab B's title change was discarded");
+  assert.deepEqual(
+    report.fromRemote.filter((n) => n.field === 'datePrecision'),
+    [{ entity: 'trip', id: 'trip-1', field: 'datePrecision' }],
+    'a field taken from the remote side is reported, like every other trip field',
+  );
+  assert.equal(report.overwritten.length, 0, 'nothing was lost, so nothing to report');
+});
+
+test('QA P2-3: and the reverse — a local datePrecision change survives a remote title edit', () => {
+  const b = base();
+  const local = setTripMeta(b, { datePrecision: 'year' }, ctx());
+  const remote = setTripMeta(b, { title: 'Renamed by tab A' }, ctx());
+  const { trip, report } = mergeTrips(b, local, remote);
+  assert.equal(trip.datePrecision, 'year');
+  assert.equal(trip.title, 'Renamed by tab A');
+  assert.equal(report.overwritten.length, 0);
+});
+
+test('QA P2-3: both tabs changing datePrecision resolves to the local writer AND is reported', () => {
+  const b = base();
+  const local = setTripMeta(b, { datePrecision: 'month' }, ctx());
+  const remote = setTripMeta(b, { datePrecision: 'year' }, ctx());
+  const { trip, report } = mergeTrips(b, local, remote);
+  assert.equal(trip.datePrecision, 'month', 'last writer wins, per §2.2');
+  assert.deepEqual(report.overwritten, [{ entity: 'trip', id: 'trip-1', field: 'datePrecision' }]);
+});
+
 test('a day added by a remote date extension appears, and days stay dense and sorted', () => {
   const b = base();
   const local = updateStop(b, 'stop-a', { name: 'L' });

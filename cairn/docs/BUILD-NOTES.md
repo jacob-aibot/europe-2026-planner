@@ -1,6 +1,28 @@
 # Cairn — build notes, Phase 1 (and Phase 2 in progress)
 
-> **Status: CURRENT — the KD-38 / absent-`ownerId` pass** (`master`, after `f26905d`). Two
+> **Status: CURRENT — the round-12 P2-3 / P2-4 / P2-6 / P2-7 pass** (`master`, after `7fb753c`).
+> Four routed defect fixes from QA round 12 and nothing else. **P2-1, P2-2, P2-5 and P2-8 were
+> not touched** (P2-1/P2-2 are with the architect; P2-5 and P2-8 are disclosed and open).
+> I-5 … I-11 untouched.
+>
+> | | |
+> |---|---|
+> | **P2-3 (MAJOR) — closed** | `mergeTrips`' `TRIP_FIELDS` gains `datePrecision`, one entry, no restructuring. It now merges last-writer-wins per §2.2 exactly as `title` does, and a change taken from the other tab is **reported** (`report.fromRemote`) instead of vanishing. Three tests in `packages/core/test/merge.test.ts` cover remote-only, local-only and both-sides-changed. `homeBase` is **still** missing from that list — pre-existing since Phase 1, named as out of scope by the finding itself, and now named in a comment above the array so it is not re-derived. |
+> | **P2-4 (MINOR) — closed, as a code fix** | The comment was right and the code was wrong: the synthesised `rule_error` note inherits the **crashing rule's** `class`, so a crash inside a `feasibility` rule was silent on every finished trip while the identical crash in an integrity rule reported. `detect.ts` now carries a local `crashed` flag set by the `catch`, and the gate reads `!crashed && rule.class === 'feasibility' && …`. The exemption is the crash itself, not the string `'rule_error'`, so a live rule cannot claim it by minting a conflict with that `ruleId`. Two tests in `ruleClass.test.ts`, one of which crashes **every** rule in turn. |
+> | **P2-4 — one latent bug it made visible** | With the fix in, `qa/p2b-gate.mjs` §1.7 turns from ok to FAIL at `3 vs 2`: on an **un-padded** `today` (`'2019-3-5'`) the `unbooked_ticketed` rule throws `invalid IsoDate`, and until now the gate swallowed the crash report on a past trip. The crash is pre-existing and is the probe's own §1.7 divergence (and R2-14's *"`detectConflicts` accepts a garbage `today`"*); what changed is that it is no longer hidden. **Not fixed here** — validating `opts.today` is R2-14's scope, not P2-4's. |
+> | **P2-6 (MINOR) — closed** | `TripSummaryRow` carries `datePrecision` and `Library.tsx` renders `dateRangeLabel(row)`, the same function `TripView` already used. The Library now lists *"June 2019"* and *"2015"* where it listed `2019-06-01 → 2019-06-30`. This is a **one-field** widening of the row, not I-6's (`cityKeys`, countries, `SUMMARY_VERSION` are untouched and still I-6's). A row written to IndexedDB before this change has no `datePrecision`, reads `undefined` and falls through to the exact form — which is what it was. |
+> | **P2-6 — the ceiling it moved, read this** | §8.1's greppable ceiling (*`datePrecision` appears nowhere under `conflict/`, `derive/`, `validate/`*) now has **one exemption, `derive/summary.ts`**, because the Library lists rows read back from storage rather than `Trip`s — so `tripSummary` is display's hand-off point. The exemption is not a free pass: a second test asserts `summary.ts` **cannot** branch on the value (it names none of `'exact'`/`'month'`/`'year'`, contains no comparison against the field, and mentions it exactly three times — the type field and `datePrecision: trip.datePrecision`), and the exemption list itself is asserted to be exactly one entry. `qa/p2b-gate.mjs`'s own copy of that grep now reports 1 FAIL for this file — **expected, and the reason is here.** See KD-41. |
+> | **P2-7 (MINOR) — closed** | `assertDatePrecision` in `createTrip.ts`, applied at both doors: `setTripMeta` when the patch **has the key** (so `{datePrecision: undefined}`, which spreads the field away, is refused too) and `createTrip` when `init.datePrecision` is not `undefined`. Throws `Error` naming the field and the three legal values, following `createTrip`'s existing calendar-date guard and `stops.ts`' `assertPatchable`. Guarding `createTrip` as well as `setTripMeta` is a deliberate one-line extension of the finding: same file, same field, same *"writes a document it cannot read back"* harm. |
+> | **Numbers, my own runs** | `npm run typecheck` clean (both projects). `npm run test:tap` **492 pass / 0 fail** (was 479; +13). `npm run web:build` clean. |
+> | **Probes, before → after** | `qa/p2b-gate.mjs` **19 FAIL → 13** (§1.8 P2-4, §2.5 P2-3, §2.6 P2-7 and §2.7 P2-6 all closed; the 13 are P2-1 ×4, P2-2 ×4, P2-5, P2-8 ×2, the §1.7 crash above, and the ceiling grep above). `qa/p2b-past.mjs` in real Chromium **6 FAIL → 4** (§4 P2-6 closed both halves; the 4 are P2-5 and P2-2 ×3). `qa/p2-pasttrip.mjs` **0 FAIL**, `qa/baseline.mjs` **0 FAIL**, `qa/accept.mjs` **28 pass / 0 fail**, `qa/r2-import.mjs` **0 FAIL**, `qa/prov.mjs` **0 FAIL**, `qa/r2-constraints.mjs` **1 FAIL** (R2-18, known, untouched). |
+> | **Red/green, verified per fix** | Every one of the four was written test-first and watched fail: P2-3 2 of 3 red (the local-only direction passes trivially, since the local side already wins by construction — kept as the control), P2-4 2 of 2 red at `expected 1, actual 0`, P2-6 red on both the core row and the `Library.tsx` grep, P2-7 red on both doors. |
+> | **Files** | `packages/core/src/merge/mergeTrips.ts`, `packages/core/src/conflict/detect.ts`, `packages/core/src/build/createTrip.ts`, `packages/core/src/derive/summary.ts`, `apps/web/src/views/Library.tsx`; tests `packages/core/test/merge.test.ts`, `ruleClass.test.ts`, `datePrecision.test.ts`, `packages/client/test/storage-version.test.ts` (one literal widened to satisfy the row's new field), `test/views.test.ts`. No `ARCHITECTURE.md`/`ROADMAP.md` change. No new export symbol. Nothing at the repo root was touched. |
+> | **What I could not verify** | Node 24 (this environment is Node 22.22.2), Safari/iOS, and a real second user — all unchanged from previous passes. |
+>
+> **The status note below is superseded by this one** and is kept as the record of what was
+> true at `7fb753c`.
+
+> **Status: superseded — the KD-38 / absent-`ownerId` pass** (`master`, after `f26905d`). Two
 > routed fixes, both disclosed by the I-0…I-4 pass below, and nothing else. I-5 … I-11 untouched.
 >
 > | | |
@@ -1092,6 +1114,34 @@ alternative the same sentence rejects — not as a ban on owning your own restor
 **If the architect meant the other reading** (an ownerless document stays ownerless and shows
 `owner_missing` until the user is asked), the change is two lines in `store.importDoc` and the
 parser half stands either way.
+
+### KD-41 — `datePrecision`'s greppable ceiling now has one exemption: `derive/summary.ts`
+
+`packages/core/src/derive/summary.ts`, `packages/core/test/datePrecision.test.ts` ·
+**Phase 2.** Closing QA P2-6 required the field to reach a directory §8.1's ceiling names, and
+the divergence is recorded rather than argued away.
+
+§8.1 says `datePrecision` is *"read by display and nothing else: no conflict rule, no derive and
+no validation may branch on it"*, and I-2 turned that into a grep over `conflict/`, `derive/` and
+`validate/`. But the Library — the screen a past trip mostly lives on — does not render `Trip`s.
+It renders `TripSummaryRow`s read back from storage, and `tripSummary` is the only thing that
+builds one. So either the row carries the precision or the Library states dates the user never
+claimed, which is the convention `CLAUDE.md` calls absolute. The breaker filed P2-6 against
+`derive/summary.ts:60` for exactly this reason, and §8.9 already anticipates `tripSummary`'s
+return type widening (there, for I-6's country index).
+
+**The distinction the ceiling was written to protect is *branching*, not *naming*, and that is
+what the tests now enforce.** The exemption list has one entry, asserted to have one entry, and
+a second test proves the claim behind it by construction: `summary.ts` names none of `'exact'`,
+`'month'` or `'year'`, contains no comparison against the field, and mentions `datePrecision`
+exactly three times — the field on the type and `datePrecision: trip.datePrecision` on the copy.
+A fourth mention fails the test.
+
+**`qa/p2b-gate.mjs` §2.1's copy of the same grep now reports 1 FAIL** naming this file. That is
+expected and it is this entry. If the architect wants the ceiling to stay literal, the
+alternative is a display-owned row type outside `packages/core` that `apps/web` builds from a
+`Trip` — which would mean the Library loading every trip in full to list them, and that is the
+cost `TripSummaryRow` exists to avoid.
 
 ---
 

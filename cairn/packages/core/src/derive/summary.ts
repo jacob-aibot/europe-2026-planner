@@ -2,7 +2,7 @@
  * Derived summaries (ARCHITECTURE §2.5). `cityRange` replaces the hardcoded `CITY_RANGE`
  * map in the live app — the importer asserts the derived string matches for all six cities.
  */
-import type { City, Day, Trip } from '../model/types.ts';
+import type { City, DatePrecision, Day, Trip } from '../model/types.ts';
 import type { CityKey, IsoDate } from '../model/ids.ts';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -62,6 +62,13 @@ export type TripSummaryRow = {
   title: string;
   startDate: IsoDate;
   endDate: IsoDate;
+  /**
+   * Carried, never branched on — §8.1's *"read by display and nothing else"* holds, and this
+   * module is what hands the row to display. The Library lists `TripSummaryRow`s read back
+   * from storage rather than `Trip`s, so without this the trip the user recorded as
+   * *"March 2019"* was listed as `2019-03-01 → 2019-03-31` (QA P2-6).
+   */
+  datePrecision: DatePrecision;
   cityCount: number;
   dayCount: number;
   stopCount: number;
@@ -76,6 +83,7 @@ export function tripSummary(trip: Trip): TripSummaryRow {
     title: trip.title,
     startDate: trip.startDate,
     endDate: trip.endDate,
+    datePrecision: trip.datePrecision,
     cityCount: trip.cities.length,
     dayCount: trip.days.length,
     stopCount: trip.days.reduce((n, d) => n + d.stops.length, 0),

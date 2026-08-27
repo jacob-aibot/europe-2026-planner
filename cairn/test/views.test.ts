@@ -188,6 +188,48 @@ test('I-4: one lifecycle implementation — no view compares dates to today itse
   assert.deepEqual(offenders, [], 'a view re-derives the lifecycle instead of calling core.lifecycle');
 });
 
+/**
+ * QA P2-6, as a ceiling rather than a spot check. `dateRangeLabel` existed and was correct,
+ * and it was wired into exactly one of the two screens a trip appears on — so the Library
+ * printed `2019-03-01 → 2019-03-31` for a trip the user recorded as *"March 2019"*, stating
+ * something the user never claimed. Four hand checks cannot notice a third screen; a grep can.
+ *
+ * The rule: **a view that renders a trip's own date range renders it through
+ * `dateRangeLabel`**, with a short exemption list whose justification is stated.
+ */
+const RAW_RANGE = /\{[^{}]*\.startDate\s*\}[\s\S]{0,12}\{[^{}]*\.endDate\s*\}/;
+
+const MAY_PRINT_A_RAW_RANGE: Record<string, string> = {
+  'PastTripForm.tsx': 'the "Stored as …" line is the disclosure of what the chosen precision ' +
+    'will be written to the document as, shown beside the fuzzy label the user picked. It is ' +
+    'the stored representation quoted as such, not the trip presented by its dates.',
+};
+
+test('QA P2-6: every view that prints a trip date range prints it through dateRangeLabel', () => {
+  const offenders: string[] = [];
+  for (const name of viewFiles()) {
+    if (name in MAY_PRINT_A_RAW_RANGE) continue;
+    if (RAW_RANGE.test(readFileSync(resolve(VIEWS, name), 'utf8'))) offenders.push(name);
+  }
+  assert.deepEqual(
+    offenders,
+    [],
+    'a view states exact dates for a trip whose datePrecision may be month or year — use dateRangeLabel',
+  );
+});
+
+test('QA P2-6: the Library reads the honest range label, and the exemption still applies', () => {
+  assert.match(
+    readFileSync(resolve(VIEWS, 'Library.tsx'), 'utf8'),
+    /dateRangeLabel\(/,
+    'Library.tsx does not call dateRangeLabel — the screen a past trip mostly lives on',
+  );
+  // The exemption is not a free pass: the line it covers must still be the one it describes.
+  const past = readFileSync(resolve(VIEWS, 'PastTripForm.tsx'), 'utf8');
+  assert.ok(RAW_RANGE.test(past), 'PastTripForm.tsx no longer prints a raw range — drop the exemption');
+  assert.match(past, /Stored as/, 'the exemption\'s justification names a "Stored as" disclosure that is gone');
+});
+
 /** §2.1: `Date` is read in `ports/env.ts` and nowhere else in `apps/web`. */
 test('I-4: no view calls new Date() — the clock comes from the port', () => {
   const offenders: string[] = [];

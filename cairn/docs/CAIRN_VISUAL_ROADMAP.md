@@ -36,9 +36,20 @@ update to this file added that instruction).
 > recorded through the form now **names at least one city and puts it on every one of its days**,
 > so the trips 2b's lifetime map is built from are attributable to a place instead of to the
 > "transit" catch-all; and restoring a backup file that carries no owner no longer fails to load.
+>
+> **2a has now been attacked** (QA round 12): **no blockers**, 3 major and 5 minor findings.
+> Four of the eight are **fixed**: two browser tabs editing the same trip no longer throw away
+> a change to *how precisely you knew the dates*; a conflict rule that crashes is now reported
+> on a finished trip instead of being silently swallowed; the trip list shows *"June 2019"*
+> rather than two exact days for a trip you only remembered the month of; and a trip can no
+> longer be written with a date-precision value that stops it loading again. **Four remain
+> open:** two are with the architect (a dismissed warning being permanently retired by the
+> calendar alone; a city name in a non-Latin alphabet collapsing to a meaningless key — the
+> Japan case), and two are disclosed (one undo peels the city off a long recorded trip; a
+> backup file with no owner is adopted without marking its foreign content).
 
-> **Last updated:** 2026-08-27, against `master` after the KD-38 / absent-`ownerId` fix pass
-> (previously the Phase 2 I-0…I-4 builder pass). Update this line every time you edit this file.
+> **Last updated:** 2026-08-27, against `master` after the round-12 P2-3/P2-4/P2-6/P2-7 fix pass
+> (previously the KD-38 / absent-`ownerId` pass). Update this line every time you edit this file.
 
 **Status vocabulary used throughout:** 🟢 COMPLETE · 🟡 IN PROGRESS · 🟠 NEXT / APPROVED ·
 🔴 BLOCKED · ⚪ NOT STARTED. Also: **built** (code exists) vs **verified** (an adversarial tester

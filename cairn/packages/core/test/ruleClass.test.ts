@@ -294,6 +294,53 @@ test('edge ruling 2: an undatable subject resolves to endDate, so a wholly-past 
   assert.equal(subjectDate(trip, { kind: 'trip', id: trip.id }), trip.endDate);
 });
 
+/**
+ * QA P2-4. `detect.ts` catches a throwing rule and synthesises a `rule_error` note whose only
+ * subject is `{kind:'trip'}` — which ruling 2 resolves to `trip.endDate`. So on a past trip
+ * the note was gated by exactly the rule that must not apply to it, but only when the rule
+ * that crashed happened to be `feasibility`: a bug in `missingLodging` was invisible on every
+ * finished trip, while the identical bug in `geoOutlier` reported.
+ *
+ * A crash is not "this no longer applies" — it is "the checker is broken", which is an
+ * integrity fact about the code and never suppressible by the clock (§0.5, §8.2).
+ */
+test('QA P2-4: a crashing FEASIBILITY rule still reports rule_error on a wholly-past trip', () => {
+  const { trip } = europe2026();
+  const seen: Record<string, number> = {};
+  for (const id of ['missing_lodging', 'geo_outlier']) {
+    const victim = RULES.find((r) => r.id === id);
+    assert.ok(victim, `no rule ${id}`);
+    const realRun = victim.run;
+    victim.run = () => { throw new Error('boom'); };
+    try {
+      seen[id] = detectConflicts(trip, { today: '2099-01-01' }).filter((c) => c.ruleId === 'rule_error').length;
+    } finally {
+      victim.run = realRun;
+    }
+  }
+  assert.equal(seen.geo_outlier, 1, 'control: a crashing integrity rule was already reported');
+  assert.equal(
+    seen.missing_lodging,
+    1,
+    'a crashing feasibility rule went silent on a past trip — the gate swallowed the crash report',
+  );
+});
+
+test('QA P2-4: the rule_error exemption is the crash, not the class — every rule is covered', () => {
+  const { trip } = europe2026();
+  for (const victim of RULES) {
+    const realRun = victim.run;
+    victim.run = () => { throw new Error(`boom in ${victim.id}`); };
+    try {
+      const notes = detectConflicts(trip, { today: '2099-01-01' }).filter((c) => c.ruleId === 'rule_error');
+      assert.equal(notes.length, 1, `a crash in ${victim.id} (${victim.class}) is invisible on a past trip`);
+      assert.match(notes[0].summary, /boom in /);
+    } finally {
+      victim.run = realRun;
+    }
+  }
+});
+
 test('a wholly-past trip with only feasibility faults is SILENT — no gate leak through severity', () => {
   const { trip } = europe2026();
   const past = detectConflicts(trip, { today: '2099-01-01' });

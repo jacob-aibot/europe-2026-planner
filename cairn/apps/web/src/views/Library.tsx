@@ -15,7 +15,7 @@ import type { AppState } from '@cairn/client';
 import type { Lifecycle, Trip } from '@cairn/core';
 import { lifecycle } from '@cairn/core';
 import { clock, store } from '../store.ts';
-import { lifecycleLabel } from '../format.ts';
+import { dateRangeLabel, lifecycleLabel } from '../format.ts';
 import { PastTripForm } from './PastTripForm.tsx';
 
 /**
@@ -122,8 +122,12 @@ export function Library({ state, onError, sample }: Props) {
                 {row.title}
                 <LifecycleChip trip={row} today={today} />
               </span>
-              <span className="tripcard__meta">
-                {row.startDate} → {row.endDate} · {row.cityCount} {row.cityCount === 1 ? 'city' : 'cities'}
+              <span className="tripcard__meta" data-testid="tripcard-range">
+                {/* QA P2-6: the row carries `datePrecision`, so a trip recorded as "March 2019"
+                    is listed as "March 2019" here too — the same label TripView renders, from
+                    the same function. A row written before the field existed reads `undefined`
+                    and falls through to the exact form, which is what it was. */}
+                {dateRangeLabel(row)} · {row.cityCount} {row.cityCount === 1 ? 'city' : 'cities'}
               </span>
               <span className="tripcard__meta tripcard__meta--dim">
                 {row.dayCount} days · {row.stopCount} stops

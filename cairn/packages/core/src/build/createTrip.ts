@@ -18,6 +18,25 @@ export type BuildCtx = {
   actorUserId?: UserId | null;
 };
 
+const DATE_PRECISIONS: readonly string[] = ['exact', 'month', 'year'];
+
+/**
+ * §2.1: *"every `*Patch` type is enforced at runtime by an explicit key allowlist, not by
+ * TypeScript"* — and the same holds for an enum-valued field, because the action and JSON
+ * boundaries above core are untyped at runtime. `fromJSON` refuses anything outside the three
+ * members (`$.datePrecision`); without this, `setTripMeta` accepted them, and the resulting
+ * document **serializes but cannot be parsed back** — a trip that writes itself into a state
+ * it cannot be opened from (QA P2-7). Throws on programmer error, per §2.1.
+ */
+function assertDatePrecision(where: string, value: unknown): void {
+  if (typeof value !== 'string' || !DATE_PRECISIONS.includes(value)) {
+    throw new Error(
+      `${where}: datePrecision must be one of ${DATE_PRECISIONS.map((p) => `"${p}"`).join(', ')}, got ` +
+        `${JSON.stringify(value) ?? String(value)}`,
+    );
+  }
+}
+
 export type CityInit = {
   key: CityKey;
   name: string;
@@ -61,6 +80,7 @@ export function createTrip(init: TripInit, ctx: BuildCtx): Trip {
   if (init.endDate < init.startDate) {
     throw new Error(`createTrip: endDate ${init.endDate} precedes startDate ${init.startDate}`);
   }
+  if (init.datePrecision !== undefined) assertDatePrecision('createTrip', init.datePrecision);
   const cities: City[] = (init.cities ?? []).map((c, i) => ({
     key: c.key,
     name: c.name,
@@ -104,9 +124,15 @@ export type TripMetaPatch = Partial<
  * Patches trip-level metadata. Changing the date range re-runs `ensureDays`, so days can
  * never drift out of density (§2.3). Pure.
  *
- * @throws {Error} if the patch would put `endDate` before `startDate`.
+ * @throws {Error} if the patch would put `endDate` before `startDate`, or if it carries a
+ *         `datePrecision` outside `'exact' | 'month' | 'year'` — programmer error per §2.1.
  */
 export function setTripMeta(trip: Trip, patch: TripMetaPatch, ctx: BuildCtx): Trip {
+  // The key's PRESENCE is what is checked, not its truthiness: `{datePrecision: undefined}`
+  // spreads the field away entirely and is as unreadable a document as `'fortnight'` is.
+  if (Object.prototype.hasOwnProperty.call(patch, 'datePrecision')) {
+    assertDatePrecision('setTripMeta', patch.datePrecision);
+  }
   const next: Trip = { ...trip, ...patch, revision: trip.revision + 1 };
   if (!isIsoDate(next.startDate) || !isIsoDate(next.endDate)) {
     throw new Error(

@@ -186,7 +186,16 @@ function dedupePlacements(days: Day[], pool: Stop[], local: Trip, report: MergeR
   };
 }
 
-const TRIP_FIELDS = ['title', 'ownerId', 'startDate', 'endDate', 'homeCurrency', 'party', 'schemaVersion', 'meta'] as const;
+/**
+ * The trip-level scalars merged three-way, last-writer-wins per field (§2.2). A field absent
+ * from this list is silently taken from `local` and the other tab's change is neither merged
+ * nor reported — QA P2-3, which is how `datePrecision` (§8.1) was lost. Adding a stored
+ * trip-level field means adding it here.
+ *
+ * `homeBase` is knowingly still absent — pre-existing since Phase 1, recorded in QA round 12
+ * so it is not re-derived, and out of P2-3's scope.
+ */
+const TRIP_FIELDS = ['title', 'ownerId', 'startDate', 'endDate', 'homeCurrency', 'datePrecision', 'party', 'schemaVersion', 'meta'] as const;
 
 /**
  * Merges `local` (what this writer is about to save) and `remote` (what storage holds now)

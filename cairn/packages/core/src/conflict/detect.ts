@@ -122,9 +122,14 @@ export function detectConflicts(trip: Trip, opts: DetectOpts = {}): Conflict[] {
   RULES.forEach((rule, rank) => {
     if (opts.only && !opts.only.includes(rule.id)) return;
     let produced: Conflict[] = [];
+    // Set by the catch below and read by the gate: a crash is exempt because it *is* a crash,
+    // not because of anything about the note it produced. A real rule cannot claim the
+    // exemption by minting a conflict with `ruleId: 'rule_error'`.
+    let crashed = false;
     try {
       produced = rule.run(ctx);
     } catch (err) {
+      crashed = true;
       produced = [
         {
           id: `rule_error-${rule.id}`,
@@ -142,7 +147,12 @@ export function detectConflicts(trip: Trip, opts: DetectOpts = {}): Conflict[] {
       // §8.2. `rule.class` is read here and only here — the gate has one home. A `rule_error`
       // note is synthesised above and is never gated: a rule that crashed is an integrity
       // problem with the code, and silencing it because the trip is over would hide it.
-      if (rule.class === 'feasibility' && suppressedAsPast(trip, c, opts.today)) continue;
+      //
+      // QA P2-4: `crashed` is why that sentence is now true. The synthesised note inherits the
+      // crashing rule's `class` and its only subject is `{kind:'trip'}`, which ruling 2
+      // resolves to `trip.endDate` — so without this clause a bug in a *feasibility* rule was
+      // silent on every finished trip while the same bug in an integrity rule reported.
+      if (!crashed && rule.class === 'feasibility' && suppressedAsPast(trip, c, opts.today)) continue;
       const live = byId.get(c.id) ?? null;
       const retired = live ? null : retiredById.get(c.id);
       const detail = retired
