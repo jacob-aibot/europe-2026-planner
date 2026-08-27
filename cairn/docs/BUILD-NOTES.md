@@ -1,6 +1,20 @@
 # Cairn — build notes, Phase 1
 
-> **Status: CURRENT — the R10-3 / R10-2 pass.** Two fixes for the two Phase 1-gating findings
+> **Status: CURRENT — the A-7 pass.** One ruling (ARCHITECTURE §2.2a A-7, §4.2 rule 4a),
+> implemented exactly as specified, for the one BLOCKER the Phase 1 gate re-review sent back
+> (R11-1):
+>
+> | | |
+> |---|---|
+> | **A-7, resolved** | Two edits in `packages/client/src/store/store.ts`, both required, neither substitutes for the other. (1) `writeAndSettle`: immediately after `stillOurs` is computed, `if (!stillOurs && toWrite !== startedFrom)` sets `'conflict'`, upserts the library row from the write's own summary, and returns — no install, no fence advance, no re-arm. (2) `doMerge`'s merged-write link, at the top of the `chainOntoSaving` callback: `if (state.doc !== doc)` abandons the merge before even attempting the write, closing the wide half of the window (the storage read, the parse, `mergeTrips`, serialization, anything already queued) for free. |
+> | **Regression** | Six tests in `merge-race.test.ts`, extending its existing `gatedStorage` harness with a `load()` gate (`parkLoad`) alongside the existing `saveIfVersion` gate, since the two gates open different halves of the window: the ordinary merge (ceiling — must still install), an edit during the write, an edit during the storage read, a write already queued ahead, the invariant asserted directly plus a second-press convergence, and the ordinary-autosave ceiling (both non-merge call sites are `toWrite === startedFrom` and must be untouched). Every assertion is on the bytes the port holds. |
+> | **Numbers, my own runs** | `npm run test:tap` **432 pass / 0 fail** (was 426; +6 new). `npm run typecheck` clean. Red/green confirmed via `git stash` on `store.ts` alone: exactly the 4 tests that exercise the actual defect (cases 2, 3, 4, 5) fail without it; the ordinary-merge and ordinary-autosave ceiling tests correctly pass either way. The breaker's own `qa/r11-recheck.mjs` §1.3b/§1.3c re-run clean, unedited. |
+> | **Scope** | `store.ts` and `merge-race.test.ts` only. No `qa/*.mjs`, no `ARCHITECTURE.md`/`ROADMAP.md`. R8-3, R8-4 and R10-1 untouched, as instructed — R8-4 was NOT folded in; the deleted-trip merge branch (a different `chainOntoSaving` link, a different question about `load()`'s trustworthiness after a delete) is unmodified. |
+>
+> **The status note below is superseded by this one** and is kept as the record of what was
+> true at `c6c6e2b`.
+
+> **Status: superseded — the R10-3 / R10-2 pass.** Two fixes for the two Phase 1-gating findings
 > QA round 10 surfaced while independently re-verifying A-5b and A-6a — both applying an
 > already-decided principle to a door it had not yet been wired into, not a new architectural
 > call:

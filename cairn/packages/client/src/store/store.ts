@@ -417,6 +417,26 @@ export function createStore(opts: StoreOptions) {
       return;
     }
     const stillOurs = state.doc === startedFrom;
+    // §2.2a A-7 / §4.2 rule 4a (QA R11-1). `savedDoc`/`savedVersion` may advance only to a
+    // document this store still holds (`stillOurs`) or one it wrote itself (`toWrite ===
+    // startedFrom`, true at both autosave call sites). The merged write is the one place
+    // both can be false at once: the write landed, but this store no longer holds the
+    // document it wrote. Advancing the fence there would let the NEXT ordinary autosave write
+    // an un-merged document over another writer's saved edit with the fence's own blessing —
+    // and advancing `savedDoc` alone is just as fatal, because `doMerge` reads it as the
+    // three-way ancestor, and the other writer's incorporated edits would then read as
+    // deletions a later merge performs on purpose. So: no install, no fence, no re-arm — the
+    // write's success is a fact about `toWrite`, not a licence to overwrite storage with
+    // `state.doc`. `library` still upserts: storage genuinely holds `summary` now. `lastMerge`
+    // does NOT get set on this branch — it would describe content the user cannot see.
+    if (!stillOurs && toWrite !== startedFrom) {
+      set({
+        ...state,
+        library: upsertSummary(state.library, summary),
+        persistence: { ...state.persistence, status: 'conflict', lastError: CONFLICT_MESSAGE },
+      });
+      return;
+    }
     set({
       ...state,
       ...(stillOurs ? { doc: toWrite } : {}),
@@ -625,6 +645,19 @@ export function createStore(opts: StoreOptions) {
     // expectation, and the banner read "Not saved — edited elsewhere" over a document that
     // was fully and correctly saved.
     await chainOntoSaving(async () => {
+      // §2.2a A-7 (QA R11-1). Checked HERE, inside the link, after the queue has drained —
+      // checking before `chainOntoSaving` is a check-then-act with an interleaving point in
+      // the middle, §0.6's error and R7-3's exact mistake. `doc` is the document this merge
+      // began from; if the store no longer holds it, a dispatch landed somewhere in the
+      // storage read, the parse, `mergeTrips`, or the serialization — the merge is stale.
+      // `writeAndSettle`'s own guard would still catch this (the write's success is never a
+      // licence to move the fence to a document `state.doc` doesn't hold), but this closes
+      // the WIDE part of the window for free, without even attempting a write that storage
+      // would accept and this store would then have to discard.
+      if (state.doc !== doc) {
+        set({ ...state, persistence: { ...state.persistence, status: 'conflict', lastError: CONFLICT_MESSAGE } });
+        return;
+      }
       try {
         // The merge is only valid against the exact `remote` we just read, so the write
         // carries **that same version** as its expectation — never one recomputed from
