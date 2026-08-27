@@ -662,6 +662,44 @@ test('mergeWithStored resolves a conflict: disjoint edits from both tabs survive
   assert.equal(b.isDirty(), false);
 });
 
+test('QA R10-3: mergeWithStored clears undo history — one Ctrl+Z after a merge cannot overwrite it', async () => {
+  // The exact repro `qa/r10-mergeundo.mjs` reduced it to: two writers, one trip, disjoint
+  // fields on the same day. The merge is correct (both survive) — the defect was one keystroke
+  // later, when `history.past` still held a PRE-merge snapshot and Ctrl+Z restored it, then the
+  // debounced autosave wrote that stale document to storage under the POST-merge
+  // `savedVersion`, which the fence genuinely agreed to — silently destroying the other tab's
+  // saved edit with the chip reading "Saved".
+  const { storage, a, b, tripId } = await twoTabs();
+  const dayId = a.getState().doc?.days[0].id as string;
+
+  b.dispatch({ type: 'setDayMeta', dayId, patch: { title: 'OTHER TAB' } } as Action);
+  await b.flush();
+  a.dispatch({ type: 'setDayMeta', dayId, patch: { subtitle: 'mine' } } as Action);
+  await a.flush();
+  assert.equal(a.getState().persistence.status, 'conflict', 'precondition: the save must be refused');
+
+  await a.mergeWithStored();
+  const merged = a.getState().doc?.days[0];
+  assert.equal(merged?.title, 'OTHER TAB', 'precondition: the merge itself must be correct');
+  assert.equal(merged?.subtitle, 'mine', 'precondition: the merge itself must be correct');
+
+  // §2.7 A-5's own definition: a merged document was installed from OUTSIDE this store's own
+  // dispatched edits, so nothing in `history` should have a linear relationship to it.
+  assert.equal(a.getState().history.past.length, 0, 'R10-3: the pre-merge snapshot must not survive the reseed');
+  assert.equal(a.getState().history.future.length, 0);
+
+  a.undo(); // a no-op: there is nothing left to undo INTO
+  assert.equal(a.getState().doc?.days[0].title, 'OTHER TAB', 'undo must not restore a pre-merge snapshot');
+  assert.equal(a.getState().doc?.days[0].subtitle, 'mine');
+  await a.flush();
+
+  const stored = core.fromJSON(storage.docs.get(tripId) as string);
+  assert.equal(stored.days[0].title, 'OTHER TAB', 'R10-3: the other tab\'s merged-in edit must survive in STORAGE');
+  assert.equal(stored.days[0].subtitle, 'mine');
+  assert.equal(a.getState().persistence.status, 'idle');
+  assert.equal(saveIndicator(a), 'Saved');
+});
+
 test('mergeWithStored on a genuine collision keeps this tab\'s value and reports the loss', async () => {
   const { storage, a, b, tripId } = await twoTabs();
   const day = a.getState().doc?.days[0].id as string;

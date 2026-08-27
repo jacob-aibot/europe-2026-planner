@@ -16,7 +16,7 @@ import assert from 'node:assert/strict';
 import { europe2026, FIXTURE_TODAY } from './fixture.ts';
 import {
   acceptCandidate, addStop, attribution, copyStopInto, createTrip, detectConflicts, geoCheck,
-  rejectCandidate, removeStop, sequentialIds, validateTrip,
+  rejectCandidate, removeStop, sequentialIds, updateStop, validateTrip,
 } from '../src/index.ts';
 import type { BuildCtx, Place, Stop, Trip } from '../src/index.ts';
 
@@ -583,4 +583,112 @@ test('A-6a: rejectCandidate prunes nothing — the stop stays in the document', 
     [],
     'rejection alone must not mint a blocker either — the place is still copy-borne',
   );
+});
+
+// ---------------------------------------------------------------------------
+// A-6a extended to `updateStop` (QA R10-2) — `apps/web`'s `StopEditor` puts `place` in every
+// patch, so typing coordinates into a copied stop swaps its `{kind:'place'}` link for an
+// inline one without ever calling `removeStop`. The same four clauses, the same prune,
+// triggered from the second door that can orphan a copy-borne Place.
+// ---------------------------------------------------------------------------
+
+test('A-6a/R10-2: re-pointing a copied stop\'s place to inline coordinates prunes the orphaned place', () => {
+  const { trip, copiedStopId, copiedPlaceId } = lisbonWithCopiedPlaceStop();
+  assert.deepEqual(
+    detectConflicts(trip, { today: FIXTURE_TODAY }).filter((c) => c.ruleId === 'geo_outlier'),
+    [],
+    'precondition: the copy alone is silent',
+  );
+
+  // The exact patch `StopEditor.submit` sends when the Lat/Lng fields are filled in.
+  const after = updateStop(trip, copiedStopId, { place: { kind: 'inline', at: { lat: 38.7, lng: -9.1 } } });
+
+  assert.equal(after.places.some((p) => p.id === copiedPlaceId), false, 'the orphaned copied place must be pruned');
+  assert.deepEqual(
+    detectConflicts(after, { today: FIXTURE_TODAY }).filter((c) => c.ruleId === 'geo_outlier'),
+    [],
+    'R10-2: re-pointing the place must not mint a geo_outlier',
+  );
+  const stop = after.days.flatMap((d) => d.stops).find((s) => s.id === copiedStopId);
+  assert.equal(stop?.place.kind, 'inline', 'the stop itself must still get its new place — only pruning is added');
+});
+
+test('A-6a/R10-2: patching an UNRELATED field on a copied stop never prunes its place', () => {
+  const { trip, copiedStopId, copiedPlaceId } = lisbonWithCopiedPlaceStop();
+  const after = updateStop(trip, copiedStopId, { note: 'a note, nothing about the place' });
+  assert.ok(
+    after.places.some((p) => p.id === copiedPlaceId),
+    'a patch that never touches `place` must never prune it — the stop still links it afterward',
+  );
+  const finding = geoCheck(after).find((f) => f.ref.kind === 'place' && f.ref.id === copiedPlaceId);
+  assert.equal(finding?.confidence, 'unanchored', 'still copy-borne, still exempt');
+});
+
+test('A-6a/R10-2: re-pointing a USER-authored stop\'s place never prunes — clause 2 gates on the OLD stop', () => {
+  const { trip, copiedPlaceId, dayId } = lisbonWithCopiedPlaceStop();
+  const ctx: BuildCtx = { ids: sequentialIds('u2'), now: '2026-08-25', actorUserId: 'local:self' };
+  const withOwn = addStop(
+    trip,
+    { kind: 'scheduled', dayId, time: '14:00', order: 5 },
+    { name: 'My own visit', category: 'sight', place: { kind: 'place', placeId: copiedPlaceId } },
+    ctx,
+  );
+  const ownStop = withOwn.days.find((d) => d.id === dayId)!.stops.find((s) => s.name === 'My own visit')!;
+  // The user's own stop is one of two linkers; re-pointing IT must never prune — it was never
+  // a copy — even though it is the direct cause of the place losing a linker.
+  const after = updateStop(withOwn, ownStop.id, { place: { kind: 'inline', at: { lat: 0, lng: 0 } } });
+  assert.ok(after.places.some((p) => p.id === copiedPlaceId), 'a user-authored re-point must never prune a Place');
+  // The copied stop is still the sole remaining linker, so the place reverts to copy-borne.
+  const finding = geoCheck(after).find((f) => f.ref.kind === 'place' && f.ref.id === copiedPlaceId);
+  assert.equal(finding?.confidence, 'unanchored');
+});
+
+test('A-6a/R10-2: two copied stops on one place — re-pointing one survives, the second prunes', () => {
+  const { trip: europe } = europe2026();
+  const { trip: base, copiedPlaceId, dayId } = lisbonWithCopiedPlaceStop();
+  const src = europe.days.flatMap((d) => d.stops).find((s) => s.place.kind === 'place');
+  assert.ok(src, 'the fixture lost its place-linked stop');
+  const trip = copyStopInto(
+    base,
+    { trip: europe, stopId: src.id },
+    { kind: 'scheduled', dayId, time: null, order: 10 },
+    { ids: sequentialIds('c3'), today: '2026-09-01', actorUserId: 'local:self' },
+  );
+  const linking = trip.days.find((d) => d.id === dayId)!.stops
+    .filter((s) => s.place.kind === 'place' && s.place.placeId === copiedPlaceId);
+  assert.equal(linking.length, 2);
+
+  const afterFirst = updateStop(trip, linking[0].id, { place: { kind: 'inline', at: { lat: 1, lng: 1 } } });
+  assert.ok(afterFirst.places.some((p) => p.id === copiedPlaceId), 'the place survives while one copy still links it');
+
+  const afterSecond = updateStop(afterFirst, linking[1].id, { place: { kind: 'inline', at: { lat: 2, lng: 2 } } });
+  assert.equal(afterSecond.places.some((p) => p.id === copiedPlaceId), false, 'the second re-point prunes it');
+});
+
+test('A-6a/R10-2, end to end on the REAL fixture: editing a copied stop\'s coordinates leaves 2 blockers, not 3', () => {
+  const { trip: full } = europe2026();
+  const marta: Trip = { ...full, id: 'trip-marta', ownerId: 'user:marta', title: "Marta's Croatia" };
+  const islandDay = full.days.find((d) => d.date === '2026-08-13');
+  assert.ok(islandDay, 'the fixture lost the Aug 13 island day');
+  const jacob: Trip = {
+    ...full,
+    days: full.days.filter((d) => d.date !== '2026-08-13'),
+    places: full.places.filter((p) => !/Blue Cave|Stiniva|Hvar Town/i.test(p.name)),
+  };
+  const src = islandDay.stops.find((s) => s.place.kind === 'place' && /Blue Cave/i.test(s.name));
+  assert.ok(src, 'the fixture lost the Blue Cave stop');
+  const splitDay = jacob.days.find((d) => d.cities.includes('split'));
+  assert.ok(splitDay, 'the fixture lost its Split days');
+  const copied = copyStopInto(
+    jacob,
+    { trip: marta, stopId: src.id },
+    { kind: 'scheduled', dayId: splitDay.id, time: null, order: 99 },
+    { ids: sequentialIds('copy2'), today: FIXTURE_TODAY, actorUserId: 'local:self' },
+  );
+  const copiedStop = copied.days.find((d) => d.id === splitDay.id)!.stops.find((s) => attribution(s) !== null)!;
+
+  const edited = updateStop(copied, copiedStop.id, { place: { kind: 'inline', at: { lat: 43.51, lng: 16.44 } } });
+  const after = detectConflicts(edited, { today: FIXTURE_TODAY });
+  assert.deepEqual(after.filter((c) => c.ruleId === 'geo_outlier'), [], 'R10-2 on the real fixture');
+  assert.equal(after.filter((c) => c.severity === 'blocker').length, 2, 'editing coordinates must not add a third blocker');
 });

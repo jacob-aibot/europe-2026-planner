@@ -161,6 +161,12 @@ function assertPatchable(patch: object): void {
  */
 export function updateStop(trip: Trip, stopId: StopId, patch: StopPatch): Trip {
   assertPatchable(patch);
+  // §2.13 A-6a, extended to this door (QA R10-2): `StopPatch` allows `place`, and
+  // `apps/web`'s editor puts it in every patch, so a copied stop's `{kind:'place'}` link can
+  // be swapped for an inline coordinate here just as surely as `removeStop` can drop it —
+  // `pruneOrphanedCopyPlace` reads the STOP BEFORE the patch, exactly as `removeStop` reads
+  // the stop before removal, so the same four clauses decide it the same way.
+  const before = findStop(trip, stopId);
   const { time, ...rest } = patch;
   let found = false;
   const days = trip.days.map((day) => {
@@ -174,12 +180,12 @@ export function updateStop(trip: Trip, stopId: StopId, patch: StopPatch): Trip {
     stops[i] = { ...s, ...rest, placement };
     return { ...day, stops };
   });
-  if (found) return { ...trip, days, revision: trip.revision + 1 };
+  if (found) return pruneOrphanedCopyPlace({ ...trip, days, revision: trip.revision + 1 }, before);
   const pi = trip.pool.findIndex((s) => s.id === stopId);
   if (pi < 0) throw new Error(`updateStop: no such stop ${stopId}`);
   const pool = trip.pool.slice();
   pool[pi] = { ...pool[pi], ...rest };
-  return { ...trip, pool, revision: trip.revision + 1 };
+  return pruneOrphanedCopyPlace({ ...trip, pool, revision: trip.revision + 1 }, before);
 }
 
 /** Removes a stop from wherever it is. Pure. @throws {Error} if it does not exist. */
@@ -200,26 +206,35 @@ export function removeStop(trip: Trip, stopId: StopId): Trip {
 }
 
 /**
- * §2.13 **A-6a** (QA R9-2): a `Place` `copyStopInto` rule 4 dragged in exists to support the
- * copied stop, and A-6 measures a zero-link copy-borne place at `'certain'` — an orphan the
- * delete action itself just created is not evidence of anything real, and one `×` after a
- * copy put a third `geo_outlier` blocker on the reference trip naming it.
+ * §2.13 **A-6a** (QA R9-2, extended to `updateStop` for QA R10-2): a `Place` `copyStopInto`
+ * rule 4 dragged in exists to support the copied stop, and A-6 measures a zero-link copy-borne
+ * place at `'certain'` — an orphan the action that just orphaned it did not intend is not
+ * evidence of anything real, whether that action removed the stop or reassigned its `place`.
  *
- * Prunes exactly the ONE place the removed stop pointed at, and only when every one of these
- * holds — the same four clauses the ruling states, in order:
+ * Called from both `removeStop` (where `removed` is the stop that no longer exists at all)
+ * and `updateStop` (where `removed` is the stop AS IT WAS BEFORE the patch, which may still
+ * exist afterward with a different `place` — R10-2: `StopPatch` allows `place`, and swapping a
+ * copied stop's `{kind:'place'}` link for an inline coordinate orphans the place exactly as
+ * surely as deleting the stop does). Either caller passes the PRE-operation stop; this
+ * function only ever looks at the POST-operation `trip` to decide clause 3.
  *
- *   1. the removed stop resolved through a `{ kind: 'place' }` link;
- *   2. the removed stop was itself a copy — `attribution(removed.provenance) !== null`, the
- *      same predicate `geoCheck`'s `isCopied` is defined as. Removing a stop the USER wrote
- *      prunes nothing, ever — every existing path is exactly as it was;
- *   3. after removal, no stop anywhere in the trip (any day, or the pool) still links it;
+ * Prunes exactly the ONE place `removed` pointed at, and only when every one of these holds —
+ * the same four clauses the ruling states, in order:
+ *
+ *   1. `removed` resolved through a `{ kind: 'place' }` link;
+ *   2. `removed` was itself a copy — `attribution(removed.provenance) !== null`, the same
+ *      predicate `geoCheck`'s `isCopied` is defined as. A stop the USER wrote prunes nothing,
+ *      ever — every existing path is exactly as it was;
+ *   3. in the resulting `trip`, no stop anywhere (any day, or the pool) still links it — this
+ *      is what correctly does nothing when `updateStop` left the `place` untouched, since the
+ *      patched stop itself still links it;
  *   4. the place row is actually still in `trip.places`.
  *
- * **Never a sweep.** This only ever considers the one place the just-removed stop named — not
- * a scan for every zero-link place in the trip, which would delete the Fisherman's Bastion
- * place row along with the 59 other legitimately-orphaned places on the reference trip. At
- * most one row leaves, per call, and `revision` is not bumped again: the caller already
- * bumped it once for the stop removal, and this is the same edit, not a second one. Pure.
+ * **Never a sweep.** This only ever considers the one place `removed` named — not a scan for
+ * every zero-link place in the trip, which would delete the Fisherman's Bastion place row
+ * along with the 59 other legitimately-orphaned places on the reference trip. At most one row
+ * leaves, per call, and `revision` is not bumped again: the caller already bumped it once for
+ * its own edit, and this is the same edit, not a second one. Pure.
  */
 function pruneOrphanedCopyPlace(trip: Trip, removed: Stop | null): Trip {
   if (!removed || removed.place.kind !== 'place') return trip;

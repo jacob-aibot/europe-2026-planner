@@ -213,10 +213,26 @@ export function createStore(opts: StoreOptions) {
       return;
     }
     const doc = next.doc;
+    // QA R10-3 (§4.2 rule 5). A caller opting `reseed` on means "this document was installed
+    // from OUTSIDE this store's own dispatched edits" — A-5's own definition of the seven
+    // paths that turn it on. `history` is built entirely from THIS store's
+    // `dispatch`/`undo`/`redo` calls, so a document that bypassed all of them has no linear
+    // relationship to whatever `past`/`future` this store was holding. The six
+    // document-installing transitions already arrive with `next.history` zeroed by their own
+    // `...initialState()` spread, so this was always a no-op for them; `doMerge` turned the
+    // option on for the LEDGER'S sake (A-5) and left `history` untouched, which is the whole
+    // defect: a Ctrl+Z after a successful merge could
+    // restore a PRE-merge snapshot, and that snapshot's own autosave then wrote it to storage
+    // under the POST-merge `savedVersion` — a version the write-fence genuinely agreed to,
+    // over a document the fence was never asked about. Clearing `history` here, once, for
+    // every reseed path, means there is nothing left to undo INTO the instant a document
+    // arrives this way — not a flag on stale snapshots the rest of the store would have to
+    // keep checking.
+    const reseeded = opts?.reseed ? { ...next, history: { past: [], future: [], limit: next.history.limit } } : next;
     // 2 and 3 — the arriving document is the authority; a ledger never crosses a trip.
     // A `null` document takes this branch too: both steps say the ledger becomes `null`.
     if (opts?.reseed || doc === null || state.retired === null || state.retired.tripId !== doc.id) {
-      state = { ...next, retired: doc === null ? null : { tripId: doc.id, marks: marksOf(doc) } };
+      state = { ...reseeded, retired: doc === null ? null : { tripId: doc.id, marks: marksOf(doc) } };
       emit();
       return;
     }

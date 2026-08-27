@@ -1,6 +1,23 @@
 # Cairn — build notes, Phase 1
 
-> **Status: CURRENT — the A-5b / A-6a pass** (`master`, after `9ba5aec`). Two architect
+> **Status: CURRENT — the R10-3 / R10-2 pass.** Two fixes for the two Phase 1-gating findings
+> QA round 10 surfaced while independently re-verifying A-5b and A-6a — both applying an
+> already-decided principle to a door it had not yet been wired into, not a new architectural
+> call:
+>
+> | | |
+> |---|---|
+> | **R10-3 (BLOCKER), resolved** | `set()` now clears `history` (`past`/`future`) whenever a document arrives via `{reseed:true}` — the same "installed from outside this store's own dispatched edits" test A-5 already uses for the ledger, extended to the undo stack. The six document-installing transitions were already a no-op under this (they zero `history` themselves via `...initialState()`); `doMerge` was the one path that didn't, so a Ctrl+Z straight after a successful merge could restore a pre-merge snapshot and the autosave would write it over storage under the post-merge `savedVersion` — silently. |
+> | **R10-2 (MAJOR), resolved** | `pruneOrphanedCopyPlace` (A-6a) is now also called from `updateStop`, keyed on the stop's state BEFORE the patch — the same four clauses, unchanged. `apps/web`'s `StopEditor` puts `place` in every patch, so typing coordinates into a copied stop swapped its `{kind:'place'}` link for an inline one with no `removeStop` in the trace; the orphan is now pruned there too. |
+> | **Regression** | `store.test.ts`: the exact `qa/r10-mergeundo.mjs` sequence — disjoint edits, merge, one Ctrl+Z, checked in STORAGE, not just in memory. `geoCheck.test.ts`: re-pointing a copied stop's place prunes it; an unrelated-field patch never prunes; a user-authored re-point never prunes (even as the sole remaining linker); two copies (one survives, the second prunes); the real fixture end to end (2 blockers, not 3). |
+> | **Numbers, my own runs** | `npm run test:tap` **426 pass / 0 fail** (was 420; +6 new). `npm run typecheck` clean. Red/green confirmed via `git stash` on both product files together: 4 of the 6 new tests fail without them (the other 2 assert pre-existing behaviour alongside the new). The breaker's own `qa/r10-mergeundo.mjs`, `qa/r10-prune.mjs` and (in real Chromium) `qa/r10-editdoor.mjs` all re-run clean, unedited. |
+> | **Note found and fixed along the way** | The existing source-scan test (`A-5: reseed: true — the six document-installing transitions all pass it`) counts literal occurrences of `reseed:\s*true` across the whole file, including comments — my first draft of the R10-3 doc comment used that exact token twice in prose and tripped it (9 vs the expected 7). Reworded, not weakened; the test is untouched and still checking the same ceiling. |
+> | **Scope** | `store.ts`, `stops.ts`, and their two test files only. No `qa/*.mjs`, no `ARCHITECTURE.md`/`ROADMAP.md`. R10-1, R8-3, R8-4 untouched, as instructed. |
+>
+> **The status note below is superseded by this one** and is kept as the record of what was
+> true at `9ba5aec`.
+
+> **Status: superseded — the A-5b / A-6a pass** (`master`, after `9ba5aec`). Two architect
 > addenda, closing the two MAJORs QA round 9 found (R9-1, R9-2), and nothing else:
 >
 > | | |
