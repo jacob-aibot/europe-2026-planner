@@ -1,6 +1,20 @@
 # Cairn — build notes, Phase 1
 
-> **Status: CURRENT — the A-5a pass** (`master`, after `c9c274d`). One architect addendum,
+> **Status: CURRENT — the A-5b / A-6a pass** (`master`, after `9ba5aec`). Two architect
+> addenda, closing the two MAJORs QA round 9 found (R9-1, R9-2), and nothing else:
+>
+> | | |
+> |---|---|
+> | **A-5b — R9-1, resolved** | `redo()` releases the retirement ledger too, keyed off the document delta (a `conflictId`'s row count rising is exactly "the redone step was a `resolveConflict`"). `rowsFor` added next to `liveConflictIds`. `undo()` is unchanged, per the ruling. |
+> | **A-6a — R9-2, resolved** | `removeStop` prunes the one `Place` a copied stop orphans — only when the removed stop was itself a copy, nothing else links the place afterward, and the place exists. Never a sweep; lives in `core.removeStop`, `Place`'s shape unchanged. |
+> | **Regression** | `retirement-ledger.test.ts`: QA's six-action sequence (dismiss → retire → undo → dismiss again → undo → redo) is not stillborn, holds across further `set()`s; the ledger invariant checked at every step; `undo` confirmed to still release nothing. `geoCheck.test.ts`: the real-fixture four-click-plus-delete regression (2 blockers, not 3); a user-authored removal is never a sweep (guard, even when it is the place's only linker); two copied stops on one place (first removal survives, second prunes); `rejectCandidate` prunes nothing. |
+> | **Numbers, my own runs** | `npm run test:tap` **420 pass / 0 fail** (was 412; +8 new). `npm run typecheck` clean. Red/green confirmed by `git stash`ing both product files together: 3 of the 8 new tests fail without them, all pass with them. |
+> | **Scope** | `store.ts`, `stops.ts`, and their two test files only. No `qa/*.mjs`, no `ARCHITECTURE.md`/`ROADMAP.md`. |
+>
+> **The status note below is superseded by this one** and is kept as the record of what was
+> true at `c9c274d`.
+
+> **Status: superseded — the A-5a pass** (`master`, after `c9c274d`). One architect addendum,
 > closing the one open objection (**KD-36**) the A-5/A-6 pass below disclosed and declined to
 > work around, and nothing else:
 >

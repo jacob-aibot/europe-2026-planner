@@ -405,3 +405,72 @@ test('A-5a: R8-1 remains fixed with the veto in place', async () => {
     'the returning blocker must still not render "Marked dismissed"',
   );
 });
+
+// ---------------------------------------------------------------------------
+// A-5b (revision 7 addendum, QA R9-1) — `redo` releases the ledger too. `undo` does not, and
+// must not: releasing on undo would delete A-5's whole purpose.
+// ---------------------------------------------------------------------------
+
+test('A-5b (R9-1): QA\'s six actions — dismiss, retire, undo, dismiss again, undo, redo — is not stillborn', async () => {
+  // secondDismissal() performs exactly: dismiss -> retire -> undo -> dismiss again.
+  const { store, conflictId } = await secondDismissal();
+  assert.equal(freshRow(store.getState(), conflictId).retiredAt, null);
+
+  store.undo(); // undoes the second dismissal
+  store.redo(); // QA's step 6 — redo it. Without A-5b this stamps the redone row retired.
+
+  assert.equal(
+    freshRow(store.getState(), conflictId).retiredAt,
+    null,
+    'A-5b: a redone dismissal must not be stillborn — R9-1',
+  );
+  assert.equal(
+    store.getDerived()!.conflicts.find((c) => c.id === conflictId)?.resolution?.state,
+    'dismissed',
+    'must render dismissed after redo',
+  );
+
+  // ...and it holds across three further set()s, exactly as a first dismissal must (existing
+  // A-5 coverage above) — the redo path owes the same guarantee.
+  store.setUi({ panel: 'conflicts' });
+  store.setUi({ panel: 'timeline' });
+  store.getDerived();
+  assert.equal(
+    freshRow(store.getState(), conflictId).retiredAt,
+    null,
+    'the redone dismissal was retired by a later set()',
+  );
+});
+
+test('A-5b: the invariant holds at every step of the six-action sequence', async () => {
+  // "For every id in `state.retired.marks`, `state.doc` holds no row for that id with
+  // `retiredAt === null`." — checkable after every store operation; violated by both R9-1
+  // (before this fix) and, before A-5a, by KD-36.
+  const invariantHolds = (s: ReturnType<Store['getState']>) => {
+    const marks = s.retired?.marks;
+    if (!marks || !s.doc) return true;
+    for (const id of marks.keys()) {
+      if (s.doc.resolutions.some((r) => r.conflictId === id && r.retiredAt === null)) return false;
+    }
+    return true;
+  };
+  const { store } = await secondDismissal();
+  assert.ok(invariantHolds(store.getState()), 'after dismiss -> retire -> undo -> dismiss again');
+  store.undo();
+  assert.ok(invariantHolds(store.getState()), 'after the second undo');
+  store.redo();
+  assert.ok(invariantHolds(store.getState()), 'after redo — this is the one R9-1 broke');
+});
+
+test('A-5b: `undo` still releases nothing — redoing an UNRELATED action does not disturb a held mark', async () => {
+  const { store, conflictId } = await dismissedThenRetired();
+  store.undo();
+  store.redo();
+  store.undo();
+  assert.equal(
+    rowFor(store.getState(), conflictId)!.retiredAt,
+    TODAY,
+    'redo/undo at this depth must still stamp — this is the ceiling A-5b names: a redo step ' +
+      'that does not raise the row count releases nothing',
+  );
+});

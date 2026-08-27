@@ -15,6 +15,7 @@
 import type { Day, MoveOverride, Place, PlaceLink, Stop, StopPlacement, TravelRole, Trip } from '../model/types.ts';
 import type { CityKey, ClockTime, DayId, StopId } from '../model/ids.ts';
 import { timeVal } from '../derive/legs.ts';
+import { attribution } from '../derive/display.ts';
 import type { BuildCtx } from './createTrip.ts';
 import { userProvenance } from '../model/provenance.ts';
 
@@ -183,15 +184,51 @@ export function updateStop(trip: Trip, stopId: StopId, patch: StopPatch): Trip {
 
 /** Removes a stop from wherever it is. Pure. @throws {Error} if it does not exist. */
 export function removeStop(trip: Trip, stopId: StopId): Trip {
+  const removed = findStop(trip, stopId);
   let found = false;
   const days = trip.days.map((day) => {
     if (!day.stops.some((s) => s.id === stopId)) return day;
     found = true;
     return { ...day, stops: reindex(day.stops.filter((s) => s.id !== stopId), day.id) };
   });
-  if (found) return { ...trip, days, revision: trip.revision + 1 };
+  if (found) return pruneOrphanedCopyPlace({ ...trip, days, revision: trip.revision + 1 }, removed);
   if (!trip.pool.some((s) => s.id === stopId)) throw new Error(`removeStop: no such stop ${stopId}`);
-  return { ...trip, pool: trip.pool.filter((s) => s.id !== stopId), revision: trip.revision + 1 };
+  return pruneOrphanedCopyPlace(
+    { ...trip, pool: trip.pool.filter((s) => s.id !== stopId), revision: trip.revision + 1 },
+    removed,
+  );
+}
+
+/**
+ * §2.13 **A-6a** (QA R9-2): a `Place` `copyStopInto` rule 4 dragged in exists to support the
+ * copied stop, and A-6 measures a zero-link copy-borne place at `'certain'` — an orphan the
+ * delete action itself just created is not evidence of anything real, and one `×` after a
+ * copy put a third `geo_outlier` blocker on the reference trip naming it.
+ *
+ * Prunes exactly the ONE place the removed stop pointed at, and only when every one of these
+ * holds — the same four clauses the ruling states, in order:
+ *
+ *   1. the removed stop resolved through a `{ kind: 'place' }` link;
+ *   2. the removed stop was itself a copy — `attribution(removed.provenance) !== null`, the
+ *      same predicate `geoCheck`'s `isCopied` is defined as. Removing a stop the USER wrote
+ *      prunes nothing, ever — every existing path is exactly as it was;
+ *   3. after removal, no stop anywhere in the trip (any day, or the pool) still links it;
+ *   4. the place row is actually still in `trip.places`.
+ *
+ * **Never a sweep.** This only ever considers the one place the just-removed stop named — not
+ * a scan for every zero-link place in the trip, which would delete the Fisherman's Bastion
+ * place row along with the 59 other legitimately-orphaned places on the reference trip. At
+ * most one row leaves, per call, and `revision` is not bumped again: the caller already
+ * bumped it once for the stop removal, and this is the same edit, not a second one. Pure.
+ */
+function pruneOrphanedCopyPlace(trip: Trip, removed: Stop | null): Trip {
+  if (!removed || removed.place.kind !== 'place') return trip;
+  if (attribution(removed.provenance) === null) return trip;
+  const placeId = removed.place.placeId;
+  const linksIt = (s: Stop) => s.place.kind === 'place' && s.place.placeId === placeId;
+  if (trip.days.some((d) => d.stops.some(linksIt)) || trip.pool.some(linksIt)) return trip;
+  if (!trip.places.some((p) => p.id === placeId)) return trip;
+  return { ...trip, places: trip.places.filter((p) => p.id !== placeId) };
 }
 
 /** Finds a stop anywhere in the trip. Pure; returns null. */

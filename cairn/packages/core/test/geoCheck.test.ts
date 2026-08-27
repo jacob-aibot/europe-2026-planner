@@ -16,7 +16,7 @@ import assert from 'node:assert/strict';
 import { europe2026, FIXTURE_TODAY } from './fixture.ts';
 import {
   acceptCandidate, addStop, attribution, copyStopInto, createTrip, detectConflicts, geoCheck,
-  sequentialIds, validateTrip,
+  rejectCandidate, removeStop, sequentialIds, validateTrip,
 } from '../src/index.ts';
 import type { BuildCtx, Place, Stop, Trip } from '../src/index.ts';
 
@@ -476,4 +476,111 @@ test('A-6, the four-click regression on the REAL fixture: 2 blockers, not 3', ()
     'the copy path minted a geo_outlier — R8-2',
   );
   assert.equal(after.filter((c) => c.severity === 'blocker').length, 2, 'a third blocker appeared on one click');
+});
+
+// ---------------------------------------------------------------------------
+// A-6a (revision 7 addendum, QA R9-2) — deleting the copy takes its Place with it.
+//
+// A-6 clause 1 stands: 60 of the reference trip's 94 coordinate-bearing places have no
+// linking stop, and `place-68` (Fisherman's Bastion) is one of them, so an orphan is measured
+// exactly as before. Instead `removeStop` prunes the ONE place a copied stop orphans, and
+// only that one — never a sweep.
+// ---------------------------------------------------------------------------
+
+test('A-6a (R9-2): removing the copied stop prunes its place — 2 blockers, not 3, one click further', () => {
+  const { trip, copiedStopId, copiedPlaceId } = lisbonWithCopiedPlaceStop();
+  // Precondition, per A-6: the copy alone is silent.
+  assert.deepEqual(
+    detectConflicts(trip, { today: FIXTURE_TODAY }).filter((c) => c.ruleId === 'geo_outlier'),
+    [],
+  );
+  const after = removeStop(trip, copiedStopId);
+  assert.equal(
+    after.places.some((p) => p.id === copiedPlaceId),
+    false,
+    'the orphaned copied place must be gone from trip.places',
+  );
+  assert.deepEqual(
+    detectConflicts(after, { today: FIXTURE_TODAY }).filter((c) => c.ruleId === 'geo_outlier'),
+    [],
+    'deleting the copy must not mint a geo_outlier — R9-2',
+  );
+  assert.equal(
+    geoCheck(after).some((f) => f.ref.kind === 'place' && f.ref.id === copiedPlaceId),
+    false,
+    'a pruned place produces no finding at all — it is gone, not measured',
+  );
+});
+
+test('A-6a: removing the USER\'s own stop is never a sweep — the place survives and stays measured', () => {
+  const { trip, ownStopId } = lisbonWithCopiedPlaceStop();
+  // `ownStopId` resolves through an INLINE coordinate, not a Place, so this exercises clause 1
+  // (no place link at all) — the cheapest way removeStop can be asked to prune nothing.
+  const before = trip.places.length;
+  const after = removeStop(trip, ownStopId);
+  assert.equal(after.places.length, before, 'removing a stop with no place link prunes nothing');
+});
+
+test('A-6a: removing a user-authored stop that links a place never prunes it, even when it is the only linker', () => {
+  const { trip, copiedPlaceId, dayId } = lisbonWithCopiedPlaceStop();
+  const ctx: BuildCtx = { ids: sequentialIds('u'), now: '2026-08-25', actorUserId: 'local:self' };
+  // The user's own stop is now the ONLY thing linking the copied place — the exact state A-6's
+  // "every, not some" test builds. Removing THIS stop must not prune the place: clause 2
+  // (`attribution(removed.provenance) !== null`) fails for a stop the user wrote themselves.
+  const withOwn = addStop(
+    trip,
+    { kind: 'scheduled', dayId, time: '14:00', order: 5 },
+    { name: 'My own visit', category: 'sight', place: { kind: 'place', placeId: copiedPlaceId } },
+    ctx,
+  );
+  const ownStop = withOwn.days.find((d) => d.id === dayId)!.stops.find((s) => s.name === 'My own visit')!;
+  const after = removeStop(withOwn, ownStop.id);
+  assert.ok(after.places.some((p) => p.id === copiedPlaceId), 'a user-authored removal must never prune a Place');
+  const finding = geoCheck(after).find((f) => f.ref.kind === 'place' && f.ref.id === copiedPlaceId);
+  assert.equal(finding?.confidence, 'unanchored', 'the copied stop is still the only linker left, so it is still exempt');
+});
+
+test('A-6a: two copied stops on one place — the first removal survives, the second prunes', () => {
+  const { trip: europe } = europe2026();
+  const { trip: base, copiedPlaceId, dayId } = lisbonWithCopiedPlaceStop();
+  // The exact same selection `lisbonWithCopiedPlaceStop` used — copying it a SECOND time must
+  // reuse the already-copied place via rule 4's `samePlace` branch, not duplicate the row.
+  const src = europe.days.flatMap((d) => d.stops).find((s) => s.place.kind === 'place');
+  assert.ok(src, 'the fixture lost its place-linked stop');
+  const placesBefore = base.places.length;
+  const trip = copyStopInto(
+    base,
+    { trip: europe, stopId: src.id },
+    { kind: 'scheduled', dayId, time: null, order: 10 },
+    { ids: sequentialIds('c2'), today: '2026-09-01', actorUserId: 'local:self' },
+  );
+  assert.equal(trip.places.length, placesBefore, 'copying the same source place again must reuse the row, not duplicate it');
+  const linking = trip.days.find((d) => d.id === dayId)!.stops
+    .filter((s) => s.place.kind === 'place' && s.place.placeId === copiedPlaceId);
+  assert.equal(linking.length, 2, 'the place must now be linked by two copied stops');
+
+  const afterFirst = removeStop(trip, linking[0].id);
+  assert.ok(afterFirst.places.some((p) => p.id === copiedPlaceId), 'the place survives while one copy still links it');
+  assert.equal(
+    geoCheck(afterFirst).find((f) => f.ref.kind === 'place' && f.ref.id === copiedPlaceId)?.confidence,
+    'unanchored',
+  );
+
+  const afterSecond = removeStop(afterFirst, linking[1].id);
+  assert.equal(afterSecond.places.some((p) => p.id === copiedPlaceId), false, 'the second removal prunes it');
+});
+
+test('A-6a: rejectCandidate prunes nothing — the stop stays in the document', () => {
+  const { trip, copiedStopId, copiedPlaceId } = lisbonWithCopiedPlaceStop();
+  const rejected = rejectCandidate(trip, { kind: 'stop', id: copiedStopId }, 'local:self', '2026-09-02');
+  assert.ok(
+    rejected.days.some((d) => d.stops.some((s) => s.id === copiedStopId)),
+    'rejectCandidate must not remove the stop — only removeStop does',
+  );
+  assert.ok(rejected.places.some((p) => p.id === copiedPlaceId), 'a rejected-but-present stop keeps its place');
+  assert.deepEqual(
+    detectConflicts(rejected, { today: FIXTURE_TODAY }).filter((c) => c.ruleId === 'geo_outlier'),
+    [],
+    'rejection alone must not mint a blocker either — the place is still copy-borne',
+  );
 });

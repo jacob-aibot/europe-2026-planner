@@ -145,6 +145,20 @@ export function createStore(opts: StoreOptions) {
     return ids;
   }
 
+  /**
+   * How many resolution rows this document carries for one conflict id (live and retired
+   * counted alike) — §2.7 **A-5b**.
+   *
+   * `resolveConflict` is the only writer in the system that APPENDS a row; nothing else does.
+   * So a redo step that raises this count for an id is a redone `resolveConflict` on that id
+   * and nothing else — the fact `redo()`'s release condition is built on.
+   */
+  function rowsFor(doc: Trip, conflictId: string): number {
+    let n = 0;
+    for (const r of doc.resolutions) if (r.conflictId === conflictId) n++;
+    return n;
+  }
+
   /** A trip's own retired rows, as a ledger. §2.7 A-5's "reconstructed on load". */
   function marksOf(doc: Trip | null): ReadonlyMap<string, string> {
     const marks = new Map<string, string>();
@@ -669,8 +683,40 @@ export function createStore(opts: StoreOptions) {
       return state;
     },
 
+    /**
+     * §2.7 **A-5b** (QA R9-1): `redo` releases the retirement ledger too, because `redo` is a
+     * snapshot restore and not a `dispatch` — `dispatch`'s release (above) never runs for it.
+     *
+     * The release cannot be the A-5a veto reapplied: A-5a's blessed corner (dismiss → retire
+     * → undo → dismiss again → retire again → undo) and this one both install `[retired,
+     * live]` over an identical held mark, and require OPPOSITE outcomes — stamp there, do not
+     * stamp here. The only fact that tells them apart is which direction history moved, which
+     * is known here and nowhere else `set` is called from.
+     *
+     * So: release a `conflictId` iff the redo actually moves to a new document, the ledger
+     * holds a mark for it, the redone document has a LIVE row for it, and the row count for
+     * that id ROSE — which is exactly "the redone step was a `resolveConflict` on this id"
+     * (`rowsFor`'s doc comment). Without the row-count clause this would also fire on a
+     * same-row live/retired difference and un-retire a mark with no user act behind it — R8-1
+     * rebuilt inside `redo`.
+     *
+     * `undo()` gets none of this and must not: undoing a `resolveConflict` LOWERS the row
+     * count (nothing to protect), undoing anything else leaves it equal (R8-1's own case, and
+     * releasing there would be the defect), and the one shape a rowsFor-based rule WOULD catch
+     * on undo — undoing an `unresolveConflict` — is exactly where staying silent is correct.
+     */
     redo(): AppState {
-      set(redo(state));
+      const next = redo(state);
+      const doc = next.doc;
+      if (doc && state.doc && doc !== state.doc && state.retired && state.retired.tripId === doc.id) {
+        const live = liveConflictIds(doc);
+        for (const conflictId of state.retired.marks.keys()) {
+          if (live.has(conflictId) && rowsFor(doc, conflictId) > rowsFor(state.doc, conflictId)) {
+            releaseRetirement(conflictId);
+          }
+        }
+      }
+      set(next);
       scheduleSave();
       return state;
     },
