@@ -127,3 +127,45 @@ test('a foreign-owned document loads but every one of its stops stays badged', a
   assert.deepEqual([...new Set(stops.map((s) => displayStatus(s)))], ['imported']);
   assert.deepEqual(validateTrip(trip).filter((i) => i.code === 'origin_stripped'), [], 'credit links intact');
 });
+
+// ---------------------------------------------------------------------------
+// §2.14 rule 1 — an ABSENT ownerId is not a parse failure
+// ---------------------------------------------------------------------------
+
+/**
+ * §2.14 rule 1 refuses a document whose `ownerId` is *"present and is neither the local user
+ * … nor absent"*. Absent is therefore an allowed input class, and the parser may not refuse
+ * it before the ownership check the rule describes has had a chance to run.
+ *
+ * The parser does not invent an owner: core has no idea who is signed in, and `LOCAL_OWNER`
+ * here would silently stamp a stranger's ownerless file as the local user's inside a pure
+ * function. Absence is carried as `''` — the same "present, falsy, and `validateTrip` says
+ * so" shape `owner_missing` already exists for — and `store.importDoc`, which is the layer
+ * that knows the local user, is where absence becomes ownership.
+ */
+test('fromJSON accepts a document with no ownerId at all — §2.14 rule 1', () => {
+  const trip = fromJSON(mutated((d) => { delete d.ownerId; }));
+  assert.equal(trip.ownerId, '', 'an absent owner is carried as absent, not invented');
+  assert.equal(trip.days.length > 0, true, 'the rest of the document still parsed');
+  assert.deepEqual(
+    validateTrip(trip).filter((i) => i.code === 'owner_missing').map((i) => i.level),
+    ['error'],
+    'an ownerless trip is a domain problem core REPORTS, not one the parser hides',
+  );
+});
+
+test('fromJSON accepts an explicitly null ownerId the same way JSON expresses absence', () => {
+  const trip = fromJSON(mutated((d) => { d.ownerId = null; }));
+  assert.equal(trip.ownerId, '');
+});
+
+test('fromJSON still rejects a non-string ownerId — absent is allowed, garbage is not', () => {
+  assert.throws(
+    () => fromJSON(mutated((d) => { d.ownerId = 42; })),
+    (e: Error) => {
+      assert.equal(e.name, 'TripParseError');
+      assert.match((e as TripParseError).path, /ownerId/);
+      return true;
+    },
+  );
+});

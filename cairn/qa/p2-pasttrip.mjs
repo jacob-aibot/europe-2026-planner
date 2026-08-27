@@ -119,6 +119,19 @@ if (doc) {
   ok('f. no gaps in the day skeleton', gaps.length === 0, JSON.stringify(gaps.map((d) => d.date)));
   ok('g. zero stops, and no day-by-day was required', doc.days.every((d) => d.stops.length === 0));
   ok('h. one city', doc.cities.length === 1, JSON.stringify(doc.cities.map((c) => c.name)));
+  // KD-38, closed: a past trip whose days carry no city is unattributable, and I-6's
+  // `cityKeys` widening — the lifetime map, which is what Phase 2 exists to build — would
+  // find nothing on it. The form assigns the trip's first city to every day it mints.
+  const cityKey = doc.cities[0] ? doc.cities[0].key : null;
+  const unassigned = doc.days.filter((d) => d.primaryCity !== cityKey).map((d) => `${d.date}:${d.primaryCity}`);
+  ok('h2. EVERY day of the recorded past trip is attributable to its city, not "transit"',
+     cityKey !== null && unassigned.length === 0, JSON.stringify(unassigned.slice(0, 5)));
+  const badCities = doc.days.filter((d) => !Array.isArray(d.cities) || !d.cities.includes(cityKey)).map((d) => d.date);
+  ok('h3. and Day.cities contains the primary city on every day',
+     badCities.length === 0, JSON.stringify(badCities.slice(0, 5)));
+  ok('h4. no day is left carrying the "transit" catch-all',
+     doc.days.every((d) => d.primaryCity !== 'transit' && !(d.cities || []).includes('transit')),
+     JSON.stringify(doc.days.filter((d) => d.primaryCity === 'transit').map((d) => d.date).slice(0, 5)));
   ok('i. schemaVersion did NOT bump — datePrecision is additive with a total default',
      doc.schemaVersion === 1, String(doc.schemaVersion));
 }

@@ -1016,7 +1016,16 @@ export function createStore(opts: StoreOptions) {
       if (!(await flushForTransition())) return state;
       let doc = core.fromJSON(text);
       const owner = localOwner();
-      if (doc.ownerId !== owner) throw new core.ForeignDocumentError(doc.ownerId, owner);
+      // §2.14 rule 1 refuses a document whose `ownerId` is "present and is neither the local
+      // user … nor absent" — so the refusal is on a PRESENT, foreign owner, and an ownerless
+      // document (an old export, a build older than the field) is a backup of this user's own
+      // trip. It is adopted here rather than in `fromJSON`, because this is the only layer
+      // that knows who the local user is; core carries absence through as `''` and
+      // `validateTrip` reports `owner_missing` for anything that reaches it still ownerless.
+      // Adopting an ownerless file is not rule 1's "it does not adopt ownership": that
+      // sentence is about the document owned by somebody else, which is still refused.
+      if (doc.ownerId && doc.ownerId !== owner) throw new core.ForeignDocumentError(doc.ownerId, owner);
+      if (!doc.ownerId) doc = { ...doc, ownerId: owner };
       if ((await ports.storage.load(doc.id)) !== null) {
         // The injected `IdFactory` is deterministic (it must be, for goldens), so a fresh
         // id can itself collide with a stored one. Keep minting until it does not.

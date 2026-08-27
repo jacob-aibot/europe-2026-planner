@@ -34,17 +34,27 @@ function ports(storage = memoryStorage()): Ports & { storage: ReturnType<typeof 
   } as Ports & { storage: ReturnType<typeof memoryStorage> };
 }
 
-/** Exactly what `PastTripForm` dispatches: one `createTrip`, one `setTripMeta`. */
+/**
+ * Exactly what `PastTripForm` dispatches: one `createTrip`, one `setTripMeta`, and one
+ * `setDayMeta` per day assigning the trip's first city (KD-38 — `ensureDays` mints
+ * `primaryCity:'transit'`, and a past trip attributable to nowhere defeats the lifetime map
+ * this phase exists to build). `test/views.test.ts` greps the form against this list, and
+ * `qa/p2-pasttrip.mjs` asserts the persisted document a real user produces; this file is
+ * where the resulting document is measured.
+ */
 async function recordPastTrip() {
   const p = ports();
   const store = createStore({ ports: p });
-  await store.createTrip({
+  const created = await store.createTrip({
     title: 'Japan, March 2019',
     startDate: '2019-03-01',
     endDate: '2019-03-21',
     cities: [{ key: 'tokyo', name: 'Tokyo', order: 0 }],
   });
   store.dispatch({ type: 'setTripMeta', patch: { datePrecision: 'month' } });
+  for (const day of created.doc!.days) {
+    store.dispatch({ type: 'setDayMeta', dayId: day.id, patch: { primaryCity: 'tokyo', cities: ['tokyo'] } });
+  }
   return { store, p };
 }
 
@@ -90,26 +100,38 @@ test('criterion 3: days stay DENSE and Day.id === Day.date throughout', async ()
 });
 
 /**
+ * KD-38, closed: a recorded past trip is attributable to a place. `ensureDays` mints blank
+ * days as `primaryCity:'transit'` — the catch-all — so without this step the trip says
+ * "Japan" and not one of its twenty-one days says anything at all, and I-6's `cityKeys`
+ * widening finds no city to put on the map.
+ */
+test('criterion 3: every day of a recorded past trip is attributable to the trip\'s city', async () => {
+  const { store } = await recordPastTrip();
+  const trip = store.getState().doc!;
+  assert.deepEqual([...new Set(trip.days.map((d) => d.primaryCity))], ['tokyo'], 'a day is attributable to nowhere');
+  assert.deepEqual([...new Set(trip.days.flatMap((d) => d.cities))], ['tokyo'], 'the transit catch-all survives');
+  assert.deepEqual(
+    trip.days.filter((d) => !d.cities.includes(d.primaryCity)).map((d) => d.id),
+    [],
+    '§2.3: `cities` always contains `primaryCity`',
+  );
+});
+
+/**
  * The half that makes criterion 3 mean something.
  *
  * `ensureDays` mints blank days as `primaryCity:'transit'`, and `missing_lodging` skips
- * transit days — so a bare `createTrip` past trip is silent for a second reason as well as
- * the gate, and criterion 3 alone would pass with the gate deleted. The case §8.2 actually
- * names is *"a 21-day memory trip in one city with no stops trips `missing_lodging` on every
- * night of it"*, so this test builds exactly that — the same document with its days assigned
- * to the city — and asserts the gate is what silences it.
- *
- * BUILD-NOTES **KD-38** records the open question this exposes: whether the past-trip form should
- * assign the trip's single city to its days. I-4's brief says the form dispatches
- * `createTrip` + `setTripMeta` and nothing else, so it does not, and this is where the harsher
- * document is built instead.
+ * transit days — so a past trip recorded *without* the day assignment above is silent for a
+ * second reason as well as the gate, and criterion 3 would pass with the gate deleted. The
+ * case §8.2 actually names is *"a 21-day memory trip in one city with no stops trips
+ * `missing_lodging` on every night of it"*, and since KD-38 that is exactly the document the
+ * form produces — so the same document is measured twice, at two clocks, and the gate is the
+ * only difference between them.
  */
 test('criterion 3, the CEILING half: the silence is the GATE, not transit days', async () => {
   const { store } = await recordPastTrip();
-  let trip = store.getState().doc!;
-  for (const day of trip.days) {
-    trip = core.setDayMeta(trip, day.id, { primaryCity: 'tokyo', cities: ['tokyo'] });
-  }
+  const trip = store.getState().doc!;
+  assert.ok(trip.days.every((d) => d.primaryCity === 'tokyo'), 'INCONCLUSIVE: the days are not in a city');
 
   // As a plan, this document is loud: twenty uncovered nights in Tokyo, in one run.
   const asPlanned = core.detectConflicts(trip, { today: '2019-01-01' });
@@ -132,7 +154,10 @@ test('criterion 3, the CEILING half: the silence is the GATE, not transit days',
 });
 
 test('criterion 3, INJECTED FAULT: a stop dated after today brings feasibility back for that day ONLY', async () => {
-  // Same shape, but the trip straddles `today`, so one of its days is in the future.
+  // Same shape, but the trip straddles `today`, so one of its days is in the future. The days
+  // are deliberately NOT assigned to the city here: this measures the one injected fault (a
+  // future-dated ticketed stop), and a `missing_lodging` run over a straddling trip survives
+  // the gate by §8.2 ruling 1 (all-subjects) and would name past days for a second reason.
   const p = ports();
   const store = createStore({ ports: p });
   await store.createTrip({
@@ -177,10 +202,13 @@ test('criterion 3, INJECTED FAULT: a stop dated after today brings feasibility b
  */
 test('I-4: the past-trip flow adds no action and no reducer logic', () => {
   assert.equal(ACTION_SPECS.setTripMeta.coreFn, 'setTripMeta');
+  assert.equal(ACTION_SPECS.setDayMeta.coreFn, 'setDayMeta');
   assert.equal(ACTION_SPECS.addStop.coreFn, 'addStop');
-  assert.equal(
-    typeof (core as Record<string, unknown>).setTripMeta,
-    'function',
-    'setTripMeta is not a core build function',
-  );
+  for (const fn of ['setTripMeta', 'setDayMeta']) {
+    assert.equal(
+      typeof (core as Record<string, unknown>)[fn],
+      'function',
+      `${fn} is not a core build function`,
+    );
+  }
 });

@@ -1,6 +1,22 @@
 # Cairn — build notes, Phase 1 (and Phase 2 in progress)
 
-> **Status: CURRENT — Phase 2, increments I-0 … I-4 (2a: past trips and the trip lifecycle).**
+> **Status: CURRENT — the KD-38 / absent-`ownerId` pass** (`master`, after `f26905d`). Two
+> routed fixes, both disclosed by the I-0…I-4 pass below, and nothing else. I-5 … I-11 untouched.
+>
+> | | |
+> |---|---|
+> | **Fix 1 — KD-38, closed** | `PastTripForm` now requires **at least one city** and assigns the trip's **first** city to **every** day it mints, through the existing `setDayMeta` action (one dispatch per day, `{primaryCity, cities:[key]}`). Before this, `ensureDays`' `primaryCity:'transit'` catch-all meant a recorded "past trip to Japan" had **zero** city-bearing days and I-6's `cityKeys` widening would find nothing on the trips 2a exists to record. No new action, no reducer logic, no city-editing UI: the days are all the one city and any of them can be re-pointed later in the ordinary editor. `createTrip`'s existing name-only city collection is followed exactly — no coordinate input was added, so a city centre is still `createTrip`'s `{0,0}` default on **both** the new-trip and past-trip screens (**KD-39**). |
+> | **Fix 1, what it did to criterion 3** | KD-38's disclosure was that criterion 3 *"a past trip is silent"* **still passed with the §8.2 gate deleted**, because transit days silence `missing_lodging` on their own. It does not any more: with the gate line deleted, `packages/client/test/past-trip.test.ts` fails **2 of 6** — criterion 3 itself, and the ceiling half. Verified by deleting the line, running, and restoring it. |
+> | **Fix 2 — the absent `ownerId`, closed** | `fromJSON` threw `TripParseError: expected a string (at $.ownerId)` on a document with no `ownerId`, which §2.14 rule 1 says is an **allowed** input class (*"neither the local user … **nor absent**"*). Two edits: the parser carries absence through as `''` (it may not invent an owner — core does not know who is signed in), and `store.importDoc` refuses only a **present, foreign** owner and adopts an ownerless document as the local user's. Reading and its justification: **KD-40**. |
+> | **Fix 2, what did NOT change** | A document owned by a different real user is still refused with `ForeignDocumentError` — `packages/client/test/store.test.ts`'s existing refusal test is untouched and green, `qa/prov.mjs` is 0 FAIL, and a **non-string** `ownerId` (`42`) still fails the parse with the `$.ownerId` path. §2.14's other rules were not touched. |
+> | **Numbers, my own runs** | `npm run typecheck` clean (both projects). `npm run test:tap` **479 pass / 0 fail** (was 472; +7). `npm run web:build` clean. |
+> | **QA probes, before → after, both extended not replaced** | `qa/r2-import.mjs` **1 FAIL → 0**. `qa/p2-pasttrip.mjs` in real Chromium **0 FAIL → 3 FAIL** with the three new city assertions added and the form unchanged (the RED), then **0 FAIL** with the fix — and its criterion-3 §3 (Conflicts and Validation both unbadged, both panels empty) still reads zero **with** the city assigned. `qa/baseline.mjs` 0 FAIL, `qa/accept.mjs` 0 FAIL, `qa/prov.mjs`, `qa/r2-copy2.mjs`, `qa/r2-redact.mjs` 0 FAIL. `qa/r5-freshness.mjs` is **4 FAIL, unchanged** — R5-2 ×2 and the two null-actor findings, none of them mine and none touched. |
+> | **Files** | `apps/web/src/views/PastTripForm.tsx`, `packages/core/src/serialize/fromJSON.ts`, `packages/client/src/store/store.ts`, plus tests: `packages/core/test/serialize.test.ts`, `packages/client/test/store.test.ts`, `packages/client/test/past-trip.test.ts`, `test/views.test.ts`, and `qa/p2-pasttrip.mjs`. No `ARCHITECTURE.md`/`ROADMAP.md` change. Nothing at the repo root was touched. |
+>
+> **The status note below is superseded by this one** and is kept as the record of what was
+> true at `f26905d`.
+
+> **Status: superseded — Phase 2, increments I-0 … I-4 (2a: past trips and the trip lifecycle).**
 > `master` @ `a55634f`+. Scope was exactly I-0 through I-4; nothing from I-5 onward was touched.
 >
 > | | |
@@ -1016,12 +1032,66 @@ asserts it is loud as a plan (20 uncovered nights, one `missing_lodging` run) an
 `today`. That is the case §8.2 actually names — *"a 21-day memory trip in one city with no
 stops trips `missing_lodging` on every night of it"* — and it fails with the gate removed.
 
-**The open question, which is the architect's and not mine.** Should the past-trip form assign
-the trip's single city to its days? I-4's brief says the form dispatches `createTrip` +
-`setTripMeta` **and nothing else**, so it does not, and a recorded past trip's days are all
-`transit`. That is defensible (the user said nothing about which days were where) but it means
-a one-city past trip renders a spine of transit days, and I-6's `cityKeys` summary widening will
-find no city on any day. Worth a ruling before 2b.
+**RESOLVED in the pass after this one, and the entry stays because the reasoning is what the
+next reader needs.** The ruling routed back was: the past-trip form assigns a city. It now
+requires at least one and dispatches one `setDayMeta` per day putting the trip's **first** city
+on it — the existing action, no reducer logic, no day-by-day UI. Two consequences worth
+carrying forward:
+
+1. **Criterion 3 now proves the gate.** The measurement above — *criterion 3 alone still passes
+   with the gate deleted* — is no longer true. With the gate line deleted, `past-trip.test.ts`
+   fails 2 of 6, criterion 3 among them. The "CEILING half" test survives and now runs against
+   the document the form actually produces rather than a harsher one built by hand.
+2. **The injected-fault test deliberately does NOT assign cities.** A `missing_lodging` run over
+   a trip that straddles `today` survives the gate by §8.2 ruling 1 (all-subjects) and names
+   past days, which is correct and would have made that test measure two things at once.
+
+---
+
+### KD-39 — a city's centre is `{0,0}` on both trip-creation screens
+
+`apps/web/src/views/PastTripForm.tsx`, `Library.tsx` · **Phase 2, the KD-38 fix.** Not a new
+divergence — the pre-existing shape of the new-trip flow, recorded because KD-38's fix now makes
+it matter.
+
+Both forms collect cities as **names only**, comma separated; `createTrip` fills
+`centre: {lat: 0, lng: 0}` (`createTrip.ts:68`) and `countryCode: ''`. The past-trip fix follows
+that pattern rather than inventing a coordinate input, per its own scope. Nothing today reads a
+city centre for a stopless trip — `geoCheck` measures stops and places — so this costs nothing
+yet. It will matter at **I-7** if country attribution is ever taken from a city centre rather
+than from stop coordinates: every hand-entered city would attribute to the Gulf of Guinea. The
+fix belongs with whatever gives cities coordinates (a geocoder, or an autocomplete), which is
+not this pass and not I-6.
+
+### KD-40 — an absent `ownerId` is adopted by `importDoc`, not by `fromJSON`
+
+`packages/core/src/serialize/fromJSON.ts`, `packages/client/src/store/store.ts` ·
+**Phase 2.** The reading behind the fix, written down because §2.14 rule 1 states the *refusal*
+predicate and not what an accepted ownerless document's owner becomes.
+
+Rule 1 refuses a document whose `ownerId` is *"present and is neither the local user … nor
+absent"*, so **absent is accepted** — that half is not ambiguous, and `qa/r2-import.mjs` was
+right to call the parser's `TripParseError` a defect. What the text does not say directly is
+whether the trip stays ownerless or becomes the local user's. It is settled by the model rather
+than by rule 1: §2 types `Trip.ownerId: UserId` as *"present from Phase 1, carrying the sentinel
+`local:self`"*, `validateTrip` reports `owner_missing` as an **error**, and §6.2's predicates
+grant `owner` by id — so an ownerless trip installed in the library is a trip its own restorer
+could not be shown to own. There is no coherent "distinct allowed owner-less case"; absent means
+the local user.
+
+**So the adoption is at the client, not in core.** `fromJSON` carries absence through as `''`
+(a pure function that stamped `LOCAL_OWNER` would make a stranger's ownerless file the local
+user's silently, and core cannot know who is signed in); `store.importDoc` — rule 1's own stated
+home, *"enforced in `packages/client`"* — refuses a present foreign owner and adopts an absent
+one as `localOwner()`. That also makes rule 1 hold in **Phase 2**: a signed-in `user:jacob`
+restoring an ownerless backup gets it under `user:jacob`, which a `LOCAL_OWNER` default in the
+parser would have turned into a `ForeignDocumentError` against the sentinel. Rule 1's *"it does
+not adopt ownership"* is read as being about the refused foreign document — the adopt-and-badge
+alternative the same sentence rejects — not as a ban on owning your own restored backup.
+
+**If the architect meant the other reading** (an ownerless document stays ownerless and shows
+`owner_missing` until the user is asked), the change is two lines in `store.importDoc` and the
+parser half stands either way.
 
 ---
 

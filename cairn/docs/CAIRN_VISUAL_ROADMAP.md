@@ -31,9 +31,14 @@ update to this file added that instruction).
 > has attacked any of it and no manager verdict exists. I-5 … I-11 (the lifetime map, travel
 > statistics, participants, and the phase gate) are ⚪ **NOT STARTED**. Numbers and caveats:
 > `BUILD-NOTES.md`'s current status note.
+>
+> **Since then, two gaps 2a disclosed are closed** (still built, still not verified): a past trip
+> recorded through the form now **names at least one city and puts it on every one of its days**,
+> so the trips 2b's lifetime map is built from are attributable to a place instead of to the
+> "transit" catch-all; and restoring a backup file that carries no owner no longer fails to load.
 
-> **Last updated:** 2026-08-27, against `master` after the Phase 2 I-0…I-4 builder pass
-> (previously `340f17f`). Update this line every time you edit this file.
+> **Last updated:** 2026-08-27, against `master` after the KD-38 / absent-`ownerId` fix pass
+> (previously the Phase 2 I-0…I-4 builder pass). Update this line every time you edit this file.
 
 **Status vocabulary used throughout:** 🟢 COMPLETE · 🟡 IN PROGRESS · 🟠 NEXT / APPROVED ·
 🔴 BLOCKED · ⚪ NOT STARTED. Also: **built** (code exists) vs **verified** (an adversarial tester

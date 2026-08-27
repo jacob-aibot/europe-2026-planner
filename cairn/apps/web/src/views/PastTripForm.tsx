@@ -7,9 +7,18 @@
  * `days: []` is not permitted for "memory" trips because it would put a hole in the one
  * invariant every derive function relies on.
  *
- * It dispatches **`createTrip` + `setTripMeta` and nothing else** (§4.2 rule 1). There is no
- * new action, no new store method, and no domain logic here: the closed list of six
- * document-installing store methods stays six, and `createTrip` is already one of them.
+ * It dispatches **`createTrip`, `setTripMeta` and `setDayMeta` and nothing else** (§4.2 rule
+ * 1). There is no new action, no new store method, and no domain logic here: the closed list
+ * of six document-installing store methods stays six, and `createTrip` is already one of them.
+ *
+ * **At least one city, and the days carry it** (BUILD-NOTES KD-38). `ensureDays` mints blank
+ * days as `primaryCity:'transit'`, the catch-all, so a past trip recorded without this step is
+ * attributable to nowhere: the trip says "Japan" and not one of its days says so, and I-6's
+ * `cityKeys` widening — the lifetime map, which is the thing Phase 2 exists to build — finds
+ * no city on any of them. The trip's **first** city is assigned to every day, through the
+ * ordinary `setDayMeta` action. That is deliberately the simplest thing that makes the record
+ * attributable: a user who moved around can refine any day afterwards in the ordinary editor,
+ * and nothing here pretends to know which day was where.
  *
  * `datePrecision` is the *only* thing this screen knows that `NewTrip` does not, and all it
  * does with it is **choose which date inputs to show**. `startDate`/`endDate` are still real
@@ -79,28 +88,39 @@ export function PastTripForm({ onClose, onError }: Props) {
   const [busy, setBusy] = useState(false);
 
   const range = rangeFor(precision, { exactStart, exactEnd, month, year });
-  const valid = !!title.trim() && !!range && !busy;
+  // Same shape the new-trip form already uses: names, comma separated, in order. A city's
+  // centre is not asked for on either screen and `createTrip` supplies its default.
+  const cityList = cities
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .map((name, i) => ({ key: name.toLowerCase().replace(/[^a-z0-9]+/g, '-'), name, order: i }));
+  const valid = !!title.trim() && !!range && cityList.length > 0 && !busy;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!valid || !range) return;
     setBusy(true);
     try {
-      // 1 of 2: `createTrip`. `ensureDays` mints the dense day skeleton — a 21-day 2019 trip
+      // 1 of 3: `createTrip`. `ensureDays` mints the dense day skeleton — a 21-day 2019 trip
       // gets 21 empty `Day` rows, which is the point (§8.1).
-      await store.createTrip({
+      const created = await store.createTrip({
         title: title.trim(),
         startDate: range.startDate,
         endDate: range.endDate,
-        cities: cities
-          .split(',')
-          .map((s) => s.trim())
-          .filter(Boolean)
-          .map((name, i) => ({ key: name.toLowerCase().replace(/[^a-z0-9]+/g, '-'), name, order: i })),
+        cities: cityList,
       });
-      // 2 of 2: `setTripMeta`, through the ordinary action. `datePrecision` is on the patch
+      // 2 of 3: `setTripMeta`, through the ordinary action. `datePrecision` is on the patch
       // allowlist (§8.9) and adds no build function — it is data, not a capability.
       store.dispatch({ type: 'setTripMeta', patch: { datePrecision: precision } });
+      // 3 of 3: the days carry the trip's first city, so the record is attributable to a
+      // place rather than to the `transit` catch-all `ensureDays` mints (KD-38). One
+      // `setDayMeta` per day, the existing action, unchanged — `cities` is set alongside
+      // `primaryCity` so a day ends up with exactly the one city, not the catch-all beside it.
+      const key = cityList[0].key;
+      for (const day of created.doc?.days ?? []) {
+        store.dispatch({ type: 'setDayMeta', dayId: day.id, patch: { primaryCity: key, cities: [key] } });
+      }
       onClose();
     } catch (err) {
       onError((err as Error).message);
@@ -182,9 +202,20 @@ export function PastTripForm({ onClose, onError }: Props) {
       )}
 
       <label>
-        Cities <span className="hint">comma separated, in order — optional</span>
+        Cities <span className="hint">comma separated, in order — at least one</span>
         <input value={cities} onChange={(e) => setCities(e.target.value)} placeholder="Tokyo, Kyoto" data-testid="past-cities" />
       </label>
+      {/*
+        Say why, rather than just refusing to submit: the city is what puts the trip on the
+        map of where you have been. Days are assigned to the first one and can be changed
+        later — stated here so nothing is presented as a claim the user made about a day.
+      */}
+      {cityList.length === 0 && (
+        <p className="hint" data-testid="past-cities-why">
+          Name at least one city — it is what puts this trip on the map of where you have been. Every day is
+          recorded in the first one; you can change any of them later.
+        </p>
+      )}
 
       {/*
         Never present a stored range as something the user claimed. When the answer was fuzzy

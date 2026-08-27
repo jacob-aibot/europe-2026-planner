@@ -126,16 +126,37 @@ test('every exemption\'s justification holds: no Day can carry an attribution', 
 // ROADMAP Phase 2 I-4 — the past-trip flow and the lifecycle chips.
 
 /**
- * §4.2 rule 1, as a grep rather than a promise: the past-trip form dispatches `createTrip`
- * and `setTripMeta`, and invents no domain logic. Every store method and action it names is
- * checked against a closed list, so a third one cannot appear silently.
+ * §4.2 rule 1, as a grep rather than a promise: the past-trip form dispatches `createTrip`,
+ * `setTripMeta` and `setDayMeta`, and invents no domain logic. Every store method and action
+ * it names is checked against a closed list, so a fourth one cannot appear silently.
+ *
+ * `setDayMeta` joined the list when **KD-38** was closed: a past trip whose days were all
+ * `primaryCity:'transit'` (what `ensureDays` mints) is attributable to no city at all, so
+ * I-6's `cityKeys` widening — the lifetime map — would find nothing on the very trips this
+ * form exists to record. It is the existing action, unchanged, and the reducer gained
+ * nothing: `setDayMeta` is a core build function and was already on `ACTION_SPECS`.
  */
-test('I-4: PastTripForm dispatches only createTrip + setTripMeta', () => {
+test('I-4: PastTripForm dispatches only createTrip + setTripMeta + setDayMeta', () => {
   const src = readFileSync(resolve(VIEWS, 'PastTripForm.tsx'), 'utf8');
   const storeCalls = [...new Set([...src.matchAll(/store\.(\w+)\(/g)].map((m) => m[1]))].sort();
   assert.deepEqual(storeCalls, ['createTrip', 'dispatch'], `store calls: ${storeCalls.join(', ')}`);
   const actions = [...new Set([...src.matchAll(/type:\s*'(\w+)'/g)].map((m) => m[1]))].sort();
-  assert.deepEqual(actions, ['setTripMeta'], `dispatched actions: ${actions.join(', ')}`);
+  assert.deepEqual(actions, ['setDayMeta', 'setTripMeta'], `dispatched actions: ${actions.join(', ')}`);
+});
+
+/**
+ * KD-38, closed. The grep half of "a recorded past trip has at least one city, and its days
+ * reflect it": the form may not submit without a city, and what it assigns to the day is the
+ * trip's own city key — not a literal, and not `'transit'`.
+ */
+test('I-4: PastTripForm requires a city and assigns it as the days\' primaryCity', () => {
+  const src = readFileSync(resolve(VIEWS, 'PastTripForm.tsx'), 'utf8');
+  const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+  assert.match(code, /primaryCity:/, 'the form assigns no primaryCity');
+  assert.ok(!/primaryCity:\s*'/.test(code), 'the form hardcodes a city key instead of using the trip\'s own');
+  assert.ok(!/'transit'/.test(code), 'the form names the transit catch-all');
+  // The submit gate names the cities the form parsed, so "Record it" cannot fire with none.
+  assert.match(code, /const valid =[^;]*cit/i, 'a trip with no city can still be submitted');
 });
 
 /**

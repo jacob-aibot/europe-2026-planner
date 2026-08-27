@@ -807,6 +807,44 @@ test('import accepts a document owned by this store\'s own owner id', async () =
   assert.equal(s.getState().doc?.ownerId, 'user:jacob');
 });
 
+/**
+ * §2.14 rule 1, the *"nor absent"* clause. An old export — or one written by a build before
+ * `ownerId` was on the document — is a backup of this user's own trip, and restoring it is
+ * exactly what this button is for. `qa/r2-import.mjs` reported this as a FAIL: the parser
+ * threw `TripParseError: expected a string (at $.ownerId)` before the ownership check ran.
+ *
+ * The store adopts, because it is the layer that knows who the local user is. Adopting is
+ * not in tension with rule 1's *"it does not adopt ownership"* — that sentence is about the
+ * document owned by **someone else**, which is refused outright and is asserted two tests up.
+ */
+test('import accepts a document with NO ownerId and adopts it as this user\'s own — §2.14 rule 1', async () => {
+  const storage = memoryStorage();
+  const s = createStore({ ports: ports(storage) });
+  await s.createTrip(TRIP_INIT);
+  const raw = JSON.parse(await s.exportActive()) as Record<string, unknown>;
+  delete raw.ownerId;
+  await s.deleteTrip(s.getState().activeTripId as string);
+
+  await s.importDoc(JSON.stringify(raw));
+  assert.equal(s.getState().doc?.ownerId, core.LOCAL_OWNER, 'the restored trip has no owner');
+  assert.deepEqual(
+    core.validateTrip(s.getState().doc as core.Trip).filter((i) => i.code === 'owner_missing'),
+    [],
+    'the restored trip is owned by nobody and validateTrip says so',
+  );
+});
+
+test('a signed-in user restoring an ownerless backup gets it under THEIR id, not the sentinel', async () => {
+  const s = createStore({ ports: ports(memoryStorage()), ownerId: 'user:jacob' });
+  await s.createTrip({ ...TRIP_INIT, ownerId: 'user:jacob' } as Parameters<typeof s.createTrip>[0]);
+  const raw = JSON.parse(await s.exportActive()) as Record<string, unknown>;
+  delete raw.ownerId;
+  await s.deleteTrip(s.getState().activeTripId as string);
+
+  await s.importDoc(JSON.stringify(raw));
+  assert.equal(s.getState().doc?.ownerId, 'user:jacob');
+});
+
 // ---------------------------------------------------------------------------
 // §2.14 — browse another trip, copy one stop across
 // ---------------------------------------------------------------------------

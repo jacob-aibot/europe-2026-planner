@@ -363,7 +363,14 @@ export function fromJSON(input: string | unknown): Trip {
   return {
     id: str(o.id, '$.id'),
     title: str(o.title, '$.title'),
-    ownerId: str(o.ownerId, '$.ownerId'),
+    // §2.14 rule 1 refuses a document whose owner is "neither the local user … nor absent",
+    // so ABSENT is an allowed input class and the parser may not refuse it before the
+    // ownership check can run (QA `qa/r2-import.mjs`). The parser does not invent an owner
+    // either: it cannot know who is signed in, and stamping `LOCAL_OWNER` on an ownerless
+    // file inside a pure function would make it the local user's silently. Absence is carried
+    // as `''`, which `validateTrip` already reports as `owner_missing`; `store.importDoc` —
+    // the layer that knows the local user — is where absence becomes ownership.
+    ownerId: o.ownerId === undefined || o.ownerId === null ? '' : str(o.ownerId, '$.ownerId'),
     startDate: isoDate(o.startDate, '$.startDate'),
     endDate: isoDate(o.endDate, '$.endDate'),
     datePrecision: datePrecision(o.datePrecision, '$.datePrecision'),
