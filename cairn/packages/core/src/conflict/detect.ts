@@ -7,7 +7,9 @@
  * disappear.
  */
 import type { Conflict, Ref, Trip, TripCtx } from '../model/types.ts';
-import type { IsoDate } from '../model/ids.ts';
+import type { IsoDate, RuleId } from '../model/ids.ts';
+// §2.7 A-11. `derive/summary.ts` imports only `model/`, so there is no cycle.
+import { dayNumber } from '../derive/summary.ts';
 import { bookingVsPlan } from './rules/bookingVsPlan.ts';
 import { duplicateBooking } from './rules/duplicateBooking.ts';
 import { geoOutlier } from './rules/geoOutlier.ts';
@@ -101,12 +103,54 @@ function suppressedAsPast(trip: Trip, conflict: Conflict, today: IsoDate | undef
 }
 
 /**
+ * The far-future horizon (§2.7 **A-11**), symmetrical with `suppressedAsPast` above and living
+ * in the same place for the same reason: **every clock-driven suppression in the system is
+ * under the `gate` conjunct, where `detectUngated` can disable it.**
+ *
+ * A rule that applied its own horizon would be invisible to `detectUngated`, and *absent from
+ * the un-gated set* is exactly what `syncResolutions` reads as *"the user fixed it"* — so a
+ * device clock stepping backwards over the boundary (a phone flying west, a corrected clock)
+ * retired a live dismissal with no edit at all. QA R13-1.
+ *
+ * Suppressed **iff every subject resolves to a date strictly more than `horizonDays` days after
+ * `today`** — the same asymmetry as the gate, for the same reason (§8.2 ruling 1): one subject
+ * inside the horizon keeps the whole finding, because suppression must never remove something
+ * somebody can act on.
+ *
+ * Returns `false` with no `horizonDays` and with no `today`, so it is inert for every rule that
+ * declares no horizon.
+ */
+function beyondHorizon(
+  trip: Trip,
+  conflict: Conflict,
+  today: IsoDate | undefined,
+  horizonDays: number | undefined,
+): boolean {
+  if (horizonDays === undefined) return false;
+  if (!today) return false;
+  if (conflict.subjects.length === 0) return false;
+  const todayN = dayNumber(today);
+  return conflict.subjects.every((s) => dayNumber(subjectDate(trip, s)) - todayN > horizonDays);
+}
+
+/**
+ * A detection plus the health of the run that produced it (§2.7 **A-12**).
+ *
+ * `crashed` names every rule that threw, in `RULES` order. It exists because *a rule that threw
+ * did not report "nothing"; it reported nothing we can read* — and absence of evidence is the
+ * whole mechanism of retirement, so an incomplete analysis is not a set retirement may be
+ * computed from.
+ */
+export type UngatedDetection = { conflicts: Conflict[]; crashed: RuleId[] };
+
+/**
  * The one implementation (§2.7 A-9). `gate` decides whether §8.2's feasibility gate is
  * applied; everything else is identical, because there is exactly one rule loop and exactly
- * one place the gate lives. Private: the two public entry points below are the whole API.
+ * one place the gate lives. Private: the entry points below are the whole API.
  */
-function runRules(trip: Trip, opts: DetectOpts, gate: boolean): Conflict[] {
+function runRules(trip: Trip, opts: DetectOpts, gate: boolean): UngatedDetection {
   const ctx: TripCtx = { trip, ...(opts.today ? { today: opts.today } : {}) };
+  const crashedRules: RuleId[] = [];
   // Retired rows never resolve a conflict again (§2.7) — but they are read below, so a
   // conflict that comes back after a dismissal says so instead of returning silently.
   const byId = new Map(trip.resolutions.filter((r) => !r.retiredAt).map((r) => [r.conflictId, r]));
@@ -123,6 +167,8 @@ function runRules(trip: Trip, opts: DetectOpts, gate: boolean): Conflict[] {
       produced = rule.run(ctx);
     } catch (err) {
       crashed = true;
+      // A-12: the crashing rule's id, in RULES order, so `syncResolutions` can refuse the set.
+      crashedRules.push(rule.id);
       produced = [
         {
           id: `rule_error-${rule.id}`,
@@ -149,7 +195,16 @@ function runRules(trip: Trip, opts: DetectOpts, gate: boolean): Conflict[] {
       // A-9 adds the `gate` conjunct at the front and keeps every conjunct that was already
       // here. `detectUngated` is `gate === false`: retirement is a claim about the DOCUMENT
       // and must not read a set the clock has thinned.
-      if (gate && !crashed && rule.class === 'feasibility' && suppressedAsPast(trip, c, opts.today)) continue;
+      //
+      // A-11 puts the SECOND clock-driven suppression under the same `gate` conjunct, and
+      // deliberately not nested inside the first: past-ness is a property of the rule's CLASS,
+      // a horizon is a property of the RULE. §8.2's table classifies; `horizonDays`
+      // parameterises. `beyondHorizon` is inert for the nine rules that declare no horizon.
+      if (
+        gate && !crashed &&
+        ((rule.class === 'feasibility' && suppressedAsPast(trip, c, opts.today)) ||
+          beyondHorizon(trip, c, opts.today, rule.horizonDays))
+      ) continue;
       const live = byId.get(c.id) ?? null;
       const retired = live ? null : retiredById.get(c.id);
       const detail = retired
@@ -159,7 +214,7 @@ function runRules(trip: Trip, opts: DetectOpts, gate: boolean): Conflict[] {
       found.push({ c: { ...c, resolution: live, ...(detail !== undefined ? { detail } : {}) }, rank });
     }
   });
-  return found
+  const conflicts = found
     .sort(
       (a, b) =>
         SEVERITY_ORDER[a.c.severity] - SEVERITY_ORDER[b.c.severity] ||
@@ -167,6 +222,7 @@ function runRules(trip: Trip, opts: DetectOpts, gate: boolean): Conflict[] {
         a.c.id.localeCompare(b.c.id),
     )
     .map((x) => x.c);
+  return { conflicts, crashed: crashedRules };
 }
 
 /**
@@ -182,7 +238,7 @@ function runRules(trip: Trip, opts: DetectOpts, gate: boolean): Conflict[] {
  * Ordered by severity, then rule order, then id, so goldens are stable.
  */
 export function detectConflicts(trip: Trip, opts: DetectOpts = {}): Conflict[] {
-  return runRules(trip, opts, true);
+  return runRules(trip, opts, true).conflicts;
 }
 
 /**
@@ -200,6 +256,30 @@ export function detectConflicts(trip: Trip, opts: DetectOpts = {}): Conflict[] {
  * Pure.
  */
 export function detectUngated(trip: Trip, opts: DetectOpts = {}): Conflict[] {
+  return detectUngatedChecked(trip, opts).conflicts;
+}
+
+/**
+ * `detectUngated`, plus the ids of any rules that threw (§2.7 **A-12**, revision 12, QA R13-3).
+ *
+ * `detect.ts`'s `catch` replaces a crashing rule's **entire output** with one synthetic
+ * `rule_error` note, so every real finding that rule would have produced is absent from the
+ * un-gated set — and `syncResolutions` reads absence as *"the user fixed it"*. A-9 point 1's
+ * `!crashed` conjunct protects the **note**; nothing protected the rule's other findings. One
+ * crashed detection therefore retired every live dismissal the rule owned, permanently, at the
+ * same clock, with no edit.
+ *
+ * *A rule that threw did not report "nothing"; it reported nothing we can read.* So retirement
+ * needs to know, and this is how it is told — a **pair**, not an out-parameter (filling a
+ * caller-supplied object is a side effect on an argument, and §2.1's purity rule is why golden
+ * fixtures work at all), and a new name rather than a changed `detectUngated`, so round 13's
+ * probe assertions keep calling it as an array and stay independent evidence of A-11.
+ *
+ * **Not exported from `index.ts`**, exactly as `detectUngated` is not. §2.10 stays at 71.
+ *
+ * Pure.
+ */
+export function detectUngatedChecked(trip: Trip, opts: DetectOpts = {}): UngatedDetection {
   return runRules(trip, opts, false);
 }
 

@@ -9,8 +9,8 @@ import type { ConflictResolution, Trip } from '../model/types.ts';
 import type { ConflictId, IsoDate } from '../model/ids.ts';
 import { isIsoDate } from '../model/ids.ts';
 // §2.7 A-9 point 4: `resolve.ts` may import `detect.ts`. There is no cycle — `detect.ts`
-// imports `model/` and `rules/` only, and `index.ts` imports both.
-import { detectUngated } from './detect.ts';
+// imports `model/`, `derive/summary.ts` and `rules/` only, and `index.ts` imports both.
+import { detectUngatedChecked } from './detect.ts';
 
 /** `retiredAt` is set by `syncResolutions`, never by a caller, so it is optional here. */
 export type ResolutionInit = Omit<ConflictResolution, 'retiredAt'> & { retiredAt?: IsoDate | null };
@@ -54,6 +54,18 @@ export function resolveConflict(trip: Trip, resolution: ResolutionInit): Trip {
  * `at` is now both the stamp and the clock, so a missing or malformed one means **do
  * nothing** — never *detect with no horizon*.
  *
+ * **It retires nothing at all if any rule threw during that detection** (§2.7 **A-12**,
+ * revision 12, QA R13-3). `detect.ts`'s `catch` replaces a crashing rule's *entire output* with
+ * one `rule_error` note, so all of that rule's real findings leave the un-gated set and every
+ * live dismissal they carried looked fixed. *A rule that threw did not report "nothing"; it
+ * reported nothing we can read* — and absence of evidence is the whole mechanism here, so an
+ * incomplete analysis is not a set retirement may be computed from. Trip-wide rather than
+ * per-rule: a stored row carries only its `conflictId`, and mapping that back to the rule that
+ * owned it means parsing the id, which §2.7 treats as an opaque content address. Nothing is
+ * lost — retirement is idempotent bookkeeping with no deadline, so it runs on the next
+ * recompute after the crash is fixed, and until then the crash is on screen as a `rule_error`
+ * note rather than silently eating the user's answers.
+ *
  * Pure (the rules are pure and the clock is injected).
  */
 export function syncResolutions(trip: Trip, at: IsoDate): Trip {
@@ -61,7 +73,10 @@ export function syncResolutions(trip: Trip, at: IsoDate): Trip {
   // common case — the reference trip has zero.
   if (!trip.resolutions.some((r) => !r.retiredAt)) return trip;
   if (!isIsoDate(at)) return trip;
-  const live = new Set(detectUngated(trip, { today: at }).map((c) => c.id));
+  const { conflicts, crashed } = detectUngatedChecked(trip, { today: at });
+  // A-12. Before any row is stamped: unknown is not absent.
+  if (crashed.length > 0) return trip;
+  const live = new Set(conflicts.map((c) => c.id));
   let changed = false;
   const resolutions = trip.resolutions.map((r) => {
     if (r.retiredAt || live.has(r.conflictId)) return r;

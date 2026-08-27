@@ -219,28 +219,53 @@ line('§2b through the store: a genuine fix at a post-gate clock reaches storage
 
 /* ============================================== §3  A-9 assertion 4 ======== */
 
-line('§3 R13-2 — is A-9 assertion 4\'s `setTripMeta({endDate})` load-bearing, or inert?');
+line('§3 R13-2 — A-9(4)\'s mechanism, after A-13 retired the literal one');
 {
-  const { trip, target, c } = dismissedLodging();
+  // A-13 (ARCHITECTURE §2.7, revision 12) rules on this section rather than on the code. The
+  // FIRST assertion here — "extending `endDate` makes the conflict return" — is **retired, not
+  // fixed**: it asserts a mechanism the model does not have, for any Phase 1 rule, and the
+  // ruling authorises replacing that line with the tripwire below. The SECOND — "the
+  // substituted test's `setTripMeta` is load-bearing" — measured a call A-13 orders deleted, so
+  // it is replaced by the two things A-13 actually requires of `retirementGate.test.ts`. The
+  // third is kept verbatim. See docs/BUILD-NOTES.md KD-49.
+  const { trip, target } = dismissedLodging();
   const t2 = core.syncResolutions(core.syncResolutions(trip, '2026-08-25'), '2026-08-30');
-  const extended = core.setTripMeta(t2, { endDate: '2026-09-30' }, c);
 
-  // A-9's literal wording: "extend `endDate`, expect the conflict to return."
-  const literal = core.detectConflicts(extended, { today: '2026-08-30' }).find((x) => x.id === target.id);
-  ok('A-9(4) as literally written: extending endDate makes the conflict return at a post-endDate clock',
-    !!literal, 'the finding\'s subjects are its OWN days, which are still past — the extension cannot un-gate it');
+  // A-13's tripwire, in the probe's own words: extending `endDate` can un-gate a finding only
+  // if some subject resolves through §8.2 ruling 2's fallback, and no feasibility rule emits
+  // one. When this line starts failing, A-9(4)'s literal mechanism has become achievable and
+  // must be written as a test in the same commit.
+  const feasibility = new Set(core.RULES.filter((r) => r.class === 'feasibility').map((r) => r.id));
+  const unpinned = [];
+  for (const [name, doc] of [['reference', loadEurope2026().trip], ['lodging', t2]]) {
+    for (const cf of core.detectConflicts(doc, { today: '2026-08-26' })) {
+      if (!feasibility.has(cf.ruleId)) continue;
+      const pinned = cf.subjects.some((s) =>
+        (s.kind === 'day' && doc.days.some((d) => d.id === s.id)) ||
+        (s.kind === 'stop' && doc.days.some((d) => d.stops.some((x) => x.id === s.id))) ||
+        (s.kind === 'booking' && doc.bookings.some((b) => b.id === s.id)));
+      if (!pinned) unpinned.push(`${name}:${cf.id}`);
+    }
+  }
+  ok('A-13 tripwire: no feasibility finding resolves ONLY through §8.2 ruling 2\'s endDate fallback',
+    unpinned.length === 0,
+    `${unpinned.join(', ')} — A-9(4)'s literal mechanism is now achievable; write that test`);
 
-  // What `retirementGate.test.ts` substitutes: view at a clock INSIDE the trip.
-  const withExt = core.detectConflicts(extended, { today: '2026-08-26' }).find((x) => x.id === target.id);
-  const noExt = core.detectConflicts(t2, { today: '2026-08-26' }).find((x) => x.id === target.id);
-  console.log('  with the extension   :', !!withExt, '| resolution =', withExt && withExt.resolution && withExt.resolution.state,
+  // A-13 (1): the inert call is gone, and the test's name describes the clock crossing.
+  const gateTest = readFileSync('packages/core/test/retirementGate.test.ts', 'utf8');
+  const a9_4 = /test\('([^']*A-9 \(4\)[^']*)'/.exec(gateTest);
+  // Comments stripped: the ruling deletes the CALL, and the header is allowed to say why.
+  const gateCode = gateTest.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  ok('the inert `setTripMeta({endDate})` is gone from retirementGate.test.ts',
+    !/setTripMeta/.test(gateCode), 'the call round 13 measured byte-inert is still there');
+  ok('...and A-9(4)\'s test now names the clock crossing it actually runs',
+    !!a9_4 && /clock|boundary/i.test(a9_4[1]) && !/extended trip/i.test(a9_4[1]),
+    a9_4 && a9_4[1]);
+
+  // What the substituted mechanism DOES prove, kept verbatim from round 13:
+  const withExt = core.detectConflicts(t2, { today: '2026-08-26' }).find((x) => x.id === target.id);
+  console.log('  the clock crossing   :', !!withExt, '| resolution =', withExt && withExt.resolution && withExt.resolution.state,
     '| detail =', JSON.stringify(withExt && withExt.detail));
-  console.log('  WITHOUT the extension:', !!noExt, '| resolution =', noExt && noExt.resolution && noExt.resolution.state,
-    '| detail =', JSON.stringify(noExt && noExt.detail));
-  ok('the substituted test\'s `setTripMeta` changes its outcome (i.e. it is load-bearing)',
-    JSON.stringify(withExt) !== JSON.stringify(noExt),
-    'identical with and without the extension — the test verifies the clock case, not the extend-endDate case A-9 names');
-  // what the substitution DOES prove, and it is worth having:
   ok('(what it does prove) a clock crossing leaves the dismissal live and the finding un-accused',
     !!withExt && !!withExt.resolution && !/come back/.test(String(withExt.detail ?? '')));
 }

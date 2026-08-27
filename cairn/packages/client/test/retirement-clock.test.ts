@@ -110,6 +110,103 @@ test('A-9 (2): the store still retires when the DATA stops producing the conflic
   );
 });
 
+/**
+ * A-11 assertion 1, store level — QA `r13-gate-citykey.mjs` §1.3 (ARCHITECTURE §2.7 **A-11**,
+ * revision 12, QA R13-1).
+ *
+ * `apps/web`'s `systemClock()` returns the device's **local civil date**, and both phone
+ * platforms move the device's time zone by themselves while the user travels. Flying west —
+ * Budapest UTC+2 → London UTC+1 → LA UTC−7, this app's own reference itinerary — steps that date
+ * **back** by one for any local moment before 09:00. A user correcting a wrong clock does the
+ * same with no travel at all.
+ *
+ * `unbooked_ticketed`'s 60-day horizon used to be applied inside `rule.run`, where
+ * `detectUngated` could not disable it, so one step back across the boundary took the finding
+ * out of the set retirement reads and `syncResolutions` retired the dismissal — a write to
+ * storage after one `getDerived()` with no keystroke.
+ */
+function movableClockPort(start: string) {
+  let d = start;
+  return { port: { today: () => d } as Ports['clock'], set: (x: string) => { d = x; } };
+}
+
+/** QA §1.1's document, built through the client's own re-export of core. */
+function dismissedTicket() {
+  const c: core.BuildCtx = { ids: core.sequentialIds('hz'), now: '2026-01-01', actorUserId: core.LOCAL_OWNER };
+  const dayDate = '2026-03-02';
+  let t = core.createTrip(
+    {
+      title: 'Horizon',
+      startDate: dayDate,
+      endDate: dayDate,
+      cities: [{ name: 'Tokyo', order: 0, centre: { lat: 35.68, lng: 139.77 } }],
+    },
+    c,
+  );
+  const key = t.cities[0].key;
+  for (const d of t.days) t = core.setDayMeta(t, d.id, { primaryCity: key, cities: [key] });
+  t = core.addStop(
+    t,
+    { kind: 'scheduled', dayId: dayDate, time: '10:00', order: 0 },
+    {
+      name: 'Ghibli Museum',
+      category: 'sight',
+      place: { kind: 'inline', at: { lat: 35.696, lng: 139.57 } },
+      cost: { display: '€10', amounts: [{ lo: 10, hi: 10, currency: 'EUR', basis: 'per_person' }] },
+      links: [{ label: 'Tickets', href: 'https://example.test/t' }],
+    },
+    c,
+  );
+  // `delta = 60` exactly: the boundary is one step of a device clock away.
+  const target = core.detectConflicts(t, { today: '2026-01-01' }).find((x) => x.ruleId === 'unbooked_ticketed')!;
+  assert.ok(target, 'the document must produce an unbooked_ticketed to dismiss');
+  return {
+    doc: core.resolveConflict(t, {
+      conflictId: target.id, state: 'dismissed', by: core.LOCAL_OWNER, at: '2026-01-01',
+    }),
+    target,
+  };
+}
+
+test('A-11 (1, store) / QA §1.3: a westward clock step does not dirty storage', async () => {
+  const { doc, target } = dismissedTicket();
+  const storage = memoryStorage();
+  const clock = movableClockPort('2026-01-01');
+
+  const store = createStore({
+    ports: { ...portsAt('2026-01-01', storage), clock: clock.port },
+    autosave: false,
+  });
+  await store.adoptTrip(doc);
+  store.getDerived();
+  await store.flush();
+  const atRest = storedBytes(storage, doc.id);
+  const midRev = JSON.parse(atRest).revision;
+  assert.equal(JSON.parse(atRest).resolutions[0].retiredAt, null, 'stored with the dismissal live');
+
+  // The plane lands. The device date steps back one day, `delta` becomes 61, and the panel
+  // re-renders. That is the whole user action.
+  clock.set('2025-12-31');
+  store.getDerived();
+  await store.flush();
+
+  assert.equal(
+    store.getState().doc!.resolutions.find((r) => r.conflictId === target.id)!.retiredAt, null,
+    'the stepped-back clock left the dismissal live',
+  );
+  assert.equal(store.getState().doc!.revision, midRev, 'the revision does not move');
+  assert.equal(store.isDirty(), false, 'no write is scheduled by a clock the user did not set');
+  assert.equal(storedBytes(storage, doc.id), atRest, '...and the stored bytes are the bytes we left');
+
+  // The clock is corrected. The finding must render DISMISSED, not accused.
+  clock.set('2026-01-01');
+  const derived = store.getDerived()!;
+  const again = derived.conflicts.find((c) => c.id === target.id)!;
+  assert.ok(again, 'the finding is on screen again at the corrected clock');
+  assert.ok(again.resolution, 'it carries the user\'s own live resolution');
+  assert.doesNotMatch(String(again.detail ?? ''), /come back/, 'and does not accuse the user');
+});
+
 test('A-9 (3, store): the explicit syncResolutions() method still runs on a cache hit', async () => {
   const { doc, target } = dismissedLodging();
   const storage = memoryStorage();

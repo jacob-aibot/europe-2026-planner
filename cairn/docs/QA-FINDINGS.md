@@ -38,10 +38,10 @@ ruling whose reasoning has a hole.
 
 | id | severity | file:line | defect | repro | routing |
 |---|---|---|---|---|---|
-| **R13-1** | MAJOR | `packages/core/src/conflict/rules/unbookedTicketed.ts:37` × §2.7 A-9's *"the far-future half stays and needs nothing"* | `delta > UNBOOKED_HORIZON_DAYS` is a **second** clock-driven suppression and it is applied inside `detectUngated`, so a clock step **backwards** across the 60-day boundary retires a live dismissal permanently, bumps `revision` and dirties storage with no edit — P2-1's exact harm, through the one door A-9 chose to leave open. | `node --experimental-strip-types qa/r13-gate-citykey.mjs` §1.1, §1.2, §1.3 | **architect** — A-9's *"as a clock advances `delta` only shrinks"* assumes a monotone clock |
+| **R13-1** | MAJOR | `packages/core/src/conflict/rules/unbookedTicketed.ts:37` × §2.7 A-9's *"the far-future half stays and needs nothing"* | `delta > UNBOOKED_HORIZON_DAYS` is a **second** clock-driven suppression and it is applied inside `detectUngated`, so a clock step **backwards** across the 60-day boundary retires a live dismissal permanently, bumps `revision` and dirties storage with no edit — P2-1's exact harm, through the one door A-9 chose to leave open. | `node --experimental-strip-types qa/r13-gate-citykey.mjs` §1.1, §1.2, §1.3 | **architect** — A-9's *"as a clock advances `delta` only shrinks"* assumes a monotone clock — ruled in §2.7 **A-11** (revision 12) and built: **CLOSED**, see the follow-up note below |
 | **R13-6** | MAJOR | `packages/core/src/build/copyStop.ts:126` × §2.2 A-10's *"what this changes elsewhere — the complete list"* | `copyStopInto` copies a `Place` with `{...original}`, so it carries the **source trip's** minted `CityKey` into the target. Between two product-created trips the keys can never match, so every cross-trip copy of a place-linked stop leaves the recipient's document reporting `unknown_city_key` (**error**) with no UI able to repair it. Under the pre-A-10 slug two trips to Vienna both said `vienna` and the copy was clean — the control proves it. | `qa/r13-gate-citykey.mjs` §10 | **architect** — A-10's change table does not mention `copyStopInto`; whether the copied place re-points by normalised name is a §2.14 ruling, not a builder's call — ruled in §2.14 **A-14** (revision 12) and built: **CLOSED**, see the follow-up note below |
-| **R13-2** | MINOR | `packages/core/test/retirementGate.test.ts:103` | A-9(4)'s substituted test calls `setTripMeta(t2, { endDate: '2026-09-30' })` and the call is **inert** — the assertions produce a byte-identical result with it removed, because the clock it then reads (`2026-08-26`) is inside the *original* range. The harm is proven; the mechanism the test name claims is not exercised. | `qa/r13-gate-citykey.mjs` §3 | **builder** — either drop the inert call and rename the test to what it measures, or route the *literal* A-9(4) back to the architect as unachievable |
-| **R13-3** | MINOR | `packages/core/src/conflict/detect.ts:152` × A-9 point 1 | A-9 says a crash *"can never be the thing that retires a resolution"*. It can: the `catch` replaces a crashing rule's **whole output** with one `rule_error` note, so all of that rule's real findings leave the un-gated set and `syncResolutions` retires every live dismissal they carried — permanently, at the same clock, with no edit. The `!crashed` conjunct protects the note, not the findings. MINOR only because no content route into a crash survives `fromJSON` today (five tried, all refused). | `qa/r13-gate-citykey.mjs` §4 | **architect** — the sentence in A-9 point 1 is false as written |
+| **R13-2** | MINOR | `packages/core/test/retirementGate.test.ts:103` | A-9(4)'s substituted test calls `setTripMeta(t2, { endDate: '2026-09-30' })` and the call is **inert** — the assertions produce a byte-identical result with it removed, because the clock it then reads (`2026-08-26`) is inside the *original* range. The harm is proven; the mechanism the test name claims is not exercised. | `qa/r13-gate-citykey.mjs` §3 | **builder** — either drop the inert call and rename the test to what it measures, or route the *literal* A-9(4) back to the architect as unachievable — routed, and ruled unachievable in §2.7 **A-13** (revision 12); built: **CLOSED**, see the follow-up note below |
+| **R13-3** | MINOR | `packages/core/src/conflict/detect.ts:152` × A-9 point 1 | A-9 says a crash *"can never be the thing that retires a resolution"*. It can: the `catch` replaces a crashing rule's **whole output** with one `rule_error` note, so all of that rule's real findings leave the un-gated set and `syncResolutions` retires every live dismissal they carried — permanently, at the same clock, with no edit. The `!crashed` conjunct protects the note, not the findings. MINOR only because no content route into a crash survives `fromJSON` today (five tried, all refused). | `qa/r13-gate-citykey.mjs` §4 | **architect** — the sentence in A-9 point 1 is false as written — ruled in §2.7 **A-12** (revision 12) and built: **CLOSED**, see the follow-up note below |
 | **R13-4** | MINOR | `packages/core/src/conflict/detect.ts:192` | The comment written by this same pass still reads *"§2.10's runtime symbol count stays at 70"*. KD-42 corrected both prose sites in `ARCHITECTURE.md` and `ROADMAP.md` and missed the code. (KD-42's substance is correct — verified 71 both ways.) | `qa/r13-gate-citykey.mjs` §7 | **builder** — one word |
 | **R13-5** | MINOR | `packages/core/src/conflict/rules/geoOutlier.ts:61,68,74` | KD-44 moved the legibility problem rather than removing it. The phrase is substituted where a noun phrase for a place belongs, so the reference trip's own injected fault reads *"“Austrian National Library” **on a city this trip does not have** is 9030 km from…"*; and both label sites now emit the identical string, so a reader can no longer tell a city map from an optional list — the distinction `whereOf` exists to draw. The comment at `:58` also describes the behaviour the change deleted. | `qa/r13-gate-citykey.mjs` §8 | **builder** — same routine-UX class KD-44 was resolved under (e.g. *"a map for a city this trip does not have"* / *"an optional list for …"*) |
 | **R13-7** | MINOR | `packages/core/src/validate/validateTrip.ts:111,133,176,187,280,402` | Six `Issue.message` strings still interpolate a raw opaque `CityKey` — *"Place "Belvedere" references unknown city "acity-1""*, *"Two cities share the key "city-7""*. Two of those codes are A-10's own, and the other four became opaque the day keys started being minted. KD-44 fixed exactly one instance of this class and left six, all of them user-visible in the Issues panel. | `qa/r13-gate-citykey.mjs` §10 (`R13-6b`); direct: `validateTrip` on any cross-trip copy | **builder** — **CLOSED**, see the follow-up note below |
@@ -73,6 +73,50 @@ ruling whose reasoning has a hole.
 >   (was 515) · `npm run web:build` clean · `qa/p2b-past.mjs` 0 FAIL · `qa/r13-gate-citykey.mjs`
 >   12 FAIL · `qa/p2b-gate.mjs` 5 FAIL, `qa/confid2.mjs` 0, `qa/p2-pasttrip.mjs` 0, `qa/r3-pool.mjs`
 >   3 and `qa/r3-cas2.mjs` 3 — the last two confirmed identical at `30d6288` in a `git worktree`.
+
+> **Builder follow-up, 2026-08-27 (after `78b490f`) — R13-1, R13-2 and R13-3 are CLOSED.** Scope
+> was A-11/A-12/A-13 and nothing else; R13-4 and R13-5 were not touched by this pass, and R13-6 was
+> closed by the parallel A-14 pass.
+>
+> - **R13-1 (A-11).** `Rule` gains `horizonDays?: number`; `unbookedTicketed` **declares**
+>   `horizonDays: UNBOOKED_HORIZON_DAYS` and its `if (delta > UNBOOKED_HORIZON_DAYS) continue;` is
+>   deleted. `detect.ts` grows `beyondHorizon(trip, conflict, today, horizonDays)`, symmetrical with
+>   `suppressedAsPast` and under the **same `gate` conjunct**, so `detectUngated` disables it exactly
+>   as it disables §8.2's gate. `ctx.today` stays in the rule file for `summary` and `params.daysOut`
+>   — prose — and no branch reads it. **§1.1 ×1, §1.2 ×4 and §1.3 ×2 all close.**
+> - **A-9's greppable ceiling is replaced, not deleted.** *"`ctx.today` in exactly one rule file"*
+>   was a proxy for a property the grep could not see, since the surviving suppression lived in the
+>   one file the grep permitted. The property is now swept directly: for one document,
+>   `detectUngated` returns the **same conflict ids at all six clocks** (`2019-01-01`, `2026-08-01`,
+>   `2026-08-24`, `2026-08-30`, `2027-08-30`, `2030-01-01`), over the reference fixture **and** five
+>   injected-fault fixtures that between them make all ten rules fire — the sweep fails if any rule
+>   is silent everywhere. `packages/core/test/horizonGate.test.ts`. (The probe's own §9 grep still
+>   passes: the token is still there, for prose.)
+> - **R13-3 (A-12).** `syncResolutions` returns the trip **unchanged** if any rule threw during the
+>   detection it is deciding from — trip-wide, before any row is stamped, because mapping a stored
+>   `conflictId` back to its rule means parsing the id, which A-9 refused. `detect.ts` grows
+>   `detectUngatedChecked(trip, opts): { conflicts, crashed }`; **`detectUngated`'s array return
+>   shape is unchanged**, so §1/§5/§9's probe assertions still call it verbatim and stay independent
+>   evidence that A-11 worked. Neither name is on `index.ts`; 71 runtime symbols before and after.
+>   **§4 ×2 close.**
+> - **R13-2 (A-13).** The inert `setTripMeta({endDate})` call is deleted from
+>   `packages/core/test/retirementGate.test.ts` and the test renamed to the **clock crossing** it
+>   runs; every assertion and the pre-A-9 control are kept. A-13's tripwire is added — *no
+>   `feasibility` rule emits a finding whose subjects all resolve through §8.2 ruling 2's `endDate`
+>   fallback* — over the reference fixture and every injected-fault fixture, verified red by
+>   temporarily making `missing_lodging` emit a `{kind:'trip'}` subject. **§3 ×2 close**, and the
+>   two lines that close are **retired rather than fixed**: A-13 authorises replacing §3's first
+>   assertion with the tripwire, and the second measured a call the same ruling orders deleted, so
+>   it now checks what A-13 actually requires of the test file. BUILD-NOTES **KD-49**.
+> - **One number the ruling stated that measurement moved.** A-11 assertion 4 says `unbooked_ticketed`
+>   fires **three** times on the reference trip; it fires **ten** (the *three* are §2.7's three named
+>   fixture cases). The test keeps A-11's shape with the measured count and additionally asserts the
+>   three named cases are among the ten. BUILD-NOTES **KD-48**.
+> - **Verified, this pass:** `npm run typecheck` clean · `npm run test:tap` **554 pass / 0 fail**
+>   (539 at `78b490f`; +15 — 7 in the new `horizonGate.test.ts`, 7 net in `retirementGate.test.ts`,
+>   1 in `packages/client/test/retirement-clock.test.ts`) · `qa/r13-gate-citykey.mjs` **11 FAIL → 0**
+>   · `npm run golden` byte-identical, sample sha unmoved at `40955ca0b182`. Not run: any browser
+>   probe — nothing in `apps/web` changed.
 
 > **Builder follow-up, 2026-08-27 (after `be1ed01`) — R13-6 is CLOSED.** Scope was A-14 and
 > nothing else; R13-1…R13-5 were not touched by this pass (A-11/A-12/A-13 were built in a parallel
