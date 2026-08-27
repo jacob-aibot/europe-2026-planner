@@ -184,3 +184,28 @@ test('--force still cannot write outside cairn/, through a symlink or otherwise'
     rmSync(outside, { recursive: true, force: true });
   }
 });
+
+/**
+ * ROADMAP Phase 2 I-1: `cli.ts trip` prints the trip's lifecycle stage, driven by the
+ * existing `--today` flag. This is the first time the product can say a trip has ended —
+ * the reference trip ran 2026-08-07 → 2026-08-22 and today is after that.
+ */
+test('cli trip prints the lifecycle stage, and --today drives it', () => {
+  const cases: Array<[string, string]> = [
+    ['2026-08-01', 'planned'],    // FIXTURE_TODAY, before the trip starts
+    ['2026-08-07', 'active'],     // startDate
+    ['2026-08-22', 'active'],     // endDate — inclusive
+    ['2026-08-27', 'completed'],  // the day this increment was written
+  ];
+  for (const [today, stage] of cases) {
+    const r = cli('trip', '--today', today);
+    assert.equal(r.code, 0, r.err);
+    assert.match(r.out, new RegExp(`\\b${stage}\\b`), `--today ${today} did not report "${stage}":\n${r.out}`);
+  }
+});
+
+test('cli trip with no --today still runs and reports a stage at FIXTURE_TODAY', () => {
+  const r = cli('trip');
+  assert.equal(r.code, 0, r.err);
+  assert.match(r.out, /\bplanned\b/, r.out);
+});

@@ -61,7 +61,11 @@ export { acceptCandidate, rejectCandidate } from './build/candidates.ts';
 export { copyStopInto } from './build/copyStop.ts';
 export type { CopyStopSource, CopyStopCtx } from './build/copyStop.ts';
 
-// ---- derive (21) -------------------------------------------------------------
+// ---- derive (22) -------------------------------------------------------------
+// `lifecycle` joins in revision 10 under P2: §8.1 names it, and §8.9 is the documentation
+// change §2.10's own rule requires before a symbol may reach this file.
+export { lifecycle } from './derive/lifecycle.ts';
+export type { Lifecycle } from './derive/lifecycle.ts';
 export { computeLegs, dayMovingMinutes, dayDistanceKm, fmtMins } from './derive/legs.ts';
 export { stopLatLng } from './derive/geo.ts';
 export { geoCheck, GEO_LIMIT_KM } from './derive/geoCheck.ts';

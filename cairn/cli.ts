@@ -46,7 +46,11 @@ const money = (roll: core.CostRollUp) =>
 
 function cmdTrip() {
   const s = core.tripSummary(trip);
-  out(`${trip.title}  ${trip.startDate} → ${trip.endDate}  (owner ${trip.ownerId}, rev ${trip.revision})`);
+  // §8.1: the stage is DERIVED from (trip, today) — there is no stored status field. `--today`
+  // is what drives it, and it already defaults to FIXTURE_TODAY.
+  const stage = core.lifecycle(trip, today);
+  out(`${trip.title}  ${trip.startDate} → ${trip.endDate}  [${stage}]  (owner ${trip.ownerId}, rev ${trip.revision})`);
+  out(`stage: ${stage}  (as of ${today})`);
   out(`${s.dayCount} days · ${s.stopCount} scheduled stops · ${s.poolCount} pooled · ${trip.places.length} places · ${trip.bookings.length} bookings`);
   out('');
   for (const c of core.orderedCities(trip)) {

@@ -12,8 +12,9 @@
  * against cannot be "110 against 50, enumerated". BUILD-NOTES KD-33, which supersedes
  * KD-19 — the entry that recorded the gap as enumerated rather than narrowed.
  *
- * So: one array, 70 entries, set equality both ways. (69 in revision 5; `reassertRetirements`
- * joins in revision 6 under §2.7 A-5.) A symbol added to `index.ts` without
+ * So: one array, 71 entries, set equality both ways. (69 in revision 5; `reassertRetirements`
+ * joins in revision 6 under §2.7 A-5; `lifecycle` joins in revision 10 under §8.1/§8.9,
+ * Phase 2 I-1.) A symbol added to `index.ts` without
  * being added to §2.10 fails; a symbol in §2.10 that is not exported fails. Widening the
  * surface is a documentation change first — add the caller or add the section that names
  * it, then add the line.
@@ -30,7 +31,7 @@ import * as core from '../src/index.ts';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CAIRN = resolve(HERE, '..', '..', '..');
 
-/** §2.10, transcribed. Runtime symbols only — 70 of them, grouped as the section groups them. */
+/** §2.10, transcribed. Runtime symbols only — 71 of them, grouped as the section groups them. */
 const THE_LIST = [
   // model (7)
   'LOCAL_OWNER', 'SCHEMA_VERSION', 'sequentialIds', 'formatRange', 'costFromDisplay',
@@ -40,12 +41,12 @@ const THE_LIST = [
   'addStop', 'updateStop', 'removeStop', 'moveStop', 'reorderStop',
   'scheduleFromPool', 'returnToPool', 'poolFor',
   'acceptCandidate', 'rejectCandidate', 'copyStopInto', 'upsertBooking', 'linkBooking',
-  // derive (21)
+  // derive (22)
   'computeLegs', 'dayMovingMinutes', 'dayDistanceKm', 'fmtMins',
   'clusterStops', 'focusCluster', 'fitSpanKm', 'MIN_SPAN_KM', 'mapBounds', 'stopPoints', 'stopLatLng',
   'rollUpCost', 'displayStatus', 'attribution',
   'cityRange', 'daysForCity', 'orderedCities', 'weekdayOf', 'tripSummary',
-  'geoCheck', 'GEO_LIMIT_KM',
+  'geoCheck', 'GEO_LIMIT_KM', 'lifecycle',
   // conflict (6)
   'detectConflicts', 'RULES', 'resolveConflict', 'unresolveConflict', 'syncResolutions',
   'reassertRetirements',
@@ -66,9 +67,9 @@ const THE_LIST = [
 const runtimeExports = () =>
   Object.keys(core).filter((k) => typeof (core as Record<string, unknown>)[k] !== 'undefined');
 
-test('§2.10 is 70 symbols, and the list in this file is exactly that long', () => {
-  assert.equal(THE_LIST.length, 70, 'the transcribed list is no longer §2.10\'s stated size');
-  assert.equal(new Set(THE_LIST).size, 70, 'the list has a duplicate');
+test('§2.10 is 71 symbols, and the list in this file is exactly that long', () => {
+  assert.equal(THE_LIST.length, 71, 'the transcribed list is no longer §2.10\'s stated size');
+  assert.equal(new Set(THE_LIST).size, 71, 'the list has a duplicate');
 });
 
 test('the index exports exactly §2.10\'s list — set equality, both directions', () => {

@@ -504,8 +504,9 @@ not decoration.
 - **`cli export` refuses any path that normalises outside `cairn/`** `[stated]`
 - **The dependency-direction test exists and passes**, including "nothing under `apps/` imports
   `tools/extract-legacy.mjs`" `[stated]`
-- **`packages/core/src/index.ts`'s runtime exports equal §2.10's list exactly — 70 symbols** (69 in revision
-  5; `reassertRetirements` joins in revision 6 under P1, §2.7 A-5), **one list, set
+- **`packages/core/src/index.ts`'s runtime exports equal §2.10's list exactly — 71 symbols** (69 in revision
+  5; `reassertRetirements` joins in revision 6 under P1, §2.7 A-5; `lifecycle` joins in revision 10 under
+  P2, §8.1/§8.9, counted in Phase 2 I-1's own pass), **one list, set
   equality in both directions** `[stated]`. Rewritten in revision 5, because the criterion as met was
   satisfied by construction: the test asserted equality against the **union** of `SECTION_2_10` (50) and
   `BEYOND_2_10` (60), which is 110 = 110 for any 110 exports, and QA found 42 of the 60 per-symbol
@@ -515,7 +516,7 @@ not decoration.
   > second list, of the identifier `BEYOND_2_10`, and of the string `INTERNAL` — a symbol the test itself
   > calls internal is a symbol that is not exported. The assertion is
   > `setEquals(Object.keys(runtimeExportsOf(index)), THE_LIST)` in both directions, and `THE_LIST` is §2.10's
-  > list transcribed, **70 entries**. Type-only exports are excluded from the set by construction (they do
+  > list transcribed, **71 entries**. Type-only exports are excluded from the set by construction (they do
   > not exist at runtime) and the criterion says so rather than leaving a tester to discover it.
   >
   > **Plus the two ceilings that stop the list drifting back:** (1) grep `packages/client/src`,

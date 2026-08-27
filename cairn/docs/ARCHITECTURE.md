@@ -1420,11 +1420,14 @@ This generalises the scripted checks in `CLAUDE.md` — the ones that caught bug
 
 ### 2.10 The public API surface
 
-**Settled in revision 5 (QA R2-12, KD-19); 69 → 70 in revision 6, for one symbol and one stated reason.**
+**Settled in revision 5 (QA R2-12, KD-19); 69 → 70 in revision 6, and 70 → 71 in revision 10, each for one
+symbol and one stated reason.**
 `reassertRetirements` joins under **P1** — `packages/client`'s `set()` calls it — and it is the same class as
 `syncResolutions`, which is already here: a pure build function the client must call because the client is
-where the trigger lives. §2.10's own enforcement rule is *"widening the surface is a documentation change
-first"*, and this line is that change. The list below is the whole contract: **70 runtime symbols**,
+where the trigger lives. **`lifecycle` joins under P2 in revision 10** (Phase 2 I-1): §8.1 specifies it by
+name, §8.9 is the documentation change, and `cli.ts` and `apps/web` are its callers. §2.10's own enforcement
+rule is *"widening the surface is a documentation change
+first"*, and these lines are that change. The list below is the whole contract: **71 runtime symbols**,
 one list, asserted as set equality in both directions against the runtime exports of
 `packages/core/src/index.ts`. It replaces a two-list arrangement — 50 "in §2.10" plus 60 "beyond §2.10, each
 with a justification" — that made the criterion true by construction against 110 exports. A boundary the
@@ -1439,10 +1442,11 @@ A symbol is on the surface if **either**:
 (`reassertRetirements`, called by the store's `set()` — §2.7 A-5), counting the reducer's string-keyed
 `ACTION_SPECS[…].coreFn` dispatch as a call site, because it is one.
 
-**(P2) a numbered section of this document specifies it by name as a callable or a constant.** 19 symbols —
-things Phase 1 has no caller for yet but Phase 2 or Phase 4 is being written against: the access predicates
-(§6.2), `geoCheck`/`GEO_LIMIT_KM` (§2.13), `clusterStops`/`MIN_SPAN_KM` (§2.5), `SCHEMA_VERSION`/`migrateDoc`
-(serialization), `TripParseError`, `RULES`, and the redaction four (§6.6).
+**(P2) a numbered section of this document specifies it by name as a callable or a constant.** 19 symbols in
+revision 6, **20 in revision 10** — things a phase has no caller for yet, or that a section names outright:
+the access predicates (§6.2), `geoCheck`/`GEO_LIMIT_KM` (§2.13), `clusterStops`/`MIN_SPAN_KM` (§2.5),
+`SCHEMA_VERSION`/`migrateDoc` (serialization), `TripParseError`, `RULES`, the redaction four (§6.6), and
+`lifecycle` (§8.1, §8.9).
 
 Everything else is internal, whether or not it is currently exported. **Tests do not create surface.**
 `packages/core`'s own tests, `cairn/test/` and `cairn/qa/` may import a module path directly
@@ -1451,7 +1455,7 @@ would make every internal public. The un-export pass therefore rewrites some pro
 index to the module path; that is the expected shape of the change, not a regression.
 
 ```
-packages/core/src/index.ts re-exports exactly this and nothing else — 70 runtime symbols:
+packages/core/src/index.ts re-exports exactly this and nothing else — 71 runtime symbols:
 
   model (7)      LOCAL_OWNER · SCHEMA_VERSION · sequentialIds · formatRange · costFromDisplay
                  TripParseError · ForeignDocumentError
@@ -1463,11 +1467,12 @@ packages/core/src/index.ts re-exports exactly this and nothing else — 70 runti
                  acceptCandidate / rejectCandidate(trip, ref, actorUserId: UserId, at)  // NOT nullable — §2.14
                  copyStopInto(target, source, placement, ctx)        // §2.14 — the social primitive
                  upsertBooking · linkBooking
-  derive (21)    computeLegs(day, trip) · dayMovingMinutes(day, trip) · dayDistanceKm(day, trip) · fmtMins
+  derive (22)    computeLegs(day, trip) · dayMovingMinutes(day, trip) · dayDistanceKm(day, trip) · fmtMins
                  clusterStops · focusCluster · fitSpanKm · MIN_SPAN_KM · mapBounds · stopPoints · stopLatLng
                  rollUpCost · displayStatus · attribution
                  cityRange · daysForCity · orderedCities · weekdayOf · tripSummary
                  geoCheck · GEO_LIMIT_KM                             // §2.13 — one implementation
+                 lifecycle(trip, today)                              // §8.1 — derived, never stored
   conflict (6)   detectConflicts · RULES · resolveConflict · unresolveConflict · syncResolutions
                  reassertRetirements(trip, retired)                  // §2.7 A-5 — the retirement ledger
   validate (2)   validateTrip · issueCounts
