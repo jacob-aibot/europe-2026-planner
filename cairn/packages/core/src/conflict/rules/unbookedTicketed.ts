@@ -16,6 +16,8 @@ export const UNBOOKED_HORIZON_DAYS = 60;
 export const unbookedTicketed: Rule = {
   id: 'unbooked_ticketed',
   description: 'A ticketed stop that has not been booked yet.',
+  /** §8.2: "book this within N days" is meaningless afterwards. */
+  class: 'feasibility',
   run(ctx) {
     if (!ctx.today) return [];
     const out: Conflict[] = [];

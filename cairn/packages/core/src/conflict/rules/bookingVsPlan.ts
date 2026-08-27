@@ -27,6 +27,8 @@ export const BOOKING_TIME_TOLERANCE_MINS = 30;
 export const bookingVsPlan: Rule = {
   id: 'booking_vs_plan',
   description: 'A booking says something different from the stop it is attached to.',
+  /** §8.2: it asserts the plan cannot happen as written, which is the blocker definition. */
+  class: 'feasibility',
   run(ctx) {
     const out: Conflict[] = [];
     const byId = new Map(ctx.trip.bookings.map((b) => [b.id, b]));

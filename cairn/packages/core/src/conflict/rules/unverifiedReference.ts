@@ -12,6 +12,8 @@ import type { Rule } from './types.ts';
 export const unverifiedReference: Rule = {
   id: 'unverified_reference',
   description: 'A booking reference nobody has a document for.',
+  /** §8.2: a reference nobody could verify stays unverified. */
+  class: 'integrity',
   run(ctx) {
     const out: Conflict[] = [];
     for (const b of ctx.trip.bookings) {

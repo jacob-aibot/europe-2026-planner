@@ -49,6 +49,8 @@ function whereOf(trip: Trip, kind: string, id: string): string {
 export const geoOutlier: Rule = {
   id: 'geo_outlier',
   description: 'A coordinate sits far outside everything else in the trip.',
+  /** §8.2: a coordinate typo is wrong forever, and the lifetime map now renders it. */
+  class: 'integrity',
   run(ctx) {
     const out: Conflict[] = [];
     for (const f of geoCheck(ctx.trip)) {

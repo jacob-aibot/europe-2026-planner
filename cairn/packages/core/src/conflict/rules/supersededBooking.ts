@@ -10,6 +10,8 @@ import type { Rule } from './types.ts';
 export const supersededBooking: Rule = {
   id: 'superseded_booking',
   description: 'The same ticket reference exists in two issues.',
+  /** §8.2: two records disagreeing about one thing is a fact about the records. */
+  class: 'integrity',
   run(ctx) {
     const groups = new Map<string, Booking[]>();
     for (const b of ctx.trip.bookings) {

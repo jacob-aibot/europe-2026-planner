@@ -13,6 +13,8 @@ import type { Rule } from './types.ts';
 export const legacyFlag: Rule = {
   id: 'legacy_flag',
   description: 'A day the author marked as needing attention.',
+  /** §8.2: the user marked this day themselves; retiring their own flag is not ours to do. */
+  class: 'integrity',
   run(ctx) {
     const out: Conflict[] = [];
     for (const day of ctx.trip.days) {

@@ -16,6 +16,8 @@ function routeKey(b: Booking): string | null {
 export const duplicateBooking: Rule = {
   id: 'duplicate_booking',
   description: 'Two different bookings cover the same journey on the same day.',
+  /** §8.2: two records disagreeing about one thing is a fact about the records. */
+  class: 'integrity',
   run(ctx) {
     const groups = new Map<string, Booking[]>();
     for (const b of ctx.trip.bookings) {

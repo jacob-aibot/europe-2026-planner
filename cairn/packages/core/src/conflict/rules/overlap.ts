@@ -44,6 +44,8 @@ function occupancy(s: Stop): { mins: number; derived: boolean } | null {
 export const overlap: Rule = {
   id: 'overlap',
   description: 'Two stops on the same day are scheduled on top of each other.',
+  /** §8.2: two things you already did do not clash. */
+  class: 'feasibility',
   run(ctx) {
     const out: Conflict[] = [];
     for (const day of ctx.trip.days) {

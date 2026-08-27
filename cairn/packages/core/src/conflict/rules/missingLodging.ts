@@ -26,6 +26,8 @@ function coveredByBooking(trip: Trip, cityKey: CityKey, nightDate: string): bool
 export const missingLodging: Rule = {
   id: 'missing_lodging',
   description: 'A night in a city with no lodging booked.',
+  /** §8.2: you slept somewhere; the record is merely incomplete. */
+  class: 'feasibility',
   run(ctx) {
     const trip = ctx.trip;
     type Night = { cityKey: CityKey; date: string; nextDate: string };

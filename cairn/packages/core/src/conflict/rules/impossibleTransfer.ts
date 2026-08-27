@@ -27,6 +27,8 @@ import type { Rule } from './types.ts';
 export const impossibleTransfer: Rule = {
   id: 'impossible_transfer',
   description: 'The journey into a stop is longer than the time available before it.',
+  /** §8.2: you cannot miss a connection you already made. */
+  class: 'feasibility',
   run(ctx) {
     const out: Conflict[] = [];
     for (const day of ctx.trip.days) {
