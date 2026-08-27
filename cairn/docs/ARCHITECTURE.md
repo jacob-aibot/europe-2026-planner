@@ -26,6 +26,17 @@ refusal that shows on screen and re-arms the debounce (§4.2 rule 6a″, QA R6-1
 surface is settled at **69 runtime symbols**, derived by a stated principle rather than enumerated against
 itself (QA R2-12, KD-19). §2.2 and §2.5 pick up three documented-shape drifts in the same pass.
 
+**Revision 6, 2026-08-27.** QA round 8 falsified two promises revision 5 made, both on paths a user reaches
+in four clicks. Two rulings, no redesign, and the engine still does not move. **A-5** (§2.7, §4.2 rule 5, QA
+R8-1): retirement is *monotone metadata*, not document history — it lives in the document because it must
+persist, and a **retirement ledger** outside `history` re-asserts it after every snapshot restore, so undo
+reverts the user's edits and never the bookkeeping. **A-6** (§2.13, QA R8-2): revision 5's *"Places need no
+row of their own"* paragraph is **withdrawn** — its premise (an unrecognised `cityKey` yields `nearest ===
+null`) is false for any trip with a `homeBase`, which is the field §2.13 itself added, so a copied `Place`
+mints a blocker. A place whose only referents are copied stops is now exempt, derived at evaluation time
+with **no change to `Place`'s shape**. §2.10 moves 69 → 70 runtime symbols as a mechanical consequence of
+A-5, and for no other reason.
+
 **Phase 1 is §2 and §4.** Everything else is the shape those two must not foreclose. See `ROADMAP.md`.
 
 ## Read only your sections
@@ -42,9 +53,9 @@ cairn/tools/doc-section ARCHITECTURE         # lists the sections and their size
 |---|---|---|---|
 | 0 | Six positions, stated up front | <1k | everyone — read it, it is 20 lines |
 | 1 | Stack decision and the capability checks behind it | 3k | architect. Settled; do not re-litigate |
-| 2 | **Domain model — the builder's contract.** §2.12 `travelRole`, §2.13 geography and §2.14 import/copy are new in revision 2 and are where the Phase 1 rework lives; **§2.2a (the `StorageVersion` write fence, revision 3) and §2.2b (the freshness rule it turned out to be one instance of, revision 4) are read together with §4.2 and §4.3, never alone**; §2.10 (the export surface) and §2.13's copied-record row are settled in revision 5 | 22k | builder, breaker |
+| 2 | **Domain model — the builder's contract.** §2.12 `travelRole`, §2.13 geography and §2.14 import/copy are new in revision 2 and are where the Phase 1 rework lives; **§2.2a (the `StorageVersion` write fence, revision 3) and §2.2b (the freshness rule it turned out to be one instance of, revision 4) are read together with §4.2 and §4.3, never alone**; §2.10 (the export surface) and §2.13's copied-record row are settled in revision 5; **§2.7's retirement ledger (A-5) and §2.13's copy-borne `Place` rule (A-6) are revision 6** | 22k | builder, breaker |
 | 3 | Module boundaries | <1k | builder |
-| 4 | **The Phase 1 client.** §4.2 rule 6 (a pending write is never outlived by its document) is new in revision 3 — QA R3-2; rule 6a′ and the `savedDoc` predicate are revision 4 — QA R4-1; **rule 6a″ (the flush bound and its exits) and rule 6c's "delete goes on the chain" are revision 5** — QA R6-1/R6-2/R7-3 | 6k | builder |
+| 4 | **The Phase 1 client.** §4.2 rule 6 (a pending write is never outlived by its document) is new in revision 3 — QA R3-2; rule 6a′ and the `savedDoc` predicate are revision 4 — QA R4-1; **rule 6a″ (the flush bound and its exits) and rule 6c's "delete goes on the chain" are revision 5** — QA R6-1/R6-2/R7-3; **rule 5's retirement carve-out is revision 6** — QA R8-1, read with §2.7 | 6k | builder |
 | 5 | The four hard subsystems | 1k | breaker; builder from Phase 3 on |
 | 6 | Privacy, authorization, deletion cascade | 2k | breaker, manager; builder for §6.2 |
 | 7 | Explicitly deferred | <1k | anyone about to build something not in the roadmap |
@@ -788,6 +799,98 @@ dismissed this on 12 Aug; it has come back."* This also stops `trip.resolutions`
 changes nothing else — a resolved conflict still renders, dimmed. **No code path in core edits a stop in
 response to a conflict.**
 
+#### A-5 — retirement is monotone metadata, and undo does not un-retire it (revision 6, QA R8-1)
+
+**The defect, in one sentence.** `syncResolutions` writes `retiredAt` into the document *outside* the
+reducer — correctly, because retirement is bookkeeping and §2.7 forbids it from consuming an undo slot — but
+§4.2 rule 5's undo is a snapshot restore over that same document, and `history.past` already holds the
+pre-retirement `Trip`. Ctrl+Z therefore restores `retiredAt: null` and a dismissed **blocker** renders again
+as *"Marked dismissed on <date>"* after a keystroke that acknowledged nothing. QA measured it in Chromium in
+four user actions (`qa/r8-undo.mjs`). §2.7's *"never un-retires"* and §2.7's *"not undoable document state"*
+were both true of the code and were not reconciled with each other.
+
+**The position.** *Undo restores the plan. It does not restore the user's ignorance of what has already been
+retired.* Retirement is not a step in the document's history; it is a **monotone fact about a `conflictId`**,
+discovered once and true from then on. It is stored in the document because it has to survive a reload, and
+that storage location is what made it look like history. It is not history.
+
+Two mechanisms were rejected before this one and the reasons are the ruling's own evidence:
+
+- **Re-running `syncResolutions` after undo cannot work.** After the restore the conflict is live again, so
+  the rule sees nothing to retire. QA's finding says this, and it is right: the mechanism cannot distinguish
+  *"never retired"* from *"un-retired by a snapshot"* without remembering something.
+- **Moving `retiredAt` out of `Trip` entirely is the expensive answer to the cheap question.** It is a second
+  persisted structure with its own storage record, its own place in the §6.3 deletion cascade, its own
+  export/round-trip parity and its own migration. The thing that must be remembered is one date per
+  `conflictId`; a document already carries it.
+
+**The mechanism — a retirement ledger, in client state, outside `history`.**
+
+```ts
+// packages/core/src/conflict/resolve.ts — pure, next to syncResolutions
+reassertRetirements(trip: Trip, retired: ReadonlyMap<ConflictId, IsoDate>): Trip
+```
+
+Sets `retiredAt = retired.get(r.conflictId)` on every resolution row whose `retiredAt === null` and whose
+`conflictId` the ledger holds. Returns the **same reference** when nothing changed; bumps `revision` when
+something did, exactly as `syncResolutions` does. It changes no other field of any record, ever — that
+sentence is the whole of §4.2 rule 5's carve-out and the builder writes a test that asserts it.
+
+`AppState` gains one field, and it is neither persisted, exported, nor in `history`:
+
+```ts
+retired: { tripId: TripId; marks: ReadonlyMap<ConflictId, IsoDate> } | null;
+```
+
+There is **exactly one place it is read or written**: `set()`. This is deliberate and it is the R3-3 pattern
+— one assignment site, so no path can opt out — rather than a closed list of callers to keep in step.
+
+**`set(next, opts?: { reseed?: boolean })`, in five mechanical steps:**
+
+1. If `next.doc === state.doc` (reference identity) → assign and emit, unchanged. Every UI-only `set` takes
+   this branch; the cost is one comparison.
+2. If `opts.reseed` is true → `retired` becomes **exactly** `next.doc`'s own retired rows (`null` when
+   `next.doc === null`), and **no re-assertion runs**. The document that just arrived is the authority.
+3. Otherwise, if `state.retired === null` or `state.retired.tripId !== next.doc.id` → same as step 2. (A
+   ledger is per trip; conflict ids are content-addressed over subject ids, which do not cross trips, and a
+   ledger that outlived its trip would only grow.)
+4. Otherwise **absorb**: for every row of `next.doc.resolutions` with `retiredAt !== null`, record
+   `marks[conflictId] = retiredAt` **if the key is absent** — first write wins, so the recorded date is the
+   earliest retirement this session observed and does not drift.
+5. Then **re-assert**: `next.doc = reassertRetirements(next.doc, marks)`. Assign and emit **once**, with the
+   corrected document — never a `set` for the restored snapshot followed by a second `set` for the fix, or
+   subscribers render the stale *"Marked dismissed"* for a frame, which is the defect.
+
+**`reseed: true` is passed by exactly the paths that install a document from outside this store's own
+edits** — §4.2 rule 6a's closed list (`closeTrip`, `openTrip`, `createTrip`, `adoptTrip`, `importDoc`,
+`deleteTrip`) plus `doMerge`'s result. Seven paths; an eighth path that installs a document without passing
+it is a defect, checked the way rule 6a's list is checked. Merge reseeds rather than absorbs because the
+merged document is one storage and this tab have just *jointly agreed on*, at the user's explicit request,
+and the ledger's job is to defend against this store's own undo stack — not to outvote a merge.
+
+**Release, so a fresh answer is not stillborn.** `unresolveConflict` followed by a new `resolveConflict` for
+the same `conflictId` would otherwise have its brand-new live row stamped retired by the ledger on the very
+next `set`. So: **`dispatch` deletes the ledger entry for that conflict id before calling `set`, for exactly
+two action types** — `resolveConflict` (key: `action.resolution.conflictId`) and `unresolveConflict` (key:
+`action.conflictId`). Nothing else releases. This does not weaken *"never un-retires"*: both are deliberate
+user acts *on that exact conflict*, which is the opposite of the bookkeeping-with-no-user-action that §2.7
+exists to stop. Undoing past a release restores a live row, and that is the user's own answer being undone.
+
+**Two obligations on the builder that are easy to miss and expensive to get wrong:**
+
+- **After `set()`, the store reads `state.doc` — never the local it passed in.** `retireResolutions` today
+  ends `return derivedFor(derived, next, …)`; `next` is the pre-re-assertion document and keying the derived
+  cache on it is §2.2b F2 in miniature. It becomes `state.doc`.
+- **Re-assertion is idempotent and converges in one pass** (it only ever moves `null` → a date the ledger
+  already holds), so `set` → re-assert cannot recurse and `getDerived`'s existing one-pass convergence
+  argument still holds.
+
+**What is not persisted, and what happens on a hard kill.** The ledger is memory only and is reconstructed
+on load from the stored document's own `retiredAt` fields — there is no new storage record and no change to
+`toJSON`/`fromJSON`, the §6.3 cascade or `importDoc`. If the process dies before the retirement's autosave
+lands, the retirement is lost together with the edit that triggered it, which is the same guarantee every
+other edit in §4.2 has and no weaker.
+
 ### 2.8 Provenance
 
 ```ts
@@ -878,7 +981,11 @@ This generalises the scripted checks in `CLAUDE.md` — the ones that caught bug
 
 ### 2.10 The public API surface
 
-**Settled in revision 5 (QA R2-12, KD-19).** The list below is the whole contract: **69 runtime symbols**,
+**Settled in revision 5 (QA R2-12, KD-19); 69 → 70 in revision 6, for one symbol and one stated reason.**
+`reassertRetirements` joins under **P1** — `packages/client`'s `set()` calls it — and it is the same class as
+`syncResolutions`, which is already here: a pure build function the client must call because the client is
+where the trigger lives. §2.10's own enforcement rule is *"widening the surface is a documentation change
+first"*, and this line is that change. The list below is the whole contract: **70 runtime symbols**,
 one list, asserted as set equality in both directions against the runtime exports of
 `packages/core/src/index.ts`. It replaces a two-list arrangement — 50 "in §2.10" plus 60 "beyond §2.10, each
 with a justification" — that made the criterion true by construction against 110 exports. A boundary the
@@ -889,7 +996,8 @@ Phase 2 server and the Phase 4 native app are written against cannot be "110 aga
 A symbol is on the surface if **either**:
 
 **(P1) a consumer outside `packages/core` calls it today** — `packages/client`, `apps/web`, `cli.ts`,
-`fixtures/`, `tools/`. Measured, not assumed: 50 symbols, counting the reducer's string-keyed
+`fixtures/`, `tools/`. Measured, not assumed: 50 symbols in revision 5, **51 in revision 6**
+(`reassertRetirements`, called by the store's `set()` — §2.7 A-5), counting the reducer's string-keyed
 `ACTION_SPECS[…].coreFn` dispatch as a call site, because it is one.
 
 **(P2) a numbered section of this document specifies it by name as a callable or a constant.** 19 symbols —
@@ -904,7 +1012,7 @@ would make every internal public. The un-export pass therefore rewrites some pro
 index to the module path; that is the expected shape of the change, not a regression.
 
 ```
-packages/core/src/index.ts re-exports exactly this and nothing else — 69 runtime symbols:
+packages/core/src/index.ts re-exports exactly this and nothing else — 70 runtime symbols:
 
   model (7)      LOCAL_OWNER · SCHEMA_VERSION · sequentialIds · formatRange · costFromDisplay
                  TripParseError · ForeignDocumentError
@@ -921,7 +1029,8 @@ packages/core/src/index.ts re-exports exactly this and nothing else — 69 runti
                  rollUpCost · displayStatus · attribution
                  cityRange · daysForCity · orderedCities · weekdayOf · tripSummary
                  geoCheck · GEO_LIMIT_KM                             // §2.13 — one implementation
-  conflict (5)   detectConflicts · RULES · resolveConflict · unresolveConflict · syncResolutions
+  conflict (6)   detectConflicts · RULES · resolveConflict · unresolveConflict · syncResolutions
+                 reassertRetirements(trip, retired)                  // §2.7 A-5 — the retirement ledger
   validate (2)   validateTrip · issueCounts
   merge (2)      mergeTrips · describeMerge                          // §4.2 rule 6b's "merge with the stored copy"
   access (7)     canView · canComment · canEdit · canShare · canDelete · can · effectiveRole   // §6.2
@@ -1164,6 +1273,7 @@ quietly. There is no second radius, no `daytrip` exemption constant and no trave
 | **Pool stop** filed under city `c` | centre of `c` · every coordinate-bearing scheduled stop on a day whose `cities` include `c` |
 | **Place** filed under city `c` | the same set, minus any stop that resolves its `PlaceLink` **through this place** (or the record would anchor itself) |
 | **Any stop with `attribution(stop) !== null`** — a record `copyStopInto` produced (revision 5) | **none.** `confidence: 'unanchored'`, always. `km` and `nearest` are still measured against the row above so a view can say how far it is, but `geo_outlier` never publishes it |
+| **Any *copy-borne* `Place`** — at least one stop in this trip resolves its coordinate through it, and **every** such stop has `attribution(stop) !== null` (revision 6) | **the same as the Place row above, and the same treatment as the copied-stop row**: measured, `km` and `nearest` still computed, `confidence: 'unanchored'`, never published |
 | any record with no resolvable coordinate | not checked — `place_ref_dangling` and the `PlaceLink {kind:'none'}` path already cover it |
 
 `geo_outlier` publishes `confidence:'certain'` findings as blockers. `'unanchored'` is not published as a
@@ -1203,16 +1313,92 @@ themselves. Once `acceptCandidate` runs, it joins the anchor set like any other 
 that moves in: acceptance can only ever *add* anchors, so it can only ever *remove* a blocker, never create
 one. A transition that can mint a blocker is exactly what this ruling exists to stop.
 
-**Places need no row of their own, and here is why the table does not grow.** A `Place` carries no
-`provenance` (§2.2), so a copied place is not identifiable as one — and it does not need to be.
-`copyStopInto` rule 4 copies the place with its `cityKey` verbatim, so in the destination trip it is either
-filed under a city that trip *does* have — in which case its anchors are that city's centre and that city's
-stops, which is a meaningful measurement and should run — or under a city key that trip has never heard of,
-in which case the existing Place row already yields no anchor, `nearest === null`, and `'unanchored'`. Both
-outcomes are correct under the rules already written. Adding `Place.provenance` to serve this rule would be
-new persisted state bought for nothing.
+#### A-6 — the copied `Place`, and why revision 5's paragraph here is withdrawn (revision 6, QA R8-2)
 
-**A third honest limitation, alongside the two below**: a
+**Revision 5 said Places needed no row of their own. That paragraph is wrong and is withdrawn.** Its
+argument was a disjunction: a place `copyStopInto` rule 4 drags in is filed either under a city the
+destination trip *does* have — meaningful anchors, the check should run — or under a `cityKey` that trip has
+never heard of, *"in which case the existing Place row already yields no anchor, `nearest === null`, and
+`'unanchored'`"*. **The second disjunct is false, and it is falsified by this section's own new field.**
+`homeBase` is appended to every anchor list unconditionally, so any trip with a `homeBase` — the reference
+trip has one, LAX — offers the unrecognised place exactly one anchor, thousands of kilometres away.
+`nearest !== null`, `km > 35`, `confidence: 'certain'`, and QA measured the result: **one Browse-and-copy
+click puts a third `geo_outlier` blocker on the reference trip**, naming a record the user never typed a
+coordinate into and never accepted (`qa/r8-geo.mjs` §1).
+
+**(a) A-1's principle extends to the place. Yes, and for A-1's own three reasons, unchanged.** A place that
+is in this trip *only* because a stop copy brought it is not a claim the user has made about this trip's
+geography; measuring it against the destination's anchors checks the wrong claim; and the coordinate was
+already measured, against meaningful anchors, in the trip it came from — copying creates no new opportunity
+to catch a typo, only a new opportunity to false-positive on one already cleared. Above all, §0.5 governs
+here exactly as it governed the stop: *the copy path may not mint blockers by being used*, and ROADMAP C's
+promise that a third blocker appears only when somebody writes down why Jacob must act on it cannot survive
+a primitive that mints one per click.
+
+**(b) The implementation rule, exactly — and `Place`'s shape does not change.** The two candidate mechanisms
+were provenance on `Place` and derivation at evaluation time. **Derivation wins, decisively**, and adding
+`Place.provenance` is refused:
+
+- Rule 4 **reuses** an equivalent existing place in the target when `samePlace` matches, so a "copied" place
+  can be byte-identical to, and literally the same row as, one the user entered. A `provenance` field would
+  have to answer what the reuse branch stamps, and any answer is a judgment call handed to a builder.
+- It is new persisted state, in `toJSON`/`fromJSON` round-trip parity, `migrateDoc`, the §6.3 cascade and
+  `validateTrip`'s provenance rules (`origin_stripped`, `accepted_by_non_member`) — bought to express a fact
+  the document already contains.
+- §2.2's *"a Place is a description of the world, not a claim about the user"* is still right. That is why
+  it has no provenance, and this ruling does not disturb it.
+
+So, the rule a builder implements with no interpretation, in `geoCheck.ts`'s `---- places ----` loop:
+
+```ts
+// Built once, before the loop, over trip.days.flatMap(d => d.stops) then trip.pool, in
+// document order: placeId -> the stops whose PlaceLink names it.
+//
+// A Place is COPY-BORNE iff it has at least one such stop AND every one of them is isCopied().
+const linking = linkedBy.get(p.id) ?? [];
+const copyBorne = linking.length > 0 && linking.every(isCopied);
+const f = finding({ kind: 'place', id: p.id }, p.at, anchors, copyBorne ? 'unanchored' : 'certain');
+```
+
+Four clauses, each load-bearing, each stated so nobody has to infer it:
+
+1. **`linking.length > 0`.** A place with *no* stop pointing at it is a place the user keeps for its own
+   sake, or an orphan. It is measured at `'certain'` exactly as today; this rule does not touch it.
+2. **`every`, not `some`.** If even one stop the user wrote themselves resolves through this place, the
+   user's own plan rests on that coordinate, and a blocker on it is indistinguishable from — and is — the
+   Fisherman's Bastion case. The exemption is *"the only reason this record is here is a copy"*, and `every`
+   is the only reading of that sentence.
+3. **`isCopied`, i.e. `attribution(stop) !== null` — and NOT `provenance.state`.** This is what makes the
+   ruling monotone across acceptance, which is the half R8-2's sibling finding proves is not optional. See
+   the next paragraph.
+4. **`anchors` is computed unchanged**, including the existing self-exclusion of stops that resolve through
+   this place, so `km` and `nearest` are still real. §2.13's *"measure it and decline to publish"* applies
+   verbatim: an implementation that `continue`s past the record has implemented "skip", loses the distance,
+   and is wrong.
+
+**What happens when the copied stop is accepted: nothing, deliberately, and that is the whole point.**
+Because the clause keys on `attribution()` and not on `provenance.state`, accepting the copied stop does not
+make its place `'certain'`. Had it keyed on state, `acceptCandidate` would flip the place from exempt to
+measured and **mint a blocker at the moment of acceptance** — precisely the transition A-1 exists to forbid
+(*"acceptance can only ever add anchors, so it can only ever remove a blocker, never create one"*), and
+precisely the failure mode §0.5 rates as worse than a named blind spot. Acceptance stays monotone in the
+only direction it moves: the accepted stop joins `anchorable` (`anchorsOthers` already keys on state), so the
+place's coordinate starts serving as a `same_day`/`adjacent_day`/`city_stop` anchor for *other* records —
+**anchors are added, and a blocker can therefore only disappear.** No code change is needed on the anchor
+side at all: `Place` is not an anchor kind, a place's coordinate enters the anchor set only through a stop
+that resolves via it, and that stop's eligibility is already governed by `anchorsOthers`.
+
+**What ends the exemption is a user act, and it is the right one:** the moment the user creates a stop of
+their own linking to that place, `every(isCopied)` is false, the place is measured at `'certain'`, and a
+genuine outlier is reported — because that is the moment the coordinate becomes a claim about the user's own
+plan. Until then it is a record they have been told came from somewhere else.
+
+**The cost, stated rather than discovered later:** a coordinate typo that was already in the *source* trip's
+place travels with the copy and is not re-reported here. That is A-1's third rejection reason applied
+unchanged — the record was already measured where the anchors meant something — and it joins the numbered
+limitations list below rather than being left implicit.
+
+**Limitation 3 in the list below**: a
 coordinate typed *into* a copied stop after it was copied is invisible to this rule, because the row keys on
 `attribution(stop) !== null` and not on `provenance.state`. That is deliberate. Keying on state would make
 the same document produce different conflicts either side of a provenance transition — accepting a stop could
@@ -1240,7 +1426,8 @@ Compare the rule being replaced: 6 false blockers, 31 of 238 coordinate-bearing 
 the 95 places** — the record class the real bug lived in — looked at at all.
 **The Fisherman's Bastion typo is caught: 109.5 km from its nearest anchor, one blocker, naming `place-68`.**
 
-Two honest limitations, written down rather than discovered later:
+Four honest limitations, written down rather than discovered later (1 and 2 are measurement misses; 3 and 4
+are the stated cost of the two copy-path rows):
 
 1. **The two misses are `Blue Cave, Biševo` and `Stiniva Cove, Vis`.** Both are Split-filed island places
    ~55–64 km out; displaced 1° north they land within 35 km of the Aug 14 Krka day-trip stops, which are
@@ -1249,11 +1436,15 @@ Two honest limitations, written down rather than discovered later:
    class this exists for — one digit, one record, `HISTORY.md` and `CLAUDE.md` both — is a single outlier.
    A bulk error is a different problem and it is not this rule's job to pretend otherwise.
 3. A coordinate edited into a copied stop after the copy — the copied-record row above.
+4. A coordinate typo already present in a *copy-borne* `Place` in its source trip — A-6 above. Same reason
+   as 3, on the record class rule 4 drags across.
 
-**None of the numbers above move under revision 5.** The reference trip contains no record with
-`attribution(r) !== null`, so the clean run is still 0/112 and 0/94, the +1° detection rate is still 112/112
-and 92/94, and the Fisherman's Bastion blocker is untouched. The new row changes what happens to records the
-*copy path* creates and nothing else — which is why it is a row and not a rewrite.
+**None of the numbers above move under revision 5 or revision 6.** The reference trip contains no record with
+`attribution(r) !== null`, so no place in it can satisfy A-6's `every(isCopied)` either: the clean run is
+still 0/112 and 0/94, the +1° detection rate is still 112/112 and 92/94, and the Fisherman's Bastion blocker
+is untouched. Both rows change what happens to records the *copy path* creates and nothing else — which is
+why they are rows and not a rewrite. **The builder re-derives all four numbers rather than quoting them**;
+ROADMAP C states them as the ceiling.
 
 `Trip.homeBase` is the one new field the mechanism needs. It is real modelling, not a patch: a trip starts
 and ends somewhere, and the Europe trip starts and ends at LAX. It is nullable, the importer takes it from
@@ -1509,6 +1700,20 @@ Six rules, each of which exists because of a specific failure:
 5. **Undo/redo is snapshot-based** over the immutable `Trip`, limit 50. Structural sharing makes this cheap.
    The restored snapshot is byte-identical to the document it captured, `revision` included; it carries no
    authority over `savedVersion` (rule 4, §2.2a).
+
+   **One carve-out, and it is exactly one field (revision 6, QA R8-1).** `resolutions[].retiredAt` is
+   monotone metadata, not history: §2.7's A-5 ledger re-asserts it onto every restored snapshot, inside the
+   same `set()`, before any subscriber sees the state. So the guarantee reads, precisely: *the restored
+   snapshot is byte-identical to the document it captured except that a `resolutions[]` row whose `retiredAt`
+   was `null` may be restored carrying the date the ledger already holds for its `conflictId`, and `revision`
+   is bumped when that happens.* Nothing else moves — not a day, not a stop, not a place, not a booking, not
+   a resolution's `state`, `by`, `at` or `note`, and not a row the ledger has no key for. `reassertRetirements`
+   is a pure function whose only writable field is `retiredAt`, so this is enforced by the function's shape
+   and not by discipline, and the test asserts field-by-field equality over everything else.
+
+   The reducer's `undo`/`redo` stay pure snapshot restores and gain nothing: the ledger is applied by the
+   store, above them. **Retirement still never consumes an undo slot and is still never a user edit** — it
+   does not push onto `history.past`, and pressing undo *N* times reverts *N* of the user's own edits.
 6. **A pending write is never outlived by its document.** The five NO-SILENT-LOSS cases the criterion
    enumerated all keep the edit in memory; QA R3-2 found the sixth, where the edit's *container* goes away —
    a 400 ms debounced write is still pending and the active document is replaced, closed or deleted, so the

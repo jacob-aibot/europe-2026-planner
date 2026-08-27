@@ -131,6 +131,20 @@ rounds. The engine still does not move.
 `LatLng | null`; §2.5's `computeLegs(day, ctx: TripCtx)` is corrected to the shipped `computeLegs(day, trip)`
 — QA R2-21; §2.14 rule 5 gains `links`, which does copy.)*
 
+### Revision 6 — the two rulings QA round 8 routed to the architect
+
+Round 8 found four MAJORs and no BLOCKER. Two of them are user-reachable in four clicks each, and both
+defeat a promise revision 5 made, so both come back here. R8-3 and R8-4 are **not** in this revision and are
+not adjudicated by it. Neither ruling is a redesign; the engine still does not move.
+
+| # | Change | Closes | § |
+|---|---|---|---|
+| 15 | **A-5 — retirement is monotone metadata, not document history.** `retiredAt` stays in the document (it has to persist) and a per-trip **retirement ledger** in `AppState`, outside `history` and never persisted, re-asserts it onto every restored snapshot inside the same `set()`. `reassertRetirements(trip, retired)` is a new pure core function; `set(next, {reseed})` is its one read/write site; `resolveConflict`/`unresolveConflict` release the key. §4.2 rule 5's byte-identity guarantee gains **one** carve-out — `resolutions[].retiredAt`, `null` → a date the ledger already held — and nothing else moves. Retirement still consumes **no** undo slot. | R8-1 | 2.7, 4.2 rule 5, 2.10 |
+| 16 | **A-6 — a copy-borne `Place` is exempt too, and `Place`'s shape does not change.** Revision 5's *"Places need no row of their own"* paragraph is **withdrawn**: its premise (an unrecognised `cityKey` yields `nearest === null`) is false for any trip with a `homeBase`. A `Place` with ≥1 linking stop, **all** of them `attribution() !== null`, is measured but never `'certain'`. Derived in `geoCheck` at evaluation time — no `Place.provenance`. Keyed on `attribution()` and **not** on `provenance.state`, so acceptance still only ever adds anchors and can never mint a blocker. | R8-2 | 2.13 |
+
+*(§2.10 moves 69 → 70 runtime symbols as a mechanical consequence of row 15 and for no other reason;
+criterion E's list and its set-equality assertion take the one line. No other section moved.)*
+
 ### Deliverables
 
 ```
@@ -284,9 +298,26 @@ not decoration.
   > suppression the symmetric clause exists to prevent, the second is the stated consequence of accepting,
   > and a run where acceptance *creates* a blocker fails outright.
   >
-  > **Ceiling on the reference trip:** it contains no record with `attribution(r) !== null`, so all of
-  > §2.13's existing numbers must be unchanged by this row — 0/112 and 0/94 clean, 112/112 and 92/94 under
-  > +1°, and the Fisherman's Bastion blocker still fires. A run in which any of those moves fails `[stated]`
+  > **(c) The place the copy dragged in must not mint one either** (revision 6, §2.13 A-6, QA R8-2). On the
+  > same Lisbon trip, copy a stop whose `PlaceLink` is `{kind:'place'}` — so `copyStopInto` rule 4 copies the
+  > `Place` across — and assert all four of: `geoCheck` returns a finding for the copied place with
+  > `confidence:'unanchored'`, `nearest !== null` and `km` equal to the real distance (a finding with
+  > `nearest === null` is "skip the record", which is wrong); `detectConflicts` returns **zero**
+  > `geo_outlier` conflicts, a ceiling; **`acceptCandidate` on the copied stop leaves it at zero** — a run in
+  > which acceptance produces a `geo_outlier` naming that place fails outright, because A-6 keys on
+  > `attribution()` and not on `provenance.state` for exactly this reason; and finally, add a stop the *user*
+  > authored (`attribution() === null`) resolving through that same place, and the place becomes `'certain'`
+  > again — with a +1° fault injected into it, **exactly one** `geo_outlier` naming that place. The last half
+  > is what stops the exemption being a hole: `every`, not `some`.
+  >
+  > **And the four-click regression, on the real fixture:** the sequence QA measured — open the reference
+  > trip, browse a second trip, copy one place-linked stop across — leaves `detectConflicts` at **2**
+  > blockers, not 3. `[stated]` A run reporting 3 is R8-2.
+  >
+  > **Ceiling on the reference trip:** it contains no record with `attribution(r) !== null`, so no place in it
+  > can satisfy A-6's `every(isCopied)` either, and all of §2.13's existing numbers must be unchanged by both
+  > rows — 0/112 and 0/94 clean, 112/112 and 92/94 under +1°, and the Fisherman's Bastion blocker still
+  > fires. **Re-derive them; do not quote them.** A run in which any of those moves fails `[stated]`
 - **`geoCheck` detection rate under a +1° latitude fault, injected on each record in turn: 112/112 scheduled
   stops and 92/94 places.** The two permitted misses are `Blue Cave, Biševo` and `Stiniva Cove, Vis`,
   named in §2.13 `[stated]`
@@ -308,6 +339,26 @@ not decoration.
 - **A dismissal does not resurrect** `[stated]`: dismiss a conflict at value X, edit to Y, edit back to X →
   the conflict returns with `resolution === null` and a `detail` recording the earlier dismissal;
   `syncResolutions` has marked the old row `retiredAt`.
+- **Injected fault — undo does not un-retire** (rule 3; revision 6, §2.7 A-5, QA R8-1). The exact four-action
+  sequence QA measured, asserted in `packages/client` over the in-memory ports **and** repeated in Chromium
+  (`qa/r8-undo.mjs` is the shape) `[stated]`:
+
+  > Move a stop so a `booking_vs_plan` **blocker** appears; dismiss it; move the stop back (the next
+  > `getDerived()` retires the resolution — assert `retiredAt !== null` here); press **undo**. Assert, on the
+  > state the subscriber is handed and not on some later recompute: the restored resolution row still carries
+  > `retiredAt` set to **the same date** it was retired with, the returned conflict's `resolution` is `null`,
+  > and no rendered row anywhere reads *"Marked dismissed"* against a live blocker. Then press **redo** and
+  > **undo** again and assert it twice more — the ledger is monotone, so it must hold at every depth, not
+  > only the first.
+  >
+  > **Three ceilings on the same run, each of which fails it independently:** `history.past.length` moves by
+  > **exactly one** across the retirement plus the undo — retirement consumes no undo slot; the subscriber is
+  > called **once** for the undo, never once with the stale document and again with the corrected one; and
+  > `state.retired` is absent from `toJSON(state.doc)` and from anything written to the `StoragePort`.
+- **A re-answer is not stillborn** `[stated]`, the release half of A-5: after the sequence above,
+  `unresolveConflict` then `resolveConflict` the same id → the new row's `retiredAt` is `null` and **stays**
+  `null` across the next three `set()`s. A ledger that re-stamps a fresh answer has implemented "never
+  un-retires" as "never resolve again".
 
 #### D. Provenance, import and copy
 
@@ -381,7 +432,8 @@ not decoration.
 - **`cli export` refuses any path that normalises outside `cairn/`** `[stated]`
 - **The dependency-direction test exists and passes**, including "nothing under `apps/` imports
   `tools/extract-legacy.mjs`" `[stated]`
-- **`packages/core/src/index.ts`'s runtime exports equal §2.10's list exactly — 69 symbols, one list, set
+- **`packages/core/src/index.ts`'s runtime exports equal §2.10's list exactly — 70 symbols** (69 in revision
+  5; `reassertRetirements` joins in revision 6 under P1, §2.7 A-5), **one list, set
   equality in both directions** `[stated]`. Rewritten in revision 5, because the criterion as met was
   satisfied by construction: the test asserted equality against the **union** of `SECTION_2_10` (50) and
   `BEYOND_2_10` (60), which is 110 = 110 for any 110 exports, and QA found 42 of the 60 per-symbol
@@ -391,7 +443,7 @@ not decoration.
   > second list, of the identifier `BEYOND_2_10`, and of the string `INTERNAL` — a symbol the test itself
   > calls internal is a symbol that is not exported. The assertion is
   > `setEquals(Object.keys(runtimeExportsOf(index)), THE_LIST)` in both directions, and `THE_LIST` is §2.10's
-  > list transcribed, **69 entries**. Type-only exports are excluded from the set by construction (they do
+  > list transcribed, **70 entries**. Type-only exports are excluded from the set by construction (they do
   > not exist at runtime) and the criterion says so rather than leaving a tester to discover it.
   >
   > **Plus the two ceilings that stop the list drifting back:** (1) grep `packages/client/src`,
@@ -400,7 +452,7 @@ not decoration.
   > **zero**, which is what makes `tools/redact.mjs`'s deep import into `build/redactText.ts` fail until the
   > redaction four are on the index; (2) every name in `THE_LIST` satisfies §2.10's derivation — it is either
   > called from outside `packages/core` or named in a numbered section of `ARCHITECTURE.md`. The second half
-  > is checkable by grep and is the *principle* being asserted, not 69 hand-written justifications; a symbol
+  > is checkable by grep and is the *principle* being asserted, not 70 hand-written justifications; a symbol
   > that satisfies neither is removed from the index, not annotated. `cairn/test/` and `cairn/qa/` are
   > exempt from ceiling (1) by design: tests may import a module path directly, because tests do not create
   > surface `[stated]`
@@ -424,7 +476,14 @@ not decoration.
   array or any other memo key; expect none. `DayMap`'s effect was one, and a dependency array is `===`
   suppressing work, which is exactly what §2.2a rule 1 forbids `[stated]`
 - undo/redo restores the previous `Trip` exactly, to a depth of 50 — **byte-identical, `revision` included**,
-  because §2.2a makes `revision` content and not a fence `[stated]`
+  because §2.2a makes `revision` content and not a fence `[stated]`. **One carve-out, revision 6 (§4.2 rule 5,
+  §2.7 A-5, QA R8-1), and the criterion is written as a ceiling on it:** a `resolutions[]` row whose
+  `retiredAt` was `null` may come back carrying the date the retirement ledger already holds for its
+  `conflictId`, and `revision` is bumped when that happens. Assert it as **field-by-field equality over the
+  whole document with `resolutions[].retiredAt` and `revision` excluded**, plus: the only rows that differ are
+  rows the ledger has a key for, the value written equals the ledger's value exactly, and **no `retiredAt`
+  ever goes from a date back to `null`**. A criterion that just skips `resolutions` would let a resolution's
+  `state`, `by`, `at` or `note` drift through the same hole `[stated]`
 - **Undo cannot readmit a refused write** (injected fault for §2.2a, QA R3-1). Two stores at the same
   starting point; A saves; B saves and is refused; **A presses undo and its autosave completes**; then B
   dispatches another edit and saves. B MUST still be `'conflict'`, B's indicator string MUST NOT be "Saved",
