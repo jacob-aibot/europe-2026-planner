@@ -5,6 +5,12 @@
 paraphrase of them. This document is the *decision* that follows from it: what to build next, in what
 order, what to design now and what to leave alone.
 
+**Second input, same day: Jacob's travel-distance clarification**, preserved verbatim in **Appendix B**. It
+changes one line of §3's table into five and changes **nothing** about Phase 2 — distance is architected in
+`ARCHITECTURE.md` **§8.10** and built in phases 4, 5b and 7. It is recorded here because the previous
+classification (*"travel miles — safely defer both"*) is now wrong in a way a reader would otherwise carry
+forward.
+
 **Where the authority lives, so this file never becomes a second contract:**
 
 | Question | Authoritative document |
@@ -14,8 +20,10 @@ order, what to design now and what to leave alone.
 | Phases, deliverables, acceptance criteria | `ROADMAP.md` — revision 9 |
 | **Why this order and not another; what is deferred and why** | **this file** |
 
-≈7k tokens. Read it whole if you are the architect or the manager; §1, §4 and §6 if you are building Phase
-2; §3 if you are about to build something that is not in the roadmap.
+≈9k tokens. Read it whole if you are the architect or the manager; §1, §4 and §6 if you are building Phase
+2; §3 if you are about to build something that is not in the roadmap. **Appendix B and §3's distance rows
+are not Phase 2 reading** — they are the long-term classification, and a Phase 2 builder who acts on them
+has pulled a later phase forward.
 
 The thesis in one sentence, because everything below is downstream of it:
 
@@ -118,7 +126,11 @@ Every capability the thesis names, classified. **"Architect now"** means a decis
 | Goals and achievements | **Architect now in one line — derived, never counted — build in Phase 7** | §8.8 |
 | Destination discovery through people | **Build in Phase 7.** A query over shares and history, not a recommendation engine | §2 above |
 | Yearly recap, travel passport | **Build in Phase 7.** Pure derive; cheap once stats exist, empty before | §8.4 |
-| Travel miles / flight miles | **Safely defer both.** Needs airport data and real instants — and a mileage derived from a *plan* is a fabricated statistic | §8.8 |
+| ~~Travel miles / flight miles~~ — **superseded 2026-08-27 by Jacob's distance clarification**; classified per mode and per provenance in the four rows below | *(the wholesale deferral is withdrawn; the reason behind it is not — see the last row)* | §8.10 |
+| **Air distance** (airport-to-airport, verified/completed flights) | **Architect now, build in Phase 7 — and it is blocked on Phase 4, not on the phone.** The great circle is trivial; the hard part is a *verified endpoint pair*, and `Booking.route` is free text today (`"Los Angeles (LAX)"` is a display string). Structured `fromCode`/`toCode` land in Phase 4 with the parser that can fill them honestly. **No airline integration is needed for this** — Jacob is right about that — only a bundled public-domain airport index | §8.10.3, §8.10.4 |
+| **Ground-mode distance** — train, car/road, walking/hiking, cycling, boat/ferry | **Architect now, build after Phase 5b.** Every one of them needs an *observed* track, which is the first automatic data in the product. The one exception is a distance an operator's own document states (a rail ticket saying 412 km), which is `derived` and could arrive with Phase 4's parsers | §8.10.5 |
+| **Planned distance** (what the itinerary implies) | **Never counts.** It may be shown, labelled, in its own block; it may not enter a lifetime total, a goal or an achievement. This is the part of the old deferral that stands verbatim | §8.10.1 |
+| **Airline / loyalty rewards** (SkyMiles, AAdvantage, MileagePlus) | **Safely defer both — unscheduled, but *not* refused.** They are not a distance (fare- and status-derived, different per programme for the same seat), they are a third-party integration surface in the mailbox-OAuth family, and no phase plans for them. Forbidden in advance: a loyalty figure may never be written into a `Journey` or into any total containing physical travel | §8.10.7 |
 | Live / overlapping travellers | **Refused, not deferred.** It requires the server to hold where someone is *now*, which inverts the product's central privacy claim | §8.8 |
 | Chat, payments, recommendation ML, public feed | **Safely defer both** — the brief's standing non-goals | §7 of ARCHITECTURE |
 
@@ -445,8 +457,8 @@ free before spending the ones that cannot.
 
 | # | Principle | Enforced by |
 |---|---|---|
-| 1 | Real-world travel is the source of truth | derived statistics only (§8.4); mileage deferred until observed (§8.8) |
-| 2 | Planned vs observed distinguishable | `Visit` as a separate record class (§8.5) |
+| 1 | Real-world travel is the source of truth | derived statistics only (§8.4); and, for distance, **four provenance bases that may never be summed across** — `verified` / `observed` / `derived` count, `planned` never does (§8.10.1), with `Journey` stored only where its inputs are not in the document (§8.10.2) |
+| 2 | Planned vs observed distinguishable | `Visit` as a separate record class (§8.5); `Journey` as its movement counterpart, with `planned` distance a basis that never counts (§8.10) |
 | 3 | Participants ≠ relationships ≠ location sharing | five edges (§8.7); participants ship first, granting nothing (§8.3); a matrix cell asserts it (Phase 3 gate) |
 | 4 | Past travel matters as much as future | Phase 2 in full; the feasibility/integrity rule class (§8.2) |
 | 5 | History compounds | derived stats, the versioned summary rescan (§8.4) |
@@ -455,3 +467,40 @@ free before spending the ones that cannot.
 | 8 | No complexity that does not protect a future capability | §8's nine changes are additive and each names the door it holds open; `Place.provenance`, a people table and a stored lifecycle were each refused |
 | 9 | The travel graph is the product, not a social network with travel branding | no feed, no likes, no ranking; the social unit is the trip/stop/place (§5) |
 | 10 | The base product is valuable before automation and social | Phase 2 is local-first and needs no account (§1); sequencing rule 8 |
+
+---
+
+## Appendix B — the travel-distance clarification, verbatim (Jacob, 2026-08-27)
+
+Given after the thesis above, on the same day. His words:
+
+> Cairn should eventually track meaningful physical travel distance by mode, including: Air
+> (airport-to-airport distance for verified/completed flights), Train (verified or reliably derived rail
+> distance), Car/road (actual or reliably derived route distance), Walking/hiking (observed/tracked
+> distance), Cycling (observed/tracked distance), Boat/ferry (observed or reliably derived distance), and
+> other meaningful modes where trustworthy data exists.
+>
+> Distinguish clearly between: (1) Physical travel distance — actual/verified travel, which can contribute
+> to lifetime statistics and achievements; (2) Planned distance — itinerary estimates that should not count
+> as completed travel; (3) Airline/loyalty rewards — SkyMiles, AAdvantage, MileagePlus, etc. — separate from
+> physical distance and must not be conflated with it.
+>
+> Eventually this could support: total miles traveled, air/train/road/walking/cycling/boat miles, flights
+> and other journeys, countries/cities visited, travel goals and achievements.
+>
+> Airport-to-airport flight distance does NOT require airline integrations; it can be calculated from
+> verified flight endpoints. Airline rewards data would be a separate, optional future capability.
+
+**Where it lands:** `ARCHITECTURE.md` **§8.10** (the four provenance bases, the `Journey` record class, the
+bundled airport index, what *"verified/completed flight"* means against the model as shipped, and the
+per-mode phase schedule), **§3's table above** (the classification, replacing the old *"travel miles —
+safely defer both"* row), and **three one-line deliverable additions** in `ROADMAP.md` — Phase 4 (structured
+flight endpoints), Phase 5b (`Journey` from observed tracks), Phase 7 (the distance surfaces and goals).
+**No new phase. No change to Phase 2, deliberately.**
+
+**The one thing worth re-reading before anyone builds it:** Jacob is right that airport-to-airport distance
+needs no airline integration — but it does need a *structured endpoint pair*, and the model does not have
+one. `Booking.route` is `{fromName, toName}` free text, and the reference trip's `"Los Angeles (LAX)"` is a
+display string, not a code. That is why air distance is blocked on Phase 4's parsers rather than on the
+phone, and why scraping `(LAX)` out of prose is only ever allowed to produce a *suggestion the user
+confirms*. §8.10.4.

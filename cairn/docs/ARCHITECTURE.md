@@ -74,12 +74,25 @@ telling Jacob his finished trip is missing a hotel); and §4.2's `TripSummaryRow
 shipped shape. **R8-3 and R8-4 are still not adjudicated** — `ROADMAP.md` names the phase and the trigger
 for each.
 
+**Revision 10, 2026-08-27.** Jacob followed the thesis with one clarification: Cairn should eventually track
+**meaningful physical travel distance by mode** — air, train, road, walking, cycling, boat — and must keep
+three things visibly apart: physical distance, *planned* distance, and airline loyalty rewards. That is a
+model decision, so it is taken here rather than in the phase that first wants a number. New **§8.10**: four
+provenance bases (`verified` / `observed` / `derived` / `planned`) that may never be summed across, a
+`Journey` record class that is the movement counterpart of §8.5's `Visit`, a bundled airport index on the
+same mechanism as §8.4's country index, the definition of a *verified* flight endpoint measured against the
+model as it actually is, and a per-mode phase schedule. §8.8's blanket mileage deferral is **superseded, not
+reversed** — a distance derived from a plan still never counts. **Nothing in §8.10 is Phase 2 scope and
+nothing in it is implemented by this revision**; the mechanical consequences are three one-line deliverable
+additions in `ROADMAP.md` (phases 4, 5b and 7) and no new phase. Airline loyalty miles are **out of scope and
+unscheduled** — §8.10.7 says why, and why that is not the same kind of "no" as §8.8's refusal of live presence.
+
 **Phase 1 is §2 and §4. The next phase is §8.1–§8.4.** Everything else is the shape those must not
 foreclose. See `ROADMAP.md` for sequencing and `PRODUCT-VISION.md` for why this order and not another.
 
 ## Read only your sections
 
-This document is ~54k tokens (re-measured at revision 8 with `cairn/tools/doc-section ARCHITECTURE`; the
+This document is ~65k tokens (re-measured at revision 10 with `cairn/tools/doc-section ARCHITECTURE`; the
 per-section figures below were stale by a third before that). Nothing needs all of it, and a fresh agent that reads it whole starts a sixth
 of the way into its context before writing a line. Pull what you need:
 
@@ -98,7 +111,10 @@ cairn/tools/doc-section ARCHITECTURE         # lists the sections and their size
 | 5 | The four hard subsystems | 2k | breaker; builder from Phase 3 on |
 | 6 | Privacy, authorization, deletion cascade | 3k | breaker, manager; builder for §6.2 |
 | 7 | Explicitly deferred | <1k | anyone about to build something not in the roadmap |
-| 8 | **The travel-history model** (revision 9) — trip lifecycle and past trips (§8.1), the feasibility/integrity rule class (§8.2), participants (§8.3), geography attribution, travel stats and the summary-row rule (§8.4); then the shapes the location, photo and social phases must land on (§8.5–§8.7) and what is refused (§8.8) | 6k | architect; the builder and breaker of the phase after Phase 1. Read with `PRODUCT-VISION.md` |
+| 8 | **The travel-history model** (revision 9) — trip lifecycle and past trips (§8.1), the feasibility/integrity rule class (§8.2), participants (§8.3), geography attribution, travel stats and the summary-row rule (§8.4); then the shapes the location, photo and social phases must land on (§8.5–§8.7) and what is refused (§8.8). **§8.10 is revision 10** — physical travel distance by mode and the four provenance bases that keep it honest; **it is not Phase 2 scope**, so a Phase 2 builder reads §8.1–§8.4 and stops | 11k | architect; the builder and breaker of the phase after Phase 1 (§8.1–§8.4 only). §8.10 is for the architect and for phases 4, 5 and 7. Read with `PRODUCT-VISION.md` |
+
+*(§8's figure is measured with `doc-section`, not estimated. §8.1–§8.4 — the Phase 2 model — are roughly
+half of it; a Phase 2 builder who reads only those pays about 5k.)*
 
 Read the whole document when you are the manager, when you are changing the design, or when a change
 crosses a section boundary. Otherwise this table is the contract.
@@ -2756,6 +2772,9 @@ statements, and they are what this section exists to settle:
 
 **Phase 1 is §2 and §4. The next phase is §8.1–§8.4** — all of it local-first, no server, no device.
 §8.5–§8.7 are architected here and implemented in the phases `ROADMAP.md` names. §8.8 is what is refused.
+**§8.10 is revision 10** — physical travel distance by mode, and the provenance that makes a distance figure
+mean anything. It is **not** Phase 2 scope and nothing in it is built in Phase 2; it supersedes the mileage
+bullet in §8.8, which deferred the whole subject before Jacob gave it a shape.
 
 ### 8.1 The trip lifecycle is derived. A past trip is a trip whose end date has passed.
 
@@ -2836,6 +2855,28 @@ class: 'feasibility' | 'integrity'
 **Per *subject day*, not per trip.** A trip in progress has past days and future days in the same document,
 and a trip-level test would silence tomorrow's missed connection on the strength of yesterday's. The
 subject's day is exact; the trip's lifecycle is not.
+
+**Three edges the sentence above does not settle, ruled here rather than left to the builder** (revision 10,
+written for the increment that implements this — the shipped `Conflict` carries `subjects: Ref[]`, plural,
+and three of the ten rules emit more than one):
+
+1. **A conflict is suppressed iff *every* subject resolves to a date strictly before `ctx.today`.** One
+   subject on or after today keeps the whole finding. The asymmetry is deliberate and it is the safe
+   direction: a `booking_vs_plan` between a past booking and a future day is still something Jacob can act
+   on, and §0.5 is the test — suppression must never remove a finding somebody could still do something
+   about.
+2. **A subject that resolves to no date resolves to `trip.endDate`.** `{kind:'trip'}`, `{kind:'place'}` and
+   a pool stop have no day of their own. Falling back to the trip's end date means a wholly-past trip goes
+   quiet — which is the point of the whole ruling — while a trip that has not ended keeps every one of its
+   trip-level findings. `{kind:'day'}` is its own date, `{kind:'stop'}` is its day's date, `{kind:'booking'}`
+   is `startsAt.date`.
+3. **With no `ctx.today`, nothing is gated.** `DetectOpts.today` is already optional and rules that need a
+   horizon already skip themselves without it; the gate inherits that rule rather than inventing a default
+   clock, which core is forbidden from having anyway (§2.1). **The goldens run at `FIXTURE_TODAY =
+   2026-08-01`, which is before the reference trip starts**, so every subject in them is in the future and
+   the gate is a no-op on the golden clock *by construction* — which is why "every Phase 1 number is
+   re-derived unchanged" is an achievable ceiling and not a hope. A run that moves one has classified a rule
+   wrongly, exactly as the criterion says.
 
 **Two ceilings, and the second is the one that will be got wrong.** (1) The goldens run at a fixed clock
 (§2.1 — no ambient time), so **every number in ROADMAP §C must be re-derived and unchanged**; a run that
@@ -2964,6 +3005,22 @@ A summary is a **copy**, so §0.6 applies to it and four clauses discharge it:
 4. **Every drill-down reads the document.** The summary answers *"which countries"*; the moment the user
    taps one, the trip is opened and the answer comes from `Trip`.
 
+**Two consequences of clause 1, ruled at revision 10 because the increment that builds it cannot avoid
+them:**
+
+- **The country index is a required argument to `tripSummary`, not an optional one.** `tripSummary(trip,
+  index)` — because an optional index has a default behaviour, and the only available default is *"emit a
+  row with no countries"*, which is a row that claims to be complete and is not. Making it required means
+  there is no way to mint a summary that silently forgot the countries. The index itself is generated code
+  inside `packages/core` and is exported as a value from `index.ts` so every call site can pass it; the
+  *function* still takes it as a parameter and stays pure and testable against the four-polygon fixture. The
+  `StoragePort` contract does not change — the caller computes the summary, as it already does.
+- **The lifetime map should be drawn from the country index we already bundle, with no tiles behind it.**
+  `PRODUCT-VISION.md` §7 risk 5 names the exposure — a *lifetime* map loads on every profile view, so tile
+  cost scales with sessions — and a phase that is local-first with no network has no business acquiring a
+  tile dependency to draw filled countries. The rings are already in the bundle; a filled-country world map
+  needs nothing else. The *trip* map keeps its existing tiles and is untouched.
+
 **And the question §6.1 will be asked about this: no, a country code is not location data of the kind that
 table governs.** It is derived from coordinates the user typed into their own itinerary and which already
 live in the document; the table's subject is *observed* location — a fix stream, a library index, a dwell
@@ -3059,10 +3116,14 @@ adding one is what would create the moderation obligation §6.5 defers.
   TTL, written by the device, readable only by that trip's members, never joined to a trace and never
   retained. That design is written here so that the version which shows up under schedule pressure — a
   `users.current_location` column — is recognisable as the thing this paragraph refused.
-- **Travel miles and flight miles. Deferred, both.** They need airport and route data plus real instants
-  (§7 defers timezones to the phone phase), and — the deciding reason — a mile count derived from a *plan*
-  is a fabricated statistic. Principle 1 says real-world travel is the source of truth. Miles become honest
-  when §8.5's observed data exists, and not before.
+- **Travel miles and flight miles. Deferred, both — *superseded at revision 10 by §8.10*, which is a
+  refinement and not a reversal.** The refusal this bullet actually made stands verbatim and is now §8.10's
+  first rule: **a mile count derived from a *plan* is a fabricated statistic**, and no planned distance ever
+  counts toward a lifetime total. What has changed is that Jacob has given the capability a shape — distance
+  by mode, with air separable from ground — so the deferral is now per mode and per *provenance* rather than
+  wholesale, and the model decisions that keep the four kinds of number apart are taken in §8.10 rather than
+  left for the phase that first needs them. **Airline loyalty miles (SkyMiles, AAdvantage, MileagePlus) are
+  a different thing again and are out of scope in §8.10** — unscheduled, not refused.
 - **Goals and achievements. Architected here in one line, implemented late:** a `Goal` is a declarative
   target (`{kind:'countries'|'cities'|'trips', target: number, window?: {from,to}}`) evaluated against
   `travelStats`. **No stored counters, no points, no badge table.** The reason is not tidiness: a
@@ -3082,8 +3143,234 @@ adding one is what would create the moderation obligation §6.5 defers.
 
 §2.10 is set equality against one list, and *"widening the surface is a documentation change first"*. This
 section is that change: it names, under **P2**, `lifecycle`, `countryOf`, `travelStats`, `SUMMARY_VERSION`,
-and the participant build functions `addParticipant` / `updateParticipant` / `removeParticipant`.
-`setTripMeta`'s patch allowlist gains `datePrecision` and `tripSummary`'s return type widens — neither adds
-a symbol. **The new total is derived by counting, in the pass that adds the callers, and pinned in §2.10
+the generated country index value `COUNTRY_INDEX` (revision 10 — `tripSummary` and the map surfaces are
+outside `packages/core` and every one of them has to be handed one), and the participant build functions
+`addParticipant` / `updateParticipant` / `removeParticipant`. `setTripMeta`'s patch allowlist gains
+`datePrecision`; `tripSummary`'s return type widens and it **takes the index as a second parameter**
+(revision 10, §8.4) — neither adds a symbol. **The new total is derived by counting, in the pass that adds the callers, and pinned in §2.10
 and in ROADMAP criterion E in the same commit.** Quoting a number here that nobody has counted is the
 defect §2.10 exists to prevent.
+
+**§8.10 adds nothing to the surface now**, because it implements nothing now. The symbols it will name when
+its first mode ships — `airportOf`, `journeyDistance`, and whatever `travelStats`' widening needs — are
+listed in §8.10 and counted in the pass that adds their callers, under the same rule.
+
+---
+
+### 8.10 Physical travel distance — four bases, one per-mode schedule, and what may never be added together
+
+**Input: Jacob's clarification of 2026-08-27**, given after the product thesis and recorded here because it
+is a model decision, not a feature request. He asked for meaningful physical travel distance by mode — air,
+train, car/road, walking/hiking, cycling, boat/ferry, and other modes where trustworthy data exists — and,
+in the same breath, for three things to stay visibly apart: **physical distance** (actual travel, which may
+count toward lifetime statistics and achievements), **planned distance** (itinerary estimates, which may
+not), and **airline loyalty rewards** (SkyMiles and friends, which are not distance at all).
+
+**This is not Phase 2 scope and none of it is built in Phase 2.** Phase 2 is §8.1–§8.4. This section exists
+so that the phases that *can* produce an honest distance do not each invent their own answer, and so that
+the cheap wrong version — one `totalKm` field, filled from whatever was nearest to hand — is recognisable
+as the thing this section refused.
+
+#### 1. The rule the whole section is for: a distance is only as good as the reader's ability to tell where it came from
+
+A mode-by-mode figure is meaningless unless the reader can distinguish a great-circle distance between two
+airports named on a confirmation from a GPS track sum from a number an operator's own document stated from
+a guess the itinerary implied. **These are four different claims and they are never interchangeable.**
+
+```ts
+type DistanceBasis = 'verified' | 'observed' | 'derived' | 'planned';
+type DistanceMethod = 'great_circle' | 'track_sum' | 'stated';
+```
+
+| Basis | Means | Example | Counts toward lifetime totals |
+|---|---|---|---|
+| `verified` | both endpoints came from a document we hold, or from the user confirming them against one, **and the journey is in the past** | airport-to-airport great circle for a completed, coded flight | **yes** |
+| `observed` | measured from the device's own fixes, on the device | a walked, cycled or driven track summed by `segmentTrace` | **yes, on acceptance** (§8.5's boundary, unchanged) |
+| `derived` | computed from a trustworthy stated figure that is not a measurement — Jacob's *"reliably derived"* | a rail operator's ticket that states 412 km | **yes, labelled as derived** |
+| `planned` | implied by the itinerary and nothing else | `computeLegs`' `km` for a flight that has not happened; a haversine between two typed coordinates | **never** |
+
+**Three consequences, each of which is the thing a later phase will be tempted to break:**
+
+1. **No total is ever rendered across two bases.** *"48,120 km flown"* is only a sentence if every kilometre
+   in it has the same basis; a screen may show *verified*, *observed* and *derived* subtotals side by side,
+   and `planned` belongs in a different block or on a different screen entirely. A UI that adds `verified`
+   to `planned` has committed §8.4's error — a statistic a user can inflate by typing — with an extra step.
+2. **`null` stays a first-class answer**, exactly as it is for `countryOf` (§8.4). A journey whose endpoints
+   do not resolve has **no distance**, and the surface says *"n journeys not measured"*. It is never
+   back-filled from the plan, and it is never snapped to the nearest thing that would produce a number.
+3. **Nothing counts anything into storage.** §8.4's rule is unchanged and binds here hardest, because a
+   running mileage total is the single most tempting counter in the product. Every figure is derived, on
+   read, from the records it claims to summarise.
+
+#### 2. `Journey` — the movement counterpart of `Visit`, and it obeys §8.5's three rules
+
+§8.5 gave observation one record class for *being somewhere*. Distance needs its counterpart for *going
+between two somewheres*, and it is the same shape for the same reasons:
+
+```ts
+type Endpoint =
+  | { kind: 'airport'; code: string }          // IATA/ICAO, resolved through the bundled index
+  | { kind: 'place';   placeId: PlaceId }
+  | { kind: 'coord';   at: LatLng }
+  | { kind: 'name';    name: string };         // unresolvable by construction — distance is null
+
+type Journey = {
+  id: JourneyId;
+  mode: TravelMode;                            // the existing enum — §2.2, no new values
+  from: Endpoint; to: Endpoint;
+  date: IsoDate;                               // the day it happened
+  distance: { km: number; basis: DistanceBasis; method: DistanceMethod } | null;
+  bookingId: BookingId | null;                 // what it was derived from, if anything
+  stopId: StopId | null;
+  provenance: Provenance;                      // the existing one — WHO produced the record
+};
+```
+
+**Two provenances, deliberately, and they are not the same question.** `Journey.provenance` is §2.8's — who
+produced this record and whether the user has taken it on. `distance.basis` is what the *number* is. A
+`{source:'user'}` record can carry a `verified` distance (the user confirmed the airport codes against the
+confirmation) and a `{source:'device'}` record can carry a `planned` one (it never should, and the type
+permits saying so rather than lying). Collapsing them into one field is how *"asserted"* becomes
+*"verified"* in a later refactor.
+
+**The three §8.5 rules apply unchanged:** a `Journey` is a separate record class and **never mutates a
+`Stop`** or a `Booking`; an unaccepted, device-produced `Journey` is device-local and **acceptance is the
+transmission boundary**; and `source:'device'` is the one widening, carried by §8.5's `schemaVersion` bump,
+not a second one.
+
+**Stored or derived — the ruling, because §0.6 will be pointed at it.** A `Journey` is stored **only when
+its inputs are not in the document**. Observed journeys are stored on acceptance, because the fix stream
+they came from is device-local and never syncs, so there is nothing left to recompute from — which is
+exactly `Visit`'s situation and gets `Visit`'s answer. **Air distance for a booked flight is not stored at
+all**: it is recomputed on read from `(route.fromCode, route.toCode, airportIndex)`, so it cannot drift
+from the booking and improves for free when the index does. A stored `distanceKm` on a `Booking` is the
+`countriesVisited: 47` mistake in a different costume.
+
+#### 3. The airport index — the same mechanism family as the country index, a separate dataset
+
+```ts
+airportOf(code: string, index: AirportIndex): LatLng | null    // pure; index injected
+journeyDistance(j: Journey, ctx: { airports: AirportIndex; today: IsoDate }): Journey['distance']
+```
+
+Same **mechanism** as §8.4 and for the same three reasons — a bundled, generated, committed module; the
+index injected so the function stays pure and testable against a four-airport fixture; a size budget pinned
+by a test and measured by the generator, never quoted from a document; `null` first-class. **§8.4's finding
+that there is no cheap hosted answer that is also a private one applies here unchanged, and it extends to
+routing:** sending an origin and a destination to a routing service transmits a location just as surely as
+sending one coordinate to a geocoder does. That is why `DistanceMethod` has no `'route'` value — a hosted
+route API is not an available mechanism under §6.1, and if one ever becomes viable on-device it is a new
+method value *and* a new privacy ruling, not a quiet addition.
+
+**A separate dataset and a separate generator** (`tools/gen-airports.mjs`), not a widening of
+`gen-countries.mjs`: countries are polygons tested by ray-casting, airports are points keyed by code, and
+one generator emitting both would couple two size budgets that move for unrelated reasons.
+
+**Source, with its licence checked rather than assumed** *(verified 2026-08-27)*: **OurAirports**, whose
+distribution repository states the **Unlicense** and whose project data page is described as Open Data
+Commons PDDL 1.0 — public domain either way, no attribution required, commercial use permitted. Filtered to
+airports carrying an IATA code with scheduled service, which is a few thousand rows of `code → lat,lng`
+rather than the full ~80,000. ⚠ **The project's own data page was blocked by this session's egress proxy,
+so the licence line must be re-confirmed from the source before the generator ships** — the fallback, if it
+cannot be, is Natural Earth's `ne_10m_airports` layer (already public domain, already the family §8.4
+uses), at the cost of coverage that the correctness floor would then have to measure. Sources:
+[ourairports-data](https://github.com/davidmegginson/ourairports-data) ·
+[OurAirports open data](https://ourairports.com/data/).
+
+#### 4. What *"verified/completed flight"* means against the model as it actually is
+
+Three findings from the shipped code, because this is where a plausible-sounding spec would go wrong:
+
+1. **There is no airport identity in the model today.** `Booking.route` is `{fromName, toName}` and both are
+   free text: the reference trip's first booking reads `"Los Angeles (LAX)"`. That is a display string.
+2. **`confidence:'confirmed'` is not sufficient.** All 21 bookings in the reference fixture are
+   `{source:'user', state:'accepted', confidence:'confirmed'}` — transcribed by hand from `docs/BOOKINGS.md`
+   — and two of them carry `unverified_reference` conflicts. Confidence describes *the booking*; it says
+   nothing about whether an endpoint pair is trustworthy.
+3. **Nothing in the model says a journey happened.** `lifecycle()` (§8.1) is the only thing that can, and
+   only at day granularity — which is enough.
+
+So, stated once:
+
+> A flight's distance is **`verified`** iff all three hold: **(a)** the booking carries structured endpoint
+> codes that came from the booking document itself or that the user confirmed against it; **(b)** both codes
+> resolve in the bundled index; **(c)** the journey's date is strictly before `today`. Fail (a) or (b) and
+> there is **no distance** — `null`, rendered as unmeasured. Fail only (c) and the identical number exists
+> with basis `planned`, is labelled, and does not count.
+
+**Named anti-pattern: regex-scraping `(LAX)` out of `fromName` does not produce a verified endpoint.** It
+may produce a **suggestion the user confirms** — `{source:'system', state:'candidate'}`, the same
+candidate-then-accept path as every other automatic source in this product — and that is the shape the phase
+that builds it must take. A scraped code that silently becomes a lifetime statistic is precisely the
+fabricated number this section exists to prevent.
+
+**The additive field, named now, added in the phase that can populate it honestly:**
+
+```ts
+Booking.route?: { fromName: string; toName: string; fromCode?: string; toCode?: string };  // IATA/ICAO
+```
+
+Optional, display-neutral, **read by no rule, no derive and no validation**, exactly as `datePrecision` is
+(§8.1). It lands in **Phase 4** with the parser that fills it from a real confirmation, plus a user-confirm
+control for bookings already entered by hand. **It is not added in Phase 2**, because a field nothing can
+fill honestly is a field that gets filled dishonestly.
+
+#### 5. Per-mode schedule — which phase can make each mode honest
+
+| Mode | Where an honest number comes from | Bases reachable | Phase |
+|---|---|---|---|
+| **Air** | great circle between two indexed airports | `verified` when past + coded + resolved; else `planned` | endpoints in **4**; index, `journeyDistance` and the surfaces in **7** |
+| **Train** | observed track; or a distance the operator's document states | `observed`, `derived` | **5b** (observed); `derived` whenever a parser can read a stated figure — **4** at the earliest |
+| **Car / road** | observed track | `observed` | **5b** |
+| **Walking / hiking** | observed track | `observed` | **5b** |
+| **Cycling** | observed track | `observed` | **5b** |
+| **Boat / ferry** | observed track; or a stated operator figure | `observed`, `derived` | **5b** |
+| anything else | — | — | a mode gets a model when it has a trustworthy source, not before |
+
+**Air is the only mode that can be honest without a device**, which is the whole reason it is separable —
+and it still cannot be honest before Phase 4, because nothing before Phase 4 produces a structured endpoint
+pair. **Every ground mode waits for §8.5's observed data.** Sequencing rule 8 already says this in general
+form; this table is it applied per mode.
+
+Two constraints inherited rather than invented: distance arithmetic is `derive/geo.ts`'s haversine and
+**there is exactly one implementation of coordinate distance in `packages/core`** (§2.13's grep criterion —
+a `journeyDistance` that hand-rolls its own great circle fails it); and any surface that renders a journey
+inherits §5.3's gap rule — a track with a hole is summed as the sum of its measured segments and the hole is
+**reported**, never bridged.
+
+#### 6. What `travelStats` gains, in the phase that ships the first mode
+
+```ts
+TravelStats.distance?: {
+  byMode: Array<{ mode: TravelMode; km: number; basis: DistanceBasis; journeys: number }>;
+  unmeasured: { journeys: number };      // the honest hole, on screen — §8.4's `unattributed`, again
+};
+```
+
+One row per `(mode, basis)` pair and **no `totalKm` field anywhere**, so a caller that wants a total has to
+choose a basis to state — which is the point. Units are stored in kilometres and converted for display; a
+goal expressed as *"fly 25,000 miles"* stores its target with its unit, and §8.8's ruling stands unchanged:
+a goal is a declarative target evaluated against derived statistics, filtered to physical bases, never a
+counter that is incremented.
+
+#### 7. Airline and loyalty rewards — out of scope, and not the same kind of out-of-scope as live presence
+
+**SkyMiles, AAdvantage, MileagePlus and every programme like them are outside the near-to-mid-term
+architecture.** Three reasons, in order:
+
+1. **They are not a distance.** Award and status miles are derived from fare, cabin, status tier and
+   promotions; the same physical flight earns different numbers in different programmes and different
+   numbers for two passengers in adjacent seats. Putting them in the same field as a great-circle distance
+   would be the exact conflation Jacob asked to prevent — **and it is forbidden in advance: no loyalty
+   figure may ever be written into a `Journey`, into `TravelStats.distance`, or into any total that also
+   contains physical travel.**
+2. **They are a third-party integration surface**, not a travel-history concept: per-airline account
+   linking, OAuth or scraping, credentials to hold, and a partner relationship to negotiate. That is the
+   mailbox problem's family (§6.4), and it is the family this project has already measured as expensive.
+3. **No phase plans for it**, and sequencing rule 8 says a capability with no data behind it does not get a
+   phase.
+
+**This is a deferral, not a refusal.** §8.8 refuses live presence *on principle*, because building it would
+invert the product's central privacy claim; nothing of that kind is true here. If Jacob wants loyalty
+balances later they are a separate capability with their own record class, their own credential handling and
+their own phase — sitting **beside** physical distance on a profile, never summed into it.

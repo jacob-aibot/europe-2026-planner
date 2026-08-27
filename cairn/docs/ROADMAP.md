@@ -22,6 +22,15 @@ thesis in full — Cairn as the persistent record of a travel life, not a planne
 next and it **shifts the phase numbers by one from the accounts/server phase onward.** The product argument
 is `PRODUCT-VISION.md`; the model is `ARCHITECTURE.md` §8; this file is the sequence and the gates.
 
+**Revision 10, 2026-08-27.** Jacob approved the Phase 2 scope in revision 9 and asked for two things: the
+approved scope **sequenced** as an implementation plan a builder can pick up increment by increment, and his
+travel-distance clarification folded into the long-term architecture. Both are done and **neither re-scopes
+anything**. Phase 2's boundaries are exactly as revision 9 left them; what is new is *§ Phase 2 — the
+increment sequence*, which supersedes revision 9's six-line build order by spelling the same order out with
+a ship gate on each step. The distance work is `ARCHITECTURE.md` **§8.10** and reaches this file as **three
+one-line deliverable additions** — Phase 4, Phase 5b and Phase 7 — and **no new phase**. Nothing about
+distance is in Phase 2, and the "Explicitly not in Phase 2" list now says so.
+
 > **Phase numbers changed once, here.** Every heading below carries its old number, and every "Phase N"
 > written in `ARCHITECTURE.md` §1–§7, `BUILD-NOTES.md` or `QA-FINDINGS.md` before revision 9 means the
 > *named* phase it described: "Phase 2" = accounts/server (**now 3**), "Phase 3" = ingest (**now 4**),
@@ -859,6 +868,11 @@ Entry: Phase 1 shipped with a manager verdict of SHIP (`b32ef9a`) — done.
 | **2b — the lifetime map and travel identity** | `countryOf` + the generated country index, `travelStats`, the widened `TripSummaryRow` + `SUMMARY_VERSION` rescan, the **Map** and **Profile** surfaces | *"show me everywhere I've been"* — the signature experience, from data that already exists |
 | **2c — participants** | `Trip.participants`, three build functions, the participants editor, *"people you have travelled with"* on the profile | you can say the trip was with your girlfriend and her family, and it grants them nothing |
 
+**Mapped onto the increment sequence below** (revision 10): **2a = I-1 → I-4**, **2b = I-5 → I-8**,
+**2c = I-9 → I-10**, with **I-0** before all of them and **I-11** the gate. Each of the three steps is
+genuinely shippable at its own increment — the phase can stop after I-4 or I-8 and still have delivered
+something better than what it started with.
+
 ### Deliverables
 
 ```
@@ -892,16 +906,275 @@ five that are specific to this phase:
 - **`node --test` still runs `packages/core` and `packages/client` directly.** A generated module that is
   megabytes of JSON in a `.ts` file breaks that; the size budget is a test, and it is the first test.
 
-### Build order (spine first)
+### The increment sequence — the implementation brief
 
-1. `lifecycle` + `datePrecision` + the rule `class` — the engine, the goldens re-derived, the CLI honest
-   about a past trip. **Useful already** through `cli.ts`.
-2. The past-trip flow in `apps/web`. 2a ships here.
-3. `tools/gen-countries.mjs` + `countryOf` + the golden of per-stop attribution — measured before any
-   screen depends on it.
-4. `travelStats` + the summary widening + the rescan.
-5. The Map and Profile surfaces. 2b ships here.
-6. Participants: core, then validation, then the editor, then the profile grouping. 2c ships here.
+**Revision 10.** Revision 9's six-line build order is superseded by the twelve increments below, which are
+the same order spelled out. This is a **sequencing** document, not a scoping one: every increment implements
+something `ARCHITECTURE.md` §8 has already decided, and an increment that seems to need a new decision is a
+design defect routed to the architect (sequencing rule 5), not a judgement call taken in code.
+
+**Four rules that apply to every increment, so they are not repeated twelve times:**
+
+- **The repo is runnable and `npm run test:tap` is green at the end of every increment.** *Runnable beats
+  complete* — an increment that leaves the suite red is not finished, it is abandoned mid-way.
+- **An increment that adds an export updates §2.10's list and criterion E's count in the same commit**, and
+  the count is obtained by **counting**, never by quoting §8.9 or this file (§2.10's own rule; §8.9 says so
+  explicitly).
+- **Any divergence from `ARCHITECTURE.md` gets a `BUILD-NOTES.md` entry under *Known divergences from the
+  contract* in the same pass** — sequencing rule 6, and the grep check in `npm test` enforces it.
+- **Ceilings are re-derived by running, never quoted.** Every increment that touches the engine re-runs the
+  Phase 1 numbers; "unchanged" is a measurement.
+
+---
+
+#### I-0 — Probe repair and the measured baseline
+
+- **Built.** The breaker's carried item: `qa/r6-flush.mjs` §6, `qa/r7-chain.mjs`'s hardcoded counts, and the
+  three dead probes. Each probe is repaired or **deleted with a stated reason**. Nothing in `packages/` or
+  `apps/` changes.
+- **User-visible outcome.** **None — and this is the only increment with none.** It exists because Phase 2's
+  opening ceiling is the whole Phase 1 probe board, and a stale FAIL count costs a QA round to rediscover.
+- **Architecture / data model.** None. `qa/` and `BUILD-NOTES.md` only.
+- **Verification.** The full board runs; every probe is PASS or gone; `npm run test:tap` and
+  `npm run typecheck` are green and their numbers are recorded *from this run*. The four geography numbers
+  (`geoCheck` 0/112 and 0/94 clean, 112/112 and 92/94 under +1°) and `detectConflicts` = **2 blockers at
+  `FIXTURE_TODAY`** are re-derived here and become the baseline every later increment is measured against.
+- **Dependencies / blockers.** None. It is owed *before Phase 2's first breaker round* — see the carried
+  items table below.
+- **Ship gate.** A one-line-per-probe table in `BUILD-NOTES.md` (PASS, or deleted and why), plus the six
+  baseline numbers, each with the command that produced it.
+
+#### I-1 — `lifecycle()`, in core and in the CLI
+
+- **Built.** `packages/core/src/derive/lifecycle.ts`: `lifecycle(trip, today): 'planned' | 'active' |
+  'completed'`, pure, exported. `cli.ts` prints the stage in `trip show`; the existing `--today` flag
+  (already present, defaulting to `FIXTURE_TODAY`) is what drives it.
+- **User-visible outcome.** `node --experimental-strip-types cli.ts trip --today 2026-08-27` says the
+  reference trip is **completed**. Small, but it is the first time the product can say a trip has ended.
+- **Architecture / data model.** §8.1. **No stored status field, and a builder must not add one** — a stored
+  status is a copy of what the dates already say and goes stale at midnight with nothing to invalidate it
+  (§0.6). Keyed on `today` exactly as `TripCtx` already is; no ambient clock in core.
+- **Verification.** A table test over the three stages plus the four boundary days (day before start, start,
+  end, day after end) with `endDate` inclusive; a zero-day trip (`start === end`); a trip whose dates are
+  invalid is not `lifecycle`'s problem — `createTrip`/`setTripMeta` already reject it, and the test asserts
+  that division of labour rather than duplicating the check.
+- **Dependencies / blockers.** I-0 (baseline). Nothing external.
+- **Ship gate.** `lifecycle` is on §2.10's list and criterion E's count is re-counted; the CLI prints the
+  stage; no occurrence of `Date.now()` or `new Date()` reaches `packages/core` (existing grep, re-run).
+
+#### I-2 — `Trip.datePrecision`
+
+- **Built.** The one new stored field: `datePrecision: 'exact' | 'month' | 'year'`, default `'exact'`.
+  `types.ts`, `fromJSON` (reject anything else), `toJSON`, `migrateDoc` (absent → `'exact'`),
+  `setTripMeta`'s `TripMetaPatch`. Display formatting lives in `apps/web`, **not** in core.
+- **User-visible outcome.** *"Japan, March 2019"* can be recorded honestly instead of as a false claim about
+  the 1st to the 31st.
+- **Architecture / data model.** §8.1. `startDate`/`endDate` stay **real calendar dates**, so no rule, derive
+  or golden moves. Stored because it is not derivable and retrofitting date fuzziness after forty trips is
+  the expensive migration. **Read by display and nothing else.** No `schemaVersion` bump: the field is
+  additive with a total default and `migrateDoc` supplies it, which is the same treatment every additive
+  field gets; a bump is reserved for a *value* widening that an older client would silently drop (§8.5's
+  `source:'device'` is the one that earns it).
+- **Verification.** `toJSON(fromJSON(toJSON(trip)))` byte-identical with the field present and absent;
+  `fromJSON` rejects `datePrecision:'fortnight'`; a stored document from before this increment loads and
+  comes back `'exact'`; undo/redo carries it at depth 50. **Ceiling, greppable:** `datePrecision` appears in
+  `types.ts`, the three serialize files, `createTrip.ts` and `apps/web` — and **nowhere** under
+  `conflict/`, `derive/` or `validate/`. A hit there is the field having grown a second meaning.
+- **Dependencies / blockers.** I-1 is not strictly required but shares the same reviewers; keep the order.
+- **Ship gate.** The grep ceiling is a test, not a promise; round-trip parity holds both ways; no export
+  added (the field is data, not a symbol).
+
+#### I-3 — The conflict rule `class`, and the feasibility gate
+
+- **Built.** `Rule` gains `class: 'feasibility' | 'integrity'`; all ten rules in `RULES` are classified per
+  §8.2's table; `detect.ts` gains `subjectDate(trip, ref)` and suppresses a feasibility conflict **iff
+  `ctx.today` is present and every one of its subjects resolves to a date strictly before it**.
+- **User-visible outcome.** **The live defect closes.** The conflicts panel stops telling Jacob that the trip
+  he finished on 22 August is missing a hotel in Budapest.
+- **Architecture / data model.** §8.2, including revision 10's three edge rulings: all-subjects (not
+  any-subject); an undatable subject resolves to `trip.endDate`; no `today` means no gating. The gate lives
+  **once**, in `detect.ts` — a rule that checks the clock itself is ten implementations of one idea and is
+  the §2.13 mistake in a new place. `booking_vs_plan` going quiet on a completed trip is a **deliberate,
+  named loss** (§8.2), not a bug to patch back in.
+- **Verification.** The phase's second and third exit criteria in full — the same trip evaluated after
+  `endDate` returns only `integrity` findings with the count stated and one line per finding, then moved
+  back before `startDate` returns the original set **exactly**; a rule silent at both clocks has been
+  deleted, not classified. Plus a straddling trip in **one call**: feasibility fires on the future half and
+  not the past half.
+- **Dependencies / blockers.** I-0's baseline. **The ceiling is achievable by construction** — the goldens
+  run at `FIXTURE_TODAY = 2026-08-01`, before the trip starts, so every subject is in the future and the
+  gate is a no-op there. A moved golden number means a misclassified rule, which is the criterion's own
+  reading.
+- **Ship gate.** All Phase 1 conflict numbers re-derived and **unchanged**; every rule carries a class;
+  `subjectDate` has a test per `RefKind` including the pool-stop and trip-ref fallbacks.
+
+#### I-4 — The past-trip flow in `apps/web` — **2a ships here**
+
+- **Built.** `PastTripForm.tsx`: title, dates, `datePrecision`, cities — **no day-by-day required**. A
+  lifecycle chip in `Library.tsx` and `TripView.tsx`. Nothing else in the web app changes.
+- **User-visible outcome.** Jacob records a trip he took in 2019 in under a minute, and it does not greet him
+  with a wall of warnings about a hotel he already slept in.
+- **Architecture / data model.** Days stay **dense** — a 21-day 2019 trip gets 21 empty `Day` rows and
+  `ensureDays` already mints them (§8.1); `days: []` is not permitted for "memory" trips and would put a hole
+  in the invariant every derive relies on. The form dispatches `createTrip` + `setTripMeta` and **no new
+  action invents domain logic** (§4.2 rule 1). **The closed list of six document-installing store methods
+  stays six** — `createTrip` is already one of them.
+- **Verification.** Exit criterion 3 end to end: a 21-day, one-city, zero-stop 2019 trip with
+  `datePrecision:'month'` returns **zero** conflicts and **zero** validation issues — a ceiling — while
+  `days` is dense and `Day.id === Day.date` throughout; add a stop dated after `today` and the feasibility
+  rules return **for that day only**. Run it in the browser, not only in Node, because this increment is the
+  first one a user touches.
+- **Dependencies / blockers.** I-1, I-2, I-3. No external dependency.
+- **Ship gate.** **2a is independently shippable here** and the phase could stop at this point with a
+  product that is better than Phase 1's. Criteria 1, 2, 3 and the NO-SILENT-LOSS extension all pass.
+
+#### I-5 — `tools/gen-countries.mjs` + `countryOf` + the attribution golden
+
+- **Built.** The generator (Natural Earth admin-0 → `packages/core/src/geo/countries.gen.ts`, reporting
+  emitted bytes), `derive/country.ts`'s `countryOf(at, index)` by ray-casting, and
+  `fixtures/golden/countries.json`.
+- **User-visible outcome.** None yet, deliberately — **the dataset is measured before any screen depends on
+  it.** A map built on an unmeasured index is a map that is quietly wrong.
+- **Architecture / data model.** §8.4 clause 1. Pure function, **index injected**, testable against a
+  four-polygon fixture. **`null` is a first-class answer** and is never snapped to the nearest country.
+  Public-domain source only; **no network geocoder in any phase** — sending a coordinate to a geocoder *is*
+  transmitting a location (§6.1), and the free public service forbids this use anyway.
+- **Verification.** **The size-budget test is written first**, with the number measured by the generator and
+  living in the test — not in any document. Then exit criterion 4 in full: a golden naming **every distinct
+  country and the stop that produced it** (a country with no stop named fails the run); a mid-Atlantic
+  coordinate returns `null`; the Fisherman's Bastion typo changes the attributed country **and** still
+  produces its `geo_outlier` blocker; the Dalmatian islands (`Blue Cave, Biševo`, `Stiniva Cove, Vis`,
+  Lokrum) attribute to **HR** — if they do not, the generator moves to 1:50m and **the budget moves, not the
+  criterion**. Attack list: the poles, the antimeridian, exactly `(0,0)`, an enclave, international waters.
+- **Dependencies / blockers.** **One external item, and it is the phase's only one: the Natural Earth
+  admin-0 download.** The generated module is committed, so this is a one-time fetch — but this environment's
+  egress proxy blocks many hosts, so **confirm the download works before this increment starts**, not during.
+  If it is blocked, that is a blocker to raise, not to route around by hand-typing polygons.
+- **Ship gate.** Budget test passes and its number came from a measurement; the golden exists and every
+  entry names its producing record; `node --test` still runs `packages/core` directly (a generated module
+  that is megabytes of JSON in a `.ts` file breaks type stripping — the budget test is the guard and it is
+  the *first* test).
+
+#### I-6 — The widened `TripSummaryRow` and the `SUMMARY_VERSION` rescan
+
+- **Built.** Core: `tripSummary(trip, index)` gains `countryCodes`, `cityKeys` and `summaryVersion`, and
+  `SUMMARY_VERSION` becomes a core constant. Client: rows below the current version are rescanned — load the
+  document, recompute, rewrite **through the ordinary chained write** — and the map says *"recomputing"*
+  while it runs.
+- **User-visible outcome.** The trip library knows which countries each trip touched without opening forty
+  documents, and the day the attribution improves is the day the numbers improve rather than the day they
+  silently stay wrong.
+- **Architecture / data model.** §8.4 clause 3 and its four sub-clauses; this is **§0.6 applied to the one
+  cache the lifetime map depends on**, and it is the riskiest increment in the phase for exactly that
+  reason. **The index is a required second argument** (§8.4, revision 10): an optional one has a default,
+  and the only available default is a row that claims completeness while having no countries. `AppState`
+  still holds **exactly one trip document in memory** — the map reads rows, and a screen that needs forty
+  documents is out of scope and needs a ruling, not a loop.
+- **Verification.** Exit criterion 7's injected fault: write three trips, bump `SUMMARY_VERSION`, reopen.
+  Every row below the version is recomputed **from its own document**; the rewrites go through
+  `chainOntoSaving` (the §4.3 structural grep still finds **zero** `ports.storage.*` mutations outside it);
+  the map does not claim completeness while the rescan runs; **ceiling** — a row is never computed from
+  another row, from `AppState`, or from a document it is not about. Attack: `SUMMARY_VERSION` bumped
+  mid-rescan with a write in flight; 40 summaries with one corrupt document (39 render, one is reported
+  unreadable).
+- **Dependencies / blockers.** I-5 (there is no `countryCodes` without an index).
+- **Ship gate.** The freshness criterion passes; the 200-step dirty walk still holds; the closed list of six
+  document-installing methods is still six; every new `StoragePort` interaction is on the chain.
+
+#### I-7 — `travelStats`
+
+- **Built.** `derive/travelStats.ts`: `travelStats(summaries, today): TravelStats`, exactly §8.4's shape —
+  countries with first/last visit and trip ids, cities, trip counts by lifecycle, `daysTravelled`, and
+  `unattributed`.
+- **User-visible outcome.** None on screen yet; the numbers exist and are addressable from the CLI.
+- **Architecture / data model.** **Every statistic is derived and nothing counts anything into storage**
+  (§8.4 clause 2, §0.7). A stored `countriesVisited: 47` is a second source of truth that a user can inflate
+  by typing. `unattributed` is **on the type on purpose** — the honest hole is a field, not an omission.
+- **Verification.** Exit criterion 6: greppable absence of any persisted field naming a count of countries,
+  cities, trips or days; purity asserted by calling twice on one input and once on a mutated copy. Plus the
+  attack the tester will bring: a trip with **no coordinate-bearing record at all** must produce *"no places
+  yet"*, never *"0 countries"* as though zero had been measured.
+- **Dependencies / blockers.** I-6 (it consumes summary rows), I-1 (`lifecycle` supplies the trip counts).
+- **Ship gate.** The no-stored-counts grep is a test; `travelStats` is on §2.10's list with the count
+  re-counted; both goldens (`countries.json`, `travel-stats.json`) exist and were derived, not written.
+
+#### I-8 — The Map and Profile surfaces — **2b ships here**
+
+- **Built.** `WorldMap.tsx` and `Profile.tsx`. Navigation becomes **Trips · Map · Profile** — three tabs,
+  not four. **No DISCOVER tab**: a slot that exists to promise something is the opposite of what this
+  product's conventions say about presenting things that are not yet true.
+- **User-visible outcome.** *"Show me everywhere I've been"* — filled countries, city pins, tap a country for
+  its trips; and a travel identity that is countries, cities, trips, days travelled, first and last visit per
+  country, and an honest count of what could not be attributed.
+- **Architecture / data model.** The world map is **drawn from the bundled country index, with no tiles
+  behind it** (§8.4, revision 10) — the trip map keeps its tiles and is untouched. It inherits both of
+  `CLAUDE.md`'s map bugs (**never fit a hidden container; cluster before fitting**) plus its own min-span
+  case: a history containing one country must not open at a rooftop zoom. **Same core functions, new caller,
+  no second implementation** — bounds come from core (§4.4). **Provenance carries onto the map**: a pin for
+  an unaccepted copied stop is dimmed exactly as its card is, and an unattributed coordinate renders as
+  unattributed. The map is where the badge rule will first be forgotten.
+- **Verification.** A hidden-then-shown map fits correctly on tab activation; a one-country history does not
+  exceed the min-span guard; a `null` attribution renders as *unattributed* and never as the nearest
+  country; a dimmed pin for a copied, unaccepted stop, asserted on the rendered output. The rescan indicator
+  from I-6 is visible on screen and not merely in state.
+- **Dependencies / blockers.** I-5, I-6, I-7.
+- **Ship gate.** **2b is independently shippable here.** Criteria 4, 5, 6 and 7 all pass; the map bugs have
+  a test each rather than a comment each.
+
+#### I-9 — Participants in core
+
+- **Built.** `Participant` and `Trip.participants` (§8.3); `build/participants.ts` with
+  `addParticipant` / `updateParticipant` / `removeParticipant`, one core function per action;
+  `validateTrip`'s new codes `duplicate_participant_id` and `participant_name_empty`, with *at most one
+  `'self'`* riding on the same mechanism.
+- **User-visible outcome.** None on screen yet — the model and its guards land first.
+- **Architecture / data model.** **Embedded in the trip document, not a second persisted structure** — that
+  is A-5's rejected option and it is rejected here for the same reasons; embedding gives round-trip parity,
+  deletion and undo for free. **Participation grants nothing**: not a read, not a comment, not a coordinate.
+  `userId` stays permanently `null` until Phase 3, and that is correct, not a gap.
+- **Verification.** Round-trip byte-identical with participants present; `fromJSON` rejects a duplicate
+  participant id; undo/redo restores participants exactly at depth 50; every new action maps 1:1 onto a core
+  build function and the reducer holds no domain logic. Attack list: 200 participants; two participants with
+  the same name and different ids, and the same id twice; a name of `''` and a name that is only an emoji;
+  `kind:'self'` twice and zero times.
+- **Dependencies / blockers.** None beyond a green suite. Could in principle precede I-5–I-8; **keep it
+  here** so 2b is not held behind it.
+- **Ship gate.** Three build functions on §2.10's list with the count re-counted; validation codes have
+  injected-fault tests (a rule with no injected-fault criterion does not ship).
+
+#### I-10 — The participants editor, the profile grouping, and the access double-run — **2c ships here**
+
+- **Built.** `Participants.tsx`; *"people you have travelled with"* on the profile, grouped by `userId` where
+  it is non-null and by a **normalised `displayName`** otherwise, **with the surface saying that is what it
+  is doing**; and the §6.2 access conformance set run twice, with and without participants.
+- **User-visible outcome.** Jacob can say the trip was with his girlfriend and her family — and it grants
+  them nothing.
+- **Architecture / data model.** §8.3 and §8.7. Cross-trip identity is **derived**, and two spellings of one
+  person are two people until one is linked to an account — a **named** limitation, rendered, not a silent
+  one. **Not in this phase, and named so it is not assumed:** participants on a *stop*, inviting a
+  participant, and a participant contributing anything.
+- **Verification.** Exit criterion 8, mechanically: the two conformance runs are **identical, cell for
+  cell**, and a participant who is neither a member nor a share holder is denied every operation *including*
+  `view`. This is principle 3 with a test behind it **before** there is any server that could get it wrong.
+- **Dependencies / blockers.** I-9.
+- **Ship gate.** **2c is independently shippable here.** The two conformance runs diff to nothing; the
+  grouping surface states its own limitation in rendered text, not in a code comment.
+
+#### I-11 — The phase gate
+
+- **Built.** Nothing new. The full chain: a breaker round over the whole phase, then the manager's
+  SHIP/SEND BACK — **no shortcuts from `cairn/CLAUDE.md`'s delegation table, which does not override
+  `manager.md` at a phase boundary.**
+- **User-visible outcome.** Phase 2 is *shippable*, which is a different claim from *built* and from
+  *verified*.
+- **Architecture / data model.** The export surface total is **pinned by counting** in this pass and written
+  into §2.10 and criterion E together. `CAIRN_VISUAL_ROADMAP.md` and its `.html` twin are rebuilt against the
+  post-revision-9 phase order **in the same pass** — that board is currently flying a staleness banner and
+  this is the pass that clears it.
+- **Verification.** All eight exit criteria below, each re-derived; the whole Phase 1 suite unchanged; the
+  attack list for this phase run end to end.
+- **Dependencies / blockers.** I-0 through I-10.
+- **Ship gate.** A manager verdict of **SHIP**. Nothing else counts as the phase being done.
 
 ### Exit criteria — the Phase 2 ship gate
 
@@ -980,6 +1253,12 @@ No server, no accounts, no auth *enforcement* (the predicates still only define)
 photos, no device. **No stop-level participants.** No trip invitations. No public profile. No goals or
 achievements — §8.8 architects them as derived and this phase does not implement them. **No in-trip delete
 control** (see the routed items below). No renumbering of anything in Phase 1.
+
+**And, added at revision 10: no travel distance or mileage of any kind, in any mode.** `ARCHITECTURE.md`
+§8.10 architects it and schedules it across phases 4, 5b and 7; **nothing about it is built here.** In
+particular this phase adds no `Journey` record, no airport index, no `Booking.route` endpoint codes and no
+`TravelStats.distance` — and a `travelStats` that grows a kilometre field because the data was "right
+there" has pulled a later phase forward and fabricated a statistic, which is what §8.10 exists to prevent.
 
 ### The carried-forward items, placed
 
@@ -1061,6 +1340,15 @@ export/deletion cascade. Not built here: moderation, rate limiting, billing, adm
 trip (Condor, Ryanair, FlixBus, Smartwings/Amadeus, Booking.com, GetYourGuide), reissue-vs-duplicate
 detection, and ticket storage on acceptance.
 
+**Added at revision 10, as a direct consequence of `ARCHITECTURE.md` §8.10 and for no other reason:**
+**structured flight endpoints.** `Booking.route` gains optional `fromCode` / `toCode` (IATA/ICAO), and the
+flight parsers fill them **from the confirmation document**, plus a user-confirm control for bookings already
+entered by hand. This is the *only* thing that can ever make an air distance `verified` (§8.10.4) — today
+`route` is free text and `"Los Angeles (LAX)"` is a display string. **No distance is computed in this
+phase.** A code the parser scraped out of prose rather than read from a structured field is a
+`{source:'system', state:'candidate'}` suggestion like everything else here, and it is `verified` only once
+the user has confirmed it.
+
 **Independently useful:** the review queue itself — "here are 6 things I found, accept or reject" — is the
 feature, before it is smart.
 
@@ -1114,6 +1402,13 @@ either way, which is why the phase is ordered like this.
   widens by its one new value, `'device'`, with a `schemaVersion` bump. Accepting a visit is what makes it
   trip content, and **acceptance is the transmission boundary**: an unaccepted observation never leaves the
   device.
+
+  **Added at revision 10 (§8.10):** the same pass produces **`Journey` records — the movement counterpart of
+  `Visit`** — from the travel segments `segmentTrace` already emits, carrying `mode`, endpoints and a
+  `{km, basis:'observed', method:'track_sum'}` distance. Same record class rules, same acceptance boundary,
+  **same gap discipline** — a track with a hole is summed as the sum of its measured segments and the hole is
+  reported, never bridged (§5.3). This is what makes walking, cycling, road and boat distance possible at
+  all; no ground mode has an honest number before it.
 
 Entry: Phase 3 shipped (the app needs sync). First phase requiring developer accounts and a physical
 device, so 5b must land with a recorded-fixture path — a canned fix stream through `segmentTrace` — that
@@ -1192,6 +1487,14 @@ order of how well each is supported by data that will exist by then:
   exist, worthless before.
 - **Goals and achievements**, as §8.8 defines them: a declarative target evaluated against derived stats.
   No counters, no points, nothing that rewards typing.
+- **Travel distance by mode** (added at revision 10; `ARCHITECTURE.md` §8.10). `tools/gen-airports.mjs` and
+  the bundled airport index, `airportOf` and `journeyDistance`, `TravelStats.distance`, and the surfaces that
+  render it. **Air distance becomes available the moment Phase 4's endpoint codes exist**; the ground modes
+  arrive with Phase 5b's `Journey` records. Two things are criteria, not preferences: **no total is ever
+  rendered across two provenance bases**, and a journey whose endpoints do not resolve is reported as
+  *unmeasured* rather than back-filled from the plan. A distance goal (*"fly 25,000 miles"*) is the same
+  declarative target as every other goal, filtered to physical bases. **Airline loyalty miles are not in this
+  phase or any phase** — §8.10.7.
 - **Opt-in simplified trace sharing** if it did not land in 5b; **share-page polish** with its own
   permission attack pass (the one surface where a mistake is publicly visible); a trip-level cost report
   with a stored `rateSetId`; and whatever the earlier phases proved was missing.
@@ -1230,8 +1533,10 @@ built.
    carries its old number and the mapping is at the top of this file. A document written before revision 9
    means the phase it *described*. If a future change needs work inserted, it gets a letter (`2a`, `2b`),
    not a renumbering — forty cross-references inside settled rulings are not worth a tidy sequence.
-8. **A capability with no data behind it does not get a phase.** Discovery, recaps, goals and mileage are
+8. **A capability with no data behind it does not get a phase.** Discovery, recaps, goals and distance are
    all derived from travel the product has not recorded yet, and each is scheduled *after* the phase that
-   records it. This is the roadmap form of principle 10: the base product must be valuable before the
+   records it. **Distance is the worked example** (§8.10): air waits for Phase 4's endpoint codes, every
+   ground mode waits for Phase 5b's observed tracks, and the surfaces wait for both — which is why revision
+   10 added three deliverable lines and **no new phase**. This is the roadmap form of principle 10: the base product must be valuable before the
    automatic, social and gamified layers exist, and every one of those layers is only as good as the
    history underneath it.
