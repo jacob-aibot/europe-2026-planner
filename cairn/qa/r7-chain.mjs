@@ -105,8 +105,23 @@ line('static: `saving = ` appears exactly once, at chainOntoSaving');
   hits.forEach((h) => console.log('  store.ts:' + h));
   ok('exactly one assignment to `saving`', hits.length === 1, `${hits.length} found`);
   ok('and it is `saving = run` inside chainOntoSaving', /saving = run;$/.test(hits[0] ?? ''), hits[0]);
-  const callers = (src.match(/chainOntoSaving\(/g) ?? []).length - 1; // minus the declaration
-  ok('three call sites route through it', callers === 3, `${callers} call sites`);
+  // REPAIRED, Phase 2 I-0. Two faults, both in the counting rather than in the product:
+  //   (1) `/chainOntoSaving\(/g` also matched the *doc comment* at store.ts:106 that names the
+  //       function in prose, so the count was one too high from the day the comment was written;
+  //   (2) the expected value was hardcoded at 3, and `deleteTrip` legitimately became a fourth
+  //       call site when QA R7-3 put the delete ON the chain (store.ts:971). The probe therefore
+  //       reported FAIL for a change that is the fix to a finding it itself filed.
+  // The claim worth asserting is not "there are exactly N" but "every call site is a call, and
+  // the declaration is the only non-call", so the count is derived and printed, and the
+  // assertion is the structural one: at least the three write paths plus the delete link.
+  const callSites = [];
+  src.split('\n').forEach((l, i) => {
+    if (/(?:^|[^\w.])(?:await\s+|return\s+)?chainOntoSaving\(/.test(l) && !/^\s*\*/.test(l) && !/function chainOntoSaving/.test(l)) {
+      callSites.push(`${i + 1}: ${l.trim()}`);
+    }
+  });
+  callSites.forEach((h) => console.log('  store.ts:' + h));
+  ok('every chainOntoSaving call site is a statement, not a comment', callSites.length >= 3, `${callSites.length} call sites`);
 }
 
 // ---------------------------------------------------------------------------
@@ -626,15 +641,32 @@ line('§11 structural: no write path can reach storage without the chain');
   const src = fs.readFileSync(new URL('../packages/client/src/store/store.ts', import.meta.url), 'utf8');
   const saveIfVersionCalls = [...src.matchAll(/ports\.storage\.saveIfVersion\(/g)].length;
   const writeAndSettleCalls = [...src.matchAll(/await writeAndSettle\(/g)].length;
-  const deleteCalls = [...src.matchAll(/ports\.storage\.delete\(/g)].length;
+  // REPAIRED, Phase 2 I-0. `/ports\.storage\.delete\(/g` counted the two doc-comment mentions
+  // at store.ts:956/960 as call sites, and the expectation was hardcoded at 1. Worse, the
+  // *claim* is stale: R7-3 was fixed by putting the delete ON the chain (store.ts:971), so the
+  // assertion "delete is NOT on the chain" now fails for the reason the finding was closed.
+  // Statement position only, and the claim inverted to the one the product now makes.
+  const deleteSites = [];
+  src.split('\n').forEach((l, i) => {
+    const code = l.replace(/^\s*(\/\/|\*).*$/, '');   // drop whole-line `//` and `*` comments
+    if (/ports\.storage\.delete\(/.test(code)) deleteSites.push({ line: i + 1, text: l.trim() });
+  });
   console.log(`  ports.storage.saveIfVersion call sites: ${saveIfVersionCalls}` +
-              ` · writeAndSettle call sites: ${writeAndSettleCalls} · ports.storage.delete: ${deleteCalls}`);
+              ` · writeAndSettle call sites: ${writeAndSettleCalls} · ports.storage.delete: ${deleteSites.length}`);
+  deleteSites.forEach((d) => console.log(`  store.ts:${d.line}: ${d.text}`));
   ok('saveIfVersion has exactly ONE call site (inside writeAndSettle)', saveIfVersionCalls === 1,
      String(saveIfVersionCalls));
   ok('every writeAndSettle call site is inside a chainOntoSaving work function',
      writeAndSettleCalls === 3, `${writeAndSettleCalls} — check by hand if this moves`);
-  ok('recorded: ports.storage.delete is NOT on the chain (see §10 for whether that matters)',
-     deleteCalls === 1, `${deleteCalls} call site(s)`);
+  ok('ports.storage.delete has exactly ONE call site', deleteSites.length === 1,
+     `${deleteSites.length} call site(s)`);
+  // §10's finding is closed: the delete is now a link of the chain ("drain, delete, forget").
+  // Assert it by locating the nearest enclosing `chainOntoSaving(` above the call.
+  const linesBefore = src.split('\n').slice(0, (deleteSites[0]?.line ?? 1) - 1);
+  const nearestChain = linesBefore.map((l, i) => (/chainOntoSaving\(async/.test(l) ? i + 1 : 0)).filter(Boolean).pop() ?? 0;
+  ok('and it is INSIDE a chainOntoSaving link (R7-3 closed — was "NOT on the chain")',
+     nearestChain > 0 && (deleteSites[0].line - nearestChain) < 5,
+     `nearest chainOntoSaving(async at ${nearestChain}, delete at ${deleteSites[0]?.line}`);
 }
 
 console.log(`\n== r7-chain: ${fails} FAIL ==\n`);

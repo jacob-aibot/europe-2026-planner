@@ -275,8 +275,24 @@ line('5 — every transition propagates a false flush into an aborted transition
 line('6 — R3-3 (mergeWithStored assigns `saving`) against the drain loop');
 {
   const src = await import('node:fs').then((fs) => fs.readFileSync(new URL('../packages/client/src/store/store.ts', import.meta.url), 'utf8'));
-  const bare = [...src.matchAll(/^\s*saving = (?!saving)/gm)].length;
-  ok('mergeWithStored still assigns `saving` rather than chaining onto it (R3-3, unchanged)', bare === 0, `${bare} bare assignments — R3-3 is still open, as reported`);
+  // REPAIRED, Phase 2 I-0. The original check was `/^\s*saving = (?!saving)/gm`, written when
+  // `mergeWithStored` assigned `saving` directly. `32a3839` introduced `chainOntoSaving`, whose
+  // body is literally `saving = run;` — which the old regex matched, so this probe reported
+  // R3-3 open forever, against the very fix that closed it. The claim R3-3 actually makes is
+  // "there is exactly ONE assignment to `saving`, and it is the one inside `chainOntoSaving`",
+  // so that is what is asserted now: statement position only, so a doc comment quoting the old
+  // form is not a hit, and the single permitted hit must be `saving = run;`.
+  const assignments = [];
+  src.split('\n').forEach((l, i) => {
+    if (/^\s*saving\s*=\s/.test(l)) assignments.push(`${i + 1}: ${l.trim()}`);
+  });
+  assignments.forEach((h) => console.log('  store.ts:' + h));
+  const bare = assignments.filter((h) => !/saving = run;$/.test(h)).length;
+  ok(
+    'the only assignment to `saving` is chainOntoSaving\'s own `saving = run` (R3-3 closed)',
+    assignments.length === 1 && bare === 0,
+    `${assignments.length} assignment(s), ${bare} of them outside chainOntoSaving — R3-3 would be open again`,
+  );
 
   // Behavioural: press "Merge and save" while a transition's flush is parked.
   const inner = mem.memoryStorage();

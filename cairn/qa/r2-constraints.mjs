@@ -62,7 +62,17 @@ ok('gen-sample is byte-stable', s1 === s2);
 line('constraint 2 — zero runtime deps declared');
 for (const p of ['packages/core', 'packages/client', 'packages/tokens']) {
   const pkg = JSON.parse(readFileSync(resolve(CAIRN, p, 'package.json'), 'utf8'));
-  ok(`${p} has no dependencies`, !pkg.dependencies || Object.keys(pkg.dependencies).length === 0, JSON.stringify(pkg.dependencies));
+  // REPAIRED, Phase 2 I-0: the rule is *zero **runtime** dependencies* — no date library, no
+  // zod, no lodash (cairn-constraints §2). `packages/client` declares `{"@cairn/core":"*"}`,
+  // which is a workspace sibling resolved from this repo, installs nothing, and is the very
+  // dependency direction ARCHITECTURE §3 requires (`client → core`). Counting it as a runtime
+  // dependency made this check report a permanent false FAIL.
+  const deps = Object.entries(pkg.dependencies ?? {});
+  const external = deps.filter(([name, range]) => !(name.startsWith('@cairn/') && range === '*'));
+  ok(`${p} has no EXTERNAL runtime dependencies`, external.length === 0, JSON.stringify(Object.fromEntries(external)));
+  if (deps.length !== external.length) {
+    console.log(`    (workspace siblings, which install nothing: ${deps.filter(([n]) => n.startsWith('@cairn/')).map(([n]) => n).join(', ')})`);
+  }
 }
 
 line('§2.10 export surface — the gap the builder enumerated (KD-19)');

@@ -17,8 +17,17 @@ const withHours = trip.places.filter((p) => p.hours);
 console.log('   places carrying opening hours after import:', withHours.length, '/', trip.places.length);
 const nasch = trip.days.flatMap((d) => d.stops).find((s) => /Naschmarkt/i.test(s.name));
 console.log('   Naschmarkt stop:', nasch ? nasch.name + ' @ ' + nasch.placement.time + ' place=' + JSON.stringify(nasch.place) : 'not found');
-ok('the documented `closed` fixture case fires', fired.has('closed'),
-  'no Place carries hours, so `closed` can never fire on this trip');
+// REPAIRED, Phase 2 I-0: this probe FILED the finding, and the finding was accepted — the
+// `closed` rule is **dropped from Phase 1** (ARCHITECTURE §2.7 line 1001, ROADMAP row 5,
+// `conflict/closed.ts is deleted`) precisely because 0 of 95 places carry `hours`, so a rule
+// nobody's data can trigger cannot catch its own bug (§0.5). Asserting it fires re-reports a
+// closed finding forever. The ceiling that replaced it: the rule is gone, and it is gone
+// because the premise is still absent.
+ok('`closed` is not in RULES — dropped from Phase 1 because no Place carries hours (§2.7)',
+  !fired.has('closed') && !core.RULES.some((r) => r.id === 'closed'),
+  `RULES: ${core.RULES.map((r) => r.id).join(', ')}`);
+ok('...and the premise is still absent, which is why it stays dropped',
+  withHours.length === 0, `${withHours.length} of ${trip.places.length} places carry hours`);
 
 console.log('');
 console.log('== "overlap": two stops with durations that intersect ==');

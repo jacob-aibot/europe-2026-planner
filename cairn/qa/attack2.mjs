@@ -33,9 +33,17 @@ console.log('   inline sample:', inline?.name, JSON.stringify(inline?.place));
 const at=inline.place.at;
 const bumped=core.updateStop(trip, inline.id, {place:{kind:'inline',at:{lat:at.lat+1,lng:at.lng}}}, ctx());
 const bi=core.validateTrip(bumped);
-ok('+1deg typo -> stop_far_from_city', bi.some(i=>i.code==='stop_far_from_city'), JSON.stringify(bi.filter(i=>i.code==='stop_far_from_city').map(i=>i.message)));
+// REPAIRED, Phase 2 I-0. Two stale reads of a rewritten contract:
+//   (1) `stop_far_from_city` is DELETED, not renamed (§2.9, ROADMAP Phase 1 row 2) — a
+//       coordinate typo is a CONFLICT, never a structural validity issue. Asserting the
+//       deleted code made this a permanent FAIL; the ceiling that replaced it is asserted.
+//   (2) `geo_outlier` names its record in `params.name` (and in `subjects`), not
+//       `params.stopName`, which was renamed when §2.13 rewrote the rule over `geoCheck`.
+ok('ceiling (§2.9): validateTrip emits no stop_far_from_city — the code does not exist',
+   !bi.some(i=>i.code==='stop_far_from_city'));
 const bc=core.detectConflicts(bumped,{today:'2026-08-01'});
-ok('+1deg typo -> geo_outlier conflict', bc.some(c=>c.ruleId==='geo_outlier'&&c.params.stopName===inline.name), '');
+ok('+1deg typo -> geo_outlier conflict', bc.some(c=>c.ruleId==='geo_outlier'&&(c.params.name===inline.name||c.subjects.some(x=>x.id===inline.id))),
+   JSON.stringify(bc.filter(c=>c.ruleId==='geo_outlier').map(c=>c.params.name)));
 
 console.log('\n== out-of-range coords ==');
 const wild=core.updateStop(trip, inline.id, {place:{kind:'inline',at:{lat:999,lng:-4000}}}, ctx());

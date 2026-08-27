@@ -32,7 +32,22 @@ const c1 = core.copyStopInto(mine0, { trip: marta, stopId: placeStop.id }, { kin
 console.log('  places after 1 copy:', c1.places.length, JSON.stringify(c1.places[0]));
 const c2 = core.copyStopInto(c1, { trip: marta, stopId: placeStop.id }, { kind: 'scheduled', dayId: d0, time: null, order: 0 }, ctx);
 ok('place reused on the second copy', c2.places.length === 1, `${c2.places.length} places`);
-ok('copied Place carries some provenance/credit', 'provenance' in c1.places[0], 'Place type has no provenance field at all');
+// REPAIRED, Phase 2 I-0. This probe filed the question and the architect ANSWERED it against
+// a `Place.provenance` field: ARCHITECTURE §2.13 A-6 / ROADMAP Phase 1 row 16 — "a `Place` with
+// >=1 linking stop, ALL of them `attribution() !== null`, is measured but never `'certain'`.
+// Derived in `geoCheck` at evaluation time — **no `Place.provenance`**", and A-6a then made
+// `removeStop` prune the orphan rather than let it linger. So the credit a copied place
+// carries is the credit on the stops that link it, and the ceiling is that `Place`'s shape did
+// NOT change. Both halves are asserted, which is strictly more than the original line was.
+ok('ceiling (§2.13 A-6): a copied Place carries NO provenance field — credit lives on the stop',
+  !('provenance' in c1.places[0]), 'Place grew a provenance field; A-6 says it must not');
+{
+  const linkers = c1.days.flatMap((d) => d.stops).concat(c1.pool)
+    .filter((st) => st.place.kind === 'place' && st.place.placeId === c1.places[0].id);
+  ok('...and every stop linking it is attributed, which is what makes the place exempt',
+    linkers.length > 0 && linkers.every((st) => core.attribution(st.provenance) !== null),
+    `${linkers.length} linker(s), attributed: ${linkers.filter((st) => core.attribution(st.provenance) !== null).length}`);
+}
 console.log('  copied Place note:', JSON.stringify(c1.places[0].note ?? null));
 console.log('  copied Place links:', JSON.stringify(c1.places[0].links ?? null));
 console.log('  validate:', core.validateTrip(c2).map((i) => `${i.level}:${i.code}`).join(', ') || '(clean)');
@@ -82,8 +97,11 @@ try {
 } catch (e) {
   console.log('  dispatch against a browsed stop id threw:', e.message.slice(0, 70));
 }
+// REPAIRED, Phase 2 I-0: `StoragePort.load()` has returned `{doc, version}` since `3a124a2`
+// (ARCHITECTURE §2.2a rule 4). This line was `JSON.parse(await load(...))` and threw, so this
+// probe has not executed past here since round 2.
 const storedSource = await ports.storage.load('trip:source');
-ok('browsed source document unchanged in storage', JSON.parse(storedSource).days.flatMap((d) => d.stops)[0].name === bStop.name);
+ok('browsed source document unchanged in storage', JSON.parse(storedSource.doc).days.flatMap((d) => d.stops)[0].name === bStop.name);
 ok('in-memory browsed doc unchanged', core.toJSON(browsed) === before);
 
 line('does the browsing doc survive a trip switch? (stale cross-trip state)');

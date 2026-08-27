@@ -16,8 +16,17 @@ if(st.place.kind==='place'){
   bumped=core.updateStop(trip, st.id, {place:{kind:'inline',at:{lat:at.lat+1,lng:at.lng}}}, ctx());
 }
 const conf=core.detectConflicts(bumped,{today:'2026-08-01'}).filter(c=>c.ruleId==='geo_outlier');
-ok('typo -> geo_outlier fires', conf.some(c=>c.params.stopName===st.name), JSON.stringify(conf.map(c=>c.params.stopName)));
-ok('typo -> stop_far_from_city', core.validateTrip(bumped).some(i=>i.code==='stop_far_from_city'&&i.message.includes(st.name)));
+// REPAIRED, Phase 2 I-0: `geo_outlier` names the record in `params.name` (and in `subjects`),
+// not in `params.stopName` — the key was renamed when §2.13 rewrote the rule over `geoCheck`.
+// The probe was reading `undefined === st.name`, so it could never pass.
+ok('typo -> geo_outlier fires', conf.some(c=>c.params.name===st.name||c.subjects.some(s=>s.id===st.id)),
+   JSON.stringify(conf.map(c=>c.params.name)));
+// REPAIRED, Phase 2 I-0: `stop_far_from_city` is DELETED, not renamed (ARCHITECTURE §2.9,
+// ROADMAP Phase 1 row 2) — coordinate distance is a CONFLICT (`geo_outlier`), never a
+// structural validity problem. The assertion is inverted to the ceiling that replaced it:
+// ROADMAP §C, "validateTrip emits no stop_far_from_city — the code does not exist".
+ok('ceiling (§2.9): validateTrip emits no stop_far_from_city — the code does not exist',
+   !core.validateTrip(bumped).some(i=>i.code==='stop_far_from_city'));
 console.log('   NOTE geo_outlier skips days with primaryCity="transit":', trip.days.filter(d=>d.primaryCity==='transit').map(d=>d.id).join(','));
 
 console.log('\n== conflict id changes when Aug 18 flight time is edited ==');
@@ -26,12 +35,18 @@ const d18=trip.days.find(d=>d.id==='2026-08-18');
 console.log('   Aug18 stops:',d18.stops.map(s=>`${s.placement.time} ${s.name.slice(0,34)}`).join(' | '));
 const flight=d18.stops.find(s=>/Ryanair|flight|FR|→ Budapest/i.test(s.name));
 console.log('   flight stop:',flight?.name, flight?.placement.time);
-const edited=core.updateStop(trip, flight.id, {placement:{...flight.placement, time:'07:30'}}, ctx());
+// REPAIRED, Phase 2 I-0: `updateStop` THROWS on a `placement` patch — §2.10 makes `moveStop`
+// the one function that moves a stop, and `assertPatchable` enforces it. This line crashed the
+// probe, so nothing below it had run since that guard landed.
+const edited=core.moveStop(trip, flight.id, {...flight.placement, time:'07:30'});
 const after=core.detectConflicts(edited,{today:'2026-08-01'});
 const bIds=new Set(before.map(c=>c.id)), aIds=new Set(after.map(c=>c.id));
 const gone=[...bIds].filter(i=>!aIds.has(i)), added=[...aIds].filter(i=>!bIds.has(i));
 console.log('   before',before.length,'after',after.length,'ids removed',gone.length,'added',added.length);
-ok('conflict ids change after the flight-time edit', gone.length>0||added.length>0);
+// REPAIRED, Phase 2 I-0: ROADMAP **revision 1**'s criterion, retracted by name in the current
+// §C — an edit that does not touch a conflict's inputs must leave its id ALONE.
+ok('ROADMAP §C: an unrelated edit leaves every pre-existing conflict id in place', gone.length===0,
+   `${gone.length} id(s) vanished`);
 // legacy_flag for Aug18 - does its id change?
 const lf=(cs)=>cs.filter(c=>c.ruleId==='legacy_flag'&&c.subjects.some(s=>s.id==='2026-08-18')).map(c=>c.id);
 console.log('   legacy_flag(Aug18) id before/after:', lf(before), lf(after), lf(before)[0]===lf(after)[0]?'UNCHANGED':'changed');
@@ -42,7 +57,7 @@ console.log('\n== acknowledged resolution carry-over ==');
 const target=before.find(c=>c.ruleId==='impossible_transfer'&&c.subjects.some(s=>s.id==='2026-08-18'));
 if(target){
   const ack=core.resolveConflict(trip,{conflictId:target.id,state:'acknowledged',by:'u1',at:'2026-08-01'});
-  const ackEdited=core.updateStop(ack, flight.id, {placement:{...flight.placement, time:'07:30'}}, ctx());
+  const ackEdited=core.moveStop(ack, flight.id, {...flight.placement, time:'07:30'});
   const post=core.detectConflicts(ackEdited,{today:'2026-08-01'});
   const same=post.find(c=>c.id===target.id);
   ok('acknowledgement does NOT carry to the edited conflict', !same || same.resolution===null, same?JSON.stringify(same.resolution):'gone');

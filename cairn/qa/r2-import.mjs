@@ -48,7 +48,9 @@ line('F-2: an import never overwrites a stored trip');
   await store.flush();
   const stale = core.toJSON(trip);
   await store.importDoc(stale);
-  const after = JSON.parse(await storage.load(trip.id));
+  // REPAIRED, Phase 2 I-0: `StoragePort.load()` returns `{doc, version}` since `3a124a2`
+  // (ARCHITECTURE §2.2a rule 4). This threw, and the probe has not run past here since round 2.
+  const after = JSON.parse((await storage.load(trip.id)).doc);
   ok('the stored trip keeps its edit', after.days.find((d) => d.id === '2026-08-13').title === 'MY REAL EDIT',
     after.days.find((d) => d.id === '2026-08-13').title);
   console.log('  new trip id:', store.getState().doc.id, '| title:', store.getState().doc.title);
@@ -98,7 +100,9 @@ line('a corrupt stored document');
   const store = createStore({ ports: mkPorts(storage), autosave: false });
   await store.adoptTrip(trip);
   await store.flush();
-  await storage.save(trip.id, '{"schemaVersion":1,"id":"trip-europe-2026","days":', { id: trip.id, title: 'x', startDate: '2026-08-07', endDate: '2026-08-22', dayCount: 16, stopCount: 0, cityCount: 0 });
+  // REPAIRED, Phase 2 I-0: `StoragePort.save()` became `saveIfVersion(id, expected, doc,
+  // summary)` at `3a124a2` (§2.2a). This threw `storage.save is not a function`.
+  await storage.saveIfVersion(trip.id, storage.versions.get(trip.id), '{"schemaVersion":1,"id":"trip-europe-2026","days":', { id: trip.id, title: 'x', startDate: '2026-08-07', endDate: '2026-08-22', dayCount: 16, stopCount: 0, cityCount: 0 });
   try { await store.openTrip(trip.id); ok('a corrupt document is refused', false, 'it opened'); }
   catch (e) { ok('a corrupt document is refused with a path', e.constructor.name === 'TripParseError', `${e.constructor.name}: ${String(e.message).slice(0, 70)}`); }
   console.log('  browseTrip on the same corrupt doc:');

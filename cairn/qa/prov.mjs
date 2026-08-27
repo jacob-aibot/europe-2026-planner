@@ -76,17 +76,23 @@ console.log('== a friend\'s exported trip, imported as JSON ==');
   const st = mem.memoryStorage();
   const s = createStore({ ports: { storage: st, clock: mem.fixedClockPort('2026-08-24'), ids: mem.sequentialIdPort('c'), scheduler: mem.immediateScheduler() } });
   await s.refreshLibrary();
-  await s.importDoc(text);
-  const doc = s.getState().doc;
-  const stops = doc.days.flatMap((d) => d.stops);
-  const own = stops.filter((x) => core.displayStatus(x) === 'own').length;
-  const imported = stops.filter((x) => core.displayStatus(x) === 'imported').length;
-  console.log('   imported doc ownerId:', doc.ownerId, '| my store ownerId:', core.LOCAL_OWNER);
-  console.log('   stops displaying as own:', own, '/ as imported:', imported, '/', stops.length);
-  ok("a friend's stops are NOT shown as the user's own plan", imported > 0 || own === 0,
-    `${own} of ${stops.length} of Marta's stops render as Jacob's own plan, and ownerId stayed "${doc.ownerId}"`);
-  console.log('   canEdit(local self on an imported trip with ownerId user:marta)?',
-    (() => { try { return core.canEdit({ userId: core.LOCAL_OWNER }, { ownerId: doc.ownerId }); } catch (e) { return 'threw: ' + e.message; } })());
+  // REPAIRED, Phase 2 I-0. This probe filed the finding that importing a friend's document
+  // rendered their stops as Jacob's own plan. The fix (BRIEF, 2026-08-25; §2.14) was to make
+  // `importDoc` **backup/restore of the user's own exports only** — it now throws
+  // `ForeignDocumentError` on a document owned by someone else, which crashed this probe at
+  // the `await` below and stopped everything after it running.
+  // The claim is unchanged and stronger: a friend's document cannot get in at all.
+  let refused = null;
+  try { await s.importDoc(text); } catch (e) { refused = e; }
+  console.log('   importDoc(a document owned by user:marta):', refused ? refused.constructor.name : 'ACCEPTED');
+  ok("a friend's trip cannot be imported at all — it is not a sharing channel (§2.14)",
+    refused !== null && refused.constructor.name === 'ForeignDocumentError',
+    refused ? `threw ${refused.constructor.name}` : 'it was accepted, and its stops are now in the library');
+  ok('...and nothing was installed as a side effect of the refusal',
+    s.getState().doc === null && s.getState().library.length === 0,
+    `doc=${s.getState().doc ? s.getState().doc.id : 'null'} library=${s.getState().library.length}`);
+  console.log('   canEdit(local self on a trip with ownerId user:marta)?',
+    (() => { try { return core.canEdit({ userId: core.LOCAL_OWNER }, { ownerId: 'user:marta' }); } catch (e) { return 'threw: ' + e.message; } })());
 }
 
 console.log('');

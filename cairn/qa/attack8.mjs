@@ -11,27 +11,46 @@ const edited = core.updateStop(trip, flight.id, { time: '19:30' });
 const after = core.detectConflicts(edited, T);
 const b = before.map((c) => c.id), a = after.map((c) => c.id);
 console.log('   removed ids:', b.filter((i) => !a.includes(i)).length, '| added:', a.filter((i) => !b.includes(i)).length);
-ok('ids change', b.filter((i) => !a.includes(i)).length > 0);
+// REPAIRED, Phase 2 I-0 — same two faults as qa/confid.mjs, in the same fixture case:
+//   (1) this asserted ROADMAP **revision 1**'s criterion, which the current §C retracts by
+//       name ("revision 1's criterion mistook it for a failure");
+//   (2) the acknowledgement case below targeted `impossible_transfer` on the unmodified trip,
+//       which §2.12 took to 0 findings, so `tgt` was `undefined` and `tgt.id` threw — nothing
+//       in this file past line 19 had run since `travelRole` landed.
+ok('ROADMAP §C: an edit that does not touch a conflict\'s inputs leaves its id alone',
+  b.every((i) => a.includes(i)),
+  `${b.filter((i) => !a.includes(i)).length} pre-existing id(s) vanished on an unrelated edit`);
 
 console.log('');
-console.log('== an acknowledgement made before the edit must not carry over ==');
-const tgt = before.find((c) => c.ruleId === 'impossible_transfer' && c.params.dayId === '2026-08-18');
-const ack = core.resolveConflict(trip, { conflictId: tgt.id, state: 'acknowledged', by: 'u1', at: '2026-08-01' });
-const ackEdited = core.updateStop(ack, flight.id, { time: '19:30' });
-const post = core.detectConflicts(ackEdited, T);
-const carried = post.filter((c) => c.resolution);
-ok('no conflict on Aug 18 still carries the old acknowledgement',
-  !carried.some((c) => c.params.dayId === '2026-08-18'),
-  JSON.stringify(carried.map((c) => c.summary.slice(0, 80))));
-console.log('   stale resolutions left in trip.resolutions:', ackEdited.resolutions.length, '(never garbage-collected)');
+console.log('== acknowledgement follows the VALUE, in both directions (ROADMAP §C) ==');
+{
+  // Direction 1 — the edit does NOT touch this conflict's inputs, so the acknowledgement stays.
+  const keep = before.find((c) => c.ruleId === 'legacy_flag' && c.subjects.some((s) => s.id === '2026-08-18'));
+  const ack = core.resolveConflict(trip, { conflictId: keep.id, state: 'acknowledged', by: 'u1', at: '2026-08-01' });
+  const post = core.detectConflicts(core.updateStop(ack, flight.id, { time: '19:30' }), T);
+  const same = post.find((c) => c.id === keep.id);
+  ok('an unrelated edit leaves an acknowledgement in place', !!same && !!same.resolution,
+    `present=${!!same} resolution=${JSON.stringify(same?.resolution?.state ?? null)}`);
+
+  // Direction 2 — edit the text the id is addressed over, and the acknowledgement is gone.
+  const retitled = core.setDayMeta(ack, '2026-08-18', { subtitle: 'Totally different reason' },
+    { ids: core.sequentialIds('q'), now: '2026-08-01', actorUserId: 'u1' });
+  const post2 = core.detectConflicts(retitled, T);
+  ok('editing the text behind it drops the acknowledgement', !post2.find((c) => c.id === keep.id),
+    'that exact id survived an edit to its own inputs');
+  console.log('   stale resolutions left in trip.resolutions:', retitled.resolutions.length, '(syncResolutions retires them)');
+}
 
 console.log('');
 console.log('== updateStop with a runtime key TypeScript would have blocked ==');
 const s0 = trip.days.find((d) => d.id === '2026-08-13').stops[0];
-const hij = core.updateStop(trip, s0.id, { id: 'HIJACKED' });
-const found = hij.days.find((d) => d.id === '2026-08-13').stops[0];
-console.log('   stop id after updateStop({id:"HIJACKED"}):', found.id);
-ok('updateStop refuses to rewrite the id', found.id === s0.id, 'id was rewritten -> booking links and conflict resolutions now dangle');
+// REPAIRED, Phase 2 I-0: `assertPatchable` now THROWS on `id` (§2.10's forbidden-patch-keys),
+// so the old shape crashed this probe. The claim is unchanged — the id must not be rewritten —
+// only the mechanism it is refused by.
+let hijThrew = null;
+try { core.updateStop(trip, s0.id, { id: 'HIJACKED' }); } catch (e) { hijThrew = e.message; }
+console.log('   updateStop({id:"HIJACKED"}):', hijThrew ?? 'DID NOT THROW');
+ok('updateStop refuses to rewrite the id', hijThrew !== null, 'id was rewritten -> booking links and conflict resolutions now dangle');
 const junk = core.updateStop(trip, s0.id, { totallyUnknownKey: 'x', schemaVersion: 99 });
 const j = junk.days.find((d) => d.id === '2026-08-13').stops[0];
 console.log('   unknown keys written onto the stop:', Object.keys(j).filter((k) => !Object.keys(s0).includes(k)));
@@ -39,7 +58,12 @@ console.log('   survives a JSON round trip?', (() => { try { return Object.keys(
 
 console.log('');
 console.log('== rollUpCost lists the HOME currency as a missing rate ==');
-const roll = core.rollUpCost(trip.days.flatMap((d) => d.stops), { homeCurrency: 'EUR' });
+// REPAIRED, Phase 2 I-0: the option is `target`, not `homeCurrency` (`RollUpOpts`, §2.6). With
+// an unrecognised key `target` is `undefined`, so every present currency lands in
+// `missingRates` including the home one — the probe was measuring its own typo. ROADMAP §B:
+// "`rollUpCost` is always called with `{ target: trip.homeCurrency }`, and a `homeCurrency:'EUR'`
+// trip never reports EUR in `missingRates`".
+const roll = core.rollUpCost(trip.days.flatMap((d) => d.stops), { target: trip.homeCurrency });
 console.log('   missingRates:', JSON.stringify(roll.missingRates), '| trip.homeCurrency =', trip.homeCurrency);
 ok('home currency is not reported as unconvertible', !roll.missingRates.includes(trip.homeCurrency));
 

@@ -25,6 +25,14 @@ import { readFileSync } from 'node:fs';
 import { webcrypto } from 'node:crypto';
 
 const core = await import('../packages/core/src/index.ts');
+// REPAIRED, Phase 2 I-0. §5.7 used `core.accept`, `core.friendImport` and `core.needsBadge`,
+// and R5-5 took all three OFF the public surface — which is the fix to the finding §5.7 filed.
+// Since `5f92145` this probe crashed at the first of them and §5.7, §5.6 and §6 had not
+// executed at all. Reached by module path instead: `cairn/qa/` attacking an internal is exactly
+// what ARCHITECTURE §2.10 exempts, and it lets §5.7 keep asking its real question (can the
+// SHAPE survive `addStop`?) while §5.7a now asserts the un-export itself.
+const prov_ = await import('../packages/core/src/model/provenance.ts');
+const display_ = await import('../packages/core/src/derive/display.ts');
 const { createStore } = await import('../packages/client/src/store/store.ts');
 const mem = await import('../packages/client/src/ports/memory.ts');
 const { loadEurope2026 } = await import('../fixtures/loadEurope2026.mjs');
@@ -599,8 +607,13 @@ const { trip: europe } = loadEurope2026();
 //       `addStop` copies `StopInit.provenance` verbatim and `accept()` is on the public export
 //       surface with an unchecked `UserId | null`, so two public calls mint it outright.
 {
-  const prov = core.accept(
-    core.friendImport(TODAY, { friendUserId: 'user:marta', sourceTripId: 'trip:marta', sourceStopId: 'stop:1' }),
+  // 5.7a — the half of this section that R5-5 actually closed: neither minting primitive is
+  // public any more, so the "two public calls" sentence above no longer describes the product.
+  for (const name of ['accept', 'reject', 'userProvenance', 'systemSuggestion', 'emailCandidate', 'friendImport']) {
+    ok(`core.${name} is NOT on the public surface (R5-5)`, core[name] === undefined, `typeof=${typeof core[name]}`);
+  }
+  const prov = prov_.accept(
+    prov_.friendImport(TODAY, { friendUserId: 'user:marta', sourceTripId: 'trip:marta', sourceStopId: 'stop:1' }),
     TODAY,
     null,
   );
@@ -615,7 +628,7 @@ const { trip: europe } = loadEurope2026();
   ok('the shape cannot be minted through the public build API without a hand edit or an import',
     flagged || core.displayStatus(s.provenance) !== 'own',
     `core.addStop({provenance: core.accept(core.friendImport(...), at, null)}) → displayStatus=${core.displayStatus(s.provenance)}` +
-    ` · needsBadge=${core.needsBadge(s.provenance)} · attribution=${core.attribution(s.provenance) !== null}` +
+    ` · needsBadge=${display_.needsBadge(s.provenance)} · attribution=${core.attribution(s.provenance) !== null}` +
     ` · accepted_by_non_member=${flagged}`);
 
   const { store } = newStore({ prefix: 'j' });
