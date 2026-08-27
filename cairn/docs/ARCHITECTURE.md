@@ -1525,8 +1525,9 @@ Five mechanical points, and they are the whole change:
    only, and `index.ts` imports both. `syncResolutions` stays pure — the rules are pure and the clock is
    injected.
 5. **The export surface does not move.** `syncResolutions` keeps its place on §2.10's list, `detectUngated`
-   is not on it, and the runtime symbol count stays at **70**. This is a signature change to one exported
-   function and nothing else.
+   is not on it, and the runtime symbol count stays at **71** (§2.10's own enumerated list; the count was
+   already 71 before this revision — a stale `70` survived here from an earlier draft of this addendum,
+   corrected in place). This is a signature change to one exported function and nothing else.
 
 **The one rule that still hides a clock of its own, and what happens to it.** `unbooked_ticketed` is the
 only rule that reads `ctx.today`, and it does so at both ends: `delta < 0` skips a past day and `delta > 60`

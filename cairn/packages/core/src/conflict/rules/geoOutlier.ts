@@ -34,14 +34,16 @@ function anchorCity(anchor: GeoAnchor | null): string {
  *
  * A `CityKey` is a minted opaque id — `city-7`, not `vienna` — so interpolating one into a
  * summary put an id in front of the user. `City.name` is the city's only human identity;
- * the key is the fallback, because a document whose `Place.cityKey` names no city of the
- * trip still has to render something (`validateTrip` is what reports it).
+ * `null` here means the trip has no city for this key (`validateTrip` is what reports the
+ * document as broken — this function only has to keep the sentence legible). The caller
+ * composes the fallback phrase itself, since `` `the ${label} map` `` cannot host a full
+ * sentence in the label's place.
  *
  * `params.cityKey` keeps the **key**: it is structured data and §2.7 requires the id there.
  * Pure.
  */
-function cityLabel(trip: Trip, key: string): string {
-  return trip.cities.find((c) => c.key === key)?.name ?? key;
+function cityLabel(trip: Trip, key: string): string | null {
+  return trip.cities.find((c) => c.key === key)?.name ?? null;
 }
 
 function nameOf(trip: Trip, kind: string, id: string): string {
@@ -53,15 +55,23 @@ function nameOf(trip: Trip, kind: string, id: string): string {
   return trip.pool.find((x) => x.id === id)?.name ?? id;
 }
 
+// A raw, unresolvable cityKey never reaches the summary sentence — it composes as "the <id> map",
+// which reads as a real place name rather than a broken document. `params.cityKey` still carries
+// the id for anything structured; this is the sentence a person reads.
+const UNRESOLVED_CITY = 'a city this trip does not have';
+
 function whereOf(trip: Trip, kind: string, id: string): string {
   if (kind === 'place') {
     const key = trip.places.find((p) => p.id === id)?.cityKey;
-    return `the ${key === undefined ? '?' : cityLabel(trip, key)} map`;
+    if (key === undefined) return 'the ? map';
+    const label = cityLabel(trip, key);
+    return label === null ? UNRESOLVED_CITY : `the ${label} map`;
   }
   for (const d of trip.days) if (d.stops.some((x) => x.id === id)) return d.date;
   const pooled = trip.pool.find((x) => x.id === id);
   if (pooled && pooled.placement.kind === 'pool') {
-    return `the ${cityLabel(trip, pooled.placement.cityKey)} optional list`;
+    const label = cityLabel(trip, pooled.placement.cityKey);
+    return label === null ? UNRESOLVED_CITY : `the ${label} optional list`;
   }
   return 'this trip';
 }

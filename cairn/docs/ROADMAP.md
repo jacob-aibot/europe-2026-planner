@@ -1055,7 +1055,8 @@ routed to a builder against the finding itself and is not an increment.
 - **Architecture / data model.** §2.7 **A-9**, read with §8.2. *Retirement is a claim about the document;
   the gate is a claim about the user's attention; they may not read the same set.* **The retirement ledger
   is not reopened** — A-5, A-5a, A-5b and A-8 are settled and this increment changes when retirement fires,
-  never how a retirement behaves once it has. §2.10's runtime symbol count stays at **70**: one exported
+  never how a retirement behaves once it has. §2.10's runtime symbol count stays at **71** (BUILD-NOTES
+  KD-42: the count was already 71 pre-revision-11; a stale 70 in an earlier draft is corrected): one exported
   signature changes and no symbol is added or removed.
 - **Verification.** A-9's six assertions in full — QA's `qa/p2b-gate.mjs` §1.10 and §1.11 re-expressed
   against the two-argument signature (the assertions are kept verbatim; only the calls change, and A-9 says

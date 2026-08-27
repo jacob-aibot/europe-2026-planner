@@ -211,7 +211,7 @@ test('A-10: geo_outlier renders the city NAME, and params.cityKey keeps the id',
   assert.equal(typeof found[0].params.cityKey, 'string');
 });
 
-test('A-10: an unresolvable key still renders — the label helpers fall back to the key', () => {
+test('A-10: an unresolvable key still renders — the label helpers fall back to a legible phrase', () => {
   const { trip } = europe2026();
   const place = trip.places.find((p) => p.cityKey === 'vienna' && p.at !== null)!;
   const orphaned: Trip = {
@@ -222,7 +222,12 @@ test('A-10: an unresolvable key still renders — the label helpers fall back to
   const found = detectConflicts(orphaned, { today: FIXTURE_TODAY })
     .filter((c) => c.ruleId === 'geo_outlier' && c.subjects.some((s) => s.id === place.id));
   assert.equal(found.length, 1);
-  assert.match(found[0].summary, /the no-such-city map/, 'no trip city for this key — show the key');
+  assert.match(
+    found[0].summary,
+    /a city this trip does not have/,
+    'no trip city for this key — show a legible phrase, not the raw opaque id',
+  );
+  assert.doesNotMatch(found[0].summary, /no-such-city/, 'the raw key must not leak into the summary string');
 });
 
 // ---------------------------------------------------------------------------
