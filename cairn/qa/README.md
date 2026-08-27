@@ -292,3 +292,49 @@ deterministic click sequence, not a race.
 samples `status` 200 ms after the abort, and `r8-persist.mjs` §4 shows the re-armed write lands
 and clears the banner inside that window — the assertion is stale, the product is right.
 `qa/r5-freshness.mjs:602` still crashes on `core.accept`.
+
+---
+
+## Round 9 (2026-08-27, `master` @ `773f8ea`) — the A-5 / A-5a / A-6 gate verification
+
+Narrow: four items only — R8-1 across undo *with the A-5a veto present*, KD-36's second
+dismissal across further edits, the same case across a storage round-trip/reseed, and A-6's
+copy-borne `Place`. R2–R8 were **not** re-litigated; R8-3 and R8-4 were deliberately not
+investigated. Headless, from `cairn/`:
+
+```bash
+node qa/r9-ledger.mjs   # §1 R8-1 with the veto: six undo/redo cycles, undo PAST the
+                        #    conflictId's creation, the stale-mark leak, and a retirement
+                        #    that happens while a live row for the same id is present
+                        # §2 KD-36 case 1: ten further edits, edits on the conflict's OWN
+                        #    subject day, an id-moving edit and back, undo/redo after the
+                        #    second dismissal, and a THIRD dismissal (3 rows, one id)
+                        # §3 KD-36 case 2: five close/reopen round trips, an A -> B -> A trip
+                        #    switch, and the `mergeWithStored` reseed path
+                        # §4 R9-1's root cause isolated: the same live row put back by
+                        #    `redo()` vs by `dispatch()`, one difference — releaseRetirement
+node qa/r9-geo.mjs      # §1 two copied stops from TWO source trips, incl. `samePlace` reuse
+                        # §2 accepting one of two copies, then both
+                        # §3 user-authored -> copy-only and back (`every`, not `some`)
+                        # §4 R9-2 — reject (fine) vs remove (mints a blocker on the orphan)
+                        # §5 R9-2 on the REAL fixture through the store: Browse, Copy, ×
+```
+
+`r9-ledger.mjs` reports **4 FAIL**, all one root cause (R9-1). `r9-geo.mjs` reports **3 FAIL**,
+all one root cause (R9-2); everything else in both files is a confirmation that must stay at 0.
+Neither is timing-dependent — both are deterministic call sequences.
+
+Browser probe needs `npm run web:build && node tools/serve.mjs` in one shell, then:
+
+```bash
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r9-redo.mjs   # R9-1 as a user: seven
+                                                                # actions, and the redone
+                                                                # dismissal is stillborn
+```
+
+`r9-redo.mjs` is `r8-undo.mjs` continued by three more actions (a second "Not a problem",
+Ctrl+Z, Ctrl+Shift+Z). Deterministic, not a race; 2 FAIL, both R9-1.
+
+Round-8 probes re-run **unmodified** this round and unchanged by `773f8ea`: `qa/r8-geo.mjs`
+**1 FAIL** (R8-3, out of scope — R8-2 closes), `qa/r8-persist.mjs` **1 FAIL** (R8-4, out of
+scope — R8-1 closes), `qa/r8-undo.mjs` in Chromium **0 FAIL**. `npm run test:tap` 412/0.

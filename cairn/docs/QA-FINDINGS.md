@@ -1,4 +1,24 @@
-# Cairn — QA findings, Phase 1 **rounds 2, 3, 4, 5, 6, 7 and 8**
+# Cairn — QA findings, Phase 1 **rounds 2, 3, 4, 5, 6, 7, 8 and 9**
+
+> **Status (as of `master` @ `773f8ea`, independently verified 2026-08-27 — round 9, the
+> narrow A-5 / A-5a / A-6 gate-verification pass, four items only):**
+>
+> | | |
+> |---|---|
+> | **Scope** | Exactly four things, all new since round 8: **(1)** R8-1 — retirement across undo with the A-5a veto added; **(2)** KD-36 case 1 — a second dismissal surviving further edits; **(3)** KD-36 case 2 — the same case surviving a storage round-trip / reseed; **(4)** A-6 — copy-borne `Place` exemption and its behaviour at acceptance. R2–R7 were **not** re-litigated. **R8-3 and R8-4 were not investigated** — both remain open, disclosed and out of scope, and both still FAIL in their round-8 probes (`r8-geo.mjs` 1 FAIL, `r8-persist.mjs` 1 FAIL, exactly as the builder reported). |
+> | **FIXED — verified closed on my own evidence** | **R8-1** (undo does not un-retire, at six undo/redo depths, after a trip switch, after a reopen, and with a second dismissal interleaved) and **R8-2** (the copy path mints no `geo_outlier` blocker: two source trips, `samePlace` reuse, one-of-two acceptance, both-accepted, `every`-not-`some`, and the user-authored→copy-only handover all behave as A-6 rules). `qa/r8-undo.mjs` in Chromium **0 FAIL**; `npm run test:tap` **412 pass / 0 fail** (the builder's number, re-run). |
+> | **NEW in round 9 — MAJOR (2)** | **R9-1** — **Redo** does not release the retirement ledger, so redoing a dismissal the user just undid produces a **stillborn** dismissal: the conflict renders unresolved and the row is stamped `retiredAt` in the document permanently. KD-36's own symptom (*"never un-retires" implemented as "never resolve again"*) through the one door A-5a's veto does not cover. **R9-2** — deleting a copied stop **orphans** the `Place` `copyStopInto` rule 4 dragged in, and A-6 clause 1 measures an orphan at `'certain'` — so Browse → Copy → **×** puts a third `geo_outlier` **blocker** on the real fixture, naming `place-copy-1` (*Blue Cave, Biševo*). R8-2's own symptom sentence, one click later. |
+> | **Reachability, stated plainly** | **Both are reachable in the shipped UI.** R9-1 reproduced end to end in Chromium in seven user actions (`qa/r9-redo.mjs`): the Conflicts panel's *"Not a problem"* (`Panels.tsx:72`), `Ctrl+Z` and `Ctrl+Shift+Z` (`App.tsx:33`; there is also a Redo button, `TripView.tsx:54`). R9-2 uses `BrowsePane.tsx:35`'s copy button and `DayTimeline.tsx:192`'s unconditional `×`. |
+> | **BLOCKERS** | **None.** No data loss, no privacy leak, no wrong-person's-data path in any of the four items. R9-1 is recoverable (pressing *"Not a problem"* again works — that path releases); R9-2 is a false blocker, not a lost record. |
+> | **What I tried and could NOT break** | Ten sequential further edits after a second dismissal; edits on the conflict's **own** subject day; an id-moving edit and back; a **third** dismissal with three rows for one `conflictId`; five close/reopen round trips with an edit between each; an A→B→A trip switch; the `mergeWithStored` reseed path; a genuine retirement occurring while a live row for the same id is present (§1.4). On A-6: two source trips reusing one `Place` via `samePlace`; accepting one of two copies, then both; the user deleting their own linking stop; the user adopting a copy-borne place; and `rejectCandidate` (which leaves the stop badged in the document, so the exemption correctly survives). All clean. |
+> | **Gate verdict** | **NOT clean: 0 BLOCKER, 2 MAJOR on the four items under test.** The three ledger obligations A-5a names are all met and the A-6 rule is right as written — but each of the two rulings has one adjacent door left open, and both are user-reachable, and both are the *same defect the ruling was written to close*, reached one action further along. **Recommend SEND BACK — architect first for both** (R9-1 changes A-5's *"nothing else releases"* closed list; R9-2 changes A-6 clause 1's *"an orphan is measured at certain exactly as today"*). Neither is a builder-only patch. |
+>
+> **New probes this round:** `qa/r9-ledger.mjs` (headless, 4 FAIL by design — all one root
+> cause, isolated in §4), `qa/r9-geo.mjs` (headless, 3 FAIL by design — §4.2/§4.3 synthetic,
+> §5.2 on the real fixture), `qa/r9-redo.mjs` (Chromium, 2 FAIL by design).
+>
+> **The round-8 status note below is superseded by this one** and is kept as the record of
+> what was true at `0a58c81`.
 
 > **Status (as of `master` @ `0a58c81`, independently verified 2026-08-27 — round 8, the
 > narrow gate-breaker pass over the SEND-BACK work only):**
@@ -129,6 +149,90 @@ PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r2-race.mjs      # browser pro
 | `qa/r8-geo.mjs` | **R8-2 / R8-3** — A-1's two promises about `geoCheck`, falsified |
 | `qa/r8-persist.mjs` | **R8-1 / R8-4** — B-2 × undo; delete-as-chain-link × an in-flight merge; plus B-4 and B-6's R7-1/R7-2 halves as confirmations |
 | `qa/r8-undo.mjs` | **R8-1** in Chromium — Ctrl+Z, and the blocker comes back *"Marked dismissed"* |
+| `qa/r9-ledger.mjs` | **R9-1** — the A-5/A-5a ledger: undo/redo depth, the second and third dismissal, five reseed round trips, an A→B→A switch, the merge reseed |
+| `qa/r9-geo.mjs` | **R9-2** — A-6's copy-borne `Place`: two source trips, one-of-two acceptance, the user-authored→copy-only handover, reject vs. remove, and the real fixture |
+| `qa/r9-redo.mjs` | **R9-1** in Chromium — seven user actions, and the redone dismissal is stillborn |
+
+---
+
+# Round 9 — the A-5 / A-5a / A-6 gate verification (`0a58c81..773f8ea`)
+
+Four items, nothing else. Two are clean; two have one adjacent door each still open.
+
+| id | severity | file:line | defect | repro | routing |
+|---|---|---|---|---|---|
+| **R9-1** | MAJOR | `packages/client/src/store/store.ts:672` (`redo`) vs `:659` (`dispatch`'s release) × `:212–218` (`set` step 4/5) | `redo()` calls `set()` without `releaseRetirement`, so the mark the preceding `undo()` legitimately re-acquired is re-asserted onto the redone `resolveConflict` row: the redone dismissal is **stillborn** and the blocker renders unresolved, permanently. | `node qa/r9-ledger.mjs` §1.2c / §2.4c / §4.1; `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r9-redo.mjs` | **architect** — A-5's *"Nothing else releases"* is a closed list of two `dispatch` action types; adding `redo` to it is a ruling, not a patch |
+| **R9-2** | MAJOR | `packages/core/src/derive/geoCheck.ts:277–279` (`linking.length > 0`) ← `build/copyStop.ts:124` (rule 4's `const copy: Place`) × `apps/web/src/views/DayTimeline.tsx:192` (`removeStop`) | Deleting a copied stop leaves the `Place` the copy dragged in with **no** linking stop, and A-6 clause 1 measures a zero-link place at `'certain'` — so Browse → Copy → `×` mints a third `geo_outlier` **blocker** on the reference trip, naming a record the user never typed a coordinate into. | `node qa/r9-geo.mjs` §4.2 / §4.3 (synthetic), §5.2 (the real fixture, through the store) | **architect** — A-6 clause 1's *"an orphan is measured at `'certain'` exactly as today"* was written without the copy path in view |
+
+## R9-1, in full — the ledger's one remaining door
+
+**The trace, all seven steps user actions in the shipped UI.** Dismiss a blocker (*"Not a
+problem"*, `Panels.tsx:72`) → put the data back so the conflict goes away → the next render's
+`syncResolutions` retires the row and `set` **correctly acquires** the mark → `Ctrl+Z` brings
+the conflict back and A-5 **correctly** re-stamps the restored row, so it does *not* read
+*"Marked dismissed"* (this is R8-1, and it holds) → the user dismisses it a **second** time and
+A-5a's veto **correctly** lets that stick (this is KD-36, and it holds) → the user presses
+`Ctrl+Z` to take that second dismissal back → the user changes their mind and presses
+`Ctrl+Shift+Z`.
+
+The last step is where it goes wrong, and the reason is precise. At the sixth step the document
+that `undo` installs holds **only** the retired row for that `conflictId` — no live row — so
+A-5a's veto does not apply and step 4 legitimately (re)acquires the mark. At the seventh step
+`redo` restores the `[retired, live]` document, and `redo` is not `dispatch`: it does not call
+`releaseRetirement`. The already-held mark is not removed by the veto (*"acquisition is vetoed;
+retention is not"*), so step 5's `reassertRetirements` stamps the redone live row `retiredAt`
+inside the same `set()`. The conflict renders unresolved and the row is retired in the document
+from then on; no later edit or reload brings it back.
+
+**Isolated, not inferred.** `qa/r9-ledger.mjs` §4 puts two stores in the identical state and
+puts the identical live row back two ways — `redo()` and a `dispatch` of the same
+`resolveConflict`. `via redo: retiredAt=2026-08-01`, `via dispatch: retiredAt=null`. The only
+difference between the two paths is `dispatch`'s release, which is the root cause.
+
+**Why this is the architect's and not the builder's.** A-5 states the release list as closed
+and reasons about it: *"both are deliberate user acts on that exact conflict"*. A redo of a
+`resolveConflict` is exactly such an act, and A-5 does not say so because it only reasoned about
+undo (*"Undoing past a release restores a live row, and that is the user's own answer being
+undone"*). Extending the release to `redo` requires deciding what a redo of an
+`unresolveConflict` should do too, and whether the release keys off the redone action or off
+the document delta — a builder guessing at that is how KD-36 happened the first time.
+
+**Severity, argued.** MAJOR, not BLOCKER: nothing is lost, the safe direction is taken (a
+conflict is shown, not hidden), and the user can recover by pressing *"Not a problem"* once more,
+because that path does release. But it is the same failure KD-36 was raised over — a deliberate
+user act on a conflict silently discarded by bookkeeping — and A-5a's own sentence applies
+verbatim: *"a ledger that re-stamps a fresh answer has implemented 'never un-retires' as 'never
+resolve again'."*
+
+## R9-2, in full — the copy path still mints a blocker, one click later
+
+A-6 closed R8-2: the copy itself is clean, re-confirmed on the real fixture at
+`qa/r9-geo.mjs` §5.1 (2 blockers before, 2 after). The rule's four clauses are all right as
+written and all four were attacked — `every`-not-`some` holds when a user-authored stop shares
+the place (§3.3), the exemption starts when the user deletes their own stop (§3.4) and ends when
+they author one (§3.5), acceptance of one or both copies changes nothing (§2.1–§2.5), two
+different source trips reusing one `Place` via `samePlace` is still exempt (§1.2), and
+`rejectCandidate` leaves the stop in the document badged, so `linkedBy` still names it and the
+exemption correctly survives (§4.1).
+
+What is **not** covered is clause 1. `copyStopInto` rule 4 adds a `Place` row to the target
+trip; `removeStop` removes the stop and **not** the place. One `×` later the place has zero
+linking stops, `copyBorne` is `false` by clause 1 rather than by clause 2, and it is measured at
+`'certain'`. On the reference trip that is a third `geo_outlier` blocker naming `place-copy-1`
+(*Blue Cave, Biševo*, 62 km from the Split anchors) — ROADMAP C's two-blocker ceiling broken by
+a record the user never authored and has just thrown away.
+
+For contrast, and because it narrows the defect: `Ctrl+Z` after the copy is clean (§5.3) —
+undo is a snapshot restore, so the place goes back with the stop. The defect is specific to
+`removeStop`, which is the only one of the two the UI offers as a per-stop control.
+
+**Why this is the architect's and not the builder's.** Clause 1 is a deliberate, reasoned
+clause (*"a place with no stop pointing at it is a place the user keeps for its own sake, or an
+orphan"*) and it is right for a place the user typed. The question A-6 did not ask is what a
+place the **copy path** created and the user then orphaned should be — and the two candidate
+answers (have `removeStop` drop a place nothing links to, or extend the exemption to a place
+whose *last* linking stop was a copy) are both modelling decisions with their own costs, exactly
+like the `Place.provenance` question A-6 already ruled on.
 
 ---
 
