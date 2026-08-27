@@ -1,6 +1,36 @@
 # Cairn — build notes, Phase 1 (and Phase 2 in progress)
 
-> **Status: CURRENT — the round-12 P2-3 / P2-4 / P2-6 / P2-7 pass** (`master`, after `7fb753c`).
+> **Status: CURRENT — ROADMAP revision 11, increments I-3a and I-4a** (`master`, on `23f37b9`).
+> The two architect rulings QA round 12 routed — `ARCHITECTURE.md` §2.7 **A-9** (P2-1) and §2.2
+> **A-10** (P2-2) — built. Both were owed before I-6 and both are now in. **P2-5 and P2-8 were
+> not touched and remain open.** I-5 … I-11 untouched. The retirement **ledger** (A-5, A-5a,
+> A-5b, A-8) was not reopened: A-9 changes *when* retirement fires, never how a retirement
+> behaves once it has.
+>
+> | | |
+> |---|---|
+> | **I-3a — retirement stops answering to the clock** | `detect.ts`'s body is now one private `runRules(trip, opts, gate)`. `detectConflicts = runRules(…, true)` (export unchanged); `detectUngated = runRules(…, false)` is module-level and **not** on `index.ts`. The gate line keeps every conjunct it had — including P2-4's `!crashed`, which A-9 explicitly preserves — and gains `gate &&` at the front, so the gate still lives **once**, where §8.2 put it. |
+> | **I-3a — the footgun is deleted, not documented** | `syncResolutions` goes from `(trip, conflicts, at)` to `(trip, at)` and calls `detectUngated` itself. The rejected fix was passing the un-gated set in: handing it `derived.conflicts` is the *natural* call, it is the call QA's own probe made, and a function whose correctness depends on the caller not making the natural call is a footgun. Two early returns, cheapest first: no live resolution row (the reference trip has zero), then `!isIsoDate(at)` — `at` is now the clock as well as the stamp, so a missing or malformed one must mean *do nothing*, never *detect with no horizon*. |
+> | **I-3a — the store** | `retireResolutions(derived, run)` loses the conflict-set argument and calls `core.syncResolutions(doc, derived.today)`. Retirement is now a function of `(document, today)` — `derivedFor`'s own cache key — so the render path runs it **only when `derivedFor` returned a new cache object** (`cache = retireResolutions(cache, cache !== prev)`). The public `store.syncResolutions()` passes `true`: explicit request, idempotent, not a render path. A-5's *"after `set()`, read `state.doc`, never the local"* is untouched. |
+> | **I-3a — one rule lost half a guard** | `unbooked_ticketed`'s `delta < 0` is **deleted**. It was §8.2's gate open-coded inside a rule — what `rules/types.ts` forbids in writing — and it defeated A-9, because a finding the *rule* withheld is invisible to `detectUngated` and therefore looks to retirement like a fix. Provably output-neutral, and **measured**: `detectConflicts` on the reference trip is byte-identical before and after at five clocks and with no clock at all. The far-future half stays; as a clock advances `delta` only shrinks, so the 60-day horizon can only ever admit a finding. |
+> | **I-4a — city keys are minted ids** | `CityInit.key` is optional; `createTrip` mints `ctx.ids.newId('city')` when it is absent, with `??` and not `\|\|` so an explicit key is honoured **verbatim** (legacy import's `vienna`/`split`/…, every fixture, every stored document). No migration, no `schemaVersion` bump, `CityKey` is still `string`. |
+> | **I-4a — the slug is deleted, not repaired** | `name.toLowerCase().replace(/[^a-z0-9]+/g,'-')` is gone from `PastTripForm.tsx` and `Library.tsx`; both now pass `{ name, order }` and nothing else. `PastTripForm` **reads the minted key back** off the created document for its `setDayMeta` loop — recomputing one there is precisely the bug. Transliteration was not attempted: §1 forbids the dependency, and a hand-rolled kanji reading table produces a confident wrong answer, which is worse than a hole. |
+> | **I-4a — three new validation codes, all `error`** | `duplicate_city_key`, `reserved_city_key` (the `transit` sentinel) and `city_name_empty`, all `ref: {kind:'trip'}` with `params.cityKey`. None is reachable by construction any more; all three are reachable by `importDoc`, by hand-edit, and from a build predating the ruling. **`fromJSON` refuses none of them** — an already-collapsed document must still *open*, or the user cannot see or act on it (the P2-7 harm). Each has an injected-fault test that also asserts the round trip still parses. |
+> | **I-4a — `geo_outlier` says "the Vienna map"** | One shared `cityLabel(trip, key)` helper behind both label sites, resolving a key to `City.name` and falling back to the key when the trip has no such city. `params.cityKey` keeps the id — structured data, and §2.7 requires the id there. This is the **only** expected string that moves in the repo, and it moves in the injected-fault `geo_outlier` case only. |
+> | **Numbers, my own runs** | `npm run typecheck` clean (both projects). `npm run test:tap` **515 pass / 0 fail** (was 492; +23). `npm run web:build` clean. |
+> | **Ceilings, measured not asserted** | `detectConflicts` + `validateTrip` on the reference trip: **byte-identical** JSON before and after, at `FIXTURE_TODAY`, 2026-08-10, 2026-08-27, 2027-01-01, 2019-01-01 and with no clock (11 validation issues both sides; 2 blockers / 4 warnings / 11 notes at `FIXTURE_TODAY`). `fixtures/golden/*.json`, `fixtures/europe2026.sha256` and `apps/web/src/sample/europe2026.json` all regenerated and **byte-identical**. `ctx.today` appears in exactly one file under `conflict/rules/` (`unbookedTicketed.ts`) — the two prose mentions in `rules/types.ts` were reworded so the grep measures code. The slug expression appears nowhere under `apps/` or `packages/`. |
+> | **Export surface** | Unchanged. `detectUngated` is deliberately **not** on `index.ts`; `syncResolutions` keeps its place with a changed signature. See **KD-42** — the count is 71, not the 70 A-9 and ROADMAP I-3a state, and it was 71 before this pass too. |
+> | **Probes, before → after** | `qa/p2b-gate.mjs` **13 FAIL → 5**. Closed: **§1.10** (2) and **§1.11** (2) for I-3a, **§3.3** (4) for I-4a. The 5 remaining are P2-5 (§3.4), P2-8 ×2 (§4.6), the §1.7 un-padded-`today` crash and the §2.1 `datePrecision`/`summary.ts` ceiling — all four pre-existing, disclosed, none of them this pass's. `qa/confid2.mjs` 0 FAIL. |
+> | **Probes I edited, and why** | Two, both because the call they made no longer exists. `qa/p2b-gate.mjs` §1.10's `core.syncResolutions(t1, after, '2026-08-30')` → the two-argument form: A-9 says in writing *"that call is the defect, not the test"* and that its assertions are kept verbatim. `qa/confid2.mjs`'s `recompute` helper, the same edit. **§3.3 is the judgment call** — see KD-43. |
+> | **Red/green, verified per increment** | Both written test-first and watched fail. I-3a: 3 of 9 red (the six that passed were the no-live-row early return, `detectUngated`'s absence from the surface, and cases the old code happened to satisfy). I-4a: 9 of 11 red. |
+> | **Files** | Core: `conflict/detect.ts`, `conflict/resolve.ts`, `conflict/rules/unbookedTicketed.ts`, `conflict/rules/types.ts`, `conflict/rules/geoOutlier.ts`, `build/createTrip.ts`, `validate/validateTrip.ts`, `model/types.ts`. Client: `store/store.ts`. Web: `views/PastTripForm.tsx`, `views/Library.tsx`. Tests: new `packages/core/test/retirementGate.test.ts`, new `packages/core/test/cityKey.test.ts`, new `packages/client/test/retirement-clock.test.ts`, edited `packages/core/test/conflict.test.ts`. Probes: `qa/p2b-gate.mjs`, `qa/confid2.mjs`. Docs: this file, `QA-FINDINGS.md`, `CAIRN_VISUAL_ROADMAP.md` + `.html`. **No `ARCHITECTURE.md` or `ROADMAP.md` change.** Nothing at the repo root was touched. |
+> | **What I could not verify** | Node 24 (this environment is Node 22.22.2). Nothing was run in a browser this pass beyond `web:build` — `qa/p2b-past.mjs` (Chromium) was **not** re-run, so its §3 P2-2 assertions are unconfirmed against the fix even though the headless §3.3 equivalent passes. Safari/iOS and a real second user, unchanged from previous passes. |
+> | **Objection to the design** | None on A-9. One small one on A-10 — recorded in **KD-44**, and implemented as written regardless. |
+>
+> **The status note below is superseded by this one** and is kept as the record of what was
+> true at `7fb753c`.
+
+> **Status: superseded — the round-12 P2-3 / P2-4 / P2-6 / P2-7 pass** (`master`, after `7fb753c`).
 > Four routed defect fixes from QA round 12 and nothing else. **P2-1, P2-2, P2-5 and P2-8 were
 > not touched** (P2-1/P2-2 are with the architect; P2-5 and P2-8 are disclosed and open).
 > I-5 … I-11 untouched.
@@ -1142,6 +1172,64 @@ expected and it is this entry. If the architect wants the ceiling to stay litera
 alternative is a display-owned row type outside `packages/core` that `apps/web` builds from a
 `Trip` — which would mean the Library loading every trip in full to list them, and that is the
 cost `TripSummaryRow` exists to avoid.
+
+### KD-42 — the runtime export count is 71, not 70; A-9 and ROADMAP I-3a both say 70
+
+`packages/core/src/index.ts`, `packages/core/test/surface.test.ts` · **Phase 2, doc-only.**
+
+A-9 point 5 and ROADMAP I-3a's *"Architecture / data model"* row both state that §2.10's runtime
+symbol count *"stays at 70"*. It stays at **71**. That is not a drift this pass introduced:
+`Object.keys(core)` counted 71 at the base commit `23f37b9` too, `surface.test.ts` transcribes
+§2.10 as a 71-entry list and asserts set equality in both directions, and that test is green
+before and after. So the substance of the assertion holds exactly — **no symbol was added or
+removed, and one exported signature changed** — and only the number in the prose is stale.
+
+Not corrected here, because the architect owns §2.10's stated size and a builder editing a count
+in `ARCHITECTURE.md` to match the code is how a ceiling stops being a ceiling. Flagged for the
+next architect pass: either §2.10's own list is 71 and the two `70`s are typos, or one symbol on
+the list is not meant to be there.
+
+### KD-43 — `qa/p2b-gate.mjs` §3.3 measures the product now, not a copy of the deleted slug
+
+`qa/p2b-gate.mjs` · **Phase 2.** The one probe edit A-10 did **not** pre-authorise, so the
+reasoning is here rather than assumed.
+
+§3.3 opened with `const keyOf = (name) => name.toLowerCase().replace(/[^a-z0-9]+/g, '-')` — the
+probe holding its own copy of the expression `PastTripForm.tsx` held, and asserting things about
+that copy. With the expression deleted from the product, that block would have gone on failing
+forever while measuring nothing that ships: a private function in a QA file, unreachable from any
+user action.
+
+So `keyOf` now calls `createTrip` and reads back `trip.cities[0].key` — what the form actually
+stores after A-10 — and **every assertion is kept verbatim**. The deleted expression survives as
+`legacySlug`, called only in the `console.log` line, so the log still shows what it used to do
+beside what the product does now. Three assertions were **added** rather than changed: the
+already-collapsed document still `fromJSON`s, and the `reserved_city_key` and `city_name_empty`
+cases each report. The one assertion whose *wording* moved is *"two colliding city keys are
+reported by `validateTrip`"*, which now runs against an injected collision, because a collision
+can no longer be produced by the path the probe was using; the original sentence is kept beside
+it as *"a two-city Japanese trip is now CLEAN"*.
+
+If the breaker disagrees, the honest alternative is to delete §3.3's first three assertions
+outright rather than leave them measuring a private helper — I chose to keep them pointed at the
+product instead.
+
+### KD-44 — A-10's fallback in the label helpers can print an opaque id at a person
+
+`packages/core/src/conflict/rules/geoOutlier.ts` · **Phase 2.** Implemented as A-10 specifies;
+this is the objection, not a deviation.
+
+A-10 says the label helpers *"resolve the key to `City.name`, falling back to the key when the
+trip has no such city"*. Before A-10 that fallback printed `vienna`, which reads as a place. After
+A-10 it prints `city-7`, which reads as nothing — and the case it fires on is exactly the broken
+document (`Place.cityKey` naming no city of the trip) where the user most needs a legible
+sentence. The summary becomes *"'X' on the city-7 map is 340 km from…"*.
+
+It is a genuinely small harm: the finding is a blocker, `validateTrip` reports the dangling key
+separately as `unknown_city_key`, and `params` carries the id for anyone debugging. But the
+alternative costs one word — *"a city this trip does not have"* instead of the raw key — and
+loses nothing, since the id is already in `params`. Left as A-10 wrote it, because changing what
+a user-facing string says is the architect's call and not mine to make by writing different code.
 
 ---
 

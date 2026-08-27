@@ -265,13 +265,19 @@ line('§1.10 the gate x §2.7\'s retirement ledger: does the clock retire a dism
   ok('the dismissal is stored live', t.resolutions.length === 1 && !t.resolutions[0].retiredAt);
 
   // Day 1 of the trip: the clock moves, nothing else. The run's subjects are all still >= today.
+  //
+  // ARCHITECTURE §2.7 A-9 ruled on this section: the three-argument call below WAS the defect
+  // — handing `syncResolutions` the gated set is the natural call and it is the wrong one —
+  // so `syncResolutions` now detects its own un-gated set and takes `(trip, at)`. Every
+  // assertion in this block is kept verbatim; only the calls changed, and A-9 says in writing
+  // that no correct fix can leave the three-argument form meaning what it meant.
   const dayOne = core.detectConflicts(t, { today: '2026-08-25' });
-  const t1 = core.syncResolutions(t, dayOne, '2026-08-25');
+  const t1 = core.syncResolutions(t, '2026-08-25');
   ok('on day 1 the dismissal is untouched', !t1.resolutions[0].retiredAt, String(t1.resolutions[0].retiredAt));
 
   // The trip ends. Nothing the user did; only the clock.
   const after = core.detectConflicts(t1, { today: '2026-08-30' });
-  const t2 = core.syncResolutions(t1, after, '2026-08-30');
+  const t2 = core.syncResolutions(t1, '2026-08-30');
   console.log('  after the trip ended: conflicts =', after.length, '| resolution.retiredAt =', JSON.stringify(t2.resolutions[0].retiredAt),
     '| revision', t1.revision, '->', t2.revision);
   ok('merely opening the completed trip does not RETIRE the user\'s dismissal', !t2.resolutions[0].retiredAt,
@@ -537,25 +543,54 @@ line('§3.2 the document the form produces, rebuilt through the same three dispa
 
 line('§3.3 city names the form accepts, and the keys they become');
 {
-  const keyOf = (name) => name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  // ARCHITECTURE §2.2 A-10 ruled on this section (P2-2). The form no longer computes a key:
+  // `CityInit.key` is optional and `createTrip` mints `ctx.ids.newId('city')`. `legacySlug`
+  // below is the DELETED expression, kept only so the record shows what it did; every
+  // assertion is kept verbatim and now measures what the product actually stores.
+  const legacySlug = (name) => name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  const keyOf = (name) => {
+    const t = core.createTrip({ title: 'k', startDate: '2019-03-01', endDate: '2019-03-01', cities: [{ name }] }, ctx('k'));
+    return t.cities[0].key;
+  };
   const cases = ['Tokyo', 'tokyo', '東京', 'Кыив', 'München', 'São Paulo', 'Transit', '...', "  "];
-  for (const n of cases) console.log(`    ${JSON.stringify(n)} -> key ${JSON.stringify(keyOf(n))}`);
+  for (const n of cases) {
+    console.log(`    ${JSON.stringify(n)} -> key ${JSON.stringify(keyOf(n))}  (the deleted slug said ${JSON.stringify(legacySlug(n))})`);
+  }
   ok('a non-Latin city name does NOT collapse to a meaningless key', keyOf('東京') !== '-' && keyOf('東京') !== '', keyOf('東京'));
-  ok('two different non-Latin city names do not collide', keyOf('東京') !== keyOf('京都'), `${keyOf('東京')} === ${keyOf('京都')}`);
+  // Two cities in ONE trip, because a minted id is only unique within the factory that mints it.
+  const jp = core.createTrip({ title: 'JP', startDate: '2019-03-01', endDate: '2019-03-02',
+    cities: [{ name: '東京', order: 0 }, { name: '京都', order: 1 }] }, ctx('jp'));
+  ok('two different non-Latin city names do not collide', jp.cities[0].key !== jp.cities[1].key,
+    `${jp.cities[0].key} === ${jp.cities[1].key}`);
   ok('a city literally named "Transit" does not become the reserved catch-all key', keyOf('Transit') !== 'transit', keyOf('Transit'));
   // and what the trip does with it
-  const c = ctx('ck');
-  let t = core.createTrip({ title: 'JP', startDate: '2019-03-01', endDate: '2019-03-02',
-    cities: [{ key: keyOf('東京'), name: '東京', order: 0 }, { key: keyOf('京都'), name: '京都', order: 1 }] }, c);
-  for (const d of t.days) t = core.setDayMeta(t, d.id, { primaryCity: keyOf('東京'), cities: [keyOf('東京')] });
+  let t = jp;
+  for (const d of t.days) t = core.setDayMeta(t, d.id, { primaryCity: t.cities[0].key, cities: [t.cities[0].key] });
   const iss = core.validateTrip(t);
   console.log('  a two-city Japanese trip validates as:', iss.length, 'issues —', iss.map((i) => i.code).join(', '));
-  ok('two colliding city keys are reported by validateTrip', iss.length > 0, 'no issue reported for duplicate city keys');
-  // "Transit"
+  ok('a two-city Japanese trip is now CLEAN — the collision is unreachable by construction',
+    iss.length === 0, iss.map((i) => i.code).join(', '));
+  // The document that already collapsed: it must OPEN and it must say so (A-10, P2-7).
+  const collapsed = { ...jp, cities: jp.cities.map((x) => ({ ...x, key: '-' })),
+    days: jp.days.map((d) => ({ ...d, primaryCity: '-', cities: ['-'] })) };
+  const collapsedIssues = core.validateTrip(collapsed).map((i) => i.code);
+  ok('two colliding city keys are reported by validateTrip', collapsedIssues.includes('duplicate_city_key'),
+    collapsedIssues.join(', ') || 'no issue reported for duplicate city keys');
+  let opened = null;
+  try { opened = core.fromJSON(core.toJSON(collapsed)); } catch (e) { opened = e; }
+  ok('...and the already-collapsed document still OPENS', opened && opened.cities && opened.cities.length === 2,
+    String(opened && opened.message));
+  // "Transit" — reachable only by import/hand-edit now, and an error when it is.
+  const shadow = { ...jp, cities: [{ ...jp.cities[0], key: 'transit' }, jp.cities[1]] };
+  ok('a city keyed with the transit sentinel is an error',
+    core.validateTrip(shadow).some((i) => i.code === 'reserved_city_key'));
+  ok('a city with an empty name is an error',
+    core.validateTrip({ ...jp, cities: [{ ...jp.cities[0], name: '' }, jp.cities[1]] })
+      .some((i) => i.code === 'city_name_empty'));
   let t2 = core.createTrip({ title: 'T', startDate: '2019-03-01', endDate: '2019-03-21',
-    cities: [{ key: keyOf('Transit'), name: 'Transit', order: 0 }] }, c);
-  for (const d of t2.days) t2 = core.setDayMeta(t2, d.id, { primaryCity: 'transit', cities: ['transit'] });
-  console.log('  a trip whose only city is "Transit": missing_lodging as a plan =',
+    cities: [{ name: 'Transit' }] }, ctx('tr'));
+  for (const d of t2.days) t2 = core.setDayMeta(t2, d.id, { primaryCity: t2.cities[0].key, cities: [t2.cities[0].key] });
+  console.log('  a trip whose only city is named "Transit": missing_lodging as a plan =',
     core.detectConflicts(t2, { today: '2018-01-01' }).filter((x) => x.ruleId === 'missing_lodging').length);
 }
 

@@ -29,6 +29,21 @@ function anchorCity(anchor: GeoAnchor | null): string {
   return anchor && anchor.kind === 'city' ? anchor.cityKey : '';
 }
 
+/**
+ * A city key rendered for a person (§2.2 **A-10**).
+ *
+ * A `CityKey` is a minted opaque id — `city-7`, not `vienna` — so interpolating one into a
+ * summary put an id in front of the user. `City.name` is the city's only human identity;
+ * the key is the fallback, because a document whose `Place.cityKey` names no city of the
+ * trip still has to render something (`validateTrip` is what reports it).
+ *
+ * `params.cityKey` keeps the **key**: it is structured data and §2.7 requires the id there.
+ * Pure.
+ */
+function cityLabel(trip: Trip, key: string): string {
+  return trip.cities.find((c) => c.key === key)?.name ?? key;
+}
+
 function nameOf(trip: Trip, kind: string, id: string): string {
   if (kind === 'place') return trip.places.find((p) => p.id === id)?.name ?? id;
   for (const d of trip.days) {
@@ -39,10 +54,15 @@ function nameOf(trip: Trip, kind: string, id: string): string {
 }
 
 function whereOf(trip: Trip, kind: string, id: string): string {
-  if (kind === 'place') return `the ${trip.places.find((p) => p.id === id)?.cityKey ?? '?'} map`;
+  if (kind === 'place') {
+    const key = trip.places.find((p) => p.id === id)?.cityKey;
+    return `the ${key === undefined ? '?' : cityLabel(trip, key)} map`;
+  }
   for (const d of trip.days) if (d.stops.some((x) => x.id === id)) return d.date;
   const pooled = trip.pool.find((x) => x.id === id);
-  if (pooled && pooled.placement.kind === 'pool') return `the ${pooled.placement.cityKey} optional list`;
+  if (pooled && pooled.placement.kind === 'pool') {
+    return `the ${cityLabel(trip, pooled.placement.cityKey)} optional list`;
+  }
   return 'this trip';
 }
 

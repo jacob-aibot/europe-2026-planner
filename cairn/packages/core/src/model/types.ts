@@ -248,7 +248,10 @@ export type IssueCode =
   | 'unknown_city_key' | 'place_ref_dangling' | 'lat_lng_out_of_range'
   | 'pool_stop_has_day' | 'pool_stop_unknown_city' | 'scheduled_stop_has_no_day' | 'booking_ref_orphan'
   | 'cost_basis_mixed' | 'provenance_missing' | 'accepted_without_timestamp' | 'owner_missing'
-  | 'origin_stripped' | 'accepted_by_non_member' | 'stale_resolutions' | 'invalid_calendar_date';
+  | 'origin_stripped' | 'accepted_by_non_member' | 'stale_resolutions' | 'invalid_calendar_date'
+  // §2.2 A-10 (revision 11, QA P2-2). A key that is minted is not thereby a key that is
+  // trusted: all three arrive by import, by hand-edit, or from a build predating the ruling.
+  | 'duplicate_city_key' | 'reserved_city_key' | 'city_name_empty';
 
 export type Issue = {
   level: 'error' | 'warn';

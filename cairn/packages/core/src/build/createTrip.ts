@@ -38,7 +38,18 @@ function assertDatePrecision(where: string, value: unknown): void {
 }
 
 export type CityInit = {
-  key: CityKey;
+  /**
+   * **Optional since §2.2 A-10** (revision 11, QA P2-2). A `CityKey` is an opaque id minted
+   * by the injected `IdFactory`, exactly as every other id here is; it is never derived from
+   * the display name and nothing may parse one. Omit it and `createTrip` mints
+   * `ctx.ids.newId('city')`. Supply it and it is honoured **verbatim** — `import/legacyDays.ts`
+   * passes `vienna`/`split`/… and every fixture and stored document keeps the keys it has.
+   *
+   * No caller outside `packages/core` constructs one. The two web forms used to slug the name
+   * with `name.toLowerCase().replace(...)`, which deleted every non-ASCII-alphanumeric
+   * character and collapsed 東京 and 京都 to the single key `"-"`.
+   */
+  key?: CityKey;
   name: string;
   countryCode?: string;
   centre?: { lat: number; lng: number };
@@ -82,7 +93,11 @@ export function createTrip(init: TripInit, ctx: BuildCtx): Trip {
   }
   if (init.datePrecision !== undefined) assertDatePrecision('createTrip', init.datePrecision);
   const cities: City[] = (init.cities ?? []).map((c, i) => ({
-    key: c.key,
+    // §2.2 A-10. `??` and not `||`: an explicit key is honoured verbatim, and `''` is a key
+    // the document already carries — minting over it would silently orphan every
+    // `Day.primaryCity`, `Place.cityKey` and pool placement pointing at it. `validateTrip`
+    // is what says such a document is broken (§2.9); `createTrip` does not repair it.
+    key: c.key ?? ctx.ids.newId('city'),
     name: c.name,
     countryCode: c.countryCode ?? '',
     centre: c.centre ?? { lat: 0, lng: 0 },

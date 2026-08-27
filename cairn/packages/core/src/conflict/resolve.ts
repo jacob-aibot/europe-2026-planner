@@ -5,8 +5,12 @@
  * conflict still renders, dimmed. No code path in core edits a stop in response to a
  * conflict — auto-fixing is precisely the failure this whole subsystem exists to prevent.
  */
-import type { Conflict, ConflictResolution, Trip } from '../model/types.ts';
+import type { ConflictResolution, Trip } from '../model/types.ts';
 import type { ConflictId, IsoDate } from '../model/ids.ts';
+import { isIsoDate } from '../model/ids.ts';
+// §2.7 A-9 point 4: `resolve.ts` may import `detect.ts`. There is no cycle — `detect.ts`
+// imports `model/` and `rules/` only, and `index.ts` imports both.
+import { detectUngated } from './detect.ts';
 
 /** `retiredAt` is set by `syncResolutions`, never by a caller, so it is optional here. */
 export type ResolutionInit = Omit<ConflictResolution, 'retiredAt'> & { retiredAt?: IsoDate | null };
@@ -37,10 +41,27 @@ export function resolveConflict(trip: Trip, resolution: ResolutionInit): Trip {
  * Returns the trip unchanged (same reference, same revision) when nothing was retired, so a
  * client may call it on every recompute without churning the document.
  *
- * Pure.
+ * **It detects the set itself, un-gated** (§2.7 **A-9**, revision 11, QA P2-1). The old
+ * signature took the conflict set as an argument, and the natural thing to hand it — the set
+ * the panel is holding — is §8.2's **gated** set, from which a feasibility finding has been
+ * withdrawn merely because the trip is over. `syncResolutions` reads *"not in the set"* as
+ * *"the user fixed it"*, so opening a finished trip retired every dismissal on it, bumped
+ * `revision` and left the store dirty with no user action at all. *Retirement is a claim
+ * about the document; the gate is a claim about the user's attention; they may not read the
+ * same set.* A function whose correctness depends on the caller **not** making the natural
+ * call is a footgun, so the ambiguous argument is deleted rather than documented.
+ *
+ * `at` is now both the stamp and the clock, so a missing or malformed one means **do
+ * nothing** — never *detect with no horizon*.
+ *
+ * Pure (the rules are pure and the clock is injected).
  */
-export function syncResolutions(trip: Trip, conflicts: readonly Conflict[], at: IsoDate): Trip {
-  const live = new Set(conflicts.map((c) => c.id));
+export function syncResolutions(trip: Trip, at: IsoDate): Trip {
+  // Cheapest test first: with no live row there is nothing retirement can do, and this is the
+  // common case — the reference trip has zero.
+  if (!trip.resolutions.some((r) => !r.retiredAt)) return trip;
+  if (!isIsoDate(at)) return trip;
+  const live = new Set(detectUngated(trip, { today: at }).map((c) => c.id));
   let changed = false;
   const resolutions = trip.resolutions.map((r) => {
     if (r.retiredAt || live.has(r.conflictId)) return r;

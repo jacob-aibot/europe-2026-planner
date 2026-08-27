@@ -90,11 +90,17 @@ export function PastTripForm({ onClose, onError }: Props) {
   const range = rangeFor(precision, { exactStart, exactEnd, month, year });
   // Same shape the new-trip form already uses: names, comma separated, in order. A city's
   // centre is not asked for on either screen and `createTrip` supplies its default.
+  //
+  // **No `key`** (ARCHITECTURE §2.2 A-10, QA P2-2). This form used to slug the name, which
+  // deleted every character outside ASCII alphanumerics — so 東京 and 京都 both became `"-"`
+  // and "日本 2019" recorded as one city with `primaryCity: "-"` on all 30 days. A `CityKey`
+  // is a minted opaque id like every other id here; `createTrip` mints it, no caller outside
+  // `packages/core` constructs one, and the name is what a person is ever shown.
   const cityList = cities
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean)
-    .map((name, i) => ({ key: name.toLowerCase().replace(/[^a-z0-9]+/g, '-'), name, order: i }));
+    .map((name, i) => ({ name, order: i }));
   const valid = !!title.trim() && !!range && cityList.length > 0 && !busy;
 
   async function submit(e: React.FormEvent) {
@@ -117,9 +123,15 @@ export function PastTripForm({ onClose, onError }: Props) {
       // place rather than to the `transit` catch-all `ensureDays` mints (KD-38). One
       // `setDayMeta` per day, the existing action, unchanged — `cities` is set alongside
       // `primaryCity` so a day ends up with exactly the one city, not the catch-all beside it.
-      const key = cityList[0].key;
-      for (const day of created.doc?.days ?? []) {
-        store.dispatch({ type: 'setDayMeta', dayId: day.id, patch: { primaryCity: key, cities: [key] } });
+      //
+      // The key is READ BACK off the created document (§2.2 A-10): the form no longer knows
+      // it, because `createTrip` minted it. Reading it back is the only correct source —
+      // recomputing one here is precisely the bug A-10 deletes.
+      const key = created.doc?.cities[0]?.key;
+      if (key) {
+        for (const day of created.doc?.days ?? []) {
+          store.dispatch({ type: 'setDayMeta', dayId: day.id, patch: { primaryCity: key, cities: [key] } });
+        }
       }
       onClose();
     } catch (err) {

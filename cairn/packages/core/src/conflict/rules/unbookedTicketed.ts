@@ -24,7 +24,18 @@ export const unbookedTicketed: Rule = {
     const todayN = dayNumber(ctx.today);
     for (const day of ctx.trip.days) {
       const delta = dayNumber(day.date) - todayN;
-      if (delta < 0 || delta > UNBOOKED_HORIZON_DAYS) continue;
+      // §2.7 A-9: the `delta < 0` half of this guard is DELETED. It was §8.2's gate
+      // open-coded inside a rule — the thing `types.ts` forbids in writing — and it defeated
+      // A-9, because a finding the *rule* withheld is invisible to `detectUngated` and so
+      // looks to retirement like a fix. It is provably output-neutral for `detectConflicts`:
+      // both subjects (the stop, its day) resolve to this day's date, so `delta < 0` and
+      // §8.2's "every subject strictly before today" are one predicate.
+      //
+      // The far-future half stays and needs nothing: as a clock advances `delta` only
+      // shrinks, so the horizon can only ever ADMIT a finding, never withdraw one — and a
+      // finding withdrawn because the user moved the day further out is a data change, which
+      // is a retirement §2.7 wants.
+      if (delta > UNBOOKED_HORIZON_DAYS) continue;
       for (const stop of day.stops) {
         if (stop.bookingId) continue;
         if (!stop.cost) continue;

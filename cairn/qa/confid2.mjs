@@ -9,8 +9,10 @@ const bvp = (t) => core.detectConflicts(t, T).find((c) => c.ruleId === 'booking_
 // — a build function §2.7 says "the client calls whenever it recomputes the derived conflict
 // set". The probe never called it, so it kept reproducing the pre-fix behaviour of a caller
 // that opts out of the fix, and reported R2-7 open forever. `recompute` below is what
-// `packages/client`'s `getDerived()` does (store.ts:595): detect, then retire, on every pass.
-const recompute = (t) => core.syncResolutions(t, core.detectConflicts(t, T), FIXTURE_TODAY);
+// `packages/client`'s `getDerived()` does: detect, then retire, on every pass. Since §2.7 A-9
+// `syncResolutions` detects its own UN-GATED set and takes `(trip, at)` — the set argument is
+// gone, because the gated set is the wrong thing to retire against (QA P2-1).
+const recompute = (t) => core.syncResolutions(t, FIXTURE_TODAY);
 
 console.log('== resurrection of a dismissed conflict ==');
 let t = core.updateStop(trip, flight.id, { time: '19:30' });

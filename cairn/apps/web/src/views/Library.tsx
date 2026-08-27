@@ -165,11 +165,13 @@ function NewTrip({ onClose, onError }: { onClose: () => void; onError: (m: strin
         title: title.trim(),
         startDate,
         endDate,
+        // **No `key`** — §2.2 A-10 / QA P2-2. The slug this used to compute collapsed every
+        // non-Latin name to `"-"`; `createTrip` mints an opaque id and the name is the label.
         cities: cities
           .split(',')
           .map((s) => s.trim())
           .filter(Boolean)
-          .map((name, i) => ({ key: name.toLowerCase().replace(/[^a-z0-9]+/g, '-'), name, order: i })),
+          .map((name, i) => ({ name, order: i })),
       });
       onClose();
     } catch (err) {

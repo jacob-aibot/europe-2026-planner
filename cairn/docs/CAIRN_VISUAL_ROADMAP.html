@@ -343,10 +343,31 @@ no longer throw away a change to <em>how precisely you knew the dates</em>; a co
 crashes is now reported on a finished trip instead of being silently swallowed; the trip list shows
 &ldquo;June 2019&rdquo; rather than two exact days for a trip you only remembered the month of; and a
 trip can no longer be written with a date-precision value that stops it loading again.
-<strong>Four remain open:</strong> two are with the architect (a dismissed warning being permanently
+<strong>Four remain open:</strong> two went to the architect (a dismissed warning being permanently
 retired by the calendar alone; a city name in a non-Latin alphabet collapsing to a meaningless key
 &mdash; the Japan case), and two are disclosed (one undo peels the city off a long recorded trip; a
 backup file with no owner is adopted without marking its foreign content).</p>
+<p><strong>The architect ruled on both, and both are now BUILT</strong> (still not verified &mdash; no
+breaker round has attacked them). Two more increments, <strong>I-3a</strong> and
+<strong>I-4a</strong>:</p>
+<ul>
+<li><strong>A dismissed warning is no longer thrown away by the calendar.</strong> Before: you tell
+the app &ldquo;not a problem&rdquo; about a missing hotel, the trip ends, and simply
+<strong>opening</strong> the trip deleted your answer, changed the file and queued a save &mdash; from
+looking at it. If the warning ever came back it accused you of a dismissal you never took back. Now
+the app asks &ldquo;does this trip still produce that finding?&rdquo; rather than &ldquo;is the app
+still nagging me about it?&rdquo; &mdash; two different questions that had been quietly treated as
+one.</li>
+<li><strong>A city called 東京 is a city called 東京.</strong> Before: any name outside the English
+alphabet became the same meaningless key <code>-</code>, so &ldquo;日本 2019 &mdash; 東京, 京都&rdquo;
+recorded as <strong>one</strong> city and every day of the trip pointed at nothing, silently. Now the
+app mints an internal id for a city instead of building one out of its name, so it works in any
+script; the name is only ever a label. Trips already saved with the old collapse now <strong>say so on
+screen</strong> &mdash; they still open, and the app names the problem instead of mis-filing every
+day.</li>
+</ul>
+<p>Left open from round 12, unchanged: the undo that peels the city off a long recorded trip, and the
+ownerless backup file adopted without marking its foreign content.</p>
 </div>
 
 <div class="wrap">
@@ -354,7 +375,7 @@ backup file with no owner is adopted without marking its foreign content).</p>
   <div class="brand">
     <h1>CAIRN</h1>
     <div class="tagline">"You are here"</div>
-    <div class="updated">Updated 2026-08-27 · against <code>master</code>, after the round-12 P2-3/P2-4/P2-6/P2-7 fix pass</div>
+    <div class="updated">Updated 2026-08-27 · against <code>master</code>, after ROADMAP revision 11&rsquo;s I-3a and I-4a</div>
   </div>
 
   <!-- ============ DECISION CALLOUT ============ -->

@@ -426,7 +426,8 @@ test('a dismissal does not resurrect when the data reverts to its old value', ()
   const toY = setDayMeta(dismissed, '2026-08-20', { subtitle: 'A different subtitle' });
   const atY = detectConflicts(toY, { today: FIXTURE_TODAY });
   assert.equal(atY.some((c) => c.id === original.id), false);
-  const syncedAtY = syncResolutions(toY, atY, '2026-08-13');
+  // §2.7 A-9: `syncResolutions` detects the un-gated set itself; there is no set argument.
+  const syncedAtY = syncResolutions(toY, '2026-08-13');
   assert.equal(syncedAtY.resolutions.find((r) => r.conflictId === original.id)?.retiredAt, '2026-08-13');
 
   // Y -> X: the original id comes back. It must come back UNRESOLVED.
@@ -445,14 +446,22 @@ test('syncResolutions is one-way and is a no-op when nothing changed', () => {
   const resolved = resolveConflict(a, {
     conflictId: conflicts[0].id, state: 'acknowledged', at: '2026-08-01', by: 'local:self',
   });
-  assert.equal(syncResolutions(resolved, conflicts, '2026-08-13'), resolved, 'must not churn the document');
+  // §2.7 A-9: no conflict-set argument. A conflict the document still produces is still live.
+  assert.equal(syncResolutions(resolved, '2026-08-13'), resolved, 'must not churn the document');
 
-  const retired = syncResolutions(resolved, [], '2026-08-13');
-  assert.equal(retired.resolutions[0].retiredAt, '2026-08-13');
-  assert.equal(retired.revision, resolved.revision + 1);
+  // A row answering a conflict this document does not produce is what retirement is for.
+  const ghosted = resolveConflict(resolved, {
+    conflictId: 'gone-forever', state: 'dismissed', at: '2026-08-01', by: 'local:self',
+  });
+  const retired = syncResolutions(ghosted, '2026-08-13');
+  const row = () => retired.resolutions.find((r) => r.conflictId === 'gone-forever')!;
+  assert.equal(row().retiredAt, '2026-08-13');
+  assert.equal(retired.resolutions[0].retiredAt, null, 'the still-produced conflict keeps its live answer');
+  assert.equal(retired.revision, ghosted.revision + 1);
   // and nothing un-retires
-  const again = syncResolutions(retired, conflicts, '2026-08-20');
-  assert.equal(again.resolutions[0].retiredAt, '2026-08-13');
+  const again = syncResolutions(retired, '2026-08-20');
+  assert.equal(again, retired, 'a second pass finds nothing left to do');
+  assert.equal(again.resolutions.find((r) => r.conflictId === 'gone-forever')!.retiredAt, '2026-08-13');
 });
 
 test('validateTrip reports retired resolutions once they pile up, and stays quiet below the limit', () => {
@@ -488,9 +497,14 @@ test('A-5: reassertRetirements returns the SAME reference when nothing changed',
     resolved,
     'a ledger with no key for any live row must not churn the document',
   );
-  const retired = syncResolutions(resolved, [], '2026-08-13');
+  // A-9: `syncResolutions` takes no set. A row answering a conflict this document does not
+  // produce is the one thing that retires, at any clock.
+  const ghosted = resolveConflict(resolved, {
+    conflictId: 'gone-forever', state: 'dismissed', at: '2026-08-01', by: 'local:self',
+  });
+  const retired = syncResolutions(ghosted, '2026-08-13');
   assert.equal(
-    reassertRetirements(retired, new Map([[conflicts[0].id, '2026-08-13']])),
+    reassertRetirements(retired, new Map([['gone-forever', '2026-08-13']])),
     retired,
     'a row that is ALREADY retired is not rewritten',
   );
@@ -542,10 +556,11 @@ test('A-5: reassertRetirements never un-retires, and never overwrites an earlier
   const a = europe2026().trip;
   const conflicts = detectConflicts(a, { today: FIXTURE_TODAY });
   const resolved = resolveConflict(a, {
-    conflictId: conflicts[0].id, state: 'dismissed', at: '2026-08-01', by: 'local:self',
+    conflictId: 'gone-forever', state: 'dismissed', at: '2026-08-01', by: 'local:self',
   });
-  const retired = syncResolutions(resolved, [], '2026-08-13');
-  const later = reassertRetirements(retired, new Map([[conflicts[0].id, '2026-08-20']]));
+  assert.ok(conflicts.length > 0);
+  const retired = syncResolutions(resolved, '2026-08-13');
+  const later = reassertRetirements(retired, new Map([['gone-forever', '2026-08-20']]));
   assert.equal(later, retired, 'an already-retired row is untouched, whatever the ledger says');
   assert.equal(later.resolutions[0].retiredAt, '2026-08-13');
 });

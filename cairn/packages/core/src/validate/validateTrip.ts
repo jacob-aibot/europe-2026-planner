@@ -89,6 +89,53 @@ export function validateTrip(trip: Trip): Issue[] {
     });
   }
 
+  /**
+   * --- cities: distinct, non-reserved, named (§2.2 **A-10**, revision 11, QA P2-2) ---------
+   *
+   * Keys are minted now, so none of these is reachable by construction. All three are still
+   * reachable by `importDoc`, by a hand-edit, and from a build that predates the ruling —
+   * which is exactly why they are `Issue`s and not throws: a document already carrying the
+   * `"-"` collision must **open**, so the user can see it and act. Refusing to parse it would
+   * make it unopenable, which is the harm QA P2-7 describes. `fromJSON` is not the place for
+   * any of these and `createTrip` does not throw on them (§2.1: domain problems are data).
+   */
+  const cityKeysSeen = new Set<string>();
+  for (const c of trip.cities) {
+    if (cityKeysSeen.has(c.key)) {
+      // Structurally broken, not merely untidy: `daysForCity` and `poolFor` return the same
+      // rows for both entries, and a pooled stop under that key belongs to neither.
+      push({
+        level: 'error',
+        code: 'duplicate_city_key',
+        ref: { kind: 'trip', id: trip.id },
+        message: `Two cities share the key "${c.key}" — every day, place and pooled stop under it is ambiguous.`,
+        params: { cityKey: c.key },
+      });
+    } else cityKeysSeen.add(c.key);
+    if (c.key === TRANSIT_CITY_KEY) {
+      // A shadowed sentinel is silent corruption of `Day.primaryCity`'s meaning: the day
+      // would claim to be a travel day and to be in this city at the same time.
+      push({
+        level: 'error',
+        code: 'reserved_city_key',
+        ref: { kind: 'trip', id: trip.id },
+        message: `City "${c.name}" uses the reserved key "${TRANSIT_CITY_KEY}", which marks a day as travel-only.`,
+        params: { cityKey: c.key, name: c.name },
+      });
+    }
+    if (!c.name.trim()) {
+      // Decoupling the key from the name makes the name the ONLY human identity a city has.
+      // This is §8.3's `participant_name_empty` argument verbatim, true for cities from A-10.
+      push({
+        level: 'error',
+        code: 'city_name_empty',
+        ref: { kind: 'trip', id: trip.id },
+        message: `A city has no name, and its key "${c.key}" is an opaque id nobody can read.`,
+        params: { cityKey: c.key },
+      });
+    }
+  }
+
   // --- days dense, ids correct -------------------------------------------------
   const expected = trip.endDate >= trip.startDate ? dayNumber(trip.endDate) - dayNumber(trip.startDate) + 1 : 0;
   if (trip.days.length !== expected) {

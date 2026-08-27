@@ -101,18 +101,11 @@ function suppressedAsPast(trip: Trip, conflict: Conflict, today: IsoDate | undef
 }
 
 /**
- * Runs every rule and attaches any stored resolution. Pure; never throws — a rule that
- * throws is caught and reported as a `note` so one bad rule cannot take down the panel.
- *
- * A **feasibility** rule's finding is dropped when every one of its subjects is already in
- * the past (§8.2, `suppressedAsPast` above). An **integrity** rule always runs. This is what
- * stops the conflicts panel telling Jacob his Budapest lodging is missing for a trip he
- * finished on 22 August. `booking_vs_plan` going quiet on a completed trip is a **deliberate,
- * named loss** (§8.2), not a bug to patch back in.
- *
- * Ordered by severity, then rule order, then id, so goldens are stable.
+ * The one implementation (§2.7 A-9). `gate` decides whether §8.2's feasibility gate is
+ * applied; everything else is identical, because there is exactly one rule loop and exactly
+ * one place the gate lives. Private: the two public entry points below are the whole API.
  */
-export function detectConflicts(trip: Trip, opts: DetectOpts = {}): Conflict[] {
+function runRules(trip: Trip, opts: DetectOpts, gate: boolean): Conflict[] {
   const ctx: TripCtx = { trip, ...(opts.today ? { today: opts.today } : {}) };
   // Retired rows never resolve a conflict again (§2.7) — but they are read below, so a
   // conflict that comes back after a dismissal says so instead of returning silently.
@@ -152,7 +145,11 @@ export function detectConflicts(trip: Trip, opts: DetectOpts = {}): Conflict[] {
       // crashing rule's `class` and its only subject is `{kind:'trip'}`, which ruling 2
       // resolves to `trip.endDate` — so without this clause a bug in a *feasibility* rule was
       // silent on every finished trip while the same bug in an integrity rule reported.
-      if (!crashed && rule.class === 'feasibility' && suppressedAsPast(trip, c, opts.today)) continue;
+      //
+      // A-9 adds the `gate` conjunct at the front and keeps every conjunct that was already
+      // here. `detectUngated` is `gate === false`: retirement is a claim about the DOCUMENT
+      // and must not read a set the clock has thinned.
+      if (gate && !crashed && rule.class === 'feasibility' && suppressedAsPast(trip, c, opts.today)) continue;
       const live = byId.get(c.id) ?? null;
       const retired = live ? null : retiredById.get(c.id);
       const detail = retired
@@ -170,6 +167,40 @@ export function detectConflicts(trip: Trip, opts: DetectOpts = {}): Conflict[] {
         a.c.id.localeCompare(b.c.id),
     )
     .map((x) => x.c);
+}
+
+/**
+ * Runs every rule and attaches any stored resolution. Pure; never throws — a rule that
+ * throws is caught and reported as a `note` so one bad rule cannot take down the panel.
+ *
+ * A **feasibility** rule's finding is dropped when every one of its subjects is already in
+ * the past (§8.2, `suppressedAsPast` above). An **integrity** rule always runs. This is what
+ * stops the conflicts panel telling Jacob his Budapest lodging is missing for a trip he
+ * finished on 22 August. `booking_vs_plan` going quiet on a completed trip is a **deliberate,
+ * named loss** (§8.2), not a bug to patch back in.
+ *
+ * Ordered by severity, then rule order, then id, so goldens are stable.
+ */
+export function detectConflicts(trip: Trip, opts: DetectOpts = {}): Conflict[] {
+  return runRules(trip, opts, true);
+}
+
+/**
+ * The same rules with §8.2's feasibility gate **disabled** (§2.7 A-9, QA P2-1).
+ *
+ * **Not exported from `index.ts`** — exactly as `TRANSIT_CITY_KEY`'s sentinel discipline, and
+ * §2.10's runtime symbol count stays at 70. The only legitimate caller is `syncResolutions`.
+ *
+ * Why it exists: *retirement is a claim about the document; the gate is a claim about the
+ * user's attention, taken at a clock, over a document that has not changed.* A conflict the
+ * gate withheld has **not** been fixed, so reading the gated set as evidence of a fix retires
+ * the user's dismissals for no reason other than the calendar. Nothing that renders may call
+ * this — a panel built from it would nag about a trip that is over.
+ *
+ * Pure.
+ */
+export function detectUngated(trip: Trip, opts: DetectOpts = {}): Conflict[] {
+  return runRules(trip, opts, false);
 }
 
 /** Conflicts touching a given day, stop or booking id. Pure. */

@@ -43,13 +43,33 @@ update to this file added that instruction).
 > on a finished trip instead of being silently swallowed; the trip list shows *"June 2019"*
 > rather than two exact days for a trip you only remembered the month of; and a trip can no
 > longer be written with a date-precision value that stops it loading again. **Four remain
-> open:** two are with the architect (a dismissed warning being permanently retired by the
+> open:** two went to the architect (a dismissed warning being permanently retired by the
 > calendar alone; a city name in a non-Latin alphabet collapsing to a meaningless key — the
 > Japan case), and two are disclosed (one undo peels the city off a long recorded trip; a
 > backup file with no owner is adopted without marking its foreign content).
 
-> **Last updated:** 2026-08-27, against `master` after the round-12 P2-3/P2-4/P2-6/P2-7 fix pass
-> (previously the KD-38 / absent-`ownerId` pass). Update this line every time you edit this file.
+> **The architect ruled on both, and both are now BUILT** (still not verified — no breaker
+> round has attacked them). **Two more increments, I-3a and I-4a:**
+>
+> - **A dismissed warning is no longer thrown away by the calendar.** Before: you tell the app
+>   *"not a problem"* about a missing hotel, the trip ends, and simply **opening** the trip
+>   deleted your answer, changed the file and queued a save — from looking at it. If the
+>   warning ever came back it accused you of a dismissal you never took back. Now the app asks
+>   *"does this trip still produce that finding?"* rather than *"is the app still nagging me
+>   about it?"* — two different questions that had been quietly treated as one.
+> - **A city called 東京 is a city called 東京.** Before: any name outside the English alphabet
+>   became the same meaningless key `-`, so *"日本 2019 — 東京, 京都"* recorded as **one** city
+>   and every day of the trip pointed at nothing, silently. Now the app mints an internal id
+>   for a city instead of building one out of its name, so it works in any script; the name is
+>   only ever a label. Trips already saved with the old collapse now **say so on screen** —
+>   they still open, and the app names the problem instead of mis-filing every day.
+>
+> Left open from round 12, unchanged: the undo that peels the city off a long recorded trip,
+> and the ownerless backup file adopted without marking its foreign content.
+
+> **Last updated:** 2026-08-27, against `master` after ROADMAP revision 11's I-3a and I-4a
+> (previously the round-12 P2-3/P2-4/P2-6/P2-7 fix pass). Update this line every time you edit
+> this file.
 
 **Status vocabulary used throughout:** 🟢 COMPLETE · 🟡 IN PROGRESS · 🟠 NEXT / APPROVED ·
 🔴 BLOCKED · ⚪ NOT STARTED. Also: **built** (code exists) vs **verified** (an adversarial tester

@@ -576,7 +576,10 @@ export function createStore(opts: StoreOptions) {
   }
 
   /**
-   * §2.7's `syncResolutions`, run against a conflict set that was **just** computed (QA R2-7).
+   * §2.7's `syncResolutions` (QA R2-7), which since §2.7 **A-9** detects its own **un-gated**
+   * set and no longer takes one (QA P2-1). The cache's `conflicts` are §8.2's *gated* set —
+   * the right thing to render and the wrong thing to retire against — so the argument is
+   * gone and the store cannot hand over the wrong one.
    *
    * The retirement is dated with `derived.today` — the cache's own record of the day its
    * conflict set was computed for — and not with a fresh clock read. §0.6: *a fact about a
@@ -585,14 +588,20 @@ export function createStore(opts: StoreOptions) {
    * as the explicit `syncResolutions()` method has always done it. It does make the document
    * dirty, which is correct — the retirement has to reach storage.
    *
+   * `run` is A-9 point 3's cost control: retirement is now a pure function of
+   * `(document, today)` — the same key `derivedFor` caches on — so on a cache **hit** it has
+   * already run for that pair and running it again can only re-derive the same answer. The
+   * render path passes `cache !== prev`; the explicit `syncResolutions()` method passes
+   * `true`, because that is a request, it is idempotent, and it is not on a render path.
+   *
    * Returns the cache for the document that now exists. This converges in one pass: retiring
    * a resolution cannot make a conflict appear or disappear, only detach a `resolution` from
    * one, so a second sync over the new set finds nothing left to retire.
    */
-  function retireResolutions(derived: DerivedCache | null): DerivedCache | null {
+  function retireResolutions(derived: DerivedCache | null, run: boolean): DerivedCache | null {
     const doc = state.doc;
-    if (!doc || !derived) return derived;
-    const next = core.syncResolutions(doc, derived.conflicts, derived.today);
+    if (!doc || !derived || !run) return derived;
+    const next = core.syncResolutions(doc, derived.today);
     if (next === doc) return derived;
     set({ ...state, doc: next });
     scheduleSave();
@@ -705,8 +714,11 @@ export function createStore(opts: StoreOptions) {
      * `state.doc` itself, one statement earlier. BUILD-NOTES KD-25.
      */
     getDerived(): DerivedCache | null {
+      // A-9 point 3: retirement is a function of `(document, today)` — `derivedFor`'s own
+      // cache key — so it runs only when `derivedFor` returned a NEW cache object.
+      const prev = cache;
       cache = derivedFor(cache, state.doc, ports.clock.today());
-      cache = retireResolutions(cache);
+      cache = retireResolutions(cache, cache !== prev);
       return cache;
     },
 
@@ -926,7 +938,8 @@ export function createStore(opts: StoreOptions) {
      */
     syncResolutions(): AppState {
       cache = derivedFor(cache, state.doc, ports.clock.today());
-      cache = retireResolutions(cache);
+      // Unconditionally `true`: an explicit request, idempotent, not on a render path (A-9).
+      cache = retireResolutions(cache, true);
       return state;
     },
 
