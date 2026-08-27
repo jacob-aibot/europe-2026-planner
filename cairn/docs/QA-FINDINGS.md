@@ -1,4 +1,24 @@
-# Cairn — QA findings, Phase 1 **rounds 2, 3, 4, 5, 6, 7, 8 and 9**
+# Cairn — QA findings, Phase 1 **rounds 2, 3, 4, 5, 6, 7, 8, 9 and 10**
+
+> **Status (as of `master` @ `9ced6e7`, independently verified 2026-08-27 — round 10, the
+> narrow A-5b / A-6a gate re-verification, two items only):**
+>
+> | | |
+> |---|---|
+> | **Scope** | Exactly two things: **A-5b** (`redo()` releases the retirement ledger under the four-clause rule; `undo()` unchanged) and **A-6a** (`removeStop` prunes the one `Place` a copied stop orphans, under its four clauses, and nothing else). Nothing else was investigated. **R8-3, R8-4 and every round 2–7 open finding were deliberately not re-run.** |
+> | **A-5b — PASS** | Implemented exactly as §2.7 revision 7 states: release-then-`set`, one emit, four clauses, `undo()` carries no release. **R9-1's own Chromium repro `qa/r9-redo.mjs` is 0 FAIL** (was 2). Adversarial beyond the builder's test (`qa/r10-redo.mjs`): redo with an empty future, redo of an unrelated action with a mark held, undo of an `unresolveConflict` (the one shape a `rowsFor` rule would fire on), two interleaved conflicts, the 50-entry history limit (50 undos + 50 redos), an A→B→A trip switch, and a `mergeWithStored` reseed with a live future — all clean, the A-5b invariant asserted after every step. One MINOR residual, **R10-1**. |
+> | **A-6a — PASS** | All four clauses correct and no over-prune anywhere I could reach (`qa/r10-prune.mjs`): pool removals, day→pool moves, accepted copies, rejected copies, copy-of-a-copy, a stop id duplicated across a day and the pool, purity, one revision bump, `samePlace` reuse with a user stop still linking, the ONE documented cost, undo/redo through the store, and the real fixture at scale (**2 blockers, 92→92 places, 61 orphans untouched, `place-68` still blocks under +1°**). `qa/r9-geo.mjs` is **ALL OK** (was 3 FAIL). |
+> | **NEW in round 10 — BLOCKER (1), MAJOR (1), MINOR (1)** | **R10-3 (BLOCKER, out of the two-item scope, found while probing `redo`)** — `mergeWithStored` does not clear the undo history, so **one Ctrl+Z after a merge writes a pre-merge snapshot over storage and destroys the other tab's saved edit**, silently, with the chip reading *Saved*. **R10-2 (MAJOR)** — R9-2's orphan is still reachable through `StopEditor`: typing coordinates into a copied stop replaces its place link, no `removeStop` runs, and the fixture carries a third `geo_outlier` blocker naming `place-copy-1` again. **R10-1 (MINOR)** — `qa/r9-ledger.mjs` §1.2c/d still FAIL: with two Ctrl+Z's instead of one, A-5b clause 2 declines because the document `undo` pushed into `future` is the re-asserted one. |
+> | **Not regressions** | R10-1, R10-2 and R10-3 all reproduce identically at `9ba5aec` (pre-implementation worktree). The A-5b/A-6a diff introduced none of them. |
+> | **Numbers, re-derived** | `npm run test:tap` **420 pass / 0 fail**, `npm run typecheck` clean, `npm run web:build` clean — the builder's numbers are accurate. |
+> | **Gate verdict** | **The two items under test are clean: A-5b PASS, A-6a PASS.** The Phase 1 gate is **not** clean, on findings adjacent to them: **1 BLOCKER (R10-3), 1 MAJOR (R10-2)**, plus R8-3/R8-4 (MAJOR, untouched since round 8). **Recommend SEND BACK — architect first for all three new items.** |
+>
+> **New probes this round:** `qa/r10-redo.mjs` (headless, 3 FAIL — all R10-1), `qa/r10-prune.mjs`
+> (headless, 1 FAIL — R10-2 §5), `qa/r10-editdoor.mjs` (Chromium, 1 FAIL — R10-2 end to end),
+> `qa/r10-mergeundo.mjs` (headless, 2 FAIL — R10-3).
+>
+> **The round-9 status note below is superseded by this one** and is kept as the record of
+> what was true at `773f8ea`.
 
 > **Status (as of `master` @ `773f8ea`, independently verified 2026-08-27 — round 9, the
 > narrow A-5 / A-5a / A-6 gate-verification pass, four items only):**
@@ -152,6 +172,105 @@ PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r2-race.mjs      # browser pro
 | `qa/r9-ledger.mjs` | **R9-1** — the A-5/A-5a ledger: undo/redo depth, the second and third dismissal, five reseed round trips, an A→B→A switch, the merge reseed |
 | `qa/r9-geo.mjs` | **R9-2** — A-6's copy-borne `Place`: two source trips, one-of-two acceptance, the user-authored→copy-only handover, reject vs. remove, and the real fixture |
 | `qa/r9-redo.mjs` | **R9-1** in Chromium — seven user actions, and the redone dismissal is stillborn |
+| `qa/r10-redo.mjs` | **A-5b** past the builder's test — empty future, unrelated redo, undo of an `unresolveConflict`, two interleaved conflicts, the 50-entry limit, an A→B→A switch, a merge reseed, and the A-5b invariant after every step (**R10-1**) |
+| `qa/r10-prune.mjs` | **A-6a** past `geoCheck.test.ts` — the four clauses one at a time, the anti-sweep guards, dangling references, undo/redo, the real fixture at scale, and the `updateStop` door (**R10-2**) |
+| `qa/r10-editdoor.mjs` | **R10-2** in Chromium — six user actions, and the copy-borne `Place` is orphaned in IndexedDB |
+| `qa/r10-mergeundo.mjs` | **R10-3** — one Ctrl+Z after a merge overwrites storage with a pre-merge snapshot |
+
+---
+
+# Round 10 — the A-5b / A-6a gate re-verification (`773f8ea..9ced6e7`)
+
+Two items. Both rulings are implemented as written and both pass. Three findings, none of
+them a defect *in* those two implementations, and none of them a regression from them —
+all three reproduce unchanged in a worktree at `9ba5aec`.
+
+**Baseline first, as instructed:** `node --test packages/client/test/retirement-ledger.test.ts
+packages/core/test/geoCheck.test.ts` **43 pass / 0 fail**; `npm run test:tap` **420/0**;
+`npm run typecheck` clean; `npm run web:build` clean. Round-9 probes re-run **unmodified**:
+`qa/r9-geo.mjs` **ALL OK** (was 3 FAIL — R9-2 closed), `qa/r9-redo.mjs` in Chromium **0 FAIL**
+(was 2 — R9-1's user-visible repro closed), `qa/r9-ledger.mjs` **2 FAIL** (was 4 — see R10-1).
+
+| id | severity | file:line | defect | repro | routing |
+|---|---|---|---|---|---|
+| **R10-3** | **BLOCKER** | `packages/client/src/store/store.ts:404–411` (`writeAndSettle` spreads `...state`, so `history` survives the merge reseed) × `store/reducer.ts:170` (undo is a snapshot restore) × `store.ts:682` (`undo()`'s `scheduleSave`, which then autosaves the restored snapshot) | `mergeWithStored` reseeds the document but **not** the undo history, so one `Ctrl+Z` after a merge installs a pre-merge snapshot and the debounced autosave writes it over storage with the post-merge expectation — which the port accepts. The other tab's saved edit is destroyed in storage, the chip reads *Saved*, and nothing is surfaced. | `node qa/r10-mergeundo.mjs` (assertions 3 and 4) | **architect** — §4.2 rule 5's history vs. §2.7 A-5's reseed paths: whether a reseed must clear `past`/`future` is a ruling, not a patch |
+| **R10-2** | MAJOR | `apps/web/src/views/StopEditor.tsx:63–76` (`place` is in **every** update patch) × `packages/core/src/build/stops.ts:224` (`pruneOrphanedCopyPlace` runs only from `removeStop`) × `derive/geoCheck.ts:277–279` | Typing coordinates into a **copied** stop replaces its `{kind:'place'}` link with `{kind:'inline'}`. No `removeStop` runs, so A-6a's prune never fires, the copy-borne `Place` is orphaned, and A-6 clause 1 measures a zero-link place at `'certain'`: the reference trip carries a third `geo_outlier` **blocker** naming `place-copy-1` (*Blue Cave, Biševo*) — R9-2's symptom sentence, through a different door. | `node qa/r10-prune.mjs` §5.1 (real fixture, through the store); `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r10-editdoor.mjs` (six user actions, orphan read back out of IndexedDB) | **architect** — A-6a's prune is a closed list of one site (`removeStop`); adding `updateStop`, or exempting the orphan, is the same class of ruling R9-2 already got |
+| **R10-1** | MINOR | `packages/client/src/store/store.ts:711–718` (clause 2) × `:232` (`set` step 5 replaces `next.doc` with the re-asserted document, which the **next** `undo` then pushes into `future`) | With **two** Ctrl+Z's instead of one (dismiss → retire → Ctrl+Z → Ctrl+Z → Ctrl+Shift+Z), the redone document holds the dismissal row already stamped `retiredAt`, so A-5b clause 2 declines and the redone dismissal is dead in the document. **Not user-visible**: that render is identical to the one the user was already looking at one keystroke earlier (R8-1's blessed re-assertion), and pressing *"Not a problem"* again works. | `node qa/r10-redo.mjs` §2.1 / §2.2 / §2.5; `node qa/r9-ledger.mjs` §1.2c / §1.2d | **architect** — either bless it (clause 2 is deliberate) or extend the rule; the implementation matches §2.7 revision 7 exactly as written |
+
+## R10-3, in full — a merge, then one keystroke, and another writer's work is gone
+
+This is outside the two items I was sent to verify. I found it while attacking `redo()`'s
+interaction with the `mergeWithStored` reseed (`qa/r10-redo.mjs` §5.2, which is itself clean),
+and it is reported rather than parked because it is silent, permanent, cross-writer data loss.
+
+**The trace, all of it reachable in the shipped UI.** Two tabs hold the same trip. Tab B edits
+a day's title and saves. Tab A edits the same day's *note* — a disjoint field — and its save is
+correctly refused on the version fence (`status: 'conflict'`). Tab A presses **Merge and save**
+(`App.tsx:96`). The merge is *correct*: `mergeTrips` is per-entity, and the resulting document
+holds both edits (`r10-mergeundo.mjs` assertion 2 — `title="OTHER TAB" note="mine"`). Then the
+user presses `Ctrl+Z` once (`App.tsx:29`).
+
+`writeAndSettle` installed the merged document with `{ reseed: true }`, which is right for the
+*ledger* — but it builds its next state as `{ ...state, doc: toWrite, ... }`, so `history.past`
+is untouched and still holds tab A's own pre-merge snapshots. §4.2 rule 5's undo is a snapshot
+restore, so it restores a document that predates the merge and knows nothing about tab B's
+title. `scheduleSave` then fires, and the write carries the **post-merge** `savedVersion` as its
+expectation, so the fence has nothing to object to: it lands. Storage now reads
+`title="" note=undefined` — tab B's edit and tab A's own edit both gone — and
+`persistence.status` is `idle`, i.e. the UI says **Saved**.
+
+Three things make this a BLOCKER rather than a rough edge. It destroys data the user never
+touched and cannot see (tab B's edit is not on screen in tab A after the undo). It is
+persisted, not in-memory: reopening the trip does not recover it, and there is no second copy.
+And it is **silent** — the one mechanism that exists to stop exactly this (the version fence)
+is satisfied by construction, because the tab writing the loss is the tab that owns the
+current version.
+
+Not a regression: identical output at `9ba5aec`. It is not R8-4 (`doMerge`'s off-chain `load()`
+resurrecting a deleted trip) — different mechanism, different symptom, same function.
+
+## What I tried on A-5b and A-6a and could NOT break
+
+**A-5b.** `redo()` with an empty `future` (three times in a row: no throw, no release, ledger
+byte-identical). A redo of an unrelated action with a mark held — R8-1 at redo depth, still
+stamped. `undo()` of an `unresolveConflict`, the one shape a `rowsFor`-based rule *would* fire
+on if anybody added one to `undo`: silent, stamped, correct. Two conflicts on two days with
+their dismissals interleaved: the release is attributed to the right `conflictId` and the other
+mark survives. Whether one redo step can raise two ids' row counts at once: **it cannot** —
+`reduce` pushes one snapshot per action and `resolveConflict` appends one row, measured over
+every history entry (§3.3). The 50-entry history limit: 50 undos to the floor and 50 redos back
+leave the dismissal live and rendered *dismissed*, and `past` never exceeds the limit. An
+A→B→A trip switch: `openTrip` reseeds from `initialState()`, so the future stack is gone, the
+redo is a harmless no-op, the ledger is trip A's and the document is trip A's. A `mergeWithStored`
+reseed with a live future: no throw, no un-retirement, invariant holds (the *content* problem
+on that path is R10-3, not a ledger problem). The §2.7 A-5b invariant was asserted after every
+step of every sequence and never broke — including in the R10-1 case, which is why the
+invariant alone is not a sufficient test.
+
+**A-6a.** Removing a copied stop from the **pool** (clause 3's pool half is symmetric), and a
+copy moved day→pool first. An **accepted** copy (`accept()` changes `state`, not `source`, so
+`attribution()` survives and the prune still fires — "Copy → Accept → ×" does not reopen R9-2)
+and a **rejected** one. A copy of a copy. A stop id present in both a day and the pool: the
+prune correctly declines. Purity, exactly one revision bump, and a JSON round trip afterwards.
+The anti-sweep guards: a user-authored stop's place survives its own removal and is still
+measured `'certain'`; `samePlace` reuse with the user's own stop still linking declines; the
+one documented cost (user place, copy as its last linker) deletes exactly that one row and
+nothing else, and undo restores it. `addStop` against a pruned `placeId` does not throw,
+`validateTrip` reports `place_ref_dangling`, and no derive path throws on it. Through the store:
+`×` prunes, `Ctrl+Z` restores stop **and** place with the place back at `'unanchored'`, and
+`Ctrl+Shift+Z` prunes again. On the real fixture: 2 blockers before and after, `places` 92→92,
+**61 orphaned places untouched**, `place-68` (*Fisherman's Bastion*) still present and still
+minting exactly one `geo_outlier` blocker under a +1° injection — the sweep the ruling refused
+did not happen. A pool copy on the real fixture prunes too.
+
+**One observation, not filed as a finding.** On a document that already has two `places` rows
+with the same id, the prune's `filter` removes **both**, against the ruling's "at most one row
+leaves per call". `validateTrip` reports `duplicate_id` on such a document and `fromJSON`
+cannot produce one, so the input is already invalid; noted so a future reader does not
+rediscover it as new.
+
+**Not re-run this round, still open, unchanged:** R8-3, R8-4 (both MAJOR, round 8), and the
+round 2–7 open list in the round-7 status note above (all MINOR). None were investigated.
 
 ---
 

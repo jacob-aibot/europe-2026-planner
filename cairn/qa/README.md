@@ -338,3 +338,44 @@ Ctrl+Z, Ctrl+Shift+Z). Deterministic, not a race; 2 FAIL, both R9-1.
 Round-8 probes re-run **unmodified** this round and unchanged by `773f8ea`: `qa/r8-geo.mjs`
 **1 FAIL** (R8-3, out of scope — R8-2 closes), `qa/r8-persist.mjs` **1 FAIL** (R8-4, out of
 scope — R8-1 closes), `qa/r8-undo.mjs` in Chromium **0 FAIL**. `npm run test:tap` 412/0.
+
+---
+
+## Round 10 (2026-08-27, `master` @ `9ced6e7`) — the A-5b / A-6a gate re-verification
+
+Narrow: two items only — A-5b (`redo` releases the retirement ledger) and A-6a (`removeStop`
+prunes the one `Place` a copied stop orphans). R8-3, R8-4 and the round 2–7 open list were
+**not** re-run. Headless, from `cairn/`:
+
+```bash
+node qa/r10-redo.mjs       # A-5b past retirement-ledger.test.ts: empty future, unrelated
+                           #   redo, undo of an `unresolveConflict`, two interleaved
+                           #   conflicts, the 50-entry history limit, an A->B->A switch, a
+                           #   merge reseed, and the A-5b invariant after every step
+                           #   3 FAIL — all R10-1 (MINOR), all pre-existing at 9ba5aec
+node qa/r10-prune.mjs      # A-6a past geoCheck.test.ts: the four clauses one at a time
+                           #   (pool, accepted, rejected, copy-of-a-copy, duplicate stop id,
+                           #   purity, one revision bump), the anti-sweep guards, dangling
+                           #   references, undo/redo, the real fixture at scale
+                           #   1 FAIL — §5, R10-2 (MAJOR): the `updateStop` door
+node qa/r10-mergeundo.mjs  # R10-3 (BLOCKER) — one Ctrl+Z after a merge writes a pre-merge
+                           #   snapshot over storage and destroys the other tab's edit
+                           #   2 FAIL
+```
+
+Everything else in both `r10-*` probes is a confirmation that must stay at 0. None are
+timing-dependent: all are deterministic call sequences.
+
+Browser probe needs `npm run web:build && node tools/serve.mjs` in one shell, then:
+
+```bash
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r10-editdoor.mjs  # R10-2 as a user: six
+                                                                    # actions, and the
+                                                                    # copy-borne Place is
+                                                                    # orphaned in IndexedDB
+```
+
+Round-9 probes re-run **unmodified** at `9ced6e7`: `qa/r9-geo.mjs` **ALL OK** (was 3 FAIL,
+R9-2 closed), `qa/r9-redo.mjs` in Chromium **0 FAIL** (was 2, R9-1's user-visible repro
+closed), `qa/r9-ledger.mjs` **2 FAIL** (was 4; the two that remain are §1.2c/d = R10-1, a
+sequence A-5b clause 2 declines by construction). `npm run test:tap` 420/0.
