@@ -1,4 +1,25 @@
-# Cairn — QA findings, Phase 1 **rounds 2, 3, 4, 5, 6 and 7**
+# Cairn — QA findings, Phase 1 **rounds 2, 3, 4, 5, 6, 7 and 8**
+
+> **Status (as of `master` @ `0a58c81`, independently verified 2026-08-27 — round 8, the
+> narrow gate-breaker pass over the SEND-BACK work only):**
+>
+> | | |
+> |---|---|
+> | **Scope** | The diff `5bdd0dc..0a58c81` and nothing else: B-1…B-7 plus the architect's A-1…A-4. R2–R7 were **not** re-litigated; the 387-test suite and typecheck were confirmed clean by the orchestrating session and were not re-derived here. |
+> | **PASS — verified on my own evidence** | **B-1** (`travelLine`, §2.12 arithmetic incl. midnight, missing/malformed `HH:MM`, a pooled `journey`, and no arrival maths leaking onto `transfer`/`unknown`). **B-3** (credit renders in all four stop-rendering views; no other record class can carry a non-null `attribution`). **B-4/A-3** (bound exhaustion reproduced for real: 5 writes, `status:'error'`, `FLUSH_EXHAUSTED_MESSAGE` verbatim, debounce re-armed, banner clears when the re-armed write lands, nothing lost; the `'error'` exit correctly does **not** re-arm). **B-5** (7 dist hits → **3**, and all three are the two justified `NOT_CREDENTIALS` false positives — `DE4345` and `Booking 338 441 5948` are gone; the rule is derived and red-greened). **B-7** (symlinked file, symlinked directory, `--force`, `..` traversal and the `cairn-backup` sibling prefix all refused; no-clobber exits 3). **A-4** (69 runtime symbols; nothing in `apps/web`, `cli.ts`, `tools/` or `fixtures/` reaches past `core/src/index.ts`, static or dynamic). **B-6's R7-1/R7-2 halves** (merge guard holds, zero unhandled rejections). |
+> | **NEW in round 8 — MAJOR (4)** | **R8-1** — `store.undo()` restores a pre-retirement snapshot, so a dismissed **blocker** comes back *"Marked dismissed"* after Ctrl+Z; §2.7's *"never un-retires"*, opened by B-2's own fix. **R8-2** — one Browse-and-copy click mints a third `geo_outlier` **blocker** on the real fixture, via the `Place` `copyStopInto` rule 4 drags across; A-1 exempts the copied stop and not the place. **R8-3** — accepting a copied stop can **replace** the adjacent-day anchor and mint a blocker on a stop the user wrote themselves; A-1's monotonicity claim is false for `adjacent_day`. **R8-4** — `mergeWithStored`'s off-chain `load()` lets a merge already in flight resurrect a trip the delete link just removed (`in storage=true in library=true` — R7-3's own measurement, through a different door). |
+> | **Reachability, stated plainly** | **R8-1 and R8-2 are reachable in the shipped UI in four clicks each** (`qa/r8-undo.mjs` in Chromium; `qa/r8-geo.mjs` §1 through the store's own dispatch path). **R8-3 and R8-4 are not** — `acceptCandidate` has no control in `apps/web`, and `deleteTrip(activeTripId)` cannot be reached because `Library.tsx` renders only when `state.doc === null`. Both are still real violations of rulings written this revision. |
+> | **BLOCKERS** | **None.** No data loss, no privacy leak and no wrong-person's-data path was found in the SEND-BACK diff. |
+> | **Not gating, one line each** | `travelLine` prints *"(+1 day)"* for a run over 24 h, and renders `NaN:NaN` / `16:0.7000000000000455` for a `NaN` or fractional `arrival.mins` — none of which the importer, the UI or `JSON.parse` can produce. A day-map marker tooltip shows a copied stop's name with no badge or credit (§2.14 rule 7's fifth surface; pre-existing, out of B-3's scope). `FLUSH_EXHAUSTED_MESSAGE` is not on `packages/client`'s index while `CONFLICT_MESSAGE` is. A subscriber that throws inside `dispatch` aborts before `scheduleSave()`, so the edit sits dirty with nothing scheduled (R7-2's neighbour; the three §4.2 backstops still apply). |
+> | **Probe rot confirmed, not patched** | BUILD-NOTES' status note is accurate on both counts: `qa/r6-flush.mjs` samples `status` 200 ms after the abort, and §4 above shows the re-armed write lands and clears the banner inside that window — the assertion is stale, not a defect. `qa/r5-freshness.mjs` §5.7 still crashes on `core.accept`. |
+> | **Gate verdict** | **No BLOCKER. Four MAJORs, all in code or rulings this pass introduced or claimed to close.** R8-1 and R8-2 are user-reachable and both defeat a promise the gate review's own routing was written to obtain (§2.7's retirement rule; A-1's *"copying does not mint blockers"*). **Recommend SEND BACK for those two**; R8-3 and R8-4 can ride to a following pass on the reachability argument, provided they are written down rather than inferred. |
+>
+> **New probes this round:** `qa/r8-geo.mjs` (headless, 2 FAIL by design), `qa/r8-persist.mjs`
+> (headless, 2 FAIL by design), `qa/r8-undo.mjs` (Chromium, 1 FAIL by design). The builder's
+> `qa/r8-views.mjs` was re-run unmodified: **0 FAIL**, zero page errors.
+>
+> **The round-7 status note below is superseded by this one** and is kept as the record of what
+> was true at `32a3839`.
 
 > **Status (as of `master` @ `32a3839`, independently verified 2026-08-26 — round 7):**
 >
@@ -105,6 +126,78 @@ PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r2-race.mjs      # browser pro
 | `qa/r2-data.mjs` | real-trip shapes; travelRole × geoCheck × copy interactions |
 | `qa/r2-constraints.mjs` | `cairn-constraints`: determinism, DOM, zero-dep, coordinates in params |
 | `qa/r2-import.mjs` | `importDoc` (F-2/F-6), storage failure, quota, corrupt documents |
+| `qa/r8-geo.mjs` | **R8-2 / R8-3** — A-1's two promises about `geoCheck`, falsified |
+| `qa/r8-persist.mjs` | **R8-1 / R8-4** — B-2 × undo; delete-as-chain-link × an in-flight merge; plus B-4 and B-6's R7-1/R7-2 halves as confirmations |
+| `qa/r8-undo.mjs` | **R8-1** in Chromium — Ctrl+Z, and the blocker comes back *"Marked dismissed"* |
+
+---
+
+# Round 8 — the SEND-BACK pass (`5bdd0dc..0a58c81`)
+
+Narrow verification of the thirteen items the gate review and the architect routed. Ten were
+attacked adversarially; four MAJORs and no BLOCKER came out. Every row below has a command.
+
+| id | sev | file:line | defect | repro | routing |
+|---|---|---|---|---|---|
+| **R8-1** | MAJOR | `packages/client/src/store/store.ts:432` (`retireResolutions`'s `set`) × `:544` (`undo`) | `syncResolutions` writes `retiredAt` into the **document**, and snapshot undo restores a pre-retirement `Trip` — so Ctrl+Z un-retires the row and a dismissed **blocker** returns *"Marked dismissed"*. §2.7: *"never un-retires"*. | `node qa/r8-persist.mjs` §3; `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r8-undo.mjs` | **architect** (see below) |
+| **R8-2** | MAJOR | `packages/core/src/derive/geoCheck.ts:230–242` (the places loop has no copied-record exemption) ← `build/copyStop.ts:124` (rule 4's `const copy: Place`) | One Browse-and-copy click adds a third `geo_outlier` **blocker** to the reference trip, naming the `Place` the copy dragged in. §2.13 exempts the copied **stop**; rule 4 copies the place with its `cityKey` verbatim and the place is measured as the user's own. | `node qa/r8-geo.mjs` §1 | **architect** — §2.13's *"Places need no row of their own"* paragraph is the wrong ruling |
+| **R8-3** | MAJOR | `packages/core/src/derive/geoCheck.ts:177`, `:178` | The adjacent-day anchor is **one representative chosen by position** from `anchorable`, so accepting a copied stop can *replace* it rather than add to it — minting a `geo_outlier` blocker on a stop the user wrote themselves. §2.13: *"acceptance can only ever add anchors … never create [a blocker]"*. Not UI-reachable (`acceptCandidate` has no control). | `node qa/r8-geo.mjs` §2 | **architect** — the anchor definition and the monotonicity claim contradict each other |
+| **R8-4** | MAJOR | `packages/client/src/store/store.ts:444` (`doMerge`'s off-chain `load`) → `:452–454` (the expect-absent write) vs `:753` (the delete link) | A merge already in flight when the active trip is deleted resurrects it: the delete link drains and deletes, the merge's `load()` — which is **not** on the chain — then returns `null`, and the *"write it back with `expectedVersion: null`"* branch is satisfied by the record's absence. `in storage=true in library=true`, and `persistence.savedDoc` points at a trip with no `doc`. Not UI-reachable. | `node qa/r8-persist.mjs` §1 | **builder** (put the load on the chain, or don't take the null branch when this store issued the delete), with an architect note on §4.2 6c |
+
+### R8-1, in full — because the reasoning is the evidence
+
+B-2 was routed to stop exactly one thing: *"a conflict the user dismissed once is LIVE again
+after the data returns to that value."* The fix works for the route the review named — edit
+away, edit back — and `qa/r8-persist.mjs` §3 route A confirms it. It does not work for the
+other route back to the same value, which is the app's own global Ctrl+Z (`App.tsx:27–38`).
+
+The mechanism is one sentence. `retireResolutions` sets `state.doc` to a document with
+`retiredAt` filled in, *outside* the reducer, so — correctly, per §2.7 — nothing goes on the
+undo stack. But `history.past` already holds the pre-retirement document, and §4.2 rule 5's
+undo is *"snapshot-based over the immutable `Trip`"*: restoring that snapshot restores
+`retiredAt: null`. The retirement is document state, the undo stack owns document state, and
+the two rules have not been reconciled.
+
+Measured, in Chromium, four user actions from a clean load of the sample:
+
+```
+move "City Airport Train" 16:20 -> 21:45   booking_vs_plan: 1 blocker
+"Not a problem"                            Marked dismissed on 2026-08-27
+move it back to 16:20                      0 rows   (the render retires the resolution)
+Ctrl+Z                                     1 row — "…blocker… Marked dismissed on 2026-08-27"
+```
+
+That last line is R2-7's symptom sentence, restored, on a **blocker**, after a keystroke that
+is not an acknowledgement of anything. §2.7 exists because `HISTORY.md` Pass 5 lost a week to
+a stale acknowledgement; the reason it is *"retired, not resurrected"* is that a dismissed
+blocker re-arming with no user action is worse than one that never existed, and a dimmed row
+is how Jacob stops looking at it.
+
+Routed to the **architect** rather than the builder because no local change satisfies both
+rules. Retiring inside the reducer puts bookkeeping on the undo stack, which §2.7 forbids in
+as many words. Re-retiring after `undo()` cannot work either: at that moment the conflict is
+back, so there is nothing the rule can see to retire — the mechanism cannot distinguish
+*"never retired"* from *"un-retired by a snapshot"*. Either retirement state moves outside the
+snapshotted `Trip`, or `undo`/`redo` must carry `resolutions[].retiredAt` forward across a
+restore. That is a design call about where retirement lives, and it is one line in §2.7.
+
+### What I attacked and could not break
+
+`travelLine`: midnight wrap, exactly 24 h, `"7:5"`, `"25:00"`, absent `arrival.mins`, a pooled
+`journey` with no time, an unrecognised and an absent `travelRole`, and — the leak the review
+worried about — a `'transfer'` and an `'unknown'` stop that *do* carry `arrival.mins`, both of
+which correctly publish `arrives: null` and no arithmetic. `attribution()`: every provenance
+shape that can produce a non-null credit, against all five surfaces that render a stop; only a
+map-marker tooltip omits it. The flush bound: forced to exhaustion with a port that re-dirties
+the document inside every write, then checked against all three of rule 6a″'s obligations and
+against the two exits that must *not* re-arm. `safeWritePath`: a symlinked file, a symlinked
+directory, `--force` on both, `..` traversal, an absolute path outside, the `cairn-backup`
+sibling-prefix trick, and a symlink pointing *inside* `cairn/` (which must and does pass) — six
+refusals, exit 2, `git status` clean afterwards. The export surface: 69 runtime symbols, and
+every static and dynamic importer of `packages/core` in `apps/web`, `cli.ts`, `tools/` and
+`fixtures/` resolves through `index.ts` with nothing missing at runtime. The delete link: a
+dispatch racing it, a dispatch behind it, and an autosave already in flight — all three end
+with the trip deleted and the library row gone.
 
 ---
 

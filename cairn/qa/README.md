@@ -247,3 +247,48 @@ second press fails to land at all four.
   `{"@cairn/core": "*"}` as a runtime dependency. The root workspace declares none at all.
   Only R2-18 is a real FAIL in that probe.
 - `qa/r5-freshness.mjs:602`, `qa/r2-copy2.mjs:86`, `qa/r2-import.mjs:51` remain rotten.
+
+---
+
+## Round 8 (2026-08-27, `master` @ `0a58c81`) — the gate-breaker pass over the SEND-BACK work
+
+Narrow: the diff `5bdd0dc..0a58c81` only (B-1…B-7, A-1…A-4). R2–R7 were **not** re-run.
+Headless, from `cairn/`:
+
+```bash
+node qa/r8-geo.mjs      # A-1 (§2.13 revision 5) falsified twice — R8-2, the copied PLACE
+                        # rule 4 drags in mints a geo_outlier BLOCKER on the real fixture;
+                        # R8-3, accepting a copied stop REPLACES the adjacent-day anchor and
+                        # mints a blocker on a user-authored stop. §3 is the half A-1 did
+                        # deliver: copy-of-a-copy place chains, credit direction, exemption.
+node qa/r8-persist.mjs  # §1 R8-4 — mergeWithStored's OFF-CHAIN load() lets an in-flight merge
+                        #    resurrect a trip the delete link just removed (A-2)
+                        # §2 the delete orderings A-2 did close (confirmations)
+                        # §3 R8-1 — undo restores a PRE-RETIREMENT snapshot, so a dismissed
+                        #    blocker comes back dismissed (§2.7, opened by B-2's own fix)
+                        # §4 B-4/A-3 — the bound exhausted for real, all three obligations,
+                        #    plus the two exits that must not re-arm (confirmations)
+                        # §5 B-6's R7-1 merge guard and R7-2 unhandled rejection (confirmations)
+```
+
+`r8-geo.mjs` reports **2 FAIL** and `r8-persist.mjs` **2 FAIL**, and in both cases every other
+section is a confirmation that must stay at 0. Neither is timing-dependent: `r8-persist.mjs`
+§1 forces the interleaving with a port whose `load()` takes 60 ms, which is an ordinary
+IndexedDB read, not a race window.
+
+Browser probes need `npm run web:build && node tools/serve.mjs` in one shell, then:
+
+```bash
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r8-views.mjs  # the builder's own probe,
+                                                                # re-run unmodified: 0 FAIL
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r8-undo.mjs   # R8-1 as a user: four clicks
+                                                                # and Ctrl+Z, 1 FAIL
+```
+
+`r8-undo.mjs` is `r8-views.mjs` §4 with the last leg replaced by the app's own Ctrl+Z. It is a
+deterministic click sequence, not a race.
+
+**Probe rot re-confirmed and again not patched** (same ruling as rounds 5–7): `qa/r6-flush.mjs`
+samples `status` 200 ms after the abort, and `r8-persist.mjs` §4 shows the re-armed write lands
+and clears the banner inside that window — the assertion is stale, the product is right.
+`qa/r5-freshness.mjs:602` still crashes on `core.accept`.
