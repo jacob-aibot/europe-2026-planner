@@ -323,3 +323,85 @@ test('A-5: an unrelated edit does not release anybody else\'s key', async () => 
   store.undo();
   assert.equal(rowFor(store.getState(), conflictId)!.retiredAt, TODAY);
 });
+
+// ---------------------------------------------------------------------------
+// A-5a (KD-36) — the ledger veto: a conflictId may not be ACQUIRED from a document that
+// still holds a live row for it, at either reseed or absorb. Three required cases.
+// ---------------------------------------------------------------------------
+
+/**
+ * The exact KD-36 setup: a conflict retired once, brought back live (`undo`), then dismissed
+ * again with a PLAIN `resolveConflict` — no `unresolveConflict` first. `core.resolveConflict`
+ * keeps the surviving retired row and appends a fresh live one beside it, which is the
+ * `[retired, live]` pair A-5 as first written could not tell from "never answered again".
+ */
+async function secondDismissal(p = ports()) {
+  const { store, conflictId, dayId } = await dismissedThenRetired(p);
+  store.undo(); // conflict live again; the old row re-asserted retired
+  assert.equal(rowFor(store.getState(), conflictId)!.retiredAt, TODAY);
+  store.dispatch({
+    type: 'resolveConflict',
+    resolution: { conflictId, state: 'dismissed', by: 'local:self', at: '2026-08-02' },
+  });
+  const rows = store.getState().doc!.resolutions.filter((r) => r.conflictId === conflictId);
+  assert.equal(rows.length, 2, 'the retired row stays and the fresh dismissal appends beside it');
+  return { store, conflictId, dayId, rows };
+}
+
+const freshRow = (state: AppState, conflictId: string) =>
+  state.doc!.resolutions.find((r) => r.conflictId === conflictId && r.at === '2026-08-02')!;
+
+test('A-5a (KD-36): a second dismissal is not stillborn, and survives a further edit', async () => {
+  const { store, conflictId, dayId } = await secondDismissal();
+  assert.equal(freshRow(store.getState(), conflictId).retiredAt, null, 'the fresh dismissal must not be stillborn');
+
+  // A further, unrelated edit runs `set()` again (absorb) — the fresh answer must still hold.
+  // `title`, not `subtitle` — `legacy_flag`'s conflict id is content-addressed over
+  // `{date, subtitle}` (rules/legacyFlag.ts), so `subtitle` is not an unrelated field here.
+  store.dispatch({ type: 'setDayMeta', dayId, patch: { title: 'an unrelated edit' } });
+  assert.equal(
+    freshRow(store.getState(), conflictId).retiredAt,
+    null,
+    'A-5a: absorb must not re-acquire an id that has a live row in the same document',
+  );
+  assert.equal(
+    store.getDerived()!.conflicts.find((c) => c.id === conflictId)?.resolution?.state,
+    'dismissed',
+    'must render dismissed, not silently retired',
+  );
+});
+
+test('A-5a (KD-36): the same case survives a storage round-trip — the case bare option 1 misses', async () => {
+  const p = ports();
+  const { store, conflictId, dayId } = await secondDismissal(p);
+  const tripId = store.getState().doc!.id;
+
+  await store.flush();
+  await store.closeTrip();
+  await store.openTrip(tripId); // step 2/3 — reseed, not absorb
+
+  assert.equal(
+    freshRow(store.getState(), conflictId).retiredAt,
+    null,
+    'reseed must not acquire the id from the still-present retired row — this is what a veto placed only in absorb would miss',
+  );
+
+  // ...and it holds across the next ordinary edit too (absorb, on top of the reseeded ledger).
+  store.dispatch({ type: 'setDayMeta', dayId, patch: { title: 'after reopen' } });
+  assert.equal(freshRow(store.getState(), conflictId).retiredAt, null);
+});
+
+test('A-5a: R8-1 remains fixed with the veto in place', async () => {
+  const { store, conflictId } = await dismissedThenRetired();
+  store.undo();
+  assert.equal(
+    rowFor(store.getState(), conflictId)!.retiredAt,
+    TODAY,
+    'undo must still not un-retire, with the A-5a veto added',
+  );
+  assert.equal(
+    store.getDerived()!.conflicts.find((c) => c.id === conflictId)?.resolution,
+    null,
+    'the returning blocker must still not render "Marked dismissed"',
+  );
+});

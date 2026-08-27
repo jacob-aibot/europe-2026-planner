@@ -130,12 +130,28 @@ export function createStore(opts: StoreOptions) {
     for (const l of [...listeners]) l(state);
   }
 
+  /**
+   * Conflict ids with a LIVE (`retiredAt === null`) row in this document — §2.7 **A-5a**.
+   *
+   * The ledger may acquire a `conflictId` from a document only when the document holds no
+   * live row for it. Without this veto, a second `resolveConflict` on a conflict that still
+   * carries a retired row (the "it has come back; you dismissed it again" case) has its
+   * brand-new live row immediately re-absorbed and re-stamped retired — KD-36. The veto never
+   * removes a mark already held; it only stops one from being acquired.
+   */
+  function liveConflictIds(doc: Trip): ReadonlySet<string> {
+    const ids = new Set<string>();
+    for (const r of doc.resolutions) if (!r.retiredAt) ids.add(r.conflictId);
+    return ids;
+  }
+
   /** A trip's own retired rows, as a ledger. §2.7 A-5's "reconstructed on load". */
   function marksOf(doc: Trip | null): ReadonlyMap<string, string> {
     const marks = new Map<string, string>();
     if (!doc) return marks;
+    const live = liveConflictIds(doc);
     for (const r of doc.resolutions) {
-      if (r.retiredAt && !marks.has(r.conflictId)) marks.set(r.conflictId, r.retiredAt);
+      if (r.retiredAt && !marks.has(r.conflictId) && !live.has(r.conflictId)) marks.set(r.conflictId, r.retiredAt);
     }
     return marks;
   }
@@ -170,8 +186,10 @@ export function createStore(opts: StoreOptions) {
    *      `set` for the restored snapshot followed by a second `set` for the fix, or subscribers
    *      render the stale *"Marked dismissed"* for a frame — which is the defect.
    *
-   * BUILD-NOTES KD-34 records the five implementation calls A-5 left to the builder, and
-   * **KD-36 is an objection to the ruling as specified** — read it before changing this.
+   * BUILD-NOTES KD-34 records the five implementation calls A-5 left to the builder. KD-36
+   * objected that steps 2/3/4 as first specified could re-acquire an id from a retired row
+   * while a live row for the same id sat in the same document — ARCHITECTURE §2.7 **A-5a**
+   * upheld the objection and added the veto `liveConflictIds` implements, at both sites.
    */
   function set(next: AppState, opts?: { reseed?: boolean }) {
     // 1 — identity.
@@ -188,10 +206,13 @@ export function createStore(opts: StoreOptions) {
       emit();
       return;
     }
-    // 4 — absorb.
+    // 4 — absorb. §2.7 A-5a: a conflictId with a LIVE row in `doc` may not be (re-)acquired —
+    // otherwise a second dismissal of a conflict that still carries a retired row (KD-36) is
+    // re-absorbed from that retired row and stamped onto the brand-new live one.
     const marks = new Map(state.retired.marks);
+    const live = liveConflictIds(doc);
     for (const r of doc.resolutions) {
-      if (r.retiredAt && !marks.has(r.conflictId)) marks.set(r.conflictId, r.retiredAt);
+      if (r.retiredAt && !marks.has(r.conflictId) && !live.has(r.conflictId)) marks.set(r.conflictId, r.retiredAt);
     }
     // 5 — re-assert, then one emit with the corrected document.
     state = { ...next, doc: core.reassertRetirements(doc, marks), retired: { tripId: doc.id, marks } };
@@ -212,9 +233,9 @@ export function createStore(opts: StoreOptions) {
    * It replaces the map rather than mutating it: a subscriber may be holding the previous
    * `AppState`, and `retired.marks` is reachable from it.
    *
-   * **BUILD-NOTES KD-36**: releasing here and absorbing in `set` step 4 means a SECOND
-   * `resolveConflict` on a conflict that still carries a retired row is re-stamped retired.
-   * That is A-5 as written, it is reproduced in KD-36, and it is the architect's to settle.
+   * Release alone is not sufficient — without §2.7 **A-5a**'s veto in `set`'s absorb/reseed,
+   * the freshly-released id would be re-acquired from the retired row `resolveConflict` keeps
+   * beside the new live one (KD-36). Both mechanisms are required; neither alone is.
    */
   function releaseRetirement(conflictId: string) {
     const ledger = state.retired;

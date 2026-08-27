@@ -1,6 +1,20 @@
 # Cairn — build notes, Phase 1
 
-> **Status: CURRENT — the A-5 / A-6 pass** (`master`, after `6d336f1`). Two architect rulings
+> **Status: CURRENT — the A-5a pass** (`master`, after `c9c274d`). One architect addendum,
+> closing the one open objection (**KD-36**) the A-5/A-6 pass below disclosed and declined to
+> work around, and nothing else:
+>
+> | | |
+> |---|---|
+> | **A-5a — KD-36, resolved** | The ledger veto: `liveConflictIds(doc)` in `store.ts`, consulted at **both** `marksOf` (reseed) and step 4 (absorb) — a `conflictId` may not be *acquired* from a document that still holds a live (`retiredAt === null`) row for it. Acquisition is vetoed; retention (an already-held mark) is untouched, so R8-1's undo behaviour is unchanged. |
+> | **Regression, three cases per the ruling** | `retirement-ledger.test.ts`: a second dismissal (plain `resolveConflict`, no `unresolveConflict`) is not stillborn and survives a further edit; the same case survives a storage round-trip (`flush` → `closeTrip` → `openTrip`, i.e. reseed — the case a veto placed only in absorb would miss); R8-1 itself re-asserted unchanged. |
+> | **Numbers, my own runs** | `npm run test:tap` **412 pass / 0 fail** (was 409; +3 tests, all new). `npm run typecheck` clean on both projects. Red/green confirmed by `git stash`ing the `store.ts` change alone: 2 of the 3 new tests fail without it (the R8-1 re-assertion test correctly still passes, since that path was never broken), all 3 pass with it. |
+> | **Scope** | `store.ts` and its test file only. No other product code, no `qa/*.mjs`, no `ARCHITECTURE.md`/`ROADMAP.md`. R8-3 and R8-4 remain untouched, as instructed. |
+>
+> **The status note below is superseded by this one** and is kept as the record of what was
+> true at `6d336f1`.
+
+> **Status: superseded — the A-5 / A-6 pass** (`master`, after `6d336f1`). Two architect rulings
 > from ARCHITECTURE revision 6, closing the two **user-reachable** MAJORs of round 8, and
 > nothing else:
 >
@@ -828,6 +842,13 @@ copy-borne `Place` in its *source* trip travels with the copy and is not re-repo
 §2.13 names it; it is not a surprise.
 
 ### KD-36 — OBJECTION: A-5 makes a *second* dismissal stillborn, and I shipped it anyway
+
+**RESOLVED, `c9c274d`/A-5a.** The architect upheld the objection and ruled a veto: the ledger
+may acquire a `conflictId` from a document only when that document holds no live row for it,
+at both reseed and absorb (bare "skip in absorb" was insufficient — it still failed on a
+storage round-trip). Implemented as `liveConflictIds(doc)`, consulted at both sites in
+`store.ts`. Three regression cases in `retirement-ledger.test.ts`; `npm run test:tap` 412/0.
+The objection below is kept as the record of what was found and why it was not worked around.
 
 `packages/client/src/store/store.ts` (`set` step 4 × `dispatch`'s release)
 
