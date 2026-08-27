@@ -7,6 +7,16 @@ this same content at `cairn/docs/CAIRN_VISUAL_ROADMAP.html` — open it in a bro
 desktop) for the visual version. **Keep the two in sync**: when the state below changes, update
 both files in the same pass.
 
+> **⚠ STALE — do not answer "where is Cairn" from the body of this file.** Everything below
+> describes `0a58c81`, when Phase 1 was mid-gate. Since then: **Phase 1 shipped**
+> (`REVIEW.md`, verdict SHIP, `b32ef9a`, 2026-08-27), and the roadmap was re-cut against
+> Jacob's product thesis the same day — **Phase 2 is now travel history, local-first**
+> (past trips, the lifetime map, participants) and accounts/the server moved to Phase 3, so
+> the phase stepper below is wrong from Phase 1 onward. Current sources of truth:
+> `REVIEW.md` (what shipped), `PRODUCT-VISION.md` (why the new order), `ROADMAP.md`
+> revision 9 (the sequence), `ARCHITECTURE.md` §8 (the model). **Rebuilding this board — and
+> its HTML twin, in the same pass — is a task in its own right and has not been done.**
+
 > **Last updated:** 2026-08-27, against `master` @ `0a58c81` ("Cairn: the SEND-BACK pass —
 > travelRole reaches the screen, and delete joins the chain"). Update this line every time you
 > edit this file.

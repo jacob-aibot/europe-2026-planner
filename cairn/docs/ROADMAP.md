@@ -17,14 +17,33 @@ of an outcome, and the `displayStatus` criterion was ambiguous enough that two r
 three are rewritten below against **ARCHITECTURE §2.2b**, and R2-11's `displayStatus` half is ruled on in §D
 rather than deferred a third time.
 
+**Revision 9, 2026-08-27.** Phase 1 shipped (`REVIEW.md`, SHIP, `b32ef9a`) and Jacob gave the product
+thesis in full — Cairn as the persistent record of a travel life, not a planner. That changes what comes
+next and it **shifts the phase numbers by one from the accounts/server phase onward.** The product argument
+is `PRODUCT-VISION.md`; the model is `ARCHITECTURE.md` §8; this file is the sequence and the gates.
+
+> **Phase numbers changed once, here.** Every heading below carries its old number, and every "Phase N"
+> written in `ARCHITECTURE.md` §1–§7, `BUILD-NOTES.md` or `QA-FINDINGS.md` before revision 9 means the
+> *named* phase it described: "Phase 2" = accounts/server (**now 3**), "Phase 3" = ingest (**now 4**),
+> "Phase 4" = the phone (**now 5**), "Phase 5" = photos (**now 6**). Those documents are not being
+> rewritten: editing forty cross-references inside settled rulings to correct a number is a worse risk than
+> one mapping stated where everybody reads it.
+
 | Phase | Ships | New external dependency |
 |---|---|---|
-| **1** | `packages/core` + `packages/client` + `apps/web`: a local-first, multi-trip planner Jacob can open and use | none — Node 24 and a browser |
-| **2** | `services/api` + Postgres/RLS: accounts, sync, friends, shares, public share links | a managed Postgres/auth/storage account |
-| **3** | `services/ingest`: mailbox → candidate review queue → tickets | forward-in address, then Outlook OAuth, then Gmail |
-| **4** | `apps/mobile` (Expo): offline travel, then background location and the live path | Apple/Google developer accounts, a physical phone |
-| **5** | Photos: on-device library scan, stop suggestions, opt-in attach | device photo library |
-| **6** | Trace sharing, share-page polish, cost reporting | — |
+| **1** ✅ | `packages/core` + `packages/client` + `apps/web`: a local-first, multi-trip planner Jacob can open and use | none — Node 24 and a browser |
+| **2** | **Travel history, local-first**: past trips, the trip lifecycle, the lifetime map, travel identity, trip participants as data | **none** — still Node 24 and a browser |
+| **3** *(was 2)* | `services/api` + Postgres/RLS: accounts, sync, friends, shares, public share links, the accept control | a managed Postgres/auth/storage account |
+| **4** *(was 3)* | `services/ingest`: mailbox → candidate review queue → tickets | forward-in address, then Outlook OAuth, then Gmail |
+| **5** *(was 4)* | `apps/mobile` (Expo): offline travel, then background location, observed visits, timezones | Apple/Google developer accounts, a physical phone, **a Play background-location declaration** |
+| **6** *(was 5)* | Photos: on-device library scan, stop suggestions, opt-in attach | device photo library, **a Play broad-media-access review** |
+| **7** *(was 6)* | Discovery through the network, the yearly recap, goals, trace sharing, share-page polish | — |
+
+**Why a second local phase before the server**, in one line each, with the argument in `PRODUCT-VISION.md`
+§1: nothing in the travel-history product needs a server; it is the only large capability left that a
+single builder can finish and a tester can attack in plain Node with no cloud account; and it is what makes
+an account worth creating, because a user with one trip has nothing to sync and a user with twelve past
+trips has a travel history.
 
 ---
 
@@ -817,7 +836,166 @@ source exists). No sub-maps (Lokrum). No currency conversion. No native app. **N
 
 ---
 
-## Phase 2 — server, accounts, the social graph, and share links
+## Phase 2 — travel history: past trips, the lifetime map, and who you went with
+
+**Goal.** `ARCHITECTURE.md` **§8.1–§8.4**. A trip stops being a plan that expires and becomes a record that
+compounds. Still local-first: no server, no accounts, no device, no network. Everything in this phase is
+attackable in plain Node with the in-memory ports, exactly as Phase 1 is.
+
+**Independently useful:** Jacob enters the six trips he has already taken — dates, cities, who he went with
+— and gets a map of everywhere he has been, a count of countries and cities that is derived from real trips
+rather than typed, and a completed-trip view of Europe 2026 that is a record instead of an itinerary that
+has expired. It is also the phase that stops the app telling him his finished trip is missing a hotel.
+
+Entry: Phase 1 shipped with a manager verdict of SHIP (`b32ef9a`) — done.
+
+### Three steps, each shippable on its own, in this order
+
+| Step | Ships | Useful alone because |
+|---|---|---|
+| **2a — past trips and the lifecycle** | `lifecycle()`, `Trip.datePrecision`, the feasibility/integrity rule class (§8.2), a "record a past trip" flow (title, dates, precision, cities — no day-by-day required) | you can enter a 2019 trip and it does not greet you with twenty warnings about a hotel you already slept in |
+| **2b — the lifetime map and travel identity** | `countryOf` + the generated country index, `travelStats`, the widened `TripSummaryRow` + `SUMMARY_VERSION` rescan, the **Map** and **Profile** surfaces | *"show me everywhere I've been"* — the signature experience, from data that already exists |
+| **2c — participants** | `Trip.participants`, three build functions, the participants editor, *"people you have travelled with"* on the profile | you can say the trip was with your girlfriend and her family, and it grants them nothing |
+
+### Deliverables
+
+```
+packages/core/src/
+  derive/     lifecycle.ts  country.ts  travelStats.ts     (+ summary.ts widens)
+  geo/        countries.gen.ts          generated, committed, size-budgeted — §8.4
+  build/      participants.ts           add/update/remove — one core fn per action
+  conflict/   rules/*.ts                each gains `class`; detect.ts gates feasibility on ctx.today
+packages/client/src/
+  store/      summary rescan on SUMMARY_VERSION; library selectors for travelStats
+apps/web/src/views/
+  WorldMap.tsx  Profile.tsx  PastTripForm.tsx  Participants.tsx
+tools/gen-countries.mjs   Natural Earth admin-0 → countries.gen.ts, reports emitted bytes
+fixtures/golden/          countries.json (per-stop attribution), travel-stats.json
+```
+
+### Hard constraints on the builder
+
+All of Phase 1's stand — zero runtime dependencies in `core`/`client`, bare Node 24 type stripping, no
+ambient clock or randomness, `packages/client` free of DOM and React, the root planner read-only — plus
+five that are specific to this phase:
+
+- **No new persisted structure.** Participants and `datePrecision` live in the trip document; the country
+  index is generated code, not data at rest; statistics are derived. If this phase adds a second storage
+  record, it has taken A-5's rejected option (§8.3).
+- **`AppState` still holds exactly one trip document in memory.** The lifetime map reads
+  `TripSummaryRow`s. A screen that needs forty documents is out of scope and needs a ruling, not a loop.
+- **No stored count, anywhere, of anything.** §8.4.
+- **The country index is injected, not imported by the function.** `countryOf(at, index)` stays pure and
+  testable against a four-polygon fixture.
+- **`node --test` still runs `packages/core` and `packages/client` directly.** A generated module that is
+  megabytes of JSON in a `.ts` file breaks that; the size budget is a test, and it is the first test.
+
+### Build order (spine first)
+
+1. `lifecycle` + `datePrecision` + the rule `class` — the engine, the goldens re-derived, the CLI honest
+   about a past trip. **Useful already** through `cli.ts`.
+2. The past-trip flow in `apps/web`. 2a ships here.
+3. `tools/gen-countries.mjs` + `countryOf` + the golden of per-stop attribution — measured before any
+   screen depends on it.
+4. `travelStats` + the summary widening + the rescan.
+5. The Map and Profile surfaces. 2b ships here.
+6. Participants: core, then validation, then the editor, then the profile grouping. 2c ships here.
+
+### Exit criteria — the Phase 2 ship gate
+
+Tagged per **How a criterion is written**. The first two are ceilings on Phase 1 and are the ones that fail
+first.
+
+- **Phase 1's whole suite still passes, unchanged, and every number in §A–§F is re-derived rather than
+  quoted.** Specifically: `detectConflicts` on the reference trip **at the goldens' fixed clock** still
+  returns exactly 2 blockers (the Aug 18 and Aug 20 `legacy_flag` days) with the same warnings and notes,
+  and `geoCheck` still returns 0/112 and 0/94 clean and 112/112 and 92/94 under +1°. A run in which the
+  rule `class` moved any of them has classified a rule wrongly `[stated + legacy]`
+- **Injected fault — the rule class does what it claims.** Evaluate the *same* reference trip at a `today`
+  **after** `endDate`: every finding returned is from an `integrity` rule, the golden states the exact
+  count and lists one line per finding, and **zero** findings come from `impossible_transfer`, `overlap`,
+  `missing_lodging`, `unbooked_ticketed` or `booking_vs_plan`. Then move `today` back before `startDate`
+  and assert the original set returns **exactly**. A rule that is silent at both clocks has been deleted,
+  not classified `[stated]`
+- **A past trip is silent.** Build a 21-day, one-city, zero-stop trip ending in 2019 with
+  `datePrecision:'month'`: `detectConflicts` returns **zero** findings of any severity and `validateTrip`
+  returns **zero** issues — a ceiling, not a floor — while `days` is dense over the range and
+  `Day.id === Day.date` throughout. **Injected fault:** add one stop to it dated *after* `today` and the
+  feasibility rules return for that day only `[stated]`
+- **Country attribution is measured, and its holes are visible.** `countryOf` over the reference trip's 112
+  stops and 94 places produces a golden listing **every distinct country with the stop that produced it**
+  — a country with no stop named fails the run. Three injected faults: a mid-Atlantic coordinate returns
+  **`null`** and the profile renders it as *unattributed*, never as the nearest country; the historical
+  Fisherman's Bastion typo (`place-68`, lat `47.5025 → 48.5025`) changes the attributed country **and**
+  still produces its `geo_outlier` blocker, so the map inherits the same protection the conflicts panel
+  has; and the island places (`Blue Cave, Biševo`, `Stiniva Cove, Vis`, Lokrum) attribute to **HR** — if
+  they do not, the generator is on the wrong Natural Earth scale and the budget moves, not the criterion
+  `[stated]`
+- **The generated index is inside its budget**, and the budget is a number in the test, measured by
+  `tools/gen-countries.mjs` and not quoted from any document `[stated]`
+- **Statistics cannot be stored.** Grep `packages/core`, `packages/client` and `apps/web` for a persisted
+  field whose name is a count of countries, cities, trips or days; expect **zero**. `travelStats` is a pure
+  function of the summaries it is handed, asserted by calling it twice on the same input and once on a
+  mutated copy `[stated]`
+- **Injected fault — the summary is only as fresh as the write that minted it** (§8.4, §0.6). Write three
+  trips; bump `SUMMARY_VERSION`; reopen the library. Assert: every row below the version is recomputed
+  **from its own document**, the rewritten rows go through the ordinary chained write (the §4.3 structural
+  grep still finds zero `ports.storage.*` mutations outside `chainOntoSaving`), the map does **not** claim
+  to be complete while the rescan runs, and — the ceiling — a row is never computed from another row, from
+  `AppState`, or from a document other than the one being written `[stated]`
+- **Participation grants nothing, asserted mechanically.** Run the §6.2 access conformance set twice, once
+  with participants added to every trip and once without, over every (principal × relationship ×
+  operation) cell: **the two runs are identical**, and a participant who is not also a member or a share
+  holder is denied every operation including `view`. This is principle 3 with a test behind it before
+  there is any server that could get it wrong `[stated]`
+- **Round-trip and undo parity hold over the new fields.** `toJSON(fromJSON(toJSON(trip)))` is
+  byte-identical with participants and `datePrecision` present; `fromJSON` rejects
+  `datePrecision:'fortnight'` and a participant with a duplicate id; undo/redo restores participants
+  exactly, at depth 50 `[stated]`
+- **Every new action maps 1:1 onto a core build function and the reducer holds no domain logic** — §4.2
+  rule 1, re-asserted because this is the first phase since Phase 1 to add actions `[stated]`
+- **NO SILENT LOSS is unchanged and extended to the new write paths**: the 200-step dirty walk still holds
+  with participant edits in the step chooser, and no new path assigns `state.doc` (the closed list of six
+  is still six) `[stated]`
+
+### What the tester should attack (plain `node`, no network)
+
+A past trip with `endDate` before `startDate` · a trip whose dates straddle `today` (feasibility rules must
+fire on the future half and not the past half, on the same document, in one call) · `datePrecision:'year'`
+on a trip whose real dates are a single day · a participant list of 200 · two participants with the same
+name and different ids, and the same id twice · a participant named `''` and one named with only an emoji ·
+`kind:'self'` appearing twice, and zero times · coordinates at the poles, at the antimeridian, at exactly
+`(0,0)` and inside a country's enclave · a stop in international waters · a city whose stops attribute to
+two different countries (the FRA connect on a Vienna day) · a trip with no coordinate-bearing record at all
+(the profile must say "no places yet", not "0 countries" as if that were measured) · `SUMMARY_VERSION`
+bumped mid-rescan with a write in flight · a library of 40 summaries where one document is corrupt (the map
+must render the other 39 and say one is unreadable) · the reference trip evaluated at a `today` inside the
+trip, on each of its 16 days in turn · and every Phase 1 attack in the list above, re-run.
+
+### Explicitly not in Phase 2
+
+No server, no accounts, no auth *enforcement* (the predicates still only define), no sync, no location, no
+photos, no device. **No stop-level participants.** No trip invitations. No public profile. No goals or
+achievements — §8.8 architects them as derived and this phase does not implement them. **No in-trip delete
+control** (see the routed items below). No renumbering of anything in Phase 1.
+
+### The carried-forward items, placed
+
+`REVIEW.md`'s SHIP verdict carried three findings forward. This is where each belongs, with its trigger:
+
+| Item | Where | Why there |
+|---|---|---|
+| **R10-1** (MINOR) | **Closed now** — `ARCHITECTURE.md` §2.7 **A-8** blesses A-5b clause 2, with the trigger that would reopen it | It is not user-visible, weakening clause 2 rebuilds R8-1, and the honest fix is a change to A-5's substrate that a defect nobody can see does not pay for |
+| **R8-3** (MAJOR, unreachable today) | **Ruled by the architect before the accept control ships — Phase 3**, or before it if Jacob pulls the control forward | Its trigger is `acceptCandidate` becoming reachable in `apps/web`, and Phase 2 deliberately does not ship that control. **The direction the ruling should take, for the pass that makes it:** the `adjacent_day` anchor is one representative chosen by position, so acceptance can *replace* it; widening it to every coordinate-bearing stop of D−1 and D+1 is monotone in the safe direction — more anchors can only ever *remove* a finding, never mint one — so its only cost is detection, and the ruling must re-derive §2.13's four numbers (0/112, 0/94, 112/112, 92/94, and the `place-68` blocker) rather than quote them |
+| **R8-4** (MAJOR, unreachable today) | **Phase 3**, with the `SyncPort` | Its trigger is *"whenever `deleteTrip` becomes reachable with a trip open, or when the `SyncPort` gives `load()` a second source"*. The `SyncPort` is a Phase 3 deliverable and fires the second clause on its own. **Phase 2 must therefore not add any control that deletes a trip while one is open** — that is why "no in-trip delete control" is a scope line above and not a UI preference |
+
+The breaker's carried item — probe repair (`qa/r6-flush.mjs` §6, `qa/r7-chain.mjs`'s hardcoded counts,
+the three dead probes) — is **owed before Phase 2's first breaker round**, in a commit of its own, because
+this phase re-runs the whole board as its first ceiling and a stale FAIL count costs a round.
+
+---
+
+## Phase 3 *(was Phase 2)* — server, accounts, the social graph, and share links
 
 **Ships:** `services/api` (Node 24, Postgres, RLS, managed auth and object storage), `packages/client` gains
 a `SyncPort`, sign-in, multi-device sync, friends, per-trip shares (`viewer/commenter/editor`), ticket
@@ -826,9 +1004,19 @@ companion's other job per Jacob's answer. **Sharing is read + `copyStopInto`**; 
 from Phase 1 gains shared trips as a source and nothing else changes. `forkTrip` is not in this phase and is
 not coming (§2.14).
 
+**Also here, because it needs accounts and it needs a ruling:** the `acceptCandidate` control in
+`apps/web`, which Phase 1 shipped without (`REVIEW.md`: an imported stop stays badged *from a friend*
+forever). **R8-3 is ruled before it ships**, and **R8-4 is ruled before or with the `SyncPort`.** If Jacob
+pulls the accept control forward into Phase 2, R8-3 moves with it — the two are one item.
+
+**Five edges, and the pairs that must not be collapsed** (§8.7): `TripParticipant` (who travelled, shipped
+in Phase 2, grants nothing), `TripMember`, `TripShare`, `Connection`, `LocationShare`. Phase 2's
+participants become linkable to real `User`s here — `Participant.userId` stops being permanently null —
+and linking a participant **still grants nothing**; a grant is a second row the user creates deliberately.
+
 **Independently useful:** Jacob's trips stop living in one browser, and his friends can see them.
 
-Entry: Phase 1 shipped, with a manager verdict of SHIP.
+Entry: Phase 2 shipped, with a manager verdict of SHIP.
 
 **Exit criteria**, tagged per **How a criterion is written**:
 
@@ -837,6 +1025,13 @@ Entry: Phase 1 shipped, with a manager verdict of SHIP.
   so a new role or operation cannot be silently absent. Count criterion, outcome clause: *every cell names
   the principal, the relationship, the operation and the expected verdict; a cell that agrees because both
   sides are `false` for the wrong reason is a defect.* `[stated]`
+- **The five edges are five tables and the matrix proves it** (§8.7). *"Participant with no share"*,
+  *"follower with no share"* and *"member"* are three distinct principals, and the first two are denied
+  **every** operation including `view`, in the predicates **and** in the policies. **Injected fault:** add
+  a participant to a trip and a `Connection` from that user, and assert **no** operation's verdict changes
+  anywhere in the matrix. A schema in which participation, friendship or membership can be inferred from
+  one another fails this outright — that is principle 3, and it is cheaper to assert here than to migrate
+  later `[stated]`
 - **Injected fault:** revoke a share, go offline, reopen the cached trip → **an error, never stale content**;
   and expire a share by moving the clock, not by editing the row `[stated]`
 - **Injected fault:** grant `services/ingest`'s database role and try to write a stop → refused by grant, not
@@ -858,7 +1053,7 @@ export/deletion cascade. Not built here: moderation, rate limiting, billing, adm
 
 ---
 
-## Phase 3 — mailbox ingestion
+## Phase 4 *(was Phase 3)* — mailbox ingestion
 
 **Ships:** `services/ingest`, the `IngestCandidate` review queue, parsers seeded from the real mail in this
 trip (Condor, Ryanair, FlixBus, Smartwings/Amadeus, Booking.com, GetYourGuide), reissue-vs-duplicate
@@ -903,23 +1098,39 @@ either way, which is why the phase is ordered like this.
 
 ---
 
-## Phase 4 — the native app and the live path
+## Phase 5 *(was Phase 4)* — the native app, the live path, and observed travel
 
 **Ships:** `apps/mobile` on Expo SDK 56, in two shippable halves:
 
-- **4a — offline travel.** The trip on a phone, fully offline, `expo-sqlite`-backed, syncing when there is
+- **5a — offline travel.** The trip on a phone, fully offline, `expo-sqlite`-backed, syncing when there is
   signal. Useful on its own: this is the version Jacob travels with, and the one that survives the flaky
   hotel wifi in `HISTORY.md`. It reuses the Phase 1 store unchanged — only the ports are new (§4.3).
-- **4b — background location.** `expo-location` + `expo-task-manager`, iOS `UIBackgroundModes: location`,
-  Android foreground service, fixes to encrypted local SQLite, `segmentTrace()` in core, **gaps rendered as
-  gaps** (§5.3). Nothing uploaded.
+- **5b — background location and observed visits.** `expo-location` + `expo-task-manager`, iOS
+  `UIBackgroundModes: location`, Android foreground service, fixes to encrypted local SQLite,
+  `segmentTrace()` in core, **gaps rendered as gaps** (§5.3). Nothing uploaded. Segments become **`Visit`
+  candidates** (§8.5) — a separate record class that never mutates a `Stop` — and `Provenance.source`
+  widens by its one new value, `'device'`, with a `schemaVersion` bump. Accepting a visit is what makes it
+  trip content, and **acceptance is the transmission boundary**: an unaccepted observation never leaves the
+  device.
 
-Entry: Phase 2 shipped (the app needs sync). First phase requiring developer accounts and a physical device,
-so 4b must land with a recorded-fixture path — a canned fix stream through `segmentTrace` — that *is*
-testable in plain Node.
+Entry: Phase 3 shipped (the app needs sync). First phase requiring developer accounts and a physical
+device, so 5b must land with a recorded-fixture path — a canned fix stream through `segmentTrace` — that
+*is* testable in plain Node.
 
-Timezones (§7) are resolved here: a live "up next" across a border needs real instants. **`journey_overrun`
-ships with them** (§2.12) — the rule `travelRole` makes possible and a wall-clock model cannot support. Its
+**The store gate is part of the phase, not an afterthought** *(verified 2026-08-27)*. Google Play requires a
+Play Console **permissions declaration** for `ACCESS_BACKGROUND_LOCATION`, reviewed against a
+core-functionality justification with a video of the feature in use; without approval, updates are blocked
+and the app can be removed. Apple rejects a declared background mode the app does not visibly use, and
+ambiguous data requests unrelated to core functionality. Consequence for this roadmap: **5b's user-facing
+feature — the live path over the planned one, and the travel history it builds — must be the thing the
+declaration describes**, which it is; and the declaration is written *before* the build, because a rejected
+declaration is a schedule event, not a bug. Sources: [Play — location in the
+background](https://support.google.com/googleplay/android-developer/answer/9799150?hl=en) ·
+[Android — access location in the
+background](https://developer.android.com/develop/sensors-and-location/location/background).
+
+Timezones (§7) are resolved here: a live "up next" across a border needs real instants, and so does any
+honest mileage number (§8.8). **`journey_overrun` ships with them** (§2.12) — the rule `travelRole` makes possible and a wall-clock model cannot support. Its
 injected-fault criterion is already known and measured: on the reference trip it must fire **zero** times,
 and specifically must **not** fire on Aug 21 BA863 (Budapest 12:55 + 165 min, next stop 15:15) once the
 CEST → BST crossing is modelled. Move that flight one hour later within Budapest's own timezone and it must
@@ -933,13 +1144,28 @@ in any log call in `apps/mobile` `[stated]`.
 
 ---
 
-## Phase 5 — photos
+## Phase 6 *(was Phase 5)* — photos
 
 **Ships:** on-device library enumeration by trip window, EXIF/location read, `suggestPhotoStops` scoring in
-core, a suggestion queue, and opt-in attach with EXIF GPS stripped on upload (§5.4).
+core, a suggestion queue, and opt-in attach with EXIF GPS stripped on upload (§5.4). The association model
+is §8.6 and it is deliberately narrow: one trip, at most one of a stop/place/day, optionally participants,
+candidate until accepted.
 
 **Independently useful:** "here are 40 photos from Aug 13, and here is the stop you were standing at" is the
-pillar-5 payoff and needs nothing from Phase 6.
+pillar-5 payoff and needs nothing from Phase 7.
+
+**Two gates that are not engineering** *(the first verified 2026-08-27)*. Google Play's Photo and Video
+Permissions policy restricts broad `READ_MEDIA_IMAGES` to apps that pass an **appropriate-access review**
+demonstrating a core use case for persistent or frequent access; everything else is expected to use the
+system photo picker — **and a picker cannot enumerate a library by timestamp and GPS, which is the whole of
+pillar 5.** So on Android this phase either wins that review or degrades to "pick photos yourself", and the
+degraded mode must be designed rather than discovered. Compliance is mandatory for apps targeting Android
+17+ from 2026-10-28. Source: [Play — Photo and Video Permissions
+policy](https://support.google.com/googleplay/android-developer/answer/14115180?hl=en).
+
+**This phase fires a trigger already written down:** photos are `Place`'s second referent kind, so §2.13
+A-6a's closing paragraph applies — `removeStop`'s single-row prune becomes a reference-counted delete with
+a user-visible affordance. Re-read it; do not rediscover it.
 
 Watch item: Android `ACCESS_MEDIA_LOCATION`. Without it coordinates come back empty *with no error*, which
 will look like a matching bug and is a manifest bug. **Injected-fault criterion, precisely because it is
@@ -950,11 +1176,27 @@ Every photo suggestion is `{source:'system', state:'candidate'}` and `displaySta
 
 ---
 
-## Phase 6 — sharing surfaces and polish
+## Phase 7 *(was Phase 6)* — discovery through the network, the recap, and polish
 
-Opt-in simplified trace sharing if it did not land in 4b; share-page polish and its own permission attack
-pass (the one surface where a mistake is publicly visible); a trip-level cost report with a stored
-`rateSetId`; and whatever the earlier phases proved was missing.
+Only meaningful once there *is* a network, which is why it is last rather than exciting. Ships, in rough
+order of how well each is supported by data that will exist by then:
+
+- **Discovery through people, not an algorithm.** *"Friends who have been here"*, *"people you follow are
+  going here"*, *"trips from people you trust"* — every one of these is a **query over shares and the
+  travel history that already exists** (§8.4's country and city attribution, joined to `Connection` and
+  `TripShare`). No recommendation ML, no feed, no ranking model. The social unit stays the trip, the stop
+  or the place.
+- **The yearly recap and the travel passport.** Pure derive over `travelStats`; cheap once the statistics
+  exist, worthless before.
+- **Goals and achievements**, as §8.8 defines them: a declarative target evaluated against derived stats.
+  No counters, no points, nothing that rewards typing.
+- **Opt-in simplified trace sharing** if it did not land in 5b; **share-page polish** with its own
+  permission attack pass (the one surface where a mistake is publicly visible); a trip-level cost report
+  with a stored `rateSetId`; and whatever the earlier phases proved was missing.
+
+**Not in this phase and not in any phase yet: live presence** — *"people currently in the same
+destination"*. §8.8 refuses it, in writing, with the bounded design it would have to take if it is ever
+built.
 
 ---
 
@@ -964,9 +1206,10 @@ pass (the one surface where a mistake is publicly visible); a trip-level cost re
    implementation of legs, costs, conflicts or trip state anywhere is a design defect, routed to the architect.
 2. **No phase begins before the previous one has a manager verdict of SHIP.** A phase built on an unverified
    phase is where the pipeline stops being worth having.
-3. **Privacy and authorization invariants are tested every phase, not audited at the end.** From Phase 2 the
-   tester's brief includes grepping for coordinates and mailbox content in logs, requests and database rows,
-   and running the access conformance matrix.
+3. **Privacy and authorization invariants are tested every phase, not audited at the end.** From the
+   accounts phase (now **3**) the tester's brief includes grepping for coordinates and mailbox content in
+   logs, requests and database rows, and running the access conformance matrix. Phase 2 runs the matrix too
+   — twice, with and without participants, and the two runs must be identical.
 4. **The live planner stays untouched throughout.** `europe-2026-itinerary.html`, `docs/` and `tickets/` at
    the repo root are Jacob's working app; Cairn reads them and never writes them, in any phase, until
    Jacob says the replacement is better. This includes write paths that only *could* reach it: `cli export`
@@ -981,3 +1224,12 @@ pass (the one surface where a mistake is publicly visible); a trip-level cost re
    which is the first thing the manager reads, and a grep-based check in `npm test` keeps the two from
    drifting. Six files pointing at BUILD-NOTES for content it did not contain is how nine false blockers
    stayed invisible.
+7. **Phase numbers shifted exactly once, at revision 9, and they do not shift again.** Every heading above
+   carries its old number and the mapping is at the top of this file. A document written before revision 9
+   means the phase it *described*. If a future change needs work inserted, it gets a letter (`2a`, `2b`),
+   not a renumbering — forty cross-references inside settled rulings are not worth a tidy sequence.
+8. **A capability with no data behind it does not get a phase.** Discovery, recaps, goals and mileage are
+   all derived from travel the product has not recorded yet, and each is scheduled *after* the phase that
+   records it. This is the roadmap form of principle 10: the base product must be valuable before the
+   automatic, social and gamified layers exist, and every one of those layers is only as good as the
+   history underneath it.

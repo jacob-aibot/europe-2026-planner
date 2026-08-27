@@ -63,7 +63,19 @@ the merged write is the one site in the system where they can come apart, the ex
 no export surface and no autosave behaviour moves. R8-3, R8-4 and R10-1 are **not** adjudicated by this
 revision.
 
-**Phase 1 is §2 and §4.** Everything else is the shape those two must not foreclose. See `ROADMAP.md`.
+**Revision 9, 2026-08-27.** Phase 1 shipped (`REVIEW.md`, verdict SHIP, `b32ef9a`) and Jacob gave the
+product thesis in full. This revision is **additive**: a new **§8** carries the travel-history model — the
+trip lifecycle, past trips, participants, geography attribution and the lifetime map — and states what the
+location, photo and social phases must be able to land on. **No Phase 1 section changes behaviour.** Three
+smaller things ride with it: **A-8** (§2.7, QA **R10-1**) blesses A-5b clause 2 and closes the last carried
+MINOR; every rule in §2.7 gains a **class**, ruled in §8.2 (a feasibility rule does not
+run on a day that has passed — the reference trip is itself in the past as of today, and the app has been
+telling Jacob his finished trip is missing a hotel); and §4.2's `TripSummaryRow` comment is corrected to the
+shipped shape. **R8-3 and R8-4 are still not adjudicated** — `ROADMAP.md` names the phase and the trigger
+for each.
+
+**Phase 1 is §2 and §4. The next phase is §8.1–§8.4.** Everything else is the shape those must not
+foreclose. See `ROADMAP.md` for sequencing and `PRODUCT-VISION.md` for why this order and not another.
 
 ## Read only your sections
 
@@ -86,6 +98,7 @@ cairn/tools/doc-section ARCHITECTURE         # lists the sections and their size
 | 5 | The four hard subsystems | 2k | breaker; builder from Phase 3 on |
 | 6 | Privacy, authorization, deletion cascade | 3k | breaker, manager; builder for §6.2 |
 | 7 | Explicitly deferred | <1k | anyone about to build something not in the roadmap |
+| 8 | **The travel-history model** (revision 9) — trip lifecycle and past trips (§8.1), the feasibility/integrity rule class (§8.2), participants (§8.3), geography attribution, travel stats and the summary-row rule (§8.4); then the shapes the location, photo and social phases must land on (§8.5–§8.7) and what is refused (§8.8) | 6k | architect; the builder and breaker of the phase after Phase 1. Read with `PRODUCT-VISION.md` |
 
 Read the whole document when you are the manager, when you are changing the design, or when a change
 crosses a section boundary. Otherwise this table is the contract.
@@ -122,6 +135,11 @@ crosses a section boundary. Otherwise this table is the contract.
    port's cached `epoch`) — which is why it is stated once, as a rule with mechanical checks, in **§2.2b**.
    §2.2a is the fence itself; §2.2b is the rule §2.2a turned out to be one instance of; §4.2 rules 3, 4
    and 6 are where the client obeys them.
+7. **A trip does not end when the itinerary ends, and nothing about the history is stored as a count.**
+   Added at revision 9 from Jacob's product thesis. The lifecycle is derived from dates; a past trip is a
+   trip whose end date has passed; participation, access, friendship and location-sharing are four
+   different edges; and every statistic — countries, cities, days, goals — is derived from the trips it
+   claims to summarise, so it cannot drift from them and cannot be inflated by typing. §8.
 
 ---
 
@@ -958,6 +976,12 @@ which side is wrong; a `note` is a nudge.
 | `superseded_booking` | Two bookings share `operator + reference`, different issue dates. Emits *supersedes*, not *duplicate*. | note | 1 — YZGDTS 16 Jul vs 04 Aug. |
 | `unbooked_ticketed` | A stop with a booking link and a cost but no `Booking`, within N days of `now`. | note | Széchenyi, Prague Castle, Windsor. |
 
+**Every rule also carries a `class` — `feasibility` or `integrity` — and a feasibility rule does not run
+for a subject whose day is strictly before `ctx.today`** (revision 9). The classification, the reasoning
+and the two ceilings are **§8.2**; it is stated there and not here because it is a consequence of the trip
+lifecycle, and because the numbers in this section's fixture table are asserted at a fixed clock and must
+not move.
+
 **`closed` is dropped from Phase 1.** 0 of 95 places carry `hours`, §2.11 has no `hours` row, and the
 fixture case named in the old table — "Naschmarkt flea market ends 14:00, arrival 15:50" — is not a stop in
 the trip. A rule with a fictional fixture case reads as coverage and is not. `Place.hours` stays in the type
@@ -1263,6 +1287,32 @@ themselves — it is the property both R9-1 and KD-36 violate.
    count, the restored live row is still stamped — R8-1 at redo depth, unchanged.
 3. `undo()` contains no release: the R8-1 sequence, at six undo/redo depths, still ends with the row stamped
    and no rendered row reading *"Marked dismissed"* against a live blocker.
+
+#### A-8 — A-5b clause 2 is blessed, and the reason is that history stores re-asserted documents (revision 9, QA R10-1)
+
+**The finding.** With **two** Ctrl+Z's instead of one — dismiss → retire → undo → undo → redo — the document
+`redo` installs already carries the dismissal row stamped `retiredAt`, because `set` step 5 re-asserted it
+*before* the second `undo` pushed it into `future`. A-5b clause 2 requires a **live** row, so it declines,
+no release happens, and the redone dismissal is dead in the document.
+
+**Ruling: clause 2 stands as written. Nothing changes.** Three reasons, in order:
+
+1. **It is not user-visible.** The render after the redo is identical to the one the user was looking at one
+   keystroke earlier — A-5's blessed re-assertion — and pressing *"Not a problem"* again works and sticks.
+   §0.5's standard is *"a blocker is a thing Jacob must act on"*; nothing here is.
+2. **Weakening clause 2 rebuilds R8-1.** Releasing on a *retired* row is precisely the state A-5b's own
+   impossibility table proves is indistinguishable from the corner where undo must **not** un-retire. Any
+   rule that fires here fires there.
+3. **The honest fix is one level down and is not worth its blast radius today.** The real cause is that
+   `history` stores the document *after* re-assertion, so the pre-assertion truth the redo needs is already
+   gone. Storing the document **as dispatched** — re-asserting only on install, which `set` does anyway —
+   would make clause 2 pass without touching it. That is a change to the substrate of A-5, A-5a, A-5b and
+   §4.2 rule 5, and it would have to be re-measured against all three; buying that with a defect nobody can
+   see would be the worst trade in this document.
+
+**The trigger, written down rather than left implicit:** if any surface ever renders `retiredAt` directly,
+or makes the retired-versus-live distinction visible to the user, this stops being invisible and reason 1
+expires — at which point the fix is reason 3's, not a new clause.
 
 ### 2.8 Provenance
 
@@ -2082,7 +2132,10 @@ apps/web/src/
 
 ```ts
 type AppState = {
-  library: TripSummaryRow[];   // {id,title,startDate,endDate,cityCount,updatedAt} — cheap, always loaded
+  library: TripSummaryRow[];   // the shipped shape is {id,title,startDate,endDate,cityCount,dayCount,
+                               // stopCount,poolCount,revision} — cheap, always loaded. (Revisions 1–8 said
+                               // `updatedAt`, which has never existed; corrected in revision 9, and §8.4
+                               // widens the row and states the freshness rule that keeps it honest.)
   activeTripId: TripId | null;
   doc: Trip | null;            // exactly ONE trip in memory at a time
   derived: DerivedCache;       // legs, roll-ups, clusters, conflicts, issues — keyed by (doc identity, today)
@@ -2676,5 +2729,361 @@ bundle, and the dependency-direction test of §3 asserts it.
   is a Phase 2 concern with a stored `rateSetId` so a total is always reproducible.
 - **Booking/payments, chat, recommendation ML, offline map tiles, multi-tenant enterprise** — the brief's
   non-goals, restated so nobody re-adds them.
-- **Public share pages with SEO/OG rendering** — Phase 2. They are the one surface where a permission bug is
-  publicly visible, so they get their own attack pass.
+- **Public share pages with SEO/OG rendering** — the accounts phase. They are the one surface where a
+  permission bug is publicly visible, so they get their own attack pass.
+
+*(§8 adds to this list and, in two places, takes something off it. Read §8.8 with this section.)*
+
+---
+
+## 8. The travel-history model — what the next phase adds, and what nothing may foreclose
+
+**Input: Jacob's product thesis of 2026-08-27**, given directly and in full. The product argument — why this
+sequencing and not another — is `PRODUCT-VISION.md`. This section is only the part that is a *model*
+decision, because that is the part that is expensive to get wrong later.
+
+The thesis in one line: **Cairn is the persistent record of a person's travel life, and a trip does not end
+when the itinerary ends.** Three of its ten principles are data-model decisions rather than policy
+statements, and they are what this section exists to settle:
+
+- **Principle 2 — planned and observed travel must stay distinguishable.** §8.5. Observation is a separate
+  record class; it never mutates a `Stop`.
+- **Principle 3 — trip participants, social relationships and location-sharing permissions are separate
+  concepts.** §8.3 and §8.7. Five edges, never collapsed, and the first of them ships before any account
+  exists so the separation is load-bearing before it is convenient to break.
+- **Principle 5 — the lifetime history compounds in value.** §8.4. Every statistic is *derived*; nothing in
+  this product stores a count of anything.
+
+**Phase 1 is §2 and §4. The next phase is §8.1–§8.4** — all of it local-first, no server, no device.
+§8.5–§8.7 are architected here and implemented in the phases `ROADMAP.md` names. §8.8 is what is refused.
+
+### 8.1 The trip lifecycle is derived. A past trip is a trip whose end date has passed.
+
+```ts
+lifecycle(trip: Trip, today: IsoDate): 'planned' | 'active' | 'completed'
+```
+
+Pure, in `derive/`, keyed on `today` exactly as the conflict engine's `ctx` already is. **No stored status
+field, and a builder must not add one.** A stored `status` is a copy of a fact the dates already state, it
+goes stale at midnight with nothing to invalidate it, and §0.6 is the whole of the argument — the same
+reasoning that keeps `Leg`, `CostRollUp` and `Conflict` derived.
+
+**Days stay dense.** A three-week trip to Japan in 2019 entered from memory gets 21 empty `Day` rows, and
+that is fine: empty days are already a supported, titled, navigable shape (§2.3), `ensureDays` already
+mints them, and a `Day` is small. The alternative — permitting `days: []` for "memory" trips — would put a
+hole in the one invariant every derive function relies on, to save a few kilobytes.
+
+**One new stored field, and it earns its place:**
+
+```ts
+Trip.datePrecision: 'exact' | 'month' | 'year';   // default 'exact'
+```
+
+`startDate` and `endDate` remain **real calendar dates** (`invalid_calendar_date` is unchanged), so every
+existing rule, derive and golden is untouched; `datePrecision` records only that the user did not know the
+exact days — *"Japan, March 2019"* is stored as `2019-03-01 … 2019-03-31, precision:'month'`. It is stored
+because it is not derivable and because retrofitting fuzziness onto dates after a user has entered forty
+trips is the expensive migration this project keeps choosing to avoid. It is read by **display and nothing
+else**: no conflict rule, no derive, no validation may branch on it. It joins `setTripMeta`'s patch
+allowlist; it adds no build function.
+
+**There is no `Trip.kind`, and manually-entered travel needs no new provenance value.** The certainty of a
+record is already `provenance.confidence`, and it already means exactly the right things:
+
+| The thesis's phrase | Existing shape | Nothing new needed |
+|---|---|---|
+| manually entered from memory | `{source:'user', confidence:'asserted'}` | *"a human said so with nothing behind it"* — §2.8's own words |
+| imported from a booking | `{source:'email', confidence:'confirmed'}` | we hold the document |
+| observed by the device | `{source:'device', confidence:'inferred'}` | **one** new `source` value, and not until §8.5 |
+| taken from someone else | `{source:'friend', …}` + `attribution()` | §2.14, shipped |
+
+That is the thesis's *"treat manually entered, imported, and observed travel as potentially different
+provenance rather than pretending all data has identical certainty"*, and four fifths of it was already
+built. A phase that adds a `Trip.kind: 'past' | 'planned'` has added a second, weaker copy of both the
+dates and the provenance.
+
+### 8.2 Conflict rules gain a class: feasibility, or integrity
+
+**The defect this closes, which is live today.** `detectConflicts` was designed against a trip in the
+future. Today is 2026-08-27 and the reference trip ended on the 22nd, so the app now tells Jacob — forever
+— that his Budapest lodging is missing for a trip he has already taken. Worse for the phase: a 21-day
+memory trip in one city with no stops trips `missing_lodging` on every night of it, so **the first thing a
+new user sees after entering their first past trip is a wall of warnings about a holiday they finished in
+2019.** §0.5 governs: *a blocker is a thing Jacob must act on.* Nobody can act on the past.
+
+**The rule.** Every entry in `RULES` declares its class:
+
+```ts
+class: 'feasibility' | 'integrity'
+```
+
+> A **feasibility** rule asserts something about whether the plan can happen. It does not run for a subject
+> whose day is strictly before `ctx.today`. An **integrity** rule asserts that the data disagrees with
+> itself or with the world; it always runs.
+
+| Rule | Class | Why |
+|---|---|---|
+| `impossible_transfer` | feasibility | you cannot miss a connection you already made |
+| `overlap` | feasibility | two things you already did do not clash |
+| `missing_lodging` | feasibility | you slept somewhere; the record is merely incomplete |
+| `unbooked_ticketed` | feasibility | *"book this within N days"* is meaningless afterwards |
+| `booking_vs_plan` | feasibility | it asserts the plan cannot happen as written, which is the blocker definition |
+| `legacy_flag` | integrity | the user marked this day themselves; retiring their own flag is not ours to do |
+| `geo_outlier` | integrity | a coordinate typo is wrong forever, and the lifetime map now renders it |
+| `unverified_reference` | integrity | a reference nobody could verify stays unverified |
+| `duplicate_booking`, `superseded_booking` | integrity | two records disagreeing about one thing is a fact about the records |
+
+**Per *subject day*, not per trip.** A trip in progress has past days and future days in the same document,
+and a trip-level test would silence tomorrow's missed connection on the strength of yesterday's. The
+subject's day is exact; the trip's lifecycle is not.
+
+**Two ceilings, and the second is the one that will be got wrong.** (1) The goldens run at a fixed clock
+(§2.1 — no ambient time), so **every number in ROADMAP §C must be re-derived and unchanged**; a run that
+moves them has classified a rule wrongly. (2) `booking_vs_plan` going quiet on a completed trip is a
+deliberate loss, and it is named here rather than discovered: for a trip that has happened, *"the booking
+says the 15th and the plan says the 14th"* stops being a feasibility question and becomes a **history
+accuracy** question — which is a real question, and it is answered in the phase that has observed data to
+answer it with (§8.5), not by leaving a rule firing where nobody can act on it.
+
+### 8.3 Participants — principle 3's first entity, shipped before there is anything to grant
+
+```ts
+type Participant = {
+  id: ParticipantId;
+  displayName: string;
+  kind: 'self' | 'contact';
+  userId: UserId | null;     // null until that person has an account AND the user links them
+  note?: string;
+};
+
+Trip.participants: Participant[];   // ordered; at most one 'self'; 'self' is trip.ownerId
+```
+
+**Participation grants nothing. Not a read, not a comment, not a coordinate.** A participant is a statement
+about *who was on the trip*; access is `TripMember` and `TripShare`; visibility of a location trace is
+`LocationShare`; a social relationship is `Connection`. Five edges (§8.7), and Jacob's girlfriend's family
+are participants with no row in any of the other four. This is principle 3 as a schema rather than a
+sentence, and it ships now precisely because there is nothing to grant yet — the separation is free today
+and is a migration the day it is not.
+
+**Embedded in the document, not a second persisted structure.** The alternative — a store-level people
+record — buys cross-trip identity and costs a second storage record, its own place in the §6.3 cascade, its
+own export/round-trip parity, its own migration and its own index that can drift from the documents. That
+is A-5's rejected option, verbatim, and it is rejected here for the same reasons. Embedding gives
+round-trip parity, deletion and undo for free.
+
+**Cross-trip identity is therefore derived, and the view says so.** *"People you have travelled with"*
+groups by `userId` where it is non-null and by a normalised `displayName` otherwise, and the surface states
+that it is grouping by name. Two spellings of one person are two people until one of them is linked to an
+account. Named limitation, not a silent one.
+
+**Not in this phase, and named so it is not assumed:** participants on a *stop* (who came to dinner),
+inviting a participant, and a participant contributing anything. The first is a second nesting level nobody
+has asked for; the other two require accounts and are §8.7.
+
+`validateTrip` gains two codes: `duplicate_participant_id` (error) and `participant_name_empty` (error — a
+participant with no name renders as a ghost row and can never be re-identified). One `'self'` at most is
+the third check and rides on the first two's mechanism.
+
+### 8.4 Geography attribution, travel statistics, and the lifetime map
+
+This is the signature surface of the thesis and it is, in model terms, three decisions.
+
+**1. A coordinate is attributed to a country on-device, from a bundled dataset, never by a network
+geocoder.**
+
+```ts
+countryOf(at: LatLng, index: CountryIndex): CountryCode | null    // pure; index injected
+```
+
+Not a preference. Sending a coordinate to a geocoding service **is transmitting a location**, which §6.1
+forbids in every phase, and it would put a per-request dependency in the middle of the one screen the
+thesis calls the signature experience. Separately and independently: the public OSM/Nominatim service's
+usage policy forbids exactly this use — systematic reverse queries, and any application whose function is
+related to geocoding must run its own service *(verified 2026-08-27,
+[operations.osmfoundation.org/policies/nominatim](https://operations.osmfoundation.org/policies/nominatim/))*.
+There is no cheap hosted answer that is also a private one.
+
+The index is generated by `tools/gen-countries.mjs` from **Natural Earth admin-0**, which is public domain
+*(verified 2026-08-27, [naturalearthdata.com](https://www.naturalearthdata.com/downloads/10m-cultural-vectors/10m-admin-0-countries/))*,
+into one committed module; the lookup is ray-casting point-in-polygon over the ISO-coded rings. Two
+constraints on the generator, both measured rather than assumed:
+
+- **A size budget, pinned by a test.** The generator reports the emitted bytes and a test fails above the
+  budget. Start at the 1:110m simplification; **the builder measures, and the number goes in the test, not
+  in this paragraph.**
+- **A correctness floor that decides the scale.** 1:110m is coarse at coastlines and islands. The generator
+  is validated against every coordinate-bearing record in the reference trip — 112 stops and 94 places,
+  including the Dalmatian islands (`Blue Cave, Biševo`; `Stiniva Cove, Vis`) and Lokrum. **If 1:110m
+  misattributes or drops one of them, the generator uses 1:50m and the budget moves.** Detection quality
+  decides the dataset; the budget does not.
+
+**`null` is a first-class answer.** A coordinate the index does not resolve — mid-ocean, a disputed area, a
+bad digit — is reported as *unattributed* and rendered as unattributed. It is never snapped to the nearest
+country. This is §2.7's rule about `unknown` in a different costume: a system that guesses a country is a
+system whose lifetime map is quietly wrong, and a wrong map is worse than an honest hole.
+
+**2. Every statistic is derived. Nothing counts anything into storage.**
+
+```ts
+travelStats(summaries: TripSummaryRow[], today: IsoDate): TravelStats
+type TravelStats = {
+  countries: Array<{ code: CountryCode; firstVisit: IsoDate; lastVisit: IsoDate; tripIds: TripId[] }>;
+  cities:    Array<{ key: CityKey; name: string; countryCode: CountryCode | null; tripIds: TripId[] }>;
+  trips: { planned: number; active: number; completed: number };
+  daysTravelled: number;
+  unattributed: { places: number; stops: number };     // the honest hole, on screen
+};
+```
+
+A stored `countriesVisited: 47` is a second source of truth that can disagree with the trips it summarises,
+and — the reason that matters for this product specifically — **it is a number a user can inflate by
+typing**. Principle 1 says real-world travel is the source of truth; a derived statistic cannot drift from
+the travel it is derived from. This same rule pre-decides goals and achievements (§8.8): a goal is a
+declarative target evaluated against `travelStats`, never a counter that is incremented.
+
+**3. The library summary widens, and one rule keeps it honest.** The lifetime map must not load forty trip
+documents — §4.2's *"exactly ONE trip in memory at a time"* is unchanged and is not negotiable here.
+
+The shipped `TripSummaryRow` is `{id, title, startDate, endDate, cityCount, dayCount, stopCount, poolCount,
+revision}` *(§4.2's inline comment says `{…, updatedAt}` and has been wrong since revision 1; corrected in
+this pass, the shipped shape is the contract — the §2.5 precedent)*. It gains
+`countryCodes: CountryCode[]`, `cityKeys: CityKey[]` and `summaryVersion: number`.
+
+A summary is a **copy**, so §0.6 applies to it and four clauses discharge it:
+
+1. **A summary is computed only from the document being written, inside the write that carries it.** That
+   is already the shipped shape — `saveIfVersion(id, expectedVersion, doc, summary)` — and no port method
+   changes. Nothing computes a summary from another summary, from `AppState`, or from a document it is not
+   about.
+2. **Nothing edits a summary independently of its document.** A rename writes the document.
+3. **`SUMMARY_VERSION` is a core constant, bumped whenever any summary field's derivation changes.** The
+   client rescans every row below it — load the document, recompute, rewrite through the ordinary chained
+   write — before the lifetime map claims to be complete, and the map says *"recomputing"* while it does.
+   Without this, the day `countryOf` improves is the day the map silently keeps the old answer.
+4. **Every drill-down reads the document.** The summary answers *"which countries"*; the moment the user
+   taps one, the trip is opened and the answer comes from `Trip`.
+
+**And the question §6.1 will be asked about this: no, a country code is not location data of the kind that
+table governs.** It is derived from coordinates the user typed into their own itinerary and which already
+live in the document; the table's subject is *observed* location — a fix stream, a library index, a dwell
+inference — none of which exists in this phase. When observation does arrive (§8.5), a country derived from
+a `Visit` inherits that `Visit`'s rules, not these. The cross-cutting rule still binds: **no coordinate in
+any log line**, and a country code in a summary row is not a licence to log the point it came from.
+
+**The map surface inherits both of `CLAUDE.md`'s map bugs and adds one.** §4.4 is unchanged — bounds come
+from core, a hidden container never fits — and the world map's version of the min-span guard is that a
+history containing one country must not zoom to a max-zoom rooftop view. Same mechanism (`fitSpanKm`,
+`MIN_SPAN_KM`), new caller, no second implementation.
+
+### 8.5 Observed travel — the shape Phase 5 must be able to land on
+
+Not built now. Three decisions taken now, because each is a one-way door:
+
+**1. Observation is a separate record class. It never mutates a `Stop`.**
+
+```ts
+type Visit = { id: VisitId; at: LatLng | null; placeId: PlaceId | null; stopId: StopId | null;
+               arrived: IsoDateTimeLocal; departed: IsoDateTimeLocal | null;
+               confidence: 'certain' | 'likely' | 'uncertain'; provenance: Provenance };
+```
+
+A `visited: boolean` on `Stop`, or a device writing an observed time over a planned one, destroys principle
+2 permanently and irreversibly: once the plan has been overwritten there is no second copy to compare
+against, so *"did I actually do what I planned"* — the question the completed-trip view exists to answer —
+becomes unanswerable for every trip already travelled. This is the same rule as *"email-derived data is a
+candidate, never a silent write"*, applied to the highest-volume source there will ever be.
+
+**2. Acceptance is the transmission boundary, and this is what keeps §6.1 true when location arrives.** An
+unaccepted observation is device-local: no server row, no upload, no analytics. Accepting one makes it
+*trip content* — the user's own itinerary record, which syncs like the rest of the document. The user's
+explicit act is the only thing that moves a location off the device, and it moves one coarse record rather
+than a fix stream. §6.1's table gains its row in that phase, and the raw-fix row does not change.
+
+**3. `Provenance.source` widens by exactly one value — `'device'` — and not before.** `fromJSON` rejects it
+until then (that rejection is already asserted), and the widening carries a `schemaVersion` bump and a
+`migrateDoc` case, so an older client cannot silently drop records it does not understand.
+
+Country attribution then runs over visits with the same `countryOf`, and the profile can distinguish
+*planned* countries from *observed* ones — which is principle 2 paying for itself on the surface the thesis
+cares most about.
+
+### 8.6 Photos — the shape, and the one thing it triggers
+
+Not built now. §5.4 and §6.1 already hold the flow and the privacy rules; the thesis adds only the
+association model, and it is deliberately narrow:
+
+> A photo reference attaches to **exactly one trip** and **at most one** of a stop, a place or a day, plus
+> optionally a subset of that trip's participants. It is `{source:'system', state:'candidate'}` until the
+> user accepts it. Bytes stay in the library; only an accepted, explicitly attached photo is uploaded, with
+> EXIF GPS stripped by default.
+
+Not a general tagging graph, not many-to-many, not a feed item. **And it fires a trigger already written
+down:** §2.13 A-6a's closing paragraph says that the moment `Place` gains a second referent kind — a saved
+places library, place notes, or photos — `removeStop`'s single-row prune must become a reference-counted
+delete with a user-visible affordance. Photos are that second referent. The phase that ships them re-reads
+that paragraph; it is not a discovery.
+
+### 8.7 The social graph — five edges, and the pairs that must never be collapsed
+
+Phase 3's tables, stated now because `core/access` already models three of them and the conformance matrix
+is generated from the types:
+
+| Edge | Answers | Grants |
+|---|---|---|
+| `TripParticipant` | who travelled | **nothing** |
+| `TripMember` | who co-owns | full rights on that trip |
+| `TripShare` | who was given this trip (a user, or a link token) | `viewer` / `commenter` / `editor`, with `expiresAt` / `revokedAt` |
+| `Connection` | who follows or is friends with whom | **nothing by itself** — §6.2's predicates already treat `friendIds` as granting nothing |
+| `LocationShare` | who may see a trace, at what precision, until when | one audience, one day, revocable |
+
+**The collapses to refuse, each of which is the obvious shortcut:** participant ⇒ member (*"they were on
+the trip, let them edit"*), friend ⇒ viewer (*"friends can see my trips"*), member ⇒ location (*"we are
+travelling together, share my position"*). Every one of them is a privacy decision disguised as a
+convenience, and every one is a data migration to undo. The conformance matrix (§6.2) gains **participant
+with no share** as a principal, and its expected verdict on every operation is `deny` — a cell that is
+asserted before there is any code that could make it true.
+
+**Following is not friendship and Cairn has no public surface** until a trip is explicitly published.
+Publication is a `TripShare` to a link principal, which already exists; there is no `is_public` column, and
+adding one is what would create the moderation obligation §6.5 defers.
+
+### 8.8 What §8 refuses to architect, and the two it refuses outright
+
+- **Live presence — *"people currently or approximately in the same destination"*. Refused outright, and
+  this is the one place I push back on the thesis.** It cannot be built without the server holding where
+  someone *is now*, which inverts §6.1's central claim — *"a full dump of the production database contains
+  zero raw traces"* — the single property that makes every other location feature in this product
+  defensible. **Nothing may add a `last_seen_at`, a `current_city` or a coordinate column "for later".** If
+  it is ever built it is a separate, opt-in, per-trip *ephemeral presence*: a coarse geohash with a short
+  TTL, written by the device, readable only by that trip's members, never joined to a trace and never
+  retained. That design is written here so that the version which shows up under schedule pressure — a
+  `users.current_location` column — is recognisable as the thing this paragraph refused.
+- **Travel miles and flight miles. Deferred, both.** They need airport and route data plus real instants
+  (§7 defers timezones to the phone phase), and — the deciding reason — a mile count derived from a *plan*
+  is a fabricated statistic. Principle 1 says real-world travel is the source of truth. Miles become honest
+  when §8.5's observed data exists, and not before.
+- **Goals and achievements. Architected here in one line, implemented late:** a `Goal` is a declarative
+  target (`{kind:'countries'|'cities'|'trips', target: number, window?: {from,to}}`) evaluated against
+  `travelStats`. **No stored counters, no points, no badge table.** The reason is not tidiness: a
+  gamification that rewards *entering* data corrupts the travel history's honesty, and this product's whole
+  claim is that the history is real.
+- **Automatic trip detection.** Nothing here forecloses it — a detected trip is a candidate `Trip` with
+  `{source:'device', state:'candidate'}`, which is the shape that already exists — and nothing here builds
+  it. It is worth the thesis's own warning: build it when the manual path is good enough that the automatic
+  one has something to be checked against.
+- **CRDTs, still.** §7's deferral stands, and its **trigger is now named**: the first `editor` role on a
+  shared trip makes two people editing one document real. Last-writer-wins per stop behind the §2.2a fence
+  is the answer for as long as the complaint is hypothetical.
+- **Opening hours, currency conversion, sub-maps, booking/payments, chat, recommendation ML** — §7,
+  unchanged.
+
+### 8.9 The export surface, and what §8 costs it
+
+§2.10 is set equality against one list, and *"widening the surface is a documentation change first"*. This
+section is that change: it names, under **P2**, `lifecycle`, `countryOf`, `travelStats`, `SUMMARY_VERSION`,
+and the participant build functions `addParticipant` / `updateParticipant` / `removeParticipant`.
+`setTripMeta`'s patch allowlist gains `datePrecision` and `tripSummary`'s return type widens — neither adds
+a symbol. **The new total is derived by counting, in the pass that adds the callers, and pinned in §2.10
+and in ROADMAP criterion E in the same commit.** Quoting a number here that nobody has counted is the
+defect §2.10 exists to prevent.

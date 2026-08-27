@@ -20,6 +20,9 @@ Cairn is that, generalised into a product:
 4. **Live path.** Location services draw your real route as you travel, over the planned one.
 5. **Photos.** Using that location history, photos get placed on the trip automatically — or suggested
    against the stop you were standing at when you took them.
+6. **Travel history.** A trip does not end when the itinerary ends. Past trips are first-class, a completed
+   trip stays useful, and everywhere you have been accumulates into one map and one travel identity.
+   *(Added 2026-08-27 from Jacob's product thesis — `PRODUCT-VISION.md`, which holds his words in full.)*
 
 ---
 
@@ -88,6 +91,10 @@ Data model to design against, at minimum: `User`, `Trip`, `TripMember`, `Stop`, 
 stop-level. `StopImport` is not a table either; it is the `origin` block on a copied stop's
 provenance. ARCHITECTURE §2.14.)*
 
+*(The 2026-08-27 thesis adds five and splits one: `TripParticipant` — who travelled, granting nothing —
+`Connection`, `LocationShare`, `Visit` (observed travel, never a mutation of a `Stop`) and `Goal`; and
+`TripMember` stops being a stand-in for all of them. ARCHITECTURE §8.)*
+
 Two design positions to take a view on explicitly:
 - Are **days** stored, or derived from a date range plus stops? (Today they are stored.)
 - Do **location traces and photo metadata stay on-device by default**, with only an explicit, simplified
@@ -150,6 +157,32 @@ So, settled:
 
 The rule *"never present a suggestion as the user's own plan"* is now enforced **on the copy path**,
 which is where it will actually be exercised. ARCHITECTURE §2.14.
+
+### 2026-08-27, the day after Phase 1 shipped — the product thesis
+
+Jacob gave the long-term thesis in full. It is preserved **verbatim** in `PRODUCT-VISION.md` Appendix A;
+what it settles as *intent*, and therefore belongs here:
+
+- **Cairn is the persistent record of a person's travel life**, not a planner that expires. The loop is
+  Discover → Plan → Travel → Document → Share → build history → discover through the network.
+- **Past trips are part of the usable product**, not an import feature. A new user does not start empty.
+- **Trip participants, social relationships and location-sharing permissions are three separate things.**
+  Someone can be on your trip without being a Cairn friend and without seeing where you are. This is a
+  schema decision, not a policy one — `ARCHITECTURE.md` §8.7 makes it five edges that may never be
+  collapsed into one another.
+- **Planned and observed travel must stay distinguishable**, so observation never overwrites a plan.
+- **The base product must be valuable before automatic location, social discovery or gamification exist**,
+  and *"do not build continuous background tracking simply because it is part of the vision"*.
+
+What that changes downstream: **Phase 2 is travel history, local-first** — past trips, the trip lifecycle,
+the lifetime map, travel identity, participants — and accounts/the server move to Phase 3.
+`PRODUCT-VISION.md` §1 has the argument; `ROADMAP.md` revision 9 has the sequence and the gate;
+`ARCHITECTURE.md` §8 has the model.
+
+One item of the thesis is pushed back on rather than scheduled: **live presence** — *"people currently or
+approximately in the same destination"* — would require the server to hold where someone is now, which
+inverts the privacy claim every other location feature here rests on. §8.8 refuses it in writing and states
+the bounded design it would have to take if Jacob ever overrules that.
 
 ## Working rules
 
