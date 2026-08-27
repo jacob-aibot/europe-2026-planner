@@ -25,6 +25,7 @@ adding, moving or trusting one.
 | `REVIEW.md` | ~7.2k tok | you're the builder/breaker acting on its routing table | the Status note at the top tells you whether it's even current |
 | `docs/HISTORY.md`, `cairn/docs/archive/*` | — | a finding or a comment cites it by name | never by default |
 | `europe-2026-itinerary.html` | ~44k tok | you're auditing render paths end to end (say so) | `node cairn/tools/extract-legacy.mjs`, or grep — see `cairn-constraints` §1 |
+| `CAIRN_VISUAL_ROADMAP.md` (+ its `.html` twin) | ~2k tok | you just made a phase-boundary decision or scope change (see below) | not a contract doc — skip it for a routine builder/breaker task |
 
 ## Delegation — when a change needs which stage
 
@@ -40,6 +41,24 @@ Not every change earns the full pipeline. Route by what the change actually touc
 | **Phase boundary — a SHIP/SEND BACK decision** | **full chain, no exceptions, no shortcuts from this table** | non-negotiable regardless of how small the last diff looks; `manager.md` is the gate and this table does not change what it requires |
 
 When unsure which row applies, treat it as the more expensive route. This table optimizes the common case; it does not override `manager.md`'s judgment on any individual review.
+
+## Keep the visual roadmap in sync
+
+`cairn/docs/CAIRN_VISUAL_ROADMAP.md` and its `.html` twin are a plain-English status board for
+Jacob — not part of the contract (`BRIEF.md`/`ARCHITECTURE.md`/`ROADMAP.md`), and nothing enforces
+that they stay current automatically. **Update both files, in the same pass**, whenever:
+
+- a phase-boundary decision is made (a manager SHIP/SEND BACK verdict);
+- a builder/architect pass changes what's actually built vs. left, for a phase currently in
+  progress (e.g. a routed fix lands, a new gap is found);
+- the project's scope changes (a phase added, cut, or reordered; a new capability that isn't
+  already in the journey list).
+
+A routine single-finding builder pass doesn't need this — see the delegation table above. When in
+doubt, a stale roadmap is worse than a skipped update on a trivial change, so err toward updating
+it. Keep the same three-way distinction the doc already uses — **built** (code exists) vs.
+**verified** (an adversarial round tried to break it) vs. **shippable** (a manager verdict of
+SHIP) — rather than collapsing them into a single "done."
 
 ## Task sizing
 

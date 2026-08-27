@@ -5,21 +5,22 @@ the plain-English companion to `ARCHITECTURE.md` and `ROADMAP.md` — those are 
 is the status board. It does not redefine anything they say. There is also an HTML version of
 this same content at `cairn/docs/CAIRN_VISUAL_ROADMAP.html` — open it in a browser (phone or
 desktop) for the visual version. **Keep the two in sync**: when the state below changes, update
-both files in the same pass.
+both files in the same pass (`cairn/CLAUDE.md` now says so explicitly, at the point the last
+update to this file added that instruction).
 
-> **⚠ STALE — do not answer "where is Cairn" from the body of this file.** Everything below
-> describes `0a58c81`, when Phase 1 was mid-gate. Since then: **Phase 1 shipped**
-> (`REVIEW.md`, verdict SHIP, `b32ef9a`, 2026-08-27), and the roadmap was re-cut against
-> Jacob's product thesis the same day — **Phase 2 is now travel history, local-first**
-> (past trips, the lifetime map, participants) and accounts/the server moved to Phase 3, so
-> the phase stepper below is wrong from Phase 1 onward. Current sources of truth:
-> `REVIEW.md` (what shipped), `PRODUCT-VISION.md` (why the new order), `ROADMAP.md`
-> revision 9 (the sequence), `ARCHITECTURE.md` §8 (the model). **Rebuilding this board — and
-> its HTML twin, in the same pass — is a task in its own right and has not been done.**
+> **⚠ PHASE 2 RE-SCOPED — do not read the phase stepper below as current.** Phase 1 shipped
+> (`REVIEW.md`, verdict SHIP, `b32ef9a`, 2026-08-27) and this file was updated to say so. The
+> same day, the roadmap was re-cut against Jacob's product thesis: **Phase 2 is now travel
+> history, local-first** (past trips, the trip lifecycle, the lifetime map, participants),
+> and accounts/the server moved to Phase 3 — so anything below describing "Phase 2" as
+> accounts/sync/sharing is superseded. Current sources of truth: `PRODUCT-VISION.md` (why
+> the new order), `ROADMAP.md` revision 9 (the sequence, with the old-number → new-number
+> mapping at its top), `ARCHITECTURE.md` §8 (the model). **Rebuilding this board — and its
+> HTML twin, in the same pass — against the new phase order is a task of its own and has not
+> been done.**
 
-> **Last updated:** 2026-08-27, against `master` @ `0a58c81` ("Cairn: the SEND-BACK pass —
-> travelRole reaches the screen, and delete joins the chain"). Update this line every time you
-> edit this file.
+> **Last updated:** 2026-08-27, against `master` @ `340f17f` ("Cairn: roadmap revision 9
+> follow-ups"). Update this line every time you edit this file.
 
 **Status vocabulary used throughout:** 🟢 COMPLETE · 🟡 IN PROGRESS · 🟠 NEXT / APPROVED ·
 🔴 BLOCKED · ⚪ NOT STARTED. Also: **built** (code exists) vs **verified** (an adversarial tester
@@ -28,122 +29,126 @@ different claims — see "Definition of done" at the bottom.
 
 ---
 
+## ⚠️ A decision only Jacob can make
+
+Before anything else: `REVIEW.md`'s SHIP verdict named one open question for Jacob, not for the
+pipeline. **Do you want an "accept" control before Phase 2?** Today, copying an activity from one
+of your trips into another leaves it permanently badged *"from a friend"* — there's no button that
+says "yes, this is mine now." That's the safe default (nothing of someone else's is ever shown as
+yours), but it's the kind of thing you'd notice the first time you used the feature. It's cheap to
+add now; otherwise it ships with the Phase 2 accounts work. **Nobody is blocked waiting on this**
+— it's a preference, not a gate — but it's sitting unanswered, so it's flagged here rather than
+buried in a paragraph.
+
+---
+
 ## 1. Where we are
 
-**Phase:** 1 of 6 — "the core engine and a working multi-trip planner."
-**Status:** 🟡 IN PROGRESS. Sent back once by the manager gate (`REVIEW.md`, `43497a2`); the
-architect answered the four rulings that review routed to design (`5bdd0dc`, "revision 5"); the
-builder has now implemented all of it — the three disclosed screen gaps (B-1/B-2/B-3), the four
-smaller fixes (B-4/B-5/B-6/B-7), and the three architecture rulings (A-1/A-2/A-4) — in one pass
-(`0a58c81`, "the SEND-BACK pass"). **Not yet done:** an *independent* breaker round on that pass,
-and the manager's re-gate. The builder's own test suite (387 pass / 0 fail, up from 333) and its
-own new Chromium probe are the builder's evidence that its own work is correct — real, but not a
-substitute for someone else trying to break it, which is the whole reason this pipeline has four
-roles instead of one.
+**Phase:** 1 of 6 is 🟢 **COMPLETE — SHIPPED.** Phase 2 ("accounts, sync, sharing") is unlocked and
+⚪ **NOT STARTED** — nobody has opened a Phase 2 session yet.
 
-**Plain-English assessment.** The hard, invisible part — "does this thing lose your edits, ever,
-under any race or crash" — has been done and independently verified for a while (seven rounds of
-a tester actively trying to break it). The part Jacob actually looks at — the day view, the
-conflicts panel, the copy-a-stop flow — had three specific, named gaps where what the screen
-showed didn't match what the engine underneath already knew; the builder reports all three fixed
-as of the pass that just landed. This is now "believed done, awaiting someone independent to
-check" rather than either "just started" or "verified" — a real, meaningful step forward, and
-still one gate away from shippable.
+**How Phase 1 closed.** The manager sent it back once for three disclosed screen gaps; the
+builder fixed all of them plus four smaller items in one pass; then an adversarial QA tester found
+a real, if narrow, remaining bug (R11-1 — a merge landing at the same instant as a local edit could
+silently overwrite the other tab's saved work) across three more rounds (R9, R10, R11) of the
+usual find → design ruling → fix → re-verify cycle. The architect ruled on the fix (revision 8,
+**A-7**), the builder implemented it, and the manager's final gate review re-derived the fix's
+correctness on its **own** probe — not the builder's tests — before recording **SHIP**.
 
-**Current gate status:** 🔴 the Phase 1 → Phase 2 gate is **not open**. The manager's last verdict
-was SEND BACK, on the version of the product that had the three screen gaps. Before the manager
-looks again, the breaker needs an independent round on this new pass — verifying B-1/B-2/B-3 as a
-user in a real browser, not re-running the builder's own probe, plus the standing regression set.
+**Plain-English assessment.** Phase 1 is done, for real, by this project's own standard: built,
+independently attacked, and signed off by the role whose job is exactly that. The manager was
+explicit about one shortcut it took on the way there — it verified the very last fix (A-7) itself,
+by hand, rather than ordering a full extra breaker round, and said so in writing rather than
+silently skipping a step. It also named the one place it wants the *first* Phase 2 breaker round
+to point: the merge/write code (`doMerge`/`writeAndSettle`) that has produced four of this
+project's bugs so far (R3-3, R7-1, R8-4, R10-3, R11-1). That's not a loose end Phase 1 left behind
+— it's a disclosed, deliberate trigger for the next phase's QA to pick up on day one.
+
+**Current gate status:** 🟢 **Phase 1's gate is PASSED — Phase 1 itself is closed, not open.** ("The
+gate is open" describes the *door into Phase 2*, not Phase 1's own status — worth saying plainly
+since that phrase reads the wrong way at a glance.) Nothing is routed back to any role for Phase 1.
+What carries forward — three small entry items, a couple of stale numbers, and Jacob's one open
+decision above — is listed in §4.
 
 ---
 
 ## 2. What is already built
 
-Only things that exist and run, today, on `master`:
+Everything below is not just built — it's **shipped**, per the manager's SHIP verdict:
 
 - **The trip engine** (`packages/core`) — days, stops, legs, cost roll-up, geographic
   clustering, conflict detection, validation, JSON import/export, and the provenance rules that
   track who a piece of data belongs to. Zero runtime dependencies. Deterministic (no clock, no
-  randomness, so the same input always gives the same output — this is what makes automated
-  checking possible at all).
-- **The persistence/write layer** (`packages/client`) — the part that decides when an edit is
-  safe to save, refuses to overwrite a concurrent edit, and never silently drops something you
-  typed. This is the part that took seven adversarial rounds (R2–R7 below) to get right.
-- **The web app** (`apps/web`) — opens in a browser, loads the real Europe 2026 trip, lets you
-  create a second trip, switch between trips, edit days and stops, see a day on a map, see a
-  conflicts panel, and browse another trip to copy a single stop into your own (with credit to
-  where it came from). As of the latest builder pass, this now also correctly renders a travel
-  stop's departure/arrival, keeps a dismissed conflict dismissed, and shows the copy credit line
-  on every screen that renders a stop — see §3 for the caveat on "as of."
+  randomness, so the same input always gives the same output).
+- **The persistence/write layer** (`packages/client`) — decides when an edit is safe to save,
+  refuses to overwrite a concurrent edit, never silently drops something you typed — **including
+  the case of two tabs merging and editing at the same instant**, which took 11 rounds total to
+  close (§6).
+- **The web app** (`apps/web`) — opens in a browser, loads the real Europe 2026 trip, supports any
+  number of trips, day/stop editing, a day map, a conflicts panel that shows exactly the two things
+  Jacob needs to act on, and copying one stop from another trip with a credit line that now shows
+  up on every screen that can render it. A travel stop shows a real departure/arrival, not a
+  misleading single time.
 - **A command-line tool** (`cli.ts`) — `trip`, `day`, `conflicts`, `cost`, `validate`, `export`,
-  runnable with no browser at all. This is what a tester uses to check the engine without
-  touching a UI.
-- **387 automated tests, all passing** (up from 333 as of the latest builder pass), plus a
-  separate stack of adversarial probe scripts under `cairn/qa/` that are not unit tests — they're
-  built to actively try to break specific claims (a race condition, a database wipe mid-write, a
-  symlink escape).
+  runnable with no browser at all.
+- **432 automated tests, all passing** (up from 333 at the last update to this document), plus a
+  wide stack of adversarial probe scripts under `cairn/qa/` built to actively try to break specific
+  claims — a race condition, a database wipe mid-write, a symlink escape, a merge landing at the
+  same instant as an edit.
 
 ---
 
 ## 3. What I can actually do today
 
-**Already works, right now, if you open the app:**
+**Everything below is shipped — verified by an adversarial tester, signed off by the manager, not
+just "the builder says it works":**
+
 - Open the app and see your real Europe 2026 trip, loaded read-only from the live planner.
-- Create a second trip and switch between the two without them bleeding into each other.
-- Edit a day's stops, see them on a map, and not lose the edit if you close the tab, switch
-  trips, or have it open in two tabs at once.
+- Create any number of trips and switch between them without them bleeding into each other.
+- Edit a day's stops and see them on a map, without losing the edit on tab close, a trip switch,
+  two tabs open at once, **or two tabs saving and merging at the same instant** — the last of
+  these was the specific thing that held Phase 1 back until this pass.
 - See a conflicts panel that flags exactly your two real red-flag days (Aug 18, Aug 20) and
-  nothing invented.
-- Browse your other trip and copy one stop into this one — it arrives badged "from a friend"
-  with a credit line saying which trip, and any door PIN or booking number in the note is
-  redacted.
+  nothing invented — five rounds of design work went into keeping that count honest.
+- See a flight/train stop rendered correctly: "departs 14:30 · 1h 20m · arrives 15:50," not a
+  single time that reads like an arrival.
+- Dismiss a conflict and have it stay dismissed, even if you edit the value away and back.
+- Browse another trip and copy one stop into this one — badged "from a friend," credited to the
+  source trip on every screen that shows it, with any door PIN or booking number redacted.
 - Export and re-import a trip as a JSON file (backup/restore).
-- **As of the latest builder pass** (not yet independently verified, see §4): a flight/train stop
-  reads "departs 14:30 · 1h 20m · arrives 15:50" instead of the misleading old string; dismissing
-  a conflict stays dismissed even if you edit the value away and back; the "copied from" credit
-  line shows up wherever a copied stop is rendered, including the two screens it was missing from.
 
-**Believed fixed, pending independent verification (see §4):** the three gaps above are what the
-last manager gate sent back. The builder reports all three fixed, with its own tests and its own
-new browser probe as evidence. That is real work, and it is exactly the kind of self-reported
-"done" this project's own pipeline does not treat as the final word — the breaker's independent
-round on this specific pass hasn't happened yet.
+**Known, disclosed, and deliberately not fixed for Phase 1 (see §4):** a copied stop has no
+"accept as mine" control yet — see the decision box at the top. Two narrow, real bugs exist that
+are not reachable through anything currently in the app (R8-3, R8-4) and are queued as Phase 2
+entry conditions rather than Phase 1 blockers.
 
-**Not built at all yet — planned for a later phase, not Phase 1:**
-- Accounts, sync across devices, friends, or share links (Phase 2).
+**Not built at all yet — later phases:**
+- Accounts, sync across devices, friends, or share links (Phase 2 — next).
 - Anything that reads your email for bookings (Phase 3).
 - A phone app, offline mode, or a live drawn path of where you actually went (Phase 4).
 - Photos placed on the trip automatically (Phase 5).
 
 ---
 
-## 4. What is left for Phase 1
+## 4. What carries forward — Phase 1 is closed, nothing is owed
 
-The seven items the manager's last gate review routed to the builder, plus three architecture
-rulings, all landed in one pass (`0a58c81`). **Every row below is "built by the builder, not yet
-independently verified"** — that distinction is the whole remaining gap, not a list of unwritten
-code.
+**Nothing is routed back to any role for Phase 1.** The table below is not unfinished Phase 1 work
+— it's the disclosed list of small items and one decision that the *next* phase inherits, so
+nobody has to re-derive them from git history.
 
-| # | What | Why it matters | Status |
+| # | What | Why it matters | Next responsible role/action |
 |---|---|---|---|
-| B-1 | Show a flight/train's departure vs. arrival correctly in the day view | The single thing most likely to mislead Jacob on a travel day — the exact bug the old planner had | 🟡 built, unverified |
-| B-2 | Make the conflicts panel's "dismiss" actually stick | Right now dismissing something was pointless — it came back on its own | 🟡 built, unverified |
-| B-3 | Show the "copied from" credit everywhere a copied stop appears | The rule is "never let a copied thing look unattributed"; two screens broke it | 🟡 built, unverified |
-| B-4 | Tell the user when autosave gives up after retrying, and reschedule the save | It used to fail silently with no further attempt until the user typed again | 🟡 built, unverified |
-| B-5 | Fix the sample-data scrub so a real booking reference/flight number can't leak into a build file | One did — the rule that shipped wasn't the rule Jacob asked for after the last review | 🟡 built, unverified |
-| B-6 | Close narrow, UI-unreachable holes in the write/save logic found by round-7 QA | Not reachable by a user, but "not reachable yet" isn't the same as "safe" | 🟡 built, unverified |
-| B-7 | Fix a file-export symlink escape, and a permission check that didn't validate a date string | Both small, both exactly the kind of thing that becomes real once Phase 2 adds real users | 🟡 built, unverified |
+| — | **Jacob's call: add an "accept" control for copied stops?** | Cheap either way; changes nothing about safety, only about a screen you'll see the first time you copy something | **Jacob** — see the box at the top |
+| R8-3 | A copied stop's acceptance can, in one specific case, replace a geographic anchor and mint a false conflict on a stop *you* wrote | Violates a stated invariant, but unreachable until an "accept" control exists in the app | **Architect** — must be ruled on before any accept control ships |
+| R8-4 | A merge already in flight can resurrect a trip that was just deleted, in one narrow window | Real, but the delete control isn't reachable with a trip still open today | **Architect** — rule on it when `deleteTrip` becomes reachable that way, or when Phase 2's sync gives loading a second source |
+| R10-1 | Two undos in a row can make one dismiss-rule clause decline instead of act; the screen looks identical either way | Cosmetic-only edge case | **Architect** — bless the current behavior or extend the rule, low priority |
+| — | Five dormant QA probe scripts report stale pass/fail counts, not real defects | A future QA round could waste real time chasing a false signal | **Breaker** — repair or retire them before Phase 2's first round |
+| — | `BUILD-NOTES.md` has two stale numbers (test count, export-surface count) | Cosmetic; the doc's own status note already says not to trust them without re-running the commands | **Builder** — fix in the next pass that touches the file anyway |
 
-**What's actually next — process, not code (unless the breaker finds something):**
-
-1. **Breaker, independently** — drives B-1/B-2/B-3 as a user in a real browser (not the builder's
-   own `qa/r8-views.mjs`, though that's a useful starting point), walks the phase's full "what
-   Jacob can do" list end to end, and re-runs the whole standing regression set to confirm nothing
-   regressed under 387 tests' worth of change.
-2. **Manager re-gates** — SHIP or SEND BACK, against the actual product, not the test count.
-
-Nobody skips a step in that chain for a phase-boundary decision — see `cairn/CLAUDE.md`'s
-delegation table. If the breaker finds the builder's fixes don't hold up, this table gets new rows.
+**The one thing written down as a trigger, not just a residual:** Phase 2's **first breaker round**
+is pre-committed to attack `doMerge`/`writeAndSettle` specifically — the code that has produced
+five of this project's bugs across Phase 1 (R3-3, R7-1, R8-4, R10-3, R11-1). That's the manager's
+own call, made explicitly rather than left implicit.
 
 ---
 
@@ -151,52 +156,59 @@ delegation table. If the breaker finds the builder's fixes don't hold up, this t
 
 | Phase | You'll be able to... | Status |
 |---|---|---|
-| **1 — Core planner** | Plan trips like the old single-trip app, but as many trips as you want, safely — nothing you type ever silently vanishes | 🟡 IN PROGRESS |
-| **2 — Accounts & sharing** | Have your trips follow you across devices, and let friends see them and copy a stop into their own | ⚪ NOT STARTED |
+| **1 — Core planner** | Plan trips like the old single-trip app, but as many trips as you want, safely — nothing you type ever silently vanishes | 🟢 **COMPLETE — SHIPPED** |
+| **2 — Accounts & sharing** | Have your trips follow you across devices, and let friends see them and copy a stop into their own | ⚪ NOT STARTED — unlocked, not yet begun |
 | **3 — Email ingestion** | Forward a booking confirmation and have Cairn find it, file it on the right day, and attach the ticket | ⚪ NOT STARTED |
 | **4 — Phone app & live path** | Carry Cairn on your phone, fully offline, and have it quietly draw the route you actually traveled next to the plan | ⚪ NOT STARTED |
 | **5 — Photos** | Have your trip photos land on the right day — and often the right stop — automatically | ⚪ NOT STARTED |
 | **6 — Sharing polish & cost reports** | Share a trip publicly with a clean page, and get a real cost report across a trip | ⚪ NOT STARTED |
 
 Each later phase only starts once the one before it gets a manager verdict of **SHIP** — see
-§10 for why that gate matters and isn't just a formality.
+§10 for why that gate matters and isn't just a formality. Phase 1 is the first phase to actually
+clear that bar.
 
 ---
 
-## 6. Recent progress — what the R2–R7 rounds actually did
+## 6. Recent progress — what R2 through R11 actually did
 
-Short version: **seven rounds of one QA tester repeatedly trying to break the save/persistence
-layer, and finding a real way to lose data almost every time until round 6.** In order:
+Short version: **eleven rounds of one QA tester repeatedly trying to break the save/persistence
+layer**, four design rulings from the architect, and a manager who verified the very last fix
+personally before signing off. In order:
 
-- **R2** — found and closed a lost-edit race, a stop that could vanish from the trip pool, and a
-  copy-a-stop path that leaked a real credential into the copied note.
-- **R3** — found the compare-and-set "is this still safe to save" check could be spoofed by a
-  delete-then-recreate sequence (a classic "ABA" bug), and a debounced save could be abandoned
-  mid-flight if you switched trips at the wrong instant.
-- **R4** — found the *fix* for R3 had the same root bug one layer upstream: an undo followed by a
-  new edit could reuse an old "this was already saved" marker and skip the write entirely, with
-  the screen still saying "Saved."
-- **R5** — found a case where an edit made *during* the save-before-switching-trips check could be
-  thrown away with no error shown, plus a provenance check that could be satisfied by a blank
-  actor field.
-- **R6** — verified R5's fixes hold (deliberately reverted them in a scratch copy and watched the
-  tests go red, to prove the tests were catching the real thing, not passing by accident), and
-  found the "give up after 5 retries" path failed silently.
-- **R7** — verified everything again, closed the last MAJOR-severity save-path bug, and found three
-  more narrow issues that (for now) can't actually be triggered through the shipped UI.
-- **Then the manager's gate review** looked past the save logic to the actual screens for the
-  first time in five rounds, and sent Phase 1 back for three disclosed-but-never-fixed gaps (§4).
-- **The builder's SEND-BACK pass** (`0a58c81`) just landed: all three screen gaps plus the smaller
-  routed fixes, 387 tests passing. Independent verification of *this specific pass* hasn't
-  happened yet — that's §4's "what's actually next."
+- **R2–R7** — closed a lost-edit race, a vanishing pool stop, a leaked credential, an ABA
+  compare-and-set spoof, an undo that could skip a write while showing "Saved," an edit discarded
+  mid-transition with no error, and a silent give-up-after-retries path. (Full detail in the prior
+  version of this document, preserved in git history — the short version is: nearly every round
+  found a real way to lose data, until round 6.)
+- **Gate review** — looked at the actual app screens for the first time in five rounds and sent
+  Phase 1 back for three disclosed-but-unfixed gaps: a misleading travel time, a conflict dismissal
+  that didn't stick, and a missing credit line on two screens.
+- **The SEND-BACK pass** — the builder fixed all three, plus four smaller routed items, in one
+  pass (387 tests passing).
+- **R8** — independently verified that pass closed (0 BLOCKER), and found 4 new MAJOR issues one
+  layer over: a retirement-ledger gap and a copy-path anchor problem, both routed to the architect.
+- **R9** — the architect's rulings (A-5, A-5a, A-6) implemented and verified; 0 BLOCKER, 2 MAJOR
+  remained, both narrow.
+- **R10** — those two closed (a merge-then-undo sequence, and a stop's `place` field escaping a
+  pruning rule); found one more BLOCKER, adjacent, not the same mechanism: **R11-1**.
+- **R11** — the final one. **R11-1**: a merge landing at the same instant as a local edit could
+  make the store discard the just-merged document from memory and silently overwrite the other
+  writer's already-saved edit — with the screen still saying "Saved." Routed to the architect.
+- **Architecture revision 8 (A-7)** ruled on it: the save-fence must only ever advance to a
+  document the store still holds or one it wrote itself; a write that lands but is no longer
+  wanted refuses instead of installing.
+- **The builder implemented A-7**, with six new regression tests proving the exact defect and two
+  ceiling tests proving the fix doesn't over-refuse an ordinary merge or an ordinary autosave.
+- **The manager's final gate review** re-derived the fix's correctness itself — wrote its own
+  probe, watched it fail against the old code and pass against the new, then attacked five adjacent
+  paths by hand (closeTrip, undo, further edits, a third writer, a concurrent merge-vs-write race).
+  All clean. **Verdict: SHIP.**
 
-**Why this took so long before Phase 1 was even considered close to ready:** every one of these
-was a way an edit could be silently lost, corrupted, or double-applied — the single worst thing a
-trip planner can do to someone's actual trip. Each fix closed one hole and QA immediately
-attacked the fix itself rather than taking it on faith, which is why several "closed" bugs
-reopened one layer up. That is expensive and it is also the only way to actually trust the
-result — a save path that's merely "believed to work" is not different from one that's broken,
-until someone has tried hard to break it.
+**Why this took eleven rounds before Phase 1 counted as shippable:** every one of these was a way
+an edit could be silently lost, corrupted, or overwritten — the single worst thing a trip planner
+can do. Each fix was immediately attacked rather than trusted, which is why several "closed" bugs
+reopened one layer up, and why the very last one (R11-1) surfaced only after ten rounds had already
+passed. That's expensive, and it's the only way to actually trust the result.
 
 ---
 
@@ -204,8 +216,8 @@ until someone has tried hard to break it.
 
 | Technical thing | What it actually buys Jacob |
 |---|---|
-| **Persistence safety** (the R2–R7 work above) | Your edits don't silently disappear — not from a crash, a closed tab, two tabs open at once, or the app giving up after retrying |
-| **Merge/save serialization** (no two writes racing each other) | Two things happening "at once" — an autosave and a manual save, or two tabs — can't corrupt the trip into a half-applied state |
+| **Persistence safety** (the R2–R11 work above) | Your edits don't silently disappear — not from a crash, a closed tab, two tabs open at once, or the app giving up after retrying |
+| **Merge/save serialization**, including the last-mile fix (A-7) | Two things happening at the exact same instant — an autosave racing a merge from another tab — can't silently overwrite one side's saved work; the app now refuses and tells you instead |
 | **Provenance** (every piece of data remembers where it came from) | A stop copied from a friend's trip is always visibly marked as theirs until you accept it as your own — nothing gets silently presented as your own plan |
 | **Validation** (`validateTrip`, the conflicts engine) | Bad or contradictory trip data — an overlapping booking, a stop nowhere near the rest of the day, a flight time that doesn't match the ticket — gets flagged instead of silently accepted |
 
@@ -214,19 +226,20 @@ until someone has tried hard to break it.
 ## 8. What happens next
 
 ```
-  Breaker   →  Manager
- (round 8)    (re-gate)
+  Architect  →  Builder  →  Breaker  →  Manager
+ (Phase 2 kickoff, entry rulings)
 ```
 
-- **Architect** already did its part for this cycle — revision 5 (`5bdd0dc`) answered the four
-  design questions the last gate review raised.
-- **Builder** also already did its part — the SEND-BACK pass (`0a58c81`) implements all seven
-  routed items plus the three architecture rulings.
-- **Breaker** is next: an independent round on this specific pass, focused on the app screens
-  (six rounds already went into the save logic; the screens have had one systematic pass so far,
-  which is what found the three gaps that are now believed fixed).
-- **Manager** makes the SHIP / SEND BACK call once the breaker's round is in. This is the only
-  role that can open Phase 2.
+Phase 2 hasn't started — nobody has opened a session against it yet. When one does:
+
+- **Architect** goes first, same as any phase boundary: turning ROADMAP's Phase 2 sketch
+  (`services/api`, Postgres/RLS, sync, friends, share links) into a buildable design, and ruling on
+  the three small entry items carried from Phase 1 (§4: R8-3, R8-4, R10-1) — plus Jacob's
+  accept-control decision, if he wants it pulled forward rather than folded into the accounts work.
+- **Builder** implements against that design.
+- **Breaker** — its first Phase 2 round has a standing, pre-written target: `doMerge` and
+  `writeAndSettle`, the code that produced five bugs across Phase 1.
+- **Manager** makes the next SHIP / SEND BACK call. Only this role can open Phase 3.
 
 ---
 
@@ -238,14 +251,14 @@ document** — this is a status list, not an action.
 | Tool | Status | Why |
 |---|---|---|
 | **superpowers** (`obra/superpowers`) | ✅ Useful now | Already vendored in `cairn/.claude/skills/` — `test-driven-development`, `systematic-debugging`, `verification-before-completion` are in active use by the four pipeline agents. `using-superpowers` itself was deliberately *not* installed (see `cairn/.claude/skills/README.md`) because its trigger rule would hijack every turn in the repo, including plain trip-edits. |
-| **skill-creator** | ⏸ Useful later | Would help package a repeatable Cairn workflow (e.g. "run the standing QA regression set") as a proper skill. Not worth it while the pipeline is 4 fixed roles and a small doc set — revisit once there's a third or fourth recurring workflow to package. |
-| **agent-browser** | ⛔ Not needed | The breaker's Chromium-driving QA scripts (`cairn/qa/*-browser.mjs`) already do this job, purpose-built to the specific probes this project needs. Adding a general browser-automation skill on top would be a second way to do the same thing. |
-| **gstack** | ⏸ Useful later | No deployment stack exists yet — Phase 1 has no server. Revisit at Phase 2, when `services/api` and a real hosting story get designed. |
-| **ui-ux-pro-max** | ⏸ Useful later | Phase 1's open UI gaps (§4) are correctness bugs — a mismatch between what the engine knows and what the screen shows — not visual design problems. A UI/UX review tool earns its keep once the phase is functionally correct and the question shifts to "does this look and feel good." |
-| **taste-skill** | ⏸ Useful later | Same reasoning as above — aesthetic judgment matters most once Phase 6 ("sharing surfaces and polish") is the actual work being done. |
-| **impeccable** | ⛔ Not needed | No specific gap in the current pipeline this would fill; the project already has strict typechecking, 333 tests, and a dedicated adversarial QA role covering correctness. |
-| **claude-hud** | ⏸ Useful later | A session/status dashboard could be handy once there are multiple concurrent agent sessions to watch, but right now `cairn/CLAUDE.md`'s "one task per session" rule keeps things to one thing at a time. |
-| **GSAP / Emil** | ⛔ Not needed | Would be a runtime dependency, and `packages/core`/`packages/client` are contractually zero-dependency (`cairn-constraints` skill). Even in `apps/web`, which may take dependencies, nothing in Phase 1–5 calls for animation work. Revisit only if Phase 6 polish specifically wants motion design. |
+| **skill-creator** | ⏸ Useful later | Would help package a repeatable Cairn workflow as a proper skill. Not worth it while the pipeline is 4 fixed roles and a small doc set — revisit once there's a third or fourth recurring workflow to package. |
+| **agent-browser** | ⛔ Not needed | The breaker's Chromium-driving QA scripts (`cairn/qa/*-browser.mjs`) already do this job, purpose-built to the specific probes this project needs. |
+| **gstack** | ⏸ Useful soon | Phase 1 shipped with no server at all. Phase 2 (`services/api`, Postgres/RLS, hosting) is where a deployment stack stops being hypothetical — worth a real look once the architect starts Phase 2 design, not before. |
+| **ui-ux-pro-max** | ⏸ Useful later | Phase 1's gaps were correctness bugs — a mismatch between what the engine knew and what the screen showed — not visual design problems. Earns its keep once a phase is functionally correct and the question shifts to "does this look and feel good." |
+| **taste-skill** | ⏸ Useful later | Same reasoning — matters most once Phase 6 ("sharing surfaces and polish") is the actual work being done. |
+| **impeccable** | ⛔ Not needed | No specific gap in the current pipeline this would fill; the project already has strict typechecking, 432 tests, and a dedicated adversarial QA role covering correctness. |
+| **claude-hud** | ⏸ Useful later | A session/status dashboard could be handy once there are multiple concurrent agent sessions to watch, but `cairn/CLAUDE.md`'s "one task per session" rule keeps things to one thing at a time. |
+| **GSAP / Emil** | ⛔ Not needed | Would be a runtime dependency, and `packages/core`/`packages/client` are contractually zero-dependency (`cairn-constraints` skill). Nothing in Phase 1–5 calls for animation work. |
 
 ---
 
@@ -267,8 +280,9 @@ A phase is complete only when:
 3. The manager has reviewed the actual product against the brief — not just the test count — and
    recorded a verdict of **SHIP** in `REVIEW.md`.
 
-Phase 1's engine and save logic are **built and verified** — genuinely, by the standard above.
-The three screen gaps the manager sent back are now **built**, per the builder's own tests and
-probe — that is not the same claim as **verified**, which needs an independent breaker round, and
-neither is the same as **shippable**, which needs a manager verdict of SHIP. All three states are
-real and distinct, and this document tries to always say which one it means.
+**Phase 1 has now cleared all three, genuinely.** It is not merely "built" (code exists), and it
+is not merely "verified" (a tester tried and found nothing) — the manager reviewed the actual
+product, disclosed the one shortcut it took along the way (verifying the last fix itself instead
+of ordering a ceremonial extra round), and recorded SHIP. That's what makes it the first phase in
+this document to earn the 🟢 label rather than 🟡. The same discipline — and the same three-way
+distinction — applies to every phase after it, starting with Phase 2.
