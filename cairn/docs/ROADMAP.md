@@ -872,7 +872,9 @@ Entry: Phase 1 shipped with a manager verdict of SHIP (`b32ef9a`) — done.
 **Mapped onto the increment sequence below** (revision 10): **2a = I-1 → I-4**, **2b = I-5 → I-8**,
 **2c = I-9 → I-10**, with **I-0** before all of them and **I-11** the gate. Each of the three steps is
 genuinely shippable at its own increment — the phase can stop after I-4 or I-8 and still have delivered
-something better than what it started with.
+something better than what it started with. *(Revision 11: **I-3a** and **I-4a** carry the two design
+rulings QA round 12 routed to the architect — `ARCHITECTURE.md` §2.7 **A-9** and §2.2 **A-10**. They sit
+inside 2a, which shipped with follow-ups rather than clean, and **both are owed before I-6**.)*
 
 ### Deliverables
 
@@ -882,6 +884,7 @@ packages/core/src/
   geo/        countries.gen.ts          generated, committed, size-budgeted — §8.4
   build/      participants.ts           add/update/remove — one core fn per action
   conflict/   rules/*.ts                each gains `class`; detect.ts gates feasibility on ctx.today
+              detect.ts / resolve.ts    detectUngated (private) + syncResolutions(trip, at) — §2.7 A-9
 packages/client/src/
   store/      summary rescan on SUMMARY_VERSION; library selectors for travelStats
 apps/web/src/views/
@@ -1029,6 +1032,72 @@ design defect routed to the architect (sequencing rule 5), not a judgement call 
 - **Ship gate.** **2a is independently shippable here** and the phase could stop at this point with a
   product that is better than Phase 1's. Criteria 1, 2, 3 and the NO-SILENT-LOSS extension all pass.
 
+---
+
+**I-3a and I-4a are revision 11.** QA round 12's adversarial pass over the shipped 2a slice routed two
+design findings to the architect; `ARCHITECTURE.md` **§2.7 A-9** and **§2.2 A-10** are the rulings, and these
+two increments are where they get built. **Both are owed before I-6**, because I-6's summary widening
+consumes exactly the day/city data A-10 governs. Everything else round 12 found (P2-3 through P2-8) is
+routed to a builder against the finding itself and is not an increment.
+
+#### I-3a — Retirement stops answering to the clock (§2.7 A-9, QA P2-1)
+
+- **Built.** `detect.ts`'s body moves into one private `runRules(trip, opts, gate)` with
+  `detectConflicts = runRules(…, true)` and a new module-level `detectUngated = runRules(…, false)` that is
+  **not** on `index.ts`. `syncResolutions` becomes `(trip, at)` and detects the un-gated set itself, with
+  two early returns (no live resolution row; no well-formed `at`). `store.ts`'s `retireResolutions` drops
+  its conflict-set argument and runs only when `derivedFor` returned a **new** cache. `unbooked_ticketed`'s
+  `delta < 0` guard — §8.2's gate, open-coded inside a rule — is deleted.
+- **User-visible outcome.** Opening a trip you have finished no longer silently throws away the answers you
+  gave it while it was live, and no longer schedules a write to a document you only looked at. If the trip's
+  dates are later extended, the finding you dismissed comes back **still dismissed**, instead of accusing
+  you of a dismissal the calendar undid.
+- **Architecture / data model.** §2.7 **A-9**, read with §8.2. *Retirement is a claim about the document;
+  the gate is a claim about the user's attention; they may not read the same set.* **The retirement ledger
+  is not reopened** — A-5, A-5a, A-5b and A-8 are settled and this increment changes when retirement fires,
+  never how a retirement behaves once it has. §2.10's runtime symbol count stays at **70**: one exported
+  signature changes and no symbol is added or removed.
+- **Verification.** A-9's six assertions in full — QA's `qa/p2b-gate.mjs` §1.10 and §1.11 re-expressed
+  against the two-argument signature (the assertions are kept verbatim; only the calls change, and A-9 says
+  why no correct fix can avoid that); a genuine fix on a completed trip **does** still retire; the extended-
+  dates case renders dismissed with no *"it has come back"*; `detectConflicts` output byte-identical before
+  and after the `unbooked_ticketed` deletion at three clocks; and `syncResolutions(trip, '')` a no-op with
+  live rows present. **Greppable ceiling:** after this increment `ctx.today` appears in **exactly one** file
+  under `conflict/rules/`.
+- **Dependencies / blockers.** I-3 (the gate it adjudicates). None external.
+- **Ship gate.** Every Phase 1 and 2a conflict number re-derived unchanged — 2 blockers / 4 warnings / 11
+  notes at `FIXTURE_TODAY`, and exactly two suppressed `missing_lodging` warnings on the reference trip at
+  the real clock; the A-5a and A-5b test sequences pass untouched; `npm run test:tap` green.
+
+#### I-4a — City keys become minted ids, and duplicates become visible (§2.2 A-10, QA P2-2)
+
+- **Built.** `CityInit.key` becomes optional and `createTrip` mints `ctx.ids.newId('city')` when it is
+  absent; the `name.toLowerCase().replace(/[^a-z0-9]+/g,'-')` expression is **deleted** from both
+  `PastTripForm.tsx` and `Library.tsx` (not repaired); `validateTrip` gains `duplicate_city_key`,
+  `reserved_city_key` and `city_name_empty`, all `error`; `geoOutlier.ts`'s two label helpers resolve a key
+  to `City.name` for display while `params.cityKey` keeps the id.
+- **User-visible outcome.** *"日本 2019 — 東京, 京都"* records as two cities instead of one, in any script,
+  and a document that already collapsed two cities into `"-"` says so on screen instead of silently
+  mis-attributing every day of the trip.
+- **Architecture / data model.** §2.2 **A-10**. A `CityKey` is an opaque minted id like every other id here;
+  it is never derived from the display name and nothing may parse one. **No migration and no
+  `schemaVersion` bump** — `CityKey` was and stays `string`, existing documents keep their keys, and
+  `import/legacyDays.ts` still passes `vienna`/`split`/… explicitly. Cross-trip city identity is derived
+  from the **normalised name** and the surface says so, which is §8.3's participant rule applied unchanged.
+- **Verification.** A trip created with cities `東京` and `京都` yields two distinct keys, two distinct
+  `daysForCity` results and zero validation issues; a hand-built document with two identical city keys, with
+  a city keyed `transit`, and with a city named `''` each produce exactly one error and still **open**;
+  `fromJSON` is unchanged and still parses all three (refusing to parse would make the document
+  unopenable). **Ceiling, measured not asserted:** the reference trip's validation issue count, conflict
+  counts at every clock, and the round-trip goldens and sample JSON are byte-identical; the only expected
+  string that moves in the repo is the injected-fault `geo_outlier` case, now reading *"the Vienna map"*.
+- **Dependencies / blockers.** I-4 (the form it corrects). None external.
+- **Ship gate.** The slug expression appears **nowhere** in `apps/` or `packages/` (grep); no call site
+  outside `packages/core` constructs a city key; each of the three new validation codes has an
+  injected-fault test, because a rule with no injected-fault criterion does not ship.
+
+---
+
 #### I-5 — `tools/gen-countries.mjs` + `countryOf` + the attribution golden
 
 - **Built.** The generator (Natural Earth admin-0 → `packages/core/src/geo/countries.gen.ts`, reporting
@@ -1058,8 +1127,11 @@ design defect routed to the architect (sequencing rule 5), not a judgement call 
 
 #### I-6 — The widened `TripSummaryRow` and the `SUMMARY_VERSION` rescan
 
-- **Built.** Core: `tripSummary(trip, index)` gains `countryCodes`, `cityKeys` and `summaryVersion`, and
-  `SUMMARY_VERSION` becomes a core constant. Client: rows below the current version are rescanned — load the
+- **Built.** Core: `tripSummary(trip, index)` gains `countryCodes`, `summaryVersion` and
+  `cities: Array<{ key: CityKey; name: string; countryCode: CountryCode | null }>` — **not** `cityKeys`
+  (revision 11, §2.2 A-10: a `CityKey` is an opaque minted id, so a bare key can neither label a pin nor
+  join two trips, and a row that must be resolved against a document it does not carry is not a summary) —
+  and `SUMMARY_VERSION` becomes a core constant. Client: rows below the current version are rescanned — load the
   document, recompute, rewrite **through the ordinary chained write** — and the map says *"recomputing"*
   while it runs.
 - **User-visible outcome.** The trip library knows which countries each trip touched without opening forty
@@ -1078,7 +1150,9 @@ design defect routed to the architect (sequencing rule 5), not a judgement call 
   another row, from `AppState`, or from a document it is not about. Attack: `SUMMARY_VERSION` bumped
   mid-rescan with a write in flight; 40 summaries with one corrupt document (39 render, one is reported
   unreadable).
-- **Dependencies / blockers.** I-5 (there is no `countryCodes` without an index).
+- **Dependencies / blockers.** I-5 (there is no `countryCodes` without an index) and **I-4a** (a row that
+  carries a city key minted by the 2a slug carries `"-"` for every non-Latin city, and the rescan would
+  copy that into the one cache the lifetime map reads).
 - **Ship gate.** The freshness criterion passes; the 200-step dirty walk still holds; the closed list of six
   document-installing methods is still six; every new `StoragePort` interaction is on the chain.
 
@@ -1091,10 +1165,15 @@ design defect routed to the architect (sequencing rule 5), not a judgement call 
 - **Architecture / data model.** **Every statistic is derived and nothing counts anything into storage**
   (§8.4 clause 2, §0.7). A stored `countriesVisited: 47` is a second source of truth that a user can inflate
   by typing. `unattributed` is **on the type on purpose** — the honest hole is a field, not an omission.
+  **Cities group by `nameKey = normalizeCityName(name)`, not by `CityKey`** (revision 11, §2.2 A-10): keys
+  are opaque and per-trip, so two trips to Tokyo carry two of them and only the name can join them — and the
+  Profile states that it is grouping by name, exactly as *"people you have travelled with"* must.
 - **Verification.** Exit criterion 6: greppable absence of any persisted field naming a count of countries,
   cities, trips or days; purity asserted by calling twice on one input and once on a mutated copy. Plus the
   attack the tester will bring: a trip with **no coordinate-bearing record at all** must produce *"no places
-  yet"*, never *"0 countries"* as though zero had been measured.
+  yet"*, never *"0 countries"* as though zero had been measured. Two trips to the same city, entered with
+  different capitalisation and spacing, are **one** row; the same city name in two countries is **two**, and
+  the surface names the limitation in rendered text.
 - **Dependencies / blockers.** I-6 (it consumes summary rows), I-1 (`lifecycle` supplies the trip counts).
 - **Ship gate.** The no-stored-counts grep is a test; `travelStats` is on §2.10's list with the count
   re-counted; both goldens (`countries.json`, `travel-stats.json`) exist and were derived, not written.
@@ -1246,7 +1325,10 @@ two different countries (the FRA connect on a Vienna day) · a trip with no coor
 (the profile must say "no places yet", not "0 countries" as if that were measured) · `SUMMARY_VERSION`
 bumped mid-rescan with a write in flight · a library of 40 summaries where one document is corrupt (the map
 must render the other 39 and say one is unreadable) · the reference trip evaluated at a `today` inside the
-trip, on each of its 16 days in turn · and every Phase 1 attack in the list above, re-run.
+trip, on each of its 16 days in turn · **a trip whose cities are `東京` and `京都`, and one whose city is
+named `Transit`, `''` or a single emoji** (§2.2 A-10) · **a conflict dismissed while the trip is live and
+then left alone while the clock crosses `endDate`, opened, reopened, undone and redone** (§2.7 A-9 × the
+retirement ledger) · and every Phase 1 attack in the list above, re-run.
 
 ### Explicitly not in Phase 2
 

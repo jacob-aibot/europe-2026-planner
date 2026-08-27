@@ -87,12 +87,29 @@ nothing in it is implemented by this revision**; the mechanical consequences are
 additions in `ROADMAP.md` (phases 4, 5b and 7) and no new phase. Airline loyalty miles are **out of scope and
 unscheduled** — §8.10.7 says why, and why that is not the same kind of "no" as §8.8's refusal of live presence.
 
+**Revision 11, 2026-08-27.** QA round 12 — the first adversarial pass over Phase 2's **2a** slice — routed
+**two** design findings here and nothing else. Both are addenda; no engine, no phase and no persisted shape
+moves. **A-9** (§2.7, §8.2, QA **P2-1**): §8.2's feasibility gate gave a conflict a second way to leave the
+detected set, and `syncResolutions` — which has read *"absent"* as *"the user fixed it"* since revision 1 —
+retired every dismissal on a trip the moment the **clock** passed its end date, with no user action, a
+`revision` bump and a scheduled write. Retirement is a claim about the document; the gate is a claim about
+the user's attention; they may not read the same set. `syncResolutions` becomes `(trip, at)` and detects the
+**un-gated** set itself, so no caller can hand it the wrong one, and `unbooked_ticketed`'s open-coded copy of
+the gate is deleted. The retirement ledger (A-5/A-5a/A-5b/A-8) is **not** reopened and does not change.
+**A-10** (§2.2, §8.1, §8.4, QA **P2-2**): the trip forms' `[^a-z0-9]` slug maps every non-Latin city name to
+the single key `"-"`, so 東京 and 京都 are one city and nothing validates it. Human-readable city keys were
+never an invariant — the audit is in the addendum — so a `CityKey` becomes a minted opaque id like every
+other id here, cross-trip city identity is derived from the normalised **name** (§8.3's precedent), and
+`validateTrip` gains three codes. No migration and no `schemaVersion` bump: `CityKey` was, and stays,
+`string`. The mechanical consequences in `ROADMAP.md` are two new increments (**I-3a**, **I-4a**) and one
+widened field in I-6.
+
 **Phase 1 is §2 and §4. The next phase is §8.1–§8.4.** Everything else is the shape those must not
 foreclose. See `ROADMAP.md` for sequencing and `PRODUCT-VISION.md` for why this order and not another.
 
 ## Read only your sections
 
-This document is ~65k tokens (re-measured at revision 10 with `cairn/tools/doc-section ARCHITECTURE`; the
+This document is ~70k tokens (re-measured at revision 11 with `cairn/tools/doc-section ARCHITECTURE`; the
 per-section figures below were stale by a third before that). Nothing needs all of it, and a fresh agent that reads it whole starts a sixth
 of the way into its context before writing a line. Pull what you need:
 
@@ -105,13 +122,13 @@ cairn/tools/doc-section ARCHITECTURE         # lists the sections and their size
 |---|---|---|---|
 | 0 | Six positions, stated up front | <1k | everyone — read it, it is 20 lines |
 | 1 | Stack decision and the capability checks behind it | 3k | architect. Settled; do not re-litigate |
-| 2 | **Domain model — the builder's contract.** §2.12 `travelRole`, §2.13 geography and §2.14 import/copy are new in revision 2 and are where the Phase 1 rework lives; **§2.2a (the `StorageVersion` write fence, revision 3) and §2.2b (the freshness rule it turned out to be one instance of, revision 4) are read together with §4.2 and §4.3, never alone**; §2.10 (the export surface) and §2.13's copied-record row are settled in revision 5; **§2.7's retirement ledger (A-5) and §2.13's copy-borne `Place` rule (A-6) are revision 6**; **§2.2a's A-7 (the fence a declined write may not move) is revision 8** and is read with §4.2 rule 4a | 35k | builder, breaker |
+| 2 | **Domain model — the builder's contract.** §2.12 `travelRole`, §2.13 geography and §2.14 import/copy are new in revision 2 and are where the Phase 1 rework lives; **§2.2a (the `StorageVersion` write fence, revision 3) and §2.2b (the freshness rule it turned out to be one instance of, revision 4) are read together with §4.2 and §4.3, never alone**; §2.10 (the export surface) and §2.13's copied-record row are settled in revision 5; **§2.7's retirement ledger (A-5) and §2.13's copy-borne `Place` rule (A-6) are revision 6**; **§2.2a's A-7 (the fence a declined write may not move) is revision 8** and is read with §4.2 rule 4a; **§2.2's A-10 (a `CityKey` is a minted opaque id) and §2.7's A-9 (retirement is decided against the un-gated set) are revision 11** — a Phase 2 builder needs both | 40k | builder, breaker |
 | 3 | Module boundaries | <1k | builder |
 | 4 | **The Phase 1 client.** §4.2 rule 6 (a pending write is never outlived by its document) is new in revision 3 — QA R3-2; rule 6a′ and the `savedDoc` predicate are revision 4 — QA R4-1; **rule 6a″ (the flush bound and its exits) and rule 6c's "delete goes on the chain" are revision 5** — QA R6-1/R6-2/R7-3; **rule 5's retirement carve-out is revision 6** — QA R8-1, read with §2.7; **rule 4a is revision 8** — QA R11-1, read with §2.2a A-7 | 7k | builder |
 | 5 | The four hard subsystems | 2k | breaker; builder from Phase 3 on |
 | 6 | Privacy, authorization, deletion cascade | 3k | breaker, manager; builder for §6.2 |
 | 7 | Explicitly deferred | <1k | anyone about to build something not in the roadmap |
-| 8 | **The travel-history model** (revision 9) — trip lifecycle and past trips (§8.1), the feasibility/integrity rule class (§8.2), participants (§8.3), geography attribution, travel stats and the summary-row rule (§8.4); then the shapes the location, photo and social phases must land on (§8.5–§8.7) and what is refused (§8.8). **§8.10 is revision 10** — physical travel distance by mode and the four provenance bases that keep it honest; **it is not Phase 2 scope**, so a Phase 2 builder reads §8.1–§8.4 and stops | 11k | architect; the builder and breaker of the phase after Phase 1 (§8.1–§8.4 only). §8.10 is for the architect and for phases 4, 5 and 7. Read with `PRODUCT-VISION.md` |
+| 8 | **The travel-history model** (revision 9) — trip lifecycle and past trips (§8.1), the feasibility/integrity rule class (§8.2), participants (§8.3), geography attribution, travel stats and the summary-row rule (§8.4); then the shapes the location, photo and social phases must land on (§8.5–§8.7) and what is refused (§8.8). **§8.10 is revision 10** — physical travel distance by mode and the four provenance bases that keep it honest; **it is not Phase 2 scope**, so a Phase 2 builder reads §8.1–§8.4 and stops. **Revision 11 amends §8.1, §8.2 and §8.4 by pointer only — the two rulings themselves live in §2.2 (A-10) and §2.7 (A-9), and a Phase 2 builder reads both** | 11k | architect; the builder and breaker of the phase after Phase 1 (§8.1–§8.4 only). §8.10 is for the architect and for phases 4, 5 and 7. Read with `PRODUCT-VISION.md` |
 
 *(§8's figure is measured with `doc-section`, not estimated. §8.1–§8.4 — the Phase 2 model — are roughly
 half of it; a Phase 2 builder who reads only those pays about 5k.)*
@@ -406,6 +423,107 @@ Server-authoritative vs client-local:
 | `MailAccount`, `IngestCandidate` | Server only. | §5.1. |
 | `LocationFix`, `LocationSegment`, `PhotoAsset` | **Device only. No server table exists.** | §6.1. |
 | `SharedTrace` | Server, opt-in per day. | The only location data ever transmitted. |
+
+#### A-10 — a `CityKey` is a minted opaque id, not a slug of the city's name (revision 11, QA P2-2)
+
+**The defect.** Both trip-creation forms mint a city key with
+`name.toLowerCase().replace(/[^a-z0-9]+/g, '-')`. That expression deletes every character outside ASCII
+alphanumerics, so **any name written in a non-Latin script collapses to the single key `"-"`**. Recording
+*"日本 2019, 東京, 京都"* stores two cities with the **same** key, puts `primaryCity: "-"` on all 30 days, and
+`validateTrip` reports nothing, because no check anywhere asserts that city keys are distinct. §8.1's own
+worked example is a trip to Japan; this is the phase's headline scenario, not its edge case.
+
+**The question that decides the fix: was a human-readable key ever an invariant?** It was not, and the audit
+is short enough to state in full. (1) `ids.ts` declares `export type CityKey = string` in the same block as
+`TripId`, `StopId` and `PlaceId`, under a file header that says *"ids are opaque strings"*. (2) The only
+keys in this system that read like words are `vienna`, `split`, `prague` … — hand-authored in
+`europe-2026-itinerary.html`'s `CITY_ORDER` and carried through `import/legacyDays.ts` verbatim. They are an
+artefact of one hand-written source file, not a rule anybody wrote down. (3) Nothing routes on a city key:
+`apps/web` has no URL router at all, and `AppState.ui.activeCityKey` is in-memory state. (4) No surface
+renders a key as a label — the sidebar uses `city.name` and the key only as a React key, and `cli.ts` prints
+`city.name`. (5) Every consumer in core compares keys for **equality** and nothing parses one: `daysForCity`,
+`cityRange`, `poolFor`, `geoCheck`'s centre map, `Place.cityKey`, `Day.cities`, `poolNotes`. (6) The one
+sentinel, `TRANSIT_CITY_KEY`, is a separate exported constant, not a reserved prefix. So the slug was
+convenience, and it bought nothing that survives contact with a second alphabet.
+
+**Transliteration is not available and would not be enough.** §1's zero-runtime-dependency rule means no
+`unidecode`, and Jacob — not our judgement — is who adds a dependency. Hand-rolling one is a table for Latin
+diacritics, which is the easy fifth of the problem; 東京 → *tōkyō* needs a kanji reading dictionary and is
+**context-dependent** (the same characters read differently in different names), so a table produces a
+confident wrong answer, which is worse than a hole (§8.4's `null`-is-a-first-class-answer argument, applied
+to text). Even a perfect transliterator leaves the deeper flaw untouched: a name-derived key is **mutable by
+rename**, so renaming a city today silently orphans every `Day.primaryCity`, `Place.cityKey` and pool
+placement that pointed at it.
+
+**The rule, with nothing left to the builder's judgment:**
+
+> **A `CityKey` is an opaque id minted by the injected `IdFactory` — `ctx.ids.newId('city')` — exactly as
+> every other id in this system is. It is never derived from, and never has to agree with, the city's
+> display name. `CityInit.key` becomes optional; when it is absent `createTrip` mints one; when it is
+> present it is honoured verbatim. No caller outside `packages/core` constructs a city key. Both web forms
+> stop computing one. Where a city must be shown to a person, `City.name` is shown; where two cities across
+> different trips must be recognised as the same place, they are grouped by normalised **name**, and the
+> surface says so.**
+
+**Four consequences in `validateTrip`, because a key that is minted is not thereby a key that is trusted** —
+a document can arrive by `importDoc`, by hand-edit, or from a build that predates this ruling:
+
+- `duplicate_city_key` (**error**) — two entries of `trip.cities` with the same key. Structurally broken,
+  not merely untidy: `daysForCity` and `poolFor` return the same rows for both, and a pooled stop under
+  that key belongs to neither. It rides on the existing `claim()` mechanism that already covers day, stop,
+  place and booking ids, with `ref: {kind:'trip', id: trip.id}` and `params: { cityKey }`.
+- `reserved_city_key` (**error**) — a city whose key equals `TRANSIT_CITY_KEY`. Reachable today by naming a
+  city *"Transit"*; unreachable by construction once keys are minted; still reachable by import, and a
+  shadowed sentinel is silent corruption of `Day.primaryCity`'s meaning.
+- `city_name_empty` (**error**) — decoupling the key from the name makes the name the **only** human
+  identity a city has. This is `participant_name_empty`'s argument (§8.3) verbatim, and it becomes true for
+  cities on the day this ruling lands, not before.
+- **`fromJSON` is not the place for any of these, and `createTrip` does not throw on them.** A document
+  already carrying the `"-"` collision must still **open**, so the user can see it and act; refusing to
+  parse would make it unopenable, which is the harm P2-7 describes. Domain problems come back as `Issue[]`
+  (§2.1).
+
+**Cross-trip city identity is derived by name, and this is §8.3's precedent applied unchanged.** Two trips
+to Tokyo carry two different `CityKey`s and always did in every design considered here — a slug would have
+merged *Paris, France* with *Paris, Texas* and split 東京 from itself, so it was never the right grouping
+key either. The lifetime map groups by
+
+```ts
+normalizeCityName(name) = name.normalize('NFC').replace(/\s+/g, ' ').trim().toLowerCase()
+```
+
+— `toLowerCase`, not `toLocaleLowerCase`, because the latter is locale-dependent and core is not. Two
+spellings of one city are two rows until the user says otherwise, **and the surface states that it is
+grouping by name**, exactly as *"people you have travelled with"* must. *(`String.prototype.normalize` is
+ES2015 and present in Node and every browser; whether Hermes ships it is **unverified** and is a Phase 5
+question. It is used only for display grouping, so a runtime that lacked it would render two rows instead of
+one and could not corrupt anything.)*
+
+**What this changes elsewhere — the complete list, so nothing is discovered later:**
+
+| Site | Change |
+|---|---|
+| `build/createTrip.ts` | `CityInit.key?: CityKey`; mint `ctx.ids.newId('city')` when absent. The only new code. |
+| `apps/web` `PastTripForm.tsx`, `Library.tsx` | Both `.map((name, i) => ({ key: slug(name), … }))` expressions drop `key` entirely. The slug function is deleted, not fixed. |
+| `conflict/rules/geoOutlier.ts` | Two label helpers interpolate a key into a user-visible summary — *"the vienna map"*, *"the split optional list"*. They resolve the key to `City.name`, falling back to the key when the trip has no such city. `params.cityKey` stays the key: it is structured data, and §2.7 requires the id there. |
+| §8.4 `TripSummaryRow` | I-6's widening is `cities: Array<{ key: CityKey; name: string; countryCode: CountryCode \| null }>` **instead of** `cityKeys: CityKey[]`. An opaque key alone cannot name a city or place it on a map, and a row that has to be joined against a document it does not carry defeats the whole point of the summary (§8.4 clause 4 sends drill-downs to the document; the map's *labels* are not a drill-down). |
+| §8.4 `TravelStats.cities[]` | `{ key: CityKey; … }` becomes `{ nameKey: string; name: string; countryCode: CountryCode \| null; tripIds: TripId[] }`. `nameKey` is `normalizeCityName(name)`; it is a grouping key, not a `CityKey`, and calling it one would be the drift this table exists to stop. |
+| **Nothing else.** | `Day.primaryCity`, `Day.cities`, `StopPlacement.pool.cityKey`, `Place.cityKey`, `Trip.poolNotes`, `geoCheck`'s anchors, `TRANSIT_CITY_KEY` and every equality comparison in `validateTrip` are untouched — they compare keys and never read them. |
+
+**No migration, and no `schemaVersion` bump.** `CityKey` is `string` and stays `string`; existing documents
+keep the keys they have, so the reference trip's `vienna`/`split`/… are still legal, `import/legacyDays.ts`
+still passes them explicitly, every golden and the sample JSON are **byte-identical**, and the 2a defect's
+own casualties — a trip with two `"-"` cities, if one exists at all after four days — show up as a
+`duplicate_city_key` error on screen rather than silently. Repairing such a document by rewriting keys would
+mean rewriting `Day.primaryCity`, `Day.cities`, `Place.cityKey` and every pool placement in one migration,
+for a population that is plausibly empty; the honest answer is to make it visible and let the user re-record
+the trip.
+
+**Ceiling.** No Phase 1 number moves: the reference trip's validation issue count is unchanged (it has six
+distinct, non-reserved, non-empty city keys), `detectConflicts` is unchanged at every clock, and the
+round-trip goldens are byte-identical. The single expected-string change in the whole repo is the
+injected-fault `geo_outlier` case, which now reads *"the Vienna map"* rather than *"the vienna map"* — and
+that is the fix, not a casualty.
 
 ### 2.2a `Trip.revision` is a content counter. The write fence is a separate opaque `StorageVersion`
 
@@ -1025,12 +1143,14 @@ the original dismissal). A dismissed *blocker* re-arming with no user action is 
 exists to prevent. So:
 
 ```ts
-syncResolutions(trip, conflicts: Conflict[], at: IsoDate): Trip
+syncResolutions(trip, at: IsoDate): Trip      // was (trip, conflicts, at) — see A-9
 ```
 
-A build function the client calls whenever it recomputes the derived conflict set — the one build function
-driven by derived data, and the reason it is a build function and not a side effect. It sets `retiredAt` on
-every live resolution whose `conflictId` is absent from `conflicts`, and never un-retires. `detectConflicts`
+A build function the client calls whenever it recomputes the derived conflict set. It sets `retiredAt` on
+every live resolution whose `conflictId` is absent from the set detected for this document at this clock,
+and never un-retires. **Which set, exactly, is A-9's ruling and it is load-bearing: the set with §8.2's
+feasibility gate disabled**, because a finding the gate withheld has not been fixed. The function detects
+that set itself rather than being handed one, so no caller can pass the gated set by accident. `detectConflicts`
 ignores retired resolutions when attaching `Conflict.resolution`, but reads them for `detail`: *"you
 dismissed this on 12 Aug; it has come back."* This also stops `trip.resolutions` growing without bound —
 `validateTrip` emits `stale_resolutions` once retired rows exceed 50.
@@ -1329,6 +1449,141 @@ no release happens, and the redone dismissal is dead in the document.
 **The trigger, written down rather than left implicit:** if any surface ever renders `retiredAt` directly,
 or makes the retired-versus-live distinction visible to the user, this stops being invisible and reason 1
 expires — at which point the fix is reason 3's, not a new clause.
+
+#### A-9 — retirement is decided against the *un-gated* set, because a clock is not a fix (revision 11, QA P2-1)
+
+**The defect, in one sentence.** §8.2's feasibility gate gave a conflict a **second** way to leave
+`detectConflicts`' returned set, and `syncResolutions` — written in revision 1, when there was only one way —
+reads *"not in the set"* as *"the user fixed it"*, so **merely opening a trip after it ends retires every
+dismissal of every feasibility finding on it**, bumps `revision`, and leaves the store dirty, with no user
+action of any kind. QA measured it both in core and through the real store (`qa/p2b-gate.mjs` §1.10, §1.11):
+dismiss `missing_lodging` before the trip → `retiredAt: null`; day 1 → `null`; the day after `endDate`, clock
+only → `retiredAt: "2026-08-30"`, `revision 7 → 8`, `isDirty() === true`.
+
+And because retirement is deliberately **monotone** (A-5, A-5a, A-5b — `reassertRetirements` never
+un-retires), the damage does not stop at one write. If the same `conflictId` ever becomes live again — the
+user corrects the end date, extends the trip, adds a stop — the panel renders *"You dismissed this on
+&lt;date&gt; and it went away; it has come back."* over a dismissal the **clock** retired, and the user's
+answer no longer suppresses anything. That sentence is now capable of being false. This is R8-1's harm class
+reached through a door §2.7 was not written against.
+
+**The position, and it is one sentence.** *Retirement is a claim about the document. The gate is a claim
+about the user's attention. They may not read the same set.* §2.7 retires a resolution because the thing it
+answered **is no longer produced by the rules from this document** — that is the whole of what
+content-addressing plus retirement buys, and it is a statement about data. §8.2 withholds a finding because
+nobody can act on it any more — a statement about *whether to ask*, taken at a clock, over a document that
+has not changed. Reading the second as evidence for the first is a category error of exactly the §0.6 shape
+this document has now made four times.
+
+**The rule, with nothing left to the builder's judgment:**
+
+> **`syncResolutions` retires a live resolution if and only if its `conflictId` is absent from the set
+> `detectConflicts` would return for this document at this clock **with §8.2's feasibility gate disabled**.
+> A conflict withheld solely by the gate has not been fixed and its resolution stays live. `syncResolutions`
+> does not run at all when it is given no usable clock.**
+
+**The mechanism — the caller stops being able to get this wrong.** The obvious fix (pass the un-gated set in
+from the store) is rejected: `syncResolutions(trip, conflicts, at)` handed the set the panel is holding is
+the *natural* call, it is the call QA's own probe makes, and a function whose correctness depends on the
+caller not making the natural call is the footgun §2.1's runtime patch allowlists exist to refuse. So the
+function acquires the set itself and the ambiguous argument is deleted:
+
+```ts
+// packages/core/src/conflict/detect.ts — NOT exported from index.ts, exactly as TRANSIT_CITY_KEY
+// is not. The only legitimate caller is syncResolutions.
+export function detectUngated(trip: Trip, opts?: DetectOpts): Conflict[];
+
+// packages/core/src/conflict/resolve.ts
+export function syncResolutions(trip: Trip, at: IsoDate): Trip;   // was (trip, conflicts, at)
+```
+
+Five mechanical points, and they are the whole change:
+
+1. **`detect.ts` grows no second implementation.** Today's `detectConflicts` body moves into one private
+   `runRules(trip, opts, gate: boolean)`; the single gate line becomes `if (gate && rule.class ===
+   'feasibility' && suppressedAsPast(trip, c, opts.today)) continue;`. `detectConflicts` is
+   `runRules(…, true)` and `detectUngated` is `runRules(…, false)`. The gate still lives **once**, where
+   §8.2 put it, and `suppressedAsPast` does not move. *(The `rule_error` synthesis inside that loop is
+   untouched by A-9 — P2-4 is a separate, builder-routed finding and this addendum neither fixes nor
+   worsens it.)*
+2. **`syncResolutions` early-returns twice, cheapest test first.** `if (!trip.resolutions.some((r) =>
+   !r.retiredAt)) return trip;` — with no live row there is nothing retirement can do, and this is the
+   common case (the reference trip has zero). Then `if (!isIsoDate(at)) return trip;` — `at` used to be
+   only a stamp and is now also the clock, so a missing or malformed one must mean *do nothing*, never
+   *detect with no horizon*. The rest of the body is unchanged: build `live` from `detectUngated(trip,
+   { today: at })`, stamp every live row whose id is absent, return the same reference when nothing changed.
+3. **The store's `retireResolutions` loses its argument and gains a guard.** It calls
+   `core.syncResolutions(doc, derived.today)`. Because retirement is now a function of `(document, today)`
+   — the same key `derivedFor` caches on — it runs **only when `derivedFor` returned a new cache object**:
+   `const prev = cache; cache = derivedFor(cache, state.doc, ports.clock.today()); cache =
+   retireResolutions(cache, cache !== prev);`. A cache hit means retirement already ran for that pair. The
+   public `store.syncResolutions()` method passes `true` unconditionally — it is an explicit request, it is
+   idempotent, and it is not on a render path. Everything else in `retireResolutions` stands, including
+   *"after `set()`, read `state.doc`, never the local"* (A-5).
+4. **`resolve.ts` may import `detect.ts`.** There is no cycle: `detect.ts` imports `model/` and `rules/`
+   only, and `index.ts` imports both. `syncResolutions` stays pure — the rules are pure and the clock is
+   injected.
+5. **The export surface does not move.** `syncResolutions` keeps its place on §2.10's list, `detectUngated`
+   is not on it, and the runtime symbol count stays at **70**. This is a signature change to one exported
+   function and nothing else.
+
+**The one rule that still hides a clock of its own, and what happens to it.** `unbooked_ticketed` is the
+only rule that reads `ctx.today`, and it does so at both ends: `delta < 0` skips a past day and `delta > 60`
+skips a far-future one. The low end is §8.2's gate, re-implemented inside a rule — precisely what
+`rules/types.ts` already forbids in writing — and it defeats A-9, because a finding the *rule* withheld is
+invisible to `detectUngated`. **Delete the `delta < 0` half of that guard** (`if (delta > UNBOOKED_HORIZON_DAYS)
+continue;`). This is provably output-neutral for `detectConflicts`: the rule's two subjects are the stop and
+its own day, both resolving to that day's date, so `delta < 0` and *"every subject is strictly before
+`today`"* are the same predicate and the gate suppresses exactly what the rule used to skip. The far-future
+half stays and needs nothing: as a clock advances `delta` only shrinks, so the 60-day horizon can only ever
+*admit* a finding, never withdraw one — and a finding withdrawn because the user moved the day further out
+is a data change, which is a retirement §2.7 wants. After this deletion the greppable invariant is
+**`ctx.today` appears in exactly one rule file**, and §8.2's gate is the only clock-driven suppression in
+the system.
+
+**Two alternatives, and why neither is the answer.**
+
+- *Give `syncResolutions` an extra argument naming the gated ids.* Same information, one more parameter that
+  a caller can forget, and the caller has to run detection twice to produce it. It is this ruling with a
+  worse ergonomic.
+- *Never retire a feasibility-classed resolution while it is gated.* To know a stored resolution is
+  feasibility-classed and currently gated you need its rule and its subjects — which you only have if the
+  conflict was produced, i.e. you need the un-gated set anyway. The shortcut is to read the `ruleId` off the
+  front of the `conflictId` string, which makes the id **format** load-bearing when §2.7 treats it as an
+  opaque content address. And the rule over-reaches in the other direction: it would refuse to retire a
+  feasibility dismissal on a past trip even when the user genuinely fixed it, which is the behaviour §2.7
+  exists to have.
+
+**What the builder asserts** (core, plus the store level with in-memory ports):
+
+1. QA's §1.10 exactly, re-expressed against the new signature: dismiss `missing_lodging` while the trip is
+   future → `syncResolutions(t, '2026-08-25')` leaves it live → `syncResolutions(t, '2026-08-30')`, after
+   `endDate`, **still** leaves it live, and returns the **same trip reference** with `revision` unmoved.
+2. QA's §1.11 exactly: a second store opens the stored document a fortnight later, calls `getDerived()`
+   once, and the row is still live, `revision` is unmoved and `isDirty()` is **false**.
+3. **The point of §2.7 is not lost.** On the same completed trip, add the lodging booking so the rule stops
+   producing the finding at all → the next `syncResolutions` **does** retire the dismissal. Retirement still
+   answers to the data at any clock.
+4. **The re-arming case, end to end.** After (1), extend `endDate` so the conflict returns: it renders
+   **dismissed**, carrying the user's live resolution, and its `detail` contains no *"it has come back"*.
+5. `unbooked_ticketed`: `detectConflicts` output is byte-identical before and after the `delta < 0`
+   deletion, at `FIXTURE_TODAY`, at a clock inside the trip, and at a clock after `endDate`; and a
+   dismissal of one is not retired by the day merely passing.
+6. **No clock, nothing happens:** `syncResolutions(trip, '')` and a malformed `at` return the same
+   reference, with live rows present.
+
+**Ceiling.** Every Phase 1 and 2a number is re-derived unchanged — `detectConflicts` at `FIXTURE_TODAY` is
+2 blockers / 4 warnings / 11 notes, the real trip at the real clock suppresses exactly the two
+`missing_lodging` warnings, and the retirement ledger's own three test sequences (A-5a) and three more
+(A-5b) pass untouched. **A-9 changes when retirement fires, never how a retirement behaves once it has
+fired.** The ledger, the veto, the release list of three sites and A-8's blessing of clause 2 are all
+outside this addendum.
+
+**Consequence for the probes, stated so it is not discovered.** `qa/p2b-gate.mjs` §1.10 calls
+`core.syncResolutions(t1, after, '2026-08-30')` with the gated set — that call is the defect, not the test,
+and no correct fix can leave the three-argument form meaning what it means today. The probe's assertions are
+right and are kept verbatim; its calls become the two-argument form. Any fix to P2-1 requires that edit;
+this one says so.
 
 ### 2.8 Provenance
 
@@ -2811,6 +3066,12 @@ trips is the expensive migration this project keeps choosing to avoid. It is rea
 else**: no conflict rule, no derive, no validation may branch on it. It joins `setTripMeta`'s patch
 allowlist; it adds no build function.
 
+**The cities on a past trip are typed by a person, in that person's script.** The past-trip form is the
+first surface in this product where a city name arrives from a keyboard rather than from a hand-authored
+import, which is why §2.2 **A-10** is a Phase 2 ruling: a `CityKey` is a minted opaque id, never a slug of
+the name, and cross-trip city identity is derived from the normalised name. A form that mints its own key
+is the defect (QA P2-2), not the fix.
+
 **There is no `Trip.kind`, and manually-entered travel needs no new provenance value.** The certainty of a
 record is already `provenance.confidence`, and it already means exactly the right things:
 
@@ -2882,6 +3143,12 @@ and three of the ten rules emit more than one):
    the gate is a no-op on the golden clock *by construction* — which is why "every Phase 1 number is
    re-derived unchanged" is an achievable ceiling and not a hope. A run that moves one has classified a rule
    wrongly, exactly as the criterion says.
+
+**The gate does not decide anything about a stored resolution — §2.7 A-9 (revision 11, QA P2-1).** A
+conflict the gate withholds has not been fixed, so it must not retire the user's dismissal of it;
+`syncResolutions` therefore evaluates retirement against the **un-gated** set. Read A-9 before touching
+either side. One consequence lands inside a rule: `unbooked_ticketed`'s `delta < 0` guard is this gate,
+re-implemented in a rule, and A-9 deletes it so the gate is the only clock-driven suppression in the system.
 
 **Two ceilings, and the second is the one that will be got wrong.** (1) The goldens run at a fixed clock
 (§2.1 — no ambient time), so **every number in ROADMAP §C must be re-derived and unchanged**; a run that
@@ -2975,7 +3242,9 @@ system whose lifetime map is quietly wrong, and a wrong map is worse than an hon
 travelStats(summaries: TripSummaryRow[], today: IsoDate): TravelStats
 type TravelStats = {
   countries: Array<{ code: CountryCode; firstVisit: IsoDate; lastVisit: IsoDate; tripIds: TripId[] }>;
-  cities:    Array<{ key: CityKey; name: string; countryCode: CountryCode | null; tripIds: TripId[] }>;
+  // `nameKey` is normalizeCityName(name) — a GROUPING key, not a CityKey. §2.2 A-10: a CityKey is an
+  // opaque per-trip id, so two trips to Tokyo carry two of them and only the name can join them.
+  cities:    Array<{ nameKey: string; name: string; countryCode: CountryCode | null; tripIds: TripId[] }>;
   trips: { planned: number; active: number; completed: number };
   daysTravelled: number;
   unattributed: { places: number; stops: number };     // the honest hole, on screen
@@ -2994,7 +3263,10 @@ documents — §4.2's *"exactly ONE trip in memory at a time"* is unchanged and 
 The shipped `TripSummaryRow` is `{id, title, startDate, endDate, cityCount, dayCount, stopCount, poolCount,
 revision}` *(§4.2's inline comment says `{…, updatedAt}` and has been wrong since revision 1; corrected in
 this pass, the shipped shape is the contract — the §2.5 precedent)*. It gains
-`countryCodes: CountryCode[]`, `cityKeys: CityKey[]` and `summaryVersion: number`.
+`countryCodes: CountryCode[]`, `cities: Array<{ key: CityKey; name: string; countryCode: CountryCode | null }>`
+and `summaryVersion: number`. *(Revision 11: the city field was `cityKeys: CityKey[]` and is widened by
+§2.2 A-10 — an opaque key alone can neither label a pin nor join two trips, and a row that must be resolved
+against a document it does not carry is not a summary.)*
 
 A summary is a **copy**, so §0.6 applies to it and four clauses discharge it:
 
