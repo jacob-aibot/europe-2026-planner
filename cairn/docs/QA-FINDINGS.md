@@ -1,4 +1,111 @@
-# Cairn — QA findings, Phase 1 **rounds 2–11** and Phase 2 **rounds 12 (2a) and 13 (I-3a / I-4a)**
+# Cairn — QA findings, Phase 1 **rounds 2–11** and Phase 2 **rounds 12 (2a), 13 (I-3a / I-4a) and 14 (A-11…A-14)**
+
+> **Status (as of `master` @ `fb3ff34`, independently verified 2026-08-27 — round 14, the
+> mandatory breaker pass over the builder implementations of ARCHITECTURE revision 12's four
+> rulings **A-11**, **A-12**, **A-13** and **A-14**, which between them close round 13's
+> R13-1 / R13-2 / R13-3 / R13-6):**
+>
+> | | |
+> |---|---|
+> | **Scope** | Exactly `4dd50d1..fb3ff34`: `conflict/rules/types.ts` (`Rule.horizonDays`), `rules/unbookedTicketed.ts` (the deleted `delta > 60`), `conflict/detect.ts` (`beyondHorizon`, `runRules`'s `crashed`, `detectUngatedChecked`), `conflict/resolve.ts` (`syncResolutions`' crash refusal), `build/copyStop.ts` (`refileCityKey`, rule 4's three-step decision), the new `model/cityName.ts`, and the test files `horizonGate.test.ts` / `faultFixtures.ts` / `retirementGate.test.ts` / `copyStop.test.ts` / `cityName.test.ts` / `geoCheck.test.ts`. The Phase 1 open list, P2-5, P2-8, R13-4 and R13-5 were **not** re-litigated. |
+> | **BLOCKERS** | **1 — R14-4.** `copyStopInto` rule 4 hands the referenced `Place`'s `note` and `links` across a trip boundary **unredacted**, so a door PIN, a booking confirmation number, a vendor voucher URL and a mailbox address all land in the recipient's document and in every later export of it. This is the un-fixed half of round 2's own BLOCKER **R2-3**, which the status table above records as *"Fixed and verified closed (`b5c742b`)"* — only the `Stop.note` half was fixed. §6.6's free-text table already names `Place.note` as credential-bearing; §2.14 rule 4 does not run it through anything. |
+> | **Fixed vs still open** | **CLOSED by this pass and re-verified independently, by running rather than by reading the diff:** **R13-1** (A-11 — `detectUngated`'s id set is identical at **434** clocks over **ten** documents, not six over six; the 60-day boundary is a gate now and not a rule guard; a clock step backwards retires nothing in core, through the store and combined with a crash), **R13-3** (A-12 — 1, 2, 4 and **all ten** rules crashing at once, a **clock-dependent** crash, 25 rounds of dismiss/crash/recover with zero state leaked, and the discriminating genuine-fix case that defers and then resumes), **R13-2** (A-13 — the inert call is gone, the test is named for the crossing it runs, and the tripwire really does turn **red**, for the right reason, under a *real* rule increment rather than a synthetic one), **R13-6** (A-14 — cross-trip copies re-file cleanly, reuse across trips is restored, the no-match case adds no row and no issue). **STILL OPEN, new this round:** **R14-4** (BLOCKER, architect), **R14-2** (MAJOR, architect), **R14-1** and **R14-3** (MINOR). **STILL OPEN, unchanged and not re-litigated:** R13-4, R13-5, P2-5, P2-8, and the whole Phase 1 list (R10-1, R8-3, R8-4, R6-1/2, R5-2, R11-1). |
+> | **1. A-11's property, attacked past its own test — PASS** | The shipped test sweeps six clocks over six documents. I swept **434** clocks (every day from 2025-11-01 for 430 days, plus 2019, 2027, 2030 and 2099) over **ten** documents — the six fault fixtures, a 60-day-boundary trip, a `duplicate_id` document, the reference trip with a live dismissal, and the reference trip with a retired row so the *"it has come back"* path is exercised. `detectUngated`'s sorted id list is **identical everywhere**. I then injected rules into `RULES` at `horizonDays` **0, −1, NaN, Infinity and 1e9**, with an **integrity** class, beside a horizon-free rule, with mixed-date subjects and with **no** subjects: the un-gated set contains the finding in every one of those cases, §8.2 ruling 1's asymmetry holds for the horizon exactly as for the gate, and `beyondHorizon` is inert without a horizon or without a clock. Five malformed clocks (`'2026-8-1'`, `'not-a-date'`, `'2026-13-45'`, `''`, an ISO instant) add no throw site to `detect.ts`. |
+> | **2. KD-48 — the measurement is real** | Re-derived from the **fixture**, not from the rule: I counted, by hand and independently of `unbookedTicketed`, the reference trip's scheduled stops with no `bookingId`, a `cost` and a link. **Ten**, and they are the ten the rule reports, and the three §2.7 names (Széchenyi, Prague Castle, Windsor) are among them. The test is not accepting whatever the code does — the hand count and the rule agree, and the 11-note ceiling still holds with ten of the eleven from this rule. |
+> | **3. A-12 — PASS, including the cases the builder did not run** | Multiple simultaneous crashes (1, 2, 4 and all ten rules) all return the **same trip reference** with nothing stamped, and `detectUngatedChecked` reports every crashing rule in `RULES` order. A **clock-dependent** crash defers a *genuine* retirement at the clock where the rule throws and does not defer it at a clock where it works — the discriminating case, since the un-gated set then differs from the gated one because of the crash and not the calendar. 25 rounds of dismiss/crash/recover on one document leak nothing: 50 calls, `revision` unmoved. Through the real store with a real storage port, one render during a crash writes nothing, and retirement **resumes** on the next real recompute. |
+> | **4. A-13's tripwire — PASS, and it is genuinely reachable** | Not taken on trust and not tested with the builder's one-line hack. In a scratch `git worktree` I made a **plausible next increment** — `unbooked_ticketed` also covering a ticketed **pool** stop, whose only subject has no day of its own and therefore resolves through §8.2 ruling 2's `endDate` fallback — and the tripwire went `not ok`, carrying A-13's own instruction (*"A-9 assertion 4's LITERAL mechanism has just become achievable… Write that test, in this commit"*). It inspects 75 feasibility findings covering 5/5 feasibility rules, and it measures the **un-gated** set so the gate cannot hide what it is looking for. |
+> | **5. A-14 — the mechanism is right; the "what does not change" claim is not** | Assertions 1–5 all reproduce, including the three-same-named-cities tie-break (lowest `order`, then document position — checked at orders `2,1,1`, `1,1,0`, `0,0,0`, negative and fractional), Unicode folding at the boundary (NFC/NFD, NBSP, tab/newline, case — match; zero-width space, fullwidth `Ｖ`, dotted `İ`, `ß`/`ss` — no match, so the copy takes step 3, which is the safe direction), double-hop A→B→C in both the step-2 and step-3 flavours, and KD-47's disclosed pre-A-14 gap (**real, and MINOR as disclosed** — one duplicate row, bounded, no *new* error). What does **not** hold is A-14's own closing paragraph: **R14-2**. |
+> | **6. The `lisbonWithCopiedPlaceStop` rework — verified, and it is not weaker** | The original fixture really is dead: with a Lisbon-only trip the copy now takes step 3, no `Place` travels, and all 14 A-6/A-6a tests lose their precondition — I built both fixtures side by side and confirmed it. The replacement is a genuine test of what A-6 needs tested: the copy-borne `Place` is still **measured** (`nearest !== null`), still `unanchored`, still a real outlier at **2 329 km**, and its nearest anchor is still `home_base` — the same anchor and the same distance the pre-A-14 fixture produced, because the stub city's `centre` defaults to `{0,0}` and is 5 600 km away, so it never becomes the nearest. One Browse-and-copy click still mints no `geo_outlier`, and pointing a **user-authored** stop at the copied place still ends the exemption (`every`, not `some`) and mints the blocker — which is the clause that would be lost if the fixture had been weakened. |
+> | **7. Byte-identity, re-derived rather than trusted** | `detectConflicts` diffed against a `git worktree` at `78b490f` (the commit **before** A-11/A-12/A-13) over **435** clocks × three documents. Identical on the reference trip and on a 60-day-boundary trip. It **diverges on a `duplicate_id` document** — 123 of 435 clocks — which is **R14-1**. `npm run golden` + `npm run sample` regenerate byte-identically and leave the tree clean; the sample sha is unmoved. |
+> | **8. Numbers, my own runs at `fb3ff34`** | `npm run test:tap` **554 pass / 0 fail** (the builder's number, reproduced) · `npm run typecheck` clean (both projects) · `npm run web:build` clean · `Object.keys(core).length` = **71**, and `detectUngated` / `detectUngatedChecked` / `normalizeCityName` are all off it · reference trip **2 blockers / 4 warnings / 11 notes** at `FIXTURE_TODAY` and `2/4/7`, `2/2/1`, `2/2/1`, `2/4/1` at `2026-08-14`, `-08-27`, `2027-01-01`, `2019-01-01` · `validateTrip` still the known 11 issues (`warn:cost_basis_mixed` ×10, `error:lat_lng_out_of_range` ×1) · `qa/r2-copy.mjs` **0 FAIL**, `qa/prov.mjs` **0 FAIL** (neither had been run at a commit carrying *both* builder passes) · `qa/r2-constraints.mjs` **1 FAIL** (R2-18, known). |
+> | **KD numbering and disclosure — PASS** | `### KD-n` headings in BUILD-NOTES are contiguous **1…49** with no duplicates and no gap across the two parallel passes, and `node --test test/disclosure.test.ts` passes 5/5. KD-47's three judgment calls and KD-48's re-measurement are both accurate; KD-49's probe edits are within what A-13 pre-authorises. |
+> | **`cairn-constraints`, re-checked** | No `Date.now()` / `Math.random()` / `crypto.randomUUID()` in `packages/core` or `packages/client`; the two `new Date(…)` sites in `derive/summary.ts` are pure arithmetic on an injected date string and are pre-existing. No DOM, `window` or React under `packages/client/src`. Zero runtime dependencies in the root workspace and in `@cairn/core`. `normalizeCityName` lives in `model/` and is imported once, so there is no second copy to drift. |
+> | **Read-only boundary** | `europe-2026-itinerary.html`, `docs/` and `tickets/` at the repo root: untouched. The only file this round adds anywhere is `cairn/qa/r14-horizon-copy.mjs`. |
+> | **Gate verdict** | **A-11, A-12 and A-13 are done. A-14's mechanism is done; A-14's claim about what it leaves alone is not, and the copy path still carries the credential leak round 2 filed as a BLOCKER.** So: I-3a is closed, I-4a's conflict half is closed, and the copy/social primitive needs one more architect pass. **R14-4 must be answered before any share or friend path ships**, because it is the only place in the design where data crosses a person boundary and it applies §6.6 to half the payload. R14-2 should be answered in the same ruling — it is four lines of `refileCityKey`. |
+>
+> **New probe this round:** `qa/r14-horizon-copy.mjs` (headless, **15 FAIL by design** with both
+> scratch worktrees present and **14** without one — R14-1 ×2, R14-2 ×5, R14-3 ×2, R14-4 ×6; every
+> other line in the file is a confirmation that must stay at 0). Not timing-dependent —
+> deterministic call sequences only, no races and no sleeps. Two sections are differentials against
+> other commits and print `skip` without a second checkout; the header names the two
+> `git worktree add` commands, and neither writes anything under `cairn/`.
+>
+> **The round-13 status note below is superseded by this one** and is kept as the record of what
+> was true at `4dd50d1`.
+
+## Round 14 — A-11 / A-12 / A-13 / A-14 (`master` @ `fb3ff34`)
+
+Every row was produced by running the repro, not by reading the diff. Routing says *builder* when
+the code diverges from the ruling and *architect* when the code is faithful to a ruling whose
+reasoning has a hole.
+
+| id | severity | file:line | defect | repro | routing |
+|---|---|---|---|---|---|
+| **R14-4** | **BLOCKER** | `packages/core/src/build/copyStop.ts:169` (and `:164`) × §2.14 rule 4 / rule 5 × §6.6's free-text table | Rule 4 copies the referenced `Place` with `{...refiled, id: newId('place')}`, so the **place's** `note` and `links` cross the trip boundary verbatim while rule 5 redacts the **stop's** `note` two lines later. A place note reading *"Front door PIN 0754, conf 5814731574 — ask for jacob@example.com"* and a link `https://vendor.example/booking/GYGG45MLA9Q9` land intact in the recipient's document: five of `redactText`'s six patterns hit the copied string and all four credentials are greppable in the recipient's `toJSON`. This is the half of round 2's BLOCKER **R2-3** that was never fixed — R2-3's own text says *"`Place.note` and `Place.links` copy with the place"*, the status table records R2-3 as closed, and only `Stop.note` was. | `node --experimental-strip-types qa/r14-horizon-copy.mjs` §5.9 | **architect** — §2.14 rule 4 *tells* the builder to copy the place, and §6.6 already classifies `Place.note` as free text that must be redacted; the two documents disagree and only an architect can reconcile them. The mechanism is three lines (`redactText` on `note`, and the same rule-3 argument applied to `links`), so a builder can land it the moment it is ruled. |
+| **R14-2** | MAJOR | `packages/core/src/build/copyStop.ts:91`–`103` (`refileCityKey`) × §2.14 A-14's *"Copying within one trip is unchanged: … the key comes back identical, and the reuse search matches the original place exactly as today"* | `refileCityKey` never special-cases `source === target`, so a **within-trip** copy is re-filed by name like any other. On a trip that holds two cities of the same name — which A-10 explicitly blesses, and which is what a there-and-back itinerary through a hub looks like — a place filed under the *second* Vienna is silently re-filed onto the *first*, `samePlace` then fails against the original row, and a **duplicate `Place` row** is written under the wrong city. A-14 assertion 2's *"`target.places.length` is unmoved"* is false for exactly this document. Two further shapes take step 3 within one trip and lose the place link entirely (the stop drops to `{kind:'inline'}`, losing the place's `note`/`links`/`hours`): a city whose name folds to `''`, and a place whose `cityKey` the source itself cannot resolve. Reproduced through `core` **and** through the real store and reducer — one Copy click. | `qa/r14-horizon-copy.mjs` §5.2, §5.7, §5.10 | **architect** — the builder implemented A-14 step 2 literally and correctly; it is A-14's *"what does not change"* paragraph that is false. The fix is one early return (`if (source === target) return cityKey`, or: the source's own key is the winning candidate whenever the target holds it), but which one it is is a §2.14 ruling. |
+| **R14-1** | MINOR | `packages/core/src/conflict/detect.ts:133` (`beyondHorizon` → `subjectDate`) × §2.7 A-11 assertion 5, *"`detectConflicts` is provably output-neutral"* | The proof rests on *"`unbooked_ticketed`'s two subjects are the stop and its own day, both resolving through `subjectDate` to that day's date"*. `subjectDate` resolves a `{kind:'stop'}` ref by scanning `trip.days` for the **first** day containing that id, which is not the day the rule was iterating when the same stop id appears on two days. On such a document `detectConflicts` diverges from pre-A-11 at **123 of 435 clocks**, and the horizon **leaks**: a note **73 days out** survives a 60-day gate. The direction is safe (over-reporting only, never hiding something actionable), and the document is malformed — `validateTrip` calls it `duplicate_id` (error) — but `fromJSON` accepts it, so `importDoc` is a live route. | `qa/r14-horizon-copy.mjs` §1.5 (standalone), and §1.4 for the pre-vs-post byte differential (needs `git worktree add /tmp/r14-pre 78b490f`) | **architect** — A-11 point 2 names `subjectDate` as the resolver, so the code is faithful and it is assertion 5's *proof* that has the hole. Either narrow the claim to documents `validateTrip` accepts, or have the rule carry its own subject date. |
+| **R14-3** | MINOR | `packages/core/src/build/copyStop.ts:150` (`let place = src.place;`) | When the source stop's place is `{kind:'inline'}` or `{kind:'none'}`, `copyStopInto` assigns the **same object** into the target document — the two trips then share one `PlaceLink` and one mutable `LatLng`. KD-47's third judgment call spends a paragraph explaining that A-14's step 3 must clone *"because `copyStopInto` is pure and the two documents must not end up sharing one mutable `LatLng` object"*, and then the pre-existing branch two lines above does exactly that. No code mutates a `LatLng` today, which is the only reason this is MINOR — the same sentence KD-47 uses about its own case. | `qa/r14-horizon-copy.mjs` §5.3 | **builder** — `{ ...src.place }` plus a cloned `at`, matching the step-3 branch it sits beside. |
+
+### What I attacked and could **not** break (round 14)
+
+- **A-11's invariant, 434 clocks × 10 documents.** Sorted `detectUngated` id lists identical
+  everywhere, including on documents carrying a live dismissal and a retired row (so the
+  *"it has come back"* detail path runs), and on a `duplicate_id` document.
+- **The horizon as a mechanism, not just as `unbooked_ticketed`'s constant.** Injected rules at
+  `horizonDays` 0, −1, `NaN`, `Infinity` and `1e9`; an **integrity** rule declaring a horizon
+  (the gate applies it — A-11 says only a feasibility rule *may* declare one, asserted rather
+  than typed, and the shipped table still has exactly one); a horizon-free rule beside a
+  horizoned one; a finding with one subject inside and one beyond (kept — §8.2 ruling 1's
+  asymmetry); every subject beyond (dropped); and **no** subjects (never suppressed).
+- **The 60-day boundary itself.** Gated: fires at Δ59 and Δ60, withheld at Δ61 and Δ62 — strictly
+  `> horizonDays`, matching the deleted guard. Un-gated: present at all four, and it is **one**
+  conflict id across the boundary, so content-addressing is clock-free.
+- **A-12 against everything I could think of.** Ten rules crashing at once; a crash that only
+  happens at some clocks, over a document whose dismissal is *genuinely* fixed (deferred at the
+  crashing clock, retired at the working one); 25 crash/recover cycles with `revision` unmoved;
+  and through the store, one render during a crash writing nothing and retirement resuming after.
+- **A-13's tripwire, forced red by a real increment**, not by the builder's synthetic one — and it
+  failed with A-13's own message and named the ruling.
+- **A-14's five builder assertions**, the three-way tie-break under five different `order`
+  arrangements, eight Unicode/whitespace folding cases at the copy boundary, double-hop copies in
+  both flavours, and KD-47's disclosed gap (real, bounded at one duplicate row, mints no new
+  error — MINOR as disclosed).
+- **The `geoCheck` fixture rework.** Both fixtures built side by side: the old one is genuinely
+  dead, the new one measures the same anchor at the same distance and still exercises A-6's
+  `every`-not-`some` clause and the acceptance-monotonicity clause.
+- **The ceilings.** 71 exports, 2/4/11 at `FIXTURE_TODAY`, 11 validation issues, goldens and
+  sample byte-identical, KD ids contiguous 1…49, `test/disclosure.test.ts` green, 554/0.
+- **`cairn-constraints`.** Determinism, zero-dep, no DOM in `packages/client`, read-only boundary.
+
+### Confirmed by design, recorded so nobody re-derives them (round 14)
+
+- **A crash is deterministic for a document, so `store.getDerived()`'s cache-miss guard is not a
+  hole.** Retirement runs only when `derivedFor` returned a new cache object. A rule is a pure
+  function of the document, so a rule that threw will throw again on the same document at the
+  same clock — the only thing that can make it stop throwing is a document change or a code
+  change, and both invalidate the cache. A second render at the same `(document, today)` really
+  does have nothing to retry. Measured, and not filed.
+- **A-12's residual cost, named rather than found.** While a rule crashes, a dismissal whose
+  conflict was genuinely fixed is *not* retired — so if the data then reverts, the finding comes
+  back still dismissed. A-12 states this trade in writing and prefers it to the alternative
+  (retiring on an incomplete analysis, permanently). Confirmed to behave exactly as written.
+- **An integrity rule that declared `horizonDays` would be gated by it.** A-11 says only a
+  feasibility rule may declare one and that this is *"asserted in the same test, not enforced by
+  a type"*. The assertion is present, the shipped table has one horizon on one feasibility rule,
+  and the mechanism does not care about class — which is the documented state, not a defect.
+- **`normalizeCityName`'s conservative failures are the right direction.** A zero-width space, a
+  fullwidth letter, a Turkish dotted `İ` and `ß`/`ss` all fail to match, so the copy takes step 3
+  and the place does not travel. That is A-14's own preference — a hole over a confident wrong
+  filing — and the Hermes guard behaves identically.
+- **Stop `links` copy verbatim across the boundary and that is deliberate.** `qa/r2-copy.mjs` §H
+  reports two order/ticket-shaped hrefs travelling and does not fail on them: a stop link is a
+  vendor page, `Stop.ticket` is the credential and rule 3 drops it. `Place.links` is a different
+  question and is part of **R14-4**, because it travels with a record nobody badged.
+- **The reference trip has no exposure to R14-4 today.** All 95 of its places carry a `note` and
+  **none** is credential-shaped; `addPlace` is not on `index.ts`, so the shipped app has no write
+  path for a place note. The live route is `fromJSON`/`importDoc`, which accepts one and
+  round-trips it. R2-3 was filed a BLOCKER on exactly this footing — *"no exposure exists today"*
+  — and the primitive ships now.
 
 > **Status (as of `master` @ `4dd50d1`, independently verified 2026-08-27 — round 13, the
 > mandatory breaker pass over ROADMAP **I-3a** (§2.7 A-9) and **I-4a** (§2.2 A-10), plus the

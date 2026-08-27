@@ -563,3 +563,68 @@ end in a real browser — 東京 and 京都 get two distinct minted keys (`city_
 expects the app to *report* a collapse that no longer happens. Left unpatched, same ruling as
 rounds 5–10 — a probe that measures a deleted expression is a finding, not a repair job for the
 breaker.
+
+---
+
+## Round 14 (2026-08-27, `master` @ `fb3ff34`) — the A-11 / A-12 / A-13 / A-14 breaker pass
+
+Narrow: the diff `4dd50d1..fb3ff34` only — `Rule.horizonDays` + `beyondHorizon` (**A-11**),
+`detectUngatedChecked` + `syncResolutions`' crash refusal (**A-12**), the substituted A-9(4)
+test and its `endDate`-fallback tripwire (**A-13**), and `copyStopInto` rule 4's three-step
+re-filing + the new `model/cityName.ts` (**A-14**). R13-4, R13-5, P2-5, P2-8 and the Phase 1
+open list were **not** re-litigated.
+
+```bash
+node --experimental-strip-types qa/r14-horizon-copy.mjs
+        # §1  A-11 past its own six-clock sweep: 434 clocks x 10 documents; the 60-day
+        #     boundary in both sets; injected rules at horizon 0 / -1 / NaN / Infinity / 1e9,
+        #     an INTEGRITY class, a horizon-free rule beside a horizoned one, mixed-date and
+        #     empty subject sets; §1.4's pre-vs-post differential and §1.5, the horizon
+        #     leaking 73 days out on a duplicate-stop-id document      (R14-1, 2 FAIL)
+        # §2  KD-48 re-derived from the FIXTURE by hand, not from the rule: ten, and the
+        #     three named cases are among them                                     (0 FAIL)
+        # §3  A-12 vs 1/2/4/ten simultaneous crashes, a CLOCK-DEPENDENT crash over a
+        #     genuinely-fixed dismissal, 25 crash/recover rounds, and the real store
+        #                                                                          (0 FAIL)
+        # §4  A-13's tripwire: shape, 5/5 rule coverage, and forced RED in a scratch
+        #     worktree by a real rule increment (a ticketed pool stop)              (0 FAIL)
+        # §5  A-14: assertions 1-5; the three-same-named-cities tie-break x5; R14-2, the
+        #     WITHIN-trip copy A-14 says is unchanged (§5.2, §5.7, §5.10 through the store);
+        #     R14-3, the aliased inline PlaceLink (§5.3); eight Unicode folding cases;
+        #     double-hop copies; KD-47's disclosed gap; the reworked
+        #     `lisbonWithCopiedPlaceStop` fixture measured against the one it replaced; and
+        #     §5.9 R14-4 (BLOCKER) — the copied PLACE's note and links cross the trip
+        #     boundary unredacted           (R14-2 x5, R14-3 x2, R14-4 x6)
+        # §6  cross-cutting: copy -> horizoned conflict -> unrelated crash -> retirement
+        # §7  the ceilings re-derived by running: 71 exports, conflicts at five clocks,
+        #     validateTrip, goldens + sample, KD numbering, test/disclosure.test.ts  (0 FAIL)
+```
+
+**15 FAIL by design** with both worktrees present, **14** without (the missing one is §1.4's
+differential; §1.5 carries R14-1's other half and needs no second checkout) — R14-1 ×2, R14-2 ×5,
+R14-3 ×2, R14-4 ×6. Every other line in the file is a confirmation that must stay at 0. Not
+timing-dependent — deterministic call sequences only, no races and no sleeps.
+
+Two sections need a second checkout and print `skip` without one, because both are differentials
+against other commits rather than assertions about this one:
+
+```bash
+git worktree add /tmp/r14-pre 78b490f   # the commit BEFORE A-11/A-12/A-13 — §1.4's oracle
+git worktree add /tmp/r14-tw  fb3ff34   # a scratch tree §4 patches and restores, for the
+                                        # tripwire's RED state. It edits
+                                        # unbookedTicketed.ts in THAT tree only and puts the
+                                        # file back in a `finally`; nothing under cairn/ is
+                                        # ever written.
+```
+
+Re-run **unmodified** this round and unchanged by `fb3ff34`: `qa/r2-copy.mjs` **0 FAIL** and
+`qa/prov.mjs` **0 FAIL** — neither had been run at a commit carrying *both* builder passes (the
+A-14 builder ran them in a detached worktree holding only his five files) — and
+`qa/r2-constraints.mjs` **1 FAIL** (R2-18, known). `npm run test:tap` 554/0, `npm run typecheck`
+clean, `npm run web:build` clean. `qa/r13-gate-citykey.mjs` was **not** re-run: the orchestrating
+session had already re-run it at 0 FAIL and §1/§3/§4/§10 of this file attack the same rulings from
+angles that probe does not cover.
+
+Note for whoever reads §5.9 first: `qa/r2-copy.mjs` §H does **not** fail on R14-4. It only
+inspects the copied *stop*'s note, ticket and links — the copied `Place` is not in its scope,
+which is how the un-fixed half of R2-3 stayed invisible for eleven rounds.
