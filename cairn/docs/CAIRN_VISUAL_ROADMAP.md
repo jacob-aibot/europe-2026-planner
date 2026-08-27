@@ -53,9 +53,11 @@ to point: the merge/write code (`doMerge`/`writeAndSettle`) that has produced fo
 project's bugs so far (R3-3, R7-1, R8-4, R10-3, R11-1). That's not a loose end Phase 1 left behind
 — it's a disclosed, deliberate trigger for the next phase's QA to pick up on day one.
 
-**Current gate status:** 🟢 the Phase 1 → Phase 2 gate is **open.** Nothing is routed back to any
-role for Phase 1. What carries forward — three small entry items, a couple of stale numbers, and
-Jacob's one open decision above — is listed in §4.
+**Current gate status:** 🟢 **Phase 1's gate is PASSED — Phase 1 itself is closed, not open.** ("The
+gate is open" describes the *door into Phase 2*, not Phase 1's own status — worth saying plainly
+since that phrase reads the wrong way at a glance.) Nothing is routed back to any role for Phase 1.
+What carries forward — three small entry items, a couple of stale numbers, and Jacob's one open
+decision above — is listed in §4.
 
 ---
 
