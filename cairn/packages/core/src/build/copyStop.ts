@@ -24,6 +24,14 @@
  *      place's `cityKey` is this document's filing, not part of the place, so it is re-filed
  *      under the target's own city of that name — and if the target has no such city the
  *      place does not travel and the stop keeps the raw coordinate. See `refileCityKey`.
+ *      **Amended again by A-16 (revision 13, QA R14-2):** re-filing by name is a derivation
+ *      of city identity *across documents*, so it is the fallback and not the answer — when
+ *      the source IS the target document and the target still holds that key, the place's
+ *      own `cityKey` wins and no name is consulted. See `refileCityKey` step 2.
+ *      **And by A-15 (revision 13, QA R14-4):** the row that gets pushed is built field by
+ *      field by `placeForCopy`, never spread from the source. A `Place` crosses a person
+ *      boundary exactly as a `Stop` does, so §6.6 applies to it: `note` and `hours.note` go
+ *      through `redactText` and `links` are dropped entirely.
  *   5. `flags`, `name`, `category`, `durationMins`, `arrival` and `travelRole` copy verbatim
  *      — they describe a place and a journey, not a claim about the user. `note` does NOT
  *      copy verbatim: it is prose, and prose is exactly where a door code or a booking
@@ -39,8 +47,8 @@
  *
  * Pure apart from consuming ids from the injected factory.
  */
-import type { Place, Provenance, ProvenanceConfidence, Stop, StopPlacement, Trip } from '../model/types.ts';
-import type { IdFactory, IsoDate, StopId, UserId } from '../model/ids.ts';
+import type { Place, PlaceLink, Provenance, ProvenanceConfidence, Stop, StopPlacement, Trip } from '../model/types.ts';
+import type { IdFactory, IsoDate, PlaceId, StopId, UserId } from '../model/ids.ts';
 import { addStop } from './stops.ts';
 import type { StopInit } from './stops.ts';
 import { redactText } from './redactText.ts';
@@ -79,9 +87,26 @@ function samePlace(a: Place, b: { cityKey: string; name: string; at: Place['at']
  * when a place crosses a trip boundary it is **re-filed in the target's terms, or it does
  * not cross**.
  *
- *   1. Find the source's city by key. No such city, or a name that folds to `''` (which is
- *      not an identity), and there is nothing to match on → `null`, i.e. step 3.
- *   2. Every city in the target whose folded name equals it is a candidate. The lowest
+ *   1. Find the source's city by key. No such city and there is nothing to match on →
+ *      `null`, i.e. step 3. This stays FIRST: a place filed under a key its own document
+ *      cannot resolve has no city, `validateTrip` reports that as `unknown_city_key` (an
+ *      error), and a copy may not paper over it by inventing one — even within one trip.
+ *   2. **A-16 (revision 13, QA R14-2) — the source's own key wins when the source IS the
+ *      target document and the target still holds that key.** Re-filing by name is a
+ *      derivation of city identity *across* documents, and a derivation is only for the case
+ *      where the primary answer is missing; when the source is the target, the primary answer
+ *      is right there, because the target is the document that minted the key. No name is
+ *      consulted here, so a blank name, a duplicate name and a missing `String.normalize` are
+ *      all irrelevant on this path. Both conjuncts are load-bearing: `source.id === target.id`
+ *      rather than `source === target` because the reducer applies the action to the store's
+ *      current document while the UI passes whatever object it rendered from (a different
+ *      object for the same document after any `openTrip` or dispatch); and the key is checked
+ *      against `target`, not `source`, because `source.trip` is a snapshot and §0.6 is the
+ *      rule that snapshots go stale — a stale source falls through to name matching, and then
+ *      to step 3. A hole, never a wrong filing.
+ *   3. Otherwise fold the source city's name. A name that folds to `''` is not an identity,
+ *      so there is nothing to match on → `null`, i.e. step 3.
+ *   4. Every city in the target whose folded name equals it is a candidate. The lowest
  *      `order` wins, ties broken by position in `target.cities` — a trip may legitimately
  *      hold two cities of the same name (A-10 blesses that) and the answer must not depend
  *      on which one the scan happened to reach first.
@@ -91,6 +116,11 @@ function samePlace(a: Place, b: { cityKey: string; name: string; at: Place['at']
 function refileCityKey(source: Trip, target: Trip, cityKey: string): string | null {
   const sourceCity = source.cities.find((c) => c.key === cityKey);
   if (!sourceCity) return null;
+  // A-16 step 2. A `CityKey` means nothing outside the document that minted it (A-10), so a
+  // bare key match between two documents is a coincidence — every deterministic IdFactory in
+  // this repo mints `city-1` in every document it builds. The same-document conjunct is what
+  // turns key equality into an identity.
+  if (source.id === target.id && target.cities.some((c) => c.key === cityKey)) return cityKey;
   const wanted = normalizeCityName(sourceCity.name);
   if (wanted === '') return null;
 
@@ -100,6 +130,65 @@ function refileCityKey(source: Trip, target: Trip, cityKey: string): string | nu
     if (best === null || c.order < best.order) best = { key: c.key, order: c.order };
   }
   return best === null ? null : best.key;
+}
+
+/**
+ * §2.14 **A-15** (revision 13, QA R14-4) — what of a `Place` may cross a trip boundary. Pure.
+ *
+ * *A string's classification does not change because of which record it is attached to.* A
+ * door PIN in `Place.note` is the same credential as a door PIN in `Stop.note`, and §6.6 has
+ * classified `Place.note` as free text since revision 2. If anything the copied place is the
+ * worse carrier of the two: **a `Place` has no provenance** (A-6). The copied stop is stamped
+ * `source:'friend'`, badged `'imported'` from the instant it exists and carries `attribution`
+ * every view must render; the place beside it is badged by nothing, credited to nobody, and
+ * the recipient never chose it — it rode along.
+ *
+ * This function exists in this shape because the two places in this system that decide what
+ * may leave a document used to fail in opposite directions: §6.6's sample path fails **closed**
+ * (redact every string except the structural ones, so a field added later is redacted by
+ * default), while the copy path failed **open** (enumerate fields, and a field nobody
+ * enumerated travels verbatim). So there is **no spread of a source `Place` into the target
+ * document** anywhere below, and every field is classified:
+ *
+ *   - `id`       — a fresh one from the injected factory. Rule 1: ids never cross trips.
+ *   - `cityKey`  — the re-filed key (A-14 step 2, A-16).
+ *   - `name`     — verbatim. A place's name is a description of the world; rule 5 treats
+ *                  `Stop.name` identically and §6.6 does not classify a name as free text.
+ *   - `at`       — cloned, or `null`. Two documents may not share one mutable `LatLng`.
+ *   - `category` — verbatim. An enum.
+ *   - `note`     — `redactText`, and the key is present only if the source had one.
+ *   - `links`    — **dropped entirely, key absent.** A `Link` is `{label, href}` and the href
+ *                  is the entire payload, so a redacted href is a control that renders and
+ *                  navigates nowhere — a confident wrong answer where a hole is honest. Rule 3
+ *                  already decided this class (*"their ticket URL is an access credential"*),
+ *                  and a vendor voucher URL does not become safe by being filed one record
+ *                  further away from the stop. It also makes rule 4's two branches agree: the
+ *                  reuse branch already gives the recipient no new links.
+ *   - `hours`    — key present only if the source had one; `weekly` cloned entry by entry;
+ *                  `hours.note` through `redactText`, because opening times are a description
+ *                  of the world and the note beside them is free text.
+ *
+ * A ninth field on `Place` must be classified here and in `copyStop.test.ts`'s key-set test,
+ * which is the mechanical form of §6.6's *"redacted by default rather than leaking by
+ * default"* inside a typed record.
+ */
+function placeForCopy(p: Place, cityKey: string, id: PlaceId): Place {
+  return {
+    id,
+    cityKey,
+    name: p.name,
+    at: p.at === null ? null : { lat: p.at.lat, lng: p.at.lng },
+    category: p.category,
+    ...(p.note === undefined ? {} : { note: redactText(p.note) as string }),
+    ...(p.hours === undefined
+      ? {}
+      : {
+        hours: {
+          weekly: p.hours.weekly.map((w) => (w === null ? null : { ...w })),
+          ...(p.hours.note === undefined ? {} : { note: redactText(p.hours.note) as string }),
+        },
+      }),
+  };
 }
 
 /**
@@ -147,7 +236,16 @@ export function copyStopInto(
   // Rule 4 — the place travels RE-FILED under the target's own city, or an equivalent one in
   // the target is reused, or it does not travel at all and the coordinate goes instead.
   let withPlace = target;
-  let place = src.place;
+  // R14-3: the initial value must be a CLONE, not the source's own `PlaceLink`. Aliasing it
+  // left the two documents sharing one `PlaceLink` object — and, for `{kind:'inline'}`, one
+  // mutable `LatLng` — which is the same purity defect A-14's own step-3 branch below already
+  // avoids. The `{kind:'place'}` case is fully replaced by the block below, in every branch.
+  let place: PlaceLink =
+    src.place.kind === 'inline'
+      ? { kind: 'inline', at: { ...src.place.at } }
+      : src.place.kind === 'none'
+        ? { kind: 'none' }
+        : src.place;
   if (src.place.kind === 'place') {
     const original = source.trip.places.find((p) => p.id === (src.place as { placeId: string }).placeId);
     if (!original) {
@@ -161,12 +259,19 @@ export function copyStopInto(
         // untouched.
         place = original.at === null ? { kind: 'none' } : { kind: 'inline', at: { ...original.at } };
       } else {
+        // `refiled` is the PROBE the reuse search compares against — `samePlace` reads
+        // `cityKey`, `name` and `at`, none of which A-15 changes, so reuse decisions are
+        // bit-for-bit what A-14 left. It is no longer the thing that gets pushed.
         const refiled = { ...original, cityKey: targetKey };
         const existing = target.places.find((p) => samePlace(p, refiled));
         if (existing) {
+          // The reuse branch needs nothing from A-15: no field of the source place crosses at
+          // all, and the row the recipient keeps is their own.
           place = { kind: 'place', placeId: existing.id };
         } else {
-          const copy: Place = { ...refiled, id: ctx.ids.newId('place') };
+          // A-15: built field by field, never spread. §6.6 applies to a `Place` that crosses a
+          // person boundary exactly as it applies to the stop beside it.
+          const copy = placeForCopy(original, targetKey, ctx.ids.newId('place'));
           withPlace = { ...target, places: [...target.places, copy] };
           place = { kind: 'place', placeId: copy.id };
         }

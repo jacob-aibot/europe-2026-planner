@@ -255,6 +255,16 @@ if (!existsSync(`${PRE}/packages/core/src/index.ts`)) {
       const b = digestOf(old.core.detectConflicts(tOld, opts));
       if (a !== b) { n++; if (!diverged) diverged = today ?? '(no clock)'; }
     }
+    if (name === 'duplicate-stop-id') {
+      // A-17 (revision 13) narrowed A-11 assertion 5 to *"provably output-neutral on every
+      // document `validateTrip` accepts"*. This document carries a `duplicate_id` ERROR, so a
+      // non-zero differential here is now a documented, expected divergence — over-reporting
+      // only, bounded to documents this system already reports as invalid. The line stays as
+      // the MEASUREMENT of that divergence (QA measured 123 of 435 clocks), not as a failure.
+      console.log(`  ${name}: ${n}/${CLOCKS.length + 1} clocks diverge from pre-A-11` +
+        `${n ? `, first at ${diverged}` : ''} — expected and documented (A-17), not a failure`);
+      continue;
+    }
     ok(`${name}: detectConflicts is byte-identical to pre-A-11 at all ${CLOCKS.length + 1} clocks`,
       n === 0, n ? `${n} clocks diverge, first at ${diverged}` : '');
   }
@@ -264,7 +274,7 @@ if (!existsSync(`${PRE}/packages/core/src/index.ts`)) {
   console.log(`  pre-A-11 @${at}: ${b.length} note(s) daysOut=${JSON.stringify(b.map((x) => x.params.daysOut))}`);
 }
 
-line('§1.5 R14-1 standalone — the horizon LEAKS on a document whose stop id is on two days');
+line('§1.5 R14-1 standalone — the horizon on a document whose stop id is on two days (A-17)');
 {
   // `beyondHorizon` resolves a `{kind:'stop'}` subject through `subjectDate`, which returns the
   // FIRST day containing that id — not the day the rule was iterating. The finding minted on
@@ -274,9 +284,33 @@ line('§1.5 R14-1 standalone — the horizon LEAKS on a document whose stop id i
   const at = '2026-06-20';
   const a = core.detectConflicts(dup, { today: at }).filter((c) => c.ruleId === 'unbooked_ticketed');
   console.log(`  post-A-11 @${at}: ${a.length} note(s) daysOut=${JSON.stringify(a.map((x) => x.params.daysOut))}`);
-  ok('R14-1: no `unbooked_ticketed` note survives the gate more than 60 days out',
-    !a.some((x) => Number(x.params.daysOut) > 60),
-    `a note ${a.map((x) => x.params.daysOut).join('/')} days out survived the 60-day gate`);
+  // The original assertion here — *"no `unbooked_ticketed` note survives the gate more than 60
+  // days out"* — is RETIRED BY **A-17**, not fixed: it asserts the claim A-17 has just narrowed.
+  // `subjectDate` is the right resolver and on a `duplicate_id` document there is no correct
+  // answer for it to return, so the ruling buys the safe half only and says so in writing. The
+  // measurement above stays, because the surviving `daysOut` values are the interesting number.
+  // What replaces it is A-17 point 3's DIRECTION: the gate may over-report, never withhold.
+  const horizons = new Map(detectMod.RULES.filter((r) => r.horizonDays !== undefined)
+    .map((r) => [r.id, r.horizonDays]));
+  let withheld = null, checked = 0;
+  for (const [name, trip] of [['duplicate-stop-id', dup], ['horizon-60', horizonTrip('2026-03-02', 'a17')]]) {
+    for (const today of CLOCKS) {
+      const gated = new Set(core.detectConflicts(trip, { today }).map((c) => c.id));
+      for (const c of detectMod.detectUngated(trip, { today })) {
+        const h = horizons.get(c.ruleId);
+        if (h === undefined) continue;
+        const d = Number(c.params.daysOut);
+        // `daysOut >= 0` excludes §8.2's PAST gate, which A-11 never touched: inside this band
+        // the horizon is the only gate left that could withhold the finding.
+        if (!Number.isFinite(d) || d < 0 || d > h) continue;
+        checked++;
+        if (!gated.has(c.id) && !withheld) withheld = `${name} @${today}: ${c.id} at ${d} days out`;
+      }
+    }
+  }
+  ok(`A-17: the gate never WITHHOLDS a finding inside its own horizon (${checked} checked)`,
+    withheld === null && checked > 0,
+    withheld ?? (checked === 0 ? 'nothing was checked — the sweep is vacuous' : ''));
   const codes = core.validateTrip(dup).filter((i) => i.level === 'error').map((i) => i.code);
   const parses = (() => { try { core.fromJSON(JSON.parse(JSON.stringify(core.toJSON(dup)))); return true; } catch { return false; } })();
   console.log('  reachability: validateTrip says', JSON.stringify(codes), '| fromJSON accepts it:', parses);

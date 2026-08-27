@@ -34,7 +34,7 @@ import {
 import { detectUngated } from '../src/conflict/detect.ts';
 import { europe2026, FIXTURE_TODAY } from './fixture.ts';
 import { faultFixtures } from './faultFixtures.ts';
-import type { BuildCtx, Trip } from '../src/index.ts';
+import type { BuildCtx, Conflict, Trip } from '../src/index.ts';
 
 /** The six-clock sweep A-11 names: two decades apart, and both sides of the reference trip. */
 const CLOCKS = ['2019-01-01', '2026-08-01', '2026-08-24', '2026-08-30', '2027-08-30', '2030-01-01'];
@@ -231,6 +231,40 @@ test('A-11 (4): the horizon still works where it is supposed to', () => {
 
 // ------------------------------------------------------------------ A-11 (5)
 
+/**
+ * Every document A-11's sweep covers, plus the one A-17 adds: a `duplicate_id` document, which
+ * `validateTrip` calls an **error** and `fromJSON` accepts deliberately (refusing to parse
+ * would make the document unopenable and hide the report — A-10's precedent), so `importDoc`
+ * is a live route to one.
+ */
+function sweptDocuments(): Array<{ name: string; trip: Trip }> {
+  return [
+    { name: 'reference', trip: europe2026().trip },
+    ...faultFixtures(),
+    { name: 'horizon-60', trip: horizonTrip('2026-03-02') },
+    { name: 'duplicate-stop-id', trip: duplicateStopIdTrip() },
+  ];
+}
+
+/** One stop id on TWO days. `subjectDate` has no correct answer to *"which day is this on"*. */
+function duplicateStopIdTrip(): Trip {
+  const c = ctx('dup');
+  let t = createTrip(
+    {
+      title: 'D', startDate: '2026-05-01', endDate: '2026-09-01',
+      cities: [{ name: 'Vienna', order: 0, centre: { lat: 48.2, lng: 16.37 } }],
+    },
+    c,
+  );
+  const init = {
+    id: 'stop-dup', name: 'Tick', category: 'sight' as const, place: { kind: 'none' as const },
+    cost: { display: '€10', amounts: [{ lo: 10, hi: 10, currency: 'EUR', basis: 'per_person' as const }] },
+    links: [{ label: 'T', href: 'https://e.test/t' }],
+  };
+  t = addStop(t, { kind: 'scheduled', dayId: '2026-05-01', time: '10:00', order: 0 }, init, c);
+  return addStop(t, { kind: 'scheduled', dayId: '2026-09-01', time: '10:00', order: 0 }, init, c);
+}
+
 test('A-11 (5): only a feasibility rule may declare a horizon, and exactly one does', () => {
   const withHorizon = RULES.filter((r) => r.horizonDays !== undefined);
   assert.deepEqual(
@@ -244,4 +278,97 @@ test('A-11 (5): only a feasibility rule may declare a horizon, and exactly one d
       `${rule.id}'s horizonDays is not a positive number`,
     );
   }
+
+  // A-17 (revision 13, QA R14-1) — the `Rule` contract's standing obligation, asserted here
+  // because this is where "who may declare a horizon" already lives:
+  //
+  // > A rule that declares `horizonDays` must emit, among the subjects of every conflict it
+  // > produces, at least one ref whose `subjectDate` resolution does not depend on an id being
+  // > unique — in practice the `{kind:'day'}` ref for the day the finding is about. A rule that
+  // > cannot do so may not declare a horizon.
+  //
+  // That is what keeps A-17's safe direction true for the NEXT rule to declare a horizon:
+  // `beyondHorizon` suppresses only when EVERY subject resolves beyond the horizon, so a ref
+  // that resolves unambiguously to the day the rule reasoned about means a duplicated id can
+  // only ever make the conjunction fail — over-reporting, never hiding something actionable.
+  // The case it excludes is real: a finding about a POOL stop has no day of its own and falls
+  // through to §8.2 ruling 2's `endDate`. Excluding it is the honest answer — a pool stop has
+  // no date, so "more than 60 days out" is a claim about a date that does not exist.
+  const horizoned = new Set(withHorizon.map((r) => r.id));
+  let inspected = 0;
+  for (const { name, trip } of sweptDocuments()) {
+    for (const today of CLOCKS) {
+      for (const c of detectUngated(trip, { today })) {
+        if (!horizoned.has(c.ruleId)) continue;
+        inspected++;
+        assert.ok(
+          c.subjects.some((s) => s.kind === 'day' && trip.days.some((d) => d.id === s.id)),
+          `${name} @${today}: ${c.ruleId} declares a horizon but conflict ${c.id} carries no ` +
+            'resolvable {kind:\'day\'} subject — its gating would depend on an id being unique',
+        );
+      }
+    }
+  }
+  assert.ok(inspected > 0, 'no horizoned rule fired anywhere in the sweep, so the obligation is vacuous');
+});
+
+// ------------------------------------------------------------------ A-17
+
+/**
+ * A-17 (revision 13, QA R14-1) — *the gate never withholds a finding the deleted guard would
+ * have kept.*
+ *
+ * A-11 assertion 5 claimed `detectConflicts` was *"provably output-neutral"*, on the argument
+ * that `unbooked_ticketed`'s two subjects both resolve through `subjectDate` to the same day.
+ * They do not on a document whose stop id sits on two days: `subjectDate` resolves a
+ * `{kind:'stop'}` ref to the **first** day holding that id, which need not be the day the rule
+ * was iterating. A-17 **narrows the claim** rather than threading a subject date through
+ * `Conflict` — §0.6 (the date a stop happens on is a fact the document states, and on a
+ * `duplicate_id` document there is no correct answer), blast radius (`Conflict.values` is
+ * content-addressed and persisted in every `Resolution` row), and the direction being safe.
+ *
+ * This is the assertion that stops that being a doc edit which waves a finding through.
+ * `params.daysOut` is the rule's own reckoning, computed from the day it was iterating —
+ * prose, which A-11 permits a clock to influence — so it is an oracle **independent of
+ * `subjectDate`**, which is exactly what makes the test worth writing.
+ *
+ * The one narrowing this test makes to the ruling's wording, and why it is not a weakening:
+ * the sweep excludes findings whose `daysOut` is **negative**. A day in the past is withheld by
+ * §8.2's feasibility gate (`suppressedAsPast`), which A-11 did not touch and A-17 does not
+ * claim anything about; `daysOut >= 0` means the day the rule iterated is today or later, so
+ * that subject cannot be strictly before `today` and `suppressedAsPast` — which needs EVERY
+ * subject in the past — provably cannot fire. Inside that band the horizon is the only gate
+ * left that could withhold the finding, which is the claim being made.
+ */
+test('A-17: the gate never withholds a finding inside its own horizon — by id, over every fixture', () => {
+  const horizons = new Map(
+    RULES.filter((r) => r.horizonDays !== undefined).map((r) => [r.id, r.horizonDays as number]),
+  );
+  const inHorizon = (c: Conflict): boolean => {
+    const h = horizons.get(c.ruleId);
+    if (h === undefined) return false;
+    const daysOut = Number(c.params.daysOut);
+    return Number.isFinite(daysOut) && daysOut >= 0 && daysOut <= h;
+  };
+
+  const byDoc: Record<string, number> = {};
+  for (const { name, trip } of sweptDocuments()) {
+    for (const today of CLOCKS) {
+      const gated = new Set(detectConflicts(trip, { today }).map((c) => c.id));
+      for (const c of detectUngated(trip, { today }).filter(inHorizon)) {
+        byDoc[name] = (byDoc[name] ?? 0) + 1;
+        assert.ok(
+          gated.has(c.id),
+          `${name} @${today}: ${c.ruleId} reported ${c.params.daysOut} days out — inside its own ` +
+            `${horizons.get(c.ruleId)}-day horizon — and the GATE withheld it. The horizon may only ` +
+            'ever over-report (A-17); withholding is the direction this ruling did not buy.',
+        );
+      }
+    }
+  }
+  assert.ok((byDoc['reference'] ?? 0) > 0, 'the reference trip contributed nothing — the sweep is vacuous');
+  assert.ok(
+    (byDoc['duplicate-stop-id'] ?? 0) > 0,
+    'the duplicate_id document contributed nothing, and it is the document A-17 exists for',
+  );
 });

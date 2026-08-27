@@ -46,6 +46,26 @@ export type Rule = {
    * performs itself is invisible to `detectUngated`, which is the set retirement reads, and
    * *absent from the un-gated set* means *fixed*. Only a `feasibility` rule may declare one —
    * a horizon says *"this is premature"*, which is a feasibility claim by construction.
+   *
+   * §2.7 **A-17** (revision 13, QA R14-1) adds one standing obligation to this field:
+   *
+   * > A rule that declares `horizonDays` must emit, among the subjects of every conflict it
+   * > produces, at least one ref whose `subjectDate` resolution does not depend on an id being
+   * > unique — in practice the `{kind:'day'}` ref for the day the finding is about. A rule that
+   * > cannot do so may not declare a horizon.
+   *
+   * Why: `subjectDate` resolves a `{kind:'stop'}` ref to the FIRST day holding that id, which on
+   * a `duplicate_id` document need not be the day the rule was iterating — and `fromJSON`
+   * accepts such a document deliberately, so `importDoc` is a live route to one. `beyondHorizon`
+   * suppresses only when EVERY subject is beyond the horizon, so an unambiguous day ref means an
+   * ambiguous stop ref can only ever make the conjunction fail: the gate may KEEP a finding the
+   * old in-rule guard would have withheld, and can never withhold one it would have kept.
+   * Over-reporting, never hiding something actionable. The case this excludes is a finding about
+   * a POOL stop, which has no day of its own and falls through to §8.2 ruling 2's `endDate`
+   * fallback — a pool stop has no date, so *"more than 60 days out"* is a claim about a date
+   * that does not exist, and such a finding simply always shows. Asserted in
+   * `packages/core/test/horizonGate.test.ts`, in the same test as *"only a feasibility rule may
+   * declare a horizon"*, not enforced by a type, for the same reason.
    */
   horizonDays?: number;
   /** Pure. MUST NOT mutate the trip and MUST NOT throw on bad data. */

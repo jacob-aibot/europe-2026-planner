@@ -23,7 +23,8 @@ import { detectConflicts } from '../src/index.ts';
 import { addPlace } from '../src/build/stops.ts';
 import { needsBadge } from '../src/derive/display.ts';
 import { resolvePlaceLink } from '../src/derive/geo.ts';
-import type { BuildCtx, LatLng, Stop, Trip } from '../src/index.ts';
+import type { BuildCtx, LatLng, Place, Stop, Trip } from '../src/index.ts';
+import { redactionHits } from '../src/index.ts';
 import { europe2026 } from './fixture.ts';
 
 const CTX = (prefix: string): BuildCtx => ({ ids: sequentialIds(prefix), now: '2026-08-25', actorUserId: 'user:jacob' });
@@ -794,6 +795,329 @@ test('A-14: copying within one trip is unchanged — the source city resolves to
   assert.equal(after.places[0].cityKey, source.cities[0].key);
   const clone = after.days.find((d) => d.id === '2026-08-09')!.stops[0];
   assert.equal(clone.place.kind === 'place' ? clone.place.placeId : '', 'p-src');
+});
+
+// ---------------------------------------------------------------------------
+// A-15 (ARCHITECTURE revision 13, QA R14-4) — a copied `Place` crosses a person boundary, so
+// §6.6 applies to it.
+//
+// Rule 4 built the copied place as `{...refiled, id: newId('place')}` and rule 5, two lines
+// later, ran the copied STOP's note through `redactText`. The place's own `note` and `links`
+// went through nothing, so a door PIN, a confirmation number, a mailbox address and a vendor
+// voucher URL all arrived intact in the recipient's document — the unfixed half of round 2's
+// BLOCKER R2-3, whose own text named `Place.note` and `Place.links`.
+//
+// The direction is the point: §6.6's sample path fails CLOSED (redact every string but the
+// structural ones) and the copy path failed OPEN (enumerate fields; a field nobody enumerated
+// travels verbatim). `placeForCopy` enumerates all eight, and the key-set test below is the
+// mechanical stop that makes a ninth field fail until it is classified.
+// ---------------------------------------------------------------------------
+
+/** The credential shapes §6.6 classifies, in one place note and one place link. */
+const CREDENTIAL_NOTE = 'Front door PIN 0754, conf 5814731574 - ask for jacob@example.com';
+const CREDENTIAL_HREF = 'https://vendor.example/booking/GYGG45MLA9Q9';
+const CREDENTIALS = ['0754', '5814731574', 'GYGG45MLA9Q9', 'jacob@example.com'];
+
+/**
+ * Every field `Place` has, as a compile-time exhaustive map. A ninth field added to `Place`
+ * fails `npm run typecheck` here — which is the cheapest available form of §6.6's *"redacted
+ * by default rather than leaking by default"* inside a typed record — and then fails the
+ * key-set test below until it is classified in `placeForCopy`'s table.
+ */
+const PLACE_FIELDS: Record<keyof Place, true> = {
+  id: true, cityKey: true, name: true, at: true, category: true, note: true, links: true, hours: true,
+};
+
+/** What A-15's table says may cross: everything but `links`, which is dropped. */
+const PLACE_FIELDS_THAT_CROSS = ['id', 'cityKey', 'name', 'at', 'category', 'note', 'hours'];
+
+/** A source trip whose one `Place` carries every optional field populated. */
+function sourceWithFullPlace(note: string, hoursNote?: string): Trip {
+  let t = mintedTrip('trip-src', 'user:marta', 'src', [{ name: 'Vienna', centre: VIENNA }]);
+  t = addPlace(t, {
+    id: 'p-src', cityKey: t.cities[0].key, name: 'Habyt Vienna', at: BELVEDERE, category: 'stay',
+    note,
+    links: [{ label: 'Voucher', href: CREDENTIAL_HREF }],
+    hours: {
+      weekly: [null, { day: 1, open: '09:00', close: '17:00' }],
+      ...(hoursNote === undefined ? {} : { note: hoursNote }),
+    },
+  });
+  t = addStop(
+    t, { kind: 'scheduled', dayId: '2026-08-08', time: '10:00', order: 0 },
+    { id: 's-src', name: 'Check in', category: 'stay', place: { kind: 'place', placeId: 'p-src' } },
+    CTX('srcf'),
+  );
+  return t;
+}
+
+test('A-15: the copied place\'s KEY SET is the classified list — a ninth field fails here first', () => {
+  const source = sourceWithFullPlace('ordinary prose');
+  assert.deepEqual(
+    Object.keys(source.places[0]).sort(), Object.keys(PLACE_FIELDS).sort(),
+    'the fixture must populate every field of Place, or this test measures less than it claims',
+  );
+  const target = mintedTrip('trip-tgt', 'user:jacob', 'tgt', [{ name: 'Vienna', centre: VIENNA }]);
+  const copy = copyAcross(target, source).places[0];
+  assert.deepEqual(
+    Object.keys(copy).sort(), [...PLACE_FIELDS_THAT_CROSS].sort(),
+    'a field crossed the trip boundary that A-15\'s table does not classify (or a classified one is missing)',
+  );
+});
+
+test('A-15: a credential in the copied place\'s note and links does not cross the trip boundary', () => {
+  const source = sourceWithFullPlace(CREDENTIAL_NOTE);
+  const target = mintedTrip('trip-tgt', 'user:jacob', 'tgt', [{ name: 'Vienna', centre: VIENNA }]);
+  const after = copyAcross(target, source);
+  const copy = after.places[0];
+
+  assert.deepEqual(redactionHits(copy.note ?? ''), [], 'a §6.6 pattern still matches the copied place note');
+  assert.match(copy.note ?? '', /\[redacted\]/, 'redaction should be visible, not a silently emptied note');
+  assert.equal('links' in copy, false, 'A-15 drops `links` entirely — an empty array is not the answer');
+
+  const doc = JSON.stringify(toJSON(after));
+  for (const needle of CREDENTIALS) {
+    assert.equal(doc.includes(needle), false, `${needle} is greppable in the recipient's whole document`);
+  }
+});
+
+test('A-15: redaction is not a wipe — an ordinary place note crosses byte-identical', () => {
+  const prose = 'entrance is on the north side';
+  const source = sourceWithFullPlace(prose);
+  const target = mintedTrip('trip-tgt', 'user:jacob', 'tgt', [{ name: 'Vienna', centre: VIENNA }]);
+  const copy = copyAcross(target, source).places[0];
+  assert.equal(copy.note, prose, 'a rule that redacts everything passes the test above and is wrong');
+  assert.equal(copy.name, 'Habyt Vienna');
+  assert.equal(copy.category, 'stay');
+  assert.deepEqual(copy.at, BELVEDERE);
+  assert.deepEqual(copy.hours?.weekly, [null, { day: 1, open: '09:00', close: '17:00' }]);
+
+  // A source place with no note and no hours arrives with neither key invented.
+  const bare = sourceWithPlace({ name: 'Vienna', centre: VIENNA }, { name: 'Belvedere', at: null });
+  const bareCopy = copyAcross(target, { ...bare, places: bare.places.map((p) => ({ ...p, note: undefined })) })
+    .places[0];
+  assert.equal('note' in bareCopy, false, 'an absent note must not become a present one');
+  assert.equal('hours' in bareCopy, false, 'an absent `hours` must not become a present one');
+  assert.equal(bareCopy.at, null, 'a null coordinate crosses as null');
+});
+
+test('A-15: hours.note is free text too — the weekly array crosses, the note beside it is redacted', () => {
+  const source = sourceWithFullPlace('ordinary prose', 'code 4417');
+  const target = mintedTrip('trip-tgt', 'user:jacob', 'tgt', [{ name: 'Vienna', centre: VIENNA }]);
+  const copy = copyAcross(target, source).places[0];
+  assert.deepEqual(copy.hours?.weekly, [null, { day: 1, open: '09:00', close: '17:00' }]);
+  assert.deepEqual(redactionHits(copy.hours?.note ?? ''), [], 'hours.note is the same class of omission as Place.note');
+  assert.equal(copy.hours?.note, '[redacted]');
+});
+
+test('A-15: nothing of the copied place is aliased — mutating the source afterwards changes nothing', () => {
+  const source = sourceWithFullPlace('ordinary prose', 'closed in winter');
+  const target = mintedTrip('trip-tgt', 'user:jacob', 'tgt', [{ name: 'Vienna', centre: VIENNA }]);
+  const after = copyAcross(target, source);
+  const copy = after.places[0];
+  const original = source.places[0];
+
+  assert.notEqual(copy.at, original.at, 'two documents must not share one mutable LatLng');
+  assert.notEqual(copy.hours, original.hours, 'nor one OpeningHours');
+  assert.notEqual(copy.hours?.weekly, original.hours?.weekly);
+  assert.notEqual(copy.hours?.weekly[1], original.hours?.weekly[1]);
+
+  const before = toJSON(after);
+  (original.at as LatLng).lat = 0;
+  original.hours!.weekly[1]!.open = '00:00';
+  assert.equal(toJSON(after), before, 'a later mutation of the SOURCE document reached the target');
+});
+
+test('A-15: the reuse branch is untouched — the target keeps its own note and links', () => {
+  const source = sourceWithFullPlace(CREDENTIAL_NOTE);
+  let target = mintedTrip('trip-tgt', 'user:jacob', 'tgt', [{ name: 'Vienna', centre: VIENNA }]);
+  target = addPlace(target, {
+    id: 'p-tgt', cityKey: target.cities[0].key, name: 'habyt vienna', at: BELVEDERE, category: 'stay',
+    note: 'my own note', links: [{ label: 'Mine', href: 'https://example.test/mine' }],
+  });
+  const after = copyAcross(target, source);
+  assert.equal(after.places.length, 1, 'A-14 assertion 2: an equivalent place is reused, not duplicated');
+  assert.equal(after.places[0].note, 'my own note', 'the reused row must keep the TARGET\'s note');
+  assert.deepEqual(after.places[0].links, [{ label: 'Mine', href: 'https://example.test/mine' }]);
+  const doc = JSON.stringify(toJSON(after));
+  for (const needle of CREDENTIALS) {
+    assert.equal(doc.includes(needle), false, `${needle} crossed through the reuse branch`);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// A-16 (ARCHITECTURE revision 13, QA R14-2) — re-filing is a derivation, and the source
+// document may already hold the answer.
+//
+// A-14 claimed copying within one trip was unchanged: *"the source city is found by key, its
+// own name matches itself, the key comes back identical."* `refileCityKey` never asked whether
+// source and target were the same document, so a within-trip copy was re-filed by name like
+// any other — and on a trip holding two cities of the same name (A-10 blesses that; it is what
+// a there-and-back itinerary through a hub looks like) the place re-filed onto the wrong one
+// and a duplicate row was written.
+// ---------------------------------------------------------------------------
+
+/** A trip with two cities named Vienna, one place filed under the SECOND, and a stop on it. */
+function twoViennas(): { trip: Trip; secondKey: string } {
+  let t = mintedTrip('trip-hub', 'user:jacob', 'hub', [
+    { name: 'Vienna', centre: VIENNA, order: 0 },
+    { name: 'Vienna', centre: VIENNA, order: 1 },
+  ]);
+  const secondKey = t.cities[1].key;
+  t = addPlace(t, { id: 'p-src', cityKey: secondKey, name: 'Belvedere', at: BELVEDERE, category: 'sight' });
+  t = addStop(
+    t, { kind: 'scheduled', dayId: '2026-08-08', time: '10:00', order: 0 },
+    { id: 's-src', name: 'Belvedere', category: 'sight', place: { kind: 'place', placeId: 'p-src' } },
+    CTX('hubs'),
+  );
+  return { trip: t, secondKey };
+}
+
+const copyWithin = (t: Trip, source: Trip, prefix = 'w'): Trip =>
+  copyStopInto(
+    t, { trip: source, stopId: 's-src' },
+    { kind: 'scheduled', dayId: '2026-08-09', time: '11:00', order: 0 }, COPY_CTX(prefix),
+  );
+
+test('A-16 step 2: a within-trip copy on a two-Vienna trip keeps the place\'s OWN key and adds no row', () => {
+  const { trip, secondKey } = twoViennas();
+  assert.notEqual(secondKey, trip.cities[0].key, 'the fixture is not testing two same-named cities');
+
+  const after = copyWithin(trip, trip);
+  assert.equal(after.places.length, 1, 'the reuse search must match the original row — A-14 assertion 2');
+  assert.equal(after.places[0].cityKey, secondKey, 're-filed by name onto the lowest-order Vienna');
+  const clone = after.days.find((d) => d.id === '2026-08-09')!.stops[0];
+  assert.equal(clone.place.kind === 'place' ? clone.place.placeId : '', 'p-src');
+  assert.deepEqual(validateTrip(after).filter((i) => i.code === 'unknown_city_key'), []);
+});
+
+test('A-16 step 2: `.id`, not `===` — the same document as a DIFFERENT object copies identically', () => {
+  const { trip } = twoViennas();
+  const sameObject = copyWithin(trip, trip, 'obj');
+  // What the reducer actually holds: the store applies the action to its current document
+  // while the UI passes whatever object it rendered from — equal by `.id`, a different object
+  // after any `openTrip` (which re-parses through `fromJSON`) or any dispatch since the render.
+  const snapshot = fromJSON(toJSON(trip));
+  assert.notEqual(snapshot, trip, 'the fixture is not testing two objects');
+  assert.equal(snapshot.id, trip.id);
+  const different = copyWithin(trip, snapshot, 'obj');
+  assert.equal(toJSON(different), toJSON(sameObject), 'this is the assertion that fails under `===`');
+});
+
+test('A-16 step 2: a within-trip copy under a BLANK-named city keeps the place link', () => {
+  let t = mintedTrip('trip-blank', 'user:jacob', 'bl', [{ name: '   ', centre: VIENNA }]);
+  t = addPlace(t, { id: 'p-src', cityKey: t.cities[0].key, name: 'Belvedere', at: BELVEDERE, category: 'sight' });
+  t = addStop(
+    t, { kind: 'scheduled', dayId: '2026-08-08', time: '10:00', order: 0 },
+    { id: 's-src', name: 'Belvedere', category: 'sight', place: { kind: 'place', placeId: 'p-src' } },
+    CTX('bls'),
+  );
+  const after = copyWithin(t, t, 'bl2');
+  const clone = after.days.find((d) => d.id === '2026-08-09')!.stops[0];
+  assert.equal(clone.place.kind, 'place', 'no identity is being derived from a name here — step 2 answers first');
+  assert.equal(after.places.length, 1, 'and no row is added');
+  // A-14 assertion 5 is unmoved: ACROSS documents, two blank names still do not match.
+  const other = mintedTrip('trip-other', 'user:jacob', 'ot', [{ name: '', centre: VIENNA }]);
+  const across = copyAcross(other, t, 'bl3');
+  assert.equal(across.places.length, 0, 'a blank name is still not an identity across documents');
+  assert.equal(copiedStop(across).place.kind, 'inline');
+});
+
+test('A-16 step 1 stays first: a key the SOURCE cannot resolve takes step 3 even within one trip', () => {
+  let t = mintedTrip('trip-dangle', 'user:jacob', 'dg', [{ name: 'Vienna', centre: VIENNA }]);
+  t = addPlace(t, { id: 'p-src', cityKey: 'city_gone', name: 'Belvedere', at: BELVEDERE, category: 'sight' });
+  t = addStop(
+    t, { kind: 'scheduled', dayId: '2026-08-08', time: '10:00', order: 0 },
+    { id: 's-src', name: 'Belvedere', category: 'sight', place: { kind: 'place', placeId: 'p-src' } },
+    CTX('dgs'),
+  );
+  const before = validateTrip(t).filter((i) => i.code === 'unknown_city_key').length;
+  assert.equal(before, 1, 'the fixture must already be the data-integrity gap A-16 refuses to paper over');
+
+  const after = copyWithin(t, t, 'dg2');
+  assert.equal(after.places.length, 1, 'no row may be minted for a place whose own city does not exist');
+  const clone = after.days.find((d) => d.id === '2026-08-09')!.stops[0];
+  assert.equal(clone.place.kind, 'inline', 'the coordinate travels; the record does not');
+  assert.equal(
+    validateTrip(after).filter((i) => i.code === 'unknown_city_key').length, before,
+    'the copy minted a NEW unknown_city_key',
+  );
+});
+
+test('A-16 step 2: a STALE source snapshot never files under a key the target no longer holds', () => {
+  const { trip, secondKey } = twoViennas();
+  // The user deletes the second Vienna after the pane rendered. The snapshot the UI holds
+  // still has it; §0.6 — the fact is read from `target`, which is the resource that holds it.
+  const stale = trip;
+  const target: Trip = { ...trip, cities: trip.cities.filter((c) => c.key !== secondKey) };
+
+  const after = copyWithin(target, stale, 'st');
+  assert.deepEqual(
+    validateTrip(after).filter((i) => i.code === 'unknown_city_key'),
+    validateTrip(target).filter((i) => i.code === 'unknown_city_key'),
+    'the stale key was filed into a document that no longer has it',
+  );
+  // A city of that name is still there, so name matching answers: the copy lands on it.
+  const copy = after.places[after.places.length - 1];
+  assert.equal(copy.cityKey, target.cities[0].key, 'a stale source falls through to name matching');
+
+  // With the NAME gone too, it falls all the way through to step 3 — a hole, never a wrong filing.
+  const renamed: Trip = { ...target, cities: target.cities.map((c) => ({ ...c, name: 'Prague' })) };
+  const gone = copyWithin(renamed, stale, 'st2');
+  assert.equal(gone.places.length, renamed.places.length, 'step 3: no row, and no city invented');
+  assert.equal(gone.days.find((d) => d.id === '2026-08-09')!.stops[0].place.kind, 'inline');
+});
+
+test('A-16 step 2: two DIFFERENT documents sharing a city key is a coincidence, not an identity', () => {
+  // Every deterministic IdFactory in this repo mints `city-1` in every document it builds, and
+  // `importDoc`'s "restore as a copy" produces two documents with the same city keys by
+  // construction. Trusting a bare key match would file a Vienna place under the target's
+  // `city-1`, whatever that happens to be.
+  const source = sourceWithPlace({ name: 'Vienna', centre: VIENNA }, { name: 'Belvedere', at: BELVEDERE });
+  // The same `IdFactory` prefix in both documents, which is what `sequentialIds`, the fixtures
+  // and `tools/gen-sample.mjs` all do: `city-1` in every document they build.
+  const target = mintedTrip('trip-tgt', 'user:jacob', 'src', [{ name: 'Prague', centre: PRAGUE }]);
+  assert.equal(source.cities[0].key, target.cities[0].key, 'the fixture is not testing a shared key');
+  assert.notEqual(source.id, target.id);
+
+  const after = copyAcross(target, source, 'coin');
+  assert.equal(after.places.length, 0, 'a bare key match filed a Vienna place under Prague');
+  assert.equal(copiedStop(after).place.kind, 'inline');
+});
+
+// ---------------------------------------------------------------------------
+// R14-3 (routed to the builder; the same purity argument as A-14's step 3)
+// ---------------------------------------------------------------------------
+
+test('R14-3: an inline or absent source place is CLONED into the target, not aliased', () => {
+  let t = mintedTrip('trip-inline', 'user:jacob', 'il', [{ name: 'Vienna', centre: VIENNA }]);
+  t = addStop(
+    t, { kind: 'scheduled', dayId: '2026-08-08', time: '10:00', order: 0 },
+    { id: 's-src', name: 'Inline', category: 'sight', place: { kind: 'inline', at: { lat: 1, lng: 2 } } },
+    CTX('ils'),
+  );
+  const after = copyWithin(t, t, 'il2');
+  const srcPlace = t.days.find((d) => d.id === '2026-08-08')!.stops[0].place;
+  const dstPlace = after.days.find((d) => d.id === '2026-08-09')!.stops[0].place;
+  assert.notEqual(srcPlace, dstPlace, 'the two stops share ONE PlaceLink object');
+  assert.notEqual(
+    srcPlace.kind === 'inline' ? srcPlace.at : null, dstPlace.kind === 'inline' ? dstPlace.at : undefined,
+    'the two documents share ONE mutable LatLng',
+  );
+  assert.deepEqual(dstPlace.kind === 'inline' ? dstPlace.at : null, { lat: 1, lng: 2 });
+
+  let n = mintedTrip('trip-none', 'user:jacob', 'nn', [{ name: 'Vienna', centre: VIENNA }]);
+  n = addStop(
+    n, { kind: 'scheduled', dayId: '2026-08-08', time: '10:00', order: 0 },
+    { id: 's-src', name: 'No place', category: 'sight', place: { kind: 'none' } },
+    CTX('nns'),
+  );
+  const afterNone = copyWithin(n, n, 'nn2');
+  assert.notEqual(
+    n.days.find((d) => d.id === '2026-08-08')!.stops[0].place,
+    afterNone.days.find((d) => d.id === '2026-08-09')!.stops[0].place,
+    '{kind:\'none\'} is a fresh object too — the copy owns every part of its own document',
+  );
 });
 
 test('R5-2 ceiling: the widened rule adds nothing to the unmodified reference trip', () => {
