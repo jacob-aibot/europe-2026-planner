@@ -1500,12 +1500,13 @@ export function syncResolutions(trip: Trip, at: IsoDate): Trip;   // was (trip, 
 Five mechanical points, and they are the whole change:
 
 1. **`detect.ts` grows no second implementation.** Today's `detectConflicts` body moves into one private
-   `runRules(trip, opts, gate: boolean)`; the single gate line becomes `if (gate && rule.class ===
-   'feasibility' && suppressedAsPast(trip, c, opts.today)) continue;`. `detectConflicts` is
-   `runRules(…, true)` and `detectUngated` is `runRules(…, false)`. The gate still lives **once**, where
-   §8.2 put it, and `suppressedAsPast` does not move. *(The `rule_error` synthesis inside that loop is
-   untouched by A-9 — P2-4 is a separate, builder-routed finding and this addendum neither fixes nor
-   worsens it.)*
+   `runRules(trip, opts, gate: boolean)`; the single gate line gains one conjunct at its front and keeps
+   every conjunct it already has — `if (gate && !crashed && rule.class === 'feasibility' &&
+   suppressedAsPast(trip, c, opts.today)) continue;`. `detectConflicts` is `runRules(…, true)` and
+   `detectUngated` is `runRules(…, false)`. The gate still lives **once**, where §8.2 put it, and
+   `suppressedAsPast` does not move. *(The `!crashed` conjunct is P2-4's fix, landed separately at
+   `25a223b`. A-9 neither removes nor relies on it: a `rule_error` note is ungated in both sets, so it can
+   never be the thing that retires a resolution.)*
 2. **`syncResolutions` early-returns twice, cheapest test first.** `if (!trip.resolutions.some((r) =>
    !r.retiredAt)) return trip;` — with no live row there is nothing retirement can do, and this is the
    common case (the reference trip has zero). Then `if (!isIsoDate(at)) return trip;` — `at` used to be
@@ -3260,9 +3261,10 @@ declarative target evaluated against `travelStats`, never a counter that is incr
 **3. The library summary widens, and one rule keeps it honest.** The lifetime map must not load forty trip
 documents — §4.2's *"exactly ONE trip in memory at a time"* is unchanged and is not negotiable here.
 
-The shipped `TripSummaryRow` is `{id, title, startDate, endDate, cityCount, dayCount, stopCount, poolCount,
-revision}` *(§4.2's inline comment says `{…, updatedAt}` and has been wrong since revision 1; corrected in
-this pass, the shipped shape is the contract — the §2.5 precedent)*. It gains
+The shipped `TripSummaryRow` is `{id, title, startDate, endDate, datePrecision, cityCount, dayCount,
+stopCount, poolCount, revision}` *(§4.2's inline comment says `{…, updatedAt}` and has been wrong since
+revision 1; corrected at revision 9, the shipped shape is the contract — the §2.5 precedent.
+`datePrecision` was added by the P2-6 fix at `25a223b`, carried and never branched on)*. It gains
 `countryCodes: CountryCode[]`, `cities: Array<{ key: CityKey; name: string; countryCode: CountryCode | null }>`
 and `summaryVersion: number`. *(Revision 11: the city field was `cityKeys: CityKey[]` and is widened by
 §2.2 A-10 — an opaque key alone can neither label a pin nor join two trips, and a row that must be resolved
