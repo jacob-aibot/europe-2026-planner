@@ -5,7 +5,7 @@
  * one of them bumps `Trip.revision`, which is what the client's derived-cache invalidation
  * keys off (§4.2 rule 3).
  */
-import type { City, Trip, TripMeta } from '../model/types.ts';
+import type { City, DatePrecision, Trip, TripMeta } from '../model/types.ts';
 import type { CityKey, Currency, IdFactory, IsoDate, UserId } from '../model/ids.ts';
 import { LOCAL_OWNER, SCHEMA_VERSION } from '../model/types.ts';
 import { isIsoDate } from '../model/ids.ts';
@@ -37,6 +37,8 @@ export type TripInit = {
   homeBase?: { name: string; at: { lat: number; lng: number } } | null;
   party?: { adults: number; children: number };
   cities?: CityInit[];
+  /** §8.1. Defaults to `'exact'` — display reads it and nothing else. */
+  datePrecision?: DatePrecision;
   meta?: TripMeta;
 };
 
@@ -74,6 +76,7 @@ export function createTrip(init: TripInit, ctx: BuildCtx): Trip {
     startDate: init.startDate,
     endDate: init.endDate,
     homeCurrency: init.homeCurrency ?? 'EUR',
+    datePrecision: init.datePrecision ?? 'exact',
     homeBase: init.homeBase ?? null,
     party: init.party ?? { adults: 1, children: 0 },
     cities,
@@ -89,8 +92,12 @@ export function createTrip(init: TripInit, ctx: BuildCtx): Trip {
   return ensureDays(base, ctx);
 }
 
+/**
+ * §8.9: the allowlist gains `datePrecision` and nothing else. It adds no build function —
+ * the field is data, not a capability.
+ */
 export type TripMetaPatch = Partial<
-  Pick<Trip, 'title' | 'startDate' | 'endDate' | 'homeCurrency' | 'homeBase' | 'party' | 'cities' | 'ownerId' | 'meta'>
+  Pick<Trip, 'title' | 'startDate' | 'endDate' | 'datePrecision' | 'homeCurrency' | 'homeBase' | 'party' | 'cities' | 'ownerId' | 'meta'>
 >;
 
 /**

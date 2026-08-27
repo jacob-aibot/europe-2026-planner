@@ -30,7 +30,7 @@ export type {
   CostEstimate, Money, MoneyBasis, Provenance, ProvenanceSource, ProvenanceState,
   ProvenanceConfidence, Conflict, ConflictKind, ConflictResolution, ConflictSeverity,
   Leg, Issue, IssueCode, Ref, RefKind, LatLng, StopCategory, StopFlag, TravelMode, TravelRole,
-  MoveOverride, CostRollUp, DisplayStatus, OpeningHours, Link, TripCtx, TripMeta,
+  MoveOverride, CostRollUp, DisplayStatus, OpeningHours, Link, TripCtx, TripMeta, DatePrecision,
 } from './model/types.ts';
 export { SCHEMA_VERSION, LOCAL_OWNER } from './model/types.ts';
 export type { TripId, DayId, StopId, PlaceId, BookingId, ConflictId, UserId, CityKey, RuleId, IsoDate, ClockTime, Currency, IdFactory, ClockPort } from './model/ids.ts';

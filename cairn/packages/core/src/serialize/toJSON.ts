@@ -152,6 +152,9 @@ export function toDoc(trip: Trip): Record<string, unknown> {
     ownerId: trip.ownerId,
     startDate: trip.startDate,
     endDate: trip.endDate,
+    // §8.1. Always written (never omitted): the default is total, so writing it keeps the
+    // round trip byte-identical from the first save on rather than only from the second.
+    datePrecision: trip.datePrecision,
     homeCurrency: trip.homeCurrency,
     homeBase: trip.homeBase ? { name: trip.homeBase.name, at: { lat: trip.homeBase.at.lat, lng: trip.homeBase.at.lng } } : null,
     party: { adults: trip.party.adults, children: trip.party.children },

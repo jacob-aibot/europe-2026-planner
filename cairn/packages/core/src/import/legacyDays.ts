@@ -331,6 +331,10 @@ export function importLegacyDays(legacy: LegacyConstants, opts: ImportOpts): Imp
     ownerId: opts.ownerId ?? LOCAL_OWNER,
     startDate: days[0]?.date ?? `${opts.year}-01-01`,
     endDate: days[days.length - 1]?.date ?? `${opts.year}-01-01`,
+    // §8.1: the legacy planner's dates are exact day-by-day dates, so this is 'exact' and
+    // there is nothing to infer. It is written here rather than defaulted so that the one
+    // place a Trip is constructed outside `createTrip` cannot silently drift from it.
+    datePrecision: 'exact',
     homeCurrency: opts.homeCurrency ?? 'EUR',
     homeBase: opts.homeBase ?? null,
     party: opts.party ?? { adults: 1, children: 0 },

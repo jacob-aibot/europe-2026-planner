@@ -288,12 +288,33 @@ export type TripMeta = {
   [k: string]: unknown;
 };
 
+/**
+ * How certain the user is about `startDate`/`endDate` (§8.1). **Display reads this and
+ * nothing else** — no conflict rule, no derive and no validation may branch on it, and
+ * `packages/core/test/datePrecision.test.ts` enforces that as a greppable ceiling.
+ *
+ * `startDate`/`endDate` remain **real calendar dates** whatever this says, so every existing
+ * rule, derive and golden is untouched. *"Japan, March 2019"* is stored as
+ * `2019-03-01 … 2019-03-31, datePrecision:'month'` — the range is honest, and this records
+ * that the user did not claim the 1st and the 31st specifically.
+ */
+export type DatePrecision = 'exact' | 'month' | 'year';
+
+/** The three legal values, in one place, so the parser and the builder cannot disagree. */
+export const DATE_PRECISIONS: readonly DatePrecision[] = ['exact', 'month', 'year'];
+
 export type Trip = {
   id: TripId;
   title: string;
   ownerId: UserId;
   startDate: IsoDate;
   endDate: IsoDate;
+  /**
+   * §8.1. Default `'exact'`; absent in any document written before Phase 2 I-2, which
+   * `migrateDoc` supplies. Stored because it is not derivable, and because retrofitting date
+   * fuzziness after a user has entered forty trips is the expensive migration.
+   */
+  datePrecision: DatePrecision;
   homeCurrency: Currency;
   /**
    * Where the trip starts and ends from (§2.13). Nullable. It is a `geoCheck` anchor — it

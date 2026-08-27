@@ -6,10 +6,10 @@
  * is useless when a document has 112 stops.
  */
 import type {
-  Booking, City, CostEstimate, Day, Money, Place, PlaceLink, Provenance, Stop,
+  Booking, City, CostEstimate, DatePrecision, Day, Money, Place, PlaceLink, Provenance, Stop,
   StopPlacement, Ticket, Trip, ConflictResolution,
 } from '../model/types.ts';
-import { SCHEMA_VERSION } from '../model/types.ts';
+import { DATE_PRECISIONS, SCHEMA_VERSION } from '../model/types.ts';
 
 /** Thrown by `fromJSON` for any malformed document. Carries a JSON path. */
 export class TripParseError extends Error {
@@ -58,6 +58,18 @@ function oneOf<T extends string>(v: unknown, allowed: readonly T[], path: string
     throw new TripParseError(`expected one of ${allowed.join('|')}, got ${JSON.stringify(s)}`, path);
   }
   return s as T;
+}
+/**
+ * §8.1. Absent means a document written before Phase 2 I-2 — the default is `'exact'` and it
+ * is total, so this can never fail on an older document. Anything else present is refused
+ * with the JSON path, exactly as every other hand-validated field is.
+ */
+function datePrecision(v: unknown, path: string): DatePrecision {
+  if (v === undefined) return 'exact';
+  if (typeof v !== 'string' || !DATE_PRECISIONS.includes(v as DatePrecision)) {
+    throw new TripParseError(`expected one of ${DATE_PRECISIONS.map((p) => JSON.stringify(p)).join(', ')}`, path);
+  }
+  return v as DatePrecision;
 }
 function isoDate(v: unknown, path: string): string {
   const s = str(v, path);
@@ -354,6 +366,7 @@ export function fromJSON(input: string | unknown): Trip {
     ownerId: str(o.ownerId, '$.ownerId'),
     startDate: isoDate(o.startDate, '$.startDate'),
     endDate: isoDate(o.endDate, '$.endDate'),
+    datePrecision: datePrecision(o.datePrecision, '$.datePrecision'),
     homeCurrency: str(o.homeCurrency, '$.homeCurrency'),
     // Absent means a document written before §2.13. `null` is a legal value, not a defect.
     homeBase:

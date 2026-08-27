@@ -1019,3 +1019,49 @@ test('R2-7: the retirement reaches STORAGE, because syncResolutions writes the d
   assert.equal(stored.resolutions.find((r) => r.conflictId === target.id)?.retiredAt, TODAY,
     'the retirement never reached the stored bytes');
 });
+
+/**
+ * ROADMAP Phase 2 I-2: `datePrecision` survives undo/redo at the full history depth.
+ *
+ * It rides on the existing `setTripMeta` action and the existing `TripMetaPatch` — no new
+ * action, no reducer change, no new domain logic (§4.2 rule 1). This test exists because the
+ * criterion names depth 50 specifically, and because a field that is present in memory but
+ * absent from a restored snapshot is exactly the failure a new stored field invites.
+ */
+test('I-2: datePrecision carries through undo/redo at depth 50', async () => {
+  const store = await storeWithTrip();
+  assert.equal(store.getState().doc!.datePrecision, 'exact', 'a new trip starts exact');
+
+  store.dispatch({ type: 'setTripMeta', patch: { datePrecision: 'month' } });
+  assert.equal(store.getState().doc!.datePrecision, 'month');
+
+  // Fill the history to its limit with edits that do NOT touch the field, so the snapshot at
+  // the far end of the stack is one that had better still carry it.
+  for (let i = 0; i < HISTORY_LIMIT + 10; i++) {
+    store.dispatch({ type: 'setTripMeta', patch: { title: `edit ${i}` } });
+  }
+  assert.equal(store.getState().history.past.length, HISTORY_LIMIT, 'history did not reach its limit');
+  assert.equal(store.getState().doc!.datePrecision, 'month', 'the field was lost while editing other fields');
+
+  for (let i = 0; i < HISTORY_LIMIT; i++) store.undo();
+  assert.equal(store.getState().history.past.length, 0);
+  assert.equal(store.getState().doc!.datePrecision, 'month', 'undo to the bottom of the stack lost datePrecision');
+
+  for (let i = 0; i < HISTORY_LIMIT; i++) store.redo();
+  assert.equal(store.getState().doc!.datePrecision, 'month', 'redo to the top of the stack lost datePrecision');
+  assert.equal(store.getState().doc!.title, `edit ${HISTORY_LIMIT + 9}`);
+});
+
+test('I-2: datePrecision survives a save and reopen through the storage port', async () => {
+  const p = ports();
+  const store = createStore({ ports: p });
+  await store.createTrip(TRIP_INIT);
+  const id = store.getState().activeTripId!;
+  store.dispatch({ type: 'setTripMeta', patch: { datePrecision: 'year' } });
+  await store.flush();
+  await store.closeTrip();
+  await store.openTrip(id);
+  assert.equal(store.getState().doc!.datePrecision, 'year');
+  // And on the bytes the port actually holds, not just on in-memory state.
+  assert.equal(core.fromJSON(p.storage.docs.get(id)!).datePrecision, 'year');
+});
