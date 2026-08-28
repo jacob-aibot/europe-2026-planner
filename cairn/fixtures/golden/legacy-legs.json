@@ -1,0 +1,536 @@
+{
+  "$generatedBy": "cairn/tools/gen-golden.mjs",
+  "$source": "europe-2026-itinerary.html (read-only)",
+  "$sourceSha256": "40955ca0b182dddcc33540accadf2a65a329bc20b9e6ca109c9884e776bb06d2",
+  "$what": "legBetween() from the live page, run over the live page's DAYS. Index-aligned with day.stops.",
+  "legs": {
+    "08-07": [
+      null,
+      {
+        "mode": "flight",
+        "mins": 660,
+        "km": 9321.213965
+      }
+    ],
+    "08-08": [
+      null,
+      {
+        "mode": "flight",
+        "mins": 80,
+        "km": 621.032811
+      },
+      {
+        "mode": "train",
+        "mins": 16,
+        "km": 17.361088
+      },
+      {
+        "mode": "transit",
+        "mins": 12,
+        "km": 1.738927
+      },
+      {
+        "mode": "transit",
+        "mins": 20,
+        "km": 3.099987
+      },
+      {
+        "mode": "walk",
+        "mins": 18,
+        "km": 1.037868
+      },
+      {
+        "mode": "walk",
+        "mins": 11,
+        "km": 0.649994
+      },
+      {
+        "mode": "walk",
+        "mins": 14,
+        "km": 0.8237
+      }
+    ],
+    "08-09": [
+      {
+        "mode": "metro",
+        "mins": 22,
+        "km": null
+      },
+      {
+        "mode": "metro",
+        "mins": 25,
+        "km": 4.610728
+      },
+      {
+        "mode": "metro",
+        "mins": 14,
+        "km": 1.696524
+      },
+      {
+        "mode": "transit",
+        "mins": 16,
+        "km": 2.27841
+      },
+      {
+        "mode": "metro",
+        "mins": 12,
+        "km": 2.961929
+      },
+      {
+        "mode": "metro",
+        "mins": 14,
+        "km": 2.961929
+      }
+    ],
+    "08-10": [
+      {
+        "mode": "train",
+        "mins": 16,
+        "km": null
+      },
+      {
+        "mode": "flight",
+        "mins": 80,
+        "km": 631.08786
+      },
+      {
+        "mode": "bus",
+        "mins": 32,
+        "km": 15.94175
+      },
+      {
+        "mode": "walk",
+        "mins": 24,
+        "km": 1.565963
+      },
+      {
+        "mode": "bus",
+        "mins": 18,
+        "km": 4.494621
+      },
+      {
+        "mode": "bus",
+        "mins": 18,
+        "km": 3.401874
+      },
+      {
+        "mode": "walk",
+        "mins": 15,
+        "km": 0.500313
+      }
+    ],
+    "08-11": [
+      null,
+      {
+        "mode": "boat",
+        "mins": 12,
+        "km": 1.800957
+      },
+      {
+        "mode": "boat",
+        "mins": 45,
+        "km": 2.115125
+      },
+      {
+        "mode": "walk",
+        "mins": 8,
+        "km": 0.431735
+      },
+      {
+        "mode": "walk",
+        "mins": 15,
+        "km": 0.244189
+      }
+    ],
+    "08-12": [
+      {
+        "mode": "walk",
+        "mins": 9,
+        "km": null
+      },
+      {
+        "mode": "bus",
+        "mins": 245,
+        "km": 162.462822
+      },
+      {
+        "mode": "walk",
+        "mins": 15,
+        "km": 1.000084
+      },
+      {
+        "mode": "walk",
+        "mins": 18,
+        "km": 1.10721
+      },
+      {
+        "mode": "walk",
+        "mins": 25,
+        "km": 1.181013
+      },
+      {
+        "mode": "bus",
+        "mins": 30,
+        "km": 2.426623
+      },
+      {
+        "mode": "walk",
+        "mins": 15,
+        "km": 4.397512
+      },
+      {
+        "mode": "walk",
+        "mins": 4,
+        "km": 1.10721
+      }
+    ],
+    "08-13": [
+      null,
+      {
+        "mode": "speedboat",
+        "mins": 105,
+        "km": 63.626263
+      },
+      {
+        "mode": "speedboat",
+        "mins": 45,
+        "km": 17.829123
+      },
+      {
+        "mode": "speedboat",
+        "mins": 25,
+        "km": 4.1227
+      },
+      {
+        "mode": "speedboat",
+        "mins": 50,
+        "km": 19.531489
+      },
+      {
+        "mode": "walk",
+        "mins": 5,
+        "km": 37.374309
+      },
+      {
+        "mode": "walk",
+        "mins": 5,
+        "km": 0.276794
+      }
+    ],
+    "08-14": [
+      {
+        "mode": "bus",
+        "mins": 90,
+        "km": null
+      },
+      {
+        "mode": "taxi",
+        "mins": 83,
+        "km": 54.317677
+      },
+      {
+        "mode": "boat",
+        "mins": 20,
+        "km": 3.430538
+      },
+      null,
+      {
+        "mode": "taxi",
+        "mins": 24,
+        "km": 13.010022
+      },
+      {
+        "mode": "boat",
+        "mins": 20,
+        "km": 13.010022
+      },
+      {
+        "mode": "bus",
+        "mins": 80,
+        "km": 3.430538
+      }
+    ],
+    "08-15": [
+      null,
+      {
+        "mode": "bus",
+        "mins": 35,
+        "km": 11.957961
+      },
+      {
+        "mode": "flight",
+        "mins": 95,
+        "km": 745.869541
+      },
+      {
+        "mode": "bus",
+        "mins": 40,
+        "km": 12.689396
+      },
+      {
+        "mode": "metro",
+        "mins": 20,
+        "km": 1.792692
+      },
+      {
+        "mode": "walk",
+        "mins": 23,
+        "km": 1.365719
+      }
+    ],
+    "08-16": [
+      null,
+      {
+        "mode": "bike",
+        "mins": 6,
+        "km": 0.922896
+      },
+      {
+        "mode": "walk",
+        "mins": 8,
+        "km": 0.634453
+      },
+      {
+        "mode": "walk",
+        "mins": 4,
+        "km": 0.260662
+      },
+      {
+        "mode": "walk",
+        "mins": 3,
+        "km": 0.057399
+      },
+      {
+        "mode": "metro",
+        "mins": 20,
+        "km": 2.417147
+      },
+      {
+        "mode": "metro",
+        "mins": 18,
+        "km": 1.854438
+      },
+      {
+        "mode": "walk",
+        "mins": 5,
+        "km": 0.311346
+      },
+      {
+        "mode": "transit",
+        "mins": 12,
+        "km": 1.161205
+      }
+    ],
+    "08-17": [
+      null,
+      {
+        "mode": "walk",
+        "mins": 20,
+        "km": 1.234213
+      },
+      {
+        "mode": "walk",
+        "mins": 2,
+        "km": 0.054666
+      },
+      {
+        "mode": "walk",
+        "mins": 3,
+        "km": 0.102322
+      },
+      {
+        "mode": "walk",
+        "mins": 3,
+        "km": 0.110529
+      },
+      {
+        "mode": "walk",
+        "mins": 5,
+        "km": 0.213374
+      },
+      {
+        "mode": "walk",
+        "mins": 10,
+        "km": 0.288852
+      },
+      {
+        "mode": "walk",
+        "mins": 5,
+        "km": 0.136446
+      },
+      {
+        "mode": "walk",
+        "mins": 10,
+        "km": 0.399692
+      },
+      {
+        "mode": "walk",
+        "mins": 15,
+        "km": 0.368715
+      },
+      {
+        "mode": "walk",
+        "mins": 11,
+        "km": 0.625305
+      },
+      {
+        "mode": "walk",
+        "mins": 10,
+        "km": 0
+      }
+    ],
+    "08-18": [
+      {
+        "mode": "metro",
+        "mins": 20,
+        "km": null
+      },
+      {
+        "mode": "bus",
+        "mins": 40,
+        "km": 11.287446
+      },
+      {
+        "mode": "flight",
+        "mins": 75,
+        "km": 471.593264
+      },
+      {
+        "mode": "bus",
+        "mins": 40,
+        "km": 18.250946
+      },
+      {
+        "mode": "walk",
+        "mins": 10,
+        "km": 1.064194
+      },
+      null,
+      {
+        "mode": "walk",
+        "mins": 12,
+        "km": 0.797838
+      },
+      {
+        "mode": "walk",
+        "mins": 14,
+        "km": 0.804885
+      },
+      {
+        "mode": "walk",
+        "mins": 15,
+        "km": 1.163086
+      },
+      {
+        "mode": "walk",
+        "mins": 11,
+        "km": 0.662271
+      }
+    ],
+    "08-19": [
+      null,
+      {
+        "mode": "metro",
+        "mins": 22,
+        "km": 1.472898
+      },
+      {
+        "mode": "transit",
+        "mins": 20,
+        "km": 3.072591
+      },
+      {
+        "mode": "walk",
+        "mins": 20,
+        "km": 3.966369
+      },
+      {
+        "mode": "walk",
+        "mins": 10,
+        "km": 0.58007
+      }
+    ],
+    "08-20": [
+      null,
+      {
+        "mode": "walk",
+        "mins": 5,
+        "km": 0.156944
+      },
+      {
+        "mode": "transit",
+        "mins": 25,
+        "km": 1.243161
+      },
+      {
+        "mode": "walk",
+        "mins": 5,
+        "km": 0.15816
+      },
+      null,
+      {
+        "mode": "walk",
+        "mins": 6,
+        "km": 0.329275
+      },
+      null,
+      {
+        "mode": "walk",
+        "mins": 20,
+        "km": 1.395179
+      }
+    ],
+    "08-21": [
+      null,
+      {
+        "mode": "bus",
+        "mins": 40,
+        "km": 17.331364
+      },
+      {
+        "mode": "flight",
+        "mins": 165,
+        "km": 1489.015304
+      },
+      {
+        "mode": "bus",
+        "mins": 35,
+        "km": 10.71582
+      },
+      null,
+      {
+        "mode": "walk",
+        "mins": 15,
+        "km": 0.605264
+      },
+      {
+        "mode": "walk",
+        "mins": 10,
+        "km": 0.605264
+      }
+    ],
+    "08-22": [
+      null,
+      {
+        "mode": "walk",
+        "mins": 12,
+        "km": 0.978259
+      },
+      {
+        "mode": "walk",
+        "mins": 10,
+        "km": 0.589983
+      },
+      {
+        "mode": "bus",
+        "mins": 35,
+        "km": 10.878943
+      },
+      {
+        "mode": "flight",
+        "mins": 670,
+        "km": 8760.100826
+      }
+    ]
+  }
+}

@@ -1,0 +1,71 @@
+const core = await import('../packages/core/src/index.ts');
+const { loadEurope2026 } = await import('../fixtures/loadEurope2026.mjs');
+const ok = (n, c, x = '') => console.log((c ? '  ok   ' : '  FAIL ') + n, c ? '' : x);
+const { trip } = loadEurope2026();
+const json = core.toJSON(trip);
+
+console.log('== malformed / hostile documents ==');
+const cases = {
+  'empty string': '',
+  'not json': '{{{',
+  truncated: json.slice(0, Math.floor(json.length / 2)),
+  null: 'null',
+  array: '[]',
+  number: '42',
+  'schemaVersion 99': JSON.stringify({ ...JSON.parse(json), schemaVersion: 99 }),
+  'schemaVersion 0': JSON.stringify({ ...JSON.parse(json), schemaVersion: 0 }),
+  'schemaVersion "1"': JSON.stringify({ ...JSON.parse(json), schemaVersion: '1' }),
+  'no schemaVersion': (() => { const o = JSON.parse(json); delete o.schemaVersion; return JSON.stringify(o); })(),
+  'unknown category': json.replace('"category":"sight"', '"category":"nuclear"'),
+  'unknown provenance source': json.replace('"source":"user"', '"source":"nsa"'),
+  'unknown placement kind': json.replace('"kind":"scheduled"', '"kind":"telepathic"'),
+  'proto pollution top': json.replace('{', '{"__proto__":{"polluted":true},'),
+  'proto in stop': json.replace('"stops":[', '"stops":[{"__proto__":{"pwn":1},"id":"x","name":"x"},'),
+  'huge nesting': '['.repeat(2000) + ']'.repeat(2000),
+  'ownerId missing': (() => { const o = JSON.parse(json); delete o.ownerId; return JSON.stringify(o); })(),
+  'days null': (() => { const o = JSON.parse(json); o.days = null; return JSON.stringify(o); })(),
+  'stops not array': (() => { const o = JSON.parse(json); o.days[0].stops = {}; return JSON.stringify(o); })(),
+  'lat is string': json.replace('"lat":33.9425', '"lat":"33.9425"'),
+  'lat is 1e999': json.replace('"lat":33.9425', '"lat":1e999'),
+};
+for (const [name, doc] of Object.entries(cases)) {
+  try {
+    const t = core.fromJSON(doc);
+    console.log('   ACCEPTED  ' + name + '  -> days=' + (t.days ? t.days.length : '?'));
+  } catch (e) {
+    console.log('   rejected  ' + name + '  -> ' + e.constructor.name + (e.path ? ' @' + e.path : '') + ': ' + String(e.message).slice(0, 80));
+  }
+}
+console.log('   Object.prototype.polluted?', {}.polluted === undefined ? 'no' : 'YES');
+console.log('   Object.prototype.pwn?', {}.pwn === undefined ? 'no' : 'YES');
+
+console.log('');
+console.log('== unicode / emoji round trip ==');
+const names = [
+  'Vyšehrad',
+  'Széchenyi',
+  'Jiráskovo náměstí',
+  'Srđ',
+  '🇭🇷 Dubrovnik',
+  'x'.repeat(5000),
+  '<' + '/script><script>alert(1)</script>',
+  'nul\u0000byte',
+  'rtl\u202eoverride',
+];
+const ctx = { ids: core.sequentialIds('u'), now: '2026-01-01', actorUserId: 'u1' };
+let t2 = trip;
+for (const n of names) {
+  t2 = core.addStop(t2, { kind: 'scheduled', dayId: '2026-08-13', time: '10:00', order: 99 },
+    { name: n, category: 'sight', place: { kind: 'none' }, note: n }, ctx);
+}
+const rt = core.fromJSON(core.toJSON(t2));
+const got = rt.days.find((d) => d.id === '2026-08-13').stops.map((s) => s.name);
+for (const n of names) ok('round-trips: ' + JSON.stringify(n.slice(0, 24)), got.includes(n));
+ok('byte-identical re-serialize', core.toJSON(rt) === core.toJSON(t2));
+
+console.log('');
+console.log('== migrateDoc ==');
+try { core.migrateDoc({ ...JSON.parse(json), schemaVersion: 99 }); console.log('   migrateDoc(v99) ACCEPTED'); }
+catch (e) { console.log('   migrateDoc(v99) rejected: ' + e.constructor.name + ': ' + e.message.slice(0, 110)); }
+try { core.migrateDoc({ schemaVersion: 1, trip: {} }); console.log('   migrateDoc(v1 minimal) ACCEPTED'); }
+catch (e) { console.log('   migrateDoc(v1 minimal) rejected: ' + e.constructor.name + ': ' + e.message.slice(0, 100)); }

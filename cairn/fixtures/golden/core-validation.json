@@ -1,0 +1,172 @@
+{
+  "$generatedBy": "cairn/tools/gen-golden.mjs",
+  "$source": "europe-2026-itinerary.html (read-only)",
+  "$sourceSha256": "40955ca0b182dddcc33540accadf2a65a329bc20b9e6ca109c9884e776bb06d2",
+  "$what": "validateTrip() on the unmodified fixture. No live-app counterpart exists.",
+  "issues": [
+    {
+      "level": "warn",
+      "code": "cost_basis_mixed",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-37"
+      },
+      "message": "\"Speedboat pickup — Split harbour\" is priced in USD on a trip kept in EUR; core will not convert it.",
+      "params": {
+        "stopId": "stop-37",
+        "currencies": "USD",
+        "homeCurrency": "EUR",
+        "display": "$159.98pp"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "cost_basis_mixed",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-54"
+      },
+      "message": "\"Airport Express bus → city centre\" is priced in CZK on a trip kept in EUR; core will not convert it.",
+      "params": {
+        "stopId": "stop-54",
+        "currencies": "CZK",
+        "homeCurrency": "EUR",
+        "display": "~100 CZK"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "cost_basis_mixed",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-57"
+      },
+      "message": "\"Jewish Quarter (Josefov)\" is priced in CZK on a trip kept in EUR; core will not convert it.",
+      "params": {
+        "stopId": "stop-57",
+        "currencies": "CZK",
+        "homeCurrency": "EUR",
+        "display": "~550 CZK"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "cost_basis_mixed",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-67"
+      },
+      "message": "\"Prague Castle grounds & ticket queue\" is priced in CZK on a trip kept in EUR; core will not convert it.",
+      "params": {
+        "stopId": "stop-67",
+        "currencies": "CZK",
+        "homeCurrency": "EUR",
+        "display": "~450 CZK"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "cost_basis_mixed",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-79"
+      },
+      "message": "\"Airport Express bus → Václav Havel Airport (PRG)\" is priced in CZK on a trip kept in EUR; core will not convert it.",
+      "params": {
+        "stopId": "stop-79",
+        "currencies": "CZK",
+        "homeCurrency": "EUR",
+        "display": "~100 CZK"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "cost_basis_mixed",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-92"
+      },
+      "message": "\"Board the Danube dinner cruise — Akadémia 3 Dock\" is priced in USD on a trip kept in EUR; core will not convert it.",
+      "params": {
+        "stopId": "stop-92",
+        "currencies": "USD",
+        "homeCurrency": "EUR",
+        "display": "$573.25 total"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "cost_basis_mixed",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-107"
+      },
+      "message": "\"Dinner — Windsor town centre\" is priced in GBP on a trip kept in EUR; core will not convert it.",
+      "params": {
+        "stopId": "stop-107",
+        "currencies": "GBP",
+        "homeCurrency": "EUR",
+        "display": "£20–35"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "cost_basis_mixed",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-108"
+      },
+      "message": "\"Windsor Castle\" is priced in GBP on a trip kept in EUR; core will not convert it.",
+      "params": {
+        "stopId": "stop-108",
+        "currencies": "GBP",
+        "homeCurrency": "EUR",
+        "display": "~£32"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "cost_basis_mixed",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-110"
+      },
+      "message": "\"Lunch — Windsor or Eton riverside\" is priced in GBP on a trip kept in EUR; core will not convert it.",
+      "params": {
+        "stopId": "stop-110",
+        "currencies": "GBP",
+        "homeCurrency": "EUR",
+        "display": "£18–28"
+      }
+    },
+    {
+      "level": "warn",
+      "code": "cost_basis_mixed",
+      "ref": {
+        "kind": "stop",
+        "id": "stop-111"
+      },
+      "message": "\"Collect bags, head to Heathrow\" is priced in GBP on a trip kept in EUR; core will not convert it.",
+      "params": {
+        "stopId": "stop-111",
+        "currencies": "GBP",
+        "homeCurrency": "EUR",
+        "display": "£5–20"
+      }
+    },
+    {
+      "level": "error",
+      "code": "lat_lng_out_of_range",
+      "ref": {
+        "kind": "place",
+        "id": "place-92"
+      },
+      "message": "Place \"Windsor Great Park / Long Walk\" has no coordinates at all.",
+      "params": {
+        "placeId": "place-92",
+        "name": "Windsor Great Park / Long Walk",
+        "cityKey": "london"
+      }
+    }
+  ]
+}

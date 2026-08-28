@@ -1,0 +1,777 @@
+# QA reproduction scripts
+
+The scripts behind `cairn/docs/QA-FINDINGS.md`. They are **not** part of the product and are
+not run by `npm test`. Each one is a standalone probe; run it from this directory.
+
+```bash
+cd cairn/qa
+node accept.mjs        # every ROADMAP Phase 1 acceptance number, re-derived independently
+node attack1.mjs       # zero-day / inverted / impossible-calendar trips; immutability; displayStatus matrix
+node attack2.mjs       # validateTrip density, geo typos, out-of-range coords, pool round trip
+node attack3.mjs       # geo_outlier scope; conflict ids under an Aug 18 edit
+node attack5.mjs       # F-5: the Fisherman's Bastion typo vs geo_outlier / validateTrip coverage
+node attack6.mjs       # legacy -> core coordinate parity for scheduled and pool stops
+node attack7.mjs       # F-12: malformed / hostile documents, prototype pollution, unicode round trip
+node attack8.mjs       # F-7: updateStop patch escape; rollUpCost target
+node access.mjs        # the full 12-principal x 5-operation access matrix (F-13)
+node client1.mjs       # F-2 (headless), ui leakage, undo/redo depth, save failure, quota
+node confid.mjs        # F-9: the Aug 18 conflict-id criterion
+node confid2.mjs       # F-10: dismissed-conflict resurrection, resolutions growth
+node probe1.mjs        # F-4: the 12 blockers, listed
+node prov.mjs          # F-6, F-7, F-17: provenance escape paths
+node rev.mjs           # revision bumping and derived-cache keying
+node rules.mjs         # F-8 and the rules that stay silent on the fixture
+```
+
+Browser probes need `npm run web:build && npm run serve` in one shell first, then:
+
+```bash
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node browser2.mjs   # badges, spine, Aug 8 map
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node browser3.mjs   # map refit, corrupt document
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node browser4.mjs   # F-2 in a real browser, two tabs
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node browser5.mjs   # F-1 two tabs, one trip; zero-day trip
+```
+
+A "FAIL" line in this directory means the probe found what it was looking for. Read the
+finding in `../docs/QA-FINDINGS.md` before assuming a script is broken.
+
+---
+
+## Round 2 (2026-08-25, `master` @ `fcceb56`)
+
+Written against the re-delivery. `cairn/docs/QA-FINDINGS.md` names the finding each one
+backs. Headless probes run from `cairn/`:
+
+```bash
+node qa/r2-copy.mjs         # copyStopInto: every provenance escape path; credentials in notes (R2-3)
+node qa/r2-copy2.mjs        # the copy through the client store: undo/redo, Place copy, browse read-only
+node qa/r2-import.mjs       # importDoc F-2/F-6 re-check; storage failure, quota, corrupt documents
+node qa/r2-resolutions.mjs  # R2-7: syncResolutions has no caller, so a dismissal still resurrects
+node qa/r2-access.mjs       # R2-6: F-13 re-check, and the share's own dates failing open
+node qa/r2-data.mjs         # real-trip shapes; travelRole x geoCheck x copy interactions (R2-9)
+node qa/r2-constraints.mjs  # cairn-constraints: determinism, DOM, zero-dep, coordinates in params
+node qa/r2-redact.mjs       # R2-4: the credential set derived from the trip, greped against dist/
+```
+
+`r2-redact.mjs` needs `npm run web:build` first. Browser probes need
+`npm run web:build && node tools/serve.mjs` in one shell, then:
+
+```bash
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r2-browser.mjs    # Browse & copy, badges, credit line
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r2-poolloss.mjs   # R2-2: a pooled transit stop vanishes
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r2-tabs.mjs       # the revision guard's sequential case
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r2-race.mjs       # R2-1: two tabs at once, an edit lost
+```
+
+`r2-race.mjs` is timing-dependent by nature: it lost an edit in 2 of 3 rounds when filed.
+
+---
+
+## Round 3 (2026-08-26, `master` @ `a746d75`)
+
+Re-verification of the R2-1 / R2-2 fix. `cairn/docs/QA-FINDINGS.md` names the finding each one
+backs. Headless probes run from `cairn/`:
+
+```bash
+node qa/r3-cas.mjs      # the atomic saveIfRevision: 3-way race, self-race, in-flight trip switch,
+                        # storage failure mid-chain, ABA, corrupt records, rapid-fire dispatches
+node qa/r3-cas2.mjs     # R3-4/R3-5/R3-8/R3-9 — ABA in a user-shaped sequence, corrupt records x6,
+                        # the catch-all's double render, the transcribed save indicator
+node qa/r3-undo.mjs     # R3-1 (BLOCKER) — undo lowers the stored revision and reopens R2-1
+node qa/r3-loss.mjs     # R3-2 (BLOCKER) — the 400 ms debounce vs closeTrip / openTrip
+node qa/r3-merge.mjs    # R3-3 — mergeWithStored assigns `saving` instead of chaining onto it
+node qa/r3-pool.mjs     # R2-2's fix: poolCityFor, pool_stop_unknown_city, the catch-all round trip
+```
+
+Browser probes need `npm run web:build && node tools/serve.mjs` in one shell, then:
+
+```bash
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r3-browser.mjs   # R3-1 and R3-2 in real IndexedDB
+```
+
+`r3-browser.mjs` is **not** timing-dependent: both cases are deterministic sequences, not races.
+R2-6, R2-11 and R2-18 were re-confirmed with the unmodified round-2 scripts (`r2-access.mjs`,
+`r2-copy.mjs`, `r2-constraints.mjs`) and are unchanged by `a746d75`.
+
+Note: `r3-pool.mjs` was corrected in this round — it was calling `addStop(trip, dayId, …)` and
+`setDayMeta(trip, id, patch, ctx)`, and the real signatures are `addStop(trip, placement, init,
+ctx)` and `setDayMeta(trip, id, patch)`. It aborted at section 2 before the fix.
+
+---
+
+## Round 4 (2026-08-26, `master` @ `3a124a2`) — the phase-gate re-verification
+
+Written against the §2.2a `StorageVersion` / flush-before-switch delivery. Headless probes
+run from `cairn/`:
+
+```bash
+node qa/r4-switch.mjs   # R4-1 (BLOCKER) §1-3; 3 and 4 concurrent tabs; a trip deleted under
+                        # another tab; mergeWithStored vs a switch; importDoc onto a live id;
+                        # §10 falsifies ARCHITECTURE §2.2a rule 1's "equal revision implies
+                        # identical content" in six lines
+```
+
+Browser probes need `npm run web:build && node tools/serve.mjs` in one shell, then:
+
+```bash
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r4-browser.mjs  # R4-1 in real IndexedDB, and
+                                                                  # the visibilitychange/pagehide
+                                                                  # leg BUILD-NOTES §6 never ran
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r4-epoch.mjs    # R4-2 (BLOCKER) — a token from
+                                                                  # a destroyed database accepted
+                                                                  # by its replacement
+```
+
+Neither is timing-dependent: both are deterministic sequences, not races. `r4-browser.mjs` §1
+does depend on the second edit landing inside the 400 ms debounce that follows the undo, which
+is why it uses `DayTimeline`'s ↑/↓ reorder button (one click, one dispatch) rather than the
+rename dialog.
+
+R3-3, R2-6, R2-11 and R2-18 were re-confirmed with the unmodified scripts (`r3-merge.mjs`,
+`r2-access.mjs`, `r2-copy.mjs`, `r2-constraints.mjs`) and are unchanged by `3a124a2`.
+`r3-cas2.mjs` probe **3** now passes — R3-5 is closed as a side effect of the fence redesign,
+which the builder's report did not claim.
+
+---
+
+## Round 5 (2026-08-26, `master` @ `c3c79b3`) — verification of the §2.2b freshness rule
+
+Written against the R4-1 / R4-2 / R2-11 delivery. Headless probe runs from `cairn/`:
+
+```bash
+node qa/r5-freshness.mjs   # §1 the dirty oracle over mergeWithStored / createTrip / importDoc /
+                           #    deleteTrip / syncResolutions — the transitions dirty.test.ts's
+                           #    200-step walk never visits
+                           # §2 every way to fool flushForTransition's three-conjunct skip,
+                           #    including R5-3 (the not-dirty 'conflict' trap)
+                           # §3 the token mint: 200 port instances, 300k CSPRNG mints, opacity,
+                           #    and the no-token-literal ceiling
+                           # §4 the derived cache's (doc identity, today) key
+                           # §5 the R2-11 ruling — requireActor, accepted_by_non_member, and
+                           #    R5-2's null / undefined / '' actor (the classification finding)
+                           # §6 R5-1 (BLOCKER) — an edit dispatched during a transition's own
+                           #    flush, across all six transitions by name
+```
+
+Browser probe needs `npm run web:build && node tools/serve.mjs` in one shell, then:
+
+```bash
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r5-browser.mjs   # R5-1 through the shipped UI
+```
+
+`r5-browser.mjs` is **not** a race in the flaky sense — it sweeps the delay between the "Cairn"
+click and the ↓ click across 0/1/2/4/8 ms and reproduced at all five when filed. It is timing-
+*shaped* by nature (the window is the length of one real IndexedDB write), so `r5-freshness.mjs`
+§6 is the deterministic form and is what a fix should be verified against first.
+
+R4-1 and R4-2 were re-verified with the unmodified `qa/r4-browser.mjs` (4/4 ok) and
+`qa/r4-epoch.mjs` (6/6 ok). R3-3, R3-6…R3-9, R2-6, R2-7, R2-9, R2-11 and R2-18 were re-run with
+the unmodified round-2/3 scripts and are unchanged by `c3c79b3`.
+
+**Two round-2 probes no longer run at all** and were left alone rather than quietly repaired:
+`qa/r2-copy2.mjs:86` and `qa/r2-import.mjs:51` both do `JSON.parse(await storage.load(id))`, and
+`StoragePort.load()` has returned `{doc, version}` since `3a124a2` (ARCHITECTURE §2.2a rule 4).
+They have not executed since round 2; anyone re-running them needs `.doc` first.
+
+---
+
+## Round 6 (2026-08-26, `master` @ `5f92145`)
+
+Independent verification of the R5-1 / R5-2 / R5-5 fix pass. Headless, from `cairn/`:
+
+```bash
+node qa/r6-flush.mjs   # the R5-1 drain loop, attacked: mid-flush edits on the same and on
+                       # another trip, the bound exhausted with a REAL scheduler, a refusal
+                       # arriving mid-loop, all six transitions propagating false, R3-3 x the
+                       # loop, deleteTrip(active) racing a parked flush
+node qa/r6-actor.mjs   # accepted_by_non_member over ten actor shapes x four ref kinds, the
+                       # §2.14 exemptions, the reference-trip ceiling re-derived, and R5-5's
+                       # export surface
+```
+
+Both are **oracles, not confirmations**: against the pre-fix code (`flushForTransition` reverted
+to `d97feed`'s single pass, `if (!actor || …)` restored, `accept`/`reject` re-exported, all in a
+scratch copy) they report 12 FAIL and 17 FAIL respectively, versus 3 and 5 at `5f92145`. The
+FAILs that remain at `5f92145` are R6-1/R6-2 (`r6-flush.mjs` §3), R3-3's static probe
+(`r6-flush.mjs` §6, a known-open finding restated) and `r6-actor.mjs`'s params-fidelity note on
+non-string actors, which is an observation rather than a filed defect — see QA-FINDINGS round 6.
+
+`qa/r5-freshness.mjs` still crashes at `:602` on `core.accept`, which is the R5-5 fix taking
+effect. It was **not** patched, deliberately, same ruling as `r2-copy2.mjs` / `r2-import.mjs`
+above; §1–§5 still run and were used this round.
+
+---
+
+## Round 7 (2026-08-26, `master` @ `32a3839`)
+
+Independent verification of the R3-3 fix (`chainOntoSaving`). Headless, from `cairn/`:
+
+```bash
+node qa/r7-chain.mjs      # the chain, attacked: a THREE-way pile-up (autosave + flush() +
+                          # mergeWithStored) measured at the port; a genuine third writer
+                          # landing mid-queue; a link that really rejects (the `.catch(() => {})`
+                          # claim); the merge branch rejecting; R5-1's drain loop x the chain;
+                          # merge LATENCY and what is on screen for it; the button pressed twice;
+                          # the deleted-trip branch; a stalled chain; deleteTrip off the chain;
+                          # and the structural claim (one saveIfVersion call site, three
+                          # writeAndSettle, all inside chainOntoSaving)
+node qa/r7-r6recheck.mjs  # R6-1/R6-2's SEVERITY re-derived independently of r6-flush.mjs:
+                          # the bound-exhausted abort, then all three backstops — the next
+                          # keystroke, registerPageExit (visibilitychange AND pagehide), and
+                          # beforeunload's preventDefault
+```
+
+Browser probe needs `npm run web:build && node tools/serve.mjs` in one shell, then:
+
+```bash
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r7-browser.mjs   # R3-3 end to end through
+                                                                  # the shipped UI, and R7-1's
+                                                                  # reachability swept at
+                                                                  # 0/30/80/150 ms
+```
+
+`r7-chain.mjs` is an **oracle, not a confirmation**: against the parent commit `584c218` (in a
+scratch `git worktree`, never in `cairn/`) it reports **10 FAIL**; at `32a3839` it reports **3**,
+and all three of those also FAIL at `584c218`, so nothing it still reports is a regression.
+`r7-r6recheck.mjs` reports **0 FAIL** — a FAIL there would mean R6-1/R6-2 are worse than MINOR.
+`r7-browser.mjs` is timing-*shaped* but not flaky: §2 sweeps four inter-click gaps and the
+second press fails to land at all four.
+
+**Probe rot found this round and deliberately not patched** (same ruling as rounds 5 and 6):
+
+- `qa/r6-flush.mjs` §6's static check is `/^\s*saving = (?!saving)/gm`, which now matches
+  `chainOntoSaving`'s own `saving = run;` and falsely reports R3-3 open. `qa/r3-merge.mjs`'s
+  check (`/^\s*saving = \(async/`) is the correct one. One of `r6-flush.mjs`'s three FAILs is
+  stale; R6-1/R6-2 account for the other two.
+- `qa/r2-constraints.mjs`'s zero-dep check counts `packages/client`'s workspace-internal
+  `{"@cairn/core": "*"}` as a runtime dependency. The root workspace declares none at all.
+  Only R2-18 is a real FAIL in that probe.
+- `qa/r5-freshness.mjs:602`, `qa/r2-copy2.mjs:86`, `qa/r2-import.mjs:51` remain rotten.
+
+---
+
+## Round 8 (2026-08-27, `master` @ `0a58c81`) — the gate-breaker pass over the SEND-BACK work
+
+Narrow: the diff `5bdd0dc..0a58c81` only (B-1…B-7, A-1…A-4). R2–R7 were **not** re-run.
+Headless, from `cairn/`:
+
+```bash
+node qa/r8-geo.mjs      # A-1 (§2.13 revision 5) falsified twice — R8-2, the copied PLACE
+                        # rule 4 drags in mints a geo_outlier BLOCKER on the real fixture;
+                        # R8-3, accepting a copied stop REPLACES the adjacent-day anchor and
+                        # mints a blocker on a user-authored stop. §3 is the half A-1 did
+                        # deliver: copy-of-a-copy place chains, credit direction, exemption.
+node qa/r8-persist.mjs  # §1 R8-4 — mergeWithStored's OFF-CHAIN load() lets an in-flight merge
+                        #    resurrect a trip the delete link just removed (A-2)
+                        # §2 the delete orderings A-2 did close (confirmations)
+                        # §3 R8-1 — undo restores a PRE-RETIREMENT snapshot, so a dismissed
+                        #    blocker comes back dismissed (§2.7, opened by B-2's own fix)
+                        # §4 B-4/A-3 — the bound exhausted for real, all three obligations,
+                        #    plus the two exits that must not re-arm (confirmations)
+                        # §5 B-6's R7-1 merge guard and R7-2 unhandled rejection (confirmations)
+```
+
+`r8-geo.mjs` reports **2 FAIL** and `r8-persist.mjs` **2 FAIL**, and in both cases every other
+section is a confirmation that must stay at 0. Neither is timing-dependent: `r8-persist.mjs`
+§1 forces the interleaving with a port whose `load()` takes 60 ms, which is an ordinary
+IndexedDB read, not a race window.
+
+Browser probes need `npm run web:build && node tools/serve.mjs` in one shell, then:
+
+```bash
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r8-views.mjs  # the builder's own probe,
+                                                                # re-run unmodified: 0 FAIL
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r8-undo.mjs   # R8-1 as a user: four clicks
+                                                                # and Ctrl+Z, 1 FAIL
+```
+
+`r8-undo.mjs` is `r8-views.mjs` §4 with the last leg replaced by the app's own Ctrl+Z. It is a
+deterministic click sequence, not a race.
+
+**Probe rot re-confirmed and again not patched** (same ruling as rounds 5–7): `qa/r6-flush.mjs`
+samples `status` 200 ms after the abort, and `r8-persist.mjs` §4 shows the re-armed write lands
+and clears the banner inside that window — the assertion is stale, the product is right.
+`qa/r5-freshness.mjs:602` still crashes on `core.accept`.
+
+---
+
+## Round 9 (2026-08-27, `master` @ `773f8ea`) — the A-5 / A-5a / A-6 gate verification
+
+Narrow: four items only — R8-1 across undo *with the A-5a veto present*, KD-36's second
+dismissal across further edits, the same case across a storage round-trip/reseed, and A-6's
+copy-borne `Place`. R2–R8 were **not** re-litigated; R8-3 and R8-4 were deliberately not
+investigated. Headless, from `cairn/`:
+
+```bash
+node qa/r9-ledger.mjs   # §1 R8-1 with the veto: six undo/redo cycles, undo PAST the
+                        #    conflictId's creation, the stale-mark leak, and a retirement
+                        #    that happens while a live row for the same id is present
+                        # §2 KD-36 case 1: ten further edits, edits on the conflict's OWN
+                        #    subject day, an id-moving edit and back, undo/redo after the
+                        #    second dismissal, and a THIRD dismissal (3 rows, one id)
+                        # §3 KD-36 case 2: five close/reopen round trips, an A -> B -> A trip
+                        #    switch, and the `mergeWithStored` reseed path
+                        # §4 R9-1's root cause isolated: the same live row put back by
+                        #    `redo()` vs by `dispatch()`, one difference — releaseRetirement
+node qa/r9-geo.mjs      # §1 two copied stops from TWO source trips, incl. `samePlace` reuse
+                        # §2 accepting one of two copies, then both
+                        # §3 user-authored -> copy-only and back (`every`, not `some`)
+                        # §4 R9-2 — reject (fine) vs remove (mints a blocker on the orphan)
+                        # §5 R9-2 on the REAL fixture through the store: Browse, Copy, ×
+```
+
+`r9-ledger.mjs` reports **4 FAIL**, all one root cause (R9-1). `r9-geo.mjs` reports **3 FAIL**,
+all one root cause (R9-2); everything else in both files is a confirmation that must stay at 0.
+Neither is timing-dependent — both are deterministic call sequences.
+
+Browser probe needs `npm run web:build && node tools/serve.mjs` in one shell, then:
+
+```bash
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r9-redo.mjs   # R9-1 as a user: seven
+                                                                # actions, and the redone
+                                                                # dismissal is stillborn
+```
+
+`r9-redo.mjs` is `r8-undo.mjs` continued by three more actions (a second "Not a problem",
+Ctrl+Z, Ctrl+Shift+Z). Deterministic, not a race; 2 FAIL, both R9-1.
+
+Round-8 probes re-run **unmodified** this round and unchanged by `773f8ea`: `qa/r8-geo.mjs`
+**1 FAIL** (R8-3, out of scope — R8-2 closes), `qa/r8-persist.mjs` **1 FAIL** (R8-4, out of
+scope — R8-1 closes), `qa/r8-undo.mjs` in Chromium **0 FAIL**. `npm run test:tap` 412/0.
+
+---
+
+## Round 10 (2026-08-27, `master` @ `9ced6e7`) — the A-5b / A-6a gate re-verification
+
+Narrow: two items only — A-5b (`redo` releases the retirement ledger) and A-6a (`removeStop`
+prunes the one `Place` a copied stop orphans). R8-3, R8-4 and the round 2–7 open list were
+**not** re-run. Headless, from `cairn/`:
+
+```bash
+node qa/r10-redo.mjs       # A-5b past retirement-ledger.test.ts: empty future, unrelated
+                           #   redo, undo of an `unresolveConflict`, two interleaved
+                           #   conflicts, the 50-entry history limit, an A->B->A switch, a
+                           #   merge reseed, and the A-5b invariant after every step
+                           #   3 FAIL — all R10-1 (MINOR), all pre-existing at 9ba5aec
+node qa/r10-prune.mjs      # A-6a past geoCheck.test.ts: the four clauses one at a time
+                           #   (pool, accepted, rejected, copy-of-a-copy, duplicate stop id,
+                           #   purity, one revision bump), the anti-sweep guards, dangling
+                           #   references, undo/redo, the real fixture at scale
+                           #   1 FAIL — §5, R10-2 (MAJOR): the `updateStop` door
+node qa/r10-mergeundo.mjs  # R10-3 (BLOCKER) — one Ctrl+Z after a merge writes a pre-merge
+                           #   snapshot over storage and destroys the other tab's edit
+                           #   2 FAIL
+```
+
+Everything else in both `r10-*` probes is a confirmation that must stay at 0. None are
+timing-dependent: all are deterministic call sequences.
+
+Browser probe needs `npm run web:build && node tools/serve.mjs` in one shell, then:
+
+```bash
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r10-editdoor.mjs  # R10-2 as a user: six
+                                                                    # actions, and the
+                                                                    # copy-borne Place is
+                                                                    # orphaned in IndexedDB
+```
+
+Round-9 probes re-run **unmodified** at `9ced6e7`: `qa/r9-geo.mjs` **ALL OK** (was 3 FAIL,
+R9-2 closed), `qa/r9-redo.mjs` in Chromium **0 FAIL** (was 2, R9-1's user-visible repro
+closed), `qa/r9-ledger.mjs` **2 FAIL** (was 4; the two that remain are §1.2c/d = R10-1, a
+sequence A-5b clause 2 declines by construction). `npm run test:tap` 420/0.
+
+## Round 11 — after the R10-3 / R10-2 fixes (`c6c6e2b`)
+
+```bash
+node qa/r11-recheck.mjs     # §1 R10-3 past the builder's test: a non-empty `future` at merge
+                            #   time, ten undos after a merge, and typing THROUGH the merge
+                            #   write
+                            #   2 FAIL — §1.3b/§1.3c, R11-1 (BLOCKER, pre-existing race):
+                            #   `stillOurs` discards the merged document and the un-merged
+                            #   local one is autosaved over storage. No undo involved.
+                            # §2 R10-2 past it: place -> none, a re-point to a DIFFERENT
+                            #   place, a pooled copy, moveStop/reorderStop, the pool-side
+                            #   over-prune guard, the reducer action
+                            #   0 FAIL
+```
+
+All three round-10 probes re-run **unmodified** at `c6c6e2b`: `qa/r10-mergeundo.mjs` **0 FAIL**
+(was 2, R10-3 closed), `qa/r10-prune.mjs` **ALL OK** (was 1 FAIL, R10-2 closed),
+`qa/r10-editdoor.mjs` in Chromium **0 FAIL** (was 1). `npm run test:tap` 426/0.
+
+---
+
+## Phase 2, I-0 — probe repair and the measured baseline (`master`, after `a55634f`)
+
+Sixteen probes were dead or stale. **None was deleted**; each carries the reason for its repair
+at the call site, and BUILD-NOTES' current status note has the one-line-per-probe table.
+
+Seven had *crashed* and had not executed past their first bad line for several rounds:
+`attack3.mjs` (`updateStop({placement})` now throws), `attack8.mjs` / `confid.mjs` (both
+targeted an `impossible_transfer` §2.12 took to zero), `prov.mjs` (`importDoc` of a foreign
+document now throws by design), `r2-copy2.mjs` / `r2-import.mjs` (`load()` returns
+`{doc, version}`; `save()` became `saveIfVersion()`), and `r5-freshness.mjs` (`core.accept`,
+un-exported by R5-5).
+
+Nine asserted a contract the architecture had **deliberately changed** — a deleted issue code
+(`stop_far_from_city`), a retracted ROADMAP revision-1 criterion, a renamed `params` key
+(`stopName` → `name`), a dropped rule (`closed`), and three closed findings (R3-3, R7-3, R2-7)
+whose fixes the probes were still reporting as open.
+
+Two new probes:
+
+```bash
+node qa/baseline.mjs        # the six Phase 2 baseline numbers, derived by RUNNING:
+                            #   detectConflicts at FIXTURE_TODAY = 2 blockers / 4 warn / 11 notes
+                            #   geoCheck clean          = 0/112 stops, 0/94 places
+                            #   geoCheck under +1 deg   = 112/112 stops, 92/94 places
+```
+
+The browser probe needs `npm run web:build && node tools/serve.mjs` in one shell, then:
+
+```bash
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/p2-pasttrip.mjs
+                            # I-4 end to end: record a past trip, the persisted document,
+                            # the lifecycle chips, exit criterion 3 on screen, and the
+                            # injected fault with the browser's Date pinned mid-trip
+```
+
+**FAILs that are still real open findings and were left alone:** `r10-redo` 3 / `r9-ledger` 2
+(R10-1) · `r7-r6recheck` 3 / `r6-flush` 1 (R6-1/R6-2) · `r8-geo` 1 (R8-3) · `r8-persist` 1
+(R8-4) · `r6-actor` 5 · `r3-cas2` 3 / `r3-pool` 3 · `r5-freshness` 4 · `r2-constraints` 1 (its
+zero-dep false positive **is** repaired; the determinism-grep one is a genuine gap) ·
+`r2-import` 1 (**new** — `fromJSON` rejects an absent `ownerId` that §2.14 rule 1 permits).
+
+---
+
+## Round 12 (2026-08-27, `master` @ `5a3c723`) — the Phase 2 **2a** breaker pass
+
+Narrow: the diff `8df2ae6..5a3c723` only — `lifecycle()`, `Trip.datePrecision`, `Rule.class` +
+the `detect.ts` feasibility gate, `PastTripForm.tsx` (incl. KD-38's city assignment), and the
+`fromJSON`/`importDoc` absent-`ownerId` fix (KD-40). Phase 1's open list was **not**
+re-litigated. Headless, from `cairn/`:
+
+```bash
+node --experimental-strip-types qa/p2b-gate.mjs
+        # §1  the gate: the ten classes vs §8.2's table; a wholly-past trip (integrity
+        #     identical by id AND count, feasibility gone); a STRADDLING trip with a real
+        #     city on every day; `subjectDate` over all seven ref shapes incl. the pool /
+        #     place / trip / unknown-id fallbacks; ruling 1's asymmetry on the subjects
+        #     themselves; ruling 3 (`today` omitted / undefined / `''`); the un-padded
+        #     `today` the gate accepts and `lifecycle` rejects; the `rule_error` claim
+        #     (P2-4); the gate x the retirement ledger (P2-1); the Phase 1 ceiling
+        # §2  datePrecision: an independent grep walk of the ceiling; 11 malformed values;
+        #     absent -> 'exact' through fromJSON AND migrateDoc; round-trip parity both
+        #     ways; undo/redo x 50; mergeTrips (P2-3); setTripMeta (P2-7); the summary row
+        #     the Library renders (P2-6)
+        # §3  the form's document rebuilt through its own three dispatches; the city-key
+        #     slug (P2-2); the "a year" path at 365 days
+        # §4  ownerId: absent / null / non-string x 8 / a real foreign owner / `''` /
+        #     one space / the deleted-key bypass (P2-8)
+```
+
+The browser probe needs `npm run web:build && node tools/serve.mjs` in one shell, then:
+
+```bash
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/p2b-past.mjs
+        # §1 a straddling trip recorded through the real form with a real city on every day
+        # §2 "a year" precision — 365 days and 366 dispatches behind one click, timed by
+        #    POLLING IndexedDB rather than sleeping, then one Ctrl+Z (P2-5)
+        # §3 a trip to Japan named in Japanese — both cities become key "-" (P2-2)
+        # §4 the Library's range label vs the open trip's (P2-6)
+```
+
+`p2b-gate.mjs` reports **19 FAIL** and `p2b-past.mjs` **6 FAIL**, all by design; everything
+else in both files is a confirmation that must stay at 0. Neither is timing-dependent — both
+are deterministic call/click sequences.
+
+Re-run **unmodified** this round and unchanged by `5a3c723`: `qa/baseline.mjs` 0 FAIL,
+`qa/accept.mjs` 28/0, `qa/r2-import.mjs` 0 FAIL, `qa/prov.mjs` 0 FAIL, `qa/p2-pasttrip.mjs`
+in Chromium 0 FAIL (30 assertions), `qa/r2-constraints.mjs` 1 FAIL (R2-18, known).
+`npm run test:tap` 479/0, `npm run typecheck` clean, `npm run web:build` clean.
+
+---
+
+## Round 13 (2026-08-27, `master` @ `4dd50d1`) — the I-3a / I-4a breaker pass
+
+Narrow: the diff `23f37b9..4dd50d1` only — §2.7 **A-9** (retirement vs the clock,
+`syncResolutions(trip, at)`, `detectUngated`, the deleted `delta < 0`), §2.2 **A-10** (`CityKey`
+is a minted opaque id, the three new `validateTrip` codes, the slug deletion in the two web
+forms), and the follow-ups **KD-42** (the 71 export count) and **KD-44** (`geoOutlier`'s
+city-label fallback). Phase 1's open list, P2-5 and P2-8 were **not** re-litigated.
+
+```bash
+node --experimental-strip-types qa/r13-gate-citykey.mjs
+        # §1  R13-1 — `unbooked_ticketed`'s SURVIVING `delta > 60` guard is a second
+        #     clock-driven suppression and `detectUngated` applies it, so one clock step
+        #     BACKWARDS across the 60-day boundary permanently retires a live dismissal.
+        #     Core (§1.2) and through the real store + storage port (§1.3).
+        # §2  the gate crossed in both directions, alone and combined with real edits; a
+        #     genuine fix still retires at any clock, in core and into storage   (0 FAIL)
+        # §3  R13-2 — A-9 assertion 4's substituted test: the `setTripMeta({endDate})` is
+        #     inert, and the literal A-9(4) is unachievable for `missing_lodging`
+        # §4  R13-3 — a crashed rule retires every dismissal it owned; plus the five content
+        #     routes into a crash that `fromJSON` refuses (why it stays MINOR)
+        # §5  `detectUngated` off `index.ts`, unnamed by client/web/cli, absent from the
+        #     built bundle, no deep module-path import anywhere              (0 FAIL)
+        # §6  A-10: 22 adversarial names -> 22 distinct keys; the three new codes; an
+        #     explicit `key:''`; `fromJSON`/`migrateDoc`/`importDoc` silence on a collapsed
+        #     pre-A-10 document; the reference trip's keys and its 11 issues   (0 FAIL)
+        # §7  KD-42 re-derived both ways (71 / 71) — and R13-4, the stale `70` left in
+        #     `detect.ts:192` by the same pass that corrected the docs
+        # §8  R13-5 — KD-44's phrase composed into the sentence a person reads, at both
+        #     label sites
+        # §9  the ceilings, by running: 2/4/11 at FIXTURE_TODAY; un-gated 17 vs gated 5 on
+        #     the completed trip; `ctx.today` in exactly one rule file          (0 FAIL)
+        # §10 R13-6 — A-10 x `copyStopInto`: a cross-trip copy imports the SOURCE trip's
+        #     minted CityKey on the copied `Place`, so the recipient's document reports
+        #     `unknown_city_key` (error). Control: the same copy under the pre-A-10 slug
+        #     is clean.
+```
+
+**16 FAIL by design**; everything else in the file is a confirmation that must stay at 0.
+Not timing-dependent — deterministic call sequences only, no races and no sleeps.
+
+The two **byte-identity** claims were re-derived rather than trusted, and the recipe is not in
+the probe because it needs a second checkout:
+
+```bash
+git worktree add /tmp/pre 23f37b9        # the commit before I-3a/I-4a
+# run the same dump script against both trees and diff — conflicts + issues + summary +
+# cities on the reference trip at FIXTURE_TODAY, 2026-08-10, -08-14, -08-27, 2027-01-01,
+# 2019-01-01 and with no clock: 52229 bytes, identical.
+cd /tmp/pre/cairn && npm run golden      # pre-change code
+diff -r /tmp/pre/cairn/fixtures/golden cairn/fixtures/golden   # identical
+cd cairn && npm run golden && npm run sample && git status --porcelain   # empty
+```
+
+Re-run this round: `qa/p2b-gate.mjs` **5 FAIL** (exactly the five the builder disclosed — P2-5,
+P2-8 ×2, the §1.7 un-padded-`today` crash, the §2.1 `summary.ts` ceiling), `qa/confid2.mjs`
+**0 FAIL**, `qa/r2-constraints.mjs` **1 FAIL** (R2-18, known). `npm run test:tap` 515/0,
+`npm run typecheck` clean, `npm run web:build` clean, `npm run cli -- trip|conflicts` run.
+
+Browser probe, needing `npm run web:build && node tools/serve.mjs` in one shell:
+
+```bash
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/p2b-past.mjs   # 3 FAIL, all probe rot
+```
+
+The builder disclosed that he had **not** re-run this one, so I did. Its §3 confirms A-10 end to
+end in a real browser — 東京 and 京都 get two distinct minted keys (`city_5f59852c43dc`,
+`city_f545e99a1ba1`), day 1 carries the first, 0 validation issues. Its 3 FAILs are **R13-8**:
+§1c and §2d still assert `primaryCity === 'tokyo'` (the deleted slug's output) and §3d still
+expects the app to *report* a collapse that no longer happens. Left unpatched, same ruling as
+rounds 5–10 — a probe that measures a deleted expression is a finding, not a repair job for the
+breaker.
+
+---
+
+## Round 14 (2026-08-27, `master` @ `fb3ff34`) — the A-11 / A-12 / A-13 / A-14 breaker pass
+
+Narrow: the diff `4dd50d1..fb3ff34` only — `Rule.horizonDays` + `beyondHorizon` (**A-11**),
+`detectUngatedChecked` + `syncResolutions`' crash refusal (**A-12**), the substituted A-9(4)
+test and its `endDate`-fallback tripwire (**A-13**), and `copyStopInto` rule 4's three-step
+re-filing + the new `model/cityName.ts` (**A-14**). R13-4, R13-5, P2-5, P2-8 and the Phase 1
+open list were **not** re-litigated.
+
+```bash
+node --experimental-strip-types qa/r14-horizon-copy.mjs
+        # §1  A-11 past its own six-clock sweep: 434 clocks x 10 documents; the 60-day
+        #     boundary in both sets; injected rules at horizon 0 / -1 / NaN / Infinity / 1e9,
+        #     an INTEGRITY class, a horizon-free rule beside a horizoned one, mixed-date and
+        #     empty subject sets; §1.4's pre-vs-post differential and §1.5, the horizon
+        #     leaking 73 days out on a duplicate-stop-id document      (R14-1, 2 FAIL)
+        # §2  KD-48 re-derived from the FIXTURE by hand, not from the rule: ten, and the
+        #     three named cases are among them                                     (0 FAIL)
+        # §3  A-12 vs 1/2/4/ten simultaneous crashes, a CLOCK-DEPENDENT crash over a
+        #     genuinely-fixed dismissal, 25 crash/recover rounds, and the real store
+        #                                                                          (0 FAIL)
+        # §4  A-13's tripwire: shape, 5/5 rule coverage, and forced RED in a scratch
+        #     worktree by a real rule increment (a ticketed pool stop)              (0 FAIL)
+        # §5  A-14: assertions 1-5; the three-same-named-cities tie-break x5; R14-2, the
+        #     WITHIN-trip copy A-14 says is unchanged (§5.2, §5.7, §5.10 through the store);
+        #     R14-3, the aliased inline PlaceLink (§5.3); eight Unicode folding cases;
+        #     double-hop copies; KD-47's disclosed gap; the reworked
+        #     `lisbonWithCopiedPlaceStop` fixture measured against the one it replaced; and
+        #     §5.9 R14-4 (BLOCKER) — the copied PLACE's note and links cross the trip
+        #     boundary unredacted           (R14-2 x5, R14-3 x2, R14-4 x6)
+        # §6  cross-cutting: copy -> horizoned conflict -> unrelated crash -> retirement
+        # §7  the ceilings re-derived by running: 71 exports, conflicts at five clocks,
+        #     validateTrip, goldens + sample, KD numbering, test/disclosure.test.ts  (0 FAIL)
+```
+
+**15 FAIL by design** with both worktrees present, **14** without (the missing one is §1.4's
+differential; §1.5 carries R14-1's other half and needs no second checkout) — R14-1 ×2, R14-2 ×5,
+R14-3 ×2, R14-4 ×6. Every other line in the file is a confirmation that must stay at 0. Not
+timing-dependent — deterministic call sequences only, no races and no sleeps.
+
+Two sections need a second checkout and print `skip` without one, because both are differentials
+against other commits rather than assertions about this one:
+
+```bash
+git worktree add /tmp/r14-pre 78b490f   # the commit BEFORE A-11/A-12/A-13 — §1.4's oracle
+git worktree add /tmp/r14-tw  fb3ff34   # a scratch tree §4 patches and restores, for the
+                                        # tripwire's RED state. It edits
+                                        # unbookedTicketed.ts in THAT tree only and puts the
+                                        # file back in a `finally`; nothing under cairn/ is
+                                        # ever written.
+```
+
+Re-run **unmodified** this round and unchanged by `fb3ff34`: `qa/r2-copy.mjs` **0 FAIL** and
+`qa/prov.mjs` **0 FAIL** — neither had been run at a commit carrying *both* builder passes (the
+A-14 builder ran them in a detached worktree holding only his five files) — and
+`qa/r2-constraints.mjs` **1 FAIL** (R2-18, known). `npm run test:tap` 554/0, `npm run typecheck`
+clean, `npm run web:build` clean. `qa/r13-gate-citykey.mjs` was **not** re-run: the orchestrating
+session had already re-run it at 0 FAIL and §1/§3/§4/§10 of this file attack the same rulings from
+angles that probe does not cover.
+
+Note for whoever reads §5.9 first: `qa/r2-copy.mjs` §H does **not** fail on R14-4. It only
+inspects the copied *stop*'s note, ticket and links — the copied `Place` is not in its scope,
+which is how the un-fixed half of R2-3 stayed invisible for eleven rounds.
+
+---
+
+## Round 15 (2026-08-28, `claude/i4a-r14-issues-f0bkgc` @ `bd195bd`) — the A-15 / A-16 / A-17 breaker pass
+
+Narrow: the diff `3409420..bd195bd` only — `placeForCopy` and `refileCityKey`'s new step 2 in
+`build/copyStop.ts` (**A-15**, **A-16**), the `PlaceLink` clone (**R14-3**), the `Rule.horizonDays`
+comment (**A-17**), and the two test files. Round 14's own open list was re-derived only where
+this diff claims to close it; R13-4, R13-5, P2-5, P2-8 and the Phase 1 list were **not**
+re-litigated.
+
+```bash
+node --experimental-strip-types qa/r15-place-copy.mjs
+        # §1  A-15 measured against what a `Place` carries at RUNTIME, not against the type:
+        #     §1.1 the one surviving spread (`{...w}` over `hours.weekly`) and §1.2 a
+        #     non-string `hours.note`, both live because `fromJSON` casts `hours` unvalidated
+        #                                                              (R15-1, 7 FAIL)
+        #     §1.3 the six `place.hours` shapes fromJSON accepts and copyStopInto now THROWS
+        #     on — all six copy cleanly at 3409420                      (R15-2, 2 FAIL)
+        #     §1.4 what the ruling's table DOES deliver, and §1.5 over-redaction measured
+        #     across eleven notes                                                 (0 FAIL)
+        # §2  §2.1 `Stop.cost.note` and `Stop.arrival.label` cross verbatim while §6.6's
+        #     sample path redacts both; §2.2 the reference trip's exposure, measured
+        #                                                              (R15-3, 5 FAIL)
+        # §3  A-16: assertions 1-5, the stale source in both directions, the coincidental
+        #     cross-document key, same-`.id`-different-object, determinism   (0 FAIL);
+        #     §3.2 the step-1-before-step-2 ordering nothing can fail on (R15-4, 1 FAIL);
+        #     §3.3 the trip-id collision, checked in store.ts rather than reasoned about;
+        #     §3.4 the pool placement's raw cityKey                      (R15-6, 1 FAIL)
+        # §4  R14-3 from BOTH directions, plus every other alias copyStopInto still has
+        #                                                                          (0 FAIL)
+        # §5  A-17's directional test measured for what it can actually detect
+        #                                                              (R15-5, 1 FAIL)
+        # §6  the ceilings, the read-only boundary, and the pre-vs-post differential (0 FAIL)
+```
+
+**17 FAIL by design** — R15-1 ×7, R15-2 ×2, R15-3 ×5, R15-4 ×1, R15-5 ×1, R15-6 ×1. Every other
+line in the file is a confirmation that must stay at 0. Deterministic call sequences only, no
+races and no sleeps.
+
+§6.3 is a differential and prints `skip` without a second checkout:
+
+```bash
+git worktree add /tmp/r15-pre 3409420   # the commit BEFORE A-15/A-16/A-17 were built
+```
+
+Three of this round's findings are about **tests that cannot fail**, and none of them can be
+expressed as an assertion inside this probe — a probe cannot mutate the product code it is
+importing. Each was established by editing `copyStop.ts`, `detect.ts` or `unbookedTicketed.ts` in
+a throwaway `git worktree add /tmp/r15-mut bd195bd`, running `node --test`, and discarding the
+tree. Nothing under `cairn/` was ever written. The three mutations, so the next round does not
+re-derive them:
+
+```bash
+# R15-4 — move refileCityKey's step 2 above step 1:      568/568 pass, r14 probe ALL OK
+# R15-4 rider — `name: redactText(p.name)` in placeForCopy: 568/568 pass
+# R15-5 — beyondHorizon's `subjects.every(...)` -> `.some(...)`: 568/568 pass
+#         (the same mutation on §8.2's `suppressedAsPast` turns 3 tests red, which is the
+#          contrast that makes R15-5 a finding rather than a general observation)
+```
+
+Re-run **unmodified** this round: `qa/r14-horizon-copy.mjs` **0 FAIL** with both worktrees
+present (A-15/A-16/A-17/R14-3 close every line it had red), `qa/r2-copy.mjs` **0 FAIL**,
+`qa/prov.mjs` **0 FAIL**, `qa/r2-constraints.mjs` **1 FAIL** (R2-18, known). `npm run test:tap`
+568/0, `npm run typecheck` clean.
+
+Note for whoever reads §1.1 first: `qa/r14-horizon-copy.mjs` §5.9 does **not** fail on R15-1. It
+inspects the copied place's `note` and `links` — the two fields R14-4 named — and never
+populates `hours`, which is how the third carrier survived the ruling written to close the first
+two.
+
+**Round 16 maintained this file to 0 FAIL.** All six R15 findings close; three lines could not be
+closed by product code and were re-expressed rather than deleted (A-19 assertion 7 forbids the
+builder editing anything under `qa/`, so this was QA's job):
+
+- **§3.4** asserted against a document A-19 now refuses to return. It is a `throws` assertion
+  now, against A-19's real contract, with `TRANSIT_CITY_KEY` and a key the target *does* have
+  measured beside it so the line proves a refusal and not a blanket ban.
+- **§3.2 (R15-4)** and **§5.1 (R15-5)** were literal `ok(..., false, …)` — statements about a gap
+  in the *shipped suite*, not measurements of the product, so no product change could ever turn
+  them green. Both now point at the test that closed them. **Round 16 re-derived both by
+  mutation** rather than trusting the builder: see the round-16 section below.
+
+---
+
+## Round 16 (2026-08-28, `claude/i4a-r14-issues-f0bkgc` @ `bff7a81`) — the A-18 / A-19 breaker pass
+
+Narrow: the diff `b3a0c89..bff7a81` only — `build/copyStop.ts` (`redacted`, `costForCopy`,
+`arrivalForCopy`, `weeklyForCopy`, `hoursForCopy`, A-19's three parts), `model/types.ts` (the new
+`place_hours_malformed` code), `validate/validateTrip.ts` (`wellFormedHours`) and the two test
+files. Nothing else was re-litigated.
+
+```bash
+node --experimental-strip-types qa/r16-copy-depth.mjs
+        # §1  A-18 past r15 §2.1's repro: §1.1 the `display` predicate at six edges;
+        #     §1.2 an unclassified key on ALL FOUR records the ruling enumerates —
+        #     `CostEstimate`, `Money`, `MoveOverride` and **`Link`**       (R16-1, 1 FAIL)
+        #     §1.3 the strings that still cross verbatim, checked against
+        #     tools/redact.mjs's STRUCTURAL_KEYS rather than against the ruling's prose;
+        #     §1.4 the open/close judgment call vs all 240 clock times in a day  (0 FAIL)
+        # §2  `Place.hours`: 34 shapes through the live fromJSON route, including nested
+        #     objects, array-likes, `__proto__` as a data key and 1e999 as a `day`
+        #                                                                        (0 FAIL)
+        #     §2.3 the new `place_hours_malformed` vs what the copy actually did
+        #                                                                 (R16-2, 1 FAIL)
+        # §3  A-19's eight assertions re-derived, plus the id factory behind the refusal
+        #     and a placement whose `kind` is out of the union             (0 FAIL)
+        # §4  `place_hours_malformed` as shipped: ceiling, determinism, Ref, wiring (0 FAIL)
+        # §5  ceilings, BUILD-NOTES' two greppable claims (comments stripped, or they
+        #     report their own docstring), and a byte-identity differential vs b3a0c89
+        #                                                                        (0 FAIL)
+```
+
+**2 FAIL by design** — R16-1 ×1, R16-2 ×1. Every other line is a confirmation that must stay at 0.
+Deterministic call sequences only, no races and no sleeps.
+
+§5.3 is a differential and prints `skip` without a second checkout:
+
+```bash
+git worktree add /tmp/r16-pre b3a0c89   # the commit BEFORE A-18/A-19 were built
+```
+
+Ten mutations, all made in a throwaway `git worktree add /tmp/r16-mut bff7a81` and discarded —
+nothing under `cairn/` was ever written. The counts are what a future round should reproduce:
+
+```bash
+# reintroduce the cost/arrival spread                     3 red
+# `{...w}` back on hours.weekly                           2 red
+# alias the caller's placement into addStop               2 red
+# delete A-19's pool-city check                           1 red
+# carry the source hint verbatim                          2 red
+# skip `redacted` on cost.note / on arrival.label       1 red each
+# `display: c.display` (drop the predicate)               2 red
+# refileCityKey step 2 above step 1                       1 red  <- R15-4 CLOSES
+# beyondHorizon `subjects.every` -> `.some`               1 red  <- R15-5 CLOSES (full suite)
+# spread `links` back to `{ ...l }`                       0 red  <- R16-1
+# restore `redactText(p.note) as string` in placeForCopy   0 red  <- R16-1's rider
+```
+
+Re-run **unmodified** this round: `qa/r14-horizon-copy.mjs` **ALL OK** with both worktrees
+present, `qa/r2-copy.mjs` **0 FAIL**, `qa/prov.mjs` **0 FAIL**, `qa/r2-constraints.mjs` **1 FAIL**
+(R2-18, known). `npm run test:tap` 583/0, `npm run typecheck` clean, `npm run web:build` clean,
+`npm run golden` + `npm run sample` byte-identical (sample sha `40955ca0b182`).
+
+Note for whoever reads §1.2 first: `r16` does **not** re-run round 15's credential repro. That
+lives in `qa/r15-place-copy.mjs` §1.1/§1.2/§2.1 and now passes there; re-running it here would
+have spent a run re-confirming a number the builder already reported and I had no reason to doubt.

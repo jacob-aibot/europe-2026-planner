@@ -1,0 +1,20 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    // A bundler consumes this app, not Node's resolver: `module: preserve` is what lets
+    // Vite handle the JSON import and the package aliases in vite.config.ts.
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "types": ["vite/client"],
+    "noEmit": true,
+    "paths": {
+      "@cairn/core": ["../../packages/core/src/index.ts"],
+      "@cairn/client": ["../../packages/client/src/index.ts"],
+      "@cairn/tokens": ["../../packages/tokens/src/index.ts"]
+    }
+  },
+  "include": ["src", "vite.config.ts"]
+}

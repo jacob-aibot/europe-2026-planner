@@ -1,0 +1,25 @@
+{
+  "name": "@cairn/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Cairn web client — Vite + React. Port implementations and views only; no domain logic.",
+  "scripts": {
+    "presample": "node ../../tools/gen-sample.mjs",
+    "dev": "npm run presample && vite",
+    "build": "npm run presample && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "leaflet": "^1.9.4",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@types/leaflet": "^1.9.20",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "vite": "^8.0.0"
+  }
+}

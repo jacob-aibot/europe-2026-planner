@@ -1,0 +1,14 @@
+{
+  "$generatedBy": "cairn/tools/gen-golden.mjs",
+  "$source": "europe-2026-itinerary.html (read-only)",
+  "$sourceSha256": "40955ca0b182dddcc33540accadf2a65a329bc20b9e6ca109c9884e776bb06d2",
+  "$what": "The hardcoded CITY_RANGE map. cityRange() must reproduce every string.",
+  "cityRange": {
+    "vienna": "Aug 8–10",
+    "dubrovnik": "Aug 10–12",
+    "split": "Aug 12–15",
+    "prague": "Aug 15–18",
+    "budapest": "Aug 18–21",
+    "london": "Aug 21–22"
+  }
+}

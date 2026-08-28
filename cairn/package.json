@@ -1,0 +1,30 @@
+{
+  "name": "cairn",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Cairn \u2014 multi-trip itinerary planner. Phase 1: core engine + local-first client.",
+  "workspaces": [
+    "packages/*",
+    "apps/web"
+  ],
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p apps/web/tsconfig.json --noEmit",
+    "test": "node --test --test-reporter=dot packages/core/test/*.test.ts packages/client/test/*.test.ts test/*.test.ts",
+    "test:tap": "node --test packages/core/test/*.test.ts packages/client/test/*.test.ts test/*.test.ts",
+    "golden": "node tools/gen-golden.mjs",
+    "cli": "node cli.ts",
+    "serve": "node tools/serve.mjs",
+    "web:dev": "npm --prefix apps/web run dev",
+    "web:build": "npm --prefix apps/web run build",
+    "sample": "node tools/gen-sample.mjs",
+    "pretypecheck": "npm run sample"
+  },
+  "devDependencies": {
+    "@types/node": "^26.3.0",
+    "typescript": "^5.9.3"
+  }
+}

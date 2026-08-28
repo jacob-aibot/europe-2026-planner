@@ -1,0 +1,260 @@
+{
+  "$generatedBy": "cairn/tools/gen-golden.mjs",
+  "$source": "europe-2026-itinerary.html (read-only)",
+  "$sourceSha256": "40955ca0b182dddcc33540accadf2a65a329bc20b9e6ca109c9884e776bb06d2",
+  "$what": "rollUpCost() per day, compared with the live dayCost() string. \"divergent\" days are explained in BUILD-NOTES §1 KD-3: they are the four money defects ARCHITECTURE §2.6 lists. NOTE: core-*.json files are SELF-SNAPSHOTS of this code, not independent goldens — KD-14.",
+  "days": {
+    "2026-08-07": {
+      "byCurrency": {},
+      "missingRates": [],
+      "basisWarnings": [],
+      "coreEurString": null,
+      "legacyString": null,
+      "parity": "exact"
+    },
+    "2026-08-08": {
+      "byCurrency": {
+        "EUR": {
+          "lo": 42.41,
+          "hi": 62.41
+        }
+      },
+      "missingRates": [],
+      "basisWarnings": [],
+      "coreEurString": "≈ €42–62",
+      "legacyString": "≈ €42–62",
+      "parity": "exact"
+    },
+    "2026-08-09": {
+      "byCurrency": {
+        "EUR": {
+          "lo": 35,
+          "hi": 48
+        }
+      },
+      "missingRates": [],
+      "basisWarnings": [],
+      "coreEurString": "≈ €35–48",
+      "legacyString": "≈ €20–48",
+      "parity": "divergent"
+    },
+    "2026-08-10": {
+      "byCurrency": {
+        "EUR": {
+          "lo": 81,
+          "hi": 104
+        }
+      },
+      "missingRates": [],
+      "basisWarnings": [],
+      "coreEurString": "≈ €81–104",
+      "legacyString": "≈ €81–104",
+      "parity": "exact"
+    },
+    "2026-08-11": {
+      "byCurrency": {
+        "EUR": {
+          "lo": 115,
+          "hi": 142
+        }
+      },
+      "missingRates": [],
+      "basisWarnings": [],
+      "coreEurString": "≈ €115–142",
+      "legacyString": "≈ €115–142",
+      "parity": "exact"
+    },
+    "2026-08-12": {
+      "byCurrency": {
+        "EUR": {
+          "lo": 25,
+          "hi": 45
+        }
+      },
+      "missingRates": [],
+      "basisWarnings": [],
+      "coreEurString": "≈ €25–45",
+      "legacyString": "≈ €25–45",
+      "parity": "exact"
+    },
+    "2026-08-13": {
+      "byCurrency": {
+        "USD": {
+          "lo": 159.98,
+          "hi": 159.98
+        },
+        "EUR": {
+          "lo": 15,
+          "hi": 25
+        }
+      },
+      "missingRates": [
+        "USD",
+        "EUR"
+      ],
+      "basisWarnings": [],
+      "coreEurString": "≈ €15–25",
+      "legacyString": "≈ €175–185",
+      "parity": "divergent"
+    },
+    "2026-08-14": {
+      "byCurrency": {
+        "EUR": {
+          "lo": 88.47000000000001,
+          "hi": 92.47000000000001
+        }
+      },
+      "missingRates": [],
+      "basisWarnings": [],
+      "coreEurString": "≈ €88–92",
+      "legacyString": "≈ €88–93",
+      "parity": "divergent"
+    },
+    "2026-08-15": {
+      "byCurrency": {
+        "EUR": {
+          "lo": 21,
+          "hi": 31
+        },
+        "CZK": {
+          "lo": 100,
+          "hi": 100
+        }
+      },
+      "missingRates": [
+        "EUR",
+        "CZK"
+      ],
+      "basisWarnings": [],
+      "coreEurString": "≈ €21–31",
+      "legacyString": "≈ €25–35",
+      "parity": "divergent"
+    },
+    "2026-08-16": {
+      "byCurrency": {
+        "CZK": {
+          "lo": 550,
+          "hi": 550
+        },
+        "EUR": {
+          "lo": 15,
+          "hi": 20
+        }
+      },
+      "missingRates": [
+        "CZK",
+        "EUR"
+      ],
+      "basisWarnings": [],
+      "coreEurString": "≈ €15–20",
+      "legacyString": "≈ €37–42",
+      "parity": "divergent"
+    },
+    "2026-08-17": {
+      "byCurrency": {
+        "CZK": {
+          "lo": 450,
+          "hi": 450
+        },
+        "EUR": {
+          "lo": 95,
+          "hi": 130
+        }
+      },
+      "missingRates": [
+        "CZK",
+        "EUR"
+      ],
+      "basisWarnings": [],
+      "coreEurString": "≈ €95–130",
+      "legacyString": "≈ €113–148",
+      "parity": "divergent"
+    },
+    "2026-08-18": {
+      "byCurrency": {
+        "CZK": {
+          "lo": 100,
+          "hi": 100
+        },
+        "EUR": {
+          "lo": 63,
+          "hi": 94
+        }
+      },
+      "missingRates": [
+        "CZK",
+        "EUR"
+      ],
+      "basisWarnings": [],
+      "coreEurString": "≈ €63–94",
+      "legacyString": "≈ €67–98",
+      "parity": "divergent"
+    },
+    "2026-08-19": {
+      "byCurrency": {
+        "EUR": {
+          "lo": 62,
+          "hi": 80
+        },
+        "USD": {
+          "lo": 573.25,
+          "hi": 573.25
+        }
+      },
+      "missingRates": [
+        "EUR",
+        "USD"
+      ],
+      "basisWarnings": [],
+      "coreEurString": "≈ €62–80",
+      "legacyString": "≈ €630–658",
+      "parity": "divergent"
+    },
+    "2026-08-20": {
+      "byCurrency": {
+        "EUR": {
+          "lo": 35,
+          "hi": 60
+        }
+      },
+      "missingRates": [],
+      "basisWarnings": [],
+      "coreEurString": "≈ €35–60",
+      "legacyString": "≈ €35–60",
+      "parity": "exact"
+    },
+    "2026-08-21": {
+      "byCurrency": {
+        "EUR": {
+          "lo": 7,
+          "hi": 7
+        },
+        "GBP": {
+          "lo": 20,
+          "hi": 35
+        }
+      },
+      "missingRates": [
+        "EUR",
+        "GBP"
+      ],
+      "basisWarnings": [],
+      "coreEurString": "≈ €7",
+      "legacyString": "≈ €30–47",
+      "parity": "divergent"
+    },
+    "2026-08-22": {
+      "byCurrency": {
+        "GBP": {
+          "lo": 55,
+          "hi": 80
+        }
+      },
+      "missingRates": [],
+      "basisWarnings": [],
+      "coreEurString": null,
+      "legacyString": "≈ €57–84",
+      "parity": "divergent"
+    }
+  }
+}

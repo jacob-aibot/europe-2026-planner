@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+# Print only the named top-level sections of a cairn/docs markdown file.
+#
+# ARCHITECTURE.md alone is ~24k tokens (measured; re-check with `doc-section <DOC>` and no
+# section args if the doc has grown — that lists every section with its own size). No agent
+# needs all of it: the builder needs §2 and §4, the breaker §2 §5 §6, the architect §1.
+# Pulling just those sections is the difference between an 8k-token start and a 24k one, on
+# every fresh agent run.
+#
+#   cairn/tools/doc-section ARCHITECTURE 2 4                       # numbered sections, by number
+#   cairn/tools/doc-section ROADMAP "Phase 1" "Sequencing rules"   # unnumbered sections, by heading text
+#   cairn/tools/doc-section ARCHITECTURE                           # list the sections and their sizes
+#
+# A numeric argument ("2") matches a heading shaped "## 2. ...". Any other argument matches
+# a top-level heading whose text contains it, case-insensitively — quote multi-word section
+# names. Works on any cairn/docs file, numbered (ARCHITECTURE, BUILD-NOTES) or not (ROADMAP,
+# QA-FINDINGS).
+set -euo pipefail
+
+doc="${1:?usage: doc-section <DOC> [section ...]}"; shift || true
+dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../docs" && pwd)"
+file="$dir/${doc%.md}.md"
+[ -f "$file" ] || { echo "no such doc: $file" >&2; exit 1; }
+
+if [ $# -eq 0 ]; then
+  echo "# sections of ${doc%.md}.md — pass the numbers or heading text you need"
+  awk '
+    /^## / { if(h){printf "  %-64s ~%dk tokens\n", h, int(c/4000+0.5)} h=$0; c=0; next }
+    { c+=length($0)+1 }
+    END { if(h) printf "  %-64s ~%dk tokens\n", h, int(c/4000+0.5) }
+  ' "$file"
+  exit 0
+fi
+
+for n in "$@"; do
+  if [[ "$n" =~ ^[0-9]+$ ]]; then
+    awk -v n="$n" '
+      $0 ~ "^## " n "\\." { p=1 }
+      p && /^## / && $0 !~ "^## " n "\\." && seen { exit }
+      p { print; seen=1 }
+    ' "$file"
+  else
+    awk -v n="$n" '
+      BEGIN { needle = tolower(n) }
+      /^## / {
+        heading = tolower(substr($0, 4))
+        match_now = (index(heading, needle) > 0)
+        if (p && !match_now && seen) exit
+        p = match_now
+      }
+      p { print; seen=1 }
+    ' "$file"
+  fi
+  echo
+done

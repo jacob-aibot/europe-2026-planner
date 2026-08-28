@@ -1,0 +1,278 @@
+{
+  "$generatedBy": "cairn/tools/gen-golden.mjs",
+  "$source": "europe-2026-itinerary.html (read-only)",
+  "$sourceSha256": "40955ca0b182dddcc33540accadf2a65a329bc20b9e6ca109c9884e776bb06d2",
+  "$what": "focusCluster() from the live page, plus the span guard lifted from applyDayFit().",
+  "clusters": {
+    "08-07": {
+      "split": true,
+      "groupSizes": [
+        1,
+        1
+      ],
+      "focusNames": [
+        "Arrive LAX — Tom Bradley International",
+        "Condor DE2081 → Frankfurt"
+      ],
+      "focusSpanKm": 9321.213965,
+      "liveUsesCentreView": false
+    },
+    "08-08": {
+      "split": true,
+      "groupSizes": [
+        1,
+        7
+      ],
+      "focusNames": [
+        "Condor DE4345 → Vienna (VIE)",
+        "City Airport Train → Wien Mitte",
+        "Check in — Habyt Vienna",
+        "Maria-Theresien-Platz & Volksgarten",
+        "Stephansplatz + dinner at a Beisl",
+        "DECENTRAL — Sachertorte nightcap",
+        "Filmfestival Rathausplatz — open-air screening"
+      ],
+      "focusSpanKm": 19.503441,
+      "liveUsesCentreView": false
+    },
+    "08-09": {
+      "split": false,
+      "groupSizes": [
+        6
+      ],
+      "focusNames": [
+        "Schönbrunn gardens & Gloriette",
+        "Austrian National Library — State Hall",
+        "Mariahilfer Straße + coffeehouse stop",
+        "Back to hotel — pack tonight, not at 5am",
+        "IKEA Rooftop, Westbahnhof — golden hour",
+        "Early night — 4:45am alarm"
+      ],
+      "focusSpanKm": 5.200963,
+      "liveUsesCentreView": false
+    },
+    "08-10": {
+      "split": true,
+      "groupSizes": [
+        1,
+        6
+      ],
+      "focusNames": [
+        "Ryanair VIE → DBV",
+        "Airport bus → Pile Gate, drop bags",
+        "Sveti Jakov Beach",
+        "Check in — Hostel Petra Marina",
+        "Dubrovnik Cable Car → Srđ Hill, sunset",
+        "Stradun wander + dinner"
+      ],
+      "focusSpanKm": 18.903457,
+      "liveUsesCentreView": false
+    },
+    "08-11": {
+      "split": false,
+      "groupSizes": [
+        5
+      ],
+      "focusNames": [
+        "Old Town wander + quick lunch",
+        "Lokrum Island",
+        "Dubrovnik City Walls",
+        "Buža Bar for sunset",
+        "Dinner at Dubrovnik 186"
+      ],
+      "focusSpanKm": 2.115125,
+      "liveUsesCentreView": false
+    },
+    "08-12": {
+      "split": true,
+      "groupSizes": [
+        1,
+        7
+      ],
+      "focusNames": [
+        "FlixBus → Split",
+        "Drop bags — Guest House Lana",
+        "Lunch, Old Town",
+        "Marjan Hill — Vidilica viewpoint & ridge walk",
+        "Kasjuni Beach — swim",
+        "Check in — Guest House Lana",
+        "Dinner — Smash Burger"
+      ],
+      "focusSpanKm": 4.397512,
+      "liveUsesCentreView": false
+    },
+    "08-13": {
+      "split": false,
+      "groupSizes": [
+        7
+      ],
+      "focusNames": [
+        "Speedboat pickup — Split harbour",
+        "Blue Cave, Biševo",
+        "Stiniva Cove, Vis",
+        "Budikovac / Blue Lagoon — snorkel stop",
+        "Hvar Town",
+        "Dinner — Cicibela Food & Wine Bar",
+        "Diocletian's Palace & Peristyle at night"
+      ],
+      "focusSpanKm": 63.830587,
+      "liveUsesCentreView": false
+    },
+    "08-14": {
+      "split": false,
+      "groupSizes": [
+        7
+      ],
+      "focusNames": [
+        "FlixBus → Skradin",
+        "Arrive Skradin — buy park entrance ticket",
+        "Boat to Skradinski Buk",
+        "Buy the Visovac + Roški Slap boat excursion",
+        "Roški Slap — mills, cascades & swim",
+        "Boat back to Skradinski Buk, then Skradin",
+        "FlixBus → Split"
+      ],
+      "focusSpanKm": 54.317677,
+      "liveUsesCentreView": false
+    },
+    "08-15": {
+      "split": true,
+      "groupSizes": [
+        2,
+        4
+      ],
+      "focusNames": [
+        "Smartwings QS1083 → Prague",
+        "Airport Express bus → city centre",
+        "Check in — Jiráskovo náměstí",
+        "Old Town Square + dinner"
+      ],
+      "focusSpanKm": 12.689396,
+      "liveUsesCentreView": false
+    },
+    "08-16": {
+      "split": false,
+      "groupSizes": [
+        9
+      ],
+      "focusNames": [
+        "Jewish Quarter (Josefov)",
+        "Franz Kafka Rotating Head",
+        "Idiom — the Infinity Book Tower",
+        "Lunch, Old Town",
+        "Astronomical Clock",
+        "Vyšehrad",
+        "Anonymous Shrink's Office (walk-in attempt)",
+        "The Alchemist Bar",
+        "Glass Bar"
+      ],
+      "focusSpanKm": 2.791905,
+      "liveUsesCentreView": false
+    },
+    "08-17": {
+      "split": false,
+      "groupSizes": [
+        12
+      ],
+      "focusNames": [
+        "Letná Park",
+        "Prague Castle grounds & ticket queue",
+        "St Vitus Cathedral",
+        "St George's Basilica",
+        "Golden Lane",
+        "Wallenstein Garden",
+        "Lesser Town (Malá Strana) wander",
+        "Lennon Wall",
+        "Charles Bridge crossing",
+        "Bernard Beer Spa — Karoliny Světlé 20",
+        "Late lunch, Old Town",
+        "Dinner, Old Town"
+      ],
+      "focusSpanKm": 1.480181,
+      "liveUsesCentreView": false
+    },
+    "08-18": {
+      "split": true,
+      "groupSizes": [
+        2,
+        8
+      ],
+      "focusNames": [
+        "Ryanair PRG → Budapest",
+        "100E airport bus → city, check in",
+        "St Stephen's Basilica + panorama",
+        "Lunch, Basilica square",
+        "Shoes on the Danube Bank",
+        "Rest — you've been up since before dawn",
+        "Dinner, Pest side",
+        "Szimpla Kert — the original ruin bar"
+      ],
+      "focusSpanKm": 18.271315,
+      "liveUsesCentreView": false
+    },
+    "08-19": {
+      "split": false,
+      "groupSizes": [
+        5
+      ],
+      "focusNames": [
+        "Brunch — Twenty6",
+        "Hungarian Parliament — interior tour (same-day, walk-up)",
+        "Széchenyi Thermal Bath",
+        "Free time — head back and get ready for the cruise",
+        "Board the Danube dinner cruise — Akadémia 3 Dock"
+      ],
+      "focusSpanKm": 3.966369,
+      "liveUsesCentreView": false
+    },
+    "08-20": {
+      "split": false,
+      "groupSizes": [
+        8
+      ],
+      "focusNames": [
+        "St. Stephen's Day state ceremony",
+        "Air Parade over the Danube",
+        "Festival of Folk Arts — Buda Castle",
+        "Street of Hungarian Flavours — Várkert Bazaar",
+        "Rest / flex time",
+        "Stake out a fireworks spot",
+        "Fireworks over the Danube",
+        "Ruin bar crawl — Jewish Quarter"
+      ],
+      "focusSpanKm": 1.693422,
+      "liveUsesCentreView": false
+    },
+    "08-21": {
+      "split": true,
+      "groupSizes": [
+        2,
+        5
+      ],
+      "focusNames": [
+        "British Airways BA863 → London Heathrow",
+        "Bus 8 or taxi → Windsor",
+        "Hotel check-in — Windsor",
+        "Windsor riverside & Eton Bridge evening walk",
+        "Dinner — Windsor town centre"
+      ],
+      "focusSpanKm": 10.878943,
+      "liveUsesCentreView": false
+    },
+    "08-22": {
+      "split": true,
+      "groupSizes": [
+        4,
+        1
+      ],
+      "focusNames": [
+        "Windsor Castle",
+        "Walk over to Eton",
+        "Lunch — Windsor or Eton riverside",
+        "Collect bags, head to Heathrow"
+      ],
+      "focusSpanKm": 10.96908,
+      "liveUsesCentreView": false
+    }
+  }
+}
