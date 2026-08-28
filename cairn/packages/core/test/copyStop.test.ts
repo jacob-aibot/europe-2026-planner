@@ -14,16 +14,22 @@ import assert from 'node:assert/strict';
 
 import {
   acceptCandidate, addStop, attribution, copyStopInto, createTrip, displayStatus,
-  moveStop, rejectCandidate, removeStop, returnToPool, scheduleFromPool, sequentialIds,
+  moveStop, poolFor, rejectCandidate, removeStop, returnToPool, scheduleFromPool, sequentialIds, setDayMeta,
   toJSON, fromJSON,
   updateStop, upsertBooking, validateTrip,
 } from '../src/index.ts';
 import { detectConflicts } from '../src/index.ts';
 // Internals of public functions, off the surface in §2.10 revision 5. BUILD-NOTES KD-33.
 import { addPlace } from '../src/build/stops.ts';
+// Not on §2.10's surface by design (`model/ids.ts`): a caller outside core asks "is this key
+// one of `trip.cities`?" rather than knowing the value. A-19 makes it the one honest answer a
+// cross-trip pool copy can give, so the test names it rather than the bare string.
+import { TRANSIT_CITY_KEY } from '../src/model/ids.ts';
 import { needsBadge } from '../src/derive/display.ts';
 import { resolvePlaceLink } from '../src/derive/geo.ts';
-import type { BuildCtx, LatLng, Place, Stop, Trip } from '../src/index.ts';
+import type {
+  BuildCtx, CostEstimate, LatLng, Link, MoveOverride, Money, Place, Stop, StopPlacement, Trip,
+} from '../src/index.ts';
 import { redactionHits } from '../src/index.ts';
 import { europe2026 } from './fixture.ts';
 
@@ -1167,4 +1173,484 @@ test('R5-2 ceiling: the widened rule adds nothing to the unmodified reference tr
     issues.length + 1,
     'exactly one additional issue, not a cascade',
   );
+});
+
+// ---------------------------------------------------------------------------
+// A-18 (ARCHITECTURE revision 14, QA R15-3) — free text does not become structural by being
+// nested inside a `Stop`.
+//
+// Rule 5 lists the fields of `Stop`, and `cost` and `arrival` are RECORDS, not strings:
+// naming them in a field list says which fields travel, not which strings do. So
+// `cost: {...src.cost}` and `arrival: {...src.arrival}` handed `CostEstimate.note` and
+// `MoveOverride.label` across the person boundary verbatim, while §6.6's sample path redacts
+// both — the same "sample fails closed, copy fails open" asymmetry A-15 called THE finding,
+// one record inward instead of one record sideways.
+//
+// > A field list is only exhaustive down to the depth it recurses. Enumeration stops at a
+// > SCALAR, never at a field name.
+//
+// R15-1 (`{...w}` on an `hours.weekly` entry) is the same sentence one level down inside
+// `Place`, which is why the two land together.
+// ---------------------------------------------------------------------------
+
+const COST_NOTE_CREDENTIAL = 'paid with card, conf 5814731574';
+const ARRIVAL_LABEL_CREDENTIAL = 'Bus 8, booking GYGG45MLA9Q9';
+
+/**
+ * The four records A-18 rebuilds, as compile-time exhaustive maps — the same mechanical stop
+ * A-15 gave `Place`, which R15-3 observed `Stop` did not have. A field added to any of these
+ * fails `npm run typecheck` HERE first, and then fails the key-set assertions below until it is
+ * classified in `costForCopy` / `arrivalForCopy` / the `links` line.
+ */
+const STOP_FIELDS: Record<keyof Stop, true> = {
+  id: true, placement: true, name: true, category: true, place: true, note: true, cost: true,
+  arrival: true, travelRole: true, bookingId: true, flags: true, provenance: true,
+  durationMins: true, links: true, ticket: true,
+};
+const COST_FIELDS: Record<keyof CostEstimate, true> = { amounts: true, display: true, note: true };
+const MONEY_FIELDS: Record<keyof Money, true> = { lo: true, hi: true, currency: true, basis: true };
+const ARRIVAL_FIELDS: Record<keyof MoveOverride, true> = { mode: true, mins: true, label: true };
+const LINK_FIELDS: Record<keyof Link, true> = { label: true, href: true };
+
+/** `ticket` is the one field of `Stop` that may not cross: §6.6, a ticket is a credential. */
+const STOP_FIELDS_THAT_CROSS = Object.keys(STOP_FIELDS).filter((k) => k !== 'ticket');
+
+/** A source trip whose one stop populates every field of `CostEstimate` and `MoveOverride`. */
+function sourceWithFullStop(over: {
+  costNote?: string;
+  display?: string | null;
+  label?: string;
+} = {}): Trip {
+  const t = mintedTrip('trip-src', 'user:marta', 'fs', [{ name: 'Vienna', centre: VIENNA }]);
+  return addStop(
+    t, { kind: 'scheduled', dayId: '2026-08-07', time: '10:00', order: 0 },
+    {
+      id: 's-src', name: 'Tour', category: 'sight', place: { kind: 'none' }, note: 'plain prose',
+      cost: {
+        amounts: [{ lo: 10, hi: 20, currency: 'EUR', basis: 'per_person' }],
+        display: over.display === undefined ? '€10–20' : over.display,
+        note: over.costNote ?? 'tickets at the door',
+      },
+      arrival: { mode: 'bus', mins: 20, label: over.label ?? 'Bus 8' },
+      travelRole: 'transfer', durationMins: 90, flags: ['ticketed'],
+      links: [{ label: 'Info', href: 'https://example.test/info' }],
+    },
+    CTX('fss'),
+  );
+}
+
+const jacobsTarget = (prefix = 'tgt'): Trip =>
+  mintedTrip('trip-tgt', 'user:jacob', prefix, [{ name: 'Vienna', centre: VIENNA }]);
+
+test('A-18: the copied stop\'s KEY SETS are the classified lists — a new cost or arrival field fails here first', () => {
+  const source = sourceWithFullStop();
+  const before = source.days.find((d) => d.id === '2026-08-07')!.stops[0];
+  assert.deepEqual(
+    Object.keys(before).sort(), Object.keys(STOP_FIELDS).filter((k) => k !== 'ticket').sort(),
+    'the fixture must populate every field of Stop but `ticket`, or this measures less than it claims',
+  );
+  assert.deepEqual(Object.keys(before.cost!).sort(), Object.keys(COST_FIELDS).sort());
+  assert.deepEqual(Object.keys(before.arrival!).sort(), Object.keys(ARRIVAL_FIELDS).sort());
+
+  const copy = copiedStop(copyAcross(jacobsTarget(), source));
+  assert.deepEqual(
+    Object.keys(copy).sort(), [...STOP_FIELDS_THAT_CROSS].sort(),
+    'a field crossed the trip boundary that rule 5 does not classify (or a classified one is missing)',
+  );
+  assert.deepEqual(
+    Object.keys(copy.cost!).sort(), Object.keys(COST_FIELDS).sort(),
+    'a field of CostEstimate travelled unclassified — A-18 position 2 forbids a spread at any depth',
+  );
+  assert.deepEqual(
+    Object.keys(copy.cost!.amounts[0]).sort(), Object.keys(MONEY_FIELDS).sort(),
+    'a field of Money travelled unclassified',
+  );
+  assert.deepEqual(
+    Object.keys(copy.arrival!).sort(), Object.keys(ARRIVAL_FIELDS).sort(),
+    'a field of MoveOverride travelled unclassified',
+  );
+  assert.deepEqual(
+    Object.keys(copy.links![0]).sort(), Object.keys(LINK_FIELDS).sort(),
+    'a field of Link travelled unclassified',
+  );
+
+  // The limitation, stated so it is not oversold (A-15's is the same): this catches a field
+  // that TRAVELS unclassified — a re-introduced spread over a source that carries one — and it
+  // catches a classified field that stops travelling. A field that silently fails to travel
+  // when nothing in the fixture populates it is the fail-closed direction, and is caught by the
+  // compile-time maps above plus review, not by this assertion.
+  const hostile: Trip = {
+    ...source,
+    days: source.days.map((d) => ({
+      ...d,
+      stops: d.stops.map((s) => ({
+        ...s,
+        cost: { ...s.cost!, ninth: 'PIN 0754' } as unknown as Stop['cost'],
+        arrival: { ...s.arrival!, tenth: 'PIN 0754' } as unknown as Stop['arrival'],
+      })),
+    })),
+  };
+  const hostileCopy = copiedStop(copyAcross(jacobsTarget(), hostile, 'k2'));
+  assert.deepEqual(Object.keys(hostileCopy.cost!).sort(), Object.keys(COST_FIELDS).sort());
+  assert.deepEqual(Object.keys(hostileCopy.arrival!).sort(), Object.keys(ARRIVAL_FIELDS).sort());
+});
+
+test('A-18: a credential in cost.note or arrival.label does not cross the trip boundary', () => {
+  const source = sourceWithFullStop({
+    costNote: COST_NOTE_CREDENTIAL,
+    label: ARRIVAL_LABEL_CREDENTIAL,
+    display: '€40, conf 5814731574',
+  });
+  const after = copyAcross(jacobsTarget(), source);
+  const copy = copiedStop(after);
+
+  assert.deepEqual(redactionHits(copy.cost?.note ?? ''), [], 'a §6.6 pattern still matches the copied cost.note');
+  assert.deepEqual(redactionHits(copy.arrival?.label ?? ''), [], 'a §6.6 pattern still matches the copied arrival.label');
+  assert.match(copy.cost?.note ?? '', /\[redacted\]/, 'redaction should be visible, not a silently emptied note');
+  assert.equal(copy.arrival?.label, 'Bus 8, [redacted]', 'the part that describes the journey must survive');
+
+  const doc = JSON.stringify(toJSON(after));
+  for (const needle of ['5814731574', 'GYGG45MLA9Q9']) {
+    assert.equal(doc.includes(needle), false, `${needle} is greppable in the recipient's whole document`);
+  }
+  // The two thresholds now agree: the sample path redacts both of these strings, and so does
+  // the copy path. That agreement is the whole finding.
+  assert.deepEqual(redactionHits(copy.cost?.display ?? ''), []);
+});
+
+test('A-18: redaction is not a wipe — an ordinary cost.note, label and display cross byte-identical', () => {
+  const source = sourceWithFullStop({
+    costNote: 'tickets at the door', label: 'Bus 8', display: 'gardens free · palace €15–24',
+  });
+  const before = source.days.find((d) => d.id === '2026-08-07')!.stops[0];
+  const copy = copiedStop(copyAcross(jacobsTarget(), source));
+
+  assert.equal(copy.cost?.note, 'tickets at the door', 'a rule that redacts everything is wrong');
+  assert.equal(copy.arrival?.label, 'Bus 8');
+  assert.equal(copy.cost?.display, 'gardens free · palace €15–24');
+  assert.deepEqual(copy.cost?.amounts, before.cost?.amounts, 'the money is a description of the world');
+  assert.equal(copy.arrival?.mode, 'bus');
+  assert.equal(copy.arrival?.mins, 20);
+  assert.deepEqual(copy.flags, ['ticketed'], 'flags is a STRUCTURAL_KEY on the sample path too');
+});
+
+test('A-18: a credential-shaped display becomes null and `amounts` is unmoved, so the price survives', () => {
+  // The `display` row is the one that drops to a specified unknown instead of redacting in
+  // place: `[redacted] HUF` is a number that is not a number. `costLabel` (apps/web) reads
+  // `amounts` whenever `display` is falsy, so the recipient sees €40 rather than a marker.
+  // Asserted here as the two facts costLabel consumes — `test/boundaries.test.ts` forbids any
+  // test importing apps/web, so its output cannot be asserted directly from the suite.
+  const source = mintedTrip('trip-src', 'user:marta', 'dsp', [{ name: 'Vienna', centre: VIENNA }]);
+  const withStop = addStop(
+    source, { kind: 'scheduled', dayId: '2026-08-07', time: '10:00', order: 0 },
+    {
+      id: 's-src', name: 'Tour', category: 'sight', place: { kind: 'none' },
+      cost: { amounts: [{ lo: 40, hi: 40, currency: 'EUR', basis: 'per_person' }], display: '€40, conf 5814731574' },
+    },
+    CTX('dsps'),
+  );
+  const copy = copiedStop(copyAcross(jacobsTarget(), withStop));
+  assert.equal(copy.cost?.display, null, 'a display that redactText alters must not travel altered');
+  assert.deepEqual(copy.cost?.amounts, [{ lo: 40, hi: 40, currency: 'EUR', basis: 'per_person' }]);
+  assert.equal('note' in (copy.cost as object), false, 'an absent cost.note must not become a present one');
+
+  // And a non-string display — reachable from a hand-built document — fails closed the same
+  // way, with no throw and no cast.
+  const hostile: Trip = {
+    ...withStop,
+    days: withStop.days.map((d) => ({
+      ...d,
+      stops: d.stops.map((s) => ({ ...s, cost: { ...s.cost!, display: { pin: 'PIN 0754' } as unknown as string } })),
+    })),
+  };
+  const hostileCopy = copiedStop(copyAcross(jacobsTarget(), hostile, 'h2'));
+  assert.equal(hostileCopy.cost?.display, null);
+  assert.equal(JSON.stringify(toJSON(copyAcross(jacobsTarget(), hostile, 'h3'))).includes('0754'), false);
+});
+
+test('A-18: nothing of the copied cost, arrival or links is aliased, from either direction', () => {
+  const source = sourceWithFullStop();
+  const after = copyAcross(jacobsTarget(), source);
+  const original = source.days.find((d) => d.id === '2026-08-07')!.stops[0];
+  const copy = copiedStop(after);
+
+  assert.notEqual(copy.cost, original.cost, 'two documents must not share one CostEstimate');
+  assert.notEqual(copy.cost!.amounts[0], original.cost!.amounts[0], 'nor one Money');
+  assert.notEqual(copy.arrival, original.arrival, 'nor one MoveOverride');
+  assert.notEqual(copy.links![0], original.links![0], 'nor one Link');
+  assert.notEqual(copy.flags, original.flags);
+
+  const targetBefore = toJSON(after);
+  original.cost!.amounts[0].lo = 999;
+  original.arrival!.mins = 999;
+  original.links![0].href = 'https://changed.test/';
+  assert.equal(toJSON(after), targetBefore, 'a later mutation of the SOURCE document reached the target');
+
+  const sourceBefore = toJSON(source);
+  copy.cost!.amounts[0].hi = 111;
+  copy.arrival!.mins = 111;
+  copy.links![0].label = 'CHANGED';
+  assert.equal(toJSON(source), sourceBefore, 'a later mutation of the TARGET document reached the source');
+});
+
+test('A-18: no new throw site — every cost and arrival shape fromJSON accepts copies cleanly', () => {
+  const shapes: Array<[string, { cost?: Stop['cost']; arrival?: Stop['arrival'] }]> = [
+    ['cost: null, arrival: null', { cost: null, arrival: null }],
+    ['amounts: []', { cost: { amounts: [], display: null } }],
+    ['display: null with amounts', { cost: { amounts: [{ lo: 1, hi: 2, currency: 'EUR', basis: 'per_person' }], display: null } }],
+    ['no note, no label', { cost: { amounts: [], display: '€1' }, arrival: { mode: 'walk', mins: 4 } }],
+  ];
+  for (const [label, over] of shapes) {
+    let t = mintedTrip('trip-src', 'user:marta', 'ns', [{ name: 'Vienna', centre: VIENNA }]);
+    t = addStop(
+      t, { kind: 'scheduled', dayId: '2026-08-07', time: '10:00', order: 0 },
+      { id: 's-src', name: 'S', category: 'sight', place: { kind: 'none' }, ...over },
+      CTX('nss'),
+    );
+    const round = fromJSON(toJSON(t));
+    const copy = copiedStop(copyAcross(jacobsTarget(), round, 'ns2'));
+    assert.equal('note' in ((copy.cost ?? {}) as object), false, `${label}: an absent cost.note was invented`);
+    assert.equal('label' in ((copy.arrival ?? {}) as object), false, `${label}: an absent arrival.label was invented`);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// R15-1 / R15-2 — `Place.hours` is the one field `parsePlace` does not structurally validate
+// (`o.hours as Place['hours']`), so what the TYPE says about `hours` is not what a DOCUMENT
+// may carry. `{...w}` over `hours.weekly` therefore carried arbitrary keys across the person
+// boundary (R15-1), and `p.hours.weekly.map(...)` threw a raw `TypeError` on six shapes
+// `fromJSON` accepts (R15-2) — core throwing about a document, which §2.1 forbids.
+// ---------------------------------------------------------------------------
+
+/** Re-parses through the live import route, so these tests measure what `importDoc` sees. */
+function reparsedWithHours(hours: unknown): Trip {
+  const t = sourceWithFullPlace('ordinary prose');
+  const raw = JSON.parse(toJSON(t));
+  raw.places[0].hours = hours;
+  return fromJSON(JSON.stringify(raw));
+}
+
+test('R15-1: an unvalidated hours.weekly entry is rebuilt field by field — nothing else crosses', () => {
+  const source = reparsedWithHours({
+    weekly: [{
+      day: 1, open: '09:00', close: '17:00',
+      note: 'Front door PIN 0754, conf 5814731574 - ask for jacob@example.com',
+      href: 'https://vendor.example/booking/GYGG45MLA9Q9',
+    }],
+  });
+  assert.notEqual(
+    (source.places[0].hours!.weekly[0] as Record<string, unknown>).note, undefined,
+    'the fixture must survive fromJSON unvalidated, or it is not testing the live route',
+  );
+
+  const after = copyAcross(jacobsTarget(), source);
+  const entry = after.places[0].hours!.weekly[0]!;
+  assert.deepEqual(Object.keys(entry).sort(), ['close', 'day', 'open'], 'a key of a weekly entry crossed unclassified');
+  assert.deepEqual(entry, { day: 1, open: '09:00', close: '17:00' }, 'the hours themselves must still cross');
+  const doc = JSON.stringify(toJSON(after));
+  for (const needle of CREDENTIALS) {
+    assert.equal(doc.includes(needle), false, `${needle} reached the recipient's document through hours.weekly`);
+  }
+});
+
+test('R15-1: hours.note is redacted even when it is not a string — `as string` was hiding that', () => {
+  for (const value of [{ pin: 'PIN 0754' }, 5814731574, ['conf 5814731574']]) {
+    const source = reparsedWithHours({ weekly: [], note: value });
+    const after = copyAcross(jacobsTarget(), source, 'hn');
+    assert.equal(after.places[0].hours?.note, '[redacted]', `a non-string hours.note crossed whole: ${JSON.stringify(value)}`);
+    assert.equal(JSON.stringify(toJSON(after)).includes('0754'), false);
+  }
+  // A weekly entry whose open/close are not clock times redactText leaves alone becomes the
+  // model's own specified unknown — `null` — rather than a `[redacted]` opening time.
+  const hostile = reparsedWithHours({ weekly: [{ day: 1, open: 'PIN 0754', close: '17:00' }] });
+  const copy = copyAcross(jacobsTarget(), hostile, 'hw').places[0];
+  assert.deepEqual(copy.hours?.weekly, [null], 'a time that is not a time must not travel as a redaction marker');
+});
+
+test('R15-2: the six hours shapes fromJSON accepts copy without throwing, and warn instead', () => {
+  const shapes: Array<[string, unknown]> = [
+    ['hours: {} (no weekly)', {}],
+    ['hours: a string', 'closed mondays'],
+    ['hours: a number', 7],
+    ['hours: an array', [1, 2]],
+    ['hours: null', null],
+    ['hours.weekly: a string', { weekly: 'mon-fri' }],
+  ];
+  for (const [label, hours] of shapes) {
+    const source = reparsedWithHours(hours);
+    let after: Trip;
+    assert.doesNotThrow(() => { after = copyAcross(jacobsTarget(), source, 'sh'); }, `${label} threw`);
+    const copy = after!.places[0];
+    assert.deepEqual(copy.hours?.weekly, [], `${label}: an unreadable weekly must become a hole, not an invention`);
+    assert.equal('note' in (copy.hours as object), false, `${label}: a note was invented`);
+    // §2.1: core throws on programmer error and reports a DOCUMENT problem as an Issue. This
+    // is the half of R15-2 that answers "nothing warns the user first".
+    const issues = validateTrip(source).filter((i) => i.code === 'place_hours_malformed');
+    assert.equal(issues.length, 1, `${label}: validateTrip says nothing about the malformed hours`);
+    assert.equal(issues[0].level, 'warn');
+  }
+  // And a WELL-FORMED hours warns about nothing, or the rule is noise.
+  assert.deepEqual(
+    validateTrip(reparsedWithHours({ weekly: [null, { day: 1, open: '09:00', close: '17:00' }], note: 'x' }))
+      .filter((i) => i.code === 'place_hours_malformed'),
+    [],
+  );
+});
+
+// ---------------------------------------------------------------------------
+// R15-4 — A-16 step 1 must run BEFORE step 2, and the fixture above cannot show it.
+//
+// `A-16 step 1 stays first` files its place under `'city_gone'`, a key NEITHER document holds,
+// so step 2's `target.cities.some(...)` is false whatever the order and moving step 2 above
+// step 1 leaves the whole suite green (QA verified this by mutation). The document that
+// distinguishes the two orders is the one where the SOURCE cannot resolve the key and the
+// TARGET can: a snapshot taken before the target gained the city.
+// ---------------------------------------------------------------------------
+
+test('A-16 step 1 stays first: a key only the TARGET can resolve still takes step 3', () => {
+  const GAINED = 'city-later';
+  let target = mintedTrip('trip-gain', 'user:jacob', 'gn', [{ name: 'Vienna', centre: VIENNA }]);
+  target = {
+    ...target,
+    cities: [...target.cities, { key: GAINED, name: 'Prague', countryCode: 'CZ', centre: PRAGUE, order: 1 }],
+  };
+  // The snapshot the Browse pane still holds: no such city, but a place already filed under it.
+  let stale: Trip = { ...target, cities: target.cities.filter((c) => c.key !== GAINED) };
+  stale = addPlace(stale, { id: 'p-src', cityKey: GAINED, name: 'Belvedere', at: BELVEDERE, category: 'sight' });
+  stale = addStop(
+    stale, { kind: 'scheduled', dayId: '2026-08-07', time: '10:00', order: 0 },
+    { id: 's-src', name: 'Belvedere', category: 'sight', place: { kind: 'place', placeId: 'p-src' } },
+    CTX('gns'),
+  );
+  target = { ...target, places: stale.places, days: stale.days };
+
+  // The preconditions that make the ORDER observable, asserted rather than assumed.
+  assert.equal(stale.cities.some((c) => c.key === GAINED), false, 'the source must NOT resolve its own key');
+  assert.equal(target.cities.some((c) => c.key === GAINED), true, 'the target MUST resolve it, or step 2 is false anyway');
+  assert.equal(stale.id, target.id, 'and they must be the same document, or step 2\'s first conjunct is false');
+
+  const after = copyAcross(target, stale, 'gn2');
+  const landed = copiedStop(after).place;
+  assert.equal(
+    landed.kind, 'inline',
+    'step 2 answered before step 1: a place whose own document cannot resolve its city was filed ' +
+      'under the target\'s key anyway, which is the papering-over A-16 refuses',
+  );
+  assert.equal(after.places.length, stale.places.length, 'no row may be minted for a place with no city');
+});
+
+// ---------------------------------------------------------------------------
+// A-19 (ARCHITECTURE revision 14, QA R15-6) — a placement is an instruction in the TARGET's
+// terms, so it is validated, not re-filed.
+//
+// `copyStopInto` validated the scheduled branch's `dayId` against the target and nothing for
+// the pool branch, so a `{kind:'pool', cityKey}` carrying the SOURCE's key was written straight
+// into the recipient's document, where `validateTrip` reports `pool_stop_unknown_city` — an
+// error they did not cause, explained by a sentence that is false for their document, whose
+// only repair ("Add to the plan") throws.
+// ---------------------------------------------------------------------------
+
+test('A-19: a pool placement naming a city the target does not have is REFUSED, and nothing is written', () => {
+  const source = sourceWithPlace({ name: 'Vienna', centre: VIENNA }, { name: 'Belvedere', at: BELVEDERE });
+  const target = jacobsTarget('a19');
+  assert.notEqual(source.cities[0].key, target.cities[0].key, 'the fixture is not testing minted keys');
+
+  const before = toJSON(target);
+  assert.throws(
+    () => copyStopInto(target, { trip: source, stopId: 's-src' },
+      { kind: 'pool', cityKey: source.cities[0].key }, COPY_CTX('a19a')),
+    new RegExp(`no such city ${source.cities[0].key} in trip-tgt`),
+  );
+  assert.equal(toJSON(target), before, 'the target moved behind the throw');
+});
+
+test('A-19: the transit key is the honest unknown, and a key the target HAS files under it', () => {
+  const source = sourceWithPlace({ name: 'Vienna', centre: VIENNA }, { name: 'Belvedere', at: BELVEDERE });
+  const target = jacobsTarget('a19b');
+
+  const unfiled = copyStopInto(target, { trip: source, stopId: 's-src' },
+    { kind: 'pool', cityKey: TRANSIT_CITY_KEY }, COPY_CTX('a19c'));
+  assert.equal(unfiled.pool.length, 1);
+  assert.deepEqual(unfiled.pool[0].placement, { kind: 'pool', cityKey: TRANSIT_CITY_KEY });
+  assert.deepEqual(
+    validateTrip(unfiled).map((i) => i.code), validateTrip(target).map((i) => i.code),
+    'the transit group must add no issue at all',
+  );
+  assert.equal(displayStatus(unfiled.pool[0]), 'imported', 'the badge and the credit are untouched');
+  assert.ok(attribution(unfiled.pool[0]));
+
+  const filed = copyStopInto(target, { trip: source, stopId: 's-src' },
+    { kind: 'pool', cityKey: target.cities[0].key }, COPY_CTX('a19d'));
+  assert.equal(poolFor(filed, target.cities[0].key).length, 1);
+  assert.deepEqual(validateTrip(filed).filter((i) => i.code === 'pool_stop_unknown_city'), []);
+  // Otherwise identical to the scheduled case: A-15 applied to the place beside it.
+  assert.equal(filed.places.length, 1);
+  assert.equal(filed.places[0].cityKey, target.cities[0].key, 'the PLACE\'s key is still re-filed');
+});
+
+test('A-19: a within-trip copy into the pool under the stop\'s own key adds no issue', () => {
+  let t = mintedTrip('trip-self', 'user:jacob', 'sf', [{ name: 'Vienna', centre: VIENNA }]);
+  t = addStop(
+    t, { kind: 'pool', cityKey: t.cities[0].key },
+    { id: 's-src', name: 'Pooled', category: 'sight', place: { kind: 'none' } }, CTX('sfs'),
+  );
+  const after = copyStopInto(t, { trip: t, stopId: 's-src' },
+    { kind: 'pool', cityKey: t.cities[0].key }, COPY_CTX('sf2'));
+  assert.equal(after.pool.length, 2);
+  assert.deepEqual(validateTrip(after).map((i) => i.code), validateTrip(t).map((i) => i.code));
+});
+
+test('A-19: a hint the target cannot resolve is DROPPED, not carried and not thrown on', () => {
+  let source = mintedTrip('trip-src', 'user:marta', 'hs', [{ name: 'Vienna', centre: VIENNA }]);
+  // A day that belongs to the city, so `pickDay` has an answer and the fallback is reachable.
+  source = setDayMeta(source, '2026-08-08', { primaryCity: source.cities[0].key });
+  source = addStop(
+    source, { kind: 'pool', cityKey: source.cities[0].key },
+    { id: 's-src', name: 'Pooled', category: 'sight', place: { kind: 'none' } }, CTX('hss'),
+  );
+  const target = jacobsTarget('hst');
+  assert.equal(target.days.some((d) => d.id === '2020-01-01'), false);
+
+  const dropped = copyStopInto(source, { trip: source, stopId: 's-src' }, // same doc, foreign day
+    { kind: 'pool', cityKey: source.cities[0].key, hint: { dayId: '2020-01-01', time: '09:00', order: 2 } },
+    COPY_CTX('h1'));
+  const copy = dropped.pool[dropped.pool.length - 1];
+  assert.equal('hint' in copy.placement, false, 'a hint naming a day the target does not have is a wrong filing');
+  // ...and the repair the recipient is offered now works, through pickDay + CAT_DEFAULT_TIME.
+  assert.doesNotThrow(() => scheduleFromPool(dropped, copy.id));
+
+  const kept = copyStopInto(source, { trip: source, stopId: 's-src' },
+    { kind: 'pool', cityKey: source.cities[0].key, hint: { dayId: '2026-08-08', time: '09:00', order: 2 } },
+    COPY_CTX('h2'));
+  assert.deepEqual(
+    kept.pool[kept.pool.length - 1].placement,
+    { kind: 'pool', cityKey: source.cities[0].key, hint: { dayId: '2026-08-08', time: '09:00', order: 2 } },
+    'a hint the target CAN resolve is preserved, order included',
+  );
+});
+
+test('A-19: the written placement is never the caller\'s object, for either branch', () => {
+  const source = sourceWithPlace({ name: 'Vienna', centre: VIENNA }, { name: 'Belvedere', at: BELVEDERE });
+  const target = jacobsTarget('a19e');
+
+  const scheduled: StopPlacement = { kind: 'scheduled', dayId: '2026-08-08', time: '11:00', order: 0 };
+  const afterS = copyStopInto(target, { trip: source, stopId: 's-src' }, scheduled, COPY_CTX('al1'));
+  assert.notEqual(copiedStop(afterS).placement, scheduled, 'reindex keeps the caller\'s object when the order matches');
+
+  const pooled: StopPlacement = {
+    kind: 'pool', cityKey: target.cities[0].key, hint: { dayId: '2026-08-08', time: '09:00', order: 1 },
+  };
+  const afterP = copyStopInto(target, { trip: source, stopId: 's-src' }, pooled, COPY_CTX('al2'));
+  assert.notEqual(afterP.pool[0].placement, pooled);
+  assert.notEqual(
+    (afterP.pool[0].placement as { hint?: object }).hint,
+    (pooled as { hint?: object }).hint,
+    'the hint is a mutable object shared between two documents',
+  );
+
+  const before = toJSON(afterP);
+  (pooled as { cityKey: string }).cityKey = 'mutated';
+  (pooled as { hint: { time: string } }).hint.time = '23:59';
+  (scheduled as { order: number }).order = 99;
+  assert.equal(toJSON(afterP), before, 'mutating the caller\'s placement after the copy reached the document');
 });

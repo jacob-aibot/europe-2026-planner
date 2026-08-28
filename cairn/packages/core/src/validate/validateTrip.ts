@@ -60,6 +60,35 @@ function namePhrase(name: string): string {
  */
 const NO_SUCH_CITY = 'a city this trip does not have';
 
+/**
+ * True when a `Place.hours` really is an `OpeningHours` (QA **R15-2**). Pure.
+ *
+ * `parsePlace` casts `hours` through unvalidated — the one field of that hand-rolled parser
+ * that is not structurally checked — deliberately: refusing to parse would make the document
+ * unopenable and hide the report, which is A-10's precedent and the same reason `duplicate_id`
+ * is an `Issue` rather than a parse error. The consequence is that `{}`, a string, a number, an
+ * array, `null` and `{weekly: 'mon-fri'}` all reach the model as an `OpeningHours` the type
+ * system believes in. `copyStopInto` used to meet that as a raw `TypeError`; it now copies a
+ * hole, and this is what says so to the user *before* they wonder where their hours went.
+ *
+ * `warn`, not `error`: nothing is unreachable or contradictory, the trip renders, and an
+ * imported document is allowed to be imperfect. A `weekly` entry with extra keys is NOT
+ * reported — the extra keys are dropped at the copy boundary and nowhere else reads them, so a
+ * warning about them would be noise about a field this trip does not use.
+ */
+function wellFormedHours(hours: unknown): boolean {
+  if (hours === null || typeof hours !== 'object' || Array.isArray(hours)) return false;
+  const o = hours as { weekly?: unknown; note?: unknown };
+  if (!Array.isArray(o.weekly)) return false;
+  if (o.note !== undefined && typeof o.note !== 'string') return false;
+  return o.weekly.every((w) => {
+    if (w === null) return true;
+    if (typeof w !== 'object' || Array.isArray(w)) return false;
+    const e = w as { day?: unknown; open?: unknown; close?: unknown };
+    return typeof e.day === 'number' && typeof e.open === 'string' && typeof e.close === 'string';
+  });
+}
+
 
 /** Pure. Returns every problem found, in a deterministic order; never throws. */
 export function validateTrip(trip: Trip): Issue[] {
@@ -456,6 +485,15 @@ export function validateTrip(trip: Trip): Issue[] {
         ref: { kind: 'place', id: p.id },
         message: `Place "${p.name}" references ${NO_SUCH_CITY}.`,
         params: { placeId: p.id, cityKey: p.cityKey },
+      });
+    }
+    if (p.hours !== undefined && !wellFormedHours(p.hours)) {
+      push({
+        level: 'warn',
+        code: 'place_hours_malformed',
+        ref: { kind: 'place', id: p.id },
+        message: `Place "${p.name}" has opening hours in a shape this trip cannot read.`,
+        params: { placeId: p.id, name: p.name },
       });
     }
   }

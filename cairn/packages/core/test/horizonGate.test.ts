@@ -28,8 +28,8 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 
 import {
-  addStop, createTrip, detectConflicts, LOCAL_OWNER, resolveConflict, RULES, sequentialIds,
-  setDayMeta, syncResolutions,
+  addStop, createTrip, detectConflicts, fromJSON, LOCAL_OWNER, resolveConflict, RULES, sequentialIds,
+  setDayMeta, syncResolutions, toJSON,
 } from '../src/index.ts';
 import { detectUngated } from '../src/conflict/detect.ts';
 import { europe2026, FIXTURE_TODAY } from './fixture.ts';
@@ -243,15 +243,41 @@ function sweptDocuments(): Array<{ name: string; trip: Trip }> {
     ...faultFixtures(),
     { name: 'horizon-60', trip: horizonTrip('2026-03-02') },
     { name: 'duplicate-stop-id', trip: duplicateStopIdTrip() },
+    // R15-5. The same defect with the ambiguity pointing the OTHER way — see `reversedDays`.
+    { name: 'duplicate-stop-id-far', trip: reversedDays(duplicateStopIdTrip('2026-08-15', '2026-12-01')) },
   ];
 }
 
+/**
+ * The same class of document with `days` in the other order, and dates chosen so the ambiguity
+ * is observable at one of `CLOCKS` (QA **R15-5**).
+ *
+ * `subjectDate` resolves a `{kind:'stop'}` ref to the **first day holding that id**. On the
+ * ascending `duplicate_id` document above, that is always the EARLIER day — so the ambiguous
+ * subject always resolves NEARER than the day `unbooked_ticketed` was iterating, and A-17's
+ * directional test is blind to the second half of the argument it exists to protect:
+ * `beyondHorizon` suppressing only when EVERY subject is beyond. QA mutation-verified that
+ * `subjects.every(...)` → `subjects.some(...)` leaves the whole suite green.
+ *
+ * Reversed, and with the two days 108 days apart, `@2026-08-01` the rule reports **14** days out
+ * for 2026-08-15 — inside its own 60-day horizon — while the ambiguous stop ref resolves to
+ * 2026-12-01, **122** days out. `every` keeps the finding; `some` withholds it. That single
+ * clock is what makes the assertion below falsifiable in the direction that matters.
+ *
+ * Days out of date order are a document `fromJSON` accepts — nothing sorts them on the way in —
+ * so this is a document the import route can produce, not a synthetic object. Pure.
+ */
+function reversedDays(trip: Trip): Trip {
+  const raw = JSON.parse(toJSON(trip));
+  return fromJSON(JSON.stringify({ ...raw, days: raw.days.slice().reverse() }));
+}
+
 /** One stop id on TWO days. `subjectDate` has no correct answer to *"which day is this on"*. */
-function duplicateStopIdTrip(): Trip {
+function duplicateStopIdTrip(first = '2026-05-01', second = '2026-09-01'): Trip {
   const c = ctx('dup');
   let t = createTrip(
     {
-      title: 'D', startDate: '2026-05-01', endDate: '2026-09-01',
+      title: 'D', startDate: first, endDate: second,
       cities: [{ name: 'Vienna', order: 0, centre: { lat: 48.2, lng: 16.37 } }],
     },
     c,
@@ -261,8 +287,8 @@ function duplicateStopIdTrip(): Trip {
     cost: { display: '€10', amounts: [{ lo: 10, hi: 10, currency: 'EUR', basis: 'per_person' as const }] },
     links: [{ label: 'T', href: 'https://e.test/t' }],
   };
-  t = addStop(t, { kind: 'scheduled', dayId: '2026-05-01', time: '10:00', order: 0 }, init, c);
-  return addStop(t, { kind: 'scheduled', dayId: '2026-09-01', time: '10:00', order: 0 }, init, c);
+  t = addStop(t, { kind: 'scheduled', dayId: first, time: '10:00', order: 0 }, init, c);
+  return addStop(t, { kind: 'scheduled', dayId: second, time: '10:00', order: 0 }, init, c);
 }
 
 test('A-11 (5): only a feasibility rule may declare a horizon, and exactly one does', () => {
@@ -370,5 +396,13 @@ test('A-17: the gate never withholds a finding inside its own horizon — by id,
   assert.ok(
     (byDoc['duplicate-stop-id'] ?? 0) > 0,
     'the duplicate_id document contributed nothing, and it is the document A-17 exists for',
+  );
+  // R15-5: this is the document on which `every` versus `some` is observable. On the ascending
+  // one the ambiguous subject always resolves nearer than the iterated day, so a weakened
+  // `beyondHorizon` is invisible there — and A-17's safety argument has two halves, of which
+  // the obligation test above catches only the first.
+  assert.ok(
+    (byDoc['duplicate-stop-id-far'] ?? 0) > 0,
+    'the far-ambiguity document contributed nothing, so `beyondHorizon`\'s `every` is still unpinned',
   );
 });
