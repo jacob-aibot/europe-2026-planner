@@ -95,7 +95,7 @@ function boxOf(rings: readonly CountryRing[]): CountryBox {
  * (§8.4 **A-27**). The fill takes the family's *finest* scale, which tracks the waterline — so a
  * coordinate a few hundred metres offshore of a small island state came back `null` at its own
  * capital. A-27 measured the obvious remedy, choosing a coarser scale per code, and rejected it:
- * the coarse polygon deletes whole landforms (175 of the Maldives' 176 atolls). Instead, 54 of
+ * the coarse polygon deletes whole landforms (175 of the Maldives' 176 atolls). Instead, 53 of
  * the 64 filled codes carry a **second entry** holding the same country's coarser rings, filtered
  * at generation time so they claim only ground that touches the country's own fine rings and no
  * other country's at all. Two entries of one code compose as a **union**, because `countryOf`

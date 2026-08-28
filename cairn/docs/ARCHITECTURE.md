@@ -407,7 +407,9 @@ two facts to one command that demonstrates only the first; each is re-pointed at
 Measured outcome: **292 entries / 239 codes / 1,033 rings / 369,524 packed**, 53 forgiveness entries, 11
 codes correctly refused one, and a 17.9 M-cell sweep in which the *whole* delta from the committed artefact
 is 5 cells of `MO` reverting to `null`. **No engine, no persisted shape, no `schemaVersion` bump, no
-hand-written change in `packages/core`, and no movement on §2.10's export surface (71).** `ROADMAP.md`
+movement on §2.10's export surface (71), and exactly one hand-written number in `packages/core`** —
+`countryIndex.ts`'s forgiveness census, 54 → 53, corrected 2026-08-28 per QA R24-1; A-28 Part 7 item 3
+carries the note. `ROADMAP.md`
 carries this as **I-5c**, owed before I-6 for the third time and for the same reason.
 
 **Phase 1 is §2 and §4. The next phase is §8.1–§8.4.** Everything else is the shape those must not
@@ -7614,10 +7616,22 @@ Generated at `v5.1.2`, base `110m`, fill `10m`, forgiveness from `50m`, with bot
    ground at the finest scale`). `fixtures/golden/forgiveness-drops.json` gains the `against` field and its
    `forgivenessAt` positions move because one entry is gone. `--no-fill`, `--scale`, `--dry-run`,
    `--audit-only` and `--holes` all keep working.
-3. **`packages/core` — no hand-written change in any file.** `countries.gen.ts` is regenerated;
-   `countryIndex.ts`'s and `derive/country.ts`'s A-27 text is still true and must not be touched. **If
-   `countryOf` grows a branch, a distance function or a parameter, the increment has gone wrong** — that
+3. **`packages/core` — one hand-written number, and nothing else.** `countries.gen.ts` is regenerated;
+   `countryIndex.ts`'s and `derive/country.ts`'s A-27 text is otherwise still true and must not be touched.
+   **If `countryOf` grows a branch, a distance function or a parameter, the increment has gone wrong** — that
    sentence is now three rulings old and has not moved.
+
+   *(**Corrected 2026-08-28, QA R24-1.** As first written this item said "no hand-written change in any
+   file" and that `countryIndex.ts`'s A-27 text "is still true and must not be touched" — and it was wrong
+   in one word. `countryIndex.ts`'s docstring says **"54 of the 64 filled codes carry a second entry"**, and
+   this increment is exactly what makes that **53**: `MO` moves from having a forgiveness entry to being
+   correctly refused one, so the entry count falls 54 → 53 and the refused count rises 10 → 11, as Part 6's
+   table already states. The I-5c builder complied with the instruction and left the number stale; the
+   instruction is the defect, not the compliance. **The number is now 53** in `countryIndex.ts:98`. Nothing
+   else in that docstring or in `derive/country.ts` moves — the mechanism it describes is unchanged by A-28,
+   only the census is. The 54s that remain elsewhere in this document and in `ROADMAP.md` are **historical
+   and correct**: A-27's own Parts and revision 21's changelog record what I-5b measured, and Part 6's
+   17.9 M-cell sweep is over the **committed I-5b artefact's** 54 boxes by construction.)*
 4. **The tests.** `0-countryBudget.test.ts`'s `EMITTED_BYTES` is re-measured from the generator's output;
    `country.test.ts`'s entry count moves to the measured 292 while its distinct-code assertion stays at 239.
    **One new named test, and it is the point of the increment:** with `filter2b` removed, `MO` acquires a

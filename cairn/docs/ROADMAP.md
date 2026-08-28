@@ -1865,8 +1865,11 @@ builder against the finding itself and is not an increment.
   `against: 'coverage' | 'finest' | null`; `filter` stays `1 | 2`. `tools/gen-countries.mjs` prepares the
   finest population **once** outside the per-code loop, asserts `FILL === FAMILY[FAMILY.length - 1]` (A-28
   Part 3's trigger — the day the fill is not the finest scale, filter *1* inherits R23-1), and reports the
-  two arms separately. `packages/core` gains **no hand-written change in any file**; `countries.gen.ts` and
-  the two goldens are regenerated.
+  two arms separately. `packages/core` gains **one hand-written change and no other**; `countries.gen.ts` and
+  the two goldens are regenerated. *(Corrected 2026-08-28, QA R24-1: as written this said "no hand-written
+  change in any file", and A-28 Part 7 item 3 said `countryIndex.ts`'s A-27 text must not be touched. Its
+  docstring's forgiveness census — "**54** of the 64 filled codes carry a second entry" — is precisely what
+  this increment changes to **53**. The number is now 53; see A-28 Part 7 item 3's correction note.)*
 - **User-visible outcome.** None yet, deliberately, exactly as I-5, I-5a and I-5b. What it buys is that a
   stop recorded in Zhuhai is not recorded as a visit to Macao — and, from I-6, not *persisted* as one.
 - **Architecture / data model.** §8.4 **A-28**, Parts 3, 5 and 7, written as an implementation brief.
