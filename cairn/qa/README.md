@@ -1874,3 +1874,95 @@ property on a caller-supplied value**, the same population bound as every read-o
 round 16, which is why they are MINOR. **R19-3, R19-4 and R19-5 do not** — they are gaps in the
 guard rather than defects in the guarded code, and each is demonstrated by planting a defect the
 guard should have caught and measuring that it did not.
+
+---
+
+## Round 30 (2026-08-28, `claude/cairn-i7-architect-pass-4y8q40` @ `b964e19`) — I-7b: A-35's span cap, A-36's executed port gate, A-37's row read gates
+
+Six new probes plus three **re-expressions** of existing ones. Five probes are offline; the sixth
+needs a browser. The `.sh` probes build throwaway `git worktree`s at `HEAD`, mutate them and
+remove them; nothing in the working tree is touched. All run from `cairn/`.
+
+```bash
+node --experimental-strip-types qa/r30-span.mjs        # ALL OK, 30 checks. A-35 at every edge: the cap in
+                                                       # BOTH directions on three decade anchors (incl. a
+                                                       # low-era one with only two leap days, which is why
+                                                       # 3,653 is a MAXIMUM and not one decade's length),
+                                                       # R29-2's own repro, every legitimate span, every
+                                                       # OTHER caller (setTripMeta, bare ensureDays), the
+                                                       # WIDENED span (the pinned day must carry stops or
+                                                       # the probe measures nothing), Part 5 clause 1's
+                                                       # "an over-cap document stays usable", the export
+                                                       # surface at 75, and both forms' catch → onError.
+
+node --experimental-strip-types qa/r30-rowgates.mjs     # ALL OK, 55 checks. A-37's two gates. The HIGH edge
+                                                       # is R29-6's; the LOW edge is not in the ruling —
+                                                       # '0000-00-00' is shape-valid and rolls BELOW
+                                                       # dayNumber('0000-01-01'). Eleven malformed country
+                                                       # codes at BOTH read sites; the deliberate '--'→null
+                                                       # merge (one row, two counted, both trips, nothing
+                                                       # dropped); the 'A|' key ambiguity; purity; an
+                                                       # out-of-domain `today`; and §3 is the discriminating
+                                                       # case for the UNCLAMPED comparator that the suite
+                                                       # does not have (R30-3).
+
+node --experimental-strip-types qa/r30-upcast.mjs       # 2 FAIL BY DESIGN — R30-1, against A-36 Part 3's own
+                                                       # recording double. Proves G12 is a real leak and not
+                                                       # a no-op: write with one port instance, then open a
+                                                       # SECOND over the same database (every page load after
+                                                       # the first) and the record goes 14 → 16 keys.
+
+bash qa/r30-exit6c.sh                                   # EIGHT new exit-6 faults past round 29's G1..G6.
+                                                       # RED: G7 (the parameter reassigned in place — A-36's
+                                                       # crux, 6b-1b alone), G7b (Object.assign in place),
+                                                       # G8 (a third SUMMARIES.put writing a CORRECT row —
+                                                       # 6b-2's site count alone), G11 (listTrips DROPS a
+                                                       # key), G12b (the upcast widening spelled as a literal
+                                                       # objectStore(SUMMARIES).put chain).
+                                                       # GREEN: G9/G9m (a lifetime cache in a SECOND store,
+                                                       # unannotated — R30-2), G10 (widening gated on
+                                                       # `typeof window` — R30-4), G12 (the upcast widening
+                                                       # through a hoisted store reference — R30-1).
+
+bash qa/r30-reexpressed.sh                              # The three round-30 probe re-expressions,
+                                                       # mutation-tested: revert ONE implementation line and
+                                                       # check the NEW assertion still reds. i7-edges 2 FAIL,
+                                                       # i7a-provisional 6 FAIL, i7a-span 8 FAIL. None was
+                                                       # laundered. Note: i7-edges' ROW COUNT alone does not
+                                                       # discriminate, which is why the re-expression asserts
+                                                       # the emitted value and the count too.
+
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node --experimental-strip-types qa/r30-upcast-browser.mjs
+                                                       # 3 FAIL BY DESIGN — R30-1 in real Chromium: 14 → 16
+                                                       # keys in the browser's own IndexedDB, read back with
+                                                       # a raw transaction that bypasses the port.
+                                                       # Add `--clean` for the shipped-port control: ALL OK,
+                                                       # 14 keys across a second open — a property nothing in
+                                                       # the repo asserted before this round.
+```
+
+**Re-expressed this round** — three probes whose assertions were pinned to behaviour ARCHITECTURE
+revision 26 has since corrected. Each is ALL OK on the shipped tree and each still reds when its
+implementation fix alone is reverted (`bash qa/r30-reexpressed.sh`):
+
+- `qa/i7-edges.mjs` — the `'--'` sentinel expectation. A-37 Part 4 names this line and prints the
+  ruled answer: **one** row, `countryCode: null`, `unattributed.cities` **2**, both `tripIds`.
+- `qa/i7a-provisional.mjs` §4 — the same, plus the `''` half (now counted as unattributed) and the
+  `'A|'` half (still two rows, both codes now `null`).
+- `qa/i7a-span.mjs` §§2–3 — asserted the *presence* of R29-2, so under A-35 the probe **died with
+  a stack trace and printed no verdict**. `measure()` now returns the refusal; §§2–3 assert it;
+  §1 is unchanged and re-labelled as A-35 Part 6's *positive* criterion (the bound is NOT in the
+  view); §3 gains two assertions nobody had made — after a refused `store.createTrip` the port
+  holds **no** library row, and a legitimate trip through the same store still lands. `--fast` is
+  now a no-op.
+
+Round 29's probes at `b964e19`: `i7a-calendar` **ALL OK**, `i7a-provisional` **ALL OK** (was 2
+FAIL, re-expressed), `i7a-span` **ALL OK** (was 2 FAIL / then a crash, re-expressed), `i7a-today`
+**4 FAIL** (R29-3, still open and validly deferred), `i7a-idb-rowkeys` **ALL OK** and `--fault`
+**3 FAIL**, `bash qa/i7a-exit6b.sh` all six red (1·2·1·1·3·10 — G1 and G4 were GREEN at round 29).
+Round 28's: `i7-edges` **ALL OK** (was 1 FAIL, re-expressed), `i7-oracle`/`i7-year`/`i7-pastyear`/
+`i7-rescan` **ALL OK**, `bash qa/i7-faults.sh` all seven red (4·2·2·3·5·1·1) and exit 0,
+`bash qa/i7-exit6.sh` all ten red and exit 0. **R29-4 verified by construction:** drift every
+anchor and the two harnesses print `7 fault(s) UNRUN … M1…M7` / `6 fault(s) UNRUN … F1…F6` and
+**exit 1**. Historic: `r13`…`r20` **0 FAIL**, `r21-closure` **1 FAIL** (R21-1), `r2-constraints`
+**1 FAIL** (R2-18).

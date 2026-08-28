@@ -183,28 +183,42 @@ head('3. R28-5 — `undefined` and `null` are one answer');
 // ===========================================================================
 head('4. the composite key — the sentinel, and the widths it assumes');
 {
-  // Round 28's open expectation, re-stated: a stored code of `--` collides with null.
+  // **RE-EXPRESSED at QA round 30.** All three assertions in this block asserted the PRESENCE
+  // of R29-7. ARCHITECTURE §8.4 **A-37** Part 3 ruled it — one predicate, `isMintedCode`
+  // (`/^[A-Z]{2}$/`, the MINT'S OUTPUT shape, not A-29's acceptance shape), at the two places a
+  // stored code is read — and Part 4 names this file and this line as the breaker's to
+  // re-express, with the ruled answer printed: **one** row, `countryCode: null`,
+  // `unattributedCities` incremented **twice**, `tripIds` carrying both entries.
   const st = core.travelStats([row('a', '2020-01-01', '2020-01-05', {
     cities: [city('Paris', '--'), { key: 'k2', name: 'Paris', countryCode: null, countrySource: null }],
   })], '2030-01-01');
-  ok(st.cities.length === 2,
-    `a stored countryCode of '--' does not collide with null (got ${st.cities.length} row(s)) — ` +
-    'round 28 filed this and I-7a left it open; it needs a corrupt row to reach');
-  // NEW: the code's docstring claims the country prefix "is always exactly two characters".
-  // An empty-string code is neither null nor two characters, and `??` does not catch it.
+  ok(st.cities.length === 1,
+    `a stored countryCode of '--' is read as null and merges with the null row (got ${st.cities.length} row(s)) — ` +
+    'A-37 Part 4: this is A-31 Part 5 residue 6, not a collision');
+  ok(st.cities[0]?.countryCode === null, `and is emitted as null (got ${JSON.stringify(st.cities[0]?.countryCode)})`);
+  eq(st.unattributed.cities, 2, 'and BOTH city entries are counted unattributed — nothing is dropped');
+  eq(st.located.cities, 2, 'and both are still located');
+  // The `''` half, likewise inverted: `?? null` was a check on PRESENCE and `isMintedCode` is a
+  // check on SHAPE, so an empty-string code is now null, counted, and emitted as null.
   const empty = core.travelStats([row('a', '2020-01-01', '2020-01-05', {
     cities: [{ key: 'k1', name: 'Paris', countryCode: '', countrySource: null }],
   })], '2030-01-01');
-  eq(empty.unattributed.cities, 0,
-    "NOTE: a countryCode of '' is not counted as unattributed and is emitted as '' — `?? null` " +
-    'only catches null/undefined, so the "always exactly two characters" comment on NO_COUNTRY is ' +
-    'false for a value out of storage. Needs a corrupt row; recorded, not filed as a defect.');
-  // The collision this actually enables: a one-character code plus a name starting with `|`.
+  eq(empty.unattributed.cities, 1,
+    "a countryCode of '' IS now counted as unattributed — the NO_COUNTRY docstring's " +
+    '"always exactly two characters" is true again because the gate makes it true, not because ' +
+    'the mint promised it (A-37 Part 3)');
+  ok(empty.cities[0]?.countryCode === null,
+    `and '' is emitted as null rather than as '' (got ${JSON.stringify(empty.cities[0]?.countryCode)})`);
+  // The collision this used to enable: a one-character code plus a name starting with `|`.
+  // Both codes now fail `isMintedCode`, so both fold to null and the names alone tell them
+  // apart — which is the point: the composite key is unambiguous again.
   const collide = core.travelStats([row('a', '2020-01-01', '2020-01-05', {
     cities: [{ key: 'k1', name: 'x', countryCode: 'A|', countrySource: null },
              { key: 'k2', name: '|x', countryCode: 'A', countrySource: null }],
   })], '2030-01-01');
-  console.log(`      note: countryCode 'A|' + name 'x' vs 'A' + '|x' -> ${collide.cities.length} row(s)`);
+  eq(collide.cities.length, 2, "countryCode 'A|' + name 'x' and 'A' + '|x' stay TWO rows");
+  ok(collide.cities.every((c) => c.countryCode === null),
+    `and neither one-and-a-bit-character code is read as a country (got ${JSON.stringify(collide.cities.map((c) => c.countryCode))})`);
 }
 
 // ===========================================================================

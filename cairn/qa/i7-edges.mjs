@@ -156,11 +156,28 @@ head('the composite city key — separator and sentinel');
 {
   // A hand-built row stating the sentinel itself as a country code. `travelStats` takes
   // `readonly TripSummaryRow[]` from any caller; A-29's two-letter gate runs in `tripSummary`.
+  //
+  // **RE-EXPRESSED at QA round 30.** This asserted `st.cities.length === 2` — *"a countryCode
+  // of '--' does not collide with null"* — which was the round-28/29 finding. ARCHITECTURE
+  // §8.4 **A-37** Part 4 rules the opposite answer correct and names this line: `'--'` is not a
+  // country code, so `isMintedCode` reads it as `null`, and **one** row is right. Two
+  // unattributed same-name cities being one row is A-31 Part 5 residue 6, already ruled,
+  // already costed, already accepted — it is not a collision. The re-expression asserts the
+  // whole of the ruled answer, not just the row count, so it still discriminates: revert
+  // `isMintedCode` to `?? null` and the count, the emitted value and `unattributed.cities` all
+  // move together.
   const st = core.travelStats([
     row('t1', '2020-01-01', '2020-01-02', { cities: [city('Paris', '--')] }),
     row('t2', '2021-01-01', '2021-01-02', { cities: [city('Paris', null)] }),
   ], T);
-  ok(st.cities.length === 2, `a countryCode of '--' does not collide with null (got ${st.cities.length} rows)`);
+  ok(st.cities.length === 1,
+    `a countryCode of '--' is read as null and joins the null row — A-37 Part 3 (got ${st.cities.length} rows)`);
+  ok(st.cities[0]?.countryCode === null,
+    `and is emitted as null, not as '--' (got ${JSON.stringify(st.cities[0]?.countryCode)})`);
+  ok(st.unattributed.cities === 2,
+    `and BOTH city entries are counted unattributed (got ${st.unattributed.cities})`);
+  ok(st.cities[0]?.tripIds.join(',') === 't1,t2',
+    `and both trips are credited, so nothing was dropped (got ${JSON.stringify(st.cities[0]?.tripIds)})`);
 }
 {
   // `undefined` where the type says `CountryCode | null`. `?? NO_COUNTRY` treats it as null for
