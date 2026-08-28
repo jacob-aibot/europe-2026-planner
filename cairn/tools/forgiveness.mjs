@@ -1,27 +1,42 @@
 /**
- * `overlaps` and the two forgiveness filters — ARCHITECTURE §8.4 **A-27** Part 4, ROADMAP Phase 2
- * **I-5b**.
+ * `overlaps` and the forgiveness filters — ARCHITECTURE §8.4 **A-28** Parts 3 and 5, ROADMAP
+ * Phase 2 **I-5c** (replacing A-27 Part 4 / I-5b).
  *
  * This file exists as a module of its own, separate from `gen-countries.mjs`, for one reason:
- * ROADMAP exit criterion 4 part **e** asks for two *injected-fault* assertions — delete filter 2
- * and the bordered codes gain an entry, delete filter 1 and Vatican City gains a polygon a
- * kilometre west of itself — and a test cannot inject a fault into a filter it cannot import.
- * `gen-countries.mjs` runs `main()` at import time and fetches 13 MB when it does; this file
- * fetches nothing, reads nothing and holds no state, so `test/forgiveness.test.ts` can call the
- * same functions the generator calls.
+ * ROADMAP exit criterion 4 part **e** asks for *injected-fault* assertions — delete filter 1 and
+ * Vatican City gains a polygon a kilometre west of itself; delete both arms of filter 2 and the
+ * bordered codes gain an entry; delete **arm 2b alone** and Macao claims 22 km² of Guangdong — and
+ * a test cannot inject a fault into a filter it cannot import. `gen-countries.mjs` runs `main()`
+ * at import time and fetches 13 MB when it does; this file fetches nothing, reads nothing and
+ * holds no state, so `test/forgiveness.test.ts` can call the same functions the generator calls.
  *
  * ---
  *
- * **The predicate, verbatim from A-27 Part 4:**
+ * **The predicate, verbatim from A-28 Part 5:**
  *
- * > `overlaps(ring R, ring-set S)` is true iff any of: (a) a vertex of `R`, or the arithmetic mean
- * > of `R`'s vertices, is inside `S` under the even-odd rule; (b) a vertex of any ring of `S`, or
- * > that ring's vertex mean, is inside `R`; (c) a segment of `R` crosses a segment of any ring of
- * > `S`. Rings whose bounding boxes are disjoint are rejected before any of this. The predicate is
- * > exact for simple rings and is evaluated on the **quantised** rings — the ones that ship —
- * > never the raw ones.
+ * > `overlaps(ring R, ring-set S)` is true iff any of: (a) a vertex of `R` is inside `S` under the
+ * > even-odd rule; (b) a vertex of any ring of `S` is inside `R`; (c) a segment of `R` crosses a
+ * > segment of any ring of `S`. Rings whose bounding boxes are disjoint are rejected before any of
+ * > this. It is evaluated on the **quantised** rings — the ones that ship — never the raw ones,
+ * > and on the integer lattice those rings live on, so every clause is an exact integer comparison.
+ * >
+ * > **Exact for simple rings, as a theorem rather than a claim.** If two simple closed rings have
+ * > no crossing pair of segments, they are either disjoint or one lies wholly inside the other; in
+ * > the second case every vertex of the inner ring is inside the outer, so (a) or (b) fires.
+ * > (a)–(c) are therefore complete and sound for simple rings, and the integer arithmetic makes
+ * > each decision exact rather than nearly exact. **No claim is made for self-intersecting rings.**
+ * > The artefact contains nine — eight in `MV`, one in `SD` (QA R22-2) — none of them a
+ * > forgiveness candidate; where such a ring sits in a filter's *population* the predicate could in
+ * > principle miss an overlap, bounded by the bow-ties' own lobes, which R22-2 measured at
+ * > ~0.0196 km² lost / ~0.0118 km² gained in total.
  *
- * Three implementation notes, none of which is a judgment call the ruling left open:
+ * *(A-27's version of this predicate also probed the arithmetic **mean** of each ring's vertices.
+ * QA R23-2 showed the mean of a concave ring can lie outside it, so those two probes could report
+ * an overlap between rings that share no ground — a false positive, which is the direction that
+ * makes filter 1 unsound. A-28 Part 5 removes them; re-measured over all 153 candidates under the
+ * two-arm filter, **0 decisions change**.)*
+ *
+ * Two implementation notes, neither of which is a judgment call the ruling left open:
  *
  * 1. **The arithmetic is integer.** The rings that ship are quantised to `DECIMALS = 4`, so every
  *    coordinate is an exact multiple of 1e-4 — but stored as a double, `12.4527` is not exactly
@@ -34,8 +49,6 @@
  *    disjoint from `R`'s box can contain no vertex of `R`, can have no vertex inside `R`, and can
  *    cross no segment of `R` — so dropping it changes no answer, including the even-odd count in
  *    (a): any ring that could enclose a point of `R` has a box containing that point.
- * 3. **The vertex mean is rounded to the lattice.** It is a probe point, not a boundary decision,
- *    and rounding keeps the whole predicate on one exact lattice. `Math.round` is deterministic.
  */
 
 /** The quantisation lattice the shipped rings live on: 4 decimal places. */
@@ -122,19 +135,6 @@ function insideRings(x, y, rings) {
   return inside;
 }
 
-/** The arithmetic mean of a ring's vertices, rounded to the lattice. */
-function vertexMean(pts) {
-  let sx = 0;
-  let sy = 0;
-  let n = 0;
-  for (let i = 0; i + 1 < pts.length; i += 2) {
-    sx += pts[i];
-    sy += pts[i + 1];
-    n++;
-  }
-  return n === 0 ? null : [Math.round(sx / n), Math.round(sy / n)];
-}
-
 /** Sign of the cross product (b−a)×(c−a): +1 left turn, −1 right turn, 0 collinear. Exact. */
 function orient(ax, ay, bx, by, cx, cy) {
   const v = (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);
@@ -201,7 +201,7 @@ function ringsCross(a, b) {
 }
 
 /**
- * **A-27 Part 4's predicate.** `R` is a prepared ring (`prepRing`), `S` a prepared ring-set
+ * **A-28 Part 5's predicate.** `R` is a prepared ring (`prepRing`), `S` a prepared ring-set
  * (`prepSet`). Pure, exact for simple rings, and evaluated on the lattice the rings ship on.
  */
 export function overlaps(R, S) {
@@ -209,20 +209,16 @@ export function overlaps(R, S) {
   const near = S.rings.filter((s) => boxesMeet(R.box, s.box));
   if (near.length === 0) return false;
 
-  // (a) a vertex of R — or R's vertex mean — inside S, even-odd across S's rings.
+  // (a) a vertex of R inside S, even-odd across S's rings.
   for (let i = 0; i + 1 < R.pts.length; i += 2) {
     if (insideRings(R.pts[i], R.pts[i + 1], near)) return true;
   }
-  const mR = vertexMean(R.pts);
-  if (mR && insideRings(mR[0], mR[1], near)) return true;
 
-  // (b) a vertex of a ring of S — or that ring's vertex mean — inside R.
+  // (b) a vertex of a ring of S inside R.
   for (const s of near) {
     for (let i = 0; i + 1 < s.pts.length; i += 2) {
       if (insideRing(s.pts[i], s.pts[i + 1], R.pts)) return true;
     }
-    const mS = vertexMean(s.pts);
-    if (mS && insideRing(mS[0], mS[1], R.pts)) return true;
   }
 
   // (c) a segment of R crossing a segment of a ring of S.
@@ -237,29 +233,65 @@ export function overlapsRings(ring, rings) {
 }
 
 /**
- * **The forgiveness pass for one ISO code** — A-27 Part 4, both filters, with each independently
- * removable so ROADMAP exit criterion 4 part (e)'s two injected faults are a call rather than a code edit.
+ * **The forgiveness pass for one ISO code** — A-28 Part 3: filter 1, then filter 2's **two arms**,
+ * each independently removable so ROADMAP exit criterion 4 part (e)'s three injected faults are a
+ * call rather than a code edit.
  *
- * **The filters run in order and a drop is booked against the first one that fires**, which is how
- * A-27 Part 5 counts them (`VA` and one `MV` ring under filter 1, nine rings under filter 2). One
+ * **Filter 2 is two comparisons, not one, and neither may be dropped in favour of the other**
+ * (A-28 Part 3, on QA R23-1). The coverage-only index is deliberately mixed-resolution — 175 codes
+ * at 1:110m, 64 at 1:10m — so *"do you overlap this neighbour"* asked of the index alone is a
+ * question at whatever scale that neighbour happens to ship at, and for a coarse one it fails
+ * **generously**: Macao's 1:50m ring was checked against China's 1:110m coastline, which is
+ * generalised kilometres inland of the Pearl River delta, and ~22.1 km² of Guangdong came to
+ * answer `MO`.
+ *
+ *  - **2a — against the shipped index**, each entry at the resolution it ships at. This is the
+ *    **non-regression** guarantee: A-27 Part 3 property 2 (`country → other country` is impossible
+ *    by construction) rests on it, and it is what refuses `HK[1]`, `HK[2]` and `SG[0]`, whose
+ *    ground genuinely belongs to `CN` and `MY` *as the index draws them at 1:110m*.
+ *  - **2b — against each other code's finest drawing** in the pinned family, whatever scale its
+ *    own coverage entry uses. This is the **truth** guarantee, and it is what refuses `MO[0]`.
+ *
+ * A-28 Part 4 is the census: of the 151 candidate rings that survive filter 1, exactly four get
+ * different verdicts from the two arms — `MO[0]` (2b only) and `HK[1]`, `HK[2]`, `SG[0]` (2a only).
+ * Replacing 2a with 2b would trade one wrong answer for three.
+ *
+ * **The filters run 1, 2a, 2b and a drop is booked against the first one that fires.** One
  * consequence is worth stating where the code is rather than leaving it to be rediscovered:
  * removing filter 1 alone does not admit `VA`'s 1:50m polygon, because filter 2 then catches it
  * against Italy. See **KD-54** in BUILD-NOTES §1 for the measurement and what the test asserts
  * instead.
  *
- * @param candidates flat quantised rings from a strictly coarser scale that carries this code
- * @param own        the code's own coverage rings (the ones already shipping for it)
- * @param others     every OTHER entry of the coverage-only index: `[{ code, rings }]`
- * @param opts       `{ filter1, filter2 }` — both default true; false *removes* that filter
- * @returns `{ kept: number[], drops: [{ index, filter, code }] }` — `kept` and `drops[].index`
- *          are indices into `candidates`, so the caller keeps whatever it carries alongside a
- *          ring (its raw, unquantised twin, for one).
+ * @param candidates   flat quantised rings from a strictly coarser scale that carries this code
+ * @param own          the code's own coverage rings (the ones already shipping for it)
+ * @param others       every OTHER entry of the coverage-only index, at the resolution it ships
+ *                     at: `[{ code, rings }]`
+ * @param finestOthers every OTHER ISO code the coverage-only index carries, at the finest scale of
+ *                     the pinned family that carries it: `[{ code, rings }]`
+ * @param opts         `{ filter1, filter2a, filter2b }` — all default true; false *removes* that
+ *                     filter
+ * @throws when `filter2b` is enabled and `finestOthers` is absent or empty. An accidentally-empty
+ *         finest population is R23-1 exactly, and it must not be reachable by forgetting an
+ *         argument (A-28 Part 7).
+ * @returns `{ kept: number[], drops: [{ index, filter, code, against }] }` — `kept` and
+ *          `drops[].index` are indices into `candidates`, so the caller keeps whatever it carries
+ *          alongside a ring (its raw, unquantised twin, for one). `filter` stays `1 | 2`;
+ *          `against` is `'coverage' | 'finest' | null` and names the arm.
  */
-export function forgivenessFor(candidates, own, others, opts = {}) {
+export function forgivenessFor(candidates, own, others, finestOthers, opts = {}) {
   const filter1 = opts.filter1 !== false;
-  const filter2 = opts.filter2 !== false;
+  const filter2a = opts.filter2a !== false;
+  const filter2b = opts.filter2b !== false;
+  if (filter2b && (!finestOthers || finestOthers.length === 0)) {
+    throw new Error(
+      'forgivenessFor: arm 2b is enabled but the finest population is empty. An empty one admits ' +
+        'every ring it sees, which is QA R23-1 exactly — pass the other codes at the pinned ' +
+        "family's finest scale, or disable filter2b deliberately (ARCHITECTURE §8.4 A-28 Part 7).",
+    );
+  }
   const ownSet = prepSet(own);
-  const otherSets = others.map((e) => ({ code: e.code, set: prepSet(e.rings) }));
+  const coverageSets = filter2a ? others.map((e) => ({ code: e.code, set: prepSet(e.rings) })) : [];
+  const finestSets = filter2b ? finestOthers.map((e) => ({ code: e.code, set: prepSet(e.rings) })) : [];
 
   const kept = [];
   const drops = [];
@@ -267,21 +299,27 @@ export function forgivenessFor(candidates, own, others, opts = {}) {
     const R = prepRing(candidates[i]);
     // Filter 1 — it must be the same place.
     if (filter1 && !overlaps(R, ownSet)) {
-      drops.push({ index: i, filter: 1, code: null });
+      drops.push({ index: i, filter: 1, code: null, against: null });
       continue;
     }
-    // Filter 2 — forgiveness may not be taken from a neighbour.
+    // Filter 2 — forgiveness may not be taken from a neighbour, and the arms run in this order.
     let taken = null;
-    if (filter2) {
-      for (const o of otherSets) {
+    let against = null;
+    for (const [arm, sets] of [
+      ['coverage', coverageSets],
+      ['finest', finestSets],
+    ]) {
+      for (const o of sets) {
         if (overlaps(R, o.set)) {
           taken = o.code;
+          against = arm;
           break;
         }
       }
+      if (taken !== null) break;
     }
     if (taken !== null) {
-      drops.push({ index: i, filter: 2, code: taken });
+      drops.push({ index: i, filter: 2, code: taken, against });
       continue;
     }
     kept.push(i);

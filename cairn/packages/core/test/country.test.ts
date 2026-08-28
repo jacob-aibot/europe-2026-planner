@@ -719,7 +719,9 @@ test('I-5a: the bundled index decodes to a plausible mixed-resolution admin-0 la
   // filled code may now own a second, forgiveness entry. Asserting one number for both was
   // asserting the wrong thing.
   assert.equal(new Set(codes).size, 239, 'the index no longer names 239 distinct countries');
-  assert.equal(COUNTRY_INDEX.countries.length, 293, 'the artefact no longer has 293 entries');
+  // Moved at I-5c (§8.4 A-28): 293 → 292, because arm 2b refuses `MO` the forgiveness entry that
+  // was claiming Zhuhai. The *distinct-code* assertion above did not move and must not.
+  assert.equal(COUNTRY_INDEX.countries.length, 292, 'the artefact no longer has 292 entries');
   assert.deepEqual(codes.filter((c) => !/^[A-Z]{2}$/.test(c)), [], 'a code is not ISO 3166-1 alpha-2');
   for (const c of COUNTRY_INDEX.countries) {
     assert.ok(c.rings.length > 0, `${c.code} has no rings`);
@@ -871,7 +873,7 @@ test('I-5b: Grytviken was never broken, and St Helier is a dataset gap rather th
  * the byte. Nothing was re-quantised, re-ordered or merged.
  */
 test('I-5b criterion 4e(ii): the forgiveness pass is purely additive to the pre-I-5b index', () => {
-  assert.equal(FORGIVENESS_AT.length, 54, 'the generator recorded a different number of forgiveness entries');
+  assert.equal(FORGIVENESS_AT.length, 53, 'the generator recorded a different number of forgiveness entries');
   assert.equal(COVERAGE_ONLY.countries.length, 239);
   const coverageCodes = COVERAGE_ONLY.countries.map((c) => c.code);
   assert.equal(new Set(coverageCodes).size, 239, 'the coverage-only index has a duplicate code');
@@ -895,8 +897,11 @@ test('I-5b criterion 4e(ii): the forgiveness pass is purely additive to the pre-
   }
   assert.equal(coverageRings, 892, 'the coverage half no longer has 892 rings');
   const total = COUNTRY_INDEX.countries.reduce((n, c) => n + c.rings.length, 0);
-  assert.equal(total, 1_034);
-  assert.equal(total - coverageRings, 142, 'the forgiveness pass added a different number of rings');
+  // I-5c (§8.4 A-28): 1,034 → 1,033 and 142 → 141. `MO`'s single candidate ring is the one that
+  // left, and the coverage half above is untouched — which is what keeps the additive claim true
+  // against the **pre-I-5b** baseline even though this increment removes a ring I-5b shipped.
+  assert.equal(total, 1_033);
+  assert.equal(total - coverageRings, 141, 'the forgiveness pass added a different number of rings');
 });
 
 /**
@@ -938,6 +943,14 @@ test('I-5b criterion 4e(iii): over the forgiveness boxes, no cell gets worse', (
  * A-27 filter 1 drops the 1:50m `VA` polygon by measurement instead — so the answer is unchanged
  * and the reason for it is now reproducible. Zhuhai is the other side: Chinese ground beside
  * Macao, `null` before and `null` after, because filter 2 refused `MO` any coarse ring at all.
+ *
+ * **I-5c (§8.4 A-28) adds Zhuhai Nanping, and it is the coordinate the increment exists for.**
+ * A-27's filter 2 did *not* refuse `MO` — it compared Macao's 1:50m ring against China as the
+ * mixed-resolution index draws it, at 1:110m, kilometres inland of the Pearl River delta, and
+ * found nothing to reject it. So `MO` shipped a forgiveness ring covering ~22.1 km² of Guangdong,
+ * and (22.221 N, 113.503 E) — a street in Zhuhai — answered `MO`. It is `null` at both ends of
+ * this table now: `null` before I-5b, `null` after A-28. The line that was briefly `MO` is the
+ * defect, and the whole increment is here to put it back.
  */
 test('I-5b criterion 4e(iv): the pinned answers are all unchanged by the forgiveness entries', () => {
   const cases: Array<[string, LatLng, string | null]> = [
@@ -945,6 +958,7 @@ test('I-5b criterion 4e(iv): the pinned answers are all unchanged by the forgive
     ['Vatican Museums entrance', { lat: 41.9065, lng: 12.4536 }, 'IT'],
     ['Senado Square, Macao', { lat: 22.1936, lng: 113.5397 }, 'MO'],
     ['Zhuhai, across the border', { lat: 22.2769, lng: 113.5678 }, null],
+    ['Zhuhai Nanping (A-28, QA R23-1)', { lat: 22.221, lng: 113.503 }, null],
     ['Vaduz', { lat: 47.141, lng: 9.5209 }, 'LI'],
     ['Singapore', { lat: 1.3521, lng: 103.8198 }, 'SG'],
     ['Hong Kong', { lat: 22.3193, lng: 114.1694 }, 'HK'],
@@ -970,13 +984,16 @@ test('I-5b criterion 4e(iv): the pinned answers are all unchanged by the forgive
  * no 1:50m polygon at all. `test/forgiveness.test.ts` proves *which filter* refused each by
  * re-running them; this asserts the consequence in the shipped index.
  */
-test('I-5b: ten filled codes carry exactly one entry, and no eleventh code was refused', () => {
+test('I-5c: eleven filled codes carry exactly one entry, and no twelfth code was refused', () => {
   const counts = new Map<string, number>();
   for (const c of COUNTRY_INDEX.countries) counts.set(c.code, (counts.get(c.code) ?? 0) + 1);
-  for (const code of ['AD', 'GI', 'HK', 'LI', 'MC', 'SG', 'SM', 'SX', 'UM', 'VA']) {
+  // I-5c (§8.4 A-28 Part 4): the list gains `MO`. A-27's enumeration of "every bordered filled
+  // code" was short by one, and being short by one is precisely what QA R23-1 found — Macao is
+  // bordered, its 1:50m ring crosses into Guangdong, and only arm 2b can see that.
+  for (const code of ['AD', 'GI', 'HK', 'LI', 'MC', 'MO', 'SG', 'SM', 'SX', 'UM', 'VA']) {
     assert.equal(counts.get(code), 1, `${code} should carry exactly one entry — it was refused forgiveness`);
   }
-  assert.equal([...counts.values()].filter((n) => n === 2).length, 54, 'a different number of codes carry two entries');
+  assert.equal([...counts.values()].filter((n) => n === 2).length, 53, 'a different number of codes carry two entries');
   assert.equal([...counts.values()].filter((n) => n > 2).length, 0, 'a code carries more than two entries');
 });
 

@@ -47,8 +47,16 @@ const GENERATED = resolve(HERE, '..', 'src', 'geo', 'countries.gen.ts');
  * 293 entries over 239 distinct ISO codes, 1,034 rings, 22,229 points; 369,688 bytes of that is
  * the packed literal. The forgiveness rings are the coarse, cheap ones — A-27 Part 3 measured the
  * alternatives at +19 % for a blanket second layer and 9.07 MB for a wholesale escalation.
+ *
+ * **Moved at I-5c (§8.4 A-28), 374,826 → 374,659 — downward, for the first time.** Filter 2 became
+ * two arms and its second one, which compares a candidate against every other code at the pinned
+ * family's *finest* scale rather than at whatever scale the mixed-resolution index draws it,
+ * refuses `MO` the forgiveness ring that was claiming ~22.1 km² of Guangdong (QA R23-1). 53 codes
+ * now carry a second entry, not 54: **292 entries over the same 239 distinct ISO codes, 1,033
+ * rings, 22,220 points; 369,524 bytes of that is the packed literal.** One entry smaller, and the
+ * one it lost was a wrong answer.
  */
-const EMITTED_BYTES = 374_826;
+const EMITTED_BYTES = 374_659;
 
 /**
  * The ceiling the *budget itself* is measured against — the reason a budget exists at all.

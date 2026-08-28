@@ -62,7 +62,7 @@ import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
-import { forgivenessFor } from './forgiveness.mjs';
+import { forgivenessFor, overlaps, prepRing, prepSet } from './forgiveness.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CAIRN = resolve(HERE, '..');
@@ -121,6 +121,26 @@ const FILL = '10m';
  *  first (A-27 Part 4). With `FAMILY`/`FILL` as pinned this is `['110m', '50m']`, and the base
  *  layer contributes nothing by construction — a filled code is one the base does not carry. */
 const FORGIVE = FAMILY.slice(0, FAMILY.indexOf(FILL));
+
+/**
+ * **A-28 Part 3's trigger, asserted rather than left to be discovered.** Filter 1's population is
+ * the code's own *coverage* rings, which for a filled code are the fill — so filter 1 compares at
+ * the family's finest resolution today and carries no instance of R23-1's class **by construction,
+ * not by luck**. That construction is exactly this equality. The moment `FILL` is not `FAMILY`'s
+ * last element, filter 1 starts comparing a 1:50m candidate against a coarser drawing of the same
+ * country and acquires the defect A-28 just fixed one filter to the right — so it fails here,
+ * loudly, instead of quietly re-opening it.
+ */
+if (FILL !== FAMILY[FAMILY.length - 1]) {
+  console.error(
+    `gen-countries: FILL is "${FILL}" but the pinned family's finest scale is ` +
+      `"${FAMILY[FAMILY.length - 1]}". ARCHITECTURE §8.4 A-28 Part 3: filter 1 only avoids R23-1 ` +
+      'because the fill IS the finest scale, so a filled code\'s own coverage rings are already ' +
+      'the finest drawing of it. Change either constant and filter 1 needs its own second arm — ' +
+      'that is an architect decision, not a regeneration.',
+  );
+  process.exit(2);
+}
 
 const scaleKey = opt('scale', '110m');
 const scale = SCALES[scaleKey];
@@ -215,6 +235,19 @@ async function main() {
       `${entries[0].code} (smallest) … ${entries[entries.length - 1].code} (largest)`,
   );
 
+  // ---- criterion 4(e)'s third-source comparison (ROADMAP revision 22, A-28 Part 1's lesson).
+  //      Every OTHER sweep this generator and its tests run compares the index against ITSELF,
+  //      which is exactly why 22.1 km² of Guangdong could be gained without any of them noticing:
+  //      a cell going `null → MO` books as a *gain*. This asks a third source — the pinned
+  //      family's FINEST layer, the one the fill is cut from — about the ground every admitted
+  //      forgiveness ring claims, and it asks it of the EMITTED artefact rather than of the pass's
+  //      own bookkeeping.
+  const forgivenessAt = [];
+  entries.forEach((e, i) => {
+    if (e.forgiveness) forgivenessAt.push(i);
+  });
+  const thirdSource = thirdSourceCheck(entries, forgivenessAt, forgiveness);
+
   const rawMixed = mixedRaw(entries);
   const quantMisses = verifyQuantisation(rawMixed, entries);
   console.log(`  quantisation check: ${quantMisses} grid points changed answer at ${DECIMALS} dp`);
@@ -265,7 +298,7 @@ async function main() {
     `  entries: ${entries.length}   distinct codes: ${new Set(entries.map((e) => e.code)).size}` +
       `   rings: ${stats.rings}   points: ${stats.points}`,
   );
-  writeDrops(forgiveness, indexScale, source, entries);
+  writeDrops(forgiveness, indexScale, source, forgivenessAt, thirdSource);
   // Audit the module that was actually written, decoded the way the product decodes it — not the
   // in-memory build. A generator that audits its own intermediate value cannot see an emit bug.
   //
@@ -407,6 +440,10 @@ async function forgivenessPass({ filled, coverage, layers }) {
     kept: 0,
     scalesUsed: [],
     shas: new Map(),
+    // Arm 2b's population, kept for the third-source check in `main()`: every coverage code at the
+    // finest scale of the pinned family that carries it, and the same set ordered for `pick()`.
+    finest: new Map(),
+    finestOrdered: [],
   };
   if (!filled.length || !FORGIVE.length) {
     console.log(`  forgiveness: none (no filled codes)`);
@@ -416,6 +453,7 @@ async function forgivenessPass({ filled, coverage, layers }) {
   const filledSet = new Set(filled);
   const byCode = new Map(coverage.map((e) => [e.code, e]));
   const built = new Map(); // scale -> Map(code -> {rings, raw})
+  const geoByScale = new Map([...layers.entries()].map(([k, v]) => [k, v.geo]));
 
   for (const key of FORGIVE) {
     const cached = layers.get(key);
@@ -425,6 +463,7 @@ async function forgivenessPass({ filled, coverage, layers }) {
       const dl = await download(key);
       out.shas.set(key, dl.sha);
       geoHere = JSON.parse(dl.buf.toString('utf8'));
+      geoByScale.set(key, geoHere);
     }
     const has = codesOf(geoHere);
     const want = new Set(filled.filter((c) => has.has(c)));
@@ -441,10 +480,46 @@ async function forgivenessPass({ filled, coverage, layers }) {
     );
   }
 
+  // **Arm 2b's population, built ONCE (A-28 Parts 3 and 7).** `F(c)` is every ISO code the
+  // coverage-only index carries, drawn at *the finest scale of the pinned family that carries it*
+  // — regardless of the scale that code's own coverage entry uses. That is the whole fix: the
+  // shipped index is mixed-resolution, so arm 2a alone asks "do you overlap this neighbour as the
+  // index happens to draw it", which for a 1:110m neighbour is a question at the wrong scale and
+  // fails generously. Built here rather than inside the per-code loop because re-preparing 239
+  // ring-sets 62 times is the difference between a generator run and a coffee break.
+  const finestByCode = new Map();
+  const finestFrom = new Map(); // scale -> how many codes took their finest drawing from it
+  for (let i = FAMILY.length - 1; i >= 0; i--) {
+    const key = FAMILY[i];
+    const geoHere = geoByScale.get(key);
+    if (!geoHere) continue; // a scale this run never fetched (--no-fill, --scale 10m)
+    const want = new Set(coverage.map((e) => e.code).filter((c) => !finestByCode.has(c)));
+    if (!want.size) break;
+    const b = build(geoHere, want, key);
+    for (const e of b.entries) finestByCode.set(e.code, { code: e.code, rings: e.rings });
+    if (b.entries.length) finestFrom.set(key, b.entries.length);
+  }
+  const noFinest = coverage.map((e) => e.code).filter((c) => !finestByCode.has(c));
+  if (noFinest.length) {
+    // Unreachable with the pinned family — every code the index carries comes from one of these
+    // very layers — and stated rather than assumed, because arm 2b silently skipping a neighbour
+    // is R23-1 again with a different cause.
+    throw new Error(`forgiveness: ${noFinest.length} coverage code(s) have no finest drawing: ${noFinest.join(' ')}`);
+  }
+  console.log(
+    `  arm 2b population: ${finestByCode.size} codes at the finest scale that carries each — ` +
+      [...finestFrom.entries()].map(([k, n]) => `${n} from ${k}`).join(', '),
+  );
+  out.finest = finestByCode;
+  // Ordered the way the emitted index is, so `pick()` reaches an enclave before its encloser and
+  // the third source's answers are the ones a properly-ordered index would give.
+  out.finestOrdered = orderEntries([...finestByCode.values()].map((e) => ({ ...e, scale: FILL })));
+
   for (const code of filled) {
     const own = byCode.get(code);
     if (!own) throw new Error(`forgiveness: ${code} is filled but has no coverage entry`);
     const others = coverage.filter((e) => e.code !== code);
+    const finestOthers = [...finestByCode.values()].filter((e) => e.code !== code);
     let got = 0;
     let sawCandidate = false;
     for (const key of FORGIVE) {
@@ -452,12 +527,13 @@ async function forgivenessPass({ filled, coverage, layers }) {
       if (!cand || !cand.rings.length) continue;
       sawCandidate = true;
       out.candidates += cand.rings.length;
-      const { kept, drops } = forgivenessFor(cand.rings, own.rings, others);
+      const { kept, drops } = forgivenessFor(cand.rings, own.rings, others, finestOthers);
       for (const d of drops) {
         out.drops.push({
           code,
           scale: key,
           filter: d.filter,
+          against: d.against,
           takenFrom: d.code,
           ring: cand.rings[d.index],
         });
@@ -490,17 +566,25 @@ async function forgivenessPass({ filled, coverage, layers }) {
     }
   }
 
-  const dropsBy = (n) => out.drops.filter((d) => d.filter === n);
+  // The two arms are reported separately (A-28 Part 7): a run that says "9 by filter 2" cannot
+  // tell a reader whether the arm that catches Macao is doing anything at all.
+  const byFilter1 = out.drops.filter((d) => d.filter === 1);
+  const by2a = out.drops.filter((d) => d.against === 'coverage');
+  const by2b = out.drops.filter((d) => d.against === 'finest');
   console.log(
     `  forgiveness: ${out.entries.length} entries over ${out.codes.length} codes; ` +
       `${out.kept} of ${out.candidates} candidate rings kept, ${out.drops.length} dropped ` +
-      `(${dropsBy(1).length} by filter 1 — not the same place; ${dropsBy(2).length} by filter 2 — a neighbour's ground)`,
+      `(${byFilter1.length} by filter 1 — not the same place; ` +
+      `${by2a.length} by filter 2a — a neighbour's ground as the index draws it; ` +
+      `${by2b.length} by filter 2b — a neighbour's ground at the finest scale)`,
   );
   console.log(`    ${wrap(out.codes.join(' '), 88, '    ')}`);
   for (const d of out.drops) {
     console.log(
-      `    drop  ${d.code} @${d.scale}  filter ${d.filter}  ` +
-        (d.filter === 2 ? `overlaps ${d.takenFrom}` : 'does not touch its own coverage rings'),
+      `    drop  ${d.code} @${d.scale}  filter ${d.filter}${d.against ? d.against === 'coverage' ? 'a' : 'b' : ' '}  ` +
+        (d.filter === 2
+          ? `overlaps ${d.takenFrom}${d.against === 'finest' ? ` at the finest scale — invisible to the shipped index` : ''}`
+          : 'does not touch its own coverage rings'),
     );
   }
   console.log(
@@ -525,16 +609,13 @@ async function forgivenessPass({ filled, coverage, layers }) {
  * Generated, never hand-typed — I-5's dependency clause applies to every polygon in this
  * repository, test fixtures included.
  */
-function writeDrops(forgiveness, indexScale, source, entries) {
-  // The positions, in the emitted array, of the entries the forgiveness pass added. Recorded
-  // rather than inferred: two entries of one ISO code are indistinguishable in the packed payload,
-  // so a test that wants "the coverage-only index" has no way to reconstruct it from the artefact
-  // alone. With these, `countries.filter((_, i) => !forgivenessAt.includes(i))` is exactly the
-  // index as it shipped before I-5b, which is what makes the additive claim assertable.
-  const forgivenessAt = [];
-  entries.forEach((e, i) => {
-    if (e.forgiveness) forgivenessAt.push(i);
-  });
+function writeDrops(forgiveness, indexScale, source, forgivenessAt, thirdSource) {
+  // `forgivenessAt` is the positions, in the emitted array, of the entries the forgiveness pass
+  // added. Recorded rather than inferred: two entries of one ISO code are indistinguishable in the
+  // packed payload, so a test that wants "the coverage-only index" has no way to reconstruct it
+  // from the artefact alone. With these,
+  // `countries.filter((_, i) => !forgivenessAt.includes(i))` is exactly the index as it shipped
+  // before I-5b, which is what makes the additive claim assertable.
   if (forgivenessAt.length !== forgiveness.entries.length) {
     throw new Error(
       `forgiveness: ${forgivenessAt.length} flagged entries emitted but ${forgiveness.entries.length} were built`,
@@ -562,15 +643,145 @@ function writeDrops(forgiveness, indexScale, source, entries) {
       code: d.code,
       scale: d.scale,
       filter: d.filter,
+      // A-28: which ARM refused it. `filter` stays 1|2 so the golden's shape and the run's
+      // counting survive; `against` is what distinguishes a neighbour the shipped index can see
+      // (2a) from one only the finest layer can (2b) — Macao's is the only 'finest' in the
+      // artefact, and it is the whole point of the increment.
+      against: d.against,
       takenFrom: d.takenFrom,
       ring: d.ring,
     })),
+    thirdSource,
   };
   mkdirSync(dirname(DROPS_OUT), { recursive: true });
   writeFileSync(DROPS_OUT, `${JSON.stringify(out, null, 2)}\n`);
   console.log(
     `wrote fixtures/golden/forgiveness-drops.json  (${out.dropped} rejected rings, ${statSync(DROPS_OUT).size} bytes)`,
   );
+}
+
+// ------------------------------------------- criterion 4(e)'s comparison against a third source
+
+/**
+ * **The third source, asked about the artefact that was just built** — ROADMAP exit criterion 4
+ * part **e**, revision 22, and A-28 Part 1's generalisable lesson: *"every sweep either of us ran
+ * compared the index against itself … a wrong answer of this class is only visible against a third
+ * source, and the right one was already in the repository."*
+ *
+ * Two things happen here, and they are different in kind:
+ *
+ *  1. **The exact assertion, over the full geometry.** For every ring an emitted forgiveness entry
+ *     carries, `overlaps` is re-run against every OTHER ISO code's finest-scale rings. This is arm
+ *     2b again — but taken from the *emitted entries* rather than from the pass's own `kept` list,
+ *     so a pass that admitted a ring and an entry that ships it have to agree. A hit throws; there
+ *     is no artefact to write.
+ *  2. **A committed sample the test suite can re-assert without the layer.** The finest layer is
+ *     13 MB and nothing in this repository may commit a copy of it (the whole point of a generated
+ *     index), and the neighbour rings whose *bounding boxes* meet the forgiveness rings come to
+ *     1.2 MB of polygon on their own. So what is recorded is the third source's **answer** at
+ *     deterministic probe points inside each ring: for an admitted ring the answer must be that
+ *     ring's own code or `null`, and for `MO`'s refused ring it is `CN`, which is Zhuhai. The test
+ *     re-checks that each probe really lies inside the ring it is recorded against, so the sample
+ *     cannot drift into open water and pass vacuously.
+ */
+function thirdSourceCheck(entries, forgivenessAt, forgiveness) {
+  const finestOrdered = forgiveness.finestOrdered ?? [];
+  const finestByCode = forgiveness.finest ?? new Map();
+  if (!forgivenessAt.length) return null;
+  if (!finestOrdered.length) throw new Error('third source: no finest layer to compare against');
+
+  // 1. the exact assertion, ring by ring, against every other code's finest drawing.
+  const prepped = new Map([...finestByCode.entries()].map(([c, e]) => [c, prepSet(e.rings)]));
+  let checked = 0;
+  for (const i of forgivenessAt) {
+    const e = entries[i];
+    for (const ring of e.rings) {
+      checked++;
+      const R = prepRing(ring);
+      for (const [c, set] of prepped) {
+        if (c === e.code) continue;
+        if (overlaps(R, set)) {
+          throw new Error(
+            `third source: a shipped ${e.code} forgiveness ring claims ground the finest layer ` +
+              `calls ${c}. That is QA R23-1 — arm 2b did not do its job (ARCHITECTURE §8.4 A-28).`,
+          );
+        }
+      }
+    }
+  }
+
+  // 2. the committed sample.
+  const answer = (x, y) => pick(finestOrdered, x, y);
+  const admitted = [];
+  for (const i of forgivenessAt) {
+    const e = entries[i];
+    e.rings.forEach((ring, r) => {
+      admitted.push({ entry: i, ring: r, code: e.code, points: probesInside(ring).map((p) => [...p, answer(p[0], p[1])]) });
+    });
+  }
+  const dropped = forgiveness.drops.map((d, i) => ({
+    drop: i,
+    code: d.code,
+    filter: d.filter,
+    against: d.against,
+    takenFrom: d.takenFrom,
+    points: probesInside(d.ring).map((p) => [...p, answer(p[0], p[1])]),
+  }));
+
+  const elsewhere = admitted.filter((a) => a.points.some((p) => p[2] !== null && p[2] !== a.code));
+  if (elsewhere.length) {
+    throw new Error(`third source: ${elsewhere.length} admitted ring(s) probe to another country`);
+  }
+  const unprobed = admitted.filter((a) => a.points.length === 0).length;
+  console.log(
+    `  third source (${FILL}): ${checked} shipped forgiveness rings checked against every other ` +
+      `code's finest drawing — 0 claim another country's ground; ${admitted.length} rings sampled ` +
+      `at ${admitted.reduce((n, a) => n + a.points.length, 0)} probe points (${unprobed} rings too ` +
+      'thin for a probe)',
+  );
+  return {
+    $what:
+      "The finest layer's own answer at deterministic points inside each forgiveness ring — the " +
+      'ONE comparison in criterion 4(e) that is not the index against itself. An admitted ring may ' +
+      "probe to its own code or to null, never to another country's; MO's refused ring probes to " +
+      'CN, which is the ~22 km² of Zhuhai that ARCHITECTURE §8.4 A-28 removed.',
+    scale: FILL,
+    checkedRings: checked,
+    unprobedRings: unprobed,
+    admitted,
+    dropped,
+  };
+}
+
+/**
+ * Deterministic probe points strictly inside a flat ring: the coarsest `k × k` lattice over the
+ * ring's bounding box that lands at least one point inside it, thinned evenly to at most `max`.
+ * Points are rounded to 6 dp for the fixture and re-tested after rounding, so a recorded point is
+ * always genuinely inside the ring it is recorded against. Pure and order-stable.
+ */
+function probesInside(ring, max = 8) {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (let i = 0; i + 1 < ring.length; i += 2) {
+    if (ring[i] < x0) x0 = ring[i];
+    if (ring[i] > x1) x1 = ring[i];
+    if (ring[i + 1] < y0) y0 = ring[i + 1];
+    if (ring[i + 1] > y1) y1 = ring[i + 1];
+  }
+  for (const k of [4, 8, 16, 32, 64, 128, 256]) {
+    const found = [];
+    for (let i = 1; i < k; i++) {
+      for (let j = 1; j < k; j++) {
+        const x = Number((x0 + ((x1 - x0) * i) / k).toFixed(6));
+        const y = Number((y0 + ((y1 - y0) * j) / k).toFixed(6));
+        if (odd(x, y, ring)) found.push([x, y]);
+      }
+    }
+    if (found.length) {
+      const step = Math.max(1, Math.floor(found.length / max));
+      return found.filter((_, i) => i % step === 0).slice(0, max);
+    }
+  }
+  return [];
 }
 
 /** Every ISO alpha-2 code a layer carries, without quantising a single ring. */

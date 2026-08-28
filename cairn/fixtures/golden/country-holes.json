@@ -5,7 +5,7 @@
   "$what": "Every coordinate-bearing record of the reference trip that the committed COUNTRY_INDEX leaves unattributed, with the coarsest scale in the pinned Natural Earth family that does attribute it — or null, which means the dataset carries no polygon for that landform at any scale and null is the CORRECT answer. NO COORDINATES: ids and names only.",
   "index": {
     "scale": "ne_110m+10m+50m",
-    "source": "nvkelso/natural-earth-vector@v5.1.2/geojson/ne_110m_admin_0_countries.geojson (base) + ne_10m_admin_0_countries.geojson (fill: 64 codes the base omits) + ne_50m_admin_0_countries.geojson (forgiveness: 54 of those codes, A-27)"
+    "source": "nvkelso/natural-earth-vector@v5.1.2/geojson/ne_110m_admin_0_countries.geojson (base) + ne_10m_admin_0_countries.geojson (fill: 64 codes the base omits) + ne_50m_admin_0_countries.geojson (forgiveness: 53 of those codes, A-27)"
   },
   "scales": [
     "110m",

@@ -8,7 +8,13 @@ export type Box = readonly [number, number, number, number];
 export type PreppedRing = { pts: number[]; box: Box };
 export type PreppedSet = { rings: PreppedRing[]; box: Box };
 export type ForgivenessEntry = { code: string; rings: readonly Ring[] };
-export type ForgivenessDrop = { index: number; filter: 1 | 2; code: string | null };
+export type ForgivenessArm = 'coverage' | 'finest';
+export type ForgivenessDrop = {
+  index: number;
+  filter: 1 | 2;
+  code: string | null;
+  against: ForgivenessArm | null;
+};
 
 export declare const LATTICE: number;
 
@@ -21,5 +27,6 @@ export declare function forgivenessFor(
   candidates: readonly Ring[],
   own: readonly Ring[],
   others: readonly ForgivenessEntry[],
-  opts?: { filter1?: boolean; filter2?: boolean },
+  finestOthers: readonly ForgivenessEntry[],
+  opts?: { filter1?: boolean; filter2a?: boolean; filter2b?: boolean },
 ): { kept: number[]; drops: ForgivenessDrop[] };
