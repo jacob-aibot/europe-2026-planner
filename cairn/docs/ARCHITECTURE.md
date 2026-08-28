@@ -607,8 +607,8 @@ foreclose. See `ROADMAP.md` for sequencing and `PRODUCT-VISION.md` for why this 
 
 ## Read only your sections
 
-This document is ~199k tokens (re-measured at revision 26, with
-`cairn/tools/doc-section ARCHITECTURE` — §2 is ~110k of it and §8 ~51k; the per-section figures below were stale by a third before revision 11 and are
+This document is ~204k tokens (re-measured at revision 27, with
+`cairn/tools/doc-section ARCHITECTURE` — §2 is ~110k of it and §8 ~56k; the per-section figures below were stale by a third before revision 11 and are
 re-measured, not estimated, whenever a revision lands). Nothing needs all of it, and a fresh agent that reads it whole starts a sixth
 of the way into its context before writing a line. Pull what you need:
 
@@ -627,11 +627,11 @@ cairn/tools/doc-section ARCHITECTURE         # lists the sections and their size
 | 5 | The four hard subsystems | 2k | breaker; builder from Phase 3 on |
 | 6 | Privacy, authorization, deletion cascade. **§6.6 is the build-artifact threshold; the copy threshold is §2.14 A-15 + A-18 (revisions 13 and 14) and they differ deliberately, in two named places — read them together or neither** | 4k | breaker, manager; builder for §6.2 |
 | 7 | Explicitly deferred | <1k | anyone about to build something not in the roadmap |
-| 8 | **The travel-history model** (revision 9) — trip lifecycle and past trips (§8.1), the feasibility/integrity rule class (§8.2), participants (§8.3), geography attribution, travel stats and the summary-row rule (§8.4); then the shapes the location, photo and social phases must land on (§8.5–§8.7) and what is refused (§8.8). **§8.10 is revision 10** — physical travel distance by mode and the four provenance bases that keep it honest; **it is not Phase 2 scope**, so a Phase 2 builder reads §8.1–§8.4 and stops. **Revision 11 amends §8.1, §8.2 and §8.4 by pointer only — the two rulings themselves live in §2.2 (A-10) and §2.7 (A-9), and a Phase 2 builder reads both; revision 12 amends §8.2 by pointer in the same way, and its four rulings live in §2.7 (A-11, A-12, A-13) and §2.14 (A-14)**. **A-26 is revision 20 and lives in §8.4** — the mixed-resolution country index, the withdrawal of the correctness floor's escalation mechanism, and the ruling that `null` is the right answer for a landform the dataset does not carry; **anyone touching `tools/gen-countries.mjs`, `geo/countryIndex.ts` or the attribution golden reads it first**, and it is what ROADMAP's I-5a builds; **A-27 is revision 21, sits directly under A-26 and is read *with* it, never instead of it** — it amends A-26 Part 4's block-quoted rule with a third clause (a filled code ships a **forgiveness entry** as well as a coverage entry), supersedes A-26 Part 5's two-residue list with three, lifts A-26 Part 6 item 3 for a docstring correction only, and is what ROADMAP's **I-5b** builds; **A-28 is revision 22, sits under A-27 and is read with both, never instead of them** — it supersedes A-27 Part 4's filter 2 (two arms, because the coverage index it compared against is mixed-resolution and answered generously) and A-27 Part 4's `overlaps` predicate (the vertex-mean probes come out), corrects A-27 Part 5's Macao sentence and every count in it, and is what ROADMAP's **I-5c** builds. **Anyone touching `tools/forgiveness.mjs` or the forgiveness pass reads A-28 first and A-27 second**; **A-29 is revision 23 and sits under A-28** — it is the only one of the four that is *not* about the index: it rules that a `City`'s **stated** `countryCode` fills a gap the coordinate cannot answer, never overrides one, and only through a gate ending in index membership, and it takes `SUMMARY_VERSION` to 3. **Anyone touching `derive/summary.ts` reads A-29 and §4.3's A-30 together** — A-29 changes what a row *says*, A-30 changes how it is *written*, and I-6a builds both; **A-31 is revision 24 and sits under A-29** — it is the `travelStats` specification (type, signature, algorithm, sort orders, residues), and it widens the row a second time with the **record census** clause 2's `unattributed` cannot be computed without, taking `SUMMARY_VERSION` to 4. **A builder of I-7 reads §8.4 clause 2, then A-31, and needs nothing else in this document except §2.10's list**; A-31 also rewrites ROADMAP exit criterion 6, so **anyone about to add a count to `TripSummaryRow` reads A-31 Part 6 first — widening that allow-list is an architect's ruling**; **A-33 and A-34 are revision 25 and sit under A-31** — **A-33 supersedes A-31 Part 6's two-half check entirely** (it grepped declarations while the danger is a *value*, and a persisted `countriesVisited` passed it), so read A-33 and treat Part 6 as the *principle* it block-quotes and nothing more; **A-34** adds `provisional` to `travelStats`' two row types and is the ruling that stops an active trip's unreached countries being printed as fact. **A builder of I-7a reads A-31, then A-33 and A-34, plus §2.1's A-32**; **A-36 and A-37 are revision 26 and sit under A-34** — **A-36 supersedes A-33 Part 3's 6b-1/6b-2/6b-4 split and Part 7 residue 2** (every `StoragePort` implementation is *executed* by the gate, including the web port, against a recording double; 6b-2 is demoted to a tripwire and its parameter grep withdrawn; 6b-4's Chromium read-back becomes a required recorded ship-gate condition), so **anyone touching a port implementation, `test/stats-storage.test.ts` or `ROW_KEYS` reads A-36 first and A-33 second**; **A-37** is the ruling that a stored summary row is not a validated document — two module-private read gates in `travelStats` (day numbers clamped into `IsoDate`'s domain, a stored country code read through `/^[A-Z]{2}$/`), and it is what makes A-32 Part 8 residue 3's bound and the composite key's docstring true rather than merely stated. **A builder of I-7b reads A-36 and A-37, plus §2.3's A-35** | 51k | architect; the builder and breaker of the phase after Phase 1 (§8.1–§8.4 only). §8.10 is for the architect and for phases 4, 5 and 7. Read with `PRODUCT-VISION.md` |
+| 8 | **The travel-history model** (revision 9) — trip lifecycle and past trips (§8.1), the feasibility/integrity rule class (§8.2), participants (§8.3), geography attribution, travel stats and the summary-row rule (§8.4); then the shapes the location, photo and social phases must land on (§8.5–§8.7) and what is refused (§8.8). **§8.10 is revision 10** — physical travel distance by mode and the four provenance bases that keep it honest; **it is not Phase 2 scope**, so a Phase 2 builder reads §8.1–§8.4 and stops. **Revision 11 amends §8.1, §8.2 and §8.4 by pointer only — the two rulings themselves live in §2.2 (A-10) and §2.7 (A-9), and a Phase 2 builder reads both; revision 12 amends §8.2 by pointer in the same way, and its four rulings live in §2.7 (A-11, A-12, A-13) and §2.14 (A-14)**. **A-26 is revision 20 and lives in §8.4** — the mixed-resolution country index, the withdrawal of the correctness floor's escalation mechanism, and the ruling that `null` is the right answer for a landform the dataset does not carry; **anyone touching `tools/gen-countries.mjs`, `geo/countryIndex.ts` or the attribution golden reads it first**, and it is what ROADMAP's I-5a builds; **A-27 is revision 21, sits directly under A-26 and is read *with* it, never instead of it** — it amends A-26 Part 4's block-quoted rule with a third clause (a filled code ships a **forgiveness entry** as well as a coverage entry), supersedes A-26 Part 5's two-residue list with three, lifts A-26 Part 6 item 3 for a docstring correction only, and is what ROADMAP's **I-5b** builds; **A-28 is revision 22, sits under A-27 and is read with both, never instead of them** — it supersedes A-27 Part 4's filter 2 (two arms, because the coverage index it compared against is mixed-resolution and answered generously) and A-27 Part 4's `overlaps` predicate (the vertex-mean probes come out), corrects A-27 Part 5's Macao sentence and every count in it, and is what ROADMAP's **I-5c** builds. **Anyone touching `tools/forgiveness.mjs` or the forgiveness pass reads A-28 first and A-27 second**; **A-29 is revision 23 and sits under A-28** — it is the only one of the four that is *not* about the index: it rules that a `City`'s **stated** `countryCode` fills a gap the coordinate cannot answer, never overrides one, and only through a gate ending in index membership, and it takes `SUMMARY_VERSION` to 3. **Anyone touching `derive/summary.ts` reads A-29 and §4.3's A-30 together** — A-29 changes what a row *says*, A-30 changes how it is *written*, and I-6a builds both; **A-31 is revision 24 and sits under A-29** — it is the `travelStats` specification (type, signature, algorithm, sort orders, residues), and it widens the row a second time with the **record census** clause 2's `unattributed` cannot be computed without, taking `SUMMARY_VERSION` to 4. **A builder of I-7 reads §8.4 clause 2, then A-31, and needs nothing else in this document except §2.10's list**; A-31 also rewrites ROADMAP exit criterion 6, so **anyone about to add a count to `TripSummaryRow` reads A-31 Part 6 first — widening that allow-list is an architect's ruling**; **A-33 and A-34 are revision 25 and sit under A-31** — **A-33 supersedes A-31 Part 6's two-half check entirely** (it grepped declarations while the danger is a *value*, and a persisted `countriesVisited` passed it), so read A-33 and treat Part 6 as the *principle* it block-quotes and nothing more; **A-34** adds `provisional` to `travelStats`' two row types and is the ruling that stops an active trip's unreached countries being printed as fact. **A builder of I-7a reads A-31, then A-33 and A-34, plus §2.1's A-32**; **A-36 and A-37 are revision 26 and sit under A-34** — **A-36 supersedes A-33 Part 3's 6b-1/6b-2/6b-4 split and Part 7 residue 2** (every `StoragePort` implementation is *executed* by the gate, including the web port, against a recording double; 6b-2 is demoted to a tripwire and its parameter grep withdrawn; 6b-4's Chromium read-back becomes a required recorded ship-gate condition), so **anyone touching a port implementation, `test/stats-storage.test.ts` or `ROW_KEYS` reads A-36 first and A-33 second**; **A-37** is the ruling that a stored summary row is not a validated document — two module-private read gates in `travelStats` (day numbers clamped into `IsoDate`'s domain, a stored country code read through `/^[A-Z]{2}$/`), and it is what makes A-32 Part 8 residue 3's bound and the composite key's docstring true rather than merely stated. **A builder of I-7b reads A-36 and A-37, plus §2.3's A-35**; **A-38 is revision 27 and sits under A-37** — it **widens A-36 Part 2's mechanism and Part 4's 6b-4 scope without touching A-36's sentence**: a port's coverage is its **write paths**, not its interface methods, so the recording double gains a **seed** (a pre-existing database, including a *legacy* record with no envelope version), 6b-1b becomes **five arms each with a stated starting state**, and 6b-4 gains a second seeded phase. **Anyone touching a port implementation, `recordingIdb`, `test/stats-storage.test.ts` or `qa/i7a-idb-rowkeys.mjs` reads A-38 first and A-36 second** | 56k | architect; the builder and breaker of the phase after Phase 1 (§8.1–§8.4 only). §8.10 is for the architect and for phases 4, 5 and 7. Read with `PRODUCT-VISION.md` |
 
 *(§8's figure is measured with `doc-section`, not estimated. §8.1–§8.4 — the Phase 2 model — are roughly
-five sixths of it since revisions 20–26 put A-26…A-29, A-31, A-33, A-34, A-36 and A-37 in §8.4; a Phase 2 builder
-who reads only those pays about 44k, and a builder who reads §8.4 alone pays about 41k — with §4.3
+five sixths of it since revisions 20–27 put A-26…A-29, A-31, A-33, A-34, A-36, A-37 and A-38 in §8.4; a Phase 2 builder
+who reads only those pays about 50k, and a builder who reads §8.4 alone pays about 47k — with §4.3
 (~4k, and A-30 is most of it) beside it, because I-6a is the one increment that needs both. **A-28 is the entry
 point to that trio, not the last of it** — it names which of A-27's sentences it supersedes, so a builder who
 reads A-28 first knows which parts of A-27 to skip. **A builder of I-7 needs none of A-26…A-29** — those are
@@ -640,7 +640,9 @@ plus A-31 is ~9k and is the whole brief. **A builder of I-7a** reads A-31 → A-
 together, measured) plus §2.1's **A-32** (**4k**), and needs nothing else in either section. **A builder of
 I-7b** reads **A-36** and **A-37** plus §2.3's **A-35**, and needs A-33 only for Part 2's `ROW_KEYS` and
 A-31 only for Part 4's algorithm — A-36 names which of A-33's parts it supersedes, so reading A-36 first is
-what tells you which of A-33 to skip.)*
+what tells you which of A-33 to skip. **A builder of A-38** reads **A-38** (**~5k**) and **A-36 Parts 2–5**
+and needs nothing else in this document except A-33 Part 2's `ROW_KEYS`/`ROW_PATHS` — A-38 restates which
+of A-36 it widens, and touches only `test/stats-storage.test.ts` and `qa/i7a-idb-rowkeys.mjs`.)*
 
 Read the whole document when you are the manager, when you are changing the design, or when a change
 crosses a section boundary. Otherwise this table is the contract.
@@ -9428,6 +9430,13 @@ too, and which would let the clamp be real instead of marked.
 
 #### A-36 — every `StoragePort` implementation is **executed** by the gate; no port is policed by reading its source (revision 26, QA R29-1, MAJOR)
 
+**⚠ Part 2's mechanism and Part 4's 6b-4 scope are widened by A-38 (revision 27, QA R30-1).** Part 2's
+*sentence* is unchanged and is still the contract — A-38 kept it deliberately. What A-38 adds is that
+6b-1b's single empty-database arm does not discharge it: `ensureReady()`'s upcast is a third write path that
+only executes against a database that already holds records, so 6b-1b becomes **five arms with stated
+starting states** and 6b-4 gains a second, seeded phase. **Read A-36 for why execution replaced the grep;
+read A-38 for which starting states the execution must run from.**
+
 **Part 1 — the routed question, and why one of the two answers is not an answer.**
 
 A-33 Part 3 left one port unexecuted: `apps/web/src/ports/storage.ts` *"is IndexedDB and does not run in
@@ -9498,6 +9507,10 @@ Node program and make the gate depend on `@cairn/*` bare-specifier resolution fr
 `ExperimentalWarning`, which is noise in `node --test` and not a failure.
 
 **Part 3 — the double: what it is, what it is not, and how it is kept honest.**
+
+*(**Extended at revision 27 — A-38 Part 4/Part 5.** The recorder's constructor takes an optional **seed**:
+pre-filled stores and an already-installed database version. That is state, not behaviour, and A-38 Part 5
+draws the line and makes it checkable. The listing below is otherwise unchanged.)*
 
 A-33 residue 2 refused *"building a fake IndexedDB … a second implementation of a database in order to
 test a two-line property"*, and that refusal is narrowed rather than reversed. What goes in is **not a
@@ -9607,6 +9620,11 @@ on the shipped tree and already goes 3 FAIL under G1. So:
 > **Any increment that touches `apps/web/src/ports/storage.ts`, the recording double, or `ROW_KEYS` runs
 > `qa/i7a-idb-rowkeys.mjs` against a real browser and records the measured result in `BUILD-NOTES.md`. If
 > no browser is available in the environment, that is a **disclosed gap**, stated as such, and not a pass.**
+
+*(**Widened at revision 27 — A-38 Part 6.** The obligation and the out-of-suite status are unchanged; the
+probe's **scope** grows. It ran one instance against a database it had just deleted, so it was blind to the
+upcast for the same structural reason 6b-1b was — R30-1. It now runs **two phases**, the second against a
+pre-seeded legacy database, and records the measured result of each.)*
 
 It stays **out** of `npm run test:tap`, deliberately and permanently: the gate must run on bare Node with
 no browser and no non-`devDependencies` install — `BRIEF.md`'s phasing principle (*"runnable and
@@ -9803,6 +9821,255 @@ re-express"*).
    directly. It is not in this ruling's scope and it is not the same exposure — a bad string renders as a
    bad string there, where here it was being typed `IsoDate` and handed on. **Trigger:** a surface that
    *computes* with a row field rather than displaying it.
+
+#### A-38 — a port's coverage is its **write paths**, not its interface methods: the double is seeded with a pre-existing database, and `ensureReady`'s upcast is executed (revision 27, QA R30-1, MAJOR)
+
+**Part 1 — the routed question, and why it is one sentence wide rather than one method wide.**
+
+A-36 Part 2 is a totality claim over *values*:
+
+> *"…the keys of **every value that reaches its summary store**, and of every row it returns, are asserted
+> against `ROW_KEYS`/`ROW_PATHS`."*
+
+6b-1b as built (`test/stats-storage.test.ts:512-542`) constructs **one** port instance over an **empty**
+recorder. `apps/web/src/ports/storage.ts:124`'s `ensureReady()` is the port's third write path: it is not an
+interface method, it runs **once per port instance**, and on an empty database its loop body has nothing to
+walk. So the sentence is true of the property and false of the mechanism, one method over — QA round 30
+put a widening there (**G12**), measured exit criterion 6 at **18 pass / 0 fail**, and read
+`countriesVisited` and `daysTravelled` out of **real Chromium's IndexedDB** after a second port instance
+opened the same database (`qa/r30-upcast-browser.mjs`, 14 keys → 16; `--clean` is the control and is ALL
+OK, so the shipped port is not defective).
+
+**The ruling widens the mechanism and keeps the sentence.** The alternative the finding offers — narrow
+Part 2 to *"every value written by a mutating interface method"* and disclose the upcast as a residue — is
+refused, and for the same reason A-36 refused the scoped grep. A claim about *interface methods* is a claim
+about the port's API; §8.4 clause 2 and A-31 Part 6 are claims about the **bytes in storage**. Substituting
+one for the other is the identical category error A-33 made when it grepped a declaration to police a value,
+and this project has now paid for that error in three consecutive rounds. The sentence is the property Jacob
+is owed; what has to move is the thing that enforces it. So:
+
+> **A `StoragePort`'s coverage is the set of its write paths, not the set of its interface methods.** Every
+> arm of 6b-1 drives its port from a **stated starting state**, and the stated starting states include a
+> database that already holds records — because a path that only executes against an existing database is
+> the path that executes on **every page load after the first**, which is almost every page load there is.
+
+**Part 2 — which shape actually exercises the blind path, measured, because two of the three only look as
+if they do.**
+
+The finding offers "construct the port twice — three lines". That is not sufficient, and the difference is
+not a nuance. `ensureReady`'s loop has two arms:
+
+```ts
+for (const key of docKeys.result) {
+  if (have.has(String(key))) continue;   // arm A: this doc already has an envelope version
+  versions.put(mintVersion(), key);      // arm B: the legacy record — the upcast's actual work
+}
+```
+
+**A port called twice can never produce arm B**, because the port's own write path always writes a version
+alongside the document. Only a database the port did not create has a versionless record in it, and that is
+precisely the population `ensureReady` exists for (its own docstring: *"Jacob's existing IndexedDB has
+records that predate the fence"*). Measured, against the shipped double, with three faults and three drive
+shapes — each fault applied alone, each shape identical apart from its starting state:
+
+| | shipped | **G12** upcast widens every summary row | **G13** upcast widens **inside the stamping branch** |
+|---|---|---|---|
+| **two instances**, port-written state (the finding's suggestion) | 14 keys | **RED**, 16 | **green, 14 — blind** |
+| **seeded, current** (doc + summary + version, no upgrade) | 14 keys | **RED**, 16 | **green, 14 — blind** |
+| **seeded, legacy** (doc + summary, **no** version) | 14 keys, `versions` 0 → 1 | **RED**, 16 | **RED**, 16 |
+
+G13 is one edit (a `sums.get`/`sums.put` pair after the existing `versions.put(mintVersion(), key)`), it is
+in-class with G12 and with R29-1 before it, and it is invisible to everything the repo has: exit criterion 6
+green, **6b-2 green in both of its surviving assertions** (the site count is still 2 and both captures are
+still the bare identifier `summary` — measured over the faulted source, not reasoned), 6b-1b green, and 6b-4
+green because it deletes the database first. It is caught by exactly one thing, and only after this ruling:
+an arm whose starting state is a **versionless** record.
+
+So the answer to the routed question is **both, and the seeding is the load-bearing half**: the port is
+driven twice *and* the double is seeded directly. Running the port twice is not the coverage mechanism — it
+is the **fidelity cross-check on the fixture** (Part 3, arm 5), which is a different and smaller job.
+
+**Part 3 — the arms. 6b-1b becomes five, and every one states its starting state.**
+
+Arm 1 is what ships today, unchanged. Arms 2–5 are new. Every arm asserts the same two key-set properties
+it already asserts — the records in `summaries`, and the rows `listTrips()` returns — and each adds the
+assertions that prove its own path ran.
+
+- **6b-1b-1 — empty database, one instance.** Unchanged. The first-write path. Keeps its outcome
+  assertions and its vacuity control.
+- **6b-1b-2 — an existing *current* database.** Seed `docs`, `summaries` and `versions` for one id, with
+  the recorder's stored version already at `DB_VERSION` so **no upgrade fires**. One fresh port, then
+  `listTrips()`. Additionally assert: the record's `StorageVersion` is **byte-identical** to the seeded one
+  (arm A ran and correctly did nothing), `summaries.size` is unchanged, and the `docs` value is unchanged.
+- **6b-1b-3 — an existing *legacy* database.** The same, with the `versions` store **empty**. One fresh
+  port, then `listTrips()`. Additionally assert: `versions` gains **exactly one** entry, it is a non-empty
+  string, `summaries.size` and the `docs` value are unchanged, and `await port.load(id)` resolves with the
+  seeded document and the newly minted version — which it cannot do unless the stamp landed, because
+  `load()` rejects a record with no envelope version. **This is the arm G13 dies in and it is the reason
+  this ruling exists.**
+- **6b-1b-4 — mixed, in one transaction.** Two ids in one seeded database: one versionless, one carrying a
+  version. One fresh port. Assert both arms in the same `ensureReady` run — the versionless id is stamped,
+  the versioned id's token is byte-identical to the seeded one, and **both** rows are clean. A real upgraded
+  database is mixed; an arm that is uniformly legacy or uniformly current tests half a loop.
+- **6b-1b-5 — the port's own second instance.** Write with instance 1 over an empty recorder, construct
+  instance 2 over the same recorder, `listTrips()`. Its coverage is a strict subset of arm 2's, and it is
+  kept for the one thing no seeded arm can do: **its starting state was produced by the port rather than by
+  the test.** So it carries the fixture-fidelity assertion — the store names present, and the key set of
+  each store's value, after instance 1's write must equal those of the hand-written fixture arms 2–4 use.
+  **That is what stops the fixture drifting away from what the port actually writes**, which is the way a
+  seeded arm goes quietly wrong.
+
+**Part 4 — the seed, and the one assertion without which this whole ruling re-creates R30-1 inside its own
+fix.**
+
+*Shape.* A seed is a plain object of store name → (key → value), plus the database version the recorder
+should report as already installed:
+
+```ts
+recordingIdb({
+  dbVersion: 3,                                     // = the port's DB_VERSION: an existing database
+  stores: {
+    docs:      { 't-legacy': JSON.stringify(trip) },
+    summaries: { 't-legacy': tripSummary(trip, COUNTRY_INDEX) },
+    versions:  {},                                  // legacy: no envelope version. Arm B's population.
+  },
+})
+```
+
+*Where it lives.* **In the recorder's own constructor, and nowhere else** — five lines that pre-fill the
+`stores` map and set the initial `version`, before any transaction exists. Not a separate fixture module and
+not a helper that reaches into the double afterwards: a test that mutates the double's internals between
+port calls is writing migration logic in the test file, which is the thing Part 5 forbids.
+
+*What the fixture is minted from.* The same `webRow()` idiom the file already uses — `createTrip` with
+`sequentialIds` and the pinned `TODAY`, then `tripSummary(trip, COUNTRY_INDEX)`. **Never a hand-typed row
+literal**, which would go stale the next time the row is widened and would defeat the key assertion it is
+the subject of. (It is also load-bearing at run time: `listTrips()` sorts on `startDate` and `title`, so a
+stub row throws inside the port rather than failing an assertion — measured.) The seeded `StorageVersion`
+is a fixed literal string; it must not be minted, so that
+determinism (`cairn-constraints` §4) holds and so that "the token did not move" is assertable by equality.
+
+*The seed-integrity assertion, which is not optional.* **Before the port is constructed, assert the seed
+actually landed**: `docs` and `summaries` each hold exactly the seeded ids, `versions` holds exactly the
+seeded ids (none, for arm 3), and the seeded summary record's key set is already exactly `ROW_KEYS`. A
+mis-spelled store name silently yields an **empty** database, at which point arms 2–4 degrade back into arm
+1 and report green — which is R30-1, re-created inside the fix for R30-1, with the same signature. The
+before/after pair on the summary record's key set is also what makes a red attributable: clean before,
+widened after, therefore the port did it.
+
+**Part 5 — why this is still a recorder, and where the line now is.**
+
+A-33 residue 2 refused *"a second implementation of a database in order to test a two-line property"*;
+A-36 Part 3 narrowed that to permit a recorder for the empty-database case. This ruling extends the same
+narrow permission to a non-empty starting state, and it stays on the permitted side because of a
+distinction that is mechanical rather than rhetorical:
+
+> **The double may be given *state*. It may never be given *behaviour that depends on state*.**
+
+Seeding is `Map.set` into the `stores` map the recorder already keeps, plus the initial value of the
+`version` variable the recorder already has. It adds **no method to the IndexedDB surface**, **no branch on
+record content**, and **no transformation of any value** — every seeded value is handed back verbatim, which
+is the recorder's one existing obligation. Nothing in the double knows what a "version 2 record" is, what an
+upcast is, or that `versions` relates to `docs`; all of that knowledge stays where it already lives, in the
+port under test. What A-33 refused was a component that would *decide* things — key ordering, constraint
+enforcement, migration, quota. A recorder pre-loaded with a value decides nothing; the **test** states the
+fixture and the recorder is still only a tape.
+
+The line is checkable and a reviewer should check it: **the diff to `recordingIdb()` is additive-only,
+confined to the constructor, and contains no `if` that reads a stored value.** A diff that fails that
+description has crossed into the forbidden territory and is an architect's question, not a builder's.
+
+**Part 6 — 6b-4: its status does not change, its scope does, and it is not made redundant.**
+
+A-36 Part 4 made `qa/i7a-idb-rowkeys.mjs` a **required, recorded ship-gate condition** that stays out of
+`npm run test:tap` permanently (the gate must run on bare Node — `BRIEF.md`'s phasing principle,
+`cairn-constraints` §2/§3, §1.3). **That status is unchanged.** What changes is what it must cover, because
+it is currently blind for exactly the reason 6b-1b was: `qa/i7a-idb-rowkeys.mjs:92` calls
+`indexedDB.deleteDatabase('cairn')` and then uses **one** `indexedDbStorage()` instance.
+
+> **6b-4 runs in two phases in its default run.** Phase 1 is what it does today (fresh database, one
+> instance, both mutating methods, raw read-back). Phase 2 opens a raw `indexedDB.open('cairn', 3)`, writes
+> a document and a summary row with **no** `versions` entry, closes it, and *then* constructs the port —
+> the legacy state — and reads the `summaries` store back with a transaction that bypasses the port. Both
+> phases assert `ROW_KEYS` and the "no lifetime count of any name in the persisted bytes" blob check. It
+> carries at least two named faults, one per class (the A-36 G1 shape, and an upcast-path shape), and the
+> measured result of **each phase** is what gets recorded in `BUILD-NOTES.md`.
+
+**Strengthening 6b-1b does not make this redundant — it makes 6b-4's remaining job sharper.** The double
+cannot model the `versionchange` transaction: a real `onupgradeneeded` handler writes through
+`request.transaction`, which the recorder does not implement, so a widening placed in the port's
+`onupgradeneeded` is beyond the double's reach *by construction* and is only visible in a real browser.
+That path is definitionally an existing-database path, which is why it belongs here and not in a wider
+double. Teaching the double `versionchange` semantics would be inventing transaction lifetimes — the wrong
+side of Part 5's line — so it is 6b-4's, deliberately, and it is Part 8 residue 1.
+
+**Part 7 — the injected-fault matrix, extended per §0.5.**
+
+A-33 Part 6's ten and A-36 Part 5's four stand and must all stay red. Three are added. The **required
+fault-catching property** is stated first, because the specific faults are instances of it and a future
+round will construct others:
+
+> **For any single-edit fault confined to `ensureReady()` that causes a key outside `ROW_KEYS` to appear in
+> a persisted summary record, or in a row `listTrips()` returns, at least one 6b-1b arm is red.** In
+> particular the gate is red for a fault reachable **only** when a document key has no envelope version —
+> the class no number of port instances can reach.
+
+| | Fault | Must be caught by |
+|---|---|---|
+| **G12** | `ensureReady` takes `SUMMARIES` into its transaction scope and re-puts every summary row widened (*"while we are in here, bring the summaries current"*) | **6b-1b arms 2, 3, 4 and 5** |
+| **G13** | the same widening placed **inside the stamping branch**, so it fires only for a versionless document | **6b-1b arm 3 and arm 4, and nothing else in the repo** — this is the fault the ruling turns on |
+| **G14** | `ensureReady` stamps a record it should have skipped (drop the `have.has(...) continue`), moving a fence the port was handed | **6b-1b arm 2 and arm 4** — the "byte-identical version" assertion, which is §0.6 and §4.3 A-30 applied to the upcast |
+
+A fault caught by exactly one arm is fine and G13 is deliberately one — that is what tells the seeded arms
+apart from every shape that came before them. **A fault caught by none is a hole and is a finding.** Each
+new arm also needs its own vacuity control, in the shape of the one already at
+`test/stats-storage.test.ts:577`: the faulted source is built by string replacement over the shipped file,
+the replacement is asserted to have applied (*"the anchor no longer applies — re-derive it, do not delete
+it"*), and the drive is asserted to **reject**. R29-4's rule holds here without restatement: an injected
+fault that did not run is a failure, not a pass.
+
+**Part 8 — the residues.**
+
+1. **`onupgradeneeded` is not executed by the gate.** The recorder fires the callback but does not model the
+   `versionchange` transaction, so a widening written through `request.transaction` is invisible to every
+   arm. It is 6b-4 phase 2's, per Part 6. **Trigger:** a defect found in `onupgradeneeded`, at which point
+   the question is whether 6b-4 gains an assertion or the recorder gains a `transaction` property on the
+   open request — and the second one is an architect's ruling, because it is the first thing that would give
+   the double a behaviour rather than a state.
+2. **A seeded arm asserts the port's effect on a fixture, not on a real prior version of itself.** Nothing
+   in the repo pins that the fixture equals what a *shipped older build* wrote; arm 5 pins it against what
+   *this* build writes, which is the strongest available claim without keeping historical builds around.
+   **Trigger:** the first real schema migration (a `DB_VERSION` 4), at which point the fixture stops being
+   a transcription of the current shape and becomes a record of an older one, and it needs to be pinned by
+   something other than today's port.
+3. **A-36 Part 6 residues 1–4 are unchanged and are not restated here.** Residue 2 in particular still
+   stands: these arms pin **keys, not values**, so a port that persisted a correct key set with a corrupted
+   value still passes, and that is A-31 Part 6 working as written.
+4. **This ruling covers `ensureReady` because `ensureReady` is what exists.** The rule in Part 1 is stated
+   over *write paths*, not over that one function, so a port that grows a fourth path — a compaction pass,
+   a lazy repair on read — needs an arm with a stated starting state that reaches it. 6b-3's census counts
+   *files*, not paths, and cannot see this. **Trigger: fired by construction** the moment a port grows a
+   non-interface write path; the reviewer of that diff is the mechanism, which is weaker than a test and is
+   disclosed as such.
+
+**Part 9 — what this ruling does *not* touch.**
+
+Round 30 filed four MINORs beside R30-1 and **none of them is inseparable from it**; they are left open and
+unruled rather than swept in. Recorded so the next architect does not have to re-derive the separation:
+**R30-2** (a lifetime cache in a *second object store*) is about which **stores** the gate asserts over, not
+which **code path** it executes — every arm here would pass a port that wrote its counts to a `lifetime`
+store, and widening the assertion's store scope is a change to exit criterion 6's subject that belongs with
+A-31 Part 6's allow-list. **R30-3** is a builder defect in `packages/core/test/travelStats.test.ts` and
+touches nothing in this file. **R30-4** asks A-36 Part 6 residue 1's *wording* to name the
+`typeof window !== 'undefined'` instance; Part 6 above makes 6b-4's obligation larger, which is consistent
+with R30-4 and does not resolve it — residue 1's text is untouched here. **R30-5** is §2.1's i18n rule
+against A-35's message. A builder implementing A-38 implements A-38 and stops.
+
+**And it deliberately writes no increment into `ROADMAP.md`.** A-38 is a ruling, not a schedule. The
+increment that carries it has to carry R30-2…R30-5 as well — R30-2 in particular is a second change to exit
+criterion 6's *subject* and would land in the same test file — so writing a partial I-7c now would be a
+contract document that goes stale the moment those four are ruled. Whoever rules them writes the increment,
+with A-38's Part 3 arms, Part 6's two 6b-4 phases and Part 7's three faults as its Verification lines.
 
 ### 8.5 Observed travel — the shape Phase 5 must be able to land on
 
