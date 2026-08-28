@@ -416,6 +416,21 @@ does not have, leaving an error nothing on screen can clear; that is now refused
 guessed at. The architect has ruled on both (<code>ARCHITECTURE.md</code> <strong>A-18</strong> and
 <strong>A-19</strong>, revision 14). <strong>Nothing about sharing with a friend ships until A-18 is
 built</strong>, for the second round running and for the same reason.</p>
+<p><strong>Both of those were built, and the credential leak is finally closed</strong> (QA round 16).
+The tester pushed a door PIN, a confirmation number, a voucher link and an email address across the copy
+on every carrier the last four rounds found, and none of them arrived; an ordinary note, an ordinary price
+and an ordinary bus label all crossed <strong>unchanged</strong>, which is the half that proves the rule
+is a scrub and not a blanket. What is left is smaller and is not a leak. When a trip file is opened, every
+field in it is checked &mdash; except one: a place's <strong>opening hours</strong> were taken on trust.
+That single gap is what produced the last two rounds' findings, and the two patches written to contain it
+disagreed with each other, so a copy could quietly throw away opening hours while the app's own "something
+looks wrong here" report called them fine. The architect's ruling (<code>ARCHITECTURE.md</code>
+<strong>A-20</strong>, revision 15): opening hours get checked at the door like everything else, and there
+is now <strong>one</strong> definition of what valid opening hours are, shared by the three places that
+were each carrying their own. The warning a builder added for this &mdash; <em>"this place has opening
+hours this trip cannot read"</em> &mdash; is <strong>approved and stays</strong>; it is what tells you
+before an export you cannot re-open. <strong>Still built, not yet verified:</strong> one builder pass
+lands A-20, then a tester round 17 attacks it.</p>
 </div>
 
 <div class="wrap">
@@ -423,7 +438,7 @@ built</strong>, for the second round running and for the same reason.</p>
   <div class="brand">
     <h1>CAIRN</h1>
     <div class="tagline">"You are here"</div>
-    <div class="updated">Updated 2026-08-28 · against <code>master</code>, after ARCHITECTURE revision 14 (A-18/A-19, the two round-15 design findings)</div>
+    <div class="updated">Updated 2026-08-28 · against <code>master</code>, after ARCHITECTURE revision 15 (A-20, the one round-16 design finding, plus the ratification of <code>place_hours_malformed</code>)</div>
   </div>
 
   <!-- ============ DECISION CALLOUT ============ -->

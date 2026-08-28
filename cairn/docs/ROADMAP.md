@@ -63,6 +63,18 @@ work**, and the reason is now stronger rather than merely repeated: two rounds r
 handed a credential across the one boundary in this design where data reaches another person, each time
 through a field the previous ruling assumed rather than enumerated.
 
+**Revision 15, 2026-08-28.** QA round 16 — the breaker pass over A-18/A-19 — closed **both**, and with them
+the entire R14/R15 chain, and left two MINOR findings: one a fixture a builder repairs in a line, the other a
+design question. `ARCHITECTURE.md` revision 15 answers it as **A-20** (§2.9): `fromJSON` validates
+`Place.hours` like every other field it parses, one predicate in `model/openingHours.ts` becomes the single
+definition of a well-formed `OpeningHours` for the parser, `validateTrip` and the copy boundary, and the
+builder-added `place_hours_malformed` is **ratified** with its meaning narrowed. This file changes in exactly
+the same one way revisions 12, 13 and 14 did: **I-4a's Built / Verification / Ship-gate lines.** **No new
+increment, no phase re-scoped and no change to the order.** I-4a's outright block on share/friend/
+public-share-link work is **unchanged in scope and no longer the reason this increment is open** — the
+credential carriers are all closed; what remains is one parser gap and one fixture, and neither is a
+credential path. I-5 stays unblocked.
+
 > **Phase numbers changed once, here.** Every heading below carries its old number, and every "Phase N"
 > written in `ARCHITECTURE.md` §1–§7, `BUILD-NOTES.md` or `QA-FINDINGS.md` before revision 9 means the
 > *named* phase it described: "Phase 2" = accounts/server (**now 3**), "Phase 3" = ingest (**now 4**),
@@ -1190,6 +1202,20 @@ builder against the finding itself and is not an increment.
   placement rebuilt rather than aliased, and a `hint.dayId` the target lacks **dropped** instead of carried
   (**A-19**). Neither changes `Stop`'s shape, `fromJSON`, `tools/redact.mjs`, `packages/client`, `apps/web`
   or §2.10's 71. R15-1 and R15-2 ride along as builder work under A-15's existing table, not as new rulings.
+  **Revision 15 adds one, and it is the only line here that changes `fromJSON` (§2.9 A-20, QA R16-2):**
+  `parsePlace`'s raw `hours` cast — the one field of that parser that is not structurally checked, and the
+  root cause of R15-1, R15-2 *and* R16-2 — is replaced by a `parseOpeningHours` that refuses a malformed
+  `hours` with a JSON path like every other field; `model/openingHours.ts` lands beside `cityName.ts`, **off**
+  `index.ts` (§2.10 stays 71), holding `isClockTime`/`isWeeklyEntry`/`isOpeningHours` as the **only**
+  definition of a well-formed `OpeningHours` in the repo; `wellFormedHours` is **deleted** from
+  `validateTrip` and `weeklyForCopy` keeps only its redaction test, which is a copy-boundary **policy** and
+  not a shape check; `toJSON`'s `hours: p.hours` becomes a field-by-field rebuild, the same gap on the way
+  out; and `clockOrNull` is rewritten onto `isClockTime` so exactly one clock regex exists in
+  `packages/core`. **`place_hours_malformed` is ratified** — level, code, ref, message and params unchanged;
+  only its doc comment moves, because the sentence it currently carries (*the parser's cast is deliberate,
+  per A-10*) is what this ruling reverses. No `Place`/`OpeningHours` shape change, no `schemaVersion` bump,
+  no new pattern or call site in `redactText`, no change to `tools/redact.mjs`, `packages/client` or
+  `apps/web`.
 - **User-visible outcome.** *"日本 2019 — 東京, 京都"* records as two cities instead of one, in any script,
   and a document that already collapsed two cities into `"-"` says so on screen instead of silently
   mis-attributing every day of the trip.
@@ -1202,7 +1228,10 @@ builder against the finding itself and is not an increment.
   `daysForCity` results and zero validation issues; a hand-built document with two identical city keys, with
   a city keyed `transit`, and with a city named `''` each produce exactly one error and still **open**;
   `fromJSON` is unchanged and still parses all three (refusing to parse would make the document
-  unopenable). **Ceiling, measured not asserted:** the reference trip's validation issue count, conflict
+  unopenable) — **a claim about those three codes only, and revision 15 sharpens rather than contradicts it:
+  a duplicate city key is a structurally perfect `Trip` that *means* something wrong, so it parses and
+  `validateTrip` reports it; a `Place.hours` that is not an `OpeningHours` is not the declared type at all,
+  so A-20 refuses it with a path. §2.9 A-20 draws that line.** **Ceiling, measured not asserted:** the reference trip's validation issue count, conflict
   counts at every clock, and the round-trip goldens and sample JSON are byte-identical; the only expected
   string that moves in the repo is the injected-fault `geo_outlier` case, now reading *"the Vienna map"*.
   **Added at revision 12, and it is the criterion this increment shipped without:** the ruling is exercised
@@ -1234,6 +1263,19 @@ builder against the finding itself and is not an increment.
   succeeds, mints no `pool_stop_unknown_city` and lands in `unfiledPool`; a `hint.dayId` only the source has
   is dropped, so `scheduleFromPool` on the copy succeeds through `pickDay` instead of throwing; and the
   written placement is never the caller's object, on the scheduled branch as well as the pool one (**A-19**).
+  **Added at revision 15, and the first of these is the criterion R16-2 asked for (A-20):** over a table of
+  `weekly` entry shapes that includes the three round 16 measured (`close:'170000'`,
+  `open:'https://vendor.test/x'`, `open:'YZGDTS'`), **an entry `isWeeklyEntry` calls well-formed is never
+  dropped by the copy** — and that invariant is not satisfiable by weakening one side, because all **11 000**
+  strings matching `/^\d{1,2}:\d{2}$/` are proved byte-identical under `redactText` in a test of their own,
+  which is what makes the copy's redaction arm unreachable for a structurally valid entry. Then the parser:
+  each of those three shapes makes `fromJSON` throw naming the exact path
+  (`$.places[0].hours.weekly[0].close`, `…[0].open`), `hours: 'mon-fri'` and `hours: null` are refused at
+  `$.places[0].hours`, a legal `hours` **round-trips byte-identically**, a `weekly` entry with an extra key
+  parses with the key **dropped**, and an `undefined` slot parses to `null`. And the two things that must not
+  regress: `copyStopInto` **still never throws** on any of round 15/16's 34 hostile `hours` shapes supplied as
+  a **cast-built in-memory** document, and the reference trip stays at **11** `validateTrip` issues —
+  `place_hours_malformed` does not fire, because 0 of its 95 places carry `hours` at all.
 - **Dependencies / blockers.** I-4 (the form it corrects). None external.
 - **Ship gate.** The slug expression appears **nowhere** in `apps/` or `packages/` (grep); no call site
   outside `packages/core` constructs a city key; each of the three new validation codes has an
@@ -1256,6 +1298,17 @@ builder against the finding itself and is not an increment.
   optional-key spread (`...(x === undefined ? {} : { … })`), never `{ ...sourceRecord }`. §3.4's first probe
   line meets A-19's throw and is **QA's to re-express**, not the builder's to satisfy; nothing under `qa/`
   is edited by the pass that lands this.
+  **Added at revision 15 (A-20):** **exactly one clock regex exists in `packages/core`** — the grep is
+  `\d{1,2}:` and it hits `model/openingHours.ts` and nothing else — `wellFormedHours` exists nowhere,
+  `isOpeningHours` is not on `index.ts` (**71** unmoved), and no second copy of either predicate exists in
+  `build/` or `validate/`; both of A-20's tests are **mutation-verified** (weakening either predicate on one
+  side turns exactly one test red), because a test that cannot fail is what R15-4 and R15-5 were. And the
+  same `qa/` rule as revision 14, now pointing the other way: **`qa/r15-place-copy.mjs` and
+  `qa/r16-copy-depth.mjs` push hostile `hours` through `fromJSON` and will meet a `TripParseError` — that is
+  the new correct behaviour, it is QA's to re-express in round 17, and a builder who "fixes" it by loosening
+  the parser has reverted the ruling.** The builder reports the probe lines it expects to move; the
+  re-expression is two-sided and both halves must survive it — `fromJSON` refuses with a path, and
+  `copyStopInto` still never throws on the equivalent cast-built document.
 
 ---
 

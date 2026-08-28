@@ -178,13 +178,34 @@ R14-3's sweep missed — and a stale `hint.dayId` is dropped rather than refused
 in `ROADMAP.md` are I-4a's Built / Verification / Ship-gate lines and nothing else: **no new increment, no
 change to the phase order.**
 
+**Revision 15, 2026-08-28.** QA round 16 — the breaker pass over A-18/A-19 — closed the whole R14/R15 chain
+and left exactly one thing for an architect: a builder-added `IssueCode` with no ruling behind it, and the
+design question underneath it. **One addendum, in §2.9**; no redesign, no engine, no persisted shape, no
+`schemaVersion` bump, no movement on §2.10's export surface. **A-20** (§2.9, §2.14, QA **R16-2**):
+`parsePlace` casts `hours` through unvalidated — the one field of that hand-rolled parser that is not
+structurally checked — and that single gap produced **both** R15-1 (a credential crossing a person boundary
+inside `hours.weekly`) and R15-2 (`copyStopInto` throwing on shapes `fromJSON` accepts). The two
+compensating guards were then written independently, in one commit, and **diverged**: three `weekly` shapes
+the copy silently drops are shapes `validateTrip` calls well-formed, so the warning added to say *"your
+hours did not survive"* does not fire on the documents it was added for. The parser is where a document's
+**shape** is decided in this system — `isoDate` refuses `'2026-13-4x'` while `invalid_calendar_date`
+*reports* `'2026-13-45'`; `oneOf` refuses an unknown enum while `duplicate_city_key` *reports* a legal
+one — so `hours` is validated at parse time exactly like every other field, and **one predicate in
+`model/openingHours.ts` becomes the only definition of a well-formed `OpeningHours` anywhere in the repo**,
+shared by the parser, `validateTrip` and the copy boundary. `place_hours_malformed` is **ratified**, with
+its meaning narrowed to what it now is: *this in-memory document holds hours `fromJSON` would refuse* —
+which is also the warning that precedes an export that will not re-import. §2.9's printed code list picks
+up A-10's three codes, which it has lagged by since revision 11, in the same sweep. The mechanical
+consequences in `ROADMAP.md` are I-4a's Built / Verification / Ship-gate lines and nothing else: **no new
+increment, no change to the phase order.**
+
 **Phase 1 is §2 and §4. The next phase is §8.1–§8.4.** Everything else is the shape those must not
 foreclose. See `ROADMAP.md` for sequencing and `PRODUCT-VISION.md` for why this order and not another.
 
 ## Read only your sections
 
-This document is ~94k tokens (re-measured at revision 14 with `cairn/tools/doc-section ARCHITECTURE` — §2 is
-now ~62k of it and §8 ~12k; the per-section figures below were stale by a third before revision 11 and are
+This document is ~100k tokens (re-measured at revision 15 with `cairn/tools/doc-section ARCHITECTURE` — §2 is
+now ~68k of it and §8 ~12k; the per-section figures below were stale by a third before revision 11 and are
 re-measured, not estimated, whenever a revision lands). Nothing needs all of it, and a fresh agent that reads it whole starts a sixth
 of the way into its context before writing a line. Pull what you need:
 
@@ -197,7 +218,7 @@ cairn/tools/doc-section ARCHITECTURE         # lists the sections and their size
 |---|---|---|---|
 | 0 | Six positions, stated up front | <1k | everyone — read it, it is 20 lines |
 | 1 | Stack decision and the capability checks behind it | 3k | architect. Settled; do not re-litigate |
-| 2 | **Domain model — the builder's contract.** §2.12 `travelRole`, §2.13 geography and §2.14 import/copy are new in revision 2 and are where the Phase 1 rework lives; **§2.2a (the `StorageVersion` write fence, revision 3) and §2.2b (the freshness rule it turned out to be one instance of, revision 4) are read together with §4.2 and §4.3, never alone**; §2.10 (the export surface) and §2.13's copied-record row are settled in revision 5; **§2.7's retirement ledger (A-5) and §2.13's copy-borne `Place` rule (A-6) are revision 6**; **§2.2a's A-7 (the fence a declined write may not move) is revision 8** and is read with §4.2 rule 4a; **§2.2's A-10 (a `CityKey` is a minted opaque id) and §2.7's A-9 (retirement is decided against the un-gated set) are revision 11** — a Phase 2 builder needs both; **A-11, A-12 and A-13 (§2.7) and A-14 (§2.14) are revision 12** and are read *with* A-9 and A-10, never instead of them — A-11 replaces A-9's greppable invariant, A-12 narrows A-9 point 1, A-13 rewrites A-9 assertion 4, and A-14 corrects A-10's change table; **A-15 and A-16 (§2.14) and A-17 (§2.7) are revision 13** — A-15 is the copy path's redaction rule and is read with §6.6, A-16 withdraws A-14's *"within one trip is unchanged"* paragraph, A-17 narrows A-11 assertion 5; **A-18 and A-19 (§2.14) are revision 14** — A-18 is the copy path's redaction rule for the *stop's own* nested records (`cost`, `arrival`) and generalises A-15 to *no spread at any depth*, A-19 rules that the `placement` **argument** is validated against the target and never re-filed. **Anyone touching `copyStopInto` reads A-14, A-15 and A-16 as one rule 4, and A-18 with rules 3 and 5** | 62k | builder, breaker |
+| 2 | **Domain model — the builder's contract.** §2.12 `travelRole`, §2.13 geography and §2.14 import/copy are new in revision 2 and are where the Phase 1 rework lives; **§2.2a (the `StorageVersion` write fence, revision 3) and §2.2b (the freshness rule it turned out to be one instance of, revision 4) are read together with §4.2 and §4.3, never alone**; §2.10 (the export surface) and §2.13's copied-record row are settled in revision 5; **§2.7's retirement ledger (A-5) and §2.13's copy-borne `Place` rule (A-6) are revision 6**; **§2.2a's A-7 (the fence a declined write may not move) is revision 8** and is read with §4.2 rule 4a; **§2.2's A-10 (a `CityKey` is a minted opaque id) and §2.7's A-9 (retirement is decided against the un-gated set) are revision 11** — a Phase 2 builder needs both; **A-11, A-12 and A-13 (§2.7) and A-14 (§2.14) are revision 12** and are read *with* A-9 and A-10, never instead of them — A-11 replaces A-9's greppable invariant, A-12 narrows A-9 point 1, A-13 rewrites A-9 assertion 4, and A-14 corrects A-10's change table; **A-15 and A-16 (§2.14) and A-17 (§2.7) are revision 13** — A-15 is the copy path's redaction rule and is read with §6.6, A-16 withdraws A-14's *"within one trip is unchanged"* paragraph, A-17 narrows A-11 assertion 5; **A-18 and A-19 (§2.14) are revision 14** — A-18 is the copy path's redaction rule for the *stop's own* nested records (`cost`, `arrival`) and generalises A-15 to *no spread at any depth*, A-19 rules that the `placement` **argument** is validated against the target and never re-filed. **Anyone touching `copyStopInto` reads A-14, A-15 and A-16 as one rule 4, and A-18 with rules 3 and 5**; **A-20 is revision 15 and lives in §2.9, not §2.14** — it is where the *shape* of a document is decided, it amends A-15's `hours` row and A-18's *"changes nothing in `fromJSON`"* paragraph, and **anyone touching `Place.hours` at any layer reads it first** | 68k | builder, breaker |
 | 3 | Module boundaries | <1k | builder |
 | 4 | **The Phase 1 client.** §4.2 rule 6 (a pending write is never outlived by its document) is new in revision 3 — QA R3-2; rule 6a′ and the `savedDoc` predicate are revision 4 — QA R4-1; **rule 6a″ (the flush bound and its exits) and rule 6c's "delete goes on the chain" are revision 5** — QA R6-1/R6-2/R7-3; **rule 5's retirement carve-out is revision 6** — QA R8-1, read with §2.7; **rule 4a is revision 8** — QA R11-1, read with §2.2a A-7 | 7k | builder |
 | 5 | The four hard subsystems | 2k | breaker; builder from Phase 3 on |
@@ -2132,10 +2153,24 @@ validateTrip(trip): Issue[]
 type Issue = { level: 'error'|'warn'; code: string; ref: Ref; message: string; params: Record<string, string|number> };
 ```
 
-Codes: `days_not_dense`, `day_id_mismatch`, `duplicate_id`, `primary_city_not_in_cities`, `unknown_city_key`,
+Codes — **all 23, swept against `model/types.ts` at revision 15 and equal to it**: `days_not_dense`,
+`day_id_mismatch`, `duplicate_id`, `primary_city_not_in_cities`, `unknown_city_key`,
 `place_ref_dangling`, `lat_lng_out_of_range`, `pool_stop_has_day`, `pool_stop_unknown_city`, `scheduled_stop_has_no_day`,
 `booking_ref_orphan`, `cost_basis_mixed`, `provenance_missing`, `accepted_without_timestamp`,
-`owner_missing`, `origin_stripped`, `accepted_by_non_member`, `stale_resolutions`, `invalid_calendar_date`.
+`owner_missing`, `origin_stripped`, `accepted_by_non_member`, `stale_resolutions`, `invalid_calendar_date`,
+`duplicate_city_key`, `reserved_city_key`, `city_name_empty` *(the three A-10 added in revision 11; this
+list lagged them for four revisions)*, `place_hours_malformed` *(A-20, revision 15)*.
+
+**The list is the architect's, and it moves in the revision that adds the code — not a revision later.** It
+has now drifted twice, and both times the same way: a ruling added codes to the type and left the prose
+behind. The cost of that drift is documentation-only and was measured rather than assumed — QA round 16
+established that **nothing in this repo switches exhaustively on `IssueCode`** (no `Record<IssueCode, …>`,
+no `switch (issue.code)` in `packages/client`, `apps/web` or `cli.ts`), so an unlisted code renders its own
+`message` and never `undefined`. There is deliberately no `ISSUE_CODES` runtime constant to check the list
+against: it would be a new export for a documentation problem (§2.10 is 71 for stated reasons), and the real
+rule is procedural — **a code arrives with a ruling, and a ruling that adds one edits this paragraph.** A
+builder who finds a code missing here has found a ruling that was not finished, which is exactly what
+`place_hours_malformed` was.
 
 - **`accepted_by_non_member`** (level `error`, added in revision 4 — QA R2-11): a record with a non-null
   `attribution()` whose `provenance.state === 'accepted'` and whose `provenance.actorUserId` is not a member
@@ -2169,6 +2204,300 @@ Four changes from revision 1, each with a reason:
   `YYYY-MM-DD`-shaped. `'2026-13-45'` currently rolls over to 2027-02-14 and validates clean.
 
 This generalises the scripted checks in `CLAUDE.md` — the ones that caught bugs nothing visible was showing.
+
+#### A-20 — the parser decides *shape*, `validateTrip` decides *meaning*, and `Place.hours` was the one field nobody applied that to (revision 15, QA R16-2)
+
+**The defect, and it is one defect wearing three faces.** `serialize/fromJSON.ts:294` reads
+
+```ts
+...(o.hours !== undefined ? { hours: o.hours as Place['hours'] } : {}),
+```
+
+That is the only raw cast in a 400-line hand-rolled parser in which every other field of every other record
+is checked and refused with a JSON path. Its consequences have now been filed three times:
+
+- **R15-1** (BLOCKER) — a `weekly` entry may hold any key at all, so `{ ...w }` in `placeForCopy` carried a
+  door PIN, a confirmation number, a mailbox address and a vendor voucher URL across a **person** boundary.
+- **R15-2** (MAJOR) — `hours` may be a string, a number, an array, `null` or `{weekly:'mon-fri'}`, so
+  `p.hours.weekly.map(...)` threw a raw `TypeError` from core on a document `fromJSON` had just accepted,
+  which §2.1 forbids.
+- **R16-2** (MINOR) — the two guards written to close those two symptoms, `wellFormedHours`
+  (`validate/validateTrip.ts:406`) and `weeklyForCopy` (`build/copyStop.ts:157`), landed **in the same
+  commit** with **different** definitions of a well-formed entry. `weeklyForCopy` additionally requires
+  `Number.isFinite(day)` and an `open`/`close` that `redactText` leaves byte-identical; `wellFormedHours`
+  requires only `typeof day === 'number'` and `typeof open === 'string'`. Measured: `close: '170000'`,
+  `open: 'https://vendor.test/x'` and `open: 'YZGDTS'` are dropped to `null` by the copy — indistinguishable
+  from *"this day is unknown"*, which is `OpeningHours`' own documented meaning — while `validateTrip` calls
+  the same entries well-formed and says nothing. The `IssueCode` added to tell the user their hours did not
+  survive does not fire on the documents whose hours did not survive.
+
+So there are **three** answers in this repo to *"what is a well-formed `OpeningHours`"* — the parser's
+(anything), `validateTrip`'s (loose), the copy's (strict) — and no two agree. Patching R16-2 where it
+surfaced would produce a fourth. QA routed the mechanism to a builder and the question to me, correctly.
+
+**The question, and the precedent that answers it.** Round 15 told a builder *"`parsePlace` should validate
+`hours` the way it validates every other field"*; A-18 then said the pass *"changes nothing in `fromJSON`"*,
+and the builder — obeying the ruling, which was the right thing to do — closed the two symptoms with two new
+predicates instead of the one cause. QA names an A-10 precedent on each side. Both citations are real, and
+they are about different things:
+
+- **A-10's refusal to parse-check** is about `duplicate_city_key`, `reserved_city_key` and `city_name_empty`:
+  *"A document already carrying the `"-"` collision must still **open**, so the user can see it and act;
+  refusing to parse would make it unopenable."* Every one of those documents is a **structurally perfect**
+  `Trip`. Each `City` has a string key, a string name, a numeric order. What is wrong is what the document
+  **means** — two cities claiming one key, a key shadowing a sentinel, a name that identifies nobody.
+- **The parser's refusals** are about shape: `str`, `numOf`, `oneOf`, `arr`, `obj`, `isoDate`, `clockOrNull`.
+  A field that is not the type the model declares is not repairable by the user *looking* at it, because
+  there is nothing to look at — the trip's own type system is lying about what it holds.
+
+The pair that settles it is already in this file, one line apart in the same parser: **`isoDate` refuses
+`'2026-13-4x'` (not `YYYY-MM-DD`-shaped) while `invalid_calendar_date` — an `Issue` — reports `'2026-13-45'`
+(shaped right, means nothing).** That is the line, drawn twice, deliberately:
+
+> **`fromJSON` decides whether a document *is* a `Trip`. `validateTrip` decides whether a `Trip` says
+> something wrong. A value that is not the declared type is the parser's; a value of the declared type that
+> is impossible, contradictory or unusable is `validateTrip`'s.**
+
+`hours: 'mon-fri'` is not an `OpeningHours` in any field. It is `isoDate`'s case, not
+`invalid_calendar_date`'s, and it is the only field in `parsePlace` — the only field in the whole parser —
+on the wrong side of that line. **The parser validates `hours`.**
+
+**The three objections, answered rather than waved past.**
+
+1. *"An unopenable document is the harm A-10 named."* It is, and here the population is **empty and
+   measurably so**: nothing in this repo has ever written `Place.hours` — `grep` finds it in `types.ts`,
+   `toJSON`, `fromJSON`, `copyStop` and `validateTrip` and nowhere else; `import/legacyDays.ts` does not
+   emit it; **0 of the reference trip's 95 places carry it**; no screen renders it. Every document that can
+   fail this check today is hand-edited or hostile, which is precisely the population a parser exists for.
+   And the refusal is *legible* — `expected HH:MM (at $.places[7].hours.weekly[2].close)` names the byte to
+   fix, where the status quo silently drops the entry at a copy boundary the user never sees.
+2. *"Then the trip is lost over the least important field in the model."* Only for a document that also
+   cannot be produced by this system. Weigh the two failure modes rather than the two adjectives: refusing
+   costs a named path in a hand-edited file; accepting costs a credential crossing a person boundary
+   (R15-1), a throw out of core (R15-2), and a silent drop the warning misses (R16-2) — three findings
+   across two rounds, all from one cast.
+3. *"Does the ruling then delete `place_hours_malformed`?"* No — see the ratification below. It is exactly
+   what it always should have been: the report on the one door the parser does not stand at.
+
+**The ratification, and its narrowed meaning.** `place_hours_malformed` (level `warn`, `ref:{kind:'place'}`)
+is **ratified as shipped** and stays. QA measured it safe — the reference trip is unmoved at 11 issues and
+2/4/11 conflicts, it is deterministic, it never throws on any of 34 hostile shapes, its `Issue` obeys every
+contract §2.9 and R13-7 impose, and it carries a place name and id and no coordinate, note or `hours`
+content — and it answers the half of R15-2 that said *"nothing warns the user first"*. Its meaning is now
+exact and is not what its current comment says:
+
+> **`place_hours_malformed` means: this in-memory document holds a `Place.hours` that `fromJSON` would
+> refuse.** After this ruling that state is unreachable through the parser, so it reports a document built
+> in memory past the type system — a cast, a future untyped writer, a native bridge. It is not dead code
+> for three reasons. (a) It is the **only** warning ahead of a real harm: `toJSON` will happily re-emit such
+> an `hours`, and the export then fails to re-import at that field — the user learns their backup is
+> unrestorable at restore time unless something says so first. (b) It is the same class the round-16 notes
+> already record as *"recorded, not filed — it becomes a finding the day an untyped caller exists"* (the
+> out-of-union `StopPlacement`), and `validateTrip` is where this design puts that class. (c) It is the
+> injected-fault criterion for the shared predicate below (§0.5): the fault is a cast-built document, the
+> output is exactly one `warn` per malformed place.
+
+Its comment in `validate/validateTrip.ts` currently asserts that the parser's cast is **deliberate** and
+cites A-10 for it. That sentence is now false and is replaced by this ruling; it was a builder's honest
+reconstruction of a gap, and leaving it would teach the next reader the wrong rule.
+
+**The mechanism — five parts, no judgment calls left in any of them.**
+
+**Part 1. One predicate, one module.** New file `packages/core/src/model/openingHours.ts`, modelled on
+`model/cityName.ts` and **deliberately off `index.ts`**, so §2.10 stays at **71** runtime symbols. This is
+the only definition of a well-formed `OpeningHours` in the repo after this pass:
+
+```ts
+/** `H:MM` or `HH:MM`. The one clock-shape test in this system. */
+export function isClockTime(v: unknown): boolean {
+  return typeof v === 'string' && /^\d{1,2}:\d{2}$/.test(v);
+}
+
+/** One `weekly` entry: `null`/absent (day unknown, §7) or `{day, open, close}`. */
+export function isWeeklyEntry(v: unknown): boolean {
+  if (v === null || v === undefined) return true;
+  if (typeof v !== 'object' || Array.isArray(v)) return false;
+  const e = v as { day?: unknown; open?: unknown; close?: unknown };
+  return typeof e.day === 'number' && Number.isFinite(e.day) && isClockTime(e.open) && isClockTime(e.close);
+}
+
+/** True when `v` is an `OpeningHours` — i.e. exactly when `fromJSON` accepts it. */
+export function isOpeningHours(v: unknown): boolean {
+  if (v === null || typeof v !== 'object' || Array.isArray(v)) return false;
+  const o = v as { weekly?: unknown; note?: unknown };
+  if (!Array.isArray(o.weekly)) return false;
+  if (o.note !== undefined && typeof o.note !== 'string') return false;
+  return o.weekly.every(isWeeklyEntry);
+}
+```
+
+Three things it deliberately does **not** do, so nobody adds them:
+
+- **No `day` range check.** `0 ≤ day ≤ 6` is a claim about *meaning*, not shape; §7 says a missing day is
+  unknown and never a conflict; nothing in this system reads `day` yet. A range rule with no consumer is a
+  rule with no injected-fault criterion (§0.5). If a renderer ever needs one it is a new `IssueCode` in
+  `validateTrip`, ruled then, and **not** a parse refusal.
+- **Extra keys on a `weekly` entry are not malformed.** The parser drops them (Part 2), exactly as
+  `parseLinks` drops a third key on a `Link`, and nothing reads them. Reporting them would be over-reporting
+  — QA's own words, and the reverse direction of R16-2 rather than a second instance of it.
+- **`undefined` in a `weekly` slot is not malformed.** `fromJSON` normalises it to `null`, so by the
+  predicate's own definition (*"exactly when `fromJSON` accepts it"*) it is accepted. Normalisation and
+  refusal are different acts and this ruling keeps them apart on purpose: the parser normalises only
+  **absence** (as it already does for `datePrecision`, `travelRole`, `ownerId`, `retiredAt`) and refuses
+  every present-but-wrong value.
+
+**Part 2. `serialize/fromJSON.ts` — `hours` becomes a field like every other field.**
+
+```ts
+/**
+ * `HH:MM`, with no empty string. `clockOrNull` allows `''` because a stop's time may be blank;
+ * an opening time that exists is a time.
+ */
+function clock(v: unknown, path: string): string {
+  const s = str(v, path);
+  if (!isClockTime(s)) throw new TripParseError('expected HH:MM', path);
+  return s;
+}
+
+function parseOpeningHours(v: unknown, path: string): OpeningHours {
+  const o = obj(v, path);
+  return {
+    weekly: arr(o.weekly, `${path}.weekly`).map((w, i) => {
+      if (w === null || w === undefined) return null;
+      const e = obj(w, `${path}.weekly[${i}]`);
+      return {
+        day: numOf(e.day, `${path}.weekly[${i}].day`),
+        open: clock(e.open, `${path}.weekly[${i}].open`),
+        close: clock(e.close, `${path}.weekly[${i}].close`),
+      };
+    }),
+    ...(o.note !== undefined ? { note: str(o.note, `${path}.note`) } : {}),
+  };
+}
+```
+
+and in `parsePlace`, the cast becomes
+
+```ts
+...(o.hours !== undefined ? { hours: parseOpeningHours(o.hours, `${path}.hours`) } : {}),
+```
+
+Four points a builder does not have to decide:
+
+- **`hours: null` is refused** (`expected an object`), because `Place.hours` is optional and *not* nullable —
+  the same treatment `links: null` and `note: null` already get, and the opposite of `cost`/`ticket`/`at`,
+  whose types *are* nullable. Only `undefined` means absent, and absent means the key is not written.
+- **The entry is rebuilt from three named fields**, so an unenumerated key on a `weekly` entry — R15-1's
+  actual carrier — cannot survive the parser at all. This is `parseLinks`' construction, applied one record
+  over.
+- **`isClockTime` is imported from Part 1's module, and `clockOrNull` is rewritten to use it too**
+  (`if (s !== '' && !isClockTime(s)) throw …`). After this pass the clock regex appears **once** in
+  `packages/core`. A second copy of the predicate is the disease this ruling is treating; introducing one
+  while treating it would be absurd.
+- **`numOf` already refuses `NaN`/`±Infinity`**, which is where `weeklyForCopy`'s extra `Number.isFinite`
+  requirement came from. The two definitions agree now because there is one definition.
+
+**Part 3. `validate/validateTrip.ts` — delete `wellFormedHours`.** Its 12 lines go; the call site becomes
+`if (p.hours !== undefined && !isOpeningHours(p.hours))` and the `Issue` it pushes is **unchanged** in
+level, code, ref, message and params. Its doc comment is rewritten to the narrowed meaning above.
+
+**Part 4. `build/copyStop.ts` — `weeklyForCopy` keeps only what is genuinely a copy-boundary policy.**
+
+```ts
+function weeklyForCopy(w: unknown): { day: number; open: ClockTime; close: ClockTime } | null {
+  if (w === null || w === undefined || !isWeeklyEntry(w)) return null;
+  const e = w as { day: number; open: string; close: string };
+  // A-18 policy, NOT a shape test: an opening time that redaction would alter is not a time the
+  // recipient could trust. Provably unreachable for a structurally valid entry — Part 5(a).
+  if (redacted(e.open) !== e.open || redacted(e.close) !== e.close) return null;
+  return { day: e.day, open: e.open, close: e.close };
+}
+```
+
+`hoursForCopy` is **unchanged**, including its `Array.isArray` guard and its `raw as unknown` treatment: the
+copy still may not throw on an in-memory document that never went through the parser (R15-2's closure is not
+reopened), and A-18's *"a field nobody named does not travel"* still holds. The structural half of the
+question is now asked in exactly one place, and the redaction half stays where it belongs — a **policy**
+that drops a time, distinguishable in code and in comment from *malformed*, which is what QA asked for.
+
+**Part 5. Two tests, and the first is the one that makes R16-2 unrepeatable.**
+
+- **(a) The redaction arm cannot fire on a well-formed entry — exhaustively, not by sampling.** For all
+  **11 000** strings matching `/^\d{1,2}:\d{2}$/` (hours `0`–`9` and `00`–`99`, minutes `00`–`99`),
+  `redactText(s) === s`. QA measured 240 of them by hand at round 16; the whole accepted set is small enough
+  to prove. This converts *"the copy never silently drops an entry `validateTrip` calls well-formed"* from an
+  argument into a red test the day someone adds a `REDACTION_PATTERN` that breaks it — at which point the
+  divergence is an architect's problem again, on purpose, rather than a silent `null`.
+- **(b) The invariant R16-2 asked for, stated directly.** Over a table of `weekly` entry shapes that
+  includes the three R16-2 found (`close:'170000'`, `open:'https://vendor.test/x'`, `open:'YZGDTS'`), a
+  legitimate entry, an entry with an extra key, `null`, `undefined`, a nested object, an array and a string:
+  **if `isWeeklyEntry(w)` and `w != null`, then `weeklyForCopy(w) !== null`.** Given (a) this cannot be
+  satisfied by weakening either side. Beside it: each of the three R16-2 shapes now (i) makes `fromJSON`
+  throw a `TripParseError` naming the exact path, and (ii) produces exactly one `place_hours_malformed` on a
+  cast-built in-memory document.
+
+**What else moves, and it is one line.** `serialize/toJSON.ts:39` writes `hours: p.hours` — the same field
+passed through unenumerated, on the way *out*, in a function that rebuilds every other field by name. It
+becomes a field-by-field rebuild (`weekly` mapped to `{day, open, close}` or `null`, `note` via `omitUndef`),
+which removes the aliasing between an in-memory `weekly` array and the object handed to `JSON.stringify`,
+and stops `toJSON` re-emitting an unenumerated key from a cast-built document. It does **not** normalise or
+drop a malformed value: an export stays a faithful record of what the document holds, `validateTrip` is what
+says the document is wrong, and `fromJSON` is what refuses it on the way back in. The goldens and the sample
+do not move — no place in either carries `hours`.
+
+**What does not change.** `Place`'s shape and `OpeningHours`' shape; `schemaVersion` (no document that any
+version of this system could write is refused by this rule — the population is empty, measured above, so a
+bump would be ceremony); `redactText` and `REDACTION_PATTERNS` — **this ruling adds no pattern and no call
+site**; `tools/redact.mjs` and §6.6's sample path, whose deep walk already runs `open`/`close` through
+`redactText` (neither is a `STRUCTURAL_KEY`) with no effect, which Part 5(a) now pins; A-15's table, A-16,
+A-18 position 2 and A-19 in full; `packages/client`, `apps/web`, `cli.ts`; §2.10 at **71**.
+
+**Two sentences elsewhere in this document are amended by this ruling and are marked at their sites.**
+A-15's `hours` row said *"`weekly` cloned entry by entry"* — it is now *rebuilt from three named fields
+against one shared predicate*. A-18's *"this ruling changes nothing in `fromJSON`"* was true of A-18 and is
+superseded here: the parser gap A-18 correctly identified as R15-1/R15-2's root cause is closed by A-20.
+
+**`qa/` is QA's, and this ruling will turn two probes red on purpose.** `qa/r15-place-copy.mjs` and
+`qa/r16-copy-depth.mjs` push hostile `hours` shapes **through `fromJSON`** and assert it accepts them. After
+this pass those lines meet a `TripParseError`, which is the new correct behaviour and not a defect. A-19
+assertion 7 stands — **the builder does not edit anything under `qa/`** — so the builder reports which probe
+lines it expects to move and QA re-expresses them in round 17, exactly as round 16 re-expressed three lines
+of `r15-place-copy.mjs`. The re-expressed assertion is two-sided and both halves must be kept: **`fromJSON`
+refuses with a path**, and **`copyStopInto` still never throws** on the equivalent *cast-built in-memory*
+document. Tests under `packages/core/test/` are the builder's and are re-expressed in this pass — a hostile
+`hours` fixture now arrives by cast, not by parse.
+
+**What the builder asserts:**
+
+1. **Part 5(a) and 5(b) both green**, and 5(b) fails when either predicate is weakened on one side only —
+   mutation-verified, since a test that cannot fail is what R15-4 and R15-5 were.
+2. **`fromJSON` refuses with the exact path** for: `hours: 'mon-fri'` → `$.places[0].hours`;
+   `hours: {weekly:'mon-fri'}` → `$.places[0].hours.weekly`; `hours: {weekly:[{day:1,open:'9:00',close:'170000'}]}`
+   → `$.places[0].hours.weekly[0].close`; `hours: null` → `$.places[0].hours`; a non-string `hours.note` →
+   `$.places[0].hours.note`.
+3. **`fromJSON` accepts and normalises** — a legal `hours` round-trips byte-identically through
+   `toJSON(fromJSON(doc))`; a `weekly` entry with an extra key parses with the key **dropped**; an
+   `undefined` slot parses to `null`.
+4. **`copyStopInto` never throws** on any of the 34 shapes round 15/16 built, supplied as a cast-built
+   in-memory document rather than through the parser. R15-2 stays closed.
+5. **Exactly one clock regex in `packages/core`** — `grep -rn '\d{1,2}:' packages/core/src` returns
+   `model/openingHours.ts` and nothing else. (It returns exactly one line today, in `fromJSON.ts`; this
+   assertion is that it still returns exactly one, at the new address.)
+6. **`wellFormedHours` no longer exists**, `isOpeningHours` is not on `index.ts`, and no second copy of
+   either predicate exists in `build/` or `validate/`.
+7. Ceilings: **71** exports, the reference trip at **2 blockers / 4 warnings / 11 notes** at `FIXTURE_TODAY`
+   and **11** `validateTrip` issues (`place_hours_malformed` does not fire — 0 of 95 places carry `hours`),
+   goldens and sample sha byte-identical, `qa/r2-copy.mjs` (§H included), `qa/prov.mjs` and
+   `qa/r14-horizon-copy.mjs` unmoved, `npm run test:tap` green, `npm run typecheck` clean, `npm run web:build`
+   clean.
+
+**The residue, named rather than discovered later.** The day something other than a person's own hand writes
+`Place.hours` — a vendor's opening-hours feed, an ingest candidate (§5.1), an import from a mapping
+service — the population that this rule refuses stops being empty, and refusing a whole trip because a
+vendor writes `9:00 AM` is the wrong trade. **That is the trigger to re-rule Part 2**, and the shape it would
+take is already decided by the rest of this ruling: the *parser* would normalise the field it can and drop to
+`null` the entry it cannot, `place_hours_malformed` would become the live report of it, and the shared
+predicate would not move. Nothing about the copy boundary or `validateTrip` changes on that day.
 
 ### 2.10 The public API surface
 
@@ -3021,7 +3350,7 @@ function placeForCopy(p: Place, cityKey: string, id: PlaceId): Place { … }
 | `category` | **verbatim** | an enum |
 | `note` | `redactText(p.note)`, **and the key is present only if the source had one** | §6.6's free-text row, applied to the record §6.6 already names in it |
 | `links` | **dropped entirely — the key is absent from the copy**, not emptied and not redacted | rule 3's argument, below |
-| `hours` | key present only if the source had one; `weekly` cloned entry by entry; **`hours.note` through `redactText`** | opening times are a description of the world. The note beside them is free text that §6.6's deep pass already redacts and this document's field list never named — the same class of omission as `Place.note`, closed in the same pass rather than left for round 15 |
+| `hours` | key present only if the source had one; `weekly` cloned entry by entry; **`hours.note` through `redactText`** | opening times are a description of the world. The note beside them is free text that §6.6's deep pass already redacts and this document's field list never named — the same class of omission as `Place.note`, closed in the same pass rather than left for round 15. **Amended at revision 15 (§2.9 A-20, QA R16-2):** *"cloned entry by entry"* is now *rebuilt from three named fields against `isOpeningHours`/`isWeeklyEntry`*, the one shared predicate the parser and `validateTrip` also use. The copy's own extra test — dropping an `open`/`close` that redaction would alter — stays, and is a **policy**, not a shape check |
 
 At the call site, `refiled` stays exactly as A-14 left it — it is the *probe* the reuse search compares
 against (`samePlace(p, refiled)`), and it is no longer the thing that gets pushed. The one line that pushes
@@ -3245,6 +3574,13 @@ counterpart to `parsePlace`'s raw `hours` cast (`:294`)**, so no document `fromJ
 unenumerated key or a non-string into either record, and **this ruling changes nothing in `fromJSON`**. It
 still forbids the cast that hid R15-1: `redactText` is typed `(unknown) => unknown` for a reason, and
 `as string` is how a non-string crossed whole.
+
+> **Superseded in part at revision 15 — §2.9 A-20 (QA R16-2).** The sentence above is true of A-18 and its
+> parenthetical is the finding: `parsePlace`'s raw `hours` cast is the one counterpart, and leaving it in
+> place is what let the two compensating guards written for R15-1 and R15-2 diverge. A-20 closes the cast —
+> `fromJSON` now validates `hours` field by field like everything else — and one shared predicate replaces
+> both guards' structural halves. Nothing else in A-18 moves: `costForCopy`, `arrivalForCopy`, `redacted()`,
+> position 2 and the four key-set assertions all stand exactly as written.
 
 **The mechanism.** Three module-private functions in `build/copyStop.ts`, plus three call sites. Nothing is
 exported and §2.10 stays at **71**.

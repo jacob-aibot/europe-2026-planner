@@ -114,9 +114,25 @@ update to this file added that instruction).
 > (`ARCHITECTURE.md` **A-18** and **A-19**, revision 14). **Nothing about sharing with a friend
 > ships until A-18 is built**, for the second round running and for the same reason.
 
-> **Last updated:** 2026-08-28, against `master` after ARCHITECTURE revision 14 (A-18/A-19, the
-> two round-15 design findings) — previously revision 13's A-15/A-16/A-17. Update this
-> line every time you edit this file.
+> **Both of those were built, and the credential leak is finally closed** (QA round 16). The tester
+> pushed a door PIN, a confirmation number, a voucher link and an email address across the copy on
+> every carrier the last four rounds found, and none of them arrived; an ordinary note, an ordinary
+> price and an ordinary bus label all crossed **unchanged**, which is the half that proves the rule
+> is a scrub and not a blanket. What is left is smaller and is not a leak. When a trip file is
+> opened, every field in it is checked — except one: a place's **opening hours** were taken on
+> trust. That single gap is what produced the last two rounds' findings, and the two patches written
+> to contain it disagreed with each other, so a copy could quietly throw away opening hours while
+> the app's own "something looks wrong here" report called them fine. The architect's ruling
+> (`ARCHITECTURE.md` **A-20**, revision 15): opening hours get checked at the door like everything
+> else, and there is now **one** definition of what valid opening hours are, shared by the three
+> places that were each carrying their own. The warning a builder added for this — *"this place has
+> opening hours this trip cannot read"* — is **approved and stays**; it is what tells you before an
+> export you cannot re-open. **Still built, not yet verified:** one builder pass lands A-20, then a
+> tester round 17 attacks it.
+
+> **Last updated:** 2026-08-28, against `master` after ARCHITECTURE revision 15 (A-20, the one
+> round-16 design finding, plus the ratification of `place_hours_malformed`) — previously
+> revision 14's A-18/A-19. Update this line every time you edit this file.
 
 **Status vocabulary used throughout:** 🟢 COMPLETE · 🟡 IN PROGRESS · 🟠 NEXT / APPROVED ·
 🔴 BLOCKED · ⚪ NOT STARTED. Also: **built** (code exists) vs **verified** (an adversarial tester
