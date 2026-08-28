@@ -819,7 +819,9 @@ export function createStore(opts: StoreOptions) {
         }
         // The pass reached its own end, which is NOT the same fact as "the library is
         // current" (§0.6). Ask storage — on the chain, so the answer cannot be installed over
-        // a delete that landed while it was in flight (R26-1).
+        // a delete that landed while it was in flight (R26-1). BUILD-NOTES **KD-60** records
+        // why this rather than a row-by-row reconcile, and the ordering it makes observable:
+        // a `deleteTrip` issued while this link is in flight now waits for it.
         await chainOntoSaving(async () => {
           const library = await ports.storage.listTrips();
           set({ ...state, library, rescan: { running: true, unreadable: report() } });

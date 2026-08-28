@@ -216,7 +216,8 @@ export function summaryScan(state: Pick<AppState, 'library' | 'rescan'>): Summar
   // meaningful about a record that is still there: a trip deleted since the last pass must stop
   // being reported as a file that could not be read, and `deleteTrip` runs no pass to clear it.
   // Derived here rather than remembered in the store, for §0.6's reason — a pruned list is one
-  // more copy that can go stale, and this cannot. (With `outdated` empty and a phantom entry
+  // more copy that can go stale, and this cannot. BUILD-NOTES **KD-59** records the choice and
+  // its one cost: `state.rescan.unreadable` and this list can differ, and this is the one to read. (With `outdated` empty and a phantom entry
   // still in `unreadable`, `Library.tsx`'s header read *"0 trips are not up to date yet."*)
   const present = new Set(state.library.map((r) => r.id));
   const unreadable = state.rescan.unreadable.filter((u) => present.has(u.id));

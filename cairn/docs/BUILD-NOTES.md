@@ -1,5 +1,48 @@
 # Cairn — build notes, Phase 1 (and Phase 2 in progress)
 
+> **Addendum, on ROADMAP Phase 2 **I-6a** — §8.4 **A-29** (a city's *stated* country) and §4.3
+> **A-30** (a summary refresh is not a document write), plus QA round 26's R26-1, R26-2 and R26-3.**
+> Two rulings and three bookkeeping fixes as one pass, at `eead735`. **A-29:** `tripSummary` gains a
+> module-private four-step acceptance gate for a `City`'s stated `countryCode`, consulted **only**
+> where `countryOf(centre)` is `null`; `TripSummaryCity` gains
+> `countrySource: 'coordinate' | 'stated' | null`; `SUMMARY_VERSION` becomes **3**. **A-30:**
+> `StoragePort` gains `refreshSummary(id, expectedVersion, summary)` — an atomic compare-and-set
+> over the summary row alone, carrying no document argument and **minting no version** — and
+> `runRescan`'s per-row link becomes uniform for every row including the active one, with the
+> `attemptSave` branch KD-57 built **deleted**. Scope: **1 core source, 3 client sources, 1
+> `apps/web` source, 1 new test file, 5 touched test files, 7 `qa/` scripts, this file.** No
+> `schemaVersion` bump, no regenerated golden (`npm run golden` is a no-diff), nothing at the repo
+> root, no change to `ARCHITECTURE.md`, `ROADMAP.md` or the visual roadmap. **Four new KDs:
+> KD-59…KD-62**, one of which (**KD-62**) is a hole I found in the §4.3 structural grep while
+> mutation-testing it and could not close with a grep.
+>
+> | | |
+> |---|---|
+> | **What runs, and the exact command** | `cd cairn && npm run typecheck && npm run test:tap`. Then `npm run golden` (no diff), `npm run sample` (no diff) and `npm run web:build`. The two adversarial harnesses this increment is really about: `bash qa/i6-fence.sh` (two counterfactual worktrees — restore I-6's document rewrite, and KD-57's refused `writeAndSettle`) and `bash qa/i6-ceiling.sh` (three §4.3 mutations). The round-26 repros: `node --experimental-strip-types qa/i6-{ghostrow,unreadable,converge,race,summary}.mjs`, all five **ALL OK**. |
+> | **A-29 — the gate, exactly as Part 3 states it** | `packages/core/src/derive/summary.ts`, module-private `acceptStatedCountry(raw, codes)`: not a string ⇒ `null`; `trim()` then `/^[A-Za-z]{2}$/` or `null`; uppercase; **the shipped index must carry the code** or `null`. The membership set is built **once per `tripSummary` call** — `new Set(index.countries.map(e => e.code))`, measured at **292 entries / 239 distinct codes**. `countryOf(city.centre, index)` runs first and wins whenever non-null (`countrySource: 'coordinate'`); the stated value is consulted only where it is `null`. §2.10's export surface does not move: the helper is private and `countrySource` is a field, not an export. `countryOf`, `geo/`, `countries.gen.ts`, `tools/gen-countries.mjs` and `homeBase`'s exclusion (KD-55) are **untouched**. |
+> | **A-29 — measured, not argued** | On the reference trip, `countryCodes` is unchanged at `["AT","CZ","DE","GB","HR","HU","US"]` and **all six cities report `'coordinate'`** — because all six *state* the code their coordinate derives, which is why the `'stated'` branch is tested with hand-built fixtures and must be. `fixtures/golden/countries.json` **cannot** move under A-29 and does not: `tools/gen-golden.mjs` computes it straight from `countryOf` over the trip's records and never calls `tripSummary`. Confirmed by running the reverse-precedence mutation and regenerating: **no golden diff, and the test catches it instead.** The stored row grows **593 → 767 bytes** on the reference trip — the six `countrySource` strings — and still carries **no coordinate**. |
+> | **A-29 — the gate, one assertion per clause** | `packages/core/test/summary.test.ts`, +15 tests. `''` → `null` (this is `createTrip`'s own default, so it is the ordinary case for every city the product creates today); `'hr'` → `HR`; `'  HR  '` → `HR`; `'HRV'`, `'Croatia'`, `'H1'`, `'H R'` → `null`; `'ZZ'` → `null` (well-formed, not in the index); **`'RE'` → `null` with Part 3's reason written into the test's own text**, so the next reader does not "fix" it. Non-string inputs (`null`, `undefined`, `42`, `{}`, `['HR']`) are refused rather than crashing — the helper is total because a hand-built fixture is not `fromJSON`. Then the three that are the point: the **gap-fill** (a city at Hvar Town's coordinate stating `HR` ⇒ `{HR, 'stated'}`, `countryCodes: ['HR']`), the **non-override** (a city at Vienna's coordinate stating `HU` ⇒ `{AT, 'coordinate'}`, and `HU` is *not* in `countryCodes`), and the **non-regression**. |
+> | **A-30 — the port method** | `packages/client/src/ports/types.ts` carries the contract as a docstring, and §2.2a rule 1's narrowing with it. `ports/memory.ts`: **one synchronous block, no `await`**, `summaries.set` only, `docs`/`versions` untouched; its own `refreshCount`; `saveCount` deliberately **not** bumped, because *"the rescan wrote no document"* is an assertion a test has to be able to make; `failAll` applies; `failNextRefresh` is the new injected fault and `failNextSave` still means `saveIfVersion` alone. `apps/web/src/ports/storage.ts`: one `readwrite` transaction over `[DOCS, SUMMARIES, VERSIONS]`, every request issued from the previous one's `onsuccess`, `DOCS.getKey(id)` for existence and `VERSIONS.get(id)` for the compare, then **`SUMMARIES.put` and nothing else** — `mintVersion()` is not called from this method at all. |
+> | **A-30 — what the rescan became** | `runRescan`'s link, uniformly for every row: `load(id)` → `fromJSON` → `tripSummary(doc, COUNTRY_INDEX)` → `refreshSummary(id, stored.version, summary)` → upsert the library row. No `toJSON`, no `saveIfVersion`, **no `attemptSave` branch**. Property 4 in the docstring is replaced with A-30 Part 3's wording. Two consequences measured rather than assumed: an unsaved in-memory edit is **no longer flushed ahead of its own debounce** (round 26 §F, which recorded the opposite under I-6), and **no row ever describes an unsaved edit** — the row is computed from the document storage holds, which is the document `listTrips()` serves a row about. |
+> | **A-30 — the fence, tested rather than believed** | Two stores over one `memoryStorage`. Tab A opens trip Y and idles at version *V*, captured through the port's own `versions` map and never asserted as a literal (§2.2a rule 3's corollary). Tab B boots and runs `refreshLibrary()` + `rescanSummaries()`. Measured **across the rescan alone** — not across tab A's own later writes, which would have made the assertion pass for the wrong reason: `versions.get(Y)` is still *V*, `docs.get(Y)` is byte-identical, `saveCount` did not move, and Y's row **did** reach `SUMMARY_VERSION`. Tab A's next keystroke then settles `'idle'` and reaches storage. **Injected fault: restore the `saveIfVersion` rewrite → 7 tests red, including this one.** Round 26's own §D asserted the *bug* here and now asserts the fix. |
+> | **KD-57 re-verified rather than assumed moot** | `bash qa/i6-fence.sh` builds **both** counterfactuals in throwaway worktrees. **M-A** (restore I-6's document rewrite): compiles clean, **7 tests red**. **M-B** (KD-57's refused `writeAndSettle(doc, doc, null, stored.version)`): compiles clean — `tsc` still cannot see it — **8 tests red**, and `qa/i6-fence-probe.mjs` reports **7 FAILs**: `savedDoc` becomes trip Y's document, `savedVersion` becomes `1.5` (minted for Y) against X's stored `1.4`, `dirty()` is true with nothing typed, the next keystroke is `'conflict'`, and `mergeTrips` throws `base, local and remote must be the same trip (got t-hr, t-at, t-at)`. **So the failure mode is as real as round 26 measured; what changed is that the shipped path has no document write to aim anywhere.** That is why this is deletion-of-the-question rather than a fix. |
+> | **A-30 (c) — neither create nor resurrect, and the check that is actually load-bearing** | Three tests. A refresh against an id with no record is refused `{ok:false, storedVersion:null}` and `listTrips()` does not grow. A delete landing between the pass's `load` and its `refreshSummary` leaves the trip deleted. And the one that makes the ruling's `DOCS.getKey(id)` bite: **the half-deleted record** — envelope version present, document gone — must be refused. My first attempt at this mutation came back **green**, because in the memory port `delete()` removes all three maps, so a bare version comparison answers the ordinary delete identically; the half-deleted shape (what a partial restore or a half-completed delete leaves) is the only one where the two differ. With that test, dropping the existence check reds. Recorded because a mutation that does not red is a test that was not testing. |
+> | **R26-4 — subsumed, confirmed by its own repro, and NOT separately fixed** | `qa/i6-race.mjs` §E, re-run and re-expressed: the active trip is pushed into `'conflict'` by a third writer, then the pass runs. **The row reaches `SUMMARY_VERSION`**, `summaryScan` is `'complete'`, `persistence.status` is `'conflict'` before and after and the *only* status observed during the pass is `'conflict'` — no flicker through `'saving'` — the user's in-memory edit is intact, and the pass spends **2** refreshes on 2 rows rather than re-spending the bound. There is **no `status === 'conflict'` condition anywhere in the store**; this falls out of `attemptSave` leaving the path, exactly as A-30 Part 3 point 2 says it must. |
+> | **R26-1 — the end-of-pass snapshot** | The `listTrips()` read stays off the chain (§4.3 exempts reads), but **the `set` that installs its result is now issued from inside a `chainOntoSaving` callback**, so it is ordered against `deleteTrip`'s own link. Verified with round 26's own repro: park the pass on its end-of-pass `listTrips()`, delete a trip, release — the library ends `["keep"]`, the document is gone, and the surviving row is current. **Injected fault: put the `set` back off the chain → the test and `qa/i6-ghostrow.mjs` both red, with the ghost row named.** KD-60 records the one behavioural consequence: `deleteTrip` now *queues behind* a parked pass, so the probe starts the delete without awaiting it — a probe that still awaited it would deadlock rather than fail. |
+> | **R26-2 — two halves, two places** | (a) `startRescan` clears `rescan.unreadable` **before** the early return, so a record another writer repaired-and-brought-current stops being reported even though no pass runs. (b) `summaryScan` filters `unreadable` to ids still in `library`, so a deleted trip stops being reported without `deleteTrip` having to remember anything — **KD-59** records why that half is derived in the selector rather than pruned in the store. Both halves mutation-verified individually, and `qa/i6-unreadable.mjs` §1 and §3 are **ALL OK** where they were the finding's own FAILs. |
+> | **R26-3 — a `null` load is as final as an unparseable one** | `runRescan` keeps a `missing` set beside `unreadable` and filters both out of later passes. Deliberately **not** merged into `unreadable`: they are different facts, so an orphan row stays honestly `outdated` and is **not** reported as *"could not be read"*. Measured on round 26's own fixture (`qa/i6-converge.mjs` §5): **1 pass and 2 loads**, where it was 5 passes and 6 loads *on every boot, forever*. Injected fault: remove the `missing` set → back to 5 and 6, and the test reds. |
+> | **The §4.3 ceiling** | `switch.test.ts`'s structural grep still finds **zero** off-chain `ports.storage.*` mutations. `saveIfVersion` goes back to **exactly one** call site (inside `writeAndSettle`) — I-6's second is gone — and `refreshSummary` is pinned at **exactly one**, asserted to be lexically inside a `chainOntoSaving` callback and **not** added to §4.3's exemption list (still `listTrips` and `load`). The port-method census assertion now reads `['delete','listTrips','load','refreshSummary','saveIfVersion']`. `bash qa/i6-ceiling.sh` reds on all three mutations (M1 bare async IIFE, M2 an extra off-chain `saveIfVersion`, M3 the write hoisted into a helper called from inside the callback). `retirement-ledger.test.ts` is **byte-unmodified since `4eabf08`** and green; `reseed: true` still occurs exactly **7** times; the closed list of six document-installing methods is still six, and the rescan is now *further* from it — it no longer reaches `persistence` at all. |
+> | **Ceilings, re-derived by running** | `npm run typecheck` clean, both projects, exit 0. `npm run test:tap` **751 pass / 0 fail / 0 cancelled** (722 → 751: **+15** core, **+14** client, **+0** `test/`). `Object.keys(core).length` **74, unchanged** — A-29 adds no export, the gate helper is module-private and `countrySource` is a field. `packages/client`'s runtime exports **38, unchanged** — `refreshSummary` is a `StoragePort` *method*, so it reaches `apps/web` through the already-exported interface and adds no symbol. Phase 1 ceilings unmoved: reference trip **2 blockers / 4 warnings / 11 notes**, `validateTrip` **11** (1 error + 10 warnings), `geoCheck` **0**. I-5 arc unmoved: `npm run golden` and `npm run sample` both regenerate with **no diff**, sample sha still `40955ca0b182`. `npm run web:build` clean — `dist/assets/index-CneKbyDK.js` **973,783 bytes** against 972,580 at `0f52c4c`, **+1,203 bytes** for the gate, `countrySource`, the port method and the two IndexedDB blocks. `EMITTED_BYTES` does not move, so A-27 Part 9's bundle obligation does not apply. |
+> | **Test-first, and watched fail** | A-29's 15 tests were written first and watched fail **16 of 24** in `summary.test.ts` before the implementation existed. A-30's file was written first and watched fail **11 of 13**. Then the injected faults, each run individually and watched red: **A-29** delete the stated fallback → 4 red (the gap-fill among them); let the stated value win → 4 red (the non-override and the reference trip among them), and the golden confirmed not to move either way. **A-30** (a) restore the `saveIfVersion` rewrite → 7 red; (b) `refreshSummary` a no-op → 21 red; (c) drop the existence check → 1 red *after* the half-deleted-record test was added (see above); (d) hoist the write out of the callback → the structural grep red. **R26-1/2/3** each reverted individually → exactly the one test that names it goes red, in the suite and in its `qa/` repro. |
+> | **`qa/` — re-expressed, not left stale (A-19 assertion 7, KD-58's class)** | Seven scripts. `i6-race.mjs` (the `gate()` helper and §A/§B/§C/§I now park `refreshSummary`; §D and §E, which asserted R26-6 and R26-4 as *defects*, now assert the fixes; §F's confirmation of the early flush is inverted); `i6-converge.mjs` (the call counter grew a `refreshSummary` field; §3's third-writer hook moved to the write the rescan now issues; §5 asserts 1 pass, not 5; §6 asserts **0** document rewrites where it measured 40); `i6-ghostrow.mjs` (the delete is started rather than awaited — KD-60); `i6-summary.mjs` (the hardcoded `SUMMARY_VERSION === 2` → 3, plus a new §7 covering every clause of A-29's gate); `i6-fence.sh` (two counterfactuals instead of one); `i6-ceiling.sh` (M1 and M3 re-anchored on the new source shape); `r7-chain.mjs` §11 (its *"exactly ONE `saveIfVersion` call site"* assertion, which I-6 turned into a FAIL, passes again — and it gains the same two assertions for `refreshSummary`). **KD-58's seven repaired call sites still work.** The other 15 scripts that touch this surface were run at `4c8ba74` and at `eead735` and their FAIL counts are **identical**, so nothing here regressed a historic probe. |
+> | **What I stubbed** | Nothing in I-6a's own scope. `countrySource` is **carried and not branched on** by any surface, exactly as A-29 Part 7 point 3 requires — `Library.tsx` renders `row.countryCodes` as it already did. The Map and Profile surfaces are I-8; `travelStats` is I-7. |
+> | **What I could not verify** | (1) **The `apps/web` IndexedDB `refreshSummary` was not executed.** There is no headless-browser harness in this repo's test suite, so it is asserted by construction and by review against `saveIfVersion`, which it is a strict subset of: same transaction scope, same `onsuccess` chaining, `SUMMARIES.put` only, `mintVersion` not called. The in-memory port is the one that ran. A browser round of `qa/` should exercise it. (2) The **half-deleted record** is reachable in the memory port only by reaching into its maps; whether IndexedDB can actually produce that state (a `VERSIONS` row surviving a `DOCS` deletion) is not something I could test — the check is there because A-30 specifies it and because it costs nothing. (3) A 2 → 3 `SUMMARY_VERSION` bump is now exercised *as a real load* by every existing row, which is the thing I-6's notes said was only synthetic — but I have no user database to run it against, so it is exercised by seeded rows only. |
+> | **Objection to the design** | **None that blocks, and one disclosure that is not about this increment's design.** **KD-62**: the §4.3 structural grep asserts *lexical* position, so a write wrapped in a thunk **created** inside the `chainOntoSaving` callback and **invoked** after it returns passes the grep while running off the chain. I found this by writing exactly that mutation, expecting it to red, and watching it stay green; the write itself has to leave the callback before the grep bites. This is not new at I-6a — the same hole existed for `saveIfVersion` at I-6 and for `delete` before that — and closing it needs dataflow analysis rather than a regex, which is an architect's call. Recorded rather than patched around. |
+>
+> **The I-6 addendum below is superseded on three points** — `SUMMARY_VERSION` is 3 not 2, the
+> rescan's write is `refreshSummary` not `saveIfVersion`, and the active trip has no
+> `attemptSave` branch — and is kept as the record of what was true at `0f52c4c`.
+
 > **Addendum, on ROADMAP Phase 2 **I-6** — the widened `TripSummaryRow` and the `SUMMARY_VERSION`
 > rescan (ARCHITECTURE §8.4 clause 3, §0.6).**
 > `tripSummary(trip, index)` gains `countryCodes`, `cities: {key, name, countryCode}[]` and
@@ -2101,7 +2144,19 @@ timeout** (each pass awaits its own writes, so slow storage makes the loop longe
 and two passes settle the realistic case. Exhausting it is not silent — `summaryScan` keeps
 reporting the library as out of date, from the rows, so it cannot be fooled by the loop giving up.
 
-### KD-57 — the §4.3 structural grep's clause 1 was a fact about write paths, not about the chain
+### KD-57 — the §4.3 structural grep's clause 1 was a fact about write paths, not about the chain — **SUPERSEDED by §4.3 A-30 at I-6a**
+
+> **Superseded, and the way it was superseded is the interesting part.** Round 26 built KD-57's
+> refused option and confirmed the analysis was right and understated. §4.3 **A-30** then removed
+> the question rather than answering it: the rescan issues `refreshSummary`, which carries no
+> document argument and mints nothing, so **there is no document write left to aim anywhere** and
+> the `attemptSave` branch this note argues for is deleted. Clause 1 goes back to *"exactly one
+> `saveIfVersion` call site, and it is inside `writeAndSettle`"*, with `refreshSummary` pinned at
+> one call site and asserted to be on the chain. `qa/i6-fence.sh` M-B still reproduces everything
+> below on demand, in a worktree, which is why this text is kept rather than deleted. The two
+> paragraphs after this box remain accurate about `writeAndSettle` and A-7; only the conclusion
+> about how the rescan should be shaped is superseded.
+
 
 **Where:** `packages/client/test/switch.test.ts` (`structural: every ports.storage mutation is
 issued inside a chainOntoSaving callback`) · **ARCHITECTURE §4.3, §4.2 rule 6c.**
@@ -2144,6 +2199,113 @@ missing index is supposed to produce, and a silent empty-countries row is the ou
 exists to make unreachable. I did not make the edit: the task that routed I-6 excludes `qa/`
 explicitly, and a builder editing the breaker's own harness is the wrong shape even when the edit
 is seven characters. Recorded here so the next `qa/` run is not mistaken for a defect in the store.
+
+**CLOSED at round 26** — the breaker repaired all seven and re-ran the five scripts. **Re-checked at
+I-6a:** the same five run at `eead735` with FAIL counts identical to `4c8ba74`, so this pass did not
+re-break them; the one hardcoded `SUMMARY_VERSION === 2` that A-29's bump *did* break is repaired in
+`qa/i6-summary.mjs` under KD-61's licence.
+
+### KD-59 — R26-2's "drop ids that have left the library" is **derived in the selector**, not pruned in the store
+
+**Where:** `packages/client/src/selectors/index.ts` (`summaryScan`) · **QA R26-2, §0.6.**
+
+The finding names `store.ts:814` and routes *"clear before the early return, **and drop ids that have
+left the library**"*. The first half is in `startRescan`, where the finding puts it. The second half
+is not, and the reason is the finding's own diagnosis one level up.
+
+`deleteTrip` runs **no rescan pass**, so nothing in `runRescan` gets a chance to prune; pruning in the
+store therefore means teaching `deleteTrip` — and, for a delete arriving from a second tab, also
+`refreshLibrary` — to reach into `rescan.unreadable`. That is one more remembered copy of a fact about
+the library, maintained at every site that can change the library, which is the shape §0.6 exists to
+refuse and the shape four of round 26's six findings had. `summaryScan` already derives `outdated`
+from the rows on every read; deriving `unreadable` the same way cannot go stale, cannot be forgotten
+at a new call site, and is one line.
+
+**The cost, stated:** `state.rescan.unreadable` and `summaryScan(state).unreadable` can now differ —
+the raw field may hold an id the selector does not report. Nothing outside the store reads the raw
+field (`test/views.test.ts` already asserts `summaryScan` is the one reader, and `Library.tsx` goes
+through it), so the difference is not observable on any surface today. If a future surface wants the
+raw list, it should get it from `summaryScan` too rather than from `state`.
+
+### KD-60 — R26-1 is fixed by putting the **install** on the chain, which makes `deleteTrip` queue behind a parked pass
+
+**Where:** `packages/client/src/store/store.ts` (`runRescan`'s end-of-pass link) · **QA R26-1, §4.3.**
+
+R26-1 offers two remedies: *"either put the `set` on the chain, or reconcile row-by-row against the
+current `state.library` instead of replacing it."* I took the first. The second is a trap: reconciling
+by keeping only ids already present would drop a row that **arrived** behind the pass, and
+`qa/i6-converge.mjs` §3 asserts exactly that case converges (a second, older tab writing a new stale
+row mid-pass). Getting both right by hand is a merge policy; putting the read and the install in one
+chain link gets both for free, because the read then happens after every queued mutation.
+
+**The consequence, disclosed because it changes an observable ordering.** `deleteTrip` already takes a
+chain link of its own, so a delete issued while a pass's link is in flight now **waits for that link**
+rather than racing it. In the app this is invisible — the links are a `listTrips()` apart. In a test or
+probe that deliberately parks the pass, `await store.deleteTrip(id)` before releasing the park is a
+**deadlock**, not a failure. `qa/i6-ghostrow.mjs` starts the delete and awaits it after the release,
+and says so in its header; the equivalent test in `summary-refresh.test.ts` does the same.
+
+**What this does not fix:** `refreshLibrary()` has the identical off-chain shape and predates I-6. It
+is out of I-6a's scope by the finding's own words (*"it is called once, before the Library renders"*),
+and it is a method the app calls when the user asks for it rather than 1–5 times per boot against a
+live screen. It stays as it is; a future increment that makes `refreshLibrary` background or automatic
+owes it the same treatment.
+
+### KD-61 — `qa/`'s round-26 probes assert the defects they found, so fixing the defects means re-expressing the probes (doc-only: its home is `qa/`, which the disclosure scan does not cover)
+
+**Where:** `qa/i6-race.mjs` §D/§E/§F, `qa/i6-converge.mjs` §5/§6, `qa/i6-ghostrow.mjs`,
+`qa/i6-summary.mjs` §5 · **ARCHITECTURE §0.5, A-19 assertion 7, ROADMAP I-6a (*"`qa/` is in scope for
+this increment"*).**
+
+A probe written to demonstrate a defect asserts the defect. `qa/i6-race.mjs` §D asserted
+`persistence.status === 'conflict'` with the label *"REPRODUCED: the other tab is refused"*; §E asserted
+the conflicted row could never converge; §F asserted the rescan *did* flush an in-flight edit. All three
+are now false, which is the point of the increment. They are re-expressed to assert the fixed behaviour
+with the finding named in the text, rather than deleted — so the next reader can see what R26-4 and
+R26-6 *were*, and so the probe still fails if the fix regresses.
+
+Three mechanical staleness classes came with them, and they are worth naming because each fails in a
+different and increasingly unhelpful way: a **hardcoded constant** (`SUMMARY_VERSION === 2`) fails
+loudly and correctly; a **hooked method** (`storage.saveIfVersion = …` to inject a third writer) fails
+*silently* — the hook simply never fires and the section passes for no reason; and a **parked method**
+(`gate('saveIfVersion')`) **hangs**, because the probe waits forever for a call that is never made. The
+third is the one to watch for: `qa/i6-race.mjs` and `qa/i6-converge.mjs` both had it, and a hang is not
+a test result.
+
+I also measured §D against the wrong window on the first attempt — comparing the fence *after tab A's
+own subsequent writes* rather than across the rescan alone — which made it fail for a true-but-unrelated
+reason. The assertion now sits immediately after the pass. A probe that measures the wrong interval is
+the same class of error as one that hooks the wrong method.
+
+### KD-62 — OBJECTION / DISCLOSURE: the §4.3 structural grep asserts **lexical** position, so a thunk defined inside the callback and invoked outside it passes
+
+**Where:** `packages/client/test/switch.test.ts` (`insideChain`) · **ARCHITECTURE §4.3.** *Not new at
+I-6a — the same hole existed for `saveIfVersion` at I-6 and for `ports.storage.delete` before that.*
+
+Found by writing A-30's own mutation (d) — *"`refreshSummary` hoisted one frame out of its
+`chainOntoSaving` callback turns it red"* — and watching it stay **green**. The mutation I wrote first
+assigned an `async () => { … refreshSummary … }` thunk to an outer variable *inside* the callback and
+invoked it *after* `chainOntoSaving` had resolved. The write ran off the chain; the call site was still
+lexically inside the callback's argument list; the grep passed. It only reds once the `ports.storage.*`
+call itself moves out of the braces, which is what my second mutation did and what `qa/i6-ceiling.sh`
+M3 does.
+
+**Why I did not close it.** The grep's contract is *"appears lexically inside a `chainOntoSaving`
+callback"*, and that is §4.3's own wording. Making it an ordering guarantee needs to know whether the
+function containing the call is *invoked* on the chain, which is dataflow analysis over the store, not
+a regex — and choosing a weaker-but-checkable property versus a stronger-but-unimplementable one is an
+architect's decision, not a builder's.
+
+**And there is no behavioural backstop, which I checked rather than hoped.** Under the thunk mutation
+the *whole* client suite is **216 pass / 0 fail** — the grep, `retirement-ledger.test.ts`, the fence
+tests and the concurrency tests all stay green. The write is out of the serialized link, so its
+ordering against a mutation queued concurrently is decided by microtask scheduling rather than by the
+chain; the existing tests happen to schedule the way that survives. So the honest statement is: **this
+weakening is currently undetectable by anything in the repo.** It is a real hole in the ceiling, it is
+narrow (it requires someone to write a store that defers its own writes out of the link that read for
+them), and it is disclosed here because the alternative is that the next reader trusts the grep for
+more than it proves. **Trigger to reopen:** any increment that adds a third `ports.storage` mutation
+site, or a store refactor that starts passing work functions around rather than writing them out inline.
 
 ---
 

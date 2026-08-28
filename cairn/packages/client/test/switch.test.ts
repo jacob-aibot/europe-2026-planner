@@ -685,6 +685,12 @@ function bodyRange(code: string, decl: RegExp): [number, number] {
  * `writeAndSettle` (whose every caller clause 2 checks), and every other `ports.storage`
  * mutation, `refreshSummary` included, is lexically inside a `chainOntoSaving` callback. The
  * counts are pinned, so a new write path fails here until somebody re-derives this deliberately.
+ *
+ * **What this does NOT prove — BUILD-NOTES KD-62.** `insideChain` is a *lexical* test. A write
+ * wrapped in a thunk created inside the callback and invoked after it returns passes here while
+ * running off the chain, and nothing else in the suite catches that either (measured). The
+ * property asserted is §4.3's own wording; making it an ordering guarantee needs dataflow
+ * analysis over the store rather than a regex, which is an architect's call.
  */
 test('structural: every ports.storage mutation is issued inside a chainOntoSaving callback', () => {
   const code = codeOnly(readFileSync(new URL('../src/store/store.ts', import.meta.url), 'utf8'));
