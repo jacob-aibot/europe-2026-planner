@@ -803,6 +803,37 @@ test('I-5c (R24-3): the generator refuses to run when FAMILY is not ordered coar
   assert.match(stderr, /coarsest/, 'the message does not say which invariant broke');
 });
 
+/**
+ * **QA R25-3 — the guard's *other* arm.** R24-3's ordering check has two: *"this scale is not finer
+ * than the previous one"*, which the test above watches, and *"this scale has no pinned byte count
+ * at all"* (`if (!here) fail(…)`), which nothing did — neutering it left all 697 tests green. The
+ * arm matters because the ordering is checked **from the pinned bytes**, so a family member missing
+ * from `SCALES` has nothing to order by; without the arm the loop reads `here.bytes` off
+ * `undefined` and the run dies with a `TypeError` and exit 1 instead of exit 2 and the ruling's
+ * name. It still fails closed, which is why R25-3 is a MINOR — but a rule ships with the exact
+ * fault it exists to catch (§0 position 5), and this is that fault.
+ *
+ * `'5m'` is deliberately a scale Natural Earth does not publish at admin-0 and `SCALES` does not
+ * pin. Note that it is spliced into the *middle*: `FILL` stays `'10m'` and stays `FAMILY`'s last
+ * element, so A-28 Part 3's own assertion above is satisfied and this arm is the only thing
+ * standing between the mutation and a fetch.
+ */
+test('I-5c (R25-3): the generator refuses to run when a FAMILY scale has no pinned byte count', () => {
+  const { status, stderr } = runMutatedGenerator((src) =>
+    src.replace("const FAMILY = ['110m', '50m', '10m'];", "const FAMILY = ['110m', '5m', '10m'];"),
+  );
+  assert.equal(
+    status,
+    2,
+    `an unpinned scale was spliced into FAMILY and the generator did not refuse with the ordering ` +
+      `guard's exit code (exit ${status}) — the ordering is checked from the pinned byte counts, so ` +
+      `a scale with no SCALES entry has nothing to order by. stderr: ${stderr.slice(0, 300)}`,
+  );
+  assert.match(stderr, /not a pinned scale/, 'the message does not say that the scale is unpinned');
+  assert.match(stderr, /"5m"/, 'the message does not name the offending scale');
+  assert.doesNotMatch(stderr, /TypeError/, 'the guard was reached by a crash rather than by a check');
+});
+
 // ---------------------------------------------------------------- prep/box sanity
 
 test('I-5b: prepSet unions its rings boxes and overlaps() rejects on it before anything else', () => {

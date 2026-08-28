@@ -110,7 +110,7 @@ test('I-5: the generated module declares its generator, source, pinned tag and c
  * syntax"*. Neither half was true of what would trip it. Everything outside the literal is 87 %
  * generated **header comment**, and that comment is mostly ISO code lists that grow with the
  * dataset: I-5a raised the limit from 3,000 to 3,600 in the commit that tripped it and left 140
- * bytes of headroom, and A-27's forgiveness pass adds a 54-code list and a 10-code list on top.
+ * bytes of headroom, and A-27's forgiveness pass adds a 53-code list and an 11-code list on top.
  * A guard whose next failure will be caused by something its message does not name is a guard
  * that will be raised again rather than read.
  *

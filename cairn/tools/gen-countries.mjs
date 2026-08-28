@@ -501,7 +501,17 @@ async function forgivenessPass({ filled, coverage, layers }) {
     finest: new Map(),
     finestOrdered: [],
   };
-  if (!filled.length || !FORGIVE.length) {
+  // Two distinct reasons to skip the pass, reported distinctly (QA R25-2). Reporting both as "no
+  // filled codes" made the run contradict itself: with `FAMILY = ['10m']` the fill still splices 64
+  // codes three lines above, and the log named a cause that had not happened.
+  if (!FORGIVE.length) {
+    console.log(
+      `  forgiveness: none (no scale in FAMILY is coarser than the fill "${FILL}", so there is ` +
+        'nothing to forgive from)',
+    );
+    return out;
+  }
+  if (!filled.length) {
     console.log(`  forgiveness: none (no filled codes)`);
     return out;
   }
