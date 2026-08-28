@@ -139,6 +139,7 @@ export type TripSummaryRow = {
  * ends from and it is a `geoCheck` anchor (§2.13); counting it would put the traveller's own
  * country on the lifetime map for every trip they ever record, which is a claim the trip's
  * data does not make. A home airport that is also a *stop* still counts, through the stop.
+ * §8.4 does not say either way, so this is a choice — BUILD-NOTES **KD-55** records it.
  *
  * @throws {Error} programmer error only: a missing country index.
  */

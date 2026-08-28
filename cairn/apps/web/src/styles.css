@@ -87,6 +87,7 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .library { max-width: 62rem; margin: 0 auto; padding: 1.5rem 1rem 4rem; width: 100%; }
 .library__head { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; margin-bottom: 1.25rem; }
 .library__head h1 { flex: 1; margin: 0; }
+.library__scan { margin: -.5rem 0 1rem; font-size: .82rem; color: var(--ink-dim); }
 
 .triplist { display: grid; gap: .6rem; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); }
 .tripcard {
@@ -259,6 +260,9 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
   background: var(--card); font: inherit; font-size: .78rem; cursor: pointer; color: var(--ink-dim);
 }
 .chip--on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.chip--dim { border-style: dashed; opacity: .8; cursor: default; }
+/* ARCHITECTURE §8.4 clause 3 — a row whose document could not be read says so. */
+.chip--warn { border-color: var(--warn, #b4690e); color: var(--warn, #b4690e); cursor: default; }
 
 .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: .9rem; box-shadow: var(--shadow); }
 .editor { margin: .5rem 0 0; display: grid; gap: .6rem; }

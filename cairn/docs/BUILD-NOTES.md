@@ -1,5 +1,37 @@
 # Cairn — build notes, Phase 1 (and Phase 2 in progress)
 
+> **Addendum, on ROADMAP Phase 2 **I-6** — the widened `TripSummaryRow` and the `SUMMARY_VERSION`
+> rescan (ARCHITECTURE §8.4 clause 3, §0.6).**
+> `tripSummary(trip, index)` gains `countryCodes`, `cities: {key, name, countryCode}[]` and
+> `summaryVersion`; the index is a **required** second argument; `SUMMARY_VERSION` becomes a core
+> constant; and `packages/client` recomputes every stored row below it — load the document,
+> recompute from **that** document, rewrite inside a `chainOntoSaving` callback — while nothing
+> claims the library is complete. Scope: **2 core sources, 4 client sources, 3 `apps/web` sources,
+> 2 new test files, 6 touched test files, this file.** No `schemaVersion` bump, no regenerated
+> golden (`npm run golden` is a no-diff), nothing under `qa/`, nothing at the repo root, no change
+> to `ARCHITECTURE.md`, `ROADMAP.md` or the visual roadmap. **Four new KDs: KD-55…KD-58.**
+>
+> | | |
+> |---|---|
+> | **What runs, and the exact command** | `cd cairn && npm run typecheck && npm run test:tap`. Then `npm run golden` (no diff) and `npm run web:build`. The user-visible half: `npm run web:dev`, open the library — a trip whose row predates I-6 shows *"Recomputing…"* and then its country codes. |
+> | **Core — the widened row** | `packages/core/src/derive/summary.ts`. `SUMMARY_VERSION = 2` (**1** = the Phase 1 / 2a row, which carries no `summaryVersion` field at all; **2** = this one). `countryCodes` is the sorted, deduplicated set of `countryOf` over the trip's **city centres, places and stops** — `null` never enters it. `cities` is `orderedCities(trip)` with `countryCode: countryOf(centre, index)`, derived through the injected index and **not** copied from `City.countryCode` (which is importer metadata and is not nullable). A one-argument call **throws**, by design and by test: §8.4's whole reason for making the index required is that the only available default is a row claiming completeness with no countries in it. |
+> | **Client — the rescan** | `store.rescanSummaries()`. Per stale row, **inside one `chainOntoSaving` callback**: `load` → `fromJSON` → `tripSummary(doc, COUNTRY_INDEX)` → `saveIfVersion(id, thatLoad'sVersion, toJSON(doc), summary)` → upsert the library row. One document in a local at a time; `state.doc` is never assigned. The **active** trip is the one exception and goes through `attemptSave` — the existing autosave path — because it is the one document whose write fence this store holds (§2.2a A-7); a detached rewrite would leave `savedVersion` pointing past storage and the user's next keystroke would land on a spurious `'conflict'`. A pass ends by re-reading `listTrips()` and re-deriving what is still outstanding, bounded by `RESCAN_MAX_PASSES = 5`. |
+> | **Client — the honesty rule** | `summaryScan(state)` in `packages/client/src/selectors`. `phase` is `'recomputing'` while a pass runs, `'stale'` when any row is below the version or any document was unreadable, `'complete'` only otherwise — and **every input is a row's own `summaryVersion`, never "a pass finished"**. That is the §0.6 half of the increment: a pass reaching its own end is a fact about the pass. A library nobody has rescanned reads `'stale'`, which is true, rather than `'complete'`, which would not be. |
+> | **`apps/web`** | `App.tsx` boots `refreshLibrary()` then `rescanSummaries()` (two calls, KD-56). `Library.tsx` renders a `ScanNote` — *"Recomputing trip details… N of M up to date"* — a per-row `Recomputing…` / `Not up to date` chip, a per-row *"This trip's file could not be read"* chip, and the row's country codes. The **Map** surface is I-8 and does not exist yet, so §8.4's *"the map says recomputing"* is implemented on the surface that does; `summaryScan` is where the Map will read it from, unchanged. |
+> | **Exit criterion 7 — three trips, bumped version, reopen** | `packages/client/test/summary-rescan.test.ts`. Three trips seeded with rows in the pre-I-6 shape (**no `summaryVersion` field**, which is how every row a user already has looks), each with a city in a different country — AT / HR / CZ — so a row computed from the wrong document is *visible*, not plausible. After `refreshLibrary()` + `rescanSummaries()`: each row carries its own trip's codes, in storage as well as in `state.library`. The **ceiling** is a separate test: `state.doc` is sampled on every emission and is `null` throughout, so no row can have been computed from `AppState`. |
+> | **Exit criterion 7 — the chained write** | `switch.test.ts`'s structural grep still finds **zero** off-chain `ports.storage.*` mutations. Its clause 1 changed and **KD-57** records why: *"exactly one `saveIfVersion` call site"* was a fact about how many write paths existed, not about the chain, so it is now §4.3's own sentence — every call site is either inside `writeAndSettle` (whose callers clause 2 checks) or lexically inside a `chainOntoSaving` callback — with the count still pinned at 2. Mutation-verified: rewriting the rescan's link as a bare `await (async () => {…})()` turns that test red. |
+> | **ATTACK 1 — `SUMMARY_VERSION` bumped mid-rescan, write in flight** | A pausable storage port parks the rescan **inside** its second `saveIfVersion`. While it is held there, a row the pass has already landed is knocked back below the constant — which is the only thing any reader can observe a further bump as. **The measured answer:** the held write lands against the expectation it was issued with; the pass does *not* report completeness on reaching its own end, because it re-reads `listTrips()` and re-derives the outstanding set from the rows; the knocked-back row is picked up by the next pass and ends at the current version; and no emission reads `'complete'` before the last one. Converges in 2 of the 5 passes. A second, narrower case (**ATTACK 1b**) parks the first write and lets another tab write *both* records underneath: the parked write is refused by the fence, the rescan does **not** retry over the other writer, and their title survives. |
+> | **ATTACK 2 — 40 rows, one unreadable document** | 40 trips seeded; row 17's *document* is truncated JSON while its *row* is perfectly well-formed, which is what makes it the interesting case. Measured: `rescanSummaries()` does not throw, the library still lists **40**, the other **39** carry the current version and their own countries, and the corrupt one is **reported** — `summaryScan(state).unreadable` names it with the parser's message, `outdated` is `[that id]`, `current`/`total` are `39`/`40`, and `phase` is `'stale'`, never `'complete'`. Its stored row is untouched: nothing guessed a replacement. **ATTACK 2b** proves the report is an observation and not a verdict — another writer repairs the record and the next pass clears it. |
+> | **Three more injected faults, same file** | A trip **deleted** between `listTrips` and the rescan's `load` is not resurrected (QA R7-3's failure in a new costume) and does not throw. A **storage failure** mid-pass rejects to the caller, leaves `phase: 'stale'`, does **not** wedge `running: true`, and a retry after the port recovers completes — mutation-verified by wrapping the link body in a swallowing `try`/`catch`. Three **concurrent** `rescanSummaries()` calls join one pass and write each row once. |
+> | **Ceilings, re-derived by running** | `npm run typecheck` clean, both projects, exit 0. `npm run test:tap` **722 pass / 0 fail / 0 cancelled** (698 → 722: **+9** core, **+13** client, **+2** `test/views.test.ts`). `Object.keys(core).length` **73 → 74** — the one new export is `SUMMARY_VERSION`; `tripSummary`'s signature changed and its symbol count did not. `packages/client`'s runtime exports **36 → 38** (`RESCAN_MAX_PASSES`, `summaryScan`). **The closed list of six document-installing store methods is still six** and `retirement-ledger.test.ts` is **byte-unmodified** and green — `reseed: true` still appears exactly **7** times, and `rescanSummaries` installs no document, so it is not a seventh. Phase 1's 200-write dirty walk, the flush-race and merge-race suites, and every Phase 2 I-5…I-5c number are unmoved: `npm run golden` regenerates every fixture with **no diff** (`countries.json` byte-identical, sample sha still `40955ca0b182`). `npm run web:build` clean — `dist/assets/index-ChBRv50t.js` **972.58 kB, gzip 315.88 kB** (969.41 / 314.80 at `4eabf08`; the delta is the widened row, the selector and the two library chips). |
+> | **Test-first, and watched fail** | Both new test files were written before their implementation and watched fail at import (`does not provide an export named 'SUMMARY_VERSION'` / `'RESCAN_MAX_PASSES'`). Five behavioural mutations were then run individually to prove the assertions bite rather than merely pass: (1) `phase` allowed to read `'complete'` while `running` → 2 red; (2) the rescan writing an empty `countryCodes` → 7 red; (3) the active trip skipped by the rescan → 1 red (this one caught a **gap in my own first draft** — the fence test passed under the mutation until it was strengthened to assert the open trip's row is brought current too); (4) the rescan's write moved off the chain → the structural grep red; (5) the link body wrapped in a swallowing `catch` → the storage-failure test red. The two new `test/views.test.ts` assertions were red-green verified by stashing `Library.tsx` and by injecting a hand-rolled `summaryVersion` comparison into it. |
+> | **What I stubbed** | Nothing in I-6's own scope. The **Map** and **Profile** surfaces are I-8 and are not started — `summaryScan` is the seam they read, and `travelStats` (I-7) is not written. |
+> | **What I could not verify** | (1) **Nothing under `qa/` was run or edited** — out of scope by instruction. **KD-58** records the consequence that matters: seven `core.tripSummary(trip)` call sites across five `qa/` scripts now hit the deliberate one-argument throw and need `, core.COUNTRY_INDEX` appended. That is the required-argument ruling working, not a regression, but those scripts will not run until somebody who may edit `qa/` makes the edit. (2) The `apps/web` half is asserted as **source greps** in `test/views.test.ts`, not as rendered strings — §3's dependency test forbids importing `apps/web` from `test/`, and this repo's convention is that the rendered strings are asserted in Chromium under `qa/`, which I did not touch. I did not open a browser. (3) `SUMMARY_VERSION`'s *first* bump is exercised only by rows that predate the field; a future bump from 2 to 3 is exercised by the ATTACK 1 knock-back, which is the same observation but not the same act. |
+> | **Objection to the design** | **None that blocks.** Three choices §8.4 does not settle are recorded as **KD-55** (`homeBase` is not a source of `countryCodes`), **KD-56** (`refreshLibrary` does not start the rescan; `RESCAN_MAX_PASSES` is a new constant §8.4 does not name) and **KD-57** (the structural grep's clause 1 widened to §4.3's own wording). All three are implemented as §8.4 specifies and are flagged here rather than being decided in silence. |
+>
+> `CAIRN_VISUAL_ROADMAP.md` and its `.html` twin were **not** updated: no phase boundary moved and
+> the task that routed this excluded them explicitly.
+
 > **Addendum, on QA round 25's routed cleanup — **R25-1**, **R25-2**, **R25-3**, **R25-4**: the last
 > pass on the I-5 arc before I-6.**
 > Round 25 closed I-5/I-5a/I-5b/I-5c and left four MINORs: two comment digits, a log message that
@@ -2021,6 +2053,97 @@ the one: with both filters the ring is refused **by filter 1**; with filter 1 re
 **by filter 2, naming `IT`**; with both removed `VA` gains the polygon and its box lies entirely
 west of the state. Weakening the assertion to match the sentence, or reordering the filters so the
 sentence became true, would both be worse than saying this.
+
+### KD-55 — `homeBase` is not a source of `countryCodes`, and §8.4 does not say either way
+
+**Where:** `packages/core/src/derive/summary.ts` (`tripSummary`) ·
+`packages/core/test/summary.test.ts` · **ARCHITECTURE §8.4 clause 3, §2.13.**
+
+**The gap.** §8.4 says the row *"gains `countryCodes: CountryCode[]`"* and never enumerates which of
+a trip's coordinates feed it. `Trip` states coordinates in four places: city centres, `Place.at`,
+inline `PlaceLink`s on stops, and `Trip.homeBase.at`. The first three are unambiguous. The fourth
+is not.
+
+**What I built, and why.** `homeBase` is **excluded**. It is where the trip starts and ends *from*
+and it exists as a `geoCheck` anchor (§2.13) — including it would put the traveller's own country
+on the lifetime map for every trip they ever record, which is a claim the trip's own data does not
+make and which §8.4's *"a wrong map is worse than an honest hole"* argues against in the other
+direction too. A home airport that is also a **stop** still counts, through the stop: the Europe
+2026 row carries `US` for exactly that reason, which is why the fixture could not have caught this
+choice being wrong. `tripSummary` is asserted against a two-polygon fixture whose home base sits
+inside a polygon the trip otherwise never touches, so the exclusion is a test rather than a comment.
+
+**If the architect wants the other reading**, it is one line and one golden-free test change. It is
+flagged because *"countries visited"* is a number a user will read as a claim about themselves.
+
+### KD-56 — `refreshLibrary()` does not start the rescan, and `RESCAN_MAX_PASSES` is a constant §8.4 does not name
+
+**Where:** `packages/client/src/store/store.ts` (`rescanSummaries`, `runRescan`, `startRescan`) ·
+`apps/web/src/App.tsx` · **ARCHITECTURE §8.4 clause 3.**
+
+**Two small decisions the section leaves open.**
+
+**1. The trigger is explicit.** §8.4 says *"the client rescans every row below it"* without saying
+*when*. Folding the rescan into `refreshLibrary()` would have made every library read also a write
+— a background pass nobody asked for, nobody can await and nothing can cancel, started from a
+method whose name says it reads. So `refreshLibrary()` reads and `rescanSummaries()` rewrites, and
+`App.tsx` calls them in that order on boot. The consequence, stated rather than hidden: **between
+the two calls `summaryScan` reports `'stale'`**, which is true, and the alternative — reporting
+`'recomputing'` because a pass is *about* to start — would have been the same class of confident
+wrong answer this increment exists to remove.
+
+**2. `RESCAN_MAX_PASSES = 5` is new.** §8.4 does not mention a bound because it does not mention
+the re-read that needs one. The re-read is forced by §0.6: a pass reaching its own end is a fact
+about the pass, not about the rows, so a pass ends by asking `listTrips()` what is still below the
+version — and that can be non-empty forever if another writer keeps producing old rows. The
+number and the reasoning are lifted from `FLUSH_MAX_ATTEMPTS`, deliberately: it is a **bound, not a
+timeout** (each pass awaits its own writes, so slow storage makes the loop longer, not exhausted),
+and two passes settle the realistic case. Exhausting it is not silent — `summaryScan` keeps
+reporting the library as out of date, from the rows, so it cannot be fooled by the loop giving up.
+
+### KD-57 — the §4.3 structural grep's clause 1 was a fact about write paths, not about the chain
+
+**Where:** `packages/client/test/switch.test.ts` (`structural: every ports.storage mutation is
+issued inside a chainOntoSaving callback`) · **ARCHITECTURE §4.3, §4.2 rule 6c.**
+
+**What changed.** The test asserted *"exactly one `saveIfVersion` call site, and it is inside
+`writeAndSettle`"*. I-6 adds a second: the rescan's rewrite, written out inside a
+`chainOntoSaving` callback. Clause 1 is now §4.3's own sentence — **every** `saveIfVersion` call
+site is either inside `writeAndSettle` (whose every caller clause 2 already checks) or lexically
+inside a `chainOntoSaving` callback — with the count still pinned, at 2.
+
+**Why this is a widening and not a weakening.** §4.3's criterion is *"every `ports.storage.*` call
+that is not `listTrips` or `load` appears lexically inside a `chainOntoSaving` callback"*. "One
+call site" was a stronger statement than that, but about a different thing: it constrained how many
+write paths the store had, not whether they were ordered. The new form tests the ordering property
+directly for every site, and a **third** site still fails until somebody re-derives the assertion
+deliberately. Mutation-verified: rewriting the rescan's link as `await (async () => {…})()` — same
+code, no chain — turns the test red.
+
+**Why the rescan does not simply reuse `writeAndSettle`.** That function advances `savedDoc` and
+`savedVersion` under §2.2a A-7's rule *"a document this store still holds or one it wrote itself"*.
+A detached rescan write satisfies A-7's second disjunct literally (`toWrite === startedFrom`) while
+being about a trip the store does not have open — so it would move the **active** trip's fence to a
+version minted for a different document. A-7 was written on the unstated assumption that every
+write is about the active document; the rescan is the first write that is not, and adding a
+"do not touch the fence" flag to the store's most safety-critical function is worse than a second,
+smaller, separately-named path. The active trip itself is written through `attemptSave` precisely
+so that A-7's assumption keeps holding everywhere it is relied on.
+
+### KD-58 — seven `tripSummary(trip)` call sites in `qa/` now throw (doc-only: its home is `qa/`, which the disclosure scan does not cover)
+
+**Where:** `qa/attack1.mjs`, `qa/r6-flush.mjs` (×3), `qa/r8-persist.mjs`, `qa/p2b-gate.mjs`,
+`qa/r9-ledger.mjs` · **ARCHITECTURE §8.4 clause 3's required-argument ruling.**
+
+Making the index required means every one-argument call is a programmer error, and `tripSummary`
+now says so loudly rather than returning a row with no countries. Seven call sites in five `qa/`
+scripts are one-argument calls. They will throw
+`tripSummary: the country index is a required argument (ARCHITECTURE §8.4 clause 3)` until each
+gains `, core.COUNTRY_INDEX`. **This is the ruling working, not a regression** — the throw is what a
+missing index is supposed to produce, and a silent empty-countries row is the outcome the ruling
+exists to make unreachable. I did not make the edit: the task that routed I-6 excludes `qa/`
+explicitly, and a builder editing the breaker's own harness is the wrong shape even when the edit
+is seven characters. Recorded here so the next `qa/` run is not mistaken for a defect in the store.
 
 ---
 

@@ -16,11 +16,30 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [booting, setBooting] = useState(true);
 
+  // Boot: read the library, then bring every row minted by an older build up to the current
+  // `SUMMARY_VERSION` (ARCHITECTURE §8.4 clause 3). The two are deliberately separate calls —
+  // reading rows and rewriting them are different acts with different failure modes — and the
+  // rescan is not awaited before the app renders: `Library` shows what it has and says
+  // "Recomputing…" over it, which is the honest state rather than a spinner over the library.
   useEffect(() => {
-    store
-      .refreshLibrary()
-      .catch((e: Error) => setError(`Could not read local storage: ${e.message}`))
-      .finally(() => setBooting(false));
+    void (async () => {
+      try {
+        await store.refreshLibrary();
+      } catch (e) {
+        setError(`Could not read local storage: ${(e as Error).message}`);
+        return;
+      } finally {
+        setBooting(false);
+      }
+      // Never throws for a document it could not read — that is reported per row through
+      // `summaryScan(state).unreadable`, because one corrupt record out of forty must not
+      // take the library view down with it.
+      try {
+        await store.rescanSummaries();
+      } catch (e) {
+        setError(`Could not update the trip library: ${(e as Error).message}`);
+      }
+    })();
   }, []);
 
   // Ctrl/Cmd+Z and Shift+Ctrl/Cmd+Z, the only two shortcuts worth having in Phase 1.

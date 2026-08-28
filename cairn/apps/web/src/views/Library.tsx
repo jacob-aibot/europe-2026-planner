@@ -12,6 +12,7 @@
  */
 import { useState } from 'react';
 import type { AppState } from '@cairn/client';
+import { summaryScan } from '@cairn/client';
 import type { Lifecycle, Trip } from '@cairn/core';
 import { lifecycle } from '@cairn/core';
 import { clock, store } from '../store.ts';
@@ -34,6 +35,34 @@ export function LifecycleChip({ trip, today }: { trip: { startDate: string; endD
   );
 }
 
+/**
+ * What the library says about its own summary rows — ARCHITECTURE §8.4 clause 3, I-6.
+ *
+ * §8.4's sentence is *"the map says 'recomputing' while it does"*, and this is the same
+ * sentence one surface earlier: while a rescan is in flight the library says so, and a row
+ * whose document could not be read says **that**, rather than looking exactly like a row that
+ * is fine. Nothing here claims a count is complete — `summaryScan` derives the answer from
+ * the rows, and this only renders it.
+ */
+function ScanNote({ scan }: { scan: ReturnType<typeof summaryScan> }) {
+  if (scan.phase === 'complete') return null;
+  const unreadable = scan.unreadable.length;
+  return (
+    <p className="library__scan" data-testid="summary-scan" data-phase={scan.phase}>
+      {scan.phase === 'recomputing'
+        ? `Recomputing trip details… ${scan.current} of ${scan.total} up to date.`
+        : `${scan.outdated.length} ${scan.outdated.length === 1 ? 'trip is' : 'trips are'} not up to date yet.`}
+      {unreadable > 0 && (
+        <>
+          {' '}
+          {unreadable === 1 ? 'One trip’s file' : `${unreadable} trips’ files`} could not be read, so
+          {unreadable === 1 ? ' its' : ' their'} details are the last ones we managed to work out.
+        </>
+      )}
+    </p>
+  );
+}
+
 type Props = {
   state: AppState;
   onError: (m: string) => void;
@@ -47,6 +76,12 @@ export function Library({ state, onError, sample }: Props) {
   // `Date` is called). Every chip below is derived against the same value.
   const today = clock.today();
   const run = (p: Promise<unknown>) => p.catch((e: Error) => onError(e.message));
+  // §8.4 clause 3. Derived from the rows on every render, never stored: a row that is still
+  // below `SUMMARY_VERSION` is marked as such, and a document that would not parse is marked
+  // as unreadable rather than being quietly dropped or quietly left looking complete.
+  const scan = summaryScan(state);
+  const outdated = new Set(scan.outdated);
+  const unreadable = new Set(scan.unreadable.map((u) => u.id));
 
   async function onImport() {
     const input = document.createElement('input');
@@ -105,6 +140,8 @@ export function Library({ state, onError, sample }: Props) {
         </div>
       </div>
 
+      <ScanNote scan={scan} />
+
       {creating && <NewTrip onClose={() => setCreating(false)} onError={onError} />}
       {recording && <PastTripForm onClose={() => setRecording(false)} onError={onError} />}
 
@@ -132,7 +169,21 @@ export function Library({ state, onError, sample }: Props) {
               <span className="tripcard__meta tripcard__meta--dim">
                 {row.dayCount} days · {row.stopCount} stops
                 {row.poolCount > 0 ? ` · ${row.poolCount} optional` : ''}
+                {/* §8.4 clause 3: the countries are the row's own answer, and a row that has
+                    not been recomputed yet must not be shown as though it had. */}
+                {row.countryCodes && row.countryCodes.length > 0
+                  ? ` · ${row.countryCodes.join(' ')}`
+                  : ''}
               </span>
+              {unreadable.has(row.id) ? (
+                <span className="chip chip--warn" data-testid="row-unreadable">
+                  This trip’s file could not be read
+                </span>
+              ) : outdated.has(row.id) ? (
+                <span className="chip chip--dim" data-testid="row-outdated">
+                  {scan.phase === 'recomputing' ? 'Recomputing…' : 'Not up to date'}
+                </span>
+              ) : null}
             </button>
             <button
               className="btn btn--quiet"

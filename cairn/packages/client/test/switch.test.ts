@@ -683,6 +683,7 @@ function bodyRange(code: string, decl: RegExp): [number, number] {
  * `saveIfVersion` call site is either inside `writeAndSettle` (whose every caller clause 2
  * checks) or lexically inside a `chainOntoSaving` callback. The count is still pinned, so a
  * third write path fails here until somebody re-derives this assertion deliberately.
+ * BUILD-NOTES **KD-57**.
  */
 test('structural: every ports.storage mutation is issued inside a chainOntoSaving callback', () => {
   const code = codeOnly(readFileSync(new URL('../src/store/store.ts', import.meta.url), 'utf8'));

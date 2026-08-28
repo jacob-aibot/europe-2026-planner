@@ -57,6 +57,9 @@ export const FLUSH_MAX_ATTEMPTS = 5;
  * means something is rewriting old rows as fast as we can fix them, and the honest outcome is
  * to stop and let `summaryScan` keep reporting the library as out of date, which it does from
  * the rows and so cannot be fooled by the loop giving up.
+ *
+ * §8.4 does not name this constant, because it does not name the re-read that needs one —
+ * BUILD-NOTES **KD-56**.
  */
 export const RESCAN_MAX_PASSES = 5;
 
@@ -749,7 +752,8 @@ export function createStore(opts: StoreOptions) {
    *      detached rewrite, because it is the one document whose write fence this store holds
    *      (§2.2a A-7). Rewriting it behind `attemptSave`'s back would leave `savedVersion`
    *      pointing at a version storage has moved past, and the user's next keystroke would
-   *      land on a spurious `'conflict'`.
+   *      land on a spurious `'conflict'`. BUILD-NOTES **KD-57** records why this is a second,
+   *      smaller path rather than a flag on `writeAndSettle`.
    *
    * Not a seventh document-installing transition: nothing here assigns `state.doc`,
    * `activeTripId` or `persistence` except through `attemptSave`, which is the existing
@@ -965,7 +969,7 @@ export function createStore(opts: StoreOptions) {
      * background pass nobody asked for and nobody can await is not testable and not
      * cancellable. The caller does `refreshLibrary()` then `rescanSummaries()` — `App.tsx`
      * does exactly that on boot. In between, `summaryScan` reports the library as out of
-     * date, which is true, rather than as complete, which would not be.
+     * date, which is true, rather than as complete, which would not be. BUILD-NOTES **KD-56**.
      */
     async refreshLibrary(): Promise<AppState> {
       const library = await ports.storage.listTrips();

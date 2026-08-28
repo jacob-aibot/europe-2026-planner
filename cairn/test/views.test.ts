@@ -241,3 +241,43 @@ test('I-4: no view calls new Date() — the clock comes from the port', () => {
   }
   assert.deepEqual(offenders, [], 'a view reads the ambient clock instead of the ClockPort');
 });
+
+// ---------------------------------------------------------------------------
+// ROADMAP Phase 2 I-6 — the SUMMARY_VERSION rescan reaches the screen.
+
+/**
+ * §8.4 clause 3's last sentence, at the view layer: *"the map says 'recomputing' while it
+ * does."* The library is the surface that ships in I-6 (the Map arrives at I-8), and the rule
+ * is the same one either way — **a row that has not been recomputed yet must not be rendered
+ * as though it had.**
+ *
+ * Three things are asserted, all as greps, because `apps/web` cannot be imported from here
+ * (§3's dependency test). The rendered strings are asserted in Chromium, in `qa/`.
+ */
+test('I-6: the Library derives its scan state and says "recomputing" while it runs', () => {
+  const src = readFileSync(resolve(VIEWS, 'Library.tsx'), 'utf8');
+  // 1. It asks the selector, rather than deciding for itself what "complete" means.
+  assert.match(src, /summaryScan\(/, 'Library.tsx never asks summaryScan how current its rows are');
+  // 2. It renders the word while a pass is in flight.
+  assert.match(src, /Recomputing/, 'nothing on the library says a rescan is running');
+  // 3. A document that could not be read is reported, not silently dropped or left looking fine.
+  assert.match(src, /unreadable/i, 'an unreadable trip is not reported on the library');
+  assert.match(src, /could not be read/i, 'the unreadable case has no sentence a reader would understand');
+});
+
+/**
+ * The one thing the view may NOT do: decide completeness from its own arithmetic. Counting
+ * `state.library.length` and calling it "40 trips, 6 countries" is exactly the stored-count
+ * failure §8.4 clause 2 and §0.7 forbid, one layer up — the row's own `summaryVersion` is the
+ * only fact about whether the row is current, and `summaryScan` is the only place that reads it.
+ */
+test('I-6: no view compares summaryVersion itself — summaryScan is the one reader', () => {
+  const offenders: string[] = [];
+  for (const f of readdirSync(VIEWS).filter((n) => n.endsWith('.tsx'))) {
+    const src = readFileSync(resolve(VIEWS, f), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/(^|[^:])\/\/.*$/gm, '$1');
+    if (/summaryVersion|SUMMARY_VERSION/.test(src)) offenders.push(f);
+  }
+  assert.deepEqual(offenders, [], 'a view re-implements the freshness comparison instead of calling summaryScan');
+});

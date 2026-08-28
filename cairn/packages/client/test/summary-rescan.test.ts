@@ -476,3 +476,25 @@ test('I-6: concurrent rescan calls join one pass — the store never runs two at
   assert.equal(storage.saveCount - before, 2, 'three calls wrote each row more than once');
   assert.equal(summaryScan(store.getState()).phase, 'complete');
 });
+
+test('I-6: a storage failure mid-rescan is reported, not swallowed, and the pass can be retried', async () => {
+  // The third exit this pass can take, after "refused" and "unreadable": the port itself is
+  // failing. It must not look like success and it must not wedge — `summaryScan` keeps
+  // reporting the library as out of date, and a second call runs a real second pass.
+  const storage = memoryStorage();
+  for (const d of [makeTrip('e-at', 'vienna'), makeTrip('e-hr', 'dubrovnik')]) await seed(storage, d);
+  const store = createStore({ ports: ports(storage) });
+  await store.refreshLibrary();
+
+  storage.failAll = 'disk on fire';
+  await assert.rejects(() => store.rescanSummaries(), /disk on fire/);
+  const failed = summaryScan(store.getState());
+  assert.equal(failed.phase, 'stale', 'a failed rescan left the library claiming to be current');
+  assert.equal(failed.outdated.length, 2);
+  assert.equal(store.getState().rescan.running, false, 'the pass is wedged "running" forever');
+
+  storage.failAll = null;
+  await store.rescanSummaries();
+  assert.equal(summaryScan(store.getState()).phase, 'complete');
+  assert.deepEqual(rowFor(store.getState(), 'e-hr').countryCodes, ['HR']);
+});

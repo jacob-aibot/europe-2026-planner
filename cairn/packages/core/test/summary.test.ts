@@ -179,3 +179,35 @@ test('I-6: tripSummary is pure and takes its whole answer from the injected inde
   // …and the trip itself is untouched by any of it.
   assert.deepEqual(tripSummary(trip, COUNTRY_INDEX), a);
 });
+
+/**
+ * I-6's stated dependency on **I-4a** (§2.2 A-10), asserted rather than assumed.
+ *
+ * Before city keys were minted ids, both web forms slugged the display name with
+ * `name.toLowerCase().replace(…)`, which deleted every non-ASCII-alphanumeric character and
+ * collapsed 東京 and 京都 to the single key `"-"`. A summary row carrying that key would put
+ * one pin on the lifetime map for two cities and label it with nothing — which is exactly why
+ * `cities` carries `{key, name, countryCode}` and why this increment was blocked on that one.
+ */
+test('I-6: two non-Latin city names produce two rows, each carrying its own name', () => {
+  const trip = createTrip(
+    {
+      title: '日本 2027',
+      startDate: '2027-04-01',
+      endDate: '2027-04-03',
+      homeCurrency: 'JPY',
+      cities: [
+        { name: '東京', countryCode: 'JP', centre: { lat: 35.6762, lng: 139.6503 } },
+        { name: '京都', countryCode: 'JP', centre: { lat: 35.0116, lng: 135.7681 } },
+      ],
+    },
+    ctx(),
+  );
+  const row = tripSummary(trip, COUNTRY_INDEX);
+  assert.equal(row.cities.length, 2);
+  assert.equal(new Set(row.cities.map((c) => c.key)).size, 2, 'two cities collapsed to one key');
+  assert.deepEqual(row.cities.map((c) => c.name), ['東京', '京都']);
+  assert.deepEqual(row.cities.map((c) => c.countryCode), ['JP', 'JP']);
+  assert.deepEqual(row.countryCodes, ['JP'], 'two cities in one country are one country');
+  for (const c of row.cities) assert.ok(!/^-*$/.test(c.key), `key ${JSON.stringify(c.key)} is a dead slug`);
+});
