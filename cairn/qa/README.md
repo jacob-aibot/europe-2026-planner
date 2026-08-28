@@ -974,3 +974,120 @@ caller-supplied value**. `JSON.parse` produces own data properties and never acc
 `{ trip: browsing, stopId: stop.id }` as an object literal from a parsed document. The population
 is an in-process caller past the type system — the same one `place_hours_malformed` was ratified
 for. That is the whole reason all five are MINOR and none is a BLOCKER.
+
+---
+
+## Round 19 (2026-08-28, `master` @ `215aeee`) — the A-22 / A-23 breaker pass
+
+Narrow: the diff `993d8fc..215aeee` under `packages/` only — `build/copyStop.ts`,
+`test/copyStop.test.ts` (80 → 85) and the new **`test/readOnce.test.ts`** (A-23's standing
+census, +2). Nothing else was re-litigated.
+
+```bash
+node --experimental-strip-types qa/r19-census-gaps.mjs
+        # §1  R19-1 — `source.trip.id` is read TWICE on the SHIPPED tree: read 1 is the
+        #     credit (`origin.sourceTripId`), read 2 is A-16 step 2's `source.id ===
+        #     target.id`. A-22 Part 1 hoisted the CONTAINER and left the FIELD.  (2 FAIL)
+        #     §1.2 the harm, measured: step 2 fires on a city-key COINCIDENCE and a
+        #          Vienna `Place` lands filed under the recipient's PRAGUE city;
+        #          `validateTrip` 0 issues; a `Place` carries no provenance (A-6)
+        # §2  R19-2 — the recipient's own `Day.id` read twice across `copyStopInto` ->
+        #     `addStop`: the guard passes, `withDay` then throws `no such day`  (2 FAIL)
+        # §3  R19-3 — A-23's `opaque` set holds both whole `Trip`s, so no field of either
+        #     document's own record can ever reach the offender list; and the ruling's
+        #     stated reason ("the document skeleton rather than values that cross") is
+        #     FALSE for `Trip.id`/`Trip.ownerId`, which cross into `origin`     (2 FAIL)
+        #     §3.1 first cross-checks QA's copy of the census against the shipped
+        #          `readOnce.test.ts` — A-23 says a divergence is itself a finding (0 FAIL)
+        # §4  R19-4 — the matrix's reach: row 5 does NOT deliver `placeForCopy`'s
+        #     `at === null` (the reuse branch short-circuits it), and A-16 step 2, a
+        #     POOLED source stop and the absent-optional-field arms are unreached (4 FAIL)
+        # §5  R19-5 — `Stop.ticket` is invisible: the census enumerates the fixture's
+        #     keys and A-23's fixture list omits the one field §6.6 calls a
+        #     credential                                                        (2 FAIL)
+        # §6  R19-6 — A-23's printed `srcPlace.at.lat ×3` is ×4, re-derived; cosmetic,
+        #     which is what this line CONFIRMS                                  (0 FAIL)
+        # §7  what A-23 does catch (20 mutations), ceilings, `cairn-constraints`,
+        #     the read-only boundary                                            (0 FAIL)
+```
+
+**12 FAIL by design.** Every other line is a confirmation that must stay at 0. Deterministic
+call sequences only, no races and no sleeps. No second checkout needed.
+
+**`qa/r18-readonce.mjs` is now ALL OK** — R18-1…R18-5 are all closed, and the two lines A-22
+handed QA to re-express are re-expressed (A-19 assertion 7: the builder edits nothing under
+`qa/`):
+
+- **§2.3**'s first assertion was `latReads === 1`. A-22 Part 2 makes the correct claim
+  `latReads === 2` **and** `lngReads === 2`, **constant in N** — one read by the reuse probe, one
+  by `placeForCopy`, never a count the recipient's document controls. Re-expressed, plus a second
+  line asserting `lat` and `lng` are now read the *same* number of times as each other, which is
+  what kills the hybrid coordinate. Measured 2/2 at N = 0, 1 and 3.
+- **§3.5**'s three *"recorded, not filed"* lines measured a second read A-22 Part 1(b) removed.
+  Re-expressed as read-count assertions of **1** on `ctx.actorUserId`, `ctx.today` and — a fourth
+  line, new — `ctx.ids`, each still checked byte-identical beside the count.
+
+Every mutation below was made in a throwaway `git worktree add … 215aeee` and discarded —
+nothing under `cairn/` was ever written. Baseline `readOnce.test.ts` 2/2 and `copyStop.test.ts`
+85/85 before and after each, restore verified. The counts are what a future round should
+reproduce; `RO` is `readOnce.test.ts`, `CS` is `copyStop.test.ts`:
+
+```bash
+# A-22's own five, reverted
+# restore `sourceStopId: src.id`                       RO red  CS red
+# restore `friendUserId: source.trip.ownerId`          RO red  CS red
+# restore the inline `srcPlace.at` double read         RO red  CS red
+# restore `samePlace`'s `a.at` reads                   RO red  CS red
+# un-clone the reuse probe's `at`                      RO red  CS red
+# A-22 Part 1(b) — the trio A-23 exists for
+# restore `ids: ctx.ids` in addStop's opts             RO red  CS GREEN
+# restore `now: ctx.today` in addStop's opts           RO red  CS GREEN
+# restore `actorUserId: ctx.actorUserId`               RO red  CS GREEN
+# twelve INVENTED sites, in functions no ruling names
+# re-read `c.note` in costForCopy                      RO red  CS GREEN
+# re-read `a.label` in arrivalForCopy                  RO red  CS GREEN
+# re-read `p.note` in placeForCopy                     RO red  CS GREEN
+# re-read `o.note` in hoursForCopy                     RO red  CS GREEN
+# re-read `l.href` in the Stop.links map               RO red  CS GREEN
+# call readWeeklyEntry twice in weeklyForCopy          RO red  CS red
+# spread `flags` from `src.flags`                      RO red  CS GREEN
+# re-read `src.provenance.confidence`                  RO red  CS GREEN
+# re-read `h.dayId` in the hint block                  RO red  CS GREEN
+# re-read `a.name` in samePlace (recipient's row)      RO red  CS GREEN
+# re-read `a.lo` in the cost.amounts map               RO red  CS GREEN
+# re-read `srcPlace.placeId` in the find predicate     RO red  CS GREEN
+# seven planted OUTSIDE A-23's five roots — six are the findings, the
+# seventh is the control that localises R19-5
+# double-read `sourceTrip.ownerId`                     RO GREEN  CS GREEN  (426/426 green)
+# double-read `sourceTrip.id`                          RO GREEN  CS GREEN  <- R19-1's shape
+# double-read a target `City.name` in refileCityKey    RO GREEN  CS GREEN
+# emit `src.ticket` only when `kind === 'bundled'`     RO GREEN  CS GREEN  <- R19-5
+# emit `src.ticket` unconditionally                    RO GREEN  CS red    <- localises R19-5
+# double-read `original.cityKey` on the A-16 step-2
+#   path only                                          RO GREEN  CS GREEN  <- R19-4
+# double-read `src.place` when the source stop is in
+#   the source's POOL                                  RO GREEN  CS GREEN  <- R19-4
+# the ALLOWED table, both directions, all five entries
+# any entry `max: 2 -> 1`                              RO red (BOTH assertions)
+# any entry `max: 2 -> 3`                              RO red (assertion 2 only)
+# un-clone the probe WITH scenario 3 deleted           RO red (assertion 2)
+# the matrix's own reach
+# delete `placeForCopy`'s `at === null` guard          RO GREEN as shipped;
+#   ...with row 5's target place RENAMED               RO red  <- R19-4, two-sided
+# revert copyStop.ts to 993d8fc under the shipped test RO red, 57 offender lines,
+#   including `srcPlace.at.lat ×4`  <- R19-6, ×3 in the ruling is low by one
+```
+
+Re-run **unmodified** this round: `qa/r14-horizon-copy.mjs` **ALL OK**, `qa/r15-place-copy.mjs`
+**ALL OK**, `qa/r16-copy-depth.mjs` **ALL OK**, `qa/r17-hours-parser.mjs` **ALL OK**,
+`qa/r2-copy.mjs` **0 FAIL**, `qa/prov.mjs` **0 FAIL**, `qa/r2-constraints.mjs` **1 FAIL**
+(R2-18, known). `npm run test:tap` 615/0 (with `readOnce.test.ts` confirmed inside it at
+`ok 502`/`ok 503`, not just standalone), `npm run typecheck` clean, `npm run web:build` clean,
+`npm run golden` + `npm run sample` byte-identical (sample sha `40955ca0b182`),
+`Object.keys(core).length` 71 with `index.ts` byte-unchanged across the whole diff.
+
+Note for whoever reads `r19-census-gaps.mjs` §1 or §2 first: R19-1 and R19-2 need an **accessor
+property on a caller-supplied value**, the same population bound as every read-once finding since
+round 16, which is why they are MINOR. **R19-3, R19-4 and R19-5 do not** — they are gaps in the
+guard rather than defects in the guarded code, and each is demonstrated by planting a defect the
+guard should have caught and measuring that it did not.

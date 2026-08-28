@@ -247,12 +247,20 @@ line('§2.2 A-21a\'s bound: the reuse-MISS residue is "a duplicate row", never a
     'not the crossing', greppable(stable.out).length > 0, JSON.stringify(greppable(stable.out)));
 }
 
-line('§2.3 R18-5 — where A-21a\'s bound stops holding: one level below the table\'s granularity');
+line('§2.3 R18-5 CLOSED — A-22 Part 2\'s corrected bound, one level below the table\'s granularity');
 {
-  // A-21a's table is written at the granularity of `original`'s FIELDS and says "two is the
-  // ceiling, and never two reads inside one function". Measured one level down, at
-  // `original.at.lat`: `samePlace` reads it ONCE PER CANDIDATE ROW in the recipient's trip (any
-  // row with the same folded city and the same folded name), and `placeForCopy` reads it again.
+  // ROUND 19 RE-EXPRESSION (A-22's own instruction; A-19 assertion 7 — the builder edits nothing
+  // under `qa/`, QA re-expresses its own probe). This section was written at `1d091a6`, where
+  // `refiled` ALIASED the caller's `LatLng`: `samePlace` read `b.at.lat` once per candidate row
+  // and `placeForCopy` read it again, so `original.at.lat` was read N+1 times with N controlled by
+  // the RECIPIENT's document, and `&&`'s short-circuit read `lat` and `lng` a different number of
+  // times as each other (measured 1/2/4 at N = 0/1/3 for `lat`, 1 for `lng`).
+  //
+  // A-22 Part 2 makes the probe carry a CLONE. The corrected claim — and what this section now
+  // asserts — is `latReads === 2` AND `lngReads === 2`, CONSTANT IN N: one read by the probe, one
+  // by `placeForCopy`, never two inside one function, never a count the other party controls.
+  // The old assertion (`latReads === 1`) is not the fix and never was: driving that 2 to 1 would
+  // change `placeForCopy`'s contract, which A-21a refused and A-22 does not reopen.
   const counts = [];
   for (const k of [0, 1, 3]) {
     const glat = flipping([BELVEDERE.lat, 10.0]);
@@ -268,13 +276,20 @@ line('§2.3 R18-5 — where A-21a\'s bound stops holding: one level below the ta
     counts.push({ candidates: k, latReads: glat.reads(), lngReads: glng.reads(), written });
     note(`${k} same-name candidate rows in the target -> lat read ${glat.reads()}×, lng read ${glng.reads()}×, row written ${JSON.stringify(written)}`);
   }
-  ok('R18-5: A-21a\'s "two is the ceiling" holds for `original.at` but NOT for `original.at.lat`, ' +
-    'whose read count is N+1 where N is the number of same-city, same-name rows in the ' +
-    'RECIPIENT\'s trip — a count the source does not control and the ruling does not name',
-    counts.every((c) => c.latReads === 1), JSON.stringify(counts.map((c) => `${c.candidates}->${c.latReads}`)));
-  ok('...and the residue there is not the disclosed "duplicate row" but a HYBRID coordinate — ' +
-    '`lat` from one read and `lng` from another, a pair no single read ever produced',
-    counts.every((c) => c.written === undefined || c.written.lat === BELVEDERE.lat || c.written.lat === 10.0 === false || c.written.lng !== BELVEDERE.lng),
+  ok('R18-5 CLOSED (A-22 Part 2): `original.at.lat` and `original.at.lng` are each read EXACTLY ' +
+    'TWICE — the probe once, `placeForCopy` once — and the count is CONSTANT in N, the number of ' +
+    'same-city, same-name rows in the RECIPIENT\'s document. A count the other party can raise is ' +
+    'not a bound; this one they cannot',
+    counts.every((c) => c.latReads === 2 && c.lngReads === 2),
+    JSON.stringify(counts.map((c) => `${c.candidates}->lat ${c.latReads}/lng ${c.lngReads}`)));
+  ok('...and `lat` and `lng` are read the SAME number of times as each other, so the short-circuit ' +
+    'in `samePlace`\'s `&&` can no longer produce a HYBRID coordinate — the pair written is the ' +
+    'pair one read produced, which restores A-21a\'s disclosed residue (a duplicate row) as the ' +
+    'true one',
+    counts.every((c) => c.latReads === c.lngReads) &&
+    counts.every((c) => c.written === undefined ||
+      (c.written.lat === 10.0 && c.written.lng === 20.0) ||
+      (c.written.lat === BELVEDERE.lat && c.written.lng === BELVEDERE.lng)),
     JSON.stringify(counts.map((c) => c.written)));
 }
 
@@ -373,27 +388,42 @@ line('§3.4 R18-4 — `samePlace` reads `a.at` up to three times, where `a` is t
     'the finding that established it', r.threw === null, r.threw?.message ?? '');
 }
 
-line('§3.5 recorded, not filed — the argument fields read twice whose second read is unobservable today');
+line('§3.5 the `ctx` trio — A-22 Part 1(b): re-expressed from "recorded, not filed" to a read count of 1');
 {
-  // `ctx.actorUserId` ×2 (`requireActor` validates read 1; `addStop`'s `opts.actorUserId` gets
-  // read 2), `ctx.today` ×2 (`provenance.addedAt` is read 1; `addStop`'s `opts.now` gets read 2)
-  // and `ctx.ids` ×3. All three are the banned form on paper. Measured: `addStop` does not stamp
-  // either opt on this path, so the copied document is BYTE-IDENTICAL either way. Recorded here
-  // so the day `addStop` starts using them the site is already named.
+  // ROUND 19 RE-EXPRESSION (A-22's own instruction). At `1d091a6` this section measured
+  // `ctx.actorUserId` ×2 (`requireActor` validates read 1; `addStop`'s `opts.actorUserId` took
+  // read 2), `ctx.today` ×2 and `ctx.ids` ×3, and recorded them rather than filing them: the
+  // copied document was byte-identical either way. A-22 Part 1(b) reclassifies that — the reason
+  // the second read was harmless was a property of `addStop`, not of `copyStopInto`, and A-21's
+  // whole thesis is that a rule kept true by a fact about another function decays the day that
+  // function changes. So the claim is no longer "unobservable"; it is a COUNT, and it is 1.
+  //
+  // This is the half of A-23 no value-based fixture can reach: measured in round 19's scratch
+  // worktree, restoring any one of `ids: ctx.ids` / `now: ctx.today` / `actorUserId:
+  // ctx.actorUserId` in `addStop`'s opts leaves `copyStop.test.ts` 85/85 GREEN and turns
+  // `readOnce.test.ts` red. Hence both, side by side.
   const build = (ctx) => core.toJSON(core.copyStopInto(
     targetTrip({ id: 'trip-tgt' }), { trip: sourceTrip(), stopId: 's-src' }, { ...SCHED }, ctx));
   seq = 900; const stable = build({ ids: core.sequentialIds('fx'), today: '2026-04-01', actorUserId: core.LOCAL_OWNER });
   const cases = [
-    ['ctx.actorUserId flips to ""', () => ({ ids: core.sequentialIds('fx'), today: '2026-04-01', get actorUserId() { return this.g ??= flipping([core.LOCAL_OWNER, '']), this.g(); } })],
-    ['ctx.actorUserId flips to a credential', () => ({ ids: core.sequentialIds('fx'), today: '2026-04-01', get actorUserId() { return this.g ??= flipping([core.LOCAL_OWNER, PIN]), this.g(); } })],
-    ['ctx.today flips to 1999-01-01', () => ({ ids: core.sequentialIds('fx'), get today() { return this.g ??= flipping(['2026-04-01', '1999-01-01']), this.g(); }, actorUserId: core.LOCAL_OWNER })],
+    ['ctx.actorUserId, flipping to ""', 'actorUserId', () => flipping([core.LOCAL_OWNER, ''])],
+    ['ctx.actorUserId, flipping to a credential', 'actorUserId', () => flipping([core.LOCAL_OWNER, PIN])],
+    ['ctx.today, flipping to 1999-01-01', 'today', () => flipping(['2026-04-01', '1999-01-01'])],
+    ['ctx.ids, flipping to a second factory', 'ids', () => flipping([core.sequentialIds('fx'), core.sequentialIds('zz')])],
   ];
-  for (const [what, mk] of cases) {
+  for (const [what, field, mkg] of cases) {
     seq = 900;
-    const r = attempt(() => build(mk()));
-    ok(`RECORDED, not filed: ${what} — the second read reaches \`addStop\`'s opts, which this ` +
-      `path does not stamp, so the copy is byte-identical`, r.threw === null && r.out === stable,
-      r.threw?.message ?? (r.out === stable ? '' : 'OBSERVABLE — this is now a finding'));
+    const g = mkg();
+    const ctx = { ids: core.sequentialIds('fx'), today: '2026-04-01', actorUserId: core.LOCAL_OWNER };
+    Object.defineProperty(ctx, field, { get: g, enumerable: true, configurable: true });
+    const r = attempt(() => build(ctx));
+    ok(`A-22 Part 1(b) CLOSED: \`${what}\` is read EXACTLY ONCE — the value \`requireActor\` ` +
+      `validated (or \`provenance.addedAt\` carries, or \`newId\` came from) is the value ` +
+      `\`addStop\`'s opts receive, and that is now a property of \`copyStopInto\` rather than of ` +
+      `\`addStop\``,
+      r.threw === null && r.out === stable && g.reads() === 1,
+      `reads = ${g.reads()}${r.threw ? `; threw ${r.threw.message}` : ''}` +
+      `${r.out === stable ? '' : '; DOCUMENT DIVERGED'}`);
   }
 }
 
