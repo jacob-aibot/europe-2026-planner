@@ -19,7 +19,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, relative, resolve, sep } from 'node:path';
-import { createTrip, fromJSON, migrateDoc, sequentialIds, setTripMeta, toJSON, tripSummary, TripParseError } from '../src/index.ts';
+import { COUNTRY_INDEX, createTrip, fromJSON, migrateDoc, sequentialIds, setTripMeta, toJSON, tripSummary, TripParseError } from '../src/index.ts';
 import type { BuildCtx, Trip } from '../src/index.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -170,8 +170,8 @@ test('fromJSON rejects every non-member value, not just the one the criterion na
  */
 test('QA P2-6: the summary row the Library lists carries datePrecision', () => {
   const t = setTripMeta(base(), { datePrecision: 'month' }, ctx());
-  assert.equal(tripSummary(t).datePrecision, 'month');
-  assert.equal(tripSummary(base()).datePrecision, 'exact');
+  assert.equal(tripSummary(t, COUNTRY_INDEX).datePrecision, 'month');
+  assert.equal(tripSummary(base(), COUNTRY_INDEX).datePrecision, 'exact');
 });
 
 test('no schemaVersion bump — the field is additive with a total default', () => {

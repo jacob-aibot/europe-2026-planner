@@ -67,7 +67,7 @@ export function computeDerived(trip: Trip, today: string): DerivedCache {
     conflicts: core.detectConflicts(trip, { today }),
     issues: core.validateTrip(trip),
     tripCost: core.rollUpCost(trip, { target: trip.homeCurrency }),
-    summary: core.tripSummary(trip),
+    summary: core.tripSummary(trip, core.COUNTRY_INDEX),
   };
 }
 

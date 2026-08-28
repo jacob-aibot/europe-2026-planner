@@ -55,6 +55,7 @@ function summaryFor(id: string, revision: number): TripSummaryRow {
   return {
     id, title: 'T', startDate: '2026-08-07', endDate: '2026-08-08', datePrecision: 'exact',
     cityCount: 0, dayCount: 2, stopCount: 0, poolCount: 0, revision,
+    countryCodes: [], cities: [], summaryVersion: core.SUMMARY_VERSION,
   };
 }
 
@@ -462,7 +463,7 @@ test('a merge cannot write using a stale StorageVersion', async () => {
       const held = storage.versions.get(id) ?? null;
       const doc = core.fromJSON(storage.docs.get(id) as string);
       const third = core.setDayMeta(doc, dayA, { title: 'THIRD WRITER' });
-      await storage.saveIfVersion(id, held, core.toJSON(third), core.tripSummary(third));
+      await storage.saveIfVersion(id, held, core.toJSON(third), core.tripSummary(third, core.COUNTRY_INDEX));
     }
     return out;
   };

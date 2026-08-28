@@ -45,7 +45,7 @@ const money = (roll: core.CostRollUp) =>
     .join(' + ') || '—';
 
 function cmdTrip() {
-  const s = core.tripSummary(trip);
+  const s = core.tripSummary(trip, core.COUNTRY_INDEX);
   // §8.1: the stage is DERIVED from (trip, today) — there is no stored status field. `--today`
   // is what drives it, and it already defaults to FIXTURE_TODAY.
   const stage = core.lifecycle(trip, today);

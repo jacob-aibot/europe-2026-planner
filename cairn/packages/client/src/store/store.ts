@@ -403,7 +403,7 @@ export function createStore(opts: StoreOptions) {
     // against this store's own undo stack — not to outvote a merge.
     opts?: { reseed?: boolean },
   ): Promise<void> {
-    const summary = core.tripSummary(toWrite);
+    const summary = core.tripSummary(toWrite, core.COUNTRY_INDEX);
     const outcome = await ports.storage.saveIfVersion(toWrite.id, expected, core.toJSON(toWrite), summary);
     if (!outcome.ok) {
       set({

@@ -208,7 +208,7 @@ test('R5-1: a refused flush still aborts the transition — the drain loop does 
 
   // Another writer moves the record while this store holds an edit.
   const before = g.inner.docs.get(idA)!;
-  await g.inner.saveIfVersion(idA, g.inner.versions.get(idA)!, before, core.tripSummary(core.fromJSON(before)));
+  await g.inner.saveIfVersion(idA, g.inner.versions.get(idA)!, before, core.tripSummary(core.fromJSON(before), core.COUNTRY_INDEX));
 
   store.dispatch({ type: 'setDayMeta', dayId: '2026-09-01', patch: { title: 'edit ONE' } });
   assert.equal(await store.closeTrip().then(() => store.getState().activeTripId), idA, 'a refused flush let the transition through');

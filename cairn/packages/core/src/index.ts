@@ -1,9 +1,9 @@
 /**
  * `@cairn/core` — the public surface of ARCHITECTURE §2.10 and nothing else.
  *
- * **73 runtime symbols, one list, set equality in both directions** (69 at revision 5, QA R2-12,
+ * **74 runtime symbols, one list, set equality in both directions** (69 at revision 5, QA R2-12,
  * BUILD-NOTES KD-33; +`reassertRetirements` at revision 6; +`lifecycle` at Phase 2 I-1;
- * +`countryOf` and `COUNTRY_INDEX` at Phase 2 I-5). It used to be 110 against a 50-name list plus a 60-name "beyond §2.10,
+ * +`countryOf` and `COUNTRY_INDEX` at Phase 2 I-5; +`SUMMARY_VERSION` at Phase 2 I-6). It used to be 110 against a 50-name list plus a 60-name "beyond §2.10,
  * each with a justification" list, which made the acceptance criterion true by construction:
  * 110 = 50 + 60 for *any* 110 exports. A boundary the Phase 2 server and the Phase 4 native
  * app are written against cannot be "110 against 50, enumerated".
@@ -62,7 +62,7 @@ export { acceptCandidate, rejectCandidate } from './build/candidates.ts';
 export { copyStopInto } from './build/copyStop.ts';
 export type { CopyStopSource, CopyStopCtx } from './build/copyStop.ts';
 
-// ---- derive (24) -------------------------------------------------------------
+// ---- derive (25) -------------------------------------------------------------
 // `countryOf` and `COUNTRY_INDEX` join in revision 20's terms under Phase 2 I-5: §8.4 clause 1
 // names `countryOf(at, index)` as a callable (P2), and the same clause's revision-10 consequence
 // says the index "is generated code inside `packages/core` and is exported as a value from
@@ -84,8 +84,10 @@ export type { FocusResult, MapBounds } from './derive/cluster.ts';
 export { rollUpCost } from './derive/cost.ts';
 export type { RollUpScope, RollUpOpts } from './derive/cost.ts';
 export { displayStatus, attribution } from './derive/display.ts';
-export { cityRange, tripSummary, daysForCity, orderedCities, weekdayOf } from './derive/summary.ts';
-export type { TripSummaryRow } from './derive/summary.ts';
+// `SUMMARY_VERSION` joins under §8.4 clause 3 at Phase 2 I-6: `packages/client` compares
+// every stored row against it and rescans the ones below, so it has to be public.
+export { cityRange, tripSummary, daysForCity, orderedCities, weekdayOf, SUMMARY_VERSION } from './derive/summary.ts';
+export type { TripSummaryRow, TripSummaryCity } from './derive/summary.ts';
 
 // ---- conflict (6) ------------------------------------------------------------
 // `reassertRetirements` joins in revision 6 (§2.7 A-5, QA R8-1): the retirement ledger lives
