@@ -220,7 +220,16 @@ which §2.1 forbids. What A-21 explicitly does **not** close is named rather tha
 across **two** traversals (`validateTrip` at T1, `toJSON` at T2) no discipline inside either can make an
 unstable document consistent, so R17-1's second face is narrowed, not closed, and the two mechanisms that
 would close it (freeze the document at every entry point; round-trip the export text) are both costed and
-refused with a trigger. The mechanical consequences in `ROADMAP.md` are I-4a's Built / Verification /
+refused with a trigger. **A-21a** (§2.9, BUILD-NOTES) is an addendum to A-21, not a new ruling and not a new
+revision: the builder objected — with a reproduction — that Part 4 claims a **total**, file-wide rule while
+its own printed block exempts A-14/A-15/A-16's place logic as *"verbatim"*, and that block still reads
+`original.at` three times and still throws `Cannot read properties of null` out of `copyStopInto`. Upheld,
+and re-derived here: *verbatim* meant *A-14/A-15/A-16's rules are unchanged*, never *exempt from Part 4*.
+`original.cityKey`, `original.at` and `original.name` are read once each into `const`s ahead of every use;
+the one surviving double read — `placeForCopy` re-reading `name` and `at` on the reuse-miss path — is
+bounded, measured (a duplicate `Place` row; never a leak, never a throw) and kept deliberately, because
+closing it would break A-15's *"every field of `Place` is classified in one function"*. The mechanical
+consequences in `ROADMAP.md` are I-4a's Built / Verification /
 Ship-gate lines and nothing else: **no new increment, no change to the phase order.**
 
 **Phase 1 is §2 and §4. The next phase is §8.1–§8.4.** Everything else is the shape those must not
@@ -242,7 +251,7 @@ cairn/tools/doc-section ARCHITECTURE         # lists the sections and their size
 |---|---|---|---|
 | 0 | Six positions, stated up front | <1k | everyone — read it, it is 20 lines |
 | 1 | Stack decision and the capability checks behind it | 3k | architect. Settled; do not re-litigate |
-| 2 | **Domain model — the builder's contract.** §2.12 `travelRole`, §2.13 geography and §2.14 import/copy are new in revision 2 and are where the Phase 1 rework lives; **§2.2a (the `StorageVersion` write fence, revision 3) and §2.2b (the freshness rule it turned out to be one instance of, revision 4) are read together with §4.2 and §4.3, never alone**; §2.10 (the export surface) and §2.13's copied-record row are settled in revision 5; **§2.7's retirement ledger (A-5) and §2.13's copy-borne `Place` rule (A-6) are revision 6**; **§2.2a's A-7 (the fence a declined write may not move) is revision 8** and is read with §4.2 rule 4a; **§2.2's A-10 (a `CityKey` is a minted opaque id) and §2.7's A-9 (retirement is decided against the un-gated set) are revision 11** — a Phase 2 builder needs both; **A-11, A-12 and A-13 (§2.7) and A-14 (§2.14) are revision 12** and are read *with* A-9 and A-10, never instead of them — A-11 replaces A-9's greppable invariant, A-12 narrows A-9 point 1, A-13 rewrites A-9 assertion 4, and A-14 corrects A-10's change table; **A-15 and A-16 (§2.14) and A-17 (§2.7) are revision 13** — A-15 is the copy path's redaction rule and is read with §6.6, A-16 withdraws A-14's *"within one trip is unchanged"* paragraph, A-17 narrows A-11 assertion 5; **A-18 and A-19 (§2.14) are revision 14** — A-18 is the copy path's redaction rule for the *stop's own* nested records (`cost`, `arrival`) and generalises A-15 to *no spread at any depth*, A-19 rules that the `placement` **argument** is validated against the target and never re-filed. **Anyone touching `copyStopInto` reads A-14, A-15 and A-16 as one rule 4, and A-18 with rules 3 and 5**; **A-20 is revision 15 and lives in §2.9, not §2.14** — it is where the *shape* of a document is decided, it amends A-15's `hours` row and A-18's *"changes nothing in `fromJSON`"* paragraph, and **anyone touching `Place.hours` at any layer reads it first**; **A-21 is revision 16, lives in §2.9 beside A-20 and is read with it** — it replaces A-20's `isWeeklyEntry` with a reader that returns what it read, and imposes one read per field on `copyStop.ts`, so **anyone touching a predicate over an `unknown`, or any function in `copyStop.ts`, reads A-21 with A-15 and A-18** | 76k | builder, breaker |
+| 2 | **Domain model — the builder's contract.** §2.12 `travelRole`, §2.13 geography and §2.14 import/copy are new in revision 2 and are where the Phase 1 rework lives; **§2.2a (the `StorageVersion` write fence, revision 3) and §2.2b (the freshness rule it turned out to be one instance of, revision 4) are read together with §4.2 and §4.3, never alone**; §2.10 (the export surface) and §2.13's copied-record row are settled in revision 5; **§2.7's retirement ledger (A-5) and §2.13's copy-borne `Place` rule (A-6) are revision 6**; **§2.2a's A-7 (the fence a declined write may not move) is revision 8** and is read with §4.2 rule 4a; **§2.2's A-10 (a `CityKey` is a minted opaque id) and §2.7's A-9 (retirement is decided against the un-gated set) are revision 11** — a Phase 2 builder needs both; **A-11, A-12 and A-13 (§2.7) and A-14 (§2.14) are revision 12** and are read *with* A-9 and A-10, never instead of them — A-11 replaces A-9's greppable invariant, A-12 narrows A-9 point 1, A-13 rewrites A-9 assertion 4, and A-14 corrects A-10's change table; **A-15 and A-16 (§2.14) and A-17 (§2.7) are revision 13** — A-15 is the copy path's redaction rule and is read with §6.6, A-16 withdraws A-14's *"within one trip is unchanged"* paragraph, A-17 narrows A-11 assertion 5; **A-18 and A-19 (§2.14) are revision 14** — A-18 is the copy path's redaction rule for the *stop's own* nested records (`cost`, `arrival`) and generalises A-15 to *no spread at any depth*, A-19 rules that the `placement` **argument** is validated against the target and never re-filed. **Anyone touching `copyStopInto` reads A-14, A-15 and A-16 as one rule 4, and A-18 with rules 3 and 5**; **A-20 is revision 15 and lives in §2.9, not §2.14** — it is where the *shape* of a document is decided, it amends A-15's `hours` row and A-18's *"changes nothing in `fromJSON`"* paragraph, and **anyone touching `Place.hours` at any layer reads it first**; **A-21 is revision 16, lives in §2.9 beside A-20 and is read with it** — it replaces A-20's `isWeeklyEntry` with a reader that returns what it read, and imposes one read per field on `copyStop.ts`, so **anyone touching a predicate over an `unknown`, or any function in `copyStop.ts`, reads A-21 with A-15 and A-18**; **A-21a is a revision-16 addendum in the same place** and is what makes A-21's file-wide rule actually total — it is read with A-21, never instead of it | 79k | builder, breaker |
 | 3 | Module boundaries | <1k | builder |
 | 4 | **The Phase 1 client.** §4.2 rule 6 (a pending write is never outlived by its document) is new in revision 3 — QA R3-2; rule 6a′ and the `savedDoc` predicate are revision 4 — QA R4-1; **rule 6a″ (the flush bound and its exits) and rule 6c's "delete goes on the chain" are revision 5** — QA R6-1/R6-2/R7-3; **rule 5's retirement carve-out is revision 6** — QA R8-1, read with §2.7; **rule 4a is revision 8** — QA R11-1, read with §2.2a A-7 | 7k | builder |
 | 5 | The four hard subsystems | 2k | breaker; builder from Phase 3 on |
@@ -2976,6 +2985,138 @@ one pass over a 500-line file, and the reason that is affordable is that the fil
 The day it stops being small is the day this rule needs a mechanical check, and that is a cheaper problem
 than the one A-15, A-18 and A-21 have each been.
 
+#### A-21a — Part 4's rule is total, and the one block it printed as *"verbatim"* still crashed (revision 16 addendum, BUILD-NOTES)
+
+**The objection is upheld, and I re-derived it rather than taking the report.** Part 4 states a **file-wide**
+rule and rests its whole value on that rule being **total** — *"every field of every record this function
+reads, once"* is a property a reviewer can verify in one pass, and *"every field except the ones supplied by
+a caller we trust"* is a judgment call. But Part 4's own printed place block elides A-14/A-15/A-16's
+step-2/step-3 logic as `/* … refileCityKey / samePlace / placeForCopy block, verbatim … */`, and that block
+reads `original.at` **three times** on the step-3 path — the `=== null` test, then `.lat`, then `.lng`. That
+is the identical shape, on the identical field of the identical record, in the identical file, that Part 4
+fixes one function away in `placeForCopy`.
+
+Measured against the tree as shipped at `a3caca5`, in a throwaway copy, with a source place whose city the
+target cannot re-file (so step 3 is live) and `at` an accessor:
+
+```
+at flips [{lat:1,lng:2}, null]        → TypeError: Cannot read properties of null (reading 'lat')
+                                        thrown out of copyStopInto, after 2 reads
+at flips [{lat:1,lng:2}, {lat:3,lng:4}] → copies {kind:'inline', at:{lat:3,lng:4}}, after 3 reads
+```
+
+The second line is the one that decides this, and it is not the one that was reported: it is not a crash but
+a **coordinate that no `null` test ever saw crossing a person boundary**, which is A-21's subject sentence
+verbatim. The builder prepared exactly the right fix, reverted it because the ruling said *verbatim*, and
+routed it back. That was the correct call and it is what this addendum exists to answer.
+
+**The word "verbatim" was shorthand for the wrong thing.** It marked *A-14/A-15/A-16's rules and outcomes as
+unchanged* — which they are, and still are below — and it was written on a block Part 4 chose not to reprint.
+A carve-out that exists only because a print was elided is not a ruling. **Part 4's rule extends to this
+block**, and wherever Part 4 says "verbatim" it is to be read as *"A-14/A-15/A-16's rules and outcomes are
+unchanged"*, never as *"exempt from Part 4"*.
+
+**The fix, printed, because the last elision is what caused this.** Three lines change inside
+`copyStopInto`'s `if (original)` block; `refileCityKey`, `samePlace` and `placeForCopy` are untouched in
+body, in signature and in docstring, and A-14's step-3 comment and A-15's probe comment are preserved.
+
+```ts
+    if (original) {
+      // A-21a: one read per field of `original` in THIS block. `at` was read three times below —
+      // the `null` test and then `.lat`/`.lng` — which threw `Cannot read properties of null` out
+      // of `copyStopInto`, and, for a getter that flipped to another coordinate, put a coordinate
+      // the `null` test never saw into the recipient's document.
+      const originalCityKey: string = original.cityKey;
+      const at: LatLng | null = original.at;
+      const targetKey = refileCityKey(source.trip, target, originalCityKey);
+      if (targetKey === null) {
+        // A-14 step 3 — comment unchanged.
+        place = at === null
+          ? { kind: 'none' }
+          : { kind: 'inline', at: { lat: at.lat, lng: at.lng } };
+      } else {
+        // `refiled` is the PROBE the reuse search compares against — comment unchanged.
+        // `name` is read HERE and not hoisted above `refileCityKey`: step 3 never uses it, and a
+        // hoist would make a THROWING getter on `name` propagate on a path that never read it.
+        // A-21 accepts that a getter's throw propagates; it does not widen the set of paths that
+        // can see one.
+        const name: string = original.name;
+        const refiled = { cityKey: targetKey, name, at };
+        // … `existing` / reuse / `placeForCopy` unchanged.
+```
+
+`LatLng` is already imported by this file (A-21 Part 4 added it for `placeForCopy`), so the import block does
+not move. **Verified, not asserted**: with this body, `copyStopInto` returns rather than throws on both
+flipping fixtures above, the step-3 read count of `at` is **1**, the copied coordinate is the one the `null`
+test saw, `npm run typecheck` is clean on both projects, `packages/core/test/copyStop.test.ts` is **79/79**
+and `openingHours.test.ts` **11/11** with **no assertion edited**, the full suite is unchanged against a
+baseline run of the same copy, and `npm run golden` + `npm run sample` regenerate byte-identically.
+
+**The search found a second field on the same split, which the report did not name.** `original.name` is read
+by the `refiled` probe and again inside `placeForCopy`. Measured on the shipped tree: a `name` flipping
+`['Belvedere', 'Front door PIN 0754, conf 5814731574']` puts the **second** read into the recipient's `Place`
+row. That is the same rule violated, and — stated precisely — it is **not a new leak**: A-15 classifies
+`name` as crossing verbatim (*"a place's name is a description of the world"*), so a stable hostile name
+crosses identically today, by ratified policy. The harm is that the value the dedupe compared is not the
+value the row carries.
+
+**One exception survives this addendum, and it is now written down rather than invisible.** After the fix,
+`placeForCopy(original, …)` still re-reads `name` and `at` on the reuse-**miss** path, because it takes a
+`Place` and reads it. Read counts of `original`'s fields per path through `copyStopInto`, which is the
+checkable form of this and what QA may assert:
+
+| path | `cityKey` | `at` | `name` | `category` / `note` / `hours` |
+|---|---|---|---|---|
+| link dangles (no `original`) | 0 | 0 | 0 | 0 |
+| step 3 — target cannot re-file | 1 | **1** (was 3) | 0 | 0 |
+| re-filed, existing row reused | 1 | 1 | 1 | 0 |
+| re-filed, new row written | 1 | **2** | **2** | 1 each, inside `placeForCopy` |
+
+**Two is the ceiling, and never two reads inside one function**: one is the probe's, one is
+`placeForCopy`'s. Measured consequence of that pair, on the shipped tree and on the fixed one alike: an `at`
+flipping `[{9,9},{1,2}]` against a target that already holds that place writes a **duplicate `Place` row**
+(the dedupe was computed on a coordinate the row does not carry). A hole, in A-21's own vocabulary — never a
+leak, never a throw, and confined to a document built in memory past the type system.
+
+**Why it stays, which is a ruling and not an omission.** Closing it costs one of two things, and both are
+worse than naming it. Either `placeForCopy` takes `name` and `at` by argument — so half a `Place`'s fields
+are classified at the call site and half inside the function — or `copyStopInto` builds a pre-read `Place`
+snapshot to hand it, which needs a borrowed `id` and re-reads `note`/`hours` to build. Both break the thing
+A-15 is *for*: **every field of `Place` is classified in one function, so that a ninth field fails there
+first** (A-15's docstring and `copyStop.test.ts`'s key-set test are the mechanism). Two total rules meet
+here; on a fault population only an in-process caller can construct, and where the residue is a hole rather
+than a leak or a throw, **A-15's single classification point wins and A-21 records the exception with a
+bound.** The trigger to revisit is the one A-20 and A-21 Part 6 already name: the day something other than a
+person's own hand builds a `Trip` in memory — a native bridge, an ingest worker (§5.1), a vendor feed — the
+whole read-once question is re-opened at once, and not one field of it at a time.
+
+**What the builder asserts** (all in `copyStop.test.ts`, using A-21's existing `flipping`/`withAccessor`
+helpers; nothing under `qa/` is edited, per A-19 assertion 7):
+
+1. **The step-3 crash, and the wrong coordinate.** A source place whose city the target cannot re-file, `at`
+   flipping `[{lat:1,lng:2}, null]`: `copyStopInto` **does not throw** and the stop's place is
+   `{kind:'inline', at:{lat:1,lng:2}}`. The same fixture with `at` flipping `[{lat:1,lng:2},{lat:3,lng:4}]`
+   copies `{lat:1,lng:2}` — the coordinate that was `null`-tested — and **`reads() === 1`**.
+2. **The existing `at.reads() === 2` assertion is unmoved**, and its comment is re-expressed to point at this
+   addendum rather than at "a disclosed residue of the ruling". A builder who drives that 2 to 1 has changed
+   `placeForCopy`'s contract, which this addendum refuses.
+3. **A seventh mutation**, in the same throwaway-worktree form as A-21's six: restoring `original.at` in the
+   step-3 branch (`original.at === null ? … : {lat: original.at.lat, …}`) turns at least one test red. A
+   mutation that survives is a missing fixture and is reported as one.
+4. **Ceilings unmoved**: `Object.keys(core).length` = **71**; reference trip **2/4/11** and **11**
+   `validateTrip` issues; `npm run golden` and `npm run sample` byte-identical, sample sha `40955ca0b182`;
+   `copyStop.ts` still contains no `as string` and, comments stripped, exactly one `{ ...x }` spread
+   (`{ ...target }`); `npm run test:tap` and `npm run typecheck` clean.
+
+**This is an in-place correction to revision 16, not revision 17, and `ROADMAP.md` is not amended.** The
+precedent is **A-5a**, which is the same shape: a builder implemented a just-shipped ruling exactly,
+reproduced a defect in one clause of the ruling's own printed body, declined to work around it, and the
+architect upheld it as a lettered addendum inside the revision that shipped the parent — one paragraph added
+to that revision's header, no ROADMAP change, no new revision number. A revision number here tracks *what QA
+reviewed*; this corrects one elided block of what QA already routed. I-4a's ship gate keeps its wording
+(*"six mutations"* gated the increment that shipped); A-21a's seventh mutation is its own gate, stated above,
+and the visual roadmap does not move because nothing about phase content, order or status changed.
+
 ### 2.10 The public API surface
 
 **Settled in revision 5 (QA R2-12, KD-19); 69 → 70 in revision 6, and 70 → 71 in revision 10, each for one
@@ -4344,8 +4485,13 @@ source record is read **once**, into a `const`, and everything downstream tests,
 the moment the field is an accessor, and A-18's own `cost.display` construction leaked a credential that
 way. It rewrites `weeklyForCopy`, `costForCopy`, `arrivalForCopy`, `hoursForCopy`, `placeForCopy` and
 `copyStopInto`'s place block (which also stops **aliasing** the source's own `PlaceLink` into the target),
-and it changes no rule in A-14, A-15, A-16, A-18 or A-19 for any value the type system permits. **Anyone
-touching `copyStop.ts` reads A-21 with A-15 and A-18.**
+and it changes no rule in A-14, A-15, A-16, A-18 or A-19 for any value the type system permits. **The rule
+is total for the file, and A-21a (§2.9, revision 16 addendum) is what makes that true**: A-21 printed
+A-14/A-15/A-16's step-2/step-3 logic as *"verbatim"* and that block went on reading `original.at` three
+times, crashing `copyStopInto` on the step-3 path; *verbatim* meant *those rules are unchanged*, never
+*exempt*. A-21a hoists `cityKey`, `at` and `name`, and names the one bounded double read it deliberately
+keeps (`placeForCopy` re-reading `name`/`at` on the reuse-miss path, because A-15 classifies every field of
+a `Place` in **one** function). **Anyone touching `copyStop.ts` reads A-21 and A-21a with A-15 and A-18.**
 
 ---
 
