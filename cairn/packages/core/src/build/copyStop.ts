@@ -65,6 +65,21 @@
  * fresh record may be read more than once, because the worst an unstable discriminant can then
  * produce is a well-formed record of the wrong variant — a hole, never a leak.
  *
+ * **A-22 and A-23 (revision 17, QA R18-1…R18-5) — the rule now covers the ARGUMENTS, and it is
+ * checked by a test rather than by the next reviewer's eyes.** Round 18 ran a mechanical
+ * read-count census over the shipped control flow and found five more sites neither A-21's
+ * *"file-wide"* nor A-21a's *"total"* search reached: `source.trip` (read **five** times, so the
+ * stop could be copied out of one document while the credit named another — §2.14 rule 7),
+ * `src.id`, `srcPlace.at` in the `inline` branch, `samePlace`'s reads of the **recipient's own**
+ * row, and — one level below A-21a's printed table — `original.at.lat`, whose read count was
+ * N+1 in the *other* party's document because the reuse probe aliased the caller's `LatLng`.
+ * Each fix is marked at its site. Since a hand search of this file has now missed a site in five
+ * consecutive rounds, A-23 makes the census standing: `packages/core/test/readOnce.test.ts`
+ * counts every field every caller-supplied record hands out, across ten scenarios covering every
+ * branch below, and fails the suite on anything read twice outside a five-entry allow-list.
+ * **A new branch here needs a new scenario row there; a new allow-list entry is an architect's
+ * ruling, not a builder's judgment.**
+ *
  * What A-21 deliberately does **not** do here: it adds **no new defensive guard**. `src.links`
  * that is a truthy non-array still throws on `.map`, and `[...src.flags]` still throws on a
  * non-iterable, exactly as before. A-21 is about *which value crosses*, not about whether a
@@ -250,12 +265,25 @@ function hoursForCopy(h: OpeningHours): OpeningHours {
   };
 }
 
-/** Same name, same city, same coordinates to ~1 m — the same place. Pure. */
+/** Same name, same city, same coordinates to ~1 m — the same place. Pure.
+ *
+ *  A-22 (QA R18-4): `a` is a row of the RECIPIENT'S OWN `places`, and it was read up to three
+ *  times — `a.at === null`, `a.at.lat`, `a.at.lng` — so a target row whose `at` flipped to `null`
+ *  threw a raw `TypeError` out of `copyStopInto` because of what the TARGET document contains
+ *  (§2.1, R15-2). `b` is `refiled`, which core constructs, and it is hoisted anyway for A-21's
+ *  stated reason: "every field of every record this function reads, once" is a property a reviewer
+ *  checks in one pass; "every field except the ones we judged safe" is a judgment call. */
 function samePlace(a: Place, b: { cityKey: string; name: string; at: Place['at'] }): boolean {
-  if (a.cityKey !== b.cityKey) return false;
-  if (a.name.trim().toLowerCase() !== b.name.trim().toLowerCase()) return false;
-  if (a.at === null || b.at === null) return a.at === b.at;
-  return Math.abs(a.at.lat - b.at.lat) < 1e-5 && Math.abs(a.at.lng - b.at.lng) < 1e-5;
+  const aCityKey: string = a.cityKey;
+  const bCityKey: string = b.cityKey;
+  if (aCityKey !== bCityKey) return false;
+  const aName: string = a.name;
+  const bName: string = b.name;
+  if (aName.trim().toLowerCase() !== bName.trim().toLowerCase()) return false;
+  const aAt: LatLng | null = a.at;
+  const bAt: LatLng | null = b.at;
+  if (aAt === null || bAt === null) return aAt === bAt;
+  return Math.abs(aAt.lat - bAt.lat) < 1e-5 && Math.abs(aAt.lng - bAt.lng) < 1e-5;
 }
 
 /**
@@ -397,8 +425,19 @@ export function copyStopInto(
   // unchecked at runtime, and R2-11 went straight through it. Checked first, before anything
   // is copied, so nothing is partially mutated behind the exception.
   const actorUserId = requireActor('copyStopInto', ctx.actorUserId);
-  const src = findAnywhere(source.trip, source.stopId);
-  if (!src) throw new Error(`copyStopInto: no such stop ${source.stopId} in ${source.trip.id}`);
+  // A-22 Part 1 — the three ARGUMENTS are held to Part 4(c)'s rule, because Part 4(c)'s reason
+  // ("the rule for this file is only checkable if it is TOTAL") is about arguments as a class and
+  // not about `placement`. `source.trip` was read FIVE times — `findAnywhere` (which stop),
+  // `origin.friendUserId`, `origin.sourceTripId`, `.places` and `refileCityKey` — so the document
+  // the stop came from and the document the CREDIT names could be two different documents, and
+  // the `Place` row a third. `source.stopId` was read twice (the lookup and the throw message);
+  // `ctx.today`, `ctx.actorUserId` and `ctx.ids` reach `addStop`'s opts on a second read.
+  const ids: IdFactory = ctx.ids;
+  const today: IsoDate = ctx.today;
+  const sourceTrip: Trip = source.trip;
+  const stopId: StopId = source.stopId;
+  const src = findAnywhere(sourceTrip, stopId);
+  if (!src) throw new Error(`copyStopInto: no such stop ${stopId} in ${sourceTrip.id}`);
   // A-19 (revision 14, QA R15-6). A `placement` is not a record that crosses: it is an ARGUMENT
   // the caller supplies about the TARGET, in the same position and with the same authority as
   // `placement.dayId`. So it is validated exactly as `dayId` is and never re-filed — the primary
@@ -466,11 +505,16 @@ export function copyStopInto(
     state: 'candidate',
     confidence: demote(confidence),
     origin: {
-      friendUserId: source.trip.ownerId,
-      sourceTripId: source.trip.id,
-      sourceStopId: src.id,
+      friendUserId: sourceTrip.ownerId,
+      sourceTripId: sourceTrip.id,
+      // A-22 (R18-2): the id the caller NAMED and the predicate MATCHED, not a second read of the
+      // found record. `src.id` is now read zero times, which is stronger than hoisting it: rule 1
+      // says the source id survives only inside `origin`, and `stopId` is the only value in this
+      // function that anything checked. `findAnywhere` compares `x.id === stopId`, so for every
+      // document the type system permits this is bit-for-bit what shipped.
+      sourceStopId: stopId,
     },
-    addedAt: ctx.today,
+    addedAt: today,
     acceptedAt: null,
     actorUserId,
   };
@@ -492,12 +536,16 @@ export function copyStopInto(
   // constructs a fresh record and the worst an unstable `kind` yields is `{kind:'none'}`, a hole.
   let place: PlaceLink = { kind: 'none' };
   if (srcPlace.kind === 'inline') {
-    place = { kind: 'inline', at: { lat: srcPlace.at.lat, lng: srcPlace.at.lng } };
+    // A-22 (R18-3) — A-21a's defect in the sibling branch. `at` flipping [{1,2}, null] threw
+    // `Cannot read properties of null (reading 'lng')` out of `copyStopInto`; flipping
+    // [{1,2},{3,4}] copied {lat:1, lng:4}, a pair no read ever produced.
+    const srcAt: LatLng = srcPlace.at;
+    place = { kind: 'inline', at: { lat: srcAt.lat, lng: srcAt.lng } };
   } else if (srcPlace.kind === 'place') {
     // `srcPlace.placeId` is read once, as a lookup KEY against the source-side row, which
     // `placeForCopy` then rebuilds field by field. The `as {placeId: string}` cast is gone —
     // narrowing a `const` of a discriminated union needs none.
-    const original = source.trip.places.find((p) => p.id === srcPlace.placeId);
+    const original = sourceTrip.places.find((p) => p.id === srcPlace.placeId);
     // `original` missing → `place` stays `{kind:'none'}`: the source's own link dangled, and we
     // do not invent one. Everything below is A-14/A-15/A-16, unchanged.
     if (original) {
@@ -507,7 +555,7 @@ export function copyStopInto(
       // the `null` test never saw into the recipient's document.
       const originalCityKey: string = original.cityKey;
       const at: LatLng | null = original.at;
-      const targetKey = refileCityKey(source.trip, target, originalCityKey);
+      const targetKey = refileCityKey(sourceTrip, target, originalCityKey);
       if (targetKey === null) {
         // A-14 step 3 — no city in the target answers to the source city's name, so there is
         // nothing to file this place under and every alternative writes a guess into the
@@ -528,7 +576,16 @@ export function copyStopInto(
         // A-21 accepts that a getter's throw propagates; it does not widen the set of paths that
         // can see one.
         const name: string = original.name;
-        const refiled = { cityKey: targetKey, name, at };
+        // A-22 Part 2 (QA R18-5). The probe carries a CLONE of the coordinate: `samePlace` reads
+        // `b.at.lat`/`b.at.lng` once per candidate row, so aliasing the caller's own `LatLng` here
+        // made `original.at.lat`'s read count N+1 in the RECIPIENT's document — and, because
+        // `samePlace`'s `&&` short-circuits, `lat` and `lng` were read a DIFFERENT number of times
+        // as each other. Cloning restores A-21a's ceiling one level down: each scalar is read once
+        // by the probe and once by `placeForCopy`, never twice inside one function, and never a
+        // count the other party controls. `samePlace`, `placeForCopy` and `refileCityKey` are
+        // untouched in body, in signature and in contract — A-15's "every field of `Place` is
+        // classified in one function" is exactly what A-21a refused to trade, and it is not traded.
+        const refiled = { cityKey: targetKey, name, at: at === null ? null : { lat: at.lat, lng: at.lng } };
         const existing = target.places.find((p) => samePlace(p, refiled));
         if (existing) {
           // The reuse branch needs nothing from A-15: no field of the source place crosses at
@@ -537,7 +594,7 @@ export function copyStopInto(
         } else {
           // A-15: built field by field, never spread. §6.6 applies to a `Place` that crosses a
           // person boundary exactly as it applies to the stop beside it.
-          const copy = placeForCopy(original, targetKey, ctx.ids.newId('place'));
+          const copy = placeForCopy(original, targetKey, ids.newId('place'));
           withPlace = { ...target, places: [...target.places, copy] };
           place = { kind: 'place', placeId: copy.id };
         }
@@ -562,7 +619,7 @@ export function copyStopInto(
   const durationMins = src.durationMins;
 
   const init: StopInit = {
-    id: ctx.ids.newId('stop'),
+    id: ids.newId('stop'),
     name,
     category,
     place,
@@ -595,9 +652,7 @@ export function copyStopInto(
   };
 
   // `addStop` bumps the revision once, which is the whole operation.
-  return addStop(withPlace, placed, init, {
-    ids: ctx.ids,
-    now: ctx.today,
-    actorUserId: ctx.actorUserId,
-  });
+  // A-22 Part 1(b): the ids factory, the date and the actor are the values this function already
+  // validated or already used — never a second read of `ctx`.
+  return addStop(withPlace, placed, init, { ids, now: today, actorUserId });
 }

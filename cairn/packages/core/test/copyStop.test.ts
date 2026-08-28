@@ -2106,6 +2106,194 @@ test('A-21 Part 4(c), disclosed consequence: an out-of-union placement `kind` is
 });
 
 // ---------------------------------------------------------------------------
+// A-22 (ARCHITECTURE revision 17, QA R18-1 … R18-5) — the five sites A-21's and A-21a's own
+// "exhaustive" searches missed, found by a mechanical read-count census rather than by reading
+// the diff. Nothing new is ruled here: four are A-21 Part 4(c) and A-21a applied to arguments and
+// to a sibling branch, and the fifth corrects A-21a's printed BOUND, which was true at the
+// granularity of `original`'s fields and false one level down at `original.at.lat`.
+//
+// These are the `flipping` fixtures — *which value crosses, and that nothing throws*. The read
+// COUNT over every control-flow path is `readOnce.test.ts` (A-23), which is the standing census
+// that exists because a hand search of this file has now missed a site five rounds running.
+// ---------------------------------------------------------------------------
+
+const A22_CREDENTIAL = 'conf 5814731574 - ask for jacob@example.com';
+
+/** A source trip whose owner, id and place name identify WHICH document it is. */
+function sourceOwnedBy(id: string, ownerId: string, prefix: string, placeName: string): Trip {
+  let t = mintedTrip(id, ownerId, prefix, [{ name: 'Vienna', centre: VIENNA }]);
+  t = addPlace(t, {
+    id: 'p-src', cityKey: t.cities[0].key, name: placeName, at: BELVEDERE,
+    category: 'sight', note: 'the curated record',
+  });
+  return addStop(
+    t, { kind: 'scheduled', dayId: '2026-08-08', time: '10:00', order: 0 },
+    { id: 's-src', name: 'Belvedere', category: 'sight', place: { kind: 'place', placeId: 'p-src' } },
+    CTX(`${prefix}s`),
+  );
+}
+
+/** A target holding one `Place` row of its own — the RECIPIENT's document, R18-4's subject. */
+function targetWithRow(prefix: string, row: { name: string; at: LatLng | null }): Trip {
+  const t = mintedTrip('trip-tgt', 'user:jacob', prefix, [{ name: 'Vienna', centre: VIENNA }]);
+  return addPlace(t, {
+    id: 'p-tgt', cityKey: t.cities[0].key, name: row.name, at: row.at, category: 'sight',
+  });
+}
+
+test('A-22 R18-1: `source.trip` is read ONCE — the credit names the document the stop was FOUND in', () => {
+  // Five reads in the shipped body: `findAnywhere` (which stop), `origin.friendUserId`,
+  // `origin.sourceTripId`, `.places` (which `Place` row) and `refileCityKey`. So the stop could
+  // be copied out of one person's document while `provenance.origin` stamped another person's
+  // name — §2.14 rule 7, "credit survives acceptance, and the views must show it", which
+  // `BRIEF.md` calls non-negotiable — and the `Place` row beside it could come from a third
+  // document, credited to nobody, because a `Place` carries no provenance (A-6).
+  const alice = sourceOwnedBy('trip-A', 'user:alice', 'a22A', 'Belvedere A');
+  const mallory = sourceOwnedBy('trip-B', 'user:mallory', 'a22B', 'Belvedere B');
+  const trip = withAccessor(
+    { stopId: 's-src' } as unknown as { trip: Trip; stopId: string }, 'trip', [alice, mallory],
+  );
+
+  const after = copyStopInto(
+    jacobsTarget('a22a'), trip.value,
+    { kind: 'scheduled', dayId: '2026-08-08', time: '11:00', order: 0 }, COPY_CTX('a22a'),
+  );
+  const copy = copiedStop(after);
+  assert.equal(trip.reads(), 1, 'A-22: `source.trip` must be read exactly once for the whole copy');
+  assert.equal(copy.provenance.origin!.friendUserId, 'user:alice', 'the stop was found in Alice\'s document and credited to Mallory');
+  assert.equal(copy.provenance.origin!.sourceTripId, 'trip-A');
+  assert.equal(after.places.length, 1);
+  assert.equal(
+    after.places[0].name, 'Belvedere A',
+    'read 4 (`source.trip.places`) put a `Place` row from a document the credit does not name into the recipient\'s trip',
+  );
+  assert.deepEqual(
+    attribution(copy), { friendUserId: 'user:alice', sourceTripId: 'trip-A', sourceStopId: 's-src' },
+    'the credit line every view renders — §2.14 rule 7',
+  );
+});
+
+test('A-22 R18-2: `origin.sourceStopId` is the id the caller NAMED, not a second read of the found record', () => {
+  // `findAnywhere` matches on `x.id === stopId` and `origin.sourceStopId` was `src.id` again —
+  // A-21's unsafe form verbatim: read 1 is tested, read 2 is emitted. A-21 Part 4 enumerated the
+  // `src.*` fields it hoisted and `id` was not among them.
+  const t = sourceWithPlace({ name: 'Vienna', centre: VIENNA }, { name: 'Belvedere', at: BELVEDERE });
+  const stop = t.days.find((d) => d.id === '2026-08-08')!.stops[0];
+  const id = withAccessor({ ...stop } as Stop, 'id', ['s-src', A22_CREDENTIAL]);
+  const source: Trip = {
+    ...t,
+    days: t.days.map((d) => (d.id !== '2026-08-08' ? d : { ...d, stops: [id.value] })),
+  };
+
+  const after = copyAcross(jacobsTarget('a22b'), source, 'a22b');
+  assert.equal(id.reads(), 1, 'A-22: the `find` predicate reads `src.id`; nothing else may');
+  assert.equal(
+    copiedStop(after).provenance.origin!.sourceStopId, 's-src',
+    'a string the caller never named crossed into the recipient\'s provenance',
+  );
+  const doc = toJSON(after);
+  for (const needle of ['5814731574', 'jacob@example.com']) {
+    assert.equal(doc.includes(needle), false, `${needle} crossed through provenance.origin.sourceStopId`);
+  }
+});
+
+test('A-22 R18-3: the `kind:\'inline\'` branch reads `srcPlace.at` ONCE — A-21a\'s defect, sibling branch', () => {
+  // `{ kind:'inline', at: { lat: srcPlace.at.lat, lng: srcPlace.at.lng } }` — the exact shape
+  // A-21a ruled on, twenty lines above the block it fixed and printed inside A-21 Part 4's own
+  // body.
+  const inline = (values: readonly unknown[]) => {
+    const t = sourceWithPlace({ name: 'Vienna', centre: VIENNA }, { name: 'Belvedere', at: BELVEDERE });
+    const stop = t.days.find((d) => d.id === '2026-08-08')!.stops[0];
+    const at = withAccessor({ kind: 'inline' } as unknown as { kind: 'inline'; at: LatLng }, 'at', values);
+    return {
+      at,
+      source: {
+        ...t,
+        days: t.days.map((d) => (d.id !== '2026-08-08' ? d : { ...d, stops: [{ ...stop, place: at.value }] })),
+      } as Trip,
+    };
+  };
+
+  const nulls = inline([{ lat: 1, lng: 2 }, null]);
+  let afterNull: Trip;
+  assert.doesNotThrow(
+    () => { afterNull = copyAcross(jacobsTarget('a22c'), nulls.source, 'a22c'); },
+    'Cannot read properties of null (reading \'lng\') — §2.1: core does not throw on a document shape',
+  );
+  assert.equal(nulls.at.reads(), 1, 'A-22: the inline branch reads `srcPlace.at` exactly once');
+  assert.deepEqual(copiedStop(afterNull!).place, { kind: 'inline', at: { lat: 1, lng: 2 } });
+
+  const flips = inline([{ lat: 1, lng: 2 }, { lat: 3, lng: 4 }]);
+  const afterFlip = copyAcross(jacobsTarget('a22d'), flips.source, 'a22d');
+  assert.equal(flips.at.reads(), 1, 'A-22: the inline branch reads `srcPlace.at` exactly once');
+  assert.deepEqual(
+    copiedStop(afterFlip).place, { kind: 'inline', at: { lat: 1, lng: 2 } },
+    'the shipped body copied {lat:1, lng:4} — a pair no read ever produced',
+  );
+});
+
+test('A-22 R18-4: a flipping `at` on the RECIPIENT\'s own `Place` row does not throw out of core', () => {
+  // `samePlace(a, b)` read `a.at` three times — `a.at === null`, `a.at.lat`, `a.at.lng` — and `a`
+  // is a row of the TARGET document. So `copyStopInto` threw a raw `TypeError` because of what
+  // the recipient's own document contains, which is the second §2.1 violation in the pair and
+  // R15-2's rule.
+  const target = targetWithRow('a22e', { name: 'Belvedere', at: BELVEDERE });
+  const at = withAccessor({ ...target.places[0] } as Place, 'at', [BELVEDERE, null] as unknown[]);
+  const withRow: Trip = { ...target, places: [at.value] };
+  const source = sourceWithPlace({ name: 'Vienna', centre: VIENNA }, { name: 'Belvedere', at: BELVEDERE });
+
+  let after: Trip;
+  assert.doesNotThrow(
+    () => { after = copyAcross(withRow, source, 'a22e'); },
+    'a getter on the TARGET\'s `Place.at` threw a raw TypeError out of copyStopInto',
+  );
+  assert.equal(at.reads(), 1, 'A-22: `samePlace` reads the recipient\'s `a.at` exactly once');
+  assert.equal(after!.places.length, 1, 'the recipient keeps their own row — the reuse branch');
+  assert.deepEqual(copiedStop(after!).place, { kind: 'place', placeId: 'p-tgt' }, 'and the copy still lands');
+});
+
+test('A-22 R18-5: `original.at.lat`/`.lng` are read exactly twice, independent of the RECIPIENT\'s row count', () => {
+  // A-21a's table says two is the ceiling for `original.at`. One level down that was false: the
+  // reuse probe ALIASED the caller's `LatLng`, and `samePlace` reads `b.at.lat` once per
+  // candidate row — every row of the recipient's trip with the same folded city and name — so
+  // `lat` was read N+1 times with N controlled by the OTHER party's document. Worse, `&&`
+  // short-circuits, so `lat` and `lng` were read a different number of times as each other and
+  // the written row could be a HYBRID pair no single read produced. Measured on the shipped body:
+  // N = 0/1/3 → lat 1/2/4, lng 1/1/1.
+  for (const n of [0, 1, 3]) {
+    const t = mintedTrip('trip-src', 'user:marta', `a22f${n}`, [{ name: 'Vienna', centre: VIENNA }]);
+    const at = withAccessor({} as unknown as LatLng, 'lat', [BELVEDERE.lat]);
+    const lng = withAccessor(at.value, 'lng', [BELVEDERE.lng]);
+    let source = addPlace(t, {
+      id: 'p-src', cityKey: t.cities[0].key, name: 'Belvedere', at: at.value, category: 'sight',
+    });
+    source = addStop(
+      source, { kind: 'scheduled', dayId: '2026-08-08', time: '10:00', order: 0 },
+      { id: 's-src', name: 'Belvedere', category: 'sight', place: { kind: 'place', placeId: 'p-src' } },
+      CTX(`a22g${n}`),
+    );
+
+    // Same folded city and name as the source row, so every one of them is a `samePlace`
+    // candidate; a different coordinate, so none of them is reused and `placeForCopy` runs.
+    let target = mintedTrip('trip-tgt', 'user:jacob', `a22h${n}`, [{ name: 'Vienna', centre: VIENNA }]);
+    for (let i = 0; i < n; i++) {
+      target = addPlace(target, {
+        id: `p-tgt-${i}`, cityKey: target.cities[0].key, name: 'Belvedere',
+        at: { lat: 40 + i, lng: 40 + i }, category: 'sight',
+      });
+    }
+
+    const after = copyAcross(target, source, `a22i${n}`);
+    assert.equal(at.reads(), 2, `A-22 Part 2: \`at.lat\` must be read twice with ${n} candidate rows — once by the probe, once by placeForCopy`);
+    assert.equal(lng.reads(), 2, `A-22 Part 2: \`at.lng\` must be read twice with ${n} candidate rows`);
+    assert.deepEqual(
+      after.places.at(-1)!.at, BELVEDERE,
+      'the written row must carry the pair `placeForCopy` read, never a hybrid',
+    );
+  }
+});
+
+// ---------------------------------------------------------------------------
 // R17-2 (QA round 17) — A-20 added `hours: p.hours === undefined ? undefined : hours(p.hours)`
 // to `toJSON` and nothing in the suite failed when it was reverted to `hours: p.hours`
 // (mutation-verified at `909b4a3`: 593/593 green). The mutation is not a no-op — passing the
