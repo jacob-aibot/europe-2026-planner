@@ -54,6 +54,63 @@ for (const [label, mutate, path] of REJECTED) {
   });
 }
 
+// ---------------------------------------------------------------------------
+// R17-3 (QA round 17) — `clockOrNull`'s `HH:MM` refusal, which had no test at all.
+//
+// Deleting `if (s !== '' && !isClockTime(s)) throw …` left 593/593 green at `909b4a3` and
+// 583/583 at `69f551c`, so this is **pre-existing** rather than something A-20 introduced —
+// A-20 only moved the line onto the shared predicate (`model/openingHours.ts`). The
+// consequence is measurable and there is nothing downstream to catch it: with the line gone,
+// `fromJSON` accepts `placement.time: 'PIN 0754'`, `validateTrip` reports nothing about it,
+// and a stop time that is not a time reaches every consumer of `timeVal`/`compareStops`.
+//
+// `clockOrNull` guards three fields, so all three are pinned here rather than just the one the
+// finding named — the two `Booking` ones would otherwise carry the same hole.
+// ---------------------------------------------------------------------------
+
+const NOT_A_CLOCK: Array<[string, (d: any) => void, string]> = [
+  ["placement.time: 'PIN 0754'", (d) => { d.days[1].stops[0].placement.time = 'PIN 0754'; }, '$.days[1].stops[0].placement.time'],
+  ["placement.time: '9:0'", (d) => { d.days[1].stops[0].placement.time = '9:0'; }, '$.days[1].stops[0].placement.time'],
+  ["placement.time: '17:00 '", (d) => { d.days[1].stops[0].placement.time = '17:00 '; }, '$.days[1].stops[0].placement.time'],
+  ["booking startsAt.time", (d) => { d.bookings[0].startsAt.time = 'GYGG45MLA9Q9'; }, '$.bookings[0].startsAt.time'],
+];
+
+test('R17-3: fromJSON refuses a placement.time that is not a clock time, at its own path', () => {
+  for (const [label, mutate, path] of NOT_A_CLOCK) {
+    assert.throws(
+      () => fromJSON(mutated(mutate)),
+      (e: Error) => {
+        assert.equal(e.name, 'TripParseError', `${label} threw ${e.name}`);
+        assert.equal((e as TripParseError).path, path, `${label}: path was "${(e as TripParseError).path}"`);
+        assert.match(e.message, /HH:MM/, `${label}: the refusal must say what it wanted`);
+        return true;
+      },
+      `${label} was ACCEPTED — the only guard on Stop.placement.time is gone`,
+    );
+  }
+});
+
+test('R17-3: the refusal is not a wipe — a blank time and a legal one both still parse', () => {
+  // `clockOrNull` allows `''` on purpose (A-20): a stop's time may be blank, and an opening
+  // time is the field that must be a time. Both halves are asserted so that neither tightening
+  // nor deleting the guard is a silent change.
+  const blank = fromJSON(mutated((d) => { d.days[1].stops[0].placement.time = ''; }));
+  assert.equal(blank.days[1].stops[0].placement.kind === 'scheduled'
+    && blank.days[1].stops[0].placement.time, '');
+  const legal = fromJSON(mutated((d) => { d.days[1].stops[0].placement.time = '9:05'; }));
+  assert.equal(legal.days[1].stops[0].placement.kind === 'scheduled'
+    && legal.days[1].stops[0].placement.time, '9:05');
+  const absent = fromJSON(mutated((d) => { d.days[1].stops[0].placement.time = null; }));
+  assert.equal(absent.days[1].stops[0].placement.kind === 'scheduled'
+    && absent.days[1].stops[0].placement.time, null);
+  // And nothing downstream re-checks it, which is why the parser is the only guard: measured,
+  // not assumed — this is the sentence the finding rests on.
+  assert.deepEqual(
+    validateTrip(legal).filter((i) => JSON.stringify(i.params).includes('9:05')), [],
+    'validateTrip says nothing about placement.time, so deleting the parser guard is unobserved',
+  );
+});
+
 test('fromJSON rejects malformed and truncated JSON', () => {
   assert.throws(() => fromJSON('{ not json'), /./);
   assert.throws(() => fromJSON(toJSON(europe2026().trip).slice(0, 5000)), /./);

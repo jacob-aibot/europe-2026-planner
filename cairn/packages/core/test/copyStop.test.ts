@@ -28,7 +28,9 @@ import { TRANSIT_CITY_KEY } from '../src/model/ids.ts';
 import { needsBadge } from '../src/derive/display.ts';
 // A-20: the ONE definition of a well-formed `OpeningHours`, shared by `fromJSON`,
 // `validateTrip` and `weeklyForCopy`. Off §2.10's surface by design, so it is imported by path.
-import { isWeeklyEntry } from '../src/model/openingHours.ts';
+// A-21 (revision 16) replaced the boolean predicate with a READER that hands back what it read,
+// so the question this file asks is `readWeeklyEntry(w).kind === 'entry'`.
+import { readWeeklyEntry } from '../src/model/openingHours.ts';
 import { resolvePlaceLink } from '../src/derive/geo.ts';
 import type {
   BuildCtx, CostEstimate, LatLng, Link, MoveOverride, Money, Place, Stop, StopPlacement, Trip,
@@ -1595,7 +1597,10 @@ test('R15-2: the six hours shapes are refused by fromJSON, and cast-built still 
 // ---------------------------------------------------------------------------
 // A-20 Part 5(b) — the invariant R16-2 asked for, stated directly:
 //
-//   > if `isWeeklyEntry(w)` and `w != null`, then `weeklyForCopy(w) !== null`.
+//   > if `readWeeklyEntry(w).kind === 'entry'`, then `weeklyForCopy(w) !== null`.
+//
+// (A-20 stated this as `isWeeklyEntry(w) && w != null`; A-21 renamed the predicate to a reader
+// and the two forms are the same set, which `openingHours.test.ts` re-derives row for row.)
 //
 // `weeklyForCopy` is module-private (§2.10), so it is measured where it is observable: the
 // entry a copied place's `hours.weekly` actually holds. Given Part 5(a) — all 11 000 strings
@@ -1604,7 +1609,7 @@ test('R15-2: the six hours shapes are refused by fromJSON, and cast-built still 
 // weaken it and one of R16-2's three shapes crosses as a time that is not a time.
 // ---------------------------------------------------------------------------
 
-test('A-20 5(b): isWeeklyEntry(w) && w != null  ⟹  the entry survives the copy', () => {
+test('A-20 5(b): readWeeklyEntry(w).kind === \'entry\'  ⟹  the entry survives the copy', () => {
   const table: Array<[string, unknown]> = [
     ['a legitimate entry', { day: 1, open: '09:00', close: '17:00' }],
     ['a single-digit hour', { day: 0, open: '9:00', close: '23:59' }],
@@ -1625,13 +1630,13 @@ test('A-20 5(b): isWeeklyEntry(w) && w != null  ⟹  the entry survives the copy
   for (const [label, w] of table) {
     const source = castWithHours({ weekly: [w] });
     const entry = copyAcross(jacobsTarget(), source, `wc${survived}${dropped}`).places[0].hours!.weekly[0];
-    const wellFormed = isWeeklyEntry(w) && w !== null && w !== undefined;
+    const wellFormed = readWeeklyEntry(w).kind === 'entry';
     if (wellFormed) {
-      assert.notEqual(entry, null, `${label}: isWeeklyEntry says well-formed but the copy dropped it (R16-2)`);
+      assert.notEqual(entry, null, `${label}: readWeeklyEntry says well-formed but the copy dropped it (R16-2)`);
       assert.deepEqual(Object.keys(entry!).sort(), ['close', 'day', 'open'], `${label}: an unclassified key crossed`);
       survived++;
     } else {
-      assert.equal(entry, null, `${label}: the copy kept an entry isWeeklyEntry calls malformed`);
+      assert.equal(entry, null, `${label}: the copy kept an entry readWeeklyEntry calls malformed`);
       dropped++;
     }
     // The two readers agree by construction now — one predicate, three call sites.
@@ -1801,4 +1806,304 @@ test('A-19: the written placement is never the caller\'s object, for either bran
   (pooled as { hint: { time: string } }).hint.time = '23:59';
   (scheduled as { order: number }).order = 99;
   assert.equal(toJSON(afterP), before, 'mutating the caller\'s placement after the copy reached the document');
+});
+
+// ---------------------------------------------------------------------------
+// A-21 (ARCHITECTURE revision 16, QA R17-1) — **within one traversal, a field of a
+// caller-supplied value is read exactly once.** The value that was checked is the value that is
+// used, compared, redacted and emitted.
+//
+// A-20 printed `isWeeklyEntry(v): boolean`: a predicate that validates a value and then throws
+// it away, so every consumer had to go back to the object and read the field AGAIN to use it.
+// `weeklyForCopy` therefore read `open` four times and `close` four times. For a plain data
+// object every read is equal — which is why A-20's argument held and why all 53 of QA's parser
+// shapes agreed — but for an **accessor property** they are four different values, and the entry
+// that passed the check is not the entry that crosses. That is R15-1's exact harm, on the person
+// boundary A-15 and A-18 were written to close, reached through the construction that closed it.
+//
+// The injected fault is `flipping` (§0.5): a getter that returns a different value per read,
+// with the last value repeating forever so that a call site's read COUNT cannot change the
+// outcome. The population is a document built **in memory past the type system** — `JSON.parse`
+// produces own data properties and never accessors — i.e. exactly the population
+// `place_hours_malformed` was ratified for.
+//
+// A-21's search found seven more sites in six functions beyond the one R17-1 named; every one
+// below was measured against the shipped body before the fix, and each is one of the ruling's
+// six named mutations.
+// ---------------------------------------------------------------------------
+
+/** A getter that returns a different value on each read — A-21's injected fault. The last value
+ *  repeats forever, so a call site's read COUNT cannot change the outcome. */
+function flipping<T>(values: readonly T[]): () => T {
+  let i = 0;
+  return () => { const v = values[Math.min(i, values.length - 1)] as T; i += 1; return v; };
+}
+
+/**
+ * Installs `key` on `base` as an enumerable accessor over `values`, and hands back a read
+ * counter.
+ *
+ * The counter is what actually pins A-21, and the flipping values alone are not: the values
+ * below are calibrated to the read COUNT of the shipped pre-A-21 body, so a mutation that
+ * re-reads the field once more still lands on a benign value and the value assertion survives
+ * it. `reads()` is the rule stated literally — *a field of a caller-supplied value is read
+ * exactly once* — and it is what turns "re-read `e.open`" and "re-read `c.display`" red.
+ */
+function withAccessor<T extends object>(
+  base: T, key: string, values: readonly unknown[],
+): { value: T; reads: () => number } {
+  let n = 0;
+  const next = flipping(values);
+  Object.defineProperty(base, key, {
+    enumerable: true, configurable: true, get: () => { n += 1; return next(); },
+  });
+  return { value: base, reads: () => n };
+}
+
+const A21_PIN = 'Front door PIN 0754, conf 5814731574';
+
+test('A-21 R17-1: a weekly entry whose `open` is an ACCESSOR crosses as the value that was VALIDATED', () => {
+  // Four reads of `open` in the shipped body: inside `isWeeklyEntry`, inside `redacted(e.open)`,
+  // in the `!==` comparison, and in the object it returned. So the fourth value is the one that
+  // used to reach the recipient's document.
+  const open = withAccessor({ day: 1, close: '17:00' }, 'open', ['9:00', '9:00', '9:00', A21_PIN]);
+  const source = castWithHours({ weekly: [open.value] });
+  const after = copyAcross(jacobsTarget('a21a'), source, 'a21a');
+
+  assert.equal(open.reads(), 1, 'A-21: `open` must be read exactly once for the whole copy');
+  assert.equal(
+    after.places[0].hours!.weekly[0]!.open, '9:00',
+    'the copy emitted a read of `open` that no shape check ever saw — R17-1',
+  );
+  const doc = toJSON(after);
+  for (const needle of ['0754', '5814731574']) {
+    assert.equal(doc.includes(needle), false, `${needle} crossed the person boundary through hours.weekly[0].open`);
+  }
+  // `close` is the same field one column over, and it flips the same way.
+  const close = withAccessor({ day: 1, open: '9:00' }, 'close', ['17:00', '17:00', '17:00', A21_PIN]);
+  const after2 = copyAcross(jacobsTarget('a21b'), castWithHours({ weekly: [close.value] }), 'a21b');
+  assert.equal(close.reads(), 1, 'A-21: `close` must be read exactly once for the whole copy');
+  assert.equal(after2.places[0].hours!.weekly[0]!.close, '17:00');
+  assert.equal(toJSON(after2).includes('0754'), false);
+});
+
+test('A-21: `cost.display` is the same leak, unfiled — A-18\'s own field by A-18\'s own construction', () => {
+  // `display` ×4: `c.display === null`, `redacted(c.display)`, `=== c.display`, `? c.display`.
+  const t = sourceWithFullStop();
+  const day = t.days.find((d) => d.id === '2026-08-07')!;
+  const stop = day.stops[0];
+  const display = withAccessor(
+    { amounts: stop.cost!.amounts, note: stop.cost!.note } as unknown as CostEstimate,
+    'display', ['€25', '€25', '€25', 'conf 5814731574'],
+  );
+  const cost = display.value;
+  const source: Trip = {
+    ...t,
+    days: t.days.map((d) => (d.id !== '2026-08-07' ? d : { ...d, stops: [{ ...stop, cost }] })),
+  };
+
+  const after = copyAcross(jacobsTarget('a21c'), source, 'a21c');
+  const copy = copiedStop(after);
+  assert.equal(display.reads(), 1, 'A-21: `cost.display` must be read exactly once for the whole copy');
+  assert.equal(copy.cost!.display, '€25', 'the display that was redaction-checked is not the one that crossed');
+  assert.deepEqual(
+    copy.cost!.amounts, [{ lo: 10, hi: 20, currency: 'EUR', basis: 'per_person' }],
+    'the price itself must be unmoved — A-18 keeps `amounts` intact so `costLabel` still has a figure',
+  );
+  assert.equal(toJSON(after).includes('5814731574'), false, 'a booking reference crossed through cost.display');
+});
+
+test('A-21: a flipping `cost.amounts` does not throw out of copyStopInto — §2.1', () => {
+  // `amounts` ×2: `Array.isArray(c.amounts)` said "array", `c.amounts` handed back a string, and
+  // `.map is not a function` came out of a function §2.1 says does not throw on a document.
+  const t = sourceWithFullStop();
+  const day = t.days.find((d) => d.id === '2026-08-07')!;
+  const stop = day.stops[0];
+  const amounts = withAccessor(
+    { display: '€25', note: 'tickets at the door' } as unknown as CostEstimate,
+    'amounts', [[{ lo: 1, hi: 2, currency: 'EUR', basis: 'per_person' }], 'nope'],
+  );
+  const source: Trip = {
+    ...t,
+    days: t.days.map((d) => (d.id !== '2026-08-07' ? d : { ...d, stops: [{ ...stop, cost: amounts.value }] })),
+  };
+  let after: Trip;
+  assert.doesNotThrow(() => { after = copyAcross(jacobsTarget('a21d'), source, 'a21d'); });
+  assert.equal(amounts.reads(), 1, 'A-21: `cost.amounts` must be read exactly once for the whole copy');
+  assert.deepEqual(copiedStop(after!).cost!.amounts, [{ lo: 1, hi: 2, currency: 'EUR', basis: 'per_person' }]);
+});
+
+test('A-21: a flipping `hours.weekly` does not throw — R15-2\'s closure, held on an accessor', () => {
+  // `weekly` ×2 in `hoursForCopy`: `Array.isArray(o.weekly)` then `o.weekly.map(...)`.
+  const weekly = withAccessor({} as Record<string, unknown>, 'weekly', [[], 'nope']);
+  const source = castWithHours(weekly.value);
+  let after: Trip;
+  assert.doesNotThrow(
+    () => { after = copyAcross(jacobsTarget('a21e'), source, 'a21e'); },
+    'TypeError: o.weekly.map is not a function — R15-2 reopened on a getter',
+  );
+  assert.equal(weekly.reads(), 1, 'A-21: `hours.weekly` must be read exactly once for the whole copy');
+  assert.deepEqual(after!.places[0].hours!.weekly, [], 'the array that was tested is the array that was mapped');
+});
+
+test('A-21: a flipping `Place.at` does not throw, and the coordinate that crosses is the one that was checked', () => {
+  // `p.at` ×3 in `placeForCopy`: `p.at === null`, `p.at.lat`, `p.at.lng`. Read 1 said "not
+  // null", read 2 was `null`, and `Cannot read properties of null (reading 'lat')` came out.
+  //
+  // Three values, not two: `copyStopInto`'s A-14 block reads `original.at` once ahead of this,
+  // to build the `refiled` probe `samePlace` compares against. A-21 leaves that block verbatim,
+  // so the first value is consumed there and `placeForCopy` sees values 2 and 3.
+  const t = sourceWithFullPlace('ordinary prose');
+  const at = withAccessor(
+    { ...t.places[0] } as Place, 'at',
+    [{ lat: 1, lng: 2 }, { lat: 1, lng: 2 }, null] as unknown[],
+  );
+  const source: Trip = { ...t, places: [at.value] };
+
+  let after: Trip;
+  assert.doesNotThrow(
+    () => { after = copyAcross(jacobsTarget('a21f'), source, 'a21f'); },
+    'a getter on `at` threw a raw TypeError out of copyStopInto',
+  );
+  // TWO, not one, and the second is the disclosed residue rather than an oversight: A-14's own
+  // block reads `original.at` once to build the `refiled` probe `samePlace` compares against,
+  // and A-21 leaves that block verbatim. `placeForCopy` — the function A-21 rewrites — reads it
+  // exactly once. A third read is `placeForCopy` re-reading, and that is the mutation.
+  assert.equal(at.reads(), 2, 'A-21: `placeForCopy` reads `at` once; A-14\'s `refiled` probe is the other');
+  assert.deepEqual(
+    after!.places[0].at, { lat: 1, lng: 2 },
+    'the coordinate that was null-checked must be the coordinate that crosses',
+  );
+});
+
+test('A-21: an out-of-union `place` kind copies as `{kind:\'none\'}` — the alias needed no getter at all', () => {
+  // The ternary's fallthrough was `: src.place`, so a cast-built link with a `kind` outside the
+  // union put the SOURCE's own object — with every key it carried — into the target document.
+  // A-18 position 2 forbids a spread of a source record at any depth; an alias of one is worse.
+  const t = sourceWithFullStop();
+  const day = t.days.find((d) => d.id === '2026-08-07')!;
+  const stop = day.stops[0];
+  const hostileLink = { kind: 'nope', pin: `${A21_PIN} - ask for jacob@example.com` };
+  const link = withAccessor({ ...stop } as Stop, 'place', [hostileLink]);
+  const source: Trip = {
+    ...t,
+    days: t.days.map((d) => (d.id !== '2026-08-07' ? d : { ...d, stops: [link.value] })),
+  };
+
+  const after = copyAcross(jacobsTarget('a21g'), source, 'a21g');
+  const copy = copiedStop(after);
+  assert.equal(link.reads(), 1, 'A-21: `src.place` was read five times; it is read once');
+  assert.deepEqual(copy.place, { kind: 'none' }, 'the hole is the DEFAULT; every branch overwrites it deliberately');
+  assert.notEqual(copy.place, hostileLink, 'the source\'s own PlaceLink object was aliased into the recipient');
+  const doc = toJSON(after);
+  for (const needle of ['0754', '5814731574', 'jacob@example.com']) {
+    assert.equal(doc.includes(needle), false, `${needle} crossed inside an aliased PlaceLink`);
+  }
+});
+
+test('A-21 Part 4(c): a flipping `placement.cityKey` files the stop under the key that was VALIDATED', () => {
+  // A-19 validates `placement.cityKey` against `target.cities` and then emitted a SECOND read of
+  // it into the document, so the throw and the emission could see different values — and the
+  // recipient's document acquires `pool_stop_unknown_city`, the uncleanable issue A-19 exists to
+  // prevent. Three values because the shipped body reads it once against `TRANSIT_CITY_KEY` and
+  // once per city inside `target.cities.some(...)`; the target here has exactly one city.
+  const source = sourceWithPlace({ name: 'Vienna', centre: VIENNA }, { name: 'Belvedere', at: BELVEDERE });
+  const target = jacobsTarget('a21h');
+  const good = target.cities[0].key;
+  const bad = 'city-the-target-does-not-have';
+  assert.equal(target.cities.some((c) => c.key === bad), false, 'the fixture must name a key the target lacks');
+
+  const cityKey = withAccessor({ kind: 'pool' } as unknown as StopPlacement, 'cityKey', [good, good, bad]);
+  let after: Trip;
+  assert.doesNotThrow(
+    () => { after = copyStopInto(target, { trip: source, stopId: 's-src' }, cityKey.value, COPY_CTX('a21h')); },
+  );
+  assert.equal(cityKey.reads(), 1, 'A-21 Part 4(c): the throw and the emission must see one read');
+  assert.deepEqual(after!.pool[0].placement, { kind: 'pool', cityKey: good }, 'filed under the key that was checked');
+  assert.deepEqual(
+    validateTrip(after!).filter((i) => i.code === 'pool_stop_unknown_city'), [],
+    'the recipient inherited an error they did not cause — A-19\'s whole subject',
+  );
+
+  // A-19's rules are otherwise untouched: same throws, same messages, same TRANSIT exemption.
+  assert.throws(
+    () => copyStopInto(target, { trip: source, stopId: 's-src' },
+      { kind: 'pool', cityKey: bad }, COPY_CTX('a21i')),
+    new RegExp(`no such city ${bad} in trip-tgt`),
+  );
+  const transit = copyStopInto(target, { trip: source, stopId: 's-src' },
+    { kind: 'pool', cityKey: TRANSIT_CITY_KEY }, COPY_CTX('a21j'));
+  assert.deepEqual(transit.pool[0].placement, { kind: 'pool', cityKey: TRANSIT_CITY_KEY });
+});
+
+test('A-21 Part 4(c), disclosed consequence: an out-of-union placement `kind` is now REFUSED, not coerced', () => {
+  // `qa/r16-copy-depth.mjs` §3.5 measured the old behaviour and recorded it as *"confirmed, not
+  // filed"*: a `{kind:'nonsense'}` placement fell past A-19's city check (which tested
+  // `kind === 'pool'` first) and then landed on the rebuild ternary's else-arm, writing
+  // `{kind:'pool', cityKey: undefined}` into the recipient's document — a filing nothing badges.
+  //
+  // A-21 Part 4(c) merges the check and the rebuild into ONE branch on the discriminant, so the
+  // else-arm now validates `cityKey` before it emits it and `undefined` is refused. This is a
+  // behaviour change on an argument the type system forbids, it is a direct consequence of the
+  // body A-21 prints rather than a choice made here, and §2.1 calls an out-of-union argument
+  // programmer error either way — refusing it is what §2.1 prescribes. **The probe's §3.5 line
+  // therefore goes red and is reported to QA rather than edited** (A-19 assertion 7). Pinned here
+  // so the change is deliberate and visible rather than an unobserved side effect.
+  const source = sourceWithPlace({ name: 'Vienna', centre: VIENNA }, { name: 'Belvedere', at: BELVEDERE });
+  const target = jacobsTarget('a21k');
+  const before = toJSON(target);
+  assert.throws(
+    () => copyStopInto(target, { trip: source, stopId: 's-src' },
+      { kind: 'nonsense', dayId: '2026-08-08', time: '11:00', order: 0 } as unknown as StopPlacement,
+      COPY_CTX('a21l')),
+    /no such city undefined in trip-tgt/,
+  );
+  assert.equal(toJSON(target), before, 'the target moved behind the throw');
+});
+
+// ---------------------------------------------------------------------------
+// R17-2 (QA round 17) — A-20 added `hours: p.hours === undefined ? undefined : hours(p.hours)`
+// to `toJSON` and nothing in the suite failed when it was reverted to `hours: p.hours`
+// (mutation-verified at `909b4a3`: 593/593 green). The mutation is not a no-op — passing the
+// value through unenumerated re-emits every key a cast-built document put on it, straight into
+// the user's own backup file.
+//
+// The R15-2 test above already builds the cast fixture; this is the key-set assertion on the
+// EXPORTED `hours` that the mutation actually turns red, plus the greppability line beside it.
+// ---------------------------------------------------------------------------
+
+test('R17-2: toJSON rebuilds `hours` field by field — an unenumerated key is not re-emitted', () => {
+  const secret = `${A21_PIN} - ask for jacob@example.com`;
+  const source = castWithHours({
+    weekly: [{ day: 1, open: '09:00', close: '17:00', secret }],
+    note: 'closed in winter',
+    // NOT `CREDENTIAL_HREF`: `sourceWithFullPlace` already carries that in the place's own
+    // `links`, which this document is entitled to export. The needle has to be unique to the
+    // key that must NOT survive, or the assertion measures the wrong field.
+    extraKey: 'https://vendor.example/booking/ZZTOP99',
+  });
+  // The fixture must actually carry the unclassified keys, or it measures nothing.
+  const raw = source.places[0].hours as unknown as Record<string, unknown>;
+  assert.equal('extraKey' in raw, true);
+  assert.equal('secret' in (raw.weekly as Record<string, unknown>[])[0], true);
+
+  const doc = toJSON(source);
+  const exported = JSON.parse(doc).places[0].hours;
+  assert.deepEqual(
+    Object.keys(exported.weekly[0]).sort(), ['close', 'day', 'open'],
+    'an unclassified key on a weekly entry was re-emitted into the export',
+  );
+  assert.deepEqual(Object.keys(exported).sort(), ['note', 'weekly'], 'an unclassified key on `hours` was re-emitted');
+  assert.equal(exported.note, 'closed in winter', 'the rebuild is not a wipe');
+  for (const needle of ['0754', '5814731574', 'jacob@example.com', 'ZZTOP99']) {
+    assert.equal(doc.includes(needle), false, `${needle} reached the user's own backup through toJSON's \`hours\``);
+  }
+
+  // The second property the rebuild exists for: the exported object does not ALIAS the in-memory
+  // `weekly`. `toJSON` stringifies immediately, so it is measured the only way it is observable —
+  // mutate the source's entry after the export and the export must not have moved.
+  const before = toJSON(source);
+  (raw.weekly as Record<string, unknown>[])[0].open = A21_PIN;
+  assert.notEqual(toJSON(source), before, 'the fixture must be mutable, or the aliasing claim is untestable');
+  assert.equal(before.includes(A21_PIN), false, 'the earlier export aliased the live weekly entry');
 });

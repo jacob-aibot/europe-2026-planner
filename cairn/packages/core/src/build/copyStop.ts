@@ -50,19 +50,40 @@
  *   7. **Credit survives acceptance.** `displayStatus` governs the badge; `attribution`
  *      governs the credit line, and every view that renders one renders the other.
  *
+ * **§2.14 A-21 (revision 16, QA R17-1) — a file-wide rule, not five patched lines.**
+ *
+ * > Within one traversal, a field of a caller-supplied value is read exactly **once**. The value
+ * > that was checked is the value that is used, compared, redacted and emitted.
+ *
+ * This file is the one place in the design where data crosses a *person* boundary, and the
+ * discriminator between a safe and an unsafe double read is a judgment call — so this is not the
+ * file to leave one in. The rule is stated for the whole file so that the **next** field added to
+ * `Stop` inherits it, and so that a reviewer can check it in one pass: *"does any field of a
+ * source record appear twice in this function?"* Two carve-outs are used deliberately and neither
+ * is discretionary: a value **core itself constructed** from validated scalars is stable and may
+ * be read freely, and a **discriminant tested against a closed set** where every branch builds a
+ * fresh record may be read more than once, because the worst an unstable discriminant can then
+ * produce is a well-formed record of the wrong variant — a hole, never a leak.
+ *
+ * What A-21 deliberately does **not** do here: it adds **no new defensive guard**. `src.links`
+ * that is a truthy non-array still throws on `.map`, and `[...src.flags]` still throws on a
+ * non-iterable, exactly as before. A-21 is about *which value crosses*, not about whether a
+ * type-lie throws; the latter is R15-2's rule, whose scope A-20 fixed at `hours`.
+ *
  * Pure apart from consuming ids from the injected factory.
  */
 import type {
-  CostEstimate, MoveOverride, OpeningHours, Place, PlaceLink, Provenance, ProvenanceConfidence,
-  Stop, StopPlacement, Trip,
+  CostEstimate, LatLng, Money, MoveOverride, OpeningHours, Place, PlaceLink, Provenance,
+  ProvenanceConfidence, Stop, StopPlacement, Trip,
 } from '../model/types.ts';
-import type { ClockTime, IdFactory, IsoDate, PlaceId, StopId, UserId } from '../model/ids.ts';
+import type { IdFactory, IsoDate, PlaceId, StopId, UserId } from '../model/ids.ts';
 import { addStop } from './stops.ts';
 import type { StopInit } from './stops.ts';
 import { REDACTED, redactText } from './redactText.ts';
 import { requireActor } from './candidates.ts';
 import { normalizeCityName } from '../model/cityName.ts';
-import { isWeeklyEntry } from '../model/openingHours.ts';
+import type { WeeklyEntry } from '../model/openingHours.ts';
+import { readWeeklyEntry } from '../model/openingHours.ts';
 import { TRANSIT_CITY_KEY } from '../model/ids.ts';
 
 export type CopyStopSource = { trip: Trip; stopId: StopId };
@@ -117,13 +138,22 @@ function redacted(s: string): string {
  *
  * The `Array.isArray` guard on `amounts` is R15-2's lesson, not distrust of `parseCost`: the
  * crash R15-2 filed was `.map` on a field a *document* is free to send as something else.
+ *
+ * **A-21:** each field is read into a local **once**. `display` was read four times — the `null`
+ * test, `redacted(c.display)`, the `===` comparison and the value emitted — which is R17-1's leak
+ * on A-18's own field, by A-18's own construction; and `amounts` was read twice, so
+ * `Array.isArray` and `.map` could see different values and raise a `TypeError` out of
+ * `copyStopInto`.
  */
 function costForCopy(c: CostEstimate): CostEstimate {
-  const amounts = Array.isArray(c.amounts) ? c.amounts : [];
+  const rawAmounts: unknown = c.amounts;
+  const display: string | null = c.display;
+  const note: string | undefined = c.note;
+  const amounts: Money[] = Array.isArray(rawAmounts) ? rawAmounts : [];
   return {
     amounts: amounts.map((a) => ({ lo: a.lo, hi: a.hi, currency: a.currency, basis: a.basis })),
-    display: c.display === null ? null : redacted(c.display) === c.display ? c.display : null,
-    ...(c.note === undefined ? {} : { note: redacted(c.note) }),
+    display: display === null ? null : redacted(display) === display ? display : null,
+    ...(note === undefined ? {} : { note: redacted(note) }),
   };
 }
 
@@ -136,11 +166,12 @@ function costForCopy(c: CostEstimate): CostEstimate {
  * that describes the journey survives, which is the difference from `display`.
  */
 function arrivalForCopy(a: MoveOverride): MoveOverride {
-  return {
-    mode: a.mode,
-    mins: a.mins,
-    ...(a.label === undefined ? {} : { label: redacted(a.label) }),
-  };
+  // A-21: `label` was the SAFE double-read form (read 2 goes through `redacted`, which is total
+  // and fails closed), and it is hoisted anyway — the rule for this file is only checkable if it
+  // is TOTAL. "Every field of every record this function reads, once" is a property a reviewer
+  // verifies in one pass; "every field except the ones we judged safe" is a judgment call.
+  const label: string | undefined = a.label;
+  return { mode: a.mode, mins: a.mins, ...(label === undefined ? {} : { label: redacted(label) }) };
 }
 
 /**
@@ -152,9 +183,15 @@ function arrivalForCopy(a: MoveOverride): MoveOverride {
  * across the trip boundary. A field nobody named does not travel; enumeration stops at a
  * **scalar**, never at a field name.
  *
- * **The structural half of the question is no longer asked here.** It is `isWeeklyEntry`, shared
- * with `fromJSON` and `validateTrip`, because R16-2 was three definitions of "well-formed" and no
- * two agreeing. This function's own contribution is one line, and it is a **copy-boundary
+ * **The structural half of the question is no longer asked here.** It is `readWeeklyEntry`,
+ * shared with `fromJSON` and `validateTrip`, because R16-2 was three definitions of "well-formed"
+ * and no two agreeing. **A-21 (revision 16, QA R17-1)** made that reader hand back *what it read*
+ * instead of a boolean: this function used to read `open` four times and `close` four times, and
+ * an accessor property returns a different value on each, so the entry that passed the check was
+ * not the entry that crossed — R15-1's exact harm, on the boundary A-18 closed. Now the three
+ * scalars come out of the reader and nothing re-reads the caller's object.
+ *
+ * This function's own contribution is one line, and it is a **copy-boundary
  * policy, not a shape test**: an opening time that redaction would alter is not a time the
  * recipient could trust, and `null` — `OpeningHours`' own specified unknown (*"Missing day =
  * unknown, never a conflict"*) — is the honest answer rather than a `[redacted]` opening time,
@@ -164,13 +201,16 @@ function arrivalForCopy(a: MoveOverride): MoveOverride {
  * because it is what makes the day someone adds a `REDACTION_PATTERN` that breaks that an
  * architect's problem — a red test — instead of a silent `null`.
  */
-function weeklyForCopy(w: unknown): { day: number; open: ClockTime; close: ClockTime } | null {
-  if (w === null || w === undefined || !isWeeklyEntry(w)) return null;
-  const e = w as { day: number; open: string; close: string };
+function weeklyForCopy(w: unknown): WeeklyEntry | null {
+  const read = readWeeklyEntry(w);
+  if (read.kind !== 'entry') return null;
+  const { day, open, close } = read.entry;
   // A-18 policy, NOT a shape test: an opening time that redaction would alter is not a time the
   // recipient could trust. Provably unreachable for a structurally valid entry — A-20 Part 5(a).
-  if (redacted(e.open) !== e.open || redacted(e.close) !== e.close) return null;
-  return { day: e.day, open: e.open, close: e.close };
+  if (redacted(open) !== open || redacted(close) !== close) return null;
+  // Rebuilt, not `return read.entry`: three scalars cost nothing, and the copy must not become
+  // aliased to the reader's return value if the reader is ever changed to hand back its input.
+  return { day, open, close };
 }
 
 /**
@@ -199,9 +239,14 @@ function hoursForCopy(h: OpeningHours): OpeningHours {
     weekly?: unknown;
     note?: string;
   };
+  // A-21: one read each. `weekly` was read twice — `Array.isArray` said "array" and `.map` then
+  // met a string, which is `TypeError: o.weekly.map is not a function` out of a function this
+  // docstring says never throws, i.e. R15-2's closure reopened on a getter.
+  const weekly: unknown = o.weekly;
+  const note: string | undefined = o.note;
   return {
-    weekly: Array.isArray(o.weekly) ? o.weekly.map(weeklyForCopy) : [],
-    ...(o.note === undefined ? {} : { note: redacted(o.note) }),
+    weekly: Array.isArray(weekly) ? weekly.map(weeklyForCopy) : [],
+    ...(note === undefined ? {} : { note: redacted(note) }),
   };
 }
 
@@ -310,14 +355,20 @@ function refileCityKey(source: Trip, target: Trip, cityKey: string): string | nu
  * default"* inside a typed record.
  */
 function placeForCopy(p: Place, cityKey: string, id: PlaceId): Place {
+  // A-21: one read per field. `at` was read three times — the `null` test, `.lat` and `.lng` —
+  // so a getter whose second read was `null` produced `Cannot read properties of null (reading
+  // 'lat')` out of `copyStopInto`.
+  const at: LatLng | null = p.at;
+  const note: string | undefined = p.note;
+  const hours: OpeningHours | undefined = p.hours;
   return {
     id,
     cityKey,
     name: p.name,
-    at: p.at === null ? null : { lat: p.at.lat, lng: p.at.lng },
+    at: at === null ? null : { lat: at.lat, lng: at.lng },
     category: p.category,
-    ...(p.note === undefined ? {} : { note: redacted(p.note) }),
-    ...(p.hours === undefined ? {} : { hours: hoursForCopy(p.hours) }),
+    ...(note === undefined ? {} : { note: redacted(note) }),
+    ...(hours === undefined ? {} : { hours: hoursForCopy(hours) }),
   };
 }
 
@@ -348,9 +399,6 @@ export function copyStopInto(
   const actorUserId = requireActor('copyStopInto', ctx.actorUserId);
   const src = findAnywhere(source.trip, source.stopId);
   if (!src) throw new Error(`copyStopInto: no such stop ${source.stopId} in ${source.trip.id}`);
-  if (placement.kind === 'scheduled' && !target.days.some((d) => d.id === placement.dayId)) {
-    throw new Error(`copyStopInto: no such day ${placement.dayId} in ${target.id}`);
-  }
   // A-19 (revision 14, QA R15-6). A `placement` is not a record that crosses: it is an ARGUMENT
   // the caller supplies about the TARGET, in the same position and with the same authority as
   // `placement.dayId`. So it is validated exactly as `dayId` is and never re-filed — the primary
@@ -359,41 +407,64 @@ export function copyStopInto(
   // side). `TRANSIT_CITY_KEY` is exempt because `validateTrip` exempts it and because it is the
   // designed "belongs to no city" group — the one honest answer a caller with no city of the
   // target can give. Checked before anything is copied, so nothing is partially built behind it.
-  if (
-    placement.kind === 'pool' &&
-    placement.cityKey !== TRANSIT_CITY_KEY &&
-    !target.cities.some((c) => c.key === placement.cityKey)
-  ) {
-    throw new Error(`copyStopInto: no such city ${placement.cityKey} in ${target.id}`);
-  }
-
+  //
   // A-19 parts 2 and 3, and A-18 position 2 (*no spread of a source record into the target
   // document, at any depth*) applied to the one record the CALLER owns. `makeStop` assigns
   // `placement` as given and `reindex` keeps that same object when the order already matches, so
   // the natural call — `copyStopInto(target, src, srcStop.placement, ctx)`, "copy it where it
   // already sits" — aliased one mutable object into two documents. That is R14-3 one field over.
   //
-  // The asymmetry between the throw above and the dropped `hint` below is the ruling, not an
+  // The asymmetry between the throw and the dropped `hint` is the ruling, not an
   // inconsistency: a REQUIRED field with no honest unknown is refused; an OPTIONAL field with a
   // specified fallback becomes the hole. A hint naming the SOURCE's day is a fact about a
   // document the recipient does not have, and carried across it makes their "Add to the plan"
   // throw `scheduleFromPool: no such day`. Without it, `scheduleFromPool` falls back to
   // `pickDay` + `CAT_DEFAULT_TIME`, which is fully specified.
-  const h = placement.kind === 'pool' ? placement.hint : undefined;
-  const hint =
-    h && target.days.some((d) => d.id === h.dayId)
-      ? { dayId: h.dayId, time: h.time, ...(h.order === undefined ? {} : { order: h.order }) }
-      : undefined;
-  const placed: StopPlacement =
-    placement.kind === 'scheduled'
-      ? { kind: 'scheduled', dayId: placement.dayId, time: placement.time, order: placement.order }
-      : { kind: 'pool', cityKey: placement.cityKey, ...(hint ? { hint } : {}) };
+  //
+  // **A-21 Part 4(c).** `placement.cityKey` was validated against `target.cities` and then a
+  // SECOND read of it was emitted into the document — the banned form, even though A-19
+  // classifies a `placement` as an argument rather than a document, because the throw and the
+  // emission could then see different values and the recipient inherits `pool_stop_unknown_city`,
+  // the uncleanable issue A-19 exists to prevent. The two validation throws and the rebuilt
+  // `placed` merge into one branch on the discriminant so that each field is read once.
+  // **A-19's rules are otherwise untouched: same throws, same messages, same `TRANSIT_CITY_KEY`
+  // exemption, same dropped-hint fallback.** `placement.kind` is read once per branch rather than
+  // hoisted, because hoisting a discriminant into a `const` loses TypeScript's narrowing and
+  // would put back the very casts A-21 removes — that is what the discriminant carve-out is for.
+  // The two throws are now in mutually exclusive branches, which is unobservable: they were
+  // already mutually exclusive by `kind`.
+  let placed: StopPlacement;
+  if (placement.kind === 'scheduled') {
+    const dayId = placement.dayId;
+    const time = placement.time;
+    const order = placement.order;
+    if (!target.days.some((d) => d.id === dayId)) {
+      throw new Error(`copyStopInto: no such day ${dayId} in ${target.id}`);
+    }
+    placed = { kind: 'scheduled', dayId, time, order };
+  } else {
+    const cityKey = placement.cityKey;
+    const h = placement.hint;
+    if (cityKey !== TRANSIT_CITY_KEY && !target.cities.some((c) => c.key === cityKey)) {
+      throw new Error(`copyStopInto: no such city ${cityKey} in ${target.id}`);
+    }
+    // One read per hint field, into an object core owns. Everything below reads THAT object,
+    // which is stable by construction — the carve-out, used deliberately.
+    const hintFields = h === undefined ? undefined : { dayId: h.dayId, time: h.time, order: h.order };
+    const hint =
+      hintFields !== undefined && target.days.some((d) => d.id === hintFields.dayId)
+        ? { dayId: hintFields.dayId, time: hintFields.time,
+            ...(hintFields.order === undefined ? {} : { order: hintFields.order }) }
+        : undefined;
+    placed = { kind: 'pool', cityKey, ...(hint ? { hint } : {}) };
+  }
 
   // Rule 2 — built from scratch, never spread from the source.
+  const confidence: ProvenanceConfidence = src.provenance.confidence;   // A-21: one read.
   const provenance: Provenance = {
     source: 'friend',
     state: 'candidate',
-    confidence: demote(src.provenance.confidence),
+    confidence: demote(confidence),
     origin: {
       friendUserId: source.trip.ownerId,
       sourceTripId: source.trip.id,
@@ -406,22 +477,30 @@ export function copyStopInto(
 
   // Rule 4 — the place travels RE-FILED under the target's own city, or an equivalent one in
   // the target is reused, or it does not travel at all and the coordinate goes instead.
+  const srcPlace: PlaceLink = src.place;   // A-21: ONE read of the field.
   let withPlace = target;
   // R14-3: the initial value must be a CLONE, not the source's own `PlaceLink`. Aliasing it
   // left the two documents sharing one `PlaceLink` object — and, for `{kind:'inline'}`, one
   // mutable `LatLng` — which is the same purity defect A-14's own step-3 branch below already
   // avoids. The `{kind:'place'}` case is fully replaced by the block below, in every branch.
-  let place: PlaceLink =
-    src.place.kind === 'inline'
-      ? { kind: 'inline', at: { lat: src.place.at.lat, lng: src.place.at.lng } }
-      : src.place.kind === 'none'
-        ? { kind: 'none' }
-        : src.place;
-  if (src.place.kind === 'place') {
-    const original = source.trip.places.find((p) => p.id === (src.place as { placeId: string }).placeId);
-    if (!original) {
-      place = { kind: 'none' }; // the source's own link dangled; do not invent one
-    } else {
+  //
+  // **A-21:** the hole is the DEFAULT, and every branch below overwrites it deliberately. It used
+  // to be `: src.place` — so a cast-built link with an out-of-union `kind` put the SOURCE's own
+  // object, with every key it carried, into the target document. A-18 position 2 forbids a spread
+  // of a source record at any depth; an alias of one is worse, and this was the only one left.
+  // `srcPlace.kind` is read in two tests, which the discriminant carve-out permits: each branch
+  // constructs a fresh record and the worst an unstable `kind` yields is `{kind:'none'}`, a hole.
+  let place: PlaceLink = { kind: 'none' };
+  if (srcPlace.kind === 'inline') {
+    place = { kind: 'inline', at: { lat: srcPlace.at.lat, lng: srcPlace.at.lng } };
+  } else if (srcPlace.kind === 'place') {
+    // `srcPlace.placeId` is read once, as a lookup KEY against the source-side row, which
+    // `placeForCopy` then rebuilds field by field. The `as {placeId: string}` cast is gone —
+    // narrowing a `const` of a discriminated union needs none.
+    const original = source.trip.places.find((p) => p.id === srcPlace.placeId);
+    // `original` missing → `place` stays `{kind:'none'}`: the source's own link dangled, and we
+    // do not invent one. Everything below is A-14/A-15/A-16, unchanged.
+    if (original) {
       const targetKey = refileCityKey(source.trip, target, original.cityKey);
       if (targetKey === null) {
         // A-14 step 3 — no city in the target answers to the source city's name, so there is
@@ -455,15 +534,31 @@ export function copyStopInto(
     }
   }
 
+  // A-21, the file-wide rule applied to the source stop itself: every field of `src` is read
+  // into a `const` ONCE, ahead of the literal. `cost`, `arrival` and `links` were each read
+  // twice — a truthiness test and then the value passed on — which is the banned form: the value
+  // that was tested is not necessarily the value that crosses. The rest are already single-read
+  // and are hoisted anyway, so that the NEXT field added to `Stop` inherits the rule rather than
+  // having to rediscover it.
+  const name = src.name;
+  const category = src.category;
+  const note = src.note;
+  const cost: Stop['cost'] = src.cost;
+  const arrival: Stop['arrival'] = src.arrival;
+  const travelRole = src.travelRole;
+  const flags = src.flags;
+  const links: Stop['links'] = src.links;
+  const durationMins = src.durationMins;
+
   const init: StopInit = {
     id: ctx.ids.newId('stop'),
-    name: src.name,
-    category: src.category,
+    name,
+    category,
     place,
     // Rule 5 amended, BUILD-NOTES §1 KD-20: free text is where the leak was. `note` is prose
     // someone typed, and prose is exactly where a door PIN or a booking confirmation ends up.
     // Run it through the same pattern set §6.6 uses.
-    note: redacted(src.note),
+    note: redacted(note),
     // Rule 3 amended by A-18 (revision 14, QA R15-3) — the money is a description of the world;
     // the booking and the ticket are not, and NEITHER IS THE PROSE BESIDE THE MONEY. `cost.note`
     // and `arrival.label` are free text nested one record inward, and a field list is only
@@ -471,20 +566,20 @@ export function copyStopInto(
     // not which STRINGS do. §6.6's sample path redacts both today, so the two thresholds
     // disagreed about exactly these two strings — the "sample fails closed, copy fails open"
     // asymmetry A-15 called the finding, reproduced one record inward.
-    cost: src.cost ? costForCopy(src.cost) : null,
-    arrival: src.arrival ? arrivalForCopy(src.arrival) : null,
-    travelRole: src.travelRole,
+    cost: cost ? costForCopy(cost) : null,
+    arrival: arrival ? arrivalForCopy(arrival) : null,
+    travelRole,
     bookingId: null,
-    flags: [...src.flags],
+    flags: [...flags],
     provenance,
-    durationMins: src.durationMins,
+    durationMins,
     // A-18 position 2: same policy, different construction. A-15's disclosed residue stands —
     // a `Stop`'s links still travel, with the same reopening trigger (*the day anything writes
     // `Stop.links` from a source the user did not type*) — but `{ ...l }` is a spread of a source
     // record, and *no record that crosses the trip boundary is copied by spread, at any depth*
     // admits no exceptions. `qa/r2-copy.mjs` §H, which asserts two order-shaped hrefs travel, is
     // the policy this deliberately does not change.
-    ...(src.links ? { links: src.links.map((l) => ({ label: l.label, href: l.href })) } : {}),
+    ...(links ? { links: links.map((l) => ({ label: l.label, href: l.href })) } : {}),
     // no `ticket`: §6.6, a ticket is an access credential
   };
 

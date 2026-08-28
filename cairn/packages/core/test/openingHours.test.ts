@@ -15,10 +15,25 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { isClockTime, isOpeningHours, isWeeklyEntry } from '../src/model/openingHours.ts';
+import { isClockTime, isOpeningHours, readWeeklyEntry } from '../src/model/openingHours.ts';
 import { redactText } from '../src/build/redactText.ts';
-import { fromJSON, toJSON, TripParseError } from '../src/index.ts';
+import { fromJSON, toJSON, validateTrip, TripParseError } from '../src/index.ts';
+import type { Place, Trip } from '../src/index.ts';
 import { europe2026 } from './fixture.ts';
+
+/** A getter that returns a different value on each read — A-21's injected fault. The last value
+ *  repeats forever, so a call site's read COUNT cannot change the outcome. */
+function flipping<T>(values: readonly T[]): () => T {
+  let i = 0;
+  return () => { const v = values[Math.min(i, values.length - 1)] as T; i += 1; return v; };
+}
+
+/**
+ * A-21's own definition of "well-formed entry", expressed through the reader that replaced the
+ * boolean predicate: `readWeeklyEntry(v).kind !== 'malformed'` ⟺ the old `isWeeklyEntry(v)`.
+ * The table below is A-20's, row for row, and no row's verdict moves.
+ */
+const wellFormedEntry = (v: unknown): boolean => readWeeklyEntry(v).kind !== 'malformed';
 
 // ---------------------------------------------------------------------------
 // The predicates themselves.
@@ -37,26 +52,36 @@ test('isClockTime: H:MM and HH:MM, and nothing else', () => {
   }
 });
 
-test('isWeeklyEntry: absence is the model\'s own unknown; a present entry is three named fields', () => {
-  // §7: "Missing day = unknown, never a conflict." Absence is not malformed.
-  assert.equal(isWeeklyEntry(null), true);
-  assert.equal(isWeeklyEntry(undefined), true, 'fromJSON normalises an undefined slot to null');
+test('readWeeklyEntry: absence is the model\'s own unknown; a present entry is three named fields', () => {
+  // §7: "Missing day = unknown, never a conflict." Absence is not malformed — and A-21 gives it
+  // its own arm, because `null` cannot mean both "absent, and that is valid" and "malformed".
+  assert.deepEqual(readWeeklyEntry(null), { kind: 'absent' });
+  assert.deepEqual(readWeeklyEntry(undefined), { kind: 'absent' }, 'fromJSON normalises an undefined slot to null');
+  assert.equal(wellFormedEntry(null), true);
+  assert.equal(wellFormedEntry(undefined), true);
 
-  assert.equal(isWeeklyEntry({ day: 1, open: '09:00', close: '17:00' }), true);
-  assert.equal(isWeeklyEntry({ day: 0, open: '9:00', close: '23:59' }), true);
+  assert.equal(wellFormedEntry({ day: 1, open: '09:00', close: '17:00' }), true);
+  assert.equal(wellFormedEntry({ day: 0, open: '9:00', close: '23:59' }), true);
   // A-20: extra keys on an entry are NOT malformed — the parser drops them, exactly as
   // `parseLinks` drops a third key on a `Link`, and reporting them would be over-reporting.
-  assert.equal(isWeeklyEntry({ day: 1, open: '09:00', close: '17:00', note: 'x' }), true);
+  assert.equal(wellFormedEntry({ day: 1, open: '09:00', close: '17:00', note: 'x' }), true);
   // A-20: no `day` range check. `0 ≤ day ≤ 6` is a claim about MEANING, and a rule with no
   // consumer has no injected-fault criterion (§0.5).
-  assert.equal(isWeeklyEntry({ day: 99, open: '09:00', close: '17:00' }), true);
-  assert.equal(isWeeklyEntry({ day: -3.5, open: '09:00', close: '17:00' }), true);
+  assert.equal(wellFormedEntry({ day: 99, open: '09:00', close: '17:00' }), true);
+  assert.equal(wellFormedEntry({ day: -3.5, open: '09:00', close: '17:00' }), true);
+
+  // A-21: the reader HANDS BACK what it read, and it hands back three named fields — never the
+  // caller's own object, so nothing unenumerated rides out of it either.
+  assert.deepEqual(
+    readWeeklyEntry({ day: 1, open: '09:00', close: '17:00', note: 'PIN 0754' }),
+    { kind: 'entry', entry: { day: 1, open: '09:00', close: '17:00' } },
+  );
 
   // The three shapes R16-2 measured as dropped-by-the-copy-and-unwarned-by-validateTrip. The
   // whole point of A-20 is that all three are now false HERE, in one place, for both readers.
-  assert.equal(isWeeklyEntry({ day: 1, open: '9:00', close: '170000' }), false);
-  assert.equal(isWeeklyEntry({ day: 1, open: 'https://vendor.test/x', close: '17:00' }), false);
-  assert.equal(isWeeklyEntry({ day: 1, open: 'YZGDTS', close: '17:00' }), false);
+  assert.equal(wellFormedEntry({ day: 1, open: '9:00', close: '170000' }), false);
+  assert.equal(wellFormedEntry({ day: 1, open: 'https://vendor.test/x', close: '17:00' }), false);
+  assert.equal(wellFormedEntry({ day: 1, open: 'YZGDTS', close: '17:00' }), false);
 
   for (const bad of [
     { open: '09:00', close: '17:00' },                       // no day
@@ -70,8 +95,79 @@ test('isWeeklyEntry: absence is the model\'s own unknown; a present entry is thr
     [{ day: 1, open: '09:00', close: '17:00' }],             // an array is not an entry
     'mon 9-5', 7, true,
   ]) {
-    assert.equal(isWeeklyEntry(bad), false, `${JSON.stringify(bad)} is not a weekly entry`);
+    assert.deepEqual(readWeeklyEntry(bad), { kind: 'malformed' }, `${JSON.stringify(bad)} is not a weekly entry`);
   }
+});
+
+// ---------------------------------------------------------------------------
+// A-21 (revision 16, QA R17-1) — the value that was CHECKED is the value that is USED.
+//
+// A-20 printed `isWeeklyEntry(v): boolean`, which validates a value and then throws it away, so
+// every consumer had to go back to the caller's object and read the field again to use it. For a
+// plain data object every read is equal; for an ACCESSOR property they are different values, and
+// the entry that passed the check is not the entry that crosses. `readWeeklyEntry` returns what
+// it read, so there is no second read to disagree with the first.
+//
+// Here that is measured on the two functions this file owns — the predicate itself, and the two
+// traversals A-21 says must not throw out of an export or out of `validateTrip`.
+// ---------------------------------------------------------------------------
+
+test('A-21: readWeeklyEntry reads each field exactly ONCE, and returns what it read', () => {
+  const counts = { day: 0, open: 0, close: 0 };
+  const openFlip = flipping(['09:00', 'Front door PIN 0754, conf 5814731574']);
+  const closeFlip = flipping(['17:00', 'https://vendor.example/booking/GYGG45MLA9Q9']);
+  const entry = {};
+  Object.defineProperty(entry, 'day', { enumerable: true, get: () => { counts.day++; return 1; } });
+  Object.defineProperty(entry, 'open', { enumerable: true, get: () => { counts.open++; return openFlip(); } });
+  Object.defineProperty(entry, 'close', { enumerable: true, get: () => { counts.close++; return closeFlip(); } });
+
+  const read = readWeeklyEntry(entry);
+  assert.deepEqual(counts, { day: 1, open: 1, close: 1 }, 'A-21: one read per field, no more');
+  assert.deepEqual(read, { kind: 'entry', entry: { day: 1, open: '09:00', close: '17:00' } },
+    'the reader must hand back the values it validated, not a second read of them');
+});
+
+test('A-21: isOpeningHours does not throw on a flipping `weekly` — its docstring says it throws nothing', () => {
+  // `o.weekly` ×2 was `Array.isArray(o.weekly)` then `o.weekly.every(...)`: read 1 says "array",
+  // read 2 is a string, and `.every is not a function` came out of a predicate documented not to
+  // throw — and out of `validateTrip`, whose docstring says "Nothing here throws".
+  // Each object is asked EXACTLY ONCE: a second call is a second traversal, and A-21 Part 6 is
+  // explicit that two traversals of an unstable document may legitimately disagree.
+  const hostile = {};
+  Object.defineProperty(hostile, 'weekly', { enumerable: true, get: flipping<unknown>([[], 'nope']) });
+  let weeklyAnswer: unknown;
+  assert.doesNotThrow(() => { weeklyAnswer = isOpeningHours(hostile); });
+  assert.equal(weeklyAnswer, true, 'the value it TESTED is the value it answered about');
+
+  // `note` ×2 is the same shape one field over: read 1 `!== undefined`, read 2 `typeof`.
+  const noteHostile: Record<string, unknown> = { weekly: [] };
+  Object.defineProperty(noteHostile, 'note', { enumerable: true, get: flipping<unknown>(['ok', 7]) });
+  let noteAnswer: unknown;
+  assert.doesNotThrow(() => { noteAnswer = isOpeningHours(noteHostile); });
+  assert.equal(noteAnswer, true);
+});
+
+test('A-21: toJSON and validateTrip both survive a flipping `weekly`, and neither throws', () => {
+  const { trip } = europe2026();
+  const hostileHours = {};
+  Object.defineProperty(hostileHours, 'weekly', {
+    enumerable: true, get: flipping<unknown>([[], 'nope']),
+  });
+  const src: Trip = {
+    ...trip,
+    places: trip.places.map((p, i) => (i === 0 ? { ...p, hours: hostileHours as Place['hours'] } : p)),
+  };
+
+  // §2.1: core throws on programmer error. A document shape is not programmer error, and an
+  // export may not throw on one.
+  let doc = '';
+  assert.doesNotThrow(() => { doc = toJSON(src); }, 'toJSON threw on a flipping weekly');
+  assert.deepEqual(JSON.parse(doc).places[0].hours, { weekly: [] },
+    'the array `Array.isArray` accepted is the array that was mapped');
+
+  let issues: ReturnType<typeof validateTrip> | null = null;
+  assert.doesNotThrow(() => { issues = validateTrip(src); }, 'validateTrip threw on a flipping weekly');
+  assert.ok(Array.isArray(issues), 'validateTrip must return an Issue[], not throw');
 });
 
 test('isOpeningHours: an object with a weekly ARRAY and, if present, a string note', () => {
@@ -189,8 +285,18 @@ test('A-20 assertion 3: fromJSON accepts a legal hours, drops an extra key, norm
   }
 
   // An `undefined` slot is ABSENCE, which the parser normalises rather than refuses. JSON has
-  // no `undefined`, so this is `fromJSON`'s already-parsed-object input, which is a live route
-  // (`store.importDoc` and `cli` both pass one).
+  // no `undefined`, so this exercises `fromJSON`'s already-parsed-object arm.
+  //
+  // **R17-4 (QA round 17): that arm is NOT a live route today, and this comment used to claim it
+  // was.** Every shipped caller hands `fromJSON` a string — `store.importDoc` calls
+  // `core.fromJSON(text)`, `store.ts`'s three internal calls pass `stored.doc` whose type is
+  // `TripDoc = string` (`packages/client/src/ports/types.ts`), `cli.ts:37` passes
+  // `readFileSync(file, 'utf8')`, `apps/web/src/sample.ts` passes `JSON.stringify(raw)` and
+  // `tools/gen-sample.mjs` passes `toJSON(...)`. The distinction is load-bearing precisely because
+  // this project keeps making reachability arguments out of it (*"a document can do this"* vs
+  // *"only an in-process caller can"*) — R17-1's own severity turned on it. So: the object arm is
+  // an IN-PROCESS entry point with no shipped caller, kept because `parseTrip` accepts one and an
+  // untested accepted input is how the last four rounds of findings started.
   const raw = JSON.parse(withHours({ weekly: [] })) as Doc;
   (raw.places as Doc[])[0].hours = { weekly: [undefined, null] };
   const undef = fromJSON(raw);
@@ -240,7 +346,7 @@ test('A-20 assertion 5: the clock-shape regex appears exactly once in packages/c
 test('A-20 assertion 6: isOpeningHours is NOT on the public surface (§2.10 stays at 71)', async () => {
   const core = await import('../src/index.ts');
   assert.equal(Object.keys(core).length, 71);
-  for (const name of ['isClockTime', 'isWeeklyEntry', 'isOpeningHours']) {
+  for (const name of ['isClockTime', 'readWeeklyEntry', 'isOpeningHours']) {
     assert.equal(name in core, false, `${name} widened §2.10's surface`);
   }
 });

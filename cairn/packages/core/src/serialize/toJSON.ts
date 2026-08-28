@@ -44,6 +44,15 @@ function city(c: City) {
  *
  * So anything not of the declared shape passes through untouched — the same defensive treatment
  * `hoursForCopy` gives an in-memory document, and for the same reason (R15-2).
+ *
+ * **A-21 (revision 16, QA R17-1):** `weekly` is read into a local **once**, so `Array.isArray`
+ * and `.map` see the same value and an accessor property cannot produce `o.weekly.map is not a
+ * function` out of an export. The rest of `toJSON` is deliberately out of scope, and the boundary
+ * is principled rather than arbitrary: `toJSON` writes the user's own document back to the user,
+ * so an unstable getter elsewhere in this file costs that caller their own data, crosses no
+ * boundary and leaks to nobody. `place()`'s `p.at ? {lat: p.at.lat, …} : null` has the same shape
+ * and is knowingly left; the day something other than a person's own hand builds a `Trip` in
+ * memory — a native bridge, an ingest worker (§5.1) — is the trigger to sweep this file whole.
  */
 function weeklyOut(w: unknown): unknown {
   if (w === null || typeof w !== 'object' || Array.isArray(w)) return w;
@@ -55,8 +64,9 @@ function hours(h: Place['hours']): unknown {
   const raw = h as unknown;
   if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) return raw;
   const o = raw as { weekly?: unknown; note?: unknown };
-  return omitUndef({
-    weekly: Array.isArray(o.weekly) ? o.weekly.map(weeklyOut) : o.weekly,
+  const weekly: unknown = o.weekly;              // A-21: one read; `Array.isArray` and `.map` see
+  return omitUndef({                             // the same value, so an export cannot throw here.
+    weekly: Array.isArray(weekly) ? weekly.map(weeklyOut) : weekly,
     note: o.note,
   });
 }
