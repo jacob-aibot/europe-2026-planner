@@ -9,6 +9,63 @@ import { countryOf } from './country.ts';
 import { stopLatLng } from './geo.ts';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+/**
+ * The civil calendar these helpers run on — ARCHITECTURE §2.1 **A-32** (QA R28-1).
+ *
+ * `Date.UTC` applies the ES **legacy two-digit-year rule** (a `year` argument of 0–99 means
+ * 1900–1999), so `dayNumber('0001-01-01')` used to be 1901's — measured, both `-25202`. The
+ * arithmetic below is Howard Hinnant's `days_from_civil` / `civil_from_days` (*chrono-Compatible
+ * Low-Level Date Algorithms*, public domain): constant-time, exact over the whole proleptic
+ * Gregorian calendar, and with **no two-digit-year special case because it has no `Date` in it**.
+ *
+ * > **An `IsoDate` is a proleptic Gregorian calendar date in `YYYY-MM-DD`, from `0000-01-01` to
+ * > `9999-12-31` inclusive.** `model/ids.ts`'s `isIsoDate` is the definition and has always
+ * > implemented exactly this. There is no floor and no ceiling inside that range.
+ *
+ * Both are module-private: neither goes on §2.10's surface and neither is exported from here.
+ */
+const EPOCH_SHIFT = 719468;   // days from 0000-03-01 to 1970-01-01, the era's own origin
+const ERA_DAYS = 146097;      // days in a 400-year Gregorian era
+
+/**
+ * Days since 1970-01-01 for a civil (y, m, d), proleptic Gregorian. Pure, no `Date`.
+ *
+ * The first two lines normalise an out-of-range month **exactly as `Date.UTC` does**, because
+ * `fromJSON` accepts a shape-valid, calendar-invalid date (`2026-13-45`) and `validateTrip`
+ * *reports* it rather than refusing it (§2.9 A-20) — so this function must stay total on one, and
+ * must not change the day it has always answered with.
+ *
+ * Every `/` is a **floor** division, written as `Math.floor`. Do not "simplify" one to `| 0` or
+ * `~~`: `| 0` truncates toward zero and is wrong for a negative year, and both coerce through
+ * int32, which `z = 2932896 + 719468` survives and a future range may not.
+ */
+function daysFromCivil(year: number, month: number, day: number): number {
+  const y0 = year + Math.floor((month - 1) / 12);
+  const m = ((month - 1) % 12 + 12) % 12 + 1;
+  const y = y0 - (m <= 2 ? 1 : 0);              // the era's year starts in March
+  const era = Math.floor(y / 400);
+  const yoe = y - era * 400;                    // [0, 399]
+  const doy = Math.floor((153 * (m > 2 ? m - 3 : m + 9) + 2) / 5) + day - 1;
+  const doe = yoe * 365 + Math.floor(yoe / 4) - Math.floor(yoe / 100) + doy;
+  return era * ERA_DAYS + doe - EPOCH_SHIFT;
+}
+
+/** The inverse. Pure, no `Date`. Total for every integer. */
+function civilFromDays(n: number): { y: number; m: number; d: number } {
+  const z = n + EPOCH_SHIFT;
+  const era = Math.floor(z / ERA_DAYS);
+  const doe = z - era * ERA_DAYS;               // [0, 146096]
+  const yoe = Math.floor((doe - Math.floor(doe / 1460) + Math.floor(doe / 36524)
+    - Math.floor(doe / 146096)) / 365);         // [0, 399]
+  const y = yoe + era * 400;
+  const doy = doe - (365 * yoe + Math.floor(yoe / 4) - Math.floor(yoe / 100));
+  const mp = Math.floor((5 * doy + 2) / 153);   // [0, 11]
+  const d = doy - Math.floor((153 * mp + 2) / 5) + 1;
+  const m = mp + (mp < 10 ? 3 : -9);
+  return { y: y + (m <= 2 ? 1 : 0), m, d };
+}
 
 /** Parses `YYYY-MM-DD` without touching `Date`. Pure; throws on a malformed date. */
 export function parseIsoDate(d: IsoDate): { y: number; m: number; d: number } {
@@ -17,17 +74,27 @@ export function parseIsoDate(d: IsoDate): { y: number; m: number; d: number } {
   return { y: Number(m[1]), m: Number(m[2]), d: Number(m[3]) };
 }
 
-/** Days since 1970-01-01 for a `YYYY-MM-DD`. Pure, timezone-free. */
+/** Days since 1970-01-01 for a `YYYY-MM-DD`. Pure, timezone-free, no `Date` (A-32). */
 export function dayNumber(d: IsoDate): number {
   const { y, m, d: dd } = parseIsoDate(d);
-  return Math.floor(Date.UTC(y, m - 1, dd) / 86400000);
+  return daysFromCivil(y, m, dd);
 }
 
-/** `YYYY-MM-DD` for a day number. Pure, timezone-free. */
+/**
+ * `YYYY-MM-DD` for a day number. Pure, timezone-free, no `Date` (A-32).
+ *
+ * The year is padded to **four** digits, which is the half of R28-1 that silently minted
+ * `"202-01-01"` into a stored document. A day number outside `IsoDate`'s domain renders
+ * faithfully rather than being clamped or thrown on — five digits, or a leading `-` — so the
+ * caller gets a string `parseIsoDate` refuses instead of a plausible wrong date. This is
+ * deliberately **not** a throw (A-32 Part 4): the only path that reaches one runs through
+ * `validateTrip` on a document `fromJSON` accepted, and §2.1 forbids a throw there.
+ */
 export function fromDayNumber(n: number): IsoDate {
-  const dt = new Date(n * 86400000);
+  const { y, m, d } = civilFromDays(n);
   const p = (x: number) => String(x).padStart(2, '0');
-  return `${dt.getUTCFullYear()}-${p(dt.getUTCMonth() + 1)}-${p(dt.getUTCDate())}`;
+  const year = y < 0 ? `-${String(-y).padStart(4, '0')}` : String(y).padStart(4, '0');
+  return `${year}-${p(m)}-${p(d)}`;
 }
 
 /** Adds days to an ISO date. Pure. */
@@ -40,10 +107,11 @@ export function dateSpan(start: IsoDate, end: IsoDate): number {
   return dayNumber(end) - dayNumber(start) + 1;
 }
 
-/** Three-letter weekday, Sun-first index. Pure. */
+/** Three-letter weekday, Sun-first index. Pure, no `Date` (A-32). */
 export function weekdayOf(d: IsoDate): string {
   const { y, m, d: dd } = parseIsoDate(d);
-  return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date(Date.UTC(y, m - 1, dd)).getUTCDay()];
+  // 1970-01-01 is day 0 and was a Thursday, hence the +4; the double modulo is for day < 0.
+  return WEEKDAYS[((daysFromCivil(y, m, dd) + 4) % 7 + 7) % 7];
 }
 
 /**

@@ -341,10 +341,29 @@ exist and are printable from the command line (<code>node cli.ts stats</code>), 
 <strong>Map and Profile screens are I-8</strong>, which is where 2b actually ships.
 <strong>Verification:</strong> I-5 through I-6a have all been attacked (QA rounds 22&ndash;27, the
 last one clean of blockers), and <strong>I-7 has now been attacked too &mdash; QA round 28,
-2026-08-28, and it did not pass.</strong> No manager verdict exists for any of 2b.
+2026-08-28, and it did not pass.</strong> <strong>I-7a then fixed everything that round found, and
+has not itself been attacked yet.</strong> No manager verdict exists for any of 2b.
 Built &#9989; &middot; verified &#9898; &middot; shippable &#9898;.</p>
-<p><strong>&#128308; What round 28 found, and what happens before I-8.</strong> The statistics
-function itself held up under everything the tester threw at it. Two things underneath it did not.
+<p><strong>&#128993; I-7a IS BUILT &mdash; every one of round 28&rsquo;s findings is closed in
+code, and nobody has attacked the fixes yet.</strong> Dates before the year 1000 are now real years:
+the app does its own calendar arithmetic instead of asking JavaScript&rsquo;s <code>Date</code>, so
+a trip recorded as year <code>0202</code> stores, reopens and validates like any other, and the year
+comes back four digits wide instead of three. The rule that stops a lifetime total ever being
+<em>saved</em> was rewritten to check <strong>what is actually written into storage</strong> rather
+than what the source code declares &mdash; including reading the rows back out of a real store after
+a real save &mdash; and the ten ways a tester found to smuggle a total past the old rule are now ten
+faults the new one is checked against. And the command line stops presenting a country you reach
+next week as somewhere you have been: those rows now say <strong>&ldquo;&middot; in
+progress&rdquo;</strong>, with a one-line explanation underneath, and are marked rather than hidden
+&mdash; because hiding them would tell someone standing in Vienna that they have never been there.
+Four smaller fixes came with it: a crash on a stale saved row (which the app itself could produce
+for a second between opening the trip list and finishing its repair pass), a count that could go
+negative, one field with two different answers to <em>&ldquo;is this country unknown&rdquo;</em>,
+and <code>--today gibberish</code> printing a wall of red stack trace instead of one line.
+<strong>I-7a is built &#9989; &middot; verified &#9898; &middot; shippable &#9898;</strong> &mdash;
+QA round 29 is what would move the second one.</p>
+<p><strong>&#128308; What round 28 found, and what happens before I-8.</strong> <em>(History as of
+I-7a.)</em> The statistics function itself held up under everything the tester threw at it. Two things underneath it did not.
 <strong>(1) Dates before the year 1000 were being silently misread as 1900-something</strong>
 &mdash; a JavaScript rule from 1995 that <code>Date</code> still honours &mdash; which meant that
 recording a past trip and mistyping the year as <code>0202</code> instead of <code>2020</code>
@@ -359,7 +378,8 @@ country you reach <em>next week</em> as somewhere you have already been, with da
 which is the one convention this project has held since day one. All three are now designed
 (<code>ARCHITECTURE.md</code> revision 25) and scheduled as a new increment, <strong>I-7a</strong>,
 which is owed <strong>before</strong> I-8 &mdash; because I-8 is the screen that would otherwise put
-every one of them in front of you.</p>
+every one of them in front of you. <strong>I-7a is now built</strong> &mdash; see the paragraph
+above it.</p>
 </div>
 
 <div class="callout" style="border-left:4px solid #2a5138;padding:.75rem 1rem;margin:1rem 0;background:#f0f8f2">

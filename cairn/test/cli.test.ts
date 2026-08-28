@@ -243,3 +243,75 @@ test('cli stats reports the honest hole as a count, never as a silence', () => {
   // "N we could not place" is the sentence; "0 countries" would be a measurement never taken.
   assert.match(r.out, /could not place|unattributed/i, r.out);
 });
+
+/**
+ * §8.4 **A-34** (QA R28-7). On 2026-08-14 the reference trip is `active`, so every country it
+ * carries is contributed **un-clamped** by the day the traveller has reached — the CLI printed
+ * `GB 2026-08-07 → 2026-08-14 (1 trip)` for a country the trip does not reach until the 20th, in
+ * the same visual form as one actually visited. A plan rendered as an accomplished fact is the
+ * root `CLAUDE.md` convention broken, and this is the first place a *derived statistic* did it.
+ *
+ * Both directions are asserted, because a marker with a test on one side only is a marker that
+ * will be printed always or never.
+ */
+test('cli stats marks a country an active trip has not confirmed reaching', () => {
+  const r = cli('stats', '--today', '2026-08-14');
+  assert.equal(r.code ?? 0, 0, r.err);
+  assert.match(r.out, /GB\s+2026-08-07 → 2026-08-14\s+\(1 trip\)\s+·\s+in progress/, r.out);
+  assert.match(r.out, /countries\s+7\s+\(7 in progress\)/, r.out);
+  assert.match(r.out, /cities\s+6\s+\(6 in progress\)/, r.out);
+  // The legend prints once, and it is a caveat rather than a negation: "in progress", not
+  // "not visited" — on day 8 of a 16-day trip most of these rows are true visits (A-34 Part 5).
+  const legend = r.out.split('\n').filter((l) => /in progress — from a trip you are on/.test(l));
+  assert.equal(legend.length, 1, `the legend printed ${legend.length} times:\n${r.out}`);
+  // Marked, NOT hidden and not excluded from the counts — excluding them is the alternative
+  // A-31 Part 5 residue 2 already refused.
+  for (const code of ['AT', 'CZ', 'DE', 'GB', 'HR', 'HU', 'US']) {
+    assert.match(r.out, new RegExp(`\\b${code}\\b`), `${code} was hidden rather than marked:\n${r.out}`);
+  }
+});
+
+test('cli stats prints no marker and no legend when the trip is over', () => {
+  const r = cli('stats', '--today', '2026-08-24');
+  assert.equal(r.code ?? 0, 0, r.err);
+  assert.equal(/in progress/.test(r.out), false, `a completed trip was marked provisional:\n${r.out}`);
+  assert.match(r.out, /countries\s+7\s*$/m, r.out);
+});
+
+/**
+ * QA **R28-9**. `stats --today bogus` exited on a raw `Error: invalid IsoDate` stack trace, and
+ * `conflicts --today bogus` did the opposite — it accepted the garbage and printed
+ * `(today = bogus)` with exit 0. One check, every command that reads `today`.
+ */
+for (const cmd of ['stats', 'conflicts', 'trip']) {
+  test(`cli ${cmd} --today refuses garbage with a message, not a stack trace`, () => {
+    for (const bad of ['bogus', '', '20260814', '2026-8-7', 'tomorrow', '2026-08-07T00:00:00Z']) {
+      const r = cli(cmd, '--today', bad);
+      assert.notEqual(r.code, 0, `"${bad}" was accepted by ${cmd} (exit ${r.code}):\n${r.out}`);
+      assert.match(r.out, /--today must be a date in YYYY-MM-DD/, r.out);
+      assert.equal(/at .*cli\.ts:\d+/.test(r.out + r.err), false, `a stack trace reached the user:\n${r.err}`);
+      assert.equal(/invalid IsoDate/.test(r.err), false, `the raw core error reached stderr:\n${r.err}`);
+      assert.equal(new RegExp(`today = ${bad}`).test(r.out), false, `the garbage was echoed as fact:\n${r.out}`);
+    }
+  });
+}
+
+/**
+ * The other side of the same rule, asserted so it is a decision and not an oversight: a
+ * **shape-valid, calendar-invalid** `--today` is ACCEPTED and rolls over, exactly as `fromJSON`
+ * accepts one in a stored document and `validateTrip` reports rather than refuses it (§2.9
+ * A-20, §2.1 A-32 Part 4). Refusing it here would be a second, narrower definition of
+ * `IsoDate`'s domain living in a surface, which A-32 Part 5 refuses — and `isIsoDate`, the
+ * calendar half, is off §2.10's surface, which criterion E ceiling (1) forbids `cli.ts`
+ * reaching past the index for.
+ */
+test('cli stats accepts a rolled-over --today, as every other date path in Cairn does', () => {
+  const rolled = cli('stats', '--today', '2026-13-45');   // = 2027-02-14
+  assert.equal(rolled.code ?? 0, 0, rolled.err);
+  const real = cli('stats', '--today', '2027-02-14');
+  assert.equal(
+    rolled.out.split('\n').slice(1).join('\n'),
+    real.out.split('\n').slice(1).join('\n'),
+    'a rolled-over --today did not answer as the date it rolls over to',
+  );
+});

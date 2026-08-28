@@ -33,6 +33,16 @@ export type TravelStatsCountry = {
   lastVisit: IsoDate;
   /** In canonical row order. `TripSummaryRow.id` is a plain `string`, so this is too. */
   tripIds: string[];
+  /**
+   * **A-34.** True when no `completed` trip contributed this row.
+   *
+   * A-31 Part 5 residue 2 licenses an `active` trip contributing **all** of its countries,
+   * un-clamped by the day it has actually reached, because the row carries no day-level
+   * attribution. That licence holds only because the contribution is **marked**: a surface
+   * renders a provisional row visibly differently and never as a visited fact with dates.
+   * It is a caveat — *"the evidence is from a trip you are on"* — and not a negation.
+   */
+  provisional: boolean;
 };
 
 export type TravelStatsCity = {
@@ -42,6 +52,8 @@ export type TravelStatsCity = {
   name: string;
   countryCode: CountryCode | null;
   tripIds: string[];
+  /** **A-34.** True when no `completed` trip contributed this row. See `TravelStatsCountry`. */
+  provisional: boolean;
 };
 
 /**
@@ -101,8 +113,15 @@ const NO_COUNTRY = '--';
  * separately, and that is not a discrepancy — they are counts of different things, and the
  * alternative is the one that inflates (residue 5).
  *
- * @throws {Error} programmer error only — a duplicate row id, a malformed date, or a row minted
- *         before `SUMMARY_VERSION` 4 and so carrying no `attribution` census.
+ * **A row out of storage is never a reason to throw** (QA R28-3, R28-4). A row minted before
+ * `SUMMARY_VERSION` 4 carries no `attribution` census and contributes none; a row whose census
+ * is impossible (`attributed > located`) contributes `0` to `unattributed` and its `located` as
+ * given. Both used to be a throw or a negative number, and both are reachable without a caller
+ * bug — `refreshLibrary()` installs the stored rows and the rescan brings them current
+ * *afterwards*, so the library legitimately holds a stale row in between.
+ *
+ * @throws {Error} programmer error only — a duplicate row id, or a malformed date. **Two, and
+ *         the list is exhaustive** (A-31 Part 4).
  */
 export function travelStats(summaries: readonly TripSummaryRow[], today: IsoDate): TravelStats {
   const todayNum = dayNumber(today);
@@ -130,14 +149,16 @@ export function travelStats(summaries: readonly TripSummaryRow[], today: IsoDate
   //    of trip state (sequencing rule 1). `TripSummaryRow` structurally satisfies `DatedTrip`.
   const trips = { planned: 0, active: 0, completed: 0 };
   // 4. The travelled set: `active` or `completed`, with the clamped interval each contributes.
-  const travelled: Array<{ row: TripSummaryRow; a: number; b: number }> = [];
+  const travelled: Array<{ row: TripSummaryRow; a: number; b: number; done: boolean }> = [];
   for (const row of rows) {
     const stage = lifecycle(row, today);
     trips[stage]++;
     if (stage === 'planned') continue;
     const a = dayNumber(row.startDate);
     const rawB = stage === 'active' ? Math.min(dayNumber(row.endDate), todayNum) : dayNumber(row.endDate);
-    travelled.push({ row, a, b: Math.max(a, rawB) });
+    // `done` is A-34's evidence, carried once per row rather than re-derived per country and
+    // per city: `lifecycle` is called exactly here, and the folds below only read this flag.
+    travelled.push({ row, a, b: Math.max(a, rawB), done: stage === 'completed' });
   }
 
   // 5. `daysTravelled` — the size of the UNION of the intervals, by sort-and-sweep. Sweep and
@@ -159,7 +180,7 @@ export function travelStats(summaries: readonly TripSummaryRow[], today: IsoDate
   // 6. `countries` — first/last visit are the TRIP's range, not the country's (residue 1): the
   //    row carries no per-country dates and cannot without carrying the day→city edges.
   const countryMap = new Map<CountryCode, TravelStatsCountry & { firstNum: number; lastNum: number }>();
-  for (const { row, a, b } of travelled) {
+  for (const { row, a, b, done } of travelled) {
     for (const code of row.countryCodes) {
       const hit = countryMap.get(code);
       if (!hit) {
@@ -168,6 +189,9 @@ export function travelStats(summaries: readonly TripSummaryRow[], today: IsoDate
           firstVisit: fromDayNumber(a),
           lastVisit: fromDayNumber(b),
           tripIds: [row.id],
+          // **A-34**, accumulated in the fold rather than in a second pass: the row starts
+          // provisional and stops being so the first time a `completed` trip contributes it.
+          provisional: !done,
           firstNum: a,
           lastNum: b,
         });
@@ -181,12 +205,19 @@ export function travelStats(summaries: readonly TripSummaryRow[], today: IsoDate
         hit.lastNum = b;
         hit.lastVisit = fromDayNumber(b);
       }
+      if (done) hit.provisional = false;
       if (hit.tripIds[hit.tripIds.length - 1] !== row.id) hit.tripIds.push(row.id);
     }
   }
   const countries: TravelStatsCountry[] = [...countryMap.values()]
     .sort((x, y) => (x.code < y.code ? -1 : x.code > y.code ? 1 : 0))
-    .map((c) => ({ code: c.code, firstVisit: c.firstVisit, lastVisit: c.lastVisit, tripIds: c.tripIds }));
+    .map((c) => ({
+      code: c.code,
+      firstVisit: c.firstVisit,
+      lastVisit: c.lastVisit,
+      tripIds: c.tripIds,
+      provisional: c.provisional,
+    }));
 
   // 7. `cities` — grouped on the pair `(nameKey, countryCode)`. A `CityKey` is opaque and
   //    per-trip (§2.2 A-10), so two trips to Tokyo carry two of them and only the name can join
@@ -196,27 +227,42 @@ export function travelStats(summaries: readonly TripSummaryRow[], today: IsoDate
   let locatedCities = 0;
   let unattributedCities = 0;
   let locatedPlaces = 0;
-  let attributedPlaces = 0;
+  let unattributedPlaces = 0;
   let locatedStops = 0;
-  let attributedStops = 0;
-  for (const { row } of travelled) {
+  let unattributedStops = 0;
+  for (const { row, done } of travelled) {
+    // **QA R28-3.** A row minted before `SUMMARY_VERSION` 4 carries no `attribution`, and this
+    // used to throw — non-uniformly, because only travelled rows are walked, so the same stale
+    // row was fatal when the trip was `completed` and silent when it was `planned`. It is not a
+    // caller bug: `refreshLibrary()` installs the stored rows and the rescan brings them current
+    // *afterwards*, so between the two the library legitimately holds version-3 rows and §2.1
+    // lets core throw on programmer error only. A missing census contributes **nothing** to
+    // either side of the place/stop hole rather than being invented; the row's cities are still
+    // walked, because `cities[]` has been on the row since version 3.
     const census = row.attribution;
-    if (!census || !census.places || !census.stops) {
-      throw new Error(
-        `travelStats: summary row ${JSON.stringify(row.id)} carries no \`attribution\` census. ` +
-          'Rows minted before SUMMARY_VERSION 4 are rescanned by the client before the lifetime ' +
-          'map claims to be complete (ARCHITECTURE §8.4 clause 3); one reaching here is a caller bug.',
-      );
+    if (census) {
+      if (census.places) {
+        locatedPlaces += census.places.located;
+        // **QA R28-4**, A-31 Part 2's clamp, applied per row rather than to the total: a row out
+        // of storage with `attributed > located` (hand-edited, half-migrated) would otherwise
+        // make `unattributed` negative, or pay for another row's genuine hole.
+        unattributedPlaces += Math.max(0, census.places.located - census.places.attributed);
+      }
+      if (census.stops) {
+        locatedStops += census.stops.located;
+        unattributedStops += Math.max(0, census.stops.located - census.stops.attributed);
+      }
     }
-    locatedPlaces += census.places.located;
-    attributedPlaces += census.places.attributed;
-    locatedStops += census.stops.located;
-    attributedStops += census.stops.attributed;
     // `City.centre` is non-nullable, so every city entry is a located record and the city census
     // is derivable from `cities[]` alone. That is why the row carries no city census.
     for (const c of row.cities) {
       locatedCities++;
-      if (c.countryCode === null) unattributedCities++;
+      // **QA R28-5.** `null` and `undefined` are ONE answer, read once, here. The two used to
+      // disagree — `=== null` decided this count while `?? NO_COUNTRY` decided the group key —
+      // so an `undefined` code was grouped as unattributed without being counted as one, and
+      // came back out as `undefined`, which `JSON.stringify` silently drops.
+      const countryCode = c.countryCode ?? null;
+      if (countryCode === null) unattributedCities++;
       const nameKey = normalizeCityName(c.name);
       // A name that folds to `''` is **not an identity** (§2.14 A-14 assertion 5). Grouping on
       // it would put every blank city in every trip into one row labelled with nothing; skipping
@@ -225,13 +271,17 @@ export function travelStats(summaries: readonly TripSummaryRow[], today: IsoDate
         unnamedCities++;
         continue;
       }
-      const key = `${c.countryCode ?? NO_COUNTRY}|${nameKey}`;
+      const key = `${countryCode ?? NO_COUNTRY}|${nameKey}`;
       const hit = cityMap.get(key);
       if (!hit) {
-        cityMap.set(key, { nameKey, name: c.name, countryCode: c.countryCode, tripIds: [row.id] });
-      } else if (hit.tripIds[hit.tripIds.length - 1] !== row.id) {
-        // At most once per trip, even if the trip holds two cities that fold to the same key.
-        hit.tripIds.push(row.id);
+        // `provisional` accumulates as for a country (**A-34**), per row and not per city.
+        cityMap.set(key, { nameKey, name: c.name, countryCode, tripIds: [row.id], provisional: !done });
+      } else {
+        if (done) hit.provisional = false;
+        if (hit.tripIds[hit.tripIds.length - 1] !== row.id) {
+          // At most once per trip, even if the trip holds two cities that fold to the same key.
+          hit.tripIds.push(row.id);
+        }
       }
     }
   }
@@ -252,8 +302,8 @@ export function travelStats(summaries: readonly TripSummaryRow[], today: IsoDate
     located: { cities: locatedCities, places: locatedPlaces, stops: locatedStops },
     unattributed: {
       cities: unattributedCities,
-      places: locatedPlaces - attributedPlaces,
-      stops: locatedStops - attributedStops,
+      places: unattributedPlaces,
+      stops: unattributedStops,
     },
     unnamedCities,
   };

@@ -38,10 +38,29 @@ update to this file added that instruction).
 > printable from the command line (`node cli.ts stats`), but the **Map and Profile screens are
 > I-8**, which is where 2b actually ships. **Verification:** I-5 through I-6a have all
 > been attacked (QA rounds 22–27, the last one clean of blockers), and **I-7 has now been attacked
-> too — QA round 28, 2026-08-28, and it did not pass.** No manager verdict exists for any of 2b.
+> too — QA round 28, 2026-08-28, and it did not pass.** **I-7a then fixed everything that round
+> found, and has not itself been attacked yet.** No manager verdict exists for any of 2b.
 > Built ✅ · verified ⚪ · shippable ⚪.
 >
-> **🔴 What round 28 found, and what happens before I-8.** The statistics function itself held up
+> **🟡 I-7a IS BUILT — every one of round 28's findings is closed in code, and nobody has attacked
+> the fixes yet.** Dates before the year 1000 are now real years: the app does its own calendar
+> arithmetic instead of asking JavaScript's `Date`, so a trip recorded as year `0202` stores,
+> reopens and validates like any other, and the year comes back four digits wide instead of three.
+> The rule that stops a lifetime total ever being *saved* was rewritten to check **what is actually
+> written into storage** rather than what the source code declares — including reading the rows
+> back out of a real store after a real save — and the ten ways a tester found to smuggle a total
+> past the old rule are now ten faults the new one is checked against. And the command line stops
+> presenting a country you reach next week as somewhere you have been: those rows now say
+> **"· in progress"**, with a one-line explanation underneath, and are marked rather than hidden —
+> because hiding them would tell someone standing in Vienna that they have never been there. Four
+> smaller fixes came with it: a crash on a stale saved row (which the app itself could produce for
+> a second between opening the trip list and finishing its repair pass), a count that could go
+> negative, one field with two different answers to *"is this country unknown"*, and
+> `--today gibberish` printing a wall of red stack trace instead of one line.
+> **I-7a is built ✅ · verified ⚪ · shippable ⚪** — QA round 29 is what would move the second one.
+>
+> **🔴 What round 28 found, and what happens before I-8.** *(History as of I-7a. The statistics
+> function itself held up)*
 > under everything the tester threw at it. Two things underneath it did not. **(1) Dates before the
 > year 1000 were being silently misread as 1900-something** — a JavaScript rule from 1995 that
 > `Date` still honours — which meant that recording a past trip and mistyping the year as `0202`
@@ -55,7 +74,7 @@ update to this file added that instruction).
 > have already been, with dates and no marker, which is the one convention this project has held
 > since day one. All three are now designed (`ARCHITECTURE.md` revision 25) and scheduled as a new
 > increment, **I-7a**, which is owed **before** I-8 — because I-8 is the screen that would otherwise
-> put every one of them in front of you.
+> put every one of them in front of you. **I-7a is now built** — see the paragraph above it.
 
 > **🟢 STEP 2a IS SHIPPED.** The manager reviewed it at `67f5588` on 2026-08-28 and the verdict is
 > **SHIP** — `REVIEW.md`, "Phase 2, step 2a". So 2a is now **built ✅ · verified ✅ · shippable ✅**,

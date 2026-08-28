@@ -248,6 +248,150 @@ test('I-7: the place and stop censuses are the row\'s own, summed over travelled
   assert.deepEqual(s.unattributed, { cities: 0, places: 3, stops: 6 });
 });
 
+/**
+ * QA **R28-4**, §8.4 A-31 Part 2's clamp. `attributed <= located` is an invariant of the *mint*
+ * — `tripSummary` increments both in one walk and guards the second by the first — but
+ * `travelStats` is handed rows out of **storage**, and a row that arrives with
+ * `attributed > located` (hand-edited, half-migrated) made `unattributed` **negative**, which is
+ * a number no surface can render honestly. The read clamps at zero. Not a throw: the row came
+ * from storage, not from a caller.
+ */
+test('R28-4: an impossible census clamps at zero and never goes negative', () => {
+  const bad = row({
+    id: 'bad', startDate: '2024-04-01', endDate: '2024-04-02',
+    places: { located: 1, attributed: 5 }, stops: { located: 2, attributed: 6 },
+  });
+  const s = travelStats([bad], TODAY);
+  assert.equal(s.unattributed.places, 0, 'unattributed.places went negative');
+  assert.equal(s.unattributed.stops, 0, 'unattributed.stops went negative');
+  // `located` is still summed as given, so a row whose census is impossible still shows up in
+  // the denominator rather than disappearing.
+  assert.deepEqual(s.located, { cities: 0, places: 1, stops: 2 });
+});
+
+test('R28-4: the clamp is per class and does not mask a real hole in the other one', () => {
+  const mixed = row({
+    id: 'mixed', startDate: '2024-04-01', endDate: '2024-04-02',
+    places: { located: 1, attributed: 9 }, stops: { located: 10, attributed: 4 },
+  });
+  const s = travelStats([mixed], TODAY);
+  assert.equal(s.unattributed.places, 0);
+  assert.equal(s.unattributed.stops, 6, 'the clamp swallowed a real hole');
+});
+
+test('R28-4: the clamp is per ROW, so one impossible row cannot cancel another row\'s hole', () => {
+  // Summing first and clamping once would let `attributed - located = -4` on row A pay for
+  // row B's genuine 4 unattributed places. Clamping inside the fold is what stops that.
+  const impossible = row({ id: 'a', startDate: '2024-04-01', endDate: '2024-04-02', places: { located: 1, attributed: 5 } });
+  const honest = row({ id: 'b', startDate: '2024-05-01', endDate: '2024-05-02', places: { located: 10, attributed: 6 } });
+  assert.equal(travelStats([impossible, honest], TODAY).unattributed.places, 4);
+});
+
+/**
+ * QA **R28-5**. One field, two answers: `c.countryCode === null` decided `unattributed.cities`
+ * while `?? NO_COUNTRY` decided the group key, so an `undefined` code was grouped as
+ * unattributed and not counted as one — and came back out as `undefined`, which
+ * `JSON.stringify` silently **drops**, corrupting any golden it reached. `null` and `undefined`
+ * are now one answer everywhere the field is read.
+ */
+test('R28-5: an `undefined` countryCode is treated exactly as `null`, everywhere', () => {
+  const undef = { key: 'k-u' as CityKey, name: 'Paris', countryCode: undefined, countrySource: null };
+  const a = row({ id: 'a', startDate: '2024-04-01', endDate: '2024-04-02' });
+  a.cities = [undef as unknown as TripSummaryCity];
+  const s = travelStats([a], TODAY);
+  assert.equal(s.located.cities, 1);
+  assert.equal(s.unattributed.cities, 1, 'an undefined code was grouped as unattributed but not counted as one');
+  assert.equal(s.cities[0].countryCode, null, 'the row came back carrying `undefined`');
+  // The consequence that reaches a file: `JSON.stringify` drops an `undefined` value, so the
+  // key would vanish from the golden entirely rather than reading `null`.
+  assert.ok('countryCode' in JSON.parse(JSON.stringify(s.cities[0])), 'countryCode was dropped by JSON.stringify');
+  assert.equal(JSON.parse(JSON.stringify(s.cities[0])).countryCode, null);
+});
+
+test('R28-5: an `undefined` and a `null` code with the same name are ONE row, and it is null', () => {
+  const a = row({ id: 'a', startDate: '2024-04-01', endDate: '2024-04-02' });
+  a.cities = [{ key: 'k-a' as CityKey, name: 'Paris', countryCode: undefined, countrySource: null } as unknown as TripSummaryCity];
+  const b = row({ id: 'b', startDate: '2024-05-01', endDate: '2024-05-02', cities: [city('Paris', null)] });
+  const s = travelStats([a, b], TODAY);
+  assert.equal(s.cities.length, 1);
+  assert.equal(s.cities[0].countryCode, null);
+  assert.deepEqual(s.cities[0].tripIds, ['a', 'b']);
+  assert.equal(s.unattributed.cities, 2, 'both cities are unattributed and both are counted');
+});
+
+// ---------------------------------------------------------------- provisional (A-34)
+
+/**
+ * §8.4 **A-34** (QA R28-7). A-31 Part 5 residue 2 licenses an `active` trip contributing all of
+ * its countries un-clamped by the day it has reached — and that licence holds *only because the
+ * contribution is marked*. `provisional` is true exactly when **no `completed` trip contributed
+ * the row**; a surface renders a provisional row visibly differently and never as a visited fact.
+ *
+ * Both directions are asserted, because a boolean with a test on one side only is a boolean that
+ * will be inverted.
+ */
+test('A-34: a country only an active trip contributes is provisional; one a completed trip did is not', () => {
+  const done = row({
+    id: 'done', startDate: '2024-04-01', endDate: '2024-04-10',
+    countryCodes: ['AT' as CountryCode], cities: [city('Vienna', 'AT' as CountryCode)],
+  });
+  const now = row({
+    id: 'now', startDate: '2026-06-01', endDate: '2026-06-30',
+    countryCodes: ['AT' as CountryCode, 'GB' as CountryCode],
+    cities: [city('Vienna', 'AT' as CountryCode), city('London', 'GB' as CountryCode)],
+  });
+  const s = travelStats([done, now], TODAY);   // TODAY = 2026-06-15, so `now` is active
+  assert.equal(s.trips.active, 1);
+  assert.equal(s.trips.completed, 1);
+  const by = Object.fromEntries(s.countries.map((c) => [c.code, c.provisional]));
+  assert.deepEqual(by, { AT: false, GB: true });
+  const byCity = Object.fromEntries(s.cities.map((c) => [c.nameKey, c.provisional]));
+  assert.deepEqual(byCity, { london: true, vienna: false });
+});
+
+test('A-34: provisional is per row, not per library — a lone completed trip marks nothing', () => {
+  const done = row({
+    id: 'done', startDate: '2024-04-01', endDate: '2024-04-10',
+    countryCodes: ['AT' as CountryCode], cities: [city('Vienna', 'AT' as CountryCode)],
+  });
+  const s = travelStats([done], TODAY);
+  assert.equal(s.countries[0].provisional, false);
+  assert.equal(s.cities[0].provisional, false);
+});
+
+test('A-34: a library of nothing but active trips marks every row provisional', () => {
+  const now = row({
+    id: 'now', startDate: '2026-06-01', endDate: '2026-06-30',
+    countryCodes: ['HR' as CountryCode], cities: [city('Split', 'HR' as CountryCode)],
+  });
+  const s = travelStats([now], TODAY);
+  assert.equal(s.countries[0].provisional, true);
+  assert.equal(s.cities[0].provisional, true);
+});
+
+test('A-34: a planned trip cannot make a row provisional, because it contributes no row at all', () => {
+  const soon = row({
+    id: 'soon', startDate: '2027-01-01', endDate: '2027-01-10',
+    countryCodes: ['JP' as CountryCode], cities: [city('Tokyo', 'JP' as CountryCode)],
+  });
+  const done = row({
+    id: 'done', startDate: '2024-04-01', endDate: '2024-04-10',
+    countryCodes: ['JP' as CountryCode], cities: [city('Tokyo', 'JP' as CountryCode)],
+  });
+  const s = travelStats([soon, done], TODAY);
+  assert.equal(s.countries.length, 1);
+  assert.equal(s.countries[0].provisional, false, 'a planned trip should not even be in the fold');
+  assert.equal(s.cities[0].provisional, false);
+});
+
+test('A-34: the order the rows arrive in does not decide provisional', () => {
+  const done = row({ id: 'z-done', startDate: '2026-01-01', endDate: '2026-01-10', countryCodes: ['AT' as CountryCode] });
+  const now = row({ id: 'a-now', startDate: '2026-06-01', endDate: '2026-06-30', countryCodes: ['AT' as CountryCode] });
+  // `a-now` sorts first by id but last by start date; the completed row is seen second.
+  assert.equal(travelStats([now, done], TODAY).countries[0].provisional, false);
+  assert.equal(travelStats([done, now], TODAY).countries[0].provisional, false);
+});
+
 // ---------------------------------------------------------------- daysTravelled
 
 /**
@@ -281,8 +425,35 @@ test('I-7: a year 0001 trip does not allocate a day-number set — the sweep is 
   // An `IsoDate` admits `0001-01-01`, and a `Set` of day numbers over it would allocate
   // ~720,000 entries per such row. This is a timing-free way to say the same thing: the answer
   // is right and the call returns.
-  const a = row({ id: 'a', startDate: '0001-01-01', endDate: '0001-12-31' });
-  assert.equal(travelStats([a], TODAY).daysTravelled, 365);
+  //
+  // **§2.1 A-32 Part 6 (QA R28-1).** `365` was green here for the wrong reason: `Date.UTC` read
+  // year 1 as **1901**, which also has 365 days, so the number could not discriminate. The
+  // country code and the two date assertions below are what make this test measure what its own
+  // name says — under the shipped code they were `'1901-01-01'` / `'1901-12-31'`.
+  const a = row({ id: 'a', startDate: '0001-01-01', endDate: '0001-12-31', countryCodes: ['JP' as CountryCode] });
+  const s = travelStats([a], TODAY);
+  assert.equal(s.daysTravelled, 365, 'year 1 is not a leap year in the proleptic Gregorian calendar');
+  assert.equal(s.countries[0].firstVisit, '0001-01-01');
+  assert.equal(s.countries[0].lastVisit, '0001-12-31');
+});
+
+test('I-7: a year 0500 trip reports the year it was given, padded to four digits', () => {
+  // The padding half of R28-1, which the year-0001 case cannot reach: `fromDayNumber` padded the
+  // month and the day and not the year, so this row's `firstVisit` came back as `"500-06-01"` —
+  // a string `parseIsoDate`, in the same file, throws on. §2.1 **A-32** Part 6 item 3.
+  const a = row({ id: 'a', startDate: '0500-06-01', endDate: '0500-06-10', countryCodes: ['IT' as CountryCode] });
+  const s = travelStats([a], TODAY);
+  assert.equal(s.countries[0].firstVisit, '0500-06-01');
+  assert.equal(s.countries[0].lastVisit, '0500-06-10');
+  assert.equal(s.daysTravelled, 10);
+});
+
+test('I-7: two trips 1900 years apart are two intervals, not one', () => {
+  // The consequence of the same fault inside `daysTravelled`: `Date.UTC` collapsed year 0001 and
+  // year 1901 onto the same day numbers, so the interval union reported 10 days for 20.
+  const a = row({ id: 'a', startDate: '0001-01-01', endDate: '0001-01-10' });
+  const b = row({ id: 'b', startDate: '1901-01-01', endDate: '1901-01-10' });
+  assert.equal(travelStats([a, b], TODAY).daysTravelled, 20);
 });
 
 // ---------------------------------------------------------------- totality and throws
@@ -313,13 +484,52 @@ test('I-7: a duplicate row id throws and names the id', () => {
   );
 });
 
-test('I-7: a row minted before SUMMARY_VERSION 4 is refused by name, not by a TypeError', () => {
-  // The client rescans every row below `SUMMARY_VERSION` before the lifetime map claims to be
-  // complete (§8.4 clause 3), so a version-3 row reaching here is a caller bug — but
-  // `undefined is not an object` is not a message anyone can act on.
-  const stale = row({ id: 'old', startDate: '2024-04-01', endDate: '2024-04-02' }) as TripSummaryRow;
-  delete (stale as { attribution?: unknown }).attribution;
-  assert.throws(() => travelStats([stale], TODAY), /attribution.*"old"|"old".*attribution/i);
+/**
+ * QA **R28-3**. A row minted before `SUMMARY_VERSION` 4 used to **throw**, and only when the
+ * trip happened to be `active` or `completed` — a `planned` one passed silently, because the
+ * census walk only visits travelled rows. That throw was neither uniform nor programmer error:
+ * `refreshLibrary()` installs the stored rows and the rescan brings them current *afterwards*,
+ * so between the two the library legitimately holds version-3 rows and I-8's Profile would have
+ * thrown on a state the client itself produces. §2.1 lets core throw on programmer error only.
+ */
+test('R28-3: a row minted before SUMMARY_VERSION 4 does not throw, whatever its lifecycle', () => {
+  const strip = (r: TripSummaryRow) => {
+    const s = { ...r } as TripSummaryRow;
+    delete (s as { attribution?: unknown }).attribution;
+    return s;
+  };
+  const completed = strip(row({
+    id: 'old', startDate: '2024-04-01', endDate: '2024-04-10',
+    countryCodes: ['HR' as CountryCode], cities: [city('Split', 'HR' as CountryCode)],
+  }));
+  const planned = strip(row({ id: 'soon', startDate: '2027-01-01', endDate: '2027-01-10' }));
+  assert.doesNotThrow(() => travelStats([completed], TODAY));
+  assert.doesNotThrow(() => travelStats([planned], TODAY));
+  assert.doesNotThrow(() => travelStats([completed, planned], TODAY));
+
+  // What it contributes instead of throwing: everything the row does carry, and nothing it
+  // does not. The census it has no numbers for stays at zero rather than being invented.
+  const s = travelStats([completed], TODAY);
+  assert.equal(s.daysTravelled, 10);
+  assert.deepEqual(s.countries.map((c) => c.code), ['HR']);
+  assert.deepEqual(s.cities.map((c) => c.name), ['Split']);
+  assert.equal(s.located.cities, 1, 'the city census comes from cities[], which a version-3 row has');
+  assert.deepEqual(
+    { places: s.located.places, stops: s.located.stops },
+    { places: 0, stops: 0 },
+    'a row with no census contributes no census — it is not guessed at',
+  );
+  assert.deepEqual(s.unattributed, { cities: 0, places: 0, stops: 0 });
+});
+
+test('R28-3: a row carrying a HALF census is treated the same way, not dereferenced', () => {
+  // `{places}` with no `stops` is what a partial hand edit or a half-finished migration leaves.
+  const half = row({ id: 'half', startDate: '2024-04-01', endDate: '2024-04-10', places: { located: 4, attributed: 3 } });
+  delete (half.attribution as { stops?: unknown }).stops;
+  const s = travelStats([half], TODAY);
+  assert.equal(s.located.places, 4);
+  assert.equal(s.unattributed.places, 1);
+  assert.equal(s.located.stops, 0, 'the missing half is zero, not a TypeError and not a throw');
 });
 
 test('I-7: a malformed date is a throw, not a zero', () => {

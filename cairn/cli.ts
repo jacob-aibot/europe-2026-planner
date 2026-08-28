@@ -32,6 +32,38 @@ const has = (name: string) => argv.includes(`--${name}`);
 const file = flag('file');
 const today = flag('today') ?? FIXTURE_TODAY;
 
+/**
+ * QA **R28-9**. `--today` reached `dayNumber` unchecked, so `stats --today bogus` exited on a raw
+ * `Error: invalid IsoDate` **stack trace** — and its sibling `conflicts --today bogus` did the
+ * opposite: it printed `(today = bogus)` and exit 0, because `detectConflicts` never parses the
+ * date on the path a one-trip fixture takes. Two opposite bugs from one missing check, so the
+ * check is one function and every command that reads `today` calls it. Refusal is this CLI's
+ * house style for bad input — one line, no stack, a non-zero exit (see `cmdExport`'s two).
+ *
+ * **The check is core's own, reached through `weekdayOf`, and not a regex of its own.** §2.1
+ * **A-32** Part 5: there is one definition of `IsoDate`'s shape and a caller refuses against
+ * *that*. `weekdayOf` is the narrowest thing on §2.10's surface whose only precondition is
+ * `parseIsoDate`, and `isIsoDate` — the calendar half — is deliberately **off** that surface,
+ * which ROADMAP criterion E ceiling (1) forbids this file reaching past the index for
+ * (BUILD-NOTES **KD-66**).
+ *
+ * So this refuses what is not `YYYY-MM-DD` and **accepts a shape-valid, calendar-invalid date**
+ * such as `2026-13-45`, which rolls over to 2027-02-14 exactly as it does everywhere else in
+ * this system: `fromJSON` accepts one in a stored document and `validateTrip` *reports* it
+ * rather than refusing it (§2.9 A-20, §2.1 A-32 Part 4). A stricter rule here would be a second,
+ * narrower definition of the domain living in a surface — the thing A-32 Part 5 refuses.
+ */
+function todayIsValid(): boolean {
+  try {
+    core.weekdayOf(today);
+    return true;
+  } catch {
+    out(`--today must be a date in YYYY-MM-DD, got ${JSON.stringify(today)}`);
+    process.exitCode = 2;
+    return false;
+  }
+}
+
 type Loaded = { trip: core.Trip; issues: core.Issue[]; cityRangeCheck?: unknown; unmatchedNames?: string[] };
 
 const loaded: Loaded = file
@@ -46,6 +78,7 @@ const money = (roll: core.CostRollUp) =>
     .join(' + ') || '—';
 
 function cmdTrip() {
+  if (!todayIsValid()) return;   // R28-9 — `--today` drives the stage below
   const s = core.tripSummary(trip, core.COUNTRY_INDEX);
   // §8.1: the stage is DERIVED from (trip, today) — there is no stored status field. `--today`
   // is what drives it, and it already defaults to FIXTURE_TODAY.
@@ -98,6 +131,7 @@ function cmdDay() {
 }
 
 function cmdConflicts() {
+  if (!todayIsValid()) return;   // R28-9 — this printed `(today = bogus)` and exit 0
   const list = core.detectConflicts(trip, { today });
   const shown = has('all') ? list : list.filter((c) => !c.resolution);
   out(`${shown.length} conflicts (today = ${today})\n`);
@@ -156,16 +190,29 @@ function cmdImport() {
  * everywhere you have been may not include a trip you have booked.
  */
 function cmdStats() {
+  if (!todayIsValid()) return;   // R28-9 — this exited on a raw `invalid IsoDate` stack trace
   const s = core.travelStats([core.tripSummary(trip, core.COUNTRY_INDEX)], today);
-  const pad = (label: string, n: number) => out(`  ${label.padEnd(18)} ${n}`);
+  /**
+   * §8.4 **A-34** (QA R28-7). An `active` trip contributes all of its countries un-clamped by the
+   * day it has reached (A-31 Part 5 residue 2), and that licence holds **only because the
+   * contribution is marked**: printing `GB 2026-08-07 → 2026-08-14 (1 trip)` for a country the
+   * traveller does not reach until the 20th is a plan rendered as an accomplished fact, which is
+   * the root `CLAUDE.md` convention. Marked, never hidden and never excluded from the counts —
+   * excluding them tells a traveller standing in Vienna that they have never been.
+   */
+  const MARKER = '  ·  in progress';
+  const LEGEND = '  ·  in progress — from a trip you are on; not yet confirmed reached';
+  const provisional = [...s.countries, ...s.cities].some((r) => r.provisional);
+  const pad = (label: string, n: number, marked = 0) =>
+    out(`  ${label.padEnd(18)} ${n}${marked ? `  (${marked} in progress)` : ''}`);
   out(`travel statistics as of ${today}  (derived, never stored)`);
   out('');
   pad('trips planned', s.trips.planned);
   pad('trips active', s.trips.active);
   pad('trips completed', s.trips.completed);
   pad('days travelled', s.daysTravelled);
-  pad('countries', s.countries.length);
-  pad('cities', s.cities.length);
+  pad('countries', s.countries.length, s.countries.filter((c) => c.provisional).length);
+  pad('cities', s.cities.length, s.cities.filter((c) => c.provisional).length);
   out('');
   if (s.countries.length === 0) {
     // Never "0 countries" as though zero had been measured — A-31 Part 4's closing sentence.
@@ -173,12 +220,17 @@ function cmdStats() {
     out(nothing ? '  no places yet' : '  nothing could be placed on the map');
   }
   for (const c of s.countries) {
-    out(`  ${c.code}  ${c.firstVisit} → ${c.lastVisit}  (${c.tripIds.length} trip${c.tripIds.length === 1 ? '' : 's'})`);
+    out(
+      `  ${c.code}  ${c.firstVisit} → ${c.lastVisit}  ` +
+        `(${c.tripIds.length} trip${c.tripIds.length === 1 ? '' : 's'})${c.provisional ? MARKER : ''}`,
+    );
   }
   if (s.cities.length) out('');
   for (const c of s.cities) {
-    out(`  ${(c.countryCode ?? '··').padEnd(3)} ${c.name}`);
+    out(`  ${(c.countryCode ?? '··').padEnd(3)} ${c.name}${c.provisional ? MARKER : ''}`);
   }
+  // The legend prints once, and only when something is actually marked.
+  if (provisional) out(LEGEND);
   out('');
   out(`  located      cities ${s.located.cities} · places ${s.located.places} · stops ${s.located.stops}`);
   out(

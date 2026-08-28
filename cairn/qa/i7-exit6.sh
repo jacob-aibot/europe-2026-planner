@@ -21,6 +21,21 @@
 #   F6  the same count declared through a type ALIAS (`countriesVisited: Tally`)
 #   F7  a lifetime statistic imported by a storage port (the assertion 6b's travelStats.ts
 #       allow-list entries rest on)
+#   F8  the same lifetime tally WRITTEN to IndexedDB by the web port, with no annotation
+#       anywhere — a spread onto the record actually put into the store
+#
+# Round 28 found F4, F6 and F8 GREEN, which is R28-2. ARCHITECTURE §8.4 **A-33** (revision 25)
+# replaced criterion 6's mechanism, and A-33 Part 6 adds two faults here, because the ruling
+# introduces two checks nothing in this harness attacked:
+#
+#   F9  the same spread in `memory.ts`'s `summaries.set` — caught by 6b-1 (a value read back
+#       out of a real port) AND by 6b-2: two independent checks, deliberately, because 6b-1 can
+#       only see ports that run in Node and 6b-2 can only see source text
+#   F10 a THIRD `SUMMARIES.put(summary, id)` site in the web port — caught by 6b-2's pinned
+#       site count and by nothing else, because the argument itself is innocent
+#
+# All ten must be RED. A fault caught by exactly one check is fine; a fault caught by none is a
+# hole and is a finding.
 #
 # A fault that produces `# fail 0` is a fault exit criterion 6 does not catch.
 set -u
@@ -156,6 +171,34 @@ new = ("            tx.objectStore(SUMMARIES).put(\n"
 s = s.replace(old, new)
 open(p,'w').write(s)
 PY
+)"
+
+run_fault "F9 — the same lifetime tally spread into memory.ts's summaries.set (expect: RED)" "$(cat <<'PYF9'
+import sys
+p = sys.argv[1] + '/packages/client/src/ports/memory.ts'
+s = open(p).read()
+old = "      summaries.set(id, summary);"
+assert s.count(old) == 2, 'shape moved'
+# THE FAULT: the in-Node port, which 6b-1 drives and then reads back. No `: number` anywhere,
+# so no declaration-shaped grep can see it either.
+new = ("      summaries.set(id, { ...summary, countriesVisited: summary.countryCodes.length,\n"
+       "        daysTravelled: summary.dayCount });")
+s = s.replace(old, new)
+open(p,'w').write(s)
+PYF9
+)"
+
+run_fault "F10 — a THIRD SUMMARIES.put site in the web port (expect: RED)" "$(cat <<'PYF10'
+import sys
+p = sys.argv[1] + '/apps/web/src/ports/storage.ts'
+s = open(p).read()
+old = "            tx.objectStore(SUMMARIES).put(summary, id);"
+assert s.count(old) == 2, 'shape moved'
+# THE FAULT: the argument is innocent, so only the PINNED SITE COUNT can see this. A third
+# write site is where the next spread gets added without a recipe.
+s = s.replace(old, old + "\n            tx.objectStore(SUMMARIES).put(summary, id + '-shadow');", 1)
+open(p,'w').write(s)
+PYF10
 )"
 
 say "F8, continued — does anything ELSE in the suite catch it, and does it typecheck?"

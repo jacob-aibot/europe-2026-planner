@@ -245,12 +245,32 @@ head('census invariants');
   let threw = null;
   try { core.travelStats([bad], '2026-08-28'); } catch (e) { threw = e.message; }
   ok(threw === null, `a PLANNED version-3 row does not throw (threw: ${threw})`);
-  const bad2 = row('c', '2020-01-01', '2020-01-10');
+  const bad2 = row('c', '2020-01-01', '2020-01-10', { cities: [city('Split', 'HR')] });
   delete bad2.attribution;
   let threw2 = null;
-  try { core.travelStats([bad2], T); } catch (e) { threw2 = e.message; }
-  ok(threw2 !== null && /attribution/.test(threw2), 'a COMPLETED version-3 row throws by name');
-  console.log('   note: the same stale row is silently fine or fatal depending on `today`.');
+  let st2 = null;
+  try { st2 = core.travelStats([bad2], T); } catch (e) { threw2 = e.message; }
+  // RE-EXPRESSED BY THE BUILDER OF I-7a, and the original expectation is kept here so nobody has
+  // to diff to find out what moved. This line read:
+  //
+  //   ok(threw2 !== null && /attribution/.test(threw2), 'a COMPLETED version-3 row throws by name');
+  //
+  // …which was **R28-3 itself**: the throw fired only for rows that happened to be in the past,
+  // and the probe's own next line said so. The finding was routed to the builder and the fix is
+  // that the throw is **gone** — a version-3 row is reachable without a caller bug (the window
+  // between `refreshLibrary()` and the rescan finishing), and §2.1 lets core throw on programmer
+  // error only. So the assertion is inverted rather than deleted, and it now asserts the two
+  // things that make the removal safe: uniformity, and that nothing is invented in place of the
+  // census the row does not carry.
+  ok(threw2 === null, `a COMPLETED version-3 row does not throw either — R28-3 (threw: ${threw2})`);
+  if (st2) {
+    ok(st2.located.places === 0 && st2.located.stops === 0 && st2.unattributed.places === 0,
+      'a row with no census contributes no census — not a guess, not a throw',
+      JSON.stringify({ located: st2.located, unattributed: st2.unattributed }));
+    ok(st2.located.cities === 1 && st2.cities.length === 1,
+      'and everything the row DOES carry still counts', JSON.stringify(st2.cities));
+  }
+  console.log('   note: the stale row is now treated identically whatever `today` is.');
 }
 
 // ---------------------------------------------------------------------------

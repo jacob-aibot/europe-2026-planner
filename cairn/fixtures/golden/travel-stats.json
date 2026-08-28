@@ -44,7 +44,8 @@
             "lastVisit": "2026-08-22",
             "tripIds": [
               "trip-europe-2026"
-            ]
+            ],
+            "provisional": false
           },
           {
             "code": "CZ",
@@ -52,7 +53,8 @@
             "lastVisit": "2026-08-22",
             "tripIds": [
               "trip-europe-2026"
-            ]
+            ],
+            "provisional": false
           },
           {
             "code": "DE",
@@ -60,7 +62,8 @@
             "lastVisit": "2026-08-22",
             "tripIds": [
               "trip-europe-2026"
-            ]
+            ],
+            "provisional": false
           },
           {
             "code": "GB",
@@ -68,7 +71,8 @@
             "lastVisit": "2026-08-22",
             "tripIds": [
               "trip-europe-2026"
-            ]
+            ],
+            "provisional": false
           },
           {
             "code": "HR",
@@ -76,7 +80,8 @@
             "lastVisit": "2026-08-22",
             "tripIds": [
               "trip-europe-2026"
-            ]
+            ],
+            "provisional": false
           },
           {
             "code": "HU",
@@ -84,7 +89,8 @@
             "lastVisit": "2026-08-22",
             "tripIds": [
               "trip-europe-2026"
-            ]
+            ],
+            "provisional": false
           },
           {
             "code": "US",
@@ -92,7 +98,8 @@
             "lastVisit": "2026-08-22",
             "tripIds": [
               "trip-europe-2026"
-            ]
+            ],
+            "provisional": false
           }
         ],
         "cities": [
@@ -102,7 +109,8 @@
             "countryCode": "HU",
             "tripIds": [
               "trip-europe-2026"
-            ]
+            ],
+            "provisional": false
           },
           {
             "nameKey": "dubrovnik",
@@ -110,7 +118,8 @@
             "countryCode": "HR",
             "tripIds": [
               "trip-europe-2026"
-            ]
+            ],
+            "provisional": false
           },
           {
             "nameKey": "london",
@@ -118,7 +127,8 @@
             "countryCode": "GB",
             "tripIds": [
               "trip-europe-2026"
-            ]
+            ],
+            "provisional": false
           },
           {
             "nameKey": "prague",
@@ -126,7 +136,8 @@
             "countryCode": "CZ",
             "tripIds": [
               "trip-europe-2026"
-            ]
+            ],
+            "provisional": false
           },
           {
             "nameKey": "split",
@@ -134,7 +145,8 @@
             "countryCode": "HR",
             "tripIds": [
               "trip-europe-2026"
-            ]
+            ],
+            "provisional": false
           },
           {
             "nameKey": "vienna",
@@ -142,7 +154,8 @@
             "countryCode": "AT",
             "tripIds": [
               "trip-europe-2026"
-            ]
+            ],
+            "provisional": false
           }
         ],
         "trips": {

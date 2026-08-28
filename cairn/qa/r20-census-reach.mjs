@@ -496,7 +496,10 @@ line('§6 R20-5 — `qa/r14-horizon-copy.mjs` §7\'s KD ceiling is now red');
 line('§7 ceilings, `cairn-constraints`, and what did NOT break');
 {
   // Round 22: 71 -> 73. Phase 2 I-5 (`897b928`) added `countryOf` and `COUNTRY_INDEX`.
-  ok('§2.10 export surface is still 73', Object.keys(core).length === 73, String(Object.keys(core).length));
+  // I-7a (QA R28-8, BUILD-NOTES KD-65): 73 -> 75, re-derived by running rather than
+  // quoted. `SUMMARY_VERSION` joined at I-6 and `travelStats` at I-7, and neither commit
+  // updated this line. Strict equality on purpose — never relaxed to `>=`.
+  ok('§2.10 export surface is still 75', Object.keys(core).length === 75, String(Object.keys(core).length));
   const copyStop = readFileSync(new URL('../packages/core/src/build/copyStop.ts', import.meta.url), 'utf8');
   const stripped = copyStop.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
   ok('determinism: no `Date.now`, `Math.random` or `crypto.randomUUID` in `copyStop.ts`',

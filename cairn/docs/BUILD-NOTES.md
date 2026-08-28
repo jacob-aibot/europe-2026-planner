@@ -1,5 +1,34 @@
 # Cairn — build notes, Phase 1 (and Phase 2 in progress)
 
+> **Addendum, on ROADMAP Phase 2 **I-7a** — the calendar under the row, and a ship gate with
+> teeth.** ARCHITECTURE revision 25's three rulings — §2.1 **A-32** (the civil calendar under
+> `IsoDate`), §8.4 **A-33** (exit criterion 6 checks a *value*) and §8.4 **A-34** (`provisional`)
+> — plus QA round 28's four builder findings **R28-3**, **R28-4**, **R28-5**, **R28-9** and the two
+> stale `qa/` ceilings. Scope: **3 sources (`derive/summary.ts`, `derive/travelStats.ts`,
+> `cli.ts`), 1 new test file, 3 touched test files, 1 rewritten test file, 1 regenerated golden,
+> 12 `qa/` files, this file.** No client source change, no port change, no `schemaVersion` bump,
+> **no `SUMMARY_VERSION` bump** (the row's shape does not move), **no export-surface movement
+> (still 75)**, nothing at the repo root, no change to `ARCHITECTURE.md` or `ROADMAP.md` (the
+> architect's revision 25 carries both). **Three new KDs: KD-66…KD-68.**
+>
+> | | |
+> |---|---|
+> | **What runs, and the exact command** | `cd cairn && npm ci && npm run typecheck && npm run test:tap`. Then `npm run golden`, `npm run sample`, `npm run web:build`. The user-facing half: **`node cli.ts stats --today 2026-08-14`**, which is the reference trip mid-flight and now prints `·  in progress` on every row it cannot yet call visited, a legend once, and `countries 7 (7 in progress)`; `node cli.ts stats --today 2026-08-24` prints none of that. And `node cli.ts stats --today bogus`, which is now one line and exit 2 instead of a stack trace. |
+> | **A-32 — the calendar (R28-1, BLOCKER)** | `derive/summary.ts` gains the module-private `daysFromCivil`/`civilFromDays` pair **printed verbatim from A-32 Part 3**, including the month-normalisation prologue and every `Math.floor` (the ruling forbids `\|0`/`~~`: they truncate toward zero and coerce through int32). `dayNumber`, `fromDayNumber` and `weekdayOf` are re-expressed on them; the year is padded to **four** digits; `fromDayNumber` stays **total** and renders a five-digit or negative year rather than throwing, because the only path that reaches one runs through `validateTrip` on a document `fromJSON` accepted. `parseIsoDate`, `addDays` and `dateSpan` are untouched. **`packages/core/src` now constructs no `Date` and calls no `Date.UTC` at all** — asserted in the suite, with comments stripped first, because `model/ids.ts` and `build/createTrip.ts` both explain in prose why they do *not* use `Date.UTC`. |
+> | **A-33 — exit criterion 6 (R28-2, MAJOR)** | `test/stats-storage.test.ts` rewritten to the revision-25 form. **6a′**: `ROW_KEYS: Record<keyof TripSummaryRow, true>` (compile-time), a runtime top-level key-set equality, and a runtime **leaf-path** assertion over the union of **three** rows — the reference trip, a trip with one city the index cannot place, and a trip with no city/place/stop — with each row's paths additionally a subset. `ROW_KEYS` and `ROW_PATHS` are defined **once**, in the one file both halves live in, which is A-33 Part 3's condition. **6b-1**: the memory port driven three ways (the store's write path, the rescan's `refreshSummary`, and both port methods directly) and `listTrips()` read back — the check that ends at a value in a store. **6b-2**: both ports' summary-store argument is the bare identifier `summary`, at a pinned **2 + 2** sites, with the total write count pinned too and the parameter declaration grepped. **6b-3**: the four-file `refreshSummary` census. **6b-5**: the import assertion, unchanged. The old classifier survives as a **tripwire** with A-33 Part 4's three widenings (comments stripped, `type X = number` aliases, count-shaped numeric literals) — **measured: zero new allow-list entries**, exactly as the ruling predicted. `ROOTS` gains `packages/tokens/src`, and a test asserts every root resolves to a directory that contributes files. |
+> | **A-34 — `provisional` (R28-7)** | Both row types gain `provisional: boolean`, accumulated **in the folds Part 4 steps 6 and 7 already run** — one `done` flag per travelled row, set where `lifecycle` is already called, and no second pass. `cli.ts` renders A-34 Part 3's strings verbatim: `  ·  in progress` on the row, the legend once and only when something is marked, and `countries   7  (7 in progress)` in the header. Marked, **never hidden and never excluded from the counts** — that is the alternative residue 2 already refused. |
+> | **The four builder MINORs** | **R28-3**: the third throw is **removed**, not merely disclosed. It was reachable without a caller bug — `refreshLibrary()` installs the stored rows and the rescan brings them current *afterwards* — and it fired only for `active`/`completed` rows, so the same stale row was fatal or silent depending on `today`. A row with no census now contributes none, its cities still count, and `@throws` says **two** throws and that the list is exhaustive. **R28-4**: `Math.max(0, located - attributed)` on both classes, **inside the per-row fold** rather than on the total, so an impossible row cannot pay for another row's genuine hole. **R28-5**: `c.countryCode ?? null`, read **once** per city, decides the count, the key and the emitted value together. **R28-9**: one `todayIsValid()` guard shared by `stats`, `conflicts` and `trip` — see KD-66 for why it checks shape and not the calendar. |
+> | **Ceilings, re-derived by running** | `Object.keys(core).length` = **75**, counted (`node --experimental-strip-types -e "import('./packages/core/src/index.ts')…"`), so the nine `qa/` pins move 73 → **75**; §2.10's own enumerated group counts, summed out of `ARCHITECTURE.md` by `qa/r13-gate-citykey.mjs`, also sum to **75**. `### KD-n` headings in this file = **68**, counted, so `qa/r14-horizon-copy.mjs`'s pin moves 53 → **68** (the routing task said 65, which was right at the moment of the ruling and two behind by the time this pass minted KD-66…KD-68). Every one stays a **strict equality**. `npm run typecheck` clean, both projects, exit 0. `npm run test:tap` **835 pass / 0 fail / 0 cancelled** (795 → 835: **+12** the new `dates.test.ts`, **+13** `travelStats.test.ts`, **+9** net in the rewritten `stats-storage.test.ts`, **+6** `cli.test.ts`). `npm run golden` → **only** `travel-stats.json` moves, +13 `"provisional": false` lines and nothing else; `countries.json` **byte-identical**. `npm run sample` no diff, source sha still `40955ca0b182`. `npm run web:build` clean, `dist/assets/index-CNrBljpS.js` **976,576 bytes** against the **976,160** round 28 re-derived at I-7 — **+416 bytes**, and the cause is A-32 rather than A-34: `derive/summary.ts` is in the bundle and its three date helpers grew by the civil arithmetic that replaced `Date.UTC`, while `travelStats` has no consumer in `apps/web` at all. Phase 1 ceilings unmoved: reference trip **2 blockers / 4 warnings**, `validateTrip` **11**, `geoCheck` **0**, reference row `countryCodes ['AT','CZ','DE','GB','HR','HU','US']`, `summaryVersion` **4**. |
+> | **Test-first, and watched fail** | Every test was written before its implementation and watched fail for the right reason. `dates.test.ts`: **8 of 12 red** on the shipped helpers — and the four that were *green* are the differentials against `Date.UTC` for years ≥ 100, which is the point, since the band `Date.UTC` gets right must stay identically right. `travelStats.test.ts`: **12 red** (3 R28-4, 2 R28-5, 5 A-34, 2 R28-3). `cli.test.ts`: **4 red** against the shipped `cli.ts`, re-run by swapping the committed file back in. Then A-32 Part 7's own injected faults, applied one at a time to the shipped file and reverted: restore `Date.UTC` in `dayNumber` → **6 red** naming `1901`; unpad the year in `fromDayNumber` → **5 red** naming `"500-06-01"`; restore `new Date(Date.UTC(…)).getUTCDay()` in `weekdayOf` → **2 red**, one of them the determinism grep; drop the month-normalisation prologue → **2 red**, both roll-over differentials and nothing else. |
+> | **The exit-6 fault matrix, measured** | `bash qa/i7-exit6.sh`, extended with A-33 Part 6's **F9** (the same spread in `memory.ts`'s `summaries.set`) and **F10** (a third `SUMMARIES.put` site in the web port). Result recorded in §4 below. **F9 is caught twice on purpose** — 6b-1 sees it as a value in a store, 6b-2 sees it as source text — and that redundancy is the answer to *"is 6b-2 redundant with 6b-1"*: no, because 6b-1 can only see ports that run in Node and 6b-2 can only see source text. |
+> | **What I stubbed** | **A-33 6b-4** — the real-IndexedDB read-back in Chromium. A-33 Part 3 and ROADMAP I-7a both state it is **not a gate condition** (the gate is 6b-1…6b-3); it is a `qa/` probe that needs a browser. I did **not** add the assertion to `qa/i6a-idb.mjs`, because I cannot run it here and shipping an unrun assertion into the one probe that drives real Chromium is worse than leaving the line for whoever can. It is named here and in ROADMAP so the next round runs it rather than re-deriving it. Nothing else in I-7a's scope is stubbed; there is no UI in it (I-8 owns the Map and Profile). |
+> | **What I could not verify** | (1) **6b-4, above** — no browser in this environment. (2) **The +416-byte bundle delta is attributed by reasoning, not by bisection**: the previous figure (976,160) is round 28's, quoted rather than re-measured, and I did not build the tree twice with only one of the two changes in it to prove the bytes are A-32's and not A-34's. `EMITTED_BYTES` itself does not move (no index or generator change), so A-27 Part 9's obligation does not apply either way. (3) **`qa/i6a-*.mjs` and `qa/browser*.mjs` were not run** (same reason as 1); the offline probes were. |
+> | **Objection to the design** | **None that blocks, and A-32 in particular is right in a way the finding understated.** Three disclosures, all filed as KDs rather than as code that diverges: **KD-66** (the CLI's `--today` guard checks shape and not the calendar, because criterion E ceiling (1) forbids `cli.ts` reaching `isIsoDate` and A-32 Part 5 forbids re-implementing it — this is the one place where two contract rules leave a fix narrower than it reads), **KD-67** (two round-28 probe expectations were inverted *by the fixes they routed*, and are re-expressed in place with the originals quoted), **KD-68** (`provisional` reaches one of the golden's two clock blocks because the other has no rows to carry it — a fact about the fixture, not about the field). |
+>
+> **The I-7 addendum below is superseded on four points** — the third `travelStats` throw is gone,
+> `unattributed` is clamped, exit criterion 6 is A-33's and not A-31 Part 6's, and KD-65's nine
+> stale ceilings are fixed — and is otherwise unchanged and still current.
+
 > **Addendum, on ROADMAP Phase 2 **I-7** — `travelStats`, and the record census the row was
 > missing (ARCHITECTURE §8.4 clause 2, specified by **A-31**).**
 > Two core files, one CLI command, one new golden, and exit criterion 6 rewritten into two
@@ -2406,6 +2435,91 @@ still correct, which is exactly why `travelStats.ts` imports it by module path.
 **For the breaker:** the nine lines are a known, pre-existing FAIL and are not evidence of a surface
 regression. `packages/core/test/surface.test.ts` and `packages/core/test/openingHours.test.ts` are the
 two places the count is asserted *in the suite*; both were updated to 75 and are green.
+
+***CLOSED at I-7a.*** All nine now say **75**, re-derived by running
+(`Object.keys(core).length` → 75) rather than by trusting the number in the routing task, and
+`qa/r13-gate-citykey.mjs:459`'s companion — §2.10's own enumerated group counts, summed out of
+`ARCHITECTURE.md` — sums to 75 too, so the code and the contract document agree by measurement.
+Each edited line carries a comment saying which increment moved it and why, and every one stays a
+**strict equality**. `qa/r14-horizon-copy.mjs`'s KD ceiling moved in the same pass — see KD-67.
+
+### KD-66 — `cli.ts --today` validates the **shape** of a date and not the calendar, because the calendar half is off §2.10's surface
+
+**Where:** `cli.ts`'s `todayIsValid()` · **ROADMAP criterion E ceiling (1), §2.1 A-32 Part 5, QA R28-9.**
+
+R28-9 is two opposite bugs from one missing check: `stats --today bogus` exited on a raw
+`Error: invalid IsoDate` **stack trace**, and `conflicts --today bogus` accepted the garbage and
+printed `(today = bogus)` with exit 0. One guard now serves `stats`, `conflicts` and `trip` — the
+three commands that read `today` — and refuses in this CLI's house style: one line, no stack, exit 2.
+
+**What it does not do is refuse `--today 2026-13-45`,** and that is a decision rather than an
+oversight. The full check is `model/ids.ts`'s `isIsoDate`, which is deliberately **not** on §2.10's
+export surface, and criterion E ceiling (1) — *"nothing outside `packages/core` may import a core
+module path directly"*, with `cli.ts` named in the test's own file list — forbids reaching past the
+index for it. I wrote the deep import first, watched
+`packages/core/test/surface.test.ts` go red for exactly that reason, and took it back out. The three
+ways forward were: (a) widen §2.10, which ARCHITECTURE revision 25 states in writing it is not doing
+(*"no movement on §2.10's export surface (75)"*) and which is an architect's ruling regardless;
+(b) re-implement the calendar check in the CLI, which §2.1 **A-32 Part 5** refuses by name — *"a
+second definition of `IsoDate`'s domain living in a view"*; or (c) delegate the **shape** check to
+the narrowest exported function whose only precondition is `parseIsoDate`, which is `weekdayOf`.
+
+(c), and it is not a hole: a shape-valid calendar-invalid date is **accepted everywhere else in
+Cairn** — `fromJSON` takes one in a stored document and `validateTrip` *reports* it rather than
+refusing it (§2.9 A-20, §2.1 A-32 Part 4) — so refusing one here would make the CLI the only
+surface in the product with a narrower domain than the model. `test/cli.test.ts` asserts both
+sides: six garbage strings are refused with a message and no stack, and `--today 2026-13-45`
+produces byte-identical output to `--today 2027-02-14`, which is the date it rolls over to.
+
+**Trigger to revisit:** any ruling that puts `isIsoDate` on §2.10 (at which point this becomes two
+lines and the calendar half comes for free), or a finding that a rolled-over `--today` produces a
+wrong user-visible answer rather than the answer for the date it rolls over to.
+
+### KD-67 — two `qa/` probe expectations were inverted by the fixes they routed, and are re-expressed in place (doc-only: its home is `qa/`, which the disclosure scan does not cover)
+
+**Where:** `qa/i7-edges.mjs` (the version-3 block), `qa/i7-pastyear.mjs` §2 · **KD-58 and KD-61's precedent.**
+
+Round 28's probes assert the defects they found, so closing the defects leaves two assertions that
+are now false *because the finding was fixed*. Both are **re-expressed rather than deleted, with the
+original line quoted verbatim in a comment above the replacement**, so nobody has to diff to see
+what moved:
+
+1. `qa/i7-edges.mjs` — *"a COMPLETED version-3 row throws by name"*. That throw **is R28-3**, and
+   the probe's own next line said so (*"the same stale row is silently fine or fatal depending on
+   `today`"*). The fix removes the throw, so the assertion is inverted and two more are added
+   beside it: the row contributes no place/stop census (nothing is invented), and everything it
+   *does* carry still counts.
+2. `qa/i7-pastyear.mjs` §2 — *"validateTrip reports a document whose days are 1900 years from its
+   dates as a blocker"*. Two reasons: `Issue` carries `level: 'error' | 'warn'` and has no
+   `severity`, so `issues.filter(i => i.severity === 'blocker')` was `[]` on **any** tree and the
+   assertion could never have passed; and, more to the point, A-32 means a year-`0026` trip's days
+   are `0026-01-01`… and there is nothing left to report. It now asserts the document is sound.
+
+**What I did not touch:** `qa/i7-edges.mjs`'s *"a countryCode of `'--'` does not collide with
+null"*, which is still 1 FAIL. ROADMAP I-7a names it as the breaker's own expectation and
+*"theirs to re-express, not a gate condition here"*, and a builder repairing a probe that is still
+demonstrating something is how a finding gets repaired away. It stays red.
+
+The KD ceiling in `qa/r14-horizon-copy.mjs:957` moves in the same pass — **53 → 68**, re-derived by
+counting `### KD-n` headings in this file rather than by trusting the routing task's number (which
+said 65, correct at the moment of the architect's ruling and two behind by the time this pass
+minted KD-66 … KD-68). Strict equality, never `>=`.
+
+### KD-68 — `provisional` reaches only one of `travel-stats.json`'s two clock blocks, because the other has no travelled rows (doc-only: its home is a fixture)
+
+**Where:** `fixtures/golden/travel-stats.json` · **§8.4 A-34, and KD-63's consequence.**
+
+A-34 says the golden *"regenerates with the new field in both of its clock blocks"*. It regenerates
+with the field on **every row it has**, and the `fixtureToday` block has none: KD-63 records why
+that block exists — at `FIXTURE_TODAY` the reference trip has not started, so it is `planned` and
+contributes no country and no city, which is A-31 Part 3 working. Thirteen `"provisional": false`
+lines land in the `afterTheTrip` block and zero in the other, and the only way to make the field
+appear twice would be to move a clock or invent a second trip. Neither is worth it: the two-clock
+golden exists to pin the *population rule*, and `test/cli.test.ts` covers the provisional-true
+direction end to end at `--today 2026-08-14`, where the reference trip is `active`.
+
+**Trigger:** a multi-trip fixture (I-8 will want one), at which point a clock with both a completed
+and an active trip in it is worth more than either of today's two.
 
 ---
 

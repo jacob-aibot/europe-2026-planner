@@ -101,11 +101,26 @@ head('2. year "0026" — inside the ES two-digit window, so it does not even err
     'days[0].date equals the trip\'s own startDate (ARCHITECTURE §2.2: days are dense over [start,end])',
     { startDate: r.doc.startDate, day0: r.doc.days[0].date });
   const issues = core.validateTrip(r.doc, TODAY);
-  const blockers = issues.filter((i) => i.severity === 'blocker');
-  note(`validateTrip: ${issues.length} issue(s), ${blockers.length} blocker(s) — ` +
+  const errors = issues.filter((i) => i.level === 'error');
+  note(`validateTrip: ${issues.length} issue(s), ${errors.length} error(s) — ` +
     JSON.stringify(issues.slice(0, 3).map((i) => i.code)));
-  ok(blockers.length > 0,
-    'validateTrip reports a document whose days are 1900 years from its dates as a blocker');
+  // RE-EXPRESSED BY THE BUILDER OF I-7a, with the original kept here so nobody has to diff for
+  // it. This line read:
+  //
+  //   ok(blockers.length > 0,
+  //     'validateTrip reports a document whose days are 1900 years from its dates as a blocker');
+  //
+  // …where `blockers` was `issues.filter((i) => i.severity === 'blocker')`. Two reasons it is
+  // replaced rather than kept: (1) `Issue` carries `level: 'error' | 'warn'` and has no
+  // `severity` — `blockers` was always `[]`, so the assertion could not have passed on any tree;
+  // (2) more importantly, **the condition it wanted reported no longer exists**. §2.1 A-32 is
+  // the ruling on R28-1: the days of a year-`0026` trip are now `0026-01-01`…, the assertion two
+  // lines above (`days[0].date === startDate`) passes, and `validateTrip` has nothing to report
+  // because the document is correct. Reporting zero issues on a sound document is the right
+  // answer; the finding is closed by the arithmetic, not by the validator.
+  ok(errors.length === 0 && r.doc.days[0].date === r.doc.startDate,
+    'the year-0026 document is SOUND, so validateTrip reports no error — the 1900-year drift is gone',
+    JSON.stringify(issues.map((i) => i.code)));
   // And what the lifetime map says about it.
   if (r.row) {
     const st = core.travelStats([core.tripSummary(r.reopened ?? r.doc, core.COUNTRY_INDEX)], TODAY);

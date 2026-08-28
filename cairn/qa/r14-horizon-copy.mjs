@@ -913,7 +913,10 @@ line('§7 the ceilings, re-derived by running');
 {
   // Round 22: the pin moves 71 -> 73. Phase 2 I-5 (`897b928`) added `countryOf` and
   // `COUNTRY_INDEX` to §2.10's surface; I-5a added nothing. Re-expressed by QA, never relaxed.
-  ok('§2.10 export surface is 73', Object.keys(core).length === 73, String(Object.keys(core).length));
+  // I-7a (QA R28-8, BUILD-NOTES KD-65): 73 -> 75, re-derived by running rather than
+  // quoted. `SUMMARY_VERSION` joined at I-6 and `travelStats` at I-7, and neither commit
+  // updated this line. Strict equality on purpose — never relaxed to `>=`.
+  ok('§2.10 export surface is 75', Object.keys(core).length === 75, String(Object.keys(core).length));
   ok('detectUngated / detectUngatedChecked / normalizeCityName are NOT on it',
     !('detectUngated' in core) && !('detectUngatedChecked' in core) && !('normalizeCityName' in core));
   const { trip } = loadEurope2026();
@@ -951,7 +954,11 @@ line('§7 the ceilings, re-derived by running');
   // KD-50. The ceiling is deliberately load-bearing — a pass that mints a KD must run this probe
   // and say so — so it is re-expressed by QA, never relaxed to `>=`.
   // Round 22: 50 -> 53. I-5 minted KD-51; I-5a minted KD-52 and KD-53.
-  ok(`KD ids are contiguous 1..${kds.length} with no duplicates`, contiguous && kds.length === 53,
+  // I-7a (QA R28-8, BUILD-NOTES KD-67): 53 -> 68, re-derived by counting `### KD-n` headings in
+  // BUILD-NOTES rather than quoted. The pin was stale from I-5b onward — I-5b/I-5c/I-6/I-6a/I-7
+  // each minted KDs without moving it — and I-7a itself minted KD-66, KD-67 and KD-68. Strict
+  // equality on purpose: a pass that mints a KD must run this probe and say so.
+  ok(`KD ids are contiguous 1..${kds.length} with no duplicates`, contiguous && kds.length === 68,
     kds.join(','));
   try {
     execFileSync('node', ['--test', 'test/disclosure.test.ts'], { cwd: root, stdio: 'pipe' });
