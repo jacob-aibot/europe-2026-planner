@@ -6,10 +6,11 @@
  * is useless when a document has 112 stops.
  */
 import type {
-  Booking, City, CostEstimate, DatePrecision, Day, Money, Place, PlaceLink, Provenance, Stop,
-  StopPlacement, Ticket, Trip, ConflictResolution,
+  Booking, City, CostEstimate, DatePrecision, Day, Money, OpeningHours, Place, PlaceLink,
+  Provenance, Stop, StopPlacement, Ticket, Trip, ConflictResolution,
 } from '../model/types.ts';
 import { DATE_PRECISIONS, SCHEMA_VERSION } from '../model/types.ts';
+import { isClockTime } from '../model/openingHours.ts';
 
 /** Thrown by `fromJSON` for any malformed document. Carries a JSON path. */
 export class TripParseError extends Error {
@@ -79,7 +80,18 @@ function isoDate(v: unknown, path: string): string {
 function clockOrNull(v: unknown, path: string): string | null {
   if (v === null || v === undefined) return null;
   const s = str(v, path);
-  if (s !== '' && !/^\d{1,2}:\d{2}$/.test(s)) throw new TripParseError('expected HH:MM', path);
+  // A-20: the clock-shape regex lives in `model/openingHours.ts` and nowhere else in
+  // `packages/core`. A second copy of the predicate is exactly the defect A-20 is treating.
+  if (s !== '' && !isClockTime(s)) throw new TripParseError('expected HH:MM', path);
+  return s;
+}
+/**
+ * `HH:MM`, with no empty string (A-20). `clockOrNull` allows `''` because a stop's time may be
+ * blank; an opening time that exists is a time.
+ */
+function clock(v: unknown, path: string): string {
+  const s = str(v, path);
+  if (!isClockTime(s)) throw new TripParseError('expected HH:MM', path);
   return s;
 }
 
@@ -279,6 +291,40 @@ function parseCity(v: unknown, path: string): City {
   };
 }
 
+/**
+ * `Place.hours` — a field like every other field (§2.14 **A-20**, revision 15).
+ *
+ * This used to be `o.hours as Place['hours']`, the only raw cast in this parser, and the root
+ * cause of R15-1, R15-2 and R16-2. A-20's line: *"`fromJSON` decides whether a document IS a
+ * `Trip`; `validateTrip` decides whether a `Trip` says something wrong."* `hours: 'mon-fri'` is
+ * not an `OpeningHours` in any field, so it is `isoDate`'s case (refuse, with a path), not
+ * `invalid_calendar_date`'s (report, as an `Issue`).
+ *
+ *   - **`hours: null` is refused.** `Place.hours` is optional and *not* nullable — the same
+ *     treatment `links: null` and `note: null` already get, and the opposite of
+ *     `cost`/`ticket`/`at`, whose types *are* nullable. Only `undefined` means absent.
+ *   - **Each entry is rebuilt from three named fields**, so an unenumerated key — R15-1's
+ *     actual carrier — cannot survive the parser at all. This is `parseLinks`' construction,
+ *     applied one record over.
+ *   - An `undefined` or `null` slot normalises to `null`: §7's *"missing day = unknown"*.
+ *     The parser normalises **absence** and refuses every present-but-wrong value.
+ */
+function parseOpeningHours(v: unknown, path: string): OpeningHours {
+  const o = obj(v, path);
+  return {
+    weekly: arr(o.weekly, `${path}.weekly`).map((w, i) => {
+      if (w === null || w === undefined) return null;
+      const e = obj(w, `${path}.weekly[${i}]`);
+      return {
+        day: numOf(e.day, `${path}.weekly[${i}].day`),
+        open: clock(e.open, `${path}.weekly[${i}].open`),
+        close: clock(e.close, `${path}.weekly[${i}].close`),
+      };
+    }),
+    ...(o.note !== undefined ? { note: str(o.note, `${path}.note`) } : {}),
+  };
+}
+
 function parsePlace(v: unknown, path: string): Place {
   const o = obj(v, path);
   const at = o.at === null || o.at === undefined ? null : obj(o.at, `${path}.at`);
@@ -291,7 +337,7 @@ function parsePlace(v: unknown, path: string): Place {
     category: oneOf(o.category, CATEGORIES, `${path}.category`),
     ...(o.note !== undefined ? { note: str(o.note, `${path}.note`) } : {}),
     ...(links ? { links } : {}),
-    ...(o.hours !== undefined ? { hours: o.hours as Place['hours'] } : {}),
+    ...(o.hours !== undefined ? { hours: parseOpeningHours(o.hours, `${path}.hours`) } : {}),
   };
 }
 

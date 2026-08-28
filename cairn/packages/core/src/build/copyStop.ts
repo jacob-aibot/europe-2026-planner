@@ -62,6 +62,7 @@ import type { StopInit } from './stops.ts';
 import { REDACTED, redactText } from './redactText.ts';
 import { requireActor } from './candidates.ts';
 import { normalizeCityName } from '../model/cityName.ts';
+import { isWeeklyEntry } from '../model/openingHours.ts';
 import { TRANSIT_CITY_KEY } from '../model/ids.ts';
 
 export type CopyStopSource = { trip: Trip; stopId: StopId };
@@ -84,11 +85,14 @@ function findAnywhere(trip: Trip, stopId: StopId): Stop | null {
  * `redactText` at the call sites where the model says `string` (§2.14 **A-18**, QA R15-1). Pure.
  *
  * **Never a cast.** `redactText` is typed `(unknown) => unknown` deliberately: a value the type
- * says is a `string` can still arrive non-string from a hand-built or imported document —
- * `parsePlace` passes `hours` through unvalidated (`serialize/fromJSON.ts`) — and `redactText`
- * returns a non-string **unchanged**. `redactText(x) as string` therefore compiled cleanly while
- * handing `{pin: '…'}` across the trip boundary whole, which is exactly how R15-1 crossed. This
- * fails closed instead, and never throws. It replaces every `as string` in this file.
+ * says is a `string` can still arrive non-string from a document built in memory past the type
+ * system, and `redactText` returns a non-string **unchanged**. `redactText(x) as string`
+ * therefore compiled cleanly while handing `{pin: '…'}` across the trip boundary whole, which is
+ * exactly how R15-1 crossed — through `parsePlace`'s then-unvalidated `hours`, a hole **A-20 has
+ * since closed** at the parser. The carrier is gone; the construction is still forbidden,
+ * because the next unvalidated field will not announce itself. This fails closed instead, and
+ * never throws. It replaces every `as string` in this file, and
+ * `copyStop.test.ts`'s R16-1 rider pins that for `Place.note`.
  */
 function redacted(s: string): string {
   const out = redactText(s);
@@ -140,25 +144,31 @@ function arrivalForCopy(a: MoveOverride): MoveOverride {
 }
 
 /**
- * One `hours.weekly` entry, rebuilt field by field (§2.14 **A-18**, QA R15-1). Pure.
+ * One `hours.weekly` entry, rebuilt field by field (§2.14 **A-18**, QA R15-1; narrowed by
+ * **A-20**, QA R16-2). Pure, and never throws.
  *
- * `{ ...w }` copied whatever keys the entry actually held, and `parsePlace` casts `hours`
- * unvalidated — the one field of that hand-rolled parser that is not structurally checked — so
- * a `note` and an `href` on a weekly entry carried a door PIN, a confirmation number, a mailbox
- * address and a vendor voucher URL across the trip boundary. A field nobody named does not
- * travel; enumeration stops at a **scalar**, never at a field name.
+ * `{ ...w }` copied whatever keys the entry actually held, so a `note` and an `href` on a weekly
+ * entry carried a door PIN, a confirmation number, a mailbox address and a vendor voucher URL
+ * across the trip boundary. A field nobody named does not travel; enumeration stops at a
+ * **scalar**, never at a field name.
  *
- * `null` is `OpeningHours`' own specified unknown (*"Missing day = unknown, never a conflict"*),
- * so it is what an entry that is not a well-formed range becomes — including one whose `open` or
- * `close` is not a clock time `redactText` leaves alone. A `[redacted]` opening time is A-18's
- * `display` argument one record over: a time that is not a time, which every reader of `hours`
- * would then have to guess about.
+ * **The structural half of the question is no longer asked here.** It is `isWeeklyEntry`, shared
+ * with `fromJSON` and `validateTrip`, because R16-2 was three definitions of "well-formed" and no
+ * two agreeing. This function's own contribution is one line, and it is a **copy-boundary
+ * policy, not a shape test**: an opening time that redaction would alter is not a time the
+ * recipient could trust, and `null` — `OpeningHours`' own specified unknown (*"Missing day =
+ * unknown, never a conflict"*) — is the honest answer rather than a `[redacted]` opening time,
+ * which is A-18's `display` argument one record over. That arm is **provably unreachable for a
+ * structurally valid entry**: all 11 000 strings `isClockTime` accepts are byte-identical under
+ * `redactText`, pinned exhaustively in `test/openingHours.test.ts` (A-20 Part 5(a)). It stays
+ * because it is what makes the day someone adds a `REDACTION_PATTERN` that breaks that an
+ * architect's problem — a red test — instead of a silent `null`.
  */
 function weeklyForCopy(w: unknown): { day: number; open: ClockTime; close: ClockTime } | null {
-  if (w === null || typeof w !== 'object' || Array.isArray(w)) return null;
-  const e = w as { day?: unknown; open?: unknown; close?: unknown };
-  if (typeof e.day !== 'number' || !Number.isFinite(e.day)) return null;
-  if (typeof e.open !== 'string' || typeof e.close !== 'string') return null;
+  if (w === null || w === undefined || !isWeeklyEntry(w)) return null;
+  const e = w as { day: number; open: string; close: string };
+  // A-18 policy, NOT a shape test: an opening time that redaction would alter is not a time the
+  // recipient could trust. Provably unreachable for a structurally valid entry — A-20 Part 5(a).
   if (redacted(e.open) !== e.open || redacted(e.close) !== e.close) return null;
   return { day: e.day, open: e.open, close: e.close };
 }
@@ -168,12 +178,17 @@ function weeklyForCopy(w: unknown): { day: number; open: ClockTime; close: Clock
  * **never throws** (QA R15-2).
  *
  * The parameter is typed `OpeningHours` and is treated as `unknown`, because that is what it
- * actually is: `fromJSON` accepts `hours` as `{}`, a string, a number, an array, `null` and
- * `{weekly: 'mon-fri'}`, and `p.hours.weekly.map(...)` threw a raw `TypeError` on all six —
- * core throwing on a *document shape* rather than on programmer error (§2.1). Anything that is
- * not a well-formed weekly array becomes an empty one: a hole, never an invented opening time.
- * `validateTrip` reports the malformed document separately (`place_hours_malformed`), which is
- * the half of R15-2 that answers *"nothing warns the user first"*.
+ * actually is. `fromJSON` used to accept `hours` as `{}`, a string, a number, an array, `null`
+ * and `{weekly: 'mon-fri'}`, and `p.hours.weekly.map(...)` threw a raw `TypeError` on all six —
+ * core throwing on a *document shape* rather than on programmer error (§2.1).
+ *
+ * **A-20 closed the parser hole and this guard still stays**, deliberately: the copy may not
+ * throw on an **in-memory** document that never went through the parser (a cast, a future
+ * untyped writer, a native bridge), and R15-2's closure is not reopened by a ruling about
+ * `fromJSON`. Anything that is not a well-formed weekly array becomes an empty one: a hole,
+ * never an invented opening time. `validateTrip` reports such a document separately
+ * (`place_hours_malformed`), which is the half of R15-2 that answers *"nothing warns the user
+ * first"* — and which A-20 ratified as exactly that report.
  */
 function hoursForCopy(h: OpeningHours): OpeningHours {
   const raw = h as unknown;
@@ -285,7 +300,8 @@ function refileCityKey(source: Trip, target: Trip, cityKey: string): string | nu
  *                  reuse branch already gives the recipient no new links.
  *   - `hours`    — key present only if the source had one; `hoursForCopy`, which rebuilds each
  *                  `weekly` entry **field by field** (A-18, QA R15-1: `{...w}` was the one
- *                  surviving spread, and `parsePlace` does not validate `hours`) and runs
+ *                  surviving spread, over a field `parsePlace` did not then validate — A-20 has
+ *                  since made it validate it, and the rebuild stays) and runs
  *                  `hours.note` through `redacted`, because opening times are a description of
  *                  the world and the note beside them is free text.
  *

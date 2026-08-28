@@ -12,6 +12,7 @@ import { addDays, dayNumber } from '../derive/summary.ts';
 import { attribution } from '../derive/display.ts';
 import { inRange, stopLatLng } from '../derive/geo.ts';
 import { TRANSIT_CITY_KEY, isIsoDate } from '../model/ids.ts';
+import { isOpeningHours } from '../model/openingHours.ts';
 import { currenciesOf, mixesBasis } from '../model/money.ts';
 
 /**
@@ -59,36 +60,6 @@ function namePhrase(name: string): string {
  * voice and none of them prints the id. Deliberately the same words `geoOutlier.ts` uses.
  */
 const NO_SUCH_CITY = 'a city this trip does not have';
-
-/**
- * True when a `Place.hours` really is an `OpeningHours` (QA **R15-2**). Pure.
- *
- * `parsePlace` casts `hours` through unvalidated — the one field of that hand-rolled parser
- * that is not structurally checked — deliberately: refusing to parse would make the document
- * unopenable and hide the report, which is A-10's precedent and the same reason `duplicate_id`
- * is an `Issue` rather than a parse error. The consequence is that `{}`, a string, a number, an
- * array, `null` and `{weekly: 'mon-fri'}` all reach the model as an `OpeningHours` the type
- * system believes in. `copyStopInto` used to meet that as a raw `TypeError`; it now copies a
- * hole, and this is what says so to the user *before* they wonder where their hours went.
- *
- * `warn`, not `error`: nothing is unreachable or contradictory, the trip renders, and an
- * imported document is allowed to be imperfect. A `weekly` entry with extra keys is NOT
- * reported — the extra keys are dropped at the copy boundary and nowhere else reads them, so a
- * warning about them would be noise about a field this trip does not use.
- */
-function wellFormedHours(hours: unknown): boolean {
-  if (hours === null || typeof hours !== 'object' || Array.isArray(hours)) return false;
-  const o = hours as { weekly?: unknown; note?: unknown };
-  if (!Array.isArray(o.weekly)) return false;
-  if (o.note !== undefined && typeof o.note !== 'string') return false;
-  return o.weekly.every((w) => {
-    if (w === null) return true;
-    if (typeof w !== 'object' || Array.isArray(w)) return false;
-    const e = w as { day?: unknown; open?: unknown; close?: unknown };
-    return typeof e.day === 'number' && typeof e.open === 'string' && typeof e.close === 'string';
-  });
-}
-
 
 /** Pure. Returns every problem found, in a deterministic order; never throws. */
 export function validateTrip(trip: Trip): Issue[] {
@@ -487,7 +458,19 @@ export function validateTrip(trip: Trip): Issue[] {
         params: { placeId: p.id, cityKey: p.cityKey },
       });
     }
-    if (p.hours !== undefined && !wellFormedHours(p.hours)) {
+    // `place_hours_malformed` (ratified by §2.14 **A-20**, revision 15) means: **this in-memory
+    // document holds a `Place.hours` that `fromJSON` would refuse.** Since A-20 the parser
+    // stands at that door, so this reports a document built in memory *past* the type system —
+    // a cast, a future untyped writer, a native bridge. It is not dead code: `toJSON` will
+    // happily re-emit such an `hours`, and the export then fails to re-import at that field, so
+    // without this the user learns their backup is unrestorable at restore time. One shared
+    // predicate answers the question here, in `fromJSON` and at the copy boundary — three
+    // disagreeing answers is what R16-2 was.
+    //
+    // `warn`, not `error`: nothing is unreachable or contradictory and the trip renders. A
+    // `weekly` entry with extra keys is NOT reported — the parser drops them and nothing reads
+    // them, so a warning would be noise about a field this trip does not use.
+    if (p.hours !== undefined && !isOpeningHours(p.hours)) {
       push({
         level: 'warn',
         code: 'place_hours_malformed',

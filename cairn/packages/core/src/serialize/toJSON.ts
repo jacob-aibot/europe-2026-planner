@@ -27,6 +27,40 @@ function city(c: City) {
   });
 }
 
+/**
+ * `Place.hours` on the way OUT, field by field (§2.14 **A-20**, revision 15).
+ *
+ * This was `hours: p.hours` — the one field of this function passed through unenumerated, in a
+ * function that rebuilds every other field by name. Two consequences, both removed here: the
+ * in-memory `weekly` array was **aliased** into the object handed to `JSON.stringify`, and an
+ * unenumerated key on an entry of a cast-built document was re-emitted verbatim.
+ *
+ * It does **not** normalise or drop a malformed value, and it does **not** throw on one. An
+ * export stays a faithful record of what the document holds; `validateTrip` is what says the
+ * document is wrong (`place_hours_malformed`), and `fromJSON` is what refuses it on the way back
+ * in. That division is A-20's whole line, and the ratified meaning of `place_hours_malformed`
+ * depends on this function re-emitting rather than repairing: without the warning, a user with a
+ * cast-built document learns their backup is unrestorable only at restore time.
+ *
+ * So anything not of the declared shape passes through untouched — the same defensive treatment
+ * `hoursForCopy` gives an in-memory document, and for the same reason (R15-2).
+ */
+function weeklyOut(w: unknown): unknown {
+  if (w === null || typeof w !== 'object' || Array.isArray(w)) return w;
+  const e = w as { day?: unknown; open?: unknown; close?: unknown };
+  return omitUndef({ day: e.day, open: e.open, close: e.close });
+}
+
+function hours(h: Place['hours']): unknown {
+  const raw = h as unknown;
+  if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) return raw;
+  const o = raw as { weekly?: unknown; note?: unknown };
+  return omitUndef({
+    weekly: Array.isArray(o.weekly) ? o.weekly.map(weeklyOut) : o.weekly,
+    note: o.note,
+  });
+}
+
 function place(p: Place) {
   return omitUndef({
     id: p.id,
@@ -36,7 +70,7 @@ function place(p: Place) {
     category: p.category,
     note: p.note,
     links: p.links ? p.links.map((l) => ({ label: l.label, href: l.href })) : undefined,
-    hours: p.hours,
+    hours: p.hours === undefined ? undefined : hours(p.hours),
   });
 }
 

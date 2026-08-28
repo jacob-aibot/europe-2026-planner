@@ -252,11 +252,13 @@ export type IssueCode =
   // §2.2 A-10 (revision 11, QA P2-2). A key that is minted is not thereby a key that is
   // trusted: all three arrive by import, by hand-edit, or from a build predating the ruling.
   | 'duplicate_city_key' | 'reserved_city_key' | 'city_name_empty'
-  // QA R15-2. `parsePlace` casts `hours` through unvalidated — the one field of that parser
-  // that is not structurally checked — so six shapes `fromJSON` accepts are not `OpeningHours`
-  // at all. Core must not throw on a document (§2.1), and until this existed nothing told the
-  // user their opening hours were unreadable either. NOT in §2.9's printed code list yet: it
-  // arrived with a builder pass, and the architect ratifies the list.
+  // QA R15-2, **ratified by §2.14 A-20 (revision 15)** with its meaning narrowed: it means
+  // *this in-memory document holds a `Place.hours` that `fromJSON` would refuse*. `parsePlace`
+  // used to cast `hours` through unvalidated, so six shapes the parser accepted were not
+  // `OpeningHours` at all; A-20 closed that, so the remaining population is a document built
+  // past the type system — a cast, a future untyped writer, a native bridge. Not dead code:
+  // `toJSON` re-emits such an `hours` faithfully and the export then fails to re-import at that
+  // field, so without this the user learns their backup is unrestorable only at restore time.
   | 'place_hours_malformed';
 
 export type Issue = {

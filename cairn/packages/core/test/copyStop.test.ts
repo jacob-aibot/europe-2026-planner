@@ -26,6 +26,9 @@ import { addPlace } from '../src/build/stops.ts';
 // cross-trip pool copy can give, so the test names it rather than the bare string.
 import { TRANSIT_CITY_KEY } from '../src/model/ids.ts';
 import { needsBadge } from '../src/derive/display.ts';
+// A-20: the ONE definition of a well-formed `OpeningHours`, shared by `fromJSON`,
+// `validateTrip` and `weeklyForCopy`. Off §2.10's surface by design, so it is imported by path.
+import { isWeeklyEntry } from '../src/model/openingHours.ts';
 import { resolvePlaceLink } from '../src/derive/geo.ts';
 import type {
   BuildCtx, CostEstimate, LatLng, Link, MoveOverride, Money, Place, Stop, StopPlacement, Trip,
@@ -1279,6 +1282,13 @@ test('A-18: the copied stop\'s KEY SETS are the classified lists — a new cost 
   // catches a classified field that stops travelling. A field that silently fails to travel
   // when nothing in the fixture populates it is the fail-closed direction, and is caught by the
   // compile-time maps above plus review, not by this assertion.
+  // QA **R16-1**: `links` was the one row of the assertion above NOT forced against a hostile
+  // fixture — it ran on a two-key `{label, href}` and read `{label, href}` whatever the
+  // construction, so reverting the `links` line to `{ ...l }` left the whole suite green and
+  // the round-16 claim of "spreading `links` (1 red)" was measured at 0. The eleventh key makes
+  // that mutation red. `parseLinks` rebuilds every `Link` as `{label, href}`, so the carrier is
+  // an in-memory document — which is exactly the population A-18 position 2's *"no spread at
+  // any depth"* is written against.
   const hostile: Trip = {
     ...source,
     days: source.days.map((d) => ({
@@ -1287,12 +1297,49 @@ test('A-18: the copied stop\'s KEY SETS are the classified lists — a new cost 
         ...s,
         cost: { ...s.cost!, ninth: 'PIN 0754' } as unknown as Stop['cost'],
         arrival: { ...s.arrival!, tenth: 'PIN 0754' } as unknown as Stop['arrival'],
+        links: [{ label: 'Info', href: 'https://example.test/info', eleventh: 'PIN 0754' }] as unknown as Stop['links'],
       })),
     })),
   };
   const hostileCopy = copiedStop(copyAcross(jacobsTarget(), hostile, 'k2'));
   assert.deepEqual(Object.keys(hostileCopy.cost!).sort(), Object.keys(COST_FIELDS).sort());
   assert.deepEqual(Object.keys(hostileCopy.arrival!).sort(), Object.keys(ARRIVAL_FIELDS).sort());
+  assert.deepEqual(
+    Object.keys(hostileCopy.links![0]).sort(), Object.keys(LINK_FIELDS).sort(),
+    'a field of Link travelled unclassified — A-18 position 2 forbids `{ ...l }` at any depth',
+  );
+  assert.equal(
+    JSON.stringify(hostileCopy.links).includes('eleventh'), false,
+    'the eleventh key rode across on a spread',
+  );
+});
+
+// ---------------------------------------------------------------------------
+// QA **R16-1**, the named rider: A-18 says *"`redacted()` replaces every `as string` in this
+// file"*, and restoring `redactText(p.note) as string` in `placeForCopy` left 583/583 green,
+// because `parsePlace` validates `note` with `str()` so no PARSED document carries a non-string
+// one. `redactText` is typed `(unknown) => unknown` and returns a non-string **unchanged**, so
+// the cast is what let `{pin: '…'}` cross whole in R15-1. A cast-built place is the fixture that
+// tells the two constructions apart — the same population A-20 ratified `place_hours_malformed`
+// for, one field over.
+// ---------------------------------------------------------------------------
+
+test('R16-1 rider: placeForCopy uses `redacted()`, not `redactText(...) as string` — a non-string note fails CLOSED', () => {
+  for (const value of [{ pin: 'Front door PIN 0754' }, 5814731574, ['conf 5814731574'], true]) {
+    const src = sourceWithFullPlace('ordinary prose');
+    const source: Trip = { ...src, places: src.places.map((p) => ({ ...p, note: value as unknown as string })) };
+    const copy = copyAcross(jacobsTarget(), source, 'rn').places[0];
+    assert.equal(
+      copy.note, '[redacted]',
+      `a non-string Place.note crossed whole: ${JSON.stringify(value)} — that is \`as string\`, not \`redacted()\``,
+    );
+    assert.equal(JSON.stringify(toJSON(copyAcross(jacobsTarget(), source, 'rn2'))).includes('0754'), false);
+  }
+  // And the fail-closed rule is not a wipe: a real string still crosses byte-identical.
+  assert.equal(
+    copyAcross(jacobsTarget(), sourceWithFullPlace('entrance is on the north side'), 'rn3').places[0].note,
+    'entrance is on the north side',
+  );
 });
 
 test('A-18: a credential in cost.note or arrival.label does not cross the trip boundary', () => {
@@ -1415,32 +1462,68 @@ test('A-18: no new throw site — every cost and arrival shape fromJSON accepts 
 });
 
 // ---------------------------------------------------------------------------
-// R15-1 / R15-2 — `Place.hours` is the one field `parsePlace` does not structurally validate
-// (`o.hours as Place['hours']`), so what the TYPE says about `hours` is not what a DOCUMENT
-// may carry. `{...w}` over `hours.weekly` therefore carried arbitrary keys across the person
-// boundary (R15-1), and `p.hours.weekly.map(...)` threw a raw `TypeError` on six shapes
-// `fromJSON` accepts (R15-2) — core throwing about a document, which §2.1 forbids.
+// R15-1 / R15-2 — `Place.hours` USED to be the one field `parsePlace` did not structurally
+// validate (`o.hours as Place['hours']`), so what the TYPE said about `hours` was not what a
+// DOCUMENT could carry. `{...w}` over `hours.weekly` therefore carried arbitrary keys across
+// the person boundary (R15-1), and `p.hours.weekly.map(...)` threw a raw `TypeError` on six
+// shapes `fromJSON` accepted (R15-2) — core throwing about a document, which §2.1 forbids.
+//
+// **§2.14 A-20 (revision 15) closed the cast**, so none of these shapes can arrive through the
+// parser any more — `test/openingHours.test.ts` pins the refusal, path by path. A-20 says in
+// writing that these fixtures are re-expressed rather than deleted: *"a hostile `hours` fixture
+// now arrives by cast, not by parse"*, and the assertion is **two-sided** — `fromJSON` refuses
+// with a path, AND `copyStopInto` still never throws on the equivalent cast-built in-memory
+// document. The second half is R15-2's closure, and a ruling about the parser does not reopen
+// it: a cast, a future untyped writer or a native bridge can still hand core one of these, and
+// `place_hours_malformed` is the warning A-20 ratified for exactly that document.
 // ---------------------------------------------------------------------------
 
-/** Re-parses through the live import route, so these tests measure what `importDoc` sees. */
-function reparsedWithHours(hours: unknown): Trip {
+/**
+ * A source trip whose place holds an `hours` the type system says is an `OpeningHours` and is
+ * not — built **in memory, past the parser**, because since A-20 that is the only way such a
+ * document exists. `castWithHours` is the population `place_hours_malformed` describes.
+ */
+function castWithHours(hours: unknown): Trip {
   const t = sourceWithFullPlace('ordinary prose');
-  const raw = JSON.parse(toJSON(t));
+  return { ...t, places: t.places.map((p) => ({ ...p, hours: hours as Place['hours'] })) };
+}
+
+/** A document that carries `hours`, as JSON text — the input side of the parser. */
+function docWithHours(hours: unknown): string {
+  const raw = JSON.parse(toJSON(sourceWithFullPlace('ordinary prose')));
   raw.places[0].hours = hours;
-  return fromJSON(JSON.stringify(raw));
+  return JSON.stringify(raw);
+}
+
+/** The other half of every assertion below: the parser refuses what the cast smuggles in. */
+function refusedByParser(hours: unknown, label: string): void {
+  assert.throws(
+    () => fromJSON(docWithHours(hours)),
+    (e: unknown) => (e as Error).name === 'TripParseError',
+    `${label}: A-20 says fromJSON refuses this — if it parses, the cast fixture is testing nothing`,
+  );
 }
 
 test('R15-1: an unvalidated hours.weekly entry is rebuilt field by field — nothing else crosses', () => {
-  const source = reparsedWithHours({
+  const hostileHours = {
     weekly: [{
       day: 1, open: '09:00', close: '17:00',
       note: 'Front door PIN 0754, conf 5814731574 - ask for jacob@example.com',
       href: 'https://vendor.example/booking/GYGG45MLA9Q9',
     }],
-  });
+  };
+  // A-20 puts an extra key on a *structurally valid* entry on the NORMALISE side, not the
+  // refuse side: the parser drops it, exactly as `parseLinks` drops a third key on a `Link`.
+  // So the two-sided statement here is *dropped by the parser, and dropped by the copy too*.
+  const parsed = fromJSON(docWithHours(hostileHours));
+  assert.deepEqual(
+    Object.keys(parsed.places[0].hours!.weekly[0]!).sort(), ['close', 'day', 'open'],
+    'A-20: the parser rebuilds a weekly entry from three named fields — the extra key must not survive it',
+  );
+  const source = castWithHours(hostileHours);
   assert.notEqual(
     (source.places[0].hours!.weekly[0] as Record<string, unknown>).note, undefined,
-    'the fixture must survive fromJSON unvalidated, or it is not testing the live route',
+    'the fixture must actually carry the extra key, or it is not testing the carrier',
   );
 
   const after = copyAcross(jacobsTarget(), source);
@@ -1455,19 +1538,21 @@ test('R15-1: an unvalidated hours.weekly entry is rebuilt field by field — not
 
 test('R15-1: hours.note is redacted even when it is not a string — `as string` was hiding that', () => {
   for (const value of [{ pin: 'PIN 0754' }, 5814731574, ['conf 5814731574']]) {
-    const source = reparsedWithHours({ weekly: [], note: value });
+    refusedByParser({ weekly: [], note: value }, `hours.note as ${JSON.stringify(value)}`);
+    const source = castWithHours({ weekly: [], note: value });
     const after = copyAcross(jacobsTarget(), source, 'hn');
     assert.equal(after.places[0].hours?.note, '[redacted]', `a non-string hours.note crossed whole: ${JSON.stringify(value)}`);
     assert.equal(JSON.stringify(toJSON(after)).includes('0754'), false);
   }
   // A weekly entry whose open/close are not clock times redactText leaves alone becomes the
   // model's own specified unknown — `null` — rather than a `[redacted]` opening time.
-  const hostile = reparsedWithHours({ weekly: [{ day: 1, open: 'PIN 0754', close: '17:00' }] });
+  refusedByParser({ weekly: [{ day: 1, open: 'PIN 0754', close: '17:00' }] }, 'an open that is not a time');
+  const hostile = castWithHours({ weekly: [{ day: 1, open: 'PIN 0754', close: '17:00' }] });
   const copy = copyAcross(jacobsTarget(), hostile, 'hw').places[0];
   assert.deepEqual(copy.hours?.weekly, [null], 'a time that is not a time must not travel as a redaction marker');
 });
 
-test('R15-2: the six hours shapes fromJSON accepts copy without throwing, and warn instead', () => {
+test('R15-2: the six hours shapes are refused by fromJSON, and cast-built still copy without throwing', () => {
   const shapes: Array<[string, unknown]> = [
     ['hours: {} (no weekly)', {}],
     ['hours: a string', 'closed mondays'],
@@ -1477,24 +1562,87 @@ test('R15-2: the six hours shapes fromJSON accepts copy without throwing, and wa
     ['hours.weekly: a string', { weekly: 'mon-fri' }],
   ];
   for (const [label, hours] of shapes) {
-    const source = reparsedWithHours(hours);
+    // Half one (A-20): the parser refuses it. Half two (R15-2, unchanged): the same shape
+    // built in memory past the type system still copies without a throw out of core.
+    refusedByParser(hours, label);
+    const source = castWithHours(hours);
     let after: Trip;
     assert.doesNotThrow(() => { after = copyAcross(jacobsTarget(), source, 'sh'); }, `${label} threw`);
     const copy = after!.places[0];
     assert.deepEqual(copy.hours?.weekly, [], `${label}: an unreadable weekly must become a hole, not an invention`);
     assert.equal('note' in (copy.hours as object), false, `${label}: a note was invented`);
     // §2.1: core throws on programmer error and reports a DOCUMENT problem as an Issue. This
-    // is the half of R15-2 that answers "nothing warns the user first".
+    // is the half of R15-2 that answers "nothing warns the user first", and the population
+    // A-20 ratified `place_hours_malformed` to describe: a document built past the parser.
     const issues = validateTrip(source).filter((i) => i.code === 'place_hours_malformed');
     assert.equal(issues.length, 1, `${label}: validateTrip says nothing about the malformed hours`);
     assert.equal(issues[0].level, 'warn');
+    // And `toJSON` re-emits it rather than repairing or throwing — which is why the warning
+    // above is not dead code: the export is what fails to re-import.
+    assert.doesNotThrow(() => toJSON(source), `${label}: toJSON threw on a cast-built document`);
+    assert.throws(() => fromJSON(toJSON(source)), /./, `${label}: the re-emitted export must not re-import clean`);
   }
-  // And a WELL-FORMED hours warns about nothing, or the rule is noise.
+  // And a WELL-FORMED hours warns about nothing, or the rule is noise — through the parser,
+  // which is the only route a well-formed one now needs.
+  const wellFormed = JSON.parse(toJSON(sourceWithFullPlace('ordinary prose')));
+  wellFormed.places[0].hours = { weekly: [null, { day: 1, open: '09:00', close: '17:00' }], note: 'x' };
   assert.deepEqual(
-    validateTrip(reparsedWithHours({ weekly: [null, { day: 1, open: '09:00', close: '17:00' }], note: 'x' }))
-      .filter((i) => i.code === 'place_hours_malformed'),
+    validateTrip(fromJSON(JSON.stringify(wellFormed))).filter((i) => i.code === 'place_hours_malformed'),
     [],
   );
+});
+
+// ---------------------------------------------------------------------------
+// A-20 Part 5(b) — the invariant R16-2 asked for, stated directly:
+//
+//   > if `isWeeklyEntry(w)` and `w != null`, then `weeklyForCopy(w) !== null`.
+//
+// `weeklyForCopy` is module-private (§2.10), so it is measured where it is observable: the
+// entry a copied place's `hours.weekly` actually holds. Given Part 5(a) — all 11 000 strings
+// `isClockTime` accepts are byte-identical under `redactText` — this cannot be satisfied by
+// weakening either side: strengthen the predicate and a legitimate entry stops crossing;
+// weaken it and one of R16-2's three shapes crosses as a time that is not a time.
+// ---------------------------------------------------------------------------
+
+test('A-20 5(b): isWeeklyEntry(w) && w != null  ⟹  the entry survives the copy', () => {
+  const table: Array<[string, unknown]> = [
+    ['a legitimate entry', { day: 1, open: '09:00', close: '17:00' }],
+    ['a single-digit hour', { day: 0, open: '9:00', close: '23:59' }],
+    ['an entry with an extra key', { day: 2, open: '09:00', close: '17:00', note: 'PIN 0754' }],
+    ['R16-2: close as 170000', { day: 1, open: '9:00', close: '170000' }],
+    ['R16-2: open as a URL', { day: 1, open: 'https://vendor.test/x', close: '17:00' }],
+    ['R16-2: open as a reference', { day: 1, open: 'YZGDTS', close: '17:00' }],
+    ['null', null],
+    ['undefined', undefined],
+    ['a nested object', { day: 1, open: { h: 9 }, close: '17:00' }],
+    ['an array', [1, 2]],
+    ['a string', 'mon 9-5'],
+    ['a NaN day', { day: NaN, open: '9:00', close: '17:00' }],
+  ];
+
+  let survived = 0;
+  let dropped = 0;
+  for (const [label, w] of table) {
+    const source = castWithHours({ weekly: [w] });
+    const entry = copyAcross(jacobsTarget(), source, `wc${survived}${dropped}`).places[0].hours!.weekly[0];
+    const wellFormed = isWeeklyEntry(w) && w !== null && w !== undefined;
+    if (wellFormed) {
+      assert.notEqual(entry, null, `${label}: isWeeklyEntry says well-formed but the copy dropped it (R16-2)`);
+      assert.deepEqual(Object.keys(entry!).sort(), ['close', 'day', 'open'], `${label}: an unclassified key crossed`);
+      survived++;
+    } else {
+      assert.equal(entry, null, `${label}: the copy kept an entry isWeeklyEntry calls malformed`);
+      dropped++;
+    }
+    // The two readers agree by construction now — one predicate, three call sites.
+    const issues = validateTrip(source).filter((i) => i.code === 'place_hours_malformed');
+    assert.equal(
+      issues.length, wellFormed || w === null || w === undefined ? 0 : 1,
+      `${label}: validateTrip and the copy boundary disagree — that disagreement IS R16-2`,
+    );
+  }
+  assert.equal(survived, 3, 'the table must contain entries that DO survive, or it proves nothing');
+  assert.equal(dropped, 9);
 });
 
 // ---------------------------------------------------------------------------
