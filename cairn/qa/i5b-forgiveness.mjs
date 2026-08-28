@@ -72,7 +72,8 @@ const oldArr = JSON.parse(oldPacked);
 note(`new payload ${newArr.length} entries / ${newPacked.length} bytes; old ${oldArr.length} / ${oldPacked.length}`);
 
 const at = new Set(DROPS.forgivenessAt);
-ok(at.size === 54 && DROPS.forgivenessAt.length === 54, 'forgivenessAt records exactly 54 positions', `${at.size}`);
+// I-5c (A-28): 54 -> 53. Arm 2b refuses `MO` the entry that claimed Zhuhai; the other 53 stand.
+ok(at.size === 53 && DROPS.forgivenessAt.length === 53, 'forgivenessAt records exactly 53 positions', `${at.size}`);
 const stripped = newArr.filter((_, i) => !at.has(i));
 ok(
   JSON.stringify(stripped) === oldPacked,
@@ -421,9 +422,16 @@ for (const d of diffExamples) note(d);
 
 console.log('\n§5  The drops fixture — re-derived, and its filter-1 drops examined');
 
-ok(DROPS.drops.length === 11, 'eleven candidate rings were dropped', `${DROPS.drops.length}`);
+// I-5c (A-28): 11 -> 12 drops, and filter 2's nine become nine by arm 2a plus one by arm 2b.
+ok(DROPS.drops.length === 12, 'twelve candidate rings were dropped', `${DROPS.drops.length}`);
 ok(DROPS.drops.filter((d) => d.filter === 1).length === 2, 'two by filter 1', DROPS.drops.filter((d) => d.filter === 1).map((d) => d.code).join(' '));
-ok(DROPS.drops.filter((d) => d.filter === 2).length === 9, 'nine by filter 2');
+ok(DROPS.drops.filter((d) => d.filter === 2).length === 10, 'ten by filter 2', DROPS.drops.filter((d) => d.filter === 2).map((d) => `${d.code}/${d.against}`).join(' '));
+ok(DROPS.drops.filter((d) => d.against === 'coverage').length === 9, 'nine of them by arm 2a');
+ok(
+  DROPS.drops.filter((d) => d.against === 'finest').length === 1 &&
+    DROPS.drops.find((d) => d.against === 'finest').code === 'MO',
+  'one by arm 2b, and it is MO — R23-1 closed',
+);
 
 // For the two filter-1 drops: is the drop legitimate (the ring is somewhere else) or is it a real
 // piece of that country's territory the coarse entry could have restored?
@@ -450,8 +458,8 @@ console.log('\n§6  Artefact hygiene under A-27');
 
 const codes = entries.map((e) => e.code);
 ok(new Set(codes).size === 239, 'still 239 distinct ISO codes', `${new Set(codes).size}`);
-ok(entries.length === 293, '293 entries', `${entries.length}`);
-ok(entries.length - new Set(codes).size === 54, '54 duplicate-code entries');
+ok(entries.length === 292, '292 entries', `${entries.length}`);
+ok(entries.length - new Set(codes).size === 53, '53 duplicate-code entries');
 const dupes = codes.filter((c, i) => codes.indexOf(c) !== i);
 ok(new Set(dupes).size === dupes.length, 'no ISO code appears three or more times');
 ok(
@@ -471,8 +479,8 @@ for (const e of entries) {
     }
   }
 }
-ok(rings === 1034, '1,034 rings', `${rings}`);
-ok(points === 22229, '22,229 points', `${points}`);
+ok(rings === 1033, '1,033 rings', `${rings}`);
+ok(points === 22220, '22,220 points', `${points}`);
 ok(badRing === 0, 'every ring is even-length, ≥3 points, finite and inside ±180/±90');
 
 // The entry order is still ascending area, with the third key only breaking exact ties.

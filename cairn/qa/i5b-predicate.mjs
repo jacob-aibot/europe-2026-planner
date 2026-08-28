@@ -2,6 +2,12 @@
  * QA round 23 — is A-27 Part 4's `overlaps()` predicate actually *exact for simple rings*, and
  * does the answer change any decision the shipped artefact rests on?
  *
+ * **Round 24: R23-2 is CLOSED and this probe is now its regression guard.** A-28 Part 5 deleted
+ * both vertex-mean probes and `vertexMean` with them, so §1's three counterexamples — which were
+ * `3 FAIL by design` at `38d23c9` — are green, and §3's blast-radius diff is repaired for A-28's
+ * second arm (the one decision an offline, coverage-only comparison cannot reproduce is `MO`'s,
+ * and that is now asserted by name rather than reported as a difference).
+ *
  * OFFLINE. Run from `cairn/`:
  *
  *   node --experimental-strip-types qa/i5b-predicate.mjs
@@ -152,7 +158,7 @@ const overlapsExactRings = (ring, rings) => overlapsExact(prep(ring), prepS(ring
 
 // ------------------------------------------------------------------ §1 the counterexample
 
-console.log('\n§1  A-27 Part 4 claims the predicate is "exact for simple rings". It is not.');
+console.log('\n§1  A-27 Part 4 claimed "exact for simple rings" and was wrong. A-28 Part 5 made it true.');
 
 // A "C" opening east. The notch — x in (3,10), y in (4,6) — is OUTSIDE the ring.
 const C = [0, 0, 10, 0, 10, 4, 3, 4, 3, 6, 10, 6, 10, 10, 0, 10];
@@ -238,7 +244,8 @@ const entries = COUNTRY_INDEX.countries;
 const at = new Set(DROPS.forgivenessAt);
 const coverage = entries.filter((_, i) => !at.has(i)); // the pre-I-5b index, exactly (§1 of the sibling probe)
 const forgiven = entries.filter((_, i) => at.has(i));
-ok(coverage.length === 239 && forgiven.length === 54, 'coverage/forgiveness split reconstructed', `${coverage.length}/${forgiven.length}`);
+// I-5c (A-28): 54 -> 53 forgiveness entries; `MO`'s is the one arm 2b refused.
+ok(coverage.length === 239 && forgiven.length === 53, 'coverage/forgiveness split reconstructed', `${coverage.length}/${forgiven.length}`);
 
 /** Every candidate ring the generator saw, with the decision it got. */
 const candidates = [];
@@ -271,7 +278,15 @@ for (const c of candidates) {
   }
   void own;
 }
-ok(changed === 0, 'no shipped decision changes under the exact predicate', `${changed} would change`);
+// **I-5c repair.** This simulation is A-27's ONE-ARM filter 2: it asks the coverage-only index,
+// which is what `coverage` is. A-28 gave filter 2 a second arm against every code's FINEST
+// drawing, and that arm is invisible here by construction — the finest layer is 13 MB and this
+// probe is offline. So exactly one shipped decision is unreproducible, and it must be `MO`'s: the
+// ring arm 2b refuses and the coverage-only index has nothing to refuse it with. That is R23-1
+// stated as an assertion rather than a defect. Every OTHER decision must still reproduce.
+const armB = changes.filter((c) => c.startsWith('MO:'));
+ok(changed === armB.length, 'every decision the coverage-only comparison CAN see is unchanged', `${changed - armB.length} others`);
+ok(armB.length === 1, 'and the one it cannot see is MO — arm 2b\'s, by construction', armB.join('; '));
 for (const ch of changes) note(ch);
 
 // The same question asked one step earlier: for each of the 142 KEPT rings, is filter 1's
@@ -284,8 +299,12 @@ for (const c of candidates.filter((x) => x.shipped === 'kept')) {
 ok(keptByMeanOnly === 0, 'no kept ring was admitted by filter 1 on a vertex-mean probe alone', `${keptByMeanOnly}`);
 
 // …and for each of the 9 filter-2 drops, is the drop genuine or a vertex-mean artefact?
+// I-5c: arm 2b's drop names a country only the FINEST layer draws over that ground, so the
+// coverage-only comparison below cannot see it. Excluded by name, and asserted to be exactly one.
+const finestDrops = DROPS.drops.filter((x) => x.against === 'finest');
+ok(finestDrops.length === 1 && finestDrops[0].code === 'MO', 'exactly one drop is arm 2b\'s, and it is MO', finestDrops.map((d) => d.code).join(' '));
 let droppedByMeanOnly = 0;
-for (const d of DROPS.drops.filter((x) => x.filter === 2)) {
+for (const d of DROPS.drops.filter((x) => x.filter === 2 && x.against === 'coverage')) {
   const R = prep(d.ring);
   if (!overlapsExact(R, covPrep.get(d.takenFrom))) {
     droppedByMeanOnly++;

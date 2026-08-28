@@ -6,7 +6,7 @@
  * layer in the pinned family. So the question the filter actually answers is *"does this ring
  * reach a neighbour as the 1:110m layer draws them"*, not *"does this ring reach a neighbour"*.
  * This probe re-asks it against the **1:10m** layer — the finest one, the one the fill itself
- * uses — for every one of the 142 rings filter 2 admitted.
+ * uses — for every one of the 141 rings filter 2 admits (142 before I-5c refused MO's).
  *
  * Filter 1 gets the mirror attack: the two rings it dropped are checked against the *raw* layers
  * to see whether the drop refused a genuine piece of that country's territory.
@@ -123,7 +123,7 @@ const forgiven = entries.filter((_, i) => at.has(i));
 // ------------------------------------------------------------------ §1 filter 2's blind spot
 
 console.log('\n§1  Filter 2 asked the 1:110m base. Ask the 1:10m layer instead.');
-console.log('    For every one of the 142 ADMITTED forgiveness rings: does it reach ground that the');
+console.log('    For every one of the 141 ADMITTED forgiveness rings: does it reach ground that the');
 console.log('    finest layer says belongs to another ISO code?');
 
 const finePrep = new Map();
@@ -141,7 +141,10 @@ for (const e of forgiven) {
     }
   }
 }
-ok(admitted === 142, 'all 142 admitted rings tested', `${admitted}`);
+// I-5c (A-28): 142 -> 141. The ring that left is MO's, and §1's `MO->CN at 1:10m` line — this
+// probe's own R23-1 finding — is green as a result. That is the closure, measured by the probe
+// that filed it.
+ok(admitted === 141, 'all 141 admitted rings tested', `${admitted}`);
 ok(
   encroach.length === 0,
   'no admitted forgiveness ring reaches another country as the 1:10m layer draws it',
@@ -270,7 +273,7 @@ for (const d of DROPS.drops.filter((x) => x.filter === 1)) {
 
 // ------------------------------------------------------------------ §4 the codes the pass never reached
 
-console.log('\n§4  The 10 refused codes and the 2 with no 1:50m polygon');
+console.log('\n§4  The 11 refused codes and the 2 with no 1:50m polygon');
 ok(
   DROPS.noCandidates.every((c) => !mid.has(c)),
   'GI and UM genuinely have no 1:50m polygon in the pinned layer',

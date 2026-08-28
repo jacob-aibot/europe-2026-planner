@@ -12,6 +12,14 @@
  * A-27 Part 5 and BUILD-NOTES both assert *"Zhuhai across the border is still `null`"*; that is
  * true of the coordinate they spot-checked and false a few kilometres away.
  *
+ * **Round 24: R23-1 is CLOSED, and this probe is now its regression guard.** ARCHITECTURE §8.4
+ * **A-28** gave filter 2 a second arm — 2b, against every neighbour's drawing at the pinned
+ * family's *finest* scale — and it refuses `MO[0]`, the only ring in the whole pass it refuses.
+ * Every assertion below is inverted accordingly: the ground this probe measured as wrongly
+ * attributed is measured again, against the **I-5b artefact** (`git show 38d23c9:…`) as the
+ * "before", and must now answer `null`. If `MO` ever regains a forgiveness entry this file goes
+ * red again, which is the point of keeping it.
+ *
  * NEEDS THE NETWORK (the pinned 1:10m layer). Prints SKIP if it is blocked. Run from `cairn/`:
  *
  *   node --experimental-strip-types qa/i5b-macao.mjs
@@ -24,7 +32,8 @@ import { tmpdir } from 'node:os';
 
 import { COUNTRY_INDEX } from '../packages/core/src/index.ts';
 import { countryOf } from '../packages/core/src/derive/country.ts';
-import { countryIndex } from '../packages/core/src/geo/countryIndex.ts';
+import { countryIndex, decodeCountryIndex } from '../packages/core/src/geo/countryIndex.ts';
+import { execFileSync } from 'node:child_process';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CAIRN = resolve(HERE, '..');
@@ -33,11 +42,22 @@ const at = new Set(DROPS.forgivenessAt);
 const entries = COUNTRY_INDEX.countries;
 
 /** The index exactly as it shipped before I-5b, reconstructed from the recorded positions. */
-const OLD = countryIndex({
+const PRE = countryIndex({
   scale: 'ne_110m+10m',
-  source: 'pre-I-5b, reconstructed by removing the 54 forgiveness entries',
+  source: 'pre-I-5b, reconstructed by removing the 53 forgiveness entries',
   countries: entries.filter((_, i) => !at.has(i)),
 });
+
+/** The I-5b artefact — the one that carried the defect. This is the "before" everything below is
+ *  measured against, because the ground R23-1 named is ground only I-5b ever attributed to MO. */
+const I5BSRC = execFileSync('git', ['show', '38d23c9:cairn/packages/core/src/geo/countries.gen.ts'], {
+  cwd: resolve(CAIRN, '..'),
+  maxBuffer: 64 * 1024 * 1024,
+}).toString('utf8');
+const OLD = decodeCountryIndex(
+  { scale: 'I-5b', source: 'git show 38d23c9 — the artefact R23-1 was filed against' },
+  /'(\[\[".*\]\])'/s.exec(I5BSRC)[1],
+);
 
 let fails = 0;
 const ok = (cond, label, detail = '') => {
@@ -102,14 +122,23 @@ const inSet = (lng, lat, rs) => {
   return inside;
 };
 
-console.log('\n§1  A-27 Part 4 filter 2 names "every bordered filled code". MO is bordered and absent.');
+console.log('\n§1  A-27 Part 4 filter 2 named "every bordered filled code" and was short by MO. A-28 fixed it.');
 const filter2Codes = [...new Set(DROPS.drops.filter((d) => d.filter === 2).map((d) => d.code))].sort();
 note(`filter 2 rejected: ${filter2Codes.join(' ')}`);
-note('MO — Macao — has a land border with Zhuhai, Guangdong, PRC, and is not on that list.');
-ok(DROPS.codes.includes('MO'), 'MO was ADMITTED a forgiveness entry', `${DROPS.codes.includes('MO')}`);
+note('MO — Macao — has a land border with Zhuhai, Guangdong, PRC, and is now on that list.');
+ok(!DROPS.codes.includes('MO'), 'MO is REFUSED a forgiveness entry — R23-1 closed', `admitted: ${DROPS.codes.includes('MO')}`);
+const moDrop = DROPS.drops.find((d) => d.code === 'MO');
+ok(
+  moDrop != null && moDrop.filter === 2 && moDrop.against === 'finest' && moDrop.takenFrom === 'CN',
+  'and it is arm 2b that refused it, naming CN — the arm A-28 Part 3 added for exactly this',
+  moDrop ? `${moDrop.filter}${moDrop.against} / ${moDrop.takenFrom}` : 'no MO drop',
+);
 
-console.log('\n§2  The ground that entry claims, as the 1:10m layer — the layer the fill uses — draws it');
-const mo = entries.filter((e, i) => at.has(i) && e.code === 'MO')[0];
+console.log('\n§2  The ground that entry CLAIMED at I-5b, as the 1:10m layer draws it');
+// From the I-5b artefact, because the shipped one no longer carries it. Two MO entries there: the
+// forgiveness one is the one whose rings are not the coverage rings.
+const moShipped = JSON.stringify(entries.find((e) => e.code === 'MO').rings);
+const mo = OLD.countries.filter((e) => e.code === 'MO' && JSON.stringify(e.rings) !== moShipped)[0];
 note(`MO forgiveness entry: ${mo.rings.length} ring, box ${mo.box.map((n) => n.toFixed(4)).join(', ')}`);
 const [x0, y0, x1, y1] = mo.box;
 const N = 400;
@@ -122,21 +151,31 @@ for (let i = 0; i <= N; i++) {
     const lat = y0 + ((y1 - y0) * j) / N;
     if (!inSet(lng, lat, raw.get('CN'))) continue;
     cn++;
-    const before = countryOf({ lat, lng }, OLD);
-    if (countryOf({ lat, lng }, COUNTRY_INDEX) === 'MO') {
-      cnNowMO++;
-      if (before === null) cnWasNull++;
+    if (countryOf({ lat, lng }, OLD) === 'MO') {
+      cnWasNull++;
+      if (countryOf({ lat, lng }, COUNTRY_INDEX) === 'MO') cnNowMO++;
     }
   }
 }
 // Cell area, at ~22.2 N.
 const cellKm2 = (((x1 - x0) / N) * 111.32 * Math.cos((22.2 * Math.PI) / 180)) * (((y1 - y0) / N) * 110.57);
-note(`${cn} sample cells inside CN at 1:10m fall in MO's forgiveness box; ${cnNowMO} of them now answer MO`);
-note(`≈ ${(cnNowMO * cellKm2).toFixed(1)} km² of Chinese mainland attributes to MO — against Macao's own ~33 km²`);
-note(`${cnWasNull} of those ${cnNowMO} were null before I-5b, which is why every "country → another country" sweep passes`);
+note(`${cn} sample cells inside CN at 1:10m fall in MO's I-5b forgiveness box`);
+note(`at I-5b, ${cnWasNull} of them answered MO — ≈ ${(cnWasNull * cellKm2).toFixed(1)} km² of Chinese mainland`);
+note(`in the shipped index, ${cnNowMO} of them do — and every one of those cells is also null in the PRE-I-5b index`);
 ok(cnNowMO === 0, 'no ground the 1:10m layer calls China attributes to MO', `${cnNowMO} cells do`);
+ok(cnWasNull > 0, 'the defect this probe was written for was real and is measured here, not asserted', `${cnWasNull} cells`);
+{
+  let differsFromPre = 0;
+  for (let i = 0; i <= 60; i++)
+    for (let j = 0; j <= 60; j++) {
+      const lng = x0 + ((x1 - x0) * i) / 60;
+      const lat = y0 + ((y1 - y0) * j) / 60;
+      if (countryOf({ lat, lng }, PRE) !== countryOf({ lat, lng }, COUNTRY_INDEX)) differsFromPre++;
+    }
+  ok(differsFromPre === 0, 'over MO’s old box the shipped index and the PRE-I-5b index agree cell for cell', `${differsFromPre}`);
+}
 
-console.log('\n§3  Named coordinates, before and after');
+console.log('\n§3  Named coordinates — I-5b as "before", the shipped index as "after"');
 const pts = {
   'Senado Square, Macao (MO)': [22.1936, 113.5397],
   'Zhuhai Nanping, Guangdong (CN)': [22.221, 113.503],
@@ -156,11 +195,11 @@ for (const [name, [lat, lng]] of Object.entries(pts)) {
 }
 ok(
   countryOf({ lat: 22.221, lng: 113.503 }, COUNTRY_INDEX) === null,
-  'Zhuhai Nanping — Chinese mainland at 1:10m — is still null after I-5b',
+  'Zhuhai Nanping — Chinese mainland at 1:10m — answers null again after I-5c',
   `it is ${countryOf({ lat: 22.221, lng: 113.503 }, COUNTRY_INDEX)}`,
 );
 
-console.log('\n§4  Why filter 2 missed it: CN is drawn at 1:110m in the coverage index');
+console.log('\n§4  Why A-27’s ONE-ARM filter 2 missed it: CN is drawn at 1:110m in the coverage index');
 const cnEntry = entries.find((e) => e.code === 'CN');
 note(`CN's coverage entry has ${cnEntry.rings.length} rings — the 1:110m base (1:10m CN has ${raw.get('CN').length})`);
 let inCoarse = 0;
@@ -174,9 +213,11 @@ for (let i = 0; i <= 120; i++) {
   }
 }
 note(`inside MO's forgiveness box: ${inCoarse} cells are CN at 1:110m, ${inFine} at 1:10m (of ${121 * 121})`);
-note('The 1:110m China polygon does not reach the Macao border at all, so filter 2 had nothing to');
-note('compare against. Had CN been a *filled* code — drawn at 1:10m — the ring would have been');
-note('rejected exactly as HK\'s three rings were.');
+note('The 1:110m China polygon does not reach the Macao border at all, so ARM 2A had nothing to');
+note('compare against — and it still has nothing. What refuses the ring is ARM 2B, which asks CN');
+note('at 1:10m regardless of the scale CN\'s own coverage entry is drawn at (A-28 Part 3).');
+note('Note that arm 2a is NOT redundant: it is what refuses HK[1], HK[2] and SG[0], which arm 2b');
+note('passes. See qa/i5c-filter2.mjs §2 for the census.');
 
 console.log(`\n${fails === 0 ? 'ALL OK' : `${fails} FAIL`}\n`);
 process.exit(0);

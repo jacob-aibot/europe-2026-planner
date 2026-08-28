@@ -213,7 +213,8 @@ ok(oldRaw.length === 175, 'the pre-I-5a module carried 175 codes', String(oldRaw
 ok(absent.length === 0, 'every pre-I-5a code is still in the index', JSON.stringify(absent));
 ok(changed.length === 0, 'every pre-I-5a code\'s rings are BYTE-IDENTICAL — only the order moved', JSON.stringify(changed));
 // Round 23: 64 fill entries (I-5a) + 54 forgiveness entries (I-5b / A-27) = 118 added, none removed.
-ok(IX.countries.length - oldRaw.length === 118, '118 ENTRIES were added and nothing was removed (64 fill + 54 forgiveness)', String(IX.countries.length - oldRaw.length));
+// I-5c (A-28): 118 -> 117. 64 fill (I-5a) + 53 forgiveness (I-5b, less the MO entry A-28 refused).
+ok(IX.countries.length - oldRaw.length === 117, '117 ENTRIES were added and nothing was removed (64 fill + 53 forgiveness)', String(IX.countries.length - oldRaw.length));
 note(
   'therefore, structurally',
   'the set of countries containing any point is a SUPERSET of the pre-I-5a set, so `country -> null` is impossible and `country -> other country` can only happen where >1 country contains the point',
@@ -455,8 +456,18 @@ const bytes = statSync(GEN).size;
 // Round 23 (I-5b): EMITTED_BYTES moved 346_455 -> 374_826 and R22-4's guard 1 was REPLACED by two
 // measurements of two different things. This section is re-expressed against the guards that now
 // exist, and R22-4's assertion becomes a headroom check on both of them.
-note('EMITTED_BYTES', `test pins 374_826; file is ${bytes}`);
-ok(bytes <= 374826, 'the file is within its measured budget');
+//
+// Round 24 (I-5c): it moved again — 374_826 -> 374_659, DOWNWARD for the first time, because A-28's
+// arm 2b refused `MO` a ring. Rather than re-pin a third time, the ceiling is now READ FROM THE
+// TEST, so this probe measures the guard instead of duplicating its number.
+const pin = /const EMITTED_BYTES = ([\d_]+);/.exec(
+  readFileSync(resolve(CAIRN, 'packages/core/test/0-countryBudget.test.ts'), 'utf8'),
+);
+ok(pin !== null, 'the budget test still declares EMITTED_BYTES where this probe can read it');
+const ceiling = Number(pin[1].replace(/_/g, ''));
+note('EMITTED_BYTES', `test pins ${pin[1]}; file is ${bytes}`);
+ok(bytes <= ceiling, 'the file is within its measured budget');
+ok(bytes === ceiling, 'and the pin is EXACT, not merely an upper bound the artefact sits under', `${ceiling - bytes} bytes of slack`);
 ok((outside.match(/\[/g) ?? []).length === 0, 'guard 2: zero "[" outside the packed literal');
 ok(packed[1].length / src.length > 0.98, 'guard 3: the packed literal is >98% of the file', (packed[1].length / src.length).toFixed(6));
 {

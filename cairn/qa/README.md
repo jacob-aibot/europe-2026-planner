@@ -979,6 +979,102 @@ for. That is the whole reason all five are MINOR and none is a BLOCKER.
 
 ---
 
+## Round 24 (2026-08-28, `master` @ `99c2e84`) — the I-5c breaker pass on A-28's second arm
+
+Fourth round on the geography surface, and the first that found nothing wrong with the mechanism.
+Five new probes, run from `cairn/`:
+
+```bash
+node --experimental-strip-types qa/i5c-sweep.mjs        # offline: the I-5b → I-5c delta, and BOTH
+                                                        # sweeps re-derived with the grid's phase
+                                                        # stepped through the cell
+node --experimental-strip-types qa/i5c-filter2.mjs      # network: the two arms in isolation on
+                                                        # synthetic rings, then A-28 Part 4's census
+                                                        # rebuilt from the pinned layers
+node --experimental-strip-types qa/i5c-predicate.mjs    # offline: 21 fresh adversarial ring pairs,
+                                                        # a raster differential, and R23-3's two
+                                                        # remaining arithmetic mutants
+node --experimental-strip-types qa/i5c-thirdsource.mjs  # network: every one of the 983 recorded
+                                                        # thirdSource answers re-derived from the
+                                                        # raw 1:10m layer
+bash qa/i5c-family.sh                                   # R24-3: three mutations of FAMILY/FILL —
+                                                        # a report, no verdict
+bash qa/i5b-mutants.sh                                  # 26 mutants of the REAL tools/forgiveness.mjs,
+                                                        # REPAIRED for the two-arm source (below)
+```
+
+`i5c-sweep.mjs` is **1 FAIL by design** (R24-4 — the 0.005° count is not phase-independent).
+`i5c-filter2.mjs`, `i5c-predicate.mjs` and `i5c-thirdsource.mjs` must be **ALL OK**.
+`i5c-family.sh` prints no verdict: its case **B** exiting 0 *is* R24-3.
+
+The network probes reuse `$TMPDIR/cairn-qa-ne/` — the same cache rounds 22 and 23 fill — and print
+`SKIP` for the affected section rather than a false pass if the fetch is blocked. `i5c-sweep.mjs`
+takes about two minutes for §2; set `I5C_SKIP_FULL=1` to skip that one section while iterating.
+Nothing under `cairn/` is written by any of them except `i5b-mutants.sh` and `i5c-family.sh`, which
+write only inside a `git worktree` they then remove.
+
+What each probe covers:
+
+| probe | § | what it measures |
+|---|---|---|
+| `i5c-sweep` | 1 | the two artefacts and the multiset difference between them — one entry, one 9-vertex ring, `MO`'s, nothing added; and **why the "54 forgiveness boxes" is an ambiguous sweep geometry** (48 of the recorded positions are the *first* entry of their code) |
+| | 2 | 14,926,301 cells at 0.02° over the recorded boxes → 4 changed, all `MO` → `null` |
+| | 3 | the phase family: 5,5,4,4,4,5,6,5,6,5 — and the two anchors on record giving 4 and 5 for identical ground |
+| | 4 | the 0.005° sweep, its own phase spread (76–82), the ring's equal-area shoelace (22.7 km²), and the named coordinates both ways |
+| | 5 | the reference trip's 226 coordinate-bearing records, both artefacts, 0 changed |
+| `i5c-filter2` | 1 | eight synthetic cases isolating each arm: 2a-only, 2b-only, both, neither, filter 1's precedence, the empty-population throw, cross-arm independence, and self-exclusion |
+| | 2 | A-28 Part 4's census rebuilt from the pinned layers: 153 candidates, 151 past filter 1, exactly 4 disagreements |
+| | 3 | **new** — the 13 code-**less** 1:10m features neither arm's population can see, and whether any admitted ring touches one (none does) |
+| `i5c-predicate` | 1 | 21 hand-built pairs, none of them round 23's or the shipped test's |
+| | 2 | 2,000 randomised simple pairs against a raster reference sharing no code with `overlaps()` |
+| | 3 | R23-3's `insideRing` strictness mutant over 500,000 pairs — 0 disagreements, an equivalent mutant |
+| | 4 | R23-3's `prepRing` truncation mutant — observable, and the new fixture that catches it |
+| | 5 | the self-intersection census under the narrowed claim |
+| `i5c-thirdsource` | 1 | the block's shape and whether every probe lies inside the ring it is filed against |
+| | 2 | **all 983 recorded answers re-derived from the raw 1:10m layer** — the only check that can tell a true third-source record from a plausible one |
+| | 3 | the `MO` record: 8 probes, `CN` at 1:10m, `null` in the shipped index |
+| | 4 | what the block costs in bytes, what reads it, and that no part of it reaches the bundle |
+
+**`qa/i5b-mutants.sh` — repaired, and the repair is structural.** Five rows (not the four
+BUILD-NOTES discloses) matched no source text after I-5c renamed `filter2` to `filter2a`/`filter2b`
+and deleted the vertex means. A `perl -0pi -e 's///'` that matches nothing exits 0, so those rows
+ran an **unmutated** module and printed `fail=0`. The rows are now re-expressed against the two-arm
+source, eight rows were added for A-28's own machinery (each arm, the arm **order**, the `against`
+label, the empty-population guard, an emptied 2b population, a `floor` variant of the rounding
+mutant), and **every mutation is verified to have applied** — `mutate` diffs against a pristine
+copy, prints `MUTATION DID NOT APPLY` for a stale row, and the script exits non-zero if any row is
+stale. Default commit is now `99c2e84`.
+
+**QA pin repairs this round (probe rot, introduced by I-5c as intended).**
+
+- `qa/i5b-forgiveness.mjs` — 7 pins (54→53 positions, 11→12 drops with the arm split asserted,
+  293→292 entries, 54→53 duplicate-code entries, 1,034→1,033 rings, 22,229→22,220 points).
+  **ALL OK**, and its §4 C-notch case — round 23's R23-2 failure — is green.
+- `qa/i5b-predicate.mjs` — the 54→53 split, and §3's blast-radius diff re-expressed: that
+  simulation is A-27's *one-arm* filter 2, so exactly one shipped decision is unreproducible from
+  the coverage-only index and it must be `MO`'s. Asserted by name. §1's three R23-2 counterexamples
+  are green. **ALL OK.**
+- `qa/i5b-macao.mjs` — **threw** at `99c2e84` (it dereferenced an entry that no longer exists).
+  Rewritten as R23-1's regression guard: the "before" is now the I-5b artefact from
+  `git show 38d23c9:…`, §1 asserts `MO` is refused **by arm 2b naming CN**, and §2 measures the
+  89,286 sample cells that answered `MO` at I-5b against the 0 that do now (≈22.1 km²). **ALL OK.**
+- `qa/i5b-neighbour.mjs` — 142→141 admitted rings, and §4's heading 10→11 refused codes. Now
+  **2 FAIL**, both previously explained and neither a defect: `MF`→`SX` at 1:50m (a same-scale
+  artefact of the source layer) and Alofi's `ISO_A2` being `NZ`. Its §1 `MO`→`CN` line — the sweep
+  that filed R23-1 — is **green**.
+- `qa/i5-order.mjs` — 118→117 added entries, and `EMITTED_BYTES` is now **read from
+  `0-countryBudget.test.ts`** instead of hardcoded, with an added assertion that the pin is exact
+  rather than a loose ceiling. It has rotted on this number three times; it cannot a fourth.
+  **0 FAIL.**
+
+`qa/i5-fillscale.mjs` needed no repair and is still **1 FAIL by design** (R22-2, open, and A-28
+deliberately does not touch it).
+
+**Not touched, and not routed to this round:** breaker-board items **B-1**…**B-4**.
+`qa/r11-recheck.mjs` still throws at line 243 and `qa/p2b-gate.mjs` is still 5 FAIL.
+
+---
+
 ## Round 23 (2026-08-28, `master` @ `38d23c9`) — the I-5b breaker pass on A-27's forgiveness entry
 
 Second round on the geography surface. Five new probes, run from `cairn/`:
