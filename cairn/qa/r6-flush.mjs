@@ -210,7 +210,7 @@ line('4 — a genuine refusal arriving DURING the retry loop, not before it');
         // of the loop meets a moved record.
         state.store.dispatch({ type: 'setDayMeta', dayId: '2026-09-02', patch: { title: 'MINE' } });
         const cur = inner.docs.get(id);
-        await inner.saveIfVersion(id, inner.versions.get(id), cur, core.tripSummary(core.fromJSON(cur)));
+        await inner.saveIfVersion(id, inner.versions.get(id), cur, core.tripSummary(core.fromJSON(cur), core.COUNTRY_INDEX));
       }
       return out;
     },
@@ -249,7 +249,7 @@ line('5 — every transition propagates a false flush into an aborted transition
 
     // Move the record behind the store's back so its next write is refused.
     const cur = inner.docs.get(id);
-    await inner.saveIfVersion(id, inner.versions.get(id), cur, core.tripSummary(core.fromJSON(cur)));
+    await inner.saveIfVersion(id, inner.versions.get(id), cur, core.tripSummary(core.fromJSON(cur), core.COUNTRY_INDEX));
     store.dispatch({ type: 'setDayMeta', dayId: '2026-09-01', patch: { title: 'AT RISK' } });
 
     try {
@@ -302,7 +302,7 @@ line('6 — R3-3 (mergeWithStored assigns `saving`) against the drain loop');
   const id = store.getState().doc.id;
   await store.flush();
   const cur = inner.docs.get(id);
-  await inner.saveIfVersion(id, inner.versions.get(id), cur, core.tripSummary(core.fromJSON(cur)));
+  await inner.saveIfVersion(id, inner.versions.get(id), cur, core.tripSummary(core.fromJSON(cur), core.COUNTRY_INDEX));
   store.dispatch({ type: 'setDayMeta', dayId: '2026-09-01', patch: { title: 'MINE' } });
   await store.closeTrip(); // refused → conflict, still open
 

@@ -29,7 +29,7 @@ const slowLoad = (port, ms) => new Proxy(port, {
 /** Puts a store into `persistence.status === 'conflict'` by moving storage on underneath it. */
 async function intoConflict(store, base, id) {
   const stored = await base.load(id);
-  await base.saveIfVersion(id, stored.version, stored.doc, core.tripSummary(core.fromJSON(stored.doc)));
+  await base.saveIfVersion(id, stored.version, stored.doc, core.tripSummary(core.fromJSON(stored.doc), core.COUNTRY_INDEX));
   store.dispatch({ type: 'setTripMeta', patch: { title: 'mine' } });
   await store.flush();
 }

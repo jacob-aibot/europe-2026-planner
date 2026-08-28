@@ -9,7 +9,7 @@ try{
   const t=core.createTrip({id:'t1',title:'Zero',startDate:'2026-05-01',endDate:'2026-05-01',homeCurrency:'EUR',ownerId:'u1'},ctx());
   ok('same-day trip => 1 day', t.days.length===1, t.days.length);
   console.log('   validate:',JSON.stringify(core.validateTrip(t).map(i=>i.code)));
-  console.log('   summary:',JSON.stringify(core.tripSummary(t)));
+  console.log('   summary:',JSON.stringify(core.tripSummary(t, core.COUNTRY_INDEX)));
   console.log('   conflicts:',core.detectConflicts(t,{today:'2026-01-01'}).length);
 }catch(e){ok('same-day trip',false,e.message)}
 try{

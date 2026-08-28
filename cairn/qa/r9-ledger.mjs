@@ -254,7 +254,7 @@ line('§3 KD-36 case 2 — the reseed paths: repeated round trips, a trip switch
   // Move storage on underneath the store, so the next save is refused -> status 'conflict'.
   const stored = await storage.load(tripId);
   const other = core.setTripMeta(core.fromJSON(stored.doc), { title: 'the other tab' });
-  await storage.saveIfVersion(tripId, stored.version, core.toJSON(other), core.tripSummary(other));
+  await storage.saveIfVersion(tripId, stored.version, core.toJSON(other), core.tripSummary(other, core.COUNTRY_INDEX));
   store.dispatch({ type: 'setDayMeta', dayId, patch: { title: 'mine' } });
   await store.flush().catch(() => {});
   ok('3.3a the store is in conflict, so merge is reachable', store.getState().persistence.status === 'conflict',

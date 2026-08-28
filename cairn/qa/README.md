@@ -979,6 +979,64 @@ for. That is the whole reason all five are MINOR and none is a BLOCKER.
 
 ---
 
+## Round 26 (2026-08-28, `master` @ `0f52c4c`) — I-6: the widened row and the `SUMMARY_VERSION` rescan
+
+Six new probes. All run from `cairn/`; the two `.sh` ones build a throwaway `git worktree` at
+`HEAD`, mutate it, and remove it — nothing in the working tree is touched.
+
+```bash
+node --experimental-strip-types qa/i6-summary.mjs     # tripSummary(trip, index): the required-argument
+                                                      # throw (8 bad indexes), `null` in the countryCodes
+                                                      # aggregation, KD-55's homeBase exclusion, purity,
+                                                      # determinism, real-trip shapes, the Europe fixture
+bash qa/i6-fence.sh                                   # KD-57 TESTED, NOT BELIEVED. Routes the rescan's
+                                                      # non-active write through writeAndSettle in a
+                                                      # worktree and shows the fence move to another
+                                                      # trip, the spurious conflict, and mergeTrips
+                                                      # throwing on the ancestor. Runs i6-fence-probe.mjs
+bash qa/i6-ceiling.sh                                 # the §4.3 structural grep, three mutations: a bare
+                                                      # async IIFE, a third off-chain call site, and the
+                                                      # same write hoisted one frame out of the callback
+node --experimental-strip-types qa/i6-race.mjs        # A openTrip mid-pass · B closeTrip on the row being
+                                                      # rescanned · C a port-level delete between load and
+                                                      # write · D two tabs, the other one conflicted ·
+                                                      # E a conflicted active trip · F the in-flight edit ·
+                                                      # G doc/activeTripId/persistence untouched ·
+                                                      # H a failing port · I three joined passes
+node --experimental-strip-types qa/i6-converge.mjs    # is RESCAN_MAX_PASSES = 5 enough? port-call
+                                                      # arithmetic, a transient refusal, rows arriving
+                                                      # behind the pass, an adversary, an ORPHAN row, 40 rows
+node --experimental-strip-types qa/i6-unreadable.mjs  # the `unreadable` report outliving its own subject
+node --experimental-strip-types qa/i6-ghostrow.mjs    # R26-1: the off-chain end-of-pass listTrips()
+```
+
+`i6-unreadable.mjs` (**4 FAIL**, R26-2) and `i6-ghostrow.mjs` (**1 FAIL**, R26-1) fail by design —
+they are the two findings. `i6-summary.mjs`, `i6-race.mjs` and `i6-converge.mjs` are **ALL OK**;
+R26-4 and R26-6 are recorded inside `i6-race.mjs` as `note` lines beside passing assertions,
+because the behaviour is correct-as-built and the finding is about what it costs. `i6-fence.sh`'s
+probe reports **7 FAIL** *inside the mutated worktree* — that is the counterfactual failing, which
+is the evidence; against the shipped tree the same probe would be trivially green.
+
+`i6-ghostrow.mjs` models a slow port by reading first and delivering late, which is what an
+IndexedDB cursor round trip does. Wrapping `listTrips` so it parks *before* reading does **not**
+reproduce it — the window is between the read and the `set`, not before the read.
+
+**Repaired this round, per KD-58** (seven `core.tripSummary(trip)` sites that now hit the
+required-argument throw): `attack1.mjs:12`, `p2b-gate.mjs:491`, `r6-flush.mjs:213/252/305`,
+`r8-persist.mjs:32`, `r9-ledger.mjs:257` — each gained `, core.COUNTRY_INDEX`. All five scripts
+were then re-run against `4eabf08` and `0f52c4c`: FAIL counts identical (**0 / 5 / 1 / 1 / 2**), so
+their remaining FAILs are the historic findings each probe exists to demonstrate and none of them
+is an I-6 regression.
+
+Re-run **unmodified** this round: `qa/r2-constraints.mjs` **1 FAIL** (the determinism grep's scope,
+known and pre-existing), `qa/r2-redact.mjs` 3 "leaks" — all its known false positives
+(`OPTIONAL`, `BOOKINGS`), unchanged. `npm run test:tap` **722/0**, `npm run typecheck` clean,
+`npm run web:build` clean, `npm run golden` + `npm run sample` byte-identical (sample sha
+`40955ca0b182`), `Object.keys(core).length` **74**, `Object.keys(client).length` **38**,
+`dist/assets/*.js` 972,580 bytes against 969,414 at `4eabf08`.
+
+---
+
 ## Round 25 (2026-08-28, `master` @ `32efd1e`) — the I-5 closure round
 
 Fifth and last round on the geography surface: a confirmation pass over the R24-2 / R24-3 / R24-4

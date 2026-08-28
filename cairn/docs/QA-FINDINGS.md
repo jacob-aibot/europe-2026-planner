@@ -1,4 +1,30 @@
-# Cairn — QA findings, Phase 1 **rounds 2–11** and Phase 2 **rounds 12 (2a), 13 (I-3a / I-4a), 14 (A-11…A-14), 15 (A-15…A-17), 16 (A-18 / A-19), 17 (A-20 / R16-1), 18 (A-21 / A-21a), 19 (A-22 / A-23), 20 (A-24 / R19-1 / R19-2 / KD-50), 21 (A-25 — the closure round), 22 (I-5 / I-5a — A-26's mixed-resolution country index), 23 (I-5b — A-27's forgiveness entry), 24 (I-5c — A-28's second arm for filter 2) and 25 (the I-5 closure round)**
+# Cairn — QA findings, Phase 1 **rounds 2–11** and Phase 2 **rounds 12 (2a), 13 (I-3a / I-4a), 14 (A-11…A-14), 15 (A-15…A-17), 16 (A-18 / A-19), 17 (A-20 / R16-1), 18 (A-21 / A-21a), 19 (A-22 / A-23), 20 (A-24 / R19-1 / R19-2 / KD-50), 21 (A-25 — the closure round), 22 (I-5 / I-5a — A-26's mixed-resolution country index), 23 (I-5b — A-27's forgiveness entry), 24 (I-5c — A-28's second arm for filter 2), 25 (the I-5 closure round) and 26 (I-6 — the widened `TripSummaryRow` and the `SUMMARY_VERSION` rescan)**
+
+> **Status (as of `master` @ `0f52c4c`, independently verified 2026-08-28 — round 26, the
+> mandatory adversarial pass over Phase 2 **I-6**: the widened `TripSummaryRow`, the
+> `SUMMARY_VERSION` rescan, and KD-57's ruling that the rescan may not reuse `writeAndSettle`.
+> Surface: `git diff 4eabf08 0f52c4c -- cairn/packages cairn/apps cairn/cli.ts` —
+> `packages/core/src/derive/summary.ts`, `packages/client/src/store/store.ts` (+168),
+> `store/reducer.ts`, `selectors/index.ts`, `apps/web/src/{App,views/Library}.tsx`.**
+>
+> | | |
+> |---|---|
+> | **Verdict** | **KD-57 is right, and it is *understated*. The `attemptSave` route is sound and does not move the bug.** I built the refused option in a worktree and ran it: routing the rescan's non-active write through `writeAndSettle` moves the **active** trip's fence to a version minted for another trip, the store then believes it is dirty, the user's next keystroke is refused with a spurious `'conflict'` and never reaches storage — and the consequence KD-57 does not state is worse: `savedDoc` becomes the *other trip's document*, which is `doMerge`'s three-way ancestor, so the one button offered to escape that conflict throws `mergeTrips: base, local and remote must be the same trip (got t-hr, t-at, t-at)`. The shipped path cannot reach any of that: `attemptSave` is called **only** under `state.doc.id === id`, so it is never used for a non-active document, and the non-active branch touches nothing but `library`. **Three MAJOR/MINOR findings, all in the rescan's bookkeeping rather than in its write path.** |
+> | **BLOCKERS** | **0.** No path in this increment loses, leaks or crosses data. Every row I could produce was computed from its own document — verified across a mid-pass `openTrip`, a mid-pass `closeTrip`, three joined `rescanSummaries()` calls, a delete arriving straight at the port, and 40 rows in two countries. The widened row persists **no coordinate** (`countryCodes`, `cities[].{key,name,countryCode}` and nothing else; 593 bytes on the reference trip, zero coordinate-shaped floats). No `console.*`, no `fetch`, no new DOM in `packages/client`. `saveIfVersion` refuses an expect-version write against an absent record, so the rescan cannot resurrect a deleted trip **in storage**. |
+> | **Findings** | **R26-1 MAJOR (builder)** — a deleted trip's row comes back into the on-screen library. **R26-2 MINOR (builder)** — a repaired or deleted trip is still reported *"could not be read"*, forever. **R26-3 MINOR (builder)** — an orphan row burns the whole pass bound on every boot. **R26-4 MINOR (builder)** — a conflicted active trip can never converge and re-spends the bound on every call. **R26-5 MINOR (architect)** — `City.countryCode` is stored, user-supplied, and silently ignored. **R26-6 MINOR (architect)** — the rescan pushes another tab into `'conflict'` over a byte-identical rewrite. |
+> | **KD-57, reproduced rather than believed** | `bash qa/i6-fence.sh`. The mutation is four lines and **compiles clean** — the type system cannot see it. Under it: `savedVersion` `1.4` → `1.5` (trip Y's), `savedDoc` → trip Y's document, `dirty()` true with nothing typed, the next flush `'conflict'`, the user's edit stranded in memory, and `mergeTrips` throwing on the ancestor. Two shipped tests go red — the builder's own *"rescanning while a trip is open never moves that trip's write fence behind it"* and the §4.3 structural grep — so the invariant is pinned, not just documented. **A-7's guard `!stillOurs && toWrite !== startedFrom` genuinely does not cover this case**: `toWrite === startedFrom` is true for a self-contained rewrite of *any* document, which is exactly the assumption KD-57 identifies. |
+> | **Is `attemptSave` safe where `writeAndSettle` is not?** | **Yes, and for a structural reason rather than a lucky one.** `attemptSave` reads `state.doc` itself (`store.ts:404`) and returns early if `forTripId` does not match it, so it *cannot* be aimed at a non-active document — it does not take one. `runRescan` reaches it only inside `if (state.doc && state.doc.id === id)` (`:774`), with no `await` between the test and the call. The two paths are disjoint by construction: the active row goes through the fence-owning path, every other row goes through a write that touches `library` and nothing else. Verified at runtime — over a full pass with a trip open, `activeTripId` never moved, `state.doc` was never a non-active document, the undo stack was neither cleared nor grown, the retirement ledger never crossed a trip, and the final fence was the active trip's own stored version. |
+> | **The §4.3 ceiling, mutation-tested three ways** | `bash qa/i6-ceiling.sh`. KD-57's widened clause 1 reds on **all three**: **M1** the rescan's link rewritten as a bare `await (async () => {…})()` (the builder's own claimed mutation, re-derived here rather than taken on trust); **M2** a third off-chain `saveIfVersion`; **M3** the subtle one — the same write hoisted one stack frame out of the callback, still ordered. A "lexically inside" assertion that passed M3 would be a grep a builder could walk around by extracting a function; it does not. `retirement-ledger.test.ts` is **byte-identical** since `4eabf08` and still finds exactly `['adoptTrip','closeTrip','createTrip','deleteTrip','importDoc','openTrip']` with `reseed: true` occurring exactly **7** times. |
+> | **KD-55 and KD-56, assessed** | **KD-55 (`homeBase` excluded) is right and needs no ruling on the case it was asked about** — a pool-only trip is *not* the counterexample, because pool stops, inline `PlaceLink`s, `Place.at` and city centres all count; only `homeBase` does not, and a trip whose sole coordinate is a home base honestly has nowhere recorded. What KD-55 *misses* is a fifth source that is not a coordinate at all — R26-5. **KD-56 (`RESCAN_MAX_PASSES = 5`) is sufficient and the borrowed reasoning holds**, measured rather than argued: a clean 3-row library is 1 pass; a single transient refusal converges in **2**; a row arriving below the version mid-pass converges in **2**; an adversary re-lowering a row every pass stops at exactly **5** and the library keeps saying *"not up to date"* from the rows. The one non-convergent shape the bound does not help is R26-3, and the bound is what stops it being an infinite loop. |
+> | **The builder's own numbers, re-derived** | `npm run test:tap` **722 pass / 0 fail** · `npm run typecheck` clean, both projects · `Object.keys(core).length` **74**, `Object.keys(client).length` **38** · goldens and sample regenerate with **no change** (sample sha unmoved at `40955ca0b182`) · `npm run web:build` clean, `dist/assets/index-ChBRv50t.js` **972,580 bytes** against 969,414 at `4eabf08` — **+3.2 kB**, so the country index was *already* in the bundle at I-5 and A-27 Part 9's cost concern does not land at I-6 · reference-trip row: `countryCodes ["AT","CZ","DE","GB","HR","HU","US"]`, six cities all labelled and attributed, `US` and `DE` arriving through stops rather than cities. |
+> | **KD-58's seven stale `qa/` sites — fixed, and the throw is sound** | The throw is well-formed: a plain `Error` (the dominant convention across `packages/core/src/build/*`), prefixed `tripSummary: `, citing §8.4 clause 3 and stating *why* there is no default. It fires identically for a missing argument, `undefined`, `null`, `{}`, `{countries: null}`, `{countries: 'AT'}`, a number and a string — never a raw dereference `TypeError`. (`requireActor` uses `TypeError`; that is the outlier, not this.) I repaired the seven sites in five scripts per A-19 assertion 7 and re-ran all five: FAIL counts are **identical** to `4eabf08` (0 / 5 / 1 / 1 / 2), so nothing in I-6 regressed them and their FAILs remain the historic findings each probe exists to demonstrate. |
+> | **`cairn-constraints`, re-checked on this diff** | Determinism — the diff adds no `Date.now`, `Math.random`, `crypto.randomUUID` or `new Date(`; `tripSummary` is byte-identical on two calls, does not mutate the trip or the index, and sorts `countryCodes`. Zero-dep core — `packages/core` and `packages/client` both declare `dependencies: {}`. No DOM in `packages/client` (`qa/r2-constraints.mjs` §5 green). The one pre-existing FAIL in that probe — the determinism grep walking `packages/core/src` only, so the reducer the constraint names is not covered — is **unchanged and not from this increment**. |
+> | **The sensitive paths (§5, §6)** | Nothing here logs, transmits or persists a coordinate. The row deliberately carries `{key, name, countryCode}` and **not** `centre` — §8.4 revision 11's A-10 widening turns out to also be the privacy-correct shape, since a `cityKeys`-only row would have forced the map to reopen documents. Redaction re-checked against a fresh `dist`: 0 credential tokens in `index.html` or the sample, 20 of 112 notes redacted, and the three "leaks" `qa/r2-redact.mjs` reports are its known false positives (`OPTIONAL`, `BOOKINGS`), unchanged. No mailbox surface is touched. |
+> | **Read-only boundary** | Untouched: `git diff 4eabf08 0f52c4c -- . ':(exclude)cairn'` is **empty**, and `git status --porcelain` is clean outside `cairn/qa` after four suite runs, two full web builds, a golden regeneration and eight worktree mutations. Every mutation was made in a throwaway `git worktree add --detach` and discarded; `git worktree list` shows none of mine. The only files this round writes are `cairn/qa/i6-*.{mjs,sh}`, the five repaired `qa/` scripts, `cairn/qa/README.md` and this file. **No implementation file, no test file under `packages/`/`apps/`/`test/`, no `ARCHITECTURE.md`, no `ROADMAP.md`.** |
+> | **Fixed vs still open** | **NEW and OPEN: R26-1 (MAJOR), R26-2, R26-3, R26-4 (MINOR → builder), R26-5, R26-6 (MINOR → architect).** **CLOSED by this round's own work:** KD-58's seven stale `qa/` call sites. **STILL OPEN, unchanged and not re-litigated:** R25-1…R25-4, R22-2, R21-1, R13-4, R13-5, P2-5, P2-8, R2-18 and the whole Phase 1 list. Breaker-board **B-1**…**B-4** untouched. |
+>
+> **The round-25 status note below is superseded by this one** and is kept as the record of what
+> was true at `32efd1e`.
 
 > **Status (as of `master` @ `32efd1e`, independently verified 2026-08-28 — round 25, the
 > confirmation pass over the R24-2 / R24-3 / R24-4 cleanup and the fifth and last round on the
@@ -265,6 +291,129 @@
 >
 > **The round-17 status note below is superseded by this one** and is kept as the record of what
 > was true at `909b4a3`.
+
+## Round 26 — I-6: the widened `TripSummaryRow` and the `SUMMARY_VERSION` rescan (`master` @ `0f52c4c`)
+
+ROADMAP calls I-6 *"the riskiest increment in the phase"*, and the risk it names — a summary is a
+copy, so §0.6 governs it — is not where the defects are. **The write path is sound.** The
+bookkeeping around it is where four of the six findings live, and all four have the same shape:
+a fact about *the last pass* outliving the thing it was a fact about.
+
+**The load-bearing question first, because it deserves a plain answer. KD-57 is correct, and the
+builder undersold it.** The claim is that reusing `writeAndSettle` for a non-active document would
+violate §2.2a A-7. I did not take that on trust; I built it. In a throwaway worktree the rescan's
+non-active branch becomes `await writeAndSettle(doc, doc, null, stored.version)` — four lines, and
+**it compiles clean**, which is the first thing worth knowing: nothing in the type system can see
+this. A-7's guard reads
+
+```ts
+if (!stillOurs && toWrite !== startedFrom) { /* refuse: no install, no fence, no re-arm */ }
+```
+
+and for a self-contained rewrite of trip **Y** while trip **X** is active, `stillOurs` is false but
+`toWrite === startedFrom` — both are Y — so the guard does not fire and execution falls into the
+ordinary `set`. Measured, with X active at storage version `1.4`:
+
+| after the rescan of trip Y | shipped (`attemptSave` route) | KD-57's refused option |
+|---|---|---|
+| `persistence.savedVersion` | `1.4` — X's own | **`1.5` — minted for Y** |
+| `persistence.savedDoc` | X's document | **Y's document** |
+| `dirty()` with nothing typed | false | **true** |
+| the user's next keystroke + flush | `'idle'`, edit in storage | **`'conflict'`, edit stranded in memory** |
+| *Merge and save*, the only offered escape | converges | **throws** `mergeTrips: base, local and remote must be the same trip (got t-hr, t-at, t-at)` |
+
+That last row is the consequence KD-57 does not state and it is the sharpest one. §2.2a's Merge row
+and A-7's own argument both make `savedDoc` the three-way ancestor; a fence pointing at another
+trip therefore does not merely mis-refuse a write, it makes the button offered to resolve the
+refusal *unreachable*. A user in that state has a conflict banner, a Merge button that throws, and
+an edit only in memory. The builder's route never enters that state, and not by luck:
+`attemptSave` reads `state.doc` itself and returns early unless `forTripId` matches it
+(`store.ts:404-407`), so it is structurally incapable of being aimed at a non-active document, and
+`runRescan` calls it only under `if (state.doc && state.doc.id === id)` with no `await` between
+the test and the call. **The fix did not move the bug; the two paths are disjoint by
+construction.** Two shipped tests go red under the mutation — the builder's own fence test and the
+§4.3 structural grep — so this is pinned rather than merely argued.
+
+**What I could not break, listed so "sound" is a conclusion and not an absence of effort.** The
+active trip's identity changing mid-pass (`openTrip` landing between two rows); `closeTrip` on the
+very document being rescanned; three `rescanSummaries()` calls joining one pass with an edit
+dispatched under it; a delete arriving straight at the port between the rescan's `load` and its
+`saveIfVersion`; 40 rows in two countries. In every one of them every row was computed from its own
+document, no row carried another row's countries, `activeTripId` never moved, `state.doc` was never
+a non-active document, the undo stack was neither cleared nor grown, the retirement ledger never
+crossed a trip, and the fence ended on the active trip's own stored version.
+
+### Findings
+
+| id | sev | where | defect | repro | routing |
+|---|---|---|---|---|---|
+| **R26-1** | **MAJOR** | `packages/client/src/store/store.ts:806-807` | Every pass ends `const library = await ports.storage.listTrips(); set({ ...state, library, … })` **outside** any `chainOntoSaving` callback. §4.3 exempts `listTrips` from the chain because it is a *read* — but the `set` that consumes it is a **write to `state.library`** that replaces the whole array with a snapshot taken at an earlier moment, and `deleteTrip` removes a row from `state.library` inside a chain link (`:1143-1150`) that this read is not ordered against. Park the pass's `listTrips()`, delete a trip while it is parked, release: **the deleted trip's card is back in the library the user is looking at**, `summaryScan` reports `complete`, and clicking it raises the raw internal `openTrip: no trip doomed in storage`. Storage is correct throughout and an explicit `refreshLibrary()` heals it — so this is a resurrected *row*, not a resurrected trip — but the app never issues one after boot, and the rescan is deliberately **not awaited before render** (`App.tsx:24-41`), so a delete in the first seconds of a session hits a live window. This is §2.2b F1's own class (*a fact read somewhere other than where the resource states it*) and R7-3's shape one level up. `refreshLibrary()` has the identical shape and predates I-6, but it is called once, before the Library renders; I-6 is what makes the window reachable, 1–5 times per boot, against a fully interactive screen. | `node --experimental-strip-types qa/i6-ghostrow.mjs` | **builder** — implementation defect. The read is fine off-chain; the *installation* of its result is not. Either put the `set` on the chain, or reconcile row-by-row against the current `state.library` instead of replacing it |
+| **R26-2** | MINOR | `packages/client/src/store/store.ts:814` (the early return, before `:818`'s clearing) | `RescanState.unreadable` is documented as *"cleared and re-derived at the start of every pass, so a record another writer repairs stops being reported without anything having to remember that it was"* (`reducer.ts:85-90`). The clearing is at `startRescan:818`; the early return `if (!state.library.some(needsRescan)) return Promise.resolve();` is at `:814`. So when the repair *also* brings the row current — which is exactly what a second tab opening and re-saving the trip leaves behind — there is nothing left to rescan, **no pass runs, and nothing is cleared**. The library then renders *"This trip's file could not be read"* on a row whose file reads perfectly, and `summaryScan` stays `'stale'` indefinitely. The same happens after `deleteTrip`, which does not prune `rescan.unreadable` either — and there the header string is worse, because `phase === 'stale'` with `outdated.length === 0` makes `Library.tsx:54` render **"0 trips are not up to date yet."** It clears only when some *unrelated* row later drops below `SUMMARY_VERSION`. §8.4 clause 3's honesty rule read in the other direction: this claims incompleteness it does not have. | `node --experimental-strip-types qa/i6-unreadable.mjs` (§1 and §3 FAIL) | **builder** — implementation defect. Clear before the early return, and drop ids that have left the library |
+| **R26-3** | MINOR | `packages/client/src/store/store.ts:782` vs `:769` | A document the rescan cannot **parse** is filed in `unreadable` and filtered out of every later pass (`:769`'s `.filter((id) => !unreadable.has(id))`). A document `load()` returns `null` for is `return`ed on at `:782` and filed nowhere, so the row stays in `listTrips()`, stays below the version, and is retried on every pass until the bound is spent. For a delete this is right — the record leaves storage and the row goes with it (verified). For an **orphan row** — a summary in storage whose document is gone, the shape a half-completed delete or a partial restore leaves — the row never leaves, and the loop spends **all 5 passes, 5 `listTrips()` and 5 `load()`s on it, on every single boot**, forever. Bounded and honestly reported (`phase: 'stale'`, the orphan named in `outdated`), which is why it is MINOR and not MAJOR; it is also the one shape KD-56's *"convergence in the realistic worst case is two passes"* does not describe. | `node --experimental-strip-types qa/i6-converge.mjs` §5 | **builder** — implementation defect. A `null` load is as final as an unparseable one; either file it beside `unreadable` or count it out of the pass |
+| **R26-4** | MINOR | `packages/client/src/store/store.ts:774-776` | Property 4 routes the active document to `attemptSave`, which writes against `state.persistence.savedVersion`. When the active trip is already in `'conflict'`, that fence is stale **by definition of the state**, so the write is refused, the row is never brought current, and no number of passes changes that. Measured: the rescan spends the full bound, the row stays below `SUMMARY_VERSION` permanently, and every subsequent `rescanSummaries()` re-spends it — with `attemptSave` flipping `status` to `'saving'` and back to `'conflict'` five times, i.e. the conflict banner flickers on a background pass the user did not ask for. Nothing is lost, the user's edit is intact, the conflict is neither cleared nor masked, and `summaryScan` correctly names the row it could not fix — this is a permanently-stale row reported honestly, not a corruption. But KD-56 argues the bound from *contention*, and this is a case where the bound is spent on a write that cannot succeed. | `node --experimental-strip-types qa/i6-race.mjs` §E | **builder** — implementation defect, one condition (`state.persistence.status === 'conflict'` → skip, and let the merge bring the row current). If the architect prefers the rescan to force a fresh fence, that is a ruling, not a patch |
+| **R26-5** | MINOR | `packages/core/src/derive/summary.ts:157` | `cities[].countryCode` is `countryOf(c.centre, index)` and the document's **own** `City.countryCode` (`model/types.ts:64` — stored, round-tripped through `toJSON`/`fromJSON`, hand-supplied by `createTrip` and by the legacy importer) is never consulted. Two consequences the code does not distinguish. (a) Where the index has a hole, the row reports `null` for a city the document *states* a country for — measured on this project's own domain: `countryOf` returns `null` for **Vis town** and **Hvar Town**, so a Dalmatian-islands trip whose only city is Hvar mints `countryCodes: []` while its document says `HR` on every city. (b) Where they *disagree*, nothing is surfaced — `CLAUDE.md`'s *"flag conflicts, don't resolve them by guessing"* and *"his content outranks our ideas"* both point the other way, and the summary silently picks the derived answer. **KD-55 enumerates four sources of coordinates and misses this fifth source, which is not a coordinate at all** — that is the undisclosed half of the decision. This needs a ruling rather than a patch, because `City.countryCode` is typed `string`, defaults to `''` and is validated nowhere, so it cannot simply be trusted either; and the row's field shares a name with the document's field while meaning something else, which a future reader will conflate. | `node --experimental-strip-types qa/i6-summary.mjs` §6 · `node --experimental-strip-types qa/i6-summary.mjs` §2 | **architect** — design defect. §8.4 clause 1 rules on attributing *a coordinate*; it does not rule on a country the user has already stated |
+| **R26-6** | MINOR | `packages/client/src/store/store.ts:796` (consequence of ARCHITECTURE §8.4 clause 3) | The `StoragePort` has no summary-only write, so bringing a row current means `saveIfVersion(id, v, toJSON(doc), summary)` — **a full document rewrite that is byte-identical to what storage already held**, purely to move the summary. That mints a new storage version, which is another tab's write fence. Reproduced with two stores on one storage: tab A has trip Y open and idle; tab B boots and runs `App.tsx`'s ordinary `refreshLibrary()` → `rescanSummaries()`; tab A's next keystroke is refused with the full `CONFLICT_MESSAGE` — *"This trip was saved somewhere else … you can merge with the stored copy"* — over a stored copy whose document bytes are identical to the one tab A holds. Nothing is lost and the refusal is the fence doing its job; the cost is a conflict banner and a merge prompt with nothing to merge, triggered by a background pass with no user on the other side. At the 40-row scale §8.4 talks about, one version bump is also ~40 full document rewrites (~230 KB each on the reference trip) on a single boot. | `node --experimental-strip-types qa/i6-race.mjs` §D · `node --experimental-strip-types qa/i6-converge.mjs` §6 | **architect** — design defect. §8.4 clause 3 prescribes *"rewrite through the ordinary chained write"* and clause 1 says *"no port method changes"*; whether a summary-only write is worth adding, or whether a rewrite-induced conflict should be suppressed, is a ruling |
+
+### What I attacked and could **not** break
+
+- **The KD-57 counterfactual, both directions.** Not just "does the shipped path avoid it" but
+  "does the refused path actually fail" — it does, five ways (table above), and the failure is
+  invisible to `tsc`. `bash qa/i6-fence.sh`.
+- **The §4.3 ceiling, three mutations.** M1 the bare async IIFE (the builder's own claim,
+  re-derived), M2 a third off-chain call site, M3 the same write hoisted one frame out of the
+  callback while staying ordered. All three red. `bash qa/i6-ceiling.sh`.
+- **The "closed list of six" claim, count *and* substance.** `retirement-ledger.test.ts` is
+  byte-identical since `4eabf08`, still finds exactly the six methods, and `reseed: true` still
+  occurs exactly 7 times. Substantively: over a full pass with a trip open, `runRescan` emitted 7
+  state updates and **0** of them moved `doc` or `activeTripId`; the only `persistence` movement
+  was the active trip's own `attemptSave`; `set` takes its step-1 identity branch on every rescan
+  update because `next.doc === state.doc`, so the ledger's absorb/re-assert path is never entered.
+- **Cross-contamination, six ways.** Three trips in three countries under: a mid-pass `openTrip`,
+  a mid-pass `closeTrip`, three joined `rescanSummaries()` calls with an edit dispatched under
+  them, a port-level delete between `load` and `saveIfVersion`, a transient third-writer refusal,
+  and 40 rows alternating `AT`/`HR`. Every row carried its own countries and matched its own
+  document's `id` and `title`. `qa/i6-race.mjs`, `qa/i6-converge.mjs`.
+- **Resurrection in storage.** `saveIfVersion` with a non-null expectation against an absent
+  record is refused (`memory.ts:98` — `matches = exists ? … : expectedVersion === null`), so the
+  rescan cannot write back a trip a second tab destroyed under it. R26-1 is the *in-memory row*,
+  not the document.
+- **Degradation under a failing port.** `storage.failAll` mid-pass: `rescan.running` is cleared by
+  the `finally`, `summaryScan` reports `'stale'` rather than `'complete'`, the failure surfaces to
+  the caller (and `App.tsx:37-39` catches it into the error banner) rather than being swallowed, it
+  is **not** mis-filed as an unreadable document, and the `chainOntoSaving` queue is not poisoned —
+  a later pass completes normally. `qa/i6-race.mjs` §H.
+- **`tripSummary`'s `null` handling, which is `countryOf`'s first real consumer.** A mid-Atlantic
+  city centre carries `null` into `cities[].countryCode` and is *excluded* from `countryCodes` —
+  never `null`, never `undefined`, never the string `"null"`, never snapped to a neighbour. A
+  wholly unattributable trip is `[]`. Out-of-range and `NaN` coordinates do not crash. A stop with
+  `place: {kind:'none'}` is counted as a stop and contributes no country. Zero cities, zero days.
+  `qa/i6-summary.mjs`.
+- **Purity and determinism of the widened row.** Two calls byte-identical; the trip is not mutated;
+  the index is not mutated; `countryCodes` sorted; `cities` in display order, not sort order.
+- **The active document's in-flight edit.** The rescan does write it early — `attemptSave` has no
+  `dirty()` skip — so a half-typed title reaches storage ahead of the 400 ms debounce. Recorded
+  rather than filed: it is the same write the debounce would have made 400 ms later, the store is
+  left `'idle'` with `savedDoc === doc`, and nothing is lost. Worth knowing only because a method
+  named for a summary refresh is also a document write. `qa/i6-race.mjs` §F.
+- **`summaryScan`'s completeness claim.** `'recomputing'` wins over `'complete'` while a pass runs;
+  a row carrying a *higher* `summaryVersion` than this build's is treated as current rather than
+  rescanned; an absent field reads as below every version. The only way I got it to lie is R26-2,
+  and it lies in the safe direction.
+
+### Why this is not a BLOCKER round
+
+Every finding here is recoverable and none of them crosses a trip boundary. R26-1 is the closest
+call and I considered MAJOR carefully against BLOCKER: it puts a card on screen for a trip that no
+longer exists, which is a delete visibly not working — but storage is correct at every instant, no
+document is resurrected, no other trip's data is shown, and the next boot's `refreshLibrary()`
+removes it. The thing that would have made I-6 a blocker round is a summary computed from the wrong
+document or a fence moved to the wrong trip, and I went at both hard: the first across six
+concurrency shapes and 40 rows, the second by building the failure KD-57 refuses and confirming the
+shipped path cannot reach it. **The mechanism is sound. The bookkeeping around it has four bugs and
+they are all the same bug — an observation about the last pass outliving the thing it observed —
+which is worth saying to the builder as one sentence rather than four.**
+
+---
 
 ## Round 25 — the I-5 closure round (`master` @ `32efd1e`)
 

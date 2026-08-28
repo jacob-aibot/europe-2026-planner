@@ -488,7 +488,7 @@ line('§2.7 the storage round trip, and what the LIBRARY can say about a fuzzy r
   const b = createStore({ ports: mkPorts(storage), autosave: false });
   await b.openTrip(id);
   ok('datePrecision survives save -> reopen', b.getState().doc.datePrecision === 'month', String(b.getState().doc.datePrecision));
-  const row = (await storage.listTrips()).find((r) => r.id === id) ?? core.tripSummary(b.getState().doc);
+  const row = (await storage.listTrips()).find((r) => r.id === id) ?? core.tripSummary(b.getState().doc, core.COUNTRY_INDEX);
   console.log('  the TripSummaryRow the Library renders:', JSON.stringify(row));
   ok('the summary row the Library lists carries the precision, so a past trip is not listed as an exact claim',
     row && 'datePrecision' in row,
