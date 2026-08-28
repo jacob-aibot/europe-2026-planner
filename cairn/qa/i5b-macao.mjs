@@ -145,15 +145,28 @@ const N = 400;
 let cn = 0;
 let cnNowMO = 0;
 let cnWasNull = 0;
+// Round 25: the same sweep, without the "inside CN at 1:10m" restriction, so the two numbers on
+// record for this ground can be compared as the two different quantities they are. See below.
+let lostAll = 0;
+let lostNeither = 0;
+let lostToCountry = 0;
 for (let i = 0; i <= N; i++) {
   for (let j = 0; j <= N; j++) {
     const lng = x0 + ((x1 - x0) * i) / N;
     const lat = y0 + ((y1 - y0) * j) / N;
-    if (!inSet(lng, lat, raw.get('CN'))) continue;
+    const wasMO = countryOf({ lat, lng }, OLD) === 'MO';
+    const isMO = countryOf({ lat, lng }, COUNTRY_INDEX) === 'MO';
+    const inCN = inSet(lng, lat, raw.get('CN'));
+    if (wasMO && !isMO) {
+      lostAll++;
+      if (countryOf({ lat, lng }, COUNTRY_INDEX) !== null) lostToCountry++;
+      if (!inCN && !inSet(lng, lat, raw.get('MO'))) lostNeither++;
+    }
+    if (!inCN) continue;
     cn++;
-    if (countryOf({ lat, lng }, OLD) === 'MO') {
+    if (wasMO) {
       cnWasNull++;
-      if (countryOf({ lat, lng }, COUNTRY_INDEX) === 'MO') cnNowMO++;
+      if (isMO) cnNowMO++;
     }
   }
 }
@@ -164,6 +177,35 @@ note(`at I-5b, ${cnWasNull} of them answered MO — ≈ ${(cnWasNull * cellKm2).
 note(`in the shipped index, ${cnNowMO} of them do — and every one of those cells is also null in the PRE-I-5b index`);
 ok(cnNowMO === 0, 'no ground the 1:10m layer calls China attributes to MO', `${cnNowMO} cells do`);
 ok(cnWasNull > 0, 'the defect this probe was written for was real and is measured here, not asserted', `${cnWasNull} cells`);
+
+/**
+ * **Round 25 — the other half of the 22.6-vs-22.1 reconciliation** (`qa/i5c-sweep.mjs` §4 has the
+ * shoelace half). The two figures on record are not two measurements of one quantity and there is
+ * no measurement error between them:
+ *
+ *   • **22.1 km²** — round 24 and A-28: the ground **the 1:10m layer calls China** that stopped
+ *     answering `MO`. That is the line immediately above, and it is the number R23-1 is *about*.
+ *   • **22.6 km²** — BUILD-NOTES: **all** ground that stopped answering `MO`, whatever the 1:10m
+ *     layer calls it.
+ *
+ * The difference is the part of the removed ring that the 1:10m layer attributes to neither `CN`
+ * nor `MO` — Pearl-estuary water inside a coarse 1:50m coastline. Both are right; neither party
+ * was measuring badly; the builder's "~2 % gap, unresolved" is this definition and nothing else.
+ * Asserted rather than narrated, so a future round does not open it a third time.
+ */
+note(`without the "inside CN" restriction: ${lostAll} cells stopped answering MO — ≈ ${(lostAll * cellKm2).toFixed(2)} km²`);
+note(`of those, ${cnWasNull} are CN at 1:10m (≈ ${(cnWasNull * cellKm2).toFixed(2)} km²) and ${lostNeither} are neither CN nor MO (≈ ${(lostNeither * cellKm2).toFixed(2)} km² of estuary)`);
+ok(lostToCountry === 0, 'every cell that stopped answering MO answers null now, not another country', `${lostToCountry}`);
+ok(
+  lostAll === cnWasNull + lostNeither,
+  'the 22.6 and 22.1 figures differ by exactly the non-CN part of the ring — a difference of question, not of method',
+  `${lostAll} = ${cnWasNull} + ${lostNeither}`,
+);
+ok(
+  lostNeither / lostAll > 0.01 && lostNeither / lostAll < 0.03,
+  'and that part is the ~2 % the builder could not account for',
+  `${((100 * lostNeither) / lostAll).toFixed(2)} %`,
+);
 {
   let differsFromPre = 0;
   for (let i = 0; i <= 60; i++)

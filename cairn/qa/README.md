@@ -979,6 +979,65 @@ for. That is the whole reason all five are MINOR and none is a BLOCKER.
 
 ---
 
+## Round 25 (2026-08-28, `master` @ `32efd1e`) — the I-5 closure round
+
+Fifth and last round on the geography surface: a confirmation pass over the R24-2 / R24-3 / R24-4
+cleanup, not a fresh hunt. **No new probe file.** Three existing ones were extended and two
+repaired, which is the point — everything this round needed was already built:
+
+```bash
+bash qa/i5c-family.sh                                   # R24-3's regression guard, and a VERDICT
+                                                        # now: six mutations that must exit 2, one
+                                                        # (G) that must not, and §2's mutation of
+                                                        # the guard against the suite
+bash qa/i5b-mutants.sh                                  # unchanged rows; default commit now HEAD
+node --experimental-strip-types qa/i5c-sweep.mjs        # R24-4 closed: the phase assertion inverted
+node --experimental-strip-types qa/i5b-macao.mjs        # §2 now reconciles 22.6 km² against 22.1
+```
+
+**Everything on this surface is now green.** `i5c-sweep.mjs` **ALL OK — 25 checks** (it was
+1 FAIL by design at round 24, and that FAIL was R24-4); `i5b-macao.mjs`, `i5b-forgiveness.mjs`,
+`i5b-predicate.mjs`, `i5c-filter2.mjs`, `i5c-predicate.mjs`, `i5c-thirdsource.mjs` and
+`i5-order.mjs` all **ALL OK / 0 FAIL**; `i5b-neighbour.mjs` is **2 FAIL**, both the artefacts of
+the source layer round 24 explained (`MF`→`SX` at 1:50m, Alofi's `ISO_A2`); `i5-fillscale.mjs` is
+still **1 FAIL by design** (R22-2, open, untouched by I-5c). `i5b-mutants.sh` exits 0 with every
+one of its 26 mutations applying and a **29 pass** baseline.
+
+**What changed in the three files, and why a breaker rather than a builder changed them.** All
+three are `qa/`, which is QA's own; the builder's I-5c cleanup pass correctly declined to touch
+them and disclosed the fact.
+
+- **`qa/i5c-family.sh`** — round 24 wrote it as a report whose case **B** exited 0, and B exiting 0
+  *was* R24-3. B now exits 2, so the narrative around it was describing a fixed bug in the present
+  tense. Rewritten as the finding's **regression guard**: cases **A**–**F** must all exit 2 before
+  fetching (D, E and F are new: an unpinned scale in `FAMILY`, a repeated scale, and byte pins
+  swapped without reordering `FAMILY`), the script exits non-zero if any of them does not, and
+  case **G** — `FAMILY = ['10m']`, which both assertions pass — is the one remaining hole, R25-2.
+  Default commit is now `HEAD`, not `99c2e84`. A new **§2** mutates each arm of the guard in the
+  real generator and re-runs `test/forgiveness.test.ts`: two arms turn a test red, the third turns
+  **none** red, which is R25-3.
+- **`qa/i5b-mutants.sh`** — its rows were **not** stale, contrary to what BUILD-NOTES still says:
+  round 24 repaired them and this round re-ran them against `32efd1e` with every mutation applying.
+  Only the default commit was stale (`99c2e84` → `HEAD`), and the header now records the measured
+  result rather than the disclosure it inherited.
+- **`qa/i5c-sweep.mjs`** §4 — probe rot introduced by the R24-4 fix, exactly as intended. The
+  assertion read *"the 0.005° cell count is phase-INDEPENDENT, as BUILD-NOTES claims"*; BUILD-NOTES
+  no longer claims it, so the assertion is **inverted** rather than deleted — the 76–82 spread is
+  now the thing being asserted. §4 also computes the ring's area under *both* sets of Earth
+  constants, which is half of the reconciliation below.
+- **`qa/i5b-macao.mjs`** §2 — extended with the other half. The two figures on record for `MO`'s
+  removed ring were never two measurements of one quantity: **22.1 km²** (round 24, A-28) is the
+  ground *the 1:10m layer calls China* that stopped answering `MO`; **22.6 km²** (BUILD-NOTES) is
+  *all* ground that stopped answering it. `90,991 = 89,286 + 1,705` cells, the 1,705 being
+  Pearl-estuary water inside a coarse 1:50m coastline — **1.87 %**, which is the builder's "~2 %
+  gap". Asserted now, so it cannot be reopened a third time.
+
+`i5c-family.sh` case **G** and §2 need no network for the six guarded cases (they exit before any
+fetch); G itself runs the generator to completion and prints SKIP if the pinned layers are
+unreachable. §2 runs the suite four times and the whole script takes ~18 s.
+
+---
+
 ## Round 24 (2026-08-28, `master` @ `99c2e84`) — the I-5c breaker pass on A-28's second arm
 
 Fourth round on the geography surface, and the first that found nothing wrong with the mechanism.

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# QA rounds 23 and 24 — do `test/forgiveness.test.ts`'s injected-fault tests actually test what
+# QA rounds 23, 24 and 25 — do `test/forgiveness.test.ts`'s injected-fault tests actually test what
 # they claim?
 #
 # Reading the test is not evidence. This mutates the REAL `tools/forgiveness.mjs` — in a throwaway
@@ -28,9 +28,18 @@
 #      pristine copy and refuses to report a result for an edit that changed nothing; it prints
 #      `MUTATION DID NOT APPLY` and counts it. The script exits non-zero if any row is stale, so
 #      the next reader finds out from the exit code rather than from a false `fail=0`.
+#
+# **Round 25 — re-run against `32efd1e` and the default commit un-pinned.** The I-5c BUILD-NOTES
+# addendum still describes these five rows as stale, and its round-24 successor repeats it; that is
+# no longer true and had not been true since `99c2e84`. Measured here rather than asserted: at
+# `32efd1e` **every one of the 26 rows' mutations applies**, the script exits 0, and the baseline is
+# **29 pass / 0 fail** (27 before R24-3 added the two generator-guard tests, which are unaffected by
+# a mutation of `tools/forgiveness.mjs` and stay green on every row). The default commit was
+# `99c2e84` — the artefact this file was repaired against — and is now `HEAD`, so the script cannot
+# quietly go on grading a commit two behind the one someone is asking about.
 # ---------------------------------------------------------------------------------------------
 set -u
-COMMIT="${1:-99c2e84}"
+COMMIT="${1:-HEAD}"
 REPO="$(cd "$(dirname "$0")/../.." && pwd)"
 WT="$(mktemp -d)/wt"
 STALE=0

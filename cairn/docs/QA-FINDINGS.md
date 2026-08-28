@@ -1,4 +1,31 @@
-# Cairn — QA findings, Phase 1 **rounds 2–11** and Phase 2 **rounds 12 (2a), 13 (I-3a / I-4a), 14 (A-11…A-14), 15 (A-15…A-17), 16 (A-18 / A-19), 17 (A-20 / R16-1), 18 (A-21 / A-21a), 19 (A-22 / A-23), 20 (A-24 / R19-1 / R19-2 / KD-50), 21 (A-25 — the closure round), 22 (I-5 / I-5a — A-26's mixed-resolution country index), 23 (I-5b — A-27's forgiveness entry) and 24 (I-5c — A-28's second arm for filter 2)**
+# Cairn — QA findings, Phase 1 **rounds 2–11** and Phase 2 **rounds 12 (2a), 13 (I-3a / I-4a), 14 (A-11…A-14), 15 (A-15…A-17), 16 (A-18 / A-19), 17 (A-20 / R16-1), 18 (A-21 / A-21a), 19 (A-22 / A-23), 20 (A-24 / R19-1 / R19-2 / KD-50), 21 (A-25 — the closure round), 22 (I-5 / I-5a — A-26's mixed-resolution country index), 23 (I-5b — A-27's forgiveness entry), 24 (I-5c — A-28's second arm for filter 2) and 25 (the I-5 closure round)**
+
+> **Status (as of `master` @ `32efd1e`, independently verified 2026-08-28 — round 25, the
+> confirmation pass over the R24-2 / R24-3 / R24-4 cleanup and the fifth and last round on the
+> country index. Surface: `git diff 6ccff9a 32efd1e -- cairn/tools cairn/test cairn/packages` —
+> `tools/gen-countries.mjs` (R24-3's guard and R24-2's strings), `test/forgiveness.test.ts` (+2
+> tests, 695 → 697), the regenerated `countries.gen.ts`, `packages/core/src/geo/countryIndex.ts`
+> (R24-1's digit) and `packages/core/test/country.test.ts`'s four stale sites.**
+>
+> | | |
+> |---|---|
+> | **Verdict** | **Everything round 24 left open is closed, and the I-5 arc is closed with it.** R24-3's new guard is real: I re-ran all three of round 24's cases and case **B** — the specific hole — now exits **2** before any fetch, with a message that names the byte counts it reasoned from. I then attacked the guard four more ways it had not been attacked (an unpinned scale in `FAMILY`, a repeated scale, byte pins swapped without reordering `FAMILY`, and the per-code-vs-per-file question); it holds on all four, and the fifth — a single-scale `FAMILY` — is R25-2 and is cosmetic. The 22.6 / 22.1 km² gap the builder flagged as unresolved is **fully reconciled and is not measurement variance**: the two numbers answer two different questions and differ by exactly the 1,705 sample cells of Pearl-estuary water inside `MO`'s removed ring (1.87 %). **Four MINORs, none of which touches the mechanism, the artefact or an answer.** |
+> | **BLOCKERS** | **0.** Nothing on this surface reads, logs, transmits or persists a user coordinate; `countryOf` and `COUNTRY_INDEX` still have **no consumer** in `apps/web/src`, `packages/client/src` or `cli.ts`, so today's blast radius remains one committed dataset and two goldens. The two new tests spawn a mutated generator into `os.tmpdir()` and remove it; no temp directory survives a suite run and the checkout is never mutated. |
+> | **Findings** | **R25-1 MINOR (builder)** · **R25-2 MINOR (builder)** · **R25-3 MINOR (builder)** · **R25-4 MINOR (builder — BUILD-NOTES prose)**. No MAJOR, no BLOCKER. R25-1 is the one the builder itself flagged and could not route. |
+> | **R24-3's guard — verified, then attacked** | `bash qa/i5c-family.sh` at `32efd1e`: **A exit 2** (A-28's own message), **B exit 2** — *"`50m` (3083490 bytes) is not finer than `10m` (13287234 bytes)"*, the hole closed — **C exit 2**. Four cases round 24 did not try, all **exit 2 before any fetch**: **D** an unpinned scale spliced into `FAMILY` (*"not a pinned scale, so it has no size to order by"*), **E** `FAMILY` repeating the fill (strict `<=` catches the tie), **F** the `SCALES` byte pins swapped with `FAMILY` untouched — it fails closed, though the message names the wrong cause, which is worth knowing before someone re-pins. **The one thing the guard cannot see, measured rather than argued:** it proves the ordering of the *layers* by file size, while arm 2b needs it **per code**. Of the 237 codes present at both 1:50m and 1:10m, **0** are drawn with fewer vertices at 1:10m; the 2 drawn with the same count (`BL`, `NF`) have the same perimeter to 0.03 %. The proxy and the invariant agree on the pinned data, and now that is a measurement instead of an assumption. |
+> | **The 22.6 vs 22.1 km² gap — resolved, and it was never variance** | Both figures are correct answers to different questions, and both parties' arithmetic checks out. **The shoelace half:** 22.70 km² (round 24) and 22.60 km² (BUILD-NOTES) are the same ring under different Earth constants — R = 6,371.0088 km against 110.574 km/° latitude with 111.320·cos φ km/° longitude. The ratio is **1.00447**, and that is the whole difference. **The sample half:** round 24's 22.1 km² is the ground **the 1:10m layer calls China** that stopped answering `MO` — `qa/i5b-macao.mjs` §2 filters on `inSet(CN)`, which is what makes it the number *R23-1* is about. The builder's 22.56 km² is **all** ground that stopped answering `MO`. At 401×401, 1001×1001 and 2001×2001 over the ring's own box the split is stable: **90,991 = 89,286 + 1,705 cells**, 22.56 = 22.14 + 0.42 km², the 1,705 being estuary water inside a coarse 1:50m coastline and **1.87 %** of the total — the builder's "~2 %". 0 cells went to another country in either measure. Both halves are now asserted in the probes (`qa/i5c-sweep.mjs` §4, `qa/i5b-macao.mjs` §2) so this cannot be reopened a third time. |
+> | **The two `qa/` files the builder could not touch — fixed, plus two more** | **`qa/i5c-family.sh`**: rewritten from a report into R24-3's **regression guard** — its case-B narrative said *"exit=0 … the hole"* and B now exits 2. Cases D/E/F added, the script exits non-zero if any of the six guarded cases does not exit 2, case **G** (the remaining hole, R25-2) added, default commit `99c2e84` → `HEAD`, and a new **§2** that mutates each arm of the guard in the real generator and re-runs the suite. **`qa/i5b-mutants.sh`**: its rows were **not** stale — round 24 repaired them and BUILD-NOTES has now repeated the superseded disclosure twice. Re-run at `32efd1e`: **every one of the 26 mutations applies, exit 0, baseline 29 pass / 0 fail.** Only the default commit was stale; it is now `HEAD`, and the header records the measured result. Two more, same class, found by running rather than reading: **`qa/i5c-sweep.mjs`** §4's *"phase-INDEPENDENT, as BUILD-NOTES claims"* assertion is probe rot created by the R24-4 fix and is **inverted** (the 76–82 spread is now what is asserted) — the probe is **ALL OK, 25 checks**, where it was 1 FAIL by design; **`qa/i5b-macao.mjs`** §2 carries the reconciliation above. |
+> | **Fixed vs still open** | **CLOSED this round, re-derived by me rather than read: R24-1** (`countryIndex.ts` says **53**, and `54`/`10-code` survives in exactly one place — R25-1), **R24-2** (the shipped string is *"(forgiveness: 53 of those codes, A-28)"*, **1** occurrence of `A-28)` and **0** of `A-27)` in `dist/assets/index-eA22zvGi.js`; no *"two filters"* text left anywhere under `packages/core/src`, `tools/` or the goldens), **R24-3** (six mutations, above), **R24-4** (`qa/i5c-sweep.mjs` §4 green with the corrected claim). **STILL OPEN, new this round:** R25-1…R25-4, all MINOR. **STILL OPEN, unchanged and correctly not in this increment: R22-2** — `verifyQuantisation`'s 1.7° lattice still cannot see the `MV` bow-ties; `qa/i5-fillscale.mjs` §3 is still **1 FAIL by design**. **STILL OPEN, unchanged and not re-litigated:** R21-1, R13-4, R13-5, P2-5, P2-8, R2-18 and the whole Phase 1 list. Breaker-board **B-1**…**B-4** untouched. |
+> | **The builder's own numbers, re-derived rather than accepted** | `npm run test:tap` **697 pass / 0 fail** · `npm run typecheck` clean, both projects, exit 0 · `Object.keys(core).length` **73** · reference trip **2 blockers / 4 warnings**, `validateTrip` **11**, `geoCheck` **0** — the Phase 1 ceilings, unmoved · `npm run golden` and `npm run sample` regenerate with **no change**, sample sha unmoved at `40955ca0b182` · `npm run web:build` clean, `dist/assets/index-eA22zvGi.js` **969,418 bytes** · `git status --porcelain` clean before and after every run. The packed literal is **byte-identical across the fix** (`6ccff9a` and `32efd1e` both 369,524 chars, `===` true) and the emitted file is 374,659 bytes, so ARCHITECTURE §8.4's pinned 369,524 / 374,659 pair still holds — the builder's byte-neutral header rewrite did what it claimed, and the rewritten header is *more* accurate than the one it replaced, not less. |
+> | **Reproducibility, over a real network fetch** | `node tools/gen-countries.mjs` in a throwaway worktree at `32efd1e`, fetching all three pinned layers: `countries.gen.ts` **sha256 `8ce942e9…`** and `forgiveness-drops.json` **sha256 `ce6c4e36…`**, both byte-identical to the committed files; `npm run golden` and `--holes` then regenerate with no change (`country-holes.json` **`4d4fa4ce…`**, unmoved) and `git status` in the worktree is empty. **292 entries · 239 codes · 1,033 rings · 22,220 points · 374,659 emitted bytes · 12 rejected rings · 111,368-byte drops fixture.** The worktree was removed; `git worktree list` shows none of mine. |
+> | **The two new tests, mutation-checked** | Red-green verified independently of the builder's claim, in a worktree (`qa/i5c-family.sh` §2): neutering the **byte-ordering comparison** turns exactly the new R24-3 test red; neutering **A-28 Part 3's own assertion** turns the other new test red; neutering the **unpinned-scale arm** turns **0 of 697** red — that is R25-3. The tests also self-verify against drift: rename both constants and `assert.notEqual(mutated, src)` fires with *"the mutation did not apply — the generator's constants have moved"* rather than passing on an unmutated copy, which is the failure mode `qa/i5b-mutants.sh` exists for. The generator's `packages/core` imports are all **dynamic**, which is why the temp-dir copy reaches the guard at all. |
+> | **`cairn-constraints`, re-checked on this diff** | Determinism — `tools/gen-countries.mjs`, `countries.gen.ts`, `countryIndex.ts` and `test/forgiveness.test.ts` contain **zero** occurrences of `Date.now`, `Math.random`, `crypto.randomUUID` or `new Date(`. Zero-dep core — `packages/core/package.json` declares `dependencies: {}`. **`packages/client` is untouched by this diff** and its only `document.`/`window.` hits are the English word "document" in four prose comments. Node type-stripping holds at 374,659 bytes; `node --test packages/core` exits 0. The diff adds no `fetch`, `node:fs`, DOM or mailbox surface to `packages/core`. |
+> | **The sensitive paths (§5, §6)** | Nothing here logs, transmits or persists a user coordinate. R24-3's guard message carries **scale names and file byte counts only** — no coordinate, no path, no user data. The two new tests spawn a generator that exits before its first `fetch`, so `npm test` remains network-free; they write into `os.tmpdir()` and `rmSync` it in a `finally`. `forgiveness-drops.json` grew 111,340 → 111,368 bytes for one `$what` string and is still absent from the web build graph. No mailbox surface is touched at all. |
+> | **Read-only boundary** | Untouched: `git diff 6ccff9a 32efd1e -- . ':(exclude)cairn'` is **empty**, and `git status --porcelain` is clean after a full generator run, `npm run golden`, `npm run sample`, `npm run web:build`, four suite runs and eleven mutations. Every mutation was made in a throwaway `git worktree add … 32efd1e` and discarded. The only files this round writes are `cairn/qa/i5c-family.sh`, `cairn/qa/i5b-mutants.sh`, `cairn/qa/i5c-sweep.mjs`, `cairn/qa/i5b-macao.mjs`, `cairn/qa/README.md` and this file. **No implementation file, no test file under `packages/`/`tools/`/`test/`, no `ARCHITECTURE.md`, no `ROADMAP.md`.** |
+> | **Closure — the whole I-5 arc** | **I-5, I-5a, I-5b and I-5c are closed. The country index is ready for I-6 to build on.** Five rounds: 22 found the fill's five `null` capitals and the budget guard that could not name its own trip, 23 found R23-1 (`MO` claiming 22 km² of Guangdong) and the predicate's false theorem, 24 found nothing wrong with the mechanism and three stale sentences, and this round found nothing wrong with the fix. Every finding from every round is closed except **R22-2**, which is open by an architect's decision, named in the probe, and about `verifyQuantisation` rather than about the index. What I-6 inherits is an artefact that regenerates byte-identically from pinned public-domain layers, an `overlaps()` that survived 2,000 differential pairs and 26 source mutants, both arms of filter 2 independently load-bearing and measured, and — new this round — a start-up guard on the constants both arms are built from that fails closed under six different ways of breaking it. **The one thing I-6 must know: `countryOf`'s answer is not yet persisted anywhere.** The moment it is baked into a `TripSummaryRow`, a wrong answer stops being one dataset and becomes stored user data, which is why R23-1 would have been a blocker at I-6 and was not one at I-5b. |
+>
+> **The round-24 status note below is superseded by this one** and is kept as the record of what
+> was true at `99c2e84`.
 
 > **Status (as of `master` @ `99c2e84`, independently verified 2026-08-28 — round 24, the
 > mandatory adversarial pass over Phase 2 **I-5c**: ARCHITECTURE revision 22's **A-28**, filter 2's
@@ -238,6 +265,89 @@
 >
 > **The round-17 status note below is superseded by this one** and is kept as the record of what
 > was true at `909b4a3`.
+
+## Round 25 — the I-5 closure round (`master` @ `32efd1e`)
+
+Fifth pass on the country index, and a confirmation pass rather than a hunt: the builder had just
+closed R24-2, R24-3 and R24-4 plus four stale sites the architect found while fixing R24-1. **The
+fix holds under attack, including four ways of breaking it nobody had tried, and the one item the
+builder left explicitly unresolved is now resolved and was never a bug.** Four MINORs, and one of
+them is the finding the builder itself asked to have routed.
+
+The one thing worth reading twice: **`qa/i5b-mutants.sh`'s "five stale rows" have not been stale
+since `99c2e84`.** Round 24 repaired them, said so in its own status note, and BUILD-NOTES has now
+carried the superseded disclosure through two consecutive addenda — a stale claim propagating
+because each pass copied the previous pass's caveat instead of running the script. Running it takes
+14 seconds and every one of its 26 mutations applies. That is the same failure mode as R24-2 and
+R24-4, one level up: a *caveat* that reads as a result.
+
+### Findings
+
+| id | sev | where | defect | repro | routing |
+|---|---|---|---|---|---|
+| **R25-1** | MINOR | `packages/core/test/0-countryBudget.test.ts:113` | *"A-27's forgiveness pass adds a **54**-code list and a **10**-code list on top"* — the generated header carries a **53**-code `Forgiven` list and an **11**-code `Refused` list, and has since I-5c. This is guard 2's justification, i.e. a present-tense statement about what the header contains *now*, not one of the file's three history paragraphs (`:45`, `:55`, which are correctly framed as I-5b's state and are right). It is the last stale count on the surface: the same grep over `packages/core/test`, `test/` and `tools/` returns four other hits and every one of them is explicitly historical. Flagged by the builder in its own BUILD-NOTES as not among its routed sites; filed here so a sixth round does not rediscover it. | `grep -n "54-code" packages/core/test/0-countryBudget.test.ts` · `grep -n "Forgiven (\|Refused (" packages/core/src/geo/countries.gen.ts` | **builder** — two digits in a comment; no behaviour, no artefact, no regeneration |
+| **R25-2** | MINOR | `tools/gen-countries.mjs:504-505` | `forgivenessPass` returns early on `!filled.length \|\| !FORGIVE.length` and reports **both** causes as *"forgiveness: none (**no filled codes**)"*. With `FAMILY = ['10m']` — which passes A-28 Part 3's assertion (`FILL` is the last element) **and** R24-3's ordering guard (a one-element array is trivially ordered) — the forgiveness pass is skipped entirely and the same run prints `fill from 10m: … splicing 64` three lines above `forgiveness: none (no filled codes)`. The artefact silently becomes a different index (**346,750** emitted bytes against 374,659); `EMITTED_BYTES` catches *that* downstream, but the run's own report contradicts itself and names the wrong cause. Correct for the two reachable cases (`--no-fill`, `--scale 10m`), which is why nothing has caught it. R24-3's class exactly: a check that covers two conditions and names one. | `bash qa/i5c-family.sh` case **G** (exit 0, both log lines printed) | **builder** — split the message, or assert `FORGIVE.length > 0` beside the other two constant guards; it is one line either way |
+| **R25-3** | MINOR | `tools/gen-countries.mjs:179` vs `test/forgiveness.test.ts:784-806` | R24-3's guard has two arms — *"this scale is not finer than the previous one"* and *"this scale has no pinned byte count at all"* — and only the first is watched by the suite. Neutering `if (!here) fail(…)` in the real generator turns **0 of 697** tests red; neutering the byte comparison turns exactly the new test red, and neutering A-28's own assertion turns the other new one red. Without the arm, an unpinned scale in `FAMILY` produces a `TypeError` on `here.bytes` and exit 1 with a stack trace instead of exit 2 with the ruling's name — so it still fails closed, which is why this is MINOR and not MAJOR. §0 position 5 asks every rule to ship with the exact fault it exists to catch; this arm ships without one. `qa/i5c-family.sh` case D covers it, and `qa/` is not run by `npm test`. | `bash qa/i5c-family.sh` §2 (four mutations of the real generator against the suite) | **builder** — a third `runMutatedGenerator` case in the test that already exists, ~6 lines, mutating `FAMILY` to `['110m','5m','10m']` and asserting exit 2 with `/not a pinned scale/` |
+| **R25-4** | MINOR | `docs/BUILD-NOTES.md`, the R24 cleanup addendum's *"What I could not verify, and what I deliberately did not touch"* row, items (2) and (4) | Two claims that are not true. **(2)** *"The five stale rows in `qa/i5b-mutants.sh` … are still stale"* — they were repaired at round 24 and the script now self-verifies; at `32efd1e` all 26 mutations apply and it exits 0. The row is quoting the I-5c addendum rather than the script. **(4)** *"The ~2 % gap between my 22.6 km² and round 24's 22.1 km² … is not resolved"* — it is now, and it is a difference of **question**, not of method: round 24's figure is the ground *the 1:10m layer calls China* that stopped answering `MO` (`qa/i5b-macao.mjs` §2 filters on `inSet(CN)`), the builder's is *all* such ground, and they differ by the 1,705 sample cells of estuary water inside the removed ring — 1.87 %, stable at three sampling densities. The shoelace half (22.70 vs 22.60) is the Earth constants alone, ratio 1.00447. | `node --experimental-strip-types qa/i5b-macao.mjs` §2 · `node --experimental-strip-types qa/i5c-sweep.mjs` §4 · `bash qa/i5b-mutants.sh` | **builder** — one row of BUILD-NOTES; no code, no artefact, no number in any contract document changes |
+
+### What I attacked and could **not** break
+
+Listed so "closed" is a conclusion rather than an absence of effort.
+
+- **R24-3's guard, six ways.** Cases A/B/C from round 24 plus **D** an unpinned scale spliced into
+  `FAMILY`, **E** `FAMILY` repeating the fill (the tie the strict `<=` exists for), **F** the
+  `SCALES` byte pins swapped with `FAMILY` left alone. All six exit **2 before any fetch**. F is
+  worth one sentence: a bad *re-pin* is indistinguishable to a guard that reasons from the pins, so
+  it is reported as a bad *order*. It fails closed and the `sha256`/byte check at download would
+  catch the same edit a second time, so it is a message nit rather than a hole.
+- **The global-vs-per-code question the guard's proxy raises.** The guard proves the *layers* are
+  ordered by file size; arm 2b needs *"the finest drawing of country c"*, per code. Measured on the
+  pinned layers rather than reasoned about: 110m→50m **0 inversions of 175 codes**, 50m→10m **0 of
+  237**, 110m→10m **0 of 175**, no code present at a coarser scale and missing at a finer one, and
+  the only two codes drawn with an equal vertex count at 1:50m and 1:10m (`BL` 11, `NF` 26) have
+  perimeters agreeing to 0.03 %. A dataset where a code inverted would satisfy this guard and still
+  hand arm 2b a coarser neighbour; today's does not, and that is now recorded in
+  `qa/i5c-family.sh`'s tail rather than left for a seventh round to wonder about.
+- **The two new tests, by mutation rather than by reading.** Red-green reproduced independently
+  (see the status note). They also survive constant drift correctly: rename `FILL` and `FAMILY` and
+  both tests fail loudly with *"the mutation did not apply — the generator's constants have moved"*
+  instead of silently grading an unmutated copy.
+- **Hermeticity of the new tests.** The mutated copy is written under `os.tmpdir()` and removed in a
+  `finally`; no `cairn-genfamily-*` directory survives a suite run, the checkout is never touched,
+  and the child exits at the top-level guard **before** its first `fetch`, so `npm test` stays
+  network-free. The generator's `packages/core` imports are all dynamic, which is the reason the
+  out-of-tree copy reaches the guard rather than dying on module resolution.
+- **The artefact.** Byte-identical regeneration over a real three-layer fetch; the packed literal is
+  `===` identical across the fix (369,524 chars at both `6ccff9a` and `32efd1e`), so the builder's
+  byte-neutral header rewrite is exactly that; `--holes` regenerates `country-holes.json`
+  unmoved; every geography probe green except the two documented artefacts in `i5b-neighbour` and
+  R22-2's by-design FAIL in `i5-fillscale`.
+- **R24-2's fix in the shipped bundle.** `A-28)` appears **once** in `dist/assets/index-eA22zvGi.js`
+  and `A-27)` **zero** times; *"two filters"* survives nowhere under `packages/core/src`, `tools/`
+  or the goldens. The regenerated header is more accurate than the one it replaced — it names
+  filter 1, arm 2a and arm 2b, and its `Refused (11)` list now contains `MO`, which is R23-1 visible
+  in the artefact itself.
+- **The Phase 1 ceilings and the export surface**, re-derived rather than read: 73 exports, 2/4/11,
+  `validateTrip` 11, `geoCheck` 0, goldens and sample unchanged, `dist` unmoved at 969,418 bytes.
+
+### Why this closes the arc
+
+Five increments and five adversarial rounds on one feature is a lot; the question a sixth round
+would have to answer is whether anything is still *unknown*, not whether anything could still be
+polished. Nothing is. The mechanism was re-derived from the raw layers at round 24 and not taken on
+the artefact's word; the predicate survived 2,000 differential pairs and 26 source mutants; both
+arms of filter 2 are independently load-bearing with a named ring each; the artefact regenerates
+byte-identically from pinned public-domain data; and the constants the whole pass is built from now
+carry a start-up guard that six different breakages trip. The four MINORs open here are two
+comment digits, a log message, a missing test case and a BUILD-NOTES row — none of them can change
+an answer, and none of them needs to be fixed before I-6 starts.
+
+**The one live risk, restated for whoever builds I-6:** `countryOf` still has no consumer. A wrong
+answer today is one committed dataset; the increment that persists a country code into a
+`TripSummaryRow` converts the same class of defect into stored user data, which is precisely why
+R23-1 was a MAJOR at I-5b and would have been a BLOCKER at I-6.
+
+---
 
 ## Round 24 — I-5c: A-28's second arm for filter 2 (`master` @ `99c2e84`)
 
