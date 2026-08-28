@@ -1654,6 +1654,12 @@ builder against the finding itself and is not an increment.
   admin-0 download.** The generated module is committed, so this is a one-time fetch — but this environment's
   egress proxy blocks many hosts, so **confirm the download works before this increment starts**, not during.
   If it is blocked, that is a blocker to raise, not to route around by hand-typing polygons.
+  **Resolved 2026-08-28, before the increment started, and the answer is in §8.4's citation, which is the one
+  to read** — `naturalearthdata.com` *is* proxy-blocked (403); the source is Natural Earth's own repository
+  at **tag `v5.1.2`**, same dataset and all three scales, identity/scale/licence re-verified from content and
+  the 110m/50m checksums recorded. **The builder fetches the pinned tag §8.4 names and does not substitute
+  another host, ref or scale** — a scale change is still the correctness floor's decision, made by
+  measurement, exactly as **Verification** above says.
 - **Ship gate.** Budget test passes and its number came from a measurement; the golden exists and every
   entry names its producing record; `node --test` still runs `packages/core` directly (a generated module
   that is megabytes of JSON in a `.ts` file breaks type stripping — the budget test is the guard and it is
