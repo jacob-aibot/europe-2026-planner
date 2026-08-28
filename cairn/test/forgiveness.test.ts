@@ -32,9 +32,11 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { copyFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { dirname, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 
 import { COUNTRY_INDEX, countryOf } from '../packages/core/src/index.ts';
 import type { CountryEntry, CountryIndex } from '../packages/core/src/index.ts';
@@ -737,6 +739,68 @@ test('I-5b: GI and UM are refused for having no coarser polygon at all, not by a
   const refusedByFilter = [...new Set(DROPS.drops.map((d) => d.code))];
   const refused = new Set([...DROPS.noCandidates, ...refusedByFilter.filter((c) => entriesFor(c).length === 1)]);
   assert.deepEqual([...refused].sort(), [...DROPS.refusedCodes].sort());
+});
+
+// ------------------------------------------------- the generator's constants, and what guards them
+
+/**
+ * **QA R24-3 — the guard on `FILL`/`FAMILY`, exercised rather than read.**
+ *
+ * Both arms' populations are decided by two constants in `tools/gen-countries.mjs`: `FAMILY`,
+ * documented *"Coarsest first"*, and `FILL`, documented as the family's finest scale. A-28 Part 3's
+ * trigger is asserted there — `FILL === FAMILY[FAMILY.length - 1]` — but that equality is only the
+ * same statement as *"the fill is the finest scale"* while `FAMILY` really is ordered coarsest-first,
+ * and until R24-3 nothing checked the ordering. Reorder it to `['110m', '10m', '50m']` with
+ * `FILL = '50m'` and the equality still holds while arm 2b — which takes "the finest scale carrying
+ * this code" to be the *last* one that does — starts comparing 1:10m candidates against 1:50m
+ * neighbours. That is R23-1's class, inside the arm A-28 added to prevent it.
+ *
+ * Both guards run at module top level, **before any fetch**, so the assertion is cheap: a mutated
+ * copy of the generator that reaches the network has already failed it. The copy is written to a
+ * temporary directory outside the repository and removed again; the checkout is never mutated.
+ * Out of tree the copy cannot *finish* a run — its `../packages/core` import does not resolve from
+ * `/tmp` — so what is asserted is the guard's own exit code and message, never a completed
+ * generation. `qa/i5c-family.sh` runs the same mutations against a git worktree, where a run that
+ * gets past the constants completes; this is the half of it that `npm test` can afford.
+ */
+function runMutatedGenerator(mutate: (src: string) => string): { status: number | null; stderr: string } {
+  const dir = mkdtempSync(join(tmpdir(), 'cairn-genfamily-'));
+  try {
+    copyFileSync(resolve(CAIRN, 'tools', 'forgiveness.mjs'), join(dir, 'forgiveness.mjs'));
+    const src = readFileSync(resolve(CAIRN, 'tools', 'gen-countries.mjs'), 'utf8');
+    const mutated = mutate(src);
+    assert.notEqual(mutated, src, 'the mutation did not apply — the generator’s constants have moved');
+    writeFileSync(join(dir, 'gen-countries.mjs'), mutated);
+    const r = spawnSync(process.execPath, [join(dir, 'gen-countries.mjs'), '--dry-run'], {
+      encoding: 'utf8',
+      timeout: 30_000,
+    });
+    return { status: r.status, stderr: r.stderr ?? '' };
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+test('I-5c: the generator refuses to run when FILL is not the family’s last scale', () => {
+  const { status, stderr } = runMutatedGenerator((src) => src.replace("const FILL = '10m';", "const FILL = '50m';"));
+  assert.equal(status, 2, `A-28 Part 3’s trigger did not fire (exit ${status}). stderr: ${stderr.slice(0, 300)}`);
+  assert.match(stderr, /finest scale/, 'the message does not say which invariant broke');
+});
+
+test('I-5c (R24-3): the generator refuses to run when FAMILY is not ordered coarsest-first', () => {
+  const { status, stderr } = runMutatedGenerator((src) =>
+    src
+      .replace("const FAMILY = ['110m', '50m', '10m'];", "const FAMILY = ['110m', '10m', '50m'];")
+      .replace("const FILL = '10m';", "const FILL = '50m';"),
+  );
+  assert.equal(
+    status,
+    2,
+    `FAMILY was reordered so FILL is still its LAST scale but no longer its FINEST, and the ` +
+      `generator ran anyway (exit ${status}) — arm 2b would compare 1:10m candidates against 1:50m ` +
+      `neighbours. stderr: ${stderr.slice(0, 300)}`,
+  );
+  assert.match(stderr, /coarsest/, 'the message does not say which invariant broke');
 });
 
 // ---------------------------------------------------------------- prep/box sanity

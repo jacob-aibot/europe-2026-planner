@@ -25,20 +25,24 @@
  * so San Marino's ring is reached before Italy's. `countryIndex()` preserves that order; it does
  * not re-derive it. See A-26 Parts 4 and 6.
  *
- * **And a filled code ships a second entry — the forgiveness entry (ARCHITECTURE §8.4 A-27,
- * ROADMAP Phase 2 I-5b).** The fill is the family's finest scale, which is the scale A-26 Part 2
+ * **And a filled code ships a second entry — the forgiveness entry (ARCHITECTURE §8.4 A-27 as
+ * A-28 replaced its filter 2, ROADMAP Phase 2 I-5b and I-5c).** The fill is the family's finest
+ * scale, which is the scale A-26 Part 2
  * measured and rejected for the base: it tracks the waterline, and five of the sixty-four filled
  * countries came back `null` at their own capital. A-27 measured the obvious remedy — pick a
  * coarser scale per code — and **rejected it**, because substituting the coarser polygon deletes
  * whole landforms (175 of the Maldives' 176 atolls, 67 of French Polynesia's 88). So a filled code
  * is not made to choose. It ships the fine rings for coverage AND, as a **separate entry under the
  * same ISO code**, the same country's rings at each strictly coarser scale of the family, filtered
- * so that the coarse ring may only claim ground that is genuinely uncontested: it must overlap the
- * code's own coverage rings (filter 1 — it is the same place) and must overlap no other entry
- * (filter 2 — forgiveness is never taken from a neighbour). Two entries of one code compose as a
+ * so that the coarse ring may only claim ground that is genuinely uncontested. That is **three**
+ * comparisons, not two: it must overlap the code's own coverage rings (filter 1 — it is the same
+ * place), no other entry of the coverage-only index (arm 2a — forgiveness is never taken from a
+ * neighbour as the index draws it), and no other ISO code at the family's FINEST scale (arm 2b —
+ * nor from a neighbour the mixed-resolution index draws too coarsely to defend itself, which is
+ * how `MO` came to claim ~22.1 km² of Guangdong; QA R23-1). Two entries of one code compose as a
  * union, because `countryOf` returns on the first *entry* whose rings contain the point and the
- * even-odd rule runs within an entry. `overlaps` and both filters live in `tools/forgiveness.mjs`;
- * see A-27 Parts 3, 4 and 7.
+ * even-odd rule runs within an entry. `overlaps`, filter 1 and both arms live in
+ * `tools/forgiveness.mjs`; see A-28 Part 3 first, then A-27 Parts 3 and 7.
  *
  * **This runs at generation time, by a human, once. Nothing in the shipped product runs it.**
  * `packages/core`, `packages/client` and `apps/web` never fetch anything for this feature — the
@@ -140,6 +144,45 @@ if (FILL !== FAMILY[FAMILY.length - 1]) {
       'that is an architect decision, not a regeneration.',
   );
   process.exit(2);
+}
+
+/**
+ * **And the ordering that equality stands for (QA R24-3).** The assertion above guards A-28 Part
+ * 3's *sentence*; this one guards its *invariant*. `FILL === FAMILY[FAMILY.length - 1]` means "the
+ * fill is the family's finest scale" only while `FAMILY` is ordered coarsest-first — which its own
+ * comment states and, until this, nothing checked. Reorder it to `['110m', '10m', '50m']` with
+ * `FILL = '50m'` and the equality above is still satisfied, while arm 2b — which reads "the finest
+ * scale that carries this code" off the LAST family entry carrying it — starts comparing 1:10m
+ * candidates against 1:50m neighbours, and filter 1 compares a 1:10m candidate against the code's
+ * own 1:50m coverage. That is R23-1's class, reintroduced inside the arm A-28 added to prevent it.
+ *
+ * The ordering is checked from **data rather than from the scale names**: a coarser admin-0 layer is
+ * a smaller file, so the pinned byte counts must strictly increase across the family. They do —
+ * 838,726 / 3,083,490 / 13,287,234, re-fetched and re-measured over the network on 2026-08-28 — and
+ * that is the only fact this needs. A family member with no `SCALES` entry has no byte count to
+ * order and fails here too, which is the same class of change.
+ */
+for (let i = 0; i < FAMILY.length; i++) {
+  const here = SCALES[FAMILY[i]];
+  const fail = (why) => {
+    console.error(
+      `gen-countries: FILL is "${FILL}", which IS FAMILY's last scale — but FAMILY is not ordered ` +
+        `coarsest-first, so its last scale is not its finest: ${why}. ARCHITECTURE §8.4 A-28 Part 3 ` +
+        "reads FILL === FAMILY[FAMILY.length - 1] as \"the fill is the family's FINEST scale\", and " +
+        'that is only the same statement while this array is ordered coarsest first. Out of order, ' +
+        'arm 2b and filter 1 both start comparing a candidate against a COARSER drawing of its ' +
+        'neighbour — QA R23-1 — with the assertion above still green. Fix the order, or the ' +
+        'population both arms are built from is an architect decision, not a regeneration.',
+    );
+    process.exit(2);
+  };
+  if (!here) fail(`"${FAMILY[i]}" is not a pinned scale, so it has no size to order by`);
+  if (i > 0 && here.bytes <= SCALES[FAMILY[i - 1]].bytes) {
+    fail(
+      `"${FAMILY[i]}" (${here.bytes} bytes) is not finer than "${FAMILY[i - 1]}" ` +
+        `(${SCALES[FAMILY[i - 1]].bytes} bytes)`,
+    );
+  }
 }
 
 const scaleKey = opt('scale', '110m');
@@ -260,7 +303,11 @@ async function main() {
       `(fill: ${filled.length} codes the base omits)` +
       (usedScales.length
         ? ` + ${usedScales.map((k) => SCALES[k].file).join(' + ')} ` +
-          `(forgiveness: ${forgiveness.codes.length} of those codes, A-27)`
+          // A-28, not A-27: A-28 Part 3 replaced filter 2 in full, and it is the two-arm filter
+          // that produced THIS index. The string reaches `COUNTRY_INDEX.source` and the web
+          // bundle, so a reader tracing the artefact's provenance must land on the live ruling
+          // (QA R24-2). Four characters, deliberately — the emitted byte count is pinned.
+          `(forgiveness: ${forgiveness.codes.length} of those codes, A-28)`
         : '')
     : `${REPO}@${TAG}/geojson/${scale.file}`;
   const shas = doFill
@@ -407,16 +454,25 @@ function build(geo, only = null, scaleTag = null) {
   return { entries, skipped, stats: { rings, points, dropped } };
 }
 
-// ---------------------------------------------------------------- the forgiveness pass (A-27)
+// ------------------------------------------------- the forgiveness pass (A-27 Part 4, A-28 Part 3)
 
 /**
- * **A-27 Part 4, run.** For each filled ISO code — the codes the base scale does not carry, and
- * only those — take the same country's rings at each strictly coarser scale of the pinned family
- * that carries it, coarsest first, and keep a ring only if it passes both filters:
+ * **A-27 Part 4 as A-28 Part 3 replaced it, run.** For each filled ISO code — the codes the base
+ * scale does not carry, and only those — take the same country's rings at each strictly coarser
+ * scale of the pinned family that carries it, coarsest first, and keep a ring only if all three
+ * of these hold. Filter 2's two arms are tested in order and a drop is booked against the first
+ * that fires; both arms are required and neither substitutes for the other:
  *
- *  1. it `overlaps` the code's own coverage rings — it is a coarser drawing of the same place;
- *  2. it `overlaps` no OTHER entry of the coverage-only index — the ground it claims is nobody
- *     else's.
+ *  1. **filter 1** — it `overlaps` the code's own coverage rings: a coarser drawing of the same
+ *     place. Its population is already the family's finest scale, which is why it needs no second
+ *     arm and why `FILL`/`FAMILY` are asserted at the top of this file (A-28 Part 3, QA R24-3);
+ *  2. **arm 2a** — it `overlaps` no OTHER entry of the coverage-only index, each at whatever
+ *     resolution that entry ships at. The non-regression guarantee: it is what refuses `HK[1]`,
+ *     `HK[2]` and `SG[0]`, whose ground is `CN`'s and `MY`'s as the index draws them at 1:110m;
+ *  3. **arm 2b** — it `overlaps` no other ISO code at the FINEST scale of the pinned family that
+ *     carries that code, whatever scale its own coverage entry uses. The truth guarantee: the
+ *     mixed-resolution index cannot defend ground it draws too coarsely, which is how `MO` came
+ *     to claim ~22.1 km² of Guangdong (QA R23-1). It is what refuses that ring.
  *
  * Surviving rings become a **second entry under the same ISO code**, never a merge into the first.
  * That matters: `countryOf` runs even-odd *within* an entry, so merging a coarse ring into the
@@ -595,8 +651,8 @@ async function forgivenessPass({ filled, coverage, layers }) {
 }
 
 /**
- * `fixtures/golden/forgiveness-drops.json` — every candidate ring the two filters rejected, with
- * the filter that rejected it.
+ * `fixtures/golden/forgiveness-drops.json` — every candidate ring filter 1 or either arm of
+ * filter 2 rejected (A-28 Part 3), with the filter, and for filter 2 the arm, that rejected it.
  *
  * **Why this is written at all.** A rejected ring is by definition absent from `countries.gen.ts`,
  * so ROADMAP exit criterion 4 part (e)'s two injected faults — *"delete filter 2 and the bordered codes gain
@@ -624,8 +680,9 @@ function writeDrops(forgiveness, indexScale, source, forgivenessAt, thirdSource)
   const out = {
     $generatedBy: 'cairn/tools/gen-countries.mjs',
     $what:
-      'Every coarser-scale candidate ring that ARCHITECTURE §8.4 A-27 Part 4\'s two filters ' +
-      'rejected, with the filter that rejected it. These rings are NOT in countries.gen.ts — ' +
+      "Every coarser-scale candidate ring that ARCHITECTURE §8.4 A-28 Part 3's filter 1 and " +
+      "filter 2's two arms rejected, with the filter or arm that rejected it. These rings are " +
+      'NOT in countries.gen.ts — ' +
       'that is the point: ROADMAP exit criterion 4(e) injects a fault into each filter and needs ' +
       'the rings the filters refused. Natural Earth admin-0, public domain, quantised exactly as ' +
       'the shipped module is.',
@@ -936,18 +993,18 @@ function emit({ scaleKey, indexScale, source, shas, entries, stats, filled, forg
     : ' * Fill   : none — this is a single-scale index.';
   const forgiveLine = forgiveness.entries.length
     ? ` * Forgive: ${forgiveness.entries.length} SECOND entries, one per filled code whose coarser polygon survives
- *          A-27 Part 4's two filters — it must touch the code's own fine rings, and it must
- *          touch no other country's. A filled code is drawn at the finest scale, which tracks
- *          the waterline; the coarse entry forgives a coordinate a few hundred metres out to
- *          sea rather than answering null. AN ISO CODE THEREFORE APPEARS TWICE HERE, and the
- *          two entries compose as a union because \`countryOf\` returns on the first ENTRY that
- *          contains the point.
+ *          A-28 Part 3's three comparisons: it must touch the code's own coverage rings
+ *          (filter 1), no other entry of the coverage-only index (arm 2a), and no other
+ *          country at the family's FINEST scale (arm 2b). The fine rings track the waterline;
+ *          the coarse one forgives a coordinate a few hundred metres offshore. AN ISO CODE
+ *          APPEARS TWICE, and its two entries compose as a union: \`countryOf\` returns on the
+ *          first ENTRY containing the point.
  *          Forgiven (${forgiveness.codes.length}):
  *          ${wrap(forgiveness.codes.join(' '), 88, ' *          ')}
  *          Refused (${forgiveness.refused.length}) — a coarse ring that would be a neighbour's ground,
  *          would not touch the country at all, or does not exist at any coarser scale:
  *          ${wrap(forgiveness.refused.join(' '), 88, ' *          ')}`
-    : ' * Forgive: none — no filled code has a coarser polygon that survives A-27 Part 4.';
+    : ' * Forgive: none — no filled code has a coarser polygon that survives A-28 Part 3.';
   return `/**
  * GENERATED FILE — DO NOT EDIT.
  *

@@ -801,7 +801,8 @@ test('I-5a injected fault: dropping LI from the fill returns Vaduz to Austria', 
 // ---------------------------------------------------------------- I-5b: the forgiveness entry
 
 /**
- * The positions, in the emitted array, of the 54 entries A-27's forgiveness pass added. Two
+ * The positions, in the emitted array, of the 53 entries the forgiveness pass added — 54 until
+ * I-5c (§8.4 A-28) refused `MO` its ring, and the fixture is what says which. Two
  * entries of one ISO code are indistinguishable in the packed payload, so the generator records
  * them; `countries.filter((_, i) => !forgivenessAt.has(i))` is then *exactly* the index as it
  * shipped before I-5b, which is what makes the additive claim below assertable rather than
@@ -812,7 +813,7 @@ const FORGIVENESS_AT: number[] = JSON.parse(
   readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'fixtures', 'golden', 'forgiveness-drops.json'), 'utf8'),
 ).forgivenessAt;
 
-/** The index as it shipped before I-5b: the same entries, in the same order, minus the 54. */
+/** The index as it shipped before I-5b: the same entries, in the same order, minus the 53. */
 const COVERAGE_ONLY = countryIndex({
   scale: 'coverage-only',
   source: 'COUNTRY_INDEX minus its forgiveness entries — the pre-I-5b index',
@@ -868,7 +869,7 @@ test('I-5b: Grytviken was never broken, and St Helier is a dataset gap rather th
  * A-27 Part 3 property 2: *"Every ring in the committed index is still in the index,
  * byte-identical; the change is purely additive. So the set of countries containing any point can
  * only grow, and a `country → null` regression is impossible by construction."* That argument is
- * only as good as its premise, so the premise is what is asserted: strip the 54 recorded
+ * only as good as its premise, so the premise is what is asserted: strip the 53 recorded
  * positions and what is left is the pre-I-5b artefact — same entries, same order, same rings, to
  * the byte. Nothing was re-quantised, re-ordered or merged.
  */
@@ -905,13 +906,21 @@ test('I-5b criterion 4e(ii): the forgiveness pass is purely additive to the pre-
 });
 
 /**
- * **Criterion 4(e)(iii), in the form a unit test can afford.** The full measurement is
- * 14,926,301 cells at 0.02° over all 54 forgiveness bounding boxes padded by 0.1°, re-derived for
- * this increment and recorded in this increment's build notes: **704 cells `null` → a country, 0 `country` →
- * `null`, 0 one country → another.** That sweep takes ninety seconds and does not belong in the
- * suite; what belongs here is a coarser run of the same comparison, over the same boxes, so a
- * regression that made a forgiveness entry steal ground would be caught by `npm test` rather than
- * only by a builder who remembered to sweep.
+ * **Criterion 4(e)(iii), in the form a unit test can afford.** The full measurement is the same
+ * loop at `STEP = 0.02`, over the **53** forgiveness bounding boxes this increment's fixture
+ * records, padded by 0.1°: **14,926,119 cells — 700 `null` → a country, 0 `country` → `null`, 0
+ * one country → another.** Re-derived for I-5c on 2026-08-28 and recorded in this increment's
+ * build notes; it was 14,926,301 cells and 704 gains over I-5b's **54** boxes, and the whole
+ * difference is `MO` — its box left the sweep and the four cells its ring was gaining left with
+ * it. That sweep takes ninety seconds and does not belong in the suite; what belongs here is a
+ * coarser run of the same comparison, over the same boxes, so a regression that made a
+ * forgiveness entry steal ground would be caught by `npm test` rather than only by a builder who
+ * remembered to sweep.
+ *
+ * **A cell count is not a property of the geometry** (QA R24-4). It is a property of the geometry
+ * *and* the grid's phase: these boxes anchor the grid at `box[1] - PAD`, so the count above is
+ * reproducible from this loop and is not a number any other sweep of the same ground has to
+ * agree with. What is phase-free is area — see the build notes for `MO`'s.
  */
 test('I-5b criterion 4e(iii): over the forgiveness boxes, no cell gets worse', () => {
   const STEP = 0.1;

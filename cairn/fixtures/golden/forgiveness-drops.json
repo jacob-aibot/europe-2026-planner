@@ -1,9 +1,9 @@
 {
   "$generatedBy": "cairn/tools/gen-countries.mjs",
-  "$what": "Every coarser-scale candidate ring that ARCHITECTURE §8.4 A-27 Part 4's two filters rejected, with the filter that rejected it. These rings are NOT in countries.gen.ts — that is the point: ROADMAP exit criterion 4(e) injects a fault into each filter and needs the rings the filters refused. Natural Earth admin-0, public domain, quantised exactly as the shipped module is.",
+  "$what": "Every coarser-scale candidate ring that ARCHITECTURE §8.4 A-28 Part 3's filter 1 and filter 2's two arms rejected, with the filter or arm that rejected it. These rings are NOT in countries.gen.ts — that is the point: ROADMAP exit criterion 4(e) injects a fault into each filter and needs the rings the filters refused. Natural Earth admin-0, public domain, quantised exactly as the shipped module is.",
   "index": {
     "scale": "ne_110m+10m+50m",
-    "source": "nvkelso/natural-earth-vector@v5.1.2/geojson/ne_110m_admin_0_countries.geojson (base) + ne_10m_admin_0_countries.geojson (fill: 64 codes the base omits) + ne_50m_admin_0_countries.geojson (forgiveness: 53 of those codes, A-27)"
+    "source": "nvkelso/natural-earth-vector@v5.1.2/geojson/ne_110m_admin_0_countries.geojson (base) + ne_10m_admin_0_countries.geojson (fill: 64 codes the base omits) + ne_50m_admin_0_countries.geojson (forgiveness: 53 of those codes, A-28)"
   },
   "candidateScales": [
     "110m",

@@ -4,7 +4,7 @@
  * Produced by `node tools/gen-countries.mjs --scale 110m`. Re-run that to change it; a hand
  * edit here is lost on the next run and untraceable to a source in the meantime.
  *
- * Source : nvkelso/natural-earth-vector@v5.1.2/geojson/ne_110m_admin_0_countries.geojson (base) + ne_10m_admin_0_countries.geojson (fill: 64 codes the base omits) + ne_50m_admin_0_countries.geojson (forgiveness: 53 of those codes, A-27)
+ * Source : nvkelso/natural-earth-vector@v5.1.2/geojson/ne_110m_admin_0_countries.geojson (base) + ne_10m_admin_0_countries.geojson (fill: 64 codes the base omits) + ne_50m_admin_0_countries.geojson (forgiveness: 53 of those codes, A-28)
  *          (Natural Earth admin-0 countries, public domain — see the generator's header for the
  *          licence citation and why the tag is pinned rather than tracking `master`.)
  * sha256 : ne_110m_admin_0_countries.geojson 6866c877d39cba9c357620878839b336d569f8c662d3cfab4cb1dbe2d39c977f
@@ -17,12 +17,12 @@
  *          KY LC LI MC MF MH MO MP MS MT MU MV NF NR NU PF PM PN PW SC SG SH SM ST SX TC TO TV UM
  *          VA VC VG VI WF WS
  * Forgive: 53 SECOND entries, one per filled code whose coarser polygon survives
- *          A-27 Part 4's two filters — it must touch the code's own fine rings, and it must
- *          touch no other country's. A filled code is drawn at the finest scale, which tracks
- *          the waterline; the coarse entry forgives a coordinate a few hundred metres out to
- *          sea rather than answering null. AN ISO CODE THEREFORE APPEARS TWICE HERE, and the
- *          two entries compose as a union because `countryOf` returns on the first ENTRY that
- *          contains the point.
+ *          A-28 Part 3's three comparisons: it must touch the code's own coverage rings
+ *          (filter 1), no other entry of the coverage-only index (arm 2a), and no other
+ *          country at the family's FINEST scale (arm 2b). The fine rings track the waterline;
+ *          the coarse one forgives a coordinate a few hundred metres offshore. AN ISO CODE
+ *          APPEARS TWICE, and its two entries compose as a union: `countryOf` returns on the
+ *          first ENTRY containing the point.
  *          Forgiven (53):
  *          AG AI AS AW AX BB BH BL BM CK CV CW DM FM FO GD GG GS GU HM IM IO JE KI KM KN KY LC MF
  *          MH MP MS MT MU MV NF NR NU PF PM PN PW SC SH ST TC TO TV VC VG VI WF WS
@@ -62,6 +62,6 @@ const PACKED =
 
 /** The bundled admin-0 index. Injected into `countryOf(at, index)`; never read by it directly. */
 export const COUNTRY_INDEX: CountryIndex = decodeCountryIndex(
-  { scale: 'ne_110m+10m+50m', source: 'nvkelso/natural-earth-vector@v5.1.2/geojson/ne_110m_admin_0_countries.geojson (base) + ne_10m_admin_0_countries.geojson (fill: 64 codes the base omits) + ne_50m_admin_0_countries.geojson (forgiveness: 53 of those codes, A-27)' },
+  { scale: 'ne_110m+10m+50m', source: 'nvkelso/natural-earth-vector@v5.1.2/geojson/ne_110m_admin_0_countries.geojson (base) + ne_10m_admin_0_countries.geojson (fill: 64 codes the base omits) + ne_50m_admin_0_countries.geojson (forgiveness: 53 of those codes, A-28)' },
   PACKED,
 );
