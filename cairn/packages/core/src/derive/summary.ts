@@ -77,8 +77,40 @@ export function cityRange(trip: Trip, cityKey: CityKey): string | null {
  *     rescans it.
  *   - **2** — Phase 2 I-6: `countryCodes`, `cities` and `summaryVersion` themselves, over the
  *     index I-5c settled (§8.4 A-26/A-27/A-28).
+ *   - **3** — Phase 2 I-6a (§8.4 **A-29**): a city's *stated* `City.countryCode` may fill a gap
+ *     `countryOf` cannot answer, so both `cities[].countryCode` and `countryCodes` can differ
+ *     from a version-2 row over the same document; and `cities[]` gains `countrySource`.
  */
-export const SUMMARY_VERSION = 2;
+export const SUMMARY_VERSION = 3;
+
+/**
+ * A city's **stated** country code, accepted or refused — §8.4 **A-29** Part 3. Module-private:
+ * §2.10's export surface does not move, and every clause below is reachable through
+ * `tripSummary` with a hand-built `City`.
+ *
+ * Total, in order, and the last step is the one that makes the rest affordable:
+ *
+ *   1. not a string ⇒ `null`. `fromJSON` guarantees a string for a *stored* document; a
+ *      hand-built fixture does not, and this helper may not crash on one.
+ *   2. `trim()`, then `/^[A-Za-z]{2}$/` or `null`. This is what refuses `''` (`createTrip`'s
+ *      own default), `'HRV'`, `'Croatia'`, `'H1'` and `'H R'`.
+ *   3. uppercase.
+ *   4. **the shipped index must carry the code**, or `null`. §8.4 clause 3's second consequence
+ *      draws the lifetime map from this index's own rings with no tiles behind it, so a code the
+ *      index does not carry is a country the map cannot fill — the row would name a country the
+ *      signature screen silently omits. The codes this refuses are the ISO codes Natural Earth
+ *      folds into a parent state (`RE`, `GF`, `GP`, `MQ`, `YT`, `SJ`, `TK`, `BQ`), for which the
+ *      coordinate attribution already answers the parent and is the better answer.
+ *
+ * `codes` is the membership set built once per `tripSummary` call, not per city.
+ */
+function acceptStatedCountry(raw: unknown, codes: ReadonlySet<string>): CountryCode | null {
+  if (typeof raw !== 'string') return null;
+  const t = raw.trim();
+  if (!/^[A-Za-z]{2}$/.test(t)) return null;
+  const u = t.toUpperCase();
+  return codes.has(u) ? (u as CountryCode) : null;
+}
 
 export type TripSummaryCity = {
   /**
@@ -89,8 +121,24 @@ export type TripSummaryCity = {
   key: CityKey;
   /** The label. §2.2 A-10: a key alone cannot label a pin, which is why this field exists. */
   name: string;
-  /** `countryOf(city.centre, index)`. `null` is a first-class answer and never a guess. */
+  /**
+   * The answer, whatever its source. `null` is first-class and never a guess.
+   *
+   * **Not the same field as the document's `City.countryCode`** (§8.4 A-29 Part 4, point 4).
+   * That one is stated, unvalidated and defaults to `''`; this one is the *attribution*, and
+   * `countrySource` says which of the two produced it.
+   */
   countryCode: CountryCode | null;
+  /**
+   * Where that answer came from — §8.4 **A-29**. `null` exactly when `countryCode` is null.
+   *
+   * `'coordinate'` is `countryOf(city.centre, index)`, which is evaluated first and wins
+   * whenever it is non-null. `'stated'` is the city's own `countryCode` through the acceptance
+   * gate, consulted **only** where the coordinate is silent. Carried and not branched on by any
+   * surface in this increment (§8.1's precedent for `datePrecision`); nothing may ever *gate* a
+   * country's inclusion on it, because inclusion is decided here.
+   */
+  countrySource: 'coordinate' | 'stated' | null;
 };
 
 export type TripSummaryRow = {
@@ -112,11 +160,19 @@ export type TripSummaryRow = {
   poolCount: number;
   revision: number;
   /**
-   * Every country the trip's own coordinates resolve to, distinct and sorted (§8.4 clause 3).
-   * Sorted so two rows for the same document are byte-identical wherever they were minted.
+   * Every country the trip itself accounts for, distinct and sorted (§8.4 clause 3). Sorted so
+   * two rows for the same document are byte-identical wherever they were minted.
+   *
+   * The union is every non-null `cities[].countryCode` — **of either source**, §8.4 A-29 — plus
+   * `countryOf` over `places[].at`, every scheduled stop and every pooled stop. `null` never
+   * enters it, and a stated code enters only through its own city's entry: the union is not
+   * additive, so a typo'd code on a city the index *can* attribute can never reach it.
    */
   countryCodes: CountryCode[];
-  /** The trip's cities in display order — `{key, name, countryCode}`, never a bare key. */
+  /**
+   * The trip's cities in display order — `{key, name, countryCode, countrySource}`, never a
+   * bare key.
+   */
   cities: TripSummaryCity[];
   /** The `SUMMARY_VERSION` in force when this row was computed. */
   summaryVersion: number;
@@ -139,7 +195,14 @@ export type TripSummaryRow = {
  * ends from and it is a `geoCheck` anchor (§2.13); counting it would put the traveller's own
  * country on the lifetime map for every trip they ever record, which is a claim the trip's
  * data does not make. A home airport that is also a *stop* still counts, through the stop.
- * §8.4 does not say either way, so this is a choice — BUILD-NOTES **KD-55** records it.
+ * §8.4 does not say either way, so this is a choice — BUILD-NOTES **KD-55** records it, and
+ * §8.4 **A-29** re-affirms it verbatim.
+ *
+ * **A-29's one addition, and its precedence.** A `City`'s *stated* `countryCode` is a second,
+ * independent piece of evidence the document already carries, and it is admitted **only** where
+ * `countryOf(city.centre, index)` is `null` and only through `acceptStatedCountry`'s gate. It
+ * never overrides a coordinate, it is never read for any record other than the `City` that
+ * carries it, and it reaches `countryCodes` only through that city's own entry.
  *
  * @throws {Error} programmer error only: a missing country index.
  */
@@ -151,11 +214,24 @@ export function tripSummary(trip: Trip, index: CountryIndex): TripSummaryRow {
         'claims to be complete while carrying no countries',
     );
   }
-  const cities = orderedCities(trip).map((c) => ({
-    key: c.key,
-    name: c.name,
-    countryCode: countryOf(c.centre, index),
-  }));
+  // Built once per call, not per city — 292 entries, 239 distinct codes (§8.4 A-29 Part 3).
+  const drawable = new Set<string>(index.countries.map((e) => e.code));
+  const cities: TripSummaryCity[] = orderedCities(trip).map((c) => {
+    // §8.4 A-29: the coordinate is asked first and its answer is final when it has one. Only
+    // where it is `null` — the dataset has no evidence, which A-26 ruled is the *correct*
+    // answer rather than a hole to fill by snapping — is the city's own stated code consulted.
+    const derived = countryOf(c.centre, index);
+    if (derived !== null) {
+      return { key: c.key, name: c.name, countryCode: derived, countrySource: 'coordinate' };
+    }
+    const stated = acceptStatedCountry(c.countryCode, drawable);
+    return {
+      key: c.key,
+      name: c.name,
+      countryCode: stated,
+      countrySource: stated === null ? null : 'stated',
+    };
+  });
   const codes = new Set<CountryCode>();
   const add = (at: LatLng | null) => {
     if (!at) return;

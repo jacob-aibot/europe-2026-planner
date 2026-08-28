@@ -93,9 +93,11 @@ test('I-6: `cities` carries key, NAME and countryCode — never a bare CityKey (
     assert.equal(row.cities[i].key, cities[i].key);
     assert.equal(row.cities[i].name, cities[i].name);
     assert.ok(row.cities[i].name.length > 0, 'a city row carries no name — the pin cannot be labelled');
-    // Derived from the city's own coordinate through the injected index, never copied from
-    // `City.countryCode` (which is importer metadata and is not nullable).
+    // Derived from the city's own coordinate through the injected index. §8.4 **A-29** lets a
+    // *stated* `City.countryCode` fill a gap the coordinate cannot answer — but never override
+    // one, so on every city the index can attribute this is still the coordinate's answer.
     assert.equal(row.cities[i].countryCode, countryOf(cities[i].centre, COUNTRY_INDEX));
+    assert.equal(row.cities[i].countrySource, 'coordinate');
   }
 });
 
@@ -115,6 +117,9 @@ test('I-6: a city whose centre no polygon contains carries countryCode null, nev
   );
   const row = tripSummary(trip, TWO_POLYGONS);
   assert.deepEqual(row.cities.map((c) => c.countryCode), ['AA', null]);
+  // `'ZZ'` is well-formed and the gate still refuses it: `TWO_POLYGONS` carries no such code,
+  // so the map has no ring to draw for it (§8.4 A-29 Part 3, step 4).
+  assert.deepEqual(row.cities.map((c) => c.countrySource), ['coordinate', null]);
   assert.deepEqual(row.countryCodes, ['AA'], 'a null attribution leaked into countryCodes');
 });
 
@@ -176,6 +181,12 @@ test('I-6: tripSummary is pure and takes its whole answer from the injected inde
     tripSummary(trip, empty).cities.map((c) => c.countryCode),
     trip.cities.map(() => null),
   );
+  // …including through A-29's gate: an index carrying no codes at all can draw no country, so
+  // no stated code survives step 4 either. The gate's alphabet is the index's own.
+  assert.deepEqual(
+    tripSummary(trip, empty).cities.map((c) => c.countrySource),
+    trip.cities.map(() => null),
+  );
   // …and the trip itself is untouched by any of it.
   assert.deepEqual(tripSummary(trip, COUNTRY_INDEX), a);
 });
@@ -210,4 +221,178 @@ test('I-6: two non-Latin city names produce two rows, each carrying its own name
   assert.deepEqual(row.cities.map((c) => c.countryCode), ['JP', 'JP']);
   assert.deepEqual(row.countryCodes, ['JP'], 'two cities in one country are one country');
   for (const c of row.cities) assert.ok(!/^-*$/.test(c.key), `key ${JSON.stringify(c.key)} is a dead slug`);
+});
+
+// ---------------------------------------------------------------------------
+// §8.4 **A-29** — a city's *stated* country fills a gap the coordinate cannot
+// answer, never overrides one, and only if the index can draw it.
+// ---------------------------------------------------------------------------
+
+/**
+ * Hvar Town, Dalmatia. Measured against the shipped artefact: `countryOf` returns **`null`**
+ * here — no ring in the 1:10m admin-0 layer contains it, which A-26 ruled is the *correct*
+ * answer for a coordinate the dataset has no evidence about. The document's own `City`
+ * record nevertheless says `HR`, and that is a second, independent piece of evidence.
+ */
+const HVAR = { lat: 43.1729, lng: 16.4413 };
+const VIENNA = { lat: 48.2082, lng: 16.3738 };
+
+/** One city, one hand-built stated code, and nothing else that could contribute a country. */
+function statedCity(countryCode: string, centre: LatLng): Trip {
+  return createTrip(
+    {
+      title: 'A-29 gate',
+      startDate: '2026-03-01',
+      endDate: '2026-03-02',
+      homeCurrency: 'EUR',
+      cities: [{ name: 'Stated', countryCode, centre }],
+    },
+    ctx(),
+  );
+}
+
+const gateRow = (countryCode: string, centre: LatLng = HVAR) =>
+  tripSummary(statedCity(countryCode, centre), COUNTRY_INDEX).cities[0];
+
+test('A-29 precondition: countryOf has no answer at Hvar Town, so the gap is real', () => {
+  assert.equal(
+    countryOf(HVAR, COUNTRY_INDEX),
+    null,
+    'INCONCLUSIVE: the index now attributes Hvar, so every test below tests nothing',
+  );
+});
+
+test('A-29 gap-fill: a stated HR on a city the index cannot attribute is admitted', () => {
+  const row = tripSummary(statedCity('HR', HVAR), COUNTRY_INDEX);
+  assert.deepEqual(row.cities[0].countryCode, 'HR');
+  assert.equal(row.cities[0].countrySource, 'stated');
+  assert.deepEqual(row.countryCodes, ['HR'], 'the stated code never reached countryCodes');
+});
+
+test('A-29 non-override: a coordinate that answers WINS over a stated code that disagrees', () => {
+  // A Vienna city record mistyped as `HU`. The coordinate says `AT` and the coordinate is the
+  // answer; the stated value is not consulted at all. Had the rule been "union both", one
+  // mistyped field would put Hungary on the lifetime map permanently.
+  const row = tripSummary(statedCity('HU', VIENNA), COUNTRY_INDEX);
+  assert.equal(row.cities[0].countryCode, 'AT');
+  assert.equal(row.cities[0].countrySource, 'coordinate');
+  assert.deepEqual(row.countryCodes, ['AT']);
+  assert.equal(row.countryCodes.includes('HU' as CountryCode), false, 'a stated typo inflated the map');
+});
+
+test('A-29 gate: an empty stated code is refused', () => {
+  // `''` is `createTrip`'s own default (`c.countryCode ?? ''`), so this is the ordinary case
+  // for every city created inside the product today.
+  assert.deepEqual(gateRow(''), { key: gateRow('').key, name: 'Stated', countryCode: null, countrySource: null });
+});
+
+test('A-29 gate: a lowercase two-letter code is normalised, not refused', () => {
+  const c = gateRow('hr');
+  assert.equal(c.countryCode, 'HR');
+  assert.equal(c.countrySource, 'stated');
+});
+
+test('A-29 gate: surrounding whitespace is trimmed before the shape is judged', () => {
+  const c = gateRow('  HR  ');
+  assert.equal(c.countryCode, 'HR');
+  assert.equal(c.countrySource, 'stated');
+});
+
+test('A-29 gate: an alpha-3 code is refused — the gate is exactly two letters', () => {
+  assert.equal(gateRow('HRV').countryCode, null);
+  assert.equal(gateRow('HRV').countrySource, null);
+});
+
+test('A-29 gate: a country NAME is refused', () => {
+  assert.equal(gateRow('Croatia').countryCode, null);
+  assert.equal(gateRow('H1').countryCode, null, 'a digit passed the letters-only shape');
+  assert.equal(gateRow('H R').countryCode, null, 'an interior space passed the shape');
+});
+
+test('A-29 gate: ZZ is well-formed and still refused — the index carries no such code', () => {
+  assert.equal(
+    COUNTRY_INDEX.countries.some((e) => e.code === ('ZZ' as CountryCode)),
+    false,
+    'INCONCLUSIVE: the index now carries ZZ',
+  );
+  assert.equal(gateRow('ZZ').countryCode, null);
+  assert.equal(gateRow('ZZ').countrySource, null);
+});
+
+test('A-29 gate: RE is a real ISO code and is refused ON PURPOSE — do not "fix" this', () => {
+  // Réunion. `RE` is a genuine ISO 3166-1 alpha-2 code, and the gate refuses it because the
+  // shipped index does not carry it: Natural Earth's admin-0 layer folds Réunion into France,
+  // so there is no ring here to fill. §8.4 clause 3's second consequence draws the lifetime
+  // map from *this index's own rings with no tiles behind it*, so admitting `RE` would name a
+  // country the signature screen silently omits. The coordinate attribution already answers
+  // the parent state for `RE`, `GF`, `GP`, `MQ`, `YT`, `SJ`, `TK` and `BQ`, and that is the
+  // better answer. A-29 Part 3, and residue 2.
+  assert.equal(
+    COUNTRY_INDEX.countries.some((e) => e.code === ('RE' as CountryCode)),
+    false,
+    'INCONCLUSIVE: the index now carries RE, so this test no longer says what it means',
+  );
+  assert.equal(gateRow('RE').countryCode, null);
+  assert.equal(gateRow('RE').countrySource, null);
+});
+
+test('A-29 gate: a non-string stated code cannot crash the helper — it is total', () => {
+  // `fromJSON` guarantees a string for a stored document; a hand-built fixture does not, and
+  // §8.4 clause 3 is reached from the CLI and from tests with hand-built trips.
+  const trip = statedCity('HR', HVAR);
+  for (const bad of [null, undefined, 42, {}, ['HR']]) {
+    const mutated = {
+      ...trip,
+      cities: [{ ...trip.cities[0], countryCode: bad as unknown as string }],
+    };
+    const row = tripSummary(mutated, COUNTRY_INDEX);
+    assert.equal(row.cities[0].countryCode, null, `${JSON.stringify(bad)} was admitted`);
+    assert.equal(row.cities[0].countrySource, null);
+  }
+});
+
+test('A-29: countrySource is null exactly when countryCode is null', () => {
+  const trips = [
+    tripSummary(statedCity('HR', HVAR), COUNTRY_INDEX),
+    tripSummary(statedCity('HU', VIENNA), COUNTRY_INDEX),
+    tripSummary(statedCity('', HVAR), COUNTRY_INDEX),
+    tripSummary(europe2026().trip, COUNTRY_INDEX),
+  ];
+  for (const row of trips) {
+    for (const c of row.cities) {
+      assert.equal(
+        c.countrySource === null,
+        c.countryCode === null,
+        `${c.name}: ${JSON.stringify(c)} breaks the "null exactly when null" pairing`,
+      );
+      if (c.countrySource !== null) {
+        assert.ok(['coordinate', 'stated'].includes(c.countrySource), `bad source ${c.countrySource}`);
+      }
+    }
+  }
+});
+
+test('A-29: a stated code on a city does NOT rescue that city\'s places and stops', () => {
+  // Residue 1's other half: `Place` and `Stop` have no stated country and none is being added,
+  // so a place on Vis stays unattributed and honestly so. Here the trip's only *coordinate*
+  // evidence is the city centre, and `countryCodes` gets `HR` from the city's own entry only.
+  const row = tripSummary(statedCity('HR', HVAR), COUNTRY_INDEX);
+  assert.deepEqual(row.countryCodes, ['HR']);
+  assert.equal(row.stopCount, 0, 'INCONCLUSIVE: the fixture grew stops');
+});
+
+test('A-29: SUMMARY_VERSION is 3 — two derivations changed, so the stamp moves', () => {
+  assert.equal(SUMMARY_VERSION, 3);
+});
+
+test('A-29 non-regression: the reference trip does not move, and every city is coordinate-derived', () => {
+  const { trip } = europe2026();
+  const row = tripSummary(trip, COUNTRY_INDEX);
+  assert.deepEqual(row.countryCodes, ['AT', 'CZ', 'DE', 'GB', 'HR', 'HU', 'US']);
+  assert.deepEqual(row.cities.map((c) => c.countrySource), row.cities.map(() => 'coordinate'));
+  // …and every one of the six *states* the same code its coordinate derives, which is why the
+  // stated branch is unreachable on the only real trip we have and its tests are hand-built.
+  for (const c of orderedCities(trip)) {
+    assert.equal(c.countryCode.toUpperCase(), countryOf(c.centre, COUNTRY_INDEX));
+  }
 });

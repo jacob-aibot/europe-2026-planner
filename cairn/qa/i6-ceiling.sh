@@ -3,15 +3,16 @@
 #
 #   Run: bash qa/i6-ceiling.sh        (from cairn/)
 #
-# KD-57 widened `switch.test.ts`'s clause 1 from *"exactly one `saveIfVersion` call site, and
-# it is inside `writeAndSettle`"* to *"every call site is either inside `writeAndSettle` or
-# lexically inside a `chainOntoSaving` callback"*, count still 2. A widened assertion is only
-# as good as what it still catches, so this plants three defects it must catch:
+# `switch.test.ts`'s clause 1 reads *"every `saveIfVersion` call site is inside `writeAndSettle`,
+# and every other `ports.storage` mutation is lexically inside a `chainOntoSaving` callback"*.
+# **Since I-6a (§4.3 A-30) the rescan's write is `refreshSummary`, not `saveIfVersion`** — one
+# document-write call site, one summary-refresh call site, and `refreshSummary` is explicitly
+# NOT on §4.3's exemption list (which stays `listTrips` and `load`). An assertion is only as
+# good as what it still catches, so this plants three defects it must catch:
 #
 #   M1  the rescan's link becomes a bare `await (async () => {…})()` — same code, no chain.
-#       (The builder's own claimed mutation. Re-derived here rather than taken on trust.)
-#   M2  a THIRD `saveIfVersion` call site, off the chain entirely.
-#   M3  the subtle one: the rescan's `saveIfVersion` is hoisted into a helper, and the helper
+#   M2  an EXTRA `saveIfVersion` call site, off the chain entirely.
+#   M3  the subtle one: the rescan's `refreshSummary` is hoisted into a helper, and the helper
 #       is called from inside the chain callback. The write IS ordered; the call site is not
 #       lexically inside the callback. A "lexically inside" assertion must red on this, or the
 #       ceiling is a grep a builder can walk around by extracting a function.
@@ -54,9 +55,9 @@ run_mutation "M1 — the rescan's link becomes a bare async IIFE (no chain)" "$(
 import sys
 p = sys.argv[1] + '/packages/client/src/store/store.ts'
 s = open(p).read()
-old = "          await chainOntoSaving(async () => {\n            // Property 4"
+old = "          await chainOntoSaving(async () => {\n            const stored = await ports.storage.load(id);"
 assert old in s, 'shape moved'
-s = s.replace(old, "          await (async () => {\n            // Property 4", 1)
+s = s.replace(old, "          await (async () => {\n            const stored = await ports.storage.load(id);", 1)
 # close the IIFE: the matching `});` for that call becomes `})();`
 i = s.index("          await (async () => {")
 j = s.index("\n          });\n", i)
@@ -66,7 +67,7 @@ print('  mutated: chainOntoSaving(...) -> (async () => {...})()')
 PY
 )"
 
-run_mutation "M2 — a THIRD saveIfVersion call site, off the chain" "$(cat <<'PY'
+run_mutation "M2 — an EXTRA saveIfVersion call site, off the chain" "$(cat <<'PY'
 import sys
 p = sys.argv[1] + '/packages/client/src/store/store.ts'
 s = open(p).read()
@@ -92,7 +93,7 @@ import sys
 p = sys.argv[1] + '/packages/client/src/store/store.ts'
 s = open(p).read()
 old = """            const summary = core.tripSummary(doc, core.COUNTRY_INDEX);
-            const outcome = await ports.storage.saveIfVersion(id, stored.version, core.toJSON(doc), summary);
+            const outcome = await ports.storage.refreshSummary(id, stored.version, summary);
             if (!outcome.ok) return;
             set({ ...state, library: upsertSummary(state.library, summary), rescan: { running: true, unreadable: report() } });"""
 assert old in s, 'shape moved'
@@ -107,14 +108,14 @@ helper = """  /** MUTATION (qa/i6-ceiling.sh): the same write, one stack frame o
     report: () => Array<{ id: string; message: string }>,
   ): Promise<void> {
     const summary = core.tripSummary(doc, core.COUNTRY_INDEX);
-    const outcome = await ports.storage.saveIfVersion(id, expected, core.toJSON(doc), summary);
+    const outcome = await ports.storage.refreshSummary(id, expected, summary);
     if (!outcome.ok) return;
     set({ ...state, library: upsertSummary(state.library, summary), rescan: { running: true, unreadable: report() } });
   }
 
 """
 open(p, 'w').write(s.replace(anchor, helper + anchor, 1))
-print('  mutated: saveIfVersion hoisted out of the chainOntoSaving callback (still ordered)')
+print('  mutated: refreshSummary hoisted out of the chainOntoSaving callback (still ordered)')
 PY
 )"
 

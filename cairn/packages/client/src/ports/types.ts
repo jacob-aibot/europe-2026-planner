@@ -18,9 +18,18 @@ export type TripDoc = string;
  *
  * Four rules, and they are the entire contract:
  *
- *   1. Storage issues it, on every successful write, inside the same atomic step as the
- *      write. Nothing above the port computes, derives, increments or forges one — the
- *      client's only sources are `load()` and a successful `saveIfVersion()`.
+ *   1. Storage issues it, on every successful write **of a document**, inside the same atomic
+ *      step as the write. Nothing above the port computes, derives, increments or forges one —
+ *      the client's only sources are `load()` and a successful `saveIfVersion()`.
+ *
+ *      *(Narrowed at revision 23 by §4.3 **A-30**, QA R26-6. What the fence means, stated once:*
+ *      **equality of a `StorageVersion` asserts that the document bytes under that id have not
+ *      changed since the token was issued, and asserts nothing whatever about the summary row
+ *      stored beside them.** *A write that can change the document therefore MUST mint; a write
+ *      that changes only the summary MUST NOT, because minting for it would assert a change the
+ *      document did not make and would refuse another writer holding a token that is still
+ *      true. `refreshSummary` is that second kind. A successful `refreshSummary` returns the
+ *      version it was handed, so it is not a third source of a token.)*
  *   2. It never repeats within one storage, ever: not after a `delete()`, not after the
  *      record is recreated under the same id, not after the whole database is recreated.
  *      That is what closes R3-4's ABA.
@@ -45,8 +54,10 @@ export type StoredDoc = { doc: TripDoc; version: StorageVersion };
  * the document is intact, someone else just got there first. The store turns `ok:false`
  * into `persistence.status = 'conflict'` and a rejected promise into `'error'`.
  *
- * `ok:true` carries the freshly minted version now in storage; `ok:false` carries the
- * version actually found (`null` = nothing is stored under that id).
+ * `ok:true` carries the version now in storage; `ok:false` carries the version actually found
+ * (`null` = nothing is stored under that id). For `saveIfVersion` the successful version is a
+ * freshly minted one; for **`refreshSummary` it is the unchanged expectation it was handed**,
+ * because that call does not move the document's fence (§4.3 A-30).
  */
 export type SaveOutcome =
   | { ok: true; version: StorageVersion }
@@ -83,6 +94,37 @@ export interface StoragePort {
     id: string,
     expectedVersion: StorageVersion | null,
     doc: TripDoc,
+    summary: TripSummaryRow,
+  ): Promise<SaveOutcome>;
+  /**
+   * **Atomic** compare-and-set over the **summary row alone** — ARCHITECTURE §4.3 **A-30**.
+   *
+   * It exists because a summary refresh is not a document write, and I-6 was the first thing
+   * to need that said. Bringing a stale row current used to mean
+   * `saveIfVersion(id, v, toJSON(doc), summary)` — a full document rewrite, byte-identical to
+   * what storage already held, purely to move the summary — which **minted**, and another
+   * tab's write fence is exactly what that mints against. A background pass with no user on
+   * the other side would put a live tab into `'conflict'` with a *Merge* button and nothing
+   * to merge (QA R26-6).
+   *
+   * The contract, and every clause of it is load-bearing:
+   *
+   *   - The comparison, the write and the return happen in **one atomic step**, exactly as
+   *     `saveIfVersion`'s do and for exactly R2-1's reason. An implementation that cannot be
+   *     atomic must reject, never write optimistically.
+   *   - It writes the summary row and **nothing else**: the document is not read for content,
+   *     not parsed, and not written. There is no `doc` argument, so there is nothing in this
+   *     signature to write a document *with* — which is also why §8.4 clause 1's *"a summary is
+   *     computed only from the document it is about"* cannot be violated through here.
+   *   - **It does not mint.** The record's `StorageVersion` is left exactly as it was found;
+   *     on success the outcome carries that same version back.
+   *   - `expectedVersion` is **not nullable** and an absent record is refused with
+   *     `{ok: false, storedVersion: null}`. A summary row may never exist without the document
+   *     it is about, so this can neither create a record nor resurrect a deleted one.
+   */
+  refreshSummary(
+    id: string,
+    expectedVersion: StorageVersion,
     summary: TripSummaryRow,
   ): Promise<SaveOutcome>;
   /** Removes the record. MUST NOT rewind the version counter — §2.2a rule 2. */

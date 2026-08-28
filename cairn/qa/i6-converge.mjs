@@ -16,7 +16,8 @@
  *      library must keep saying so
  *   5  an ORPHAN row: a summary in storage whose document is gone. `load()` returns null, so
  *      the row is never written, never marked unreadable, and never leaves `listTrips()`.
- *      Does the loop spend all five passes on it every single boot?
+ *      Under I-6 the loop spent all five passes on it every single boot (R26-3); I-6a files an
+ *      absent document as finally as an unparseable one, so it must now cost exactly one.
  *   6  40 rows: the pass cost at the scale §8.4 talks about
  */
 import {
@@ -58,7 +59,7 @@ async function seed(storage, doc) {
 }
 /** Counts every port call by name. */
 function count(storage) {
-  const n = { load: 0, listTrips: 0, saveIfVersion: 0, delete: 0 };
+  const n = { load: 0, listTrips: 0, saveIfVersion: 0, refreshSummary: 0, delete: 0 };
   for (const k of Object.keys(n)) {
     const orig = storage[k].bind(storage);
     storage[k] = async (...a) => { n[k]++; return orig(...a); };
@@ -76,7 +77,8 @@ head('1 — one clean pass over 3 rows: the port-call arithmetic');
   const n = count(storage);
   await store.rescanSummaries();
   note(`3 rows, no contention: ${JSON.stringify(n)}`);
-  ok(n.saveIfVersion === 3, 'one write per row, no retries', n.saveIfVersion);
+  ok(n.refreshSummary === 3, 'one summary refresh per row, no retries', n.refreshSummary);
+  ok(n.saveIfVersion === 0, 'and NO document write at all — §4.3 A-30', n.saveIfVersion);
   ok(n.load === 3, 'one document load per row — never two rows in memory at once', n.load);
   ok(n.listTrips === 1, 'one library re-read per pass, and exactly one pass was needed', n.listTrips);
   ok(summaryScan(store.getState()).phase === 'complete', 'complete');
@@ -118,11 +120,13 @@ head('3 — rows arriving BELOW the version while a pass runs (an older second t
   const n = count(storage);
   let dropped = false;
   const origSave = storage.saveIfVersion.bind(storage);
-  storage.saveIfVersion = async (...a) => {
-    const r = await origSave(...a);
+  // Hooked on `refreshSummary`, which since §4.3 A-30 is the write the rescan issues mid-pass.
+  const origRefresh = storage.refreshSummary.bind(storage);
+  storage.refreshSummary = async (...a) => {
+    const r = await origRefresh(...a);
     if (!dropped && a[0] === 'a') {
       dropped = true;
-      const c = makeTrip('c');                                     // an OLD tab writes a pre-I-6 row
+      const c = makeTrip('c');                                     // an OLD tab writes a stale row
       await origSave('c', null, core.toJSON(c), preI6Row(c));
     }
     return r;
@@ -178,10 +182,12 @@ head('5 — an ORPHAN row: a summary in storage whose document is gone');
   ok(scan.phase === 'stale', 'the library reports itself out of date rather than complete', scan.phase);
   ok(scan.outdated.length === 1 && scan.outdated[0] === 'ghost', 'and names the orphan', scan.outdated);
   ok(scan.unreadable.length === 0, 'it is "outdated", not "unreadable" — different facts, kept apart', scan.unreadable);
-  ok(n.listTrips === RESCAN_MAX_PASSES, `the loop spends ALL ${RESCAN_MAX_PASSES} passes on it, every boot`, n.listTrips);
-  note(`a null \`load\` is the ONE non-convergent outcome that is not filtered out of the next`);
-  note(`pass the way an unreadable document is. Cost is bounded (${n.load} loads) and the user`);
-  note(`is told the truth, but the work is repeated in full on every single boot.`);
+  // I-6a fixes R26-3: a `null` load is as final as an unparseable one, so the orphan is
+  // filtered out of every later pass instead of being retried until the bound is spent.
+  ok(n.listTrips === 1, `ONE pass, not ${RESCAN_MAX_PASSES} — R26-3 CLOSED`, n.listTrips);
+  ok(n.load === 2, 'and one load per row, not five for the orphan', n.load);
+  note(`It stays honestly reported: \`outdated\` names it, \`unreadable\` does not — those are`);
+  note(`different facts and the report keeps them apart.`);
   ok(store.getState().rescan.running === false, 'the pass stops');
 }
 
@@ -199,16 +205,17 @@ head('6 — 40 rows: what one pass costs at §8.4\'s stated scale');
   const scan = summaryScan(store.getState());
   note(`40 rows: ${JSON.stringify(n)} in ${ms.toFixed(0)} ms (in-memory port)`);
   ok(scan.phase === 'complete', 'all 40 converged', scan.phase);
-  ok(n.load === 40 && n.saveIfVersion === 40, 'exactly one load and one write each', n);
+  ok(n.load === 40 && n.refreshSummary === 40, 'exactly one load and one summary refresh each', n);
+  ok(n.saveIfVersion === 0, 'and ZERO document rewrites — R26-6 CLOSED by §4.3 A-30', n.saveIfVersion);
   const rows = await storage.listTrips();
   const mixed = rows.filter((r) => {
     const want = Number(r.id.slice(1)) % 2 ? 'HR' : 'AT';
     return JSON.stringify(r.countryCodes) !== JSON.stringify([want]);
   });
   ok(mixed.length === 0, 'and no row carries another row\'s countries', mixed.map((r) => r.id));
-  note(`40 documents were serialized and rewritten to bring a SUMMARY field current — the`);
-  note(`port has no summary-only write, so §8.4 clause 3's rescan is a full document rewrite`);
-  note(`per row. On the reference trip that is ~230 KB each.`);
+  note(`Under I-6 this was 40 full document rewrites (~230 KB each on the reference trip) and`);
+  note(`40 minted versions, purely to move a SUMMARY field. \`refreshSummary\` writes the row`);
+  note(`alone and mints nothing, so no fence moved and no other tab was refused.`);
 }
 
 console.log(`\n${fails === 0 ? 'ALL OK' : `${fails} FAIL(S)`}`);

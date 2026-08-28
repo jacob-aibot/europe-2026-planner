@@ -656,6 +656,24 @@ line('§11 structural: no write path can reach storage without the chain');
   deleteSites.forEach((d) => console.log(`  store.ts:${d.line}: ${d.text}`));
   ok('saveIfVersion has exactly ONE call site (inside writeAndSettle)', saveIfVersionCalls === 1,
      String(saveIfVersionCalls));
+  // I-6 briefly made this 2 — the SUMMARY_VERSION rescan's own document rewrite — and §4.3
+  // **A-30** took it back to 1 by giving the port a summary-only write instead. That write is
+  // NOT exempt from the chain (§4.3's exemptions stay `listTrips` and `load`), so it gets the
+  // same two assertions the delete does.
+  const refreshSites = [];
+  src.split('\n').forEach((l, i) => {
+    const code = l.replace(/^\s*(\/\/|\*).*$/, '');
+    if (/ports\.storage\.refreshSummary\(/.test(code)) refreshSites.push({ line: i + 1, text: l.trim() });
+  });
+  ok('refreshSummary has exactly ONE call site (the SUMMARY_VERSION rescan)', refreshSites.length === 1,
+     `${refreshSites.length} call site(s)`);
+  {
+    const before = src.split('\n').slice(0, (refreshSites[0]?.line ?? 1) - 1);
+    const nearest = before.map((l, i) => (/chainOntoSaving\(async/.test(l) ? i + 1 : 0)).filter(Boolean).pop() ?? 0;
+    ok('and it is INSIDE a chainOntoSaving link (A-30: refreshSummary is not exempt)',
+       nearest > 0 && (refreshSites[0].line - nearest) < 30,
+       `nearest chainOntoSaving(async at ${nearest}, refreshSummary at ${refreshSites[0]?.line}`);
+  }
   ok('every writeAndSettle call site is inside a chainOntoSaving work function',
      writeAndSettleCalls === 3, `${writeAndSettleCalls} — check by hand if this moves`);
   ok('ports.storage.delete has exactly ONE call site', deleteSites.length === 1,

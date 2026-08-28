@@ -237,6 +237,59 @@ export function indexedDbStorage(): StoragePort {
       }).finally(() => db.close());
     },
     /**
+     * The summary-only write of §4.3 **A-30**, and the two things it must not do are the two
+     * things this transaction structurally cannot: **no put on `DOCS` and no put on
+     * `VERSIONS`.** `mintVersion()` is not called from here at all, so the record's fence is
+     * left exactly as it was found and another tab holding it is not refused.
+     *
+     * One `readwrite` transaction over all three stores, with every request issued from the
+     * previous one's `onsuccess` — the same shape as `saveIfVersion` and for the same reason:
+     * returning to the event loop between the compare and the put would end the transaction
+     * and put R2-1's interleaving gap right back. `VERSIONS` is in the scope because it is
+     * *read* for the compare; it is never written.
+     *
+     * An absent record is refused, so this can neither create a summary row for a document
+     * that does not exist nor resurrect one a second tab deleted.
+     */
+    async refreshSummary(
+      id: string,
+      expectedVersion: StorageVersion,
+      summary: TripSummaryRow,
+    ): Promise<SaveOutcome> {
+      await ensureReady();
+      const db = await open();
+      return new Promise<SaveOutcome>((resolve, reject) => {
+        const tx = db.transaction([DOCS, SUMMARIES, VERSIONS], 'readwrite');
+        let outcome: SaveOutcome | null = null;
+        const readKey = tx.objectStore(DOCS).getKey(id) as IDBRequest<IDBValidKey | undefined>;
+        readKey.onsuccess = () => {
+          if (readKey.result === undefined) {
+            outcome = { ok: false, storedVersion: null };
+            return; // no put — the transaction commits having changed nothing
+          }
+          const readVersion = tx.objectStore(VERSIONS).get(id) as IDBRequest<unknown>;
+          readVersion.onsuccess = () => {
+            const storedVersion = typeof readVersion.result === 'string' && readVersion.result !== ''
+              ? readVersion.result
+              : null;
+            if (storedVersion === null || storedVersion !== expectedVersion) {
+              outcome = { ok: false, storedVersion };
+              return;
+            }
+            tx.objectStore(SUMMARIES).put(summary, id);
+            // The version now in storage — the one we were handed. Nothing is minted.
+            outcome = { ok: true, version: storedVersion };
+          };
+        };
+        tx.oncomplete = () => {
+          if (outcome === null) return reject(new Error('refreshSummary committed without an outcome'));
+          resolve(outcome);
+        };
+        tx.onerror = () => reject(tx.error ?? new Error('summary refresh failed'));
+        tx.onabort = () => reject(tx.error ?? new Error('summary refresh aborted — storage quota?'));
+      }).finally(() => db.close());
+    },
+    /**
      * Removes the record. A recreated id gets a strictly fresh token like everything else —
      * 128 fresh bits collide with the dead record's token only by accident that does not
      * happen — so a writer holding it matches nothing (§2.2a rule 2, R3-4's ABA).

@@ -70,6 +70,7 @@ function gatedStorage(): {
       return inner.load(id);
     },
     delete: (id) => inner.delete(id),
+    refreshSummary: (id, expected, summary) => inner.refreshSummary(id, expected, summary),
     async saveIfVersion(id, expected, doc, summary) {
       saves += 1;
       inFlight += 1;

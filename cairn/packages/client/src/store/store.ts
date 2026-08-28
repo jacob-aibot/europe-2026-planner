@@ -741,45 +741,64 @@ export function createStore(opts: StoreOptions) {
    *   1. **One document in memory at a time** (§4.2). `doc` is a local inside one link, used
    *      and dropped; the rows are processed one after another, never gathered. `state.doc` is
    *      not assigned by any path here. A screen that needs forty documents is out of scope.
-   *   2. **Every mutation is on the serialization chain** (§4.3). Both the load-recompute-write
-   *      and the active document's `attemptSave` are issued from *inside* a `chainOntoSaving`
-   *      callback, so a rescan write cannot interleave with an autosave, a merge or a delete.
+   *   2. **Every mutation is on the serialization chain** (§4.3). The whole link — load,
+   *      recompute, refresh — is issued from *inside* a `chainOntoSaving` callback, so it
+   *      cannot interleave with an autosave, a merge or a delete. **So is the end-of-pass
+   *      library re-read and its install** (QA R26-1): `listTrips` is exempt from the chain
+   *      because it is a *read*, but the `set` that replaces `state.library` with its result
+   *      is a write, and `deleteTrip` removes a row from `state.library` inside a link of its
+   *      own. Off the chain, a delete landing while the read was in flight put the deleted
+   *      trip's card back on screen, clickable and broken.
    *   3. **The write is the same compare-and-set every other write is.** The expectation is the
    *      version the load returned, so a row another writer has moved is *refused* — and that
    *      is the correct outcome, because that writer's own write carried a summary computed at
    *      the current version. The rescan never retries over somebody else's work.
-   *   4. **The active trip is written through the ordinary autosave path**, not through a
-   *      detached rewrite, because it is the one document whose write fence this store holds
-   *      (§2.2a A-7). Rewriting it behind `attemptSave`'s back would leave `savedVersion`
-   *      pointing at a version storage has moved past, and the user's next keystroke would
-   *      land on a spurious `'conflict'`. BUILD-NOTES **KD-57** records why this is a second,
-   *      smaller path rather than a flag on `writeAndSettle`.
+   *   4. **The rescan never writes a document — not even the active one — and therefore never
+   *      moves a fence** (§4.3 **A-30**, replacing I-6's property 4). The row is computed from
+   *      the document **storage holds**, read in the same chained step, because a
+   *      `TripSummaryRow` is a fact about the *stored record*: `listTrips()` is what serves it.
+   *      `state.doc` is not consulted by this path, so a half-typed title is no longer flushed
+   *      to storage ahead of its own debounce, and an unsaved edit is never described by a row.
+   *      The next autosave recomputes the row from the document it writes, exactly as it always
+   *      has. BUILD-NOTES **KD-57**'s subject — whether `writeAndSettle` may be aimed at a
+   *      non-active document — disappears with the branch that raised it.
    *
    * Not a seventh document-installing transition: nothing here assigns `state.doc`,
-   * `activeTripId` or `persistence` except through `attemptSave`, which is the existing
-   * autosave path for the document the store already holds.
+   * `activeTripId` or `persistence` at all, and `refreshSummary` cannot.
    */
   async function runRescan(): Promise<void> {
     const unreadable = new Map<string, string>();
+    /**
+     * Ids whose `load()` came back `null` — QA **R26-3**. A document the pass cannot *parse* is
+     * filed in `unreadable` and filtered out of every later pass; a document that is not there
+     * at all was filed nowhere, so an **orphan row** (a summary whose document is gone — what a
+     * half-completed delete or a partial restore leaves) stayed in `listTrips()`, stayed below
+     * the version, and burned all `RESCAN_MAX_PASSES` passes on every single boot, forever. An
+     * absent document is as final as an unreadable one.
+     *
+     * Not merged into `unreadable`: they are different facts and the report keeps them apart.
+     * The row stays honestly `outdated`, which is what `summaryScan` says about it.
+     */
+    const missing = new Set<string>();
     const report = () => [...unreadable].map(([id, message]) => ({ id, message }));
     try {
       for (let pass = 0; pass < RESCAN_MAX_PASSES; pass++) {
         // Re-derived from the rows on every pass, never carried between them (§0.6): the
         // library is the only thing that knows what is still outstanding.
-        const ids = state.library.filter(needsRescan).map((r) => r.id).filter((id) => !unreadable.has(id));
+        const ids = state.library
+          .filter(needsRescan)
+          .map((r) => r.id)
+          .filter((id) => !unreadable.has(id) && !missing.has(id));
         if (ids.length === 0) return;
         for (const id of ids) {
           await chainOntoSaving(async () => {
-            // Property 4 — the active document goes through the ordinary autosave path.
-            if (state.doc && state.doc.id === id) {
-              await attemptSave(id);
+            const stored = await ports.storage.load(id);
+            // Deleted between `listTrips` and here, or an orphan row. Either way there is no
+            // document to compute a row from, and `refreshSummary` would refuse one anyway.
+            if (stored === null) {
+              missing.add(id);
               return;
             }
-            const stored = await ports.storage.load(id);
-            // Deleted between `listTrips` and here. Writing it back would resurrect a trip
-            // the user destroyed — QA R7-3's failure in a new costume. The next `listTrips`
-            // drops the row.
-            if (stored === null) return;
             let doc: Trip;
             try {
               doc = core.fromJSON(stored.doc);
@@ -790,18 +809,21 @@ export function createStore(opts: StoreOptions) {
               return;
             }
             // §8.4 clause 1, mechanically: the summary is computed from `doc`, and `doc` is
-            // what the same call writes. There is no other document in scope to compute it
-            // from, which is the point of the shape rather than a happy accident.
+            // the document this same link just read out of storage. There is no other document
+            // in scope to compute it from — not even `state.doc`, which this path never reads.
             const summary = core.tripSummary(doc, core.COUNTRY_INDEX);
-            const outcome = await ports.storage.saveIfVersion(id, stored.version, core.toJSON(doc), summary);
+            const outcome = await ports.storage.refreshSummary(id, stored.version, summary);
             if (!outcome.ok) return;
             set({ ...state, library: upsertSummary(state.library, summary), rescan: { running: true, unreadable: report() } });
           });
         }
         // The pass reached its own end, which is NOT the same fact as "the library is
-        // current" (§0.6). Ask storage.
-        const library = await ports.storage.listTrips();
-        set({ ...state, library, rescan: { running: true, unreadable: report() } });
+        // current" (§0.6). Ask storage — on the chain, so the answer cannot be installed over
+        // a delete that landed while it was in flight (R26-1).
+        await chainOntoSaving(async () => {
+          const library = await ports.storage.listTrips();
+          set({ ...state, library, rescan: { running: true, unreadable: report() } });
+        });
       }
     } finally {
       set({ ...state, rescan: { running: false, unreadable: report() } });
@@ -811,10 +833,17 @@ export function createStore(opts: StoreOptions) {
   /** Starts a rescan, or joins the one already running. Never two passes at once. */
   function startRescan(): Promise<void> {
     if (rescanning) return rescanning;
-    if (!state.library.some(needsRescan)) return Promise.resolve();
     // `unreadable` is cleared here and not remembered across passes: it is an observation
     // about the last attempt, so a record another writer has since repaired stops being
     // reported without anything having to remember that it was.
+    //
+    // **Before the early return, not after it** (QA R26-2). When the repair also brings the row
+    // current — which is exactly what a second tab opening and re-saving the trip leaves behind
+    // — there is nothing left to rescan and no pass runs, so a clearing that lived past this
+    // line never happened: the library went on rendering *"This trip's file could not be read"*
+    // over a file that reads perfectly, and `summaryScan` stayed `'stale'` indefinitely.
+    if (state.rescan.unreadable.length > 0) set({ ...state, rescan: { ...state.rescan, unreadable: [] } });
+    if (!state.library.some(needsRescan)) return Promise.resolve();
     set({ ...state, rescan: { running: true, unreadable: [] } });
     const run = runRescan().finally(() => {
       rescanning = null;

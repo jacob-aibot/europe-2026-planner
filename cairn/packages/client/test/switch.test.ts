@@ -675,15 +675,16 @@ function bodyRange(code: string, decl: RegExp): [number, number] {
  * because `saveIfVersion` is reached through two helpers rather than written out at each call
  * site — which is the same shape QA's own `r7-chain` §11 uses. Expected violations: zero.
  *
- * **Phase 2 I-6 (§8.4 clause 3) adds the second `saveIfVersion` call site**, and it is the
- * literal shape §4.3 describes rather than a new exemption: the `SUMMARY_VERSION` rescan's
- * rewrite is written out *inside* a `chainOntoSaving` callback. So clause 1 stops being
- * *"exactly one call site, in `writeAndSettle`"* — which was a fact about how many write
- * paths existed, not about the chain — and becomes the criterion's own sentence: **every**
- * `saveIfVersion` call site is either inside `writeAndSettle` (whose every caller clause 2
- * checks) or lexically inside a `chainOntoSaving` callback. The count is still pinned, so a
- * third write path fails here until somebody re-derives this assertion deliberately.
- * BUILD-NOTES **KD-57**.
+ * **Phase 2 I-6a (§4.3 A-30) takes `saveIfVersion` back to one call site and adds
+ * `refreshSummary` as the rescan's.** I-6 brought a stale row current by rewriting the whole
+ * record, which minted a version for a document that had not changed and knocked another tab
+ * into a conflict with nothing to merge (QA R26-6). The rescan now issues a summary-only write
+ * instead, and it is the literal shape §4.3 describes rather than a new exemption: **the §4.3
+ * exemption list stays `listTrips` and `load`, and `refreshSummary` is not on it.** So the
+ * criterion's own sentence holds unchanged — every `saveIfVersion` call site is inside
+ * `writeAndSettle` (whose every caller clause 2 checks), and every other `ports.storage`
+ * mutation, `refreshSummary` included, is lexically inside a `chainOntoSaving` callback. The
+ * counts are pinned, so a new write path fails here until somebody re-derives this deliberately.
  */
 test('structural: every ports.storage mutation is issued inside a chainOntoSaving callback', () => {
   const code = codeOnly(readFileSync(new URL('../src/store/store.ts', import.meta.url), 'utf8'));
@@ -691,21 +692,24 @@ test('structural: every ports.storage mutation is issued inside a chainOntoSavin
   const [wsStart, wsEnd] = bodyRange(code, /async function writeAndSettle\(/);
   const [asStart, asEnd] = bodyRange(code, /async function attemptSave\(/);
 
-  // 1. Two `saveIfVersion` call sites — the autosave/merge path inside `writeAndSettle`, and
-  //    I-6's rescan rewrite, written out inside a `chainOntoSaving` callback. Each must be
-  //    one or the other; a third is a new write path and is not blessed by this assertion.
+  // 1. One `saveIfVersion` call site, in `writeAndSettle`. A second is a new DOCUMENT write
+  //    path and is not blessed by this assertion.
   const saves = [...code.matchAll(/ports\.storage\.saveIfVersion\(/g)].map((m) => m.index as number);
-  assert.equal(saves.length, 2, 'saveIfVersion call sites: writeAndSettle + the I-6 rescan');
+  assert.equal(saves.length, 1, 'saveIfVersion call sites: writeAndSettle, and nothing else');
   assert.equal(
     saves.filter((i) => i > wsStart && i < wsEnd).length,
     1,
     'writeAndSettle must hold exactly one saveIfVersion call site',
   );
-  for (const i of saves) {
-    if (i > wsStart && i < wsEnd) continue;
+
+  // 1b. …and one `refreshSummary` call site — the rescan's — lexically inside a
+  //     `chainOntoSaving` callback. **A-30 test (d): hoist it one frame out and this reds.**
+  const refreshes = [...code.matchAll(/ports\.storage\.refreshSummary\(/g)].map((m) => m.index as number);
+  assert.equal(refreshes.length, 1, 'refreshSummary call sites: the SUMMARY_VERSION rescan, and nothing else');
+  for (const i of refreshes) {
     assert.ok(
       insideChain(code, i),
-      `a saveIfVersion at line ${lineOf(i)} is neither in writeAndSettle nor on the chain`,
+      `a refreshSummary at line ${lineOf(i)} is off the serialization chain — it is NOT exempt`,
     );
   }
 
@@ -729,7 +733,7 @@ test('structural: every ports.storage mutation is issued inside a chainOntoSavin
     if (insideChain(code, i) || (i > asStart && i < asEnd)) continue;
     offenders.push(`writeAndSettle at line ${lineOf(i)}`);
   }
-  for (const i of [...attempts, ...deletes]) {
+  for (const i of [...attempts, ...deletes, ...refreshes]) {
     if (insideChain(code, i)) continue;
     offenders.push(`${code.slice(i, code.indexOf('(', i))} at line ${lineOf(i)}`);
   }
@@ -746,7 +750,7 @@ test('structural: every ports.storage mutation is issued inside a chainOntoSavin
   const all = [...code.matchAll(/ports\.storage\.(\w+)\(/g)].map((m) => m[1]);
   assert.deepEqual(
     [...new Set(all)].sort(),
-    ['delete', 'listTrips', 'load', 'saveIfVersion'],
+    ['delete', 'listTrips', 'load', 'refreshSummary', 'saveIfVersion'],
     'the storage port grew a method this assertion does not classify',
   );
 });

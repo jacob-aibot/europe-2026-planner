@@ -11,8 +11,13 @@
  *   C  a delete arriving through STORAGE (a second tab's port), not through `deleteTrip`,
  *      between the rescan's `load` and its `saveIfVersion`
  *   D  two stores on one storage: does a background rescan push the OTHER tab into 'conflict'?
+ *      (R26-6. Since §4.3 **A-30** the answer must be NO — this section is now its guard.)
  *   E  the active trip already in 'conflict' — does the rescan converge, or spin the bound?
- *   F  does the rescan persist the active document's UNSAVED in-memory edit ahead of the debounce?
+ *      (R26-4. A-30 subsumes it: with `attemptSave` out of the path, `savedVersion` is not in
+ *      it either, so the row is brought current from the STORED document while the conflict —
+ *      which is about the user's in-memory edit — stands untouched. **No dedicated fix.**)
+ *   F  does the rescan persist the active document's UNSAVED in-memory edit ahead of the
+ *      debounce? (Under I-6 it did, through `attemptSave`. Under A-30 it must not.)
  *   G  substance of the "six document-installing methods" claim: is `doc`/`activeTripId`/
  *      `persistence` ever touched for a document that is NOT the active one?
  *   H  a storage failure (not a parse failure) mid-rescan — degrade or collapse?
@@ -78,7 +83,7 @@ function gate(storage) {
       return orig(...args);
     };
   };
-  for (const n of ['saveIfVersion', 'load', 'listTrips', 'delete']) wrap(n);
+  for (const n of ['saveIfVersion', 'refreshSummary', 'load', 'listTrips', 'delete']) wrap(n);
   return {
     storage,
     open: (n) => gates.add(n),
@@ -108,12 +113,12 @@ head('A — the ACTIVE trip changes identity mid-rescan (openTrip between two ro
   await store.refreshLibrary();
   await store.openTrip('t-at');
 
-  // Park the rescan on its first `saveIfVersion`, then switch the active trip to t-cz —
-  // a row the same pass has not reached yet.
-  g.open('saveIfVersion');
+  // Park the rescan on its first write — since §4.3 A-30 that is `refreshSummary`, not
+  // `saveIfVersion` — then switch the active trip to t-cz, a row the pass has not reached yet.
+  g.open('refreshSummary');
   const pass = store.rescanSummaries();
-  ok(await g.waitFor('saveIfVersion'), 'the rescan reached a write');
-  g.close('saveIfVersion');
+  ok(await g.waitFor('refreshSummary'), 'the rescan reached a write');
+  g.close('refreshSummary');
   g.releaseAll();
   await tick();
   await store.openTrip('t-cz');
@@ -151,12 +156,12 @@ head('B — closeTrip on the very document being rescanned');
   await store.refreshLibrary();
   await store.openTrip('t-at');
 
-  g.open('saveIfVersion');
+  g.open('refreshSummary');
   const pass = store.rescanSummaries();
-  await g.waitFor('saveIfVersion');
+  await g.waitFor('refreshSummary');
   const closing = store.closeTrip();
   await tick();
-  g.close('saveIfVersion');
+  g.close('refreshSummary');
   g.releaseAll();
   await Promise.all([pass, closing]);
   await tick();
@@ -182,13 +187,13 @@ head('C — a delete arriving through STORAGE between the rescan\'s load and its
   const store = createStore({ ports: ports(storage) });
   await store.refreshLibrary();
 
-  g.open('saveIfVersion');
+  g.open('refreshSummary');
   const pass = store.rescanSummaries();
-  await g.waitFor('saveIfVersion');
-  const target = g.parked.find((p) => p.name === 'saveIfVersion').args[0];
+  await g.waitFor('refreshSummary');
+  const target = g.parked.find((p) => p.name === 'refreshSummary').args[0];
   // A DIFFERENT tab destroys it — straight at the port, never through `deleteTrip`.
   await storage.delete(target);
-  g.close('saveIfVersion');
+  g.close('refreshSummary');
   g.releaseAll();
   await pass;
 
@@ -214,11 +219,22 @@ head('D — two tabs: does a background rescan push the OTHER tab into conflict?
   await tabA.refreshLibrary();
   await tabA.openTrip('t-hr');
   const fenceBefore = tabA.getState().persistence.savedVersion;
+  const savesBefore = storage.saveCount;
 
   // Tab B boots and rescans (this is exactly App.tsx's boot sequence).
   const tabB = createStore({ ports: ports(storage) });
   await tabB.refreshLibrary();
   await tabB.rescanSummaries();
+
+  // Measured across the RESCAN alone, before tab A does anything of its own — otherwise this
+  // would be measuring tab A's own writes and would pass for the wrong reason.
+  ok(storage.versions.get('t-hr') === fenceBefore,
+    'R26-6 CLOSED: the background rescan did not move tab A\'s fence',
+    { before: fenceBefore, now: storage.versions.get('t-hr') });
+  ok(storage.saveCount === savesBefore,
+    'because the rescan issued no document write at all', { before: savesBefore, now: storage.saveCount });
+  const rowHR = (await storage.listTrips()).find((r) => r.id === 't-hr');
+  ok(rowHR.summaryVersion === core.SUMMARY_VERSION, 'while the row WAS brought current', rowHR.summaryVersion);
 
   // Tab A's user types one character.
   await tabA.dispatch({ type: 'setTripMeta', patch: { title: 'Croatia, renamed by the user' } });
@@ -227,14 +243,13 @@ head('D — two tabs: does a background rescan push the OTHER tab into conflict?
   note(`tab A fence before rescan: ${fenceBefore}; storage now: ${storage.versions.get('t-hr')}`);
   note(`tab A status after its own edit: ${s.persistence.status} / ${s.persistence.lastError ?? '—'}`);
   const stored = core.fromJSON((await storage.load('t-hr')).doc);
-  ok(s.persistence.status === 'conflict', 'REPRODUCED: the other tab is refused, with no user on the other side', s.persistence.status);
-  ok(stored.title === 'Trip t-hr', 'and the edit is NOT in storage (correctly refused, not lost)', stored.title);
-  ok(s.doc.title === 'Croatia, renamed by the user', 'the edit is still in memory — nothing was destroyed');
-  note('Severity turns on whether a rescan is allowed to invalidate another tab\'s fence.');
-  note('§8.4 clause 3 mandates the rewrite, so this is a consequence of the design, not of');
-  note('the code — but the rewrite is byte-identical to what storage already held.');
-  const sameBytes = JSON.stringify(core.toJSON(core.fromJSON(storage.docs.get('t-hr')))) === JSON.stringify(storage.docs.get('t-hr'));
-  ok(sameBytes, 'the rescan rewrote byte-identical document content (only the summary changed)');
+  // The fence fences the DOCUMENT, and the rescan no longer writes one — so tab A's token is
+  // still true, the port does not refuse it, and there is no banner with nothing behind it.
+  ok(s.persistence.status === 'idle',
+    'so tab A is NOT refused — no conflict banner, no Merge button with nothing to merge',
+    { status: s.persistence.status, err: s.persistence.lastError });
+  ok(stored.title === 'Croatia, renamed by the user', 'and the edit reached storage', stored.title);
+  ok(s.doc.title === 'Croatia, renamed by the user', 'the edit is in memory too — nothing was destroyed');
 }
 
 // ---------------------------------------------------------------------------
@@ -253,23 +268,29 @@ head('E — the ACTIVE trip is already in conflict: does the rescan converge?');
   await store.flush();
   ok(store.getState().persistence.status === 'conflict', 'precondition: the active trip is in conflict');
 
-  const before = storage.saveCount;
+  const before = storage.refreshCount;
+  const statuses = [];
+  const un = store.subscribe((st) => statuses.push(st.persistence.status));
   await store.rescanSummaries();
-  const spent = storage.saveCount - before;
+  un();
+  const spent = storage.refreshCount - before;
   const s = store.getState();
   const scan = summaryScan(s);
-  note(`saveIfVersion attempts spent by the rescan: ${spent} (RESCAN_MAX_PASSES=${RESCAN_MAX_PASSES})`);
+  note(`refreshSummary attempts spent by the rescan: ${spent} (RESCAN_MAX_PASSES=${RESCAN_MAX_PASSES})`);
+  note(`persistence.status seen during the pass: ${JSON.stringify([...new Set(statuses)])}`);
   note(`summaryScan: ${JSON.stringify(scan)}`);
-  ok(scan.phase === 'stale', 'the library honestly reports itself out of date', scan.phase);
-  ok(scan.outdated.includes('t-at'), 'and names the row it could not bring current', scan.outdated);
+  // R26-4 CLOSED as a CONSEQUENCE of A-30, with no condition of its own. The conflict is about
+  // the user's in-memory edit; the row is about the document storage holds; neither needs the
+  // other resolved first, and `refreshSummary` does not consult `persistence.savedVersion`.
+  ok(scan.phase === 'complete', 'R26-4 CLOSED: the row converges even in conflict', scan);
+  ok(!scan.outdated.includes('t-at'), 'the conflicted trip\'s row is not left behind', scan.outdated);
   ok(s.persistence.status === 'conflict', 'the user\'s conflict is not cleared or masked', s.persistence.status);
+  ok(JSON.stringify([...new Set(statuses)]) === '["conflict"]',
+    'and the banner never flickered through \'saving\' on a pass nobody asked for', statuses);
   ok(s.doc.title === 'edited', 'the user\'s edit is intact');
-  ok(spent <= RESCAN_MAX_PASSES + 2, 'the bound holds — it does not spin', spent);
+  ok(spent <= 2, 'and the bound is not re-spent on a write that cannot succeed', spent);
   ok(!scan.unreadable.some((u) => u.id === 't-at'),
     'a refused write is NOT reported as an unreadable document (they are different facts)');
-  note('The row can never converge while the conflict stands: `attemptSave` writes against');
-  note('`persistence.savedVersion`, which is stale by definition in this state. Every future');
-  note('rescan re-spends the bound. Reported honestly, but it is a permanent stale row.');
 }
 
 // ---------------------------------------------------------------------------
@@ -290,12 +311,20 @@ head('F — does the rescan persist the active document\'s UNSAVED edit ahead of
   await store.rescanSummaries();
   const storedAfter = core.fromJSON((await storage.load('t-at')).doc);
   note(`title in storage after the rescan: ${JSON.stringify(storedAfter.title)}`);
-  ok(storedAfter.title === 'half-typed, debounce still pending',
-    'CONFIRMED: the rescan wrote the in-flight edit early, through attemptSave', storedAfter.title);
-  note('Not a loss — it is the same write the debounce would have made. Worth stating because');
-  note('the rescan is documented as a summary refresh, and it is also a document write.');
+  // Under I-6 the active row went through `attemptSave`, which has no `dirty()` skip, so this
+  // read back the half-typed title. Under §4.3 A-30 the pass reads the document STORAGE holds
+  // and never consults `state.doc`, so the debounce is left to make its own write.
+  ok(storedAfter.title === 'Trip t-at',
+    'the rescan did NOT flush the in-flight edit ahead of its own debounce', storedAfter.title);
+  const row = (await storage.listTrips()).find((r) => r.id === 't-at');
+  ok(row.summaryVersion === core.SUMMARY_VERSION, 'and the row was still brought current', row.summaryVersion);
+  ok(row.title === 'Trip t-at', 'from the stored document — no row describes an unsaved edit', row.title);
   const s = store.getState();
-  ok(s.persistence.status === 'idle' && s.persistence.savedDoc === s.doc, 'and the store is left clean and consistent', s.persistence.status);
+  ok(s.persistence.savedDoc !== s.doc, 'the pending edit is still pending — the store did not lie about it');
+  sched.runAll();
+  await store.flush();
+  ok(core.fromJSON((await storage.load('t-at')).doc).title === 'half-typed, debounce still pending',
+    'and the debounce still lands the edit when it fires');
 }
 
 // ---------------------------------------------------------------------------
@@ -369,14 +398,14 @@ head('I — two overlapping rescanSummaries() with a different document edited u
   await store.refreshLibrary();
   await store.openTrip('t-at');
 
-  g.open('saveIfVersion');
+  g.open('refreshSummary');
   const p1 = store.rescanSummaries();
-  await g.waitFor('saveIfVersion');
+  await g.waitFor('refreshSummary');
   const p2 = store.rescanSummaries();     // joins, must not start a second pass
   const p3 = store.rescanSummaries();
   ok(p1 !== null && p2 !== null && p3 !== null, 'three calls returned');
   const edit = store.dispatch({ type: 'setTripMeta', patch: { title: 'typed under the rescan' } });
-  g.close('saveIfVersion');
+  g.close('refreshSummary');
   g.releaseAll();
   await tick();
   g.releaseAll();

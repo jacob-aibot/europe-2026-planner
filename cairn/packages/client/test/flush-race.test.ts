@@ -52,6 +52,9 @@ function gatedStorage(): {
     listTrips: () => inner.listTrips(),
     load: (id) => inner.load(id),
     delete: (id) => inner.delete(id),
+    // §4.3 A-30's summary-only write. Nothing in this file exercises it; it delegates so the
+    // stub stays a `StoragePort` rather than a subset of one.
+    refreshSummary: (id, expected, summary) => inner.refreshSummary(id, expected, summary),
     async saveIfVersion(id, expected, doc, summary) {
       if (gate) await gate;
       return inner.saveIfVersion(id, expected, doc, summary);
@@ -228,6 +231,7 @@ test('R5-1: the drain is BOUNDED — continuous typing cannot hang the transitio
     listTrips: () => inner.listTrips(),
     load: (id) => inner.load(id),
     delete: (id) => inner.delete(id),
+    refreshSummary: (id, expected, summary) => inner.refreshSummary(id, expected, summary),
     async saveIfVersion(id, expected, doc, summary) {
       const outcome = await inner.saveIfVersion(id, expected, doc, summary);
       // One keystroke lands during every single write, forever.

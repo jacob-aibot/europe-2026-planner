@@ -155,7 +155,10 @@ head('4 — determinism, purity, sort order');
   core.tripSummary(t, IDX);
   ok(IDX.countries.length === idxBefore, 'the index is not mutated');
   ok(a.summaryVersion === core.SUMMARY_VERSION, 'summaryVersion is stamped from the constant', a.summaryVersion);
-  ok(core.SUMMARY_VERSION === 2, 'SUMMARY_VERSION is 2', core.SUMMARY_VERSION);
+  // 3 since I-6a: §8.4 **A-29** changed two derivations (a city's stated code may now fill a
+  // gap `countryOf` cannot answer, and `cities[]` gained `countrySource`), and clause 3 bumps
+  // the stamp whenever any summary field's derivation changes.
+  ok(core.SUMMARY_VERSION === 3, 'SUMMARY_VERSION is 3', core.SUMMARY_VERSION);
 }
 
 // ---------------------------------------------------------------------------
@@ -215,6 +218,53 @@ head('6 — the real fixture: the Europe 2026 sample');
   // ...and does countryCodes contain a country NO city is in? (stops/places-only countries)
   const cityCodes = new Set(s.cities.map((c) => c.countryCode).filter(Boolean));
   console.log(`  note  countries from stops/places only: ${JSON.stringify(s.countryCodes.filter((c) => !cityCodes.has(c)))}`);
+}
+
+// ---------------------------------------------------------------------------
+head('7 — §8.4 A-29: a city\'s STATED country, gated (round 26 R26-5, closed)');
+
+{
+  // Round 26 found `City.countryCode` stored, user-supplied and silently ignored, and measured
+  // the bill on this project's own domain: `countryOf` has no answer at Hvar Town, so a
+  // Dalmatian-islands trip minted `countryCodes: []` while its every `City` record said `HR`.
+  // A-29 admits the stated code as a GAP-FILLER only, behind a four-step gate whose last step
+  // is *the shipped index must carry the code*.
+  const HVAR = { lat: 43.1729, lng: 16.4413 };
+  const at = (countryCode, centre = HVAR) =>
+    core.tripSummary(
+      trip({ cities: [{ key: 'c', name: 'Stated', countryCode, centre }] }),
+      core.COUNTRY_INDEX,
+    ).cities[0];
+
+  ok(core.countryOf(HVAR, core.COUNTRY_INDEX) === null,
+    'precondition: the shipped index still cannot attribute Hvar Town');
+  const filled = at('HR');
+  ok(filled.countryCode === 'HR' && filled.countrySource === 'stated',
+    'R26-5 CLOSED: the stated code fills the gap, labelled `stated`', filled);
+  const vienna = at('HU', { lat: 48.2082, lng: 16.3738 });
+  ok(vienna.countryCode === 'AT' && vienna.countrySource === 'coordinate',
+    'and NEVER overrides a coordinate that answers — a typo cannot inflate the map', vienna);
+
+  for (const [raw, why] of [
+    ['', "createTrip's own default"],
+    ['HRV', 'alpha-3'],
+    ['Croatia', 'a name'],
+    ['H1', 'a digit'],
+    ['H R', 'an interior space'],
+    ['ZZ', 'well-formed, not in the index'],
+    ['RE', 'a real ISO code the index folds into its parent state — refused ON PURPOSE'],
+  ]) {
+    const c = at(raw);
+    ok(c.countryCode === null && c.countrySource === null, `refused: ${JSON.stringify(raw)} (${why})`, c);
+  }
+  for (const raw of ['hr', '  HR  ']) {
+    const c = at(raw);
+    ok(c.countryCode === 'HR' && c.countrySource === 'stated', `normalised: ${JSON.stringify(raw)}`, c);
+  }
+  for (const raw of [null, undefined, 42, {}, ['HR']]) {
+    const c = at(raw);
+    ok(c.countryCode === null, `total on a non-string: ${JSON.stringify(raw) ?? 'undefined'}`, c);
+  }
 }
 
 console.log(`\n${fails === 0 ? 'ALL OK' : `${fails} FAIL(S)`}`);

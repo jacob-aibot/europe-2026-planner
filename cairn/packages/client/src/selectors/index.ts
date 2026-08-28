@@ -212,7 +212,14 @@ export function summaryScan(state: Pick<AppState, 'library' | 'rescan'>): Summar
   const outdated = state.library
     .filter((r) => (r.summaryVersion ?? 0) < core.SUMMARY_VERSION)
     .map((r) => r.id);
-  const unreadable = state.rescan.unreadable;
+  // QA **R26-2**, the second half. `unreadable` is an observation about a record, so it is only
+  // meaningful about a record that is still there: a trip deleted since the last pass must stop
+  // being reported as a file that could not be read, and `deleteTrip` runs no pass to clear it.
+  // Derived here rather than remembered in the store, for §0.6's reason — a pruned list is one
+  // more copy that can go stale, and this cannot. (With `outdated` empty and a phantom entry
+  // still in `unreadable`, `Library.tsx`'s header read *"0 trips are not up to date yet."*)
+  const present = new Set(state.library.map((r) => r.id));
+  const unreadable = state.rescan.unreadable.filter((u) => present.has(u.id));
   const phase = state.rescan.running
     ? 'recomputing'
     : outdated.length > 0 || unreadable.length > 0

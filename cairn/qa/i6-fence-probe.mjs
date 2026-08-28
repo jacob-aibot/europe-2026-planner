@@ -3,6 +3,11 @@
  * against the shipped tree** — against the shipped tree it passes trivially, which is the
  * point: it is the evidence that KD-57's refused option really does corrupt the write fence.
  *
+ * **Since I-6a (§4.3 A-30) the shipped rescan has no document write at all**, so this is a
+ * counterfactual twice over: the branch KD-57 argued about is deleted, and the mutation
+ * `qa/i6-fence.sh` M-B plants puts it back. That is the point — A-30 removed the question
+ * rather than answering it, and this is the evidence that the answer would still be the same.
+ *
  * Scenario, exactly as KD-57 describes it:
  *   - trip X (`t-at`) is the active document; the store holds X's fence
  *   - a background rescan brings trip Y (`t-hr`) — a row the store does NOT have open — up to

@@ -20,11 +20,16 @@ export type MemoryStorage = StoragePort & {
    * outside a port implementation may.
    */
   versions: Map<string, StorageVersion>;
-  /** Make exactly the next save reject. */
+  /** Make exactly the next `saveIfVersion` reject. Never `refreshSummary` — §4.3 A-30. */
   failNextSave: string | null;
-  /** Make every save reject until cleared. */
+  /** Make exactly the next `refreshSummary` reject (§0.5's injected fault for that path). */
+  failNextRefresh: string | null;
+  /** Make every write reject until cleared — a broken port is broken for everything. */
   failAll: string | null;
+  /** Document writes only. A test asserting "no document was written" has to be able to. */
   saveCount: number;
+  /** Summary-row refreshes. Deliberately a separate counter from `saveCount` — §4.3 A-30. */
+  refreshCount: number;
 };
 
 /**
@@ -70,8 +75,10 @@ export function memoryStorage(
     summaries,
     versions,
     failNextSave: null,
+    failNextRefresh: null,
     failAll: null,
     saveCount: 0,
+    refreshCount: 0,
     async listTrips() {
       return [...summaries.values()].sort((a, b) => a.startDate.localeCompare(b.startDate));
     },
@@ -102,6 +109,34 @@ export function memoryStorage(
       summaries.set(id, summary);
       versions.set(id, version);
       return { ok: true, version };
+    },
+    /**
+     * §4.3 **A-30**. Atomic for the same reason `saveIfVersion` is: one synchronous block with
+     * deliberately **no `await` in it**, so nothing can interleave between the compare and the
+     * put. `docs` and `versions` are not touched — not read for content, not written, and
+     * above all **not minted**, which is the whole point of the method.
+     *
+     * It bumps `refreshCount` and never `saveCount`: "the rescan did not write a document" is
+     * an assertion a test has to be able to make, and it cannot if one counter serves both.
+     */
+    async refreshSummary(id, expectedVersion, summary) {
+      port.refreshCount++;
+      if (port.failAll) throw new Error(port.failAll);
+      if (port.failNextRefresh) {
+        const msg = port.failNextRefresh;
+        port.failNextRefresh = null;
+        throw new Error(msg);
+      }
+      // A summary row may never exist without the document it is about, so an absent record is
+      // refused rather than created: this method cannot resurrect a trip a second tab destroyed.
+      if (!docs.has(id)) return { ok: false, storedVersion: null };
+      const storedVersion = versions.get(id) ?? null;
+      if (storedVersion === null || storedVersion !== expectedVersion) {
+        return { ok: false, storedVersion };
+      }
+      summaries.set(id, summary);
+      // The version now in storage — which is the one we were handed. Nothing was minted.
+      return { ok: true, version: storedVersion };
     },
     async delete(id) {
       docs.delete(id);

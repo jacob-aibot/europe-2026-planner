@@ -20,6 +20,17 @@
  *
  * `refreshLibrary()` has the same shape and predates I-6 — but it is a method the app calls
  * when the user asks for it. The rescan calls it once per pass, unprompted, on every boot.
+ *
+ * ---------------------------------------------------------------------------------------
+ * **I-6a (ROADMAP): R26-1 is fixed, and this probe is the regression guard for it.** The read
+ * is still off the chain — §4.3 exempts it, and it is still a read — but *the `set` that
+ * installs its result* is now issued from inside a `chainOntoSaving` callback, so a delete
+ * cannot land between the read and the install.
+ *
+ * That changes one thing about how the probe has to be written, and the change is itself the
+ * evidence: `deleteTrip` now **queues behind** the parked link, so `await store.deleteTrip()`
+ * before the release would deadlock. It is started and awaited after the release instead. A
+ * probe that still awaited it would hang rather than fail, which is worth saying out loud.
  */
 import {
   createStore, summaryScan, memoryStorage, memoryFile,
@@ -78,21 +89,26 @@ const pass = store.rescanSummaries();
 for (let i = 0; i < 200 && release === null; i++) await new Promise((r) => setImmediate(r));
 ok(release !== null, 'the pass parked on its end-of-pass listTrips()');
 
-await store.deleteTrip('doomed');
-const afterDelete = store.getState();
-ok(!afterDelete.library.some((r) => r.id === 'doomed'), 'deleteTrip removed the row from the in-memory library',
-  afterDelete.library.map((r) => r.id));
-ok((await storage.load('doomed')) === null, 'and the document is gone from storage');
+// Started, NOT awaited: the delete is now ordered behind the parked link (see the header).
+const deleting = store.deleteTrip('doomed');
+await new Promise((r) => setImmediate(r));
+note(`deleteTrip is queued behind the parked pass rather than racing it — that is the fix.`);
 
 release();
-await pass;
+await Promise.all([pass, deleting]);
 
 const s = store.getState();
 note(`in-memory library after the pass resumed: ${JSON.stringify(s.library.map((r) => r.id))}`);
 note(`storage listTrips now: ${JSON.stringify((await origList()).map((r) => r.id))}`);
+ok((await storage.load('doomed')) === null, 'the document is gone from storage');
 ok(!s.library.some((r) => r.id === 'doomed'),
   'REPRODUCED IF FAILING: the deleted trip\'s row is back in the library the user is looking at',
   s.library.map((r) => r.id));
+ok(JSON.stringify(s.library.map((r) => r.id)) === '["keep"]',
+  'and the library is exactly the trips that still exist', s.library.map((r) => r.id));
+ok(s.library[0] && s.library[0].summaryVersion === core.SUMMARY_VERSION,
+  'the surviving row was still brought current by the pass', s.library[0]);
+ok(summaryScan(s).phase === 'complete', 'and the scan settles complete', summaryScan(s));
 
 if (s.library.some((r) => r.id === 'doomed')) {
   let err = null;

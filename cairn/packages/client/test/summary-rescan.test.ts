@@ -161,23 +161,27 @@ test('I-6 ceiling: a row is not computed from AppState — no document is ever a
   assert.deepEqual(rowFor(store.getState(), 'a-hr').countryCodes, ['HR']);
 });
 
-test('I-6: the rescan rewrites through the ordinary write path — one write per stale row', async () => {
+test('I-6: the rescan refreshes one row per stale row — and writes no documents at all', async () => {
   const storage = memoryStorage();
   const docs = [makeTrip('w-at', 'vienna'), makeTrip('w-hr', 'dubrovnik'), makeTrip('w-cz', 'prague')];
   for (const d of docs) await seed(storage, d);
-  // One row is already current: it must not be rewritten at all.
+  // One row is already current: it must not be refreshed at all.
   await seed(storage, makeTrip('w-ok', 'vienna'), core.tripSummary(makeTrip('w-ok', 'vienna'), core.COUNTRY_INDEX));
 
   const store = createStore({ ports: ports(storage) });
   await store.refreshLibrary();
-  const before = storage.saveCount;
+  const before = storage.refreshCount;
+  const savesBefore = storage.saveCount;
   await store.rescanSummaries();
-  assert.equal(storage.saveCount - before, 3, 'the rescan wrote a row that was already current');
+  assert.equal(storage.refreshCount - before, 3, 'the rescan refreshed a row that was already current');
+  // §4.3 **A-30**: since I-6a the rescan is a summary-only write, so no document is rewritten
+  // and no fence is minted. The two counters are separate precisely so this can be asserted.
+  assert.equal(storage.saveCount, savesBefore, 'the rescan wrote a document');
 
   // A second rescan finds nothing to do — the pass is idempotent, not a rewrite loop.
-  const after = storage.saveCount;
+  const after = storage.refreshCount;
   await store.rescanSummaries();
-  assert.equal(storage.saveCount, after);
+  assert.equal(storage.refreshCount, after);
 });
 
 // ---------------------------------------------------------------------------
@@ -263,11 +267,15 @@ test('I-6: rescanning while a trip is open never moves that trip\'s write fence 
 // ---------------------------------------------------------------------------
 
 /**
- * A storage port that lets the test stand inside one `saveIfVersion` call.
+ * A storage port that lets the test stand inside one `refreshSummary` call.
  *
  * `gate` resolves when the Nth write has been entered but not yet performed, and `release`
  * lets it proceed — which is the only way to be genuinely *mid-rescan with a write in
  * flight* rather than merely between two of them.
+ *
+ * Since §4.3 **A-30** the write the rescan issues is `refreshSummary`, not `saveIfVersion`, so
+ * that is what this parks. (A probe that still gated `saveIfVersion` would never park at all
+ * and would hang rather than fail, which is the failure mode this comment exists to prevent.)
  */
 function pausableStorage(inner: MemoryStorage, pauseOnWrite: number) {
   let writes = 0;
@@ -280,11 +288,14 @@ function pausableStorage(inner: MemoryStorage, pauseOnWrite: number) {
     async listTrips() { return inner.listTrips(); },
     async load(id) { return inner.load(id); },
     async saveIfVersion(id, expected, doc, summary) {
+      return inner.saveIfVersion(id, expected, doc, summary);
+    },
+    async refreshSummary(id, expected, summary) {
       if (++writes === pauseOnWrite) {
         enteredFn();
         await released;
       }
-      return inner.saveIfVersion(id, expected, doc, summary);
+      return inner.refreshSummary(id, expected, summary);
     },
     async delete(id) { return inner.delete(id); },
   };
@@ -471,9 +482,9 @@ test('I-6: concurrent rescan calls join one pass — the store never runs two at
   const store = createStore({ ports: ports(storage) });
   await store.refreshLibrary();
 
-  const before = storage.saveCount;
+  const before = storage.refreshCount;
   await Promise.all([store.rescanSummaries(), store.rescanSummaries(), store.rescanSummaries()]);
-  assert.equal(storage.saveCount - before, 2, 'three calls wrote each row more than once');
+  assert.equal(storage.refreshCount - before, 2, 'three calls wrote each row more than once');
   assert.equal(summaryScan(store.getState()).phase, 'complete');
 });
 
