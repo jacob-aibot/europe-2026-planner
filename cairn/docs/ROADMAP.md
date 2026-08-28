@@ -201,6 +201,28 @@ each is now pointed at the command that proves it — **no new script and no cha
 run separately, for the reason A-28 Part 5 gives: its cause is the surplus A-28 removes, and its fixtures are
 fixtures for the clauses A-28 rewrites.
 
+**Revision 23, 2026-08-28 — the first of these that is not about the country index.** QA round 26 attacked
+**I-6** and found the write path sound: no summary computed from the wrong document, no fence moved to the
+wrong trip, across six concurrency shapes and forty rows. What it found is one MAJOR and five MINORs in the
+*bookkeeping* around the write, four of them the same bug — a fact about the last pass outliving the thing
+it was a fact about — and two design defects routed to the architect. `ARCHITECTURE.md` revision 23 answers
+those two as **§8.4 A-29** and **§4.3 A-30**. This file changes in four ways.
+
+(1) **One new increment, I-6a**, builds both rulings *and* round 26's four builder-routed findings as one
+pass, because A-30 rewrites the exact lines R26-1…R26-4 are filed against and doing them apart means
+touching `runRescan` twice. (2) **I-6's record** says what it shipped and what round 26 found in it.
+(3) **Exit criterion 7 gains its missing half**: it asserts that a stale row is brought current and never
+asserted what that *may not cost*, which is why a rescan that moved another tab's write fence passed it.
+(4) **I-7's dependency** on I-6 becomes a dependency on **I-6a**, because `travelStats` consumes summary
+rows and A-29 changes what a row says.
+
+**No phase re-scoped, no change to the order, and no new external dependency.** Two things worth reading
+before building: **A-30 subsumes R26-4** — with the rescan's `attemptSave` branch gone there is no stale
+fence for a conflicted trip to be refused by, so R26-4's proposed one-line skip is *not* implemented and its
+repro becomes A-30's own criterion — and **A-30 Part 4 measures and refuses the remedy R26-6 names**
+(*skip the write when the row is unchanged*), because a row the rescan selects is by construction changed in
+the one field the rescan exists to change.
+
 > **Phase numbers changed once, here.** Every heading below carries its old number, and every "Phase N"
 > written in `ARCHITECTURE.md` §1–§7, `BUILD-NOTES.md` or `QA-FINDINGS.md` before revision 9 means the
 > *named* phase it described: "Phase 2" = accounts/server (**now 3**), "Phase 3" = ingest (**now 4**),
@@ -1037,7 +1059,7 @@ Entry: Phase 1 shipped with a manager verdict of SHIP (`b32ef9a`) — done.
 | Step | Ships | Useful alone because | State |
 |---|---|---|---|
 | **2a — past trips and the lifecycle** | `lifecycle()`, `Trip.datePrecision`, the feasibility/integrity rule class (§8.2), a "record a past trip" flow (title, dates, precision, cities — no day-by-day required) | you can enter a 2019 trip and it does not greet you with twenty warnings about a hotel you already slept in | **SHIPPED — manager verdict SHIP, `REVIEW.md` "Phase 2, step 2a", reviewed at `67f5588`, 2026-08-28.** Built, verified (rounds 12–21), shippable. Seven routed items, **none blocking**; the block on share/friend/public-share-link work is **not** lifted by this verdict — see A-2 in that routing table |
-| **2b — the lifetime map and travel identity** | `countryOf` + the generated country index, `travelStats`, the widened `TripSummaryRow` + `SUMMARY_VERSION` rescan, the **Map** and **Profile** surfaces | *"show me everywhere I've been"* — the signature experience, from data that already exists | **UNBLOCKED** by 2a's SHIP. **In progress: I-5 shipped at `897b928`** and routed one design defect here (KD-51), ruled as §8.4 **A-26** and built as **I-5a** at `b6200e6`, which QA round 22 verified and which routed one more (R22-1), ruled as §8.4 **A-27** and built as **I-5b** at `38d23c9`, which QA round 23 verified and which routed one more (R23-1), ruled as §8.4 **A-28** and scheduled as **I-5c**. Four things are owed **before I-6**: **I-5c**, `REVIEW.md` 2a routing **A-1**, and the breaker board items **B-1**…**B-4** before 2b's next breaker round |
+| **2b — the lifetime map and travel identity** | `countryOf` + the generated country index, `travelStats`, the widened `TripSummaryRow` + `SUMMARY_VERSION` rescan, the **Map** and **Profile** surfaces | *"show me everywhere I've been"* — the signature experience, from data that already exists | **UNBLOCKED** by 2a's SHIP. **In progress: I-5 shipped at `897b928`** and routed one design defect here (KD-51), ruled as §8.4 **A-26** and built as **I-5a** at `b6200e6`, which QA round 22 verified and which routed one more (R22-1), ruled as §8.4 **A-27** and built as **I-5b** at `38d23c9`, which QA round 23 verified and which routed one more (R23-1), ruled as §8.4 **A-28** and built as **I-5c**, which QA rounds 24 and 25 closed. **I-6 then shipped and QA round 26 verified it**: the write path is sound, the bookkeeping around it is not, and round 26 routed two design defects here — ruled as §8.4 **A-29** and §4.3 **A-30** and scheduled with round 26's four builder findings as **I-6a**. Still owed: `REVIEW.md` 2a routing **A-1**, and the breaker board items **B-1**…**B-4** before 2b's next breaker round |
 | **2c — participants** | `Trip.participants`, three build functions, the participants editor, *"people you have travelled with"* on the profile | you can say the trip was with your girlfriend and her family, and it grants them nothing | Not started; gated on 2b |
 
 **Mapped onto the increment sequence below** (revision 10): **2a = I-1 → I-4**, **2b = I-5 → I-8**,
@@ -1944,6 +1966,72 @@ builder against the finding itself and is not an increment.
   the rescan would copy that into the one cache the lifetime map reads).
 - **Ship gate.** The freshness criterion passes; the 200-step dirty walk still holds; the closed list of six
   document-installing methods is still six; every new `StoragePort` interaction is on the chain.
+  **BUILT at `0f52c4c` and verified by QA round 26**, which could not break the mechanism: over six
+  concurrency shapes and forty rows every row was computed from its own document, no row carried another
+  row's countries, `activeTripId` never moved, `state.doc` was never a non-active document, the retirement
+  ledger never crossed a trip, and the fence ended on the active trip's own stored version. It also *built*
+  the option BUILD-NOTES KD-57 refuses — reusing `writeAndSettle` for a non-active document — and confirmed
+  it compiles clean and fails five ways, so KD-57 is pinned rather than argued. **What round 26 found is the
+  bookkeeping around the write**: one MAJOR (`R26-1`, a deleted trip's card resurrected by an end-of-pass
+  library snapshot installed off-chain) and three MINORs of the same shape (`R26-2`, `R26-3`, `R26-4`), plus
+  two design defects routed to the architect and ruled as §8.4 **A-29** (`R26-5`) and §4.3 **A-30**
+  (`R26-6`). All six are scheduled below as **I-6a**. **This increment is not re-opened**: what it shipped is
+  what §8.4 clause 3 asked for, and I-6a repairs the pass around it.
+
+#### I-6a — A-29 and A-30, and round 26's four bookkeeping bugs, as one pass
+
+- **Built.** **Core (A-29):** `derive/summary.ts` gains a module-private acceptance gate for a city's
+  **stated** `countryCode` — trim, `/^[A-Za-z]{2}$/`, uppercase, and *the shipped index must carry the code*
+  — consulted **only** where `countryOf(city.centre, index)` is `null` and **never** over a non-null one.
+  `TripSummaryCity` gains `countrySource: 'coordinate' | 'stated' | null`; `SUMMARY_VERSION` becomes **3**.
+  `countryOf`, the index, the generator and `homeBase`'s exclusion (KD-55) do not move.
+  **Client (A-30):** `StoragePort` gains
+  `refreshSummary(id, expectedVersion: StorageVersion, summary): Promise<SaveOutcome>` — the same atomic
+  compare-and-set, writing the summary row only, **carrying no document argument and minting no version** —
+  implemented in `ports/memory.ts` (its own `refreshCount`, a new `failNextRefresh`, `saveCount` untouched)
+  and in `apps/web/src/ports/storage.ts` (one `readwrite` transaction, put on `SUMMARIES` only).
+  `runRescan`'s per-row link becomes uniform — `load` → `fromJSON` → `tripSummary` → `refreshSummary` —
+  and the `attemptSave` branch for the active trip is **deleted**. **Client (round 26's four):** R26-1 the
+  end-of-pass `listTrips()` result is installed on the chain or reconciled row-by-row rather than replacing
+  `state.library` with an earlier snapshot; R26-2 `rescan.unreadable` is cleared **before** the early return
+  and ids that have left the library are dropped; R26-3 a `null` `load` is as final as an unparseable one;
+  R26-4 needs **no** condition — A-30 removes the stale fence it is about.
+- **User-visible outcome.** A trip whose cities the dataset cannot draw — the Dalmatian islands are the
+  measured case — stops claiming it visited no countries, and says which of its answers it worked out and
+  which the user stated. A background rescan stops raising a conflict banner, with a *Merge* button and
+  nothing to merge, in a tab nobody was typing in. A deleted trip's card stays deleted.
+- **Architecture / data model.** §8.4 **A-29** and §4.3 **A-30**, both written as implementation briefs.
+  **Read A-29 Part 2 first** — it is the census of what `City.countryCode` actually is (unvalidated,
+  defaulting to `''`, written by no UI), and it is why the answer is a gate rather than a copy. **Read A-30
+  Part 4 before "optimising" the write** — the finding's own remedy is measured and refused there, and the
+  definition "unchanged" would have had to take is written down so the question does not reopen. A-30
+  narrows §2.2a rule 1 by three words and amends §8.4 clause 1 by name; **no §4.2 rule changes**, the closed
+  list of six document-installing methods is still six, and the rescan gets *further* from it.
+- **Verification.** Exit criterion 7 in its revision-23 form, both halves. Plus the injected faults each
+  ruling ships with, run individually and watched red:
+  **A-29** — delete the stated fallback and the Hvar fixture goes back to `countryCodes: []`; let the stated
+  value win and a Vienna city stating `HU` reports `HU`; `'hr'`/`'  HR  '` normalise, `''`/`'HRV'`/
+  `'Croatia'`/`'ZZ'`/`'RE'` are refused, with `RE`'s reason in the test's own text.
+  **A-30** — restore the `saveIfVersion` rewrite in `runRescan` and the two-tab fence test goes red (the
+  assertion whose absence let R26-6 ship); make `refreshSummary` a no-op and the row never reaches
+  `SUMMARY_VERSION`; drop its existence check and a summary appears for a document that is gone; hoist it
+  one frame out of `chainOntoSaving` and the §4.3 structural grep goes red.
+  **Round 26's four** — each of `qa/i6-ghostrow.mjs`, `qa/i6-unreadable.mjs` (§1 and §3),
+  `qa/i6-converge.mjs` (§5 and §6) and `qa/i6-race.mjs` (§D and §E) passes, and each was watched failing at
+  the parent commit first.
+  **And the non-regression that is the strongest single check:** on the reference trip `countryCodes` is
+  unchanged at `['AT','CZ','DE','GB','HR','HU','US']`, every city reports `countrySource: 'coordinate'`, and
+  `npm run golden` regenerates with no diff apart from `summaryVersion` and the new field.
+- **Dependencies / blockers.** I-6. No new external dependency. **`qa/` is in scope for this increment** —
+  KD-58 records seven `core.tripSummary(trip)` call sites across five `qa/` scripts that still need
+  `, core.COUNTRY_INDEX` appended, and the round-26 repros above cannot be re-run until they do.
+- **Ship gate.** Exit criterion 7 passes in its revision-23 form; the 200-step dirty walk still holds; the
+  closed list of six document-installing methods is still six and `retirement-ledger.test.ts` is
+  byte-unmodified; the §4.3 structural grep finds **zero** `ports.storage.*` mutations outside
+  `chainOntoSaving` with `refreshSummary` **not** on its exemption list; `Object.keys(core).length` is
+  unchanged (A-29 adds no export — the gate helper is module-private); `npm run typecheck` and
+  `npm run test:tap` are green; `npm run golden` diffs only where A-29 says it may. `EMITTED_BYTES` does not
+  move, so A-27 Part 9's bundle-figure obligation does **not** apply to this increment.
 
 #### I-7 — `travelStats`
 
@@ -1963,7 +2051,10 @@ builder against the finding itself and is not an increment.
   yet"*, never *"0 countries"* as though zero had been measured. Two trips to the same city, entered with
   different capitalisation and spacing, are **one** row; the same city name in two countries is **two**, and
   the surface names the limitation in rendered text.
-- **Dependencies / blockers.** I-6 (it consumes summary rows), I-1 (`lifecycle` supplies the trip counts).
+- **Dependencies / blockers.** **I-6a** (revision 23: it consumes summary rows, and §8.4 A-29 changes what a
+  row says — `countryCodes` gains gap-filled countries and `cities[]` gains `countrySource`, so
+  `travelStats` built against the I-6 row would be built against a shape one increment from moving), I-1
+  (`lifecycle` supplies the trip counts).
 - **Ship gate.** The no-stored-counts grep is a test; `travelStats` is on §2.10's list with the count
   re-counted; both goldens (`countries.json`, `travel-stats.json`) exist and were derived, not written.
 
@@ -2145,7 +2236,16 @@ first.
   **from its own document**, the rewritten rows go through the ordinary chained write (the §4.3 structural
   grep still finds zero `ports.storage.*` mutations outside `chainOntoSaving`), the map does **not** claim
   to be complete while the rescan runs, and — the ceiling — a row is never computed from another row, from
-  `AppState`, or from a document other than the one being written `[stated]`
+  `AppState`, or from a document other than the one it is about `[stated]`
+
+  *(**Revision 23 adds the half this was missing**, QA R26-6. As written it asserts only that a stale row
+  is **brought current**, and never what that may **cost** — which is how a rescan that rewrote every
+  document and moved every write fence passed it. The criterion gains: **a second store holding one of
+  those trips open and idle is still `'idle'` after the pass, and its next keystroke settles without a
+  `'conflict'`; the record's `StorageVersion` is unchanged, read through the port's own map and never
+  asserted as a literal; and its document bytes are unchanged.** Injected fault, and it is the mutation
+  whose absence let R26-6 ship: restore the `saveIfVersion` document rewrite in `runRescan` and this goes
+  red while every clause above it stays green. §4.3 **A-30**.)*
 - **Participation grants nothing, asserted mechanically.** Run the §6.2 access conformance set twice, once
   with participants added to every trip and once without, over every (principal × relationship ×
   operation) cell: **the two runs are identical**, and a participant who is not also a member or a share
@@ -2182,7 +2282,15 @@ name and different ids, and the same id twice · a participant named `''` and on
 `kind:'self'` appearing twice, and zero times · coordinates at the poles, at the antimeridian, at exactly
 `(0,0)` and inside a country's enclave · a stop in international waters · a city whose stops attribute to
 two different countries (the FRA connect on a Vienna day) · a trip with no coordinate-bearing record at all
-(the profile must say "no places yet", not "0 countries" as if that were measured) · `SUMMARY_VERSION`
+(the profile must say "no places yet", not "0 countries" as if that were measured) ·
+**a trip whose only cities are on Vis and Hvar, each stating `countryCode: 'HR'`** (§8.4 A-29: the
+coordinates are `null` at every scale and stay `null`, and the *row* must say `HR` from the cities' own
+records — the case that mints `countryCodes: []` before I-6a) · **the same trip with `'hr'`, `'  HR  '`,
+`'HRV'`, `'Croatia'`, `'ZZ'` and `'RE'`** (only the first two are admitted, and `RE` is refused on purpose —
+A-29 Part 3) · **a Vienna city stating `'HU'`** (the coordinate wins; `HU` must not reach the lifetime map) ·
+**two tabs over one storage, one of them idle with a trip open, while the other boots and rescans** (§4.3
+A-30: no fence moves, no document is rewritten, and the idle tab's next keystroke does not raise a
+conflict) · `SUMMARY_VERSION`
 bumped mid-rescan with a write in flight · a library of 40 summaries where one document is corrupt (the map
 must render the other 39 and say one is unreadable) · the reference trip evaluated at a `today` inside the
 trip, on each of its 16 days in turn · **a trip whose cities are `東京` and `京都`, and one whose city is

@@ -412,13 +412,49 @@ movement on §2.10's export surface (71), and exactly one hand-written number in
 carries the note. `ROADMAP.md`
 carries this as **I-5c**, owed before I-6 for the third time and for the same reason.
 
+**Revision 23, 2026-08-28.** QA round 26 attacked **I-6** — the widened `TripSummaryRow` and the
+`SUMMARY_VERSION` rescan — found the write path sound and the bookkeeping around it wrong in four places,
+and routed **two** of its six findings here. Both are answered, in two rulings that live in two different
+sections because they are about two different things.
+
+(1) **R26-5 → §8.4 A-29.** `tripSummary` derives `countryCodes` from coordinates only, so a trip whose
+cities are on Vis and Hvar — landforms A-26 Part 1 measured as absent from the dataset at *every* scale, and
+correctly `null` — mints `countryCodes: []` while its own `City` records say `HR`. §8.4 clause 1 rules on
+attributing *a coordinate*; it had nothing to say about a country the document already **states**. Ruled:
+a city's stated `countryCode` is admitted **where the coordinate cannot answer, never over it**, through a
+total four-step gate whose last step is *the shipped index must carry the code* — because §8.4 clause 3's
+second consequence draws the lifetime map from that index's own rings, so a code the index cannot draw is a
+country the map cannot fill. `TripSummaryCity` gains `countrySource: 'coordinate' | 'stated' | null`, so
+the blend is legible rather than silent, and `SUMMARY_VERSION` goes to **3**. Measured on the reference
+trip: **all six cities' stated codes equal their derived codes, so `countryCodes` does not move** — the same
+non-regression check A-26, A-27 and A-28 each leaned on. Three residues are named, one of them the
+disagreement case, with the trigger that reopens it written down.
+
+(2) **R26-6 → §4.3 A-30.** Bringing a row current means `saveIfVersion(id, v, toJSON(doc), summary)` — a
+full document rewrite, byte-identical to what storage already held, purely to move the summary — which
+**mints a new `StorageVersion` and therefore knocks another tab holding that document into a conflict with
+nothing to merge**. The defect is not the byte-identical write, it is that *a summary refresh moves the
+document's fence*, and that is true of every rescan write including the necessary ones. Ruled: the fence's
+meaning is stated once — **equality of `StorageVersion` asserts that the document bytes have not changed,
+and asserts nothing about the summary row beside them** — and `StoragePort` gains
+`refreshSummary(id, expectedVersion, summary)`: same atomic compare-and-set, writes the row only, carries no
+document argument at all, and **does not mint**. §8.4 clause 1's *"no port method changes"* is amended by
+name. The rescan's per-row link becomes uniform — the `attemptSave` branch for the active trip goes away
+with it, which **subsumes R26-4** and removes KD-57's entire subject. The finding's own remedy, *skip the
+write when the row is unchanged*, is measured and refused in A-30 Part 4, and what "unchanged" would have
+had to mean is written down there so the question is closed rather than left open.
+
+Nothing else moves: no engine, no `schemaVersion` bump, no change to `countryOf` or the country index, no
+new §2.10 export, no §4.2 rule, and the closed list of six document-installing store methods is still six —
+A-30 takes the rescan *further* from it. `ROADMAP.md` carries the pair as **I-6a**, with R26-1…R26-4.
+
 **Phase 1 is §2 and §4. The next phase is §8.1–§8.4.** Everything else is the shape those must not
 foreclose. See `ROADMAP.md` for sequencing and `PRODUCT-VISION.md` for why this order and not another.
 
 ## Read only your sections
 
-This document is ~150k tokens (re-measured at revision 22, with
-`cairn/tools/doc-section ARCHITECTURE` — §2 is ~102k of it and §8 ~27k; the per-section figures below were stale by a third before revision 11 and are
+This document is ~167k tokens (re-measured at revision 23, with
+`cairn/tools/doc-section ARCHITECTURE` — §2 is ~102k of it and §8 ~31k; the per-section figures below were stale by a third before revision 11 and are
 re-measured, not estimated, whenever a revision lands). Nothing needs all of it, and a fresh agent that reads it whole starts a sixth
 of the way into its context before writing a line. Pull what you need:
 
@@ -433,15 +469,16 @@ cairn/tools/doc-section ARCHITECTURE         # lists the sections and their size
 | 1 | Stack decision and the capability checks behind it | 3k | architect. Settled; do not re-litigate |
 | 2 | **Domain model — the builder's contract.** §2.12 `travelRole`, §2.13 geography and §2.14 import/copy are new in revision 2 and are where the Phase 1 rework lives; **§2.2a (the `StorageVersion` write fence, revision 3) and §2.2b (the freshness rule it turned out to be one instance of, revision 4) are read together with §4.2 and §4.3, never alone**; §2.10 (the export surface) and §2.13's copied-record row are settled in revision 5; **§2.7's retirement ledger (A-5) and §2.13's copy-borne `Place` rule (A-6) are revision 6**; **§2.2a's A-7 (the fence a declined write may not move) is revision 8** and is read with §4.2 rule 4a; **§2.2's A-10 (a `CityKey` is a minted opaque id) and §2.7's A-9 (retirement is decided against the un-gated set) are revision 11** — a Phase 2 builder needs both; **A-11, A-12 and A-13 (§2.7) and A-14 (§2.14) are revision 12** and are read *with* A-9 and A-10, never instead of them — A-11 replaces A-9's greppable invariant, A-12 narrows A-9 point 1, A-13 rewrites A-9 assertion 4, and A-14 corrects A-10's change table; **A-15 and A-16 (§2.14) and A-17 (§2.7) are revision 13** — A-15 is the copy path's redaction rule and is read with §6.6, A-16 withdraws A-14's *"within one trip is unchanged"* paragraph, A-17 narrows A-11 assertion 5; **A-18 and A-19 (§2.14) are revision 14** — A-18 is the copy path's redaction rule for the *stop's own* nested records (`cost`, `arrival`) and generalises A-15 to *no spread at any depth*, A-19 rules that the `placement` **argument** is validated against the target and never re-filed. **Anyone touching `copyStopInto` reads A-14, A-15 and A-16 as one rule 4, and A-18 with rules 3 and 5**; **A-20 is revision 15 and lives in §2.9, not §2.14** — it is where the *shape* of a document is decided, it amends A-15's `hours` row and A-18's *"changes nothing in `fromJSON`"* paragraph, and **anyone touching `Place.hours` at any layer reads it first**; **A-21 is revision 16, lives in §2.9 beside A-20 and is read with it** — it replaces A-20's `isWeeklyEntry` with a reader that returns what it read, and imposes one read per field on `copyStop.ts`, so **anyone touching a predicate over an `unknown`, or any function in `copyStop.ts`, reads A-21 with A-15 and A-18**; **A-21a is a revision-16 addendum in the same place** and is what makes A-21's file-wide rule actually total — it is read with A-21, never instead of it; **A-22 and A-23 are revision 17, in the same place again** — A-22 closes the four sites A-21/A-21a's searches missed and **supersedes A-21a's read-count table one level down** (read A-22 Part 2's table, not A-21a's), and **A-23 is the standing census test that replaces the hand search** — *anyone adding a branch to `copyStopInto`, or a field to `Stop` or `Place`, reads A-23 first, because the scenario matrix and the allow-list are part of the contract and widening the allow-list is an architect's ruling*; **A-24 is revision 18 and is read *with* A-23, never instead of it** — it supersedes A-23's `opaque` set, its ten-row matrix and its fixture list, and nothing else about A-23 moves; **A-25 is revision 19 and is the last of the chain — it is read with A-23 and A-24 and closes the arc**, adding `City` rows to the roots, a fifteenth matrix row, an eighth `ALLOWED` entry, the structural fixture-completeness tests, and the **written closing criterion** in its Part 6 that a manager or a future session checks rather than takes on trust. **QA round 21 ran that criterion and all six clauses hold, so the arc is closed rather than closeable** — Part 6 records the verification and Part 5's class-A residue list was completed **in place** with the three instances round 21's re-derivation added (R21-1); that correction carries **no revision number** because no rule, entry, root, row, gate or line of code moved | 101k | builder, breaker |
 | 3 | Module boundaries | <1k | builder |
-| 4 | **The Phase 1 client.** §4.2 rule 6 (a pending write is never outlived by its document) is new in revision 3 — QA R3-2; rule 6a′ and the `savedDoc` predicate are revision 4 — QA R4-1; **rule 6a″ (the flush bound and its exits) and rule 6c's "delete goes on the chain" are revision 5** — QA R6-1/R6-2/R7-3; **rule 5's retirement carve-out is revision 6** — QA R8-1, read with §2.7; **rule 4a is revision 8** — QA R11-1, read with §2.2a A-7 | 7k | builder |
+| 4 | **The Phase 1 client.** §4.2 rule 6 (a pending write is never outlived by its document) is new in revision 3 — QA R3-2; rule 6a′ and the `savedDoc` predicate are revision 4 — QA R4-1; **rule 6a″ (the flush bound and its exits) and rule 6c's "delete goes on the chain" are revision 5** — QA R6-1/R6-2/R7-3; **rule 5's retirement carve-out is revision 6** — QA R8-1, read with §2.7; **rule 4a is revision 8** — QA R11-1, read with §2.2a A-7; **§4.3's A-30 is revision 23** — the `refreshSummary` port method, the fence's meaning stated once, and the rescan's uniform per-row link — and **anyone touching `runRescan`, `StoragePort` or a port implementation reads it first**, with §8.4 clause 3 beside it | 10k | builder |
 | 5 | The four hard subsystems | 2k | breaker; builder from Phase 3 on |
 | 6 | Privacy, authorization, deletion cascade. **§6.6 is the build-artifact threshold; the copy threshold is §2.14 A-15 + A-18 (revisions 13 and 14) and they differ deliberately, in two named places — read them together or neither** | 4k | breaker, manager; builder for §6.2 |
 | 7 | Explicitly deferred | <1k | anyone about to build something not in the roadmap |
-| 8 | **The travel-history model** (revision 9) — trip lifecycle and past trips (§8.1), the feasibility/integrity rule class (§8.2), participants (§8.3), geography attribution, travel stats and the summary-row rule (§8.4); then the shapes the location, photo and social phases must land on (§8.5–§8.7) and what is refused (§8.8). **§8.10 is revision 10** — physical travel distance by mode and the four provenance bases that keep it honest; **it is not Phase 2 scope**, so a Phase 2 builder reads §8.1–§8.4 and stops. **Revision 11 amends §8.1, §8.2 and §8.4 by pointer only — the two rulings themselves live in §2.2 (A-10) and §2.7 (A-9), and a Phase 2 builder reads both; revision 12 amends §8.2 by pointer in the same way, and its four rulings live in §2.7 (A-11, A-12, A-13) and §2.14 (A-14)**. **A-26 is revision 20 and lives in §8.4** — the mixed-resolution country index, the withdrawal of the correctness floor's escalation mechanism, and the ruling that `null` is the right answer for a landform the dataset does not carry; **anyone touching `tools/gen-countries.mjs`, `geo/countryIndex.ts` or the attribution golden reads it first**, and it is what ROADMAP's I-5a builds; **A-27 is revision 21, sits directly under A-26 and is read *with* it, never instead of it** — it amends A-26 Part 4's block-quoted rule with a third clause (a filled code ships a **forgiveness entry** as well as a coverage entry), supersedes A-26 Part 5's two-residue list with three, lifts A-26 Part 6 item 3 for a docstring correction only, and is what ROADMAP's **I-5b** builds; **A-28 is revision 22, sits under A-27 and is read with both, never instead of them** — it supersedes A-27 Part 4's filter 2 (two arms, because the coverage index it compared against is mixed-resolution and answered generously) and A-27 Part 4's `overlaps` predicate (the vertex-mean probes come out), corrects A-27 Part 5's Macao sentence and every count in it, and is what ROADMAP's **I-5c** builds. **Anyone touching `tools/forgiveness.mjs` or the forgiveness pass reads A-28 first and A-27 second** | 27k | architect; the builder and breaker of the phase after Phase 1 (§8.1–§8.4 only). §8.10 is for the architect and for phases 4, 5 and 7. Read with `PRODUCT-VISION.md` |
+| 8 | **The travel-history model** (revision 9) — trip lifecycle and past trips (§8.1), the feasibility/integrity rule class (§8.2), participants (§8.3), geography attribution, travel stats and the summary-row rule (§8.4); then the shapes the location, photo and social phases must land on (§8.5–§8.7) and what is refused (§8.8). **§8.10 is revision 10** — physical travel distance by mode and the four provenance bases that keep it honest; **it is not Phase 2 scope**, so a Phase 2 builder reads §8.1–§8.4 and stops. **Revision 11 amends §8.1, §8.2 and §8.4 by pointer only — the two rulings themselves live in §2.2 (A-10) and §2.7 (A-9), and a Phase 2 builder reads both; revision 12 amends §8.2 by pointer in the same way, and its four rulings live in §2.7 (A-11, A-12, A-13) and §2.14 (A-14)**. **A-26 is revision 20 and lives in §8.4** — the mixed-resolution country index, the withdrawal of the correctness floor's escalation mechanism, and the ruling that `null` is the right answer for a landform the dataset does not carry; **anyone touching `tools/gen-countries.mjs`, `geo/countryIndex.ts` or the attribution golden reads it first**, and it is what ROADMAP's I-5a builds; **A-27 is revision 21, sits directly under A-26 and is read *with* it, never instead of it** — it amends A-26 Part 4's block-quoted rule with a third clause (a filled code ships a **forgiveness entry** as well as a coverage entry), supersedes A-26 Part 5's two-residue list with three, lifts A-26 Part 6 item 3 for a docstring correction only, and is what ROADMAP's **I-5b** builds; **A-28 is revision 22, sits under A-27 and is read with both, never instead of them** — it supersedes A-27 Part 4's filter 2 (two arms, because the coverage index it compared against is mixed-resolution and answered generously) and A-27 Part 4's `overlaps` predicate (the vertex-mean probes come out), corrects A-27 Part 5's Macao sentence and every count in it, and is what ROADMAP's **I-5c** builds. **Anyone touching `tools/forgiveness.mjs` or the forgiveness pass reads A-28 first and A-27 second**; **A-29 is revision 23 and sits under A-28** — it is the only one of the four that is *not* about the index: it rules that a `City`'s **stated** `countryCode` fills a gap the coordinate cannot answer, never overrides one, and only through a gate ending in index membership, and it takes `SUMMARY_VERSION` to 3. **Anyone touching `derive/summary.ts` reads A-29 and §4.3's A-30 together** — A-29 changes what a row *says*, A-30 changes how it is *written*, and I-6a builds both | 31k | architect; the builder and breaker of the phase after Phase 1 (§8.1–§8.4 only). §8.10 is for the architect and for phases 4, 5 and 7. Read with `PRODUCT-VISION.md` |
 
 *(§8's figure is measured with `doc-section`, not estimated. §8.1–§8.4 — the Phase 2 model — are roughly
-four fifths of it since revisions 20, 21 and 22 put A-26, A-27 and A-28 in §8.4; a Phase 2 builder who reads
-only those pays about 19k, and a builder of I-5c who reads §8.4 alone pays about 17k. **A-28 is the entry
+four fifths of it since revisions 20, 21, 22 and 23 put A-26, A-27, A-28 and A-29 in §8.4; a Phase 2 builder
+who reads only those pays about 25k, and a builder of I-6a who reads §8.4 alone pays about 22k — with §4.3
+(~4k, and A-30 is most of it) beside it, because I-6a is the one increment that needs both. **A-28 is the entry
 point to that trio, not the last of it** — it names which of A-27's sentences it supersedes, so a builder who
 reads A-28 first knows which parts of A-27 to skip.)*
 
@@ -882,9 +919,19 @@ type StoredDoc = { doc: TripDoc; version: StorageVersion }; // what load() retur
 
 Four rules define it, and they are the entire contract:
 
-1. **Storage issues it, on every successful write, inside the same atomic step as the write.** Nothing above
-   the port ever computes, derives, increments or forges one. The client's only sources are `load()` and a
-   successful `saveIfVersion()`.
+1. **Storage issues it, on every successful write *of a document*, inside the same atomic step as the
+   write.** Nothing above the port ever computes, derives, increments or forges one. The client's only
+   sources are `load()` and a successful `saveIfVersion()`.
+
+   *(**Narrowed at revision 23 by §4.3 A-30**, QA R26-6 — three words, and they are the whole of the
+   change. What the fence means, stated once because I-6 was the first thing to need it stated:*
+   **equality of a `StorageVersion` asserts that the document bytes under that id have not changed since
+   the token was issued, and asserts nothing whatever about the summary row stored beside them.** *A write
+   that can change the document therefore MUST mint; a write that changes only the summary MUST NOT, because
+   minting for it would assert a change the document did not make and would refuse another writer holding a
+   token that is still true. `refreshSummary` is that second kind, it carries no document argument, and it
+   leaves the record's version exactly as it found it. The client's sources of a token are unchanged: a
+   successful `refreshSummary` returns the version it was handed, not a new one.)*
 2. **It never repeats within one storage, ever** — not after a `delete()`, not after the record is recreated
    under the same id, not after the whole database is recreated. This is what closes R3-4's ABA. The rule was
    stated correctly in revision 3 and the implementation drifted from it (R4-2), so it now carries its
@@ -6184,12 +6231,20 @@ type SaveOutcome    = { ok: true;  version: StorageVersion }        // the versi
 
 interface StoragePort { listTrips(): Promise<TripSummaryRow[]>; load(id): Promise<StoredDoc|null>;
                         // EVERY mutation below is issued from inside the store's serialization
-                        // chain — `saveIfVersion` and `delete` alike. §4.2 rule 6c, QA R7-3.
+                        // chain — `saveIfVersion`, `refreshSummary` and `delete` alike. §4.2 rule 6c,
+                        // QA R7-3. The grep's exemptions are `listTrips` and `load`, and no others.
                         // ATOMIC compare-and-set. `expectedVersion: null` means "nothing stored yet".
                         // A refusal is `{ok:false, storedVersion}`, not a throw — storage is healthy.
                         // MUST mint a fresh, never-reused version on every success (§2.2a rules 1-2).
                         saveIfVersion(id, expectedVersion: StorageVersion|null, doc: TripDoc,
                                       summary: TripSummaryRow): Promise<SaveOutcome>;
+                        // A-30, revision 23. The SAME atomic compare-and-set, writing the summary row
+                        // and nothing else. No `doc` argument — structurally incapable of a document
+                        // write. MUST NOT mint: the record's version is unchanged on success (§2.2a
+                        // rule 1 as narrowed). `expectedVersion` is NOT nullable and an absent record
+                        // is refused — a summary may never exist without its document.
+                        refreshSummary(id, expectedVersion: StorageVersion,
+                                       summary: TripSummaryRow): Promise<SaveOutcome>;
                         delete(id): Promise<void> }
 interface FilePort    { exportDoc(name: string, bytes: Uint8Array): Promise<void>;
                         importDoc(): Promise<{ name: string; bytes: Uint8Array } | null> }
@@ -6200,7 +6255,8 @@ interface IdPort      { newId(): string }
 ```
 
 **The chain's subject is every `StoragePort` mutation, not every write** (revision 5, QA R7-3). `store.ts`'s
-`chainOntoSaving` is the sole gateway for **all** storage mutations — `saveIfVersion` *and* `delete()` — so
+`chainOntoSaving` is the sole gateway for **all** storage mutations — `saveIfVersion`, `refreshSummary`
+(A-30, revision 23) *and* `delete()` — so
 the store issues at most one mutation at a time and in a single total order. A mutation that reaches the port
 without going through it is a defect, and the criterion greps for it: every `ports.storage.*` call that is
 not `listTrips` or `load` appears lexically inside a `chainOntoSaving` callback. The reason it must be the
@@ -6231,6 +6287,161 @@ one, so Phase 4 does not rewrite state management.
 `packages/client` and every reducer test run **in plain Node with in-memory ports**. That extends the
 tester's no-browser reach from the model to the state machine, which is the point of putting the store here
 rather than in `apps/web`.
+
+#### A-30 — a summary refresh is not a document write, so it may not move the document's fence (revision 23, QA R26-6)
+
+**Part 1 — the defect, stated one level up from where it was found.**
+
+I-6 brings a stale row current by rewriting the whole record:
+`saveIfVersion(id, stored.version, toJSON(doc), summary)`. The document bytes going in are the bytes that
+came out — nothing about the trip changed — but `saveIfVersion` mints, because minting on every success is
+the only contract it has. The bill, reproduced by round 26 with two stores over one storage: tab A holds
+trip Y open and idle; tab B boots and runs `App.tsx`'s ordinary `refreshLibrary()` → `rescanSummaries()`;
+tab A's next keystroke is refused with the full `CONFLICT_MESSAGE`, over a stored copy whose document is
+byte-identical to the one tab A is holding. A conflict banner and a *Merge* button, with nothing to merge,
+raised by a background pass with no user on the other side. At the forty-row scale §8.4 clause 3 is written
+for, the same pass is also ~40 full document rewrites of ~230 KB each on a single boot.
+
+**The finding files this as "the rescan writes even when the row is unchanged". That is the smaller half.**
+The rows the rescan exists for are *below* `SUMMARY_VERSION`, so their recomputed row is **not** unchanged —
+it differs in at least `summaryVersion`, which is the field the whole mechanism turns on. Tab B's write in
+the reproduction above is a **necessary** refresh, and it is that necessary refresh which moved tab A's
+fence. The defect is not the redundant write. It is that a summary refresh moves the document's fence at
+all.
+
+**Part 2 — the ruling.**
+
+> **The fence fences the document.** Equality of a `StorageVersion` asserts that the document bytes under
+> that id have not changed since the token was issued, and asserts nothing about the summary row stored
+> beside them (§2.2a rule 1, as narrowed at this revision). A write that can change the document MUST mint.
+> **A write that changes only the summary MUST NOT**, and `StoragePort` gains one for it:
+>
+> ```ts
+> refreshSummary(id: string, expectedVersion: StorageVersion,
+>                summary: TripSummaryRow): Promise<SaveOutcome>;
+> ```
+>
+> The comparison, the write and the return happen in **one atomic step**, exactly as `saveIfVersion`'s do
+> and for exactly R2-1's reason. It writes the summary row and nothing else: the document is not read for
+> content, not parsed, and not written. `expectedVersion` is **not nullable** and an absent record is
+> refused with `{ok: false, storedVersion: null}` — a summary row may never exist without the document it
+> is about, so this method can neither create a record nor resurrect a deleted one. On success it returns
+> `{ok: true, version: expectedVersion}`: the version now in storage, which is the one it was handed.
+
+**§8.4 clause 1's *"and no port method changes"* is amended by name.** That sentence was written when a
+summary was only ever computed inside a document write, which was true until I-6 introduced a second
+occasion — a refresh with no document change. What clause 1 was actually protecting survives intact and is
+restated as the invariant: **a summary is computed only from the document it is about, inside the same
+chained step that read or wrote that document.** `refreshSummary` cannot violate it, because it carries no
+document argument; there is nothing in its signature to write a summary *about*.
+
+**Part 3 — what the rescan becomes, and the property that is replaced.**
+
+`runRescan`'s per-row link, inside one `chainOntoSaving` callback, becomes uniform for every row:
+`load(id)` → `fromJSON` → `tripSummary(doc, COUNTRY_INDEX)` → `refreshSummary(id, stored.version, summary)`
+→ upsert the library row. No `toJSON`, no `saveIfVersion`, and **no `attemptSave` branch**. §8.4 clause 3's
+four properties are unchanged except the fourth, which is replaced:
+
+> **4. The rescan never writes a document — not even the active one — and therefore never moves a fence.**
+> The row is computed from the document **storage holds**, read in the same chained step, because a
+> `TripSummaryRow` is a fact about the *stored record*: `listTrips()` is what serves it. `state.doc` is not
+> consulted by this path, so a half-typed title is no longer flushed to storage ahead of its own debounce,
+> and an unsaved edit is never described by a row. The next autosave recomputes the row from the document
+> it writes, exactly as it always has.
+
+Four things this settles, each stated because a reader will otherwise re-derive it:
+
+1. **§2.2a A-7 is untouched and gets easier.** A-7 governs the fence a *declined write* may not move. The
+   rescan now has no document write to decline, and `refreshSummary` moves no fence in any outcome. **BUILD-NOTES
+   KD-57's entire subject — whether `writeAndSettle` may be aimed at a non-active document — disappears**,
+   because the rescan no longer has a document write to aim anywhere. Round 26 confirmed KD-57's analysis
+   was correct; A-30 removes the question rather than answering it again.
+2. **This subsumes QA R26-4.** With `attemptSave` out of the path, `state.persistence.savedVersion` is not
+   in it either, so a trip sitting in `'conflict'` has its row brought current from the stored document —
+   the conflict is about the user's in-memory edit, the row is about storage, and neither needs the other
+   resolved first. **R26-4's proposed one-line `status === 'conflict'` skip is NOT implemented**; the
+   builder verifies convergence and the absence of banner flicker with R26-4's own repro
+   (`qa/i6-race.mjs` §E) instead.
+3. **R26-1, R26-2 and R26-3 are unaffected and are implemented as routed.** A-30 changes what one link
+   *writes*; those three are about what the pass *remembers* between links and passes. A-30 is deliberately
+   compatible with §0.6's answer to them — a pass that re-derives its outstanding, unreadable and deleted
+   state from storage on every pass rather than trusting an end-of-pass snapshot — because the uniform link
+   above holds no cross-row state at all.
+4. **No §4.2 rule changes, and the ceiling moves the right way.** The closed list of six document-installing
+   store methods is still six and the rescan gets *further* from it: the pass now emits only `library` and
+   `rescan` updates, and no longer reaches `persistence` through `attemptSave`. The retirement ledger is not
+   in the path. The §4.3 chain grep's exemptions stay `listTrips` and `load`, and **`refreshSummary` is not
+   exempt**.
+
+**Part 4 — why not "skip the write when the row is unchanged", which is what the finding asks for.**
+
+Refused, for three reasons in the order that decides it:
+
+1. **It never fires where the defect is.** If the comparison includes `summaryVersion` — and it must, since
+   that stamp is the entire subject of the rescan — then a row selected by `needsRescan` is by construction
+   *changed*, so the skip cannot fire on the case round 26 reproduced. If the comparison **excludes** the
+   stamp, the write is skipped, the stamp is never brought current, `needsRescan` selects the same row on
+   every pass and on every boot forever, and `summaryScan` is pinned at `'stale'` — R26-3's permanent-row
+   shape, manufactured deliberately.
+2. **It needs a fact the pass does not hold.** `load()` returns `{doc, version}`; the stored *row* is not in
+   it. Comparing against `state.library`'s copy is reading a fact about a resource somewhere other than
+   where the resource stated it — §0.6, and the root cause of four of round 26's six findings. Getting it
+   honestly means widening `StoredDoc` and both port implementations, for a comparison whose only firing
+   case is a cross-tab race.
+3. **Under A-30 the redundant write costs nothing worth a mechanism**: an idempotent put of a small row, no
+   document bytes, no fence movement, in a race that resolves the same way whether or not it happens.
+
+**And so the question is closed rather than left open, here is what "unchanged" would have had to mean** if
+a future increment ever wants one: field-by-field structural equality over every declared field of
+`TripSummaryRow` **including `summaryVersion`**, arrays compared elementwise, `cities` compared elementwise
+by `{key, name, countryCode, countrySource}`. **Never `JSON.stringify`** — its answer depends on key
+insertion order, so it would compare a row minted here against a row that came back through an adapter's
+serializer and call two equal rows different, or drift the day a field is added in a different position.
+
+**Part 5 — what a builder implements. Two port implementations, one store function, five tests. No engine.**
+
+1. **`packages/client/src/ports/types.ts`** — the method above, with its contract as a docstring. `StoredDoc`,
+   `SaveOutcome` and `StorageVersion` are unchanged; `SaveOutcome`'s *"the version now in storage"* comment
+   gains one sentence saying that for `refreshSummary` that is the unchanged expectation.
+2. **`packages/client/src/ports/memory.ts`** — one synchronous block, **no `await`**, for the same reason
+   `saveIfVersion` has none: `summaries.set(id, summary)` only, `docs` and `versions` untouched. It gets its
+   own counter, `refreshCount`, and **does not bump `saveCount`** — a test asserting "no document was
+   written" has to be able to say so. `failAll` applies to it (a broken port is broken for everything); a
+   new `failNextRefresh` is the injectable failure for this path, and `failNextSave` keeps meaning
+   `saveIfVersion` alone.
+3. **`apps/web/src/ports/storage.ts`** — one `readwrite` transaction over `[DOCS, SUMMARIES, VERSIONS]`,
+   with every request issued from the previous one's `onsuccess` exactly as `saveIfVersion` does it:
+   `DOCS.getKey(id)` for existence, `VERSIONS.get(id)` for the compare, then `SUMMARIES.put(summary, id)`
+   and **no put on `DOCS` and no put on `VERSIONS`**. `ensureReady()` first, as everywhere else.
+4. **`packages/client/src/store/store.ts`** — `runRescan`'s link as Part 3 states it, and the `if (state.doc
+   && state.doc.id === id)` branch deleted. The docstring's property 4 is replaced with Part 3's wording.
+5. **The tests, and §0.5's injected fault for each rule this ruling adds:**
+   - **(a) the fence does not move.** Two stores over one `memoryStorage`. A opens trip Y and idles at
+     version *V*, captured through the port's own `versions` map — never asserted as a literal (§2.2a rule 3's
+     corollary). B boots, `refreshLibrary()` + `rescanSummaries()`. Assert: `versions.get(Y)` is still *V*,
+     `docs.get(Y)` is byte-identical, `saveCount` did not move, and A's next edit and flush settle `'idle'`
+     with no `'conflict'`. **Mutation: restore the `saveIfVersion` rewrite in `runRescan` → red.** This is
+     the assertion whose absence let R26-6 ship.
+   - **(b) the row is still brought current.** Same setup: after the pass, `listTrips()` shows Y at
+     `SUMMARY_VERSION` carrying its own countries, and `summaryScan(state).phase` reaches `'complete'`.
+     **Mutation: make `refreshSummary` a no-op → red.**
+   - **(c) a refresh can neither create nor resurrect.** `refreshSummary` against an id with no document is
+     refused and `listTrips()` does not grow; a delete landing between the pass's `load` and its
+     `refreshSummary` leaves the trip deleted. **Mutation: drop the existence check → red.**
+   - **(d) the chain still binds it.** The §4.3 structural grep exempts `listTrips` and `load` only;
+     `refreshSummary` hoisted one frame out of its `chainOntoSaving` callback turns it red.
+   - **(e) the active trip in `'conflict'` converges** — R26-4's own repro, `qa/i6-race.mjs` §E, re-run:
+     the row reaches `SUMMARY_VERSION`, `persistence.status` never leaves `'conflict'` and never flickers
+     through `'saving'`, and the user's in-memory edit is intact.
+
+**Part 6 — the residue.** A `refreshSummary` and a `saveIfVersion` for the same record can race, and the
+loser is refused rather than merged — which is correct and is the same fence doing the same job: the
+refresh's expectation is the version its own `load` returned, so a document write landing in between refuses
+it, and the rescan does not retry over another writer's work (§8.4 clause 3 property 3, unchanged). The
+refused row stays below the version and is picked up by the next pass. **Trigger to reopen:** a storage
+implementation that cannot make the compare-and-put atomic without also touching the document — none of the
+four named in §4.3 has that shape, and a port that cannot be atomic must reject rather than write
+optimistically, which is already the contract.
 
 ### 4.4 The map contract
 
@@ -6885,7 +7096,9 @@ revision 1; corrected at revision 9, the shipped shape is the contract — the �
 `countryCodes: CountryCode[]`, `cities: Array<{ key: CityKey; name: string; countryCode: CountryCode | null }>`
 and `summaryVersion: number`. *(Revision 11: the city field was `cityKeys: CityKey[]` and is widened by
 §2.2 A-10 — an opaque key alone can neither label a pin nor join two trips, and a row that must be resolved
-against a document it does not carry is not a summary.)*
+against a document it does not carry is not a summary. **Revision 23: the city entry gains
+`countrySource: 'coordinate' | 'stated' | null` and `SUMMARY_VERSION` goes to 3 — A-29 below, which is what
+decides where a city entry's `countryCode` may come from.**)*
 
 A summary is a **copy**, so §0.6 applies to it and four clauses discharge it:
 
@@ -6893,6 +7106,16 @@ A summary is a **copy**, so §0.6 applies to it and four clauses discharge it:
    is already the shipped shape — `saveIfVersion(id, expectedVersion, doc, summary)` — and no port method
    changes. Nothing computes a summary from another summary, from `AppState`, or from a document it is not
    about.
+
+   *(**Amended at revision 23 by §4.3 A-30**, QA R26-6. The *"and no port method changes"* half is
+   withdrawn: it was written when a summary was only ever computed inside a document write, and I-6
+   introduced a second occasion — a **refresh** with no document change, which under this clause was
+   forced to rewrite the whole record and so moved another tab's write fence. `StoragePort` gains
+   `refreshSummary(id, expectedVersion, summary)`. What this clause was protecting is unchanged and is
+   restated as:* **a summary is computed only from the document it is about, inside the same chained step
+   that read or wrote that document.** *`refreshSummary` cannot violate it — it carries no document
+   argument, so there is nothing in its signature to write a summary about. **Read A-30 before
+   implementing this clause.**)*
 2. **Nothing edits a summary independently of its document.** A rename writes the document.
 3. **`SUMMARY_VERSION` is a core constant, bumped whenever any summary field's derivation changes.** The
    client rescans every row below it — load the document, recompute, rewrite through the ordinary chained
@@ -7676,6 +7899,197 @@ fails *every* test that imports core, whenever it runs. Being first is a fail-fa
 only under serial execution. `ROADMAP.md` carries the corrected wording in all three ship gates. **No new
 script, no new command in any gate, and nothing about what is run changes** — this is a prose defect and its
 fix is prose.
+
+#### A-29 — a city's *stated* country fills a gap the coordinate cannot answer, never overrides one, and only if the index can draw it (revision 23, QA R26-5)
+
+A-26, A-27 and A-28 are three rulings about **the index**. This one is not about the index at all, and that
+is the reason the defect survived three adversarial rounds on the same paragraph: `City.countryCode` is not
+a coordinate, so no amount of attention to `countryOf` was ever going to reach it.
+
+**Part 1 — the defect, and why it is not the island residue in another costume.**
+
+`derive/summary.ts` builds `cities[].countryCode` as `countryOf(c.centre, index)` and unions the non-null
+answers, over city centres, places and stops, into `countryCodes`. The document's own `City.countryCode` —
+stored, round-tripped through `toJSON`/`fromJSON`, hand-supplied by `createTrip` and by the legacy importer —
+is never consulted. Measured against the shipped artefact: `countryOf` returns `null` for **Hvar Town**
+(43.1729, 16.4413), **Stiniva Cove, Vis** and **Blue Cave, Biševo**. So a Dalmatian-islands trip whose
+cities are Vis and Hvar mints `countryCodes: []` — an empty lifetime map for a trip whose every `City`
+record says `HR`.
+
+**That is not A-26 Part 1's residue and must not be filed under it.** A-26 ruled that `null` is the *correct*
+answer for a coordinate no polygon in the dataset contains, and it is still correct: nothing here computes an
+answer from that coordinate, nothing snaps, and no ring moves. What A-26 ruled on is **the absence of
+evidence in the dataset**. What this ruling is about is a **second, independent piece of evidence the
+document already carries and the summary threw away**. The two do not touch, and the root `CLAUDE.md`
+convention that decides it — *"his content is authoritative and outranks our ideas"* — points one way only.
+
+**The disclosure it was decided under.** BUILD-NOTES **KD-55** enumerates four *coordinate* sources and
+argues one of them (`homeBase`) out; it does not consider a stated one, because it is a ruling about which
+coordinates count. The builder's table row beside it does mention the field in passing — *"not copied from
+`City.countryCode` (which is importer metadata and is not nullable)"* — and that half-sentence is the most
+accurate thing anybody has written about the field. **It is also exactly why the answer is a gate and not a
+copy.**
+
+**Part 2 — what `City.countryCode` actually is, read out of the code rather than assumed.**
+
+| | |
+|---|---|
+| Type | `string` — not `CountryCode \| null`, not branded. `ids.ts` says why, and that widening it is a migration rather than a rename |
+| Default | `''`. `createTrip` writes `c.countryCode ?? ''`; the legacy importer writes `opts.countryCodes?.[key] ?? ''` |
+| Validated | **Nowhere.** `fromJSON` asserts it is a string and nothing else. `validateTrip` has no rule for it. No case normalisation, no ISO membership check, no relation to `centre` |
+| Written by a UI | **Never.** Neither `Library.tsx`'s *New trip* nor `PastTripForm.tsx` collects a country; every city created inside the product today carries `''` |
+| Actually populated by | `import/legacyDays.ts`'s hand-supplied `countryCodes` map, and any document written or round-tripped as JSON |
+| Read by | **nothing**, at any layer, before this ruling |
+
+So the breaker's caution is right and is load-bearing: this field cannot simply be trusted. It can hold
+`''`, `'Croatia'`, `'hr'`, `'HRV'`, `'ZZ'` or a stale answer, and nothing in the system would notice.
+**It also cannot simply be ignored**, because it is the user's own statement about their own trip and it is
+the only evidence that exists where the dataset has none. The answer is neither trust nor refusal: it is a
+**gate**, and the gate's last step is what makes the whole thing safe.
+
+**Part 3 — the ruling.**
+
+> **A city's stated `countryCode` is admitted as an attribution for that city if and only if the coordinate
+> attribution for the same city is `null`, and the stated value survives a four-step acceptance gate. It
+> never overrides a non-null `countryOf`, it is never read for any record other than the `City` that carries
+> it, and it never reaches `countryCodes` except through that city's own entry.**
+>
+> The gate, total and in order, evaluated per city:
+>
+> 1. `raw = city.countryCode`; if it is not a string, **reject**. (`fromJSON` guarantees a string for a
+>    stored document; the helper is total so a hand-built fixture cannot crash it.)
+> 2. `t = raw.trim()`; if `t` does not match `/^[A-Za-z]{2}$/`, **reject**. This is what rejects `''`,
+>    `'HRV'`, `'Croatia'`, `'H1'` and `'H R'`.
+> 3. `u = t.toUpperCase()`.
+> 4. If the **shipped index does not carry `u`** as the code of some entry, **reject**. Otherwise the
+>    accepted value is `u`.
+>
+> `tripSummary` builds the membership set once per call — `new Set(index.countries.map((e) => e.code))`,
+> 292 entries, 239 distinct codes — and hands it to the per-city helper. The helper stays **module-private
+> in `derive/summary.ts`**: §2.10's export surface does not move, and every clause of the gate is reachable
+> through `tripSummary` with a hand-built `City`.
+
+**Step 4 is what makes this affordable, and it is not a formality.** §8.4 clause 3's second consequence
+draws the lifetime map from *this index's own rings, with no tiles behind it*. A code the index does not
+carry is therefore a country the map **cannot fill** — the statistic would name a country the signature
+screen silently omits. Measured against the shipped artefact: the 239 codes include `TW`, `XK`, `PS`, `EH`,
+`HK`, `MO` and `SG`, and every sovereign state a traveller is likely to type; the codes it refuses are ISO
+codes Natural Earth's admin-0 layer folds into a parent state — `RE`, `GF`, `GP`, `MQ`, `YT`, `SJ`, `TK`,
+`BQ` — for which the coordinate attribution already returns the parent and is the better answer. So the
+gate's alphabet is *the set of countries this product can draw*, which is the only alphabet a summary row
+has any business speaking.
+
+**Part 4 — precedence, and the field that makes the blend legible.**
+
+`TripSummaryCity` becomes:
+
+```ts
+type TripSummaryCity = {
+  key: CityKey;
+  name: string;
+  /** The answer, whatever its source. `null` is first-class and never a guess. */
+  countryCode: CountryCode | null;
+  /** Where that answer came from. `null` exactly when `countryCode` is null. */
+  countrySource: 'coordinate' | 'stated' | null;
+};
+```
+
+- `countryOf(city.centre, index)` is evaluated first. Non-null ⇒ `countrySource: 'coordinate'`, and the
+  stated value is **not consulted**.
+- Only if it is `null` is the gate run. Accepted ⇒ `countrySource: 'stated'`. Rejected ⇒
+  `{countryCode: null, countrySource: null}`, which is exactly today's answer.
+- `countryCodes` is the sorted distinct union of every non-null `cities[].countryCode` — *of either source* —
+  plus, unchanged, `countryOf` over `trip.places[].at`, over every scheduled stop and over every pooled stop.
+  `null` still never enters it.
+
+Four things this deliberately does **not** do:
+
+1. **It does not give `Place` or `Stop` a stated country.** They have no such field and none is being added,
+   so a place on Vis stays unattributed and honestly so. A stated code on a city does not rescue that city's
+   records; it attributes the city, and nothing else.
+2. **It does not touch `homeBase`.** KD-55 stands verbatim and is re-affirmed: counting it would put the
+   traveller's own country on the lifetime map for every trip they ever record.
+3. **It does not make the union additive.** A stated code is admitted *only where the coordinate is silent*,
+   so a typo'd `HU` on a Vienna city — whose centre resolves `AT` — can never put Hungary on the map. Had the
+   rule been *"union both"*, one mistyped field would inflate the lifetime map permanently, which is §8.4
+   decision 2's own objection (*"a number a user can inflate by typing"*) arriving through the back door.
+4. **It does not rename `City.countryCode`.** `ids.ts` already rules that widening or renaming that field is
+   a migration and not a naming change. The name collision the finding notes — the row's `countryCodes` and
+   the document's `countryCode` meaning different things — is closed by `countrySource` and by the two
+   docstrings, not by touching a persisted field.
+
+**Part 5 — `SUMMARY_VERSION` goes to 3, and this is the cheapest moment it will ever be.**
+
+Clause 3 is unambiguous: the constant is bumped whenever any summary field's derivation changes, and this
+changes two. `SUMMARY_VERSION = 3`, with its own line in the constant's docstring. Two things worth stating
+because they will not be obvious later:
+
+- **This is the first bump that exercises the rescan as a rescan.** Version 2's rows were upgraded from rows
+  carrying no `summaryVersion` field at all; I-6's own BUILD-NOTES records that a 2 → 3 bump was exercised
+  only by ATTACK 1's synthetic knock-back. I-6a makes it real, which is the right place for it — the same
+  increment repairs the rescan's bookkeeping under R26-1…R26-4, so the mechanism and its first genuine load
+  land together.
+- **It costs nothing today and would cost a migration later.** A-26 Part 7's argument for the fourth time,
+  and it still holds: there are no user rows in the wild.
+
+**Part 6 — non-regression, measured, not argued.**
+
+On the reference trip, **all six cities' stated codes are identical to their derived codes** — `vienna` AT,
+`dubrovnik` HR, `split` HR, `prague` CZ, `budapest` HU, `london` GB — so every one takes the `'coordinate'`
+branch and the stated value is never consulted. `countryCodes` stays `['AT','CZ','DE','GB','HR','HU','US']`
+and `fixtures/golden/countries.json` does not move. **A-29 changes nothing about the only real trip we
+have**, which is the same strongest-single-check A-26, A-27 and A-28 each rested on — and it carries the same
+warning: a corpus of one Adriatic trip cannot exercise the `'stated'` branch at all, so that branch's tests
+are hand-built fixtures and must be, rather than something the sample is hoped to cover.
+
+**Part 7 — what a builder implements. One core file, one constant, the tests. No engine, no port, no index.**
+
+1. **`packages/core/src/derive/summary.ts`** — the module-private gate helper of Part 3; `TripSummaryCity`
+   gains `countrySource`; `tripSummary`'s city map and the `countryCodes` union as Part 4 states them;
+   `SUMMARY_VERSION = 3` with its docstring line. The function stays pure, keeps its required-index throw,
+   and gains no argument.
+2. **`packages/core/src/geo/`, `derive/country.ts`, `countries.gen.ts`, `tools/gen-countries.mjs`** —
+   **untouched.** `countryOf` gains no branch, no parameter, no distance function. That sentence is now four
+   rulings old and has not moved.
+3. **`apps/web`** — `Library.tsx` renders `row.countryCodes` as it already does. `countrySource` is
+   **carried and not branched on** in this increment (§8.1's precedent for `datePrecision`); a later surface
+   may show it, and nothing may ever *gate* a country's inclusion on it, because inclusion is decided here.
+4. **The tests, and §0.5's injected fault for every clause of the gate.** Hand-built cities, one assertion
+   each: `''` → `null`; `'hr'` → `HR` (normalised); `'  HR  '` → `HR`; `'HRV'` → `null`; `'Croatia'` →
+   `null`; `'ZZ'` → `null` (well-formed, not in the index); `'RE'` → `null` **with Part 3's reason in the
+   test's own text**, so the next reader does not "fix" it. Then the three that are the point:
+   - **the gap-fill** — a city at Hvar Town's coordinate with `countryCode: 'HR'` yields
+     `{countryCode: 'HR', countrySource: 'stated'}` and `countryCodes: ['HR']`. **Mutation: delete the
+     fallback → red.** This is the assertion whose absence let R26-5 ship.
+   - **the non-override** — a city at Vienna's coordinate with `countryCode: 'HU'` yields
+     `{countryCode: 'AT', countrySource: 'coordinate'}`, and `countryCodes` contains **`AT` and not `HU`**.
+     **Mutation: let the stated value win → red.**
+   - **the reference trip does not move** — `tripSummary` over the sample yields the same `countryCodes` as
+     at `SUMMARY_VERSION` 2 and every city reports `'coordinate'`. **Mutation: reverse the precedence → the
+     golden moves.**
+
+**Part 8 — the residues, three, disclosed rather than left to be discovered.**
+
+1. **A stated code that disagrees with a non-null coordinate attribution is unused and unreported.** The
+   coordinate wins and nothing surfaces the disagreement, which is in tension with *"flag conflicts, don't
+   resolve them by guessing"* — mitigated by the fact that this is a stated precedence rule rather than a
+   guess, and that the disagreement cannot change any output. **It is not surfaced here on purpose:** the
+   right home for the report is a `geoCheck`/`validateTrip` warning, and that needs the country index
+   threaded into the validation surface as a required argument — a change to the most heavily ceilinged API
+   in the project, for a case reachable today only through a hand-written document. **Trigger to reopen: the
+   first surface that lets a user type a country code.** There is none today (Part 2's table), and the moment
+   one exists the silent override becomes a user-visible surprise and the warning is owed in the same
+   increment as the input.
+2. **A code the index does not carry is refused, so `RE`, `GF`, `GP`, `MQ`, `YT`, `SJ`, `TK` and `BQ` are
+   never admitted.** Deliberate — Part 3's argument. The coordinate attribution answers the parent state for
+   all of them, which is what the map can draw. **Trigger to reopen:** a dataset that carries the code, or a
+   map surface not drawn from this index.
+3. **A typo that lands on a valid, drawable code, on a city whose coordinate the index cannot answer, is
+   accepted and puts a wrong country on the lifetime map.** Accepted deliberately: it is the user's own
+   document stating it, their content outranks our inference, and it is reachable only where we have nothing
+   better than `null` to offer. The alternative — refusing every stated code — is the defect this ruling
+   closes. It is bounded to cities the index cannot attribute, which the reference corpus measures at three
+   records out of 226.
 
 ### 8.5 Observed travel — the shape Phase 5 must be able to land on
 
