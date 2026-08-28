@@ -78,3 +78,13 @@ start rather than discovering it mid-session.
 - Prefer `git diff --stat` and targeted reads over repository sweeps, especially for the manager reviewing
   a routine (non-gate) batch.
 - Run `/context` when a session feels slow or forgetful — it shows where the window actually went.
+- **Dispatch each pipeline stage as its own isolated `Agent()` call** rather than chaining architect,
+  builder, and breaker inline in one long session — that gives each stage the fresh context `/clear` would,
+  without depending on anyone remembering to run it.
+
+### Resuming from a fresh session
+
+To pick up Cairn cold, without re-deriving history: `git log -1` on `master` for the current commit, then
+the Status note at the top of `QA-FINDINGS.md`, then the Status note at the top of `BUILD-NOTES.md`, then
+grep `ROADMAP.md` for the current phase's increment to find its dependency/"still owed" line. That's the
+whole checkpoint — no archive reading, no full `ARCHITECTURE.md` pass.
