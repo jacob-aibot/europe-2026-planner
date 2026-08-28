@@ -37,15 +37,18 @@
  *   - It measures the paths the matrix reaches. That is why the matrix is specified in A-23
  *     rather than left to the builder, and why **adding a branch means adding a row**.
  *
- * **The maintenance rule, as A-24 amends it.** A new branch in `copyStopInto` adds a scenario row.
- * A new field on `Stop` or `Place` is covered automatically **once the fixture populates it** — the
+ * **The maintenance rule, as A-25 Part 1 finally makes it mechanical.** A new branch in
+ * `copyStopInto` adds a scenario row — **that one stays a maintenance rule, honestly**, because
+ * *"a branch"* is a property of the code and no `Record<keyof T, true>` reaches it. A new field on
+ * `Trip`, `Stop`, `Place` or `City` fails `npm run typecheck` in the four `CENSUS_*_FIELDS` maps
+ * below, and the key-set test then stays **red until the fixture actually carries it** — because the
  * census enumerates `Object.keys` of the fixture INSTANCE, so a field the fixture omits is
- * invisible, which is how `Stop.ticket` stayed invisible through round 19 (R19-5); **the fixture
- * populating every field of both records is part of this contract.** A new entry in `ALLOWED` — or
- * a raised `max` — is **an architect's ruling, not a builder's judgment**: it is the written form of
- * *"this value may be read twice and here is why the second read cannot leak"*. A builder who needs
- * one stops and routes it. The converse is a builder's **obligation**: **deleting an entry that a
- * fix in the same pass made dead is not widening the allow-list**, and assertion 2 will demand it.
+ * invisible, which is how `Stop.ticket` stayed invisible through round 19 (R19-5) and how any next
+ * field would have (R20-1). A new entry in `ALLOWED` — or a raised `max` — is **an architect's
+ * ruling, not a builder's judgment**: it is the written form of *"this value may be read twice and
+ * here is why the second read cannot leak"*. A builder who needs one stops and routes it. The
+ * converse is a builder's **obligation**: **deleting an entry that a fix in the same pass made dead
+ * is not widening the allow-list**, and assertion 2 will demand it.
  *
  * **A-24 (revision 18, QA R19-3…R19-5) — three claims A-23 made about its own reach, all smaller
  * than stated, all corrected here.** The `opaque` set held both whole `Trip` records on the ground
@@ -53,6 +56,16 @@
  * and `Trip.ownerId`; the matrix assigned row 5 two covers that are mutually exclusive; and *"a new
  * field is covered automatically"* was true only of fields the fixture instance carried. Seven roots,
  * fourteen rows, seven `ALLOWED` entries, and a fixture stop carrying 15 of `Stop`'s 15 fields.
+ *
+ * **A-25 (revision 19, QA R20-1…R20-3) — the last of the three dimensions, and the last site.**
+ * A census can be wrong about its **roots**, its **matrix** or its **fixtures**; A-23 closed the
+ * first for `Stop`/`Place`, A-24 closed it for `Trip`, and the third was pure prose. Part 1 makes it
+ * structural (four compile-time maps, a runtime key-set assertion, and a `DECLARED_NULLS` list,
+ * because a key set cannot see a field that is `null` — which is exactly how `homeBase` stayed
+ * invisible). Part 2 adds **both documents' `City` rows** as roots, on the rule that *a value which
+ * decides where a crossed record is FILED is in scope exactly as a value that crosses is* — a
+ * `Place` carries no provenance (A-6), so a mis-filing is as unbadged as a leak. Part 4 adds row 15.
+ * **Nine roots, fifteen rows, eight `ALLOWED` entries, four tests.**
  *
  * This does not replace `qa/r18-readonce.mjs` §1.1, which is QA's own copy of the mechanism at
  * its own scope. **A divergence between the two is itself a finding.**
@@ -64,7 +77,9 @@ import assert from 'node:assert/strict';
 // `addPlace` / `TRANSIT_CITY_KEY` are internals imported by module path. Nothing here widens the
 // surface — §2.10 stays at 71.
 import { addStop, copyStopInto, createTrip, sequentialIds } from '../src/index.ts';
-import type { BuildCtx, LatLng, PlaceLink, StopPlacement, Trip } from '../src/index.ts';
+import type {
+  BuildCtx, City, LatLng, Place, PlaceLink, Stop, StopPlacement, Trip,
+} from '../src/index.ts';
 import { addPlace } from '../src/build/stops.ts';
 import { TRANSIT_CITY_KEY } from '../src/model/ids.ts';
 
@@ -130,10 +145,11 @@ function censusTrip(trip: Trip, counts: Counts, path: string, opaque: ReadonlySe
 }
 
 /**
- * **The allow-list is the ruling, written in the test** (A-23). Exactly **seven** entries after
- * A-24 Part 1 — the five A-22 left, plus the two irreducible structural counts narrowing `opaque`
- * made visible. Adding one, or raising a `max`, is an architect's decision; see the maintenance
- * rule in this file's header.
+ * **The allow-list is the ruling, written in the test** (A-23). Exactly **eight** entries after
+ * A-25 Part 2 — the five A-22 left, the two irreducible structural counts narrowing `opaque` made
+ * visible (A-24 Part 1), and the one bounded exception opening the `City` rows produced. Adding
+ * one, or raising a `max`, is an architect's decision; see the maintenance rule in this file's
+ * header.
  *
  * **The discriminator A-24 Part 1 states, so a builder never guesses which is which:**
  *
@@ -153,7 +169,56 @@ const ALLOWED: Record<string, { max: number; why: string }> = {
   'srcPlace.name':      { max: 2, why: 'A-21a: probe + placeForCopy; A-15 has `name` crossing verbatim, so this is an inconsistency and not a crossing' },
   'tgtTrip.id':       { max: 2, why: 'A-24 Part 1: read 1 is refileCityKey\'s A-16 identity conjunct, read 2 is the record spread that rebuilds the RECIPIENT\'S OWN document — an irreducible floor, not a blessed second read. Nothing of the target Trip crosses a person boundary' },
   'tgtTrip.revision': { max: 2, why: 'A-24 Part 1: read 1 is the { ...trip } spread whose value the explicit `revision:` key immediately overwrites; read 2 is the increment. Irreducible for the same reason' },
+  'tgtCity0.key': { max: 2, why: 'A-25 Part 2: read 1 is A-19 validating the POOL PLACEMENT ARGUMENT against target.cities — a boolean about the caller\'s key, emitting nothing of the row; read 2 is refileCityKey step 4 recording the re-file answer. Two independent decisions over the RECIPIENT\'S OWN row; nothing of a target City crosses a person boundary' },
 };
+
+// ---------------------------------------------------------------------------
+// A-25 Part 1 (revision 19, QA R20-1, R20-2) — fixture completeness becomes STRUCTURAL.
+//
+// A-24 amended the maintenance rule to say the fixture must populate every field, and shipped
+// nothing behind the sentence. Round 20 proved the consequence in four steps: a 16th `Stop` field
+// written by `makeStop` only when truthy fails `npm run typecheck` at exactly one site
+// (`copyStop.test.ts`), a builder clears it there, the suite is green, and the census's fixture
+// never carried the field — so R19-5's exact plant on it is invisible all over again.
+//
+// These four maps are the same compile-time stop `copyStop.test.ts` has had since A-15, applied to
+// the census's OWN fixtures: a new field on `Stop`, `Place`, `Trip` or `City` fails
+// `npm run typecheck` HERE as well as there, and the key-set test below then stays red until the
+// fixture actually carries it. The maximal fixtures get **no `filter`** — `copyStop.test.ts:1300`
+// excludes `ticket` because that assertion is about what may CROSS, and this one is about what is
+// WATCHED, so nothing is excluded.
+// ---------------------------------------------------------------------------
+
+const CENSUS_TRIP_FIELDS: Record<keyof Trip, true> = {
+  id: true, title: true, ownerId: true, startDate: true, endDate: true, datePrecision: true,
+  homeCurrency: true, homeBase: true, party: true, cities: true, days: true, pool: true,
+  places: true, bookings: true, resolutions: true, revision: true, schemaVersion: true, meta: true,
+};
+const CENSUS_STOP_FIELDS: Record<keyof Stop, true> = {
+  id: true, placement: true, name: true, category: true, place: true, note: true, cost: true,
+  arrival: true, travelRole: true, bookingId: true, flags: true, provenance: true,
+  durationMins: true, links: true, ticket: true,
+};
+const CENSUS_PLACE_FIELDS: Record<keyof Place, true> = {
+  id: true, cityKey: true, name: true, at: true, category: true, note: true, links: true, hours: true,
+};
+const CENSUS_CITY_FIELDS: Record<keyof City, true> = {
+  key: true, name: true, countryCode: true, centre: true, order: true, meta: true,
+};
+
+/** Row 14 is deliberately minimal (A-24 Part 2), and its minimality is PINNED rather than assumed:
+ *  these are the keys `makeStop` / `addPlace` write only when the init carries them. A new optional
+ *  field on `Stop` or `Place` reds the test below until it is either populated in the maximal
+ *  fixture or named here — which is the classification, made once, out loud. */
+const MINIMAL_STOP_ABSENT: ReadonlyArray<keyof Stop> = ['links', 'ticket'];
+const MINIMAL_PLACE_ABSENT: ReadonlyArray<keyof Place> = ['note', 'links', 'hours'];
+
+/** Nulls in a MAXIMAL census fixture, each with the reason it hides nothing. A `null` stops
+ *  `censusDeep` dead, so an undeclared one is a subtree the census silently does not measure
+ *  (R20-2: `homeBase: null` hid a named home coordinate, and R18-5's hybrid-coordinate shape one
+ *  level down was then green by vacancy). Empty today, and empty is the strongest state this list
+ *  can be in. */
+const DECLARED_NULLS: Record<string, string> = {};
 
 // ---------------------------------------------------------------------------
 // Fixtures — the source stop carries every optional field and the source place carries `note`,
@@ -177,6 +242,11 @@ const ALLOWED: Record<string, { max: number; why: string }> = {
 
 const VIENNA: LatLng = { lat: 48.2082, lng: 16.3738 };
 const BELVEDERE: LatLng = { lat: 48.1915, lng: 16.3806 };
+/** A-25 Part 1: `Trip.homeBase` is a NAMED HOME COORDINATE — a `geoCheck` anchor (§2.13) and
+ *  precisely the class `BRIEF.md` calls data that must not leak. It was `null` in every census
+ *  fixture, so `censusDeep` stopped at the null and the field the guard most needed to watch was
+ *  one of the two it could not see (R20-2). */
+const LAX: LatLng = { lat: 33.9416, lng: -118.4085 };
 
 const CTX = (prefix: string): BuildCtx => ({
   ids: sequentialIds(prefix), now: '2026-08-01', actorUserId: 'user:marta',
@@ -185,12 +255,29 @@ const CTX = (prefix: string): BuildCtx => ({
 const SRC_CITY = 'src-vienna';
 const TGT_CITY = 'tgt-city';
 
+/**
+ * A-25 Part 1. The two `Trip` fields A-24's own roots could not see, populated on **all three**
+ * `Trip` fixtures. `meta.poolNotes` is KD-20's free-text carrier class and `homeBase.at` is the
+ * coordinate §2.13 anchors on, so these are the two `Trip` fields worth watching and not two
+ * arbitrary ones.
+ */
+const HOME_BASE = (): { name: string; at: LatLng } => ({ name: 'Los Angeles', at: { ...LAX } });
+const TRIP_META = (cityKey: string) => ({
+  poolNotes: { [cityKey]: { title: 'Optional in Vienna', note: 'ordinary prose about the pool' } },
+  sourceHash: '0000deadbeef',
+});
+
+/** A-25 Part 1. Both documents' `City` rows carry `countryCode` and `meta` — a `City` row is a
+ *  census root now (Part 2), and a root whose fixture is partial is the R20-1 gap one record over. */
+const CITY_META = { flagEmoji: '\u{1F1E6}\u{1F1F9}', color: '#c8102e' };
+
 function sourceTrip(opts: { link?: PlaceLink; at?: LatLng | null; pool?: boolean } = {}): Trip {
   let t = createTrip(
     {
       id: 'trip-src', title: 'Marta in Vienna', ownerId: 'user:marta',
       startDate: '2026-08-07', endDate: '2026-08-09',
-      cities: [{ key: SRC_CITY, name: 'Vienna', centre: VIENNA, order: 0 }],
+      homeBase: HOME_BASE(), meta: TRIP_META(SRC_CITY),
+      cities: [{ key: SRC_CITY, name: 'Vienna', countryCode: 'AT', centre: VIENNA, order: 0, meta: { ...CITY_META } }],
     },
     CTX('src-'),
   );
@@ -210,6 +297,13 @@ function sourceTrip(opts: { link?: PlaceLink; at?: LatLng | null; pool?: boolean
     {
       id: 's-src', name: 'Check in', category: 'stay',
       place: opts.link ?? { kind: 'place', placeId: 'p-src' },
+      // A-25 Part 1, the one judgment inside it: `bookingId` is POPULATED, not declared in
+      // `DECLARED_NULLS`. It is a scalar and a null scalar hides no subtree, so a declaration
+      // would have been cheaper — but the regression shape this arc keeps meeting is
+      // `...(src.x && … ? { x: src.x } : {})`, and against a `null` that expression short-circuits
+      // after ONE read and is invisible exactly as `ticket` was. A maximal fixture means values
+      // that make the test-then-emit shape MEASURABLE, not merely keys that are present.
+      bookingId: 'bk-src',
       note: 'Go early', flags: ['free'], durationMins: 90, travelRole: 'transfer',
       cost: {
         amounts: [{ lo: 10, hi: 20, currency: 'EUR', basis: 'per_person' }],
@@ -237,7 +331,10 @@ function minimalSourceTrip(): Trip {
     {
       id: 'trip-src', title: 'Marta in Vienna', ownerId: 'user:marta',
       startDate: '2026-08-07', endDate: '2026-08-09',
-      cities: [{ key: SRC_CITY, name: 'Vienna', centre: VIENNA, order: 0 }],
+      // A-25 Part 1: row 14 is minimal in its STOP and its PLACE, never in its `Trip` — a `Trip`
+      // field the fixture omits is invisible to the census on every row this document appears in.
+      homeBase: HOME_BASE(), meta: TRIP_META(SRC_CITY),
+      cities: [{ key: SRC_CITY, name: 'Vienna', countryCode: 'AT', centre: VIENNA, order: 0, meta: { ...CITY_META } }],
     },
     CTX('min-'),
   );
@@ -250,17 +347,37 @@ function minimalSourceTrip(): Trip {
   );
 }
 
-function targetTrip(cfg: { city?: string; places?: Array<{ name: string; at: LatLng | null }> } = {}): Trip {
+/**
+ * `cities` (A-25 Part 4, row 15) overrides the single default city with a list — the only row that
+ * needs one is the three-same-named-cities tie-break, and every other row keeps the one-city shape
+ * rows 1–14 were written against.
+ */
+function targetTrip(cfg: {
+  city?: string;
+  cities?: Array<{ key: string; name: string; order: number }>;
+  places?: Array<{ name: string; at: LatLng | null }>;
+} = {}): Trip {
   let t = createTrip(
     {
       id: 'trip-tgt', title: 'Jacob', ownerId: 'user:jacob',
       startDate: '2026-08-07', endDate: '2026-08-09',
-      cities: [{ key: TGT_CITY, name: cfg.city ?? 'Vienna', centre: VIENNA, order: 0 }],
+      homeBase: HOME_BASE(), meta: TRIP_META(TGT_CITY),
+      cities: (cfg.cities ?? [{ key: TGT_CITY, name: cfg.city ?? 'Vienna', order: 0 }]).map((c) => ({
+        key: c.key, name: c.name, countryCode: 'AT', centre: VIENNA, order: c.order,
+        meta: { ...CITY_META },
+      })),
     },
     CTX('tgt-'),
   );
   for (const [i, p] of (cfg.places ?? []).entries()) {
-    t = addPlace(t, { id: `p-tgt-${i}`, cityKey: TGT_CITY, name: p.name, at: p.at, category: 'stay' });
+    t = addPlace(t, {
+      id: `p-tgt-${i}`, cityKey: TGT_CITY, name: p.name, at: p.at, category: 'stay',
+      // A-25 Part 1: `tgtPlace0…n` are roots (R18-4), so the RECIPIENT's rows are populated as
+      // fully as the source's — a root whose fixture is partial is the R20-1 gap one record over.
+      note: 'ordinary prose about the target row',
+      links: [{ label: 'Site', href: 'https://example.test/tgt' }],
+      hours: { weekly: [{ day: 2, open: '10:00', close: '18:00' }], note: 'shorter on Sundays' },
+    });
   }
   return t;
 }
@@ -268,8 +385,10 @@ function targetTrip(cfg: { city?: string; places?: Array<{ name: string; at: Lat
 const SCHEDULED: StopPlacement = { kind: 'scheduled', dayId: '2026-08-08', time: '11:00', order: 0 };
 
 // ---------------------------------------------------------------------------
-// The scenario matrix — **fourteen** rows, one per control-flow path through `copyStopInto`
-// (A-23, extended by A-24 Part 2). A census only measures what the scenarios reach, so the matrix
+// The scenario matrix — **fifteen** rows, one per control-flow path through `copyStopInto`
+// (A-23, extended by A-24 Part 2 and A-25 Part 4). Rows 1–14 are unchanged in construction and in
+// numbering, so `qa/`'s row-by-row cross-check survives. A census only measures what the scenarios
+// reach, so the matrix
 // is part of the contract, and rows 1–10 are unchanged in construction and in numbering so that
 // `qa/`'s cross-check of the two censuses stays a row-by-row comparison.
 //
@@ -387,6 +506,27 @@ const MATRIX: Array<{ n: number; name: string; build: () => Case }> = [
     n: 14, name: '14 · a MINIMAL source stop — the absent-optional arms',
     build: () => ({ source: minimalSourceTrip(), target: targetTrip(), placement: SCHEDULED }),
   },
+  {
+    // A-25 Part 4 (QA R20-3). `refileCityKey`'s step-4 tie-break run MORE THAN ONCE — the branch
+    // R20-3 subverts. Two candidates never reach it (`best === null` short-circuits the first), which
+    // is why no row of the 14 could see this. Orders 5 / 3 / 4: the stable answer files the copied
+    // `Place` under the order-3 city; with the compared `order` and the recorded `order` being two
+    // separate reads, a flipping middle candidate wins the comparison and is filed under the loser —
+    // and `validateTrip` reports 0, because a `Place` carries no provenance (A-6). A trip may
+    // legitimately hold two cities of one name (A-10), so this is an ordinary document.
+    n: 15, name: '15 · three same-named target cities — the step-4 order tie-break',
+    build: () => ({
+      source: sourceTrip(),
+      target: targetTrip({
+        cities: [
+          { key: TGT_CITY, name: 'Vienna', order: 5 },
+          { key: 'tgt-city-b', name: 'Vienna', order: 3 },
+          { key: 'tgt-city-c', name: 'Vienna', order: 4 },
+        ],
+      }),
+      placement: SCHEDULED,
+    }),
+  },
 ];
 
 /**
@@ -394,12 +534,14 @@ const MATRIX: Array<{ n: number; name: string; build: () => Case }> = [
  * **immediately after `copyStopInto` returns** and before anything inspects the result, so
  * nothing but the copy is measured.
  *
- * **Seven roots** (A-24 Part 1), named by the path prefix a failure prints: `srcStop` (the source
- * stop, substituted into its day **and into the pool**, because row 13 takes it from there),
- * `srcPlace` (the source's `places` row), `tgtPlace0…n` (the **recipient's** own rows — R18-4 was a
- * multi-read of one of those), `srcTrip` and `tgtTrip` (every own field of each **except** the six
- * collections), `source`, `placement`, and `ctx` (with `ctx.ids` opaque, because an `IdFactory` is
- * a callable core owns).
+ * **Nine roots** (A-24 Part 1, A-25 Part 2), named by the path prefix a failure prints: `srcStop`
+ * (the source stop, substituted into its day **and into the pool**, because row 13 takes it from
+ * there), `srcPlace` (the source's `places` row), `tgtPlace0…n` (the **recipient's** own rows —
+ * R18-4 was a multi-read of one of those), `srcCity0…n` and `tgtCity0…n` (A-25 Part 2: a `City`
+ * row's `key` is the answer to *where is this crossed `Place` filed* and its `order` is the
+ * tie-break), `srcTrip` and `tgtTrip` (every own field of each **except** the six collections),
+ * `source`, `placement`, and `ctx` (with `ctx.ids` opaque, because an `IdFactory` is a callable
+ * core owns).
  */
 function runScenario(build: () => Case): { counts: Counts; threw: unknown } {
   const { source: srcTrip0, target: tgtTrip0, placement } = build();
@@ -419,10 +561,14 @@ function runScenario(build: () => Case): { counts: Counts; threw: unknown } {
     // A-24 Part 2 row 13: the source stop may live in the POOL, so it is substituted there too.
     pool: srcTrip0.pool.map((s) => (s.id === 's-src' ? censusDeep(s, counts, 'srcStop', opaque) : s)),
     places: srcTrip0.places.map((p, i) => censusDeep(p, counts, i === 0 ? 'srcPlace' : `srcPlace${i}`, opaque)),
+    // A-25 Part 2 (QA R20-3): a `City` row decides where a crossed `Place` is FILED — `key` is the answer
+    // and `order` is the tie-break — so its rows are roots for the same reason `tgtPlace0…n` are.
+    cities: srcTrip0.cities.map((c, i) => censusDeep(c, counts, `srcCity${i}`, opaque)),
   };
   const tgtSub: Trip = {
     ...tgtTrip0,
     places: tgtTrip0.places.map((p, i) => censusDeep(p, counts, `tgtPlace${i}`, opaque)),
+    cities: tgtTrip0.cities.map((c, i) => censusDeep(c, counts, `tgtCity${i}`, opaque)),
   };
   const srcTrip = censusTrip(srcSub, counts, 'srcTrip', opaque);
   const tgtTrip = censusTrip(tgtSub, counts, 'tgtTrip', opaque);
@@ -508,5 +654,74 @@ test('A-23: no dead allowance — every ALLOWED entry is observed at EXACTLY its
     dead, [],
     'an ALLOWED entry is never observed at its max: either the exception is dead (delete it — ' +
     'route it) or the matrix stopped reaching the branch that exercises it (add the scenario row).',
+  );
+});
+
+// ---------------------------------------------------------------------------
+// A-25 Part 1 — the third dimension. A census can be wrong in three ways: its ROOTS (what is
+// watched — A-24 Part 1, A-25 Part 2), its MATRIX (which branches are reached — a maintenance
+// rule, honestly, because "a branch" is a property of the code and no `Record<keyof T, true>`
+// reaches it), and its FIXTURES (whether a watched record is populated). The third was pure prose
+// until now, and R19-5, R20-1 and R20-2 are all instances of it.
+// ---------------------------------------------------------------------------
+
+function keys(o: object): string[] { return Object.keys(o).sort(); }
+
+function without<T extends string>(all: Record<string, true>, absent: ReadonlyArray<T>): string[] {
+  return Object.keys(all).filter((k) => !(absent as ReadonlyArray<string>).includes(k)).sort();
+}
+
+function nullPaths(v: unknown, path: string, out: string[]): void {
+  if (v === null || v === undefined) { out.push(path); return; }
+  if (typeof v !== 'object') return;
+  const from = v as Record<string, unknown>;
+  for (const k of Object.keys(from)) nullPaths(from[k], `${path}.${k}`, out);
+}
+
+/** The six collections are handed back bare by `censusTrip`, so they are not watched and their
+ *  nulls are not this test's business — their ROWS are separate roots with their own sweep. */
+function tripNullPaths(t: Trip, path: string, out: string[]): void {
+  const from = t as unknown as Record<string, unknown>;
+  for (const k of Object.keys(from)) {
+    if (TRIP_SKELETON.has(k)) continue;
+    nullPaths(from[k], `${path}.${k}`, out);
+  }
+}
+
+const srcStopOf = (t: Trip): Stop =>
+  [...t.days.flatMap((d) => d.stops), ...t.pool].find((s) => s.id === 's-src')!;
+
+test('A-25: the census fixtures populate every field of every censused record', () => {
+  const src = sourceTrip();
+  const tgt = targetTrip({ places: [{ name: 'Habyt Vienna', at: BELVEDERE }] });
+  const min = minimalSourceTrip();
+  assert.deepEqual(keys(src), keys(CENSUS_TRIP_FIELDS), 'srcTrip: a Trip field the fixture omits is invisible to the census (R20-2)');
+  assert.deepEqual(keys(tgt), keys(CENSUS_TRIP_FIELDS), 'tgtTrip: as above, on the recipient');
+  assert.deepEqual(keys(min), keys(CENSUS_TRIP_FIELDS), 'minimal srcTrip: row 14 is minimal in its STOP and PLACE, never in its Trip');
+  assert.deepEqual(keys(srcStopOf(src)), keys(CENSUS_STOP_FIELDS), 'srcStop: this is R19-5 — `ticket` was absent and a kind-gated leak was invisible');
+  assert.deepEqual(keys(srcStopOf(sourceTrip({ pool: true }))), keys(CENSUS_STOP_FIELDS), 'srcStop (row 13 takes it from the pool)');
+  assert.deepEqual(keys(src.places[0]!), keys(CENSUS_PLACE_FIELDS), 'srcPlace');
+  assert.deepEqual(keys(tgt.places[0]!), keys(CENSUS_PLACE_FIELDS), 'tgtPlace0: the RECIPIENT\'s rows are roots too — R18-4');
+  assert.deepEqual(keys(src.cities[0]!), keys(CENSUS_CITY_FIELDS), 'srcCity0');
+  assert.deepEqual(keys(tgt.cities[0]!), keys(CENSUS_CITY_FIELDS), 'tgtCity0');
+  assert.deepEqual(keys(srcStopOf(min)), without(CENSUS_STOP_FIELDS, MINIMAL_STOP_ABSENT), 'minimal stop');
+  assert.deepEqual(keys(min.places[0]!), without(CENSUS_PLACE_FIELDS, MINIMAL_PLACE_ABSENT), 'minimal place');
+});
+
+test('A-25: every null a maximal census fixture carries is declared', () => {
+  const src = sourceTrip();
+  const tgt = targetTrip({ places: [{ name: 'Habyt Vienna', at: BELVEDERE }] });
+  const found: string[] = [];
+  tripNullPaths(src, 'srcTrip', found);          // skips TRIP_SKELETON, exactly as `censusTrip` does
+  tripNullPaths(tgt, 'tgtTrip', found);
+  nullPaths(srcStopOf(src), 'srcStop', found);
+  nullPaths(src.places[0], 'srcPlace', found);
+  nullPaths(tgt.places[0], 'tgtPlace0', found);
+  nullPaths(src.cities[0], 'srcCity0', found);
+  nullPaths(tgt.cities[0], 'tgtCity0', found);
+  assert.deepEqual(
+    found.sort(), Object.keys(DECLARED_NULLS).sort(),
+    'a null in a maximal census fixture hides its whole subtree (R20-2: `homeBase: null` hid a named home ' +
+    'coordinate). Populate it, or declare it with the reason it hides nothing.',
   );
 });

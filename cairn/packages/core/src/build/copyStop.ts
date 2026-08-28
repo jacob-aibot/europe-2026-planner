@@ -354,7 +354,14 @@ function refileCityKey(source: Trip, sourceTripId: TripId, target: Trip, cityKey
   let best: { key: string; order: number } | null = null;
   for (const c of target.cities) {
     if (normalizeCityName(c.name) !== wanted) continue;
-    if (best === null || c.order < best.order) best = { key: c.key, order: c.order };
+    // A-25 Part 3 (revision 19, QA R20-3). ONE read of the candidate's `order`: the number the
+    // tie-break is decided on is the number the winning record carries. With two reads, an `order`
+    // flipping [3, 99] on the middle of three same-named target cities wins the comparison and is
+    // filed under the loser — and `validateTrip` reports 0, because a `Place` carries no provenance
+    // (A-6). It takes THREE same-named candidates to reach: with two, the first match short-circuits
+    // on `best === null` and `order` is read once.
+    const order: number = c.order;
+    if (best === null || order < best.order) best = { key: c.key, order };
   }
   return best === null ? null : best.key;
 }
