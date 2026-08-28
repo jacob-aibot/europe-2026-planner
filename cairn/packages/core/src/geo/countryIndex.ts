@@ -84,12 +84,24 @@ function boxOf(rings: readonly CountryRing[]): CountryBox {
  * before `HK`, `ES` before `GI`, `FR` before `MC`, `IT` before `SM`, `MY` before `SG`).
  *
  * So the order is decided where the polygons are: `tools/gen-countries.mjs` emits entries in
- * **ascending summed absolute spherical ring area, ties by ISO code ascending** — non-arbitrary,
- * because an enclave is always smaller than the thing enclosing it. Determinism is not weakened
- * by moving the decision here; it is strengthened, because the order becomes part of the
- * committed artefact, so a reorder is a diff a reviewer sees rather than a comparison a reviewer
- * trusts. A hand-written test fixture is tested in the order it was written, which is what a
- * four-polygon fixture wants.
+ * **ascending summed absolute spherical ring area, ties by ISO code ascending, then by scale
+ * coarsest first** — non-arbitrary, because an enclave is always smaller than the thing enclosing
+ * it. Determinism is not weakened by moving the decision here; it is strengthened, because the
+ * order becomes part of the committed artefact, so a reorder is a diff a reviewer sees rather
+ * than a comparison a reviewer trusts. A hand-written test fixture is tested in the order it was
+ * written, which is what a four-polygon fixture wants.
+ *
+ * **An ISO code may appear on more than one entry, and nothing here treats a code as a key**
+ * (§8.4 **A-27**). The fill takes the family's *finest* scale, which tracks the waterline — so a
+ * coordinate a few hundred metres offshore of a small island state came back `null` at its own
+ * capital. A-27 measured the obvious remedy, choosing a coarser scale per code, and rejected it:
+ * the coarse polygon deletes whole landforms (175 of the Maldives' 176 atolls). Instead, 54 of
+ * the 64 filled codes carry a **second entry** holding the same country's coarser rings, filtered
+ * at generation time so they claim only ground that touches the country's own fine rings and no
+ * other country's at all. Two entries of one code compose as a **union**, because `countryOf`
+ * returns the first *entry* whose rings contain the point and the even-odd rule runs *within* an
+ * entry — which is also why the coarse rings are a separate entry rather than merged into the
+ * fine ones: merged, the two would cancel exactly where the forgiveness is wanted.
  */
 export function countryIndex(init: {
   scale: string;

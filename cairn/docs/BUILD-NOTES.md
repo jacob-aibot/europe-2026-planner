@@ -1,5 +1,42 @@
 # Cairn — build notes, Phase 1 (and Phase 2 in progress)
 
+> **Addendum, on Phase 2 **I-5b** — ARCHITECTURE revision 21's **A-27**: the forgiveness entry, and
+> why a filled code may not be made to choose a scale. The third increment of step 2b.**
+> Scope was A-27 Part 7 and nothing else: **one new generator module, one generator, two hand-written
+> `packages/core` docstrings (no behaviour), two test files (one new), one regenerated module, two
+> regenerated goldens, one new generated fixture.** Nothing in `packages/client`, nothing in
+> `apps/web/src`, nothing under `qa/`, nothing at the repo root, no `schemaVersion` bump, **no new
+> export (73, unchanged)**, no change to `ARCHITECTURE.md`, `ROADMAP.md` or the visual roadmap.
+> **`derive/country.ts` gains no branch, no parameter and no distance function** — the only edit to
+> it is A-27 Part 8's two verbatim docstring replacements, which is the permission the ruling
+> issues in as many words. **One new KD (54).** Written test-first: the seventeen `overlaps`/filter
+> tests were written and run against synthetic geometry before the generator called any of them.
+>
+> | | |
+> |---|---|
+> | **What runs, and the exact command** | `cd cairn && npm run typecheck && npm run test:tap`. The generator is still a build-time tool run by hand and never by the product: `node tools/gen-countries.mjs` (110m base + 10m fill + 50m forgiveness; writes `countries.gen.ts` **and** `fixtures/golden/forgiveness-drops.json`), `--dry-run`, `--no-fill`, `--scale 50m\|10m`, `--audit-only`, `--holes`. All six re-run and still work; `--scale 25m` still exits 2 with a usable message. Goldens: `npm run golden`, then `node tools/gen-countries.mjs --holes`. |
+> | **My measurements vs A-27's projection — the packed payload matches to the byte** | **293 entries · 239 distinct ISO codes · 1,034 rings · 22,229 points · 369,688 bytes packed.** A-27 Part 5 projected **293 / 239 / 1,034 / 22,229 / 369,688**. Every figure reproduces, including the packed byte count exactly, which I did not expect and checked twice. The *file* is **374,826** bytes — the extra 5,138 is header comment, as at I-5a. `EMITTED_BYTES` moves **346,455 → 374,826, +8.2 %** (A-27 projected +7.8 % on the payload; the payload itself is +7.8 % exactly, 342,981 → 369,688). |
+> | **The forgiveness pass, and what it refused** | **54 forgiveness entries over 54 codes; 142 of 153 candidate rings kept, 11 dropped — 2 by filter 1, 9 by filter 2.** A-27 Part 5's split, reproduced: filter 1 drops one `MV` ring and one `VA` ring; filter 2 drops `AD` 1, `HK` 3, `LI` 1, `MC` 1, `SG` 1, `SM` 1, `SX` 1. **Ten filled codes are refused an entry: `AD GI HK LI MC SG SM SX UM VA`** — seven bordered (filter 2, each naming the encloser it would have taken from: `ES CN CH FR MY IT MF`), `VA` by filter 1, and `GI`/`UM` because no 1:50m polygon for them exists. The 1:110m layer carries **0** of the 64 filled codes, as A-27 Part 3 property 4 says it must by construction, so the only forgiveness scale that contributes is 1:50m. |
+> | **`overlaps`, and why it is in its own file** | `tools/forgiveness.mjs` — A-27 Part 4's predicate and both filters, with each filter independently removable by argument. It is a separate module because criterion 4(e) asks for *injected faults*, and a test cannot inject a fault into a filter it cannot import: `gen-countries.mjs` runs `main()` and fetches 13 MB at import time. The predicate is evaluated on the **quantised** rings, as the ruling requires, and in **exact integer arithmetic** on the 1e-4 lattice — every orientation and crossing test is a comparison of integer products under 1.3 × 10¹³, so *"exact for simple rings"* is a property of the code and not only of the prose. Ring-level bounding-box rejection first, and that rejection is exact rather than an approximation (a box-disjoint ring of `S` can hold no vertex of `R`, contribute no even-odd crossing over `R`'s vertices, and cross no segment of `R`). |
+> | **Verification (i) — the reference trip, unchanged** | Over all **226** coordinate-bearing records, **zero** answers change. `fixtures/golden/countries.json` regenerates with a **4-line diff and nothing else** (`index.scale`, `index.source`, `index.countries` 239 → 293, `index.rings` 892 → 1,034); `country-holes.json` with a **2-line diff**, both in `index`. Its 7 holes, its `total`/`resolvable` counters and every `resolvesAt` are identical. Every country row, every `namedBy`, both unattributed lists: unchanged. |
+> | **Verification (ii) — additive, proven structurally rather than sampled** | The generator records the emitted positions of its 54 forgiveness entries in `forgiveness-drops.json`. Strip those positions from the new packed payload and the result is **byte-identical JSON to the entire pre-I-5b payload restored from `git show b6200e6:…`** — same 239 entries, same order, same 892 rings. Not "no ring is missing": the coverage half *is* the old artefact. A `country → null` regression is therefore impossible by construction, which is A-27 Part 3 property 2 with its premise measured instead of assumed. 892 + 142 = 1,034. |
+> | **Verification (iii) — the fine sweep, re-derived** | **14,926,301 cells at 0.02° over all 54 forgiveness bounding boxes padded by 0.1°: 704 cells `null` → a country, 0 `country` → `null`, 0 one country → another.** A-27 Part 5's figures, cell for cell, including the 704. Largest gainers `GS` 107, `PF` 95, `KI` 68, `FO` 63, `AX` 53. A coarser run of the same comparison (0.1°, 598,020 cells, 25 gained, 0 worse; ~3 s) ships as a test so a future regression is caught by `npm test` rather than by a builder who remembered to sweep. |
+> | **Verification (iv) — the capitals, and the one that was never broken** | **`Nuku'alofa` `null` → `TO`, `St John's` `null` → `AG`, `St George's` `null` → `GD`, `Diego Garcia` `null` → `IO`.** Each asserted in both directions — the test states that the pre-I-5b index really did miss it, so a fix cannot be confused with a coordinate that always worked. **`Grytviken` is `GS` before and `GS` after**: A-27 Part 1 could not reproduce the breaker on it, nor could I, and it was not "fixed". **`St Helier` is `null` before and after** — no scale in the pinned family reaches it, the same class as the three Dalmatian coves. **St Peter's is still `IT`**, and the Vatican residue is now refused *by measurement*: filter 1 drops the 1:50m `VA` polygon because it does not touch the state at all. **Zhuhai is still `null`** and Senado Square still `MO`; all eight A-26 micro-states, Malta, the Maldives and Pile Gate unchanged. |
+> | **R22-4, the budget guard — re-measured, not padded** | The old guard 1 (*"< 3,600 bytes of TypeScript outside the packed literal"*, message *"data leaked into syntax"*) is replaced by two measurements of two different things, because 87 % of what it was measuring is generated header comment. **Guard 1a: the statements after the header comment — 579 bytes measured, limit 1,500**, and its message now says what it means. **Guard 1b: the header's prose with its ISO code runs subtracted — 3,293 bytes measured, limit 6,000**, so the code lists grow with the dataset instead of silently eating the allowance. The `[`-outside-the-literal and >98 %-inside assertions are unchanged; they are the ones that actually catch data becoming syntax. |
+> | **R22-5, the fill's dropped rings** | The fill line now reports its own degenerate-ring count beside the base's: `splicing 64 (+606 rings, +10143 points, 0 rings dropped as degenerate)`. Today it is 0 and the base's is 1 (the ~0.3 m `KP` sliver). The forgiveness pass reports the same field per scale. |
+> | **Ceilings, re-derived by running** | `npm run typecheck` clean, both projects, exit 0. `npm run test:tap` **685 pass / 0 fail** (662 → 685, **+23**: 17 in the new `test/forgiveness.test.ts`, 6 in `country.test.ts`). `node --test packages/core` exits 0 — the type-stripping gate, with the generated module at 374,826 bytes and no build step. `Object.keys(core).length` **73**, unchanged. Reference trip **2 blockers / 4 warnings / 11 notes**, `validateTrip` **11**, `geoCheck` **0** — all unmoved. `npm run golden` and `npm run sample` regenerate with no further change (sample sha still `40955ca0b182`); two consecutive generator runs produce byte-identical `countries.gen.ts` and `forgiveness-drops.json`. |
+> | **`npm run web:build`, per A-27 Part 9's standing obligation** | Clean. **`dist/assets/index-*.js` is 969.58 kB (gzip 314.86 kB)**, up from 942.79 kB at I-5a. The country payload is 369,688 bytes of that — **38.1 % of the bundle**, up from 36.4 %. Recorded, not argued: A-27 Part 9 accepts the share until I-6 and this is the number it asks each affected increment to leave behind. Note the file grew 160 bytes more than the bundle did, because those bytes are comment and the bundler drops them. |
+> | **The new fixture, and why it is committed** | `fixtures/golden/forgiveness-drops.json` (7,383 bytes) — the 11 candidate rings the filters rejected, each with the filter that rejected it and, for filter 2, the code it overlapped; plus the emitted positions of the 54 forgiveness entries. Rejected rings are by definition absent from `countries.gen.ts`, so the two injected faults cannot be run without them. Everything else the fault tests need comes out of `COUNTRY_INDEX` itself. **Generated, never hand-typed** — I-5's dependency clause applies to test fixtures too. |
+> | **What I stubbed** | Nothing. A-27 Part 7's three items are all built. What I did **not** build, because it is I-6's and I-8's: `tripSummary(trip, index)`, `countryCodes`, `SUMMARY_VERSION`, `travelStats`, any screen. `countryOf` and `COUNTRY_INDEX` still have no consumer inside the product, deliberately. |
+> | **What I could not verify** | Four, stated rather than glossed. (1) **No checksum comparison against `naturalearthdata.com`'s own artefact** — still 403 through the proxy, §8.4's own limit; all three files matched the generator's pins to the byte. (2) **The capital coordinates are typed from general knowledge**, exactly as A-27 Part 1 says of its own; they are not verified against a source, and the result rests on a plausible traveller's coordinate missing rather than on their precision. (3) **`node --test packages/core` reports one subtest and finishes in ~170 ms**, which is too fast to be running the 23 test files; it does the same at `b6200e6`, so it is pre-existing and unchanged by this increment, but the ship gate leans on it and a reader should know that `node --test packages/core/test/*.test.ts` is the run that actually loads the generated module. (4) I ran nothing under `qa/` — out of scope by instruction; `qa/r14-horizon-copy.mjs` §7's `kds.length` pin moves again with KD-54. |
+> | **R22-2 is NOT in this increment** | Deliberately, and checked rather than assumed: A-27 Part 7 folds **R22-4** in as a prerequisite and **absorbs R22-5**, and names neither R22-2 nor its `verifyQuantisation` lattice anywhere. It remains open. What I did touch nearby: `mixedRaw` no longer rebuilds the raw twin by ISO code — it could not, now that one code can supply rings from two scales — so `build()` records each kept ring's unquantised twin at the same index. That is strictly more accurate than the old form (which re-included rings quantisation had dropped) and it does not make the 1.7° lattice able to fail, which is R22-2's actual point. `quantMisses` is still 0. |
+> | **Objection to the design** | **None on the mechanism.** A-27 Part 2's measurement-then-rejection of the per-code scale choice is the right call and I could not find a case it gets wrong. One correction to the *criterion*, not the ruling, and it is disclosed as **KD-54**: ROADMAP criterion 4(e)'s injected fault 2 says removing filter 1 gives `VA` the westward polygon, and it does not — filter 2 catches it against `IT`, because the ground that polygon claims is a square kilometre of Rome. Both filters have to go. The test asserts all three states rather than weakening to match the sentence. |
+>
+> The I-5a addendum below stands, with three figures superseded by this pass: `EMITTED_BYTES` is
+> `374_826`, the index carries **293 entries over 239 distinct codes**, and I-5a's *"could not
+> verify"* item 2 — the un-measured web bundle — is now measured, above. `CAIRN_VISUAL_ROADMAP.md`
+> and its `.html` twin were **not** updated: the task that routed I-5b excluded them explicitly.
+
 > **Addendum, on Phase 2 **I-5a** — ARCHITECTURE revision 20's **A-26**: the mixed-resolution
 > index, and the emission order that resolves an enclave. The second increment of step 2b.**
 > Scope was A-26 Part 6 and nothing else: **one generator, one hand-written `packages/core` file,
@@ -1851,6 +1888,39 @@ requires. **It is a one-line correction** — the sentence should point at A-26 
 generator — and it is a doc-only change with no behavioural risk whenever the architect wants it made.
 The behavioural claim the file makes that *is* still true, and the one that matters, is that it
 contains no distance function; a test greps for that and it still passes.
+
+**CLOSED at I-5b.** ARCHITECTURE revision 21, §8.4 **A-27 Part 8**, is the architect's ruling on
+exactly this: *"That instruction is narrowed here: `derive/country.ts`'s **behaviour** is unchanged
+— no distance function, no branch, no parameter, now and in every later increment — and its
+docstring is corrected to match what A-26 made true."* Part 8 supplies both replacement sentences
+verbatim (the `:70` order sentence this entry raised, and the `:27` *"stops at the box"* rider round
+22 found beside it, `R22-3`); both are pasted into the file at I-5b with no other change. The
+grep-for-no-distance-function test still passes.
+
+### KD-54 — ROADMAP criterion 4(e)'s second injected fault is one filter short of what it describes, and the test records the measurement
+
+**Where:** `tools/forgiveness.mjs` (`forgivenessFor`) · `test/forgiveness.test.ts` ·
+**ROADMAP exit criterion 4 part (e), ARCHITECTURE §8.4 A-27 Part 4.**
+
+**What the contract says.** *"Injected fault 2: remove filter 1 and Vatican City gains the 1:50m
+polygon that lies ~1 km west of the state — a named test goes red."*
+
+**The divergence, measured.** Removing filter 1 alone does **not** give `VA` that polygon. A-27
+Part 4 runs the filters in order — filter 1 first, then filter 2 on the survivors — so the ring
+never reaches filter 2 today, which is why A-27 Part 5 books it as *"`VA` 1 by filter 1"*. Take
+filter 1 away and filter 2 catches it immediately, and against the obvious neighbour: the ground
+that polygon claims is a square kilometre of Rome, so it `overlaps` `IT`'s coverage rings. Both
+filters have to be removed before `VA` actually gains an entry.
+
+**Why this is a disclosure and not a fix.** The criterion's *intent* is right and the mechanism it
+describes is doing exactly what it was written to do — filter 1 is what identifies the ring as *a
+different claim about where the Vatican is* rather than a coarser drawing of it, which is the
+measurement A-27 wanted in place of A-26 Part 5's hand-written exception. Only the sentence's
+"a named test goes red" step is one filter short. So the test asserts all three states rather than
+the one: with both filters the ring is refused **by filter 1**; with filter 1 removed it is refused
+**by filter 2, naming `IT`**; with both removed `VA` gains the polygon and its box lies entirely
+west of the state. Weakening the assertion to match the sentence, or reordering the filters so the
+sentence became true, would both be worse than saying this.
 
 ---
 

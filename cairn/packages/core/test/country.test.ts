@@ -708,13 +708,18 @@ test('I-5: a degenerate ring encloses nothing rather than throwing', () => {
 // ---------------------------------------------------------------- the bundled index itself
 
 test('I-5a: the bundled index decodes to a plausible mixed-resolution admin-0 layer', () => {
-  assert.equal(COUNTRY_INDEX.scale, 'ne_110m+10m');
+  assert.equal(COUNTRY_INDEX.scale, 'ne_110m+10m+50m');
   assert.match(COUNTRY_INDEX.source, /^nvkelso\/natural-earth-vector@v5\.1\.2\//);
   assert.match(COUNTRY_INDEX.source, /ne_110m_admin_0_countries\.geojson/, 'the base file is not named');
   assert.match(COUNTRY_INDEX.source, /ne_10m_admin_0_countries\.geojson/, 'the fill file is not named');
-  assert.equal(COUNTRY_INDEX.countries.length, 239);
+  assert.match(COUNTRY_INDEX.source, /ne_50m_admin_0_countries\.geojson/, 'the forgiveness file is not named');
   const codes = COUNTRY_INDEX.countries.map((c) => c.code);
-  assert.equal(new Set(codes).size, codes.length, 'a country code appears twice');
+  // **Criterion 4c, split at revision 21 (§8.4 A-27).** "Every ISO code the base scale omits is
+  // filled" is a claim about *countries*; the artefact's length is a different claim, because a
+  // filled code may now own a second, forgiveness entry. Asserting one number for both was
+  // asserting the wrong thing.
+  assert.equal(new Set(codes).size, 239, 'the index no longer names 239 distinct countries');
+  assert.equal(COUNTRY_INDEX.countries.length, 293, 'the artefact no longer has 293 entries');
   assert.deepEqual(codes.filter((c) => !/^[A-Z]{2}$/.test(c)), [], 'a code is not ISO 3166-1 alpha-2');
   for (const c of COUNTRY_INDEX.countries) {
     assert.ok(c.rings.length > 0, `${c.code} has no rings`);
@@ -789,6 +794,190 @@ test('I-5a injected fault: dropping LI from the fill returns Vaduz to Austria', 
   });
   assert.equal(countryOf({ lat: 47.141, lng: 9.5209 }, withoutLI), 'AT');
   assert.equal(countryOf({ lat: 47.141, lng: 9.5209 }, COUNTRY_INDEX), 'LI', 'and the shipped index does not');
+});
+
+// ---------------------------------------------------------------- I-5b: the forgiveness entry
+
+/**
+ * The positions, in the emitted array, of the 54 entries A-27's forgiveness pass added. Two
+ * entries of one ISO code are indistinguishable in the packed payload, so the generator records
+ * them; `countries.filter((_, i) => !forgivenessAt.has(i))` is then *exactly* the index as it
+ * shipped before I-5b, which is what makes the additive claim below assertable rather than
+ * argued. The rest of that fixture — the rings the filters rejected — is
+ * `test/forgiveness.test.ts`'s, which injects the two faults ROADMAP exit criterion 4 part (e) asks for.
+ */
+const FORGIVENESS_AT: number[] = JSON.parse(
+  readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'fixtures', 'golden', 'forgiveness-drops.json'), 'utf8'),
+).forgivenessAt;
+
+/** The index as it shipped before I-5b: the same entries, in the same order, minus the 54. */
+const COVERAGE_ONLY = countryIndex({
+  scale: 'coverage-only',
+  source: 'COUNTRY_INDEX minus its forgiveness entries — the pre-I-5b index',
+  countries: COUNTRY_INDEX.countries
+    .filter((_, i) => !FORGIVENESS_AT.includes(i))
+    .map((c) => ({ code: c.code, rings: c.rings })),
+});
+
+/**
+ * **Criterion 4(e)(i).** A-27 Part 1's four reproduced failures. The fill scale is the family's
+ * *finest*, which tracks the waterline, so a coordinate a few hundred metres out to sea off a
+ * small island state came back `null` at its own capital. Each assertion states both halves: the
+ * answer today, and that the pre-I-5b index really did miss it — a test that only asserted the
+ * new answer could not tell a fix from a coordinate that always worked.
+ *
+ * **Coordinates typed from general knowledge, and A-27 says so too.** The ruling does not rest on
+ * their precision, only on the fact that a plausible traveller's coordinate misses; these are
+ * within a few hundred metres of each capital's waterfront.
+ */
+test('I-5b criterion 4e(i): four capitals that were null now attribute to their own countries', () => {
+  const cases: Array<[string, LatLng, string]> = [
+    ["Nuku'alofa, Tonga", { lat: -21.139, lng: -175.204 }, 'TO'],
+    ["St John's, Antigua", { lat: 17.1274, lng: -61.8468 }, 'AG'],
+    ["St George's, Grenada", { lat: 12.0561, lng: -61.7488 }, 'GD'],
+    ['Diego Garcia, BIOT', { lat: -7.3133, lng: 72.4111 }, 'IO'],
+  ];
+  for (const [name, at, want] of cases) {
+    assert.equal(countryOf(at, COVERAGE_ONLY), null, `${name} was NOT null before I-5b — the test has drifted`);
+    assert.equal(countryOf(at, COUNTRY_INDEX), want, `${name} should attribute to ${want}`);
+  }
+});
+
+/**
+ * **The case that did not reproduce, kept as a test so it is not "fixed" later.** A-27 Part 1
+ * re-derived the breaker's five and found Grytviken among them attributing correctly already,
+ * both at a typed coordinate and at Natural Earth's own populated-place point. It is `GS` before
+ * I-5b and `GS` after; the forgiveness entry adds sea around South Georgia and changes nothing on
+ * it. And St Helier is the third class again — no scale in the pinned family attributes it, so
+ * `null` is the correct answer, exactly as the three Dalmatian coves are (A-26 Part 1).
+ */
+test('I-5b: Grytviken was never broken, and St Helier is a dataset gap rather than a scale one', () => {
+  const grytviken = { lat: -54.2811, lng: -36.5092 };
+  assert.equal(countryOf(grytviken, COVERAGE_ONLY), 'GS', 'Grytviken was already GS before I-5b');
+  assert.equal(countryOf(grytviken, COUNTRY_INDEX), 'GS');
+  const stHelier = { lat: 49.1868, lng: -2.1064 };
+  assert.equal(countryOf(stHelier, COVERAGE_ONLY), null);
+  assert.equal(countryOf(stHelier, COUNTRY_INDEX), null, 'no scale in the family reaches St Helier — null is right');
+});
+
+/**
+ * **Criterion 4(e)(ii) — the additive claim, asserted on the ring sets rather than sampled.**
+ *
+ * A-27 Part 3 property 2: *"Every ring in the committed index is still in the index,
+ * byte-identical; the change is purely additive. So the set of countries containing any point can
+ * only grow, and a `country → null` regression is impossible by construction."* That argument is
+ * only as good as its premise, so the premise is what is asserted: strip the 54 recorded
+ * positions and what is left is the pre-I-5b artefact — same entries, same order, same rings, to
+ * the byte. Nothing was re-quantised, re-ordered or merged.
+ */
+test('I-5b criterion 4e(ii): the forgiveness pass is purely additive to the pre-I-5b index', () => {
+  assert.equal(FORGIVENESS_AT.length, 54, 'the generator recorded a different number of forgiveness entries');
+  assert.equal(COVERAGE_ONLY.countries.length, 239);
+  const coverageCodes = COVERAGE_ONLY.countries.map((c) => c.code);
+  assert.equal(new Set(coverageCodes).size, 239, 'the coverage-only index has a duplicate code');
+
+  // Every forgiveness entry sits under a code the coverage pass already emitted — the ceiling.
+  const covered = new Set(coverageCodes);
+  for (const i of FORGIVENESS_AT) {
+    assert.ok(covered.has(COUNTRY_INDEX.countries[i].code), `entry ${i} introduces a code the coverage pass did not`);
+  }
+
+  // And no coverage ring was disturbed: every one of the 892 is still present, byte-identical,
+  // under its own code.
+  const shipped = new Set<string>();
+  for (const c of COUNTRY_INDEX.countries) for (const r of c.rings) shipped.add(`${c.code}|${JSON.stringify(r)}`);
+  let coverageRings = 0;
+  for (const c of COVERAGE_ONLY.countries) {
+    for (const r of c.rings) {
+      coverageRings++;
+      assert.ok(shipped.has(`${c.code}|${JSON.stringify(r)}`), `${c.code} lost a ring`);
+    }
+  }
+  assert.equal(coverageRings, 892, 'the coverage half no longer has 892 rings');
+  const total = COUNTRY_INDEX.countries.reduce((n, c) => n + c.rings.length, 0);
+  assert.equal(total, 1_034);
+  assert.equal(total - coverageRings, 142, 'the forgiveness pass added a different number of rings');
+});
+
+/**
+ * **Criterion 4(e)(iii), in the form a unit test can afford.** The full measurement is
+ * 14,926,301 cells at 0.02° over all 54 forgiveness bounding boxes padded by 0.1°, re-derived for
+ * this increment and recorded in this increment's build notes: **704 cells `null` → a country, 0 `country` →
+ * `null`, 0 one country → another.** That sweep takes ninety seconds and does not belong in the
+ * suite; what belongs here is a coarser run of the same comparison, over the same boxes, so a
+ * regression that made a forgiveness entry steal ground would be caught by `npm test` rather than
+ * only by a builder who remembered to sweep.
+ */
+test('I-5b criterion 4e(iii): over the forgiveness boxes, no cell gets worse', () => {
+  const STEP = 0.1;
+  const PAD = 0.1;
+  let cells = 0;
+  let gained = 0;
+  for (const i of FORGIVENESS_AT) {
+    const box = COUNTRY_INDEX.countries[i].box;
+    for (let lat = Math.max(-90, box[1] - PAD); lat <= Math.min(90, box[3] + PAD); lat += STEP) {
+      for (let lng = Math.max(-180, box[0] - PAD); lng <= Math.min(180, box[2] + PAD); lng += STEP) {
+        cells++;
+        const before = countryOf({ lat, lng }, COVERAGE_ONLY);
+        const after = countryOf({ lat, lng }, COUNTRY_INDEX);
+        if (before === after) continue;
+        assert.notEqual(after, null, `(${lat}, ${lng}) went ${before} -> null`);
+        assert.equal(before, null, `(${lat}, ${lng}) went ${before} -> ${after}`);
+        gained++;
+      }
+    }
+  }
+  assert.ok(cells > 500_000, `only ${cells} cells swept — the boxes are not being covered`);
+  assert.ok(gained > 0, 'not one cell gained a country: the forgiveness entries are doing nothing');
+});
+
+/**
+ * **Criterion 4(e)(iv).** The answers A-26 pinned, re-asserted against the larger index, because
+ * the whole risk of adding entries is that one of them answers ground it should not. Vatican City
+ * is the load-bearing one: A-26 Part 5 residue 1 held `IT` as a *hand-written exception*, and
+ * A-27 filter 1 drops the 1:50m `VA` polygon by measurement instead — so the answer is unchanged
+ * and the reason for it is now reproducible. Zhuhai is the other side: Chinese ground beside
+ * Macao, `null` before and `null` after, because filter 2 refused `MO` any coarse ring at all.
+ */
+test('I-5b criterion 4e(iv): the pinned answers are all unchanged by the forgiveness entries', () => {
+  const cases: Array<[string, LatLng, string | null]> = [
+    ["St Peter's Basilica", { lat: 41.9022, lng: 12.4539 }, 'IT'],
+    ['Vatican Museums entrance', { lat: 41.9065, lng: 12.4536 }, 'IT'],
+    ['Senado Square, Macao', { lat: 22.1936, lng: 113.5397 }, 'MO'],
+    ['Zhuhai, across the border', { lat: 22.2769, lng: 113.5678 }, null],
+    ['Vaduz', { lat: 47.141, lng: 9.5209 }, 'LI'],
+    ['Singapore', { lat: 1.3521, lng: 103.8198 }, 'SG'],
+    ['Hong Kong', { lat: 22.3193, lng: 114.1694 }, 'HK'],
+    ['Monaco', { lat: 43.7384, lng: 7.4246 }, 'MC'],
+    ['San Marino', { lat: 43.9424, lng: 12.4578 }, 'SM'],
+    ['Andorra la Vella', { lat: 42.5063, lng: 1.5218 }, 'AD'],
+    ['Gibraltar', { lat: 36.1408, lng: -5.3536 }, 'GI'],
+    ['Valletta, Malta', { lat: 35.8989, lng: 14.5146 }, 'MT'],
+    ['Malé, Maldives', { lat: 4.1755, lng: 73.5093 }, 'MV'],
+    ['Pile Gate, Dubrovnik', { lat: 42.6414, lng: 18.1067 }, 'HR'],
+    ['mid-Atlantic', { lat: 30, lng: -40 }, null],
+  ];
+  for (const [name, at, want] of cases) {
+    assert.equal(countryOf(at, COVERAGE_ONLY), want, `${name} changed BEFORE I-5b — something else moved`);
+    assert.equal(countryOf(at, COUNTRY_INDEX), want, `${name} should still be ${want}`);
+  }
+});
+
+/**
+ * **The ten codes refused a forgiveness entry, from the artefact's own shape.** Seven are
+ * bordered — filter 2 refused them, because their coarse polygon reaches into an encloser, which
+ * is the wrong-answer class A-26 Part 5 residue 2 bounds. `VA` is filter 1's, and `GI`/`UM` have
+ * no 1:50m polygon at all. `test/forgiveness.test.ts` proves *which filter* refused each by
+ * re-running them; this asserts the consequence in the shipped index.
+ */
+test('I-5b: ten filled codes carry exactly one entry, and no eleventh code was refused', () => {
+  const counts = new Map<string, number>();
+  for (const c of COUNTRY_INDEX.countries) counts.set(c.code, (counts.get(c.code) ?? 0) + 1);
+  for (const code of ['AD', 'GI', 'HK', 'LI', 'MC', 'SG', 'SM', 'SX', 'UM', 'VA']) {
+    assert.equal(counts.get(code), 1, `${code} should carry exactly one entry — it was refused forgiveness`);
+  }
+  assert.equal([...counts.values()].filter((n) => n === 2).length, 54, 'a different number of codes carry two entries');
+  assert.equal([...counts.values()].filter((n) => n > 2).length, 0, 'a code carries more than two entries');
 });
 
 test('I-5: the bundled index is data only — nothing in core reaches the network for it', () => {

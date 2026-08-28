@@ -24,7 +24,8 @@
  *
  *  - **No antimeridian wrapping.** Admin-0 rings are clipped at ±180°, so a country that straddles
  *    the line arrives as two polygons and the ray cast never needs to cross it. The ray is cast
- *    towards +∞ longitude and stops at the box; a point at lng −179.5 is tested against the rings
+ *    towards +∞ longitude and is unbounded; the entry's bounding box is a *point* reject applied
+ *    before the cast, never a clip on the ray. A point at lng −179.5 is tested against the rings
  *    that live at negative longitudes, which is where its half of the country is.
  *  - **The poles are not special-cased.** They are ordinary coordinates and get whatever answer
  *    the rings give — which for the north pole is `null`, there being no admin-0 polygon over the
@@ -66,9 +67,12 @@ function crossesOdd(lng: number, lat: number, ring: CountryRing): boolean {
  * The country whose rings contain `at`, or `null`.
  *
  * Pure: the index is injected, nothing is read from disk or the network, and the same
- * `(at, index)` always yields the same answer. Countries are tested in the index's own order,
- * which `countryIndex` fixes as ascending ISO code, so an overlap in the data resolves the same
- * way everywhere.
+ * `(at, index)` always yields the same answer. Entries are tested in the index's own order, which
+ * `countryIndex` **preserves** exactly as the committed artefact emits it — ascending polygon
+ * area, ties by ISO code (§8.4 A-26 Part 4) — so an overlap in the data resolves the same way on
+ * every machine and every run. An ISO code may appear on **more than one entry** (§8.4 A-27): the
+ * first entry containing the point wins, and same-code entries carry the same answer, so which
+ * one wins is not observable.
  */
 export function countryOf(at: LatLng, index: CountryIndex): CountryCode | null {
   // §2.9 A-21's read-once rule: `at` is caller-supplied, so each field is read exactly once and

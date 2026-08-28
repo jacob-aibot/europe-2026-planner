@@ -3,7 +3,9 @@
  * admin-0 country boundaries (ARCHITECTURE §8.4 clause 1, ROADMAP Phase 2 I-5).
  *
  * Run:
- *   node tools/gen-countries.mjs                 # 1:110m base + 1:10m fill (the shipped index)
+ *   node tools/gen-countries.mjs                 # 1:110m base + 1:10m fill + 1:50m forgiveness
+ *                                                #   (the shipped index; also writes
+ *                                                #   fixtures/golden/forgiveness-drops.json)
  *   node tools/gen-countries.mjs --scale 50m     # a different base; the budget moves with it
  *   node tools/gen-countries.mjs --no-fill       # the base scale alone, for A-26 Part 2's comparison
  *   node tools/gen-countries.mjs --dry-run       # measure and audit, write nothing
@@ -22,6 +24,21 @@
  * order `countryOf` must test them in: an enclave is always smaller than the thing enclosing it,
  * so San Marino's ring is reached before Italy's. `countryIndex()` preserves that order; it does
  * not re-derive it. See A-26 Parts 4 and 6.
+ *
+ * **And a filled code ships a second entry — the forgiveness entry (ARCHITECTURE §8.4 A-27,
+ * ROADMAP Phase 2 I-5b).** The fill is the family's finest scale, which is the scale A-26 Part 2
+ * measured and rejected for the base: it tracks the waterline, and five of the sixty-four filled
+ * countries came back `null` at their own capital. A-27 measured the obvious remedy — pick a
+ * coarser scale per code — and **rejected it**, because substituting the coarser polygon deletes
+ * whole landforms (175 of the Maldives' 176 atolls, 67 of French Polynesia's 88). So a filled code
+ * is not made to choose. It ships the fine rings for coverage AND, as a **separate entry under the
+ * same ISO code**, the same country's rings at each strictly coarser scale of the family, filtered
+ * so that the coarse ring may only claim ground that is genuinely uncontested: it must overlap the
+ * code's own coverage rings (filter 1 — it is the same place) and must overlap no other entry
+ * (filter 2 — forgiveness is never taken from a neighbour). Two entries of one code compose as a
+ * union, because `countryOf` returns on the first *entry* whose rings contain the point and the
+ * even-odd rule runs within an entry. `overlaps` and both filters live in `tools/forgiveness.mjs`;
+ * see A-27 Parts 3, 4 and 7.
  *
  * **This runs at generation time, by a human, once. Nothing in the shipped product runs it.**
  * `packages/core`, `packages/client` and `apps/web` never fetch anything for this feature — the
@@ -45,10 +62,12 @@ import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
+import { forgivenessFor } from './forgiveness.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CAIRN = resolve(HERE, '..');
 const OUT = resolve(CAIRN, 'packages/core/src/geo/countries.gen.ts');
+const DROPS_OUT = resolve(CAIRN, 'fixtures/golden/forgiveness-drops.json');
 
 const TAG = 'v5.1.2';
 const REPO = 'nvkelso/natural-earth-vector';
@@ -93,10 +112,15 @@ const opt = (name, dflt) => {
   return i >= 0 && argv[i + 1] ? argv[i + 1] : dflt;
 };
 
-/** Coarsest first. `resolvesAt` in the holes golden is the FIRST of these that attributes. */
+/** Coarsest first. `resolvesAt` in the holes golden is the FIRST of these that attributes, and
+ *  the index of a scale in this array is the emitted order's third sort key (A-27 Part 7). */
 const FAMILY = ['110m', '50m', '10m'];
 /** The fill scale: the family's finest. A-26 Part 4 — the fill is 64 small polygons, not an escalation. */
 const FILL = '10m';
+/** The forgiveness scales: every scale of the family strictly COARSER than the fill, coarsest
+ *  first (A-27 Part 4). With `FAMILY`/`FILL` as pinned this is `['110m', '50m']`, and the base
+ *  layer contributes nothing by construction — a filled code is one the base does not carry. */
+const FORGIVE = FAMILY.slice(0, FAMILY.indexOf(FILL));
 
 const scaleKey = opt('scale', '110m');
 const scale = SCALES[scaleKey];
@@ -124,7 +148,7 @@ async function main() {
 
   const baseDl = await download(scaleKey);
   const geo = JSON.parse(baseDl.buf.toString('utf8'));
-  const built = build(geo);
+  const built = build(geo, null, scaleKey);
   console.log(
     `  ${geo.features.length} features -> ${built.entries.length} ISO-coded countries, ` +
       `${built.stats.rings} rings, ${built.stats.points} points (${built.stats.dropped} rings dropped as degenerate)`,
@@ -149,12 +173,16 @@ async function main() {
     // for a country the base already names.
     const fillCodes = codesOf(fillGeo);
     const want = new Set([...fillCodes].filter((c) => !baseCodes.has(c)));
-    const fillBuilt = build(fillGeo, want);
+    const fillBuilt = build(fillGeo, want, FILL);
     filled = fillBuilt.entries.map((e) => e.code).sort();
     entries = [...built.entries, ...fillBuilt.entries];
     console.log(
       `  fill from ${FILL}: base carries ${baseCodes.size} codes, ${FILL} carries ${fillCodes.size}; ` +
-        `splicing ${filled.length} (+${fillBuilt.stats.rings} rings, +${fillBuilt.stats.points} points)`,
+        `splicing ${filled.length} (+${fillBuilt.stats.rings} rings, +${fillBuilt.stats.points} points, ` +
+        // R22-5: the fill's own degenerate-ring count, reported beside the base's rather than
+        // discarded. A fill that silently loses a small island's only ring would otherwise be
+        // invisible — the `stillMissing` throw below only catches a code losing ALL of its rings.
+        `${fillBuilt.stats.dropped} rings dropped as degenerate)`,
     );
     console.log(`    ${wrap(filled.join(' '), 88, '    ')}`);
     const stillMissing = [...want].filter((c) => !filled.includes(c)).sort();
@@ -167,27 +195,49 @@ async function main() {
     console.log(`  fill: none (${flag('no-fill') ? '--no-fill' : `base is already ${FILL}`})`);
   }
 
-  // ---- the order IS the artefact (A-26 Part 4): ascending area, ties by ISO code ascending.
+  // ---- the forgiveness pass (A-27 Part 4). Filled codes only, and nothing else.
+  const forgiveness = await forgivenessPass({
+    filled,
+    coverage: orderEntries(entries),
+    layers: new Map([
+      [scaleKey, { geo, sha: baseDl.sha }],
+      ...(fillGeo ? [[FILL, { geo: fillGeo, sha: fillDl.sha }]] : []),
+    ]),
+  });
+  entries = [...entries, ...forgiveness.entries];
+
+  // ---- the order IS the artefact (A-26 Part 4, A-27 Part 7): ascending area, ties by ISO code
+  //      ascending, then by scale coarsest first.
   entries = orderEntries(entries);
   const stats = statsOf(entries);
   console.log(
-    `  emitted order: ascending polygon area, ties by code — ` +
+    `  emitted order: ascending polygon area, ties by code, then scale coarsest first — ` +
       `${entries[0].code} (smallest) … ${entries[entries.length - 1].code} (largest)`,
   );
 
-  const rawMixed = mixedRaw(entries, geo, fillGeo, filled);
+  const rawMixed = mixedRaw(entries);
   const quantMisses = verifyQuantisation(rawMixed, entries);
   console.log(`  quantisation check: ${quantMisses} grid points changed answer at ${DECIMALS} dp`);
   if (quantMisses > 0) throw new Error(`quantisation to ${DECIMALS} dp moved ${quantMisses} attributions`);
 
-  const indexScale = doFill ? `${scaleKey}+${FILL}` : scaleKey;
+  const usedScales = forgiveness.scalesUsed;
+  const indexScale = [scaleKey, ...(doFill ? [FILL] : []), ...usedScales].join('+');
   const source = doFill
-    ? `${REPO}@${TAG}/geojson/${scale.file} + ${SCALES[FILL].file} (fill: ${filled.length} codes the base omits)`
+    ? `${REPO}@${TAG}/geojson/${scale.file} (base) + ${SCALES[FILL].file} ` +
+      `(fill: ${filled.length} codes the base omits)` +
+      (usedScales.length
+        ? ` + ${usedScales.map((k) => SCALES[k].file).join(' + ')} ` +
+          `(forgiveness: ${forgiveness.codes.length} of those codes, A-27)`
+        : '')
     : `${REPO}@${TAG}/geojson/${scale.file}`;
   const shas = doFill
-    ? [`${scale.file} ${baseDl.sha}`, `${SCALES[FILL].file} ${fillDl.sha}`]
+    ? [
+        `${scale.file} ${baseDl.sha}`,
+        `${SCALES[FILL].file} ${fillDl.sha}`,
+        ...usedScales.map((k) => `${SCALES[k].file} ${forgiveness.shas.get(k)}`),
+      ]
     : [`${scale.file} ${baseDl.sha}`];
-  const text = emit({ scaleKey, indexScale, source, shas, entries, stats, filled });
+  const text = emit({ scaleKey, indexScale, source, shas, entries, stats, filled, forgiveness });
 
   roundTrip(text, entries);
   console.log(`  round-trip: the emitted literal re-parses to the same ${entries.length} countries`);
@@ -211,7 +261,11 @@ async function main() {
   console.log(`emitted bytes: ${written}`);
   console.log(`  ^ this is the number that goes in EMITTED_BYTES in`);
   console.log(`    packages/core/test/0-countryBudget.test.ts, and in no document.`);
-  console.log(`  codes: ${entries.length}   rings: ${stats.rings}   points: ${stats.points}`);
+  console.log(
+    `  entries: ${entries.length}   distinct codes: ${new Set(entries.map((e) => e.code)).size}` +
+      `   rings: ${stats.rings}   points: ${stats.points}`,
+  );
+  writeDrops(forgiveness, indexScale, source, entries);
   // Audit the module that was actually written, decoded the way the product decodes it — not the
   // in-memory build. A generator that audits its own intermediate value cannot see an emit bug.
   //
@@ -257,7 +311,7 @@ async function download(key) {
  * disputed area is reported as unattributed, and minting a code for one here would be exactly the
  * guess `null` exists to refuse.
  */
-function build(geo, only = null) {
+function build(geo, only = null, scaleTag = null) {
   const q = (n) => Math.round(n * 10 ** DECIMALS) / 10 ** DECIMALS;
   const byCode = new Map();
   const skipped = [];
@@ -275,7 +329,7 @@ function build(geo, only = null) {
     if (only && !only.has(code)) continue;
     const g = f.geometry;
     const polys = g.type === 'Polygon' ? [g.coordinates] : g.coordinates;
-    const out = byCode.get(code) ?? [];
+    const out = byCode.get(code) ?? { rings: [], raw: [] };
     for (const poly of polys) {
       for (const ring of poly) {
         const flat = [];
@@ -294,7 +348,13 @@ function build(geo, only = null) {
           dropped++;
           continue;
         }
-        out.push(flat);
+        out.rings.push(flat);
+        // The unquantised twin of the ring just kept, at the same index. `verifyQuantisation`
+        // compares the two attributions ring-for-ring, so the raw list has to be built HERE,
+        // beside the ring it belongs to — a raw list rebuilt afterwards from the source layer
+        // silently re-includes the rings this loop dropped, and once one ISO code can supply
+        // rings from two different scales (A-27) it cannot be rebuilt by code at all.
+        out.raw.push(ring.flat());
         rings++;
         points += flat.length / 2;
       }
@@ -305,8 +365,212 @@ function build(geo, only = null) {
   // Insertion order, deliberately: `orderEntries` is the one place the emitted order is decided,
   // and A-26 Part 4 makes that order part of the committed artefact rather than a property this
   // function happens to have.
-  const entries = [...byCode.entries()].map(([code, rings2]) => ({ code, rings: rings2 }));
+  const entries = [...byCode.entries()].map(([code, v]) => ({
+    code,
+    rings: v.rings,
+    raw: v.raw,
+    scale: scaleTag,
+  }));
   return { entries, skipped, stats: { rings, points, dropped } };
+}
+
+// ---------------------------------------------------------------- the forgiveness pass (A-27)
+
+/**
+ * **A-27 Part 4, run.** For each filled ISO code — the codes the base scale does not carry, and
+ * only those — take the same country's rings at each strictly coarser scale of the pinned family
+ * that carries it, coarsest first, and keep a ring only if it passes both filters:
+ *
+ *  1. it `overlaps` the code's own coverage rings — it is a coarser drawing of the same place;
+ *  2. it `overlaps` no OTHER entry of the coverage-only index — the ground it claims is nobody
+ *     else's.
+ *
+ * Surviving rings become a **second entry under the same ISO code**, never a merge into the first.
+ * That matters: `countryOf` runs even-odd *within* an entry, so merging a coarse ring into the
+ * fine ones would make the two cancel wherever they overlap — which is everywhere the forgiveness
+ * entry is for. As two entries they compose as a union, because the function returns on the first
+ * *entry* that contains the point.
+ *
+ * Every drop is recorded with the filter that made it and, for filter 2, the code it would have
+ * taken ground from. A code with no surviving ring gets no entry and the run says so. **A
+ * forgiveness entry can never introduce an ISO code the coverage pass did not emit** — the pass
+ * only ever iterates `filled`, and the assertion below states that rather than assuming it.
+ */
+async function forgivenessPass({ filled, coverage, layers }) {
+  const out = {
+    entries: [],
+    codes: [],
+    refused: [],
+    noCandidates: [],
+    drops: [],
+    candidates: 0,
+    kept: 0,
+    scalesUsed: [],
+    shas: new Map(),
+  };
+  if (!filled.length || !FORGIVE.length) {
+    console.log(`  forgiveness: none (no filled codes)`);
+    return out;
+  }
+
+  const filledSet = new Set(filled);
+  const byCode = new Map(coverage.map((e) => [e.code, e]));
+  const built = new Map(); // scale -> Map(code -> {rings, raw})
+
+  for (const key of FORGIVE) {
+    const cached = layers.get(key);
+    let geoHere = cached?.geo;
+    if (cached) out.shas.set(key, cached.sha);
+    else {
+      const dl = await download(key);
+      out.shas.set(key, dl.sha);
+      geoHere = JSON.parse(dl.buf.toString('utf8'));
+    }
+    const has = codesOf(geoHere);
+    const want = new Set(filled.filter((c) => has.has(c)));
+    if (!want.size) {
+      console.log(`  forgiveness from ${key}: 0 of ${filled.length} filled codes appear at this scale — skipped`);
+      built.set(key, new Map());
+      continue;
+    }
+    const b = build(geoHere, want, key);
+    built.set(key, new Map(b.entries.map((e) => [e.code, e])));
+    console.log(
+      `  forgiveness from ${key}: ${want.size} of ${filled.length} filled codes have a polygon here ` +
+        `(${b.stats.rings} candidate rings, ${b.stats.dropped} dropped as degenerate)`,
+    );
+  }
+
+  for (const code of filled) {
+    const own = byCode.get(code);
+    if (!own) throw new Error(`forgiveness: ${code} is filled but has no coverage entry`);
+    const others = coverage.filter((e) => e.code !== code);
+    let got = 0;
+    let sawCandidate = false;
+    for (const key of FORGIVE) {
+      const cand = built.get(key)?.get(code);
+      if (!cand || !cand.rings.length) continue;
+      sawCandidate = true;
+      out.candidates += cand.rings.length;
+      const { kept, drops } = forgivenessFor(cand.rings, own.rings, others);
+      for (const d of drops) {
+        out.drops.push({
+          code,
+          scale: key,
+          filter: d.filter,
+          takenFrom: d.code,
+          ring: cand.rings[d.index],
+        });
+      }
+      if (!kept.length) continue;
+      out.kept += kept.length;
+      got += kept.length;
+      if (!out.scalesUsed.includes(key)) out.scalesUsed.push(key);
+      out.entries.push({
+        code,
+        rings: kept.map((i) => cand.rings[i]),
+        raw: kept.map((i) => cand.raw[i]),
+        scale: key,
+        // Survives `orderEntries`' spread, and is what lets the emitted positions of the
+        // forgiveness entries be recorded exactly rather than guessed at from ring counts.
+        forgiveness: true,
+      });
+    }
+    if (got > 0) out.codes.push(code);
+    else {
+      out.refused.push(code);
+      if (!sawCandidate) out.noCandidates.push(code);
+    }
+  }
+
+  // The ceiling, asserted rather than assumed (A-27 Part 4, ROADMAP exit criterion 4 part e).
+  for (const e of out.entries) {
+    if (!filledSet.has(e.code)) {
+      throw new Error(`forgiveness: ${e.code} is not a filled code — a forgiveness entry may not introduce one`);
+    }
+  }
+
+  const dropsBy = (n) => out.drops.filter((d) => d.filter === n);
+  console.log(
+    `  forgiveness: ${out.entries.length} entries over ${out.codes.length} codes; ` +
+      `${out.kept} of ${out.candidates} candidate rings kept, ${out.drops.length} dropped ` +
+      `(${dropsBy(1).length} by filter 1 — not the same place; ${dropsBy(2).length} by filter 2 — a neighbour's ground)`,
+  );
+  console.log(`    ${wrap(out.codes.join(' '), 88, '    ')}`);
+  for (const d of out.drops) {
+    console.log(
+      `    drop  ${d.code} @${d.scale}  filter ${d.filter}  ` +
+        (d.filter === 2 ? `overlaps ${d.takenFrom}` : 'does not touch its own coverage rings'),
+    );
+  }
+  console.log(
+    `    refused a forgiveness entry (${out.refused.length}): ${out.refused.join(' ') || 'none'}` +
+      (out.noCandidates.length ? `   — of which no polygon at any coarser scale: ${out.noCandidates.join(' ')}` : ''),
+  );
+  return out;
+}
+
+/**
+ * `fixtures/golden/forgiveness-drops.json` — every candidate ring the two filters rejected, with
+ * the filter that rejected it.
+ *
+ * **Why this is written at all.** A rejected ring is by definition absent from `countries.gen.ts`,
+ * so ROADMAP exit criterion 4 part (e)'s two injected faults — *"delete filter 2 and the bordered codes gain
+ * entries"*, *"delete filter 1 and Vatican City gains a polygon a kilometre west of itself"* —
+ * cannot be asserted from the shipped artefact. `test/forgiveness.test.ts` re-runs the real
+ * filters over these rings with each one switched off. Everything else those tests need (the
+ * code's own coverage rings, every other entry's rings) comes out of `COUNTRY_INDEX`, so the only
+ * thing committed here is the part that is otherwise unrecoverable.
+ *
+ * Generated, never hand-typed — I-5's dependency clause applies to every polygon in this
+ * repository, test fixtures included.
+ */
+function writeDrops(forgiveness, indexScale, source, entries) {
+  // The positions, in the emitted array, of the entries the forgiveness pass added. Recorded
+  // rather than inferred: two entries of one ISO code are indistinguishable in the packed payload,
+  // so a test that wants "the coverage-only index" has no way to reconstruct it from the artefact
+  // alone. With these, `countries.filter((_, i) => !forgivenessAt.includes(i))` is exactly the
+  // index as it shipped before I-5b, which is what makes the additive claim assertable.
+  const forgivenessAt = [];
+  entries.forEach((e, i) => {
+    if (e.forgiveness) forgivenessAt.push(i);
+  });
+  if (forgivenessAt.length !== forgiveness.entries.length) {
+    throw new Error(
+      `forgiveness: ${forgivenessAt.length} flagged entries emitted but ${forgiveness.entries.length} were built`,
+    );
+  }
+  const out = {
+    $generatedBy: 'cairn/tools/gen-countries.mjs',
+    $what:
+      'Every coarser-scale candidate ring that ARCHITECTURE §8.4 A-27 Part 4\'s two filters ' +
+      'rejected, with the filter that rejected it. These rings are NOT in countries.gen.ts — ' +
+      'that is the point: ROADMAP exit criterion 4(e) injects a fault into each filter and needs ' +
+      'the rings the filters refused. Natural Earth admin-0, public domain, quantised exactly as ' +
+      'the shipped module is.',
+    index: { scale: `ne_${indexScale}`, source },
+    candidateScales: [...FORGIVE],
+    candidates: forgiveness.candidates,
+    kept: forgiveness.kept,
+    dropped: forgiveness.drops.length,
+    entries: forgiveness.entries.length,
+    codes: [...forgiveness.codes],
+    forgivenessAt,
+    refusedCodes: [...forgiveness.refused],
+    noCandidates: [...forgiveness.noCandidates],
+    drops: forgiveness.drops.map((d) => ({
+      code: d.code,
+      scale: d.scale,
+      filter: d.filter,
+      takenFrom: d.takenFrom,
+      ring: d.ring,
+    })),
+  };
+  mkdirSync(dirname(DROPS_OUT), { recursive: true });
+  writeFileSync(DROPS_OUT, `${JSON.stringify(out, null, 2)}\n`);
+  console.log(
+    `wrote fixtures/golden/forgiveness-drops.json  (${out.dropped} rejected rings, ${statSync(DROPS_OUT).size} bytes)`,
+  );
 }
 
 /** Every ISO alpha-2 code a layer carries, without quantising a single ring. */
@@ -341,18 +605,35 @@ function ringArea(ring) {
 }
 
 /**
- * **The emitted order (A-26 Part 4).** Ascending summed absolute ring area, ties by ISO code
- * ascending. `countryOf` returns the first entry whose rings contain the point, and filling a
- * 1:110m base with 1:10m polygons creates overlaps the source data never had — a Vaduz point is
- * inside both Austria's coarse ring and Liechtenstein's fine one. Ascending area is the
- * non-arbitrary tie-break, because an enclave is always smaller than the thing enclosing it;
- * alphabetical order resolved seven of the eight in favour of the encloser.
+ * **The emitted order (A-26 Part 4, third key added by A-27 Part 7).** Ascending summed absolute
+ * ring area, ties by ISO code ascending, then by scale **coarsest first**. `countryOf` returns the
+ * first entry whose rings contain the point, and filling a 1:110m base with 1:10m polygons creates
+ * overlaps the source data never had — a Vaduz point is inside both Austria's coarse ring and
+ * Liechtenstein's fine one. Ascending area is the non-arbitrary tie-break, because an enclave is
+ * always smaller than the thing enclosing it; alphabetical order resolved seven of the eight in
+ * favour of the encloser.
+ *
+ * **Why the third key exists at all.** Before A-27 an ISO code appeared at most once, so
+ * `(area, code)` was already a total order and the tie-break by code was never exercised. A filled
+ * code now carries a coverage entry and a forgiveness entry, so `(area, code)` alone can tie — and
+ * a comparator that returns 0 for two distinct entries hands the outcome to `Array.prototype.sort`
+ * implementation detail, which is the one thing the emitted order may not depend on. The key is
+ * `FAMILY.indexOf(scale)` ascending; `FAMILY` is coarsest-first, so the coarser entry of a
+ * same-code pair sorts first, exactly as A-27 Part 3 states. It cannot change any *answer* — the
+ * two entries carry the same ISO code — only which of them `countryOf` returns it from.
  */
 function orderEntries(entries) {
+  const fam = (e) => {
+    const i = FAMILY.indexOf(e.scale);
+    return i < 0 ? FAMILY.length : i;
+  };
   return entries
     .map((e) => ({ ...e, area: e.rings.reduce((a, r) => a + ringArea(r), 0) }))
-    .sort((a, b) => a.area - b.area || (a.code < b.code ? -1 : a.code > b.code ? 1 : 0))
-    .map(({ code, rings }) => ({ code, rings }));
+    .sort(
+      (a, b) =>
+        a.area - b.area || (a.code < b.code ? -1 : a.code > b.code ? 1 : 0) || fam(a) - fam(b),
+    )
+    .map(({ area, ...rest }) => rest);
 }
 
 function statsOf(entries) {
@@ -365,31 +646,20 @@ function statsOf(entries) {
   return { rings, points };
 }
 
-/** Raw (unquantised) rings per ISO code for one layer, optionally restricted to a code set. */
-function rawByCode(geo, only = null) {
-  const merged = new Map();
-  for (const f of geo.features) {
-    const c = f.properties.ISO_A2_EH;
-    if (!(typeof c === 'string' && /^[A-Z]{2}$/.test(c))) continue;
-    if (only && !only.has(c)) continue;
-    const g = f.geometry;
-    const polys = g.type === 'Polygon' ? [g.coordinates] : g.coordinates;
-    const rings = merged.get(c) ?? [];
-    for (const poly of polys) for (const r of poly) rings.push(r.flat());
-    merged.set(c, rings);
-  }
-  return merged;
-}
-
 /**
- * The unquantised twin of the emitted index: the same codes, in the same order, each taking its
- * rings from whichever layer supplied it. Same order matters — the comparison below is between
- * two ray casts whose tie-break is position in the list.
+ * The unquantised twin of the emitted index: the same entries, in the same order, each carrying
+ * the raw rings `build()` recorded beside the quantised ones it kept. Same order matters — the
+ * comparison below is between two ray casts whose tie-break is position in the list.
+ *
+ * **This is a lookup, not a reconstruction, and A-27 is why.** Before the forgiveness pass, the
+ * raw twin could be rebuilt by ISO code from the two source layers. It cannot be now: a filled
+ * code's coverage rings come from 1:10m and its forgiveness rings from 1:50m, so "the raw rings
+ * for `TO`" is not a well-formed question. `build()` carries each ring's raw twin at the same
+ * index instead, which also fixes a smaller inaccuracy in the old form — the rebuilt list
+ * re-included rings that quantisation had collapsed and `build()` had dropped.
  */
-function mixedRaw(entries, baseGeo, fillGeo, filledCodes) {
-  const baseRaw = rawByCode(baseGeo);
-  const fillRaw = fillGeo ? rawByCode(fillGeo, new Set(filledCodes)) : new Map();
-  return entries.map((e) => ({ code: e.code, rings: baseRaw.get(e.code) ?? fillRaw.get(e.code) ?? [] }));
+function mixedRaw(entries) {
+  return entries.map((e) => ({ code: e.code, rings: e.raw ?? [] }));
 }
 
 /**
@@ -441,7 +711,7 @@ function odd(lng, lat, ring) {
 
 // ---------------------------------------------------------------- emitting
 
-function emit({ scaleKey, indexScale, source, shas, entries, stats, filled }) {
+function emit({ scaleKey, indexScale, source, shas, entries, stats, filled, forgiveness }) {
   const packed = JSON.stringify(entries.map((e) => [e.code, e.rings]));
   if (packed.includes("'") || packed.includes('\\')) {
     throw new Error("the packed payload contains ' or \\ and would need escaping in a TS literal");
@@ -453,6 +723,20 @@ function emit({ scaleKey, indexScale, source, shas, entries, stats, filled }) {
  *          1:${FILL.replace('m', '')} million — ARCHITECTURE §8.4 A-26 Part 4.
  *          ${wrap(filled.join(' '), 88, ' *          ')}`
     : ' * Fill   : none — this is a single-scale index.';
+  const forgiveLine = forgiveness.entries.length
+    ? ` * Forgive: ${forgiveness.entries.length} SECOND entries, one per filled code whose coarser polygon survives
+ *          A-27 Part 4's two filters — it must touch the code's own fine rings, and it must
+ *          touch no other country's. A filled code is drawn at the finest scale, which tracks
+ *          the waterline; the coarse entry forgives a coordinate a few hundred metres out to
+ *          sea rather than answering null. AN ISO CODE THEREFORE APPEARS TWICE HERE, and the
+ *          two entries compose as a union because \`countryOf\` returns on the first ENTRY that
+ *          contains the point.
+ *          Forgiven (${forgiveness.codes.length}):
+ *          ${wrap(forgiveness.codes.join(' '), 88, ' *          ')}
+ *          Refused (${forgiveness.refused.length}) — a coarse ring that would be a neighbour's ground,
+ *          would not touch the country at all, or does not exist at any coarser scale:
+ *          ${wrap(forgiveness.refused.join(' '), 88, ' *          ')}`
+    : ' * Forgive: none — no filled code has a coarser polygon that survives A-27 Part 4.';
   return `/**
  * GENERATED FILE — DO NOT EDIT.
  *
@@ -463,13 +747,16 @@ function emit({ scaleKey, indexScale, source, shas, entries, stats, filled }) {
  *          (Natural Earth admin-0 countries, public domain — see the generator's header for the
  *          licence citation and why the tag is pinned rather than tracking \`master\`.)
 ${shaLines}
- * Scale  : base 1:${scaleKey.replace('m', '')} million  ·  ${entries.length} ISO-coded countries · ${stats.rings} rings · ${stats.points} points
+ * Scale  : base 1:${scaleKey.replace('m', '')} million  ·  ${entries.length} entries · ${new Set(codes).size} distinct ISO codes · ${stats.rings} rings · ${stats.points} points
 ${fillLine}
- * Order  : ascending summed absolute spherical ring area, ties by ISO code ascending. This is the
- *          order \`countryOf\` tests entries in, and it is a property of THIS FILE:
- *          \`countryIndex()\` preserves it and does not re-derive it. An enclave is always smaller
- *          than the thing enclosing it, so San Marino is reached before Italy and Singapore
- *          before Malaysia — which ISO-ascending order got wrong for 7 of 8 enclaves.
+${forgiveLine}
+ * Order  : ascending summed absolute spherical ring area, ties by ISO code ascending, then by
+ *          scale coarsest first. This is the order \`countryOf\` tests entries in, and it is a
+ *          property of THIS FILE: \`countryIndex()\` preserves it and does not re-derive it. An
+ *          enclave is always smaller than the thing enclosing it, so San Marino is reached
+ *          before Italy and Singapore before Malaysia — which ISO-ascending order got wrong for
+ *          7 of 8 enclaves. The third key exists only to keep the comparator a total order now
+ *          that one ISO code can own two entries; it decides no answer.
  * Coords : ${DECIMALS} decimal places (~11 m); the generator re-attributes a global grid against
  *          the unquantised rings and refuses to write if any answer moves.
  *
@@ -596,7 +883,7 @@ async function writeHoles() {
   const byScale = new Map();
   for (const key of FAMILY) {
     const dl = await download(key);
-    byScale.set(key, orderEntries(build(JSON.parse(dl.buf.toString('utf8'))).entries));
+    byScale.set(key, orderEntries(build(JSON.parse(dl.buf.toString('utf8')), null, key).entries));
   }
 
   const resolvesAt = (at) => {
