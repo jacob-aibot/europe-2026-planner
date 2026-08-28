@@ -19,7 +19,19 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
-> **⚙ PHASE 2 IS UNDERWAY — step 2a is built (not yet verified, not yet shipped).** As of
+> **🟢 STEP 2a IS SHIPPED.** The manager reviewed it at `67f5588` on 2026-08-28 and the verdict is
+> **SHIP** — `REVIEW.md`, "Phase 2, step 2a". So 2a is now **built ✅ · verified ✅ · shippable ✅**,
+> all three, which are three different claims (see "Definition of done" at the bottom). **Step 2b —
+> the map of everywhere you have been — is unblocked and is next.** Seven follow-up items were routed
+> and **none of them blocks 2b**; two of them are visible to you and are written up in *"What Jacob
+> should know"* below. One thing the verdict deliberately did **not** do: the block on
+> sharing/friends/public links stays in place until one design question about importing someone
+> else's file is settled.
+>
+> The paragraphs below are the running log of how 2a got here, oldest first. **They are history, not
+> current state** — the current state is the paragraph you just read.
+
+> **⚙ [history] PHASE 2 IS UNDERWAY — step 2a is built (not yet verified, not yet shipped).** As of
 > 2026-08-27, increments **I-0 … I-4** of the twelve in `ROADMAP.md` revision 10 are **built**:
 > the QA probe board is repaired and its baseline numbers re-measured (I-0); `lifecycle()` is in
 > core and in the CLI (I-1); `Trip.datePrecision` is a stored field (I-2); every conflict rule
@@ -223,16 +235,33 @@ update to this file added that instruction).
 > doesn't watch"* named the categories correctly but was **three items short**, all three being
 > containers inside the *recipient's own* trip where nothing crosses. That is fixed in the ruling's
 > prose, in place, with **no code change** — and the tester said in writing that it does not re-open
-> the arc. **Status: built ✅, verified ✅ (round 21), not yet shippable** — the manager's Phase-2a
-> SHIP / SEND BACK call is the one remaining step, and it is now a judgement about the two
-> increments rather than another round of this arc.
+> the arc. **Status: built ✅, verified ✅ (round 21), and now shippable ✅** — see the manager's
+> verdict below.
 
-> **Last updated:** 2026-08-28, against `master` after **QA round 21 — the closure round**: the
-> builder landed A-25, the tester verified all six points of its written closing criterion, and the
-> seven-round copy-path arc is **closed**. I-4a's ship gate is **met** and has no open item; the one
-> finding of the round (a three-item gap in the ruling's own disclosure list) is corrected in
-> `ARCHITECTURE.md` A-25 Part 5 in place — no revision 20, no code change. Previously: revision 19's
-> A-25, ruled but not built. Update this line every time you edit this file.
+> **✅ THE MANAGER RULED: SHIP. Step 2a is done.** (`REVIEW.md`, "Phase 2, step 2a", reviewed at
+> `67f5588`, 2026-08-28.) The manager did not take anyone's word for it: it re-ran the whole test
+> suite (620, all passing), the type checker, the build, the golden files and **78** separate attack
+> scripts, re-derived every headline number from scratch rather than quoting one, entered a
+> *"Japan, March 2019 — 東京, 京都"* trip itself and got zero warnings and zero problems back, and
+> re-proved two of the six closing checks on the copy-path arc by breaking the code on purpose and
+> watching the right test go red. Everything 2a promised is built and works.
+>
+> **Seven follow-ups were routed and none of them blocks step 2b.** Four are housekeeping on the
+> tester's own attack scripts — one of them had been quietly crashing half-way through for seven
+> commits, which is exactly the kind of thing a gate exists to catch. Two are real but small, and are
+> in *"What Jacob should know"* below: **undo behaves badly immediately after recording a very long
+> past trip**, and **the app assumes every day of a recorded trip was in the first city you listed**
+> (so "Tokyo, Kyoto" records 31 days in Tokyo and none in Kyoto) — the second is now a design
+> question that must be settled *before* the lifetime map is built from that data. The seventh is the
+> one thing the SHIP verdict deliberately did **not** unblock: **sharing, friends and public links
+> stay blocked** until an architect rules on what should happen when someone hands you a trip file
+> with no owner recorded in it.
+
+> **Last updated:** 2026-08-28, against `master` after the **manager's 2a gate — verdict SHIP**. Step
+> 2a (past trips and the trip lifecycle) is built, verified and **shipped**; step 2b (the lifetime
+> map) is unblocked and next. Previously: QA round 21, the closure round — the builder landed A-25,
+> the tester verified all six points of its written closing criterion, and the seven-round copy-path
+> arc closed. Update this line every time you edit this file.
 
 **Status vocabulary used throughout:** 🟢 COMPLETE · 🟡 IN PROGRESS · 🟠 NEXT / APPROVED ·
 🔴 BLOCKED · ⚪ NOT STARTED. Also: **built** (code exists) vs **verified** (an adversarial tester
@@ -241,16 +270,54 @@ different claims — see "Definition of done" at the bottom.
 
 ---
 
-## ⚠️ A decision only Jacob can make
+## ⚠️ Decisions only Jacob can make
 
-Before anything else: `REVIEW.md`'s SHIP verdict named one open question for Jacob, not for the
-pipeline. **Do you want an "accept" control before Phase 2?** Today, copying an activity from one
-of your trips into another leaves it permanently badged *"from a friend"* — there's no button that
-says "yes, this is mine now." That's the safe default (nothing of someone else's is ever shown as
-yours), but it's the kind of thing you'd notice the first time you used the feature. It's cheap to
-add now; otherwise it ships with the Phase 3 accounts work. **Nobody is blocked waiting on this**
-— it's a preference, not a gate — but it's sitting unanswered, so it's flagged here rather than
-buried in a paragraph.
+**Two now, neither blocking anything today.**
+
+**1. NEW, from the 2a gate — what should happen to a trip file with no owner in it?** If someone
+exports a trip and sends it to you, the app correctly refuses it: *"this belongs to someone else."*
+But if that file happens to carry no owner at all, the app adopts the **whole thing** as yours — and
+91 of the activities inside it stay quietly stamped with the other person's name underneath, with
+nothing on screen saying so. Nothing leaks and nothing breaks; the problem is that the app would be
+telling you a trip is yours when it isn't, which is the one rule you said is not negotiable.
+**(a)** refuse anything that isn't provably yours, **(b)** accept it but visibly badge the whole trip
+as imported from someone else, or **(c)** leave it until real accounts exist in Phase 3?
+*All friend-sharing and public-link work is blocked until this is settled either way, so nothing is
+waiting on you today.*
+
+**2. Still unanswered from Phase 1 — do you want an "accept" control?** Today, copying an activity
+from one of your trips into another leaves it permanently badged *"from a friend"* — there's no
+button that says "yes, this is mine now." That's the safe default (nothing of someone else's is ever
+shown as yours), but it's the kind of thing you'd notice the first time you used the feature. It's
+cheap to add now; otherwise it ships with the Phase 3 accounts work. **Nobody is blocked waiting on
+this** — it's a preference, not a gate.
+
+---
+
+## 📌 What Jacob should know about 2a, in plain terms
+
+**What you can do now that you couldn't before.** Record trips you have already taken — title,
+roughly-when, the cities, no day-by-day required — and the app treats them as *records* rather than
+as itineraries that have expired. And your Europe trip has stopped nagging you: it ended on 22
+August, and until now the app kept telling you, forever, that you were missing a hotel in Budapest
+for nights you'd already slept through. That's gone. Your own two red flags for Aug 18 and Aug 20
+are still there, which is exactly right — nothing of *yours* gets silenced.
+
+**"Roughly when" is recorded honestly.** If you only remember *March 2019*, it stores March 2019 and
+says so on screen. It does not quietly claim you were there from the 1st to the 31st.
+
+**Two rough edges, both small, both now assigned rather than floating:**
+
+- **Undo, straight after recording a past trip.** Record a whole *year* and then press Ctrl+Z and it
+  peels the trip apart one day at a time — and you can't get all the way back. A month-long trip is
+  fine, just fiddly. Found nine rounds ago, quietly never picked up; it now has a name on it.
+- **Every day of a recorded trip is assumed to be in the first city you listed.** So *"Tokyo,
+  Kyoto"* records 31 days in Tokyo and none in Kyoto. The form does tell you this before you press
+  the button, which is the right instinct — but the **next** step is the map of everywhere you've
+  been, and it will be built from exactly that data. So the architect has to settle, before that map
+  exists, how the app tells the difference between *"I said I was in Kyoto"* and *"the app filled
+  that in for me."* That's your own rule — never present our guess as your plan — applied one step
+  ahead of where it would have bitten.
 
 ---
 
@@ -258,10 +325,21 @@ buried in a paragraph.
 
 **Phase:** 1 of **7** is 🟢 **COMPLETE — SHIPPED.** Phase 2 — *travel history*, not accounts (the
 phases were re-cut on 2026-08-27; accounts are now Phase 3) — is 🟡 **IN PROGRESS**: step **2a of 3
-is built** (increments I-0…I-4) and has now been **verified** — ten adversarial rounds (12 → 21),
-ending with round 21 closing the copy-path arc against a criterion written in advance — but it is
-**not shipped**: the manager's 2a gate has not been called yet. Steps 2b (the lifetime map and
-travel identity) and 2c (participants) are ⚪ **NOT STARTED**.
+is 🟢 SHIPPED** (increments I-0…I-4a) — built, then **verified** over ten adversarial rounds (12 →
+21) ending with round 21 closing the copy-path arc against a criterion written in advance, then
+**signed off by the manager on 2026-08-28 at `67f5588`, verdict SHIP** (`REVIEW.md`, "Phase 2, step
+2a"). Step **2b** (the lifetime map and travel identity) is 🟠 **NEXT — unblocked by that verdict**;
+step **2c** (participants) is ⚪ **NOT STARTED**.
+
+**What the 2a gate actually checked**, because "the manager said SHIP" is only worth something if it
+means someone ran it: the full suite (620 tests, all passing), the type checker on both projects,
+the production build, the golden-file regeneration (byte-identical), **78** attack scripts, the
+command-line tool at three different dates, and a *"Japan, March 2019 — 東京, 京都"* trip entered by
+hand end to end (two distinct cities, 31 days, **zero** warnings, **zero** problems). Every headline
+number was re-derived from scratch rather than quoted, and two of the copy-path arc's six closing
+checks were re-proved by deliberately breaking the code and confirming the right test went red.
+**Seven follow-ups were routed; none blocks 2b.** The sharing/friends/public-link block is **not**
+lifted — it now hangs on the ownerless-import question in *"Decisions only Jacob can make"* above.
 
 **Where the effort has actually gone since Phase 1 shipped.** Not on 2b or 2c. Ten consecutive
 adversarial rounds (12 → 21) have been spent on **two** increments — I-3a (a dismissed warning
@@ -496,12 +574,15 @@ it is closed.
 ## 8. What happens next
 
 ```
-  Architect  →  Builder  →  Breaker  →  Manager
-   (done)       (done)      (done, r21)  (NEXT — 2a gate)
+  Architect  →  Builder  →  Breaker  →  Manager  ⇒  step 2b
+   (done)       (done)      (done, r21)  (done — SHIP)   (NEXT)
 ```
 
-Phase 2 is underway, the copy-path arc is **finished**, and exactly one step stands between here
-and the first manager gate since Phase 1:
+**Step 2a is closed.** The full four-agent chain ran and the gate at the end of it said SHIP. What
+comes next is **step 2b — the map of everywhere you have been**, which starts with the architect's
+own carried item (below) and with the breaker cleaning its attack board.
+
+How 2a's last round went, for the record:
 
 - **Architect — done.** `ARCHITECTURE.md` revision 19 (**A-25**): test-data completeness enforced by
   the compiler and the tests instead of by memory, one one-line fix for the three-same-name-cities
@@ -515,10 +596,26 @@ and the first manager gate since Phase 1:
   that — no crash, no unexplained second look at borrowed data, nothing crossing between people.
   One MINOR finding, a three-item gap in the ruling's own disclosure list, corrected in prose with
   no code change and explicitly **not** a re-opening.
-- **Manager — next, and it is the only thing outstanding.** The **2a SHIP / SEND BACK** call. I-3a
-  and I-4a are both closed on their ship gates, so this is a judgement about the two increments as
-  a whole rather than another round of this arc. Only this role can open the rest of Phase 2, and
-  the block on sharing/friends/public links holds until it rules.
+- **Manager — done, 2026-08-28 at `67f5588`: verdict SHIP.** Re-ran the suite, the type checker, the
+  build, the golden files and 78 attack scripts; re-derived every number rather than quoting one;
+  entered a past trip by hand end to end; and re-proved two of the arc's six closing checks by
+  breaking the code on purpose. **Seven follow-ups routed, none blocking.** The block on
+  sharing/friends/public links is **not** lifted — it now hangs on one design question about
+  importing a trip file with no owner (see *"Decisions only Jacob can make"* at the top).
+
+**What 2b starts with, in order:**
+
+1. **Breaker, before its first round on 2b:** clean the attack board and re-run **all** of it, not
+   just the files in scope. The 2a gate found one script (`qa/r11-recheck.mjs`) that had been
+   crashing half-way through for seven commits, losing nine of its checks with no status note
+   mentioning it, plus three stale ceilings. **New standing rule:** the whole board runs at every
+   step boundary, and its state gets recorded.
+2. **Architect, before the lifetime map is built:** rule on how the app distinguishes a place *you*
+   said you went from one *the form filled in for you* — and on why a trip typed in from memory
+   currently records at the same certainty as one with a booking confirmation behind it. Both feed
+   the map directly.
+3. **Architect, before any sharing work:** the ownerless-import question above.
+4. **Builder, in 2b's first pass:** the undo-after-recording-a-long-past-trip defect.
 
 **Still standing from Phase 1, unchanged:** whenever the merge/write code is next touched, the
 first breaker round on it is pre-committed to attack `doMerge`/`writeAndSettle` — the code behind

@@ -319,8 +319,24 @@
 </style>
 </head>
 <body>
+<div class="callout" style="border-left:4px solid #2a5138;padding:.75rem 1rem;margin:1rem 0;background:#f0f8f2">
+<p><strong>&#128994; STEP 2a IS SHIPPED.</strong> The manager reviewed it at <code>67f5588</code> on
+2026-08-28 and the verdict is <strong>SHIP</strong> (<code>REVIEW.md</code>, &ldquo;Phase 2, step
+2a&rdquo;). So 2a is now <strong>built &#9989; &middot; verified &#9989; &middot; shippable
+&#9989;</strong> &mdash; all three, which are three different claims (see &ldquo;Definition of
+done&rdquo; at the bottom). <strong>Step 2b &mdash; the map of everywhere you have been &mdash; is
+unblocked and is next.</strong></p>
+<p>Seven follow-up items were routed and <strong>none of them blocks 2b</strong>. Two are visible to
+you and are written up under &ldquo;What Jacob should know&rdquo; below. One thing the verdict
+deliberately did <strong>not</strong> do: the block on sharing, friends and public links stays in
+place until one design question about importing someone else&rsquo;s file is settled &mdash; see
+&ldquo;Decisions only Jacob can make&rdquo;.</p>
+<p style="color:#6b6257;font-size:0.85rem;"><em>The paragraphs below are the running log of how 2a
+got here, oldest first. They are history, not current state.</em></p>
+</div>
+
 <div class="callout" style="border-left:4px solid #b3701e;padding:.75rem 1rem;margin:1rem 0;background:#fff8ec">
-<p><strong>&#9881; PHASE 2 IS UNDERWAY &mdash; step 2a is built (not yet verified, not yet shipped).</strong>
+<p><strong>&#9881; [history] PHASE 2 IS UNDERWAY &mdash; step 2a is built (not yet verified, not yet shipped).</strong>
 As of 2026-08-27, increments <strong>I-0 &hellip; I-4</strong> of the twelve in <code>ROADMAP.md</code>
 revision 10 are <strong>built</strong>: the QA probe board is repaired and its baseline numbers
 re-measured (I-0); <code>lifecycle()</code> is in core and in the CLI (I-1);
@@ -521,9 +537,29 @@ defect: the ruling's own list of <em>&ldquo;things this check knowingly doesn't 
 categories correctly but was <strong>three items short</strong>, all three being containers inside the
 <em>recipient's own</em> trip where nothing crosses. That is fixed in the ruling's prose, in place, with
 <strong>no code change</strong> &mdash; and the tester said in writing that it does not re-open the arc.
-<strong>Status: built ✅, verified ✅ (round 21), not yet shippable</strong> &mdash; the manager's Phase-2a
-SHIP / SEND BACK call is the one remaining step, and it is now a judgement about the two increments rather
-than another round of this arc.</p>
+<strong>Status: built ✅, verified ✅ (round 21), and now shippable ✅</strong> &mdash; see the manager's
+verdict below.</p>
+</div>
+
+<div class="callout" style="border-left:4px solid #2a5138;padding:.75rem 1rem;margin:1rem 0;background:#f0f8f2">
+<p><strong>&#9989; THE MANAGER RULED: SHIP. Step 2a is done.</strong> (<code>REVIEW.md</code>,
+&ldquo;Phase 2, step 2a&rdquo;, reviewed at <code>67f5588</code>, 2026-08-28.) The manager did not take
+anyone&rsquo;s word for it: it re-ran the whole test suite (<strong>620, all passing</strong>), the type
+checker, the build, the golden files and <strong>78</strong> separate attack scripts, re-derived every
+headline number from scratch rather than quoting one, entered a <em>&ldquo;Japan, March 2019 &mdash; 東京,
+京都&rdquo;</em> trip itself and got <strong>zero warnings and zero problems</strong> back, and re-proved two
+of the six closing checks on the copy-path arc by breaking the code on purpose and watching the right test
+go red. Everything 2a promised is built and works.</p>
+<p><strong>Seven follow-ups were routed and none of them blocks step 2b.</strong> Four are housekeeping on
+the tester&rsquo;s own attack scripts &mdash; one of them had been quietly crashing half-way through for
+seven commits, which is exactly the kind of thing a gate exists to catch. Two are real but small, and are in
+&ldquo;What Jacob should know&rdquo; below: <strong>undo behaves badly immediately after recording a very
+long past trip</strong>, and <strong>the app assumes every day of a recorded trip was in the first city you
+listed</strong> (so &ldquo;Tokyo, Kyoto&rdquo; records 31 days in Tokyo and none in Kyoto) &mdash; the second
+is now a design question that must be settled <em>before</em> the lifetime map is built from that data. The
+seventh is the one thing the SHIP verdict deliberately did <strong>not</strong> unblock: <strong>sharing,
+friends and public links stay blocked</strong> until an architect rules on what should happen when someone
+hands you a trip file with no owner recorded in it.</p>
 </div>
 
 <div class="wrap">
@@ -531,25 +567,63 @@ than another round of this arc.</p>
   <div class="brand">
     <h1>CAIRN</h1>
     <div class="tagline">"You are here"</div>
-    <div class="updated">Updated 2026-08-28 · against <code>master</code>, after <strong>QA round 21 — the closure round</strong>: the builder landed A-25, the tester verified all six points of its written closing criterion, and the seven-round copy-path arc is <strong>closed</strong>. I-4a's ship gate is met and has no open item; the round's one finding (a three-item gap in the ruling's own disclosure list) is corrected in ARCHITECTURE A-25 Part 5 in place — no revision 20, no code change.</div>
+    <div class="updated">Updated 2026-08-28 · against <code>master</code>, after the <strong>manager's 2a gate — verdict SHIP</strong> (<code>67f5588</code>). Step 2a (past trips and the trip lifecycle) is built, verified and <strong>shipped</strong>; step 2b (the lifetime map) is unblocked and next. Seven follow-ups routed, none blocking; the sharing/friends/public-link block is <em>not</em> lifted. Previously: QA round 21, the closure round — the seven-round copy-path arc closed.</div>
   </div>
 
   <!-- ============ DECISION CALLOUT ============ -->
   <div class="callout">
-    <span class="label">⚠️ Waiting on Jacob, not on the pipeline</span>
-    <p><strong>Want an "accept" button for copied stops before Phase 2?</strong> Today a copied
-      activity stays badged "from a friend" forever — there's no control to say "this is mine
-      now." Safe, but you'll notice it. Cheap to add now; otherwise it ships with the Phase 3
+    <span class="label">⚠️ Waiting on Jacob, not on the pipeline — two now</span>
+    <p><strong>1. NEW, from the 2a gate — what should happen to a trip file with no owner in it?</strong>
+      If someone exports a trip and sends it to you, the app correctly refuses it: <em>"this belongs to
+      someone else."</em> But if that file happens to carry no owner at all, the app adopts the
+      <strong>whole thing</strong> as yours — and 91 of the activities inside it stay quietly stamped
+      with the other person's name underneath, with nothing on screen saying so. Nothing leaks and
+      nothing breaks; the problem is that the app would be telling you a trip is yours when it isn't,
+      which is the one rule you said is not negotiable. <strong>(a)</strong> refuse anything that isn't
+      provably yours, <strong>(b)</strong> accept it but visibly badge the whole trip as imported from
+      someone else, or <strong>(c)</strong> leave it until real accounts exist in Phase 3? All
+      friend-sharing and public-link work is blocked until this is settled either way, so nothing is
+      waiting on you today.</p>
+    <p><strong>2. Still unanswered from Phase 1 — want an "accept" button for copied stops?</strong>
+      Today a copied activity stays badged "from a friend" forever — there's no control to say "this is
+      mine now." Safe, but you'll notice it. Cheap to add now; otherwise it ships with the Phase 3
       accounts work. No rush — nothing else is blocked on this.</p>
+  </div>
+
+  <!-- ============ WHAT JACOB SHOULD KNOW ABOUT 2a ============ -->
+  <div class="callout" style="border-left-color:#2a5138;">
+    <span class="label">📌 What Jacob should know about 2a, in plain terms</span>
+    <p><strong>What you can do now that you couldn't before.</strong> Record trips you have already
+      taken — title, roughly-when, the cities, no day-by-day required — and the app treats them as
+      <em>records</em> rather than as itineraries that have expired. And your Europe trip has stopped
+      nagging you: it ended on 22 August, and until now the app kept telling you, forever, that you were
+      missing a hotel in Budapest for nights you'd already slept through. That's gone. Your own two red
+      flags for Aug 18 and Aug 20 are still there, which is exactly right — nothing of <em>yours</em>
+      gets silenced.</p>
+    <p><strong>"Roughly when" is recorded honestly.</strong> If you only remember <em>March 2019</em>, it
+      stores March 2019 and says so on screen. It does not quietly claim you were there from the 1st to
+      the 31st.</p>
+    <p><strong>Two rough edges, both small, both now assigned rather than floating.</strong>
+      <em>Undo, straight after recording a past trip:</em> record a whole <em>year</em> and then press
+      Ctrl+Z and it peels the trip apart one day at a time — and you can't get all the way back. A
+      month-long trip is fine, just fiddly. Found nine rounds ago, quietly never picked up; it now has a
+      name on it. <em>Every day of a recorded trip is assumed to be in the first city you listed:</em>
+      so "Tokyo, Kyoto" records 31 days in Tokyo and none in Kyoto. The form does tell you this before
+      you press the button, which is the right instinct — but the <strong>next</strong> step is the map
+      of everywhere you've been, and it will be built from exactly that data. So the architect has to
+      settle, before that map exists, how the app tells the difference between "I said I was in Kyoto"
+      and "the app filled that in for me." That's your own rule — never present our guess as your plan —
+      applied one step ahead of where it would have bitten.</p>
   </div>
 
   <!-- ============ HERO: 10-second read ============ -->
   <div class="hero">
     <div class="phase-tag">Phase 2 of 7 — travel history, local-first</div>
-    <h2>Phase 1 shipped. Phase 2 is underway, and stuck on one file on purpose.</h2>
+    <h2>Phase 1 shipped. Phase 2 step 2a has now shipped too. The lifetime map is next.</h2>
     <div class="pills">
       <span class="pill green">🟢 PHASE 1 CLOSED — SHIPPED</span>
-      <span class="pill amber">🟡 PHASE 2 — 2a BUILT, NOT VERIFIED</span>
+      <span class="pill green">🟢 PHASE 2 — STEP 2a SHIPPED</span>
+      <span class="pill orange">🟠 STEP 2b — NEXT, UNBLOCKED</span>
     </div>
     <p><strong>Phase 1: SHIP</strong> (<code>REVIEW.md</code>, <code>b32ef9a</code>, 2026-08-27) —
       built, independently attacked across 11 rounds, and the very last fix re-verified by the
@@ -636,11 +710,25 @@ than another round of this arc.</p>
       <h4>Current phase</h4>
       <p>Phase 1 of 7: <span class="pill green">🟢 COMPLETE — SHIPPED</span><br>
         Phase 2 of 7 (travel history): <span class="pill amber">🟡 IN PROGRESS</span> — step 2a of 3
-        is <strong>built</strong> (increments I-0…I-4) and now <strong>verified</strong> (ten
-        adversarial rounds, 12 → 21, ending with round 21 closing the copy-path arc against a
-        criterion written in advance), but <strong>not shipped</strong> — the manager's 2a gate has
-        not been called yet; 2b (lifetime map, travel identity) and 2c (participants) are
+        is <span class="pill green">🟢 SHIPPED</span> (increments I-0…I-4a): <strong>built</strong>,
+        then <strong>verified</strong> over ten adversarial rounds (12 → 21, ending with round 21
+        closing the copy-path arc against a criterion written in advance), then
+        <strong>signed off by the manager on 2026-08-28 at <code>67f5588</code>, verdict SHIP</strong>
+        (<code>REVIEW.md</code>, "Phase 2, step 2a"). Step 2b (lifetime map, travel identity) is
+        <span class="pill orange">🟠 NEXT — unblocked</span>; step 2c (participants) is
         <span class="pill grey">⚪ NOT STARTED</span></p>
+      <h4>What the 2a gate actually checked</h4>
+      <p>Because "the manager said SHIP" is only worth something if it means someone ran it: the full
+        suite (<strong>620 tests, all passing</strong>), the type checker on both projects, the
+        production build, the golden-file regeneration (byte-identical), <strong>78</strong> attack
+        scripts, the command-line tool at three different dates, and a <em>"Japan, March 2019 — 東京,
+        京都"</em> trip entered by hand end to end (two distinct cities, 31 days, <strong>zero</strong>
+        warnings, <strong>zero</strong> problems). Every headline number was re-derived from scratch
+        rather than quoted, and two of the copy-path arc's six closing checks were re-proved by
+        deliberately breaking the code and confirming the right test went red.
+        <strong>Seven follow-ups were routed; none blocks 2b.</strong> The
+        sharing/friends/public-link block is <strong>not</strong> lifted — it now hangs on the
+        ownerless-import question in the banner at the top.</p>
       <h4>Where the effort has actually gone</h4>
       <p>Not on 2b or 2c. <strong>Ten consecutive adversarial rounds (12 → 21)</strong> have been
         spent on two increments — I-3a (a dismissed warning staying dismissed) and I-4a (city
@@ -653,8 +741,10 @@ than another round of this arc.</p>
         clean across twenty-two more data shapes and all 143 stops of the real trip, and round 21
         confirmed point by point, against six checks written down <em>before</em> it started, that
         the last ruling landed. <strong>I-4a's ship gate is met.</strong> The
-        share/friend/public-link block stays in place until the manager's Phase-2a verdict, which is
-        a scope rule rather than an open defect.</p>
+        share/friend/public-link block stays in place — and the manager's Phase-2a verdict did
+        <strong>not</strong> lift it. It now hangs on one design question about importing a trip file
+        with no owner in it (the banner at the top), which is a scope rule rather than an open
+        defect.</p>
       <h4>Current gate status</h4>
       <p><span class="pill green">🟢 PHASE 1 GATE: PASSED</span> — Phase 1 itself is
         <strong>closed</strong>, not open. ("Gate open" describes the door into Phase 2, not Phase
@@ -731,8 +821,8 @@ than another round of this arc.</p>
         <li>No "accept as mine" control yet for a copied stop — Jacob's call, see the banner above.</li>
         <li>Two narrow bugs exist but aren't reachable through anything currently in the app.</li>
       </ul>
-      <h4>Built in Phase 2, but not verified and not shipped</h4>
-      <p>This is "the builder says it works", which this project does not count as done:</p>
+      <h4>Shipped in Phase 2, step 2a — built, verified and signed off</h4>
+      <p>All three claims, per the manager's SHIP verdict at <code>67f5588</code> on 2026-08-28:</p>
       <ul>
         <li>Record a <strong>past trip</strong> from a form, with planned / current / past chips.</li>
         <li>Dates you only half-remember — <em>"June 2019"</em>, not two invented exact days.</li>
@@ -893,9 +983,12 @@ than another round of this arc.</p>
     <summary><span><span class="num">8</span>What happens next</span><span class="chev">▾</span></summary>
     <div class="details-body">
       <p style="text-align:center;font-weight:700;font-size:1rem;letter-spacing:0.02em;">
-        Architect&nbsp;→&nbsp;Builder&nbsp;→&nbsp;Breaker&nbsp;→&nbsp;Manager
+        Architect&nbsp;→&nbsp;Builder&nbsp;→&nbsp;Breaker&nbsp;→&nbsp;Manager&nbsp;&rArr;&nbsp;step&nbsp;2b
       </p>
-      <p style="text-align:center;color:var(--ink-dim);font-size:0.85rem;margin-top:-4px;">Architect done · builder done · breaker done (round 21) · <strong>the 2a gate is next</strong></p>
+      <p style="text-align:center;color:var(--ink-dim);font-size:0.85rem;margin-top:-4px;">Architect done · builder done · breaker done (round 21) · <strong>manager done — verdict SHIP</strong> · step 2b next</p>
+      <p><strong>Step 2a is closed.</strong> The full four-agent chain ran and the gate at the end of
+        it said SHIP. What comes next is <strong>step 2b — the map of everywhere you have
+        been</strong>. How 2a's last round went, for the record:</p>
       <ul>
         <li><strong>Architect — done.</strong> <code>ARCHITECTURE.md</code> revision 19
           (<strong>A-25</strong>): test-data completeness enforced by the compiler and the tests
@@ -912,12 +1005,29 @@ than another round of this arc.</p>
           borrowed data, nothing crossing between people. One MINOR finding, a three-item gap in the
           ruling's own disclosure list, corrected in prose with no code change and explicitly
           <em>not</em> a re-opening.</li>
-        <li><strong>Manager — next, and it is the only thing outstanding.</strong> The
-          <strong>2a SHIP / SEND BACK</strong> call. I-3a and I-4a are both closed on their ship
-          gates, so this is a judgement about the two increments as a whole rather than another round
-          of this arc. Only this role can open the rest of Phase 2, and the block on
-          sharing/friends/public links holds until it rules.</li>
+        <li><strong>Manager — done, 2026-08-28 at <code>67f5588</code>: verdict SHIP.</strong>
+          Re-ran the suite, the type checker, the build, the golden files and 78 attack scripts;
+          re-derived every number rather than quoting one; entered a past trip by hand end to end; and
+          re-proved two of the arc's six closing checks by breaking the code on purpose.
+          <strong>Seven follow-ups routed, none blocking.</strong> The block on
+          sharing/friends/public links is <strong>not</strong> lifted — it now hangs on one design
+          question about importing a trip file with no owner (see the banner at the top).</li>
       </ul>
+      <h4>What 2b starts with, in order</h4>
+      <ol>
+        <li><strong>Breaker, before its first round on 2b:</strong> clean the attack board and re-run
+          <em>all</em> of it, not just the files in scope. The 2a gate found one script that had been
+          crashing half-way through for seven commits, losing nine of its checks with no status note
+          mentioning it, plus three stale ceilings. <strong>New standing rule:</strong> the whole
+          board runs at every step boundary, and its state gets recorded.</li>
+        <li><strong>Architect, before the lifetime map is built:</strong> rule on how the app
+          distinguishes a place <em>you</em> said you went from one <em>the form filled in for
+          you</em> — and on why a trip typed in from memory currently records at the same certainty
+          as one with a booking confirmation behind it. Both feed the map directly.</li>
+        <li><strong>Architect, before any sharing work:</strong> the ownerless-import question.</li>
+        <li><strong>Builder, in 2b's first pass:</strong> the undo-after-recording-a-long-past-trip
+          defect.</li>
+      </ol>
       <p><strong>Still standing from Phase 1:</strong> whenever the merge/write code is next
         touched, the first breaker round on it is pre-committed to attack
         <code>doMerge</code>/<code>writeAndSettle</code> — the code behind five of Phase 1's bugs.</p>

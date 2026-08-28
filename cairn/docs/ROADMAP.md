@@ -975,11 +975,11 @@ Entry: Phase 1 shipped with a manager verdict of SHIP (`b32ef9a`) — done.
 
 ### Three steps, each shippable on its own, in this order
 
-| Step | Ships | Useful alone because |
-|---|---|---|
-| **2a — past trips and the lifecycle** | `lifecycle()`, `Trip.datePrecision`, the feasibility/integrity rule class (§8.2), a "record a past trip" flow (title, dates, precision, cities — no day-by-day required) | you can enter a 2019 trip and it does not greet you with twenty warnings about a hotel you already slept in |
-| **2b — the lifetime map and travel identity** | `countryOf` + the generated country index, `travelStats`, the widened `TripSummaryRow` + `SUMMARY_VERSION` rescan, the **Map** and **Profile** surfaces | *"show me everywhere I've been"* — the signature experience, from data that already exists |
-| **2c — participants** | `Trip.participants`, three build functions, the participants editor, *"people you have travelled with"* on the profile | you can say the trip was with your girlfriend and her family, and it grants them nothing |
+| Step | Ships | Useful alone because | State |
+|---|---|---|---|
+| **2a — past trips and the lifecycle** | `lifecycle()`, `Trip.datePrecision`, the feasibility/integrity rule class (§8.2), a "record a past trip" flow (title, dates, precision, cities — no day-by-day required) | you can enter a 2019 trip and it does not greet you with twenty warnings about a hotel you already slept in | **SHIPPED — manager verdict SHIP, `REVIEW.md` "Phase 2, step 2a", reviewed at `67f5588`, 2026-08-28.** Built, verified (rounds 12–21), shippable. Seven routed items, **none blocking**; the block on share/friend/public-share-link work is **not** lifted by this verdict — see A-2 in that routing table |
+| **2b — the lifetime map and travel identity** | `countryOf` + the generated country index, `travelStats`, the widened `TripSummaryRow` + `SUMMARY_VERSION` rescan, the **Map** and **Profile** surfaces | *"show me everywhere I've been"* — the signature experience, from data that already exists | **UNBLOCKED** by 2a's SHIP. Not started. Two of 2a's routed items are owed **before I-6** (`REVIEW.md` 2a routing **A-1**, and the breaker board items **B-1**…**B-4** before 2b's first breaker round) |
+| **2c — participants** | `Trip.participants`, three build functions, the participants editor, *"people you have travelled with"* on the profile | you can say the trip was with your girlfriend and her family, and it grants them nothing | Not started; gated on 2b |
 
 **Mapped onto the increment sequence below** (revision 10): **2a = I-1 → I-4**, **2b = I-5 → I-8**,
 **2c = I-9 → I-10**, with **I-0** before all of them and **I-11** the gate. Each of the three steps is
@@ -1606,6 +1606,29 @@ builder against the finding itself and is not an increment.
   verdict — that block is a scope rule, not an open defect, and closing this gate does not lift it. The next
   step for I-4a is the **manager's 2a SHIP / SEND BACK call**, which is now a judgment about I-3a and I-4a as
   increments, with **no further round of this arc owed to it**.
+  **MANAGER VERDICT: SHIP** (`REVIEW.md` "Phase 2, step 2a", reviewed at `67f5588`, 2026-08-28). **2a is
+  shipped and 2b may open.** I-3a's and I-4a's ship gates are met as written; the manager re-derived
+  A-25 Part 6 **clause 2** (revert the `refileCityKey` step-4 hoist → `readOnce.test.ts` assertion 1 red
+  with a **one-element** offender list naming exactly `15 · … : tgtCity1.order ×2`; restored → 4/4) and
+  **clause 4's null clause** (plant `homeBase: null` on `sourceTrip` → test 4 red naming exactly
+  `srcTrip.homeBase`; `DECLARED_NULLS` `{}`) in a throwaway worktree, and states in writing why clauses
+  1, 3, 5 and 6 were **not** derived a third time. Independently re-run and reproduced: 620/620,
+  typecheck clean both projects, `web:build` clean, **71** exports, **2/4/11** at `FIXTURE_TODAY`,
+  `validateTrip` **11**, goldens + sample byte-identical at `40955ca0b182`, `detectUngated`'s id set
+  identical at **eight** clocks, `qa/r13`…`qa/r20` all 0 FAIL / ALL OK.
+  **Two things this verdict does NOT do, stated so they are not assumed.** (1) **The block on share,
+  friend and public-share-link work is not lifted** — it is re-issued, now attached to `REVIEW.md`'s 2a
+  routing item **A-2** (P2-8: an ownerless foreign document is adopted whole and unmarked;
+  `packages/client/src/store/store.ts:1027-1028`), which is an **architect** item that must be ruled
+  before any of that work ships. (2) It does not close the two items routed against 2a's own surface:
+  **BLD-1** (P2-5, `apps/web/src/views/PastTripForm.tsx:107-143`, builder, in 2b's first builder pass)
+  and **A-1** (§8.1's provenance table names `{source:'user', confidence:'asserted'}` for
+  memory-entered travel and no path in the product produces it — `provenance.ts:18` hardcodes
+  `'confirmed'` — architect, **owed before I-6**, together with the ruling on whether a day-city the
+  past-trip form assigned may stand as evidence in `travelStats`). Four further items go to the
+  **breaker before 2b's first round** (**B-1**…**B-4**): the probe board has re-rotted since I-0 cleared
+  it — `qa/r11-recheck.mjs:207` aborts on A-19's throw and silently loses 9 of its 21 assertions, and
+  `qa/r21-closure.mjs` §6 and `qa/p2b-gate.mjs` §2.1 carry stale ceilings.
 
 ---
 
@@ -1867,6 +1890,26 @@ there" has pulled a later phase forward and fabricated a statistic, which is wha
 The breaker's carried item — probe repair (`qa/r6-flush.mjs` §6, `qa/r7-chain.mjs`'s hardcoded counts,
 the three dead probes) — is **owed before Phase 2's first breaker round**, in a commit of its own, because
 this phase re-runs the whole board as its first ceiling and a stale FAIL count costs a round.
+**Discharged by I-0 — and it has re-accumulated, which is why the obligation is now standing rather than
+one-off.** The 2a manager gate ran the whole headless board (78 files) and found rot I-0 had cleared:
+`qa/r11-recheck.mjs:207` aborts on A-19's throw, silently losing 9 of its 21 assertions including R10-2's
+end-to-end store coverage. **The rule this makes explicit: the breaker runs the WHOLE board at each step
+boundary, not only the probes in the round's scope, and records its state.** Eight consecutive scoped
+rounds is how a probe stayed broken for seven commits with no status note mentioning it.
+
+### The 2a gate's own carried items, placed (added 2026-08-28)
+
+`REVIEW.md`'s 2a SHIP verdict routed seven items, none blocking. Where each belongs, with its trigger:
+
+| Item | Agent | Where | Trigger |
+|---|---|---|---|
+| **A-1** — §8.1's provenance table claims `{source:'user', confidence:'asserted'}` for memory-entered travel; `model/provenance.ts:18` hardcodes `'confirmed'` and nothing produces `'asserted'`. Plus: whether a day-city the past-trip form assigned (not the user) may stand as evidence in `travelStats` | **architect** | §8.1 + §8.4 | **Before I-6.** I-6's summary widening consumes exactly this data — the same dependency ROADMAP already states for A-10/A-14 |
+| **A-2** — **P2-8**: deleting `ownerId` from a foreign export turns `ForeignDocumentError` into adoption; 91 stops stay authored by the other user with 0 ownership issues reported. `packages/client/src/store/store.ts:1027-1028` | **architect** | §2.14 rule 1 / KD-40 | **Before any share, friend or public-share-link work**, and before 2b touches `importDoc`. This carries I-4a's block forward; 2a's SHIP does **not** lift it |
+| **BLD-1** — **P2-5**: the past-trip form's per-day `setDayMeta` loop makes one press N+2 undo entries, so a year-length trip can never be undone past its own recording (measured: 400 undos, 315/365 days still assigned). `apps/web/src/views/PastTripForm.tsx:107-143` | **builder** | I-4's own file | **2b's first builder pass.** Repros already exist: `qa/p2b-past.mjs` §2f, `qa/p2b-gate.mjs` §3.4 |
+| **B-1** — `qa/r11-recheck.mjs:207` crashes; §2.3's `withCopy({kind:'pool'})` passes no `cityKey` and A-19 correctly refuses it | **breaker** | `qa/` | **Before 2b's first breaker round**, with the whole-board re-run above |
+| **B-2** — `qa/r21-closure.mjs:407-409` hardcodes *"NOT enumerated in Part 5"* for three paths `67f5588` enumerated | **breaker** | `qa/` | same |
+| **B-3** — `qa/p2b-gate.mjs` §2.1's `datePrecision` ceiling does not honour `datePrecision.test.ts`'s single pinned exemption | **breaker** | `qa/` | same |
+| **B-4** — `QA-FINDINGS.md`'s status note lists **R13-4** and **R13-5** as still open; both are closed in code and `qa/r13-gate-citykey.mjs` §7/§8 are green | **breaker** | `QA-FINDINGS.md` | same |
 
 ---
 
