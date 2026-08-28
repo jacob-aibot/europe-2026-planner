@@ -75,10 +75,22 @@
  * N+1 in the *other* party's document because the reuse probe aliased the caller's `LatLng`.
  * Each fix is marked at its site. Since a hand search of this file has now missed a site in five
  * consecutive rounds, A-23 makes the census standing: `packages/core/test/readOnce.test.ts`
- * counts every field every caller-supplied record hands out, across ten scenarios covering every
- * branch below, and fails the suite on anything read twice outside a five-entry allow-list.
+ * counts every field every caller-supplied record hands out, across a scenario matrix covering every
+ * branch below, and fails the suite on anything read twice outside a named allow-list.
  * **A new branch here needs a new scenario row there; a new allow-list entry is an architect's
  * ruling, not a builder's judgment.**
+ *
+ * **A-24 (revision 18, QA R19-1…R19-5) — the sixth consecutive round, and the second in a row where
+ * the site was found by widening the guard rather than by running it.** A-23 held both whole `Trip`
+ * records opaque, on the stated ground that they are *"the document skeleton rather than values that
+ * cross"* — false for `Trip.id` and `Trip.ownerId`, which cross verbatim into `provenance.origin`.
+ * So A-22's hoist of the CONTAINER (`source.trip`) hid that the FIELD was still read twice: the
+ * credit, and A-16 step 2's identity test (**R19-1**, fixed below). The recipient's own `Day.id` was
+ * read twice across one `copyStopInto` → `addStop` traversal, so this function's own guard could
+ * accept a day `withDay` then threw on (**R19-2**, fixed below). The census now opens both `Trip`s
+ * except their six collections, runs **fourteen** scenarios, holds **seven** allow-list entries, and
+ * its fixture stop carries **15 of `Stop`'s 15 fields** — `ticket` included, which is the field §6.6
+ * calls an access credential and rule 3 says never travels.
  *
  * What A-21 deliberately does **not** do here: it adds **no new defensive guard**. `src.links`
  * that is a truthy non-array still throws on `.map`, and `[...src.flags]` still throws on a
@@ -91,7 +103,7 @@ import type {
   CostEstimate, LatLng, Money, MoveOverride, OpeningHours, Place, PlaceLink, Provenance,
   ProvenanceConfidence, Stop, StopPlacement, Trip,
 } from '../model/types.ts';
-import type { IdFactory, IsoDate, PlaceId, StopId, UserId } from '../model/ids.ts';
+import type { IdFactory, IsoDate, PlaceId, StopId, TripId, UserId } from '../model/ids.ts';
 import { addStop } from './stops.ts';
 import type { StopInit } from './stops.ts';
 import { REDACTED, redactText } from './redactText.ts';
@@ -319,15 +331,23 @@ function samePlace(a: Place, b: { cityKey: string; name: string; at: Place['at']
  *      on which one the scan happened to reach first.
  *
  * Returns the target's key, or `null` when the place must not travel. Pure.
+ *
+ * **A-24 Part 1 (revision 18, QA R19-1).** `sourceTripId` is a PARAMETER rather than a read of
+ * `source.id`, because the caller has already read that field once — for the credit,
+ * `provenance.origin.sourceTripId` — and step 2's conjunct was the second read. The credit and
+ * the identity test must be the same id or the credit can name one document while the re-file
+ * decides the place belongs to another. `target.id` stays a read: A-24 measures it at 2 and rules
+ * the second one irreducible (the record spread that rebuilds the recipient's own document), and
+ * nothing of the target crosses a person boundary.
  */
-function refileCityKey(source: Trip, target: Trip, cityKey: string): string | null {
+function refileCityKey(source: Trip, sourceTripId: TripId, target: Trip, cityKey: string): string | null {
   const sourceCity = source.cities.find((c) => c.key === cityKey);
   if (!sourceCity) return null;
   // A-16 step 2. A `CityKey` means nothing outside the document that minted it (A-10), so a
   // bare key match between two documents is a coincidence — every deterministic IdFactory in
   // this repo mints `city-1` in every document it builds. The same-document conjunct is what
   // turns key equality into an identity.
-  if (source.id === target.id && target.cities.some((c) => c.key === cityKey)) return cityKey;
+  if (sourceTripId === target.id && target.cities.some((c) => c.key === cityKey)) return cityKey;
   const wanted = normalizeCityName(sourceCity.name);
   if (wanted === '') return null;
 
@@ -435,9 +455,19 @@ export function copyStopInto(
   const ids: IdFactory = ctx.ids;
   const today: IsoDate = ctx.today;
   const sourceTrip: Trip = source.trip;
+  // A-24 Part 1 (revision 18, QA R19-1). A-22 hoisted the CONTAINER and left the FIELD: `.id` was
+  // then read twice off it — `origin.sourceTripId` (the CREDIT, §2.14 rule 7) and, inside
+  // `refileCityKey`, A-16 step 2's `source.id === target.id` (the conjunct A-16 says "turns key
+  // equality into an identity"). With those two reads disagreeing the credit names one document
+  // while the re-file decides the place belongs to another, and a Vienna `Place` is filed under
+  // the key the recipient's Prague city holds — the papering-over A-16 exists to refuse, invisible
+  // to `validateTrip` and to every view, because a `Place` carries no provenance (A-6). Hoisting
+  // here rather than at the two sites widens nothing: every path past `requireActor` already read
+  // this field, including the throw below.
+  const sourceTripId: TripId = sourceTrip.id;
   const stopId: StopId = source.stopId;
   const src = findAnywhere(sourceTrip, stopId);
-  if (!src) throw new Error(`copyStopInto: no such stop ${stopId} in ${sourceTrip.id}`);
+  if (!src) throw new Error(`copyStopInto: no such stop ${stopId} in ${sourceTripId}`);
   // A-19 (revision 14, QA R15-6). A `placement` is not a record that crosses: it is an ARGUMENT
   // the caller supplies about the TARGET, in the same position and with the same authority as
   // `placement.dayId`. So it is validated exactly as `dayId` is and never re-filed — the primary
@@ -472,14 +502,26 @@ export function copyStopInto(
   // would put back the very casts A-21 removes — that is what the discriminant carve-out is for.
   // The two throws are now in mutually exclusive branches, which is unobservable: they were
   // already mutually exclusive by `kind`.
+  //
+  // **A-24 Part 1's step 1 (revision 18, QA R19-2).** The `scheduled` branch's own
+  // `target.days.some((d) => d.id === dayId)` pre-check is GONE. It was read 1 of the recipient's
+  // own `Day.id`; `addStop` → `withDay` is read 2, and A-22 Part 1(b) settles that the two are one
+  // traversal for this rule ("`requireActor` validating read 1 while `addStop` receives read 2 is
+  // the banned form on its face"). With the two reads disagreeing, this guard accepted the day and
+  // `withDay` then threw `no such day` NAMING THE DAY THE GUARD HAD JUST ACCEPTED — core throwing
+  // because of what the RECIPIENT's document contains, which §2.1 forbids and R15-2 established.
+  // `addStop` already owns that throw and already produces one, so the rule is unchanged: a caller
+  // naming a day the target lacks is still refused, `@throws` below is still accurate, and nothing
+  // is written behind it because every function on this path is pure. What does change is the
+  // message (`no such day: <id>` rather than `copyStopInto: no such day <id> in <trip>`) and the
+  // fact that up to two ids are drawn from the injected factory before the refusal — BUILD-NOTES
+  // §1 KD-50, and neither is observable to a caller that is not already in programmer error. The
+  // `pool` branch's A-19 check stays: `cities` is read by nothing downstream.
   let placed: StopPlacement;
   if (placement.kind === 'scheduled') {
     const dayId = placement.dayId;
     const time = placement.time;
     const order = placement.order;
-    if (!target.days.some((d) => d.id === dayId)) {
-      throw new Error(`copyStopInto: no such day ${dayId} in ${target.id}`);
-    }
     placed = { kind: 'scheduled', dayId, time, order };
   } else {
     const cityKey = placement.cityKey;
@@ -506,7 +548,7 @@ export function copyStopInto(
     confidence: demote(confidence),
     origin: {
       friendUserId: sourceTrip.ownerId,
-      sourceTripId: sourceTrip.id,
+      sourceTripId,
       // A-22 (R18-2): the id the caller NAMED and the predicate MATCHED, not a second read of the
       // found record. `src.id` is now read zero times, which is stronger than hoisting it: rule 1
       // says the source id survives only inside `origin`, and `stopId` is the only value in this
@@ -555,7 +597,7 @@ export function copyStopInto(
       // the `null` test never saw into the recipient's document.
       const originalCityKey: string = original.cityKey;
       const at: LatLng | null = original.at;
-      const targetKey = refileCityKey(sourceTrip, target, originalCityKey);
+      const targetKey = refileCityKey(sourceTrip, sourceTripId, target, originalCityKey);
       if (targetKey === null) {
         // A-14 step 3 — no city in the target answers to the source city's name, so there is
         // nothing to file this place under and every alternative writes a guess into the

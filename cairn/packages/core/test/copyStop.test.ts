@@ -33,7 +33,8 @@ import { needsBadge } from '../src/derive/display.ts';
 import { readWeeklyEntry } from '../src/model/openingHours.ts';
 import { resolvePlaceLink } from '../src/derive/geo.ts';
 import type {
-  BuildCtx, CostEstimate, LatLng, Link, MoveOverride, Money, Place, Stop, StopPlacement, Trip,
+  BuildCtx, CostEstimate, Day, LatLng, Link, MoveOverride, Money, Place, Stop, StopPlacement,
+  Ticket, Trip,
 } from '../src/index.ts';
 import { redactionHits } from '../src/index.ts';
 import { europe2026 } from './fixture.ts';
@@ -41,8 +42,39 @@ import { europe2026 } from './fixture.ts';
 const CTX = (prefix: string): BuildCtx => ({ ids: sequentialIds(prefix), now: '2026-08-25', actorUserId: 'user:jacob' });
 const COPY_CTX = (prefix: string) => ({ ids: sequentialIds(prefix), today: '2026-08-25', actorUserId: 'user:jacob' });
 
-/** Marta's trip: one stop that references a Place, has a booking and a bundled ticket. */
-function martasTrip(): Trip {
+/**
+ * A-24 Part 3 (revision 18, QA R19-5) — *"no `Ticket` travels"* is a claim over the **union**, and
+ * the shape that slipped past both this file and `readOnce.test.ts` is a **kind-gated** emission:
+ * `...(src.ticket && src.ticket.kind === 'bundled' ? { ticket: src.ticket } : {})` passed 615/615.
+ * A fixture pinning one `kind` measures a third of the rule.
+ *
+ * This map is the compile-time stop: a **fourth** `Ticket` kind fails `npm run typecheck` HERE,
+ * before it fails a test, in the same idiom as `STOP_FIELDS` below. `payloads` are the greppable
+ * halves of each variant — the whole point of §6.6 calling a ticket an access credential — and the
+ * assertion beneath ties this map to the fixtures so a kind cannot be added and left uncovered.
+ */
+const TICKET_KINDS: Record<Ticket['kind'], true> = { bundled: true, url: true, attachment: true };
+
+const TICKET_FIXTURES: ReadonlyArray<{ ticket: Ticket; payloads: readonly string[] }> = [
+  {
+    ticket: { kind: 'url', href: 'https://example.test/secret-token', label: 'Ticket', verifiedAt: null, verifiedBy: null },
+    payloads: ['secret-token'],
+  },
+  {
+    // §6.6's own threshold: the kind that names a file shipped inside `apps/web/dist`.
+    ticket: { kind: 'bundled', path: 'tickets/marta-entry-4471.pdf', label: 'Ticket' },
+    payloads: ['tickets/marta-entry-4471.pdf'],
+  },
+  {
+    ticket: { kind: 'attachment', mailMessageId: 'msg-9c3f-mailbox-secret', filename: 'boarding-pass-XX00XX0X.pdf', label: 'Ticket' },
+    payloads: ['msg-9c3f-mailbox-secret', 'boarding-pass-XX00XX0X.pdf'],
+  },
+];
+
+const URL_TICKET: Ticket = TICKET_FIXTURES[0].ticket;
+
+/** Marta's trip: one stop that references a Place, has a booking, and carries a `Ticket`. */
+function martasTrip(ticket: Ticket = URL_TICKET): Trip {
   let t = createTrip(
     {
       id: 'trip-marta', title: 'Marta in Vienna', ownerId: 'user:marta',
@@ -58,7 +90,7 @@ function martasTrip(): Trip {
   t = upsertBooking(t, {
     id: 'bk-marta', tripId: 'trip-marta', kind: 'tour', operator: 'SomeTours', reference: 'MARTA123',
     startsAt: { date: '2026-08-08', time: '10:00' }, price: null, party: null, status: 'active',
-    ticket: { kind: 'url', href: 'https://example.test/secret-token', label: 'Ticket', verifiedAt: null, verifiedBy: null },
+    ticket,
     provenance: { source: 'user', state: 'accepted', confidence: 'confirmed', addedAt: '2026-08-01', acceptedAt: '2026-08-01', actorUserId: 'user:marta' },
   });
   t = addStop(
@@ -70,7 +102,7 @@ function martasTrip(): Trip {
       note: 'Go early', flags: ['free'], durationMins: 90,
       arrival: { mode: 'metro', mins: 12 }, travelRole: 'transfer',
       bookingId: 'bk-marta',
-      ticket: { kind: 'url', href: 'https://example.test/secret-token', label: 'Ticket', verifiedAt: null, verifiedBy: null },
+      ticket,
       cost: { amounts: [{ lo: 10, hi: 20, currency: 'EUR', basis: 'per_person' }], display: '€10–20' },
     },
     CTX('m2'),
@@ -89,10 +121,10 @@ function jacobsTrip(): Trip {
   );
 }
 
-function copied(): { trip: Trip; stop: Stop } {
+function copied(ticket: Ticket = URL_TICKET): { trip: Trip; stop: Stop } {
   const target = copyStopInto(
     jacobsTrip(),
-    { trip: martasTrip(), stopId: 'stop-marta-1' },
+    { trip: martasTrip(ticket), stopId: 'stop-marta-1' },
     { kind: 'scheduled', dayId: '2026-08-08', time: '11:00', order: 0 },
     COPY_CTX('c'),
   );
@@ -132,13 +164,27 @@ test('rule 2: confidence is demoted — you do not hold their document', () => {
   assert.ok(['asserted', 'inferred'].includes(stop.provenance.confidence));
 });
 
-test('rule 3: bookingId is dropped and no Ticket travels — a ticket URL is an access credential', () => {
-  const { trip, stop } = copied();
-  assert.equal(stop.bookingId, null);
-  assert.equal(stop.ticket ?? null, null);
-  assert.equal(trip.bookings.length, 0, "the friend's booking must not be adopted");
-  assert.equal(JSON.stringify(trip).includes('secret-token'), false, 'a ticket credential reached the target trip');
-  assert.equal(JSON.stringify(trip).includes('MARTA123'), false, 'a booking reference reached the target trip');
+test('rule 3: bookingId is dropped and no Ticket travels — for ALL THREE kinds of Ticket', () => {
+  // A-24 Part 3 (QA R19-5). Rule 3 is a claim over the whole `Ticket` UNION, and the regression it
+  // has to stop is a KIND-GATED emission: `...(src.ticket && src.ticket.kind === 'bundled' ?
+  // { ticket: src.ticket } : {})` passed 615/615 while this fixture pinned only `{kind:'url'}`.
+  assert.deepEqual(
+    TICKET_FIXTURES.map((f) => f.ticket.kind).sort(), Object.keys(TICKET_KINDS).sort(),
+    'a `Ticket` kind exists that rule 3 is not measured against — add a fixture beside its entry in TICKET_KINDS',
+  );
+
+  for (const { ticket, payloads } of TICKET_FIXTURES) {
+    const { trip, stop } = copied(ticket);
+    const doc = JSON.stringify(trip);
+    assert.equal(stop.bookingId, null, `${ticket.kind}: bookingId`);
+    assert.equal(stop.ticket ?? null, null, `${ticket.kind}: a Ticket travelled`);
+    assert.equal(trip.bookings.length, 0, `${ticket.kind}: the friend's booking must not be adopted`);
+    for (const needle of payloads) {
+      assert.equal(doc.includes(needle), false, `${ticket.kind}: the credential "${needle}" reached the target trip`);
+    }
+    assert.equal(doc.includes('MARTA123'), false, `${ticket.kind}: a booking reference reached the target trip`);
+    assert.equal(doc.includes('"ticket"'), false, `${ticket.kind}: the key itself must not appear anywhere in the copy`);
+  }
 });
 
 test('rule 3: cost is copied, with confidence demoted to inferred', () => {
@@ -2291,6 +2337,101 @@ test('A-22 R18-5: `original.at.lat`/`.lng` are read exactly twice, independent o
       'the written row must carry the pair `placeForCopy` read, never a hybrid',
     );
   }
+});
+
+// ---------------------------------------------------------------------------
+// A-24 (ARCHITECTURE revision 18, QA R19-1 / R19-2) — the SIXTH consecutive round in which this
+// file produced a finding, and the second in a row where the site was found by widening the
+// guard rather than by running it. Both are the same class as A-22's five: A-22 Part 1 hoisted
+// the CONTAINER (`source.trip`) and left the FIELD (`source.trip.id`); and the recipient's own
+// `Day.id` was resolved twice across one `copyStopInto` → `addStop` traversal, which A-22 Part
+// 1(b) already settled is one traversal for this rule.
+// ---------------------------------------------------------------------------
+
+test('A-24 R19-1: `source.trip.id` is read ONCE — the credit and A-16 step 2 see the same id', () => {
+  // Read 1 was `provenance.origin.sourceTripId`, the credit §2.14 rule 7 makes non-negotiable.
+  // Read 2 was `refileCityKey`'s `source.id === target.id` — the conjunct A-16 describes as what
+  // "turns key equality into an identity", because "a bare key match between two documents is a
+  // coincidence: every deterministic IdFactory in this repo mints `city-1` in every document".
+  //
+  // So: two DIFFERENT documents that happen to share a city key, for two DIFFERENT cities. With
+  // a stable id the answer is A-14 step 3 — Vienna does not fold onto Prague, no `Place` row is
+  // written and the stop keeps the raw coordinate. With `id` flipping, the credit says `trip-src`
+  // while the re-file decides "the source IS the target", so a VIENNA place is filed into the
+  // recipient's document under the key their PRAGUE city holds. `validateTrip` says nothing and a
+  // `Place` carries no provenance (A-6), so no view can tell.
+  const source = sourceWithPlace({ name: 'Vienna', centre: VIENNA }, { name: 'Belvedere', at: BELVEDERE });
+  const sharedKey = source.cities[0].key;
+  const prague = mintedTrip('trip-tgt', 'user:jacob', 'r191', [{ name: 'Prague', centre: PRAGUE }]);
+  // Force the collision A-16 calls a coincidence: one shared key, two different cities.
+  const target: Trip = {
+    ...prague,
+    cities: [{ ...prague.cities[0], key: sharedKey }],
+    days: prague.days.map((d) => ({ ...d, primaryCity: sharedKey, cities: [sharedKey] })),
+  };
+
+  const stable = copyAcross(target, source, 'r191a');
+  assert.equal(stable.places.length, 0, 'the fixture must take A-14 step 3 with a stable id, or it tests nothing');
+  assert.equal(copiedStop(stable).place.kind, 'inline', 'step 3 keeps the raw coordinate');
+
+  const id = withAccessor({ ...source } as Trip, 'id', ['trip-src', 'trip-tgt']);
+  const after = copyStopInto(
+    target, { trip: id.value, stopId: 's-src' },
+    { kind: 'scheduled', dayId: '2026-08-08', time: '11:00', order: 0 }, COPY_CTX('r191b'),
+  );
+  assert.equal(id.reads(), 1, 'A-24: `source.trip.id` must be read exactly once for the whole copy');
+  const copy = copiedStop(after);
+  assert.equal(copy.provenance.origin!.sourceTripId, 'trip-src', 'the credit names the id that was read');
+  assert.equal(
+    after.places.length, 0,
+    'A-16 step 2 fired on a key COINCIDENCE: a Vienna place was filed under the recipient\'s Prague key',
+  );
+  assert.deepEqual(copy.place, { kind: 'inline', at: BELVEDERE }, 'step 3 is the answer for two different documents');
+  assert.deepEqual(validateTrip(after).filter((i) => i.code === 'unknown_city_key'), []);
+});
+
+test('A-24 R19-2: the recipient\'s `Day.id` is resolved ONCE across copyStopInto → addStop', () => {
+  // `copyStop.ts` asked `target.days.some((d) => d.id === dayId)` and threw its own `no such day`;
+  // `addStop` then called `withDay`, which asked the same rows AGAIN. A-22 Part 1(b) settles that
+  // this is one traversal ("`requireActor` validating read 1 while `addStop` receives read 2 is
+  // the banned form on its face"), so the guard and the write must not be two reads. Measured on
+  // the shipped tree: the guard accepted the day and `withDay` then threw `no such day:
+  // 2026-08-08` — naming the day the guard had just accepted, because of what the RECIPIENT's own
+  // document contains. §2.1: core throws on programmer error, never on what a document holds.
+  const source = sourceWithPlace({ name: 'Vienna', centre: VIENNA }, { name: 'Belvedere', at: BELVEDERE });
+  for (const [i, values] of [['2026-08-08', '2026-08-09'], ['2026-08-08', 'gone']].entries()) {
+    const base = mintedTrip('trip-tgt', 'user:jacob', `r192${i}`, [{ name: 'Vienna', centre: VIENNA }]);
+    const idx = base.days.findIndex((d) => d.id === '2026-08-08');
+    const day = withAccessor({ ...base.days[idx] } as Day, 'id', values);
+    const target: Trip = { ...base, days: base.days.map((d, n) => (n === idx ? day.value : d)) };
+
+    let after: Trip;
+    assert.doesNotThrow(
+      () => { after = copyAcross(target, source, `r192c${i}`); },
+      `a flipping \`Day.id\` on the RECIPIENT's own document threw out of copyStopInto (${values.join(' → ')})`,
+    );
+    assert.equal(
+      after!.days[idx].stops.length, 1,
+      'the stop must land in the day the ONE read resolved',
+    );
+  }
+});
+
+test('A-24 R19-2: a day the target genuinely lacks is still refused, and nothing is written', () => {
+  // Dropping `copyStop.ts`'s pre-check hands the throw to `addStop`, which already produces one.
+  // The rule it enforces is unchanged (§2.1: a caller naming a day the target lacks is programmer
+  // error) and so is the fact that a pure function writes nothing behind it.
+  const source = sourceWithPlace({ name: 'Vienna', centre: VIENNA }, { name: 'Belvedere', at: BELVEDERE });
+  const target = mintedTrip('trip-tgt', 'user:jacob', 'r192d', [{ name: 'Vienna', centre: VIENNA }]);
+  assert.throws(
+    () => copyStopInto(
+      target, { trip: source, stopId: 's-src' },
+      { kind: 'scheduled', dayId: '2027-01-01', time: '11:00', order: 0 }, COPY_CTX('r192e'),
+    ),
+    /no such day/,
+  );
+  assert.equal(target.places.length, 0, 'the target is untouched — every build function is pure');
+  assert.equal(target.days.reduce((n, d) => n + d.stops.length, 0), 0);
 });
 
 // ---------------------------------------------------------------------------

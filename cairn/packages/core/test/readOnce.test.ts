@@ -37,11 +37,22 @@
  *   - It measures the paths the matrix reaches. That is why the matrix is specified in A-23
  *     rather than left to the builder, and why **adding a branch means adding a row**.
  *
- * **The maintenance rule.** A new branch in `copyStopInto` adds a scenario row. A new field on
- * `Stop` or `Place` is covered automatically, because the census enumerates whatever the record
- * carries. And a new entry in `ALLOWED` — or a raised `max` — is **an architect's ruling, not a
- * builder's judgment**: it is the written form of *"this value may be read twice and here is why
- * the second read cannot leak"*. A builder who needs one stops and routes it.
+ * **The maintenance rule, as A-24 amends it.** A new branch in `copyStopInto` adds a scenario row.
+ * A new field on `Stop` or `Place` is covered automatically **once the fixture populates it** — the
+ * census enumerates `Object.keys` of the fixture INSTANCE, so a field the fixture omits is
+ * invisible, which is how `Stop.ticket` stayed invisible through round 19 (R19-5); **the fixture
+ * populating every field of both records is part of this contract.** A new entry in `ALLOWED` — or
+ * a raised `max` — is **an architect's ruling, not a builder's judgment**: it is the written form of
+ * *"this value may be read twice and here is why the second read cannot leak"*. A builder who needs
+ * one stops and routes it. The converse is a builder's **obligation**: **deleting an entry that a
+ * fix in the same pass made dead is not widening the allow-list**, and assertion 2 will demand it.
+ *
+ * **A-24 (revision 18, QA R19-3…R19-5) — three claims A-23 made about its own reach, all smaller
+ * than stated, all corrected here.** The `opaque` set held both whole `Trip` records on the ground
+ * that they are *"the document skeleton rather than values that cross"*, which is false for `Trip.id`
+ * and `Trip.ownerId`; the matrix assigned row 5 two covers that are mutually exclusive; and *"a new
+ * field is covered automatically"* was true only of fields the fixture instance carried. Seven roots,
+ * fourteen rows, seven `ALLOWED` entries, and a fixture stop carrying 15 of `Stop`'s 15 fields.
  *
  * This does not replace `qa/r18-readonce.mjs` §1.1, which is QA's own copy of the mechanism at
  * its own scope. **A divergence between the two is itself a finding.**
@@ -65,9 +76,9 @@ type Counts = Record<string, number>;
 
 /**
  * Wraps every own enumerable property of `v` — recursively, through plain objects and arrays — in
- * a counting accessor that returns a STABLE value. Recursion stops at `opaque` (the `Trip`
- * containers and the `IdFactory`: core legitimately scans `days`, `cities` and `places` in `find`
- * loops, and those are the document skeleton rather than values that cross).
+ * a counting accessor that returns a STABLE value. Recursion stops at `opaque` (the `IdFactory`,
+ * which is a callable core owns, and the two censused `Trip` records, which `censusTrip` has
+ * already wrapped at their own granularity).
  */
 function censusDeep<T>(v: T, counts: Counts, path: string, opaque: ReadonlySet<unknown>): T {
   if (v === null || typeof v !== 'object' || opaque.has(v)) return v;
@@ -85,9 +96,54 @@ function censusDeep<T>(v: T, counts: Counts, path: string, opaque: ReadonlySet<u
 }
 
 /**
- * **The allow-list is the ruling, written in the test** (A-23). Exactly five entries after A-22,
- * each naming the ruling that blesses it. Adding one, or raising a `max`, is an architect's
- * decision — see the maintenance rule in this file's header.
+ * A-24 Part 1 (QA R19-3). The `Trip` is a root, not an opaque box. Core legitimately SCANS the six
+ * collections — those are the document skeleton — but `Trip.id` and `Trip.ownerId` cross the person
+ * boundary verbatim into `provenance.origin`, so they are censused like any other value. The
+ * collections are handed back BARE (their rows are already censused as their own roots), which is
+ * why they are a key list here rather than members of `opaque`: `opaque` stops recursion at an
+ * OBJECT, and what has to stop here is six NAMED FIELDS of one object.
+ *
+ * A-23 held both whole `Trip`s opaque on the stated ground that they are *"the document skeleton
+ * rather than values that cross"*. That is false for exactly the two fields the credit is made of,
+ * and it is why R19-1 — `source.trip.id` read twice, once for the credit and once for A-16 step 2's
+ * identity test — survived A-22's own hoist of the container and had to be found by widening the
+ * guard rather than by running it, for the sixth round in a row.
+ */
+const TRIP_SKELETON: ReadonlySet<string> = new Set([
+  'days', 'cities', 'places', 'pool', 'bookings', 'resolutions',
+]);
+
+function censusTrip(trip: Trip, counts: Counts, path: string, opaque: ReadonlySet<unknown>): Trip {
+  const from = trip as unknown as Record<string, unknown>;
+  const out: Record<string, unknown> = {};
+  for (const k of Object.keys(from)) {
+    const raw = from[k];
+    if (TRIP_SKELETON.has(k)) { out[k] = raw; continue; }   // bare, uncounted
+    const key = `${path}.${k}`;
+    const child = censusDeep(raw, counts, key, opaque);
+    Object.defineProperty(out, k, {
+      enumerable: true, configurable: true,
+      get() { counts[key] = (counts[key] ?? 0) + 1; return child; },
+    });
+  }
+  return out as unknown as Trip;
+}
+
+/**
+ * **The allow-list is the ruling, written in the test** (A-23). Exactly **seven** entries after
+ * A-24 Part 1 — the five A-22 left, plus the two irreducible structural counts narrowing `opaque`
+ * made visible. Adding one, or raising a `max`, is an architect's decision; see the maintenance
+ * rule in this file's header.
+ *
+ * **The discriminator A-24 Part 1 states, so a builder never guesses which is which:**
+ *
+ * > A field of a document the function *spreads* has an irreducible floor of one read, from the
+ * > spread itself. A field of a document the function only *reads* has no floor.
+ *
+ * `copyStopInto` spreads the **target** — `{ ...target }`, then `withDay`'s and `addStop`'s
+ * `{ ...trip }` / `{ ...next }` — because its result *is* the recipient's own document rebuilt. It
+ * never spreads the **source**. So `srcTrip.id ×2` was a defect (R19-1, fixed: one hoist, no entry
+ * here) while `tgtTrip.id ×2` and `tgtTrip.revision ×2` are floors.
  */
 const ALLOWED: Record<string, { max: number; why: string }> = {
   'srcStop.place.kind': { max: 2, why: 'A-21: discriminant tested against a closed set; every branch builds a fresh record, so the worst an unstable kind yields is {kind:"none"} — a hole' },
@@ -95,11 +151,28 @@ const ALLOWED: Record<string, { max: number; why: string }> = {
   'srcPlace.at.lat':    { max: 2, why: 'A-22 Part 2: the same exception one level down, now constant in the recipient\'s row count' },
   'srcPlace.at.lng':    { max: 2, why: 'A-22 Part 2: as above' },
   'srcPlace.name':      { max: 2, why: 'A-21a: probe + placeForCopy; A-15 has `name` crossing verbatim, so this is an inconsistency and not a crossing' },
+  'tgtTrip.id':       { max: 2, why: 'A-24 Part 1: read 1 is refileCityKey\'s A-16 identity conjunct, read 2 is the record spread that rebuilds the RECIPIENT\'S OWN document — an irreducible floor, not a blessed second read. Nothing of the target Trip crosses a person boundary' },
+  'tgtTrip.revision': { max: 2, why: 'A-24 Part 1: read 1 is the { ...trip } spread whose value the explicit `revision:` key immediately overwrites; read 2 is the increment. Irreducible for the same reason' },
 };
 
 // ---------------------------------------------------------------------------
 // Fixtures — the source stop carries every optional field and the source place carries `note`,
 // `links` and `hours`, or the recursion has nothing to count and the census is green by vacancy.
+//
+// **A-24 Part 3 (QA R19-5).** `censusDeep` enumerates `Object.keys` of the fixture INSTANCE, and
+// `makeStop` writes `ticket` only when `init.ticket` is truthy — so A-23's printed field list, which
+// omitted it, left the censused stop carrying 14 of `Stop`'s 15 fields, and the absent one was the
+// field §6.6 classifies as an access credential. A regression emitting
+// `...(src.ticket && src.ticket.kind === 'bundled' ? { ticket: src.ticket } : {})` passed 615/615:
+// invisible here because the field was absent, and invisible to `copyStop.test.ts` because its
+// rule-3 fixture pinned a single kind. `bundled` is chosen because it is the kind that names a file
+// shipped inside `apps/web/dist`, which is §6.6's own threshold. Nothing reads the field today, so
+// counts are unchanged — but any future regression that TESTS the ticket and then EMITS it reads
+// `srcStop.ticket` twice and goes red here.
+//
+// **A-24 Part 2 (QA R19-4).** *"Every optional field"* is a property of rows 1–13. Row 14 is
+// deliberately MINIMAL (`minimalSourceTrip`), because a census that only ever measures a maximal
+// document never measures the absent-optional arms.
 // ---------------------------------------------------------------------------
 
 const VIENNA: LatLng = { lat: 48.2082, lng: 16.3738 };
@@ -112,7 +185,7 @@ const CTX = (prefix: string): BuildCtx => ({
 const SRC_CITY = 'src-vienna';
 const TGT_CITY = 'tgt-city';
 
-function sourceTrip(opts: { link?: PlaceLink; at?: LatLng | null } = {}): Trip {
+function sourceTrip(opts: { link?: PlaceLink; at?: LatLng | null; pool?: boolean } = {}): Trip {
   let t = createTrip(
     {
       id: 'trip-src', title: 'Marta in Vienna', ownerId: 'user:marta',
@@ -131,7 +204,9 @@ function sourceTrip(opts: { link?: PlaceLink; at?: LatLng | null } = {}): Trip {
   });
   return addStop(
     t,
-    { kind: 'scheduled', dayId: '2026-08-08', time: '10:00', order: 0 },
+    opts.pool
+      ? { kind: 'pool', cityKey: SRC_CITY }
+      : { kind: 'scheduled', dayId: '2026-08-08', time: '10:00', order: 0 },
     {
       id: 's-src', name: 'Check in', category: 'stay',
       place: opts.link ?? { kind: 'place', placeId: 'p-src' },
@@ -142,8 +217,36 @@ function sourceTrip(opts: { link?: PlaceLink; at?: LatLng | null } = {}): Trip {
       },
       arrival: { mode: 'metro', mins: 12, label: 'Bus 8' },
       links: [{ label: 'Menu', href: 'https://example.test/menu' }],
+      // A-24 Part 3: the 15th field. §6.6 calls a ticket an access credential and rule 3 says none
+      // travels; `bundled` names a file shipped inside `apps/web/dist` — §6.6's own threshold.
+      ticket: { kind: 'bundled', path: 'tickets/entry.pdf', label: 'Entry' },
     },
     CTX('src2-'),
+  );
+}
+
+/**
+ * A-24 Part 2, row 14: the same document with **no** optional field populated — `cost === null`,
+ * `arrival === null`, `links` absent, `ticket` absent, and a source `Place` with no `note`, no
+ * `links` and no `hours`. A-23 populates the fixture maximally so the recursion has something to
+ * count; the cost is that it only ever measured a maximal document, and the honest fix is one row
+ * that is not maximal rather than a weaker fixture everywhere.
+ */
+function minimalSourceTrip(): Trip {
+  let t = createTrip(
+    {
+      id: 'trip-src', title: 'Marta in Vienna', ownerId: 'user:marta',
+      startDate: '2026-08-07', endDate: '2026-08-09',
+      cities: [{ key: SRC_CITY, name: 'Vienna', centre: VIENNA, order: 0 }],
+    },
+    CTX('min-'),
+  );
+  t = addPlace(t, { id: 'p-src', cityKey: SRC_CITY, name: 'Habyt Vienna', at: BELVEDERE, category: 'stay' });
+  return addStop(
+    t,
+    { kind: 'scheduled', dayId: '2026-08-08', time: '10:00', order: 0 },
+    { id: 's-src', name: 'Check in', category: 'stay', place: { kind: 'place', placeId: 'p-src' } },
+    CTX('min2-'),
   );
 }
 
@@ -165,8 +268,17 @@ function targetTrip(cfg: { city?: string; places?: Array<{ name: string; at: Lat
 const SCHEDULED: StopPlacement = { kind: 'scheduled', dayId: '2026-08-08', time: '11:00', order: 0 };
 
 // ---------------------------------------------------------------------------
-// The scenario matrix — ten rows, one per control-flow path through `copyStopInto` (A-23).
-// A census only measures what the scenarios reach, so the matrix is part of the contract.
+// The scenario matrix — **fourteen** rows, one per control-flow path through `copyStopInto`
+// (A-23, extended by A-24 Part 2). A census only measures what the scenarios reach, so the matrix
+// is part of the contract, and rows 1–10 are unchanged in construction and in numbering so that
+// `qa/`'s cross-check of the two censuses stays a row-by-row comparison.
+//
+// **Row 5's second cover is WITHDRAWN, not repaired** (A-24 Part 2, QA R19-4). Its A-23 table entry
+// claimed *"`samePlace`'s `null` arm, `placeForCopy`'s `at === null`"* and the two are mutually
+// exclusive by construction: a same-named target row whose `at` is `null` makes `samePlace` return
+// **true** (`aAt === bAt`), so the copy takes the reuse branch and `placeForCopy` is never called.
+// Renaming row 5's target row would trade one cover for the other, which is why rows 11–14 are new
+// rows rather than an edit.
 // ---------------------------------------------------------------------------
 
 type Case = { source: Trip; target: Trip; placement: StopPlacement };
@@ -203,6 +315,8 @@ const MATRIX: Array<{ n: number; name: string; build: () => Case }> = [
     build: () => ({ source: sourceTrip(), target: targetTrip({ city: 'Prague' }), placement: SCHEDULED }),
   },
   {
+    // Covers `samePlace`'s `null` arm AND NOTHING ELSE — see the note above the matrix. Row 11 is
+    // the cover this row's A-23 table entry wrongly claimed as its second.
     n: 5, name: "5 · {kind:'place'} · null coordinate, target row also null",
     build: () => ({
       source: sourceTrip({ at: null }),
@@ -244,6 +358,35 @@ const MATRIX: Array<{ n: number; name: string; build: () => Case }> = [
       placement: { kind: 'pool', cityKey: TRANSIT_CITY_KEY, hint: { dayId: '2099-01-01', time: '11:00', order: 0 } },
     }),
   },
+  {
+    // A-24 Part 2. `placeForCopy`'s `at === null` arm — row 5's withdrawn second cover. **This is
+    // the shape of Jacob's own data**: the live planner has exactly one place with no coordinates
+    // (Windsor Great Park / Long Walk) and the copy path for it is exactly "no matching row in the
+    // target". The row written is `{name:'Habyt Vienna', cityKey:'tgt-city', at:null}`.
+    n: 11, name: "11 · {kind:'place'} · null coordinate, NO matching target row",
+    build: () => ({ source: sourceTrip({ at: null }), target: targetTrip(), placement: SCHEDULED }),
+  },
+  {
+    // A-24 Part 2. **A-16 step 2** — `source.id === target.id && target.cities.some(…)`, the branch
+    // R19-1 subverts and the one §2.14 says Phase 1 exercises ("copying between two of your own
+    // trips"). Built by calling the source fixture TWICE: same `Trip.id`, same city key, distinct
+    // object graphs — which is A-16's own stated reason for `source.id === target.id` rather than
+    // `source === target`. No serializer in the loop.
+    n: 12, name: '12 · the SAME document, two distinct objects (A-16 step 2)',
+    build: () => ({ source: sourceTrip(), target: sourceTrip(), placement: SCHEDULED }),
+  },
+  {
+    // A-24 Part 2. `findAnywhere`'s second arm. The reference trip carries 31 pool stops, so this
+    // is the ordinary shape and not an exotic one.
+    n: 13, name: "13 · the source stop is taken from the source's POOL",
+    build: () => ({ source: sourceTrip({ pool: true }), target: targetTrip(), placement: SCHEDULED }),
+  },
+  {
+    // A-24 Part 2. The absent-optional arms: `cost === null`, `arrival === null`, `links` absent,
+    // `ticket` absent, and a source `Place` with no `note` and no `hours`.
+    n: 14, name: '14 · a MINIMAL source stop — the absent-optional arms',
+    build: () => ({ source: minimalSourceTrip(), target: targetTrip(), placement: SCHEDULED }),
+  },
 ];
 
 /**
@@ -251,10 +394,12 @@ const MATRIX: Array<{ n: number; name: string; build: () => Case }> = [
  * **immediately after `copyStopInto` returns** and before anything inspects the result, so
  * nothing but the copy is measured.
  *
- * Five roots, named by the path prefix a failure prints: `srcStop` (the source stop, substituted
- * into its day), `srcPlace` (the source's `places` row), `tgtPlace0…n` (the **recipient's** own
- * rows — R18-4 was a multi-read of one of those), `source` (with `source.trip` opaque),
- * `placement`, and `ctx` (with `ctx.ids` opaque, because an `IdFactory` is a callable core owns).
+ * **Seven roots** (A-24 Part 1), named by the path prefix a failure prints: `srcStop` (the source
+ * stop, substituted into its day **and into the pool**, because row 13 takes it from there),
+ * `srcPlace` (the source's `places` row), `tgtPlace0…n` (the **recipient's** own rows — R18-4 was a
+ * multi-read of one of those), `srcTrip` and `tgtTrip` (every own field of each **except** the six
+ * collections), `source`, `placement`, and `ctx` (with `ctx.ids` opaque, because an `IdFactory` is
+ * a callable core owns).
  */
 function runScenario(build: () => Case): { counts: Counts; threw: unknown } {
   const { source: srcTrip0, target: tgtTrip0, placement } = build();
@@ -262,20 +407,29 @@ function runScenario(build: () => Case): { counts: Counts; threw: unknown } {
   const ids = sequentialIds('copy-');
   const opaque = new Set<unknown>([ids]);
 
-  const srcTrip: Trip = {
+  // The row substitution happens FIRST and `censusTrip` wraps the result, so the collections still
+  // hand out the already-wrapped `srcStop` / `srcPlace` / `tgtPlaceN` rows and nothing is counted
+  // twice.
+  const srcSub: Trip = {
     ...srcTrip0,
     days: srcTrip0.days.map((d) => ({
       ...d,
       stops: d.stops.map((s) => (s.id === 's-src' ? censusDeep(s, counts, 'srcStop', opaque) : s)),
     })),
+    // A-24 Part 2 row 13: the source stop may live in the POOL, so it is substituted there too.
+    pool: srcTrip0.pool.map((s) => (s.id === 's-src' ? censusDeep(s, counts, 'srcStop', opaque) : s)),
     places: srcTrip0.places.map((p, i) => censusDeep(p, counts, i === 0 ? 'srcPlace' : `srcPlace${i}`, opaque)),
   };
-  const tgtTrip: Trip = {
+  const tgtSub: Trip = {
     ...tgtTrip0,
     places: tgtTrip0.places.map((p, i) => censusDeep(p, counts, `tgtPlace${i}`, opaque)),
   };
-  // The two documents are the skeleton, not values that cross: `findAnywhere`, `refileCityKey`
-  // and the reuse search legitimately scan `days`, `cities` and `places`.
+  const srcTrip = censusTrip(srcSub, counts, 'srcTrip', opaque);
+  const tgtTrip = censusTrip(tgtSub, counts, 'tgtTrip', opaque);
+  // Only the collections are the skeleton: `findAnywhere`, `refileCityKey` and the reuse search
+  // legitimately scan `days`, `cities` and `places`. `Trip.id` and `Trip.ownerId` are not skeleton
+  // — they cross into `provenance.origin` verbatim (A-24 Part 1). These two entries stop the
+  // `source` root from re-wrapping a document `censusTrip` has already wrapped.
   opaque.add(srcTrip);
   opaque.add(tgtTrip);
 

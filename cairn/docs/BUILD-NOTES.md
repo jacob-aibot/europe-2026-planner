@@ -1,5 +1,31 @@
 # Cairn — build notes, Phase 1 (and Phase 2 in progress)
 
+> **Addendum, on `2b561e3` — ARCHITECTURE revision 18's **A-24** (QA R19-3…R19-6) plus the two
+> findings routed straight to a builder, **R19-1** and **R19-2**.**
+> Scope was those and nothing else: **one source file, two test files, one KD entry.** No new
+> source module, no `schemaVersion` bump, **no new export (71)**, no new `REDACTION_PATTERN` and no
+> new `redactText` call site, no new defensive guard, nothing under `qa/`, nothing in
+> `packages/client` or `apps/web`, nothing at the repo root, and no edit to `ARCHITECTURE.md`,
+> `ROADMAP.md` or the visual roadmap. Done in A-24's own stated order: R19-1, then R19-2, then
+> Parts 1–3.
+>
+> | | |
+> |---|---|
+> | **R19-1 — `source.trip.id` read twice (`copyStop.ts`)** | A-22 hoisted the **container** and left the **field**. One hoist, `const sourceTripId: TripId = sourceTrip.id`, placed beside A-22's own `const sourceTrip` and used at all three sites — the credit (`origin.sourceTripId`), the not-found throw message, and `refileCityKey`, which now takes the id as a **parameter** (A-24's preferred form: *"pass the id into `refileCityKey` rather than re-reading the trip"*). `refileCityKey` still reads `target.id`, deliberately: A-24 measures that at 2 and rules the second read irreducible. Hoisting at the top widens nothing — every path past `requireActor` already read this field, including the throw. |
+> | **R19-1, red first, at the value level** | `copyStop.test.ts` gains a fixture built from A-16's own words: two **different** documents that share a city key for two **different** cities. Stable id → A-14 step 3, no `Place` row, the stop keeps the coordinate. `id` flipping `['trip-src','trip-tgt']` on the shipped tree → `reads() === 2`, the credit says `trip-src` while the re-file decides *"the source IS the target"*, and a **Vienna place is filed under the recipient's Prague key** with `validateTrip` reporting **0**. Red before, green after, `reads() === 1`. |
+> | **R19-2 — the recipient's `Day.id` read twice across `copyStopInto` → `addStop`** | A-24 offers two fixes; this pass takes the first one it names — the `scheduled` branch's `target.days.some(…)` pre-check is **deleted** and `addStop`/`withDay` owns the throw it already produces. Measured red first: with the day's `id` flipping `['2026-08-08','2026-08-09']`, the guard accepted the day and `withDay` threw **`no such day: 2026-08-08`**, naming the day the guard had just accepted — §2.1. Two consequences are **disclosed as KD-50**, not hidden: the message loses its `copyStopInto:` prefix and the trip id, and up to two ids are drawn from the injected factory before the refusal. A second new test pins that a genuinely missing day is still refused and that the target is untouched. |
+> | **A-24 Part 1 — `opaque` narrows from the `Trip` to its six collections** | `censusTrip` and `TRIP_SKELETON` copied **verbatim** from the ruling, and `runScenario`'s substitution block likewise (rows substituted first, `censusTrip` wrapping the result, both documents added to `opaque` afterwards so the `source` root counts `source.trip` without re-wrapping). Seven roots, not five. `censusDeep`'s body, both assertions, the failure messages, the existing roots and their naming scheme, and the snapshot point are **unchanged**, as the ruling requires. |
+> | **A-24 Part 1 — the two new `ALLOWED` entries, and the eighth that is not there** | Applied on its own, before any entry was added, the narrowing turned the census red on exactly what A-24 predicts: **`tgtTrip.id ×2`** (rows 1–5, 9, 10) and **`tgtTrip.revision ×2`** (rows 2, 4–8) — **and nothing else.** No `srcTrip.id`, because R19-1 was already fixed. Both entries copied verbatim; the table is **seven**. |
+> | **The two-sided acceptance check, run both ways** | **Red direction:** with `packages/core/src/build/copyStop.ts` restored to `HEAD` (both fixes reverted) and A-24 Part 1 in place, `readOnce.test.ts` is **RED naming `srcTrip.id ×2`** on 11 of the 14 rows — every row that reaches `refileCityKey`; rows 6, 7 and 8 correctly show 1, because they never call it. **Green direction:** with the fixes present, `readOnce.test.ts` is **2/2 green** with all seven entries observed at exactly their max. So the census now catches, mechanically, the defect this file produced for the sixth round running. |
+> | **A-24 Part 2 — four new scenario rows, 14 in total** | Rows 1–10 unchanged in construction and numbering, so `qa/`'s row-by-row cross-check survives. Row 5's second cover is **withdrawn in the comment**, not repaired. Each new row was verified to take the branch it claims, by running it: **11** writes `{name:'Habyt Vienna', cityKey:'tgt-city', at:null}` — `placeForCopy`'s `at === null` arm, and the shape of Jacob's own data; **12** is one `Trip.id` in two distinct object graphs (source fixture called twice), takes A-16 step 2, files under the **source's own** key, reuses the row, `validateTrip` **0**; **13** has **0** stops in `days` and **1** in `pool`, so it is `findAnywhere`'s second arm; **14** is minimal — `cost: null`, `arrival: null`, no `links`, no `ticket`, and a source `Place` with only `id`/`cityKey`/`name`/`at`/`category`. No eighth multi-read surfaced from any of them. |
+> | **A-24 Part 3 — `ticket` on the fixture, and rule 3 over the whole `Ticket` union** | The census fixture's stop now carries `ticket: {kind:'bundled', path:'tickets/entry.pdf', label:'Entry'}` and **15 of `Stop`'s 15 fields** (measured, not assumed). `copyStop.test.ts`'s `martasTrip` is parameterised by `Ticket` (stop **and** booking), rule 3 runs once per kind over a `TICKET_FIXTURES` table, each with its own greppable payload — `href`, `path`, `mailMessageId` **and** `filename` — plus `"ticket"` as a key. `TICKET_KINDS: Record<Ticket['kind'], true>` is the compile-time stop in `STOP_FIELDS`' idiom, and a runtime assertion ties it to the fixture list so a fourth kind cannot be added and left uncovered. The fixture docstring said *"a bundled ticket"* over a `url` ticket; corrected. |
+> | **Part 3, red first, with A-24's own named regression** | Planting `...(src.ticket && src.ticket.kind === 'bundled' ? { ticket: src.ticket } : {})` in `copyStopInto`'s `init` turns **both** files red — the rule-3 union test (the bundled payload reaches the recipient) **and** `readOnce.test.ts` (`srcStop.ticket` read twice: tested, then emitted). The ruling says this regression passed 615/615 before; it now fails from two independent directions. Reverted. |
+> | **A-24 Part 4 (R19-6)** | Nothing to do in code — the architect corrected the number in the ruling itself. |
+> | **Numbers, my own runs on this pass** | `npm run typecheck` clean (both projects, exit 0). `npm run test:tap` **618 pass / 0 fail** — 615 before, **+3**, all in `copyStop.test.ts` (85 → **88**); `readOnce.test.ts` stays at 2 tests and grows from 10 rows to 14. `npm run web:build` clean. `Object.keys(core).length` **71**. `validateTrip` **11** issues on the reference trip and **2 / 4 / 11** at `FIXTURE_TODAY`. `npm run golden` + `npm run sample` regenerate **byte-identically**, sample sha unmoved at `40955ca0b182`, `git status` clean before and after. `git status -- . ':(exclude)cairn'` **empty**. |
+> | **`qa/r19-census-gaps.mjs`, run unedited — 12 FAIL → 8 FAIL** | R19-1 (§1.1 ×2, the read count and the `ownerId` half) and R19-2 (§2 ×2, both flip pairs) are **closed and green**. The remaining 8 — R19-3 ×2, R19-4 ×4, R19-5 ×2 — are all measured against **QA's own local copy** of A-23's specification (`runMatrix`, `a23Source`), which is still the ten-row, five-entry, whole-`Trip`-opaque version, and A-19 assertion 7 makes re-expressing it QA's job, not mine. §3.1's cross-check (*"QA's copy agrees with the shipped `readOnce.test.ts`"*) is still green but is now green against A-23-as-was rather than A-24-as-shipped: **that divergence is real and is reported here rather than resolved by editing `qa/`**, exactly as A-22 handled `r18-readonce.mjs` §2.3. Its §7.2 ceilings are all green, including 71 exports, no `as string`, exactly one `{ ...x }` record spread, 11 issues and 2/4/11. |
+> | **What I did not verify** | Nothing in this pass went unrun. Two limits are A-24's own and are not gaps I introduced: the census still does not reach `days` / `cities` **rows**, so R19-2's remaining spread-read of `Day.id` and QA's recorded `tgtTrip.cities.0.key ×2` stay invisible to it (Part 1's disclosed residue, restated at KD-50); and the census proves read *counts*, never which value crosses — the `flipping` fixtures beside it are what prove that. |
+> | **Objection to the design — one, and it is small** | A-24's amended maintenance rule now says *"the fixture populating every field of both records is part of this contract"*, but nothing **enforces** it: I added `ticket` by hand, and the next optional field added to `Stop` or `Place` will be invisible to the census for exactly the reason `ticket` was, until someone remembers. `copyStop.test.ts` already has the mechanism — a `Record<keyof Stop, true>` map plus a key-set assertion against the fixture instance — and the same three lines in `readOnce.test.ts` would turn the amended rule from prose into a red test. I did **not** add it, because A-24 specifies this file's assertions precisely and assigns the compile-time exhaustiveness check to `copyStop.test.ts` over `Ticket['kind']` instead; adding a third assertion here is an architect's call, not mine. Routing it rather than coding it. |
+
 > **Addendum, on `7fa5df5` — ARCHITECTURE revision 17's **A-22** (QA R18-1…R18-5, plus the `ctx`
 > trio the ruling adds to QA's list) and **A-23** (the standing census, `readOnce.test.ts`).**
 > Scope was A-22 and A-23 and nothing else: **one source file, one test file, one new test file**.
@@ -1587,6 +1613,35 @@ verbatim, because A-13 says that is what the substitution does prove.
 Nothing else in the probe moved. §1, §4, §5 and §9 call `detectUngated` as an array and are
 untouched, deliberately: A-12 adds `detectUngatedChecked` beside it rather than changing its shape,
 precisely so round 13's assertions stay independent evidence that A-11 worked.
+
+### KD-50 — `copyStopInto` no longer pre-checks the target day, so the refusal message and the id draw both move
+
+`packages/core/src/build/copyStop.ts` · **A-24's step 1, QA R19-2.**
+
+A-24 offers two fixes for R19-2 and this pass takes the first one it names — *"dropping
+`copyStop.ts:480`'s pre-check and letting `addStop` own the throw it already produces"* — because the
+second (*"resolving the `Day` once and handing it down"*) would change `addStop`'s signature, which
+is on §2.10's surface, to close a read on the **recipient's own** value that A-24 Part 1 deliberately
+leaves uncensused. Two consequences, neither observable to a caller that is not already in programmer
+error, both recorded here rather than left to be rediscovered:
+
+1. **The message changes.** `copyStopInto: no such day 2027-01-01 in trip-tgt` becomes `withDay`'s
+   `no such day: 2027-01-01`. It loses the function name and the target trip's id. `copyStop.test.ts`
+   asserts `/no such day/`, which is the rule and not the wording, and `@throws {Error} if the stop or
+   the target day does not exist` is still accurate.
+2. **Up to two ids are drawn from the injected factory before the refusal.** The check used to run
+   before `ids.newId('place')` and `ids.newId('stop')`; now it runs after them, inside `addStop`. The
+   *document* is still untouched — every function on this path is pure and a new test asserts the
+   target is unchanged — but a caller who catches the throw and retries with a corrected `dayId` gets
+   different ids than it would have before. Determinism (`cairn-constraints` §4) is unaffected: the
+   factory is still injected and still consumed in call order.
+
+**The residue A-24 already discloses, restated at the site:** `Day.id` is still read twice on the
+success path — once by `withDay`'s `findIndex` and once by the `{ ...day }` record spread that
+rebuilds the recipient's day. That second read is A-24 Part 1's *"irreducible floor of one read, from
+the spread itself"* discriminator, it is the recipient's own value, it crosses no person boundary, and
+`readOnce.test.ts` does not census `days` rows by A-24's own decision. `qa/r19-census-gaps.mjs` §2
+asserts only that nothing throws, which is the half that was a §2.1 violation.
 
 ---
 
