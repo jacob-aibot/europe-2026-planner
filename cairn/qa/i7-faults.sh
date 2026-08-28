@@ -59,7 +59,9 @@ run_fault "M2 — the city group key is nameKey alone" "$(cat <<'PY'
 import sys
 p = sys.argv[1] + '/packages/core/src/derive/travelStats.ts'
 s = open(p).read()
-old = '      const key = `${c.countryCode ?? NO_COUNTRY}|${nameKey}`;'
+# I-7a re-expressed this anchor: R28-5 made `null` and `undefined` one answer, read once into
+# a local, so the key line no longer says `c.countryCode`. The FAULT is unchanged.
+old = '      const key = `${countryCode ?? NO_COUNTRY}|${nameKey}`;'
 assert old in s, 'shape moved'
 open(p,'w').write(s.replace(old, '      const key = nameKey;', 1))
 PY
