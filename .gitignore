@@ -5,3 +5,6 @@ node_modules/
 
 # superpowers scratch state (subagent-driven-development ledger)
 .superpowers/
+
+# isolated worktrees for Agent(isolation: "worktree") pipeline stages
+.claude/worktrees/
