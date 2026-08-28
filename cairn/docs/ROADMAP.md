@@ -51,6 +51,18 @@ test, while **I-4a now blocks any share, friend or public-share-link work outrig
 in the design where data crosses a *person* boundary, and until it lands the copy hands a friend's door PIN,
 confirmation number and voucher URL to the recipient's document.
 
+**Revision 14, 2026-08-28.** QA round 15 — the breaker pass over A-15/A-16/A-17 — confirmed **A-16** and
+**A-17** and could not break A-15's redaction of a copied `Place`; what it broke is the *reach* of A-15's
+argument, twice, at depths the ruling's table did not recurse into. `ARCHITECTURE.md` revision 14 answers the
+two design findings as **A-18** (the copied stop's own `cost` and `arrival` carry free text across the person
+boundary — BLOCKER) and **A-19** (a `{kind:'pool'}` placement's `cityKey` is validated against the target,
+never re-filed). This file changes in exactly the same one way revisions 12 and 13 did: **I-4a's Built /
+Verification / Ship-gate lines.** **No new increment, no phase re-scoped and no change to the order.**
+I-3a is untouched — A-17 held. **I-4a keeps its outright block on any share, friend or public-share-link
+work**, and the reason is now stronger rather than merely repeated: two rounds running, the copy path has
+handed a credential across the one boundary in this design where data reaches another person, each time
+through a field the previous ruling assumed rather than enumerated.
+
 > **Phase numbers changed once, here.** Every heading below carries its old number, and every "Phase N"
 > written in `ARCHITECTURE.md` §1–§7, `BUILD-NOTES.md` or `QA-FINDINGS.md` before revision 9 means the
 > *named* phase it described: "Phase 2" = accounts/server (**now 3**), "Phase 3" = ingest (**now 4**),
@@ -1167,6 +1179,17 @@ builder against the finding itself and is not an increment.
   `refileCityKey` gains one step, *the source's own key wins when `source.id === target.id` **and** the
   target still holds that key*, ahead of the name fold and behind the source-resolves-its-own-key check
   (**A-16**). Neither changes `Place`'s shape, `packages/client`, `tools/redact.mjs` or §2.10's 71.
+  **Revision 14 adds two more, and the first is again a BLOCKER (§2.14 A-18, A-19):** the copied **stop**'s
+  own `cost` and `arrival` stop being spread — one `costForCopy` and one `arrivalForCopy`, with `cost.note`
+  and `arrival.label` redacted, `cost.display` crossing only when redaction leaves it byte-identical and
+  `null` otherwise (`costLabel` fills the hole from `amounts`), `amounts`/`Link`/`StopPlacement` rebuilt field
+  by field, one cast-free `redacted()` helper replacing **every** `as string` in the file, and **four
+  key-set assertions** so the next field on `CostEstimate` or `MoveOverride` cannot travel un-classified
+  (**A-18**); and `copyStopInto` validates a `{kind:'pool'}` placement's `cityKey` against `target.cities`
+  the way it already validates `dayId` — `TRANSIT_CITY_KEY` exempt, a throw when it does not resolve, the
+  placement rebuilt rather than aliased, and a `hint.dayId` the target lacks **dropped** instead of carried
+  (**A-19**). Neither changes `Stop`'s shape, `fromJSON`, `tools/redact.mjs`, `packages/client`, `apps/web`
+  or §2.10's 71. R15-1 and R15-2 ride along as builder work under A-15's existing table, not as new rulings.
 - **User-visible outcome.** *"日本 2019 — 東京, 京都"* records as two cities instead of one, in any script,
   and a document that already collapsed two cities into `"-"` says so on screen instead of silently
   mis-attributing every day of the trip.
@@ -1201,6 +1224,16 @@ builder against the finding itself and is not an increment.
   takes step 3; and a copy whose `source.trip` is the same document re-parsed through `fromJSON` (equal by
   `.id`, a different object) is byte-identical to the same-object call — the assertion that fails under
   `===` (**A-16**).
+  **Added at revision 14, and the first of these is what round 15 found by looking one record inward:** a
+  stop whose `cost.note` reads *"paid with card, conf 5814731574"* and whose `arrival.label` reads *"Bus 8,
+  booking GYGG45MLA9Q9"* copies with **no** `redactionHits` on either and neither number greppable in the
+  recipient's `toJSON` — while *"tickets at the door"*, *"Bus 8"* and *"gardens free · palace €15–24"* all
+  cross **byte-identical**, and a credential-shaped `display` becomes `null` with `amounts` unchanged, so
+  `costLabel` still renders a correct price (**A-18**). And the placement: a cross-trip copy into a pool under
+  the **source's** city key **throws** with the target unmoved; the same copy under `TRANSIT_CITY_KEY`
+  succeeds, mints no `pool_stop_unknown_city` and lands in `unfiledPool`; a `hint.dayId` only the source has
+  is dropped, so `scheduleFromPool` on the copy succeeds through `pickDay` instead of throwing; and the
+  written placement is never the caller's object, on the scheduled branch as well as the pool one (**A-19**).
 - **Dependencies / blockers.** I-4 (the form it corrects). None external.
 - **Ship gate.** The slug expression appears **nowhere** in `apps/` or `packages/` (grep); no call site
   outside `packages/core` constructs a city key; each of the three new validation codes has an
@@ -1216,6 +1249,13 @@ builder against the finding itself and is not an increment.
   boundary; until A-15 lands it hands a friend's door PIN, confirmation number and voucher URL into the
   recipient's document and every later export of it, on a record nothing badges (§2.14 A-6: a `Place` has no
   provenance).
+  **Added at revision 14:** `qa/r15-place-copy.mjs` §2.1 at **0 FAIL** and §1.1/§1.2/§1.3 at 0 FAIL (R15-1
+  and R15-2, the builder half of A-15); §5.1/§5.2/§5.7/§5.9/§5.10 of `qa/r14-horizon-copy.mjs` **unmoved**;
+  and **no spread of a source record into the target document survives anywhere in `copyStop.ts`, at any
+  depth** — the grep is `\.\.\.` inside `copyStop.ts`, and every remaining one must be an object-literal
+  optional-key spread (`...(x === undefined ? {} : { … })`), never `{ ...sourceRecord }`. §3.4's first probe
+  line meets A-19's throw and is **QA's to re-express**, not the builder's to satisfy; nothing under `qa/`
+  is edited by the pass that lands this.
 
 ---
 

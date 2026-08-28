@@ -98,8 +98,24 @@ update to this file added that instruction).
 > A-15 is built** — the copy is the one place in the whole design where your data crosses to
 > another person.
 
-> **Last updated:** 2026-08-27, against `master` after ARCHITECTURE revision 13 (A-15/A-16/A-17,
-> the three round-14 design findings) — previously revision 12's A-11 … A-14. Update this
+> **Those three were built, and attacked again** (QA round 15). The place-note scrub **holds** —
+> eleven different notes were pushed across the boundary and only credential-shaped ones changed —
+> and both of the smaller fixes hold too. What the tester found is that the *same mistake* had been
+> made twice more, one level further in, and neither had been looked at: when you copy an activity,
+> the activity's own **cost note** and **arrival label** were still travelling unedited, so
+> *"paid with card, conf 5814731574"* and *"Bus 8, booking GYGG45MLA9Q9"* would land in the other
+> person's trip word for word — even though the demo-data scrub has cleaned both of those fields
+> for months. The lesson the architect has taken from two rounds of this: a list of fields is only
+> a real list as far down as it actually goes, so the rule is now *nothing is copied wholesale, at
+> any depth* — everything the copy writes is rebuilt field by field from fields somebody named.
+> One smaller gap came with it: copying an activity into the *optional list* of another trip could
+> file it under a city that trip does not have, leaving an error nothing on screen can clear; that
+> is now refused outright rather than guessed at. The architect has ruled on both
+> (`ARCHITECTURE.md` **A-18** and **A-19**, revision 14). **Nothing about sharing with a friend
+> ships until A-18 is built**, for the second round running and for the same reason.
+
+> **Last updated:** 2026-08-28, against `master` after ARCHITECTURE revision 14 (A-18/A-19, the
+> two round-15 design findings) — previously revision 13's A-15/A-16/A-17. Update this
 > line every time you edit this file.
 
 **Status vocabulary used throughout:** 🟢 COMPLETE · 🟡 IN PROGRESS · 🟠 NEXT / APPROVED ·

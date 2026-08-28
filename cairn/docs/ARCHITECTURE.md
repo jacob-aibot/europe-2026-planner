@@ -155,13 +155,36 @@ direction true for the *next* rule to declare a horizon, and one directional tes
 consequences in `ROADMAP.md` are I-3a's and I-4a's Built/Verification/Ship-gate lines and nothing else:
 **no new increment, no change to the phase order.**
 
+**Revision 14, 2026-08-28.** QA round 15 — the breaker pass over A-15/A-16/A-17 — confirmed A-16 and A-17
+and attacked A-15's own direction argument, which held for `Place` and failed twice at other depths. Two
+addenda, both in §2.14; no redesign, no engine, no persisted shape, no `schemaVersion` bump, no movement on
+§2.10's export surface. **A-18** (§2.14, §6.6, QA **R15-3**, BLOCKER): the copied **stop** spreads its own
+`cost` and `arrival`, so `cost.note` (*"paid with card, conf 5814731574"*) and `arrival.label` (*"Bus 8,
+booking GYGG45MLA9Q9"*) cross the person boundary verbatim while §6.6's sample path redacts both — A-15's
+*"sample fails closed, copy fails open"* asymmetry, one record **inward**. The general fault is that **a
+field list is only exhaustive down to the depth it recurses**: rule 5 named `arrival`, and `arrival` is a
+record, not a string. So the ruling is stated once for every record the copy writes — **no spread of a source
+record at any depth** — with `costForCopy`/`arrivalForCopy`, a cast-free `redacted()` helper replacing every
+`as string` in the file, and four key-set assertions so the next field added to `CostEstimate` or
+`MoveOverride` cannot travel un-classified. `cost.display` is the one field that takes a third answer — it is
+a price *and* a text box, so it crosses only when redaction leaves it byte-identical and is `null` otherwise,
+where `costLabel` fills the hole from `amounts`. **A-19** (§2.14, §2.2, QA **R15-6**, MINOR): a
+`{kind:'pool'}` placement's `cityKey` reaches the target unchecked and mints an uncleanable
+`pool_stop_unknown_city`. It is **not** re-filed like `Place.cityKey`: a placement is an *argument about the
+target*, the caller holds the target, and A-16 established that name-derivation is only for when the primary
+answer is missing. It is validated exactly as `placement.dayId` already is (with `TRANSIT_CITY_KEY` the one
+honest answer a caller with no city can give), the placement is rebuilt field by field — closing an alias
+R14-3's sweep missed — and a stale `hint.dayId` is dropped rather than refused. The mechanical consequences
+in `ROADMAP.md` are I-4a's Built / Verification / Ship-gate lines and nothing else: **no new increment, no
+change to the phase order.**
+
 **Phase 1 is §2 and §4. The next phase is §8.1–§8.4.** Everything else is the shape those must not
 foreclose. See `ROADMAP.md` for sequencing and `PRODUCT-VISION.md` for why this order and not another.
 
 ## Read only your sections
 
-This document is ~88k tokens (re-measured at revision 13 with `cairn/tools/doc-section ARCHITECTURE` — §2 is
-now ~56k of it and §8 ~12k; the per-section figures below were stale by a third before revision 11 and are
+This document is ~94k tokens (re-measured at revision 14 with `cairn/tools/doc-section ARCHITECTURE` — §2 is
+now ~62k of it and §8 ~12k; the per-section figures below were stale by a third before revision 11 and are
 re-measured, not estimated, whenever a revision lands). Nothing needs all of it, and a fresh agent that reads it whole starts a sixth
 of the way into its context before writing a line. Pull what you need:
 
@@ -174,11 +197,11 @@ cairn/tools/doc-section ARCHITECTURE         # lists the sections and their size
 |---|---|---|---|
 | 0 | Six positions, stated up front | <1k | everyone — read it, it is 20 lines |
 | 1 | Stack decision and the capability checks behind it | 3k | architect. Settled; do not re-litigate |
-| 2 | **Domain model — the builder's contract.** §2.12 `travelRole`, §2.13 geography and §2.14 import/copy are new in revision 2 and are where the Phase 1 rework lives; **§2.2a (the `StorageVersion` write fence, revision 3) and §2.2b (the freshness rule it turned out to be one instance of, revision 4) are read together with §4.2 and §4.3, never alone**; §2.10 (the export surface) and §2.13's copied-record row are settled in revision 5; **§2.7's retirement ledger (A-5) and §2.13's copy-borne `Place` rule (A-6) are revision 6**; **§2.2a's A-7 (the fence a declined write may not move) is revision 8** and is read with §4.2 rule 4a; **§2.2's A-10 (a `CityKey` is a minted opaque id) and §2.7's A-9 (retirement is decided against the un-gated set) are revision 11** — a Phase 2 builder needs both; **A-11, A-12 and A-13 (§2.7) and A-14 (§2.14) are revision 12** and are read *with* A-9 and A-10, never instead of them — A-11 replaces A-9's greppable invariant, A-12 narrows A-9 point 1, A-13 rewrites A-9 assertion 4, and A-14 corrects A-10's change table; **A-15 and A-16 (§2.14) and A-17 (§2.7) are revision 13** — A-15 is the copy path's redaction rule and is read with §6.6, A-16 withdraws A-14's *"within one trip is unchanged"* paragraph, A-17 narrows A-11 assertion 5. **Anyone touching `copyStopInto` reads A-14, A-15 and A-16 as one rule 4** | 56k | builder, breaker |
+| 2 | **Domain model — the builder's contract.** §2.12 `travelRole`, §2.13 geography and §2.14 import/copy are new in revision 2 and are where the Phase 1 rework lives; **§2.2a (the `StorageVersion` write fence, revision 3) and §2.2b (the freshness rule it turned out to be one instance of, revision 4) are read together with §4.2 and §4.3, never alone**; §2.10 (the export surface) and §2.13's copied-record row are settled in revision 5; **§2.7's retirement ledger (A-5) and §2.13's copy-borne `Place` rule (A-6) are revision 6**; **§2.2a's A-7 (the fence a declined write may not move) is revision 8** and is read with §4.2 rule 4a; **§2.2's A-10 (a `CityKey` is a minted opaque id) and §2.7's A-9 (retirement is decided against the un-gated set) are revision 11** — a Phase 2 builder needs both; **A-11, A-12 and A-13 (§2.7) and A-14 (§2.14) are revision 12** and are read *with* A-9 and A-10, never instead of them — A-11 replaces A-9's greppable invariant, A-12 narrows A-9 point 1, A-13 rewrites A-9 assertion 4, and A-14 corrects A-10's change table; **A-15 and A-16 (§2.14) and A-17 (§2.7) are revision 13** — A-15 is the copy path's redaction rule and is read with §6.6, A-16 withdraws A-14's *"within one trip is unchanged"* paragraph, A-17 narrows A-11 assertion 5; **A-18 and A-19 (§2.14) are revision 14** — A-18 is the copy path's redaction rule for the *stop's own* nested records (`cost`, `arrival`) and generalises A-15 to *no spread at any depth*, A-19 rules that the `placement` **argument** is validated against the target and never re-filed. **Anyone touching `copyStopInto` reads A-14, A-15 and A-16 as one rule 4, and A-18 with rules 3 and 5** | 62k | builder, breaker |
 | 3 | Module boundaries | <1k | builder |
 | 4 | **The Phase 1 client.** §4.2 rule 6 (a pending write is never outlived by its document) is new in revision 3 — QA R3-2; rule 6a′ and the `savedDoc` predicate are revision 4 — QA R4-1; **rule 6a″ (the flush bound and its exits) and rule 6c's "delete goes on the chain" are revision 5** — QA R6-1/R6-2/R7-3; **rule 5's retirement carve-out is revision 6** — QA R8-1, read with §2.7; **rule 4a is revision 8** — QA R11-1, read with §2.2a A-7 | 7k | builder |
 | 5 | The four hard subsystems | 2k | breaker; builder from Phase 3 on |
-| 6 | Privacy, authorization, deletion cascade. **§6.6 is the build-artifact threshold; the copy threshold is §2.14 A-15 (revision 13) and they differ deliberately — read them together or neither** | 4k | breaker, manager; builder for §6.2 |
+| 6 | Privacy, authorization, deletion cascade. **§6.6 is the build-artifact threshold; the copy threshold is §2.14 A-15 + A-18 (revisions 13 and 14) and they differ deliberately, in two named places — read them together or neither** | 4k | breaker, manager; builder for §6.2 |
 | 7 | Explicitly deferred | <1k | anyone about to build something not in the roadmap |
 | 8 | **The travel-history model** (revision 9) — trip lifecycle and past trips (§8.1), the feasibility/integrity rule class (§8.2), participants (§8.3), geography attribution, travel stats and the summary-row rule (§8.4); then the shapes the location, photo and social phases must land on (§8.5–§8.7) and what is refused (§8.8). **§8.10 is revision 10** — physical travel distance by mode and the four provenance bases that keep it honest; **it is not Phase 2 scope**, so a Phase 2 builder reads §8.1–§8.4 and stops. **Revision 11 amends §8.1, §8.2 and §8.4 by pointer only — the two rulings themselves live in §2.2 (A-10) and §2.7 (A-9), and a Phase 2 builder reads both; revision 12 amends §8.2 by pointer in the same way, and its four rulings live in §2.7 (A-11, A-12, A-13) and §2.14 (A-14)** | 12k | architect; the builder and breaker of the phase after Phase 1 (§8.1–§8.4 only). §8.10 is for the architect and for phases 4, 5 and 7. Read with `PRODUCT-VISION.md` |
 
@@ -561,7 +584,8 @@ one and could not corrupt anything.)*
 | §8.4 `TripSummaryRow` | I-6's widening is `cities: Array<{ key: CityKey; name: string; countryCode: CountryCode \| null }>` **instead of** `cityKeys: CityKey[]`. An opaque key alone cannot name a city or place it on a map, and a row that has to be joined against a document it does not carry defeats the whole point of the summary (§8.4 clause 4 sends drill-downs to the document; the map's *labels* are not a drill-down). |
 | §8.4 `TravelStats.cities[]` | `{ key: CityKey; … }` becomes `{ nameKey: string; name: string; countryCode: CountryCode \| null; tripIds: TripId[] }`. `nameKey` is `normalizeCityName(name)`; it is a grouping key, not a `CityKey`, and calling it one would be the drift this table exists to stop. |
 | `build/copyStop.ts` | **Added at revision 12 — this row was missing and the one below was wrong. §2.14 A-14.** Rule 4 spreads the source `Place`, so a minted key crosses a trip boundary into a document that cannot have it. The copied place is **re-filed** against the target's cities by normalised name, and a place that cannot be filed does not travel. |
-| **Nothing else** — *with the exception above.* | `Day.primaryCity`, `Day.cities`, `StopPlacement.pool.cityKey`, `Place.cityKey` *within one document*, `Trip.poolNotes`, `geoCheck`'s anchors, `TRANSIT_CITY_KEY` and every equality comparison in `validateTrip` are untouched — they compare keys and never read them. What this row missed is the one place in the system where a record **moves between documents**; equality inside a trip was never the exposure, and A-14 says so at the level the mistake was made. |
+| `build/copyStop.ts`, the `placement` **argument** | **Added at revision 14. §2.14 A-19 (QA R15-6).** The row below is right about a *stored* `StopPlacement` and wrong about the one this function takes as a parameter: a `{kind:'pool'}` placement carrying the source's key is written into the target and mints `pool_stop_unknown_city`. It is **not** re-filed — it is an instruction in the target's terms, like `placement.dayId` — so it is **validated against `target.cities`** (with `TRANSIT_CITY_KEY` exempt) and refused when it does not resolve. |
+| **Nothing else** — *with the two exceptions above.* | `Day.primaryCity`, `Day.cities`, `StopPlacement.pool.cityKey` *as stored in a document*, `Place.cityKey` *within one document*, `Trip.poolNotes`, `geoCheck`'s anchors, `TRANSIT_CITY_KEY` and every equality comparison in `validateTrip` are untouched — they compare keys and never read them. What this row missed is the one place in the system where a record **moves between documents**; equality inside a trip was never the exposure, and A-14 says so at the level the mistake was made. **Revision 14 adds the second half of that sentence:** at that same boundary a key also arrives as an *argument*, and an argument is neither re-filed nor compared — it is checked against the document it claims to be about (A-19). |
 
 **No migration, and no `schemaVersion` bump.** `CityKey` is `string` and stays `string`; existing documents
 keep the keys they have, so the reference trip's `vienna`/`split`/… are still legal, `import/legacyDays.ts`
@@ -2737,7 +2761,9 @@ copyStopInto(
 ): Trip
 ```
 
-Pure, in core, and it ships in Phase 1. Seven rules, and rules 2 and 7 are the ones the tester should aim at:
+Pure, in core, and it ships in Phase 1. Seven rules, and rules 2 and 7 are the ones the tester should aim at.
+**`placement` is an argument about the *target*, not a record that crosses — A-19 (revision 14) says what
+`copyStopInto` does with a `{kind:'pool'}` one, and it is validated rather than re-filed.**
 
 1. **A new id, always.** Ids never cross trips; `ctx.ids` mints one. The source's `id` is not preserved
    anywhere except inside `origin`.
@@ -2753,7 +2779,11 @@ Pure, in core, and it ships in Phase 1. Seven rules, and rules 2 and 7 are the o
    `displayStatus()` therefore returns `'imported'` from the instant the stop exists. There is no window in
    which it is unbadged.
 3. **`bookingId` is dropped and no `Ticket` travels.** A friend's booking reference is not yours, and their
-   ticket URL is an access credential (§6.6). `cost` is copied, with `confidence` demoted to `'inferred'`.
+   ticket URL is an access credential (§6.6). ~~`cost` is copied~~, with `confidence` demoted to
+   `'inferred'`. **Amended by A-18 (revision 14, QA R15-3): `cost` crosses through `costForCopy`, not by
+   spread** — the money (`amounts`) is a description of the world and crosses field by field, `cost.note` is
+   free text and is redacted, and `cost.display` is a text box the user types into, so it crosses only when
+   `redactText` leaves it byte-identical and is `null` otherwise.
 4. **A referenced `Place` is copied with it**, new id, same provenance stamp — otherwise the link dangles.
    An existing place in the target with the same name and coordinates in the same city is reused instead.
    **Amended three times and never read on its own: A-14** (the `cityKey` is re-filed in the target's terms
@@ -2761,9 +2791,14 @@ Pure, in core, and it ships in Phase 1. Seven rules, and rules 2 and 7 are the o
    `at` cloned) and **A-16** (when the source *is* the target document, its own key is already the answer).
    "Same provenance stamp" was never true and is withdrawn: A-6 refused provenance on `Place`, which is
    precisely why A-15's redaction is not optional — nothing badges a `Place`.
-5. `flags`, `name`, `note`, `category`, `durationMins`, `arrival`, `travelRole` and `links` copy verbatim
+5. `flags`, `name`, `note`, `category`, `durationMins`, ~~`arrival`~~, `travelRole` and `links` copy verbatim
    (`note` through `redactText` — BUILD-NOTES KD-20). They are descriptions of a place and a journey, not
    claims about the user. **`ticket` is not on this list and never joins it** — see rule 3.
+   **Amended by A-18 (revision 14, QA R15-3): `arrival` leaves this list.** It is a record, not a string, and
+   `arrival.label` is free text — it crosses through `arrivalForCopy`, `mode` and `mins` verbatim and `label`
+   redacted. `links` still copy (A-15's disclosed residue, same trigger) but are **rebuilt field by field**,
+   because A-18 position 2 admits no spread of a source record at any depth. `flags` and `name` stay
+   verbatim, and A-18 gives each of them a measured reason rather than an assertion.
 6. **Accepting is a separate, explicit act.** `acceptCandidate` sets `state:'accepted'` and `acceptedAt`,
    which by §2.8 makes `displayStatus()` return `'own'` — that is the brief's rule, *"marked as such **until
    the user accepts it**"*. But it **preserves `origin`**, and preserving it is not optional:
@@ -3160,6 +3195,322 @@ at **71**. `packages/client` does not change — this is four lines in one core 
    same-object call. This is the assertion that would fail under `===`.
 5. Determinism and ceilings: the same copy run twice is byte-identical, the goldens and sample sha are
    unmoved, `npm run test:tap` green.
+
+#### A-18 — free text does not become structural by being nested inside a `Stop` (revision 14, QA R15-3)
+
+**The defect.** `build/copyStop.ts:292`–`293`. The copied **stop** carries
+
+```ts
+cost: src.cost ? { ...src.cost, amounts: src.cost.amounts.map((a) => ({ ...a })) } : null,
+arrival: src.arrival ? { ...src.arrival } : null,
+```
+
+`CostEstimate.note` and `MoveOverride.label` are free text and go through nothing. A stop whose `cost.note`
+reads *"paid with card, conf 5814731574"* and whose `arrival.label` reads *"Bus 8, booking GYGG45MLA9Q9"*
+arrives in the recipient's document verbatim, with both numbers greppable in every later `toJSON` of it —
+four `redactText` patterns match the first string and three the second. §6.6's **sample** path redacts both
+today (`tools/redact.mjs:97` runs `cost.note` *and* `cost.display` through `redactText` by an explicit rule;
+`redactStringsDeep` catches `arrival.label`, because `label` is not a `STRUCTURAL_KEY`), so the two
+thresholds already disagree about these two strings. That disagreement is the thing A-15 called **the**
+finding — *the sample path fails closed, the copy path fails open* — reproduced one record **inward** rather
+than one record sideways.
+
+**Why A-15 did not already cover it, stated rather than excused.** A-15 was written against the record that
+crosses *beside* the stop, and its table enumerated `Place`. The stop itself looked enumerated, because rule
+5 lists its fields by name. But rule 5 lists the fields of `Stop`, and `cost` and `arrival` are **records,
+not strings**: naming them in a field list says which fields travel, not which *strings* do. So the general
+statement, which is what makes this a ruling and not two more `redactText` calls:
+
+> **A field list is only exhaustive down to the depth it recurses.** Enumeration stops at a **scalar**, never
+> at a field name.
+
+R15-1 is the same sentence proved one level down inside `Place` (`{ ...w }` on an `hours.weekly` entry), and
+this is why the two land in one commit.
+
+**The position.** Two sentences; the first is A-15's and the second is new:
+
+1. *A string's classification does not change because of which record it is attached to.* A confirmation
+   number in `cost.note` is the same credential as one in `Stop.note`, which rule 5 has redacted since KD-20.
+2. **No record that crosses the trip boundary is copied by spread, at any depth.** Every record `copyStopInto`
+   writes into the target — `Stop`, `Place`, `CostEstimate`, `Money`, `MoveOverride`, `Link`, `StopPlacement`
+   — is rebuilt field by field from named fields, and a field nobody named does not travel. That is the
+   fail-closed direction §6.6 has and the copy path did not.
+
+**What `fromJSON` guarantees here, checked field by field rather than assumed** — because R15-1/R15-2's root
+cause was a parser gap and this ruling must not inherit one. `parseCost` (`serialize/fromJSON.ts:132`–`140`)
+builds `{ amounts, display, note? }` field by field, `parseMoney` (`:122`–`130`) builds
+`{ lo, hi, currency, basis }`, `amounts` goes through `arr()` so it is an array before anything calls `.map`,
+and the arrival branch (`:222`–`232`) builds `{ mode, mins, label? }`. **Neither `cost` nor `arrival` has any
+counterpart to `parsePlace`'s raw `hours` cast (`:294`)**, so no document `fromJSON` accepts can carry an
+unenumerated key or a non-string into either record, and **this ruling changes nothing in `fromJSON`**. It
+still forbids the cast that hid R15-1: `redactText` is typed `(unknown) => unknown` for a reason, and
+`as string` is how a non-string crossed whole.
+
+**The mechanism.** Three module-private functions in `build/copyStop.ts`, plus three call sites. Nothing is
+exported and §2.10 stays at **71**.
+
+```ts
+/**
+ * `redactText` at the call sites where the model says `string`. Pure.
+ * Never a cast: a value typed `string` can still arrive non-string from a hand-built document,
+ * and `redactText` returns a non-string unchanged — which is exactly how R15-1 crossed.
+ */
+function redacted(s: string): string {
+  const out = redactText(s);
+  return typeof out === 'string' ? out : REDACTED;   // fails closed, never throws
+}
+
+/** §2.14 A-18. What of a `CostEstimate` may cross a trip boundary. Pure. */
+function costForCopy(c: CostEstimate): CostEstimate { … }
+
+/** §2.14 A-18. What of a `MoveOverride` may cross a trip boundary. Pure. */
+function arrivalForCopy(a: MoveOverride): MoveOverride { … }
+```
+
+`REDACTED` is imported from `build/redactText.ts` beside `redactText`. **`redacted()` replaces every
+`as string` in this file** — rule 5's `note`, and `placeForCopy`'s `note` and `hours.note` — so the cast
+appears nowhere in `copyStop.ts` when this lands.
+
+| `CostEstimate` field | What crosses | Why |
+|---|---|---|
+| `amounts` | rebuilt entry by entry, **field by field** — `{ lo, hi, currency, basis }`, never `{ ...a }` | rule 3's *"the money is a description of the world"* holds for all four: two numbers, an ISO code and an enum. Field by field because the spread is the pattern that produced R14-4 and R15-1, not because `parseMoney` is suspect |
+| `display` | `redacted(display)` **when that is byte-identical to the input; `null` when it is not** | it is a text box the user types into (`apps/web/src/views/StopEditor.tsx:121`, parsed by `costFromDisplay`), so it can hold a credential — *and* it is a **price**. `[redacted] HUF` is a number that is not a number: A-15's own *"a redacted href is a control that navigates nowhere"* argument, applied to money. Here the hole is **filled**: `amounts` crosses intact and `costLabel` (`apps/web/src/format.ts:36`–`45`) derives the figure from `amounts` whenever `display` is falsy, so the recipient sees a correct cost instead of a redaction marker |
+| `note` | `redacted(note)`, **key present only if the source had one** | §6.6's free-text row. Prose keeps its meaning around a `[redacted]`; a price does not, which is the whole reason the two rows differ |
+
+| `MoveOverride` field | What crosses | Why |
+|---|---|---|
+| `mode` | verbatim | an enum |
+| `mins` | verbatim | a number |
+| `label` | `redacted(label)`, **key present only if the source had one** | free text, and §6.6's deep pass already redacts it on the sample path. *"Bus 8, booking GYGG45MLA9Q9"* → *"Bus 8, [redacted]"*: the part that describes the journey survives, which is the difference from `display` |
+
+The exact `display` predicate, so there is no judgment call in it:
+
+```ts
+const display =
+  c.display === null ? null : redacted(c.display) === c.display ? c.display : null;
+```
+
+A non-string `display` yields `REDACTED !== c.display` and therefore `null` — fails closed, no throw, no cast.
+
+**The three call sites.**
+
+```ts
+cost:    src.cost    ? costForCopy(src.cost)       : null,
+arrival: src.arrival ? arrivalForCopy(src.arrival) : null,
+...(src.links ? { links: src.links.map((l) => ({ label: l.label, href: l.href })) } : {}),
+```
+
+The `links` line is **the same policy and a different construction**: A-15's disclosed residue stands — a
+`Stop`'s links still travel, with the same reopening trigger (*the day anything writes `Stop.links` from a
+source the user did not type*) — but `{ ...l }` is a spread of a source record and position 2 above admits no
+exceptions. `qa/r2-copy.mjs` §H, which asserts two order-shaped hrefs travel and passes, must stay passing;
+a builder who "fixes" it has changed a policy this ruling did not.
+
+**`flags` stay `[...src.flags]` and that is not an omission.** `StopFlag` is `'free' | 'daytrip' | string`,
+so a flag is nominally free text — but `flags` is a `STRUCTURAL_KEY` in `tools/redact.mjs:63`, meaning §6.6's
+sample path deliberately does **not** redact it. The two thresholds therefore already agree about flags, and
+the array of scalars is copied, not spread from a record. Named here so round 16 does not re-derive it.
+
+**`name` stays verbatim, and now with a measurement instead of an assertion.** A-15's table justified this
+in prose; R15-4's rider observed that nothing pins it. The measurement, taken against the reference trip:
+running `redactText` over all 143 stop names alters **4**, and all four are false positives —
+`"Condor DE2081 → Frankfurt"`, `"Condor DE4345 → Vienna (VIE)"` and `"Smartwings QS1083 → Prague"` (public
+timetable designators, matched by `alnum_reference`) and `"DECENTRAL — Sachertorte nightcap"` (a bar's name).
+Against **0** credentials. A redacted name is also unrepairable by the recipient in a way a redacted note is
+not: the name *is* the record they chose to copy, and *"[redacted] — Sachertorte nightcap"* cannot be
+recovered from anything else in the document, whereas a mangled `display` has `amounts` behind it. This is
+the general rule the three rows above apply: **redact a string in place when the surrounding prose still
+carries the meaning; drop to a specified unknown when a fallback exists; keep it verbatim when neither is
+true and the field is the record's identity.**
+
+**What does not change.** Rules 1, 2, 4, 6 and 7; A-14, A-15 and A-16 in full, including `placeForCopy`'s
+table and its key-set guard; `redactText` and `REDACTION_PATTERNS` — **this ruling adds no pattern**, only
+call sites; `tools/redact.mjs` and §6.6's sample rules, which already cover all three strings (the deliberate
+difference is now two-way and disclosed: the sample redacts `display` **in place** because a `[redacted]`
+price in a demo document is a rule visibly working, while a copy hands a usable record to a person and so
+takes the `null` that `costLabel` fills); `serialize/fromJSON.ts`; `packages/client` and `apps/web`; no
+`schemaVersion` bump, no migration, no new export, §2.10 at **71**.
+
+Rules 3 and 5 are amended in place above — *"`cost` is copied"* becomes *"`cost` crosses through
+`costForCopy`"*, and `arrival` leaves rule 5's verbatim list. Those two sentences are what this finding
+falsified, exactly as A-15 falsified rule 4's *"copied with it"*.
+
+**The reference trip is unmoved, measured not asserted:** 0 of its 143 stops carry a `cost.note`, 0 carry an
+`arrival.label`, and **0 of its 51 non-null `cost.display` strings are altered by `redactText`**. The shape
+that would be altered is a space-grouped six-digit price — `"12 000 HUF"` → `"[redacted] HUF"` under the
+sample path's rule, `display: null` plus a correct derived figure under this one — and Budapest is on this
+trip, so it is a real future case and not a hypothetical. `"~100 CZK"`, `"€15–24"` and
+*"gardens free · palace €15–24"* all cross byte-identical. The goldens and the sample do not move because
+neither performs a copy.
+
+**The mechanical stop, which is what QA asked for in the same breath.** A-15's key-set guard has no
+counterpart for the stop, so the *next* field added to `CostEstimate` or `MoveOverride` would travel by
+whatever construction the builder happened to use. `copyStop.test.ts` gains **four** key-set assertions
+against literal lists, built from a source stop with every optional field populated:
+`Object.keys(copied)`, `Object.keys(copied.cost!)`, `Object.keys(copied.cost!.amounts[0])` and
+`Object.keys(copied.arrival!)`. Same limitation as A-15's, stated so it is not oversold: this catches a field
+that **travels** unclassified (i.e. a re-introduced spread); a field that silently fails to travel is the
+fail-closed direction and is caught by review, not by the test.
+
+**What the builder asserts:**
+
+1. **`qa/r15-place-copy.mjs` §2.1 at 0 FAIL**, all five lines — no `redactionHits` on the copied `cost.note`
+   or `arrival.label`, neither `5814731574` nor `GYGG45MLA9Q9` greppable in the recipient's `toJSON`, and the
+   two thresholds agreeing on both fields.
+2. **Redaction is not a wipe.** A `cost.note` of *"tickets at the door"*, an `arrival.label` of *"Bus 8"* and
+   a `display` of *"gardens free · palace €15–24"* all cross **byte-identical**; `amounts`, `mode` and `mins`
+   are unmoved. A rule that redacts everything passes assertion 1 and is wrong.
+3. **The `display` hole is filled, not just opened.** A source `cost` with `display: '€40, conf 5814731574'`
+   and `amounts: [{lo:40,hi:40,…}]` crosses with `display === null` and `amounts` **unchanged**, so
+   `costLabel` renders *€40* rather than *[redacted]* — asserted against `costLabel`'s own output, since that
+   is the claim this row makes.
+4. **The four key-set assertions**, and each fails when a field is added to its record and left unclassified.
+5. **No aliasing, from both sides.** `copied.cost !== src.cost`, `copied.cost.amounts[0] !== src.cost.amounts[0]`,
+   `copied.arrival !== src.arrival`, `copied.links[0] !== src.links[0]`; mutating any of the source's after
+   the copy leaves `toJSON(target)` byte-identical, and mutating the target's leaves `toJSON(source)`
+   byte-identical. (R14-3's sweep found these already fresh; the assertion pins them against the rebuild.)
+6. **No new throw site.** Every `cost`/`arrival` shape `fromJSON` accepts copies without throwing —
+   `cost: null`, `amounts: []`, `display: null`, an absent `note`, an absent `label` — and `copyStopInto`
+   still throws only on the two argument errors it threw on before (plus A-19's third).
+7. Ceilings: **71** exports, the reference trip at **2 blockers / 4 warnings / 11 notes** at `FIXTURE_TODAY`,
+   goldens and sample sha byte-identical, `qa/r2-copy.mjs` (§H included) and `qa/prov.mjs` at 0 FAIL,
+   `npm run test:tap` green, `npm run typecheck` clean.
+
+**R15-1 and R15-2 are not re-ruled here** — A-15's table already decides them and QA routed both to a builder.
+Position 2 above is the reason `placeForCopy`'s `weekly` entry becomes `{ day, open, close }` rather than
+`{ ...w }`, and `redacted()` is the helper that removes its two casts, so the three land in one commit.
+
+#### A-19 — a placement is an instruction in the target's terms, so it is validated, not re-filed (revision 14, QA R15-6)
+
+**The defect.** `copyStopInto` validates the scheduled branch's `dayId` against the target
+(`build/copyStop.ts:217`–`219`) and validates **nothing** for the pool branch. A caller-supplied
+`{ kind: 'pool', cityKey }` carrying the **source's** key is written straight into the recipient's document,
+where `validateTrip` reports `pool_stop_unknown_city` (`validate/validateTrip.ts:322`–`338`) — an **error**.
+
+**What QA's *"unrepairable"* gets right, and what I checked rather than repeated.** The row is not invisible:
+`unfiledPool` (`packages/client/src/selectors/index.ts:48`–`51`) catches **every** pooled stop whose `cityKey`
+is not in `trip.cities`, and `PoolPanel` renders that catch-all unconditionally (`apps/web/src/views/Panels.tsx:118`,
+`:167`–`181`). So this is not R2-2's lost stop. What is true is worse than a cosmetic issue and different
+from what was filed: the recipient's document carries a `validateTrip` **error they did not cause**, the
+panel explains it with a sentence that is false for this document (*"Taken off a travel day, so it belongs to
+no city on this trip"*), and the *"Add to the plan"* button throws
+`scheduleFromPool: no day available for <key>` (`build/pool.ts:91`) unless a day tab happens to be open,
+surfacing a raw core message in a toast. §2.9's standard is that an `error` is something the user can act on;
+this one is an error whose only repair is an action the control offering it may refuse to perform.
+
+**The position, and it is a boundary A-14 does not extend across.** A-14/A-16 re-file `Place.cityKey` because
+it is a **fact attached to a record that is crossing**: the source stated it, the target must restate it, and
+A-16 settled that re-filing by name is a *derivation used only when the primary answer is missing*.
+`copyStopInto`'s `placement` is not a record that crosses. It is an **argument the caller supplies about the
+target**, in the same position and with the same authority as `placement.dayId` — which the caller has always
+had to state in the target's terms. The primary answer is therefore *never* missing: the caller holds the
+target document. Re-filing it inside core would mean core deriving an answer to a question the caller is the
+authority on, silently, onto a filing nothing badges — which is the guess A-14 refused, arriving from the
+opposite direction.
+
+So: **the pool placement's `cityKey` is validated exactly as `dayId` is, and never re-filed.**
+A-10's change-table row (*"`StopPlacement.pool.cityKey` … they compare keys and never read them"*) stays
+true for every **stored** placement inside one document, and gains this one exception for the **argument**.
+
+**The mechanism.** Three parts, all inside `copyStopInto`. `refileCityKey`, `placeForCopy` and rule 4 do not
+move.
+
+> 1. **Check the pool branch where the scheduled branch is already checked**, before anything is copied, so
+>    nothing is partially built behind the throw:
+>    ```ts
+>    if (
+>      placement.kind === 'pool' &&
+>      placement.cityKey !== TRANSIT_CITY_KEY &&
+>      !target.cities.some((c) => c.key === placement.cityKey)
+>    ) {
+>      throw new Error(`copyStopInto: no such city ${placement.cityKey} in ${target.id}`);
+>    }
+>    ```
+>    `TRANSIT_CITY_KEY` (`model/ids.ts:31`) is exempt because `validateTrip` exempts it (`:323`) and because
+>    it is the designed *"belongs to no city"* group (`build/pool.ts:38`–`56`) — the one honest answer a
+>    caller with no city of the target can give. Imported from `model/ids.ts`; no export-surface change.
+> 2. **Rebuild the placement field by field; never store the caller's object.** `makeStop` assigns
+>    `placement` as given (`build/stops.ts:79`–`97`) and `reindex` keeps that same object when the order
+>    already matches (`:45`–`51`), so the natural call — `copyStopInto(target, src, srcStop.placement, ctx)`,
+>    *"copy it where it already sits"* — aliases one mutable object into two documents. That is **R14-3
+>    exactly, one field over**; round 15 swept `cost`, `arrival`, `links` and `flags` for the same alias and
+>    did not look at `placement`. A-18 position 2 covers it:
+>    ```ts
+>    const placed: StopPlacement =
+>      placement.kind === 'scheduled'
+>        ? { kind: 'scheduled', dayId: placement.dayId, time: placement.time, order: placement.order }
+>        : { kind: 'pool', cityKey: placement.cityKey, ...(hint ? { hint } : {}) };
+>    ```
+>    `placed` is what goes to `addStop`.
+> 3. **A `hint` whose `dayId` the target cannot resolve is dropped, not thrown on:**
+>    ```ts
+>    const h = placement.kind === 'pool' ? placement.hint : undefined;
+>    const hint =
+>      h && target.days.some((d) => d.id === h.dayId)
+>        ? { dayId: h.dayId, time: h.time, ...(h.order === undefined ? {} : { order: h.order }) }
+>        : undefined;
+>    ```
+
+**The asymmetry between parts 1 and 3 is the ruling, not an inconsistency, and it has a rule:** *a required
+field with no honest unknown is refused; an optional field with a specified fallback becomes the hole.*
+`cityKey` is required and decides where the stop can be reached — there is no "unknown city" value except
+`TRANSIT_CITY_KEY`, and inventing one for the caller is a filing nothing badges. `hint` is optional, its
+absence is legal and fully specified (`scheduleFromPool` falls back to the stored hint, then `pickDay` +
+`CAT_DEFAULT_TIME`, `build/pool.ts:85`–`96`), and a hint naming the **source's** day is a fact about a
+document the recipient does not have — carried across, it makes the recipient's *"Add to the plan"* throw
+`scheduleFromPool: no such day` (`:92`). A hole, never a wrong filing: A-14 step 3's own rule, applied to the
+one other field at this boundary that has an honest unknown.
+
+**Why a throw and not an `Issue`.** §2.1: core throws on **programmer error** and returns `Issue[]` for a
+**document**. A placement is an argument. A caller naming a city the target does not have has made the same
+mistake as one naming a day the target does not have, and that has thrown since Phase 1. The converse stays
+converse: R15-2 is a defect precisely because it throws on a *document shape* `fromJSON` accepts, and nothing
+in A-18 or A-19 throws because of what a document contains.
+
+**What a caller passes, so no future UI has to guess** — a refusal with no answer is not a design:
+
+- Copying into the pool from one of the **target's own** city tabs → that city's key.
+- Copying from a browsed trip with no city of the target chosen → **`TRANSIT_CITY_KEY`**. The stop lands
+  under *"Not filed under a city"*, which is exactly where the recipient re-files it by scheduling it onto a
+  day; the badge and the credit are untouched (rules 2 and 7).
+- **Never the source's key, and never a name-derived key computed inside core.** If *"copy into my Vienna"*
+  is wanted later, the **UI** may default a picker over `target.cities` to the name match and **show** it —
+  a default the user can see is not the silent filing A-14 refused. `normalizeCityName` is already the
+  function for that and is deliberately not exported (§2.10 at 71); exporting it is a decision for the phase
+  that builds the picker, not a consequence of this ruling.
+
+**What does not change.** A-14, A-15 and A-16 in full — the *place's* key is still re-filed, and the
+placement's is still never re-filed; rules 1–7; `StopPlacement`'s shape; `addStop`, `makeStop`, `moveStop`,
+`returnToPool`, `scheduleFromPool`, `poolFor`, `unfiledPool` and `validateTrip` are all untouched. The check
+lives at the **copy boundary**, which is where the cross-document caller is; `addStop` is called by
+`importLegacyDays` and by every editor inside one document and is deliberately not made stricter here.
+`packages/client` and `apps/web` do not change — `BrowsePane` passes `{kind:'scheduled'}` and keeps doing so,
+which is what bounds this finding to MINOR. No `schemaVersion` bump, no migration, no new export, §2.10 at
+**71**.
+
+**What the builder asserts:**
+
+1. A cross-trip copy with `{ kind: 'pool', cityKey: <the source's key> }` **throws** an `Error` naming the key
+   and the target id, and `target` is unmoved — same `revision`, byte-identical `toJSON`.
+2. `{ kind: 'pool', cityKey: TRANSIT_CITY_KEY }` **succeeds**, adds **no** `pool_stop_unknown_city` and no
+   other new issue, and the copied stop is in `unfiledPool(after)`.
+3. `{ kind: 'pool', cityKey: <a key the target does have> }` succeeds and the stop is in
+   `poolFor(after, key)` — the copy is otherwise identical to the scheduled case (same provenance stamp,
+   same credit, A-15/A-18 applied).
+4. A **within-trip** copy into the pool under the stop's own pool key succeeds and adds no issue.
+5. **The hint:** a pool placement whose `hint.dayId` exists only in the *source* copies cleanly with **no
+   `hint` key** on the written placement, and `scheduleFromPool` on the copy then succeeds through
+   `pickDay`/`CAT_DEFAULT_TIME` instead of throwing; a `hint.dayId` the target **does** have is preserved,
+   `order` included.
+6. **No aliasing:** `copied.placement !== placement` and `copied.placement.hint !== placement.hint`, for the
+   **scheduled** branch as well as the pool one (`reindex` keeps the caller's object when the order already
+   matches); mutating the caller's placement after the copy leaves `toJSON(target)` byte-identical.
+7. `qa/r15-place-copy.mjs` §3.4's second line — *no shipped caller offers a pool placement* — still passes.
+   **Its first line asserts against a returned document and will now meet a throw**; that probe line is
+   QA's to re-express as a `throws` assertion in round 16, and **the builder does not edit anything under
+   `qa/`**.
+8. Ceilings: **71** exports, 2 / 4 / 11 at `FIXTURE_TODAY`, goldens and sample sha byte-identical,
+   `npm run test:tap` green.
 
 #### Why this ships in Phase 1, with no friends and no server
 
@@ -3798,6 +4149,19 @@ redacts it, because `redactStringsDeep` redacts every string not under a `STRUCT
 adds the field-by-field equivalent on the copy path, which has no such default. **That asymmetry is the
 finding**: the sample path fails closed, the copy path failed open, and A-15's key-set assertion is what
 makes the next field added to `Place` fail closed too.
+
+**Revision 14 (QA R15-3, §2.14 A-18) closes the same gap one record inward, and records one more deliberate
+difference.** Three strings this table's implementation has always redacted — `CostEstimate.note` and
+`CostEstimate.display` by the explicit rule in `redactStop`, and `MoveOverride.label` through the deep pass,
+since `label` is not a `STRUCTURAL_KEY` — were crossing the **copy** boundary verbatim, because §2.14 rule 5
+named `arrival` in a list of fields and a field list is only exhaustive down to the depth it recurses. All
+three are now classified on the copy path too. The one **difference** between the paths, disclosed rather
+than discovered: the sample redacts `cost.display` **in place**, and the copy sets it to `null` when
+redaction would change it, because `[redacted] HUF` is a price that is not a price and the copy has a correct
+fallback the sample does not need — `amounts` crosses intact and `costLabel` derives the figure from it. Two
+things that are again *not* differences: `Stop.flags` is a `STRUCTURAL_KEY` here and copies verbatim there,
+and `Stop.links`/`Place.links` keep the split A-15 disclosed. **This table and `tools/redact.mjs` do not
+move at revision 14** — the sample sha is unchanged.
 
 **What it does not cover, deliberately.** Personal prose — *"Morning with your girlfriend's family"* — is
 not a credential and is not redacted. The consequence, stated so nobody is surprised by it: the shipped

@@ -400,6 +400,22 @@ on all three (<code>ARCHITECTURE.md</code> <strong>A-15</strong>, <strong>A-16</
 <strong>A-17</strong>, revision 13). <strong>Nothing about sharing with a friend ships until A-15 is
 built</strong> &mdash; the copy is the one place in the whole design where your data crosses to another
 person.</p>
+<p><strong>Those three were built, and attacked again</strong> (QA round 15). The place-note scrub
+<strong>holds</strong> &mdash; eleven different notes were pushed across the boundary and only
+credential-shaped ones changed &mdash; and both of the smaller fixes hold too. What the tester found is
+that the <em>same mistake</em> had been made twice more, one level further in, and neither had been
+looked at: when you copy an activity, the activity's own <strong>cost note</strong> and
+<strong>arrival label</strong> were still travelling unedited, so <em>"paid with card, conf
+5814731574"</em> and <em>"Bus 8, booking GYGG45MLA9Q9"</em> would land in the other person's trip word
+for word &mdash; even though the demo-data scrub has cleaned both of those fields for months. The lesson
+the architect has taken from two rounds of this: a list of fields is only a real list as far down as it
+actually goes, so the rule is now <em>nothing is copied wholesale, at any depth</em> &mdash; everything
+the copy writes is rebuilt field by field from fields somebody named. One smaller gap came with it:
+copying an activity into the <em>optional list</em> of another trip could file it under a city that trip
+does not have, leaving an error nothing on screen can clear; that is now refused outright rather than
+guessed at. The architect has ruled on both (<code>ARCHITECTURE.md</code> <strong>A-18</strong> and
+<strong>A-19</strong>, revision 14). <strong>Nothing about sharing with a friend ships until A-18 is
+built</strong>, for the second round running and for the same reason.</p>
 </div>
 
 <div class="wrap">
@@ -407,7 +423,7 @@ person.</p>
   <div class="brand">
     <h1>CAIRN</h1>
     <div class="tagline">"You are here"</div>
-    <div class="updated">Updated 2026-08-27 · against <code>master</code>, after ARCHITECTURE revision 13 (A-15/A-16/A-17, the three round-14 design findings)</div>
+    <div class="updated">Updated 2026-08-28 · against <code>master</code>, after ARCHITECTURE revision 14 (A-18/A-19, the two round-15 design findings)</div>
   </div>
 
   <!-- ============ DECISION CALLOUT ============ -->
