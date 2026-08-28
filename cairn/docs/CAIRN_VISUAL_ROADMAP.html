@@ -338,10 +338,28 @@ computed on demand from those summaries, with the one rule the whole feature res
 right now counts only up to today.</p>
 <p><strong>What that means for what you can see:</strong> still nothing new on screen. The numbers
 exist and are printable from the command line (<code>node cli.ts stats</code>), but the
-<strong>Map and Profile screens are I-8</strong>, which is next and is where 2b actually ships.
+<strong>Map and Profile screens are I-8</strong>, which is where 2b actually ships.
 <strong>Verification:</strong> I-5 through I-6a have all been attacked (QA rounds 22&ndash;27, the
-last one clean of blockers); <strong>I-7 has not been attacked yet</strong> and no manager verdict
-exists for any of 2b. Built &#9989; &middot; verified &#9898; &middot; shippable &#9898;.</p>
+last one clean of blockers), and <strong>I-7 has now been attacked too &mdash; QA round 28,
+2026-08-28, and it did not pass.</strong> No manager verdict exists for any of 2b.
+Built &#9989; &middot; verified &#9898; &middot; shippable &#9898;.</p>
+<p><strong>&#128308; What round 28 found, and what happens before I-8.</strong> The statistics
+function itself held up under everything the tester threw at it. Two things underneath it did not.
+<strong>(1) Dates before the year 1000 were being silently misread as 1900-something</strong>
+&mdash; a JavaScript rule from 1995 that <code>Date</code> still honours &mdash; which meant that
+recording a past trip and mistyping the year as <code>0202</code> instead of <code>2020</code>
+wrote a trip to your browser&rsquo;s storage <strong>that could never be opened again</strong>.
+That is real data loss on a screen you can reach in four clicks, and it is the reason this round is
+a send-back rather than a note. <strong>(2) The rule that is supposed to stop the app ever
+<em>saving</em> a lifetime total</strong> &mdash; because a saved total is a number that can
+silently disagree with the trips it claims to summarise &mdash; <strong>could not actually catch it
+happening</strong>: the tester wrote <code>countriesVisited</code> into every stored record and the
+whole 795-test suite stayed green. A third, smaller finding: the command-line output prints a
+country you reach <em>next week</em> as somewhere you have already been, with dates and no marker,
+which is the one convention this project has held since day one. All three are now designed
+(<code>ARCHITECTURE.md</code> revision 25) and scheduled as a new increment, <strong>I-7a</strong>,
+which is owed <strong>before</strong> I-8 &mdash; because I-8 is the screen that would otherwise put
+every one of them in front of you.</p>
 </div>
 
 <div class="callout" style="border-left:4px solid #2a5138;padding:.75rem 1rem;margin:1rem 0;background:#f0f8f2">

@@ -492,13 +492,71 @@ generator, no `StoragePort` method, no §4.2 rule, and no client change at all �
 on `row.summaryVersion < core.SUMMARY_VERSION` and does not care what the constant is. `ROADMAP.md` carries
 this as **I-7**.
 
+**Revision 25, 2026-08-28.** QA round 28 — the mandatory breaker pass over I-7 — found `travelStats`
+itself sound at every boundary it could construct, and broke **the substrate it stands on** and **the gate
+that is supposed to police it**. Three rulings, in two sections, and none of them is a redesign.
+
+**A-32** (§2.1, QA **R28-1**, BLOCKER): `dayNumber` is `Math.floor(Date.UTC(y, m-1, dd)/86400000)`, and
+`Date.UTC` applies the ES legacy two-digit-year rule — a `year` argument of 0–99 means 1900–1999 — so
+`dayNumber('0001-01-01')` and `dayNumber('1901-01-01')` are **the same number**, measured, both `-25202`.
+`weekdayOf` is built the same way and has the same fault. `fromDayNumber` pads the month and the day and
+**not the year**, so `fromDayNumber(dayNumber('0500-06-01'))` is `"500-06-01"`, which `parseIsoDate` —
+eight lines up in the same file — throws on. It is product-reachable: `PastTripForm`'s Year field gates on
+`/^\d{4}$/`, so `0202` is typeable, and the trip it creates is written to storage with days minted as
+`"202-01-01"` and **can never be read back**. Ruled: the three helpers are re-implemented in **pure civil
+arithmetic that never constructs a `Date`** (Hinnant's `days_from_civil`/`civil_from_days`, with an
+explicit month normalisation so the roll-over `fromJSON` already permits is preserved exactly), the year is
+zero-padded to four digits on the way out, and **`IsoDate`'s domain is stated for the first time**:
+proleptic Gregorian, `0000-01-01` … `9999-12-31`, which is what `isIsoDate` has always implemented.
+Narrowing the domain instead (a floor at 1000 or 1900) is costed and **refused** — an `IsoDate` is minted
+from user input at more than a dozen sites across two validators, and the arithmetic is 30 lines. Printed
+function bodies, the differential I ran against `Date.UTC`, and the ruling on
+`travelStats.test.ts:280` are in A-32. **`packages/core/src` loses its last two `new Date(`
+constructions as a consequence, which is a determinism win the ruling did not set out to buy.**
+
+**A-33** (§8.4, QA **R28-2**, MAJOR): exit criterion 6 half (b) is a regex over source text —
+`/([A-Za-z$_][\w$]*)\??\s*:\s*number\b/` — so it matches a **declaration** and can never match a **value**.
+The breaker wrote `countriesVisited` and `daysTravelled` into every IndexedDB summary record, on every
+write, forever, and criterion 6, the 795-test suite and `tsc` were **all green**. §0.5: *a rule that cannot
+catch its own bug does not ship*. Ruled: half (a) stops classifying by name and asserts the row's **whole
+key set**; half (b) becomes four gates — **the rows a real port actually holds after a real write**, the
+argument every port hands its summary store, a port census so a third implementation cannot appear
+unpoliced, and the import assertion — plus the source sweep demoted to a **secondary tripwire** with two
+measured widenings (a `number` type alias, a numeric literal, comments stripped) that cost **zero** new
+allow-list entries. `ROOTS` gains `packages/tokens/src`. The eight faults become the criterion's own
+injected-fault matrix.
+
+**A-34** (§8.4, QA **R28-7**, MINOR): A-31 Part 5 residue 2 licenses an `active` trip contributing all of
+its countries unclamped, and `cli.ts stats` therefore prints *"GB 2026-08-07 → 2026-08-14 (1 trip)"* for a
+country the traveller does not reach until Aug 20 — a plan rendered as an accomplished fact, which is the
+root `CLAUDE.md` convention this project has held since revision 1. Ruled: the *statistic* carries the
+fact rather than each surface re-deriving it — `TravelStatsCountry` and `TravelStatsCity` gain
+`provisional: boolean`, true exactly when **no `completed` trip contributed the row** — and every surface
+that renders `travelStats` marks it. ROADMAP I-8 carries the requirement for the Map and Profile; the CLI
+marks it now, because the CLI is the surface that exists.
+
+Folded into this revision without rulings of their own: **R28-6** — A-31 Part 5 gains **residue 6**, the
+inverse of residue 3 (two *different* unattributed cities that fold to the same name become **one** row,
+because `null === null`), accepted as documented behaviour with the reasoning and the trigger; A-31 Part 2
+gains the one sentence that says what `travelStats` does when a stored row's census violates the
+*"never greater than `located`"* invariant (**clamp at zero, never negative, never throw** — R28-4's
+implementation, specified so the builder does not have to choose); and **R28-8**, which is arithmetic
+rather than design: §2.10's list and its **75** are correct and re-derived here, and it is `ROADMAP.md`
+criterion **E** that is stale at 73.
+
+Nothing else moves: no engine, no `schemaVersion` bump, no `SUMMARY_VERSION` bump (the row's *shape* does
+not change), no change to `countryOf`, the country index or the generator, no `StoragePort` method, no §4.2
+rule, no client change, and **no movement on §2.10's export surface (75)** — `dayNumber`, `fromDayNumber`,
+`parseIsoDate` and `addDays` are all internal (§2.10's "45 that come off", group 1). `ROADMAP.md` carries
+the three rulings and round 28's four builder findings as **I-7a**.
+
 **Phase 1 is §2 and §4. The next phase is §8.1–§8.4.** Everything else is the shape those must not
 foreclose. See `ROADMAP.md` for sequencing and `PRODUCT-VISION.md` for why this order and not another.
 
 ## Read only your sections
 
-This document is ~175k tokens (re-measured at revision 24, with
-`cairn/tools/doc-section ARCHITECTURE` — §2 is ~102k of it and §8 ~37k; the per-section figures below were stale by a third before revision 11 and are
+This document is ~186k tokens (re-measured at revision 25, with
+`cairn/tools/doc-section ARCHITECTURE` — §2 is ~106k of it and §8 ~44k; the per-section figures below were stale by a third before revision 11 and are
 re-measured, not estimated, whenever a revision lands). Nothing needs all of it, and a fresh agent that reads it whole starts a sixth
 of the way into its context before writing a line. Pull what you need:
 
@@ -511,13 +569,13 @@ cairn/tools/doc-section ARCHITECTURE         # lists the sections and their size
 |---|---|---|---|
 | 0 | Six positions, stated up front | <1k | everyone — read it, it is 20 lines |
 | 1 | Stack decision and the capability checks behind it | 3k | architect. Settled; do not re-litigate |
-| 2 | **Domain model — the builder's contract.** §2.12 `travelRole`, §2.13 geography and §2.14 import/copy are new in revision 2 and are where the Phase 1 rework lives; **§2.2a (the `StorageVersion` write fence, revision 3) and §2.2b (the freshness rule it turned out to be one instance of, revision 4) are read together with §4.2 and §4.3, never alone**; §2.10 (the export surface) and §2.13's copied-record row are settled in revision 5; **§2.7's retirement ledger (A-5) and §2.13's copy-borne `Place` rule (A-6) are revision 6**; **§2.2a's A-7 (the fence a declined write may not move) is revision 8** and is read with §4.2 rule 4a; **§2.2's A-10 (a `CityKey` is a minted opaque id) and §2.7's A-9 (retirement is decided against the un-gated set) are revision 11** — a Phase 2 builder needs both; **A-11, A-12 and A-13 (§2.7) and A-14 (§2.14) are revision 12** and are read *with* A-9 and A-10, never instead of them — A-11 replaces A-9's greppable invariant, A-12 narrows A-9 point 1, A-13 rewrites A-9 assertion 4, and A-14 corrects A-10's change table; **A-15 and A-16 (§2.14) and A-17 (§2.7) are revision 13** — A-15 is the copy path's redaction rule and is read with §6.6, A-16 withdraws A-14's *"within one trip is unchanged"* paragraph, A-17 narrows A-11 assertion 5; **A-18 and A-19 (§2.14) are revision 14** — A-18 is the copy path's redaction rule for the *stop's own* nested records (`cost`, `arrival`) and generalises A-15 to *no spread at any depth*, A-19 rules that the `placement` **argument** is validated against the target and never re-filed. **Anyone touching `copyStopInto` reads A-14, A-15 and A-16 as one rule 4, and A-18 with rules 3 and 5**; **A-20 is revision 15 and lives in §2.9, not §2.14** — it is where the *shape* of a document is decided, it amends A-15's `hours` row and A-18's *"changes nothing in `fromJSON`"* paragraph, and **anyone touching `Place.hours` at any layer reads it first**; **A-21 is revision 16, lives in §2.9 beside A-20 and is read with it** — it replaces A-20's `isWeeklyEntry` with a reader that returns what it read, and imposes one read per field on `copyStop.ts`, so **anyone touching a predicate over an `unknown`, or any function in `copyStop.ts`, reads A-21 with A-15 and A-18**; **A-21a is a revision-16 addendum in the same place** and is what makes A-21's file-wide rule actually total — it is read with A-21, never instead of it; **A-22 and A-23 are revision 17, in the same place again** — A-22 closes the four sites A-21/A-21a's searches missed and **supersedes A-21a's read-count table one level down** (read A-22 Part 2's table, not A-21a's), and **A-23 is the standing census test that replaces the hand search** — *anyone adding a branch to `copyStopInto`, or a field to `Stop` or `Place`, reads A-23 first, because the scenario matrix and the allow-list are part of the contract and widening the allow-list is an architect's ruling*; **A-24 is revision 18 and is read *with* A-23, never instead of it** — it supersedes A-23's `opaque` set, its ten-row matrix and its fixture list, and nothing else about A-23 moves; **A-25 is revision 19 and is the last of the chain — it is read with A-23 and A-24 and closes the arc**, adding `City` rows to the roots, a fifteenth matrix row, an eighth `ALLOWED` entry, the structural fixture-completeness tests, and the **written closing criterion** in its Part 6 that a manager or a future session checks rather than takes on trust. **QA round 21 ran that criterion and all six clauses hold, so the arc is closed rather than closeable** — Part 6 records the verification and Part 5's class-A residue list was completed **in place** with the three instances round 21's re-derivation added (R21-1); that correction carries **no revision number** because no rule, entry, root, row, gate or line of code moved | 101k | builder, breaker |
+| 2 | **Domain model — the builder's contract.** §2.12 `travelRole`, §2.13 geography and §2.14 import/copy are new in revision 2 and are where the Phase 1 rework lives; **§2.2a (the `StorageVersion` write fence, revision 3) and §2.2b (the freshness rule it turned out to be one instance of, revision 4) are read together with §4.2 and §4.3, never alone**; §2.10 (the export surface) and §2.13's copied-record row are settled in revision 5; **§2.7's retirement ledger (A-5) and §2.13's copy-borne `Place` rule (A-6) are revision 6**; **§2.2a's A-7 (the fence a declined write may not move) is revision 8** and is read with §4.2 rule 4a; **§2.2's A-10 (a `CityKey` is a minted opaque id) and §2.7's A-9 (retirement is decided against the un-gated set) are revision 11** — a Phase 2 builder needs both; **A-11, A-12 and A-13 (§2.7) and A-14 (§2.14) are revision 12** and are read *with* A-9 and A-10, never instead of them — A-11 replaces A-9's greppable invariant, A-12 narrows A-9 point 1, A-13 rewrites A-9 assertion 4, and A-14 corrects A-10's change table; **A-15 and A-16 (§2.14) and A-17 (§2.7) are revision 13** — A-15 is the copy path's redaction rule and is read with §6.6, A-16 withdraws A-14's *"within one trip is unchanged"* paragraph, A-17 narrows A-11 assertion 5; **A-18 and A-19 (§2.14) are revision 14** — A-18 is the copy path's redaction rule for the *stop's own* nested records (`cost`, `arrival`) and generalises A-15 to *no spread at any depth*, A-19 rules that the `placement` **argument** is validated against the target and never re-filed. **Anyone touching `copyStopInto` reads A-14, A-15 and A-16 as one rule 4, and A-18 with rules 3 and 5**; **A-20 is revision 15 and lives in §2.9, not §2.14** — it is where the *shape* of a document is decided, it amends A-15's `hours` row and A-18's *"changes nothing in `fromJSON`"* paragraph, and **anyone touching `Place.hours` at any layer reads it first**; **A-21 is revision 16, lives in §2.9 beside A-20 and is read with it** — it replaces A-20's `isWeeklyEntry` with a reader that returns what it read, and imposes one read per field on `copyStop.ts`, so **anyone touching a predicate over an `unknown`, or any function in `copyStop.ts`, reads A-21 with A-15 and A-18**; **A-21a is a revision-16 addendum in the same place** and is what makes A-21's file-wide rule actually total — it is read with A-21, never instead of it; **A-22 and A-23 are revision 17, in the same place again** — A-22 closes the four sites A-21/A-21a's searches missed and **supersedes A-21a's read-count table one level down** (read A-22 Part 2's table, not A-21a's), and **A-23 is the standing census test that replaces the hand search** — *anyone adding a branch to `copyStopInto`, or a field to `Stop` or `Place`, reads A-23 first, because the scenario matrix and the allow-list are part of the contract and widening the allow-list is an architect's ruling*; **A-24 is revision 18 and is read *with* A-23, never instead of it** — it supersedes A-23's `opaque` set, its ten-row matrix and its fixture list, and nothing else about A-23 moves; **A-25 is revision 19 and is the last of the chain — it is read with A-23 and A-24 and closes the arc**, adding `City` rows to the roots, a fifteenth matrix row, an eighth `ALLOWED` entry, the structural fixture-completeness tests, and the **written closing criterion** in its Part 6 that a manager or a future session checks rather than takes on trust. **QA round 21 ran that criterion and all six clauses hold, so the arc is closed rather than closeable** — Part 6 records the verification and Part 5's class-A residue list was completed **in place** with the three instances round 21's re-derivation added (R21-1); that correction carries **no revision number** because no rule, entry, root, row, gate or line of code moved. **A-32 is revision 25 and lives in §2.1**, at the other end of the section from the copy chain — the civil-calendar implementation of `dayNumber`/`fromDayNumber`/`weekdayOf` and the first written statement of `IsoDate`'s **domain**; it is ~4k on its own, and **anyone touching a date helper, or minting an `IsoDate` from user input, reads it and needs nothing else in §2** | 106k | builder, breaker |
 | 3 | Module boundaries | <1k | builder |
 | 4 | **The Phase 1 client.** §4.2 rule 6 (a pending write is never outlived by its document) is new in revision 3 — QA R3-2; rule 6a′ and the `savedDoc` predicate are revision 4 — QA R4-1; **rule 6a″ (the flush bound and its exits) and rule 6c's "delete goes on the chain" are revision 5** — QA R6-1/R6-2/R7-3; **rule 5's retirement carve-out is revision 6** — QA R8-1, read with §2.7; **rule 4a is revision 8** — QA R11-1, read with §2.2a A-7; **§4.3's A-30 is revision 23** — the `refreshSummary` port method, the fence's meaning stated once, and the rescan's uniform per-row link — and **anyone touching `runRescan`, `StoragePort` or a port implementation reads it first**, with §8.4 clause 3 beside it | 10k | builder |
 | 5 | The four hard subsystems | 2k | breaker; builder from Phase 3 on |
 | 6 | Privacy, authorization, deletion cascade. **§6.6 is the build-artifact threshold; the copy threshold is §2.14 A-15 + A-18 (revisions 13 and 14) and they differ deliberately, in two named places — read them together or neither** | 4k | breaker, manager; builder for §6.2 |
 | 7 | Explicitly deferred | <1k | anyone about to build something not in the roadmap |
-| 8 | **The travel-history model** (revision 9) — trip lifecycle and past trips (§8.1), the feasibility/integrity rule class (§8.2), participants (§8.3), geography attribution, travel stats and the summary-row rule (§8.4); then the shapes the location, photo and social phases must land on (§8.5–§8.7) and what is refused (§8.8). **§8.10 is revision 10** — physical travel distance by mode and the four provenance bases that keep it honest; **it is not Phase 2 scope**, so a Phase 2 builder reads §8.1–§8.4 and stops. **Revision 11 amends §8.1, §8.2 and §8.4 by pointer only — the two rulings themselves live in §2.2 (A-10) and §2.7 (A-9), and a Phase 2 builder reads both; revision 12 amends §8.2 by pointer in the same way, and its four rulings live in §2.7 (A-11, A-12, A-13) and §2.14 (A-14)**. **A-26 is revision 20 and lives in §8.4** — the mixed-resolution country index, the withdrawal of the correctness floor's escalation mechanism, and the ruling that `null` is the right answer for a landform the dataset does not carry; **anyone touching `tools/gen-countries.mjs`, `geo/countryIndex.ts` or the attribution golden reads it first**, and it is what ROADMAP's I-5a builds; **A-27 is revision 21, sits directly under A-26 and is read *with* it, never instead of it** — it amends A-26 Part 4's block-quoted rule with a third clause (a filled code ships a **forgiveness entry** as well as a coverage entry), supersedes A-26 Part 5's two-residue list with three, lifts A-26 Part 6 item 3 for a docstring correction only, and is what ROADMAP's **I-5b** builds; **A-28 is revision 22, sits under A-27 and is read with both, never instead of them** — it supersedes A-27 Part 4's filter 2 (two arms, because the coverage index it compared against is mixed-resolution and answered generously) and A-27 Part 4's `overlaps` predicate (the vertex-mean probes come out), corrects A-27 Part 5's Macao sentence and every count in it, and is what ROADMAP's **I-5c** builds. **Anyone touching `tools/forgiveness.mjs` or the forgiveness pass reads A-28 first and A-27 second**; **A-29 is revision 23 and sits under A-28** — it is the only one of the four that is *not* about the index: it rules that a `City`'s **stated** `countryCode` fills a gap the coordinate cannot answer, never overrides one, and only through a gate ending in index membership, and it takes `SUMMARY_VERSION` to 3. **Anyone touching `derive/summary.ts` reads A-29 and §4.3's A-30 together** — A-29 changes what a row *says*, A-30 changes how it is *written*, and I-6a builds both; **A-31 is revision 24 and sits under A-29** — it is the `travelStats` specification (type, signature, algorithm, sort orders, residues), and it widens the row a second time with the **record census** clause 2's `unattributed` cannot be computed without, taking `SUMMARY_VERSION` to 4. **A builder of I-7 reads §8.4 clause 2, then A-31, and needs nothing else in this document except §2.10's list**; A-31 also rewrites ROADMAP exit criterion 6, so **anyone about to add a count to `TripSummaryRow` reads A-31 Part 6 first — widening that allow-list is an architect's ruling** | 37k | architect; the builder and breaker of the phase after Phase 1 (§8.1–§8.4 only). §8.10 is for the architect and for phases 4, 5 and 7. Read with `PRODUCT-VISION.md` |
+| 8 | **The travel-history model** (revision 9) — trip lifecycle and past trips (§8.1), the feasibility/integrity rule class (§8.2), participants (§8.3), geography attribution, travel stats and the summary-row rule (§8.4); then the shapes the location, photo and social phases must land on (§8.5–§8.7) and what is refused (§8.8). **§8.10 is revision 10** — physical travel distance by mode and the four provenance bases that keep it honest; **it is not Phase 2 scope**, so a Phase 2 builder reads §8.1–§8.4 and stops. **Revision 11 amends §8.1, §8.2 and §8.4 by pointer only — the two rulings themselves live in §2.2 (A-10) and §2.7 (A-9), and a Phase 2 builder reads both; revision 12 amends §8.2 by pointer in the same way, and its four rulings live in §2.7 (A-11, A-12, A-13) and §2.14 (A-14)**. **A-26 is revision 20 and lives in §8.4** — the mixed-resolution country index, the withdrawal of the correctness floor's escalation mechanism, and the ruling that `null` is the right answer for a landform the dataset does not carry; **anyone touching `tools/gen-countries.mjs`, `geo/countryIndex.ts` or the attribution golden reads it first**, and it is what ROADMAP's I-5a builds; **A-27 is revision 21, sits directly under A-26 and is read *with* it, never instead of it** — it amends A-26 Part 4's block-quoted rule with a third clause (a filled code ships a **forgiveness entry** as well as a coverage entry), supersedes A-26 Part 5's two-residue list with three, lifts A-26 Part 6 item 3 for a docstring correction only, and is what ROADMAP's **I-5b** builds; **A-28 is revision 22, sits under A-27 and is read with both, never instead of them** — it supersedes A-27 Part 4's filter 2 (two arms, because the coverage index it compared against is mixed-resolution and answered generously) and A-27 Part 4's `overlaps` predicate (the vertex-mean probes come out), corrects A-27 Part 5's Macao sentence and every count in it, and is what ROADMAP's **I-5c** builds. **Anyone touching `tools/forgiveness.mjs` or the forgiveness pass reads A-28 first and A-27 second**; **A-29 is revision 23 and sits under A-28** — it is the only one of the four that is *not* about the index: it rules that a `City`'s **stated** `countryCode` fills a gap the coordinate cannot answer, never overrides one, and only through a gate ending in index membership, and it takes `SUMMARY_VERSION` to 3. **Anyone touching `derive/summary.ts` reads A-29 and §4.3's A-30 together** — A-29 changes what a row *says*, A-30 changes how it is *written*, and I-6a builds both; **A-31 is revision 24 and sits under A-29** — it is the `travelStats` specification (type, signature, algorithm, sort orders, residues), and it widens the row a second time with the **record census** clause 2's `unattributed` cannot be computed without, taking `SUMMARY_VERSION` to 4. **A builder of I-7 reads §8.4 clause 2, then A-31, and needs nothing else in this document except §2.10's list**; A-31 also rewrites ROADMAP exit criterion 6, so **anyone about to add a count to `TripSummaryRow` reads A-31 Part 6 first — widening that allow-list is an architect's ruling**; **A-33 and A-34 are revision 25 and sit under A-31** — **A-33 supersedes A-31 Part 6's two-half check entirely** (it grepped declarations while the danger is a *value*, and a persisted `countriesVisited` passed it), so read A-33 and treat Part 6 as the *principle* it block-quotes and nothing more; **A-34** adds `provisional` to `travelStats`' two row types and is the ruling that stops an active trip's unreached countries being printed as fact. **A builder of I-7a reads A-31, then A-33 and A-34, plus §2.1's A-32** | 44k | architect; the builder and breaker of the phase after Phase 1 (§8.1–§8.4 only). §8.10 is for the architect and for phases 4, 5 and 7. Read with `PRODUCT-VISION.md` |
 
 *(§8's figure is measured with `doc-section`, not estimated. §8.1–§8.4 — the Phase 2 model — are roughly
 five sixths of it since revisions 20–24 put A-26, A-27, A-28, A-29 and A-31 in §8.4; a Phase 2 builder
@@ -526,7 +584,8 @@ who reads only those pays about 31k, and a builder of I-6a who reads §8.4 alone
 point to that trio, not the last of it** — it names which of A-27's sentences it supersedes, so a builder who
 reads A-28 first knows which parts of A-27 to skip. **A builder of I-7 needs none of A-26…A-29** — those are
 about the index and about one city field, and A-31 is about the row and the statistic; §8.4's clauses 1–3
-plus A-31 is ~9k and is the whole brief.)*
+plus A-31 is ~9k and is the whole brief. **A builder of I-7a** reads A-31 → A-33 → A-34 (**11.3k**
+together, measured) plus §2.1's **A-32** (**4k**), and needs nothing else in either section.)*
 
 Read the whole document when you are the manager, when you are changing the design, or when a change
 crosses a section boundary. Otherwise this table is the contract.
@@ -707,6 +766,264 @@ This section is the builder's contract. Where it says MUST, the tester will chec
 - **Every user-facing string core produces carries structured `params` beside it** (`Conflict.summary` +
   `Conflict.params`, `Issue.message` + `Issue.params`). i18n is deferred, but generating English-only strings
   with no structured data behind them is exactly the kind of thing that is expensive to retrofit. §7.
+- **`IsoDate`'s domain is `0000-01-01` … `9999-12-31`, proleptic Gregorian, and every date helper is civil
+  arithmetic with no `Date` in it.** Stated for the first time in revision 25 — **A-32**, below, which is
+  where a builder goes.
+
+#### A-32 — the civil calendar under `IsoDate`: `Date.UTC` may not appear in a date helper, and a year below 1000 is a real year (revision 25, QA R28-1, BLOCKER)
+
+**Part 1 — the defect, measured rather than described.**
+
+`derive/summary.ts` has carried three date helpers since revision 1, and two of them go through `Date`:
+
+```ts
+export function dayNumber(d: IsoDate): number {           // :21
+  const { y, m, d: dd } = parseIsoDate(d);
+  return Math.floor(Date.UTC(y, m - 1, dd) / 86400000);
+}
+export function fromDayNumber(n: number): IsoDate {       // :27
+  const dt = new Date(n * 86400000);
+  const p = (x: number) => String(x).padStart(2, '0');
+  return `${dt.getUTCFullYear()}-${p(dt.getUTCMonth() + 1)}-${p(dt.getUTCDate())}`;
+}
+export function weekdayOf(d: IsoDate): string {           // :44
+  const { y, m, d: dd } = parseIsoDate(d);
+  return [...][new Date(Date.UTC(y, m - 1, dd)).getUTCDay()];
+}
+```
+
+Two independent faults, in two disjoint bands of years:
+
+| | Fault | Band | Measured |
+|---|---|---|---|
+| 1 | **`Date.UTC` applies the ES legacy two-digit-year rule** — a `year` argument of 0–99 *means* 1900–1999 | years **0000–0099** | `dayNumber('0001-01-01')` and `dayNumber('1901-01-01')` are both `-25202`. `dayNumber('0100-01-01')` is `-683003`, so the band ends exactly at 100 |
+| 2 | **`fromDayNumber` pads the month and the day and not the year** | years **0000–0999** | `fromDayNumber(dayNumber('0500-06-01'))` is `"500-06-01"`, which `parseIsoDate` — eight lines up in the same file — throws on |
+
+`weekdayOf` is fault 1 again and was confirmed rather than assumed: `weekdayOf('0001-01-01')` returns
+`'Tue'`, which is 1901's weekday; the proleptic Gregorian answer is **Mon**. `weekdayOf('0099-03-01')`
+equals `weekdayOf('1999-03-01')`.
+
+**It is reachable from the product, and it destroys data.** `apps/web/src/views/PastTripForm.tsx:76` gates
+the Year field on `/^\d{4}$/` and nothing else, and the input strips non-digits and truncates to four — so
+`0202`, a plausible mistype of `2020`, is typeable and valid. `createTrip` accepts it, `ensureDays` mints
+365 days whose `date` **and `id`** are `"202-01-01"`…, the document is written to storage, and the next cold
+start gets `TripParseError: expected YYYY-MM-DD (at $.days[0].date)`. The trip is in storage, it is the only
+copy, and it can never be opened again. Year `0026` is the quieter half: no error anywhere, days minted as
+**1926-01-01…1926-12-31** against a `startDate` of `0026-01-01`, and `validateTrip` reporting **0 issues**,
+because its density check runs through the same mangled `dayNumber` and is therefore internally consistent
+in mangled space.
+
+**Part 2 — the two directions, and why this one.**
+
+*(a) Fix the arithmetic.* Implement the three helpers as civil-calendar arithmetic that never passes a raw
+year to `Date`, and pad the year to four digits on the way out.
+
+*(b) Narrow the domain.* Give `IsoDate` a floor (1000, or 1900), make the validators refuse below it, and
+withdraw A-31 Part 4 step 5's *"an `IsoDate` admits year `0001`"*.
+
+**Ruled: (a).** (b) is refused on a count, not on taste. An `IsoDate` is minted from outside core at more
+sites than the finding suggests, and a floor has to land at every one of them or it is not a domain:
+
+- **two** validators inside core that do not share code — `model/ids.ts`'s `isIsoDate` (7 call sites:
+  `createTrip` ×2, `validateTrip` ×2, `conflict/resolve`, `access/predicates` ×2) and
+  `serialize/fromJSON.ts:75`'s `isoDate` (**9** call sites), which deliberately checks shape where
+  `isIsoDate` checks the calendar (§2.9 A-20);
+- `derive/summary.ts`'s own `parseIsoDate`, a third shape check;
+- **three** branches of `PastTripForm.rangeFor` plus the new-trip form, which under (b) must refuse at the
+  point of entry rather than downstream — a rule the user only meets after their trip is written is not a
+  narrowed domain, it is a delayed error;
+- `cli.ts --today`, `ports/env.ts`'s clock, and every `at` a provenance stamp carries.
+
+So (b) is a dozen-plus edit sites, a new class of user-facing refusal, a withdrawn clause in A-31, and a
+`.gen`-free contract that now has a magic number in it — against **30 lines of arithmetic** that make the
+question disappear. And (a) pays a dividend (b) does not: it removes the **last two `new Date(`
+constructions in `packages/core/src`**, which the determinism grep has had to carve an exception for since
+round 2.
+
+**Part 3 — the implementation, printed, because a wrong algorithm here is a silent wrong answer.**
+
+Howard Hinnant's `days_from_civil` / `civil_from_days` (*chrono-Compatible Low-Level Date Algorithms*,
+public domain), which is constant-time, exact over the whole proleptic Gregorian calendar, and has **no
+two-digit-year special case because it has no `Date` in it**. Both are module-private in
+`derive/summary.ts`; neither goes on §2.10's surface, and neither is exported from the module.
+
+```ts
+const EPOCH_SHIFT = 719468;   // days from 0000-03-01 to 1970-01-01, the era's own origin
+const ERA_DAYS = 146097;      // days in a 400-year Gregorian era
+
+/**
+ * Days since 1970-01-01 for a civil (y, m, d), proleptic Gregorian. Pure, no `Date`.
+ *
+ * The first two lines normalise an out-of-range month **exactly as `Date.UTC` does**, because
+ * `fromJSON` accepts a shape-valid, calendar-invalid date (`2026-13-45`) and `validateTrip`
+ * *reports* it rather than refusing it (§2.9 A-20) — so this function must stay total on one, and
+ * must not change the day it has always answered with. Verified: over all 100,000 shape-valid
+ * `(m, d)` pairs at ten sample years >= 100, this and `Date.UTC` agree on every one.
+ */
+function daysFromCivil(year: number, month: number, day: number): number {
+  const y0 = year + Math.floor((month - 1) / 12);
+  const m = ((month - 1) % 12 + 12) % 12 + 1;
+  const y = y0 - (m <= 2 ? 1 : 0);              // the era's year starts in March
+  const era = Math.floor(y / 400);
+  const yoe = y - era * 400;                    // [0, 399]
+  const doy = Math.floor((153 * (m > 2 ? m - 3 : m + 9) + 2) / 5) + day - 1;
+  const doe = yoe * 365 + Math.floor(yoe / 4) - Math.floor(yoe / 100) + doy;
+  return era * ERA_DAYS + doe - EPOCH_SHIFT;
+}
+
+/** The inverse. Pure, no `Date`. Total for every integer. */
+function civilFromDays(n: number): { y: number; m: number; d: number } {
+  const z = n + EPOCH_SHIFT;
+  const era = Math.floor(z / ERA_DAYS);
+  const doe = z - era * ERA_DAYS;               // [0, 146096]
+  const yoe = Math.floor((doe - Math.floor(doe / 1460) + Math.floor(doe / 36524)
+    - Math.floor(doe / 146096)) / 365);         // [0, 399]
+  const y = yoe + era * 400;
+  const doy = doe - (365 * yoe + Math.floor(yoe / 4) - Math.floor(yoe / 100));
+  const mp = Math.floor((5 * doy + 2) / 153);   // [0, 11]
+  const d = doy - Math.floor((153 * mp + 2) / 5) + 1;
+  const m = mp + (mp < 10 ? 3 : -9);
+  return { y: y + (m <= 2 ? 1 : 0), m, d };
+}
+```
+
+Every `/` above is a **floor** division, written as `Math.floor`. Hinnant's C++ writes several of them as
+truncating division with a sign guard; every operand that is divided here is non-negative except `y / 400`
+and `z / ERA_DAYS`, for which `Math.floor` *is* the guarded form. Do not "simplify" one to `| 0` or `~~`:
+`| 0` truncates toward zero and is wrong for a negative year, and both coerce through int32, which
+`z = 2932896 + 719468` survives and a future range may not.
+
+The three exported helpers then become:
+
+```ts
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+/** Days since 1970-01-01 for a `YYYY-MM-DD`. Pure, timezone-free, no `Date`. */
+export function dayNumber(d: IsoDate): number {
+  const { y, m, d: dd } = parseIsoDate(d);
+  return daysFromCivil(y, m, dd);
+}
+
+/**
+ * `YYYY-MM-DD` for a day number. Pure, no `Date`.
+ *
+ * The year is padded to **four** digits, which is the half of R28-1 that silently minted
+ * `"202-01-01"` into a stored document. A day number outside `IsoDate`'s domain renders
+ * faithfully rather than being clamped or thrown on — five digits, or a leading `-` — so the
+ * caller gets a string `parseIsoDate` refuses instead of a plausible wrong date. See A-32 Part 4
+ * for why this is deliberately not a throw.
+ */
+export function fromDayNumber(n: number): IsoDate {
+  const { y, m, d } = civilFromDays(n);
+  const p = (x: number) => String(x).padStart(2, '0');
+  const year = y < 0 ? `-${String(-y).padStart(4, '0')}` : String(y).padStart(4, '0');
+  return `${year}-${p(m)}-${p(d)}`;
+}
+
+/** Three-letter weekday, Sun-first index. Pure, no `Date`. */
+export function weekdayOf(d: IsoDate): string {
+  const { y, m, d: dd } = parseIsoDate(d);
+  // 1970-01-01 is day 0 and was a Thursday, hence the +4; the double modulo is for day < 0.
+  return WEEKDAYS[((daysFromCivil(y, m, dd) + 4) % 7 + 7) % 7];
+}
+```
+
+`parseIsoDate`, `addDays` and `dateSpan` are **unchanged** — `addDays` and `dateSpan` are already written
+in terms of the two functions above, and `parseIsoDate` is a shape check that must keep accepting what
+`fromJSON` accepts.
+
+**What I ran before printing this** (all four differentials, on the exact bodies above):
+
+- **Calendar differential vs `Date.UTC`**, every month × four days per month, years 100…9999 step 3 —
+  **158,400 dates, 0 mismatches**. The band `Date.UTC` gets right, this gets identically right.
+- **Roll-over differential vs `Date.UTC`**, every shape-valid `(m, d)` in `[0,99] × [0,99]` at ten sample
+  years — **100,000 cases, 0 mismatches**. This is the assertion that `2026-13-45` still answers
+  `2027-02-14` and `2026-02-30` still answers `2026-03-02`.
+- **Exhaustive round-trip** over the whole domain: for every `n` in `[dayNumber('0000-01-01'),
+  dayNumber('9999-12-31')]` = `[-719528, 2932896]`, `fromDayNumber(n)` matches `/^\d{4}-\d{2}-\d{2}$/` and
+  `dayNumber` of it is `n` again — **3,652,425 days, 0 failures**.
+- **Weekday differential vs `Date`** for years ≥ 100 — **0 mismatches**; and `weekdayOf('0001-01-01')` is
+  **`'Mon'`**, the proleptic Gregorian answer, where the shipped code says `'Tue'`.
+
+**Part 4 — the domain, and why `fromDayNumber` does not throw.**
+
+> **An `IsoDate` is a proleptic Gregorian calendar date in `YYYY-MM-DD`, from `0000-01-01` to
+> `9999-12-31` inclusive.** `model/ids.ts`'s `isIsoDate` is the definition and has always implemented
+> exactly this: four digits of year, a real month, a real day for that month, with the Gregorian leap rule
+> applied uniformly (so `0004-02-29` is a date and `0100-02-29` is not). There is no floor and no ceiling
+> inside that range, and nothing anywhere may invent one.
+
+The tempting extra — make `fromDayNumber` throw outside the domain — is **refused**, and the reason is a
+real path rather than a hypothetical. `fromJSON` accepts `endDate: '9999-13-45'` (shape-valid,
+calendar-invalid; `validateTrip` reports it as `invalid_calendar_date` and does not reject it). That
+document reaches `validateTrip.ts:202`'s `addDays(trip.startDate, i)` and `build/days.ts:53`'s, and the
+roll-over carries the year past 9999. A throw there is a throw **out of `validateTrip`, on a document
+`fromJSON` accepted** — which §2.1 forbids and §2.9 A-21 has already ruled on once. So `fromDayNumber`
+stays total and renders honestly: a five-digit or negative year is a string every downstream
+`parseIsoDate` refuses, which is where the refusal belongs, and the document that produced it is already
+carrying an `invalid_calendar_date` issue for the field that caused it. **No new `IssueCode`, no new
+validation call site, and no change to `isIsoDate`.**
+
+**Part 5 — `PastTripForm`'s Year field: no floor, and here is the trigger that would add one.**
+
+With Part 3 in place, year `0202` is no longer data loss — the trip stores, reads back, validates, and can
+be edited or deleted like any other. What remains is a typo the user can see and fix, which is not a class
+of problem this codebase adds validation for. A plausibility floor in the form would be **a second
+definition of `IsoDate`'s domain living in a view**, which is the shape §2.9 A-20 spent a whole ruling
+removing, and it buys nothing once the arithmetic is right. **Trigger to reopen:** any evidence that an
+out-of-era trip costs something beyond the user's own typo — unbounded work (it is not: a `year` trip is
+365 days at any year), a surface that sorts or ranges badly on it, or a second report of the same mistype.
+If it is ever added, it goes in `isIsoDate` — the one validator — and the forms refuse at the point of
+entry against **that**, never against a regex of their own.
+
+**Part 6 — what happens to the test that certifies the wrong answer.**
+
+`packages/core/test/travelStats.test.ts:280` asserts `daysTravelled === 365` for a row spanning
+`0001-01-01`…`0001-12-31`. **The number is right and the reason is wrong** — it is green because it is
+measuring 1901, which also has 365 days. Fixing the arithmetic does not move it, so the fix must be the
+assertion that would have caught this, not the number:
+
+1. **Keep the case and keep `365`.** Year 1 is not a leap year in the proleptic Gregorian calendar, so
+   this is the correct answer for the correct reason once A-32 lands.
+2. **Add the assertion that discriminates.** Give the row a `countryCodes: ['JP']` and assert
+   `countries[0].firstVisit === '0001-01-01'` and `lastVisit === '0001-12-31'`. Under the shipped code
+   those are `'1901-01-01'` / `'1901-12-31'`; under A-32 they are the year they were given. **This is the
+   line that makes the test measure what its own name says.**
+3. **Add a second row for the padding half**, which the year-`0001` case cannot reach: a row spanning
+   `0500-06-01`…`0500-06-10` with a country code reports `firstVisit === '0500-06-01'`, where the shipped
+   code emits `"500-06-01"` — a string its own `parseIsoDate` throws on.
+4. **A-31 Part 4 step 5's justification is honoured, not withdrawn.** *"An `IsoDate` admits year `0001`"*
+   is now true, and the sweep is still the right algorithm for the reason it gave. Round 28 timed it:
+   200 rows each spanning `0001-01-01`…`9999-12-31` sweep in **1.9 ms** and 50,000 rows in **283 ms**,
+   against ~730M `Set` insertions for the first.
+
+Beyond `travelStats`, the helper-level tests belong with the helpers: a `dayNumber`/`fromDayNumber`
+round-trip over the domain's two endpoints and the four boundary years (`0000`, `0099`/`0100` — fault 1's
+edge — and `0999`/`1000` — fault 2's edge), the `weekdayOf('0001-01-01') === 'Mon'` case, and the roll-over
+non-regression (`2026-13-45` → `2027-02-14`, `2026-02-30` → `2026-03-02`) so the next person to "clean up"
+`parseIsoDate` finds out immediately.
+
+**Part 7 — the injected fault, per §0.5.**
+
+Restore `Math.floor(Date.UTC(y, m - 1, dd) / 86400000)` in `dayNumber` alone and Part 6's item 2 goes red
+naming `1901-01-01`. Restore the unpadded year in `fromDayNumber` alone and item 3 goes red naming
+`"500-06-01"`. Restore `new Date(Date.UTC(...)).getUTCDay()` in `weekdayOf` alone and the `'Mon'` case goes
+red. Three faults, three named tests, no overlap — and the determinism grep over `packages/core/src` gains
+`new Date(` back on each of them, which is the fourth signal.
+
+**Part 8 — the residues.**
+
+1. **`parseIsoDate` still validates shape and not the calendar**, so `dayNumber('2026-02-30')` still
+   answers `2026-03-02`'s day number rather than refusing. That is deliberate and load-bearing (Part 4);
+   the calendar check is `isIsoDate`'s and the reporting is `validateTrip`'s. **Trigger:** a finding where
+   a *rolled-over* date, not an out-of-domain one, produces a wrong user-visible answer.
+2. **The domain is not enforced at the type level.** `IsoDate` is `string`, as `CityKey` and `CountryCode`
+   are, for the reason `model/ids.ts` already gives about branding being a migration. Nothing in this
+   ruling changes that.
+3. **`fromDayNumber` can return a string that is not an `IsoDate`** — a five-digit or negative year — for a
+   day number outside the domain, and its return type still says `IsoDate`. This is the honest lesser evil
+   of Part 4 and it is bounded: the only way to reach it is a date that already carries an
+   `invalid_calendar_date` issue. **Trigger:** a second way to reach it that does not.
 
 ### 2.2 Entities
 
@@ -7137,10 +7454,14 @@ whose error runs outward at a convex coast. A-26 keeps the rule and drops the il
 ```ts
 travelStats(summaries: readonly TripSummaryRow[], today: IsoDate): TravelStats
 type TravelStats = {
-  countries: Array<{ code: CountryCode; firstVisit: IsoDate; lastVisit: IsoDate; tripIds: string[] }>;
+  // `provisional` (A-34): no COMPLETED trip contributed this row, so it may be somewhere the traveller
+  // has not reached yet. Marked on every surface, never rendered as a visited fact.
+  countries: Array<{ code: CountryCode; firstVisit: IsoDate; lastVisit: IsoDate; tripIds: string[];
+                     provisional: boolean }>;
   // `nameKey` is normalizeCityName(name) — a GROUPING key, not a CityKey. §2.2 A-10: a CityKey is an
   // opaque per-trip id, so two trips to Tokyo carry two of them and only the name can join them.
-  cities:    Array<{ nameKey: string; name: string; countryCode: CountryCode | null; tripIds: string[] }>;
+  cities:    Array<{ nameKey: string; name: string; countryCode: CountryCode | null; tripIds: string[];
+                     provisional: boolean }>;
   trips: { planned: number; active: number; completed: number };
   daysTravelled: number;
   located:      { cities: number; places: number; stops: number };   // what there was to attribute
@@ -7158,6 +7479,10 @@ second is the answer ROADMAP I-7 requires to read **"no places yet"**; and `unna
 name that folds to `''` may not be merged into a blank row. **A-31 also widens `TripSummaryRow` a second
 time** — `unattributed.places` and `unattributed.stops` were never computable from the row clause 3
 defines, which is a defect in this clause and not in whoever tried to build it.)*
+
+*(**Revision 25, A-34.** Both row types gain `provisional`. Nothing else in this block moves, nothing about
+the population changes, and `TripSummaryRow` does not move at all — `provisional` is a property of a
+*statistic*, is never stored, and does not touch `SUMMARY_VERSION`.)*
 
 A stored `countriesVisited: 47` is a second source of truth that can disagree with the trips it summarises,
 and — the reason that matters for this product specifically — **it is a number a user can inflate by
@@ -8247,6 +8572,16 @@ Definitions, total and matching `countryCodes`' own walk record for record:
 - `stops.located` — every scheduled stop (`trip.days[].stops`) **and** every pooled stop (`trip.pool`)
   where `stopLatLng(stop, trip) !== null`. `stops.attributed` — of those, a non-null `countryOf`.
 
+**`attributed <= located` is an invariant of the mint and a *clamp* at the read (added at revision 25, QA
+R28-4).** `tripSummary` cannot violate it — both counters are incremented in one walk and the second is
+guarded by the first — but `travelStats` is handed rows out of **storage**, and a row that arrives with
+`attributed > located` (hand-edited, half-migrated, or from a build that does not exist yet) would make
+`unattributed` **negative**, which is a number no surface can render honestly. So the read clamps:
+`unattributed.places += Math.max(0, p.located - p.attributed)`, and the same for stops. Not a throw — the
+row came from storage, not from a caller, and A-31's policy for a malformed row is Part 3's *"counting zero
+would make it invisible"*, not refusal. Not silent either: `located` is still summed as given, so a row
+whose census is impossible still shows up in the denominator.
+
 **Pooled stops are in, and that is inherited rather than decided here.** Clause 3 already defines
 `countryCodes` as the union over *"every scheduled stop and over every pooled stop"*; a census whose
 denominator excluded the pool could report `attributed < ` the number of countries the same row claims.
@@ -8300,6 +8635,8 @@ export type TravelStatsCountry = {
   lastVisit: IsoDate;
   /** In canonical row order. `TripSummaryRow.id` is a plain `string`, so this is too. */
   tripIds: string[];
+  /** **A-34.** True when no `completed` trip contributed this row. */
+  provisional: boolean;
 };
 export type TravelStatsCity = {
   /** `normalizeCityName(name)` — a grouping key, never a `CityKey`, never `''`. */
@@ -8308,6 +8645,8 @@ export type TravelStatsCity = {
   name: string;
   countryCode: CountryCode | null;
   tripIds: string[];
+  /** **A-34.** True when no `completed` trip contributed this row. */
+  provisional: boolean;
 };
 export type TravelRecordCensus = { cities: number; places: number; stops: number };
 export type TravelStats = {
@@ -8342,9 +8681,14 @@ export function travelStats(summaries: readonly TripSummaryRow[], today: IsoDate
    `a`, keep a current interval, extend it while `a <= cur.b`, otherwise bank `cur.b - cur.a + 1` and start
    a new one. **Union, not sum**, because two trips overlapping in time are not two days of your life; and
    sweep, not a `Set` of day numbers, because an `IsoDate` admits year `0001` and a hand-written row would
-   otherwise allocate millions of entries.
+   otherwise allocate millions of entries. *(Revision 25: that justification was **true of the type and
+   false of the implementation** until A-32 — `dayNumber('0001-01-01')` was silently `1901`'s. A-32 makes
+   the clause honest, and round 28 measured the cost the clause asserts: 200 rows each spanning
+   `0001-01-01`…`9999-12-31` sweep in **1.9 ms**, 50,000 rows in **283 ms**, against ~730M `Set`
+   insertions for the first. The algorithm does not change.)*
 6. **`countries`** — for each row of `T`, for each code in `row.countryCodes`: `firstVisit = min(a)`,
-   `lastVisit = max(b)`, append `row.id`. Emit dates with `fromDayNumber`. **Sorted by `code` ascending.**
+   `lastVisit = max(b)`, append `row.id`, and `provisional &&= lifecycle !== 'completed'` (**A-34**). Emit
+   dates with `fromDayNumber`. **Sorted by `code` ascending.**
 7. **`cities`** — for each row of `T`, for each `c` of `row.cities`: `nameKey = normalizeCityName(c.name)`.
    - If `nameKey === ''`, **`unnamedCities++` and skip.** `model/cityName.ts` is explicit that a name
      folding to `''` *"is not an identity"* (§2.14 A-14 assertion 5); grouping on it would put every blank
@@ -8354,7 +8698,11 @@ export function travelStats(summaries: readonly TripSummaryRow[], today: IsoDate
      requires the same name in two countries to be **two** rows, and that is only expressible if the country
      is part of the key. `name` and `countryCode` come from the **first** member in canonical order; a trip
      is added to `tripIds` **at most once** even if it holds two cities that fold to the same key.
+     `provisional` accumulates as for a country (**A-34**), per row and not per city.
    - **Sorted by `nameKey` ascending, then by `countryCode` ascending with `null` last.**
+   - **Two `null`-country cities that fold to the same name are one row.** `null === null`, so this
+     follows from the key and is not a separate decision — Part 5 **residue 6** discloses it, weighs it and
+     states the trigger.
 8. **The two censuses**, summed over `T` only — same population as everything else:
    - `located.cities = Σ row.cities.length`; `unattributed.cities = Σ` of those with `countryCode === null`.
    - `located.places = Σ row.attribution.places.located`; `unattributed.places = Σ (located - attributed)`.
@@ -8368,7 +8716,8 @@ export function travelStats(summaries: readonly TripSummaryRow[], today: IsoDate
 > *"N places we could not put on the map"* — never *"0 countries"*, which asserts a measurement that was
 > never taken.
 
-**Part 5 — the residues, five, disclosed rather than left to be discovered.**
+**Part 5 — the residues, six, disclosed rather than left to be discovered.** *(Five at revision 24;
+residue 6 added at revision 25, QA R28-6, and residue 2 gains the obligation A-34 attaches to it.)*
 
 1. **`firstVisit`/`lastVisit` are trip-range, not country-range.** A trip through six countries reports the
    whole trip's span for each of them, so "first visited Croatia" is really "the start of the first trip
@@ -8378,7 +8727,12 @@ export function travelStats(summaries: readonly TripSummaryRow[], today: IsoDate
 2. **An `active` trip contributes countries it has not reached yet.** Day 2 of a six-country trip puts all
    six on the map. Bounded — it self-corrects at `endDate`, it can only ever be wrong about a trip the user
    is *on*, and the alternative (excluding active trips) tells a traveller standing in Vienna that they have
-   never been. **Trigger:** the same as residue 1.
+   never been. **Trigger:** the same as residue 1. ***Revision 25 (QA R28-7): this residue is licensed only
+   because the contribution is marked.*** Including a country the traveller has not reached is a tolerable
+   over-report; rendering it *as a visited fact, with dates, unmarked* is the root `CLAUDE.md` convention
+   broken — and that is exactly what `cli.ts stats` did. **A-34** attaches the obligation: every row whose
+   evidence is entirely un-clamped carries `provisional: true`, and no surface renders one the way it
+   renders a visited country. Reading this residue without A-34 gets the wrong answer.
 3. **One city can become two rows.** Same city, two trips, one of which the index could attribute and one of
    which it could not, gives `(tokyo, JP)` and `(tokyo, null)`. Honest — nothing merges records we cannot
    show are the same place — and much narrower since A-29 gap-fills the common case. **Trigger:** a surface
@@ -8389,8 +8743,41 @@ export function travelStats(summaries: readonly TripSummaryRow[], today: IsoDate
 5. **`trips.completed` counts overlapping trips separately while `daysTravelled` counts their shared days
    once.** Deliberate and not a discrepancy: they are counts of different things, and the alternative
    (double-counting a day) is the one that inflates.
+6. **Two *different* cities can become one row — the inverse of residue 3, and it was missing from it**
+   (revision 25, QA R28-6). Residue 3 discloses the **split**: one city, two rows, because the country is
+   part of the key. It never disclosed the **merge**: `null` is a value in that key, so two cities with the
+   same folded name whose `countryCode` is `null` in *both* — genuinely different places, in genuinely
+   different countries, neither of which the index could attribute — collapse into **one** row carrying
+   both trips' ids. Springfield, Illinois and Springfield, Massachusetts are one row if neither could be
+   placed.
+
+   **Accepted as documented behaviour, and the reason is that the alternative inflates.** An unattributed
+   city has, by definition, no information that distinguishes it from another unattributed city of the same
+   name: the row carries `{key, name, countryCode, countrySource}` and the key is opaque and per-trip
+   (§2.2 A-10), so *"are these two the same place"* has no evidence to answer with. The only mitigation
+   available is to stop grouping `null`-country cities across trips at all — one row per trip. Costed
+   against the census's purpose, that is strictly worse: the **common** case of a `null` country is not two
+   Springfields, it is *the same city on two trips* that the dataset cannot name — Vis, Hvar, Biševo,
+   Lokrum, the landforms A-26 Part 1 measured as absent at every scale — and it would report three visits
+   to Hvar as **three cities**, which is the inflation §0.7 forbids, on the traveller's own real data,
+   to avoid an under-count on a case requiring two same-named cities in two unattributable countries. A
+   statistic that never inflates and occasionally under-counts is the right side of that trade, and it is
+   the same side residue 3 already picked. A-29's stated-country gate narrows the whole class further with
+   every code the index gains.
+
+   **Bounded and marked.** It can only affect a row whose `countryCode` is `null` — which A-34's
+   `provisional` does *not* cover, so this needs its own treatment on the surface: a `(nameKey, null)` row
+   is already the row I-8 must render as *"we could not place this"* rather than as a located city, and
+   that rendering is also the honest rendering of a possible merge. **Trigger to reopen:** the same as
+   residues 1 and 3 — a cross-trip city identity, or a surface that lets a user split or merge city rows —
+   plus one of its own: any `null`-country row whose `tripIds` span trips with **disjoint** country sets,
+   which is the cheapest available signal that two different places have merged and is a *reporting*
+   change rather than a grouping change.
 
 **Part 6 — what replaces "grep for a persisted count", because the old rule was already false.**
+**⚠ The two-half check at the end of this Part is superseded by A-33 (revision 25).** The block-quoted
+**rule** below stands and is the whole point; the *mechanism* it proposed grepped declarations while the
+danger is a value, and a persisted `countriesVisited` passed it. Read the rule here, then A-33.
 
 ROADMAP exit criterion 6 says: *"Grep `packages/core`, `packages/client` and `apps/web` for a persisted
 field whose name is a count of countries, cities, trips or days; expect **zero**."* Run it honestly and it
@@ -8409,7 +8796,8 @@ the first can be recomputed from a document that exists and repaired by the resc
 *set* of documents, has no document to be recomputed from, and drifts with nothing to notice. It is §0.6
 applied one level up.
 
-The check that replaces the grep, in two halves:
+The check that replaces the grep, in two halves — **superseded by A-33; kept because A-33 names which of
+these two sentences it replaces and which it keeps**:
 
 1. **An allow-list, in a test, over `TripSummaryRow`'s own count-shaped fields** — today exactly
    `cityCount`, `dayCount`, `stopCount`, `poolCount`, `attribution.places.located`,
@@ -8450,6 +8838,316 @@ reference trip and computed by a *different* program (`gen-golden.mjs` walking t
 > `unattributedStops.length`** — four numbers, two programs, one trip. This is the closest thing to an
 > external oracle a derived statistic can have, and it is the assertion that would catch the row's census
 > and the golden's census walking different records.
+
+#### A-33 — exit criterion 6 checks a **value**, not a declaration: the row's whole key set, the port's own argument, and a census so a third port cannot appear unpoliced (revision 25, QA R28-2, MAJOR)
+
+**Part 1 — what the shipped check actually asserts, measured.**
+
+A-31 Part 6 withdrew the old grep as false and replaced it with two mechanical halves. Half (b), at
+`test/stats-storage.test.ts:172`, is:
+
+```ts
+for (const m of src.matchAll(/([A-Za-z$_][\w$]*)\??\s*:\s*number\b/g)) { … }
+```
+
+That matches a **type declaration**. It does not and cannot match a **value being written**. Round 28 ran
+eight faults, each alone, each in a throwaway worktree, and three are green:
+
+| Fault | What it does | Result |
+|---|---|---|
+| **F8** | both `SUMMARIES.put(summary, id)` call sites in `apps/web/src/ports/storage.ts` become `put({ ...summary, countriesVisited: summary.countryCodes.length, daysTravelled: summary.dayCount }, id)` | criterion 6 **5 pass / 0 fail**; full suite **795 pass / 0 fail**; `tsc -p apps/web` **clean** (a spread widens the object type, so excess-property checking never fires) |
+| **F6** | the same counts declared through a one-line `type Tally = number` alias | green — the regex wants the literal token `number` |
+| **F4** | `daysAbroad: number` added to `TripSummaryRow` **and minted into every row** | green — the name classifier wants a counting suffix or a plural domain noun, and `daysAbroad` is neither |
+
+F8 is the one that matters: those two numbers are in IndexedDB, on every write, forever, with nothing to
+recompute them from — **the literal `countriesVisited: 47` A-31 Part 6 exists to forbid**, shipping past
+the criterion written to forbid it. §0.5: *a rule that cannot catch its own bug does not ship*.
+
+**KD-64 is not the problem and is not reopened.** The builder's two extra allow-list entries (`horizonDays`,
+and `TravelStats`' own fields) are legitimate and round 28 assessed them so. F4 proves the allow-list's
+*classifier* is name-based and therefore always one synonym behind — but the classifier is not what should
+have been load-bearing. **The hole is the shape of the check**: it asks *what is declared* when the rule is
+about *what is written*.
+
+**Part 2 — half (a) replaced: the row's key set is total, and the classifier stops deciding.**
+
+A-31 Part 6 half (a) filtered the row's numeric leaves through `countShaped()` and compared the survivors
+to an eight-entry list. F4 walks past it by choosing a name. The fix is to stop filtering:
+
+> **The set of leaf paths a minted `TripSummaryRow` carries is pinned in full.** Not the count-shaped
+> subset — *every* key. Adding any field to the row, count-shaped or not, fails the run until the list is
+> widened, and widening it is an architect's ruling, because a field on the row is a field in storage and
+> `SUMMARY_VERSION` has to move with it (clause 3).
+
+Three assertions, and the first two are the A-25 idiom (a compile-time key-set map beside a runtime key-set
+assertion) applied one section over:
+
+1. **Compile-time.** `const ROW_KEYS: Record<keyof TripSummaryRow, true> = { id: true, title: true,
+   startDate: true, endDate: true, datePrecision: true, cityCount: true, dayCount: true, stopCount: true,
+   poolCount: true, revision: true, countryCodes: true, cities: true, attribution: true,
+   summaryVersion: true };` — a field added to the type without a line here is a **`tsc` error**, which is
+   the earliest this can possibly fail. No `Partial`, no index signature.
+2. **Runtime, top level.** `assert.deepEqual(Object.keys(mintedRow).sort(), Object.keys(ROW_KEYS).sort())`
+   — a field minted but not typed, or typed but not minted, is red.
+3. **Runtime, every leaf.** `ROW_PATHS`, the dotted leaf paths with array indices collapsed to `[]`,
+   transcribed in full:
+
+   ```
+   attribution.places.attributed · attribution.places.located · attribution.stops.attributed ·
+   attribution.stops.located · cities[].countryCode · cities[].countrySource · cities[].key ·
+   cities[].name · cityCount · countryCodes[] · datePrecision · dayCount · endDate · id ·
+   poolCount · revision · startDate · stopCount · summaryVersion · title
+   ```
+
+   The existing `numericPaths` generalises to `leafPaths` by removing the `typeof value === 'number'` gate
+   (a leaf is anything that is not an array and not a plain object, `null` included). The assertion is over
+   the **union of three rows**, because an empty collection contributes no path and one row cannot cover the
+   set: the reference trip's row; a row from a trip with **one city whose `countryCode` is `null`**; and a
+   row from a trip with **no city, no place and no stop**. Each individual row's paths must additionally be
+   a **subset** of `ROW_PATHS`, which is what catches an injection into a row that is not the reference one.
+
+**The count-shaped list survives as an assertion about the eight, not as a filter.** Keep
+`countShaped()` and keep `ROW_COUNT_FIELDS`, and assert `ROW_PATHS.filter(countShaped) ===
+ROW_COUNT_FIELDS` — so A-31 Part 6's block-quoted rule stays attached to a specific list of eight fields
+and the test still says *why* `cityCount` is legitimate. What changes is that the classifier is no longer
+the thing standing between a lifetime count and storage. It is now a **label** on a set that is pinned by
+other means, which is the only job a name-based heuristic can do honestly.
+
+**Part 3 — half (b) replaced: four gates and one out-of-band probe, and the first gate ends at a value in
+a store rather than at text in a file.**
+
+**6b-1 — the rows a real port actually holds.** Drive a port and read back, rather than reading source
+text. `packages/client/src/ports/memory.ts` is a real `StoragePort` and runs in plain Node, which is the
+whole reason §1.3 requires the client to be attackable there.
+
+- Through the store's own write path: `createStore` over `memoryStorage`, `memoryFile`, `fixedClockPort`,
+  `sequentialIdPort` and `immediateScheduler` — all five exported from `packages/client/src/index.ts`, so
+  the test needs no deep import — then `createTrip`, flush, then `ports.storage.listTrips()`.
+- Through the refresh path: knock a row's `summaryVersion` back, run the rescan, `listTrips()` again.
+- Through the port directly: `saveIfVersion(id, null, doc, summary)` and `refreshSummary(id, version,
+  summary)` with a summary minted by `tripSummary`.
+
+`cairn/test/` may import `packages/client/src/index.ts` — criterion E's ceiling (1) exempts `cairn/test/`
+and `cairn/qa/` by name, because tests do not create surface (§2.10). If it turns out cleaner to put 6b-1
+in `packages/client/test/` instead, that is allowed on one condition: `ROW_KEYS` and `ROW_PATHS` are
+defined **once** and imported by both files. Two copies of the pinned key set is two things to forget to
+update, which is the failure mode this whole criterion is about.
+
+For **every** row returned: `Object.keys(row).sort()` deep-equals `Object.keys(ROW_KEYS).sort()`, and
+`leafPaths(row)` is a subset of `ROW_PATHS`. This is the check with actual teeth — it asserts what is in
+the store, not what a file says.
+
+**6b-2 — every port hands its summary store the value it was given, unmodified.** The one port 6b-1 cannot
+reach is `apps/web/src/ports/storage.ts`: it is IndexedDB and does not run in Node, and building a fake
+IndexedDB to make it run is a second implementation of a database in order to test a two-line property.
+Assert the property directly instead — **the expression written to the summary store is the bare parameter
+identifier and nothing else** — which is exactly what F8 violates:
+
+| File | Regex over the source | Every capture must be | Sites |
+|---|---|---|---|
+| `apps/web/src/ports/storage.ts` | `/objectStore\(SUMMARIES\)\s*\.\s*put\(\s*([^,)]*?)\s*,/g` | `summary` | exactly **2** |
+| `packages/client/src/ports/memory.ts` | `/summaries\.set\(\s*[^,)]*?\s*,\s*([^,)]*?)\s*\)/g` | `summary` | exactly **2** |
+
+Plus, in each file, the total count of writes to that store — `/objectStore\(SUMMARIES\)\s*\.\s*put/g` and
+`/summaries\.set\(/g` respectively — must equal the pinned site count, so a **third** write site fails even
+if it happens to pass the identifier test, and so a renamed constant fails rather than silently matching
+nothing. In each file the captured identifier must also be a parameter of the enclosing method: assert the
+file contains `summary: TripSummaryRow` (web) / the `summary` parameter in both signatures (memory), which
+is one more grep and closes "declare a local `const summary = {...spread}` above the put".
+
+This is a static check and I am not pretending otherwise — it is a *value*-shaped one (it constrains the
+argument expression, not a type annotation), it is the strongest thing available in Node for a browser-only
+module, and it is backed at runtime by 6b-4 below.
+
+**6b-3 — the port census, so a third implementation cannot appear unpoliced.** 6b-2 is a per-file recipe,
+and a per-file recipe drifts the moment a fourth port exists. So pin the population: the set of files under
+the source roots whose text contains `refreshSummary` must be **exactly**
+
+```
+apps/web/src/ports/storage.ts · packages/client/src/ports/memory.ts ·
+packages/client/src/ports/types.ts · packages/client/src/store/store.ts
+```
+
+(the two implementations, the interface, and the one caller — measured, and the same four §4.3's chain
+census already reasons about). A fifth file is red, with a message saying that a new `StoragePort`
+implementation needs a 6b-2 recipe and that adding one is an architect's ruling.
+
+**6b-4 — the real bytes, once, out of band.** The suite cannot run the IndexedDB port; `cairn/qa` can, and
+has driven real Chromium against real IndexedDB since round 3. `qa/i6a-idb.mjs` already evaluates the
+shipped port in a real page. It gains one assertion: after the differential script, read every record of
+the `summaries` store back out of the database and assert `Object.keys(row)` equals `ROW_KEYS`. That is
+the only place in this repo where *the actual persisted bytes of the actual shipped port* are checked, and
+it is where F8 dies at runtime rather than by grep. It is a `qa/` probe, so it is not a gate — the gate is
+6b-1 through 6b-3 — but it is named here so the next round runs it rather than re-deriving it.
+
+**6b-5 — the import assertion is kept exactly as it is.** *"Nothing under `ports/`, `serialize/` or
+`store` imports `travelStats`/`TravelStats`"* is the one existing check that already asserts a property of
+the persistence layer rather than of a name, round 28 re-ran it as fault F7 and it goes red, and it is what
+the `travelStats.ts` allow-list entries rest on. Unchanged, including its `persisters.length >= 5`
+inconclusiveness guard.
+
+**Part 4 — the source sweep survives as a secondary tripwire, with two widenings that cost nothing.**
+
+The declaration grep is not deleted. It is the only check that can see a lifetime count **before** it is
+written — F1 (`countriesVisited: number` on `Trip`) and F5 (an exported `lifetimeTotals` object literal in
+the store) are both caught there and nowhere else — and a check that catches an intent one commit early is
+worth keeping once it has stopped being the thing that was supposed to catch F8. It is demoted in the
+file's own prose from *the* check to *a tripwire*, and it gets the two closures F6 and F5 named:
+
+1. **Strip comments before scanning.** `src.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/[^\n]*/g, '$1')`.
+   Required, not cosmetic: without it the numeric-literal sweep below hits
+   `derive/travelStats.ts::countriesVisited` — the docstring quoting A-31's own rule — which would be a
+   false positive on prose that must stay in the file.
+2. **A local `number` alias counts as `number`.** Per file, collect
+   `/^\s*(?:export\s+)?type\s+([A-Za-z_$][\w$]*)\s*=\s*number\s*;/gm` and accept
+   `name: <alias>` as well as `name: number`. Closes F6.
+3. **A numeric literal counts too.** `/([A-Za-z$_][\w$]*)\s*:\s*(-?\d)/g` — a count-shaped property
+   initialised to a number is a count whether or not anyone annotated it. Closes F5 and F8-shaped source
+   even where it never reaches a port.
+
+**Measured before ruling, so the builder knows what to expect: all three widenings together produce zero
+new allow-list entries.** Over 77 files in the four roots, with comments stripped, the hit set is exactly
+the 13 entries already in `SOURCE_ALLOW` — the six on `derive/summary.ts`, the five on
+`derive/travelStats.ts`, and `horizonDays` in two files. There are **no** `type X = number` aliases in the
+source trees today, and the only count-shaped numeric literals are `located:` and `attributed:` in
+`derive/summary.ts`, which are already allow-listed under the same `<path>::<name>` key. So this widening
+is free at the moment it lands, which is the only moment to land it.
+
+**Part 5 — `ROOTS` gains `packages/tokens/src`.**
+
+Round 28 noted the omission. It is worth closing and it is worth being honest about why: adding it produces
+**zero** new hits today (the package is one file of design tokens). It goes in for *closure* — the roots
+list is supposed to be "every source tree this repo ships", and a list that is nearly that invites the next
+package to be forgotten — not because anything is hiding there. The four roots are then
+`packages/core/src`, `packages/client/src`, `apps/web/src`, `packages/tokens/src`, and the test asserts
+each resolves to a real directory so a renamed package fails loudly instead of silently scanning nothing.
+
+**Part 6 — the injected-fault matrix, because §0.5 applies to this rule too.**
+
+`qa/i7-exit6.sh` already builds eight faults and is the regression harness. **All eight must be red** after
+this ruling, and the builder records the measured result. Two more are added, because A-33 introduces two
+checks nothing currently attacks:
+
+| | Fault | Must be caught by |
+|---|---|---|
+| F1 | `countriesVisited: number` on `Trip` | Part 4 tripwire |
+| F2 | `daysTravelled: number` on a client port record | Part 4 tripwire |
+| F3 | `citiesVisited: number` on the row, minted | Part 2 (all three assertions) |
+| F4 | `daysAbroad: number` on the row, minted | **Part 2** — the fault the classifier could not see |
+| F5 | an exported `lifetimeTotals` object literal in `store.ts` | Part 4 widening 3 |
+| F6 | `countriesVisited: Tally` with `type Tally = number` | Part 4 widening 2 |
+| F7 | a storage port imports `TravelStats` | 6b-5 |
+| F8 | `put({ ...summary, countriesVisited, daysTravelled }, id)` in the web port | **6b-2** |
+| **F9** | the same spread in `memory.ts`'s `summaries.set` | **6b-1** *and* 6b-2 — two independent checks, deliberately |
+| **F10** | a third `SUMMARIES.put(summary, id)` site added to the web port | **6b-2**'s pinned site count |
+
+A fault that is caught by exactly one check is fine; a fault caught by **none** is a hole and is a finding.
+F9 existing at all is the answer to *"is 6b-2 redundant with 6b-1"* — no: 6b-1 can only see ports that run
+in Node, and 6b-2 can only see source text, and F8 and F9 are each visible to exactly one of them until
+they are both present.
+
+**Part 7 — the residues.**
+
+1. **6b-2 is static.** A port that computed its summary through a function call — `put(widen(summary), id)`
+   — would fail 6b-2 (the capture is not the bare identifier `summary`), which is the correct outcome, but
+   6b-2 cannot tell a *widening* helper from a harmless one and does not try: the rule is *the argument is
+   the identifier*, full stop, and a port that needs to do something else has found a design question.
+2. **The real IndexedDB port is asserted at runtime only in `qa/`** (6b-4), not in the gate. Closing that
+   properly needs either a fake IndexedDB in the suite or the browser probe promoted into `npm run test:tap`,
+   and both are larger than this criterion. **Trigger:** a second port-internal defect, or the first
+   non-browser native port (Phase 5's `expo-sqlite`), at which point 6b-1's population is what grows.
+3. **Part 4's tripwire is still name-based** and will always be one synonym behind. That is now acceptable
+   *because it is not load-bearing*: everything that reaches storage is covered by Part 2 and 6b-1/6b-2,
+   and the tripwire's job is to catch an intent before it reaches a port. **Trigger:** a fault that reaches
+   storage and is caught only by the tripwire — that would mean Part 2 or 6b-1 has a hole.
+
+#### A-34 — an un-clamped active-trip contribution is marked, never rendered as a visited fact (revision 25, QA R28-7)
+
+**Part 1 — the defect.**
+
+A-31 Part 5 residue 2 licenses an `active` trip contributing **all** of its countries and cities, unclamped
+by which day the trip has actually reached, because refining that needs day-level attribution the row does
+not carry. That licence was granted for the *statistic*. What shipped is the statistic rendered as fact:
+on 2026-08-14, `cli.ts stats` prints
+
+```
+  GB  2026-08-07 → 2026-08-14  (1 trip)
+```
+
+for a trip that does not reach the UK until Aug 20 — a country the traveller has not been to, with dates,
+in the same visual form as one they have. The root `CLAUDE.md` convention is *"never present my suggestions
+as Jacob's own plan"*, and its natural extension — never present a plan as an accomplished fact — is what
+`suggested` badges, dimmed cards and §2.14's provenance rules exist for everywhere else in this product.
+This is the first place a *derived statistic* breaks it, and I-8 is about to put it on the Map and the
+Profile, which is where it stops being a CLI line and becomes the product's headline claim.
+
+**Part 2 — the ruling: the statistic carries the fact, not each surface.**
+
+> **`TravelStatsCountry` and `TravelStatsCity` gain `provisional: boolean`, true exactly when no
+> `completed` trip contributed the row.** A surface renders a `provisional` row visibly differently from a
+> confirmed one, and never in a way that asserts the traveller has been there.
+
+Accumulation is one line in the fold Part 4 steps 6 and 7 already run: start `provisional = true` when the
+row is created, and set it to `false` the first time a contributing row's lifecycle is `'completed'`.
+Equivalently, `provisional = tripIds.every(id => lifecycle(rowById(id), today) !== 'completed')`, but the
+fold is what is built — no second pass and no second population rule.
+
+**Why this predicate and not a narrower one.** The honest answer is that within an active trip the row
+carries **no** evidence about which countries have been reached — that is residue 2's whole point — so
+*"has this country been reached"* is unanswerable and any per-country cleverness would be invention. What
+*is* answerable is *"is all the evidence for this row from a trip still under way"*, and that is exactly
+the set of rows a reader could otherwise mistake for history. A country on both a completed trip and the
+current one is **not** provisional, and correctly so: it was visited, and the active trip adds nothing to
+that claim.
+
+**Why on the type and not computed by the caller.** A caller can compute it — it has `tripIds` and can call
+`lifecycle` — and that is precisely the problem: it would be a *second* expression of A-31 Part 3's
+population rule, in every surface, diverging on the first edge case. Sequencing rule 1. It is also the
+same argument A-31 used for `unattributed` being a field rather than an omission: the honest caveat is
+part of the answer, not something the reader is expected to reconstruct.
+
+**Cost.** One boolean on two row types. **No storage** — `TravelStats` is derived and never persisted
+(A-33 6b-5 asserts exactly that), so **`SUMMARY_VERSION` does not move**, the row does not change, and
+A-33 Part 2's key set is untouched. `provisional` is not count-shaped, so A-33 Part 4's tripwire does not
+see it. `fixtures/golden/travel-stats.json` regenerates with the new field in both of its clock blocks,
+which is a golden diff and not a behaviour change.
+
+**Part 3 — the two surfaces.**
+
+**The CLI, now**, because it is the surface that exists and the fix is four lines. A provisional row prints
+a marker and the block prints a legend once, only when at least one row is provisional:
+
+```
+  GB  2026-08-07 → 2026-08-14  (1 trip)  ·  in progress
+  ·  in progress — from a trip you are on; not yet confirmed reached
+```
+
+and the header count says so: `countries   7  (1 in progress)` when any row is provisional, and the bare
+number otherwise. Same treatment on the city list. **Do not** hide provisional rows and do not exclude
+them from the counts — that is the alternative residue 2 already refused (it tells a traveller standing in
+Vienna that they have never been); the ruling is about *marking*, not about population.
+
+**I-8's Map and Profile**, when they are built. `ROADMAP.md` I-8 carries the requirement so it is not lost
+between now and then; the visual treatment is that increment's builder's, within the constraint that it is
+**the same "not yet true" treatment this product already uses** — the dimmed/pending state of an unaccepted
+copied stop (§2.14), not a novel one — and that a provisional country may not be filled on the map in the
+same ink as a visited one.
+
+**Part 4 — the injected fault.**
+
+Set `provisional` to `false` unconditionally and the test that asserts a two-row library — one completed
+trip to `AT`, one active trip to `AT` and `GB` — reports `GB` as confirmed; the CLI test's expected output
+loses its marker line. Set it to `true` unconditionally and `AT`, which a completed trip visited, is marked
+as in progress. Both directions are asserted, because a boolean with a test on one side only is a boolean
+that will be inverted.
+
+**Part 5 — the residue.**
+
+`provisional` says *"the evidence is from a trip you are on"*. It does **not** say *"you have not been
+here"* — on day 12 of a 14-day trip most provisional rows are true visits. It is a caveat, not a negation,
+and the copy must not read as one; *"in progress"* is chosen over *"not visited"* for that reason.
+**Trigger to reopen:** day-level attribution (§8.5's `Visit`), which is residue 1 and residue 2's trigger
+too, and which would let the clamp be real instead of marked.
 
 ### 8.5 Observed travel — the shape Phase 5 must be able to land on
 

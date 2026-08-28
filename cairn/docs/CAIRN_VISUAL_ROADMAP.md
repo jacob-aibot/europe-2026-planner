@@ -36,9 +36,26 @@ update to this file added that instruction).
 >
 > **What that means for what you can see:** still nothing new on screen. The numbers exist and are
 > printable from the command line (`node cli.ts stats`), but the **Map and Profile screens are
-> I-8**, which is next and is where 2b actually ships. **Verification:** I-5 through I-6a have all
-> been attacked (QA rounds 22–27, the last one clean of blockers); **I-7 has not been attacked
-> yet** and no manager verdict exists for any of 2b. Built ✅ · verified ⚪ · shippable ⚪.
+> I-8**, which is where 2b actually ships. **Verification:** I-5 through I-6a have all
+> been attacked (QA rounds 22–27, the last one clean of blockers), and **I-7 has now been attacked
+> too — QA round 28, 2026-08-28, and it did not pass.** No manager verdict exists for any of 2b.
+> Built ✅ · verified ⚪ · shippable ⚪.
+>
+> **🔴 What round 28 found, and what happens before I-8.** The statistics function itself held up
+> under everything the tester threw at it. Two things underneath it did not. **(1) Dates before the
+> year 1000 were being silently misread as 1900-something** — a JavaScript rule from 1995 that
+> `Date` still honours — which meant that recording a past trip and mistyping the year as `0202`
+> instead of `2020` wrote a trip to your browser's storage **that could never be opened again**.
+> That is real data loss on a screen you can reach in four clicks, and it is the reason this round
+> is a send-back rather than a note. **(2) The rule that is supposed to stop the app ever *saving* a
+> lifetime total** — because a saved total is a number that can silently disagree with the trips it
+> claims to summarise — **could not actually catch it happening**: the tester wrote
+> `countriesVisited` into every stored record and the whole 795-test suite stayed green. A third,
+> smaller finding: the command-line output prints a country you reach *next week* as somewhere you
+> have already been, with dates and no marker, which is the one convention this project has held
+> since day one. All three are now designed (`ARCHITECTURE.md` revision 25) and scheduled as a new
+> increment, **I-7a**, which is owed **before** I-8 — because I-8 is the screen that would otherwise
+> put every one of them in front of you.
 
 > **🟢 STEP 2a IS SHIPPED.** The manager reviewed it at `67f5588` on 2026-08-28 and the verdict is
 > **SHIP** — `REVIEW.md`, "Phase 2, step 2a". So 2a is now **built ✅ · verified ✅ · shippable ✅**,
