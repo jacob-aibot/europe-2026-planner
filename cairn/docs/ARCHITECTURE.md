@@ -448,13 +448,57 @@ Nothing else moves: no engine, no `schemaVersion` bump, no change to `countryOf`
 new §2.10 export, no §4.2 rule, and the closed list of six document-installing store methods is still six —
 A-30 takes the rescan *further* from it. `ROADMAP.md` carries the pair as **I-6a**, with R26-1…R26-4.
 
+**Revision 24, 2026-08-28.** Not a QA round: this is the architect pass that specifies **I-7**
+(`travelStats`) down to a signature and an algorithm, and it found that §8.4 clause 2's five-year-old type
+block **cannot be computed from the row it is handed**. One ruling, **A-31** in §8.4, read after A-29
+because it consumes A-29's row.
+
+The defect is small and total: clause 2 promises `unattributed: {places, stops}`, and `TripSummaryRow`
+carries `countryCodes` and `cities[]` and **nothing about the records those codes were derived from** — no
+place census, no coordinate-bearing stop count, no `placeCount` at all. So a `travelStats` built against
+the shipped row can only ever say *"0 countries"*, and cannot tell the trip with fifty unattributable stops
+from the trip with none — which is precisely the answer `ROADMAP` I-7's own verification forbids (*"a trip
+with no coordinate-bearing record at all must produce 'no places yet', never '0 countries' as though zero
+had been measured"*). A criterion that the design makes unsatisfiable is a design defect (**How a criterion
+is written**, rule 5), and it is mine.
+
+Ruled: the row gains **`attribution: {places: {located, attributed}, stops: {located, attributed}}`**,
+computed in the walk that already visits every one of those records, and `SUMMARY_VERSION` goes to **4**.
+Cities need nothing — `City.centre` is non-nullable, so the city census is already derivable from
+`cities[]`. `travelStats`' full type, its exact signature and its algorithm are A-31 Parts 2–4, including
+the four things clause 2 never said: **planned trips contribute no country, no city and no day**; an
+`active` trip's contribution is **clamped at `today`** (which is what `today` is *for*, beyond the trip
+counts); cities group on the **pair** `(nameKey, countryCode)`, because ROADMAP requires two rows for one
+name in two countries; and a name that folds to `''` is **not an identity** (`model/cityName.ts`, A-14
+assertion 5), so it is counted in `unnamedCities` rather than merged into a blank row.
+
+Two things this changes outside §8.4. (1) **§2.10's list is corrected to 74 and then to 75** — the shipped
+index has exported `SUMMARY_VERSION` since I-6 and §2.10's block never gained the line, so the document has
+been one behind the test since then; `travelStats` joins under **P2**. (2) **ROADMAP exit criterion 6 is
+rewritten**, because *"grep for a persisted field naming a count of countries, cities, trips or days;
+expect zero"* is falsified by `cityCount` and `dayCount`, which have been on the row since Phase 1. The
+principle was never *"no counts in storage"*; it is **no count that is not a property of exactly one
+document, minted inside the write that carries that document, and stamped with `SUMMARY_VERSION`** — and a
+lifetime statistic has no such document, which is why it may never be stored at all. A-31 Part 6 states the
+rule and the mechanical check that replaces the grep.
+
+Folded into this revision without a ruling of its own: **R27-3** (QA round 27, MINOR, architect-doc) — A-29
+Part 8 residue 3 bounds how often the stated branch *fires* and never how often a fired branch is *wrong*;
+the measured figure is added there and residue 1's trigger points at it. No behaviour changes and no
+number in A-29 moves.
+
+Nothing else moves: no engine, no `schemaVersion` bump, no change to `countryOf`, the country index or the
+generator, no `StoragePort` method, no §4.2 rule, and no client change at all — the rescan already selects
+on `row.summaryVersion < core.SUMMARY_VERSION` and does not care what the constant is. `ROADMAP.md` carries
+this as **I-7**.
+
 **Phase 1 is §2 and §4. The next phase is §8.1–§8.4.** Everything else is the shape those must not
 foreclose. See `ROADMAP.md` for sequencing and `PRODUCT-VISION.md` for why this order and not another.
 
 ## Read only your sections
 
-This document is ~167k tokens (re-measured at revision 23, with
-`cairn/tools/doc-section ARCHITECTURE` — §2 is ~102k of it and §8 ~31k; the per-section figures below were stale by a third before revision 11 and are
+This document is ~175k tokens (re-measured at revision 24, with
+`cairn/tools/doc-section ARCHITECTURE` — §2 is ~102k of it and §8 ~37k; the per-section figures below were stale by a third before revision 11 and are
 re-measured, not estimated, whenever a revision lands). Nothing needs all of it, and a fresh agent that reads it whole starts a sixth
 of the way into its context before writing a line. Pull what you need:
 
@@ -473,14 +517,16 @@ cairn/tools/doc-section ARCHITECTURE         # lists the sections and their size
 | 5 | The four hard subsystems | 2k | breaker; builder from Phase 3 on |
 | 6 | Privacy, authorization, deletion cascade. **§6.6 is the build-artifact threshold; the copy threshold is §2.14 A-15 + A-18 (revisions 13 and 14) and they differ deliberately, in two named places — read them together or neither** | 4k | breaker, manager; builder for §6.2 |
 | 7 | Explicitly deferred | <1k | anyone about to build something not in the roadmap |
-| 8 | **The travel-history model** (revision 9) — trip lifecycle and past trips (§8.1), the feasibility/integrity rule class (§8.2), participants (§8.3), geography attribution, travel stats and the summary-row rule (§8.4); then the shapes the location, photo and social phases must land on (§8.5–§8.7) and what is refused (§8.8). **§8.10 is revision 10** — physical travel distance by mode and the four provenance bases that keep it honest; **it is not Phase 2 scope**, so a Phase 2 builder reads §8.1–§8.4 and stops. **Revision 11 amends §8.1, §8.2 and §8.4 by pointer only — the two rulings themselves live in §2.2 (A-10) and §2.7 (A-9), and a Phase 2 builder reads both; revision 12 amends §8.2 by pointer in the same way, and its four rulings live in §2.7 (A-11, A-12, A-13) and §2.14 (A-14)**. **A-26 is revision 20 and lives in §8.4** — the mixed-resolution country index, the withdrawal of the correctness floor's escalation mechanism, and the ruling that `null` is the right answer for a landform the dataset does not carry; **anyone touching `tools/gen-countries.mjs`, `geo/countryIndex.ts` or the attribution golden reads it first**, and it is what ROADMAP's I-5a builds; **A-27 is revision 21, sits directly under A-26 and is read *with* it, never instead of it** — it amends A-26 Part 4's block-quoted rule with a third clause (a filled code ships a **forgiveness entry** as well as a coverage entry), supersedes A-26 Part 5's two-residue list with three, lifts A-26 Part 6 item 3 for a docstring correction only, and is what ROADMAP's **I-5b** builds; **A-28 is revision 22, sits under A-27 and is read with both, never instead of them** — it supersedes A-27 Part 4's filter 2 (two arms, because the coverage index it compared against is mixed-resolution and answered generously) and A-27 Part 4's `overlaps` predicate (the vertex-mean probes come out), corrects A-27 Part 5's Macao sentence and every count in it, and is what ROADMAP's **I-5c** builds. **Anyone touching `tools/forgiveness.mjs` or the forgiveness pass reads A-28 first and A-27 second**; **A-29 is revision 23 and sits under A-28** — it is the only one of the four that is *not* about the index: it rules that a `City`'s **stated** `countryCode` fills a gap the coordinate cannot answer, never overrides one, and only through a gate ending in index membership, and it takes `SUMMARY_VERSION` to 3. **Anyone touching `derive/summary.ts` reads A-29 and §4.3's A-30 together** — A-29 changes what a row *says*, A-30 changes how it is *written*, and I-6a builds both | 31k | architect; the builder and breaker of the phase after Phase 1 (§8.1–§8.4 only). §8.10 is for the architect and for phases 4, 5 and 7. Read with `PRODUCT-VISION.md` |
+| 8 | **The travel-history model** (revision 9) — trip lifecycle and past trips (§8.1), the feasibility/integrity rule class (§8.2), participants (§8.3), geography attribution, travel stats and the summary-row rule (§8.4); then the shapes the location, photo and social phases must land on (§8.5–§8.7) and what is refused (§8.8). **§8.10 is revision 10** — physical travel distance by mode and the four provenance bases that keep it honest; **it is not Phase 2 scope**, so a Phase 2 builder reads §8.1–§8.4 and stops. **Revision 11 amends §8.1, §8.2 and §8.4 by pointer only — the two rulings themselves live in §2.2 (A-10) and §2.7 (A-9), and a Phase 2 builder reads both; revision 12 amends §8.2 by pointer in the same way, and its four rulings live in §2.7 (A-11, A-12, A-13) and §2.14 (A-14)**. **A-26 is revision 20 and lives in §8.4** — the mixed-resolution country index, the withdrawal of the correctness floor's escalation mechanism, and the ruling that `null` is the right answer for a landform the dataset does not carry; **anyone touching `tools/gen-countries.mjs`, `geo/countryIndex.ts` or the attribution golden reads it first**, and it is what ROADMAP's I-5a builds; **A-27 is revision 21, sits directly under A-26 and is read *with* it, never instead of it** — it amends A-26 Part 4's block-quoted rule with a third clause (a filled code ships a **forgiveness entry** as well as a coverage entry), supersedes A-26 Part 5's two-residue list with three, lifts A-26 Part 6 item 3 for a docstring correction only, and is what ROADMAP's **I-5b** builds; **A-28 is revision 22, sits under A-27 and is read with both, never instead of them** — it supersedes A-27 Part 4's filter 2 (two arms, because the coverage index it compared against is mixed-resolution and answered generously) and A-27 Part 4's `overlaps` predicate (the vertex-mean probes come out), corrects A-27 Part 5's Macao sentence and every count in it, and is what ROADMAP's **I-5c** builds. **Anyone touching `tools/forgiveness.mjs` or the forgiveness pass reads A-28 first and A-27 second**; **A-29 is revision 23 and sits under A-28** — it is the only one of the four that is *not* about the index: it rules that a `City`'s **stated** `countryCode` fills a gap the coordinate cannot answer, never overrides one, and only through a gate ending in index membership, and it takes `SUMMARY_VERSION` to 3. **Anyone touching `derive/summary.ts` reads A-29 and §4.3's A-30 together** — A-29 changes what a row *says*, A-30 changes how it is *written*, and I-6a builds both; **A-31 is revision 24 and sits under A-29** — it is the `travelStats` specification (type, signature, algorithm, sort orders, residues), and it widens the row a second time with the **record census** clause 2's `unattributed` cannot be computed without, taking `SUMMARY_VERSION` to 4. **A builder of I-7 reads §8.4 clause 2, then A-31, and needs nothing else in this document except §2.10's list**; A-31 also rewrites ROADMAP exit criterion 6, so **anyone about to add a count to `TripSummaryRow` reads A-31 Part 6 first — widening that allow-list is an architect's ruling** | 37k | architect; the builder and breaker of the phase after Phase 1 (§8.1–§8.4 only). §8.10 is for the architect and for phases 4, 5 and 7. Read with `PRODUCT-VISION.md` |
 
 *(§8's figure is measured with `doc-section`, not estimated. §8.1–§8.4 — the Phase 2 model — are roughly
-four fifths of it since revisions 20, 21, 22 and 23 put A-26, A-27, A-28 and A-29 in §8.4; a Phase 2 builder
-who reads only those pays about 25k, and a builder of I-6a who reads §8.4 alone pays about 22k — with §4.3
+five sixths of it since revisions 20–24 put A-26, A-27, A-28, A-29 and A-31 in §8.4; a Phase 2 builder
+who reads only those pays about 31k, and a builder of I-6a who reads §8.4 alone pays about 28k — with §4.3
 (~4k, and A-30 is most of it) beside it, because I-6a is the one increment that needs both. **A-28 is the entry
 point to that trio, not the last of it** — it names which of A-27's sentences it supersedes, so a builder who
-reads A-28 first knows which parts of A-27 to skip.)*
+reads A-28 first knows which parts of A-27 to skip. **A builder of I-7 needs none of A-26…A-29** — those are
+about the index and about one city field, and A-31 is about the row and the statistic; §8.4's clauses 1–3
+plus A-31 is ~9k and is the whole brief.)*
 
 Read the whole document when you are the manager, when you are changing the design, or when a change
 crosses a section boundary. Otherwise this table is the contract.
@@ -4544,8 +4590,9 @@ what the product code throws.
 
 ### 2.10 The public API surface
 
-**Settled in revision 5 (QA R2-12, KD-19); 69 → 70 in revision 6, 70 → 71 in revision 10, and 71 → 73 at
-Phase 2 I-5, each for a stated reason.**
+**Settled in revision 5 (QA R2-12, KD-19); 69 → 70 in revision 6, 70 → 71 in revision 10, 71 → 73 at
+Phase 2 I-5, 73 → 74 at Phase 2 I-6 (recorded late — see below), and 74 → 75 at Phase 2 I-7, each for a
+stated reason.**
 `reassertRetirements` joins under **P1** — `packages/client`'s `set()` calls it — and it is the same class as
 `syncResolutions`, which is already here: a pure build function the client must call because the client is
 where the trigger lives. **`lifecycle` joins under P2 in revision 10** (Phase 2 I-1): §8.1 specifies it by
@@ -4555,9 +4602,26 @@ the same clause's revision-10 consequence says the index *"is generated code ins
 exported as a value from `index.ts` so every call site can pass it"* — `tools/gen-golden.mjs` is already such
 a call site (**P1**), and ceiling (1) below forbids it reaching into `geo/countries.gen.ts` by module path.
 The index's *constructor* and *decoder* (`countryIndex`, `decodeCountryIndex`) stay internal: a caller needs
-to pass an index, not to mint one. §2.10's own enforcement
+to pass an index, not to mint one.
+
+**`SUMMARY_VERSION` joined at Phase 2 I-6 and this block did not say so — corrected at revision 24, and the
+correction is the interesting part.** I-6 added it to `index.ts` and to `surface.test.ts`'s list in the same
+pass, so set equality held in both directions and nothing went red; only *this document* was behind, at
+**73** while the code was at **74**. §2.10's enforcement is set equality between `index.ts` and
+`surface.test.ts`, and the prose count is the one thing neither of them can check — so treat a number in
+this paragraph as a claim to re-derive (`node -e "import('./packages/core/src/index.ts').then(m =>
+console.log(Object.keys(m).length))"`), never as an oracle. It is a **P1** join: `packages/client`'s
+`store.ts` compares `row.summaryVersion` against it and the whole rescan is that comparison.
+
+**`travelStats` joins at Phase 2 I-7** under **P2** — §8.4 clause 2 specifies it by name and **A-31** gives
+its signature — and under **P1** in the same increment, because `cli.ts stats` calls it. Its helpers stay
+internal for group 1's reason: `normalizeCityName` is `model/cityName.ts`'s and is deliberately off the
+index (§2.14 A-14), and a caller that can fold a name itself is a caller that will grow a second grouping
+rule.
+
+§2.10's own enforcement
 rule is *"widening the surface is a documentation change
-first"*, and these lines are that change. The list below is the whole contract: **73 runtime symbols**,
+first"*, and these lines are that change. The list below is the whole contract: **75 runtime symbols**,
 one list, asserted as set equality in both directions against the runtime exports of
 `packages/core/src/index.ts`. It replaces a two-list arrangement — 50 "in §2.10" plus 60 "beyond §2.10, each
 with a justification" — that made the criterion true by construction against 110 exports. A boundary the
@@ -4573,11 +4637,12 @@ A symbol is on the surface if **either**:
 `ACTION_SPECS[…].coreFn` dispatch as a call site, because it is one.
 
 **(P2) a numbered section of this document specifies it by name as a callable or a constant.** 19 symbols in
-revision 6, **20 in revision 10**, **21 at Phase 2 I-5** — things a phase has no caller for yet, or that a
-section names outright: the access predicates (§6.2), `geoCheck`/`GEO_LIMIT_KM` (§2.13),
-`clusterStops`/`MIN_SPAN_KM` (§2.5), `SCHEMA_VERSION`/`migrateDoc` (serialization), `TripParseError`,
-`RULES`, the redaction four (§6.6), `lifecycle` (§8.1, §8.9) and `countryOf` (§8.4). `COUNTRY_INDEX` is a
-**P1** join, not a P2 one: `tools/gen-golden.mjs` passes it.
+revision 6, **20 in revision 10**, **21 at Phase 2 I-5**, **22 at Phase 2 I-7** — things a phase has no
+caller for yet, or that a section names outright: the access predicates (§6.2), `geoCheck`/`GEO_LIMIT_KM`
+(§2.13), `clusterStops`/`MIN_SPAN_KM` (§2.5), `SCHEMA_VERSION`/`migrateDoc` (serialization),
+`TripParseError`, `RULES`, the redaction four (§6.6), `lifecycle` (§8.1, §8.9), `countryOf` (§8.4) and
+`travelStats` (§8.4 clause 2, **A-31**). `COUNTRY_INDEX` and `SUMMARY_VERSION` are **P1** joins, not P2
+ones: `tools/gen-golden.mjs` passes the first and `packages/client`'s rescan compares against the second.
 
 Everything else is internal, whether or not it is currently exported. **Tests do not create surface.**
 `packages/core`'s own tests, `cairn/test/` and `cairn/qa/` may import a module path directly
@@ -4586,7 +4651,7 @@ would make every internal public. The un-export pass therefore rewrites some pro
 index to the module path; that is the expected shape of the change, not a regression.
 
 ```
-packages/core/src/index.ts re-exports exactly this and nothing else — 73 runtime symbols:
+packages/core/src/index.ts re-exports exactly this and nothing else — 75 runtime symbols:
 
   model (7)      LOCAL_OWNER · SCHEMA_VERSION · sequentialIds · formatRange · costFromDisplay
                  TripParseError · ForeignDocumentError
@@ -4598,13 +4663,15 @@ packages/core/src/index.ts re-exports exactly this and nothing else — 73 runti
                  acceptCandidate / rejectCandidate(trip, ref, actorUserId: UserId, at)  // NOT nullable — §2.14
                  copyStopInto(target, source, placement, ctx)        // §2.14 — the social primitive
                  upsertBooking · linkBooking
-  derive (24)    computeLegs(day, trip) · dayMovingMinutes(day, trip) · dayDistanceKm(day, trip) · fmtMins
+  derive (26)    computeLegs(day, trip) · dayMovingMinutes(day, trip) · dayDistanceKm(day, trip) · fmtMins
                  clusterStops · focusCluster · fitSpanKm · MIN_SPAN_KM · mapBounds · stopPoints · stopLatLng
                  rollUpCost · displayStatus · attribution
                  cityRange · daysForCity · orderedCities · weekdayOf · tripSummary
+                 SUMMARY_VERSION                                     // §8.4 clause 3 — the rescan's subject
                  geoCheck · GEO_LIMIT_KM                             // §2.13 — one implementation
                  lifecycle(trip, today)                              // §8.1 — derived, never stored
                  countryOf(at, index) · COUNTRY_INDEX                // §8.4 clause 1 — index injected
+                 travelStats(summaries, today)                       // §8.4 clause 2, A-31 — never stored
   conflict (6)   detectConflicts · RULES · resolveConflict · unresolveConflict · syncResolutions
                  reassertRetirements(trip, retired)                  // §2.7 A-5 — the retirement ledger
   validate (2)   validateTrip · issueCounts
@@ -7068,17 +7135,29 @@ whose error runs outward at a convex coast. A-26 keeps the rule and drops the il
 **2. Every statistic is derived. Nothing counts anything into storage.**
 
 ```ts
-travelStats(summaries: TripSummaryRow[], today: IsoDate): TravelStats
+travelStats(summaries: readonly TripSummaryRow[], today: IsoDate): TravelStats
 type TravelStats = {
-  countries: Array<{ code: CountryCode; firstVisit: IsoDate; lastVisit: IsoDate; tripIds: TripId[] }>;
+  countries: Array<{ code: CountryCode; firstVisit: IsoDate; lastVisit: IsoDate; tripIds: string[] }>;
   // `nameKey` is normalizeCityName(name) — a GROUPING key, not a CityKey. §2.2 A-10: a CityKey is an
   // opaque per-trip id, so two trips to Tokyo carry two of them and only the name can join them.
-  cities:    Array<{ nameKey: string; name: string; countryCode: CountryCode | null; tripIds: TripId[] }>;
+  cities:    Array<{ nameKey: string; name: string; countryCode: CountryCode | null; tripIds: string[] }>;
   trips: { planned: number; active: number; completed: number };
   daysTravelled: number;
-  unattributed: { places: number; stops: number };     // the honest hole, on screen
+  located:      { cities: number; places: number; stops: number };   // what there was to attribute
+  unattributed: { cities: number; places: number; stops: number };   // the honest hole, on screen
+  unnamedCities: number;                                             // folded to '' — not an identity
 };
 ```
+
+*(**Revision 24, A-31.** This block is the ruling's own type and is written here so clause 2 is readable on
+its own; **A-31 Parts 2–4 are the specification** — the population each field is computed over, the
+clamping `today` does, the sort orders, and the algorithm. The two differences from revisions 9–23 are
+recorded there: `unattributed` gains `cities` and grows a `located` twin, because `unattributed: 0` is
+otherwise ambiguous between *"everything was attributed"* and *"there was nothing to attribute"* and the
+second is the answer ROADMAP I-7 requires to read **"no places yet"**; and `unnamedCities` exists because a
+name that folds to `''` may not be merged into a blank row. **A-31 also widens `TripSummaryRow` a second
+time** — `unattributed.places` and `unattributed.stops` were never computable from the row clause 3
+defines, which is a defect in this clause and not in whoever tried to build it.)*
 
 A stored `countriesVisited: 47` is a second source of truth that can disagree with the trips it summarises,
 and — the reason that matters for this product specifically — **it is a number a user can inflate by
@@ -7098,7 +7177,10 @@ and `summaryVersion: number`. *(Revision 11: the city field was `cityKeys: CityK
 §2.2 A-10 — an opaque key alone can neither label a pin nor join two trips, and a row that must be resolved
 against a document it does not carry is not a summary. **Revision 23: the city entry gains
 `countrySource: 'coordinate' | 'stated' | null` and `SUMMARY_VERSION` goes to 3 — A-29 below, which is what
-decides where a city entry's `countryCode` may come from.**)*
+decides where a city entry's `countryCode` may come from. **Revision 24: the row gains
+`attribution: {places: {located, attributed}, stops: {located, attributed}}` and `SUMMARY_VERSION` goes to
+4 — A-31, which is what makes clause 2's `unattributed` computable at all. Cities get no such field: a
+`City.centre` is non-nullable, so the city census is already derivable from `cities[]`.**)*
 
 A summary is a **copy**, so §0.6 applies to it and four clauses discharge it:
 
@@ -8079,7 +8161,8 @@ are hand-built fixtures and must be, rather than something the sample is hoped t
    in the project, for a case reachable today only through a hand-written document. **Trigger to reopen: the
    first surface that lets a user type a country code.** There is none today (Part 2's table), and the moment
    one exists the silent override becomes a user-visible surprise and the warning is owed in the same
-   increment as the input.
+   increment as the input. *(Revision 24, QA **R27-3**: residue 3 below now carries the number that decides
+   whether the warning this residue defers is optional or owed on that day. Read the two together.)*
 2. **A code the index does not carry is refused, so `RE`, `GF`, `GP`, `MQ`, `YT`, `SJ`, `TK` and `BQ` are
    never admitted.** Deliberate — Part 3's argument. The coordinate attribution answers the parent state for
    all of them, which is what the map can draw. **Trigger to reopen:** a dataset that carries the code, or a
@@ -8090,6 +8173,283 @@ are hand-built fixtures and must be, rather than something the sample is hoped t
    better than `null` to offer. The alternative — refusing every stated code — is the defect this ruling
    closes. It is bounded to cities the index cannot attribute, which the reference corpus measures at three
    records out of 226.
+
+   *(**Revision 24, QA R27-3.** That sentence bounds how often the stated branch **fires**; it says nothing
+   about how often a fired branch is **wrong**, and the second number is the one the ruling is actually
+   exposed to. Measured over the shipped index's own 239 codes: a single-character substitution lands on
+   another real, drawable code for a mean of **22.4 of a code's 50 neighbours — 45 %** — and `HR`
+   specifically has **19**, including `HU`, the neighbouring country; **82** codes have a real code as their
+   own reversal. So on the exact case A-29 was written for, a Dalmatian-islands trip, mistyping `HR` as `HU`
+   yields `countryCodes: ['HU']` — Hungary on the lifetime map, silently, labelled only `'stated'`. **This
+   changes no decision and reopens nothing**: the gate is still the right shape, and the alternative is still
+   worse. It is recorded because residue 1's trigger — the first surface that lets a user type a country
+   code — needs it: a 45 % chance that a one-key slip is *accepted* rather than refused is what makes the
+   `geoCheck` warning residue 1 defers **owed in the same increment as the input** rather than optional.
+   `qa/i6a-gate.mjs` §4 is the census.)*
+
+#### A-31 — `travelStats`: what it may be computed from, and the row census clause 2 forgot to ask for (revision 24, ROADMAP I-7)
+
+Clause 2 has carried a `TravelStats` type since revision 9 and has never been implemented. Specifying it as
+an implementation brief is what found the defect: **two of its six fields cannot be computed from the row
+clause 3 defines**, and no amount of care by a builder would have changed that.
+
+**Part 1 — the defect, measured against the shipped row.**
+
+`TripSummaryRow` is `{id, title, startDate, endDate, datePrecision, cityCount, dayCount, stopCount,
+poolCount, revision, countryCodes, cities, summaryVersion}`. Clause 2 asks for `unattributed: {places,
+stops}`. The row carries:
+
+| Asked for | What the row has | Verdict |
+|---|---|---|
+| how many **places** could not be attributed | nothing — there is no `placeCount`, let alone an attributed one | **not computable** |
+| how many **stops** could not be attributed | `stopCount` and `poolCount`, which count *records*, not *coordinate-bearing* records | **not computable** |
+| how many **cities** could not be attributed | `cities[].countryCode === null` | computable, and clause 2 never asked |
+| whether the trip had **anything to attribute** | nothing | **not computable** |
+
+The fourth row is the one that matters, because ROADMAP I-7's verification demands it in so many words: *"a
+trip with no coordinate-bearing record at all must produce 'no places yet', never '0 countries' as though
+zero had been measured."* Against the shipped row those two states are **the same value** — `countryCodes:
+[]` — and a `travelStats` written against it must either guess or lie. A criterion the design makes
+unsatisfiable is a design defect (**How a criterion is written**, rule 5); this one is mine, and it is
+being fixed in the increment that first needs it rather than worked around in the increment's code.
+
+**Why this is not solved by loading the documents.** §4.2's *"exactly ONE trip in memory at a time"* is not
+negotiable here (clause 3's own first sentence), and the lifetime map is precisely the screen that would
+want forty. The census has to be minted where the document is, which is `tripSummary`, which is where every
+other summary field is minted. It is clause 1 working exactly as written — the fix is to compute the right
+thing inside that write, not to move the computation.
+
+**Part 2 — the row widening. Two numbers per record class, in the walk that already visits them.**
+
+```ts
+export type AttributionCensus = {
+  /** Records bearing a resolvable coordinate. The denominator. */
+  located: number;
+  /** Of those, the ones `countryOf` gave a country. Never greater than `located`. */
+  attributed: number;
+};
+
+// on TripSummaryRow:
+  /**
+   * The coordinate-bearing record census `countryCodes` was computed from (§8.4 A-31).
+   * A count *about this one document*, minted inside the write that carries it and stamped
+   * with `summaryVersion` — which is what separates it from a lifetime statistic, and why
+   * Part 6's rule permits it. Cities are absent on purpose: `City.centre` is non-nullable,
+   * so `located` is `cities.length` and `attributed` is the non-null `countryCode`s.
+   */
+  attribution: { places: AttributionCensus; stops: AttributionCensus };
+```
+
+Definitions, total and matching `countryCodes`' own walk record for record:
+
+- `places.located` — `trip.places` where `at !== null`. `places.attributed` — of those, `countryOf(at,
+  index) !== null`.
+- `stops.located` — every scheduled stop (`trip.days[].stops`) **and** every pooled stop (`trip.pool`)
+  where `stopLatLng(stop, trip) !== null`. `stops.attributed` — of those, a non-null `countryOf`.
+
+**Pooled stops are in, and that is inherited rather than decided here.** Clause 3 already defines
+`countryCodes` as the union over *"every scheduled stop and over every pooled stop"*; a census whose
+denominator excluded the pool could report `attributed < ` the number of countries the same row claims.
+The two must walk the same records or the row contradicts itself. That a pooled stop is a plan rather than
+travel is a real objection and it is Part 5 residue 4, filed against clause 3 where it belongs.
+
+`SUMMARY_VERSION = 4`, with its own line in the constant's docstring. **A-29 Part 5's argument holds for the
+fourth time and is not re-made:** there are no user rows in the wild, and the rescan is generic —
+`store.ts:70` is `(row.summaryVersion ?? 0) < core.SUMMARY_VERSION` and `selectors/index.ts:213` is the same
+comparison, and neither cares what the constant is. **So no client code changes.** The two readers above are
+the only two permitted, and `test/views.test.ts:274` already asserts that **no view** is a third; a builder
+who finds themselves editing a client file to accommodate this bump has found a fourth reader, which is a
+finding rather than a chore.
+
+**Part 3 — the population, and what `today` is for.**
+
+This is the half clause 2 left open, and every field depends on it.
+
+> **`travelStats` partitions its rows by `lifecycle(row, today)` and computes the lifetime map from the
+> travelled ones only.** A `planned` trip contributes **no country, no city, no day and nothing to either
+> census**. It contributes exactly one thing: `+1` to `trips.planned`.
+
+The argument is clause 2's own. A stored `countriesVisited: 47` is refused because *"it is a number a user
+can inflate by typing"* — and a lifetime map that counts a trip to Japan you have booked for next spring is
+that same inflation, reached by planning instead of by typing. A country you have not been to is not on the
+map of everywhere you have been.
+
+Two consequences, both stated so a builder does not have to choose:
+
+1. **An `active` trip's contribution is clamped at `today`.** A 14-day trip on its second day contributes
+   **2** days to `daysTravelled`, not 14, and its `lastVisit` is `today`, not a date in the future. This is
+   the second thing `today` is for and the reason it is a parameter rather than a convenience.
+2. **An `active` trip contributes all of its countries and cities, unclamped.** Refining that needs
+   day-level attribution, which the row does not carry and §8.5's `Visit` has not been built. Including
+   them is the lesser wrong — Part 5 residue 2, with its trigger.
+
+**A row whose `endDate` precedes its `startDate` degenerates to its start day.** `validateTrip` reports it
+as an issue and does not reject it (`validateTrip.ts:181` computes `expected = 0`), `fromJSON` accepts it,
+so it reaches this function and this function may not throw on it. One clause, applied everywhere:
+`travelEnd = max(travelStart, clamp(endDate))`. It contributes one day, a same-day first/last visit, and
+its countries. Counting zero would make a malformed row *invisible*, which is worse than counting it small.
+
+**Part 4 — the algorithm, in the order a builder writes it.**
+
+```ts
+export type TravelStatsCountry = {
+  code: CountryCode;
+  /** The `startDate` of the earliest travelled trip carrying this code. */
+  firstVisit: IsoDate;
+  /** The clamped end of the latest travelled trip carrying it — never after `today`. */
+  lastVisit: IsoDate;
+  /** In canonical row order. `TripSummaryRow.id` is a plain `string`, so this is too. */
+  tripIds: string[];
+};
+export type TravelStatsCity = {
+  /** `normalizeCityName(name)` — a grouping key, never a `CityKey`, never `''`. */
+  nameKey: string;
+  /** The raw display name from the first member in canonical row order. */
+  name: string;
+  countryCode: CountryCode | null;
+  tripIds: string[];
+};
+export type TravelRecordCensus = { cities: number; places: number; stops: number };
+export type TravelStats = {
+  countries: TravelStatsCountry[];
+  cities: TravelStatsCity[];
+  trips: { planned: number; active: number; completed: number };
+  daysTravelled: number;
+  located: TravelRecordCensus;
+  unattributed: TravelRecordCensus;
+  unnamedCities: number;
+};
+
+/** Pure. @throws {Error} programmer error only — a duplicate row id, or a malformed date. */
+export function travelStats(summaries: readonly TripSummaryRow[], today: IsoDate): TravelStats;
+```
+
+1. **Duplicate ids throw.** `travelStats: duplicate summary id "<id>"` — a library is keyed by id, so two
+   rows with one id is a caller bug, and a silent dedupe would make `trips.completed` quietly wrong for
+   whoever built the list. §2.1: core throws on programmer error and returns `Issue[]` for everything else,
+   and this is not a domain problem a user can have.
+2. **Canonical order, computed once: `summaries.slice().sort()` by `dayNumber(startDate)` ascending, then
+   `id` ascending.** Everything downstream reads this array, so **no output depends on the order the caller
+   happened to pass** — which is what makes the golden stable and the purity assertion meaningful. `slice()`
+   before `sort()`: the input is `readonly` and must come back untouched.
+3. **`trips`** — `lifecycle(row, today)` over **every** row, counted three ways. `TripSummaryRow`
+   structurally satisfies `DatedTrip` (`derive/lifecycle.ts:29`), so this is the existing function with a
+   new caller and **not** a second implementation of trip state — sequencing rule 1.
+4. **The travelled set `T`** — rows whose lifecycle is `'active'` or `'completed'`. Per row:
+   `a = dayNumber(startDate)`; `b = lifecycle === 'active' ? min(dayNumber(endDate), dayNumber(today)) :
+   dayNumber(endDate)`; then `b = max(a, b)`.
+5. **`daysTravelled`** — the size of the **union** of the `[a, b]` intervals, by sort-and-sweep: sort by
+   `a`, keep a current interval, extend it while `a <= cur.b`, otherwise bank `cur.b - cur.a + 1` and start
+   a new one. **Union, not sum**, because two trips overlapping in time are not two days of your life; and
+   sweep, not a `Set` of day numbers, because an `IsoDate` admits year `0001` and a hand-written row would
+   otherwise allocate millions of entries.
+6. **`countries`** — for each row of `T`, for each code in `row.countryCodes`: `firstVisit = min(a)`,
+   `lastVisit = max(b)`, append `row.id`. Emit dates with `fromDayNumber`. **Sorted by `code` ascending.**
+7. **`cities`** — for each row of `T`, for each `c` of `row.cities`: `nameKey = normalizeCityName(c.name)`.
+   - If `nameKey === ''`, **`unnamedCities++` and skip.** `model/cityName.ts` is explicit that a name
+     folding to `''` *"is not an identity"* (§2.14 A-14 assertion 5); grouping on it would put every blank
+     city in every trip into one row labelled with nothing. Skipping without counting would be silent loss,
+     which is why the count is a field.
+   - **The group key is the pair `(nameKey, countryCode)`**, `null` being a distinct value. ROADMAP I-7
+     requires the same name in two countries to be **two** rows, and that is only expressible if the country
+     is part of the key. `name` and `countryCode` come from the **first** member in canonical order; a trip
+     is added to `tripIds` **at most once** even if it holds two cities that fold to the same key.
+   - **Sorted by `nameKey` ascending, then by `countryCode` ascending with `null` last.**
+8. **The two censuses**, summed over `T` only — same population as everything else:
+   - `located.cities = Σ row.cities.length`; `unattributed.cities = Σ` of those with `countryCode === null`.
+   - `located.places = Σ row.attribution.places.located`; `unattributed.places = Σ (located - attributed)`.
+   - `located.stops` / `unattributed.stops` — the same, from `row.attribution.stops`.
+
+**And the sentence the Profile is built against, stated here so I-8 has no judgment call:**
+
+> **"No places yet"** is `located.cities + located.places + located.stops === 0`. It is *not*
+> `countries.length === 0`, and it is *not* `unattributed === 0`. A history with nothing in it and a history
+> whose every coordinate the dataset cannot name are different claims, and the second one says
+> *"N places we could not put on the map"* — never *"0 countries"*, which asserts a measurement that was
+> never taken.
+
+**Part 5 — the residues, five, disclosed rather than left to be discovered.**
+
+1. **`firstVisit`/`lastVisit` are trip-range, not country-range.** A trip through six countries reports the
+   whole trip's span for each of them, so "first visited Croatia" is really "the start of the first trip
+   that reached Croatia". The row carries no per-country or per-city dates and cannot without carrying the
+   day→city edges, which is a document-sized answer. **Trigger to reopen:** day-level attribution — §8.5's
+   `Visit`, or a summary that carries city date ranges (`cityRange` already computes them per document).
+2. **An `active` trip contributes countries it has not reached yet.** Day 2 of a six-country trip puts all
+   six on the map. Bounded — it self-corrects at `endDate`, it can only ever be wrong about a trip the user
+   is *on*, and the alternative (excluding active trips) tells a traveller standing in Vienna that they have
+   never been. **Trigger:** the same as residue 1.
+3. **One city can become two rows.** Same city, two trips, one of which the index could attribute and one of
+   which it could not, gives `(tokyo, JP)` and `(tokyo, null)`. Honest — nothing merges records we cannot
+   show are the same place — and much narrower since A-29 gap-fills the common case. **Trigger:** a surface
+   that lets a user merge two city rows, or a cross-trip city identity.
+4. **A pooled stop is a plan, and it counts.** Inherited from clause 3's definition of `countryCodes`, not
+   introduced by this ruling; the census merely stops it being invisible. **Trigger:** the first surface that
+   shows "countries visited" beside a pool, at which point clause 3 is what changes, not A-31.
+5. **`trips.completed` counts overlapping trips separately while `daysTravelled` counts their shared days
+   once.** Deliberate and not a discrepancy: they are counts of different things, and the alternative
+   (double-counting a day) is the one that inflates.
+
+**Part 6 — what replaces "grep for a persisted count", because the old rule was already false.**
+
+ROADMAP exit criterion 6 says: *"Grep `packages/core`, `packages/client` and `apps/web` for a persisted
+field whose name is a count of countries, cities, trips or days; expect **zero**."* Run it honestly and it
+finds `cityCount` and `dayCount` on `TripSummaryRow`, which have been persisted since Phase 1. The criterion
+has been passing because nobody ran it as written.
+
+The principle was never *"no counts in storage"*. It is:
+
+> **A count may be stored only if it is a property of exactly one document, minted inside the write that
+> carries that document (clause 1) and stamped with `SUMMARY_VERSION` (clause 3). Everything else — every
+> number that summarises more than one trip — is computed on read and has no storage representation at
+> all.**
+
+That is why `cityCount` is legitimate and `countriesVisited: 47` is not, and the distinction is mechanical:
+the first can be recomputed from a document that exists and repaired by the rescan; the second summarises a
+*set* of documents, has no document to be recomputed from, and drifts with nothing to notice. It is §0.6
+applied one level up.
+
+The check that replaces the grep, in two halves:
+
+1. **An allow-list, in a test, over `TripSummaryRow`'s own count-shaped fields** — today exactly
+   `cityCount`, `dayCount`, `stopCount`, `poolCount`, `attribution.places.located`,
+   `attribution.places.attributed`, `attribution.stops.located`, `attribution.stops.attributed`. A field
+   added to the row without being added to the list fails, and **widening the list is an architect's
+   ruling**, exactly as §2.10's surface list works. The test carries the block-quoted rule above in its own
+   text, so the next reader knows what question the list is answering.
+2. **The grep, re-aimed**: no persisted field naming a count of countries, cities, trips or days **anywhere
+   outside `TripSummaryRow`** — no such field on `Trip`, on any document type, on `AppState`, or in any
+   `ports/storage` record. Expect zero, and it currently is zero.
+
+**Part 7 — what a builder implements. Two core files, two goldens, one CLI command. No engine, no port, no
+index, no client change.**
+
+1. **`packages/core/src/derive/summary.ts`** — `AttributionCensus`, `TripSummaryRow.attribution`, the two
+   counters accumulated in the existing `add()` walk (**one traversal, not a second pass**), and
+   `SUMMARY_VERSION = 4` with its docstring line. `tripSummary` gains no argument and stays pure.
+2. **`packages/core/src/derive/travelStats.ts`** — Part 4, importing `normalizeCityName` from
+   `../model/cityName.ts` (**by module path; it is deliberately off `index.ts` and stays off** — §2.14 A-14,
+   and `qa/r14-horizon-copy.mjs:917` asserts it) and `lifecycle` from `./lifecycle.ts`.
+3. **`packages/core/src/index.ts`** — `travelStats` and its types. §2.10's list is at 75.
+4. **`tools/gen-golden.mjs`** — a new `travel-stats.json`, **derived by calling `travelStats`**, never
+   hand-written. Its input is `[tripSummary(referenceTrip, COUNTRY_INDEX)]` at the fixture clock, and it
+   carries the same *"NO COORDINATES"* discipline `countries.json` already has: codes, names, ids, counts.
+   `countries.json` is unchanged and is not regenerated for this — but it becomes the **external check**
+   below.
+5. **`cli.ts stats`** — `travelStats([tripSummary(trip, COUNTRY_INDEX)], today)` as text, honouring
+   `--today` and `--file`. One trip is a thin exercise of a multi-trip function; the tests are where the
+   multi-trip cases live, and the CLI is what makes the numbers addressable without a browser.
+
+**The check that is worth more than the golden.** `fixtures/golden/countries.json` already carries, for the
+reference trip and computed by a *different* program (`gen-golden.mjs` walking the document directly),
+`stops: {total, withCoordinates, attributed, unattributed}` and `places: {…}`. So:
+
+> `travelStats` over the reference trip's single summary row must report `located.places`,
+> `unattributed.places`, `located.stops` and `unattributed.stops` **equal to `countries.json`'s
+> `places.withCoordinates`, `unattributedPlaces.length`, `stops.withCoordinates` and
+> `unattributedStops.length`** — four numbers, two programs, one trip. This is the closest thing to an
+> external oracle a derived statistic can have, and it is the assertion that would catch the row's census
+> and the golden's census walking different records.
 
 ### 8.5 Observed travel — the shape Phase 5 must be able to land on
 
