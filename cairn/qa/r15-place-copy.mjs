@@ -27,6 +27,20 @@
  *
  * A FAIL line means the probe found what it was looking for. Read the finding in
  * ../docs/QA-FINDINGS.md before assuming the script is broken.
+ *
+ * **Maintained by QA round 16 (`bff7a81`), which is when it went to 0 FAIL.** Three of its 17
+ * by-design FAILs could not be closed by product code and were re-expressed rather than deleted,
+ * per A-19 assertion 7 (*"the builder does not edit anything under `qa/`"*):
+ *   - §3.4 asserted against a document A-19 now refuses to return — it is a `throws` assertion
+ *     now, against A-19's actual contract, with the two legal keys measured beside it.
+ *   - §3.2 (R15-4) and §5.1 (R15-5) were literal `ok(..., false, …)` statements about a GAP IN
+ *     THE SHIPPED SUITE, not measurements of the product, so no product change could turn them
+ *     green. Both now point at the test that closed them. Round 16 re-derived each by mutating
+ *     product code in a throwaway `git worktree` at `bff7a81` — reordering `refileCityKey`'s
+ *     steps 1/2 turns `copyStop.test.ts:1510` red (67/1), and `beyondHorizon`'s `every` -> `some`
+ *     turns `horizonGate.test.ts`'s A-17 directional test red (582/1). The probe can only confirm
+ *     the pins EXIST; the mutations are never made in this tree.
+ * The round-16 findings live in `qa/r16-copy-depth.mjs`, which does not duplicate anything here.
  */
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
@@ -387,13 +401,21 @@ line('§3.2 A-16 — step 1 staying FIRST is unpinned by any test or probe (R15-
     'is filed under the target\'s `' + gainedKey + '` — a DIFFERENT, observable outcome.');
   ok('shipped behaviour is A-16\'s: step 3, the record does not travel',
     landed.kind === 'inline', JSON.stringify(landed));
-  note('SO: the order is behaviourally load-bearing on this document class — and no shipped test ' +
-    'or probe covers it. `copyStop.test.ts`\'s "A-16 step 1 stays first" fixture files the place ' +
-    'under a key NEITHER document holds, so step 2 is false there whatever the order. Verified by ' +
-    'moving step 2 above step 1 in a scratch worktree: 568/568 tests pass and r14-horizon-copy.mjs ' +
-    'prints ALL OK.');
-  ok('R15-4: the ruling\'s explicitly load-bearing ordering has a test that can fail', false,
-    'reordering step 2 above step 1 is invisible to the whole suite and to qa/r14-horizon-copy.mjs §5.7');
+  note('SO: the order is behaviourally load-bearing on this document class. At bd195bd no shipped ' +
+    'test covered it — `copyStop.test.ts:1032`\'s "A-16 step 1 stays first" fixture files the ' +
+    'place under `city_gone`, a key NEITHER document holds, so step 2 is false there whatever ' +
+    'the order, and moving step 2 above step 1 in a scratch worktree left 568/568 green.');
+  // ROUND 16 re-expression. R15-4 was a statement about the SHIPPED SUITE, not a measurement of
+  // the product, so no product change could turn the old `ok(..., false, ...)` line green. The
+  // builder added the missing coverage at `copyStop.test.ts:1510` ("A-16 step 1 stays first: a
+  // key only the TARGET can resolve still takes step 3"), on this exact document class. Round 16
+  // re-derived the mutation in a scratch `git worktree` at bff7a81 rather than trusting the
+  // claim: moving step 2 above step 1 turns EXACTLY that one test red (67 pass / 1 fail).
+  ok('R15-4 CLOSED: the load-bearing ordering is now pinned by copyStop.test.ts:1510, and the ' +
+    'reordering the ruling forbids turns exactly that test red (mutation-verified, round 16)',
+    /A-16 step 1 stays first: a key only the TARGET can resolve still takes step 3/
+      .test(readFileSync(HERE + 'packages/core/test/copyStop.test.ts', 'utf8')),
+    'the probe can only confirm the test EXISTS; the mutation is a scratch-worktree edit, never made in this tree');
 }
 
 line('§3.3 A-16 — a colliding trip id between two library documents (reachability)');
@@ -424,15 +446,34 @@ line('§3.4 A-14/A-16 re-file the PLACE\'s cityKey; the POOL PLACEMENT\'s is sti
   // between documents. `copyStopInto` takes the caller's `placement` verbatim and validates
   // only the `scheduled` branch's `dayId`, so a `pool` placement carrying the SOURCE's key is
   // written straight into the target — R13-6's harm class, through the placement.
+  //
+  // ROUND 16 re-expression. A-19 (revision 14) rules that a placement is an ARGUMENT about the
+  // target, so its `cityKey` is validated exactly as `dayId` is and never re-filed. The line
+  // below used to assert against a RETURNED document; that call is now a hard `Error`, and
+  // A-19 assertion 7 hands the re-expression to QA. It is a `throws` assertion now.
   const src = sourceWithPlace({}, 'pl', 'trip-src', 'Vienna');
   const target = mintedTrip('trip-tgt', 'plt', [{ name: 'Vienna', centre: VIENNA }]);
-  const after = core.copyStopInto(target, { trip: src, stopId: 's-src' },
-    { kind: 'pool', cityKey: src.cities[0].key }, CC('pl2'));
+  const before = core.toJSON(target);
+  let err = null;
+  try {
+    core.copyStopInto(target, { trip: src, stopId: 's-src' },
+      { kind: 'pool', cityKey: src.cities[0].key }, CC('pl2'));
+  } catch (e) { err = e; }
   note('target city keys: ' + JSON.stringify(target.cities.map((c) => c.key)) +
-    ' | written placement: ' + JSON.stringify(after.pool[0].placement));
-  const errs = core.validateTrip(after).filter((i) => i.level === 'error').map((i) => i.code);
-  ok('a cross-trip copy into the POOL mints no unrepairable validation error',
-    !errs.includes('pool_stop_unknown_city'), JSON.stringify(errs));
+    ' | source key offered: ' + JSON.stringify(src.cities[0].key) +
+    ' | result: ' + (err ? err.message : 'returned a document'));
+  ok('R15-6 CLOSED: a cross-trip copy into the POOL under the SOURCE\'s key is REFUSED, so it can ' +
+    'no longer mint an unrepairable `pool_stop_unknown_city` in the recipient\'s document',
+    err instanceof Error && /no such city .* in trip-tgt/.test(err.message), String(err));
+  ok('...and the target is unmoved behind the throw', core.toJSON(target) === before, '');
+  // The two keys A-19 rules legal, so this line measures a refusal and not a blanket ban.
+  const transit = core.copyStopInto(target, { trip: src, stopId: 's-src' },
+    { kind: 'pool', cityKey: 'transit' }, CC('pl3'));
+  ok('...while TRANSIT_CITY_KEY and a key the target DOES have both still succeed',
+    transit.pool.length === 1 &&
+    core.copyStopInto(target, { trip: src, stopId: 's-src' },
+      { kind: 'pool', cityKey: target.cities[0].key }, CC('pl4')).pool.length === 1,
+    'the full A-19 matrix is qa/r16-copy-depth.mjs §3');
   ok('no shipped caller offers a pool placement to copyStopInto today (bounds it)',
     !/type: 'copyStopInto'[\s\S]{0,400}kind: 'pool'/.test(readFileSync(HERE + 'apps/web/src/views/BrowsePane.tsx', 'utf8')));
 }
@@ -544,8 +585,18 @@ line('§5.1 A-17\'s directional test vs the mechanism it is protecting (R15-5)')
     'point 3 and §8.2 ruling 1 both rest on — leaves 568/568 tests GREEN, including A-17\'s own ' +
     'directional test. On the reversed-days document the same mutation withholds 61 findings ' +
     'inside their own horizon.');
-  ok('R15-5: A-17\'s directional test can detect an inverted `beyondHorizon`', false,
-    'its duplicate_id fixture resolves the ambiguous subject NEARER than the iterated day, so `every` vs `some` is unobservable on it');
+  // ROUND 16 re-expression. Like R15-4, R15-5 was a statement about the SHIPPED SUITE and no
+  // product change could turn the old `ok(..., false, ...)` line green. The builder added a
+  // `duplicate-stop-id-far` fixture to `horizonGate.test.ts`'s `sweptDocuments()` — the same
+  // duplicate_id construction with `days` REVERSED and dated 2026-08-15 / 2026-12-01, so one of
+  // the six swept clocks lands in the discriminating band. Round 16 re-derived the mutation in a
+  // scratch `git worktree` at bff7a81 rather than trusting the claim: `every` -> `some` now
+  // turns A-17's own directional test red across the WHOLE suite (582 pass / 1 fail).
+  ok('R15-5 CLOSED: `beyondHorizon`\'s `every` is now pinned in the shipped suite by ' +
+    'horizonGate.test.ts\'s `duplicate-stop-id-far` fixture, and inverting it turns A-17\'s ' +
+    'directional test red (mutation-verified, round 16)',
+    /duplicate-stop-id-far/.test(readFileSync(HERE + 'packages/core/test/horizonGate.test.ts', 'utf8')),
+    'the probe can only confirm the fixture EXISTS; the mutation is a scratch-worktree edit, never made in this tree');
   // The half it DOES catch, recorded so the next round does not re-derive it.
   note('The half it does catch, also verified by mutation: deleting `unbooked_ticketed`\'s ' +
     '{kind:\'day\'} subject turns A-11(3), A-11(5) and A-17 all red, and A-17 fails ON the ' +

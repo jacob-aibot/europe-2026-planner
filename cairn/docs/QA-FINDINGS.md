@@ -1,4 +1,153 @@
-# Cairn — QA findings, Phase 1 **rounds 2–11** and Phase 2 **rounds 12 (2a), 13 (I-3a / I-4a), 14 (A-11…A-14) and 15 (A-15…A-17)**
+# Cairn — QA findings, Phase 1 **rounds 2–11** and Phase 2 **rounds 12 (2a), 13 (I-3a / I-4a), 14 (A-11…A-14), 15 (A-15…A-17) and 16 (A-18 / A-19)**
+
+> **Status (as of `claude/i4a-r14-issues-f0bkgc` @ `bff7a81`, independently verified 2026-08-28
+> — round 16, the mandatory breaker pass over the builder implementation of ARCHITECTURE
+> revision 14's **A-18** and **A-19**, plus the four findings QA round 15 routed straight to a
+> builder (**R15-1**, **R15-2**, **R15-4**, **R15-5**)):**
+>
+> | | |
+> |---|---|
+> | **Scope** | Exactly `b3a0c89..bff7a81`: `build/copyStop.ts` (`redacted`, `costForCopy`, `arrivalForCopy`, `weeklyForCopy`, `hoursForCopy`, A-19's three parts, three de-spread sites no finding named), `model/types.ts` (the new `place_hours_malformed` code), `validate/validateTrip.ts` (`wellFormedHours` + one `push`), `test/copyStop.test.ts` and `test/horizonGate.test.ts`. R13-4, R13-5, P2-5, P2-8, R2-18 and the Phase 1 list were **not** re-litigated. |
+> | **BLOCKERS** | **0.** Both of round 15's blockers close, verified by running rather than by reading the diff. **R15-3**: a `cost.note` of *"paid with card, conf 5814731574"* and an `arrival.label` of *"Bus 8, booking GYGG45MLA9Q9"* now cross as *"paid with card, [redacted]"* and *"Bus 8, [redacted]"*, with zero `redactionHits` and neither number greppable in the recipient's `toJSON` — and the redaction is **not a wipe**: an ordinary note, label and display cross byte-identical. **R15-1**: **34** `hours` shapes through the live `fromJSON` route, including nested-object `weekly` entries, an array-like `weekly`, `__proto__` as a data key and a 500-entry array — **0** carry a credential and **0** throw. |
+> | **Fixed vs still open** | **CLOSED by this pass and re-verified independently:** **R15-1**, **R15-2**, **R15-3**, **R15-4**, **R15-5**, **R15-6** — all six. With round 15's own closures (R14-1, R14-2, R14-3, R14-4), **the entire R14/R15 chain is closed**. `qa/r15-place-copy.mjs` is at **0 FAIL** after QA re-expressed its three stale lines (below). **STILL OPEN, new this round:** **R16-1** and **R16-2**, both MINOR, both to a builder; plus one **ratification** item for the architect (`place_hours_malformed`, §"The one thing an architect has to ratify" below). **STILL OPEN, unchanged and not re-litigated:** R13-4, R13-5, P2-5, P2-8, R2-18, and the whole Phase 1 list (R10-1, R8-3, R8-4, R6-1/2, R5-2, R11-1). |
+> | **1. A-18 — PASS, including where the ruling only argued** | The seven `CostEstimate`/`MoveOverride` rows are implemented as ruled and I could not break any of them. The `display` predicate holds at six edges (a plain price, `''`, a space-grouped six-digit price, a price with a credential, a 6+ ALL-CAPS token, a sub-six-digit forint price). An **unclassified ninth key** is dropped from all four records the ruling enumerates — `CostEstimate`, `Money`, `MoveOverride` **and `Link`**. Redaction is **idempotent and stable across a copy chain**: A→B→C leaves `note`, `cost.note`, `arrival.label`, `display` and `hours` byte-identical at hop 2 and hop 1, with 0 credentials greppable. The two strings A-18 keeps verbatim by a *threshold-agreement* argument (`flags`, `Money.currency`) really are `STRUCTURAL_KEYS` in `tools/redact.mjs`, checked against the file and not against the prose; `label`, `open` and `close` really are not. |
+> | **2. The `open`/`close` judgment call — SAFE, and measured** | The builder's disclosed call (a `weekly` entry whose `open`/`close` `redactText` would alter becomes `null`, not `[redacted]`) cannot corrupt a legitimate time: **all 240** `HH:MM`/`H:MM` strings in a 24-hour day, plus 12 near-miss formats a hand-written document might carry, are left byte-identical by `redactText`. Every shape that *is* altered (`PIN 0754`, `170000`, a URL, `YZGDTS`, `conf …`) was never a time. A well-formed entry beside a hostile one survives intact and the hostile one becomes `null` in place, so array positions are preserved. The residue is that the entry's `day` goes with it, silently — **R16-2**. |
+> | **3. A-19 — PASS on all eight assertions** | The refusal throws a plain `Error` naming the key and the target id; the target is byte-identical behind it; and the **id factory is left unconsumed**, so a retry mints the same ids (not asserted by the ruling, and true). `TRANSIT_CITY_KEY` succeeds, lands in `unfiledPool`, is badged `imported` from the instant it exists and adds no issue; a key the target *does* have lands in `poolFor` with the same provenance stamp; a within-trip pool copy adds no issue. `''`, `'Transit'` and `' transit '` are all refused rather than folded into transit. The hint is dropped when unresolvable (key **absent**, not present-and-empty) and `scheduleFromPool` on the copy then succeeds through `pickDay`; a resolvable hint is preserved with `order`; an unclassified key on the hint does not travel. **No aliasing, from both branches**: mutating the source stop's own `placement` and `placement.hint` after a pool copy leaves the target byte-identical, and the same for the scheduled branch. |
+> | **4. R15-4 and R15-5 — CLOSED, re-derived by mutation, not by reading** | Both were claims about *tests that cannot fail*, so both were re-verified in a throwaway `git worktree` at `bff7a81`. Moving `refileCityKey`'s step 2 above step 1 turns **exactly one** test red — `copyStop.test.ts:1510`, the new one (67 pass / 1 fail). Inverting `beyondHorizon`'s `subjects.every` to `.some` turns **exactly one** test red across the whole suite — A-17's own directional test, over the new `duplicate-stop-id-far` fixture (582 pass / 1 fail). Both mutations left the suite fully green at `bd195bd`. Ten mutations in total; the two that survive are R16-1 and its rider. |
+> | **5. Numbers, my own runs at `bff7a81`** | `npm run test:tap` **583 pass / 0 fail** · `npm run typecheck` clean (both projects) · `npm run web:build` clean · `Object.keys(core).length` = **71**, with all seven of `placeForCopy`/`refileCityKey`/`costForCopy`/`arrivalForCopy`/`weeklyForCopy`/`hoursForCopy`/`redacted` module-private · reference trip **2 / 4 / 11** at `FIXTURE_TODAY` · `validateTrip` **11** issues, **not 12** — `place_hours_malformed` does not fire, because **0 of the reference trip's 95 places carry `hours` at all** · `npm run golden` + `npm run sample` regenerate byte-identically, sample sha unmoved at `40955ca0b182`, tree clean apart from my two QA files · `qa/r14-horizon-copy.mjs` **ALL OK** · `qa/r2-copy.mjs` **0 FAIL** (§H included) · `qa/prov.mjs` **0 FAIL** · `qa/r15-place-copy.mjs` **0 FAIL** · `qa/r2-constraints.mjs` **1 FAIL** (R2-18, known). Every number in the builder's addendum reproduces **except one**: its "Red before green" row claims *spreading `links` (1 red)*; the measured number is **0**. That is R16-1. |
+> | **6. Byte-identity, re-derived rather than trusted** | Against a `git worktree` at `b3a0c89`: an **ordinary** copy — a reference-trip-shaped stop with no `cost.note`, no `arrival.label`, no place `hours`, a plain `display` and one link — is **byte-identical** to pre-A-18. And on the reference trip itself, **0 of 51** non-empty `cost.display` strings are altered by `redactText` and 0 stops carry a `cost.note` or an `arrival.label`, so A-18 drops no real price and has no live exposure. `copyStop.ts` contains **no `as string`** and, comments stripped, **exactly one** spread — `{ ...target }`, the recipient's own document. Both of BUILD-NOTES' greppable claims hold, once you strip the comments that quote the constructions the ruling forbids. |
+> | **7. The disclosed residue, measured on real data rather than argued** | A-15/A-18 let a `Stop`'s `links` travel (`qa/r2-copy.mjs` §H pins it) and A-18 explicitly does not change that policy. Measured: **34** of the reference trip's stops carry links, and **0** of those 34 hrefs carry a reference-shaped token (`[A-Z0-9]{6,}` or a 6+ digit run) anywhere in path or query. The disclosed reopening trigger — *the day anything writes `Stop.links` from a source the user did not type* — has **not** fired: `importLegacyDays` is the only writer and it reads Jacob's own `book` field. Recorded so round 17 does not re-derive it. |
+> | **`cairn-constraints`, re-checked** | Determinism (no `Date.now()`/`Math.random()`/`crypto.randomUUID()` in core or client), zero runtime deps (`{}` in the root and `@cairn/core`, `{"@cairn/core":"*"}` in client), no DOM/React under `packages/client/src` — all clean. **Round 15's §6 violation is closed**: `copyStopInto` no longer throws on any document shape. A-19's new throw is on an *argument*, which §2.1 classifies as programmer error, and it is the only new throw site. `redactText` is not ReDoS-able on the unvalidated strings that now reach it: 200 000 characters in ≤ 2 ms on four adversarial shapes. |
+> | **Read-only boundary** | `europe-2026-itinerary.html`, `docs/` and `tickets/` at the repo root: untouched. The only files this round writes anywhere are `cairn/qa/r16-copy-depth.mjs` (new), `cairn/qa/r15-place-copy.mjs` (three lines re-expressed, explicitly authorised) and `cairn/qa/README.md`. No implementation file, no test file, no `ARCHITECTURE.md`, no `ROADMAP.md`. |
+> | **Gate verdict** | **A-18 and A-19 both close, and with them the whole R14/R15 chain — R14-1, R14-2, R14-3, R14-4, R15-1, R15-2, R15-3, R15-4, R15-5, R15-6.** The credential leak round 2 filed as R2-3 and round 14 re-filed as R14-4 is finally closed on **every** carrier the four rounds found: `Stop.note`, `Place.note`, `Place.links`, `Place.hours.note`, `Place.hours.weekly`, `Stop.cost.note` and `Stop.arrival.label`. The copy path is now the same shape as §6.6's sample path — enumerate to a scalar, redact what is not structural, refuse what has no honest unknown — and I could not find a string that crosses it unclassified. **The two findings that survive are both MINOR and neither blocks a share or friend path**: one is a test that cannot fail on a construction with no live carrier, the other is a warning that does not fire on all the documents it was added to describe. |
+>
+> **New probe this round:** `qa/r16-copy-depth.mjs` (headless, **2 FAIL by design** — R16-1 ×1,
+> R16-2 ×1; every other line is a confirmation that must stay at 0). Deterministic call sequences
+> only, no races and no sleeps. §5.3 is a differential and prints `skip` without
+> `git worktree add /tmp/r16-pre b3a0c89`. Nothing under `cairn/` is ever written by it.
+>
+> **`qa/r15-place-copy.mjs` is now at 0 FAIL, and three of its lines were re-expressed to get
+> there** — A-19 assertion 7 says in writing that the builder does not edit anything under `qa/`,
+> so this was QA's job and this round did it. §3.4 asserted against a document A-19 now refuses to
+> return and is a `throws` assertion now, with the two legal keys measured beside it. §3.2's R15-4
+> line and §5.1's R15-5 line were literal `ok(..., false, …)` — statements about a gap in the
+> *shipped suite*, which no product change could ever turn green — and now point at the tests that
+> closed them, each **mutation-verified in a scratch worktree first**. The probe's remaining count
+> reflects only genuine defects.
+>
+> **The round-15 status note below is superseded by this one** and is kept as the record of what
+> was true at `bd195bd`.
+
+## Round 16 — A-18 / A-19 + R15-1 / R15-2 / R15-4 / R15-5 (`claude/i4a-r14-issues-f0bkgc` @ `bff7a81`)
+
+Every row was produced by running the repro, not by reading the diff. Routing says *builder* when
+the code or its test diverges from a sound ruling, and *architect* when a decision was made that
+no ruling covers.
+
+| id | severity | file:line | defect | repro | routing |
+|---|---|---|---|---|---|
+| **R16-1** | MINOR | `packages/core/test/copyStop.test.ts:1281`–`1295` × §2.14 A-18 position 2 | A-18's mechanical stop is the key-set assertion forced against a **hostile** source — *"so the assertion catches a re-introduced spread and not only a deleted field"*. The hostile source populates an unclassified key on `cost` and on `arrival` and **not on `links`**, so the fifth row of the assertion (`Object.keys(copy.links![0])` vs `LINK_FIELDS`) runs against a two-key fixture link and is `{label,href}` whatever the construction. Measured in a scratch worktree at `bff7a81`: reverting the `links` line to `{ ...l }` leaves **583/583** tests green **and** `qa/r2-copy.mjs` at 0 FAIL. BUILD-NOTES' own "Red before green" row claims *"spreading `links` (1 red)"*; the measured number is **0**, which is a disclosure error as well as a coverage gap. No live carrier today — `fromJSON`'s `parseLinks` rebuilds every `Link` as `{label, href}`, so a third key needs a hand-built in-memory document — which is why this is MINOR and not the R15-1 it structurally resembles. **Rider, same class:** restoring `redactText(p.note) as string` in `placeForCopy` also leaves 583/583 green, so A-18's *"`redacted()` replaces every `as string` in this file"* is unpinned too; harm is nil for the same reason (`parsePlace` validates `note` with `str()`), but it is the cast the ruling named as the mechanism R15-1 crossed through. | `node --experimental-strip-types qa/r16-copy-depth.mjs` §1.2 | **builder** — the ruling and the code are both right; the fixture is not. Adding `links: [{label, href, eleventh: '…'}]` to the existing `hostile` object at `:1281` is a one-line change that turns the mutation red. |
+| **R16-2** | MINOR | `packages/core/src/validate/validateTrip.ts:406`–`417` (`wellFormedHours`) × `packages/core/src/build/copyStop.ts:157`–`164` (`weeklyForCopy`) | The two guards landed in the **same commit** and hold **different** definitions of a well-formed `weekly` entry, so the new `place_hours_malformed` does not fire on every document whose hours the copy silently discards. `weeklyForCopy` additionally requires `Number.isFinite(day)` and an `open`/`close` that `redactText` leaves byte-identical; `wellFormedHours` requires only `typeof day === 'number'` and `typeof open === 'string'`. Three shapes measured as dropped-and-unwarned: `close: '170000'`, `open: 'https://vendor.test/x'`, `open: 'YZGDTS'`. In each, the recipient's `weekly` entry becomes `null` — indistinguishable from *"this day is unknown"*, which is `OpeningHours`' own documented meaning — and **neither** document says anything. That is exactly the sentence the new IssueCode was added to satisfy: BUILD-NOTES calls it *"what says so to the user before they wonder where their hours went"*. Bounded to MINOR because none of the three is a plausible legitimate opening time (verified: all 240 `HH:MM`/`H:MM` strings in a day and 12 near-miss formats are untouched by `redactText`, so a real time is never dropped) and because the reference trip has no `hours` at all. The reverse direction — a warning where the copy loses nothing but a non-string `hours.note` — is over-reporting, and is not a defect. | `qa/r16-copy-depth.mjs` §2.3 | **builder** for the mechanism (one predicate, one place, called by both — `weeklyForCopy` returning `null` for a redaction reason is a *copy-boundary policy* and should be distinguishable from *malformed*), and **architect** for the ratification question below, which is the same finding read one level up. |
+
+### The one thing an architect has to ratify, and my recommendation
+
+The builder added **`place_hours_malformed`** (a new `IssueCode`, level `warn`, `ref:{kind:'place'}`)
+without a ruling, disclosed it in BUILD-NOTES as *"the one thing in this pass an architect has to
+ratify"*, and marked it in `types.ts` as not being in §2.9's printed list. Two questions, answered
+separately because they have different answers.
+
+**Is it safe as shipped? Yes — measured, not assumed.** The reference trip is unmoved at **11**
+`validateTrip` issues and **2/4/11** conflicts, because 0 of its 95 places carry `hours`.
+`validateTrip` is still deterministic and still never throws on any of the 34 `hours` shapes.
+`Object.keys(core).length` is still 71 and the goldens and sample regenerate byte-identically.
+The `Issue` obeys every contract §2.9 and R13-7 impose: `warn` (not `error`) for *"shaped oddly"*,
+a resolvable `{kind:'place'}` ref, structured `params`, a message that names the place rather than
+an opaque id, exactly one per malformed place rather than one per entry, and none at all on a
+well-formed `hours`. And **nothing in the repo switches exhaustively on `IssueCode`** — no
+`Record<IssueCode, …>`, no `switch (issue.code)` in `packages/client`, `apps/web` or `cli.ts` — so
+an unratified code cannot render as `undefined` anywhere. Typecheck is clean.
+
+**Does it need ratification anyway? Yes, and for a bigger reason than the printed list.** The
+bookkeeping half is real but small: §2.9's list already lags the type by A-10's three codes, so
+this is drift joining existing drift, and it should be swept in one pass rather than argued about.
+The substantive half is R16-2 read one level up. There are now **three** independent answers in
+this repo to *"what is a well-formed `OpeningHours`"* — `serialize/fromJSON.ts:294` (a raw cast,
+i.e. *anything*), `validate/validateTrip.ts:406` and `build/copyStop.ts:157` — and no two of them
+agree. Round 15 routed R15-1 to a builder with the instruction *"and `parsePlace` should validate
+`hours` the way it validates every other field"*; A-18 then ruled that the pass *"changes nothing
+in `fromJSON`"*, and the builder, correctly obeying the ruling, closed the two symptoms with two
+new predicates instead of the one cause. So the parser gap that produced **both** R15-1 and R15-2
+is still open, and the compensating guards were written independently and diverge. That is a
+design question — *refuse at the parser, or accept and warn?* — with an A-10 precedent on each
+side, and it is exactly the class §2.9 reserves for the architect.
+
+**Recommendation: ratify it as shipped — do not revert it, and do not block on it.** It is a
+correct, well-formed, defensive addition that measurably moves nothing, and it answers the half of
+R15-2 that said *"nothing warns the user first"*. But ratify it in a ruling that also decides
+whether `parsePlace` validates `hours`, because if it does, both `wellFormedHours` and
+`weeklyForCopy`'s structural half become dead code and R16-2 closes with them. I could not
+substantiate any severity beyond MINOR for the divergence itself, and I am not inventing one.
+
+### What I attacked and could **not** break (round 16)
+
+- **A-18's redaction, in both directions and down a chain.** Six `display` edges, an unclassified
+  key on all four enumerated records, a two-hop copy chain (A→B→C) whose `note`, `cost.note`,
+  `arrival.label`, `display` and `hours` are byte-identical at both hops with 0 credentials
+  greppable, and `redactText` proved idempotent on its own output. An ordinary note, label and
+  display cross **byte-identical** — a rule that redacts everything passes the credential
+  assertion and is wrong, and this one does not.
+- **`Place.hours`, past round 15's six shapes.** 34 shapes through the live `fromJSON` route:
+  nested-object `weekly` entries, two levels of nesting, an entry that is an array, a string, a
+  number, `true`, `{}`, missing `close`, a string `day`, `1e999` and `-1e999` as a `day`, a
+  fractional and an out-of-range `day`, a numeric and an object `open`, `__proto__` as a data key,
+  a `constructor` key, an array-**like** `weekly`, a second `weekly` nested under another key, a
+  numeric/object/credential `hours.note`, and 500 entries half of them hostile. **0 threw, 0
+  leaked, and `Object.prototype` is unpolluted.** The copy's own output is always a well-formed
+  `OpeningHours`, so the recipient inherits no warning.
+- **A-19 from every side I could find.** All eight builder assertions, plus three the ruling does
+  not make: the id factory is unconsumed behind the refusal; `''`, `'Transit'` and `' transit '`
+  are refused rather than folded into transit; and an unclassified key on the `hint` does not
+  travel. The aliasing check was run from the *source stop's own* placement — A-19's own "copy it
+  where it already sits" call — and from a caller-owned scheduled placement, mutating both
+  afterwards.
+- **The two mutation findings, re-derived rather than trusted.** Ten mutations in a scratch
+  worktree at `bff7a81`, each reverted. The counts are in `qa/README.md` so round 17 does not
+  re-derive them. Only two survive the suite, and both are R16-1.
+- **The ceilings, the differential and the boundary.** 71 exports with all seven new helpers
+  module-private; 2/4/11 and 11 `validateTrip` issues; goldens and sample byte-identical; an
+  ordinary copy byte-identical to `b3a0c89`; `npm run web:build` clean; repo-root planner, `docs/`
+  and `tickets/` untouched.
+- **`cairn-constraints`.** Determinism, zero runtime deps, no DOM/React in `packages/client`, and
+  §6's throw discipline — all clean. Round 15's one violation is closed. `redactText` is not
+  ReDoS-able on the now-unvalidated strings that reach it (200 000 chars, ≤ 2 ms, four shapes).
+- **A sensitive-path sweep over the diff.** No `console.`, `fetch(`, `localStorage` or
+  `process.env` anywhere in `copyStop.ts`; the new `Issue` carries a place name and a place id and
+  no coordinate, no note and no `hours` content, so it adds nothing to R2-18's class.
+
+### Confirmed by design, recorded so nobody re-derives them (round 16)
+
+- **A `cost` with `amounts: []` and a credential-shaped `display` crosses as no price at all.**
+  A-18 argues the `display` hole is *filled* because `costLabel` derives the figure from
+  `amounts`; with `amounts: []` — which `fromJSON` accepts — there is nothing behind it. §6.6
+  redacts the same string on the sample path, so the two thresholds still agree, and this is the
+  disclosed residue of the ruling rather than a divergence from it. Not filed.
+- **A placement whose `kind` is out of the union is silently coerced into a pool placement with
+  `cityKey: undefined`, past A-19's own city check.** A-19 part 2's two-armed ternary makes the
+  else-arm the pool branch; before this pass `addStop` stored the caller's object as given. It is
+  unreachable from TypeScript (`StopPlacement` is a discriminated union) and §2.1 calls an
+  out-of-union argument programmer error either way, and `validateTrip` does report the result as
+  `pool_stop_unknown_city`. Recorded, not filed — it becomes a finding the day an untyped caller
+  exists.
+- **`Money.currency` is unvalidated free text that crosses verbatim.** `fromJSON` checks only
+  `str()`, and `costForCopy` copies it as *"an ISO code"*. It is a `STRUCTURAL_KEY` in
+  `tools/redact.mjs`, so §6.6's sample path does not redact it either — the same
+  threshold-agreement argument A-18 makes for `flags`, checked against the file rather than the
+  prose. Not filed, and named here so round 17 does not re-derive it.
+- **`Stop.name` is the one disclosed *disagreement* between the two thresholds**, not an
+  agreement: `redactStop` runs it through `redactText` on the sample path and `copyStopInto` does
+  not. A-18's measurement reproduces exactly — 4 of 143 stop names altered, all four false
+  positives (three timetable designators, one bar name), 0 credentials; and 0 of 95 `Place.name`s.
+  Architect-blessed in A-18's own words. Not filed.
 
 > **Status (as of `claude/i4a-r14-issues-f0bkgc` @ `bd195bd`, independently verified 2026-08-28
 > — round 15, the mandatory breaker pass over the builder implementation of ARCHITECTURE

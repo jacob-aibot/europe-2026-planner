@@ -698,3 +698,80 @@ Note for whoever reads §1.1 first: `qa/r14-horizon-copy.mjs` §5.9 does **not**
 inspects the copied place's `note` and `links` — the two fields R14-4 named — and never
 populates `hours`, which is how the third carrier survived the ruling written to close the first
 two.
+
+**Round 16 maintained this file to 0 FAIL.** All six R15 findings close; three lines could not be
+closed by product code and were re-expressed rather than deleted (A-19 assertion 7 forbids the
+builder editing anything under `qa/`, so this was QA's job):
+
+- **§3.4** asserted against a document A-19 now refuses to return. It is a `throws` assertion
+  now, against A-19's real contract, with `TRANSIT_CITY_KEY` and a key the target *does* have
+  measured beside it so the line proves a refusal and not a blanket ban.
+- **§3.2 (R15-4)** and **§5.1 (R15-5)** were literal `ok(..., false, …)` — statements about a gap
+  in the *shipped suite*, not measurements of the product, so no product change could ever turn
+  them green. Both now point at the test that closed them. **Round 16 re-derived both by
+  mutation** rather than trusting the builder: see the round-16 section below.
+
+---
+
+## Round 16 (2026-08-28, `claude/i4a-r14-issues-f0bkgc` @ `bff7a81`) — the A-18 / A-19 breaker pass
+
+Narrow: the diff `b3a0c89..bff7a81` only — `build/copyStop.ts` (`redacted`, `costForCopy`,
+`arrivalForCopy`, `weeklyForCopy`, `hoursForCopy`, A-19's three parts), `model/types.ts` (the new
+`place_hours_malformed` code), `validate/validateTrip.ts` (`wellFormedHours`) and the two test
+files. Nothing else was re-litigated.
+
+```bash
+node --experimental-strip-types qa/r16-copy-depth.mjs
+        # §1  A-18 past r15 §2.1's repro: §1.1 the `display` predicate at six edges;
+        #     §1.2 an unclassified key on ALL FOUR records the ruling enumerates —
+        #     `CostEstimate`, `Money`, `MoveOverride` and **`Link`**       (R16-1, 1 FAIL)
+        #     §1.3 the strings that still cross verbatim, checked against
+        #     tools/redact.mjs's STRUCTURAL_KEYS rather than against the ruling's prose;
+        #     §1.4 the open/close judgment call vs all 240 clock times in a day  (0 FAIL)
+        # §2  `Place.hours`: 34 shapes through the live fromJSON route, including nested
+        #     objects, array-likes, `__proto__` as a data key and 1e999 as a `day`
+        #                                                                        (0 FAIL)
+        #     §2.3 the new `place_hours_malformed` vs what the copy actually did
+        #                                                                 (R16-2, 1 FAIL)
+        # §3  A-19's eight assertions re-derived, plus the id factory behind the refusal
+        #     and a placement whose `kind` is out of the union             (0 FAIL)
+        # §4  `place_hours_malformed` as shipped: ceiling, determinism, Ref, wiring (0 FAIL)
+        # §5  ceilings, BUILD-NOTES' two greppable claims (comments stripped, or they
+        #     report their own docstring), and a byte-identity differential vs b3a0c89
+        #                                                                        (0 FAIL)
+```
+
+**2 FAIL by design** — R16-1 ×1, R16-2 ×1. Every other line is a confirmation that must stay at 0.
+Deterministic call sequences only, no races and no sleeps.
+
+§5.3 is a differential and prints `skip` without a second checkout:
+
+```bash
+git worktree add /tmp/r16-pre b3a0c89   # the commit BEFORE A-18/A-19 were built
+```
+
+Ten mutations, all made in a throwaway `git worktree add /tmp/r16-mut bff7a81` and discarded —
+nothing under `cairn/` was ever written. The counts are what a future round should reproduce:
+
+```bash
+# reintroduce the cost/arrival spread                     3 red
+# `{...w}` back on hours.weekly                           2 red
+# alias the caller's placement into addStop               2 red
+# delete A-19's pool-city check                           1 red
+# carry the source hint verbatim                          2 red
+# skip `redacted` on cost.note / on arrival.label       1 red each
+# `display: c.display` (drop the predicate)               2 red
+# refileCityKey step 2 above step 1                       1 red  <- R15-4 CLOSES
+# beyondHorizon `subjects.every` -> `.some`               1 red  <- R15-5 CLOSES (full suite)
+# spread `links` back to `{ ...l }`                       0 red  <- R16-1
+# restore `redactText(p.note) as string` in placeForCopy   0 red  <- R16-1's rider
+```
+
+Re-run **unmodified** this round: `qa/r14-horizon-copy.mjs` **ALL OK** with both worktrees
+present, `qa/r2-copy.mjs` **0 FAIL**, `qa/prov.mjs` **0 FAIL**, `qa/r2-constraints.mjs` **1 FAIL**
+(R2-18, known). `npm run test:tap` 583/0, `npm run typecheck` clean, `npm run web:build` clean,
+`npm run golden` + `npm run sample` byte-identical (sample sha `40955ca0b182`).
+
+Note for whoever reads §1.2 first: `r16` does **not** re-run round 15's credential repro. That
+lives in `qa/r15-place-copy.mjs` §1.1/§1.2/§2.1 and now passes there; re-running it here would
+have spent a run re-confirming a number the builder already reported and I had no reason to doubt.
