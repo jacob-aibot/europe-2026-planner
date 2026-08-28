@@ -385,13 +385,38 @@ to paste them. (3) **R22-6.** The index is 36.4 % of the web bundle with no cons
 bounded and recorded — A-27 Part 9 — because I-6 puts the index on the *write* path, where §0.6 forbids the
 async boundary a lazy import would need. `ROADMAP.md` carries this as **I-5b**, owed before I-6.
 
+**Revision 22, 2026-08-28.** QA round 23 attacked I-5b on four axes and broke one: **A-27's own filter 2**.
+Three findings route here and are answered by one ruling, **A-28** in §8.4, read *with* A-26 and A-27 and
+never instead of them. (1) **R23-1 (MAJOR).** A-27 Part 4's filter 2 compares a candidate ring against
+*"every other entry of the coverage-only index"* — and A-26 made that index **mixed-resolution**, so 175 of
+its 239 entries are drawn at 1:110m. Macao's 1:50m ring was checked against China's 1:110m coastline, which
+is generalised kilometres inland of the Pearl River delta, passed, and **took ≈22.1 km² of Guangdong** —
+bigger than Macao. A-27's own list of filter-2 rejects is short by one, and the reason neither the builder's
+verification nor mine caught it is worth carrying forward: **every sweep compared the index against itself,
+and a wrong answer of this class is only visible against a third source.** The remedy is *not* to replace
+the population with the finest layer: measured, that admits `HK`'s two outlying-island rings and `SG`'s and
+moves **23 cells `CN`→`HK` and 42 `MY`→`SG`**, the exact class A-27 Part 3 property 2 declares impossible.
+So filter 2 becomes **two arms** — 2a against the shipped index (non-regression), 2b against each
+neighbour's finest drawing (truth) — and **all 153 candidate rings against all 239 codes** say the two arms
+disagree on exactly four rings, `MO` being the only one in the harmful direction. Filter 1 carries no
+instance of the class, by construction, with the trigger written down. (2) **R23-2.** The predicate's two
+*"arithmetic mean of the vertices"* probes are removed and *"exact for simple rings"* is restated as the
+theorem it is; 0 of 153 decisions change, re-verified under the **new** filter. (3) **R23-4.** ROADMAP's
+*"`node --test packages/core` still runs directly … and the budget test is still the first test"* attaches
+two facts to one command that demonstrates only the first; each is re-pointed at the command that proves it.
+Measured outcome: **292 entries / 239 codes / 1,033 rings / 369,524 packed**, 53 forgiveness entries, 11
+codes correctly refused one, and a 17.9 M-cell sweep in which the *whole* delta from the committed artefact
+is 5 cells of `MO` reverting to `null`. **No engine, no persisted shape, no `schemaVersion` bump, no
+hand-written change in `packages/core`, and no movement on §2.10's export surface (71).** `ROADMAP.md`
+carries this as **I-5c**, owed before I-6 for the third time and for the same reason.
+
 **Phase 1 is §2 and §4. The next phase is §8.1–§8.4.** Everything else is the shape those must not
 foreclose. See `ROADMAP.md` for sequencing and `PRODUCT-VISION.md` for why this order and not another.
 
 ## Read only your sections
 
-This document is ~145k tokens (re-measured at revision 21, with
-`cairn/tools/doc-section ARCHITECTURE` — §2 is ~102k of it and §8 ~22k; the per-section figures below were stale by a third before revision 11 and are
+This document is ~150k tokens (re-measured at revision 22, with
+`cairn/tools/doc-section ARCHITECTURE` — §2 is ~102k of it and §8 ~27k; the per-section figures below were stale by a third before revision 11 and are
 re-measured, not estimated, whenever a revision lands). Nothing needs all of it, and a fresh agent that reads it whole starts a sixth
 of the way into its context before writing a line. Pull what you need:
 
@@ -410,11 +435,13 @@ cairn/tools/doc-section ARCHITECTURE         # lists the sections and their size
 | 5 | The four hard subsystems | 2k | breaker; builder from Phase 3 on |
 | 6 | Privacy, authorization, deletion cascade. **§6.6 is the build-artifact threshold; the copy threshold is §2.14 A-15 + A-18 (revisions 13 and 14) and they differ deliberately, in two named places — read them together or neither** | 4k | breaker, manager; builder for §6.2 |
 | 7 | Explicitly deferred | <1k | anyone about to build something not in the roadmap |
-| 8 | **The travel-history model** (revision 9) — trip lifecycle and past trips (§8.1), the feasibility/integrity rule class (§8.2), participants (§8.3), geography attribution, travel stats and the summary-row rule (§8.4); then the shapes the location, photo and social phases must land on (§8.5–§8.7) and what is refused (§8.8). **§8.10 is revision 10** — physical travel distance by mode and the four provenance bases that keep it honest; **it is not Phase 2 scope**, so a Phase 2 builder reads §8.1–§8.4 and stops. **Revision 11 amends §8.1, §8.2 and §8.4 by pointer only — the two rulings themselves live in §2.2 (A-10) and §2.7 (A-9), and a Phase 2 builder reads both; revision 12 amends §8.2 by pointer in the same way, and its four rulings live in §2.7 (A-11, A-12, A-13) and §2.14 (A-14)**. **A-26 is revision 20 and lives in §8.4** — the mixed-resolution country index, the withdrawal of the correctness floor's escalation mechanism, and the ruling that `null` is the right answer for a landform the dataset does not carry; **anyone touching `tools/gen-countries.mjs`, `geo/countryIndex.ts` or the attribution golden reads it first**, and it is what ROADMAP's I-5a builds; **A-27 is revision 21, sits directly under A-26 and is read *with* it, never instead of it** — it amends A-26 Part 4's block-quoted rule with a third clause (a filled code ships a **forgiveness entry** as well as a coverage entry), supersedes A-26 Part 5's two-residue list with three, lifts A-26 Part 6 item 3 for a docstring correction only, and is what ROADMAP's **I-5b** builds | 22k | architect; the builder and breaker of the phase after Phase 1 (§8.1–§8.4 only). §8.10 is for the architect and for phases 4, 5 and 7. Read with `PRODUCT-VISION.md` |
+| 8 | **The travel-history model** (revision 9) — trip lifecycle and past trips (§8.1), the feasibility/integrity rule class (§8.2), participants (§8.3), geography attribution, travel stats and the summary-row rule (§8.4); then the shapes the location, photo and social phases must land on (§8.5–§8.7) and what is refused (§8.8). **§8.10 is revision 10** — physical travel distance by mode and the four provenance bases that keep it honest; **it is not Phase 2 scope**, so a Phase 2 builder reads §8.1–§8.4 and stops. **Revision 11 amends §8.1, §8.2 and §8.4 by pointer only — the two rulings themselves live in §2.2 (A-10) and §2.7 (A-9), and a Phase 2 builder reads both; revision 12 amends §8.2 by pointer in the same way, and its four rulings live in §2.7 (A-11, A-12, A-13) and §2.14 (A-14)**. **A-26 is revision 20 and lives in §8.4** — the mixed-resolution country index, the withdrawal of the correctness floor's escalation mechanism, and the ruling that `null` is the right answer for a landform the dataset does not carry; **anyone touching `tools/gen-countries.mjs`, `geo/countryIndex.ts` or the attribution golden reads it first**, and it is what ROADMAP's I-5a builds; **A-27 is revision 21, sits directly under A-26 and is read *with* it, never instead of it** — it amends A-26 Part 4's block-quoted rule with a third clause (a filled code ships a **forgiveness entry** as well as a coverage entry), supersedes A-26 Part 5's two-residue list with three, lifts A-26 Part 6 item 3 for a docstring correction only, and is what ROADMAP's **I-5b** builds; **A-28 is revision 22, sits under A-27 and is read with both, never instead of them** — it supersedes A-27 Part 4's filter 2 (two arms, because the coverage index it compared against is mixed-resolution and answered generously) and A-27 Part 4's `overlaps` predicate (the vertex-mean probes come out), corrects A-27 Part 5's Macao sentence and every count in it, and is what ROADMAP's **I-5c** builds. **Anyone touching `tools/forgiveness.mjs` or the forgiveness pass reads A-28 first and A-27 second** | 27k | architect; the builder and breaker of the phase after Phase 1 (§8.1–§8.4 only). §8.10 is for the architect and for phases 4, 5 and 7. Read with `PRODUCT-VISION.md` |
 
 *(§8's figure is measured with `doc-section`, not estimated. §8.1–§8.4 — the Phase 2 model — are roughly
-three quarters of it since revisions 20 and 21 put A-26 and A-27 in §8.4; a Phase 2 builder who reads only
-those pays about 15k, and a builder of I-5b who reads §8.4 alone pays about 12k.)*
+four fifths of it since revisions 20, 21 and 22 put A-26, A-27 and A-28 in §8.4; a Phase 2 builder who reads
+only those pays about 19k, and a builder of I-5c who reads §8.4 alone pays about 17k. **A-28 is the entry
+point to that trio, not the last of it** — it names which of A-27's sentences it supersedes, so a builder who
+reads A-28 first knows which parts of A-27 to skip.)*
 
 Read the whole document when you are the manager, when you are changing the design, or when a change
 crosses a section boundary. Otherwise this table is the contract.
@@ -7227,6 +7254,11 @@ predicate:
 > are disjoint are rejected before any of this. The predicate is exact for simple rings and is evaluated on
 > the **quantised** rings — the ones that ship — never the raw ones.
 
+*(**Superseded at revision 22 by A-28 Part 5**, QA R23-2: the two *"or the arithmetic mean"* probes are
+**removed** — they fire on a point neither ring contains when a ring is concave, which makes filter 1
+unsound in the one direction it exists to guard — and *"exact for simple rings"* is restated as the theorem
+it is. The removal changes 0 of the 153 shipped decisions. **Implement A-28's predicate, not this one.**)*
+
 For each filled code, for each strictly coarser scale of the family that carries it, coarsest first, take that
 scale's rings and apply, per ring:
 
@@ -7242,6 +7274,14 @@ scale's rings and apply, per ring:
    claim is a wrong answer, not a tolerance. *Measured: this drops every ring of `AD`, `HK`, `LI`, `MC`, `SG`,
    `SM` and `SX` — i.e. every bordered filled code — so A-26 Part 5 residue 2's ~700 m bias is not widened by
    one metre.*
+
+   *(**Superseded at revision 22 by A-28 Part 3**, QA R23-1 (MAJOR). Both sentences above are wrong. The
+   population *"every other entry of the coverage-only index"* is **mixed-resolution** — 175 of its 239
+   entries are drawn at 1:110m — so a 1:50m candidate is asked about a neighbour at the wrong scale, and it
+   fails generously: `MO`'s ring was checked against China's 1:110m coastline, passed, and took ≈22.1 km² of
+   Guangdong. **`MO` is a bordered filled code and the list above is short by one.** A-28 replaces this
+   filter with two arms — 2a against the shipped index, 2b against each neighbour's finest drawing — and
+   explains why replacing rather than adding is worse. **Implement A-28 Part 3, not this item.**)*
 
 If no ring survives, the code has no forgiveness entry and the run says so. **A forgiveness entry may never
 introduce an ISO code the coverage pass did not already emit** — asserted, not assumed, beside the existing
@@ -7268,6 +7308,13 @@ These are an architect's measurements in a scratchpad with the generator's build
 builder re-derives every one of them from `tools/gen-countries.mjs` itself** and the increment's numbers are
 the generator's, not these. If they disagree, the generator is right and this paragraph is the defect.
 
+*(**Superseded at revision 22 by A-28 Part 6.** Every figure in this Part is the I-5b artefact's and is
+correct for it; A-28 refuses `MO`'s ring and the counts move to **53 entries / 141 of 153 rings kept /
+12 dropped / 292 entries / 1,033 rings / 22,220 points / 369,524 packed**. The sentence *"Macao's Senado
+Square is still `MO` and Zhuhai across the border is still `null`"* is **half false as shipped** — Senado
+Square is `MO`, Zhuhai is `MO` too — and is true again under A-28. It was a spot check of one coordinate
+where a sweep was owed, which is the process point of R23-1 and is stated in A-28 Part 1.)*
+
 **Part 6 — the residues, now three.** A-26 Part 5's list is superseded by this one.
 
 1. **Vatican City is `IT` at every scale, unchanged.** A-26 Part 5 residue 1 stands, with round 22's KD-52
@@ -7286,6 +7333,12 @@ the generator's, not these. If they disagree, the generator is right and this pa
    computed from a coordinate no polygon contains. **Trigger to reopen:** the first real trip whose coordinates
    sit between two island states close enough for their forgiveness bands to meet — filter 2 catches an
    overlap with a *shipped* entry, and nothing in the family currently produces such a pair.
+
+   *(Revision 22: **53** territories, not 54 — A-28 refuses `MO`'s band. The trigger is **re-derived** in
+   A-28 Part 8 rather than left asserted: all 1,378 pairs of the 53 entries, ring against ring-set, give zero
+   overlaps. Round 23 confirmed independently that R23-1 is a *different* case from this one — forgiveness
+   against a **coverage** entry too coarse to defend itself, not forgiveness against forgiveness — so this
+   residue was never the hole.)*
 
 **Part 7 — what a builder implements. Three files, no engine.**
 
@@ -7367,6 +7420,248 @@ share is a tracked number rather than a thing each round rediscovers. **The trig
 *second* generated dataset shipping ahead of its consumers — §8.10's airport index is the one already
 designed — because two of them is a pattern and one is an increment, and the right answer to a pattern is a
 build-time split for the class, not a special case for this file.
+
+#### A-28 — filter 2 is two comparisons, not one, because the index it compares against is mixed-resolution (revision 22, QA R23-1, R23-2, R23-4)
+
+QA round 23 attacked A-27 on four axes and broke one. The finding is right, its severity is right, and its
+closing paragraph is right about the shape of the remedy being an architect's call rather than a patch:
+**it names three candidate populations for filter 2, and none of the three alone is correct.** The answer
+is a conjunction of two of them, and the reason is that filter 2 has been doing two different jobs under
+one name since A-27 was written.
+
+Everything below is re-derived here, from the same three pinned layers fetched independently
+(838,726 / 3,083,490 / 13,287,234 bytes; all three checksums match `tools/gen-countries.mjs`'s pins to the
+byte) with the real generator re-run against a patched filter. The numbers are an architect's; **the builder
+re-derives every one of them from the generator itself, and if they disagree the generator is right.**
+
+**Part 1 — the defect, reproduced.**
+
+A-27 Part 4's filter 2 tests a candidate ring against *"every other entry `E` of the coverage-only index"*.
+A-26 Part 4 made that index deliberately **mixed-resolution**: 175 codes at 1:110m, 64 at 1:10m. So what
+filter 2 actually asks is *"do you overlap this neighbour as the index happens to draw it"* — and for a
+neighbour drawn at 1:110m that is a question at the wrong scale. It fails in exactly one direction:
+**generously**.
+
+`MO` is the case. Macao's 1:50m candidate ring was checked against China's **1:110m** coastline, which is
+generalised kilometres inland of the Pearl River delta, so there was nothing there to reject it and the ring
+was admitted. Measured against the committed artefact over `MO`'s candidate bounding box padded by 0.1°, at
+0.005°: **77 of 2,754 cells answer `MO` today and answer `null` once the ring is refused — ≈22.1 km²,
+against Macao's own ~33 km².** Zhuhai Nanping (22.221 N, 113.503 E) is `MO` in the shipped index. Natural
+Earth's 1:10m layer calls that ground `CN`; the shipped index cannot say `CN` there, because it draws China
+at 1:110m — so `null` is the answer A-26 Part 1's rule requires, and `MO` is simply wrong.
+
+A-27 Part 4 enumerates filter 2's rejects as *"`AD`, `HK`, `LI`, `MC`, `SG`, `SM` and `SX` — i.e. every
+bordered filled code"*. **`MO` is a bordered filled code, the enumeration is short by one, and that sentence
+is the defect** — exactly as the finding says. It survived both my Part 5 verification and the builder's for
+one reason worth writing down, because it generalises past this ruling: **every sweep either of us ran
+compared the index against itself.** A cell that was `null` and is now `MO` books as a *gain* under A-27
+Part 3 property 2, and the index's own opinion of Zhuhai is `null` before *and* after, so no self-consistent
+check could ever see it. A wrong answer of this class is only visible against a **third source**, and the
+right one was already in the repository: the 1:10m layer the fill itself is cut from.
+
+**Part 2 — the finding's three populations, each measured, each insufficient.**
+
+All 153 candidate rings, run through filter 1 and then through each population in turn. *Kept* counts rings
+surviving both filters; two of the twelve drops (`MV[0]`, `VA[0]`) are filter 1's in every row.
+
+| filter 2's population | kept | what it gets wrong |
+|---|---|---|
+| **the coverage-only index, as shipped** (A-27, today) | 142 | admits `MO[0]` — 22.1 km² of Guangdong attributes to Macao |
+| **every other code at the family's finest scale (1:10m)** | 144 | rejects `MO[0]` correctly, but **admits `HK[1]`, `HK[2]` and `SG[0]`** |
+| **every other code at the candidate's own scale (1:50m)** | 143 | admits the same three, **and** loses `MF[0]` to `SX` for no reason in the ground |
+
+The second row is the trap, and it is why the obvious remedy is not the remedy. `CN`'s and `MY`'s **1:110m**
+rings cover Lantau and Singapore Island wholesale; their 1:10m rings do not. So a finest-scale comparison
+stops rejecting `HK`'s two outlying-island rings and `SG`'s ring — and admitting them moves, at 0.005° over
+their own boxes, **23 cells from `CN` to `HK` and 42 from `MY` to `SG`**. That is precisely the
+`country → other country` class **A-27 Part 3 property 2 declares impossible by construction**, and precisely
+the widening of A-26 Part 5 residue 2 that A-27 Part 6 residue 2 says filter 2 forbids. Replacing the
+population trades a wrong answer at Macao for two wrong answers at Hong Kong and Singapore and forfeits the
+strongest check the ship gate has.
+
+The third row loses `MF`'s only candidate ring because Saint-Martin's and Sint Maarten's **1:50m** polygons
+overlap each other in the source layer — a same-scale artefact of Natural Earth, not a claim on anyone's
+ground: `SX`'s 1:10m territory is nowhere answered `MF`. Rejected.
+
+**Part 3 — the ruling. Filter 2 becomes two arms, and neither may be dropped in favour of the other.**
+
+A-27 Part 4's filter 2 is replaced, in full, by:
+
+> **Filter 2 — forgiveness may not be taken from a neighbour, and "neighbour" is decided at the finest
+> scale available.** A ring that survived filter 1 is kept only if **both** of the following are false:
+>
+> - **2a — against the shipped index.** `overlaps(ring, E.rings)` for any other entry `E` of the
+>   coverage-only index, each at the resolution that entry ships at.
+> - **2b — against each neighbour's finest drawing.** `overlaps(ring, F(c))` for any ISO code `c` other
+>   than the candidate's own that the coverage-only index carries, where `F(c)` is that code's rings at
+>   **the finest scale of the pinned family that carries `c`**, quantised exactly as the shipped rings are —
+>   *regardless of the scale `c`'s own coverage entry is drawn at*.
+>
+> The arms are tested in that order and a drop is booked against the first that fires. Both populations
+> exclude the candidate's own ISO code. **2a is the non-regression guarantee and 2b is the truth guarantee**;
+> A-27 Part 3 property 2 rests on 2a exactly as this ruling rests on 2b, and dropping either one re-opens a
+> defect this section has now measured.
+
+With `FAMILY` and `FILL` as pinned, `F(c)` is *c*'s 1:10m rings for all 239 codes: measured here, **every one
+of the base's 175 codes is present at 1:10m** (and the 64 filled codes are 1:10m by construction), so the
+*"finest scale that carries `c`"* clause selects one layer today and is insurance that costs nothing.
+
+**Filter 1 is unchanged, and this is a measured property rather than an omission.** Its population is the
+code's own **coverage** rings; for a filled code those *are* the fill, and the fill is `FAMILY`'s finest
+scale — so filter 1 already compares at the finest resolution available and carries no instance of R23-1's
+class. **The trigger, stated so it cannot be discovered later:** the moment `FILL` is not `FAMILY`'s last
+element, filter 1 acquires exactly this defect and needs its own second arm. `gen-countries.mjs` therefore
+asserts `FILL === FAMILY[FAMILY.length - 1]` at start-up, naming this ruling in the message, so that a change
+to either constant fails loudly instead of quietly reintroducing R23-1 one filter to the left.
+
+**Part 4 — the second-instance census, which is the part the finding asked for.**
+
+Not sampled. Every one of the **151 candidate rings that survive filter 1** was run against **all 239 codes**
+under both arms. Exactly **four rings** get different verdicts from the two arms, and they are all of them:
+
+| ring | arm 2a (shipped index) | arm 2b (finest) | shipped today | under A-28 |
+|---|---|---|---|---|
+| `MO[0]` | passes | **rejects — `CN`** | admitted; **wrong** | rejected by 2b |
+| `HK[1]` | **rejects — `CN`** | passes | rejected | rejected by 2a |
+| `HK[2]` | **rejects — `CN`** | passes | rejected | rejected by 2a |
+| `SG[0]` | **rejects — `MY`** | passes | rejected | rejected by 2a |
+
+The other 147 receive the same verdict from both arms. So: **there is no second instance of R23-1 in
+the harmful direction — `MO` is the only ring the shipped-index comparison wrongly admits.** There are three
+instances in the *harmless* direction, and they are recorded above rather than left to be rediscovered,
+because a future reader who finds `HK` and `SG` rejected "against a coarse polygon" will recognise R23-1's
+mechanism and be tempted to fix it. **Those three rejections are correct and must stay**; Part 2 has the
+measurement of what admitting them costs.
+
+**Part 5 — R23-2: the vertex means come out, and the claim narrows to what is provable.**
+
+The finding is right that *"exact for simple rings"* is false as A-27 wrote it: a ring's vertex mean can lie
+outside a concave ring, so the *"or the arithmetic mean of the vertices"* clauses can fire on a point neither
+ring contains. The harm has a direction — a false positive makes **filter 1 unsound**, which is the Vatican
+failure filter 1 exists to stop — and the means are surplus, because containment in either direction is
+already caught by the individual-vertex clauses. A-27 Part 4's predicate is replaced by:
+
+> **`overlaps(ring R, ring-set S)`** is true iff any of: **(a)** a vertex of `R` is inside `S` under the
+> even-odd rule; **(b)** a vertex of any ring of `S` is inside `R`; **(c)** a segment of `R` crosses a
+> segment of any ring of `S`. Rings whose bounding boxes are disjoint are rejected before any of this. It is
+> evaluated on the **quantised** rings — the ones that ship — never the raw ones, and on the integer lattice
+> those rings live on, so every clause is an exact integer comparison.
+>
+> **Exact for simple rings, as a theorem rather than a claim.** If two simple closed rings have no crossing
+> pair of segments, they are either disjoint or one lies wholly inside the other; in the second case every
+> vertex of the inner ring is inside the outer, so (a) or (b) fires. (a)–(c) are therefore complete and
+> sound for simple rings, and the integer arithmetic makes each decision exact rather than nearly exact.
+> **No claim is made for self-intersecting rings.** The artefact contains nine — eight in `MV`, one in `SD`
+> (QA R22-2) — none of them a forgiveness candidate; where such a ring sits in a filter's *population* the
+> predicate could in principle miss an overlap, bounded by the bow-ties' own lobes, which R22-2 measured at
+> ~0.0196 km² lost / ~0.0118 km² gained in total.
+
+**Re-verified here rather than inherited:** the finding measured "0 of 153 decisions change" against the
+*old* one-arm filter. I re-ran the **new two-arm** filter with a mean-free predicate over all 153 candidates:
+**0 of 153 decisions differ** — same 141 kept, same 12 drops, same filter and same code on every one. So the
+removal is a simplification with no shipped consequence, and after it the ruling's own sentence is true.
+
+*(Round 23's **R23-3** — the seven `overlaps()` tests cannot detect any of its three clauses being deleted —
+is routed to the builder, not here, and I am not ruling on it. It is **sequenced** into the same increment
+for one reason: R23-3's cause is the surplus this Part removes, and the fixtures it asks for are fixtures for
+the three clauses this Part rewrites. Doing them apart means writing the tests twice.)*
+
+**Part 6 — what this produces, measured.**
+
+Generated at `v5.1.2`, base `110m`, fill `10m`, forgiveness from `50m`, with both arms:
+
+| | A-27, shipped today | A-28 |
+|---|---|---|
+| candidate rings kept | 142 of 153 | **141 of 153** |
+| dropped | 11 — 2 by filter 1, 9 by filter 2 | **12 — 2 by filter 1, 9 by arm 2a, 1 by arm 2b (`MO` → `CN`)** |
+| forgiveness entries / codes | 54 / 54 | **53 / 53** |
+| filled codes refused one | 10 — `AD GI HK LI MC SG SM SX UM VA` | **11 — the same plus `MO`** |
+| index entries / distinct codes | 293 / 239 | **292 / 239** |
+| rings / points | 1,034 / 22,229 | **1,033 / 22,220** |
+| packed / emitted bytes | 369,688 / 374,826 | **369,524 / 374,659** |
+
+- **Nuku'alofa, St John's, St George's and Diego Garcia still attribute to their own countries.** Senado
+  Square is still `MO`; St Peter's is still `IT`; Pile Gate is still `HR`; the three Dalmatian coves are
+  still `null`. The reference trip's 226 coordinate-bearing records are unchanged, as they were at I-5b.
+- **The whole delta is Macao's ring.** A 0.02° sweep over all **54** of the committed artefact's forgiveness
+  bounding boxes padded by 0.1° — **17,889,541 cells** — finds **5 cells changed, all `MO` → `null`, and
+  nothing else anywhere**. At 0.005° over `MO`'s box alone the figure is 77 cells, ≈22.1 km², and **every one
+  of them is the Zhuhai ground**: refusing `MO`'s forgiveness costs Macao no water of its own that the sweep
+  can see.
+- **Additivity is preserved.** The coverage half is untouched and the forgiveness half is a strict subset of
+  I-5b's, so every ring of the **pre-I-5b** index is still present byte-identical and
+  `country → null` against that baseline remains impossible by construction. ROADMAP criterion 4(e)(ii) and
+  (iii) are measured against the pre-I-5b index and both still hold as written; the five `MO → null` cells
+  are a diff against the *committed I-5b artefact*, where they are the correction and not a regression.
+
+**Part 7 — what a builder implements. Two files, the artefact, and the tests. No engine.**
+
+1. **`tools/forgiveness.mjs`.** Delete the two vertex-mean probes from `overlaps` and `vertexMean` with them;
+   replace the header's block-quoted predicate with Part 5's, verbatim, and drop implementation note 3.
+   `forgivenessFor`'s signature becomes
+   **`forgivenessFor(candidates, own, others, finestOthers, opts = {})`**, with
+   `opts = { filter1, filter2a, filter2b }`, all defaulting true and **each independently removable** so the
+   injected faults stay a call rather than a code edit. It **throws** when `filter2b` is enabled and
+   `finestOthers` is absent or empty: an accidentally-empty finest population is R23-1 exactly, and it must
+   not be reachable by forgetting an argument. Each drop record gains
+   `against: 'coverage' | 'finest' | null`; `filter` stays `1 | 2` so the existing golden's shape and the
+   run's counting survive.
+2. **`tools/gen-countries.mjs`.** Assert `FILL === FAMILY[FAMILY.length - 1]` at start-up, with Part 3's
+   trigger named in the message. Build the finest layer's full code→rings map **once, outside the per-code
+   loop** — the fill layer is already downloaded and parsed, and re-preparing 239 ring-sets 62 times is the
+   difference between a generator run and a coffee break. Report the two arms separately in the run's own
+   output (`… 9 by filter 2a — a neighbour's ground as the index draws it; 1 by filter 2b — a neighbour's
+   ground at the finest scale`). `fixtures/golden/forgiveness-drops.json` gains the `against` field and its
+   `forgivenessAt` positions move because one entry is gone. `--no-fill`, `--scale`, `--dry-run`,
+   `--audit-only` and `--holes` all keep working.
+3. **`packages/core` — no hand-written change in any file.** `countries.gen.ts` is regenerated;
+   `countryIndex.ts`'s and `derive/country.ts`'s A-27 text is still true and must not be touched. **If
+   `countryOf` grows a branch, a distance function or a parameter, the increment has gone wrong** — that
+   sentence is now three rulings old and has not moved.
+4. **The tests.** `0-countryBudget.test.ts`'s `EMITTED_BYTES` is re-measured from the generator's output;
+   `country.test.ts`'s entry count moves to the measured 292 while its distinct-code assertion stays at 239.
+   **One new named test, and it is the point of the increment:** with `filter2b` removed, `MO` acquires a
+   forgiveness entry and Zhuhai Nanping attributes to `MO` — red. That is the assertion whose absence let
+   R23-1 ship. R23-3's per-clause fixtures land here too, per Part 5's note.
+
+**Part 8 — the residues. A-27 Part 6's three stand, and its trigger is re-verified.**
+
+1. **Vatican City is `IT` at every scale.** Unchanged; filter 1 still drops the 1:50m polygon.
+2. **A filled country's border is biased toward the smaller state, ~700 m at Monaco.** Unchanged — and now
+   *doubly* protected: arm 2a forbids widening it, and Part 2 records the 65 cells that would move if it were
+   dropped.
+3. **A band of sea answers the island rather than `null`, around 53 island territories** (was 54; `MO` leaves
+   the list). Unchanged in kind. **Its trigger — two forgiveness bands meeting — is re-derived here rather
+   than inherited:** all 1,378 pairs of the 53 entries, ring against ring-set, give **zero** overlaps.
+   Fifteen pairs' bounding boxes meet, fourteen of them because `KI` spans 27° of the Pacific and the
+   antimeridian and the fifteenth being `VG`/`VI`; not one is an overlap. The residue is intact and the
+   trigger has not fired.
+
+Nothing here is a *new* residue. Macao losing its forgiveness band is not one: Part 6 measures the cost at
+zero cells of Macao's own water, and `MO` joins the ten codes A-27 already refused for being bordered.
+
+**Part 9 — R23-4: the ROADMAP sentence, ruled here and corrected there.**
+
+`ROADMAP.md`'s I-5, I-5a and I-5b ship gates each say *"`node --test packages/core` still runs directly"*
+alongside *"the budget test is still the first test"*. Three facts, verified here by running all three
+commands:
+
+- `node --test packages/core` resolves the workspace through its `exports` field, imports `src/index.ts`,
+  **registers no tests**, and reports one passing subtest named `packages/core` in ~170 ms. It **is** a real
+  gate — it proves the 374 kB generated module type-strips with no build step — but it demonstrates nothing
+  about ordering and runs none of the suite.
+- `npm run test:tap` runs the whole suite, and **does not run it in file order**: with Node's default
+  concurrency the budget test lands at **`ok 190`**, not `ok 1`. *(The finding's own correction says
+  otherwise; this is the one place round 23 is wrong, and it is wrong in the direction of a stronger claim.)*
+- `node --test --test-concurrency=1 packages/core/test/*.test.ts` puts the budget test at **`ok 1`, `ok 2`,
+  `ok 3`** — so *"first"* is a true and useful claim about exactly one command.
+
+**Ruling: attach each fact to the command that demonstrates it, and demote "first" to what it is.** The
+type-stripping gate is the load-bearing half and it is order-independent — a module that will not strip
+fails *every* test that imports core, whenever it runs. Being first is a fail-fast convenience observable
+only under serial execution. `ROADMAP.md` carries the corrected wording in all three ship gates. **No new
+script, no new command in any gate, and nothing about what is run changes** — this is a prose defect and its
+fix is prose.
 
 ### 8.5 Observed travel — the shape Phase 5 must be able to land on
 
