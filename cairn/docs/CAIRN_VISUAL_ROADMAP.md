@@ -130,9 +130,25 @@ update to this file added that instruction).
 > export you cannot re-open. **Still built, not yet verified:** one builder pass lands A-20, then a
 > tester round 17 attacks it.
 
-> **Last updated:** 2026-08-28, against `master` after ARCHITECTURE revision 15 (A-20, the one
-> round-16 design finding, plus the ratification of `place_hours_malformed`) — previously
-> revision 14's A-18/A-19. Update this line every time you edit this file.
+> **That was built, and round 17 could not break it — but it found the fix's own blind spot.** When
+> the app checks a value and then goes back to fetch it again to use it, those are two separate
+> looks at the same thing. Normal trip data never changes between two looks, which is why the rule
+> worked. But a value can be a tiny function rather than a stored fact — and one written to answer
+> *"9:00"* the first three times and hand over a door PIN the fourth slips a credential straight
+> past the check, into the other person's trip. The tester demonstrated it, and found the same
+> pattern on a **price** field and in three places where it makes the app crash rather than leak.
+> Nothing a trip *file* contains can do this — a saved file has no room for a tiny function — so
+> the exposure is limited to the app talking to itself, which is why it is filed as minor. The
+> architect's ruling (`ARCHITECTURE.md` **A-21**, revision 16): **look once.** Whatever the check
+> looked at is the exact thing that gets used, and the check now hands that value back instead of
+> just saying "fine". One thing it deliberately does **not** fix, and says so in writing: the
+> app cannot promise that a value it checked this second is the same value it saves a minute later,
+> if the value is free to change itself in between. **Built, not yet verified:** one builder pass
+> lands A-21, then a tester round 18 attacks it.
+
+> **Last updated:** 2026-08-28, against `master` after ARCHITECTURE revision 16 (A-21, the one
+> round-17 design finding — check once, use what you checked) — previously revision 15's A-20.
+> Update this line every time you edit this file.
 
 **Status vocabulary used throughout:** 🟢 COMPLETE · 🟡 IN PROGRESS · 🟠 NEXT / APPROVED ·
 🔴 BLOCKED · ⚪ NOT STARTED. Also: **built** (code exists) vs **verified** (an adversarial tester

@@ -199,13 +199,37 @@ up A-10's three codes, which it has lagged by since revision 11, in the same swe
 consequences in `ROADMAP.md` are I-4a's Built / Verification / Ship-gate lines and nothing else: **no new
 increment, no change to the phase order.**
 
+**Revision 16, 2026-08-28.** QA round 17 — the breaker pass over A-20 — closed A-20, R16-1 and R16-2 and
+routed **one** finding back here, because the defect is in the ruling's own printed function body rather
+than in the code that implements it. **One addendum, in §2.9**; no redesign, no engine, no persisted shape,
+no `schemaVersion` bump, no movement on §2.10's export surface. **A-21** (§2.9, §2.14, QA **R17-1**): A-20
+Part 1 prints `isWeeklyEntry(v): boolean`, so **the read that is validated and the read that is used are two
+different reads of the same field**. For a plain data object they are equal, which is why A-20's argument
+held; for an **accessor property** they are not, and `weeklyForCopy` — which reads `open` four times —
+validates `'09:00'` and copies a door PIN into the recipient's document, R15-1's exact harm on the boundary
+A-18 was written to close. The answer is not a fourth guard around `hours`: a predicate over a compound
+value **returns what it read** (`readWeeklyEntry(v): WeeklyRead`), and every field of a caller-supplied
+record is read **once**, into a `const`, which everything downstream then tests, redacts, compares and
+emits. Searching the module family for the same shape found **seven more sites in six functions the finding
+did not name**, all previously unfiled and all measured: `cost.display` leaks a credential by the identical
+mechanism, `copyStopInto` **aliases** the source's own `PlaceLink` into the target for an out-of-union
+`kind` (no accessor needed at all), and a flipping
+`weekly` makes `isOpeningHours`, `hoursForCopy` and `toJSON`'s `hours()` each throw a raw `TypeError` — out
+of a predicate documented *"throws nothing"*, out of `validateTrip`, and out of an export, all three of
+which §2.1 forbids. What A-21 explicitly does **not** close is named rather than left to be re-found:
+across **two** traversals (`validateTrip` at T1, `toJSON` at T2) no discipline inside either can make an
+unstable document consistent, so R17-1's second face is narrowed, not closed, and the two mechanisms that
+would close it (freeze the document at every entry point; round-trip the export text) are both costed and
+refused with a trigger. The mechanical consequences in `ROADMAP.md` are I-4a's Built / Verification /
+Ship-gate lines and nothing else: **no new increment, no change to the phase order.**
+
 **Phase 1 is §2 and §4. The next phase is §8.1–§8.4.** Everything else is the shape those must not
 foreclose. See `ROADMAP.md` for sequencing and `PRODUCT-VISION.md` for why this order and not another.
 
 ## Read only your sections
 
-This document is ~100k tokens (re-measured at revision 15 with `cairn/tools/doc-section ARCHITECTURE` — §2 is
-now ~68k of it and §8 ~12k; the per-section figures below were stale by a third before revision 11 and are
+This document is ~108k tokens (re-measured at revision 16 with `cairn/tools/doc-section ARCHITECTURE` — §2 is
+now ~76k of it and §8 ~12k; the per-section figures below were stale by a third before revision 11 and are
 re-measured, not estimated, whenever a revision lands). Nothing needs all of it, and a fresh agent that reads it whole starts a sixth
 of the way into its context before writing a line. Pull what you need:
 
@@ -218,7 +242,7 @@ cairn/tools/doc-section ARCHITECTURE         # lists the sections and their size
 |---|---|---|---|
 | 0 | Six positions, stated up front | <1k | everyone — read it, it is 20 lines |
 | 1 | Stack decision and the capability checks behind it | 3k | architect. Settled; do not re-litigate |
-| 2 | **Domain model — the builder's contract.** §2.12 `travelRole`, §2.13 geography and §2.14 import/copy are new in revision 2 and are where the Phase 1 rework lives; **§2.2a (the `StorageVersion` write fence, revision 3) and §2.2b (the freshness rule it turned out to be one instance of, revision 4) are read together with §4.2 and §4.3, never alone**; §2.10 (the export surface) and §2.13's copied-record row are settled in revision 5; **§2.7's retirement ledger (A-5) and §2.13's copy-borne `Place` rule (A-6) are revision 6**; **§2.2a's A-7 (the fence a declined write may not move) is revision 8** and is read with §4.2 rule 4a; **§2.2's A-10 (a `CityKey` is a minted opaque id) and §2.7's A-9 (retirement is decided against the un-gated set) are revision 11** — a Phase 2 builder needs both; **A-11, A-12 and A-13 (§2.7) and A-14 (§2.14) are revision 12** and are read *with* A-9 and A-10, never instead of them — A-11 replaces A-9's greppable invariant, A-12 narrows A-9 point 1, A-13 rewrites A-9 assertion 4, and A-14 corrects A-10's change table; **A-15 and A-16 (§2.14) and A-17 (§2.7) are revision 13** — A-15 is the copy path's redaction rule and is read with §6.6, A-16 withdraws A-14's *"within one trip is unchanged"* paragraph, A-17 narrows A-11 assertion 5; **A-18 and A-19 (§2.14) are revision 14** — A-18 is the copy path's redaction rule for the *stop's own* nested records (`cost`, `arrival`) and generalises A-15 to *no spread at any depth*, A-19 rules that the `placement` **argument** is validated against the target and never re-filed. **Anyone touching `copyStopInto` reads A-14, A-15 and A-16 as one rule 4, and A-18 with rules 3 and 5**; **A-20 is revision 15 and lives in §2.9, not §2.14** — it is where the *shape* of a document is decided, it amends A-15's `hours` row and A-18's *"changes nothing in `fromJSON`"* paragraph, and **anyone touching `Place.hours` at any layer reads it first** | 68k | builder, breaker |
+| 2 | **Domain model — the builder's contract.** §2.12 `travelRole`, §2.13 geography and §2.14 import/copy are new in revision 2 and are where the Phase 1 rework lives; **§2.2a (the `StorageVersion` write fence, revision 3) and §2.2b (the freshness rule it turned out to be one instance of, revision 4) are read together with §4.2 and §4.3, never alone**; §2.10 (the export surface) and §2.13's copied-record row are settled in revision 5; **§2.7's retirement ledger (A-5) and §2.13's copy-borne `Place` rule (A-6) are revision 6**; **§2.2a's A-7 (the fence a declined write may not move) is revision 8** and is read with §4.2 rule 4a; **§2.2's A-10 (a `CityKey` is a minted opaque id) and §2.7's A-9 (retirement is decided against the un-gated set) are revision 11** — a Phase 2 builder needs both; **A-11, A-12 and A-13 (§2.7) and A-14 (§2.14) are revision 12** and are read *with* A-9 and A-10, never instead of them — A-11 replaces A-9's greppable invariant, A-12 narrows A-9 point 1, A-13 rewrites A-9 assertion 4, and A-14 corrects A-10's change table; **A-15 and A-16 (§2.14) and A-17 (§2.7) are revision 13** — A-15 is the copy path's redaction rule and is read with §6.6, A-16 withdraws A-14's *"within one trip is unchanged"* paragraph, A-17 narrows A-11 assertion 5; **A-18 and A-19 (§2.14) are revision 14** — A-18 is the copy path's redaction rule for the *stop's own* nested records (`cost`, `arrival`) and generalises A-15 to *no spread at any depth*, A-19 rules that the `placement` **argument** is validated against the target and never re-filed. **Anyone touching `copyStopInto` reads A-14, A-15 and A-16 as one rule 4, and A-18 with rules 3 and 5**; **A-20 is revision 15 and lives in §2.9, not §2.14** — it is where the *shape* of a document is decided, it amends A-15's `hours` row and A-18's *"changes nothing in `fromJSON`"* paragraph, and **anyone touching `Place.hours` at any layer reads it first**; **A-21 is revision 16, lives in §2.9 beside A-20 and is read with it** — it replaces A-20's `isWeeklyEntry` with a reader that returns what it read, and imposes one read per field on `copyStop.ts`, so **anyone touching a predicate over an `unknown`, or any function in `copyStop.ts`, reads A-21 with A-15 and A-18** | 76k | builder, breaker |
 | 3 | Module boundaries | <1k | builder |
 | 4 | **The Phase 1 client.** §4.2 rule 6 (a pending write is never outlived by its document) is new in revision 3 — QA R3-2; rule 6a′ and the `savedDoc` predicate are revision 4 — QA R4-1; **rule 6a″ (the flush bound and its exits) and rule 6c's "delete goes on the chain" are revision 5** — QA R6-1/R6-2/R7-3; **rule 5's retirement carve-out is revision 6** — QA R8-1, read with §2.7; **rule 4a is revision 8** — QA R11-1, read with §2.2a A-7 | 7k | builder |
 | 5 | The four hard subsystems | 2k | breaker; builder from Phase 3 on |
@@ -2499,6 +2523,459 @@ take is already decided by the rest of this ruling: the *parser* would normalise
 `null` the entry it cannot, `place_hours_malformed` would become the live report of it, and the shared
 predicate would not move. Nothing about the copy boundary or `validateTrip` changes on that day.
 
+#### A-21 — a value that crosses a boundary is read once, and a predicate over a compound value hands back what it read (revision 16, QA R17-1)
+
+**The defect, and it is in A-20's own printed body.** A-20 Part 1 prints `isWeeklyEntry(v): boolean`. A
+boolean answers *"is that value well-formed?"* and then throws the value away, so every consumer must go
+back to the object and **read the field again** to use it. `weeklyForCopy` therefore reads `open` four
+times — inside `isWeeklyEntry`, inside `redacted(e.open)`, in the `!==` comparison, and in the object it
+returns — and `close` four times, and `day` twice. For a plain data object every read is equal, which is
+exactly why A-20's argument held and why every one of QA's 53 parser shapes agreed. For an **accessor
+property** they are four different values.
+
+Measured (a getter returning `'9:00'` on reads 1–3 and a credential on read 4, against bodies copied
+verbatim out of `model/openingHours.ts` and `build/copyStop.ts`):
+
+```
+weeklyForCopy, as shipped:  {"day":1,"open":"Front door PIN 0754, conf 5814731574","close":"17:00"}
+```
+
+That string is then greppable in the recipient's `toJSON`. It is R15-1's exact harm, on the person boundary
+A-15 and A-18 were written to close, reached through the one construction A-20 introduced while closing it.
+**MINOR, and the bound is the population, not the harm**: `JSON.parse` produces own data properties and
+never accessors, so no document can do this — it needs a `Place` built in memory past the type system, the
+same population `place_hours_malformed` was ratified for. QA routed it here rather than to a builder because
+the builder implemented the ruling exactly; the ruling is what re-reads.
+
+**The rule, stated so it decides the next case as well as this one.**
+
+> **Within one traversal, a field of a caller-supplied value is read exactly once.** The value that was
+> checked is the value that is used, compared, redacted and emitted. A predicate over a **compound** value
+> therefore returns *what it read* — never a `boolean` that its caller must re-derive the value to act on.
+
+There is a safe double read and an unsafe one, and the difference is the whole rule. A builder applies this
+discriminator rather than a style preference:
+
+- **Safe — read 1 decides only whether a key is *present*; read 2 is validated and *is* the value used.**
+  `fromJSON`'s `...(o.x !== undefined ? { x: str(o.x, path) } : {})` is this form, in about forty places.
+  Nothing unvalidated can escape it: whatever read 2 returns is what `str`/`numOf`/`clock` check and hand
+  back, and the worst outcome an unstable getter can produce is a `TripParseError` on a named path — a
+  legitimate refusal. **This form does not change**; rewriting forty sites with no defect behind them is
+  churn, and churn in a parser is how a parser acquires one.
+- **Unsafe — read 1 is validated or tested, and read 2 is used, compared or emitted.** That is R17-1, and
+  it is banned. Also unsafe, and the same shape one step down: **read 1 is `Array.isArray`-tested and read 2
+  is `.map`ped or `.every`ed**, which is not a leak but a raw `TypeError` out of a function §2.1 says does
+  not throw.
+
+Note what is *not* covered, so nobody over-applies it: a value **core itself constructed** from validated
+scalars is stable by construction and may be read freely (destructuring `read.entry` below is not a re-read
+of the caller's object); and a **discriminant tested against a closed set**, where every branch builds a
+fresh record from named fields, may be read more than once, because the worst an unstable discriminant can
+then produce is a well-formed record of the wrong variant — a hole, never a leak. Both carve-outs are used
+below and neither is discretionary.
+
+**The search, and it found seven more sites in six functions the finding did not name.** The general class
+is *reads a field of a caller-supplied value
+more than once*, so this was a search of `model/openingHours.ts`, `serialize/fromJSON.ts`,
+`build/copyStop.ts` and the `hours` half of `serialize/toJSON.ts` (A-20's own diff), not a patch of the
+reported line. Every consequence below was produced by running the shipped body against a flipping getter,
+not by reading it:
+
+| site | field, reads | measured consequence today |
+|---|---|---|
+| `copyStop.ts` `weeklyForCopy` | `open` ×4, `close` ×4, `day` ×2 | **R17-1.** `open: "Front door PIN 0754, conf 5814731574"` in the recipient's document |
+| `copyStop.ts` `costForCopy` | `display` ×4 | **The same leak, unfiled.** `display: "conf 5814731574"` crosses — A-18's own field, by A-18's own construction (`redacted(c.display) === c.display ? c.display : null`) |
+| `copyStop.ts` `costForCopy` | `amounts` ×2 | `TypeError: c.amounts.map is not a function` out of `copyStopInto` |
+| `copyStop.ts` `hoursForCopy` | `weekly` ×2 | `TypeError: o.weekly.map is not a function` out of `copyStopInto` — R15-2's closure, reopened on a getter |
+| `copyStop.ts` `placeForCopy` | `at` ×3 | `TypeError: Cannot read properties of null (reading 'lat')` |
+| `copyStop.ts` `copyStopInto` | `src.place` ×5, `placement.cityKey` ×2 | **An alias, and it needs no getter at all.** The ternary's fallthrough is `place = src.place`, so a cast-built `PlaceLink` with an out-of-union `kind` puts the **source's own object, with every key it carries**, into the target document — A-18 position 2's *"no spread of a source record at any depth"* defeated by something worse than a spread. The `as { placeId: string }` cast two lines down is the same re-read |
+| `openingHours.ts` `isOpeningHours` | `weekly` ×2, `note` ×2 | `TypeError: o.weekly.every is not a function` — thrown out of a predicate whose docstring says *"Throws nothing"*, and out of `validateTrip`, whose docstring says *"Nothing here throws"* |
+| `toJSON.ts` `hours()` | `weekly` ×2 | `TypeError: o.weekly.map is not a function` out of an export |
+| `fromJSON.ts` `parseOpeningHours`, `clock`, `clockOrNull` | — | **Clean already.** `arr`/`obj`/`str`/`numOf`/`clock` each return the value they validated, and the entry is built from those returns. This is the shape the rest of this ruling copies |
+
+`weeklyOut` in `toJSON.ts` is also already clean (one read per field). `arrivalForCopy`, `placeForCopy`'s
+`note`/`hours` and `costForCopy`'s `note` are the **safe** double-read form (read 2 goes through `redacted`,
+which is total and fails closed) — they are hoisted below anyway, for a reason given in Part 4.
+
+**Part 1. `model/openingHours.ts` — the predicate returns the entry.** `isWeeklyEntry` is **deleted** and
+replaced. The module keeps three runtime exports and stays **off `index.ts`** (§2.10 unmoved at **71**);
+`WeeklyEntry` and `WeeklyRead` are types and cost nothing there.
+
+```ts
+/** `H:MM` or `HH:MM`. The one clock-shape test in this system. Pure. Throws nothing. */
+export function isClockTime(v: unknown): v is ClockTime {
+  return typeof v === 'string' && /^\d{1,2}:\d{2}$/.test(v);
+}
+
+/** One well-formed `weekly` entry, already read. Every field here is a value, never a getter. */
+export type WeeklyEntry = { day: number; open: ClockTime; close: ClockTime };
+
+/** The result of reading one `weekly` slot exactly once. Three outcomes, because `null` cannot
+ *  mean both "absent, and that is valid" and "malformed". */
+export type WeeklyRead =
+  | { kind: 'absent' }
+  | { kind: 'entry'; entry: WeeklyEntry }
+  | { kind: 'malformed' };
+
+/**
+ * Reads one `weekly` slot **once per field** and hands back what it read (A-21). Pure. Throws
+ * nothing of its own — a getter on the caller's object that throws still propagates, which is
+ * true of reading any field of any record and is not this function's to catch.
+ */
+export function readWeeklyEntry(v: unknown): WeeklyRead {
+  if (v === null || v === undefined) return { kind: 'absent' };
+  if (typeof v !== 'object' || Array.isArray(v)) return { kind: 'malformed' };
+  const e = v as { day?: unknown; open?: unknown; close?: unknown };
+  // One read per field, in the order the boolean predicate short-circuited in, so the read
+  // COUNT and the read ORDER are both unchanged from A-20 for every value either can see.
+  const day: unknown = e.day;
+  if (typeof day !== 'number' || !Number.isFinite(day)) return { kind: 'malformed' };
+  const open: unknown = e.open;
+  if (!isClockTime(open)) return { kind: 'malformed' };
+  const close: unknown = e.close;
+  if (!isClockTime(close)) return { kind: 'malformed' };
+  return { kind: 'entry', entry: { day, open, close } };
+}
+
+/** True when `v` is an `OpeningHours` — i.e. exactly when `fromJSON` accepts it. Pure. Throws nothing. */
+export function isOpeningHours(v: unknown): boolean {
+  if (v === null || typeof v !== 'object' || Array.isArray(v)) return false;
+  const o = v as { weekly?: unknown; note?: unknown };
+  const weekly: unknown = o.weekly;
+  const note: unknown = o.note;
+  if (!Array.isArray(weekly)) return false;
+  if (note !== undefined && typeof note !== 'string') return false;
+  return weekly.every((w) => readWeeklyEntry(w).kind !== 'malformed');
+}
+```
+
+Four points a builder does not have to decide:
+
+- **`isClockTime` becomes a type predicate** (`v is ClockTime`). That is what lets `readWeeklyEntry` build a
+  `WeeklyEntry` with **no cast at all** — `w as { day: number; open: string; close: string }`, the
+  construction A-18 spent a ruling removing from `copyStop.ts`, disappears from this system rather than
+  moving. `ClockTime` is `string` (`model/ids.ts`), so every existing caller (`clock`, `clockOrNull`) is
+  unaffected. Verified rather than assumed: every body printed in this ruling typechecks clean under
+  `strict`, `erasableSyntaxOnly` and `verbatimModuleSyntax`, in a scratch file with the real declarations
+  stubbed — including the narrowing that removes the cast.
+- **`isOpeningHours` stays a `boolean`, and that is not an inconsistency.** Its only consumer *reports* on
+  the value (`place_hours_malformed`) and never uses it, so there is nothing for it to hand back. The line
+  is: a predicate whose caller will **act on the value** returns the value; a predicate whose caller will
+  **describe the document** returns a boolean. `isClockTime` is a boolean for the other reason — its
+  argument is an already-read scalar, so there is no second read to get wrong.
+- **The accept set does not move**, and that is the load-bearing claim, because A-20's contract sentence
+  (*"`isOpeningHours(v)` is true exactly when `fromJSON` accepts `v`"*) is the strongest thing in that
+  ruling. `readWeeklyEntry(v).kind !== 'malformed'` ⟺ the old `isWeeklyEntry(v)`. Measured over the 28 entry
+  shapes and 18 `hours` shapes of the shipped test table plus QA's round-17 hostiles (`Object.create(null)`,
+  a boxed `String`, a function, a symbol, a trailing `\n`, a sparse `weekly`, a getter-bearing `weekly`):
+  **0 disagreements**, in a scratch script against bodies copied verbatim. The builder re-derives this in
+  `openingHours.test.ts` rather than trusting it.
+- **`weekly.every` still skips array holes**, so round 17's *"a sparse `weekly` stays sparse"* note holds
+  unchanged, and a hole never reaches `readWeeklyEntry` at all.
+
+**Part 2. `serialize/fromJSON.ts` — nothing changes.** `parseOpeningHours`, `clock` and `clockOrNull` are
+already read-once-and-return: `arr` hands back the array it checked, `obj` the object, `str`/`numOf`/`clock`
+the scalar, and the entry is built from those returns. The parser is the model this ruling generalises from,
+not a site of it. The `...(o.x !== undefined ? { x: str(o.x, path) } : {})` form throughout the file is the
+**safe** double read defined above and is explicitly blessed here so that a later reader does not "finish
+the job" across forty call sites.
+
+**Part 3. `serialize/toJSON.ts` — one line, in the function A-20 added.**
+
+```ts
+function hours(h: Place['hours']): unknown {
+  const raw = h as unknown;
+  if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) return raw;
+  const o = raw as { weekly?: unknown; note?: unknown };
+  const weekly: unknown = o.weekly;              // A-21: one read; `Array.isArray` and `.map` see
+  return omitUndef({                             // the same value, so an export cannot throw here.
+    weekly: Array.isArray(weekly) ? weekly.map(weeklyOut) : weekly,
+    note: o.note,
+  });
+}
+```
+
+`weeklyOut` is unchanged — it already reads each field once. **The rest of `toJSON` is deliberately out of
+scope**, and the boundary is principled rather than arbitrary: `toJSON` writes the user's own document back
+to the user, so an unstable getter there costs that caller their own data and crosses no boundary and leaks
+to nobody. `hours()` is fixed because it is part of A-20's diff and because its second read can throw *out
+of an export*. `place()`'s `p.at ? { lat: p.at.lat, … } : null` has the same shape and is knowingly left;
+the day something other than a person's own hand builds a `Trip` in memory — a native bridge, an ingest
+worker (§5.1) — is the trigger to sweep `toJSON` whole, and it is the same trigger A-20's own residue
+paragraph names.
+
+**Part 4. `build/copyStop.ts` — every field of a source record is read once.** Unlike Parts 2 and 3 this is
+a **file-wide** rule, not five patched lines, and the reason is that this file is the one place in the
+design where data crosses a *person* boundary: the discriminator between a safe and an unsafe double read is
+a judgment call, and this is not the file to leave one in. Five helpers and one block. (Imports move by
+three lines: `WeeklyEntry` and `readWeeklyEntry` come from `../model/openingHours.ts` in place of
+`isWeeklyEntry`; `Money` and `LatLng` join the `../model/types.ts` type import; `ClockTime` leaves the
+`../model/ids.ts` type import, where `weeklyForCopy`'s old return type was its only consumer.)
+
+```ts
+function weeklyForCopy(w: unknown): WeeklyEntry | null {
+  const read = readWeeklyEntry(w);
+  if (read.kind !== 'entry') return null;
+  const { day, open, close } = read.entry;
+  // A-18 policy, NOT a shape test: an opening time that redaction would alter is not a time the
+  // recipient could trust. Provably unreachable for a structurally valid entry — A-20 Part 5(a).
+  if (redacted(open) !== open || redacted(close) !== close) return null;
+  // Rebuilt, not `return read.entry`: three scalars cost nothing, and the copy must not become
+  // aliased to the reader's return value if the reader is ever changed to hand back its input.
+  return { day, open, close };
+}
+
+function hoursForCopy(h: OpeningHours): OpeningHours {
+  const raw = h as unknown;
+  const o = (raw !== null && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}) as {
+    weekly?: unknown;
+    note?: string;
+  };
+  const weekly: unknown = o.weekly;
+  const note: string | undefined = o.note;
+  return {
+    weekly: Array.isArray(weekly) ? weekly.map(weeklyForCopy) : [],
+    ...(note === undefined ? {} : { note: redacted(note) }),
+  };
+}
+
+function costForCopy(c: CostEstimate): CostEstimate {
+  const rawAmounts: unknown = c.amounts;
+  const display: string | null = c.display;
+  const note: string | undefined = c.note;
+  const amounts: Money[] = Array.isArray(rawAmounts) ? rawAmounts : [];
+  return {
+    amounts: amounts.map((a) => ({ lo: a.lo, hi: a.hi, currency: a.currency, basis: a.basis })),
+    display: display === null ? null : redacted(display) === display ? display : null,
+    ...(note === undefined ? {} : { note: redacted(note) }),
+  };
+}
+
+function arrivalForCopy(a: MoveOverride): MoveOverride {
+  const label: string | undefined = a.label;
+  return { mode: a.mode, mins: a.mins, ...(label === undefined ? {} : { label: redacted(label) }) };
+}
+
+function placeForCopy(p: Place, cityKey: string, id: PlaceId): Place {
+  const at: LatLng | null = p.at;
+  const note: string | undefined = p.note;
+  const hours: OpeningHours | undefined = p.hours;
+  return {
+    id,
+    cityKey,
+    name: p.name,
+    at: at === null ? null : { lat: at.lat, lng: at.lng },
+    category: p.category,
+    ...(note === undefined ? {} : { note: redacted(note) }),
+    ...(hours === undefined ? {} : { hours: hoursForCopy(hours) }),
+  };
+}
+```
+
+and in `copyStopInto`, the place block loses its alias, its cast and its fallthrough:
+
+```ts
+  const srcPlace: PlaceLink = src.place;   // A-21: ONE read of the field.
+  let withPlace = target;
+  // The hole is the DEFAULT, and every branch below overwrites it deliberately. It used to be
+  // `: src.place` — so a cast-built link with an out-of-union `kind` put the SOURCE's own object,
+  // with every key it carried, into the target document. A-18 position 2 forbids a spread of a
+  // source record at any depth; an alias of one is worse, and this was the only one left.
+  let place: PlaceLink = { kind: 'none' };
+  if (srcPlace.kind === 'inline') {
+    // R14-3: a clone. Two documents may not share one mutable `LatLng`.
+    place = { kind: 'inline', at: { lat: srcPlace.at.lat, lng: srcPlace.at.lng } };
+  } else if (srcPlace.kind === 'place') {
+    const original = source.trip.places.find((p) => p.id === srcPlace.placeId);
+    // `original` missing → `place` stays `{kind:'none'}`: the source's own link dangled, and we
+    // do not invent one. Everything else in this branch is A-14/A-15/A-16, unchanged.
+    if (original) { /* … refileCityKey / samePlace / placeForCopy block, verbatim … */ }
+  }
+```
+
+Four notes on this block. `srcPlace.kind` is read in two tests — permitted by the discriminant carve-out
+above, because each branch constructs a fresh record and the worst an unstable `kind` yields is
+`{kind:'none'}`, a hole. `srcPlace.placeId` is read once, as a lookup **key** against the target-side row,
+which `placeForCopy` then rebuilds field by field. The `as { placeId: string }` cast is **gone**, because
+narrowing a `const` of a discriminated union needs none. And the behaviour change is confined to documents
+that are already type-lies: for every `PlaceLink` the type system actually permits, the output is
+bit-for-bit what A-14/A-15/A-16 left — any test asserting the old aliasing is asserting the defect and is
+re-expressed.
+
+**Part 4(c). The one argument, held to the same rule.** `copyStopInto` validates `placement.cityKey` against
+`target.cities` and then **emits a second read of it** into the document, which is the banned form even
+though A-19 classifies a `placement` as an *argument* (programmer error) rather than a document. The two
+validation throws and the rebuilt `placed` merge into one branch on the discriminant, so each field is read
+once and the throw and the emission see the same value. **A-19's rules are otherwise untouched: same
+throws, same messages, same `TRANSIT_CITY_KEY` exemption, same dropped-hint fallback**, and A-19's own
+comment block above this code is unchanged.
+
+```ts
+  let placed: StopPlacement;
+  if (placement.kind === 'scheduled') {
+    const dayId = placement.dayId;
+    const time = placement.time;
+    const order = placement.order;
+    if (!target.days.some((d) => d.id === dayId)) {
+      throw new Error(`copyStopInto: no such day ${dayId} in ${target.id}`);
+    }
+    placed = { kind: 'scheduled', dayId, time, order };
+  } else {
+    const cityKey = placement.cityKey;
+    const h = placement.hint;
+    if (cityKey !== TRANSIT_CITY_KEY && !target.cities.some((c) => c.key === cityKey)) {
+      throw new Error(`copyStopInto: no such city ${cityKey} in ${target.id}`);
+    }
+    // One read per hint field, into an object core owns. Everything below reads THAT object,
+    // which is stable by construction — the carve-out, used deliberately.
+    const hintFields = h === undefined ? undefined : { dayId: h.dayId, time: h.time, order: h.order };
+    const hint =
+      hintFields !== undefined && target.days.some((d) => d.id === hintFields.dayId)
+        ? { dayId: hintFields.dayId, time: hintFields.time,
+            ...(hintFields.order === undefined ? {} : { order: hintFields.order }) }
+        : undefined;
+    placed = { kind: 'pool', cityKey, ...(hint ? { hint } : {}) };
+  }
+```
+
+`placement.kind` is read once per branch rather than hoisted, because hoisting a discriminant into a `const`
+loses TypeScript's narrowing and would put back the very casts this ruling removes — the discriminant
+carve-out exists for exactly this. The two throws are now in mutually exclusive branches, which is
+unobservable: they were already mutually exclusive by `kind`. It is included because
+the rule for this file is only checkable if it is **total** — "every field of every record this function
+reads, once" is a property a reviewer can verify in one pass; "every field except the ones supplied by a
+caller we trust" is a judgment call, and this file has produced at least one finding in each of the last
+four QA rounds.
+
+Likewise `src.name`, `src.category`, `src.note`, `src.cost`, `src.arrival`, `src.travelRole`, `src.flags`,
+`src.links`, `src.durationMins` and `src.provenance.confidence` are read into `const`s once, ahead of the
+`StopInit` literal. Most are already single-read; the rule is stated for the file so that the *next* field
+added to `Stop` inherits it.
+
+**What Part 4 deliberately does not do:** it adds **no new defensive guard**. `src.links` that is a truthy
+non-array still throws on `.map`, and `[...src.flags]` still throws on a non-iterable, exactly as today.
+A-21 is about *which value crosses*, not about whether a type-lie throws; the latter is R15-2's rule, whose
+scope A-20 already fixed at `hours` (the one field a *parsed* document could lie about) and which this
+ruling does not widen. Opening that campaign here would be a different ruling with a different criterion,
+and there is no finding behind it.
+
+**Part 5. What this closes, measured.** Same fixtures, same flip points, the new bodies:
+
+```
+weeklyForCopy:            {"day":1,"open":"9:00","close":"17:00"}     (was: the credential)
+cost.display:             "€25"                                       (was: "conf 5814731574")
+isOpeningHours(flipping): true                                        (was: TypeError …every is not a function)
+hoursForCopy(flipping):   {"weekly":[]}                               (was: TypeError …map is not a function)
+```
+
+The invariant this establishes, and it is the one to state rather than any of the four lines above:
+**no value crosses a person boundary that was not itself validated, and no traversal in core emits, compares
+or redacts a value it did not read.**
+
+**Part 6. What A-21 does *not* close — R17-1's second face, named rather than left to be re-found.**
+QA's second face is that `validateTrip` reports no `place_hours_malformed` on a document whose export then
+fails to re-import. That is a claim about **two traversals**: `validateTrip` reads at T1, `toJSON` reads at
+T2, and if the document returns different values to the two of them, no report made at T1 can be true at T2.
+**No single-read discipline inside either function can fix that**, because there is no single read — there
+are two calls, and the instability is in the caller's object, not in core's code. So:
+
+> After A-21, `validateTrip`'s verdict is a true statement about the values **it** read, and `toJSON` exports
+> the values **it** read. Each traversal is internally consistent and none of them throws. A document that
+> answers the two of them differently is not a document; it is a program pretending to be one, and the
+> harm is bounded to that caller's own export of their own trip.
+
+`qa/r17-hours-parser.mjs` §3.2's second assertion (`warned || restores`) is therefore **not satisfiable by
+any implementation that does not re-read**, and it is withdrawn as over-strong rather than fixed. The
+invariant QA may assert in its place is the four-part one above. Two mechanisms *would* close it, and both
+are refused now with a trigger:
+
+- **Freeze or deep-snapshot the document at every core entry point.** It would work, and it costs a full
+  clone of the largest object in the app on every reducer action, in a design built on pure functions over
+  shared immutable structure — and it *invokes every getter anyway*, so a throwing getter stops being a
+  localised propagation and becomes a whole-document failure. Refused on cost, not on principle.
+- **Round-trip the export: `fromJSON(toJSON(trip))` at save time, and warn if it throws.** This is strictly
+  the better guarantee — *"your backup restores, or you were told"* becomes unconditional, for every cause
+  and not just this one — and it would arguably supersede `place_hours_malformed`. It is refused **now**
+  because it is a `packages/client` behaviour change on the save path, ratified two revisions ago in the
+  other direction, for a fault only an in-process caller can create. **The trigger is the same one A-20
+  named**: the day anything other than a person's own hand writes a document core did not parse — a native
+  bridge, an ingest candidate (§5.1), a vendor feed — the round-trip check is the design, and it is ruled
+  then, in `packages/client`, not here.
+
+**What does not change.** `Place`'s shape and `OpeningHours`' shape (`WeeklyEntry` is named in
+`model/openingHours.ts` and `model/types.ts` is **not** edited to import it — that is a refactor with no
+defect behind it); `schemaVersion`; A-20's contract sentence, its Part 2, its Part 5(a)'s 11 000 strings and
+its ratification of `place_hours_malformed` in level, code, `ref`, message and params; `redactText` and
+`REDACTION_PATTERNS` — **this ruling adds no pattern and no call site**; `tools/redact.mjs` and §6.6's
+sample path; A-14, A-15, A-16, A-18 and A-19 in rule and in outcome for every value the type system permits;
+`validateTrip`'s call site (`p.hours !== undefined && !isOpeningHours(p.hours)` is the safe double-read
+form); `packages/client`, `apps/web`, `cli.ts`; §2.10 at **71**; the reference trip at 2/4/11 and 11 issues;
+the goldens and the sample sha.
+
+**The probe lines this ruling moves, named by the ruling and re-expressed by QA.** A-19 assertion 7 stands —
+**the builder edits nothing under `qa/`** — so the builder reports these and QA re-expresses them in round 18:
+
+- `qa/r16-copy-depth.mjs` §1.4's source-grep assertion (~`:484`) tests `/isWeeklyEntry\(w\)/` and
+  `/redacted\(e\.open\) !== e\.open/` against `build/copyStop.ts`. Both are false after Part 4 and the
+  equivalents are `/readWeeklyEntry\(w\)/` and `/redacted\(open\) !== open/`. The assertion's *subject* —
+  that the structural half is asked once, elsewhere, and the redaction half is a copy-boundary policy — is
+  unchanged and still true.
+- `qa/r17-hours-parser.mjs` §3.2's **first** assertion (the leak) must go **green**. If it does not, Part 4
+  is not implemented.
+- `qa/r17-hours-parser.mjs` §3.2's **second** assertion (`warned || restores`) stays red and is withdrawn by
+  Part 6. A builder who makes it pass by touching `toJSON` or `place_hours_malformed` has reverted A-20.
+
+**What the builder asserts.** Every one of these is mutation-verified — a test that cannot fail is what
+R15-4, R15-5, R16-1 and R17-2 all were, and this ruling will not add a fifth.
+
+1. **The injected fault is a flipping accessor** (§0.5). One four-line helper per test file that needs it:
+   ```ts
+   /** A getter that returns a different value on each read — A-21's injected fault. The last value
+    *  repeats forever, so a call site's read COUNT cannot change the outcome. */
+   function flipping<T>(values: readonly T[]): () => T {
+     let i = 0;
+     return () => { const v = values[Math.min(i, values.length - 1)] as T; i += 1; return v; };
+   }
+   ```
+2. **`copyStop.test.ts`** — with `open` flipping `['9:00','9:00','9:00','Front door PIN 0754, conf 5814731574']`
+   on a cast-built source place: the recipient's `hours.weekly[0].open` is **exactly `'9:00'`**, and neither
+   `0754` nor `5814731574` is greppable anywhere in the recipient's `toJSON`. The same, for `cost.display`
+   flipping `['€25','€25','€25','conf 5814731574']` → **`'€25'`**, `amounts` unmoved. The same, for a
+   `weekly` flipping `[[], 'nope']` and an `at` flipping `[{lat:1,lng:2}, null]` → `copyStopInto` **does not
+   throw** and the copied `at` is `{lat:1,lng:2}`. And a cast-built `place` of `{kind:'nope', pin:'…'}` →
+   the copy's `place` is `{kind:'none'}` and `pin` is **not** in the recipient's `toJSON`. And Part 4(c):
+   a `{kind:'pool'}` placement whose `cityKey` flips from a key the target **has** to one it does not →
+   `copyStopInto` does not throw, the stop is filed under the **validated** key, and `validateTrip` on the
+   recipient reports **no** `pool_stop_unknown_city` — the uncleanable issue A-19 exists to prevent.
+3. **`openingHours.test.ts`** — the existing entry table is re-expressed 1:1 with the mapping `true` ⟺
+   `readWeeklyEntry(v).kind !== 'malformed'`, and `null`/`undefined` ⟺ `kind === 'absent'`; **no row's
+   verdict moves**. Plus: `isOpeningHours` and `toJSON` **do not throw** on a `weekly` flipping `[[],'nope']`,
+   and `validateTrip` on the same document returns an `Issue[]` rather than throwing.
+4. **A-20's contract sentence is re-derived, not assumed**: `isOpeningHours(v)` still agrees with
+   `fromJSON`'s object arm on every shape the existing table carries.
+5. **Six mutations, at least one red test each** (throwaway worktree, discarded): re-reading `e.open` in
+   `weeklyForCopy`; re-reading `c.display` in `costForCopy`; re-reading `o.weekly` in `isOpeningHours`;
+   re-reading `o.weekly` in `hoursForCopy`; re-reading `p.at` in `placeForCopy`; restoring
+   `place = src.place` as the ternary fallthrough. A mutation that survives is a missing fixture and is
+   reported as one, in BUILD-NOTES, in the finding's own words — not rounded down.
+6. **Ceilings, unmoved**: `Object.keys(core).length` = **71** with `readWeeklyEntry` off `index.ts`; the
+   reference trip at **2/4/11** at `FIXTURE_TODAY` and **11** `validateTrip` issues; `npm run golden` and
+   `npm run sample` byte-identical, sample sha `40955ca0b182`; exactly **one** clock regex in
+   `packages/core/src`, still at `model/openingHours.ts`; `npm run test:tap`, `npm run typecheck` and
+   `npm run web:build` all clean; `qa/r2-copy.mjs`, `qa/prov.mjs`, `qa/r14-horizon-copy.mjs` and
+   `qa/r15-place-copy.mjs` unmoved at 0 FAIL.
+7. **No new `as` cast appears in `copyStop.ts`, and one is removed.** `copyStop.ts` still contains no
+   `as string`, and — comments stripped — still exactly one `{ ...x }` spread, `{ ...target }`, the
+   recipient's own document.
+
+**The residue, named.** A-21 is a discipline, and a discipline that is not mechanically checked decays. The
+check it ships with is behavioural (the flipping fixture), not a grep, because a grep over property-access
+counts is brittle enough to be deleted the first time it false-positives. The day `copyStop.ts` grows a new
+helper, the reviewer's question is *"does any field of a source record appear twice in this function?"* —
+one pass over a 500-line file, and the reason that is affordable is that the file is deliberately small.
+The day it stops being small is the day this rule needs a mechanical check, and that is a cheaper problem
+than the one A-15, A-18 and A-21 have each been.
+
 ### 2.10 The public API surface
 
 **Settled in revision 5 (QA R2-12, KD-19); 69 → 70 in revision 6, and 70 → 71 in revision 10, each for one
@@ -3860,6 +4337,15 @@ a friend to break it. In Phase 2 the pane's source list gains shared trips and n
 nobody wants. `StopImport` is not a table either: it is `Provenance.origin`, which already carries every
 field a `stop_imports` row would have. The only thing a table would add is enumerating *"what have people
 taken from my trip"*, which nobody has asked for; if it is asked for, it is a query over provenance.
+
+**One rule for this whole file lives in §2.9, not here: A-21 (revision 16, QA R17-1).** Every field of a
+source record is read **once**, into a `const`, and everything downstream tests, redacts, compares and emits
+*that* — because a check and a use that are two different reads of the same field are two different values
+the moment the field is an accessor, and A-18's own `cost.display` construction leaked a credential that
+way. It rewrites `weeklyForCopy`, `costForCopy`, `arrivalForCopy`, `hoursForCopy`, `placeForCopy` and
+`copyStopInto`'s place block (which also stops **aliasing** the source's own `PlaceLink` into the target),
+and it changes no rule in A-14, A-15, A-16, A-18 or A-19 for any value the type system permits. **Anyone
+touching `copyStop.ts` reads A-21 with A-15 and A-18.**
 
 ---
 

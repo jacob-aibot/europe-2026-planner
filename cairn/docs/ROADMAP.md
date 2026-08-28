@@ -75,6 +75,17 @@ public-share-link work is **unchanged in scope and no longer the reason this inc
 credential carriers are all closed; what remains is one parser gap and one fixture, and neither is a
 credential path. I-5 stays unblocked.
 
+**Revision 16, 2026-08-28.** QA round 17 — the breaker pass over A-20 — closed A-20, R16-1 and R16-2 and
+left four MINOR findings, three for a builder and one for an architect because its cause is A-20's own
+printed function body. `ARCHITECTURE.md` revision 16 answers it as **A-21** (§2.9): a predicate over a
+compound value **returns what it read** instead of a `boolean` its caller must re-read the value to act on,
+and every field of a source record in `copyStop.ts` is read **once**. This file changes in exactly the same
+one way revisions 12, 13, 14 and 15 did: **I-4a's Built / Verification / Ship-gate lines.** **No new
+increment, no phase re-scoped and no change to the order.** I-4a's outright block on share/friend/
+public-share-link work is **unchanged**, and the reason moves back one notch: the copy path has a live
+credential path again — `cost.display` and `hours.weekly[*].open`, on a cast-built source — bounded to
+in-process callers because JSON cannot express an accessor. I-5 stays unblocked.
+
 > **Phase numbers changed once, here.** Every heading below carries its old number, and every "Phase N"
 > written in `ARCHITECTURE.md` §1–§7, `BUILD-NOTES.md` or `QA-FINDINGS.md` before revision 9 means the
 > *named* phase it described: "Phase 2" = accounts/server (**now 3**), "Phase 3" = ingest (**now 4**),
@@ -1216,6 +1227,24 @@ builder against the finding itself and is not an increment.
   per A-10*) is what this ruling reverses. No `Place`/`OpeningHours` shape change, no `schemaVersion` bump,
   no new pattern or call site in `redactText`, no change to `tools/redact.mjs`, `packages/client` or
   `apps/web`.
+  **Revision 16 adds one, and it corrects revision 15's own mechanism (§2.9 A-21, QA R17-1):**
+  `isWeeklyEntry(v): boolean` becomes `readWeeklyEntry(v): WeeklyRead` — `absent` / `entry` / `malformed`,
+  **one read per field**, handing back the entry it validated — because a boolean forces every consumer to
+  re-read the field to use it, and a `weekly` entry whose `open` is an **accessor** is validated on one read
+  and copied from another (a door PIN into the recipient's document, R15-1's harm on a cast-built source).
+  `isClockTime` becomes a type predicate, which deletes the last `as {…}` shape cast from `copyStop.ts`
+  rather than moving it; `isOpeningHours` stays a boolean **because its caller reports rather than uses**,
+  and reads `weekly`/`note` once each. In `copyStop.ts` the rule is **file-wide**: `weeklyForCopy`,
+  `costForCopy` (whose `display` leaks by the identical mechanism — A-18's own field), `arrivalForCopy`,
+  `hoursForCopy`, `placeForCopy` and `copyStopInto`'s placement and place blocks read every source field
+  once into a `const`, and the place block's ternary fallthrough — which **aliased the source's own
+  `PlaceLink` object into the target** for an out-of-union `kind`, needing no accessor at all — becomes a
+  `{kind:'none'}` default. `toJSON`'s `hours()` reads `weekly` once; the rest of `toJSON` is deliberately
+  out of scope. **No new defensive guard is added anywhere** — A-21 governs *which value crosses*, not
+  whether a type-lie throws. `fromJSON` is **unchanged** (it is already read-once-and-return, and its forty
+  `...(o.x !== undefined ? { x: str(o.x, path) } : {})` sites are the *safe* double read, blessed in
+  writing so nobody sweeps them). No `Place`/`OpeningHours`/`Stop` shape change, no `schemaVersion` bump, no
+  `redactText` change, no `packages/client`, `apps/web` or §2.10 movement (**71**).
 - **User-visible outcome.** *"日本 2019 — 東京, 京都"* records as two cities instead of one, in any script,
   and a document that already collapsed two cities into `"-"` says so on screen instead of silently
   mis-attributing every day of the trip.
@@ -1276,6 +1305,17 @@ builder against the finding itself and is not an increment.
   regress: `copyStopInto` **still never throws** on any of round 15/16's 34 hostile `hours` shapes supplied as
   a **cast-built in-memory** document, and the reference trip stays at **11** `validateTrip` issues —
   `place_hours_malformed` does not fire, because 0 of its 95 places carry `hours` at all.
+  **Added at revision 16, and the injected fault is a flipping accessor (A-21, §0.5):** a getter whose 4th
+  read is *"Front door PIN 0754, conf 5814731574"* and whose first three are `'9:00'`, on a cast-built
+  source place, copies as **exactly `'9:00'`** with neither number greppable in the recipient's `toJSON`;
+  the same for a `cost.display` flipping to *"conf 5814731574"* → **`'€25'`**, `amounts` unmoved. A `weekly`
+  flipping `[[], 'nope']` and an `at` flipping `[{lat,lng}, null]` make `copyStopInto`, `validateTrip`,
+  `isOpeningHours` and `toJSON` **return rather than throw** (all four throw a raw `TypeError` today, out of
+  three functions whose docstrings say they do not). A cast-built `place` of `{kind:'nope', pin:'…'}` copies
+  as `{kind:'none'}` with `pin` absent from the recipient's document. And the accept set does not move:
+  `readWeeklyEntry(v).kind !== 'malformed'` agrees with the deleted `isWeeklyEntry` on **every** row of the
+  existing table, so A-20's contract sentence — `isOpeningHours` is true exactly when `fromJSON` accepts —
+  is re-derived rather than assumed.
 - **Dependencies / blockers.** I-4 (the form it corrects). None external.
 - **Ship gate.** The slug expression appears **nowhere** in `apps/` or `packages/` (grep); no call site
   outside `packages/core` constructs a city key; each of the three new validation codes has an
@@ -1309,6 +1349,21 @@ builder against the finding itself and is not an increment.
   the parser has reverted the ruling.** The builder reports the probe lines it expects to move; the
   re-expression is two-sided and both halves must survive it — `fromJSON` refuses with a path, and
   `copyStopInto` still never throws on the equivalent cast-built document.
+  **Added at revision 16 (A-21):** **six mutations, at least one red test each** — re-reading `e.open` in
+  `weeklyForCopy`, `c.display` in `costForCopy`, `o.weekly` in `isOpeningHours` and again in `hoursForCopy`,
+  `p.at` in `placeForCopy`, and restoring `place = src.place` as the ternary fallthrough — each verified in
+  a throwaway worktree, because
+  a test that cannot fail is what R15-4, R15-5, R16-1 **and R17-2** all were and this pass will not add a
+  sixth; a surviving mutation is reported in BUILD-NOTES as a missing fixture, not rounded down.
+  `copyStop.ts` still contains **no `as string`** and, comments stripped, **exactly one** `{ ...x }` spread
+  (`{ ...target }`), and it now contains one shape cast fewer than before. And the same `qa/` rule as
+  revisions 14 and 15, pointing at three named lines: `qa/r16-copy-depth.mjs` §1.4's source greps for
+  `isWeeklyEntry(w)` / `redacted(e.open) !== e.open` go **red on the rename** and are QA's to re-express
+  (`readWeeklyEntry(w)` / `redacted(open) !== open`); `qa/r17-hours-parser.mjs` §3.2's **first** assertion
+  must go **green** — if it does not, A-21 Part 4 is not implemented; and §3.2's **second** assertion
+  (`warned || restores`) **stays red and is withdrawn by A-21 Part 6** as a claim about two traversals of an
+  unstable document that no implementation can satisfy — **a builder who makes it pass by touching `toJSON`
+  or `place_hours_malformed` has reverted A-20.** Nothing under `qa/` is edited by the pass that lands this.
 
 ---
 

@@ -431,6 +431,21 @@ were each carrying their own. The warning a builder added for this &mdash; <em>"
 hours this trip cannot read"</em> &mdash; is <strong>approved and stays</strong>; it is what tells you
 before an export you cannot re-open. <strong>Still built, not yet verified:</strong> one builder pass
 lands A-20, then a tester round 17 attacks it.</p>
+<p><strong>That was built, and round 17 could not break it &mdash; but it found the fix's own blind
+spot.</strong> When the app checks a value and then goes back to fetch it again to use it, those are two
+separate looks at the same thing. Normal trip data never changes between two looks, which is why the rule
+worked. But a value can be a tiny function rather than a stored fact &mdash; and one written to answer
+<em>"9:00"</em> the first three times and hand over a door PIN the fourth slips a credential straight past
+the check, into the other person's trip. The tester demonstrated it, and found the same pattern on a
+<strong>price</strong> field and in three places where it makes the app crash rather than leak. Nothing a
+trip <em>file</em> contains can do this &mdash; a saved file has no room for a tiny function &mdash; so the
+exposure is limited to the app talking to itself, which is why it is filed as minor. The architect's ruling
+(<code>ARCHITECTURE.md</code> <strong>A-21</strong>, revision 16): <strong>look once.</strong> Whatever the
+check looked at is the exact thing that gets used, and the check now hands that value back instead of just
+saying "fine". One thing it deliberately does <strong>not</strong> fix, and says so in writing: the app
+cannot promise that a value it checked this second is the same value it saves a minute later, if the value
+is free to change itself in between. <strong>Built, not yet verified:</strong> one builder pass lands A-21,
+then a tester round 18 attacks it.</p>
 </div>
 
 <div class="wrap">
@@ -438,7 +453,7 @@ lands A-20, then a tester round 17 attacks it.</p>
   <div class="brand">
     <h1>CAIRN</h1>
     <div class="tagline">"You are here"</div>
-    <div class="updated">Updated 2026-08-28 · against <code>master</code>, after ARCHITECTURE revision 15 (A-20, the one round-16 design finding, plus the ratification of <code>place_hours_malformed</code>)</div>
+    <div class="updated">Updated 2026-08-28 · against <code>master</code>, after ARCHITECTURE revision 16 (A-21, the one round-17 design finding &mdash; check once, use what you checked)</div>
   </div>
 
   <!-- ============ DECISION CALLOUT ============ -->
