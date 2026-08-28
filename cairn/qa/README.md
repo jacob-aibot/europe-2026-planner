@@ -979,6 +979,90 @@ for. That is the whole reason all five are MINOR and none is a BLOCKER.
 
 ---
 
+## Round 23 (2026-08-28, `master` @ `38d23c9`) — the I-5b breaker pass on A-27's forgiveness entry
+
+Second round on the geography surface. Five new probes, run from `cairn/`:
+
+```bash
+node --experimental-strip-types qa/i5b-forgiveness.mjs  # offline: additivity, composition, double
+                                                        # coverage, the predicate, the drops fixture,
+                                                        # artefact hygiene, the regression sweeps
+node --experimental-strip-types qa/i5b-predicate.mjs    # offline: is overlaps() "exact for simple
+                                                        # rings"? (R23-2) and does it change any
+                                                        # shipped decision? (no)
+node --experimental-strip-types qa/i5b-neighbour.mjs    # network: the two filters re-asked against
+                                                        # the 1:10m and 1:50m layers they never saw
+node --experimental-strip-types qa/i5b-macao.mjs        # network: R23-1, isolated and measured
+bash qa/i5b-mutants.sh                                  # 18 mutants of the REAL tools/forgiveness.mjs,
+                                                        # in a throwaway worktree — a report, no verdict
+```
+
+`i5b-forgiveness.mjs` is **1 FAIL by design** (R23-2, the C-notch false positive).
+`i5b-predicate.mjs` is **3 FAIL by design** (R23-2's three counterexamples).
+`i5b-neighbour.mjs` is **3 FAIL** — two are R23-1 (`MO`→`CN` at 1:10m and at 1:50m) and the third is
+a Natural Earth labelling artefact (Alofi's `ISO_A2` is `NZ`, its `ADM0NAME` is `Niue`), explained
+in the finding's "could not break" list so the next round does not re-derive it.
+`i5b-macao.mjs` is **2 FAIL by design** (R23-1). Everything else in all four must stay at 0.
+
+The two network probes fetch the three pinned `nvkelso/natural-earth-vector@v5.1.2` admin-0 layers
+into `$TMPDIR/cairn-qa-ne/`, verify each against the checksum `tools/gen-countries.mjs` pins, cache
+them, and print `SKIP` rather than a false pass if the egress proxy blocks the fetch.
+`i5b-macao.mjs` additionally reconstructs the **pre-I-5b index** from the shipped payload by
+removing the 54 positions `fixtures/golden/forgiveness-drops.json` records — no `git show` needed,
+which is what makes the before/after columns trustworthy. Nothing under `cairn/` is written by any
+of them except `i5b-mutants.sh`, which writes only inside a `git worktree` it then removes.
+
+What each section covers:
+
+| probe | § | what it measures |
+|---|---|---|
+| `i5b-forgiveness` | 1 | **additivity** — strip the 54 recorded positions from the packed literal and compare to `git show b6200e6:…`; also the in-order byte-identical-subsequence check, independent of the fixture |
+| | 2 | **composition** — 70,712 points chosen *inside* the 54 forgiveness entries' own rings (not capitals); every one must resolve to that entry's code, and no forgiveness entry may be preceded by an overlapping entry of another code |
+| | 3 | **double coverage** — every forgiveness entry against every other shipped entry, including *other forgiveness entries*, which filter 2 never saw (A-27 Part 6 residue 3) |
+| | 4 | `overlaps()` — 12 hand-built adversarial pairs, 4,000 randomised pairs against an independent area-sampling reference, and a self-intersection census of the whole artefact |
+| | 5 | the drops fixture: 11 drops, 2 by filter 1 / 9 by filter 2, and where the two filter-1 drops actually are |
+| | 6 | artefact hygiene — 239 distinct codes over 293 entries, no code three times, 1,034 rings, 22,229 points, ring hygiene, ascending area by an independent formula |
+| | 7 | regression — 14,926,301 cells at 0.02° over the 54 padded boxes (704 gained, 0 lost, 0 switched) and a global sweep at **0.29° / offset 0.11** |
+| | 8 | the reference trip's coordinate-bearing records, both indexes, 0 changed |
+| `i5b-predicate` | 1 | the counterexamples to *"exact for simple rings"* — a C-shape notch and a horseshoe bay, both directions |
+| | 2 | are the vertex-mean probes ever load-bearing? (20,000 randomised pairs: no) |
+| | 3 | **blast radius** — both filters re-run over all 153 candidate rings with a mean-free predicate; 0 of 153 decisions change |
+| | 4 | direction of harm, and how many coverage entries have a ring whose vertex mean falls outside it (28 of 239) |
+| `i5b-neighbour` | 1 | all 142 admitted rings against all 239 codes of the **1:10m** layer and all 237 of the 1:50m — this is what finds R23-1 |
+| | 2 | `ne_10m_populated_places` as a third opinion: does an admitted ring contain another country's settlement? |
+| | 3 | filter 1's two drops re-examined against the raw layers — quantisation artefact, or genuinely somewhere else? |
+| | 4 | the 10 refused codes; `GI`/`UM` genuinely absent at 1:50m; the 1:110m layer carries none of the 64 filled codes |
+| `i5b-macao` | 1–4 | R23-1 isolated: the missing code in A-27's own list, the km² of Chinese mainland, named coordinates before and after, and the 1:110m-vs-1:10m cell counts that explain why filter 2 could not see it |
+
+**QA pin repairs this round (probe rot, introduced by I-5b as intended).** `qa/i5-order.mjs` had
+five assertions pinned to the pre-A-27 artefact and was **5 FAIL** at `38d23c9`; all five are
+re-expressed against what A-27 made true and it is **ALL OK** again:
+
+- §2 `new Set(codes).size === codes.length` — deliberately false now (54 codes carry two entries).
+  Replaced by the property it was really asserting: **no two entries tie on `(area, code)`**, so the
+  comparator is still a total order and `Array.sort` stability is still unreachable. Plus a
+  `239 distinct over 293` count.
+- §3 `+64 codes` → **`+118` entries** (64 fill from I-5a, 54 forgiveness from I-5b).
+- §5 the ten-pair overlap census — same-code pairs now overlap **by design** (filter 1 requires it)
+  and carry the same answer, so they are separated out and reported, and the assertion is on the
+  **cross-code** list, which is still exactly **10**. A new assertion checks that every same-code
+  pair belongs to a *filled* code, i.e. A-27 touched nothing the base carries.
+- §8 `EMITTED_BYTES` 346,455 → **374,826**, and R22-4's guard 1 no longer exists: it was replaced by
+  guard 1a (statements after the header, 579/1,500) and guard 1b (header prose with ISO code runs
+  subtracted, 3,293/6,000). The assertion is now a headroom check on both — **921 and 2,707 bytes**,
+  so R22-4 is confirmed closed by the probe that filed it.
+
+`qa/i5-fillscale.mjs` needed no numeric repair — its §1 (R22-1) went green on its own, which is the
+cleanest possible confirmation that I-5b fixed the finding it was written for. Its §3 finding id was
+mislabelled **R22-3**; corrected to **R22-2** (R22-3 is the `derive/country.ts` docstring finding).
+§2's header no longer claims a finding id it never had. §3 is still **1 FAIL by design** — R22-2 is
+open and A-27 deliberately does not touch it.
+
+**Not touched, and not routed to this round:** breaker-board items **B-1**…**B-4**.
+`qa/r11-recheck.mjs` still throws at line 243 and `qa/p2b-gate.mjs` is still 5 FAIL.
+
+---
+
 ## Round 22 (2026-08-28, `master` @ `b6200e6`) — the I-5 / I-5a breaker pass on A-26's country index
 
 First round on the geography surface. Two new probes, run from `cairn/`:

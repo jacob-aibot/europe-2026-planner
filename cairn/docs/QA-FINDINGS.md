@@ -1,4 +1,38 @@
-# Cairn — QA findings, Phase 1 **rounds 2–11** and Phase 2 **rounds 12 (2a), 13 (I-3a / I-4a), 14 (A-11…A-14), 15 (A-15…A-17), 16 (A-18 / A-19), 17 (A-20 / R16-1), 18 (A-21 / A-21a), 19 (A-22 / A-23), 20 (A-24 / R19-1 / R19-2 / KD-50), 21 (A-25 — the closure round) and 22 (I-5 / I-5a — A-26's mixed-resolution country index)**
+# Cairn — QA findings, Phase 1 **rounds 2–11** and Phase 2 **rounds 12 (2a), 13 (I-3a / I-4a), 14 (A-11…A-14), 15 (A-15…A-17), 16 (A-18 / A-19), 17 (A-20 / R16-1), 18 (A-21 / A-21a), 19 (A-22 / A-23), 20 (A-24 / R19-1 / R19-2 / KD-50), 21 (A-25 — the closure round), 22 (I-5 / I-5a — A-26's mixed-resolution country index) and 23 (I-5b — A-27's forgiveness entry)**
+
+> **Status (as of `master` @ `38d23c9`, independently verified 2026-08-28 — round 23, the
+> mandatory adversarial pass over Phase 2 **I-5b**: ARCHITECTURE revision 21's **A-27**, the
+> forgiveness entry. Surface: `tools/forgiveness.mjs` (new), `tools/gen-countries.mjs`'s
+> forgiveness pass and third sort key, `test/forgiveness.test.ts` (new),
+> `fixtures/golden/forgiveness-drops.json` (new), the regenerated `countries.gen.ts`, and the two
+> `packages/core` docstrings. Second round on the geography surface.**
+>
+> | | |
+> |---|---|
+> | **Verdict** | **The mechanism is right and the artefact is exactly what the generator produces. Additivity, composition, ordering, reproducibility and the injected-fault tests all hold, re-derived rather than read.** One MAJOR survives and it is a *design* defect in the same place A-27's own prose is wrong: **R23-1** — filter 2 asks *"does this ring reach another entry of the coverage-only index"*, and 175 of those 239 entries are drawn at **1:110m**. `CN` is one. So Macao's 1:50m forgiveness ring was admitted, and **≈22 km² of the Chinese mainland now attributes to `MO`**. A-27 Part 4 names the codes filter 2 rejected as *"`AD`, `HK`, `LI`, `MC`, `SG`, `SM` and `SX` — i.e. every bordered filled code"*; **`MO` is a bordered filled code and is not on that list.** Three MINORs behind it. |
+> | **BLOCKERS** | **0.** Nothing here loses data, leaks a coordinate or answers with another person's record. `countryOf` still has no consumer in `apps/web`, `packages/client` or `cli.ts`, so today's blast radius is one committed dataset and two goldens. **R23-1 becomes a blocker at I-6**, which is the increment that bakes `countryOf`'s answer into a persisted `TripSummaryRow`. |
+> | **Findings** | **R23-1 MAJOR (architect)** · **R23-2 MINOR (architect)** · **R23-3 MINOR (builder)** · **R23-4 MINOR (architect — ROADMAP prose)**. |
+> | **Fixed vs still open** | **CLOSED by I-5b and re-derived by me rather than read from BUILD-NOTES: R22-1** (the four fixable capitals now attribute — `TO` `AG` `GD` `IO`; `qa/i5-fillscale.mjs` §1 is green and the index answers **59 of 64** capitals, the other five being dataset gaps at *every* scale where `null`/`IT` is correct), **R22-3** (both `derive/country.ts` sentences replaced verbatim, no behaviour change), **R22-4** (guard 1 replaced by 1a/1b — 921 and 2,707 bytes of headroom, and each message names what will trip it), **R22-5** (the fill and every forgiveness scale now report their own degenerate-ring count), **R22-6** (ruled on by A-27 Part 9 and the number re-measured this round: 969,582-byte bundle, 369,688 of it payload, **38.1 %**). **STILL OPEN, new this round:** R23-1 (MAJOR), R23-2…R23-4 (MINOR). **STILL OPEN, unchanged and correctly *not* in this increment: R22-2** — `verifyQuantisation`'s 1.7° lattice still cannot see the 8 self-intersecting `MV` bow-ties; A-27 names neither the finding nor the guard, the builder disclosed that deliberately, and `qa/i5-fillscale.mjs` §3 still reports it as **1 FAIL by design**. **FIXED BY QA THIS ROUND (probe rot):** `qa/i5-order.mjs` had five assertions pinned to the pre-A-27 artefact (code uniqueness, `+64` entries, the 10-pair overlap census, `EMITTED_BYTES 346_455`, and R22-4's now-deleted guard 1); all five are re-expressed against what A-27 made true and the probe is **ALL OK** again. `qa/i5-fillscale.mjs` §3's finding id was mislabelled `R22-3`; corrected to `R22-2`. **STILL OPEN, unchanged and not re-litigated:** R21-1, R13-4, R13-5, P2-5, P2-8, R2-18 and the whole Phase 1 list (R10-1, R8-3, R8-4, R6-1/2, R5-2, R11-1). Breaker-board **B-1**…**B-4** were not routed here and are untouched. |
+> | **Scope** | Exactly `e5c6376..38d23c9` under `packages/`, `tools/`, `test/` and `fixtures/`. Not re-litigated: `copyStop.ts` (closed at 21), `access/`, the reducer, the ingestion surface. |
+> | **Numbers, my own runs at `38d23c9`** | `npm run test:tap` **685 pass / 0 fail** · `npm run typecheck` clean, both projects · `npm run web:build` clean, `dist/assets/index-BCxpLNNi.js` **969,582 bytes** · `Object.keys(core).length` **73**, unmoved · reference trip **2 / 4 / 11**, `validateTrip` **11**, `geoCheck` **0** · `npm run golden` + `npm run sample` + `node tools/gen-countries.mjs --holes` all regenerate **byte-identically**, sample sha unmoved at **`40955ca0b182`** · `git status --porcelain` clean before and after every run · the repo root (`europe-2026-itinerary.html`, `docs/`, `tickets/`) untouched, `git diff e5c6376 38d23c9 -- . ':(exclude)cairn'` **empty**. |
+> | **Reproducibility, re-derived** | `node tools/gen-countries.mjs` run in a throwaway worktree at `38d23c9` produced `countries.gen.ts` **sha256 `1eef1df6…`** and `forgiveness-drops.json` **sha256 `200cd5c1…`**, both byte-identical to the committed files, `git status` empty. All three pinned layers fetched independently by me match the generator's checksums to the byte (838,726 / 3,083,490 / 13,287,234). `--dry-run`, `--audit-only`, `--no-fill`, `--scale 10m`, `--scale 50m` and `--holes` all still work; `--scale 25m` still refuses with a usable message. With `--no-fill` and with `--scale 10m` there are no filled codes and the run prints `forgiveness: none (no filled codes)`, exactly as A-27 Part 7 requires. |
+> | **Additivity — verified independently, not read** | I pulled the packed literal out of `countries.gen.ts` at `38d23c9` and out of `git show b6200e6:…` by regex, decoded both, and removed the 54 positions `forgiveness-drops.json` records. The result is **`JSON.stringify` byte-identical to the entire pre-I-5b payload: 342,981 bytes, 239 entries, same order, same 892 rings.** Separately and without the fixture: every pre-I-5b entry appears, in order, byte-identically, as a subsequence of the new payload. The builder's claim is exactly right. |
+> | **Composition and ordering — swept over the forgiveness entries' own territory, not capitals** | **70,712 points**, generated by gridding each of the 54 forgiveness entries' bounding boxes and keeping only the points the entry's own even-odd rule contains, plus every ring vertex nudged toward its centroid. **Every one resolves to that entry's own ISO code — 0 `null`, 0 another country.** No forgiveness entry is preceded in the emitted order by an overlapping entry of a different code. Entry order re-derived with a different area formula (Lambert cylindrical shoelace vs the generator's Chamberlain–Duquette): **strictly ascending, 0 violations.** No two entries tie on `(area, code)`, so the comparator was already total and A-27's third key is never exercised — it is correct insurance rather than a live tie-break. All 54 same-code pairs genuinely share interior area with their coverage twin, so filter 1 admitted nothing on a boundary touch alone. |
+> | **Non-regression, my own sweeps** | **14,926,301 cells at 0.02° over all 54 forgiveness boxes padded by 0.1°: 704 `null` → a country, 0 `country` → `null`, 0 one country → another** — A-27 Part 5's and the builder's figure, cell for cell, including the 704. A global sweep at **0.29° with a 0.11° offset, 771,282 cells** (deliberately not the builder's grid): 8 gained, 0 lost, 0 switched. Reference trip: **0 answers change**, and `countries.json` / `country-holes.json` differ from `b6200e6` in **4 and 2 lines respectively, all inside `index`** — every country row, every `namedBy`, both unattributed lists, all 7 holes and every `resolvesAt` unchanged. |
+> | **The injected-fault tests, verified by mutation rather than by reading** | `qa/i5b-mutants.sh` mutates the real `tools/forgiveness.mjs` in a throwaway worktree, 18 mutants. **Deleting filter 1 in the source turns 4 tests red; deleting filter 2 turns 5 red; deleting both turns 6 red; making either `opts` switch a no-op turns 3 red including the two named criterion-4(e) tests.** So the faults are real faults and **KD-54 is correctly reflected**: with filter 1 gone `VA` is refused by filter 2 naming `IT`, and only with both gone does it gain the westward polygon — the shipped test asserts all three states and each is load-bearing. `overlaps()` stubbed to always-true fails 9, always-false fails 11. **But see R23-3** — the five individual clause deletions all leave the suite green. |
+> | **`cairn-constraints`, re-checked** | Determinism — neither `countryIndex.ts`, `derive/country.ts`, `countries.gen.ts` nor `tools/forgiveness.mjs` contains `Date.now`, `Math.random`, `crypto.randomUUID` or `new Date(`; two separate Node processes hash the decoded index identically (`97959ca3…`). Zero-dep core — `forgiveness.mjs` has **zero imports**, and `packages/core` gains no dependency. `packages/client` is untouched by this diff and still has no DOM or React reference. Node type-stripping holds with the generated module at 374,826 bytes; `erasableSyntaxOnly`/`verbatimModuleSyntax` both still on and `npm run typecheck` is clean. `tools/forgiveness.d.mts` matches the implementation's signatures exactly, including `drops[].code: string \| null`. |
+> | **The sensitive paths (§5, §6)** | Nothing on this surface logs, transmits or persists a user coordinate. The forgiveness pass's log lines carry ISO codes, scale tags and filter numbers — **no coordinate**. `forgiveness-drops.json` does carry polygon vertices (238 decimal tokens); they are Natural Earth admin-0 boundary rings, public domain, generated and never hand-typed, and the file states that in its own `$what`. **It is not in the web build graph** — `grep` finds it only in `tools/gen-countries.mjs`, `test/forgiveness.test.ts` and `packages/core/test/country.test.ts`, and the single occurrence of "forgiveness" in `dist/assets/index-*.js` is the `COUNTRY_INDEX.source` provenance string. No `fetch`, `fs`, DOM or mailbox surface is added to `packages/core` or `packages/client`. |
+> | **Read-only boundary** | Untouched, verified twice: `git diff e5c6376 38d23c9 -- . ':(exclude)cairn'` is empty and so is `git status --porcelain -- . ':(exclude)cairn'` after every run including three full generator runs, `npm run golden`, `npm run sample` and `npm run web:build`. The only files this round writes are `cairn/qa/i5b-forgiveness.mjs`, `cairn/qa/i5b-predicate.mjs`, `cairn/qa/i5b-neighbour.mjs`, `cairn/qa/i5b-macao.mjs`, `cairn/qa/i5b-mutants.sh` (new), the probe-rot repairs to `cairn/qa/i5-order.mjs` and `cairn/qa/i5-fillscale.mjs`, `cairn/qa/README.md` and this file. **No implementation file, no test file under `packages/`/`tools/`/`test/`, no `ARCHITECTURE.md`, no `ROADMAP.md`.** Every generator run and every mutation was made in a throwaway `git worktree add … 38d23c9` and discarded; `git worktree list` shows no leftover of mine. |
+>
+> **New probes this round:** `qa/i5b-forgiveness.mjs` (offline; **1 FAIL by design — R23-2**),
+> `qa/i5b-predicate.mjs` (offline; **3 FAIL by design — R23-2**), `qa/i5b-neighbour.mjs` (fetches
+> the three pinned layers, verifies checksums, prints SKIP rather than a false pass; **3 FAIL, 2 by
+> design — R23-1 — and 1 a Natural Earth labelling artefact explained in the row**),
+> `qa/i5b-macao.mjs` (**2 FAIL by design — R23-1**, isolated) and `qa/i5b-mutants.sh` (a report,
+> no pass/fail). Every other line in all five is a confirmation that must stay at 0.
+>
+> **The round-22 status note below is superseded by this one** and is kept as the record of what
+> was true at `b6200e6`.
 
 > **Status (as of `master` @ `b6200e6`, independently verified 2026-08-28 — round 22, the
 > mandatory adversarial pass over Phase 2 **I-5** and **I-5a**: `tools/gen-countries.mjs`,
@@ -169,6 +203,138 @@
 >
 > **The round-17 status note below is superseded by this one** and is kept as the record of what
 > was true at `909b4a3`.
+
+## Round 23 — I-5b: A-27's forgiveness entry and its two filters (`master` @ `38d23c9`)
+
+A-27 is a good ruling and I want to say that before the findings, because the findings are all
+about its edges. Part 2 measures and rejects the remedy the previous round's finding looked like it
+wanted, and it is right to: substituting a coarser polygon really does delete 175 of the Maldives'
+176 landforms, and I reproduced that. The additive design — two entries under one ISO code,
+composing as a union, with `countryOf` untouched — is the correct shape, and the builder's
+implementation of it is faithful and independently reproducible.
+
+So I attacked four things separately: **is the change really additive** (yes, byte-for-byte —
+strip the 54 recorded positions and you have the pre-I-5b payload exactly), **does every
+forgiveness entry answer its own code from its own ground** (yes, over 70,712 points chosen inside
+the entries rather than at capitals), **is `overlaps()` the exact predicate the ruling claims**
+(**no** — R23-2, latent), and **do the two filters bound what the ruling says they bound** (**no**
+— R23-1, live, and it is the one that matters).
+
+### Findings
+
+| id | sev | where | defect | repro | routing |
+|---|---|---|---|---|---|
+| **R23-1** | **MAJOR** | `ARCHITECTURE.md` §8.4 **A-27 Part 4, filter 2**, implemented at `tools/gen-countries.mjs:447` + `:455` / `tools/forgiveness.mjs:273-287` | Filter 2 tests a candidate ring against *"every other entry `E` of the **coverage-only index**"* — and **175 of those 239 entries are drawn at 1:110m**, the coarsest layer in the family. `CN` is one of them, and the 1:110m China polygon does not reach the Macao border: **0 of 14,641 sample cells in `MO`'s forgiveness box are `CN` at 1:110m; 12,463 of them are `CN` at 1:10m.** So filter 2 had nothing to compare against, `MO`'s 1:50m ring was admitted, and **≈22.1 km² of the Chinese mainland now attributes to `MO`** — against Macao's own ~33 km². Named: **Zhuhai Nanping, Guangdong (22.221 N, 113.503 E) was `null` before I-5b and is `MO` after**, and Natural Earth's own 1:10m layer calls that ground `CN`. A-27 Part 4 names filter 2's rejects as *"`AD`, `HK`, `LI`, `MC`, `SG`, `SM` and `SX` — i.e. **every bordered filled code**"*; `MO` is a bordered filled code and is absent from that list, so the ruling's own enumeration is what is wrong. **`MO` is the only instance**: I checked all 142 admitted rings against all 239 codes of the 1:10m layer. | `node --experimental-strip-types qa/i5b-macao.mjs` (isolated, 2 FAIL) · `node --experimental-strip-types qa/i5b-neighbour.mjs` §1 (the sweep that found it) | **architect** — the builder implemented A-27 Part 4 filter 2 exactly as written and reproduced its measurements to the byte; the sentence is what has to change |
+| **R23-2** | MINOR | `ARCHITECTURE.md` §8.4 **A-27 Part 4**'s predicate, implemented at `tools/forgiveness.mjs:207-232` (clauses `:216-217` and `:224-225`) | A-27 states the predicate is *"exact for simple rings"* and `forgiveness.mjs`'s own header repeats it as *"a property of this code"*. It is not: **the two "or the arithmetic mean of the vertices" probes make `overlaps()` return true for pairs of simple rings that share nothing.** A ring's vertex mean can lie outside a concave ring — a `C`, a horseshoe bay, a fjord — and if the other ring sits in that notch, clause (a) or (b) fires on a point neither ring contains. Three hand-built counterexamples reproduce. The means are also **pure surplus**: containment in either direction is already caught by the individual-vertex clauses, and 20,000 randomised simple-ring pairs found **0** cases where a mean rescued a real overlap the vertex/crossing clauses missed. **Direction of harm:** a false positive makes **filter 1 unsound** (it *admits* a ring that does not touch the country — the exact Vatican failure filter 1 exists to stop) and filter 2 merely lossy. **28 of the 239 coverage entries have a ring whose vertex mean falls outside it**, so the sites are live. **Latent, not live:** re-running both filters over all 153 candidate rings with a mean-free predicate changes **0 of 153 decisions**, so today's artefact is unaffected. | `node --experimental-strip-types qa/i5b-predicate.mjs` §1 (3 FAIL, the counterexamples) and §3 (the blast radius, 0) · `qa/i5b-forgiveness.mjs` §4 (1 FAIL, the C-notch case) | **architect** — the two `or the arithmetic mean` phrases are A-27 Part 4's own words and the builder implemented them verbatim; deleting them makes the predicate exactly what the ruling claims it already is |
+| **R23-3** | MINOR | `test/forgiveness.test.ts:56-118` | The seven tests that exist to exercise `overlaps()`'s three clauses **cannot detect any of them being deleted**. Measured by mutating the real module: removing clause (a)'s vertex loop, clause (a)'s mean, clause (b)'s vertex loop, clause (b)'s mean, or clause (c)'s segment-crossing test each leaves **17/17 green**. The cause is R23-2's surplus — e.g. the plus-sign fixture at `:64-67` is commented *"neither rectangle has a vertex inside the other, but eight edges cross"*, and yet its vertex mean `(5, 5)` is inside the other rectangle, so clause (a) answers it and clause (c) is never reached. Three arithmetic mutations also survive: `prepRing` truncating instead of rounding, `vertexMean` truncating, and `insideRing`'s strict comparison made non-strict. The *filter*-level tests are sound — every filter mutation goes red, including both criterion-4(e) faults. | `bash qa/i5b-mutants.sh` — 18 mutants, one line each | **builder** — test-only; each clause needs a fixture that only that clause can answer |
+| **R23-4** | MINOR | `ROADMAP.md` I-5b ship gate, *"`node --test packages/core` still runs directly and the budget test is still the *first* test"* | The two halves of that sentence are true of two different commands, and the literal one is not what a reader will assume. **`node --test packages/core` resolves `packages/core` through its `main` field, imports `src/index.ts`, registers zero tests and reports one passing subtest named `packages/core` in ~176 ms.** It is a real gate — I appended garbage to `countries.gen.ts` and it went red, so it does prove the 374,826-byte generated module type-strips with no build step — but it **does not run the 425 tests under `packages/core/test/`** and therefore cannot demonstrate anything about ordering. The ship-gate command `npm run test:tap` does both correctly: `0-countryBudget.test.ts` is `ok 1`, `ok 2`, `ok 3`. **Pre-existing since I-5, not introduced here**, and filed only because I-5's *"the budget test is the guard and it is the **first** test"* is a real protection whose evidence a reader should be able to reproduce from the sentence. | `node --test packages/core` (1 test, ~176 ms) vs `node --test --test-concurrency=1 packages/core/test/*.test.ts` (`ok 1 - I-5: the generated country index is within its measured size budget`) | **architect** — it is ROADMAP's prose; the fix is to name the command that demonstrates each half |
+
+### R23-1, at length — why both the architect's sweep and the builder's passed over it
+
+A-27 Part 3 property 2 is the increment's strongest claim and it is *true*: the change is purely
+additive, so a `country → null` regression is impossible by construction, and a
+`country → other country` change is possible only where a forgiveness ring overlaps another entry.
+I verified both, over 14.9 M cells and a global grid, and found exactly what the ruling predicts:
+**0 lost, 0 switched, 704 gained.**
+
+The hole is in the third case. Every verification A-27 Part 5 and ROADMAP criterion 4(e) specify is
+a comparison **of the index against itself** — old answer versus new answer. A cell that was `null`
+and is now `MO` is booked as `null → a country`, which the criterion counts as a *gain*. It never
+asks the only question that could have caught this: *is the country it gained the right one?* Since
+the index draws China at 1:110m, the index's own opinion of Zhuhai was `null` both before and
+after, so the ground was invisible to every sweep either side ran. The defect is only visible
+against a **third** source, and the natural one is already in the repository: the 1:10m layer the
+fill itself uses.
+
+The mechanism, stated once so a fix can be scoped rather than guessed:
+
+- Filter 2's population is *"every other entry of the coverage-only index"*. That index is
+  **mixed-resolution by design** — 175 codes at 1:110m, 64 at 1:10m — which is exactly what A-26
+  bought. Asking a 1:50m ring whether it overlaps a 1:110m neighbour is a question at the wrong
+  scale, and it fails in one direction only: **generously**.
+- It happened not to bite for `AD`, `LI`, `MC`, `SM` (enclosed by `ES`/`CH`/`AT`/`FR`/`IT`, whose
+  coarse polygons are large and cover them), nor for `HK` (three rings, all caught against `CN`),
+  nor for `SG`/`SX` (caught against `MY`/`MF`). It bit for `MO` alone, because Macao sits on the
+  Pearl River delta where the 1:110m coastline is generalised inland by several kilometres.
+- A-27 Part 6 residue 3's *"trigger to reopen"* — *"the first real trip whose coordinates sit
+  between two island states close enough for their forgiveness bands to meet"* — anticipates a
+  neighbouring **forgiveness** entry, which filter 2 also never sees (the pass filters against the
+  coverage-only index computed before it runs). I swept for that too and there is **no
+  forgiveness-vs-forgiveness overlap today**, so that residue is intact. R23-1 is a different and
+  live case: forgiveness versus a *coverage* entry whose own drawing is too coarse to defend
+  itself.
+
+**Why MAJOR and not BLOCKER.** `countryOf` and `COUNTRY_INDEX` still have no caller in `apps/web`,
+`packages/client` or `cli.ts`, so nothing a user can see is wrong today and no stored record
+carries the answer. **Why it is a blocker for I-6.** §8.4 clause 3 makes the index a required
+argument to `tripSummary(trip, index)` and computes the summary *inside the write that carries it*.
+The moment I-6 lands, a stop recorded in Zhuhai is persisted as a visit to Macao, and correcting it
+costs a `SUMMARY_VERSION` rescan — which is precisely the argument I-5a and I-5b each made for
+themselves. It is cheapest to fix now, for the same reason and in the same words.
+
+**What I am not claiming.** I am not proposing the remedy. Comparing every candidate against the
+1:10m layer for all 239 codes is one option and it is what my probe does, but it is an architect's
+call whether filter 2's population should be *"every other entry of the coverage-only index"*,
+*"every other country at the finest scale in the family"*, or *"every other country at the
+candidate's own scale"* — the three give different answers and only the first is what ships. What I
+have established is that the first is not sufficient, that the ruling's own list of bordered filled
+codes is short by one, and that both of A-27 Part 5's Macao sentences (*"Zhuhai across the border
+is still `null`"*) are true only of the coordinate that was spot-checked.
+
+### What I attacked and could not break
+
+Listed so "the mechanism is sound" is a conclusion rather than an absence of effort.
+
+- **Additivity.** Not sampled — the coverage half of the new payload *is* the old artefact,
+  `JSON.stringify`-identical at 342,981 bytes, and separately a byte-identical in-order
+  subsequence. `892 + 142 = 1,034`.
+- **Composition under one ISO code.** 70,712 points inside the 54 forgiveness entries' own rings,
+  none at a capital: every one resolves to its own code. No forgiveness entry is preceded by an
+  overlapping entry of another code. The claim that *"which entry wins is not observable"* holds.
+- **The ordering third key.** No two entries tie on `(area, code)`, so the comparator was already a
+  total order and `Array.sort` stability is still unreachable; 20 seeded permutations re-sort to
+  the committed order exactly. The key is correct insurance, not a live tie-break.
+- **`overlaps()`'s false *negatives*.** I could not construct one. For simple rings the vertex and
+  crossing clauses are complete (if two simple closed curves neither cross nor touch, one interior
+  contains the other, and containment puts every vertex of the contained ring inside), and 4,000
+  randomised pairs differential-tested against an independent area-sampling reference produced
+  **0** false negatives. Holes behave: a ring inside a hole of `S` is correctly *not* an overlap,
+  and a ring spanning the rim correctly is. The failure is entirely in the other direction (R23-2).
+- **Self-intersecting rings.** The predicate is only claimed exact for simple rings, so I censused
+  the artefact: **9 non-simple rings, 8 in `MV` and 1 in `SD`, and none of them in a forgiveness
+  entry**. So R22-2's bow-ties cannot reach the filters' correctness.
+- **Filter 1's two drops, checked for a wrongful rejection.** `VA`'s 1:50m ring sits 1.5 km west of
+  the state and its ground is `IT` at 1:10m — the drop is right, and it is now a measurement rather
+  than A-26 Part 5's hand-written exception, which is the outcome that ruling asked for. `MV`'s
+  dropped ring sits at 3.26 N, 73.41 E, **11.0 km from the nearest 1:10m Maldives ring**, and is
+  **open water at 1:10m** — not a quantisation artefact, and no landform is lost by refusing it.
+- **Filter 2's nine drops.** Every one names a country the ring genuinely reaches, re-checked with
+  a mean-free predicate: `AD`→`ES`, `HK`→`CN` ×3, `LI`→`CH`, `MC`→`FR`, `SG`→`MY`, `SM`→`IT`,
+  `SX`→`MF`. None is a vertex-mean artefact.
+- **Filter 2 against a neighbour's *fine* geometry.** All 142 admitted rings, against all 239 codes
+  of the 1:10m layer and all 237 of the 1:50m layer. **Exactly one hit at 1:10m — R23-1.** One
+  further hit at 1:50m only, `MF`→`SX`: Saint-Martin's and Sint Maarten's 1:50m polygons overlap
+  each other, but **0 cells of `SX`'s 1:10m territory answer `MF`**, and Philipsburg, Simpson Bay
+  and Princess Juliana are unchanged. That one is a same-scale artefact of the source layer, not a
+  defect.
+- **Populated places as a third opinion.** 34 Natural Earth settlements fall inside a forgiveness
+  entry; exactly one carries another country's ISO code, and it is **Alofi**, whose
+  `ISO_A2` is `NZ` while its `ADM0NAME` is `Niue` — Natural Earth attributing the free-association
+  sovereign. Not a defect; recorded so the next round does not re-derive it.
+- **The two codes with no entry for lack of a polygon.** `GI` and `UM` genuinely have no 1:50m
+  polygon in the pinned layer, and the 1:110m layer carries **none** of the 64 filled codes, which
+  is A-27 Part 3 property 4 asserted rather than assumed.
+- **What forgiveness does *not* fix, correctly.** `KI` (Tarawa), `MH` (Majuro) and `TV` (Funafuti)
+  each received a forgiveness entry and still return `null` at their capital, because no scale in
+  the pinned family reaches those coordinates. `JE` (St Helier) is the same class and `VA` is `IT`.
+  That is A-27's own `null` rule working, not a residue of R22-1, and the five remaining misses out
+  of 64 are all genuine dataset gaps.
+- **Determinism and the artefact.** Two full generator runs, byte-identical; `--holes` byte-identical;
+  two Node processes hash the decoded index identically; the goldens' only diff against `b6200e6`
+  is `index` metadata.
+- **Sensitive paths.** The forgiveness pass logs ISO codes and filter numbers and no coordinate.
+  The new fixture carries Natural Earth boundary vertices — public domain, generated, documented in
+  its own `$what` — and is not in the web build graph. No mailbox surface is touched at all.
 
 ## Round 22 — I-5 / I-5a: A-26's mixed-resolution country index (`master` @ `b6200e6`)
 

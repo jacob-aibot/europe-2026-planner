@@ -14,9 +14,10 @@
  * Sections:
  *   §1  R22-1 — the fill scale is fixed by fiat at the family's FINEST layer (A-26 Part 4), which
  *       is the layer A-26 Part 2 measured and rejected for the base. Measured cost.
- *   §2  R22-2 — `fixtures/golden/country-holes.json`'s seven `resolvesAt` values, re-derived from
+ *   §2  (a round-22 confirmation, no finding id) — `fixtures/golden/country-holes.json`'s seven
+ *       `resolvesAt` values, re-derived from
  *       the raw layers rather than trusted.
- *   §3  R22-3 — where the shipped index's nine self-intersecting rings come from, and what the
+ *   §3  R22-2 — where the shipped index's nine self-intersecting rings come from, and what the
  *       generator's quantisation guard can and cannot see.
  */
 import { createHash } from 'node:crypto';
@@ -286,7 +287,7 @@ if (!GEO) {
   );
 }
 
-// ---------------------------------------------------------------- §2 R22-2: the holes golden
+// ---------------------------------------------------------------- §2 the holes golden
 
 h('§2 country-holes.json — every `resolvesAt` re-derived from the raw layers, not trusted');
 
@@ -334,9 +335,9 @@ if (!GEO) {
   }
 }
 
-// ---------------------------------------------------------------- §3 R22-3: quantisation
+// ---------------------------------------------------------------- §3 R22-2: quantisation
 
-h('§3 R22-3 — the nine self-intersecting rings, and what the quantisation guard can see');
+h('§3 R22-2 — the nine self-intersecting rings, and what the quantisation guard can see');
 
 if (!GEO) {
   console.log('  SKIP: needs the pinned layers');
@@ -422,7 +423,7 @@ if (!GEO) {
     if (code === 'MV') {
       ok(
         rawBad > 0 || qBad === 0,
-        'R22-3: the generator\'s 4-dp quantisation does not turn a simple Natural Earth ring into a self-intersecting one',
+        'R22-2: the generator\'s 4-dp quantisation does not turn a simple Natural Earth ring into a self-intersecting one',
         `it turns ${qBad} simple MV atoll rings into bow-ties; the guard \`verifyQuantisation\` samples a 1.7° lattice (~11k points) and reports 0, which it always will — a lattice that coarse cannot land within 11 m of a border`,
       );
       note('bounded damage', `~${(lostM2 / 1e6).toFixed(4)} km² lost / ~${(gainM2 / 1e6).toFixed(4)} km² gained across the eight bow-ties, against ~108.7 km² of Maldives land — the even-odd rule still answers MV inside both lobes, so no atoll disappears`);

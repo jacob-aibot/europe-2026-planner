@@ -165,7 +165,16 @@ h('§2 the generator\'s ordering is deterministic — total order, permutation-i
 const cmp = (a, b) => a.area - b.area || (a.code < b.code ? -1 : a.code > b.code ? 1 : 0);
 const withArea = IX.countries.map((c) => ({ code: c.code, area: areaOf(c) }));
 const codes = withArea.map((x) => x.code);
-ok(new Set(codes).size === codes.length, 'ISO codes are unique, so the comparator is a TOTAL order and Array.sort stability is irrelevant');
+// Round 23 (I-5b / A-27): an ISO code may now appear on TWO entries, so "codes are unique" is
+// deliberately false and the round-22 form of this assertion has rotted. The property it was
+// really asserting — that `Array.sort` stability is never reachable — survives, and is now
+// asserted directly: no two entries share BOTH an area and a code, so `(area, code)` is still a
+// total order and the generator's third key (scale, coarsest first) is never actually exercised.
+ok(new Set(codes).size === 239, '239 distinct ISO codes over 293 entries (A-27: 54 codes carry two)', `${new Set(codes).size} of ${codes.length}`);
+{
+  const key = withArea.map((x) => `${x.area}|${x.code}`);
+  ok(new Set(key).size === key.length, 'no two entries tie on (area, code), so the comparator is still a TOTAL order', `${key.length - new Set(key).size} ties`);
+}
 
 // seeded shuffle, so the run is reproducible
 let seed = 20260828;
@@ -203,7 +212,8 @@ for (const [code, rings] of oldRaw) {
 ok(oldRaw.length === 175, 'the pre-I-5a module carried 175 codes', String(oldRaw.length));
 ok(absent.length === 0, 'every pre-I-5a code is still in the index', JSON.stringify(absent));
 ok(changed.length === 0, 'every pre-I-5a code\'s rings are BYTE-IDENTICAL — only the order moved', JSON.stringify(changed));
-ok(IX.countries.length - oldRaw.length === 64, '64 codes were added and nothing was removed', String(IX.countries.length - oldRaw.length));
+// Round 23: 64 fill entries (I-5a) + 54 forgiveness entries (I-5b / A-27) = 118 added, none removed.
+ok(IX.countries.length - oldRaw.length === 118, '118 ENTRIES were added and nothing was removed (64 fill + 54 forgiveness)', String(IX.countries.length - oldRaw.length));
 note(
   'therefore, structurally',
   'the set of countries containing any point is a SUPERSET of the pre-I-5a set, so `country -> null` is impossible and `country -> other country` can only happen where >1 country contains the point',
@@ -276,20 +286,33 @@ for (const e of IX.countries) {
     }
   }
 }
-const pos = new Map(IX.countries.map((c, i) => [c.code, i]));
+// Round 23 (I-5b / A-27): a code's coverage and forgiveness entries overlap BY DESIGN — filter 1
+// requires it — and they carry the same answer, so a same-code pair is not contested ground and
+// is separated out rather than counted. What must not move is the CROSS-code list.
+const pos = new Map();
+IX.countries.forEach((c, i) => { if (!pos.has(c.code)) pos.set(c.code, i); });
+const sameCode = [...pairs.keys()].filter((k) => k.split('+')[0] === k.split('+')[1]);
+const crossCode = [...pairs].filter(([k]) => k.split('+')[0] !== k.split('+')[1]);
 const smallerWins = [];
-for (const [key, v] of [...pairs].sort((a, b) => b[1].km2 - a[1].km2)) {
+for (const [key, v] of crossCode.sort((a, b) => b[1].km2 - a[1].km2)) {
   const [a, b] = key.split('+');
   const first = pos.get(a) < pos.get(b) ? a : b;
   const smaller = areaOf(IX.countries[pos.get(a)]) < areaOf(IX.countries[pos.get(b)]) ? a : b;
   smallerWins.push(first === smaller);
   note(`${key.padEnd(8)} contested ~${v.km2.toFixed(2)} km²`, `countryOf answers ${first}`);
 }
-ok(pairs.size === 10, 'exactly ten pairs of entries overlap anywhere on Earth', `${pairs.size} pair(s)`);
+note('same-code pairs (A-27 forgiveness ∪ coverage, not contested)', `${sameCode.length} of the 54 seen at this grid step`);
+ok(crossCode.length === 10, 'exactly ten CROSS-CODE pairs of entries overlap anywhere on Earth', `${crossCode.length} pair(s)`);
 ok(smallerWins.every(Boolean), 'in EVERY overlapping pair the smaller-area entry is the one countryOf returns');
 ok(
-  [...pairs.keys()].every((k) => k.split('+').some((c) => !oldRaw.some(([oc]) => oc === c))),
-  'every overlapping pair has exactly one 1:10m filled member — there is no 110m-vs-110m or 10m-vs-10m overlap',
+  crossCode.every(([k]) => k.split('+').some((c) => !oldRaw.some(([oc]) => oc === c))),
+  'every cross-code overlapping pair has exactly one 1:10m filled member — there is no 110m-vs-110m or 10m-vs-10m overlap',
+);
+// Round 23: the A-27 addition must not create a new cross-code contest. Every same-code pair is
+// a forgiveness/coverage pair of a filled code.
+ok(
+  sameCode.every((k) => !oldRaw.some(([oc]) => oc === k.split('+')[0])),
+  'every same-code overlapping pair belongs to a FILLED code — A-27 touches nothing the base carries',
 );
 
 // ---------------------------------------------------------------- §6 ray-casting correctness
@@ -429,19 +452,34 @@ const src = readFileSync(GEN, 'utf8');
 const packed = /const PACKED =\n\s*'([\s\S]*?)';/.exec(src);
 const outside = src.replace(packed[1], '');
 const bytes = statSync(GEN).size;
-note('EMITTED_BYTES', `test pins 346_455; file is ${bytes}`);
-ok(bytes <= 346455, 'the file is within its measured budget');
+// Round 23 (I-5b): EMITTED_BYTES moved 346_455 -> 374_826 and R22-4's guard 1 was REPLACED by two
+// measurements of two different things. This section is re-expressed against the guards that now
+// exist, and R22-4's assertion becomes a headroom check on both of them.
+note('EMITTED_BYTES', `test pins 374_826; file is ${bytes}`);
+ok(bytes <= 374826, 'the file is within its measured budget');
 ok((outside.match(/\[/g) ?? []).length === 0, 'guard 2: zero "[" outside the packed literal');
 ok(packed[1].length / src.length > 0.98, 'guard 3: the packed literal is >98% of the file', (packed[1].length / src.length).toFixed(6));
-note('guard 1: bytes outside the packed literal', `${outside.length} against a limit of 3600 — HEADROOM ${3600 - outside.length} bytes`);
-ok(
-  3600 - outside.length > 500,
-  'R22-4: guard 1 has more than 500 bytes of headroom, so an ordinary header-comment edit will not trip it',
-  `${3600 - outside.length} bytes left; the limit was already raised 3000 -> 3600 in this increment for comment growth, and its failure message still blames "data leaked into syntax"`,
-);
+{
+  const headerEnd = outside.indexOf('*/');
+  const header = outside.slice(0, headerEnd + 2);
+  const statements = outside.slice(headerEnd + 2);
+  const prose = header.replace(/\b[A-Z]{2}(?: [A-Z]{2})+\b/g, '');
+  note('guard 1a: statements after the header comment', `${statements.length} against a limit of 1500 — HEADROOM ${1500 - statements.length}`);
+  note('guard 1b: header prose with ISO code runs removed', `${prose.length} against a limit of 6000 — HEADROOM ${6000 - prose.length}`);
+  ok(
+    1500 - statements.length > 500 && 6000 - prose.length > 500,
+    'R22-4 CLOSED: both replacement guards have >500 bytes of headroom and each names what will actually trip it',
+    `1a ${1500 - statements.length}, 1b ${6000 - prose.length}`,
+  );
+  ok(
+    /[A-Z]{2}(?: [A-Z]{2})+/.test(header) && prose.length < header.length,
+    'guard 1b really does subtract the ISO code lists — they are what grows with the dataset',
+    `${header.length - prose.length} bytes of code list excluded`,
+  );
+}
 note(
-  'guard 3 is a RATIO, so it does not bound the comment in absolute terms',
-  `at today's payload it permits ${Math.round(packed[1].length / 0.98 - packed[1].length)} bytes outside — nearly twice guard 1's 3,600 — and that allowance grows with the dataset`,
+  'guard 3 is still a RATIO, so it does not bound the comment in absolute terms',
+  `at today's payload it permits ${Math.round(packed[1].length / 0.98 - packed[1].length)} bytes outside — but guard 1a/1b now bound the two halves separately, which is R22-4's fix`,
 );
 // what the budget test alone cannot see
 const shrunk = `${outside.slice(0, outside.indexOf("'") + 1)}${packed[1].slice(0, 1000)}';`;
