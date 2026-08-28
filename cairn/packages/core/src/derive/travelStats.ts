@@ -83,11 +83,46 @@ export type TravelStats = {
 
 /**
  * `null` is a distinct group key. The country goes FIRST in the composite key and is always
- * exactly two characters — a `CountryCode` is `/^[A-Za-z]{2}$/` (§8.4 A-29's gate) and this
- * sentinel is two characters no code can be — so the split is unambiguous whatever the folded
- * city name contains.
+ * exactly two characters — **because the value has been read through `isMintedCode` below and
+ * is either two ASCII capitals or this two-character sentinel** — so the split is unambiguous
+ * whatever the folded city name contains.
+ *
+ * §8.4 **A-37** Part 3. This docstring used to cite the *mint* (*"a `CountryCode` is
+ * `/^[A-Za-z]{2}$/`, §8.4 A-29's gate"*), which is a true statement about a **document** and a
+ * false one about a row: A-29's gate runs at the mint and nothing revalidates a stored row on
+ * the way back in. A stored `'--'` collided with this sentinel exactly. The guarantee is made
+ * true by the gate rather than withdrawn, because withdrawing it leaves the key ambiguous.
  */
 const NO_COUNTRY = '--';
+
+// ---------------------------------------------------------------------------
+// §8.4 **A-37** — the two read gates. A `TripSummaryRow` is not a validated document: it is
+// read out of storage by `listTrips()`, it passes through no parser and no validator on the
+// way in, and `SUMMARY_VERSION` tells a reader WHEN a row was minted, never THAT it is
+// well-formed. Every claim this function makes about a field value it read is discharged here,
+// on the read. Both are module-private: no new export, no new type, no `Issue` channel, no
+// throw, and no `SUMMARY_VERSION` bump — a gate on the read of a field is not a change to the
+// field, and `tripSummary` is unchanged (residue 3).
+// ---------------------------------------------------------------------------
+
+/** `IsoDate`'s domain, computed from A-32 Part 4's statement rather than transcribed as two
+ * magic integers, so it cannot drift from the statement it implements. */
+const DOMAIN_MIN = dayNumber('0000-01-01' as IsoDate); // -719528
+const DOMAIN_MAX = dayNumber('9999-12-31' as IsoDate); //  2932896
+/** §8.4 A-37 Part 2. A row is not a document: its dates carry no issues and were never revalidated. */
+const inDomain = (n: number): number => Math.min(DOMAIN_MAX, Math.max(DOMAIN_MIN, n));
+
+/**
+ * §8.4 A-37 Part 3. A *minted* `cities[].countryCode` is `/^[A-Z]{2}$/` — A-29's gate checks
+ * `/^[A-Za-z]{2}$/`, uppercases, and then requires index membership, so uppercase is the shape
+ * the mint emits. A *stored* one is whatever is in the database. This is deliberately the
+ * MINT'S OUTPUT shape and not A-29's acceptance shape: they are different rules on different
+ * sides, and sharing one predicate would make a lowercase stored code a second city row.
+ *
+ * Index membership is NOT re-checked here: `travelStats` takes no index, stays pure and
+ * index-free (A-31 Part 4), and membership is the mint's job.
+ */
+const isMintedCode = (v: unknown): v is CountryCode => typeof v === 'string' && /^[A-Z]{2}$/.test(v);
 
 /**
  * Everywhere the traveller has actually been, derived from the library's summary rows. Pure.
@@ -113,6 +148,15 @@ const NO_COUNTRY = '--';
  * separately, and that is not a discrepancy — they are counts of different things, and the
  * alternative is the one that inflates (residue 5).
  *
+ * **A row is not a validated document** (§8.4 **A-37**). It is read out of storage by
+ * `listTrips()`, it passes through no parser and no validator on the way in, and
+ * `SUMMARY_VERSION` tells a reader *when* a row was minted, never *that it is well-formed*. So
+ * the two shapes this function used to take on trust are checked on the read: a day number it
+ * derives from a string it did not mint is clamped into `IsoDate`'s domain (`inDomain`), and a
+ * stored `countryCode` is read through the mint's own output shape (`isMintedCode`) — a
+ * non-matching one is `null` for a city (counted in `unattributed.cities`) and skipped for a
+ * `countryCodes[]` entry. Read-side only: `tripSummary` is unchanged.
+ *
  * **A row out of storage is never a reason to throw** (QA R28-3, R28-4). A row minted before
  * `SUMMARY_VERSION` 4 carries no `attribution` census and contributes none; a row whose census
  * is impossible (`attributed > located`) contributes `0` to `unattributed` and its `located` as
@@ -124,7 +168,12 @@ const NO_COUNTRY = '--';
  *         the list is exhaustive** (A-31 Part 4).
  */
 export function travelStats(summaries: readonly TripSummaryRow[], today: IsoDate): TravelStats {
-  const todayNum = dayNumber(today);
+  // **A-37 Part 2**, site 1 of 3. Every day number this function lets reach an output is
+  // clamped into `IsoDate`'s domain, so every date it emits is `IsoDate`-shaped by construction
+  // rather than by an argument about who validated the input. Everything downstream — the union
+  // sweep, `firstVisit`, `lastVisit` — reads these three and inherits the property, so the four
+  // `fromDayNumber` call sites need no change and cannot be forgotten one at a time.
+  const todayNum = inDomain(dayNumber(today));
 
   // 1. Duplicate ids throw. A library is keyed by id, so two rows with one id is a caller bug,
   //    and a silent dedupe would make `trips.completed` quietly wrong for whoever built the
@@ -139,6 +188,8 @@ export function travelStats(summaries: readonly TripSummaryRow[], today: IsoDate
   //    depends on the order the caller happened to pass — which is what makes the golden stable
   //    and the purity assertion meaningful. `slice()` before `sort()`: the input is `readonly`
   //    and comes back untouched.
+  //    **A-37 Part 2, deliberately NOT clamped**: this comparator decides ORDER and never
+  //    reaches an output, and `id` is the tie-break so the order stays total either way.
   const rows = summaries.slice().sort((x, y) => {
     const d = dayNumber(x.startDate) - dayNumber(y.startDate);
     if (d !== 0) return d;
@@ -151,11 +202,15 @@ export function travelStats(summaries: readonly TripSummaryRow[], today: IsoDate
   // 4. The travelled set: `active` or `completed`, with the clamped interval each contributes.
   const travelled: Array<{ row: TripSummaryRow; a: number; b: number; done: boolean }> = [];
   for (const row of rows) {
+    // **A-37 Part 2, deliberately NOT clamped**: `lifecycle` decides how a row is CLASSIFIED,
+    // which is a different function's contract, and clamping inside it would make an
+    // out-of-domain row report as `active` forever.
     const stage = lifecycle(row, today);
     trips[stage]++;
     if (stage === 'planned') continue;
-    const a = dayNumber(row.startDate);
-    const rawB = stage === 'active' ? Math.min(dayNumber(row.endDate), todayNum) : dayNumber(row.endDate);
+    // **A-37 Part 2**, sites 2 and 3 of 3.
+    const a = inDomain(dayNumber(row.startDate));
+    const rawB = inDomain(stage === 'active' ? Math.min(dayNumber(row.endDate), todayNum) : dayNumber(row.endDate));
     // `done` is A-34's evidence, carried once per row rather than re-derived per country and
     // per city: `lifecycle` is called exactly here, and the folds below only read this flag.
     travelled.push({ row, a, b: Math.max(a, rawB), done: stage === 'completed' });
@@ -182,6 +237,11 @@ export function travelStats(summaries: readonly TripSummaryRow[], today: IsoDate
   const countryMap = new Map<CountryCode, TravelStatsCountry & { firstNum: number; lastNum: number }>();
   for (const { row, a, b, done } of travelled) {
     for (const code of row.countryCodes) {
+      // **A-37 Part 3**, read 2 of 2. An entry that is not a minted code is SKIPPED:
+      // `TravelStatsCountry.code` is what I-8 looks up in the index to fill a country, and a
+      // code the index cannot contain has no honest rendering. Skipped silently — there is no
+      // `unreadableCodes` counter, and that is Part 5 residue 2.
+      if (!isMintedCode(code)) continue;
       const hit = countryMap.get(code);
       if (!hit) {
         countryMap.set(code, {
@@ -261,7 +321,13 @@ export function travelStats(summaries: readonly TripSummaryRow[], today: IsoDate
       // disagree — `=== null` decided this count while `?? NO_COUNTRY` decided the group key —
       // so an `undefined` code was grouped as unattributed without being counted as one, and
       // came back out as `undefined`, which `JSON.stringify` silently drops.
-      const countryCode = c.countryCode ?? null;
+      //
+      // **§8.4 A-37 Part 3**, read 1 of 2, and it is still exactly ONE read deciding the count,
+      // the group key and the emitted value together. `?? null` was a check on *presence*; a
+      // row is not a document, so this is a check on *shape*. A `'--'` (which collided with the
+      // composite key's sentinel), `''` (grouped as unattributed without being counted as one),
+      // `'A|'` (which made two different rows one), `'hr'` or a `42` is **null**.
+      const countryCode = isMintedCode(c.countryCode) ? c.countryCode : null;
       if (countryCode === null) unattributedCities++;
       const nameKey = normalizeCityName(c.name);
       // A name that folds to `''` is **not an identity** (§2.14 A-14 assertion 5). Grouping on

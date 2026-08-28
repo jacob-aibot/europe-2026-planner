@@ -9,7 +9,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createTrip, updateStop, addStop, displayStatus, sequentialIds, LOCAL_OWNER, returnToPool, scheduleFromPool, poolFor, setDayMeta, validateTrip } from '../src/index.ts';
+import { createTrip, updateStop, addStop, displayStatus, sequentialIds, LOCAL_OWNER, returnToPool, scheduleFromPool, poolFor, setDayMeta, validateTrip, ensureDays } from '../src/index.ts';
 // The provenance constructors are off the surface in §2.10 revision 5 — they stamp
 // provenance with no gate. Tests reach the module path directly. BUILD-NOTES KD-33.
 import { systemSuggestion, userProvenance } from '../src/model/provenance.ts';
@@ -225,4 +225,90 @@ test('R2-2: an unreachable pool key is an ERROR, never silence', () => {
   // rule that fires on every brand-new trip is noise, and noise is what makes a real
   // finding invisible.
   assert.equal(validateTrip(base).filter((i) => i.code === 'pool_stop_unknown_city').length, 0);
+});
+
+// ===========================================================================
+// §2.3 **A-35** — the day skeleton is bounded (QA R29-2).
+//
+// `ensureDays` is the only function that mints `Day` records and the number it mints is
+// bounded: at most 3,653 days — ten Gregorian years, inclusive of both endpoints. The bound
+// lives here, at the mint, and **not** in the two forms: `0202-01-01 → 2020-12-31` is one
+// mistyped digit, passes both forms' two-check validation, and minted 664,377 `Day` objects
+// (266.7 MB of JSON) that `validateTrip` reported nothing about.
+//
+// The constant is deliberately NOT exported (§2.10's surface does not move), so the numbers
+// are transcribed here — which is also what makes the off-by-one visible in both directions.
+// ===========================================================================
+
+const SPAN = { title: 'span', homeCurrency: 'EUR' } as const;
+
+test('A-35: exactly the cap — 2020-01-01 → 2029-12-31 is 3,653 days and creates', async () => {
+  const { createTrip: create } = await import('../src/index.ts');
+  const t = create({ ...SPAN, startDate: '2020-01-01', endDate: '2029-12-31' }, ctx());
+  assert.equal(t.days.length, 3653);
+});
+
+test('A-35: one day past the cap — 2020-01-01 → 2030-01-01 is 3,654 days and throws', () => {
+  assert.throws(
+    () => createTrip({ ...SPAN, startDate: '2020-01-01', endDate: '2030-01-01' }, ctx()),
+    /would cover 3654 days/,
+    'the comparison is against `span + 1`; comparing the exclusive span is off by one exactly here',
+  );
+});
+
+test('A-35: the R29-2 mistype throws, and the message names the span, the cap and both dates', () => {
+  let message = '';
+  assert.throws(
+    () => createTrip({ ...SPAN, startDate: '0202-01-01', endDate: '2020-12-31' }, ctx()),
+    (err: unknown) => {
+      message = (err as Error).message;
+      return err instanceof Error;
+    },
+  );
+  assert.match(message, /664377/, 'the message tells the user how many days they asked for');
+  assert.match(message, /3653/, 'and what the cap is');
+  assert.match(message, /0202-01-01/);
+  assert.match(message, /2020-12-31/);
+  assert.match(message, /year/i, 'and names the likely cause — it is written for a person');
+});
+
+test('A-35: the bound is NOT in the view — the forms\' own validation still accepts the mistype', () => {
+  // `rangeFor(precision:'exact')`, transcribed from `views/PastTripForm.tsx` (and open-coded a
+  // second time in `views/Library.tsx`). This is the whole reason the bound is at the mint:
+  // both forms say yes, and the thing that allocates is what says no.
+  const rangeForExact = (a: string, b: string) =>
+    /^\d{4}-\d{2}-\d{2}$/.test(a) && /^\d{4}-\d{2}-\d{2}$/.test(b) && b >= a ? { startDate: a, endDate: b } : null;
+  assert.notEqual(rangeForExact('0202-01-01', '2020-12-31'), null);
+  assert.notEqual(rangeForExact('0000-01-01', '9999-12-31'), null);
+});
+
+test('A-35: setTripMeta cannot widen an existing trip past the cap either', async () => {
+  const { setTripMeta } = await import('../src/index.ts');
+  const t = createTrip({ ...SPAN, startDate: '2026-08-07', endDate: '2026-08-09' }, ctx());
+  assert.throws(() => setTripMeta(t, { endDate: '2226-08-09' }, ctx()), /at most 3653/);
+  // …and a move inside the cap still works, so the guard is not simply refusing everything.
+  const ok = setTripMeta(t, { endDate: '2026-08-20' }, ctx());
+  assert.equal(ok.days.length, 14);
+});
+
+test('A-35: the check reads the WIDENED endpoints, not the stated ones', () => {
+  // `ensureDays` widens `[start,end]` to keep a day that still holds stops rather than
+  // destroying content, so the span that matters is the one that will actually be minted.
+  const base = addStop(
+    createTrip({ ...SPAN, startDate: '2020-01-01', endDate: '2020-01-02' }, ctx()),
+    { kind: 'day', dayId: '2020-01-01', order: 0, time: null },
+    { title: 's' },
+    ctx(),
+  );
+  const stray: Trip['days'][number] = { ...base.days[0], id: '2040-01-01', date: '2040-01-01' };
+  const widened: Trip = { ...base, days: [{ ...base.days[0], stops: [] }, base.days[1], stray] };
+  assert.throws(() => ensureDays(widened, ctx()), /would cover 7306 days \(2020-01-01 → 2040-01-01\)/);
+  // The same document with the stray day EMPTY drops it instead of widening, and is fine.
+  const empty: Trip = { ...widened, days: widened.days.map((d) => ({ ...d, stops: [] })) };
+  assert.equal(ensureDays(empty, ctx()).days.length, 2);
+});
+
+test('A-35: the cap refuses nothing anybody would type on purpose — a three-year past trip creates', () => {
+  const t = createTrip({ ...SPAN, startDate: '2019-01-01', endDate: '2021-12-31' }, ctx());
+  assert.equal(t.days.length, 1096);
 });

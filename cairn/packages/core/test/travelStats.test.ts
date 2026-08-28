@@ -669,3 +669,147 @@ test('I-7: the reference trip after it ends puts its seven countries and six cit
   assert.equal(s.unnamedCities, 0);
   assert.equal(s.daysTravelled, 16, 'Aug 7–22 inclusive');
 });
+
+// ===========================================================================
+// §8.4 **A-37** — a summary row is NOT a document (QA R29-6, R29-7).
+//
+// `travelStats` is handed rows out of `listTrips()`. They pass through no parser and no
+// validator on the way in, and `SUMMARY_VERSION` says **when** a row was minted, never **that
+// it is well-formed**. So every claim this function makes about a field value it read is
+// discharged here, on the read — two module-private gates, neither of them exported, neither of
+// them a change to the write path.
+// ===========================================================================
+
+// ------------------------------------------------- Part 2: the dates (R29-6)
+
+/**
+ * `fromJSON` accepts a shape-valid, calendar-invalid `endDate`; `validateTrip` *reports* it
+ * rather than refusing it (§2.9 A-20); `tripSummary` copies it verbatim. `dayNumber`'s month
+ * normalisation then rolls the year past 9999 and `fromDayNumber` — correctly, by A-32 Part 4's
+ * deliberate design — renders it faithfully as `"10000-02-14"`, which is typed `IsoDate` and
+ * handed to the Map and the Profile. `fromDayNumber` is unchanged and stays total; the clamp is
+ * on this side of the boundary.
+ */
+test('A-37: a row whose endDate rolls past the domain reports 9999-12-31, still counts, and does not throw', () => {
+  // `today` is out of the domain too — which is how the row's own end date survives the
+  // `Math.min(endDate, today)` clamp and reaches an output at all.
+  const wild = row({
+    id: 'wild', startDate: '2024-01-01', endDate: '9999-13-45',
+    countryCodes: ['HR' as CountryCode], cities: [city('Split', 'HR' as CountryCode)],
+  });
+  const s = travelStats([wild], '9999-13-45' as IsoDate);
+  assert.equal(s.countries.length, 1, 'the row stopped counting — clamping keeps it counted, it does not drop it');
+  assert.equal(s.countries[0].lastVisit, '9999-12-31');
+  assert.equal(s.cities.length, 1);
+  assert.equal(s.trips.active + s.trips.completed, 1);
+});
+
+test('A-37: a row whose startDate rolls BELOW the domain reports 0000-01-01', () => {
+  // `'0000-00-00'` is shape-valid — `/^(\d{4})-(\d{2})-(\d{2})$/` — and rolls back to
+  // `-0001-11-30`, a string `parseIsoDate` itself refuses. It is the `a` site, not `todayNum`.
+  const ancient = row({
+    id: 'ancient', startDate: '0000-00-00', endDate: '0000-01-10',
+    countryCodes: ['AT' as CountryCode], cities: [city('Vienna', 'AT' as CountryCode)],
+  });
+  const s = travelStats([ancient], TODAY);
+  assert.equal(s.countries[0].firstVisit, '0000-01-01');
+  assert.equal(s.trips.completed, 1);
+});
+
+test('A-37: EVERY date travelStats emits is IsoDate-shaped, whatever the rows said', () => {
+  const rows = [
+    row({ id: 'a', startDate: '0000-00-00', endDate: '0000-01-10', countryCodes: ['AT' as CountryCode] }),
+    row({ id: 'b', startDate: '2024-01-01', endDate: '9999-13-45', countryCodes: ['HR' as CountryCode] }),
+  ];
+  const s = travelStats(rows, '9999-13-45' as IsoDate);
+  const dates = s.countries.flatMap((c) => [c.firstVisit, c.lastVisit]);
+  assert.ok(dates.length >= 4, 'INCONCLUSIVE: no dates were emitted');
+  for (const d of dates) assert.match(d, /^\d{4}-\d{2}-\d{2}$/, `emitted ${JSON.stringify(d)}`);
+  // And the clamp is not a silent zero: the union sweep still counts the two intervals.
+  assert.ok(s.daysTravelled > 0);
+});
+
+/**
+ * The two day numbers that are deliberately **not** clamped, asserted so a later builder does
+ * not "finish the job". The comparator decides *order* and never reaches an output; `lifecycle`
+ * decides *classification*, and clamping inside it would report an out-of-domain row as `active`
+ * forever.
+ */
+test('A-37: the sort comparator and `lifecycle` are NOT clamped', () => {
+  // Two rows whose start dates are both below the domain but differ. If the comparator were
+  // clamped they would compare equal and fall to the id tie-break — which happens to agree
+  // here — so the observable is `lifecycle`: an out-of-domain FUTURE row is still `planned`.
+  const future = row({ id: 'future', startDate: '9999-13-45', endDate: '9999-13-46' });
+  const s = travelStats([future], TODAY);
+  assert.equal(s.trips.planned, 1, 'a clamped lifecycle would have reported this as active');
+  assert.equal(s.countries.length, 0);
+});
+
+test('A-37: a date that is not even SHAPE-valid still throws — stated as a decision, not an omission', () => {
+  const junk = row({ id: 'junk', startDate: '202-01-01' as IsoDate, endDate: '2024-01-02' });
+  assert.throws(() => travelStats([junk], TODAY), /invalid IsoDate/);
+});
+
+// ------------------------------------------------- Part 3: the country codes (R29-7)
+
+/**
+ * The composite key is `` `${countryCode ?? '--'}|${nameKey}` `` and its docstring justified the
+ * unambiguous split by *"a `CountryCode` is `/^[A-Za-z]{2}$/`"*. A-29's gate runs at the **mint**.
+ * On a stored row `'--'` collides with the sentinel exactly, `''` is neither two characters nor
+ * counted as unattributed, and `'A|'` + `'x'` produces the same key as `'A'` + `'|x'`. One
+ * predicate — the MINT'S OUTPUT shape, `/^[A-Z]{2}$/`, not A-29's acceptance shape — closes all
+ * three.
+ */
+test('A-37: a stored `--` is not a country code — it reads as null and does not collide with the sentinel', () => {
+  const a = row({ id: 'a', startDate: '2024-04-01', endDate: '2024-04-02', cities: [city('--' as CountryCode, null)] });
+  a.cities = [{ key: 'k-a' as CityKey, name: 'Paris', countryCode: '--' as CountryCode, countrySource: 'stated' }];
+  const b = row({ id: 'b', startDate: '2024-05-01', endDate: '2024-05-02', cities: [city('Paris', null)] });
+  const s = travelStats([a, b], TODAY);
+  // A-37 Part 4: the correct answer is ONE row and it is not a collision — `'--'` is not a
+  // country code, so it reads as null, and two unattributed same-name cities being one row is
+  // A-31 Part 5 residue 6, already ruled and already accepted.
+  assert.equal(s.cities.length, 1);
+  assert.equal(s.cities[0].countryCode, null);
+  assert.deepEqual(s.cities[0].tripIds, ['a', 'b']);
+  assert.equal(s.unattributed.cities, 2, 'both city entries are unattributed and both are counted');
+});
+
+test('A-37: `\'\'`, `\'hr\'`, `\'A|\'` and a non-string all read as null — counted, and emitted as null', () => {
+  for (const bad of ['', 'hr', 'A|', 'AUT', 'A', 42, {}, null, undefined]) {
+    const r = row({ id: 'x', startDate: '2024-04-01', endDate: '2024-04-02' });
+    r.cities = [{ key: 'k' as CityKey, name: 'Paris', countryCode: bad as unknown as CountryCode, countrySource: 'stated' }];
+    const s = travelStats([r], TODAY);
+    assert.equal(s.cities.length, 1, `${JSON.stringify(bad)}: lost the city`);
+    assert.equal(s.cities[0].countryCode, null, `${JSON.stringify(bad)}: was read as a country code`);
+    assert.equal(s.unattributed.cities, 1, `${JSON.stringify(bad)}: grouped as unattributed without being counted as one`);
+    assert.equal(s.located.cities, 1);
+  }
+});
+
+test('A-37: a real minted code is still read as one — the gate is not simply refusing everything', () => {
+  const r = row({
+    id: 'r', startDate: '2024-04-01', endDate: '2024-04-02',
+    countryCodes: ['HR' as CountryCode], cities: [city('Split', 'HR' as CountryCode)],
+  });
+  const s = travelStats([r], TODAY);
+  assert.equal(s.cities[0].countryCode, 'HR');
+  assert.equal(s.unattributed.cities, 0);
+  assert.deepEqual(s.countries.map((c) => c.code), ['HR']);
+});
+
+test('A-37: the composite key stays unambiguous — `A|` + `x` and `A` + `|x` are TWO rows', () => {
+  const a = row({ id: 'a', startDate: '2024-04-01', endDate: '2024-04-02' });
+  a.cities = [{ key: 'k-a' as CityKey, name: 'x', countryCode: 'A|' as CountryCode, countrySource: 'stated' }];
+  const b = row({ id: 'b', startDate: '2024-05-01', endDate: '2024-05-02' });
+  b.cities = [{ key: 'k-b' as CityKey, name: '|x', countryCode: 'A' as CountryCode, countrySource: 'stated' }];
+  const s = travelStats([a, b], TODAY);
+  assert.equal(s.cities.length, 2, 'two genuinely different rows were merged by an ambiguous key');
+  assert.deepEqual(s.cities.map((c) => c.nameKey).sort(), ['x', '|x']);
+});
+
+test('A-37: a malformed `countryCodes[]` entry produces no TravelStatsCountry at all', () => {
+  const r = row({ id: 'r', startDate: '2024-04-01', endDate: '2024-04-02' });
+  r.countryCodes = ['HR', '--', '', 'hr', 'AUT', 42 as unknown as string] as CountryCode[];
+  const s = travelStats([r], TODAY);
+  assert.deepEqual(s.countries.map((c) => c.code), ['HR'], 'a code the index cannot contain has no honest rendering');
+});

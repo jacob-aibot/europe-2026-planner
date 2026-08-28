@@ -12,6 +12,17 @@ import { addDays, dayNumber } from '../derive/summary.ts';
 import { userProvenance } from '../model/provenance.ts';
 import type { BuildCtx } from './createTrip.ts';
 
+/**
+ * The widest day skeleton `ensureDays` will mint: ten Gregorian years, inclusive
+ * (`2020-01-01 … 2029-12-31` is exactly this). §2.3 **A-35**, QA R29-2.
+ *
+ * Module-private and **not exported**: §2.10's surface does not move, and no view needs the
+ * number — the forms learn about the bound the way they already learn about a non-calendar
+ * date, by catching the throw (`PastTripForm.submit` and `Library`'s `NewTrip.submit` both
+ * already wrap `store.createTrip` in `try { … } catch (err) { onError(...) }`).
+ */
+const MAX_TRIP_SPAN_DAYS = 3653;
+
 /** A blank day. Pure. */
 export function blankDay(date: IsoDate, primaryCity: CityKey | 'transit', at: IsoDate): Day {
   return {
@@ -47,8 +58,21 @@ export function ensureDays(trip: Trip, ctx: BuildCtx, alreadyBumped = false): Tr
     if (dayNumber(d.date) > dayNumber(end)) end = d.date;
   }
 
-  const days: Day[] = [];
   const span = dayNumber(end) - dayNumber(start);
+  // §2.3 **A-35**. AFTER the widening loop, because the span that matters is the one that will
+  // actually be minted; BEFORE the allocation loop, because the harm is the allocation and the
+  // refusal has to precede it. `span + 1`, because the loop below mints `span + 1` days.
+  //
+  // Not an `Issue`: by the time `validateTrip` could report one the 664,377 records exist. Not
+  // a floor on `IsoDate` either (A-32 Part 4) — a year floor would not have caught this, since
+  // `1900-01-01 → 2500-12-31` is 219,000 days of entirely ordinary years. The disease is span.
+  if (span + 1 > MAX_TRIP_SPAN_DAYS) {
+    throw new Error(
+      `ensureDays: this trip would cover ${span + 1} days (${start} → ${end}), and one trip may ` +
+        `cover at most ${MAX_TRIP_SPAN_DAYS} (about ten years). Check the year in the dates.`,
+    );
+  }
+  const days: Day[] = [];
   for (let i = 0; i <= span; i++) {
     const date = addDays(start, i);
     const existing = byDate.get(date);

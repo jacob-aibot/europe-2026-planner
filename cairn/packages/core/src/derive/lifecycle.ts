@@ -41,8 +41,21 @@ export type DatedTrip = Pick<Trip, 'startDate' | 'endDate'>;
  * Pure.
  *
  * @throws {Error} if `today`, `trip.startDate` or `trip.endDate` is not a `YYYY-MM-DD`
- *         calendar date — programmer error per §2.1. A document cannot hold one:
- *         `createTrip`, `setTripMeta` and `fromJSON` all reject it before it gets here.
+ *         calendar date — programmer error per §2.1.
+ *
+ *         **A `DatedTrip` is not necessarily a document** (§8.4 **A-37** Part 2). This line
+ *         used to say *"a document cannot hold one: `createTrip`, `setTripMeta` and `fromJSON`
+ *         all reject it before it gets here"*, which is true of a `Trip` and **false of the
+ *         `TripSummaryRow`s `Library.tsx` and `travelStats` hand this function**: a row is read
+ *         out of storage, passes through no parser and no validator, and `SUMMARY_VERSION` says
+ *         when it was minted rather than that it is well-formed. So a shape-malformed stored
+ *         date (`'garbage'`, `'202-01-01'`) does reach here and does throw — deliberately, and
+ *         sanctioned by A-31 Part 4's `@throws` list, because such a row cannot be placed in a
+ *         lifecycle at all and inventing one for it is a lie. The obligation that creates lands
+ *         on the caller: I-8's Map and Profile render `travelStats` behind a boundary that shows
+ *         a refusal naming the row, not a blank screen. A date that is merely *calendar*-invalid
+ *         (`'9999-13-45'`) does **not** throw here — it normalises, and `travelStats` clamps it
+ *         into `IsoDate`'s domain before it can be emitted.
  */
 export function lifecycle(trip: DatedTrip, today: IsoDate): Lifecycle {
   const now = dayNumber(today);

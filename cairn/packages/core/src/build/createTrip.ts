@@ -76,7 +76,9 @@ export type TripInit = {
  * Creates a trip with a dense day skeleton over `[startDate, endDate]`.
  *
  * Pure apart from consuming ids from the injected factory.
- * @throws {Error} programmer error only: a malformed date, or `endDate` before `startDate`.
+ * @throws {Error} programmer error only: a malformed date, `endDate` before `startDate`, or a
+ *         range wider than `ensureDays`' ten-year span cap (§2.3 **A-35**) — the last of which
+ *         is a *person's* mistype, so its message is written to be read on screen.
  */
 export function createTrip(init: TripInit, ctx: BuildCtx): Trip {
   // The calendar, not the shape: `2026-13-45` matches /^\d{4}-\d{2}-\d{2}$/ and rolls over
@@ -139,8 +141,10 @@ export type TripMetaPatch = Partial<
  * Patches trip-level metadata. Changing the date range re-runs `ensureDays`, so days can
  * never drift out of density (§2.3). Pure.
  *
- * @throws {Error} if the patch would put `endDate` before `startDate`, or if it carries a
- *         `datePrecision` outside `'exact' | 'month' | 'year'` — programmer error per §2.1.
+ * @throws {Error} if the patch would put `endDate` before `startDate`, if it carries a
+ *         `datePrecision` outside `'exact' | 'month' | 'year'`, or if the resulting range is
+ *         wider than `ensureDays`' ten-year span cap (§2.3 **A-35**) — programmer error per
+ *         §2.1, and the third is the one a person can cause by mistyping a year.
  */
 export function setTripMeta(trip: Trip, patch: TripMetaPatch, ctx: BuildCtx): Trip {
   // The key's PRESENCE is what is checked, not its truthiness: `{datePrecision: undefined}`
