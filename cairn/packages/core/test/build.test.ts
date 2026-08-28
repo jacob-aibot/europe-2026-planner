@@ -296,8 +296,8 @@ test('A-35: the check reads the WIDENED endpoints, not the stated ones', () => {
   // destroying content, so the span that matters is the one that will actually be minted.
   const base = addStop(
     createTrip({ ...SPAN, startDate: '2020-01-01', endDate: '2020-01-02' }, ctx()),
-    { kind: 'day', dayId: '2020-01-01', order: 0, time: null },
-    { title: 's' },
+    { kind: 'scheduled', dayId: '2020-01-01', order: 0, time: null },
+    { name: 'a stop that pins the day to the calendar', category: 'sight' },
     ctx(),
   );
   const stray: Trip['days'][number] = { ...base.days[0], id: '2040-01-01', date: '2040-01-01' };

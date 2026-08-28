@@ -1,6 +1,7 @@
 /**
- * ROADMAP Phase 2 **exit criterion 6**, in its **revision-25** form.
- * ARCHITECTURE §8.4 **A-33** (QA **R28-2**, MAJOR), which supersedes A-31 Part 6's mechanism.
+ * ROADMAP Phase 2 **exit criterion 6**, in its **revision-26** form.
+ * ARCHITECTURE §8.4 **A-33** (QA **R28-2**, MAJOR), which supersedes A-31 Part 6's mechanism,
+ * and §8.4 **A-36** (QA **R29-1**, MAJOR), which supersedes A-33's 6b-1/6b-2/6b-4 split.
  *
  * The rule is unchanged and is the whole point:
  *
@@ -24,18 +25,33 @@
  * and minted, walked past the classifier by choosing a name. §0.5: *a rule that cannot catch its
  * own bug does not ship.*
  *
- * So, six parts, and the first one that has teeth ends at a value in a store rather than at text
- * in a file:
+ * **What revision 26 changed.** A-33 left one port unexecuted — `apps/web/src/ports/storage.ts`,
+ * *"IndexedDB, does not run in Node"* — and let 6b-2's grep stand in for running it. QA round 29
+ * defeated the grep in one line, and the architect then measured that **no static form of it
+ * works**: a check over an argument expression cannot see what happened to the binding before
+ * the call. A-36's ruling is that *execution* is the mechanism —
  *
- *   **6a′** the row's **whole key set**, compile-time and runtime, and every leaf path
- *   **6b-1** the rows a real port actually holds, read back after a real write
- *   **6b-2** every port hands its summary store the bare identifier it was given
- *   **6b-3** the port census — a third implementation cannot appear unpoliced
- *   **6b-5** nothing that persists anything imports `travelStats`
+ * > **Every `StoragePort` implementation named by the 6b-3 census is executed by the gate,
+ * > written through on every mutating method, and read back; the keys of every value that
+ * > reaches its summary store, and of every row it returns, are asserted against
+ * > `ROW_KEYS`/`ROW_PATHS`. No implementation is policed by reading its source text.**
+ *
+ * So, the parts, and the ones with teeth end at a value in a store rather than at text in a file:
+ *
+ *   **6a′**   the row's **whole key set**, compile-time and runtime, and every leaf path
+ *   **6b-1a** the rows the MEMORY port actually holds, read back after a real write
+ *   **6b-1b** the same, for the WEB port — the shipped file, type-stripped and evaluated in
+ *             plain Node against a recording double of the IndexedDB surface it uses
+ *   **6b-2**  demoted to a **tripwire**: the pinned site count and the bare-identifier capture
+ *   **6b-3**  the port census — a third implementation cannot appear without an executed arm
+ *   **6b-5**  nothing that persists anything imports `travelStats`
  *   **6b′′′′** the old source sweep, demoted to a secondary **tripwire**
  *
- * (**6b-4**, reading the real IndexedDB bytes back in Chromium, is deliberately **not** a gate:
- * it needs a browser. It lives in `qa/` — A-33 Part 3 names it so the next round runs it.)
+ * (**6b-4**, reading the real IndexedDB bytes back in Chromium, is deliberately and permanently
+ * **not** a gate: it needs a browser, and this gate must run on bare Node. It lives in `qa/` as
+ * `qa/i7a-idb-rowkeys.mjs`, and A-36 Part 4 makes running it an **obligation** on any increment
+ * that touches the web port, the double or `ROW_KEYS` — with the measured result recorded in
+ * BUILD-NOTES, or its absence disclosed as a gap and not called a pass.)
  *
  * **Widening `ROW_KEYS`, `ROW_PATHS` or either allow-list is an architect's ruling**, exactly as
  * §2.10's export list works — a field on the row is a field in storage and `SUMMARY_VERSION` has
@@ -46,12 +62,17 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, relative, resolve, sep } from 'node:path';
+// **A-36.** Node 22.18's type stripper, which `package.json`'s `engines` already requires. It
+// is what lets 6b-1b evaluate the shipped `apps/web` port without a build step and without a
+// static import into a tsconfig that deliberately excludes that project. It prints an
+// `ExperimentalWarning`, which is noise in `node --test` and not a failure.
+import { stripTypeScriptTypes } from 'node:module';
 import { COUNTRY_INDEX, SUMMARY_VERSION, tripSummary, createTrip, sequentialIds } from '../packages/core/src/index.ts';
 import type { Trip, TripSummaryRow } from '../packages/core/src/index.ts';
 import {
   createStore, memoryStorage, memoryFile, fixedClockPort, sequentialIdPort, immediateScheduler,
 } from '../packages/client/src/index.ts';
-import type { MemoryStorage, Ports } from '../packages/client/src/index.ts';
+import type { MemoryStorage, Ports, StoragePort } from '../packages/client/src/index.ts';
 import { loadEurope2026 } from '../fixtures/loadEurope2026.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -346,13 +367,251 @@ test('exit 6b-1: the rows a DIRECT port call leaves are clean, for both mutating
 });
 
 // ===========================================================================
-// (6b-2) Every port hands its summary store the value it was given, unmodified.
+// (6b-1b) The WEB port, EXECUTED — `apps/web/src/ports/storage.ts`, in plain Node.
 //
-// The one port 6b-1 cannot reach is `apps/web/src/ports/storage.ts`: it is IndexedDB and does
-// not run in Node, and building a fake IndexedDB to test a two-line property is a second
-// implementation of a database. So assert the property directly — **the expression written to
-// the summary store is the bare parameter identifier and nothing else** — which is exactly what
-// the spread fault violates. Static, and a *value*-shaped check rather than a type annotation.
+// **§8.4 A-36 (QA R29-1, MAJOR).** A-33 left this one port unexecuted — *"it is IndexedDB and
+// does not run in Node"* — and stood 6b-2's source grep in its place. Round 29 defeated the grep
+// with one line (**G1**), and the architect then measured that *no* static form of it works:
+// take the fault one line further up (**G7**, `summary = { ...summary, … }`, the parameter
+// reassigned in place) and the parameter is still named `summary`, the declaration is still
+// there, the capture at both puts is still the bare identifier, and the site count is still 2 —
+// every version of 6b-2, shipped or scoped, passes, while the port persists a 16-key record.
+//
+// > **A static check over an argument expression cannot see what happened to the binding before
+// > the call.** The only checks that see all of these shapes are the ones that look at the value.
+//
+// So: the port runs here. It has **zero** runtime imports (both of its imports are `import type`
+// and erase) and it reaches `indexedDB`, `crypto` and `btoa` off the global object at call time,
+// so nothing has to be refactored for injection. It is loaded the way `qa/i7a-idb-rowkeys.mjs`
+// already loads it — read the file, type-strip it, import it as a `data:` URL module — and
+// **not** with a static `import`: the root `tsconfig.json` excludes `apps/web` on purpose, and a
+// static import would make this gate depend on `@cairn/*` bare-specifier resolution from a
+// project with no `paths`. Type-stripping erases the type imports and the question with them.
+// ===========================================================================
+
+/**
+ * A **recorder for the IndexedDB API surface this one port uses** — not a database. A-33
+ * residue 2 refused *"a second implementation of a database in order to test a two-line
+ * property"* and A-36 Part 3 narrows that refusal rather than reversing it: no persistence, no
+ * key ordering, no cursors, no index, no quota, no constraint checking, no `versionchange`
+ * blocking. Its only obligations are that the port's methods run to completion and that every
+ * value put or returned is observed verbatim.
+ *
+ * The one subtlety it must get right is the one the port depends on: **a request issued from a
+ * previous request's `onsuccess` is still inside the transaction**, and `oncomplete` fires only
+ * when nothing is pending. The `queueMicrotask(settle)` after each callback is that; it is why
+ * `saveIfVersion`'s compare-then-put chain works here at all, and it must not be "simplified".
+ *
+ * Its own fidelity is pinned by the outcome assertions below, by the injected-fault matrix of
+ * A-36 Part 5, and out of band by `qa/i7a-idb-rowkeys.mjs` in real Chromium (6b-4).
+ */
+function recordingIdb() {
+  const stores = new Map<string, Map<string, unknown>>();
+  const at = (n: string) => { if (!stores.has(n)) stores.set(n, new Map()); return stores.get(n)!; };
+  let version = 0;
+
+  function makeTx(names: string[]) {
+    let pending = 0, done = false;
+    const tx: any = { error: null, oncomplete: null, onerror: null, onabort: null };
+    const settle = () => { if (!done && pending === 0) { done = true; tx.oncomplete?.(); } };
+    const request = (fn: () => unknown) => {
+      const req: any = { result: undefined, error: null, onsuccess: null, onerror: null };
+      pending++;
+      queueMicrotask(() => {
+        try { req.result = fn(); } catch (e) { req.error = e; }
+        pending--;
+        if (req.error) req.onerror?.(); else req.onsuccess?.();
+        queueMicrotask(settle);          // a request issued from onsuccess keeps the tx alive
+      });
+      return req;
+    };
+    tx.objectStore = (name: string) => {
+      if (!names.includes(name)) throw new Error(`store ${name} not in transaction scope`);
+      const m = at(name);
+      return {
+        put: (v: unknown, k: string) => request(() => { m.set(k, v); return k; }),
+        get: (k: string) => request(() => m.get(k)),
+        getKey: (k: string) => request(() => (m.has(k) ? k : undefined)),
+        getAll: () => request(() => [...m.values()]),
+        getAllKeys: () => request(() => [...m.keys()]),
+        delete: (k: string) => request(() => { m.delete(k); return undefined; }),
+      };
+    };
+    return tx;
+  }
+
+  return {
+    open(_name: string, want: number) {
+      const req: any = { result: null, onsuccess: null, onerror: null, onupgradeneeded: null };
+      queueMicrotask(() => {
+        req.result = {
+          objectStoreNames: { contains: (n: string) => stores.has(n) },
+          createObjectStore: (n: string) => at(n),
+          deleteObjectStore: (n: string) => stores.delete(n),
+          transaction: (n: string | string[]) => makeTx(Array.isArray(n) ? n : [n]),
+          close: () => {},
+        };
+        if (version < want) { version = want; req.onupgradeneeded?.(); }   // once, like a real upgrade
+        req.onsuccess?.();
+      });
+      return req;
+    },
+    _summaries: () => at('summaries'),
+    /** §4.3 A-30's fence, so "`refreshSummary` moved no `StorageVersion`" is assertable. */
+    _store: (name: string) => at(name),
+  };
+}
+
+type Recording = ReturnType<typeof recordingIdb>;
+
+/** The shipped file, type-stripped and evaluated. No static import — see the block above. */
+async function loadWebPort(source?: string): Promise<() => StoragePort> {
+  const raw = source ?? readFileSync(resolve(CAIRN, 'apps/web/src/ports/storage.ts'), 'utf8');
+  const js = stripTypeScriptTypes(raw, { mode: 'strip' });
+  const mod = (await import(`data:text/javascript,${encodeURIComponent(js)}`)) as {
+    indexedDbStorage?: () => StoragePort;
+  };
+  assert.equal(typeof mod.indexedDbStorage, 'function', 'the web port\'s export shape moved');
+  return mod.indexedDbStorage as () => StoragePort;
+}
+
+/**
+ * Runs `fn` with a fresh recorder installed as the global `indexedDB` — which is where the port
+ * reaches for it, at call time, so nothing needs injecting. `crypto.getRandomValues` and `btoa`
+ * are Node globals already and are the real ones.
+ */
+async function driveWebPort(fn: (port: StoragePort, db: Recording) => Promise<void>, source?: string): Promise<void> {
+  const db = recordingIdb();
+  const had = 'indexedDB' in globalThis;
+  const prior = (globalThis as Record<string, unknown>).indexedDB;
+  (globalThis as Record<string, unknown>).indexedDB = db;
+  try {
+    const make = await loadWebPort(source);
+    await fn(make(), db);
+  } finally {
+    if (had) (globalThis as Record<string, unknown>).indexedDB = prior;
+    else delete (globalThis as Record<string, unknown>).indexedDB;
+  }
+}
+
+function webRow(id: string): { trip: Trip; summary: TripSummaryRow } {
+  const trip = createTrip(
+    {
+      id,
+      title: `Through the web port (${id})`,
+      startDate: '2026-03-01',
+      endDate: '2026-03-04',
+      homeCurrency: 'EUR',
+      cities: [{ key: 'vienna', name: 'Vienna', centre: { lat: 48.2082, lng: 16.3738 } }],
+    },
+    { ids: sequentialIds(`web-${id}-`), now: TODAY },
+  );
+  return { trip, summary: tripSummary(trip, COUNTRY_INDEX) };
+}
+
+test('exit 6b-1b: the web port EXECUTED — every value that reaches its summary store is clean', async () => {
+  await driveWebPort(async (port, db) => {
+    const { trip, summary } = webRow('web-1');
+    const saved = await port.saveIfVersion(trip.id, null, JSON.stringify(trip), summary);
+    if (!saved.ok) assert.fail(`INCONCLUSIVE: saveIfVersion refused (${JSON.stringify(saved)})`);
+    // What is IN THE STORE, not what a file says. This is what G1 and G7 fail.
+    assertRowsAreClean([...db._summaries().values()] as TripSummaryRow[], 'the web port: saveIfVersion → summaries');
+
+    const refreshed = await port.refreshSummary(trip.id, saved.version, tripSummary(trip, COUNTRY_INDEX));
+    if (!refreshed.ok) assert.fail(`INCONCLUSIVE: refreshSummary refused (${JSON.stringify(refreshed)})`);
+    assertRowsAreClean([...db._summaries().values()] as TripSummaryRow[], 'the web port: refreshSummary → summaries');
+  });
+});
+
+test('exit 6b-1b: the web port EXECUTED — every row it HANDS BACK is clean', async () => {
+  // Read back through the port as well as out of the store, because a read-side widening
+  // (G4: `listTrips` decorating the rows it returns) persists nothing and is invisible to the
+  // assertion above while every consumer sees the count anyway.
+  await driveWebPort(async (port, db) => {
+    const a = webRow('web-a');
+    const b = webRow('web-b');
+    for (const { trip, summary } of [a, b]) {
+      const saved = await port.saveIfVersion(trip.id, null, JSON.stringify(trip), summary);
+      if (!saved.ok) assert.fail('INCONCLUSIVE: seeding failed');
+    }
+    assert.equal(db._summaries().size, 2, 'INCONCLUSIVE: the store did not take two rows');
+    assertRowsAreClean(await port.listTrips(), 'the web port: listTrips');
+  });
+});
+
+test('exit 6b-1b: the double is not lying — the port\'s OUTCOMES are asserted, not just its keys', async () => {
+  // A double that has broken the transaction semantics fails these BEFORE it can give a false
+  // green on the key set. A-36 Part 3 fidelity obligations 1 and 4.
+  await driveWebPort(async (port, db) => {
+    const { trip, summary } = webRow('web-fid');
+    const doc = JSON.stringify(trip);
+
+    const first = await port.saveIfVersion(trip.id, null, doc, summary);
+    assert.equal(first.ok, true, 'a fresh record with expectedVersion null must be accepted');
+    if (!first.ok) return;
+
+    // A stale fence refuses AND writes nothing.
+    const widened = { ...summary, title: 'a value a refused write must not leave behind' };
+    const stale = await port.saveIfVersion(trip.id, 'not-the-stored-token', doc, widened as TripSummaryRow);
+    assert.deepEqual(stale, { ok: false, storedVersion: first.version }, 'a stale expectedVersion must be refused with the stored token');
+    assert.equal((db._summaries().get(trip.id) as TripSummaryRow).title, summary.title, 'a REFUSED write reached the store');
+
+    // `refreshSummary` on an absent record refuses, and creates nothing.
+    const absent = await port.refreshSummary('no-such-trip', first.version, summary);
+    assert.deepEqual(absent, { ok: false, storedVersion: null });
+    assert.equal(db._summaries().has('no-such-trip'), false, 'a refused refresh created a summary row for a document that does not exist');
+
+    // §4.3 **A-30**: `refreshSummary` moves no `StorageVersion` and touches no document.
+    const versionBefore = db._store('versions').get(trip.id);
+    const docBefore = db._store('docs').get(trip.id);
+    const again = await port.refreshSummary(trip.id, first.version, { ...summary, title: 'refreshed' } as TripSummaryRow);
+    assert.deepEqual(again, { ok: true, version: first.version }, 'refreshSummary minted a new fence');
+    assert.equal(db._store('versions').get(trip.id), versionBefore, 'refreshSummary moved the record\'s StorageVersion');
+    assert.equal(db._store('docs').get(trip.id), docBefore, 'refreshSummary wrote the document');
+    assert.equal((db._summaries().get(trip.id) as TripSummaryRow).title, 'refreshed', 'INCONCLUSIVE: the accepted refresh did not land');
+  });
+});
+
+test('exit 6b-1b: the arm is not vacuous — a port that widens its rows FAILS it', async () => {
+  // The control. Without this, every assertion above could be passing because nothing ran.
+  const faulted = readFileSync(resolve(CAIRN, 'apps/web/src/ports/storage.ts'), 'utf8').replace(
+    '      await ensureReady();\n      const db = await open();\n      return new Promise<SaveOutcome>((resolve, reject) => {\n        const tx = db.transaction([DOCS, SUMMARIES, VERSIONS], \'readwrite\');\n        let outcome: SaveOutcome | null = null;\n        const readKey = tx.objectStore(DOCS).getKey(id) as IDBRequest<IDBValidKey | undefined>;',
+    '      await ensureReady();\n      summary = { ...summary, countriesVisited: summary.countryCodes.length } as TripSummaryRow;\n      const db = await open();\n      return new Promise<SaveOutcome>((resolve, reject) => {\n        const tx = db.transaction([DOCS, SUMMARIES, VERSIONS], \'readwrite\');\n        let outcome: SaveOutcome | null = null;\n        const readKey = tx.objectStore(DOCS).getKey(id) as IDBRequest<IDBValidKey | undefined>;',
+  );
+  assert.notEqual(faulted, readFileSync(resolve(CAIRN, 'apps/web/src/ports/storage.ts'), 'utf8'),
+    'the anchor for the vacuity control no longer applies — re-derive it, do not delete it');
+  await assert.rejects(
+    () => driveWebPort(async (port, db) => {
+      const { trip, summary } = webRow('web-fault');
+      await port.saveIfVersion(trip.id, null, JSON.stringify(trip), summary);
+      assertRowsAreClean([...db._summaries().values()] as TripSummaryRow[], 'the faulted web port');
+    }, faulted),
+    /not on TripSummaryRow|leaves reached the store/,
+    'G7\'s shape — the parameter reassigned in place before an unchanged put — walked past 6b-1b',
+  );
+});
+
+// ===========================================================================
+// (6b-2) A TRIPWIRE. Every port hands its summary store the bare identifier it was given.
+//
+// **§8.4 A-36 Part 4.** This check no longer carries the weight A-33 put on it — **6b-1b above
+// is what asserts the property**, by executing the port and looking at the value. Two of its
+// three assertions survive, because each has value the runtime arm does not duplicate:
+//
+//   - the **pinned site count** — a THIRD write site writing a *correct* row is invisible to a
+//     runtime check and is a design change that should fail loudly;
+//   - the **bare-identifier capture** — it refuses `put(widen(summary), id)`,
+//     `put(Object.assign({}, summary, …), id)` and a spread at the call site *at review time*,
+//     one commit before anything reaches a port.
+//
+// **Its third assertion — the parameter-declaration grep — is WITHDRAWN, not scoped.** Its
+// failure message claimed *"a local `const summary = { ...spread }` would pass the check
+// above"*, which is a claim of coverage that is false, and G7 shows that binding it to the
+// enclosing method's parameter list leaves the claim just as false. A check whose only value was
+// an untrue sentence about what it catches is worth less than the sentence that replaces it.
+//
+// **If you are reading this because you changed a port, run `qa/i7a-idb-rowkeys.mjs`** — the
+// real bytes in real Chromium, 6b-4, which A-36 Part 4 makes an obligation and not a note.
 // ===========================================================================
 
 const PORT_WRITES: Array<{
@@ -362,27 +621,23 @@ const PORT_WRITES: Array<{
   /** Every write to that store, so a THIRD site fails even if it passes the identifier test. */
   all: RegExp;
   sites: number;
-  /** The parameter declaration, so `const summary = {...spread}` above the put cannot pass. */
-  param: RegExp;
 }> = [
   {
     file: 'apps/web/src/ports/storage.ts',
     capture: /objectStore\(SUMMARIES\)\s*\.\s*put\(\s*([^,)]*?)\s*,/g,
     all: /objectStore\(SUMMARIES\)\s*\.\s*put/g,
     sites: 2,
-    param: /summary:\s*TripSummaryRow/,
   },
   {
     file: 'packages/client/src/ports/memory.ts',
     capture: /summaries\.set\(\s*[^,)]*?\s*,\s*([^,)]*?)\s*\)/g,
     all: /summaries\.set\(/g,
     sites: 2,
-    param: /async\s+saveIfVersion\([^)]*\bsummary\b[^)]*\)|async\s+refreshSummary\([^)]*\bsummary\b[^)]*\)/,
   },
 ];
 
 for (const port of PORT_WRITES) {
-  test(`exit 6b-2: ${port.file} writes the bare identifier \`summary\`, at exactly ${port.sites} sites`, () => {
+  test(`tripwire 6b-2: ${port.file} writes the bare identifier \`summary\`, at exactly ${port.sites} sites`, () => {
     const src = readFileSync(resolve(CAIRN, port.file), 'utf8');
     const captures = [...src.matchAll(port.capture)].map((m) => m[1]);
     const writes = [...src.matchAll(port.all)].length;
@@ -390,21 +645,18 @@ for (const port of PORT_WRITES) {
       writes,
       port.sites,
       `${port.file}: ${writes} writes to the summary store, expected ${port.sites}. A new write ` +
-        'site needs an A-33 6b-2 recipe, and adding one is an architect\'s ruling. (A renamed ' +
-        'constant lands here too, rather than silently matching nothing.)',
+        'site is a design change and adding one is an architect\'s ruling — and a third site ' +
+        'writing a CORRECT row is invisible to 6b-1b, which is why this assertion survives ' +
+        '(§8.4 A-36 Part 4). (A renamed constant lands here too, rather than silently matching ' +
+        'nothing.)',
     );
     assert.deepEqual(
       captures,
       new Array(port.sites).fill('summary'),
-      `${port.file}: the summary store was handed something other than the bare parameter it was ` +
-        'given. `put({ ...summary, countriesVisited }, id)` is a lifetime count in storage, on ' +
-        'every write, forever, with nothing to recompute it from (§8.4 A-33 6b-2).',
-    );
-    assert.match(
-      src,
-      port.param,
-      `${port.file}: the identifier written to the summary store is no longer a parameter of the ` +
-        'enclosing method — a local `const summary = { ...spread }` would pass the check above.',
+      `${port.file}: the summary store was handed something other than the bare identifier at ` +
+        'the call site. `put({ ...summary, countriesVisited }, id)` is a lifetime count in ' +
+        'storage, on every write, forever, with nothing to recompute it from. This is a ' +
+        'TRIPWIRE: it catches the shape at review time, and 6b-1b is what asserts the property.',
     );
   });
 }
@@ -426,9 +678,10 @@ test('exit 6b-3: exactly four source files mention refreshSummary', () => {
   assert.deepEqual(
     hits.sort(),
     [...PORT_CENSUS].sort(),
-    'the StoragePort population moved. A new implementation needs a 6b-2 recipe of its own — ' +
-      '6b-2 is a per-file check and a per-file check drifts the moment a fourth port exists — ' +
-      'and adding one is an ARCHITECT\'S ruling (§8.4 A-33 6b-3).',
+    'the StoragePort population moved. A new `StoragePort` implementation needs an EXECUTED ' +
+      '6b-1 arm of its own — not a 6b-2 recipe: no port is policed by reading its source ' +
+      '(§8.4 A-36 Part 2), and Phase 5\'s expo-sqlite port is the next one. Adding an arm is ' +
+      'mechanical; widening this census is an ARCHITECT\'S ruling.',
   );
 });
 
