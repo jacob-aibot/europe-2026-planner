@@ -46,6 +46,14 @@ TEST='test/stats-storage.test.ts'
 
 say() { printf '\n== %s ==\n' "$1"; }
 
+# QA **R29-4**. An injected fault whose anchor has drifted used to print
+# `(patch failed to apply — shape moved)`, continue, and exit 0 — so an **unrun** fault read
+# exactly like a caught one, in the output and in the exit code. That already cost a round: M2
+# went unrun through round 28 in the sibling harness. An unrun fault is a FAILURE of the harness
+# and says so, loudly and in the exit code. Same mechanism as `qa/i7a-exit6b.sh`.
+UNRUN=0
+UNRUN_LIST=""
+
 run_fault() {
   local label="$1"; local script="$2"
   local wt; wt="$(mktemp -d)/wt"
@@ -55,7 +63,11 @@ run_fault() {
   python3 - "$wt/cairn" <<PY
 $script
 PY
-  if [ $? -ne 0 ]; then echo "  (patch failed to apply — shape moved)"; else
+  if [ $? -ne 0 ]; then
+    echo "  *** UNRUN — the anchor no longer applies. This is NOT a pass (R29-4). ***"
+    UNRUN=$((UNRUN + 1))
+    UNRUN_LIST="$UNRUN_LIST ${label%% *}"
+  else
     ( cd "$wt/cairn" && node --test --test-reporter=tap "$TEST" 2>&1 \
         | grep -E '^(not ok|# (pass|fail))' | head -8 | sed 's/^/  /' )
   fi
@@ -227,4 +239,15 @@ PY
   git -C "$REPO" worktree remove --force "$wt" >/dev/null 2>&1
 }
 
+# R29-4: the harness's own verdict, in the output AND in the exit code.
+say "summary"
+if [ "$UNRUN" -gt 0 ]; then
+  echo "  *** $UNRUN fault(s) UNRUN — anchors drifted:$UNRUN_LIST ***"
+  echo "  An unrun fault is not a caught fault. Re-derive the anchor (R29-4)."
+  printf '\n== done ==\n'
+  exit 1
+fi
+echo "  every fault ran (whether each was CAUGHT is the '# fail' line under it)"
+
 printf '\n== done ==\n'
+exit 0

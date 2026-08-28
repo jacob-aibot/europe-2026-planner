@@ -25,6 +25,15 @@ REPO="$(cd .. && pwd)"
 
 say() { printf '\n== %s ==\n' "$1"; }
 
+# QA **R29-4**. An injected fault whose anchor has drifted used to print
+# `(patch failed to apply — shape moved)`, continue, and exit 0 — so an **unrun** fault read
+# exactly like a caught one, in the output and in the exit code. **This harness is where that
+# already cost a round:** M2 went unrun through round 28 and the builder repaired the instance
+# rather than the class. An unrun fault is a FAILURE of the harness and says so, loudly and in
+# the exit code. Same mechanism as `qa/i7a-exit6b.sh`.
+UNRUN=0
+UNRUN_LIST=""
+
 run_fault() {
   local label="$1"; local script="$2"
   local wt; wt="$(mktemp -d)/wt"
@@ -34,7 +43,11 @@ run_fault() {
   python3 - "$wt/cairn" <<PY
 $script
 PY
-  if [ $? -ne 0 ]; then echo "  (patch failed to apply — shape moved)"; else
+  if [ $? -ne 0 ]; then
+    echo "  *** UNRUN — the anchor no longer applies. This is NOT a pass (R29-4). ***"
+    UNRUN=$((UNRUN + 1))
+    UNRUN_LIST="$UNRUN_LIST ${label%% *}"
+  else
     ( cd "$wt/cairn" && node --test --test-reporter=tap packages/core/test/*.test.ts packages/client/test/*.test.ts test/*.test.ts 2>&1 \
         | grep -E '^(not ok|# (pass|fail))' | sed 's/^/  /' )
   fi
@@ -81,9 +94,12 @@ run_fault "M4 — the today clamp is removed from an active trip" "$(cat <<'PY'
 import sys
 p = sys.argv[1] + '/packages/core/src/derive/travelStats.ts'
 s = open(p).read()
-old = "    const rawB = stage === 'active' ? Math.min(dayNumber(row.endDate), todayNum) : dayNumber(row.endDate);"
+# Re-derived at I-7b: §8.4 A-37 Part 2 wrapped this line's expression in `inDomain(...)`. The
+# fault is unchanged — the `today` clamp comes out and nothing else does; the clamp INTO
+# `IsoDate`'s domain stays, so this still isolates the one behaviour it always isolated.
+old = "    const rawB = inDomain(stage === 'active' ? Math.min(dayNumber(row.endDate), todayNum) : dayNumber(row.endDate));"
 assert old in s, 'shape moved'
-open(p,'w').write(s.replace(old, '    const rawB = dayNumber(row.endDate);', 1))
+open(p,'w').write(s.replace(old, '    const rawB = inDomain(dayNumber(row.endDate));', 1))
 PY
 )"
 
@@ -121,4 +137,15 @@ open(p,'w').write(s.replace(old, '  const rows = (summaries as TripSummaryRow[])
 PY
 )"
 
+# R29-4: the harness's own verdict, in the output AND in the exit code.
+say "summary"
+if [ "$UNRUN" -gt 0 ]; then
+  echo "  *** $UNRUN fault(s) UNRUN — anchors drifted:$UNRUN_LIST ***"
+  echo "  An unrun fault is not a caught fault. Re-derive the anchor (R29-4)."
+  printf '\n== done ==\n'
+  exit 1
+fi
+echo "  every fault ran (whether each was CAUGHT is the '# fail' line under it)"
+
 printf '\n== done ==\n'
+exit 0
