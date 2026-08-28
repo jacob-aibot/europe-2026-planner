@@ -977,7 +977,120 @@ for. That is the whole reason all five are MINOR and none is a BLOCKER.
 
 ---
 
+## Round 20 (2026-08-28, `master` @ `3d1be3b`) — the A-24 / R19-1 / R19-2 / KD-50 breaker pass
+
+Narrow: the diff `63a14d7..3d1be3b` under `packages/` — `build/copyStop.ts`,
+`test/copyStop.test.ts` (85 → 88) and `test/readOnce.test.ts` (10 rows → 14, 5 `ALLOWED` → 7,
+fixture 14/15 → 15/15 `Stop` fields) — plus `docs/BUILD-NOTES.md`'s **KD-50**. Seventh consecutive
+round on `copyStop.ts`'s read-once / credential-boundary class.
+
+```bash
+node --experimental-strip-types qa/r20-census-reach.mjs
+        # §1  R20-1 — A-24's amended maintenance rule ("the fixture populating every
+        #     field of both records is part of this contract") is UNENFORCED. Nothing
+        #     ties `readOnce.test.ts`'s fixture to `keyof Stop` / `keyof Place`, and
+        #     `copyStop.test.ts`'s STOP_FIELDS assertion filters `ticket` OUT, so it
+        #     pins a different fixture to a different list.                     (1 FAIL)
+        # §2  R20-2 — the same gap one record UP, created by A-24 Part 1 itself: the
+        #     two new `Trip` roots carry 17 of `Trip`'s 18 keys. `meta` is ABSENT and
+        #     `homeBase` is `null`, so `Trip.meta` may be multi-read invisibly and the
+        #     `homeBase.at` subtree (a named home coordinate) is never entered.  (2 FAIL)
+        #     ...and the closing line proves the FIX costs no eighth `ALLOWED` entry:
+        #     ten further document shapes, both fields populated, still green.  (0 FAIL)
+        # §3  R20-3 — `copyStop.ts:357` reads a TARGET `City.order` twice in
+        #     `refileCityKey`'s step-4 fold (compared, then recorded), so A-16's
+        #     tie-break is decided on a number the winning record does not carry.
+        #     With three same-named target cities the `Place` is mis-filed.      (2 FAIL)
+        # §4  KD-50 — the builder's two disclosed consequences, CHECKED: the message,
+        #     the id draws (2 / 1 / 0-written), the target byte-identical behind the
+        #     refusal, and the refuse-then-retry. Safe, with one cosmetic residue —
+        #     the three refusals no longer share a message family.               (1 FAIL)
+        # §5  R20-4 — A-24 Part 1's residue paragraph names TWO invisible multi-reads;
+        #     a fully-opened census finds FIVE, and two of the three it does not name
+        #     produce a divergent record rather than only a count.                (1 FAIL)
+        # §6  R20-5 — `qa/r14-horizon-copy.mjs` §7 pins `kds.length === 49`; this pass
+        #     minted KD-50, so a probe that was ALL OK at `215aeee` is 1 FAIL, while
+        #     BUILD-NOTES says "nothing in this pass went unrun".                 (1 FAIL)
+        # §7  Ceilings, `cairn-constraints`, and the attack list that did NOT break —
+        #     including all 143 reference-trip stops copied into a fresh trip with 0
+        #     throws and 0 credential/ticket crossings.                           (0 FAIL)
+```
+
+**8 FAIL by design.** Every other line is a confirmation that must stay at 0. Deterministic call
+sequences only, no races and no sleeps. No second checkout needed.
+
+**`qa/r19-census-gaps.mjs` is re-expressed and now ALL OK.** It was 12 FAIL by design at
+`215aeee` and 8 FAIL unedited at `3d1be3b`; the builder correctly reported that all 8 were
+measured against **QA's own local copy of the pre-A-24 census** and refused to touch a file
+A-19 assertion 7 assigns to QA. Round 20 brought it current:
+
+- `a23Source` → `a24Source` (gains `ticket` and a `pool` option) plus a new `a24Minimal`;
+- the matrix **10 rows → 14**, with rows 1–10 unchanged in construction and numbering so the
+  cross-check against `readOnce.test.ts` stays row-by-row;
+- `censusTrip` / `TRIP_SKELETON` copied from A-24 Part 1, so the two `Trip` documents are roots
+  rather than members of `opaque`;
+- `ALLOWED` **5 → 7** (`tgtTrip.id`, `tgtTrip.revision`);
+- §1, §2, §4 and §5 re-expressed from *"here is the gap"* to *"here is the closure"*, each with
+  this file's own flipping accessors rather than the builder's tests.
+
+**Nothing in those 8 was a genuine gap once the probe was current** — every one closed on
+re-expression. Round 20's own findings are in `r20-census-reach.mjs`, not here.
+
+Every mutation below was made in a throwaway `git worktree add … 3d1be3b` and discarded — nothing
+under `cairn/` was ever written by one, and the worktree was removed. Baseline `readOnce.test.ts`
+2/2, `copyStop.test.ts` 88/88 and `npm run test:tap` 618/0 before and after each. `RO` is
+`readOnce.test.ts`, `CS` is `copyStop.test.ts`, `ALL` is `npm run test:tap`:
+
+```bash
+# A-24's own acceptance check, both directions
+# `git show 63a14d7:…/copyStop.ts` under the SHIPPED test  RO red: `srcTrip.id ×2` on 11 of 14
+#                                                            rows; rows 6/7/8 correctly show 1
+# as shipped                                               RO 2/2 green, all 7 ALLOWED at max
+# the two ALLOWED entries A-24 added, both directions
+# `tgtTrip.id`       max: 2 -> 1                           RO red (BOTH assertions)
+# `tgtTrip.id`       max: 2 -> 3                           RO red (assertion 2 only)
+# `tgtTrip.revision` max: 2 -> 1                           RO red (BOTH assertions)
+# `tgtTrip.revision` max: 2 -> 3                           RO red (assertion 2 only)
+# R20-1 — the maintenance rule, in four steps
+# 1. add `voucher?: { code: string }` to `Stop`            typecheck red at ONE site:
+#    (written by makeStop only when truthy)                  copyStop.test.ts:1256 TS2741
+# 2. satisfy it as a builder would (STOP_FIELDS +          typecheck clean, ALL 618/618 green,
+#    STOP_FIELDS_THAT_CROSS)                                 RO fixture never touched
+# 3. plant R19-5's shape on the new field                  RO 2/2 GREEN  <- R20-1
+# R20-2 — the `Trip` roots' own fixture
+# double-read `Trip.meta` on BOTH documents                RO green  CS green  ALL 618/618
+# R18-5's hybrid shape on `sourceTrip.homeBase.at`         RO green  CS green  ALL 618/618
+# ...the SAME two plants with the fixture populating       RO RED: `srcTrip.homeBase ×3`,
+#    `homeBase` and `meta`                                   `srcTrip.homeBase.at ×2`,
+#                                                            `srcTrip.meta ×2`   <- the fix
+# an eighth multi-read in the product code — 22 shapes     none found, 0 throws
+```
+
+Re-run **unmodified** this round: `qa/r15-place-copy.mjs` **ALL OK**, `qa/r16-copy-depth.mjs`
+**ALL OK**, `qa/r17-hours-parser.mjs` **ALL OK**, `qa/r18-readonce.mjs` **ALL OK**,
+`qa/r2-copy.mjs` **0 FAIL**, `qa/prov.mjs` **0 FAIL**, `qa/accept.mjs` **28 pass / 0 fail**,
+`qa/r2-constraints.mjs` **1 FAIL** (R2-18, known), `qa/r2-redact.mjs` unchanged (its two known
+non-credential words, KD-27). **`qa/r14-horizon-copy.mjs` is 1 FAIL** — that is **R20-5**, new
+this pass, and the one-character ceiling re-expression is deliberately *not* done here: this
+round's brief lists the `qa/` files it may edit and `r14-horizon-copy.mjs` is not among them.
+`npm run test:tap` 618/0, `npm run typecheck` clean, `npm run web:build` clean, `npm run golden`
++ `npm run sample` byte-identical (sample sha `40955ca0b182`), `Object.keys(core).length` 71,
+reference trip 2/4/11 and 11 `validateTrip` issues.
+
+Note for whoever reads `r20-census-reach.mjs` §2 or §3 first: both need an **accessor property on
+a caller-supplied value**, the same population bound as every read-once finding since round 16,
+which is why they are MINOR. **§1, §5 and §6 do not** — they are gaps in a guard and in a
+disclosure, each demonstrated by planting something the guard or the report should have caught and
+measuring that it did not.
+
+---
+
 ## Round 19 (2026-08-28, `master` @ `215aeee`) — the A-22 / A-23 breaker pass
+
+> **Superseded in round 20.** `qa/r19-census-gaps.mjs` no longer matches the block below: it was
+> re-expressed at `3d1be3b` onto the shipped A-24 census (14 rows, `censusTrip`, 7 `ALLOWED`
+> entries) and is now **ALL OK**, with §1/§2/§4/§5 asserting the *closure* of R19-1…R19-5 rather
+> than the gap. The section below is kept as the record of what the probe measured at `215aeee`.
 
 Narrow: the diff `993d8fc..215aeee` under `packages/` only — `build/copyStop.ts`,
 `test/copyStop.test.ts` (80 → 85) and the new **`test/readOnce.test.ts`** (A-23's standing
