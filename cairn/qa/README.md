@@ -628,3 +628,73 @@ angles that probe does not cover.
 Note for whoever reads §5.9 first: `qa/r2-copy.mjs` §H does **not** fail on R14-4. It only
 inspects the copied *stop*'s note, ticket and links — the copied `Place` is not in its scope,
 which is how the un-fixed half of R2-3 stayed invisible for eleven rounds.
+
+---
+
+## Round 15 (2026-08-28, `claude/i4a-r14-issues-f0bkgc` @ `bd195bd`) — the A-15 / A-16 / A-17 breaker pass
+
+Narrow: the diff `3409420..bd195bd` only — `placeForCopy` and `refileCityKey`'s new step 2 in
+`build/copyStop.ts` (**A-15**, **A-16**), the `PlaceLink` clone (**R14-3**), the `Rule.horizonDays`
+comment (**A-17**), and the two test files. Round 14's own open list was re-derived only where
+this diff claims to close it; R13-4, R13-5, P2-5, P2-8 and the Phase 1 list were **not**
+re-litigated.
+
+```bash
+node --experimental-strip-types qa/r15-place-copy.mjs
+        # §1  A-15 measured against what a `Place` carries at RUNTIME, not against the type:
+        #     §1.1 the one surviving spread (`{...w}` over `hours.weekly`) and §1.2 a
+        #     non-string `hours.note`, both live because `fromJSON` casts `hours` unvalidated
+        #                                                              (R15-1, 7 FAIL)
+        #     §1.3 the six `place.hours` shapes fromJSON accepts and copyStopInto now THROWS
+        #     on — all six copy cleanly at 3409420                      (R15-2, 2 FAIL)
+        #     §1.4 what the ruling's table DOES deliver, and §1.5 over-redaction measured
+        #     across eleven notes                                                 (0 FAIL)
+        # §2  §2.1 `Stop.cost.note` and `Stop.arrival.label` cross verbatim while §6.6's
+        #     sample path redacts both; §2.2 the reference trip's exposure, measured
+        #                                                              (R15-3, 5 FAIL)
+        # §3  A-16: assertions 1-5, the stale source in both directions, the coincidental
+        #     cross-document key, same-`.id`-different-object, determinism   (0 FAIL);
+        #     §3.2 the step-1-before-step-2 ordering nothing can fail on (R15-4, 1 FAIL);
+        #     §3.3 the trip-id collision, checked in store.ts rather than reasoned about;
+        #     §3.4 the pool placement's raw cityKey                      (R15-6, 1 FAIL)
+        # §4  R14-3 from BOTH directions, plus every other alias copyStopInto still has
+        #                                                                          (0 FAIL)
+        # §5  A-17's directional test measured for what it can actually detect
+        #                                                              (R15-5, 1 FAIL)
+        # §6  the ceilings, the read-only boundary, and the pre-vs-post differential (0 FAIL)
+```
+
+**17 FAIL by design** — R15-1 ×7, R15-2 ×2, R15-3 ×5, R15-4 ×1, R15-5 ×1, R15-6 ×1. Every other
+line in the file is a confirmation that must stay at 0. Deterministic call sequences only, no
+races and no sleeps.
+
+§6.3 is a differential and prints `skip` without a second checkout:
+
+```bash
+git worktree add /tmp/r15-pre 3409420   # the commit BEFORE A-15/A-16/A-17 were built
+```
+
+Three of this round's findings are about **tests that cannot fail**, and none of them can be
+expressed as an assertion inside this probe — a probe cannot mutate the product code it is
+importing. Each was established by editing `copyStop.ts`, `detect.ts` or `unbookedTicketed.ts` in
+a throwaway `git worktree add /tmp/r15-mut bd195bd`, running `node --test`, and discarding the
+tree. Nothing under `cairn/` was ever written. The three mutations, so the next round does not
+re-derive them:
+
+```bash
+# R15-4 — move refileCityKey's step 2 above step 1:      568/568 pass, r14 probe ALL OK
+# R15-4 rider — `name: redactText(p.name)` in placeForCopy: 568/568 pass
+# R15-5 — beyondHorizon's `subjects.every(...)` -> `.some(...)`: 568/568 pass
+#         (the same mutation on §8.2's `suppressedAsPast` turns 3 tests red, which is the
+#          contrast that makes R15-5 a finding rather than a general observation)
+```
+
+Re-run **unmodified** this round: `qa/r14-horizon-copy.mjs` **0 FAIL** with both worktrees
+present (A-15/A-16/A-17/R14-3 close every line it had red), `qa/r2-copy.mjs` **0 FAIL**,
+`qa/prov.mjs` **0 FAIL**, `qa/r2-constraints.mjs` **1 FAIL** (R2-18, known). `npm run test:tap`
+568/0, `npm run typecheck` clean.
+
+Note for whoever reads §1.1 first: `qa/r14-horizon-copy.mjs` §5.9 does **not** fail on R15-1. It
+inspects the copied place's `note` and `links` — the two fields R14-4 named — and never
+populates `hours`, which is how the third carrier survived the ruling written to close the first
+two.
