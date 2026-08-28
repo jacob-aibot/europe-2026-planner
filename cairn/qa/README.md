@@ -979,6 +979,54 @@ for. That is the whole reason all five are MINOR and none is a BLOCKER.
 
 ---
 
+## Round 22 (2026-08-28, `master` @ `b6200e6`) — the I-5 / I-5a breaker pass on A-26's country index
+
+First round on the geography surface. Two new probes, run from `cairn/`:
+
+```bash
+node --experimental-strip-types qa/i5-order.mjs      # offline: order, determinism, non-regression,
+                                                     # double coverage, ray casting, KD-52, the budget guards
+node --experimental-strip-types qa/i5-fillscale.mjs  # network: the fill-scale measurement (R22-1),
+                                                     # country-holes.json vs raw Natural Earth, quantisation (R22-2)
+```
+
+`i5-order.mjs` is **1 FAIL by design** (R22-4 — guard 1 has 140 bytes of headroom).
+`i5-fillscale.mjs` is **2 FAIL by design** (R22-1, R22-2). Everything else in both must stay at 0.
+
+`i5-fillscale.mjs` fetches the three pinned `nvkelso/natural-earth-vector@v5.1.2` admin-0 layers
+into `$TMPDIR/cairn-ne-v5.1.2/`, verifies each against the checksum `tools/gen-countries.mjs`
+pins, and caches them. If the egress proxy blocks the fetch it prints `SKIP` per section rather
+than a false pass. Nothing under `cairn/` is written by either probe.
+
+What each section covers:
+
+| probe | § | what it measures |
+|---|---|---|
+| `i5-order` | 1 | the emitted order re-derived with a **different** area formula (Lambert equal-area shoelace vs the generator's Chamberlain–Duquette); 0 violations, 0 ties, `VA` first / `RU` last |
+| | 2 | ordering determinism — unique codes ⇒ total order, 20 seeded permutations re-sort identically, no `NaN` area |
+| | 3 | the structural non-regression proof: all 175 pre-I-5a entries present with **byte-identical rings**, so `country → null` is impossible by construction |
+| | 4 | a global grid sweep at **0.31° / offset 0.07** (deliberately not the builder's 0.25°) against `git show 897b928:…` — 674,541 cells, 0 worse |
+| | 5 | double coverage: exactly **ten** overlapping pairs on Earth, contested area in km², and who wins each |
+| | 6 | ray casting — an opposite-direction (−∞) implementation on 1,225,395 cells; holes via single-country indices; antimeridian; poles; malformed input; ring hygiene; self-intersection census |
+| | 7 | KD-52 — the Vatican patch mapped, its four one-step neighbours, St Peter's, and the seven ring vertices |
+| | 8 | the budget test's three guards and their measured headroom |
+| `i5-fillscale` | 1 | **R22-1** — all 64 filled codes probed at their capital; the misses re-tested at 1:50m and 1:110m; the per-code 10m-vs-50m coverage ratio |
+| | 2 | `country-holes.json`'s seven `resolvesAt` values re-derived from the raw layers, quantised **and** unquantised |
+| | 3 | **R22-2** — where the nine self-intersecting rings come from, and the bounded damage |
+
+**QA pin repairs this round (probe rot, pre-existing since I-5 at `897b928`).** Nine probes pinned
+`Object.keys(core).length === 71`; I-5 added `countryOf` and `COUNTRY_INDEX`, so the surface is
+**73**. `qa/r13-gate-citykey.mjs` §7 also pinned §2.10's own enumerated group sum at 71 (the
+document already says 73), and `qa/r14-horizon-copy.mjs` §7 pinned `kds.length === 50` (BUILD-NOTES
+now holds 53: KD-51 from I-5, KD-52 and KD-53 from I-5a). All brought current — one number each,
+never relaxed to `>=`, each with a dated comment. After the repair: `r13` `r14` `r15` `r16` `r17`
+`r18` `r19` `r20` **ALL OK**; `r21-closure.mjs` **1 FAIL**, which is R21-1 and is by design.
+
+**Not touched, and not routed to this round:** breaker-board items **B-1**…**B-4**.
+`qa/r11-recheck.mjs` still throws at line 243 and `qa/p2b-gate.mjs` is still 5 FAIL.
+
+---
+
 ## Round 21 (2026-08-28, `master` @ `020ee37`) — the closure round on A-25
 
 **A-25 Part 6 does not ask for a fresh hunt.** It states a **criterion** in six clauses and says

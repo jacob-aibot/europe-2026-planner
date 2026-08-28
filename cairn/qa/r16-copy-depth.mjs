@@ -737,7 +737,8 @@ line('§4.1 the new IssueCode — ceiling, determinism and wiring');
 
 line('§5.1 ceilings and the read-only boundary');
 {
-  ok('§2.10 export surface is still 71', Object.keys(core).length === 71, String(Object.keys(core).length));
+  // Round 22: 71 -> 73. Phase 2 I-5 (`897b928`) added `countryOf` and `COUNTRY_INDEX`.
+  ok('§2.10 export surface is still 73', Object.keys(core).length === 73, String(Object.keys(core).length));
   for (const n of ['placeForCopy', 'refileCityKey', 'costForCopy', 'arrivalForCopy', 'weeklyForCopy', 'hoursForCopy', 'redacted'])
     ok(`  ...and \`${n}\` is module-private`, !(n in core), '');
   const { trip } = loadEurope2026();

@@ -624,7 +624,8 @@ line('§5.2 R17-3 — `clockOrNull`\'s refusal has no test either (pre-existing,
 
 line('§6.1 ceilings and the export surface, re-derived by running');
 {
-  ok('§2.10 export surface is still 71', Object.keys(core).length === 71, String(Object.keys(core).length));
+  // Round 22: 71 -> 73. Phase 2 I-5 (`897b928`) added `countryOf` and `COUNTRY_INDEX`.
+  ok('§2.10 export surface is still 73', Object.keys(core).length === 73, String(Object.keys(core).length));
   for (const name of ['isClockTime', 'isWeeklyEntry', 'isOpeningHours', 'parseOpeningHours', 'clock'])
     ok(`  ...and \`${name}\` is not on it`, !(name in core), '');
   const { trip } = loadEurope2026();

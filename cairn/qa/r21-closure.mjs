@@ -135,7 +135,8 @@ const shipped = await import(`file://${deriveCensus(roSrc, 'shipped.ts')}`);
 
 line('§1 A-25 Part 6 clause 1 — the ceilings, re-derived by running');
 {
-  ok('§2.10 export surface is 71', Object.keys(core).length === 71, String(Object.keys(core).length));
+  // Round 22: 71 -> 73. Phase 2 I-5 (`897b928`) added `countryOf` and `COUNTRY_INDEX`.
+  ok('§2.10 export surface is 73', Object.keys(core).length === 73, String(Object.keys(core).length));
 
   const { loadEurope2026, FIXTURE_TODAY } = await import('../fixtures/loadEurope2026.mjs');
   const { trip } = loadEurope2026();

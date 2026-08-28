@@ -445,14 +445,15 @@ line('§6.4 the form paths construct no key, and the reference trip keeps the ke
 
 /* ==================================================== §7  KD-42 ============ */
 
-line('§7 KD-42 re-derived: 71 runtime symbols, and §2.10\'s own list says 71');
+line('§7 KD-42 re-derived: 73 runtime symbols, and §2.10\'s own list says 73');
 {
-  ok('Object.keys(core).length === 71', Object.keys(core).length === 71, String(Object.keys(core).length));
+  // Round 22: 71 -> 73. Phase 2 I-5 (`897b928`) added `countryOf` and `COUNTRY_INDEX`.
+  ok('Object.keys(core).length === 73', Object.keys(core).length === 73, String(Object.keys(core).length));
   const arch = readFileSync('docs/ARCHITECTURE.md', 'utf8');
   const block = arch.match(/packages\/core\/src\/index\.ts re-exports exactly this and nothing else[\s\S]*?\n```/);
   const groups = [...block[0].matchAll(/^\s{2}\w+\s+\((\d+)\)/gm)].map((m) => Number(m[1]));
   const sum = groups.reduce((a, b) => a + b, 0);
-  ok('§2.10\'s enumerated group counts sum to 71', sum === 71, `${groups.join('+')} = ${sum}`);
+  ok('§2.10\'s enumerated group counts sum to 73', sum === 73, `${groups.join('+')} = ${sum}`);
   // R13-4: the correction did not reach the code comment the same pass wrote.
   const stale = [];
   for (const f of ['packages/core/src/conflict/detect.ts', 'packages/core/src/conflict/resolve.ts'])

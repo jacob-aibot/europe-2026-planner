@@ -911,7 +911,9 @@ line('§6 A-11 x A-14 x A-12: copy a ticketed stop across trips, then crash a di
 
 line('§7 the ceilings, re-derived by running');
 {
-  ok('§2.10 export surface is 71', Object.keys(core).length === 71, String(Object.keys(core).length));
+  // Round 22: the pin moves 71 -> 73. Phase 2 I-5 (`897b928`) added `countryOf` and
+  // `COUNTRY_INDEX` to §2.10's surface; I-5a added nothing. Re-expressed by QA, never relaxed.
+  ok('§2.10 export surface is 73', Object.keys(core).length === 73, String(Object.keys(core).length));
   ok('detectUngated / detectUngatedChecked / normalizeCityName are NOT on it',
     !('detectUngated' in core) && !('detectUngatedChecked' in core) && !('normalizeCityName' in core));
   const { trip } = loadEurope2026();
@@ -948,7 +950,8 @@ line('§7 the ceilings, re-derived by running');
   // Round 21 (R20-5, A-19 assertion 7): the ceiling moves 49 -> 50 because the A-24 pass minted
   // KD-50. The ceiling is deliberately load-bearing — a pass that mints a KD must run this probe
   // and say so — so it is re-expressed by QA, never relaxed to `>=`.
-  ok(`KD ids are contiguous 1..${kds.length} with no duplicates`, contiguous && kds.length === 50,
+  // Round 22: 50 -> 53. I-5 minted KD-51; I-5a minted KD-52 and KD-53.
+  ok(`KD ids are contiguous 1..${kds.length} with no duplicates`, contiguous && kds.length === 53,
     kds.join(','));
   try {
     execFileSync('node', ['--test', 'test/disclosure.test.ts'], { cwd: root, stdio: 'pipe' });

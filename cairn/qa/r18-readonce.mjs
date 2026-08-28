@@ -545,7 +545,8 @@ line('§4.3 A-21 Part 4(c) — the placement argument: validated key and emitted
 
 line('§5.1 ceilings, re-derived by running');
 {
-  ok('§2.10 export surface is still 71', Object.keys(core).length === 71, String(Object.keys(core).length));
+  // Round 22: 71 -> 73. Phase 2 I-5 (`897b928`) added `countryOf` and `COUNTRY_INDEX`.
+  ok('§2.10 export surface is still 73', Object.keys(core).length === 73, String(Object.keys(core).length));
   for (const s of ['readWeeklyEntry', 'isClockTime', 'isOpeningHours', 'WeeklyEntry', 'samePlace', 'placeForCopy']) {
     ok(`  ...and \`${s}\` is not on it`, !(s in core));
   }

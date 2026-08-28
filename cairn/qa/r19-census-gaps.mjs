@@ -486,7 +486,8 @@ line('§7.1 the census catches everything inside its roots — recorded');
 
 line('§7.2 ceilings, `cairn-constraints` and the read-only boundary');
 {
-  ok('§2.10 export surface is still 71', Object.keys(core).length === 71, String(Object.keys(core).length));
+  // Round 22: 71 -> 73. Phase 2 I-5 (`897b928`) added `countryOf` and `COUNTRY_INDEX`.
+  ok('§2.10 export surface is still 73', Object.keys(core).length === 73, String(Object.keys(core).length));
   for (const s of ['censusDeep', 'censusTrip', 'TRIP_SKELETON', 'samePlace', 'placeForCopy', 'refileCityKey', 'ALLOWED']) {
     ok(`  ...and \`${s}\` is not on it — A-23's "tests do not create surface"`, !(s in core));
   }

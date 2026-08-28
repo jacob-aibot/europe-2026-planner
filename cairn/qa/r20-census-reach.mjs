@@ -495,7 +495,8 @@ line('§6 R20-5 — `qa/r14-horizon-copy.mjs` §7\'s KD ceiling is now red');
 
 line('§7 ceilings, `cairn-constraints`, and what did NOT break');
 {
-  ok('§2.10 export surface is still 71', Object.keys(core).length === 71, String(Object.keys(core).length));
+  // Round 22: 71 -> 73. Phase 2 I-5 (`897b928`) added `countryOf` and `COUNTRY_INDEX`.
+  ok('§2.10 export surface is still 73', Object.keys(core).length === 73, String(Object.keys(core).length));
   const copyStop = readFileSync(new URL('../packages/core/src/build/copyStop.ts', import.meta.url), 'utf8');
   const stripped = copyStop.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
   ok('determinism: no `Date.now`, `Math.random` or `crypto.randomUUID` in `copyStop.ts`',

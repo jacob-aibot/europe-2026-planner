@@ -1,4 +1,37 @@
-# Cairn — QA findings, Phase 1 **rounds 2–11** and Phase 2 **rounds 12 (2a), 13 (I-3a / I-4a), 14 (A-11…A-14), 15 (A-15…A-17), 16 (A-18 / A-19), 17 (A-20 / R16-1), 18 (A-21 / A-21a), 19 (A-22 / A-23), 20 (A-24 / R19-1 / R19-2 / KD-50) and 21 (A-25 — the closure round)**
+# Cairn — QA findings, Phase 1 **rounds 2–11** and Phase 2 **rounds 12 (2a), 13 (I-3a / I-4a), 14 (A-11…A-14), 15 (A-15…A-17), 16 (A-18 / A-19), 17 (A-20 / R16-1), 18 (A-21 / A-21a), 19 (A-22 / A-23), 20 (A-24 / R19-1 / R19-2 / KD-50), 21 (A-25 — the closure round) and 22 (I-5 / I-5a — A-26's mixed-resolution country index)**
+
+> **Status (as of `master` @ `b6200e6`, independently verified 2026-08-28 — round 22, the
+> mandatory adversarial pass over Phase 2 **I-5** and **I-5a**: `tools/gen-countries.mjs`,
+> `countryOf`, `COUNTRY_INDEX`, `geo/countryIndex.ts`, `fixtures/golden/countries.json` and the
+> new `fixtures/golden/country-holes.json`. First round on the geography surface; the
+> `copyStop.ts` read-once arc is not re-litigated (closed at round 21).**
+>
+> | | |
+> |---|---|
+> | **Verdict** | **I-5 and I-5a are sound. The engine is right, the order is right, the artefact is reproducible byte-for-byte, and nothing regresses.** One MAJOR survives and it is a *design* defect, not an implementation one: **R22-1** — A-26 Part 4 fixes the fill scale at the family's finest layer by fiat, which is the layer A-26 Part 2 measured and rejected, and it costs five of the sixty-four filled countries their capital city. Five MINORs behind it. |
+> | **BLOCKERS** | **0.** Nothing here loses data, leaks a coordinate or answers with another person's record. `countryOf` has no consumer inside the product yet, so the whole surface's blast radius today is one committed dataset and two goldens. |
+> | **Findings** | **R22-1 MAJOR (architect)** · **R22-2 MINOR (builder)** · **R22-3 MINOR (architect — KD-53 confirmed, plus one adjacent sentence)** · **R22-4 MINOR (builder)** · **R22-5 MINOR (builder)** · **R22-6 MINOR (architect — a confirmation and a measurement of an already-disclosed item)**. |
+> | **Fixed vs still open** | **CLOSED and re-derived by me rather than read from BUILD-NOTES: KD-51 / A-26 in full** — the 64 missing ISO codes are present, 7 of the 8 misattributed micro-states now answer themselves, and the three Dalmatian `null`s are confirmed correct at every scale of the pinned family. **STILL OPEN, new this round:** R22-1 (MAJOR), R22-2…R22-6 (MINOR). **FIXED BY QA THIS ROUND (probe rot, R22-5's sibling):** nine probes had pinned `Object.keys(core).length === 71` since I-5 shipped at `897b928` and `qa/r14-horizon-copy.mjs` §7 pinned `kds.length === 50`; both are brought current (73 / 53) and all nine are green again. **STILL OPEN, unchanged and not re-litigated:** R21-1, R13-4, R13-5, P2-5, P2-8, R2-18 and the whole Phase 1 list (R10-1, R8-3, R8-4, R6-1/2, R5-2, R11-1). The breaker-board items **B-1**…**B-4** (`qa/r11-recheck.mjs:243` still aborts; `qa/p2b-gate.mjs` still 5 FAIL) were **not** routed to this round and are untouched. |
+> | **Scope** | Exactly `897b928..b6200e6` under `packages/`, `tools/` and `fixtures/`: `tools/gen-countries.mjs` (+369), `packages/core/src/geo/countryIndex.ts` (the sort removed), `packages/core/src/geo/countries.gen.ts` (regenerated), `packages/core/test/0-countryBudget.test.ts`, `packages/core/test/country.test.ts` (+376), `fixtures/golden/countries.json` and the new `fixtures/golden/country-holes.json`. Plus the I-5 diff `75af152..897b928` where a question needed it. |
+> | **Numbers, my own runs at `b6200e6`** | `npm run test:tap` **662 pass / 0 fail** · `node --test packages/core/test/*.test.ts` **419 pass** · **`node --test packages/core` exits 0** — the type-stripping ship gate, with the generated module now 346,455 bytes · `npm run typecheck` clean, both projects · **`npm run web:build` clean** (the check the I-5a builder explicitly did not run — see R22-6) · `Object.keys(core).length` **73**, unmoved from I-5 · reference trip **2 / 4 / 11** at `FIXTURE_TODAY`, `validateTrip` **11**, `geoCheck` **0** · `npm run golden` + `npm run sample` regenerate **byte-identically**, sample sha unmoved at **`40955ca0b182`** · `git status --porcelain` clean before and after. |
+> | **Reproducibility of the artefact — the strongest single result** | `node tools/gen-countries.mjs`, run today in a throwaway worktree at `b6200e6`, produced `countries.gen.ts` **byte-identical to the committed file** (sha256 `8783652949164a9875fb188d4c3367add5686bc564dc44db6bafc9b840ebc4bd`, 346,455 bytes, `git status` empty). All three pinned layers matched the generator's checksums to the byte, fetched independently by me. `--holes` regenerates `country-holes.json` byte-identically. `--dry-run`, `--no-fill`, `--audit-only`, `--scale 50m` and `--scale 10m` all still work, and `--scale 25m` exits 2 with a usable message. **I could not make the generator non-deterministic:** codes are unique so `orderEntries`'s comparator is a total order and `Array.sort` stability is unreachable; there are **zero** area ties in the shipped data, so the ISO tie-break is never exercised; the "missing codes" set is consumed in *file* order, not Set-iteration order; and 20 seeded permutations of the entry list re-sort to the committed order exactly. |
+> | **The emission order, re-derived rather than trusted** | Recomputed every entry's area with a **different formula** from the generator's (shoelace on the Lambert cylindrical equal-area projection, against the generator's Chamberlain–Duquette line integral). Result: **strictly ascending, 0 violations, 0 ties**, `VA` first and `RU` last. Then swept for double coverage entry-by-entry at up to 0.00005° — **exactly ten pairs of countries claim the same ground anywhere on Earth**, every one of them has exactly one 1:10m filled member (no 110m-vs-110m and no 10m-vs-10m overlap), and **in every one the smaller-area entry is the one `countryOf` returns**: `CN+HK` (~686 km² contested), `AD+FR` (~561), `MY+SG` (~542), `AT+LI` (~77), `CH+LI` (~60), `IT+SM` (~50), `AD+ES` (~48), `FR+MC` (~9.4), `ES+GI` (~1.8), `IT+VA` (~0.01). The builder spot-checked 8 microstates; this is the sweep, and it found two pairs the spot-check does not name (`CH+LI`, `AD+ES`). |
+> | **Non-regression, independently re-swept** | My own global grid — **0.31° step, 0.07° offset, 674,541 cells**, deliberately not the builder's 0.25° — against the actual pre-I-5a module restored from `git show 897b928:…`. **34 cells `null` → a country, 5 a wrong country → the right one (`MY→SG`, `CN→HK`, `FR→AD`, `FR→MC`, `AT→LI`), ZERO cells worse.** My grid catches three changes the builder's 0.25° grid does not. **And the property is structural, not statistical:** all 175 pre-I-5a entries carry **byte-identical rings** in the new index and 64 were added, so the set of countries containing any point is a strict superset of the old one — a `country → null` regression is *impossible by construction*, not merely unobserved. `fixtures/golden/countries.json` differs from I-5's in exactly four lines, all `index` metadata. |
+> | **`countryOf`'s ray casting** | Re-implemented the point-in-polygon with the ray cast toward **−∞ longitude** (the opposite direction) and compared over **1,225,395 cells: zero disagreements**. Holes: a Lesotho point is `null` against a *South-Africa-only* index — the hole ring is genuinely honoured, not masked by `LS` being ordered first — and Johannesburg is still `ZA`. The 1:110m base has **no** San Marino hole in Italy and no Liechtenstein hole in Austria, which is exactly why the emission order has to decide those. Antimeridian: **no ring vertex anywhere outside ±180 / ±90**, so `derive/country.ts`'s "the rings are clipped" claim is true of the shipped data; `FJ`, `AQ` and `RU` carry vertices at exactly ±180; Chukotka at (66, −175) is `RU`, Suva and Vanua Levu are `FJ`, Kiritimati is `KI` across 27° and an antimeridian from Tarawa. Poles: north `null`, south `AQ`. `(0,0)` `null`. `NaN`/`Infinity`/91°/181°/`-0` all `null`. Ring hygiene: 892 rings, all even-length, no non-finite value, no ring under 3 points, no consecutive duplicate vertices, every ring explicitly closed. Boundary-exact points on the `VA` ring's own seven vertices give `VA`/`IT` and never a third answer — arbitrary but deterministic, as documented. |
+> | **KD-52 — confirmed exactly, and mapped rather than asserted** | `VA` is entry **0** of 239, a single seven-point ring spanning **12.4527–12.4540 E, 41.9028–41.9039 N ≈ 108 m × 122 m**, which is A-26 Part 5's figure to the digit. Inside the patch → `VA`; **one 0.0002° step (≈17–22 m) outside it in any of the four directions → `IT`, never `null`**; St Peter's Basilica, the Square and the Museums entrance → `IT`. The patch answers ~**11.7 × 10³ m²** against the real state's 440,000 m² — "about a thirtieth", as KD-52 says. **KD-52's correction of A-26 Part 5 is right and A-26 Part 5's sentence is wrong as written.** I attacked the underlying ruling too: the **1:50m** layer carries a *larger* `VA` polygon (18× the sampled area) — but it spans 12.4275–12.4392 E, about **1 km west of the real state**, so filling `VA` from 50m would claim ~1 km² of Rome and *still* miss the basilica. **A-26 Part 5 residue 1 survives the attack; only its wording needs the KD-52 correction.** |
+> | **KD-53 — confirmed, correctly scoped, and one adjacent sentence found** | `derive/country.ts:70` does say *"which `countryIndex` fixes as ascending ISO code"* and that is false as of `b6200e6`. I audited the **whole** file for the broader inconsistency the round was asked to look for, and every other behavioural claim it makes is measurably true: no network, no distance function, rings clipped at ±180, north pole `null`, boundary points arbitrary-but-deterministic. **One rider, same doc block (`derive/country.ts:27`):** *"The ray is cast towards +∞ longitude and stops at the box"* — the box is a *point*-reject, not a clip on the ray; the ray is unbounded. Both are one-line corrections and both are the architect's, because A-26 Part 6 item 3 names this file "unchanged" twice. **R22-3.** |
+> | **`fixtures/golden/country-holes.json`** | Re-derived all seven `resolvesAt` values **from the raw Natural Earth layers directly**, both quantised the way the generator quantises and unquantised, rather than from the golden: **all seven are accurate.** `Blue Cave, Biševo`, `Stiniva Cove, Vis` and `Budikovac` are `null` at 110m, 50m **and** 10m, raw and quantised — a genuine dataset gap, and `null` is the correct answer. `Hvar Town` (stop-41, place-38) resolves at 10m and only at 10m. The file names exactly the set the committed index leaves `null`, its own `total`/`resolvable` counters agree with its rows, and it carries **no coordinate** — two numbers in the whole file, both integers. |
+> | **The sensitive paths (§5, §6)** | Nothing on this surface logs, transmits or persists a coordinate. `countryOf` and `countryIndex.ts` contain no `fetch`, no `Date.now`, no `Math.random`, no `crypto.randomUUID`, no `fs` and no DOM. Both goldens carry ids and names only — I scanned every number in both: **24 numbers in `countries.json`, 2 in `country-holes.json`, all integers, zero decimal-coordinate-shaped tokens.** The generator's three fetches are generation-time, by a human, to a pinned public-domain tag; nothing in `packages/core`, `packages/client` or `apps/web` fetches anything for this feature. The one thing that *does* travel is the dataset itself — see **R22-6**. |
+> | **`cairn-constraints`, re-checked** | Determinism — the two hand-written `packages/core` files this increment touches hold no ambient clock or randomness, and two separate processes plus two CLI runs agree byte-for-byte (`qa/r2-constraints.mjs`). Zero-dep core — `packages/core` declares no external runtime dependency and `countries.gen.ts` imports exactly one relative module. No DOM under `packages/client` (untouched by this diff). Node type-stripping holds with the generated module at 346 kB: `node --test packages/core` exits 0 with no build step, and both new probes run under bare `node --experimental-strip-types`. |
+> | **Read-only boundary** | `europe-2026-itinerary.html`, `docs/` and `tickets/` at the repo root: untouched. `git diff 897b928 b6200e6 -- . ':(exclude)cairn'` is **empty**, and so is `git status --porcelain -- . ':(exclude)cairn'` after every run in this round including `npm run golden`, `npm run sample` and `npm run web:build`. The only files this round writes are `cairn/qa/i5-order.mjs` and `cairn/qa/i5-fillscale.mjs` (new), the ten one-number QA pin repairs listed above, `cairn/qa/README.md` and this file. **No implementation file, no test file under `packages/` or `tools/`, no `ARCHITECTURE.md`, no `ROADMAP.md`.** Every generator run was made in a throwaway `git worktree add … b6200e6` and discarded; `git worktree list` shows no leftover of mine. |
+>
+> **New probes this round:** `qa/i5-order.mjs` (offline; **1 FAIL by design — R22-4**) and
+> `qa/i5-fillscale.mjs` (fetches the three pinned layers into `$TMPDIR`, verifies their checksums,
+> and prints SKIP rather than a false pass if the proxy blocks it; **2 FAIL by design — R22-1 and
+> R22-2**). Every other line in both is a confirmation that must stay at 0.
+>
+> **The round-21 status note below is superseded by this one** and is kept as the record of what
+> was true at `020ee37`.
 
 > **Status (as of `master` @ `020ee37`, independently verified 2026-08-28 — round 21, the
 > **closure round** on ARCHITECTURE revision 19's **A-25**. Ninth consecutive round touching
@@ -136,6 +169,116 @@
 >
 > **The round-17 status note below is superseded by this one** and is kept as the record of what
 > was true at `909b4a3`.
+
+## Round 22 — I-5 / I-5a: A-26's mixed-resolution country index (`master` @ `b6200e6`)
+
+The increment ships a dataset, a pure function over it, and an *order*. So there are three
+independent questions, and I attacked them separately: **is the artefact the one the generator
+would produce today** (yes, byte-for-byte), **is the ray cast right** (yes, on 1.2 M cells against
+an opposite-direction implementation), and **is the order right** (yes, and I found two overlapping
+pairs the builder's spot-check does not name). What survives is none of those. It is the one
+decision A-26 took without measuring.
+
+### Findings
+
+| id | sev | where | defect | repro | routing |
+|---|---|---|---|---|---|
+| **R22-1** | **MAJOR** | `tools/gen-countries.mjs:99` (`const FILL = '10m'`), from `ARCHITECTURE.md` §8.4 **A-26 Part 4** | The fill scale is fixed at the pinned family's **finest** layer by fiat — the layer A-26 **Part 2** measured and rejected for the base because *"a fine one tracks the water and drops anything a few hundred metres seaward"* — so all 64 filled countries inherit exactly the error the base scale was chosen to avoid. Measured: **5 of the 64 return `null` at their capital city and attribute correctly at 1:50m** — Nuku'alofa (`TO`), St John's (`AG`), St George's (`GD`), Diego Garcia (`IO`), Grytviken (`GS`). | `node --experimental-strip-types qa/i5-fillscale.mjs` §1 | **architect** — A-26 Part 4 states the rule; the builder implemented it faithfully |
+| **R22-2** | MINOR | `tools/gen-countries.mjs:395-410` (`verifyQuantisation`) | The quantisation guard samples a **1.7° lattice (~11 k points)** and its own docstring claims *"a non-zero count means the rounding is coarse enough to be visible, which is a measurement rather than an assumption"*. A lattice that coarse cannot land within 11 m of a border, so the guard reports 0 unconditionally. Measured consequence: 4-dp quantisation turns **8 of the Maldives' 176 raw 1:10m rings into self-intersecting bow-ties** (the raw rings are simple), and the guard reports 0. Damage is bounded — ~0.0196 km² lost / ~0.0118 km² gained against ~108.7 km² of Maldives land, and the even-odd rule still answers `MV` inside both lobes, so no atoll disappears. | `node --experimental-strip-types qa/i5-fillscale.mjs` §3; ring census in `qa/i5-order.mjs` §6.6 | **builder** — the guard and its comment are the generator's |
+| **R22-3** | MINOR | `packages/core/src/derive/country.ts:70` and `:27` | **KD-53 confirmed.** Line 70 says countries are tested *"in the index's own order, which `countryIndex` fixes as ascending ISO code"* — withdrawn by A-26 Part 4; `countryIndex` fixes nothing now. **Plus one adjacent sentence the builder's narrow scoping did not reach:** line 27 says the ray *"is cast towards +∞ longitude and stops at the box"* — the box is a point-reject, not a clip on the ray. Both are one-line doc corrections. No third inconsistency exists: I audited every other behavioural claim in the file and all are measurably true. | `qa/i5-order.mjs` §6 (each of the file's other claims is a named assertion) | **architect** — A-26 Part 6 item 3 names this file *"unchanged"* and Part 6 item 2 names `countryIndex.ts` *"the only hand-written change"*, so the builder was right to refuse; the ruling has to move before the comment can |
+| **R22-4** | MINOR | `packages/core/test/0-countryBudget.test.ts:107` | Guard 1 (*"bytes of TypeScript outside the packed literal"*) has **140 bytes of headroom** against its 3,600 limit, and the limit was itself raised 3,000 → 3,600 in this increment by the commit that tripped it. Its failure message says *"data leaked into syntax"*, which is not what will actually trip it next — the header comment carries a wrapped 239-entry code list and the 64-code fill list, both of which grow with the dataset. Guard 3 (*">98% of file bytes inside the literal"*) is a **ratio**, so it permits ~7,000 bytes today and its allowance grows with the payload; it does not bound the comment in absolute terms. The real absolute bound is `EMITTED_BYTES`, and that works. | `qa/i5-order.mjs` §8 (asserts >500 bytes of headroom; currently 140) | **builder** — test-only; either express guard 1 against the *code list's* size or fold it into guard 3 and drop the false-precision number |
+| **R22-5** | MINOR | `tools/gen-countries.mjs:128-135` vs `:152-158` | The generator reports the base build's `dropped` (degenerate-ring) count and **never the fill's**. Today the fill drops 0 rings and the base drops 1 (a 4-point, ~0.3 m `KP` sliver), so nothing is lost — but a future fill that silently drops a whole small island's only ring would be invisible in the run's output. The `stillMissing` throw only catches a code losing *all* its rings, not one of several. | `node tools/gen-countries.mjs --dry-run` — compare the base line, which prints `(N rings dropped as degenerate)`, with the fill line, which does not | **builder** — one field in an existing log line |
+| **R22-6** | MINOR | `apps/web/dist/assets/index-*.js` | **The check the I-5a builder disclosed as not run, run.** `npm run web:build` is clean, and the bundle is **942.79 kB (gzip 303.99 kB)**, up from 772.74 at I-5 and 598.73 before it. **342,981 of 941,450 bytes — 36.4% of the shipped bundle — is the country payload**, and `grep` finds **zero** references to `COUNTRY_INDEX` or `countryOf` in `apps/web/src`, `packages/client/src` or `cli.ts`. It is dead weight on first load until I-8 draws the lifetime map. Already disclosed by both I-5 and I-5a builders as a standing objection; this row supplies the number and the share. | `npm run web:build && node -e "…"` — the exact check is `qa/i5-order.mjs`'s sibling measurement, reproduced in the status note above | **architect** — §8.4 requires the index be *"exported as a value from `index.ts`"*; whether it is lazily loaded is that section's call, not a builder's |
+
+### What I attacked and could not break
+
+Listed so "sound" is a conclusion rather than an absence of effort.
+
+- **Reproducibility.** Ran the generator myself at the pinned tag and got a byte-identical
+  `countries.gen.ts`. Fetched all three Natural Earth layers independently: all three checksums
+  match the generator's pins exactly (including the 10m one, which §8.4 does not record and the
+  generator honestly marks as its own measurement).
+- **Non-determinism in the emission order.** No area ties exist, so the ISO tie-break is dead code
+  and `Array.sort` stability is unreachable; codes are unique, so the comparator is a total order;
+  the "missing codes" set is consumed in *file* order rather than Set-iteration order; 20 seeded
+  permutations of the input re-sort to the committed order. No `NaN` area anywhere, which would
+  have made the comparator engine-defined.
+- **Ascending-area ordering producing a wrong answer.** Swept every entry's own bounding box down
+  to 0.00005° for double coverage. Exactly ten pairs overlap; the smaller wins all ten; all ten are
+  well-formed enclave/encloser pairs. No same-scale overlap exists — the 1:110m base is a clean
+  partition, and `MF`/`SX`, the two filled polygons that share a real land border, are adjacent
+  rather than overlapping.
+- **A gap between the two resolutions.** Structurally impossible, and I proved it rather than
+  sampling for it: every one of the 175 pre-I-5a entries is present with **byte-identical rings**,
+  so the containing set only grows. A coordinate that answered `AT` before cannot answer `null`
+  now; it can only answer `LI`.
+- **Antimeridian and polar handling.** No vertex outside ±180/±90 anywhere in the shipped data;
+  `KI` spans 27° and the antimeridian and still resolves from its Line Islands; `RU`'s Chukotka
+  lobe east of 180 resolves from its own negative-longitude polygon. `UM`, `KI`, `FJ`, `AQ` and
+  `RU` have reject boxes wider than 180°, so the box prunes nothing for them — a cost, not a
+  correctness problem.
+- **Holes.** Tested against single-country indices so an enclave being ordered first could not mask
+  a broken hole. Lesotho is `null` against `ZA` alone. Confirmed the converse too: the 1:110m base
+  has *no* hole for San Marino or Liechtenstein, which is precisely why A-26 had to move the order.
+- **Self-intersecting rings changing an answer.** Nine exist. `SD`'s is in the published raw data;
+  `MV`'s eight are quantisation artefacts (R22-2) and cost ~0.02 km² of a 108.7 km² country.
+  Neither changes a country's identity anywhere on my sweeps.
+- **A-26 Part 5 residue 1 (`VA`).** Attacked from the one angle that could have overturned it — the
+  1:50m layer carries a *bigger* Vatican polygon — and it does not overturn it: that polygon sits
+  ~1 km west of the real state and would claim ~1 km² of Rome while still missing the basilica.
+  The residue is real; only its wording is wrong, exactly as KD-52 says.
+- **A-26 Part 5 residue 2 (border bias).** Reproduced and quantified for all ten pairs rather than
+  Monaco alone. One note for the record: the *mechanism* the ruling states — *"there is no shared
+  boundary, there is an overlap band"* — understates it. The encloser's coarse ring covers the
+  *whole* enclave, so what is contested is essentially the enclave's entire area, not a band; the
+  ordering is therefore load-bearing rather than a tie-break, and the residual wrongness is
+  Natural Earth's own 1:10m generalisation of the enclave. The number and the conclusion are
+  unaffected, so this is not filed as a finding.
+- **The budget test's structural guards.** Both do what they claim (zero `[` outside the literal,
+  >98% inside). Guard 2 cannot be evaded by a two-literal payload because `emit()` throws on an
+  apostrophe in the packed bytes. What the budget test *cannot* see is an index that silently
+  **shrank** — `EMITTED_BYTES` is a `<=` ceiling — but `country.test.ts:715` pins
+  `countries.length === 239`, so the chain holds; that is a division of labour, not a hole.
+- **Sensitive paths.** No coordinate reaches either golden, no log line, no network call from
+  product code, and no mailbox surface is touched by this increment at all.
+
+### The one thing worth arguing about — why R22-1 is MAJOR and why it goes to the architect
+
+A-26's own case for re-opening I-5 was: *"An index that can never say Malta is broken for the exact
+demographic the thesis is about."* It can now say Malta. What I measured is that it still cannot
+say **Tonga** from Nuku'alofa, **Antigua** from St John's, **Grenada** from St George's, the
+**British Indian Ocean Territory** from Diego Garcia, or **South Georgia** from Grytviken — and
+that all five of those are inside the *same pinned family's* 1:50m polygon for the same country.
+
+The reason is a single line. A-26 Part 2 derives the **base** scale by measurement, and its finding
+is the opposite of intuition: *"1:110m gets them right by being wrong in the useful direction."*
+A-26 Part 4 then chooses the **fill** scale in one clause — *"the 1:10m polygons for exactly the
+codes it does not [carry]"* — with no measurement behind it, because the reference corpus is one
+Adriatic trip and contains none of the 64. The builder met that clause exactly, and it is worth
+saying that the builder *did* see the symptom: `country.test.ts`'s island-states test uses
+`Jersey (inland)` with the comment *"the harbour town sits on the waterline and falls ~200 m
+outside the 1:10m ring — A-26 Part 2's shoreline effect, on a filled polygon this time."* That
+observation was made, worked around by moving the coordinate, and not raised as a KD. It should
+have been; it is the visible corner of R22-1, in the same way the four micro-enclaves were the
+visible corner of KD-51.
+
+**What I am not claiming.** A blanket switch of the fill to 1:50m would be *worse*: measured over
+all 62 filled codes the 50m layer carries, the 1:10m polygon covers more ground for **53** of them
+and less for **9** (`VA` 0.06, `IO` 0.35, `SX` 0.57, `MH` 0.59, `SM` 0.88, `HM` 0.94, `JE` 0.94,
+`BM` 0.95, `LI` 0.99). `VA` in particular would get strictly worse. The rule that is missing is
+**per-code and measured**, and the generator already computes exactly that quantity for the holes
+golden: `resolvesAt` is *"the coarsest scale in the pinned family that does attribute"*. The same
+mechanism, applied to the fill instead of to the holes, is the shape of the fix — and it is an
+architect's ruling because A-26 Part 4's sentence is what has to change first. Four of the ten
+misses (`JE` St Helier, `KI` Tarawa, `MH` Majuro, `TV` Funafuti) miss at **every** scale and are
+genuine dataset gaps where `null` is correct; those are not part of this finding.
+
+**Cost of leaving it.** The same as KD-51's: nothing today, because `countryOf` has no consumer.
+`TripSummaryRow.countryCodes` minted from this index at I-6 would need a `SUMMARY_VERSION` rescan
+the day the fill rule changes — which is A-26 Part 7's own argument for why the index had to be
+fixed while nothing depended on it, applied one level down.
+
+---
 
 ## Round 21 — A-25, the closure round (`master` @ `020ee37`)
 

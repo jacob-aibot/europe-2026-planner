@@ -678,7 +678,8 @@ line('§5.1 A-17\'s directional test vs the mechanism it is protecting (R15-5)')
 
 line('§6.1 the export surface and the read-only boundary');
 {
-  ok('§2.10 export surface is 71', Object.keys(core).length === 71, String(Object.keys(core).length));
+  // Round 22: 71 -> 73. Phase 2 I-5 (`897b928`) added `countryOf` and `COUNTRY_INDEX`.
+  ok('§2.10 export surface is 73', Object.keys(core).length === 73, String(Object.keys(core).length));
   ok('`placeForCopy` and `refileCityKey` are module-private',
     !('placeForCopy' in core) && !('refileCityKey' in core));
   const src = readFileSync(HERE + 'packages/core/src/build/copyStop.ts', 'utf8');
