@@ -21,6 +21,7 @@ node probe1.mjs        # F-4: the 12 blockers, listed
 node prov.mjs          # F-6, F-7, F-17: provenance escape paths
 node rev.mjs           # revision bumping and derived-cache keying
 node rules.mjs         # F-8 and the rules that stay silent on the fixture
+node --experimental-strip-types r18-readonce.mjs   # A-21/A-21a: the read-once census (round 18)
 ```
 
 Browser probes need `npm run web:build && npm run serve` in one shell first, then:
@@ -863,3 +864,113 @@ Note for whoever reads §3.2 first: R17-1 needs an **accessor property** on a `w
 document can carry one, and every shipped caller of `fromJSON` passes text (`importDoc(text)`,
 `cli`, and `StoredDoc.doc`, which is `type TripDoc = string`) — so the population is an in-process
 writer, the same one `place_hours_malformed` exists for. That is the whole reason it is MINOR.
+
+---
+
+## Round 18 (2026-08-28, `master` @ `1d091a6`) — the A-21 / A-21a breaker pass
+
+Narrow: the diff `10fe04c..1d091a6` under `packages/` only — `build/copyStop.ts` (file-wide),
+`model/openingHours.ts` (`isWeeklyEntry` → `readWeeklyEntry`), `serialize/toJSON.ts` (`hours()`)
+and the three test files — plus the three round-17 findings a builder closed in the same pass.
+Nothing else was re-litigated.
+
+```bash
+node --experimental-strip-types qa/r18-readonce.mjs
+        # §1  a mechanical read-count CENSUS: every field of every caller-supplied record
+        #     `copyStopInto` touches, over five control-flow paths, each wrapped in a
+        #     counting getter that returns a STABLE value          (census summary, 1 FAIL)
+        # §2  A-21a's read-count table re-derived path by path              (0 FAIL)
+        #     §2.2 its stated bound attacked from three directions: duplicate row yes,
+        #          crash no, false-positive merge no, new leak no            (0 FAIL)
+        #     §2.3 where the bound stops holding, one level down      (R18-5, 2 FAIL)
+        # §3  the sites the census finds that neither ruling names:
+        #     §3.1 `source.trip` ×5 — the credit names the wrong person (R18-1, 2 FAIL)
+        #     §3.2 `src.id` ×2 — tested by `find`, emitted as origin    (R18-2, 1 FAIL)
+        #     §3.3 `srcPlace.at` ×2 in the inline branch               (R18-3, 2 FAIL)
+        #     §3.4 `samePlace` reads the RECIPIENT's `a.at` ×3         (R18-4, 1 FAIL)
+        #     §3.5 the ctx fields whose second read is inert today      (recorded, 0 FAIL)
+        # §4  where A-21's claim DOES hold — Parts 1, 4 and 4(c) and A-21a's
+        #     own two fixtures, all re-derived                                  (0 FAIL)
+        # §5  ceilings, `cairn-constraints` and the read-only boundary          (0 FAIL)
+```
+
+**9 FAIL by design** — R18-1 ×2, R18-2 ×1, R18-3 ×2, R18-4 ×1, R18-5 ×2, plus the §1.1 census
+summary. Every other line is a confirmation that must stay at 0. Deterministic call sequences only,
+no races and no sleeps. No second checkout needed.
+
+**The census in §1.1 is the reusable part.** A-21's own residue paragraph says the rule is checked
+behaviourally rather than by a grep, and that *"the day `copyStop.ts` grows a new helper, the
+reviewer's question is: does any field of a source record appear twice in this function?"* — one
+pass over a 500-line file, by hand. §1.1 is that question asked mechanically: it wraps every own
+enumerable field of the source stop, its `PlaceLink`, the source `Place`, the `placement` and the
+two argument objects in counting getters that return **stable** values, so it measures the shipped
+control flow and injects no fault at all. Run it on any future pass that touches this file; the
+only maintenance it needs is the `BLESSED` set, which is the two carve-outs the rulings write down.
+
+Thirteen mutations, all made in a throwaway `git worktree add … 1d091a6` and discarded — nothing
+under `cairn/` was ever written. Baseline 608/608 before and after each, restore verified. **Every
+one is red; none survives**, which is the opposite of round 17's result and is the strongest thing
+in the builder's two passes:
+
+```bash
+# A-21's own six
+# re-read `e.open` in weeklyForCopy                          1 red
+# re-read `c.display` in costForCopy                         1 red
+# re-read `o.weekly` in isOpeningHours                       1 red
+# re-read `o.weekly` in hoursForCopy                         1 red
+# re-read `p.at` in placeForCopy                             1 red
+# restore `place = src.place` as the ternary fallthrough     2 red
+# A-21a's seventh
+# restore `original.at` in the step-3 branch                 1 red
+# the Part 1 reversion the ruling is written against
+# readWeeklyEntry -> a bool the caller re-derives from       2 red
+# the builder's five
+# re-read `placement.cityKey` in Part 4(c)                   1 red
+# re-read `o.weekly` in toJSON's hours()                     1 red
+# revert toJSON's `hours` rebuild                            1 red  <- R17-2 CLOSES (0 at 909b4a3)
+# delete clockOrNull's HH:MM refusal                         1 red  <- R17-3 CLOSES (0 at 909b4a3
+#                                                                      AND at 69f551c)
+# drop Number.isFinite from readWeeklyEntry                  3 red
+```
+
+Re-run **unmodified** this round: `qa/r14-horizon-copy.mjs` **ALL OK**, `qa/r15-place-copy.mjs`
+**ALL OK**, `qa/r2-copy.mjs` **0 FAIL**, `qa/prov.mjs` **0 FAIL**, `qa/r2-constraints.mjs` **1
+FAIL** (R2-18, known). `npm run test:tap` 608/0, `npm run typecheck` clean, `npm run web:build`
+clean, `npm run golden` + `npm run sample` byte-identical (sample sha `40955ca0b182`),
+`Object.keys(core).length` 71 with `index.ts` byte-unchanged across the whole diff.
+
+**`qa/r16-copy-depth.mjs` and `qa/r17-hours-parser.mjs` are both at 0 FAIL and both run to
+completion.** A-21 named the lines it would turn red and said re-expressing them is QA's job, not
+the builder's; this round did it:
+
+- **`r16` §1.4's source-grep** tested `/isWeeklyEntry\(w\)/` and `/redacted\(e\.open\) !== e\.open/`.
+  A-21 renamed both halves; the equivalents are `/readWeeklyEntry\(w\)/` and
+  `/redacted\(open\) !== open/` and the assertion's *subject* — the structural half is asked once,
+  elsewhere, and the redaction half is a copy-boundary policy — is unchanged and still true. A
+  second line now asserts, against **comment-stripped** source, that the old boolean predicate was
+  **deleted** rather than shipped alongside the new one.
+- **`r16` §3.5** recorded, as *"confirmed, not filed"*, that an out-of-union placement `kind` fell
+  past A-19's city check and wrote `{kind:'pool', cityKey: undefined}`. A-21 Part 4(c) merges the
+  check and the rebuild into one branch on the discriminant, so the call is now **refused**. The
+  ruling does not name this; the builder reported it. The line is re-expressed two-sided (the
+  refusal, and the target byte-identical behind it) with the residual coercion — an out-of-union
+  `kind` carrying a key the target *has* still lands in the pool — recorded beside it.
+- **`r17` §3.2's second assertion** (`warned || restores`) is **withdrawn by A-21 Part 6** as
+  unsatisfiable by any implementation that does not re-read, and is replaced by Part 6's own
+  four-part invariant, measured rather than argued: neither traversal throws at any of 7 flip
+  points and the export stays parseable JSON; **each traversal reads each field exactly once**
+  (`validateTrip` 1/1, `toJSON` 1/1, `copyStopInto` 1/1 — which is the checkable form of
+  *"internally consistent"*); the two-traversal disagreement is **recorded and not asserted**; and
+  the harm is bounded to the caller's own document, which is the half that must not be withdrawn.
+- **`r17` §5.1 and §5.2** were literal `ok(…, false, …)` statements about the shipped suite's own
+  coverage gaps — R17-2 and R17-3 — which no product change can turn green. Both now assert the
+  closure by naming the fixture, and both are re-derived by mutation at `1d091a6` rather than taken
+  from BUILD-NOTES. §5.2 also gains **R17-4**'s closure, re-derived: `importDoc(text: string)`,
+  `type TripDoc = string`, `cli.ts`'s `readFileSync(…, 'utf8')`.
+
+Note for whoever reads `r18-readonce.mjs` §3 first: every finding needs an **accessor property on a
+caller-supplied value**. `JSON.parse` produces own data properties and never accessors,
+`TripDoc = string`, and `apps/web`'s only `copyStopInto` call site builds
+`{ trip: browsing, stopId: stop.id }` as an object literal from a parsed document. The population
+is an in-process caller past the type system — the same one `place_hours_malformed` was ratified
+for. That is the whole reason all five are MINOR and none is a BLOCKER.

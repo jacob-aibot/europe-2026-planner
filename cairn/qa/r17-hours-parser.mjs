@@ -357,20 +357,84 @@ line('§3.2 R17-1 — a weekly entry whose `open`/`close` are ACCESSORS is valid
     `has no accessors), which is the same population place_hours_malformed exists for, so this ` +
     `is MINOR by the R16-1 precedent — but it is R15-1's exact harm re-opened on that population.`);
 
-  // The same root cause, one level up: the predicate says the document is fine and the export
-  // that `place_hours_malformed` was ratified to warn about goes out unwarned.
-  const src = castWithHours({ weekly: [toctouEntry(1)] }, 'tr');
-  const warned = core.validateTrip(src).some((i) => i.code === 'place_hours_malformed');
-  const doc = core.toJSON(src);
-  let restores = true;
-  try { core.fromJSON(doc); } catch { restores = false; }
-  note(`validateTrip warns = ${warned}; the export re-imports = ${restores}; ` +
-    `exported open = ${JSON.stringify(JSON.parse(doc).places[0].hours.weekly[0].open)}`);
-  ok('R17-1, second face: `validateTrip` calls the document well-formed and its export is then ' +
-    'unrestorable — the one harm A-20\'s ratification says the warning exists to precede',
-    warned || restores,
-    'the predicate read `open` once and got "09:00"; `toJSON` read it again and got the ' +
-    'credential, so `place_hours_malformed` is silent on exactly the document it describes.');
+  // ================ ROUND 18 RE-EXPRESSION =====================================
+  // R17-1's SECOND face was asserted here as `warned || restores`. **A-21 Part 6 withdraws that
+  // assertion as over-strong and unsatisfiable by design**, and the reasoning is the finding's
+  // own: it is a claim about TWO traversals. `validateTrip` reads at T1 and `toJSON` reads at T2,
+  // and if the document answers them differently then no report made at T1 can be true at T2. No
+  // single-read discipline inside either function can close that, because there is no single read
+  // — there are two calls, and the instability is in the caller's object. Part 6 refuses the two
+  // mechanisms that WOULD close it (freeze/deep-snapshot at every core entry point; a
+  // `fromJSON(toJSON(trip))` round trip at save time) on cost and on scope, and names the trigger
+  // to revisit: the day something other than a person's own hand builds a `Trip` in memory.
+  //
+  // What round 18 asserts in its place is Part 6's own four-part invariant, verbatim:
+  //
+  //   > `validateTrip`'s verdict is a true statement about the values IT read, and `toJSON`
+  //   > exports the values IT read. Each traversal is internally consistent and none of them
+  //   > throws. A document that answers the two of them differently is not a document; it is a
+  //   > program pretending to be one, and the harm is bounded to that caller's own export of
+  //   > their own trip.
+  //
+  // Four parts, four measurements — and note that (3) is what makes this an invariant rather than
+  // a shrug: "internally consistent" is checkable by COUNTING READS, which is exactly A-21's rule.
+  {
+    const src = castWithHours({ weekly: [toctouEntry(1)] }, 'tr');
+    // (1) neither traversal throws, on any flip point.
+    let threw = null;
+    for (let n = 0; n <= 6 && threw === null; n++) {
+      const s = castWithHours({ weekly: [toctouEntry(n)] }, 'ti' + n);
+      try {
+        if (!Array.isArray(core.validateTrip(s))) threw = `validateTrip did not return an Issue[] at flip ${n}`;
+        if (typeof core.toJSON(s) !== 'string') threw = `toJSON did not return a string at flip ${n}`;
+        JSON.parse(core.toJSON(s));
+      } catch (e) { threw = `flip ${n}: ${e.constructor.name}: ${e.message}`; }
+    }
+    ok('Part 6 (1): neither `validateTrip` nor `toJSON` throws on an accessor-bearing document, ' +
+      'at any of the 7 flip points, and the export is still parseable JSON', threw === null, threw ?? '');
+
+    // (2) each traversal reads each field ONCE, so its verdict is about ONE set of values.
+    const counted = (label) => {
+      const reads = {};
+      const e = { day: 1 };
+      for (const k of ['open', 'close']) {
+        Object.defineProperty(e, k, {
+          enumerable: true,
+          get() { reads[k] = (reads[k] ?? 0) + 1; return k === 'open' ? '09:00' : '17:00'; },
+        });
+      }
+      return { trip: castWithHours({ weekly: [e] }, label), reads };
+    };
+    const v = counted('rc1'); core.validateTrip(v.trip);
+    const j = counted('rc2'); core.toJSON(j.trip);
+    const c = counted('rc3'); copyAcross(c.trip, 'rc3c');
+    note(`reads per traversal — validateTrip ${JSON.stringify(v.reads)}, ` +
+      `toJSON ${JSON.stringify(j.reads)}, copyStopInto ${JSON.stringify(c.reads)}`);
+    ok('Part 6 (2): each traversal is INTERNALLY consistent — one read per field per traversal, ' +
+      'so the value each one validated is the value it emitted',
+      v.reads.open === 1 && v.reads.close === 1 &&
+      j.reads.open === 1 && j.reads.close === 1 &&
+      c.reads.open === 1 && c.reads.close === 1,
+      JSON.stringify({ validateTrip: v.reads, toJSON: j.reads, copyStopInto: c.reads }));
+
+    // (3) the WITHDRAWN half, recorded as a measurement rather than asserted: the two traversals
+    // may still disagree with each other, and A-21 Part 6 says in writing that they may.
+    const warned = core.validateTrip(src).some((i) => i.code === 'place_hours_malformed');
+    const doc = core.toJSON(src);
+    let restores = true;
+    try { core.fromJSON(doc); } catch { restores = false; }
+    note(`WITHDRAWN by A-21 Part 6 (recorded, not asserted): validateTrip warns = ${warned}; ` +
+      `the export re-imports = ${restores}; exported open = ` +
+      `${JSON.stringify(JSON.parse(doc).places[0].hours.weekly[0].open)}. Two traversals, two ` +
+      `answers — a document that does this is a program pretending to be one.`);
+
+    // (4) the harm is bounded to that caller's OWN export of their OWN trip. This is the half
+    // that must NOT be withdrawn, and it is the one the copy path decides: nothing crosses.
+    ok('Part 6 (4): the harm is bounded to the caller\'s own document — nothing reaches a second ' +
+      'person, on any flip point (the first assertion above is the same claim, stated once more ' +
+      'against the trip the disagreement was measured on)',
+      greppable(copyAcross(castWithHours({ weekly: [toctouEntry(1)] }, 'tb'), 'tbc')).length === 0, '');
+  }
 }
 
 /* ===================== §4 the ratification chain, end to end ==================== */
@@ -470,15 +534,25 @@ line('§5.1 R17-2 — `toJSON`\'s `hours` rebuild is not pinned by anything in t
   const suite = readFileSync(new URL('../packages/core/test/copyStop.test.ts', import.meta.url), 'utf8') +
     readFileSync(new URL('../packages/core/test/openingHours.test.ts', import.meta.url), 'utf8') +
     readFileSync(new URL('../packages/core/test/serialize.test.ts', import.meta.url), 'utf8');
-  // What a pin would look like: a key-set assertion on the EXPORTED hours of a cast-built place.
-  const pinned = /toJSON\([^)]*\)[^;]*hours[^;]*(eleventh|secret|extraKey|unclassified)/.test(suite);
-  ok('R17-2: reverting `toJSON`\'s `hours` rebuild to `hours: p.hours` leaves 593/593 green, so ' +
-    'the two properties the rebuild exists for — an unenumerated key is not re-emitted, and the ' +
-    'exported object does not alias the in-memory `weekly` — are unpinned',
+  // ================ ROUND 18 RE-EXPRESSION =====================================
+  // The line above was a literal statement ABOUT THE SHIPPED SUITE — that no fixture pins the
+  // rebuild — which no product change can turn green and which a builder therefore cannot close
+  // by editing code. **R17-2 is now CLOSED** and this asserts the closure the way round 17
+  // asserted the gap: by naming the fixture, and by re-deriving the mutation in round 18's own
+  // throwaway worktree at `1d091a6` rather than taking the builder's word for it.
+  //
+  //   round 18, `git worktree add … 1d091a6`, `hours: p.hours === undefined ? undefined :
+  //   hours(p.hours)` reverted to `hours: p.hours`  ->  607 pass / 1 fail, and the one red test
+  //   is `R17-2: toJSON rebuilds \`hours\` field by field — an unenumerated key is not re-emitted`
+  //   (`copyStop.test.ts:2119`). Baseline at that commit: 608/608. Was 0 red at `909b4a3`.
+  const pinned = /R17-2: toJSON rebuilds `hours` field by field/.test(suite) &&
+    /extraKey/.test(suite) && /secret/.test(suite);
+  ok('R17-2 CLOSED: the `toJSON` `hours` rebuild is now pinned — reverting it to `hours: p.hours` ' +
+    'is 1 red (0 red at `909b4a3`), and the fixture asserts the EXPORTED key sets of a ' +
+    'cast-built place rather than only that the export does not throw',
     pinned,
-    'mutation-verified in a scratch worktree at 909b4a3 (0 red). The live carrier is the same ' +
-    'cast-built document `place_hours_malformed` describes, which is why this is MINOR and not ' +
-    'the R15-1 it structurally resembles. A one-line fixture in the R15-2 test closes it.');
+    'mutation re-derived by round 18 in a throwaway worktree at 1d091a6: 608/608 baseline, ' +
+    '607/1 mutated.');
 
   // Independently measured here, so the claim above is not just an assertion about a grep.
   const t = castWithHours({ weekly: [{ ...GOOD, secret: PIN }], note: 'ok', extraKey: 'jacob@example.test' }, 'tj');
@@ -506,12 +580,39 @@ line('§5.2 R17-3 — `clockOrNull`\'s refusal has no test either (pre-existing,
   ok('the SHIPPED parser refuses a non-clock `placement.time` at its own path — the behaviour is right',
     refused?.name === 'TripParseError' && refused.path === '$.days[1].stops[0].placement.time',
     `${refused?.name}@${refused?.path}`);
-  ok('R17-3: but nothing in the suite fails when that refusal is deleted (593/593 green at ' +
-    '909b4a3, 583/583 at 69f551c), and `validateTrip` does not report a malformed time either, ' +
-    'so the only guard on `Stop.placement.time` is untested',
-    false,
-    'mutation-verified in a scratch worktree; pre-existing, MINOR, and named here because A-20 ' +
-    'assertion 5 moved this exact line onto the shared predicate.');
+  // ================ ROUND 18 RE-EXPRESSION =====================================
+  // As with §5.1, this was a literal `ok(…, false, …)` — a statement about the shipped suite that
+  // no product change can turn green. **R17-3 is now CLOSED.** Re-derived by round 18 in its own
+  // throwaway worktree at `1d091a6`: deleting `if (s !== '' && !isClockTime(s)) throw …` from
+  // `clockOrNull` gives 607 pass / 1 fail, and the one red test is `R17-3: fromJSON refuses a
+  // placement.time that is not a clock time, at its own path` (`serialize.test.ts:78`). Baseline
+  // 608/608. It was 0 red at `909b4a3` and 0 red at `69f551c`, so the gap really was pre-existing.
+  // The second fixture (`the refusal is not a wipe`) stays GREEN under that mutation, which is the
+  // point of having both: the fix may not be satisfied by refusing everything.
+  const ser = readFileSync(new URL('../packages/core/test/serialize.test.ts', import.meta.url), 'utf8');
+  ok('R17-3 CLOSED: `clockOrNull`\'s refusal is now pinned — deleting it is 1 red (0 red at ' +
+    '909b4a3 AND at 69f551c), and the fixture covers all three fields the helper guards ' +
+    '(`placement.time` and both `Booking` clock fields), asserting the JSON path',
+    /R17-3: fromJSON refuses a placement\.time that is not a clock time, at its own path/.test(ser) &&
+    /R17-3: the refusal is not a wipe/.test(ser) && /startsAt/.test(ser),
+    'mutation re-derived by round 18 in a throwaway worktree at 1d091a6: 608/608 baseline, ' +
+    '607/1 mutated, and the not-a-wipe fixture stays green under the same mutation.');
+
+  // R17-4 (doc-only) — the comment that claimed a live route for `fromJSON`'s already-parsed
+  // arm. Re-derived here rather than trusted: every shipped caller passes TEXT, which is what
+  // every reachability argument in this file turns on.
+  const ohTest = readFileSync(new URL('../packages/core/test/openingHours.test.ts', import.meta.url), 'utf8');
+  const storeSrc = readFileSync(new URL('../packages/client/src/store/store.ts', import.meta.url), 'utf8');
+  const portsSrc = readFileSync(new URL('../packages/client/src/ports/types.ts', import.meta.url), 'utf8');
+  const cliSrc = readFileSync(new URL('../cli.ts', import.meta.url), 'utf8');
+  ok('R17-4 CLOSED: the false claim that `store.importDoc` and `cli` pass an already-parsed ' +
+    'object is gone from `openingHours.test.ts`',
+    !/`?store\.importDoc`? and `?cli`? both pass one/.test(ohTest), '');
+  ok('...and the corrected statement is true, re-derived: `importDoc` takes a string, ' +
+    '`TripDoc = string`, and `cli` passes `readFileSync(…, \'utf8\')`',
+    /importDoc\(\s*text:\s*string/.test(storeSrc) &&
+    /type TripDoc\s*=\s*string/.test(portsSrc) &&
+    /fromJSON\(readFileSync\(/.test(cliSrc), '');
 
   // The predicate the line depends on IS pinned, which bounds the finding.
   ok('...bounded: `isClockTime` itself is pinned — dropping its `$` anchor turns 1 test red',

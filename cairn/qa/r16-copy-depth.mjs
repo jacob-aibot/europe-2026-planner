@@ -480,9 +480,24 @@ line('§2.3 `place_hours_malformed` vs what the copy actually did (R16-2)');
       /model\/openingHours/.test(src('validate/validateTrip.ts')) &&
       /model\/openingHours/.test(src('build/copyStop.ts')) &&
       /model\/openingHours/.test(src('serialize/fromJSON.ts')), '');
+    // ROUND 18 re-expression. A-21 (revision 16) renamed both halves and the ruling named this
+    // line as QA's to re-express: `isWeeklyEntry(w)` became `readWeeklyEntry(w)` (a predicate over
+    // a compound value hands back what it read, so the validated value IS the used value), and
+    // `redacted(e.open) !== e.open` became `redacted(open) !== open` (the reader's own scalar, not
+    // a second read of the caller's object). The assertion's SUBJECT is unchanged and still true:
+    // the structural half is asked once, elsewhere, and the redaction half is a copy-boundary
+    // policy that lives here.
     ok('...and `weeklyForCopy`\'s own remaining line is the A-18 redaction POLICY, not a shape test',
-      /isWeeklyEntry\(w\)/.test(src('build/copyStop.ts')) &&
-      /redacted\(e\.open\) !== e\.open/.test(src('build/copyStop.ts')), '');
+      /readWeeklyEntry\(w\)/.test(src('build/copyStop.ts')) &&
+      /redacted\(open\) !== open/.test(src('build/copyStop.ts')), '');
+    // Comments still name `isWeeklyEntry` — that is the ruling's own reasoning for the next
+    // reader — so this is asserted against comment-stripped source, the same treatment §5.1's
+    // spread ceiling uses.
+    const bare = (p) => src(p).replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*/g, '');
+    ok('...and A-21 DELETED the old boolean predicate rather than shipping both',
+      !/isWeeklyEntry/.test(bare('model/openingHours.ts')) &&
+      !/isWeeklyEntry/.test(bare('build/copyStop.ts')) &&
+      !/isWeeklyEntry/.test(bare('validate/validateTrip.ts')), '');
   }
 }
 
@@ -562,25 +577,47 @@ line('§3.5 A-19 part 2 — what the rebuild does to a placement whose `kind` is
   // discriminated union so this is unreachable from TypeScript, but `copyStopInto` is called
   // from `.mjs` probes and could be called from untyped JS. Measured rather than reasoned about,
   // because the ruling does not mention the case and the behaviour CHANGED with this pass.
+  // ROUND 18 re-expression. A-21 Part 4(c) merges A-19's city check and the placement rebuild
+  // into ONE branch on the discriminant, so the else-arm now VALIDATES `cityKey` before emitting
+  // it. The recorded behaviour therefore changed from "silently coerced into `{kind:'pool',
+  // cityKey: undefined}` past the city check" to "refused". The builder reported this in
+  // BUILD-NOTES as a consequence A-21 does not name; round 18 re-derives it and keeps the line as
+  // a two-sided assertion, because the direction of the change is what matters — refusing beats
+  // writing a filing nothing badges (§2.1: an out-of-union argument is programmer error).
   const source = sourceWithPlace({}, 'pz');
+  const target = jacobsTarget('pzt');
+  const before = core.toJSON(target);
   let out = null, threw = null;
   try {
-    out = core.copyStopInto(jacobsTarget('pzt'), { trip: source, stopId: 's-src' },
+    out = core.copyStopInto(target, { trip: source, stopId: 's-src' },
       { kind: 'nonsense', dayId: '2026-08-09', time: '11:00', order: 0 }, CC('pzc'));
   } catch (e) { threw = e; }
   const written = out?.pool?.[0]?.placement;
   note(`kind:'nonsense' -> ${threw ? threw.message : JSON.stringify(written)}`);
-  ok('CONFIRMED, not filed: a placement with an out-of-union `kind` is silently coerced into a ' +
-    'pool placement with `cityKey: undefined`, past A-19\'s own city check',
-    threw === null && written?.kind === 'pool' && written.cityKey === undefined,
-    'Before this pass `addStop` stored the caller\'s object as given; now the two-armed ternary ' +
-    'makes the else-arm the pool branch. Recorded, not filed: it is unreachable from TypeScript ' +
-    'and §2.1 calls an out-of-union argument programmer error either way. It becomes a finding ' +
-    'the day an untyped caller exists.');
-  if (out) {
-    ok('...and validateTrip does at least report the result as `pool_stop_unknown_city`',
-      core.validateTrip(out).some((i) => i.code === 'pool_stop_unknown_city'),
-      JSON.stringify(core.validateTrip(out).map((i) => i.code)));
+  ok('A-21 Part 4(c): a placement with an out-of-union `kind` no longer falls PAST A-19\'s city ' +
+    'check — the else-arm validates `cityKey` before emitting it, so the call is REFUSED',
+    threw !== null && threw.constructor === Error && /no such city undefined/.test(threw.message),
+    threw ? threw.constructor.name + ': ' + threw.message : JSON.stringify(written));
+  ok('...and the target is byte-identical behind the refusal',
+    core.toJSON(target) === before, '');
+  // The residual coercion, measured rather than assumed: an out-of-union `kind` carrying a
+  // cityKey the target DOES have still lands in the pool. That is a hole (a filing the recipient
+  // can see and move), not a leak, and §2.1 calls the argument programmer error either way.
+  let out2 = null, threw2 = null;
+  try {
+    out2 = core.copyStopInto(jacobsTarget('pzt2'), { trip: source, stopId: 's-src' },
+      { kind: 'nonsense', cityKey: TRANSIT }, CC('pzc2'));
+  } catch (e) { threw2 = e; }
+  note(`kind:'nonsense' + a valid cityKey -> ${threw2 ? threw2.message : JSON.stringify(out2?.pool?.[0]?.placement)}`);
+  ok('RECORDED, not filed: an out-of-union `kind` carrying a cityKey the target HAS is still ' +
+    'coerced to a pool filing — a hole the recipient can see, never a leak',
+    threw2 === null && out2?.pool?.[0]?.placement?.kind === 'pool' &&
+    out2.pool[0].placement.cityKey === TRANSIT,
+    'unreachable from TypeScript; it becomes a finding the day an untyped caller exists.');
+  if (out2) {
+    ok('...and validateTrip reports nothing uncleanable about the result',
+      !core.validateTrip(out2).some((i) => i.code === 'pool_stop_unknown_city'),
+      JSON.stringify(core.validateTrip(out2).map((i) => i.code)));
   }
 }
 
