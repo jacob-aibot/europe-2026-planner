@@ -363,13 +363,35 @@ distance function, no buffer, no snapping. The mechanical consequences in `ROADM
 criterion 4, an amended I-5 and **one new increment, I-5a**, owed before I-6. No engine, no persisted shape,
 no `schemaVersion` bump and no movement on §2.10's export surface (**71**).
 
+**Revision 21, 2026-08-28.** QA round 22 — the first adversarial pass over the geography surface — found
+I-5 and I-5a sound in every respect it could measure *except the one decision A-26 took without measuring*.
+Three findings route here and are answered by one ruling, **A-27** in §8.4. (1) **R22-1 (MAJOR).** A-26
+Part 4 fixes the fill at the family's **finest** layer by fiat — the layer A-26 **Part 2** measured and
+rejected for the base, because a fine ring tracks the waterline and drops the shoreline coordinates travel
+data is made of. The breaker measured the consequence: capitals of filled countries returning `null`. I
+re-derived it and then tested the remedy the finding gestures at — per-code scale *selection* — and
+**falsified it**: at 1:50m the Maldives goes from 176 rings to 2, the Seychelles 26 → 1, French Polynesia
+88 → 21, Tonga 10 → 3. Choosing a scale per code buys a capital and pays with an archipelago. So the ruling
+is not *which* scale but *why this is a choice at all*: **a filled code ships both — the finest scale for
+coverage and the coarser one for forgiveness, as two entries under one ISO code.** `countryOf` returns on
+the first *entry* that contains the point and even-odd runs *within* an entry, so two entries give union
+semantics with holes intact, **`countryOf` does not change, and neither does any behaviour in
+`packages/core`.** Non-regression is structural, exactly as A-26 Part 4's was: every ring shipped today is
+still shipped. Measured: **293 entries / 239 codes / 1,034 rings / 369,688 packed (+7.8 %)**, 54 forgiveness
+entries, 10 codes correctly refused one, and over 14.9 M cells at 0.02° — **704 `null` → a country, 0 worse,
+0 changed country.** (2) **R22-3.** Two sentences in `derive/country.ts`'s docstring were made false by
+A-26; A-27 Part 8 carries their replacements verbatim and lifts A-26 Part 6 item 3 far enough for a builder
+to paste them. (3) **R22-6.** The index is 36.4 % of the web bundle with no consumer until I-6. Accepted,
+bounded and recorded — A-27 Part 9 — because I-6 puts the index on the *write* path, where §0.6 forbids the
+async boundary a lazy import would need. `ROADMAP.md` carries this as **I-5b**, owed before I-6.
+
 **Phase 1 is §2 and §4. The next phase is §8.1–§8.4.** Everything else is the shape those must not
 foreclose. See `ROADMAP.md` for sequencing and `PRODUCT-VISION.md` for why this order and not another.
 
 ## Read only your sections
 
-This document is ~140k tokens (re-measured at revision 20, with
-`cairn/tools/doc-section ARCHITECTURE` — §2 is ~102k of it and §8 ~17k; the per-section figures below were stale by a third before revision 11 and are
+This document is ~145k tokens (re-measured at revision 21, with
+`cairn/tools/doc-section ARCHITECTURE` — §2 is ~102k of it and §8 ~22k; the per-section figures below were stale by a third before revision 11 and are
 re-measured, not estimated, whenever a revision lands). Nothing needs all of it, and a fresh agent that reads it whole starts a sixth
 of the way into its context before writing a line. Pull what you need:
 
@@ -388,10 +410,11 @@ cairn/tools/doc-section ARCHITECTURE         # lists the sections and their size
 | 5 | The four hard subsystems | 2k | breaker; builder from Phase 3 on |
 | 6 | Privacy, authorization, deletion cascade. **§6.6 is the build-artifact threshold; the copy threshold is §2.14 A-15 + A-18 (revisions 13 and 14) and they differ deliberately, in two named places — read them together or neither** | 4k | breaker, manager; builder for §6.2 |
 | 7 | Explicitly deferred | <1k | anyone about to build something not in the roadmap |
-| 8 | **The travel-history model** (revision 9) — trip lifecycle and past trips (§8.1), the feasibility/integrity rule class (§8.2), participants (§8.3), geography attribution, travel stats and the summary-row rule (§8.4); then the shapes the location, photo and social phases must land on (§8.5–§8.7) and what is refused (§8.8). **§8.10 is revision 10** — physical travel distance by mode and the four provenance bases that keep it honest; **it is not Phase 2 scope**, so a Phase 2 builder reads §8.1–§8.4 and stops. **Revision 11 amends §8.1, §8.2 and §8.4 by pointer only — the two rulings themselves live in §2.2 (A-10) and §2.7 (A-9), and a Phase 2 builder reads both; revision 12 amends §8.2 by pointer in the same way, and its four rulings live in §2.7 (A-11, A-12, A-13) and §2.14 (A-14)**. **A-26 is revision 20 and lives in §8.4** — the mixed-resolution country index, the withdrawal of the correctness floor's escalation mechanism, and the ruling that `null` is the right answer for a landform the dataset does not carry; **anyone touching `tools/gen-countries.mjs`, `geo/countryIndex.ts` or the attribution golden reads it first**, and it is what ROADMAP's I-5a builds | 17k | architect; the builder and breaker of the phase after Phase 1 (§8.1–§8.4 only). §8.10 is for the architect and for phases 4, 5 and 7. Read with `PRODUCT-VISION.md` |
+| 8 | **The travel-history model** (revision 9) — trip lifecycle and past trips (§8.1), the feasibility/integrity rule class (§8.2), participants (§8.3), geography attribution, travel stats and the summary-row rule (§8.4); then the shapes the location, photo and social phases must land on (§8.5–§8.7) and what is refused (§8.8). **§8.10 is revision 10** — physical travel distance by mode and the four provenance bases that keep it honest; **it is not Phase 2 scope**, so a Phase 2 builder reads §8.1–§8.4 and stops. **Revision 11 amends §8.1, §8.2 and §8.4 by pointer only — the two rulings themselves live in §2.2 (A-10) and §2.7 (A-9), and a Phase 2 builder reads both; revision 12 amends §8.2 by pointer in the same way, and its four rulings live in §2.7 (A-11, A-12, A-13) and §2.14 (A-14)**. **A-26 is revision 20 and lives in §8.4** — the mixed-resolution country index, the withdrawal of the correctness floor's escalation mechanism, and the ruling that `null` is the right answer for a landform the dataset does not carry; **anyone touching `tools/gen-countries.mjs`, `geo/countryIndex.ts` or the attribution golden reads it first**, and it is what ROADMAP's I-5a builds; **A-27 is revision 21, sits directly under A-26 and is read *with* it, never instead of it** — it amends A-26 Part 4's block-quoted rule with a third clause (a filled code ships a **forgiveness entry** as well as a coverage entry), supersedes A-26 Part 5's two-residue list with three, lifts A-26 Part 6 item 3 for a docstring correction only, and is what ROADMAP's **I-5b** builds | 22k | architect; the builder and breaker of the phase after Phase 1 (§8.1–§8.4 only). §8.10 is for the architect and for phases 4, 5 and 7. Read with `PRODUCT-VISION.md` |
 
 *(§8's figure is measured with `doc-section`, not estimated. §8.1–§8.4 — the Phase 2 model — are roughly
-two thirds of it since revision 20 put A-26 in §8.4; a Phase 2 builder who reads only those pays about 10k.)*
+three quarters of it since revisions 20 and 21 put A-26 and A-27 in §8.4; a Phase 2 builder who reads only
+those pays about 15k, and a builder of I-5b who reads §8.4 alone pays about 12k.)*
 
 Read the whole document when you are the manager, when you are changing the design, or when a change
 crosses a section boundary. Otherwise this table is the contract.
@@ -6858,7 +6881,10 @@ them:**
   there is no way to mint a summary that silently forgot the countries. The index itself is generated code
   inside `packages/core` and is exported as a value from `index.ts` so every call site can pass it; the
   *function* still takes it as a parameter and stays pure and testable against the four-polygon fixture. The
-  `StoragePort` contract does not change — the caller computes the summary, as it already does.
+  `StoragePort` contract does not change — the caller computes the summary, as it already does. *(Revision
+  21: this is also the answer to *"why is the index in the web bundle before any screen uses it"* — from I-6
+  it is on the **write** path, not the map screen, so it cannot be lazily loaded behind a route without
+  putting an `await` where §0.6 and §2.2b forbid one. **A-27 Part 9**, QA R22-6.)*
 - **The lifetime map should be drawn from the country index we already bundle, with no tiles behind it.**
   `PRODUCT-VISION.md` §7 risk 5 names the exposure — a *lifetime* map loads on every profile view, so tile
   cost scales with sessions — and a phase that is local-first with no network has no business acquiring a
@@ -6983,6 +7009,11 @@ trip cannot show that, which is the whole lesson: a criterion written against on
 > the codes it does not, emitted in the order `countryOf` must test them: ascending polygon area, ties
 > broken by ISO code ascending.**
 
+*(**Amended at revision 21 by A-27**, which adds a third clause: each filled code also ships a
+**forgiveness entry** — the same country at the coarser scale, under the same ISO code — because fixing the
+fill at the finest layer is this paragraph making, for the fill, the assumption Part 2 measured and rejected
+for the base. Read A-27 before implementing this sentence.)*
+
 Three properties make this the answer rather than a compromise:
 
 1. **It is not an escalation.** The wholesale move the withdrawn floor prescribed costs 9.07 MB and leaves 26
@@ -7019,7 +7050,10 @@ part of the committed artefact, so a reorder is a diff a reviewer sees rather th
 comparison a reviewer trusts. A hand-built test fixture keeps working; it simply gets tested in the order
 it was written, which is what a four-polygon fixture wants.
 
-**Part 5 — the two residues, disclosed rather than left to be discovered.**
+**Part 5 — the two residues, disclosed rather than left to be discovered.** *(Superseded at revision 21 by
+**A-27 Part 6**, which carries three: residue 1's arithmetic is corrected by KD-52 and its exception becomes
+a measured filter, residue 2 is unchanged and now protected by a filter, and a third — a band of sea around
+54 island territories — is introduced by A-27 and quantified there.)*
 
 1. **Vatican City is `IT` at every scale, and stays that way.** Natural Earth's `VA` feature is a 7-point
    sliver spanning 12.4527–12.4540 E, 41.9028–41.9039 N — about **110 m × 130 m**, against the real state's
@@ -7051,13 +7085,17 @@ it was written, which is what a four-polygon fixture wants.
    budget test. Its existing guards — checksum pin, quantisation check, round-trip, and the cross-check of
    `countryOf` against the generator's own ray cast — all still run, and the cross-check must use the
    emitted order. **`--scale 10m` must keep working**, because Part 2's selection rule is only honest if
-   the comparison is still one command.
+   the comparison is still one command. *(Revision 21: **A-27 Part 4** adds a third pass — forgiveness
+   entries for the filled codes, under two measured filters — and **A-27 Part 7** is the implementation brief
+   that supersedes this item. R22-5's missing fill-drop count is absorbed there.)*
 2. **`packages/core/src/geo/countryIndex.ts`** — `countryIndex()` no longer sorts. It preserves the order
    of `init.countries` and derives each box as it does today. The docstring's determinism argument is kept
    and re-pointed: the order is a property of the committed artefact, and A-26 Part 4 says why area and not
    code. **This is the only hand-written change to `packages/core`.**
 3. **`packages/core/src/derive/country.ts`** — **unchanged.** If this file grows a distance function, the
-   increment has gone wrong.
+   increment has gone wrong. *(Narrowed at revision 21 by **A-27 Part 8**: the file's **behaviour** is
+   unchanged — that half is permanent — but two docstring sentences this ruling made false are corrected,
+   with the replacement text given verbatim there. QA R22-3.)*
 4. **`fixtures/golden/country-holes.json`**, new, written by `gen-countries.mjs --holes` (which fetches all
    three scales — a human's generation-time cost, never the product's). One row per unattributed record of
    the reference trip: `{kind: 'stop'|'place', id, name, resolvesAt}`, where `resolvesAt` is the coarsest
@@ -7077,6 +7115,258 @@ and the sequencing reason is §8.4 clause 3's own: `TripSummaryRow.countryCodes`
 index would need a `SUMMARY_VERSION` rescan the day the index is completed, and there are currently zero
 summaries in existence. Fixing the index while nothing depends on it costs one increment; fixing it after
 I-6 costs one increment plus a migration of every row a user has written.
+
+#### A-27 — a filled code ships coverage *and* forgiveness, because choosing between them deletes archipelagos (revision 21, QA R22-1, R22-3, R22-6)
+
+QA round 22 attacked I-5a on three axes — is the artefact reproducible, is the ray cast right, is the order
+right — and could break none of them. What survived is the one line A-26 wrote without a measurement behind
+it: `tools/gen-countries.mjs:99`, `const FILL = '10m'`.
+
+The finding is correct and its severity is right. **Everything below was re-derived here**, against the same
+three pinned layers (fetched independently; 838,726 / 3,083,490 / 13,287,234 bytes, matching the generator's
+pins to the byte) with the generator's own quantisation re-implemented. Where I could not reproduce the
+breaker, I say so.
+
+**Part 1 — the defect, reproduced, and one case that did not reproduce.**
+
+A-26 Part 2's finding about the *base* applies unchanged to the *fill*: a fine ring tracks the waterline, and
+travel coordinates sit on the waterline. Against the committed index, with capital-city coordinates typed
+from general knowledge *(and marked as such — they are not verified against a source, and the ruling does not
+rest on their precision, only on the fact that a plausible traveller's coordinate misses)*:
+
+| coordinate | committed index (fill = 1:10m) | that country's 1:50m polygon |
+|---|---|---|
+| Nuku'alofa, Tonga | `null` | contains it |
+| St John's, Antigua | `null` | contains it |
+| St George's, Grenada | `null` | contains it |
+| Diego Garcia, BIOT | `null` | contains it |
+| St Helier, Jersey | `null` | **also misses it** |
+| Grytviken, South Georgia | **`GS`** | contains it |
+
+Four of the breaker's five reproduce. **Grytviken does not**: it attributes to `GS` today, both at the
+coordinate I typed and at Natural Earth's own populated-place point for it, which differ by ~120 m. I record
+that rather than repeating the list, because a ruling that inherits an unreproduced measurement is the exact
+failure A-26 was written about. The other four stand and are enough. `JE` is a third thing again — a
+coordinate no scale in the family attributes — and it is the same class as A-26 Part 1's Dalmatian coves:
+`null` is the correct answer, and the builder of I-5a who noticed it in `country.test.ts` and moved the test
+coordinate should have filed it. **A shoreline observation is a finding, not a test-fixture problem**; that is
+the one process point in this ruling and it is directed at the builder role, not at the person.
+
+**Part 2 — the remedy the finding gestures at, measured and rejected.**
+
+The finding proposes a per-code *choice* of scale, measured the way `resolvesAt` is measured. I built it: a
+per-code veto over Natural Earth's own `ne_10m_populated_places` at the same pinned tag, preferring the
+coarsest scale that keeps every settlement the finest scale keeps and captures no neighbour's. It works on
+its own terms — 49 codes to 1:50m, 15 held at 1:10m, `VA` and `MC` correctly held, and the payload gets
+**smaller** (237,591 packed, −31 %). **And it is wrong**, for a reason no capital-city test and no global
+grid can see. Counting rings that survive the move (a 1:10m ring is counted as lost when no scale-50m ring
+of the same country overlaps it anywhere):
+
+| country | 1:10m rings | 1:50m rings | landforms lost |
+|---|---|---|---|
+| Maldives | 176 | 2 | **175** |
+| French Polynesia | 88 | 21 | 67 |
+| Seychelles | 26 | 1 | 24 |
+| Marshall Islands | 22 | 5 | 17 |
+| Micronesia | 20 | 5 | 16 |
+| Kiribati | 35 | 19 | 13 |
+| Cook Islands | 13 | 1 | 12 |
+| South Georgia | 12 | 2 | 10 |
+| Tonga | 10 | 3 | 7 |
+
+Thirty-one of the sixty-four lose at least one landform. A 0.25° grid sees eleven cells of this, because a
+27 km cell rarely lands on an atoll — which is precisely how a measurement that counts *area* misses a
+country disappearing. **Substituting a coarser polygon for a filled code buys its capital and pays with its
+archipelago.** For a product whose signature screen is *everywhere you have been*, the Maldives drawn as two
+blobs out of 176 atolls is a worse answer than a missed capital, and it is worse *silently*.
+
+**Part 3 — the ruling.**
+
+> **A-26 Part 4's rule gains a third clause.** The shipped index is 1:110m for every ISO code that layer
+> carries, plus the 1:10m polygons for exactly the codes it does not — **and, for each of those filled codes
+> only, the same country's polygons at each strictly coarser scale of the pinned family, as an additional
+> entry under the same ISO code, subject to the two filters in Part 4.** Entries are emitted in the order
+> `countryOf` must test them: ascending polygon area, ties by ISO code ascending, then by scale coarsest
+> first.
+
+The second entry is a **forgiveness entry**. It exists to be wrong in the useful direction — A-26 Part 2's
+words — for the codes whose scale nobody chose by measurement.
+
+Four properties make this the answer rather than a compromise:
+
+1. **`countryOf` does not change and nothing in `packages/core` changes behaviour.** The function returns the
+   first *entry* whose rings contain the point; even-odd runs across the rings *of one entry*, which is what
+   makes holes work. Two entries carrying the same code therefore compose as a **union** — the intersection is
+   not cancelled, because no two rings of a single entry overlap. `countryIndex()` maps entries one-to-one and
+   preserves order; `decodeCountryIndex` parses `[code, rings]` pairs. **Neither assumes a code is unique**,
+   and I checked that by reading them rather than by assuming it. Nothing gains a distance function, a buffer,
+   a snap or a parameter. This is the same closing property A-26 Part 4 claimed, and it is why the fix is
+   affordable at all.
+2. **Non-regression is structural, not statistical.** Every ring in the committed index is still in the
+   index, byte-identical; the change is purely additive. So the set of countries containing any point can only
+   grow, a `country → null` regression is **impossible by construction**, and a `country → other country`
+   change is possible only where a forgiveness ring overlaps another entry — which Part 4's second filter is
+   there to make impossible. This is A-26 Part 4 property 2's argument, one level down, and it is the strongest
+   check the ship gate has.
+3. **It is not an escalation, and it is not the substitution of Part 2.** The forgiveness rings are the
+   coarse, cheap ones. Measured: **+26,707 packed bytes, +7.8 %**, against +19 % for a blanket second layer and
+   9.07 MB for a wholesale escalation.
+4. **The scope is exactly the codes whose scale was never chosen.** The base's 175 codes were selected by
+   A-26 Part 2's corpus measurement and keep the coarsest scale in the family, so there is nothing coarser to
+   forgive them with; the rule is vacuous for them by construction rather than by exception. It applies to
+   filled codes only, which is the population the defect is about.
+
+**Part 4 — the two filters, stated so a builder implements them without a judgment call.**
+
+Both run at generation time, both are reported in the run's own output, and both are expressed with one
+predicate:
+
+> **`overlaps(ring R, ring-set S)`** is true iff any of: (a) a vertex of `R`, or the arithmetic mean of `R`'s
+> vertices, is inside `S` under the even-odd rule; (b) a vertex of any ring of `S`, or that ring's vertex
+> mean, is inside `R`; (c) a segment of `R` crosses a segment of any ring of `S`. Rings whose bounding boxes
+> are disjoint are rejected before any of this. The predicate is exact for simple rings and is evaluated on
+> the **quantised** rings — the ones that ship — never the raw ones.
+
+For each filled code, for each strictly coarser scale of the family that carries it, coarsest first, take that
+scale's rings and apply, per ring:
+
+1. **Filter 1 — it must be the same place.** Keep the ring only if `overlaps(ring, the code's coverage
+   rings)`. A coarse polygon that does not touch the country as the finest scale draws it is not a coarser
+   drawing of that country; it is a different claim about where the country is, and adding it would answer
+   that code for ground the country is not on. *Measured: this filter alone drops Vatican City's 1:50m
+   polygon, which sits ~1 km west of the state — so A-26 Part 5 residue 1 is now reproduced by measurement
+   instead of held by a hand-written exception, which is the outcome it asked for.*
+2. **Filter 2 — forgiveness may not be taken from a neighbour.** Keep a surviving ring only if
+   `overlaps(ring, E.rings)` is false for **every other entry `E`** of the coverage-only index. A forgiveness
+   ring's whole purpose is to claim ground beyond the waterline; where that ground is another country's, the
+   claim is a wrong answer, not a tolerance. *Measured: this drops every ring of `AD`, `HK`, `LI`, `MC`, `SG`,
+   `SM` and `SX` — i.e. every bordered filled code — so A-26 Part 5 residue 2's ~700 m bias is not widened by
+   one metre.*
+
+If no ring survives, the code has no forgiveness entry and the run says so. **A forgiveness entry may never
+introduce an ISO code the coverage pass did not already emit** — asserted, not assumed, beside the existing
+`stillMissing` guard.
+
+**Part 5 — what this produces, measured.**
+
+At `v5.1.2`, base `110m`, fill `10m`, forgiveness from `50m`:
+
+- **54 forgiveness entries.** 142 of 153 candidate rings kept; 11 dropped — `MV` 1 and `VA` 1 by filter 1,
+  and one to three each from `AD`, `HK`, `LI`, `MC`, `SG`, `SM`, `SX` by filter 2.
+- **10 filled codes get none:** `AD` `HK` `LI` `MC` `SG` `SM` `SX` (bordered), `VA` (disjoint), `GI` and `UM`
+  (no 1:50m polygon exists).
+- **293 entries, 239 distinct ISO codes, 1,034 rings, 22,229 points, 369,688 bytes packed** — against
+  239 / 892 / 20,702 / 342,981 today.
+- **Nuku'alofa, St John's, St George's and Diego Garcia attribute to their own countries.** St Peter's is
+  still `IT`; Macao's Senado Square is still `MO` and Zhuhai across the border is still `null`; Pile Gate is
+  still `HR`; the three Dalmatian coves are still `null`.
+- **14,926,301 cells at 0.02° (~2.2 km) over the 54 forgiveness bounding boxes, padded by 0.1°: 704 cells
+  `null` → a country, 0 cells `country` → `null`, 0 cells one country → another.** A 0.25° global sweep
+  agrees. **Zero cells get worse, and Part 3 property 2 says why that is a proof rather than a sample.**
+
+These are an architect's measurements in a scratchpad with the generator's build re-implemented; **the
+builder re-derives every one of them from `tools/gen-countries.mjs` itself** and the increment's numbers are
+the generator's, not these. If they disagree, the generator is right and this paragraph is the defect.
+
+**Part 6 — the residues, now three.** A-26 Part 5's list is superseded by this one.
+
+1. **Vatican City is `IT` at every scale, unchanged.** A-26 Part 5 residue 1 stands, with round 22's KD-52
+   correction to its arithmetic (the sliver is ~108 m × 122 m, ~11.7 × 10³ m² against the real state's
+   440,000 m² — *"about a thirtieth"*, not the figure Part 5 printed) and with round 22's own attack on it
+   recorded: the 1:50m `VA` polygon is larger but ~1 km west, so it would claim a square kilometre of Rome and
+   *still* miss the basilica. Under A-27 that is no longer a judgment — filter 1 drops it.
+2. **At a filled country's border the index is biased toward the smaller state**, ~700 m at Monaco.
+   Unchanged, and now protected: filter 2 forbids A-27 from widening it.
+3. **New, and introduced by this ruling: around 54 island territories, a band of sea answers the island
+   rather than `null`.** It is the 1:50m generalisation's outward error — kilometres, not metres — and the 704
+   cells of Part 5 are its measure. It is accepted for A-26 Part 2's own reason: a coordinate a traveller
+   records off an island is a coordinate *about* that island, the alternative is `null` for most of the
+   habitable coast of a small state, and the whole index is a simplified drawing whose error already runs
+   outward at every convex coast (see the paragraph above the `null` rule). **It is not a snap**: no answer is
+   computed from a coordinate no polygon contains. **Trigger to reopen:** the first real trip whose coordinates
+   sit between two island states close enough for their forgiveness bands to meet — filter 2 catches an
+   overlap with a *shipped* entry, and nothing in the family currently produces such a pair.
+
+**Part 7 — what a builder implements. Three files, no engine.**
+
+1. **`tools/gen-countries.mjs`** — after the fill, a forgiveness pass over the filled codes exactly as Part 4
+   states, with `overlaps` as one helper used by both filters. `orderEntries`'s comparator gains a third key
+   (family index ascending, so the coarser entry of a same-code pair sorts first when areas tie) and stays a
+   total order in the presence of duplicate codes. The run reports the forgiveness code list, the kept and
+   dropped ring counts **with the filter that dropped each**, and — R22-5, absorbed here rather than left to
+   drift — the fill's own degenerate-ring count alongside the base's. `COUNTRY_INDEX.scale` becomes
+   `ne_110m+10m+50m` and `source` names all three files with their roles; that string is the *only* permitted
+   change to `fixtures/golden/countries.json` and to `country-holes.json`'s `index` block. `--scale 10m`,
+   `--scale 50m`, `--no-fill`, `--dry-run`, `--audit-only` and `--holes` all keep working; with `--no-fill`
+   there are no filled codes and therefore no forgiveness pass.
+2. **`packages/core`** — **no behavioural change, in any file.** Two docstrings move and nothing else:
+   `geo/countryIndex.ts`'s paragraph describing the fill gains the forgiveness clause and the sentence that an
+   ISO code may now appear on more than one entry, and `derive/country.ts` takes Part 8's two corrections.
+   **If either file grows a distance function, or `countryOf` grows a branch, the increment has gone wrong.**
+3. **The tests** — `country.test.ts:715`'s `countries.length === 239` splits into two assertions:
+   `new Set(countries.map((c) => c.code)).size === 239` (the semantic one — *this many countries*) and
+   `countries.length === <measured>` (the artefact one). `0-countryBudget.test.ts`'s `EMITTED_BYTES` is
+   re-measured from the generator's output. **R22-4 is a prerequisite, not a parallel task:** its guard 1 has
+   140 bytes of headroom against a header comment that A-27 lengthens by a 54-code list and its explanation,
+   so guard 1 must be expressed against the code list's size (or folded into guard 3) **in or before** this
+   increment, or the increment fails on a test that is measuring the wrong thing.
+
+**Part 8 — R22-3: the two sentences in `derive/country.ts`, and the permission to change them.**
+
+A-26 Part 6 item 3 says this file is *"unchanged"*, and the I-5a builder was right to read that literally and
+refuse. **That instruction is narrowed here: `derive/country.ts`'s *behaviour* is unchanged — no distance
+function, no branch, no parameter, now and in every later increment — and its docstring is corrected to
+match what A-26 made true.** Both replacements are given verbatim so the change needs no judgment:
+
+- **At `:27`,** *"The ray is cast towards +∞ longitude and stops at the box"* is false — the box is a
+  **point** reject applied before the cast, and the ray is unbounded. Replace with:
+
+  > The ray is cast towards +∞ longitude and is unbounded; the entry's bounding box is a *point* reject
+  > applied before the cast, never a clip on the ray. A point at lng −179.5 is tested against the rings that
+  > live at negative longitudes, which is where its half of the country is.
+
+- **At `:70`,** *"which `countryIndex` fixes as ascending ISO code"* was withdrawn by A-26 Part 4;
+  `countryIndex` fixes nothing. Replace the sentence with:
+
+  > Entries are tested in the index's own order, which `countryIndex` **preserves** exactly as the committed
+  > artefact emits it — ascending polygon area, ties by ISO code (§8.4 A-26 Part 4) — so an overlap in the
+  > data resolves the same way on every machine and every run. An ISO code may appear on **more than one
+  > entry** (§8.4 A-27): the first entry containing the point wins, and same-code entries carry the same
+  > answer, so which one wins is not observable.
+
+Round 22 audited every other behavioural claim in the file and found them all true. No third correction is
+owed, and this is a comment change with no test.
+
+**Part 9 — R22-6: the index is 36.4 % of the web bundle and has no consumer. That is accepted, bounded, and
+recorded here rather than re-argued every round.**
+
+The measurement is real: `apps/web` builds to 942.79 kB, of which 342,981 bytes is the country payload, and
+`COUNTRY_INDEX`/`countryOf` have no caller in `apps/web`, `packages/client` or `cli.ts`. A-27 makes it
+~369.7 kB of a ~969 kB bundle. **No code-splitting or lazy loading before I-6.** Four reasons, in the order
+that decides it:
+
+1. **I-6 puts the index on the *write* path, not the map screen.** §8.4 clause 3's first consequence makes
+   the index a **required argument** to `tripSummary(trip, index)`, and a summary is computed *inside the
+   write that carries it*. So from I-6 the index is needed every time a trip is saved — before any map is
+   opened. A lazy `import()` there is an `await` inside the one path §0.6 and §2.2b spend three sections
+   keeping synchronous and fenced. **Splitting now would be undone by I-6 and would be undone in the most
+   expensive place in the codebase.**
+2. **It is already bounded by a test.** `0-countryBudget.test.ts`'s `EMITTED_BYTES` is a ceiling on the
+   payload, so this cannot drift upward without a builder editing a number a reviewer sees. What was missing
+   was not a bound but a *ruling*, and this is it.
+3. **§0.4 decides which side of the line this is on.** Public-grade is *what is expensive to retrofit*.
+   Splitting a static asset out of a bundle is a build-configuration change with no schema, no migration and
+   no user-visible state — the cheapest class of retrofit there is. Authorization, ownership and the deletion
+   cascade are on the other side of that line; a first-load byte count on a desktop planning companion is not.
+4. **The native shell inverts the question anyway.** On Expo the payload is a file in the app bundle, not a
+   first-load cost, and §1's end state is that the phone is the primary client.
+
+**What is owed instead of a split, and it is small:** any increment that moves `EMITTED_BYTES` re-measures
+`npm run web:build` and records the resulting bundle figure in that increment's `ROADMAP.md` ship gate, so the
+share is a tracked number rather than a thing each round rediscovers. **The trigger that reopens this:** a
+*second* generated dataset shipping ahead of its consumers — §8.10's airport index is the one already
+designed — because two of them is a pattern and one is an increment, and the right answer to a pattern is a
+build-time split for the class, not a special case for this file.
 
 ### 8.5 Observed travel — the shape Phase 5 must be able to land on
 

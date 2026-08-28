@@ -329,8 +329,10 @@ is 🟢 SHIPPED** (increments I-0…I-4a) — built, then **verified** over ten 
 21) ending with round 21 closing the copy-path arc against a criterion written in advance, then
 **signed off by the manager on 2026-08-28 at `67f5588`, verdict SHIP** (`REVIEW.md`, "Phase 2, step
 2a"). Step **2b** (the lifetime map and travel identity) is 🟠 **STARTED**: its first increment — the
-world-boundary dataset that turns a coordinate into a country — is **built**, not yet verified and not
-yet shippable. Step **2c** (participants) is ⚪ **NOT STARTED**.
+world-boundary dataset that turns a coordinate into a country — is **built**, and its completion pass is
+**built and verified** (an adversarial round went at it on 2026-08-28 and could not break the data, the
+lookup, or the file's reproducibility), with **one more correction scheduled before anything is built on
+top**. Neither is shippable yet. Step **2c** (participants) is ⚪ **NOT STARTED**.
 
 **2b's first increment found a real gap, and it is the good kind of finding.** The builder was told
 that two Croatian island stops (the Blue Cave on Biševo, Stiniva Cove on Vis) had to come out as
@@ -353,6 +355,34 @@ every level of detail), and about 700 m of French ground next to Monaco will com
 the two island coves stay *"unknown"* — that is now the **correct** answer, because the boundary data
 simply does not contain those islands at any resolution, and inventing a nearest-country guess is the
 one thing this design refuses to do.
+
+**Then the same mistake turned up one level down, found by the round that checked the fix.** The
+completion pass adds the 64 missing countries at the *most detailed* level available — the level the same
+investigation had already measured and rejected for everything else, because a highly detailed outline
+hugs the waterline and a real coordinate on a harbour front falls just outside it. So we can now say
+*Malta*, but a stop on the seafront in **Nuku'alofa, St John's, St George's or Diego Garcia** still comes
+out as *"unknown"*. **And the obvious fix is worse.** Dropping those countries to the coarser outline was
+measured and refused: at that level the **Maldives loses 175 of its 176 islands**, the Seychelles 24 of
+26, French Polynesia 67 of 88. You would buy a capital city and pay with an archipelago — silently,
+because neither a file-size check nor a world-grid check can see an atoll disappear. **So the ruling is
+to stop choosing: a missing country now ships at both levels of detail at once** — the detailed outline
+for its islands, the coarser one for its coastline — which combine to mean "either counts". It costs
+**+7.8%** of the file, it fixes all four capitals, and it cannot make any existing answer worse, because
+every outline we ship today is still shipped untouched and the change can only *add*. Two guards keep it
+honest, both measured rather than asserted: a coarser outline is dropped if it does not sit on the
+country it claims to be (which is what removes the Vatican's, drawn a kilometre west of the real thing),
+and dropped if it would reach into a **neighbour's** ground (which removes Andorra's, Monaco's, San
+Marino's, Liechtenstein's, Hong Kong's, Singapore's and Sint Maarten's). **One new cost is accepted in
+writing:** around 54 island territories, a few kilometres of open sea will now come out as that island
+rather than *"unknown"* — for a travel diary that is the useful direction to be wrong in, and it is the
+same tolerance every answer on this map already carries.
+
+**One number worth knowing, decided rather than deferred.** The world-boundary file is about a third of
+what the browser downloads on first load, and nothing uses it yet — the map that will is two increments
+away. It stays. Splitting it out would be undone almost immediately: the moment trips start recording
+which countries they touched, the file is needed every time a trip is *saved*, not only when the map is
+opened. It is capped by a test so it cannot creep, and on the phone app it is a file inside the app
+rather than a download at all.
 
 **What the 2a gate actually checked**, because "the manager said SHIP" is only worth something if it
 means someone ran it: the full suite (620 tests, all passing), the type checker on both projects,

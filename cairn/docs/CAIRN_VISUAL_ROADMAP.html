@@ -716,8 +716,11 @@ hands you a trip file with no owner recorded in it.</p>
         <strong>signed off by the manager on 2026-08-28 at <code>67f5588</code>, verdict SHIP</strong>
         (<code>REVIEW.md</code>, "Phase 2, step 2a"). Step 2b (lifetime map, travel identity) is
         <span class="pill orange">🟠 STARTED</span> — its first increment, the world-boundary dataset
-        that turns a coordinate into a country, is <strong>built</strong>, not yet verified and not yet
-        shippable; step 2c (participants) is
+        that turns a coordinate into a country, is <strong>built</strong>, and its completion pass is
+        <strong>built and verified</strong> (an adversarial round went at it on 2026-08-28 and could not
+        break the data, the lookup, or the file's reproducibility), with <strong>one more correction
+        scheduled before anything is built on top</strong>. Neither is shippable yet; step 2c
+        (participants) is
         <span class="pill grey">⚪ NOT STARTED</span></p>
       <h4>2b's first increment found a real gap, and it is the good kind of finding</h4>
       <p>The builder was told that two Croatian island stops (the Blue Cave on Biševo, Stiniva Cove on
@@ -743,6 +746,37 @@ hands you a trip file with no owner recorded in it.</p>
         <em>"unknown"</em> — that is now the <strong>correct</strong> answer, because the boundary data
         simply does not contain those islands at any resolution, and inventing a nearest-country guess
         is the one thing this design refuses to do.</p>
+      <h4>Then the same mistake turned up one level down, found by the round that checked the fix</h4>
+      <p>The completion pass adds the 64 missing countries at the <em>most detailed</em> level
+        available — the level the same investigation had already measured and rejected for everything
+        else, because a highly detailed outline hugs the waterline and a real coordinate on a harbour
+        front falls just outside it. So we can now say <em>Malta</em>, but a stop on the seafront in
+        <strong>Nuku'alofa, St John's, St George's or Diego Garcia</strong> still comes out as
+        <em>"unknown"</em>. <strong>And the obvious fix is worse.</strong> Dropping those countries to
+        the coarser outline was measured and refused: at that level the <strong>Maldives loses 175 of
+        its 176 islands</strong>, the Seychelles 24 of 26, French Polynesia 67 of 88. You would buy a
+        capital city and pay with an archipelago — silently, because neither a file-size check nor a
+        world-grid check can see an atoll disappear.</p>
+      <p><strong>So the ruling is to stop choosing: a missing country now ships at both levels of
+        detail at once</strong> — the detailed outline for its islands, the coarser one for its
+        coastline — which combine to mean "either counts". It costs <strong>+7.8%</strong> of the file,
+        it fixes all four capitals, and it cannot make any existing answer worse, because every outline
+        we ship today is still shipped untouched and the change can only <em>add</em>. Two guards keep
+        it honest, both measured rather than asserted: a coarser outline is dropped if it does not sit
+        on the country it claims to be (which is what removes the Vatican's, drawn a kilometre west of
+        the real thing), and dropped if it would reach into a <strong>neighbour's</strong> ground
+        (which removes Andorra's, Monaco's, San Marino's, Liechtenstein's, Hong Kong's, Singapore's and
+        Sint Maarten's). <strong>One new cost is accepted in writing:</strong> around 54 island
+        territories, a few kilometres of open sea will now come out as that island rather than
+        <em>"unknown"</em> — for a travel diary that is the useful direction to be wrong in, and it is
+        the same tolerance every answer on this map already carries.</p>
+      <h4>One number worth knowing, decided rather than deferred</h4>
+      <p>The world-boundary file is about a third of what the browser downloads on first load, and
+        nothing uses it yet — the map that will is two increments away. It stays. Splitting it out
+        would be undone almost immediately: the moment trips start recording which countries they
+        touched, the file is needed every time a trip is <em>saved</em>, not only when the map is
+        opened. It is capped by a test so it cannot creep, and on the phone app it is a file inside the
+        app rather than a download at all.</p>
       <h4>What the 2a gate actually checked</h4>
       <p>Because "the manager said SHIP" is only worth something if it means someone ran it: the full
         suite (<strong>620 tests, all passing</strong>), the type checker on both projects, the

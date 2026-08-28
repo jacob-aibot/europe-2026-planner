@@ -160,6 +160,25 @@ blocked on I-5a**, because a summary row minted from a 175-code index needs a `S
 day the index is completed, and today there are zero summary rows to migrate. **No phase re-scoped, no
 change to the order otherwise, and nothing in Phase 2's boundaries moves.**
 
+**Revision 21, 2026-08-28 — and this one corrects me again, in the same paragraph.** QA round 22 found I-5
+and I-5a sound everywhere it could measure them, and found that A-26 Part 4 chose the **fill** scale by
+fiat, at the layer A-26 Part 2 had just measured and rejected for the **base** (`R22-1`, MAJOR). It costs
+filled countries their capitals: Nuku'alofa, St John's, St George's and Diego Garcia all come back `null`.
+`ARCHITECTURE.md` revision 21 answers it as **§8.4 A-27**, and — this is the part worth reading before
+building anything — **the obvious remedy is measured and rejected there**: choosing a coarser scale per code
+deletes 175 of the Maldives' 176 atolls, 24 of the Seychelles' 26 and 67 of French Polynesia's 88. The
+ruling is that a filled code ships **both** scales, as two entries under one ISO code, which composes as a
+union because `countryOf` returns on the first *entry* that matches. This file changes in four ways.
+(1) **One new increment, I-5b**, builds A-27; it is **owed before I-6** for exactly the reason I-5a was —
+fixing the index while zero summary rows exist costs one increment, and after I-6 it costs a migration.
+(2) **Exit criterion 4 gains a part e** and part c is amended where it counts entries rather than codes.
+(3) **I-5a's record** says what it shipped and what round 22 found in it. (4) **I-6's blockers** gain I-5b.
+**No phase re-scoped and no change to the order.** Two of round 22's builder-routed MINORs are folded into
+I-5b rather than run separately, because A-27 lands in the same lines: **R22-4** (the budget test's guard 1,
+which A-27's header list would otherwise trip) is a **prerequisite**, and **R22-5** (the fill's unreported
+dropped-ring count) is absorbed. **R22-6** is ruled on rather than scheduled — A-27 Part 9 accepts the
+bundle share, with one standing obligation recorded in every affected ship gate below.
+
 > **Phase numbers changed once, here.** Every heading below carries its old number, and every "Phase N"
 > written in `ARCHITECTURE.md` §1–§7, `BUILD-NOTES.md` or `QA-FINDINGS.md` before revision 9 means the
 > *named* phase it described: "Phase 2" = accounts/server (**now 3**), "Phase 3" = ingest (**now 4**),
@@ -996,7 +1015,7 @@ Entry: Phase 1 shipped with a manager verdict of SHIP (`b32ef9a`) — done.
 | Step | Ships | Useful alone because | State |
 |---|---|---|---|
 | **2a — past trips and the lifecycle** | `lifecycle()`, `Trip.datePrecision`, the feasibility/integrity rule class (§8.2), a "record a past trip" flow (title, dates, precision, cities — no day-by-day required) | you can enter a 2019 trip and it does not greet you with twenty warnings about a hotel you already slept in | **SHIPPED — manager verdict SHIP, `REVIEW.md` "Phase 2, step 2a", reviewed at `67f5588`, 2026-08-28.** Built, verified (rounds 12–21), shippable. Seven routed items, **none blocking**; the block on share/friend/public-share-link work is **not** lifted by this verdict — see A-2 in that routing table |
-| **2b — the lifetime map and travel identity** | `countryOf` + the generated country index, `travelStats`, the widened `TripSummaryRow` + `SUMMARY_VERSION` rescan, the **Map** and **Profile** surfaces | *"show me everywhere I've been"* — the signature experience, from data that already exists | **UNBLOCKED** by 2a's SHIP. **In progress: I-5 shipped at `897b928`** and routed one design defect here (KD-51), ruled as §8.4 **A-26** and scheduled as **I-5a**. Three things are owed **before I-6**: **I-5a**, `REVIEW.md` 2a routing **A-1**, and the breaker board items **B-1**…**B-4** before 2b's first breaker round |
+| **2b — the lifetime map and travel identity** | `countryOf` + the generated country index, `travelStats`, the widened `TripSummaryRow` + `SUMMARY_VERSION` rescan, the **Map** and **Profile** surfaces | *"show me everywhere I've been"* — the signature experience, from data that already exists | **UNBLOCKED** by 2a's SHIP. **In progress: I-5 shipped at `897b928`** and routed one design defect here (KD-51), ruled as §8.4 **A-26** and built as **I-5a** at `b6200e6`, which QA round 22 verified and which routed one more (R22-1), ruled as §8.4 **A-27** and scheduled as **I-5b**. Four things are owed **before I-6**: **I-5b**, `REVIEW.md` 2a routing **A-1**, and the breaker board items **B-1**…**B-4** before 2b's next breaker round |
 | **2c — participants** | `Trip.participants`, three build functions, the participants editor, *"people you have travelled with"* on the profile | you can say the trip was with your girlfriend and her family, and it grants them nothing | Not started; gated on 2b |
 
 **Mapped onto the increment sequence below** (revision 10): **2a = I-1 → I-4**, **2b = I-5 → I-8**,
@@ -1007,6 +1026,9 @@ rulings QA round 12 routed to the architect — `ARCHITECTURE.md` §2.7 **A-9** 
 inside 2a, which shipped with follow-ups rather than clean, and **both are owed before I-6**.)*
 *(Revision 20: **I-5a** carries `ARCHITECTURE.md` §8.4 **A-26**, the ruling on the design defect I-5
 disclosed as KD-51. It sits inside 2b, directly after I-5, and is **owed before I-6**.)*
+*(Revision 21: **I-5b** carries §8.4 **A-27**, the ruling on the design defect QA round 22 found *in A-26* —
+the fill scale, chosen by fiat at the layer A-26 Part 2 had measured and rejected. Same place in the
+sequence, same reason, **owed before I-6**.)*
 
 ### Deliverables
 
@@ -1023,6 +1045,7 @@ apps/web/src/views/
   WorldMap.tsx  Profile.tsx  PastTripForm.tsx  Participants.tsx
 tools/gen-countries.mjs   Natural Earth admin-0 → countries.gen.ts, reports emitted bytes
                           I-5a: a 1:110m base filled from 1:10m, emitted in test order — §8.4 A-26
+                          I-5b: + a 1:50m forgiveness entry per filled code, two filters — §8.4 A-27
 fixtures/golden/          countries.json (per-stop attribution), country-holes.json (I-5a),
                           travel-stats.json
 ```
@@ -1731,6 +1754,60 @@ builder against the finding itself and is not an increment.
 - **Ship gate.** Criterion 4 b and c pass; the three verification measurements are re-derived, not quoted;
   the golden's non-`index` bytes are unchanged; `node --test packages/core` still runs directly with the
   larger generated module and the budget test is still the *first* test.
+  **BUILT at `b6200e6` and verified by QA round 22**, which could not break the artefact's reproducibility
+  (a throwaway regeneration is byte-identical), the ray cast (1.2 M cells against an opposite-direction
+  implementation, zero disagreements), the emission order (re-derived with a different area formula:
+  strictly ascending, zero ties; ten overlapping country pairs swept, the smaller wins all ten) or the
+  non-regression (674,541 cells, zero worse). **What round 22 found is the fill *scale*, which A-26 chose
+  without measuring** — `R22-1`, MAJOR, ruled as §8.4 **A-27** and scheduled below as **I-5b**. Nothing I-5a
+  shipped is wrong; like I-5 before it, it is incomplete, and A-27 adds to its output without changing one
+  ring of it.
+
+#### I-5b — A-27: the forgiveness entry, and why a filled code may not be made to choose
+
+- **Built.** `tools/gen-countries.mjs` gains a **forgiveness pass**: for each filled ISO code — the codes the
+  base scale does not carry, and only those — the same country's polygons at each strictly coarser scale of
+  the pinned family are added as an **additional entry under the same ISO code**, ring by ring, subject to
+  A-27 Part 4's two filters (a ring must overlap the code's own coverage rings; a ring must overlap no other
+  entry). `orderEntries` gains a third sort key so the comparator stays a total order with duplicate codes.
+  The run reports the forgiveness list, the kept/dropped ring counts **with the filter that dropped each**,
+  and the fill's degenerate-ring count (R22-5). `packages/core` gains **no behavioural change at all**: two
+  docstrings move — `geo/countryIndex.ts`'s fill paragraph, and `derive/country.ts`'s two false sentences,
+  whose replacements A-27 Part 8 gives **verbatim** (R22-3).
+- **User-visible outcome.** None yet, deliberately, exactly as I-5 and I-5a. What it buys is that a stop
+  recorded on the waterfront in Nuku'alofa, St John's, St George's or Diego Garcia is attributed to its own
+  country rather than to nothing — the failure mode a lifetime map of island travel is *made* of.
+- **Architecture / data model.** §8.4 **A-27**, Parts 3, 4 and 7, written as an implementation brief.
+  **Read Part 2 first**: it measures and rejects the remedy this finding looks like it wants (a per-code
+  *choice* of scale), because substituting the coarser polygon deletes 175 of the Maldives' 176 landforms.
+  `countryOf` **does not change**; if it grows a distance function, a buffer or a branch, the increment has
+  gone wrong. A-27 Part 6 carries the three residues, one of them introduced by this increment and accepted
+  in writing.
+- **Verification.** Exit criterion 4 part **e** in full, plus four measurements re-derived by the builder
+  from the generator itself and **not quoted from A-27**: **(i)** over the reference trip's 226
+  coordinate-bearing records, **zero** answers change — `fixtures/golden/countries.json` is byte-identical
+  except its `index` header, and so is `country-holes.json` including its hole count and every `resolvesAt`;
+  **(ii)** every ring of the pre-I-5b index is present **byte-identical** in the new one, which is what makes
+  `country → null` impossible rather than merely unobserved; **(iii)** a fine sweep (step ≤0.02°) over every
+  forgiveness entry's bounding box padded by 0.1°: cells may go `null → a country` and **no cell may go
+  `country → null` or `country → a different country`**; **(iv)** the four capitals above attribute to their
+  own countries, St Peter's Basilica is still `IT`, and Zhuhai — Chinese ground beside Macao — is still
+  `null`. **Injected faults:** delete filter 2 and `AD`, `HK`, `LI`, `MC`, `SG`, `SM`, `SX` acquire
+  forgiveness entries, turning a named test red; delete filter 1 and Vatican City acquires the 1:50m polygon
+  that sits a kilometre west of it, turning a named test red.
+- **Dependencies / blockers.** I-5a. **R22-4 is a prerequisite inside this increment** — the budget test's
+  guard 1 has 140 bytes of headroom and A-27 lengthens the generated header by a 54-code list, so guard 1 is
+  re-expressed against the code list (or folded into guard 3) *before* the regeneration lands, or the
+  increment fails on a guard that is measuring the wrong thing. No new external dependency: same repository,
+  same pinned tag `v5.1.2`, same three files, all fetched at generation time by a human.
+- **Ship gate.** Criterion 4 part e passes; the four verification measurements are re-derived, not quoted;
+  the goldens' non-`index` bytes are unchanged; `EMITTED_BYTES` is re-measured from the generator's own
+  output and pasted into `0-countryBudget.test.ts` in the same commit; `country.test.ts`'s code-count
+  assertion is split into a **distinct-code** count (239) and an **entry** count (measured);
+  `node --test packages/core` still runs directly and the budget test is still the *first* test. **And, per
+  A-27 Part 9: `npm run web:build` is run and the resulting bundle figure is recorded here**, because this is
+  an increment that moves `EMITTED_BYTES` and the bundle share is a tracked number from now on rather than
+  something each QA round rediscovers.
 
 #### I-6 — The widened `TripSummaryRow` and the `SUMMARY_VERSION` rescan
 
@@ -1760,7 +1837,10 @@ builder against the finding itself and is not an increment.
 - **Dependencies / blockers.** I-5 (there is no `countryCodes` without an index), **I-5a** (revision 20: a
   row minted from a 175-code index carries `null` for Malta and `MY` for Singapore, and completing the index
   afterwards costs a `SUMMARY_VERSION` rescan of every row a user has written — today there are zero rows,
-  which is the cheapest this fix will ever be; §8.4 clause 3's own argument, applied to itself) and
+  which is the cheapest this fix will ever be; §8.4 clause 3's own argument, applied to itself),
+  **I-5b** (revision 21: the identical argument one step further — a row minted before A-27's forgiveness
+  entries carries `null` for a stop on the Nuku'alofa waterfront, and the rescan that fixes it is free only
+  while there are no rows) and
   **I-4a** (a row that carries a city key minted by the 2a slug carries `"-"` for every non-Latin city, and
   the rescan would copy that into the one cache the lifetime map reads).
 - **Ship gate.** The freshness criterion passes; the 200-step dirty walk still holds; the closed list of six
@@ -1912,12 +1992,38 @@ first.
     ISO-ascending order and Vaduz returns `AT`, Singapore returns `MY` and Hong Kong returns `CN` — three
     named tests red in each case. **One known-wrong answer is pinned rather than fixed:** Vatican City
     returns `IT` at every scale, with A-26 Part 5's reason in the test's own text `[stated]`
+    *(Revision 21: **"every ISO code" is a count of distinct codes, not of entries.** A-27 lets one code own
+    more than one entry, so a test asserting `countries.length === <number of countries>` is asserting the
+    wrong thing and must be split — `new Set(countries.map((c) => c.code)).size` for the semantic claim, a
+    separate measured number for the artefact's length.)*
   - **d. The two original injected faults, unchanged.** A mid-Atlantic coordinate returns **`null`** and the
     profile renders it as *unattributed*, never as the nearest country; the historical Fisherman's Bastion
     typo (`place-68`, lat `47.5025 → 48.5025`) changes the attributed country **and** still produces its
     `geo_outlier` blocker, so the map inherits the same protection the conflicts panel has `[stated]`
+  - **e. A filled country is forgiven at its waterline, and forgiveness is never taken from a neighbour.**
+    *(Revision 21, §8.4 **A-27**, replacing nothing — this is the part A-26 had no measurement for.)* Each
+    filled ISO code carries, in addition to its finest-scale rings, the same country's rings at each coarser
+    scale of the pinned family that survives A-27 Part 4's two filters. Three assertions and two injected
+    faults: **(i)** a waterfront coordinate in Nuku'alofa, St John's, St George's and Diego Garcia attributes
+    to `TO`, `AG`, `GD` and `IO` — all four are `null` against the pre-I-5b index, and the test says so;
+    **(ii)** every ring of the pre-I-5b index is present **byte-identical**, so the change is additive and a
+    `country → null` regression is impossible by construction rather than merely unobserved — assert the ring
+    sets, not a sample; **(iii)** a fine sweep over each forgiveness entry's bounding box finds **zero** cells
+    that go `country → null` or `country → a different country`. **Injected fault 1:** remove filter 2 and
+    `AD`, `HK`, `LI`, `MC`, `SG`, `SM`, `SX` gain forgiveness entries — a named test goes red, because
+    forgiveness taken from an encloser is the wrong-answer class A-26 Part 5 residue 2 bounds.
+    **Injected fault 2:** remove filter 1 and Vatican City gains the 1:50m polygon that lies ~1 km west of
+    the state — a named test goes red. **The ceiling:** no code may acquire a forgiveness entry that the
+    generator did not report, and no forgiveness entry may introduce an ISO code the coverage pass did not
+    already emit `[stated]`
 - **The generated index is inside its budget**, and the budget is a number in the test, measured by
-  `tools/gen-countries.mjs` and not quoted from any document `[stated]`
+  `tools/gen-countries.mjs` and not quoted from any document `[stated]` *(Revision 21, §8.4 **A-27** Part 9:
+  the index is ~36 % of the web bundle and has no consumer until I-6. That is **accepted, not deferred** —
+  from I-6 the index is on the **write** path, so it can never be lazily loaded behind the map route, and
+  splitting it now is work I-6 would undo in the one place §0.6 keeps synchronous. The obligation this
+  creates is one line, not a task: **any increment that moves `EMITTED_BYTES` runs `npm run web:build` and
+  records the resulting bundle figure in its own ship gate**, so the share is tracked rather than
+  rediscovered.)*
 - **Statistics cannot be stored.** Grep `packages/core`, `packages/client` and `apps/web` for a persisted
   field whose name is a count of countries, cities, trips or days; expect **zero**. `travelStats` is a pure
   function of the summaries it is handed, asserted by calling it twice on the same input and once on a
@@ -1950,7 +2056,13 @@ fire on the future half and not the past half, on the same document, in one call
 on a trip whose real dates are a single day · **a stop in each of San Marino, Vatican City, Monaco,
 Liechtenstein, Andorra, Gibraltar, Singapore, Hong Kong, Macao, Malta and the Maldives** (§8.4 A-26: seven
 must return themselves, `VA` is a pinned known-wrong `IT`, and none may return `null` after I-5a) ·
+**a stop on the waterfront in Nuku'alofa, St John's (Antigua), St George's (Grenada) and Diego Garcia**
+(§8.4 A-27: all four are `null` before I-5b and must return `TO`, `AG`, `GD`, `IO` after it) · **a stop in
+St Helier, Jersey**, which is `null` at every scale of the pinned family and must **stay** `null` — the same
+class as the Dalmatian coves, and the one a tester is most likely to file as a bug ·
 **a stop 500 m outside Monaco on the French side**, which A-26 Part 5 says will return `MC` and says why ·
+**a stop a few kilometres out to sea from one of the 54 forgiven island territories**, which A-27 Part 6
+residue 3 says will return that island and says why ·
 a participant list of 200 · two participants with the same
 name and different ids, and the same id twice · a participant named `''` and one named with only an emoji ·
 `kind:'self'` appearing twice, and zero times · coordinates at the poles, at the antimeridian, at exactly
