@@ -10,9 +10,12 @@
  *   git worktree add /tmp/r15-pre 3409420    # the commit BEFORE A-15/A-16/A-17 were built
  *
  *   §1  A-15's field coverage measured against what a `Place` can carry at RUNTIME, not
- *       against the `Place` type: `fromJSON` casts `hours` unvalidated, so `placeForCopy`'s
- *       one surviving spread (`{...w}` over `hours.weekly`) is a live carrier, and its
- *       `.map` is a live crash.                                               (R15-1, R15-2)
+ *       against the `Place` type. Written when `fromJSON` cast `hours` unvalidated, so
+ *       `placeForCopy`'s one surviving spread (`{...w}` over `hours.weekly`) was a live
+ *       carrier and its `.map` a live crash. **A-20 (revision 15) closed that door**, so each
+ *       assertion here is now two-sided — the parser refuses (or drops) with a JSON path, and
+ *       a CAST-BUILT equivalent that never went through the parser still copies without
+ *       throwing and without carrying a credential.                           (R15-1, R15-2)
  *   §2  The rest of the copied stop. A-15 closed `Place`; `Stop.cost.note` and
  *       `Stop.arrival.label` are the same class of free text on the same path and are still
  *       copied verbatim, while §6.6's sample path redacts both.                     (R15-3)
@@ -41,6 +44,15 @@
  *     turns `horizonGate.test.ts`'s A-17 directional test red (582/1). The probe can only confirm
  *     the pins EXIST; the mutations are never made in this tree.
  * The round-16 findings live in `qa/r16-copy-depth.mjs`, which does not duplicate anything here.
+ *
+ * **Maintained again by QA round 17 (`909b4a3`)**, after ARCHITECTURE revision 15's **A-20** made
+ * `fromJSON` validate `Place.hours` like every other field. §1.1, §1.2 and §1.3 fed a malformed
+ * `hours` THROUGH `fromJSON` and asserted it was accepted — an assumption A-20 correctly
+ * overturns, and which aborted this probe at §1.2 with an uncaught `TripParseError`. All three
+ * are re-expressed in the two-sided form `packages/core/test/copyStop.test.ts` now uses
+ * (`refusedByParser` + `castWithHours`): **the parser refuses with a path**, and **`copyStopInto`
+ * still never throws** on the cast-built equivalent, which is the population `place_hours_malformed`
+ * describes. Nothing else in the file moved.
  */
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
@@ -107,6 +119,29 @@ const reparse = (t, mutate) => {
   return core.fromJSON(JSON.stringify(raw));
 };
 
+/* --- A-20 (revision 15): the two halves every `hours` assertion below is stated in. ---------
+ * `fromJSON` now validates `Place.hours`, so a hostile fixture can no longer ARRIVE by parse.
+ * It arrives by cast, and the parser's refusal is asserted beside it. Same construction as
+ * `packages/core/test/copyStop.test.ts`'s `castWithHours` / `refusedByParser`. */
+
+/** A source trip whose `Place.hours` is set BY CAST — it never goes through the parser. */
+const castWithHours = (hours, prefix = 'src') => {
+  const t = sourceWithPlace({ note: 'ordinary prose' }, prefix);
+  return { ...t, places: t.places.map((p) => ({ ...p, hours })) };
+};
+
+/** The parser's half: `fromJSON` refuses `hours`, and the JSON path it names. Returns the path. */
+const parserVerdict = (hours) => {
+  const raw = JSON.parse(core.toJSON(sourceWithPlace({ note: 'ordinary prose' })));
+  raw.places[0].hours = hours;
+  try {
+    const t = core.fromJSON(JSON.stringify(raw));
+    return { accepted: true, hours: t.places[0].hours };
+  } catch (e) {
+    return { accepted: false, name: e.constructor.name, path: e.path, message: e.message };
+  }
+};
+
 /* ==================================================== §1 A-15 field coverage ==== */
 
 line('§1.1 A-15 — `placeForCopy`\'s one surviving spread: `hours.weekly` entries (R15-1)');
@@ -114,20 +149,34 @@ line('§1.1 A-15 — `placeForCopy`\'s one surviving spread: `hours.weekly` entr
   // §2.14 A-15, in its own words: "there is no remaining spread of a source `Place` into the
   // target document; a builder who leaves one has not landed this ruling." `placeForCopy`
   // clones `weekly` with `{...w}`, which is a spread of whatever the source document actually
-  // holds — and `fromJSON`'s `parsePlace` passes `hours` through as a RAW CAST
-  //   ...(o.hours !== undefined ? { hours: o.hours as Place['hours'] } : {})
-  // so `weekly[i]` is not structurally validated at all. `importDoc` is the live route, which
-  // is the same reachability argument round 14 filed R14-4 on.
-  const src = reparse(sourceWithPlace({ note: 'ordinary prose' }), (raw) => {
-    raw.places[0].hours = {
-      weekly: [{
-        day: 1, open: '09:00', close: '17:00',
-        note: 'Front door PIN 0754, conf 5814731574 - ask for jacob@example.com',
-        href: 'https://vendor.example/booking/GYGG45MLA9Q9',
-      }],
-    };
-  });
-  ok('the hostile `hours` survives fromJSON unvalidated (the live route this finding needs)',
+  // holds — and when this was written `fromJSON`'s `parsePlace` passed `hours` through as a
+  // RAW CAST, so `weekly[i]` was not structurally validated at all.
+  //
+  // **Re-expressed by round 17 (A-20).** The parser now rebuilds each entry from three named
+  // fields, so the carrier cannot arrive by parse. A-20 puts an extra key on a structurally
+  // VALID entry on the *normalise* side, not the refuse side (`parseLinks` drops a third key on
+  // a `Link` the same way), so the parser's half here is "the key is DROPPED", not "refused" —
+  // and the copy's half is measured on a cast-built document, which is the only population that
+  // can still hold the key.
+  const hostileHours = {
+    weekly: [{
+      day: 1, open: '09:00', close: '17:00',
+      note: 'Front door PIN 0754, conf 5814731574 - ask for jacob@example.com',
+      href: 'https://vendor.example/booking/GYGG45MLA9Q9',
+    }],
+  };
+  const verdict = parserVerdict(hostileHours);
+  ok('A-20: the parser ACCEPTS a structurally valid entry and DROPS the unenumerated key',
+    verdict.accepted && JSON.stringify(Object.keys(verdict.hours.weekly[0]).sort()) === '["close","day","open"]',
+    JSON.stringify(verdict));
+  ok('A-20: so no credential survives `fromJSON` on this shape at all',
+    verdict.accepted && !core.toJSON({ ...sourceWithPlace({}), places: [{ ...sourceWithPlace({}).places[0], hours: verdict.hours }] })
+      .includes('0754'), JSON.stringify(verdict.hours));
+
+  // The other half, and the one this finding was always about: the same entry arriving BY CAST,
+  // the way an in-process writer or a native bridge could still build it.
+  const src = castWithHours(hostileHours);
+  ok('the cast-built fixture really does carry the extra key (or it is testing nothing)',
     src.places[0].hours.weekly[0].note !== undefined);
 
   const target = mintedTrip('trip-tgt', 'tgt', [{ name: 'Vienna', centre: VIENNA }]);
@@ -146,44 +195,65 @@ line('§1.1 A-15 — `placeForCopy`\'s one surviving spread: `hours.weekly` entr
 
 line('§1.2 A-15 — `hours.note` is only redacted when it happens to be a string (R15-1)');
 {
-  for (const [label, value] of [['an object', { pin: 'PIN 0754' }], ['a number', 5814731574]]) {
-    const src = reparse(sourceWithPlace({ note: 'ordinary' }), (raw) => {
-      raw.places[0].hours = { weekly: [], note: value };
-    });
+  // Re-expressed by round 17 (A-20). This section used to build the fixture with `reparse`,
+  // which now throws `TripParseError: expected a string (at $.places[0].hours.note)` and
+  // aborted the whole probe. Both halves are kept: the parser refuses at the exact path, and
+  // the cast-built equivalent still crosses the copy boundary redacted rather than verbatim.
+  for (const [label, value] of [['an object', { pin: 'PIN 0754' }], ['a number', 5814731574], ['an array', ['conf 5814731574']]]) {
+    const v = parserVerdict({ weekly: [], note: value });
+    ok(`A-20: fromJSON REFUSES an hours.note that is ${label}, naming the path`,
+      !v.accepted && v.name === 'TripParseError' && v.path === '$.places[0].hours.note',
+      JSON.stringify(v));
+
+    const src = castWithHours({ weekly: [], note: value }, 'n' + label.length);
     const target = mintedTrip('trip-tgt', 'tgt', [{ name: 'Vienna', centre: VIENNA }]);
-    const copied = copyAcross(target, src).places[0];
-    ok(`A-15: hours.note as ${label} is not carried verbatim`,
-      JSON.stringify(copied.hours.note) !== JSON.stringify(value),
-      'redactText passes a non-string straight through and `as string` hides it: ' + JSON.stringify(copied.hours.note));
+    let copied = null, threw = null;
+    try { copied = copyAcross(target, src).places[0]; } catch (e) { threw = `${e.constructor.name}: ${e.message}`; }
+    ok(`R15-2 stays closed: copyStopInto does not throw on a cast-built hours.note that is ${label}`,
+      threw === null, String(threw));
+    ok(`A-15: a cast-built hours.note as ${label} is not carried verbatim`,
+      copied !== null && JSON.stringify(copied.hours.note) !== JSON.stringify(value),
+      'redactText passes a non-string straight through and `as string` hid it: ' + JSON.stringify(copied?.hours?.note));
   }
 }
 
-line('§1.3 A-15 — `copyStopInto` now THROWS on a document `fromJSON` accepts (R15-2)');
+line('§1.3 R15-2 — the six shapes: refused by the parser, and the cast-built copy still never throws');
 {
+  // Re-expressed by round 17. R15-2's six shapes used to reach the copy path THROUGH `fromJSON`;
+  // A-20 refuses all six at the parser, each with a JSON path. The finding's own closure —
+  // *the copy may not throw on a document that never went through the parser* — is unchanged
+  // and is now stated against the population that can still produce it: a cast.
   const shapes = [
-    ['hours: {} (no weekly)', {}],
-    ['hours: a string', 'closed mondays'],
-    ['hours: a number', 7],
-    ['hours: an array', [1, 2]],
-    ['hours: null', null],
-    ['hours.weekly: a string', { weekly: 'mon-fri' }],
+    ['hours: {} (no weekly)', {}, '$.places[0].hours.weekly'],
+    ['hours: a string', 'closed mondays', '$.places[0].hours'],
+    ['hours: a number', 7, '$.places[0].hours'],
+    ['hours: an array', [1, 2], '$.places[0].hours'],
+    ['hours: null', null, '$.places[0].hours'],
+    ['hours.weekly: a string', { weekly: 'mon-fri' }, '$.places[0].hours.weekly'],
   ];
-  let threw = 0;
-  for (const [label, hours] of shapes) {
-    const src = reparse(sourceWithPlace({ note: 'ordinary' }), (raw) => { raw.places[0].hours = hours; });
+  let threw = 0, accepted = 0, wrongPath = [];
+  for (const [label, hours, path] of shapes) {
+    const v = parserVerdict(hours);
+    if (v.accepted) accepted++;
+    else if (v.path !== path || v.name !== 'TripParseError') wrongPath.push(`${label} -> ${v.name}@${v.path}`);
+    else note(`${label} -> ${v.message}`);
+
+    const src = castWithHours(hours, 'c' + label.length);
     const target = mintedTrip('trip-tgt', 'tgt', [{ name: 'Vienna', centre: VIENNA }]);
     try {
       copyAcross(target, src);
     } catch (e) {
       threw++;
-      note(`${label} -> ${e.constructor.name}: ${e.message}`);
+      note(`  cast-built ${label} -> ${e.constructor.name}: ${e.message}`);
     }
   }
-  ok('A-15 introduced no new crash on the copy path', threw === 0,
-    `${threw}/${shapes.length} shapes crash copyStopInto; pre-change (3409420) all six copy cleanly`);
+  ok('A-20: fromJSON refuses all six, each with a TripParseError naming the exact JSON path',
+    accepted === 0 && wrongPath.length === 0, `${accepted} accepted; wrong path: ${wrongPath.join(' | ')}`);
+  ok('R15-2 stays closed: none of the six crashes copyStopInto when it arrives BY CAST', threw === 0,
+    `${threw}/${shapes.length} cast-built shapes crash copyStopInto`);
   ok('validateTrip reports a malformed `hours` before the copy path meets it',
-    core.validateTrip(reparse(sourceWithPlace({}), (raw) => { raw.places[0].hours = {}; }))
-      .some((i) => JSON.stringify(i).toLowerCase().includes('hour')),
+    core.validateTrip(castWithHours({}, 'vt'))
+      .some((i) => i.code === 'place_hours_malformed'),
     'nothing in validateTrip mentions `hours`, so nothing warns the user first');
 }
 

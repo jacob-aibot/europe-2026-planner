@@ -775,3 +775,91 @@ present, `qa/r2-copy.mjs` **0 FAIL**, `qa/prov.mjs` **0 FAIL**, `qa/r2-constrain
 Note for whoever reads §1.2 first: `r16` does **not** re-run round 15's credential repro. That
 lives in `qa/r15-place-copy.mjs` §1.1/§1.2/§2.1 and now passes there; re-running it here would
 have spent a run re-confirming a number the builder already reported and I had no reason to doubt.
+
+---
+
+## Round 17 (2026-08-28, `master` @ `909b4a3`) — the A-20 breaker pass
+
+Narrow: the diff `69f551c..909b4a3` under `packages/` only — the new `model/openingHours.ts`,
+`serialize/fromJSON.ts` (`clock`, `parseOpeningHours`, `clockOrNull`), `serialize/toJSON.ts`
+(`weeklyOut`, `hours`), `validate/validateTrip.ts` (`wellFormedHours` deleted), `build/copyStop.ts`
+(`weeklyForCopy`), `model/types.ts` and the two test files. Nothing else was re-litigated.
+
+```bash
+node --experimental-strip-types qa/r17-hours-parser.mjs
+        # §1  A-20's contract sentence — `isOpeningHours(v)` is true EXACTLY when `fromJSON`
+        #     accepts `v` — over 53 shapes against fromJSON's OBJECT arm: unicode digits,
+        #     a trailing newline, a NUL, an RTL override, boxed primitives, Proxies,
+        #     Object.create(null), inherited-only fields, sparse arrays, accessors  (0 FAIL)
+        #     §1.2 the ruling's own two normalisation claims, checked literally;
+        #     §1.3 a legitimate `hours` is not collateral damage                    (0 FAIL)
+        # §2  Part 5(a) re-derived: the accepted set brute-forces to exactly 11 000 and
+        #     redactText alters none of them; and the invariant is TIED to redactText by a
+        #     red test, with one pattern list shared with tools/redact.mjs          (0 FAIL)
+        # §3  R15-2's closure against 41 hostile CAST-BUILT `hours`                 (0 FAIL)
+        #     §3.2 an entry whose open/close are ACCESSORS: validated on one read,
+        #     copied from another                                            (R17-1, 2 FAIL)
+        # §4  the ratification chain end to end over 26 shapes: validateTrip warns ->
+        #     toJSON re-emits -> fromJSON refuses at the exact path              (0 FAIL)
+        # §5  statements about the SHIPPED SUITE, mutation-verified in a scratch worktree:
+        #     §5.1 toJSON's `hours` rebuild is unpinned                      (R17-2, 1 FAIL)
+        #     §5.2 clockOrNull's refusal is unpinned, pre-existing            (R17-3, 1 FAIL)
+        # §6  ceilings, A-20 assertions 5 and 6, and the read-only boundary        (0 FAIL)
+```
+
+**4 FAIL by design** — R17-1 ×2, R17-2 ×1, R17-3 ×1. Every other line is a confirmation that must
+stay at 0. Deterministic call sequences only, no races and no sleeps. No second checkout needed.
+
+Seventeen mutations, all made in a throwaway `git worktree add /tmp/r17-mut 909b4a3` (and one in
+`/tmp/r17-pre 69f551c`) and discarded — nothing under `cairn/` was ever written. The counts are
+what a future round should reproduce:
+
+```bash
+# isClockTime without its `$` anchor                        1 red
+# isWeeklyEntry without Number.isFinite(day)                3 red
+# isWeeklyEntry weakened to the old `typeof e.open string`  4 red
+# isOpeningHours without the `note` typeof check            2 red
+# isOpeningHours without Array.isArray(v)                   0 red  <- unreachable population
+# isWeeklyEntry without Array.isArray(v)                    0 red  <- unreachable population
+# parseOpeningHours: `str` instead of `clock`               2 red
+# parseOpeningHours: `{...e}` back on a parsed entry        2 red
+# parsePlace: the raw cast restored                         5 red
+# parseOpeningHours: `hours: null` accepted as absent       2 red
+# parseOpeningHours: an `undefined` slot refused            1 red
+# weeklyForCopy without isWeeklyEntry                       1 red
+# weeklyForCopy without its redaction line                  0 red  <- provably dead, per A-20 5(a)
+# validateTrip: the place_hours_malformed push deleted      2 red
+# a REDACTION_PATTERN that alters a clock time              6 red  <- 5(a) and 5(b) both fire
+# toJSON: `hours: p.hours` restored                         0 red  <- R17-2
+# clockOrNull: the HH:MM refusal deleted                    0 red  <- R17-3 (0 red at 69f551c too)
+# `{ ...l }` back on links                                  1 red  <- R16-1 CLOSES  (0 at bff7a81)
+# `redactText(p.note) as string` in placeForCopy            1 red  <- rider CLOSES  (0 at bff7a81)
+```
+
+Re-run **unmodified** this round: `qa/r14-horizon-copy.mjs` **ALL OK**, `qa/r2-copy.mjs` **0 FAIL**,
+`qa/prov.mjs` **0 FAIL**, `qa/r2-constraints.mjs` **1 FAIL** (R2-18, known). `npm run test:tap`
+593/0, `npm run typecheck` clean, `npm run web:build` clean, `npm run golden` + `npm run sample`
+byte-identical (sample sha `40955ca0b182`).
+
+**`qa/r15-place-copy.mjs` and `qa/r16-copy-depth.mjs` are both back at 0 FAIL and both now run to
+completion.** A-20 said in writing that it would turn two probes red on purpose and that
+re-expressing them is QA's job; both aborted with an uncaught `TripParseError` before this pass
+(`r15` at §1.2, `r16` at §1.4 line 253). Every affected line is now two-sided in the form
+`packages/core/test/copyStop.test.ts` models — the parser refuses (or, for an extra key, **drops**)
+with a JSON path, and `copyStopInto` still never throws on the cast-built equivalent:
+
+- **`r15` §1.1** asserted the hostile entry *survived* the parser; it now asserts the parser keeps
+  the entry and drops the unenumerated key, with the copy measured on a cast-built source.
+- **`r15` §1.2 / §1.3** now assert the refusal and its exact path (`$.places[0].hours.note`, and
+  the six R15-2 shapes), then the cast-built copy.
+- **`r16` §1.4(b), §2.1, §2.2** the same; §2.1 measures all 35 shapes on both sides rather than
+  skipping the refused ones, which would have silently emptied the section.
+- **`r16` §2.3** is R16-2's own assertion, unchanged in wording and now **green** — one predicate,
+  three importers, and `wellFormedHours` gone.
+- **`r16` §1.2's R16-1 line** was a literal `ok(…, false, …)` about the shipped suite, so it now
+  points at the fixture that closed it, mutation-verified above.
+
+Note for whoever reads §3.2 first: R17-1 needs an **accessor property** on a `weekly` entry. No JSON
+document can carry one, and every shipped caller of `fromJSON` passes text (`importDoc(text)`,
+`cli`, and `StoredDoc.doc`, which is `type TripDoc = string`) — so the population is an in-process
+writer, the same one `place_hours_malformed` exists for. That is the whole reason it is MINOR.

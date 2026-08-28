@@ -28,6 +28,22 @@
  *
  * A FAIL line means the probe found what it was looking for. Read the finding in
  * ../docs/QA-FINDINGS.md before assuming the script is broken.
+ *
+ * **Maintained by QA round 17 (`909b4a3`), which is when it went to 0 FAIL.** Both of its
+ * by-design FAILs are closed, and four groups of lines were re-expressed rather than deleted
+ * (A-19 assertion 7 and A-20 both say the builder does not edit anything under `qa/`):
+ *   - **§1.2's R16-1 line** was a literal `ok(…, false, …)` about a gap in the shipped suite; it
+ *     now points at the fixture that closed it. Mutation-verified at `909b4a3`: reverting the
+ *     `links` line to `{ ...l }` is 1 red (0 at `bff7a81`), and restoring
+ *     `redactText(p.note) as string` is 1 red (0 at `bff7a81`).
+ *   - **§1.4(b), §2.1, §2.2 and §2.3** built hostile `hours` fixtures THROUGH `fromJSON` and
+ *     asserted acceptance. **A-20 (revision 15) refuses those shapes**, which aborted this probe
+ *     at §1.4 line 253 with an uncaught `TripParseError`. Each is now two-sided: the parser's
+ *     refusal with its JSON path, and the copy measured on a CAST-BUILT document — the
+ *     population `place_hours_malformed` was ratified to describe.
+ *   - **§2.3 is R16-2's closure**, kept as the same assertion and now green: one predicate in
+ *     `model/openingHours.ts`, imported by `fromJSON`, `validateTrip` and `copyStop`.
+ * Round 17's own findings are in `qa/r17-hours-parser.mjs`, which does not duplicate anything here.
  */
 import { readFileSync } from 'node:fs';
 
@@ -117,6 +133,25 @@ const reparse = (t, mutate) => {
   return core.fromJSON(JSON.stringify(raw));
 };
 
+/* --- A-20 (revision 15), added by round 17 -------------------------------------------------
+ * `fromJSON` validates `Place.hours` now, so a hostile `hours` can no longer ARRIVE by parse.
+ * Every such fixture below is two-sided: the parser's refusal (with its JSON path) is asserted,
+ * and the copy is measured on a CAST-BUILT document — a `Place.hours` set past the type system,
+ * which is exactly the population `place_hours_malformed` was ratified to describe. Same
+ * construction as `packages/core/test/copyStop.test.ts`'s `castWithHours`/`refusedByParser`. */
+
+/** A source trip whose `Place.hours` is set by cast; it never goes through the parser. */
+const castWithHours = (hours, prefix = 'ch') => {
+  const t = sourceWithPlace({}, prefix);
+  return { ...t, places: t.places.map((p) => ({ ...p, hours })) };
+};
+
+/** `{accepted}` or `{name, path, message}` — the parser's verdict on one `hours` value. */
+const parserVerdict = (hours, prefix = 'pv') => {
+  try { reparse(sourceWithPlace({ hours }, prefix)); return { accepted: true }; }
+  catch (e) { return { accepted: false, name: e.constructor.name, path: e.path, message: e.message }; }
+};
+
 /* ================================================= §1 A-18 in depth ============ */
 
 line('§1.1 A-18 — the `display` predicate at its edges');
@@ -188,15 +223,27 @@ line('§1.2 A-18 position 2 — an unclassified key on every record the ruling e
   ok('and no credential from any of the four is greppable in the recipient\'s document',
     greppable(after).length === 0, greppable(after).join());
 
-  // The code is right on all four. The MECHANICAL STOP is not: the shipped key-set test's
-  // hostile source populates `cost` and `arrival` only, so the `Link` row of the assertion runs
-  // against a two-key fixture link and is true whatever the construction. Measured by mutation
-  // in a scratch worktree at bff7a81, never in this tree.
-  ok('R16-1: the `Link` row of A-18\'s key-set assertion cannot fail — reverting the `links` ' +
-    'line to `{ ...l }` leaves 583/583 tests and qa/r2-copy.mjs green', false,
-    'BUILD-NOTES\' "Red before green" row claims "spreading `links` (1 red)"; the measured number ' +
-    'is 0. The hostile source at copyStop.test.ts:1281 carries an unclassified key on `cost` and ' +
-    'on `arrival` and NOT on `links`, so `Object.keys(copy.links![0])` is `{label,href}` either way.');
+  // R16-1 was that the code was right on all four while the MECHANICAL STOP was not: the shipped
+  // key-set test's hostile source populated `cost` and `arrival` only, so the `Link` row ran
+  // against a two-key fixture link and was `{label,href}` whatever the construction.
+  //
+  // **Re-expressed by round 17**, the way round 16 re-expressed §3.2/§5.1: this was a literal
+  // `ok(…, false, …)` — a statement about a gap in the *shipped suite*, which no product change
+  // can turn green — so it now points at the fixture that closed it. A probe cannot mutate the
+  // product code it imports; the mutation was made in a throwaway `git worktree` at `909b4a3`
+  // and discarded, and nothing under `cairn/` was written by it.
+  {
+    const suite = readFileSync(new URL('../packages/core/test/copyStop.test.ts', import.meta.url), 'utf8');
+    ok('R16-1 CLOSED: the hostile source in A-18\'s key-set test now carries an unclassified key ' +
+      'on `links` too, so the `Link` row can fail — reverting the `links` line to `{ ...l }` turns ' +
+      'exactly 1 test red (it was 0 at `bff7a81`), mutation-verified in a scratch worktree at 909b4a3',
+      /links: \[\{ label: [^\n]*, href: [^\n]*, eleventh:/.test(suite),
+      'the fixture must populate an eleventh key on `links`, or the assertion is true by construction');
+    ok('R16-1\'s rider CLOSED: `placeForCopy`\'s `redacted(p.note)` is pinned by a cast-built ' +
+      'non-string note — restoring `redactText(p.note) as string` turns exactly 1 test red (0 at `bff7a81`)',
+      /R16-1 rider: placeForCopy uses `redacted\(\)`/.test(suite),
+      'the named test must exist in the shipped suite');
+  }
 }
 
 line('§1.3 A-18 — the strings that still cross verbatim, and whether the two thresholds agree');
@@ -246,11 +293,22 @@ line('§1.4 A-18 — a `weeklyForCopy` entry is dropped whole when ONE of its tw
     alteredNear.length === 0, JSON.stringify(alteredNear));
 
   // (b) The shapes that ARE altered are the ones that were never a time.
+  //
+  // **Re-expressed by round 17 (A-20, revision 15).** This fixture used to arrive through
+  // `reparse`; the parser now refuses `close: '170000'` at `$.places[0].hours.weekly[1].close`,
+  // which aborted this probe here. Both halves are kept — the parser refuses with the path, and
+  // a cast-built equivalent (the population `place_hours_malformed` describes) still copies
+  // without throwing, with the hostile entry nulled in place.
   const hostile = ['PIN 0754', '170000', 'https://vendor.test/x', 'YZGDTS', 'conf 5814731574'];
-  const src = sourceWithPlace({
-    hours: { weekly: [{ day: 1, open: '09:00', close: '17:00' }, { day: 2, open: '09:00', close: '170000' }] },
-  }, 'wk');
-  const after = copyAcross(jacobsTarget(), reparse(src), 'wk1');
+  const badWeekly = { weekly: [{ day: 1, open: '09:00', close: '17:00' }, { day: 2, open: '09:00', close: '170000' }] };
+  let parseErr = null;
+  try { reparse(sourceWithPlace({ hours: badWeekly }, 'wkp')); } catch (e) { parseErr = e; }
+  ok('A-20: fromJSON refuses the hostile entry at the exact path, rather than accepting it',
+    parseErr?.name === 'TripParseError' && parseErr.path === '$.places[0].hours.weekly[1].close',
+    `${parseErr?.name}@${parseErr?.path}`);
+
+  const src = castWithHours(badWeekly, 'wk');
+  const after = copyAcross(jacobsTarget(), src, 'wk1');
   const hours = after.places[0].hours;
   note(`weekly after copy: ${JSON.stringify(hours.weekly)}`);
   ok('a well-formed entry beside a hostile one survives intact',
@@ -307,29 +365,34 @@ line('§2.1 `Place.hours` — 34 shapes through the live fromJSON route (R15-1, 
     ['`hours.note` a number', { weekly: [GOOD], note: 5814731574 }],
     ['`hours` with 500 weekly entries, half hostile', { weekly: Array.from({ length: 500 }, (_, i) => (i % 2 ? { ...GOOD, note: PIN } : null)) }],
   ];
-  let threw = 0, leaked = 0, n = 0;
+  // **Re-expressed by round 17 (A-20).** Round 16 fed all 34 through `fromJSON` and skipped the
+  // ones it refused; A-20 refuses most of them, which would silently empty this section. So each
+  // shape is now measured on BOTH sides: what the parser does with it (recorded, and refusals
+  // must name a path), and what `copyStopInto` does with the same shape supplied BY CAST — which
+  // is R15-1/R15-2's live population after A-20 and the only one left.
+  let threw = 0, leaked = 0, n = 0, refused = 0, pathless = [];
   const leakedShapes = [], threwShapes = [];
   for (const [what, hours] of shapes) {
     n++;
-    let doc;
-    try {
-      doc = reparse(sourceWithPlace({ hours }, 'h' + n));
-    } catch (e) {
-      note(`  (fromJSON refuses ${what}: ${e.message}) — out of scope, R15-2 is about what it ACCEPTS`);
-      continue;
+    const v = parserVerdict(hours, 'h' + n);
+    if (!v.accepted) {
+      refused++;
+      if (v.name !== 'TripParseError' || !v.path) pathless.push(`${what}: ${v.name}@${v.path}`);
     }
     try {
-      const after = copyAcross(jacobsTarget(), doc, 'hc' + n);
+      const after = copyAcross(jacobsTarget(), castWithHours(hours, 'k' + n), 'hc' + n);
       const hits = greppable(after);
       if (hits.length) { leaked++; leakedShapes.push(`${what} -> ${hits.join()}`); }
     } catch (e) {
       threw++; threwShapes.push(`${what}: ${e.constructor.name}: ${e.message}`);
     }
   }
-  note(`${n} shapes offered; ${threwShapes.length} threw; ${leakedShapes.length} leaked a credential`);
-  ok('R15-2 CLOSED: no `hours` shape fromJSON accepts makes `copyStopInto` throw',
+  note(`${n} shapes offered; fromJSON refuses ${refused} of them; ${threwShapes.length} threw on the copy; ${leakedShapes.length} leaked a credential`);
+  ok('A-20: every `hours` shape the parser refuses is refused as a TripParseError WITH a JSON path',
+    pathless.length === 0, pathless.join(' | '));
+  ok('R15-2 CLOSED: no cast-built `hours` shape makes `copyStopInto` throw',
     threw === 0, threwShapes.join(' | '));
-  ok('R15-1 CLOSED: no `hours` shape fromJSON accepts carries a credential into the recipient',
+  ok('R15-1 CLOSED: no cast-built `hours` shape carries a credential into the recipient',
     leaked === 0, leakedShapes.join(' | '));
   ok('...and `Object.prototype` is not polluted by any of them',
     ({}).polluted === undefined, String(({}).polluted));
@@ -343,10 +406,13 @@ line('§2.2 the copy\'s own output is always a well-formed OpeningHours');
     ['a string', 'mon-fri'], ['{}', {}], ['{weekly:"x"}', { weekly: 'x' }],
     ['a hostile entry', { weekly: [{ ...GOOD, note: PIN }] }],
   ]) {
-    const after = copyAcross(jacobsTarget(), reparse(sourceWithPlace({ hours }, 'q' + what.length)), 'qc' + what.length);
+    // Re-expressed by round 17: cast-built, because A-20's parser refuses all four.
+    const after = copyAcross(jacobsTarget(), castWithHours(hours, 'q' + what.length), 'qc' + what.length);
     const issues = core.validateTrip(after).filter((i) => i.code === 'place_hours_malformed');
     ok(`the COPY of ${what} is well-formed — the recipient inherits no warning`,
       issues.length === 0, JSON.stringify(issues));
+    ok(`...and the copy of ${what} round-trips through toJSON/fromJSON, so the recipient's backup restores`,
+      (() => { try { core.fromJSON(core.toJSON(after)); return true; } catch { return false; } })(), '');
   }
 }
 
@@ -365,25 +431,32 @@ line('§2.3 `place_hours_malformed` vs what the copy actually did (R16-2)');
     ['open is an ALL-CAPS token', { weekly: [{ ...GOOD, open: 'YZGDTS' }] }],
     ['day is a string (control — both agree)', { weekly: [{ ...GOOD, day: '1' }] }],
   ];
-  const silent = [];
+  // **Re-expressed by round 17: this is R16-2's closure, measured.** A-20 deletes
+  // `wellFormedHours` and points `validateTrip`, `fromJSON` and `weeklyForCopy` at ONE predicate
+  // (`model/openingHours.ts`), so the divergence this line was written to catch cannot exist by
+  // construction — the assertion is kept, stated the same way, and must now hold. The fixtures
+  // arrive by cast, because the parser refuses all six (asserted beside each).
+  const silent = [], accepted = [];
   for (const [what, hours] of cases) {
-    const src = reparse(sourceWithPlace({ hours }, 'v' + what.length));
+    if (parserVerdict(hours, 'p' + what.length).accepted) accepted.push(what);
+    const src = castWithHours(hours, 'v' + what.length);
     const warned = core.validateTrip(src).some((i) => i.code === 'place_hours_malformed');
     const after = copyAcross(jacobsTarget(), src, 'vc' + what.length);
     const dropped = after.places[0].hours.weekly[0] === null;
-    note(`${what}: validateTrip warns = ${warned}, copy drops the entry = ${dropped}`);
+    note(`${what}: fromJSON refuses = ${!accepted.includes(what)}, validateTrip warns = ${warned}, copy drops the entry = ${dropped}`);
     if (dropped && !warned) silent.push(what);
   }
-  ok('R16-2: every document whose weekly entry the copy silently discards is also reported by ' +
-    '`place_hours_malformed`', silent.length === 0,
+  ok('A-20: fromJSON refuses all six of R16-2\'s shapes, so none can arrive by parse',
+    accepted.length === 0, JSON.stringify(accepted));
+  ok('R16-2 CLOSED: every document whose weekly entry the copy silently discards is also reported ' +
+    'by `place_hours_malformed`', silent.length === 0,
     `${silent.length} shapes are dropped by weeklyForCopy and called well-formed by ` +
-    `validateTrip's wellFormedHours: ${JSON.stringify(silent)}. The two guards landed in the ` +
-    `same commit and disagree: weeklyForCopy requires Number.isFinite(day) and an open/close ` +
-    `redactText leaves alone; wellFormedHours requires only typeof number / typeof string.`);
+    `validateTrip: ${JSON.stringify(silent)}. Round 16 measured 5 here — the three R16-2 named ` +
+    `plus both Infinity days — because the two guards held different predicates. A-20 made it one.`);
 
   // The other direction, for completeness: a document that IS warned about while the copy loses
   // nothing. Bounded and benign — recorded so the finding is not overstated in one direction.
-  const noisy = reparse(sourceWithPlace({ hours: { weekly: [GOOD], note: 5814731574 } }, 'v9'));
+  const noisy = castWithHours({ weekly: [GOOD], note: 5814731574 }, 'v9');
   const noisyCopy = copyAcross(jacobsTarget(), noisy, 'v9c');
   note(`hours.note as a number: validateTrip warns = ` +
     `${core.validateTrip(noisy).some((i) => i.code === 'place_hours_malformed')}, ` +
@@ -393,14 +466,24 @@ line('§2.3 `place_hours_malformed` vs what the copy actually did (R16-2)');
     'the weekly entry crosses intact and the note becomes [redacted]; the warning is still true ' +
     'about the document, so this direction is over-reporting rather than under-reporting.');
 
-  // ROOT CAUSE, per `systematic-debugging`: there are now THREE independent answers in this repo
-  // to "what is a well-formed OpeningHours", and no two of them agree.
-  note('root cause: `serialize/fromJSON.ts:294` (parsePlace — NO validation, a raw cast), ' +
-    '`validate/validateTrip.ts:406` (wellFormedHours) and `build/copyStop.ts:157` (weeklyForCopy) ' +
-    'each hold a different predicate. Round 15 routed R15-1 with "and `parsePlace` should ' +
-    'validate `hours` the way it validates every other field"; A-18 ruled the pass "changes ' +
-    'nothing in `fromJSON`", so the parser gap that produced R15-1 AND R15-2 is still open and ' +
-    'the two guards written to compensate for it were written independently.');
+  // ROOT CAUSE, as filed at round 16: there were THREE independent answers in this repo to
+  // "what is a well-formed OpeningHours" — `serialize/fromJSON.ts:294` (a raw cast, i.e.
+  // anything), `validate/validateTrip.ts:406` (`wellFormedHours`) and `build/copyStop.ts:157`
+  // (`weeklyForCopy`) — and no two agreed. **A-20 (revision 15) made it one**, in
+  // `model/openingHours.ts`, imported by all three. Round 17 re-derives that here rather than
+  // reading it: the three call sites, and the one address the clock regex now lives at.
+  {
+    const src = (p) => readFileSync(new URL('../packages/core/src/' + p, import.meta.url), 'utf8');
+    ok('R16-2\'s mechanism: `wellFormedHours` no longer exists in validateTrip.ts',
+      !/function wellFormedHours/.test(src('validate/validateTrip.ts')), '');
+    ok('...and all three call sites import the ONE predicate module',
+      /model\/openingHours/.test(src('validate/validateTrip.ts')) &&
+      /model\/openingHours/.test(src('build/copyStop.ts')) &&
+      /model\/openingHours/.test(src('serialize/fromJSON.ts')), '');
+    ok('...and `weeklyForCopy`\'s own remaining line is the A-18 redaction POLICY, not a shape test',
+      /isWeeklyEntry\(w\)/.test(src('build/copyStop.ts')) &&
+      /redacted\(e\.open\) !== e\.open/.test(src('build/copyStop.ts')), '');
+  }
 }
 
 /* ==================================================== §3 A-19 ================== */
