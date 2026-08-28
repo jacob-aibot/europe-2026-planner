@@ -534,7 +534,9 @@ test('exit 6b-1b: the web port EXECUTED — every row it HANDS BACK is clean', a
       const saved = await port.saveIfVersion(trip.id, null, JSON.stringify(trip), summary);
       if (!saved.ok) assert.fail('INCONCLUSIVE: seeding failed');
     }
-    assert.equal(db._summaries().size, 2, 'INCONCLUSIVE: the store did not take two rows');
+    // `>=`, not `===`: this is an inconclusiveness guard, and a *count* here would make this arm
+    // catch G8 as well — which is 6b-2's job and is what tells the two checks apart (A-36 Part 5).
+    assert.ok(db._summaries().size >= 2, 'INCONCLUSIVE: the store did not take the two rows');
     assertRowsAreClean(await port.listTrips(), 'the web port: listTrips');
   });
 });
