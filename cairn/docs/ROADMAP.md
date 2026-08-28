@@ -289,6 +289,37 @@ does not take the increment's own Ship-gate line as a verdict.
 **No phase re-scoped, no change to the order, no new external dependency, no `SUMMARY_VERSION` bump and no
 movement on the export surface.**
 
+**Revision 26, 2026-08-28.** QA round 29 — the mandatory breaker pass over I-7a — returned **SEND BACK**
+with 0 BLOCKERS, 2 MAJOR and 5 MINOR. **A-32 held** against three oracles that are not `Date` and 4.5M
+evaluations; **A-34 held** at every lifecycle boundary; **A-33 did not** — a one-line variant of the fault
+it was written for still lands two lifetime counts in real IndexedDB with the criterion at 14/0, the suite
+at 835/0 and `tsc` clean. `ARCHITECTURE.md` revision 26 answers the four design findings as §2.3 **A-35**
+(R29-2), §8.4 **A-36** (R29-1) and §8.4 **A-37** (R29-6, R29-7). This file changes in four ways.
+
+(1) **A new increment, `I-7b`**, carrying the three rulings and round 29's three builder findings
+(**R29-3**, **R29-4**, **R29-5**). Same shape and same reason as I-5a/b/c, I-6a and I-7a. **I-8 is blocked
+on it** as it was on I-7a.
+
+(2) **Exit criterion 6's port half is rewritten** — parts **b′** and **b″** below. b′ stops being *"the
+memory port"* and becomes **every implementation the census names, executed**: the web port has no runtime
+imports and reads `indexedDB` off the global, so it runs on bare Node against a recording double, and
+*that* is the check with teeth. b″ (the static grep) is demoted to a tripwire and loses the parameter
+assertion whose failure message claimed coverage it does not have. The Chromium read-back is **named as a
+required, recorded ship-gate condition** for any increment touching the web port — and stays out of `npm
+run test:tap` permanently, because the gate must run on bare Node.
+
+(3) **I-7b gains a criterion nothing in Phase 2 had**: a bound on the day skeleton. `0202-01-01 →
+2020-12-31` — one mistyped digit in the past-trip form's *exact* branch — mints 664,377 `Day` records and
+266.7 MB, and `validateTrip` reports nothing. §2.3 **A-35** caps it in `ensureDays`, in core, so every
+caller inherits it.
+
+(4) **I-7a's ship gate is recorded as not met**, with the findings it is waiting on, so a reader does not
+take the increment's own Ship-gate line as a verdict.
+
+**No phase re-scoped, no change to the order, no new external dependency, no `SUMMARY_VERSION` bump and no
+movement on the export surface (still 75) — `MAX_TRIP_SPAN_DAYS` and both of A-37's read gates are
+module-private.**
+
 > **Phase numbers changed once, here.** Every heading below carries its old number, and every "Phase N"
 > written in `ARCHITECTURE.md` §1–§7, `BUILD-NOTES.md` or `QA-FINDINGS.md` before revision 9 means the
 > *named* phase it described: "Phase 2" = accounts/server (**now 3**), "Phase 3" = ingest (**now 4**),
@@ -1134,7 +1165,7 @@ Entry: Phase 1 shipped with a manager verdict of SHIP (`b32ef9a`) — done.
 | Step | Ships | Useful alone because | State |
 |---|---|---|---|
 | **2a — past trips and the lifecycle** | `lifecycle()`, `Trip.datePrecision`, the feasibility/integrity rule class (§8.2), a "record a past trip" flow (title, dates, precision, cities — no day-by-day required) | you can enter a 2019 trip and it does not greet you with twenty warnings about a hotel you already slept in | **SHIPPED — manager verdict SHIP, `REVIEW.md` "Phase 2, step 2a", reviewed at `67f5588`, 2026-08-28.** Built, verified (rounds 12–21), shippable. Seven routed items, **none blocking**; the block on share/friend/public-share-link work is **not** lifted by this verdict — see A-2 in that routing table |
-| **2b — the lifetime map and travel identity** | `countryOf` + the generated country index, `travelStats`, the widened `TripSummaryRow` + `SUMMARY_VERSION` rescan, the **Map** and **Profile** surfaces | *"show me everywhere I've been"* — the signature experience, from data that already exists | **UNBLOCKED** by 2a's SHIP. **In progress: I-5 shipped at `897b928`** and routed one design defect here (KD-51), ruled as §8.4 **A-26** and built as **I-5a** at `b6200e6`, which QA round 22 verified and which routed one more (R22-1), ruled as §8.4 **A-27** and built as **I-5b** at `38d23c9`, which QA round 23 verified and which routed one more (R23-1), ruled as §8.4 **A-28** and built as **I-5c**, which QA rounds 24 and 25 closed. **I-6 then shipped and QA round 26 verified it**: the write path is sound, the bookkeeping around it is not, and round 26 routed two design defects here — ruled as §8.4 **A-29** and §4.3 **A-30** and scheduled with round 26's four builder findings as **I-6a**, which QA round 27 verified (0 blockers, 3 MINOR). **I-7 then shipped and QA round 28 verified it**: `travelStats` itself held at every boundary, and the round returned **SEND BACK** on what is underneath it — **R28-1 (BLOCKER)**, the two-digit-year rule inside `dayNumber`, and **R28-2 (MAJOR)**, an exit criterion 6 that cannot catch a persisted `countriesVisited`. Ruled at revision 25 as §2.1 **A-32**, §8.4 **A-33** and §8.4 **A-34**, and scheduled with round 28's four builder findings and two stale ceilings as **I-7a**, which is **owed before I-8**. Still owed: `REVIEW.md` 2a routing **A-1**'s provenance half (its `travelStats` half is closed by A-31), round 27's **R27-1** and **R27-2** (both builder, both MINOR, neither blocking I-7a), and the breaker board items **B-1**…**B-4** before 2b's next breaker round |
+| **2b — the lifetime map and travel identity** | `countryOf` + the generated country index, `travelStats`, the widened `TripSummaryRow` + `SUMMARY_VERSION` rescan, the **Map** and **Profile** surfaces | *"show me everywhere I've been"* — the signature experience, from data that already exists | **UNBLOCKED** by 2a's SHIP. **In progress: I-5 shipped at `897b928`** and routed one design defect here (KD-51), ruled as §8.4 **A-26** and built as **I-5a** at `b6200e6`, which QA round 22 verified and which routed one more (R22-1), ruled as §8.4 **A-27** and built as **I-5b** at `38d23c9`, which QA round 23 verified and which routed one more (R23-1), ruled as §8.4 **A-28** and built as **I-5c**, which QA rounds 24 and 25 closed. **I-6 then shipped and QA round 26 verified it**: the write path is sound, the bookkeeping around it is not, and round 26 routed two design defects here — ruled as §8.4 **A-29** and §4.3 **A-30** and scheduled with round 26's four builder findings as **I-6a**, which QA round 27 verified (0 blockers, 3 MINOR). **I-7 then shipped and QA round 28 verified it**: `travelStats` itself held at every boundary, and the round returned **SEND BACK** on what is underneath it — **R28-1 (BLOCKER)**, the two-digit-year rule inside `dayNumber`, and **R28-2 (MAJOR)**, an exit criterion 6 that cannot catch a persisted `countriesVisited`. Ruled at revision 25 as §2.1 **A-32**, §8.4 **A-33** and §8.4 **A-34**, and scheduled with round 28's four builder findings and two stale ceilings as **I-7a**. **I-7a then shipped and QA round 29 verified it**: **A-32 held** against three oracles that are not `Date` and **A-34** held at every lifecycle boundary, and the round returned **SEND BACK** again on **R29-1 (MAJOR)** — A-33's port grep is a whole-file check and the fault it forbids still reaches a real IndexedDB record with every gate green — and **R29-2 (MAJOR)** — the *exact*-date branch of both trip forms mints 664,377 days from one mistyped digit. Ruled at revision 26 as §2.3 **A-35**, §8.4 **A-36** and §8.4 **A-37**, and scheduled with round 29's three builder findings as **I-7b**, which is **owed before I-8**. Still owed: `REVIEW.md` 2a routing **A-1**'s provenance half (its `travelStats` half is closed by A-31), round 27's **R27-1** and **R27-2** (both builder, both MINOR, neither blocking I-7a), and the breaker board items **B-1**…**B-4** before 2b's next breaker round |
 | **2c — participants** | `Trip.participants`, three build functions, the participants editor, *"people you have travelled with"* on the profile | you can say the trip was with your girlfriend and her family, and it grants them nothing | Not started; gated on 2b |
 
 **Mapped onto the increment sequence below** (revision 10): **2a = I-1 → I-4**, **2b = I-5 → I-8**,
@@ -1158,6 +1189,13 @@ design defects QA round 28 found *under* I-7 — a `dayNumber` that reads year `
 gate that greps declarations while the danger is a value. It sits directly after I-7 and is **owed before
 I-8**, for the I-5c version of the reason: A-32 is data loss on a path a user reaches in four clicks, and
 a rescan does not quietly forgive a document that cannot be parsed.)*
+
+*(Revision 26: **I-7b** carries §2.3 **A-35**, §8.4 **A-36** and §8.4 **A-37**, the four design findings QA
+round 29 found *under* I-7a — an exit criterion whose static port check a reassigned parameter walks past,
+an unbounded day skeleton behind a `<input type="date">`, and two bounds stated over documents that are
+applied to rows. It sits directly after I-7a and is **owed before I-8** for the same reason: A-36 is the
+gate that would otherwise certify the increment that puts `travelStats` on a screen, and A-37 is what stops
+that screen rendering a five-digit year.)*
 
 ### Deliverables
 
@@ -2307,8 +2345,119 @@ increment that puts `travelStats` on screen.)*
   failure is the breaker's own sentinel-collision expectation and is theirs to re-express, not a gate
   condition here); `npm run typecheck` and `npm run test:tap`
   green; `Object.keys(core).length` re-counted; `qa/r2-constraints.mjs` no worse than its one known
-  R2-18 FAIL. **A-33 6b-4's Chromium read-back is *named* here and is not a gate condition** — it is a
-  `qa/` probe, it needs a browser, and the gate is 6b-1…6b-3.
+  R2-18 FAIL. ~~**A-33 6b-4's Chromium read-back is *named* here and is not a gate condition** — it is a
+  `qa/` probe, it needs a browser, and the gate is 6b-1…6b-3.~~ *(Revision 26: the first half stands — it
+  stays out of `npm run test:tap` — and the second is **superseded by §8.4 A-36 Part 4**: it is a required,
+  **recorded** ship-gate condition for any increment touching the web port, and round 29 both wrote it
+  (`qa/i7a-idb-rowkeys.mjs`) and ran it here, so *"there is no browser in this environment"* is no longer
+  a reason.)*
+- **Ship gate — status at revision 26: NOT MET, and the calendar is not the reason.** QA round 29 returned
+  **SEND BACK** (0 BLOCKERS, 2 MAJOR, 5 MINOR) at `527d3a1`. **A-32 is closed end to end and closed
+  properly** — re-derived against Fliegel–Van Flandern, Zeller and a brute-force walker rather than against
+  `Date.UTC`, which is blind below year 100 and had therefore been blind in exactly the band the BLOCKER
+  lived in; `packages/core/src` now contains zero `Date` constructions and `validateTrip` can see a
+  day-drift again. **A-34 holds at every lifecycle boundary.** R28-3, R28-4, R28-5, R28-6, R28-8 are closed.
+  What did not close is **R28-2, reopened as R29-1 (MAJOR)**: A-33's 6b-2 is a whole-file grep, and the
+  fault it exists to forbid still reaches a real IndexedDB record with exit criterion 6 at **14/0**, the
+  suite at **835/0** and `tsc` clean on both projects. Round 29 added **R29-2 (MAJOR)** — the *exact*-date
+  branch of both trip forms is unbounded — plus **R29-6** and **R29-7**. All four are ruled (§2.3 **A-35**,
+  §8.4 **A-36**, §8.4 **A-37**) and scheduled with the three builder findings **R29-3**, **R29-4** and
+  **R29-5** as **I-7b**. Nothing in this increment's Built or Verification lines is withdrawn; I-7a's own
+  gate is re-run in I-7b and not here.
+
+#### I-7b — a gate that executes the port, and a bound on the day skeleton
+
+*(Revision 26. Carries `ARCHITECTURE.md` §2.3 **A-35**, §8.4 **A-36** and §8.4 **A-37** — the four design
+findings QA round 29 routed to the architect — plus round 29's three builder findings. **Owed before
+I-8**, for the same reason I-7a was: I-8 is where `travelStats` reaches a screen.)*
+
+- **Built.** Three sources (two in core, plus `cli.ts`), one test file, two `qa/` harness fixes, plus prose.
+  **`packages/core/src/build/days.ts`:** the module-private `MAX_TRIP_SPAN_DAYS = 3653` and A-35's
+  refusal, placed **after** the widening loop and **before** the allocation loop, comparing `span + 1`;
+  `createTrip`'s and `setTripMeta`'s `@throws` lines gain the third throw by name. **No export**, so
+  §2.10 does not move and neither form changes.
+  **`packages/core/src/derive/travelStats.ts`:** A-37's two module-private read gates — `inDomain()`
+  applied to `todayNum`, `a` and `rawB`, and `isMintedCode()` applied to `row.cities[].countryCode` (read
+  once, deciding the count, the key and the emitted value together) and to each `row.countryCodes[]`
+  entry; the composite-key docstring rewritten to cite the gate instead of the mint, and `lifecycle`'s
+  `@throws` prose corrected where it claims a document's validators stand behind a row.
+  **`test/stats-storage.test.ts`:** A-36 — 6b-1 gains its **web-port arm** (the shipped port,
+  type-stripped and evaluated as a `data:` module, driven against the recording double, with the double's
+  own fidelity assertions beside it); 6b-2 keeps its site count and its bare-identifier capture, loses its
+  parameter assertion, and says in its own prose that it is a tripwire; 6b-3's failure message asks for an
+  **executed arm**, not a recipe.
+  **`cli.ts`:** R29-3 — `--today` is normalised or refused, so the header and the lifecycle verdict cannot
+  name a date the numbers below them were not computed for.
+  **`qa/i7-faults.sh`, `qa/i7-exit6.sh`:** R29-4 — a fault whose patch does not apply is a **failure**,
+  loudly and in the exit code, not a line that reads like a pass.
+  **`docs/BUILD-NOTES.md`:** R29-5 — the two "could not verify" items that were verifiable, corrected with
+  the measurements round 29 made (the bundle delta bisected: A-32 **+511**, `travelStats` **−95**).
+  **No client change, no port change, no engine, no `SUMMARY_VERSION` bump, no export-surface movement.**
+- **User-visible outcome.** A mistyped year in the trip form says so instead of quietly building a
+  quarter-gigabyte trip; and the ship gate can, for the first time, catch a lifetime count on its way into
+  the browser's own database.
+- **Architecture / data model.** **The bound on the day skeleton is a bound on the mint, not on the type.**
+  A-35 refuses a floor on `IsoDate` for A-32 Part 2's reasons and because a year floor would not have
+  caught this (`1900-01-01 → 2500-12-31` is 219,000 days of ordinary years); the cap is on **span**, it is
+  3,653 days for the reasons A-35 Part 3 measures, and it is a refusal boundary rather than a product rule
+  about how long a trip may be. **The gate stops reading source text for the one port it could not run.**
+  A-36's finding is that re-scoping the grep does not enforce the invariant either — a reassigned parameter
+  defeats every static form of it — so the ruling is that *execution* is the mechanism and the static check
+  is a tripwire. **A row is not a document** (A-37): nothing revalidates a `TripSummaryRow` on read, so
+  every claim `travelStats` makes about a field it read is discharged on the read.
+- **Verification.** Exit criterion 6 in its **revision-26** form, and the new day-skeleton criterion. Plus,
+  each with the fault that makes it red:
+  - **The span cap holds at both edges** `[stated]`. `2020-01-01 → 2029-12-31` creates (3,653 days);
+    `2020-01-01 → 2030-01-01` throws (3,654); `0202-01-01 → 2020-12-31` throws and the message names the
+    span, the cap and both dates. Through the product path as well as the unit: `store.createTrip` rejects
+    and `PastTripForm`'s existing `catch → onError` puts the message on screen. **Injected fault:** delete
+    the check → 664,377 days and no issue from `validateTrip`; compare the exclusive span → the 3,653 case
+    goes red.
+  - **The web port is executed and read back** `[stated]`. `qa/i7a-exit6b.sh`'s **G1** and **G4** go red,
+    as do **G7** (the parameter reassigned before an unchanged put) and **G8** (a third `SUMMARIES.put`
+    site writing a *correct* row, which only 6b-2's site count sees). The ten A-33 Part 6 faults stay red.
+    **Injected fault:** each of the four, applied alone in a throwaway worktree, with the count recorded.
+  - **The double is not lying** `[stated]`. Beside the key assertions: a stale `expectedVersion` refuses
+    and writes nothing; `refreshSummary` on an absent record refuses; `refreshSummary` leaves the record's
+    `StorageVersion` unchanged (§4.3 A-30). **Injected fault:** break the double's transaction settling and
+    these go red before the key assertions can give a false green.
+  - **The real bytes, recorded** `[stated]`. `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node
+    --experimental-strip-types qa/i7a-idb-rowkeys.mjs` is **ALL OK**, and `--fault` is **3 FAIL**, both
+    recorded in BUILD-NOTES with the measured key count. A disclosed gap if no browser exists; not a pass.
+  - **A stored row cannot emit a non-`IsoDate`** `[stated]`. A row with `endDate: '9999-13-45'` reports
+    `lastVisit === '9999-12-31'` and every emitted date matches `/^\d{4}-\d{2}-\d{2}$/`; the row still
+    counts, still contributes its countries, and nothing throws. **Injected fault:** remove `inDomain` and
+    `lastVisit` is `"10000-02-14"`.
+  - **A stored country code is read through the mint's own shape** `[stated]`. `'--'`, `''`, `'A|'` and
+    `'hr'` all read as `null`: counted in `unattributedCities`, emitted as `null`, and `'--'` + `Paris`
+    groups with `null` + `Paris` into **one** row (A-31 Part 5 residue 6, not a collision); `'A|'` + `'x'`
+    and `'A'` + `'|x'` are **two** rows. A malformed `countryCodes[]` entry produces no
+    `TravelStatsCountry`. **Injected fault:** drop the gate and the merge and the collision both come back.
+  - **`--today` is normalised or refused** `[stated]`, R29-3. `stats --today 2026-13-45` and `trip --today
+    2026-13-45` never print a date the numbers were not computed for. **Injected fault:** echo the raw
+    argument.
+  - **An unrun fault is a failure** `[stated]`, R29-4. Drift an anchor in `qa/i7-faults.sh` and
+    `qa/i7-exit6.sh` and both report FAIL and exit non-zero, where today they print
+    `(patch failed to apply — shape moved)` and exit 0.
+  - **Non-regression** `[snapshot + legacy]`. `npm run golden` produces no diff (A-37's gates change no
+    number on the reference corpus — the row's codes are minted and in-domain — and if one moves, that is a
+    finding, not a golden to regenerate); the sample's source sha does not move;
+    `Object.keys(core).length` is still **75**; the reference row is unchanged and still
+    `summaryVersion: 4`; `npm run typecheck` and `npm run test:tap` green; `qa/r2-constraints.mjs` no worse
+    than its one known R2-18 FAIL.
+- **Dependencies / blockers.** I-7a. **No new external dependency, and specifically not a browser in the
+  gate** — the recording double is ~80 lines of test-only code with no imports beyond `node:*`, and the
+  Chromium probe stays in `qa/`. Touches `derive/travelStats.ts` and `build/days.ts`, so it inherits I-7a's
+  and I-6a's non-regression obligations: the A-29 gate tests stay green untouched, the country index, the
+  generator and `countryOf` do not move, the four-number `countries.json` cross-check still holds, and
+  A-32's date helpers are not edited by this increment at all.
+- **Ship gate.** I-7a's ship gate re-run in full, plus: exit criterion 6 in its revision-26 form with
+  `qa/i7-exit6.sh` at 10 of 10 red and `qa/i7a-exit6b.sh` at **G1, G4 and G7 red** (G2, G3, G5, G6 stay
+  red); the new day-skeleton criterion at both edges; `qa/i7a-span.mjs` **ALL OK** where it is 2 FAIL by
+  design today; `qa/i7a-today.mjs` ALL OK (4 FAIL today); `qa/i7a-provisional.mjs` §4 and `qa/i7-edges.mjs`
+  re-expressed to A-37 Part 4's stated answer **by the breaker, not by the builder** — a builder who edits
+  a probe's expectation to match their own output has removed the check; and the Chromium read-back run and
+  recorded, or its absence disclosed.
 
 #### I-8 — The Map and Profile surfaces — **2b ships here**
 
@@ -2345,8 +2494,16 @@ increment that puts `travelStats` on screen.)*
   confirmed one, on both the map and the profile, in the same pass. **Injected fault:** render
   `provisional` rows identically to confirmed ones and the assertion goes red — which is the fault that
   shipped in `cli.ts stats` and was found by a breaker rather than by a test.
-- **Dependencies / blockers.** I-5, I-6, I-7, **I-7a** — A-32's dates round-trip and A-34's `provisional`
-  both land there, and this is the increment that would otherwise render both wrong on screen.
+  **And `travelStats` is rendered behind a boundary that can refuse** (revision 26, §8.4 **A-37** Part 2).
+  A stored summary row is not a validated document, and a row whose date is not even shape-valid still
+  throws out of `travelStats` by A-31 Part 4's sanctioned `@throws` — there is no honest lifecycle for it
+  and `TravelStats` has no `Issue` channel to degrade into. So the Map and Profile catch it and show
+  *"we could not read your travel history"* with the offending row id, rather than a blank screen or an
+  unhandled rejection. Every other malformation A-37 handles inside `travelStats` and this surface never
+  sees.
+- **Dependencies / blockers.** I-5, I-6, I-7, **I-7a**, **I-7b** — A-32's dates round-trip and A-34's
+  `provisional` land in I-7a, A-37's read gates in I-7b, and this is the increment that would otherwise
+  render all three wrong on screen.
 - **Ship gate.** **2b is independently shippable here.** Criteria 4, 5, 6 and 7 all pass; the map bugs have
   a test each rather than a comment each.
 
@@ -2522,17 +2679,39 @@ first.
     pinned set, not as the filter that decides it. **Injected fault:** `daysAbroad: number` on the row,
     minted — a count whose name carries no counting suffix and no plural domain noun, which the
     revision-24 classifier passed `[stated]`
-  - **b′. The rows a real port actually holds, read back.** Drive `packages/client`'s memory port — through
-    the store's write path, through the rescan's `refreshSummary`, and directly — then `listTrips()` and
-    assert every returned row's top-level keys equal the type's and its leaf paths are a subset of a′'s.
-    This is the check that ends at a value in a store rather than at text in a file. **Injected fault:**
-    spread a lifetime tally into `memory.ts`'s `summaries.set` `[stated]`
-  - **b″. Every port hands its summary store the value it was given.** In each `StoragePort`
-    implementation, the expression written to the summary store is the bare parameter identifier `summary`
-    and nothing else, at a **pinned number of sites** (2 in `apps/web/src/ports/storage.ts`, 2 in
-    `packages/client/src/ports/memory.ts`); plus a **port census** — the set of source files mentioning
-    `refreshSummary` is exactly four — so a third implementation cannot appear without a recipe.
-    **Injected fault:** the F8 spread in the web port, and a third `SUMMARIES.put` site `[stated]`
+  - **b′. Every `StoragePort` implementation the census names is EXECUTED, written through and read back.**
+    *(Rewritten at revision 26, §8.4 **A-36**, QA R29-1. The revision-25 form said "a real port" and meant
+    the memory port; the web port was covered by b″'s grep, and a one-line variant of the fault that grep
+    was written for walks past it — and past every scoped version of it — into real IndexedDB.)* Two arms,
+    one per implementation, both in the suite and both on bare Node: **`packages/client`'s memory port**
+    through the store's write path, through the rescan's `refreshSummary`, and directly; and
+    **`apps/web`'s IndexedDB port**, type-stripped and evaluated against a ~80-line **recording double**
+    of the IndexedDB API surface it uses — it has zero runtime imports and reads `indexedDB` off the
+    global, so it runs. For each: every value that reaches the summary store, and every row `listTrips()`
+    returns, has top-level keys equal to the type's and leaf paths a subset of a′'s. The double's own
+    fidelity is pinned by asserting the ports' **outcomes** too (a stale `expectedVersion` refuses and
+    writes nothing; `refreshSummary` on an absent record refuses; `refreshSummary` moves no fence).
+    **Injected faults, all of which must be red:** a spread into `memory.ts`'s `summaries.set`; the same
+    spread in the web port; a `const summary = { ...row, … }` shadow above the web port's put; the web
+    port's parameter **reassigned** before an unchanged put; and `listTrips` widening the rows it returns
+    `[stated]`
+  - **b″. A tripwire on the port source: the summary store's argument, and the site count.** *(Demoted at
+    revision 26, A-36 Part 4 — it was load-bearing for the one port nothing executed, and b′ now executes
+    it.)* In each implementation, the expression written to the summary store is the bare parameter
+    identifier `summary` and nothing else, at a **pinned number of sites** (2 + 2); plus a **port
+    census** — the set of source files mentioning `refreshSummary` is exactly four — so a third
+    implementation cannot appear without an **executed b′ arm**. The parameter-declaration assertion is
+    **withdrawn**: its failure message claimed to close "a local `const summary = {...spread}` above the
+    put" and does not. **Injected fault, and it is the one b′ cannot see:** a *third* `SUMMARIES.put` site
+    that writes a correct row `[stated]`
+  - **b″′. The real persisted bytes, out of band and recorded.** Any increment that touches
+    `apps/web/src/ports/storage.ts`, the recording double or `ROW_KEYS` runs `qa/i7a-idb-rowkeys.mjs`
+    against real Chromium — the shipped port evaluated in a real page, written through on both mutating
+    methods, and the `summaries` store read back with a raw transaction that bypasses the port — and
+    records the result in `BUILD-NOTES.md`. **It is not part of `npm run test:tap` and never becomes so:**
+    the gate must run on bare Node with no browser (`BRIEF.md`'s phasing principle, `cairn-constraints` §2
+    and §3). **If no browser is available in the environment, that is a disclosed gap, stated as such, and
+    not a pass** `[stated]`
   - **b‴. Nothing that persists anything imports `travelStats`.** Unchanged from the revision-24 form,
     including its inconclusiveness guard. **Injected fault:** a storage port importing `TravelStats`
     `[stated]`
@@ -2546,6 +2725,15 @@ first.
     mutated copy, different; the input array and its rows byte-identical after the call; and the same rows
     passed in a different order give a deep-equal result — the function sorts a `slice()` into its own
     canonical order (A-31 Part 4 step 2) so no output depends on how the caller built the list `[stated]`
+- **The day skeleton is bounded, in core, at the function that mints it.** *(New at revision 26, §2.3
+  **A-35**, QA R29-2.)* `ensureDays` refuses a span over **3,653 days** — ten Gregorian years, inclusive —
+  before it allocates, so no caller can mint an unbounded day skeleton from a date range: not the two trip
+  forms, not `setTripMeta`, not the legacy importer, not a phase that does not exist yet. Asserted at both
+  edges (`2020-01-01 → 2029-12-31` succeeds at exactly 3,653; `2020-01-01 → 2030-01-01` throws at 3,654)
+  and through the product path (`createTrip` with `0202-01-01 → 2020-12-31` throws instead of building
+  664,377 `Day` records, and the message names the span, the cap and the dates). **Injected fault:** delete
+  the check and the same call builds 664,377 days with `validateTrip` reporting zero issues, which is the
+  shipped behaviour this criterion replaces `[stated]`
 - **Injected fault — the summary is only as fresh as the write that minted it** (§8.4, §0.6). Write three
   trips; bump `SUMMARY_VERSION`; reopen the library. Assert: every row below the version is recomputed
   **from its own document**, the rewritten rows go through the ordinary chained write (the §4.3 structural
