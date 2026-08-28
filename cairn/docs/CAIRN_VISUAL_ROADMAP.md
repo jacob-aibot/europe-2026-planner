@@ -183,11 +183,33 @@ update to this file added that instruction).
 > defect stops being something a person has to spot and becomes a failing test. **Ruled, not yet
 > built:** one builder pass lands the two small fixes plus A-24, then a tester round 20 attacks it.
 
-> **Last updated:** 2026-08-28, against `master` after ARCHITECTURE revision 18 (**A-24** — the
-> automatic read-once check's *reach*: what it watches, which situations it tests, and the one
-> field its test data never carried) — previously revision 17's A-22/A-23. **This pass also rebuilt
-> the whole board against the seven-phase order**, which had been stale since 2026-08-27.
-> Update this line every time you edit this file.
+> **That was built, and round 20 is the round where the copying code itself came up clean.** The
+> tester threw twenty-two more shapes of trip data at it and **all 143 stops of Jacob's real Europe
+> trip**, and found **no** new way to look at borrowed data twice, no crash, and no ticket or door
+> PIN crossing over. The sixth-round defect is now caught by the automatic check rather than by a
+> person, exactly as promised. What round 20 broke instead is the check's **own upkeep**, and it is
+> the same lesson one level further out. The last ruling said in writing *"the test data must fill
+> in every field"* — and shipped nothing that enforces it, so the tester added a pretend new field,
+> fixed the one compile error a builder would see, and slipped a leak straight past a fully green
+> test suite. The same ruling also left **two of its own new fields empty**: the trip's home
+> location — a real address, exactly the kind of thing the design says must never leak — and its
+> free-text notes bag. One genuine new defect turned up too, narrow but real: if you have **three
+> cities with the same name** in one trip, the copy can file a place under the wrong one and nothing
+> reports it. The architect's ruling (`ARCHITECTURE.md` **A-25**, revision 19): make the test data's
+> completeness a **rule the compiler and the tests enforce**, not a sentence someone has to
+> remember — a new field on a trip, a stop, a place or a city now fails the build until the test
+> data actually fills it in, and an empty value that would hide a whole subtree has to be justified
+> out loud. Plus one one-line fix for the three-same-name-cities case, city records added to what
+> the check watches, and a fifteenth test situation that builds them. **And A-25 closes this
+> arc**: after seven rounds on one file, it writes down the exact six checks that must pass for
+> "closed" to be true, and the single thing that would re-open it — a blind spot in the check
+> itself, not just another finding. **Ruled, not yet built:** one builder pass lands A-25, then a
+> tester round 21 verifies the six checks.
+
+> **Last updated:** 2026-08-28, against `master` after ARCHITECTURE revision 19 (**A-25** — the
+> automatic read-once check's *upkeep*: test-data completeness enforced by the compiler instead of
+> by memory, the last narrow copy defect, and a **written closing criterion** for the seven-round
+> arc) — previously revision 18's A-24. Update this line every time you edit this file.
 
 **Status vocabulary used throughout:** 🟢 COMPLETE · 🟡 IN PROGRESS · 🟠 NEXT / APPROVED ·
 🔴 BLOCKED · ⚪ NOT STARTED. Also: **built** (code exists) vs **verified** (an adversarial tester
@@ -269,16 +291,18 @@ Everything below is not just built — it's **shipped**, per the manager's SHIP 
   misleading single time.
 - **A command-line tool** (`cli.ts`) — `trip`, `day`, `conflicts`, `cost`, `validate`, `export`,
   runnable with no browser at all.
-- **615 automated tests, all passing** (432 at the last update to this document; 333 the update
+- **618 automated tests, all passing** (615 at the last update to this document; 432 the update
   before), plus a wide stack of adversarial probe scripts under `cairn/qa/` built to actively try to
   break specific claims — a race condition, a database wipe mid-write, a symlink escape, a merge
   landing at the same instant as an edit.
 - **A standing automatic check on the copy path** (`packages/core/test/readOnce.test.ts`, new since
   round 18) — it counts how many times the copying code looks at each piece of borrowed data and
   fails the build if anything is looked at twice without a written-down reason. It is the first
-  thing in this project that catches a *class* of defect rather than a known one, and round 19
-  proved it works by planting twenty and catching twenty. Round 19 also found where it was not
-  looking; that is A-24, ruled and not yet built.
+  thing in this project that catches a *class* of defect rather than a known one; round 19 proved it
+  works by planting twenty and catching twenty, and round 20 confirmed the copying code itself is
+  now clean across twenty-two more data shapes and all 143 stops of the real trip. The remaining
+  work is on the check's own upkeep — that is A-25, ruled and not yet built, and it is what makes
+  this arc closeable.
 
 ---
 
@@ -443,22 +467,28 @@ it is closed.
 
 ```
   Architect  →  Builder  →  Breaker  →  Manager
-   (done)      (next up)    (round 20)   (2a gate)
+   (done)      (next up)    (round 21)   (2a gate)
 ```
 
-Phase 2 is underway, and the immediate sequence is short and specific:
+Phase 2 is underway, and the immediate sequence is short, specific, and — for the first time in
+this arc — **finite by written agreement**:
 
-- **Architect — done.** `ARCHITECTURE.md` revision 18 (**A-24**) is written: the read-once check's
-  reach, the four new test situations, the ticket in the test data.
-- **Builder — next.** One pass: two small fixes in the copy (look up "which trip" once; look up the
-  receiving day once), then A-24's changes to the check itself. The order matters — with A-24 in
-  and the first fix backed out, the check must go **red** naming the defect. If it doesn't, A-24
-  was implemented wrongly, and that gets reported rather than worked around.
-- **Breaker — round 20**, attacking that pass. The standing rule holds: it may not quietly add an
-  exception to the check's list; a new exception is an architect's ruling.
+- **Architect — done.** `ARCHITECTURE.md` revision 19 (**A-25**) is written: test-data completeness
+  enforced by the compiler and the tests instead of by memory, one one-line fix for the
+  three-same-name-cities case, city records added to what the check watches, a fifteenth test
+  situation, and a **closing criterion** for the whole seven-round arc.
+- **Builder — next.** One pass, in a fixed order: the one-line fix first, then the check's new
+  watch list and test situation, then the completeness machinery. Two of the steps must be shown to
+  fail **and** pass — back the fix out and the check must go red naming exactly the right thing;
+  invent a new field and the build must refuse to go green until the test data fills it in. If
+  either can't be reproduced, A-25 was implemented wrongly and that gets reported rather than
+  worked around.
+- **Breaker — round 21**, attacking that pass **against the six-point closing criterion** rather
+  than open-endedly. The standing rule holds: it may not quietly add an exception to the check's
+  list; a new exception is an architect's ruling.
 - **Manager** makes the **2a SHIP / SEND BACK** call once I-3a and I-4a are genuinely closed —
-  which is the first manager gate since Phase 1, and the thing eight rounds have been working
-  toward. Only this role can open the rest of Phase 2.
+  the first manager gate since Phase 1. With the criterion met, that call is a judgment about the
+  two increments rather than another round of this arc. Only this role can open the rest of Phase 2.
 
 **Still standing from Phase 1, unchanged:** whenever the merge/write code is next touched, the
 first breaker round on it is pre-committed to attack `doMerge`/`writeAndSettle` — the code behind

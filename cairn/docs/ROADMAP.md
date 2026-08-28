@@ -114,6 +114,25 @@ outright block on share/friend/public-share-link work is **unchanged**, and the 
 what moves is that the *sixth* consecutive defect in this file (R19-1, the credit again) becomes a **red test
 rather than a hand-found finding**, which is the only thing that ends the arc. I-5 stays unblocked.
 
+**Revision 19, 2026-08-28.** QA round 20 — the breaker pass over A-24 — is the first round of this arc whose
+findings are almost entirely about the **guard** rather than the guarded code: 22 further document shapes and
+all **143** of the reference trip's real stops produced no eighth multi-read in `copyStop.ts`, and A-24's
+two-sided acceptance check reproduced exactly. What it falsified is A-24's own maintenance clause (*"the
+fixture populating every field of both records is part of this contract"* — a sentence with nothing behind
+it, and the same ruling left `Trip.meta` absent and `Trip.homeBase` null on the roots it had just added) plus
+one narrow product site (`refileCityKey`'s step-4 fold reads a candidate `City.order` twice, so a copied
+place can file under the wrong one of two cities the recipient named identically, with `validateTrip` at 0).
+`ARCHITECTURE.md` revision 19 answers it as **A-25**: fixture completeness becomes **structural** — a
+compile-time `Record<keyof T, true>` map, a runtime key-set assertion and a declared-nulls list, in the idiom
+`copyStop.test.ts` has used since A-15 — `City` **rows** become census roots, one hoist closes the site, a
+fifteenth matrix row builds the three same-named cities no row built, and A-24's residue disclosure is
+corrected and completed. **A-25 Part 6 declares the arc closed for I-4a's ship gate on a written
+six-clause criterion**, with the remaining residue named and bounded and the re-opening condition narrowed to
+one thing. This file changes in exactly the same one way revisions 12–18 did: **I-4a's Built / Verification /
+Ship-gate lines** — and, for the first time in the arc, the Ship-gate line records a **closure** rather than
+another round. **No new increment, no phase re-scoped and no change to the order.** I-4a's outright block on
+share/friend/public-share-link work is **unchanged** until the manager's 2a gate. I-5 stays unblocked.
+
 > **Phase numbers changed once, here.** Every heading below carries its old number, and every "Phase N"
 > written in `ARCHITECTURE.md` §1–§7, `BUILD-NOTES.md` or `QA-FINDINGS.md` before revision 9 means the
 > *named* phase it described: "Phase 2" = accounts/server (**now 3**), "Phase 3" = ingest (**now 4**),
@@ -1309,6 +1328,31 @@ builder against the finding itself and is not an increment.
   and a kind-gated regression passed 615/615. No `Place`/`Stop`/`Ticket` shape change, no `schemaVersion`
   bump, no `redactText` change, no `fromJSON`/`toJSON`/`packages/client`/`apps/web` change, no §2.10 movement
   (**71** — `censusTrip` and `TRIP_SKELETON` are test-local).
+  **Revision 19 adds one, and it is the guard's own completeness rather than its reach or its mechanism
+  (§2.9 A-25; QA R20-1…R20-5):** **one line of product code** — `refileCityKey`'s step-4 fold hoists the
+  candidate's `order` into a `const`, so the number the tie-break is decided on is the number the winning
+  record carries (with two reads, three same-named target cities and a flipping `order` file the copied
+  `Place` under the wrong city and `validateTrip` reports **0**, because a `Place` carries no provenance).
+  Everything else is the census. **Fixture completeness stops being a sentence in a docstring**: four
+  `Record<keyof T, true>` maps (`Trip`, `Stop`, `Place`, `City`) so a new field fails `npm run typecheck` in
+  `readOnce.test.ts` as well as in `copyStop.test.ts`, a **runtime key-set assertion** tying each maximal
+  fixture instance to its map with **no `filter`** (unlike `copyStop.test.ts`'s, which excludes `ticket`
+  because that assertion is about what may *cross* and this one is about what is *watched*), a pinned list of
+  row 14's deliberate absences, and a **declared-nulls** test — because a key-set assertion cannot see a
+  `null`, and `homeBase: null` hid a named home coordinate. The fixtures gain `homeBase` and `meta` on all
+  three `Trip`s, `countryCode`/`meta` on both documents' `City` rows, `note`/`links`/`hours` on the target's
+  `Place` rows, and a **populated** `bookingId` rather than a declared null, because the regression shape this
+  arc keeps meeting (`...(src.x && … ? { x: src.x } : {})`) short-circuits after one read against a null and
+  is invisible exactly as `ticket` was. **`City` rows become roots** (`srcCity0…n`, `tgtCity0…n`) — A-24's
+  trigger was written about the wrong verb, and a value that *decides where a crossed record is filed* is in
+  scope exactly as one that crosses is, R18-4 being the precedent — with **one** new allow-list entry
+  (`tgtCity0.key`, `max: 2`) and a fifteenth matrix row (three same-named target cities at orders 5/3/4; two
+  do not reach the tie-break, because the first match short-circuits on `best === null`). A-24's residue
+  disclosure is **corrected**: the recipient's `Day.id ×2` is not a residue but a **floor** under A-24's own
+  spread-versus-read discriminator, and `reindex`/`insertionIndex`'s `placement` multi-read is ruled **out of
+  scope** for this arc with three reasons and a trigger. No `Place`/`Stop`/`City`/`Trip`/`Ticket` shape
+  change, no `schemaVersion` bump, no `redactText` change, no `fromJSON`/`toJSON`/`build/stops.ts`/
+  `packages/client`/`apps/web` change, no §2.10 movement (**71**).
 - **User-visible outcome.** *"日本 2019 — 東京, 京都"* records as two cities instead of one, in any script,
   and a document that already collapsed two cities into `"-"` says so on screen instead of silently
   mis-attributing every day of the trip.
@@ -1406,6 +1450,23 @@ builder against the finding itself and is not an increment.
   `Ticket` kind**, that `stop.ticket` is null and that the kind's own payload (`href`, `path`,
   `mailMessageId`/`filename`) is absent from `JSON.stringify(trip)`, with a compile-time exhaustiveness map
   so a fourth kind fails `typecheck` before it fails a test.
+  **Added at revision 19 (A-25), and the injected fault is R20-1's own four-step mutation, run end to end:**
+  a 16th `Stop` field written by `makeStop` only when truthy (`voucher?: { code: string }` — exactly
+  `ticket`'s shape) fails `npm run typecheck` at **two** sites rather than one; satisfying **both** maps the
+  way a builder would leaves the census's fixture test **red** naming `srcStop`; populating the fixture makes
+  it green; and R19-5's exact plant on the new field
+  (`...(src.voucher && src.voucher.code ? { voucher: src.voucher } : {})`) then reds the census with
+  `srcStop.voucher ×3` on **every** scenario row. All four steps, or Part 1 is not implemented — at
+  `3d1be3b` the same mutation ended 618/618 green with the census blind. The null clause is verified the same
+  way: a double read of `Trip.meta` and R18-5's hybrid-coordinate shape on `Trip.homeBase` — **both 2/2 green
+  before** — are **both red** after, naming `srcTrip.meta ×4`, `srcTrip.meta.sourceHash ×2`,
+  `srcTrip.homeBase ×4` and `srcTrip.homeBase.at ×2`, and `DECLARED_NULLS` is **empty**. Then the site
+  itself, two-sided: with `City` rows censused and row 15 built, reverting the `refileCityKey` hoist reds
+  assertion 1 naming **exactly** `15 · … : tgtCity1.order ×2` and nothing else, and applying it is green with
+  **all eight** allow-list entries observed at exactly their max — the eighth (`tgtCity0.key`) on row 9, the
+  only row that reaches both of its reads. Ceilings unmoved and measured, not asserted: **620** tests (618 +
+  the two new ones), typecheck clean on both projects, 71 exports, reference trip 2/4/11, `validateTrip` 11,
+  goldens and sample byte-identical at sha `40955ca0b182`.
 - **Dependencies / blockers.** I-4 (the form it corrects). None external.
 - **Ship gate.** The slug expression appears **nowhere** in `apps/` or `packages/` (grep); no call site
   outside `packages/core` constructs a city key; each of the three new validation codes has an
@@ -1484,6 +1545,32 @@ builder against the finding itself and is not an increment.
   `readOnce.test.ts` is re-derived against the *seven*-entry allow-list and the 14 rows, since A-23's
   *"a divergence between the two is itself a finding"* is unchanged); §6 is already green and stays green.
   Nothing under `qa/` is edited by the pass that lands this.
+  **Added at revision 19 (A-25), and this is the line that closes the arc rather than extending it.** The
+  same standing rules first: **no ninth `ALLOWED` entry and no raised `max`** by this pass or any later
+  builder pass (a multi-read the eight entries do not name is a **finding routed to the architect**); a
+  now-dead entry is deleted in the same pass; and nothing under `qa/` is edited — `qa/r19-census-gaps.mjs` §5
+  pins *seven* entries and goes red at eight, `qa/r20-census-reach.mjs` §2 measures QA's own local copy of
+  the fixtures, and R20-5's `qa/r14-horizon-copy.mjs` §7 ceiling (`kds.length === 49` → **50**) is one
+  character, all three **QA's to re-express in round 21** under A-19 assertion 7, with the builder *reporting*
+  the lines it expects to move. New, and it is a process gate rather than a code one: **a pass that mints a
+  KD runs the probe that pins the KD count and says so** — two earlier passes declined to mint one *because
+  of* that line, so it was known to be load-bearing, and the pass that broke it reported *"nothing in this
+  pass went unrun."*
+  **THE CLOSING CRITERION (§2.9 A-25 Part 6), stated here so it is verified rather than declared.** The
+  read-once / credential-boundary arc is **closed for this increment's ship gate** when round 21 confirms all
+  six of: **(1)** `test:tap` green with `readOnce.test.ts`'s **four** tests inside it, typecheck and
+  `web:build` clean, **71** exports, 2/4/11, `validateTrip` 11, goldens and sample byte-identical at
+  `40955ca0b182`; **(2)** the Part 3 hoist red-and-green two-sided, naming exactly `tgtCity1.order ×2`, with
+  all **eight** entries at exactly their max; **(3)** R20-1's four-step mutation reproduced end to end, all
+  four steps; **(4)** the `meta` and `homeBase` plants red and `DECLARED_NULLS` empty; **(5)** no ninth entry
+  and no raised max; **(6)** the A-25 Part 5 residue re-derived by the breaker from a fully-opened census
+  rather than inherited from this document. **The re-opening condition is exactly one thing** — a multi-read
+  the shipped census structurally **cannot see**, of a value that crosses a person boundary or that decides
+  where a crossed record is filed. A finding *inside* the census's roots is a normal regression routed as
+  ordinary builder work, not a re-opened arc; a count that moves, a message that changes, or a residue A-25
+  Part 5 already names are none of them re-openings. **Consequence for the manager's 2a gate:** with those
+  six met, I-4a is closed on this class and the gate is a judgment about I-3a and I-4a as increments, not
+  another round of this arc.
 
 ---
 

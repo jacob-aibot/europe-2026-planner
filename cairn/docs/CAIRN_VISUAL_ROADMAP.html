@@ -482,6 +482,28 @@ coordinate-less place and the copy within one trip; put a ticket in the test dat
 ticket rather than one. The payoff is concrete &mdash; with A-24 in place, that sixth defect stops being
 something a person has to spot and becomes a failing test. <strong>Ruled, not yet built:</strong> one builder
 pass lands the two small fixes plus A-24, then a tester round 20 attacks it.</p>
+<p><strong>That was built, and round 20 is the round where the copying code itself came up clean.</strong>
+The tester threw twenty-two more shapes of trip data at it and <strong>all 143 stops of Jacob's real Europe
+trip</strong>, and found <strong>no</strong> new way to look at borrowed data twice, no crash, and no ticket
+or door PIN crossing over. The sixth-round defect is now caught by the automatic check rather than by a
+person, exactly as promised. What round 20 broke instead is the check's <strong>own upkeep</strong>, and it
+is the same lesson one level further out. The last ruling said in writing <em>&ldquo;the test data must fill
+in every field&rdquo;</em> &mdash; and shipped nothing that enforces it, so the tester added a pretend new
+field, fixed the one compile error a builder would see, and slipped a leak straight past a fully green test
+suite. The same ruling also left <strong>two of its own new fields empty</strong>: the trip's home location
+&mdash; a real address, exactly the kind of thing the design says must never leak &mdash; and its free-text
+notes bag. One genuine new defect turned up too, narrow but real: if you have <strong>three cities with the
+same name</strong> in one trip, the copy can file a place under the wrong one and nothing reports it. The
+architect's ruling (<code>ARCHITECTURE.md</code> <strong>A-25</strong>, revision 19): make the test data's
+completeness a <strong>rule the compiler and the tests enforce</strong>, not a sentence someone has to
+remember &mdash; a new field on a trip, a stop, a place or a city now fails the build until the test data
+actually fills it in, and an empty value that would hide a whole subtree has to be justified out loud. Plus
+one one-line fix for the three-same-name-cities case, city records added to what the check watches, and a
+fifteenth test situation that builds them. <strong>And A-25 closes this arc</strong>: after seven rounds on
+one file, it writes down the exact six checks that must pass for &ldquo;closed&rdquo; to be true, and the
+single thing that would re-open it &mdash; a blind spot in the check itself, not just another finding.
+<strong>Ruled, not yet built:</strong> one builder pass lands A-25, then a tester round 21 verifies the six
+checks.</p>
 </div>
 
 <div class="wrap">
@@ -489,7 +511,7 @@ pass lands the two small fixes plus A-24, then a tester round 20 attacks it.</p>
   <div class="brand">
     <h1>CAIRN</h1>
     <div class="tagline">"You are here"</div>
-    <div class="updated">Updated 2026-08-28 · against <code>master</code>, after ARCHITECTURE revision 18 (A-24 &mdash; the automatic read-once check's <em>reach</em>: what it watches, which situations it tests, and the one field its test data never carried). This pass also rebuilt the whole board against the seven-phase order.</div>
+    <div class="updated">Updated 2026-08-28 · against <code>master</code>, after ARCHITECTURE revision 19 (A-25 &mdash; the automatic read-once check's <em>upkeep</em>: test-data completeness enforced by the compiler instead of by memory, the last narrow copy defect, and a written closing criterion for the seven-round arc).</div>
   </div>
 
   <!-- ============ DECISION CALLOUT ============ -->
@@ -638,15 +660,17 @@ pass lands the two small fixes plus A-24, then a tester round 20 attacks it.</p>
           and copying a stop with a credit line that shows up everywhere.</li>
         <li><strong>A command-line tool</strong> for inspecting a trip, its conflicts and costs
           with no browser at all.</li>
-        <li><strong>615 automated tests, all passing</strong> (432 last update, 333 the one
+        <li><strong>618 automated tests, all passing</strong> (615 last update, 432 the one
           before), plus a wide stack of adversarial probe scripts built to try to break named
           claims.</li>
         <li><strong>A standing automatic check on the copy path</strong> — it counts how many times
           the copying code looks at each piece of borrowed data and fails the build if anything is
           looked at twice without a written-down reason. The first thing here that catches a
           <em>class</em> of defect rather than a known one; round 19 proved it by planting twenty
-          and catching twenty. New since round 18, and its blind spots are A-24 — ruled, not yet
-          built.</li>
+          and catching twenty, and round 20 confirmed the copying code itself is now clean across
+          twenty-two more data shapes and all 143 stops of the real trip. The remaining work is on
+          the check's own upkeep — that is A-25, ruled and not yet built, and it is what makes this
+          arc closeable.</li>
       </ul>
     </div>
   </details>
@@ -839,22 +863,26 @@ pass lands the two small fixes plus A-24, then a tester round 20 attacks it.</p>
       <p style="text-align:center;font-weight:700;font-size:1rem;letter-spacing:0.02em;">
         Architect&nbsp;→&nbsp;Builder&nbsp;→&nbsp;Breaker&nbsp;→&nbsp;Manager
       </p>
-      <p style="text-align:center;color:var(--ink-dim);font-size:0.85rem;margin-top:-4px;">Architect done · builder next · breaker round 20 · then the 2a gate</p>
+      <p style="text-align:center;color:var(--ink-dim);font-size:0.85rem;margin-top:-4px;">Architect done · builder next · breaker round 21 · then the 2a gate</p>
       <ul>
-        <li><strong>Architect — done.</strong> <code>ARCHITECTURE.md</code> revision 18
-          (<strong>A-24</strong>) is written: the read-once check's reach, four new test situations,
-          and a ticket in the test data.</li>
-        <li><strong>Builder — next.</strong> One pass: two small fixes in the copy (look up "which
-          trip" once; look up the receiving day once), then A-24's changes to the check. The order
-          matters — with A-24 in and the first fix backed out, the check must go <strong>red</strong>
-          naming the defect. If it doesn't, A-24 was implemented wrongly, and that gets reported
-          rather than worked around.</li>
-        <li><strong>Breaker — round 20</strong>, attacking that pass. The standing rule holds: it
-          may not quietly add an exception to the check's list; a new exception is an architect's
-          ruling.</li>
+        <li><strong>Architect — done.</strong> <code>ARCHITECTURE.md</code> revision 19
+          (<strong>A-25</strong>) is written: test-data completeness enforced by the compiler and the
+          tests instead of by memory, one one-line fix for the three-same-name-cities case, city
+          records added to what the check watches, a fifteenth test situation, and a
+          <strong>closing criterion</strong> for the whole seven-round arc.</li>
+        <li><strong>Builder — next.</strong> One pass, in a fixed order: the one-line fix first, then
+          the check's new watch list and test situation, then the completeness machinery. Two steps
+          must be shown to fail <em>and</em> pass — back the fix out and the check must go
+          <strong>red</strong> naming exactly the right thing; invent a new field and the build must
+          refuse to go green until the test data fills it in. If either can't be reproduced, A-25 was
+          implemented wrongly and that gets reported rather than worked around.</li>
+        <li><strong>Breaker — round 21</strong>, attacking that pass <strong>against the six-point
+          closing criterion</strong> rather than open-endedly. The standing rule holds: it may not
+          quietly add an exception to the check's list; a new exception is an architect's ruling.</li>
         <li><strong>Manager</strong> makes the <strong>2a SHIP / SEND BACK</strong> call once I-3a
-          and I-4a are genuinely closed — the first manager gate since Phase 1, and what eight
-          rounds have been working toward. Only this role can open the rest of Phase 2.</li>
+          and I-4a are genuinely closed — the first manager gate since Phase 1. With the criterion
+          met, that call is a judgment about the two increments rather than another round of this
+          arc. Only this role can open the rest of Phase 2.</li>
       </ul>
       <p><strong>Still standing from Phase 1:</strong> whenever the merge/write code is next
         touched, the first breaker round on it is pre-committed to attack
