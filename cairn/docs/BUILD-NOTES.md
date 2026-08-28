@@ -1,5 +1,37 @@
 # Cairn — build notes, Phase 1 (and Phase 2 in progress)
 
+> **Addendum, on ROADMAP Phase 2 **I-7** — `travelStats`, and the record census the row was
+> missing (ARCHITECTURE §8.4 clause 2, specified by **A-31**).**
+> Two core files, one CLI command, one new golden, and exit criterion 6 rewritten into two
+> mechanical tests. `TripSummaryRow` gains `attribution: {places, stops}` — each an
+> `AttributionCensus = {located, attributed}` accumulated **in the walk that already visits those
+> records**, no second traversal and no new argument — and `SUMMARY_VERSION` becomes **4**.
+> `derive/travelStats.ts` is A-31 Part 4 verbatim: canonical sort, `lifecycle` partition, the
+> travelled-only population, the `today` clamp, the interval union, and the two censuses. Scope:
+> **2 core sources (1 new), `cli.ts`, `tools/gen-golden.mjs`, 2 new test files, 4 touched test
+> files, 1 new golden, this file.** No client source change, no port change, no `schemaVersion`
+> bump, no index/generator change, nothing under `qa/`, nothing at the repo root, no change to
+> `ARCHITECTURE.md` or `ROADMAP.md` (the architect's revision 24 already carries both).
+> **Three new KDs: KD-63…KD-65.**
+>
+> | | |
+> |---|---|
+> | **What runs, and the exact command** | `cd cairn && npm ci && npm run typecheck && npm run test:tap`. Then `npm run golden` (`countries.json` **no diff**, `travel-stats.json` new), `npm run sample` (no diff) and `npm run web:build`. The user-facing half, such as it is: `node cli.ts stats --today 2026-08-24` and `node cli.ts stats` (which defaults to `FIXTURE_TODAY`, before the trip starts, and prints *"no places yet"* — that is A-31 Part 3 working, not a bug). |
+> | **The row widening** | `packages/core/src/derive/summary.ts`. `AttributionCensus` is exported as a type; `attribution: {places, stops}` joins `TripSummaryRow`; the existing `add()` closure takes the census it is counting into, so `places` and `stops` are accumulated in the **same single traversal** that builds `countryCodes` — record for record, pool included. `SUMMARY_VERSION = 4` with its own docstring line. `tripSummary` gains **no argument** and stays pure. Cities get no census field: `City.centre` is non-nullable, so `located` is `cities.length` and `attributed` is the non-null `countryCode`s. |
+> | **`travelStats`, and what it refuses** | `packages/core/src/derive/travelStats.ts`, 251 lines. Duplicate row id ⇒ `throw` naming the id. Canonical order computed once from `summaries.slice().sort()` by `(dayNumber(startDate), id)`, so **no output depends on the caller's array order**. `trips` counts **every** row through `lifecycle(row, today)` — called, never reimplemented; a `TripSummaryRow` structurally satisfies `DatedTrip`. The travelled set is `active ∪ completed`; a `planned` trip contributes **+1 to `trips.planned` and nothing else**. An `active` row's interval end is `min(endDate, today)`, then `max(startDate, …)`, which is also what makes `endDate < startDate` degenerate to one day rather than throwing. `daysTravelled` is the **union** by sort-and-sweep, never a sum and never a `Set` of day numbers. Cities group on the pair `(countryCode, nameKey)` with `nameKey = normalizeCityName(name)` imported **by module path** — it stays off `index.ts` (§2.14 A-14) and `qa/r14-horizon-copy.mjs:917` still asserts that. |
+> | **The external oracle — worth more than the golden** | A-31 Part 7's last paragraph, asserted twice (once on the row, once through `travelStats`): `located.places`, `unattributed.places`, `located.stops`, `unattributed.stops` equal `countries.json`'s `places.withCoordinates`, `unattributedPlaces.length`, `stops.withCoordinates`, `unattributedStops.length`. **Measured: 94 / 3 / 132 / 4.** Two independent walks — `gen-golden.mjs` walks the document directly, `tripSummary` walks it again inside the write that mints the row. **Injected fault: drop `trip.pool` from the row census → 4 tests red**, including both cross-checks, because `countries.json` counts pooled stops and §8.4 clause 3's union does too. |
+> | **Exit criterion 6, both halves, in `test/stats-storage.test.ts`** | **(a)** A minted reference row is flattened to dotted numeric paths, filtered by a shared `countShaped()` classifier, and asserted **set-equal** to the eight-name allow-list. A second test pins that `revision` and `summaryVersion` are *not* classified as counts, so the allow-list cannot be satisfied vacuously by a classifier that eats everything. **(b)** All `.ts`/`.tsx` under `packages/core/src`, `packages/client/src` and `apps/web/src` are scanned for count-shaped `name: number` declarations; every hit must be on a `path::name` allow-list carrying its reason. A third test asserts the allow-list is a **ceiling** (no stale entry), and a fourth pins the one thing the `travelStats.ts` entries rest on: **nothing under `ports/`, `serialize/` or `store` imports `TravelStats`**. A-31 Part 6's block-quoted rule is in the file's own header text. |
+> | **The goldens** | `countries.json` is **byte-identical** after `npm run golden` — confirmed with `git diff --stat`, empty. `travel-stats.json` is new, **derived by calling `travelStats`** and never hand-written, and carries **two clocks** rather than one (KD-63). Measured at `2026-08-24`: 7 countries, 6 cities, `daysTravelled: 16`, `located {cities:6, places:94, stops:132}`, `unattributed {cities:0, places:3, stops:4}`, `unnamedCities: 0`. It passes the same no-float/no-coordinate test `countries.json` has. |
+> | **`cli.ts stats`** | `travelStats([tripSummary(trip, COUNTRY_INDEX)], today)` as text, honouring `--today` and `--file`. One trip is a thin exercise of a multi-trip function, and that is the point — the multi-trip cases are in `travelStats.test.ts` and the CLI is what makes the numbers addressable with no browser. It prints *"no places yet"* only when `located.cities + located.places + located.stops === 0`, never on `countries.length === 0`, which is A-31 Part 4's closing sentence and is what I-8 is built against. |
+> | **Ceilings, re-derived by running** | `npm run typecheck` clean, both projects, exit 0. `npm run test:tap` **795 pass / 0 fail / 0 cancelled** (751 → 795: **+7** `summary.test.ts`, **+30** the new `travelStats.test.ts`, **+5** the new `stats-storage.test.ts`, **+3** `cli.test.ts`, −1 net from nothing removed). `Object.keys(core).length` = **75**, counted by running, not quoted. Phase 1 ceilings unmoved: reference trip **2 blockers / 4 warnings / 11 notes**, `validateTrip` **11**, `geoCheck` **0**, `countryCodes` still `['AT','CZ','DE','GB','HR','HU','US']` with all six cities `countrySource: 'coordinate'`. `npm run sample` regenerates with no diff, sha still `40955ca0b182`. `npm run web:build` clean, `dist/assets/index-C6G5phit.js` **976,160 bytes**. `EMITTED_BYTES` does not move (no index or generator change), so A-27 Part 9's bundle obligation does **not** apply; the figure is recorded anyway. |
+> | **Test-first, and watched fail** | Every test was written before its implementation and watched fail for the right reason. The row census: **7 of 30** red in `summary.test.ts` (`attribution` undefined, `SUMMARY_VERSION` 3). `travelStats.test.ts`: the whole file red on `does not provide an export named 'travelStats'`, then 28 green. The golden and CLI tests: **5** red before `gen-golden.mjs` and `cmdStats` existed. Then seven injected faults, each applied alone and watched red: **(1)** pool dropped from the row census → 4 red; **(2)** city key = `nameKey` alone → 2 red (both Springfields, and the null-last ordering); **(3)** sweep replaced by a naive sum → 2 red; **(4)** `today` clamp removed → 2 red; **(5)** planned rows admitted to the travelled set → 4 red; **(6)** duplicate id silently deduped → 1 red; **(7)** `sort()` on the caller's array instead of a `slice()` → **green at first**, which is a finding: my purity test happened to pass rows already in canonical order. I rewrote it to pass them out of order and the fault then reds. **(8)** `countriesVisited: number` added to `Trip` → exit 6b red, and *only* 6b, in the full suite. |
+> | **What I stubbed** | Nothing in I-7's scope. **No UI**: I-7's own ROADMAP entry says *"no user-visible outcome on screen yet"*, and `WorldMap.tsx`/`Profile.tsx` are I-8. `apps/web` is untouched apart from the sample regeneration its own `presample` hook performs. |
+> | **What I could not verify** | (1) **The `SUMMARY_VERSION` 3 → 4 rescan was not executed against a stored version-3 row.** A-31 Part 2 says no client code changes because both readers are `(row.summaryVersion ?? 0) < core.SUMMARY_VERSION` — I confirmed that by reading `store.ts:70` and `selectors/index.ts:213` and by the existing `views.test.ts:274` third-reader assertion, all of which stayed green untouched, but the 3→4 path itself is exercised only by the seeded client tests, not by a real database. (2) **`travelStats` has never been called with more than one row outside a test.** The CLI holds one trip and there is no multi-trip fixture; the multi-trip behaviour rests entirely on hand-built rows. (3) The **year-`0001` case** is asserted for its *answer* (365 days), not for its cost — I have no timing assertion that would catch a `Set`-based implementation, only the algorithm's shape. |
+> | **Objection to the design** | **None that blocks.** Three disclosures, all filed as KDs rather than as code that diverges: **KD-63** (the golden is two clocks, because A-31's *"at the fixture clock"* would have produced an all-zeros golden), **KD-64** (exit criterion 6b's source allow-list needed two entries A-31 Part 6 did not enumerate — `horizonDays` and the `TravelStats` return type — and I chose a wide classifier plus a reasoned allow-list over a narrow classifier), **KD-65** (nine `qa/` scripts pin `Object.keys(core).length === 73`; they have been stale since I-6 took it to 74 and are now two behind at 75 — I did not rewrite nine historic probes to correct a number that was already wrong before this increment). |
+>
+> **The I-6a addendum below is superseded on one point** — `SUMMARY_VERSION` is 4, not 3 — and is
+> otherwise unchanged and still current.
+
 > **Addendum, on ROADMAP Phase 2 **I-6a** — §8.4 **A-29** (a city's *stated* country) and §4.3
 > **A-30** (a summary refresh is not a document write), plus QA round 26's R26-1, R26-2 and R26-3.**
 > Two rulings and three bookkeeping fixes as one pass, at `eead735`. **A-29:** `tripSummary` gains a
@@ -2306,6 +2338,74 @@ narrow (it requires someone to write a store that defers its own writes out of t
 them), and it is disclosed here because the alternative is that the next reader trusts the grep for
 more than it proves. **Trigger to reopen:** any increment that adds a third `ports.storage` mutation
 site, or a store refactor that starts passing work functions around rather than writing them out inline.
+
+### KD-63 — `travel-stats.json` is generated at **two** clocks, because A-31's "the fixture clock" produces an all-zeros golden
+
+**Where:** `tools/gen-golden.mjs` · **ARCHITECTURE §8.4 A-31 Part 7 item 4.**
+
+A-31 says the golden's input is `[tripSummary(referenceTrip, COUNTRY_INDEX)]` *"at the fixture clock"*.
+`FIXTURE_TODAY` is **2026-08-01** and the reference trip runs **2026-08-07 → 2026-08-22**, so at that
+clock the trip is `planned` — and under Part 3 a planned trip contributes no country, no city, no day
+and nothing to either census. A golden generated at that one clock is `{countries: [], cities: [],
+trips: {planned: 1, …}, daysTravelled: 0}` with every other field zero: it would pin the population rule
+and **nothing else**, and Part 7's own cross-check against `countries.json` would have no numbers to
+compare, because the four census fields would all be `0`.
+
+So the file carries a `clocks` object with two entries: `fixtureToday` (2026-08-01, `planned`) and
+`afterTheTrip` (2026-08-24, `completed`), each with a `why` line. This is **more** than A-31 asked for,
+not different from it — the fixture-clock block is present and is exactly what a literal reading would
+have produced. Recorded because a reader diffing the golden against A-31's sentence will notice the
+extra block, and because the two-clock shape is what makes the golden show the population rule at all.
+
+`travelStats.test.ts` asserts both blocks, and `cli.ts stats` with no `--today` prints the planned one —
+which is why the CLI's default output says *"no places yet"* about the only real trip we have.
+
+### KD-64 — exit criterion 6b's source allow-list needed two entries A-31 Part 6 did not enumerate
+
+**Where:** `test/stats-storage.test.ts` · **ARCHITECTURE §8.4 A-31 Part 6, ROADMAP exit criterion 6b.**
+
+Part 6 enumerates the **row's** eight permitted count fields exactly, and half (a) implements that with
+no judgement. Half (b) — *"no persisted field naming a count of countries, cities, trips or days
+anywhere outside `TripSummaryRow`"* — names no allow-list at all, because it expects zero. Implementing
+it as a *mechanical* check forced two choices the ruling does not make:
+
+1. **How wide is "count-shaped"?** A narrow classifier (`/^(cityCount|dayCount|countriesVisited)$/`)
+   passes trivially and catches nothing new; a wide one catches things that are not tallies. I chose
+   **wide** — bare plural domain nouns typed `number`, plus `Count|Total|Tally|Num|Visited|Travelled`
+   suffixes on a domain noun, plus `located`/`attributed` — on the principle that a classifier narrow
+   enough to miss `horizonDays` is narrow enough to miss a `daysVisited` somebody adds later.
+2. **What that width then requires me to allow-list.** Two entries, each with its reason in the file:
+   **`horizonDays`** (`conflict/rules/types.ts`, `conflict/detect.ts`) is a rule's look-ahead *window*,
+   a duration rather than a tally, and is a compile-time property of a `RuleSpec` that reaches no
+   document; and **`TravelStats`' own fields** (`cities`, `places`, `stops`, `daysTravelled`,
+   `unnamedCities`) are the **return type of a pure function** — the very thing that is computed on read
+   and has no storage representation, which is the criterion rather than an exception to it.
+
+Entry 2 is the one that could become a hole: someone could hide a persisted count inside
+`travelStats.ts`. That is closed by a fourth test asserting **nothing under `ports/`, `serialize/` or
+`store` imports `TravelStats`**, so the type cannot reach a persisted record without the test going red.
+**Widening either allow-list is an architect's ruling** and both tests say so in their failure text.
+
+### KD-65 — nine `qa/` scripts pin `Object.keys(core).length === 73`, and have been stale since I-6 (doc-only: its home is `qa/`, which the disclosure scan does not cover)
+
+**Where:** `qa/r13-gate-citykey.mjs:451`, `r14-horizon-copy.mjs:916`, `r15-place-copy.mjs:682`,
+`r16-copy-depth.mjs:741`, `r17-hours-parser.mjs:628`, `r18-readonce.mjs:549`, `r19-census-gaps.mjs:490`,
+`r20-census-reach.mjs:499`, `r21-closure.mjs:139`.
+
+The surface was **73** at I-5, went to **74** at I-6 when `SUMMARY_VERSION` joined, and is **75** after
+this increment. None of the nine was updated at I-6 or I-6a, so all nine were already reporting a FAIL
+on that one line before I touched anything, and are now two behind rather than one.
+
+**I did not fix them**, and the reason is deliberate rather than lazy: KD-58 and KD-61 set the precedent
+that a builder re-expresses the `qa/` scripts *their own increment breaks*. Editing nine historic probes
+to correct a number that was wrong before this pass would fold a pre-existing regression into I-7's diff
+and make it look like I-7's. The one assertion in that block that matters to **this** increment —
+`r14-horizon-copy.mjs:917`, *"`normalizeCityName` is NOT on the export surface"* — still holds and is
+still correct, which is exactly why `travelStats.ts` imports it by module path.
+
+**For the breaker:** the nine lines are a known, pre-existing FAIL and are not evidence of a surface
+regression. `packages/core/test/surface.test.ts` and `packages/core/test/openingHours.test.ts` are the
+two places the count is asserted *in the suite*; both were updated to 75 and are green.
 
 ---
 

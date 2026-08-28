@@ -319,6 +319,31 @@
 </style>
 </head>
 <body>
+<div class="callout" style="border-left:4px solid #a8621b;padding:.75rem 1rem;margin:1rem 0;background:#fdf5ec">
+<p><strong>&#128992; STEP 2b &mdash; WHERE IT ACTUALLY IS, as of 2026-08-28</strong> (this block is
+the current state; every 2b sentence below it is older). Six increments of 2b are now
+<strong>built</strong>, and this board had fallen five behind, so here is the whole of it in one
+place. <strong>I-5</strong> put a country index in the app and taught it to say which country a
+coordinate is in &mdash; <strong>offline, from a bundled map, never by asking a server where you
+are</strong>. <strong>I-5a, I-5b and I-5c</strong> were three rounds of making that index honest at
+the edges: small island countries stopped coming back blank, and the one place it was quietly
+answering &ldquo;Macao&rdquo; about mainland China was fixed. <strong>I-6</strong> widened the
+saved-per-trip summary so the trip list carries its countries and cities without opening forty
+trips, and added the &ldquo;Recomputing&hellip;&rdquo; pass that repairs old rows when the answer
+improves. <strong>I-6a</strong> let a city you typed a country for fill a gap the map cannot answer
+&mdash; never override one &mdash; and stopped that repair pass from stepping on another tab&rsquo;s
+edits. <strong>I-7 (this pass)</strong> is <code>travelStats</code>: everywhere you have been,
+computed on demand from those summaries, with the one rule the whole feature rests on &mdash;
+<strong>a trip you have booked but not taken counts for nothing</strong>, and a trip you are on
+right now counts only up to today.</p>
+<p><strong>What that means for what you can see:</strong> still nothing new on screen. The numbers
+exist and are printable from the command line (<code>node cli.ts stats</code>), but the
+<strong>Map and Profile screens are I-8</strong>, which is next and is where 2b actually ships.
+<strong>Verification:</strong> I-5 through I-6a have all been attacked (QA rounds 22&ndash;27, the
+last one clean of blockers); <strong>I-7 has not been attacked yet</strong> and no manager verdict
+exists for any of 2b. Built &#9989; &middot; verified &#9898; &middot; shippable &#9898;.</p>
+</div>
+
 <div class="callout" style="border-left:4px solid #2a5138;padding:.75rem 1rem;margin:1rem 0;background:#f0f8f2">
 <p><strong>&#128994; STEP 2a IS SHIPPED.</strong> The manager reviewed it at <code>67f5588</code> on
 2026-08-28 and the verdict is <strong>SHIP</strong> (<code>REVIEW.md</code>, &ldquo;Phase 2, step

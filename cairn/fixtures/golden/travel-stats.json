@@ -1,0 +1,168 @@
+{
+  "$generatedBy": "cairn/tools/gen-golden.mjs",
+  "$source": "europe-2026-itinerary.html (read-only)",
+  "$sourceSha256": "40955ca0b182dddcc33540accadf2a65a329bc20b9e6ca109c9884e776bb06d2",
+  "$what": "travelStats() over the reference trip's single summary row, at two clocks. DERIVED by calling travelStats — never hand-written. NO COORDINATES: codes, names, ids and counts only.",
+  "tripIds": [
+    "trip-europe-2026"
+  ],
+  "summaryVersion": 4,
+  "clocks": {
+    "fixtureToday": {
+      "today": "2026-08-01",
+      "why": "before startDate — the trip is `planned`, so A-31 Part 3 gives it nothing but +1 planned",
+      "stats": {
+        "countries": [],
+        "cities": [],
+        "trips": {
+          "planned": 1,
+          "active": 0,
+          "completed": 0
+        },
+        "daysTravelled": 0,
+        "located": {
+          "cities": 0,
+          "places": 0,
+          "stops": 0
+        },
+        "unattributed": {
+          "cities": 0,
+          "places": 0,
+          "stops": 0
+        },
+        "unnamedCities": 0
+      }
+    },
+    "afterTheTrip": {
+      "today": "2026-08-24",
+      "why": "after endDate — the trip is `completed` and contributes everything it holds",
+      "stats": {
+        "countries": [
+          {
+            "code": "AT",
+            "firstVisit": "2026-08-07",
+            "lastVisit": "2026-08-22",
+            "tripIds": [
+              "trip-europe-2026"
+            ]
+          },
+          {
+            "code": "CZ",
+            "firstVisit": "2026-08-07",
+            "lastVisit": "2026-08-22",
+            "tripIds": [
+              "trip-europe-2026"
+            ]
+          },
+          {
+            "code": "DE",
+            "firstVisit": "2026-08-07",
+            "lastVisit": "2026-08-22",
+            "tripIds": [
+              "trip-europe-2026"
+            ]
+          },
+          {
+            "code": "GB",
+            "firstVisit": "2026-08-07",
+            "lastVisit": "2026-08-22",
+            "tripIds": [
+              "trip-europe-2026"
+            ]
+          },
+          {
+            "code": "HR",
+            "firstVisit": "2026-08-07",
+            "lastVisit": "2026-08-22",
+            "tripIds": [
+              "trip-europe-2026"
+            ]
+          },
+          {
+            "code": "HU",
+            "firstVisit": "2026-08-07",
+            "lastVisit": "2026-08-22",
+            "tripIds": [
+              "trip-europe-2026"
+            ]
+          },
+          {
+            "code": "US",
+            "firstVisit": "2026-08-07",
+            "lastVisit": "2026-08-22",
+            "tripIds": [
+              "trip-europe-2026"
+            ]
+          }
+        ],
+        "cities": [
+          {
+            "nameKey": "budapest",
+            "name": "Budapest",
+            "countryCode": "HU",
+            "tripIds": [
+              "trip-europe-2026"
+            ]
+          },
+          {
+            "nameKey": "dubrovnik",
+            "name": "Dubrovnik",
+            "countryCode": "HR",
+            "tripIds": [
+              "trip-europe-2026"
+            ]
+          },
+          {
+            "nameKey": "london",
+            "name": "London",
+            "countryCode": "GB",
+            "tripIds": [
+              "trip-europe-2026"
+            ]
+          },
+          {
+            "nameKey": "prague",
+            "name": "Prague",
+            "countryCode": "CZ",
+            "tripIds": [
+              "trip-europe-2026"
+            ]
+          },
+          {
+            "nameKey": "split",
+            "name": "Split",
+            "countryCode": "HR",
+            "tripIds": [
+              "trip-europe-2026"
+            ]
+          },
+          {
+            "nameKey": "vienna",
+            "name": "Vienna",
+            "countryCode": "AT",
+            "tripIds": [
+              "trip-europe-2026"
+            ]
+          }
+        ],
+        "trips": {
+          "planned": 0,
+          "active": 0,
+          "completed": 1
+        },
+        "daysTravelled": 16,
+        "located": {
+          "cities": 6,
+          "places": 94,
+          "stops": 132
+        },
+        "unattributed": {
+          "cities": 0,
+          "places": 3,
+          "stops": 4
+        },
+        "unnamedCities": 0
+      }
+    }
+  }
+}

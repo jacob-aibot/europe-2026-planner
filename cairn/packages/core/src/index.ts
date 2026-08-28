@@ -1,9 +1,10 @@
 /**
  * `@cairn/core` — the public surface of ARCHITECTURE §2.10 and nothing else.
  *
- * **74 runtime symbols, one list, set equality in both directions** (69 at revision 5, QA R2-12,
+ * **75 runtime symbols, one list, set equality in both directions** (69 at revision 5, QA R2-12,
  * BUILD-NOTES KD-33; +`reassertRetirements` at revision 6; +`lifecycle` at Phase 2 I-1;
- * +`countryOf` and `COUNTRY_INDEX` at Phase 2 I-5; +`SUMMARY_VERSION` at Phase 2 I-6). It used to be 110 against a 50-name list plus a 60-name "beyond §2.10,
+ * +`countryOf` and `COUNTRY_INDEX` at Phase 2 I-5; +`SUMMARY_VERSION` at Phase 2 I-6;
+ * +`travelStats` at Phase 2 I-7). It used to be 110 against a 50-name list plus a 60-name "beyond §2.10,
  * each with a justification" list, which made the acceptance criterion true by construction:
  * 110 = 50 + 60 for *any* 110 exports. A boundary the Phase 2 server and the Phase 4 native
  * app are written against cannot be "110 against 50, enumerated".
@@ -87,7 +88,13 @@ export { displayStatus, attribution } from './derive/display.ts';
 // `SUMMARY_VERSION` joins under §8.4 clause 3 at Phase 2 I-6: `packages/client` compares
 // every stored row against it and rescans the ones below, so it has to be public.
 export { cityRange, tripSummary, daysForCity, orderedCities, weekdayOf, SUMMARY_VERSION } from './derive/summary.ts';
-export type { TripSummaryRow, TripSummaryCity } from './derive/summary.ts';
+export type { TripSummaryRow, TripSummaryCity, AttributionCensus } from './derive/summary.ts';
+// `travelStats` joins under §8.4 clause 2 at Phase 2 I-7: the clause names it as a callable, and
+// the Profile and the CLI are outside `packages/core`. Its inputs are summary rows and an
+// injected `today` — never a document, never storage — which is §4.2's "exactly ONE trip in
+// memory at a time" surviving the one screen that would want forty.
+export { travelStats } from './derive/travelStats.ts';
+export type { TravelStats, TravelStatsCountry, TravelStatsCity, TravelRecordCensus } from './derive/travelStats.ts';
 
 // ---- conflict (6) ------------------------------------------------------------
 // `reassertRetirements` joins in revision 6 (§2.7 A-5, QA R8-1): the retirement ledger lives

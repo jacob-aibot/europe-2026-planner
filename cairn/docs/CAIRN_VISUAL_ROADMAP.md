@@ -19,6 +19,27 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
+> **🟠 STEP 2b — WHERE IT ACTUALLY IS, as of 2026-08-28 (this block is the current state; every
+> 2b sentence below it is older).** Six increments of 2b are now **built**, and this board had
+> fallen five behind, so here is the whole of it in one place. **I-5** put a country index in the
+> app and taught it to say which country a coordinate is in — **offline, from a bundled map,
+> never by asking a server where you are**. **I-5a, I-5b and I-5c** were three rounds of making
+> that index honest at the edges: small island countries stopped coming back blank, and the one
+> place it was quietly answering *"Macao"* about mainland China was fixed. **I-6** widened the
+> saved-per-trip summary so the trip list carries its countries and cities without opening forty
+> trips, and added the *"Recomputing…"* pass that repairs old rows when the answer improves.
+> **I-6a** let a city you typed a country for fill a gap the map cannot answer — never override
+> one — and stopped that repair pass from stepping on another tab's edits. **I-7 (this pass)**
+> is `travelStats`: everywhere you have been, computed on demand from those summaries, with the
+> one rule the whole feature rests on — **a trip you have booked but not taken counts for
+> nothing**, and a trip you are on right now counts only up to today.
+>
+> **What that means for what you can see:** still nothing new on screen. The numbers exist and are
+> printable from the command line (`node cli.ts stats`), but the **Map and Profile screens are
+> I-8**, which is next and is where 2b actually ships. **Verification:** I-5 through I-6a have all
+> been attacked (QA rounds 22–27, the last one clean of blockers); **I-7 has not been attacked
+> yet** and no manager verdict exists for any of 2b. Built ✅ · verified ⚪ · shippable ⚪.
+
 > **🟢 STEP 2a IS SHIPPED.** The manager reviewed it at `67f5588` on 2026-08-28 and the verdict is
 > **SHIP** — `REVIEW.md`, "Phase 2, step 2a". So 2a is now **built ✅ · verified ✅ · shippable ✅**,
 > all three, which are three different claims (see "Definition of done" at the bottom). **Step 2b —

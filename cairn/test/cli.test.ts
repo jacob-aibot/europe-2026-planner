@@ -209,3 +209,37 @@ test('cli trip with no --today still runs and reports a stage at FIXTURE_TODAY',
   assert.equal(r.code, 0, r.err);
   assert.match(r.out, /\bplanned\b/, r.out);
 });
+
+/**
+ * `cli stats` — ROADMAP Phase 2 **I-7**. One trip is a thin exercise of a multi-trip function
+ * (the multi-trip cases live in `packages/core/test/travelStats.test.ts`); what the command is
+ * for is making the numbers addressable with no browser and no install.
+ *
+ * The two clocks are the whole demonstration of §8.4 **A-31 Part 3**: at the default
+ * `FIXTURE_TODAY` the reference trip has not happened yet, so it is `planned` and contributes
+ * nothing — a map of everywhere you have been may not include a trip you have booked.
+ */
+test('cli stats honours --today: the reference trip is planned before it starts', () => {
+  const r = cli('stats', '--today', '2026-08-01');
+  assert.equal(r.code ?? 0, 0, r.err);
+  assert.match(r.out, /planned\s+1/i);
+  assert.match(r.out, /days travelled\s+0\b/i);
+  assert.equal(/\bAT\b/.test(r.out), false, `a planned trip put a country on the lifetime map:\n${r.out}`);
+});
+
+test('cli stats after the trip ends reports its countries, cities and days', () => {
+  const r = cli('stats', '--today', '2026-08-24');
+  assert.equal(r.code ?? 0, 0, r.err);
+  assert.match(r.out, /completed\s+1/i);
+  for (const code of ['AT', 'CZ', 'DE', 'GB', 'HR', 'HU', 'US']) {
+    assert.match(r.out, new RegExp(`\\b${code}\\b`), `${code} is missing:\n${r.out}`);
+  }
+  assert.match(r.out, /days travelled\s+16\b/i, r.out);
+});
+
+test('cli stats reports the honest hole as a count, never as a silence', () => {
+  const r = cli('stats', '--today', '2026-08-24');
+  // The reference trip has records the index cannot name (the Dalmatian coves, Hvar Town).
+  // "N we could not place" is the sentence; "0 countries" would be a measurement never taken.
+  assert.match(r.out, /could not place|unattributed/i, r.out);
+});

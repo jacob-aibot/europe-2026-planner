@@ -303,6 +303,52 @@ writeJson('countries.json', {
   unattributedPlaces,
 });
 
+/**
+ * ---- travel-stats.json — ROADMAP Phase 2 I-7's lifetime-statistics golden -----
+ *
+ * **Derived, never hand-written**: this is `travelStats` called on the reference trip's single
+ * summary row. Two clocks, because A-31 Part 3's population rule is the half of the design that
+ * a one-clock golden cannot show — at `FIXTURE_TODAY` (2026-08-01) the trip has not started, so
+ * it is `planned` and contributes no country, no city and no day; after `endDate` it is
+ * `completed` and everything it holds is on the map. One trip is a thin exercise of a multi-trip
+ * function, and that is deliberate: the multi-trip cases live in `travelStats.test.ts`, and this
+ * file's job is to make a change in behaviour on the only REAL trip we have visible.
+ *
+ * **No coordinate is written here** — same rule as `countries.json`, and a test asserts it:
+ * codes, names, ids and counts only.
+ *
+ * **Two clocks, and that is a documented divergence from A-31 Part 7's literal "the fixture clock"
+ * — BUILD-NOTES KD-63.** At `FIXTURE_TODAY` alone the golden is all zeros, which pins the
+ * population rule and nothing else and leaves Part 7's own cross-check with no numbers to compare.
+ *
+ * `countries.json` above is the far more valuable check and it is unchanged: it carries the same
+ * four record-census numbers computed by a *different* program (the walk over the document at
+ * the top of this section), so `travelStats` and `tripSummary` can be caught walking different
+ * records. See A-31 Part 7's last paragraph.
+ */
+const AFTER_THE_TRIP = '2026-08-24';
+const statsRows = [core.tripSummary(trip, core.COUNTRY_INDEX)];
+writeJson('travel-stats.json', {
+  ...header(
+    'travelStats() over the reference trip\'s single summary row, at two clocks. DERIVED by ' +
+      'calling travelStats — never hand-written. NO COORDINATES: codes, names, ids and counts only.',
+  ),
+  tripIds: statsRows.map((r) => r.id),
+  summaryVersion: core.SUMMARY_VERSION,
+  clocks: {
+    fixtureToday: {
+      today: FIXTURE_TODAY,
+      why: 'before startDate — the trip is `planned`, so A-31 Part 3 gives it nothing but +1 planned',
+      stats: core.travelStats(statsRows, FIXTURE_TODAY),
+    },
+    afterTheTrip: {
+      today: AFTER_THE_TRIP,
+      why: 'after endDate — the trip is `completed` and contributes everything it holds',
+      stats: core.travelStats(statsRows, AFTER_THE_TRIP),
+    },
+  },
+});
+
 writeFileSync(resolve(HERE, '..', 'fixtures', 'europe2026.sha256'), `${sha256}  europe-2026-itinerary.html\n`);
 
 function writeJson(name, value) {

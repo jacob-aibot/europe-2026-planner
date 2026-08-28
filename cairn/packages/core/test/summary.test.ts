@@ -381,8 +381,8 @@ test('A-29: a stated code on a city does NOT rescue that city\'s places and stop
   assert.equal(row.stopCount, 0, 'INCONCLUSIVE: the fixture grew stops');
 });
 
-test('A-29: SUMMARY_VERSION is 3 — two derivations changed, so the stamp moves', () => {
-  assert.equal(SUMMARY_VERSION, 3);
+test('A-31: SUMMARY_VERSION is 4 — the row gained a census, so the stamp moves', () => {
+  assert.equal(SUMMARY_VERSION, 4);
 });
 
 test('A-29 non-regression: the reference trip does not move, and every city is coordinate-derived', () => {
@@ -395,4 +395,141 @@ test('A-29 non-regression: the reference trip does not move, and every city is c
   for (const c of orderedCities(trip)) {
     assert.equal(c.countryCode.toUpperCase(), countryOf(c.centre, COUNTRY_INDEX));
   }
+});
+
+// ---------------------------------------------------------------------------
+// §8.4 **A-31** Part 2 — the record census `countryCodes` was computed from.
+//
+// `unattributed: {places, stops}` on `TravelStats` was never computable from the
+// revision-23 row: there is no `placeCount`, and `stopCount`/`poolCount` count
+// *records*, not *coordinate-bearing* records. Two numbers per record class close
+// that, and `located` is the one that separates "nothing to attribute" from
+// "everything attributed" — the distinction the Profile's "no places yet" rests on.
+// ---------------------------------------------------------------------------
+
+/** Every coordinate-bearing stop of the trip, scheduled and pooled, in the row's own order. */
+function coordinateStops(trip: Trip): LatLng[] {
+  const out: LatLng[] = [];
+  for (const d of trip.days) for (const s of d.stops) {
+    const at = stopLatLng(s, trip);
+    if (at) out.push(at);
+  }
+  for (const s of trip.pool) {
+    const at = stopLatLng(s, trip);
+    if (at) out.push(at);
+  }
+  return out;
+}
+
+test('A-31: places.located counts coordinate-bearing places; attributed, the ones countryOf named', () => {
+  const { trip } = europe2026();
+  const row = tripSummary(trip, COUNTRY_INDEX);
+  const located = trip.places.filter((p) => p.at !== null);
+  assert.equal(row.attribution.places.located, located.length);
+  assert.equal(
+    row.attribution.places.attributed,
+    located.filter((p) => countryOf(p.at as LatLng, COUNTRY_INDEX) !== null).length,
+  );
+  assert.ok(located.length < trip.places.length || located.length === trip.places.length);
+});
+
+test('A-31: stops.located counts scheduled AND pooled stops — the same walk countryCodes uses', () => {
+  const { trip } = europe2026();
+  const row = tripSummary(trip, COUNTRY_INDEX);
+  const ats = coordinateStops(trip);
+  assert.ok(trip.pool.length > 0, 'INCONCLUSIVE: the fixture has no pooled stops, so the pool half is untested');
+  assert.equal(row.attribution.stops.located, ats.length);
+  assert.equal(
+    row.attribution.stops.attributed,
+    ats.filter((at) => countryOf(at, COUNTRY_INDEX) !== null).length,
+  );
+});
+
+test('A-31: attributed is never greater than located, on every census of every fixture', () => {
+  const rows = [
+    tripSummary(europe2026().trip, COUNTRY_INDEX),
+    tripSummary(statedCity('HR', HVAR), COUNTRY_INDEX),
+    tripSummary(europe2026().trip, countryIndex({ scale: 'test', source: 'empty', countries: [] })),
+  ];
+  for (const row of rows) {
+    for (const c of [row.attribution.places, row.attribution.stops]) {
+      assert.ok(c.attributed <= c.located, `attributed ${c.attributed} > located ${c.located}`);
+      assert.ok(Number.isInteger(c.located) && Number.isInteger(c.attributed));
+    }
+  }
+});
+
+/**
+ * A-31 Part 7's last paragraph — **the check that is worth more than the golden.**
+ *
+ * `gen-golden.mjs` walks the document directly; `tripSummary` walks it again inside the write
+ * that mints the row. Four numbers, two programs, one trip. This is the assertion that would
+ * catch the row's census and the golden's census walking different records — dropping
+ * `trip.pool` from the row is the injected fault, and `countries.json` counts pooled stops.
+ */
+test('A-31: the row census equals countries.json — four numbers, two independent walks', () => {
+  const { trip } = europe2026();
+  const row = tripSummary(trip, COUNTRY_INDEX);
+  const g = golden<{
+    stops: { withCoordinates: number };
+    places: { withCoordinates: number };
+    unattributedStops: unknown[];
+    unattributedPlaces: unknown[];
+  }>('countries.json');
+  assert.equal(row.attribution.stops.located, g.stops.withCoordinates, 'stops.located');
+  assert.equal(
+    row.attribution.stops.located - row.attribution.stops.attributed,
+    g.unattributedStops.length,
+    'unattributed stops',
+  );
+  assert.equal(row.attribution.places.located, g.places.withCoordinates, 'places.located');
+  assert.equal(
+    row.attribution.places.located - row.attribution.places.attributed,
+    g.unattributedPlaces.length,
+    'unattributed places',
+  );
+});
+
+test('A-31: a trip with no coordinate-bearing record censuses zero, not a guess', () => {
+  // One city (a `City.centre` is non-nullable, so the city census is `cities[]`), no place and
+  // no stop. This is the row behind the Profile's *"no places yet"* — distinguishable from a
+  // trip whose every coordinate the dataset could not name only because `located` exists.
+  const trip = createTrip(
+    {
+      title: 'Nothing to attribute',
+      startDate: '2026-03-01',
+      endDate: '2026-03-02',
+      homeCurrency: 'EUR',
+      cities: [{ name: 'Inside', countryCode: 'AA', centre: { lat: 10, lng: 10 } }],
+    },
+    ctx(),
+  );
+  const row = tripSummary(trip, TWO_POLYGONS);
+  assert.deepEqual(row.attribution, {
+    places: { located: 0, attributed: 0 },
+    stops: { located: 0, attributed: 0 },
+  });
+});
+
+test('A-31: a located record the index cannot name is located and NOT attributed', () => {
+  const trip = createTrip(
+    {
+      title: 'A hole with a coordinate in it',
+      startDate: '2026-03-01',
+      endDate: '2026-03-02',
+      homeCurrency: 'EUR',
+      cities: [{ name: 'Inside', countryCode: 'AA', centre: { lat: 10, lng: 10 } }],
+    },
+    ctx(),
+  );
+  // Two places: one inside "AA", one mid-ocean that no polygon contains.
+  const withPlaces: Trip = {
+    ...trip,
+    places: [
+      { id: 'place-in', cityKey: trip.cities[0].key, name: 'In', at: { lat: 10, lng: 10 }, category: 'sight' },
+      { id: 'place-out', cityKey: trip.cities[0].key, name: 'Out', at: { lat: 0, lng: 0 }, category: 'sight' },
+    ] as unknown as Trip['places'],
+  };
+  const row = tripSummary(withPlaces, TWO_POLYGONS);
+  assert.deepEqual(row.attribution.places, { located: 2, attributed: 1 });
 });

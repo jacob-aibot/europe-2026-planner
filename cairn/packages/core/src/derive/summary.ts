@@ -80,8 +80,12 @@ export function cityRange(trip: Trip, cityKey: CityKey): string | null {
  *   - **3** — Phase 2 I-6a (§8.4 **A-29**): a city's *stated* `City.countryCode` may fill a gap
  *     `countryOf` cannot answer, so both `cities[].countryCode` and `countryCodes` can differ
  *     from a version-2 row over the same document; and `cities[]` gains `countrySource`.
+ *   - **4** — Phase 2 I-7 (§8.4 **A-31**): the row gains `attribution`, the coordinate-bearing
+ *     record census `countryCodes` was computed from. No existing field's derivation moved;
+ *     the stamp goes up because a version-3 row cannot answer a question a version-4 row can,
+ *     and `travelStats` reads that answer.
  */
-export const SUMMARY_VERSION = 3;
+export const SUMMARY_VERSION = 4;
 
 /**
  * A city's **stated** country code, accepted or refused — §8.4 **A-29** Part 3. Module-private:
@@ -141,6 +145,21 @@ export type TripSummaryCity = {
   countrySource: 'coordinate' | 'stated' | null;
 };
 
+/**
+ * Two numbers about one record class of one document — §8.4 **A-31** Part 2.
+ *
+ * `located` is the denominator and it is the field that exists so `unattributed: 0` stops being
+ * ambiguous between *"everything was attributed"* and *"there was nothing to attribute"*. The
+ * second is what the Profile has to be able to say (*"no places yet"*), and against a row that
+ * carries only `countryCodes: []` the two states are the same value.
+ */
+export type AttributionCensus = {
+  /** Records bearing a resolvable coordinate. The denominator. */
+  located: number;
+  /** Of those, the ones `countryOf` gave a country. Never greater than `located`. */
+  attributed: number;
+};
+
 export type TripSummaryRow = {
   id: string;
   title: string;
@@ -174,6 +193,23 @@ export type TripSummaryRow = {
    * bare key.
    */
   cities: TripSummaryCity[];
+  /**
+   * The coordinate-bearing record census `countryCodes` was computed from (§8.4 **A-31**).
+   *
+   * A count *about this one document*, minted inside the write that carries it and stamped
+   * with `summaryVersion` — which is what separates it from a lifetime statistic, and why
+   * A-31 Part 6's rule permits it to be stored at all. Cities are absent on purpose:
+   * `City.centre` is non-nullable, so `located` is `cities.length` and `attributed` is the
+   * count of non-null `cities[].countryCode`.
+   *
+   * The two walks are **the same records `countryCodes` unions over**, record for record:
+   * `trip.places` with an `at`, and every scheduled *and* pooled stop with a `stopLatLng`. A
+   * census whose denominator excluded the pool could report fewer attributed records than the
+   * same row claims countries (§8.4 clause 3). That a pooled stop is a plan rather than travel
+   * is inherited from clause 3's own definition of `countryCodes`, not decided here, and A-31
+   * Part 5 residue 4 records it with the trigger that would reopen it.
+   */
+  attribution: { places: AttributionCensus; stops: AttributionCensus };
   /** The `SUMMARY_VERSION` in force when this row was computed. */
   summaryVersion: number;
 };
@@ -233,15 +269,25 @@ export function tripSummary(trip: Trip, index: CountryIndex): TripSummaryRow {
     };
   });
   const codes = new Set<CountryCode>();
-  const add = (at: LatLng | null) => {
+  // §8.4 A-31 Part 2: the census is accumulated in the walk that already visits these records.
+  // One traversal, not a second pass — a second pass is a second definition of "the records
+  // `countryCodes` was computed from", and two definitions is how the row comes to contradict
+  // itself.
+  const places: AttributionCensus = { located: 0, attributed: 0 };
+  const stops: AttributionCensus = { located: 0, attributed: 0 };
+  const add = (at: LatLng | null, census: AttributionCensus) => {
     if (!at) return;
+    census.located++;
     const code = countryOf(at, index);
-    if (code !== null) codes.add(code);
+    if (code !== null) {
+      census.attributed++;
+      codes.add(code);
+    }
   };
   for (const c of cities) if (c.countryCode !== null) codes.add(c.countryCode);
-  for (const p of trip.places) add(p.at);
-  for (const d of trip.days) for (const s of d.stops) add(stopLatLng(s, trip));
-  for (const s of trip.pool) add(stopLatLng(s, trip));
+  for (const p of trip.places) add(p.at, places);
+  for (const d of trip.days) for (const s of d.stops) add(stopLatLng(s, trip), stops);
+  for (const s of trip.pool) add(stopLatLng(s, trip), stops);
   return {
     id: trip.id,
     title: trip.title,
@@ -255,6 +301,7 @@ export function tripSummary(trip: Trip, index: CountryIndex): TripSummaryRow {
     revision: trip.revision,
     countryCodes: [...codes].sort(),
     cities,
+    attribution: { places, stops },
     summaryVersion: SUMMARY_VERSION,
   };
 }

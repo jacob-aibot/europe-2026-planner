@@ -6,6 +6,7 @@
  *   node cli.ts conflicts [--all]    the conflicts panel, as text
  *   node cli.ts cost                 per-day and whole-trip roll-ups
  *   node cli.ts validate             validateTrip issues
+ *   node cli.ts stats                lifetime travel statistics, derived (§8.4 A-31)
  *   node cli.ts import               the legacy import report
  *   node cli.ts export [file] [--force]
  *                                    the trip as JSON on stdout, or to a NEW file inside
@@ -144,6 +145,50 @@ function cmdImport() {
 }
 
 /**
+ * `cairn/ stats` — ARCHITECTURE §8.4 clause 2 / **A-31**, ROADMAP Phase 2 I-7.
+ *
+ * `travelStats` is a *multi-trip* function and this CLI holds one trip, so this is a thin
+ * exercise of it — the multi-trip cases live in `packages/core/test/travelStats.test.ts`. What
+ * the command is for is making the numbers addressable with no browser and no install.
+ *
+ * `--today` is the whole of the population rule made visible: before the trip's `startDate` it
+ * is `planned` and contributes **nothing** — no country, no city, no day — because a map of
+ * everywhere you have been may not include a trip you have booked.
+ */
+function cmdStats() {
+  const s = core.travelStats([core.tripSummary(trip, core.COUNTRY_INDEX)], today);
+  const pad = (label: string, n: number) => out(`  ${label.padEnd(18)} ${n}`);
+  out(`travel statistics as of ${today}  (derived, never stored)`);
+  out('');
+  pad('trips planned', s.trips.planned);
+  pad('trips active', s.trips.active);
+  pad('trips completed', s.trips.completed);
+  pad('days travelled', s.daysTravelled);
+  pad('countries', s.countries.length);
+  pad('cities', s.cities.length);
+  out('');
+  if (s.countries.length === 0) {
+    // Never "0 countries" as though zero had been measured — A-31 Part 4's closing sentence.
+    const nothing = s.located.cities + s.located.places + s.located.stops === 0;
+    out(nothing ? '  no places yet' : '  nothing could be placed on the map');
+  }
+  for (const c of s.countries) {
+    out(`  ${c.code}  ${c.firstVisit} → ${c.lastVisit}  (${c.tripIds.length} trip${c.tripIds.length === 1 ? '' : 's'})`);
+  }
+  if (s.cities.length) out('');
+  for (const c of s.cities) {
+    out(`  ${(c.countryCode ?? '··').padEnd(3)} ${c.name}`);
+  }
+  out('');
+  out(`  located      cities ${s.located.cities} · places ${s.located.places} · stops ${s.located.stops}`);
+  out(
+    `  could not place  cities ${s.unattributed.cities} · places ${s.unattributed.places} · ` +
+      `stops ${s.unattributed.stops}`,
+  );
+  if (s.unnamedCities) out(`  cities with no usable name: ${s.unnamedCities}`);
+}
+
+/**
  * `cairn/` — the only directory this CLI may ever write into.
  *
  * `europe-2026-itinerary.html`, `docs/` and `tickets/` at the repo root are the live app on
@@ -229,6 +274,7 @@ const commands: Record<string, () => void> = {
   conflicts: cmdConflicts,
   cost: cmdCost,
   validate: cmdValidate,
+  stats: cmdStats,
   import: cmdImport,
   export: cmdExport,
 };
