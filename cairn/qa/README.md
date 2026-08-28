@@ -979,6 +979,77 @@ for. That is the whole reason all five are MINOR and none is a BLOCKER.
 
 ---
 
+## Round 29 (2026-08-28, `claude/cairn-i7-r28-closure-6yrw8b` @ `61f5e71`) — I-7a: the civil calendar, exit criterion 6 with teeth, and `provisional`
+
+Seven new probes. Six are offline; **`i7a-idb-rowkeys.mjs` needs a browser** and is A-33 **6b-4**,
+the assertion BUILD-NOTES I-7a stubbed as unrunnable — it runs, from the same absolute Playwright
+path `qa/i6a-idb.mjs` has imported since round 27. The three `.sh` probes build throwaway
+`git worktree`s at `HEAD`, mutate them and remove them; nothing in the working tree is touched.
+All run from `cairn/`.
+
+```bash
+node --experimental-strip-types qa/i7a-calendar.mjs   # ALL OK, 37 checks. A-32 against THREE oracles that are
+                                                      # neither `Date` nor Hinnant: Fliegel–Van Flandern's JDN
+                                                      # (360,000 dates), Zeller's congruence (49,995 weekdays
+                                                      # plus nine historical anchors), and a brute-force
+                                                      # day-by-day walker over years 1..1200 (438,291 days).
+                                                      # `Date.UTC` cannot see years < 100 at all, so the
+                                                      # architect's and the builder's differentials were both
+                                                      # blind in exactly the band the BLOCKER lived in.
+                                                      # Plus the exhaustive 3,652,425-day round trip, the
+                                                      # domain edges, and the roll-over non-regression.
+
+node --experimental-strip-types qa/i7a-provisional.mjs  # 2 FAIL BY DESIGN. A-34's `provisional` at every
+                                                      # lifecycle boundary (one completed among several
+                                                      # active/planned, order-independence, the exact day a
+                                                      # trip stops being active, a zero-day trip, an inverted
+                                                      # row); R28-4's clamp per row vs per total AND what it
+                                                      # now hides; R28-5's undefined/null unification; the
+                                                      # version-3 row at all three lifecycles. The two FAILs
+                                                      # are R29-7 (the composite key's width) and R29-6
+                                                      # (a five-digit-year `lastVisit`).
+
+node --experimental-strip-types qa/i7a-today.mjs      # 4 FAIL BY DESIGN — R29-3. Runs the CLI on a
+                                                      # shape-valid calendar-invalid `--today`, and
+                                                      # differentially compares a round-trip calendar check
+                                                      # built from two §2.10 exports against `isIsoDate`
+                                                      # itself over 300,000 strings: KD-66's "out of reach"
+                                                      # does not hold.
+
+node --experimental-strip-types --max-old-space-size=3000 qa/i7a-span.mjs
+                                                      # 2 FAIL BY DESIGN — R29-2. The exact-date branch of
+                                                      # both trip forms is unbounded: `0202-01-01 →
+                                                      # 2020-12-31` is 664,377 days and 266.7 MB, and
+                                                      # `validateTrip` reports nothing. `--fast` skips it.
+
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node --experimental-strip-types qa/i7a-idb-rowkeys.mjs
+                                                      # ALL OK on the shipped tree — A-33 6b-4, the persisted
+                                                      # bytes of the real IndexedDB port read straight out of
+                                                      # the database. Add `--fault` for R29-1: 3 FAIL, with
+                                                      # `countriesVisited` and `daysTravelled` in the record.
+
+bash qa/i7a-exit6b.sh                                 # SIX new exit-6 faults past A-33 Part 6's own F1..F10.
+                                                      # G1 and G4 are GREEN — R29-1. Unlike i7-exit6.sh this
+                                                      # harness reports a drifted anchor as UNRUN and exits
+                                                      # non-zero (R29-4).
+
+bash qa/i7a-reexpressed.sh                            # The three KD-67 probe re-expressions, mutation-tested:
+                                                      # revert the implementation fix alone and check the
+                                                      # NEW assertion still reds. All three are legitimate
+                                                      # re-targets. §R4 demonstrates R29-4.
+
+bash qa/i7a-bundle.sh                                 # The +416-byte delta bisected across four builds —
+                                                      # A-32 is +511 and the travelStats rewrite is −95.
+```
+
+Round 28's probes at `61f5e71`: `i7-oracle` **ALL OK**, `i7-year` **ALL OK** (was 8 FAIL),
+`i7-pastyear` **ALL OK** (was 3), `i7-rescan` **ALL OK** (was 2), `i7-edges` **1 FAIL** (was 3 —
+the remaining one is R29-7), `bash qa/i7-faults.sh` all seven red (4·2·2·3·5·1·1),
+`bash qa/i7-exit6.sh` all ten red. Historic: `r13`…`r20` **0 FAIL**, `r21-closure` **1 FAIL**
+(R21-1), `r2-constraints` **1 FAIL** (R2-18), `qa/i6a-idb.mjs` **ALL OK**.
+
+---
+
 ## Round 28 (2026-08-28, `claude/cairn-i7-travelstats-c5oe7o` @ `db9dc1d`) — I-7: `travelStats` and the row's record census
 
 Seven new probes, **all offline** — no browser, no web build, no server. The two `.sh` ones build
