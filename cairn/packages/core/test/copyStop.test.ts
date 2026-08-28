@@ -1951,8 +1951,11 @@ test('A-21: a flipping `Place.at` does not throw, and the coordinate that crosse
   // null", read 2 was `null`, and `Cannot read properties of null (reading 'lat')` came out.
   //
   // Three values, not two: `copyStopInto`'s A-14 block reads `original.at` once ahead of this,
-  // to build the `refiled` probe `samePlace` compares against. A-21 leaves that block verbatim,
-  // so the first value is consumed there and `placeForCopy` sees values 2 and 3.
+  // to build the `refiled` probe `samePlace` compares against, so the first value is consumed
+  // there and `placeForCopy` sees values 2 and 3. That pair is A-21a's ONE written-down
+  // exception (its read-count table, row "re-filed, new row written"): `placeForCopy` takes a
+  // `Place` and reads it, and closing the gap would classify half of `Place`'s fields at the
+  // call site — which is exactly what A-15's single classification point forbids.
   const t = sourceWithFullPlace('ordinary prose');
   const at = withAccessor(
     { ...t.places[0] } as Place, 'at',
@@ -1965,14 +1968,55 @@ test('A-21: a flipping `Place.at` does not throw, and the coordinate that crosse
     () => { after = copyAcross(jacobsTarget('a21f'), source, 'a21f'); },
     'a getter on `at` threw a raw TypeError out of copyStopInto',
   );
-  // TWO, not one, and the second is the disclosed residue rather than an oversight: A-14's own
-  // block reads `original.at` once to build the `refiled` probe `samePlace` compares against,
-  // and A-21 leaves that block verbatim. `placeForCopy` — the function A-21 rewrites — reads it
-  // exactly once. A third read is `placeForCopy` re-reading, and that is the mutation.
+  // TWO, not one, and the second is A-21a's disclosed exception rather than an oversight: one
+  // read is A-14's `refiled` probe, one is `placeForCopy`'s, and never two inside one function.
+  // Two is the CEILING, and A-21a refuses to drive it to 1 — a builder who does has changed
+  // `placeForCopy`'s contract. A third read is `placeForCopy` re-reading, and that is the
+  // mutation. Step 3, where A-21a did move the count (3 → 1), is the test above.
   assert.equal(at.reads(), 2, 'A-21: `placeForCopy` reads `at` once; A-14\'s `refiled` probe is the other');
   assert.deepEqual(
     after!.places[0].at, { lat: 1, lng: 2 },
     'the coordinate that was null-checked must be the coordinate that crosses',
+  );
+});
+
+test('A-21a: on A-14 step 3, `original.at` is read ONCE — no throw, and the checked coordinate crosses', () => {
+  // A-21 Part 4 printed the place block as `/* … verbatim … */` and therefore left it reading
+  // `original.at` THREE times on the step-3 path: the `=== null` test, then `.lat`, then `.lng`.
+  // Measured on the shipped body (A-21a, revision 16 addendum):
+  //
+  //   at flips [{1,2}, null]  → TypeError: Cannot read properties of null (reading 'lat'), 2 reads
+  //   at flips [{1,2}, {3,4}] → copies {kind:'inline', at:{lat:3,lng:4}}, 3 reads
+  //
+  // The second is the one that decides it: a coordinate no `null` test ever saw, crossing a
+  // person boundary — A-21's subject sentence, not a crash. Step 3 is live here because the
+  // target has no city that answers to the source city's name (A-14 assertion 3's fixture).
+  const stepThree = (values: readonly unknown[]) => {
+    const t = sourceWithPlace({ name: 'Split', centre: SPLIT }, { name: 'Blue Cave, Biševo', at: BLUE_CAVE });
+    const at = withAccessor({ ...t.places[0] } as Place, 'at', values);
+    const target = mintedTrip('trip-tgt', 'user:jacob', 'tgt', [{ name: 'Prague', centre: PRAGUE }]);
+    return { at, source: { ...t, places: [at.value] } as Trip, target };
+  };
+
+  const nulls = stepThree([{ lat: 1, lng: 2 }, null]);
+  let afterNull: Trip;
+  assert.doesNotThrow(
+    () => { afterNull = copyAcross(nulls.target, nulls.source, 'a21i'); },
+    'a getter on `at` threw a raw TypeError out of copyStopInto on A-14 step 3',
+  );
+  assert.equal(nulls.at.reads(), 1, 'A-21a: step 3 reads `original.at` exactly once');
+  assert.deepEqual(
+    copiedStop(afterNull!).place, { kind: 'inline', at: { lat: 1, lng: 2 } },
+    'step 3 must keep the coordinate the `null` test actually saw',
+  );
+  assert.equal(afterNull!.places.length, 0, 'step 3 still files no Place row — A-14 is unchanged');
+
+  const flips = stepThree([{ lat: 1, lng: 2 }, { lat: 3, lng: 4 }]);
+  const afterFlip = copyAcross(flips.target, flips.source, 'a21j');
+  assert.equal(flips.at.reads(), 1, 'A-21a: step 3 reads `original.at` exactly once');
+  assert.deepEqual(
+    copiedStop(afterFlip).place, { kind: 'inline', at: { lat: 1, lng: 2 } },
+    'a coordinate no `null` test ever saw crossed the person boundary — A-21\'s subject sentence',
   );
 });
 

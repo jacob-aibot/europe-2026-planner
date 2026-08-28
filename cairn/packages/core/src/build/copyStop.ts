@@ -501,15 +501,21 @@ export function copyStopInto(
     // `original` missing → `place` stays `{kind:'none'}`: the source's own link dangled, and we
     // do not invent one. Everything below is A-14/A-15/A-16, unchanged.
     if (original) {
-      const targetKey = refileCityKey(source.trip, target, original.cityKey);
+      // A-21a: one read per field of `original` in THIS block. `at` was read three times below —
+      // the `null` test and then `.lat`/`.lng` — which threw `Cannot read properties of null` out
+      // of `copyStopInto`, and, for a getter that flipped to another coordinate, put a coordinate
+      // the `null` test never saw into the recipient's document.
+      const originalCityKey: string = original.cityKey;
+      const at: LatLng | null = original.at;
+      const targetKey = refileCityKey(source.trip, target, originalCityKey);
       if (targetKey === null) {
         // A-14 step 3 — no city in the target answers to the source city's name, so there is
         // nothing to file this place under and every alternative writes a guess into the
         // document. The stop keeps the coordinate; no `Place` row is added and `cities` is
         // untouched.
-        place = original.at === null
+        place = at === null
           ? { kind: 'none' }
-          : { kind: 'inline', at: { lat: original.at.lat, lng: original.at.lng } };
+          : { kind: 'inline', at: { lat: at.lat, lng: at.lng } };
       } else {
         // `refiled` is the PROBE the reuse search compares against — `samePlace` reads
         // `cityKey`, `name` and `at`, none of which A-15 changes, so reuse decisions are
@@ -517,7 +523,12 @@ export function copyStopInto(
         // built from the three fields `samePlace` actually reads rather than spread from
         // `original`, so A-18 position 2's *"no spread of a source record"* holds for the whole
         // file rather than for the paths that write.
-        const refiled = { cityKey: targetKey, name: original.name, at: original.at };
+        // `name` is read HERE and not hoisted above `refileCityKey`: step 3 never uses it, and a
+        // hoist would make a THROWING getter on `name` propagate on a path that never read it.
+        // A-21 accepts that a getter's throw propagates; it does not widen the set of paths that
+        // can see one.
+        const name: string = original.name;
+        const refiled = { cityKey: targetKey, name, at };
         const existing = target.places.find((p) => samePlace(p, refiled));
         if (existing) {
           // The reuse branch needs nothing from A-15: no field of the source place crosses at
