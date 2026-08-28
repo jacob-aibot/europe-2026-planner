@@ -1,5 +1,37 @@
 # Cairn — build notes, Phase 1 (and Phase 2 in progress)
 
+> **Addendum, on Phase 2 **I-5a** — ARCHITECTURE revision 20's **A-26**: the mixed-resolution
+> index, and the emission order that resolves an enclave. The second increment of step 2b.**
+> Scope was A-26 Part 6 and nothing else: **one generator, one hand-written `packages/core` file,
+> two test files, one regenerated module, one regenerated golden, one new golden.** Nothing in
+> `packages/client`, nothing in `apps/web/src`, nothing under `qa/`, nothing at the repo root, no
+> `schemaVersion` bump, **no new export (73, unchanged)**, no change to `ARCHITECTURE.md`,
+> `ROADMAP.md` or the visual roadmap. **`derive/country.ts` is untouched** — A-26 Part 6 item 3
+> says that if it grows a distance function the increment has gone wrong, and it has not grown
+> anything. **Two new KDs (52, 53).** Written test-first: the order-preservation test red before
+> `countryIndex` changed, the thirteen index assertions red before the generator did.
+>
+> | | |
+> |---|---|
+> | **What runs, and the exact command** | `cd cairn && npm run typecheck && npm run test:tap`. The generator stays a build-time tool run by hand and never by the product: `node tools/gen-countries.mjs` (110m base + 10m fill, writes), `--dry-run` (measures only), `--no-fill` (**new** — the base scale alone, which is what keeps A-26 Part 2's scale comparison one command now that the default is mixed), `--scale 50m\|10m`, `--audit-only`, `--holes` (**new** — writes `fixtures/golden/country-holes.json`, fetching all three scales). Goldens: `npm run golden`. |
+> | **`EMITTED_BYTES`, re-measured — `346_455`** | From the generator's own last line, not from A-26. **239 codes / 892 rings / 20,702 points**, which reproduces A-26 Part 4's measurement exactly. The *byte* figure does not: the architect projected **342,981** and I measured **346,455**, **+3,474**. The whole difference is comment — the header now carries two source checksums instead of one, the 64-code fill list, the paragraph explaining why the order is ascending area, and a code list that grew 175 → 239. The packed payload is identical to the projection's inputs. Flagged rather than absorbed, per the routing instruction. One knock-on: `0-countryBudget.test.ts`'s "bytes of TypeScript outside the packed literal" bound moves **3,000 → 3,600**, for the same reason and in the same direction; the two assertions that actually catch data-leaking-into-syntax (zero `[` outside the literal, >98 % of the file inside it) are unmoved. |
+> | **The fill, and the order** | `gen-countries.mjs` builds the 1:110m base (175 codes), reads the 1:10m layer's **own** code list (239), quantises **only** the 64 codes the base lacks, and splices those in. It then orders every entry by ascending summed absolute spherical ring area, ties by ISO code ascending, and emits in that order — `VA` (smallest) first, `RU` last. The filled set the generator derived is byte-for-byte A-26 Part 3's list of 64. A code the finest scale carries that does not reach the index **throws before writing**, which is criterion 4c's coverage half enforced where the network is. |
+> | **`countryIndex()` no longer sorts** | `packages/core/src/geo/countryIndex.ts`, the only hand-written `packages/core` change. It preserves the order it is given and derives each box as before. The docstring keeps the determinism argument and re-points it: the order is now a property of the committed artefact, so a reorder is a diff a reviewer sees. A four-polygon test fixture is tested in the order it was written. |
+> | **Non-regression (i) — the reference trip, byte-identical** | Over all **226** coordinate-bearing records (132 stops + 94 places), **zero** answers change. `fixtures/golden/countries.json` regenerates with a **4-line diff and nothing else**: `index.scale` `ne_110m` → `ne_110m+10m`, `index.source` gaining the fill file, `index.countries` 175 → 239, `index.rings` 286 → 892. Every country row, every `namedBy`, both unattributed lists: unchanged. This is the ship gate's strongest single check and it holds exactly. |
+> | **Non-regression (ii) — the 0.25° global sweep, re-derived** | Run against the **actual pre-I-5a module restored from `HEAD`**, not a reconstruction. **1,036,800 cells. 61 differ: 59 `null` → a country, 2 a wrong country → the right one (`1.375,103.875 MY → SG` and `22.375,114.125 CN → HK`), 0 worse.** Reproduces A-26 Part 4's figures cell-for-cell. |
+> | **Verification (iii) — the two injected faults, run against the artefact** | Not only in memory. **Fault A** — re-sort the committed `PACKED` into ISO order: **5 named tests red** (the micro-states test, the Vatican residue test, the Monaco border-bias test, the ascending-area order test, the drop-`LI` test). **Fault B** — delete the `LI` entry from `PACKED`: **5 named tests red** (the golden's dataset-provenance test, the micro-states test, the fill-coverage test, the plausible-layer test, the drop-`LI` test). Criterion 4c asks for three in each case. The artefact was restored from a pre-fault copy and the suite re-run green afterwards. |
+> | **The 7-of-8 microstate fix, confirmed by running `countryOf` on each** | `SM` ✓ (43.9424, 12.4578 → `SM`, was `IT`) · `MC` ✓ (43.7333, 7.4167 → `MC`, was `FR`) · `LI` ✓ (Vaduz 47.1410, 9.5209 → `LI`, was `AT`) · `AD` ✓ (42.5063, 1.5218 → `AD`, was `FR`) · `GI` ✓ (36.1408, −5.3536 → `GI`, was `ES`) · `HK` ✓ (22.3193, 114.1694 → `HK`, was `CN`) · `SG` ✓ (1.3521, 103.8198 → `SG`, was `MY`) · **`VA` — the disclosed residue, and narrower than A-26 Part 5 states: see KD-52.** Plus the thirteen island states the base could never name (`MT MV MU SC MO BH BM FO CV BB IM JE AX`), each verified against a named place. |
+> | **`fixtures/golden/country-holes.json`** | **7 holes, 2 of them scale-resolvable** — exactly criterion 4b's stated values. `resolvesAt: null` for `Blue Cave, Biševo` (stop-38, place-39), `Stiniva Cove, Vis` (stop-39, place-40) and `Budikovac / Blue Lagoon — snorkel stop` (stop-40): a **dataset gap**, and `null` is the correct answer. `resolvesAt: "10m"` for `Hvar Town` (stop-41 and place-38): a scale question. A test asserts the file names exactly the set the committed index leaves `null` **and** exactly the set `countries.json`'s two unattributed lists name, so the three artefacts cannot drift; another walks the file asserting every number in it is an integer, so no coordinate reached it. |
+> | **Ceilings, re-derived by running** | `npm run typecheck` clean, both projects, exit 0. `npm run test:tap` **662 pass / 0 fail** (**649 → 662, +13**). `Object.keys(core).length` **73**, unchanged — this increment adds no export. Reference trip **2 blockers / 4 warnings / 11 notes** at `FIXTURE_TODAY`, `validateTrip` **11**, `geoCheck` **0** — all unmoved. `node --test packages/core/test/*.test.ts` **419 pass**, and `node --test packages/core` exits 0, which is the type-stripping check the budget test exists to protect: the generated module doubled and the stripper still takes it with no build step. `npm run golden` and `npm run sample` regenerate with no further change — `git status --short` after is the same six modified files plus the one new golden. |
+> | **One defect found and fixed on the way** | The post-write audit was auditing the **previous** module. `crossCheck` imports `packages/core/src/index.ts` before the write, so `countries.gen.ts` is already in the module cache and the cache-busting query on the barrel does not reload it — the first run of the new generator printed `at ne_110m` for an index it had just written as `ne_110m+10m`. It now re-execs itself with `--audit-only` in a child process. Pre-existing, and it is the guard I-5's ship gate leans on. |
+> | **What I stubbed** | Nothing. A-26 Part 6's five items are all built. What I did **not** build, because it is I-6's and I-8's: `tripSummary(trip, index)`, `countryCodes`, `SUMMARY_VERSION`, `travelStats`, any screen. `countryOf` and `COUNTRY_INDEX` still have no consumer inside the product, deliberately. |
+> | **What I could not verify** | Three, stated rather than glossed. (1) **No checksum comparison against `naturalearthdata.com`'s own artefact** — still 403 through the proxy, §8.4's own limit, unchanged by this pass; all three files matched the pinned checksums in the generator to the byte. (2) **The web bundle's new size was not re-measured.** I-5 measured `apps/web` at 598.73 → 772.74 kB; the generated module grew by ~171 kB and that will land in the bundle too, but I did not run `npm run web:build`, so the figure is not mine to state. It sharpens I-5's standing objection about lazy-loading the index rather than changing it. (3) I did not run anything under `qa/` — out of scope by instruction, and `qa/r14-horizon-copy.mjs` §7's `kds.length` pin moves again with KD-52/53. |
+> | **Objection to the design** | **One, and it is small: `derive/country.ts`'s docstring is now stale and I left it stale on purpose.** Its `countryOf` doc comment says countries are tested *"in the index's own order, which `countryIndex` fixes as ascending ISO code"* — which is precisely the sentence A-26 Part 4 withdrew. A-26 Part 6 item 3 says that file is **unchanged**, and the routing instruction repeated it, so I did not touch it rather than deciding for myself that a comment is exempt from "unchanged". It is a one-line correction whenever the architect wants it made; I would rather flag it than quietly widen my own scope on the one file the ruling names twice. KD-53. |
+>
+> The I-5 addendum below stands, with two figures superseded by this pass: `EMITTED_BYTES` is
+> `346_455`, not `175_085`, and the index carries 239 codes, not 175. `CAIRN_VISUAL_ROADMAP.md` and
+> its `.html` twin were **not** updated — the task that routed I-5a excluded them explicitly.
+
 > **Addendum, on Phase 2 **I-5** — `tools/gen-countries.mjs` + `countryOf` + the attribution
 > golden. The first increment of step 2b.**
 > Scope was I-5 and nothing else: **three new source files (one of them generated), two new test
@@ -1756,6 +1788,69 @@ rather than unattributed**: San Marino and Vatican City return `IT`, Monaco `FR`
 That is the one failure mode of this scale the honest-hole rule does not cover, and it is pinned by a
 named test (*"the micro-enclaves 1:110m does not carry are absorbed by their neighbour"*) so it is a
 known number rather than a user's discovery. It is not on the reference trip.
+
+**Ruled at revision 20 as ARCHITECTURE §8.4 A-26 and built as I-5a. Both halves are closed**: the
+escalation clause is withdrawn as factually wrong, `null` is the correct answer for the three
+Dalmatian records, and the micro-enclaves are fixed by a mixed-resolution index rather than by a
+scale change — 7 of the 8 answer themselves, `VA` is the disclosed residue (**KD-52**).
+
+### KD-52 — the Vatican residue is real but narrower than A-26 Part 5 states, and the test records the measurement
+
+`packages/core/test/country.test.ts` · **ARCHITECTURE §8.4 A-26 Part 5, residue 1; ROADMAP Phase 2
+exit criterion 4c and the Phase 2 attack list.**
+
+**What the contract says.** A-26 Part 5: *"Vatican City is `IT` at every scale, and stays that way"*,
+and the roadmap's attack list: *"`VA` is a pinned known-wrong `IT`"*. The reasoning given is exact and
+correct: Natural Earth's `VA` feature is a seven-point sliver spanning 12.4527–12.4540 E,
+41.9028–41.9039 N — about 110 m × 130 m against the real state's 0.44 km² — and St Peter's Basilica
+(41.9022, 12.4539) sits about 90 m south of it.
+
+**What the code does, measured.** The reasoning is right and the blanket statement is not. The sliver
+is small but it is *there*, and it is in the index, ordered first of all 239 entries because it is the
+smallest polygon in the layer. So:
+
+- **`41.9022, 12.4539` (St Peter's Basilica) → `IT`.** Also St Peter's Square and the Vatican Museums
+  entrance, and by extension most of the state. This is the residue, and it is what a real trip records.
+- **`41.9033, 12.4533` (inside the 110 m × 130 m patch) → `VA`.** Also `41.9029, 12.4534`, which is
+  the coordinate the pre-I-5a micro-enclave test used and labelled "Vatican City" — it returned `IT`
+  before this pass and returns `VA` after.
+
+**What I did about it.** Pinned both, in one named test, with the reason in the test's own text, rather
+than asserting the ruling's sentence and getting a red run — or, worse, choosing a coordinate that made
+the sentence true. The substance of A-26 Part 5 is untouched: **the residue is not repaired**, because
+the only mechanism available is a hand-authored exclusion box for one polity and that is the road I-5's
+dependency clause forbids. The trigger to reopen is unchanged: Natural Earth shipping a real `VA`
+polygon. What moves is the *description* — from *"`VA` is `IT` everywhere"* to *"`VA` names a patch
+that is about a thirtieth of the state and does not include the basilica"* — which is the architect's
+sentence to correct, not mine.
+
+**One related correction, same test, no ruling involved.** The pre-I-5a test's "Liechtenstein"
+coordinate, `47.1662, 9.5554`, is not in Liechtenstein: measured against the 1:10m ring it is about
+250 m east of the border at that latitude, so `AT` was always the better answer for it and the fill
+does not change it. The test now uses Vaduz, `47.1410, 9.5209`, which returns `LI`. A coordinate that
+was never in the country is not evidence about the country, in either direction.
+
+### KD-53 — OBJECTION: `derive/country.ts`'s docstring is stale, and correcting it is the architect's call, not mine (no source cites this: the whole point is that the file was not edited)
+
+**Where:** `packages/core/src/derive/country.ts:70` · **ARCHITECTURE §8.4 A-26 Part 4 and Part 6 item 3.**
+
+**What the contract says.** Part 6 item 3, in full: *"`packages/core/src/derive/country.ts` —
+**unchanged.** If this file grows a distance function, the increment has gone wrong."* Part 6 item 2
+names `countryIndex.ts` as *"the only hand-written change to `packages/core`"*.
+
+**The divergence.** `countryOf`'s doc comment says countries are tested *"in the index's own order,
+which `countryIndex` fixes as ascending ISO code, so an overlap in the data resolves the same way
+everywhere."* Part 4 withdrew exactly that: `countryIndex` fixes nothing now, the generator does, and
+the key is area rather than code. The sentence is false as of this commit.
+
+**Why I shipped it false.** "Unchanged" and "the only hand-written change" are both stated in writing,
+and a comment is part of a file. Deciding that a docstring is exempt would be me widening my own scope
+on the one file the ruling names twice, in the increment whose whole failure mode is *doing something
+clever in `country.ts`*. So the objection is written here instead, as the contract's own escape hatch
+requires. **It is a one-line correction** — the sentence should point at A-26 Part 4 and at the
+generator — and it is a doc-only change with no behavioural risk whenever the architect wants it made.
+The behavioural claim the file makes that *is* still true, and the one that matters, is that it
+contains no distance function; a test greps for that and it still passes.
 
 ---
 

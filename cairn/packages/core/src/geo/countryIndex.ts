@@ -71,20 +71,32 @@ function boxOf(rings: readonly CountryRing[]): CountryBox {
 /**
  * Builds an index from entries, deriving each bounding box. Pure.
  *
- * Entries are sorted by code, ascending. That is not cosmetic: `countryOf` returns the FIRST
- * country whose rings contain the point, so if two countries' rings ever overlap — a disputed
- * area drawn twice, a dataset defect — the answer has to be the same on every machine and every
- * run. Sorting makes the tie-break a property of the data rather than of the order somebody
- * happened to append in.
+ * **The order of `init.countries` is preserved exactly.** That is not indifference: `countryOf`
+ * returns the FIRST country whose rings contain the point, so where two countries' rings overlap
+ * the order *is* the tie-break, and it has to be the same on every machine and every run.
+ *
+ * This function used to impose that determinism itself, by sorting on ISO code. §8.4 **A-26**
+ * Part 4 withdrew that: the key was deterministic and arbitrary, and the arbitrariness was the
+ * defect. The shipped index is 1:110m filled with 1:10m polygons for the 64 ISO codes the coarse
+ * layer does not carry, which creates overlaps the source data never had — a Vaduz point is
+ * inside both Austria's coarse ring and Liechtenstein's fine one — and **alphabetical order
+ * resolves seven of those eight overlaps in favour of the encloser** (`AT` before `LI`, `CN`
+ * before `HK`, `ES` before `GI`, `FR` before `MC`, `IT` before `SM`, `MY` before `SG`).
+ *
+ * So the order is decided where the polygons are: `tools/gen-countries.mjs` emits entries in
+ * **ascending summed absolute spherical ring area, ties by ISO code ascending** — non-arbitrary,
+ * because an enclave is always smaller than the thing enclosing it. Determinism is not weakened
+ * by moving the decision here; it is strengthened, because the order becomes part of the
+ * committed artefact, so a reorder is a diff a reviewer sees rather than a comparison a reviewer
+ * trusts. A hand-written test fixture is tested in the order it was written, which is what a
+ * four-polygon fixture wants.
  */
 export function countryIndex(init: {
   scale: string;
   source: string;
   countries: readonly CountryEntryInit[];
 }): CountryIndex {
-  const countries = [...init.countries]
-    .sort((a, b) => (a.code < b.code ? -1 : a.code > b.code ? 1 : 0))
-    .map((c) => ({ code: c.code, rings: c.rings, box: boxOf(c.rings) }));
+  const countries = init.countries.map((c) => ({ code: c.code, rings: c.rings, box: boxOf(c.rings) }));
   return { scale: init.scale, source: init.source, countries };
 }
 

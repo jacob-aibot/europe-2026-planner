@@ -4,10 +4,10 @@
   "$sourceSha256": "40955ca0b182dddcc33540accadf2a65a329bc20b9e6ca109c9884e776bb06d2",
   "$what": "countryOf() over every coordinate-bearing record of the reference trip, using the bundled COUNTRY_INDEX. Each country names the first stop, in document order, that produced it. NO COORDINATES: ids and names only — see the note in gen-golden.mjs.",
   "index": {
-    "scale": "ne_110m",
-    "source": "nvkelso/natural-earth-vector@v5.1.2/geojson/ne_110m_admin_0_countries.geojson",
-    "countries": 175,
-    "rings": 286
+    "scale": "ne_110m+10m",
+    "source": "nvkelso/natural-earth-vector@v5.1.2/geojson/ne_110m_admin_0_countries.geojson + ne_10m_admin_0_countries.geojson (fill: 64 codes the base omits)",
+    "countries": 239,
+    "rings": 892
   },
   "stops": {
     "total": 143,

@@ -1,0 +1,61 @@
+{
+  "$generatedBy": "cairn/tools/gen-countries.mjs --holes",
+  "$source": "europe-2026-itinerary.html (read-only)",
+  "$sourceSha256": "40955ca0b182dddcc33540accadf2a65a329bc20b9e6ca109c9884e776bb06d2",
+  "$what": "Every coordinate-bearing record of the reference trip that the committed COUNTRY_INDEX leaves unattributed, with the coarsest scale in the pinned Natural Earth family that does attribute it — or null, which means the dataset carries no polygon for that landform at any scale and null is the CORRECT answer. NO COORDINATES: ids and names only.",
+  "index": {
+    "scale": "ne_110m+10m",
+    "source": "nvkelso/natural-earth-vector@v5.1.2/geojson/ne_110m_admin_0_countries.geojson + ne_10m_admin_0_countries.geojson (fill: 64 codes the base omits)"
+  },
+  "scales": [
+    "110m",
+    "50m",
+    "10m"
+  ],
+  "total": 7,
+  "resolvable": 2,
+  "holes": [
+    {
+      "kind": "stop",
+      "id": "stop-38",
+      "name": "Blue Cave, Biševo",
+      "resolvesAt": null
+    },
+    {
+      "kind": "stop",
+      "id": "stop-39",
+      "name": "Stiniva Cove, Vis",
+      "resolvesAt": null
+    },
+    {
+      "kind": "stop",
+      "id": "stop-40",
+      "name": "Budikovac / Blue Lagoon — snorkel stop",
+      "resolvesAt": null
+    },
+    {
+      "kind": "stop",
+      "id": "stop-41",
+      "name": "Hvar Town",
+      "resolvesAt": "10m"
+    },
+    {
+      "kind": "place",
+      "id": "place-38",
+      "name": "Hvar Town",
+      "resolvesAt": "10m"
+    },
+    {
+      "kind": "place",
+      "id": "place-39",
+      "name": "Blue Cave, Biševo",
+      "resolvesAt": null
+    },
+    {
+      "kind": "place",
+      "id": "place-40",
+      "name": "Stiniva Cove, Vis",
+      "resolvesAt": null
+    }
+  ]
+}

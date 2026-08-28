@@ -274,6 +274,109 @@ test('I-5 criterion 4: the two open-sea Dalmatian islands are unattributed, and 
   }
 });
 
+// ------------------------------------------- 4a. the holes golden (criterion 4 part b)
+
+type GoldenHoles = {
+  index: { scale: string; source: string };
+  scales: string[];
+  resolvable: number;
+  holes: Array<{ kind: 'stop' | 'place'; id: string; name: string; resolvesAt: string | null }>;
+};
+
+/**
+ * **Criterion 4 part b — every hole is named, and says whether a scale would fix it.**
+ *
+ * `fixtures/golden/country-holes.json` is written by `node tools/gen-countries.mjs --holes`, which
+ * fetches all three scales in the pinned family (a human's generation-time cost — nothing in the
+ * product fetches anything) and records, for each record the *committed* index leaves `null`, the
+ * coarsest scale in the family that does attribute it.
+ *
+ * That field is the whole point of the artefact, and A-26 Part 1 is what it makes un-askable
+ * again: **`resolvesAt: null` is a dataset gap and `null` is the correct answer** — Biševo,
+ * Budikovac and Lokrum have no admin-0 polygon at any scale, with the nearest Croatian ring
+ * 4.26 km, 2.75 km and 1.87 km away — whereas a non-null `resolvesAt` is a scale question.
+ */
+test('I-5a criterion 4b: the holes golden names exactly the records the committed index leaves null', () => {
+  const { trip } = europe2026();
+  const g = golden<GoldenHoles>('country-holes.json');
+
+  const actual: Array<{ kind: string; id: string; name: string }> = [];
+  for (const s of allStops(trip)) {
+    if (s.at && countryOf(s.at, COUNTRY_INDEX) === null) actual.push({ kind: 'stop', id: s.stopId, name: s.name });
+  }
+  for (const p of trip.places) {
+    if (p.at && countryOf(p.at, COUNTRY_INDEX) === null) actual.push({ kind: 'place', id: p.id, name: p.name });
+  }
+
+  assert.deepEqual(
+    g.holes.map((h) => ({ kind: h.kind, id: h.id, name: h.name })),
+    actual,
+    'countries.json and country-holes.json name different records — the two artefacts have drifted',
+  );
+});
+
+test('I-5a criterion 4b: the holes golden agrees with the attribution golden, record for record', () => {
+  const holes = golden<GoldenHoles>('country-holes.json');
+  const g = golden<GoldenCountries>('countries.json');
+  assert.deepEqual(
+    holes.holes.filter((h) => h.kind === 'stop').map((h) => ({ stopId: h.id, name: h.name })),
+    g.unattributedStops.map((s) => ({ stopId: s.stopId, name: s.name })),
+  );
+  assert.deepEqual(
+    holes.holes.filter((h) => h.kind === 'place').map((h) => ({ placeId: h.id, name: h.name })),
+    g.unattributedPlaces.map((p) => ({ placeId: p.placeId, name: p.name })),
+  );
+  assert.equal(holes.index.scale, COUNTRY_INDEX.scale);
+  assert.equal(holes.index.source, COUNTRY_INDEX.source);
+  assert.deepEqual(holes.scales, ['110m', '50m', '10m'], 'coarsest first — resolvesAt is the coarsest that works');
+});
+
+/**
+ * The values, measured at revision 20 and re-measured by the generator that wrote the file. Three
+ * landforms Natural Earth admin-0 does not carry at any scale, and one record — Hvar Town, which
+ * *is* on a carried island — that only the finest scale reaches.
+ */
+test('I-5a criterion 4b: a dataset gap is null and a scale question names its scale', () => {
+  const g = golden<GoldenHoles>('country-holes.json');
+  const at = (kind: string, name: string) => g.holes.find((h) => h.kind === kind && h.name.startsWith(name));
+  assert.equal(at('stop', 'Blue Cave, Biševo')?.resolvesAt, null);
+  assert.equal(at('stop', 'Stiniva Cove, Vis')?.resolvesAt, null);
+  assert.equal(at('stop', 'Budikovac / Blue Lagoon')?.resolvesAt, null);
+  assert.equal(at('stop', 'Hvar Town')?.resolvesAt, '10m');
+  assert.equal(at('place', 'Blue Cave, Biševo')?.resolvesAt, null);
+  assert.equal(at('place', 'Stiniva Cove, Vis')?.resolvesAt, null);
+  assert.equal(at('place', 'Hvar Town')?.resolvesAt, '10m');
+  for (const h of g.holes) {
+    assert.ok(h.resolvesAt === null || g.scales.includes(h.resolvesAt), `${h.name}: ${h.resolvesAt} is not a pinned scale`);
+  }
+});
+
+/**
+ * **The ceiling.** The number of holes a scale change *could* have fixed is the number that may
+ * not grow; a hole with `resolvesAt: null` is correct and is not counted against anything.
+ */
+test('I-5a criterion 4b: the count of scale-resolvable holes is a ceiling, not a target', () => {
+  const g = golden<GoldenHoles>('country-holes.json');
+  const resolvable = g.holes.filter((h) => h.resolvesAt !== null).length;
+  assert.equal(resolvable, g.resolvable, 'the recorded count disagrees with the rows');
+  assert.ok(resolvable <= 2, `${resolvable} holes a scale would fix; the measured ceiling is 2`);
+});
+
+test('I-5a: no coordinate reached the committed holes golden either', () => {
+  const raw = golden<Record<string, unknown>>('country-holes.json');
+  const floats: string[] = [];
+  const walk = (v: unknown, path: string): void => {
+    if (typeof v === 'number') {
+      if (!Number.isInteger(v)) floats.push(`${path}=${v}`);
+    } else if (Array.isArray(v)) v.forEach((x, i) => walk(x, `${path}[${i}]`));
+    else if (v && typeof v === 'object') {
+      for (const [k, x] of Object.entries(v)) walk(x, `${path}.${k}`);
+    }
+  };
+  walk(raw, '$');
+  assert.deepEqual(floats, [], 'a coordinate reached the committed holes golden');
+});
+
 test('I-5: Croatia is still the trip\'s best-attributed country despite those two holes', () => {
   const g = golden<GoldenCountries>('countries.json');
   const hr = g.countries.find((c) => c.code === 'HR');
@@ -326,17 +429,135 @@ test('I-5 attack: an enclave — the hole in South Africa is respected', () => {
 });
 
 /**
- * The other half of the enclave attack, and the reason it is a separate test with its own name:
- * at 1:110m the four European micro-enclaves **are not in the dataset at all**, so they do not
- * come back `null` — they come back as their surrounding country. That is a **misattribution,
- * not a hole**, it is the one failure mode of this scale that `null` does not make visible, and
- * it is pinned here so that nobody discovers it from a user's map. BUILD-NOTES KD-51.
+ * **I-5a inverts this test.** At 1:110m the micro-states are not in the dataset at all, so they
+ * did not come back `null` — they came back as their *surrounding country*, which is the one
+ * failure mode of that scale `null` does not make visible. §8.4 **A-26** Part 3 measured the size
+ * of that hole: the 1:110m layer carries 175 ISO codes, the 1:10m layer carries 239, and eight of
+ * the 64 missing ones were being answered with a wrong neighbour rather than a hole.
+ *
+ * The mixed index fills those 64 codes and emits ascending polygon area, so the enclave's ring is
+ * tested before its encloser's. Seven of the eight now answer themselves.
+ *
+ * **`VA` is the eighth and it is pinned as `IT` — a known-wrong answer, disclosed, not repaired**
+ * (A-26 Part 5, residue 1). Natural Earth's `VA` feature is a seven-point sliver spanning
+ * 12.4527–12.4540 E, 41.9028–41.9039 N — about 110 m × 130 m against the real state's 0.44 km² —
+ * and St Peter's Basilica sits ~90 m south of it. No scale, no ordering and no fill reaches that;
+ * the only mechanism left is a hand-authored exclusion box for one polity, which is the first step
+ * onto the hand-typed-polygon road I-5's dependency clause forbids. Reopen if Natural Earth ships
+ * a real `VA` polygon.
  */
-test('I-5 attack: the micro-enclaves 1:110m does not carry are absorbed by their neighbour', () => {
-  assert.equal(countryOf({ lat: 43.9424, lng: 12.4578 }, COUNTRY_INDEX), 'IT'); // San Marino
-  assert.equal(countryOf({ lat: 41.9029, lng: 12.4534 }, COUNTRY_INDEX), 'IT'); // Vatican City
-  assert.equal(countryOf({ lat: 43.7333, lng: 7.4167 }, COUNTRY_INDEX), 'FR'); // Monaco
-  assert.equal(countryOf({ lat: 47.1662, lng: 9.5554 }, COUNTRY_INDEX), 'AT'); // Liechtenstein
+test('I-5a criterion 4c: the micro-states the base scale omits now answer themselves', () => {
+  assert.equal(countryOf({ lat: 43.9424, lng: 12.4578 }, COUNTRY_INDEX), 'SM'); // San Marino
+  assert.equal(countryOf({ lat: 43.7333, lng: 7.4167 }, COUNTRY_INDEX), 'MC'); // Monaco
+  // Vaduz, 47.1410/9.5209. NOT the 47.1662/9.5554 the pre-I-5a test labelled "Liechtenstein":
+  // measured against the 1:10m ring, that point is ~250 m EAST of Liechtenstein's border at that
+  // latitude, so `AT` was always the better answer for it and the fill does not change it. A
+  // coordinate that was never in the country is not evidence about the country.
+  assert.equal(countryOf({ lat: 47.141, lng: 9.5209 }, COUNTRY_INDEX), 'LI');
+  assert.equal(countryOf({ lat: 42.5063, lng: 1.5218 }, COUNTRY_INDEX), 'AD'); // Andorra la Vella
+  assert.equal(countryOf({ lat: 36.1408, lng: -5.3536 }, COUNTRY_INDEX), 'GI'); // Gibraltar
+  assert.equal(countryOf({ lat: 22.3193, lng: 114.1694 }, COUNTRY_INDEX), 'HK'); // Hong Kong
+  assert.equal(countryOf({ lat: 1.3521, lng: 103.8198 }, COUNTRY_INDEX), 'SG'); // Singapore
+});
+
+/**
+ * **`VA` is the eighth, and the residue is measured here rather than assumed.** A-26 Part 5 says
+ * *"Vatican City is `IT` at every scale"*; the measurement is narrower and this test records what
+ * the dataset actually does, because a pinned known-wrong answer is only useful if it is the
+ * answer the code gives.
+ *
+ * Natural Earth carries a seven-point `VA` feature spanning **12.4527–12.4540 E, 41.9028–41.9039
+ * N** — about 110 m × 130 m, roughly a thirtieth of the real state's 0.44 km², sitting over the
+ * gardens rather than the basilica. So:
+ *
+ *   - a coordinate that happens to fall inside that patch returns `VA`;
+ *   - **St Peter's Basilica — the landmark a real trip records — is ~90 m south of it and returns
+ *     `IT`**, and so does the square, the museums entrance and most of the state.
+ *
+ * That is the residue, and it is disclosed, not repaired: the only mechanism available is a
+ * hand-authored polygon for one polity, which is the road I-5's dependency clause forbids, for a
+ * state whose every visitor is in Rome the same day and whose lifetime map gains `IT` either way.
+ * **Reopen if** Natural Earth ships a real `VA` polygon. KD-52 records the measurement.
+ */
+test('I-5a criterion 4c: Vatican City stays a disclosed known-wrong answer — St Peter\'s is IT', () => {
+  assert.equal(countryOf({ lat: 41.9022, lng: 12.4539 }, COUNTRY_INDEX), 'IT'); // St Peter's Basilica
+  assert.equal(countryOf({ lat: 41.9042, lng: 12.4568 }, COUNTRY_INDEX), 'IT'); // Vatican Museums
+  assert.equal(countryOf({ lat: 41.9022, lng: 12.4568 }, COUNTRY_INDEX), 'IT'); // St Peter's Square
+  // …and the 110 m x 130 m patch the dataset does carry answers itself, which is why the ruling's
+  // "IT at every scale" is recorded above as narrower than it reads.
+  assert.equal(countryOf({ lat: 41.9033, lng: 12.4533 }, COUNTRY_INDEX), 'VA');
+});
+
+/**
+ * **A-26 Part 5, residue 2 — the second thing this ruling makes worse, disclosed rather than left
+ * to be discovered.** A filled polygon is 1:10m and its neighbour is 1:110m, so the two do not
+ * share a boundary: there is an overlap *band*, and ascending-area order hands that band to the
+ * smaller state. Natural Earth's 12-point Monaco spans 43.7179–43.7635 N against the real
+ * 43.7247–43.7519, so roughly 700 m of French ground north of Monaco returns `MC`.
+ *
+ * This is accepted deliberately: it replaces *always wrong inside Monaco* with *right inside
+ * Monaco, wrong within ~700 m outside it*, which is strictly less wrong area. It is pinned here as
+ * a measurement so that the day it changes is a red test, not a silence.
+ */
+test('I-5a: a point ~500 m north of Monaco returns MC — the fill\'s border bias, measured', () => {
+  assert.equal(countryOf({ lat: 43.7564, lng: 7.42 }, COUNTRY_INDEX), 'MC');
+  // Far enough out and France is answered again: the band is narrow, not a takeover.
+  assert.equal(countryOf({ lat: 43.79, lng: 7.42 }, COUNTRY_INDEX), 'FR');
+});
+
+/**
+ * The island states the 1:110m layer could never name — the reason A-26 re-opened I-5 rather than
+ * filing the micro-enclaves as a curiosity. A lifetime map that cannot say *Malta* is broken for
+ * exactly the person the product is for.
+ */
+test('I-5a criterion 4c: the island states the base scale cannot reach are named', () => {
+  const expected: Array<[string, LatLng, string]> = [
+    ['MT', { lat: 35.8989, lng: 14.5146 }, 'Valletta'],
+    ['MV', { lat: 4.1755, lng: 73.5093 }, 'Malé'],
+    ['MU', { lat: -20.1609, lng: 57.5012 }, 'Port Louis'],
+    ['SC', { lat: -4.6191, lng: 55.4513 }, 'Victoria'],
+    ['MO', { lat: 22.1987, lng: 113.5439 }, 'Macao'],
+    ['BH', { lat: 26.2285, lng: 50.586 }, 'Manama'],
+    ['BM', { lat: 32.2949, lng: -64.7814 }, 'Hamilton'],
+    ['FO', { lat: 62.0079, lng: -6.7723 }, 'Tórshavn'],
+    ['CV', { lat: 14.9177, lng: -23.5092 }, 'Praia'],
+    ['BB', { lat: 13.0975, lng: -59.6167 }, 'Bridgetown'],
+    ['IM', { lat: 54.1509, lng: -4.4814 }, 'Douglas'],
+    // Inland Jersey, not St Helier: the harbour town sits on the waterline and falls ~200 m
+    // outside the 1:10m ring — A-26 Part 2's shoreline effect, on a filled polygon this time.
+    ['JE', { lat: 49.2144, lng: -2.1312 }, 'Jersey (inland)'],
+    ['AX', { lat: 60.0971, lng: 19.9348 }, 'Mariehamn'],
+  ];
+  for (const [code, at, name] of expected) {
+    assert.equal(countryOf(at, COUNTRY_INDEX), code, `${name} should attribute to ${code}`);
+  }
+});
+
+/**
+ * Criterion 4c's coverage half, made checkable with no network: **every ISO code the pinned
+ * family's finest scale carries is in the shipped index.** The 64 the 1:110m base omits are
+ * enumerated by §8.4 A-26 Part 3, measured there; the generator re-derives the same set from the
+ * two downloads on every run and refuses to write if the emitted index misses one.
+ */
+const FILLED_CODES = [
+  // the 8 that were answered with a wrong neighbour
+  'AD', 'GI', 'HK', 'LI', 'MC', 'SG', 'SM', 'VA',
+  // the 56 that were unreachable
+  'MT', 'MV', 'MU', 'SC', 'MO', 'BH', 'BM', 'FO', 'CV', 'BB', 'IM', 'JE', 'GG', 'AX',
+  'AW', 'CW', 'KY', 'TC', 'AG', 'KN', 'LC', 'VC', 'GD', 'DM', 'MS', 'AI', 'BL', 'MF',
+  'SX', 'VG', 'VI', 'PF', 'WS', 'TO', 'TV', 'KI', 'FM', 'MH', 'PW', 'GU', 'MP', 'AS',
+  'NU', 'CK', 'NF', 'WF', 'NR', 'PM', 'SH', 'ST', 'KM', 'IO', 'GS', 'HM', 'UM', 'PN',
+];
+
+test('I-5a criterion 4c: every ISO code the base scale omits is filled from the finest scale', () => {
+  assert.equal(FILLED_CODES.length, 64, 'A-26 Part 3 counts 64 filled codes');
+  const have = new Set(COUNTRY_INDEX.countries.map((c) => c.code));
+  const missing = FILLED_CODES.filter((c) => !have.has(c));
+  assert.deepEqual(missing, [], 'a code the finest scale carries is absent from the shipped index');
+  for (const code of FILLED_CODES) {
+    const entry = COUNTRY_INDEX.countries.find((c) => c.code === code)!;
+    assert.ok(entry.rings.length > 0, `${code} was filled with no rings`);
+  }
 });
 
 test('I-5 attack: international waters, at four different distances from land', () => {
@@ -425,26 +646,50 @@ test('I-5: countryOf is pure — repeated calls agree and neither argument is mu
   assert.equal(JSON.stringify(FIXTURE_INDEX), snapshot, 'the index was mutated');
 });
 
-test('I-5: overlapping rings resolve by ascending code, not by insertion order', () => {
-  // Two countries claiming the same square. There is no right answer; there has to be the SAME
-  // answer on every machine, or a golden is a coin flip. `countryIndex` sorts by code, so the
-  // insertion order below is irrelevant: 'MM' sorts before 'ZZ' and wins in both.
-  const a = countryIndex({
+/**
+ * **I-5a inverts this test (§8.4 A-26 Part 4).** It used to assert that `countryIndex` re-sorted
+ * its input by ISO code, so that insertion order could not decide an overlap. That key was
+ * deterministic and arbitrary, and the arbitrariness was the defect: alphabetical order resolves
+ * seven of the eight enclave overlaps the mixed-resolution index creates *in favour of the
+ * encloser* (`AT` before `LI`, `CN` before `HK`, `IT` before `SM`, `MY` before `SG`, …).
+ *
+ * So the order moves into the artefact. `countryIndex` **preserves the order it is given**, the
+ * generator emits ascending polygon area (an enclave is always smaller than its encloser), and a
+ * reorder becomes a diff a reviewer sees rather than a comparison a reviewer trusts. Determinism
+ * is unchanged — the same input still gives the same answer on every machine — it is simply the
+ * caller's input that fixes it now.
+ */
+test('I-5a: overlapping rings resolve in the order the index was given, which countryIndex preserves', () => {
+  const square = [0, 0, 10, 0, 10, 10, 0, 10];
+  const zzFirst = countryIndex({
     scale: 'fixture', source: 'test',
-    countries: [
-      { code: 'ZZ', rings: [[0, 0, 10, 0, 10, 10, 0, 10]] },
-      { code: 'MM', rings: [[0, 0, 10, 0, 10, 10, 0, 10]] },
-    ],
+    countries: [{ code: 'ZZ', rings: [square] }, { code: 'MM', rings: [square] }],
   });
-  const b = countryIndex({
+  const mmFirst = countryIndex({
     scale: 'fixture', source: 'test',
-    countries: [
-      { code: 'MM', rings: [[0, 0, 10, 0, 10, 10, 0, 10]] },
-      { code: 'ZZ', rings: [[0, 0, 10, 0, 10, 10, 0, 10]] },
-    ],
+    countries: [{ code: 'MM', rings: [square] }, { code: 'ZZ', rings: [square] }],
   });
-  assert.equal(countryOf({ lat: 5, lng: 5 }, a), 'MM');
-  assert.equal(countryOf({ lat: 5, lng: 5 }, b), 'MM');
+  assert.equal(countryOf({ lat: 5, lng: 5 }, zzFirst), 'ZZ', 'the first entry given wins, not the first alphabetically');
+  assert.equal(countryOf({ lat: 5, lng: 5 }, mmFirst), 'MM');
+  // …and the order is genuinely preserved, not merely stable for two entries.
+  assert.deepEqual(zzFirst.countries.map((c) => c.code), ['ZZ', 'MM']);
+  assert.deepEqual(mmFirst.countries.map((c) => c.code), ['MM', 'ZZ']);
+});
+
+/**
+ * The enclave-before-encloser property, on a fixture rather than on the shipped dataset: a small
+ * square wholly inside a large one is only reachable if it is tested first. This is exactly the
+ * Vaduz/Austria and Singapore/Malaysia shape A-26 Part 4 describes, four polygons wide.
+ */
+test('I-5a: a small polygon inside a larger one is reachable only when it is emitted first', () => {
+  const big = { code: 'BG', rings: [[0, 0, 10, 0, 10, 10, 0, 10]] };
+  const small = { code: 'SL', rings: [[4, 4, 6, 4, 6, 6, 4, 6]] };
+  const enclaveFirst = countryIndex({ scale: 'fixture', source: 'test', countries: [small, big] });
+  const encloserFirst = countryIndex({ scale: 'fixture', source: 'test', countries: [big, small] });
+  assert.equal(countryOf({ lat: 5, lng: 5 }, enclaveFirst), 'SL');
+  assert.equal(countryOf({ lat: 5, lng: 5 }, encloserFirst), 'BG', 'the encloser swallows it — the fault A-26 fixes');
+  assert.equal(countryOf({ lat: 1, lng: 1 }, enclaveFirst), 'BG', 'outside the enclave, both orders agree');
+  assert.equal(countryOf({ lat: 1, lng: 1 }, encloserFirst), 'BG');
 });
 
 test('I-5: a degenerate ring encloses nothing rather than throwing', () => {
@@ -462,14 +707,13 @@ test('I-5: a degenerate ring encloses nothing rather than throwing', () => {
 
 // ---------------------------------------------------------------- the bundled index itself
 
-test('I-5: the bundled index decodes to a plausible admin-0 layer', () => {
-  assert.equal(COUNTRY_INDEX.scale, 'ne_110m');
+test('I-5a: the bundled index decodes to a plausible mixed-resolution admin-0 layer', () => {
+  assert.equal(COUNTRY_INDEX.scale, 'ne_110m+10m');
   assert.match(COUNTRY_INDEX.source, /^nvkelso\/natural-earth-vector@v5\.1\.2\//);
-  assert.equal(COUNTRY_INDEX.countries.length, 175);
-  // Every code is a well-formed uppercase alpha-2, unique, and sorted — the ordering `countryOf`
-  // relies on for a deterministic tie-break.
+  assert.match(COUNTRY_INDEX.source, /ne_110m_admin_0_countries\.geojson/, 'the base file is not named');
+  assert.match(COUNTRY_INDEX.source, /ne_10m_admin_0_countries\.geojson/, 'the fill file is not named');
+  assert.equal(COUNTRY_INDEX.countries.length, 239);
   const codes = COUNTRY_INDEX.countries.map((c) => c.code);
-  assert.deepEqual(codes, [...codes].sort(), 'the index is not sorted by code');
   assert.equal(new Set(codes).size, codes.length, 'a country code appears twice');
   assert.deepEqual(codes.filter((c) => !/^[A-Z]{2}$/.test(c)), [], 'a code is not ISO 3166-1 alpha-2');
   for (const c of COUNTRY_INDEX.countries) {
@@ -477,6 +721,74 @@ test('I-5: the bundled index decodes to a plausible admin-0 layer', () => {
     assert.ok(c.box[0] >= -180 && c.box[2] <= 180 && c.box[1] >= -90 && c.box[3] <= 90, `${c.code}'s box is off the globe`);
     assert.ok(c.box[0] <= c.box[2] && c.box[1] <= c.box[3], `${c.code}'s box is inverted`);
   }
+});
+
+/**
+ * Spherical polygon area, re-implemented here on purpose: the emitted order is the tie-break the
+ * whole ruling turns on, so the test that checks it must not ask the generator whether the
+ * generator was right. Chamberlain & Duquette's formula on a unit sphere; only the *ordering* it
+ * induces is used, so the radius cancels.
+ */
+function ringArea(ring: readonly number[]): number {
+  const rad = Math.PI / 180;
+  let sum = 0;
+  const n = ring.length;
+  for (let i = 0; i + 1 < n; i += 2) {
+    const jx = ring[(i + 2) % n];
+    const jy = ring[(i + 3) % n];
+    sum += (jx - ring[i]) * rad * (2 + Math.sin(ring[i + 1] * rad) + Math.sin(jy * rad));
+  }
+  return Math.abs(sum / 2);
+}
+
+test('I-5a: the shipped index is emitted in ascending polygon area, ties by ISO code', () => {
+  const keyed = COUNTRY_INDEX.countries.map((c) => ({
+    code: c.code,
+    area: c.rings.reduce((a, r) => a + ringArea(r), 0),
+  }));
+  for (let i = 1; i < keyed.length; i++) {
+    const prev = keyed[i - 1];
+    const cur = keyed[i];
+    assert.ok(
+      prev.area < cur.area || (Math.abs(prev.area - cur.area) < 1e-12 && prev.code < cur.code),
+      `${prev.code} (${prev.area}) is emitted before ${cur.code} (${cur.area}) — the order is not ascending area`,
+    );
+  }
+  // And it is emphatically NOT the ISO order it used to be: that is the fault A-26 Part 4 names.
+  assert.notDeepEqual(keyed.map((k) => k.code), [...keyed.map((k) => k.code)].sort());
+  // The smallest polygon in the world's admin-0 layer leads; the largest trails.
+  assert.equal(keyed[keyed.length - 1].code, 'RU', 'Russia should be the largest entry');
+});
+
+/**
+ * Criterion 4c's **first injected fault**, run in memory against the shipped rings rather than by
+ * hand-editing the generated module: put the index back in ISO order and three answers go wrong,
+ * each in favour of the encloser. This is the measurement that says ascending area is doing work.
+ */
+test('I-5a injected fault: restoring ISO-ascending order loses Vaduz, Singapore and Hong Kong', () => {
+  const isoOrder = countryIndex({
+    scale: COUNTRY_INDEX.scale,
+    source: COUNTRY_INDEX.source,
+    countries: [...COUNTRY_INDEX.countries]
+      .sort((a, b) => (a.code < b.code ? -1 : a.code > b.code ? 1 : 0))
+      .map((c) => ({ code: c.code, rings: c.rings })),
+  });
+  assert.equal(countryOf({ lat: 47.141, lng: 9.5209 }, isoOrder), 'AT', 'Vaduz falls back to Austria');
+  assert.equal(countryOf({ lat: 1.3521, lng: 103.8198 }, isoOrder), 'MY', 'Singapore falls back to Malaysia');
+  assert.equal(countryOf({ lat: 22.3193, lng: 114.1694 }, isoOrder), 'CN', 'Hong Kong falls back to China');
+  // …while an island with no encloser is unaffected: the order only decides overlaps.
+  assert.equal(countryOf({ lat: 35.8989, lng: 14.5146 }, isoOrder), 'MT');
+});
+
+/** Criterion 4c's **second injected fault**: drop `LI` from the fill and Vaduz returns `AT`. */
+test('I-5a injected fault: dropping LI from the fill returns Vaduz to Austria', () => {
+  const withoutLI = countryIndex({
+    scale: COUNTRY_INDEX.scale,
+    source: COUNTRY_INDEX.source,
+    countries: COUNTRY_INDEX.countries.filter((c) => c.code !== 'LI').map((c) => ({ code: c.code, rings: c.rings })),
+  });
+  assert.equal(countryOf({ lat: 47.141, lng: 9.5209 }, withoutLI), 'AT');
+  assert.equal(countryOf({ lat: 47.141, lng: 9.5209 }, COUNTRY_INDEX), 'LI', 'and the shipped index does not');
 });
 
 test('I-5: the bundled index is data only — nothing in core reaches the network for it', () => {

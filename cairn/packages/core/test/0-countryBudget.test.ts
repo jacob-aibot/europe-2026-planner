@@ -36,8 +36,13 @@ const GENERATED = resolve(HERE, '..', 'src', 'geo', 'countries.gen.ts');
 /**
  * Bytes written by `node tools/gen-countries.mjs` at `--scale 110m`, as the generator reported
  * them. Re-run the generator to move it; do not guess it.
+ *
+ * **Moved at I-5a (§8.4 A-26), 175,085 → 346,455.** The index is now mixed-resolution: the 1:110m
+ * base plus the 1:10m polygons of exactly the 64 ISO codes that layer does not carry. 239 codes,
+ * 892 rings, 20,702 points. Roughly 2× the old budget and about 4 % of what a wholesale move to
+ * 1:10m would have cost (9,072,727 bytes) — which is why this is a fill and not an escalation.
  */
-const EMITTED_BYTES = 175_085;
+const EMITTED_BYTES = 346_455;
 
 /**
  * The ceiling the *budget itself* is measured against — the reason a budget exists at all.
@@ -94,8 +99,12 @@ test('I-5: the payload is one string literal, not an object literal the stripper
   // small TypeScript: strip the one literal and what is left must be a few hundred bytes of
   // header and two statements, with no ring syntax in it.
   const outside = src.replace(packed[1], '');
+  // 3,600 at I-5a, up from 3,000. Every byte of the increase is *comment*: the header now carries
+  // two source checksums instead of one, the 64-code fill list, the reason the emission order is
+  // ascending area, and a code list that went from 175 entries to 239. The two assertions below
+  // are the ones that actually catch data leaking into syntax, and neither moves.
   assert.ok(
-    outside.length < 3_000,
+    outside.length < 3_600,
     `${outside.length} bytes of TypeScript outside the packed literal — data leaked into syntax`,
   );
   assert.equal(
