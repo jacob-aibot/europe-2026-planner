@@ -100,6 +100,20 @@ is **unchanged**, and the reason is now the strongest it has been: the copy path
 name on your credit** — §2.14 rule 7, one of the four things `BRIEF.md` calls non-negotiable — bounded to
 in-process callers because JSON cannot express an accessor. I-5 stays unblocked.
 
+**Revision 18, 2026-08-28.** QA round 19 — the breaker pass over A-22/A-23 — confirmed A-22 is faithfully and
+completely built and that **A-23's census mechanism works** (20 planted defects inside its roots, all 20 red,
+fourteen invisible to `copyStop.test.ts`, twelve in functions no ruling has ever touched). What it falsified
+is the census's **reach**: the `opaque` set hid both whole `Trip` records on a justification that is false for
+`Trip.id` and `Trip.ownerId`, the ten-row matrix assigned row 5 a cover its own reuse branch short-circuits
+past, and the fixture omitted `Stop.ticket` — the one field §6.6 calls an access credential.
+`ARCHITECTURE.md` revision 18 answers it as **A-24**: `opaque` narrows from the `Trip` to the `Trip`'s six
+collections, the matrix goes to **14** rows, `ticket` joins the fixture and rule 3's fixture covers all three
+`Ticket` kinds. This file changes in exactly the same one way revisions 12–17 did: **I-4a's Built /
+Verification / Ship-gate lines.** **No new increment, no phase re-scoped and no change to the order.** I-4a's
+outright block on share/friend/public-share-link work is **unchanged**, and the reason is unchanged with it —
+what moves is that the *sixth* consecutive defect in this file (R19-1, the credit again) becomes a **red test
+rather than a hand-found finding**, which is the only thing that ends the arc. I-5 stays unblocked.
+
 > **Phase numbers changed once, here.** Every heading below carries its old number, and every "Phase N"
 > written in `ARCHITECTURE.md` §1–§7, `BUILD-NOTES.md` or `QA-FINDINGS.md` before revision 9 means the
 > *named* phase it described: "Phase 2" = accounts/server (**now 3**), "Phase 3" = ingest (**now 4**),
@@ -1278,6 +1292,23 @@ builder against the finding itself and is not an increment.
   — across a ten-scenario matrix covering every branch of `copyStopInto`, with a five-entry allow-list whose
   every entry must be exercised. No `Place`/`Stop` shape change, no `schemaVersion` bump, no `redactText`
   change, no `fromJSON`/`toJSON`/`packages/client`/`apps/web` change, no §2.10 movement (**71**).
+  **Revision 18 adds one, and it is the census's reach rather than its mechanism (§2.9 A-24; QA
+  R19-3…R19-6):** two hoists in `copyStop.ts` that are mechanical applications of rules already written —
+  `source.trip.id` read **once** across the credit and A-16 step 2's identity test (A-22 hoisted the
+  container and left the field, so the credit can still name `trip-src` while the re-file decides *"the
+  source IS the target"* and files a Vienna place under the recipient's Prague key, with `validateTrip`
+  reporting 0), and the recipient's `Day` resolved **once** across `copyStopInto` → `addStop` (the pre-check
+  passes and `withDay` then throws, naming the day the guard just accepted — §2.1 again). Then the guard
+  itself: **`opaque` narrows from the whole `Trip` to the `Trip`'s six collections**, so `Trip.id` and
+  `Trip.ownerId` — which cross verbatim into `provenance.origin` — are censused like any other value, with
+  **two** new allow-list entries that are *irreducible structural counts* (a field of a document the function
+  **spreads** has a floor of one read; a field it only **reads** has none) rather than blessed judgment
+  calls; the matrix goes **10 → 14** rows for four ordinary document shapes it never built; `Stop.ticket`
+  joins the census fixture so the source stop carries **15 of 15** `Stop` fields; and `copyStop.test.ts`'s
+  rule-3 fixture covers **all three** `Ticket` kinds, because *"no ticket travels"* is a claim over the union
+  and a kind-gated regression passed 615/615. No `Place`/`Stop`/`Ticket` shape change, no `schemaVersion`
+  bump, no `redactText` change, no `fromJSON`/`toJSON`/`packages/client`/`apps/web` change, no §2.10 movement
+  (**71** — `censusTrip` and `TRIP_SKELETON` are test-local).
 - **User-visible outcome.** *"日本 2019 — 東京, 京都"* records as two cities instead of one, in any script,
   and a document that already collapsed two cities into `"-"` says so on screen instead of silently
   mis-attributing every day of the trip.
@@ -1362,6 +1393,19 @@ builder against the finding itself and is not an increment.
   asserted: `readOnce.test.ts` is **red against the tree as shipped**, naming each of round 18's five
   findings from the scenario that exercises it, and **green** once A-22 lands, with each allow-list entry
   observed at exactly its stated maximum.
+  **Added at revision 18 (A-24), and the criterion is the guard catching its own subject:** with A-24 Part 1
+  applied and the `source.trip.id` hoist **reverted**, `readOnce.test.ts` is **red naming
+  `srcTrip.id ×2`** — the sixth consecutive defect in this file, found by running the guard instead of by
+  widening it — and **green** with the hoist applied, with **all seven** allow-list entries observed at
+  exactly their max across the 14 rows. Each of the four new rows is verified by outcome and not by its
+  name: row 11 writes a `Place` with `at: null` (`placeForCopy`'s null arm, which row 5's reuse branch
+  short-circuits past, and which is the shape of the live planner's one coordinate-less place); row 12 files
+  the place under the **source's own** key with the row reused and `validateTrip` at **0** (A-16 step 2, two
+  distinct objects for one `Trip.id`); row 13 takes the source stop from `trip.pool`; row 14 copies a stop
+  whose `cost`, `arrival` and `links` are absent. And `copyStop.test.ts`'s rule 3 asserts, **once per
+  `Ticket` kind**, that `stop.ticket` is null and that the kind's own payload (`href`, `path`,
+  `mailMessageId`/`filename`) is absent from `JSON.stringify(trip)`, with a compile-time exhaustiveness map
+  so a fourth kind fails `typecheck` before it fails a test.
 - **Dependencies / blockers.** I-4 (the form it corrects). None external.
 - **Ship gate.** The slug expression appears **nowhere** in `apps/` or `packages/` (grep); no call site
   outside `packages/core` constructs a city key; each of the three new validation codes has an
@@ -1427,6 +1471,18 @@ builder against the finding itself and is not an increment.
   first assertion (`latReads === 1`) **stays red and is re-expressed** as `latReads === lngReads === 2`,
   constant in N — a builder who drives that 2 to 1 has changed `placeForCopy`'s contract, which A-21a refused
   and A-22 does not reopen; §3.5's three *"recorded, not filed"* lines stay green and become vacuous.
+  Nothing under `qa/` is edited by the pass that lands this.
+  **Added at revision 18 (A-24):** the allow-list rule gains its converse and both halves are gates. **No
+  eighth `ALLOWED` entry and no raised `max`** may be added by the pass that lands this or by any later
+  builder pass — if A-24's four new rows surface a multi-read the seven entries do not name, that is a
+  **finding routed to the architect**, not an entry. **And a now-dead entry is deleted in the same pass**:
+  if the `source.trip.id` hoist also removes `refileCityKey`'s read of `target.id`, `tgtTrip.id` drops to 1,
+  assertion 2 goes red, and the entry comes out — deleting a dead entry is a builder's obligation, not a
+  widening. Plus the same `qa/` rule as revisions 14–17, pointing at named lines that are **QA's to
+  re-express in round 20, never the builder's to satisfy**: `qa/r19-census-gaps.mjs` §1, §2, §3.1, §3.2, §4.1,
+  §4.2 and §5 must all go **green** (§3.1's cross-check that QA's copy of the census agrees with
+  `readOnce.test.ts` is re-derived against the *seven*-entry allow-list and the 14 rows, since A-23's
+  *"a divergence between the two is itself a finding"* is unchanged); §6 is already green and stays green.
   Nothing under `qa/` is edited by the pass that lands this.
 
 ---

@@ -262,13 +262,36 @@ finding in five consecutive rounds. Verified both ways before being written down
 naming all five findings; green with A-22 applied. The mechanical consequences in `ROADMAP.md` are I-4a's
 Built / Verification / Ship-gate lines and nothing else: **no new increment, no change to the phase order.**
 
+**Revision 18, 2026-08-28.** QA round 19 — the mandatory breaker pass over A-22 and A-23 — confirmed that
+**A-22 is faithfully and completely built** (every named site fixed, every named mutation red, the `ctx` trio
+caught by the census and by nothing else) and that **A-23's mechanism works**: 20 planted read-once defects
+inside its roots, all 20 red, fourteen of them invisible to `copyStop.test.ts`, twelve of them in functions no
+ruling has ever touched. What it falsified is not the mechanism but **three lines of A-23's own
+specification** — the `opaque` set, the scenario matrix and the fixture's field list — each in the same shape
+as the failure A-23 exists to end: *a ruling printed a claim about its own reach, and the reach was smaller.*
+One ruling, no redesign, no engine, no persisted shape, no `schemaVersion` bump, no movement on §2.10's
+export surface (**71**). **A-24** (§2.9, §2.14, QA **R19-3**…**R19-6**): the census's `opaque` set narrows
+from *the whole `Trip`* to *the `Trip`'s six collections*, so `Trip.id` and `Trip.ownerId` — which cross the
+person boundary verbatim into `provenance.origin`, and are therefore the opposite of the *"document
+skeleton"* A-23 called them — are censused like any other value, and R19-1 becomes a red test rather than a
+sixth consecutive hand-found defect; the ten-row matrix gains **four** rows for four ordinary document shapes
+it never built (`placeForCopy`'s `at === null` arm, which row 5's own reuse branch short-circuits past;
+A-16 step 2, the same-document copy §2.14 says Phase 1 exercises; `findAnywhere`'s pool arm; and a stop with
+its optional fields *absent*, since A-23 only ever measured a maximal document); `Stop.ticket` joins the
+fixture and rule 3's fixture covers **all three** `Ticket` kinds, because *"no ticket travels"* is a claim
+over the union and a kind-gated regression was invisible to both files; and A-23's printed `srcPlace.at.lat
+×3` is corrected in place to **×4**. Two allow-list entries are added and both are **irreducible structural
+counts** rather than blessed judgment calls — the rule that separates them from a defect is stated in Part 1
+and is measured, not argued. The mechanical consequences in `ROADMAP.md` are I-4a's Built / Verification /
+Ship-gate lines and nothing else: **no new increment, no change to the phase order.**
+
 **Phase 1 is §2 and §4. The next phase is §8.1–§8.4.** Everything else is the shape those must not
 foreclose. See `ROADMAP.md` for sequencing and `PRODUCT-VISION.md` for why this order and not another.
 
 ## Read only your sections
 
-This document is ~119k tokens (re-measured at revision 17 with `cairn/tools/doc-section ARCHITECTURE` — §2 is
-now ~86k of it and §8 ~12k; the per-section figures below were stale by a third before revision 11 and are
+This document is ~125k tokens (re-measured at revision 18 with `cairn/tools/doc-section ARCHITECTURE` — §2 is
+now ~92k of it and §8 ~12k; the per-section figures below were stale by a third before revision 11 and are
 re-measured, not estimated, whenever a revision lands). Nothing needs all of it, and a fresh agent that reads it whole starts a sixth
 of the way into its context before writing a line. Pull what you need:
 
@@ -281,7 +304,7 @@ cairn/tools/doc-section ARCHITECTURE         # lists the sections and their size
 |---|---|---|---|
 | 0 | Six positions, stated up front | <1k | everyone — read it, it is 20 lines |
 | 1 | Stack decision and the capability checks behind it | 3k | architect. Settled; do not re-litigate |
-| 2 | **Domain model — the builder's contract.** §2.12 `travelRole`, §2.13 geography and §2.14 import/copy are new in revision 2 and are where the Phase 1 rework lives; **§2.2a (the `StorageVersion` write fence, revision 3) and §2.2b (the freshness rule it turned out to be one instance of, revision 4) are read together with §4.2 and §4.3, never alone**; §2.10 (the export surface) and §2.13's copied-record row are settled in revision 5; **§2.7's retirement ledger (A-5) and §2.13's copy-borne `Place` rule (A-6) are revision 6**; **§2.2a's A-7 (the fence a declined write may not move) is revision 8** and is read with §4.2 rule 4a; **§2.2's A-10 (a `CityKey` is a minted opaque id) and §2.7's A-9 (retirement is decided against the un-gated set) are revision 11** — a Phase 2 builder needs both; **A-11, A-12 and A-13 (§2.7) and A-14 (§2.14) are revision 12** and are read *with* A-9 and A-10, never instead of them — A-11 replaces A-9's greppable invariant, A-12 narrows A-9 point 1, A-13 rewrites A-9 assertion 4, and A-14 corrects A-10's change table; **A-15 and A-16 (§2.14) and A-17 (§2.7) are revision 13** — A-15 is the copy path's redaction rule and is read with §6.6, A-16 withdraws A-14's *"within one trip is unchanged"* paragraph, A-17 narrows A-11 assertion 5; **A-18 and A-19 (§2.14) are revision 14** — A-18 is the copy path's redaction rule for the *stop's own* nested records (`cost`, `arrival`) and generalises A-15 to *no spread at any depth*, A-19 rules that the `placement` **argument** is validated against the target and never re-filed. **Anyone touching `copyStopInto` reads A-14, A-15 and A-16 as one rule 4, and A-18 with rules 3 and 5**; **A-20 is revision 15 and lives in §2.9, not §2.14** — it is where the *shape* of a document is decided, it amends A-15's `hours` row and A-18's *"changes nothing in `fromJSON`"* paragraph, and **anyone touching `Place.hours` at any layer reads it first**; **A-21 is revision 16, lives in §2.9 beside A-20 and is read with it** — it replaces A-20's `isWeeklyEntry` with a reader that returns what it read, and imposes one read per field on `copyStop.ts`, so **anyone touching a predicate over an `unknown`, or any function in `copyStop.ts`, reads A-21 with A-15 and A-18**; **A-21a is a revision-16 addendum in the same place** and is what makes A-21's file-wide rule actually total — it is read with A-21, never instead of it; **A-22 and A-23 are revision 17, in the same place again** — A-22 closes the four sites A-21/A-21a's searches missed and **supersedes A-21a's read-count table one level down** (read A-22 Part 2's table, not A-21a's), and **A-23 is the standing census test that replaces the hand search** — *anyone adding a branch to `copyStopInto`, or a field to `Stop` or `Place`, reads A-23 first, because the scenario matrix and the allow-list are part of the contract and widening the allow-list is an architect's ruling* | 86k | builder, breaker |
+| 2 | **Domain model — the builder's contract.** §2.12 `travelRole`, §2.13 geography and §2.14 import/copy are new in revision 2 and are where the Phase 1 rework lives; **§2.2a (the `StorageVersion` write fence, revision 3) and §2.2b (the freshness rule it turned out to be one instance of, revision 4) are read together with §4.2 and §4.3, never alone**; §2.10 (the export surface) and §2.13's copied-record row are settled in revision 5; **§2.7's retirement ledger (A-5) and §2.13's copy-borne `Place` rule (A-6) are revision 6**; **§2.2a's A-7 (the fence a declined write may not move) is revision 8** and is read with §4.2 rule 4a; **§2.2's A-10 (a `CityKey` is a minted opaque id) and §2.7's A-9 (retirement is decided against the un-gated set) are revision 11** — a Phase 2 builder needs both; **A-11, A-12 and A-13 (§2.7) and A-14 (§2.14) are revision 12** and are read *with* A-9 and A-10, never instead of them — A-11 replaces A-9's greppable invariant, A-12 narrows A-9 point 1, A-13 rewrites A-9 assertion 4, and A-14 corrects A-10's change table; **A-15 and A-16 (§2.14) and A-17 (§2.7) are revision 13** — A-15 is the copy path's redaction rule and is read with §6.6, A-16 withdraws A-14's *"within one trip is unchanged"* paragraph, A-17 narrows A-11 assertion 5; **A-18 and A-19 (§2.14) are revision 14** — A-18 is the copy path's redaction rule for the *stop's own* nested records (`cost`, `arrival`) and generalises A-15 to *no spread at any depth*, A-19 rules that the `placement` **argument** is validated against the target and never re-filed. **Anyone touching `copyStopInto` reads A-14, A-15 and A-16 as one rule 4, and A-18 with rules 3 and 5**; **A-20 is revision 15 and lives in §2.9, not §2.14** — it is where the *shape* of a document is decided, it amends A-15's `hours` row and A-18's *"changes nothing in `fromJSON`"* paragraph, and **anyone touching `Place.hours` at any layer reads it first**; **A-21 is revision 16, lives in §2.9 beside A-20 and is read with it** — it replaces A-20's `isWeeklyEntry` with a reader that returns what it read, and imposes one read per field on `copyStop.ts`, so **anyone touching a predicate over an `unknown`, or any function in `copyStop.ts`, reads A-21 with A-15 and A-18**; **A-21a is a revision-16 addendum in the same place** and is what makes A-21's file-wide rule actually total — it is read with A-21, never instead of it; **A-22 and A-23 are revision 17, in the same place again** — A-22 closes the four sites A-21/A-21a's searches missed and **supersedes A-21a's read-count table one level down** (read A-22 Part 2's table, not A-21a's), and **A-23 is the standing census test that replaces the hand search** — *anyone adding a branch to `copyStopInto`, or a field to `Stop` or `Place`, reads A-23 first, because the scenario matrix and the allow-list are part of the contract and widening the allow-list is an architect's ruling*; **A-24 is revision 18 and is read *with* A-23, never instead of it** — it supersedes A-23's `opaque` set, its ten-row matrix and its fixture list, and nothing else about A-23 moves | 92k | builder, breaker |
 | 3 | Module boundaries | <1k | builder |
 | 4 | **The Phase 1 client.** §4.2 rule 6 (a pending write is never outlived by its document) is new in revision 3 — QA R3-2; rule 6a′ and the `savedDoc` predicate are revision 4 — QA R4-1; **rule 6a″ (the flush bound and its exits) and rule 6c's "delete goes on the chain" are revision 5** — QA R6-1/R6-2/R7-3; **rule 5's retirement carve-out is revision 6** — QA R8-1, read with §2.7; **rule 4a is revision 8** — QA R11-1, read with §2.2a A-7 | 7k | builder |
 | 5 | The four hard subsystems | 2k | breaker; builder from Phase 3 on |
@@ -3463,6 +3486,12 @@ own rule (*"tests do not create surface"*) and **moves the export count by nothi
 
 **The specification. A builder implements this without a judgment call.**
 
+> **Amended by A-24 Part 1 (revision 18, QA R19-3).** The `opaque` set below is **superseded**: it held
+> both whole `Trip` records, and its stated reason — *"the document skeleton rather than values that
+> cross"* — is **false for `Trip.id` and `Trip.ownerId`**, which cross verbatim into
+> `provenance.origin.sourceTripId` and `.friendUserId`. `censusDeep`'s body is unchanged; what changes is
+> what it is handed. Implement A-24 Part 1, not the paragraph below it.
+
 ```ts
 type Counts = Record<string, number>;
 
@@ -3495,8 +3524,12 @@ function censusDeep<T>(v: T, counts: Counts, path: string, opaque: ReadonlySet<u
 core owns). Counts are snapshotted **immediately after `copyStopInto` returns** and before anything inspects
 the result, so nothing but the copy is measured.
 
+> **Amended by A-24 Part 1.** *"with `source.trip` opaque"* becomes **`srcTrip` and `tgtTrip` are two more
+> roots, censused for every field except their six collections.** Seven roots, not five.
+
 **The allow-list is the ruling, written in the test.** Exactly five entries after A-22, each with the ruling
-that blesses it:
+that blesses it (**seven after A-24 Part 1** — the two additions are irreducible structural counts, and the
+rule that makes them irreducible is in A-24, not here):
 
 ```ts
 const ALLOWED: Record<string, { max: number; why: string }> = {
@@ -3536,11 +3569,22 @@ what the scenarios reach, so the matrix is part of the contract:
 | 9 | `{kind:'pool'}` placement with a **live hint** | Part 4(c)'s `hintFields` block |
 | 10 | `{kind:'pool'}` placement with `TRANSIT_CITY_KEY` and a **stale hint** | the exemption and the dropped-hint fallback |
 
+> **Amended by A-24 Part 2 (QA R19-4).** Row 5's second cover is **withdrawn** — a same-named target row with
+> a `null` `at` makes `samePlace` return true, so the copy takes the reuse branch and `placeForCopy` is never
+> called. Row 5 covers `samePlace`'s `null` arm and nothing else. **Four rows are added, 11–14**; the table
+> is 14 rows.
+
 The source stop carries every optional field (`note`, `flags`, `durationMins`, `travelRole`, `cost` with
 `amounts`/`display`/`note`, `arrival` with a `label`, `links`) and the source place carries `note`, `links`
 and `hours` with a `weekly` entry and a `note` — otherwise the recursion has nothing to count and the census
 is green by vacancy. **Every scenario must complete without throwing**; a throw is reported as the scenario's
 failure, because a stable-valued document that makes `copyStopInto` throw is a §2.1 violation on its own.
+
+> **Amended by A-24 Part 3 (QA R19-5).** That list omits `ticket`, so the fixture stop carried **14 of
+> `Stop`'s 15 fields** and the missing one is the field §6.6 classifies as an access credential. `ticket`
+> joins it. **And by A-24 Part 2:** *"every optional field"* is now a property of rows 1–13; **row 14 is
+> deliberately minimal**, because a census that only ever measures a maximal document never measures the
+> absent-optional arms.
 
 **The maintenance rule, which is the point of the whole mechanism.**
 
@@ -3550,13 +3594,24 @@ failure, because a stable-valued document that makes `copyStopInto` throw is a �
 > value may be read twice and here is why the second read cannot leak". A builder who needs one stops and
 > routes it, exactly as A-21a's builder did.
 
+> **Amended by A-24 Parts 1 and 3.** Clause 2 is true only of fields **the fixture instance carries** —
+> `makeStop` writes `ticket` only when `init.ticket` is truthy, which is how the credential stayed invisible
+> — so it reads: *a new field on `Stop` or `Place` is covered automatically **once the fixture populates
+> it**, and the fixture populating every field of both records is part of this contract.* And clause 3 gains
+> its converse: **deleting an entry that a fix in the same pass made dead is a builder's obligation, not a
+> widening** — assertion 2 will demand it.
+
 **Verified, not asserted.** The specification above was implemented against a throwaway copy of `993d8fc` and
 run both ways:
 
 - Against the tree **as shipped**, it fails and names every one of round 18's findings, each from the
   scenario that exercises it: `source.trip ×5` (R18-1), `srcStop.id ×2` (R18-2), `srcStop.place.at ×2` in
-  scenario 7 (R18-3), `tgtPlace0.at ×3` in scenario 2 (R18-4), `srcPlace.at.lat ×3` in scenario 3 (R18-5),
+  scenario 7 (R18-3), `tgtPlace0.at ×3` in scenario 2 (R18-4), `srcPlace.at.lat ×4` in scenario 3 (R18-5),
   plus `ctx.actorUserId ×2`, `ctx.today ×2` and `ctx.ids ×3` (Part 1(b)).
+  *(**×4**, not the ×3 this sentence printed until revision 18 — corrected by A-24 Part 4, QA **R19-6**.
+  Scenario 3 puts **N = 3** candidate rows through `samePlace`'s coordinate arm and A-22 Part 2's mechanism
+  is N+1, which its own table states correctly as "4/1 at N = 3". Cosmetic: no behavioural claim rested on
+  the 3, and the shipped test never asserted it.)*
 - Against the tree **with A-22 applied**, it passes, with the five allow-list entries each observed at
   exactly 2.
 - It typechecks clean under the repo's `strict` + `erasableSyntaxOnly` + `verbatimModuleSyntax`, and runs
@@ -3576,6 +3631,244 @@ run both ways:
   this test is the shape the answer takes.
 - **It measures the paths the matrix reaches.** That is why the matrix is specified here rather than left to
   the builder, and why adding a branch means adding a row.
+
+#### A-24 — the census's reach: what `opaque` may hide, what the matrix must build, and the field the fixture never carried (revision 18, QA R19-3…R19-6)
+
+**What is not reopened, stated first, because it is the larger half of round 19's result.** A-23's mechanism
+is right and it is not decoration. Round 19 planted **20** read-once defects inside the census's roots, one
+at a time, and every one turned `readOnce.test.ts` red; **fourteen of the twenty left `copyStop.test.ts`
+green**, so the census buys coverage the value fixtures do not have rather than duplicating them; **twelve
+were in functions no ruling has ever touched** (`costForCopy`'s `note` and `amounts`, `arrivalForCopy`'s
+`label`, `hoursForCopy`'s `note`, `links.map`'s `href`, `[...src.flags]`, `provenance.confidence`, the hint
+block's `dayId`, `samePlace`'s read of the recipient's `name`, the `srcPlace.placeId` predicate), which is
+the whole argument for a census over a hand search and it holds. The allow-list is tight in **both**
+directions: for all five entries `max: 2 → 1` turns both assertions red and `max: 2 → 3` turns assertion 2
+red. `censusDeep`'s body, the two assertions, the failure messages, the existing roots and their naming
+scheme, the snapshot point and A-23's four *"what this does not claim"* bullets are all **unchanged by this
+ruling** — Part 1 adds two roots, it does not rename or remove one.
+
+**What is wrong is three lines of A-23's own specification, and all three fail the same way.** A-23 exists
+because *a ruling printed a claim that its search was complete, and the search had missed a site* — five
+rounds running. A-23 then printed three claims about its **own reach**, and each is smaller than stated:
+
+1. the `opaque` set hides *"the document skeleton rather than values that cross"* — and hides two fields
+   that cross verbatim (**R19-3**);
+2. the matrix table assigns row 5 two covers that are **mutually exclusive**, so one of them is never
+   reached, and three more ordinary document shapes are unreached beside it (**R19-4**);
+3. *"a new field on `Stop` or `Place` is covered automatically"* is true only of fields the **fixture
+   instance** carries, and the one it does not carry is `Stop.ticket` (**R19-5**).
+
+That is not an argument against the mechanism; it is the mechanism's own lesson applied to its own
+specification. A guard's *scope* needs the same treatment its subject got: written down, and then measured.
+**Every number below is from running A-23's census over its own matrix with the candidate narrowings
+applied, not from reading the diff.**
+
+---
+
+**Part 1 — `opaque` narrows from the `Trip` to the `Trip`'s six collections (R19-3).**
+
+A-23's justification was reaching for the right distinction and landed one level too high. What core
+legitimately **scans** is the collections — `days`, `cities`, `places`, `pool`, `bookings`, `resolutions` —
+in `find` / `some` / `findIndex` loops. What it **reads as a value** is `Trip.id` and `Trip.ownerId`, and
+both cross the person boundary **verbatim**, into `provenance.origin.sourceTripId` and `.friendUserId`.
+Those are §2.14 rule 7, the credit `BRIEF.md` calls non-negotiable, and the exact field R18-1 was filed
+over. Making the *container* opaque in order to protect the *collections* made the credit invisible — which
+is precisely how R19-1 survived A-22's own hoist of that container, and why round 19's sixth consecutive
+finding in this file was again found by widening the guard rather than by running it.
+
+**Three candidates, measured, before choosing:**
+
+- **Open the `Trip` entirely.** 12–15 multi-reads per scenario, almost all of them the recipient's skeleton
+  scan: `tgtTrip.days ×5`, `tgtTrip.days.1 ×4`, `tgtTrip.days.1.id ×3`, `tgtTrip.places ×3`,
+  `tgtTrip.cities ×3`. Closing that needs allow entries with `max: 5` on an **array** — a licence, not an
+  exception — and it would leave assertion 2 pinning nothing worth pinning. **Refused.**
+- **Census `id` and `ownerId` by name.** Gives up A-23's *"a new field is covered automatically"* promise at
+  the level where a Phase 2/3 field will actually be added to `Trip`, and buys nothing the collection rule
+  does not already buy. **Refused** — a hand-picked field list is the judgment call A-21 refused in the
+  product code, and it does not become sound because it is in a test.
+- **Census every own field of a `Trip` except its six collections.** **Chosen.**
+
+```ts
+/**
+ * A-24 Part 1 (QA R19-3). The `Trip` is a root, not an opaque box. Core legitimately SCANS the six
+ * collections — those are the document skeleton — but `Trip.id` and `Trip.ownerId` cross the person
+ * boundary verbatim into `provenance.origin`, so they are censused like any other value. The
+ * collections are handed back BARE (their rows are already censused as their own roots), which is
+ * why they are a key list here rather than members of `opaque`: `opaque` stops recursion at an
+ * OBJECT, and what has to stop here is six NAMED FIELDS of one object.
+ */
+const TRIP_SKELETON: ReadonlySet<string> = new Set([
+  'days', 'cities', 'places', 'pool', 'bookings', 'resolutions',
+]);
+
+function censusTrip(trip: Trip, counts: Counts, path: string, opaque: ReadonlySet<unknown>): Trip {
+  const from = trip as unknown as Record<string, unknown>;
+  const out: Record<string, unknown> = {};
+  for (const k of Object.keys(from)) {
+    const raw = from[k];
+    if (TRIP_SKELETON.has(k)) { out[k] = raw; continue; }   // bare, uncounted
+    const key = `${path}.${k}`;
+    const child = censusDeep(raw, counts, key, opaque);
+    Object.defineProperty(out, k, {
+      enumerable: true, configurable: true,
+      get() { counts[key] = (counts[key] ?? 0) + 1; return child; },
+    });
+  }
+  return out as unknown as Trip;
+}
+```
+
+and in `runScenario`, the two documents become roots instead of members of `opaque`. The substitution of
+censused rows happens **first** and `censusTrip` wraps the result, so the collections still hand out the
+already-wrapped `srcStop` / `srcPlace` / `tgtPlaceN` rows and nothing is counted twice:
+
+```ts
+  const srcSub: Trip = {
+    ...srcTrip0,
+    days: srcTrip0.days.map((d) => ({ ...d, stops: d.stops.map((s) => (s.id === 's-src' ? censusDeep(s, counts, 'srcStop', opaque) : s)) })),
+    // A-24 Part 2 row 13: the source stop may live in the POOL, so it is substituted there too.
+    pool: srcTrip0.pool.map((s) => (s.id === 's-src' ? censusDeep(s, counts, 'srcStop', opaque) : s)),
+    places: srcTrip0.places.map((p, i) => censusDeep(p, counts, i === 0 ? 'srcPlace' : `srcPlace${i}`, opaque)),
+  };
+  const tgtSub: Trip = { ...tgtTrip0, places: tgtTrip0.places.map((p, i) => censusDeep(p, counts, `tgtPlace${i}`, opaque)) };
+  const srcTrip = censusTrip(srcSub, counts, 'srcTrip', opaque);
+  const tgtTrip = censusTrip(tgtSub, counts, 'tgtTrip', opaque);
+  opaque.add(srcTrip);   // so the `source` root counts `source.trip` and does not re-wrap the document
+  opaque.add(tgtTrip);
+```
+
+**The rule that separates a defect from an allow-list entry, so a builder never guesses.** Narrowing
+`opaque` makes three new multi-reads visible, and two of them are not defects. The discriminator is
+mechanical, not a judgment:
+
+> **A field of a document the function *spreads* has an irreducible floor of one read, from the spread
+> itself. A field of a document the function only *reads* has no floor.**
+
+`copyStopInto` spreads the **target** (`{ ...target }`, and then `withDay`'s and `addStop`'s `{ ...trip }` /
+`{ ...next }`) because its result *is* the recipient's own document rebuilt. It never spreads the **source**.
+So, on the 14-row matrix:
+
+| field | reads | verdict |
+|---|---|---|
+| `srcTrip.id` | **2** | **A defect — this is R19-1**, and it is now a red test. Read 1 is `origin.sourceTripId`, the credit; read 2 is `refileCityKey`'s `source.id === target.id`, the conjunct A-16 says *"turns key equality into an identity"*. The source is never spread, so 2 is a second read, not a floor. A builder's hoist takes it to **1** and no `ALLOWED` entry is written for it. |
+| `srcTrip.ownerId` | 1 | Correct today — and, for the first time, watched. |
+| `tgtTrip.id` | **2** | **Irreducible.** Read 1 is `refileCityKey`'s `target.id`; read 2 is the record spread that carries the recipient's own id into the document this function returns. No hoist removes read 2 without rebuilding a `Trip` field by field in three functions, which would put a second definition of *"what a `Trip` is"* in the build layer. `ALLOWED`, `max: 2`. |
+| `tgtTrip.revision` | **2** | **Irreducible.** Read 1 is the `{ ...trip }` spread, whose value the explicit `revision:` key overwrites in the same literal; read 2 is `trip.revision + 1`. `ALLOWED`, `max: 2`. |
+| every other `Trip` field, both documents | ≤ 1 | — |
+
+so `ALLOWED` becomes **seven** entries:
+
+```ts
+  'tgtTrip.id':       { max: 2, why: 'A-24 Part 1: read 1 is refileCityKey\'s A-16 identity conjunct, read 2 is the record spread that rebuilds the RECIPIENT\'S OWN document — an irreducible floor, not a blessed second read. Nothing of the target Trip crosses a person boundary' },
+  'tgtTrip.revision': { max: 2, why: 'A-24 Part 1: read 1 is the { ...trip } spread whose value the explicit `revision:` key immediately overwrites; read 2 is the increment. Irreducible for the same reason' },
+```
+
+**And the converse clause, which is not optional.** If the builder's R19-1 fix also removes
+`refileCityKey`'s read of `target.id` (for instance by passing both ids in rather than both trips), then
+`tgtTrip.id` drops to 1 and assertion 2 — *no dead allowance* — goes red. **That entry is then deleted in
+the same pass.** Deleting an entry a fix in the same pass made dead is not widening the allow-list and is
+explicitly a builder's obligation; adding one, or raising a `max`, remains an architect's ruling. A-23's
+maintenance rule is amended in place to say so.
+
+**What Part 1 deliberately does not do, and the trigger to revisit it.** It does not census the **rows** of
+`days` and `cities`. Two known multi-reads therefore stay invisible: the recipient's `Day.id` (**R19-2**,
+routed to a builder as a code fix, not as a census gap) and QA's recorded `tgtTrip.cities.0.key ×2` on the
+pool-placement path. Both are the **recipient's own** values, neither crosses a person boundary, and
+censusing them costs an index-normalised path scheme (`days.*.id`) plus four more allow entries with wide
+maxes — masking more than it catches, which is the first candidate above in miniature. The extension point
+is stated so nobody has to re-derive it: **the census's unit is a *root* — a record `copyStopInto` reads as
+a value — and arrays are never roots, rows are.** The day a `City` or `Day` field crosses into a copied
+record, the answer is a **new root** (`srcCity0…n`, `tgtDay0…n`, censused exactly as `tgtPlace0…n` already
+is), never opening a collection. This is the residue, and it is disclosed rather than discovered.
+
+---
+
+**Part 2 — four new scenario rows (R19-4).**
+
+Row 5's second cover is withdrawn, not repaired: its table entry claims *"`samePlace`'s `null` arm,
+`placeForCopy`'s `at === null`"* and the two are mutually exclusive by construction — a same-named target
+row whose `at` is `null` makes `samePlace` return **true** (`aAt === bAt`), so the copy takes the reuse
+branch and `placeForCopy` is never called. Renaming row 5's target row would trade one cover for the other,
+which is why this is four **new** rows rather than an edit. The matrix is **14**:
+
+| # | scenario | what it is the only cover for |
+|---|---|---|
+| 11 | `{kind:'place'}` · **null coordinate, no matching target row** | `placeForCopy`'s `at === null` arm — row 5's withdrawn second cover. **This is the shape of Jacob's own data**: the live planner has exactly one place with no coordinates (Windsor Great Park / Long Walk) and the copy path for it is exactly *"no matching row in the target"*. Verified: the row written is `{name:'Habyt Vienna', cityKey:'tgt-city', at:null}` |
+| 12 | `{kind:'place'}` · **the same document, two distinct objects** | **A-16 step 2** — `source.id === target.id && target.cities.some(…)`, the branch R19-1 subverts and the one §2.14 says Phase 1 exercises (*"copying between two of your own trips"*). Built by calling the source fixture **twice**: same `Trip.id`, same city key, distinct object graphs — which is A-16's own stated reason for `source.id === target.id` rather than `source === target`. No serializer in the loop. Verified: the place is filed under the **source's own** key, the row is reused, `validateTrip` reports 0 |
+| 13 | source stop taken from the source's **`pool`** | `findAnywhere`'s second arm. The reference trip carries **31** pool stops, so this is the ordinary shape, not an exotic one |
+| 14 | a **minimal** source stop | the absent-optional arms — `cost === null`, `arrival === null`, `links` absent, and a source `Place` with no `note` and no `hours`. A-23 populates the fixture maximally so the recursion has something to count; the cost is that it only ever measured a *maximal* document, and the honest fix is one row that is not maximal rather than a weaker fixture everywhere |
+
+Rows 1–10 are unchanged in construction and in numbering, so `qa/`'s cross-check of the two censuses stays a
+row-by-row comparison. **Measured across all 14 rows with Part 1 applied**: the only multi-reads are the five
+existing `ALLOWED` entries (each still observed at exactly **2**, so assertion 2 stays live), the two new
+ones, and `srcTrip.id ×2` — R19-1, which is the point.
+
+---
+
+**Part 3 — `Stop.ticket` joins the fixture, and rule 3's fixture covers all three `Ticket` kinds (R19-5).**
+
+The census enumerates `Object.keys` of the **fixture instance**, and `makeStop` writes `ticket` only when
+`init.ticket` is truthy. A-23's printed fixture list omits it, so the censused stop carried **14 of `Stop`'s
+15 fields** and the absent one is the field §6.6 classifies as an access credential and rule 3 says may never
+travel. The population needs no accessor and no cast — a `{kind:'bundled'}` ticket survives
+`fromJSON(toJSON())` intact — and a regression emitting
+`...(src.ticket && src.ticket.kind === 'bundled' ? { ticket: src.ticket } : {})` passes **615/615** today:
+invisible to the census because the field is absent, and invisible to `copyStop.test.ts` because its rule-3
+fixture pins a `{kind:'url'}` ticket and the regression is gated on a different `kind`.
+
+Two changes, and the second is not optional:
+
+1. **`readOnce.test.ts`'s fixture stop gains `ticket: { kind: 'bundled', path: 'tickets/entry.pdf', label:
+   'Entry' }`** — one field, chosen `bundled` because it is the kind that names a file inside a build
+   artifact (§6.6's own threshold) and it is the kind the demonstrated regression used. The census then
+   carries **15 of 15**, its counts are unchanged (nothing reads the field today, verified), and any future
+   regression that *tests* the ticket and then *emits* it reads `srcStop.ticket` twice and goes red.
+2. **`copyStop.test.ts`'s rule 3 covers all three `Ticket` kinds** — `bundled`, `url` and `attachment` —
+   not two. *"No `Ticket` travels"* is a claim over the **union**, and the shape that slipped past both files
+   is a **kind-gated** emission, so a fixture pinning one kind measures a third of the rule. Mechanically:
+   parameterise the source fixture by ticket, run rule 3's assertions once per kind, and assert for each that
+   its own greppable payload (`href`, `path`, `mailMessageId` + `filename`) is absent from
+   `JSON.stringify(trip)` — the existing `secret-token` assertion generalised. Add a compile-time
+   exhaustiveness map over `Ticket['kind']` in the same idiom as `STOP_FIELDS`, so a **fourth** kind fails
+   `npm run typecheck` there before it fails a test. *(The fixture's own docstring says "a bundled ticket"
+   and the ticket is a `url` — the builder corrects the comment in the same pass.)*
+
+---
+
+**Part 4 — the number (R19-6).** A-23's *"Verified, not asserted"* section printed `srcPlace.at.lat ×3` in
+scenario 3 against the pre-fix tree; it is **×4**. I agree with the breaker's classification: **cosmetic.**
+The mechanism decides it — scenario 3 puts N = 3 candidate rows through `samePlace`'s coordinate arm and
+A-22 Part 2's count is N+1 — A-22 Part 2's own table already states *"4/1 at N = 3"* correctly, and no
+shipped assertion ever read the 3. Corrected in place, above, with the correction attributed rather than
+silently overwritten.
+
+---
+
+**What the builder does, and in what order.** One pass, and the ordering is the ruling's own injected-fault
+criterion (§0.5):
+
+1. **R19-1 and R19-2 first** (already routed as builder work, unchanged by this ruling): one hoist so
+   `source.trip.id` is read once at both the credit and the identity test — pass the id into
+   `refileCityKey` rather than re-reading the trip — and one fix so the recipient's `Day` is resolved once
+   across `copyStopInto` → `addStop`, either by dropping `copyStop.ts:480`'s pre-check and letting `addStop`
+   own the throw it already produces, or by resolving the `Day` once and handing it down.
+2. **Then A-24 Parts 1–3 in `readOnce.test.ts` and `copyStop.test.ts`.**
+3. **Both directions, or it is not done.** With Part 1 applied and R19-1 **reverted**, `readOnce.test.ts`
+   must be **red** naming `srcTrip.id ×2` — that is the census catching, mechanically, the defect this file
+   produced for the sixth round running. With R19-1 applied it must be **green**, with all seven `ALLOWED`
+   entries observed at exactly their max. A builder who cannot make it red by reverting the hoist has
+   implemented Part 1 wrongly, and reports that rather than adjusting the allow-list.
+4. **No `ALLOWED` entry beyond the seven**, and no raised `max`. If Part 2's four rows surface an eighth
+   multi-read, that is a **finding**, routed here — not an entry.
+
+**What does not change.** `copyStop.ts`'s behaviour for every value the type system permits, apart from
+R19-1's and R19-2's two hoists; §2.14's seven rules in rule and in outcome; A-14, A-15, A-16, A-18, A-19,
+A-20, A-21, A-21a and A-22 entire; `Place` / `Stop` / `OpeningHours` / `Ticket` shape; `schemaVersion`;
+`redactText` and `REDACTION_PATTERNS` — **no pattern and no call site is added**; `fromJSON`, `toJSON`,
+`packages/client`, `apps/web`, `cli.ts`; §2.10 at **71** (`censusTrip` and `TRIP_SKELETON` are test-local,
+which is §2.10's *"tests do not create surface"*); the reference trip at 2/4/11 and 11 `validateTrip` issues;
+the goldens and the sample sha `40955ca0b182`. **No new defensive guard is added**: this ruling governs what
+the guard *sees*, never what the product code throws.
 
 ### 2.10 The public API surface
 

@@ -459,8 +459,29 @@ Fix the five. Then <strong>stop relying on people to spot the sixth</strong>: an
 every time the tests run, how many times the copying code looks at each piece of borrowed data, and the
 build fails the moment anything looks twice. Five exceptions are written down with a reason each, and adding
 a sixth needs an architect, not a quiet edit. Verified before it was written down: the new check goes red on
-today's code and names all five, and green once they are fixed. <strong>Ruled, not yet built:</strong> one
-builder pass lands A-22 and A-23, then a tester round 19 attacks it.</p>
+today's code and names all five, and green once they are fixed.</p>
+<p><strong>Both were built, and round 19 attacked the automatic check itself.</strong> The five fixes all
+hold &mdash; the copy now credits the trip it actually took the stop from &mdash; and the new check is not
+decoration: the tester planted <strong>twenty</strong> deliberate &ldquo;looked twice&rdquo; bugs inside the
+area it watches and it caught <strong>all twenty</strong>, fourteen of which no other test noticed, twelve of
+them in parts of the copy nobody had ever written a test for. The mechanism is right. What the tester broke
+is the check's <strong>reach</strong> &mdash; the small print about <em>what</em> it watches, which the ruling
+wrote down and got wrong in three places. <strong>(1)</strong> It skipped each trip's own record wholesale as
+&ldquo;just the container&rdquo;, except that two things in that container are exactly what the copy carries
+across: <strong>which trip this came from, and whose it is</strong> &mdash; the credit line again, for the
+sixth round running, and the check could not see it. <strong>(2)</strong> It listed ten situations to test the
+copy in, and one of them cannot reach the case it was added for, so a place with <strong>no map
+coordinates</strong> &mdash; Jacob's own data has exactly one, Windsor Great Park &mdash; was never exercised
+on the path it actually takes; and copying <strong>within your own trip</strong>, which is the only kind of
+copying that exists today, was not among the ten either. <strong>(3)</strong> It promised &ldquo;any new field
+is watched automatically&rdquo;, which is true only of fields the test data fills in &mdash; and the one it did
+not fill in is <strong>the ticket</strong>, the single field the design calls a credential that must never
+travel. The architect's ruling (<code>ARCHITECTURE.md</code> <strong>A-24</strong>, revision 18): watch each
+trip's own details and skip only its lists of days, cities and places; add four more situations, including the
+coordinate-less place and the copy within one trip; put a ticket in the test data and check all three kinds of
+ticket rather than one. The payoff is concrete &mdash; with A-24 in place, that sixth defect stops being
+something a person has to spot and becomes a failing test. <strong>Ruled, not yet built:</strong> one builder
+pass lands the two small fixes plus A-24, then a tester round 20 attacks it.</p>
 </div>
 
 <div class="wrap">
@@ -468,7 +489,7 @@ builder pass lands A-22 and A-23, then a tester round 19 attacks it.</p>
   <div class="brand">
     <h1>CAIRN</h1>
     <div class="tagline">"You are here"</div>
-    <div class="updated">Updated 2026-08-28 · against <code>master</code>, after ARCHITECTURE revision 17 (A-22 and A-23, the round-18 design findings &mdash; fix the five sites the search missed, then let a test do the searching)</div>
+    <div class="updated">Updated 2026-08-28 · against <code>master</code>, after ARCHITECTURE revision 18 (A-24 &mdash; the automatic read-once check's <em>reach</em>: what it watches, which situations it tests, and the one field its test data never carried). This pass also rebuilt the whole board against the seven-phase order.</div>
   </div>
 
   <!-- ============ DECISION CALLOUT ============ -->
@@ -476,49 +497,39 @@ builder pass lands A-22 and A-23, then a tester round 19 attacks it.</p>
     <span class="label">⚠️ Waiting on Jacob, not on the pipeline</span>
     <p><strong>Want an "accept" button for copied stops before Phase 2?</strong> Today a copied
       activity stays badged "from a friend" forever — there's no control to say "this is mine
-      now." Safe, but you'll notice it. Cheap to add now; otherwise it ships with the Phase 2
+      now." Safe, but you'll notice it. Cheap to add now; otherwise it ships with the Phase 3
       accounts work. No rush — nothing else is blocked on this.</p>
-  </div>
-
-  <div class="hero" style="border-color:#b45309;background:#3b2a10">
-    <div class="phase-tag">⚠ PHASE 2 RE-SCOPED — do not read the phase stepper below as current</div>
-    <h2>Phase 1 has shipped, and the roadmap was re-cut the same day.</h2>
-    <p><strong>Phase 1: SHIP</strong> (<code>REVIEW.md</code>, <code>b32ef9a</code>, 2026-08-27).
-      The same day, Jacob gave the full product thesis and the phases were re-cut:
-      <strong>Phase 2 is now travel history, local-first</strong> — past trips, the trip lifecycle,
-      the lifetime map, participants — and accounts/the server moved to Phase 3. <strong>Anything
-      below describing "Phase 2" as accounts/sync/sharing is superseded, and the stepper is wrong
-      from Phase 1 onward.</strong></p>
-    <p class="assess">Current sources of truth: <code>PRODUCT-VISION.md</code> (why this order),
-      <code>ROADMAP.md</code> revision 9 (the sequence, with the old-number → new-number mapping at
-      its top), <code>ARCHITECTURE.md</code> §8 (the model). Rebuilding this board and its Markdown
-      twin against the new phase order, in one pass, is a task of its own and has not been done.</p>
   </div>
 
   <!-- ============ HERO: 10-second read ============ -->
   <div class="hero">
-    <div class="phase-tag">Phase 1 of 6 — the core engine &amp; multi-trip planner</div>
-    <h2>Phase 1 shipped. Phase 2 is next.</h2>
+    <div class="phase-tag">Phase 2 of 7 — travel history, local-first</div>
+    <h2>Phase 1 shipped. Phase 2 is underway, and stuck on one file on purpose.</h2>
     <div class="pills">
       <span class="pill green">🟢 PHASE 1 CLOSED — SHIPPED</span>
-      <span class="pill green">🟢 PHASE 2 UNLOCKED</span>
+      <span class="pill amber">🟡 PHASE 2 — 2a BUILT, NOT VERIFIED</span>
     </div>
-    <p><strong>The manager signed off.</strong> Built, independently attacked across 11 rounds,
-      and the very last fix was re-verified by the manager itself, on its own probe, before
-      recording SHIP.</p>
-    <p>The one thing that held it back — a merge landing at the same instant as an edit could
-      silently overwrite another tab's saved work — is fixed and proven fixed, the hard way.</p>
-    <p class="assess">Phase 2 (accounts, sync, sharing) is unlocked. Nobody has started it yet.</p>
+    <p><strong>Phase 1: SHIP</strong> (<code>REVIEW.md</code>, <code>b32ef9a</code>, 2026-08-27) —
+      built, independently attacked across 11 rounds, and the very last fix re-verified by the
+      manager itself before sign-off.</p>
+    <p>The same day, the phases were re-cut against Jacob's product thesis: <strong>Phase 2 is
+      travel history</strong> — past trips, the lifetime map, who you went with — and accounts moved
+      to Phase 3. There are <strong>seven</strong> phases now.</p>
+    <p class="assess">Since then: eight adversarial rounds (12 → 19), all of them on Phase 2's first
+      two increments, and seven of them on the one file that copies an activity from one trip into
+      another — the single place in the design where your data crosses to another person. Nothing
+      about friends or share links ships until that file is closed. Round 19 is the first sign of
+      the end: the next defect of that kind will be caught by a test rather than by a person.</p>
   </div>
 
   <!-- ============ VERTICAL PHASE STEPPER ============ -->
   <div class="stepper">
-    <h3>The six phases</h3>
+    <h3>The seven phases</h3>
 
     <div class="step done">
       <div class="rail"><div class="dot"></div><div class="track"></div></div>
       <div class="body">
-        <div class="name">Core planner</div>
+        <div class="name">Core planner — SHIPPED</div>
         <div class="outcome">Plan trips like the old app, but many of them, safely.</div>
       </div>
     </div>
@@ -526,13 +537,21 @@ builder pass lands A-22 and A-23, then a tester round 19 attacks it.</p>
     <div class="step current">
       <div class="rail"><div class="dot">2</div><div class="track"></div></div>
       <div class="body">
-        <div class="name">Accounts &amp; sharing</div>
-        <div class="outcome">Trips follow you across devices; friends can see them.</div>
+        <div class="name">Travel history — IN PROGRESS</div>
+        <div class="outcome">Record trips you already took; your whole travel life on one map; who you went with.</div>
       </div>
     </div>
 
     <div class="step">
       <div class="rail"><div class="dot">3</div><div class="track"></div></div>
+      <div class="body">
+        <div class="name">Accounts, server &amp; sharing</div>
+        <div class="outcome">Trips follow you across devices; friends can see them and copy a stop.</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="rail"><div class="dot">4</div><div class="track"></div></div>
       <div class="body">
         <div class="name">Email ingestion</div>
         <div class="outcome">Forward a confirmation, get it filed and ticketed.</div>
@@ -540,7 +559,7 @@ builder pass lands A-22 and A-23, then a tester round 19 attacks it.</p>
     </div>
 
     <div class="step">
-      <div class="rail"><div class="dot">4</div><div class="track"></div></div>
+      <div class="rail"><div class="dot">5</div><div class="track"></div></div>
       <div class="body">
         <div class="name">Phone app &amp; live path</div>
         <div class="outcome">Offline on your phone; your real route drawn next to the plan.</div>
@@ -548,7 +567,7 @@ builder pass lands A-22 and A-23, then a tester round 19 attacks it.</p>
     </div>
 
     <div class="step">
-      <div class="rail"><div class="dot">5</div><div class="track"></div></div>
+      <div class="rail"><div class="dot">6</div><div class="track"></div></div>
       <div class="body">
         <div class="name">Photos</div>
         <div class="outcome">Photos land on the right day — often the right stop — by themselves.</div>
@@ -556,15 +575,16 @@ builder pass lands A-22 and A-23, then a tester round 19 attacks it.</p>
     </div>
 
     <div class="step">
-      <div class="rail"><div class="dot">6</div></div>
+      <div class="rail"><div class="dot">7</div></div>
       <div class="body">
-        <div class="name">Sharing polish &amp; cost reports</div>
-        <div class="outcome">A clean public share page and a real trip cost report.</div>
+        <div class="name">Discovery, recap &amp; polish</div>
+        <div class="outcome">Find places through the people you travel with; a real recap, cost report and public share page.</div>
       </div>
     </div>
   </div>
   <p style="text-align:center;font-size:0.78rem;color:var(--ink-dim);margin-top:-10px;margin-bottom:18px;">
-    Phase 2 shows "current" because it's unlocked — nobody has started the work yet.
+    Phases 3–7 were numbered 2–6 before the 2026-08-27 re-cut. Anything older saying "Phase 2 =
+    accounts" means what is now Phase 3.
   </p>
 
   <!-- ============ 1. WHERE WE ARE ============ -->
@@ -572,8 +592,17 @@ builder pass lands A-22 and A-23, then a tester round 19 attacks it.</p>
     <summary><span><span class="num">1</span>Where we are</span><span class="chev">▾</span></summary>
     <div class="details-body">
       <h4>Current phase</h4>
-      <p>Phase 1 of 6: <span class="pill green">🟢 COMPLETE — SHIPPED</span><br>
-        Phase 2 of 6: <span class="pill grey">⚪ NOT STARTED</span> (unlocked)</p>
+      <p>Phase 1 of 7: <span class="pill green">🟢 COMPLETE — SHIPPED</span><br>
+        Phase 2 of 7 (travel history): <span class="pill amber">🟡 IN PROGRESS</span> — step 2a of 3
+        is <strong>built</strong> (increments I-0…I-4), not verified and not shipped; 2b (lifetime
+        map, travel identity) and 2c (participants) are <span class="pill grey">⚪ NOT STARTED</span></p>
+      <h4>Where the effort has actually gone</h4>
+      <p>Not on 2b or 2c. <strong>Eight consecutive adversarial rounds (12 → 19)</strong> have been
+        spent on two increments — I-3a (a dismissed warning staying dismissed) and I-4a (city
+        identity, and everything the <em>copy</em> touches) — and seven of them landed on the copy.
+        That is a written rule, not drift: <strong>nothing about sharing with a friend, and no
+        public share link, ships until the copy path is closed</strong>, because the copy is the one
+        place in the design where your data crosses to another person.</p>
       <h4>Current gate status</h4>
       <p><span class="pill green">🟢 PHASE 1 GATE: PASSED</span> — Phase 1 itself is
         <strong>closed</strong>, not open. ("Gate open" describes the door into Phase 2, not Phase
@@ -609,8 +638,15 @@ builder pass lands A-22 and A-23, then a tester round 19 attacks it.</p>
           and copying a stop with a credit line that shows up everywhere.</li>
         <li><strong>A command-line tool</strong> for inspecting a trip, its conflicts and costs
           with no browser at all.</li>
-        <li><strong>432 automated tests, all passing</strong> (up from 333 last update), plus a
-          wide stack of adversarial probe scripts built to try to break named claims.</li>
+        <li><strong>615 automated tests, all passing</strong> (432 last update, 333 the one
+          before), plus a wide stack of adversarial probe scripts built to try to break named
+          claims.</li>
+        <li><strong>A standing automatic check on the copy path</strong> — it counts how many times
+          the copying code looks at each piece of borrowed data and fails the build if anything is
+          looked at twice without a written-down reason. The first thing here that catches a
+          <em>class</em> of defect rather than a known one; round 19 proved it by planting twenty
+          and catching twenty. New since round 18, and its blind spots are A-24 — ruled, not yet
+          built.</li>
       </ul>
     </div>
   </details>
@@ -639,11 +675,22 @@ builder pass lands A-22 and A-23, then a tester round 19 attacks it.</p>
         <li>No "accept as mine" control yet for a copied stop — Jacob's call, see the banner above.</li>
         <li>Two narrow bugs exist but aren't reachable through anything currently in the app.</li>
       </ul>
+      <h4>Built in Phase 2, but not verified and not shipped</h4>
+      <p>This is "the builder says it works", which this project does not count as done:</p>
+      <ul>
+        <li>Record a <strong>past trip</strong> from a form, with planned / current / past chips.</li>
+        <li>Dates you only half-remember — <em>"June 2019"</em>, not two invented exact days.</li>
+        <li>A finished trip stops nagging you about things that were only ever about the future —
+          the live defect where the app kept saying Jacob's completed trip was missing a hotel.</li>
+        <li>City names in any script — 東京 is a city called 東京, not a collapsed placeholder.</li>
+      </ul>
       <h4>Not built yet — later phases</h4>
       <ul>
-        <li>Accounts, cross-device sync, friends, share links (Phase 2 — next).</li>
-        <li>Email-derived bookings (Phase 3).</li>
-        <li>Phone app, offline mode, live path (Phase 4). Photos (Phase 5).</li>
+        <li>The lifetime map, travel statistics and who you went with (rest of Phase 2 — 2b, 2c).</li>
+        <li>Accounts, cross-device sync, friends, share links (Phase 3).</li>
+        <li>Email-derived bookings (Phase 4).</li>
+        <li>Phone app, offline mode, live path (Phase 5). Photos (Phase 6).</li>
+        <li>Discovery through the network, recap and sharing polish (Phase 7).</li>
       </ul>
     </div>
   </details>
@@ -672,8 +719,8 @@ builder pass lands A-22 and A-23, then a tester round 19 attacks it.</p>
           <div class="why">Cosmetic-only; screen looks identical either way. Low priority.</div>
         </div>
         <div class="item">
-          <div class="row1"><span class="title">Stale QA probes and doc numbers</span><span class="pill grey">⏸ entry item</span></div>
-          <div class="why">Housekeeping — a few probes/figures need repair before they mislead a future round.</div>
+          <div class="row1"><span class="title">Stale QA probes and doc numbers</span><span class="pill green">✅ closed</span></div>
+          <div class="why">Done in Phase 2 I-0…I-4: sixteen probes repaired (none deleted), and the build notes now carry measured figures.</div>
         </div>
       </div>
       <p style="margin-top:12px;"><strong>The one standing trigger:</strong> Phase 2's first
@@ -694,41 +741,49 @@ builder pass lands A-22 and A-23, then a tester round 19 attacks it.</p>
       </div>
       <div class="journey-row now">
         <div class="badge">2</div>
-        <div class="txt"><div class="name">Accounts &amp; sharing</div>
-          <div class="outcome">Your trips follow you across devices, and friends can see them and copy a stop into their own.</div></div>
+        <div class="txt"><div class="name">Travel history — IN PROGRESS</div>
+          <div class="outcome">Record the trips you've already taken, see your whole travel life on one map, and say who you went with — a new Cairn doesn't start empty.</div></div>
       </div>
       <div class="journey-row">
         <div class="badge">3</div>
+        <div class="txt"><div class="name">Accounts, server &amp; sharing</div>
+          <div class="outcome">Your trips follow you across devices, and friends can see them and copy a stop into their own.</div></div>
+      </div>
+      <div class="journey-row">
+        <div class="badge">4</div>
         <div class="txt"><div class="name">Email ingestion</div>
           <div class="outcome">Forward a booking confirmation; Cairn finds it, files it on the right day, attaches the ticket.</div></div>
       </div>
       <div class="journey-row">
-        <div class="badge">4</div>
+        <div class="badge">5</div>
         <div class="txt"><div class="name">Phone app &amp; live path</div>
           <div class="outcome">Cairn on your phone, fully offline, quietly drawing the route you actually traveled next to the plan.</div></div>
       </div>
       <div class="journey-row">
-        <div class="badge">5</div>
+        <div class="badge">6</div>
         <div class="txt"><div class="name">Photos</div>
           <div class="outcome">Trip photos land on the right day — often the right stop — automatically.</div></div>
       </div>
       <div class="journey-row">
-        <div class="badge">6</div>
-        <div class="txt"><div class="name">Sharing polish &amp; cost reports</div>
-          <div class="outcome">A clean public share page, and a real cost report across a trip.</div></div>
+        <div class="badge">7</div>
+        <div class="txt"><div class="name">Discovery, recap &amp; polish</div>
+          <div class="outcome">Find places through the people you travel with; a real recap and cost report, and a clean public share page.</div></div>
       </div>
       <p style="margin-top:10px;">A phase only starts once the one before it gets a manager
-        verdict of <strong>SHIP</strong> (see §10). Phase 1 is the first to clear that bar.</p>
+        verdict of <strong>SHIP</strong> (see §10). Phase 1 is the only one to have cleared that
+        bar so far. Phases 3–7 were numbered 2–6 before the 2026-08-27 re-cut.</p>
     </div>
   </details>
 
   <!-- ============ 6. RECENT PROGRESS ============ -->
   <details>
-    <summary><span><span class="num">6</span>Recent progress (R2–R11)</span><span class="chev">▾</span></summary>
+    <summary><span><span class="num">6</span>Recent progress (R2–R11, then R12–R19)</span><span class="chev">▾</span></summary>
     <div class="details-body">
       <p>Short version: <strong>eleven rounds</strong> of one QA tester trying to break the
         save/persistence layer, four design rulings, and a manager who verified the very last fix
-        personally before signing off.</p>
+        personally before signing off — and then <strong>eight more rounds</strong> on Phase 2's
+        first two increments, seven of them on the copy path. Rounds 12–19 are the banner stack at
+        the top of the page; the Phase 1 sequence is below.</p>
       <ul>
         <li><strong>R2–R7</strong> — closed a lost-edit race, a vanishing pool stop, a leaked credential, an ABA save-check spoof, an undo that could skip a write while showing "Saved," a mid-transition data loss with no error, and a silent give-up-after-retries path.</li>
         <li><strong>Gate review</strong> — looked at the actual screens for the first time in five rounds; sent Phase 1 back for 3 disclosed gaps (a misleading travel time, a conflict dismissal that didn't stick, a missing credit line).</li>
@@ -746,6 +801,21 @@ builder pass lands A-22 and A-23, then a tester round 19 attacks it.</p>
         trip planner can do. Each fix was immediately attacked rather than trusted, which is why
         the very last bug (R11-1) surfaced only after ten rounds had already passed. Expensive,
         and the only way to actually trust the result.</p>
+      <h4>Rounds 12–19, in one paragraph</h4>
+      <p>Phase 2's first slice went in, and the tester found two <em>design</em> holes rather than
+        code bugs: a dismissed warning being thrown away by the calendar, and city names outside the
+        English alphabet collapsing into one meaningless key. Both were ruled on and built — and
+        then every round from 14 onward landed on the same 500-line file, the one that copies an
+        activity from one trip into another. R14 found a hotel door PIN riding along in a place's
+        note. R15 found the same mistake one level deeper, in a cost note and a bus label. R16 found
+        the last unchecked field in a saved file (opening hours). R17 and R18 found that a value can
+        be a tiny function rather than a stored fact, so <em>checking</em> a value and <em>using</em>
+        it can be two different values — and that the fix for it had missed nine sites across two
+        attempts. R19 attacked the automatic check written to end that pattern, confirmed it works,
+        and found three places it was not looking. <strong>Same file, six rounds, and not because
+        of carelessness:</strong> it is the one place where your data crosses to another person, so
+        the bar is deliberately higher there, and nothing about friends or share links ships until
+        it is closed.</p>
     </div>
   </details>
 
@@ -769,16 +839,26 @@ builder pass lands A-22 and A-23, then a tester round 19 attacks it.</p>
       <p style="text-align:center;font-weight:700;font-size:1rem;letter-spacing:0.02em;">
         Architect&nbsp;→&nbsp;Builder&nbsp;→&nbsp;Breaker&nbsp;→&nbsp;Manager
       </p>
-      <p style="text-align:center;color:var(--ink-dim);font-size:0.85rem;margin-top:-4px;">Phase 2 kickoff — nobody has started this yet</p>
+      <p style="text-align:center;color:var(--ink-dim);font-size:0.85rem;margin-top:-4px;">Architect done · builder next · breaker round 20 · then the 2a gate</p>
       <ul>
-        <li><strong>Architect</strong> goes first: turns ROADMAP's Phase 2 sketch (server,
-          accounts, sync, sharing) into a buildable design, and rules on the 3 small items carried
-          from Phase 1 plus Jacob's accept-control decision, if pulled forward.</li>
-        <li><strong>Builder</strong> implements against that design.</li>
-        <li><strong>Breaker</strong>'s first round has a standing target already written down:
-          the merge/write code that caused 5 of Phase 1's bugs.</li>
-        <li><strong>Manager</strong> makes the next SHIP / SEND BACK call. Only this role can open Phase 3.</li>
+        <li><strong>Architect — done.</strong> <code>ARCHITECTURE.md</code> revision 18
+          (<strong>A-24</strong>) is written: the read-once check's reach, four new test situations,
+          and a ticket in the test data.</li>
+        <li><strong>Builder — next.</strong> One pass: two small fixes in the copy (look up "which
+          trip" once; look up the receiving day once), then A-24's changes to the check. The order
+          matters — with A-24 in and the first fix backed out, the check must go <strong>red</strong>
+          naming the defect. If it doesn't, A-24 was implemented wrongly, and that gets reported
+          rather than worked around.</li>
+        <li><strong>Breaker — round 20</strong>, attacking that pass. The standing rule holds: it
+          may not quietly add an exception to the check's list; a new exception is an architect's
+          ruling.</li>
+        <li><strong>Manager</strong> makes the <strong>2a SHIP / SEND BACK</strong> call once I-3a
+          and I-4a are genuinely closed — the first manager gate since Phase 1, and what eight
+          rounds have been working toward. Only this role can open the rest of Phase 2.</li>
       </ul>
+      <p><strong>Still standing from Phase 1:</strong> whenever the merge/write code is next
+        touched, the first breaker round on it is pre-committed to attack
+        <code>doMerge</code>/<code>writeAndSettle</code> — the code behind five of Phase 1's bugs.</p>
     </div>
   </details>
 
@@ -791,12 +871,12 @@ builder pass lands A-22 and A-23, then a tester round 19 attacks it.</p>
         <tr><td class="tool">superpowers</td><td class="why">✅ Useful now — already in active use (TDD, systematic debugging, verification-before-completion)</td></tr>
         <tr><td class="tool">skill-creator</td><td class="why">⏸ Useful later — worth it once there's a 3rd/4th recurring workflow to package</td></tr>
         <tr><td class="tool">agent-browser</td><td class="why">⛔ Not needed — QA's own browser scripts already do this job</td></tr>
-        <tr><td class="tool">gstack</td><td class="why">⏸ Useful soon — Phase 2 is where a real deployment stack stops being hypothetical</td></tr>
+        <tr><td class="tool">gstack</td><td class="why">⏸ Useful soon — Phase 3 is where a real deployment stack stops being hypothetical; Phase 2 is local-first and needs none of it</td></tr>
         <tr><td class="tool">ui-ux-pro-max</td><td class="why">⏸ Useful later — Phase 1's gaps were correctness bugs, not design ones</td></tr>
-        <tr><td class="tool">taste-skill</td><td class="why">⏸ Useful later — matters most at Phase 6 polish</td></tr>
+        <tr><td class="tool">taste-skill</td><td class="why">⏸ Useful later — matters most at Phase 7 polish</td></tr>
         <tr><td class="tool">impeccable</td><td class="why">⛔ Not needed — no gap it would fill right now</td></tr>
         <tr><td class="tool">claude-hud</td><td class="why">⏸ Useful later — one task per session today, nothing to dashboard yet</td></tr>
-        <tr><td class="tool">GSAP / Emil</td><td class="why">⛔ Not needed — would break the zero-dependency rule; no animation work planned before Phase 6</td></tr>
+        <tr><td class="tool">GSAP / Emil</td><td class="why">⛔ Not needed — would break the zero-dependency rule; no animation work planned before Phase 7</td></tr>
       </table>
     </div>
   </details>
@@ -817,8 +897,10 @@ builder pass lands A-22 and A-23, then a tester round 19 attacks it.</p>
       <p><strong>Phase 1 has now cleared all three, genuinely.</strong> Not merely "built" (code
         exists), not merely "verified" (a tester tried and found nothing) — the manager reviewed
         the actual product, disclosed the one shortcut it took (verifying the last fix itself
-        instead of ordering a ceremonial extra round), and recorded SHIP. That's the first 🟢 in
-        this document. The same discipline applies to every phase after it, starting with Phase 2.</p>
+        instead of ordering a ceremonial extra round), and recorded SHIP. That's the only 🟢 in
+        this document so far. The same discipline — and the same three-way distinction between
+        <em>built</em>, <em>verified</em> and <em>shippable</em> — applies to Phase 2, which is why
+        eight rounds of work on it still counts as "built, not verified".</p>
     </div>
   </details>
 
