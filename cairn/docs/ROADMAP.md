@@ -86,6 +86,20 @@ public-share-link work is **unchanged**, and the reason moves back one notch: th
 credential path again — `cost.display` and `hours.weekly[*].open`, on a cast-built source — bounded to
 in-process callers because JSON cannot express an accessor. I-5 stays unblocked.
 
+**Revision 17, 2026-08-28.** QA round 18 — the breaker pass over A-21/A-21a — confirmed both are faithfully
+built and falsified the claim they rest on: a mechanical read-count **census** over the shipped control flow
+found **six** more fields of caller-supplied values read more than once in `copyStop.ts`, one of them
+(`source.trip`, ×5) able to credit a copied stop to the wrong person. `ARCHITECTURE.md` revision 17 answers
+it as **A-22** (the four missed sites, plus the `ctx` trio, plus A-21a's exception restated at the
+granularity where the harm lands and **restored** by cloning the reuse probe's coordinate) and **A-23** (the
+census becomes a **standing test** in `packages/core/test/readOnce.test.ts`, so this class of defect fails
+the suite instead of waiting for the next breaker round). This file changes in exactly the same one way
+revisions 12, 13, 14, 15 and 16 did: **I-4a's Built / Verification / Ship-gate lines.** **No new increment,
+no phase re-scoped and no change to the order.** I-4a's outright block on share/friend/public-share-link work
+is **unchanged**, and the reason is now the strongest it has been: the copy path can put **another person's
+name on your credit** — §2.14 rule 7, one of the four things `BRIEF.md` calls non-negotiable — bounded to
+in-process callers because JSON cannot express an accessor. I-5 stays unblocked.
+
 > **Phase numbers changed once, here.** Every heading below carries its old number, and every "Phase N"
 > written in `ARCHITECTURE.md` §1–§7, `BUILD-NOTES.md` or `QA-FINDINGS.md` before revision 9 means the
 > *named* phase it described: "Phase 2" = accounts/server (**now 3**), "Phase 3" = ingest (**now 4**),
@@ -1245,6 +1259,25 @@ builder against the finding itself and is not an increment.
   `...(o.x !== undefined ? { x: str(o.x, path) } : {})` sites are the *safe* double read, blessed in
   writing so nobody sweeps them). No `Place`/`OpeningHours`/`Stop` shape change, no `schemaVersion` bump, no
   `redactText` change, no `packages/client`, `apps/web` or §2.10 movement (**71**).
+  **Revision 17 adds two, and the second is the one that ends this arc (§2.9 A-22, A-23; QA R18-1…R18-5):**
+  the four sites A-21's and A-21a's searches missed are closed by hoists that are mechanical applications of
+  rules already written — `source.trip` and `source.stopId` read **once** each at the top of `copyStopInto`
+  (so the document the stop is copied **from** is the document `provenance.origin` **credits**, and
+  `origin.sourceStopId` is the id the caller named rather than a second read of the found record),
+  `srcPlace.at` hoisted in the `kind:'inline'` branch, `samePlace` reading each of its six fields once (it
+  threw a raw `TypeError` out of core on a **recipient** row whose `at` flipped to `null`), and `ctx.ids` /
+  `ctx.today` / `ctx.actorUserId` hoisted because their harmlessness today is a property of `addStop` rather
+  than of this function. **A-21a's accepted exception is restated one level down and restored**: the reuse
+  probe carries a **clone** of the coordinate, because `samePlace` reads `b.at.lat` once per candidate row —
+  so `original.at.lat` was read N+1 times with N set by the **recipient's** document, and the residue was a
+  *hybrid* coordinate rather than the disclosed duplicate row. Two is the ceiling again, at every level,
+  independent of the other party's document; `samePlace`, `placeForCopy`, `refileCityKey` and A-15's single
+  classification point are untouched in contract. And **A-23**: a new
+  `packages/core/test/readOnce.test.ts` runs a **read-count census** — counting accessors over every field of
+  the source stop, the source and target `Place` rows and all three arguments, recursing into nested records
+  — across a ten-scenario matrix covering every branch of `copyStopInto`, with a five-entry allow-list whose
+  every entry must be exercised. No `Place`/`Stop` shape change, no `schemaVersion` bump, no `redactText`
+  change, no `fromJSON`/`toJSON`/`packages/client`/`apps/web` change, no §2.10 movement (**71**).
 - **User-visible outcome.** *"日本 2019 — 東京, 京都"* records as two cities instead of one, in any script,
   and a document that already collapsed two cities into `"-"` says so on screen instead of silently
   mis-attributing every day of the trip.
@@ -1316,6 +1349,19 @@ builder against the finding itself and is not an increment.
   `readWeeklyEntry(v).kind !== 'malformed'` agrees with the deleted `isWeeklyEntry` on **every** row of the
   existing table, so A-20's contract sentence — `isOpeningHours` is true exactly when `fromJSON` accepts —
   is re-derived rather than assumed.
+  **Added at revision 17 (A-22, A-23), and the first of these is the one `BRIEF.md` calls non-negotiable:**
+  with `source.trip` an accessor flipping between two trips, the copied stop's `provenance.origin` names the
+  document the stop was **found** in and the `Place` row written comes from that same document; with the
+  source stop's `id` flipping to a credential, `origin.sourceStopId` is the id the caller named and no part
+  of the credential is greppable in the recipient's `toJSON`; an **inline** `at` flipping `[{1,2}, null]`
+  returns rather than throws and flipping `[{1,2},{3,4}]` copies `{lat:1,lng:2}` (it copied `{lat:1,lng:4}`
+  — a pair no read produced); a **target** row whose `at` flips to `null` no longer throws out of core; and
+  a source `at` whose `lat`/`lng` are counting accessors is read **exactly twice each against targets
+  holding 0, 1 and 3 same-name rows** (it was 1, 2 and 4 for `lat` against 1 for `lng`, because
+  `samePlace`'s `&&` short-circuits). Then the standing guard, which is verified **both ways** and not just
+  asserted: `readOnce.test.ts` is **red against the tree as shipped**, naming each of round 18's five
+  findings from the scenario that exercises it, and **green** once A-22 lands, with each allow-list entry
+  observed at exactly its stated maximum.
 - **Dependencies / blockers.** I-4 (the form it corrects). None external.
 - **Ship gate.** The slug expression appears **nowhere** in `apps/` or `packages/` (grep); no call site
   outside `packages/core` constructs a city key; each of the three new validation codes has an
@@ -1364,6 +1410,24 @@ builder against the finding itself and is not an increment.
   (`warned || restores`) **stays red and is withdrawn by A-21 Part 6** as a claim about two traversals of an
   unstable document that no implementation can satisfy — **a builder who makes it pass by touching `toJSON`
   or `place_hours_malformed` has reverted A-20.** Nothing under `qa/` is edited by the pass that lands this.
+  **Added at revision 17 (A-22, A-23), and this is the gate that changes what "closed" means for this
+  increment:** **`packages/core/test/readOnce.test.ts` exists, is in the default `npm test` glob, and is
+  mutation-verified in both directions** — reverting any one of A-22's five hoists turns it red on its own,
+  and it is green with all five applied. **A `readOnce` allow-list entry may not be added or widened by the
+  pass that lands this**, or by any later builder pass: a sixth entry is an architect's ruling, because it is
+  the written form of *"this value may be read twice and here is why the second read cannot leak"* (A-23).
+  Plus **five mutations with at least one red test each** in `copyStop.test.ts` (restoring `source.trip` at
+  any of its five sites; `sourceStopId: src.id`; the inline `srcPlace.at` pair; `samePlace`'s `a.at` reads;
+  the un-cloned probe `at`) — a survivor is reported in BUILD-NOTES as a missing fixture, not rounded down;
+  and the sixth (restoring `actorUserId: ctx.actorUserId` in the `addStop` opts) is **expected to survive
+  `copyStop.test.ts` and to be caught by `readOnce.test.ts` alone**, which is the point of the guard and is
+  reported as such rather than papered over. And the same `qa/` rule as revisions 14, 15 and 16, pointing at
+  three named lines that are **QA's to re-express in round 19, never the builder's to satisfy**:
+  `qa/r18-readonce.mjs` §1.1's census assertion and §3.1–§3.4 must all go **green** with no edit; §2.3's
+  first assertion (`latReads === 1`) **stays red and is re-expressed** as `latReads === lngReads === 2`,
+  constant in N — a builder who drives that 2 to 1 has changed `placeForCopy`'s contract, which A-21a refused
+  and A-22 does not reopen; §3.5's three *"recorded, not filed"* lines stay green and become vacuous.
+  Nothing under `qa/` is edited by the pass that lands this.
 
 ---
 

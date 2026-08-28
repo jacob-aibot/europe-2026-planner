@@ -146,8 +146,24 @@ update to this file added that instruction).
 > if the value is free to change itself in between. **Built, not yet verified:** one builder pass
 > lands A-21, then a tester round 18 attacks it.
 
-> **Last updated:** 2026-08-28, against `master` after ARCHITECTURE revision 16 (A-21, the one
-> round-17 design finding — check once, use what you checked) — previously revision 15's A-20.
+> **That was built — and round 18 found five more places the same fix had missed, in the same file,
+> for the fifth round running.** The worst one is not a leak but a *mis-credit*: the app looked up
+> "whose trip am I copying from?" five separate times while copying one activity, so it could take
+> the stop out of one friend's trip and then put a *different* friend's name on it — and putting the
+> right name on borrowed plans is one of this project's founding promises. The other four are
+> smaller (a stray identifier crossing over, and two ways to make the app crash on a coordinate).
+> All five need the app to be talking to itself rather than reading a saved file, so all five are
+> minor — but five rounds of the same thing is a pattern, not bad luck. So the architect's ruling
+> (`ARCHITECTURE.md` **A-22** and **A-23**, revision 17) has two halves. Fix the five. Then **stop
+> relying on people to spot the sixth**: an automatic check now counts, every time the tests run,
+> how many times the copying code looks at each piece of borrowed data, and the build fails the
+> moment anything looks twice. Five exceptions are written down with a reason each, and adding a
+> sixth needs an architect, not a quiet edit. Verified before it was written down: the new check
+> goes red on today's code and names all five, and green once they are fixed. **Ruled, not yet
+> built:** one builder pass lands A-22 and A-23, then a tester round 19 attacks it.
+
+> **Last updated:** 2026-08-28, against `master` after ARCHITECTURE revision 17 (A-22 and A-23, the
+> round-18 design findings — fix the five sites the search missed, then let a test do the searching) — previously revision 15's A-20.
 > Update this line every time you edit this file.
 
 **Status vocabulary used throughout:** 🟢 COMPLETE · 🟡 IN PROGRESS · 🟠 NEXT / APPROVED ·

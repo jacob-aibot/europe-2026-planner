@@ -446,6 +446,21 @@ saying "fine". One thing it deliberately does <strong>not</strong> fix, and says
 cannot promise that a value it checked this second is the same value it saves a minute later, if the value
 is free to change itself in between. <strong>Built, not yet verified:</strong> one builder pass lands A-21,
 then a tester round 18 attacks it.</p>
+<p><strong>That was built &mdash; and round 18 found five more places the same fix had missed, in the same
+file, for the fifth round running.</strong> The worst one is not a leak but a <em>mis-credit</em>: the app
+looked up "whose trip am I copying from?" five separate times while copying one activity, so it could take
+the stop out of one friend's trip and then put a <em>different</em> friend's name on it &mdash; and putting
+the right name on borrowed plans is one of this project's founding promises. The other four are smaller
+(a stray identifier crossing over, and two ways to make the app crash on a coordinate). All five need the
+app to be talking to itself rather than reading a saved file, so all five are minor &mdash; but five rounds
+of the same thing is a pattern, not bad luck. So the architect's ruling
+(<code>ARCHITECTURE.md</code> <strong>A-22</strong> and <strong>A-23</strong>, revision 17) has two halves.
+Fix the five. Then <strong>stop relying on people to spot the sixth</strong>: an automatic check now counts,
+every time the tests run, how many times the copying code looks at each piece of borrowed data, and the
+build fails the moment anything looks twice. Five exceptions are written down with a reason each, and adding
+a sixth needs an architect, not a quiet edit. Verified before it was written down: the new check goes red on
+today's code and names all five, and green once they are fixed. <strong>Ruled, not yet built:</strong> one
+builder pass lands A-22 and A-23, then a tester round 19 attacks it.</p>
 </div>
 
 <div class="wrap">
@@ -453,7 +468,7 @@ then a tester round 18 attacks it.</p>
   <div class="brand">
     <h1>CAIRN</h1>
     <div class="tagline">"You are here"</div>
-    <div class="updated">Updated 2026-08-28 · against <code>master</code>, after ARCHITECTURE revision 16 (A-21, the one round-17 design finding &mdash; check once, use what you checked)</div>
+    <div class="updated">Updated 2026-08-28 · against <code>master</code>, after ARCHITECTURE revision 17 (A-22 and A-23, the round-18 design findings &mdash; fix the five sites the search missed, then let a test do the searching)</div>
   </div>
 
   <!-- ============ DECISION CALLOUT ============ -->
