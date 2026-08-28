@@ -979,6 +979,87 @@ for. That is the whole reason all five are MINOR and none is a BLOCKER.
 
 ---
 
+## Round 27 (2026-08-28, `master` @ `481b7e8`) — I-6a: A-29's stated-country gate and A-30's `refreshSummary`
+
+Six new probes, two of which need a browser. All run from `cairn/`; `i6a-kd62.sh` builds a
+throwaway `git worktree` at `HEAD`, mutates it and removes it — nothing in the working tree is
+touched.
+
+```bash
+node --experimental-strip-types qa/i6a-gate.mjs         # A-29's gate past the builder's seven inputs:
+                                                        # all 2,704 two-ASCII-letter strings against a
+                                                        # regex-FREE reading of Part 3; 15 Unicode
+                                                        # homoglyph / fullwidth / combining cases; the
+                                                        # "uppercase before the regex" trap ('ıl' -> IL);
+                                                        # the index's own alphabet; the typo census
+                                                        # (R27-3); per-city isolation; a 1,244-pair
+                                                        # invariant sweep; the reference trip
+node --experimental-strip-types qa/i6a-chain.mjs        # the RUNTIME backstop for §4.3 that KD-62 says
+                                                        # needs dataflow analysis: with one chain link
+                                                        # parked inside a port mutation, no other port
+                                                        # mutation may reach the port. Three parks plus a
+                                                        # control. This is R27-2's executable spec
+bash qa/i6a-kd62.sh                                     # plants KD-62's thunk mutation in a worktree:
+                                                        # typecheck CLEAN, grep GREEN, client suite GREEN
+                                                        # (216/216), i6a-chain.mjs RED. §0 is a static
+                                                        # census of the live tree for the shape the hole
+                                                        # needs — it is ABSENT
+node --experimental-strip-types qa/i6a-fence.mjs        # the write fence, scenarios i6-fence.sh does not
+                                                        # cover: A open and IDLE (never having written) ·
+                                                        # the same assertion given teeth by swapping the
+                                                        # PORT for a minting one · two tabs rescanning at
+                                                        # once · the CAS racing deleteTrip on the SAME
+                                                        # document · the CAS racing a document save, both
+                                                        # orders · a rejecting refresh mid-pass
+node --experimental-strip-types qa/i6a-bookkeeping.mjs  # R26-1/2/3 re-derived from the FINDINGS' text
+                                                        # rather than from the builder's re-expressed
+                                                        # probes, with different fixtures. §7 is R27-1
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/i6a-idb.mjs
+                                                        # apps/web/src/ports/storage.ts EXECUTED against
+                                                        # real IndexedDB. Needs NO web build and no
+                                                        # tools/serve.mjs — it serves one blank page from
+                                                        # an ephemeral port (IndexedDB is unavailable on
+                                                        # about:blank) and type-strips the shipped file,
+                                                        # whose only imports are `import type`
+```
+
+The last one needs `npm run web:build && node tools/serve.mjs` in another shell:
+
+```bash
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/i6a-browser.mjs
+                                                        # the same port THROUGH App.tsx's boot: a row
+                                                        # knocked back below SUMMARY_VERSION is brought
+                                                        # current, the envelope version and document
+                                                        # bytes do not move, countrySource reaches real
+                                                        # storage, and R26-6's two-tab scenario runs in
+                                                        # two real pages
+```
+
+`i6a-bookkeeping.mjs` is **3 FAIL** and they are §7 — that is R27-1, and §1–§6 (R26-1, R26-2,
+R26-3) must stay green. Every other probe in this round is **ALL OK**. `i6a-kd62.sh` is a report
+with no verdict line; read its five headings in order, because the finding is the *combination*
+(grep green + suite green + `i6a-chain.mjs` red), not any one of them.
+
+Two notes for whoever runs these next:
+
+- **`i6a-fence.mjs` §1 and §2 deliberately do not flush tab A.** Flushing there makes Y's row
+  current, the pass skips Y entirely, and the fence assertion passes for the wrong reason — the
+  same class of error KD-61 records against measuring §D over the wrong window. Both sections
+  assert the precondition (*both rows below `SUMMARY_VERSION`*) before measuring anything.
+- **`i6a-bookkeeping.mjs` §6 starts the delete and awaits it after the release.** KD-60 is real:
+  with the end-of-pass install on the chain, `await store.deleteTrip(id)` before releasing a parked
+  pass is a **deadlock**, not a failure.
+
+Re-run **unmodified** this round, all accurate, none passing for the wrong reason:
+`qa/i6-summary.mjs`, `qa/i6-race.mjs`, `qa/i6-converge.mjs`, `qa/i6-ghostrow.mjs` and
+`qa/i6-unreadable.mjs` **ALL OK**; `qa/r7-chain.mjs` **0 FAIL**; `bash qa/i6-ceiling.sh` reds the
+structural grep on all three mutations; `bash qa/i6-fence.sh` reproduces both counterfactuals (M-A
+**7** tests red, M-B **8** tests red and **7** probe FAILs); `qa/accept.mjs` **28 pass / 0 fail**;
+`qa/r2-constraints.mjs` **1 FAIL** (R2-18, known, unchanged). `npm run test:tap` **751/0**,
+`npm run typecheck` clean, `Object.keys(core).length` **74** / client **38**, reference trip
+**2 / 4 / 11** with `validateTrip` 11 and `geoCheck` 0, `npm run golden` + `npm run sample`
+no-diff (source sha `40955ca0b182`), `npm run web:build` clean at **973,783 bytes**.
+
 ## Round 26 (2026-08-28, `master` @ `0f52c4c`) — I-6: the widened row and the `SUMMARY_VERSION` rescan
 
 Six new probes. All run from `cairn/`; the two `.sh` ones build a throwaway `git worktree` at
