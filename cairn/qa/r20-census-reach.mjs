@@ -11,37 +11,40 @@
  * itself a ruling about *how far a guard reaches*, and this round asks the same question of A-24
  * that A-24 asked of A-23.
  *
- *   §1  **R20-1** — A-24's amended maintenance rule (*"the fixture populating every field of both
- *       records is part of this contract"*) is **unenforced**. Nothing compile-time or test-time
- *       ties `readOnce.test.ts`'s fixture to `keyof Stop` / `keyof Place`. Demonstrated by adding
- *       a 16th field to `Stop` in a throwaway worktree: only `copyStop.test.ts` goes red, a
- *       builder satisfies it there, and a double read of the new field is then invisible to the
- *       census with the whole suite green. That is R19-5's loop, reproducing on the next field.
- *   §2  **R20-2** — the same gap one record UP, and created by A-24 Part 1 itself. The census's
- *       two new `Trip` roots carry **17 of `Trip`'s 18 keys**: `meta` is **absent** and `homeBase`
- *       is present but **`null`**. So `srcTrip.meta` may be read any number of times invisibly,
- *       and the whole `homeBase.at` subtree — a named home coordinate — is never entered at all.
- *       Two-sided: populate both on the fixture and the same plants go red.
- *   §3  **R20-3** — a live multi-read no ruling names and no guard can see: `refileCityKey`'s
- *       step-4 fold reads a **target** `City.order` twice, once in the comparison and once in the
- *       record the next iteration compares against. With three same-named target cities and an
- *       unstable `order`, the copied `Place` is filed under the wrong city and `validateTrip`
- *       reports 0.
+ * **STATUS after round 21 (`master` @ A-25 / revision 19): ALL OK.** Every one of R20-1…R20-5 is
+ * closed by A-25 and the sections below were re-expressed in round 21 under A-19 assertion 7 —
+ * §2 and §5 because they measured **QA's own local copy** of the census fixtures and of A-24's
+ * residue prose, both of which A-25 replaced; §4 because A-25 Part 5 **ruled** on KD-50's message
+ * asymmetry ("recorded and unchanged") rather than leaving it open; §6 because `r14`'s KD ceiling
+ * moved 49 → 50 in the same round. The sections now pin the closed state, so a FAIL here is a
+ * regression, not a finding. Round 21's own evidence lives in `qa/r21-closure.mjs`.
+ *
+ *   §1  **R20-1 — CLOSED (A-25 Part 1).** A-24's amended maintenance rule (*"the fixture
+ *       populating every field of both records is part of this contract"*) was **unenforced**.
+ *       `readOnce.test.ts` now carries four `Record<keyof T, true>` maps and a runtime key-set
+ *       assertion, so a 16th `Stop` field fails `npm run typecheck` at TWO sites and the fixture
+ *       test stays red until the fixture carries it.
+ *   §2  **R20-2 — CLOSED (A-25 Part 1).** The two `Trip` roots carried 17 of `Trip`'s 18 keys —
+ *       `meta` absent, `homeBase` `null`. All three `Trip` fixtures now populate both, and
+ *       `DECLARED_NULLS` is empty. Re-expressed to read the SHIPPED test file, not a local copy.
+ *   §3  **R20-3 — CLOSED (A-25 Part 3).** `refileCityKey`'s step-4 fold read a **target**
+ *       `City.order` twice, once in the comparison and once in the record the next iteration
+ *       compares against; with three same-named target cities and an unstable `order` the copied
+ *       `Place` was filed under the wrong city and `validateTrip` reported 0. One hoist.
  *   §4  **KD-50** — the builder's disclosed consequences of deleting `copyStop.ts`'s day
  *       pre-check, checked rather than accepted: the message, the id draws, the target behind the
- *       refusal, and whether any call site depends on either.
- *   §5  **R20-4** — A-24 Part 1's residue paragraph says *"Two known multi-reads therefore stay
- *       invisible"*. A fully-opened census finds **five**, two of which produce a divergent record.
- *   §6  **R20-5** — `qa/r14-horizon-copy.mjs` §7 pins `kds.length === 49`; this pass minted KD-50,
- *       so a probe that was ALL OK at `215aeee` is 1 FAIL at `3d1be3b`, and BUILD-NOTES' *"nothing
- *       in this pass went unrun"* is false for r14…r18.
+ *       refusal, and whether any call site depends on either. The message asymmetry is A-25 Part
+ *       5's ruled state and this section now pins it as such.
+ *   §5  **R20-4 — CLOSED (A-25 Part 5).** A-24's residue paragraph said *"Two known multi-reads
+ *       therefore stay invisible"* and a fully-opened census found five. A-25 Part 5 replaces that
+ *       paragraph with three named classes; this section pins the class set rather than A-24's two.
+ *   §6  **R20-5 — CLOSED.** `qa/r14-horizon-copy.mjs` §7 pinned `kds.length === 49` against a
+ *       BUILD-NOTES holding 50; re-expressed to 50 by QA in round 21.
  *   §7  Ceilings, `cairn-constraints`, and the attack list that did NOT break.
  *
  * A FAIL line means the probe found what it was looking for. Read the finding in
- * ../docs/QA-FINDINGS.md before assuming the script is broken. **8 FAIL by design** — R20-1 ×1,
- * R20-2 ×2, R20-3 ×2, R20-4 ×1, R20-5 ×1, plus KD-50's one cosmetic residue in §4. Every other
- * line is a confirmation that must stay at 0. Deterministic call sequences only, no races and no
- * sleeps. Nothing under `cairn/` is written by it.
+ * ../docs/QA-FINDINGS.md before assuming the script is broken. **0 FAIL expected** as of round 21.
+ * Deterministic call sequences only, no races and no sleeps. Nothing under `cairn/` is written by it.
  *
  * **Population bound, unchanged since round 16 and the reason every finding here is MINOR:** §2
  * and §3 need an **accessor property** on a caller-supplied value, which no JSON document and no
@@ -151,6 +154,10 @@ line('§1 R20-1 — the fixture-completeness rule A-24 added is unenforced');
     'rule from prose into a red test',
     inReadOnce.length > 0,
     'the census fixture is pinned to nothing; the rule is a sentence in a docstring');
+  note('CLOSED by A-25 Part 1. Round 21 re-ran R20-1\'s own four-step mutation end to end: a 16th ' +
+    '`Stop` field fails `npm run typecheck` at TWO sites now (`copyStop.test.ts:1256` and ' +
+    '`readOnce.test.ts:197`), satisfying both leaves the fixture test RED, populating it makes it ' +
+    'green, and R19-5\'s plant then reds the census on 14 of 15 rows. See `qa/r21-closure.mjs` §3.');
 
   note('mutation-verified in a throwaway `git worktree add … 3d1be3b`, discarded, in four steps:');
   note('  1. add a 16th optional field to `Stop` (`voucher?: { code: string }`), written by');
@@ -167,34 +174,38 @@ line('§1 R20-1 — the fixture-completeness rule A-24 added is unenforced');
 
 /* ===== §2 R20-2 — the two `Trip` roots A-24 added carry 15 of 17 fields ========= */
 
-line('§2 R20-2 — the census\'s `Trip` roots do not carry `homeBase` or `meta`');
+line('§2 R20-2 — CLOSED by A-25 Part 1; re-expressed in round 21 against the SHIPPED fixtures');
 {
-  // A-24 Part 1 refused "census `id` and `ownerId` by name" precisely because it "gives up A-23's
-  // 'a new field is covered automatically' promise AT THE LEVEL WHERE A PHASE 2/3 FIELD WILL
-  // ACTUALLY BE ADDED TO `Trip`". It then chose "census every own field except the six
-  // collections" — which delivers that promise only for fields the fixture INSTANCE carries, and
-  // the fixture is `createTrip` with no `homeBase` and no `meta`.
+  // ROUND 21 RE-EXPRESSION (A-19 assertion 7). This section used to build QA's OWN local copy of
+  // the census fixtures (`source()` / `target()` below) and measure that. A-25 Part 1 changed the
+  // shipped fixtures, so a local copy is exactly the staleness A-22 hit in `r18-readonce.mjs`
+  // §2.3: the probe would keep reporting a gap the product no longer has. It now reads
+  // `packages/core/test/readOnce.test.ts` itself, so it cannot drift from what ships.
+  const roSrc = readFileSync(new URL('../packages/core/test/readOnce.test.ts', import.meta.url), 'utf8');
   const TRIP_FIELDS = ['id', 'title', 'ownerId', 'startDate', 'endDate', 'datePrecision',
     'homeCurrency', 'homeBase', 'party', 'cities', 'days', 'pool', 'places', 'bookings',
     'resolutions', 'revision', 'schemaVersion', 'meta'];
-  const s = source(), t = target();
-  const missS = TRIP_FIELDS.filter((k) => !Object.hasOwn(s, k));
-  const missT = TRIP_FIELDS.filter((k) => !Object.hasOwn(t, k));
-  note(`the censused source trip carries ${Object.keys(s).length} of ${TRIP_FIELDS.length} \`Trip\` fields; absent: ${JSON.stringify(missS)}`);
-  note(`the censused target trip carries ${Object.keys(t).length} of ${TRIP_FIELDS.length}; absent: ${JSON.stringify(missT)}`);
-  note(`and of the keys that ARE present, \`homeBase\` is \`${JSON.stringify(s.homeBase)}\` on both, so ` +
-    '`censusDeep` stops at the null and nothing below it is ever counted.');
-  ok('R20-2a: the census\'s two `Trip` roots populate every field of `Trip`, so A-24 Part 1\'s ' +
-    'chosen candidate delivers the "a new field is covered automatically" promise it was chosen for',
-    missS.length === 0 && missT.length === 0,
-    `17 of 18 keys present; absent from both fixtures: ${JSON.stringify(missS)} — \`meta\` is ` +
-    `\`TripMeta\`, an open \`[k: string]: unknown\` bag whose \`poolNotes\` is free text (KD-20's carrier class)`);
-  ok('R20-2b: `Trip.homeBase` is non-null on at least one document, so the subtree below it — ' +
-    '`homeBase.name` and `homeBase.at.lat`/`.lng`, a NAMED HOME COORDINATE that §2.13 makes a ' +
-    '`geoCheck` anchor and `BRIEF.md` classifies as data that must not leak — is inside the census',
-    s.homeBase !== null || t.homeBase !== null,
-    'both fixtures carry `homeBase: null`, so R18-5\'s hybrid-coordinate shape one level down is ' +
-    'green by vacancy rather than by measurement');
+  const tripMap = (/const CENSUS_TRIP_FIELDS: Record<keyof Trip, true> = \{([\s\S]*?)\};/.exec(roSrc) ?? [])[1] ?? '';
+  const mapped = [...tripMap.matchAll(/(\w+): true/g)].map((m) => m[1]).sort();
+  const homeBaseFixtures = (roSrc.match(/homeBase: HOME_BASE\(\)/g) ?? []).length;
+  const metaFixtures = (roSrc.match(/meta: TRIP_META\(/g) ?? []).length;
+  const declaredNulls = /const DECLARED_NULLS: Record<string, string> = \{\};/.test(roSrc);
+  note(`\`CENSUS_TRIP_FIELDS\` maps ${mapped.length} of ${TRIP_FIELDS.length} \`Trip\` keys — a 19th field on \`Trip\` fails \`npm run typecheck\` here (TS2741)`);
+  note(`\`homeBase: HOME_BASE()\` appears on ${homeBaseFixtures} \`Trip\` fixtures, \`meta: TRIP_META(\` on ${metaFixtures} (sourceTrip, minimalSourceTrip, targetTrip)`);
+  ok('R20-2a CLOSED: the census\'s `Trip` roots populate every field of `Trip`, and the key set is ' +
+    'now pinned by a compile-time `Record<keyof Trip, true>` plus a runtime `deepEqual` rather ' +
+    'than by memory (A-25 Part 1)',
+    JSON.stringify(mapped) === JSON.stringify([...TRIP_FIELDS].sort()) && metaFixtures === 3,
+    `mapped ${JSON.stringify(mapped)}; meta fixtures ${metaFixtures}`);
+  ok('R20-2b CLOSED: `Trip.homeBase` is non-null on all three `Trip` fixtures, so the subtree ' +
+    'below it — `homeBase.name` and `homeBase.at.lat`/`.lng`, a NAMED HOME COORDINATE that §2.13 ' +
+    'makes a `geoCheck` anchor and `BRIEF.md` classifies as data that must not leak — is inside ' +
+    'the census; and `DECLARED_NULLS` is empty, so no subtree is excused',
+    homeBaseFixtures === 3 && declaredNulls,
+    `homeBase fixtures ${homeBaseFixtures}, DECLARED_NULLS empty ${declaredNulls}`);
+  note('Round 21 re-verified both directions itself: the `meta` double read and the `homeBase` ' +
+    'hybrid shape are 2/2 GREEN against `3d1be3b`\'s census and RED on every row against A-25\'s ' +
+    '(`srcTrip.meta ×2`, `srcTrip.homeBase ×4`, `srcTrip.homeBase.at ×2`). See `qa/r21-closure.mjs` §4.');
 
   note('mutation-verified in a throwaway worktree at `3d1be3b`, discarded, BOTH directions:');
   note('  A. plant `sourceTrip.meta ? String(sourceTrip.meta.sourceHash) : \'\'` (and the same on');
@@ -357,11 +368,16 @@ line('§4 KD-50 — deleting the day pre-check: the message, the id draws, and t
     'the wording. Re-derived by grep across all three, plus `BrowsePane.tsx`, the one surface that ' +
     'renders `(e as Error).message` from this path',
     true, 'checked');
-  ok('...and the three refusals `copyStopInto` can produce still share one message family — a ' +
-    'user who sees one has the same information about which function refused and about which trip',
-    /^copyStopInto:/.test(msgs.day) && /^copyStopInto:/.test(msgs.city) && /^copyStopInto:/.test(msgs.stop),
-    `"${msgs.day}" names neither the function nor the trip, while the other two name both — cosmetic, ` +
-    'disclosed at KD-50, recorded here so it is a decision rather than a drift');
+  // ROUND 21 RE-EXPRESSION. A-25 Part 5 RULED on this: "KD-50's other residue — that `no such
+  // day: <id>` no longer shares a message family with the other two refusals — stays RECORDED AND
+  // UNCHANGED", because no caller pattern-matches the text and moving it would trade a stable
+  // message for symmetry. So the line stops asserting the symmetry the architect declined and
+  // starts pinning the state the architect ruled — a change-detector, not a standing FAIL.
+  ok('...and KD-50\'s message asymmetry is exactly as A-25 Part 5 ruled it: the day refusal comes ' +
+    'from `withDay` and names neither the function nor the trip, while the city and stop refusals ' +
+    'still carry the `copyStopInto:` prefix. Recorded and unchanged, by ruling',
+    /^no such day: /.test(msgs.day) && /^copyStopInto:/.test(msgs.city) && /^copyStopInto:/.test(msgs.stop),
+    `day "${msgs.day}" · city "${msgs.city}" · stop "${msgs.stop}"`);
   // Determinism, `cairn-constraints` §4: the id gap is unobservable.
   const ids = countingIds('z-');
   const T = target();
@@ -424,18 +440,32 @@ line('§5 R20-4 — A-24 names two invisible multi-reads; a fully-opened census 
   const SCALARS = Object.keys(agg).filter((f) => /^tgtTrip\.(days|cities)\.\d+/.test(f) &&
     !/\.(days|cities|stops|places|pool|bookings|resolutions)$/.test(f) && !/\.\d+$/.test(f)).sort();
   for (const f of SCALARS) note(`${f.padEnd(40)} ${JSON.stringify(agg[f])}`);
-  const DISCLOSED = ['tgtTrip.days.1.id', 'tgtTrip.cities.0.key'];
-  const undisclosed = SCALARS.filter((f) => !DISCLOSED.includes(f));
-  ok('R20-4: A-24 Part 1\'s residue paragraph names every multi-read the narrowed `opaque` still ' +
-    'cannot see, so a future reader can trust the disclosure the way the ruling asks them to',
-    undisclosed.length === 0,
-    `${SCALARS.length} scalar paths, ${undisclosed.length} of them undisclosed: ${JSON.stringify(undisclosed)}`);
-  note('Two of the undisclosed ones produce a DIVERGENT RECORD under a flipping accessor, not just ' +
-    'a count: `cities.<n>.order` (§3 above, the tie-break) and `days.<n>.stops.<m>.placement` — ' +
-    '`reindex`/`insertionIndex` in `stops.ts`, which A-22 Part 1(b) puts inside this traversal. ' +
-    'With the recipient\'s own stop\'s `placement` flipping, the ordering decision is taken on one ' +
-    'read and the rebuilt record keeps the `time` from another, so the user\'s own day renders out ' +
-    'of time order. Both are the RECIPIENT\'S OWN values, which is why both are MINOR.');
+  // ROUND 21 RE-EXPRESSION (A-19 assertion 7). A-24's two-item residue paragraph is REPLACED by
+  // A-25 Part 5's three named classes, so the pinned set becomes Part 5's, not A-24's. Class B is
+  // `tgtTrip.days.<n>.id` (the `withDay` findIndex + `{ ...day }` spread floor); class C is
+  // `…stops.<m>.placement` and `.placement.kind` (`reindex`/`insertionIndex` in `build/stops.ts`,
+  // ruled OUT OF SCOPE for this arc with a stated trigger); `tgtTrip.cities.<n>.key` is the eighth
+  // `ALLOWED` entry, watched. `tgtTrip.cities.<n>.order` is GONE — that was R20-3, closed by
+  // A-25 Part 3's hoist, and its absence here is the fix measured rather than trusted.
+  const DISCLOSED = [
+    /^tgtTrip\.days\.\d+\.id$/,                                    // class B — the spread floor
+    /^tgtTrip\.cities\.\d+\.key$/,                                 // watched: ALLOWED tgtCity0.key
+    /^tgtTrip\.days\.\d+\.stops\.\d+\.placement(\.kind)?$/,        // class C — build/stops.ts
+  ];
+  const undisclosed = SCALARS.filter((f) => !DISCLOSED.some((re) => re.test(f)));
+  ok('R20-4 CLOSED: A-25 Part 5\'s residue is the residue — every scalar multi-read the shipped ' +
+    'census cannot name falls in class A, B or C, and R20-3\'s `cities.<n>.order` is no longer ' +
+    'among them', undisclosed.length === 0,
+    `${SCALARS.length} scalar paths, ${undisclosed.length} outside classes A/B/C: ${JSON.stringify(undisclosed)}`);
+  ok('  ...and `tgtTrip.cities.<n>.order` is absent, i.e. A-25 Part 3\'s hoist is live',
+    !SCALARS.some((f) => /^tgtTrip\.cities\.\d+\.order$/.test(f)), JSON.stringify(SCALARS));
+  note('Class C (`…stops.<m>.placement`) still produces a divergent record under a flipping ' +
+    'accessor rather than only a count — the recipient\'s own day renders out of the order they ' +
+    'dragged it into, visible to them and reversible by them. A-25 Part 5 rules it out of scope ' +
+    'for this arc with a written trigger: the day a `Stop.placement` is built by something other ' +
+    'than a person\'s own hand, the read-once question reopens for `build/stops.ts` AS A WHOLE.');
+  note('Round 21 re-derived this from a fully-opened census over all FIFTEEN shipped rows (not a ' +
+    'local copy) and over 22 further document shapes — see `qa/r21-closure.mjs` §6.');
 }
 
 /* ===== §6 R20-5 — a green probe this pass turned red without saying so ========== */
@@ -456,8 +486,7 @@ line('§6 R20-5 — `qa/r14-horizon-copy.mjs` §7\'s KD ceiling is now red');
     'went unrun".');
   ok('R20-5: `qa/r14-horizon-copy.mjs` is still ALL OK, so the regression sweep BUILD-NOTES claims ' +
     'is the sweep that was run', pinned === kds.length,
-    `r14 §7 pins ${pinned}, BUILD-NOTES holds ${kds.length} — 1 FAIL, and the fix is a one-character ` +
-    're-expression of QA\'s own ceiling (A-19 assertion 7), not a change to the KD');
+    `r14 §7 pins ${pinned}, BUILD-NOTES holds ${kds.length}`);
   ok('...and the KD ids themselves are contiguous and unique, so the finding is the STALE CEILING ' +
     'and not the KD', contiguous && new Set(kds).size === kds.length, kds.join(','));
 }

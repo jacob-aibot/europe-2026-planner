@@ -945,7 +945,10 @@ line('§7 the ceilings, re-derived by running');
   const notes = readFileSync(new URL('../docs/BUILD-NOTES.md', import.meta.url), 'utf8');
   const kds = [...notes.matchAll(/^### (KD-(\d+))\b/gm)].map((m) => Number(m[2]));
   const contiguous = kds.every((n, i) => n === i + 1);
-  ok(`KD ids are contiguous 1..${kds.length} with no duplicates`, contiguous && kds.length === 49,
+  // Round 21 (R20-5, A-19 assertion 7): the ceiling moves 49 -> 50 because the A-24 pass minted
+  // KD-50. The ceiling is deliberately load-bearing — a pass that mints a KD must run this probe
+  // and say so — so it is re-expressed by QA, never relaxed to `>=`.
+  ok(`KD ids are contiguous 1..${kds.length} with no duplicates`, contiguous && kds.length === 50,
     kds.join(','));
   try {
     execFileSync('node', ['--test', 'test/disclosure.test.ts'], { cwd: root, stdio: 'pipe' });

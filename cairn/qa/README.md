@@ -22,6 +22,8 @@ node prov.mjs          # F-6, F-7, F-17: provenance escape paths
 node rev.mjs           # revision bumping and derived-cache keying
 node rules.mjs         # F-8 and the rules that stay silent on the fixture
 node --experimental-strip-types r18-readonce.mjs   # A-21/A-21a: the read-once census (round 18)
+node --experimental-strip-types r21-closure.mjs    # A-25 Part 6's six closure clauses (round 21)
+bash r21-clause3.sh                                # clause 3's four-step mutation, in a throwaway worktree
 ```
 
 Browser probes need `npm run web:build && npm run serve` in one shell first, then:
@@ -977,7 +979,81 @@ for. That is the whole reason all five are MINOR and none is a BLOCKER.
 
 ---
 
+## Round 21 (2026-08-28, `master` @ `020ee37`) — the closure round on A-25
+
+**A-25 Part 6 does not ask for a fresh hunt.** It states a **criterion** in six clauses and says
+the `copyStop.ts` read-once / credential-boundary arc is *"closed for I-4a's ship gate once round
+21 confirms the criterion"*, with a deliberately narrow re-opening condition: *a multi-read the
+shipped census structurally cannot see, of a value that crosses a person boundary or decides where
+a crossed record is filed.* Round 21 re-derived all six clauses independently and attacked the
+re-opening condition directly. **All six hold. Nothing found meets the re-opening condition. The
+arc is CLOSED.**
+
+```bash
+node --experimental-strip-types qa/r21-closure.mjs
+        # §1  clause 1 — ceilings: 71 exports, 2/4/11, 11 validateTrip issues, sample
+        #     sha 40955ca0b182, 8 ALLOWED / 15 rows / 9 roots / 4 tests / 0 exports,
+        #     determinism, zero-dep core, no fixture literal in apps/web/dist.  (0 FAIL)
+        # §2  clause 2 — the `City.order` hoist BOTH ways, from the shipped tree: with
+        #     it reverted, assertion 1 reds naming EXACTLY `15 · … : tgtCity1.order ×2`;
+        #     with the eighth ALLOWED entry ALSO removed, exactly that plus the
+        #     builder's disclosed `tgtCity0.key ×2` (row 9); applied, all eight
+        #     observed at exactly 2, and the eighth is tight at max 1 and 3.    (0 FAIL)
+        # §3  clause 3 — the structural preconditions; the mutation is r21-clause3.sh.
+        # §4  clause 4 — the meta/homeBase plants GREEN at 3d1be3b and RED at A-25;
+        #     DECLARED_NULLS empty; a null sweep over EVERY root of EVERY row (not the
+        #     seven the shipped test visits) finds nulls only on rows 5/11/14, the
+        #     three deliberately non-maximal rows; no empty-container vacancy. (0 FAIL)
+        # §5  clause 5 — 8 entries, all max 2, A-24's seven byte-identical.     (0 FAIL)
+        # §6  clause 6 — a fully opened census over all 15 rows prints classes A, B and
+        #     C and nothing else; `tgtTrip.cities.<n>.order` is gone.
+        #     R21-1: Part 5's class-A enumeration is complete by CLASS and short by
+        #     three INSTANCES.                                          (1 FAIL by design)
+        # §6b the classification the A-25 builder routed, settled by measurement: a
+        #     flipping City ROW produces an outcome BYTE-IDENTICAL to the already-
+        #     ALLOWED `tgtCity0.key ×2` field flip, so it is the accepted class and not
+        #     a worse one; flipping to a city the target lacks is strictly MORE
+        #     visible (`unknown_city_key`, an error).                           (0 FAIL)
+        # §7  the fresh attack — 22 document shapes no row of the fifteen builds, run
+        #     through both censuses. 0 throws, 0 unnamed multi-reads inside the roots,
+        #     0 paths outside the accounted set, and the source's `homeBase` /
+        #     `meta.poolNotes` read ZERO times and absent from the recipient.   (0 FAIL)
+
+bash qa/r21-clause3.sh     # clause 3's four steps, in a throwaway `git worktree`:
+        # 1. add `Stop.voucher`, written by makeStop only when truthy
+        # 2. `npm run typecheck` fails at TWO sites (round 20 measured ONE):
+        #    copyStop.test.ts(1256,7) and readOnce.test.ts(197,7), both TS2741
+        # 3. satisfy both maps -> typecheck clean, census fixture test STILL RED
+        # 4. populate the fixture -> 4/4 green; plant R19-5's shape -> assertion 1
+        #    reds with `srcStop.voucher ×3` on 14 of 15 rows (row 14 is minimal)
+```
+
+**Three probes were re-expressed under A-19 assertion 7 and are now ALL OK.**
+`qa/r14-horizon-copy.mjs` §7's KD ceiling 49 → **50** (that was R20-5, explicitly QA's).
+`qa/r19-census-gaps.mjs` §7.2's *"seven `ALLOWED` entries and no eighth"* → **eight and no ninth**,
+plus a new line pinning that every one is still `max: 2` (A-25 Part 6 clause 5).
+`qa/r20-census-reach.mjs` §2 and §5 stopped measuring **QA's own local copy** of the fixtures and
+of A-24's residue prose — the exact staleness mode that has now bitten `r18`, `r19` and `r20` in
+turn — and §4's message-family line now pins A-25 Part 5's *ruled* state instead of asserting the
+symmetry the architect declined. **`r21-closure.mjs` avoids the mode entirely**: it derives an
+importable module from the shipped `readOnce.test.ts` in `os.tmpdir()`, so its census, fixtures,
+matrix and allow-list are the shipped ones by construction and cannot drift.
+
+Re-run **unmodified** this round: `qa/r15-place-copy.mjs` **ALL OK**, `qa/r16-copy-depth.mjs`
+**ALL OK**, `qa/r17-hours-parser.mjs` **ALL OK**, `qa/r18-readonce.mjs` **ALL OK**,
+`qa/r2-copy.mjs` **0 FAIL**, `qa/prov.mjs` **0 FAIL**. `npm run test:tap` **620/0** with all four
+`readOnce.test.ts` tests inside it (505–508), `npm run typecheck` clean (both projects),
+`npm run web:build` clean, `npm run golden` + `npm run sample` byte-identical, `git status` at the
+repo root empty.
+
+---
+
 ## Round 20 (2026-08-28, `master` @ `3d1be3b`) — the A-24 / R19-1 / R19-2 / KD-50 breaker pass
+
+> **Superseded in round 21.** All five of R20-1…R20-5 are closed by A-25 and by QA's own ceiling
+> re-expression, and `qa/r20-census-reach.mjs` is **ALL OK** — its §2, §4 and §5 were re-expressed
+> to pin the closed state rather than the open finding. The block below records what round 20
+> found; read `r20-census-reach.mjs`'s own docstring for what it measures **now**.
 
 Narrow: the diff `63a14d7..3d1be3b` under `packages/` — `build/copyStop.ts`,
 `test/copyStop.test.ts` (85 → 88) and `test/readOnce.test.ts` (10 rows → 14, 5 `ALLOWED` → 7,

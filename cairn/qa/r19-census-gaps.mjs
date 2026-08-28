@@ -496,9 +496,15 @@ line('§7.2 ceilings, `cairn-constraints` and the read-only boundary');
     /from '\.\.\/src\/index\.ts'/.test(src) && /from '\.\.\/src\/build\/stops\.ts'/.test(src) &&
     /from '\.\.\/src\/model\/ids\.ts'/.test(src));
   ok('...and exports nothing itself', !/^export /m.test(src));
-  ok('...and holds A-24\'s seven ALLOWED entries and no eighth',
-    (src.match(/\{ max: \d+, why:/g) ?? []).length === 7,
-    String((src.match(/\{ max: \d+, why:/g) ?? []).length));
+  // Round 21 (A-19 assertion 7): re-expressed 7 -> 8. A-25 Part 2 added `tgtCity0.key`, and
+  // A-25 Part 6 clause 5 makes the count a standing ceiling — "no ninth `ALLOWED` entry and no
+  // raised `max` in the pass that lands this or any later builder pass. A multi-read the eight
+  // entries do not name is a finding routed to the architect." So this line pins BOTH halves.
+  const allowedEntries = src.match(/\{ max: \d+, why:/g) ?? [];
+  ok('...and holds A-25\'s eight ALLOWED entries and no ninth',
+    allowedEntries.length === 8, String(allowedEntries.length));
+  ok('  ...and every one of them is still `max: 2` — no `max` was raised (A-25 Part 6 clause 5)',
+    allowedEntries.every((e) => /\{ max: 2, why:/.test(e)), allowedEntries.join(' | '));
   const copyStop = readFileSync(new URL('../packages/core/src/build/copyStop.ts', import.meta.url), 'utf8');
   const stripped = copyStop.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
   ok('determinism: no `Date.now`, `Math.random` or `crypto.randomUUID` in either file',
