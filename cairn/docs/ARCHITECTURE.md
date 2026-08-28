@@ -340,13 +340,36 @@ environment detail dressed as a design question. **What would have been a blocke
 for Jacob rather than been routed around — is a *lower-resolution substitute*, a *different dataset*, an
 *unverifiable licence*, or hand-typed polygons. None of those is what happened.
 
+**Revision 20, 2026-08-28.** I-5 shipped the country index and the builder disclosed, as **BUILD-NOTES
+KD-51**, that §8.4's *correctness floor* prescribes a remedy the data does not support: the two Dalmatian
+records ROADMAP's exit criterion 4 requires to attribute to **HR** are `null` at 1:110m, and escalating to
+1:50m or 1:10m — the floor's stated mechanism — leaves them `null` while making every other number worse.
+He was right to route it and right not to work around it. Investigating it found the routed defect and a
+larger one underneath. **One ruling, in §8.4: A-26.** Three parts. (1) The two islands are a **dataset gap,
+not a resolution problem** — Biševo, Budikovac and Lokrum have no admin-0 polygon at *any* scale in the
+pinned family (nearest Croatian ring at 1:10m: 4.26 km, 2.75 km, 1.87 km) — so exit criterion 4's island
+clause is **withdrawn as factually wrong**, `null` is ruled the correct answer for them, and the criterion is
+rewritten to the property that actually discriminates a good index from a bad one. (2) The floor's
+*escalate-one-step* mechanism is **withdrawn** and replaced by *measure the whole family*; 1:110m stays the
+base, now for a stated reason rather than a score. (3) The finding's smaller half is the larger defect: at
+1:110m the index carries **175 ISO codes and is missing 64**, including Malta, the Maldives, Mauritius, the
+Seychelles, Macao, Hong Kong, Singapore, Bermuda, the Faroes, Cape Verde and Bahrain — **8 of them come back
+as the wrong neighbour** (AD→FR, GI→ES, HK→CN, LI→AT, MC→FR, SG→MY, SM→IT, VA→IT) and the other 56 are
+unreachable. A lifetime map that can never say *Malta* is broken in a way the reference trip cannot show.
+The answer is a **mixed-resolution index** — 1:110m base plus the 1:10m polygons for exactly the codes the
+base omits, emitted in the order `countryOf` must test them — measured at **239 codes / 892 rings / 20,702
+points / ~343 KB packed**, against 9.07 MB for a wholesale escalation. **`countryOf` does not change**: no
+distance function, no buffer, no snapping. The mechanical consequences in `ROADMAP.md` are a rewritten exit
+criterion 4, an amended I-5 and **one new increment, I-5a**, owed before I-6. No engine, no persisted shape,
+no `schemaVersion` bump and no movement on §2.10's export surface (**71**).
+
 **Phase 1 is §2 and §4. The next phase is §8.1–§8.4.** Everything else is the shape those must not
 foreclose. See `ROADMAP.md` for sequencing and `PRODUCT-VISION.md` for why this order and not another.
 
 ## Read only your sections
 
-This document is ~134k tokens (re-measured after revision 19's round-21 in-place correction, with
-`cairn/tools/doc-section ARCHITECTURE` — §2 is now ~101k of it and §8 ~12k; the per-section figures below were stale by a third before revision 11 and are
+This document is ~140k tokens (re-measured at revision 20, with
+`cairn/tools/doc-section ARCHITECTURE` — §2 is ~102k of it and §8 ~17k; the per-section figures below were stale by a third before revision 11 and are
 re-measured, not estimated, whenever a revision lands). Nothing needs all of it, and a fresh agent that reads it whole starts a sixth
 of the way into its context before writing a line. Pull what you need:
 
@@ -365,10 +388,10 @@ cairn/tools/doc-section ARCHITECTURE         # lists the sections and their size
 | 5 | The four hard subsystems | 2k | breaker; builder from Phase 3 on |
 | 6 | Privacy, authorization, deletion cascade. **§6.6 is the build-artifact threshold; the copy threshold is §2.14 A-15 + A-18 (revisions 13 and 14) and they differ deliberately, in two named places — read them together or neither** | 4k | breaker, manager; builder for §6.2 |
 | 7 | Explicitly deferred | <1k | anyone about to build something not in the roadmap |
-| 8 | **The travel-history model** (revision 9) — trip lifecycle and past trips (§8.1), the feasibility/integrity rule class (§8.2), participants (§8.3), geography attribution, travel stats and the summary-row rule (§8.4); then the shapes the location, photo and social phases must land on (§8.5–§8.7) and what is refused (§8.8). **§8.10 is revision 10** — physical travel distance by mode and the four provenance bases that keep it honest; **it is not Phase 2 scope**, so a Phase 2 builder reads §8.1–§8.4 and stops. **Revision 11 amends §8.1, §8.2 and §8.4 by pointer only — the two rulings themselves live in §2.2 (A-10) and §2.7 (A-9), and a Phase 2 builder reads both; revision 12 amends §8.2 by pointer in the same way, and its four rulings live in §2.7 (A-11, A-12, A-13) and §2.14 (A-14)** | 12k | architect; the builder and breaker of the phase after Phase 1 (§8.1–§8.4 only). §8.10 is for the architect and for phases 4, 5 and 7. Read with `PRODUCT-VISION.md` |
+| 8 | **The travel-history model** (revision 9) — trip lifecycle and past trips (§8.1), the feasibility/integrity rule class (§8.2), participants (§8.3), geography attribution, travel stats and the summary-row rule (§8.4); then the shapes the location, photo and social phases must land on (§8.5–§8.7) and what is refused (§8.8). **§8.10 is revision 10** — physical travel distance by mode and the four provenance bases that keep it honest; **it is not Phase 2 scope**, so a Phase 2 builder reads §8.1–§8.4 and stops. **Revision 11 amends §8.1, §8.2 and §8.4 by pointer only — the two rulings themselves live in §2.2 (A-10) and §2.7 (A-9), and a Phase 2 builder reads both; revision 12 amends §8.2 by pointer in the same way, and its four rulings live in §2.7 (A-11, A-12, A-13) and §2.14 (A-14)**. **A-26 is revision 20 and lives in §8.4** — the mixed-resolution country index, the withdrawal of the correctness floor's escalation mechanism, and the ruling that `null` is the right answer for a landform the dataset does not carry; **anyone touching `tools/gen-countries.mjs`, `geo/countryIndex.ts` or the attribution golden reads it first**, and it is what ROADMAP's I-5a builds | 17k | architect; the builder and breaker of the phase after Phase 1 (§8.1–§8.4 only). §8.10 is for the architect and for phases 4, 5 and 7. Read with `PRODUCT-VISION.md` |
 
 *(§8's figure is measured with `doc-section`, not estimated. §8.1–§8.4 — the Phase 2 model — are roughly
-half of it; a Phase 2 builder who reads only those pays about 5k.)*
+two thirds of it since revision 20 put A-26 in §8.4; a Phase 2 builder who reads only those pays about 10k.)*
 
 Read the whole document when you are the manager, when you are changing the design, or when a change
 crosses a section boundary. Otherwise this table is the contract.
@@ -6758,14 +6781,26 @@ Two constraints on the generator, both measured rather than assumed:
   in this paragraph.**
 - **A correctness floor that decides the scale.** 1:110m is coarse at coastlines and islands. The generator
   is validated against every coordinate-bearing record in the reference trip — 112 stops and 94 places,
-  including the Dalmatian islands (`Blue Cave, Biševo`; `Stiniva Cove, Vis`) and Lokrum. **If 1:110m
-  misattributes or drops one of them, the generator uses 1:50m and the budget moves.** Detection quality
-  decides the dataset; the budget does not.
+  including the Dalmatian islands (`Blue Cave, Biševo`; `Stiniva Cove, Vis`) and Lokrum. ~~If 1:110m
+  misattributes or drops one of them, the generator uses 1:50m and the budget moves.~~ **That escalation
+  mechanism is withdrawn at revision 20 — it was written on an assumption I-5 measured and falsified. See
+  A-26 below for what replaces it:** the generator measures the *whole* pinned family and the base scale is
+  the one that minimises unattributed records, with the base's missing ISO codes filled from the family's
+  finest scale. Detection quality still decides the dataset; the budget still does not.
 
 **`null` is a first-class answer.** A coordinate the index does not resolve — mid-ocean, a disputed area, a
-bad digit — is reported as *unattributed* and rendered as unattributed. It is never snapped to the nearest
-country. This is §2.7's rule about `unknown` in a different costume: a system that guesses a country is a
-system whose lifetime map is quietly wrong, and a wrong map is worse than an honest hole.
+bad digit, **a landform no scale of the dataset carries** — is reported as *unattributed* and rendered as
+unattributed. It is never snapped to the nearest country. This is §2.7's rule about `unknown` in a different
+costume: a system that guesses a country is a system whose lifetime map is quietly wrong, and a wrong map is
+worse than an honest hole.
+
+**And the distinction A-26 forces, stated here because this is the paragraph a future reader will reach
+for.** *"Never snapped"* is a rule about **the absence of evidence** — do not compute an answer from a
+coordinate no polygon contains. It is **not** a claim that the polygons are exact. Every ring in this index
+is a generalisation with a positional tolerance of hundreds of metres to tens of kilometres, and *"inside
+the ring"* has always meant *"inside a simplified drawing of the country"*. Confusing the two is what makes
+1:110m look like an accurate dataset that happens to miss two islands, when it is in fact a forgiving one
+whose error runs outward at a convex coast. A-26 keeps the rule and drops the illusion.
 
 **2. Every statistic is derived. Nothing counts anything into storage.**
 
@@ -6841,6 +6876,207 @@ any log line**, and a country code in a summary row is not a licence to log the 
 from core, a hidden container never fits — and the world map's version of the min-span guard is that a
 history containing one country must not zoom to a max-zoom rooftop view. Same mechanism (`fitSpanKm`,
 `MIN_SPAN_KM`), new caller, no second implementation.
+
+#### A-26 — the index is mixed-resolution, `null` is the right answer for a landform the dataset does not carry, and the correctness floor's escalation is withdrawn (revision 20, BUILD-NOTES KD-51)
+
+I-5 shipped `tools/gen-countries.mjs`, `derive/country.ts` and `fixtures/golden/countries.json` at 1:110m
+and routed one objection here rather than working around it: **the correctness floor above prescribes a
+remedy that does not achieve its own goal.** The builder measured all three scales at the pinned tag and
+found that escalating makes every number it is written in worse. He was right on both counts — the
+measurement and the refusal to invent a coastal buffer, which this section forbids in writing.
+
+Everything below was **re-derived independently** before ruling, from the same three files at the same
+pinned tag (all three checksums re-verified against §8.4's own record). The builder's table reproduces
+exactly. What it does not contain is the reason, and the reason changes the answer.
+
+**Part 1 — why the two islands are `null`, and why no scale fixes it.**
+
+Three distinct failures are stacked under one symptom, and the roadmap's single remedy addressed none of
+them. Measured at 1:10m, the finest scale Natural Earth's admin-0 family offers:
+
+| record | coordinate (from the live planner) | 1:110m | 1:50m | 1:10m | nearest Croatian ring at 1:10m |
+|---|---|---|---|---|---|
+| `Blue Cave, Biševo` | 43.0264, 16.0114 | `null` | `null` | `null` | **4.26 km** (Vis) |
+| `Stiniva Cove, Vis` | 43.0322, 16.2306 | `null` | `null` | `null` | **1.14 km** (Vis) |
+| `Budikovac / Blue Lagoon` | 43.0397, 16.2686 | `null` | `null` | `null` | **2.75 km** (Vis) |
+| `Lokrum Island` | 42.6265, 18.1214 | **HR** | `null` | `null` | 1.87 km (mainland) |
+| `Hvar Town` | 43.1729, 16.4413 | `null` | `null` | **HR** | 0.013 km *inside* |
+
+1. **Biševo, Budikovac and Lokrum are not in the dataset at any scale.** *Measured:* no ISO-coded polygon
+   at 1:110m, 1:50m or 1:10m contains any of them, and the nearest Croatian ring is kilometres away in each
+   case. *Not measured, and marked as such:* all three are small — of the order of a few km² down to under
+   one — and Natural Earth admin-0 evidently carries an island-inclusion threshold above them; that
+   threshold is not documented in the dataset and is inferred from the three misses, not cited. This is not
+   generalisation error and no resolution reaches it, because there is nothing at any resolution to reach.
+   Verified the strong way: a **corrected** Blue Cave coordinate — 42.9806, 16.0475, about 6 km south-east
+   of the planner's, which sits in open water — is *also* `null` at 1:10m, 4.26 km from the nearest ring.
+   *(The two corrected coordinates in this point and the next are from general knowledge and are **not**
+   verified against a source here. They are used only to separate "the datum is wrong" from "the dataset
+   has no polygon", and the ruling does not rest on their precision.)*
+2. **Stiniva's hole is two independent faults stacked.** The planner's coordinate is about 6 km east of a
+   corrected one; that corrected coordinate (43.0263, 16.1517) **does** attribute to HR at 1:10m. So
+   Stiniva is a bad-datum problem *and* a scale problem wearing one symptom, and the roadmap's criterion
+   could not have told the difference — which is precisely why it needed a `resolvesAt` and not a country.
+3. **Lokrum's `HR` at 1:110m is an artefact, not a success.** Lokrum is an offshore island with no polygon
+   of its own; it attributes because the coarse mainland ring reaches ~1.9 km out over the water past it.
+   The criterion that demanded `HR` for all three was, for this record, demanding that the dataset stay
+   *imprecise* — and it duly stopped being satisfied at 1:50m and 1:10m.
+
+**Ruling.** `null` is the correct answer for `Blue Cave, Biševo`, `Stiniva Cove, Vis` and
+`Budikovac / Blue Lagoon`, at this and every scale, and it is a **first-class answer to a genuine gap in the
+dataset** — not a defect, not a `TODO`, and never to be closed by a tolerance. Exit criterion 4's clause
+requiring them to attribute to **HR** was written by me at revision 9 on an unverified assumption and is
+**withdrawn as factually wrong**. `ROADMAP.md` carries the corrected criterion; the correction is explicit
+there rather than left to be reinterpreted.
+
+**Part 2 — why 1:110m is the base, stated as a mechanism instead of a score.**
+
+The builder's ranking is confirmed (`--dry-run` at each scale, re-run here): 175,085 bytes / 3 unattributed
+places / 4 unattributed stops at 1:110m, against 1,648,598 / 24 / 31 at 1:50m and 9,072,727 / 21 / 26 at
+1:10m. The reason a nine-times-larger dataset is less accurate is worth writing down, because it is
+counter-intuitive enough to be "fixed" by the next reader:
+
+> **A country's admin-0 boundary is its waterline, and travel coordinates sit on the waterline.** At a
+> convex coast, generalisation runs *outward*: a coarse ring bulges over the sea and swallows shoreline
+> points; a fine one tracks the water and drops anything a few hundred metres seaward. Measured at 1:10m:
+> Pile Gate is **358 m** outside Croatia's ring, Diocletian's Palace **300 m**, Split's Riva **377 m**.
+> All three are unambiguously on land in Croatia. 1:110m gets them right by being wrong in the useful
+> direction.
+
+So the base scale is **1:110m** — and the honest statement of why is *"it is the most forgiving of the
+error that dominates this dataset's use"*, plus *"it is 52× smaller"*, not *"it is the most accurate"*. The
+selection rule that replaces the withdrawn escalation is: **the generator measures every scale in the
+pinned family and the base is the one that leaves the fewest records unattributed over the reference
+corpus; the budget follows the base.** One command, re-derivable, and it must be re-derived when a second
+real trip exists, because a corpus of one Adriatic trip is exactly the sample that would make this
+conclusion parochial.
+
+**Part 3 — the defect underneath: 1:110m cannot name 64 countries, and misnames 8 of them.**
+
+The builder's second, smaller disclosure — four European micro-enclaves absorbed by their neighbours — is
+the visible corner of a larger hole, and measuring it changed my ruling. **The 1:110m layer carries 175
+ISO-coded countries. The 1:10m layer carries 239.** The 64 the base omits, with what the shipped index
+returns for a point inside each:
+
+| | |
+|---|---|
+| **Misattributed — a wrong country, 8** | `AD`→FR, `GI`→ES, **`HK`→CN**, `LI`→AT, `MC`→FR, **`SG`→MY**, `SM`→IT, `VA`→IT |
+| **Unreachable — `null`, 56** | `MT` Malta · `MV` Maldives · `MU` Mauritius · `SC` Seychelles · `MO` Macao · `BH` Bahrain · `BM` Bermuda · `FO` Faroes · `CV` Cabo Verde · `BB` Barbados · `IM` Isle of Man · `JE` Jersey · `GG` Guernsey · `AX` Åland · `AW` Aruba · `CW` Curaçao · `KY` Cayman · `TC` Turks and Caicos · `AG` `KN` `LC` `VC` `GD` `DM` `MS` `AI` `BL` `MF` `SX` `VG` `VI` · `PF` `WS` `TO` `TV` `KI` `FM` `MH` `PW` `GU` `MP` `AS` `NU` `CK` `NF` `WF` `NR` `PM` `SH` `ST` `KM` `IO` `GS` `HM` `UM` `PN` |
+
+This is not a `countryOf` defect and it is not the ray cast being wrong. Verified: at 1:110m the set of
+countries whose rings contain San Marino is the singleton `[IT]`; Vaduz's is `[AT]`; Monaco's is `[FR]`.
+**No snapping occurs. The map of the world the function is handed does not contain those states.** The
+guard `derive/country.ts` carries — no distance function anywhere in the file, so the shortcut cannot be
+taken by accident — held perfectly, and held while the answer was wrong, which is the useful thing to
+notice: a rule about how an answer is computed cannot protect a dataset that has no answer in it.
+
+**And this is why the routed finding could not be settled inside its own terms.** Two Dalmatian coves and
+four micro-enclaves are curiosities. *Malta, the Maldives, Mauritius, the Seychelles, Macao, Hong Kong,
+Singapore, Bermuda, the Faroes, Cabo Verde, Bahrain, Barbados, the Isle of Man and fifty-one more* are
+**destinations**, and the product this index exists for is a lifetime map of where a person has been. An
+index that can never say *Malta* is broken for the exact demographic the thesis is about. The reference
+trip cannot show that, which is the whole lesson: a criterion written against one corpus tests the corpus.
+
+**Part 4 — the ruling: a mixed-resolution index, with its test order frozen in the artefact.**
+
+> **The shipped index is 1:110m for every ISO code that layer carries, plus the 1:10m polygons for exactly
+> the codes it does not, emitted in the order `countryOf` must test them: ascending polygon area, ties
+> broken by ISO code ascending.**
+
+Three properties make this the answer rather than a compromise:
+
+1. **It is not an escalation.** The wholesale move the withdrawn floor prescribed costs 9.07 MB and leaves 26
+   stops unattributed, most of them shoreline coordinates that are on land. This costs the 64 small
+   polygons and nothing else. Measured: **239 codes,
+   892 rings, 20,702 points, 342,981 bytes packed** (against 175 codes / 286 rings / 10,559 points /
+   172,953 packed). Roughly 2× the budget, ~4 % of a wholesale 1:10m index.
+2. **It is provably non-regressive.** Over a 0.25° global grid — **1,036,800 cells** — the mixed index
+   differs from the shipped one in **61** cells: **59 are `null` → a country** and **2 are a wrong country
+   → the right one** (`MY`→`SG`, `CN`→`HK`). **Zero cells get worse.** And over the reference trip's
+   **226** coordinate-bearing records, **0 answers change** — so `fixtures/golden/countries.json` keeps
+   every country row, every `namedBy` and both unattributed lists byte-for-byte, and only its `index`
+   header moves. That last property is the ship gate's strongest single check.
+3. **`countryOf` does not change, at all.** No distance function, no coastal buffer, no nearest-neighbour,
+   no new parameter. The fix lives entirely in *which polygons are in the index* and *what order they are
+   in*. The one rule this section states about the function's behaviour is untouched.
+
+**Why the order has to move, and why area.** Filling creates an overlap the source data does not contain:
+at 1:50m and 1:10m Natural Earth punches a San Marino-shaped hole in Italy and a Liechtenstein-shaped hole
+in Austria, but the 1:110m base has neither, so a Vaduz point is inside *both* `AT`'s coarse ring and
+`LI`'s fine one. `countryIndex()` currently sorts by ISO code ascending and `countryOf` returns the first
+hit, and **alphabetical order resolves 7 of these 8 overlaps in favour of the encloser** — `AT` before
+`LI`, `CN` before `HK`, `ES` before `GI`, `FR` before `MC`, `IT` before `SM` and `VA`, `MY` before `SG`.
+The sorting docstring's reasoning is right and its choice of key is arbitrary; **ascending area is the
+non-arbitrary key, because an enclave is always smaller than the thing enclosing it.** Measured: on the
+same 1,036,800-cell grid, exactly **2** cells are contained by more than one country (`MY`+`SG`, `CN`+`HK`)
+and area-ordering is what decides them, both correctly. Everywhere else the two orderings are identical, so
+this changes the tie-break and nothing else.
+
+**And the order is emitted, not recomputed.** `countryIndex()` stops re-sorting and preserves the order it
+is given; the generator emits countries already ordered. That keeps the property the current docstring
+exists for — the answer is the same on every machine and every run — and strengthens it: the order becomes
+part of the committed artefact, so a reorder is a diff a reviewer sees rather than a floating-point
+comparison a reviewer trusts. A hand-built test fixture keeps working; it simply gets tested in the order
+it was written, which is what a four-polygon fixture wants.
+
+**Part 5 — the two residues, disclosed rather than left to be discovered.**
+
+1. **Vatican City is `IT` at every scale, and stays that way.** Natural Earth's `VA` feature is a 7-point
+   sliver spanning 12.4527–12.4540 E, 41.9028–41.9039 N — about **110 m × 130 m**, against the real state's
+   0.44 km² — and Italy carries a matching hole. St Peter's Basilica (41.9022, 12.4539) is ~90 m *south* of
+   it. No scale, no ordering and no fill fixes that; the dataset has no better answer to prefer. It is
+   pinned by a named test as a **known-wrong answer with its reason**, not repaired. **Why not null it:**
+   the only mechanism available is a hand-authored exclusion box for one polity, which is the first step
+   onto the hand-typed-polygon road I-5's dependency clause forbids, for a state whose every visitor is in
+   Rome the same day and whose lifetime map therefore gains `IT` either way. **Trigger to reopen:** Natural
+   Earth shipping a real `VA` polygon, or a second polity found to have a placeholder feature.
+2. **At a filled country's border the index is biased toward the smaller state.** The filled polygon is
+   1:10m and its neighbour is 1:110m, so there is no shared boundary — there is an overlap band, and area
+   ordering hands it to the fill. Measured on the printed coordinates: Natural Earth's 12-point Monaco
+   spans 43.7179–43.7635 N against Monaco's real 43.7247–43.7519, so roughly **700 m** of French ground
+   next to Monaco will return `MC`. This is a wrong answer introduced by this ruling and it is accepted
+   deliberately: it replaces *always wrong inside Monaco* with *right inside Monaco, wrong within ~700 m
+   outside it*, which is strictly less wrong area, and it applies to 8 borders out of 64 fills (the other
+   56 are islands with no neighbour to overlap). It is the generalisation tolerance every answer in this
+   index already carries, not a guess — see the paragraph added above the `null` rule.
+
+**Part 6 — what a builder implements. Five files, no engine.**
+
+1. **`tools/gen-countries.mjs`** — `--scale` becomes the *base* scale (default `110m`) and the generator
+   additionally fetches the family's finest scale (`10m`, pinned checksum already in the file) as the
+   **fill**. For every ISO code present in the fill and absent from the base, the base's entry list gains
+   the fill's rings unchanged. Entries are then ordered by ascending summed absolute spherical ring area,
+   ties by ISO code ascending, and emitted in that order. The run reports, as it already reports bytes: the
+   base code count, the fill count, the filled code list, and the emitted byte figure that goes in the
+   budget test. Its existing guards — checksum pin, quantisation check, round-trip, and the cross-check of
+   `countryOf` against the generator's own ray cast — all still run, and the cross-check must use the
+   emitted order. **`--scale 10m` must keep working**, because Part 2's selection rule is only honest if
+   the comparison is still one command.
+2. **`packages/core/src/geo/countryIndex.ts`** — `countryIndex()` no longer sorts. It preserves the order
+   of `init.countries` and derives each box as it does today. The docstring's determinism argument is kept
+   and re-pointed: the order is a property of the committed artefact, and A-26 Part 4 says why area and not
+   code. **This is the only hand-written change to `packages/core`.**
+3. **`packages/core/src/derive/country.ts`** — **unchanged.** If this file grows a distance function, the
+   increment has gone wrong.
+4. **`fixtures/golden/country-holes.json`**, new, written by `gen-countries.mjs --holes` (which fetches all
+   three scales — a human's generation-time cost, never the product's). One row per unattributed record of
+   the reference trip: `{kind: 'stop'|'place', id, name, resolvesAt}`, where `resolvesAt` is the coarsest
+   scale in the pinned family that *does* attribute it, or `null` if none does. This is the artefact that
+   makes KD-51's question un-askable again: **a hole with a non-null `resolvesAt` is a scale question; a
+   hole with `resolvesAt: null` is a dataset gap and is correct.** `tools/gen-golden.mjs` is unchanged and
+   stays offline; a test asserts the two artefacts name the same set of records, so they cannot drift.
+5. **The tests** — `0-countryBudget.test.ts`'s `EMITTED_BYTES` is re-measured from the generator's own
+   output (projected ~345 KB; the *measured* number is the one that ships, and it does not go in this
+   document). `country.test.ts`'s micro-enclave test inverts: `SM`, `MC`, `LI`, `AD`, `GI`, `HK`, `SG`
+   attribute to themselves, `VA` is pinned as `IT` with Part 5's reason in the test's own text, and the
+   code count assertion moves 175 → the measured count.
+
+**Part 7 — where this sits.** This is a re-open of I-5, not a new capability and not a phase change: same
+increment, same three artefacts, same section. `ROADMAP.md` carries it as **I-5a**, owed **before I-6**,
+and the sequencing reason is §8.4 clause 3's own: `TripSummaryRow.countryCodes` minted from a 175-code
+index would need a `SUMMARY_VERSION` rescan the day the index is completed, and there are currently zero
+summaries in existence. Fixing the index while nothing depends on it costs one increment; fixing it after
+I-6 costs one increment plus a migration of every row a user has written.
 
 ### 8.5 Observed travel — the shape Phase 5 must be able to land on
 

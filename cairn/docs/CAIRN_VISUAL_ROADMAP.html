@@ -715,8 +715,34 @@ hands you a trip file with no owner recorded in it.</p>
         closing the copy-path arc against a criterion written in advance), then
         <strong>signed off by the manager on 2026-08-28 at <code>67f5588</code>, verdict SHIP</strong>
         (<code>REVIEW.md</code>, "Phase 2, step 2a"). Step 2b (lifetime map, travel identity) is
-        <span class="pill orange">🟠 NEXT — unblocked</span>; step 2c (participants) is
+        <span class="pill orange">🟠 STARTED</span> — its first increment, the world-boundary dataset
+        that turns a coordinate into a country, is <strong>built</strong>, not yet verified and not yet
+        shippable; step 2c (participants) is
         <span class="pill grey">⚪ NOT STARTED</span></p>
+      <h4>2b's first increment found a real gap, and it is the good kind of finding</h4>
+      <p>The builder was told that two Croatian island stops (the Blue Cave on Biševo, Stiniva Cove on
+        Vis) had to come out as Croatia, and that if they didn't, the fix was a more detailed world
+        map. He measured all three available levels of detail and reported that the instruction was
+        wrong: those two coves come out as <em>"unknown"</em> at <strong>every</strong> level, and the
+        more detailed maps make everything else <strong>worse</strong> — a nine times larger dataset
+        that fails to place Dubrovnik's Old Town. Rather than fudge it, he shipped the best-measured
+        version and sent the instruction back. Checking it found he was right, and found something
+        larger underneath: <strong>the world map we ship contains 175 countries and is missing
+        64</strong> — Malta, the Maldives, Mauritius, the Seychelles, Macao, Hong Kong, Singapore,
+        Bermuda, the Faroes and 55 more — with eight of them silently reported as their neighbour (a
+        stop in Monaco came out as France; one in Singapore came out as Malaysia). A trip diary that
+        can never say <em>Malta</em> is broken for exactly the kind of travel this is for, and no trip
+        in the sample data could have shown it.</p>
+      <p><strong>The fix is scheduled as its own increment before anything is built on top:</strong>
+        keep the small, forgiving world map as the base and add the detailed outline of just the 64
+        missing countries — about double the file size, against 52× for the alternative — with a check
+        that proves no existing answer changes. <strong>Two answers stay wrong on purpose and are
+        written down rather than hidden:</strong> Vatican City comes out as Italy (the source dataset
+        draws the Vatican as a 110-metre box in the wrong place, at every level of detail), and about
+        700 m of French ground next to Monaco will come out as Monaco. And the two island coves stay
+        <em>"unknown"</em> — that is now the <strong>correct</strong> answer, because the boundary data
+        simply does not contain those islands at any resolution, and inventing a nearest-country guess
+        is the one thing this design refuses to do.</p>
       <h4>What the 2a gate actually checked</h4>
       <p>Because "the manager said SHIP" is only worth something if it means someone ran it: the full
         suite (<strong>620 tests, all passing</strong>), the type checker on both projects, the
@@ -1027,6 +1053,10 @@ hands you a trip file with no owner recorded in it.</p>
         <li><strong>Architect, before any sharing work:</strong> the ownerless-import question.</li>
         <li><strong>Builder, in 2b's first pass:</strong> the undo-after-recording-a-long-past-trip
           defect.</li>
+        <li><strong>Builder, before the map screen is built:</strong> complete the world-boundary
+          dataset — the 64 missing countries described above. Done now it costs one increment; done
+          after the map exists it costs the same increment plus re-computing every trip summary
+          already written.</li>
       </ol>
       <p><strong>Still standing from Phase 1:</strong> whenever the merge/write code is next
         touched, the first breaker round on it is pre-committed to attack

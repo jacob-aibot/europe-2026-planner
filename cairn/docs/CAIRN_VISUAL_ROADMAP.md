@@ -328,8 +328,31 @@ phases were re-cut on 2026-08-27; accounts are now Phase 3) — is 🟡 **IN PRO
 is 🟢 SHIPPED** (increments I-0…I-4a) — built, then **verified** over ten adversarial rounds (12 →
 21) ending with round 21 closing the copy-path arc against a criterion written in advance, then
 **signed off by the manager on 2026-08-28 at `67f5588`, verdict SHIP** (`REVIEW.md`, "Phase 2, step
-2a"). Step **2b** (the lifetime map and travel identity) is 🟠 **NEXT — unblocked by that verdict**;
-step **2c** (participants) is ⚪ **NOT STARTED**.
+2a"). Step **2b** (the lifetime map and travel identity) is 🟠 **STARTED**: its first increment — the
+world-boundary dataset that turns a coordinate into a country — is **built**, not yet verified and not
+yet shippable. Step **2c** (participants) is ⚪ **NOT STARTED**.
+
+**2b's first increment found a real gap, and it is the good kind of finding.** The builder was told
+that two Croatian island stops (the Blue Cave on Biševo, Stiniva Cove on Vis) had to come out as
+Croatia, and that if they didn't, the fix was a more detailed world map. He measured all three
+available levels of detail and reported that the instruction was wrong: those two coves come out as
+*"unknown"* at **every** level, and the more detailed maps make everything else **worse** — a nine
+times larger dataset that fails to place Dubrovnik's Old Town. Rather than fudge it, he shipped the
+best-measured version and sent the instruction back. Checking it found he was right, and found
+something larger underneath: **the world map we ship contains 175 countries and is missing 64** —
+Malta, the Maldives, Mauritius, the Seychelles, Macao, Hong Kong, Singapore, Bermuda, the Faroes and
+55 more — with eight of them silently reported as their neighbour (a stop in Monaco came out as
+France; one in Singapore came out as Malaysia). A trip diary that can never say *Malta* is broken for
+exactly the kind of travel this is for, and no trip in the sample data could have shown it.
+**The fix is scheduled as its own increment before anything is built on top:** keep the small,
+forgiving world map as the base and add the detailed outline of just the 64 missing countries — about
+double the file size, against 52× for the alternative — with a check that proves no existing answer
+changes. **Two answers stay wrong on purpose and are written down rather than hidden:** Vatican City
+comes out as Italy (the source dataset draws the Vatican as a 110-metre box in the wrong place, at
+every level of detail), and about 700 m of French ground next to Monaco will come out as Monaco. And
+the two island coves stay *"unknown"* — that is now the **correct** answer, because the boundary data
+simply does not contain those islands at any resolution, and inventing a nearest-country guess is the
+one thing this design refuses to do.
 
 **What the 2a gate actually checked**, because "the manager said SHIP" is only worth something if it
 means someone ran it: the full suite (620 tests, all passing), the type checker on both projects,
@@ -484,7 +507,7 @@ own call, made explicitly rather than left implicit.
 | Phase | You'll be able to... | Status |
 |---|---|---|
 | **1 — Core planner** | Plan trips like the old single-trip app, but as many trips as you want, safely — nothing you type ever silently vanishes | 🟢 **COMPLETE — SHIPPED** |
-| **2 — Travel history** | Record the trips you've already taken, see your whole travel life on one map, and say who you went with — a new Cairn doesn't start empty | 🟡 **IN PROGRESS** — 2a built, not verified; 2b and 2c not started |
+| **2 — Travel history** | Record the trips you've already taken, see your whole travel life on one map, and say who you went with — a new Cairn doesn't start empty | 🟡 **IN PROGRESS** — 2a shipped; 2b's first increment built, not verified; 2c not started |
 | **3 — Accounts, server & sharing** | Have your trips follow you across devices, and let friends see them and copy a stop into their own | ⚪ NOT STARTED |
 | **4 — Email ingestion** | Forward a booking confirmation and have Cairn find it, file it on the right day, and attach the ticket | ⚪ NOT STARTED |
 | **5 — Phone app & live path** | Carry Cairn on your phone, fully offline, and have it quietly draw the route you actually traveled next to the plan | ⚪ NOT STARTED |
@@ -616,6 +639,9 @@ How 2a's last round went, for the record:
    the map directly.
 3. **Architect, before any sharing work:** the ownerless-import question above.
 4. **Builder, in 2b's first pass:** the undo-after-recording-a-long-past-trip defect.
+5. **Builder, before the map screen is built:** complete the world-boundary dataset — the 64 missing
+   countries described above. Done now it costs one increment; done after the map exists it costs the
+   same increment plus re-computing every trip summary already written.
 
 **Still standing from Phase 1, unchanged:** whenever the merge/write code is next touched, the
 first breaker round on it is pre-committed to attack `doMerge`/`writeAndSettle` — the code behind

@@ -143,6 +143,23 @@ is an in-place correction rather than a revision 20. **Nothing else in this file
 no phase re-scoped, no change to the order, and I-4a's outright block on share/friend/public-share-link work
 stands until the manager's 2a verdict.
 
+**Revision 20, 2026-08-28 — and this one corrects me, not a builder.** I-5 shipped and disclosed
+(**BUILD-NOTES KD-51**) that **exit criterion 4's island clause is factually wrong**: it requires
+`Blue Cave, Biševo` and `Stiniva Cove, Vis` to attribute to **HR** and prescribes *"the generator moves to
+1:50m and the budget moves, not the criterion"* as the remedy — and neither half survives measurement. The
+builder was right to route it rather than patch around it (sequencing rule 5), and right to refuse to
+invent a coastal buffer. `ARCHITECTURE.md` revision 20 answers it as **§8.4 A-26**, and this file changes in
+four ways. (1) **Exit criterion 4 is rewritten**, with its island clause **withdrawn as wrong** and replaced
+by a `resolvesAt` disclosure that tells a reader whether a hole is a scale question or a dataset gap —
+the exact question the old clause could not express. (2) **I-5's Verification and Ship-gate lines** record
+what shipped and what it does not cover. (3) **One new increment, I-5a**, builds A-26's mixed-resolution
+index: the 1:110m base cannot name **64** ISO codes — Malta, the Maldives, Mauritius, the Seychelles,
+Macao, Hong Kong, Singapore, Bermuda, the Faroes and 55 more — and misnames **8** of them, which is a
+bigger hole than the one that was routed and is invisible to a corpus of one Adriatic trip. (4) **I-6 is
+blocked on I-5a**, because a summary row minted from a 175-code index needs a `SUMMARY_VERSION` rescan the
+day the index is completed, and today there are zero summary rows to migrate. **No phase re-scoped, no
+change to the order otherwise, and nothing in Phase 2's boundaries moves.**
+
 > **Phase numbers changed once, here.** Every heading below carries its old number, and every "Phase N"
 > written in `ARCHITECTURE.md` §1–§7, `BUILD-NOTES.md` or `QA-FINDINGS.md` before revision 9 means the
 > *named* phase it described: "Phase 2" = accounts/server (**now 3**), "Phase 3" = ingest (**now 4**),
@@ -979,7 +996,7 @@ Entry: Phase 1 shipped with a manager verdict of SHIP (`b32ef9a`) — done.
 | Step | Ships | Useful alone because | State |
 |---|---|---|---|
 | **2a — past trips and the lifecycle** | `lifecycle()`, `Trip.datePrecision`, the feasibility/integrity rule class (§8.2), a "record a past trip" flow (title, dates, precision, cities — no day-by-day required) | you can enter a 2019 trip and it does not greet you with twenty warnings about a hotel you already slept in | **SHIPPED — manager verdict SHIP, `REVIEW.md` "Phase 2, step 2a", reviewed at `67f5588`, 2026-08-28.** Built, verified (rounds 12–21), shippable. Seven routed items, **none blocking**; the block on share/friend/public-share-link work is **not** lifted by this verdict — see A-2 in that routing table |
-| **2b — the lifetime map and travel identity** | `countryOf` + the generated country index, `travelStats`, the widened `TripSummaryRow` + `SUMMARY_VERSION` rescan, the **Map** and **Profile** surfaces | *"show me everywhere I've been"* — the signature experience, from data that already exists | **UNBLOCKED** by 2a's SHIP. Not started. Two of 2a's routed items are owed **before I-6** (`REVIEW.md` 2a routing **A-1**, and the breaker board items **B-1**…**B-4** before 2b's first breaker round) |
+| **2b — the lifetime map and travel identity** | `countryOf` + the generated country index, `travelStats`, the widened `TripSummaryRow` + `SUMMARY_VERSION` rescan, the **Map** and **Profile** surfaces | *"show me everywhere I've been"* — the signature experience, from data that already exists | **UNBLOCKED** by 2a's SHIP. **In progress: I-5 shipped at `897b928`** and routed one design defect here (KD-51), ruled as §8.4 **A-26** and scheduled as **I-5a**. Three things are owed **before I-6**: **I-5a**, `REVIEW.md` 2a routing **A-1**, and the breaker board items **B-1**…**B-4** before 2b's first breaker round |
 | **2c — participants** | `Trip.participants`, three build functions, the participants editor, *"people you have travelled with"* on the profile | you can say the trip was with your girlfriend and her family, and it grants them nothing | Not started; gated on 2b |
 
 **Mapped onto the increment sequence below** (revision 10): **2a = I-1 → I-4**, **2b = I-5 → I-8**,
@@ -988,6 +1005,8 @@ genuinely shippable at its own increment — the phase can stop after I-4 or I-8
 something better than what it started with. *(Revision 11: **I-3a** and **I-4a** carry the two design
 rulings QA round 12 routed to the architect — `ARCHITECTURE.md` §2.7 **A-9** and §2.2 **A-10**. They sit
 inside 2a, which shipped with follow-ups rather than clean, and **both are owed before I-6**.)*
+*(Revision 20: **I-5a** carries `ARCHITECTURE.md` §8.4 **A-26**, the ruling on the design defect I-5
+disclosed as KD-51. It sits inside 2b, directly after I-5, and is **owed before I-6**.)*
 
 ### Deliverables
 
@@ -1003,7 +1022,9 @@ packages/client/src/
 apps/web/src/views/
   WorldMap.tsx  Profile.tsx  PastTripForm.tsx  Participants.tsx
 tools/gen-countries.mjs   Natural Earth admin-0 → countries.gen.ts, reports emitted bytes
-fixtures/golden/          countries.json (per-stop attribution), travel-stats.json
+                          I-5a: a 1:110m base filled from 1:10m, emitted in test order — §8.4 A-26
+fixtures/golden/          countries.json (per-stop attribution), country-holes.json (I-5a),
+                          travel-stats.json
 ```
 
 ### Hard constraints on the builder
@@ -1645,12 +1666,13 @@ builder against the finding itself and is not an increment.
   Public-domain source only; **no network geocoder in any phase** — sending a coordinate to a geocoder *is*
   transmitting a location (§6.1), and the free public service forbids this use anyway.
 - **Verification.** **The size-budget test is written first**, with the number measured by the generator and
-  living in the test — not in any document. Then exit criterion 4 in full: a golden naming **every distinct
-  country and the stop that produced it** (a country with no stop named fails the run); a mid-Atlantic
-  coordinate returns `null`; the Fisherman's Bastion typo changes the attributed country **and** still
-  produces its `geo_outlier` blocker; the Dalmatian islands (`Blue Cave, Biševo`, `Stiniva Cove, Vis`,
-  Lokrum) attribute to **HR** — if they do not, the generator moves to 1:50m and **the budget moves, not the
-  criterion**. Attack list: the poles, the antimeridian, exactly `(0,0)`, an enclave, international waters.
+  living in the test — not in any document. Then exit criterion 4 parts **a** and **d**: a golden naming
+  **every distinct country and the stop that produced it** (a country with no stop named fails the run); a
+  mid-Atlantic coordinate returns `null`; the Fisherman's Bastion typo changes the attributed country **and**
+  still produces its `geo_outlier` blocker. Attack list: the poles, the antimeridian, exactly `(0,0)`, an
+  enclave, international waters. ~~The Dalmatian islands attribute to **HR** — if they do not, the generator
+  moves to 1:50m and the budget moves, not the criterion.~~ **Withdrawn at revision 20 as factually wrong;
+  parts b and c of the rewritten criterion 4 replace it and are I-5a's, not I-5's.**
 - **Dependencies / blockers.** **One external item, and it is the phase's only one: the Natural Earth
   admin-0 download.** The generated module is committed, so this is a one-time fetch — but this environment's
   egress proxy blocks many hosts, so **confirm the download works before this increment starts**, not during.
@@ -1665,6 +1687,50 @@ builder against the finding itself and is not an increment.
   entry names its producing record; `node --test` still runs `packages/core` directly (a generated module
   that is megabytes of JSON in a `.ts` file breaks type stripping — the budget test is the guard and it is
   the *first* test).
+  **SHIPPED at `897b928`, with the criterion it could not meet routed rather than worked around.** The
+  generator, `countryOf`, the golden and the budget test are built at 1:110m (175,085 bytes measured, 3
+  unattributed places / 4 unattributed stops); parts **a** and **d** of criterion 4 are met; the builder
+  measured all three scales, shipped the best of them, and filed **KD-51** instead of inventing a
+  tolerance §8.4 forbids. **What I-5 does not cover, and I-5a does:** the index carries 175 of the family's
+  239 ISO codes, so 64 countries — Malta, the Maldives, Mauritius, the Seychelles, Macao, Hong Kong,
+  Singapore, Bermuda, the Faroes and 55 more — are unreachable, and 8 of them return a wrong neighbour.
+  `ARCHITECTURE.md` §8.4 **A-26** Part 3 has the measurement. **Nothing I-5 shipped is wrong; it is
+  incomplete, and A-26 Part 4 changes none of its answers** — all 226 of the reference trip's
+  coordinate-bearing records attribute identically before and after.
+
+#### I-5a — A-26: the mixed-resolution index, and the order that resolves an enclave
+
+- **Built.** `tools/gen-countries.mjs` gains a **fill**: after building the base scale (`110m`), it fetches
+  the family's finest scale (`10m`, checksum already pinned in the file) and adds the polygons of every ISO
+  code the base does not carry, then emits all entries in the order `countryOf` must test them — ascending
+  summed absolute spherical ring area, ties by ISO code ascending. `geo/countryIndex.ts` stops re-sorting
+  and preserves the order it is given. New `--holes` mode writes `fixtures/golden/country-holes.json`.
+  **`derive/country.ts` is not touched** — if it grows a distance function, the increment has gone wrong.
+- **User-visible outcome.** None yet, deliberately, exactly as I-5: the dataset is completed **before** any
+  screen depends on it. What it buys is that the lifetime map I-6 and I-8 build can name Malta.
+- **Architecture / data model.** §8.4 **A-26**, Parts 4 and 6, which are written as an implementation brief.
+  A-26 Part 5 names the two residues that are **disclosed and pinned rather than fixed** — Vatican City is
+  `IT` at every scale because Natural Earth's `VA` feature is a 110 m × 130 m sliver, and a filled country's
+  border is biased toward the smaller state by the coarse layer's tolerance (~700 m at Monaco). Neither may
+  be closed by a hand-authored polygon or an exclusion box: **`null` and a disclosed known-wrong answer are
+  both acceptable; a hand-typed polygon is not** (I-5's dependency clause, unchanged).
+- **Verification.** Exit criterion 4 parts **b** and **c** in full, plus the three measurements that make
+  this a non-regression rather than a hope, each re-derived by the builder and not quoted from A-26:
+  **(i)** over the reference trip's 226 coordinate-bearing records, **zero** answers change — so
+  `fixtures/golden/countries.json` is byte-identical except its `index` header, and a diff anywhere else
+  fails the increment; **(ii)** over a 0.25° global grid, the new index differs from the old in cells that
+  are **only** `null → a country` or `a wrong country → the right one`, and **no cell gets worse**;
+  **(iii)** the two injected faults of part c (drop `LI`; restore ISO order) each turn named tests red.
+  `EMITTED_BYTES` is re-measured from the generator's own output and pasted into
+  `0-countryBudget.test.ts` in the same commit — it is a **ceiling** assertion, so it must be raised, and
+  the 1 MiB type-stripping ceiling stays where it is.
+- **Dependencies / blockers.** I-5. No new external dependency: same repository, same pinned tag `v5.1.2`,
+  same public-domain licence, one more file fetched at generation time by a human. **`--scale 10m` must
+  keep working**, because A-26 Part 2's scale-selection rule is only honest while the comparison is still
+  one command.
+- **Ship gate.** Criterion 4 b and c pass; the three verification measurements are re-derived, not quoted;
+  the golden's non-`index` bytes are unchanged; `node --test packages/core` still runs directly with the
+  larger generated module and the budget test is still the *first* test.
 
 #### I-6 — The widened `TripSummaryRow` and the `SUMMARY_VERSION` rescan
 
@@ -1691,9 +1757,12 @@ builder against the finding itself and is not an increment.
   another row, from `AppState`, or from a document it is not about. Attack: `SUMMARY_VERSION` bumped
   mid-rescan with a write in flight; 40 summaries with one corrupt document (39 render, one is reported
   unreadable).
-- **Dependencies / blockers.** I-5 (there is no `countryCodes` without an index) and **I-4a** (a row that
-  carries a city key minted by the 2a slug carries `"-"` for every non-Latin city, and the rescan would
-  copy that into the one cache the lifetime map reads).
+- **Dependencies / blockers.** I-5 (there is no `countryCodes` without an index), **I-5a** (revision 20: a
+  row minted from a 175-code index carries `null` for Malta and `MY` for Singapore, and completing the index
+  afterwards costs a `SUMMARY_VERSION` rescan of every row a user has written — today there are zero rows,
+  which is the cheapest this fix will ever be; §8.4 clause 3's own argument, applied to itself) and
+  **I-4a** (a row that carries a city key minted by the 2a slug carries `"-"` for every non-Latin city, and
+  the rescan would copy that into the one cache the lifetime map reads).
 - **Ship gate.** The freshness criterion passes; the 200-step dirty walk still holds; the closed list of six
   document-installing methods is still six; every new `StoragePort` interaction is on the chain.
 
@@ -1818,15 +1887,35 @@ first.
   returns **zero** issues — a ceiling, not a floor — while `days` is dense over the range and
   `Day.id === Day.date` throughout. **Injected fault:** add one stop to it dated *after* `today` and the
   feasibility rules return for that day only `[stated]`
-- **Country attribution is measured, and its holes are visible.** `countryOf` over the reference trip's 112
-  stops and 94 places produces a golden listing **every distinct country with the stop that produced it**
-  — a country with no stop named fails the run. Three injected faults: a mid-Atlantic coordinate returns
-  **`null`** and the profile renders it as *unattributed*, never as the nearest country; the historical
-  Fisherman's Bastion typo (`place-68`, lat `47.5025 → 48.5025`) changes the attributed country **and**
-  still produces its `geo_outlier` blocker, so the map inherits the same protection the conflicts panel
-  has; and the island places (`Blue Cave, Biševo`, `Stiniva Cove, Vis`, Lokrum) attribute to **HR** — if
-  they do not, the generator is on the wrong Natural Earth scale and the budget moves, not the criterion
-  `[stated]`
+- **Country attribution is measured, and its holes are visible.** *(Rewritten at revision 20. The old
+  clause — "the island places `Blue Cave, Biševo`, `Stiniva Cove, Vis`, Lokrum attribute to **HR** — if
+  they do not, the generator is on the wrong Natural Earth scale and the budget moves, not the criterion" —
+  is **withdrawn as factually wrong**, not reinterpreted. `ARCHITECTURE.md` §8.4 **A-26** Part 1 has the
+  measurement: those landforms have no admin-0 polygon at any scale in the pinned family, so no scale
+  change reaches them and `null` is their correct answer.)* Four parts:
+  - **a. The golden names its producers.** `countryOf` over the reference trip's coordinate-bearing stops
+    and places produces a golden listing **every distinct country with the stop that produced it** — a
+    country with no stop named fails the run `[snapshot + stated]`
+  - **b. Every hole is named, and says whether a scale would fix it.** `fixtures/golden/country-holes.json`
+    carries one row per unattributed record with `resolvesAt` — the coarsest scale in the pinned family
+    that *does* attribute it, or `null` if none does — and a test asserts that the set of records it names
+    is exactly the set the committed index leaves `null`, so the two artefacts cannot drift. **Stated
+    values, measured at revision 20:** `Blue Cave, Biševo`, `Stiniva Cove, Vis` and
+    `Budikovac / Blue Lagoon — snorkel stop` are `resolvesAt: null` — **a dataset gap, and `null` is the
+    correct answer, not a defect and not a `TODO`** — and `Hvar Town` (both its stop and its place) is
+    `resolvesAt: "10m"`. **The ceiling:** the count of holes with a *non-null* `resolvesAt` is the number
+    that may not grow, because that is the one a scale change could have fixed `[stated]`
+  - **c. Every ISO code the base scale omits is filled, and a filled country wins its own ground.** The
+    shipped index carries every ISO code the pinned family's finest scale carries — a code present there
+    and absent from the index fails the run — and a point inside a filled country returns that country,
+    never its neighbour. **Two injected faults:** drop `LI` from the fill and Vaduz returns `AT`; restore
+    ISO-ascending order and Vaduz returns `AT`, Singapore returns `MY` and Hong Kong returns `CN` — three
+    named tests red in each case. **One known-wrong answer is pinned rather than fixed:** Vatican City
+    returns `IT` at every scale, with A-26 Part 5's reason in the test's own text `[stated]`
+  - **d. The two original injected faults, unchanged.** A mid-Atlantic coordinate returns **`null`** and the
+    profile renders it as *unattributed*, never as the nearest country; the historical Fisherman's Bastion
+    typo (`place-68`, lat `47.5025 → 48.5025`) changes the attributed country **and** still produces its
+    `geo_outlier` blocker, so the map inherits the same protection the conflicts panel has `[stated]`
 - **The generated index is inside its budget**, and the budget is a number in the test, measured by
   `tools/gen-countries.mjs` and not quoted from any document `[stated]`
 - **Statistics cannot be stored.** Grep `packages/core`, `packages/client` and `apps/web` for a persisted
@@ -1858,7 +1947,11 @@ first.
 
 A past trip with `endDate` before `startDate` · a trip whose dates straddle `today` (feasibility rules must
 fire on the future half and not the past half, on the same document, in one call) · `datePrecision:'year'`
-on a trip whose real dates are a single day · a participant list of 200 · two participants with the same
+on a trip whose real dates are a single day · **a stop in each of San Marino, Vatican City, Monaco,
+Liechtenstein, Andorra, Gibraltar, Singapore, Hong Kong, Macao, Malta and the Maldives** (§8.4 A-26: seven
+must return themselves, `VA` is a pinned known-wrong `IT`, and none may return `null` after I-5a) ·
+**a stop 500 m outside Monaco on the French side**, which A-26 Part 5 says will return `MC` and says why ·
+a participant list of 200 · two participants with the same
 name and different ids, and the same id twice · a participant named `''` and one named with only an emoji ·
 `kind:'self'` appearing twice, and zero times · coordinates at the poles, at the antimeridian, at exactly
 `(0,0)` and inside a country's enclave · a stop in international waters · a city whose stops attribute to
