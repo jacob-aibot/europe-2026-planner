@@ -41,6 +41,33 @@ export const AUTOSAVE_DEBOUNCE_MS = 400;
 export const FLUSH_MAX_ATTEMPTS = 5;
 
 /**
+ * How many times the `SUMMARY_VERSION` rescan re-reads the library before it stops
+ * (ARCHITECTURE §8.4 clause 3, ROADMAP Phase 2 I-6).
+ *
+ * A pass is not a moment either. Between the first row it rewrites and the last, another
+ * writer — a second tab, or a build that bumped `SUMMARY_VERSION` again — can put a row back
+ * below the version. So a pass ends by re-reading the library **from storage** and asking the
+ * rows themselves what is still outstanding (§0.6: completeness is a fact about the rows, not
+ * about a pass having reached its own end), and repeats while anything is.
+ *
+ * That needs a bound for the same reason `FLUSH_MAX_ATTEMPTS` does, and it is a **bound, not
+ * a timeout**: each pass awaits its own writes, so slow storage makes the loop take longer
+ * rather than exhaust it. Convergence in the realistic worst case is two passes — the rows
+ * that were stale when the pass started, then the ones that arrived behind it. Exhausting it
+ * means something is rewriting old rows as fast as we can fix them, and the honest outcome is
+ * to stop and let `summaryScan` keep reporting the library as out of date, which it does from
+ * the rows and so cannot be fooled by the loop giving up.
+ */
+export const RESCAN_MAX_PASSES = 5;
+
+/** Does this stored row predate the current `SUMMARY_VERSION`? §8.4 clause 3. */
+function needsRescan(row: core.TripSummaryRow): boolean {
+  // `?? 0` — a row with no `summaryVersion` field at all was written by a build older than
+  // the field, which is *below* every version and not "unknown, leave it alone".
+  return (row.summaryVersion ?? 0) < core.SUMMARY_VERSION;
+}
+
+/**
  * What a refused write says, and the only place it is worded.
  *
  * §4.2 rule 6b requires the screen to name **both** things the user can actually do — merge
@@ -112,6 +139,13 @@ export function createStore(opts: StoreOptions) {
    * second one's stale expectation. The second press must not be a second merge at all.
    */
   let merging: Promise<AppState> | null = null;
+  /**
+   * The `SUMMARY_VERSION` rescan currently in flight, or `null` (§8.4 clause 3).
+   *
+   * Same shape and same reason as `merging`: two calls must not become two passes writing the
+   * same rows against each other's expectations. A second call **joins** the first.
+   */
+  let rescanning: Promise<void> | null = null;
   // `baseDoc` used to live here as a module-level `let`. It is now
   // `persistence.savedDoc` (§2.2b F2): exactly one pointer to "the last document this store
   // and storage agreed about", answering both the merge's common-ancestor question and
@@ -690,6 +724,101 @@ export function createStore(opts: StoreOptions) {
     return state;
   }
 
+  /**
+   * **The `SUMMARY_VERSION` rescan** — ARCHITECTURE §8.4 clause 3, ROADMAP Phase 2 I-6.
+   *
+   * A summary row is a *copy*, so §0.6 governs it: a row minted by an older build carries an
+   * older answer forever unless something goes back to the document and asks again. This is
+   * that something. For every stored row below `core.SUMMARY_VERSION`: load the document,
+   * recompute the summary **from that document and nothing else**, and rewrite it through the
+   * ordinary chained write.
+   *
+   * Four properties, each of which is a rule rather than an implementation detail:
+   *
+   *   1. **One document in memory at a time** (§4.2). `doc` is a local inside one link, used
+   *      and dropped; the rows are processed one after another, never gathered. `state.doc` is
+   *      not assigned by any path here. A screen that needs forty documents is out of scope.
+   *   2. **Every mutation is on the serialization chain** (§4.3). Both the load-recompute-write
+   *      and the active document's `attemptSave` are issued from *inside* a `chainOntoSaving`
+   *      callback, so a rescan write cannot interleave with an autosave, a merge or a delete.
+   *   3. **The write is the same compare-and-set every other write is.** The expectation is the
+   *      version the load returned, so a row another writer has moved is *refused* — and that
+   *      is the correct outcome, because that writer's own write carried a summary computed at
+   *      the current version. The rescan never retries over somebody else's work.
+   *   4. **The active trip is written through the ordinary autosave path**, not through a
+   *      detached rewrite, because it is the one document whose write fence this store holds
+   *      (§2.2a A-7). Rewriting it behind `attemptSave`'s back would leave `savedVersion`
+   *      pointing at a version storage has moved past, and the user's next keystroke would
+   *      land on a spurious `'conflict'`.
+   *
+   * Not a seventh document-installing transition: nothing here assigns `state.doc`,
+   * `activeTripId` or `persistence` except through `attemptSave`, which is the existing
+   * autosave path for the document the store already holds.
+   */
+  async function runRescan(): Promise<void> {
+    const unreadable = new Map<string, string>();
+    const report = () => [...unreadable].map(([id, message]) => ({ id, message }));
+    try {
+      for (let pass = 0; pass < RESCAN_MAX_PASSES; pass++) {
+        // Re-derived from the rows on every pass, never carried between them (§0.6): the
+        // library is the only thing that knows what is still outstanding.
+        const ids = state.library.filter(needsRescan).map((r) => r.id).filter((id) => !unreadable.has(id));
+        if (ids.length === 0) return;
+        for (const id of ids) {
+          await chainOntoSaving(async () => {
+            // Property 4 — the active document goes through the ordinary autosave path.
+            if (state.doc && state.doc.id === id) {
+              await attemptSave(id);
+              return;
+            }
+            const stored = await ports.storage.load(id);
+            // Deleted between `listTrips` and here. Writing it back would resurrect a trip
+            // the user destroyed — QA R7-3's failure in a new costume. The next `listTrips`
+            // drops the row.
+            if (stored === null) return;
+            let doc: Trip;
+            try {
+              doc = core.fromJSON(stored.doc);
+            } catch (err) {
+              // Reported, never silently dropped and never guessed at: the row keeps its old
+              // summary, keeps its place in the library, and says it could not be read.
+              unreadable.set(id, (err as Error).message || String(err));
+              return;
+            }
+            // §8.4 clause 1, mechanically: the summary is computed from `doc`, and `doc` is
+            // what the same call writes. There is no other document in scope to compute it
+            // from, which is the point of the shape rather than a happy accident.
+            const summary = core.tripSummary(doc, core.COUNTRY_INDEX);
+            const outcome = await ports.storage.saveIfVersion(id, stored.version, core.toJSON(doc), summary);
+            if (!outcome.ok) return;
+            set({ ...state, library: upsertSummary(state.library, summary), rescan: { running: true, unreadable: report() } });
+          });
+        }
+        // The pass reached its own end, which is NOT the same fact as "the library is
+        // current" (§0.6). Ask storage.
+        const library = await ports.storage.listTrips();
+        set({ ...state, library, rescan: { running: true, unreadable: report() } });
+      }
+    } finally {
+      set({ ...state, rescan: { running: false, unreadable: report() } });
+    }
+  }
+
+  /** Starts a rescan, or joins the one already running. Never two passes at once. */
+  function startRescan(): Promise<void> {
+    if (rescanning) return rescanning;
+    if (!state.library.some(needsRescan)) return Promise.resolve();
+    // `unreadable` is cleared here and not remembered across passes: it is an observation
+    // about the last attempt, so a record another writer has since repaired stops being
+    // reported without anything having to remember that it was.
+    set({ ...state, rescan: { running: true, unreadable: [] } });
+    const run = runRescan().finally(() => {
+      rescanning = null;
+    });
+    rescanning = run;
+    return run;
+  }
+
   return {
     /** The current state. Treat as immutable. */
     getState(): AppState {
@@ -828,10 +957,33 @@ export function createStore(opts: StoreOptions) {
       return state;
     },
 
-    /** Reads the trip library from storage. */
+    /**
+     * Reads the trip library from storage.
+     *
+     * It does **not** start the `SUMMARY_VERSION` rescan by itself. Reading rows and
+     * rewriting them are two different acts with two different failure modes, and a
+     * background pass nobody asked for and nobody can await is not testable and not
+     * cancellable. The caller does `refreshLibrary()` then `rescanSummaries()` — `App.tsx`
+     * does exactly that on boot. In between, `summaryScan` reports the library as out of
+     * date, which is true, rather than as complete, which would not be.
+     */
     async refreshLibrary(): Promise<AppState> {
       const library = await ports.storage.listTrips();
       set({ ...state, library });
+      return state;
+    },
+
+    /**
+     * Recomputes every library row below `core.SUMMARY_VERSION` from its own document
+     * (ARCHITECTURE §8.4 clause 3) — see `runRescan` for the four properties it holds.
+     *
+     * Resolves when the pass has stopped. A second call while one is in flight **joins** it
+     * rather than starting a second, exactly as `mergeWithStored` does. Never throws for a
+     * document it could not read: that is reported through `summaryScan(state).unreadable`,
+     * because one corrupt record out of forty must not take the library view down with it.
+     */
+    async rescanSummaries(): Promise<AppState> {
+      await startRescan();
       return state;
     },
 
@@ -847,6 +999,7 @@ export function createStore(opts: StoreOptions) {
       set({
         ...initialState(),
         library: state.library,
+        rescan: state.rescan,
         activeTripId: doc.id,
         doc,
         ui: { ...initialState().ui, activeDayId: doc.days[0]?.id ?? null, activeCityKey: doc.cities[0]?.key ?? null },
@@ -872,6 +1025,7 @@ export function createStore(opts: StoreOptions) {
       set({
         ...initialState(),
         library: state.library,
+        rescan: state.rescan,
         activeTripId: doc.id,
         doc,
         ui: { ...initialState().ui, activeDayId: doc.days[0]?.id ?? null, activeCityKey: doc.cities[0]?.key ?? null },
@@ -899,6 +1053,7 @@ export function createStore(opts: StoreOptions) {
       set({
         ...initialState(),
         library: state.library,
+        rescan: state.rescan,
         activeTripId: doc.id,
         doc,
         // Both come from the port result and from nowhere else — §2.2a rule 1, §2.2b F2.
@@ -950,7 +1105,7 @@ export function createStore(opts: StoreOptions) {
     async closeTrip(): Promise<AppState> {
       if (!(await flushForTransition())) return state;
       cache = null;
-      set({ ...initialState(), library: state.library }, { reseed: true });
+      set({ ...initialState(), library: state.library, rescan: state.rescan }, { reseed: true });
       return state;
     },
 
@@ -986,7 +1141,7 @@ export function createStore(opts: StoreOptions) {
         const library = state.library.filter((r) => r.id !== id);
         if (state.activeTripId === id) {
           cache = null;
-          set({ ...initialState(), library }, { reseed: true });
+          set({ ...initialState(), library, rescan: state.rescan }, { reseed: true });
         } else set({ ...state, library });
       });
       return state;
@@ -1055,6 +1210,7 @@ export function createStore(opts: StoreOptions) {
       set({
         ...initialState(),
         library: state.library,
+        rescan: state.rescan,
         activeTripId: doc.id,
         doc,
         ui: { ...initialState().ui, activeDayId: doc.days[0]?.id ?? null, activeCityKey: doc.cities[0]?.key ?? null },

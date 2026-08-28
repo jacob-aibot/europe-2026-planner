@@ -180,4 +180,45 @@ function hhmm(total: number): string {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
+/**
+ * How complete the library's summary rows are — ARCHITECTURE §8.4 clause 3, Phase 2 I-6.
+ *
+ * **The one thing this may never do is claim completeness it does not have.** §8.4 clause 3:
+ * the client rescans every row below `SUMMARY_VERSION` *"before the lifetime map claims to be
+ * complete, and the map says 'recomputing' while it does."*
+ *
+ * Every answer is derived from `library` — the rows themselves — and never from "a rescan
+ * pass finished". That is §0.6 applied to the cache the lifetime map depends on: a pass
+ * reaching its own end is a fact about the pass, and a row's `summaryVersion` is the only
+ * fact about the row. If a second bump, a second tab or a failed write leaves anything
+ * behind, this says so and keeps saying so.
+ *
+ * `'recomputing'` wins over `'complete'` while a pass is running even when every row already
+ * reads current: the pass is not finished, and a surface that flipped to "complete" for one
+ * frame and back would be exactly the flicker the rule exists to forbid. Pure.
+ */
+export type SummaryScan = {
+  phase: 'complete' | 'recomputing' | 'stale';
+  /** Rows carrying the current `SUMMARY_VERSION`. */
+  current: number;
+  total: number;
+  /** Ids whose stored row predates the current version, in library order. */
+  outdated: string[];
+  /** Documents the last pass could not read — reported, never silently dropped. */
+  unreadable: ReadonlyArray<{ id: string; message: string }>;
+};
+
+export function summaryScan(state: Pick<AppState, 'library' | 'rescan'>): SummaryScan {
+  const outdated = state.library
+    .filter((r) => (r.summaryVersion ?? 0) < core.SUMMARY_VERSION)
+    .map((r) => r.id);
+  const unreadable = state.rescan.unreadable;
+  const phase = state.rescan.running
+    ? 'recomputing'
+    : outdated.length > 0 || unreadable.length > 0
+      ? 'stale'
+      : 'complete';
+  return { phase, current: state.library.length - outdated.length, total: state.library.length, outdated, unreadable };
+}
+
 export { core };

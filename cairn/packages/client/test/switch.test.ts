@@ -674,6 +674,15 @@ function bodyRange(code: string, decl: RegExp): [number, number] {
  * store's serialization chain."* It is asserted as a composition rather than as one grep,
  * because `saveIfVersion` is reached through two helpers rather than written out at each call
  * site — which is the same shape QA's own `r7-chain` §11 uses. Expected violations: zero.
+ *
+ * **Phase 2 I-6 (§8.4 clause 3) adds the second `saveIfVersion` call site**, and it is the
+ * literal shape §4.3 describes rather than a new exemption: the `SUMMARY_VERSION` rescan's
+ * rewrite is written out *inside* a `chainOntoSaving` callback. So clause 1 stops being
+ * *"exactly one call site, in `writeAndSettle`"* — which was a fact about how many write
+ * paths existed, not about the chain — and becomes the criterion's own sentence: **every**
+ * `saveIfVersion` call site is either inside `writeAndSettle` (whose every caller clause 2
+ * checks) or lexically inside a `chainOntoSaving` callback. The count is still pinned, so a
+ * third write path fails here until somebody re-derives this assertion deliberately.
  */
 test('structural: every ports.storage mutation is issued inside a chainOntoSaving callback', () => {
   const code = codeOnly(readFileSync(new URL('../src/store/store.ts', import.meta.url), 'utf8'));
@@ -681,11 +690,23 @@ test('structural: every ports.storage mutation is issued inside a chainOntoSavin
   const [wsStart, wsEnd] = bodyRange(code, /async function writeAndSettle\(/);
   const [asStart, asEnd] = bodyRange(code, /async function attemptSave\(/);
 
-  // 1. Exactly one `saveIfVersion` call site, and it is inside `writeAndSettle`.
-  const saves = [...code.matchAll(/ports\.storage\.saveIfVersion\(/g)];
-  assert.equal(saves.length, 1, 'saveIfVersion must have exactly one call site');
-  const at = saves[0].index as number;
-  assert.ok(at > wsStart && at < wsEnd, 'the one saveIfVersion call site is not inside writeAndSettle');
+  // 1. Two `saveIfVersion` call sites — the autosave/merge path inside `writeAndSettle`, and
+  //    I-6's rescan rewrite, written out inside a `chainOntoSaving` callback. Each must be
+  //    one or the other; a third is a new write path and is not blessed by this assertion.
+  const saves = [...code.matchAll(/ports\.storage\.saveIfVersion\(/g)].map((m) => m.index as number);
+  assert.equal(saves.length, 2, 'saveIfVersion call sites: writeAndSettle + the I-6 rescan');
+  assert.equal(
+    saves.filter((i) => i > wsStart && i < wsEnd).length,
+    1,
+    'writeAndSettle must hold exactly one saveIfVersion call site',
+  );
+  for (const i of saves) {
+    if (i > wsStart && i < wsEnd) continue;
+    assert.ok(
+      insideChain(code, i),
+      `a saveIfVersion at line ${lineOf(i)} is neither in writeAndSettle nor on the chain`,
+    );
+  }
 
   const callSites = (name: string) =>
     [...code.matchAll(new RegExp(`(?<![\\w.])${name}\\(`, 'g'))]

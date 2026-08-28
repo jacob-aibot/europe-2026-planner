@@ -70,6 +70,29 @@ export type PersistenceState = {
 
 export type HistoryState = { past: Trip[]; future: Trip[]; limit: number };
 
+/**
+ * The `SUMMARY_VERSION` rescan's bookkeeping — ARCHITECTURE §8.4 clause 3, Phase 2 I-6.
+ *
+ * **What is deliberately NOT here: the list of rows that still need recomputing.** That is
+ * derived from `library` on every read, by comparing each row's own `summaryVersion` against
+ * `core.SUMMARY_VERSION`. §0.6 is the reason — a cached "still to do" list is a second copy
+ * of a fact the rows already state, and it goes stale the moment another writer touches one.
+ * The two fields below are the two things the rows genuinely cannot say for themselves.
+ *
+ * Not persisted, not exported, not in `history`: it is an observation about the last pass.
+ */
+export type RescanState = {
+  /** True from the moment a pass starts until it stops. Nothing claims completeness inside it. */
+  running: boolean;
+  /**
+   * Documents the last pass could not read. **Reported, never silently dropped** — a row
+   * whose document will not parse keeps its old summary, keeps its place in the library, and
+   * says so. Cleared and re-derived at the start of every pass, so a record another writer
+   * repairs stops being reported without anything having to remember that it was.
+   */
+  unreadable: ReadonlyArray<{ id: string; message: string }>;
+};
+
 export type AppState = {
   library: core.TripSummaryRow[];
   activeTripId: string | null;
@@ -109,6 +132,12 @@ export type AppState = {
    * it; `reduce`/`undo`/`redo`/`setUi` carry it through by spread and nothing more.
    */
   retired: { tripId: string; marks: ReadonlyMap<string, string> } | null;
+  /**
+   * §8.4 clause 3's rescan bookkeeping. It is **library-scoped, not document-scoped**, so it
+   * survives every transition that replaces `state.doc` — see the six `...initialState()`
+   * sites in `store.ts`, each of which carries it across exactly as it carries `library`.
+   */
+  rescan: RescanState;
 };
 
 export const INITIAL_UI: UiState = {
@@ -132,6 +161,7 @@ export function initialState(): AppState {
     history: { past: [], future: [], limit: HISTORY_LIMIT },
     persistence: { savedDoc: null, savedVersion: null, status: 'idle' },
     retired: null,
+    rescan: { running: false, unreadable: [] },
   };
 }
 
