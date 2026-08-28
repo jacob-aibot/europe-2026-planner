@@ -308,13 +308,29 @@ persisted shape, no `schemaVersion` bump, no movement on §2.10's export surface
 consequences in `ROADMAP.md` are I-4a's Built / Verification / Ship-gate lines and nothing else: **no new
 increment, no change to the phase order.**
 
+**Revision 19, corrected in place, 2026-08-28 — no revision 20, and here is why.** QA round 21 ran A-25 Part
+6's criterion and reports **all six clauses HOLD** at `020ee37`, with a fresh 22-shape adversarial pass
+finding nothing that meets the re-opening condition. **The arc is closed.** Its one finding, **R21-1**
+(MINOR), is the output of clause 6's own assigned re-derivation: Part 5's class-A residue was complete by
+*class* and short **three instances** (`tgtTrip.cities.<n> ×2`, `tgtTrip.pool ×2`,
+`tgtTrip.days.<n>.stops.<n> ×2`), all containers or rows of the recipient's own document, all measured to be
+the already-accepted class. Those three are now written into Part 5 and Part 6 records that the criterion was
+met. **This is an in-place correction, not a new revision**, on the A-21a precedent rather than the A-22 one:
+a revision number in this document means *the contract moved and you must re-read* — and nothing moved. No
+rule, no `ALLOWED` entry, no `max`, no root, no matrix row, no gate, no code, no test, no `qa/` file; a reader
+who has read revision 19 remains correct without re-reading. What distinguished A-22 was **new normative
+content** (four sites closed, a read-count table superseded); a QA round having intervened is not by itself
+the distinction, because this particular round's finding is the *execution of a step revision 19 scheduled
+for it*. Round 21's optional suggestion of two extra matrix rows is **declined**, with the reasoning in
+Part 5.
+
 **Phase 1 is §2 and §4. The next phase is §8.1–§8.4.** Everything else is the shape those must not
 foreclose. See `ROADMAP.md` for sequencing and `PRODUCT-VISION.md` for why this order and not another.
 
 ## Read only your sections
 
-This document is ~133k tokens (re-measured at revision 19 with `cairn/tools/doc-section ARCHITECTURE` — §2 is
-now ~100k of it and §8 ~12k; the per-section figures below were stale by a third before revision 11 and are
+This document is ~134k tokens (re-measured after revision 19's round-21 in-place correction, with
+`cairn/tools/doc-section ARCHITECTURE` — §2 is now ~101k of it and §8 ~12k; the per-section figures below were stale by a third before revision 11 and are
 re-measured, not estimated, whenever a revision lands). Nothing needs all of it, and a fresh agent that reads it whole starts a sixth
 of the way into its context before writing a line. Pull what you need:
 
@@ -327,7 +343,7 @@ cairn/tools/doc-section ARCHITECTURE         # lists the sections and their size
 |---|---|---|---|
 | 0 | Six positions, stated up front | <1k | everyone — read it, it is 20 lines |
 | 1 | Stack decision and the capability checks behind it | 3k | architect. Settled; do not re-litigate |
-| 2 | **Domain model — the builder's contract.** §2.12 `travelRole`, §2.13 geography and §2.14 import/copy are new in revision 2 and are where the Phase 1 rework lives; **§2.2a (the `StorageVersion` write fence, revision 3) and §2.2b (the freshness rule it turned out to be one instance of, revision 4) are read together with §4.2 and §4.3, never alone**; §2.10 (the export surface) and §2.13's copied-record row are settled in revision 5; **§2.7's retirement ledger (A-5) and §2.13's copy-borne `Place` rule (A-6) are revision 6**; **§2.2a's A-7 (the fence a declined write may not move) is revision 8** and is read with §4.2 rule 4a; **§2.2's A-10 (a `CityKey` is a minted opaque id) and §2.7's A-9 (retirement is decided against the un-gated set) are revision 11** — a Phase 2 builder needs both; **A-11, A-12 and A-13 (§2.7) and A-14 (§2.14) are revision 12** and are read *with* A-9 and A-10, never instead of them — A-11 replaces A-9's greppable invariant, A-12 narrows A-9 point 1, A-13 rewrites A-9 assertion 4, and A-14 corrects A-10's change table; **A-15 and A-16 (§2.14) and A-17 (§2.7) are revision 13** — A-15 is the copy path's redaction rule and is read with §6.6, A-16 withdraws A-14's *"within one trip is unchanged"* paragraph, A-17 narrows A-11 assertion 5; **A-18 and A-19 (§2.14) are revision 14** — A-18 is the copy path's redaction rule for the *stop's own* nested records (`cost`, `arrival`) and generalises A-15 to *no spread at any depth*, A-19 rules that the `placement` **argument** is validated against the target and never re-filed. **Anyone touching `copyStopInto` reads A-14, A-15 and A-16 as one rule 4, and A-18 with rules 3 and 5**; **A-20 is revision 15 and lives in §2.9, not §2.14** — it is where the *shape* of a document is decided, it amends A-15's `hours` row and A-18's *"changes nothing in `fromJSON`"* paragraph, and **anyone touching `Place.hours` at any layer reads it first**; **A-21 is revision 16, lives in §2.9 beside A-20 and is read with it** — it replaces A-20's `isWeeklyEntry` with a reader that returns what it read, and imposes one read per field on `copyStop.ts`, so **anyone touching a predicate over an `unknown`, or any function in `copyStop.ts`, reads A-21 with A-15 and A-18**; **A-21a is a revision-16 addendum in the same place** and is what makes A-21's file-wide rule actually total — it is read with A-21, never instead of it; **A-22 and A-23 are revision 17, in the same place again** — A-22 closes the four sites A-21/A-21a's searches missed and **supersedes A-21a's read-count table one level down** (read A-22 Part 2's table, not A-21a's), and **A-23 is the standing census test that replaces the hand search** — *anyone adding a branch to `copyStopInto`, or a field to `Stop` or `Place`, reads A-23 first, because the scenario matrix and the allow-list are part of the contract and widening the allow-list is an architect's ruling*; **A-24 is revision 18 and is read *with* A-23, never instead of it** — it supersedes A-23's `opaque` set, its ten-row matrix and its fixture list, and nothing else about A-23 moves; **A-25 is revision 19 and is the last of the chain — it is read with A-23 and A-24 and closes the arc**, adding `City` rows to the roots, a fifteenth matrix row, an eighth `ALLOWED` entry, the structural fixture-completeness tests, and the **written closing criterion** in its Part 6 that a manager or a future session checks rather than takes on trust | 100k | builder, breaker |
+| 2 | **Domain model — the builder's contract.** §2.12 `travelRole`, §2.13 geography and §2.14 import/copy are new in revision 2 and are where the Phase 1 rework lives; **§2.2a (the `StorageVersion` write fence, revision 3) and §2.2b (the freshness rule it turned out to be one instance of, revision 4) are read together with §4.2 and §4.3, never alone**; §2.10 (the export surface) and §2.13's copied-record row are settled in revision 5; **§2.7's retirement ledger (A-5) and §2.13's copy-borne `Place` rule (A-6) are revision 6**; **§2.2a's A-7 (the fence a declined write may not move) is revision 8** and is read with §4.2 rule 4a; **§2.2's A-10 (a `CityKey` is a minted opaque id) and §2.7's A-9 (retirement is decided against the un-gated set) are revision 11** — a Phase 2 builder needs both; **A-11, A-12 and A-13 (§2.7) and A-14 (§2.14) are revision 12** and are read *with* A-9 and A-10, never instead of them — A-11 replaces A-9's greppable invariant, A-12 narrows A-9 point 1, A-13 rewrites A-9 assertion 4, and A-14 corrects A-10's change table; **A-15 and A-16 (§2.14) and A-17 (§2.7) are revision 13** — A-15 is the copy path's redaction rule and is read with §6.6, A-16 withdraws A-14's *"within one trip is unchanged"* paragraph, A-17 narrows A-11 assertion 5; **A-18 and A-19 (§2.14) are revision 14** — A-18 is the copy path's redaction rule for the *stop's own* nested records (`cost`, `arrival`) and generalises A-15 to *no spread at any depth*, A-19 rules that the `placement` **argument** is validated against the target and never re-filed. **Anyone touching `copyStopInto` reads A-14, A-15 and A-16 as one rule 4, and A-18 with rules 3 and 5**; **A-20 is revision 15 and lives in §2.9, not §2.14** — it is where the *shape* of a document is decided, it amends A-15's `hours` row and A-18's *"changes nothing in `fromJSON`"* paragraph, and **anyone touching `Place.hours` at any layer reads it first**; **A-21 is revision 16, lives in §2.9 beside A-20 and is read with it** — it replaces A-20's `isWeeklyEntry` with a reader that returns what it read, and imposes one read per field on `copyStop.ts`, so **anyone touching a predicate over an `unknown`, or any function in `copyStop.ts`, reads A-21 with A-15 and A-18**; **A-21a is a revision-16 addendum in the same place** and is what makes A-21's file-wide rule actually total — it is read with A-21, never instead of it; **A-22 and A-23 are revision 17, in the same place again** — A-22 closes the four sites A-21/A-21a's searches missed and **supersedes A-21a's read-count table one level down** (read A-22 Part 2's table, not A-21a's), and **A-23 is the standing census test that replaces the hand search** — *anyone adding a branch to `copyStopInto`, or a field to `Stop` or `Place`, reads A-23 first, because the scenario matrix and the allow-list are part of the contract and widening the allow-list is an architect's ruling*; **A-24 is revision 18 and is read *with* A-23, never instead of it** — it supersedes A-23's `opaque` set, its ten-row matrix and its fixture list, and nothing else about A-23 moves; **A-25 is revision 19 and is the last of the chain — it is read with A-23 and A-24 and closes the arc**, adding `City` rows to the roots, a fifteenth matrix row, an eighth `ALLOWED` entry, the structural fixture-completeness tests, and the **written closing criterion** in its Part 6 that a manager or a future session checks rather than takes on trust. **QA round 21 ran that criterion and all six clauses hold, so the arc is closed rather than closeable** — Part 6 records the verification and Part 5's class-A residue list was completed **in place** with the three instances round 21's re-derivation added (R21-1); that correction carries **no revision number** because no rule, entry, root, row, gate or line of code moved | 101k | builder, breaker |
 | 3 | Module boundaries | <1k | builder |
 | 4 | **The Phase 1 client.** §4.2 rule 6 (a pending write is never outlived by its document) is new in revision 3 — QA R3-2; rule 6a′ and the `savedDoc` predicate are revision 4 — QA R4-1; **rule 6a″ (the flush bound and its exits) and rule 6c's "delete goes on the chain" are revision 5** — QA R6-1/R6-2/R7-3; **rule 5's retirement carve-out is revision 6** — QA R8-1, read with §2.7; **rule 4a is revision 8** — QA R11-1, read with §2.2a A-7 | 7k | builder |
 | 5 | The four hard subsystems | 2k | breaker; builder from Phase 3 on |
@@ -4167,7 +4183,8 @@ Rows 1–14 are unchanged in construction and in numbering, so `qa/`'s row-by-ro
 
 ---
 
-**Part 5 — the residue, corrected, completed, and bounded (R20-4).**
+**Part 5 — the residue, corrected, completed, and bounded (R20-4; the class-A enumeration itself completed
+in place after QA round 21 re-derived it — **R21-1**, below).**
 
 A-24's residue paragraph said *"Two known multi-reads therefore stay invisible"* and named two. Round 20 is
 right that a fuller sweep finds more, and right that the honest fix is for the disclosure to **be** the
@@ -4179,6 +4196,58 @@ of two different lines:
 `tgtTrip.places ×3`, `tgtTrip.cities ×2–3`, `tgtTrip.places.<n> ×2`. This is the skeleton scan A-23 blessed
 and A-24's first refused candidate: closing it needs allow entries with `max: 5` on an **array**, which is a
 licence rather than an exception. **Unchanged, and correctly so.**
+
+**Three further instances of this same class, added in place after round 21 re-derived the set (R21-1).** The
+paragraph above shipped complete **by class** and short **by instance** — which matters here more than it
+would anywhere else, because this arc's recurring failure is *a ruling printing a claim about the
+completeness of its own search*, and Part 5 is the paragraph that exists to end that shape. The classes are
+unchanged and the bound is unchanged. Each of the three is a **container or a row of the recipient's own
+document**: nothing crosses a person boundary on any of them, and none decides where a crossed record is
+filed — the two clauses Part 2 uses to bring a value *into* scope — so none of them is the re-opening
+condition Part 6 names.
+
+- **`tgtTrip.cities.<n> ×2`** — a `City` **row**, on row 9; the only one of the three any of the fifteen rows
+  reaches, and the A-25 builder disclosed it itself rather than absorbing it. Read 1 is A-19's pool-placement
+  validation, `target.cities.some((c) => c.key === cityKey)`, which extracts **only `.key`** from the row;
+  read 2 is `refileCityKey`, which takes the whole filing decision from that one read. A flipping row can
+  therefore diverge from the validation in exactly one dimension, and it is the dimension the eighth
+  `ALLOWED` entry (`tgtCity0.key`) already names and bounds. Round 21 did not take that argument, it ran the
+  experiment, on two cities the recipient had named identically: the **row** flip and the already-accepted
+  **field** flip both file the copied `Place` under `tgt-city-2` with `validateTrip` reporting **0** —
+  *byte-identical outcomes*. And the variant that is **not** accepted, flipping to a key the target does not
+  hold, is strictly **more** visible rather than less: `validateTrip` reports `unknown_city_key`, an
+  **error**. So this is the accepted class, not a worse one.
+- **`tgtTrip.pool ×2`** — a container, and **no row of the fifteen reaches it**: it needs a pool placement
+  whose `Place` is *reused*, so that `withPlace === target` and `addStop`'s
+  `{ ...trip, pool: [...trip.pool, stop] }` lands on the censused object rather than on a fresh one. That is
+  the identical **spread-then-overwrite floor** A-24 Part 1's discriminator already blesses and the
+  `tgtTrip.revision` entry already names, one container over: a record this path *spreads* has an irreducible
+  floor of one read, and the object spread is the second.
+- **`tgtTrip.days.<n>.stops.<n> ×2`** — a row of the recipient's own day, also unreached by the fifteen: it
+  needs `insertionIndex`, i.e. a scheduled `order` past the day's length. It is **class C's own container**,
+  reached through the same `build/stops.ts` editing engine class C rules **out of scope for this arc** with a
+  reason and a trigger, and it inherits class C's bound intact — the values are the recipient's own, nothing
+  crosses, and the harm ceiling is the user's own day rendering out of the order they dragged it into, which
+  is visible to the person it happens to and reversible by them with a drag. If class C's trigger ever fires
+  (a `Stop.placement` built by something other than a person's own hand), this row is inside the census that
+  answers it, not a separate question.
+
+**Two of the three are reached only by a sweep wider than the matrix, and that is expected rather than a
+gap — so the fix is these three entries and *not* two new matrix rows.** Round 21 offered the rows (a pool
+placement with a reused `Place`; a scheduled `order` past the day's length) so that this list would be
+re-derivable from the fifteen rows alone. Declined, for the reason Part 6 already gives when it refuses
+branch coverage as the matrix's mechanical proxy: **the matrix and the residue measure different things.**
+The matrix is a *branch-coverage* instrument over `copyStopInto`, and A-23's maintenance rule is written in
+those terms — *a new branch in `copyStopInto` adds a row*. Neither proposed row adds a branch of
+`copyStopInto`: one lands in `addStop`'s spread, the other in `build/stops.ts`, the engine this arc has
+deliberately not annexed. The residue, by contrast, is a *bound on what the census structurally cannot see*,
+and Part 6 clause 6 already specifies how it is kept honest — **a fully-opened census over whatever document
+shapes the round builds**, which is exactly how round 21 found these two. A row added only to make an
+accepted residue matrix-reachable would be a scenario that cannot fail differently from one already present
+(round 21 measured the `City`-row case as byte-identical to the accepted field-level flip), and it would
+churn the row numbering `qa/`'s row-by-row cross-check depends on, for a disclosure-only gain. **Standing
+instruction instead, in one line:** any future re-derivation of this list sweeps shapes beyond the fifteen
+rows, as round 21 did — a re-derivation that only sweeps the matrix has not done clause 6's job.
 
 **Class B — `tgtTrip.days.<n>.id ×2`, on every row with a scheduled placement. Not a residue at all: a
 floor, by A-24 Part 1's own discriminator.** Read 1 is `withDay`'s `findIndex(d => d.id === dayId)`; read 2
@@ -4281,6 +4350,15 @@ commit that lands A-25:
    multi-read the eight entries do not name is a **finding routed to the architect**.
 6. **The Part 5 residue is re-derived by the round-21 breaker**, not inherited: a fully-opened census over
    the 15 rows prints classes A, B and C and nothing else.
+
+**Verified. QA round 21, at `020ee37`, reports all six clauses HOLD** — clause by clause, each with a repro
+(`qa/r21-closure.mjs`, `qa/r21-clause3.sh`), plus a fresh adversarial pass of **22 further document shapes**
+through both the shipped census and a fully-opened one: **0 throws, 0 unnamed multi-reads inside the census's
+roots, 0 paths outside the accounted set, and nothing meeting the re-opening condition.** Clause 6 produced
+the one finding of the round, **R21-1** — the class-A list was short three instances, all of the same
+already-accepted class — which is folded into Part 5 above, in place, and is explicitly **not** a re-opening
+(the breaker says so, and the measurement behind it is quoted there). **So the arc is closed, not
+closeable.** Anything further about `copyStop.ts` is ordinary work under the re-opening condition below.
 
 **And the re-opening condition, which is the other half of a closure and is deliberately narrow.** A future
 finding *inside* the census's roots is a **normal regression** — the guard caught it, which is the guard

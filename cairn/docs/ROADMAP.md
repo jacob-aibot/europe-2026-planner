@@ -133,6 +133,16 @@ Ship-gate lines** — and, for the first time in the arc, the Ship-gate line rec
 another round. **No new increment, no phase re-scoped and no change to the order.** I-4a's outright block on
 share/friend/public-share-link work is **unchanged** until the manager's 2a gate. I-5 stays unblocked.
 
+**Revision 19, corrected in place, 2026-08-28 — no revision 20.** QA round 21 ran A-25 Part 6's six-clause
+criterion against `020ee37` and **all six hold**, with a fresh 22-shape adversarial pass finding nothing that
+meets the re-opening condition. **I-4a's ship gate is therefore MET and the arc is closed** — the gate line
+below now records that, with the numbers and the repros, instead of pointing forward at a round. The round's
+one finding (**R21-1**, MINOR) is a completeness gap in `ARCHITECTURE.md` A-25 Part 5's residue prose, fixed
+there in place with no revision bump and no code change; `ARCHITECTURE.md`'s own front matter says why that
+is an in-place correction rather than a revision 20. **Nothing else in this file moves:** no new increment,
+no phase re-scoped, no change to the order, and I-4a's outright block on share/friend/public-share-link work
+stands until the manager's 2a verdict.
+
 > **Phase numbers changed once, here.** Every heading below carries its old number, and every "Phase N"
 > written in `ARCHITECTURE.md` §1–§7, `BUILD-NOTES.md` or `QA-FINDINGS.md` before revision 9 means the
 > *named* phase it described: "Phase 2" = accounts/server (**now 3**), "Phase 3" = ingest (**now 4**),
@@ -1571,6 +1581,31 @@ builder against the finding itself and is not an increment.
   Part 5 already names are none of them re-openings. **Consequence for the manager's 2a gate:** with those
   six met, I-4a is closed on this class and the gate is a judgment about I-3a and I-4a as increments, not
   another round of this arc.
+  **MET — this ship gate is closed (QA round 21, `master` @ `020ee37`, `QA-FINDINGS.md` "Round 21"; recorded
+  here 2026-08-28).** All six clauses of the closing criterion **HOLD**, each verified by running the code in
+  a throwaway worktree and each with a named repro (`qa/r21-closure.mjs` §1–§6, `qa/r21-clause3.sh`): (1) 620
+  pass / 0 fail with `readOnce.test.ts`'s four tests **inside** the suite at 505–508, typecheck and
+  `web:build` clean, **71** exports, 2/4/11, `validateTrip` **11**, goldens and sample byte-identical at
+  `40955ca0b182` with `git status --porcelain` empty before and after; (2) the Part 3 hoist red-and-green
+  two-sided, the reverted offender list a **one-element array** naming exactly `15 · … : tgtCity1.order ×2`,
+  and all **eight** entries observed at exactly `max: 2`; (3) R20-1's four steps end to end — the 16th field
+  now fails typecheck at **two** sites where round 20 measured one, and **there is no green-and-blind state to
+  walk past**; (4) the `meta` and `homeBase` plants red on all fifteen rows (green at `3d1be3b`, so the
+  clause is two-sided) and `DECLARED_NULLS` `{}`; (5) eight entries, all at `max: 2`, the diff against
+  `3d1be3b` exactly one added line and zero removed or modified; (6) the residue re-derived from a
+  fully-opened census — 19 distinct paths, nine covered, ten in classes A, B and C and **nothing else**.
+  Beyond the criterion, the breaker's own fresh attack — **22 document shapes no row of the fifteen builds**,
+  through both censuses — returned **0 throws, 0 unnamed multi-reads inside the roots, 0 paths outside the
+  accounted set**, and `srcTrip.bookings` / `srcTrip.resolutions` / `Trip.homeBase` / `Trip.meta.poolNotes`
+  are read **zero** times by this path. **Nothing found meets the re-opening condition.** The round's one
+  finding, **R21-1** (MINOR, architect), is clause 6's own assigned re-derivation returning three further
+  instances of an already-accepted class; it is folded into A-25 Part 5 **in place, with no revision bump and
+  no code change**, and the breaker states explicitly that it does not re-open the arc.
+  **So: the read-once / credential-boundary arc is CLOSED for this increment, and I-4a has no open item.**
+  Its outright block on share, friend and public-share-link work stands as written until the manager's 2a
+  verdict — that block is a scope rule, not an open defect, and closing this gate does not lift it. The next
+  step for I-4a is the **manager's 2a SHIP / SEND BACK call**, which is now a judgment about I-3a and I-4a as
+  increments, with **no further round of this arc owed to it**.
 
 ---
 

@@ -504,6 +504,26 @@ one file, it writes down the exact six checks that must pass for &ldquo;closed&r
 single thing that would re-open it &mdash; a blind spot in the check itself, not just another finding.
 <strong>Ruled, not yet built:</strong> one builder pass lands A-25, then a tester round 21 verifies the six
 checks.</p>
+<p><strong>That was built, round 21 checked it against the written criterion, and the arc is now
+CLOSED.</strong> This is the first time in this project that an arc has ended on a <em>test someone wrote in
+advance</em> rather than on a judgement call at the end. The tester ran all six checks &mdash; not looking for
+whatever it could find, but for exactly the six things the ruling said must be true &mdash; and <strong>all
+six hold</strong>, each one re-run from the code rather than taken from the builder's report: the full suite
+green with the copy check inside it, the one-line fix shown to fail when backed out and pass when applied, the
+&ldquo;invent a new field&rdquo; trap now catching a builder at <strong>two</strong> places instead of one (so
+there is no green-and-blind state to walk past), the two empty fields now filled and proven watched, no new
+exceptions quietly added to the list, and the leftovers re-derived from scratch rather than copied from the
+ruling. Then it attacked anyway: <strong>twenty-two more shapes of trip data no earlier test had
+built</strong> &mdash; a city whose name folds to nothing, a door PIN in a place note, five cities sharing a
+name &mdash; and found <strong>no crash, nothing looked at twice that isn't written down, and nothing
+crossing between people.</strong> One small thing came back, and it is a documentation gap rather than a
+defect: the ruling's own list of <em>&ldquo;things this check knowingly doesn't watch&rdquo;</em> named the
+categories correctly but was <strong>three items short</strong>, all three being containers inside the
+<em>recipient's own</em> trip where nothing crosses. That is fixed in the ruling's prose, in place, with
+<strong>no code change</strong> &mdash; and the tester said in writing that it does not re-open the arc.
+<strong>Status: built ✅, verified ✅ (round 21), not yet shippable</strong> &mdash; the manager's Phase-2a
+SHIP / SEND BACK call is the one remaining step, and it is now a judgement about the two increments rather
+than another round of this arc.</p>
 </div>
 
 <div class="wrap">
@@ -511,7 +531,7 @@ checks.</p>
   <div class="brand">
     <h1>CAIRN</h1>
     <div class="tagline">"You are here"</div>
-    <div class="updated">Updated 2026-08-28 · against <code>master</code>, after ARCHITECTURE revision 19 (A-25 &mdash; the automatic read-once check's <em>upkeep</em>: test-data completeness enforced by the compiler instead of by memory, the last narrow copy defect, and a written closing criterion for the seven-round arc).</div>
+    <div class="updated">Updated 2026-08-28 · against <code>master</code>, after <strong>QA round 21 — the closure round</strong>: the builder landed A-25, the tester verified all six points of its written closing criterion, and the seven-round copy-path arc is <strong>closed</strong>. I-4a's ship gate is met and has no open item; the round's one finding (a three-item gap in the ruling's own disclosure list) is corrected in ARCHITECTURE A-25 Part 5 in place — no revision 20, no code change.</div>
   </div>
 
   <!-- ============ DECISION CALLOUT ============ -->
@@ -616,15 +636,25 @@ checks.</p>
       <h4>Current phase</h4>
       <p>Phase 1 of 7: <span class="pill green">🟢 COMPLETE — SHIPPED</span><br>
         Phase 2 of 7 (travel history): <span class="pill amber">🟡 IN PROGRESS</span> — step 2a of 3
-        is <strong>built</strong> (increments I-0…I-4), not verified and not shipped; 2b (lifetime
-        map, travel identity) and 2c (participants) are <span class="pill grey">⚪ NOT STARTED</span></p>
+        is <strong>built</strong> (increments I-0…I-4) and now <strong>verified</strong> (ten
+        adversarial rounds, 12 → 21, ending with round 21 closing the copy-path arc against a
+        criterion written in advance), but <strong>not shipped</strong> — the manager's 2a gate has
+        not been called yet; 2b (lifetime map, travel identity) and 2c (participants) are
+        <span class="pill grey">⚪ NOT STARTED</span></p>
       <h4>Where the effort has actually gone</h4>
-      <p>Not on 2b or 2c. <strong>Eight consecutive adversarial rounds (12 → 19)</strong> have been
+      <p>Not on 2b or 2c. <strong>Ten consecutive adversarial rounds (12 → 21)</strong> have been
         spent on two increments — I-3a (a dismissed warning staying dismissed) and I-4a (city
-        identity, and everything the <em>copy</em> touches) — and seven of them landed on the copy.
+        identity, and everything the <em>copy</em> touches) — and eight of them landed on the copy.
         That is a written rule, not drift: <strong>nothing about sharing with a friend, and no
         public share link, ships until the copy path is closed</strong>, because the copy is the one
-        place in the design where your data crosses to another person.</p>
+        place in the design where your data crosses to another person. <strong>That arc has now
+        ended, and it ended on a test rather than on a judgement call</strong> — round 19 planted
+        twenty defects and the automatic check caught twenty, round 20 found the copying code itself
+        clean across twenty-two more data shapes and all 143 stops of the real trip, and round 21
+        confirmed point by point, against six checks written down <em>before</em> it started, that
+        the last ruling landed. <strong>I-4a's ship gate is met.</strong> The
+        share/friend/public-link block stays in place until the manager's Phase-2a verdict, which is
+        a scope rule rather than an open defect.</p>
       <h4>Current gate status</h4>
       <p><span class="pill green">🟢 PHASE 1 GATE: PASSED</span> — Phase 1 itself is
         <strong>closed</strong>, not open. ("Gate open" describes the door into Phase 2, not Phase
@@ -660,17 +690,19 @@ checks.</p>
           and copying a stop with a credit line that shows up everywhere.</li>
         <li><strong>A command-line tool</strong> for inspecting a trip, its conflicts and costs
           with no browser at all.</li>
-        <li><strong>618 automated tests, all passing</strong> (615 last update, 432 the one
-          before), plus a wide stack of adversarial probe scripts built to try to break named
+        <li><strong>620 automated tests, all passing</strong> (618 last update, 615 the one
+          before), re-run by the round-21 tester rather than taken from the builder's report, plus a wide stack of adversarial probe scripts built to try to break named
           claims.</li>
         <li><strong>A standing automatic check on the copy path</strong> — it counts how many times
           the copying code looks at each piece of borrowed data and fails the build if anything is
           looked at twice without a written-down reason. The first thing here that catches a
           <em>class</em> of defect rather than a known one; round 19 proved it by planting twenty
           and catching twenty, and round 20 confirmed the copying code itself is now clean across
-          twenty-two more data shapes and all 143 stops of the real trip. The remaining work is on
-          the check's own upkeep — that is A-25, ruled and not yet built, and it is what makes this
-          arc closeable.</li>
+          twenty-two more data shapes and all 143 stops of the real trip. Its own upkeep — the risk
+          that the check quietly stops watching a newly added field — is now enforced by the
+          compiler rather than by memory (A-25, built), and <strong>round 21 verified all six points
+          of the written closing criterion, so this arc is closed</strong> rather than merely
+          closeable.</li>
       </ul>
     </div>
   </details>
@@ -863,26 +895,28 @@ checks.</p>
       <p style="text-align:center;font-weight:700;font-size:1rem;letter-spacing:0.02em;">
         Architect&nbsp;→&nbsp;Builder&nbsp;→&nbsp;Breaker&nbsp;→&nbsp;Manager
       </p>
-      <p style="text-align:center;color:var(--ink-dim);font-size:0.85rem;margin-top:-4px;">Architect done · builder next · breaker round 21 · then the 2a gate</p>
+      <p style="text-align:center;color:var(--ink-dim);font-size:0.85rem;margin-top:-4px;">Architect done · builder done · breaker done (round 21) · <strong>the 2a gate is next</strong></p>
       <ul>
         <li><strong>Architect — done.</strong> <code>ARCHITECTURE.md</code> revision 19
-          (<strong>A-25</strong>) is written: test-data completeness enforced by the compiler and the
-          tests instead of by memory, one one-line fix for the three-same-name-cities case, city
-          records added to what the check watches, a fifteenth test situation, and a
-          <strong>closing criterion</strong> for the whole seven-round arc.</li>
-        <li><strong>Builder — next.</strong> One pass, in a fixed order: the one-line fix first, then
-          the check's new watch list and test situation, then the completeness machinery. Two steps
-          must be shown to fail <em>and</em> pass — back the fix out and the check must go
-          <strong>red</strong> naming exactly the right thing; invent a new field and the build must
-          refuse to go green until the test data fills it in. If either can't be reproduced, A-25 was
-          implemented wrongly and that gets reported rather than worked around.</li>
-        <li><strong>Breaker — round 21</strong>, attacking that pass <strong>against the six-point
-          closing criterion</strong> rather than open-endedly. The standing rule holds: it may not
-          quietly add an exception to the check's list; a new exception is an architect's ruling.</li>
-        <li><strong>Manager</strong> makes the <strong>2a SHIP / SEND BACK</strong> call once I-3a
-          and I-4a are genuinely closed — the first manager gate since Phase 1. With the criterion
-          met, that call is a judgment about the two increments rather than another round of this
-          arc. Only this role can open the rest of Phase 2.</li>
+          (<strong>A-25</strong>): test-data completeness enforced by the compiler and the tests
+          instead of by memory, one one-line fix for the three-same-name-cities case, city records
+          added to what the check watches, a fifteenth test situation, and a <strong>closing
+          criterion</strong> for the whole seven-round arc.</li>
+        <li><strong>Builder — done.</strong> One pass, in the ruling's fixed order, landed on
+          <code>master</code>. Both two-sided demonstrations reproduced: back the one-line fix out
+          and the check goes <strong>red</strong> naming exactly the right thing; invent a new field
+          and the build refuses to go green until the test data fills it in.</li>
+        <li><strong>Breaker — done (round 21).</strong> Attacked against the six-point criterion
+          rather than open-endedly: <strong>all six hold</strong>, every one re-run from the code.
+          Then twenty-two fresh data shapes on top of that — no crash, no unexplained second look at
+          borrowed data, nothing crossing between people. One MINOR finding, a three-item gap in the
+          ruling's own disclosure list, corrected in prose with no code change and explicitly
+          <em>not</em> a re-opening.</li>
+        <li><strong>Manager — next, and it is the only thing outstanding.</strong> The
+          <strong>2a SHIP / SEND BACK</strong> call. I-3a and I-4a are both closed on their ship
+          gates, so this is a judgement about the two increments as a whole rather than another round
+          of this arc. Only this role can open the rest of Phase 2, and the block on
+          sharing/friends/public links holds until it rules.</li>
       </ul>
       <p><strong>Still standing from Phase 1:</strong> whenever the merge/write code is next
         touched, the first breaker round on it is pre-committed to attack
