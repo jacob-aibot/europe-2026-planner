@@ -979,6 +979,103 @@ for. That is the whole reason all five are MINOR and none is a BLOCKER.
 
 ---
 
+## Round 28 (2026-08-28, `claude/cairn-i7-travelstats-c5oe7o` @ `db9dc1d`) — I-7: `travelStats` and the row's record census
+
+Seven new probes, **all offline** — no browser, no web build, no server. The two `.sh` ones build
+throwaway `git worktree`s at `HEAD`, mutate them and remove them; nothing in the working tree is
+touched. All run from `cairn/`.
+
+```bash
+node --experimental-strip-types qa/i7-oracle.mjs     # ALL OK. A-31 Part 7's four-number oracle re-derived
+                                                     # by a THIRD program: my own walk of the document with
+                                                     # my own reading of stopLatLng's contract, against
+                                                     # countries.json, against row.attribution, against
+                                                     # travelStats. 94 / 3 / 132 / 4, and the pool
+                                                     # contributes 20 so "pool included" is not vacuous.
+                                                     # Then KD-63: both clock blocks present, byte-equal to
+                                                     # fresh calls, zero non-integer numbers in the golden.
+
+node --experimental-strip-types qa/i7-edges.mjs      # 3 FAIL BY DESIGN. The boundary battery: the interval
+                                                     # union at eight boundaries (endpoint-touching,
+                                                     # adjacency, containment, three-way, zero-day, leap
+                                                     # day, rollovers, pre-epoch); the `today` clamp on its
+                                                     # five exact days; the composite key's separator and
+                                                     # sentinel; whitespace/NBSP/NFD city names; census
+                                                     # invariants; deep-frozen purity and output aliasing;
+                                                     # and the year-0001 COST (200 max-span rows in ~2ms,
+                                                     # 50k rows in ~224ms). FAILs = R28-4 (negative
+                                                     # unattributed), R28-5 (undefined vs null), and the
+                                                     # '--' sentinel collision. R28-1 shows up here as a
+                                                     # note line and is proved in i7-year / i7-pastyear.
+
+node --experimental-strip-types qa/i7-year.mjs       # 8 FAIL BY DESIGN — R28-1 isolated to two helpers.
+                                                     # Date.UTC maps years 0..99 to 1900..1999, and
+                                                     # fromDayNumber never pads the year. So
+                                                     # dayNumber('0001-01-01') === dayNumber('1901-01-01')
+                                                     # and fromDayNumber(dayNumber('0500-06-01')) is
+                                                     # "500-06-01", which parseIsoDate — eight lines up in
+                                                     # the same file — throws on.
+
+node --experimental-strip-types qa/i7-pastyear.mjs   # 3 FAIL BY DESIGN — R28-1 END TO END. Drives the real
+                                                     # client store over the real memory port exactly as
+                                                     # PastTripForm does. Year "0202" (a plausible mistype
+                                                     # of 2020, and typeable: the field gate is /^\d{4}$/)
+                                                     # writes a document whose day ids are "202-01-01" and
+                                                     # which fromJSON then permanently refuses. Year "0026"
+                                                     # stores 1926 days against a 0026 startDate with
+                                                     # validateTrip reporting ZERO issues. Year "2019" is
+                                                     # the control and is clean.
+
+node --experimental-strip-types qa/i7-rescan.mjs     # 2 FAIL BY DESIGN — §1 and §2 are ALL OK and close
+                                                     # BUILD-NOTES' first two "could not verify" items:
+                                                     # the 3->4 rescan against REAL version-3 rows (minted
+                                                     # by the shipped tripSummary with `attribution`
+                                                     # deleted), and travelStats over a real multi-row
+                                                     # library out of storage. §3 is R28-3: between
+                                                     # refreshLibrary() and the rescan finishing, a
+                                                     # COMPLETED version-3 row throws — and a PLANNED one
+                                                     # with the same defect passes silently.
+
+bash qa/i7-faults.sh                                 # The builder's SEVEN injected faults, re-derived from
+                                                     # A-31's own wording and re-run in throwaway
+                                                     # worktrees, with the WHOLE suite run so the blast
+                                                     # radius is measured rather than asserted.
+                                                     # M1 pool dropped from the row census   -> 4 red
+                                                     # M2 key = nameKey alone                -> 2 red
+                                                     # M3 sweep -> naive sum                 -> 2 red
+                                                     # M4 today clamp removed                -> 2 red
+                                                     # M5 planned rows admitted              -> 5 red
+                                                     # M6 duplicate id deduped               -> 1 red
+                                                     # M7 sort() without slice()             -> 1 red
+
+bash qa/i7-exit6.sh                                  # EXIT CRITERION 6, MUTATION-TESTED FROM OUTSIDE — R28-2.
+                                                     # Eight faults, each alone, each in a worktree.
+                                                     # F1 countriesVisited: number on Trip    -> RED
+                                                     # F2 daysTravelled: number on a port     -> RED
+                                                     # F3 citiesVisited on the row, minted    -> RED (both halves)
+                                                     # F4 daysAbroad on the row, minted       -> GREEN  <- hole
+                                                     # F5 untyped lifetime-totals const       -> GREEN  <- hole
+                                                     # F6 the counts via `type Tally = number`-> GREEN  <- hole
+                                                     # F7 a port imports TravelStats          -> RED
+                                                     # F8 the counts SPREAD ONTO THE RECORD
+                                                     #    written to IndexedDB                -> GREEN  <- R28-2
+                                                     # F8 also runs the full 795-test suite (green) and
+                                                     # apps/web typecheck (clean) under the fault.
+```
+
+Re-run **unmodified** this round: `qa/r2-constraints.mjs` **1 FAIL** (R2-18, known and
+pre-existing), `qa/r14-horizon-copy.mjs` **2 FAIL** — and both of those are stale ceilings, not
+findings: the §2.10 pin says 73 against a shipped 75 (BUILD-NOTES **KD-65**, nine scripts) and the
+KD-id ceiling says 53 against 65. **A FAIL line in `r13`…`r21` that names an export count or a KD
+count is drift, not a defect** — R28-8. Everything else in those probes is still green.
+
+Ceilings re-derived by running: `npm run test:tap` **795/0**, `npm run typecheck` clean,
+`Object.keys(core).length` **75**, `npm run golden` and `npm run sample` byte-identical (sample sha
+`40955ca0b182`), `npm run web:build` clean at **976,160 bytes**, reference summary row **864 bytes**
+with **0** coordinate-shaped floats, `grep -rlP '\x00'` over the tree **clean**.
+
+---
+
 ## Round 27 (2026-08-28, `master` @ `481b7e8`) — I-6a: A-29's stated-country gate and A-30's `refreshSummary`
 
 Six new probes, two of which need a browser. All run from `cairn/`; `i6a-kd62.sh` builds a

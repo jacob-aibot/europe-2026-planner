@@ -1,4 +1,46 @@
-# Cairn — QA findings, Phase 1 **rounds 2–11** and Phase 2 **rounds 12 (2a), 13 (I-3a / I-4a), 14 (A-11…A-14), 15 (A-15…A-17), 16 (A-18 / A-19), 17 (A-20 / R16-1), 18 (A-21 / A-21a), 19 (A-22 / A-23), 20 (A-24 / R19-1 / R19-2 / KD-50), 21 (A-25 — the closure round), 22 (I-5 / I-5a — A-26's mixed-resolution country index), 23 (I-5b — A-27's forgiveness entry), 24 (I-5c — A-28's second arm for filter 2), 25 (the I-5 closure round), 26 (I-6 — the widened `TripSummaryRow` and the `SUMMARY_VERSION` rescan) and 27 (I-6a — A-29's stated-country gate and A-30's `refreshSummary`)**
+# Cairn — QA findings, Phase 1 **rounds 2–11** and Phase 2 **rounds 12 (2a), 13 (I-3a / I-4a), 14 (A-11…A-14), 15 (A-15…A-17), 16 (A-18 / A-19), 17 (A-20 / R16-1), 18 (A-21 / A-21a), 19 (A-22 / A-23), 20 (A-24 / R19-1 / R19-2 / KD-50), 21 (A-25 — the closure round), 22 (I-5 / I-5a — A-26's mixed-resolution country index), 23 (I-5b — A-27's forgiveness entry), 24 (I-5c — A-28's second arm for filter 2), 25 (the I-5 closure round), 26 (I-6 — the widened `TripSummaryRow` and the `SUMMARY_VERSION` rescan), 27 (I-6a — A-29's stated-country gate and A-30's `refreshSummary`) and 28 (I-7 — `travelStats` and the row's record census)**
+
+> **Status (as of `claude/cairn-i7-travelstats-c5oe7o` @ `db9dc1d`, independently verified
+> 2026-08-28 — round 28, the mandatory adversarial pass over Phase 2 **I-7**: §8.4 **A-31** —
+> `travelStats`, `TripSummaryRow.attribution`, `SUMMARY_VERSION` 4, the two goldens, `cli.ts
+> stats`, and exit criterion 6 rewritten. Surface: `git diff 51ac13b db9dc1d -- cairn/packages
+> cairn/cli.ts cairn/test cairn/tools cairn/fixtures` — `packages/core/src/derive/travelStats.ts`
+> (new), `packages/core/src/derive/summary.ts`, `packages/core/src/index.ts`, `cli.ts`,
+> `tools/gen-golden.mjs`, `test/stats-storage.test.ts` (new), `fixtures/golden/travel-stats.json`
+> (new), 4 touched test files.**
+>
+> | | |
+> |---|---|
+> | **Verdict** | **SEND BACK — architect first, then builder. 1 BLOCKER, 1 MAJOR, 7 MINOR.** `travelStats` itself is the strongest thing the builder has shipped in this arc: I attacked the interval union at eight boundaries, the `today` clamp on its five exact days, the composite city key with a piped name and a sentinel-shaped code, purity against a **deep-frozen** input, and the *cost* of the year-`0001` case the builder could only assert an answer for — and the algorithm held every time. What did **not** hold is the substrate it stands on and the gate that is supposed to police it. **R28-1 (BLOCKER):** `dayNumber`/`fromDayNumber` are silently wrong for every year below 1000, and the "record a past trip by year" form accepts them — year `0202` writes a document that `fromJSON` then permanently refuses, and year `0026` stores days **1900 years** from the trip's own dates with `validateTrip` reporting nothing. A-31 Part 4 step 5 names year `0001` by name and `travelStats.test.ts:280` asserts it — that test is green because it is measuring **1901**. **R28-2 (MAJOR):** exit criterion 6 cannot catch its own bug — I wrote `countriesVisited` and `daysTravelled` into every IndexedDB summary record and the criterion, the 795-test suite and `tsc` were **all green**. |
+> | **BLOCKERS** | **1 — R28-1.** Not introduced by I-7; surfaced by it, and I-7 ships a test that certifies the wrong answer. `bash`-free repro: `node --experimental-strip-types qa/i7-pastyear.mjs` (3 FAIL) and `qa/i7-year.mjs` (8 FAIL). No privacy blocker: nothing in this increment logs, transmits or persists a coordinate — the stored row grew 767 → **864 bytes** for the `attribution` block and still has **0** coordinate-shaped floats, `travel-stats.json` carries **0** non-integer numbers, and `travelStats` has exactly **one** caller outside `packages/core` (`cli.ts:159`) and **zero** in `packages/client` or `apps/web`. |
+> | **Findings** | **R28-1 BLOCKER (architect, then builder)** — years below 1000 round-trip to garbage or to 1900+; a past trip recorded as year `0202` is unopenable forever. **R28-2 MAJOR (architect — criterion shape; builder — classifier)** — exit criterion 6b greps *declarations*, so a persisted lifetime count written as a *value* is invisible. **R28-3 MINOR (builder)** — `travelStats` has a third, undisclosed throw, and it fires only for rows that happen to be in the past. **R28-4 MINOR (builder)** — `unattributed` can go negative; the "never greater than `located`" invariant is stated twice and enforced nowhere. **R28-5 MINOR (builder)** — `undefined` and `null` are two different answers to `TripSummaryCity.countryCode` inside one function. **R28-6 MINOR (architect — doc)** — A-31 residue 3 discloses the split but not the **merge**: two unattributed same-name cities in genuinely different countries become one row. **R28-7 MINOR (architect — I-8 spec)** — an active trip's unreached countries are printed as fact, with dates, unmarked. **R28-8 MINOR (architect — doc)** — KD-65's drift is real and is now in a **contract document**: ROADMAP criterion E still says 73. **R28-9 MINOR (builder)** — `cli.ts stats --today bogus` exits on a raw stack trace. |
+> | **R28-1 — the BLOCKER, in full, because the reasoning is the evidence** | `derive/summary.ts:23` is `dayNumber(d) = Math.floor(Date.UTC(y, m-1, dd)/86400000)`. **`Date.UTC` applies the ES legacy two-digit-year rule**: a `year` argument of 0–99 means 1900–1999. So `dayNumber('0001-01-01') === dayNumber('1901-01-01')` — measured, both `-25202`. And `derive/summary.ts:28-30` stringifies `getUTCFullYear()` with `padStart(2,'0')` on the *month and day* but **no padding on the year**, so a genuine year below 1000 comes back three digits: `fromDayNumber(dayNumber('0500-06-01'))` is `"500-06-01"`, which `parseIsoDate` — in the same file, eight lines up — throws on. Three consequences, each run: (1) **`travelStats` emits a date its own parser rejects.** A row starting `0500-06-01` reports `firstVisit: "500-06-01"`. (2) **Two trips 1900 years apart are one interval.** A year-`0001` trip and a year-`1901` trip over the same days report `daysTravelled: 10`, not 20 — the union collapsed them. (3) **The product-reachable one.** `apps/web/src/views/PastTripForm.tsx:76` gates the Year field on `/^\d{4}$/` and nothing else, and the input at `:208` strips non-digits and truncates to four — so `0202`, a plausible mistype of `2020`, is typeable and valid. Driving the real client store over the real port: `createTrip` accepts it, `ensureDays` mints 365 days whose `date` **and `id`** are `"202-01-01"`…, the document is written to storage, and the next cold start gets `TripParseError: expected YYYY-MM-DD (at $.days[0].date)`. The trip is in storage, is the only copy, and can never be opened again — `Library.tsx` badges it *"could not be read"*, which is graceful degradation around **data that is gone**. Year `0026` is the quieter half: no error anywhere, days minted as **1926-01-01…1926-12-31** against a `startDate` of `0026-01-01`, `validateTrip` returning **0 issues** (its density check runs through the same mangled `dayNumber`, so it is internally consistent in mangled space), and `travelStats` cheerfully reporting 365 days travelled. **Why this is I-7's to answer and not just Phase 1's:** A-31 Part 4 step 5 justifies the sort-and-sweep by *"an `IsoDate` admits year `0001`"*, and `packages/core/test/travelStats.test.ts:280` asserts `daysTravelled === 365` for exactly that row. It is green because 1901 also has 365 days. A test that certifies a wrong answer is worse than no test, and it is the one thing in this increment that a future reader will trust. **Route: architect first** — `IsoDate`'s domain needs a stated lower bound (or `dayNumber`/`fromDayNumber` need a civil-calendar implementation that does not go through `Date.UTC`), and A-31's year-`0001` clause needs to be honoured or withdrawn — **then builder.** |
+> | **R28-2 — the MAJOR: the ship gate cannot catch its own bug** | A-31 Part 6 withdrew the old grep as *false* and replaced it with two mechanical halves. Half (b) is `test/stats-storage.test.ts:172`: `src.matchAll(/([A-Za-z$_][\w$]*)\??\s*:\s*number\b/g)`. That matches **type declarations**. It does not and cannot match a **value**. `bash qa/i7-exit6.sh` runs eight faults, each alone, each in a throwaway worktree; three of them are green. **F8 is the one that matters**: in `apps/web/src/ports/storage.ts`, both `SUMMARIES.put(summary, id)` call sites (`:226`, `:279`) become `put({ ...summary, countriesVisited: summary.countryCodes.length, daysTravelled: summary.dayCount }, id)`. Those numbers are now in IndexedDB, on every write, forever, with nothing to recompute them from — **the literal `countriesVisited: 47` A-31 Part 6 exists to forbid**. Measured under that fault: exit criterion 6 **5 pass / 0 fail**, the full suite **795 pass / 0 fail**, `tsc -p apps/web/tsconfig.json` **clean** (a spread widens the object type, so excess-property checking never fires). **F6** — the same counts declared through a one-line `type Tally = number` alias — also green. **F4** — `daysAbroad: number` added to `TripSummaryRow` *and minted into every row* — also green, because the classifier's `SHAPE`/`PLURAL` regexes want a counting suffix or a plural domain noun and `daysAbroad` is neither; so half (a)'s allow-list, which A-31 says *"a field added to the row without being added to the list fails"*, does not actually hold for every count-shaped field. The five faults it **does** catch are F1 (`countriesVisited: number` on `Trip`), F2, F3 (`citiesVisited` on the row, red in **both** halves), F7 (a port importing `TravelStats`). **KD-64 assessed:** the two extra allow-list entries are fine — `horizonDays` is a duration and `TravelStats`' fields are a pure return type, and the builder's judgement on both is right. The hole is not the allow-list, it is the **shape of the check**. §0.5: *"a rule that cannot catch its own bug does not ship."* Route: **architect** for what half (b) must actually assert (a value-level or port-level check, not a declaration grep), **builder** for the classifier. Also noted: `ROOTS` omits `packages/tokens/src`. |
+> | **The seven injected faults, re-run rather than believed** | `bash qa/i7-faults.sh` — each fault re-derived from A-31's own wording, applied alone in a throwaway worktree, and the **whole** suite run so the blast radius is measured. All seven red, and the builder's counts are accurate or conservative: **M1** pool dropped from the row census → **4** red, including both cross-checks and the golden; **M2** key = `nameKey` alone → **2**; **M3** sweep → naive sum → **2**; **M4** clamp removed → **2**; **M5** planned rows admitted → **5** (the builder reported 4; `cli.test.ts`'s `--today` test is the fifth); **M6** duplicate id deduped → **1**; **M7** `sort()` on the caller's array → **1**, so the builder's own disclosed near-miss (his first purity test passed rows already in canonical order and the fault was green) is genuinely repaired — I passed them out of order independently and it reds. |
+> | **The external oracle, re-derived by a THIRD program** | A-31 Part 7's four-number check compares `travelStats` against `countries.json` — but both go through `countryOf` and `stopLatLng`, so a shared miscount would agree with itself. `qa/i7-oracle.mjs` walks the document with its own loop and its own re-implementation of `stopLatLng`'s contract from §2.2, and gets **94 / 3 / 132 / 4** — equal to `countries.json`, equal to `row.attribution`, equal to `travelStats`. The pool contributes **20** located stops, so *"the pool is counted"* is not vacuous. **KD-63 verified:** both clock blocks are present in `travel-stats.json`, `fixtureToday` is `FIXTURE_TODAY` and genuinely precedes `startDate`, and **both blocks are byte-equal to a fresh `travelStats` call**; `summaryVersion` is 4; **0** non-integer numbers anywhere in the file. |
+> | **The builder's three "could not verify" items, closed** | **(1) The 3→4 rescan against a real stored version-3 row** — `qa/i7-rescan.mjs` §1 seeds three documents whose rows are minted by the shipped `tripSummary` with `attribution` deleted and the stamp set to 3 (what a build one commit older wrote, field for field), then runs `refreshLibrary()` + `rescanSummaries()`: every row reaches version 4, every census equals a fresh mint, `saveCount` does not move (A-30 holds) and `refreshCount` is 3. **(2) `travelStats` with more than one row outside a unit test** — §2 runs it over that three-row library straight out of storage: `{completed: 2, active: 1}`, `daysTravelled` **28** (14 + 10 + the active trip's 4 clamped days), countries `AT,HR,JP` sorted, cities `split,tokyo,vienna` sorted, the active trip's `lastVisit` clamped to `today`, and the store's own `library` array byte-identical after the call. **(3) The year-`0001` case's *cost*** — now timed: 200 rows each spanning `0001-01-01`…`9999-12-31` sweep in **1.9 ms**, and 50,000 rows in **283 ms**. A `Set` of day numbers would be ~730M insertions for the first; a quadratic sweep would be 2.5 × 10⁹ comparisons for the second. The shape is O(n log n) in rows, as claimed. |
+> | **What I could not break** | The interval union at every boundary I could construct: `[a,b]`+`[b,c]` sharing an endpoint counts day `b` **once** (20, not 21); adjacency does not invent a day and does not merge one; a one-day gap stays a gap; containment adds nothing; a short interval between two long ones does not truncate the run; two zero-day trips on one day are one day; month, year and leap-day rollovers are exact; pre-epoch spans and negative day numbers round-trip. The clamp on its five exact days: `startDate` → 1, `startDate+1` → 2, `endDate` → full span, `endDate+1` → full span, `startDate−1` → 0. Purity: a **deep-frozen** `readonly` input does not throw, two calls are deep-equal, the caller's array order is untouched, shuffling gives a deep-equal result, every output array is fresh, and mutating the output does not poison the next call. Grouping: NFC/NFD `Zürich` is one row; space-, tab-, NBSP- and empty-named cities are **zero** rows, one `unnamedCities` and one `located.cities` each; a city literally named `US|Paris` does not collide with `Paris` in `US`, because the country prefix is fixed-width. `countryCodes` with duplicates credits the trip once. `tripIds` are in canonical `(startDate, id)` order with no duplicates. And A-31 Part 4's closing sentence holds through the CLI on three hand-built documents: a one-city trip with nothing placed prints *"nothing could be placed on the map"* with `located.cities 1`, a trip with no city at all prints *"no places yet"*, and a blank-named city prints *"cities with no usable name: 1"*. |
+> | **The NUL byte, and other artefacts of the first draft** | `grep -rlP '\x00'` over every `.ts`/`.tsx`/`.mjs`/`.json`/`.md` under `cairn/` is **clean** — no hits, exit 1. No stray sentinel text, no `--`-prefixed leftovers outside the documented `NO_COUNTRY` constant (`travelStats.ts:78`), no orphaned draft file in the diff. `git status --porcelain` after a full suite run, a typecheck, a golden and a sample regeneration, a web build and fifteen worktree mutations shows nothing outside `cairn/qa` and `cairn/docs/QA-FINDINGS.md`. |
+> | **The builder's own numbers, re-derived by running** | `npm ci` clean · `npm run typecheck` clean, both projects, exit 0 · `npm run test:tap` **795 pass / 0 fail / 0 cancelled** · `Object.keys(core).length` **75**, counted · `npm run golden` → `git diff` **empty** (both `countries.json` and `travel-stats.json` byte-identical to what is committed) · `npm run sample` no diff, source sha still `40955ca0b182` · `npm run web:build` clean, `dist/assets/index-C6G5phit.js` **976,160 bytes**, the builder's figure to the byte · reference row `countryCodes ["AT","CZ","DE","GB","HR","HU","US"]`, all six cities `countrySource: 'coordinate'`, `summaryVersion` 4, **864 bytes** (767 at I-6a), **0** coordinate-shaped floats · `cli.ts stats` at `FIXTURE_TODAY` prints *"no places yet"*, at `2026-08-24` prints 7 countries / 6 cities / 16 days, and two runs are byte-identical. |
+> | **`cairn-constraints`, re-checked independently** | Determinism — I greped the diff myself: **0** occurrences of `Date.now`, `Math.random`, `crypto.randomUUID` or `new Date(` in any added line across `packages/`, `apps/`, `cli.ts` and `tools/gen-golden.mjs`. The only `new Date(` in `packages/core/src` are the two pre-existing ones in `summary.ts` (`:28`, `:46`), both constructed from a number or from `Date.UTC` — no ambient clock — and both are R28-1's subject rather than a determinism breach. Zero-dep — `packages/core`, `packages/client` and `packages/tokens` declare **no external runtime dependencies**. No DOM in `packages/client` — `qa/r2-constraints.mjs` §5 green (globals, not just imports). Behavioural determinism — two separate processes agree exactly, two CLI runs agree exactly, `gen-sample` is byte-stable. The one FAIL in `qa/r2-constraints.mjs` is the known R2-18 (the determinism grep walks `packages/core/src` only, so the reducer the constraint names is uncovered), **unchanged and not from this increment**. |
+> | **The sensitive paths (§5, §6)** | **Nothing.** `attribution` is four integers; `travel-stats.json` is codes, names, ids and counts with **0** non-integer numbers; `cli.ts stats` prints no coordinate. The stored row's only `coord`-shaped substring is the string literal `'coordinate'` in `countrySource`. No `console.*`, no `fetch`, no network, no filesystem write outside `fixtures/` and `apps/web/src/sample/` in the whole diff. No mailbox surface is touched. `travelStats`' input is summary rows and an injected `today` — never a document, never storage — so §4.2's *"exactly ONE trip in memory"* survives the one screen that would want forty, and `test/stats-storage.test.ts:211` pins that nothing under `ports/`, `serialize/` or `store` imports it (I re-ran that as fault F7: it goes red, so the assertion is live). |
+> | **Read-only boundary** | Untouched: `git diff 51ac13b db9dc1d -- europe-2026-itinerary.html docs/ tickets/` is **empty**. Every mutation this round made was in a throwaway `git worktree add --detach` and discarded; `git worktree list` shows none of mine. The only files this round writes are `cairn/qa/i7-*.{mjs,sh}`, `cairn/qa/README.md` and this file. **No implementation file, no test file under `packages/`/`apps/`/`test/`, no `BUILD-NOTES.md`, no `ARCHITECTURE.md`, no `ROADMAP.md`.** |
+> | **Fixed vs still open** | **NEW and OPEN: R28-1 (BLOCKER → architect, then builder), R28-2 (MAJOR → architect + builder), R28-3, R28-4, R28-5, R28-9 (MINOR → builder), R28-6, R28-7, R28-8 (MINOR → architect).** **CLOSED by this round's own work:** all three of the builder's *"what I could not verify"* items — the 3→4 rescan is executed against real version-3 rows, `travelStats` is executed over a real multi-row library from storage, and the year-`0001` case now has a timing assertion. **ASSESSED and accepted:** KD-63 (both clocks correct, cross-check holds against a third program), KD-64 (the two extra allow-list entries are legitimate; the hole is the check's shape — R28-2). **ASSESSED and escalated:** KD-65 — not masking anything, but the same drift is now in ROADMAP criterion E (R28-8). **STILL OPEN from round 27, unchanged and not re-litigated: R27-1, R27-2, R27-3.** **STILL OPEN, unchanged:** R25-1…R25-4, R22-2, R21-1, R13-4, R13-5, P2-5, P2-8, R2-18 and the whole Phase 1 list. Breaker-board **B-1**…**B-4** untouched. |
+>
+> **New probes this round**, all offline, all from `cairn/`:
+>
+> ```bash
+> node --experimental-strip-types qa/i7-oracle.mjs     # ALL OK — the 4-number oracle by a 3rd walk; KD-63
+> node --experimental-strip-types qa/i7-edges.mjs      # 3 FAIL by design — R28-4, R28-5, and the sentinel collision
+> node --experimental-strip-types qa/i7-year.mjs       # 8 FAIL by design — R28-1, isolated to two helpers
+> node --experimental-strip-types qa/i7-pastyear.mjs   # 3 FAIL by design — R28-1 end to end through the store
+> node --experimental-strip-types qa/i7-rescan.mjs     # 2 FAIL by design — R28-3; §1/§2 are ALL OK
+> bash qa/i7-faults.sh                                 # the builder's 7 injected faults, re-run
+> bash qa/i7-exit6.sh                                  # 8 exit-6 faults; F4, F6, F8 are green — R28-2
+> ```
+>
+> **The round-27 status note below is superseded by this one** and is kept as the record of what
+> was true at `481b7e8`.
 
 > **Status (as of `master` @ `481b7e8`, independently verified 2026-08-28 — round 27, the
 > mandatory adversarial pass over Phase 2 **I-6a**: §8.4 **A-29** (a city's *stated* country as a
@@ -325,6 +367,163 @@
 >
 > **The round-17 status note below is superseded by this one** and is kept as the record of what
 > was true at `909b4a3`.
+
+## Round 28 — I-7: `travelStats` and the row's record census (`claude/cairn-i7-travelstats-c5oe7o` @ `db9dc1d`)
+
+**The verdict first. `travelStats` is right; the calendar underneath it is not, and the criterion
+that is supposed to police it cannot see its own subject.** I spent this round trying to break
+A-31 Part 4's algorithm and failed at every boundary I could construct. What broke is one level
+down (`dayNumber`/`fromDayNumber`) and one level up (exit criterion 6).
+
+**A note on where the work started.** The architect's and builder's commits were *not* on this
+worktree's branch when the round opened — `git log -1` was `51ac13b`, two commits behind
+`claude/cairn-i7-travelstats-c5oe7o` @ `db9dc1d`. I fast-forwarded before doing anything else.
+Recording it because "the stages have been merged onto your branch" was the handoff's own
+assumption and it was not true; the next round should check `git log -1` against the branch it is
+reviewing rather than trust the dispatch.
+
+| id | sev | file:line | defect | repro | route |
+|---|---|---|---|---|---|
+| **R28-1** | **BLOCKER** | `packages/core/src/derive/summary.ts:23,28`; `apps/web/src/views/PastTripForm.tsx:76` | `Date.UTC` maps years 0–99 to 1900–1999 and `fromDayNumber` never pads the year, so a past trip recorded as year `0202` writes a document `fromJSON` then permanently refuses, and one recorded as `0026` silently stores days 1900 years from its own dates with `validateTrip` reporting nothing. | `node --experimental-strip-types qa/i7-pastyear.mjs` (3 FAIL); `qa/i7-year.mjs` (8 FAIL) | **design** → architect, then builder |
+| **R28-2** | **MAJOR** | `test/stats-storage.test.ts:172` | Exit criterion 6b greps `name: number` *declarations*, so `countriesVisited`/`daysTravelled` written as *values* into every IndexedDB summary record pass the criterion, the 795-test suite and `tsc`. | `bash qa/i7-exit6.sh` — F8 (and F4, F6) green | **design** → architect (check shape) + builder (classifier) |
+| **R28-3** | MINOR | `packages/core/src/derive/travelStats.ts:204` | A third throw A-31 Part 4's `@throws` does not sanction, and it is not uniform: a version-3 row throws when the trip is `completed` and passes silently when it is `planned`. Between `refreshLibrary()` and the rescan finishing, I-8's Profile would throw. | `node --experimental-strip-types qa/i7-rescan.mjs` §3 (2 FAIL) | implementation → builder |
+| **R28-4** | MINOR | `packages/core/src/derive/travelStats.ts:255` | `unattributed = located - attributed` has no floor, so `AttributionCensus`' documented *"never greater than `located`"* invariant — restated on `TravelStats.unattributed` — yields **-4** rather than a throw or a clamp. | `qa/i7-edges.mjs`, "census invariants" | implementation → builder |
+| **R28-5** | MINOR | `packages/core/src/derive/travelStats.ts:219` vs `:228` | One field, two answers: `c.countryCode === null` decides `unattributed.cities`, `?? NO_COUNTRY` decides the group key. An `undefined` code is grouped as unattributed but not counted as one, and is emitted as `undefined` (which `JSON.stringify` drops). | `qa/i7-edges.mjs`, "the composite city key" | implementation → builder |
+| **R28-6** | MINOR | `docs/ARCHITECTURE.md` §8.4 A-31 Part 5 residue 3 | Residue 3 discloses one city becoming two rows but not the inverse: two unattributed same-name cities in genuinely different countries **merge** into one row with both trip ids. The composite key's guarantee fails exactly where the census exists to measure. | `qa/i7-edges.mjs`, "two unattributed same-name cities merge into ONE row" | **design** → architect (doc) |
+| **R28-7** | MINOR | `cli.ts:174` | An active trip's unreached countries are printed as fact with a date range and no marker: on 2026-08-14 the CLI reports `GB 2026-08-07 → 2026-08-14 (1 trip)` for a trip that does not reach London until the 20th. A-31 residue 2 licenses the *inclusion*; nothing says the surface must mark it, and I-8's map is where `CLAUDE.md`'s "never present a suggestion as the user's own plan" will break. | `node cli.ts stats --today 2026-08-14` | **design** → architect (I-8 spec) |
+| **R28-8** | MINOR | `docs/ROADMAP.md:729,743` | KD-65's drift is real (nine `qa/` scripts pinned at 73, confirmed) and is **not** masking anything — but the same drift is now in a contract document: ROADMAP's Phase 1 criterion E still says *"73 symbols"* / *"73 entries"* against a shipped 75, and `qa/r14-horizon-copy.mjs:954` has a second stale ceiling (KD ids pinned at 53, now 65). ROADMAP:1162 makes updating criterion E mandatory in the same commit as any export. | `node --experimental-strip-types qa/r14-horizon-copy.mjs` (2 FAIL, both ceilings) | **design** → architect (doc) |
+| **R28-9** | MINOR | `cli.ts:159` | `node cli.ts stats --today bogus` exits on a raw `Error: invalid IsoDate` stack trace; the sibling `cli.ts conflicts --today bogus` accepts the garbage and prints `(today = bogus)`. Neither validates `--today`. | `node cli.ts stats --today bogus` | implementation → builder |
+
+**R28-1, at length, because the reasoning is the evidence.**
+
+`derive/summary.ts:23` is `dayNumber(d) = Math.floor(Date.UTC(y, m-1, dd)/86400000)`. `Date.UTC`
+carries the ES legacy two-digit-year rule: a `year` argument of 0–99 means 1900–1999. Measured:
+`Date.UTC(1,0,1)` is `1901-01-01T00:00:00.000Z`, `Date.UTC(99,0,1)` is `1999-01-01`, and
+`Date.UTC(100,0,1)` is `0100-01-01` — so the mangle is exactly the 0–99 window. Consequently
+`dayNumber('0001-01-01') === dayNumber('1901-01-01')`, both `-25202`.
+
+`derive/summary.ts:28-30` is the inverse, and it pads the month and the day but not the year:
+`` `${dt.getUTCFullYear()}-${p(m)}-${p(d)}` ``. So a genuine year below 1000 comes back with a
+short year — `fromDayNumber(dayNumber('0500-06-01'))` is `"500-06-01"` — which `parseIsoDate`,
+eight lines above it in the same file, throws `invalid IsoDate` on.
+
+Three consequences, each executed rather than reasoned:
+
+1. **`travelStats` emits a date its own parser rejects.** A row starting `0500-06-01` reports
+   `firstVisit: "500-06-01"`. `TravelStatsCountry.firstVisit` is typed `IsoDate`.
+2. **Two trips 1900 years apart become one interval.** A year-`0001` trip and a year-`1901` trip
+   over the same day-of-year report `daysTravelled: 10`, not 20 — the union collapsed them,
+   because they are literally the same day numbers.
+3. **The product-reachable one, and it is data loss.** `PastTripForm.tsx:76` gates the Year field
+   on `/^\d{4}$/` and nothing else; the input at `:208` does
+   `value.replace(/\D/g,'').slice(0,4)`, so a leading zero is preserved and `0202` — a plausible
+   mistype of `2020` — is valid. Driven through the real client store over the real memory port,
+   exactly as the form does it: `createTrip` accepts the range, `ensureDays` mints 365 days whose
+   `date` **and `id`** are `"202-01-01"` … `"202-12-31"`, the document is written to storage, and
+   the next cold start gets `TripParseError: expected YYYY-MM-DD (at $.days[0].date)`
+   (`serialize/fromJSON.ts:77`). The trip is in storage, it is the only copy, and it can never be
+   opened again. `Library.tsx` badges it *"could not be read"* — graceful degradation around data
+   that is gone, which is the right UI over the wrong outcome.
+
+   Year `0026` is the quieter half and arguably the worse one, because nothing complains at all:
+   the days are minted as `1926-01-01` … `1926-12-31` against a stored `startDate` of
+   `0026-01-01`, `validateTrip` returns **0 issues** (its density check runs through the same
+   mangled `dayNumber`, so the document is internally consistent in mangled space and only the
+   two date *strings* disagree with it), the document round-trips, and `travelStats` reports 365
+   days travelled for a trip whose dates are meaningless.
+
+**Why this lands on I-7 rather than only on Phase 1.** `dayNumber`, `fromDayNumber`,
+`PastTripForm` and `ensureDays` all predate this increment and the builder did not introduce the
+bug. But A-31 Part 4 step 5 justifies the sort-and-sweep with *"an `IsoDate` admits year `0001`,
+and a hand-written row would otherwise allocate millions of entries"*, and
+`packages/core/test/travelStats.test.ts:280` asserts `daysTravelled === 365` for exactly that row.
+That test is green because it is silently measuring **1901**, which also has 365 days. A test that
+certifies a wrong answer is worse than no test — it is the artefact the next reader will trust —
+and it is I-7's.
+
+**Route: architect first.** Two decisions are needed and neither is a builder's: (1) does `IsoDate`
+have a stated lower bound (and does `isIsoDate` / `fromJSON` / `PastTripForm` enforce it), or do
+`dayNumber`/`fromDayNumber` get a civil-calendar implementation that does not route through
+`Date.UTC`? and (2) A-31's year-`0001` clause is either honoured or withdrawn — it cannot stay as
+a justification for an algorithm whose helpers cannot represent the year it names. Then builder,
+with `qa/i7-year.mjs` as the acceptance oracle.
+
+**R28-2, and why "the criterion passes" is not the same as "the criterion works".**
+
+A-31 Part 6 did the right thing: it caught that the old grep was *false* (it would have found
+`cityCount` and `dayCount`, which have been persisted since Phase 1), withdrew it rather than
+reinterpreting it, and replaced it with two mechanical halves. Half (b) is
+`test/stats-storage.test.ts:172`:
+
+```js
+for (const m of src.matchAll(/([A-Za-z$_][\w$]*)\??\s*:\s*number\b/g)) {
+```
+
+That matches a **type declaration**. It cannot match a **value**, and a persisted count is a value.
+`bash qa/i7-exit6.sh` runs eight faults, each applied alone in a throwaway `git worktree` at HEAD.
+Five are caught. Three are not:
+
+- **F8 — the one that matters.** Both `SUMMARIES.put(summary, id)` call sites in
+  `apps/web/src/ports/storage.ts` (`:226`, `:279`) become
+  `put({ ...summary, countriesVisited: summary.countryCodes.length, daysTravelled: summary.dayCount }, id)`.
+  Those two numbers are now in IndexedDB, on every write, with nothing to recompute them from —
+  the literal `countriesVisited: 47` that A-31 Part 6 exists to forbid. Measured under the fault:
+  exit criterion 6 **5 pass / 0 fail**; the full suite **795 pass / 0 fail**;
+  `tsc -p apps/web/tsconfig.json --noEmit` **clean**, because a spread widens the object type and
+  excess-property checking never fires.
+- **F6** — the same two counts declared through a one-line `type Tally = number` alias. Green.
+- **F4** — `daysAbroad: number` added to `TripSummaryRow` *and minted into every row*. Green in
+  **both** halves, because the classifier's `SHAPE` wants a counting suffix and `PLURAL` wants a
+  plural domain noun and `daysAbroad` is neither. So half (a)'s stated property — *"a field added
+  to the row without being added to the list fails the run"* — is not true for every count-shaped
+  field, only for conveniently-named ones.
+
+**KD-64, assessed rather than accepted.** The two entries A-31 Part 6 did not enumerate are both
+legitimate and the builder's judgement on them is right: `horizonDays` is a look-ahead duration on
+a compile-time `RuleSpec`, never written anywhere, and `TravelStats`' own fields are the return
+type of a pure function whose non-persistence is pinned mechanically by the fourth test (which I
+verified is live — fault F7 reds it). The hole is not the allow-list. It is the shape of the check.
+§0.5 is explicit that *"a rule that cannot catch its own bug does not ship"*, and this rule cannot.
+Route: **architect** for what half (b) must actually assert — a check at the value/port level, or
+an assertion that the set of keys reaching `SUMMARIES.put` is exactly `TripSummaryRow`'s — and
+**builder** for the classifier, which should also cover `packages/tokens/src` (`ROOTS` omits it).
+
+**What I attacked and could not break.**
+
+- **The interval union**, eight ways: `[a,b]` + `[b,c]` sharing an endpoint counts day `b` once
+  (20, not 21); adjacency neither invents nor merges a day; a one-day gap stays a gap; a contained
+  interval adds nothing; a short interval between two long ones does not truncate the run (32);
+  two zero-day trips on the same day are one day; month, year and leap-day rollovers are exact
+  (7 / 3 / 2); pre-epoch spans and negative day numbers round-trip.
+- **The `today` clamp on its five exact days**: `startDate` → 1, `+1` → 2, `endDate` → full span,
+  `endDate+1` → same span via `completed`, `startDate−1` → 0 and `trips.planned: 1`. Two
+  simultaneously-active overlapping trips both clamp and union to 10.
+- **Purity**, harder than the shipped test: a **deep-frozen** `readonly` input does not throw; two
+  calls are deep-equal; the caller's array order is byte-identical afterwards; a shuffled input
+  gives a deep-equal result; every output array is fresh (not frozen, so not the input's); and
+  mutating the returned `tripIds` does not poison the next call.
+- **Grouping**: NFC and NFD `Zürich` are one row; space-, tab-, NBSP- and empty-named cities are
+  zero rows, one `unnamedCities` and one `located.cities` each; a city literally named `US|Paris`
+  does not collide with `Paris` in `US`, because the country prefix is fixed-width as the comment
+  claims. Duplicate `countryCodes` on one row credit the trip once. `tripIds` come out in
+  canonical `(startDate, id)` order with no duplicates.
+- **A-31 Part 4's closing sentence, through the CLI on three hand-built documents**: a one-city
+  trip with nothing placed prints *"nothing could be placed on the map"* with `located.cities 1`;
+  a trip with no city at all prints *"no places yet"*; a blank-named city prints *"cities with no
+  usable name: 1"*. The two states A-31 says must be distinguishable are distinguishable.
+- **The seven injected faults**, re-derived from A-31's wording and re-run: all seven red, blast
+  radius measured across the whole suite (M1→4, M2→2, M3→2, M4→2, M5→5, M6→1, M7→1). The
+  builder's disclosed near-miss on M7 is genuinely repaired.
+
+**The three "could not verify" items, closed.** (1) The 3→4 rescan against real version-3 rows —
+seeded by minting with the shipped `tripSummary` and deleting exactly what I-7 added, then
+`refreshLibrary()` + `rescanSummaries()`: every row reaches 4, every census equals a fresh mint,
+`saveCount` does not move and `refreshCount` is 3. (2) `travelStats` over a real multi-row library
+straight out of storage: `{completed: 2, active: 1}`, `daysTravelled` 28, countries and cities
+sorted, the active trip's `lastVisit` clamped, the store's own array untouched. (3) The year-`0001`
+case now has a **cost** assertion: 200 rows each spanning `0001-01-01`…`9999-12-31` sweep in
+**1.9 ms**, 50,000 rows in **283 ms** — O(n log n) in rows, so a `Set` or a quadratic sweep would
+be caught. (That probe is also what first exposed R28-1.)
 
 ## Round 27 — I-6a: A-29's stated-country gate and A-30's `refreshSummary` (`master` @ `481b7e8`)
 
