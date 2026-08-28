@@ -1,0 +1,132 @@
+{
+  "$generatedBy": "cairn/tools/gen-golden.mjs",
+  "$source": "europe-2026-itinerary.html (read-only)",
+  "$sourceSha256": "40955ca0b182dddcc33540accadf2a65a329bc20b9e6ca109c9884e776bb06d2",
+  "$what": "countryOf() over every coordinate-bearing record of the reference trip, using the bundled COUNTRY_INDEX. Each country names the first stop, in document order, that produced it. NO COORDINATES: ids and names only — see the note in gen-golden.mjs.",
+  "index": {
+    "scale": "ne_110m",
+    "source": "nvkelso/natural-earth-vector@v5.1.2/geojson/ne_110m_admin_0_countries.geojson",
+    "countries": 175,
+    "rings": 286
+  },
+  "stops": {
+    "total": 143,
+    "withCoordinates": 132,
+    "attributed": 128,
+    "unattributed": 4
+  },
+  "places": {
+    "total": 95,
+    "withCoordinates": 94,
+    "attributed": 91,
+    "unattributed": 3
+  },
+  "countries": [
+    {
+      "code": "AT",
+      "stops": 20,
+      "places": 15,
+      "namedBy": {
+        "dayId": "2026-08-08",
+        "stopId": "stop-4",
+        "name": "Condor DE4345 → Vienna (VIE)"
+      }
+    },
+    {
+      "code": "CZ",
+      "stops": 35,
+      "places": 25,
+      "namedBy": {
+        "dayId": "2026-08-15",
+        "stopId": "stop-53",
+        "name": "Smartwings QS1083 → Prague"
+      }
+    },
+    {
+      "code": "DE",
+      "stops": 2,
+      "places": 0,
+      "namedBy": {
+        "dayId": "2026-08-07",
+        "stopId": "stop-2",
+        "name": "Condor DE2081 → Frankfurt"
+      }
+    },
+    {
+      "code": "GB",
+      "stops": 10,
+      "places": 6,
+      "namedBy": {
+        "dayId": "2026-08-21",
+        "stopId": "stop-103",
+        "name": "British Airways BA863 → London Heathrow"
+      }
+    },
+    {
+      "code": "HR",
+      "stops": 35,
+      "places": 24,
+      "namedBy": {
+        "dayId": "2026-08-10",
+        "stopId": "stop-18",
+        "name": "Ryanair VIE → DBV"
+      }
+    },
+    {
+      "code": "HU",
+      "stops": 24,
+      "places": 21,
+      "namedBy": {
+        "dayId": "2026-08-18",
+        "stopId": "stop-80",
+        "name": "Ryanair PRG → Budapest"
+      }
+    },
+    {
+      "code": "US",
+      "stops": 2,
+      "places": 0,
+      "namedBy": {
+        "dayId": "2026-08-07",
+        "stopId": "stop-1",
+        "name": "Arrive LAX — Tom Bradley International"
+      }
+    }
+  ],
+  "unattributedStops": [
+    {
+      "dayId": "2026-08-13",
+      "stopId": "stop-38",
+      "name": "Blue Cave, Biševo"
+    },
+    {
+      "dayId": "2026-08-13",
+      "stopId": "stop-39",
+      "name": "Stiniva Cove, Vis"
+    },
+    {
+      "dayId": "2026-08-13",
+      "stopId": "stop-40",
+      "name": "Budikovac / Blue Lagoon — snorkel stop"
+    },
+    {
+      "dayId": "2026-08-13",
+      "stopId": "stop-41",
+      "name": "Hvar Town"
+    }
+  ],
+  "unattributedPlaces": [
+    {
+      "placeId": "place-38",
+      "name": "Hvar Town"
+    },
+    {
+      "placeId": "place-39",
+      "name": "Blue Cave, Biševo"
+    },
+    {
+      "placeId": "place-40",
+      "name": "Stiniva Cove, Vis"
+    }
+  ]
+}

@@ -6,7 +6,7 @@
  * `OpeningHours`"* — the parser's (anything, via `o.hours as Place['hours']`), `validateTrip`'s
  * (`wellFormedHours`, loose) and the copy's (`weeklyForCopy`, strict) — and no two agreed. The
  * ruling collapses them onto this module, which is deliberately **off**
- * `packages/core/src/index.ts` (§2.10 stays at 71 runtime symbols).
+ * `packages/core/src/index.ts` (§2.10 is 73 runtime symbols since Phase 2 I-5; this is not one).
  *
  * The predicate's contract is one sentence: **`isOpeningHours(v)` is true exactly when
  * `fromJSON` accepts `v` as a `Place.hours`.** Both halves are pinned below — the predicate's
@@ -343,9 +343,12 @@ test('A-20 assertion 5: the clock-shape regex appears exactly once in packages/c
   assert.match(matches[0], /^model\/openingHours\.ts:/);
 });
 
-test('A-20 assertion 6: isOpeningHours is NOT on the public surface (§2.10 stays at 71)', async () => {
+test('A-20 assertion 6: isOpeningHours is NOT on the public surface (§2.10 is 73, and none of them is this)', async () => {
   const core = await import('../src/index.ts');
-  assert.equal(Object.keys(core).length, 71);
+  // 71 at revision 19; 73 since Phase 2 I-5 added `countryOf` and `COUNTRY_INDEX` under §8.4
+  // clause 1. The assertion this test exists for is the loop below — the size is the tripwire
+  // that says a widening happened at all, and it is re-derived by counting, never quoted.
+  assert.equal(Object.keys(core).length, 73);
   for (const name of ['isClockTime', 'readWeeklyEntry', 'isOpeningHours']) {
     assert.equal(name in core, false, `${name} widened §2.10's surface`);
   }

@@ -4,7 +4,7 @@
  * A `CityKey` is a minted opaque id, so the only thing two trips can compare a city by is
  * its display name. This is that comparison, in one place: NFC, whitespace collapsed,
  * trimmed, lowercased. It is deliberately NOT exported from `packages/core/src/index.ts`
- * (§2.10 stays at 71 runtime symbols) — it is an internal shared by `build/` and `derive/`.
+ * (§2.10 is 73 runtime symbols since Phase 2 I-5) — it is an internal shared by `build/` and `derive/`.
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

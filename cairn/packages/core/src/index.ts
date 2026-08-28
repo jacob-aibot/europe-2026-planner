@@ -1,8 +1,9 @@
 /**
  * `@cairn/core` — the public surface of ARCHITECTURE §2.10 and nothing else.
  *
- * **69 runtime symbols, one list, set equality in both directions** (revision 5, QA R2-12,
- * BUILD-NOTES KD-33). It used to be 110 against a 50-name list plus a 60-name "beyond §2.10,
+ * **73 runtime symbols, one list, set equality in both directions** (69 at revision 5, QA R2-12,
+ * BUILD-NOTES KD-33; +`reassertRetirements` at revision 6; +`lifecycle` at Phase 2 I-1;
+ * +`countryOf` and `COUNTRY_INDEX` at Phase 2 I-5). It used to be 110 against a 50-name list plus a 60-name "beyond §2.10,
  * each with a justification" list, which made the acceptance criterion true by construction:
  * 110 = 50 + 60 for *any* 110 exports. A boundary the Phase 2 server and the Phase 4 native
  * app are written against cannot be "110 against 50, enumerated".
@@ -33,7 +34,7 @@ export type {
   MoveOverride, CostRollUp, DisplayStatus, OpeningHours, Link, TripCtx, TripMeta, DatePrecision,
 } from './model/types.ts';
 export { SCHEMA_VERSION, LOCAL_OWNER } from './model/types.ts';
-export type { TripId, DayId, StopId, PlaceId, BookingId, ConflictId, UserId, CityKey, RuleId, IsoDate, ClockTime, Currency, IdFactory, ClockPort } from './model/ids.ts';
+export type { TripId, DayId, StopId, PlaceId, BookingId, ConflictId, UserId, CityKey, RuleId, CountryCode, IsoDate, ClockTime, Currency, IdFactory, ClockPort } from './model/ids.ts';
 export { sequentialIds } from './model/ids.ts';
 export { costFromDisplay, formatRange } from './model/money.ts';
 // `TripParseError` / `ForeignDocumentError` are model symbols by §2.10's grouping; they are
@@ -61,7 +62,15 @@ export { acceptCandidate, rejectCandidate } from './build/candidates.ts';
 export { copyStopInto } from './build/copyStop.ts';
 export type { CopyStopSource, CopyStopCtx } from './build/copyStop.ts';
 
-// ---- derive (22) -------------------------------------------------------------
+// ---- derive (24) -------------------------------------------------------------
+// `countryOf` and `COUNTRY_INDEX` join in revision 20's terms under Phase 2 I-5: §8.4 clause 1
+// names `countryOf(at, index)` as a callable (P2), and the same clause's revision-10 consequence
+// says the index "is generated code inside `packages/core` and is exported as a value from
+// `index.ts` so every call site can pass it" — which `tools/gen-golden.mjs` already is (P1),
+// since §2.10 ceiling (1) forbids it reaching into `geo/countries.gen.ts` by module path.
+export { countryOf } from './derive/country.ts';
+export { COUNTRY_INDEX } from './geo/countries.gen.ts';
+export type { CountryIndex, CountryEntry, CountryEntryInit, CountryRing, CountryBox } from './geo/countryIndex.ts';
 // `lifecycle` joins in revision 10 under P2: §8.1 names it, and §8.9 is the documentation
 // change §2.10's own rule requires before a symbol may reach this file.
 export { lifecycle } from './derive/lifecycle.ts';

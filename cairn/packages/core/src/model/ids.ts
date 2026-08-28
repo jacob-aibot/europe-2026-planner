@@ -15,6 +15,13 @@ export type ConflictId = string;
 export type UserId = string;
 export type CityKey = string;
 export type RuleId = string;
+/**
+ * An ISO 3166-1 alpha-2 country code, uppercase (§8.4). An alias, not a brand: `City.countryCode`
+ * has been a plain `string` since revision 1 and hand-supplied at import (§2.13), and widening
+ * that field to a branded type would be a migration, not a naming change. What this alias buys is
+ * that `countryOf`'s return type says what it returns.
+ */
+export type CountryCode = string;
 
 /**
  * The pseudo-city a day carries when it belongs to no city on the trip — a pure travel day

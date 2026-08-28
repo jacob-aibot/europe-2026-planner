@@ -75,7 +75,7 @@ import assert from 'node:assert/strict';
 
 // §2.10's "tests do not create surface": the four public symbols come from the index, and
 // `addPlace` / `TRANSIT_CITY_KEY` are internals imported by module path. Nothing here widens the
-// surface — §2.10 stays at 71.
+// surface — §2.10 is 73 since Phase 2 I-5, and none of the six below is one of them.
 import { addStop, copyStopInto, createTrip, sequentialIds } from '../src/index.ts';
 import type {
   BuildCtx, City, LatLng, Place, PlaceLink, Stop, StopPlacement, Trip,

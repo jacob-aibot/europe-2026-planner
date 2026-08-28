@@ -211,6 +211,98 @@ writeJson('core-import.json', {
   issues,
 });
 
+/**
+ * ---- countries.json — ROADMAP Phase 2 I-5's attribution golden ---------------
+ *
+ * Exit criterion 4's shape, and the reason it is shaped that way: **every distinct country names
+ * the stop that produced it.** A country code appearing in a summary row with nothing behind it
+ * is precisely the failure the lifetime map cannot survive — a pin on a map with no travel under
+ * it — so the golden refuses to record a code it cannot attribute to a named record.
+ *
+ * **No coordinate is written here.** The root `CLAUDE.md` boundary is that no copy of the live
+ * planner's `DAYS` is committed under `cairn/`, and a list of 132 latitudes is a copy of the part
+ * of `DAYS` that matters most. `core-conflicts.json` already carries a test asserting no float
+ * reached it; `countries.json` carries the same one. Ids and names, which the other goldens
+ * already hold, are enough to name a producing record.
+ */
+const stopRows = [];
+for (const day of trip.days) for (const stop of day.stops) stopRows.push({ dayId: day.id, stop });
+for (const stop of trip.pool) stopRows.push({ dayId: null, stop });
+
+const byCountry = new Map();
+const unattributedStops = [];
+let stopsWithCoords = 0;
+for (const { dayId, stop } of stopRows) {
+  const at = core.stopLatLng(stop, trip);
+  if (!at) continue;
+  stopsWithCoords++;
+  const code = core.countryOf(at, core.COUNTRY_INDEX);
+  if (code === null) {
+    unattributedStops.push({ dayId, stopId: stop.id, name: stop.name });
+    continue;
+  }
+  const row = byCountry.get(code) ?? { code, stops: 0, places: 0, namedBy: null };
+  row.stops++;
+  // First in document order. Stable, so the golden does not churn on an unrelated edit.
+  if (!row.namedBy) row.namedBy = { dayId, stopId: stop.id, name: stop.name };
+  byCountry.set(code, row);
+}
+
+const unattributedPlaces = [];
+let placesWithCoords = 0;
+for (const place of trip.places) {
+  if (!place.at) continue;
+  placesWithCoords++;
+  const code = core.countryOf(place.at, core.COUNTRY_INDEX);
+  if (code === null) {
+    unattributedPlaces.push({ placeId: place.id, name: place.name });
+    continue;
+  }
+  const row = byCountry.get(code) ?? { code, stops: 0, places: 0, namedBy: null };
+  row.places++;
+  byCountry.set(code, row);
+}
+
+for (const [code, row] of byCountry) {
+  if (!row.namedBy) {
+    throw new Error(
+      `gen-golden: country "${code}" is attributed by ${row.places} place(s) and NO stop. ` +
+        'ROADMAP exit criterion 4: a country with no stop named for it fails the run. Either a ' +
+        'stop resolves to it and the walk above missed it, or the country does not belong on the ' +
+        "trip's map at all.",
+    );
+  }
+}
+
+writeJson('countries.json', {
+  ...header(
+    'countryOf() over every coordinate-bearing record of the reference trip, using the bundled ' +
+      'COUNTRY_INDEX. Each country names the first stop, in document order, that produced it. ' +
+      'NO COORDINATES: ids and names only — see the note in gen-golden.mjs.',
+  ),
+  index: {
+    scale: core.COUNTRY_INDEX.scale,
+    source: core.COUNTRY_INDEX.source,
+    countries: core.COUNTRY_INDEX.countries.length,
+    rings: core.COUNTRY_INDEX.countries.reduce((n, c) => n + c.rings.length, 0),
+  },
+  stops: {
+    total: stopRows.length,
+    withCoordinates: stopsWithCoords,
+    attributed: stopsWithCoords - unattributedStops.length,
+    unattributed: unattributedStops.length,
+  },
+  places: {
+    total: trip.places.length,
+    withCoordinates: placesWithCoords,
+    attributed: placesWithCoords - unattributedPlaces.length,
+    unattributed: unattributedPlaces.length,
+  },
+  countries: [...byCountry.values()].sort((a, b) => (a.code < b.code ? -1 : 1)),
+  unattributedStops,
+  unattributedPlaces,
+});
+
 writeFileSync(resolve(HERE, '..', 'fixtures', 'europe2026.sha256'), `${sha256}  europe-2026-itinerary.html\n`);
 
 function writeJson(name, value) {

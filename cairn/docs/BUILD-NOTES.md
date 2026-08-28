@@ -1,5 +1,39 @@
 # Cairn — build notes, Phase 1 (and Phase 2 in progress)
 
+> **Addendum, on Phase 2 **I-5** — `tools/gen-countries.mjs` + `countryOf` + the attribution
+> golden. The first increment of step 2b.**
+> Scope was I-5 and nothing else: **three new source files (one of them generated), two new test
+> files, one new golden, one new tool**, plus the export-count updates rule 2 of *"four rules that
+> apply to every increment"* requires in the same commit. Nothing in `packages/client`, nothing in
+> `apps/web/src`, nothing under `qa/`, nothing at the repo root, no `schemaVersion` bump, no new
+> `REDACTION_PATTERN`, no change to the visual roadmap. **One new KD (51).** Written in the
+> increment's own stated order: the size-budget test first (red), then the generator, then the
+> measurement, then the number.
+>
+> | | |
+> |---|---|
+> | **What runs, and the exact command** | `cd cairn && npm run typecheck && npm run test:tap`. The generator is a build-time tool, run by hand and never by the product: `node tools/gen-countries.mjs` (writes), `--dry-run` (measures only), `--scale 50m\|10m` (the escalation), `--audit-only` (runs §8.4's correctness floor against the committed module). The golden comes from `npm run golden`. |
+> | **The size-budget test, first and by construction** | `packages/core/test/0-countryBudget.test.ts`. The `0-` prefix is load-bearing: the `test`/`test:tap` scripts expand `packages/core/test/*.test.ts` and the shell sorts, so this file heads the argv list. It **never imports the generated module** — it `statSync`s it — because a guard that has to load the thing it guards cannot report on a module too big to load. **`EMITTED_BYTES = 175_085`**, copied from the generator's own last line, not rounded and not in any document (§8.4: *"the number goes in the test, not in this paragraph"*). Three more assertions beside it: the budget is under a stated 1 MiB type-stripping ceiling; the generated module declares its generator, source, pinned tag and sha256; and the payload is **one string literal** (zero `[` outside it, <3 kB of TypeScript around it, >98 % of the file inside it) rather than a 10,000-element array literal the stripper would have to walk. |
+> | **The scale — 1:110m, and the escalation measured rather than assumed** | **KD-51 is the entry; this row is the number.** §8.4's floor says escalate to 1:50m if the Dalmatian islands miss. They do miss, so I ran it, and 1:50m is worse on every figure the floor is written in: **175,085 bytes / 3 unattributed places / 4 unattributed stops** at 1:110m, against **1,648,598 / 24 / 31** at 1:50m and **9,072,727 / 21 / 26** at 1:10m. Coarse rings bulge outward over water and catch shoreline points; fine ones track the waterline and drop them. At 1:50m Dubrovnik's Old Town and Split's Diocletian's Palace group both fall outside Croatia. So the shipped scale is **1:110m**, the two open-sea islands are `null`, and the criterion — not the code — is what I routed. |
+> | **The fetch, and what it is pinned to** | `raw.githubusercontent.com/nvkelso/natural-earth-vector/**v5.1.2**/geojson/…`, exactly as §8.4's citation names it, `naturalearthdata.com` being 403 through the proxy. All three scales fetched and **checksum-verified against §8.4's own recorded figures** — 110m `6866c877…` / 838,726 B and 50m `3e458fc0…` / 3,083,490 B both matched to the byte. 10m's pin (`239eec57…` / 13,287,234 B) is marked in the generator as *measured here, not in §8.4*, because the citation records no checksum for it. A mismatch makes the generator **exit 3 without writing**: a moved tag is an architect's ruling, not a regeneration. |
+> | **What the generator checks before it writes** | Four things, all measured: (1) the download matches the pin; (2) quantisation to 4 dp (~11 m) moves **0** attributions on a 1.7° global grid re-attributed against the unquantised rings; (3) the emitted string literal re-parses to exactly the rings that produced it; (4) **`countryOf` and the generator's own independent ray cast agree on 0 of ~11,000 grid points** — the generator deliberately does not certify its output with the function under test. Then it runs §8.4's correctness floor over the reference trip and prints every unattributed record by name. |
+> | **`countryOf`, and the two things it does not have** | `packages/core/src/derive/country.ts`. Pure, index injected, even-odd ray cast over every ring a country owns at once — which is why holes and multi-part countries need no special case and Lesotho comes out `LS` while Johannesburg comes out `ZA`. It contains **no distance function at all**, so "snap to nearest" is not a shortcut someone can take later by accident, and **no network of any kind** (a test greps the three files for `fetch`, `XMLHttpRequest`, `node:` and `require`). §2.9 A-21's read-once rule is honoured at the one boundary it has: `at.lat` and `at.lng` are read once each into locals and `inRange` is handed the snapshot, so the values that were range-checked are the values the cast uses. |
+> | **The golden — `fixtures/golden/countries.json`** | Criterion 4's shape: **every distinct country names the stop that produced it**, and `gen-golden.mjs` **throws** rather than writing a country with no stop behind it. Seven countries (`AT CZ DE GB HR HU US`), 128 of 132 coordinate-bearing stops and 91 of 94 places attributed. **No coordinate is written to it** — root `CLAUDE.md`'s boundary is that no copy of `DAYS` lands under `cairn/`, and 132 latitudes is a copy of the half of `DAYS` that matters most — and a test walks the parsed golden asserting every number in it is an integer. (`conflict.test.ts`'s text-grep version of that check would have tripped on the `v5.1.2` in the citation; this one walks values, not text.) |
+> | **Exit criterion 4, item by item** | Golden ✓ (and every `namedBy` re-verified: the stop exists, keeps its name and day, and re-attributes to its country). Mid-Atlantic `null` ✓ (three ocean points). Fisherman's Bastion ✓ **both halves** — `47.5025 → HU`, `48.5025 → SK`, and the same document still produces exactly one new conflict, `geo_outlier`, blocker, naming `place-68`. Dalmatian islands **partial**: Lokrum → `HR`; `Blue Cave, Biševo` and `Stiniva Cove, Vis` → `null` at every scale, pinned as measured answers, KD-51. Attack list ✓ — poles (`90,0 → null`; `-90,0 → AQ`), antimeridian (`±179.9 → RU`, `-180 → RU`, exactly `+180 → null` and documented as arbitrary-but-deterministic, `181 → null` not wrapped, Fiji `null`), exactly `(0,0) → null`, enclave (Lesotho `LS` through the hole in `ZA`), international waters (four points). |
+> | **Ceilings, re-derived by running** | `npm run typecheck` clean, both projects, exit 0. `npm run test:tap` **649 pass / 0 fail** (**620 → 649, +29**: 4 budget + 25 attribution). `Object.keys(core).length` **73** (71 before). Reference trip **2 blockers / 4 warnings / 11 notes** at `FIXTURE_TODAY = 2026-08-01`, `validateTrip` **11** issues, `geoCheck` **0** findings — all unmoved. `npm run golden` and `npm run sample` regenerate **byte-identically**: `git status --porcelain` before and after is the same list, sample sha unmoved at **`40955ca0b182`**, and `countries.json` is a **new** file, not a change to an existing golden. |
+> | **`node --test packages/core`, and what that command actually does here** | Exit 0. Worth stating precisely, because the ship gate rests on it: with an explicit path argument Node 22.22 treats `packages/core` as a **module to load**, resolving it through the workspace `package.json` to `src/index.ts` — so the command is exactly the check that matters (does the index, and therefore the generated module, load under type stripping?) and not a directory scan. It reports `1..1, pass 1`. The 406 core tests come from `node --test 'packages/core/test/*.test.ts'`, which is what the npm scripts expand. |
+> | **Measured cost of the generated module** | With the stripper already warm, importing `countries.gen.ts` costs **10.9 ms** (of which `JSON.parse` 2.2 ms and bbox+sort 2.2 ms) against ~2 ms for an ordinary core module — ~11 ms per test process, ~0.25 s across the suite. 20,000 lookups take **38 ms**. |
+> | **The web bundle grows by 174 kB, and it is not yet used by anything** | `apps/web` `dist/assets/index-*.js` goes **598.73 kB → 772.74 kB** (gzip 172.06 → 247.31 kB). This is a consequence of §8.4's own requirement that the index be *"exported as a value from `index.ts` so every call site can pass it"*, which puts it in the graph two increments before I-8 draws the lifetime map from it (§8.4: *"the rings are already in the bundle; a filled-country world map needs nothing else"*). So the bytes are budgeted by design — but they land early, they are dead weight until I-8, and if the architect wants them lazy that is a §8.4 decision and a `dynamic import()` in `apps/web`, not something I should take in code. Reported, not worked around. The >500 kB chunk advisory was already present before this pass. |
+> | **What I stubbed** | Nothing. I-5 is complete as specified. What I did **not** build, because it is I-6's and I-8's: `tripSummary(trip, index)`, `countryCodes` on `TripSummaryRow`, `SUMMARY_VERSION`, `travelStats`, and any screen. `countryOf` and `COUNTRY_INDEX` have no consumer inside the product yet — deliberately, per I-5's own *"user-visible outcome: none yet"*. |
+> | **What I could not verify** | Two things, both stated rather than glossed. (1) **No checksum comparison against naturalearthdata.com's own artefact was possible** — that host is 403 through this proxy, which is §8.4's own limit, not a new one; the identity claim rests on the file's content (feature count, `featurecla`, NE's property schema) and the repo's licence text, exactly as the citation says. (2) I did not run anything under `qa/`; `qa/r14-horizon-copy.mjs` §7 pins `kds.length === 49` against a BUILD-NOTES that held 50 before this pass and holds **51** after, so that assertion moves further out — it was already failing and closing it is QA's, not mine. |
+> | **Objection to the design** | **One, and it is KD-51, stated here as an objection rather than only as a divergence.** §8.4's correctness floor prescribes a remedy — *"if 1:110m misattributes or drops one of them, the generator uses 1:50m and the budget moves"* — that the data does not support: at this trip's coordinates 1:50m is nine times the bytes for **eight times the unattributed records**, and 1:10m is worse than both. I implemented the floor's *stated purpose* (detection quality decides the dataset) rather than its stated mechanism (escalate one step), because following the mechanism would have shipped a measurably worse index to satisfy a sentence. That choice is disclosed, the numbers are in KD-51 and reproducible with one command, and the criterion itself is routed to the architect rather than patched around — sequencing rule 5. My second, smaller objection is in KD-51's last paragraph: at 1:110m four micro-enclaves are **misattributed** rather than unattributed (San Marino/Vatican → `IT`, Monaco → `FR`, Liechtenstein → `AT`), which is the one failure mode the honest-hole rule does not cover and which no scale below 1:10m fixes. |
+>
+> The status note further down still says *"I-5 … I-11 untouched"*. That line is superseded for
+> **I-5** and for I-5 only; I-6 … I-11 are untouched and everything else in it stands.
+> `CAIRN_VISUAL_ROADMAP.md` and its `.html` twin were **not** updated on this pass — the task that
+> routed I-5 excluded them explicitly — so they still show 2b as not started, which is now stale by
+> one increment.
+
 > **Addendum, on `f515768` — ARCHITECTURE revision 19's **A-25** (QA R20-1…R20-5): the guard's
 > completeness becomes structural, the last site closes, and the arc closes with it.**
 > Scope was A-25 Parts 1–4 and nothing else: **one source file (`copyStop.ts`, one hoist), one test
@@ -1668,6 +1702,60 @@ rebuilds the recipient's day. That second read is A-24 Part 1's *"irreducible fl
 the spread itself"* discriminator, it is the recipient's own value, it crosses no person boundary, and
 `readOnce.test.ts` does not census `days` rows by A-24's own decision. `qa/r19-census-gaps.mjs` §2
 asserts only that nothing throws, which is the half that was a §2.1 violation.
+
+### KD-51 — the correctness floor's escalation makes attribution worse, measured, so I-5 ships 1:110m and routes the criterion
+
+`tools/gen-countries.mjs` · `packages/core/test/country.test.ts` · **ARCHITECTURE §8.4 clause 1's
+"correctness floor", ROADMAP Phase 2 I-5's exit criterion 4.**
+
+**What the contract says.** §8.4: *"1:110m is coarse at coastlines and islands … If 1:110m misattributes
+or drops one of them, the generator uses 1:50m and the budget moves. Detection quality decides the
+dataset; the budget does not."* I-5 names the three records: `Blue Cave, Biševo`, `Stiniva Cove, Vis`
+and Lokrum, all three attributing to **HR**.
+
+**What I measured.** At 1:110m, `Lokrum Island` attributes to HR and the other two are `null`. So the
+escalation rule fires. I ran it — and 1:50m is **worse by every number the floor is written in**, and
+1:10m is worse still. Each row is `node tools/gen-countries.mjs --scale <s> --dry-run`, all three from
+the same pinned tag, all three checksum-verified against §8.4's own figures:
+
+| scale | emitted bytes | unattributed places (of 94) | unattributed stops (of 132) | the three §8.4 names |
+|---|---|---|---|---|
+| **1:110m — shipped** | **175,085** | **3** | **4** | Lokrum **HR**, Blue Cave `null`, Stiniva `null` |
+| 1:50m | 1,648,598 | 24 | 31 | all three `null` |
+| 1:10m | 9,072,727 | 21 | 26 | all three `null` |
+
+**Why it goes the wrong way, since a 9× bigger dataset being less accurate is not intuitive.** At a
+jagged coast, generalisation runs *outward*: a coarse ring bulges over the water and swallows shoreline
+points, while a finer one tracks the real waterline and drops anything a few hundred metres seaward of
+it. Every one of Dubrovnik's Old Town coordinates and Split's Diocletian's Palace group sits on the
+shore. At 1:50m the Split peninsula is generalised away entirely and Croatia's coastline near Split runs
+at ~43.53 °N where the fixture's stops are at 43.508 °N; at 1:10m the coast near Dubrovnik runs through
+(18.1248, 42.6446)–(18.1087, 42.6474), and Pile Gate at (18.1091, 42.6440) is ~400 m on the water side
+of it. The islands do not come back at any scale either: Biševo is absent from 1:50m and 1:10m alike,
+Vis exists at 1:50m but Stiniva Cove is a cove, and Lokrum is 500 m offshore and is not in any admin-0
+layer — it attributes to HR at 1:110m only because the coarse mainland ring reaches over it.
+
+**What I did.** Shipped 1:110m, which is the scale the floor's own stated purpose selects, and pinned
+the measured answers — including the two `null`s — in `country.test.ts`, so the day attribution improves
+is a red test rather than a silence. **I did not** add a nearest-country tolerance, a coastal buffer, or
+any other widening: §8.4 forbids snapping in writing and a 2 km buffer would put every Adriatic ferry
+leg in Croatia and every Channel crossing in France.
+
+**What I am routing to the architect, and it is a criterion question, not a code one.** Exit criterion 4
+says those two records attribute to HR and prescribes a remedy that does not achieve it. Three shapes an
+answer could take, none of which is a builder's to pick (sequencing rule 5): (a) accept `null` for
+open-sea islands and reword the criterion to what the dataset can deliver; (b) accept that the *stop's
+city* already carries `countryCode: 'HR'` (§2.13, hand-supplied at import) and rule that attribution may
+fall back to the city's declared country — a different mechanism, not a nearest-neighbour guess, and one
+that would need its own provenance so a map can tell a derived country from a declared one; (c) a
+coastline-aware dataset, which is a new external dependency and a §8.4 revision.
+
+**A second, smaller thing the same measurement exposed, recorded because `null` does not make it
+visible.** At 1:110m the European micro-enclaves are not in the layer at all, so they are **misattributed
+rather than unattributed**: San Marino and Vatican City return `IT`, Monaco `FR`, Liechtenstein `AT`.
+That is the one failure mode of this scale the honest-hole rule does not cover, and it is pinned by a
+named test (*"the micro-enclaves 1:110m does not carry are absorbed by their neighbour"*) so it is a
+known number rather than a user's discovery. It is not on the reference trip.
 
 ---
 
