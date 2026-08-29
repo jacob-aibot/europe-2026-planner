@@ -319,9 +319,28 @@
 </style>
 </head>
 <body>
+<div class="callout" style="border-left:4px solid #2f7a3d;padding:.75rem 1rem;margin:1rem 0;background:#eef7ef">
+<p><strong>&#128994; STEP 2b&rsquo;S DATA LAYER IS SHIPPED &mdash; as of 2026-08-29</strong> (this
+block is the current state; every 2b/I-7 sentence below it is older). <code>REVIEW.md</code> now
+records <strong>SHIP</strong> for &ldquo;Phase 2, step 2b (data layer) &mdash; I-5 &hellip;
+I-7b&rdquo;, at <code>6cd7187</code> on <code>master</code>. Every increment from the country index
+through the summary-row read boundary is <strong>built &#9989; &middot; verified &#9989; &middot;
+shippable &#9989;</strong>: I-5/I-5a/I-5b/I-5c (the country index, corrected at the edges),
+I-6/I-6a (the widened summary row and its rescan), I-7 (<code>travelStats</code>), I-7a (the
+calendar fix and <code>provisional</code> marking), and I-7b (the storage read boundary, closed by
+architecture rulings <strong>A-38</strong> and <strong>A-39</strong> after QA rounds 30 through 32
+found and closed the last two gaps in its coverage).</p>
+<p><strong>What is NOT shipped: I-8, the Map and Profile screens &mdash; 2b&rsquo;s remaining and
+final increment.</strong> Nothing new is on screen yet; <code>WorldMap.tsx</code> and
+<code>Profile.tsx</code> do not exist. I-8&rsquo;s design-independent data plumbing &mdash; a
+<code>travelHistory</code> selector wrapping <code>travelStats</code> with the typed read boundary
+I-8 needs &mdash; shipped in the same commit as the ruling above, but I-8&rsquo;s UI is
+deliberately <strong>paused</strong>, pending a new native-iOS visual-direction process. It is a
+scheduling choice, not a technical block: nothing above is waiting on it.</p>
+</div>
 <div class="callout" style="border-left:4px solid #a8621b;padding:.75rem 1rem;margin:1rem 0;background:#fdf5ec">
-<p><strong>&#128992; STEP 2b &mdash; WHERE IT ACTUALLY IS, as of 2026-08-28</strong> (this block is
-the current state; every 2b sentence below it is older). Six increments of 2b are now
+<p><strong>&#128992; [history] STEP 2b &mdash; WHERE IT ACTUALLY IS, as of 2026-08-28</strong>
+(superseded by the block above; kept as the running log, oldest first). Six increments of 2b are now
 <strong>built</strong>, and this board had fallen five behind, so here is the whole of it in one
 place. <strong>I-5</strong> put a country index in the app and taught it to say which country a
 coordinate is in &mdash; <strong>offline, from a bundled map, never by asking a server where you
@@ -682,11 +701,13 @@ hands you a trip file with no owner recorded in it.</p>
   <!-- ============ HERO: 10-second read ============ -->
   <div class="hero">
     <div class="phase-tag">Phase 2 of 7 — travel history, local-first</div>
-    <h2>Phase 1 shipped. Phase 2 step 2a has now shipped too. The lifetime map is next.</h2>
+    <h2>Phase 1 shipped. Step 2a shipped. Step 2b's data layer (I-5…I-7b) has now shipped too —
+      its Map and Profile screens (I-8) are paused for a native-iOS design pass.</h2>
     <div class="pills">
       <span class="pill green">🟢 PHASE 1 CLOSED — SHIPPED</span>
       <span class="pill green">🟢 PHASE 2 — STEP 2a SHIPPED</span>
-      <span class="pill orange">🟠 STEP 2b — NEXT, UNBLOCKED</span>
+      <span class="pill green">🟢 STEP 2b DATA LAYER SHIPPED (I-5…I-7b)</span>
+      <span class="pill orange">🟠 I-8 (MAP/PROFILE UI) — PAUSED FOR DESIGN</span>
     </div>
     <p><strong>Phase 1: SHIP</strong> (<code>REVIEW.md</code>, <code>b32ef9a</code>, 2026-08-27) —
       built, independently attacked across 11 rounds, and the very last fix re-verified by the
@@ -778,11 +799,13 @@ hands you a trip file with no owner recorded in it.</p>
         closing the copy-path arc against a criterion written in advance), then
         <strong>signed off by the manager on 2026-08-28 at <code>67f5588</code>, verdict SHIP</strong>
         (<code>REVIEW.md</code>, "Phase 2, step 2a"). Step 2b (lifetime map, travel identity) is
-        <span class="pill orange">🟠 STARTED</span> — its first increment, the world-boundary dataset
-        that turns a coordinate into a country, is <strong>built</strong>, and its completion pass is
-        <strong>built and verified</strong> (an adversarial round went at it on 2026-08-28 and could not
-        break the data, the lookup, or the file's reproducibility), with <strong>one more correction
-        scheduled before anything is built on top</strong>. Neither is shippable yet; step 2c
+        <span class="pill green">🟢 its data layer SHIPPED</span> — I-5 through I-7b (the country
+        index, the widened summary row, <code>travelStats</code>, and the storage read boundary —
+        A-38, A-39) are all <strong>built &#9989; &middot; verified &#9989; &middot; shippable
+        &#9989;</strong>, signed off <strong>2026-08-29 at <code>6cd7187</code>, verdict SHIP</strong>
+        (<code>REVIEW.md</code>, "Phase 2, step 2b (data layer) — I-5 … I-7b"). <strong>I-8 — the Map
+        and Profile screens, 2b's last increment — is not started; its UI is paused pending a new
+        native-iOS design process</strong>, not blocked on anything technical. Step 2c
         (participants) is
         <span class="pill grey">⚪ NOT STARTED</span></p>
       <h4>2b's first increment found a real gap, and it is the good kind of finding</h4>
@@ -1011,7 +1034,7 @@ hands you a trip file with no owner recorded in it.</p>
       <div class="journey-row now">
         <div class="badge">2</div>
         <div class="txt"><div class="name">Travel history — IN PROGRESS</div>
-          <div class="outcome">Record the trips you've already taken, see your whole travel life on one map, and say who you went with — a new Cairn doesn't start empty.</div></div>
+          <div class="outcome">Record the trips you've already taken, see your whole travel life on one map, and say who you went with — a new Cairn doesn't start empty. 2a shipped; 2b's data layer (I-5…I-7b) shipped, its Map/Profile screens (I-8) paused pending design; 2c not started.</div></div>
       </div>
       <div class="journey-row">
         <div class="badge">3</div>
@@ -1106,12 +1129,20 @@ hands you a trip file with no owner recorded in it.</p>
     <summary><span><span class="num">8</span>What happens next</span><span class="chev">▾</span></summary>
     <div class="details-body">
       <p style="text-align:center;font-weight:700;font-size:1rem;letter-spacing:0.02em;">
-        Architect&nbsp;→&nbsp;Builder&nbsp;→&nbsp;Breaker&nbsp;→&nbsp;Manager&nbsp;&rArr;&nbsp;step&nbsp;2b
+        Architect&nbsp;→&nbsp;Builder&nbsp;→&nbsp;Breaker&nbsp;→&nbsp;Manager&nbsp;&rArr;&nbsp;I-8&nbsp;(paused)
       </p>
-      <p style="text-align:center;color:var(--ink-dim);font-size:0.85rem;margin-top:-4px;">Architect done · builder done · breaker done (round 21) · <strong>manager done — verdict SHIP</strong> · step 2b next</p>
-      <p><strong>Step 2a is closed.</strong> The full four-agent chain ran and the gate at the end of
-        it said SHIP. What comes next is <strong>step 2b — the map of everywhere you have
-        been</strong>. How 2a's last round went, for the record:</p>
+      <p style="text-align:center;color:var(--ink-dim);font-size:0.85rem;margin-top:-4px;">Architect done · builder done · breaker done (round 32) · <strong>manager done — verdict SHIP, 6cd7187</strong> · I-8 (design first)</p>
+      <p><strong>Step 2a is closed, and so is step 2b's data layer.</strong> The four-agent chain ran
+        through I-7b, and <code>REVIEW.md</code>'s <code>6cd7187</code> entry records SHIP for
+        I-5 … I-7b. What's left in 2b is <strong>I-8 — the Map and Profile screens</strong> — and it
+        is deliberately <strong>paused</strong> for a native-iOS visual-direction pass rather than
+        blocked on any open technical item. The list below is the plan <strong>as it stood when 2a
+        closed</strong>, kept as the running log rather than rewritten — item 5 (the world-boundary
+        dataset's missing countries) shipped as I-5a/I-5b/I-5c. <strong><code>QA-FINDINGS.md</code>'s
+        own status note is the authoritative list of what is still open</strong>, and as of round 32
+        it still names item 1 (the breaker board there) and item 4 (the past-trip undo defect,
+        <code>P2-5</code>) as untouched — read that note rather than this historical list for current
+        standing. How 2a's last round went, for the record:</p>
       <ul>
         <li><strong>Architect — done.</strong> <code>ARCHITECTURE.md</code> revision 19
           (<strong>A-25</strong>): test-data completeness enforced by the compiler and the tests

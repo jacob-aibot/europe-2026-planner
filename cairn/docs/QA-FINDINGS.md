@@ -7,6 +7,16 @@
 > `test/stats-storage.test.ts`, `qa/i7a-idb-rowkeys.mjs`, new `qa/a39-exit6e.sh`,
 > `docs/BUILD-NOTES.md`, `qa/README.md`.**
 >
+> **Addendum, 2026-08-29 — I-7's shippability, answered.** The row below states *"shippability of
+> I-7 is the manager's call, not mine"*; it now has one. `REVIEW.md` records **SHIP** for "Phase 2,
+> step 2b (data layer) — I-5 … I-7b", at `6cd7187` on `master` — closing this round's two open
+> findings via the builder pass at `f21fa42` (R32-1: the per-id key-set assertions now check nested
+> `cities[].countrySource`; R32-2: the Axis-C `revision: 0` cell is covered via `importDoc`'s
+> reachable path). That entry is the authoritative ruling; **I-8 (the Map and Profile screens) is
+> explicitly not included in it and remains not started.** Nothing below this addendum is edited —
+> the round-32 table, its findings, and every "STILL OPEN" line stand exactly as this round wrote
+> them, R32-3/R32-4 and the older carried list included.
+>
 > | | |
 > |---|---|
 > | **Verdict on A-39** | **The mechanism is right and the three pins are real — I broke each one myself rather than reading BUILD-NOTES. The 15-state table is Part 5's verbatim, it is DATA, its 15/10/6 counts are asserted from the table's own structure, and `ageRow` is the constrained helper Part 6 specifies. But two of the cells the table exists to reach are not actually *enforced*, and in both cases the guard reads a field A-39 itself names on an axis — so by A-39 Part 11's own sentence these are builder findings against the table as oracle, not a sixth axis and not an architect cycle. **SEND BACK — builder only. 0 BLOCKERS, 2 MAJOR, 2 MINOR.** Every number the builder reported that I checked was exact: 866 → 884, typecheck clean on both projects, `Object.keys(core).length` 75, golden/sample no diff, `qa/a39-exit6e.sh` exit 0 with all thirteen runs measuring the stated colour, and all three real-Chromium 6b-4 measurements. |

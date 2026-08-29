@@ -19,8 +19,24 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
-> **🟠 STEP 2b — WHERE IT ACTUALLY IS, as of 2026-08-28 (this block is the current state; every
-> 2b sentence below it is older).** Six increments of 2b are now **built**, and this board had
+> **🟢 STEP 2b's DATA LAYER IS SHIPPED — as of 2026-08-29 (this block is the current state; every
+> 2b/I-7 sentence below it is older).** `REVIEW.md` now records **SHIP** for "Phase 2, step 2b
+> (data layer) — I-5 … I-7b", at `6cd7187` on `master`. Every increment from the country index
+> through the summary-row read boundary is **built ✅ · verified ✅ · shippable ✅**: I-5/I-5a/I-5b/I-5c
+> (the country index, corrected at the edges), I-6/I-6a (the widened summary row and its rescan),
+> I-7 (`travelStats`), I-7a (the calendar fix and `provisional` marking), and I-7b (the storage
+> read boundary, closed by architecture rulings **A-38** and **A-39** after QA rounds 30 through 32
+> found and closed the last two gaps in its coverage).
+>
+> **What is NOT shipped: I-8, the Map and Profile screens — 2b's remaining and final increment.**
+> Nothing new is on screen yet; `WorldMap.tsx` and `Profile.tsx` do not exist. I-8's
+> design-independent data plumbing — a `travelHistory` selector wrapping `travelStats` with the
+> typed read boundary I-8 needs — shipped in the same commit as the ruling above, but I-8's UI is
+> deliberately **paused**, pending a new native-iOS visual-direction process. It is a scheduling
+> choice, not a technical block: nothing above is waiting on it.
+>
+> **🟠 [history] STEP 2b — WHERE IT ACTUALLY IS, as of 2026-08-28 (superseded by the block above;
+> kept as the running log, oldest first).** Six increments of 2b are now **built**, and this board had
 > fallen five behind, so here is the whole of it in one place. **I-5** put a country index in the
 > app and taught it to say which country a coordinate is in — **offline, from a bundled map,
 > never by asking a server where you are**. **I-5a, I-5b and I-5c** were three rounds of making
@@ -385,11 +401,13 @@ phases were re-cut on 2026-08-27; accounts are now Phase 3) — is 🟡 **IN PRO
 is 🟢 SHIPPED** (increments I-0…I-4a) — built, then **verified** over ten adversarial rounds (12 →
 21) ending with round 21 closing the copy-path arc against a criterion written in advance, then
 **signed off by the manager on 2026-08-28 at `67f5588`, verdict SHIP** (`REVIEW.md`, "Phase 2, step
-2a"). Step **2b** (the lifetime map and travel identity) is 🟠 **STARTED**: its first increment — the
-world-boundary dataset that turns a coordinate into a country — is **built**, and its completion pass is
-**built and verified** (an adversarial round went at it on 2026-08-28 and could not break the data, the
-lookup, or the file's reproducibility), with **one more correction scheduled before anything is built on
-top**. Neither is shippable yet. Step **2c** (participants) is ⚪ **NOT STARTED**.
+2a"). Step **2b** (the lifetime map and travel identity) is 🟢 **its data layer SHIPPED**: I-5
+through I-7b — the country index, the widened summary row, `travelStats`, and the storage read
+boundary (A-38, A-39) — are all **built ✅ · verified ✅ · shippable ✅**, signed off **2026-08-29 at
+`6cd7187`, verdict SHIP** (`REVIEW.md`, "Phase 2, step 2b (data layer) — I-5 … I-7b"). **I-8 — the
+Map and Profile screens, 2b's last increment — is not started; its UI is paused pending a new
+native-iOS design process**, not blocked on anything technical. Step **2c** (participants) is
+⚪ **NOT STARTED**.
 
 **2b's first increment found a real gap, and it is the good kind of finding.** The builder was told
 that two Croatian island stops (the Blue Cave on Biševo, Stiniva Cove on Vis) had to come out as
@@ -594,7 +612,7 @@ own call, made explicitly rather than left implicit.
 | Phase | You'll be able to... | Status |
 |---|---|---|
 | **1 — Core planner** | Plan trips like the old single-trip app, but as many trips as you want, safely — nothing you type ever silently vanishes | 🟢 **COMPLETE — SHIPPED** |
-| **2 — Travel history** | Record the trips you've already taken, see your whole travel life on one map, and say who you went with — a new Cairn doesn't start empty | 🟡 **IN PROGRESS** — 2a shipped; 2b's first increment built, not verified; 2c not started |
+| **2 — Travel history** | Record the trips you've already taken, see your whole travel life on one map, and say who you went with — a new Cairn doesn't start empty | 🟡 **IN PROGRESS** — 2a shipped; 2b's data layer (I-5…I-7b) shipped, its Map/Profile screens (I-8) paused pending design; 2c not started |
 | **3 — Accounts, server & sharing** | Have your trips follow you across devices, and let friends see them and copy a stop into their own | ⚪ NOT STARTED |
 | **4 — Email ingestion** | Forward a booking confirmation and have Cairn find it, file it on the right day, and attach the ticket | ⚪ NOT STARTED |
 | **5 — Phone app & live path** | Carry Cairn on your phone, fully offline, and have it quietly draw the route you actually traveled next to the plan | ⚪ NOT STARTED |
@@ -684,13 +702,19 @@ it is closed.
 ## 8. What happens next
 
 ```
-  Architect  →  Builder  →  Breaker  →  Manager  ⇒  step 2b
-   (done)       (done)      (done, r21)  (done — SHIP)   (NEXT)
+  Architect  →  Builder  →  Breaker  →  Manager  ⇒  I-8 (paused)
+   (done)       (done)      (done, r32)  (done — SHIP, 6cd7187)   (design first)
 ```
 
-**Step 2a is closed.** The full four-agent chain ran and the gate at the end of it said SHIP. What
-comes next is **step 2b — the map of everywhere you have been**, which starts with the architect's
-own carried item (below) and with the breaker cleaning its attack board.
+**Step 2a is closed, and so is step 2b's data layer.** The four-agent chain ran through I-7b, and
+`REVIEW.md`'s `6cd7187` entry records SHIP for I-5 … I-7b. What's left in 2b is **I-8 — the Map and
+Profile screens** — and it is deliberately **paused** for a native-iOS visual-direction pass rather
+than blocked on any open technical item. The numbered list below is the plan **as it stood when 2a
+closed**, kept as the running log rather than rewritten or re-verified item by item here — item 5
+(the world-boundary dataset's missing countries) shipped as I-5a/I-5b/I-5c. **`QA-FINDINGS.md`'s own
+status note is the authoritative list of what is still open**, and as of round 32 it still names
+item 1 (the breaker board, `B-1`…`B-4` there) and item 4 (the past-trip undo defect, `P2-5`) as
+untouched — read that note rather than this historical list for current standing.
 
 How 2a's last round went, for the record:
 
