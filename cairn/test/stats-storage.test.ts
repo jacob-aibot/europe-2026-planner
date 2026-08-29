@@ -67,8 +67,13 @@ import { dirname, relative, resolve, sep } from 'node:path';
 // static import into a tsconfig that deliberately excludes that project. It prints an
 // `ExperimentalWarning`, which is noise in `node --test` and not a failure.
 import { stripTypeScriptTypes } from 'node:module';
-import { COUNTRY_INDEX, SUMMARY_VERSION, tripSummary, createTrip, sequentialIds } from '../packages/core/src/index.ts';
-import type { Trip, TripSummaryRow } from '../packages/core/src/index.ts';
+import { COUNTRY_INDEX, SUMMARY_VERSION, tripSummary, createTrip, addStop, sequentialIds } from '../packages/core/src/index.ts';
+import type { BuildCtx, Trip, TripSummaryRow } from '../packages/core/src/index.ts';
+// §2.10's "tests do not create surface": `addPlace` is an internal, imported by module path
+// exactly as `packages/core/test/readOnce.test.ts` already imports it. Axis C's `attribution
+// .places` cell cannot be reached without a `Place` that carries an `at`, and there is no
+// public builder for one — this widens no export list.
+import { addPlace } from '../packages/core/src/build/stops.ts';
 import {
   createStore, memoryStorage, memoryFile, fixedClockPort, sequentialIdPort, immediateScheduler,
 } from '../packages/client/src/index.ts';
@@ -592,8 +597,14 @@ function portDbVersion(): number {
   return Number(m[1]);
 }
 
-/** A record as it sits in a pre-existing database. `version: null` is the LEGACY shape. */
-type SeedRecord = { trip: Trip; summary: TripSummaryRow; version: string | null };
+/**
+ * A record as it sits in a pre-existing database. `version: null` is the LEGACY shape.
+ *
+ * **A-39 Part 7 point 1 adds `gen`**, and it is required rather than defaulted on purpose: a
+ * record whose generation is implicit is a record whose key set is asserted against whatever
+ * the assertion happens to assume, which is the shape of every finding this arc has produced.
+ */
+type SeedRecord = { trip: Trip; summary: TripSummaryRow; version: string | null; gen: GenEntry };
 
 /**
  * A whole starting state. **Minted through `createTrip`/`tripSummary`, never hand-typed** — a
@@ -629,15 +640,477 @@ function assertSeedLanded(db: Recording, records: readonly SeedRecord[], where: 
   assert.deepEqual([...db._store('docs').keys()].sort(), ids, `${where}: the docs seed did not land`);
   assert.deepEqual([...db._store('summaries').keys()].sort(), ids, `${where}: the summaries seed did not land`);
   assert.deepEqual([...db._store('versions').keys()].sort(), versioned, `${where}: the versions seed did not land`);
-  for (const [id, row] of db._store('summaries')) {
+  // **A-39 Part 7 point 1.** Aged rows are, correctly, not `ROW_KEYS`-shaped, so this stops
+  // asserting `ROW_KEYS` uniformly and asserts **each record's own generation's** key set,
+  // computed from the ledger. Same purpose, same failure mode caught, one level more precise.
+  for (const r of records) {
+    const row = db._store('summaries').get(r.trip.id);
+    assert.ok(row, `${where}: no seeded row for ${r.trip.id}`);
     assert.deepEqual(
       Object.keys(row as TripSummaryRow).sort(),
-      Object.keys(ROW_KEYS).sort(),
-      `${where}: the seeded row for ${id} is not ROW_KEYS-shaped BEFORE the port runs, so a ` +
-        'widening found afterwards could not be attributed to the port',
+      expectedKeys(r.gen),
+      `${where}: the seeded row for ${r.trip.id} is not shaped like its own generation ` +
+        `(${r.gen.name}) BEFORE the port runs, so a widening found afterwards could not be ` +
+        'attributed to the port',
     );
   }
 }
+
+// ===========================================================================
+// **§8.4 A-39 (revision 28, QA R31-1, MAJOR)** — the FINITE COVERING SET.
+//
+// A-38 Part 7 stated the gate's property as a **universal quantifier over faults**, discharged
+// by an **existential list of fixtures**. A claim of that form can never be closed: for any
+// finite fixture list a reader can construct a guard that reads a field none of them varies,
+// and each such construction is a legitimate finding under the sentence's own terms. Three
+// rounds produced three such axes (R29-1: the mechanism was a grep; R30-1: the fixtures were
+// all empty; R31-1: the fixtures were all *current*).
+//
+// > **A-39's ruling: the quantifier moves from *faults* to *readable state*.** A fault confined
+// > to `ensureReady()` can be conditional only on data `ensureReady()` can READ — which, after
+// > `open()` resolves, is exactly *the contents of the three object stores* (`db.version`,
+// > `db.objectStoreNames` and the module constants are all constant at that point). That is
+// > finite, committed and versioned, so it can be enumerated; the faults cannot.
+//
+// Five axes, derived line by line in A-39 Part 3/4:
+//
+//   **V** envelope-version presence      {present, absent}                          domain 2
+//   **S** summary-row generation         {gen-1, gen-2, gen-3, gen-4, gen-future}    domain 5
+//   **C** row content                    {rich, degenerate, unattributed}            domain 3
+//   **D** document generation            {v1} — `SCHEMA_VERSION` is 1                domain 1
+//   **N** loop population                {0, ≥1 uniform, ≥2 spanning both V}         domain 3
+//
+// The cover is **pairwise over {V, S, C}** and structural over N and P (fixture provenance).
+// The lower bound on a pairwise covering array is the product of the two largest domains —
+// `|S| × |C| = 5 × 3 = 15` — and the table below achieves it, so **15 is minimal, not chosen**.
+// 3-wise is refused on the record (A-39 Part 5): a fault requiring three simultaneous state
+// conditions is not a single edit and has no instance among the seventeen faults in the matrix.
+//
+// **What reopens this** (A-39 Part 11): a `SUMMARY_VERSION` bump (→ 18 rows), a `SCHEMA_VERSION`
+// bump (→ 15 rows, D absorbed), `DatePrecision`/`countrySource` gaining a member (→ 20 rows), a
+// new object store, a new `StoragePort`, a fourth write path, or `onupgradeneeded` growing a
+// body that writes records. **What does NOT**: *"here is one more fault shape whose guard reads
+// a field already on V, S, C, D or N."* If such a fault is green, the covering set has been
+// IMPLEMENTED wrongly — a table row is missing, a fixture has rotted into another state, or an
+// assertion is not per-id — and that is a **builder** finding against the table below, with the
+// table itself as the oracle.
+// ===========================================================================
+
+/** Axis S's five states, in ledger order. */
+type GenName = 'gen-1' | 'gen-2' | 'gen-3' | 'gen-4' | 'gen-future';
+
+type GenEntry = {
+  name: GenName;
+  /** What `summaryVersion` holds — or `null` when the generation has no such KEY at all. */
+  version: number | null;
+  /** The TOP-LEVEL keys this generation did not carry. */
+  absent: readonly string[];
+  /** The keys absent from every `cities[]` entry of this generation. */
+  absentInCity: readonly string[];
+};
+
+/**
+ * **The generation ledger.** One entry per shipped `SUMMARY_VERSION`, transcribed from
+ * `SUMMARY_VERSION`'s own docstring in `packages/core/src/derive/summary.ts` — which is the
+ * ledger this file mirrors, and the only place a new generation is described.
+ *
+ * The generations differ in **key set**, not only in the number, and A-39 Part 4 is explicit
+ * about why that is load-bearing: a guard of the form `if (!('attribution' in r))` — *"this row
+ * predates the census, bring it current"* — is **invisible** to a row that was aged by setting a
+ * number and nothing else. A version-only aged fixture would have re-created R31-1 inside the
+ * fix for R31-1. That is fault **G17**, and it is here to prove this sentence rather than assert
+ * it.
+ */
+const LEDGER: readonly GenEntry[] = [
+  // 1 — Phase 1 / Phase 2a. No `countryCodes`, no `cities`, no `attribution`, and no
+  //     `summaryVersion` KEY AT ALL, which is what `needsRescan`'s `?? 0` exists for and is a
+  //     distinct state from any number.
+  { name: 'gen-1', version: null, absent: ['summaryVersion', 'countryCodes', 'cities', 'attribution'], absentInCity: [] },
+  // 2 — Phase 2 I-6: `countryCodes`, `cities` and `summaryVersion` arrive; `countrySource` and
+  //     `attribution` do not.
+  { name: 'gen-2', version: 2, absent: ['attribution'], absentInCity: ['countrySource'] },
+  // 3 — Phase 2 I-6a (A-29): `cities[]` gains `countrySource`. Still no `attribution`.
+  { name: 'gen-3', version: 3, absent: ['attribution'], absentInCity: [] },
+  // 4 — Phase 2 I-7 (A-31): the row gains `attribution`. Current.
+  { name: 'gen-4', version: 4, absent: [], absentInCity: [] },
+];
+
+/**
+ * Above current, and **not a ledger entry**: a second tab on a newer deploy wrote it. That is
+ * the same two-writer scenario §2.2a's whole fence exists for, so refusing it here would be
+ * inconsistent with the rest of the design.
+ *
+ * It is version-only, and that is A-39 Part 12 residue 1, disclosed rather than buried: a future
+ * generation's *extra* keys cannot be written down today, so a fault guarded on a key that
+ * generation will add is not covered. It is permanent and irreducible, and it is fired the day
+ * that generation ships — at which point it stops being the future and becomes a shape-faithful
+ * ledger entry (Part 11 item 1).
+ */
+const GEN_FUTURE: GenEntry = { name: 'gen-future', version: SUMMARY_VERSION + 1, absent: [], absentInCity: [] };
+
+const GENERATIONS: readonly GenEntry[] = [...LEDGER, GEN_FUTURE];
+
+function generation(name: GenName): GenEntry {
+  const found = GENERATIONS.find((g) => g.name === name);
+  assert.ok(found, `no generation named ${name} — the covering table names a state the ledger does not have`);
+  return found;
+}
+
+/** The current generation, by the ledger rather than by position-in-a-comment. */
+const CURRENT_GEN = generation('gen-4');
+
+/** A generation's top-level key set: `ROW_KEYS` minus that generation's own removals. */
+function expectedKeys(gen: GenEntry): string[] {
+  return Object.keys(ROW_KEYS).filter((k) => !gen.absent.includes(k)).sort();
+}
+
+/**
+ * **A-38 Part 4's *"never a hand-typed row literal"* rule, and A-39 Part 6's one bounded
+ * exception to it.** A-38's rule is right — a literal goes stale the next time the row is
+ * widened and defeats the key assertion it is the subject of — but Axis S needs rows that are
+ * *deliberately* not current. So the rule gains exactly one exception, drawn so its reason
+ * survives:
+ *
+ * > **A fixture row is minted through `createTrip` + `tripSummary` and may then be *aged* by a
+ * > single helper that only ever DELETES KEYS and SETS `summaryVersion`. It may never add a key
+ * > and never write any other field's value.**
+ *
+ * **The reviewer's check, in one line:** the body below contains no assignment other than to
+ * `summaryVersion`, and no key literal that is not also in the ledger. Anything else here — a
+ * defaulted field, a rewritten count, a "helpful" normalisation — has turned a fixture into a
+ * migration and this whole gate back into a fixture list nobody can reason about. Do not let
+ * this grow into a general-purpose row mutator.
+ */
+function ageRow(fresh: TripSummaryRow, gen: GenEntry): TripSummaryRow {
+  const row = structuredClone(fresh) as Record<string, unknown>;
+  for (const key of gen.absent) delete row[key];
+  for (const city of (row.cities ?? []) as Array<Record<string, unknown>>) {
+    for (const key of gen.absentInCity) delete city[key];
+  }
+  if (gen.version !== null) row.summaryVersion = gen.version;
+  return row as unknown as TripSummaryRow;
+}
+
+// ---------------------------------------------------------------------------
+// Axis C — the three representatives. A-39 Part 4: every count- and collection-shaped field of
+// the row is a function of the underlying trip document, so a single fixture choice sets all of
+// them at once, and three fixtures are chosen so their union covers both cells of every count
+// field and every value of both enums (`datePrecision` ∈ 3, `cities[].countrySource` ∈ 3).
+//
+// `DatePrecision` gaining a fourth value gives Axis C a fourth state — that is a named trigger
+// in A-39 Part 11 item 3, not something this file can absorb.
+// ---------------------------------------------------------------------------
+
+type ContentName = 'rich' | 'degenerate' | 'unattributed';
+const CONTENTS: readonly ContentName[] = ['rich', 'degenerate', 'unattributed'];
+
+/**
+ * Deep in the South Atlantic: a real coordinate the country index has nothing for, which is the
+ * same one `nullCountryRow()` above already relies on. A-26 ruled that `null` is the *correct*
+ * answer for a landform the dataset does not carry, so this is a supported state and not a hole.
+ */
+const UNPLACEABLE = { lat: -40.5, lng: -20.5 };
+/** Vienna, which the index does resolve. */
+const PLACEABLE = { lat: 48.2082, lng: 16.3738 };
+
+const buildCtx = (id: string): BuildCtx => ({ ids: sequentialIds(`${id}-`), now: TODAY });
+
+function contentTrip(content: ContentName, id: string): Trip {
+  const ctx = buildCtx(id);
+  if (content === 'degenerate') {
+    // A bare trip: no city, no place, no stop, no pool entry, `revision: 0`. `dayCount` is NOT
+    // zero and cannot be — `ensureDays` mints at least one `Day` for any valid range, so no
+    // storable document has zero days (A-39 Part 4, recorded so it is not mistaken for a gap).
+    return createTrip(
+      { id, title: `degenerate (${id})`, startDate: '2024-05-01', endDate: '2024-05-02', homeCurrency: 'EUR', datePrecision: 'month' },
+      ctx,
+    );
+  }
+  if (content === 'unattributed') {
+    // The cell neither of the other two produces: `located > 0` AND `attributed === 0`, on both
+    // census classes. This is the state §8.4 clause 2's `unattributed` exists for, and
+    // *"this row has an unattributed hole, recompute it"* is as natural a guard as staleness.
+    let trip = createTrip(
+      {
+        id, title: `unattributed (${id})`, startDate: '2024-07-01', endDate: '2024-07-02',
+        homeCurrency: 'EUR', datePrecision: 'year',
+        // No stated `countryCode`, so `countrySource` stays null as well as `countryCode`.
+        cities: [{ key: 'nowhere', name: 'Nowhere', centre: UNPLACEABLE }],
+      },
+      ctx,
+    );
+    trip = addPlace(trip, {
+      id: `${id}-place`, cityKey: 'nowhere', name: 'A pin in the ocean', at: UNPLACEABLE, category: 'sight',
+    });
+    trip = addStop(
+      trip,
+      { kind: 'scheduled', dayId: trip.days[0].id, time: '09:00', order: 0 },
+      { name: 'Standing on water', category: 'sight', place: { kind: 'inline', at: UNPLACEABLE } },
+      ctx,
+    );
+    return trip;
+  }
+  // rich — countries attributed, cities, days, stops, a pool, `revision > 0`,
+  // `datePrecision: 'exact'`, and `cities[]` carrying BOTH `countrySource` values.
+  let trip = createTrip(
+    {
+      id, title: `rich (${id})`, startDate: '2026-03-01', endDate: '2026-03-04',
+      homeCurrency: 'EUR', datePrecision: 'exact',
+      cities: [
+        // The coordinate answers → `countrySource: 'coordinate'`.
+        { key: 'vienna', name: 'Vienna', centre: PLACEABLE },
+        // The coordinate is silent and the stated code passes A-29's gate → `'stated'`.
+        { key: 'atlantis', name: 'Atlantis', centre: UNPLACEABLE, countryCode: 'HR' },
+      ],
+    },
+    ctx,
+  );
+  trip = addPlace(trip, {
+    id: `${id}-place`, cityKey: 'vienna', name: 'Stephansdom', at: { lat: 48.2085, lng: 16.3735 }, category: 'sight',
+  });
+  trip = addStop(
+    trip,
+    { kind: 'scheduled', dayId: trip.days[0].id, time: '09:00', order: 0 },
+    { name: 'Coffee', category: 'food', place: { kind: 'inline', at: { lat: 48.21, lng: 16.37 } } },
+    ctx,
+  );
+  trip = addStop(
+    trip,
+    { kind: 'pool', cityKey: 'vienna' },
+    { name: 'Maybe the Prater', category: 'sight', place: { kind: 'inline', at: { lat: 48.2166, lng: 16.3966 } } },
+    ctx,
+  );
+  return trip;
+}
+
+const contentRow = (content: ContentName, id: string): TripSummaryRow =>
+  tripSummary(contentTrip(content, id), COUNTRY_INDEX);
+
+// ---------------------------------------------------------------------------
+// **A-39 Part 5 — the covering table.** 5 summary-row generations × 3 row-content
+// representatives = 15 `S×C` pairs, each carrying a `V` value chosen so that every generation
+// carries both V values (10 `V×S` pairs) and every content class carries both (6 `V×C` pairs).
+//
+// This is DATA, not fifteen near-duplicate test bodies, and the test below asserts those three
+// counts **from the table itself** — so a row deleted or duplicated during maintenance fails
+// loudly rather than silently shrinking the cover.
+// ---------------------------------------------------------------------------
+
+type CoverCell = { n: number; s: GenName; c: ContentName; v: 'present' | 'absent'; arm: 2 | 3 };
+
+const COVERING_SET: readonly CoverCell[] = [
+  { n: 1,  s: 'gen-1',      c: 'rich',         v: 'present', arm: 2 },
+  { n: 2,  s: 'gen-1',      c: 'degenerate',   v: 'absent',  arm: 3 },
+  { n: 3,  s: 'gen-1',      c: 'unattributed', v: 'present', arm: 2 },
+  { n: 4,  s: 'gen-2',      c: 'rich',         v: 'absent',  arm: 3 },
+  { n: 5,  s: 'gen-2',      c: 'degenerate',   v: 'present', arm: 2 },
+  { n: 6,  s: 'gen-2',      c: 'unattributed', v: 'absent',  arm: 3 },
+  { n: 7,  s: 'gen-3',      c: 'rich',         v: 'present', arm: 2 },
+  { n: 8,  s: 'gen-3',      c: 'degenerate',   v: 'absent',  arm: 3 },
+  { n: 9,  s: 'gen-3',      c: 'unattributed', v: 'present', arm: 2 },
+  { n: 10, s: 'gen-4',      c: 'rich',         v: 'absent',  arm: 3 },
+  { n: 11, s: 'gen-4',      c: 'degenerate',   v: 'present', arm: 2 },
+  { n: 12, s: 'gen-4',      c: 'unattributed', v: 'absent',  arm: 3 },
+  { n: 13, s: 'gen-future', c: 'rich',         v: 'present', arm: 2 },
+  { n: 14, s: 'gen-future', c: 'degenerate',   v: 'absent',  arm: 3 },
+  { n: 15, s: 'gen-future', c: 'unattributed', v: 'present', arm: 2 },
+];
+
+const coverId = (cell: CoverCell) => `t-cov${String(cell.n).padStart(2, '0')}-${cell.s}-${cell.c}`;
+
+/** The seeded records one arm carries, built from the table rather than written beside it. */
+function coveringSeed(arm: 2 | 3): SeedRecord[] {
+  return COVERING_SET.filter((cell) => cell.arm === arm).map((cell) => {
+    const gen = generation(cell.s);
+    const id = coverId(cell);
+    const trip = contentTrip(cell.c, id);
+    return {
+      trip,
+      summary: ageRow(tripSummary(trip, COUNTRY_INDEX), gen),
+      version: cell.v === 'present' ? SEEDED_FENCE : null,
+      gen,
+    };
+  });
+}
+
+/**
+ * **A-39 Part 7 point 2.** The post-run assertion on a seeded row is per-id before/after key-set
+ * equality: the row's key set after `ensureReady` equals the key set it was SEEDED with. That is
+ * strictly stronger than `ROW_KEYS`-membership for these arms — an aged row is correctly not
+ * `ROW_KEYS`-shaped — and it is what makes a red **attributable to an id**.
+ *
+ * Rows the port MINTS (arms 1 and 5) keep the `=== ROW_KEYS` assertion of
+ * `assertRowsAreClean()`, unchanged, because for those the port is the author.
+ */
+function assertSeededRowsUnchanged(
+  db: Recording,
+  records: readonly SeedRecord[],
+  rows: readonly TripSummaryRow[],
+  where: string,
+): void {
+  assert.ok(records.length > 0, `INCONCLUSIVE: ${where} was handed no records`);
+  assert.equal(rows.length, records.length, `INCONCLUSIVE: ${where} returned ${rows.length} rows for ${records.length} seeded records`);
+  const returned = new Map(rows.map((r) => [r.id, r]));
+  for (const record of records) {
+    const id = record.trip.id;
+    const want = expectedKeys(record.gen);
+    for (const [side, row] of [
+      ['PERSISTED', db._summaries().get(id) as TripSummaryRow | undefined],
+      ['RETURNED', returned.get(id)],
+    ] as const) {
+      assert.ok(row, `${where}: no ${side} row for ${id}`);
+      assert.deepEqual(
+        Object.keys(row).sort(),
+        want,
+        `${where}: ${id} (${record.gen.name}) — the key set of the ${side} row moved. A key ` +
+          'outside the key set this record was SEEDED with reached storage, which means the ' +
+          'port rewrote a row it was handed (§8.4 A-39 Part 10).',
+      );
+      const extra = leafPaths(row).filter((p) => !ROW_PATHS.includes(p));
+      assert.deepEqual(extra, [], `${where}: ${id} — leaves reached the store that the type does not have`);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// The three self-checking pins (A-39 Part 6), and the content-fixture pins beside them. These
+// are the direct answer to the question R31-1 routes here: *"how does this stay honest?"*
+// ---------------------------------------------------------------------------
+
+test('exit 6b-1b (A-39 pin 1): the generation ledger\'s NEWEST entry IS SUMMARY_VERSION', () => {
+  assert.equal(
+    LEDGER.at(-1)?.version,
+    SUMMARY_VERSION,
+    'SUMMARY_VERSION moved and the ledger did not. Add the new generation to LEDGER (with the ' +
+      'keys that generation did NOT carry, transcribed from SUMMARY_VERSION\'s own docstring in ' +
+      'packages/core/src/derive/summary.ts), and add THREE ROWS to COVERING_SET — one per Axis C ' +
+      'representative — taking the table from 15 to 18. This is §8.4 A-39 Part 11 item 1, and ' +
+      'this pin is what stops it being forgotten.',
+  );
+  assert.deepEqual(
+    LEDGER.map((g) => g.name),
+    ['gen-1', 'gen-2', 'gen-3', 'gen-4'],
+    'the ledger holds one entry per SHIPPED SUMMARY_VERSION, in order',
+  );
+  assert.equal(GEN_FUTURE.version, SUMMARY_VERSION + 1, 'gen-future must sit exactly one above current');
+});
+
+test('exit 6b-1b (A-39 pin 2): ageing a row to the CURRENT generation is the IDENTITY', () => {
+  for (const content of CONTENTS) {
+    const fresh = contentRow(content, `pin2-${content}`);
+    assert.deepEqual(
+      ageRow(fresh, CURRENT_GEN),
+      fresh,
+      `ageRow() mangled a ${content} row while claiming to reproduce the current shape. The ` +
+        'helper may ONLY delete keys named in the ledger and set summaryVersion (§8.4 A-39 ' +
+        'Part 6) — anything else has turned a fixture into a migration.',
+    );
+  }
+});
+
+test('exit 6b-1b (A-39 pin 3): every generation\'s key set is ROW_KEYS minus its OWN removals — the ageing is SHAPE-FAITHFUL, not version-stamped', () => {
+  for (const gen of GENERATIONS) {
+    const fresh = contentRow('rich', `pin3-${gen.name}`);
+    const aged = ageRow(fresh, gen);
+    assert.deepEqual(
+      Object.keys(aged).sort(),
+      expectedKeys(gen),
+      `${gen.name}: the aged row's key set is not ROW_KEYS minus the ledger's removals. A ` +
+        'fixture aged by setting a NUMBER and nothing else is invisible to a key-presence ' +
+        'guard — that is fault G17, and it would re-create R31-1 inside the fix for R31-1.',
+    );
+    if (gen.version === null) {
+      assert.equal('summaryVersion' in aged, false, `${gen.name} must have no summaryVersion KEY AT ALL, which is a distinct state from any number`);
+    } else {
+      assert.equal(aged.summaryVersion, gen.version, `${gen.name}: summaryVersion was not set to the ledger's number`);
+    }
+    for (const city of aged.cities ?? []) {
+      for (const key of gen.absentInCity) {
+        assert.equal(key in city, false, `${gen.name}: cities[].${key} survived the ageing`);
+      }
+    }
+    // And the ageing is a copy, never a mutation of the row it was handed.
+    assert.deepEqual(Object.keys(fresh).sort(), Object.keys(ROW_KEYS).sort(), `${gen.name}: ageRow mutated its argument`);
+  }
+});
+
+test('exit 6b-1b (A-39 Part 6): the three Axis-C fixtures still ARE the states they are named for', () => {
+  // The unattributed fixture is the one that can rot silently: if the country index improves,
+  // its coordinate starts attributing and Axis C's third state degrades into `rich` with
+  // nothing saying so — which is R30-1's signature one more time. A fixture that has stopped
+  // being the state it names is INCONCLUSIVE, not green.
+  const rich = contentRow('rich', 'pinC-rich');
+  assert.ok(rich.cityCount > 0 && rich.dayCount > 0 && rich.stopCount > 0 && rich.poolCount > 0, 'INCONCLUSIVE: the `rich` fixture has a zero count');
+  assert.ok(rich.revision > 0, 'INCONCLUSIVE: the `rich` fixture is at revision 0');
+  assert.ok(rich.countryCodes.length > 0, 'INCONCLUSIVE: the `rich` fixture attributed no country');
+  assert.ok(rich.attribution.places.attributed > 0 && rich.attribution.stops.attributed > 0, 'INCONCLUSIVE: the `rich` fixture attributed no record');
+  assert.equal(rich.datePrecision, 'exact');
+  assert.deepEqual(
+    rich.cities.map((c) => c.countrySource).sort(),
+    ['coordinate', 'stated'],
+    'INCONCLUSIVE: the `rich` fixture no longer carries BOTH countrySource values, so Axis C ' +
+      'has stopped covering that enum (§8.4 A-39 Part 4)',
+  );
+
+  const degenerate = contentRow('degenerate', 'pinC-degenerate');
+  assert.equal(degenerate.cityCount, 0);
+  assert.equal(degenerate.stopCount, 0);
+  assert.equal(degenerate.poolCount, 0);
+  assert.deepEqual(degenerate.countryCodes, []);
+  assert.deepEqual(degenerate.cities, []);
+  assert.deepEqual(degenerate.attribution, { places: { located: 0, attributed: 0 }, stops: { located: 0, attributed: 0 } });
+  assert.equal(degenerate.datePrecision, 'month');
+  // `dayCount === 0` is NOT reachable — `ensureDays` mints at least one Day for any valid
+  // range — so the degenerate fixture is zero on every count the document can actually zero.
+  assert.ok(degenerate.dayCount > 0, 'ensureDays stopped minting a day, which changes Axis C');
+  // **A deviation from A-39 Part 4's wording, recorded here rather than papered over.** Part 4
+  // describes the degenerate representative as carrying `revision: 0`. It cannot: `createTrip`
+  // ends in `ensureDays`, which bumps `revision` to 1 for any valid range, so **no storable
+  // document has `revision: 0`** — and Part 4's own admission rule is *"a state is admitted only
+  // if a real deployed database can actually be in it."* This is therefore the same class of
+  // note as `dayCount === 0`, not a fixture defect: `revision`'s zero cell is unreachable, so a
+  // guard `if (r.revision === 0)` is uncovered *because it can never fire in production*.
+  // Writing 0 in anyway would need the ager to WRITE A VALUE, which A-39 Part 6 forbids
+  // outright. BUILD-NOTES records this for the architect.
+  assert.equal(degenerate.revision, 1, 'the minimum revision a minted document can carry moved — re-derive this note, do not delete it');
+
+  const unattributed = contentRow('unattributed', 'pinC-unattributed');
+  assert.ok(unattributed.attribution.places.located > 0, 'INCONCLUSIVE: the `unattributed` fixture has no located place');
+  assert.equal(unattributed.attribution.places.attributed, 0, 'INCONCLUSIVE: the `unattributed` fixture\'s place STARTED ATTRIBUTING — the country index improved and Axis C\'s third state has degraded into `rich`');
+  assert.ok(unattributed.attribution.stops.located > 0, 'INCONCLUSIVE: the `unattributed` fixture has no located stop');
+  assert.equal(unattributed.attribution.stops.attributed, 0, 'INCONCLUSIVE: the `unattributed` fixture\'s stop STARTED ATTRIBUTING — see above');
+  assert.deepEqual(unattributed.cities.map((c) => c.countrySource), [null], 'INCONCLUSIVE: the `unattributed` fixture\'s city was placed after all');
+  assert.deepEqual(unattributed.countryCodes, []);
+  assert.equal(unattributed.datePrecision, 'year');
+
+  // And the three are genuinely different states, so the cover is not one fixture three times.
+  assert.deepEqual(
+    [rich, degenerate, unattributed].map((r) => r.datePrecision).sort(),
+    ['exact', 'month', 'year'],
+    'the three Axis C representatives no longer cover DatePrecision\'s three members',
+  );
+});
+
+test('exit 6b-1b (A-39 Part 5): the covering table covers 15 S×C, 10 V×S and 6 V×C pairs — COUNTED FROM THE TABLE', () => {
+  const distinct = (f: (c: CoverCell) => string) => new Set(COVERING_SET.map(f)).size;
+  assert.equal(COVERING_SET.length, 15, 'the covering set is not 15 rows. |S| × |C| = 5 × 3 = 15 is the pairwise lower bound AND is achieved, so 15 is minimal — a row was deleted or duplicated (§8.4 A-39 Part 5).');
+  assert.equal(distinct((c) => `${c.s}|${c.c}`), 15, 'the 15 S×C pairs are not distinct — the cover has shrunk while the row count says otherwise');
+  assert.equal(distinct((c) => `${c.v}|${c.s}`), 10, 'not every generation carries BOTH envelope-version states (10 V×S pairs)');
+  assert.equal(distinct((c) => `${c.v}|${c.c}`), 6, 'not every content class carries BOTH envelope-version states (6 V×C pairs)');
+  assert.deepEqual(COVERING_SET.map((c) => c.n), Array.from({ length: 15 }, (_, i) => i + 1), 'the table rows are not numbered 1..15');
+  // The domains are exactly Part 4's, so a state cannot be dropped by dropping its rows.
+  assert.deepEqual([...new Set(COVERING_SET.map((c) => c.s))].sort(), GENERATIONS.map((g) => g.name).slice().sort(), 'the table does not exercise every generation');
+  assert.deepEqual([...new Set(COVERING_SET.map((c) => c.c))].sort(), [...CONTENTS].sort(), 'the table does not exercise every content representative');
+  // Arm assignment IS the V axis, and the split is 8/7. A-39 Part 5 counts them in writing.
+  for (const cell of COVERING_SET) {
+    assert.equal(cell.arm, cell.v === 'present' ? 2 : 3, `row ${cell.n} is assigned to an arm whose starting state does not match its V value`);
+  }
+  assert.equal(COVERING_SET.filter((c) => c.arm === 2).length, 8, 'arm 2 does not carry the eight V=present rows');
+  assert.equal(COVERING_SET.filter((c) => c.arm === 3).length, 7, 'arm 3 does not carry the seven V=absent rows');
+  // And the ids the seed is keyed by are unique, or two table rows share one record.
+  const ids = COVERING_SET.map(coverId);
+  assert.equal(new Set(ids).size, 15, 'two table rows collide on one seeded id');
+});
 
 test('exit 6b-1b-1: STARTING STATE = an EMPTY database. The web port EXECUTED — every value that reaches its summary store is clean', async () => {
   await driveWebPort(async (port, db) => {
@@ -754,59 +1227,76 @@ test('exit 6b-1b-1: the arm is not vacuous — a port that widens its rows FAILS
 // fixture-fidelity cross-check, a different and smaller job.
 // ===========================================================================
 
-test('exit 6b-1b-2: STARTING STATE = an existing CURRENT database (doc + summary + version, no upgrade). The upcast runs and correctly does nothing', async () => {
-  const { trip, summary } = webRow('t-current');
-  const records: SeedRecord[] = [{ trip, summary, version: SEEDED_FENCE }];
+test('exit 6b-1b-2: STARTING STATE = an existing CURRENT database (no upgrade), seeded with A-39\'s EIGHT V=present covering records. The upcast runs and correctly does nothing — PER ID', async () => {
+  const records = coveringSeed(2);
   await driveWebPort(
     async (port, db) => {
       const rows = await port.listTrips();
-      // The property, on both sides: what is in the store, and what the port hands back.
-      assertRowsAreClean([...db._summaries().values()] as TripSummaryRow[], 'the web port, seeded current: summaries');
-      assertRowsAreClean(rows, 'the web port, seeded current: listTrips');
+      // The property, on both sides — what is in the store and what the port hands back —
+      // **per id, against the key set each record was SEEDED with** (A-39 Part 7 point 2).
+      assertSeededRowsUnchanged(db, records, rows, 'the web port, seeded current');
       // And the assertions that prove THIS path ran and did what it should. §4.3 A-30 applied
       // to the upcast: arm A's whole job is to leave a record that already has a fence alone.
-      assert.equal(
-        db._store('versions').get(trip.id),
-        SEEDED_FENCE,
-        'the upcast moved a StorageVersion it was handed. A fence the port did not mint is a ' +
-          'fence another tab may be holding (§4.3 A-30, §2.2a) — arm A exists to skip it.',
+      // A-38's arm-2 assertions, now holding PER ID.
+      for (const r of records) {
+        assert.equal(
+          db._store('versions').get(r.trip.id),
+          SEEDED_FENCE,
+          `the upcast moved the StorageVersion it was handed for ${r.trip.id}. A fence the port ` +
+            'did not mint is a fence another tab may be holding (§4.3 A-30, §2.2a) — arm A ' +
+            'exists to skip it.',
+        );
+        assert.equal(db._store('docs').get(r.trip.id), JSON.stringify(r.trip), `the upcast rewrote the document for ${r.trip.id}`);
+      }
+      assert.equal(db._store('versions').size, records.length, 'the upcast added a version for a record with no document');
+      assert.equal(db._summaries().size, records.length, 'the upcast added or dropped a summary row');
+      assert.equal(records.length, 8, 'A-39 Part 5: arm 2 carries the EIGHT V=present rows of the covering table');
+      assert.deepEqual(
+        records.map((r) => r.gen.name),
+        COVERING_SET.filter((c) => c.arm === 2).map((c) => c.s),
+        'INCONCLUSIVE: the seeded generations are not the ones the table assigns to arm 2',
       );
-      assert.equal(db._store('versions').size, 1, 'the upcast added a version for a record with no document');
-      assert.equal(db._summaries().size, 1, 'the upcast added or dropped a summary row');
-      assert.equal(db._store('docs').get(trip.id), JSON.stringify(trip), 'the upcast rewrote the document');
-      assert.equal(rows.length, 1, 'INCONCLUSIVE: the seeded row was not returned');
-      assert.equal(rows[0].id, trip.id, 'INCONCLUSIVE: a different record came back');
     },
     { seed: seededDb(records), beforeConstruct: (db) => assertSeedLanded(db, records, 'arm 2') },
   );
 });
 
-test('exit 6b-1b-3: STARTING STATE = an existing LEGACY database (doc + summary, NO version). The stamping branch runs — this is the arm G13 dies in', async () => {
-  const { trip, summary } = webRow('t-legacy');
-  const records: SeedRecord[] = [{ trip, summary, version: null }];
+test('exit 6b-1b-3: STARTING STATE = an existing LEGACY database (NO version), seeded with A-39\'s SEVEN V=absent covering records. The stamping branch runs — this is the arm G13 dies in', async () => {
+  const records = coveringSeed(3);
   await driveWebPort(
     async (port, db) => {
       const rows = await port.listTrips();
-      assertRowsAreClean([...db._summaries().values()] as TripSummaryRow[], 'the web port, seeded legacy: summaries');
-      assertRowsAreClean(rows, 'the web port, seeded legacy: listTrips');
+      assertSeededRowsUnchanged(db, records, rows, 'the web port, seeded legacy');
 
-      // The stamp: `versions` was empty and gains EXACTLY ONE non-empty entry.
-      assert.equal(db._store('versions').size, 1, 'the upcast did not stamp the versionless record exactly once');
-      const minted = db._store('versions').get(trip.id);
-      assert.equal(typeof minted, 'string');
-      assert.ok((minted as string).length > 0, 'the upcast stamped an empty token');
-      assert.notEqual(minted, SEEDED_FENCE, 'INCONCLUSIVE: the seeded fence leaked into the legacy arm');
-      // Nothing else moved.
-      assert.equal(db._summaries().size, 1, 'the upcast added or dropped a summary row');
-      assert.equal(db._store('docs').get(trip.id), JSON.stringify(trip), 'the upcast rewrote the document');
+      // The stamp: `versions` was empty and gains EXACTLY SEVEN non-empty entries.
+      assert.equal(db._store('versions').size, records.length, 'the upcast did not stamp every versionless record exactly once');
+      assert.equal(records.length, 7, 'A-39 Part 5: arm 3 carries the SEVEN V=absent rows of the covering table');
+      const minted = new Set<string>();
+      for (const r of records) {
+        const token = db._store('versions').get(r.trip.id);
+        assert.equal(typeof token, 'string', `the upcast did not stamp ${r.trip.id}`);
+        assert.ok((token as string).length > 0, `the upcast stamped ${r.trip.id} with an empty token`);
+        assert.notEqual(token, SEEDED_FENCE, 'INCONCLUSIVE: the seeded fence leaked into the legacy arm');
+        minted.add(token as string);
+        assert.equal(db._store('docs').get(r.trip.id), JSON.stringify(r.trip), `the upcast rewrote the document for ${r.trip.id}`);
+      }
+      assert.equal(minted.size, records.length, 'the upcast reused one minted token across records (§2.2a rule 2)');
+      assert.equal(db._summaries().size, records.length, 'the upcast added or dropped a summary row');
 
       // **The assertion that proves the stamp actually landed**: `load()` REJECTS a record with
       // no envelope version (*"storage: record … has no envelope version"*), so it cannot
-      // resolve at all unless arm B wrote one.
-      const loaded = await port.load(trip.id);
-      assert.ok(loaded, 'load() returned null for a seeded document');
-      assert.equal(loaded.doc, JSON.stringify(trip), 'load() handed back a document the seed did not put there');
-      assert.equal(loaded.version, minted, 'load() returned a fence other than the newly minted one');
+      // resolve at all unless arm B wrote one. Per id, so a red names the record.
+      for (const r of records) {
+        const loaded = await port.load(r.trip.id);
+        assert.ok(loaded, `load() returned null for the seeded document ${r.trip.id}`);
+        assert.equal(loaded.doc, JSON.stringify(r.trip), `load() handed back a document the seed did not put there for ${r.trip.id}`);
+        assert.equal(loaded.version, db._store('versions').get(r.trip.id), `load() returned a fence other than the newly minted one for ${r.trip.id}`);
+      }
+      assert.deepEqual(
+        records.map((r) => r.gen.name),
+        COVERING_SET.filter((c) => c.arm === 3).map((c) => c.s),
+        'INCONCLUSIVE: the seeded generations are not the ones the table assigns to arm 3',
+      );
     },
     { seed: seededDb(records), beforeConstruct: (db) => assertSeedLanded(db, records, 'arm 3') },
   );
@@ -815,14 +1305,20 @@ test('exit 6b-1b-3: STARTING STATE = an existing LEGACY database (doc + summary,
 test('exit 6b-1b-4: STARTING STATE = a MIXED database — one legacy id and one current id, both arms of the upcast loop in one run', async () => {
   // A real upgraded database is mixed; an arm that is uniformly legacy or uniformly current
   // tests half a loop.
+  //
+  // **A-39 Part 5 says this arm's size in writing, so nobody "optimises" it.** It is UNCHANGED
+  // at two records, both gen-4/rich. It contributes **no S×C coverage cells at all** and exists
+  // solely for Axis N's third state — both loop arms in one `ensureReady` run. Growing it adds
+  // no coverage; shrinking it deletes the only arm that spans both V values in one transaction.
   const legacy = webRow('t-mixed-legacy');
   const current = webRow('t-mixed-current');
   const records: SeedRecord[] = [
-    { trip: legacy.trip, summary: legacy.summary, version: null },
-    { trip: current.trip, summary: current.summary, version: SEEDED_FENCE },
+    { trip: legacy.trip, summary: legacy.summary, version: null, gen: CURRENT_GEN },
+    { trip: current.trip, summary: current.summary, version: SEEDED_FENCE, gen: CURRENT_GEN },
   ];
   await driveWebPort(
     async (port, db) => {
+      assert.equal(records.length, 2, 'A-39 Part 5: arm 4 stays at TWO records and contributes zero S×C coverage cells — Axis N is its only job');
       const rows = await port.listTrips();
       assertRowsAreClean([...db._summaries().values()] as TripSummaryRow[], 'the web port, seeded mixed: summaries');
       assertRowsAreClean(rows, 'the web port, seeded mixed: listTrips');
@@ -860,7 +1356,7 @@ test('exit 6b-1b-5: STARTING STATE = what the PORT ITSELF wrote — a second ins
     // store the port itself writes, with a value of the same shape. (Enumerating the double's
     // store names would need an accessor outside its constructor, which A-38 Part 5's
     // checkable line forbids adding here — see BUILD-NOTES.)
-    const fixture = seededDb([{ trip, summary, version: SEEDED_FENCE }]);
+    const fixture = seededDb([{ trip, summary, version: SEEDED_FENCE, gen: CURRENT_GEN }]);
     for (const name of Object.keys(fixture.stores ?? {})) {
       assert.deepEqual(
         [...db._store(name).keys()],
@@ -958,7 +1454,7 @@ function g14(): string {
 
 test('exit 6b-1b-2: not vacuous — G12 (the upcast widens every row) FAILS the seeded-current arm', async () => {
   const { trip, summary } = webRow('t-current');
-  const records: SeedRecord[] = [{ trip, summary, version: SEEDED_FENCE }];
+  const records: SeedRecord[] = [{ trip, summary, version: SEEDED_FENCE, gen: CURRENT_GEN }];
   await assert.rejects(
     () => driveWebPort(
       async (port, db) => {
@@ -974,7 +1470,7 @@ test('exit 6b-1b-2: not vacuous — G12 (the upcast widens every row) FAILS the 
 
 test('exit 6b-1b-2: not vacuous — G14 (the upcast stamps a record it should have skipped) FAILS the byte-identical fence assertion', async () => {
   const { trip, summary } = webRow('t-current');
-  const records: SeedRecord[] = [{ trip, summary, version: SEEDED_FENCE }];
+  const records: SeedRecord[] = [{ trip, summary, version: SEEDED_FENCE, gen: CURRENT_GEN }];
   await assert.rejects(
     () => driveWebPort(
       async (port, db) => {
@@ -994,7 +1490,7 @@ test('exit 6b-1b-3: NOT VACUOUS, AND THIS IS THE POINT — G13 (the widening ins
   // deletes the database first — and caught here, by an arm whose starting state is a
   // VERSIONLESS record. `qa/a38-exit6d.sh` measures each of those three claims.
   const { trip, summary } = webRow('t-legacy');
-  const records: SeedRecord[] = [{ trip, summary, version: null }];
+  const records: SeedRecord[] = [{ trip, summary, version: null, gen: CURRENT_GEN }];
   await assert.rejects(
     () => driveWebPort(
       async (port, db) => {
@@ -1013,8 +1509,8 @@ test('exit 6b-1b-4: not vacuous — G13 FAILS the mixed arm too, through its leg
   const legacy = webRow('t-mixed-legacy');
   const current = webRow('t-mixed-current');
   const records: SeedRecord[] = [
-    { trip: legacy.trip, summary: legacy.summary, version: null },
-    { trip: current.trip, summary: current.summary, version: SEEDED_FENCE },
+    { trip: legacy.trip, summary: legacy.summary, version: null, gen: CURRENT_GEN },
+    { trip: current.trip, summary: current.summary, version: SEEDED_FENCE, gen: CURRENT_GEN },
   ];
   await assert.rejects(
     () => driveWebPort(
@@ -1046,12 +1542,186 @@ test('exit 6b-1b-5: not vacuous — G12 FAILS the second-instance arm', async ()
   );
 });
 
+// ---------------------------------------------------------------------------
+// **A-39 Part 9 — five more faults, ONE PER AXIS STATE the covering set exists to reach**, so
+// the cover is *demonstrated* rather than asserted. A-33 Part 6's ten, A-36 Part 5's four and
+// A-38 Part 7's three all stand above and must stay red.
+//
+// | G16 | `r.summaryVersion < SUMMARY_VERSION` — *"while we are in here, bring stale rows
+//         current."* **This is R31-1's own H4.**                    | arms 2 and 3 | Axis S below-current |
+// | G17 | `!('attribution' in r)` — a KEY-PRESENCE guard, no version read at all
+//                                                                   | arms 2 and 3 | that the ageing is SHAPE-FAITHFUL |
+// | G18 | `r.summaryVersion !== SUMMARY_VERSION`                     | arms 2 and 3 | gen-future ≠ stale |
+// | G19 | `r.countryCodes.length === 0`                              | arms 2 and 3 | Axis C's zero cell |
+// | G20 | `attribution.stops.attributed < attribution.stops.located` | arms 2 and 3 | Axis C's third cell |
+//
+// Each is the transaction-scope widening **G12 already makes**, with a different guard on the
+// put — which is A-39 Part 1's finding stated as code: `SUMMARIES` is not in `ensureReady`'s
+// transaction scope, so *every* fault in this class is that same scope edit plus a body.
+//
+// `qa/a39-exit6e.sh` measures each of them against the whole file, against the pre-A-38 gate
+// shape (arm 1 alone), against 6b-2, and — for G16, G17, G19 and G20 — against a **deliberately
+// degraded covering set**, which is A-39 Part 9's required NEGATIVE measurement: a fault that
+// would be caught anyway proves nothing about the axis it was added for.
+// ---------------------------------------------------------------------------
+
+/**
+ * G12's transaction-scope widening with a guard on the put. The widened key is `daysTravelled`
+ * — a lifetime count of exactly the kind §8.4 clause 2 forbids — and it is computed from
+ * `dayCount`, which is the **one count-shaped field every generation carries**, so the fault is
+ * a *widening* on every row it fires for rather than a crash on the older ones.
+ */
+function guardedUpcastFault(label: string, guard: string): string {
+  return faultedPort(label, [
+    [
+      "          const tx = db.transaction([DOCS, VERSIONS], 'readwrite');\n          const versions = tx.objectStore(VERSIONS);",
+      "          const tx = db.transaction([DOCS, SUMMARIES, VERSIONS], 'readwrite');\n          const versions = tx.objectStore(VERSIONS);\n          const sums = tx.objectStore(SUMMARIES);",
+    ],
+    [
+      '              for (const key of docKeys.result) {\n                if (have.has(String(key))) continue;',
+      '              const all = sums.getAll() as IDBRequest<TripSummaryRow[]>;\n'
+        + '              all.onsuccess = () => {\n'
+        + '                for (const r of all.result) {\n'
+        + `                  if (${guard}) sums.put({ ...r, daysTravelled: r.dayCount }, r.id);\n`
+        + '                }\n'
+        + '              };\n'
+        + '              for (const key of docKeys.result) {\n                if (have.has(String(key))) continue;',
+    ],
+  ]);
+}
+
+/**
+ * The five guards, transcribed from A-39 Part 9's table.
+ *
+ * **Two carry a null-guard A-39's table does not print, and it is disclosed rather than
+ * silent.** `r.countryCodes.length` and `r.attribution.stops.…` both *throw* against a gen-1
+ * row, which has neither key — and a throw inside the recorder's `onsuccess` escapes the
+ * transaction entirely, killing the test process instead of widening a row. A fault that
+ * crashes is not the fault A-39 is describing (a silent widening), and an author writing a
+ * migration over rows they know may be legacy writes the guarded form. The COMPARISON is
+ * verbatim; only its reachability is made safe.
+ */
+const A39_FAULTS: ReadonlyArray<{ id: string; guard: string; fires: string }> = [
+  { id: 'G16', guard: `r.summaryVersion < ${SUMMARY_VERSION}`, fires: 'gen-2 and gen-3 rows (gen-1 has no summaryVersion key at all, so `undefined < n` is false — which is exactly why G17 exists as a separate fault)' },
+  { id: 'G17', guard: "!('attribution' in r)", fires: 'gen-1, gen-2 and gen-3 rows — with no version read at all' },
+  { id: 'G18', guard: `r.summaryVersion !== ${SUMMARY_VERSION}`, fires: 'gen-1, gen-2, gen-3 AND gen-future rows — `<` and `!==` are different faults' },
+  { id: 'G19', guard: 'r.countryCodes?.length === 0', fires: 'the degenerate and unattributed rows — Axis C\'s zero cell' },
+  { id: 'G20', guard: '!!r.attribution && r.attribution.stops.attributed < r.attribution.stops.located', fires: 'the unattributed rows only — the cell neither rich nor degenerate reaches' },
+];
+
+for (const fault of A39_FAULTS) {
+  for (const arm of [2, 3] as const) {
+    test(`exit 6b-1b-${arm}: not vacuous — ${fault.id} (a guarded widening in the upcast, firing on ${fault.fires}) FAILS the covering seed`, async () => {
+      const records = coveringSeed(arm);
+      await assert.rejects(
+        () => driveWebPort(
+          async (port, db) => {
+            const rows = await port.listTrips();
+            assertSeededRowsUnchanged(db, records, rows, `the faulted web port (${fault.id}), arm ${arm}`);
+          },
+          {
+            source: guardedUpcastFault(fault.id, fault.guard),
+            seed: seededDb(records),
+            beforeConstruct: (db) => assertSeedLanded(db, records, `arm ${arm} under ${fault.id}`),
+          },
+        ),
+        /the key set of the (PERSISTED|RETURNED) row moved|leaves reached the store/,
+        `${fault.id} walked past arm ${arm}. A-39 Part 11: this is a BUILDER finding against the ` +
+          'covering table — a row is missing, a fixture has rotted into another state, or an ' +
+          'assertion is not per-id — not a design question for the architect.',
+      );
+    });
+  }
+}
+
+test('exit 6b-1b: the covering set is what catches them — G16 is GREEN against a gen-4-only seed, which is R31-1 measured', async () => {
+  // The negative half of the claim, in the suite rather than only in `qa/`. Seeding the same
+  // arm with freshly-minted rows — A-38's shape, one per content class so nothing else changed
+  // — leaves R31-1's own H4 completely invisible. That is the finding, reproduced, and it is
+  // why the table above cannot be quietly replaced by "one seeded row per arm".
+  const records: SeedRecord[] = CONTENTS.map((content) => {
+    const id = `t-fresh-${content}`;
+    const trip = contentTrip(content, id);
+    return { trip, summary: tripSummary(trip, COUNTRY_INDEX), version: SEEDED_FENCE, gen: CURRENT_GEN };
+  });
+  await driveWebPort(
+    async (port, db) => {
+      const rows = await port.listTrips();
+      // No rejection: the fault ran and changed nothing, because no seeded row is stale.
+      assertSeededRowsUnchanged(db, records, rows, 'G16 against a gen-4-only seed');
+    },
+    {
+      source: guardedUpcastFault('G16', `r.summaryVersion < ${SUMMARY_VERSION}`),
+      seed: seededDb(records),
+      beforeConstruct: (db) => assertSeedLanded(db, records, 'the gen-4-only seed'),
+    },
+  );
+});
+
+test('exit 6b-1b: the ageing must be SHAPE-FAITHFUL — G17 is GREEN against version-only-aged fixtures, which is the fixture A-39 Part 6 forbids', async () => {
+  // A-39 Part 9's required negative measurement for G17. If `ageRow` only stamped a number —
+  // the fixture that "looks aged" — a key-presence guard reads a row that still has every key
+  // and does nothing. This is R31-1's shape one level down, and it is why Part 6 forbids a
+  // version-only fixture in writing.
+  const versionOnly = (fresh: TripSummaryRow, gen: GenEntry): TripSummaryRow =>
+    (gen.version === null ? fresh : { ...fresh, summaryVersion: gen.version });
+  const records: SeedRecord[] = COVERING_SET.filter((c) => c.arm === 2).map((cell) => {
+    const gen = generation(cell.s);
+    const id = coverId(cell);
+    const trip = contentTrip(cell.c, id);
+    return {
+      trip,
+      summary: versionOnly(tripSummary(trip, COUNTRY_INDEX), gen),
+      version: SEEDED_FENCE,
+      // The seed is asserted against the CURRENT key set, because that is what a version-only
+      // aged row actually has — which is the whole point of the measurement.
+      gen: CURRENT_GEN,
+    };
+  });
+  await driveWebPort(
+    async (port, db) => {
+      const rows = await port.listTrips();
+      assertSeededRowsUnchanged(db, records, rows, 'G17 against version-only-aged fixtures');
+    },
+    {
+      source: guardedUpcastFault('G17', "!('attribution' in r)"),
+      seed: seededDb(records),
+      beforeConstruct: (db) => assertSeedLanded(db, records, 'the version-only-aged seed'),
+    },
+  );
+});
+
+test('exit 6b-1b: Axis C is what catches them — G19 and G20 are GREEN against a rich-only seed', async () => {
+  // A-39 Part 9's required negative measurement for G20, and the same shape for G19: a fault
+  // that would be caught anyway proves nothing about the axis it was added for. Every
+  // generation is present here; only the CONTENT axis has collapsed to one representative.
+  for (const fault of A39_FAULTS.filter((f) => f.id === 'G19' || f.id === 'G20')) {
+    const records: SeedRecord[] = COVERING_SET.filter((c) => c.arm === 2).map((cell) => {
+      const gen = generation(cell.s);
+      const id = `rich-only-${cell.n}`;
+      const trip = contentTrip('rich', id);
+      return { trip, summary: ageRow(tripSummary(trip, COUNTRY_INDEX), gen), version: SEEDED_FENCE, gen };
+    });
+    await driveWebPort(
+      async (port, db) => {
+        const rows = await port.listTrips();
+        assertSeededRowsUnchanged(db, records, rows, `${fault.id} against a rich-only seed`);
+      },
+      {
+        source: guardedUpcastFault(fault.id, fault.guard),
+        seed: seededDb(records),
+        beforeConstruct: (db) => assertSeedLanded(db, records, `the rich-only seed (${fault.id})`),
+      },
+    );
+  }
+});
+
 test('exit 6b-1b: the SEED-INTEGRITY assertion is itself not vacuous — a mis-spelled store name is caught BEFORE the port runs', async () => {
   // A-38 Part 4's reasoning, tested rather than asserted: without this, a typo in a store name
   // silently yields an EMPTY database, arms 2-4 degrade back into arm 1, and the gate reports
   // green — R30-1 re-created inside the fix for R30-1, with the same signature.
   const { trip, summary } = webRow('t-typo');
-  const records: SeedRecord[] = [{ trip, summary, version: null }];
+  const records: SeedRecord[] = [{ trip, summary, version: null, gen: CURRENT_GEN }];
   const good = seededDb(records);
   const typo: Seed = {
     dbVersion: good.dbVersion,
