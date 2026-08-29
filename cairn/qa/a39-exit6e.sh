@@ -120,12 +120,21 @@ G20="$PRE"'"!!r.attribution && r.attribution.stops.attributed < r.attribution.st
 
 # ---------------------------------------------------------------------------
 # The positives: every one of the five must be caught by the covering table.
+#
+# Measured TWICE, and the second is the one that means something. A whole-file run is red partly
+# for a bookkeeping reason — the in-file vacuity controls build their own faulted source from the
+# shipped port, and in a pre-faulted worktree their anchors no longer apply, which is R29-4's
+# UNRUN rule firing exactly as designed. So each fault is ALSO measured against the two seeded
+# arms alone (`ARMS`), where a red can only mean *the covering table caught the widening*.
 # ---------------------------------------------------------------------------
-run_fault "G16 — \`summaryVersion < SUMMARY_VERSION\`: R31-1's own H4 (expect: RED)" "$G16" RED
-run_fault "G17 — \`!('attribution' in r)\`: a KEY-PRESENCE guard, no version read (expect: RED)" "$G17" RED
-run_fault "G18 — \`summaryVersion !== SUMMARY_VERSION\`: fires on gen-future too (expect: RED)" "$G18" RED
-run_fault "G19 — \`countryCodes.length === 0\`: Axis C's zero cell (expect: RED)" "$G19" RED
-run_fault "G20 — \`stops.attributed < stops.located\`: Axis C's third cell (expect: RED)" "$G20" RED
+ARMS='--test-name-pattern=6b-1b-(2|3):.STARTING.STATE'
+
+run_fault "G16 — \`summaryVersion < SUMMARY_VERSION\`: R31-1's own H4, WHOLE GATE (expect: RED)" "$G16" RED
+run_fault "G16 — against the two SEEDED ARMS alone (expect: RED — the covering table caught it)" "$G16" RED "$ARMS $TEST"
+run_fault "G17 — \`!('attribution' in r)\`: a KEY-PRESENCE guard, no version read (expect: RED)" "$G17" RED "$ARMS $TEST"
+run_fault "G18 — \`summaryVersion !== SUMMARY_VERSION\`: fires on gen-future too (expect: RED)" "$G18" RED "$ARMS $TEST"
+run_fault "G19 — \`countryCodes.length === 0\`: Axis C's zero cell (expect: RED)" "$G19" RED "$ARMS $TEST"
+run_fault "G20 — \`stops.attributed < stops.located\`: Axis C's third cell (expect: RED)" "$G20" RED "$ARMS $TEST"
 
 # ---------------------------------------------------------------------------
 # The negatives, part 1: the pre-A-38 gate shape (arm 1 alone) and 6b-2. All GREEN.
@@ -171,7 +180,7 @@ open(q, "w").write(t)
 '
 
 run_fault "G16 under the PRE-A-39 GATE SHAPE — A-38's five arms with FRESHLY MINTED rows (expect: GREEN — THIS IS R31-1)" \
-  "$PRE_A39_G16" GREEN "--test-name-pattern=6b-1b-(2|3): STARTING STATE $TEST"
+  "$PRE_A39_G16" GREEN "$ARMS $TEST"
 
 say "summary"
 if [ -n "$MISMATCH" ]; then
