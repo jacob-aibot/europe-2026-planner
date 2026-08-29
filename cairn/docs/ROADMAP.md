@@ -2454,10 +2454,19 @@ I-8**, for the same reason I-7a was: I-8 is where `travelStats` reaches a screen
 - **Ship gate.** I-7a's ship gate re-run in full, plus: exit criterion 6 in its revision-26 form with
   `qa/i7-exit6.sh` at 10 of 10 red and `qa/i7a-exit6b.sh` at **G1, G4 and G7 red** (G2, G3, G5, G6 stay
   red); the new day-skeleton criterion at both edges; `qa/i7a-span.mjs` **ALL OK** where it is 2 FAIL by
-  design today; `qa/i7a-today.mjs` ALL OK (4 FAIL today); `qa/i7a-provisional.mjs` §4 and `qa/i7-edges.mjs`
-  re-expressed to A-37 Part 4's stated answer **by the breaker, not by the builder** — a builder who edits
-  a probe's expectation to match their own output has removed the check; and the Chromium read-back run and
-  recorded, or its absence disclosed.
+  design today; `qa/i7a-provisional.mjs` §4 and `qa/i7-edges.mjs` re-expressed to A-37 Part 4's stated
+  answer **by the breaker, not by the builder** — a builder who edits a probe's expectation to match their
+  own output has removed the check; and the Chromium read-back run and recorded, or its absence disclosed.
+  *(Manager, 2026-08-29: `qa/i7a-today.mjs` **ALL OK** is withdrawn as a required I-7 criterion. It was
+  written into this gate at the same revision-26 commit that scheduled R29-3 into I-7b expecting R29-3 to
+  close here; R29-3 did not close — the builder declined it as a contract collision (fixing it as specified
+  would move `Object.keys(core).length` from 75 to 77, contradicting this increment's own non-regression
+  line), round 30's breaker independently confirmed that reasoning, and no architect ruling has ever been
+  issued on it. The manager accepts the existing deferral rather than reopening it or implementing R29-3
+  just to satisfy this line. **R29-3 is not dropped**: it stays open and tracked in `QA-FINDINGS.md`
+  exactly as every round since 29 has carried it — "STILL OPEN," "validly deferred" — and remains available
+  to route to the architect in a future increment. This edit changes only what I-7's ship gate requires; it
+  is not a ruling on R29-3 and does not touch A-39 or any other verification gate.)*
 
 #### I-8 — The Map and Profile surfaces — **2b ships here**
 
