@@ -1966,3 +1966,67 @@ Round 28's: `i7-edges` **ALL OK** (was 1 FAIL, re-expressed), `i7-oracle`/`i7-ye
 anchor and the two harnesses print `7 fault(s) UNRUN … M1…M7` / `6 fault(s) UNRUN … F1…F6` and
 **exit 1**. Historic: `r13`…`r20` **0 FAIL**, `r21-closure` **1 FAIL** (R21-1), `r2-constraints`
 **1 FAIL** (R2-18).
+
+---
+
+## A-38 builder pass (2026-08-29, `claude/cairn-i7-architect-pass-4y8q40` @ `c38db0a`) — R30-1: the `ensureReady` upcast, executed
+
+One new harness, and `qa/i7a-idb-rowkeys.mjs` **grows a second phase**. ARCHITECTURE §8.4
+**A-38**: a port's coverage is its **write paths**, not its interface methods, so 6b-1b becomes
+**five arms each stating its starting state** and 6b-4 gains a seeded legacy phase. All run from
+`cairn/`; the `.sh` harness builds throwaway `git worktree`s at `HEAD` and removes them.
+
+```bash
+bash qa/a38-exit6d.sh                                   # A-38 Part 7's three faults, all in
+                                                        # `ensureReady()`, plus the two SCOPED runs
+                                                        # that make the improvement quantitative.
+                                                        # RED: G12 (the upcast widens every row —
+                                                        # 8 fail; GREEN before this pass), G13 (the
+                                                        # same widening INSIDE THE STAMPING BRANCH,
+                                                        # so it fires only for a versionless record
+                                                        # — 6 fail, arms 3 and 4; GREEN before this
+                                                        # pass), G14 (the `have.has(...) continue`
+                                                        # removed, so a fence the port was HANDED is
+                                                        # overwritten — 6 fail, arms 2, 4 and 5).
+                                                        # GREEN BY DESIGN, and this is the
+                                                        # measurement R30-1 turns on: G13 under the
+                                                        # PRE-A-38 gate shape (arm 1 alone, the
+                                                        # empty-database arm — 4 tests, 0 fail) and
+                                                        # under 6b-2's two surviving assertions
+                                                        # (2 tests, 0 fail). Each run's measured
+                                                        # colour is compared to the expected one and
+                                                        # a mismatch exits 1, as does an UNRUN
+                                                        # anchor (R29-4).
+
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node --experimental-strip-types qa/i7a-idb-rowkeys.mjs
+                                                        # ALL OK — now in TWO phases. Phase 1 is
+                                                        # what it always did (fresh database, one
+                                                        # instance, both mutating methods, raw
+                                                        # read-back): 14 keys, 387 bytes.
+                                                        # **Phase 2 is new** (A-38 Part 6): a LEGACY
+                                                        # database written RAW — doc + summary row,
+                                                        # no `versions` entry — closed, and only
+                                                        # then opened by the port. It asserts the
+                                                        # seed landed and is ROW_KEYS-shaped BEFORE
+                                                        # the port runs, that the upcast stamped the
+                                                        # versionless record exactly once, that
+                                                        # `load()` resolves with the newly minted
+                                                        # fence (it cannot, unless the stamp
+                                                        # landed), and then ROW_KEYS + the blob
+                                                        # check on the persisted bytes.
+                                                        # `--fault=g1`  → phase 1 **3 FAIL** (16
+                                                        # keys), phase 2 clean — the write-path
+                                                        # class.
+                                                        # `--fault=g13` → phase 1 clean, phase 2
+                                                        # **3 FAIL** (16 keys) — the upcast-path
+                                                        # class, which is exactly the blindness
+                                                        # R30-1 found. `--fault` alone still means
+                                                        # `--fault=g1`.
+```
+
+**What this pass changed in the existing harnesses' measurements**, re-run at `c38db0a`:
+`bash qa/r30-exit6c.sh` — **G12 is now RED (8 fail) and G12b RED (9 fail)** where round 30
+measured G12 **GREEN**; G9/G9m (**R30-2**) and G10 (**R30-4**) are **still GREEN and untouched**,
+deliberately — A-38 Part 9 leaves all four round-30 MINORs unruled. `bash qa/i7a-exit6b.sh` all
+six still red (1·2·1·5·3·20). The script comments in `qa/r30-exit6c.sh` still describe round 30's
+own measurement and were **not** rewritten: they are the breaker's record of what was true then.
