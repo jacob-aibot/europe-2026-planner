@@ -2106,3 +2106,73 @@ scoped negatives still GREEN. `bash qa/i7a-exit6b.sh` — all six still red.
 untouched**, deliberately: A-39 Part 13 leaves R30-2…R30-5, R31-2, R31-3 and R31-4 unruled.
 **`qa/i7a-idb-rowkeys.mjs` still exits 0 unconditionally (R31-4)** — read the printed summary,
 not the exit code.
+
+## Round 32 — verifying A-39 against its own table (R32-1, R32-2)
+
+Three breaker probes, aimed at the covering set's **own claims** rather than at new architecture,
+plus the builder fix that closed the two MAJORs they found. All run from `cairn/`; the two `.sh`
+harnesses build throwaway `git worktree`s at **`HEAD`** and remove them — so **commit before
+running them**, or they measure the last commit rather than your working tree.
+
+```bash
+bash qa/r32-a39-nested.sh                               # Four faults `qa/a39-exit6e.sh` does not
+                                                        # build, each with its vacuity control.
+                                                        # NOW RED, both fixed in `f21fa42`:
+                                                        #   G21n gen-2's guard one level down —
+                                                        #        `cities.some(c => !('country
+                                                        #        Source' in c))`, body writes the
+                                                        #        key back INTO the entry. Seeded
+                                                        #        arms: 2 tests / 1 fail (arm 3
+                                                        #        only — arm 2's sole gen-2 row is
+                                                        #        the degenerate one, `cities: []`).
+                                                        #        **Was GREEN 2/0 — that is R32-1.**
+                                                        #   G23  `r.revision === 0`, Axis C's
+                                                        #        revision ZERO cell: 2 tests /
+                                                        #        2 fail, BOTH arms.
+                                                        #        **Was GREEN 2/0 — that is R32-2.**
+                                                        # RED throughout: G21t (G21n's top-level
+                                                        # twin, the vacuity control), G21n whole-
+                                                        # gate, G22 `!('summaryVersion' in r)`.
+                                                        # **GREEN, so the harness still exits 1:**
+                                                        # G23c `r.revision === 1`, G23's control.
+                                                        # Its premise died with the fix — the
+                                                        # fixtures are now revision 0 / 3 / 4 and
+                                                        # none sits at exactly 1, because the only
+                                                        # one that did was the degenerate row that
+                                                        # now reaches the ZERO cell. A-39 Part 4
+                                                        # partitions counts into {zero, non-zero}
+                                                        # and nothing finer, and BOTH cells are now
+                                                        # occupied. Read the per-run lines, not the
+                                                        # exit code. BUILD-NOTES records this.
+
+node --experimental-strip-types qa/r32-revision0.mjs    # ALL OK (was 1 FAIL). Three steps proving
+                                                        # `revision: 0` is REACHABLE, with no fault
+                                                        # injected and no hand-written row:
+                                                        # `fromJSON` preserves it; `importDoc` +
+                                                        # `flush` + `listTrips()` returns a
+                                                        # PERSISTED row carrying it; and the
+                                                        # degenerate Axis-C fixture no longer pins
+                                                        # `revision === 1`. This is what refuted
+                                                        # the prior pass's "unreachable" deviation.
+
+bash qa/r32-pins.sh                                     # exit 0, ALL SEVEN FIRE. A-39 Part 6's
+                                                        # three pins, each broken on purpose:
+                                                        # pin 1 (SUMMARY_VERSION bumped to 5 with
+                                                        # the ledger untouched), pin 2 (`ageRow`
+                                                        # WRITES a value; and the breaker's own
+                                                        # P2-COERCE, `summaryVersion` coerced to a
+                                                        # string, scoped and whole-gate), pin 3
+                                                        # (`ageRow` ADDS a key; `ageRow`'s DELETE
+                                                        # LOOP removed = version-only ageing), and
+                                                        # DEV2 (G19 with A-39 Part 9's LITERAL
+                                                        # unguarded text). A pin that does not fire
+                                                        # is worse than no pin.
+```
+
+**What the R32-1/R32-2 fix changed elsewhere**, re-run at `f21fa42`: `bash qa/a39-exit6e.sh` —
+**exit 0, unchanged**, all 13 runs the colour A-39 Part 9 states. `bash qa/a38-exit6d.sh` —
+**exit 0, unchanged**. `bash qa/r32-pins.sh` — exit 0; the pin-3 edit broke none of its anchors.
+`PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node --experimental-strip-types qa/i7a-idb-rowkeys.mjs`
+— **ALL OK**, and `--fault=g1` / `--fault=g13` / `--fault=g16` → **3 / 1 / 3 FAIL**, identical to
+the counts the A-39 pass recorded. `npm run test:tap` stays at **884 / 0 fail**: the fix adds no
+test, it strengthens assertions inside tests that already existed.
