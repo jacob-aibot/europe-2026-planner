@@ -404,11 +404,41 @@ test('exit 6b-1: the rows a DIRECT port call leaves are clean, for both mutating
  *
  * Its own fidelity is pinned by the outcome assertions below, by the injected-fault matrix of
  * A-36 Part 5, and out of band by `qa/i7a-idb-rowkeys.mjs` in real Chromium (6b-4).
+ *
+ * **A-38 Part 4/5 (revision 27, QA R30-1): it takes a `Seed`.** A port's coverage is the set of
+ * its **write paths**, not the set of its interface methods, and `ensureReady()`'s upcast is a
+ * write path that only executes against a database that already holds records. So the recorder
+ * can be handed a pre-existing database. The line, which is mechanical and a reviewer should
+ * check it:
+ *
+ * > **The double may be given *state*. It may never be given *behaviour that depends on state*.**
+ *
+ * Seeding is `Map.set` into the `stores` map this already keeps, plus the initial value of the
+ * `version` variable it already has — **confined to the constructor, additive only, and with no
+ * `if` that reads a stored value**. It adds no method to the IndexedDB surface, no branch on
+ * record content and no transformation of any value: every seeded value is handed back verbatim,
+ * which is the recorder's one existing obligation. Nothing here knows what a "legacy record" is;
+ * that knowledge stays in the port under test, and the *test* states the fixture.
  */
-function recordingIdb() {
+type Seed = {
+  /** What the recorder reports as the already-installed database version. */
+  dbVersion?: number;
+  /** store name → (key → value), handed back verbatim. */
+  stores?: Record<string, Record<string, unknown>>;
+};
+
+function recordingIdb(seed?: Seed) {
   const stores = new Map<string, Map<string, unknown>>();
   const at = (n: string) => { if (!stores.has(n)) stores.set(n, new Map()); return stores.get(n)!; };
   let version = 0;
+
+  // --- A-38 Part 4: the seed. State, not behaviour. Nothing below this reads it. ---
+  for (const [name, entries] of Object.entries(seed?.stores ?? {})) {
+    const m = at(name);                                   // an empty seeded store still EXISTS
+    for (const [key, value] of Object.entries(entries)) m.set(key, value);
+  }
+  version = seed?.dbVersion ?? 0;
+  // ---------------------------------------------------------------------------------
 
   function makeTx(names: string[]) {
     let pending = 0, done = false;
@@ -479,15 +509,24 @@ async function loadWebPort(source?: string): Promise<() => StoragePort> {
  * Runs `fn` with a fresh recorder installed as the global `indexedDB` — which is where the port
  * reaches for it, at call time, so nothing needs injecting. `crypto.getRandomValues` and `btoa`
  * are Node globals already and are the real ones.
+ *
+ * **A-38 Part 3: every arm states its starting state**, which is `opts.seed`. `opts.beforeConstruct`
+ * runs after the recorder exists and **before any port is constructed** — that is where Part 4's
+ * seed-integrity assertion goes, and it is not optional for a seeded arm. `fn` is handed the
+ * factory as well as an instance, so an arm can open a second instance over the same database.
  */
-async function driveWebPort(fn: (port: StoragePort, db: Recording) => Promise<void>, source?: string): Promise<void> {
-  const db = recordingIdb();
+async function driveWebPort(
+  fn: (port: StoragePort, db: Recording, make: () => StoragePort) => Promise<void>,
+  opts: { source?: string; seed?: Seed; beforeConstruct?: (db: Recording) => void } = {},
+): Promise<void> {
+  const db = recordingIdb(opts.seed);
   const had = 'indexedDB' in globalThis;
   const prior = (globalThis as Record<string, unknown>).indexedDB;
   (globalThis as Record<string, unknown>).indexedDB = db;
   try {
-    const make = await loadWebPort(source);
-    await fn(make(), db);
+    const make = await loadWebPort(opts.source);
+    opts.beforeConstruct?.(db);
+    await fn(make(), db, make);
   } finally {
     if (had) (globalThis as Record<string, unknown>).indexedDB = prior;
     else delete (globalThis as Record<string, unknown>).indexedDB;
@@ -509,7 +548,98 @@ function webRow(id: string): { trip: Trip; summary: TripSummaryRow } {
   return { trip, summary: tripSummary(trip, COUNTRY_INDEX) };
 }
 
-test('exit 6b-1b: the web port EXECUTED — every value that reaches its summary store is clean', async () => {
+const WEB_PORT = 'apps/web/src/ports/storage.ts';
+const shippedPort = () => readFileSync(resolve(CAIRN, WEB_PORT), 'utf8');
+
+/**
+ * The shipped port with one or more string replacements applied, each asserted to have landed.
+ * R29-4 and A-38 Part 7: **an injected fault that did not run is a failure, not a pass** — so
+ * every anchor is checked, and *"the anchor no longer applies — re-derive it, do not delete it"*.
+ */
+function faultedPort(label: string, edits: Array<[string, string]>): string {
+  const shipped = shippedPort();
+  let out = shipped;
+  for (const [from, to] of edits) {
+    assert.ok(
+      out.includes(from),
+      `${label}: the anchor for this fault no longer applies — re-derive it, do not delete it`,
+    );
+    out = out.replace(from, to);
+  }
+  assert.notEqual(out, shipped, `${label}: the replacement changed nothing`);
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// A-38 Part 4 — the seed: a database the port did NOT create.
+// ---------------------------------------------------------------------------
+
+/**
+ * A fixed literal, never minted: determinism (`cairn-constraints` §4), and it is what makes
+ * *"the upcast did not move this record's fence"* assertable **by equality** rather than by
+ * shape. A real `StorageVersion` is base64url of 16 CSPRNG bytes; this is the same alphabet.
+ */
+const SEEDED_FENCE = 'seededfence0000000000A';
+
+/**
+ * The port's own `DB_VERSION`, read out of the shipped source. Hard-coding `3` here would mean
+ * that the day someone bumps it, the seeded database quietly becomes an *older* one, an upgrade
+ * fires, and arm 2 stops being the "no upgrade needed" arm it says it is.
+ */
+function portDbVersion(): number {
+  const m = /^const DB_VERSION = (\d+);$/m.exec(shippedPort());
+  assert.ok(m, `${WEB_PORT}: DB_VERSION could not be read — the seeded arms cannot state a starting state`);
+  return Number(m[1]);
+}
+
+/** A record as it sits in a pre-existing database. `version: null` is the LEGACY shape. */
+type SeedRecord = { trip: Trip; summary: TripSummaryRow; version: string | null };
+
+/**
+ * A whole starting state. **Minted through `createTrip`/`tripSummary`, never hand-typed** — a
+ * literal row would go stale the next time the row is widened and would defeat the very key
+ * assertion it is the subject of, and it is load-bearing at run time too (`listTrips()` sorts on
+ * `startDate` and `title`, so a stub throws inside the port instead of failing an assertion).
+ */
+function seededDb(records: readonly SeedRecord[]): Seed {
+  const docs: Record<string, unknown> = {};
+  const summaries: Record<string, unknown> = {};
+  const versions: Record<string, unknown> = {};
+  for (const r of records) {
+    docs[r.trip.id] = JSON.stringify(r.trip);
+    summaries[r.trip.id] = r.summary;
+    if (r.version !== null) versions[r.trip.id] = r.version;
+  }
+  // All three stores are named even when empty, so `versions: {}` is an EXISTING empty store
+  // rather than an absent one — which is exactly the legacy database's shape.
+  return { dbVersion: portDbVersion(), stores: { docs, summaries, versions } };
+}
+
+/**
+ * **A-38 Part 4's seed-integrity assertion, and it is not optional.** A mis-spelled store name
+ * silently yields an *empty* database, at which point arms 2–4 degrade back into arm 1 and
+ * report green — which is R30-1, re-created inside the fix for R30-1, with the same signature.
+ * The before/after pair on the summary record's key set is also what makes a red attributable:
+ * clean before, widened after, therefore **the port** did it.
+ */
+function assertSeedLanded(db: Recording, records: readonly SeedRecord[], where: string): void {
+  const ids = records.map((r) => r.trip.id).sort();
+  const versioned = records.filter((r) => r.version !== null).map((r) => r.trip.id).sort();
+  assert.ok(ids.length > 0, `${where}: INCONCLUSIVE — an empty seed is arm 1 wearing arm 2's name`);
+  assert.deepEqual([...db._store('docs').keys()].sort(), ids, `${where}: the docs seed did not land`);
+  assert.deepEqual([...db._store('summaries').keys()].sort(), ids, `${where}: the summaries seed did not land`);
+  assert.deepEqual([...db._store('versions').keys()].sort(), versioned, `${where}: the versions seed did not land`);
+  for (const [id, row] of db._store('summaries')) {
+    assert.deepEqual(
+      Object.keys(row as TripSummaryRow).sort(),
+      Object.keys(ROW_KEYS).sort(),
+      `${where}: the seeded row for ${id} is not ROW_KEYS-shaped BEFORE the port runs, so a ` +
+        'widening found afterwards could not be attributed to the port',
+    );
+  }
+}
+
+test('exit 6b-1b-1: STARTING STATE = an EMPTY database. The web port EXECUTED — every value that reaches its summary store is clean', async () => {
   await driveWebPort(async (port, db) => {
     const { trip, summary } = webRow('web-1');
     const saved = await port.saveIfVersion(trip.id, null, JSON.stringify(trip), summary);
@@ -523,7 +653,7 @@ test('exit 6b-1b: the web port EXECUTED — every value that reaches its summary
   });
 });
 
-test('exit 6b-1b: the web port EXECUTED — every row it HANDS BACK is clean', async () => {
+test('exit 6b-1b-1: STARTING STATE = an EMPTY database. Every row the web port HANDS BACK is clean', async () => {
   // Read back through the port as well as out of the store, because a read-side widening
   // (G4: `listTrips` decorating the rows it returns) persists nothing and is invisible to the
   // assertion above while every consumer sees the count anyway.
@@ -541,7 +671,7 @@ test('exit 6b-1b: the web port EXECUTED — every row it HANDS BACK is clean', a
   });
 });
 
-test('exit 6b-1b: the double is not lying — the port\'s OUTCOMES are asserted, not just its keys', async () => {
+test('exit 6b-1b-1: the double is not lying — the port\'s OUTCOMES are asserted, not just its keys', async () => {
   // A double that has broken the transaction semantics fails these BEFORE it can give a false
   // green on the key set. A-36 Part 3 fidelity obligations 1 and 4.
   await driveWebPort(async (port, db) => {
@@ -574,7 +704,7 @@ test('exit 6b-1b: the double is not lying — the port\'s OUTCOMES are asserted,
   });
 });
 
-test('exit 6b-1b: the arm is not vacuous — a port that widens its rows FAILS it', async () => {
+test('exit 6b-1b-1: the arm is not vacuous — a port that widens its rows FAILS it', async () => {
   // The control. Without this, every assertion above could be passing because nothing ran.
   const faulted = readFileSync(resolve(CAIRN, 'apps/web/src/ports/storage.ts'), 'utf8').replace(
     '      await ensureReady();\n      const db = await open();\n      return new Promise<SaveOutcome>((resolve, reject) => {\n        const tx = db.transaction([DOCS, SUMMARIES, VERSIONS], \'readwrite\');\n        let outcome: SaveOutcome | null = null;\n        const readKey = tx.objectStore(DOCS).getKey(id) as IDBRequest<IDBValidKey | undefined>;',
@@ -587,9 +717,353 @@ test('exit 6b-1b: the arm is not vacuous — a port that widens its rows FAILS i
       const { trip, summary } = webRow('web-fault');
       await port.saveIfVersion(trip.id, null, JSON.stringify(trip), summary);
       assertRowsAreClean([...db._summaries().values()] as TripSummaryRow[], 'the faulted web port');
-    }, faulted),
+    }, { source: faulted }),
     /not on TripSummaryRow|leaves reached the store/,
     'G7\'s shape — the parameter reassigned in place before an unchanged put — walked past 6b-1b',
+  );
+});
+
+// ===========================================================================
+// (6b-1b-2 … 6b-1b-5) The four arms A-38 adds, each with a STATED STARTING STATE.
+//
+// **§8.4 A-38 (QA R30-1, MAJOR).** A-36 Part 2's sentence is a totality claim over *values* —
+// *"the keys of every value that reaches its summary store"* — and arm 1 above discharges it
+// for exactly one starting state: a database that does not exist yet. `ensureReady()` is the
+// port's **third write path**. It is not an interface method, it runs once per port instance,
+// and on an empty database its loop body has nothing to walk. So the sentence was true of the
+// property and false of the mechanism, one method over, and round 30 put a widening there and
+// read it back out of real Chromium while exit criterion 6 reported 18 pass / 0 fail.
+//
+// > **A `StoragePort`'s coverage is the set of its WRITE PATHS, not the set of its interface
+// > methods.** Every arm drives its port from a stated starting state, and the stated starting
+// > states include a database that already holds records — because a path that only executes
+// > against an existing database is the path that executes on **every page load after the
+// > first**, which is almost every page load there is.
+//
+// `ensureReady`'s loop has two arms, and only one of them can be reached at all:
+//
+//   for (const key of docKeys.result) {
+//     if (have.has(String(key))) continue;   // arm A: this doc already has an envelope version
+//     versions.put(mintVersion(), key);      // arm B: the legacy record — the upcast's work
+//   }
+//
+// **A port called twice can never produce arm B**, because the port's own write path always
+// writes a version alongside the document. Only a database the port did not create has a
+// versionless record in it — which is precisely the population `ensureReady` exists for. That
+// is why the seeding is the load-bearing half and running the port twice (arm 5) is the
+// fixture-fidelity cross-check, a different and smaller job.
+// ===========================================================================
+
+test('exit 6b-1b-2: STARTING STATE = an existing CURRENT database (doc + summary + version, no upgrade). The upcast runs and correctly does nothing', async () => {
+  const { trip, summary } = webRow('t-current');
+  const records: SeedRecord[] = [{ trip, summary, version: SEEDED_FENCE }];
+  await driveWebPort(
+    async (port, db) => {
+      const rows = await port.listTrips();
+      // The property, on both sides: what is in the store, and what the port hands back.
+      assertRowsAreClean([...db._summaries().values()] as TripSummaryRow[], 'the web port, seeded current: summaries');
+      assertRowsAreClean(rows, 'the web port, seeded current: listTrips');
+      // And the assertions that prove THIS path ran and did what it should. §4.3 A-30 applied
+      // to the upcast: arm A's whole job is to leave a record that already has a fence alone.
+      assert.equal(
+        db._store('versions').get(trip.id),
+        SEEDED_FENCE,
+        'the upcast moved a StorageVersion it was handed. A fence the port did not mint is a ' +
+          'fence another tab may be holding (§4.3 A-30, §2.2a) — arm A exists to skip it.',
+      );
+      assert.equal(db._store('versions').size, 1, 'the upcast added a version for a record with no document');
+      assert.equal(db._summaries().size, 1, 'the upcast added or dropped a summary row');
+      assert.equal(db._store('docs').get(trip.id), JSON.stringify(trip), 'the upcast rewrote the document');
+      assert.equal(rows.length, 1, 'INCONCLUSIVE: the seeded row was not returned');
+      assert.equal(rows[0].id, trip.id, 'INCONCLUSIVE: a different record came back');
+    },
+    { seed: seededDb(records), beforeConstruct: (db) => assertSeedLanded(db, records, 'arm 2') },
+  );
+});
+
+test('exit 6b-1b-3: STARTING STATE = an existing LEGACY database (doc + summary, NO version). The stamping branch runs — this is the arm G13 dies in', async () => {
+  const { trip, summary } = webRow('t-legacy');
+  const records: SeedRecord[] = [{ trip, summary, version: null }];
+  await driveWebPort(
+    async (port, db) => {
+      const rows = await port.listTrips();
+      assertRowsAreClean([...db._summaries().values()] as TripSummaryRow[], 'the web port, seeded legacy: summaries');
+      assertRowsAreClean(rows, 'the web port, seeded legacy: listTrips');
+
+      // The stamp: `versions` was empty and gains EXACTLY ONE non-empty entry.
+      assert.equal(db._store('versions').size, 1, 'the upcast did not stamp the versionless record exactly once');
+      const minted = db._store('versions').get(trip.id);
+      assert.equal(typeof minted, 'string');
+      assert.ok((minted as string).length > 0, 'the upcast stamped an empty token');
+      assert.notEqual(minted, SEEDED_FENCE, 'INCONCLUSIVE: the seeded fence leaked into the legacy arm');
+      // Nothing else moved.
+      assert.equal(db._summaries().size, 1, 'the upcast added or dropped a summary row');
+      assert.equal(db._store('docs').get(trip.id), JSON.stringify(trip), 'the upcast rewrote the document');
+
+      // **The assertion that proves the stamp actually landed**: `load()` REJECTS a record with
+      // no envelope version (*"storage: record … has no envelope version"*), so it cannot
+      // resolve at all unless arm B wrote one.
+      const loaded = await port.load(trip.id);
+      assert.ok(loaded, 'load() returned null for a seeded document');
+      assert.equal(loaded.doc, JSON.stringify(trip), 'load() handed back a document the seed did not put there');
+      assert.equal(loaded.version, minted, 'load() returned a fence other than the newly minted one');
+    },
+    { seed: seededDb(records), beforeConstruct: (db) => assertSeedLanded(db, records, 'arm 3') },
+  );
+});
+
+test('exit 6b-1b-4: STARTING STATE = a MIXED database — one legacy id and one current id, both arms of the upcast loop in one run', async () => {
+  // A real upgraded database is mixed; an arm that is uniformly legacy or uniformly current
+  // tests half a loop.
+  const legacy = webRow('t-mixed-legacy');
+  const current = webRow('t-mixed-current');
+  const records: SeedRecord[] = [
+    { trip: legacy.trip, summary: legacy.summary, version: null },
+    { trip: current.trip, summary: current.summary, version: SEEDED_FENCE },
+  ];
+  await driveWebPort(
+    async (port, db) => {
+      const rows = await port.listTrips();
+      assertRowsAreClean([...db._summaries().values()] as TripSummaryRow[], 'the web port, seeded mixed: summaries');
+      assertRowsAreClean(rows, 'the web port, seeded mixed: listTrips');
+      assert.equal(rows.length, 2, 'INCONCLUSIVE: both seeded rows did not come back');
+
+      // Arm B: the versionless id was stamped.
+      const minted = db._store('versions').get(legacy.trip.id);
+      assert.equal(typeof minted, 'string', 'the legacy id was not stamped in a mixed database');
+      assert.ok((minted as string).length > 0, 'the legacy id was stamped with an empty token');
+      // Arm A: the versioned id's token is byte-identical to the seeded one.
+      assert.equal(
+        db._store('versions').get(current.trip.id),
+        SEEDED_FENCE,
+        'the upcast moved the fence of the record that already had one',
+      );
+      assert.equal(db._store('versions').size, 2, 'the upcast wrote a version for a key with no document');
+      assert.equal(db._summaries().size, 2, 'the upcast added or dropped a summary row');
+    },
+    { seed: seededDb(records), beforeConstruct: (db) => assertSeedLanded(db, records, 'arm 4') },
+  );
+});
+
+test('exit 6b-1b-5: STARTING STATE = what the PORT ITSELF wrote — a second instance over instance 1\'s database, and the fixture-fidelity cross-check', async () => {
+  // Its coverage is a strict subset of arm 2's. It is kept for the one thing no seeded arm can
+  // do: **its starting state was produced by the port rather than by the test**, which is what
+  // stops arms 2-4's fixture drifting away from what the port actually writes — the way a
+  // seeded arm goes quietly wrong.
+  const { trip, summary } = webRow('t-second');
+  await driveWebPort(async (port, db, make) => {
+    const saved = await port.saveIfVersion(trip.id, null, JSON.stringify(trip), summary);
+    if (!saved.ok) assert.fail(`INCONCLUSIVE: instance 1's write refused (${JSON.stringify(saved)})`);
+
+    // --- fixture fidelity: what instance 1 left behind must match the arms 2-4 fixture shape.
+    // Asserted in the direction that matters: every store the hand-written seed populates is a
+    // store the port itself writes, with a value of the same shape. (Enumerating the double's
+    // store names would need an accessor outside its constructor, which A-38 Part 5's
+    // checkable line forbids adding here — see BUILD-NOTES.)
+    const fixture = seededDb([{ trip, summary, version: SEEDED_FENCE }]);
+    for (const name of Object.keys(fixture.stores ?? {})) {
+      assert.deepEqual(
+        [...db._store(name).keys()],
+        [trip.id],
+        `fixture drift: the port did not write store \`${name}\` that arms 2-4 seed`,
+      );
+    }
+    assert.equal(typeof db._store('docs').get(trip.id), 'string', 'fixture drift: `docs` holds a serialized document');
+    assert.equal(db._store('docs').get(trip.id), JSON.stringify(trip), 'fixture drift: the document round-trip moved');
+    assert.equal(typeof db._store('versions').get(trip.id), 'string', 'fixture drift: `versions` holds an opaque string token');
+    assert.deepEqual(
+      Object.keys(db._summaries().get(trip.id) as TripSummaryRow).sort(),
+      Object.keys((fixture.stores as Record<string, Record<string, unknown>>).summaries[trip.id] as TripSummaryRow).sort(),
+      'fixture drift: the row the PORT persists and the row arms 2-4 SEED no longer have the ' +
+        'same key set. Re-derive the fixture from `tripSummary` — do not widen ROW_KEYS.',
+    );
+
+    // --- page load 2: a fresh instance over what instance 1 wrote.
+    const second = make();
+    const rows = await second.listTrips();
+    assertRowsAreClean([...db._summaries().values()] as TripSummaryRow[], 'the web port, second instance: summaries');
+    assertRowsAreClean(rows, 'the web port, second instance: listTrips');
+    assert.equal(db._store('versions').get(trip.id), saved.version, 'the second instance moved instance 1\'s fence');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The vacuity controls for the four new arms — A-38 Part 7, and R29-4's rule holds without
+// restatement: **an injected fault that did not run is a FAILURE, not a pass**, which is what
+// `faultedPort()`'s anchor assertion is.
+//
+// | G12 | the widening applied to every summary row from inside the upcast | arms 2, 3, 4, 5 |
+// | G13 | the same widening INSIDE THE STAMPING BRANCH, so it fires only for a versionless
+//         document | **arms 3 and 4, and nothing else in the repo** |
+// | G14 | the upcast stamps a record it should have skipped, moving a fence | arms 2 and 4 |
+//
+// `qa/a38-exit6d.sh` measures the same three against the whole file, against the pre-A-38 gate
+// shape (arm 1 alone) and against 6b-2 — which is where the quantitative claim comes from.
+// ---------------------------------------------------------------------------
+
+/** G12: `ensureReady` takes `SUMMARIES` into scope and re-puts every row widened. */
+function g12(): string {
+  return faultedPort('G12', [
+    [
+      "          const tx = db.transaction([DOCS, VERSIONS], 'readwrite');\n          const versions = tx.objectStore(VERSIONS);",
+      "          const tx = db.transaction([DOCS, SUMMARIES, VERSIONS], 'readwrite');\n          const versions = tx.objectStore(VERSIONS);\n          const sums = tx.objectStore(SUMMARIES);",
+    ],
+    [
+      '              for (const key of docKeys.result) {\n                if (have.has(String(key))) continue;',
+      '              const all = sums.getAll() as IDBRequest<TripSummaryRow[]>;\n'
+        + '              all.onsuccess = () => {\n'
+        + '                for (const r of all.result) {\n'
+        + '                  sums.put({ ...r, countriesVisited: r.countryCodes.length, daysTravelled: r.dayCount }, r.id);\n'
+        + '                }\n'
+        + '              };\n'
+        + '              for (const key of docKeys.result) {\n                if (have.has(String(key))) continue;',
+    ],
+  ]);
+}
+
+/**
+ * **G13.** The same widening, one `sums.get`/`sums.put` pair placed *after* the existing
+ * `versions.put(mintVersion(), key)` — so it fires **only** for a document with no envelope
+ * version. `objectStore(SUMMARIES).put` still appears exactly twice in the file, so 6b-2's
+ * pinned site count and its bare-identifier capture are both untouched, and it is invisible to
+ * every shape of this gate that existed before A-38.
+ */
+function g13(): string {
+  return faultedPort('G13', [
+    [
+      "          const tx = db.transaction([DOCS, VERSIONS], 'readwrite');\n          const versions = tx.objectStore(VERSIONS);",
+      "          const tx = db.transaction([DOCS, SUMMARIES, VERSIONS], 'readwrite');\n          const versions = tx.objectStore(VERSIONS);\n          const sums = tx.objectStore(SUMMARIES);",
+    ],
+    [
+      '                versions.put(mintVersion(), key);',
+      '                versions.put(mintVersion(), key);\n'
+        + '                const one = sums.get(String(key)) as IDBRequest<TripSummaryRow>;\n'
+        + '                one.onsuccess = () => {\n'
+        + '                  const r = one.result;\n'
+        + '                  sums.put({ ...r, countriesVisited: r.countryCodes.length, daysTravelled: r.dayCount }, String(key));\n'
+        + '                };',
+    ],
+  ]);
+}
+
+/** G14: the `continue` that skips a record which already has a fence is removed. */
+function g14(): string {
+  return faultedPort('G14', [
+    [
+      '              for (const key of docKeys.result) {\n                if (have.has(String(key))) continue;\n',
+      '              for (const key of docKeys.result) {\n',
+    ],
+  ]);
+}
+
+test('exit 6b-1b-2: not vacuous — G12 (the upcast widens every row) FAILS the seeded-current arm', async () => {
+  const { trip, summary } = webRow('t-current');
+  const records: SeedRecord[] = [{ trip, summary, version: SEEDED_FENCE }];
+  await assert.rejects(
+    () => driveWebPort(
+      async (port, db) => {
+        await port.listTrips();
+        assertRowsAreClean([...db._summaries().values()] as TripSummaryRow[], 'the faulted web port (G12), seeded current');
+      },
+      { source: g12(), seed: seededDb(records), beforeConstruct: (db) => assertSeedLanded(db, records, 'arm 2 under G12') },
+    ),
+    /not on TripSummaryRow|leaves reached the store/,
+    'G12 — a widening in the upcast, against a database that already holds records — walked past arm 2',
+  );
+});
+
+test('exit 6b-1b-2: not vacuous — G14 (the upcast stamps a record it should have skipped) FAILS the byte-identical fence assertion', async () => {
+  const { trip, summary } = webRow('t-current');
+  const records: SeedRecord[] = [{ trip, summary, version: SEEDED_FENCE }];
+  await assert.rejects(
+    () => driveWebPort(
+      async (port, db) => {
+        await port.listTrips();
+        assert.equal(db._store('versions').get(trip.id), SEEDED_FENCE, 'the upcast moved a StorageVersion it was handed');
+      },
+      { source: g14(), seed: seededDb(records), beforeConstruct: (db) => assertSeedLanded(db, records, 'arm 2 under G14') },
+    ),
+    /moved a StorageVersion it was handed/,
+    'G14 — the upcast re-stamping a record that already had a fence — walked past arm 2',
+  );
+});
+
+test('exit 6b-1b-3: NOT VACUOUS, AND THIS IS THE POINT — G13 (the widening inside the STAMPING BRANCH) FAILS the seeded-legacy arm', async () => {
+  // The fault R30-1 found: green under exit criterion 6 in its A-36 shape (18 pass / 0 fail),
+  // green under both of 6b-2's surviving assertions, green under 6b-4 because that probe
+  // deletes the database first — and caught here, by an arm whose starting state is a
+  // VERSIONLESS record. `qa/a38-exit6d.sh` measures each of those three claims.
+  const { trip, summary } = webRow('t-legacy');
+  const records: SeedRecord[] = [{ trip, summary, version: null }];
+  await assert.rejects(
+    () => driveWebPort(
+      async (port, db) => {
+        await port.listTrips();
+        assertRowsAreClean([...db._summaries().values()] as TripSummaryRow[], 'the faulted web port (G13), seeded legacy');
+      },
+      { source: g13(), seed: seededDb(records), beforeConstruct: (db) => assertSeedLanded(db, records, 'arm 3 under G13') },
+    ),
+    /not on TripSummaryRow|leaves reached the store/,
+    'G13 — a widening reachable ONLY when a document key has no envelope version — walked past ' +
+      'arm 3, which is the one arm in the repo that can see it',
+  );
+});
+
+test('exit 6b-1b-4: not vacuous — G13 FAILS the mixed arm too, through its legacy half', async () => {
+  const legacy = webRow('t-mixed-legacy');
+  const current = webRow('t-mixed-current');
+  const records: SeedRecord[] = [
+    { trip: legacy.trip, summary: legacy.summary, version: null },
+    { trip: current.trip, summary: current.summary, version: SEEDED_FENCE },
+  ];
+  await assert.rejects(
+    () => driveWebPort(
+      async (port, db) => {
+        await port.listTrips();
+        assertRowsAreClean([...db._summaries().values()] as TripSummaryRow[], 'the faulted web port (G13), seeded mixed');
+      },
+      { source: g13(), seed: seededDb(records), beforeConstruct: (db) => assertSeedLanded(db, records, 'arm 4 under G13') },
+    ),
+    /not on TripSummaryRow|leaves reached the store/,
+    'G13 walked past arm 4 — a mixed database contains the legacy half by construction',
+  );
+});
+
+test('exit 6b-1b-5: not vacuous — G12 FAILS the second-instance arm', async () => {
+  const { trip, summary } = webRow('t-second');
+  await assert.rejects(
+    () => driveWebPort(
+      async (port, db, make) => {
+        const saved = await port.saveIfVersion(trip.id, null, JSON.stringify(trip), summary);
+        assert.equal(saved.ok, true, 'INCONCLUSIVE: instance 1 refused the write');
+        await make().listTrips();
+        assertRowsAreClean([...db._summaries().values()] as TripSummaryRow[], 'the faulted web port (G12), second instance');
+      },
+      { source: g12() },
+    ),
+    /not on TripSummaryRow|leaves reached the store/,
+    'G12 walked past arm 5 — a second instance opens a database that already holds records',
+  );
+});
+
+test('exit 6b-1b: the SEED-INTEGRITY assertion is itself not vacuous — a mis-spelled store name is caught BEFORE the port runs', async () => {
+  // A-38 Part 4's reasoning, tested rather than asserted: without this, a typo in a store name
+  // silently yields an EMPTY database, arms 2-4 degrade back into arm 1, and the gate reports
+  // green — R30-1 re-created inside the fix for R30-1, with the same signature.
+  const { trip, summary } = webRow('t-typo');
+  const records: SeedRecord[] = [{ trip, summary, version: null }];
+  const good = seededDb(records);
+  const typo: Seed = {
+    dbVersion: good.dbVersion,
+    stores: { documents: (good.stores as Record<string, Record<string, unknown>>).docs, summaries: {}, versions: {} },
+  };
+  await assert.rejects(
+    () => driveWebPort(async () => { /* never reached */ }, {
+      seed: typo,
+      beforeConstruct: (db) => assertSeedLanded(db, records, 'the mis-seeded arm'),
+    }),
+    /the docs seed did not land/,
+    'a seed that landed in no store at all was accepted as a starting state',
   );
 });
 
