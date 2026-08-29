@@ -1,4 +1,50 @@
-# Cairn — QA findings, Phase 1 **rounds 2–11** and Phase 2 **rounds 12 (2a), 13 (I-3a / I-4a), 14 (A-11…A-14), 15 (A-15…A-17), 16 (A-18 / A-19), 17 (A-20 / R16-1), 18 (A-21 / A-21a), 19 (A-22 / A-23), 20 (A-24 / R19-1 / R19-2 / KD-50), 21 (A-25 — the closure round), 22 (I-5 / I-5a — A-26's mixed-resolution country index), 23 (I-5b — A-27's forgiveness entry), 24 (I-5c — A-28's second arm for filter 2), 25 (the I-5 closure round), 26 (I-6 — the widened `TripSummaryRow` and the `SUMMARY_VERSION` rescan), 27 (I-6a — A-29's stated-country gate and A-30's `refreshSummary`) 28 (I-7 — `travelStats` and the row's record census), 29 (I-7a — A-32's civil calendar, A-33's exit criterion 6, A-34's `provisional`) and 30 (I-7b — A-35's span cap, A-36's executed port gate, A-37's row read gates)**
+# Cairn — QA findings, Phase 1 **rounds 2–11** and Phase 2 **rounds 12 (2a), 13 (I-3a / I-4a), 14 (A-11…A-14), 15 (A-15…A-17), 16 (A-18 / A-19), 17 (A-20 / R16-1), 18 (A-21 / A-21a), 19 (A-22 / A-23), 20 (A-24 / R19-1 / R19-2 / KD-50), 21 (A-25 — the closure round), 22 (I-5 / I-5a — A-26's mixed-resolution country index), 23 (I-5b — A-27's forgiveness entry), 24 (I-5c — A-28's second arm for filter 2), 25 (the I-5 closure round), 26 (I-6 — the widened `TripSummaryRow` and the `SUMMARY_VERSION` rescan), 27 (I-6a — A-29's stated-country gate and A-30's `refreshSummary`) 28 (I-7 — `travelStats` and the row's record census), 29 (I-7a — A-32's civil calendar, A-33's exit criterion 6, A-34's `provisional`) 30 (I-7b — A-35's span cap, A-36's executed port gate, A-37's row read gates) and 31 (A-38 — the seeded double and `ensureReady`'s upcast)**
+
+> **Status (as of `claude/cairn-i7-architect-pass-4y8q40` @ `4e7b31d`, independently verified
+> 2026-08-29 — round 31, a single required verification pass against ARCHITECTURE §8.4 **A-38**
+> (revision 27, QA **R30-1**) and nothing else. A-35/A-36/A-37 were verified clean in round 30
+> and were not re-reviewed. Surface: `git diff 6a9b00e 4e7b31d` — exactly five files,
+> `test/stats-storage.test.ts`, `qa/i7a-idb-rowkeys.mjs`, new `qa/a38-exit6d.sh`,
+> `docs/BUILD-NOTES.md`, `qa/README.md`.**
+>
+> | | |
+> |---|---|
+> | **Verdict on A-38** | **It closes R30-1 for the fault class R30-1 named, and I confirmed that by re-deriving the whole matrix myself rather than re-running the builder's harness and believing it. But A-38 Part 7's own *required property* — *"for **any** single-edit fault confined to `ensureReady()` that causes a key outside `ROW_KEYS` to appear in a persisted summary record … at least one 6b-1b arm is red"* — does **not** hold, and the reason is A-38's own Part 4 fixture rule. **SEND BACK — architect, narrowly, then builder. 0 BLOCKERS, 1 MAJOR, 3 MINOR.** Every claim the builder made that I checked was exact, including all three faults' per-arm colours, both scoped GREEN runs, both Chromium phases and every number in §4. |
+> | **BLOCKERS** | **0.** No source file changed at all (`git diff 6a9b00e 4e7b31d -- 'cairn/packages/*' 'cairn/apps/*' 'cairn/services/*'` is **empty**, checked), so no shipped behaviour moved. The shipped port persists **14 keys / 387 bytes / 0 coordinate-shaped floats** in real Chromium in **both** 6b-4 phases, run here. The diff's added lines contain no `console.*`, no `fetch`, no filesystem write, no `Date.now`/`Math.random`/`crypto.randomUUID`/`new Date(`/`Date.UTC`, no `lat`/`lng`, no coordinate literal and no mailbox surface. Read-only root boundary: `git diff 6a9b00e 4e7b31d -- europe-2026-itinerary.html docs/ tickets/` **empty**. |
+> | **Findings** | **R31-1 MAJOR (architect — the fixture rule; then builder)** — A-38 Part 4 mandates the seeded row be minted through `tripSummary`, which stamps `summaryVersion: SUMMARY_VERSION`, so **every** seeded row in arms 2–4 *and* 6b-4 phase 2 is at the current summary version by construction. A widening in `ensureReady()` gated on a **stale** row is therefore GREEN on all five arms, GREEN on exit criterion 6 whole-file (28/28), GREEN on 6b-2, and **ALL OK in real Chromium on both 6b-4 phases** — and persists 16 keys into real IndexedDB the instant the legacy row is stale. **R31-2 MINOR (builder)** — `assertSeedLanded` pins the seeded *stores* but not the seeded `dbVersion`; change `seededDb`'s `dbVersion` to `0` and arms 2–4 silently stop being the "existing database, no upgrade" states they name, with the file still **28 pass / 0 fail**. **R31-3 MINOR (architect — doc/scope)** — the seeded arms assert the `docs` value and the `versions` token byte-identically but never the seeded **summary row's value**, so an upcast that corrupts a legacy row's `dayCount` without touching its key set is GREEN on all five arms. **R31-4 MINOR (builder)** — `qa/i7a-idb-rowkeys.mjs:288` is an unconditional `process.exit(0)`, so 6b-4 — a *required, recorded ship-gate condition* — exits **0** with 3 FAILs. |
+> | **R31-1 — the MAJOR, in full, because the reproduction is the argument** | A-38 Part 1's ruling is that *"a `StoragePort`'s coverage is the set of its **write paths**, not the set of its interface methods"*, and Part 3 discharges it by varying **one** axis of the starting state: *does this document already carry an envelope version, or not*. Arms 2–5 cover that axis completely and I could not defeat them on it. But Part 4 also **pins a second axis to a constant**, and it does so deliberately and in writing: *"What the fixture is minted from. The same `webRow()` idiom the file already uses — `createTrip` … then `tripSummary(trip, COUNTRY_INDEX)`. **Never a hand-typed row literal**."* `packages/core/src/derive/summary.ts:373` stamps `summaryVersion: SUMMARY_VERSION` (`:156`, currently **4**) on every row `tripSummary` mints, so `test/stats-storage.test.ts:536`'s `webRow()` and `:604`'s `seededDb()` cannot produce a seeded row that is anything but **current**. `qa/i7a-idb-rowkeys.mjs:268` hard-codes the same thing from the other direction — `row: ROW('t-legacy', 4)`. **So the gate has no state anywhere in which a stored summary row is behind `SUMMARY_VERSION`.** That matters because the migration `ensureReady` most obviously grows next is the one that reads exactly that field. **H4**, my fault, is one edit in class with G12 and G13 and reads like the most ordinary line in the file — *"while we are in here, bring **stale** rows current"*: take `SUMMARIES` into the upcast's transaction scope and, before the stamping loop, `for (const r of stale.result) { if (r.summaryVersion >= 4) continue; sums.put({ ...r, countriesVisited: r.countryCodes.length, daysTravelled: r.dayCount }, r.id); }`. **Measured, each independently, all in throwaway worktrees at `4e7b31d`: 6b-1b arms 1/2/3/4/5 all GREEN; exit criterion 6 whole-file `28 pass / 0 fail`; `npm run typecheck` clean on both projects; the 6b-2 tripwire GREEN** (the widened values are expressions, so neither the `: number` sweep nor the numeric-literal sweep sees them — this is R30-2's mechanism, unchanged and still open). Then the half that settles it, because a claim about persisted bytes is only settled by bytes: I copied `qa/i7a-idb-rowkeys.mjs` to a scratch file, added H4 as a third named fault, and ran it in **real Chromium** — **`ALL OK`, both phases, 14 keys**. The fault is nonetheless entirely live: reseed *only* the summary row's version (`ROW('t-legacy', 3)` in phase 2, or `{ ...webRow(id).summary, summaryVersion: 3 }` in arm 3) and the same fault is **3 FAIL / 16 keys** in Chromium and **RED in arm 3** with `+ countriesVisited, + daysTravelled`. **Nothing about the fault changed — only the fixture's version field.** **Why this is a finding and not a nitpick, in A-38's own words.** Part 7 states the required property *before* listing G12/G13/G14 precisely so that a later round could construct others, and it says outright: *"A fault caught by none is a **hole** and is a finding."* H4 is caught by none. **Why the starting state is not exotic — it is the *typical* one.** `SUMMARY_VERSION` is at 4 and has been bumped three times; §8.4 clause 3 stamps it onto the row exactly so stale rows can be found; I-6 exists because stored rows go stale. The population `ensureReady()`'s own docstring names — *"Jacob's existing IndexedDB has records that predate the fence"* — predates `DB_VERSION` 2, so those rows almost certainly predate `SUMMARY_VERSION` 4 as well. A-38's arm 3 fixture is therefore **internally implausible as a model of a legacy database**: it is legacy on the envelope axis and brand-new on the summary axis, a combination Jacob's actual database cannot be in. **Route: architect**, and for the same reason R30-1 was routed there — closing it moves what the fixture is *allowed to be*. Either Part 4's *"never a hand-typed row literal"* gains an explicit exception for **ageing a minted row** (`{ ...tripSummary(...), summaryVersion: SUMMARY_VERSION - 1 }`, which is a modification of a minted row and needs the ruling to say how it stays honest when `SUMMARY_VERSION` next moves), or Part 7's required-property sentence narrows to name the one axis it covers and the row-currency axis is disclosed as a residue with a trigger. Both are one-line decisions about what the gate *claims*, which is the architect's, not the builder's. **Then builder**, for whichever it is — and `qa/i7a-idb-rowkeys.mjs:268` needs the same treatment, since 6b-4 phase 2 is the out-of-band cross-check that is supposed to catch what the double cannot and it is blind here for the identical reason. |
+> | **A-38's own fault matrix, re-derived per arm rather than read** | I did not run the builder's harness and believe it; I rebuilt G12/G13/G14 from A-38 Part 7's text and drove each arm in isolation with `--test-name-pattern`. **G12** (the upcast widens every row): arm 1 GREEN, **arms 2, 3, 4, 5 RED** — exactly Part 7's row, and arm 1's GREEN is R30-1 itself. **G13** (the same widening *inside the stamping branch*): arm 1 GREEN, arm 2 GREEN, **arms 3 and 4 RED**, arm 5 GREEN — exactly Part 7's *"arm 3 and arm 4, and nothing else"*, and the failure message is the intended one (`the web port, seeded legacy: summaries: a field reached the store that is not on TripSummaryRow`, `+ countriesVisited`, `+ daysTravelled`), so arm 3 catches it *for the ruled reason* and not by accident. **G14** (the `have.has(...) continue` removed): arm 1 GREEN, **arms 2, 4 and 5 RED**, arm 3 GREEN — arm 5 is a superset of Part 7's stated arms, not a gap, exactly as the builder disclosed. **And the counterfactual, which is the whole point:** the same G13, applied at `6a9b00e` (the pre-A-38 tree), is **18 pass / 0 fail** on the whole of exit criterion 6. R30-1 reproduced from scratch, then closed. `bash qa/a38-exit6d.sh` exits **0** and every one of its five runs measured the colour it states. |
+> | **A-38 Part 5's checkable line — checked, not taken on the builder's word** | Part 5 says *"the diff to `recordingIdb()` is additive-only, confined to the constructor, and contains **no `if` that reads a stored value**"*, and tells a reviewer to check it. **It holds.** The diff to the double is a `type Seed` block, one parameter, and six lines in the constructor (`test/stats-storage.test.ts:433-438`): a `for…of Object.entries()` that `Map.set`s seeded values into the `stores` map the recorder already keeps, and `version = seed?.dbVersion ?? 0`. **No `if` at all**, no new method on the IndexedDB surface, no branch on record content, no transformation of any value — every seeded value is handed back verbatim. **One nuance worth recording rather than filing:** the seed *does* steer a pre-existing branch, `open()`'s `if (version < want)`, because `dbVersion` is now test-controlled. Part 5's line is about the *diff* and is satisfied as written; R31-2 is what that nuance costs. Separately, the recorder's `at()` autovivifies, so it cannot distinguish an absent store from an empty one — the seed comment's *"an empty seeded store still EXISTS"* is a distinction this double cannot express. Harmless for arms 2–4 (the intended state is empty either way) and it produces no false green, but it is not the fidelity claim the comment reads as. |
+> | **The seed mechanism, attacked directly (A-38 Part 5's *"a broken seed must not degrade into arm 1"*)** | Three corruptions of the *fixture* rather than the port, each applied alone. **The seed stamps a version for every record** (arm 3 stops being legacy): **RED, 4 fail** — `assertSeedLanded`'s `versions` id-set check catches it before the port is constructed. **The seeded row already carries `countriesVisited` before the port runs** (a red would be unattributable): **RED, 8 fail** — the `ROW_KEYS`-shape-before assertion catches it, in `beforeConstruct`, which is the right place. **`seededDb` reports `dbVersion: 0`** (an upgrade now fires, so arms 2–4 are no longer the states they name): **28 pass / 0 fail, silently.** That third one is R31-2. Two of three hold; the mandatory assertion is real and it is load-bearing. |
+> | **The two self-disclosed gaps, assessed against A-38's own scope** | **Arm 5's one-directional fidelity check** — accurately characterised. It cannot catch a widening into a store the fixture does not name; that is R30-2/G9's shape exactly, A-38 Part 9 leaves R30-2 open and unruled by name, and closing it needs a store-enumeration accessor outside the constructor that Part 5's checkable line forbids adding in this pass. **Not a new finding.** **Arm 2's *"no upgrade fires"* being inferred rather than asserted** — accurate as far as it goes, and the builder's mitigation (`portDbVersion()` reads `DB_VERSION` out of the shipped source at `:589`, so a bump cannot silently turn arm 2 into an upgrading arm) is real and I verified it. **But the disclosure's *justification* is half wrong**, and that half is R31-2: the builder writes that closing it *"needs an accessor OUTSIDE the double's constructor"*. Asserting that the **seed's declared `dbVersion` equals `portDbVersion()`** needs no accessor on the double at all — the seed is the test's own object, in the test's own hand, and `assertSeedLanded` already receives everything it would need. That is a one-line addition A-38 does not forbid, and without it the seed's version field has the exact silent-degradation signature Part 4 was written to eliminate. |
+> | **What the arms still cannot see, measured (A-38 Part 8 residue 3, made concrete)** | Arms 2 and 4 pin the seeded `StorageVersion` **byte-identically** and arms 2 and 3 pin the `docs` value **byte-identically**, but no arm pins the seeded **summary row's value** — only its key set and the store's `size`. So **G15b**, an upcast that rewrites a legacy row as `{ ...r, dayCount: r.stopCount }` inside the stamping branch, is **GREEN on all five arms**: silent corruption of a stored row in a legacy database, invisible. Written with numeric literals instead (`dayCount: 0, stopCount: 0, cityCount: 0`) it *is* caught — by 6b-2's numeric-literal sweep, not by any arm — which localises it precisely. This is residue 3's class and the residue is honest about it; **R31-3 is the narrower point** that residue 3's stated justification (*"that is A-31 Part 6 working as written"*) is weaker for the seeded arms than for the rest of the gate, because the seeded arms **hold the fixture object**, so `assert.deepEqual(db._summaries().get(id), summary)` is one line requiring nothing new from the double. |
+> | **6b-4 confirmed real, and its phase isolation reproduced in real Chromium** | Read the phase 2 code, then ran all three modes here with `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers`. **Clean: `ALL OK`** — phase 1 two records at **14 keys**, 387 bytes for one row; phase 2's raw legacy seed lands, `versions` is empty before the port runs, the upcast stamps exactly once, `load()` resolves with the newly minted fence, and the persisted record is **14 keys**. **`--fault=g1`: 3 FAIL, phase 1 only** (16 keys, `countriesVisited` + `daysTravelled`), phase 2 entirely clean. **`--fault=g13`: 3 FAIL, phase 2 only**, phase 1 entirely clean. The phase isolation the builder claims is exact and the two phases are demonstrably not redundant. Phase 2 genuinely bypasses the port to write its seed and bypasses it again to read the bytes back. **The one defect is the exit code, R31-4:** the probe prints `3 FAIL(S)` and then `process.exit(0)` (`qa/i7a-idb-rowkeys.mjs:288`). Pre-existing rather than introduced by A-38 — but A-38 Part 6 restates its status as a *required ship-gate condition* and doubles its surface, and R29-4's rule (*an injected fault that did not run is a failure, not a pass*) was applied to both `.sh` harnesses and not to this one. A ship gate that cannot be gated on mechanically is a recorded number, not a gate. |
+> | **Scope discipline, checked line by line** | `git diff 6a9b00e 4e7b31d --stat` is **exactly five files**: `test/stats-storage.test.ts` (+494/−58 net), `qa/i7a-idb-rowkeys.mjs`, `qa/a38-exit6d.sh` (new), `docs/BUILD-NOTES.md`, `qa/README.md`. **No `packages/`, no `apps/`, no `services/`** (the scoped diff is empty). **No `ARCHITECTURE.md`, no `ROADMAP.md`** — A-38 Part 9's *"deliberately writes no increment"*, honoured. **No `CAIRN_VISUAL_ROADMAP.md`.** **No R30-2/R30-3/R30-4/R30-5 touched**, no I-8 work, no `SUMMARY_VERSION` bump, no new KD. Read-only root boundary intact. The only test file touched is `test/stats-storage.test.ts`, as claimed. |
+> | **The builder's own numbers, re-derived by running** | `npm run typecheck` clean, **both** projects, exit 0 · `npm run test:tap` **866 pass / 0 fail / 0 cancelled**, counted here (856 → 866 = **+10**, all in `test/stats-storage.test.ts`, whose own file count is **18 → 28**, verified by running that file alone at `6a9b00e` and at `4e7b31d`) · `Object.keys(core).length` **75**, counted — A-38 touched no export surface · `npm run golden` → `git status --porcelain -- fixtures src/sample` **empty** · `npm run sample` no diff, source sha still **`40955ca0b182`** · `bash qa/a38-exit6d.sh` **exit 0**, baseline **28/28**, G12 8 fail, G13 6 fail, G14 6 fail, both scoped G13 runs GREEN (4/0 and 2/0) · 6b-4 `ALL OK` / `--fault=g1` 3 FAIL / `--fault=g13` 3 FAIL, all three in real Chromium here. **Every number the builder reported that I checked was exact, including all three per-arm attributions and both Chromium phases.** |
+> | **`cairn-constraints`, re-checked** | **Determinism** — 0 occurrences of `Date.now`, `Math.random`, `crypto.randomUUID`, `new Date(` or `Date.UTC` in any added line of the diff; `SEEDED_FENCE` is a fixed literal, never minted, which is what makes *"the token did not move"* assertable by equality. **Zero-dep** — no dependency added anywhere. **No DOM in `packages/client`** — untouched; the `globalThis.indexedDB` assignment is in `cairn/test/` and is restored in a `finally`, as before. **Bare Node** — the arms still load the port by type-stripping and a `data:` URL import, no static import, no build step; 6b-4 stays out of `npm run test:tap`. **No stray worktrees** — every mutation this round was a throwaway `git worktree add --detach`, removed; `git worktree list` shows only the checkout. |
+> | **What I tried and could not break** | Arm 3 on the axis A-38 aimed it at: the seed is genuinely versionless before the port runs (`versions` id-set asserted empty in `beforeConstruct`), and the arm asserts **both** halves A-38 Part 3 requires — `versions` gains exactly one non-empty entry *and* `port.load(id)` resolves with the seeded document and that newly minted fence, which it cannot do because `load()` rejects a versionless record. G13 dies there for the ruled reason. A widening whose write is a **fire-and-forget second transaction** opened in the upcast's `oncomplete` (my H2) is **RED on arms 2, 3, 4 and 5** — the double's `queueMicrotask` chain lands it before the assertion, so the un-awaited-write dodge does not work. The seed-integrity assertion against a seed whose legacy-ness has been destroyed, and against a seed whose row is pre-widened — both RED, both before the port is constructed. The mis-spelled-store control is genuine and it rejects on `the docs seed did not land`. Part 5's checkable line, read directly. And the shipped port itself, in real Chromium, in both 6b-4 phases: **14 keys, 387 bytes, 0 coordinate-shaped floats**. **What I did break is R31-1, and like every finding in this arc it is a hole in the gate rather than a defect in the product.** |
+> | **The sensitive paths (§5, §6)** | **Nothing.** No source file changed, so no shipped behaviour on either path moved. The persisted summary record was read out of real Chromium's IndexedDB twice this round — once after a fresh write and once after a **legacy** database was opened by the port — and is **14 keys, 387 bytes, 0 coordinate-shaped floats, 0 occurrences of any lifetime-count name** both times. The diff's added lines contain no `console.*` (other than `qa/i7a-idb-rowkeys.mjs`'s own reporter), no `fetch`, no filesystem write, no `lat`/`lng` reference and no coordinate literal. No mailbox surface is touched anywhere in the diff. |
+> | **Fixed vs still open** | **CLOSED by A-38 and re-derived by me rather than read from BUILD-NOTES: R30-1**, for the class it named — G12 is RED on arms 2/3/4/5 where it was 18/18 GREEN at `6a9b00e`, G13 is RED on arms 3 and 4 and GREEN under the pre-A-38 gate shape and under 6b-2, G14 is RED on arms 2/4/5, and 6b-4 phase 2 catches G13 in real Chromium while phase 1 stays clean. **PARTIALLY CLOSED:** A-38 Part 7's *required property* is stated over "any fault confined to `ensureReady()`" and holds only on the envelope-version axis — **R31-1**. **NEW and OPEN: R31-1 (MAJOR), R31-2, R31-3, R31-4 (MINOR).** **STILL OPEN, unchanged, and explicitly left unruled by A-38 Part 9: R30-2, R30-3, R30-4, R30-5.** **STILL OPEN from round 29: R29-3.** **STILL OPEN from round 27, unchanged: R27-1, R27-2, R27-3.** **STILL OPEN, unchanged:** R25-1…R25-4, R22-2, R21-1, R13-4, R13-5, P2-5, P2-8, R2-18 and the whole Phase 1 list. Breaker-board **B-1**…**B-4** untouched. **Shippability of I-7 is the manager's call, not mine** — what I can report is that R31-1 and R30-1 are the same harm class (a gate that claims a totality it does not enforce, with the product itself clean at every measurement), and that nothing found this round or last round is a defect in shipped code. |
+>
+> **No new probe files were written this round**, by instruction — the only file this pass writes
+> is this one. Every measurement above is reproducible from `cairn/` with the commands below;
+> the three novel faults (H2, H4, G15b) are transcribed in full in the Round 31 section.
+>
+> ```bash
+> npm run typecheck && npm run test:tap        # clean, both projects; 866 pass / 0 fail
+> bash qa/a38-exit6d.sh                        # exit 0; G12 8, G13 6, G14 6; both scoped runs GREEN
+> PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers \
+>   node --experimental-strip-types qa/i7a-idb-rowkeys.mjs              # ALL OK, both phases
+> PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers \
+>   node --experimental-strip-types qa/i7a-idb-rowkeys.mjs --fault=g1   # 3 FAIL, phase 1 only
+> PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers \
+>   node --experimental-strip-types qa/i7a-idb-rowkeys.mjs --fault=g13  # 3 FAIL, phase 2 only
+> node --test --test-reporter=tap --test-name-pattern='6b-1b-3: STARTING STATE' \
+>   test/stats-storage.test.ts                 # one arm in isolation — how per-arm colour is read
+> ```
+>
+> **The round-30 status note below is superseded by this one** and is kept as the record of what
+> was true at `b964e19`.
 
 > **Status (as of `claude/cairn-i7-architect-pass-4y8q40` @ `b964e19`, independently verified
 > 2026-08-28 — round 30, the mandatory adversarial pass over Phase 2 **I-7b**: §2.3 **A-35**
@@ -469,6 +515,145 @@
 >
 > **The round-17 status note below is superseded by this one** and is kept as the record of what
 > was true at `909b4a3`.
+
+## Round 31 — A-38: the seeded double, `ensureReady`'s upcast, and the axis the fixture pins (`claude/cairn-i7-architect-pass-4y8q40` @ `4e7b31d`)
+
+**The verdict first. A-38 closes R30-1 for the fault class R30-1 named, and the implementation is
+faithful to the ruling in every checkable particular I could test — including Part 5's own
+"a reviewer should check it" line, Part 4's mandatory pre-construction assertion, and Part 7's
+three-fault matrix, whose per-arm colours I re-derived from the ruling's text rather than by
+re-running the builder's harness.** What is open is that A-38 Part 7's *required property* is
+stated over **any** fault confined to `ensureReady()`, while Part 3 varies **one** axis of the
+starting state and Part 4 **pins the other one to a constant in writing**. A fault that reads the
+pinned axis is invisible to all five arms, to exit criterion 6 whole-file, to 6b-2, and to both
+6b-4 phases in real Chromium. That is R31-1 and it is R30-1's shape one dimension over.
+
+**A note on method.** Nothing below was read off the builder's report. The three A-38 faults were
+rebuilt from ARCHITECTURE §8.4 Part 7's own text and driven **per arm** in isolated worktrees with
+`--test-name-pattern`, because the builder's whole-file harness cannot attribute a red to an arm:
+under any fault the *other* arms' vacuity controls also red, on `the anchor for this fault no
+longer applies` — which is R29-4 working, not a second detection, and which a reader of the raw
+`# fail` count would misread as coverage. Where a fault of mine drifted a control's anchor, I
+**re-derived the anchor** the way the control's own message instructs before believing the colour.
+
+| id | sev | file:line | defect | routing |
+|---|---|---|---|---|
+| **R31-1** | **MAJOR** | `cairn/test/stats-storage.test.ts:536` (`webRow`) + `:604` (`seededDb`); `cairn/qa/i7a-idb-rowkeys.mjs:268` (`row: ROW('t-legacy', 4)`) | A-38 Part 4 mandates the seeded row be minted by `tripSummary`, which stamps `summaryVersion: SUMMARY_VERSION` (`packages/core/src/derive/summary.ts:373`), so no gate state anywhere holds a **stale** summary row — and an `ensureReady()` widening gated on staleness is GREEN on all five arms, 28/28 on exit criterion 6, GREEN on 6b-2 and **ALL OK in real Chromium on both 6b-4 phases**, while persisting 16 keys into IndexedDB the moment the legacy row is stale. | **architect** (Part 4's fixture rule / Part 7's property sentence), **then builder** |
+| **R31-2** | MINOR | `cairn/test/stats-storage.test.ts:625` (`assertSeedLanded`), against `:615` (`seededDb`'s `dbVersion`) | The mandatory pre-construction assertion pins the seeded *stores* but not the seeded `dbVersion`, so a `dbVersion` of `0` makes arms 2–4 stop being the "existing database, no upgrade fires" states they name, silently, at 28 pass / 0 fail — the exact degradation signature Part 4 exists to eliminate, and closable in one line with no accessor on the double. | **builder** |
+| **R31-3** | MINOR | `cairn/test/stats-storage.test.ts:757`, `:784`, `:815` (arms 2, 3, 4) | The seeded arms pin the `docs` value and the `versions` token **byte-identically** but never the seeded **summary row's value**, so an upcast that corrupts a legacy row (`dayCount: r.stopCount`) without changing its key set is GREEN on all five arms; A-38 Part 8 residue 3 names the class but its justification is weaker here, because these arms hold the fixture object. | **architect** (residue 3's scope), then builder |
+| **R31-4** | MINOR | `cairn/qa/i7a-idb-rowkeys.mjs:288` | `process.exit(0)` is unconditional, so 6b-4 — a *required, recorded ship-gate condition* under A-36 Part 4 and A-38 Part 6 — exits **0** while printing `3 FAIL(S)`; R29-4's rule was applied to both `.sh` harnesses and not to this one. | **builder** |
+
+### R31-1 — the reproduction
+
+All three commands run from `cairn/`, each in a throwaway `git worktree add --detach` at `4e7b31d`
+that is removed afterwards. Written as heredocs rather than committed under `qa/` because this
+round was instructed to write no file but this one.
+
+```bash
+# 1. H4 — "while we are in here, bring STALE summary rows current."
+#    One edit in ensureReady(), in class with G12/G13. Plus the honest maintenance step a
+#    builder shipping this would take: re-derive the two vacuity-control anchors that the
+#    transaction-scope line drifts, exactly as their own message instructs.
+python3 - "$WT/cairn" <<'PY'
+import sys
+root = sys.argv[1]
+p = root + "/apps/web/src/ports/storage.ts"
+s = open(p).read()
+old = "          const tx = db.transaction([DOCS, VERSIONS], 'readwrite');\n          const versions = tx.objectStore(VERSIONS);"
+assert old in s
+s = s.replace(old, "          const tx = db.transaction([DOCS, SUMMARIES, VERSIONS], 'readwrite');\n          const versions = tx.objectStore(VERSIONS);\n          const sums = tx.objectStore(SUMMARIES);", 1)
+loop = "              for (const key of docKeys.result) {\n                if (have.has(String(key))) continue;"
+assert loop in s
+s = s.replace(loop, """              const stale = sums.getAll() as IDBRequest<TripSummaryRow[]>;
+              stale.onsuccess = () => {
+                for (const r of stale.result) {
+                  if (r.summaryVersion >= CURRENT_SUMMARY) continue;
+                  sums.put({ ...r, countriesVisited: r.countryCodes.length, daysTravelled: r.dayCount }, r.id);
+                }
+              };
+""" + loop, 1)
+s = s.replace("const DEAD_META = 'meta';", "const DEAD_META = 'meta';\nconst CURRENT_SUMMARY = 4;", 1)
+open(p, "w").write(s)
+# re-derive the drifted anchors (both G12's and G13's first anchor is the tx-scope line)
+t = root + "/test/stats-storage.test.ts"
+ts = open(t).read()
+a = "      \"          const tx = db.transaction([DOCS, VERSIONS], 'readwrite');\\n          const versions = tx.objectStore(VERSIONS);\","
+assert ts.count(a) == 2
+ts = ts.replace(a, "      \"          const tx = db.transaction([DOCS, SUMMARIES, VERSIONS], 'readwrite');\\n          const versions = tx.objectStore(VERSIONS);\\n          const sums = tx.objectStore(SUMMARIES);\",")
+open(t, "w").write(ts)
+PY
+
+# 2. Measure. Per arm, then whole-file, then typecheck.
+for pat in 1 2 3 4 5; do
+  node --test --test-reporter=tap --test-name-pattern="6b-1b-$pat: STARTING STATE" \
+    test/stats-storage.test.ts | grep -E '^# (tests|pass|fail)'
+done
+node --test --test-reporter=tap test/stats-storage.test.ts | grep -E '^# (tests|pass|fail)'
+npm run typecheck
+```
+
+**Measured:** arms 1–5 **all GREEN**; whole file **28 pass / 0 fail**; `typecheck` clean on both
+projects; the 6b-2 tripwire GREEN (`countriesVisited: r.countryCodes.length` is an expression, so
+neither the `: number` sweep nor the numeric-literal sweep at `test/stats-storage.test.ts:1258`
+sees it — R30-2's mechanism, unchanged and still open).
+
+**In real Chromium.** Copy `qa/i7a-idb-rowkeys.mjs` to a scratch file, add H4 as a third named
+fault beside `applyG1`/`applyG13` (same two edits as above), and run it:
+`PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node --experimental-strip-types <scratch> --fault=h4`
+→ **`ALL OK`, both phases, 14 keys.**
+
+**The control that proves the fault is live rather than inert.** Change *only* the fixture's
+version field — nothing about the fault:
+
+- `qa/i7a-idb-rowkeys.mjs:268`, `row: ROW('t-legacy', 4)` → `ROW('t-legacy', 3)`: the same H4 run
+  is **3 FAIL / 16 keys** in real Chromium, `extra: ["countriesVisited","daysTravelled"]` on the
+  persisted record, on the row `listTrips()` returns, and in the blob check.
+- `test/stats-storage.test.ts:785`, `const { trip, summary } = webRow('t-legacy')` →
+  `const { trip, summary: fresh } = webRow('t-legacy'); const summary = { ...fresh, summaryVersion: 3 };`:
+  arm 3 goes **RED**, `a field reached the store that is not on TripSummaryRow`, `+ countriesVisited`,
+  `+ daysTravelled`.
+
+### The two other faults measured this round, transcribed
+
+**H2 — a fire-and-forget second transaction** opened in the upcast's `tx.oncomplete`, before
+`db.close()`, re-putting every summary row widened. The dodge is that no port promise awaits it.
+It does not work: **RED on arms 2, 3, 4 and 5** — the recorder's `queueMicrotask` chain lands the
+put before the arm's assertion runs. Recorded because it is the obvious next attack and the arms
+survive it.
+
+**G15b — value corruption without a key change**, inside the stamping branch:
+`sums.put({ ...cur.result, dayCount: cur.result.stopCount }, String(key))`. **GREEN on all five
+arms.** Spelled with numeric literals instead (`dayCount: 0, stopCount: 0, cityCount: 0`) it *is*
+caught — by the 6b-2 tripwire's numeric-literal sweep, not by any arm — which localises it exactly.
+That is R31-3.
+
+### R31-2 — the reproduction
+
+```bash
+python3 - "$WT/cairn" <<'PY'
+import sys
+t = sys.argv[1] + "/test/stats-storage.test.ts"
+s = open(t).read()
+old = "  return { dbVersion: portDbVersion(), stores: { docs, summaries, versions } };"
+assert old in s
+open(t, "w").write(s.replace(old, "  return { dbVersion: 0, stores: { docs, summaries, versions } };", 1))
+PY
+node --test --test-reporter=tap test/stats-storage.test.ts | grep -E '^# (tests|pass|fail)'
+```
+
+**Measured: 28 pass / 0 fail.** The recorder's pre-existing `if (version < want)` now fires an
+upgrade, so arms 2–4 are no longer the "an existing database, no upgrade" starting states their
+titles claim, and nothing says so. The two controls in the same family both work — a seed that
+stamps a version for every record is **4 fail**, a seed whose row is pre-widened is **8 fail**, both
+caught in `beforeConstruct` — which is what makes this the one gap in an otherwise sound mechanism.
+
+### R31-4 — the reproduction
+
+```bash
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers \
+  node --experimental-strip-types qa/i7a-idb-rowkeys.mjs --fault=g13 >/dev/null 2>&1
+echo $?          # 0, while the probe printed "3 FAIL(S)"
+```
 
 ## Round 30 — I-7b: A-35's span cap, A-36's executed port gate, A-37's row read gates (`claude/cairn-i7-architect-pass-4y8q40` @ `b964e19`)
 
