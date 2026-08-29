@@ -550,6 +550,42 @@ rule, no client change, and **no movement on §2.10's export surface (75)** — 
 `parseIsoDate` and `addDays` are all internal (§2.10's "45 that come off", group 1). `ROADMAP.md` carries
 the three rulings and round 28's four builder findings as **I-7a**.
 
+**Revision 26, 2026-08-29.** Not a QA round and not a defect. Jacob gave a product-vision clarification
+against his own thesis (`PRODUCT-VISION.md` Appendix A, unchanged) whose entire purpose is to **reserve
+future capabilities so later phases have something to land on**, and which asks explicitly that no phase be
+expanded or restructured. This revision is therefore **additive and touches §8.6, §8.7, §8.8 and §8.9 only**.
+Precedent for its shape is revision 10 (§8.10), the other Jacob clarification: a decision recorded because
+it is a one-way door, with nothing built and no ruling number, because no finding was adjudicated. Three
+things are reserved:
+
+1. **A share is not a read-only page — §8.7.** The capability is *their trip → discover → select → add to my
+   trip → adapt to my itinerary*, and every step of it already exists: the browse-another-trip pane,
+   `copyStopInto` (§2.14, shipped in Phase 1), `acceptCandidate`, then ordinary editing of a record that is
+   now the recipient's own. The decision taken here, so a builder does not invent one: **copying out is
+   inherent in the `viewer` grant** — not a fourth role and not a per-share `allowCopy` flag — and the copy
+   unit stays one `Stop` with its `Place`. **§2.14 is not redesigned and not amended**; what widens is the
+   list of trips the pane may show.
+2. **Conversations attach to travel objects, and there is no `Post` — §8.8.** A trip, a day, a stop, a place
+   or a photo/moment can carry a conversation; nothing exists whose reason to be is to be commented on. The
+   stored shape is sketched (§8.5's precedent) because one clause of it is the one-way door: a comment is
+   **server-side and never part of the trip document**, which is the mirror image of §8.3's ruling on
+   participants and inverts for the same reason — a participant is the owner's statement about their own
+   trip; a comment is another person's content on it.
+3. **The feed is split in two — §8.8.** *"No feed"* was doing two jobs. An **engagement** feed is refused
+   permanently (ranking model, follower/like economy, generic post items, counters that exist to bring
+   someone back); a **derived, travel-native surface** over the same queries Phase 7 already ships is
+   reserved, with **no store of its own and no activity-event table**, and reading through the same
+   authorization predicates as every other read path.
+
+§8.6 gains one cross-reference (a photo is a conversation subject — that is what the thesis's *"moment"* is
+in this model) and §8.9 records that all three cost the export surface nothing. **Nothing here is
+implemented, nothing here is Phase 2 scope, and nothing here is a new persisted structure in any shipping
+phase**: no engine, no `schemaVersion` or `SUMMARY_VERSION` bump, no client change, no new exported symbol,
+**no movement on §2.10's export surface (75)**, and no change to `copyStopInto`, `acceptCandidate`,
+`attribution` or any rule that reads them. The mechanical consequences in `ROADMAP.md` are **two reworded
+paragraphs** — Phase 3's sharing line and Phase 7's discovery bullet — and no new phase, no new increment
+and no change to any phase's exit criteria.
+
 **Phase 1 is §2 and §4. The next phase is §8.1–§8.4.** Everything else is the shape those must not
 foreclose. See `ROADMAP.md` for sequencing and `PRODUCT-VISION.md` for why this order and not another.
 
@@ -575,7 +611,7 @@ cairn/tools/doc-section ARCHITECTURE         # lists the sections and their size
 | 5 | The four hard subsystems | 2k | breaker; builder from Phase 3 on |
 | 6 | Privacy, authorization, deletion cascade. **§6.6 is the build-artifact threshold; the copy threshold is §2.14 A-15 + A-18 (revisions 13 and 14) and they differ deliberately, in two named places — read them together or neither** | 4k | breaker, manager; builder for §6.2 |
 | 7 | Explicitly deferred | <1k | anyone about to build something not in the roadmap |
-| 8 | **The travel-history model** (revision 9) — trip lifecycle and past trips (§8.1), the feasibility/integrity rule class (§8.2), participants (§8.3), geography attribution, travel stats and the summary-row rule (§8.4); then the shapes the location, photo and social phases must land on (§8.5–§8.7) and what is refused (§8.8). **§8.10 is revision 10** — physical travel distance by mode and the four provenance bases that keep it honest; **it is not Phase 2 scope**, so a Phase 2 builder reads §8.1–§8.4 and stops. **Revision 11 amends §8.1, §8.2 and §8.4 by pointer only — the two rulings themselves live in §2.2 (A-10) and §2.7 (A-9), and a Phase 2 builder reads both; revision 12 amends §8.2 by pointer in the same way, and its four rulings live in §2.7 (A-11, A-12, A-13) and §2.14 (A-14)**. **A-26 is revision 20 and lives in §8.4** — the mixed-resolution country index, the withdrawal of the correctness floor's escalation mechanism, and the ruling that `null` is the right answer for a landform the dataset does not carry; **anyone touching `tools/gen-countries.mjs`, `geo/countryIndex.ts` or the attribution golden reads it first**, and it is what ROADMAP's I-5a builds; **A-27 is revision 21, sits directly under A-26 and is read *with* it, never instead of it** — it amends A-26 Part 4's block-quoted rule with a third clause (a filled code ships a **forgiveness entry** as well as a coverage entry), supersedes A-26 Part 5's two-residue list with three, lifts A-26 Part 6 item 3 for a docstring correction only, and is what ROADMAP's **I-5b** builds; **A-28 is revision 22, sits under A-27 and is read with both, never instead of them** — it supersedes A-27 Part 4's filter 2 (two arms, because the coverage index it compared against is mixed-resolution and answered generously) and A-27 Part 4's `overlaps` predicate (the vertex-mean probes come out), corrects A-27 Part 5's Macao sentence and every count in it, and is what ROADMAP's **I-5c** builds. **Anyone touching `tools/forgiveness.mjs` or the forgiveness pass reads A-28 first and A-27 second**; **A-29 is revision 23 and sits under A-28** — it is the only one of the four that is *not* about the index: it rules that a `City`'s **stated** `countryCode` fills a gap the coordinate cannot answer, never overrides one, and only through a gate ending in index membership, and it takes `SUMMARY_VERSION` to 3. **Anyone touching `derive/summary.ts` reads A-29 and §4.3's A-30 together** — A-29 changes what a row *says*, A-30 changes how it is *written*, and I-6a builds both; **A-31 is revision 24 and sits under A-29** — it is the `travelStats` specification (type, signature, algorithm, sort orders, residues), and it widens the row a second time with the **record census** clause 2's `unattributed` cannot be computed without, taking `SUMMARY_VERSION` to 4. **A builder of I-7 reads §8.4 clause 2, then A-31, and needs nothing else in this document except §2.10's list**; A-31 also rewrites ROADMAP exit criterion 6, so **anyone about to add a count to `TripSummaryRow` reads A-31 Part 6 first — widening that allow-list is an architect's ruling**; **A-33 and A-34 are revision 25 and sit under A-31** — **A-33 supersedes A-31 Part 6's two-half check entirely** (it grepped declarations while the danger is a *value*, and a persisted `countriesVisited` passed it), so read A-33 and treat Part 6 as the *principle* it block-quotes and nothing more; **A-34** adds `provisional` to `travelStats`' two row types and is the ruling that stops an active trip's unreached countries being printed as fact. **A builder of I-7a reads A-31, then A-33 and A-34, plus §2.1's A-32** | 44k | architect; the builder and breaker of the phase after Phase 1 (§8.1–§8.4 only). §8.10 is for the architect and for phases 4, 5 and 7. Read with `PRODUCT-VISION.md` |
+| 8 | **The travel-history model** (revision 9) — trip lifecycle and past trips (§8.1), the feasibility/integrity rule class (§8.2), participants (§8.3), geography attribution, travel stats and the summary-row rule (§8.4); then the shapes the location, photo and social phases must land on (§8.5–§8.7) and what is refused (§8.8). **§8.10 is revision 10** — physical travel distance by mode and the four provenance bases that keep it honest; **it is not Phase 2 scope**, so a Phase 2 builder reads §8.1–§8.4 and stops. **Revision 11 amends §8.1, §8.2 and §8.4 by pointer only — the two rulings themselves live in §2.2 (A-10) and §2.7 (A-9), and a Phase 2 builder reads both; revision 12 amends §8.2 by pointer in the same way, and its four rulings live in §2.7 (A-11, A-12, A-13) and §2.14 (A-14)**. **A-26 is revision 20 and lives in §8.4** — the mixed-resolution country index, the withdrawal of the correctness floor's escalation mechanism, and the ruling that `null` is the right answer for a landform the dataset does not carry; **anyone touching `tools/gen-countries.mjs`, `geo/countryIndex.ts` or the attribution golden reads it first**, and it is what ROADMAP's I-5a builds; **A-27 is revision 21, sits directly under A-26 and is read *with* it, never instead of it** — it amends A-26 Part 4's block-quoted rule with a third clause (a filled code ships a **forgiveness entry** as well as a coverage entry), supersedes A-26 Part 5's two-residue list with three, lifts A-26 Part 6 item 3 for a docstring correction only, and is what ROADMAP's **I-5b** builds; **A-28 is revision 22, sits under A-27 and is read with both, never instead of them** — it supersedes A-27 Part 4's filter 2 (two arms, because the coverage index it compared against is mixed-resolution and answered generously) and A-27 Part 4's `overlaps` predicate (the vertex-mean probes come out), corrects A-27 Part 5's Macao sentence and every count in it, and is what ROADMAP's **I-5c** builds. **Anyone touching `tools/forgiveness.mjs` or the forgiveness pass reads A-28 first and A-27 second**; **A-29 is revision 23 and sits under A-28** — it is the only one of the four that is *not* about the index: it rules that a `City`'s **stated** `countryCode` fills a gap the coordinate cannot answer, never overrides one, and only through a gate ending in index membership, and it takes `SUMMARY_VERSION` to 3. **Anyone touching `derive/summary.ts` reads A-29 and §4.3's A-30 together** — A-29 changes what a row *says*, A-30 changes how it is *written*, and I-6a builds both; **A-31 is revision 24 and sits under A-29** — it is the `travelStats` specification (type, signature, algorithm, sort orders, residues), and it widens the row a second time with the **record census** clause 2's `unattributed` cannot be computed without, taking `SUMMARY_VERSION` to 4. **A builder of I-7 reads §8.4 clause 2, then A-31, and needs nothing else in this document except §2.10's list**; A-31 also rewrites ROADMAP exit criterion 6, so **anyone about to add a count to `TripSummaryRow` reads A-31 Part 6 first — widening that allow-list is an architect's ruling**; **A-33 and A-34 are revision 25 and sit under A-31** — **A-33 supersedes A-31 Part 6's two-half check entirely** (it grepped declarations while the danger is a *value*, and a persisted `countriesVisited` passed it), so read A-33 and treat Part 6 as the *principle* it block-quotes and nothing more; **A-34** adds `provisional` to `travelStats`' two row types and is the ruling that stops an active trip's unreached countries being printed as fact. **A builder of I-7a reads A-31, then A-33 and A-34, plus §2.1's A-32**; **revision 26 is additive, carries no ruling number and touches §8.6, §8.7, §8.8 and §8.9 only** — the discover/select/adapt reading of a share, the conversation model, and the travel-native feed, all *reserved and none built*, so **a Phase 2 builder needs none of it** and the reader who does is the architect or whoever builds Phase 3's shares or Phase 7's discovery | 44k | architect; the builder and breaker of the phase after Phase 1 (§8.1–§8.4 only). §8.10 is for the architect and for phases 4, 5 and 7. Read with `PRODUCT-VISION.md` |
 
 *(§8's figure is measured with `doc-section`, not estimated. §8.1–§8.4 — the Phase 2 model — are roughly
 five sixths of it since revisions 20–24 put A-26, A-27, A-28, A-29 and A-31 in §8.4; a Phase 2 builder
@@ -7191,6 +7227,12 @@ statements, and they are what this section exists to settle:
 mean anything. It is **not** Phase 2 scope and nothing in it is built in Phase 2; it supersedes the mileage
 bullet in §8.8, which deferred the whole subject before Jacob gave it a shape.
 
+**Revision 26 adds three reservations and no implementation**, from Jacob's clarification of 2026-08-29:
+what a share actually grants (§8.7 — *discover → select → add → adapt*, on the `copyStopInto` that already
+shipped), conversations on travel objects (§8.8 — and the `Post` that must never exist), and the split
+between the engagement feed this product refuses and the derived travel-native surface it reserves (§8.8).
+Like §8.10 they are one-way doors written down early; unlike §8.1–§8.4 **no phase builds any of them yet**.
+
 ### 8.1 The trip lifecycle is derived. A past trip is a trip whose end date has passed.
 
 ```ts
@@ -9197,6 +9239,12 @@ places library, place notes, or photos — `removeStop`'s single-row prune must 
 delete with a user-visible affordance. Photos are that second referent. The phase that ships them re-reads
 that paragraph; it is not a discovery.
 
+**One cross-reference, added at revision 26: a photo is also a conversation *subject*.** §8.8's reserved
+`Comment.subject` includes `{kind:'photo'}`, and that is what the thesis's *"moment"* is in this model — the
+association record above, not a new entity and not a post. **It changes nothing in this section's shape**:
+the association stays one trip and at most one of a stop, a place or a day, the bytes stay in the library,
+and a conversation hanging off a photo is a server-side record that never enters the trip document.
+
 ### 8.7 The social graph — five edges, and the pairs that must never be collapsed
 
 Phase 3's tables, stated now because `core/access` already models three of them and the conformance matrix
@@ -9216,6 +9264,36 @@ travelling together, share my position"*). Every one of them is a privacy decisi
 convenience, and every one is a data migration to undo. The conformance matrix (§6.2) gains **participant
 with no share** as a principal, and its expected verdict on every operation is `deny` — a cell that is
 asserted before there is any code that could make it true.
+
+**What a share actually grants, because *"read-only share page"* understates it and would be built as the
+wrong thing** (Jacob's clarification, 2026-08-29; revision 26). A shared trip is somewhere the recipient
+**explores**: *their trip → discover → select → **add to my trip** → adapt to my itinerary.* Every step of
+that already exists — the browse-another-trip pane (Phase 1), `copyStopInto` (§2.14, shipped),
+`acceptCandidate`, and then ordinary editing of a record that is now the recipient's own. Three things
+follow, stated here so nobody invents a fourth:
+
+1. **Copying out is inherent in the `viewer` grant. Not a fourth role, and not a per-share `allowCopy`
+   flag.** A principal who may read a stop may copy it, because the copy writes into *their* document and
+   carries `origin`; §2.14 rule 7's credit line is what protects the source, not a permission bit. A flag
+   would be a new persisted field on every share row, a new cell in the conformance matrix, and a switch
+   whose *off* position is unenforceable the moment the recipient can read the text at all — which is the
+   definition of a control that lies. If Jacob ever wants "look but do not take", it is a product
+   conversation about what sharing means, not a column.
+2. **What crosses is one travel object at a time, and it crosses as a candidate.** Today that object is a
+   `Stop`, with its `Place` under §2.14 rule 4. A whole trip, or a whole day, is a **loop over that
+   primitive** — `TripFork` stays cut — and the recipient's document never gains an unbadged record they did
+   not accept. **Adding a second copy unit is an architect's ruling**, on A-23's precedent, not a builder's
+   convenience.
+3. **`copyStopInto` and `acceptCandidate` are not redesigned by any of this.** The only widening is the
+   *source*: a trip the user reached through a `TripShare` rather than one they own. That is a change to
+   what the pane lists, not to the copy contract — A-14, A-15, A-16 and A-18 already assume the source is
+   another person's document, and already re-file the `cityKey`, redact the free text and re-stamp the
+   provenance on exactly that assumption.
+
+**This is the loop's closing edge, and it is why the mechanism shipped in Phase 1.** *Discover → Plan →
+Travel → Document → Share → build travel history → discover through the network → **plan again*** — the last
+arrow is a copy into the user's own trip. Phase 7's discovery surfaces (*"friends who have been here"*) are
+the *discover* step of that same edge and hand off to this one; they are a query, not a second mechanism.
 
 **Following is not friendship and Cairn has no public surface** until a trip is explicitly published.
 Publication is a `TripShare` to a link principal, which already exists; there is no `is_public` column, and
@@ -9245,6 +9323,92 @@ adding one is what would create the moderation obligation §6.5 defers.
   `travelStats`. **No stored counters, no points, no badge table.** The reason is not tidiness: a
   gamification that rewards *entering* data corrupts the travel history's honesty, and this product's whole
   claim is that the history is real.
+- **Conversations on travel objects. Architected here, implemented in the phase that has accounts — and what
+  it refuses is a `Post`.** (Jacob's clarification, 2026-08-29; revision 26.) A user must eventually be able
+  to talk about a **trip, a day, a stop, a place, or a photo/moment** — the objects that already exist.
+  There is no generic social post, no wall, no timeline object, and **nothing whose reason to exist is to be
+  commented on**. That is principle 9, and it is a model decision rather than a UI one because a `Post`
+  table is the shape a travel product cannot be recovered from: once the unit of conversation is a post, the
+  trip becomes an attachment to it. The stored shape is sketched on §8.5's precedent, because one clause of
+  it is the one-way door:
+
+  ```ts
+  type Comment = {
+    id: CommentId;
+    tripId: TripId;                                    // resolves to exactly one trip, always
+    subject: { kind: 'trip' }
+           | { kind: 'day';   date: IsoDate }
+           | { kind: 'stop';  stopId: StopId }
+           | { kind: 'place'; placeId: PlaceId }
+           | { kind: 'photo'; photoId: PhotoId };      // §8.6's association — not a new entity
+    authorUserId: UserId;
+    body: string;
+    createdAt: IsoDateTimeLocal;
+    editedAt: IsoDateTimeLocal | null;
+    deletedAt: IsoDateTimeLocal | null;
+  };
+  ```
+
+  Four decisions come with it, and they are the whole of what is being reserved:
+
+  1. **A comment is server-side and is never part of the trip document. There is no `Trip.comments`, in any
+     phase.** This is the mirror image of §8.3's ruling on participants, and it inverts for the reason §8.3
+     gives: a participant is *the owner's* statement about their own trip, so embedding buys round-trip
+     parity, undo and deletion for free; a comment is *another person's content* on the owner's trip, so
+     embedding would put a friend's words inside the owner's `toJSON`, their export, their undo stack and a
+     snapshot restore that would silently delete or resurrect them. Ownership would be untraceable at
+     exactly the point §6.2 requires it most.
+  2. **Readability is the subject's readability, and there is no sixth edge.** A comment is visible to
+     precisely the principals who may read the trip it hangs off (§6.2's predicates, unchanged), and writing
+     one is the `commenter` role `TripShare` already carries. In the phase that builds it the conformance
+     matrix gains `comment` as an **operation**, not a new relationship: a `viewer` is denied it, a
+     participant with no share is denied everything, and §8.7's five edges stay five.
+  3. **No reactions, no likes, no counts.** §0.7 and §8.4 already forbid this product from storing a count of
+     anything; a comment count is derived or it does not exist. A like is a follower economy with one field,
+     and it is refused for the same reason the feed's is below.
+  4. **Messaging that is not attached to a travel object stays deferred.** §7's *chat* non-goal is **not**
+     lifted. Direct messages have no travel object, so they have a different privacy story and a different
+     retention story, and if they are ever built they are a separate record — **not a generalisation of this
+     one**. Deletion follows §6.3 when the phase arrives: deleting a trip deletes its comments; deleting an
+     account tombstones authorship the way §6.3 already tombstones `attribution`.
+
+  **Nothing here is Phase 2 scope and nothing here is built now.** The earliest phase that could build it is
+  Phase 3, because a comment needs an author with an account; `ROADMAP.md` does not schedule it and this
+  bullet does not ask it to.
+- **A travel-native feed. The derived surface is reserved; the engagement feed is refused — and *"no feed"*
+  was doing both jobs.** (Jacob's clarification, 2026-08-29; revision 26. It resolves a real tension:
+  `ROADMAP.md` Phase 7 said *"no feed"* flatly, which refused more than this product means to refuse.)
+  **Refused, permanently:** a ranked, algorithmic, engagement-driven feed — a ranking model, a
+  follower/like economy, generic post items, and unread badges or counters that exist to bring someone back
+  rather than to tell them something. **Reserved:** a *derived* surface over the travel graph, computed from
+  exactly the queries Phase 7 already ships (§8.4's country and city attribution joined to `Connection` and
+  `TripShare`), which may surface friends' and trusted people's trips, trip starts and completions, places
+  added or visited, photos and moments, travel memories, planning activity, destination discovery, questions
+  and conversations, and *"people you know have been here"*. It is allowed to be the reason someone opens
+  the app; it is not allowed to be the reason they cannot put it down. Three model consequences, which are
+  why this is here and not only in the roadmap:
+
+  1. **The feed has no store of its own, and there is no activity-event table.** Every item it could show is
+     already dated by state that exists: `Trip.startDate`/`endDate` through `lifecycle` (§8.1),
+     `Provenance.addedAt`/`acceptedAt` (§2.8), `Visit.arrived` (§8.5), a photo's timestamp (§8.6), a
+     comment's `createdAt` (above). A denormalised activity log is the cheap wrong version — a second copy
+     of facts the documents already state, going stale with nothing to invalidate it — and §0.6 is the whole
+     of the argument. If throughput ever demands a materialised cursor, it is a **cache, rebuildable by
+     re-deriving**, never the source of truth: the same rule, and the same failure mode, as
+     `TripSummaryRow` (§8.4).
+  2. **A feed is not a second read path.** Every item is subject to the authorization of the object it
+     derives from, evaluated by the same predicates (§6.2). A feed assembled by a job that "already knows"
+     what it may show is how the one publicly visible permission bug in this product gets written — the
+     surface reads through the same policies as every other read, or it does not ship.
+  3. **It stays travel-native by a test rather than by intention: a surface that would still make sense with
+     the travel data removed is the thing this bullet refuses.** The social unit stays the trip, the stop,
+     the place or the moment (principle 9), and nothing may appear in it that is not one of the objects
+     §8.8's comment reservation already enumerates.
+
+  **Not Phase 2, and not built now.** It is a Phase 7 *candidate*, sequenced behind the data it derives from
+  by `ROADMAP.md` sequencing rule 8 — the conversation category needs comments, the photo category needs
+  Phase 6, the visited category needs Phase 5b — and Phase 7 now carries this distinction instead of the
+  flat refusal it used to.
 - **Automatic trip detection.** Nothing here forecloses it — a detected trip is a candidate `Trip` with
   `{source:'device', state:'candidate'}`, which is the shape that already exists — and nothing here builds
   it. It is worth the thesis's own warning: build it when the manual path is good enough that the automatic
@@ -9270,6 +9434,12 @@ defect §2.10 exists to prevent.
 **§8.10 adds nothing to the surface now**, because it implements nothing now. The symbols it will name when
 its first mode ships — `airportOf`, `journeyDistance`, and whatever `travelStats`' widening needs — are
 listed in §8.10 and counted in the pass that adds their callers, under the same rule.
+
+**Revision 26 adds nothing to the surface either, and that is the check on it.** §8.7's
+discover/select/adapt reading of a share is `copyStopInto`, `acceptCandidate` and `attribution` — three
+symbols that are already exported and none of which changes — and §8.8's conversation and feed reservations
+implement nothing, name no symbol and add no persisted structure to any shipping phase. A revision that
+claims to *reserve* a capability and moves the export surface has built something instead.
 
 ---
 

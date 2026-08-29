@@ -604,6 +604,19 @@ own call, made explicitly rather than left implicit.
 *(Phases 3–7 were numbered 2–6 before the 2026-08-27 re-cut. Anything older that says "Phase 2 =
 accounts" means what is now Phase 3.)*
 
+> **📝 Two things are now *reserved* but still not scheduled — 2026-08-29.** Jacob gave a short
+> product-vision clarification. **No phase above changed, nothing new is being built, and no status
+> moved.** (1) When friends can see your trips in Phase 3, that is not meant to be a read-only page:
+> you'll be able to look at someone's real trip, pick a place out of it, add it to yours and then adapt
+> it to your dates. That is the same "copy a stop" mechanism Phase 1 already shipped, so it costs
+> nothing new — it is now written down as the point of sharing rather than left implied. (2) Two
+> capabilities are written into the design **with no phase and no date**, purely so a later phase has a
+> foundation instead of a redesign: being able to hold a conversation on a trip, a place or a photo, and
+> a travel-native *"what's new from the people you travel with"* surface. Both are deliberately **not**
+> a generic social network — no likes, no follower counts, no ranking, and nothing that exists to keep
+> you scrolling; the design refuses that in writing. `ARCHITECTURE.md` revision 26, `ROADMAP.md`
+> revision 26.
+
 Each later phase only starts once the one before it gets a manager verdict of **SHIP** — see
 §10 for why that gate matters and isn't just a formality. Phase 1 is the only phase to have
 cleared that bar so far.

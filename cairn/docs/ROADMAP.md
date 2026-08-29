@@ -289,6 +289,28 @@ does not take the increment's own Ship-gate line as a verdict.
 **No phase re-scoped, no change to the order, no new external dependency, no `SUMMARY_VERSION` bump and no
 movement on the export surface.**
 
+**Revision 26, 2026-08-29.** Not a QA round. Jacob gave a product-vision clarification against his own
+thesis and asked explicitly that **no phase be expanded or restructured** — the point of it is to reserve
+future capabilities so later phases have a foundation, not to schedule them. `ARCHITECTURE.md` **revision
+26** records the three reservations (§8.7's *discover → select → add → adapt* reading of a share, §8.8's
+conversations on travel objects, §8.8's split between the refused engagement feed and the reserved
+travel-native derived surface) and builds none of them. The mechanical consequences here are **exactly two
+reworded paragraphs**:
+
+- **Phase 3's sharing line** gains the explicit *discover → select → add to my trip → adapt* framing over
+  the `copyStopInto` that shipped in Phase 1. No new mechanism, no new deliverable, no new exit criterion —
+  the gap was that *"sharing is read + `copyStopInto`"* described the machinery without naming the user path
+  it is for, which is how it gets built as a read-only page.
+- **Phase 7's first bullet** splits its flat *"no feed"* into the two things it was doing at once: the
+  **engagement** feed this product refuses permanently, and the **derived, travel-native surface** over the
+  same query-based discovery the bullet already described, which is reserved. Nothing in the refusal is
+  weakened; what is removed is a sentence that also refused something Jacob's thesis asks for.
+
+**No phase is added, cut, reordered or re-scoped; no increment is added; no exit criterion changes; no new
+external dependency; and Phase 2's scope, deliverables and exit criteria are untouched — deliberately,
+because every reserved capability is Phase 3 or later and pulling one forward is the thing this revision
+exists to prevent.**
+
 > **Phase numbers changed once, here.** Every heading below carries its old number, and every "Phase N"
 > written in `ARCHITECTURE.md` §1–§7, `BUILD-NOTES.md` or `QA-FINDINGS.md` before revision 9 means the
 > *named* phase it described: "Phase 2" = accounts/server (**now 3**), "Phase 3" = ingest (**now 4**),
@@ -2681,6 +2703,16 @@ companion's other job per Jacob's answer. **Sharing is read + `copyStopInto`**; 
 from Phase 1 gains shared trips as a source and nothing else changes. `forkTrip` is not in this phase and is
 not coming (§2.14).
 
+**What that is *for*, stated at revision 26 because "a read-only share page" is the wrong thing to build**
+(§8.7). A recipient **explores** a shared trip: *their trip → discover → select → **add to my trip** → adapt
+to my itinerary.* Every step already exists — the browse pane, `copyStopInto`, the accept control below, and
+then ordinary editing of a record that is now theirs. Two things this settles rather than leaves to the
+build: **copying out is inherent in the `viewer` grant** — not a fourth role and not a per-share `allowCopy`
+flag — and the unit that crosses is still **one stop at a time**, as a candidate, badged until accepted. This
+is the loop's closing edge, *discover through the network → plan again*, and it is what Phase 7's discovery
+surfaces hand off to. **It adds no mechanism, no deliverable and no exit criterion**: `copyStopInto` and
+`acceptCandidate` are unchanged, and what widens is the list of trips the pane may show.
+
 **Also here, because it needs accounts and it needs a ruling:** the `acceptCandidate` control in
 `apps/web`, which Phase 1 shipped without (`REVIEW.md`: an imported stop stays badged *from a friend*
 forever). **R8-3 is ruled before it ships**, and **R8-4 is ruled before or with the `SyncPort`.** If Jacob
@@ -2877,8 +2909,24 @@ order of how well each is supported by data that will exist by then:
 - **Discovery through people, not an algorithm.** *"Friends who have been here"*, *"people you follow are
   going here"*, *"trips from people you trust"* — every one of these is a **query over shares and the
   travel history that already exists** (§8.4's country and city attribution, joined to `Connection` and
-  `TripShare`). No recommendation ML, no feed, no ranking model. The social unit stays the trip, the stop
-  or the place.
+  `TripShare`). **No recommendation ML and no ranking model.** The social unit stays the trip, the stop, the
+  place or the moment. Each of these hands off to Phase 3's copy path — *discover → select → add to my trip
+  → adapt* (§8.7) — which is the loop's closing edge and needs nothing new to work.
+
+  **Revision 26 splits this bullet's old *"no feed"*, because that phrase was doing two jobs and refused
+  more than this product means to refuse** (§8.8). **Refused, permanently:** an engagement feed — an
+  algorithmic ranking model, a follower/like economy, generic post items, unread badges and counters that
+  exist to bring someone back rather than to tell them something. **Reserved, and a candidate for this
+  phase:** a *derived, travel-native* surface over exactly the queries above, with **no store of its own and
+  no activity-event table**, which may show friends' and trusted people's trips, trip starts and
+  completions, places added or visited, photos and moments, travel memories, planning activity, destination
+  discovery, questions and conversations, and *"people you know have been here"*. Two things are criteria
+  rather than preferences if it is built: **every item reads through the same authorization predicates as
+  every other read path** (§6.2 — a feed is not a second read path), and **every item derives from a trip, a
+  day, a stop, a place or a moment**, never from a post. Sequencing rule 8 applies to it category by
+  category — the conversation category needs the comment model §8.8 reserves and does not schedule, the
+  photo category needs Phase 6, the visited category needs Phase 5b — so this bullet reserves the surface
+  and does **not** commit the phase to shipping all of it.
 - **The yearly recap and the travel passport.** Pure derive over `travelStats`; cheap once the statistics
   exist, worthless before.
 - **Goals and achievements**, as §8.8 defines them: a declarative target evaluated against derived stats.
