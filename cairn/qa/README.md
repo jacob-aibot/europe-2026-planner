@@ -2030,3 +2030,79 @@ measured G12 **GREEN**; G9/G9m (**R30-2**) and G10 (**R30-4**) are **still GREEN
 deliberately — A-38 Part 9 leaves all four round-30 MINORs unruled. `bash qa/i7a-exit6b.sh` all
 six still red (1·2·1·5·3·20). The script comments in `qa/r30-exit6c.sh` still describe round 30's
 own measurement and were **not** rewritten: they are the breaker's record of what was true then.
+
+---
+
+## A-39 builder pass (2026-08-29, `claude/cairn-i7-architect-pass-4y8q40`) — R31-1: the finite covering set
+
+One new harness, and `qa/i7a-idb-rowkeys.mjs`'s **phase 2 gains a second record**. ARCHITECTURE
+§8.4 **A-39** supersedes A-38 Part 7's *required property* sentence (which quantified over
+**faults**, and so could never be discharged by a finite fixture list) and A-38 Part 3's arm
+**seeds**: the quantifier moves to the state `ensureReady()` can **read**, which is finite, and the
+five arms carry a **15-state pairwise covering set** (5 summary-row generations × 3 row-content
+representatives, minimal by the `|S| × |C|` lower bound). All run from `cairn/`; the `.sh` harness
+builds throwaway `git worktree`s at `HEAD` and removes them.
+
+```bash
+bash qa/a39-exit6e.sh                                   # A-39 Part 9's five faults, one per axis
+                                                        # state the covering set exists to reach.
+                                                        # Each is the transaction-scope widening
+                                                        # G12 already makes with a different GUARD,
+                                                        # generated from one shared template so the
+                                                        # guard is the only difference.
+                                                        # RED, against the two SEEDED ARMS alone
+                                                        # (2 tests / 2 fail each, where a red can
+                                                        # only mean the covering table caught it):
+                                                        #   G16 `summaryVersion < SUMMARY_VERSION`
+                                                        #       — R31-1's own H4;
+                                                        #   G17 `!('attribution' in r)` — a KEY-
+                                                        #       PRESENCE guard, no version read;
+                                                        #   G18 `summaryVersion !== SUMMARY_VERSION`
+                                                        #       — fires on gen-future too;
+                                                        #   G19 `countryCodes.length === 0`;
+                                                        #   G20 `stops.attributed < stops.located`.
+                                                        # G16 whole-gate is 46 tests / 19 fail.
+                                                        # GREEN BY DESIGN: all five under the
+                                                        # PRE-A-38 gate shape (arm 1 alone — 4/0),
+                                                        # G16 under 6b-2 (2/0), and — the
+                                                        # measurement R31-1 turns on — **G16 under
+                                                        # the PRE-A-39 gate shape: A-38's same five
+                                                        # arms with FRESHLY MINTED rows, 2 tests /
+                                                        # 0 fail.** A mismatch exits 1, as does an
+                                                        # UNRUN anchor (R29-4).
+
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node --experimental-strip-types qa/i7a-idb-rowkeys.mjs
+                                                        # ALL OK. **Phase 2 now seeds TWO records**
+                                                        # (A-39 Part 8), both with no `versions`
+                                                        # entry: `t-legacy` = ROW(id, 4) (14 keys)
+                                                        # and `t-legacy-g1` = the new ROW_GEN1(id)
+                                                        # (10 keys — summaryVersion, countryCodes,
+                                                        # cities and attribution genuinely ABSENT,
+                                                        # asserted). Each record's key set is
+                                                        # checked against the key set it was SEEDED
+                                                        # with, per id. This is not the coverage
+                                                        # mechanism — it is a spot-check, and does
+                                                        # NOT take the 15-state array.
+                                                        # `--fault=g16` → **3 FAIL, phase 2, all on
+                                                        # `t-legacy-g1`** (extra `daysTravelled`),
+                                                        # where before this pass that shape measured
+                                                        # ALL OK on both phases.
+                                                        # `--fault=g1` → 3 FAIL, phase 1.
+                                                        # `--fault=g13` → **1 FAIL, phase 2**, and
+                                                        # it is a THROW rather than a key-set
+                                                        # failure: G13 dereferences `countryCodes`
+                                                        # and a gen-1 row has none. Phase 2's
+                                                        # evaluate is wrapped so that is REPORTED
+                                                        # rather than killing the probe before it
+                                                        # can print a summary. G13's 6b-4 signal is
+                                                        # degraded, not lost, and BUILD-NOTES says
+                                                        # so.
+```
+
+**What this pass changed in the existing harnesses' measurements**, re-run on this branch:
+`bash qa/a38-exit6d.sh` — **exit 0, unchanged**: G12/G13/G14 all still RED and both of G13's
+scoped negatives still GREEN. `bash qa/i7a-exit6b.sh` — all six still red.
+`bash qa/r30-exit6c.sh` — unchanged, including **G9/G9m (R30-2) and G10 (R30-4) still GREEN and
+untouched**, deliberately: A-39 Part 13 leaves R30-2…R30-5, R31-2, R31-3 and R31-4 unruled.
+**`qa/i7a-idb-rowkeys.mjs` still exits 0 unconditionally (R31-4)** — read the printed summary,
+not the exit code.
