@@ -602,13 +602,32 @@ not change), no change to `countryOf`, the country index or the generator, no `S
 module-private to `build/days.ts` and the two read gates are module-private to `derive/travelStats.ts`.
 `ROADMAP.md` carries the three rulings and round 29's four builder findings as **I-7b**.
 
+**Revision 28, 2026-08-29.** One ruling, **A-39** (§8.4, QA **R31-1**, MAJOR), and it is the fourth
+consecutive round on the same gate — so Jacob asked for the **stopping boundary** rather than a fifth arm.
+The diagnosis: A-38 Part 7 quantified its coverage claim over **faults** (*"for any single-edit fault
+confined to `ensureReady()`…"*) and discharged it with a finite list of **fixtures**, which is a form no
+enumeration can close — for any list of fixtures a reader can construct a guard reading a field none of them
+varies, and three rounds produced three such axes. A-39 moves the quantifier to the state `ensureReady()`
+can **read**, which is finite because the storage schema is committed and versioned: the function's whole
+variable domain is the contents of three object stores, decomposed into five axes (envelope-version
+presence 2, summary-row generation 5, row content 3, document generation 1 — degenerate at
+`SCHEMA_VERSION = 1` — and loop population 3), covered pairwise by **exactly 15 seeded record states** in
+A-38's same five arms. Two things are settled beside the number: R31-1's premise is answered literally —
+`ensureReady()`'s transaction scope is `[DOCS, VERSIONS]`, so it **cannot** touch a summary row today, and
+the stale-row migration §8.4 clause 3 specifies already exists in the *client* — and the boundary is written
+down, naming what reopens this (a `SUMMARY_VERSION` or `SCHEMA_VERSION` bump, a new object store, a new
+port, a fourth write path) and what does not (**one more fault shape on an axis already covered is a builder
+finding against A-39 Part 5's table, not an architect's ruling**). Nothing else moves: no engine, no
+`SUMMARY_VERSION` bump, no `StoragePort` method, no change to the port itself, no client change, no movement
+on §2.10's export surface (75). The diff is two test/QA files.
+
 **Phase 1 is §2 and §4. The next phase is §8.1–§8.4.** Everything else is the shape those must not
 foreclose. See `ROADMAP.md` for sequencing and `PRODUCT-VISION.md` for why this order and not another.
 
 ## Read only your sections
 
-This document is ~204k tokens (re-measured at revision 27, with
-`cairn/tools/doc-section ARCHITECTURE` — §2 is ~110k of it and §8 ~56k; the per-section figures below were stale by a third before revision 11 and are
+This document is ~212k tokens (re-measured at revision 28, with
+`cairn/tools/doc-section ARCHITECTURE` — §2 is ~110k of it and §8 ~64k; the per-section figures below were stale by a third before revision 11 and are
 re-measured, not estimated, whenever a revision lands). Nothing needs all of it, and a fresh agent that reads it whole starts a sixth
 of the way into its context before writing a line. Pull what you need:
 
@@ -627,7 +646,7 @@ cairn/tools/doc-section ARCHITECTURE         # lists the sections and their size
 | 5 | The four hard subsystems | 2k | breaker; builder from Phase 3 on |
 | 6 | Privacy, authorization, deletion cascade. **§6.6 is the build-artifact threshold; the copy threshold is §2.14 A-15 + A-18 (revisions 13 and 14) and they differ deliberately, in two named places — read them together or neither** | 4k | breaker, manager; builder for §6.2 |
 | 7 | Explicitly deferred | <1k | anyone about to build something not in the roadmap |
-| 8 | **The travel-history model** (revision 9) — trip lifecycle and past trips (§8.1), the feasibility/integrity rule class (§8.2), participants (§8.3), geography attribution, travel stats and the summary-row rule (§8.4); then the shapes the location, photo and social phases must land on (§8.5–§8.7) and what is refused (§8.8). **§8.10 is revision 10** — physical travel distance by mode and the four provenance bases that keep it honest; **it is not Phase 2 scope**, so a Phase 2 builder reads §8.1–§8.4 and stops. **Revision 11 amends §8.1, §8.2 and §8.4 by pointer only — the two rulings themselves live in §2.2 (A-10) and §2.7 (A-9), and a Phase 2 builder reads both; revision 12 amends §8.2 by pointer in the same way, and its four rulings live in §2.7 (A-11, A-12, A-13) and §2.14 (A-14)**. **A-26 is revision 20 and lives in §8.4** — the mixed-resolution country index, the withdrawal of the correctness floor's escalation mechanism, and the ruling that `null` is the right answer for a landform the dataset does not carry; **anyone touching `tools/gen-countries.mjs`, `geo/countryIndex.ts` or the attribution golden reads it first**, and it is what ROADMAP's I-5a builds; **A-27 is revision 21, sits directly under A-26 and is read *with* it, never instead of it** — it amends A-26 Part 4's block-quoted rule with a third clause (a filled code ships a **forgiveness entry** as well as a coverage entry), supersedes A-26 Part 5's two-residue list with three, lifts A-26 Part 6 item 3 for a docstring correction only, and is what ROADMAP's **I-5b** builds; **A-28 is revision 22, sits under A-27 and is read with both, never instead of them** — it supersedes A-27 Part 4's filter 2 (two arms, because the coverage index it compared against is mixed-resolution and answered generously) and A-27 Part 4's `overlaps` predicate (the vertex-mean probes come out), corrects A-27 Part 5's Macao sentence and every count in it, and is what ROADMAP's **I-5c** builds. **Anyone touching `tools/forgiveness.mjs` or the forgiveness pass reads A-28 first and A-27 second**; **A-29 is revision 23 and sits under A-28** — it is the only one of the four that is *not* about the index: it rules that a `City`'s **stated** `countryCode` fills a gap the coordinate cannot answer, never overrides one, and only through a gate ending in index membership, and it takes `SUMMARY_VERSION` to 3. **Anyone touching `derive/summary.ts` reads A-29 and §4.3's A-30 together** — A-29 changes what a row *says*, A-30 changes how it is *written*, and I-6a builds both; **A-31 is revision 24 and sits under A-29** — it is the `travelStats` specification (type, signature, algorithm, sort orders, residues), and it widens the row a second time with the **record census** clause 2's `unattributed` cannot be computed without, taking `SUMMARY_VERSION` to 4. **A builder of I-7 reads §8.4 clause 2, then A-31, and needs nothing else in this document except §2.10's list**; A-31 also rewrites ROADMAP exit criterion 6, so **anyone about to add a count to `TripSummaryRow` reads A-31 Part 6 first — widening that allow-list is an architect's ruling**; **A-33 and A-34 are revision 25 and sit under A-31** — **A-33 supersedes A-31 Part 6's two-half check entirely** (it grepped declarations while the danger is a *value*, and a persisted `countriesVisited` passed it), so read A-33 and treat Part 6 as the *principle* it block-quotes and nothing more; **A-34** adds `provisional` to `travelStats`' two row types and is the ruling that stops an active trip's unreached countries being printed as fact. **A builder of I-7a reads A-31, then A-33 and A-34, plus §2.1's A-32**; **A-36 and A-37 are revision 26 and sit under A-34** — **A-36 supersedes A-33 Part 3's 6b-1/6b-2/6b-4 split and Part 7 residue 2** (every `StoragePort` implementation is *executed* by the gate, including the web port, against a recording double; 6b-2 is demoted to a tripwire and its parameter grep withdrawn; 6b-4's Chromium read-back becomes a required recorded ship-gate condition), so **anyone touching a port implementation, `test/stats-storage.test.ts` or `ROW_KEYS` reads A-36 first and A-33 second**; **A-37** is the ruling that a stored summary row is not a validated document — two module-private read gates in `travelStats` (day numbers clamped into `IsoDate`'s domain, a stored country code read through `/^[A-Z]{2}$/`), and it is what makes A-32 Part 8 residue 3's bound and the composite key's docstring true rather than merely stated. **A builder of I-7b reads A-36 and A-37, plus §2.3's A-35**; **A-38 is revision 27 and sits under A-37** — it **widens A-36 Part 2's mechanism and Part 4's 6b-4 scope without touching A-36's sentence**: a port's coverage is its **write paths**, not its interface methods, so the recording double gains a **seed** (a pre-existing database, including a *legacy* record with no envelope version), 6b-1b becomes **five arms each with a stated starting state**, and 6b-4 gains a second seeded phase. **Anyone touching a port implementation, `recordingIdb`, `test/stats-storage.test.ts` or `qa/i7a-idb-rowkeys.mjs` reads A-38 first and A-36 second** | 56k | architect; the builder and breaker of the phase after Phase 1 (§8.1–§8.4 only). §8.10 is for the architect and for phases 4, 5 and 7. Read with `PRODUCT-VISION.md` |
+| 8 | **The travel-history model** (revision 9) — trip lifecycle and past trips (§8.1), the feasibility/integrity rule class (§8.2), participants (§8.3), geography attribution, travel stats and the summary-row rule (§8.4); then the shapes the location, photo and social phases must land on (§8.5–§8.7) and what is refused (§8.8). **§8.10 is revision 10** — physical travel distance by mode and the four provenance bases that keep it honest; **it is not Phase 2 scope**, so a Phase 2 builder reads §8.1–§8.4 and stops. **Revision 11 amends §8.1, §8.2 and §8.4 by pointer only — the two rulings themselves live in §2.2 (A-10) and §2.7 (A-9), and a Phase 2 builder reads both; revision 12 amends §8.2 by pointer in the same way, and its four rulings live in §2.7 (A-11, A-12, A-13) and §2.14 (A-14)**. **A-26 is revision 20 and lives in §8.4** — the mixed-resolution country index, the withdrawal of the correctness floor's escalation mechanism, and the ruling that `null` is the right answer for a landform the dataset does not carry; **anyone touching `tools/gen-countries.mjs`, `geo/countryIndex.ts` or the attribution golden reads it first**, and it is what ROADMAP's I-5a builds; **A-27 is revision 21, sits directly under A-26 and is read *with* it, never instead of it** — it amends A-26 Part 4's block-quoted rule with a third clause (a filled code ships a **forgiveness entry** as well as a coverage entry), supersedes A-26 Part 5's two-residue list with three, lifts A-26 Part 6 item 3 for a docstring correction only, and is what ROADMAP's **I-5b** builds; **A-28 is revision 22, sits under A-27 and is read with both, never instead of them** — it supersedes A-27 Part 4's filter 2 (two arms, because the coverage index it compared against is mixed-resolution and answered generously) and A-27 Part 4's `overlaps` predicate (the vertex-mean probes come out), corrects A-27 Part 5's Macao sentence and every count in it, and is what ROADMAP's **I-5c** builds. **Anyone touching `tools/forgiveness.mjs` or the forgiveness pass reads A-28 first and A-27 second**; **A-29 is revision 23 and sits under A-28** — it is the only one of the four that is *not* about the index: it rules that a `City`'s **stated** `countryCode` fills a gap the coordinate cannot answer, never overrides one, and only through a gate ending in index membership, and it takes `SUMMARY_VERSION` to 3. **Anyone touching `derive/summary.ts` reads A-29 and §4.3's A-30 together** — A-29 changes what a row *says*, A-30 changes how it is *written*, and I-6a builds both; **A-31 is revision 24 and sits under A-29** — it is the `travelStats` specification (type, signature, algorithm, sort orders, residues), and it widens the row a second time with the **record census** clause 2's `unattributed` cannot be computed without, taking `SUMMARY_VERSION` to 4. **A builder of I-7 reads §8.4 clause 2, then A-31, and needs nothing else in this document except §2.10's list**; A-31 also rewrites ROADMAP exit criterion 6, so **anyone about to add a count to `TripSummaryRow` reads A-31 Part 6 first — widening that allow-list is an architect's ruling**; **A-33 and A-34 are revision 25 and sit under A-31** — **A-33 supersedes A-31 Part 6's two-half check entirely** (it grepped declarations while the danger is a *value*, and a persisted `countriesVisited` passed it), so read A-33 and treat Part 6 as the *principle* it block-quotes and nothing more; **A-34** adds `provisional` to `travelStats`' two row types and is the ruling that stops an active trip's unreached countries being printed as fact. **A builder of I-7a reads A-31, then A-33 and A-34, plus §2.1's A-32**; **A-36 and A-37 are revision 26 and sit under A-34** — **A-36 supersedes A-33 Part 3's 6b-1/6b-2/6b-4 split and Part 7 residue 2** (every `StoragePort` implementation is *executed* by the gate, including the web port, against a recording double; 6b-2 is demoted to a tripwire and its parameter grep withdrawn; 6b-4's Chromium read-back becomes a required recorded ship-gate condition), so **anyone touching a port implementation, `test/stats-storage.test.ts` or `ROW_KEYS` reads A-36 first and A-33 second**; **A-37** is the ruling that a stored summary row is not a validated document — two module-private read gates in `travelStats` (day numbers clamped into `IsoDate`'s domain, a stored country code read through `/^[A-Z]{2}$/`), and it is what makes A-32 Part 8 residue 3's bound and the composite key's docstring true rather than merely stated. **A builder of I-7b reads A-36 and A-37, plus §2.3's A-35**; **A-38 is revision 27 and sits under A-37** — it **widens A-36 Part 2's mechanism and Part 4's 6b-4 scope without touching A-36's sentence**: a port's coverage is its **write paths**, not its interface methods, so the recording double gains a **seed** (a pre-existing database, including a *legacy* record with no envelope version), 6b-1b becomes **five arms each with a stated starting state**, and 6b-4 gains a second seeded phase; **A-39 is revision 28, sits under A-38 and closes the arc** — it supersedes A-38 Part 7's *required property* sentence (which quantified over **faults** and so could never be discharged by a finite fixture list) and A-38 Part 3's arm **seeds**, replacing both with a claim quantified over the state `ensureReady()` can **read**: five axes derived line by line from the function, a **15-state pairwise covering set** in the same five arms, and — the part Jacob asked for — a **written boundary** saying what legitimately reopens this (a `SUMMARY_VERSION`/`SCHEMA_VERSION` bump, a new store, a new port, a fourth write path) and what does not (one more fault shape on an axis already covered, which is a **builder** finding against A-39 Part 5's table, not an architect's). **Anyone touching a port implementation, `recordingIdb`, `test/stats-storage.test.ts` or `qa/i7a-idb-rowkeys.mjs` reads A-39 first, A-38 second and A-36 third** | 64k | architect; the builder and breaker of the phase after Phase 1 (§8.1–§8.4 only). §8.10 is for the architect and for phases 4, 5 and 7. Read with `PRODUCT-VISION.md` |
 
 *(§8's figure is measured with `doc-section`, not estimated. §8.1–§8.4 — the Phase 2 model — are roughly
 five sixths of it since revisions 20–27 put A-26…A-29, A-31, A-33, A-34, A-36, A-37 and A-38 in §8.4; a Phase 2 builder
@@ -642,7 +661,11 @@ I-7b** reads **A-36** and **A-37** plus §2.3's **A-35**, and needs A-33 only fo
 A-31 only for Part 4's algorithm — A-36 names which of A-33's parts it supersedes, so reading A-36 first is
 what tells you which of A-33 to skip. **A builder of A-38** reads **A-38** (**~5k**) and **A-36 Parts 2–5**
 and needs nothing else in this document except A-33 Part 2's `ROW_KEYS`/`ROW_PATHS` — A-38 restates which
-of A-36 it widens, and touches only `test/stats-storage.test.ts` and `qa/i7a-idb-rowkeys.mjs`.)*
+of A-36 it widens, and touches only `test/stats-storage.test.ts` and `qa/i7a-idb-rowkeys.mjs`. **A builder of
+A-39** reads **A-39** (**~7k**) and **A-38 Parts 3–7**, plus A-33 Part 2's `ROW_KEYS`/`ROW_PATHS` and
+`SUMMARY_VERSION`'s own docstring in `packages/core/src/derive/summary.ts` — which is the ledger A-39 Part 6
+is transcribed from — and needs nothing else in this document. It touches the same two files and no
+others.)*
 
 Read the whole document when you are the manager, when you are changing the design, or when a change
 crosses a section boundary. Otherwise this table is the contract.
@@ -9824,6 +9847,15 @@ re-express"*).
 
 #### A-38 — a port's coverage is its **write paths**, not its interface methods: the double is seeded with a pre-existing database, and `ensureReady`'s upcast is executed (revision 27, QA R30-1, MAJOR)
 
+**⚠ Part 7's *required property* sentence and Part 3's arm **seeds** are superseded by A-39 (revision 28,
+QA R31-1).** The arms keep their names, their stated starting states and their per-arm assertions; what A-39
+replaces is the sentence — which quantified over *faults* and therefore could not be discharged by any
+finite fixture list — and the seeds those arms carry, which become a **15-state covering set** over the
+state `ensureReady()` can actually read. Part 4's *"never a hand-typed row literal"* gains one bounded
+exception (ageing a minted row by key removal only), and Part 4's seed-integrity assertion becomes
+per-generation. **Read A-38 for which starting states the execution must run from; read A-39 for how many
+there are, why there is not a sixteenth, and what does and does not reopen the question.**
+
 **Part 1 — the routed question, and why it is one sentence wide rather than one method wide.**
 
 A-36 Part 2 is a totality claim over *values*:
@@ -10070,6 +10102,420 @@ increment that carries it has to carry R30-2…R30-5 as well — R30-2 in partic
 criterion 6's *subject* and would land in the same test file — so writing a partial I-7c now would be a
 contract document that goes stale the moment those four are ruled. Whoever rules them writes the increment,
 with A-38's Part 3 arms, Part 6's two 6b-4 phases and Part 7's three faults as its Verification lines.
+
+#### A-39 — the gate's coverage is defined over **readable state**, not over imagined faults: the finite covering set, and the boundary that closes this arc (revision 28, QA R31-1, MAJOR)
+
+**⚠ This supersedes A-38 Part 7's *required property* sentence and A-38 Part 3's arm *seeds* (not the
+arms themselves, not their names, not their per-arm assertions), and it grants A-38 Part 4's
+*"never a hand-typed row literal"* one bounded exception. Everything else in A-36 and A-38 stands
+unchanged. Read A-36 for why execution replaced the grep, A-38 for why the seed exists, and A-39 for
+**how many seeds there are and why there is not a sixteenth**.**
+
+This is the fourth consecutive round on gate 6b-1b and the third consecutive finding of the same shape: a
+fault whose guard reads a field no fixture varies. R29-1 found the mechanism was a grep; R30-1 found the
+fixtures were all empty; R31-1 finds the fixtures are all *current*. Jacob's instruction for this pass is not
+*"add an arm"* — it is *"define the stopping boundary"*. So this ruling spends its first three Parts on why
+the arc kept reopening, and only then names the set.
+
+---
+
+**Part 1 — the routed question answered literally first: does `ensureReady()` have a summary-row migration
+path today? No. It cannot have one, and the reason is one line of code.**
+
+Read at `apps/web/src/ports/storage.ts:129`:
+
+```ts
+const tx = db.transaction([DOCS, VERSIONS], 'readwrite');
+```
+
+`SUMMARIES` is **not in the transaction scope**. A real IndexedDB throws `NotFoundError` on
+`tx.objectStore('summaries')` outside scope, and the recorder of A-36 Part 3 throws
+`store summaries not in transaction scope` on the same call. So there is **no code path in `ensureReady()`
+today, latent or otherwise, that can read or write a summary row.** R31-1's H4 is not an edit *inside* the
+upcast's existing reach; it is the same transaction-scope edit **G12 already makes**, plus a differently
+guarded body.
+
+And the second half, which matters more, because it decides whether the fault shape is *natural*: the
+stale-summary-row migration H4 describes **already exists, is specified, and is deliberately somewhere
+else.** §8.4 clause 3 assigns it in writing — *"the client rescans every row below it — load the document,
+recompute, rewrite through the ordinary chained write"* — and it is built, at
+`packages/client/src/store/store.ts` (`needsRescan` at `:67`, `RESCAN_MAX_PASSES`, the pass that ends in
+`ports.storage.refreshSummary`). A port-level upgrade of a stale row would not be *"the migration
+`ensureReady` most obviously grows next"*; it would be a **second, contradicting implementation** of a
+mechanism clause 3 already placed in the client, and it would break clause 3's own guarantee that a rescan
+recomputes from **the document** rather than from the stale row's own fields.
+
+**So R31-1's premise, stated narrowly, is false: there is no such path, and none is specified to exist.**
+
+**Part 2 — and it is nonetheless a finding, because the defect is in the sentence, not in the path. This is
+the distinction the last three rounds kept missing.**
+
+Every fault in this project's matrix is a mistake nobody intends to make. G12 contradicts §8.4 clause 1 as
+flatly as H4 contradicts clause 3; G1 contradicts A-31 Part 6; G14 contradicts §4.3 A-30. *"An
+architecturally forbidden edit"* is the definition of the population the matrix exists over, so it cannot
+also be the reason a fault is out of scope. Refusing R31-1 on the ground that H4 is unsanctioned would
+retire G12, G13 and G14 with it.
+
+What is actually wrong is A-38 Part 7's sentence:
+
+> *"For **any** single-edit fault confined to `ensureReady()` that causes a key outside `ROW_KEYS` to appear
+> in a persisted summary record … at least one 6b-1b arm is red."*
+
+That is a **universal quantifier over faults**, discharged by an **existential list of fixtures**. A claim of
+that form can never be closed by enumeration, because the enumeration is over the wrong set: for any finite
+list of fixtures a reader can construct a guard that reads a field none of them varies, and each such
+construction is a legitimate finding under the sentence's own terms. Three rounds, three axes, and there was
+never a reason for it to stop at three. **The mechanism was not short an arm. The claim was quantified over
+a set that cannot be enumerated.**
+
+> **The ruling: the quantifier moves from *faults* to *readable state*, and the covering set is proved
+> complete over the state — which is finite, committed and versioned — rather than over the faults, which
+> are not.**
+
+A fault confined to `ensureReady()` can be conditional only on data `ensureReady()` **can read**. Anything
+else it does, it does unconditionally — and an unconditional widening is red on every arm whose store is
+non-empty, which the gate already has. So enumerating the readable state enumerates every axis a guard can
+lie on, and there is no fourth axis to find that is not a new field in the schema.
+
+**Part 3 — the readable state, derived line by line, and why the list is closed.**
+
+`ensureReady()` in full is nineteen lines with exactly **two** conditions — `if (ready)` (per-instance
+memoisation of a `Promise<void>`, which carries no store state) and `if (have.has(String(key)))` — plus one
+loop over `docKeys.result`. What a fault placed anywhere in that body can reach:
+
+| Reachable | What it can be | Verdict |
+|---|---|---|
+| `db.version` | after `open()` resolves, **always** `DB_VERSION`; `onupgradeneeded` has already run | **constant — not an axis** |
+| `db.objectStoreNames` | after `open()` resolves, **always** exactly `{docs, summaries, versions}` — `onupgradeneeded` creates any missing store and deletes `meta` unconditionally | **constant — not an axis.** This is what disposes of *"a version-1 database has no `versions` store"* and of `DEAD_META`: neither survives to the point this body runs |
+| module constants (`DB_NAME`, `DB_VERSION`, the store names, `mintVersion`) | fixed | **constant — not an axis** |
+| **the contents of `docs`, `summaries`, `versions`** | anything a shipped build ever wrote | **the entire variable domain** |
+
+The transaction's declared scope is **not** a limit on this: a fault may widen line 129, and G12, H4 and any
+successor all do. So the domain is exactly *"the contents of the three stores"*, and the three stores' value
+shapes are a **committed, versioned schema**: a serialized `TripDoc` at `SCHEMA_VERSION`, a
+`TripSummaryRow` at some shipped `SUMMARY_VERSION`, and an opaque `StorageVersion` string. That is the
+finite generator, and the axes below are its exhaustive decomposition.
+
+**Part 4 — the axes. Five, with their domains and the reachability argument for each.**
+
+An axis state is admitted only if a **real deployed database can actually be in it**. That test is what
+keeps the domains finite; without it every field is a continuum and the boundary is unwritable.
+
+- **Axis V — envelope-version presence.** `versions` holds an entry for this key, or does not.
+  **Domain 2: {present, absent}.** This is A-38's axis, already covered.
+  *Excluded:* present-but-`''` and present-but-not-a-string. `mintVersion()` returns a 22-character
+  base64url string or throws; no shipped build ever wrote another value; and `load()` and `saveIfVersion`
+  already refuse both defensively. Not reachable, therefore not a state.
+  *Also excluded, and this is a real reduction rather than a convenience:* `docs`-without-`summaries`,
+  `summaries`-without-`docs`, `versions`-without-`docs`. All three port mutations write and delete all the
+  stores they touch inside **one** transaction, so a torn record is not reachable through the port, and
+  IndexedDB gives no other writer. Co-presence is therefore not an axis; only V is.
+
+- **Axis S — summary-row generation.** The `summaries` value was minted by *some* shipped build. The domain
+  is the ledger `SUMMARY_VERSION`'s own docstring already keeps, plus one:
+  **Domain 5: {gen-1 (no `summaryVersion` field at all), gen-2 (`=2`), gen-3 (`=3`), gen-4 (`=4`, current),
+  gen-future (`> SUMMARY_VERSION`)}.**
+  *Why gen-future is reachable and not exotic:* a second tab on a newer deploy writes it. That is the same
+  two-writer scenario §2.2a's whole fence exists for, so refusing it here would be inconsistent with the
+  rest of the design.
+  *Why five and not "a spectrum":* a guard may compare against `SUMMARY_VERSION` (`<`, `<=`, `===`, `!==`,
+  `>=`, `>`) or against a specific historical constant, or may test a **field's presence**. Holding one
+  representative per shipped generation plus one above-current distinguishes all of those, and it terminates
+  because the ledger has one entry per bump and gains one only when the schema does.
+  *Why the representatives must be **shape-faithful**, not merely version-stamped* — and this is the
+  sub-ruling that stops a fourth axis being born out of this one: the generations differ in **key set**, not
+  only in the number. gen-1 has no `countryCodes`, no `cities`, no `summaryVersion`; gen-2 has no
+  `countrySource` inside `cities[]`; gen-3 has no `attribution`. A guard of the form
+  `if (!('attribution' in r))` — *"this row predates the census, bring it current"*, as ordinary an edit as
+  H4 — is invisible to a row that was aged by setting a number and nothing else. **A version-only aged
+  fixture would have re-created R31-1 inside the fix for R31-1**, which is the exact failure A-38 Part 4's
+  seed-integrity assertion was written to prevent one level down.
+
+- **Axis C — row content.** Every field of the row whose *value* varies across real trips. Partitioned by
+  what a guard can distinguish:
+  - *count- and collection-shaped* (`cityCount`, `dayCount`, `stopCount`, `poolCount`, `revision`,
+    `countryCodes.length`, `cities.length`, `attribution.*.located`, `attribution.*.attributed`) — a guard
+    against a single constant distinguishes at most {zero/empty, non-zero/non-empty};
+  - *enum-valued* (`datePrecision` ∈ 3, `cities[].countrySource` ∈ 3) — finite by declaration.
+
+  These are **not independent axes**: every one is a function of the underlying trip document, so a single
+  fixture choice sets all of them at once. **Domain 3**, and the three representatives are chosen so that
+  their union covers both cells of every count field and every value of both enums:
+  1. **rich** — countries attributed, cities, days, stops, a pool; `datePrecision: 'exact'`; `revision > 0`;
+     `cities[]` carrying both `countrySource: 'coordinate'` and `countrySource: 'stated'`.
+  2. **degenerate** — a bare trip: `cityCount`/`stopCount`/`poolCount` all `0`, `countryCodes: []`,
+     `cities: []`, `attribution` all zeros; `datePrecision: 'month'`; `revision: 0`.
+  3. **located-but-unattributed** — one coordinate the index does not resolve, so
+     `attribution.*.located > 0` **and** `attribution.*.attributed === 0`; `datePrecision: 'year'`;
+     `cities[].countrySource: null`. This is the cell neither of the other two produces, it is the state
+     §8.4 clause 2's `unattributed` exists for, and *"this row has an unattributed hole, recompute it"* is
+     as natural a guard as staleness.
+
+  *Two facts recorded so a later reader does not mistake them for gaps.* `dayCount === 0` is **not
+  reachable** — `ensureDays` mints at least one `Day` for any valid range, so no storable document has zero
+  days. And `datePrecision`'s three values map one-to-one onto the three C-representatives only because
+  `DatePrecision` has exactly three members; **`DatePrecision` gaining a fourth value gives Axis C a fourth
+  state**, and that is a named trigger in Part 11.
+
+  *The one line drawn by judgment rather than by construction, stated as such:* the **free-string** fields
+  (`id`, `title`, `startDate`, `endDate`) are held at typical values and are **not** an axis. A migration
+  guarded on the text a user typed into a title is not a mistake; it is sabotage, and §0.5's matrix is a
+  matrix of mistakes. This is the only exclusion in Part 4 that is not a reachability argument, and it is
+  disclosed in Part 12 residue 2 rather than buried.
+
+- **Axis D — document generation.** A fault may `JSON.parse` a `docs` value and guard on `schemaVersion`.
+  `packages/core/src/model/types.ts:293` has `SCHEMA_VERSION = 1` and `serialize/migrate.ts`'s own comment
+  is *"there is exactly one schema version today"*. **Domain 1 — degenerate.** Every deployed document is
+  v1, so there is nothing to vary and no cell to cover. This is a material reduction, not a dodge, and its
+  trigger is named in Part 11.
+  *Excluded:* an unparseable `docs` value. Not reachable through a transaction, and external tampering with
+  a local-first store the user owns is not in the threat model §6 sets.
+
+- **Axis N — the population the single `ensureReady` run walks.** Not a per-record axis; the loop's own.
+  **Domain 3: {0 records — the body never executes; ≥1 uniform; ≥2 spanning both V values in one run}.** The
+  third is A-38 arm 4's justification (both loop arms in one transaction) and is kept for exactly that.
+
+Plus one requirement that is deliberately **not** an axis, because no fault can read it:
+
+- **Axis P — provenance of the starting state** ∈ {empty, test-seeded, port-produced}. This is A-38 arms 1
+  and 5, it is **fixture fidelity**, and it adds arms without adding coverage cells. It stays, and it is
+  counted separately so the arm count is not mistaken for the coverage count.
+
+**Part 5 — the covering set. Pairwise over {V, S, C}, structural over N and P: exactly 15 seeded record
+states, in 5 arms. These are the numbers a builder implements; nothing here is left open.**
+
+*Why pairwise (2-wise) and not the 90-cell cross-product, and not 1-wise.* A single-edit fault has **one**
+guard, which lies on one axis; 1-wise would suffice for the guard alone. But the three findings this arc has
+actually produced are faults whose *guard* is on one axis and whose *reachability* depends on a second —
+G13's guard is inside the stamping branch (Axis V) and is only observable in a run where the loop body
+executes (Axis N). That is precisely the class 2-wise coverage is defined over. **3-wise is refused and the
+refusal is on the record:** a fault requiring three simultaneous state conditions is not a single edit, has
+no instance among the seventeen faults in A-33 Part 6, A-36 Part 5 and A-38 Part 7, and would cost an order
+of magnitude more fixtures for a class nobody has produced in four rounds of trying.
+
+*The count is forced, not chosen.* The lower bound on a pairwise covering array is the product of the two
+largest domains — `|S| × |C| = 5 × 3 = **15**` — and the array below achieves it, so 15 is **minimal**.
+
+| # | S (generation) | C (content) | V (envelope) | seeded into |
+|---|---|---|---|---|
+| 1 | gen-1 | rich | present | arm 2 |
+| 2 | gen-1 | degenerate | absent | arm 3 |
+| 3 | gen-1 | unattributed | present | arm 2 |
+| 4 | gen-2 | rich | absent | arm 3 |
+| 5 | gen-2 | degenerate | present | arm 2 |
+| 6 | gen-2 | unattributed | absent | arm 3 |
+| 7 | gen-3 | rich | present | arm 2 |
+| 8 | gen-3 | degenerate | absent | arm 3 |
+| 9 | gen-3 | unattributed | present | arm 2 |
+| 10 | gen-4 | rich | absent | arm 3 |
+| 11 | gen-4 | degenerate | present | arm 2 |
+| 12 | gen-4 | unattributed | absent | arm 3 |
+| 13 | gen-future | rich | present | arm 2 |
+| 14 | gen-future | degenerate | absent | arm 3 |
+| 15 | gen-future | unattributed | present | arm 2 |
+
+**Coverage, checkable by reading the table:** all 15 `S×C` pairs appear (one per row, by construction); all
+10 `V×S` pairs appear (each generation carries both V values); all 6 `V×C` pairs appear (each content class
+carries both V values). **A test asserts these three counts over the table itself** — 15, 10 and 6, derived
+from the table rather than written beside it — so a row deleted or duplicated during maintenance fails
+loudly rather than silently shrinking the cover.
+
+**The five arms keep their A-38 names, their stated starting states and their per-arm assertions. Only their
+seeds change:**
+
+- **6b-1b-1 — empty database, one instance.** *Unchanged.* Axis N = 0, Axis P = empty.
+- **6b-1b-2 — an existing *current* database.** Seeded with the **8** rows above marked arm 2 (all
+  `V = present`), `dbVersion` at the port's `DB_VERSION` so no upgrade fires. All of A-38 Part 3's arm-2
+  assertions now hold **per id**.
+- **6b-1b-3 — an existing *legacy* database.** Seeded with the **7** rows marked arm 3 (all `V = absent`).
+  A-38's arm-3 assertions hold per id, and `versions` gains **exactly seven** entries.
+- **6b-1b-4 — mixed, in one transaction.** *Unchanged at two records* (one `V = present`, one `V = absent`,
+  both gen-4/rich). It contributes **no new coverage cells** and is kept solely for Axis N's third state —
+  both loop arms in one `ensureReady` run. Saying that plainly is what stops a future reader "optimising" it
+  away or, worse, growing it.
+- **6b-1b-5 — the port's own second instance.** *Unchanged.* Axis P = port-produced; it carries the
+  fixture-fidelity assertion and nothing else changes about it.
+
+**Part 6 — the fixtures, and A-38 Part 4's one bounded exception.**
+
+A-38 Part 4 forbids a hand-typed row literal, for the right reason: it goes stale the next time the row is
+widened and defeats the key assertion it is the subject of. Axis S needs rows that are *deliberately* not
+current, so the rule gains exactly one exception, drawn so that the reason survives:
+
+> **A fixture row is minted through `createTrip` + `tripSummary` and may then be *aged* by a single helper
+> that only ever **deletes keys** and **sets `summaryVersion`**. It may never add a key and never write any
+> other field's value. A reviewer checks this the way A-38 Part 5's line is checked: the helper's body
+> contains no assignment other than to `summaryVersion`, and no key literal that is not also in the
+> generation ledger.**
+
+*The generation ledger.* One entry per shipped `SUMMARY_VERSION`, in the test file, transcribed from
+`SUMMARY_VERSION`'s own docstring in `packages/core/src/derive/summary.ts`: the version number and the keys
+that generation did **not** carry (gen-1: `summaryVersion`, `countryCodes`, `cities`, `attribution`; gen-2:
+`attribution`, plus `countrySource` inside each `cities[]` entry; gen-3: `attribution`; gen-4: none). gen-1
+additionally has no `summaryVersion` **key at all**, which is what `needsRescan`'s `?? 0` exists for and is a
+distinct state from any number.
+
+*The three pins that make the ledger fail loudly when `SUMMARY_VERSION` next moves* — this is the direct
+answer to the question R31-1 routes here, *"how does this stay honest?"*:
+
+1. `assert.equal(LEDGER.at(-1).version, SUMMARY_VERSION)` — the ledger's newest entry **is** the current
+   version. Bumping the constant without adding a ledger entry fails here, with a message that says to add
+   the entry and three table rows.
+2. `assert.deepEqual(ageRow(fresh, currentGen), fresh)` — ageing to the current generation is the
+   **identity**, so the helper cannot silently mangle the shape it claims to reproduce.
+3. For every generation, `Object.keys(ageRow(fresh, gen))` equals `ROW_KEYS` minus that generation's
+   cumulative removals — so the ledger's arithmetic is checked against `ROW_KEYS`, the single source the
+   file already has, and never against a second hand-written list.
+
+*gen-future* is `{ ...fresh, summaryVersion: SUMMARY_VERSION + 1 }` — the one entry that adds nothing and
+only moves the number. That is honest and it is also a permanent limit: a future generation's **extra** keys
+cannot be written down today. Disclosed as Part 12 residue 1.
+
+*The content fixtures need pins too, for the same reason the seed does.* The unattributed fixture is the one
+that can rot silently — if the country index improves, its coordinate starts attributing and Axis C's third
+state degrades into `rich` with nothing saying so, which is R30-1's signature one more time. So, **before any
+port is constructed**: assert `attribution.*.located > 0 && attribution.*.attributed === 0` on the
+unattributed fixture, assert every count is `0` and `countryCodes`/`cities` are empty on the degenerate one,
+and assert every count is non-zero and `countryCodes` non-empty on the rich one. A fixture that has stopped
+being the state it names is **INCONCLUSIVE**, not green.
+
+**Part 7 — the two assertions that change, and the one that does not.**
+
+1. **`assertSeedLanded` stops asserting `ROW_KEYS` uniformly.** Aged rows are, correctly, not
+   `ROW_KEYS`-shaped. It asserts instead, **per id**, that the seeded row's key set equals **that record's
+   own generation's** key set, computed from the ledger. Same purpose, same failure mode caught, one level
+   more precise.
+2. **The post-run assertion on a seeded row becomes per-id before/after key-set equality** — the row's key
+   set after `ensureReady` equals the key set it was seeded with. That is strictly stronger than
+   `ROW_KEYS`-membership for these arms, it is what makes a red **attributable to an id**, and it is what
+   `listTrips()`'s returned rows are checked against too. Rows the port **mints** (arms 1 and 5) keep the
+   existing `=== ROW_KEYS` assertion unchanged, because for those the port is the author.
+3. **Nothing about *values* changes here.** These arms still pin keys, not values. **R31-3 is not resolved
+   by this ruling and stays routed as it was filed** — deciding whether A-38 Part 8 residue 3's scope should
+   move is a separate question, and folding it in silently would be this document making a second ruling
+   under one heading.
+
+**Part 8 — 6b-4 phase 2 is un-blinded, at the smallest honest cost.**
+
+`qa/i7a-idb-rowkeys.mjs:268` hard-codes `row: ROW('t-legacy', 4)`, which is why R31-1's H4 measured
+`ALL OK` in real Chromium on both phases. 6b-4 is **not** the coverage mechanism — A-38 Part 6 is explicit
+that its job is the classes the double cannot model (structured clone, real transaction lifetimes,
+`versionchange`) — so it does **not** take the 15-state array, and putting it there would be paying browser
+cost for coverage Node already provides.
+
+> **6b-4 phase 2 seeds two records rather than one: one gen-4 and one gen-1** — the widest separation on
+> Axis S, and the pair that differs in **key set** as well as in version, so both a numeric staleness guard
+> and a key-presence guard are live in a real browser. It carries **G16** as a third named fault beside
+> `applyG1` and `applyG13`. The measured result of each phase is recorded in `BUILD-NOTES.md`, unchanged.
+
+Concretely, so nothing is left to decide: the probe's `ROW(id, ver)` at `qa/i7a-idb-rowkeys.mjs:132` is a
+hand-typed literal **and stays one** — it is out-of-suite, it is pinned against the probe's own `ROW_KEYS`
+at `:62`, and A-38 Part 4's mint-don't-type rule was never about this file. It gains a sibling
+`ROW_GEN1(id)`: the same literal with `summaryVersion`, `countryCodes`, `cities` and `attribution` **absent**
+— the gen-1 shape from the ledger. Phase 2 seeds `t-legacy` with `ROW('t-legacy', 4)` and `t-legacy-g1` with
+`ROW_GEN1('t-legacy-g1')`, both with **no** `versions` entry, and asserts each record's key set **against the
+key set it was seeded with**, per id, exactly as Part 7 point 2 requires of the Node arms. The blob check —
+*"no lifetime count of any name in the persisted bytes"* — is unchanged and already covers both.
+
+**Part 9 — the fault matrix, extended per §0.5. Five faults, one per axis state the covering set exists to
+reach, so the cover is *demonstrated* rather than asserted.**
+
+A-33 Part 6's ten, A-36 Part 5's four and A-38 Part 7's three all stand and must stay red. Each new fault
+below is the transaction-scope widening of G12 with a different guard.
+
+| | Fault (guard on the widening put) | Must be caught by | What it proves is live |
+|---|---|---|---|
+| **G16** | `if (r.summaryVersion < SUMMARY_VERSION)` — *"while we are in here, bring stale rows current."* **This is R31-1's H4.** | arms 2 and 3, on the gen-1/2/3 records | Axis S's below-current states |
+| **G17** | `if (!('attribution' in r))` — a **key-presence** guard, no version read at all | arms 2 and 3, on the gen-1/2/3 records | that ageing is **shape-faithful**, not version-only. A version-only fixture is green here, which is why Part 6 forbids one |
+| **G18** | `if (r.summaryVersion !== SUMMARY_VERSION)` | arms 2 and 3, on gen-1/2/3 **and gen-future** | that gen-future is a distinct state from stale — `<` and `!==` are different faults |
+| **G19** | `if (r.countryCodes.length === 0)` | arms 2 and 3, on the **degenerate** records only | Axis C's zero cell |
+| **G20** | `if (r.attribution.stops.attributed < r.attribution.stops.located)` | arms 2 and 3, on the **unattributed** records only | Axis C's third cell, the one neither rich nor degenerate reaches |
+
+A fault caught by exactly one arm is fine and remains fine. **A fault caught by none is a hole and is a
+finding** — with the boundary of Part 11 now attached to that sentence, which is the change. Every new fault
+carries its own vacuity control in the existing shape (anchor asserted to have applied, drive asserted to
+reject), and R29-4's rule holds without restatement. G17 and G20 additionally require the **negative**
+measurement to be recorded: G17 green against version-only-aged fixtures, G20 green against rich-only
+fixtures — because a fault that would be caught anyway proves nothing about the axis it was added for.
+
+**Part 10 — the sentence that replaces A-38 Part 7's.**
+
+> **For any fault confined to `ensureReady()` whose behaviour is conditional on at most a two-way
+> conjunction of predicates, each reading one field of one record in `docs`, `summaries` or `versions`, and
+> which causes a key outside that record's own seeded key set to appear in a persisted summary record — or a
+> key outside `ROW_KEYS` to appear in a row `listTrips()` returns — at least one 6b-1b arm is red.**
+>
+> **The claim rests on the covering set of Part 5 being complete over the state `ensureReady()` can read
+> (Part 3), not on the arms being numerous. It is bounded, on purpose, by "at most two-way" and by "reads a
+> stored field": those bounds are Part 5's and Part 4's, they are the price of a sentence that can actually
+> be discharged, and they are stated here rather than discovered by the next round.**
+
+**Part 11 — the boundary. What reopens this, and what does not.**
+
+**Legitimate reasons to revisit — each is a new increment, not a reopening of this one:**
+
+1. **`SUMMARY_VERSION` is bumped.** Axis S gains a state; the ledger gains an entry; the table goes 15 → 18
+   (three C-values against the new generation). Part 6's pin 1 fails the moment the constant moves, so this
+   cannot be forgotten and does not depend on anyone remembering.
+2. **`SCHEMA_VERSION` is bumped.** Axis D stops being degenerate. Note the cost is **zero new rows**: a
+   domain-2 factor is absorbed into 15 (15 ≥ 2×5 and 15 ≥ 2×3), so D is assigned across the existing table
+   exactly as V is.
+3. **`DatePrecision` (or `countrySource`) gains a member.** Axis C's enum folding no longer covers, and C
+   gains a state → 20 rows.
+4. **A new object store is added to the port's database.** A genuinely new axis; Part 3's table is re-derived.
+5. **A new `StoragePort` implementation.** 6b-3's census fires by construction (A-36 Part 6 residue 3);
+   Phase 5's `expo-sqlite` port is the next one and needs its own arms.
+6. **The port grows a fourth write path** — a compaction pass, a lazy repair on read (A-38 Part 8 residue 4).
+   New starting states may be needed to reach it, and Part 3's line-by-line derivation is redone over the
+   new function.
+7. **`onupgradeneeded` gains a body that writes records.** Out of the double's reach by construction; it is
+   6b-4's, per A-38 Part 8 residue 1, and the recorder gaining `request.transaction` remains an architect's
+   ruling.
+
+**Not a legitimate reason, and this is the sentence the pass exists to write:**
+
+> **"Here is one more fault shape whose guard reads a field already on Axis V, S, C, D or N" is not a design
+> finding and does not route to the architect.** If such a fault is green, the covering set has been
+> *implemented* wrongly — a table row is missing, a fixture has rotted into another state, an assertion is
+> not per-id — and that is a **builder** finding against Part 5's table, with the table itself as the
+> oracle. The design question *"which states must the gate cover"* is answered, once, above.
+
+**Part 12 — the residues, each with its trigger.**
+
+1. **gen-future is version-only.** A future generation's *extra* keys cannot be written down today, so a
+   fault guarded on a key that generation will add is not covered. This is permanent and irreducible.
+   **Trigger:** fired by Part 11 item 1 — the day that generation ships it stops being the future and
+   becomes a shape-faithful ledger entry.
+2. **The free-string fields are held at typical values.** Part 4's only judgment-based exclusion. **Trigger:**
+   a real defect whose guard reads `title`, `id`, `startDate` or `endDate` — at which point the exclusion's
+   premise (that such a guard is sabotage rather than a mistake) has been falsified and Axis C gains a
+   string cell.
+3. **Two-way is the conjunction bound.** A fault needing three simultaneous state conditions is out of scope
+   by Part 5's stated reasoning. **Trigger:** the first three-condition fault anyone actually produces
+   against the shipped port — at which point the cost argument has an instance to weigh against and 3-wise
+   becomes arguable on evidence rather than on nerves.
+4. **These arms pin keys, not values.** A-36 Part 6 residue 2 and A-38 Part 8 residue 3 are unchanged and
+   are not restated. **R31-3 is the live question about that scope and is untouched here** (Part 7 point 3).
+5. **The double is still a double**, and A-36 Part 6 residues 1 and 4 and A-38 Part 8 residues 1, 2 and 4
+   all stand unchanged. Nothing in this ruling narrows or widens any of them.
+
+**Part 13 — what this ruling does not touch.**
+
+**R31-2** (the seeded `dbVersion` is not pinned by `assertSeedLanded`) is a **builder** finding and stays
+one; it is worth noting only that Part 5's arms name *"no upgrade fires"* in their titles, so its one-line
+fix is what makes those titles true — but the fix is the builder's and needs no ruling. **R31-3** stays
+routed as filed (Part 7 point 3). **R31-4** (`qa/i7a-idb-rowkeys.mjs:288`'s unconditional `process.exit(0)`)
+is a builder finding and is untouched here, though a builder implementing Part 8 will be standing in that
+file and should not leave without it. **R30-2, R30-3, R30-4 and R30-5** are left exactly as A-38 Part 9 left
+them: open, unruled, and not swept in. No engine moves, no `SUMMARY_VERSION` bump, no `SCHEMA_VERSION` bump,
+no `StoragePort` method, no change to `apps/web/src/ports/storage.ts`, no client change, no movement on
+§2.10's export surface. The whole diff is `test/stats-storage.test.ts` and `qa/i7a-idb-rowkeys.mjs`.
+
+**And, like A-38, it deliberately writes no `ROADMAP.md` increment.** The increment that carries this has to
+carry R31-2, R31-3, R31-4 and R30-2…R30-5 as well — R30-2 in particular is still a second change to exit
+criterion 6's *subject* and lands in the same file — so a partial I-7c written now goes stale the moment
+those are ruled. Whoever rules them writes the increment, with Part 5's table, Part 6's three pins, Part 7's
+two assertion changes, Part 8's two phases and Part 9's five faults as its Verification lines.
 
 ### 8.5 Observed travel — the shape Phase 5 must be able to land on
 
