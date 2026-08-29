@@ -67,7 +67,7 @@ import { dirname, relative, resolve, sep } from 'node:path';
 // static import into a tsconfig that deliberately excludes that project. It prints an
 // `ExperimentalWarning`, which is noise in `node --test` and not a failure.
 import { stripTypeScriptTypes } from 'node:module';
-import { COUNTRY_INDEX, SUMMARY_VERSION, tripSummary, createTrip, addStop, sequentialIds } from '../packages/core/src/index.ts';
+import { COUNTRY_INDEX, SUMMARY_VERSION, tripSummary, createTrip, addStop, sequentialIds, toJSON, fromJSON } from '../packages/core/src/index.ts';
 import type { BuildCtx, Trip, TripSummaryRow } from '../packages/core/src/index.ts';
 // §2.10's "tests do not create surface": `addPlace` is an internal, imported by module path
 // exactly as `packages/core/test/readOnce.test.ts` already imports it. Axis C's `attribution
@@ -643,12 +643,13 @@ function assertSeedLanded(db: Recording, records: readonly SeedRecord[], where: 
   // **A-39 Part 7 point 1.** Aged rows are, correctly, not `ROW_KEYS`-shaped, so this stops
   // asserting `ROW_KEYS` uniformly and asserts **each record's own generation's** key set,
   // computed from the ledger. Same purpose, same failure mode caught, one level more precise.
+  // **QA R32-1:** and at BOTH levels — the generations differ inside `cities[]` too.
   for (const r of records) {
     const row = db._store('summaries').get(r.trip.id);
     assert.ok(row, `${where}: no seeded row for ${r.trip.id}`);
-    assert.deepEqual(
-      Object.keys(row as TripSummaryRow).sort(),
-      expectedKeys(r.gen),
+    assertGenerationShape(
+      row as TripSummaryRow,
+      r.gen,
       `${where}: the seeded row for ${r.trip.id} is not shaped like its own generation ` +
         `(${r.gen.name}) BEFORE the port runs, so a widening found afterwards could not be ` +
         'attributed to the port',
@@ -765,6 +766,53 @@ function expectedKeys(gen: GenEntry): string[] {
 }
 
 /**
+ * The keys one minted `cities[]` entry carries — derived from `ROW_PATHS`, which is the single
+ * source this file already has for the row's leaves, and **never a second hand-written list**
+ * (the reason A-39 Part 6 pin 3 checks the ledger's arithmetic against `ROW_KEYS` rather than
+ * against a copy of it).
+ */
+const CITY_KEYS: readonly string[] = ROW_PATHS
+  .filter((p) => p.startsWith('cities[].'))
+  .map((p) => p.slice('cities[].'.length))
+  .sort();
+
+/** A generation's `cities[]`-entry key set: `CITY_KEYS` minus that generation's NESTED removals. */
+function expectedCityKeys(gen: GenEntry): string[] {
+  return CITY_KEYS.filter((k) => !gen.absentInCity.includes(k)).sort();
+}
+
+/**
+ * **QA R32-1 (MAJOR).** A generation is defined by its **key set**, and A-39 Part 4 defines
+ * gen-2's difference from gen-3 one level down: *"gen-2 has no `countrySource` inside
+ * `cities[]`"*. `LEDGER` encodes that (`absentInCity`) and `ageRow` genuinely produces it — and
+ * then, before this fix, nothing checked it again: both per-id assertions compared
+ * `Object.keys(row)` against `expectedKeys(gen)`, which is built from `gen.absent` alone, so a
+ * widening that filled in `cities[].countrySource` on a gen-2 row was **invisible on both
+ * seeded arms** while its top-level twin was red. The `ROW_PATHS` backstop cannot help: a
+ * *restored* nested key is a path the type legitimately has.
+ *
+ * So the key-set comparison runs at **both levels**: the row's own keys against the
+ * generation's, and then every `cities[]` entry's keys against the generation's nested key set.
+ * A generation with no `cities` key at all (gen-1) has nothing below to walk, which the ledger
+ * says rather than this function assuming it.
+ */
+function assertGenerationShape(row: TripSummaryRow, gen: GenEntry, where: string): void {
+  assert.deepEqual(Object.keys(row).sort(), expectedKeys(gen), where);
+  if (gen.absent.includes('cities')) return; // gen-1 carries no `cities` KEY AT ALL.
+  const cities = (row as { cities?: unknown }).cities;
+  assert.ok(Array.isArray(cities), `${where} — the row has no cities[] to walk, but ${gen.name} carries one`);
+  const want = expectedCityKeys(gen);
+  cities.forEach((city, i) => {
+    assert.deepEqual(
+      Object.keys(city as object).sort(),
+      want,
+      `${where} — one level down: cities[${i}]. A key outside ${gen.name}'s own NESTED key set ` +
+        'appeared inside a cities[] entry (§8.4 A-39 Part 4\'s shape-faithfulness sub-ruling, QA R32-1).',
+    );
+  });
+}
+
+/**
  * **A-38 Part 4's *"never a hand-typed row literal"* rule, and A-39 Part 6's one bounded
  * exception to it.** A-38's rule is right — a literal goes stale the next time the row is
  * widened and defeats the key assertion it is the subject of — but Axis S needs rows that are
@@ -821,10 +869,29 @@ function contentTrip(content: ContentName, id: string): Trip {
     // A bare trip: no city, no place, no stop, no pool entry, `revision: 0`. `dayCount` is NOT
     // zero and cannot be — `ensureDays` mints at least one `Day` for any valid range, so no
     // storable document has zero days (A-39 Part 4, recorded so it is not mistaken for a gap).
-    return createTrip(
+    const minted = createTrip(
       { id, title: `degenerate (${id})`, startDate: '2024-05-01', endDate: '2024-05-02', homeCurrency: 'EUR', datePrecision: 'month' },
       ctx,
     );
+    // **QA R32-2, and it is a REACHABILITY fact, not a fixture convenience.** `revision: 0` is
+    // Axis C's zero cell for `revision`, and a previous pass dropped it as unreachable on the
+    // ground that `createTrip` ends in `ensureDays`, which bumps `revision` to 1. That checks
+    // the wrong thing: A-39 Part 4's admission rule is *"a real deployed DATABASE can actually
+    // be in it"*, and `createTrip` is not the only write path into the database. `importDoc`
+    // (`packages/client/src/store/store.ts`) is the second — it takes a document from
+    // `fromJSON`, adopts an absent `ownerId` and saves — and it **never touches `revision`**,
+    // while `fromJSON` reads `revision` verbatim with no floor. Backup/restore of the user's
+    // own export is a shipped feature, so importing an export whose `revision` is 0 persists a
+    // summary row with `revision: 0`. Measured, no fault injected: `qa/r32-revision0.mjs`.
+    //
+    // So the fixture reaches the cell the way production does — a minted document, round-
+    // tripped through core's own serializer with the field the import path leaves alone. Still
+    // minted through `createTrip`, still no hand-typed row literal, and **nothing here for
+    // `ageRow` to write**: A-39 Part 6's *"only ever deletes keys and sets `summaryVersion`"*
+    // rule is about the AGER, and it is untouched. This is the content fixture's own business.
+    const doc = JSON.parse(toJSON(minted)) as Record<string, unknown>;
+    doc.revision = 0;
+    return fromJSON(JSON.stringify(doc));
   }
   if (content === 'unattributed') {
     // The cell neither of the other two produces: `located > 0` AND `attributed === 0`, on both
@@ -953,15 +1020,17 @@ function assertSeededRowsUnchanged(
   const returned = new Map(rows.map((r) => [r.id, r]));
   for (const record of records) {
     const id = record.trip.id;
-    const want = expectedKeys(record.gen);
     for (const [side, row] of [
       ['PERSISTED', db._summaries().get(id) as TripSummaryRow | undefined],
       ['RETURNED', returned.get(id)],
     ] as const) {
       assert.ok(row, `${where}: no ${side} row for ${id}`);
-      assert.deepEqual(
-        Object.keys(row).sort(),
-        want,
+      // **QA R32-1.** Both levels: the row's own key set AND every `cities[]` entry's, each
+      // against this record's own generation. A widening one level down is a key outside the
+      // key set this record was seeded with just as much as a top-level one is.
+      assertGenerationShape(
+        row,
+        record.gen,
         `${where}: ${id} (${record.gen.name}) — the key set of the ${side} row moved. A key ` +
           'outside the key set this record was SEEDED with reached storage, which means the ' +
           'port rewrote a row it was handed (§8.4 A-39 Part 10).',
@@ -1024,10 +1093,24 @@ test('exit 6b-1b (A-39 pin 3): every generation\'s key set is ROW_KEYS minus its
     } else {
       assert.equal(aged.summaryVersion, gen.version, `${gen.name}: summaryVersion was not set to the ledger's number`);
     }
+    // **QA R32-1.** The same arithmetic one level down, and stated POSITIVELY as well as
+    // negatively: an entry's key set is `CITY_KEYS` (derived from `ROW_PATHS`) minus this
+    // generation's own nested removals. The negative half alone is what let a *restored*
+    // `cities[].countrySource` pass unseen.
+    // gen-1 carries no `cities` KEY AT ALL, which the ledger says and this does not assume.
+    if (!gen.absent.includes('cities')) {
+      assert.ok(aged.cities.length > 0, `INCONCLUSIVE: the rich fixture has no cities[] entry to check ${gen.name}'s nested key set against`);
+    }
     for (const city of aged.cities ?? []) {
       for (const key of gen.absentInCity) {
         assert.equal(key in city, false, `${gen.name}: cities[].${key} survived the ageing`);
       }
+      assert.deepEqual(
+        Object.keys(city).sort(),
+        expectedCityKeys(gen),
+        `${gen.name}: a cities[] entry's key set is not CITY_KEYS minus the ledger's NESTED ` +
+          'removals (§8.4 A-39 Part 4\'s shape-faithfulness sub-ruling, QA R32-1).',
+      );
     }
     // And the ageing is a copy, never a mutation of the row it was handed.
     assert.deepEqual(Object.keys(fresh).sort(), Object.keys(ROW_KEYS).sort(), `${gen.name}: ageRow mutated its argument`);
@@ -1063,16 +1146,18 @@ test('exit 6b-1b (A-39 Part 6): the three Axis-C fixtures still ARE the states t
   // `dayCount === 0` is NOT reachable — `ensureDays` mints at least one Day for any valid
   // range — so the degenerate fixture is zero on every count the document can actually zero.
   assert.ok(degenerate.dayCount > 0, 'ensureDays stopped minting a day, which changes Axis C');
-  // **A deviation from A-39 Part 4's wording, recorded here rather than papered over.** Part 4
-  // describes the degenerate representative as carrying `revision: 0`. It cannot: `createTrip`
-  // ends in `ensureDays`, which bumps `revision` to 1 for any valid range, so **no storable
-  // document has `revision: 0`** — and Part 4's own admission rule is *"a state is admitted only
-  // if a real deployed database can actually be in it."* This is therefore the same class of
-  // note as `dayCount === 0`, not a fixture defect: `revision`'s zero cell is unreachable, so a
-  // guard `if (r.revision === 0)` is uncovered *because it can never fire in production*.
-  // Writing 0 in anyway would need the ager to WRITE A VALUE, which A-39 Part 6 forbids
-  // outright. BUILD-NOTES records this for the architect.
-  assert.equal(degenerate.revision, 1, 'the minimum revision a minted document can carry moved — re-derive this note, do not delete it');
+  // **A-39 Part 4's `revision: 0`, and QA R32-2 is why it is here rather than pinned at 1.** A
+  // previous pass dropped this cell as unreachable because `createTrip` ends in `ensureDays`,
+  // which bumps `revision` to 1. `createTrip` is not the only write path into a database:
+  // `importDoc` never touches `revision` and `fromJSON` reads it verbatim, so restoring the
+  // user's own export with `revision: 0` persists a summary row with `revision: 0` — measured,
+  // with no fault injected, by `qa/r32-revision0.mjs`. The fixture reaches the cell the same
+  // way (see `contentTrip`), so a guard `if (r.revision === 0)` is covered rather than excused.
+  assert.equal(
+    degenerate.revision, 0,
+    'INCONCLUSIVE: the degenerate fixture has stopped carrying Axis C\'s `revision` ZERO cell, ' +
+      'which is the only representative that reaches it (§8.4 A-39 Part 4, QA R32-2)',
+  );
 
   const unattributed = contentRow('unattributed', 'pinC-unattributed');
   assert.ok(unattributed.attribution.places.located > 0, 'INCONCLUSIVE: the `unattributed` fixture has no located place');
