@@ -229,4 +229,44 @@ export function summaryScan(state: Pick<AppState, 'library' | 'rescan'>): Summar
   return { phase, current: state.library.length - outdated.length, total: state.library.length, outdated, unreadable };
 }
 
+/**
+ * The read boundary ROADMAP's **I-8** requires around `travelStats` — ARCHITECTURE §8.4
+ * **A-31** Part 4, **A-37** Part 2.
+ *
+ * `travelStats` throws on exactly two conditions, and both are reachable from real storage
+ * despite being documented as programmer error: A-31 Part 4's own list is *"a duplicate row
+ * id, or a malformed date,"* and A-37 Part 2 is the ruling that a stored `TripSummaryRow` is
+ * not a validated document — a row whose `startDate`/`endDate` predates `fromJSON`'s own
+ * validation, or was hand-edited, can still reach here shape-invalid. `TravelStats` has no
+ * `Issue` channel to degrade into — there is no per-row partial answer for "the whole
+ * library's statistics" — so the two throws are sanctioned rather than a defect, and ROADMAP's
+ * I-8 spec is explicit about what happens next: *"the Map and Profile catch it and show 'we
+ * could not read your travel history' … rather than a blank screen or an unhandled
+ * rejection."* This is that catch, once, as a selector — not duplicated in two views.
+ *
+ * **`rowId` is populated only for the duplicate-id case.** `travelStats`'s duplicate-id error
+ * embeds the offending id in its message (`travelStats: duplicate summary id "…"`), and this
+ * selector extracts it. The malformed-date error names no row: `travelStats` throws from
+ * inside a loop over every travelled row with no per-row context carried into the message, and
+ * nothing on `@cairn/core`'s surface lets a caller re-validate a date without reimplementing
+ * `parseIsoDate` — which is exactly the second implementation of a core function ARCHITECTURE's
+ * sequencing rules forbid. So `rowId: null` in that case is an honest *"unknown,"* not a gap
+ * this selector left unfilled.
+ */
+export type TravelHistoryResult =
+  | { ok: true; stats: core.TravelStats }
+  | { ok: false; message: string; rowId: string | null };
+
+const DUPLICATE_ROW_ID_RE = /^travelStats: duplicate summary id (".*")$/;
+
+export function travelHistory(state: Pick<AppState, 'library'>, today: core.IsoDate): TravelHistoryResult {
+  try {
+    return { ok: true, stats: core.travelStats(state.library, today) };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    const m = DUPLICATE_ROW_ID_RE.exec(message);
+    return { ok: false, message, rowId: m ? (JSON.parse(m[1]) as string) : null };
+  }
+}
+
 export { core };

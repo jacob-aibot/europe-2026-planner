@@ -1,13 +1,66 @@
 # Cairn — manager reviews
 
-**Two verdicts live in this file, newest first.** Phase 2 step **2a** is the current one; the
-Phase 1 verdict below it is **closed and kept for the record**, not superseded — its routing
-discharged and its carried items are re-placed in 2a's routing table.
+**Three verdicts live in this file, newest first.** Phase 2 step **2b (data layer)** is the
+current one; **2a** below it and the **Phase 1** verdict below that are **closed and kept for
+the record**, not superseded — their routing discharged and their carried items re-placed
+downstream.
 
 | Verdict | Scope | Commit reviewed | Date | Result |
 |---|---|---|---|---|
+| **2b (data layer) — I-5 … I-7b** (geography attribution, `travelStats`, the summary-row read boundary) | `cairn/docs/ROADMAP.md` Phase 2, step 2b, increments I-5 through I-7b, A-26…A-39 — **I-8 (the Map/Profile surfaces) is not included** | `69e44d4` | 2026-08-29 | **SHIP** |
 | **2a — past trips and the lifecycle** (I-0 … I-4a) | `cairn/docs/ROADMAP.md` Phase 2, first of three steps | `67f5588` | 2026-08-28 | **SHIP** |
 | **Phase 1** — core engine + local-first client | whole phase | `218c7f0` | 2026-08-27 | **SHIP** (closed) |
+
+---
+
+# Phase 2, step 2b (data layer) — I-5 … I-7b
+
+> **Status: CURRENT.** Manager ruling, recorded against `master` @ `69e44d4`, 2026-08-29.
+> **Verdict: SHIP.** I-5, I-5a, I-5b, I-5c, I-6, I-6a, I-7, I-7a, I-7b — and the QA arc directly
+> under I-7b, A-38 and A-39 — are shipped. **I-8, the Map and Profile surfaces, is explicitly
+> not included in this verdict** and remains not started: `apps/web/src/views/WorldMap.tsx` and
+> `Profile.tsx` do not exist as of `69e44d4`.
+>
+> **This entry is a different kind of record than the other two in this file, and that
+> difference is stated rather than blurred.** The 2a and Phase 1 verdicts above are each an
+> independent review pass with its own re-derived evidence. This one is not: it records a
+> decision Jacob made directly, closing a gap in the paper trail rather than reopening the
+> work. Ten breaker rounds (22 through 32) already did the adversarial work this gate exists
+> for, and round 32's own status note — still the most recent independent verification on
+> record — says as much in its closing lines: *"nothing found in this round or the last three
+> is a defect in shipped code … R32-1 and R32-2 are one builder pass, they need no architect
+> ruling."* That builder pass ran at `f21fa42`, addressing exactly the two findings round 32
+> named, no other file changed. **No breaker round has re-verified `f21fa42` since.** Jacob's
+> instruction accompanying this ruling is explicit that this gap is not to be closed by
+> reopening I-7's architecture, R32, or A-39 — so it isn't; this entry records the ruling and
+> stops there.
+
+## What this records
+
+- **Shipped, per the round-32 status note and unchanged since:** the country-attribution index
+  (I-5/I-5a/I-5b/I-5c — A-26, A-27, A-28), the widened `TripSummaryRow` and its rescan
+  (I-6/I-6a — A-29, A-30), `travelStats` and the record census (I-7 — A-31), the civil-calendar
+  fix and `provisional` (I-7a — A-32, A-33, A-34), the executed port gate and the two row read
+  gates (I-7b — A-35, A-36, A-37), the seeded-double `ensureReady` upcast (A-38), and the finite
+  covering set for the storage read gate (A-39).
+- **Closed by the builder pass at `f21fa42`**, per that commit's own BUILD-NOTES addendum: R32-1
+  (the per-id key-set assertions now check nested `cities[].countrySource`, not top-level only)
+  and R32-2 (the Axis-C `revision: 0` cell is now covered via `importDoc`'s reachable path,
+  rather than argued unreachable). That addendum reports 884/884 tests, both projects typecheck
+  clean, `Object.keys(core).length` 75, and goldens/sample byte-identical — figures this entry
+  quotes rather than re-derives.
+- **Still open, and this ruling adjudicates none of it:** R32-3, R32-4 (both MINOR), R31-2,
+  R31-3, R31-4, R30-2…R30-5, R29-3, R27-1…R27-3, and the carried Phase 1 list.
+  `QA-FINDINGS.md`'s status note remains the authoritative record for each; nothing there is
+  edited by this entry.
+- **Not included, at all:** I-8. Nothing in this verdict is a statement about the Map or
+  Profile surfaces, the app-shell navigation, or any visual treatment — those remain 2b's
+  unbuilt remainder.
+
+## Routing
+
+None. This entry closes no open finding and opens none — the items listed above as still open
+keep exactly the routing `QA-FINDINGS.md` and `ROADMAP.md` already give them.
 
 ---
 
