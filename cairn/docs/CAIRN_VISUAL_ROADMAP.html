@@ -320,10 +320,57 @@
 </head>
 <body>
 <div class="callout" style="border-left:4px solid #ea580c;padding:.75rem 1rem;margin:1rem 0;background:#fff7ed">
+<p><strong>&#128992; I-8d HAS NOW BEEN ATTACKED, AND THE THING THAT&rsquo;S WRONG IS THE RULE I
+WROTE, NOT THE CODE &mdash; as of 2026-08-31</strong> (this block is the newest; it supersedes the
+I-8d block below on <em>&ldquo;verified&rdquo;</em>, supersedes the I-8e block&rsquo;s
+<em>&ldquo;I-8d has still never been attacked&rdquo;</em> line, and adds one increment).</p>
+<p>The tester spent a round on the map framing and <strong>could not find a single place where the
+code disagrees with the design</strong> &mdash; every clause, checked against all 239 countries in
+the dataset, <strong>zero blockers</strong>. The fix that motivated it is real and confirmed: the six
+European countries that were 28&ndash;46&nbsp;px wide are now <strong>152&ndash;245&nbsp;px</strong>.
+What it broke was <strong>the rule itself</strong>, twice.</p>
+<p><strong>Problem 1 &mdash; &ldquo;where is France?&rdquo; is answered by a rectangle.</strong> To
+decide which countries belong on the same map, the rule takes the middle of the box drawn around each
+country. France&rsquo;s box includes <strong>French Guiana, in South America</strong>, so the point
+that stands for &ldquo;France&rdquo; sits in the <strong>open Atlantic, 2,633&nbsp;km from anywhere
+French</strong>. The consequence is not cosmetic: France then counts as <strong>closer to Morocco
+(1,339&nbsp;km) than to Czechia (4,137&nbsp;km)</strong>, and a traveller with two France trips and
+one Greece trip gets a main map <strong>four-fifths ocean</strong> with Greece &mdash; actually
+1,900&nbsp;km from France &mdash; pushed into the little side box. That is exactly the failure this
+whole map fix existed to remove, reproduced by the fix.</p>
+<p><strong>Problem 2 &mdash; the alphabet decides which country gets exiled.</strong> Countries are
+grouped one at a time, in the order they arrive, which is alphabetical. Give the app the UAE, Austria
+and Greece: <strong>Austria (1,326&nbsp;km from Greece) goes to the side box while the UAE
+(3,281&nbsp;km) shares the main map</strong> &mdash; and the identical three countries in a different
+order produce one map. There are <strong>122</strong> such three-country combinations; the tightest
+separates <strong>Hungary and Slovenia, 350&nbsp;km apart</strong>.</p>
+<p><strong>What is now scheduled to fix it (<code>I-8g</code>), in two sentences.</strong> A
+country&rsquo;s position becomes the middle of <strong>its single largest landmass</strong>, not the
+middle of a box drawn around everything it owns &mdash; no special cases and nothing that knows which
+country is which: France lands in central France, Russia in Siberia, Kiribati on its biggest island,
+and the worst error across all 239 countries falls from <strong>16,598&nbsp;km to 203&nbsp;km</strong>,
+with 164 countries not moving at all. And the grouping is computed <strong>for the whole set at
+once</strong> rather than one country at a time, so the order they arrive in cannot change the answer
+&mdash; the three-country example above becomes <strong>one map, in all six orders</strong>.</p>
+<p><strong>What must not change, and is pinned as a test:</strong> your Europe 2026 map stays exactly
+as it looks today &mdash; Europe in the main frame, the United States in the inset, the same numbers
+to four decimal places.</p>
+<p>Three smaller things ride along, all measured this round: on a phone the map paints only
+<strong>42.6%</strong> of the space it is given (264&nbsp;px of empty sea below it); the country
+colour in <strong>dark mode</strong> sits under the accessibility contrast floor against the sea
+(2.87:1 against a floor of 3:1); and <strong>Andorra currently has no tappable pixel at all</strong>,
+because France is drawn on top of it &mdash; fixed by drawing the big countries first, which is free
+and provably right.</p>
+<p><strong>I-8d is built &#9989; &middot; verified &#9888;&#65039; (attacked, 0 blockers, 2 design
+defects found in the rule) &middot; shippable &#10060;</strong>, and <strong>I-8g is designed &#9989;
+&middot; built &#10060;</strong>. I-8b (the Profile screen) now waits on <strong>I-8f and
+I-8g</strong>.</p>
+</div>
+
+<div class="callout" style="border-left:4px solid #ea580c;padding:.75rem 1rem;margin:1rem 0;background:#fff7ed">
 <p><strong>&#128992; I-8e HAS NOW BEEN ATTACKED, AND THE &ldquo;SAVE A COPY&rdquo; PROMISE TURNED
-OUT TO COVER AN EIGHTH OF WHAT IT CLAIMED &mdash; as of 2026-08-31</strong> (this block is the
-newest; it supersedes the I-8e block below on <em>&ldquo;verified&rdquo;</em> and adds one
-increment).</p>
+OUT TO COVER AN EIGHTH OF WHAT IT CLAIMED &mdash; as of 2026-08-31</strong> (this block is
+superseded on <em>&ldquo;I-8d has still never been attacked&rdquo;</em> by the block above).</p>
 <p>The tester could not break anything I-8e was asked to build &mdash; the warning, the rescue copy,
 the Delete confirmation and the fixed &ldquo;Close this trip&rdquo; all held up under attack,
 <strong>zero blockers</strong>. What it broke was <strong>my own claim about how far they
@@ -430,8 +477,9 @@ support, and saying nothing is more honest than saying that.</p>
 no zoom, no threshold slider: a control that exists mostly to repair a bad default is a confession,
 and the default is now right.</p>
 <p><strong>I-8d is built &#9989; &middot; verified &#10060; (not yet attacked) &middot; shippable
-&#10060;.</strong> <em>(Superseded: what was still owed before I-8b &mdash; I-8c&rsquo;s two fixes
-and I-8e &mdash; has now landed. See the block above.)</em></p>
+&#10060;.</strong> <em>(Superseded twice: what was still owed before I-8b &mdash; I-8c&rsquo;s two
+fixes and I-8e &mdash; has landed; and I-8d <strong>has</strong> now been attacked, with two design
+defects found in the rule this block describes. See the newest block at the top.)</em></p>
 </div>
 
 <div class="callout" style="border-left:4px solid #c2410c;padding:.75rem 1rem;margin:1rem 0;background:#fdf0e8">

@@ -433,6 +433,39 @@ No phase re-scoped, no change to the order, **no new external dependency**, no `
 `schemaVersion` bump, no `StoragePort`/`FilePort`/`MapPort` change and no engine change. **The export
 surface does not move: 77 stays 77**, and `packages/core` has **zero** diff lines in I-8f.
 
+**Revision 33, 2026-08-31.** QA round 36 — the **first** adversarial pass over I-8d — found **0 blockers**,
+confirmed **R33-1 genuinely fixed**, and confirmed that every clause of A-41 and A-42 is implemented exactly
+as written. It then returned **SEND BACK to the architect**, because the two MAJORs are defects in the
+*ruling*: A-41 **C2**'s key point lands in the ocean for a country with a distant overseas territory (`FR`,
+2,633 km out, which makes France cluster with Morocco rather than Czechia and renders a 64.1°-wide main pane
+for one country), and A-41 **C3**'s first-fit partition makes the main/inset split depend on the **row
+order**, which A-41 constraint 2 forbids. `ARCHITECTURE.md` revision 33 rules both as **A-48** (§4.4, under
+A-42). Four changes here, and the phase is not re-scoped.
+
+(1) **One increment is inserted: `I-8g`**, carrying A-48. It runs **after I-8f** and **before I-8b**. It is
+the smallest increment that can carry the ruling: three clauses of one selector, one new core function, one
+changed core kernel, one CSS rule and one token.
+
+(2) **I-8d's verification block gains a correction note rather than being rewritten.** Everything it
+asserted is true of the build and was independently re-derived by round 36 — including the reference panes
+and the 30.2827° × 16.1550° main span, which **A-48 must not move**. What changed is the design underneath
+two of its criteria, and I-8g re-asserts both with the corrected rule plus the new invariants.
+
+(3) **I-8b's dependency line gains I-8g**, for the reason round 36 gave: I-8b puts a second surface on the
+same `travelStats`, and R36-1/R36-2 decide *which countries the product calls "shown separately"* — a claim
+the Profile inherits.
+
+(4) **Three of round 36's five MINORs are ruled into A-48 and ride I-8g** — C4's false margin claim (R36-3,
+a documentation correction, no code), `weight`'s under-disclosure (R36-4, no code), and the paint order that
+stops an enclave being unreachable (R36-7, A-48 C9). **R36-6** (dark-mode map fill at 2.87:1) and the build
+half of **R36-5** (the main pane painting 42.6% of its box) are **builder** work and ride I-8g because a
+builder is already in those two files; neither waits on anything else.
+
+No phase re-scoped, no change to the order, **no new external dependency**, no `SUMMARY_VERSION` bump, no
+`schemaVersion` bump, no `StoragePort`/`FilePort`/`MapPort` change, **no stored byte of any trip**, and no
+change to what is drawn once framed. The export surface moves **77 → 78** in I-8g, for `countryKeyPoint`
+and nothing else.
+
 > **Phase numbers changed once, here.** Every heading below carries its old number, and every "Phase N"
 > written in `ARCHITECTURE.md` §1–§7, `BUILD-NOTES.md` or `QA-FINDINGS.md` before revision 9 means the
 > *named* phase it described: "Phase 2" = accounts/server (**now 3**), "Phase 3" = ingest (**now 4**),
@@ -1292,8 +1325,14 @@ looks healthy, refuses on tap, and still offers no rescue, with Delete's warning
 boolean. Ruled at revision 32 as §2.9 **A-47** and scheduled as **I-8f** — the trigger stops being a proxy
 and becomes a fact recorded when a real open fails — which is owed before I-8b, and which also carries
 round 35's **R35-4** (`cli.ts --today` refuses) and **R35-5** (`exportStoredDoc` refuses the active trip).
-**I-8d has still had no independent adversarial round of its own** — it shipped at `6814f73`, after round
-34, and rounds 34 and 35 were both scoped elsewhere** |
+**I-8d then got its own round, and QA round 36 sent it back to the architect**: the build is faithful to
+A-41 and A-42 clause by clause and **R33-1 is genuinely fixed**, but the ruling produces wrong maps for a
+whole class of libraries — **R36-1 (MAJOR)**, a key point that is the centre of a *rectangle* and so lands
+2,633 km out in the Atlantic for France, and **R36-2 (MAJOR)**, a first-fit partition that lets the
+alphabet decide which country the surface calls *"shown separately"*. Ruled at revision 33 as §4.4 **A-48**
+— the key point becomes a point of the country's principal landmass, the partition becomes the connected
+components of the threshold graph — and scheduled as **I-8g**, which is owed before I-8b and which also
+carries round 36's **R36-3**, **R36-4**, **R36-5**, **R36-6** and half of **R36-7** |
 | **2c — participants** | `Trip.participants`, three build functions, the participants editor, *"people you have travelled with"* on the profile | you can say the trip was with your girlfriend and her family, and it grants them nothing | Not started; gated on 2b |
 
 **Mapped onto the increment sequence below** (revision 10): **2a = I-1 → I-4**, **2b = I-5 → I-8**,
@@ -1340,6 +1379,14 @@ population renders as a healthy card, refuses on tap, and still offers no rescue
 question — it records the fact when a real open actually fails, and gates the chip, the rescue and Delete's
 warning on that. It sits directly after I-8e and is **owed before I-8b**.)*
 
+*(Revision 33: **I-8g** carries §4.4 **A-48**, the two design findings QA round 36 found *in* I-8d's own
+ruling — the first round in this chain where the build was faithful and the **ruling** was the defect. A-41
+C2 keys a country off the centre of its bounding **rectangle**, so France keys off the open Atlantic and
+clusters with Morocco rather than Czechia; A-41 C3's first-fit partition is not transitive, so the row order
+decides which country the map calls *"shown separately"*. It sits directly after I-8f and is **owed before
+I-8b**, for A-41's own reason: the map is still of the wrong subject for any traveller whose countries
+include one with a distant overseas territory, and the Profile inherits the same claim.)*
+
 *(Revision 26: **I-7b** carries §2.3 **A-35**, §8.4 **A-36** and §8.4 **A-37**, the four design findings QA
 round 29 found *under* I-7a — an exit criterion whose static port check a reassigned parameter walks past,
 an unbounded day skeleton behind a `<input type="date">`, and two bounds stated over documents that are
@@ -1354,8 +1401,13 @@ packages/core/src/
   derive/     lifecycle.ts  country.ts  travelStats.ts     (+ summary.ts widens)
               cluster.ts    + clusterPoints(points, thresholdKm) — I-8d, the ONE single-linkage
                             kernel; clusterStops and focusCluster delegate — §4.4 A-41 Part 6
+                            I-8g: becomes the CONNECTED COMPONENTS of the threshold graph, so the
+                            answer stops depending on input order — §4.4 A-48 C3′
+              country.ts    + countryKeyPoint(code, index) — I-8g, §4.4 A-48 C2′: the box centre of
+                            the code's principal ring. A label, never an attribution.
   serialize/  fromJSON.ts   isoDate() calls isIsoDate — I-8c, §2.9 A-45
   index.ts      + isIsoDate re-exported (76 → 77) — I-8e, §2.9 A-46; no new code in core
+                + countryKeyPoint (77 → 78) — I-8g, §4.4 A-48 Part 2
   geo/        countries.gen.ts          generated, committed, size-budgeted — §8.4
   build/      participants.ts           add/update/remove — one core fn per action
   conflict/   rules/*.ts                each gains `class`; detect.ts gates feasibility on ctx.today
@@ -1363,6 +1415,8 @@ packages/core/src/
 packages/client/src/
   store/      summary rescan on SUMMARY_VERSION; library selectors for travelStats
   selectors/  worldMap.ts   worldMapFrame — I-8a; + panes/clustering/padding — I-8d, §4.4 A-41
+                            I-8g: keys off countryKeyPoint, emits countries in paint order, and
+                            carries pane.aspect — §4.4 A-48 C2′/C9/Part 6
               index.ts      travelHistory — I-8a; + rowLifecycle — I-8c, §8.4 A-44
                             + rowDatesReadable — I-8e, §2.9 A-46 (isIsoDate on both stored dates)
                             + rowUnopenable(state, row) — I-8f, §2.9 A-47: the ONE union of the
@@ -2851,6 +2905,15 @@ of I-8d — they share no file — but it goes first, because it is the one that
 withdrawal of the min-span claim — and answers QA **R33-1** and **R33-6**. **Runs before I-8b.** A builder
 reads A-40 Parts 3–5, then A-41 and A-42, and needs nothing else in `ARCHITECTURE.md` except §2.10's list.)*
 
+> **Built, verified, and found not shippable as designed — revision 33.** QA round 36 attacked this
+> increment and could not find a single place where the code disagrees with A-41 or A-42; **R33-1 is
+> genuinely fixed** and every criterion below was independently re-derived, including the reference panes
+> and the 30.2827° × 16.1550° main span. It then found **two MAJOR defects in the ruling itself** — a key
+> point that lands in the ocean (R36-1) and a partition that depends on the row order (R36-2) — ruled as
+> `ARCHITECTURE.md` §4.4 **A-48** and scheduled as **I-8g**. Nothing below is rewritten: it is all true of
+> the build. The two criteria whose *design* moved are re-asserted under the corrected rule in I-8g, and
+> the reference numbers in this block are what I-8g must reproduce byte for byte.
+
 - **Built.** **`packages/core/src/derive/cluster.ts`:** `clusterPoints(points, thresholdKm): number[][]` —
   the single-linkage first-fit kernel, extracted, with **`clusterStops` and `focusCluster` both delegating
   to it** so the loop exists once instead of the twice it exists today (A-41 Part 6). Exported from
@@ -3090,10 +3153,114 @@ mandatory** — it changes who can reach an export surface, which is `cairn/CLAU
   quoted; `packages/core` is byte-unchanged; and the breaker pass is **mandatory**, because this changes
   which rows can reach an export path.
 
+#### I-8g — the key point stops being a rectangle, and the alphabet stops deciding the panes
+
+*(Revision 33. Carries `ARCHITECTURE.md` §4.4 **A-48** and answers QA **R36-1** and **R36-2**, plus
+**R36-3**, **R36-4**, **R36-5**, **R36-6** and **R36-7**. **Runs after I-8f and before I-8b.** A builder
+reads **A-48 first** — it names which of A-41's clauses it supersedes — then A-41's C1/C5/C6/C7/C8 and
+Parts 4–7, then A-40 Parts 3–5, and needs nothing else in `ARCHITECTURE.md` except §2.10's list.
+**Builder + breaker, mandatory**: it widens the export surface and changes a core kernel two shipped
+surfaces already depend on.)*
+
+- **Built.** **`packages/core/src/derive/country.ts`:** `countryKeyPoint(code, index): LatLng | null` —
+  A-48 C2′, the box centre of the code's **principal ring** (greatest absolute spherical area, ties by index
+  order), with the union-box fallback for a code with no ring of three points. The area helper is
+  module-private; **no distance function enters this file** and the key point may never be used to attribute
+  a coordinate. Exported from `index.ts`: **77 → 78**, and §2.10's list is updated in the same commit.
+  **`packages/core/src/derive/cluster.ts`:** `clusterPoints` becomes the **connected components** of the
+  threshold graph (A-48 C3′) in the same output-order convention — groups by smallest member index, members
+  ascending — so `clusterStops` and `focusCluster` inherit order-independence and the one-kernel rule
+  (A-41 Part 6) is unchanged. **If `npm run golden && npm run sample` moves a byte the builder stops and
+  reports rather than regenerating a golden** — measured expectation: it does not.
+  **`packages/client/src/selectors/worldMap.ts`:** C2 calls `countryKeyPoint`; `WorldMapPane` gains
+  `aspect`; `frame.countries` is emitted in **descending index position** (C9) while `pane.codes` stays
+  canonical. **`apps/web`:** the view passes `pane.aspect` through as a CSS custom property and does no
+  arithmetic (A-40 Part 2); `styles.css` uses `aspect-ratio: var(--pane-aspect)` with a static `max-height`
+  clamp (R36-5) and re-pairs the dark-mode `--map-fill` against `--map-sea` (R36-6). **No `viewBox`
+  computation moves out of `worldMapFrame`, no `SUMMARY_VERSION` bump, no `schemaVersion` bump, no
+  `StoragePort`/`FilePort`/`MapPort` change, no reducer action, no new dependency, and no change to what is
+  drawn once framed** (A-34's provisional treatment untouched).
+- **User-visible outcome.** The map frames where you actually went. A traveller with France and Greece gets
+  **one** map of Europe instead of an Atlantic rectangle with Greece exiled to the corner; three countries
+  arriving in a different order give the same two panes; and no country can hide underneath the one that
+  surrounds it.
+- **Architecture / data model.** A-48 in full. A-41 Part 7's do-not-build list still binds, with Part 6's
+  one clarification: it forbids a **frame** that depends on a measurement, not a CSS box that resolves at
+  layout. Still no manual reframe control, no re-clustering UI, no dateline-aware bounds, no projection
+  change, no geometry simplification and no fourth pane.
+- **Verification.** Every criterion is `[stated]` against A-48, and every one has a fault that must measure
+  red:
+  - **The key point is a point of the country** `[stated]`, over all **239** codes in bare Node. Each key
+    point lies inside its principal ring's bounding box; the maximum distance from a key point to the
+    nearest vertex of its own geometry (zero when the point is inside its own rings) is **≤ 250 km**, and
+    the argmax is `NO` at **203 km** — against **16,598 km** at `KI` under C2. **176 of 239** key points
+    fall inside their own rings. **Injected fault:** key off the union of the code's boxes and the maximum
+    returns to 16,598 km.
+  - **France clusters with Europe, and the R36-1 library is one pane** `[stated]`. Key distances FR–DE
+    **804**, FR–CZ **1,075**, FR–MA **2,227** km (they were 3,891 / 4,137 / **1,339**), so the near/far
+    ordering is no longer inverted. A library of two France trips and one Greece trip returns
+    `panes.length === 1` containing `FR` and `GR`, not a 64.1°-wide main pane with `GR` in an inset.
+    **Injected fault:** restore C2 and the pane count goes to 2 and the main span to 64.1°.
+  - **The partition is a function of the point set** `[stated]` (A-48 I9). For `{AE, AT, GR}` all **six**
+    orderings return the identical partition — one pane containing all three — and over a five-code fixture
+    every permutation agrees. `{FR, HU, SI}` is one pane; `HU` and `SI` (350 km apart) are never separated.
+    **Injected fault:** restore first-fit and `{AE, AT, GR}` returns **three** distinct partitions across
+    its six orderings, one of which puts Austria in the inset.
+  - **R33-1 is not regressed, byte for byte** `[stated]`. The reference library
+    `["AT","CZ","DE","GB","HR","HU","US"]` still gives `panes.length === 2`,
+    `panes[0].codes === ["AT","CZ","DE","GB","HR","HU"]`, `panes[1].codes === ["US"]`, weights **6** and
+    **1**, dominance `12 > 7`, main span **30.2827° × 16.1550°**, and both `viewBox` strings byte-identical
+    to the ones I-8d shipped. **Injected fault:** make `weight` the count of **distinct** trips — R36-4's
+    proposed alternative — and the sample stops splitting altogether (it is one trip: 1 vs 1, and C5
+    correctly refuses to split a tie), which is the measurement that refuses that alternative.
+  - **The day map is byte-neutral, and the check is not vacuous** `[snapshot]` + `[stated]`.
+    `npm run golden && npm run sample && git status --porcelain` leaves the tree clean at sha
+    `40955ca0b182…`. Beside it, the stated measurement: over the Europe 2026 fixture at
+    `DEFAULT_CLUSTER_THRESHOLD_KM = 90`, first-fit and connected components agree on **all 16 days with two
+    or more located stops** and on the whole **112**-stop set (8 groups either way); at **60 km** exactly
+    **one** day differs. **Injected fault:** the 60 km arm *is* the vacuity control — if it also reports
+    zero differences, the two implementations are the same code and the test proves nothing.
+  - **Nothing is painted out of reach** `[stated]` (A-48 I10). In bare Node over a 239-code library, no
+    country's fill is entirely contained in the fill of a country emitted after it. In Chromium, sampling
+    each drawn country's own interior on a 40×40 grid and asking `elementFromPoint`, **`AD` hit-tests to
+    itself** where it previously had **0** self-hits under `FR`. `MF`/`SX` is recorded as the stated
+    exception (A-48 residue 6: two halves of one 90 km² island sharing a screen pixel), and both remain
+    reachable from the code-chip list, which is asserted. **Injected fault:** emit `countries` in canonical
+    order and `AD` returns to 0 self-hits.
+  - **Nothing is lost, and every A-41 invariant still holds** `[stated]` — a ceiling, not a floor. I1, I2
+    (with `pane.codes` still canonical), I3, I4, I5, I6, I7 re-run over the fixture set covering **1, 2, 3
+    and ≥4** clusters plus a `missing` code, exactly as I-8d's criteria did. **Injected fault:** sort
+    `drawn` into paint order before clustering instead of sorting only the emitted array, and `pane.codes`
+    stops being canonical — I2 goes red.
+  - **The main pane fills its box** `[stated]`, Chromium at 390×820: the reference main pane paints
+    **≥ 75%** of its CSS box, against the measured **42.6%** (356×196 inside 356×460). No pane's `viewBox`
+    string changes between this criterion and the bare-Node one — the frame is untouched. **Injected
+    fault:** remove the `aspect-ratio` rule and the fill returns under 50%.
+  - **Dark mode clears the graphical-object floor** `[stated]`: `--map-fill` against `--map-sea` measures
+    **≥ 3:1** in dark (it is **2.87:1** today), light stays at **7.16:1**, and A-34's provisional treatment
+    is still visibly distinct from the confirmed fill in **both** schemes. **Injected fault:** restore the
+    old dark token and the ratio goes back under 3:1.
+  - **The renderer still computes nothing** `[stated]`. W1's ten identifiers return **0** hits in
+    `WorldMap.tsx` (comments included), there is no arithmetic over coordinates in the file, the only
+    `viewBox` expression is `pane.viewBox`, and the only new expression is passing `pane.aspect` into a
+    style value. W2 and W3 unchanged. **Injected fault:** derive the aspect in the component by parsing
+    `pane.viewBox` and the ceiling goes red.
+  - **Nothing else moved** `[stated]`. `Object.keys(core).length` is **78**; `git diff --stat` on
+    `packages/core/` touches **`derive/country.ts`, `derive/cluster.ts` and `index.ts` and no other source
+    file**; `npm run typecheck` and `npm run test:tap` green; `qa/r2-redact.mjs` **0 KNOWN_LEAKS**;
+    `qa/r2-constraints.mjs` unchanged; the root planner's md5 unmoved and `git diff` over
+    `europe-2026-itinerary.html`, `docs/` and `tickets/` at the repo root empty.
+- **Dependencies / blockers.** I-8d (shipped) and I-8f. Independent of I-8b, which it blocks.
+- **Ship gate.** Every criterion above has its injected fault red; the export surface is **78**, re-counted
+  rather than quoted; the day map's goldens are byte-identical; **the reference frame is byte-identical to
+  I-8d's** (R33-1 stays fixed); `node qa/r36-atlas.mjs` and `qa/r36-render.mjs` are re-run and the two MAJOR
+  sections report clean; and the two-France-and-one-Greece library, driven through the real app and **looked
+  at**, is a map of Europe rather than of the Atlantic.
+
 #### I-8b — Profile
 
 *(Revision 27. Takes the Profile half of I-8's spec above, unchanged, plus the tab registration I-8a left
-for it. **2b ships here.** Revision 28 adds I-8c and I-8d to its blockers.)*
+for it. **2b ships here.** Revision 28 adds I-8c and I-8d to its blockers; revision 33 adds I-8g.)*
 
 - **Built.** `Profile.tsx` — countries, cities, trips, days travelled, first and last visit per country, and
   the honest count of what could not be attributed; the Profile tab registered into I-8a's shell; the rescan
@@ -3105,8 +3272,8 @@ for it. **2b ships here.** Revision 28 adds I-8c and I-8d to its blockers.)*
   rendered Profile with the same injected fault; the `travelStats` refusal boundary; `unattributed` and
   `unnamedCities` rendered rather than hidden, with the *"no places yet"* case distinguishable from *"all
   attributed"*; and the tab shell still carrying exactly three tabs.
-- **Dependencies / blockers.** I-8a, **I-8c, I-8d, I-8e and I-8f** (revision 28 for the first two, revision
-  29 for I-8e, revision 32 for I-8f; this is a hard gate rather than a preference). I-8c, because the Profile renders
+- **Dependencies / blockers.** I-8a, **I-8c, I-8d, I-8e, I-8f and I-8g** (revision 28 for the first two, revision
+  29 for I-8e, revision 32 for I-8f, revision 33 for I-8g; this is a hard gate rather than a preference). I-8c, because the Profile renders
   `travelStats`-derived numbers as a claim about the user's travel identity and would otherwise inherit
   A-45's wrong ones — and because it registers a **third** surface into a shell where one unreadable stored
   row still takes the whole app down (A-44). I-8d, because 2b ships here and the map is half of what 2b is.
@@ -3114,9 +3281,11 @@ for it. **2b ships here.** Revision 28 adds I-8c and I-8d to its blockers.)*
   unopenable *and* unexportable is a worse story once the Profile is summarising a whole travel life (QA
   R34-2). **I-8f**, for the same reason one degree stronger: I-8e closes that story only for a bad
   `startDate`/`endDate`, and round 35 measured the `days[n].date` population — **8:1 larger on the shipped
-  sample** — still rendering as a healthy card with Delete as its only exit (QA R35-1). *2b does not ship
-  until the map is a map of the right subject, the numbers on it are true, and no trip in the library can be
-  lost without being offered.*
+  sample** — still rendering as a healthy card with Delete as its only exit (QA R35-1). **I-8g**, because
+  round 36 found that I-8d framed the *wrong* subject for a whole class of libraries and that the alphabet
+  decided which country the surface calls *"shown separately"* — a claim this second surface inherits
+  (QA R36-1, R36-2). *2b does not ship until the map is a map of the right subject, the numbers on it are
+  true, and no trip in the library can be lost without being offered.*
 - **Ship gate.** **2b is independently shippable here.** Criteria 4, 5, 6 and 7 all pass.
 
 #### I-9 — Participants in core

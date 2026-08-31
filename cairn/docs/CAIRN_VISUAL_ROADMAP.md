@@ -19,9 +19,58 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
+> **🟠 I-8d HAS NOW BEEN ATTACKED, AND THE THING THAT'S WRONG IS THE RULE I WROTE, NOT THE CODE —
+> as of 2026-08-31 (this block is the newest; it supersedes the I-8d block below on
+> *"verified"*, supersedes the I-8e block's *"I-8d has still never been attacked"* line, and
+> adds one increment).**
+>
+> The tester spent a round on the map framing and **could not find a single place where the code
+> disagrees with the design** — every clause, checked against all 239 countries in the dataset,
+> **zero blockers**. The fix that motivated it is real and confirmed: the six European countries
+> that were 28–46 px wide are now **152–245 px**. What it broke was **the rule itself**, twice.
+>
+> **Problem 1 — "where is France?" is answered by a rectangle.** To decide which countries belong
+> on the same map, the rule takes the middle of the box drawn around each country. France's box
+> includes **French Guiana, in South America**, so the point that stands for "France" sits in the
+> **open Atlantic, 2,633 km from anywhere French**. The consequence is not cosmetic: France then
+> counts as **closer to Morocco (1,339 km) than to Czechia (4,137 km)**, and a traveller with two
+> France trips and one Greece trip gets a main map **four-fifths ocean** with Greece — actually
+> 1,900 km from France — pushed into the little side box. That is exactly the failure this whole
+> map fix existed to remove, reproduced by the fix.
+>
+> **Problem 2 — the alphabet decides which country gets exiled.** Countries are grouped one at a
+> time, in the order they arrive, which is alphabetical. Give the app the UAE, Austria and
+> Greece: **Austria (1,326 km from Greece) goes to the side box while the UAE (3,281 km) shares
+> the main map** — and the identical three countries in a different order produce one map. There
+> are **122** such three-country combinations; the tightest separates **Hungary and Slovenia, 350
+> km apart**.
+>
+> **What is now scheduled to fix it (`I-8g`), in two sentences.** A country's position becomes
+> the middle of **its single largest landmass**, not the middle of a box drawn around everything
+> it owns — no special cases and nothing that knows which country is which: France lands in
+> central France, Russia in Siberia, Kiribati on its biggest island, and the worst error across
+> all 239 countries falls from **16,598 km to 203 km**, with 164 countries not moving at all. And
+> the grouping is computed **for the whole set at once** rather than one country at a time, so
+> the order they arrive in cannot change the answer — the three-country example above becomes
+> **one map, in all six orders**.
+>
+> **What must not change, and is pinned as a test:** your Europe 2026 map stays exactly as it
+> looks today — Europe in the main frame, the United States in the inset, the same numbers to
+> four decimal places.
+>
+> Three smaller things ride along, all measured this round: on a phone the map paints only
+> **42.6%** of the space it is given (264 px of empty sea below it); the country colour in **dark
+> mode** sits under the accessibility contrast floor against the sea (2.87:1 against a floor of
+> 3:1); and **Andorra currently has no tappable pixel at all**, because France is drawn on top of
+> it — fixed by drawing the big countries first, which is free and provably right.
+>
+> **I-8d is built ✅ · verified ⚠️ (attacked, 0 blockers, 2 design defects found in the rule) ·
+> shippable ❌**, and **I-8g is designed ✅ · built ❌**. I-8b (the Profile screen) now waits on
+> **I-8f and I-8g**.
+
 > **🟠 I-8e HAS NOW BEEN ATTACKED, AND THE "SAVE A COPY" PROMISE TURNED OUT TO COVER AN EIGHTH OF
-> WHAT IT CLAIMED — as of 2026-08-31 (this block is the newest; it supersedes the I-8e block
-> below on *"verified"* and adds one increment).**
+> WHAT IT CLAIMED — as of 2026-08-31 (this block is superseded on *"I-8d has still never been
+> attacked"* by the block above).**
 >
 > The tester could not break anything I-8e was asked to build — the warning, the rescue copy, the
 > Delete confirmation and the fixed "Close this trip" all held up under attack, **zero blockers**.
@@ -126,8 +175,10 @@ update to this file added that instruction).
 > slider: a control that exists mostly to repair a bad default is a confession, and the default
 > is now right.
 >
-> **I-8d is built ✅ · verified ❌ (not yet attacked) · shippable ❌.** *(Superseded: what was
-> still owed before I-8b — I-8c's two fixes and I-8e — has now landed. See the block above.)*
+> **I-8d is built ✅ · verified ❌ (not yet attacked) · shippable ❌.** *(Superseded twice: what
+> was still owed before I-8b — I-8c's two fixes and I-8e — has landed; and I-8d **has** now been
+> attacked, with two design defects found in the rule this block describes. See the newest block
+> at the top.)*
 
 > **🟠 I-8c HAS NOW BEEN ATTACKED, AND IT GOES BACK — as of 2026-08-31 (this block is the newest;
 > it supersedes the I-8c block below on "verified" and adds one increment).** The breaker round
