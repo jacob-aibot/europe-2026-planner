@@ -19,8 +19,50 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
+> **🟠 I-8e HAS NOW BEEN ATTACKED, AND THE "SAVE A COPY" PROMISE TURNED OUT TO COVER AN EIGHTH OF
+> WHAT IT CLAIMED — as of 2026-08-31 (this block is the newest; it supersedes the I-8e block
+> below on *"verified"* and adds one increment).**
+>
+> The tester could not break anything I-8e was asked to build — the warning, the rescue copy, the
+> Delete confirmation and the fixed "Close this trip" all held up under attack, **zero blockers**.
+> What it broke was **my own claim about how far they reach**.
+>
+> **The problem, in one sentence:** the card decides whether to warn you by looking at the trip's
+> **start and end dates** — but a trip file has a date on *every day* and *every booking*, and on
+> your Europe 2026 trip that is **16 dates against 2**. So a file with one bad day-date shows a
+> **completely healthy card**: past-trip badge, full counts, a confident date range. Tap it and it
+> correctly says the file cannot be read — and *even then* there is still no "Save a copy" button
+> and Delete still gives you the ordinary "this cannot be undone" with no mention that the copy on
+> your phone is the only one. That is roughly **8 out of every 9** unreadable files, not an edge
+> case.
+>
+> **What is now scheduled to fix it (`I-8f`):** stop guessing from the dates on the card, and
+> **write it down when the file actually fails to open**. When you tap a trip and it refuses, the
+> app records that it refused — so the card you come back to now carries the warning, the "Save a
+> copy" button, and a Delete that says what Delete costs. Nothing extra is opened or scanned to do
+> this: it only remembers what already happened. The one honest limitation stays and is written
+> down: **on a fresh start, a bad file still looks fine until something tries to open it** —
+> finding it any earlier would mean opening every trip on the device every time the list is drawn,
+> which is exactly what the app is built not to do.
+>
+> Two smaller things ride along: `cli.ts --today 2026-13-45` used to print *"statistics as of
+> 2026-13-45"* over numbers actually computed for **2027-02-14** — it now refuses the date instead
+> of quietly correcting it; and the "save the stored copy" call now refuses to be pointed at the
+> trip that is currently open, where it could hand back slightly stale bytes.
+>
+> Two cosmetic findings go to the builder, not into this: the new explanatory sentence under the
+> warning is **too pale to read** (2.63:1, well under the floor), and **one** bad trip inflates
+> **every** card in the list from 95 px to 446 px tall.
+>
+> **I-8e is built ✅ · verified ⚠️ (attacked, 0 blockers, 1 design gap found) · shippable ❌**, and
+> **I-8f is designed ✅ · built ❌**. I-8b (the Profile screen) now waits on **I-8f**.
+>
+> **Also worth saying plainly: I-8d has still never been attacked.** It shipped after the last
+> tester round, and the two rounds since were both aimed at other increments. It owes its own
+> round before 2b can ship.
+
 > **🟡 I-8e IS BUILT, AND I-8c'S BROKEN "CLOSE THIS TRIP" IS FIXED — as of 2026-08-31 (this
-> block is the newest; it supersedes every "still owed before I-8b" line below).**
+> block is superseded on *"verified"* and on *"I-8b is now UNBLOCKED"* by the block above).**
 >
 > **A trip Cairn cannot open now says so on the card, before you tap it — and you can save a
 > copy of it instead of choosing between a dead screen and Delete.** Three things landed:

@@ -403,6 +403,36 @@ dependency**, no `SUMMARY_VERSION` bump, no `schemaVersion` bump, no `StoragePor
 change and no engine change. The export surface moves **76 → 77** in I-8e, for `isIsoDate` and nothing
 else (§2.10, §2.9 A-46 Part 2).
 
+**Revision 32, 2026-08-31.** QA round 35 — the breaker pass over I-8e — found **0 blockers** and could not
+break anything the increment was contracted to build, but it measured **A-46's own Part 7 residue 1 as
+false**, and false for the *majority* of what A-45 refuses rather than for an edge case. That is mine under
+sequencing rule 5, twice over: the residue and A-46 Part 4 clause 5 contradicted each other, and I-8e's own
+criterion 4 blessed the wrong outcome in writing. `ARCHITECTURE.md` revision 32 rules it as **A-47** (§2.9,
+under A-46). Four changes here, and the phase is not re-scoped.
+
+(1) **I-8e's user-visible outcome line and its fourth verification criterion are corrected in place**, and
+marked as corrected. Criterion 4 asserted that a document whose *row* is fine but whose `days[3].date` is
+not *"still opens to a refusal, with the card unflagged: that is the stated incompleteness … not a bug"*.
+It is a bug — that population is **8:1 larger** than the one I-8e flags, and it left a card that looks
+healthy, warns nothing before Delete, and offers no rescue even *after* the refusal is on screen.
+
+(2) **One increment is inserted: `I-8f`**, carrying A-47. It runs **after I-8e** and **before I-8b**.
+*(If the manager's verdict on I-8e is SEND BACK rather than SHIP, this is that send-back's scope and it
+lands as part of I-8e; the content below is identical either way and nothing in it depends on which.)*
+
+(3) **I-8b's dependency line gains I-8f**, for the reason it already names for I-8e, one degree stronger: a
+trip that is silently unopenable **and** unrescuable is the worse story once the Profile is also summarising
+it, and I-8f is what makes it not silent.
+
+(4) **Two of round 35's four MINORs are ruled and ride I-8f** — `cli.ts --today` refusing a
+calendar-invalid date (R35-4, A-47 Part 6) and `exportStoredDoc`'s active-trip precondition (R35-5, A-47
+Part 5). The other two, **R35-2** (the hint's 2.63:1 contrast) and **R35-3** (one bad row inflating every
+card from 95.3 px to 446.0 px), are **builder** findings against I-8e as written and do not wait for I-8f.
+
+No phase re-scoped, no change to the order, **no new external dependency**, no `SUMMARY_VERSION` bump, no
+`schemaVersion` bump, no `StoragePort`/`FilePort`/`MapPort` change and no engine change. **The export
+surface does not move: 77 stays 77**, and `packages/core` has **zero** diff lines in I-8f.
+
 > **Phase numbers changed once, here.** Every heading below carries its old number, and every "Phase N"
 > written in `ARCHITECTURE.md` §1–§7, `BUILD-NOTES.md` or `QA-FINDINGS.md` before revision 9 means the
 > *named* phase it described: "Phase 2" = accounts/server (**now 3**), "Phase 3" = ingest (**now 4**),
@@ -1254,7 +1284,16 @@ returned **SEND BACK** on **R34-1** (BLD-3's *"Close this trip"* does not recove
 and **R34-2** (A-45's cost paragraph names a warning surface that never fires, so a document with a
 calendar-invalid date renders as a healthy card whose only affordance is Delete, with no way to export it).
 Ruled at revision 31 as §2.9 **A-46** and scheduled as **I-8e**, which is owed before I-8b; **R34-8** rewrote
-I-8c's own criterion 3 into 3a/3b** |
+I-8c's own criterion 3 into 3a/3b. **I-8e then shipped and QA round 35 verified it**: everything it was
+contracted to build held (R34-1 fixed in both branches, the rescue export honest end to end, `rowDatesReadable`
+total over twelve hostile row shapes), **0 blockers** — and the round found **R35-1 (MAJOR)**, A-46's own Part
+7 residue 1 measurably false for the *majority* of what A-45 refuses: a bad `days[n].date` leaves a card that
+looks healthy, refuses on tap, and still offers no rescue, with Delete's warning gated on the same too-narrow
+boolean. Ruled at revision 32 as §2.9 **A-47** and scheduled as **I-8f** — the trigger stops being a proxy
+and becomes a fact recorded when a real open fails — which is owed before I-8b, and which also carries
+round 35's **R35-4** (`cli.ts --today` refuses) and **R35-5** (`exportStoredDoc` refuses the active trip).
+**I-8d has still had no independent adversarial round of its own** — it shipped at `6814f73`, after round
+34, and rounds 34 and 35 were both scoped elsewhere** |
 | **2c — participants** | `Trip.participants`, three build functions, the participants editor, *"people you have travelled with"* on the profile | you can say the trip was with your girlfriend and her family, and it grants them nothing | Not started; gated on 2b |
 
 **Mapped onto the increment sequence below** (revision 10): **2a = I-1 → I-4**, **2b = I-5 → I-8**,
@@ -1294,6 +1333,13 @@ sits directly after I-8d and is **owed before I-8b** for the I-8c reason one lev
 bad document, and until I-8e the user is never told they have one — the card is healthy, the only
 affordance is Delete, and there is no way to get the bytes out of a trip that will not open.)*
 
+*(Revision 32: **I-8f** carries §2.9 **A-47**, the one design finding QA round 35 found *under* I-8e — the
+same pattern a third time, and each time one level further out. I-8e closes the story for a bad
+`startDate`/`endDate`, which is **two** of the sixteen-plus date fields a real document carries; the other
+population renders as a healthy card, refuses on tap, and still offers no rescue. I-8f stops proxying the
+question — it records the fact when a real open actually fails, and gates the chip, the rescue and Delete's
+warning on that. It sits directly after I-8e and is **owed before I-8b**.)*
+
 *(Revision 26: **I-7b** carries §2.3 **A-35**, §8.4 **A-36** and §8.4 **A-37**, the four design findings QA
 round 29 found *under* I-7a — an exit criterion whose static port check a reassigned parameter walks past,
 an unbounded day skeleton behind a `<input type="date">`, and two bounds stated over documents that are
@@ -1319,7 +1365,13 @@ packages/client/src/
   selectors/  worldMap.ts   worldMapFrame — I-8a; + panes/clustering/padding — I-8d, §4.4 A-41
               index.ts      travelHistory — I-8a; + rowLifecycle — I-8c, §8.4 A-44
                             + rowDatesReadable — I-8e, §2.9 A-46 (isIsoDate on both stored dates)
+                            + rowUnopenable(state, row) — I-8f, §2.9 A-47: the ONE union of the
+                              three facts; rowDatesReadable stays, narrow, for the meta line
   store/      + exportStoredDoc(id) — I-8e: the stored bytes verbatim, no parse — §2.9 A-46 Part 4
+                              I-8f: + refuses state.activeTripId (A-47 Part 5)
+              + AppState.openFailures + noteOpenFailure() — I-8f, §2.9 A-47: F-D, written where
+                the open fails, session-scoped, never persisted
+cli.ts        --today refuses a calendar-invalid date via isIsoDate — I-8f, §2.9 A-47 Part 6
 apps/web/src/views/
   WorldMap.tsx  Profile.tsx  PastTripForm.tsx  Participants.tsx
 tools/gen-countries.mjs   Natural Earth admin-0 → countries.gen.ts, reports emitted bytes
@@ -2891,6 +2943,11 @@ store method, one component branch. **Builder + breaker, mandatory** — it adds
   `fromJSON` refuses.**
 - **User-visible outcome.** A trip whose file Cairn cannot read says so **on the card**, before you tap it —
   and you can save a copy of it off the device instead of choosing between a dead screen and Delete.
+  > **Corrected at revision 32 (QA R35-1, `ARCHITECTURE.md` §2.9 A-47).** True **only when the unreadable
+  > date is one of the row's own two.** For the larger population — a bad `days[n].date` or
+  > `bookings[n].*.date`, 16 fields against 2 on the shipped sample — the card is healthy, *"before you tap
+  > it"* is false, and after the tap there is still no way to save the copy. **I-8f** is what makes this
+  > sentence true, by widening the trigger; read it with this line.
 - **Architecture / data model.** A-46 in full. The scope line is A-46 Part 6: **no repair path, no clamp,
   no plausibility floor, no re-plumbing of `summaryScan`, no widening of `rowLifecycle` (A-44 is unchanged),
   no second export control on readable cards, and no ownership check on the rescue export** — the last
@@ -2918,6 +2975,13 @@ store method, one component branch. **Builder + breaker, mandatory** — it adds
     byte-identical to I-8d's — the signal is silent on healthy data. And a document whose *row* is fine but
     whose `days[3].date` is not still opens to a refusal, with the card unflagged: that is the stated
     incompleteness (A-46 Part 3), not a bug, and the test asserts it rather than hiding it.
+    > **The last sentence is withdrawn as wrong at revision 32 (QA R35-1, §2.9 A-47).** It is a bug, and
+    > this criterion blessing it in writing is why a round was spent finding it. The first sentence stands
+    > — the signal must still be silent on healthy data. What replaces the last: **before** any open
+    > attempt the card is legitimately unflagged (nothing has established anything, and A-47 Part 8 residue
+    > 1 owns that floor); **after** the refusal is on screen the card must carry the chip and the rescue
+    > control. I-8f criterion 1 asserts exactly that, and its injected fault is this criterion's own
+    > predicate.
   - **The rescue file is not offered as a backup** `[stated]`. The downloaded name ends
     `.cairn-unreadable.json`, not `.cairn.json`, and the control's own text says Cairn cannot re-read it.
     Feeding it back through *"Restore from a backup"* is refused with A-45's message and its JSON path —
@@ -2931,6 +2995,100 @@ store method, one component branch. **Builder + breaker, mandatory** — it adds
 - **Ship gate.** Every criterion above has its injected fault red; the export surface is **77**, re-counted
   rather than quoted; the breaker pass is **mandatory** because this adds an export path; and the round-34
   repro (`qa/r34-render.mjs` §F) is re-run and reports the card flagged and the copy saved.
+
+#### I-8f — the rescue is reachable whenever anything knows the trip will not open
+
+*(Revision 32. Carries `ARCHITECTURE.md` §2.9 **A-47** and answers QA **R35-1**, plus **R35-4** and
+**R35-5** which the same ruling settles. **Runs after I-8e** — it corrects I-8e in place — and **before
+I-8b**. A builder reads A-47, then A-46, and needs nothing else in `ARCHITECTURE.md`; A-47 names which of
+A-46's sentences it supersedes. Small on purpose: one client state field, one store helper with three
+callers, one client selector, one component's gates rewired, three lines in `cli.ts`. **Builder + breaker,
+mandatory** — it changes who can reach an export surface, which is `cairn/CLAUDE.md`'s delegation trigger.
+`packages/core` is **not touched at all**: zero diff lines, and the export surface stays at **77**.)*
+
+- **Built.**
+  - **`packages/client/src/store/reducer.ts`:** `AppState` gains `openFailures: ReadonlyArray<{ id: string;
+    message: string }>`, library-scoped exactly as `rescan` is, `[]` in `initialState()`, **not persisted,
+    not exported, not in `history`** (A-47 Part 2).
+  - **`packages/client/src/store/store.ts`:** one module-local `noteOpenFailure(id, err)` — **the only
+    site that assigns the field** — called from `openTrip`'s and `browseTrip`'s `core.fromJSON` catch, each
+    of which **rethrows the original error unchanged** after the `set`; the entry is cleared on
+    `openTrip`/`browseTrip` **success** and on `deleteTrip`; **all six `...initialState()` transitions carry
+    `openFailures: state.openFailures`** the way they already carry `rescan`. `importDoc` gains **no**
+    clear (it mints a fresh id on collision, so it can never repair one). Plus `exportStoredDoc(id)`'s
+    active-trip precondition throw (A-47 Part 5).
+  - **`packages/client/src/selectors/index.ts`:** `rowUnopenable(state, row): boolean` — the union of
+    `!rowDatesReadable(row)`, `state.rescan.unreadable` and `state.openFailures`, and nothing else.
+    **`rowDatesReadable` is unchanged and stays exported** (A-47 Part 3).
+  - **`apps/web/src/views/Library.tsx`:** A-46's single `unreadableRow` becomes **two correctly-scoped
+    gates** (A-47 Part 4) — the meta line's verbatim-dates branch stays on `!rowDatesReadable(row)`; the
+    `chip--warn`, its hint, the **"Save a copy"** control and **Delete's confirmation warning** all move to
+    `rowUnopenable(state, row)`. `ScanNote`'s header count stays on `scan.unreadable.length` and does
+    **not** widen.
+  - **`cairn/cli.ts`:** `todayIsValid()` becomes `core.isIsoDate(today)`, message *"--today must be a real
+    calendar date in YYYY-MM-DD, got …"*, exit code 2 unchanged; the `weekdayOf` try/catch is **replaced,
+    not stacked**; the now-false comment block above it is deleted for a pointer to A-47 Part 6 (R35-4).
+  - **No new chip, no new token, no new colour, no new port method, no new reducer action, no
+    `SUMMARY_VERSION` bump, no `schemaVersion` bump, no new dependency, no core change of any kind, and no
+    change to what `fromJSON` refuses.**
+- **User-visible outcome.** Tapping a trip that will not open now leaves you looking at a card that says so
+  and offers to save the copy — instead of a refusal message over a card that still looks healthy and
+  whose only button is Delete.
+- **Architecture / data model.** A-47 in full. The scope line is A-47 Part 7: **no full-library parse at
+  boot, no persisted unreadable flag, no re-plumbing of `summaryScan`, no widening of `rowLifecycle` or
+  `rowDatesReadable`, no repair path, no per-card parser message, no flush inside `exportStoredDoc`, and
+  no widening of the `ScanNote` header** — the boot-time floor is stated as A-47 Part 8 residue 1 rather
+  than closed.
+- **Verification.**
+  - **The rescue is reachable for the population A-46 missed** `[stated]`, on rendered output. Round 35's
+    exact repro: the shipped sample with its stored `days[3].date` rewritten to `2026-02-30` — a value the
+    pre-A-45 `importDoc` accepted and wrote. Assert **before** the tap the card is unflagged (that is the
+    stated floor, A-47 residue 1), then tap it, then assert on the **same** screen: the refusal banner is
+    present **and** `data-testid="row-unreadable"` is **1** **and** `data-testid="save-copy"` is **1**
+    **and** clicking it yields bytes **byte-identical** to what storage holds. **Injected fault:** gate the
+    chip and the control on `rowDatesReadable(row)` alone — I-8e's shipped predicate — and the post-tap
+    counts go to **0** while the banner stays. *That is the fault that must be red, and it is the code
+    that shipped.*
+  - **Delete stops being silent on the same population** `[stated]`. On that card, after the tap, the
+    confirmation text contains the *"save a copy first"* sentence; on a healthy card it is the ordinary
+    one. **Injected fault:** gate the confirmation on `rowDatesReadable` and it reverts to the ordinary
+    sentence with the rescue control still on screen beside it — the exact conflation R35-1 measured.
+  - **The meta line did not regress** `[stated]`. On that same card the range still reads
+    `2026-08-07 → 2026-08-22 · 6 cities` through `dateRangeLabel` — **not** two raw strings — because those
+    two dates are real; and a row whose *own* `startDate` is `2026-02-30` still prints
+    `2026-02-30 → 2026-03-05` verbatim, so R34-4 stays discharged. **Injected fault:** point the meta line
+    at `rowUnopenable` and the first assertion goes red.
+  - **The fact is written where the failure is, and dies with the session** `[stated]`, in bare Node
+    against `ports/memory.ts`. `openTrip` on a corrupt document rejects with the **same error class and
+    message** as before and leaves `state.openFailures` holding that id; a subsequent successful
+    `openTrip` of a repaired document clears it; `deleteTrip` clears it; `closeTrip` **preserves** it (the
+    carry test); a fresh store starts empty. **Injected fault:** drop `openFailures` from any one of the
+    six `...initialState()` carry sites and the `closeTrip` case goes red.
+  - **Nothing opens that was not going to open** `[stated]`. With a recording `StoragePort`, rendering a
+    library of N rows performs **0** `load()` calls and **0** `fromJSON` calls; the count is unchanged from
+    I-8e's. **Injected fault:** compute the flag by loading each row and the count goes to N.
+  - **The predicate is still one expression** `[stated]`. A grep of `apps/web/src` finds **0** occurrences
+    of `rescan.unreadable` or `openFailures` outside `ScanNote`'s header count, and `rowUnopenable` has
+    exactly the one definition. **Injected fault:** inline the union in `Library.tsx` and the grep goes red.
+  - **`exportStoredDoc` refuses the active trip** `[stated]`, bare Node: with a trip open, the call
+    rejects and names `exportActive()`; with no trip open it behaves exactly as I-8e shipped it, including
+    for a foreign-`ownerId` document. `qa/r35-store.mjs` §A is re-pointed at the refusal and stops
+    reporting a FAIL.
+  - **`--today` refuses a calendar-invalid date** `[stated]`. `node cli.ts stats --today 2026-13-45` prints
+    the refusal and exits **2**; `--today 2027-02-14` and `--today 2026-02-28` still work; `--today
+    not-a-date` is unchanged. A test asserts `core.weekdayOf` does not throw at `0000-01-01` or
+    `9999-12-31` — the containment the replaced guard depends on. **Injected fault:** restore the
+    `weekdayOf`-only guard and the `2026-13-45` case prints statistics again.
+  - **Nothing else moved** `[stated]`. `git diff --stat` shows **0** lines in `packages/core/`;
+    `Object.keys(core).length` is **77**; `npm run golden && npm run sample && git status --porcelain`
+    leaves the tree clean; `npm run typecheck` and `npm run test:tap` are green; `qa/r2-redact.mjs` still
+    reports **0 KNOWN_LEAKS**; the root planner's md5 is unmoved.
+- **Dependencies / blockers.** I-8e (this corrects it in place). Round 35's **R35-2** and **R35-3** are
+  builder findings against I-8e and neither blocks nor is blocked by this.
+- **Ship gate.** Every criterion above has its injected fault red — in particular the first two, whose
+  injected fault is I-8e's own shipped predicate; the export surface is **77**, re-counted rather than
+  quoted; `packages/core` is byte-unchanged; and the breaker pass is **mandatory**, because this changes
+  which rows can reach an export path.
 
 #### I-8b — Profile
 
@@ -2947,15 +3105,18 @@ for it. **2b ships here.** Revision 28 adds I-8c and I-8d to its blockers.)*
   rendered Profile with the same injected fault; the `travelStats` refusal boundary; `unattributed` and
   `unnamedCities` rendered rather than hidden, with the *"no places yet"* case distinguishable from *"all
   attributed"*; and the tab shell still carrying exactly three tabs.
-- **Dependencies / blockers.** I-8a, **I-8c, I-8d and I-8e** (revision 28 for the first two, revision 29
-  for I-8e; this is a hard gate rather than a preference). I-8c, because the Profile renders
+- **Dependencies / blockers.** I-8a, **I-8c, I-8d, I-8e and I-8f** (revision 28 for the first two, revision
+  29 for I-8e, revision 32 for I-8f; this is a hard gate rather than a preference). I-8c, because the Profile renders
   `travelStats`-derived numbers as a claim about the user's travel identity and would otherwise inherit
   A-45's wrong ones — and because it registers a **third** surface into a shell where one unreadable stored
   row still takes the whole app down (A-44). I-8d, because 2b ships here and the map is half of what 2b is.
   **I-8e**, because this increment puts a second surface on the same rows, and a trip that is silently
   unopenable *and* unexportable is a worse story once the Profile is summarising a whole travel life (QA
-  R34-2). *2b does not ship until the map is a map of the right subject, the numbers on it are true, and no
-  trip in the library can be lost without being offered.*
+  R34-2). **I-8f**, for the same reason one degree stronger: I-8e closes that story only for a bad
+  `startDate`/`endDate`, and round 35 measured the `days[n].date` population — **8:1 larger on the shipped
+  sample** — still rendering as a healthy card with Delete as its only exit (QA R35-1). *2b does not ship
+  until the map is a map of the right subject, the numbers on it are true, and no trip in the library can be
+  lost without being offered.*
 - **Ship gate.** **2b is independently shippable here.** Criteria 4, 5, 6 and 7 all pass.
 
 #### I-9 — Participants in core

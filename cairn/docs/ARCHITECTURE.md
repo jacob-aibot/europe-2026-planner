@@ -692,13 +692,39 @@ definition of a date while leaving it unreachable outside core. `ROADMAP.md` rev
 **I-8e**, which runs after I-8d and before I-8b. Nothing else moves: no core *behaviour*, no engine, no
 `schemaVersion`, no `SUMMARY_VERSION` bump, no `StoragePort`/`FilePort`/`MapPort` method, no new dependency.
 
+**Revision 32, 2026-08-31.** QA round 35 attacked I-8e, found 0 blockers, and measured **A-46's own Part 7
+residue 1 as false** — the same shape of defect A-46 had just found in A-45's Part 4, one revision later and
+one level down. *"The rescue copy is reachable from the card either way"* is not true for the **larger**
+population: `rowDatesReadable` reads the summary row's two dates, and three of A-45's five refusal sites
+(`$.days[n].date`, `$.bookings[n].startsAt.date`, `$.bookings[n].endsAt.date`) have **no counterpart on
+`TripSummaryRow` at all** — 16 day-date fields against 2 trip-date fields on the shipped sample. One ruling,
+**A-47** (§2.9, directly under A-46), and it is a correction with a small piece of new client state, not a
+redesign. **(1)** The trigger for the warn chip and the rescue export widens from *"this row's own dates are
+unreadable"* to *"this document is known-or-suspected unopenable"*, computed by **one** shared selector
+(`rowUnopenable`) over **three** unioned facts — the row's own dates (a prediction, no read), the rescan's
+`unreadable` (F-A, unchanged), and a **new** fact written at the point of failure: a real `openTrip` /
+`browseTrip` attempt in this session whose `fromJSON` threw. **No document is opened that was not going to
+be opened anyway**, so §4.2's *"exactly one trip document in memory"* and §8.4 clause 3's *"never load forty
+trips"* are untouched. **(2)** The one boolean the card used becomes **two, correctly scoped**: the meta
+line's verbatim-dates branch stays on the narrow `rowDatesReadable` (those two strings really are
+unprintable), while the chip, the rescue control and Delete's warning share the wide one — chip/control and
+Delete-warning are **not** split from each other, and A-47 Part 4 says why. **(3)** The new fact is
+**in-memory and session-scoped, never persisted** — a reader's inference about a document is a copy that
+goes stale the moment the document is repaired (§0.6), which is R26-2's exact failure. **(4)** Two round-35
+MINORs are settled in the same ruling: `cli.ts --today` refuses a calendar-invalid date with `isIsoDate`
+rather than echoing a normalised one (R35-4), and `exportStoredDoc` gains a **precondition** guard against
+the active trip rather than a flush (R35-5). §2.10 does **not** move — 77 stays 77, no new core symbol.
+`ROADMAP.md` revision 32 carries this as **I-8f**, which runs after I-8e and before I-8b. Nothing else
+moves: no core change at all, no engine, no `schemaVersion`, no `SUMMARY_VERSION` bump, no
+`StoragePort`/`FilePort`/`MapPort` method, no reducer action, no new dependency.
+
 **Phase 1 is §2 and §4. The next phase is §8.1–§8.4.** Everything else is the shape those must not
 foreclose. See `ROADMAP.md` for sequencing and `PRODUCT-VISION.md` for why this order and not another.
 
 ## Read only your sections
 
-This document is ~226k tokens (re-measured at revision 30, with
-`cairn/tools/doc-section ARCHITECTURE` — §2 is ~112k of it and §8 ~65k, and §4 grew 13k → **18k** when A-41/A-42 landed in §4.4; the per-section figures below were stale by a third before revision 11 and are
+This document is ~239k tokens (re-measured at revision 32, with
+`cairn/tools/doc-section ARCHITECTURE` — §2 is ~123k of it and §8 ~65k, and §4 grew 13k → **18k** when A-41/A-42 landed in §4.4; the per-section figures below were stale by a third before revision 11 and are
 re-measured, not estimated, whenever a revision lands). Nothing needs all of it, and a fresh agent that reads it whole starts a sixth
 of the way into its context before writing a line. Pull what you need:
 
@@ -719,8 +745,16 @@ revision 31, sits directly under A-45 and is read *with* it, never instead of it
 A-45's Part 4 cost paragraph as false and A-46 withdraws that clause in place, then rules what the Trips
 list does with a row whose stored dates are not dates (`rowDatesReadable`, **not** `rowLifecycle() === null`,
 which is strictly weaker), gives a trip that cannot be opened a **rescue export**, and rewrites I-8c
-criterion 3's Map half; **anyone rendering a stored summary row on the Trips list, adding an export path, or
-about to call `isIsoDate` from outside core reads A-46, then A-45, then §8.4 A-44** | 112k | builder, breaker |
+criterion 3's Map half; **A-47 is revision 32, sits directly under A-46 and is read *with* A-46, never
+instead of it** — QA R35-1 measured A-46's Part 7 residue 1 as false for the majority of what A-45 refuses,
+and A-47 withdraws that residue in place, widens the card's *trigger* from *"this row's dates are
+unreadable"* to *"this document is known-or-suspected unopenable"* behind one shared selector
+(`rowUnopenable`) fed by a new **session-scoped** `openFailures` fact written at the point a real open
+fails, splits A-46's single card boolean into the two correctly-scoped ones it was doing three jobs with,
+and settles `cli.ts --today` (R35-4) and `exportStoredDoc`'s pending-write staleness (R35-5); **anyone
+rendering a stored summary row on the Trips list, adding an export path, or about to call `isIsoDate` from
+outside core reads A-47, then A-46, then A-45, then §8.4 A-44 — A-47 names which of A-46's sentences it
+supersedes, so reading it first is what tells you which of A-46 to skip** | 123k | builder, breaker |
 | 3 | Module boundaries | <1k | builder |
 | 4 | **The Phase 1 client.** §4.2 rule 6 (a pending write is never outlived by its document) is new in revision 3 — QA R3-2; rule 6a′ and the `savedDoc` predicate are revision 4 — QA R4-1; **rule 6a″ (the flush bound and its exits) and rule 6c's "delete goes on the chain" are revision 5** — QA R6-1/R6-2/R7-3; **rule 5's retirement carve-out is revision 6** — QA R8-1, read with §2.7; **rule 4a is revision 8** — QA R11-1, read with §2.2a A-7; **§4.3's A-30 is revision 23** — the `refreshSummary` port method, the fence's meaning stated once, and the rescan's uniform per-row link — and **anyone touching `runRescan`, `StoragePort` or a port implementation reads it first**, with §8.4 clause 3 beside it; **§4.4's A-40 is revision 29** — the lifetime map is a plain component over a pure `packages/client` frame function, not a second `MapPort`, and **anyone building or reviewing `WorldMap.tsx` reads it first** (it is ~3k and self-contained; the trip map's port is unchanged and needs no re-reading); **§4.4's A-41 and A-42 are revision 30 and are read *with* A-40, never instead of it** — A-41 is the atlas frame (geographic clustering, one primary pane and up to two insets, padding, and the **W3** renderer clause) and it amends A-40 clause 2 and withdraws A-40 Part 7 residue 1's diagnosis; A-42 withdraws A-40 clause 2's min-span *claim* and rules that no second constant is created. **A builder of I-8d reads A-40 Parts 3–5, then A-41 and A-42, and needs nothing else in this document except §2.10's list** | 18k | builder |
 | 5 | The four hard subsystems | 2k | breaker; builder from Phase 3 on |
@@ -5470,6 +5504,21 @@ while its document carries a bad `days[3].date`; only opening it finds that, and
 during a rescan. So the card's claim is *"this trip's file could not be read"* when it is known, and never
 *"every other trip here will open."*
 
+> **Amended at revision 32 by A-47, in two places. The paragraph immediately above is upheld and is the
+> only part of Part 3 that survives untouched** — it is what A-47 builds on rather than what A-47 corrects.
+> What moves:
+>
+> - **The single `unreadableRow` boolean is withdrawn.** It was doing three jobs with one predicate, and
+>   QA R35-1 measured the cost. Clauses **1** (the warn chip) and **4** (Delete's confirmation) are
+>   re-gated on A-47's wider `rowUnopenable(state, row)`; clause **2** (the meta line printing the two
+>   stored strings verbatim instead of `dateRangeLabel`) **stays on the narrow `rowDatesReadable(row)`**,
+>   because that clause is about whether *these two strings* can be formatted, and a row whose own dates
+>   are fine must keep its proper label even when its document will not open. R34-4 is discharged by the
+>   narrow predicate and stays discharged. Clause **3** (`LifecycleChip` unchanged) does not move.
+> - **The sentence *"there is one signal on the card, not two"* is narrowed, not withdrawn.** There is one
+>   *statement* on the card — the chip — and it is still computed once, in one place. A-47 keeps that by
+>   moving the union into a shared selector rather than by keeping the predicate narrow.
+
 **Part 4 — ruled (c). A trip that cannot be opened gets an export, and it is a rescue copy rather than a backup.**
 
 **Yes, this is a real gap against a load-bearing promise, and it is cheap to close.** `store` exposes
@@ -5513,6 +5562,17 @@ Five clauses, and they are the whole of it:
   disk, the same posture `exportActive` already has.
 - **The control lives on the unreadable branch only.** A readable trip already has an export (open →
   Export), and putting a second one on every card is a Trips-list redesign this ruling does not make.
+
+> **Amended at revision 32 by A-47, in the last clause and in the last bullet of the five.** The **last
+> clause** — *"the control lives on the unreadable branch only"* — stands as a rule and changes only in
+> what *"the unreadable branch"* means: it is now `rowUnopenable(state, row)` (A-47 Part 2), not
+> `unreadableRow`. Putting the control on **every** card was reconsidered in round 35's light and is
+> **refused again**: it would give a readable trip a second export whose filename
+> (`.cairn-unreadable.json`) lies about it, and it is still the Trips-list redesign this ruling declines.
+> The **fifth bullet** (*"it touches no state: no flush"*) gains a **precondition** rather than losing its
+> property — A-47 Part 5, QA R35-5: `exportStoredDoc` refuses the **active** trip's id as a programmer
+> error, because the stored bytes for the open document may be superseded by a pending debounced write and
+> `exportActive()` is the correct export for it. No flush is added; the save chain is still not touched.
 
 Because this is a **new export surface**, `cairn/CLAUDE.md`'s delegation table applies: builder **and**
 breaker, mandatory, no shortcut.
@@ -5565,6 +5625,23 @@ it to *"delete dead code"* is reopening this ruling.
 1. **A row can be readable while its document is not.** Only opening finds it. The banner on that tap is
    still a raw `TripParseError` string, which is R34-2's builder half and is not ruled here; what this
    ruling guarantees is that the rescue copy is reachable from the card either way.
+
+   > **The last clause is withdrawn as false — QA R35-1, revision 32, ruled as A-47 below.** *"A row can
+   > be readable while its document is not"* is true and is the honest half. *"The rescue copy is
+   > reachable from the card either way"* is **not**, and it is false for the **larger** population:
+   > `rowDatesReadable` reads `TripSummaryRow`, and three of A-45's five refusal sites have no counterpart
+   > on that record at all — on the shipped sample, 16 day-date fields against 2 trip-date fields, an 8:1
+   > asymmetry. Round 35 drove exactly that population through the running app (`days[3].date` rewritten,
+   > a value the pre-A-45 `store.importDoc` accepted and wrote): **one completely healthy card** —
+   > `row-unreadable` count 0, `PAST TRIP` chip, full counts, controls `["Europe 2026 PAST TRIP",
+   > "Delete"]` — which on tap says correctly *"That trip's file could not be read … (at $.days[3].date)"*
+   > and **still offers no way to save the bytes**; the only export-ish control left on screen is
+   > *"Restore from a backup"*. Delete's confirmation is the ordinary one, because `Library.tsx` gates the
+   > warning on the same boolean that gates the control. This residue and Part 4 clause 5 contradicted
+   > each other, and this is the sentence a future reader would have trusted — **my defect, under
+   > sequencing rule 5, not the builder's**: the builder implemented clause 5 exactly as written and
+   > ROADMAP I-8e criterion 4 explicitly blessed the unflagged card. **A-47 is what makes the guarantee
+   > true**, by widening the trigger rather than by narrowing the promise.
 2. **The Map and the Profile still count a calendar-invalid row.** `travelStats` normalises it (A-32 Part
    4) and has no `Issue` channel (A-31 Part 4), so *everywhere you have been* silently includes a trip
    whose dates are not dates. The Trips list is where the user can act on it — open, save, delete — and
@@ -5573,6 +5650,304 @@ it to *"delete dead code"* is reopening this ruling.
    the repair path A-45's residue defers is what would make it restorable.
 4. **`isIsoDate` on the surface invites a caller to validate a date and then not use `fromJSON`.** It is a
    predicate, not a parser, and §2.10's list is the only place that can say so — it does, in this revision.
+
+#### A-47 — the trigger is *"this document will not open"*, not *"this row's dates are wrong"*; the fact is written when a real open fails, and it is an observation, not a record (revision 32, QA **R35-1**, **R35-4**, **R35-5**, ROADMAP **I-8f**)
+
+*(Read **with** A-46 directly above — it withdraws A-46 Part 7 residue 1, amends A-46 Part 3 and Part 4
+clause 5 in place, and changes nothing in `packages/core` at all — and with §4.2 rules 3–6 for why the new
+fact is not persisted. It is a correction to a shipped contract plus one small piece of client state; it is
+not a Trips-list redesign and it does not reopen A-45, A-44 or A-46 Part 5.)*
+
+**Part 1 — the population, measured by the breaker, and why the proxy was the wrong shape.**
+
+A-46 Part 1's table had three facts. The gap is a **fourth**, and A-46's own predicate cannot see it:
+
+| # | fact | where it comes from | when it is available |
+|---|---|---|---|
+| F-A | *a rescan opened this document and `fromJSON` threw* | `summaryScan(state).unreadable` | only during a `SUMMARY_VERSION` rescan |
+| F-B | *this row's dates are not `YYYY-MM-DD`-shaped* | `rowLifecycle(row, today) === null` (A-44) | every render |
+| F-C | *this row's dates are shape-valid but are not real calendar dates* | `rowDatesReadable(row) === false` (A-46) | every render |
+| **F-D** | ***we tried to open this document and `fromJSON` threw*** | **nothing records it** | **—** |
+
+`rowDatesReadable(row)` is a predicate over `TripSummaryRow`, which carries `startDate` and `endDate` and
+nothing else date-shaped. **A-45 refuses at five sites, and three of them have no counterpart on that
+record at all**: `$.days[n].date`, `$.bookings[n].startsAt.date`, `$.bookings[n].endsAt.date`. Per document
+the asymmetry is far worse than 3:2 — the shipped Europe 2026 sample carries **16** day-date fields against
+**2** trip-date fields, roughly **8:1**. So F-C is the *minority* of what A-45 refuses, and A-46 shipped it
+as though it were the whole.
+
+Round 35 measured the consequence rather than arguing it, through the write path that actually minted this
+population (`store.importDoc` at `068cb00~1`, before A-45, accepted `days[1].date: '2026-02-30'` and wrote a
+summary row reading `2026-08-07 → 2026-08-10`): on `98996b3` that record renders **one completely healthy
+card** — `row-unreadable` count **0**, `PAST TRIP` chip, full counts, controls exactly
+`["Europe 2026 PAST TRIP", "Delete"]`. Tapping it produces the right refusal, and **after** the refusal the
+card still offers no way to save the bytes; the only export-ish control on screen is *"Restore from a
+backup"*. Delete's confirmation is the ordinary one, because `Library.tsx:288` gates the warning on the same
+boolean that gates the control. `store.exportStoredDoc(id)` rescues that document byte-perfectly — **the
+store is not the problem; the gap is entirely in what the surface offers.**
+
+**The diagnosis, stated once because it is the transferable part.** `rowDatesReadable` was never a wrong
+predicate — it is a correct answer to the question *"are this row's two strings dates?"*, and it is still
+the right answer to that question (Part 4 keeps it for exactly that). It was pressed into service as a
+**proxy** for a different question, *"will this document open?"*, and a proxy that covers an eighth of its
+target is a guarantee that reads true and measures false. **The fix is to stop proxying and start
+recording**, which is §0.6 one more time: a fact about a resource is valid at the moment, and in the place,
+the resource itself stated it. A parse failure is the document stating it. Nobody was writing it down.
+
+**Part 2 — ruled (a). The fourth fact exists, is written at the point of failure, and is never persisted.**
+
+`packages/client`'s `AppState` gains one field, beside `rescan` and library-scoped exactly as `rescan` is:
+
+```ts
+/**
+ * Documents a **real open attempt** failed to parse, in this session — §2.9 A-47.
+ *
+ * Written at the point of failure by `openTrip`/`browseTrip`, not inferred later and not
+ * discovered by a scheduled pass. Cleared for an id the moment that id opens successfully, and
+ * when the trip is deleted.
+ *
+ * **Not persisted, not exported, not in `history`** — it is an observation about the last
+ * attempt, the same posture `RescanState.unreadable` already has, for the same reason.
+ */
+openFailures: ReadonlyArray<{ id: string; message: string }>;
+```
+
+`initialState()` returns `openFailures: []`. **Every `set({ ...initialState(), library: …, rescan:
+state.rescan, … })` site in `store.ts` carries `openFailures: state.openFailures` too** — there are six of
+them today (`createTrip`, `adoptTrip`, `openTrip`, `closeTrip`, `deleteTrip`'s active branch, `importDoc`),
+and `reducer.ts`'s own comment already names them as the sites `rescan` is carried across. A carry that is
+missed is a fact silently lost on the next transition, so a test asserts survival across `closeTrip`.
+
+**One write site, three callers.** A module-local helper inside the store factory, and nothing else may
+assign the field:
+
+```ts
+/** §2.9 A-47 Part 2. The ONE place F-D is recorded; every open path routes its parse failure here. */
+function noteOpenFailure(id: string, err: unknown): void {
+  const message = (err as Error)?.message || String(err);
+  set({ ...state, openFailures: [...state.openFailures.filter((f) => f.id !== id), { id, message }] });
+}
+```
+
+- **`openTrip(id)`** — wrap its `core.fromJSON(stored.doc)` in `try/catch`; on throw, `noteOpenFailure(id,
+  err)` and then **rethrow the original error unchanged**. The `set` must happen **before** the rethrow, so
+  subscribers re-render and the card the user just tapped comes back carrying the chip and the rescue
+  control. `App.tsx`'s banner path and `Library.tsx`'s `openRow` catch are unmoved — the error object,
+  its class and its message are identical.
+- **`browseTrip(id)`** — the same treatment around its own `core.fromJSON`. It is a real open attempt on a
+  real document (§2.14's read-only browse) and it fails for exactly the same reason.
+- **`stored === null` is not recorded, in either.** An absent document has no bytes to rescue; that is
+  R26-3's `missing`, a different fact, and merging them is the error `runRescan` already declines to make.
+
+**Two clear sites, and one that deliberately does not exist.**
+
+- **`openTrip` success** — the `set` that installs the document also drops `id` from `openFailures`. This is
+  R26-2's lesson applied here: a record that has since been repaired (hand-edited, or restored over) must
+  stop being reported without anything having to remember that it was. `browseTrip`'s success `set` does
+  the same.
+- **`deleteTrip(id)`** — drops `id` in the same `set`. The row is gone, so the entry could never render,
+  but an observation about a record that no longer exists is not an observation.
+- **`importDoc` does not clear anything, and must not grow a clear.** It never overwrites an existing
+  document: on an id collision it mints a fresh id (`store.ts`'s collision loop), so it cannot repair an id
+  that is already in `openFailures`. A clear there would be code that can never fire.
+
+**Not persisted, and this is the load-bearing half of the ruling.** A durable *"this failed to parse once"*
+would be a **reader's inference** written into the record, and §0.6 forbids exactly that: the moment the
+document is repaired, the flag is a copy that has gone stale, and the Trips list renders *"this trip's file
+could not be read"* over a file that reads perfectly — **word for word the R26-2 defect** `startRescan`'s
+clearing comment exists to prevent. It would also need a `StoragePort` write on a read-failure path, a
+`TripSummaryRow` widening and a `SUMMARY_VERSION` bump, to buy a fact that survives a reload.
+
+*The honest alternative, named so nobody re-derives it:* a **writer**-stamped fact — the writer recording
+*"this parsed under core vN"* at the moment it writes — **would** be legitimate under §0.6, because the
+writer is the place the resource states it. It is not built, for a decisive reason: the entire affected
+population is documents written by builds **older than A-45**, which no future write stamp can reach. It
+buys nothing for the users who have this problem. Residue 1 records the trigger that would change that.
+
+**Nothing here opens a document that was not going to be opened anyway.** `openFailures` holds an id and a
+message, never a `Trip`. §4.2's *"exactly one trip document in memory at a time"* is untouched, and §8.4
+clause 3's prohibition on loading forty documents to render a list is untouched — **the list still parses
+zero documents.** A-46 Part 2's refusal of the boot-time full-library parse stands and is not reopened.
+
+**Part 3 — ruled (b). One shared predicate, asked once per row, over the union of three facts.**
+
+`packages/client`'s selectors gain, beside `rowDatesReadable`:
+
+```ts
+/**
+ * Is this row's document known-or-suspected **unopenable**? §2.9 A-47 Part 3.
+ *
+ * The union of three independent facts, computed in ONE place so no surface re-derives it:
+ *   - F-C/F-B  the row's own dates are not `IsoDate`s — `rowDatesReadable`, a *prediction*, no read;
+ *   - F-A      a `SUMMARY_VERSION` rescan opened it and `fromJSON` threw — `state.rescan.unreadable`;
+ *   - F-D      a real open attempt in this session failed — `state.openFailures` (A-47 Part 2).
+ *
+ * Pure, total, never throws, opens nothing. `true` means "something has established that this
+ * document will not open." `false` means "nothing here has established that it will not open" —
+ * it has never meant, and may never be rendered as, "it will open."
+ */
+export function rowUnopenable(
+  state: Pick<AppState, 'rescan' | 'openFailures'>,
+  row: { id: string; startDate: string; endDate: string },
+): boolean;
+```
+
+Body: `!rowDatesReadable(row) || state.rescan.unreadable.some((u) => u.id === row.id) ||
+state.openFailures.some((f) => f.id === row.id)`, and it may be nothing else. **It reads
+`state.rescan.unreadable` directly rather than `summaryScan(state).unreadable`**: that selector's only
+difference is pruning ids no longer in the library, and this predicate is asked about a row that is in the
+library by construction.
+
+**`rowDatesReadable` stays exported and stays exactly as A-46 Part 2 wrote it.** It is not folded in and it
+is not widened — it answers a narrower question that Part 4 still needs, and widening it would put a
+`state` argument on a pure two-string predicate and break the one-line body A-46 made the whole point of.
+`rowUnopenable` is where the composition lives, once. **The centralisation argument A-46 made for
+`rowDatesReadable` is upheld and extended, not re-fragmented**: after this there is exactly one expression
+in the codebase that decides whether a card is flagged, and it is this function.
+
+**A `boolean`, not a message.** A caller cannot ask *why*, deliberately: the card's sentence is A-46 Part 3
+clause 1's existing one, and giving each card its own parser string is new vocabulary on a surface this
+ruling is not redesigning. `state.openFailures`' `message` exists for a future ruling and for debugging,
+and no shipped surface reads it in I-8f.
+
+**Part 4 — ruled (c), and this is the question round 35 asked directly: two booleans, not one and not three.**
+
+The breaker found `unreadableRow` doing three jobs. **The correct split is two**, and the boundary is not
+where the finding implied:
+
+| job | gate | why |
+|---|---|---|
+| the meta line prints the two stored strings verbatim instead of `dateRangeLabel` | **`!rowDatesReadable(row)`** — narrow | this asks *"can these two strings be formatted?"*. A row with good dates and a bad `days[3].date` has a perfectly good range, and printing it raw would be a regression R34-4 does not ask for |
+| the `chip--warn` *"This trip's file could not be read"* + its hint | **`rowUnopenable(state, row)`** — wide | this is the whole-card statement |
+| the **"Save a copy"** rescue control | **`rowUnopenable(state, row)`** — wide | this is the affordance the chip's sentence implies exists |
+| **Delete's confirmation warning** | **`rowUnopenable(state, row)`** — wide, the **same** boolean as the control | see below |
+
+**Should Delete's warning and the export control be gated on two different booleans? No — and stated
+plainly because the finding asked.** They are two halves of one sentence: the warning's whole content is
+*"this stored copy is the only one — save a copy first if you want to keep it,"* which is a lie on a card
+that has no save control, and a save control with a silent Delete beside it is R34-2's near-BLOCKER
+unchanged. There is no input for which one should fire and the other should not. **What was wrong was not
+that they shared a boolean; it was that the boolean they shared was the narrow one.** One wide boolean,
+both consumers, and the meta line gets its own narrow one.
+
+`ScanNote`'s header count (`scan.unreadable.length`) **does not widen.** Its sentence — *"their details are
+the last ones we managed to work out"* — is true only of the rescan population, which kept an old summary;
+it is a statement about a pass, not about a card, and widening it would make it false. Stated so nobody
+helpfully unifies it.
+
+**Part 5 — ruled (d). R35-5: a precondition, not a flush.**
+
+`exportStoredDoc` returning superseded bytes for a document with a pending debounced write is real,
+measured, and **not reachable today** — `App.tsx` renders `Library` only when `state.doc` is `null`, and the
+debounce exists only for the open trip. The fix is **not** to flush: A-46 Part 4's fifth bullet is a
+property worth keeping, and making a **rescue** read queue behind the save chain would make the rescue fail
+in exactly the state the app is unhealthy (`persistence.status === 'conflict'`), which is the worst possible
+coupling for the one path that exists to get a user's bytes out.
+
+**Ruled: the precondition becomes mechanical, now, at one line.** `exportStoredDoc(id)` throws if
+`id === state.activeTripId`, as a programmer error:
+
+```
+exportStoredDoc: "<id>" is the active trip — use exportActive(); the stored bytes may be superseded
+by a pending write.
+```
+
+Why now rather than deferred with a trigger: I-8b is the trigger, it is the next increment, and a one-line
+precondition that a test pins is cheaper and more durable than a docstring promise a second surface will
+not read. It costs no behaviour anyone can reach, and by construction the active document **parsed**, so it
+has `exportActive()` and never needs the rescue path. A-46 Part 4's *"no flush, no `set()`, no transition"*
+survives intact — this adds a read of `state.activeTripId` and no more.
+
+**What stays deferred, with its trigger stated** (the A-15 `Stop.links` pattern): a *flushing* variant of
+`exportStoredDoc`, for a surface that must export a document it cannot open **while that document is
+open**. That is impossible by construction today — a document that is open, parsed — and it becomes
+possible only if some future phase can hold an unparsed document as the active one. Nobody should build it
+before then.
+
+**One consequence for QA:** `qa/r35-store.mjs` §A drives exactly the call this now refuses. It becomes an
+assertion of the refusal rather than a recorded FAIL; the builder updates it and says so.
+
+**Part 6 — ruled (e). R35-4: `cli.ts --today` refuses a calendar-invalid date. It does not echo a
+normalised one.**
+
+`node cli.ts stats --today 2026-13-45` prints *"travel statistics as of 2026-13-45"* over statistics
+computed for **2027-02-14**. `cli.ts`'s own comment left this open for me on the ground that a stricter rule
+reached for locally would be the second, narrower definition of the domain A-32 Part 5 refuses. **That
+objection was correct when it was written and A-46 Part 2 removed it**: `isIsoDate` is on §2.10's surface
+now, so the check is not a second definition — it is *the* definition, called by name, exactly as
+`rowDatesReadable` calls it.
+
+**Ruled: refuse.** `todayIsValid()` becomes `core.isIsoDate(today)` and the message becomes
+`--today must be a real calendar date in YYYY-MM-DD, got "2026-13-45"`, matching A-45's parser sentence so
+the two surfaces say the same thing about the same input. Exit code **2**, unchanged.
+
+Why refusal and not an echo: echoing *"as of 2027-02-14 (normalised from 2026-13-45)"* keeps a path where
+the CLI computes for a date the user did not type, and surfaces A-32 Part 4's normalisation as a
+user-facing concept — a repair-and-proceed, which is the class A-45 Part 3 and A-32 Part 5 both refuse.
+**No capability is lost**: every date `dayNumber` would normalise to is itself typeable, so refusing costs a
+developer one keystroke and buys back the property that the label and the numbers describe the same day.
+
+Precisely, for the builder:
+
+- The existing `try { core.weekdayOf(today) }` guard is **replaced**, not stacked: `isIsoDate` strictly
+  contains it (every shape-invalid string fails `isIsoDate` too), and two predicates where one will do is
+  the defect this whole chain has been treating. **Assert that containment rather than assume it** — one
+  test that `core.weekdayOf` does not throw at `0000-01-01` and `9999-12-31`, `IsoDate`'s domain boundaries
+  (§2.1 A-32). If either throws, keep the `try/catch` below the new check and report it as a finding.
+- The now-false comment block above `todayIsValid` (the paragraph beginning *"It still does not, and that
+  is a choice…"*) is deleted and replaced by a pointer to this Part.
+- **Check what depends on the old leniency before changing it**: grep `--today` across `cairn/test`,
+  `cairn/qa`, `cairn/tools` and `package.json`'s scripts. Any caller passing a calendar-invalid date is
+  either a test of the old behaviour (re-point it at the refusal) or a finding (report it).
+
+**Urgency: the ordinary MINOR queue, not a hotfix — but it rides I-8f rather than waiting.** It is a
+developer knob, there is no data at risk and no persistence tail, which is what separates it from A-45's
+stored-row population. It is also three lines and shares this ruling's reasoning, so splitting it into its
+own round would cost more in review than the change. It must land before the CLI is put in front of anyone
+who is not a developer.
+
+**Part 7 — what does not move.**
+
+- **`packages/core` is untouched — zero diff lines, not "no behaviour change."** No new symbol, no
+  re-export, **§2.10 stays at 77**. Everything A-47 needs is already on the surface.
+- **No `SUMMARY_VERSION` bump, no `schemaVersion` bump, no `StoragePort`/`FilePort`/`MapPort` change, no
+  new port method, no new reducer action, no new dependency.** `openFailures` is state carried by spread,
+  exactly as `retired` and `rescan` are; `reduce`/`undo`/`redo`/`setUi` carry it and nothing more.
+- **No repair path, no clamp, no plausibility floor.** A-45 Part 3, A-32 Part 5 and A-46 Part 6 all stand.
+- **`summaryScan` is not re-plumbed and F-A is not made to look complete.** A-46 Part 6's sentence is
+  upheld: the rescan's `unreadable` stays exactly what it is, an observation made during a rescan. A-47
+  adds a *sibling* fact rather than fixing that one — the true trigger is *"a real open attempt failed"*,
+  not *"a scheduled rescan happened to run,"* and forcing F-A to carry F-D would mean running rescans for
+  reasons that are not rescans.
+- **A-44 (`rowLifecycle`) is unchanged**, for A-46 Part 1's reason, which A-47 does not touch.
+- **A-46 Part 5 (the Map's two refusal arms) is unchanged**, and neither the Map nor the Profile gains a
+  flag from this ruling — A-46 Part 7 residue 2 still holds and still reopens with A-31 Part 4's `Issue`
+  channel, not before.
+- **R35-2 (the hint's contrast) and R35-3 (the card-height inflation) are builder findings and are not
+  ruled here.** One constraint on whoever fixes R35-3: if the hint sentence leaves the card, the rescue
+  control's own `title` must keep saying that the copy is not restorable — A-46 Part 4's third bullet is
+  about what the user is told, not about which element tells them.
+
+**Part 8 — residues, stated rather than solved.**
+
+1. **A fresh boot still shows a healthy card for an unopenable document, until something tries to open
+   it.** F-D is session-scoped. This is the honest floor: closing it needs either a full-library parse at
+   boot (refused, A-46 Part 2 and §8.4 clause 3) or a durable flag (refused, Part 2 — it is a reader's
+   inference and it goes stale). **Trigger to revisit:** a *writer*-stamped parse fact, if a phase ever
+   introduces one for its own reasons; it would be legitimate under §0.6 and it would help only documents
+   written after it existed, which is why it is not built for this population.
+2. **The guarantee A-47 makes, in one sentence, so the next reader is not misled the way this one was:**
+   *the rescue copy is reachable from the card whenever anything has established that the document will not
+   open — the row's own dates, a rescan, or a real open attempt in this session — and it is reachable
+   immediately after the tap that establishes it.* It is **not** *"reachable either way, always."*
+3. **The banner on that tap is still a raw `TripParseError` string.** R34-2's builder half, unruled here
+   for the third time and now with a consequence: after A-47 the card behind that banner has changed, so a
+   test that asserts the banner must also assert the card. ROADMAP I-8f's criteria do.
+4. **`openFailures` has no cap.** It is bounded by the number of distinct trips the user tapped in one
+   session, and each entry is two strings. A cap would be a mechanism with no measured need.
+5. **The chip says *"could not be read"* for the F-C prediction case, where nothing was read.** A-46 Part 3
+   clause 1 accepted that and A-47 keeps it: a second sentence for the predicted case is new vocabulary,
+   and the prediction is sound — a row's dates are minted from the document's own.
 
 ### 2.10 The public API surface
 

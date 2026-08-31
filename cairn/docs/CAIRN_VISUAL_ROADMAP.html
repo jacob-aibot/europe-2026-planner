@@ -319,10 +319,52 @@
 </style>
 </head>
 <body>
+<div class="callout" style="border-left:4px solid #ea580c;padding:.75rem 1rem;margin:1rem 0;background:#fff7ed">
+<p><strong>&#128992; I-8e HAS NOW BEEN ATTACKED, AND THE &ldquo;SAVE A COPY&rdquo; PROMISE TURNED
+OUT TO COVER AN EIGHTH OF WHAT IT CLAIMED &mdash; as of 2026-08-31</strong> (this block is the
+newest; it supersedes the I-8e block below on <em>&ldquo;verified&rdquo;</em> and adds one
+increment).</p>
+<p>The tester could not break anything I-8e was asked to build &mdash; the warning, the rescue copy,
+the Delete confirmation and the fixed &ldquo;Close this trip&rdquo; all held up under attack,
+<strong>zero blockers</strong>. What it broke was <strong>my own claim about how far they
+reach</strong>.</p>
+<p><strong>The problem, in one sentence:</strong> the card decides whether to warn you by looking at
+the trip&rsquo;s <strong>start and end dates</strong> &mdash; but a trip file has a date on
+<em>every day</em> and <em>every booking</em>, and on your Europe 2026 trip that is <strong>16 dates
+against 2</strong>. So a file with one bad day-date shows a <strong>completely healthy card</strong>:
+past-trip badge, full counts, a confident date range. Tap it and it correctly says the file cannot be
+read &mdash; and <em>even then</em> there is still no &ldquo;Save a copy&rdquo; button and Delete
+still gives you the ordinary &ldquo;this cannot be undone&rdquo; with no mention that the copy on your
+phone is the only one. That is roughly <strong>8 out of every 9</strong> unreadable files, not an edge
+case.</p>
+<p><strong>What is now scheduled to fix it (<code>I-8f</code>):</strong> stop guessing from the dates
+on the card, and <strong>write it down when the file actually fails to open</strong>. When you tap a
+trip and it refuses, the app records that it refused &mdash; so the card you come back to now carries
+the warning, the &ldquo;Save a copy&rdquo; button, and a Delete that says what Delete costs. Nothing
+extra is opened or scanned to do this: it only remembers what already happened. The one honest
+limitation stays and is written down: <strong>on a fresh start, a bad file still looks fine until
+something tries to open it</strong> &mdash; finding it any earlier would mean opening every trip on
+the device every time the list is drawn, which is exactly what the app is built not to do.</p>
+<p>Two smaller things ride along: <code>cli.ts --today 2026-13-45</code> used to print
+<em>&ldquo;statistics as of 2026-13-45&rdquo;</em> over numbers actually computed for
+<strong>2027-02-14</strong> &mdash; it now refuses the date instead of quietly correcting it; and the
+&ldquo;save the stored copy&rdquo; call now refuses to be pointed at the trip that is currently open,
+where it could hand back slightly stale bytes.</p>
+<p>Two cosmetic findings go to the builder, not into this: the new explanatory sentence under the
+warning is <strong>too pale to read</strong> (2.63:1, well under the floor), and <strong>one</strong>
+bad trip inflates <strong>every</strong> card in the list from 95&nbsp;px to 446&nbsp;px tall.</p>
+<p><strong>I-8e is built &#9989; &middot; verified &#9888;&#65039; (attacked, 0 blockers, 1 design gap
+found) &middot; shippable &#10060;</strong>, and <strong>I-8f is designed &#9989; &middot; built
+&#10060;</strong>. I-8b (the Profile screen) now waits on <strong>I-8f</strong>.</p>
+<p><strong>Also worth saying plainly: I-8d has still never been attacked.</strong> It shipped after
+the last tester round, and the two rounds since were both aimed at other increments. It owes its own
+round before 2b can ship.</p>
+</div>
+
 <div class="callout" style="border-left:4px solid #ca8a04;padding:.75rem 1rem;margin:1rem 0;background:#fefce8">
 <p><strong>&#128993; I-8e IS BUILT, AND I-8c&rsquo;S BROKEN &ldquo;CLOSE THIS TRIP&rdquo; IS FIXED
-&mdash; as of 2026-08-31</strong> (this block is the newest; it supersedes every &ldquo;still owed
-before I-8b&rdquo; line below).</p>
+&mdash; as of 2026-08-31</strong> (this block is superseded on <em>&ldquo;verified&rdquo;</em> and on
+<em>&ldquo;I-8b is now UNBLOCKED&rdquo;</em> by the block above).</p>
 <p><strong>A trip Cairn cannot open now says so on the card, before you tap it &mdash; and you can
 save a copy of it instead of choosing between a dead screen and Delete.</strong> Three things
 landed:</p>
