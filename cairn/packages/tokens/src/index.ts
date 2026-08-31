@@ -51,6 +51,8 @@ export const STATUS_BADGE: Record<string, { label: string; color: string }> = {
 
 export const SEVERITY_COLOR: Record<string, string> = {
   blocker: '#a8382f',
-  warning: '#b3701e',
+  // QA R34-7: was `#b3701e` (4.00:1 on white at 11 px, under WCAG 1.4.3). Same value as
+  // `--warn` in `apps/web/src/styles.css`, which is where the reasoning lives.
+  warning: '#8f5816',
   note: '#5c6570',
 };

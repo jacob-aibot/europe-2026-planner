@@ -77,3 +77,25 @@ export function dateRangeLabel(
   if (trip.datePrecision === 'month') return `${MONTHS[Number(m) - 1] ?? m} ${y}`;
   return `${trip.startDate} → ${trip.endDate}`;
 }
+
+/**
+ * What a row whose dates are **not dates** says about them: the two strings that are actually
+ * in the user's file, joined, and nothing else — ARCHITECTURE §2.9 **A-46** Part 3 clause 2,
+ * ROADMAP Phase 2 **I-8e**, QA **R34-4**. Pure.
+ *
+ * `dateRangeLabel` above is for a range we can read. Handed `'not-a-date'` it does not throw —
+ * it is a string split — but at month precision it prints `MONTHS[NaN - 1] ?? 'not'`, so round
+ * 34 measured a card reading **`a not`** directly under a chip saying the dates could not be
+ * read. Not throwing is not the same as not stating something false.
+ *
+ * So: **no month-name lookup and no `datePrecision` branch.** A precision is a claim about how
+ * sure the user was, and it cannot be applied to a value we have just said we cannot read. The
+ * user gets shown what is in their file, which is the only true thing we have.
+ *
+ * This is a separate function rather than an inline `{row.startDate} → {row.endDate}` for a
+ * reason `test/views.test.ts` enforces: QA **P2-6**'s ceiling forbids that shape in a view, so
+ * that the *readable* branch can never quietly grow one back.
+ */
+export function storedDatesLabel(trip: { startDate: string; endDate: string }): string {
+  return `${trip.startDate} → ${trip.endDate}`;
+}

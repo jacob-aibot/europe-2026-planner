@@ -96,8 +96,14 @@ const TABS: TabSpec[] = [
  * It is deliberately not a general-purpose retry loop: nothing here re-runs a store operation
  * or guesses at what went wrong.
  */
-/** A control the shell offers a failed tab. `hint` is the same act named mid-sentence. */
-type Recovery = { label: string; hint: string; run: () => void };
+/**
+ * A control the shell offers a failed tab. `hint` is the same act named mid-sentence.
+ *
+ * **`run` may be asynchronous, and the boundary waits for it — QA R34-1.** Closing the open
+ * trip is a store call, and the banner may not be cleared until it has actually landed; see
+ * `TabBoundary.render` below for what went wrong when it was not.
+ */
+type Recovery = { label: string; hint: string; run: () => void | Promise<unknown> };
 
 class TabBoundary extends Component<
   { label: string; recovery: Recovery; children: ReactNode },
@@ -132,8 +138,27 @@ class TabBoundary extends Component<
         </button>
         <button
           onClick={() => {
-            recovery.run();
-            this.setState({ message: null });
+            /*
+              **QA R34-1 — the ordering, which is the whole of this handler.**
+              This used to be `recovery.run(); this.setState({ message: null })`. `run` fires an
+              ASYNC `store.closeTrip()`; clearing `message` in the same statement list made React
+              re-render the children immediately, while `state.doc` was still the open trip
+              because the promise had not settled. `TripView` threw again,
+              `getDerivedStateFromError` re-latched — and when `closeTrip` finally landed there
+              was nothing left to clear `message`. Round 34 measured the result: banner still up,
+              `.tripcard` count 0, and one further unassisted click on "Try again" recovering
+              completely, which is what proved it was ordering rather than the recovery.
+
+              So the reset waits for the act to take effect, and the boundary is never asked to
+              re-render the still-broken subtree.
+
+              A rejection clears too, deliberately: the store reports its own failure through the
+              shell's error banner (`run` in `App` catches into `setError`), and leaving a second
+              banner latched here would be the dead end BLD-3 exists to remove. This is still not
+              a retry loop — nothing here re-runs a store operation or guesses at a repair.
+            */
+            const clear = () => this.setState({ message: null });
+            void Promise.resolve(recovery.run()).then(clear, clear);
           }}
           aria-label={recovery.label}
         >
@@ -214,11 +239,15 @@ export function App() {
   // the cause. With no trip open the shell has nothing left to put down, so the honest
   // offer is re-reading storage from scratch, which is what a reload is. Neither guesses at
   // a repair: §2.1 and CLAUDE.md both say a silently corrected document is a guessed one.
+  //
+  // **The close branch returns its promise** (QA R34-1). The boundary clears its banner only
+  // once that promise settles; handing back `undefined` here would put the old bug back,
+  // because the banner would clear while `state.doc` was still the trip that threw.
   const recovery: Recovery = state.doc
     ? {
         label: 'Close this trip',
         hint: 'close the trip you have open and go back to the library',
-        run: () => { setTab('trips'); run(store.closeTrip()); },
+        run: () => { setTab('trips'); return run(store.closeTrip()); },
       }
     : {
         label: 'Reload Cairn',

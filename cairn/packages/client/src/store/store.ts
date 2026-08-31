@@ -119,6 +119,18 @@ export type StoreOptions = {
 
 export type Store = ReturnType<typeof createStore>;
 
+/**
+ * A trip title as a download filename stem. Pure; never throws.
+ *
+ * One implementation because there are now two export paths — `exportActive` (a backup of the
+ * open document) and `exportStoredDoc` (§2.9 **A-46** Part 4's rescue copy of a document that
+ * will not open) — and the **suffix** is what distinguishes them, deliberately. Two hand-rolled
+ * slugs would eventually differ in the part that is supposed to be the same.
+ */
+function slugTitle(title: string): string {
+  return title.replace(/[^\w-]+/g, '-').toLowerCase();
+}
+
 /** Creates a store. Impure: it owns state, a subscriber list and a debounce timer. */
 export function createStore(opts: StoreOptions) {
   const { ports } = opts;
@@ -1186,7 +1198,56 @@ export function createStore(opts: StoreOptions) {
     async exportActive(): Promise<string> {
       if (!state.doc) throw new Error('exportActive: no active trip');
       const text = core.toJSON(state.doc);
-      const name = `${state.doc.title.replace(/[^\w-]+/g, '-').toLowerCase()}.cairn.json`;
+      const name = `${slugTitle(state.doc.title)}.cairn.json`;
+      if (ports.file) await ports.file.exportDoc(name, new TextEncoder().encode(text));
+      return text;
+    },
+
+    /**
+     * The stored document for `id`, byte-for-byte, with **no parse** — ARCHITECTURE §2.9
+     * **A-46** Part 4, ROADMAP Phase 2 **I-8e**. This is the export path for a trip that
+     * cannot be **opened**.
+     *
+     * The gap it closes (QA **R34-2**): `exportActive` requires `openTrip`, and `openTrip` is
+     * exactly what §2.9 **A-45** made throw for a document carrying a calendar-invalid date —
+     * so the only affordance left on that card was Delete, with the bytes sitting intact in
+     * storage. *"Deletion and export as a designed cascade"* is public-grade from day one, and
+     * an export that works only for documents we can already read is not that cascade.
+     *
+     * Five clauses, and they are the whole of it:
+     *
+     *   - **`ports.storage.load(id)` then `ports.file.exportDoc`, both of which already exist.**
+     *     No `StoragePort` change, no `FilePort` change, no new port method. As with
+     *     `exportActive`, the text is returned even when `ports.file` is absent, which is what
+     *     makes this checkable in bare Node against `ports/memory.ts`.
+     *   - **The bytes are `stored.doc` verbatim.** No re-serialisation, no normalisation, no
+     *     repair, no envelope, no `StorageVersion` (§2.2a rule 4 — an export carries no storage
+     *     state). Any transformation would be a guess about a document we have just said we
+     *     cannot read, and *"a silently corrected date is a guessed date"* (A-45 Part 3).
+     *   - **The filename is deliberately not a backup's**: `.cairn-unreadable.json`, not
+     *     `.cairn.json`. Restoring it is guaranteed to be refused with the same message, and
+     *     handing the user something that looks restorable would be the promise broken one
+     *     screen later.
+     *   - **No ownership check, stated rather than skipped.** `importDoc` already refuses a
+     *     foreign `ownerId`, so Phase 1 storage holds only this user's documents — and the check
+     *     cannot be performed anyway, because parsing is the thing that fails. **This is safe
+     *     only while storage is single-owner (`LOCAL_OWNER`) and must be revisited when Phase 3
+     *     accounts can put another person's document on the device.**
+     *   - **It touches no state:** no flush, no `set()`, no transition, no `activeTripId`. It is
+     *     a read, so it does not queue behind the save chain and cannot disturb an open trip.
+     *
+     * The title for the filename comes from the **library row**, not from the document: reading
+     * it out of the document would be a parse. A row that is not in the library falls back to
+     * the id.
+     *
+     * @throws {Error} if nothing is stored under `id`.
+     */
+    async exportStoredDoc(id: string): Promise<string> {
+      const stored = await ports.storage.load(id);
+      if (!stored) throw new Error(`exportStoredDoc: nothing is stored under ${JSON.stringify(id)}`);
+      const text = stored.doc;
+      const title = state.library.find((r) => r.id === id)?.title ?? id;
+      const name = `${slugTitle(title)}.cairn-unreadable.json`;
       if (ports.file) await ports.file.exportDoc(name, new TextEncoder().encode(text));
       return text;
     },

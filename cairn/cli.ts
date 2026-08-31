@@ -43,15 +43,27 @@ const today = flag('today') ?? FIXTURE_TODAY;
  * **The check is core's own, reached through `weekdayOf`, and not a regex of its own.** §2.1
  * **A-32** Part 5: there is one definition of `IsoDate`'s shape and a caller refuses against
  * *that*. `weekdayOf` is the narrowest thing on §2.10's surface whose only precondition is
- * `parseIsoDate`, and `isIsoDate` — the calendar half — is deliberately **off** that surface,
- * which ROADMAP criterion E ceiling (1) forbids this file reaching past the index for
- * (BUILD-NOTES **KD-66**).
+ * `parseIsoDate` (BUILD-NOTES **KD-66**; ROADMAP criterion E ceiling (1) forbids this file
+ * reaching past the index).
  *
  * So this refuses what is not `YYYY-MM-DD` and **accepts a shape-valid, calendar-invalid date**
- * such as `2026-13-45`, which rolls over to 2027-02-14 exactly as it does everywhere else in
- * this system: `fromJSON` accepts one in a stored document and `validateTrip` *reports* it
- * rather than refusing it (§2.9 A-20, §2.1 A-32 Part 4). A stricter rule here would be a second,
- * narrower definition of the domain living in a surface — the thing A-32 Part 5 refuses.
+ * such as `2026-13-45`, which rolls over to 2027-02-14 exactly as `dayNumber` does everywhere
+ * else in this system (§2.1 A-32 Part 4).
+ *
+ * **Corrected at revision 31 (QA R34-6), on both halves.** This paragraph used to justify that
+ * acceptance with *"`fromJSON` accepts one in a stored document"* — §2.9 **A-45** made that
+ * false; `fromJSON` now refuses a calendar-invalid date at all five sites. And it said
+ * `isIsoDate` is *"deliberately off §2.10's surface"* — §2.9 **A-46** Part 2 put it on
+ * (76 → 77), so this file *could* now refuse `--today 2026-02-30`.
+ *
+ * It still does not, and that is a choice rather than an oversight: A-46 rules on the Trips
+ * list and explicitly moves nothing else, and `--today` is a *developer* knob whose whole job
+ * is to drive the clock to an arbitrary point — including one `dayNumber` normalises. What is
+ * true today, verifiably: `node cli.ts stats --today 2026-02-30` prints *"travel statistics as
+ * of 2026-02-30"*. **Whether that should tighten now that `isIsoDate` is reachable is an open
+ * question for the architect** (QA R34-6's second half), not something to settle here — a
+ * stricter rule reached for locally would be the second, narrower definition of the domain
+ * A-32 Part 5 refuses.
  */
 function todayIsValid(): boolean {
   try {

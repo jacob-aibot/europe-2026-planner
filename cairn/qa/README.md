@@ -74,6 +74,56 @@ reports 8 (R34-1, R34-2, R34-4). `r34-a44.mjs` is ALL CLEAR by design — R34-5 
 `note` lines there, because both are facts about the design rather than broken expectations.
 Read `../docs/QA-FINDINGS.md`'s round-34 note before assuming any of the three is broken.
 
+**After I-8e, `r34-render.mjs` reports 5, not 8, and none of the five is a live defect.** The
+two §A failures are gone — that was R34-1 and it is fixed. What remains, and why each is
+expected rather than owed:
+
+- **§F, 2 failures.** §F rewrites the stored **document**'s `startDate` and leaves the summary
+  **row** alone, so the two records disagree — a state no shipped write path produces
+  (`core.tripSummary` copies `trip.startDate` straight into the row). A-46's predicate is
+  `rowDatesReadable(row)` **by signature**, so it reads the row and cannot see a doc-only fault;
+  A-46 Part 3 states that incompleteness in as many words (*"a row can be readable while its
+  document is not; only opening it finds that"*). `i8e-render.mjs` §B plants **both** records —
+  which is what a pre-A-45 build actually wrote — and the card is flagged and the copy saved;
+  §B2 plants §F's doc-only version deliberately and asserts the unflagged card **plus** the
+  refusal-with-a-path on tap. §F's third failure (*"a sentence, not a raw parser path"*) now
+  passes.
+- **§G, 3 failures.** §G asserts the card's range line matches `/^(—|not recorded|unknown|dates
+  could not)/i` — the breaker's guess at the fix, written before the ruling. §2.9 **A-46** Part 3
+  clause 2 ruled the opposite: print the two stored strings **verbatim**, joined, with no
+  month-name lookup and no `datePrecision` branch, because *"the fix is to show the user the two
+  strings that are actually in their file."* `not-a-date → 2019-05-08` is the ruled behaviour.
+  §G's expectation is superseded, not unmet.
+
+Neither file was edited to make it green; the round-34 probes are the record of what round 34
+measured.
+
+**I-8e** (§2.9 **A-46**, plus R34-1's ordering fix) has one script, `i8e-render.mjs`:
+
+```bash
+# needs npm run web:build && npm run serve in another shell
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/i8e-render.mjs   # 8 sections; ALL CLEAR or exit 1
+```
+
+**A** R34-1 — *"Close this trip"* recovers in **one** click with the fault still armed, and
+*"Try again"* still re-raises with the cause present and clears without it; **B** R34-2's
+population on rendered output (both records planted); **B1** R34-4 at **month/year** precision,
+which is the only place the old label was both plausible and false (*"February 2026"* for
+`2026-02-30`); **B2** the stated incompleteness, asserted rather than hidden; **C** the rescue
+export through a **real download** — byte equality against the stored bytes, raw-JSON parseable,
+`core.fromJSON` still refusing, `.cairn-unreadable.json`; **D** a healthy library claims nothing;
+**E** the warn chip's contrast in both schemes (R34-7); **F** Delete's confirmation on both row
+kinds; **G** I-8c criterion 3a and 3b, confirmed rather than changed.
+
+The injected faults each measure red, and are recorded here so nobody re-derives them: the
+`rowLifecycle(...) === null` predicate → §B and §B1 (`unreadable` back to 0, and the meta line
+back to *"February 2026"*); the pre-fix `recovery.run(); this.setState(...)` ordering → §A
+(banner up, `cards=0` — round 34 exactly); `LifecycleChip` calling `core.lifecycle` → §G's 3a
+(0 cards, tab down) and **not** 3b, which is A-46 Part 5's point. Two more are plain-Node:
+inlining a calendar in `rowDatesReadable` → `packages/client/test/row-dates-readable.test.ts`
+(three ways: totality, the differential against `core.isIsoDate`, and the source grep); routing
+the export through `fromJSON`/`toJSON` → 8 of 9 in `packages/client/test/export-stored-doc.test.ts`.
+
 Browser probes need `npm run web:build && npm run serve` in one shell first, then:
 
 ```bash

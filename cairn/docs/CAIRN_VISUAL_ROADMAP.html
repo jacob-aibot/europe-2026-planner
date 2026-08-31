@@ -320,9 +320,51 @@
 </head>
 <body>
 <div class="callout" style="border-left:4px solid #ca8a04;padding:.75rem 1rem;margin:1rem 0;background:#fefce8">
+<p><strong>&#128993; I-8e IS BUILT, AND I-8c&rsquo;S BROKEN &ldquo;CLOSE THIS TRIP&rdquo; IS FIXED
+&mdash; as of 2026-08-31</strong> (this block is the newest; it supersedes every &ldquo;still owed
+before I-8b&rdquo; line below).</p>
+<p><strong>A trip Cairn cannot open now says so on the card, before you tap it &mdash; and you can
+save a copy of it instead of choosing between a dead screen and Delete.</strong> Three things
+landed:</p>
+<ol>
+<li><strong>The card tells the truth.</strong> A trip whose stored dates are not real dates &mdash;
+<code>2026-02-30</code>, <code>2026-13-01</code> &mdash; used to render as a completely healthy card:
+a <code>PAST TRIP</code> badge, full counts, a confident date range. Tapping it produced a parser
+error and nothing opened. It now carries the same <em>&ldquo;This trip&rsquo;s file could not be
+read&rdquo;</em> warning the app already used elsewhere, and the date line shows the two strings that
+are <strong>actually in the file</strong> instead of a plausible-looking guess. (It used to print
+<em>&ldquo;February 2026&rdquo;</em> for a trip whose file says <code>2026-02-30</code>, which is a
+month that date does not exist in.)</li>
+<li><strong>&ldquo;Save a copy.&rdquo;</strong> A new control, on that card only, that writes the
+stored file out exactly as it is &mdash; no repair, no rewriting, byte for byte. It is named
+<code>&hellip;cairn-unreadable.json</code> rather than <code>&hellip;cairn.json</code> and the card
+says plainly that Cairn cannot re-read it: it is a copy to <strong>keep or send on</strong>, not a
+backup to restore. Verified end to end in a real browser download.</li>
+<li><strong>Delete now says what Delete costs.</strong> On such a card the confirmation says the copy
+on this device is the only one that will exist afterwards, and points at &ldquo;Save a copy&rdquo;
+first. Before this, Delete was the <em>only</em> thing that card offered, with no warning at
+all.</li>
+</ol>
+<p><strong>And &ldquo;Close this trip&rdquo; now works.</strong> The one recovery the app offers when
+a screen fails closed the trip but left the error banner up and the library blank &mdash; you had to
+click a second button to actually get back. One click now does what it says, verified in Chromium
+with the fault still armed.</p>
+<p>Two smaller repairs went with it: the warning colour was too pale to read at chip size (it now
+clears the accessibility contrast floor in both light and dark), and the message you get when a trip
+refuses to open is a sentence now rather than a raw parser path.</p>
+<p><strong>What this does <em>not</em> claim, deliberately:</strong> a trip can still be listed as
+fine and refuse to open, because the only way to find some faults is to open the file. The card says
+<em>&ldquo;could not be read&rdquo;</em> when it knows; it never says <em>&ldquo;everything else here
+will open.&rdquo;</em></p>
+<p><strong>I-8e is built &#9989; &middot; verified &#10060; (not yet attacked) &middot; shippable
+&#10060;. I-8b (the Profile screen) is now UNBLOCKED</strong> &mdash; I-8c, I-8d and I-8e have all
+landed, which was its whole blocker list. Both I-8d and I-8e still owe a breaker round before 2b can
+ship.</p>
+</div>
+<div class="callout" style="border-left:4px solid #ca8a04;padding:.75rem 1rem;margin:1rem 0;background:#fefce8">
 <p><strong>&#128993; I-8d IS BUILT &mdash; the map is now a map of your trip, not of one country
-&mdash; as of 2026-08-31</strong> (this block is the newest; it supersedes the ordering note in the
-I-8c blocks below on what is still owed). The lifetime map used to open on a 194&deg; frame because
+&mdash; as of 2026-08-31</strong> (superseded on &ldquo;what is still owed&rdquo; by the block
+above). The lifetime map used to open on a 194&deg; frame because
 one flight stop in the United States sat 7,439&nbsp;km from the rest of the trip, squeezing all six
 European countries into 149&nbsp;px of a 958&nbsp;px figure. It now frames <strong>the main
 geographic cluster</strong>, with the distant country <strong>beside it in its own small frame that
@@ -346,8 +388,8 @@ support, and saying nothing is more honest than saying that.</p>
 no zoom, no threshold slider: a control that exists mostly to repair a bad default is a confession,
 and the default is now right.</p>
 <p><strong>I-8d is built &#9989; &middot; verified &#10060; (not yet attacked) &middot; shippable
-&#10060;.</strong> Still owed before I-8b (the Profile screen): <strong>I-8c&rsquo;s two
-fixes</strong> and <strong>I-8e</strong>.</p>
+&#10060;.</strong> <em>(Superseded: what was still owed before I-8b &mdash; I-8c&rsquo;s two fixes
+and I-8e &mdash; has now landed. See the block above.)</em></p>
 </div>
 
 <div class="callout" style="border-left:4px solid #c2410c;padding:.75rem 1rem;margin:1rem 0;background:#fdf0e8">

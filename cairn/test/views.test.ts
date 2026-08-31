@@ -584,3 +584,176 @@ test('I-8c / BLD-3: the tab boundary can be reset and offers a recovery outside 
   // …and the shell actually supplies one, per rendered tab.
   assert.match(src, /<TabBoundary[\s\S]{0,200}recovery=\{/, 'App renders TabBoundary without a recovery');
 });
+
+// ---------------------------------------------------------------------------
+// ROADMAP Phase 2 I-8e — the row that says it cannot be read, and the trip you can save but
+// not open (ARCHITECTURE §2.9 **A-46**), plus QA **R34-1**'s ordering fix in the boundary.
+//
+// Same instrument and same caveat as the I-8c block above: `apps/web` cannot be imported from
+// here, so these are source-level floors under criteria whose real oracle is rendered output,
+// in `qa/i8e-render.mjs`.
+
+/**
+ * **A-46 Part 3: one boolean per row, and it is the core predicate — not `rowLifecycle`.**
+ *
+ * The routed proposal was *"treat `rowLifecycle() === null` as the unreadable signal"*, which
+ * A-46 Part 1 measured as right in shape and **wrong in predicate**: it is strictly weaker
+ * than what `fromJSON` now refuses, and every row in QA R34-2's table (`2026-02-30`,
+ * `2026-13-01`, `0000-00-00`) still renders as a healthy card under it. This is the injected
+ * fault I-8e names — *"the fix a reasonable builder would have written"* — so it is asserted
+ * against here, at the one place a builder would write it.
+ */
+test('I-8e / A-46: the card\'s unreadable signal is `scan.unreadable || !rowDatesReadable(row)`', () => {
+  const src = stripComments(readFileSync(resolve(VIEWS, 'Library.tsx'), 'utf8'));
+  assert.match(
+    src,
+    /import\s*\{[^}]*\browDatesReadable\b[^}]*\}\s*from\s*'@cairn\/client'/,
+    'rowDatesReadable must come from @cairn/client — a hand-rolled calendar in a view is the defect A-46 closes',
+  );
+  assert.match(
+    src,
+    /unreadableRow\s*=\s*unreadable\.has\(row\.id\)\s*\|\|\s*!rowDatesReadable\(row\)/,
+    'the row boolean is not A-46 Part 3\'s: both sources, one signal',
+  );
+  // The two wrong predicates, named so the fault is red rather than merely absent.
+  assert.ok(
+    !/unreadableRow\s*=[^;]*rowLifecycle\(/.test(src),
+    'the card signal is rowLifecycle-based — A-46 Part 1: `2026-02-30` classifies as `completed` and the chip goes silent',
+  );
+  assert.ok(
+    !/isIsoDate\s*\(/.test(src),
+    'the view calls isIsoDate itself instead of the client selector — the predicate is asked once, in one place',
+  );
+});
+
+/**
+ * **A-46 Part 3 clause 2 / QA R34-4: the meta line stops stating a range it cannot read.**
+ *
+ * Round 34 measured the card printing `not-a-date → 2019-05-08`, or — for month/year
+ * precision — the plausible-looking nonsense `a not` and `not`, from `MONTHS[NaN-1] ?? 'not'`,
+ * directly under a chip saying the dates could not be read. A-44's scope note said
+ * *"`dateRangeLabel` is a string split and cannot throw (checked)"* — true, and checked for
+ * the wrong property: not throwing is not the same as not stating something false.
+ *
+ * So on an unreadable row the card does **not** call `dateRangeLabel`; it prints the two
+ * stored strings verbatim, with no month-name lookup and no `datePrecision` branch. That is
+ * `storedDatesLabel`, which exists so this file's P2-6 ceiling above stays a ceiling: the raw
+ * `{row.startDate} → {row.endDate}` shape it forbids never appears in a view.
+ */
+test('I-8e / A-46 / R34-4: an unreadable row prints its stored strings, a readable one prints the honest label', () => {
+  const src = stripComments(readFileSync(resolve(VIEWS, 'Library.tsx'), 'utf8'));
+  assert.match(
+    src,
+    /unreadableRow\s*\?\s*storedDatesLabel\(row\)\s*:\s*dateRangeLabel\(row\)/,
+    'the meta line does not branch A-46 Part 3 clause 2\'s way',
+  );
+  const fmt = stripComments(readFileSync(resolve(CAIRN, 'apps/web/src/format.ts'), 'utf8'));
+  const fn = /export function storedDatesLabel\(([\s\S]*?)\n}\n/.exec(fmt);
+  assert.ok(fn, 'format.ts has no storedDatesLabel');
+  for (const banned of [/MONTHS/, /datePrecision/, /split\(/]) {
+    assert.ok(!banned.test(fn[1]), `storedDatesLabel matches ${banned} — it must print what is stored, nothing else`);
+  }
+});
+
+/**
+ * **A-46 Part 4: a trip that cannot be opened gets an export, on that branch only.**
+ *
+ * R34-2 measured a card whose only affordance was Delete, with the bytes intact in IndexedDB.
+ * A readable trip already has an export (open → Export), and putting a second one on every
+ * card is a Trips-list redesign A-46 does not make — so the control is gated on the same
+ * boolean as the chip, and it goes through `store.exportStoredDoc`, which does not parse.
+ */
+test('I-8e / A-46 Part 4: the rescue export is offered on the unreadable branch and nowhere else', () => {
+  const src = stripComments(readFileSync(resolve(VIEWS, 'Library.tsx'), 'utf8'));
+  assert.match(src, /store\.exportStoredDoc\(row\.id\)/, 'the card offers no way to save an unopenable trip');
+  assert.match(
+    src,
+    /unreadableRow\s*&&[\s\S]{0,600}store\.exportStoredDoc/,
+    'the rescue export is not gated on the unreadable branch',
+  );
+  assert.ok(
+    !/store\.exportActive\(/.test(src),
+    'the Library reaches for exportActive, which requires openTrip — the exact thing that fails here',
+  );
+});
+
+/**
+ * **A-46 Part 4: it is a rescue copy, not a backup, and the control says so.** Handing the
+ * user something that looks like a restorable backup, when restore is guaranteed to refuse
+ * it, would be the promise broken one screen later.
+ */
+test('I-8e / A-46 Part 4: the control says Cairn cannot re-read the file', () => {
+  const src = stripComments(readFileSync(resolve(VIEWS, 'Library.tsx'), 'utf8'));
+  assert.match(src, /Save a copy/, 'the rescue control is not named');
+  assert.match(src, /cannot re-?read/i, 'nothing on the card says the copy is not restorable');
+});
+
+/**
+ * **A-46 Part 3 clause 4: Delete's confirmation says what Delete costs.** *"Nothing you type
+ * ever silently vanishes"*, applied to the one screen where the only affordance was
+ * destructive. R34-2 was one step from BLOCKER for exactly this: no warning before the Delete
+ * that destroys the only copy.
+ */
+test('I-8e / A-46 Part 3: Delete on an unreadable row says the stored copy is the only one', () => {
+  const src = stripComments(readFileSync(resolve(VIEWS, 'Library.tsx'), 'utf8'));
+  assert.match(src, /if \(confirm\(/, 'Library.tsx no longer confirms a delete at all');
+  const ask = /const ask =([\s\S]{0,900}?);\n/.exec(src);
+  assert.ok(ask, 'the delete confirmation is no longer built from a branch this test can read');
+  assert.match(ask[1], /unreadableRow\s*\?/, 'the confirmation does not distinguish the unreadable case');
+  assert.match(ask[1], /only one/i, 'the confirmation does not say the stored copy is the only one');
+  assert.match(ask[1], /save a copy first/i, 'the confirmation does not point at the rescue export');
+  assert.match(ask[1], /cannot be undone/, 'the ordinary confirmation lost its own warning');
+});
+
+/**
+ * **QA R34-2, the builder half.** The banner on tapping such a row was the raw
+ * `TripParseError` string — `expected a real calendar date in YYYY-MM-DD (at $.startDate)` —
+ * as user-facing prose. `onImport` already does the right thing one control away (*"That file
+ * is not a Cairn trip: …"*), so this is the same shape applied to `openTrip`: a sentence
+ * first, the parser's path kept after it because it is the only thing that says *where*.
+ */
+test('R34-2 (builder half): opening a trip that will not parse reports a sentence, not a bare JSON path', () => {
+  const src = stripComments(readFileSync(resolve(VIEWS, 'Library.tsx'), 'utf8'));
+  assert.ok(
+    !/onClick=\{\(\)\s*=>\s*run\(store\.openTrip\(row\.id\)\)\}/.test(src),
+    'the card still routes openTrip through the bare `run`, so a TripParseError reaches the banner verbatim',
+  );
+  assert.match(src, /could not be (read|opened)/i, 'no sentence wraps the parser message');
+});
+
+/**
+ * **QA R34-1 — BLD-3's *"Close this trip"* recovery must actually recover.**
+ *
+ * The bug was ordering, not the recovery: `recovery.run()` fires the **async**
+ * `store.closeTrip()` and the boundary cleared `message` **synchronously in the same
+ * handler**. React re-rendered the children immediately, `state.doc` was still the open trip
+ * because the promise had not settled, `TripView` threw again, `getDerivedStateFromError`
+ * re-latched — and when `closeTrip` finally landed there was nothing left to clear `message`.
+ * Round 34 measured the banner still up, `.tripcard` count `0`, and a further unassisted
+ * *"Try again"* recovering completely.
+ *
+ * So the reset waits for the act to take effect. The mechanical floor is that the boundary
+ * does not call `setState` on the same statement list as `recovery.run()` without awaiting it;
+ * the rendered oracle is `qa/i8e-render.mjs` §A, which clicks the button.
+ */
+test('R34-1: the boundary clears its banner only after the recovery has actually landed', () => {
+  const src = stripComments(readFileSync(resolve(CAIRN, 'apps/web/src/App.tsx'), 'utf8'));
+  const cls = /class TabBoundary([\s\S]*?)\n}\n/.exec(src);
+  assert.ok(cls, 'App.tsx has no TabBoundary class');
+  const body = cls[1];
+  // The shipped bug, verbatim: run() and the clear in one synchronous statement list.
+  assert.ok(
+    !/recovery\.run\(\);\s*this\.setState\(\{\s*message:\s*null\s*\}\)/.test(body.replace(/\s+/g, ' ')),
+    'the boundary still clears `message` synchronously after an async recovery — R34-1',
+  );
+  assert.match(body, /Promise\.resolve\(/, 'nothing in the boundary waits for the recovery to settle');
+  // …and the recovery's own type has to permit that, or the wait is unobservable.
+  assert.match(
+    src,
+    /type Recovery = \{[^}]*run:\s*\(\)\s*=>\s*[^;}]*Promise/,
+    'Recovery.run cannot report when it has landed — the boundary has nothing to await',
+  );
+  // The async recovery actually returns its promise rather than firing and forgetting.
+  assert.match(src, /run:\s*\(\)\s*=>\s*\{[^}]*return run\(store\.closeTrip\(\)\)/,
+    '"Close this trip" does not hand its promise back to the boundary');
+});

@@ -32,10 +32,26 @@ const ERA_DAYS = 146097;      // days in a 400-year Gregorian era
 /**
  * Days since 1970-01-01 for a civil (y, m, d), proleptic Gregorian. Pure, no `Date`.
  *
- * The first two lines normalise an out-of-range month **exactly as `Date.UTC` does**, because
- * `fromJSON` accepts a shape-valid, calendar-invalid date (`2026-13-45`) and `validateTrip`
- * *reports* it rather than refusing it (§2.9 A-20) — so this function must stay total on one, and
- * must not change the day it has always answered with.
+ * The first two lines normalise an out-of-range month **exactly as `Date.UTC` does**, so this
+ * function stays total on a shape-valid, calendar-invalid date (`2026-13-45`) and must not
+ * change the day it has always answered with.
+ *
+ * **Corrected at revision 31 (QA R34-6): the justification used to read *"because `fromJSON`
+ * accepts a shape-valid, calendar-invalid date"*, and §2.9 A-45 made that false** — `fromJSON`
+ * now refuses one at all five date sites, with a `TripParseError` naming the JSON path. What
+ * survives, and is what this totality is actually for:
+ *
+ *   - **A stored `TripSummaryRow` is not a validated document** (§8.4 **A-37** Part 2). A row
+ *     minted before A-45, or hand-edited in storage, carries `2026-02-30` and reaches `lifecycle`
+ *     and `travelStats` — both of which land here. `packages/client`'s `rowDatesReadable` (§2.9
+ *     **A-46**) is what now *tells the user* about such a row; it does not stop it arriving.
+ *   - **`validateTrip` still reports `invalid_calendar_date` rather than refusing it**, on a
+ *     `Trip` built in memory rather than parsed (§2.9 A-20). Reporting requires reading it.
+ *   - **`cli.ts --today` accepts one**, deliberately (§2.1 A-32 Part 5: one definition of the
+ *     domain, and a shape check reached through `weekdayOf`).
+ *
+ * So the reachable population narrowed and the requirement did not: **do not add a refusal
+ * here.** §2.1 A-32 Part 4 is unmoved and a clamp would be a guessed date.
  *
  * Every `/` is a **floor** division, written as `Math.floor`. Do not "simplify" one to `| 0` or
  * `~~`: `| 0` truncates toward zero and is wrong for a negative year, and both coerce through

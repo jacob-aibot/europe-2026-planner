@@ -19,9 +19,47 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
+> **🟡 I-8e IS BUILT, AND I-8c'S BROKEN "CLOSE THIS TRIP" IS FIXED — as of 2026-08-31 (this
+> block is the newest; it supersedes every "still owed before I-8b" line below).**
+>
+> **A trip Cairn cannot open now says so on the card, before you tap it — and you can save a
+> copy of it instead of choosing between a dead screen and Delete.** Three things landed:
+>
+> 1. **The card tells the truth.** A trip whose stored dates are not real dates — `2026-02-30`,
+>    `2026-13-01` — used to render as a completely healthy card: a `PAST TRIP` badge, full
+>    counts, a confident date range. Tapping it produced a parser error and nothing opened. It
+>    now carries the same *"This trip's file could not be read"* warning the app already used
+>    elsewhere, and the date line shows the two strings that are **actually in the file**
+>    instead of a plausible-looking guess. (It used to print *"February 2026"* for a trip whose
+>    file says `2026-02-30`, which is a month that date does not exist in.)
+> 2. **"Save a copy."** A new control, on that card only, that writes the stored file out
+>    exactly as it is — no repair, no rewriting, byte for byte. It is named
+>    `…cairn-unreadable.json` rather than `…cairn.json` and the card says plainly that Cairn
+>    cannot re-read it: it is a copy to **keep or send on**, not a backup to restore. Verified
+>    end to end in a real browser download.
+> 3. **Delete now says what Delete costs.** On such a card the confirmation says the copy on
+>    this device is the only one that will exist afterwards, and points at "Save a copy" first.
+>    Before this, Delete was the *only* thing that card offered, with no warning at all.
+>
+> **And "Close this trip" now works.** The one recovery the app offers when a screen fails
+> closed the trip but left the error banner up and the library blank — you had to click a second
+> button to actually get back. One click now does what it says, verified in Chromium with the
+> fault still armed.
+>
+> Two smaller repairs went with it: the warning colour was too pale to read at chip size (it now
+> clears the accessibility contrast floor in both light and dark), and the message you get when a
+> trip refuses to open is a sentence now rather than a raw parser path.
+>
+> **What this does *not* claim, deliberately:** a trip can still be listed as fine and refuse to
+> open, because the only way to find some faults is to open the file. The card says *"could not
+> be read"* when it knows; it never says *"everything else here will open."*
+>
+> **I-8e is built ✅ · verified ❌ (not yet attacked) · shippable ❌. I-8b (the Profile screen) is
+> now UNBLOCKED** — I-8c, I-8d and I-8e have all landed, which was its whole blocker list. Both
+> I-8d and I-8e still owe a breaker round before 2b can ship.
+
 > **🟡 I-8d IS BUILT — the map is now a map of your trip, not of one country — as of 2026-08-31
-> (this block is the newest; it supersedes the ordering note in the I-8c blocks below on what
-> is still owed).** The lifetime map used to open on a 194° frame because one flight stop in the
+> (superseded on "what is still owed" by the block above).** The lifetime map used to open on a 194° frame because one flight stop in the
 > United States sat 7,439 km from the rest of the trip, squeezing all six European countries
 > into 149 px of a 958 px figure. It now frames **the main geographic cluster**, with the
 > distant country **beside it in its own small frame that names it** — Jacob's own decision,
@@ -46,8 +84,8 @@ update to this file added that instruction).
 > slider: a control that exists mostly to repair a bad default is a confession, and the default
 > is now right.
 >
-> **I-8d is built ✅ · verified ❌ (not yet attacked) · shippable ❌.** Still owed before I-8b (the
-> Profile screen): **I-8c's two fixes** and **I-8e**.
+> **I-8d is built ✅ · verified ❌ (not yet attacked) · shippable ❌.** *(Superseded: what was
+> still owed before I-8b — I-8c's two fixes and I-8e — has now landed. See the block above.)*
 
 > **🟠 I-8c HAS NOW BEEN ATTACKED, AND IT GOES BACK — as of 2026-08-31 (this block is the newest;
 > it supersedes the I-8c block below on "verified" and adds one increment).** The breaker round

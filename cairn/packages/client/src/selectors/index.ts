@@ -289,7 +289,8 @@ export function travelHistory(state: Pick<AppState, 'library'>, today: core.IsoD
  * `null` means **"this row's dates are unreadable"** and nothing else — it is not a fourth
  * lifecycle stage and it may not be rendered as one. A date that is merely *calendar*-invalid
  * (`'2026-13-01'`) is not this case: `dayNumber` normalises it (§2.1 **A-32** Part 4) and the
- * row classifies, exactly as core says it does.
+ * row classifies, exactly as core says it does. **That gap is `rowDatesReadable`'s subject,
+ * below** — §2.9 **A-46** Part 2, which extends this gate rather than widening it.
  *
  * Pure. Never throws.
  */
@@ -302,6 +303,41 @@ export function rowLifecycle(
   } catch {
     return null;
   }
+}
+
+/**
+ * Does this row's own record of its dates satisfy §2.1 **A-32**'s `IsoDate` domain — i.e.
+ * exactly what `fromJSON` now refuses (§2.9 **A-45**)? ARCHITECTURE §2.9 **A-46** Part 2,
+ * ROADMAP Phase 2 **I-8e**.
+ *
+ * Pure, total, never throws. `false` means *"this trip's document will not open"*, not
+ * *"these dates are odd"*.
+ *
+ * **It is `core.isIsoDate` on both fields and it may be nothing else.** A hand-rolled calendar
+ * check here is the second-implementation defect A-20, A-21, A-37 and A-45 have each treated
+ * once, and A-45 exists precisely because `fromJSON` had one. `isIsoDate` is on §2.10's surface
+ * for this caller (76 → 77, A-46 Part 2); it is a **predicate, not a parser**, and a caller that
+ * holds a document still calls `fromJSON`.
+ *
+ * Two things it is deliberately not:
+ *
+ *   - **Not `rowLifecycle(row, today) === null`.** It strictly *contains* that case (every
+ *     shape-invalid string fails `isIsoDate`) and adds the one nothing computed: a row whose
+ *     dates are shape-valid but are not real calendar dates — `2026-02-30`, `2026-13-01`,
+ *     `0000-00-00` — which `lifecycle` classifies happily through A-32 Part 4's normalisation
+ *     and which QA **R34-2** measured rendering as a completely healthy card. So there is one
+ *     signal on the card, not two.
+ *   - **Not complete, and no surface may imply it is.** A row can be perfectly readable while
+ *     its document carries a bad `days[3].date`; only opening it finds that. The claim is
+ *     *"this trip's file could not be read"* when it is known, never *"every other trip here
+ *     will open"* (A-46 Part 3).
+ *
+ * It reads **both** fields unconditionally, which is what discharges QA **R34-5**:
+ * `core.lifecycle` returns `'planned'` before it ever evaluates `endDate`, so
+ * `2026-09-01 → not-a-date` is a confident future trip to `rowLifecycle` and unreadable here.
+ */
+export function rowDatesReadable(row: { startDate: string; endDate: string }): boolean {
+  return core.isIsoDate(row.startDate) && core.isIsoDate(row.endDate);
 }
 
 /**

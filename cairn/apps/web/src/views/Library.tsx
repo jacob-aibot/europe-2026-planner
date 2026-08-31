@@ -12,10 +12,10 @@
  */
 import { useState } from 'react';
 import type { AppState } from '@cairn/client';
-import { rowLifecycle, summaryScan } from '@cairn/client';
+import { rowDatesReadable, rowLifecycle, summaryScan } from '@cairn/client';
 import type { IsoDate, Lifecycle, Trip } from '@cairn/core';
 import { clock, store } from '../store.ts';
-import { dateRangeLabel, lifecycleLabel } from '../format.ts';
+import { dateRangeLabel, lifecycleLabel, storedDatesLabel } from '../format.ts';
 import { PastTripForm } from './PastTripForm.tsx';
 
 /**
@@ -105,6 +105,17 @@ export function Library({ state, onError, sample }: Props) {
   const outdated = new Set(scan.outdated);
   const unreadable = new Set(scan.unreadable.map((u) => u.id));
 
+  /**
+   * QA **R34-2**, the builder half. `store.openTrip` rejects with a `TripParseError` whose
+   * message is a parser sentence and a JSON path (`expected a real calendar date in
+   * YYYY-MM-DD (at $.startDate)`), and round 34 measured that reaching the banner verbatim as
+   * the only thing the user was ever told about an unopenable trip. Same shape as `onImport`
+   * one control away: a sentence first, and the path kept after it, because the path is the
+   * only part that says *where*.
+   */
+  const openRow = (id: string) =>
+    store.openTrip(id).catch((e: Error) => onError(`That trip’s file could not be read: ${e.message}`));
+
   async function onImport() {
     const input = document.createElement('input');
     input.type = 'file';
@@ -174,19 +185,53 @@ export function Library({ state, onError, sample }: Props) {
       )}
 
       <ul className="triplist">
-        {state.library.map((row) => (
+        {state.library.map((row) => {
+          /*
+            §2.9 **A-46** Part 3: **one boolean per row**, from both sources, driving the whole
+            card. Two facts, and neither alone is the answer:
+
+              F-A  we opened this document and `fromJSON` threw — `scan.unreadable`, which is
+                   fed only by the `SUMMARY_VERSION` rescan, so it is available only for rows
+                   already stale by version;
+              F-C  this row's own dates are not real calendar dates — `rowDatesReadable`, on
+                   every render.
+
+            It is **not** `rowLifecycle(row, today) === null` (A-44's question, which is a
+            different one). That predicate is strictly weaker than what `fromJSON` now refuses:
+            `2026-02-30` classifies as `completed` through §2.1 A-32 Part 4's normalisation, and
+            QA R34-2 measured exactly such a row rendering as a perfectly healthy card whose
+            only affordance was Delete. `rowDatesReadable` strictly contains that null case, so
+            there is one signal here rather than two.
+
+            **The signal is not complete and this card may not imply that it is.** A row can be
+            perfectly readable while its document carries a bad `days[3].date`; only opening it
+            finds that. So the claim is "this trip's file could not be read" when it is known,
+            and never "every other trip here will open."
+          */
+          const unreadableRow = unreadable.has(row.id) || !rowDatesReadable(row);
+          return (
           <li key={row.id} className="tripcard">
-            <button className="tripcard__open" onClick={() => run(store.openTrip(row.id))}>
+            <button className="tripcard__open" onClick={() => void openRow(row.id)}>
               <span className="tripcard__title">
                 {row.title}
+                {/* A-46 Part 3 clause 3: `LifecycleChip` is unchanged and keeps its own chip.
+                    It names the *field* class and must keep working alone on the Map
+                    drill-down, where there is no card; the chip below is the *whole-card*
+                    statement. Two chips on one card is deliberate. */}
                 <LifecycleChip trip={row} today={today} />
               </span>
               <span className="tripcard__meta" data-testid="tripcard-range">
                 {/* QA P2-6: the row carries `datePrecision`, so a trip recorded as "March 2019"
                     is listed as "March 2019" here too — the same label TripView renders, from
                     the same function. A row written before the field existed reads `undefined`
-                    and falls through to the exact form, which is what it was. */}
-                {dateRangeLabel(row)} · {row.cityCount} {row.cityCount === 1 ? 'city' : 'cities'}
+                    and falls through to the exact form, which is what it was.
+
+                    A-46 Part 3 clause 2 / QA R34-4: unless the dates cannot be read, in which
+                    case there is no precision to honour and no month to name — round 34
+                    measured `MONTHS[NaN - 1] ?? 'not'` printing "a not" under a chip saying the
+                    dates could not be read. The two strings in the file, verbatim, instead. */}
+                {unreadableRow ? storedDatesLabel(row) : dateRangeLabel(row)} · {row.cityCount}{' '}
+                {row.cityCount === 1 ? 'city' : 'cities'}
               </span>
               <span className="tripcard__meta tripcard__meta--dim">
                 {row.dayCount} days · {row.stopCount} stops
@@ -197,26 +242,60 @@ export function Library({ state, onError, sample }: Props) {
                   ? ` · ${row.countryCodes.join(' ')}`
                   : ''}
               </span>
-              {unreadable.has(row.id) ? (
-                <span className="chip chip--warn" data-testid="row-unreadable">
-                  This trip’s file could not be read
-                </span>
+              {unreadableRow ? (
+                <>
+                  <span className="chip chip--warn" data-testid="row-unreadable">
+                    This trip’s file could not be read
+                  </span>
+                  <span className="tripcard__meta tripcard__meta--dim" data-testid="row-unreadable-hint">
+                    Cairn cannot re-read this file, so “Save a copy” gives you a copy to keep —
+                    not a backup: restoring it would be refused the same way.
+                  </span>
+                </>
               ) : outdated.has(row.id) ? (
                 <span className="chip chip--dim" data-testid="row-outdated">
                   {scan.phase === 'recomputing' ? 'Recomputing…' : 'Not up to date'}
                 </span>
               ) : null}
             </button>
+            {/*
+              §2.9 **A-46** Part 4 — the rescue export, on this branch only. A readable trip
+              already has an export (open → Export), and putting a second one on every card is
+              a Trips-list redesign A-46 does not make. `exportStoredDoc` hands over the stored
+              bytes verbatim with **no parse**, which is the only thing that can work here:
+              parsing is what fails. QA R34-2 measured this card's only affordance as Delete,
+              with the bytes sitting intact in IndexedDB.
+            */}
+            {unreadableRow && (
+              <button
+                className="btn btn--quiet"
+                data-testid="save-copy"
+                title="Cairn cannot re-read this file. This saves the stored copy as it is, to keep or to send on — restoring it will be refused with the same message."
+                onClick={() => run(store.exportStoredDoc(row.id))}
+              >
+                Save a copy
+              </button>
+            )}
             <button
               className="btn btn--quiet"
               onClick={() => {
-                if (confirm(`Delete “${row.title}”? This cannot be undone.`)) run(store.deleteTrip(row.id));
+                /*
+                  A-46 Part 3 clause 4: Delete's confirmation says what Delete costs. "Nothing
+                  you type ever silently vanishes", applied to the one screen where the only
+                  affordance was destructive — R34-2 was one step from BLOCKER for exactly
+                  this: no warning before the Delete that destroys the only copy there is.
+                */
+                const ask = unreadableRow
+                  ? `Delete “${row.title}”? Cairn cannot read this trip’s file, so the copy stored on this device is the only one that will exist after this — save a copy first if you want to keep it. This cannot be undone.`
+                  : `Delete “${row.title}”? This cannot be undone.`;
+                if (confirm(ask)) run(store.deleteTrip(row.id));
               }}
             >
               Delete
             </button>
           </li>
-        ))}
+          );
+        })}
       </ul>
     </main>
   );

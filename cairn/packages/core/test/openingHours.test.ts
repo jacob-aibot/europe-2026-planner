@@ -343,15 +343,18 @@ test('A-20 assertion 5: the clock-shape regex appears exactly once in packages/c
   assert.match(matches[0], /^model\/openingHours\.ts:/);
 });
 
-test('A-20 assertion 6: isOpeningHours is NOT on the public surface (§2.10 is 76, and none of them is this)', async () => {
+test('A-20 assertion 6: isOpeningHours is NOT on the public surface (§2.10 is 77, and none of them is this)', async () => {
   const core = await import('../src/index.ts');
   // 71 at revision 19; 73 since Phase 2 I-5 added `countryOf` and `COUNTRY_INDEX` under §8.4
   // clause 1; 74 since Phase 2 I-6 added `SUMMARY_VERSION` under §8.4 clause 3; 75 since
   // Phase 2 I-7 added `travelStats` under §8.4 clause 2 / A-31; 76 since Phase 2 I-8d added
-  // `clusterPoints` under §4.4 A-41 Part 6. The assertion
+  // `clusterPoints` under §4.4 A-41 Part 6; **77 since Phase 2 I-8e added `isIsoDate` under
+  // §2.9 A-46 Part 2** — the date predicate `packages/client`'s `rowDatesReadable` calls, so
+  // that the Trips list can ask the question A-45 made `fromJSON` answer without growing a
+  // second calendar. The assertion
   // this test exists for is the loop below — the size is the tripwire that says a widening
   // happened at all, and it is re-derived by counting, never quoted.
-  assert.equal(Object.keys(core).length, 76);
+  assert.equal(Object.keys(core).length, 77);
   for (const name of ['isClockTime', 'readWeeklyEntry', 'isOpeningHours']) {
     assert.equal(name in core, false, `${name} widened §2.10's surface`);
   }

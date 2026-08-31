@@ -1,10 +1,11 @@
 /**
  * `@cairn/core` — the public surface of ARCHITECTURE §2.10 and nothing else.
  *
- * **75 runtime symbols, one list, set equality in both directions** (69 at revision 5, QA R2-12,
+ * **77 runtime symbols, one list, set equality in both directions** (69 at revision 5, QA R2-12,
  * BUILD-NOTES KD-33; +`reassertRetirements` at revision 6; +`lifecycle` at Phase 2 I-1;
  * +`countryOf` and `COUNTRY_INDEX` at Phase 2 I-5; +`SUMMARY_VERSION` at Phase 2 I-6;
- * +`travelStats` at Phase 2 I-7). It used to be 110 against a 50-name list plus a 60-name "beyond §2.10,
+ * +`travelStats` at Phase 2 I-7; +`clusterPoints` at Phase 2 I-8d, §4.4 A-41 Part 6;
+ * +`isIsoDate` at Phase 2 I-8e, §2.9 A-46 Part 2). It used to be 110 against a 50-name list plus a 60-name "beyond §2.10,
  * each with a justification" list, which made the acceptance criterion true by construction:
  * 110 = 50 + 60 for *any* 110 exports. A boundary the Phase 2 server and the Phase 4 native
  * app are written against cannot be "110 against 50, enumerated".
@@ -37,6 +38,14 @@ export type {
 export { SCHEMA_VERSION, LOCAL_OWNER } from './model/types.ts';
 export type { TripId, DayId, StopId, PlaceId, BookingId, ConflictId, UserId, CityKey, RuleId, CountryCode, IsoDate, ClockTime, Currency, IdFactory, ClockPort } from './model/ids.ts';
 export { sequentialIds } from './model/ids.ts';
+// §2.9 **A-46** Part 2 / §2.10, Phase 2 I-8e. A **predicate, not a parser**: A-45 made this the
+// definition of a date for the whole system and left it reachable only from inside core, so
+// `packages/client`'s `rowDatesReadable` could not ask the question `fromJSON` now answers and
+// the alternative was a second calendar implementation there — the exact defect A-20, A-21,
+// A-37 and A-45 have each treated once. A caller holding a document still calls `fromJSON`,
+// which does far more than check two dates; no caller may use this to decide a document is
+// safe to accept. `daysInMonth` and `ISO_DATE_RE` stay internal.
+export { isIsoDate } from './model/ids.ts';
 export { costFromDisplay, formatRange } from './model/money.ts';
 // `TripParseError` / `ForeignDocumentError` are model symbols by §2.10's grouping; they are
 // declared next to the parser that throws them. Re-exported once, below, with `fromJSON`.

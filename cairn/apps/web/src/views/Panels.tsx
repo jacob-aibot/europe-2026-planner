@@ -92,7 +92,8 @@ export function ValidationPanel({ derived }: { derived: DerivedCache | null }) {
       <ul className="issues">
         {[...errors, ...warns].map((i, n) => (
           <li key={`${i.code}-${i.ref.id}-${n}`} className={`issue issue--${i.level}`}>
-            <span className="pill" style={{ color: i.level === "error" ? "#a8382f" : "#b3701e" }}>{i.level}</span>
+            {/* QA R34-7: the warn hex tracks `--warn`, which moved to #8f5816 for contrast. */}
+            <span className="pill" style={{ color: i.level === "error" ? "#a8382f" : "#8f5816" }}>{i.level}</span>
             <span className="issue__code">{i.code}</span>
             <span>{i.message}</span>
           </li>
