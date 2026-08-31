@@ -621,12 +621,31 @@ finding against A-39 Part 5's table, not an architect's ruling**). Nothing else 
 `SUMMARY_VERSION` bump, no `StoragePort` method, no change to the port itself, no client change, no movement
 on §2.10's export surface (75). The diff is two test/QA files.
 
+**Revision 29, 2026-08-31.** Not a QA round. An architect pass over the **I-8 front end**, and it rules on
+the one question the increment could not be built without answering: I-8's own text says the lifetime map is
+*"same core functions, new caller, no second implementation"*, while `MapPort` is shaped around an imperative
+Leaflet instance that owns a DOM subtree and caches a **measured** zoom, and cannot render a filled polygon
+at all. **A-40** (§4.4) rules that the world map is **not a port**: a port abstracts a platform *capability*
+the shared layer cannot express, and this surface has none — it is `COUNTRY_INDEX`'s own rings, projected by
+a pure function in `packages/client`, emitted as SVG path data, and drawn by a plain component. `MapPort` and
+the Leaflet trip map are **untouched**: no shared interface is forced between them. The two shipped map bugs
+are inherited honestly rather than by imitation — the min-span guard is core's own `mapBounds`/`MIN_SPAN_KM`,
+and the *fit-while-hidden* bug is made **structurally absent** by a `viewBox` rather than re-solved by a
+second `pendingFit`, which is why A-40's binding clause is a prohibition on measuring layout. A-40 also
+records what the increment cannot have: `TripSummaryRow.cities[]` carries **no coordinate**, so **city pins
+are not in this increment** — drawing them needs a widened row and a `SUMMARY_VERSION` bump, which is a
+separate ruling and not something a UI increment may smuggle in. `ROADMAP.md` revision 27 carries A-40 and
+splits I-8 into **I-8a** (the shell, the world map and the token layer) and **I-8b** (Profile). Nothing else
+moves: no engine, no `StoragePort` method, no `SUMMARY_VERSION` bump, no client store change, no new runtime
+dependency, and **no movement on §2.10's export surface (75)** — `worldMapFrame` is a `packages/client`
+selector, and `packages/client` has no export ceiling.
+
 **Phase 1 is §2 and §4. The next phase is §8.1–§8.4.** Everything else is the shape those must not
 foreclose. See `ROADMAP.md` for sequencing and `PRODUCT-VISION.md` for why this order and not another.
 
 ## Read only your sections
 
-This document is ~212k tokens (re-measured at revision 28, with
+This document is ~217k tokens (re-measured at revision 29, with
 `cairn/tools/doc-section ARCHITECTURE` — §2 is ~110k of it and §8 ~64k; the per-section figures below were stale by a third before revision 11 and are
 re-measured, not estimated, whenever a revision lands). Nothing needs all of it, and a fresh agent that reads it whole starts a sixth
 of the way into its context before writing a line. Pull what you need:
@@ -642,7 +661,7 @@ cairn/tools/doc-section ARCHITECTURE         # lists the sections and their size
 | 1 | Stack decision and the capability checks behind it | 3k | architect. Settled; do not re-litigate |
 | 2 | **Domain model — the builder's contract.** §2.12 `travelRole`, §2.13 geography and §2.14 import/copy are new in revision 2 and are where the Phase 1 rework lives; **§2.2a (the `StorageVersion` write fence, revision 3) and §2.2b (the freshness rule it turned out to be one instance of, revision 4) are read together with §4.2 and §4.3, never alone**; §2.10 (the export surface) and §2.13's copied-record row are settled in revision 5; **§2.7's retirement ledger (A-5) and §2.13's copy-borne `Place` rule (A-6) are revision 6**; **§2.2a's A-7 (the fence a declined write may not move) is revision 8** and is read with §4.2 rule 4a; **§2.2's A-10 (a `CityKey` is a minted opaque id) and §2.7's A-9 (retirement is decided against the un-gated set) are revision 11** — a Phase 2 builder needs both; **A-11, A-12 and A-13 (§2.7) and A-14 (§2.14) are revision 12** and are read *with* A-9 and A-10, never instead of them — A-11 replaces A-9's greppable invariant, A-12 narrows A-9 point 1, A-13 rewrites A-9 assertion 4, and A-14 corrects A-10's change table; **A-15 and A-16 (§2.14) and A-17 (§2.7) are revision 13** — A-15 is the copy path's redaction rule and is read with §6.6, A-16 withdraws A-14's *"within one trip is unchanged"* paragraph, A-17 narrows A-11 assertion 5; **A-18 and A-19 (§2.14) are revision 14** — A-18 is the copy path's redaction rule for the *stop's own* nested records (`cost`, `arrival`) and generalises A-15 to *no spread at any depth*, A-19 rules that the `placement` **argument** is validated against the target and never re-filed. **Anyone touching `copyStopInto` reads A-14, A-15 and A-16 as one rule 4, and A-18 with rules 3 and 5**; **A-20 is revision 15 and lives in §2.9, not §2.14** — it is where the *shape* of a document is decided, it amends A-15's `hours` row and A-18's *"changes nothing in `fromJSON`"* paragraph, and **anyone touching `Place.hours` at any layer reads it first**; **A-21 is revision 16, lives in §2.9 beside A-20 and is read with it** — it replaces A-20's `isWeeklyEntry` with a reader that returns what it read, and imposes one read per field on `copyStop.ts`, so **anyone touching a predicate over an `unknown`, or any function in `copyStop.ts`, reads A-21 with A-15 and A-18**; **A-21a is a revision-16 addendum in the same place** and is what makes A-21's file-wide rule actually total — it is read with A-21, never instead of it; **A-22 and A-23 are revision 17, in the same place again** — A-22 closes the four sites A-21/A-21a's searches missed and **supersedes A-21a's read-count table one level down** (read A-22 Part 2's table, not A-21a's), and **A-23 is the standing census test that replaces the hand search** — *anyone adding a branch to `copyStopInto`, or a field to `Stop` or `Place`, reads A-23 first, because the scenario matrix and the allow-list are part of the contract and widening the allow-list is an architect's ruling*; **A-24 is revision 18 and is read *with* A-23, never instead of it** — it supersedes A-23's `opaque` set, its ten-row matrix and its fixture list, and nothing else about A-23 moves; **A-25 is revision 19 and is the last of the chain — it is read with A-23 and A-24 and closes the arc**, adding `City` rows to the roots, a fifteenth matrix row, an eighth `ALLOWED` entry, the structural fixture-completeness tests, and the **written closing criterion** in its Part 6 that a manager or a future session checks rather than takes on trust. **QA round 21 ran that criterion and all six clauses hold, so the arc is closed rather than closeable** — Part 6 records the verification and Part 5's class-A residue list was completed **in place** with the three instances round 21's re-derivation added (R21-1); that correction carries **no revision number** because no rule, entry, root, row, gate or line of code moved. **A-32 is revision 25 and lives in §2.1**, at the other end of the section from the copy chain — the civil-calendar implementation of `dayNumber`/`fromDayNumber`/`weekdayOf` and the first written statement of `IsoDate`'s **domain**; it is ~4k on its own, and **anyone touching a date helper, or minting an `IsoDate` from user input, reads it and needs nothing else in §2**; **A-35 is revision 26 and lives in §2.3** — the day skeleton's span cap (`MAX_TRIP_SPAN_DAYS = 3653`, in `ensureDays`, in core), which is A-32 Part 5's own trigger firing on the branch that Part does not cover, so **anyone touching `ensureDays`, `createTrip`'s date validation or either trip form reads A-35, and reads A-32 Part 5 only for why the Year field still has no floor** | 110k | builder, breaker |
 | 3 | Module boundaries | <1k | builder |
-| 4 | **The Phase 1 client.** §4.2 rule 6 (a pending write is never outlived by its document) is new in revision 3 — QA R3-2; rule 6a′ and the `savedDoc` predicate are revision 4 — QA R4-1; **rule 6a″ (the flush bound and its exits) and rule 6c's "delete goes on the chain" are revision 5** — QA R6-1/R6-2/R7-3; **rule 5's retirement carve-out is revision 6** — QA R8-1, read with §2.7; **rule 4a is revision 8** — QA R11-1, read with §2.2a A-7; **§4.3's A-30 is revision 23** — the `refreshSummary` port method, the fence's meaning stated once, and the rescan's uniform per-row link — and **anyone touching `runRescan`, `StoragePort` or a port implementation reads it first**, with §8.4 clause 3 beside it | 10k | builder |
+| 4 | **The Phase 1 client.** §4.2 rule 6 (a pending write is never outlived by its document) is new in revision 3 — QA R3-2; rule 6a′ and the `savedDoc` predicate are revision 4 — QA R4-1; **rule 6a″ (the flush bound and its exits) and rule 6c's "delete goes on the chain" are revision 5** — QA R6-1/R6-2/R7-3; **rule 5's retirement carve-out is revision 6** — QA R8-1, read with §2.7; **rule 4a is revision 8** — QA R11-1, read with §2.2a A-7; **§4.3's A-30 is revision 23** — the `refreshSummary` port method, the fence's meaning stated once, and the rescan's uniform per-row link — and **anyone touching `runRescan`, `StoragePort` or a port implementation reads it first**, with §8.4 clause 3 beside it; **§4.4's A-40 is revision 29** — the lifetime map is a plain component over a pure `packages/client` frame function, not a second `MapPort`, and **anyone building or reviewing `WorldMap.tsx` reads it first** (it is ~3k and self-contained; the trip map's port is unchanged and needs no re-reading) | 13k | builder |
 | 5 | The four hard subsystems | 2k | breaker; builder from Phase 3 on |
 | 6 | Privacy, authorization, deletion cascade. **§6.6 is the build-artifact threshold; the copy threshold is §2.14 A-15 + A-18 (revisions 13 and 14) and they differ deliberately, in two named places — read them together or neither** | 4k | breaker, manager; builder for §6.2 |
 | 7 | Explicitly deferred | <1k | anyone about to build something not in the roadmap |
@@ -7112,6 +7131,155 @@ its min-span guard live in core (§2.5), and `setVisible(handle, true)` triggers
 implementation MUST no-op while its container has zero size and re-fit when it gains one. Leaflet cannot
 compute a zoom against a `display:none` container, and this is the contract that stops that from being
 rediscovered on every surface.
+
+#### A-40 — the lifetime map is not a port: a pure frame function in `packages/client` and a plain component, and the hidden-container bug is made absent rather than re-solved (revision 29, ROADMAP I-8a)
+
+**Part 1 — the question, which is not a matter of taste.**
+
+`ROADMAP.md`'s I-8 says the world map is *"same core functions, new caller, no second implementation."*
+Read as *"reuse the bounds functions"* that is right and this ruling upholds it. Read as *"reuse `MapPort`"*
+it is impossible, and an increment cannot be built against a sentence that can be read both ways.
+
+`MapPort` is five methods — `mount` / `update` / `refit` / `setVisible` / `destroy` — and every one of them
+exists because **Leaflet owns a DOM subtree React does not control and caches a zoom it computed from the
+container's measured pixel size**. `mount` hands over an element and gets back a handle because there is a
+live instance to hold; `destroy` exists because that instance leaks otherwise; `setVisible` exists *only*
+because the measured zoom is wrong when the measurement was taken at 0×0. The interface is not a general
+statement about maps. It is the shape of that one problem.
+
+The lifetime map has none of that problem. Its geometry is `COUNTRY_INDEX`'s own rings — already in
+`packages/core`, already flat `[lng, lat, …]`, already bounded per country by `box` (§8.4 A-26) — and there
+are no tiles, no attribution, no pan/zoom instance, and no third-party library. Filled polygons are also
+precisely what `MapPoint` (`{id, lat, lng, label, category}`) cannot express, so satisfying `MapPort` would
+mean widening `MapPoint` into a union for the benefit of a renderer that shares no code with the Leaflet one.
+
+**Part 2 — the ruling, and the test that produced it.**
+
+**A port abstracts a platform capability the shared layer cannot express. The world map has none, so it is
+not a port.** Storage, files, a clock, ids and a tile-and-marker map are capabilities: `packages/client`
+cannot implement any of them without the platform. *"Draw a filled path from an SVG `d` string"* is not one —
+it is a string, and both a web `<svg>` and `react-native-svg`'s `<Path d>` consume the same string.
+
+So the world map is **a plain component over a pure function**, and the split is:
+
+- **`packages/client/src/selectors/worldMap.ts` — `worldMapFrame`.** Pure, no DOM, no React, zero
+  dependencies, exercised by `node --test` with no browser. Everything geometric happens here.
+- **`apps/web/src/views/WorldMap.tsx`.** Maps the frame's arrays onto elements and attaches handlers.
+  **It contains no arithmetic over coordinates.** Not a projection, not a bounds calculation, not a
+  point-in-polygon test.
+
+**`MapPort` and `apps/web/src/ports/map.ts` do not change, and no interface is shared between the two maps.**
+Forcing a common one would abstract over a similarity of *subject* (both show places) rather than of
+*mechanism*, and would import Leaflet's lifecycle into a renderer that has no lifecycle. The trip map keeps
+its tiles, its handle table, its `ResizeObserver` and its `pendingFit`, all unread by this surface.
+
+**Part 3 — the minimum contract. This is the whole of it.**
+
+```ts
+// packages/client/src/selectors/worldMap.ts
+export type WorldMapCountry = {
+  code: CountryCode;
+  /** SVG path data in the frame's own coordinate space. Renderer-agnostic: a string. */
+  d: string;
+  /** §8.4 A-34. Rendered visibly differently, and never in the confirmed fill. */
+  provisional: boolean;
+  /** Canonical row order, straight from `TravelStatsCountry`. Drives "tap a country for its trips". */
+  tripIds: string[];
+};
+
+export type WorldMapFrame = {
+  /** "minX minY width height". The ONLY fit mechanism — see Part 4. */
+  viewBox: string;
+  countries: WorldMapCountry[];
+  /** Core's own `MapBounds`, carried so the surface can say "zoomed out to a readable minimum". */
+  bounds: core.MapBounds;
+  /** Codes `travelStats` named that the shipped index cannot fill. Rendered as a stated hole. */
+  missing: CountryCode[];
+};
+
+export function worldMapFrame(stats: core.TravelStats, index: core.CountryIndex): WorldMapFrame;
+```
+
+Four clauses:
+
+1. **The projection is equirectangular** — `x = lng`, `y = -lat`, no scaling constant — and it is three lines
+   in one place. A projection is not a domain concept and does not go in `packages/core`; it is also not a
+   platform concept and does not go in a port. `packages/client` is where the third thing lives, beside
+   `dayMapPoints`, which already produces a view model for a map and is the precedent this follows.
+2. **The extent comes from core and nothing else.** `worldMapFrame` collects the corner points of each
+   visited country's `box` and calls **`mapBounds`** — the same function the day map fits with. The min-span
+   guard (`MIN_SPAN_KM`) and the `clamped` flag come with it, which is how *"a one-country history must not
+   open at a rooftop zoom"* is satisfied: by the guard that already exists, not by a second one. §4.4's
+   *"the client never computes bounds"* is honoured literally.
+3. **`missing` is populated, never dropped.** §8.4 A-29's acceptance gate runs at the *mint*, and a stored
+   row is not revalidated (A-37), so a row minted against a different index can name a code this index cannot
+   fill. Silently omitting it makes the map disagree with the Profile's count. It is a stated hole.
+4. **No memoisation keyed on a revision number.** §4.2 rule 3 and §2.2b F2 — the frame is recomputed from the
+   library, or cached by object identity, never by a counter.
+
+**Part 4 — the two shipped map bugs, and why one of them stops existing.**
+
+*Cluster before fitting* is inherited: clause 2 is core's own guard, and the increment tests it.
+
+*Never fit while hidden* is different, and this is the load-bearing paragraph. Leaflet's bug is a
+**measurement** bug: a zoom computed from a 0×0 container is nonsense and is cached. An SVG `viewBox` is not
+measured — the browser maps it onto whatever box the element has, at paint, every time, including the first
+paint after `display:none` is lifted. So the correct response is **not** to port `pendingFit` to a second
+renderer. It is to keep the renderer in the regime where the bug cannot be expressed, and to say so as an
+invariant a test can hold:
+
+> **W1. `WorldMap.tsx` reads no layout geometry.** No `getBoundingClientRect`, no `offsetWidth`/
+> `offsetHeight`, no `ResizeObserver`, no `window.innerWidth`. Fit is expressed entirely as the frame's
+> `viewBox` plus CSS. A greppable ceiling: those four identifiers do not appear in the file.
+>
+> **W2. Hit testing is the renderer's own.** *"Tap a country for its trips"* is a handler on the `<path>`;
+> the browser hit-tests the filled path. A hand-rolled point-in-polygon over screen coordinates is
+> forbidden, because it needs a measurement and would re-introduce W1's bug by the back door.
+
+W1 is the ruling's real content. The moment someone adds a pixel-measured label placement, a zoom-to-country
+animation, or a canvas fallback, the hidden-container bug is back — and at that point they need `pendingFit`
+and this ruling is reopened. That is the trigger, written down.
+
+**Part 5 — what this increment may not draw, and why the gap is honest.**
+
+**City pins are not in the world map, and this is a data fact, not a scope preference.** The lifetime surface
+reads `library: TripSummaryRow[]` — the only structure that spans trips without opening documents, and §4.2
+allows exactly one document in memory. `TripSummaryCity` is `{key, name, countryCode, countrySource}`: **no
+coordinate**. `TravelStatsCity` carries less still. So there is no honest pin position anywhere in reach, and
+the two ways to get one are (a) open every document, which contradicts §4.2, or (b) add a centre to the row,
+which is a widening of `TripSummaryRow` and a `SUMMARY_VERSION` bump — **an architect's ruling under §8.4
+A-31 Part 6 and A-33, not a line a UI increment adds.** Neither happens here. Cities appear as *text* on the
+Profile, where they need no geometry, and I-8's *"filled countries, city pins"* is met at *filled countries*
+with the pin half deferred in writing rather than half-built.
+
+**A payload ceiling, because a mixed-resolution index has no natural one.** The frame emits paths for
+**visited countries only**; the unvisited world is a backdrop, not 250 more paths. If the emitted `d` payload
+for the reference library exceeds **512 KB**, the builder reports it as a finding and stops — it does not
+hand-simplify geometry, because a simplifier is the second geometry implementation this ruling exists to
+prevent.
+
+**Part 6 — Phase 5, without designing for it.**
+
+`apps/web` and `apps/mobile` *"differ only in port implementations and view components"* (§4.3). A view is
+therefore exactly the right home for something with no capability behind it: `apps/mobile` re-writes ~40
+lines of JSX against `react-native-svg` and imports the identical `worldMapFrame`, the identical `d` strings
+and the identical `viewBox`. Nothing mobile-specific is designed now, and nothing here forecloses it. Had
+this been a port, mobile would owe a second polygon renderer *and* an implementation of five Leaflet-shaped
+methods that its renderer has no use for.
+
+**Part 7 — residues, stated rather than solved.**
+
+1. **The antimeridian.** `mapBounds` takes min/max over longitude, so a history containing NZ and the US
+   spans the globe and the map opens on the whole world. That is the trip map's existing behaviour, it is not
+   wrong (it is wide), and fixing it means dateline-aware bounds in core — a change to a function the day map
+   depends on, which is not worth making for a cosmetic case at this size. Reopen it with a real user, not a
+   hypothetical one.
+2. **`missing` has no label.** A code the index cannot fill renders as the code, because no name source is on
+   the row. Honest, and ugly in exactly the case it should be.
+3. **Provisional fill.** §8.4 A-34 requires a provisional country to be visibly distinct and *"not the same
+   ink on the filled map"*; the frame carries the flag and the treatment is the surface's. This ruling does
+   not choose the treatment — that is the token layer's job in I-8a — it only forbids the flag being dropped
+   between the two.
 
 ### 4.5 What Jacob can do at the end of Phase 1
 

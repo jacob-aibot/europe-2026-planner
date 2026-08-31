@@ -320,6 +320,31 @@ take the increment's own Ship-gate line as a verdict.
 movement on the export surface (still 75) — `MAX_TRIP_SPAN_DAYS` and both of A-37's read gates are
 module-private.**
 
+**Revision 27, 2026-08-31 — not a QA round.** An architect pass over the I-8 front end, after I-7 shipped.
+Two things change, and neither re-scopes the phase.
+
+(1) **`ARCHITECTURE.md` §4.4 gains A-40**, which answers the question I-8 could not be built without: the
+lifetime map is **not a second `MapPort`**. It is a pure `worldMapFrame` in `packages/client` plus a plain
+`WorldMap.tsx` that contains no coordinate arithmetic; the extent is core's own `mapBounds`/`MIN_SPAN_KM`
+(so *"same core functions, no second implementation"* is honoured exactly where it was meant to be); the
+Leaflet trip map and `MapPort` are untouched, with no shared interface forced between them; and the
+*fit-while-hidden* bug is made structurally absent by an SVG `viewBox` rather than re-solved by a second
+`pendingFit` — the binding clause is that the world map may read **no layout geometry at all**. A-40 also
+rules out one thing I-8's own text promised: **city pins**. `TripSummaryRow.cities[]` carries no coordinate,
+the lifetime surface may not open every document (§4.2), and adding a centre to the row is a
+`SUMMARY_VERSION` bump and a separate ruling. Filled countries ship; the pin half is deferred in writing.
+
+(2) **I-8 is split into I-8a and I-8b**, in the same shape and for the same reason as I-5a/b/c, I-6a and
+I-7a/b: one increment a builder can finish and a breaker can attack, then the next. **I-8a** is the
+three-tab shell, `WorldMap.tsx`, and the token layer that the visual language has been living without;
+**I-8b** is `Profile.tsx`. I-8's spec below is **not rewritten** — it stays as the shared specification both
+increments are measured against, and the two increments say which half of it each carries. **2b now ships at
+the end of I-8b, not at the end of I-8a.**
+
+No phase re-scoped, no change to the order, **no new external dependency**, no `SUMMARY_VERSION` bump, no
+`StoragePort` change, no engine change and no movement on the export surface (still 75) — `worldMapFrame`
+is a `packages/client` selector.
+
 > **Phase numbers changed once, here.** Every heading below carries its old number, and every "Phase N"
 > written in `ARCHITECTURE.md` §1–§7, `BUILD-NOTES.md` or `QA-FINDINGS.md` before revision 9 means the
 > *named* phase it described: "Phase 2" = accounts/server (**now 3**), "Phase 3" = ingest (**now 4**),
@@ -2468,7 +2493,13 @@ I-8**, for the same reason I-7a was: I-8 is where `travelStats` reaches a screen
   to route to the architect in a future increment. This edit changes only what I-7's ship gate requires; it
   is not a ruling on R29-3 and does not touch A-39 or any other verification gate.)*
 
-#### I-8 — The Map and Profile surfaces — **2b ships here**
+#### I-8 — The Map and Profile surfaces — **split at revision 27 into I-8a and I-8b**
+
+*(**This spec is not superseded and is not rewritten.** It is the shared specification both halves are
+measured against; I-8a and I-8b below say which half of it each carries, and add only what the split and
+`ARCHITECTURE.md` §4.4 **A-40** make necessary. **2b ships at the end of I-8b**, not of I-8a. One clause of
+what follows is overruled by A-40 Part 5 and only one: **city pins are not built** — the row carries no
+coordinate. Everything else stands as written.)*
 
 - **Built.** `WorldMap.tsx` and `Profile.tsx`. Navigation becomes **Trips · Map · Profile** — three tabs,
   not four. **No DISCOVER tab**: a slot that exists to promise something is the opposite of what this
@@ -2515,6 +2546,91 @@ I-8**, for the same reason I-7a was: I-8 is where `travelStats` reaches a screen
   render all three wrong on screen.
 - **Ship gate.** **2b is independently shippable here.** Criteria 4, 5, 6 and 7 all pass; the map bugs have
   a test each rather than a comment each.
+
+#### I-8a — The tab shell, the world map, and the token layer
+
+*(Revision 27. Carries `ARCHITECTURE.md` §4.4 **A-40**. Takes the map half of I-8's spec above, plus the
+visual-language work the surface cannot be built honestly without. **Not** the Profile — that is I-8b.)*
+
+- **Built.** **`packages/client/src/selectors/worldMap.ts`:** `worldMapFrame` to A-40 Part 3 — the
+  equirectangular projection, the `viewBox`, the `d` strings, `provisional`, `tripIds`, `missing`, and the
+  extent from core's own `mapBounds`. Pure, zero-dependency, `node --test`-able with no browser.
+  **`apps/web/src/views/WorldMap.tsx`:** the renderer, under A-40 Part 4's W1/W2 — no layout geometry, no
+  coordinate arithmetic, hit testing on the `<path>`. **The tab shell:** navigation becomes tabs rather than
+  one screen, sized for **Trips · Map · Profile** and no fourth slot (I-8's *"no DISCOVER tab"* stands). It
+  renders the two tabs that have content; **Profile is registered by I-8b, not stubbed here** — an empty tab
+  is the promise-of-something-not-yet-true this product refuses, and the shell is built so adding it is a
+  registration, not a second shell. **The token layer:** the type scale, rule weights, radii and the signal
+  channels declared once as custom properties in `apps/web/src/styles.css`, recovering the live planner's
+  editorial-cartographic language rather than inventing one; `packages/tokens` moves only if a value is
+  needed by both CSS and the Leaflet port. **Two removals, named:** the `.topbar__mark` gradient-plus-glow
+  and the `.topbar` `backdrop-filter: blur(8px)`. **And the signal-collision fix** — see below.
+  **No engine change, no `StoragePort` change, no `MapPort` change, no change to `apps/web/src/ports/map.ts`,
+  no `SUMMARY_VERSION` bump, no export-surface movement, and no new runtime dependency.**
+- **User-visible outcome.** *"Show me everywhere I've been"* — the countries filled from the bundled index,
+  a country tapped for its trips, a provisional country visibly not a visited one, and an honest statement
+  of what could not be filled. Plus a planner that stops signalling two different things with one channel.
+- **Architecture / data model.** A-40 in full, and its Part 5 is the scope line: **filled countries, no city
+  pins**, because `TripSummaryRow.cities[]` carries no coordinate and manufacturing one is a
+  `SUMMARY_VERSION` ruling, not a UI decision. **The signal-collision fix is a design defect, not polish:**
+  `.stop--dim { opacity: .72 }` is today the *only* mechanism for *"not yet accepted"*, and it composes on
+  the same element with `.stop--flag`, so a copied stop that also has a conflict renders **both** signals
+  degraded — opacity multiplies the blocker's own colour. Provenance and severity are **orthogonal channels**
+  and must be carried by orthogonal means: provenance is a mark (badge, hairline, credit line) that does not
+  attenuate anything composed with it; severity keeps its full-strength colour whatever the provenance. This
+  is load-bearing for this increment specifically, because A-34's `provisional` is a **third** thing that
+  needs a channel on the same surface — with three signals and one opacity multiplier they cannot all be
+  read. **Big Shoulders / Public Sans / IBM Plex Mono are candidates**, validated against rendered I-8a
+  output in this increment and settled only after it — not assumed.
+- **Verification.** A-40's clauses, each with the fault that makes it red:
+  - **The world map fits correctly when its tab was hidden at mount** `[stated]`. Boot on Trips, switch to
+    Map, and the rendered `viewBox` equals the one `worldMapFrame` returned. **Injected fault:** compute the
+    `viewBox` from a measured client rect in the component and the assertion goes red at 0×0. W1 also has a
+    greppable ceiling: `getBoundingClientRect`, `offsetWidth`, `offsetHeight` and `ResizeObserver` do not
+    appear in `WorldMap.tsx`.
+  - **A one-country history does not exceed the min-span guard** `[stated]`. A library whose only travelled
+    trip is `AT` produces `bounds.clamped === true` and a `viewBox` whose span is `MIN_SPAN_KM`-derived, not
+    the raw box. **Injected fault:** build the extent from the country box directly instead of through
+    `mapBounds` and it goes red.
+  - **A provisional country renders differently from a confirmed one, on the map, asserted on the rendered
+    output** `[stated]` — I-8's own criterion, map half. One completed trip to `AT` and one active trip to
+    `AT` and `GB`: `GB` provisional, `AT` confirmed, different fills. **Injected fault:** render them alike.
+  - **A code the index cannot fill appears in `missing` and on screen** `[stated]`. **Injected fault:** drop
+    it silently and the count disagrees with the row.
+  - **`travelStats` is rendered behind a boundary that can refuse** — I-8's A-37 criterion, map half: the
+    Map tab shows *"we could not read your travel history"* with the row id rather than a blank screen.
+  - **The two signals are separable** `[stated]`. A copied, unaccepted stop **that also has a blocker**
+    renders the blocker at full strength *and* the unaccepted mark, asserted on rendered output — the
+    existing Playwright probes are where this lands. **Injected fault:** restore the shared opacity and the
+    blocker's computed colour moves.
+  - **Neither removal comes back:** no `backdrop-filter` and no `linear-gradient` in a chrome fill, asserted
+    over computed style in the same probe. These are the first two of the five computed-style assertions in
+    `docs/VISUAL-TELLS.md` — an advisory checklist, read once before writing CSS and once at rendered
+    verification, which **does not outrank a design decision this document or an approved design pass made**.
+  - **The payload ceiling** (A-40 Part 5): the emitted `d` total for the reference library is **measured and
+    recorded** in `BUILD-NOTES.md`. Over 512 KB is a finding, not a licence to simplify geometry.
+- **Dependencies / blockers.** I-7b (shipped). Nothing else.
+- **Ship gate.** A-40's W1 grep is clean; every criterion above has its injected fault red; the map bugs have
+  a test each rather than a comment each. **2b does not ship here** — the phase's map/identity pair is only
+  half delivered until I-8b.
+
+#### I-8b — Profile
+
+*(Revision 27. Takes the Profile half of I-8's spec above, unchanged, plus the tab registration I-8a left
+for it. **2b ships here.**)*
+
+- **Built.** `Profile.tsx` — countries, cities, trips, days travelled, first and last visit per country, and
+  the honest count of what could not be attributed; the Profile tab registered into I-8a's shell; the rescan
+  indicator from I-6 visible on screen and not merely in state. Cities appear as **text**, which is where
+  they need no geometry (A-40 Part 5).
+- **User-visible outcome.** A travel identity, and a screen that says what it does not know.
+- **Architecture / data model.** No new ruling. I-8's spec as written, minus the map clauses I-8a discharged.
+- **Verification.** I-8's remaining criteria, on this surface: the provisional treatment asserted on the
+  rendered Profile with the same injected fault; the `travelStats` refusal boundary; `unattributed` and
+  `unnamedCities` rendered rather than hidden, with the *"no places yet"* case distinguishable from *"all
+  attributed"*; and the tab shell still carrying exactly three tabs.
+- **Dependencies / blockers.** I-8a.
+- **Ship gate.** **2b is independently shippable here.** Criteria 4, 5, 6 and 7 all pass.
 
 #### I-9 — Participants in core
 
