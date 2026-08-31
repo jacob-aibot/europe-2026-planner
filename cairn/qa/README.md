@@ -155,6 +155,45 @@ assertions prove the filename carries no separator, no traversal and no extensio
 `r35-store.mjs` reports **1 FAIL**, R35-5, deliberately: the behaviour is A-46 Part 4's own
 choice and the assertion is the record of what that choice costs.
 
+**I-8d** (§4.4 **A-41**, the atlas frame, and **A-42**) has three scripts. *They shipped at
+`6814f73` and were never indexed here — round 36 added this block; if you looked for them in
+this file before then, they were not missing, they were unlisted.*
+
+```bash
+node qa/i8d-frame.mjs                                    # the shipped sample's panes, bare Node
+bash qa/i8d-faults.sh                                    # 13 mutations in throwaway worktrees
+# needs npm run web:build && npm run serve in another shell
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/i8d-render.mjs   # 4 sections; ALL CLEAR or exit 1
+```
+
+**Round 36** is the adversarial pass over I-8d. Two probes, run from `cairn/`:
+
+```bash
+node qa/r36-atlas.mjs                                    # A-41 clause by clause, over all 239 codes
+# with `npm run web:build && npm run serve` in another shell:
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r36-render.mjs
+```
+
+`r36-atlas.mjs` has eight sections: **A** C2's key point swept over every code, with the
+displacement from the country it names (**R36-1**); **B** C3/C4 — the partition is genuinely
+first-fit, and what that costs on real neighbours (**R36-2**), plus the threshold's real
+margin re-measured over all 28,441 pairs (**R36-3**); **C** C5 at the exact integer boundary in
+both directions, including the weight-vs-trips conflation (**R36-4**); **D** C6's three ranking
+keys, one observable test each; **E** C7 and I1–I7 at 1, 2, 3, 5 and 239 countries, plus
+hostile input; **F** Part 4 / A-42 (b) containment swept over all 239 single-country libraries
+with the reference `viewBox`es re-derived byte-for-byte; **G** Part 6's one kernel, with a
+2,000-case differential against the pre-extraction loop; **H** W1/W2/W3, Part 7's do-not-build
+list and A-42 (c). It exits **0 FAIL** — every clause of A-41 holds *as implemented*; the
+findings are its **FOUND** lines, which are cases where the ruling is what is wrong.
+
+`r36-render.mjs` has six sections: **A** dark mode on the new inset and its caption, the two
+things the builder could not verify (**R36-6**); **B** reduced motion, with a control;
+**C** 390 px, where the builder's own "observation 2" is measured (**R36-5**); **D** three
+panes on screen for the first time, from a planted five-cluster library, with A-42 (b)
+re-asserted on pane 3 from the browser's own `getBBox()`; **E** the shipped sample's
+containment cross-checked in Chromium against the bare-Node numbers; **F** A-41 constraint 1's
+*"still tappable"*, tested by sampling every country's own filled interior (**R36-7**).
+
 Browser probes need `npm run web:build && npm run serve` in one shell first, then:
 
 ```bash
