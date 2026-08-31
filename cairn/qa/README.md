@@ -124,6 +124,37 @@ inlining a calendar in `rowDatesReadable` → `packages/client/test/row-dates-re
 (three ways: totality, the differential against `core.isIsoDate`, and the source grep); routing
 the export through `fromJSON`/`toJSON` → 8 of 9 in `packages/client/test/export-stored-doc.test.ts`.
 
+**Round 35** is the adversarial pass over I-8e. Two probes, run from `cairn/`:
+
+```bash
+node --experimental-strip-types qa/r35-store.mjs   # exportStoredDoc + rowDatesReadable, bare Node
+# with `npm run web:build && npm run serve` in another shell:
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r35-render.mjs
+```
+
+`r35-render.mjs` has five sections: **A** the population A-46 leaves without a rescue — a
+document whose summary **row** is readable but whose `days[n].date` is not, which is what a
+pre-A-45 `store.importDoc` actually wrote (**R35-1**); **B** the unreadable card at 360 px and
+in dark mode; **C** contrast of the new *"Save a copy"* control and its hint line in both
+schemes (**R35-2**); **D** the export as a side effect — double-fire, a hostile title in the
+filename, a row with no stored document; **E** `--warn`'s other two consumers, measured rather
+than read off the hex (R34-7 confirmed at 5.87:1).
+
+`r35-store.mjs` has five sections: **A** staleness (**R35-5** — the export returns superseded
+bytes for a document with a pending debounced write; not reachable from today's UI); **B**
+per-trip identity and the deliberate absence of an ownership check, with `importDoc`'s refusal
+asserted as the invariant that makes it safe; **C** failure modes (storage throwing, `FilePort`
+throwing, an unknown id, a non-string id); **D** `rowDatesReadable` totality over twelve
+hostile row shapes plus the containment claim; **E** R35-1 at the client layer — the store
+rescues that document byte-perfectly, so the gap is entirely in what the surface offers.
+
+`r35-render.mjs` reports **7 FAIL(S)**: 4 × R35-1 (§A), 2 × R35-2 (§C), and one §D line
+(*"no markup survives into the filename"*) that is **not** a finding — `<script>` slugs to
+`-script-`, a surviving word rather than a surviving construct, and §D's other three
+assertions prove the filename carries no separator, no traversal and no extension injection.
+`r35-store.mjs` reports **1 FAIL**, R35-5, deliberately: the behaviour is A-46 Part 4's own
+choice and the assertion is the record of what that choice costs.
+
 Browser probes need `npm run web:build && npm run serve` in one shell first, then:
 
 ```bash
