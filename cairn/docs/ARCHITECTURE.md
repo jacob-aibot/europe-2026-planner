@@ -670,6 +670,28 @@ four as **I-8c** (the two data-integrity gates) and **I-8d** (the atlas frame), 
 I-8b**. Nothing else moves: no engine, no `schemaVersion`, no `SUMMARY_VERSION` bump, no `StoragePort`
 method, no `MapPort` change, no new runtime dependency.
 
+**Revision 31, 2026-08-31.** QA round 34 attacked I-8c and could not break either gate — but it measured
+**A-45's own cost paragraph as false**. One ruling, **A-46** (§2.9, directly under A-45), and it is a
+correction, not a redesign. A-45 accepted refusing a calendar-invalid document partly because such a
+document *"surfaces through `summaryScan`'s `unreadable`"*; that list is fed only by the `SUMMARY_VERSION`
+rescan, which visits only rows already stale by version, so R34-2 drove the real population through the
+running app and got **a completely healthy trip card** whose only affordance was **Delete** — and a raw
+`TripParseError` string on tap. A-46 rules three things. **(1)** The card's unreadable signal is
+`rowDatesReadable(row)` — `core.isIsoDate` on both stored dates, the same predicate `fromJSON` now uses —
+and **not** `rowLifecycle() === null`, which is strictly weaker and, measured, returns `completed` for
+`2026-02-30`; it reuses the existing `chip--warn` / *"This trip's file could not be read"* pattern and
+invents no vocabulary. **A-44 is unchanged**: *"can this row be classified?"* and *"is what this row stores
+a date?"* are two questions. **(2)** A trip that cannot be opened gets a **rescue export** —
+`store.exportStoredDoc(id)`, the stored bytes verbatim with no parse, over ports that already exist —
+because *"deletion and export as a designed cascade"* cannot mean *"export only what we can already
+read"*, and Delete was the only exit. **(3)** I-8c criterion 3's Map half is **unmeetable as written**
+(R34-8, verified exhaustively) and is rewritten: the input it names makes `travelStats` refuse the whole
+library, so the Map states that and draws nothing, while the arm that *names a row* is reached by the other
+A-31 Part 4 fault — a duplicate summary id. §2.10 moves **76 → 77** for `isIsoDate`, which A-45 made the
+definition of a date while leaving it unreachable outside core. `ROADMAP.md` revision 29 carries this as
+**I-8e**, which runs after I-8d and before I-8b. Nothing else moves: no core *behaviour*, no engine, no
+`schemaVersion`, no `SUMMARY_VERSION` bump, no `StoragePort`/`FilePort`/`MapPort` method, no new dependency.
+
 **Phase 1 is §2 and §4. The next phase is §8.1–§8.4.** Everything else is the shape those must not
 foreclose. See `ROADMAP.md` for sequencing and `PRODUCT-VISION.md` for why this order and not another.
 
@@ -692,7 +714,13 @@ cairn/tools/doc-section ARCHITECTURE         # lists the sections and their size
 | 2 | **Domain model — the builder's contract.** §2.12 `travelRole`, §2.13 geography and §2.14 import/copy are new in revision 2 and are where the Phase 1 rework lives; **§2.2a (the `StorageVersion` write fence, revision 3) and §2.2b (the freshness rule it turned out to be one instance of, revision 4) are read together with §4.2 and §4.3, never alone**; §2.10 (the export surface) and §2.13's copied-record row are settled in revision 5; **§2.7's retirement ledger (A-5) and §2.13's copy-borne `Place` rule (A-6) are revision 6**; **§2.2a's A-7 (the fence a declined write may not move) is revision 8** and is read with §4.2 rule 4a; **§2.2's A-10 (a `CityKey` is a minted opaque id) and §2.7's A-9 (retirement is decided against the un-gated set) are revision 11** — a Phase 2 builder needs both; **A-11, A-12 and A-13 (§2.7) and A-14 (§2.14) are revision 12** and are read *with* A-9 and A-10, never instead of them — A-11 replaces A-9's greppable invariant, A-12 narrows A-9 point 1, A-13 rewrites A-9 assertion 4, and A-14 corrects A-10's change table; **A-15 and A-16 (§2.14) and A-17 (§2.7) are revision 13** — A-15 is the copy path's redaction rule and is read with §6.6, A-16 withdraws A-14's *"within one trip is unchanged"* paragraph, A-17 narrows A-11 assertion 5; **A-18 and A-19 (§2.14) are revision 14** — A-18 is the copy path's redaction rule for the *stop's own* nested records (`cost`, `arrival`) and generalises A-15 to *no spread at any depth*, A-19 rules that the `placement` **argument** is validated against the target and never re-filed. **Anyone touching `copyStopInto` reads A-14, A-15 and A-16 as one rule 4, and A-18 with rules 3 and 5**; **A-20 is revision 15 and lives in §2.9, not §2.14** — it is where the *shape* of a document is decided, it amends A-15's `hours` row and A-18's *"changes nothing in `fromJSON`"* paragraph, and **anyone touching `Place.hours` at any layer reads it first**; **A-21 is revision 16, lives in §2.9 beside A-20 and is read with it** — it replaces A-20's `isWeeklyEntry` with a reader that returns what it read, and imposes one read per field on `copyStop.ts`, so **anyone touching a predicate over an `unknown`, or any function in `copyStop.ts`, reads A-21 with A-15 and A-18**; **A-21a is a revision-16 addendum in the same place** and is what makes A-21's file-wide rule actually total — it is read with A-21, never instead of it; **A-22 and A-23 are revision 17, in the same place again** — A-22 closes the four sites A-21/A-21a's searches missed and **supersedes A-21a's read-count table one level down** (read A-22 Part 2's table, not A-21a's), and **A-23 is the standing census test that replaces the hand search** — *anyone adding a branch to `copyStopInto`, or a field to `Stop` or `Place`, reads A-23 first, because the scenario matrix and the allow-list are part of the contract and widening the allow-list is an architect's ruling*; **A-24 is revision 18 and is read *with* A-23, never instead of it** — it supersedes A-23's `opaque` set, its ten-row matrix and its fixture list, and nothing else about A-23 moves; **A-25 is revision 19 and is the last of the chain — it is read with A-23 and A-24 and closes the arc**, adding `City` rows to the roots, a fifteenth matrix row, an eighth `ALLOWED` entry, the structural fixture-completeness tests, and the **written closing criterion** in its Part 6 that a manager or a future session checks rather than takes on trust. **QA round 21 ran that criterion and all six clauses hold, so the arc is closed rather than closeable** — Part 6 records the verification and Part 5's class-A residue list was completed **in place** with the three instances round 21's re-derivation added (R21-1); that correction carries **no revision number** because no rule, entry, root, row, gate or line of code moved. **A-32 is revision 25 and lives in §2.1**, at the other end of the section from the copy chain — the civil-calendar implementation of `dayNumber`/`fromDayNumber`/`weekdayOf` and the first written statement of `IsoDate`'s **domain**; it is ~4k on its own, and **anyone touching a date helper, or minting an `IsoDate` from user input, reads it and needs nothing else in §2**; **A-35 is revision 26 and lives in §2.3** — the day skeleton's span cap (`MAX_TRIP_SPAN_DAYS = 3653`, in `ensureDays`, in core), which is A-32 Part 5's own trigger firing on the branch that Part does not cover, so **anyone touching `ensureDays`, `createTrip`'s date validation or either trip form reads A-35, and reads A-32 Part 5 only for why the Year field still has no floor**; **A-45 is revision 30 and lives in §2.9, at
 the end, beside A-20/A-21** — `fromJSON` stops hand-rolling a second date predicate and refuses a
 calendar-invalid date with its JSON path, and **anyone touching `fromJSON`, `isIsoDate` or a date field in
-the parser reads A-45 with A-20, and §2.1's A-32 Part 4 for what deliberately does *not* move** | 112k | builder, breaker |
+the parser reads A-45 with A-20, and §2.1's A-32 Part 4 for what deliberately does *not* move**; **A-46 is
+revision 31, sits directly under A-45 and is read *with* it, never instead of it** — QA R34-2 measured
+A-45's Part 4 cost paragraph as false and A-46 withdraws that clause in place, then rules what the Trips
+list does with a row whose stored dates are not dates (`rowDatesReadable`, **not** `rowLifecycle() === null`,
+which is strictly weaker), gives a trip that cannot be opened a **rescue export**, and rewrites I-8c
+criterion 3's Map half; **anyone rendering a stored summary row on the Trips list, adding an export path, or
+about to call `isIsoDate` from outside core reads A-46, then A-45, then §8.4 A-44** | 112k | builder, breaker |
 | 3 | Module boundaries | <1k | builder |
 | 4 | **The Phase 1 client.** §4.2 rule 6 (a pending write is never outlived by its document) is new in revision 3 — QA R3-2; rule 6a′ and the `savedDoc` predicate are revision 4 — QA R4-1; **rule 6a″ (the flush bound and its exits) and rule 6c's "delete goes on the chain" are revision 5** — QA R6-1/R6-2/R7-3; **rule 5's retirement carve-out is revision 6** — QA R8-1, read with §2.7; **rule 4a is revision 8** — QA R11-1, read with §2.2a A-7; **§4.3's A-30 is revision 23** — the `refreshSummary` port method, the fence's meaning stated once, and the rescan's uniform per-row link — and **anyone touching `runRescan`, `StoragePort` or a port implementation reads it first**, with §8.4 clause 3 beside it; **§4.4's A-40 is revision 29** — the lifetime map is a plain component over a pure `packages/client` frame function, not a second `MapPort`, and **anyone building or reviewing `WorldMap.tsx` reads it first** (it is ~3k and self-contained; the trip map's port is unchanged and needs no re-reading); **§4.4's A-41 and A-42 are revision 30 and are read *with* A-40, never instead of it** — A-41 is the atlas frame (geographic clustering, one primary pane and up to two insets, padding, and the **W3** renderer clause) and it amends A-40 clause 2 and withdraws A-40 Part 7 residue 1's diagnosis; A-42 withdraws A-40 clause 2's min-span *claim* and rules that no second constant is created. **A builder of I-8d reads A-40 Parts 3–5, then A-41 and A-42, and needs nothing else in this document except §2.10's list** | 18k | builder |
 | 5 | The four hard subsystems | 2k | breaker; builder from Phase 3 on |
@@ -5311,7 +5339,22 @@ domain problems *inside a `Trip`*, which come back as `Issue[]` and still do. Th
 loading and surfaces through the existing *"this trip's file could not be read"* path (`summaryScan`'s
 `unreadable`) instead of quietly producing wrong arithmetic. That is the right direction — refusal with a
 JSON path beats a plausible wrong number, per §2.1 and *"flag conflicts, don't resolve them by guessing"* —
-and the population is documents nobody's shipped write path can mint. **Tests move with the ruling, and
+and the population is documents nobody's shipped write path can mint.
+
+> **The first sentence's second clause is withdrawn as false — QA R34-2, revision 31, ruled as A-46 below.**
+> *"Stops loading"* is true and is the whole point. *"Surfaces through the existing 'this trip's file could
+> not be read' path"* is **not**: `summaryScan`'s `unreadable` is fed only by the `SUMMARY_VERSION` rescan,
+> which visits only rows **below** the current version, so a row written by any build since I-7a is never
+> re-read and can never be marked unreadable. Round 34 drove exactly this population through the running
+> app — Europe 2026 with its stored `startDate` rewritten to `2026-02-30`, a value `store.importDoc`
+> accepted and wrote before I-8c — and measured **one perfectly healthy card**: `row-unreadable` count 0,
+> no scan note, a `PAST TRIP` chip, full counts, and the raw string
+> `expected a real calendar date in YYYY-MM-DD (at $.startDate)` as a banner only after the user taps it.
+> The refusal is right; the claim that the user is *told* before they tap it was never true. **A-46 is what
+> makes it true**, and it also answers the half this paragraph never considered: the only action that card
+> offered was **Delete**.
+
+**Tests move with the ruling, and
 this is expected, not a regression:** `packages/core/test/serialize.test.ts:154` currently asserts
 `fromJSON` **accepts** `"2026-02-30"` so `validateTrip` can report it; it is rewritten to assert the
 refusal and its path, and the `invalid_calendar_date` reporting test is re-pointed at a `Trip` built
@@ -5324,13 +5367,233 @@ dead end. Building an import-repair path (*"three dates in this file are not rea
 is a real feature and is not this ruling; it is noted so the next person does not mistake the silence for
 an oversight.
 
+> **Narrowed at revision 31 by A-46.** This residue was written as though the user were *told* they have
+> such a document; R34-2 measured that they are not, and that the only affordance on the card was Delete —
+> a dead end with a destructive exit is not the same residue as a dead end. **A-46 keeps the repair path
+> deferred and removes the destructive part**: the row says it cannot be read, and the bytes can be saved
+> off the device before anything deletes them. What survives of this residue is exactly the sentence about
+> *repair*, and nothing about *warning* or *rescue*.
+
+#### A-46 — a row says whether its own dates are real; a trip that cannot be opened can still be saved; and the Map's refusal is reached by a different fault than the one the criterion named (revision 31, QA **R34-2** and **R34-8**, ROADMAP **I-8e**)
+
+*(Read **with** A-45 directly above — it amends A-45's Part 4 and narrows its residue, and it changes
+nothing about what `fromJSON` refuses — and with §8.4 **A-44**, whose gate it extends rather than replaces.
+It is a correction to a shipped contract, not a redesign of the Trips list or of export.)*
+
+**Part 1 — three facts, and the one nobody was computing. Measured, my own run.**
+
+The Trips list can know three different things about a stored `TripSummaryRow`, and I-8c collapsed the
+first two and never had the third:
+
+| # | fact | where it comes from | when it is available |
+|---|---|---|---|
+| F-A | *we opened this document and `fromJSON` threw* | `summaryScan(state).unreadable` | **only** during a `SUMMARY_VERSION` rescan, i.e. only for rows already stale by version |
+| F-B | *this row's dates are not even `YYYY-MM-DD`-shaped* | `rowLifecycle(row, today) === null` (A-44) | every render |
+| F-C | *this row's dates are shape-valid but are not real calendar dates* | **nothing computes it** | — |
+
+F-C is the whole of R34-2's population, and it is **not** F-B. `rowLifecycle` is `core.lifecycle` in a
+`try/catch`, `lifecycle` reaches `parseIsoDate`, and A-32 Part 4's month normalisation makes that total
+over anything shape-valid. Run directly against the shipped selector at `today = 2026-08-31`:
+
+| row dates | `rowLifecycle` |
+|---|---|
+| `2026-02-30 → 2026-03-01` | **`completed`** |
+| `2026-02-31 → 2026-03-05` | **`completed`** |
+| `2026-13-01 → 2026-13-02` | **`planned`** |
+| `0000-00-00 → 0000-00-00` | **`completed`** |
+| `not-a-date → 2019-05-08` | `null` |
+| `2026-09-01 → not-a-date` | **`planned`** (R34-5: `lifecycle` returns before it reads `endDate`) |
+
+So the routed proposal — *"`Library.tsx` treats `rowLifecycle() === null` as the unreadable signal for the
+whole card"* — is **right in shape and wrong in predicate**: it is strictly weaker than what `fromJSON` now
+refuses, and every row in R34-2's table above would still render as a healthy card under it. And
+`rowLifecycle`'s own docstring says so in as many words (*"a date that is merely calendar-invalid is not
+this case"*), which was correct when it was written and is now the gap. **A-44 is unchanged and stays
+unchanged**: it answers *"can this row be classified?"*, which is a different question from *"is what this
+row stores a date?"*, and widening `rowLifecycle` to return `null` for `2026-13-01` would make the chip
+disagree with `travelStats`, which still counts that row (A-37: a stored row is not revalidated).
+
+**Part 2 — ruled (a). One predicate, core's own, asked once per row.**
+
+`packages/client`'s selectors gain, beside `rowLifecycle`:
+
+```ts
+/**
+ * Does this row's own record of its dates satisfy §2.1 A-32's `IsoDate` domain — i.e. exactly what
+ * `fromJSON` now refuses (§2.9 A-45)? Pure, total, never throws. `false` means "this trip's document
+ * will not open", not "these dates are odd".
+ */
+export function rowDatesReadable(row: { startDate: string; endDate: string }): boolean;
+```
+
+Its body is `core.isIsoDate(row.startDate) && core.isIsoDate(row.endDate)` and it may be nothing else. **A
+hand-rolled calendar check in `packages/client` is forbidden** — that is the second-implementation defect
+A-20, A-21, A-37 and A-45 have each treated once already, and A-45 exists precisely because `fromJSON` had
+one. So `isIsoDate` **joins §2.10's surface**, 76 → 77, under **P1** (`packages/client` calls it) and
+**P2** (this section specifies it by name); the widening is recorded in §2.10 in this revision, which is
+what §2.10's *"widening the surface is a documentation change first"* requires. R34-6 named this exact
+tension — A-45 made `isIsoDate` *the* definition of a date while leaving it unreachable outside core.
+
+`rowDatesReadable` **strictly contains** `rowLifecycle(...) === null` (every shape-invalid string fails
+`isIsoDate`), so there is one signal on the card, not two, and F-B stops being computed separately there.
+It also has no blind spot on `endDate`, which **discharges R34-5** at the surface: both fields are read
+unconditionally, so `2026-09-01 → not-a-date` is flagged.
+
+*Alternative considered and refused in one sentence:* making `summaryScan.unreadable` honest by opening
+every document at boot would give F-A completeness, and it costs a parse of the whole library on every
+boot and contradicts §4.2's *"exactly one document in memory"* — refused.
+
+**Part 3 — ruled (b). The card treatment, which reuses the existing pattern and invents no vocabulary.**
+
+`Library.tsx` computes, per row, `const unreadableRow = scan.unreadable.has(row.id) || !rowDatesReadable(row)`
+and that single boolean drives the card:
+
+1. **The warn chip already there.** `<span className="chip chip--warn" data-testid="row-unreadable">This
+   trip's file could not be read</span>` — the same element, the same class, the same sentence, now fed by
+   both sources. **No new chip, no new token, no new colour.** (R34-7's 4.00:1 contrast on `--warn` is a
+   pre-existing token finding and is not re-ruled here; it applies to this chip too.)
+2. **The meta line stops stating a range it cannot read.** On an `unreadableRow` the card does **not** call
+   `dateRangeLabel`; it prints `startDate` and `endDate` **verbatim as stored**, joined by ` → `, with no
+   month-name lookup and no `datePrecision` branch. This **discharges R34-4** — `MONTHS[NaN-1] ?? 'not'`
+   printing `a not` beside a chip saying the dates could not be read is the contradiction, and the fix is
+   to show the user the two strings that are actually in their file.
+3. **`LifecycleChip` is unchanged (A-44) and keeps its own chip.** It sits beside the title and names the
+   *field* class; the card chip is the *whole-card* statement; and the chip must keep working on its own
+   on the Map drill-down, where there is no card. Two chips on one card is deliberate.
+4. **Delete's confirmation says what Delete costs.** On an `unreadableRow` the confirm text adds, in
+   words: Cairn cannot read this trip's file, so this stored copy is the only one — save a copy first if
+   you want to keep it. This is the *"nothing you type ever silently vanishes"* promise applied to the one
+   screen where the only affordance was destructive.
+
+**The signal is not complete and the surface may not imply that it is.** A row can be perfectly readable
+while its document carries a bad `days[3].date`; only opening it finds that, and F-A only ever sees it
+during a rescan. So the card's claim is *"this trip's file could not be read"* when it is known, and never
+*"every other trip here will open."*
+
+**Part 4 — ruled (c). A trip that cannot be opened gets an export, and it is a rescue copy rather than a backup.**
+
+**Yes, this is a real gap against a load-bearing promise, and it is cheap to close.** `store` exposes
+`exportActive()` only, `exportActive` requires `openTrip`, and `openTrip` is exactly what now throws — so
+R34-2 measured a trip whose only affordance was Delete, with the bytes sitting intact in IndexedDB. The
+brief's *"deletion and export as a designed cascade"* is public-grade-from-day-one, and an export that
+works only for documents we can already read is not that cascade.
+
+`packages/client`'s store gains one method:
+
+```ts
+/**
+ * The stored document for `id`, byte-for-byte, with **no parse** — §2.9 A-46. This is the export path
+ * for a trip that cannot be opened. It reads storage and touches no state: no flush, no `set()`, no
+ * transition, no `activeTripId`.
+ *
+ * @throws {Error} if nothing is stored under `id`.
+ */
+exportStoredDoc(id: string): Promise<string>;
+```
+
+Five clauses, and they are the whole of it:
+
+- **`ports.storage.load(id)` and `ports.file.exportDoc(name, bytes)`, both of which already exist.** **No
+  `StoragePort` change, no `FilePort` change, no new port method.** As with `exportActive`, the text is
+  returned even when `ports.file` is absent, which is what makes this checkable in bare Node against
+  `ports/memory.ts`.
+- **The bytes are `stored.doc` verbatim.** No re-serialisation, no normalisation, no repair, no envelope,
+  no `StorageVersion` (§2.2a rule 4 — an export carries no storage state). Any transformation would be a
+  guess about a document we have just said we cannot read, and *"a silently corrected date is a guessed
+  date"* (A-45 Part 3).
+- **The filename is deliberately not a backup's.** `${slug(title)}.cairn-unreadable.json`, not
+  `.cairn.json`, and the control's own text says it: Cairn cannot re-read this file, so this is a copy to
+  keep — restoring it will be refused with the same message. Handing the user something that looks like a
+  restorable backup, when restore is guaranteed to refuse it, would be the promise broken one screen later.
+- **No ownership check, stated rather than skipped.** `importDoc` already refuses a foreign `ownerId`, so
+  Phase 1 storage holds only this user's documents, and the check cannot be performed anyway — parsing is
+  the thing that fails. **This is safe only while storage is single-owner (`LOCAL_OWNER`) and must be
+  revisited when Phase 3 accounts can put another person's document on the device.** §6.6 is untouched: it
+  governs what may reach a *build artifact*, and this is the user's own document going to the user's own
+  disk, the same posture `exportActive` already has.
+- **The control lives on the unreadable branch only.** A readable trip already has an export (open →
+  Export), and putting a second one on every card is a Trips-list redesign this ruling does not make.
+
+Because this is a **new export surface**, `cairn/CLAUDE.md`'s delegation table applies: builder **and**
+breaker, mandatory, no shortcut.
+
+**Part 5 — ruled (d). The Map half of I-8c criterion 3, and what actually reaches `WorldMap.tsx`'s refusal.**
+
+R34-8 is upheld: the criterion is **unmeetable as literally written**, not merely unmet, and that is my
+defect under sequencing rule 5. The breaker swept the 7 × 6 grid of shape-valid / calendar-invalid /
+shape-invalid / empty date pairs and found **no** input where `core.travelStats` succeeds while
+`rowLifecycle` returns `null`: `travelStats` calls `dayNumber` in its sort comparator and `lifecycle` on
+every row, so the two refusals are the same refusal. A library containing a row the chip would mark
+unreadable therefore never gets as far as a drill-down — there is no country to tap, `0`
+`path[data-code]` elements.
+
+**Both arms of `WorldMap.tsx`'s refusal are real and both are exercisable, by different inputs:**
+
+- **`rowId === null`** — the aggregate refusal. A library with a shape-invalid row makes `travelStats`
+  throw for the whole library, `travelHistory` returns `{ok:false, rowId:null}`, and the surface prints
+  *"We could not read your travel history"* and draws nothing. **This is what the Map actually does with
+  the criterion's input**, and it is the honest statement to assert.
+- **`rowId` named** — the per-row refusal. Reached by the **other** A-31 Part 4 fault: a duplicate summary
+  id, which `travelHistory` parses out of the message and names. This is the arm that names a row, and it
+  is the one a test should drive to exercise it.
+
+A-37's remaining refusal cases do **not** reach either arm and must not be written into a criterion as
+though they did: a lowercase or three-letter stored country code is *skipped*, and a rolled `endDate` is
+*clamped* — both measured, both returning normally.
+
+**`LifecycleChip`'s gate stays in the drill-down** even though no unreadable row can reach it there. It is
+defence in depth with a stated trigger: the moment `travelStats`' refusal set narrows — an `Issue` channel
+(A-31 Part 4 residue), a per-row skip instead of a throw, or a drill-down fed by anything other than a
+country's `tripIds` — the gate is load-bearing on that surface and nobody has to rediscover why. Removing
+it to *"delete dead code"* is reopening this ruling.
+
+**Part 6 — what does not move.**
+
+- **Nothing in core's behaviour changes.** `fromJSON` refuses exactly what A-45 made it refuse;
+  `parseIsoDate`, `dayNumber`, `fromDayNumber` and A-32's month normalisation are untouched; `lifecycle`
+  keeps classifying a calendar-invalid row exactly as A-37 Part 2 and A-44 require. The only movement in
+  core is `index.ts` re-exporting a function that already exists.
+- **No repair path, no clamp, no plausibility floor.** A-45 Part 3 and A-32 Part 5 both stand. A-45's
+  residue keeps its *repair* sentence and loses only its *warning* and *rescue* halves.
+- **No `SUMMARY_VERSION` bump, no `schemaVersion` bump, no `StoragePort`/`FilePort`/`MapPort` change, no
+  new dependency, no reducer action, no engine change.**
+- **`summaryScan` is not re-plumbed.** F-A stays exactly what it is — an observation made during a rescan
+  — and is not made to look complete.
+
+**Part 7 — residues, stated rather than solved.**
+
+1. **A row can be readable while its document is not.** Only opening finds it. The banner on that tap is
+   still a raw `TripParseError` string, which is R34-2's builder half and is not ruled here; what this
+   ruling guarantees is that the rescue copy is reachable from the card either way.
+2. **The Map and the Profile still count a calendar-invalid row.** `travelStats` normalises it (A-32 Part
+   4) and has no `Issue` channel (A-31 Part 4), so *everywhere you have been* silently includes a trip
+   whose dates are not dates. The Trips list is where the user can act on it — open, save, delete — and
+   that is where the flag goes. Reopen with A-31 Part 4's `Issue` channel, not before.
+3. **The rescue file is a dead end by design.** It exists to be kept, mailed or hand-edited, not restored;
+   the repair path A-45's residue defers is what would make it restorable.
+4. **`isIsoDate` on the surface invites a caller to validate a date and then not use `fromJSON`.** It is a
+   predicate, not a parser, and §2.10's list is the only place that can say so — it does, in this revision.
+
 ### 2.10 The public API surface
 
 **Settled in revision 5 (QA R2-12, KD-19); 69 → 70 in revision 6, 70 → 71 in revision 10, 71 → 73 at
-Phase 2 I-5, 73 → 74 at Phase 2 I-6 (recorded late — see below), 74 → 75 at Phase 2 I-7, and 75 → 76 at
+Phase 2 I-5, 73 → 74 at Phase 2 I-6 (recorded late — see below), 74 → 75 at Phase 2 I-7, 75 → 76 at
 Phase 2 **I-8d** (`clusterPoints`, §4.4 **A-41** Part 6 — the single-linkage kernel `clusterStops`,
 `focusCluster` and the world map's frame all delegate to, so that the third copy of that loop is never
-written), each for a stated reason.**
+written), and 76 → 77 at Phase 2 **I-8e** (`isIsoDate`, §2.9 **A-46** Part 2), each for a stated reason.**
+
+**`isIsoDate` joins at Phase 2 I-8e** under **P1** — `packages/client`'s `rowDatesReadable` calls it, and
+`packages/client` sees exactly this list (`deps.ts` is `export * from '../../core/src/index.ts'`) — and
+under **P2**, because §2.9 A-46 Part 2 specifies it by name. The reason it is a join rather than a
+convenience: **A-45 made it the definition of a date for the whole system** and left it reachable only from
+inside core, so the Trips list could not ask the question `fromJSON` now answers, and the alternative was a
+second calendar implementation in `packages/client` — the exact defect A-20, A-21, A-37 and A-45 have each
+treated once (QA R34-6 named the tension; R34-2 is what it cost). **It is a predicate, not a parser:**
+a caller that has a document still calls `fromJSON`, which does far more than check two dates, and no
+caller may use `isIsoDate` to decide that a document is safe to accept. `daysInMonth` and `ISO_DATE_RE`
+stay internal for group 1's reason — a caller that can count days in a month is a caller that will grow a
+second calendar. **The order matters for the count and only for the count:** I-8e ships after I-8d, so the
+sequence is 75 → 76 → 77; re-derive it rather than quoting it (see the `SUMMARY_VERSION` paragraph below).
 `reassertRetirements` joins under **P1** — `packages/client`'s `set()` calls it — and it is the same class as
 `syncResolutions`, which is already here: a pure build function the client must call because the client is
 where the trigger lives. **`lifecycle` joins under P2 in revision 10** (Phase 2 I-1): §8.1 specifies it by
@@ -5359,7 +5622,7 @@ rule.
 
 §2.10's own enforcement
 rule is *"widening the surface is a documentation change
-first"*, and these lines are that change. The list below is the whole contract: **76 runtime symbols**,
+first"*, and these lines are that change. The list below is the whole contract: **77 runtime symbols**,
 one list, asserted as set equality in both directions against the runtime exports of
 `packages/core/src/index.ts`. It replaces a two-list arrangement — 50 "in §2.10" plus 60 "beyond §2.10, each
 with a justification" — that made the criterion true by construction against 110 exports. A boundary the
@@ -5376,7 +5639,8 @@ A symbol is on the surface if **either**:
 
 **(P2) a numbered section of this document specifies it by name as a callable or a constant.** 19 symbols in
 revision 6, **20 in revision 10**, **21 at Phase 2 I-5**, **22 at Phase 2 I-7**, **23 at Phase 2 I-8d**
-(`clusterPoints`, §4.4 A-41 Part 6 — also a P1 join, since `packages/client`'s `worldMapFrame` calls it) —
+(`clusterPoints`, §4.4 A-41 Part 6 — also a P1 join, since `packages/client`'s `worldMapFrame` calls it),
+**24 at Phase 2 I-8e** (`isIsoDate`, §2.9 A-46 Part 2 — also a P1 join, since `rowDatesReadable` calls it) —
 things a phase has no
 caller for yet, or that a section names outright: the access predicates (§6.2), `geoCheck`/`GEO_LIMIT_KM`
 (§2.13), `clusterStops`/`MIN_SPAN_KM` (§2.5), `SCHEMA_VERSION`/`migrateDoc` (serialization),
@@ -5391,10 +5655,11 @@ would make every internal public. The un-export pass therefore rewrites some pro
 index to the module path; that is the expected shape of the change, not a regression.
 
 ```
-packages/core/src/index.ts re-exports exactly this and nothing else — 76 runtime symbols:
+packages/core/src/index.ts re-exports exactly this and nothing else — 77 runtime symbols:
 
-  model (7)      LOCAL_OWNER · SCHEMA_VERSION · sequentialIds · formatRange · costFromDisplay
+  model (8)      LOCAL_OWNER · SCHEMA_VERSION · sequentialIds · formatRange · costFromDisplay
                  TripParseError · ForeignDocumentError
+                 isIsoDate(v)                           // I-8e, §2.9 A-46 — a PREDICATE, not a parser
   build (17)     createTrip(init) · ensureDays(trip) · setTripMeta(trip, patch) · setDayMeta(trip, dayId, patch)
                  addStop(trip, placement, stop) · updateStop(trip, stopId, patch) · removeStop(trip, stopId)
                  moveStop(trip, stopId, placement)      // day↔day, day↔pool, reorder — ONE function

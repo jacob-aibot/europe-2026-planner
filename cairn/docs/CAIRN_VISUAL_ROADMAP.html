@@ -319,10 +319,38 @@
 </style>
 </head>
 <body>
+<div class="callout" style="border-left:4px solid #c2410c;padding:.75rem 1rem;margin:1rem 0;background:#fdf0e8">
+<p><strong>&#128992; I-8c HAS NOW BEEN ATTACKED, AND IT GOES BACK &mdash; as of 2026-08-31</strong>
+(this block is the newest; it supersedes the I-8c block below on &ldquo;verified&rdquo; and adds one
+increment). The breaker round could not break either of the two data-integrity gates below &mdash;
+it fed the date parser 140,042 dates against an independent calendar and found no disagreement
+&mdash; but it found two things:</p>
+<ul>
+<li><strong>A screen that fails still traps you.</strong> <em>&ldquo;Close this trip&rdquo;</em> on
+the error banner leaves you looking at the same dead screen; a second click gets you out. A
+four-line ordering bug in the one branch that shipped untested. Going straight to a builder.</li>
+<li><strong>We refuse the bad file, and then never tell you that you have one.</strong> This is the
+design defect, and it is mine. A trip whose stored file contains a date that does not exist shows up
+in your list as a <strong>completely healthy trip card</strong> &mdash; full counts, no warning
+&mdash; and only fails when you tap it, with an internal error string. The only button on that card
+is <strong>Delete</strong>, and there is <strong>no way to export a trip you cannot open</strong>.
+The ruling that refused the file said this case would be flagged; it measurably is not.</li>
+</ul>
+<p><strong>What is now scheduled to fix it (<code>I-8e</code>):</strong> the card says <em>&ldquo;This
+trip&rsquo;s file could not be read&rdquo;</em> using the warning style the list already has, shows
+the raw dates as they are actually stored instead of inventing a readable-looking range, warns you
+before Delete that this is the only copy &mdash; and adds <strong>&ldquo;Save a copy&rdquo;</strong>,
+which writes the file out byte-for-byte without trying to read it. Repairing such a file in-app is
+still deliberately not built; getting it out safely now is.</p>
+<p><strong>I-8c is built &#9989; &middot; verified &#10060; (SEND BACK) &middot; shippable
+&#10060;</strong>, and <strong>I-8e is designed &#9989; &middot; built &#10060;</strong>. I-8b (the
+Profile screen) now waits on <strong>I-8c&rsquo;s fix, I-8d and I-8e</strong>.</p>
+</div>
+
 <div class="callout" style="border-left:4px solid #b4690e;padding:.75rem 1rem;margin:1rem 0;background:#fbf4e9">
-<p><strong>&#128993; I-8c IS BUILT, NOT YET ATTACKED &mdash; as of 2026-08-31</strong> (this block is
-the newest; it amends the I-8a block below on two of the items that block routed). Three small
-fixes, all on the same screen, all shipped together as one increment:</p>
+<p><strong>&#128993; I-8c IS BUILT &mdash; as of 2026-08-31</strong> (superseded on <em>&ldquo;not yet
+attacked&rdquo;</em> by the block above; it amends the I-8a block below on two of the items that
+block routed). Three small fixes, all on the same screen, all shipped together as one increment:</p>
 <ul>
 <li><strong>A backup file that contains a date which does not exist is now refused, in words,
 naming the field.</strong> Before this, restoring a file that said <code>2026-02-30</code> or
@@ -339,9 +367,10 @@ including <strong>Delete</strong> &mdash; keeps working. This is the item the I-
 <em>&ldquo;Try again&rdquo;</em> and one more control that does not live on the broken screen, and
 it stops showing once the cause is gone instead of staying for the rest of the session.</li>
 </ul>
-<p><strong>I-8c is built &#9989; &middot; verified &#10060; (no breaker round yet) &middot;
-shippable &#10060;.</strong> It does <strong>not</strong> unblock I-8b on its own: <strong>I-8d
-&mdash; the map-framing decision below &mdash; is still owed.</strong></p>
+<p><strong>I-8c is built &#9989; &middot; verified &#10060; &middot; shippable &#10060;.</strong> It
+does <strong>not</strong> unblock I-8b on its own: <strong>I-8d &mdash; the map-framing decision
+below &mdash; is still owed</strong>, and so are I-8c&rsquo;s own two fixes and I-8e (see the block
+above).</p>
 </div>
 
 <div class="callout" style="border-left:4px solid #2f7a3d;padding:.75rem 1rem;margin:1rem 0;background:#eef7ef">

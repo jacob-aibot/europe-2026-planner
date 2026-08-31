@@ -19,9 +19,34 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
-> **🟡 I-8c IS BUILT, NOT YET ATTACKED — as of 2026-08-31 (this block is the newest; it amends the
-> I-8a block below on two of the items that block routed).** Three small fixes, all on the same
-> screen, all shipped together as one increment:
+> **🟠 I-8c HAS NOW BEEN ATTACKED, AND IT GOES BACK — as of 2026-08-31 (this block is the newest;
+> it supersedes the I-8c block below on "verified" and adds one increment).** The breaker round
+> could not break either of the two data-integrity gates below — it fed the date parser 140,042
+> dates against an independent calendar and found no disagreement — but it found two things:
+>
+> - **A screen that fails still traps you.** *"Close this trip"* on the error banner leaves you
+>   looking at the same dead screen; a second click gets you out. A four-line ordering bug in the
+>   one branch that shipped untested. Going straight to a builder.
+> - **We refuse the bad file, and then never tell you that you have one.** This is the design
+>   defect, and it is mine. A trip whose stored file contains a date that does not exist shows up
+>   in your list as a **completely healthy trip card** — full counts, no warning — and only fails
+>   when you tap it, with an internal error string. The only button on that card is **Delete**, and
+>   there is **no way to export a trip you cannot open**. The ruling that refused the file said
+>   this case would be flagged; it measurably is not.
+>
+> **What is now scheduled to fix it (`I-8e`):** the card says *"This trip's file could not be
+> read"* using the warning style the list already has, shows the raw dates as they are actually
+> stored instead of inventing a readable-looking range, warns you before Delete that this is the
+> only copy — and adds **"Save a copy"**, which writes the file out byte-for-byte without trying
+> to read it. Repairing such a file in-app is still deliberately not built; getting it out safely
+> now is.
+>
+> **I-8c is built ✅ · verified ❌ (SEND BACK) · shippable ❌**, and **I-8e is designed ✅ · built
+> ❌**. I-8b (the Profile screen) now waits on **I-8c's fix, I-8d and I-8e**.
+
+> **🟡 I-8c IS BUILT — as of 2026-08-31 (superseded on *"not yet attacked"* by the block above; it
+> amends the I-8a block below on two of the items that block routed).** Three small fixes, all on
+> the same screen, all shipped together as one increment:
 >
 > - **A backup file that contains a date which does not exist is now refused, in words, naming the
 >   field.** Before this, restoring a file that said `2026-02-30` or `2026-13-01` loaded cleanly and
@@ -36,8 +61,9 @@ update to this file added that instruction).
 >   and one more control that does not live on the broken screen, and it stops showing once the
 >   cause is gone instead of staying for the rest of the session.
 >
-> **I-8c is built ✅ · verified ❌ (no breaker round yet) · shippable ❌.** It does **not** unblock
-> I-8b on its own: **I-8d — the map-framing decision below — is still owed.**
+> **I-8c is built ✅ · verified ❌ · shippable ❌.** It does **not** unblock I-8b on its own:
+> **I-8d — the map-framing decision below — is still owed**, and so are I-8c's own two fixes and
+> I-8e (see the block above).
 >
 > **🟢 I-8a IS SHIPPED — the Map screen and the visual language are signed off — as of 2026-08-31
 > (this block is the current state; the 2026-08-29 block below it is older on I-8 only).** I-8 was
