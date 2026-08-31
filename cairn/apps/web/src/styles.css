@@ -587,8 +587,35 @@ textarea { resize: vertical; }
   margin: 0 0 .9rem; border: var(--rule); border-radius: var(--radius);
   background: var(--card); overflow: hidden;
 }
-.worldmap__svg { display: block; width: 100%; height: min(58vh, 460px); }
+/* §4.4 A-41 W3 — the atlas frame. One <svg> per pane; the component decides NOTHING about
+   where a pane sits or how big it is, because a measurement is what would bring the
+   "cannot fit a hidden container" bug back. Placement and size are here, and only here. */
+.worldmap__panes { display: flex; flex-wrap: wrap; }
+.worldmap__pane { position: relative; min-width: 0; }
+.worldmap__pane--main { flex: 1 0 100%; }
+.worldmap__pane--inset { flex: 1 1 45%; border-top: var(--rule); }
+.worldmap__pane--inset + .worldmap__pane--inset { border-left: var(--rule); }
+
+/* The sea is the element's own background as well as a rect, because `preserveAspectRatio`
+   can leave user space visible OUTSIDE the world (a 109° × 57° pane in a 5.6:1 box shows
+   longitudes past -180), and a white band beside a grey one reads as a rendering fault. The
+   rect stays: it is the world in the frame's own coordinates, and it is what a future
+   land/sea distinction would hang off. Neither is a measurement. */
+.worldmap__svg { display: block; width: 100%; height: min(58vh, 460px); background: var(--map-sea); }
+.worldmap__pane--inset .worldmap__svg { height: min(22vh, 170px); }
 .worldmap__sea { fill: var(--map-sea); }
+
+/* A-41 constraint 3: the outlier is named where it is drawn, not in a footnote. */
+.worldmap__panecap {
+  display: flex; gap: .5rem; align-items: baseline; flex-wrap: wrap;
+  padding: .3rem .7rem .45rem;
+  font-size: var(--ui-text-floor); color: var(--ink-dim);
+}
+.worldmap__panecap-label {
+  font-family: var(--font-mono); font-weight: 600;
+  text-transform: uppercase; letter-spacing: var(--label-track);
+}
+.worldmap__panecap .mono { color: var(--ink); }
 
 /* CONFIRMED: filled ink. */
 .worldmap__country {
@@ -632,7 +659,8 @@ textarea { resize: vertical; }
   background: var(--map-provisional-fill);
   border: 1.5px dashed var(--map-provisional-line);
 }
-.legend__note { margin-left: auto; }
+/* `.legend__note` was the "Zoomed out to a readable minimum" slot. §4.4 A-42 (c) withdrew
+   the claim, and the rule goes with it rather than sitting here waiting to be re-used. */
 
 /* The stated hole. A-40 clause 3: a code the shipped index cannot fill is named, never
    dropped, because dropping it makes the map disagree with the count beside it. */

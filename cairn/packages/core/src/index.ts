@@ -80,7 +80,7 @@ export { computeLegs, dayMovingMinutes, dayDistanceKm, fmtMins } from './derive/
 export { stopLatLng } from './derive/geo.ts';
 export { geoCheck, GEO_LIMIT_KM } from './derive/geoCheck.ts';
 export type { GeoFinding, GeoAnchor } from './derive/geoCheck.ts';
-export { clusterStops, focusCluster, fitSpanKm, mapBounds, stopPoints, MIN_SPAN_KM } from './derive/cluster.ts';
+export { clusterPoints, clusterStops, focusCluster, fitSpanKm, mapBounds, stopPoints, MIN_SPAN_KM } from './derive/cluster.ts';
 export type { FocusResult, MapBounds } from './derive/cluster.ts';
 export { rollUpCost } from './derive/cost.ts';
 export type { RollUpScope, RollUpOpts } from './derive/cost.ts';

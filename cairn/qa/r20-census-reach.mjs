@@ -499,7 +499,7 @@ line('§7 ceilings, `cairn-constraints`, and what did NOT break');
   // I-7a (QA R28-8, BUILD-NOTES KD-65): 73 -> 75, re-derived by running rather than
   // quoted. `SUMMARY_VERSION` joined at I-6 and `travelStats` at I-7, and neither commit
   // updated this line. Strict equality on purpose — never relaxed to `>=`.
-  ok('§2.10 export surface is still 75', Object.keys(core).length === 75, String(Object.keys(core).length));
+  ok('§2.10 export surface is still 76', Object.keys(core).length === 76, String(Object.keys(core).length));
   const copyStop = readFileSync(new URL('../packages/core/src/build/copyStop.ts', import.meta.url), 'utf8');
   const stripped = copyStop.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
   ok('determinism: no `Date.now`, `Math.random` or `crypto.randomUUID` in `copyStop.ts`',

@@ -150,8 +150,13 @@ head('§2 — a one-country history does not exceed the min-span guard');
   const width = Number(got.split(' ')[2]);
   const rawBox = core.COUNTRY_INDEX.countries.find((c) => c.code === 'VA').box;
   ok(width > rawBox[2] - rawBox[0], 'and it is WIDER than the raw country box', { width, raw: rawBox[2] - rawBox[0] });
-  const legend = await page.locator('.legend__note').innerText();
-  ok(/readable minimum/i.test(legend), 'the surface says it zoomed out to a readable minimum', legend);
+  // **Rewritten at I-8d under §4.4 A-42 (c), revision 30.** This block used to assert the
+  // legend printed "Zoomed out to a readable minimum" here. A-42 withdrew that claim as
+  // false on this surface — the span floor is 1.2 km, itself a rooftop window — and deleted
+  // the line. What replaces it is A-42 (b), asserted in §2b below: the frame strictly
+  // contains what it draws.
+  ok(await page.locator('.legend__note').count() === 0,
+     'A-42 (c): the surface makes no claim about zoom, clamped or not');
   await ctx.close();
 }
 {
@@ -160,6 +165,20 @@ head('§2 — a one-country history does not exceed the min-span guard');
   const want = worldMapFrame(core.travelStats(rows, today()), core.COUNTRY_INDEX);
   ok(want.bounds.clamped === false, 'ORACLE: an AT-only history is NOT clamped (631 km across)');
   ok(await page.locator('.legend__note').count() === 0, 'and the surface does not claim it was');
+  await ctx.close();
+}
+// §2b — A-42 (b), the guarantee that replaced the withdrawn claim, on the degenerate case.
+{
+  const rows = [row('va', '2018-03-01', '2018-03-03', ['VA'])];
+  const { ctx, page } = await withLibrary(rows);
+  const inset = await page.evaluate(() => {
+    const pane = document.querySelector('#tabpanel-map .worldmap__pane');
+    const svg = pane.querySelector('.worldmap__svg');
+    const [minX, minY, w, h] = svg.getAttribute('viewBox').split(' ').map(Number);
+    const b = pane.querySelector('path[data-code]').getBBox();
+    return Math.min(b.x - minX, minX + w - (b.x + b.width), b.y - minY, minY + h - (b.y + b.height));
+  });
+  ok(inset > 0, `A-42 (b): the VA pane strictly contains VA, tightest inset ${inset.toFixed(6)}deg`, inset);
   await ctx.close();
 }
 

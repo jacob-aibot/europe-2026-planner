@@ -139,7 +139,7 @@ line('§1 A-25 Part 6 clause 1 — the ceilings, re-derived by running');
   // I-7a (QA R28-8, BUILD-NOTES KD-65): 73 -> 75, re-derived by running rather than
   // quoted. `SUMMARY_VERSION` joined at I-6 and `travelStats` at I-7, and neither commit
   // updated this line. Strict equality on purpose — never relaxed to `>=`.
-  ok('§2.10 export surface is 75', Object.keys(core).length === 75, String(Object.keys(core).length));
+  ok('§2.10 export surface is 76', Object.keys(core).length === 76, String(Object.keys(core).length));
 
   const { loadEurope2026, FIXTURE_TODAY } = await import('../fixtures/loadEurope2026.mjs');
   const { trip } = loadEurope2026();

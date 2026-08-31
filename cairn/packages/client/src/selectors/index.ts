@@ -310,7 +310,7 @@ export function rowLifecycle(
  * `dayMapPoints` precedent above — a view model for a map, computed in `packages/client`,
  * with the bounds coming from core.
  */
-export { worldMapFrame } from './worldMap.ts';
-export type { WorldMapFrame, WorldMapCountry } from './worldMap.ts';
+export { worldMapFrame, WORLD_CLUSTER_THRESHOLD_KM } from './worldMap.ts';
+export type { WorldMapFrame, WorldMapCountry, WorldMapPane } from './worldMap.ts';
 
 export { core };

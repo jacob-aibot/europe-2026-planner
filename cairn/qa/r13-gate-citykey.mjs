@@ -451,7 +451,7 @@ line('§7 KD-42 re-derived: 75 runtime symbols, and §2.10\'s own list says 75')
   // I-7a (QA R28-8, BUILD-NOTES KD-65): 73 -> 75, re-derived by running rather than
   // quoted. `SUMMARY_VERSION` joined at I-6 and `travelStats` at I-7, and neither commit
   // updated this line. Strict equality on purpose — never relaxed to `>=`.
-  ok('Object.keys(core).length === 75', Object.keys(core).length === 75, String(Object.keys(core).length));
+  ok('Object.keys(core).length === 76', Object.keys(core).length === 76, String(Object.keys(core).length));
   const arch = readFileSync('docs/ARCHITECTURE.md', 'utf8');
   const block = arch.match(/packages\/core\/src\/index\.ts re-exports exactly this and nothing else[\s\S]*?\n```/);
   const groups = [...block[0].matchAll(/^\s{2}\w+\s+\((\d+)\)/gm)].map((m) => Number(m[1]));

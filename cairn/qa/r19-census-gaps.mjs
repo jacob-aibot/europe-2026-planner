@@ -490,7 +490,7 @@ line('§7.2 ceilings, `cairn-constraints` and the read-only boundary');
   // I-7a (QA R28-8, BUILD-NOTES KD-65): 73 -> 75, re-derived by running rather than
   // quoted. `SUMMARY_VERSION` joined at I-6 and `travelStats` at I-7, and neither commit
   // updated this line. Strict equality on purpose — never relaxed to `>=`.
-  ok('§2.10 export surface is still 75', Object.keys(core).length === 75, String(Object.keys(core).length));
+  ok('§2.10 export surface is still 76', Object.keys(core).length === 76, String(Object.keys(core).length));
   for (const s of ['censusDeep', 'censusTrip', 'TRIP_SKELETON', 'samePlace', 'placeForCopy', 'refileCityKey', 'ALLOWED']) {
     ok(`  ...and \`${s}\` is not on it — A-23's "tests do not create surface"`, !(s in core));
   }

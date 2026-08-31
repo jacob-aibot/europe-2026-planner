@@ -143,7 +143,7 @@ console.log('\n== 5. the WIDENED span is what is checked, not the declared one =
 
 console.log('\n== 6. the cap is not on the export surface ==');
 const keys = Object.keys(core);
-ok(keys.length === 75, `Object.keys(core).length === 75 (got ${keys.length})`);
+ok(keys.length === 76, `Object.keys(core).length === 76 (got ${keys.length})`);
 ok(!keys.includes('MAX_TRIP_SPAN_DAYS'), 'MAX_TRIP_SPAN_DAYS is NOT exported');
 ok(!keys.includes('dayNumber') && !keys.includes('fromDayNumber'),
   'dayNumber / fromDayNumber are still NOT on §2.10 (the R29-3 collision the builder claims)');

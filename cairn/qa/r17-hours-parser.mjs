@@ -628,7 +628,7 @@ line('§6.1 ceilings and the export surface, re-derived by running');
   // I-7a (QA R28-8, BUILD-NOTES KD-65): 73 -> 75, re-derived by running rather than
   // quoted. `SUMMARY_VERSION` joined at I-6 and `travelStats` at I-7, and neither commit
   // updated this line. Strict equality on purpose — never relaxed to `>=`.
-  ok('§2.10 export surface is still 75', Object.keys(core).length === 75, String(Object.keys(core).length));
+  ok('§2.10 export surface is still 76', Object.keys(core).length === 76, String(Object.keys(core).length));
   for (const name of ['isClockTime', 'isWeeklyEntry', 'isOpeningHours', 'parseOpeningHours', 'clock'])
     ok(`  ...and \`${name}\` is not on it`, !(name in core), '');
   const { trip } = loadEurope2026();

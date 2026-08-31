@@ -19,6 +19,36 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
+> **🟡 I-8d IS BUILT — the map is now a map of your trip, not of one country — as of 2026-08-31
+> (this block is the newest; it supersedes the ordering note in the I-8c blocks below on what
+> is still owed).** The lifetime map used to open on a 194° frame because one flight stop in the
+> United States sat 7,439 km from the rest of the trip, squeezing all six European countries
+> into 149 px of a 958 px figure. It now frames **the main geographic cluster**, with the
+> distant country **beside it in its own small frame that names it** — Jacob's own decision,
+> built as `ARCHITECTURE.md` §4.4 **A-41**.
+>
+> Measured on the real Europe 2026 sample, loaded through the *"Load Europe 2026"* button: two
+> frames, the main one **30.3° × 16.2°** across Europe holding `AT CZ DE GB HR HU`, and an inset
+> holding `US`, captioned with its code and tappable exactly like the main map. **Nothing is
+> dropped and nothing is hidden**: all seven countries are still drawn, still counted and still
+> attributable to the trip they came from — that was Jacob's first constraint and it is asserted
+> as a test, not promised. A history where no part dominates (one US trip, one Japan trip) still
+> gets today's single wide frame, because there is no subject to prioritise; a history with many
+> scattered clusters gets at most three frames, the last of which holds everything remaining.
+>
+> Two smaller things went with it. Every frame now leaves a visible margin around what it draws,
+> so the outermost country's outline is no longer clipped at the edge (it was clipped by exactly
+> 0.000000° of margin before). And the legend's *"Zoomed out to a readable minimum"* line is
+> **deleted** — it claimed something the map could not support, and saying nothing is more honest
+> than saying that.
+>
+> **There is no new control, and that is deliberate.** No "reframe" button, no zoom, no threshold
+> slider: a control that exists mostly to repair a bad default is a confession, and the default
+> is now right.
+>
+> **I-8d is built ✅ · verified ❌ (not yet attacked) · shippable ❌.** Still owed before I-8b (the
+> Profile screen): **I-8c's two fixes** and **I-8e**.
+
 > **🟠 I-8c HAS NOW BEEN ATTACKED, AND IT GOES BACK — as of 2026-08-31 (this block is the newest;
 > it supersedes the I-8c block below on "verified" and adds one increment).** The breaker round
 > could not break either of the two data-integrity gates below — it fed the date parser 140,042

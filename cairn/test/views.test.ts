@@ -364,6 +364,47 @@ test('I-8a / A-40 Part 5: the world map draws no city pins', () => {
   }
 });
 
+// ---------------------------------------------------------------------------
+// ROADMAP Phase 2 I-8d — ARCHITECTURE §4.4 **A-41** W3 and **A-42** ruling (c).
+
+/**
+ * **W3 — the renderer draws panes; it does not compute them.** *"`WorldMap.tsx` renders one
+ * `<svg>` per entry of `frame.panes`, with that pane's `viewBox` verbatim, containing the
+ * countries whose `paneId` equals that pane's `id` — a **string equality filter and nothing
+ * else**."*
+ *
+ * This is W1's ceiling extended to the atlas frame: the number of panes, their `viewBox`es
+ * and which country is in which pane are decided in `worldMapFrame` from data alone, never
+ * from a measured figure or a media query. That is what keeps the hidden-container bug
+ * absent and what makes the frame reproducible in bare Node.
+ */
+test('I-8d / A-41 W3: WorldMap.tsx maps over frame.panes and filters countries by paneId equality', () => {
+  const src = stripComments(readFileSync(resolve(VIEWS, 'WorldMap.tsx'), 'utf8'));
+  assert.match(src, /frame\.panes\.map\(/, 'the renderer does not draw one <svg> per pane');
+  assert.match(src, /c\.paneId === pane\.id/, 'pane membership is not a string equality on paneId');
+  // The only `viewBox` expression in the file is the pane's own, verbatim.
+  const viewBoxExprs = [...src.matchAll(/viewBox=\{([^}]*)\}/g)].map((m) => m[1].trim());
+  assert.deepEqual([...new Set(viewBoxExprs)], ['pane.viewBox'], 'a viewBox is computed rather than carried');
+  // `frame.viewBox` and `frame.bounds` are panes[0]'s; reading them here would be a second
+  // way to say the same thing, and the one the renderer must not use.
+  for (const banned of ['frame.viewBox', 'frame.bounds', 'panes[0]', 'panes.length >', '.slice(1)']) {
+    assert.ok(!src.includes(banned), `WorldMap.tsx re-derives the pane structure: ${banned}`);
+  }
+});
+
+/**
+ * **A-42 ruling (c) — the surface stops making the claim.** The legend printed *"Zoomed out
+ * to a readable minimum"* on `bounds.clamped`. On this surface that asserts something the
+ * geometry does not support: `MIN_SPAN_KM` is 1.2 km — itself a rooftop window — and exactly
+ * one code in 239 (`VA`) ever reaches it. `bounds.clamped` stays on the frame, because it is
+ * core's honest report about core's own box, and **nothing renders it**.
+ */
+test('I-8d / A-42 (c): the world map makes no "readable minimum" claim', () => {
+  const src = readFileSync(resolve(VIEWS, 'WorldMap.tsx'), 'utf8');
+  assert.ok(!/readable minimum/i.test(src), 'the withdrawn min-span claim is still on screen');
+  assert.ok(!src.includes('clamped'), 'the renderer still reads bounds.clamped');
+});
+
 /**
  * **A-40 Part 2: `MapPort` and `apps/web/src/ports/map.ts` do not change, and no interface is
  * shared between the two maps.** The trip map keeps its tiles, its handle table, its

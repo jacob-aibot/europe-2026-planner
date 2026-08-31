@@ -1,6 +1,6 @@
 /**
- * The lifetime map — *"show me everywhere I've been"*. ROADMAP Phase 2 **I-8a**,
- * ARCHITECTURE §4.4 **A-40**.
+ * The lifetime map — *"show me everywhere I've been"*. ROADMAP Phase 2 **I-8a** and
+ * **I-8d**, ARCHITECTURE §4.4 **A-40**, **A-41** (the atlas frame) and **A-42**.
  *
  * A-40 Part 2 ruled that this is **not a port**: it draws filled paths from strings, which
  * both a web `<svg>` and `react-native-svg` consume unchanged, so there is no platform
@@ -21,10 +21,26 @@
  *  - **W2: hit testing is the browser's.** *"Tap a country for its trips"* is a handler on the
  *    `<path>`. A point-in-polygon test over screen coordinates would need a measurement and
  *    would bring W1's bug back through the side door, so it is forbidden.
+ *  - **W3 (A-41 Part 5): this file draws panes, it does not compute them.** One `<svg>` per
+ *    entry of `frame.panes`, that pane's `viewBox` verbatim, and the countries whose
+ *    `paneId` **string-equals** that pane's `id`. How many panes there are, what each frames
+ *    and which country is in which were all decided in `worldMapFrame` — in bare Node, from
+ *    data alone, never from a measured figure or a media query. Inset placement and size are
+ *    CSS. An inset names its codes and its countries carry the identical tap handler the
+ *    main pane's do, so *"an outlier stays visibly represented and attributable"* is
+ *    structural rather than decorative.
  *  - **A-40 Part 5: filled countries, and no city pins.** `TripSummaryRow` carries no
  *    coordinate for a city, and manufacturing one is a `SUMMARY_VERSION` ruling rather than a
  *    UI decision. The gap is deferred in writing instead of half-built; what could not be
  *    drawn is stated on screen.
+ *
+ * **A-42 (c): the legend makes no claim about zoom.** It used to print one whenever core
+ * reported that it had widened its own box, and on this surface that asserted something the
+ * geometry does not support — core's span floor is 1.2 km, itself a rooftop window, and
+ * exactly one code in 239 ever reaches it. The flag stays on the frame, because it is core's
+ * honest report about core's own box, and nothing here reads it. The guarantee this surface
+ * does make is A-42 (b): every pane's frame strictly contains what it draws, on all four
+ * sides, which is asserted in bare Node and on the rendered `<svg>`.
  *
  * A-34's `provisional` is rendered as **a different treatment, not a lighter one**: a
  * confirmed country is filled ink, a provisional one is an outline over a faint tint. That
@@ -99,49 +115,85 @@ export function WorldMap({ state, onOpenTrip, onError }: Props) {
 
       <figure className="worldmap__figure">
         {/*
-          The `viewBox` is the frame's, verbatim, and it is the ONLY fit mechanism. The
-          backdrop rect is the whole world in the frame's own coordinate space — a constant,
-          not a computation — so the unvisited world is one element rather than 250 paths.
+          W3: one <svg> per pane, each with THAT PANE'S `viewBox` verbatim, containing the
+          countries whose `paneId` equals the pane's `id` — a string equality filter and
+          nothing else. Which pane exists, what it frames and what is in it were all decided
+          in `worldMapFrame`, in bare Node, from data alone. Placement and size are CSS
+          (`.worldmap__pane--main` / `--inset`), which is what keeps this file free of the
+          measurement that would bring the hidden-container bug back.
+
+          The backdrop rect is the whole world in the frame's own coordinate space — a
+          constant, not a computation — so the unvisited world is one element per pane rather
+          than 250 paths.
         */}
-        <svg
-          className="worldmap__svg"
-          viewBox={frame.viewBox}
-          preserveAspectRatio="xMidYMid meet"
-          role="img"
-          aria-label={`${frame.countries.length} countries visited`}
-          data-viewbox={frame.viewBox}
-        >
-          <rect className="worldmap__sea" x="-180" y="-90" width="360" height="180" />
-          {frame.countries.map((c) => (
-            <path
-              key={c.code}
-              className={
-                'worldmap__country' +
-                (c.provisional ? ' worldmap__country--provisional' : '') +
-                (c.code === selected ? ' worldmap__country--on' : '')
-              }
-              d={c.d}
-              vectorEffect="non-scaling-stroke"
-              role="button"
-              tabIndex={0}
-              aria-label={`${c.code}, ${c.tripIds.length} trip${c.tripIds.length === 1 ? '' : 's'}`}
-              data-code={c.code}
-              data-provisional={c.provisional ? 'true' : 'false'}
-              onClick={() => setSelected(c.code === selected ? null : c.code)}
-              onKeyDown={(e) => {
-                if (e.key !== 'Enter' && e.key !== ' ') return;
-                e.preventDefault();
-                setSelected(c.code === selected ? null : c.code);
-              }}
-            />
+        <div className="worldmap__panes" data-panes={frame.panes.length}>
+          {frame.panes.map((pane) => (
+            <div
+              key={pane.id}
+              className={`worldmap__pane worldmap__pane--${pane.role}`}
+              data-pane={pane.id}
+              data-pane-codes={pane.codes.join(' ')}
+            >
+              <svg
+                className="worldmap__svg"
+                viewBox={pane.viewBox}
+                preserveAspectRatio="xMidYMid meet"
+                role="img"
+                aria-label={
+                  pane.role === 'main'
+                    ? `${pane.codes.length} countries visited`
+                    : `${pane.codes.join(', ')}, shown in a separate frame`
+                }
+                data-viewbox={pane.viewBox}
+              >
+                <rect className="worldmap__sea" x="-180" y="-90" width="360" height="180" />
+                {frame.countries
+                  .filter((c) => c.paneId === pane.id)
+                  .map((c) => (
+                    <path
+                      key={c.code}
+                      className={
+                        'worldmap__country' +
+                        (c.provisional ? ' worldmap__country--provisional' : '') +
+                        (c.code === selected ? ' worldmap__country--on' : '')
+                      }
+                      d={c.d}
+                      vectorEffect="non-scaling-stroke"
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`${c.code}, ${c.tripIds.length} trip${c.tripIds.length === 1 ? '' : 's'}`}
+                      data-code={c.code}
+                      data-pane={c.paneId}
+                      data-provisional={c.provisional ? 'true' : 'false'}
+                      onClick={() => setSelected(c.code === selected ? null : c.code)}
+                      onKeyDown={(e) => {
+                        if (e.key !== 'Enter' && e.key !== ' ') return;
+                        e.preventDefault();
+                        setSelected(c.code === selected ? null : c.code);
+                      }}
+                    />
+                  ))}
+              </svg>
+              {/*
+                A-41 constraint 3: an outlier stays visibly represented and attributable, so
+                the inset NAMES its codes and its countries carry the identical tap handler
+                the main pane's do. The caption is written from `pane.codes` and from nothing
+                else — `pane.weight` counts trip-attributions rather than trips (A-41 residue
+                4), so printing it beside a multi-country pane would read as a trip count it
+                is not.
+              */}
+              {pane.role === 'inset' ? (
+                <p className="worldmap__panecap">
+                  <span className="worldmap__panecap-label">Shown separately</span>
+                  <span className="mono">{pane.codes.join(' ')}</span>
+                </p>
+              ) : null}
+            </div>
           ))}
-        </svg>
+        </div>
         <figcaption className="worldmap__legend">
           <span className="legend__key legend__key--confirmed">Visited</span>
           <span className="legend__key legend__key--provisional">On a trip you are on now</span>
-          {frame.bounds.clamped && (
-            <span className="legend__note">Zoomed out to a readable minimum</span>
-          )}
         </figcaption>
       </figure>
 

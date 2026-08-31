@@ -28,9 +28,40 @@ function located(stops: readonly Stop[], trip: Trip): Located[] {
 }
 
 /**
+ * Single-linkage first-fit groups over points, as **indices** into `points`. Pure; never
+ * throws.
+ *
+ * The rule, unchanged since Phase 1: a point joins the **first** group containing any member
+ * within `thresholdKm` (strictly less than), otherwise it starts a new group. Groups keep the
+ * order their first member appeared in, and so do the members within a group. First-fit, not
+ * nearest-fit; single-linkage, not diameter. No k-means, no dendrogram, no library.
+ *
+ * §4.4 **A-41** Part 6 — this is the ONE clustering kernel in the system. `clusterStops` and
+ * `focusCluster` below both delegate to it, and `packages/client`'s `worldMapFrame` calls it
+ * for the atlas frame's country clusters, which is why it is on §2.10's surface: a third copy
+ * of this loop in the client would also mean a hand-rolled haversine there.
+ *
+ * Indices rather than points because every caller has a richer record — a `Stop`, a country
+ * row — that it needs to get back, and indices are the only answer that does not force the
+ * kernel to know about any of them.
+ */
+export function clusterPoints(points: readonly LatLng[], thresholdKm: number): number[][] {
+  const groups: number[][] = [];
+  for (let i = 0; i < points.length; i++) {
+    const g = groups.find((gr) => gr.some((j) => haversine(points[j], points[i]) < thresholdKm));
+    if (g) g.push(i);
+    else groups.push([i]);
+  }
+  return groups;
+}
+
+/**
  * Groups stops geographically. Straight port: a stop joins the first group containing any
  * member within `thresholdKm`, otherwise starts a new one. Stops without coordinates are
  * dropped. Pure.
+ *
+ * The partition itself is `clusterPoints` (A-41 Part 6); this function is the stop-shaped
+ * wrapper around it — drop the unlocated, cluster, map the indices back.
  */
 export function clusterStops(
   stops: readonly Stop[],
@@ -38,13 +69,7 @@ export function clusterStops(
   thresholdKm: number = DEFAULT_CLUSTER_THRESHOLD_KM,
 ): Stop[][] {
   const pts = located(stops, trip);
-  const groups: Located[][] = [];
-  for (const p of pts) {
-    const g = groups.find((gr) => gr.some((q) => haversine(q.at, p.at) < thresholdKm));
-    if (g) g.push(p);
-    else groups.push([p]);
-  }
-  return groups.map((g) => g.map((x) => x.stop));
+  return clusterPoints(pts.map((p) => p.at), thresholdKm).map((g) => g.map((i) => pts[i].stop));
 }
 
 export type FocusResult = {
@@ -63,12 +88,9 @@ export type FocusResult = {
  */
 export function focusCluster(stops: readonly Stop[], trip: Trip): FocusResult {
   const pts = located(stops, trip);
-  const groupsL: Located[][] = [];
-  for (const p of pts) {
-    const g = groupsL.find((gr) => gr.some((q) => haversine(q.at, p.at) < DEFAULT_CLUSTER_THRESHOLD_KM));
-    if (g) g.push(p);
-    else groupsL.push([p]);
-  }
+  // The same one kernel — A-41 Part 6. This loop used to be written out a second time here.
+  const groupsL: Located[][] = clusterPoints(pts.map((p) => p.at), DEFAULT_CLUSTER_THRESHOLD_KM)
+    .map((g) => g.map((i) => pts[i]));
   const groups = groupsL.map((g) => g.map((x) => x.stop));
   if (groupsL.length < 2) {
     return { focus: pts.map((p) => p.stop), groups, split: false, spanKm: rawSpanKm(pts.map((p) => p.at)) };
