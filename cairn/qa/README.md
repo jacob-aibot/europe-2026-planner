@@ -2188,3 +2188,74 @@ bash qa/r32-pins.sh                                     # exit 0, ALL SEVEN FIRE
 — **ALL OK**, and `--fault=g1` / `--fault=g13` / `--fault=g16` → **3 / 1 / 3 FAIL**, identical to
 the counts the A-39 pass recorded. `npm run test:tap` stays at **884 / 0 fail**: the fix adds no
 test, it strengthens assertions inside tests that already existed.
+
+---
+
+## Round 33 (2026-08-31, `master` @ `6b89c91`) — the I-8a breaker pass
+
+Written against the I-8a delivery (the tab shell, `WorldMap.tsx`, `worldMapFrame`, the token
+layer, the `.stop--dim` fix). These go at what `qa/i8a-signals.mjs` and `qa/i8a-faults.sh` — the
+builder's own probes, both re-run green here — do **not** cover: dark mode, motion, the network
+boundary, the antimeridian residue as *rendered pixels*, mobile, the error boundary's recovery
+path, and the ship gate's own instrument. `cairn/docs/QA-FINDINGS.md` round 33 names the finding
+each one backs. Headless probes run from `cairn/`:
+
+```bash
+node --experimental-strip-types qa/r33-minspan.mjs   # R33-2. Sweeps ALL 239 shipped codes through
+                                                     # the exact corner collection worldMapFrame
+                                                     # performs and calls core's own mapBounds:
+                                                     # VA is the ONLY code that clamps (spanKm
+                                                     # exactly 1.2), AT is 630.97 km and does not,
+                                                     # and the injected fault (raw box vs
+                                                     # mapBounds) is red for VA and GREEN for AT.
+                                                     # Confirms the builder's AT->VA substitution.
+
+node --experimental-strip-types qa/r33-frame.mjs     # R33-1 / R33-6. The reference frame is NOT a
+                                                     # dateline case (no box touches +-180; re-
+                                                     # expressing to [0,360) makes the span WORSE:
+                                                     # 350.75 vs 194.50 deg), so dateline-aware
+                                                     # bounds would not change it. Also: zero
+                                                     # frame padding, the A-40 Part 5 payload
+                                                     # figures re-measured (11,090 B / 374,268 B),
+                                                     # hostile input, purity, the projection.
+
+node --experimental-strip-types qa/r33-reach.mjs     # R33-3. Is the lifecycle-throws gap reachable
+                                                     # from a shipped write path? No: createTrip
+                                                     # refuses a 5-digit year and fromJSON refuses
+                                                     # every non-IsoDate date, so backup/restore
+                                                     # cannot carry one either.
+
+bash qa/r33-vacuity.sh                               # R33-4. THE CONTROL i8a-faults.sh DOES NOT
+                                                     # RUN ON ITSELF: makes the same throwaway
+                                                     # copy, injects NOTHING, and the views-scoped
+                                                     # suite is already `# fail 1`. Exits non-zero
+                                                     # when the control is red, i.e. when the three
+                                                     # views-scoped ship-gate faults are vacuous.
+```
+
+Browser probes need `npm run web:build && npm run serve` in one shell first, then:
+
+```bash
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r33-render.mjs
+   # A dark mode (both themes, both removals, A-34)  B motion + prefers-reduced-motion
+   # C zero external requests                        D the antimeridian, in rendered CSS px
+   # E mobile 375x667                                F the error boundary's recovery path
+   # G every opacity rule in the shipped CSS         H min-span end-to-end through the tab UI
+   # Writes /tmp/r33-map-{light,dark}.png, /tmp/r33-antimeridian.png, /tmp/r33-mobile.png.
+
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r33-render2.mjs
+   # I the transitions with time to ARRIVE   J the two sticky bars, at three viewports (R33-5)
+   # K W2 behaviourally: click, sea, Enter   L font faces actually used
+   # M severity x provenance, nine cells     N a second ungated core.lifecycle call on the Map
+
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r33-render3.mjs
+   # every surface toured: all four woff2 fetched, no dead face; the sticky-bar stripe
+   # photographed; the brand mark measured. Writes /tmp/r33-sticky.png, /tmp/r33-mark.png.
+
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r33-a11y.mjs
+   # R33-7. 239-country history: the hidden panel never enters the tab order, `display: contents`
+   # does not drop role=tabpanel, and the tablist has no arrow keys and two tab stops.
+```
+
+A FAIL in `r33-render.mjs` §F and §H, and a non-zero exit from `r33-vacuity.sh`, are the
+findings — not broken probes.
