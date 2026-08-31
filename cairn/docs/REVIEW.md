@@ -1,15 +1,485 @@
 # Cairn — manager reviews
 
-**Three verdicts live in this file, newest first.** Phase 2 step **2b (data layer)** is the
-current one; **2a** below it and the **Phase 1** verdict below that are **closed and kept for
-the record**, not superseded — their routing discharged and their carried items re-placed
+**Four verdicts live in this file, newest first.** Phase 2 increment **I-8a** is the current
+one; the **2b (data layer)**, **2a** and **Phase 1** verdicts below it are **closed and kept
+for the record**, not superseded — their routing discharged and their carried items re-placed
 downstream.
 
 | Verdict | Scope | Commit reviewed | Date | Result |
 |---|---|---|---|---|
+| **I-8a — the tab shell, the world map, the token layer, the signal-collision fix** | `ROADMAP.md` Phase 2, step 2b, increment **I-8a** (revision 27) against `ARCHITECTURE.md` §4.4 **A-40** (revision 29) — **I-8b is not included, and 2b does not ship here** | `6b89c91` | 2026-08-31 | **SHIP** (7 items routed; 4 of them gate I-8b) |
 | **2b (data layer) — I-5 … I-7b** (geography attribution, `travelStats`, the summary-row read boundary) | `cairn/docs/ROADMAP.md` Phase 2, step 2b, increments I-5 through I-7b, A-26…A-39 — **I-8 (the Map/Profile surfaces) is not included** | `69e44d4` | 2026-08-29 | **SHIP** |
 | **2a — past trips and the lifecycle** (I-0 … I-4a) | `cairn/docs/ROADMAP.md` Phase 2, first of three steps | `67f5588` | 2026-08-28 | **SHIP** |
 | **Phase 1** — core engine + local-first client | whole phase | `218c7f0` | 2026-08-27 | **SHIP** (closed) |
+
+---
+
+# I-8a — the tab shell, the world map, and the token layer
+
+> **Status: CURRENT.** Manager, stage 4. Reviewed `master` @ `6b89c91` (QA round 33's record
+> landed alongside at `e15c80d`), 2026-08-31, Node v22.22.2, Chromium via the system
+> Playwright at `/opt/node22/lib/node_modules/playwright`. **Verdict: SHIP. I-8a is closed;
+> I-8b may open, and four of the seven routed items gate it.**
+> Scope was I-8a and nothing else. **2b does not ship here** — ROADMAP says so and this verdict
+> does not move it. Every claim below has a command in **Verified — I-8a** that I ran myself,
+> on this tree.
+>
+> **Unlike the 2a review, Playwright is available in this environment**, so the browser half
+> of the board is my own evidence rather than a prior round's. I drove the shipped Europe 2026
+> sample through the real UI, looked at the rendered map, and measured it before reading
+> anyone's numbers for it.
+>
+> **The breaker's advisory lean was SEND BACK and I am overruling it, with reasons rather than
+> a preference** — see *Why this is not a SEND BACK*, and *Where I disagree with round 33*,
+> below. Its four MAJORs are all real; I reproduced every one. What I do not accept is its
+> stated ground for blocking.
+
+---
+
+## Verdict: **SHIP**
+
+**Every deliverable I-8a names is built, none is a stub, and the increment's written ship gate
+is met.** I re-derived the gate clause by clause rather than reading the harness's exit code —
+which matters here, because the harness's exit code is partly meaningless and I had to
+establish the substance by hand.
+
+Concretely, on my own runs:
+
+- **`worldMapFrame`** — pure, zero-dependency, `node --test`-able, never throws for a code the
+  index cannot fill, not memoised, does not mutate `stats` or the index, row order verbatim.
+  18/18 in `packages/client/test/world-map.test.ts`, and I ran the frame myself against the
+  real sample rather than a fixture.
+- **`WorldMap.tsx` under A-40 Part 4** — W1's greppable ceiling is clean on my own grep, over a
+  set **wider** than the ruling names (10 identifiers, comments included): 0 hits. W2 holds —
+  the handler is on the `<path>` and there is no coordinate arithmetic in the file at all.
+- **CLAUDE.md's first map bug is genuinely absent, measured on my own oracle.** Booting on
+  Trips, the Map panel is mounted inside a container that computes `display: none` with
+  `getBoundingClientRect().width === 0`, and its `viewBox` attribute is already
+  `-171.7911 -71.3578 194.5016 52.4416`. After the tab switch it is the **same string, byte for
+  byte**, and it is also the string `worldMapFrame` returns in bare Node from the same rows.
+  Three independent readings, one string. That is the strongest single result in this
+  increment and it is the one A-40 was written to produce.
+- **The tab shell** — `TABS` ids are exactly `['trips','map']`, every id has a `render`, no
+  fourth slot, `Profile.tsx` does not exist and no Profile tab is stubbed. The *"no DISCOVER"*
+  ceiling is comment-stripped before it greps, so it is an honest ceiling and not one that
+  passes by accident.
+- **The signal-collision fix** — `opacity: .72` is gone from the stylesheet; no provenance,
+  provisional or unresolved-severity selector sets `opacity` anywhere in the shipped CSS; the
+  blocker's colour and the product of every ancestor `opacity` are identical on an `imported`
+  row and an `own` row. This was a real design defect and it is really fixed.
+- **The read-only boundary and §6.6 hold.** Root diff empty, `md5sum` unchanged at
+  `7c69df3208ef91c8be0fb59a56443188`, `packages/core` byte-untouched, `ports/map.ts`
+  byte-identical, export surface still **75**, `r2-redact` **0 KNOWN_LEAKS**, and the only
+  match for `fonts.googleapis|gstatic|cdn.` anywhere in `apps/web` is a comment saying the app
+  does not use one.
+
+### The one thing I re-derived from scratch, because it decides the verdict: R33-1
+
+I did not take the pixel measurements on faith. I loaded the shipped sample through the real
+*"Load Europe 2026"* button, switched to Map, screenshotted the figure and **looked at it**.
+
+The stored row is `["AT","CZ","DE","GB","HR","HU","US"]`. In a 958 × 418 px figure the rendered
+country boxes are **US 516.3 · GB 45.6 · DE 44.5 · AT 36.9 · CZ 32.6 · HU 32.1 · HR 28.2** css
+px, and the six European countries the trip is actually about occupy **149.2 px of 958**,
+against the right edge. Looking at the picture rather than the numbers: it is a map of the
+United States with a legible United Kingdom beside a clump of five continental countries that
+are separated only by hairlines. It is not "a few pixels wide" as BUILD-NOTES says, and it is
+not unreadable either — **it is a map of the wrong subject.**
+
+**The breaker's re-derivation of the cause is correct and the builder's is not**, and I checked
+this myself rather than adjudicating between them: the reference extent is
+`-171.7911 … 22.7105`, one contiguous 194.50° span, **no country's box touches ±180°**, and
+re-expressing every longitude into `[0,360)` makes the span *worse*. So BUILD-NOTES'
+*"the fix is dateline-aware bounds in a core function the day map also depends on"* is wrong —
+that change would leave this frame byte-identical — and A-40 Part 7 residue 1's framing of the
+whole case as *"the antimeridian"* is a misdiagnosis. The cause is a single equirectangular
+extent over a set containing one 106°-wide outlier. **Nobody should be asked to build
+dateline-aware bounds on the strength of this finding**, and that is the single most valuable
+thing round 33 produced.
+
+**Why it does not block.** Four reasons, in order of weight:
+
+1. **The frame is not wrong; it is framed wrong, and the framing is a ruling this increment
+   obeyed.** A-40 clause 2 states, as a ruling, that *"the extent comes from core and nothing
+   else"* — `worldMapFrame` collects each visited country's `box` corners and calls
+   `mapBounds`. The builder implemented that literally, reported the consequence in writing
+   rather than improvising past it, and A-40 Part 5 explicitly forbids a builder inventing a
+   second geometry pass on its own authority. Sending this back to a builder would be sending
+   back a correct implementation of the architect's own sentence.
+2. **Nothing on the screen is false.** All seven countries are drawn, correctly attributed,
+   correctly filled; the provisional treatment is distinct; the code list underneath names all
+   seven and each is tappable; and the surface states what it could not attribute. This is a
+   legibility defect, not a correctness, data-loss or privacy one.
+3. **It does not get more expensive after I-8b, and the breaker's contrary claim is the one
+   part of its reasoning I checked and found wrong.** Round 33 grounds its SEND BACK lean on
+   *"the Profile renders the same `travelStats` rows on the same screen."* `worldMapFrame` has
+   exactly **one** product consumer — `apps/web/src/views/WorldMap.tsx` — and I-8b's Profile is
+   text off `travelStats`, not off the frame. The frame is map-only. So the cost of ruling on
+   R33-1 during I-8b is the same as ruling on it now.
+4. **I-8a is explicitly not the point at which Jacob sees a shipped 2b.** ROADMAP: *"2b does
+   not ship here — the phase's map/identity pair is only half delivered until I-8b."* The gate
+   at which this map reaches a user is I-8b's, and I am putting R33-1 on that gate as a hard
+   blocker rather than a note.
+
+What I will not do is ship it quietly. It goes to Jacob in plain words below, with the
+decision attached, because *"drop the outlier / inset it / fit the modal cluster"* is a product
+question about what *"everywhere you've been"* means, not a purely technical one.
+
+### Why this is not a SEND BACK
+
+Stated the same way 2a stated it, so it cannot be read as a soft SHIP: **if any one of the nine
+open items were a data-loss path, a privacy leak, a wrong-person's-data path, or a named I-8a
+deliverable that was not built, this would be a SEND BACK.** None is, and I checked each of
+those four classes by running something rather than by reading the finding:
+
+- **Data loss / availability.** R33-3 is the only candidate and it is real — one unreadable
+  stored row leaves the Trips tab permanently unusable with `["BUTTON:CAIRN","BUTTON:TRIPS",
+  "BUTTON:MAP"]` as the complete set of surviving controls, and `TabBoundary` never resets even
+  after the cause is removed. **But I re-derived the reachability myself, because that is what
+  decides it:** `createTrip` refuses all seven malformed dates I tried, and `fromJSON` — the
+  backup/restore path — refuses six of the seven. No shipped write path mints such a row. This
+  is the same class as R8-3/R8-4, which 2a and Phase 1 both carried with a trigger rather than
+  blocking on.
+- **Privacy.** `r2-redact` against the rebuilt `dist/`: **0 KNOWN_LEAKS**, 3 hits, all the
+  pre-existing `OPTIONAL`/`BOOKINGS` identifiers. No door PIN, no booking reference, no ticket
+  URL. No CDN reference, no external font, nothing new that touches a network.
+- **Wrong person's data.** Nothing in this increment touches `access/`, `redactText`,
+  `copyStop`, `cli export` or a provenance transition. `packages/core` is byte-untouched.
+- **A named deliverable missing.** All six of I-8a's *"Built"* bullet are present and none is a
+  stub. `Profile.tsx`'s absence is the spec, not a gap.
+
+The ship gate itself is met, with one honest caveat I discharged by hand rather than waving
+through — see the table below and **R33-4**.
+
+### Where I disagree with round 33
+
+Round 33 is a strong pass and I am recording where it is wrong, because it is committed to
+`master` as the record and the next round will read it.
+
+- **Its ground for SEND BACK does not hold.** See point 3 above: `worldMapFrame` has one
+  consumer and the Profile is not it.
+- **One of the numbers it certifies as exact is not.** Its closing table says *"`d` payload:
+  reference library 11,090 B = 10.8 KB (AT 618, CZ 574, GB 879, HR 694, HU 522, US 7,803) …
+  both figures re-computed, not quoted."* That is a **six**-code set with no `DE`. The
+  reference library's actual set is seven codes including `DE` — round 33 prints exactly that
+  set two rows earlier, in R33-1's own text. Re-derived by me from the real sample: **12,040 B
+  = 11.8 KB (AT 618, CZ 574, DE 950, GB 879, HR 694, HU 522, US 7,803)**. Immaterial to the
+  512 KB ceiling; material to the claim that every builder number was re-derived. The origin is
+  BUILD-NOTES, which names the same wrong six-code set; round 33 re-derived the builder's *code
+  list* rather than the sample's.
+- **Its own committed probes report FAILs that its status note does not disclose.**
+  `qa/r33-frame.mjs` ends `# 2 FAILED` and `qa/r33-reach.mjs` ends `# 1 claim(s) NOT
+  confirmed`. Both are the probe demonstrating a finding rather than a regression — which is a
+  legitimate style — but this project has now twice been bitten by exactly this (Phase 1's
+  *"probe repair, five rounds overdue"*, and 2a's **B-1**…**B-4**), and the whole point of a
+  disclosed FAIL count is that round 34 can tell an expected red from a new one.
+
+None of these three changes any of round 33's findings. All four MAJORs reproduce.
+
+---
+
+## Routing — I-8a
+
+Nine items. **None blocks this verdict. Four of them block I-8b, and that is a hard gate, not a
+preference.** Each names its agent, its file, and its trigger.
+
+### architect — **before I-8b**, in one pass, because they are one frame
+
+- **A-41. R33-1 — A-40 Part 7 residue 1 is misdiagnosed, its reopening trigger has fired, and
+  the fix it names would do nothing.** Residue 1 says *"reopen it with a real user, not a
+  hypothetical one."* The real user's library is the shipped sample and it hits the case on
+  first paint. **Do not rule dateline-aware bounds**: measured, no country in the reference set
+  has a box touching ±180°, the extent is one contiguous 194.50° span, and re-expressing
+  longitudes into `[0,360)` makes the span worse (350.75° vs 194.50°), so a dateline-aware
+  `mapBounds` leaves this frame byte-identical — and it would change a core function the day
+  map depends on for nothing. **What is actually needed is a ruling on how the lifetime frame
+  is chosen when one country's box lies far outside the rest**, and A-40 clause 2's
+  *"the extent comes from core and nothing else"* is the sentence that has to move or be
+  qualified. Three candidate shapes, all of which are product decisions as much as technical
+  ones and **all three of which are on Jacob's desk below**: fit the modal cluster and inset
+  the outlier; fit everything but let the surface offer a "zoom to Europe"-style reframing;
+  or accept the wide frame and say in words what it is showing. Whatever is ruled, A-40 Part 5's
+  *"no second geometry implementation"* still binds — a framing choice is not a simplifier, and
+  the ruling should say which side of that line it sits on. **Fold R33-6 into the same
+  ruling** (below). Evidence: `qa/r33-frame.mjs` §1, `qa/r33-render.mjs` §D, and my own run in
+  **Verified** rows 12–14. **Trigger: I-8b does not ship until this is ruled and built.**
+- **A-42. R33-2 — A-40 clause 2's claim that `MIN_SPAN_KM` satisfies "must not open at a
+  rooftop zoom" is false at world-map scale, and the criterion it licenses verifies a number
+  with no rendered consequence.** Re-derived across all 239 index codes: **`VA` is the only
+  code that clamps**, at exactly `MIN_SPAN_KM` = **1.2 km**, which is a *day-map* constant
+  (`cluster.ts:104`: *"a zoom-16 window is ≈1.2 km wide"*) and zoom 16 **is** rooftop zoom;
+  `AT` is 631 km and does not clamp, so ROADMAP I-8a's second criterion is unsatisfiable as
+  written and its injected fault is green — **the builder's `AT`→`VA` substitution is sound and
+  reporting it rather than editing the criterion was the right call**. Two things to rule: (a)
+  what the world map's min-span guard should actually be, given it is a different surface from
+  the day map with a different constant; and (b) rewrite ROADMAP I-8a's second criterion to
+  assert something with a rendered consequence — as it stands the surface has no tiles and
+  draws no unvisited countries, so a one-country history paints the same single polygon at any
+  scale, and the only visible difference between `VA` (1.20 km, clamped, prints *"Zoomed out to
+  a readable minimum"*) and `GI` (1.76 km, not clamped, prints nothing) is a claim the geometry
+  does not support. **Edit the ROADMAP criterion in this pass** — the builder correctly refused
+  to, and sequencing rule 5 makes it yours. Evidence: `qa/r33-minspan.mjs`, `qa/r33-render.mjs`
+  §H. **Trigger: I-8b does not ship until this is ruled.**
+- **A-43. R33-6 — the frame has zero inset, measured exactly.** `bounds.east` is `22.7105` and
+  the easternmost drawn vertex is `22.7105`; my own measurement of the inset is **0.000000**.
+  With `overflow: hidden` on `.worldmap__figure` and `vectorEffect="non-scaling-stroke"`, the
+  outer half of the extreme country's stroke is clipped, and I can see it in the screenshot.
+  `mapBounds` has no padding concept and W1 forbids the renderer computing one, so it belongs
+  in A-40 Part 3, which does not mention it. **Rule it as part of A-41 — it is the same frame
+  and it would be perverse to decide the extent twice.**
+- **A-44. R33-3's design half, and only that half.** The builder correctly refused to decide
+  alone where `core.lifecycle`'s read gate belongs, given A-37 Part 2 already put one around
+  `travelStats`. Rule it. The concrete question: `lifecycle` → `dayNumber` → `parseIsoDate`
+  throws (`summary.ts:73`) and `Library.tsx:29` calls it per row through `LifecycleChip` with
+  no gate, which is A-37's own failure class on a second surface. Decide whether the gate goes
+  in `lifecycle`, in a client selector, or in each surface, and say so once. **Trigger:
+  before I-8b, which registers a third surface into the same shell.**
+- **A-45 (new this pass, mine, not round 33's). `fromJSON` accepts a calendar-invalid date that
+  produces a nonsense number on the surface I-8a just built.** Round 33 checked whether such a
+  row reaches a *throw* and correctly concluded it does not. It did not check whether it
+  reaches a *wrong answer*. Measured, my own run: `fromJSON` refuses `"202-01-01"`,
+  `"10000-01-04"`, `"2026-8-7"`, `""`, `"March 2019"` and `"not-a-date"` — and **accepts
+  `"2026-02-30"`**, a date that does not exist. Carried through the real pipeline, that trip
+  gives `lifecycle` = `active`, `tripSummary` succeeds, and `travelStats` reports
+  **`daysTravelled` = 183 for a two-day trip**; `"2026-13-01"` gives `0`. The Map tab renders
+  `stats.daysTravelled` in its stat row, so I-8a is the first surface to print it. Reachable
+  through **a shipped write path** (backup/restore of the user's own hand-edited export) —
+  unlike R33-3 — which is why it is here and not filed as a curiosity. This is §2.1 **A-32**'s
+  `IsoDate` *domain* question, so it is the architect's, not a builder patch. **Trigger: before
+  I-8b, which renders the same number as text on the Profile — this is the item round 33's
+  "gets more expensive after I-8b" argument actually applies to, and it is not one of the two it
+  applied it to.** Repro: the two scripts in **Verified** rows 20–21.
+
+### builder — the next builder pass, before any further increment quotes `i8a-faults.sh`
+
+- **BLD-2. R33-4 — `qa/i8a-faults.sh:58` decides RED as "the suite failed", and three of the
+  ten ship-gate faults are vacuous as measured.** Confirmed on my own control, not read from
+  the finding: an **unmutated** copy of the tree, run at the harness's own `test/views.test.ts`
+  scope, reports `# pass 22 / # fail 1` — so line 58's `grep -qE '^# fail 0$'` cannot match and
+  the harness scores W1, the shared-opacity fault and the `backdrop-filter` fault **RED with no
+  fault injected**. The failing test is `test/views.test.ts:84` (*"every exemption's
+  justification holds"*), and the cause is `loadEurope2026` → `extract-legacy.mjs` →
+  `ENOENT … /europe-2026-itinerary.html`, because a copied `cairn/` cannot reach the repo-root
+  planner. **Fix it by making the verdict specific, not by making the suite green** — match the
+  named `not ok` id, or take a per-test scope. Making `loadEurope2026` resolve the planner from
+  the git root is the lesser fix: it papers over a harness whose verdict is *"something in the
+  file went red"* when the ROADMAP asks for *"the named criterion went red"*.
+  **This is not blocking, and here is exactly why:** I discharged the substance by hand. Each
+  of the three mutations, applied to a fresh copy, adds **its own named failure** on top of the
+  pre-existing one — `not ok 15 - I-8a / A-40 W1: WorldMap.tsx reads no layout geometry`,
+  `not ok 21 - I-8a: no provenance signal is carried by opacity`, `not ok 23 - I-8a: neither
+  named removal comes back`. The three criteria **are** load-bearing; the instrument does not
+  establish it and I do, in **Verified** rows 8–9. Repro: `bash qa/r33-vacuity.sh`.
+- **BLD-3. R33-3's recovery half.** Two things, both in `apps/web/src/App.tsx`: `TabBoundary`
+  (`:87-110`) latches `message` for the session and has **no reset**, so it keeps showing the
+  banner even after the cause is gone — I watched that happen. And with the Trips tab down, the
+  complete set of visible controls is `["BUTTON:CAIRN","BUTTON:TRIPS","BUTTON:MAP"]`: the
+  Library is the only surface with delete, export or restore, and the Library is the surface
+  that threw. Give the boundary a reset (a *"Try again"* that clears `message`), and give the
+  user **one** recovery that does not live inside the surface that throws. Do **not** invent
+  the read-gate placement — that is **A-44**. Repro: `qa/r33-render.mjs` §F.
+- **BLD-4. R33-5, `apps/web/src/styles.css:221`.** `.tabbar { position: sticky; top: 2.7rem }`
+  is a hardcoded **43.2 px** against a topbar that computes **38.38 px**, so a **4.81 px**
+  stripe of scrolling page content shows between the two sticky bars at every viewport —
+  measured again on my own run at 375 px (`topbar bottom 38.4, tabbar top 43.2`). Derive the
+  offset rather than hardcoding it. Ride the related z-index line with it: `.leaflet-top`
+  computes `1000` and `.leaflet-control` `800` against `.topbar` **500** and `.tabbar` **490**,
+  so the day map's zoom controls paint over both bars.
+- **BLD-5. R33-8, `apps/web/src/styles.css:416`.** The token layer declares three severity
+  channels and uses one: `--sev-warning` and `--sev-note` are declared at `:92-93` and appear
+  in **no** rule, `.stop--flag` paints **every** conflict severity in `--sev-blocker`, and this
+  pass *strengthened* it — I diffed it: `color-mix(in srgb, var(--danger) 55%, var(--line))` at
+  `04eeb5d` → full `var(--sev-blocker)` = `var(--danger)` at `6b89c91`. `DayTimeline.tsx:115-117`
+  already computes a `data-severity` attribute and **nothing in the CSS reads it** (0 matches).
+  Wire the attribute the builder already emitted to the two channels the builder already
+  declared. Correctly MINOR: measured in the browser, the reference trip's opening view renders
+  **0** flagged cards, so nothing is mis-coloured on Jacob's trip today.
+- **BLD-6. R33-7, `apps/web/src/App.tsx:208-223`.** `role="tablist"`/`role="tab"` is declared
+  and neither half of the WAI-ARIA tablist pattern is implemented: no arrow-key navigation, and
+  `tabIndex` is `[0, 0]` rather than a roving single stop. Either implement the pattern or drop
+  the roles. Confirmed by reading — there is no `onKeyDown` on the tab buttons at all.
+- **BLD-7. R33-9 plus one more, both in `BUILD-NOTES.md`'s I-8a addendum, doc-only.** (a) The
+  scope line says *"11 new files (4 of them font binaries) and 10 changed"*; measured,
+  `git diff --name-status 04eeb5d 6b89c91` is **10 added / 13 modified**. (b) More worth
+  fixing: the payload row's *"reference library"* set is `AT HR CZ HU GB US` — six codes, no
+  `DE` — and the reference library's actual set is `["AT","CZ","DE","GB","HR","HU","US"]`. The
+  true figure is **12,040 B = 11.8 KB** with `DE 950`, not 11,090 B. Still an order of magnitude
+  under the 512 KB ceiling, so nothing about A-40 Part 5 moves; correct the number so the next
+  round does not re-derive a wrong one from it, as round 33 did.
+
+### breaker — before round 34, in a commit of its own
+
+- **B-6. Round 33's own probes report undisclosed FAILs, which is the B-1…B-4 rot recurring one
+  round after it was cleared.** `node --experimental-strip-types qa/r33-frame.mjs` ends
+  `# 2 FAILED` (both are R33-6's padding assertions, i.e. the probe demonstrating its own
+  finding) and `qa/r33-reach.mjs` ends `# 1 claim(s) NOT confirmed` (`createTrip ACCEPTS a
+  range that crosses year 9999` — it does not; it refuses). Neither count appears in
+  `QA-FINDINGS.md`'s round-33 status note, which lists the four commands with no expected
+  colours. **Either re-express them as positive assertions of what is true, or state the
+  expected FAIL count beside each command in the status note.** A standing probe whose expected
+  colour is undocumented costs the next round real time — this file has said so twice.
+- **B-7. Round 33 did not attack the token layer's own claim.** Its "what I could not break"
+  list is long and genuinely good on dark mode, motion, network and composition — but the
+  increment's other half is *"the type scale, rule weights, radii and the signal channels
+  declared once as custom properties"*, and the pass verified the two named removals and the
+  11 px floor and stopped. **BLD-5 is the defect that was sitting in that gap** — three
+  declared channels, one used, and a `data-severity` attribute wired to nothing — and it was
+  found by reading rather than by the round. Round 34 takes the token layer as a named target:
+  every declared custom property is either used or removed, and every attribute the views emit
+  for styling is either read by a rule or deleted.
+
+### Carried forward, re-placed rather than re-derived
+
+| Item | Status at this gate | Where it now belongs |
+|---|---|---|
+| **R32-3, R32-4** (MINOR) | Untouched by this pass, unchanged | `QA-FINDINGS.md` round 32. Not I-8a items |
+| **R31-2…R31-4, R30-2…R30-5, R29-3, R27-1…R27-3** | Untouched, unchanged | Unchanged homes |
+| **2a's A-1** (provenance half), **A-2** (P2-8), **BLD-1** (P2-5) | Unchanged; none is an I-8a item and none was reopened here | 2a's routing table, unchanged triggers |
+| **B-1…B-4** (2a's probe rot) | Not re-run this pass; **B-6 above is the same failure recurring**, which is the more useful signal | Fold B-1…B-4 into B-6's commit |
+| **R8-3, R8-4** (MAJOR, unreachable) | Unchanged. Nothing in I-8a made either reachable — `acceptCandidate` still has no control, `deleteTrip` still only at `Library.tsx` | Phase 3, triggers unchanged |
+
+---
+
+## The I-8a ship gate, clause by clause, and how I checked each
+
+ROADMAP I-8a's ship gate is three clauses. I checked all three and I did not accept the
+harness's verdict for the middle one.
+
+| Gate clause | Result |
+|---|---|
+| **A-40's W1 grep is clean** | **PASS**, my own grep, over a **wider** identifier set than the ruling names: `getBoundingClientRect`, `offsetWidth`, `offsetHeight`, `ResizeObserver`, `innerWidth`, `clientX`, `clientY`, `elementFromPoint`, `getBBox`, `getScreenCTM` — **0 hits** in `WorldMap.tsx`, comments included |
+| **Every criterion has its injected fault red** | **PASS on substance, with the instrument defective — and the distinction is mine, established by hand.** `bash qa/i8a-faults.sh` exits **0** with all 10 measured RED. But 3 of the 10 are scoped to `test/views.test.ts`, which fails once in a copied tree with no mutation at all (`# pass 22 / # fail 1`, my own control), so those three verdicts are vacuous *as measured*. I then measured the substance directly: each of the three mutations adds **its own named `not ok`** (15 / 21 / 23). The clause is true; the harness does not establish it. **BLD-2** |
+| **The map bugs have a test each rather than a comment each** | **PASS for the hidden-container bug** — and it is the strongest result here: hidden `viewBox` === shown `viewBox` === bare-Node `viewBox`, byte-identical, verified on my own oracle against the real sample. **Nominal for the min-span bug** — the test asserts `VA` clamps, which is true and correctly substituted, but clamping to 1.2 km is itself a rooftop zoom and the surface has no scale reference, so the test asserts the guard fired rather than the bug being absent. Not blocking — measured, the case has **no rendered consequence** on this surface — but the criterion is wrong. **A-42** |
+
+### I-8a's own verification bullets, as ROADMAP writes them
+
+| # | Criterion | Result |
+|---|---|---|
+| 1 | The world map fits correctly when its tab was hidden at mount | **PASS**, my own Chromium run: mounted at `display:none` with `width === 0`, `viewBox` already correct, byte-identical after the switch and identical to Node's |
+| 2 | A one-country history does not exceed the min-span guard | **PASS as re-expressed (`VA`), and the re-expression is sound** — `VA` is the only clamping code in all 239, at exactly 1.2 km; `AT` is 631 km and does not clamp, so the criterion as written is unsatisfiable and its fault is green. **The criterion needs rewriting — A-42** |
+| 3 | A provisional country renders differently from a confirmed one, asserted on rendered output | **PASS.** `i8a-signals.mjs` §3 green on my run; the browser fault (provisional painted in the confirmed ink) measured **RED**, and that one is a genuine browser measurement, not a vacuous one |
+| 4 | A code the index cannot fill appears in `missing` and on screen | **PASS.** `worldMapFrame` never throws for `ZZ`, `''`, `'at'`, `__proto__` or a 5,000-char code; `drawn + missing` accounts for every row; the fault (drop it silently) measured **RED** |
+| 5 | `travelStats` is rendered behind a boundary that can refuse | **PASS** — the Map shows *"We could not read your travel history"* with the row id, and I watched it. **But the boundary has no way out — R33-3 / BLD-3 / A-44** |
+| 6 | The two signals are separable | **PASS**, and this is a real fix. No provenance/provisional/unresolved-severity selector sets `opacity` anywhere in the shipped CSS; the blocker's colour and the effective opacity product are identical on an `imported` and an `own` row |
+| 7 | Neither removal comes back | **PASS**, over computed style on every element in the running app: no `backdrop-filter`, no gradient in a chrome fill, opaque topbar, drawn flat-ink mark |
+| 8 | The payload ceiling is measured and recorded | **PASS on the ceiling, wrong on the number.** Re-derived: reference library **12,040 B = 11.8 KB**, index worst case (239 codes) **374,268 B = 365.5 KB**, both under 512 KB. BUILD-NOTES' 11,090 B is a six-code set missing `DE` — **BLD-7** |
+
+---
+
+## `cairn-constraints` and the read-only boundary, re-verified directly
+
+| Constraint | How I checked | Result |
+|---|---|---|
+| §1 read-only boundary | `git diff 04eeb5d 6b89c91 -- europe-2026-itinerary.html docs/ tickets/` from the repo root, and `md5sum` after the full suite, a web build, a golden regen, the ship-gate harness (3 mutated browser builds) and ~10 Chromium sessions | diff **empty**; `7c69df3208ef91c8be0fb59a56443188` — byte-identical to the hash in Phase 1's and 2a's verdicts |
+| `packages/core` untouched | `git diff --stat 04eeb5d 6b89c91 -- cairn/packages/core/` | **empty**. A-40 Part 2's requirement, discharged |
+| `MapPort` untouched | `git diff --stat 04eeb5d 6b89c91 -- cairn/apps/web/src/ports/map.ts` | **empty**, byte-identical |
+| §6 export surface | `Object.keys(core).length` | **75**, unmoved |
+| §6.6 credentials may not reach a build | `npm run web:build && node qa/r2-redact.mjs` | **0 KNOWN_LEAKS**; 3 hits, all `OPTIONAL`/`BOOKINGS` |
+| No new runtime dependency, no CDN | grep `fonts.googleapis\|gstatic\|cdn.` across `apps/web/src` and `apps/web/dist` | one hit, and it is a **comment** in `styles.css:18` saying the app does not use one. All four `woff2` are emitted into `dist/assets/` and served from the app's own origin |
+| Goldens and sample byte-stable | `npm run golden && npm run sample && git status --porcelain` | tree **clean**; sha still `40955ca0b182dddcc33540accadf2a65a329bc20b9e6ca109c9884e776bb06d2` |
+
+---
+
+## Verified — I-8a: what I ran, and what happened
+
+All from `/home/user/europe-2026-planner`, `master` @ `6b89c91` (record commit `e15c80d`),
+Node v22.22.2, Chromium 1194 via `/opt/node22/lib/node_modules/playwright`. `git status
+--porcelain` **empty** before and after; `git worktree list` shows only the main tree
+(one leftover at `04eeb5d` from an earlier stage was removed).
+
+| # | Command | Result |
+|---|---|---|
+| 1 | `npm run typecheck` | exit **0**, **both** projects; `pretypecheck` regenerated the redacted sample first (`16 days, 112 stops, 31 pool, 95 places, 120 import issues, source 40955ca0b182, REDACTED per §6.6`) |
+| 2 | `npm run test:tap` | `# tests 915 · # pass 915 · # fail 0 · # skipped 0`, 17.8 s. **BUILD-NOTES' and round 33's 915 are both accurate** |
+| 3 | `npm run golden && npm run sample && git status --porcelain` | tree **clean**, sha `40955ca0b182…` — byte-identical regeneration |
+| 4 | `npm run web:build` | exit 0. Four `woff2` emitted into `dist/assets/`; the pre-existing >500 kB chunk advisory is unchanged |
+| 5 | `Object.keys(core).length` | **75** |
+| 6 | three `git diff --stat` from the **repo root** (`packages/core/`, `ports/map.ts`, root boundary) | **all three empty**. *(Noted because I first ran these from `cairn/` and the pathspecs silently resolved to nothing — a false negative I caught by re-running from the root. Anyone repeating this check should run it from the repo root.)* |
+| 7 | `PLAYWRIGHT_BROWSERS_PATH=… bash qa/i8a-faults.sh` | exit **0**, all 10 measured RED against expected RED, `every injected fault fired` |
+| 8 | **my own control**: an unmutated copy of the tree, `node --test test/views.test.ts` | `# pass 22 · # fail 1` — `not ok 5 - every exemption's justification holds`, `ENOENT … /europe-2026-itinerary.html`. **R33-4 reproduced: three of the ten ship-gate verdicts are vacuous.** The same control at `packages/client/test/world-map.test.ts` scope is `# pass 18 · # fail 0`, so the other seven faults are honestly measured |
+| 9 | **my own substance check**: each of the three views-scoped mutations applied to a fresh copy, every `not ok` line printed | each adds exactly its own: `not ok 15 - … A-40 W1`, `not ok 21 - … no provenance signal is carried by opacity`, `not ok 23 - … neither named removal comes back`. **The three criteria are load-bearing. The gate's substance is met; its instrument is not.** |
+| 10 | `bash qa/r33-vacuity.sh` | reproduces #8 and names the same test and the same ENOENT. Round 33's diagnosis is correct |
+| 11 | `PLAYWRIGHT_BROWSERS_PATH=… node qa/i8a-signals.mjs` | **all green, 8 sections**, my own run: no `backdrop-filter` and no gradient on any element, opaque topbar, drawn mark, nothing rendered below the 11 px floor, all four self-hosted faces `loaded` from the app |
+| 12 | **my own Chromium probe**, shipped sample through the real *"Load Europe 2026"* button, Trips → Map | while hidden: `display:none`, `getBoundingClientRect().width === 0`, `viewBox = "-171.7911 -71.3578 194.5016 52.4416"`. After the switch: **the identical string**. **CLAUDE.md's first map bug is absent, on my own oracle** |
+| 13 | the same probe, `worldMapFrame` in bare Node from the same rows | **the identical string again.** Three readings — Node, hidden DOM, shown DOM — one byte-identical `viewBox` |
+| 14 | the same probe, rendered country boxes, and **I looked at the screenshot** | 958 × 418 px figure: **US 516.3 · GB 45.6 · DE 44.5 · AT 36.9 · CZ 32.6 · HU 32.1 · HR 28.2**; the six European countries occupy **149.2 px of 958**. Stat row reads `Countries 7 · Trips 1 · Days travelled 16`; the chip list reads `AT 1 CZ 1 DE 1 GB 1 HR 1 HU 1 US 1`. **R33-1 reproduced, and it is a map of the United States** |
+| 15 | **my own frame arithmetic**: max/min longitude over the reference set, and the same set re-expressed into `[0,360)` | contiguous span **194.5016°**, no box within 8° of ±180°; re-expressed span **350.75°** — *worse*. **Dateline-aware bounds would change this frame by zero. BUILD-NOTES' proposed fix is wrong** |
+| 16 | **my own inset measurement**: `bounds.east` vs the easternmost vertex in every emitted `d` | `22.7105` vs `22.7105`, inset **0.000000**. R33-6 exact, and visible in the screenshot |
+| 17 | **my own payload measurement** over the sample's real country set | reference **12,040 B = 11.8 KB** (`AT 618, CZ 574, DE 950, GB 879, HR 694, HU 522, US 7803`); worst case over all **239** codes **374,268 B = 365.5 KB**. Both under 512 KB. **BUILD-NOTES' 11,090 B omits `DE`** |
+| 18 | `node --experimental-strip-types qa/r33-minspan.mjs` | ALL GREEN. `VA` is the only clamping code in 239; `spanKm` exactly **1.2**; `AT` **630.97 km**, not clamped; the injected fault changes the answer for `VA` and **not** for `AT`. **The `AT`→`VA` substitution is sound and the ROADMAP criterion is unsatisfiable as written** |
+| 19 | `qa/r33-frame.mjs`, `qa/r33-reach.mjs`, `qa/r33-render.mjs` | All three reproduce their findings. §F: with a bad row planted, the complete visible control set is `["BUTTON:CAIRN","BUTTON:TRIPS","BUTTON:MAP"]` and the boundary still shows the banner after the cause is removed. **Also: `r33-frame` ends `# 2 FAILED` and `r33-reach` ends `# 1 claim(s) NOT confirmed`, neither disclosed in the status note — routing B-6** |
+| 20 | **my own reachability check**, seven malformed dates through `createTrip` and through `fromJSON` | `createTrip` refuses **all seven**. `fromJSON` refuses `"202-01-01"`, `"10000-01-04"`, `"2026-8-7"`, `""`, `"March 2019"`, `"not-a-date"` — and **accepts `"2026-02-30"`**. R33-3's *"no shipped write path mints an unreadable row"* holds |
+| 21 | **the follow-on round 33 did not run**: `"2026-02-30"` carried through the real pipeline | `fromJSON` ACCEPTED → `lifecycle` = `active` → `tripSummary` ok → `travelStats` **`daysTravelled` = 183 for a two-day trip** (`"2026-13-01"` → `0`). The Map tab prints that number. **New: routing A-45** |
+| 22 | `git diff 04eeb5d:styles.css` vs current, on `.stop--flag` | `color-mix(in srgb, var(--danger) 55%, var(--line))` → `var(--sev-blocker)`. **The collapse was strengthened by this pass.** `--sev-warning`/`--sev-note` appear in **no** rule; `data-severity` is read by **0** CSS rules |
+| 23 | **my own browser count** of `.stop--flag` cards on the reference trip's opening view | **0**. R33-8 is correctly MINOR — nothing is mis-coloured on Jacob's trip today |
+| 24 | `grep -cE` W1's identifiers (10 of them) in `WorldMap.tsx` | **0** |
+| 25 | `ls apps/web/src/views/`; the `TABS` registry test read in full | **`Profile.tsx` does not exist**; ids exactly `['trips','map']`; the *"no DISCOVER"* grep runs on **comment-stripped** source, so the ceiling is honest and the one `discover` in `App.tsx` is a doc comment quoting I-8 |
+| 26 | `npm run web:build && node qa/r2-redact.mjs` | **0 KNOWN_LEAKS**; 3 hits, all `OPTIONAL`/`BOOKINGS` |
+| 27 | `git diff --name-status 04eeb5d 6b89c91 \| cut -f1 \| sort \| uniq -c` | **10 A / 13 M**. BUILD-NOTES says *"11 new … and 10 changed"* — routing BLD-7 |
+| 28 | `git status -sb`, `git worktree list`, `git rev-parse HEAD origin/master` | `master...origin/master`, in sync, clean tree, one worktree. The work is on `master`, per `CLAUDE.md` |
+
+---
+
+## For Jacob — I-8a
+
+**There is now a map of everywhere you have been, and the app has tabs — Trips and Map.** I ran
+the whole thing myself: 915 tests, the type checker, the build, the injected-fault harness, and
+about ten browser sessions driving your real Europe trip through the actual screens rather than
+taking anyone's word for it. **Nothing here is a stub.**
+
+Three things you would notice:
+
+- **The Map tab.** It fills in every country you have been to, drawn from a map bundled inside
+  the app — nothing is fetched from any server, and I confirmed that by watching the network:
+  every single request goes to the app itself. Tap a country and it lists the trips that took
+  you there. A country you are only counted in because you are *on a trip right now* is drawn
+  as an outline instead of being claimed as somewhere you have been.
+- **The app looks like your planner again** — condensed display type, every number and label in
+  a typewriter face, hairlines, small corners, outlined badges. The three typefaces are served
+  from the app itself, so it still reads with no network at all. Two bits of glassy chrome are
+  gone for good and there is a test that stops them coming back.
+- **A real design bug is fixed.** An activity you had not accepted yet used to be shown by
+  fading the whole row — and if that row *also* had a scheduling problem, the warning faded
+  too. The more wrong it was, the fainter it got. Now the "not yours yet" mark is a dashed
+  outline and the warning keeps its full colour whatever else is true of the row. I checked
+  this nine different ways and it holds.
+
+**One thing is not good, and I want to be straight about it rather than let you find it.**
+
+Your trip includes the LA flights, so your travel history contains the United States. The map
+fits itself around *everything* you have been to — and the moment the United States is in the
+picture, the six European countries the trip is actually about become a small clump against the
+right-hand edge, about a seventh of the width of the screen, while America takes up most of it.
+I opened it and looked at it. It is not *wrong* — all seven countries are there, correctly
+drawn, correctly labelled, and listed in text underneath — but it is a map of America with
+Europe in the corner, which is not what "show me everywhere I've been" should feel like for
+this trip.
+
+**This needs a decision from you, and it is genuinely a product question, not a technical one.**
+When one place you have been is a long way from all the others, what should the map do?
+
+- **(a) Fit the main cluster and tuck the outlier into a corner inset**, the way an atlas puts
+  Alaska and Hawaii in boxes. You see Europe properly and America is still shown, just smaller
+  and off to one side.
+- **(b) Fit everything as it does now**, but give you a control that reframes to the part you
+  are looking at — so the default is honest about the whole span and you can zoom in.
+- **(c) Leave it as it is** and have the screen say in words what it is showing you.
+
+I have blocked the second half of this screen — the Profile, with your country and city and day
+counts — until this is decided, so nothing is waiting on you today, but it is the next thing.
+
+**Two smaller things, both scheduled with names on them:** if a stored trip record ever became
+unreadable, the Trips screen would go down and there would be no button left that lets you
+delete or export the trip causing it — that cannot happen from anything the app itself writes
+today, but there is no way out if it ever did, so it is being fixed. And one of the checks that
+proves this work is correct is measuring the right thing the wrong way; the checks themselves
+are sound — I re-ran them by hand to be sure — but the instrument is being repaired so nobody
+has to do that again.
+
+**Still open from before, unchanged:** the *"accept"* button question from Phase 1, and the
+"someone else's trip file with no owner in it" question from 2a. Neither is blocking anything.
+
+**Next:** I-8b — the Profile screen, and then step 2b ships.
 
 ---
 

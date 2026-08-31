@@ -319,12 +319,12 @@
 </style>
 </head>
 <body>
-<div class="callout" style="border-left:4px solid #b3701e;padding:.75rem 1rem;margin:1rem 0;background:#fdf8ef">
-<p><strong>&#128993; I-8a IS BUILT &mdash; the Map screen exists, and so does a visual language
+<div class="callout" style="border-left:4px solid #2f7a3d;padding:.75rem 1rem;margin:1rem 0;background:#eef7ef">
+<p><strong>&#128994; I-8a IS SHIPPED &mdash; the Map screen and the visual language are signed off
 &mdash; as of 2026-08-31</strong> (this block is the current state; the 2026-08-29 block below it is
 older on I-8 only). I-8 was split into <strong>I-8a</strong> (the map, the tab shell, the
 type-and-colour layer) and <strong>I-8b</strong> (the Profile screen). <strong>I-8a is now
-built.</strong> What you can actually see: the app has <strong>tabs &mdash; Trips and Map</strong>,
+built, attacked and shipped.</strong> What you can actually see: the app has <strong>tabs &mdash; Trips and Map</strong>,
 and the Map draws <strong>every country you have been to, filled in, from a map bundled inside the
 app</strong> with nothing fetched from a server. Tap a country and it lists the trips that took you
 there. A country you are only counted in because you are <em>on a trip right now</em> is drawn
@@ -342,8 +342,28 @@ warning keeps its full colour whatever else is true of the row.</p>
 <p><strong>What is NOT built: I-8b, the Profile screen.</strong> There is deliberately <strong>no
 empty Profile tab</strong> waiting for it &mdash; a tab that promises something is exactly what this
 product refuses to do. Adding it later is one line in the tab list. <strong>2b does not ship until
-I-8b lands.</strong> <strong>I-8a is built &#9989; &middot; verified &#9898; &middot; shippable
-&#9898;</strong> &mdash; nobody has attacked it yet.</p>
+I-8b lands.</strong></p>
+<p><strong>I-8a is built &#9989; &middot; verified &#9989; &middot; shippable &#9989;.</strong> QA
+round 33 attacked it &mdash; <strong>0 blockers, 4 MAJOR, 5 MINOR</strong> &mdash; and the manager
+gate ruled <strong>SHIP</strong> (<code>REVIEW.md</code>, &ldquo;I-8a&rdquo;, <code>6b89c91</code>,
+2026-08-31), re-deriving the map on his own oracle rather than taking the numbers. What held: the
+map is drawn correctly from the bundled index with <strong>nothing fetched from any server</strong>;
+the &ldquo;cannot fit a map in a hidden container&rdquo; bug that bit the original planner is
+genuinely <strong>absent</strong> here, not patched (the map&rsquo;s frame is byte-identical whether
+the tab is hidden, shown, or computed with no browser at all); the faded-signal design defect is
+really fixed; and no credential, no gradient and no external font reaches the build.</p>
+<p><strong>One thing is not good and Jacob has a decision to make about it.</strong> His trip
+includes the LA flights, so his history contains the <strong>United States</strong> &mdash; and the
+map fits itself around everything, so the six European countries the trip is about end up a small
+clump against the right-hand edge while America fills the screen. Nothing is <em>wrong</em> (all
+seven countries are drawn, labelled and listed), but it is a map of America with Europe in the
+corner. <strong>The Profile screen (I-8b) is blocked until that framing is decided</strong> &mdash;
+the three options are in <code>REVIEW.md</code>&rsquo;s &ldquo;For Jacob&rdquo;. Also routed and
+non-blocking: an unreadable stored record would take the Trips screen down with no button left to
+delete or export the trip causing it (not reachable from anything the app writes today, but there is
+no way out if it were); and three of the ten injected-fault checks behind the ship gate measure the
+right thing the wrong way &mdash; the manager re-established their substance by hand, and the
+instrument is being repaired.</p>
 </div>
 <div class="callout" style="border-left:4px solid #2f7a3d;padding:.75rem 1rem;margin:1rem 0;background:#eef7ef">
 <p><strong>&#128994; STEP 2b&rsquo;S DATA LAYER IS SHIPPED &mdash; as of 2026-08-29</strong> (this

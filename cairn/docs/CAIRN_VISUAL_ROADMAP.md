@@ -19,10 +19,10 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
-> **🟡 I-8a IS BUILT — the Map screen exists, and so does a visual language — as of 2026-08-31
+> **🟢 I-8a IS SHIPPED — the Map screen and the visual language are signed off — as of 2026-08-31
 > (this block is the current state; the 2026-08-29 block below it is older on I-8 only).** I-8 was
 > split into **I-8a** (the map, the tab shell, the type-and-colour layer) and **I-8b** (the Profile
-> screen). **I-8a is now built.** What you can actually see: the app has **tabs — Trips and Map** —
+> screen). **I-8a is now built, attacked and shipped.** What you can actually see: the app has **tabs — Trips and Map** —
 > and the Map draws **every country you have been to, filled in, from a map bundled inside the app**
 > with nothing fetched from a server. Tap a country and it lists the trips that took you there.
 > A country you are only counted in because you are *on a trip right now* is drawn differently —
@@ -41,7 +41,27 @@ update to this file added that instruction).
 > **What is NOT built: I-8b, the Profile screen.** There is deliberately **no empty Profile tab**
 > waiting for it — a tab that promises something is exactly what this product refuses to do. Adding
 > it later is one line in the tab list. **2b does not ship until I-8b lands.**
-> **I-8a is built ✅ · verified ⚪ · shippable ⚪** — nobody has attacked it yet.
+>
+> **I-8a is built ✅ · verified ✅ · shippable ✅.** QA round 33 attacked it — **0 blockers, 4
+> MAJOR, 5 MINOR** — and the manager gate ruled **SHIP** (`REVIEW.md`, "I-8a", `6b89c91`,
+> 2026-08-31), re-deriving the map on his own oracle rather than taking the numbers. What held:
+> the map is drawn correctly from the bundled index with **nothing fetched from any server**;
+> the "cannot fit a map in a hidden container" bug that bit the original planner is genuinely
+> **absent** here, not patched (the map's frame is byte-identical whether the tab is hidden,
+> shown, or computed with no browser at all); the faded-signal design defect is really fixed;
+> and no credential, no gradient and no external font reaches the build.
+>
+> **One thing is not good and Jacob has a decision to make about it.** His trip includes the LA
+> flights, so his history contains the **United States** — and the map fits itself around
+> everything, so the six European countries the trip is about end up a small clump against the
+> right-hand edge while America fills the screen. Nothing is *wrong* (all seven countries are
+> drawn, labelled and listed), but it is a map of America with Europe in the corner. **The
+> Profile screen (I-8b) is blocked until that framing is decided** — the three options are in
+> `REVIEW.md`'s "For Jacob". Also routed and non-blocking: an unreadable stored record would
+> take the Trips screen down with no button left to delete or export the trip causing it (not
+> reachable from anything the app writes today, but there is no way out if it were); and three
+> of the ten injected-fault checks behind the ship gate measure the right thing the wrong way —
+> the manager re-established their substance by hand, and the instrument is being repaired.
 
 > **🟢 STEP 2b's DATA LAYER IS SHIPPED — as of 2026-08-29 (this block is the current state; every
 > 2b/I-7 sentence below it is older).** `REVIEW.md` now records **SHIP** for "Phase 2, step 2b
