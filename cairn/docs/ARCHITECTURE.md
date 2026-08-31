@@ -640,13 +640,43 @@ moves: no engine, no `StoragePort` method, no `SUMMARY_VERSION` bump, no client 
 dependency, and **no movement on §2.10's export surface (75)** — `worldMapFrame` is a `packages/client`
 selector, and `packages/client` has no export ceiling.
 
+**Revision 30, 2026-08-31.** The I-8a gate shipped and routed five items back here (`REVIEW.md` § I-8a),
+four of them gating I-8b; Jacob decided the one product question that was his. **Four rulings, in three
+sections, and none of them is a redesign.**
+
+**A-41** (§4.4) is the framing ruling, and Jacob's decision is **atlas-style**: *"prioritize the main
+geographic cluster while preserving meaningful outliers visibly through an inset."* The measured defect is
+not the antimeridian — the reference extent is one contiguous **194.5016°** span with no box within 8° of
+±180°, and `[0,360)` makes it **worse** — so **dateline-aware bounds are refused in writing**, and A-40 Part
+7 residue 1's diagnosis is withdrawn (a narrower residue 1′ survives: five codes of 239 have a box wider
+than 180°). What replaces it is small and purely geographic: one key point per country (its box centre),
+**single-linkage first-fit** at **4,000 km** through a kernel extracted into core, a **strict-weight-majority
+dominance test** without which the frame does not split at all, a **primary pane plus at most two insets**
+with the third folding every remaining cluster in, and **2% padding** as a property of the frame rather than
+of `mapBounds` (which answers R33-6's measured inset of 0.000000). **No country is ever dropped, demoted to a
+footnote or special-cased by identity.** A-40's W1/W2 stand; **W3** is added — the renderer draws panes by
+string-equality filter and computes none of them. **A-42** (§4.4) withdraws A-40 clause 2's min-span claim as
+false (`VA` is the only clamping code in 239, at 1.2 km, which *is* rooftop zoom), **refuses a second
+constant** on the ground that it would name a decision with no rendered consequence, and replaces the claim
+with containment-with-margin, which has one. **A-44** (§8.4) puts `lifecycle`'s read gate in
+`packages/client` beside `travelHistory` — not in core (A-37 Part 2 already decided that) and not per
+surface (three copies of a read gate is the defect A-20/A-21/A-37 each treated once). **A-45** (§2.9, the
+manager's own finding, not a QA round's) closes the one **shipped write path** that mints wrong data:
+`fromJSON` hand-rolls a second date predicate and therefore accepts `"2026-02-30"`, which silently
+mis-classifies a past trip as `planned` and drops all of its countries and days out of *everywhere you have
+been*. It calls `isIsoDate` — the file's own *"ONE date validator"* — and refuses, with the path.
+§2.10 moves **75 → 76** for `clusterPoints` and for no other reason. `ROADMAP.md` revision 28 carries all
+four as **I-8c** (the two data-integrity gates) and **I-8d** (the atlas frame), both of which run **before
+I-8b**. Nothing else moves: no engine, no `schemaVersion`, no `SUMMARY_VERSION` bump, no `StoragePort`
+method, no `MapPort` change, no new runtime dependency.
+
 **Phase 1 is §2 and §4. The next phase is §8.1–§8.4.** Everything else is the shape those must not
 foreclose. See `ROADMAP.md` for sequencing and `PRODUCT-VISION.md` for why this order and not another.
 
 ## Read only your sections
 
-This document is ~217k tokens (re-measured at revision 29, with
-`cairn/tools/doc-section ARCHITECTURE` — §2 is ~110k of it and §8 ~64k; the per-section figures below were stale by a third before revision 11 and are
+This document is ~226k tokens (re-measured at revision 30, with
+`cairn/tools/doc-section ARCHITECTURE` — §2 is ~112k of it and §8 ~65k, and §4 grew 13k → **18k** when A-41/A-42 landed in §4.4; the per-section figures below were stale by a third before revision 11 and are
 re-measured, not estimated, whenever a revision lands). Nothing needs all of it, and a fresh agent that reads it whole starts a sixth
 of the way into its context before writing a line. Pull what you need:
 
@@ -659,13 +689,16 @@ cairn/tools/doc-section ARCHITECTURE         # lists the sections and their size
 |---|---|---|---|
 | 0 | Six positions, stated up front | <1k | everyone — read it, it is 20 lines |
 | 1 | Stack decision and the capability checks behind it | 3k | architect. Settled; do not re-litigate |
-| 2 | **Domain model — the builder's contract.** §2.12 `travelRole`, §2.13 geography and §2.14 import/copy are new in revision 2 and are where the Phase 1 rework lives; **§2.2a (the `StorageVersion` write fence, revision 3) and §2.2b (the freshness rule it turned out to be one instance of, revision 4) are read together with §4.2 and §4.3, never alone**; §2.10 (the export surface) and §2.13's copied-record row are settled in revision 5; **§2.7's retirement ledger (A-5) and §2.13's copy-borne `Place` rule (A-6) are revision 6**; **§2.2a's A-7 (the fence a declined write may not move) is revision 8** and is read with §4.2 rule 4a; **§2.2's A-10 (a `CityKey` is a minted opaque id) and §2.7's A-9 (retirement is decided against the un-gated set) are revision 11** — a Phase 2 builder needs both; **A-11, A-12 and A-13 (§2.7) and A-14 (§2.14) are revision 12** and are read *with* A-9 and A-10, never instead of them — A-11 replaces A-9's greppable invariant, A-12 narrows A-9 point 1, A-13 rewrites A-9 assertion 4, and A-14 corrects A-10's change table; **A-15 and A-16 (§2.14) and A-17 (§2.7) are revision 13** — A-15 is the copy path's redaction rule and is read with §6.6, A-16 withdraws A-14's *"within one trip is unchanged"* paragraph, A-17 narrows A-11 assertion 5; **A-18 and A-19 (§2.14) are revision 14** — A-18 is the copy path's redaction rule for the *stop's own* nested records (`cost`, `arrival`) and generalises A-15 to *no spread at any depth*, A-19 rules that the `placement` **argument** is validated against the target and never re-filed. **Anyone touching `copyStopInto` reads A-14, A-15 and A-16 as one rule 4, and A-18 with rules 3 and 5**; **A-20 is revision 15 and lives in §2.9, not §2.14** — it is where the *shape* of a document is decided, it amends A-15's `hours` row and A-18's *"changes nothing in `fromJSON`"* paragraph, and **anyone touching `Place.hours` at any layer reads it first**; **A-21 is revision 16, lives in §2.9 beside A-20 and is read with it** — it replaces A-20's `isWeeklyEntry` with a reader that returns what it read, and imposes one read per field on `copyStop.ts`, so **anyone touching a predicate over an `unknown`, or any function in `copyStop.ts`, reads A-21 with A-15 and A-18**; **A-21a is a revision-16 addendum in the same place** and is what makes A-21's file-wide rule actually total — it is read with A-21, never instead of it; **A-22 and A-23 are revision 17, in the same place again** — A-22 closes the four sites A-21/A-21a's searches missed and **supersedes A-21a's read-count table one level down** (read A-22 Part 2's table, not A-21a's), and **A-23 is the standing census test that replaces the hand search** — *anyone adding a branch to `copyStopInto`, or a field to `Stop` or `Place`, reads A-23 first, because the scenario matrix and the allow-list are part of the contract and widening the allow-list is an architect's ruling*; **A-24 is revision 18 and is read *with* A-23, never instead of it** — it supersedes A-23's `opaque` set, its ten-row matrix and its fixture list, and nothing else about A-23 moves; **A-25 is revision 19 and is the last of the chain — it is read with A-23 and A-24 and closes the arc**, adding `City` rows to the roots, a fifteenth matrix row, an eighth `ALLOWED` entry, the structural fixture-completeness tests, and the **written closing criterion** in its Part 6 that a manager or a future session checks rather than takes on trust. **QA round 21 ran that criterion and all six clauses hold, so the arc is closed rather than closeable** — Part 6 records the verification and Part 5's class-A residue list was completed **in place** with the three instances round 21's re-derivation added (R21-1); that correction carries **no revision number** because no rule, entry, root, row, gate or line of code moved. **A-32 is revision 25 and lives in §2.1**, at the other end of the section from the copy chain — the civil-calendar implementation of `dayNumber`/`fromDayNumber`/`weekdayOf` and the first written statement of `IsoDate`'s **domain**; it is ~4k on its own, and **anyone touching a date helper, or minting an `IsoDate` from user input, reads it and needs nothing else in §2**; **A-35 is revision 26 and lives in §2.3** — the day skeleton's span cap (`MAX_TRIP_SPAN_DAYS = 3653`, in `ensureDays`, in core), which is A-32 Part 5's own trigger firing on the branch that Part does not cover, so **anyone touching `ensureDays`, `createTrip`'s date validation or either trip form reads A-35, and reads A-32 Part 5 only for why the Year field still has no floor** | 110k | builder, breaker |
+| 2 | **Domain model — the builder's contract.** §2.12 `travelRole`, §2.13 geography and §2.14 import/copy are new in revision 2 and are where the Phase 1 rework lives; **§2.2a (the `StorageVersion` write fence, revision 3) and §2.2b (the freshness rule it turned out to be one instance of, revision 4) are read together with §4.2 and §4.3, never alone**; §2.10 (the export surface) and §2.13's copied-record row are settled in revision 5; **§2.7's retirement ledger (A-5) and §2.13's copy-borne `Place` rule (A-6) are revision 6**; **§2.2a's A-7 (the fence a declined write may not move) is revision 8** and is read with §4.2 rule 4a; **§2.2's A-10 (a `CityKey` is a minted opaque id) and §2.7's A-9 (retirement is decided against the un-gated set) are revision 11** — a Phase 2 builder needs both; **A-11, A-12 and A-13 (§2.7) and A-14 (§2.14) are revision 12** and are read *with* A-9 and A-10, never instead of them — A-11 replaces A-9's greppable invariant, A-12 narrows A-9 point 1, A-13 rewrites A-9 assertion 4, and A-14 corrects A-10's change table; **A-15 and A-16 (§2.14) and A-17 (§2.7) are revision 13** — A-15 is the copy path's redaction rule and is read with §6.6, A-16 withdraws A-14's *"within one trip is unchanged"* paragraph, A-17 narrows A-11 assertion 5; **A-18 and A-19 (§2.14) are revision 14** — A-18 is the copy path's redaction rule for the *stop's own* nested records (`cost`, `arrival`) and generalises A-15 to *no spread at any depth*, A-19 rules that the `placement` **argument** is validated against the target and never re-filed. **Anyone touching `copyStopInto` reads A-14, A-15 and A-16 as one rule 4, and A-18 with rules 3 and 5**; **A-20 is revision 15 and lives in §2.9, not §2.14** — it is where the *shape* of a document is decided, it amends A-15's `hours` row and A-18's *"changes nothing in `fromJSON`"* paragraph, and **anyone touching `Place.hours` at any layer reads it first**; **A-21 is revision 16, lives in §2.9 beside A-20 and is read with it** — it replaces A-20's `isWeeklyEntry` with a reader that returns what it read, and imposes one read per field on `copyStop.ts`, so **anyone touching a predicate over an `unknown`, or any function in `copyStop.ts`, reads A-21 with A-15 and A-18**; **A-21a is a revision-16 addendum in the same place** and is what makes A-21's file-wide rule actually total — it is read with A-21, never instead of it; **A-22 and A-23 are revision 17, in the same place again** — A-22 closes the four sites A-21/A-21a's searches missed and **supersedes A-21a's read-count table one level down** (read A-22 Part 2's table, not A-21a's), and **A-23 is the standing census test that replaces the hand search** — *anyone adding a branch to `copyStopInto`, or a field to `Stop` or `Place`, reads A-23 first, because the scenario matrix and the allow-list are part of the contract and widening the allow-list is an architect's ruling*; **A-24 is revision 18 and is read *with* A-23, never instead of it** — it supersedes A-23's `opaque` set, its ten-row matrix and its fixture list, and nothing else about A-23 moves; **A-25 is revision 19 and is the last of the chain — it is read with A-23 and A-24 and closes the arc**, adding `City` rows to the roots, a fifteenth matrix row, an eighth `ALLOWED` entry, the structural fixture-completeness tests, and the **written closing criterion** in its Part 6 that a manager or a future session checks rather than takes on trust. **QA round 21 ran that criterion and all six clauses hold, so the arc is closed rather than closeable** — Part 6 records the verification and Part 5's class-A residue list was completed **in place** with the three instances round 21's re-derivation added (R21-1); that correction carries **no revision number** because no rule, entry, root, row, gate or line of code moved. **A-32 is revision 25 and lives in §2.1**, at the other end of the section from the copy chain — the civil-calendar implementation of `dayNumber`/`fromDayNumber`/`weekdayOf` and the first written statement of `IsoDate`'s **domain**; it is ~4k on its own, and **anyone touching a date helper, or minting an `IsoDate` from user input, reads it and needs nothing else in §2**; **A-35 is revision 26 and lives in §2.3** — the day skeleton's span cap (`MAX_TRIP_SPAN_DAYS = 3653`, in `ensureDays`, in core), which is A-32 Part 5's own trigger firing on the branch that Part does not cover, so **anyone touching `ensureDays`, `createTrip`'s date validation or either trip form reads A-35, and reads A-32 Part 5 only for why the Year field still has no floor**; **A-45 is revision 30 and lives in §2.9, at
+the end, beside A-20/A-21** — `fromJSON` stops hand-rolling a second date predicate and refuses a
+calendar-invalid date with its JSON path, and **anyone touching `fromJSON`, `isIsoDate` or a date field in
+the parser reads A-45 with A-20, and §2.1's A-32 Part 4 for what deliberately does *not* move** | 112k | builder, breaker |
 | 3 | Module boundaries | <1k | builder |
-| 4 | **The Phase 1 client.** §4.2 rule 6 (a pending write is never outlived by its document) is new in revision 3 — QA R3-2; rule 6a′ and the `savedDoc` predicate are revision 4 — QA R4-1; **rule 6a″ (the flush bound and its exits) and rule 6c's "delete goes on the chain" are revision 5** — QA R6-1/R6-2/R7-3; **rule 5's retirement carve-out is revision 6** — QA R8-1, read with §2.7; **rule 4a is revision 8** — QA R11-1, read with §2.2a A-7; **§4.3's A-30 is revision 23** — the `refreshSummary` port method, the fence's meaning stated once, and the rescan's uniform per-row link — and **anyone touching `runRescan`, `StoragePort` or a port implementation reads it first**, with §8.4 clause 3 beside it; **§4.4's A-40 is revision 29** — the lifetime map is a plain component over a pure `packages/client` frame function, not a second `MapPort`, and **anyone building or reviewing `WorldMap.tsx` reads it first** (it is ~3k and self-contained; the trip map's port is unchanged and needs no re-reading) | 13k | builder |
+| 4 | **The Phase 1 client.** §4.2 rule 6 (a pending write is never outlived by its document) is new in revision 3 — QA R3-2; rule 6a′ and the `savedDoc` predicate are revision 4 — QA R4-1; **rule 6a″ (the flush bound and its exits) and rule 6c's "delete goes on the chain" are revision 5** — QA R6-1/R6-2/R7-3; **rule 5's retirement carve-out is revision 6** — QA R8-1, read with §2.7; **rule 4a is revision 8** — QA R11-1, read with §2.2a A-7; **§4.3's A-30 is revision 23** — the `refreshSummary` port method, the fence's meaning stated once, and the rescan's uniform per-row link — and **anyone touching `runRescan`, `StoragePort` or a port implementation reads it first**, with §8.4 clause 3 beside it; **§4.4's A-40 is revision 29** — the lifetime map is a plain component over a pure `packages/client` frame function, not a second `MapPort`, and **anyone building or reviewing `WorldMap.tsx` reads it first** (it is ~3k and self-contained; the trip map's port is unchanged and needs no re-reading); **§4.4's A-41 and A-42 are revision 30 and are read *with* A-40, never instead of it** — A-41 is the atlas frame (geographic clustering, one primary pane and up to two insets, padding, and the **W3** renderer clause) and it amends A-40 clause 2 and withdraws A-40 Part 7 residue 1's diagnosis; A-42 withdraws A-40 clause 2's min-span *claim* and rules that no second constant is created. **A builder of I-8d reads A-40 Parts 3–5, then A-41 and A-42, and needs nothing else in this document except §2.10's list** | 18k | builder |
 | 5 | The four hard subsystems | 2k | breaker; builder from Phase 3 on |
 | 6 | Privacy, authorization, deletion cascade. **§6.6 is the build-artifact threshold; the copy threshold is §2.14 A-15 + A-18 (revisions 13 and 14) and they differ deliberately, in two named places — read them together or neither** | 4k | breaker, manager; builder for §6.2 |
 | 7 | Explicitly deferred | <1k | anyone about to build something not in the roadmap |
-| 8 | **The travel-history model** (revision 9) — trip lifecycle and past trips (§8.1), the feasibility/integrity rule class (§8.2), participants (§8.3), geography attribution, travel stats and the summary-row rule (§8.4); then the shapes the location, photo and social phases must land on (§8.5–§8.7) and what is refused (§8.8). **§8.10 is revision 10** — physical travel distance by mode and the four provenance bases that keep it honest; **it is not Phase 2 scope**, so a Phase 2 builder reads §8.1–§8.4 and stops. **Revision 11 amends §8.1, §8.2 and §8.4 by pointer only — the two rulings themselves live in §2.2 (A-10) and §2.7 (A-9), and a Phase 2 builder reads both; revision 12 amends §8.2 by pointer in the same way, and its four rulings live in §2.7 (A-11, A-12, A-13) and §2.14 (A-14)**. **A-26 is revision 20 and lives in §8.4** — the mixed-resolution country index, the withdrawal of the correctness floor's escalation mechanism, and the ruling that `null` is the right answer for a landform the dataset does not carry; **anyone touching `tools/gen-countries.mjs`, `geo/countryIndex.ts` or the attribution golden reads it first**, and it is what ROADMAP's I-5a builds; **A-27 is revision 21, sits directly under A-26 and is read *with* it, never instead of it** — it amends A-26 Part 4's block-quoted rule with a third clause (a filled code ships a **forgiveness entry** as well as a coverage entry), supersedes A-26 Part 5's two-residue list with three, lifts A-26 Part 6 item 3 for a docstring correction only, and is what ROADMAP's **I-5b** builds; **A-28 is revision 22, sits under A-27 and is read with both, never instead of them** — it supersedes A-27 Part 4's filter 2 (two arms, because the coverage index it compared against is mixed-resolution and answered generously) and A-27 Part 4's `overlaps` predicate (the vertex-mean probes come out), corrects A-27 Part 5's Macao sentence and every count in it, and is what ROADMAP's **I-5c** builds. **Anyone touching `tools/forgiveness.mjs` or the forgiveness pass reads A-28 first and A-27 second**; **A-29 is revision 23 and sits under A-28** — it is the only one of the four that is *not* about the index: it rules that a `City`'s **stated** `countryCode` fills a gap the coordinate cannot answer, never overrides one, and only through a gate ending in index membership, and it takes `SUMMARY_VERSION` to 3. **Anyone touching `derive/summary.ts` reads A-29 and §4.3's A-30 together** — A-29 changes what a row *says*, A-30 changes how it is *written*, and I-6a builds both; **A-31 is revision 24 and sits under A-29** — it is the `travelStats` specification (type, signature, algorithm, sort orders, residues), and it widens the row a second time with the **record census** clause 2's `unattributed` cannot be computed without, taking `SUMMARY_VERSION` to 4. **A builder of I-7 reads §8.4 clause 2, then A-31, and needs nothing else in this document except §2.10's list**; A-31 also rewrites ROADMAP exit criterion 6, so **anyone about to add a count to `TripSummaryRow` reads A-31 Part 6 first — widening that allow-list is an architect's ruling**; **A-33 and A-34 are revision 25 and sit under A-31** — **A-33 supersedes A-31 Part 6's two-half check entirely** (it grepped declarations while the danger is a *value*, and a persisted `countriesVisited` passed it), so read A-33 and treat Part 6 as the *principle* it block-quotes and nothing more; **A-34** adds `provisional` to `travelStats`' two row types and is the ruling that stops an active trip's unreached countries being printed as fact. **A builder of I-7a reads A-31, then A-33 and A-34, plus §2.1's A-32**; **A-36 and A-37 are revision 26 and sit under A-34** — **A-36 supersedes A-33 Part 3's 6b-1/6b-2/6b-4 split and Part 7 residue 2** (every `StoragePort` implementation is *executed* by the gate, including the web port, against a recording double; 6b-2 is demoted to a tripwire and its parameter grep withdrawn; 6b-4's Chromium read-back becomes a required recorded ship-gate condition), so **anyone touching a port implementation, `test/stats-storage.test.ts` or `ROW_KEYS` reads A-36 first and A-33 second**; **A-37** is the ruling that a stored summary row is not a validated document — two module-private read gates in `travelStats` (day numbers clamped into `IsoDate`'s domain, a stored country code read through `/^[A-Z]{2}$/`), and it is what makes A-32 Part 8 residue 3's bound and the composite key's docstring true rather than merely stated. **A builder of I-7b reads A-36 and A-37, plus §2.3's A-35**; **A-38 is revision 27 and sits under A-37** — it **widens A-36 Part 2's mechanism and Part 4's 6b-4 scope without touching A-36's sentence**: a port's coverage is its **write paths**, not its interface methods, so the recording double gains a **seed** (a pre-existing database, including a *legacy* record with no envelope version), 6b-1b becomes **five arms each with a stated starting state**, and 6b-4 gains a second seeded phase; **A-39 is revision 28, sits under A-38 and closes the arc** — it supersedes A-38 Part 7's *required property* sentence (which quantified over **faults** and so could never be discharged by a finite fixture list) and A-38 Part 3's arm **seeds**, replacing both with a claim quantified over the state `ensureReady()` can **read**: five axes derived line by line from the function, a **15-state pairwise covering set** in the same five arms, and — the part Jacob asked for — a **written boundary** saying what legitimately reopens this (a `SUMMARY_VERSION`/`SCHEMA_VERSION` bump, a new store, a new port, a fourth write path) and what does not (one more fault shape on an axis already covered, which is a **builder** finding against A-39 Part 5's table, not an architect's). **Anyone touching a port implementation, `recordingIdb`, `test/stats-storage.test.ts` or `qa/i7a-idb-rowkeys.mjs` reads A-39 first, A-38 second and A-36 third** | 64k | architect; the builder and breaker of the phase after Phase 1 (§8.1–§8.4 only). §8.10 is for the architect and for phases 4, 5 and 7. Read with `PRODUCT-VISION.md` |
+| 8 | **The travel-history model** (revision 9) — trip lifecycle and past trips (§8.1), the feasibility/integrity rule class (§8.2), participants (§8.3), geography attribution, travel stats and the summary-row rule (§8.4); then the shapes the location, photo and social phases must land on (§8.5–§8.7) and what is refused (§8.8). **§8.10 is revision 10** — physical travel distance by mode and the four provenance bases that keep it honest; **it is not Phase 2 scope**, so a Phase 2 builder reads §8.1–§8.4 and stops. **Revision 11 amends §8.1, §8.2 and §8.4 by pointer only — the two rulings themselves live in §2.2 (A-10) and §2.7 (A-9), and a Phase 2 builder reads both; revision 12 amends §8.2 by pointer in the same way, and its four rulings live in §2.7 (A-11, A-12, A-13) and §2.14 (A-14)**. **A-26 is revision 20 and lives in §8.4** — the mixed-resolution country index, the withdrawal of the correctness floor's escalation mechanism, and the ruling that `null` is the right answer for a landform the dataset does not carry; **anyone touching `tools/gen-countries.mjs`, `geo/countryIndex.ts` or the attribution golden reads it first**, and it is what ROADMAP's I-5a builds; **A-27 is revision 21, sits directly under A-26 and is read *with* it, never instead of it** — it amends A-26 Part 4's block-quoted rule with a third clause (a filled code ships a **forgiveness entry** as well as a coverage entry), supersedes A-26 Part 5's two-residue list with three, lifts A-26 Part 6 item 3 for a docstring correction only, and is what ROADMAP's **I-5b** builds; **A-28 is revision 22, sits under A-27 and is read with both, never instead of them** — it supersedes A-27 Part 4's filter 2 (two arms, because the coverage index it compared against is mixed-resolution and answered generously) and A-27 Part 4's `overlaps` predicate (the vertex-mean probes come out), corrects A-27 Part 5's Macao sentence and every count in it, and is what ROADMAP's **I-5c** builds. **Anyone touching `tools/forgiveness.mjs` or the forgiveness pass reads A-28 first and A-27 second**; **A-29 is revision 23 and sits under A-28** — it is the only one of the four that is *not* about the index: it rules that a `City`'s **stated** `countryCode` fills a gap the coordinate cannot answer, never overrides one, and only through a gate ending in index membership, and it takes `SUMMARY_VERSION` to 3. **Anyone touching `derive/summary.ts` reads A-29 and §4.3's A-30 together** — A-29 changes what a row *says*, A-30 changes how it is *written*, and I-6a builds both; **A-31 is revision 24 and sits under A-29** — it is the `travelStats` specification (type, signature, algorithm, sort orders, residues), and it widens the row a second time with the **record census** clause 2's `unattributed` cannot be computed without, taking `SUMMARY_VERSION` to 4. **A builder of I-7 reads §8.4 clause 2, then A-31, and needs nothing else in this document except §2.10's list**; A-31 also rewrites ROADMAP exit criterion 6, so **anyone about to add a count to `TripSummaryRow` reads A-31 Part 6 first — widening that allow-list is an architect's ruling**; **A-33 and A-34 are revision 25 and sit under A-31** — **A-33 supersedes A-31 Part 6's two-half check entirely** (it grepped declarations while the danger is a *value*, and a persisted `countriesVisited` passed it), so read A-33 and treat Part 6 as the *principle* it block-quotes and nothing more; **A-34** adds `provisional` to `travelStats`' two row types and is the ruling that stops an active trip's unreached countries being printed as fact. **A builder of I-7a reads A-31, then A-33 and A-34, plus §2.1's A-32**; **A-36 and A-37 are revision 26 and sit under A-34** — **A-36 supersedes A-33 Part 3's 6b-1/6b-2/6b-4 split and Part 7 residue 2** (every `StoragePort` implementation is *executed* by the gate, including the web port, against a recording double; 6b-2 is demoted to a tripwire and its parameter grep withdrawn; 6b-4's Chromium read-back becomes a required recorded ship-gate condition), so **anyone touching a port implementation, `test/stats-storage.test.ts` or `ROW_KEYS` reads A-36 first and A-33 second**; **A-37** is the ruling that a stored summary row is not a validated document — two module-private read gates in `travelStats` (day numbers clamped into `IsoDate`'s domain, a stored country code read through `/^[A-Z]{2}$/`), and it is what makes A-32 Part 8 residue 3's bound and the composite key's docstring true rather than merely stated. **A builder of I-7b reads A-36 and A-37, plus §2.3's A-35**; **A-38 is revision 27 and sits under A-37** — it **widens A-36 Part 2's mechanism and Part 4's 6b-4 scope without touching A-36's sentence**: a port's coverage is its **write paths**, not its interface methods, so the recording double gains a **seed** (a pre-existing database, including a *legacy* record with no envelope version), 6b-1b becomes **five arms each with a stated starting state**, and 6b-4 gains a second seeded phase; **A-39 is revision 28, sits under A-38 and closes the arc** — it supersedes A-38 Part 7's *required property* sentence (which quantified over **faults** and so could never be discharged by a finite fixture list) and A-38 Part 3's arm **seeds**, replacing both with a claim quantified over the state `ensureReady()` can **read**: five axes derived line by line from the function, a **15-state pairwise covering set** in the same five arms, and — the part Jacob asked for — a **written boundary** saying what legitimately reopens this (a `SUMMARY_VERSION`/`SCHEMA_VERSION` bump, a new store, a new port, a fourth write path) and what does not (one more fault shape on an axis already covered, which is a **builder** finding against A-39 Part 5's table, not an architect's). **Anyone touching a port implementation, `recordingIdb`, `test/stats-storage.test.ts` or `qa/i7a-idb-rowkeys.mjs` reads A-39 first, A-38 second and A-36 third**; **A-44 is revision 30, sits at the end of §8.4 and is read with A-37 Part 2** — it is one paragraph plus a signature, and it says where `lifecycle`'s read gate goes (`packages/client`, once, beside `travelHistory`); **anyone rendering a stored summary row on a new surface reads it** | 65k | architect; the builder and breaker of the phase after Phase 1 (§8.1–§8.4 only). §8.10 is for the architect and for phases 4, 5 and 7. Read with `PRODUCT-VISION.md` |
 
 *(§8's figure is measured with `doc-section`, not estimated. §8.1–§8.4 — the Phase 2 model — are roughly
 five sixths of it since revisions 20–27 put A-26…A-29, A-31, A-33, A-34, A-36, A-37 and A-38 in §8.4; a Phase 2 builder
@@ -5201,11 +5234,103 @@ site is added**; `fromJSON`, `toJSON`, `build/stops.ts`, `packages/client`, `app
 **No new defensive guard is added**: like A-23 and A-24, this ruling governs what the guard *sees*, never
 what the product code throws.
 
+#### A-45 — `fromJSON` gets the one date predicate: a calendar-invalid date is not an `IsoDate`, so a document carrying one is not a `Trip` (revision 30, manager's I-8a pass, ROADMAP **I-8c**)
+
+*(Read with **A-20** two rulings up — this is A-20's own rule applied to the one field it was never applied
+to — and with §2.1's **A-32**, whose `IsoDate` domain statement is the definition being enforced. It
+changes `fromJSON` and nothing else in core's behaviour.)*
+
+**Part 1 — measured, my own run, through the real pipeline.**
+
+`fromJSON` refuses `"202-01-01"`, `"10000-01-04"`, `"2026-8-7"`, `""`, `"March 2019"`, `"not-a-date"` — and
+**accepts every calendar-invalid date that is `YYYY-MM-DD`-shaped.** Carried through
+`fromJSON → validateTrip → tripSummary → lifecycle → travelStats`, on a two-day trip:
+
+| stored range | `fromJSON` | `validateTrip` | `lifecycle` @ 2026-08-31 | `daysTravelled` |
+|---|---|---|---|---|
+| `2026-02-27 → 2026-02-28` | accepts | clean | `completed` | **2** — correct |
+| `2026-02-30 → 2026-03-01` | **accepts** | 1 × `invalid_calendar_date` | `completed` | **1** |
+| `2026-02-31 → 2026-03-05` | **accepts** | 1 | `completed` | **3** (the trip is 4 days) |
+| `2026-13-01 → 2026-13-02` | **accepts** | 2 | **`planned`** | **0** |
+
+The manager's own case (a two-day trip reading back as **183**) is the same defect at a different offset.
+**The last row is the worst of them and it is not a wrong number**: a trip taken in 2026 rolls into 2027,
+classifies as `planned`, and `travelStats` — correctly, by A-31 Part 3 — contributes **none** of its
+countries, cities or days. The trip is still in the library and is silently absent from *everywhere you
+have been*, with nothing on screen saying so. That is a data-**integrity** consequence with a persistence
+tail: `tripSummary` mints a row from those dates, and A-37 says a stored row is never revalidated, so the
+wrong answer outlives the document that caused it.
+
+**Reachability: a shipped write path.** `store.importDoc` (`store.ts:1218`) calls `core.fromJSON`, checks
+ownership, and **writes** — it never consults `validateTrip`, and it is Jacob's own backup/restore control.
+This is the discriminator against R33-3, which is reachable only from a legacy row or a direct storage
+edit.
+
+**Part 2 — the ruling, which is A-20's sentence applied where it was not.**
+
+A-20: *"`fromJSON` decides whether a document IS a `Trip`; `validateTrip` decides whether a `Trip` says
+something wrong."* §2.1 **A-32** states `IsoDate`'s domain — *proleptic Gregorian, `0000-01-01` …
+`9999-12-31`* — and `model/ids.ts` says of `isIsoDate`: *"This is the ONE date validator in core —
+`createTrip`, `validateTrip` and the access predicates all call it, so there is no second implementation to
+disagree with."* There **is** a second implementation: `fromJSON`'s local `isoDate()` helper
+(`fromJSON.ts:75-79`) hand-rolls `/^\d{4}-\d{2}-\d{2}$/`. Six lines below it, `clockOrNull` carries the
+comment *"A-20: the clock-shape regex lives in `model/openingHours.ts` and nowhere else in `packages/core`.
+A second copy of the predicate is exactly the defect A-20 is treating."* The date case is that defect,
+unfixed, in the same function, since revision 15.
+
+**Ruled: `fromJSON`'s `isoDate()` calls `isIsoDate` and refuses what it rejects**, with the existing
+`TripParseError` and its JSON path (`expected a real calendar date in YYYY-MM-DD`, at `$.startDate`,
+`$.days[3].date`, `$.bookings[1].startsAt.date`, …). Every date field the parser reads goes through it —
+one predicate, every site, which is the whole point.
+
+`"2026-02-30"` is not a date, so a document carrying it is not a `Trip`, so it is `fromJSON`'s refusal and
+not `validateTrip`'s report. **This adds no new throw class and does not dent §2.1's *"core throws only on
+programmer error"***: `TripParseError` is the parser's own established refusal channel — the same one that
+already fires for `"2026-8-7"`, `"March 2019"` and a missing `homeBase.name` — and §2.1's rule is about
+domain problems *inside a `Trip`*, which come back as `Issue[]` and still do. This **narrows** A-20 in one field rather than contradicting it: what
+`validateTrip` keeps deciding about dates is whether a well-formed `Trip` says something wrong *as a plan*
+— end before start, a day outside the range, a booking in the wrong month.
+
+**Part 3 — what does not move, stated because the temptation is real.**
+
+- **`parseIsoDate`, `dayNumber`, `fromDayNumber` and `daysFromCivil` stay total and keep their exact
+  answers.** A-32's month normalisation is **not** removed. Its docstring's *"because `fromJSON` accepts
+  one"* justification narrows, but the reachable routes remain: **stored summary rows** (A-37 — a row
+  minted before this fix still carries rolled dates), `cli --today`, and any in-memory `Trip` that never
+  passed a parser. §2.1 A-32 Part 4's refusal to throw there is unchanged.
+- **`validateTrip`'s `invalid_calendar_date` is not deleted.** It is defence in depth for objects that never
+  passed through `fromJSON`: the legacy importer, `migrateDoc`, hand-built test trips. It becomes
+  unreachable *via `fromJSON`* and stays reachable otherwise.
+- **No plausibility floor, no clamp, no repair.** A-32 Part 5 refused a plausibility floor and this ruling
+  does not reopen it. A silently corrected date is a guessed date, which is the convention `CLAUDE.md`
+  calls absolute.
+- **No new `Issue` code**, no `SUMMARY_VERSION` bump, no `schemaVersion` bump, **no export-surface
+  movement**, and no client or `apps/web` change.
+
+**Part 4 — the cost, accepted with eyes open.** A stored document that already carries such a date stops
+loading and surfaces through the existing *"this trip's file could not be read"* path (`summaryScan`'s
+`unreadable`) instead of quietly producing wrong arithmetic. That is the right direction — refusal with a
+JSON path beats a plausible wrong number, per §2.1 and *"flag conflicts, don't resolve them by guessing"* —
+and the population is documents nobody's shipped write path can mint. **Tests move with the ruling, and
+this is expected, not a regression:** `packages/core/test/serialize.test.ts:154` currently asserts
+`fromJSON` **accepts** `"2026-02-30"` so `validateTrip` can report it; it is rewritten to assert the
+refusal and its path, and the `invalid_calendar_date` reporting test is re-pointed at a `Trip` built
+directly. `dates.test.ts:153`'s comment about the reachable path is corrected to name the stored-row route.
+The builder **reports** any other test that moves; a test that goes red here is either this list or a
+finding.
+
+**Residue.** A user with such a document can no longer open it *or* repair it in-app — the refusal is a
+dead end. Building an import-repair path (*"three dates in this file are not real dates; here is where"*)
+is a real feature and is not this ruling; it is noted so the next person does not mistake the silence for
+an oversight.
+
 ### 2.10 The public API surface
 
 **Settled in revision 5 (QA R2-12, KD-19); 69 → 70 in revision 6, 70 → 71 in revision 10, 71 → 73 at
-Phase 2 I-5, 73 → 74 at Phase 2 I-6 (recorded late — see below), and 74 → 75 at Phase 2 I-7, each for a
-stated reason.**
+Phase 2 I-5, 73 → 74 at Phase 2 I-6 (recorded late — see below), 74 → 75 at Phase 2 I-7, and 75 → 76 at
+Phase 2 **I-8d** (`clusterPoints`, §4.4 **A-41** Part 6 — the single-linkage kernel `clusterStops`,
+`focusCluster` and the world map's frame all delegate to, so that the third copy of that loop is never
+written), each for a stated reason.**
 `reassertRetirements` joins under **P1** — `packages/client`'s `set()` calls it — and it is the same class as
 `syncResolutions`, which is already here: a pure build function the client must call because the client is
 where the trigger lives. **`lifecycle` joins under P2 in revision 10** (Phase 2 I-1): §8.1 specifies it by
@@ -5234,7 +5359,7 @@ rule.
 
 §2.10's own enforcement
 rule is *"widening the surface is a documentation change
-first"*, and these lines are that change. The list below is the whole contract: **75 runtime symbols**,
+first"*, and these lines are that change. The list below is the whole contract: **76 runtime symbols**,
 one list, asserted as set equality in both directions against the runtime exports of
 `packages/core/src/index.ts`. It replaces a two-list arrangement — 50 "in §2.10" plus 60 "beyond §2.10, each
 with a justification" — that made the criterion true by construction against 110 exports. A boundary the
@@ -5250,7 +5375,9 @@ A symbol is on the surface if **either**:
 `ACTION_SPECS[…].coreFn` dispatch as a call site, because it is one.
 
 **(P2) a numbered section of this document specifies it by name as a callable or a constant.** 19 symbols in
-revision 6, **20 in revision 10**, **21 at Phase 2 I-5**, **22 at Phase 2 I-7** — things a phase has no
+revision 6, **20 in revision 10**, **21 at Phase 2 I-5**, **22 at Phase 2 I-7**, **23 at Phase 2 I-8d**
+(`clusterPoints`, §4.4 A-41 Part 6 — also a P1 join, since `packages/client`'s `worldMapFrame` calls it) —
+things a phase has no
 caller for yet, or that a section names outright: the access predicates (§6.2), `geoCheck`/`GEO_LIMIT_KM`
 (§2.13), `clusterStops`/`MIN_SPAN_KM` (§2.5), `SCHEMA_VERSION`/`migrateDoc` (serialization),
 `TripParseError`, `RULES`, the redaction four (§6.6), `lifecycle` (§8.1, §8.9), `countryOf` (§8.4) and
@@ -5264,7 +5391,7 @@ would make every internal public. The un-export pass therefore rewrites some pro
 index to the module path; that is the expected shape of the change, not a regression.
 
 ```
-packages/core/src/index.ts re-exports exactly this and nothing else — 75 runtime symbols:
+packages/core/src/index.ts re-exports exactly this and nothing else — 76 runtime symbols:
 
   model (7)      LOCAL_OWNER · SCHEMA_VERSION · sequentialIds · formatRange · costFromDisplay
                  TripParseError · ForeignDocumentError
@@ -5276,8 +5403,9 @@ packages/core/src/index.ts re-exports exactly this and nothing else — 75 runti
                  acceptCandidate / rejectCandidate(trip, ref, actorUserId: UserId, at)  // NOT nullable — §2.14
                  copyStopInto(target, source, placement, ctx)        // §2.14 — the social primitive
                  upsertBooking · linkBooking
-  derive (26)    computeLegs(day, trip) · dayMovingMinutes(day, trip) · dayDistanceKm(day, trip) · fmtMins
+  derive (27)    computeLegs(day, trip) · dayMovingMinutes(day, trip) · dayDistanceKm(day, trip) · fmtMins
                  clusterStops · focusCluster · fitSpanKm · MIN_SPAN_KM · mapBounds · stopPoints · stopLatLng
+                 clusterPoints(points, thresholdKm)                  // §4.4 A-41 Part 6 — ONE single-linkage kernel
                  rollUpCost · displayStatus · attribution
                  cityRange · daysForCity · orderedCities · weekdayOf · tripSummary
                  SUMMARY_VERSION                                     // §8.4 clause 3 — the rescan's subject
@@ -7211,6 +7339,11 @@ Four clauses:
    guard (`MIN_SPAN_KM`) and the `clamped` flag come with it, which is how *"a one-country history must not
    open at a rooftop zoom"* is satisfied: by the guard that already exists, not by a second one. §4.4's
    *"the client never computes bounds"* is honoured literally.
+   > **Amended by A-41 (Part 3 C8) and A-42, revision 30.** The first sentence stands, restated: *the
+   > extent of every **pane** comes from `mapBounds` and nothing else, and which countries are in a pane
+   > comes from `clusterPoints` and nothing else.* The second sentence is **withdrawn as false** — round
+   > 33 measured `VA` as the only code in 239 that clamps, at exactly `MIN_SPAN_KM` = 1.2 km, which *is*
+   > a rooftop zoom. A-42 replaces the claim with one that has a rendered consequence.
 3. **`missing` is populated, never dropped.** §8.4 A-29's acceptance gate runs at the *mint*, and a stored
    row is not revalidated (A-37), so a row minted against a different index can name a code this index cannot
    fill. Silently omitting it makes the map disagree with the Profile's count. It is a stated hole.
@@ -7274,12 +7407,304 @@ methods that its renderer has no use for.
    wrong (it is wide), and fixing it means dateline-aware bounds in core — a change to a function the day map
    depends on, which is not worth making for a cosmetic case at this size. Reopen it with a real user, not a
    hypothetical one.
+   > **The trigger fired and the diagnosis was wrong — withdrawn at revision 30, see A-41 Part 1.** The
+   > real user's library is the shipped sample and it hit the case on first paint (R33-1), but *not*
+   > through the antimeridian: the reference extent is one contiguous **194.5016°** span, no box within
+   > 8° of ±180°, and re-expressing every longitude into `[0,360)` makes the span **worse** (350.75°).
+   > Dateline-aware bounds would leave this frame byte-identical. **Nobody may build them on the strength
+   > of this residue.** What survives of it is narrower and is restated as A-41 Part 8 residue 1′: five
+   > codes of 239 (`FJ`, `AQ`, `RU`, `KI`, `UM`) have a *box* wider than 180°, and any pane containing one
+   > is globe-wide by that country's own geometry.
 2. **`missing` has no label.** A code the index cannot fill renders as the code, because no name source is on
    the row. Honest, and ugly in exactly the case it should be.
 3. **Provisional fill.** §8.4 A-34 requires a provisional country to be visibly distinct and *"not the same
    ink on the filled map"*; the frame carries the flag and the treatment is the surface's. This ruling does
    not choose the treatment — that is the token layer's job in I-8a — it only forbids the flag being dropped
    between the two.
+
+#### A-41 — the atlas frame: clusters derived from geometry, one primary pane and at most two insets, and padding as a property of the frame (revision 30, ROADMAP **I-8d**)
+
+*(This ruling absorbs the manager's routing items **A-41** and **A-43** — they are one frame and it would
+be perverse to decide the extent twice — and answers QA **R33-1** and **R33-6**. It is read **with** A-40,
+never instead of it: A-40 Parts 1, 2, 4 (W1/W2), 5 and 6 are unchanged and still binding, and clause 2 and
+Part 7 residue 1 carry the amendment notes above. **A-42, below, is the min-span half and is separate
+because it withdraws a claim rather than adding a mechanism.**)*
+
+**Part 1 — what was measured, and what this is not.**
+
+The shipped row is `["AT","CZ","DE","GB","HR","HU","US"]`. Re-derived by the manager on the running app,
+by round 33, and again by me before writing this:
+
+- the reference extent is `-171.7911 … 22.7105` — **one contiguous 194.5016° span**;
+- in a 958 × 418 px figure: **US 516.3 · GB 45.6 · DE 44.5 · AT 36.9 · CZ 32.6 · HU 32.1 · HR 28.2** css px,
+  the six European countries occupying **149.2 px of 958**, against the right edge;
+- **no box is within 8° of ±180°**, and re-expressing every longitude into `[0,360)` gives **350.75°** —
+  worse;
+- the inset between `bounds.east` and the easternmost drawn vertex is **0.000000**, so with
+  `overflow: hidden` and `vectorEffect="non-scaling-stroke"` the outer half of the extreme country's stroke
+  is clipped (R33-6);
+- of the 239 codes the shipped index carries, exactly **five** have a box wider than 180° — `FJ`, `AQ`,
+  `RU`, `KI`, `UM` — and the next widest is `US` at **104.83°** (my own sweep).
+
+So the cause is **one equirectangular extent over a set containing a 104.83°-wide member 7,439 km from the
+rest**, not the antimeridian, and **dateline-aware bounds are not licensed by any of it**: they would leave
+this frame byte-identical and would change a core function the day map depends on. The frame is not wrong.
+It is a map of the wrong subject.
+
+**Part 2 — Jacob's decision, and the four constraints that come with it.**
+
+> *"Default framing should prioritize the main geographic cluster while preserving meaningful outliers
+> visibly through an inset rather than allowing a single distant point to compress the primary
+> trip/history geography into an unreadable frame."*
+
+Atlas-style, and **strictly presentation**. His constraints, which bind every clause below:
+
+1. **No data is discarded or altered.** Every country in `travelStats` is still drawn, still attributed,
+   still tappable. `missing` is unchanged (A-40 clause 3).
+2. **No special case for any country, region or destination type.** Nothing here reads *which* country a
+   code is. Clustering is a function of coordinates; ranking is a function of the traveller's own record.
+3. **An outlier stays visibly represented and attributable** — it goes in an inset that names its codes and
+   carries the same tap-for-its-trips handler, not into a footnote.
+4. **A manual "reframe" control is not the fix.** The default frame is correct without one. This ruling
+   builds no such control (Part 7).
+
+**Part 3 — the clustering rule. This is a contract, not a suggestion; `worldMapFrame` implements exactly
+this and nothing more.**
+
+- **C1 — the population.** The drawn countries: every row of `stats.countries`, in its canonical order
+  (ascending ISO code — `travelStats` sorts it), minus the codes the index cannot fill. A `missing` code
+  has no geometry, is framed by nothing, and is stated in words exactly as A-40 clause 3 already requires.
+- **C2 — one key point per country.** For each drawn code, union its index entries' `box`es (§8.4 A-27
+  allows a code two entries; they are one country) and take the box centre:
+  `{ lat: (minLat+maxLat)/2, lng: (minLng+maxLng)/2 }`. One point per **code** — not per entry, not per
+  ring. A country is one thing on this map, and per-ring points would make an archipelago outvote a
+  continent.
+- **C3 — the partition.** `core.clusterPoints(points, WORLD_CLUSTER_THRESHOLD_KM)`: a point joins the
+  **first** group containing a member within the threshold, otherwise starts a new group; groups and their
+  members stay in input order. This is single-linkage first-fit — **the identical rule `clusterStops` has
+  used since Phase 1**, extracted rather than re-written (Part 6). No k-means, no dendrogram, no library.
+- **C4 — `WORLD_CLUSTER_THRESHOLD_KM = 4000`, and it lives in `packages/client`, not in core.** Core owns
+  the algorithm; the threshold is a framing policy and belongs with the frame. The value is measured, not
+  taste — key-point distances on the shipped index, my own run:
+
+  | separates (must stay apart) | km | merges (must stay together) | km |
+  |---|---|---|---|
+  | US–IS | **5,998** | GB–GR | 2,659 |
+  | AU–JP | 7,289 | US–MX | 2,862 |
+  | US–GB | 7,439 | GB–MA | 2,901 |
+  | GB–JP | 9,047 | ES–FI | 3,365 |
+  | US–BR | 9,279 | PT–FI | 3,569 |
+
+  4,000 km sits with a **≥1.5× margin on the split side** (the nearest inter-continental pair I could find
+  is US–IS at 5,998) and merges every European set I measured into one cluster
+  (`PT/ES/FR/DE/PL/FI/GR/IS/TR` → 1, `AT/CZ/DE/GB/HR/HU` → 1) and North America into one
+  (`US/CA/MX` → 1). It is a **presentation constant**: changing it changes no stored byte, no attribution,
+  no count, and no test of what a trip *is*.
+- **C5 — the dominance test. Clusters alone never split the frame.** Let `weight(cluster)` be
+  `Σ tripIds.length` over its countries — how much of the traveller's own record the cluster carries — and
+  `W` the total over all drawn countries. The frame splits **only if** there are **≥ 2 clusters** *and*
+  `2 × weight(primary) > W` — a strict majority.
+
+  This clause is the one that keeps the rule from over-firing, and it is derived from the manager's own
+  reading of the defect: *"it is not unreadable either — it is a map of the wrong subject."* A frame **has**
+  a subject when one part of the history dominates it; when no part does, there is nothing to prioritise and
+  the honest frame is the one that holds everything. Measured consequences: the shipped sample splits
+  (Europe weight 6 vs US 1, `12 > 7`); a library of one US trip and one Japan trip does **not** (1 vs 1) and
+  gets today's single wide frame; the same library after twelve more US trips **does** (13 vs 1). Breaking
+  a genuine tie by alphabet would demote half a traveller's history on a coin flip, and is refused.
+- **C6 — ranking, total and deterministic.** Order clusters by `weight` descending, then by country count
+  descending, then by the **lowest ISO code** in the cluster ascending. `panes[0]` is the primary. The last
+  key is a tie-break only — alphabetical determinism of the same kind `countryIndex`'s entry order already
+  documents — and it encodes nothing about any country's identity (constraint 2).
+- **C7 — at most three panes, and nothing is dropped.** `panes[0]` = primary; `panes[1]` = the second-ranked
+  cluster; `panes[2]` = the **union of every remaining cluster**, framed as one. So a 2-cluster history has
+  a main plus one inset, a 3-cluster history a main plus two, and a 7-cluster history a main plus one plus
+  one *"everywhere else"* pane that still draws all five remaining clusters and still names every code in
+  it. **Every drawn country is in exactly one pane, always.** The cap is presentation: four insets on a
+  phone are four illegible insets, and a history with that many *dominant-cluster-plus-scatter* shapes is
+  better served by one honest wide pane, which is what C5 already gives it when no cluster dominates.
+- **C8 — the extent, unchanged in mechanism.** Each pane's `bounds` is `core.mapBounds` over that pane's
+  countries' box corners: **three calls where there was one**, and the client still computes no bounds.
+  A-40 clause 2, restated: *the extent of every pane comes from `mapBounds` and nothing else; which
+  countries are in a pane comes from `clusterPoints` and nothing else; the client adds no third geometry.*
+
+**Part 4 — padding, which is where R33-6 is answered (routing item A-43).**
+
+Each pane's `viewBox` is its `bounds` **expanded on all four sides** by
+`FRAME_PAD_FRACTION × max(width, height)` of that pane's own box, with `FRAME_PAD_FRACTION = 0.02`.
+
+This is not a bounds computation and does not go in core. `mapBounds` answers *where the countries are*;
+the frame answers *what rectangle to look through*, and A-40 already put the frame — the projection,
+`frameNum`, `WHOLE_WORLD` — in `packages/client` for precisely this reason. **`mapBounds` gains no padding
+concept**, so the day map is untouched by this Part.
+
+**No floor constant is added, and none is needed:** `mapBounds` never returns a zero-area box for a
+non-empty input (it widens about the centre to `MIN_SPAN_KM`), so `max(w, h) > 0` for every pane that
+exists, and the empty case is `WHOLE_WORLD` — a constant, which is not padded. One number, not two.
+
+**Part 5 — what the frame must carry, and the renderer's third binding clause.**
+
+```ts
+export type WorldMapPane = {
+  /** 'main' | 'inset-1' | 'inset-2'. Positional, stable, deterministic. */
+  id: string;
+  role: 'main' | 'inset';
+  /** "minX minY width height", padded per Part 4. The ONLY fit mechanism — A-40 Part 4 unchanged. */
+  viewBox: string;
+  /** Core's own `MapBounds` for this pane's countries, UNpadded. */
+  bounds: core.MapBounds;
+  /** The codes drawn in this pane, in canonical row order. The pane's caption is written from these. */
+  codes: CountryCode[];
+  /** Σ tripIds.length over `codes` — the weight C6 ranked by, carried so the surface never re-derives it. */
+  weight: number;
+};
+
+export type WorldMapCountry = { /* …A-40 Part 3, unchanged… */ paneId: string };
+
+export type WorldMapFrame = {
+  /** === panes[0].viewBox. Kept so the existing consumer and its byte-identity test keep their meaning. */
+  viewBox: string;
+  /** === panes[0].bounds. */
+  bounds: core.MapBounds;
+  /** 1…3 entries; panes[0].role === 'main'; the rest are insets in C6 order. */
+  panes: WorldMapPane[];
+  countries: WorldMapCountry[];
+  missing: CountryCode[];
+};
+```
+
+Seven invariants, each of them a test:
+
+- **I1.** Every code in `stats.countries` appears exactly once in `countries` or exactly once in `missing`.
+  (A-40 clause 3, unchanged — this ruling may not cost a single code its representation.)
+- **I2.** Every `country.paneId` names a pane in `panes`; every `pane.codes` is exactly the countries
+  carrying that `paneId`, in canonical order.
+- **I3.** `panes.length === 1` when there is one cluster **or** when C5's dominance test fails; otherwise
+  `min(clusters, 3)`.
+- **I4.** Each pane's `viewBox` **strictly contains**, on all four sides, every vertex of every `d` it
+  draws. (This is R33-6, expressed as the thing a test can hold; the old inset was exactly 0.000000.)
+- **I5.** `panes[0].role === 'main'`; every other pane's role is `'inset'`.
+- **I6.** Determinism: the same `(stats, index)` yields a byte-identical frame, with no dependence on `Map`
+  or `Set` iteration order beyond the canonical row order C1 starts from.
+- **I7.** `bounds.empty` ⇒ exactly one pane, `WHOLE_WORLD`, no insets, no padding — A-40's behaviour
+  verbatim.
+
+> **W3. The renderer draws panes; it does not compute them.** `WorldMap.tsx` renders one `<svg>` per entry
+> of `frame.panes`, with that pane's `viewBox` verbatim, containing the countries whose `paneId` equals
+> that pane's `id` — a **string equality filter and nothing else**. Inset *placement and size are CSS*.
+> An inset carries a caption written from `pane.codes` (and, if the surface wants it, `pane.weight`), and
+> its countries carry the identical tap handler the main pane's do, so *"visibly represented and
+> attributable"* is structural rather than decorative.
+>
+> **W1 and W2 are unchanged and still binding.** No layout geometry is read, and hit testing stays the
+> browser's. In particular: the number of panes, their `viewBox`es and which country is in which pane are
+> decided in `worldMapFrame` from data alone, never from a measured figure or a media query — which is
+> what keeps the hidden-container bug absent (A-40 Part 4) and what makes the frame reproducible in bare
+> Node.
+
+**Part 6 — one clustering implementation, and the export surface.**
+
+`packages/core/src/derive/cluster.ts` gains
+
+```ts
+/** Single-linkage first-fit groups over points, as INDICES into `points`. Pure. */
+export function clusterPoints(points: readonly LatLng[], thresholdKm: number): number[][];
+```
+
+and **`clusterStops` and `focusCluster` both delegate to it.** Today the loop is written out twice in that
+file (`clusterStops` at `:41-46`, `focusCluster` at `:66-71`); a third copy in `packages/client` is exactly
+what sequencing rule 1 forbids, and the alternative — a hand-rolled haversine in the client, because
+`haversine` is internal — is worse than either.
+
+**The delegation must be byte-neutral.** `npm run golden && npm run sample` must leave the tree clean and
+the sample sha at `40955ca0b182…`. If it does not, the extraction is wrong; **the builder stops and reports
+rather than regenerating a golden.**
+
+§2.10's surface moves **75 → 76** for this one symbol, under **P2** (this section specifies it by name) and
+**P1** (`packages/client` calls it) — the widening is recorded in §2.10's list in the same revision, which
+is what §2.10's *"widening the surface is a documentation change first"* requires.
+
+**Part 7 — what this ruling deliberately does not build, and why that is still faithful.**
+
+Jacob: *"Do not let this become a general cartography project."* So, explicitly **not** built:
+
+- **No interactive re-clustering, no threshold slider, no "zoom to Europe" button.** Constraint 4: a manual
+  control may not be the primary fix for a bad default, and a control that exists mostly to repair the
+  default is a confession.
+- **No continuous zoom, no pan, no animation.** A pane is a static `viewBox`; the moment one is animated or
+  measured, A-40 Part 4's trigger has fired and this ruling and that one both reopen.
+- **No per-screen-size rule.** It would require a measurement (W1), and it would make the frame
+  irreproducible in Node, which is the property the whole design rests on.
+- **No projection change.** Still `x = lng`, `y = -lat` (A-40 clause 1). No Mercator, no Albers, no library.
+- **No dateline-aware bounds** (Part 1: measured to change this frame by zero).
+- **No geometry simplification** (A-40 Part 5 unchanged: a simplifier is the second geometry implementation
+  this ruling exists to prevent).
+- **No more than three panes, and no per-country insets.**
+- **No "drop the outlier" option, ever.** Constraint 1.
+
+What that costs: a 7-cluster history gets a third pane that is wide. What it buys: the whole rule is one
+partition, one comparison, one ranking and one padding term, all of it pure, all of it `node --test`-able,
+and none of it able to lose a country.
+
+**Part 8 — residues, stated rather than solved.**
+
+1′. **A country whose own box crosses ±180°.** Measured: five of 239 — `FJ`, `AQ`, `RU`, `KI`, `UM`. Any
+   pane containing one is globe-wide by that country's own geometry, and its key point is meaningless as a
+   position (`RU`'s box is `[-180, 41.1514, 180, 81.2504]` and its centre computes to **0.00°E, 61.20°N** —
+   open water north of Norway). The effect is confined to *which
+   cluster it joins* and *how wide its own pane is* — never to whether it is drawn, counted or attributable.
+   Fixing it is dateline-aware bounds in core, which Part 1 refuses on measurement. **Reopen when a real
+   library contains one of those five codes**, and not before.
+2. **A pane has no name.** Its caption is its codes, because — exactly as A-40 residue 2 — no name source
+   exists on the row. There is no *"Europe"* anywhere in this design and adding one would be a table of
+   country→continent, i.e. the special-casing constraint 2 forbids.
+3. **The third pane can be wide.** C7 folds clusters 3…N into one frame. Bounded, honest, and reached only
+   by a history that already has a dominant cluster plus scattered singletons.
+4. **`weight` counts trip-attributions, not days.** A weekend and a month count the same. The row carries
+   no per-country day attribution (A-31 Part 5 residue 2, §8.5's `Visit` unbuilt), so this is the only
+   honest weight in reach; it is stated, not hidden.
+
+#### A-42 — the world map's min-span claim is withdrawn; its guarantee is containment with margin, and it gets no constant of its own (revision 30, ROADMAP **I-8a** criterion 2 and **I-8d**)
+
+**The finding, re-derived across all 239 index codes (round 33's sweep, re-verified twice): `VA` is the
+only code that clamps**, at exactly `MIN_SPAN_KM` = **1.2 km**; `AT` is **630.97 km** and does not clamp.
+So A-40 clause 2's *"which is how 'a one-country history must not open at a rooftop zoom' is satisfied"* is
+false twice over: the clamp almost never fires, and 1.2 km is *itself* a rooftop window — `cluster.ts:104`
+says so in as many words (*"a zoom-16 window is ≈1.2 km wide"*). The builder's `AT`→`VA` substitution in
+the test was sound, and reporting the criterion rather than editing it was correct (sequencing rule 5).
+
+**Ruling (a) — no second constant.** `MIN_SPAN_KM` stays the only span floor in the system, and the world
+map keeps inheriting it through `mapBounds`. A `WORLD_MIN_SPAN_KM` would have to be justified by a
+different **rendered** consequence, and there is none to point at: this surface has no tiles and no scale
+reference, draws no unvisited countries, and paints a one-country history as the same single polygon at any
+scale. Naming a constant for a decision nobody can see is a name pretending to be a decision. What the
+clamp actually buys here is narrower and worth keeping: it guarantees `mapBounds` never returns a
+zero-area box, which is what makes A-41 Part 4's padding term and `preserveAspectRatio` well defined for a
+single-country pane. **It is a degeneracy guard on this surface, not a legibility guard, and it may not be
+presented as one.**
+
+**Ruling (b) — the guarantee that replaces it, and it does have a rendered consequence.** For every pane:
+the `viewBox` has positive width and height and **strictly contains every vertex of every path drawn in it,
+on all four sides** (A-41 invariant I4). That is checkable in bare Node, checkable on the rendered `<svg>`,
+and it is exactly the thing that was measurably *false* before this ruling — the inset was 0.000000 and the
+extreme country's stroke was clipped.
+
+**Ruling (c) — the surface stops making the claim.** `WorldMap.tsx`'s legend prints *"Zoomed out to a
+readable minimum"* on `bounds.clamped`. Remove it: on this surface it asserts something the geometry does
+not support. `bounds.clamped` stays on the frame — it is core's honest report about core's own box — and
+nothing renders it.
+
+**Ruling (d) — the ROADMAP criterion.** I-8a's second verification bullet is rewritten in this pass
+(sequencing rule 5 makes it mine, and the builder correctly refused to). Its new text is in `ROADMAP.md`;
+it names `VA` rather than `AT`, asserts I4 rather than a clamped span, and carries an injected fault that
+can be red — remove the padding term and containment fails. Because containment-with-margin is not true of
+I-8a as shipped, the criterion is marked as **discharged by I-8d**, with I-8a's measured state recorded as
+R33-6 rather than quietly re-scored.
+
+**Residue.** The world map is now coupled to a day-map constant for a reason that is not the day map's.
+If `MIN_SPAN_KM` ever moves, the world map's only exposure is a sub-1.2 km single-country box — one code in
+239 today. That is the whole blast radius, and it is written here so the next person who touches
+`cluster.ts:15` does not have to derive it.
 
 ### 4.5 What Jacob can do at the end of Phase 1
 
@@ -10684,6 +11109,51 @@ carry R31-2, R31-3, R31-4 and R30-2…R30-5 as well — R30-2 in particular is s
 criterion 6's *subject* and lands in the same file — so a partial I-7c written now goes stale the moment
 those are ruled. Whoever rules them writes the increment, with Part 5's table, Part 6's three pins, Part 7's
 two assertion changes, Part 8's two phases and Part 9's five faults as its Verification lines.
+
+#### A-44 — the read gate for `lifecycle` goes in `packages/client`, once, beside `travelHistory` — not in core and not per surface (revision 30, QA **R33-3** design half, ROADMAP **I-8c**)
+
+*(Read with **A-37** Part 2 directly above: this is the same ruling's failure class on a second read site,
+and the answer is the same shape one layer up.)*
+
+**The question, stated exactly.** `core.lifecycle(row, today)` → `dayNumber` → `parseIsoDate` **throws**
+(`summary.ts:73`) on a stored row whose date is not even shape-valid. `Library.tsx:29` calls it per row
+through `LifecycleChip` with no gate, and `WorldMap.tsx:206` renders the same component in its drill-down.
+One bad row therefore takes down the Trips tab — round 33 measured the surviving control set as
+`["BUTTON:CAIRN","BUTTON:TRIPS","BUTTON:MAP"]` — before anything reaches I-8a's own refusal UI. Reachable
+only from a legacy pre-I-7a row or a direct storage edit; **no shipped write path mints one** (the manager
+re-derived that, and A-45 above closes the one write path that came close).
+
+**Ruled: one gate, in `packages/client`'s selectors, beside `travelHistory`.**
+
+```ts
+/** A stored row is not a validated document (§8.4 A-37). `null` means "this row's dates are unreadable". */
+export function rowLifecycle(row: { startDate: string; endDate: string }, today: core.IsoDate): core.Lifecycle | null;
+```
+
+It is `travelHistory`'s own construction — `try { return core.lifecycle(...) } catch { return null }` — and
+`LifecycleChip` renders an explicit *unreadable* chip for `null`, in the vocabulary the Library already
+uses for a row it could not read (`summaryScan`'s `unreadable`), rather than a stage it cannot justify.
+
+**Why not in `lifecycle` itself.** A-37 Part 2 already decided this and said so at the call site:
+*"deliberately NOT clamped — `lifecycle` decides how a row is CLASSIFIED, which is a different function's
+contract, and clamping inside it would make an out-of-domain row report as `active` forever."* That
+reasoning is unchanged, and a `Lifecycle | null` return in core would ripple through `travelStats`,
+`cli.ts` and both trip forms to fix a client-side render path. §2.1 also stands: core throws on programmer
+error and a bad *stored* row is not one — which is exactly why the gate belongs at the boundary that reads
+storage, not inside the pure function. `ROADMAP.md` I-1 wrote the same division of labour into `lifecycle`'s
+own acceptance criterion — *"a trip whose dates are invalid is not `lifecycle`'s problem"* — and this ruling
+keeps it rather than reversing it a phase later.
+
+**Why not a per-row `try/catch` in `Library.tsx`.** It is the cheap fix and it is the wrong place by one
+level: `LifecycleChip` already has **two** callers, I-8b registers a **third** surface into the same shell,
+and a read gate copied three times is the defect A-20, A-21 and A-37 each treated once already. One
+selector, three call sites, no copies.
+
+**Scope, so the builder does not over-reach.** This ruling covers the `lifecycle` read only.
+`dateRangeLabel` is a string split and cannot throw (checked). `TabBoundary`'s missing reset and the
+*"the only surface with delete/export/restore is the surface that threw"* recovery gap are **BLD-3**, a
+builder finding, and are not ruled here. No core change, no `SUMMARY_VERSION` bump, no export-surface
+movement.
 
 ### 8.5 Observed travel — the shape Phase 5 must be able to land on
 

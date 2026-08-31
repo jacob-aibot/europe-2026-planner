@@ -345,6 +345,33 @@ No phase re-scoped, no change to the order, **no new external dependency**, no `
 `StoragePort` change, no engine change and no movement on the export surface (still 75) — `worldMapFrame`
 is a `packages/client` selector.
 
+**Revision 28, 2026-08-31 — not a QA round.** The I-8a gate returned **SHIP** and routed five items to the
+architect, four of them gating I-8b (`REVIEW.md` § I-8a). Jacob decided the one question that was his — the
+lifetime map frames itself **atlas-style** — and `ARCHITECTURE.md` revision 30 rules the rest as **A-41**,
+**A-42**, **A-44** and **A-45**. Three things change here, and the phase is not re-scoped.
+
+(1) **Two increments are inserted, and both run before I-8b.** **I-8c** carries the two data-integrity
+gates — A-45 (`fromJSON` accepts `"2026-02-30"`, which is a **shipped write path** that mis-classifies a
+past trip as `planned` and drops all of its countries and days out of the map I-8a just built) and A-44
+(`lifecycle`'s read gate, R33-3's design half) — plus BLD-3's recovery half, because it is the same screen.
+**I-8d** carries A-41 and A-42, the atlas frame. They are separate increments because they share no file,
+have different oracles, and I-8c is small enough to ship on its own the day it is written.
+
+(2) **I-8a's second verification criterion is rewritten**, which is mine under sequencing rule 5: it named
+`AT` as the one-country clamp case and **`VA` is the only code among the shipped 239 that clamps**
+(re-derived across all 239 in round 33 and re-verified twice; `AT` is 630.97 km and never clamps), so the
+criterion was **unsatisfiable as written and its injected fault was green**. The builder's `AT`→`VA`
+substitution in the test was sound and reporting it rather than editing the criterion was correct. The new
+criterion asserts containment-with-margin, which has a rendered consequence; it is discharged by **I-8d**,
+not by I-8a as shipped, and it says so.
+
+(3) **I-8b's dependency line gains I-8c and I-8d.** *"2b does not ship until the map is a map of the right
+subject and the numbers on it are true."*
+
+No phase re-scoped, no change to the order, **no new external dependency**, no `SUMMARY_VERSION` bump, no
+`schemaVersion` bump, no `StoragePort` change, no `MapPort` change and no engine change. The export surface
+moves **75 → 76** in I-8d, for `clusterPoints` and nothing else (§2.10, §4.4 A-41 Part 6).
+
 > **Phase numbers changed once, here.** Every heading below carries its old number, and every "Phase N"
 > written in `ARCHITECTURE.md` §1–§7, `BUILD-NOTES.md` or `QA-FINDINGS.md` before revision 9 means the
 > *named* phase it described: "Phase 2" = accounts/server (**now 3**), "Phase 3" = ingest (**now 4**),
@@ -1190,7 +1217,7 @@ Entry: Phase 1 shipped with a manager verdict of SHIP (`b32ef9a`) — done.
 | Step | Ships | Useful alone because | State |
 |---|---|---|---|
 | **2a — past trips and the lifecycle** | `lifecycle()`, `Trip.datePrecision`, the feasibility/integrity rule class (§8.2), a "record a past trip" flow (title, dates, precision, cities — no day-by-day required) | you can enter a 2019 trip and it does not greet you with twenty warnings about a hotel you already slept in | **SHIPPED — manager verdict SHIP, `REVIEW.md` "Phase 2, step 2a", reviewed at `67f5588`, 2026-08-28.** Built, verified (rounds 12–21), shippable. Seven routed items, **none blocking**; the block on share/friend/public-share-link work is **not** lifted by this verdict — see A-2 in that routing table |
-| **2b — the lifetime map and travel identity** | `countryOf` + the generated country index, `travelStats`, the widened `TripSummaryRow` + `SUMMARY_VERSION` rescan, the **Map** and **Profile** surfaces | *"show me everywhere I've been"* — the signature experience, from data that already exists | **UNBLOCKED** by 2a's SHIP. **In progress: I-5 shipped at `897b928`** and routed one design defect here (KD-51), ruled as §8.4 **A-26** and built as **I-5a** at `b6200e6`, which QA round 22 verified and which routed one more (R22-1), ruled as §8.4 **A-27** and built as **I-5b** at `38d23c9`, which QA round 23 verified and which routed one more (R23-1), ruled as §8.4 **A-28** and built as **I-5c**, which QA rounds 24 and 25 closed. **I-6 then shipped and QA round 26 verified it**: the write path is sound, the bookkeeping around it is not, and round 26 routed two design defects here — ruled as §8.4 **A-29** and §4.3 **A-30** and scheduled with round 26's four builder findings as **I-6a**, which QA round 27 verified (0 blockers, 3 MINOR). **I-7 then shipped and QA round 28 verified it**: `travelStats` itself held at every boundary, and the round returned **SEND BACK** on what is underneath it — **R28-1 (BLOCKER)**, the two-digit-year rule inside `dayNumber`, and **R28-2 (MAJOR)**, an exit criterion 6 that cannot catch a persisted `countriesVisited`. Ruled at revision 25 as §2.1 **A-32**, §8.4 **A-33** and §8.4 **A-34**, and scheduled with round 28's four builder findings and two stale ceilings as **I-7a**. **I-7a then shipped and QA round 29 verified it**: **A-32 held** against three oracles that are not `Date` and **A-34** held at every lifecycle boundary, and the round returned **SEND BACK** again on **R29-1 (MAJOR)** — A-33's port grep is a whole-file check and the fault it forbids still reaches a real IndexedDB record with every gate green — and **R29-2 (MAJOR)** — the *exact*-date branch of both trip forms mints 664,377 days from one mistyped digit. Ruled at revision 26 as §2.3 **A-35**, §8.4 **A-36** and §8.4 **A-37**, and scheduled with round 29's three builder findings as **I-7b**, which is **owed before I-8**. Still owed: `REVIEW.md` 2a routing **A-1**'s provenance half (its `travelStats` half is closed by A-31), round 27's **R27-1** and **R27-2** (both builder, both MINOR, neither blocking I-7a), and the breaker board items **B-1**…**B-4** before 2b's next breaker round |
+| **2b — the lifetime map and travel identity** | `countryOf` + the generated country index, `travelStats`, the widened `TripSummaryRow` + `SUMMARY_VERSION` rescan, the **Map** and **Profile** surfaces | *"show me everywhere I've been"* — the signature experience, from data that already exists | **UNBLOCKED** by 2a's SHIP. **In progress: I-5 shipped at `897b928`** and routed one design defect here (KD-51), ruled as §8.4 **A-26** and built as **I-5a** at `b6200e6`, which QA round 22 verified and which routed one more (R22-1), ruled as §8.4 **A-27** and built as **I-5b** at `38d23c9`, which QA round 23 verified and which routed one more (R23-1), ruled as §8.4 **A-28** and built as **I-5c**, which QA rounds 24 and 25 closed. **I-6 then shipped and QA round 26 verified it**: the write path is sound, the bookkeeping around it is not, and round 26 routed two design defects here — ruled as §8.4 **A-29** and §4.3 **A-30** and scheduled with round 26's four builder findings as **I-6a**, which QA round 27 verified (0 blockers, 3 MINOR). **I-7 then shipped and QA round 28 verified it**: `travelStats` itself held at every boundary, and the round returned **SEND BACK** on what is underneath it — **R28-1 (BLOCKER)**, the two-digit-year rule inside `dayNumber`, and **R28-2 (MAJOR)**, an exit criterion 6 that cannot catch a persisted `countriesVisited`. Ruled at revision 25 as §2.1 **A-32**, §8.4 **A-33** and §8.4 **A-34**, and scheduled with round 28's four builder findings and two stale ceilings as **I-7a**. **I-7a then shipped and QA round 29 verified it**: **A-32 held** against three oracles that are not `Date` and **A-34** held at every lifecycle boundary, and the round returned **SEND BACK** again on **R29-1 (MAJOR)** — A-33's port grep is a whole-file check and the fault it forbids still reaches a real IndexedDB record with every gate green — and **R29-2 (MAJOR)** — the *exact*-date branch of both trip forms mints 664,377 days from one mistyped digit. Ruled at revision 26 as §2.3 **A-35**, §8.4 **A-36** and §8.4 **A-37**, and scheduled with round 29's three builder findings as **I-7b**, which is **owed before I-8**. Still owed: `REVIEW.md` 2a routing **A-1**'s provenance half (its `travelStats` half is closed by A-31), round 27's **R27-1** and **R27-2** (both builder, both MINOR, neither blocking I-7a), and the breaker board items **B-1**…**B-4** before 2b's next breaker round. **I-7b then shipped (2b's data layer, manager verdict SHIP at `69e44d4`), I-8 was split, and I-8a shipped at `6b89c91` with a manager verdict of SHIP** — the tab shell, the world map and the token layer — routing nine items, four of which gate I-8b. Ruled at revision 28 as §4.4 **A-41**/**A-42**, §8.4 **A-44** and §2.9 **A-45**, and scheduled as **I-8c** (the date parser and the lifecycle read gate) and **I-8d** (the atlas frame). **2b still has not shipped: it ships at the end of I-8b, and I-8b is now gated on I-8c and I-8d** |
 | **2c — participants** | `Trip.participants`, three build functions, the participants editor, *"people you have travelled with"* on the profile | you can say the trip was with your girlfriend and her family, and it grants them nothing | Not started; gated on 2b |
 
 **Mapped onto the increment sequence below** (revision 10): **2a = I-1 → I-4**, **2b = I-5 → I-8**,
@@ -1215,6 +1242,16 @@ gate that greps declarations while the danger is a value. It sits directly after
 I-8**, for the I-5c version of the reason: A-32 is data loss on a path a user reaches in four clicks, and
 a rescan does not quietly forgive a document that cannot be parsed.)*
 
+*(Revision 28: **I-8c** carries §2.9 **A-45** and §8.4 **A-44**, and **I-8d** carries §4.4 **A-41** and
+**A-42** — the four rulings on what the I-8a gate found *under* I-8a. They sit inside 2b, directly after
+I-8a, and **both are owed before I-8b**, which is where 2b finally ships. The reason is the I-5c/I-7a
+version and not the softer one: A-45 is **wrong data written through a shipped path** — an imported trip
+with a date that does not exist can classify as `planned` and drop all of its countries and days out of the
+lifetime map, and a rescan does not forgive it because the row is minted from the same bad dates — and
+I-8b's Profile is the second surface to print those numbers. A-41 is the frame itself: on the only real
+library we have, the map I-8a shipped is **a map of the United States** with the trip it is about squeezed
+into 149.2 px of 958.)*
+
 *(Revision 26: **I-7b** carries §2.3 **A-35**, §8.4 **A-36** and §8.4 **A-37**, the four design findings QA
 round 29 found *under* I-7a — an exit criterion whose static port check a reassigned parameter walks past,
 an unbounded day skeleton behind a `<input type="date">`, and two bounds stated over documents that are
@@ -1227,12 +1264,17 @@ that screen rendering a five-digit year.)*
 ```
 packages/core/src/
   derive/     lifecycle.ts  country.ts  travelStats.ts     (+ summary.ts widens)
+              cluster.ts    + clusterPoints(points, thresholdKm) — I-8d, the ONE single-linkage
+                            kernel; clusterStops and focusCluster delegate — §4.4 A-41 Part 6
+  serialize/  fromJSON.ts   isoDate() calls isIsoDate — I-8c, §2.9 A-45
   geo/        countries.gen.ts          generated, committed, size-budgeted — §8.4
   build/      participants.ts           add/update/remove — one core fn per action
   conflict/   rules/*.ts                each gains `class`; detect.ts gates feasibility on ctx.today
               detect.ts / resolve.ts    detectUngated (private) + syncResolutions(trip, at) — §2.7 A-9
 packages/client/src/
   store/      summary rescan on SUMMARY_VERSION; library selectors for travelStats
+  selectors/  worldMap.ts   worldMapFrame — I-8a; + panes/clustering/padding — I-8d, §4.4 A-41
+              index.ts      travelHistory — I-8a; + rowLifecycle — I-8c, §8.4 A-44
 apps/web/src/views/
   WorldMap.tsx  Profile.tsx  PastTripForm.tsx  Participants.tsx
 tools/gen-countries.mjs   Natural Earth admin-0 → countries.gen.ts, reports emitted bytes
@@ -2588,10 +2630,22 @@ visual-language work the surface cannot be built honestly without. **Not** the P
     `viewBox` from a measured client rect in the component and the assertion goes red at 0×0. W1 also has a
     greppable ceiling: `getBoundingClientRect`, `offsetWidth`, `offsetHeight` and `ResizeObserver` do not
     appear in `WorldMap.tsx`.
-  - **A one-country history does not exceed the min-span guard** `[stated]`. A library whose only travelled
-    trip is `AT` produces `bounds.clamped === true` and a `viewBox` whose span is `MIN_SPAN_KM`-derived, not
-    the raw box. **Injected fault:** build the extent from the country box directly instead of through
-    `mapBounds` and it goes red.
+  - **~~A one-country history does not exceed the min-span guard~~** — **rewritten at revision 28 under
+    §4.4 A-42; the old text is struck rather than deleted because I-8a was scored against it.** It named
+    `AT`, and `AT` is **630.97 km** and never clamps: re-derived across all 239 shipped codes, **`VA` is the
+    only code that clamps**, at exactly `MIN_SPAN_KM` = 1.2 km — which is itself a rooftop window
+    (`cluster.ts:104`: *"a zoom-16 window is ≈1.2 km wide"*). So the criterion was **unsatisfiable as
+    written and its injected fault was green**, and the surface has no scale reference for it to have
+    measured anyway. Replaced by:
+  - **Every pane's frame contains what it draws, with margin** `[stated]`. For each pane of
+    `worldMapFrame`'s output: the `viewBox` has strictly positive width and height, and **strictly
+    contains, on all four sides, every vertex of every `d` string drawn in that pane** (§4.4 A-41
+    invariant I4, A-42 ruling (b)). Asserted in bare Node against the shipped sample *and* against the
+    single-country library `VA` — the one code in 239 whose box is narrower than `MIN_SPAN_KM`, which is
+    the degenerate case the guard actually exists for. **Injected fault:** drop A-41 Part 4's padding term
+    and the containment assertion goes red on the extreme country in every pane. *(R33-6 measured the
+    shipped inset at exactly **0.000000**, so this criterion is **discharged by I-8d, not by I-8a as
+    shipped** — I-8a's measured state is recorded as R33-6 and is not re-scored here.)*
   - **A provisional country renders differently from a confirmed one, on the map, asserted on the rendered
     output** `[stated]` — I-8's own criterion, map half. One completed trip to `AT` and one active trip to
     `AT` and `GB`: `GB` provisional, `AT` confirmed, different fills. **Injected fault:** render them alike.
@@ -2614,10 +2668,143 @@ visual-language work the surface cannot be built honestly without. **Not** the P
   a test each rather than a comment each. **2b does not ship here** — the phase's map/identity pair is only
   half delivered until I-8b.
 
+#### I-8c — the two data-integrity gates: the date parser, the lifecycle read, and a way out of a dead tab
+
+*(Revision 28. Carries `ARCHITECTURE.md` §2.9 **A-45** and §8.4 **A-44**, plus **BLD-3** from the I-8a
+routing, which is the same screen. **Runs before I-8b.** Small on purpose: it touches one core function, one
+client selector and one component, and it is shippable on its own the day it is written. It is independent
+of I-8d — they share no file — but it goes first, because it is the one that stops wrong data being written.)*
+
+- **Built.** **`packages/core/src/serialize/fromJSON.ts`:** the local `isoDate()` helper stops hand-rolling
+  `/^\d{4}-\d{2}-\d{2}$/` and calls **`isIsoDate`** — the file's own *"ONE date validator in core"* — so a
+  calendar-invalid date is refused with a `TripParseError` and its JSON path, at every date field the parser
+  reads (A-45). **`packages/client`'s selectors:** `rowLifecycle(row, today): Lifecycle | null`, beside
+  `travelHistory` and built the same way, and `LifecycleChip` renders an explicit **unreadable** chip for
+  `null` instead of throwing (A-44). **`apps/web/src/App.tsx`:** `TabBoundary` gets a reset — a *"Try
+  again"* that clears `message` — and the user gets **one** recovery control that does not live inside the
+  surface that threw (BLD-3). **No `SUMMARY_VERSION` bump, no `schemaVersion` bump, no export-surface
+  movement (still 75), no engine change, no `StoragePort` or `MapPort` change, no new dependency.**
+- **User-visible outcome.** A backup file with a date that does not exist is refused, in words, naming the
+  field — instead of loading and quietly telling you that a trip you took never happened. And a single
+  unreadable stored row stops taking the whole app down with no way back.
+- **Architecture / data model.** A-45 and A-44 in full. A-45 is A-20's own sentence applied to the one field
+  it was never applied to (*"`fromJSON` decides whether a document IS a `Trip`"*, and §2.1 A-32 says an
+  `IsoDate` is a real proleptic-Gregorian date); it **narrows** A-20 in one field and contradicts nothing.
+  **What deliberately does not move:** `parseIsoDate`/`dayNumber`/`fromDayNumber` stay total and keep their
+  exact answers, A-32's month normalisation is not removed, `validateTrip`'s `invalid_calendar_date` is not
+  deleted (it is defence in depth for objects that never met the parser), and **no plausibility floor, clamp
+  or auto-repair is added** — A-32 Part 5 refused one and this does not reopen it.
+- **Verification.**
+  - **The parser refuses a date that does not exist, and says where** `[stated]`. Exactly these outcomes,
+    as a ceiling and not a floor: `"2026-02-30"`, `"2026-02-31"`, `"2026-02-29"`, `"2026-04-31"`,
+    `"2026-13-01"` and `"2026-00-00"` are each **refused** with a `TripParseError` whose path names the
+    field (`$.startDate`, `$.days[n].date`, `$.bookings[n].startsAt.date`); the six already refused
+    (`"202-01-01"`, `"10000-01-04"`, `"2026-8-7"`, `""`, `"March 2019"`, `"not-a-date"`) still are; and a
+    valid document round-trips byte-identically. **Injected fault:** restore the local regex and the six new
+    refusals go green — which is the state I-8a shipped in.
+  - **The wrong answer is unreachable from the shipped write path** `[stated]`. Measured before the fix, my
+    own run: `2026-13-01 → 2026-13-02` imports clean, `lifecycle` says **`planned`**, and `travelStats`
+    contributes **0 days and none of its countries** — a trip taken in 2026 is silently absent from
+    *everywhere you have been*. After: `store.importDoc` refuses and the message with its path reaches the
+    screen. **Injected fault:** as above.
+  - **One unreadable row costs one row** `[stated]`. A library of three rows, one with a shape-invalid date:
+    the Trips tab renders the two good rows, the bad row shows the **unreadable** chip, the tab does not go
+    down, and the Map tab's drill-down renders the same row the same way. **Injected fault:** call
+    `core.lifecycle` directly inside `LifecycleChip` and the tab blanks — this is R33-3 reproduced, so the
+    fault is the shipped behaviour and must measure red.
+  - **The boundary has a way out** `[stated]`, on rendered output. With the bad row planted, the set of
+    visible controls contains at least one recovery control **outside** the tab that threw; after the cause
+    is removed, pressing *"Try again"* clears the banner and the tab renders. **Injected fault:** remove the
+    reset and the banner survives the cause — round 33 watched that happen (`qa/r33-render.mjs` §F).
+  - **Nothing else moved** `[stated]`. `npm run golden && npm run sample && git status --porcelain` leaves
+    the tree clean at sha `40955ca0b182…`; `Object.keys(core).length` is **75**; `npm run typecheck` and
+    `npm run test:tap` are green. **The tests that legitimately move are named in advance and are exactly
+    these:** `packages/core/test/serialize.test.ts:154` (rewritten to assert the refusal and its path, with
+    the `invalid_calendar_date` reporting test re-pointed at a `Trip` built directly) and
+    `packages/core/test/dates.test.ts:153`'s comment about the reachable path (corrected to name the
+    stored-row route). **Any other red test is a finding, not a licence to edit it.**
+- **Dependencies / blockers.** I-8a (shipped). Nothing else.
+- **Ship gate.** Every criterion above has its injected fault red; the moved-test list is exactly the two
+  named; goldens and sample byte-stable; export surface **75**, re-counted rather than quoted; the root
+  read-only boundary and §6.6 unchanged (`qa/r2-redact.mjs` still **0 KNOWN_LEAKS**).
+
+#### I-8d — the atlas frame: the world map stops being a map of the wrong subject
+
+*(Revision 28. Carries `ARCHITECTURE.md` §4.4 **A-41** and **A-42** — Jacob's atlas-style decision and the
+withdrawal of the min-span claim — and answers QA **R33-1** and **R33-6**. **Runs before I-8b.** A builder
+reads A-40 Parts 3–5, then A-41 and A-42, and needs nothing else in `ARCHITECTURE.md` except §2.10's list.)*
+
+- **Built.** **`packages/core/src/derive/cluster.ts`:** `clusterPoints(points, thresholdKm): number[][]` —
+  the single-linkage first-fit kernel, extracted, with **`clusterStops` and `focusCluster` both delegating
+  to it** so the loop exists once instead of the twice it exists today (A-41 Part 6). Exported from
+  `index.ts`: **75 → 76**, and §2.10's list is updated in the same commit. **The delegation must be
+  byte-neutral** — if `npm run golden && npm run sample` moves a byte, the extraction is wrong and the
+  builder stops and reports rather than regenerating a golden.
+  **`packages/client/src/selectors/worldMap.ts`:** A-41 Part 3's clustering (one key point per country, the
+  4,000 km threshold, the strict-weight-majority dominance test, the ranking, the three-pane cap), Part 4's
+  2% padding, and Part 5's `panes[]` / `paneId` / `WorldMapPane` shape. **`apps/web/src/views/WorldMap.tsx`:**
+  one `<svg>` per pane under **W3** — a string-equality filter and nothing else — inset placement and size in
+  CSS, each inset captioned from `pane.codes`, and inset countries carrying the identical tap handler.
+  **And one deletion (A-42 ruling c):** the legend's *"Zoomed out to a readable minimum"* line, which asserts
+  something this surface's geometry does not support. **No `SUMMARY_VERSION` bump, no `schemaVersion` bump,
+  no `StoragePort` or `MapPort` change, no change to `apps/web/src/ports/map.ts`, no new dependency, and no
+  change to what is drawn once framed** — A-34/A-40 Part 6's provisional treatment is untouched.
+- **User-visible outcome.** The lifetime map opens on where you have actually been, with a distant country
+  shown beside it in its own small frame that names it — instead of a map of one country with the trip
+  squeezed against the edge. Nothing is dropped and nothing is hidden.
+- **Architecture / data model.** A-41 and A-42 in full, and A-41 Part 7 is the scope line: **no interactive
+  re-clustering, no threshold control, no "zoom to Europe" button, no continuous zoom, no per-screen-size
+  rule, no projection change, no dateline-aware bounds, no geometry simplification, no fourth pane, and no
+  option that drops a country.** A-40's W1 and W2 stand unchanged; W3 joins them.
+- **Verification.** Every criterion here is `[stated]` against A-41, and every one has a fault that must
+  measure red:
+  - **The shipped sample splits, and the arithmetic says why.** Reference library
+    `["AT","CZ","DE","GB","HR","HU","US"]` → **2 clusters** at 4,000 km, weights **6** and **1**, dominance
+    `12 > 7` → `panes.length === 2`; `panes[0].codes === ["AT","CZ","DE","GB","HR","HU"]`,
+    `panes[1].codes === ["US"]`; `panes[0].bounds` spans **30.2827° × 16.155°** (my own measurement, 4 dp)
+    against the 194.5016° single frame it replaces. **Injected fault:** raise the threshold to 8,000 km and
+    it comes back as one pane.
+  - **The dominance test refuses to split a tie.** A library of one US trip and one Japan trip →
+    `panes.length === 1` (no cluster carries a majority, so there is no subject to prioritise); the same
+    library with twelve further US trips → `panes.length === 2` with `US` primary. **Injected fault:**
+    weaken `2 × weight(primary) > W` to *"primary is the largest"* and the tie case splits.
+  - **A single-cluster history is A-40's frame plus padding, and nothing else.** A Europe-only library →
+    one pane, and its `viewBox` equals its `bounds` expanded by `0.02 × max(w, h)` on all four sides,
+    computed independently in the test. **Injected fault:** apply the padding as a constant number of
+    degrees and the assertion goes red on a small frame.
+  - **Every pane's frame contains what it draws, with margin** — the rewritten I-8a criterion 2, run here
+    against the shipped sample **and** against the single-country library `VA`. **Injected fault:** drop
+    the padding term; the strict-containment assertion goes red. *(R33-6 measured the pre-ruling inset at
+    exactly 0.000000.)*
+  - **Nothing is lost, at any cluster count** (a ceiling, not a floor). For each of a fixture set covering
+    **1, 2, 3 and ≥4 clusters**: every code in `stats.countries` appears **exactly once** across
+    `panes[*].codes`, or exactly once in `missing`, and never in both or neither (A-41 I1/I2); with ≥4
+    clusters `panes.length === 3` and `panes[2].codes` is the union of the remaining clusters in canonical
+    order (I3, C7). **Injected fault:** drop the fold-in and a code becomes unrepresented.
+  - **The renderer computes nothing** — the greppable ceiling, widened. W1's ten identifiers still return
+    **0** hits in `WorldMap.tsx` (comments included), there is still no arithmetic over coordinates in the
+    file, and the only `viewBox` expression in it is `pane.viewBox`; pane membership is a `===` on
+    `paneId`. **Injected fault:** select a pane's countries by a coordinate comparison in the component and
+    the ceiling goes red.
+  - **The hidden-container result extends to every pane** `[stated]`, in Chromium. Booting on Trips, each
+    pane's rendered `viewBox` attribute is byte-identical to the string `worldMapFrame` returned in bare
+    Node, before **and** after the tab switch — I-8a's strongest single result, re-run over N panes instead
+    of one. **Injected fault:** compute an inset's `viewBox` from a measured client rect and it goes red at
+    0×0.
+  - **The extraction changed nothing in core.** `npm run golden && npm run sample && git status
+    --porcelain` leaves the tree clean at sha `40955ca0b182…`; `Object.keys(core).length` is **76**;
+    `git diff --stat` on `packages/core/` touches **`derive/cluster.ts` and `index.ts` and no other file**.
+- **Dependencies / blockers.** I-8a (shipped). Independent of I-8c, which shares no file with it; build
+  I-8c first anyway.
+- **Ship gate.** Every criterion above has its injected fault red; the day map's goldens are byte-identical
+  after the `clusterPoints` extraction; the export surface is **76**, re-counted; W1's grep is clean and W3's
+  ceiling holds; and the shipped sample, driven through the real *"Load Europe 2026"* button and
+  **looked at**, is a map of the trip with the United States beside it — not the other way round.
+
 #### I-8b — Profile
 
 *(Revision 27. Takes the Profile half of I-8's spec above, unchanged, plus the tab registration I-8a left
-for it. **2b ships here.**)*
+for it. **2b ships here.** Revision 28 adds I-8c and I-8d to its blockers.)*
 
 - **Built.** `Profile.tsx` — countries, cities, trips, days travelled, first and last visit per country, and
   the honest count of what could not be attributed; the Profile tab registered into I-8a's shell; the rescan
@@ -2629,7 +2816,12 @@ for it. **2b ships here.**)*
   rendered Profile with the same injected fault; the `travelStats` refusal boundary; `unattributed` and
   `unnamedCities` rendered rather than hidden, with the *"no places yet"* case distinguishable from *"all
   attributed"*; and the tab shell still carrying exactly three tabs.
-- **Dependencies / blockers.** I-8a.
+- **Dependencies / blockers.** I-8a, **I-8c and I-8d** (revision 28, and this is a hard gate rather than a
+  preference). I-8c, because the Profile renders `travelStats`-derived numbers as a claim about the user's
+  travel identity and would otherwise inherit A-45's wrong ones — and because it registers a **third**
+  surface into a shell where one unreadable stored row still takes the whole app down (A-44). I-8d, because
+  2b ships here and the map is half of what 2b is. *2b does not ship until the map is a map of the right
+  subject and the numbers on it are true.*
 - **Ship gate.** **2b is independently shippable here.** Criteria 4, 5, 6 and 7 all pass.
 
 #### I-9 — Participants in core
