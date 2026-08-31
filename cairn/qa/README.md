@@ -54,6 +54,26 @@ click; that is pre-existing and correct (§8.4 A-31 Part 4), and it is recorded 
 asserted away. §B forces a render failure from *outside* the app's state (an armed
 `Array.prototype.join`) so that "the cause is gone" and "the banner cleared" stay two facts.
 
+**Round 34** is the adversarial pass over the same increment. Three probes, run from `cairn/`:
+
+```bash
+node qa/r34-a45.mjs    # A-45: all 5 date sites, leap/domain edges, importDoc, A-32 non-regression
+node qa/r34-a44.mjs    # A-44: rowLifecycle parity + null set; the view greps; I-8c criterion 3
+# with `npm run web:build && npm run serve` in another shell:
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r34-render.mjs
+```
+
+`r34-render.mjs` has nine sections: **A** BLD-3's *"Close this trip"* branch (the one BUILD-NOTES
+did not drive — it fails, with a root-cause drill printed inline), **B** *"Try again"* with a
+document open, **C** dark mode contrast for the unreadable chip and the error banner, **D**
+reduced motion at 360 px, **E** `TripView`'s own chip, **F** A-45's residue in the real app
+(a stored document rewritten to `2026-02-30`), **G** what the rest of an unreadable card says,
+**H** the New trip form's shape-only regex, **I** that *"Reload Cairn"* really reloads.
+A `FAIL` line is the finding: `r34-a45.mjs` reports 9 (R34-3, R34-2) and `r34-render.mjs`
+reports 8 (R34-1, R34-2, R34-4). `r34-a44.mjs` is ALL CLEAR by design — R34-5 and R34-8 are
+`note` lines there, because both are facts about the design rather than broken expectations.
+Read `../docs/QA-FINDINGS.md`'s round-34 note before assuming any of the three is broken.
+
 Browser probes need `npm run web:build && npm run serve` in one shell first, then:
 
 ```bash
