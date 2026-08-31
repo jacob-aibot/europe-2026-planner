@@ -88,7 +88,8 @@ function DayRow({ day, activeId, derived }: { day: Day; activeId: string | null;
   const status = displayStatus(day.provenance);
   return (
     <button
-      className={`spine__day ${activeId === day.id ? 'is-on' : ''} ${status !== 'own' ? 'is-dim' : ''}`}
+      className={`spine__day ${activeId === day.id ? 'is-on' : ''} ${status !== 'own' ? 'is-unaccepted' : ''}`}
+      data-status={status}
       onClick={() => store.setUi({ activeDayId: day.id, panel: 'timeline', selectedStopId: null })}
     >
       <span className="spine__dow">{day.date.slice(5)}</span>

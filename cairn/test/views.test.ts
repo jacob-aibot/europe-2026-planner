@@ -281,3 +281,181 @@ test('I-6: no view compares summaryVersion itself — summaryScan is the one rea
   }
   assert.deepEqual(offenders, [], 'a view re-implements the freshness comparison instead of calling summaryScan');
 });
+
+// ---------------------------------------------------------------------------
+// ROADMAP Phase 2 I-8a — ARCHITECTURE §4.4 A-40 Part 4's two binding clauses, and the
+// tab shell's own ceiling.
+
+/**
+ * **W1 — `WorldMap.tsx` reads no layout geometry.** This is A-40's own greppable ceiling,
+ * quoted: *"those four identifiers do not appear in the file."*
+ *
+ * It is the whole reason CLAUDE.md's *"never fit a hidden container"* bug is **absent** from
+ * this surface rather than re-solved on it. Leaflet's bug is a measurement bug — a zoom
+ * computed from a 0×0 container is nonsense and is cached — and an SVG `viewBox` is not
+ * measured. The moment someone adds a pixel-measured label placement, a zoom-to-country
+ * animation or a canvas fallback, the bug is back and they need `pendingFit`. A-40 names that
+ * as the trigger to reopen the ruling; this test is what makes the trigger fire.
+ *
+ * Asserted over the raw file including comments **on purpose**: a commented-out
+ * `getBoundingClientRect` is a line someone uncomments.
+ */
+/** Comments stripped, so a rule can quote the identifier it forbids without tripping itself. */
+function stripComments(src: string): string {
+  return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+}
+
+const W1_FORBIDDEN = ['getBoundingClientRect', 'offsetWidth', 'offsetHeight', 'ResizeObserver', 'innerWidth'];
+
+test('I-8a / A-40 W1: WorldMap.tsx reads no layout geometry', () => {
+  const src = readFileSync(resolve(VIEWS, 'WorldMap.tsx'), 'utf8');
+  const found = W1_FORBIDDEN.filter((id) => src.includes(id));
+  assert.deepEqual(found, [], `WorldMap.tsx measures layout: ${found.join(', ')}`);
+});
+
+/**
+ * **W1, the other half.** *"It contains no arithmetic over coordinates. Not a projection, not
+ * a bounds calculation, not a point-in-polygon test."* The renderer's only geometry is the
+ * two strings the frame handed it, so neither `worldMapFrame`'s inputs — `travelStats` rows
+ * and the country index — may be re-derived here.
+ */
+test('I-8a / A-40 Part 3: WorldMap.tsx does no geometry of its own', () => {
+  const src = readFileSync(resolve(VIEWS, 'WorldMap.tsx'), 'utf8');
+  assert.match(src, /worldMapFrame\(/, 'the map does not go through the frame selector at all');
+  for (const banned of ['mapBounds(', 'MIN_SPAN_KM', 'Math.min(', 'Math.max(', 'Math.cos(', '.rings']) {
+    assert.ok(!src.includes(banned), `WorldMap.tsx computes geometry itself: ${banned}`);
+  }
+});
+
+/**
+ * **W2 — hit testing is the renderer's own.** *"Tap a country for its trips"* is a handler on
+ * the `<path>`; the browser hit-tests the filled path. A hand-rolled point-in-polygon over
+ * screen coordinates is forbidden **because it needs a measurement** and would re-introduce
+ * W1's bug by the back door. So: a click handler on a path, and no pointer coordinates read.
+ */
+test('I-8a / A-40 W2: the map hit-tests through the DOM, not through coordinates', () => {
+  const src = readFileSync(resolve(VIEWS, 'WorldMap.tsx'), 'utf8');
+  assert.match(src, /<path\b[\s\S]*?onClick=/, 'no click handler on the rendered <path>');
+  for (const banned of ['clientX', 'clientY', 'pageX', 'pageY', 'elementFromPoint', 'e.nativeEvent']) {
+    assert.ok(!src.includes(banned), `WorldMap.tsx reads pointer coordinates: ${banned}`);
+  }
+});
+
+/**
+ * A-40 Part 5, as a ceiling rather than a promise: **city pins are not in the world map**,
+ * because `TripSummaryRow.cities[]` carries no coordinate and manufacturing one is a
+ * `SUMMARY_VERSION` ruling. If a later pass adds one it will have to delete this test, which
+ * is the point — the deferral is in writing and the code holds it.
+ */
+test('I-8a / A-40 Part 5: the world map draws no city pins', () => {
+  const src = readFileSync(resolve(VIEWS, 'WorldMap.tsx'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/(^|[^:])\/\/.*$/gm, '$1');
+  // `stats.cities` is the `TravelStatsCity[]` a pin would have to come from; the *counts* on
+  // `stats.unattributed` are not geometry and are exactly what the surface must state.
+  for (const banned of ['<circle', 'stats.cities', 'MapPoint', 'MapPort']) {
+    assert.ok(!src.includes(banned), `WorldMap.tsx reaches for city geometry or the Leaflet port: ${banned}`);
+  }
+});
+
+/**
+ * **A-40 Part 2: `MapPort` and `apps/web/src/ports/map.ts` do not change, and no interface is
+ * shared between the two maps.** The trip map keeps its tiles, its handle table, its
+ * `ResizeObserver` and its `pendingFit`, *"all unread by this surface"* — and, symmetrically,
+ * the Leaflet port never learns what a `viewBox` is.
+ */
+test('I-8a / A-40 Part 2: the two maps share no interface', () => {
+  const port = readFileSync(resolve(CAIRN, 'apps/web/src/ports/map.ts'), 'utf8');
+  for (const banned of ['worldMapFrame', 'WorldMapFrame', 'viewBox', 'WorldMap']) {
+    assert.ok(!port.includes(banned), `ports/map.ts was widened for the world map: ${banned}`);
+  }
+  // And the port still solves its own bug, which A-40 leaves untouched.
+  assert.match(port, /pendingFit/);
+  assert.match(port, /ResizeObserver/);
+});
+
+/**
+ * **The tab shell: three slots, and no fourth.** ROADMAP I-8 — *"Navigation becomes Trips ·
+ * Map · Profile — three tabs, not four. **No DISCOVER tab**: a slot that exists to promise
+ * something is the opposite of what this product's conventions say about presenting things
+ * that are not yet true."* I-8a registers the two that have content; I-8b registers Profile.
+ *
+ * So the assertion is on the *registry*, not on a count of rendered buttons: a tab exists
+ * exactly when something is registered for it, and an empty tab cannot be added without
+ * adding a component to render in it.
+ */
+test('I-8a: the tab shell registers only tabs that have content — no empty slot', () => {
+  const src = stripComments(readFileSync(resolve(CAIRN, 'apps/web/src/App.tsx'), 'utf8'));
+  const registry = /const TABS: TabSpec\[\] = \[([\s\S]*?)\n\];/.exec(src);
+  assert.ok(registry, 'App.tsx has no `TABS` registry — the shell is not a registry');
+  const ids = [...registry[1].matchAll(/id: '([a-z]+)'/g)].map((m) => m[1]);
+  assert.deepEqual(ids, ['trips', 'map'], 'I-8a registers Trips and Map, and nothing else');
+  for (const id of ids) {
+    assert.match(
+      registry[1],
+      new RegExp(`id: '${id}'[\\s\\S]*?render:`),
+      `the ${id} tab is registered without anything to render`,
+    );
+  }
+  assert.ok(!/discover/i.test(src), 'a DISCOVER slot appeared in the shell');
+});
+
+// ---------------------------------------------------------------------------
+// ROADMAP Phase 2 I-8a — the signal-collision fix.
+
+/**
+ * **Provenance and severity are orthogonal channels and must be carried by orthogonal
+ * means.** ROADMAP I-8a names this a *design defect*, not polish: `.stop--dim { opacity: .72 }`
+ * was the only mechanism for *"not yet accepted"*, and it composed on the same element with
+ * `.stop--flag`, so a copied stop that also has a conflict rendered **both** signals degraded
+ * — opacity multiplies the blocker's own colour. With A-34's `provisional` arriving as a
+ * *third* signal on the same surface, one opacity multiplier cannot carry them.
+ *
+ * The rule, mechanically: **no provenance class may set `opacity`.** The rendered proof — a
+ * copied, unaccepted stop that also carries a blocker, with the blocker at full strength — is
+ * in Chromium, in `qa/i8a-signals.mjs`, because computed opacity is a rendering fact.
+ */
+test('I-8a: no provenance signal is carried by opacity', () => {
+  const css = readFileSync(resolve(CAIRN, 'apps/web/src/styles.css'), 'utf8');
+  const rules = [...stripComments(css).matchAll(/([^{}]+)\{([^}]*)\}/g)];
+  const offenders: string[] = [];
+  for (const [, selector, body] of rules) {
+    // The provenance and provisional channels by name. `.conflict--done` is deliberately not
+    // here: "you have already resolved this" retires the SEVERITY channel and composes with
+    // nothing, which is the case opacity is still the right tool for.
+    if (!/--unaccepted|--provisional|--suggested|--imported|--candidate|stop--dim|is-dim/.test(selector)) continue;
+    if (/(^|[;\s])opacity\s*:/.test(body)) offenders.push(selector.trim());
+  }
+  assert.deepEqual(offenders, [], 'a provenance/provisional class attenuates with opacity');
+});
+
+/**
+ * And the mark still exists — the fix is *"carry it by another channel"*, never *"drop it"*.
+ * `CLAUDE.md`'s oldest rule is that nothing the system added is shown as Jacob's own plan.
+ */
+test('I-8a: the unaccepted mark is still applied to the row, by a non-opacity channel', () => {
+  const src = stripComments(readFileSync(resolve(VIEWS, 'DayTimeline.tsx'), 'utf8'));
+  assert.match(src, /stop--unaccepted/, 'the day timeline no longer marks an unaccepted stop at all');
+  assert.ok(!src.includes('stop--dim'), 'the old shared-opacity class is still applied');
+  // The spine carries the identical pair — a provenance mark on a row that also shows an
+  // unresolved blocker as a dot — and had the identical defect.
+  const spine = stripComments(readFileSync(resolve(VIEWS, 'Sidebar.tsx'), 'utf8'));
+  assert.match(spine, /is-unaccepted/, 'the spine no longer marks an unaccepted day');
+  assert.ok(!spine.includes("'is-dim'"), 'the spine still dims a whole row for provenance');
+  const css = stripComments(readFileSync(resolve(CAIRN, 'apps/web/src/styles.css'), 'utf8'));
+  assert.match(css, /\.stop--unaccepted\s*\{/, 'no rule draws the unaccepted mark');
+  assert.ok(!/\.stop--dim\s*\{/.test(css), '.stop--dim survived in the stylesheet');
+});
+
+/**
+ * **Two named removals** (ROADMAP I-8a, `docs/VISUAL-TELLS.md` §1). Both were independently
+ * identified by the project and by the tell list, which is the agreement that made the list
+ * worth writing down. The computed-style form of these two assertions is the first two probes
+ * in `qa/i8a-signals.mjs`; this is the source-level floor under them.
+ */
+test('I-8a: neither named removal comes back', () => {
+  const css = readFileSync(resolve(CAIRN, 'apps/web/src/styles.css'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '');
+  assert.ok(!/backdrop-filter/.test(css), 'backdrop-filter is back in the stylesheet');
+  assert.ok(!/linear-gradient|radial-gradient/.test(css), 'a gradient is back in the stylesheet');
+});

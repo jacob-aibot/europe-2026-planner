@@ -36,7 +36,7 @@ function Provenance({ stop }: { stop: Stop }) {
   const state: AppState = store.getState();
   return (
     <p className="editor__provenance">
-      {badge.label && <span className="pill" style={{ background: badge.color }}>{badge.label}</span>}
+      {badge.label && <span className="pill" style={{ color: badge.color }}>{badge.label}</span>}
       {credit && (
         <span className="stop__credit" data-credit={credit.friendUserId} title={`${credit.sourceTripId} · ${credit.sourceStopId}`}>
           From {creditLabel(credit, state)}

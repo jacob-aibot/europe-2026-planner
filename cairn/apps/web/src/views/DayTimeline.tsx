@@ -104,7 +104,20 @@ function StopRow({
     act(() => store.dispatch({ type: 'updateStop', stopId: stop.id, patch: { travelRole } }));
 
   return (
-    <li className={`stop ${status !== 'own' ? 'stop--dim' : ''} ${conflicts.length ? 'stop--flag' : ''}`}>
+    // I-8a's signal-collision fix. `stop--unaccepted` replaces `stop--dim`, and the rename is
+    // the point: the mark is now an outline that composes with `stop--flag` rather than an
+    // opacity that multiplied the blocker's colour. Provenance and severity are orthogonal
+    // channels and are now carried by orthogonal properties. `data-*` so a probe can assert
+    // the two independently on rendered output.
+    <li
+      className={`stop ${status !== 'own' ? 'stop--unaccepted' : ''} ${conflicts.length ? 'stop--flag' : ''}`}
+      data-status={status}
+      data-severity={
+        conflicts.some((c) => c.severity === 'blocker') ? 'blocker'
+          : conflicts.some((c) => c.severity === 'warning') ? 'warning'
+            : conflicts.length ? 'note' : 'none'
+      }
+    >
       {leg && (
         <div className="leg" title={leg.source === 'override' ? 'Time from the itinerary' : 'Estimated from distance'}>
           <span aria-hidden="true">{MODES[leg.mode]?.icon ?? '·'}</span>
@@ -124,7 +137,7 @@ function StopRow({
                 )
               : time && <b className="stop__time" data-travel-role={travel.kind}>{time}</b>}
             <span className="stop__name">{stop.name}</span>
-            {badge.label && <span className="pill" style={{ background: badge.color }}>{badge.label}</span>}
+            {badge.label && <span className="pill" style={{ color: badge.color }}>{badge.label}</span>}
             {stop.flags.map((f) => <span key={f} className="pill pill--quiet">{f}</span>)}
             {stop.ticket && <span className="pill pill--quiet">ticket</span>}
           </p>

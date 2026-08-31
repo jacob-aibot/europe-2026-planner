@@ -19,6 +19,30 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
+> **🟡 I-8a IS BUILT — the Map screen exists, and so does a visual language — as of 2026-08-31
+> (this block is the current state; the 2026-08-29 block below it is older on I-8 only).** I-8 was
+> split into **I-8a** (the map, the tab shell, the type-and-colour layer) and **I-8b** (the Profile
+> screen). **I-8a is now built.** What you can actually see: the app has **tabs — Trips and Map** —
+> and the Map draws **every country you have been to, filled in, from a map bundled inside the app**
+> with nothing fetched from a server. Tap a country and it lists the trips that took you there.
+> A country you are only counted in because you are *on a trip right now* is drawn differently —
+> outlined, not filled — instead of being claimed as somewhere you have been. If a country in your
+> history has no shape in the bundled map, the screen **says so and names it**, rather than quietly
+> drawing one country fewer than the number beside it.
+>
+> Two things that are not on the map but are the point: **the app now looks like the planner it came
+> from** — condensed display type, every number and label in a typewriter face, hairline rules,
+> small corners, outlined badges — with the three typefaces **served from the app itself** so it
+> still reads with no network (91.7 KB in total). And **a real design defect is fixed**: an activity
+> you had not accepted yet was shown by fading the whole row, and a row that *also* had a scheduling
+> problem faded the warning too — so the more wrong it was, the fainter it got. Provenance is now a
+> dashed outline and a badge, and the warning keeps its full colour whatever else is true of the row.
+>
+> **What is NOT built: I-8b, the Profile screen.** There is deliberately **no empty Profile tab**
+> waiting for it — a tab that promises something is exactly what this product refuses to do. Adding
+> it later is one line in the tab list. **2b does not ship until I-8b lands.**
+> **I-8a is built ✅ · verified ⚪ · shippable ⚪** — nobody has attacked it yet.
+
 > **🟢 STEP 2b's DATA LAYER IS SHIPPED — as of 2026-08-29 (this block is the current state; every
 > 2b/I-7 sentence below it is older).** `REVIEW.md` now records **SHIP** for "Phase 2, step 2b
 > (data layer) — I-5 … I-7b", at `6cd7187` on `master`. Every increment from the country index

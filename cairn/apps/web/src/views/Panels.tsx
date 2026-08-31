@@ -52,7 +52,7 @@ function ConflictRow({ conflict: c, today }: { conflict: Conflict; today: string
   return (
     <li className={`conflict ${c.resolution ? 'conflict--done' : ''}`}>
       <div className="conflict__head">
-        <span className="pill" style={{ background: SEVERITY_COLOR[c.severity] }}>{c.severity}</span>
+        <span className="pill" style={{ color: SEVERITY_COLOR[c.severity] }}>{c.severity}</span>
         <b>{c.summary}</b>
         <span className="conflict__rule">{c.ruleId}</span>
       </div>
@@ -92,7 +92,7 @@ export function ValidationPanel({ derived }: { derived: DerivedCache | null }) {
       <ul className="issues">
         {[...errors, ...warns].map((i, n) => (
           <li key={`${i.code}-${i.ref.id}-${n}`} className={`issue issue--${i.level}`}>
-            <span className="pill" style={{ background: i.level === 'error' ? '#a8382f' : '#b3701e' }}>{i.level}</span>
+            <span className="pill" style={{ color: i.level === "error" ? "#a8382f" : "#b3701e" }}>{i.level}</span>
             <span className="issue__code">{i.code}</span>
             <span>{i.message}</span>
           </li>
@@ -129,7 +129,7 @@ export function PoolPanel({ state, onError }: { state: AppState; onError: (m: st
         <div>
           <p className="stop__line">
             <span className="stop__name">{s.name}</span>
-            {badge.label && <span className="pill" style={{ background: badge.color }}>{badge.label}</span>}
+            {badge.label && <span className="pill" style={{ color: badge.color }}>{badge.label}</span>}
           </p>
           <p className="stop__meta">
             {CAT_LABEL[s.category] ?? s.category}

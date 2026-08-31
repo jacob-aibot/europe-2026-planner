@@ -269,4 +269,13 @@ export function travelHistory(state: Pick<AppState, 'library'>, today: core.IsoD
   }
 }
 
+/**
+ * The lifetime map's frame — ARCHITECTURE §4.4 **A-40**, ROADMAP I-8a. Re-exported here
+ * rather than written here because it is ~140 lines of one subject; it follows exactly the
+ * `dayMapPoints` precedent above — a view model for a map, computed in `packages/client`,
+ * with the bounds coming from core.
+ */
+export { worldMapFrame } from './worldMap.ts';
+export type { WorldMapFrame, WorldMapCountry } from './worldMap.ts';
+
 export { core };

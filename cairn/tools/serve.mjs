@@ -17,6 +17,10 @@ const TYPES = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8',
   '.svg': 'image/svg+xml', '.png': 'image/png', '.map': 'application/json',
+  // Self-hosted typefaces (I-8a). A browser will accept `application/octet-stream` for a
+  // `@font-face` source, but the correct type is one line, and a probe that checks the
+  // response header should see what the build actually emitted.
+  '.woff2': 'font/woff2', '.woff': 'font/woff', '.ttf': 'font/ttf',
 };
 
 createServer(async (req, res) => {

@@ -1,20 +1,120 @@
 /**
- * The app shell: trip library ↔ one open trip, plus the save indicator.
+ * The app shell: a tab bar over the surfaces, plus the save indicator.
  *
  * No domain logic. Every mutation goes through `store.dispatch` — §4.2 rule 1.
+ *
+ * **The shell is a registry** (ROADMAP I-8a). Navigation is sized for **Trips · Map ·
+ * Profile** and no fourth slot — I-8's *"no DISCOVER tab: a slot that exists to promise
+ * something is the opposite of what this product's conventions say about presenting things
+ * that are not yet true."* By the same rule, only the two tabs that have content are
+ * registered here; **Profile is registered by I-8b, not stubbed now**. Adding it is one entry
+ * in `TABS`, not a second shell.
+ *
+ * **Every registered panel stays mounted, and the inactive ones are `hidden`.** That is
+ * deliberate on both maps. The trip map's Leaflet instance keeps its handle and its
+ * `ResizeObserver`, so hiding and showing it costs an `invalidateSize` rather than a mount —
+ * §4.4's contract, unchanged. And it puts the world map in exactly the state CLAUDE.md's
+ * first map bug is about: mounted inside a `display:none` container. It survives because
+ * A-40 Part 4 made that bug inexpressible there, not because the shell avoids the case.
  */
-import { useEffect, useState } from 'react';
+import { Component, useEffect, useState } from 'react';
+import type { ErrorInfo, ReactNode } from 'react';
 import { registerPageExit } from '@cairn/client';
+import type { AppState, DerivedCache } from '@cairn/client';
 import { store, useAppState, useDerived } from './store.ts';
 import { Library } from './views/Library.tsx';
 import { TripView } from './views/TripView.tsx';
+import { WorldMap } from './views/WorldMap.tsx';
 import { hasSample, sampleTrip } from './sample.ts';
+
+type TabId = 'trips' | 'map';
+
+type TabContext = {
+  state: AppState;
+  derived: DerivedCache | null;
+  onError: (m: string) => void;
+  go: (tab: TabId) => void;
+};
+
+type TabSpec = {
+  id: TabId;
+  label: string;
+  /** A tab exists exactly when there is something to render in it. */
+  render: (ctx: TabContext) => ReactNode;
+};
+
+const TABS: TabSpec[] = [
+  {
+    id: 'trips',
+    label: 'Trips',
+    render: ({ state, derived, onError }) =>
+      state.doc ? (
+        <TripView state={state} derived={derived} onError={onError} />
+      ) : (
+        <Library state={state} onError={onError} sample={hasSample ? sampleTrip : null} />
+      ),
+  },
+  {
+    id: 'map',
+    label: 'Map',
+    render: ({ state, onError, go }) => (
+      <WorldMap
+        state={state}
+        onError={onError}
+        onOpenTrip={(id) => {
+          go('trips');
+          void store.openTrip(id).catch((e: Error) => onError(e.message));
+        }}
+      />
+    ),
+  },
+];
+
+/**
+ * One error boundary per tab panel, and the reason is the shell's own design.
+ *
+ * Every registered panel is mounted at once, so without this a throw anywhere in one surface
+ * unmounts **all** of them and the user gets a blank page instead of the two tabs that were
+ * working. ROADMAP I-8's `travelStats` criterion is explicit that the alternative to a
+ * refusal is *"a blank screen or an unhandled rejection"*, and a shared tree makes that
+ * outcome reachable from a surface that is not the one refusing.
+ *
+ * It is deliberately not a general-purpose recovery: it says which surface failed and what
+ * it said, and leaves the rest of the app usable. A class component because React has no
+ * hook form of `componentDidCatch`; `state` is a class field, which type-strips cleanly
+ * (no parameter properties, no enums, no `declare`).
+ */
+class TabBoundary extends Component<{ label: string; children: ReactNode }, { message: string | null }> {
+  state: { message: string | null } = { message: null };
+
+  static getDerivedStateFromError(error: unknown): { message: string } {
+    return { message: error instanceof Error ? error.message : String(error) };
+  }
+
+  componentDidCatch(error: unknown, info: ErrorInfo): void {
+    // Console rather than swallowed: a breaker reading the page's error log must still see it.
+    console.error(`Cairn: the ${this.props.label} tab failed to render`, error, info.componentStack);
+  }
+
+  render(): ReactNode {
+    if (this.state.message === null) return this.props.children;
+    return (
+      <div className="banner banner--error" role="alert">
+        <div>
+          <b>The {this.props.label} tab could not be shown.</b>
+          <p className="hint mono">{this.state.message}</p>
+        </div>
+      </div>
+    );
+  }
+}
 
 export function App() {
   const state = useAppState();
   const derived = useDerived(state);
   const [error, setError] = useState<string | null>(null);
   const [booting, setBooting] = useState(true);
+  const [tab, setTab] = useState<TabId>('trips');
 
   // Boot: read the library, then bring every row minted by an older build up to the current
   // `SUMMARY_VERSION` (ARCHITECTURE §8.4 clause 3). The two are deliberately separate calls —
@@ -78,16 +178,49 @@ export function App() {
       <header className="topbar">
         <button
           className="topbar__brand"
-          onClick={() => run(store.closeTrip())}
+          onClick={() => {
+            setTab('trips');
+            run(store.closeTrip());
+          }}
           title={state.doc ? 'Back to all trips' : 'Cairn'}
         >
-          <span className="topbar__mark" aria-hidden="true" />
+          {/*
+            A flat-ink mark, drawn rather than filled with a gradient: three stacked stones,
+            which is what a cairn is. ROADMAP I-8a names the gradient-plus-glow ring it
+            replaces as one of two removals, and `docs/VISUAL-TELLS.md` §1 had it on the same
+            list independently.
+          */}
+          <svg className="topbar__mark" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+            <path d="M4.5 12.5h7M5.5 12.5a2.5 2.5 0 0 1 5 0M6 9.6a2 2 0 0 1 4 0M6.9 7a1.4 1.4 0 0 1 2.2 0" />
+          </svg>
           Cairn
         </button>
         {state.doc && <span className="topbar__title">{state.doc.title}</span>}
         <span className="topbar__spacer" />
         {state.doc && <SaveState />}
       </header>
+
+      {/*
+        The tab bar. `role="tablist"` with real `aria-selected` state, because these are the
+        product's top-level surfaces and a screen reader has to be able to tell which one is
+        showing. Rendered from `TABS` — a tab cannot appear without something to render.
+      */}
+      <nav className="tabbar" role="tablist" aria-label="Cairn">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            id={`tabbtn-${t.id}`}
+            className={'tabbar__tab' + (t.id === tab ? ' tabbar__tab--on' : '')}
+            role="tab"
+            type="button"
+            aria-selected={t.id === tab}
+            aria-controls={`tabpanel-${t.id}`}
+            onClick={() => setTab(t.id)}
+          >
+            {t.label}
+          </button>
+        ))}
+      </nav>
 
       {error && (
         <div className="banner banner--error" role="alert">
@@ -128,14 +261,21 @@ export function App() {
 
       {booting ? (
         <p className="empty">Opening your trips…</p>
-      ) : state.doc ? (
-        <TripView state={state} derived={derived} onError={setError} />
       ) : (
-        <Library
-          state={state}
-          onError={setError}
-          sample={hasSample ? sampleTrip : null}
-        />
+        TABS.map((t) => (
+          <div
+            key={t.id}
+            id={`tabpanel-${t.id}`}
+            className="tabpanel"
+            role="tabpanel"
+            aria-labelledby={`tabbtn-${t.id}`}
+            hidden={t.id !== tab}
+          >
+            <TabBoundary label={t.label}>
+              {t.render({ state, derived, onError: setError, go: setTab })}
+            </TabBoundary>
+          </div>
+        ))
       )}
     </div>
   );

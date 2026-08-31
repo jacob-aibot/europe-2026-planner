@@ -319,6 +319,32 @@
 </style>
 </head>
 <body>
+<div class="callout" style="border-left:4px solid #b3701e;padding:.75rem 1rem;margin:1rem 0;background:#fdf8ef">
+<p><strong>&#128993; I-8a IS BUILT &mdash; the Map screen exists, and so does a visual language
+&mdash; as of 2026-08-31</strong> (this block is the current state; the 2026-08-29 block below it is
+older on I-8 only). I-8 was split into <strong>I-8a</strong> (the map, the tab shell, the
+type-and-colour layer) and <strong>I-8b</strong> (the Profile screen). <strong>I-8a is now
+built.</strong> What you can actually see: the app has <strong>tabs &mdash; Trips and Map</strong>,
+and the Map draws <strong>every country you have been to, filled in, from a map bundled inside the
+app</strong> with nothing fetched from a server. Tap a country and it lists the trips that took you
+there. A country you are only counted in because you are <em>on a trip right now</em> is drawn
+differently &mdash; outlined, not filled &mdash; instead of being claimed as somewhere you have
+been. If a country in your history has no shape in the bundled map, the screen <strong>says so and
+names it</strong>, rather than quietly drawing one country fewer than the number beside it.</p>
+<p>Two things that are not on the map but are the point: <strong>the app now looks like the planner
+it came from</strong> &mdash; condensed display type, every number and label in a typewriter face,
+hairline rules, small corners, outlined badges &mdash; with the three typefaces <strong>served from
+the app itself</strong> so it still reads with no network (91.7&nbsp;KB in total). And <strong>a
+real design defect is fixed</strong>: an activity you had not accepted yet was shown by fading the
+whole row, and a row that <em>also</em> had a scheduling problem faded the warning too &mdash; so
+the more wrong it was, the fainter it got. Provenance is now a dashed outline and a badge, and the
+warning keeps its full colour whatever else is true of the row.</p>
+<p><strong>What is NOT built: I-8b, the Profile screen.</strong> There is deliberately <strong>no
+empty Profile tab</strong> waiting for it &mdash; a tab that promises something is exactly what this
+product refuses to do. Adding it later is one line in the tab list. <strong>2b does not ship until
+I-8b lands.</strong> <strong>I-8a is built &#9989; &middot; verified &#9898; &middot; shippable
+&#9898;</strong> &mdash; nobody has attacked it yet.</p>
+</div>
 <div class="callout" style="border-left:4px solid #2f7a3d;padding:.75rem 1rem;margin:1rem 0;background:#eef7ef">
 <p><strong>&#128994; STEP 2b&rsquo;S DATA LAYER IS SHIPPED &mdash; as of 2026-08-29</strong> (this
 block is the current state; every 2b/I-7 sentence below it is older). <code>REVIEW.md</code> now
@@ -701,13 +727,14 @@ hands you a trip file with no owner recorded in it.</p>
   <!-- ============ HERO: 10-second read ============ -->
   <div class="hero">
     <div class="phase-tag">Phase 2 of 7 — travel history, local-first</div>
-    <h2>Phase 1 shipped. Step 2a shipped. Step 2b's data layer (I-5…I-7b) has now shipped too —
-      its Map and Profile screens (I-8) are paused for a native-iOS design pass.</h2>
+    <h2>Phase 1 shipped. Step 2a shipped. Step 2b's data layer (I-5…I-7b) has shipped too — and the
+      Map screen (I-8a) is now built. The Profile screen (I-8b) is what 2b is waiting on.</h2>
     <div class="pills">
       <span class="pill green">🟢 PHASE 1 CLOSED — SHIPPED</span>
       <span class="pill green">🟢 PHASE 2 — STEP 2a SHIPPED</span>
       <span class="pill green">🟢 STEP 2b DATA LAYER SHIPPED (I-5…I-7b)</span>
-      <span class="pill orange">🟠 I-8 (MAP/PROFILE UI) — PAUSED FOR DESIGN</span>
+      <span class="pill orange">🟠 I-8a (MAP + TAB SHELL + TYPE) — BUILT, NOT YET ATTACKED</span>
+      <span class="pill orange">🟠 I-8b (PROFILE) — NOT BUILT</span>
     </div>
     <p><strong>Phase 1: SHIP</strong> (<code>REVIEW.md</code>, <code>b32ef9a</code>, 2026-08-27) —
       built, independently attacked across 11 rounds, and the very last fix re-verified by the

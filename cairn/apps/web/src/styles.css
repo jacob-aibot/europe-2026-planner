@@ -1,34 +1,169 @@
 /*
- * Cairn web. The palette is lifted from the live planner via @cairn/tokens — warm paper,
- * ink, and the category colours the trip already uses. Information density over decoration:
- * this is a tool you plan a trip in, not a landing page.
+ * Cairn web — the token layer (ROADMAP Phase 2 I-8a).
+ *
+ * The visual language is **recovered, not invented**: it is the live planner's
+ * (`europe-2026-itinerary.html`), which is editorial-cartographic — condensed display type
+ * over a neutral body face, every number and label set in mono, hairline rules, outlined
+ * badges, small radii, and colour used as signal rather than as decoration. What follows
+ * declares that once, as custom properties, so a surface can be built out of it instead of
+ * re-deciding it. The palette is still the planner's warm paper and ink; @cairn/tokens keeps
+ * the category colours, because those are data-adjacent and the Leaflet port reads them too.
+ *
+ * WHAT LIVES WHERE. A value moves into `packages/tokens` only if BOTH this stylesheet and
+ * the Leaflet port (`apps/web/src/ports/map.ts`) need it. Today that is exactly the category
+ * colours and the status-badge colours, which are already there. Type, rules, radii and the
+ * signal channels are CSS-only and stay here.
+ *
+ * TYPOGRAPHY IS SELF-HOSTED. The three faces below are the planner's, all OFL, served from
+ * `public/fonts/` — never from `fonts.googleapis.com`. Phase 2 is local-first and offline, and
+ * a per-view network font dependency fails invisible-text-offline exactly the way a per-view
+ * tile dependency was already refused. Latin subsets, woff2: 91.7 KB for all four files.
+ *
+ * THE THREE SIGNAL CHANNELS, which may never be collapsed into one another (I-8a):
+ *   1. SEVERITY   — a conflict's weight. Full-strength colour, always. Never attenuated.
+ *   2. PROVENANCE — "you have not accepted this yet". A MARK: an outline, a badge, a credit
+ *                   line. It attenuates nothing it is composed with.
+ *   3. PROVISIONAL— "counted from a trip you are on now". A different treatment on the map:
+ *                   an outline over a tint, never the confirmed ink at lower strength.
+ * `opacity` carries none of them. It was carrying (2) alone, and composing it with (1) is the
+ * design defect I-8a was written to fix.
  */
 
 :root {
-  --paper: #faf7f2;
+  /* ---- ink, paper, line (the planner's palette) ------------------------- */
+  --paper: #f0f1ee;
   --card: #ffffff;
-  --ink: #26221d;
-  --ink-dim: #6b6259;
-  --line: #e4ddd2;
-  --line-soft: #efe9e0;
+  --panel-alt: #e7e9e4;
+  --ink: #1b1f27;
+  --ink-soft: #454b57;
+  --ink-dim: #6d7482;
+  --ink-faint: #9aa0ab;
+  --line: #d7dad5;
+  --line-soft: #e3e5e0;
   --accent: #2c5f8a;
+  --accent-soft: #dce8f0;
+  --gold: #c9862a;
+  --gold-ink: #8f5e15;
   --danger: #a8382f;
   --warn: #b3701e;
-  --radius: 10px;
-  --shadow: 0 1px 2px rgb(38 34 29 / 6%), 0 4px 14px rgb(38 34 29 / 5%);
+  --good: #2f7a4f;
+
+  /* ---- type ------------------------------------------------------------- */
+  --font-display: "Big Shoulders", "Arial Narrow", ui-sans-serif, sans-serif;
+  --font-body: "Public Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  /*
+   * A scale with real jumps in it. "Three sizes that are almost the same size" is on the
+   * tell list in `docs/VISUAL-TELLS.md`, and the planner's own hierarchy is steep: a 44px
+   * uppercase display head over 13.5px body over a 10px tracked mono label.
+   */
+  --t-display: clamp(26px, 4.2vw, 38px);
+  --t-h1: 25px;
+  --t-h2: 19px;
+  --t-h3: 15px;
+  --t-body: 14px;
+  --t-small: 12.5px;
+  --t-label: 11px;
+
+  /*
+   * THE UI TEXT FLOOR, decided once and written down — `docs/VISUAL-TELLS.md` §3 asks for
+   * exactly this and calls it a genuine tension rather than a taste question. 11px, and
+   * nothing rendered goes below it, including the tracked uppercase micro-labels the
+   * language is built on. The previous `.68rem` (≈10.9px) badges are raised to it.
+   */
+  --ui-text-floor: 11px;
+  --label-track: .09em;
+  --caps-track: .06em;
+
+  /* ---- rules and radii: hairlines and small corners --------------------- */
+  --hair: 1px;
+  --rule: 1px solid var(--line);
+  --rule-soft: 1px solid var(--line-soft);
+  --rule-heavy: 2px solid var(--ink);
+  --radius: 6px;
+  --radius-sm: 4px;
+  --radius-pill: 5px;
+  --shadow: 0 1px 0 rgb(20 20 15 / 6%);
+  --shadow-md: 0 2px 8px rgb(20 20 15 / 10%);
+
+  /* ---- channel 1: severity. Full strength, never composed with opacity. -- */
+  --sev-blocker: var(--danger);
+  --sev-warning: var(--warn);
+  --sev-note: var(--ink-dim);
+
+  /* ---- channel 2: provenance. A mark; attenuates nothing. --------------- */
+  --prov-line: var(--gold);
+  --prov-ink: var(--gold-ink);
+  --prov-dash: 4px 3px;
+
+  /* ---- channel 3: provisional (A-34), on the lifetime map. -------------- */
+  --map-sea: var(--panel-alt);
+  --map-fill: var(--ink-soft);
+  --map-line: var(--paper);
+  --map-provisional-fill: var(--accent-soft);
+  --map-provisional-line: var(--accent);
+  --map-on: var(--gold-ink);
+
   color-scheme: light dark;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --paper: #17161a;
-    --card: #201e23;
-    --ink: #ece7e0;
-    --ink-dim: #a49c92;
-    --line: #35313a;
-    --line-soft: #2a272e;
-    --shadow: 0 1px 2px rgb(0 0 0 / 40%), 0 6px 18px rgb(0 0 0 / 28%);
+    --paper: #12151c;
+    --card: #1b1f29;
+    --panel-alt: #171b23;
+    --ink: #ededea;
+    --ink-soft: #c7ccd3;
+    --ink-dim: #8b93a3;
+    --ink-faint: #5f6675;
+    --line: #2a2f3b;
+    --line-soft: #232833;
+    --accent: #6fa8d8;
+    --accent-soft: #182533;
+    --gold: #f0ab4c;
+    --gold-ink: #f7c581;
+    --danger: #e2685c;
+    --warn: #d99b3c;
+    --good: #3fa873;
+    --shadow: 0 1px 0 rgb(0 0 0 / 40%);
+    --shadow-md: 0 2px 10px rgb(0 0 0 / 40%);
+    --map-fill: #59637a;
+    --map-line: var(--paper);
   }
+}
+
+/* --------------------------------------------------------------- typefaces
+   Self-hosted, latin subsets, woff2. `font-display: swap` so a cold cache shows the
+   fallback rather than nothing — the same reason the files are local at all. */
+
+@font-face {
+  font-family: "Big Shoulders";
+  font-style: normal;
+  font-weight: 600 800;
+  font-display: swap;
+  src: url("./fonts/big-shoulders-latin-var.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Public Sans";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("./fonts/public-sans-latin-var.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("./fonts/ibm-plex-mono-latin-500.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("./fonts/ibm-plex-mono-latin-600.woff2") format("woff2");
 }
 
 * { box-sizing: border-box; }
@@ -37,45 +172,113 @@ body {
   margin: 0;
   background: var(--paper);
   color: var(--ink);
-  font: 15px/1.5 ui-sans-serif, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  font: var(--t-body)/1.55 var(--font-body);
   -webkit-text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
 }
 
-h1, h2, h3 { margin: 0 0 .4rem; line-height: 1.25; font-weight: 640; letter-spacing: -.01em; }
-h1 { font-size: 1.5rem; }
-h2 { font-size: 1.2rem; }
-h3 { font-size: 1rem; }
+h1, h2, h3 {
+  margin: 0 0 .4rem; line-height: 1.15;
+  font-family: var(--font-display); font-weight: 800;
+  text-transform: uppercase; letter-spacing: var(--caps-track);
+}
+h1 { font-size: var(--t-h1); }
+h2 { font-size: var(--t-h2); }
+h3 { font-size: var(--t-h3); letter-spacing: .03em; }
 p { margin: 0 0 .5rem; }
 ul, ol { margin: 0; padding: 0; list-style: none; }
 
+/* Every number, time, count, code and micro-label is mono — that is the data channel, and
+   it is what makes a column of times read as a column. */
+.mono, .eyebrow, .statrow dd, .codechip, .triprow__meta {
+  font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+}
+
+/* The tracked mono micro-label. Deliberate, and recorded as such in VISUAL-TELLS §3: it is
+   a LABEL, never body copy, and it sits at the floor rather than below it. */
+.eyebrow {
+  font-size: var(--ui-text-floor); font-weight: 600;
+  text-transform: uppercase; letter-spacing: var(--label-track);
+  color: var(--ink-dim); margin: 0 0 .35rem;
+}
+
+.statrow { display: flex; gap: 1.4rem; margin: .6rem 0 0; flex-wrap: wrap; }
+.statrow dt {
+  font-size: var(--ui-text-floor); text-transform: uppercase;
+  letter-spacing: var(--label-track); color: var(--ink-dim); font-weight: 600;
+}
+.statrow dd { margin: .1rem 0 0; font-size: 22px; font-weight: 600; color: var(--gold-ink); line-height: 1.1; }
+
 .app { min-height: 100dvh; display: flex; flex-direction: column; }
+.tabpanel { display: contents; }
+.tabpanel[hidden] { display: none; }
+
+/* ---------------------------------------------------------------- tab bar */
+
+.tabbar {
+  display: flex; gap: 0; align-items: stretch;
+  border-bottom: var(--rule); background: var(--paper);
+  position: sticky; top: 2.7rem; z-index: 490;
+}
+.tabbar__tab {
+  appearance: none; background: none; border: 0;
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+  padding: .55rem 1.1rem; cursor: pointer;
+  font-family: var(--font-mono); font-size: var(--t-label); font-weight: 600;
+  text-transform: uppercase; letter-spacing: var(--label-track);
+  color: var(--ink-dim);
+  transition: color .12s ease, border-color .12s ease;
+}
+.tabbar__tab:hover { color: var(--ink); }
+.tabbar__tab--on { color: var(--ink); border-bottom-color: var(--ink); }
+@media (prefers-reduced-motion: reduce) { .tabbar__tab { transition: none; } }
 
 /* ---------------------------------------------------------------- topbar */
 
+/*
+ * REMOVAL 1 of 2 (ROADMAP I-8a, VISUAL-TELLS §1): the `backdrop-filter: blur(8px)` over a
+ * translucent `color-mix` background is gone. An OPAQUE bar and a hairline. Glassmorphism
+ * makes the bar's contrast depend on whatever scrolls under it, which on a dense timeline is
+ * a different answer every scroll position.
+ */
 .topbar {
   position: sticky; top: 0; z-index: 500;
   display: flex; align-items: center; gap: .75rem;
-  padding: .6rem 1rem;
-  background: color-mix(in srgb, var(--paper) 88%, transparent);
-  backdrop-filter: blur(8px);
-  border-bottom: 1px solid var(--line);
+  padding: .45rem 1rem;
+  background: var(--paper);
+  border-bottom: var(--rule);
 }
 .topbar__brand {
-  display: flex; align-items: center; gap: .5rem;
-  background: none; border: 0; cursor: pointer;
-  font: inherit; font-weight: 680; color: inherit; letter-spacing: -.01em;
+  display: flex; align-items: center; gap: .45rem;
+  background: none; border: 0; cursor: pointer; padding: 0;
+  color: inherit;
+  font-family: var(--font-display); font-weight: 800; font-size: 19px;
+  text-transform: uppercase; letter-spacing: var(--caps-track);
 }
+/*
+ * REMOVAL 2 of 2: the `linear-gradient` fill plus its glow ring. A flat-ink drawn glyph —
+ * three stacked stones, which is what a cairn is — in the same stroke weight as the hairline
+ * rules. Nothing here paints a gradient or a shadow.
+ */
 .topbar__mark {
-  width: 14px; height: 14px; border-radius: 3px;
-  background: linear-gradient(150deg, #c9862a, #a8382f);
-  box-shadow: 0 0 0 3px color-mix(in srgb, #c9862a 18%, transparent);
+  width: 15px; height: 15px; flex: none;
+  fill: none; stroke: var(--gold-ink); stroke-width: 1.4;
+  stroke-linecap: round; stroke-linejoin: round;
 }
-.topbar__title { color: var(--ink-dim); font-size: .92rem; }
+.topbar__title {
+  color: var(--ink-dim); font-family: var(--font-mono);
+  font-size: var(--t-label); text-transform: uppercase; letter-spacing: var(--caps-track);
+}
 .topbar__spacer { flex: 1; }
-.savestate { font-size: .82rem; color: var(--ink-dim); }
+.savestate {
+  font-family: var(--font-mono); font-size: var(--ui-text-floor); font-weight: 600;
+  text-transform: uppercase; letter-spacing: var(--label-track); color: var(--ink-dim);
+}
 .savestate--error {
-  background: var(--danger); color: #fff; border: 0; cursor: pointer;
-  border-radius: 999px; padding: .25rem .7rem; font: inherit; font-size: .8rem;
+  background: none; color: var(--danger); border: 1px solid currentColor; cursor: pointer;
+  border-radius: var(--radius-pill); padding: .15rem .55rem;
+  font-family: var(--font-mono); font-size: var(--ui-text-floor); font-weight: 600;
+  text-transform: uppercase; letter-spacing: var(--label-track);
 }
 
 .banner { display: flex; gap: .75rem; align-items: center; padding: .6rem 1rem; font-size: .9rem; }
@@ -102,7 +305,9 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .tripcard__open:hover { background: var(--line-soft); }
 .tripcard__title { font-weight: 640; }
 .tripcard__meta { font-size: .8rem; color: var(--ink-dim); }
-.tripcard__meta--dim { opacity: .7; }
+/* Secondary metadata reads quieter by COLOUR, not by opacity — the token layer has an
+   ink for it, and opacity is now reserved for nothing at all. */
+.tripcard__meta--dim { color: var(--ink-faint); }
 .tripcard .btn--quiet { border: 0; border-left: 1px solid var(--line); border-radius: 0; }
 
 .newtrip { display: grid; gap: .75rem; margin-bottom: 1.25rem; }
@@ -134,7 +339,9 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 }
 .spine__day:hover { background: var(--line-soft); }
 .spine__day.is-on { background: color-mix(in srgb, var(--accent) 12%, transparent); font-weight: 600; }
-.spine__day.is-dim { opacity: .62; }
+/* The same signal-collision fix as `.stop--unaccepted`, on the spine. This row carries
+   `.spine__dot` — an unresolved blocker — and `opacity: .62` was dimming that dot too. */
+.spine__day.is-unaccepted { border-left: 2px dashed var(--prov-line); padding-left: calc(1rem - 2px); }
 .spine__dow { font-variant-numeric: tabular-nums; font-size: .78rem; color: var(--ink-dim); min-width: 2.6rem; }
 .spine__daytitle { flex: 1; font-size: .86rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .spine__dot { width: 7px; height: 7px; border-radius: 50%; background: var(--danger); flex: none; }
@@ -150,7 +357,7 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 }
 .tab--on { color: var(--ink); border-bottom-color: var(--accent); font-weight: 620; }
 .tab__badge {
-  font-size: .7rem; padding: .05rem .35rem; border-radius: 999px;
+  font-family: var(--font-mono); font-size: var(--ui-text-floor); padding: .05rem .35rem; border-radius: var(--radius-sm);
   background: var(--line); color: var(--ink-dim); font-variant-numeric: tabular-nums;
 }
 .tab__badge--blocker { background: var(--danger); color: #fff; }
@@ -174,13 +381,39 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .timeline__head > div:first-child { flex: 1; min-width: 12rem; }
 .timeline__sub { color: var(--ink-dim); font-size: .9rem; }
 .timeline__stats { display: flex; gap: 1.1rem; margin: 0; }
-.timeline__stats dt { font-size: .7rem; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-dim); }
+.timeline__stats dt { font-size: var(--ui-text-floor); text-transform: uppercase; letter-spacing: var(--label-track); color: var(--ink-dim); font-weight: 600; }
 .timeline__stats dd { margin: 0; font-weight: 620; font-variant-numeric: tabular-nums; font-size: .95rem; }
 
 .stops { display: grid; gap: .4rem; margin-bottom: 1rem; }
 .stop { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
-.stop--dim { opacity: .72; }
-.stop--flag { border-color: color-mix(in srgb, var(--danger) 55%, var(--line)); }
+
+/*
+ * THE SIGNAL-COLLISION FIX — ROADMAP I-8a names it a design defect, not polish.
+ *
+ * What was here: `.stop--dim { opacity: .72 }`, the ONLY mechanism for "you have not accepted
+ * this yet", composed on the same element with `.stop--flag`. A copied stop that also carried
+ * a blocker rendered BOTH signals degraded, because opacity multiplies everything inside the
+ * element including the blocker's own colour — a stop that is both unaccepted and unsafe read
+ * as slightly less unsafe than one that was only unsafe. With A-34's `provisional` arriving as
+ * a third signal on the same surface, one multiplier cannot carry three channels.
+ *
+ * The rule: PROVENANCE IS A MARK THAT ATTENUATES NOTHING IT IS COMPOSED WITH. It gets
+ * `border-style` and a rule of its own — both properties the severity channel does not use —
+ * so the two compose without either weakening the other. `.stop--flag` keeps `border-color`
+ * at full strength, whatever the provenance.
+ *
+ * The badge and the credit line (§2.14 rule 7) are unchanged and still carry the words; this
+ * is the row-level mark beside them.
+ */
+.stop--unaccepted {
+  border-style: dashed;
+  border-color: var(--prov-line);
+}
+.stop--unaccepted > .stop__body { border-left: 2px dashed var(--prov-line); }
+
+/* Severity. Full-strength colour, always — and it wins the border-COLOUR argument, because a
+   blocker is the more urgent of the two facts. Provenance keeps the dashes either way. */
+.stop--flag { border-color: var(--sev-blocker); }
 
 .leg {
   display: flex; gap: .4rem; align-items: center;
@@ -208,11 +441,24 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 
 .stop__tools { display: flex; gap: .15rem; flex-wrap: wrap; justify-content: flex-end; max-width: 11rem; }
 
+/*
+ * Badges are OUTLINED, not filled — recovered from the planner's own `.badge`, which is
+ * `border: 1px solid currentColor; background: transparent; color: <the signal colour>`.
+ * A filled badge spends the strongest ink on the least important row in the timeline; an
+ * outlined one reads as an annotation, which is what provenance is.
+ *
+ * The colour arrives as `color` on the element (the callers pass `STATUS_BADGE[…].color`),
+ * so `currentColor` carries it to the border with nothing else to keep in sync.
+ */
 .pill {
-  font-size: .68rem; text-transform: lowercase; letter-spacing: .02em;
-  padding: .08rem .4rem; border-radius: 999px; color: #fff; white-space: nowrap;
+  display: inline-block;
+  font-family: var(--font-mono); font-size: var(--ui-text-floor); font-weight: 600;
+  text-transform: uppercase; letter-spacing: var(--label-track);
+  padding: .05rem .4rem; border-radius: var(--radius-sm);
+  border: 1px solid currentColor; background: transparent;
+  white-space: nowrap;
 }
-.pill--quiet { background: var(--line); color: var(--ink-dim); }
+.pill--quiet { color: var(--ink-dim); border-color: var(--line); }
 
 /* ---------------------------------------------------------------- panels */
 
@@ -309,7 +555,8 @@ textarea { resize: vertical; }
 
 /* Lifecycle chips (ARCHITECTURE §8.1) and the past-trip form (ROADMAP Phase 2 I-4). */
 .chip--life {
-  cursor: default; margin-left: .5rem; font-size: .68rem; letter-spacing: .02em;
+  cursor: default; margin-left: .5rem;
+  font-family: var(--font-mono); font-size: var(--ui-text-floor); letter-spacing: var(--label-track);
   text-transform: uppercase; vertical-align: middle; padding: .12rem .5rem;
 }
 .chip--life-planned { border-color: var(--line); color: var(--ink-dim); }
@@ -322,3 +569,107 @@ textarea { resize: vertical; }
 .pane__range { font-size: .78rem; color: var(--ink-dim); }
 .pasttrip .precision { border: 0; padding: 0; margin: 0; display: grid; gap: .35rem; }
 .pasttrip .precision legend { font-size: .78rem; color: var(--ink-dim); padding: 0; }
+
+/* ------------------------------------------------------------- world map
+   ROADMAP I-8a / ARCHITECTURE §4.4 A-40.
+
+   Nothing here measures anything, and nothing here sizes the SVG in script. The `viewBox`
+   the frame returned plus `preserveAspectRatio` is the whole fit mechanism, and the browser
+   re-applies it at every paint — including the first paint after the tab stops being
+   `display:none`. That is why CLAUDE.md's "a map cannot be fitted while its container is
+   hidden" bug is absent from this surface rather than re-solved on it. */
+
+.worldmap { max-width: 62rem; margin: 0 auto; padding: 1.25rem 1rem 4rem; width: 100%; }
+.worldmap__head { margin-bottom: 1rem; }
+.worldmap__head h1 { font-size: var(--t-display); margin-bottom: .2rem; }
+
+.worldmap__figure {
+  margin: 0 0 .9rem; border: var(--rule); border-radius: var(--radius);
+  background: var(--card); overflow: hidden;
+}
+.worldmap__svg { display: block; width: 100%; height: min(58vh, 460px); }
+.worldmap__sea { fill: var(--map-sea); }
+
+/* CONFIRMED: filled ink. */
+.worldmap__country {
+  fill: var(--map-fill);
+  stroke: var(--map-line);
+  stroke-width: .75;
+  cursor: pointer;
+  transition: fill .12s ease;
+}
+.worldmap__country:hover { fill: var(--map-on); }
+.worldmap__country:focus-visible { outline: 2px solid var(--accent); }
+
+/* PROVISIONAL (§8.4 A-34): an OUTLINE over a faint tint — a different treatment, not the
+   confirmed ink at lower strength. "Not the same ink on the filled map", as written. A
+   traveller standing in Vienna is not told they have never been; they are told the evidence
+   is from a trip they are on. */
+.worldmap__country--provisional {
+  fill: var(--map-provisional-fill);
+  stroke: var(--map-provisional-line);
+  stroke-width: 1.4;
+  stroke-dasharray: 3.5 2.5;
+}
+
+.worldmap__country--on { fill: var(--map-on); stroke: var(--ink); stroke-width: 1.6; }
+.worldmap__country--provisional.worldmap__country--on { fill: var(--map-provisional-fill); stroke: var(--map-on); }
+
+@media (prefers-reduced-motion: reduce) { .worldmap__country { transition: none; } }
+
+.worldmap__legend {
+  display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;
+  padding: .45rem .7rem; border-top: var(--rule);
+  font-family: var(--font-mono); font-size: var(--ui-text-floor); font-weight: 600;
+  text-transform: uppercase; letter-spacing: var(--label-track); color: var(--ink-dim);
+}
+.legend__key { display: inline-flex; align-items: center; gap: .4rem; }
+.legend__key::before {
+  content: ""; width: 13px; height: 10px; border-radius: 2px; display: inline-block;
+}
+.legend__key--confirmed::before { background: var(--map-fill); }
+.legend__key--provisional::before {
+  background: var(--map-provisional-fill);
+  border: 1.5px dashed var(--map-provisional-line);
+}
+.legend__note { margin-left: auto; }
+
+/* The stated hole. A-40 clause 3: a code the shipped index cannot fill is named, never
+   dropped, because dropping it makes the map disagree with the count beside it. */
+.worldmap__gap {
+  font-size: var(--t-small); color: var(--ink-dim);
+  border-left: 2px solid var(--line); padding-left: .6rem; margin-bottom: 1.2rem;
+}
+.worldmap__gap b { color: var(--ink); }
+
+.worldmap__drill h2 { margin-bottom: .6rem; }
+.codelist { display: flex; flex-wrap: wrap; gap: .35rem; }
+.codechip {
+  display: inline-flex; align-items: center; gap: .4rem;
+  padding: .2rem .5rem; border: var(--rule); border-radius: var(--radius-sm);
+  background: var(--card); color: var(--ink); cursor: pointer;
+  font-family: var(--font-mono); font-size: var(--t-label); font-weight: 600;
+  letter-spacing: var(--caps-track);
+}
+.codechip:hover { border-color: var(--ink-dim); }
+.codechip--provisional { border-style: dashed; border-color: var(--map-provisional-line); }
+.codechip__n { color: var(--ink-dim); }
+
+.triprows { display: grid; gap: .4rem; }
+.triprow {
+  display: flex; align-items: center; gap: .5rem;
+  border: var(--rule); border-radius: var(--radius); background: var(--card);
+}
+.triprow--gone { border-style: dashed; padding: .5rem .7rem; gap: .6rem; }
+.triprow__open {
+  flex: 1; display: flex; align-items: baseline; gap: .7rem; flex-wrap: wrap;
+  padding: .55rem .7rem; background: none; border: 0; cursor: pointer;
+  color: inherit; font: inherit; text-align: left;
+}
+.triprow__open:hover { background: var(--line-soft); }
+.triprow__title { font-weight: 600; }
+.triprow__meta { font-size: var(--t-label); color: var(--ink-dim); }
+.triprow .chip--life { margin-right: .6rem; }
+
+.worldmap--refused .banner { border: 1px solid var(--danger); border-radius: var(--radius); }
+.worldmap--refused .hint.mono { font-size: var(--t-label); word-break: break-word; }

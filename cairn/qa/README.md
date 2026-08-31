@@ -26,6 +26,18 @@ node --experimental-strip-types r21-closure.mjs    # A-25 Part 6's six closure c
 bash r21-clause3.sh                                # clause 3's four-step mutation, in a throwaway worktree
 ```
 
+I-8a (the world map, the tab shell, the token layer, and the signal-collision fix) has two
+scripts of its own — a rendered-output probe and the injected-fault battery behind its ship gate:
+
+```bash
+# needs npm run web:build && npm run serve in another shell
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/i8a-signals.mjs   # 8 sections, rendered output
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers bash qa/i8a-faults.sh     # 10 injected faults, all RED
+```
+
+`i8a-faults.sh` needs no server of its own: it builds and serves each mutated copy on port 4184
+(override with `I8A_FAULT_PORT`) and refuses to run if that port is already answering.
+
 Browser probes need `npm run web:build && npm run serve` in one shell first, then:
 
 ```bash
