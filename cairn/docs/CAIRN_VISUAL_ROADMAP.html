@@ -319,6 +319,31 @@
 </style>
 </head>
 <body>
+<div class="callout" style="border-left:4px solid #b4690e;padding:.75rem 1rem;margin:1rem 0;background:#fbf4e9">
+<p><strong>&#128993; I-8c IS BUILT, NOT YET ATTACKED &mdash; as of 2026-08-31</strong> (this block is
+the newest; it amends the I-8a block below on two of the items that block routed). Three small
+fixes, all on the same screen, all shipped together as one increment:</p>
+<ul>
+<li><strong>A backup file that contains a date which does not exist is now refused, in words,
+naming the field.</strong> Before this, restoring a file that said <code>2026-02-30</code> or
+<code>2026-13-01</code> loaded cleanly and then quietly told you a trip you actually took never
+happened &mdash; a two-day trip could read back as 183 days, and a trip in 2026 could roll into
+2027, classify as <em>upcoming</em>, and vanish from <em>everywhere you have been</em> with nothing
+on screen saying so. Nothing the app writes could make such a file; a hand-edited or hand-built one
+could.</li>
+<li><strong>One unreadable stored record now costs one row, not the whole screen.</strong> That row
+shows an explicit <em>&ldquo;Dates could not be read&rdquo;</em> chip and everything else &mdash;
+including <strong>Delete</strong> &mdash; keeps working. This is the item the I-8a review routed as
+<em>&ldquo;no way out if it were reachable.&rdquo;</em></li>
+<li><strong>When a screen does fail, there is a way back.</strong> The error banner now offers
+<em>&ldquo;Try again&rdquo;</em> and one more control that does not live on the broken screen, and
+it stops showing once the cause is gone instead of staying for the rest of the session.</li>
+</ul>
+<p><strong>I-8c is built &#9989; &middot; verified &#10060; (no breaker round yet) &middot;
+shippable &#10060;.</strong> It does <strong>not</strong> unblock I-8b on its own: <strong>I-8d
+&mdash; the map-framing decision below &mdash; is still owed.</strong></p>
+</div>
+
 <div class="callout" style="border-left:4px solid #2f7a3d;padding:.75rem 1rem;margin:1rem 0;background:#eef7ef">
 <p><strong>&#128994; I-8a IS SHIPPED &mdash; the Map screen and the visual language are signed off
 &mdash; as of 2026-08-31</strong> (this block is the current state; the 2026-08-29 block below it is

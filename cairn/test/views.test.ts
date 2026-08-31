@@ -161,12 +161,18 @@ test('I-4: PastTripForm requires a city and assigns it as the days\' primaryCity
 
 /**
  * §8.1: there is no stored status field and a builder must not add one. The stage is derived
- * from `(dates, today)` on every render, so the chip must reach `core.lifecycle` and must not
- * read a field off the trip. `stage`/`status` as a *local* name is fine; `trip.status` is not.
+ * from `(dates, today)` on every render, so the chip must *call* for it and must not read a
+ * field off the trip. `stage`/`status` as a *local* name is fine; `trip.status` is not.
+ *
+ * **I-8c moved the call one level, and this assertion with it.** §8.4 **A-44** rules that the
+ * chip goes through `packages/client`'s `rowLifecycle` — which is `core.lifecycle` behind a
+ * read gate — and the companion test below now forbids the direct call this line used to
+ * require. The property is unchanged: derived on every render, from the dates, by one
+ * implementation. Only the route is.
  */
 test('I-4: the lifecycle chip derives its stage and reads no stored status field', () => {
   const src = readFileSync(resolve(VIEWS, 'Library.tsx'), 'utf8');
-  assert.match(src, /lifecycle\(/, 'the chip does not call core.lifecycle');
+  assert.match(src, /rowLifecycle\(/, 'the chip does not derive its stage from the dates at all');
   for (const banned of [/\.status\b/, /\bdatePrecision\b.*===/]) {
     assert.ok(!banned.test(src), `Library.tsx matches ${banned} — a stored stage, or a branch on precision`);
   }
@@ -458,4 +464,82 @@ test('I-8a: neither named removal comes back', () => {
     .replace(/\/\*[\s\S]*?\*\//g, '');
   assert.ok(!/backdrop-filter/.test(css), 'backdrop-filter is back in the stylesheet');
   assert.ok(!/linear-gradient|radial-gradient/.test(css), 'a gradient is back in the stylesheet');
+});
+
+// ---------------------------------------------------------------------------
+// ROADMAP Phase 2 I-8c — the lifecycle read gate (A-44) and the boundary's way out (BLD-3).
+//
+// `apps/web` cannot be imported from here (§3's dependency test), so these are source-level
+// floors under criteria whose real oracle is rendered output, in `qa/`. Same instrument as
+// every other test in this file, and stated as such.
+
+/**
+ * **A-44: one gate, in `packages/client`, and no copy of it in a view.** `core.lifecycle`
+ * throws on a stored row whose date is not shape-valid (§8.4 A-37 Part 2), and QA R33-3
+ * measured one such row taking the entire Trips tab down. The ruling is explicit that the
+ * cheap fix — a `try/catch` at the call site — is the wrong place by one level, because
+ * `LifecycleChip` already has three callers and I-8b adds a fourth.
+ *
+ * So: no view calls `core.lifecycle`, and the chip reads `rowLifecycle` instead.
+ */
+test('I-8c / A-44: no view calls core.lifecycle directly — the gate is the client selector', () => {
+  const offenders: string[] = [];
+  for (const name of viewFiles()) {
+    const src = stripComments(readFileSync(resolve(VIEWS, name), 'utf8'));
+    // The import is the mechanical form: nothing in `apps/web` may pull the ungated function.
+    if (/import\s*\{[^}]*\blifecycle\b[^}]*\}\s*from\s*'@cairn\/core'/.test(src)) offenders.push(name);
+    if (/\bcore\.lifecycle\s*\(/.test(src)) offenders.push(`${name} (core.lifecycle call)`);
+  }
+  assert.deepEqual(offenders, [], 'a view reads the ungated `lifecycle` — one bad row takes the tab down');
+  const chip = stripComments(readFileSync(resolve(VIEWS, 'Library.tsx'), 'utf8'));
+  assert.match(chip, /rowLifecycle/, 'LifecycleChip no longer goes through the A-44 gate');
+  assert.match(
+    chip,
+    /import\s*\{[^}]*\browLifecycle\b[^}]*\}\s*from\s*'@cairn\/client'/,
+    'rowLifecycle must come from @cairn/client, not be re-implemented in a view',
+  );
+});
+
+/**
+ * **A-44: `null` renders as an explicit unreadable chip.** *"…in the vocabulary the Library
+ * already uses for a row it could not read (`summaryScan`'s `unreadable`), rather than a stage
+ * it cannot justify."* Omitting the chip silently is the other wrong answer: a row whose dates
+ * could not be read must not look like a row that is fine.
+ */
+test('I-8c / A-44: an unreadable row gets a chip that says so, not silence and not a stage', () => {
+  const src = stripComments(readFileSync(resolve(VIEWS, 'Library.tsx'), 'utf8'));
+  const chip = /export function LifecycleChip\(([\s\S]*?)\n}\n/.exec(src);
+  assert.ok(chip, 'LifecycleChip is no longer a top-level function in Library.tsx');
+  const body = chip[1];
+  assert.ok(!/return null/.test(body), 'the chip omits itself for an unreadable row');
+  assert.match(body, /chip--warn/, 'the unreadable chip does not use the established warn vocabulary');
+  assert.match(body, /could not be read/, 'the unreadable chip does not say what happened');
+  assert.match(body, /data-stage="unreadable"/, 'nothing distinguishes the unreadable chip in the DOM');
+  // `lifecycleLabel` takes a `Lifecycle`; a `null` reaching it would print "Past trip".
+  assert.ok(
+    !/lifecycleLabel\(stage as/.test(body),
+    'a null stage is being cast into `lifecycleLabel` — that prints a stage for a row with none',
+  );
+});
+
+/**
+ * **BLD-3 — the boundary has a way out.** Round 33: `TabBoundary` latched `message` for the
+ * session with no reset, and with the Trips tab down the complete set of visible controls was
+ * `["BUTTON:CAIRN","BUTTON:TRIPS","BUTTON:MAP"]` — the Library is the only surface with
+ * delete, export or restore, and the Library is the surface that threw.
+ *
+ * Two things, therefore: a reset that clears `message`, and one recovery control rendered by
+ * the **shell** rather than by the surface that failed. The rendered form is `qa/`'s; this is
+ * the floor.
+ */
+test('I-8c / BLD-3: the tab boundary can be reset and offers a recovery outside the failed tab', () => {
+  const src = stripComments(readFileSync(resolve(CAIRN, 'apps/web/src/App.tsx'), 'utf8'));
+  const cls = /class TabBoundary([\s\S]*?)\n}\n/.exec(src);
+  assert.ok(cls, 'App.tsx has no TabBoundary class');
+  const body = cls[1];
+  assert.match(body, /setState\(\{\s*message:\s*null\s*\}\)/, 'the boundary has no reset — the banner outlives its cause');
+  assert.match(body, /Try again/, 'the reset control is not named "Try again"');
+  assert.match(body, /recovery\.run|recovery\.label/, 'the boundary renders no shell-provided recovery');
+  // …and the shell actually supplies one, per rendered tab.
+  assert.match(src, /<TabBoundary[\s\S]{0,200}recovery=\{/, 'App renders TabBoundary without a recovery');
 });

@@ -150,9 +150,14 @@ test('A-32: the roll-over differential vs Date.UTC, every shape-valid (m, d) pai
 // ---------------------------------------------------------------------------
 
 test('A-32: fromDayNumber is total — out of the domain it renders rather than throwing', () => {
-  // The reachable path: `endDate: '9999-13-45'` is shape-valid, `fromJSON` accepts it, and
-  // `validateTrip`'s `addDays(startDate, i)` carries the year past 9999. A throw there would be
-  // a throw out of `validateTrip` on a document `fromJSON` accepted, which §2.1 forbids.
+  // The reachable path — corrected by **A-45** (revision 30), which closed the one this comment
+  // used to name. `fromJSON` no longer accepts `endDate: '9999-13-45'`: its `isoDate()` calls
+  // `isIsoDate` and refuses a date that is not a date. What remains reachable, and is why this
+  // function stays total, is A-45 Part 3's list: a **stored `TripSummaryRow`** (§8.4 **A-37** —
+  // a row minted before that fix still carries a rolled date, and a row is never revalidated),
+  // `cli --today`, and any in-memory `Trip` that never passed a parser. `validateTrip`'s
+  // `addDays(startDate, i)` carries such a year past 9999, and a throw there would be a throw
+  // out of `validateTrip` on an object §2.1 says must come back as `Issue[]`.
   const past = dayNumber('9999-12-31') + 1;
   assert.equal(fromDayNumber(past), '10000-01-01');
   assert.equal(fromDayNumber(dayNumber('0000-01-01') - 1), '-0001-12-31');

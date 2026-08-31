@@ -12,22 +12,44 @@
  */
 import { useState } from 'react';
 import type { AppState } from '@cairn/client';
-import { summaryScan } from '@cairn/client';
-import type { Lifecycle, Trip } from '@cairn/core';
-import { lifecycle } from '@cairn/core';
+import { rowLifecycle, summaryScan } from '@cairn/client';
+import type { IsoDate, Lifecycle, Trip } from '@cairn/core';
 import { clock, store } from '../store.ts';
 import { dateRangeLabel, lifecycleLabel } from '../format.ts';
 import { PastTripForm } from './PastTripForm.tsx';
 
 /**
- * The lifecycle chip — ARCHITECTURE §8.1, ROADMAP Phase 2 I-4.
+ * The lifecycle chip — ARCHITECTURE §8.1, ROADMAP Phase 2 I-4; the read gate is §8.4 **A-44**,
+ * ROADMAP I-8c.
  *
- * The stage is **derived** from `(dates, today)` by `core.lifecycle` on every render. There is
- * no stored status field, and there must not be one: it would be a copy of what the dates
- * already say, going stale at midnight with nothing to invalidate it (§0.6).
+ * The stage is **derived** from `(dates, today)` on every render. There is no stored status
+ * field, and there must not be one: it would be a copy of what the dates already say, going
+ * stale at midnight with nothing to invalidate it (§0.6).
+ *
+ * It is derived through `rowLifecycle`, **not** `core.lifecycle`. A stored `TripSummaryRow` is
+ * not a validated document (§8.4 A-37 Part 2), `core.lifecycle` throws on one whose dates are
+ * not shape-valid, and this component has three callers — the Library, the world map's
+ * drill-down and the open trip — so QA R33-3 watched one bad row take the whole Trips tab down.
+ * The gate lives once, in `packages/client`; A-44 is explicit that a `try/catch` here instead
+ * would be the same read gate copied per surface.
+ *
+ * `null` is *"we could not read this trip's dates"* and is rendered as that, in the vocabulary
+ * the Library already uses for a row it could not read — never as a fourth stage, and never by
+ * omitting the chip, which would make an unreadable row look like a row that is fine.
  */
 export function LifecycleChip({ trip, today }: { trip: { startDate: string; endDate: string }; today: string }) {
-  const stage: Lifecycle = lifecycle(trip, today);
+  const stage: Lifecycle | null = rowLifecycle(trip, today as IsoDate);
+  if (stage === null) {
+    return (
+      <span
+        className="chip chip--life chip--warn"
+        data-testid="lifecycle-chip"
+        data-stage="unreadable"
+      >
+        Dates could not be read
+      </span>
+    );
+  }
   return (
     <span className={`chip chip--life chip--life-${stage}`} data-testid="lifecycle-chip" data-stage={stage}>
       {lifecycleLabel(stage)}

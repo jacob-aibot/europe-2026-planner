@@ -270,6 +270,41 @@ export function travelHistory(state: Pick<AppState, 'library'>, today: core.IsoD
 }
 
 /**
+ * `lifecycle`'s read gate — ARCHITECTURE §8.4 **A-44**, ROADMAP I-8c. `travelHistory`'s own
+ * construction, one entity smaller: a **row** rather than the whole library.
+ *
+ * `core.lifecycle` throws (`parseIsoDate`, via `dayNumber`) on a date that is not even
+ * `YYYY-MM-DD`-shaped, and **A-37** Part 2 is the ruling that a stored `TripSummaryRow` is not
+ * a validated document — a row minted before `fromJSON` validated dates, or hand-edited in
+ * storage, reaches a render path shape-invalid. QA **R33-3**: one such row took the whole Trips
+ * tab down, leaving `["BUTTON:CAIRN","BUTTON:TRIPS","BUTTON:MAP"]` as the entire surviving
+ * control set.
+ *
+ * The gate is here and not in `lifecycle` for A-44's reason: `lifecycle` decides how a row is
+ * *classified*, and clamping inside it would make an out-of-domain row report as `active`
+ * forever, while a `Lifecycle | null` return would ripple through `travelStats`, `cli.ts` and
+ * both trip forms to fix a render path. It is here and not per call site because a read gate
+ * copied once per surface is the defect A-20, A-21 and A-37 each treated once already.
+ *
+ * `null` means **"this row's dates are unreadable"** and nothing else — it is not a fourth
+ * lifecycle stage and it may not be rendered as one. A date that is merely *calendar*-invalid
+ * (`'2026-13-01'`) is not this case: `dayNumber` normalises it (§2.1 **A-32** Part 4) and the
+ * row classifies, exactly as core says it does.
+ *
+ * Pure. Never throws.
+ */
+export function rowLifecycle(
+  row: { startDate: string; endDate: string },
+  today: core.IsoDate,
+): core.Lifecycle | null {
+  try {
+    return core.lifecycle({ startDate: row.startDate as core.IsoDate, endDate: row.endDate as core.IsoDate }, today);
+  } catch {
+    return null;
+  }
+}
+
+/**
  * The lifetime map's frame — ARCHITECTURE §4.4 **A-40**, ROADMAP I-8a. Re-exported here
  * rather than written here because it is ~140 lines of one subject; it follows exactly the
  * `dayMapPoints` precedent above — a view model for a map, computed in `packages/client`,

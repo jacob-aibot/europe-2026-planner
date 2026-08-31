@@ -79,12 +79,30 @@ const TABS: TabSpec[] = [
  * refusal is *"a blank screen or an unhandled rejection"*, and a shared tree makes that
  * outcome reachable from a surface that is not the one refusing.
  *
- * It is deliberately not a general-purpose recovery: it says which surface failed and what
- * it said, and leaves the rest of the app usable. A class component because React has no
- * hook form of `componentDidCatch`; `state` is a class field, which type-strips cleanly
- * (no parameter properties, no enums, no `declare`).
+ * It says which surface failed and what it said, and leaves the rest of the app usable. A
+ * class component because React has no hook form of `componentDidCatch`; `state` is a class
+ * field, which type-strips cleanly (no parameter properties, no enums, no `declare`).
+ *
+ * **It also has a way out — BLD-3, from QA round 33.** The boundary used to latch `message`
+ * for the whole session with no reset, so the banner outlived its own cause; and with the
+ * Trips tab down, the complete set of visible controls was
+ * `["BUTTON:CAIRN","BUTTON:TRIPS","BUTTON:MAP"]` — delete, export and restore all live in the
+ * Library, and the Library was the surface that threw. So, exactly like the persistence
+ * banners below, this one **names the two recoveries the user actually has**: try the surface
+ * again once the cause is gone, and one control supplied by the *shell* rather than by the
+ * surface that failed. Both clear `message`; if the cause is still there the child throws
+ * again on the next render and the banner comes back, which is honest rather than sticky.
+ *
+ * It is deliberately not a general-purpose retry loop: nothing here re-runs a store operation
+ * or guesses at what went wrong.
  */
-class TabBoundary extends Component<{ label: string; children: ReactNode }, { message: string | null }> {
+/** A control the shell offers a failed tab. `hint` is the same act named mid-sentence. */
+type Recovery = { label: string; hint: string; run: () => void };
+
+class TabBoundary extends Component<
+  { label: string; recovery: Recovery; children: ReactNode },
+  { message: string | null }
+> {
   state: { message: string | null } = { message: null };
 
   static getDerivedStateFromError(error: unknown): { message: string } {
@@ -98,12 +116,29 @@ class TabBoundary extends Component<{ label: string; children: ReactNode }, { me
 
   render(): ReactNode {
     if (this.state.message === null) return this.props.children;
+    const { label, recovery } = this.props;
     return (
       <div className="banner banner--error" role="alert">
         <div>
-          <b>The {this.props.label} tab could not be shown.</b>
+          <b>The {label} tab could not be shown.</b>
           <p className="hint mono">{this.state.message}</p>
+          <p className="hint">
+            Two ways on: try {label} again, or {recovery.hint}. Nothing here has changed your
+            trips.
+          </p>
         </div>
+        <button onClick={() => this.setState({ message: null })} aria-label="Try again">
+          Try again
+        </button>
+        <button
+          onClick={() => {
+            recovery.run();
+            this.setState({ message: null });
+          }}
+          aria-label={recovery.label}
+        >
+          {recovery.label}
+        </button>
       </div>
     );
   }
@@ -172,6 +207,24 @@ export function App() {
 
   const run = (p: Promise<unknown>) => p.catch((e: Error) => setError(e.message));
   const exportCopy = () => run(store.exportActive());
+
+  // BLD-3: the one recovery a failed tab gets that does not live inside the surface that
+  // threw. With a trip open, that is closing it — the open document is the input every
+  // surface is rendering, so putting it down is the state change most likely to have been
+  // the cause. With no trip open the shell has nothing left to put down, so the honest
+  // offer is re-reading storage from scratch, which is what a reload is. Neither guesses at
+  // a repair: §2.1 and CLAUDE.md both say a silently corrected document is a guessed one.
+  const recovery: Recovery = state.doc
+    ? {
+        label: 'Close this trip',
+        hint: 'close the trip you have open and go back to the library',
+        run: () => { setTab('trips'); run(store.closeTrip()); },
+      }
+    : {
+        label: 'Reload Cairn',
+        hint: 'reload Cairn, which reads your trips from this device again',
+        run: () => window.location.reload(),
+      };
 
   return (
     <div className="app">
@@ -271,7 +324,7 @@ export function App() {
             aria-labelledby={`tabbtn-${t.id}`}
             hidden={t.id !== tab}
           >
-            <TabBoundary label={t.label}>
+            <TabBoundary label={t.label} recovery={recovery}>
               {t.render({ state, derived, onError: setError, go: setTab })}
             </TabBoundary>
           </div>

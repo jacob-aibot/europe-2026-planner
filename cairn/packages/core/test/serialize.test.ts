@@ -150,10 +150,92 @@ test('a numerically valid but geographically impossible coordinate parses, and v
   for (const i of issues) assert.equal(i.level, 'error');
 });
 
-test('a YYYY-MM-DD-shaped non-date parses, and validateTrip catches it — KD-12', () => {
-  const trip = fromJSON(mutated((d) => { d.startDate = '2026-02-30'; }));
+// ---------------------------------------------------------------------------
+// A-45 (revision 30, ROADMAP I-8c) — the date is the one field the split above does NOT
+// apply to, and the test that used to live here asserted the opposite.
+//
+// A-20: "`fromJSON` decides whether a document IS a `Trip`; `validateTrip` decides whether a
+// `Trip` says something wrong." §2.1 A-32 states `IsoDate`'s domain — a real proleptic
+// Gregorian date. `2026-02-30` is therefore not an `IsoDate`, so a document carrying one is
+// not a `Trip`, so it is the parser's refusal and not `validateTrip`'s report. The local
+// `isoDate()` helper hand-rolled `/^\d{4}-\d{2}-\d{2}$/`, which is the second copy of a
+// predicate that `clockOrNull` six lines below it already calls out by name.
+//
+// This test is the one A-45 Part 4 names as legitimately moving. It previously read
+// "a YYYY-MM-DD-shaped non-date parses, and validateTrip catches it — KD-12" and asserted
+// `fromJSON` ACCEPTED `2026-02-30`; the `invalid_calendar_date` half of it is re-pointed at a
+// `Trip` built directly, below, because that issue code is not deleted — it is defence in
+// depth for objects that never met the parser.
+// ---------------------------------------------------------------------------
+
+/** Every date field the parser reads, and the JSON path each must name. */
+const DATE_SITES: Array<[string, (d: any, v: string) => void, string]> = [
+  ['$.startDate', (d, v) => { d.startDate = v; }, '$.startDate'],
+  ['$.endDate', (d, v) => { d.endDate = v; }, '$.endDate'],
+  ['$.days[3].date', (d, v) => { d.days[3].date = v; }, '$.days[3].date'],
+  ['$.bookings[1].startsAt.date', (d, v) => { d.bookings[1].startsAt.date = v; }, '$.bookings[1].startsAt.date'],
+];
+
+/** A-45 / ROADMAP I-8c criterion 1: a ceiling, not a floor. */
+const CALENDAR_INVALID = ['2026-02-30', '2026-02-31', '2026-02-29', '2026-04-31', '2026-13-01', '2026-00-00'];
+
+/** The six the parser already refused on shape alone. They must still be refused. */
+const SHAPE_INVALID = ['202-01-01', '10000-01-04', '2026-8-7', '', 'March 2019', 'not-a-date'];
+
+for (const bad of CALENDAR_INVALID) {
+  for (const [label, mutate, path] of DATE_SITES) {
+    test(`A-45: fromJSON refuses ${JSON.stringify(bad)} at ${label}`, () => {
+      assert.throws(
+        () => fromJSON(mutated((d) => mutate(d, bad))),
+        (e: Error) => {
+          assert.equal(e.name, 'TripParseError', `${bad} at ${label} threw ${e.name}`);
+          assert.equal((e as TripParseError).path, path);
+          assert.match(e.message, /YYYY-MM-DD/, 'the refusal must say what a date looks like');
+          return true;
+        },
+      );
+    });
+  }
+}
+
+test('A-45: the six shapes the parser already refused are still refused, at every date field', () => {
+  for (const bad of SHAPE_INVALID) {
+    for (const [label, mutate, path] of DATE_SITES) {
+      assert.throws(
+        () => fromJSON(mutated((d) => mutate(d, bad))),
+        (e: Error) => {
+          assert.equal(e.name, 'TripParseError', `${JSON.stringify(bad)} at ${label} threw ${e.name}`);
+          assert.equal((e as TripParseError).path, path);
+          return true;
+        },
+      );
+    }
+  }
+});
+
+test('A-45: a real calendar date at every one of those fields still parses, and round-trips', () => {
+  // The refusal must not have widened into dates that exist. 2024 is a leap year, so
+  // `2024-02-29` is a date and `2026-02-29` (asserted refused above) is not.
+  const text = mutated((d) => {
+    d.startDate = '2024-02-29';
+    d.endDate = '2024-12-31';
+    d.days[3].date = '2024-03-01';
+    d.bookings[1].startsAt.date = '2024-02-29';
+  });
+  const trip = fromJSON(text);
+  assert.equal(trip.startDate, '2024-02-29');
+  assert.equal(toJSON(fromJSON(toJSON(trip))), toJSON(trip));
+});
+
+test('A-45: `invalid_calendar_date` survives for a Trip that never met the parser', () => {
+  // A-45 Part 3: the issue code is NOT deleted. It is defence in depth for the legacy
+  // importer, `migrateDoc` and hand-built trips — objects that reach `validateTrip` without
+  // passing `fromJSON`. So this is built directly rather than parsed, which is exactly the
+  // population the code still exists for.
+  const base = europe2026().trip;
+  const trip = { ...base, startDate: '2026-02-30' as typeof base.startDate };
   const issues = validateTrip(trip).filter((i) => i.code === 'invalid_calendar_date');
-  assert.equal(issues.length, 1, 'the parser lets it through; validateTrip must not');
+  assert.equal(issues.length, 1, 'validateTrip stopped reporting a date that is not a date');
   assert.equal(issues[0].level, 'error');
   assert.equal(issues[0].params.value, '2026-02-30');
 });

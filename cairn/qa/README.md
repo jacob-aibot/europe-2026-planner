@@ -38,6 +38,22 @@ PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers bash qa/i8a-faults.sh     # 10 injecte
 `i8a-faults.sh` needs no server of its own: it builds and serves each mutated copy on port 4184
 (override with `I8A_FAULT_PORT`) and refuses to run if that port is already answering.
 
+I-8c (§2.9 **A-45**, §8.4 **A-44**, **BLD-3**) has one script, for the two of its four criteria
+that are about rendered output — the other two (the parser's refusals, and `store.importDoc`) are
+covered in plain Node by `packages/core/test/serialize.test.ts` and need no browser:
+
+```bash
+# needs npm run web:build && npm run serve in another shell
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/i8c-render.mjs   # 3 sections; ALL CLEAR or exit 1
+```
+
+Its §A is **R33-3 turned around**: the same planted shape-invalid row that took the Trips tab
+down now costs one row and one chip. §A2 exists because §A cannot exercise the Map drill-down —
+a library containing such a row makes `travelStats` refuse wholesale, so there is no country to
+click; that is pre-existing and correct (§8.4 A-31 Part 4), and it is recorded rather than
+asserted away. §B forces a render failure from *outside* the app's state (an armed
+`Array.prototype.join`) so that "the cause is gone" and "the banner cleared" stay two facts.
+
 Browser probes need `npm run web:build && npm run serve` in one shell first, then:
 
 ```bash

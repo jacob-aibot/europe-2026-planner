@@ -19,6 +19,26 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
+> **🟡 I-8c IS BUILT, NOT YET ATTACKED — as of 2026-08-31 (this block is the newest; it amends the
+> I-8a block below on two of the items that block routed).** Three small fixes, all on the same
+> screen, all shipped together as one increment:
+>
+> - **A backup file that contains a date which does not exist is now refused, in words, naming the
+>   field.** Before this, restoring a file that said `2026-02-30` or `2026-13-01` loaded cleanly and
+>   then quietly told you a trip you actually took never happened — a two-day trip could read back
+>   as 183 days, and a trip in 2026 could roll into 2027, classify as *upcoming*, and vanish from
+>   *everywhere you have been* with nothing on screen saying so. Nothing the app writes could make
+>   such a file; a hand-edited or hand-built one could.
+> - **One unreadable stored record now costs one row, not the whole screen.** That row shows an
+>   explicit *"Dates could not be read"* chip and everything else — including **Delete** — keeps
+>   working. This is the item the I-8a review routed as *"no way out if it were reachable."*
+> - **When a screen does fail, there is a way back.** The error banner now offers *"Try again"*
+>   and one more control that does not live on the broken screen, and it stops showing once the
+>   cause is gone instead of staying for the rest of the session.
+>
+> **I-8c is built ✅ · verified ❌ (no breaker round yet) · shippable ❌.** It does **not** unblock
+> I-8b on its own: **I-8d — the map-framing decision below — is still owed.**
+>
 > **🟢 I-8a IS SHIPPED — the Map screen and the visual language are signed off — as of 2026-08-31
 > (this block is the current state; the 2026-08-29 block below it is older on I-8 only).** I-8 was
 > split into **I-8a** (the map, the tab shell, the type-and-colour layer) and **I-8b** (the Profile

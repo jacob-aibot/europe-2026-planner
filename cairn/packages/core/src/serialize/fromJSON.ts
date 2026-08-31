@@ -11,6 +11,7 @@ import type {
 } from '../model/types.ts';
 import { DATE_PRECISIONS, SCHEMA_VERSION } from '../model/types.ts';
 import { isClockTime } from '../model/openingHours.ts';
+import { isIsoDate } from '../model/ids.ts';
 
 /** Thrown by `fromJSON` for any malformed document. Carries a JSON path. */
 export class TripParseError extends Error {
@@ -72,9 +73,23 @@ function datePrecision(v: unknown, path: string): DatePrecision {
   }
   return v as DatePrecision;
 }
+/**
+ * A date field, refused unless it is a real calendar date — A-45.
+ *
+ * A-20: *"`fromJSON` decides whether a document IS a `Trip`; `validateTrip` decides whether a
+ * `Trip` says something wrong."* §2.1 **A-32** states `IsoDate`'s domain (proleptic Gregorian,
+ * `0000-01-01` … `9999-12-31`), so `2026-02-30` is not an `IsoDate` and a document carrying one
+ * is not a `Trip`. This calls `isIsoDate` — the ONE date validator in core (`model/ids.ts`) —
+ * for the same reason `clockOrNull` below calls `isClockTime`: a second copy of the predicate
+ * is exactly the defect A-20 is treating, and the shape-only regex that used to live here was
+ * that second copy, weaker by a calendar.
+ *
+ * `validateTrip`'s `invalid_calendar_date` is **not** superseded: it stays as defence in depth
+ * for `Trip`s that never met this parser (the legacy importer, `migrateDoc`, hand-built trips).
+ */
 function isoDate(v: unknown, path: string): string {
   const s = str(v, path);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) throw new TripParseError('expected YYYY-MM-DD', path);
+  if (!isIsoDate(s)) throw new TripParseError('expected a real calendar date in YYYY-MM-DD', path);
   return s;
 }
 function clockOrNull(v: unknown, path: string): string | null {
