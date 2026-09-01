@@ -19,9 +19,53 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
+> **🟢 THE NEW MAP FRAME HAS BEEN ATTACKED AND IT HELD — as of 2026-09-01 (this block is the
+> newest; it supersedes the block below on *"verified ❌"* and on what happens next, and nothing
+> else).**
+>
+> **I-8i is designed ✅ · built ✅ · verified ✅ · shippable — the manager's call.** A tester spent
+> a round trying to break it and, for the first time in this seven-round arc, could not. He wrote
+> the whole frame calculation a second time from the ruling — his own distance formula, his own
+> clustering algorithm, his own area formula — and got the **identical answer, character for
+> character, on 24 different travel histories**, sixteen of which nobody had tested before. The
+> guarantees were then checked on **every possible one- and two-country history there is** —
+> 57,121 maps: not one lost a country, not one put a territory panel ahead of a place you actually
+> went, and not one produced a broken frame. In a real browser, ten histories including the
+> fourteen-panel worst case: every panel is on the page, none is hidden, collapsed or overlapping,
+> and every country the calculation says to draw is drawn.
+>
+> **The five things Jacob asked to be re-attacked specifically, and what happened:**
+>
+> - **A trip to France opens on France.** Confirmed, and confirmed the hard way: the tester checked
+>   that without the ordering rule it really would open on French Guiana, so the rule is doing work
+>   rather than agreeing with an order that was already right.
+> - **France + the United States.** Four panels, both countries at full size, France **342 × 236
+>   px** measured on the real page. The two territory panels come after both, on screen and in the
+>   order a screen reader hears — the tester checked the *laid-out grid positions*, not just the
+>   page source.
+> - **The Europe 2026 sample.** Unchanged to the byte, including when the map is built from the
+>   real generated sample file rather than a test fixture.
+> - **Sparse, far-flung histories.** Five new ones the tester invented (Iceland + New Zealand +
+>   Mongolia, and four more). Each drew sensible independent panels; nothing merged that should not
+>   have; nothing was lost.
+> - **"I have been everywhere."** All 239 countries still collapse to one honest world map, to the
+>   byte.
+>
+> **Seven small findings, none of them blocking, and none of them a bug in what was built.** They
+> are all cases where a *sentence in the design document* is more confident than the measurement
+> behind it — the published "worst case is 14 panels" is really 18; a census the roadmap states as
+> "every one of 1,229" is a count of histories, not panels; a claim that the alphabet no longer
+> breaks ties is technically not true (it still does, one step removed, and it only affects reading
+> order); and the accessible label a screen reader hears on a territory panel says slightly more
+> than the label printed beside it, which is the one item routed back to the builder as a real
+> (one-word) fix. Full detail in `QA-FINDINGS.md`, round 39.
+>
+> **Zero blockers.** Nothing leaks, nothing is transmitted, nothing is destroyed; the saved data,
+> the day map, the shared code list and the dependency list are all byte-identical.
+
 > **🔵 THE MAP'S FRAMING MODEL WAS RECONSIDERED, JACOB'S FOLLOW-UP QUESTION IS ANSWERED, AND THE
-> DESIGN IS NOW WAITING ONLY ON HIS APPROVAL — as of 2026-09-01 (this block is the newest; it
-> supersedes the block below on what happens next, and nothing else).**
+> DESIGN IS NOW WAITING ONLY ON HIS APPROVAL — as of 2026-09-01 (this block is superseded on
+> *"verified"* and on what happens next by the block above).**
 >
 > **This is not a fifth patch. Jacob stopped the patching.** Four rounds in a row, the architect
 > added one more condition to the same rule, the builder built it faithfully, and the tester found
@@ -108,7 +152,9 @@ update to this file added that instruction).
 > **✅ APPROVED BY JACOB AND NOW BUILT — 2026-09-01.** He approved the equal-pane model and the
 > home-pane/extent-pane answer to his membership question, and the builder pass has landed.
 > **I-8i is designed ✅ · built ✅ · verified ❌ — nobody has attacked it yet, and a tester round is
-> mandatory before it counts as anything more than "the code exists".**
+> mandatory before it counts as anything more than "the code exists".** *(That round has now
+> happened — round 39, 0 blockers, verdict SHIP. See the newest block at the top of this file;
+> this line is superseded on "verified".)*
 >
 > What actually changed, in one line each:
 >

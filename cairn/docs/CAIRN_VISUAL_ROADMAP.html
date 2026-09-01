@@ -319,11 +319,56 @@
 </style>
 </head>
 <body>
+<div class="callout" style="border-left:4px solid #16a34a;padding:.75rem 1rem;margin:1rem 0;background:#f0fdf4">
+<p><strong>&#128994; THE NEW MAP FRAME HAS BEEN ATTACKED AND IT HELD &mdash; as of
+2026-09-01</strong> (this block is the newest; it supersedes the block below on
+<em>&ldquo;verified &#10060;&rdquo;</em> and on what happens next, and nothing else).</p>
+<p><strong>I-8i is designed &#9989; &middot; built &#9989; &middot; verified &#9989; &middot;
+shippable &mdash; the manager&rsquo;s call.</strong> A tester spent a round trying to break it and,
+for the first time in this seven-round arc, could not. He wrote the whole frame calculation a second
+time from the ruling &mdash; his own distance formula, his own clustering algorithm, his own area
+formula &mdash; and got the <strong>identical answer, character for character, on 24 different
+travel histories</strong>, sixteen of which nobody had tested before. The guarantees were then
+checked on <strong>every possible one- and two-country history there is</strong> &mdash; 57,121
+maps: not one lost a country, not one put a territory panel ahead of a place you actually went, and
+not one produced a broken frame. In a real browser, ten histories including the fourteen-panel worst
+case: every panel is on the page, none is hidden, collapsed or overlapping, and every country the
+calculation says to draw is drawn.</p>
+<p><strong>The five things Jacob asked to be re-attacked specifically, and what happened:</strong></p>
+<ul>
+<li><strong>A trip to France opens on France.</strong> Confirmed, and confirmed the hard way: the
+tester checked that without the ordering rule it really would open on French Guiana, so the rule is
+doing work rather than agreeing with an order that was already right.</li>
+<li><strong>France + the United States.</strong> Four panels, both countries at full size, France
+<strong>342 &times; 236 px</strong> measured on the real page. The two territory panels come after
+both, on screen and in the order a screen reader hears &mdash; the tester checked the
+<em>laid-out grid positions</em>, not just the page source.</li>
+<li><strong>The Europe 2026 sample.</strong> Unchanged to the byte, including when the map is built
+from the real generated sample file rather than a test fixture.</li>
+<li><strong>Sparse, far-flung histories.</strong> Five new ones the tester invented (Iceland + New
+Zealand + Mongolia, and four more). Each drew sensible independent panels; nothing merged that
+should not have; nothing was lost.</li>
+<li><strong>&ldquo;I have been everywhere.&rdquo;</strong> All 239 countries still collapse to one
+honest world map, to the byte.</li>
+</ul>
+<p><strong>Seven small findings, none of them blocking, and none of them a bug in what was
+built.</strong> They are all cases where a <em>sentence in the design document</em> is more
+confident than the measurement behind it &mdash; the published &ldquo;worst case is 14 panels&rdquo;
+is really 18; a census the roadmap states as &ldquo;every one of 1,229&rdquo; is a count of
+histories, not panels; a claim that the alphabet no longer breaks ties is technically not true (it
+still does, one step removed, and it only affects reading order); and the accessible label a screen
+reader hears on a territory panel says slightly more than the label printed beside it, which is the
+one item routed back to the builder as a real (one-word) fix. Full detail in
+<code>QA-FINDINGS.md</code>, round 39.</p>
+<p><strong>Zero blockers.</strong> Nothing leaks, nothing is transmitted, nothing is destroyed; the
+saved data, the day map, the shared code list and the dependency list are all byte-identical.</p>
+</div>
+
 <div class="callout" style="border-left:4px solid #2563eb;padding:.75rem 1rem;margin:1rem 0;background:#eff6ff">
 <p><strong>&#128309; THE MAP&rsquo;S FRAMING MODEL WAS RECONSIDERED, JACOB&rsquo;S FOLLOW-UP QUESTION
 IS ANSWERED, AND THE DESIGN IS NOW WAITING ONLY ON HIS APPROVAL &mdash; as of 2026-09-01</strong>
-(this block is the newest; it supersedes the block below on <em>what happens next</em>, and nothing
-else).</p>
+(this block is superseded on <em>&ldquo;verified&rdquo;</em> and on what happens next by the block
+above).</p>
 <p><strong>This is not a fifth patch. Jacob stopped the patching.</strong> Four rounds in a row, the
 architect added one more condition to the same rule, the builder built it faithfully, and the tester
 found the same kind of defect one step further out. After round 38 measured that the fourth fix
@@ -411,7 +456,7 @@ a known, separate, already-documented problem, and the note now says which 60 li
 it is ever tackled.</p>
 <p><strong>&#9989; APPROVED BY JACOB AND NOW BUILT &mdash; 2026-09-01.</strong> He approved the
 equal-pane model and the home-pane/extent-pane answer to his membership question, and the builder
-pass has landed. <strong>I-8i is designed &#9989; &middot; built &#9989; &middot; verified &#10060;
+pass has landed. <strong>I-8i is designed &#9989; &middot; built &#9989; &middot; verified &#10060; (it is now &#9989; &mdash; see the newest block at the top)
 &mdash; nobody has attacked it yet, and a tester round is mandatory before it counts as anything
 more than &ldquo;the code exists&rdquo;.</strong></p>
 <p>What actually changed, in one line each:</p>
@@ -1239,7 +1284,7 @@ hands you a trip file with no owner recorded in it.</p>
   <div class="brand">
     <h1>CAIRN</h1>
     <div class="tagline">"You are here"</div>
-    <div class="updated">Updated 2026-09-01 · against <code>master</code>, after the architect's <strong>A-53</strong> ruling — the lifetime map's pane-membership question is closed and <strong>I-8i is waiting only on Jacob's approval of A-51</strong>. Previously: 2026-08-28, after the <strong>manager's 2a gate — verdict SHIP</strong> (<code>67f5588</code>). Step 2a (past trips and the trip lifecycle) is built, verified and <strong>shipped</strong>; step 2b (the lifetime map) is unblocked and next. Seven follow-ups routed, none blocking; the sharing/friends/public-link block is <em>not</em> lifted. Previously: QA round 21, the closure round — the seven-round copy-path arc closed.</div>
+    <div class="updated">Updated 2026-09-01 · against <code>master</code> @ <code>10455b9</code>, after <strong>QA round 39 — the breaker pass over I-8i</strong>: <strong>0 blockers, 0 MAJOR, 7 MINOR, verdict SHIP</strong>. The lifetime map's new framing model (A-51/A-52/A-53) is built and now verified. Previously: the architect's <strong>A-53</strong> ruling closed the pane-membership question. Previously: 2026-08-28, after the <strong>manager's 2a gate — verdict SHIP</strong> (<code>67f5588</code>). Step 2a (past trips and the trip lifecycle) is built, verified and <strong>shipped</strong>; step 2b (the lifetime map) is unblocked and next. Seven follow-ups routed, none blocking; the sharing/friends/public-link block is <em>not</em> lifted. Previously: QA round 21, the closure round — the seven-round copy-path arc closed.</div>
   </div>
 
   <!-- ============ DECISION CALLOUT ============ -->

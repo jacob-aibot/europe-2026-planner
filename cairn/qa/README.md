@@ -363,6 +363,46 @@ withdrew: it is printed with the ruling that withdrew it and with what the same 
 now, so the record of what the old rule guaranteed survives without pretending the product is
 broken.
 
+### Round 39 — the adversarial pass over I-8i
+
+Written from A-51/A-52/A-53 and the shipped source, **not** by re-pointing `i8i-*` and **not**
+using `r38-a49.mjs`'s `myFrameA51` (which the builder of this increment wrote, so comparing the
+shipped frame to it compares one author to himself). Own haversine, own union-find components,
+own Lambert equal-area ring area, own G1…G8.
+
+```bash
+node qa/r39-a51.mjs                                      # bare Node, ~3 min (it enumerates all
+                                                         # 28,441 two-country libraries twice)
+# with `npm run web:build && node tools/serve.mjs` in another shell:
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r39-render.mjs
+```
+
+`r39-a51.mjs`, fourteen sections: **A** A-52 attacked at its own boundary — a ring the index
+carries that has no points (**R39-1**), and A-52's stated *"`[]` iff `countryKeyPoint` is null"*
+(**R39-2**); **B** the shipped frame vs. my own G1…G5 string for string over 24 libraries;
+**C** `FR` alone, and whether I18's key is load-bearing or decorative; **D** `FR`+`US`;
+**E** the Europe 2026 fixture, including a frame built from the real generated sample's own
+country codes; **F** five sparse multi-region histories of my own construction; **G** the 239-code
+ceiling, a 3,000-library random sweep, and a 4,000-run randomised greedy search for the true worst
+pane count (**R39-3**); **H** I18/I5/I1/I2/I13/L4 over 239 single + all 28,441 two-country
+libraries; **I** the extent-pane set recomputed from the raw index; **J** the ">120° panes"
+recount (**R39-4**); **K** KD-74's premise, measured and then stressed with a reversed kernel
+order; **L** I17, I6, and L5 under an order-*destroying* ISO relabel (**R39-5**); **M** the
+`cairn-constraints` greps (**R39-6**); **N** zero-trip rows, and the pane aspects the stylesheet
+has to size (**R39-7**).
+
+`r39-render.mjs`, six sections, all real page loads: **A** nothing hidden, collapsed, overlapping
+or off-canvas over ten libraries including the 14-pane worst case; **B** I18 in DOM order *and* in
+the geometric top-left reading order of the laid-out grid, at one column and at three; **C**
+A-53's caption contract, including the accessible name (**R39-6**); **D** the `--pane-min` sweep
+BUILD-NOTES says was not done — 21 widths × 3 libraries, watching `auto-fill` go 1 → 2 → 3
+columns; **E** KD-76's 35% figure and chip-list reachability for all five of `MF SX AI BL JE`;
+**F** the pixel floor at 390 × 820 (**R39-7**).
+
+`r39-a51.mjs` reports **12 FAIL** and `r39-render.mjs` **7 FAIL** at `10455b9`; every one is a
+round-39 finding, listed in `docs/QA-FINDINGS.md`. Neither script is broken — read the note
+before assuming it is.
+
 Browser probes need `npm run web:build && npm run serve` in one shell first, then:
 
 ```bash
