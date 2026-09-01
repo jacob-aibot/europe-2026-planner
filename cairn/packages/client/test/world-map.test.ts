@@ -320,13 +320,20 @@ function box(viewBox: string): { minX: number; minY: number; w: number; h: numbe
 
 test('A-41 C5: the reference library splits into a main pane and one inset', () => {
   const frame = worldMapFrame(statsOf(REFERENCE.map((code) => ({ code }))), core.COUNTRY_INDEX);
-  assert.equal(frame.panes.length, 2);
+  // **Re-pointed at I-8h.** C5 still produces exactly two GEOGRAPHIC panes; A-49 C7′ appends a
+  // third, `detached`, because `US` has geometry the CONUS frame is not connected to. The
+  // clause this test holds — the dominance test and its arithmetic — is unchanged.
+  assert.equal(frame.panes.filter((p) => p.role !== 'detached').length, 2);
   assert.deepEqual(frame.panes[0].codes, ['AT', 'CZ', 'DE', 'GB', 'HR', 'HU']);
   assert.deepEqual(frame.panes[1].codes, ['US']);
   assert.equal(frame.panes[0].weight, 6, 'Σ tripIds.length over the six European codes');
   assert.equal(frame.panes[1].weight, 1);
-  // 2 × 6 > 7 — a strict majority of the traveller's own record.
-  assert.ok(2 * frame.panes[0].weight > frame.panes.reduce((n, p) => n + p.weight, 0));
+  // 2 × 6 > 7 — a strict majority of the traveller's own record. `W` is the total over the
+  // CLUSTERS, and A-49 I15 forbids re-deriving it from `panes`, so the detached pane's repeated
+  // weight is excluded here rather than summed in.
+  const W = frame.panes.filter((p) => p.role !== 'detached').reduce((n, p) => n + p.weight, 0);
+  assert.equal(W, 7);
+  assert.ok(2 * frame.panes[0].weight > W);
 });
 
 test('A-41 C8: the reference main pane frames Europe, not the world', () => {
@@ -341,8 +348,9 @@ test('A-41 C8: the reference main pane frames Europe, not the world', () => {
 
 test('A-41 Part 5: panes are identified positionally, and panes[0] is the main one', () => {
   const frame = worldMapFrame(statsOf(REFERENCE.map((code) => ({ code }))), core.COUNTRY_INDEX);
-  assert.deepEqual(frame.panes.map((p) => p.id), ['main', 'inset-1']);
-  assert.deepEqual(frame.panes.map((p) => p.role), ['main', 'inset']);
+  // Re-pointed at I-8h: A-49 C8″ appends `detached` after the geographic panes (I5).
+  assert.deepEqual(frame.panes.map((p) => p.id), ['main', 'inset-1', 'detached']);
+  assert.deepEqual(frame.panes.map((p) => p.role), ['main', 'inset', 'detached']);
 });
 
 test('A-41 Part 5: `viewBox` and `bounds` still mean panes[0], so the old consumer is unbroken', () => {
@@ -393,8 +401,14 @@ test('A-48 C2′: a code keys off its PRINCIPAL RING, so a distant territory can
     ],
   };
   const frame = worldMapFrame(statsOf([trips('DD', 6), trips('EE', 1)]), index);
-  assert.equal(frame.panes.length, 1, 'the key point is on the mainland, and EE is 550 km from it');
+  // Re-pointed at I-8h: the CLUSTERING answer this test is for is unchanged — one geographic
+  // pane holding both. `DD`'s far territory is now drawn in its own `detached` pane (A-49 C8″)
+  // instead of stretching that pane across a hemisphere.
+  assert.equal(frame.panes.filter((p) => p.role !== 'detached').length, 1,
+    'the key point is on the mainland, and EE is 550 km from it');
   assert.deepEqual(frame.panes[0].codes, ['DD', 'EE']);
+  assert.deepEqual(frame.panes[1].codes, ['DD']);
+  assert.equal(frame.panes[1].role, 'detached');
   // The client does not derive the key itself: it is core's answer, verbatim.
   assert.deepEqual(core.countryKeyPoint('DD', index), { lat: 46, lng: 4 });
 });
@@ -647,18 +661,18 @@ const membership = (frame: ReturnType<typeof worldMapFrame>): string =>
 // R36-1 — France. The library A-41's own frame got wrong.
 // ---------------------------------------------------------------------------
 
-test('A-48 C2′ / R36-1: two France trips and one Greece trip are ONE pane, not FR + an inset', () => {
+test('A-48 C2′ / R36-1: two France trips and one Greece trip are ONE geographic pane', () => {
   const frame = worldMapFrame(statsOf([trips('FR', 2), trips('GR', 1)]), core.COUNTRY_INDEX);
-  assert.equal(frame.panes.length, 1, 'FR and GR are 1,900 km apart and belong in one frame');
+  assert.equal(frame.panes.filter((p) => p.role !== 'detached').length, 1,
+    'FR and GR are 1,900 km apart and belong in one frame');
   assert.deepEqual(frame.panes[0].codes, ['FR', 'GR']);
   assert.equal(frame.panes[0].weight, 3);
-  // **A-48 residue 1′, made visible rather than assumed away.** C2′ fixes the KEY, not the
-  // EXTENT: C8 is unchanged, so the pane still spans every corner of FR's own index box —
-  // French Guiana included, because French Guiana is drawn — and the frame is 81.1° wide.
-  // What changed is that Greece is no longer captioned "Shown separately" while sitting 1,900
-  // km from the country the frame is built around.
+  // **The extent half of this test is superseded by A-49 C8′ (QA R37-1)** and is re-asserted
+  // in the I-8h block below. It used to pin 81.1° and call that "C8 unchanged" — which is
+  // exactly the defect round 37 found. The CLUSTERING half, which is what A-48 ruled, is
+  // unchanged: Greece is still not captioned "Shown separately" 1,900 km from the subject.
   const w = frame.panes[0].bounds.east - frame.panes[0].bounds.west;
-  assert.equal(Math.round(w * 10) / 10, 81.1, 'the extent is FR box ∪ GR box, per C8 unchanged');
+  assert.equal(Math.round(w * 10) / 10, 31.2, 'A-48 shipped 81.1°; A-49 C8′ frames the parts');
 });
 
 test('A-48 C2′ / R36-1: France clusters with Europe, and no longer with Morocco alone', () => {
@@ -672,7 +686,8 @@ test('A-48 C2′ / R36-1: France clusters with Europe, and no longer with Morocc
   assert.equal(km('FR', 'CZ'), 1, 'FR–CZ is 1,075 km and must merge (it was 4,137 km under C2)');
   assert.equal(km('FR', 'MA'), 1, 'FR–MA is 2,227 km and still merges — the fix is the ORDER, not the set');
   const frame = worldMapFrame(statsOf([trips('CZ', 1), trips('FR', 2), trips('MA', 1)]), core.COUNTRY_INDEX);
-  assert.equal(frame.panes.length, 1, 'all three are one European/North-African cluster');
+  assert.equal(frame.panes.filter((p) => p.role !== 'detached').length, 1,
+    'all three are one European/North-African cluster');
 });
 
 // ---------------------------------------------------------------------------
@@ -701,7 +716,8 @@ test('A-48 I9 / R36-2: HU and SI — 350 km apart — are never separated, in an
   const spec: Array<[string, number]> = [['FR', 1], ['HU', 1], ['SI', 1]];
   for (const order of permutations(spec)) {
     const frame = worldMapFrame(statsOf(rowsOf(order)), core.COUNTRY_INDEX);
-    assert.equal(frame.panes.length, 1, `{${order.map((o) => o[0]).join(',')}} split`);
+    assert.equal(frame.panes.filter((p) => p.role !== 'detached').length, 1,
+      `{${order.map((o) => o[0]).join(',')}} split`);
     const pane = frame.panes.find((p) => p.codes.includes('HU')) as { codes: string[] };
     assert.ok(pane.codes.includes('SI'), 'Hungary and Slovenia are in different panes');
   }
@@ -719,9 +735,17 @@ test('A-48 I9: permuting a five-country library changes nothing but the row orde
 // R33-1 — the reference frame, byte for byte. A-48 may not cost I-8d its fix.
 // ---------------------------------------------------------------------------
 
-test('A-48: R33-1 is not regressed — the reference frame is byte-identical to I-8d\'s', () => {
+/**
+ * **Re-pointed at I-8h, and the moved half is named rather than deleted.** A-49 changes no key
+ * point, no partition and no paint order, so the MAIN pane is still byte-identical to I-8d's
+ * and I-8g's — that is the assertion this test exists for and it is unchanged. What moves is
+ * the US inset, from the union of every US box (104.83° wide) to CONUS (57.72°), with Alaska,
+ * Hawaii and the Aleutians in a detached pane. The superseded string is kept below as the
+ * injected fault's oracle: if it ever comes back, C8 was restored.
+ */
+test('A-48: R33-1 is not regressed — the reference MAIN pane is byte-identical to I-8d\'s', () => {
   const frame = worldMapFrame(statsOf(REFERENCE.map((code) => ({ code }))), core.COUNTRY_INDEX);
-  assert.equal(frame.panes.length, 2);
+  assert.equal(frame.panes.filter((p) => p.role !== 'detached').length, 2);
   assert.deepEqual(frame.panes[0].codes, ['AT', 'CZ', 'DE', 'GB', 'HR', 'HU']);
   assert.deepEqual(frame.panes[1].codes, ['US']);
   assert.equal(frame.panes[0].weight, 6);
@@ -730,10 +754,13 @@ test('A-48: R33-1 is not regressed — the reference frame is byte-identical to 
   const round4 = (n: number) => Math.round(n * 1e4) / 1e4;
   assert.equal(round4(frame.panes[0].bounds.east - frame.panes[0].bounds.west), 30.2827);
   assert.equal(round4(frame.panes[0].bounds.north - frame.panes[0].bounds.south), 16.155);
-  // The two strings I-8d shipped, pinned. A key point that moved a pane would move these.
+  // The string I-8d shipped for the main pane, pinned. A key point that moved a pane would
+  // move it; A-49 does not.
   assert.equal(frame.panes[0].viewBox, '-8.1779 -59.2407 31.494 17.3663');
-  assert.equal(frame.panes[1].viewBox, '-173.8876 -73.4543 109.0195 56.6347');
   assert.equal(frame.viewBox, frame.panes[0].viewBox);
+  // A-48 C8's inset, superseded by A-49 C8′ — kept as the oracle, asserted absent.
+  assert.notEqual(frame.panes[1].viewBox, '-173.8876 -73.4543 109.0195 56.6347');
+  assert.equal(frame.panes[1].viewBox, '-125.8416 -50.5435 60.0314 26.618');
 });
 
 // ---------------------------------------------------------------------------
@@ -807,5 +834,449 @@ test('A-48 C9: paint order is a property of the emitted array only — pane.code
     assert.deepEqual(pane.codes, canonical.filter((c) => pane.codes.includes(c)));
   }
   assert.notDeepEqual(frame.countries.map((c) => c.code), canonical, 'the emitted array is not paint-ordered');
-  assert.deepEqual(frame.countries.map((c) => c.code).sort(), canonical.slice().sort(), 'a code was lost');
+  // Re-pointed at I-8h: `countries` is a PAINT list, one row per (code, pane), so `US` is in
+  // it twice. `frame.codes` is the country list and is what stayed one-per-code and canonical.
+  assert.deepEqual(frame.codes, canonical, 'the country list is canonical row order');
+  assert.deepEqual([...new Set(frame.countries.map((c) => c.code))].sort(), canonical.slice().sort(),
+    'a code was lost');
+  assert.equal(frame.countries.filter((c) => c.code === 'US').length, 2);
+});
+
+// ===========================================================================
+// I-8h — ARCHITECTURE §4.4 **A-49**. C8′ (a pane frames the parts its subject is connected
+// to), C8″ (the detached pane), C7′ (1…4 panes), Part 4 (the frame shape), Part 5 (`codes`).
+//
+// A-48 moved the KEY POINT onto the country and left C8 fitting the extent over every entry
+// box, so one pane used two different answers to "where is this country" for two different
+// purposes (QA R37-1). Nothing below may cost A-48 its clustering: the reference frame's MAIN
+// pane is byte-identical, and I12 lives in core's own `countryParts` test.
+// ===========================================================================
+
+/** A-48's superseded C8, kept as the injected fault's oracle: `mapBounds` over every entry box. */
+function unionBoxExtent(codes: string[], index: core.CountryIndex): { w: number; h: number } {
+  const corners: core.LatLng[] = [];
+  for (const entry of index.countries) {
+    if (!codes.includes(entry.code)) continue;
+    const [minLng, minLat, maxLng, maxLat] = entry.box;
+    corners.push({ lat: minLat, lng: minLng }, { lat: minLat, lng: maxLng },
+                 { lat: maxLat, lng: maxLng }, { lat: maxLat, lng: minLng });
+  }
+  const b = core.mapBounds(corners);
+  return { w: b.east - b.west, h: b.north - b.south };
+}
+
+const extent = (p: { bounds: core.MapBounds }) => ({
+  w: Math.round((p.bounds.east - p.bounds.west) * 100) / 100,
+  h: Math.round((p.bounds.north - p.bounds.south) * 100) / 100,
+});
+
+// ---------------------------------------------------------------------------
+// The ship gate: the two-France-and-one-Greece library, as three numbers.
+// ---------------------------------------------------------------------------
+
+/**
+ * **Supersedes the I-8g assertion above.** That test pinned `panes.length === 1` and an
+ * 81.1°-wide extent and called the width *"C8 unchanged"*, which is exactly what R37-1 found.
+ * The clustering half it was written for is untouched — FR and GR are still ONE geographic
+ * pane, and Greece is still not captioned *"shown separately"*.
+ */
+test('A-49 C8′ / R37-1: the FR+GR library is a map of Europe — 31.20° × 16.23°, not 81.13°', () => {
+  const frame = worldMapFrame(statsOf([trips('FR', 2), trips('GR', 1)]), core.COUNTRY_INDEX);
+  assert.equal(frame.panes.length, 2, 'one geographic pane, plus the detached one');
+  assert.deepEqual(frame.panes[0].codes, ['FR', 'GR']);
+  assert.equal(frame.panes[0].role, 'main');
+  assert.deepEqual(extent(frame.panes[0]), { w: 31.2, h: 16.23 });
+  assert.equal(frame.panes[0].viewBox.split(' ')[2], '32.4444');
+  assert.equal(frame.panes[0].viewBox.split(' ')[3], '17.4764');
+  // French Guiana, which used to be a speck in the corner of that rectangle.
+  assert.equal(frame.panes[1].role, 'detached');
+  assert.equal(frame.panes[1].id, 'detached');
+  assert.deepEqual(frame.panes[1].codes, ['FR']);
+  assert.deepEqual(extent(frame.panes[1]), { w: 2.87, h: 3.7 });
+});
+
+test('the injected fault: A-48 C8 (the union of every entry box) returns the 81.13° rectangle', () => {
+  const u = unionBoxExtent(['FR', 'GR'], core.COUNTRY_INDEX);
+  assert.equal(Math.round(u.w * 100) / 100, 81.13);
+  assert.equal(Math.round(u.h * 100) / 100, 49.1);
+  const frame = worldMapFrame(statsOf([trips('FR', 2), trips('GR', 1)]), core.COUNTRY_INDEX);
+  assert.ok(frame.panes[0].bounds.east - frame.panes[0].bounds.west < 32,
+    'the main pane is still the union-box extent — C8 was not superseded');
+});
+
+/**
+ * The ruling's own metric, computed in bare geometry: how much of the main pane's rectangle is
+ * actually country. A-48 shipped **1.95%**; A-49 measures **14.02%**, and Greece's own box goes
+ * from **1.009%** of the pane to **7.86%** — 7.8× the area.
+ */
+test('A-49 Part 1: the FR+GR main pane samples ≥ 12% land, and Greece is ≥ 7% of it', () => {
+  const frame = worldMapFrame(statsOf([trips('FR', 2), trips('GR', 1)]), core.COUNTRY_INDEX);
+  const pane = frame.panes[0];
+  const { minX, minY, w, h } = box(pane.viewBox);
+  // Even-odd sampling over the pane's own rectangle, on a 400 × 400 grid.
+  const rings = frame.countries.filter((c) => c.paneId === pane.id)
+    .flatMap((c) => c.d.split('Z').filter(Boolean).map((s) => vertices(s + 'Z')));
+  let hits = 0, n = 0;
+  for (let i = 0; i < 400; i++) {
+    for (let j = 0; j < 400; j++) {
+      const x = minX + (w * (i + 0.5)) / 400;
+      const y = minY + (h * (j + 0.5)) / 400;
+      let inside = false;
+      for (const r of rings) {
+        let odd = false;
+        for (let k = 0, m = r.length - 1; k < r.length; m = k++) {
+          if ((r[k].y > y) !== (r[m].y > y) &&
+              x < ((r[m].x - r[k].x) * (y - r[k].y)) / (r[m].y - r[k].y) + r[k].x) odd = !odd;
+        }
+        if (odd) inside = !inside;
+      }
+      n++;
+      if (inside) hits++;
+    }
+  }
+  const land = (hits / n) * 100;
+  assert.ok(land >= 12, `the main pane is ${land.toFixed(2)}% land; A-48 shipped 1.95%`);
+  // Greece's own box as a share of the pane's area.
+  const gr = core.countryParts('GR', core.COUNTRY_INDEX, WORLD_CLUSTER_THRESHOLD_KM);
+  const gw = Math.max(...gr.map((p) => p.box[2])) - Math.min(...gr.map((p) => p.box[0]));
+  const gh = Math.max(...gr.map((p) => p.box[3])) - Math.min(...gr.map((p) => p.box[1]));
+  const share = ((gw * gh) / (w * h)) * 100;
+  assert.ok(share >= 7, `Greece is ${share.toFixed(2)}% of the pane; it was 1.009% under A-48`);
+});
+
+// ---------------------------------------------------------------------------
+// A-49 Part 7 — the four cases the rule had to survive.
+// ---------------------------------------------------------------------------
+
+test('A-49 Part 7: FR alone is 14.15° × 9.77° plus the same detached pane (it was 64.08°)', () => {
+  const frame = worldMapFrame(statsOf([trips('FR', 1)]), core.COUNTRY_INDEX);
+  assert.equal(frame.panes.length, 2);
+  assert.deepEqual(extent(frame.panes[0]), { w: 14.15, h: 9.77 });
+  assert.deepEqual(extent(frame.panes[1]), { w: 2.87, h: 3.7 });
+  assert.deepEqual(frame.panes[1].codes, ['FR']);
+  assert.equal(Math.round(unionBoxExtent(['FR'], core.COUNTRY_INDEX).w * 100) / 100, 64.08);
+});
+
+test('A-49 Part 7: it generalises with no count of companions — six European codes, one rule', () => {
+  const codes = ['AT', 'CZ', 'DE', 'ES', 'FR', 'IT'];
+  const frame = worldMapFrame(statsOf(codes.map((code) => trips(code, 1))), core.COUNTRY_INDEX);
+  assert.equal(frame.panes.length, 2, 'one geographic pane and the detached one');
+  assert.deepEqual(extent(frame.panes[0]), { w: 28.25, h: 19.04 });
+  assert.deepEqual(extent(frame.panes[1]), { w: 2.87, h: 3.7 }, 'the identical French Guiana pane');
+  assert.equal(Math.round(unionBoxExtent(codes, core.COUNTRY_INDEX).w * 100) / 100, 73.38);
+});
+
+/**
+ * **The case that proves the rule is geometric rather than a France-shaped carve-out.** Alaska
+ * is 1.5 M km² — 19% of the United States — and it detaches from a US-only pane and stays
+ * **in frame** the moment Canada is in the same library, because it is then genuinely chained
+ * to the pane's subject at the same threshold that decided the pane. Nothing here reads
+ * *"overseas territory"*.
+ */
+test('A-49 Part 7: Alaska detaches from a US-only pane and stays IN FRAME once Canada is present', () => {
+  const alone = worldMapFrame(statsOf([trips('US', 1)]), core.COUNTRY_INDEX);
+  assert.equal(alone.panes.length, 2);
+  assert.deepEqual(extent(alone.panes[0]), { w: 57.72, h: 24.31 }, 'CONUS');
+  assert.deepEqual(extent(alone.panes[1]), { w: 41.81, h: 52.44 }, 'Alaska, Hawaii, the Aleutians');
+
+  const withCanada = worldMapFrame(
+    statsOf([trips('CA', 1), trips('MX', 1), trips('US', 1)]), core.COUNTRY_INDEX,
+  );
+  assert.equal(withCanada.panes.length, 1, 'no detached pane: Alaska is connected to Canada');
+  assert.deepEqual(withCanada.panes[0].codes, ['CA', 'MX', 'US']);
+  assert.deepEqual(extent(withCanada.panes[0]), { w: 119.14, h: 68.69 });
+  // Unchanged from A-48 — the union-box extent and the part extent agree here.
+  const u = unionBoxExtent(['CA', 'MX', 'US'], core.COUNTRY_INDEX);
+  assert.equal(Math.round(u.w * 100) / 100, 119.14);
+  assert.equal(Math.round(u.h * 100) / 100, 68.69);
+});
+
+test('A-49 Part 7: detachment is decided PER PANE, not per country', () => {
+  // The injected fault: decide it per country and `CA MX US` grows a detached pane it must not
+  // have. The oracle is the country-alone answer, which does have one.
+  assert.equal(worldMapFrame(statsOf([trips('US', 1)]), core.COUNTRY_INDEX).panes.length, 2);
+  assert.equal(
+    worldMapFrame(statsOf([trips('CA', 1), trips('US', 1)]), core.COUNTRY_INDEX).panes.length, 1,
+  );
+});
+
+// ---------------------------------------------------------------------------
+// R33-1 — the reference frame. The main pane is byte-identical; the US inset narrows.
+// ---------------------------------------------------------------------------
+
+test('A-49: R33-1 is not regressed — the reference MAIN pane is byte-identical to I-8d\'s', () => {
+  const frame = worldMapFrame(statsOf(REFERENCE.map((code) => ({ code }))), core.COUNTRY_INDEX);
+  assert.deepEqual(frame.panes[0].codes, ['AT', 'CZ', 'DE', 'GB', 'HR', 'HU']);
+  assert.equal(frame.panes[0].weight, 6);
+  assert.ok(2 * frame.panes[0].weight > 7, 'C5 dominance: 12 > 7');
+  const round4 = (n: number) => Math.round(n * 1e4) / 1e4;
+  assert.equal(round4(frame.panes[0].bounds.east - frame.panes[0].bounds.west), 30.2827);
+  assert.equal(round4(frame.panes[0].bounds.north - frame.panes[0].bounds.south), 16.155);
+  assert.equal(frame.panes[0].viewBox, '-8.1779 -59.2407 31.494 17.3663');
+  assert.equal(frame.viewBox, frame.panes[0].viewBox);
+});
+
+test('A-49: what MOVES in the reference frame is stated, not discovered — three panes, re-pinned', () => {
+  const frame = worldMapFrame(statsOf(REFERENCE.map((code) => ({ code }))), core.COUNTRY_INDEX);
+  assert.equal(frame.panes.length, 3);
+  assert.deepEqual(frame.panes.map((p) => p.id), ['main', 'inset-1', 'detached']);
+  assert.deepEqual(frame.panes.map((p) => p.role), ['main', 'inset', 'detached']);
+  assert.deepEqual(frame.panes[1].codes, ['US']);
+  assert.equal(frame.panes[1].viewBox, '-125.8416 -50.5435 60.0314 26.618');
+  assert.deepEqual(frame.panes[2].codes, ['US']);
+  assert.equal(frame.panes[2].viewBox, '-172.8399 -72.4066 43.9088 54.5393');
+  // The string A-48 shipped for the inset, kept as the superseded rule's oracle.
+  assert.notEqual(frame.panes[1].viewBox, '-173.8876 -73.4543 109.0195 56.6347');
+});
+
+// ---------------------------------------------------------------------------
+// I11 — nothing is cropped and nothing is drawn twice.
+// ---------------------------------------------------------------------------
+
+/** Every ring of a code, as `d` subpath strings, in index order. */
+function ringSubpaths(code: string, index: core.CountryIndex): string[] {
+  const out: string[] = [];
+  for (const e of index.countries) {
+    if (e.code !== code) continue;
+    for (const r of e.rings) {
+      let s = '';
+      for (let i = 0; i + 1 < r.length; i += 2) {
+        s += `${i === 0 ? 'M' : 'L'}${r[i]},${r[i + 1] === 0 ? 0 : -r[i + 1]}`;
+      }
+      if (s !== '') out.push(`${s}Z`);
+    }
+  }
+  return out;
+}
+
+function assertI11(frame: ReturnType<typeof worldMapFrame>, index: core.CountryIndex) {
+  for (const code of frame.codes) {
+    const drawn = frame.countries.filter((c) => c.code === code)
+      .flatMap((c) => c.d.split('Z').filter(Boolean).map((s) => `${s}Z`));
+    const owned = ringSubpaths(code, index);
+    assert.equal(drawn.length, owned.length, `${code}: ring count changed (I11)`);
+    assert.deepEqual(drawn.slice().sort(), owned.slice().sort(), `${code}: rings differ (I11)`);
+  }
+}
+
+test('A-49 I11: every ring of every drawn code is drawn exactly once — FR+GR', () => {
+  assertI11(worldMapFrame(statsOf([trips('FR', 2), trips('GR', 1)]), core.COUNTRY_INDEX), core.COUNTRY_INDEX);
+});
+
+test('A-49 I11: …and over the reference sample, and over a 239-code library', () => {
+  assertI11(worldMapFrame(statsOf(REFERENCE.map((code) => ({ code }))), core.COUNTRY_INDEX), core.COUNTRY_INDEX);
+  const codes = [...new Set(core.COUNTRY_INDEX.countries.map((c) => c.code))].sort();
+  assertI11(worldMapFrame(statsOf(codes.map((code) => ({ code }))), core.COUNTRY_INDEX), core.COUNTRY_INDEX);
+});
+
+// ---------------------------------------------------------------------------
+// Part 4 — the frame shape. `countries` is a PAINT list; `codes` is the country list.
+// ---------------------------------------------------------------------------
+
+test('A-49 Part 4: a code with a detached part is one PAINT row per pane, with identical attribution', () => {
+  const frame = worldMapFrame(statsOf([trips('FR', 2), trips('GR', 1)]), core.COUNTRY_INDEX);
+  const fr = frame.countries.filter((c) => c.code === 'FR');
+  assert.equal(fr.length, 2, 'FR is painted in two panes');
+  assert.deepEqual(fr.map((c) => c.paneId).sort(), ['detached', 'main']);
+  assert.deepEqual(fr[0].tripIds, fr[1].tripIds, 'the tap and the attribution are identical');
+  assert.equal(fr[0].provisional, fr[1].provisional);
+  assert.notEqual(fr[0].d, fr[1].d, 'and each pane draws only its own parts');
+});
+
+test('A-49 I2: within any ONE pane a code appears exactly once — W3\'s key stays unique', () => {
+  const codes = [...new Set(core.COUNTRY_INDEX.countries.map((c) => c.code))].sort();
+  const frame = worldMapFrame(statsOf(codes.map((code) => ({ code }))), core.COUNTRY_INDEX);
+  for (const pane of frame.panes) {
+    const inPane = frame.countries.filter((c) => c.paneId === pane.id).map((c) => c.code);
+    assert.equal(new Set(inPane).size, inPane.length, `${pane.id} draws a code twice`);
+    assert.deepEqual(pane.codes.slice().sort(), inPane.slice().sort());
+  }
+});
+
+test('A-49 Part 5 / I13: `codes` is every drawn code exactly once, canonical, disjoint from `missing`', () => {
+  const frame = worldMapFrame(statsOf(REFERENCE.map((code) => ({ code }))), core.COUNTRY_INDEX);
+  assert.deepEqual(frame.codes, ['AT', 'CZ', 'DE', 'GB', 'HR', 'HU', 'US']);
+  // The paint list is NOT that, and that is the whole reason `codes` exists (R37-3).
+  assert.notDeepEqual(frame.countries.map((c) => c.code), frame.codes);
+
+  const dup = worldMapFrame(statsOf([trips('FR', 2), trips('GR', 1)]), core.COUNTRY_INDEX);
+  assert.deepEqual(dup.codes, ['FR', 'GR'], 'FR is one country, however many panes draw it');
+  assert.equal(dup.countries.filter((c) => c.code === 'FR').length, 2);
+
+  const withMissing = worldMapFrame(statsOf([{ code: 'AA' }, { code: 'ZZ' }]), FIXTURE);
+  assert.deepEqual(withMissing.codes, ['AA']);
+  assert.deepEqual(withMissing.missing, ['ZZ']);
+  for (const c of withMissing.codes) assert.ok(!withMissing.missing.includes(c));
+});
+
+test('A-49 Part 5 / I13: MF and SX are each in `codes` exactly once at 239 codes', () => {
+  const codes = [...new Set(core.COUNTRY_INDEX.countries.map((c) => c.code))].sort();
+  const frame = worldMapFrame(statsOf(codes.map((code) => ({ code }))), core.COUNTRY_INDEX);
+  assert.deepEqual(frame.codes, codes, 'canonical row order, every drawn code once');
+  for (const c of ['MF', 'SX', 'AD', 'FR', 'US', 'UM']) {
+    assert.equal(frame.codes.filter((x) => x === c).length, 1, `${c} is not in codes exactly once`);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// I1 / I3 / I5 restated, and I15.
+// ---------------------------------------------------------------------------
+
+test('A-49 I1: every stats code is at least once in `countries` or exactly once in `missing`', () => {
+  const rows = [trips('FR', 6), trips('GR', 1), trips('US', 1), { code: 'ZZ' }, trips('JP', 1)];
+  const frame = worldMapFrame(statsOf(rows), core.COUNTRY_INDEX);
+  for (const r of rows) {
+    const drawn = frame.countries.filter((c) => c.code === r.code).length;
+    const gone = frame.missing.filter((c) => c === r.code).length;
+    assert.ok((drawn >= 1) !== (gone === 1), `${r.code}: both or neither`);
+    if (gone) assert.equal(gone, 1);
+  }
+});
+
+test('A-49 I3/I5/C7′: 1…4 panes, a detached pane is always last and there is at most one', () => {
+  const cases: Array<Array<{ code: string; tripIds?: string[] }>> = [
+    [trips('AT', 1)],                                                  // 1 pane
+    [trips('FR', 1)],                                                  // 1 + detached
+    [trips('AT', 6), trips('JP', 1)],                                  // 2 panes
+    [trips('AT', 6), trips('JP', 1), trips('US', 1)],                  // 3 panes + detached
+    [trips('AT', 9), trips('AU', 1), trips('JP', 1), trips('BR', 1), trips('US', 1)],
+  ];
+  for (const rows of cases) {
+    const frame = worldMapFrame(statsOf(rows), core.COUNTRY_INDEX);
+    assert.ok(frame.panes.length >= 1 && frame.panes.length <= 4,
+      `${frame.panes.length} panes for ${rows.map((r) => r.code).join(',')}`);
+    assert.equal(frame.panes[0].role, 'main');
+    const detached = frame.panes.filter((p) => p.role === 'detached');
+    assert.ok(detached.length <= 1);
+    if (detached.length === 1) {
+      assert.equal(frame.panes[frame.panes.length - 1].role, 'detached');
+      assert.equal(frame.panes[frame.panes.length - 1].id, 'detached');
+    }
+    for (const p of frame.panes.slice(1, frame.panes.length - detached.length)) {
+      assert.equal(p.role, 'inset');
+    }
+    const geographic = frame.panes.filter((p) => p.role !== 'detached');
+    assert.ok(geographic.length <= 3, 'C7′: at most three GEOGRAPHIC panes');
+  }
+});
+
+test('A-49 C7′: four panes are reachable — three geographic plus the detached one', () => {
+  const frame = worldMapFrame(
+    statsOf([trips('AT', 9), trips('AU', 1), trips('JP', 1), trips('BR', 1), trips('US', 1)]),
+    core.COUNTRY_INDEX,
+  );
+  assert.equal(frame.panes.length, 4);
+  assert.deepEqual(frame.panes.map((p) => p.role), ['main', 'inset', 'inset', 'detached']);
+});
+
+test('A-49 I15: the detached pane decides nothing — C5 and C6 run over clusters, not panes', () => {
+  // `US` alone: one cluster, so C5 cannot split — and the detached pane must not make it look
+  // like two. `pane.weight` deliberately DOUBLE-COUNTS here, which is Part 4 consequence 2.
+  const frame = worldMapFrame(statsOf([trips('US', 3)]), core.COUNTRY_INDEX);
+  assert.equal(frame.panes.filter((p) => p.role !== 'detached').length, 1, 'one geographic pane');
+  assert.equal(frame.panes[0].weight, 3);
+  assert.equal(frame.panes[1].weight, 3, 'the detached pane carries its own codes\' weight');
+  assert.equal(frame.panes.reduce((n, p) => n + p.weight, 0), 6, 'and it does NOT sum to W');
+});
+
+// ---------------------------------------------------------------------------
+// I4/I14 — every pane strictly contains what it draws, over the whole shipped index.
+// ---------------------------------------------------------------------------
+
+test('A-49 I14: every pane strictly contains every vertex it draws, all 239 single-country libraries', () => {
+  const codes = [...new Set(core.COUNTRY_INDEX.countries.map((c) => c.code))].sort();
+  assert.ok(codes.length > 200);
+  for (const code of codes) {
+    const frame = worldMapFrame(statsOf([{ code }]), core.COUNTRY_INDEX);
+    for (const pane of frame.panes) {
+      const { minX, minY, w, h } = box(pane.viewBox);
+      assert.ok(w > 0 && h > 0, `${code}/${pane.id}: zero-area frame`);
+      for (const c of frame.countries.filter((x) => x.paneId === pane.id)) {
+        for (const v of vertices(c.d)) {
+          assert.ok(v.x > minX && v.x < minX + w && v.y > minY && v.y < minY + h,
+            `${code}/${pane.id}: vertex (${v.x}, ${v.y}) is not strictly inside ${pane.viewBox}`);
+        }
+      }
+    }
+  }
+});
+
+test('A-49: over all 239 single-country libraries, no pane is WIDER than A-48\'s, and 3 detach', () => {
+  const codes = [...new Set(core.COUNTRY_INDEX.countries.map((c) => c.code))].sort();
+  const detached: string[] = [];
+  for (const code of codes) {
+    const frame = worldMapFrame(statsOf([{ code }]), core.COUNTRY_INDEX);
+    const before = unionBoxExtent([code], core.COUNTRY_INDEX);
+    for (const pane of frame.panes) {
+      const w = pane.bounds.east - pane.bounds.west;
+      assert.ok(w <= before.w + 1e-9, `${code}/${pane.id}: ${w}° is wider than A-48's ${before.w}°`);
+    }
+    if (frame.panes.some((p) => p.role === 'detached')) detached.push(code);
+  }
+  assert.deepEqual(detached, ['FR', 'UM', 'US']);
+});
+
+// ---------------------------------------------------------------------------
+// C8′'s premise, measured rather than assumed — KD-72.
+// ---------------------------------------------------------------------------
+
+/**
+ * A-49's Part 2 justification says the in-frame set *"is exactly one component"* because a
+ * pane's member codes are one component of the country graph. **That premise does not hold for
+ * two of the panes C7 can build**: the no-split pane (C5 refuses to split a tie, so one pane
+ * holds every cluster) and `inset-2` (C7 folds clusters 3…N into one pane). C8′ itself is
+ * written as *the union of* the components containing a principal part, which is well defined
+ * either way — so the ruling's mechanism is unaffected and only its proof is over-stated. This
+ * test pins both halves so the next reader does not have to re-derive it. **KD-72.**
+ */
+test('A-49 C8′: the in-frame set is one component per pane ONLY when the pane is one cluster', () => {
+  const components = (frame: ReturnType<typeof worldMapFrame>, paneId: string): number => {
+    const pane = frame.panes.find((p) => p.id === paneId) as { codes: string[] };
+    const keys = pane.codes.flatMap((c) =>
+      core.countryParts(c, core.COUNTRY_INDEX, WORLD_CLUSTER_THRESHOLD_KM)
+        .filter((p) => p.principal).map((p) => p.key));
+    return core.clusterPoints(keys, WORLD_CLUSTER_THRESHOLD_KM).length;
+  };
+  // One cluster: one component, as A-49 Part 2 argues.
+  const one = worldMapFrame(statsOf([trips('FR', 2), trips('GR', 1)]), core.COUNTRY_INDEX);
+  assert.equal(components(one, 'main'), 1);
+  // C5 refuses to split a tie, so this ONE pane holds two clusters — and two components.
+  const tie = worldMapFrame(statsOf([trips('US', 1), trips('JP', 1)]), core.COUNTRY_INDEX);
+  assert.equal(tie.panes.filter((p) => p.role !== 'detached').length, 1);
+  assert.equal(components(tie, 'main'), 2, 'the "exactly one component" premise is over-stated');
+  // …and the pane still frames both, with nothing detached that a principal part reaches.
+  assert.deepEqual(tie.panes[0].codes, ['US', 'JP'], 'canonical order is the stats row order (C1)');
+  assert.ok(tie.panes.some((p) => p.role === 'detached'), 'US still detaches Alaska here');
+});
+
+// ---------------------------------------------------------------------------
+// I6 — determinism, with the detached pane in play.
+// ---------------------------------------------------------------------------
+
+test('A-49 / I6: a library with a detached pane is byte-identical run to run', () => {
+  const stats = statsOf(rowsOf([['FR', 2], ['GR', 1], ['US', 1]]));
+  assert.equal(
+    JSON.stringify(worldMapFrame(stats, core.COUNTRY_INDEX)),
+    JSON.stringify(worldMapFrame(stats, core.COUNTRY_INDEX)),
+  );
+});
+
+test('A-49 / I9: permuting that library changes the partition, the extents and the detachment by nothing', () => {
+  const spec: Array<[string, number]> = [['FR', 2], ['GR', 1], ['US', 1]];
+  const shape = (order: Array<[string, number]>) => {
+    const f = worldMapFrame(statsOf(rowsOf(order)), core.COUNTRY_INDEX);
+    return f.panes
+      .map((p) => `${p.role}:${p.codes.slice().sort().join(',')}@${p.viewBox}`)
+      .slice().sort().join(' | ');
+  };
+  const answers = new Set(permutations(spec).map(shape));
+  assert.equal(answers.size, 1, `six orderings gave ${answers.size} distinct frames`);
+});
+
+test('A-49: the empty history is still ONE unpadded whole-world pane, with no detached pane', () => {
+  const frame = worldMapFrame(statsOf([]), core.COUNTRY_INDEX);
+  assert.equal(frame.panes.length, 1);
+  assert.equal(frame.panes[0].viewBox, '-180 -90 360 180');
+  assert.deepEqual(frame.codes, []);
+  assert.deepEqual(frame.countries, []);
 });

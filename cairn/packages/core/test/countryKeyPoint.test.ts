@@ -376,5 +376,8 @@ test('A-48 Part 2: `derive/country.ts` still holds no distance function, and the
     assert.ok(!src.includes(banned), `a distance function reached derive/country.ts: ${banned}`);
   }
   const exported = [...src.matchAll(/export function (\w+)/g)].map((m) => m[1]).sort();
-  assert.deepEqual(exported, ['countryKeyPoint', 'countryOf'], 'the ring-area helper must stay module-private');
+  // `countryParts` joins at I-8h under §4.4 A-49 Part 9, on the same terms; the ring-area and
+  // ring-box helpers stay module-private.
+  assert.deepEqual(exported, ['countryKeyPoint', 'countryOf', 'countryParts'],
+    'a geometry helper escaped derive/country.ts');
 });

@@ -12,7 +12,7 @@
  * against cannot be "110 against 50, enumerated". BUILD-NOTES KD-33, which supersedes
  * KD-19 — the entry that recorded the gap as enumerated rather than narrowed.
  *
- * So: one array, 78 entries, set equality both ways. (69 in revision 5; `reassertRetirements`
+ * So: one array, 79 entries, set equality both ways. (69 in revision 5; `reassertRetirements`
  * joins in revision 6 under §2.7 A-5; `lifecycle` joins in revision 10 under §8.1/§8.9,
  * Phase 2 I-1; `countryOf` and `COUNTRY_INDEX` join under §8.4 clause 1, Phase 2 I-5; `SUMMARY_VERSION`
  * joins under §8.4 clause 3, Phase 2 I-6; `travelStats` joins under §8.4 clause 2 / A-31, Phase 2 I-7;
@@ -28,7 +28,12 @@
  * computing it in `packages/client` would put a second bounds computation there, which §4.4
  * A-40 clause 2 forbids. It is a **label, not an attribution**: it says where a country is for
  * the purpose of drawing it and may never answer which country a coordinate is in. Its
- * ring-area helper stays internal.
+ * ring-area helper stays internal. `countryParts` joins under §4.4 **A-49** Part 9, Phase 2
+ * I-8h, on exactly those terms: a country's *parts* are a geometric property of the index too,
+ * and A-49 needs them in core so that the frame's **extent** and its **clustering** stop being
+ * two different answers to "where is this country" (QA R37-1). It is a label, not an
+ * attribution, and it owns no threshold — the threshold is an argument, because framing policy
+ * lives in `packages/client`. `CountryPart` is a type and does not count.
  * `daysInMonth` and `ISO_DATE_RE` stay internal for the same reason they
  * always were — a caller that can count days in a month grows a second calendar.)
  * A symbol added to `index.ts` without
@@ -48,7 +53,7 @@ import * as core from '../src/index.ts';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CAIRN = resolve(HERE, '..', '..', '..');
 
-/** §2.10, transcribed. Runtime symbols only — 78 of them, grouped as the section groups them. */
+/** §2.10, transcribed. Runtime symbols only — 79 of them, grouped as the section groups them. */
 const THE_LIST = [
   // model (8)
   'LOCAL_OWNER', 'SCHEMA_VERSION', 'sequentialIds', 'formatRange', 'costFromDisplay',
@@ -59,13 +64,13 @@ const THE_LIST = [
   'addStop', 'updateStop', 'removeStop', 'moveStop', 'reorderStop',
   'scheduleFromPool', 'returnToPool', 'poolFor',
   'acceptCandidate', 'rejectCandidate', 'copyStopInto', 'upsertBooking', 'linkBooking',
-  // derive (28)
+  // derive (29)
   'computeLegs', 'dayMovingMinutes', 'dayDistanceKm', 'fmtMins',
   'clusterStops', 'focusCluster', 'fitSpanKm', 'MIN_SPAN_KM', 'mapBounds', 'stopPoints', 'stopLatLng',
   'clusterPoints',
   'rollUpCost', 'displayStatus', 'attribution',
   'cityRange', 'daysForCity', 'orderedCities', 'weekdayOf', 'tripSummary',
-  'geoCheck', 'GEO_LIMIT_KM', 'lifecycle', 'countryOf', 'countryKeyPoint', 'COUNTRY_INDEX', 'SUMMARY_VERSION',
+  'geoCheck', 'GEO_LIMIT_KM', 'lifecycle', 'countryOf', 'countryKeyPoint', 'countryParts', 'COUNTRY_INDEX', 'SUMMARY_VERSION',
   'travelStats',
   // conflict (6)
   'detectConflicts', 'RULES', 'resolveConflict', 'unresolveConflict', 'syncResolutions',
@@ -87,9 +92,9 @@ const THE_LIST = [
 const runtimeExports = () =>
   Object.keys(core).filter((k) => typeof (core as Record<string, unknown>)[k] !== 'undefined');
 
-test('§2.10 is 78 symbols, and the list in this file is exactly that long', () => {
-  assert.equal(THE_LIST.length, 78, 'the transcribed list is no longer §2.10\'s stated size');
-  assert.equal(new Set(THE_LIST).size, 78, 'the list has a duplicate');
+test('§2.10 is 79 symbols, and the list in this file is exactly that long', () => {
+  assert.equal(THE_LIST.length, 79, 'the transcribed list is no longer §2.10\'s stated size');
+  assert.equal(new Set(THE_LIST).size, 79, 'the list has a duplicate');
 });
 
 test('the index exports exactly §2.10\'s list — set equality, both directions', () => {

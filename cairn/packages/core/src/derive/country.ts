@@ -41,11 +41,19 @@
  * `countryOf`, whose `null` stays first-class. There is still **no distance function in this
  * file**: nothing here may snap a coordinate to the nearest key, and the ring-area helper is
  * module-private so a caller that can measure a ring cannot grow a second geometry engine.
+ *
+ * **`countryParts` joins at §4.4 A-49 Part 9 on exactly the same terms.** A part is a *label
+ * for a country's geometry* — *"which pieces is this country in, and where is each"* — and is
+ * never an answer about a coordinate either. The guard is unchanged in every clause: the
+ * ring-area helper stays module-private, and the linkage is `clusterPoints`', imported from
+ * `derive/cluster.ts`, so **no distance function enters this file** even now that a
+ * connected-components question is asked in it.
  */
 import type { CountryCode } from '../model/ids.ts';
 import type { LatLng } from '../model/types.ts';
-import type { CountryIndex, CountryRing } from '../geo/countryIndex.ts';
+import type { CountryIndex, CountryBox, CountryRing } from '../geo/countryIndex.ts';
 import { inRange } from './geo.ts';
+import { clusterPoints } from './cluster.ts';
 
 /**
  * Even-odd crossing count for one flat ring. Casts a ray towards +∞ longitude from `(lng, lat)`
@@ -149,6 +157,14 @@ function ringAreaKm2(ring: CountryRing): number {
  *
  * The union-box centre survives only as the **fallback** for a code carrying no ring of three
  * points, so the function is total on any index. It fires on **zero** of the 239 shipped codes.
+ *
+ * **QA R37-5.** *Total* meant total, not *"returns something"*: a code whose entries carry no
+ * rings at all has a union box of `[Infinity, Infinity, -Infinity, -Infinity]`, and averaging
+ * that gave `{lat: NaN, lng: NaN}` — a value that is not a coordinate, that flows into
+ * `clusterPoints` (where `NaN < t` is false, so the code silently becomes its own component)
+ * and into `mapBounds`. It is `null` instead, which every caller already handles because that
+ * is the answer for a code the index does not carry. Fixture-only: `tools/gen-countries.mjs`
+ * cannot emit such an entry.
  */
 export function countryKeyPoint(code: CountryCode, index: CountryIndex): LatLng | null {
   let principal: CountryRing | null = null;
@@ -173,7 +189,15 @@ export function countryKeyPoint(code: CountryCode, index: CountryIndex): LatLng 
   }
 
   if (!seen) return null;
-  if (principal === null) return { lat: (south + north) / 2, lng: (west + east) / 2 };
+  if (principal === null) {
+    // R37-5: an entry with no rings has an unbounded union box, and the average of
+    // `Infinity` and `-Infinity` is `NaN`. `null` is the honest answer and the one every
+    // caller already handles.
+    if (!Number.isFinite(west) || !Number.isFinite(south) || !Number.isFinite(east) || !Number.isFinite(north)) {
+      return null;
+    }
+    return { lat: (south + north) / 2, lng: (west + east) / 2 };
+  }
 
   let rw = Infinity, rs = Infinity, re = -Infinity, rn = -Infinity;
   for (let i = 0; i + 1 < principal.length; i += 2) {
@@ -185,4 +209,113 @@ export function countryKeyPoint(code: CountryCode, index: CountryIndex): LatLng 
     if (lat > rn) rn = lat;
   }
   return { lat: (rs + rn) / 2, lng: (rw + re) / 2 };
+}
+
+/**
+ * One landmass of a country — §4.4 **A-49** Part 2.
+ *
+ * A country is not one shape and it is not one rectangle either. It is a set of **parts**, and
+ * a part is what a frame can honestly be drawn around.
+ */
+export type CountryPart = {
+  /** `[minLng, minLat, maxLng, maxLat]` over this part's rings. Derived, never hand-written. */
+  box: CountryBox;
+  /** The box centre of this part's greatest-absolute-spherical-area ring; ties by index order. */
+  key: LatLng;
+  /** This part's rings, in index order (entry order, then ring order). */
+  rings: readonly CountryRing[];
+  /** The part holding the code's greatest-area ring. Exactly one part per code carries it. */
+  principal: boolean;
+};
+
+/** The bounding box of one flat `[lng, lat, …]` ring. Module-private, like the area helper. */
+function ringBox(ring: CountryRing): CountryBox {
+  let w = Infinity, s = Infinity, e = -Infinity, n = -Infinity;
+  for (let i = 0; i + 1 < ring.length; i += 2) {
+    const lng = ring[i];
+    const lat = ring[i + 1];
+    if (lng < w) w = lng;
+    if (lng > e) e = lng;
+    if (lat < s) s = lat;
+    if (lat > n) n = lat;
+  }
+  return [w, s, e, n];
+}
+
+/**
+ * The **parts** of a country: the connected components of its own rings — §4.4 **A-49** Part 2.
+ *
+ * Pure; the index and the threshold are both injected; `[]` for a code the index does not carry
+ * and for a code carrying no ring of three points. A caller treats `[]` exactly as
+ * `countryKeyPoint`'s `null`: the code is stated as unfillable, never dropped (A-40 clause 3).
+ *
+ * **The rule, and it is the one A-48 already introduced, generalised.** A-48 ruled that a
+ * country's *position* is a property of its principal landmass rather than of its bounding
+ * rectangle. A-49 is that one level up: a country's *geometry* is a set of landmasses, and both
+ * *"which countries share a pane"* and *"what rectangle does that pane look through"* are
+ * answered by single linkage at the same threshold over the same kind of point. Nothing here
+ * reads which country a code is; there is no list, no carve-out and no second constant. QA
+ * R37-1 is what happens without it: C2′ decided clustering from France's principal ring while
+ * the extent still fitted the union of every entry box, so a pane that knew France was in
+ * France framed French Guiana anyway — 81.1° × 49.1° at 1.95% land.
+ *
+ * Take every ring of every entry carrying the code (§8.4 A-27 allows two entries; they are one
+ * country) with at least three points, give each the centre of its own bounding box, and take
+ * `clusterPoints`' connected components of those centres. **That is the one kernel** (A-41
+ * Part 6, A-48 C3′) — not a second implementation, and the reason there is still no distance
+ * function in this file.
+ *
+ * Parts come back in ascending order of their lowest ring position in the index, which is
+ * `clusterPoints`' own output convention rather than a sort of ours.
+ *
+ * **I12, which is the load-bearing property:** the principal part's `key` **is**
+ * `countryKeyPoint(code, index)`, on both fields under `Object.is`, at every threshold — the
+ * greatest-area ring of a country is the greatest-area ring of its own part. Verified over all
+ * 239 shipped codes at `t ∈ {1, 100, 1000, 4000, 20000}` km: 0 mismatches. That identity is
+ * what makes A-48's C2′, I8, C4′ and every pane's *membership* untouched by A-49 rather than
+ * merely believed untouched.
+ *
+ * @param thresholdKm framing policy, so it is an argument: the threshold lives in
+ *   `packages/client` (A-41 C4), and this function owns no constant of its own.
+ */
+export function countryParts(
+  code: CountryCode,
+  index: CountryIndex,
+  thresholdKm: number,
+): CountryPart[] {
+  // Index order: entry order, then ring order. A ring of fewer than three points is not a
+  // polygon and has no part (A-49 Part 2) — the shipped index carries none.
+  const rings: CountryRing[] = [];
+  for (const entry of index.countries) {
+    if (entry.code !== code) continue;
+    for (const ring of entry.rings) if (ring.length >= 6) rings.push(ring);
+  }
+  if (rings.length === 0) return [];
+
+  const boxes = rings.map(ringBox);
+  const points = boxes.map((b) => ({ lat: (b[1] + b[3]) / 2, lng: (b[0] + b[2]) / 2 }));
+  const areas = rings.map(ringAreaKm2);
+
+  // The code's principal ring — C2′'s own rule, strictly greater so a tie keeps the earlier.
+  let principalRing = 0;
+  for (let i = 1; i < rings.length; i++) if (areas[i] > areas[principalRing]) principalRing = i;
+
+  return clusterPoints(points, thresholdKm).map((group) => {
+    let w = Infinity, s = Infinity, e = -Infinity, n = -Infinity;
+    let key = group[0];
+    for (const i of group) {
+      const b = boxes[i];
+      if (b[0] < w) w = b[0];
+      if (b[1] < s) s = b[1];
+      if (b[2] > e) e = b[2];
+      if (b[3] > n) n = b[3];
+      if (areas[i] > areas[key]) key = i;
+    }
+    return {
+      box: [w, s, e, n] as CountryBox,
+      key: points[key],
+      rings: group.map((i) => rings[i]),
+      principal: group.includes(principalRing),
+    };
+  });
 }

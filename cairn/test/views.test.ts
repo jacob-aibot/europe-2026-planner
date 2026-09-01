@@ -757,3 +757,101 @@ test('R34-1: the boundary clears its banner only after the recovery has actually
   assert.match(src, /run:\s*\(\)\s*=>\s*\{[^}]*return run\(store\.closeTrip\(\)\)/,
     '"Close this trip" does not hand its promise back to the boundary');
 });
+
+// ---------------------------------------------------------------------------
+// ROADMAP Phase 2 I-8h — ARCHITECTURE §4.4 **A-49** Part 5 (the chip list) and **A-50**
+// (the pane box, in both directions).
+//
+// Same instrument as the rest of this file: a source-level floor under criteria whose real
+// oracle is rendered output, which lives in `qa/i8h-render.mjs`.
+
+/**
+ * **A-49 Part 5 / R37-3 — the chip list renders `frame.codes`, and the view derives nothing.**
+ *
+ * A-48 C9 reordered `frame.countries` into paint order, the chip list rendered that array
+ * verbatim, and the rendered chips went from `AT CZ DE GB HR HU US` to `US DE GB HU AT CZ HR`.
+ * A-49 then makes `frame.countries` a **paint list** with one row per (code, pane), so a
+ * country with a detached part is in it twice — a country list derived from it would print
+ * `FR` twice and hand React two identical keys.
+ *
+ * The fix is in the contract, not in the view, so the ceiling is greppable: the frame carries
+ * `codes`, the list renders that, and the view neither sorts nor dedupes.
+ */
+test('I-8h / A-49 Part 5: the code-chip list renders frame.codes and derives no order of its own', () => {
+  const raw = readFileSync(resolve(VIEWS, 'WorldMap.tsx'), 'utf8');
+  const src = stripComments(raw);
+  assert.match(src, /frame\.codes\.map\(/, 'the chip list is not rendered from frame.codes');
+  assert.ok(!/frame\.countries\.map\(/.test(src),
+    'something still renders the PAINT list as a list of countries');
+  // The ceiling is over the RAW file, comments included: a ceiling that a comment can satisfy
+  // is a ceiling nobody can grep for. `qa/r37-a48.mjs` §H asserts the same three tokens.
+  for (const banned of ['.sort(', 'new Set(', 'Object.keys(']) {
+    assert.ok(!raw.includes(banned), `WorldMap.tsx re-derives a canonical order: ${banned}`);
+  }
+});
+
+/**
+ * **A-49 Part 4 consequence 3 — the detached pane may not say *"shown separately"*.** That
+ * phrase asserts the country is a distant part of the traveller's *record*; a detached pane is
+ * a distant part of the country's own *geometry*, and the country is already on another pane.
+ */
+test('I-8h / A-49 C8″: the detached pane has its own caption and its own aria-label', () => {
+  const src = stripComments(readFileSync(resolve(VIEWS, 'WorldMap.tsx'), 'utf8'));
+  assert.match(src, /pane\.role === 'detached'/, 'the renderer has no branch for the third role');
+  // The CAPTION branch specifically, not just the aria-label: A-41 constraint 3 is about what
+  // is on screen beside the frame, and A-49 requires this one to read differently.
+  assert.match(
+    src,
+    /pane\.role === 'detached' \? \(\s*<p className="worldmap__panecap">\s*<span className="worldmap__panecap-label">Distant parts of</,
+    'the detached pane has no caption of its own, or is captioned as an ordinary inset',
+  );
+  assert.match(src, /Distant parts of \$\{pane\.codes\.join/, 'the aria-label has no detached branch');
+  // …and every caption is still written from `pane.codes`, never re-derived.
+  // Five: the `data-pane-codes` attribute, the two `aria-label` branches that name codes, and
+  // the two captions (inset and detached).
+  assert.equal((src.match(/pane\.codes\.join/g) ?? []).length, 5,
+    'a pane caption or label stopped being written from pane.codes');
+});
+
+/**
+ * **A-50 — the pane box is the map, in both directions (QA R37-4).**
+ *
+ * A-48 Part 6's `aspect-ratio` + static `max-height` fixed only the **wide** direction. At
+ * 390 px the box is 356 wide and clamped at 460 tall, so a pane fills it exactly when
+ * `aspect ≥ 356/460 = 0.774`; **50 of 239** single-country libraries do not (`MV` 0.170,
+ * `CL` 0.258), and the same clamp letterboxes the shipped sample **horizontally** on a
+ * desktop (76.8% at 1440 × 700).
+ *
+ * A-50 is one declaration: the height cap moves into `--pane-cap`, and the `<svg>` is sized
+ * `width: min(100%, calc(var(--pane-cap) * var(--pane-aspect)))`. It is still
+ * measurement-free — `min()` and `calc()` over a custom property resolve at layout and measure
+ * nothing — so W1 and A-41 Part 7's *"no per-screen-size rule"* are untouched, and the frame
+ * is byte-identical in bare Node. The rendered oracle is `qa/i8h-render.mjs`.
+ */
+test('I-8h / A-50: the pane box is sized from the pane\'s own aspect in BOTH directions', () => {
+  const css = stripComments(readFileSync(resolve(CAIRN, 'apps/web/src/styles.css'), 'utf8'));
+  const rule = /\.worldmap__svg\s*\{([^}]*)\}/.exec(css);
+  assert.ok(rule, 'there is no .worldmap__svg rule');
+  const body = rule[1].replace(/\s+/g, ' ');
+  assert.match(body, /width:\s*min\(100%,\s*calc\(var\(--pane-cap\)\s*\*\s*var\(--pane-aspect[^)]*\)\)\)/,
+    'the box is still full-width, so a tall pane still letterboxes horizontally');
+  assert.match(body, /aspect-ratio:\s*var\(--pane-aspect/, 'the aspect ratio is no longer the box');
+  assert.match(body, /max-height:\s*var\(--pane-cap\)/, 'the height cap is not the custom property');
+  assert.match(body, /margin-inline:\s*auto/, 'a narrow box is not centred');
+  assert.ok(!/max-height:\s*min\(/.test(body), 'the static max-height clamp is still there');
+  // The two caps A-50 names, moved to the pane and not invented.
+  assert.match(css, /\.worldmap__pane--main[^{]*\{[^}]*--pane-cap:\s*min\(58vh,\s*460px\)/);
+  assert.match(css, /--pane-cap:\s*min\(22vh,\s*170px\)/);
+  // Still measurement-free: no media query decides a pane's size.
+  const paneRules = [...css.matchAll(/@media[^{]*\{[\s\S]*?\}\s*\}/g)].map((m) => m[0]);
+  for (const q of paneRules) {
+    assert.ok(!/worldmap__svg|--pane-cap|--pane-aspect/.test(q),
+      'a media query decides the pane box — that is the per-screen-size rule A-41 Part 7 forbids');
+  }
+});
+
+/** The detached pane needs a box of its own, or it inherits the main pane's 58vh cap. */
+test('I-8h / A-50: the detached pane is laid out like an inset, with an inset\'s cap', () => {
+  const css = stripComments(readFileSync(resolve(CAIRN, 'apps/web/src/styles.css'), 'utf8'));
+  assert.match(css, /\.worldmap__pane--detached/, 'the stylesheet has no rule for the third role');
+});

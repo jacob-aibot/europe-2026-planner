@@ -1,5 +1,50 @@
 # Cairn — build notes, Phase 1 (and Phase 2 in progress)
 
+> **Addendum, on ROADMAP Phase 2 **I-8h** (revision 34) — ARCHITECTURE §4.4 **A-49** (a country's
+> geometry is its *parts*; a pane frames the parts its subject is connected to, C8′; the rest get a
+> `detached` pane, C8″; C7′'s cap; Part 4's frame shape; Part 5's `codes`; I1/I2/I3/I5 restated and
+> I11–I15 added) and **A-50** (the pane box in both directions), answering QA round 37's **R37-1**,
+> **R37-3** and **R37-4** — plus the two builder MINORs routed separately, **R37-2** and
+> **R37-5**.** One builder pass over A-49's and A-50's "Built" bullets and nothing else.
+> **`Profile.tsx`/I-8b, `fromJSON.ts`, `Library.tsx`, `App.tsx`, `ports/map.ts`, `MapPort`,
+> `StoragePort`, `core.mapBounds`, `core.countryKeyPoint`'s rule and `travelStats` are untouched;
+> `packages/core/src/derive/cluster.ts` has a ZERO-LINE diff**, which is what makes A-48's I9 and
+> the day map's 90 km byte-identity untouched by construction rather than by re-measurement.
+> Scope: **20 files changed, 3 added.** Changed: `packages/core/src/derive/country.ts`,
+> `packages/core/src/index.ts`, `packages/core/test/surface.test.ts`,
+> `packages/core/test/openingHours.test.ts`, `packages/core/test/countryKeyPoint.test.ts`,
+> `packages/client/src/selectors/worldMap.ts`, `packages/client/test/world-map.test.ts`,
+> `apps/web/src/views/WorldMap.tsx`, `apps/web/src/styles.css`, `test/views.test.ts`,
+> `qa/r36-atlas.mjs`, `qa/r36-render.mjs`, `qa/r37-a48.mjs`, `qa/r37-render.mjs`,
+> `qa/i8g-faults.sh`, `qa/i8g-render.mjs`, `qa/README.md`, `docs/BUILD-NOTES.md`, plus
+> `docs/CAIRN_VISUAL_ROADMAP.md` + its `.html` twin (updated in the same pass, as `cairn/CLAUDE.md`
+> requires — I-8h is marked **built, not verified**). Added:
+> `packages/core/test/countryParts.test.ts`, `qa/i8h-faults.sh`, `qa/i8h-render.mjs`.
+> **`packages/core`'s export surface moves 78 → 79** for `countryParts` and nothing else
+> (re-counted with `Object.keys` on the built namespace, not quoted). Inside `packages/core/src`,
+> `git diff --stat` touches **`derive/country.ts` and `index.ts`** and no other source file. No
+> `SUMMARY_VERSION` bump, no `schemaVersion` bump, no port change, no reducer action, no new
+> dependency (`package.json`/`package-lock.json` diff **0** lines), **no golden and no sample
+> diff** (sample source sha still `40955ca0b182`).
+>
+> | | |
+> |---|---|
+> | **What runs, and the exact command** | `cd cairn && npm run typecheck && npm run test:tap` — clean on both projects, **1097 pass / 0 fail / 0 skipped**. The **1046** baseline was re-derived by running the suite on `09f7ce4` in a throwaway worktree, not quoted: **1046 → 1097, +51** (+22 the new `packages/core/test/countryParts.test.ts`; +25 `world-map.test.ts`, 55 → 80; +4 `test/views.test.ts`, 35 → 39). `npm run golden && npm run sample && git status --porcelain` → **nothing under `fixtures/` or `apps/web/src/sample/`**. `bash qa/i8h-faults.sh` → **ALL FAULTS RED, 15 of 15**. `bash qa/i8g-faults.sh` → **ALL FAULTS RED, 14 of 14** (four mutations re-pointed, below). `bash qa/i8d-faults.sh` → **ALL FAULTS RED, 13 of 13**, untouched. `node qa/r36-atlas.mjs` → **0 FAIL, 0 FOUND**. `node qa/r37-a48.mjs` → **ALL CLEAR** (it was 3 FAIL, all of them R37-2). With `npm run web:build && npm run serve` in another shell: `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/i8h-render.mjs` → **ALL CLEAR**, `qa/r37-render.mjs` → **ALL CLEAR** (it was 3 FAIL), `qa/r36-render.mjs` → **0 FAIL, 0 FOUND**, `qa/i8g-render.mjs` → **0 FAIL** (it was 2 FAIL). `node qa/r2-redact.mjs` → **KNOWN_LEAKS hits: 0**, unchanged. `node qa/r2-constraints.mjs` → unchanged, including its one round-2-vintage FAIL (the determinism grep does not walk the reducer). Root boundary intact: `git diff -- europe-2026-itinerary.html docs/ tickets/` at the repo root is empty and `md5sum europe-2026-itinerary.html` = `7c69df3208ef91c8be0fb59a56443188`, unmoved since round 33. |
+> | **A-49 P — `countryParts(code, index, thresholdKm)`, and the numbers it was ruled on** | New in `packages/core/src/derive/country.ts`, beside `countryKeyPoint`: every ring of every entry carrying the code with ≥ 3 points, each keyed by its own box centre, partitioned by **`clusterPoints`** — the one kernel, imported, so **`haversine` still does not appear in that file** and the ring-area helper is still module-private (a `ringBox` helper joins it, also private). Each part carries `box`, `key` (its greatest-area ring's box centre), `rings` in index order and `principal`. Parts come back in ascending order of their lowest ring position, which is `clusterPoints`' own output convention rather than a sort. **Every measurement A-49 states re-derived on the first run rather than tuned to:** **3 of 239** codes are multi-part at 4,000 km (`FR`, `UM`, `US`), **242 parts** at the 239-code ceiling, metropolitan France **14.1523° × 9.7685°** and French Guiana **2.867° × 3.7031°**, CONUS **57.7225° × 24.3091°** and Alaska/Hawaii/the Aleutians **41.8111° × 52.4416°** over 9 rings. |
+> | **I12 — the key point is preserved bit-for-bit, so A-48 is not reopened** | `countryParts(code, index, t).find(p => p.principal).key` equals `countryKeyPoint(code, index)` on both fields under `Object.is`, over **all 239 codes × 5 thresholds `{1, 100, 1000, 4000, 20000}` km = 1,195 comparisons, 0 mismatches**, asserted as a test rather than quoted. That is why C2′, I8, C4′'s ten pinned pairs, C5, C6 and every pane's **membership** are untouched, and it is asserted by construction as well as by measurement: the greatest-area ring of a country is the greatest-area ring of its own part. |
+> | **C8′/C8″ — the extent, and what it cost the frame** | Per pane: every part of every member code, `clusterPoints` over their keys at the same 4,000 km, keep the components holding at least one member's **principal** part, `core.mapBounds` over those parts' box corners. Everything else goes to one `detached` pane, appended last, never `panes[0]`, never ranked, never in C5's `W`. **Re-derived, not quoted:** `FR`+`GR` **81.13° × 49.10° → 31.20° × 16.23°** (`viewBox` width `32.4444`, height `17.4764`), **1.95% → 14.02% land** in bare geometry and **14.72%** on the rendered DOM; `FR` alone **64.08° → 14.15° × 9.77°**; `AT CZ DE ES FR IT` **73.38° → 28.25° × 19.04°**; `US` alone **104.83° → 57.72° × 24.31°** with a 41.81° × 52.44° detached pane; `CA MX US` **119.14° × 68.69°, one pane, unchanged from A-48**. Over all **239** single-country libraries no pane is wider than the pane A-48 produced for the same library, and exactly **3** produce a detached pane. |
+> | **Alaska, which is the criterion that says this is a rule and not a carve-out** | Asserted end to end in one test: `US` alone detaches Alaska; `CA US` and `CA MX US` keep it **in frame**, because it is then genuinely chained to the pane's subject at the threshold that decided the pane. The injected fault is fault 5 in `qa/i8h-faults.sh` — decide detachment per country instead of per pane — and `CA MX US` grows a detached pane it must not have. Nothing anywhere in the implementation reads a code, a region or a count of companions. |
+> | **R33-1, and what moves** | The reference library's **main** pane is byte-identical to I-8d's and I-8g's: weights **6** and **1**, dominance `12 > 7`, span **30.2827° × 16.1550°**, `viewBox` **`-8.1779 -59.2407 31.494 17.3663`**. `panes.length` is now **3**: `panes[1]` `["US"]` at **`-125.8416 -50.5435 60.0314 26.618`**, `panes[2]` the detached pane, `["US"]`, at **`-172.8399 -72.4066 43.9088 54.5393`** — the three strings ROADMAP I-8h pins, asserted as string equality in `world-map.test.ts`, re-derived in `qa/r36-atlas.mjs` §F and `qa/r37-a48.mjs` §E, and read off the rendered DOM in `qa/r36-render.mjs`. A-48's superseded inset string is kept in all three places as the injected fault's oracle and asserted **absent**. |
+> | **R37-3 — the chip list, fixed in the contract** | `frame.codes` is new: every drawn code exactly once, canonical row order, disjoint from `missing` (I13). `WorldMap.tsx`'s `.codelist` renders it; `frame.countries` is a paint list with one row per **(code, pane)**, so on the ship-gate library `FR` is in it twice. Rendered chips on the reference sample read **`AT CZ DE GB HR HU US`** again (round 37 measured `US DE GB HU AT CZ HR`). `.sort(`, `new Set(` and `Object.keys(` return **0** hits in `WorldMap.tsx` **over the raw file, comments included** — the ceiling is asserted in `test/views.test.ts` and again in `qa/r37-a48.mjs` §H, and the comment describing it deliberately does not quote the tokens, because a ceiling a comment can satisfy is not a ceiling. React logs **no** duplicate-key warning on the twice-drawn country (`qa/i8h-render.mjs` §D). |
+> | **A-50 — the pane box, measured in Chromium** | `--pane-cap` moves onto the pane (`min(58vh, 460px)` main, `min(22vh, 170px)` inset **and** detached), and the `<svg>` is `width: min(100%, calc(var(--pane-cap) * var(--pane-aspect, 2)))` with `aspect-ratio`, `max-height: var(--pane-cap)` and `margin-inline: auto`. **The symmetric criterion, measured at 390 × 820 and 1440 × 700 over every pane of all 239 single-country libraries: 0 letterboxed beyond 1 px**, plus six libraries driven end to end at both viewports (`qa/i8h-render.mjs` §A/§B). `MV` **22.0% → 100%** (78 × 460 in a 78 × 460 box), `CL` **33.4% → 100%**, the sample **76.8% → 100.0%** at 1440 × 700. **Injected fault, run by hand because it needs a rebuild:** restore `width: 100%` + the static `max-height`, `npm run web:build`, re-serve → `qa/i8h-render.mjs` reports **9 FAIL** with `MV` back at 78 in 356 and `CL` at 105 in 958. |
+> | **R37-2 and R37-5, the two routed MINORs** | **R37-2:** the three false sentences in `worldMap.ts` are gone — the kernel is described as connected components, C4's withdrawn *"≥1.5× margin"* is replaced by A-48 Part 4's actual measurement (`SO`–`TM` 3,999.8 km merging against `CF`–`GW` 4,000.0 km splitting, ratio 1.000×) and by the ten outcome pairs re-derived at the C2′ keys, and US–IS reads **5,707** km. No behaviour change; `qa/r37-a48.mjs` §J is the grep and it is now clean. **R37-5:** `countryKeyPoint`'s union-box fallback returns **`null`** rather than `{lat: NaN, lng: NaN}` when the union box is not finite. Callers already handled `null` — `worldMapFrame` sends it to `missing` — and the finite box fallback is unchanged, so the one shipped-index behaviour (0 codes reach it) does not move. |
+> | **Test-first, and where it was watched fail** | `countryParts.test.ts` (22) written and run **before** the function existed — *module does not provide an export named `countryParts`*. `world-map.test.ts`'s 25 new cases run against the shipped frame first: **19 red**, and the six that passed are the ones A-49 leaves alone (the main pane's byte identity, I2's per-pane uniqueness). `test/views.test.ts`'s A-50 pair red against the shipped stylesheet. The two A-49 view assertions were written after the edit and then **red-green verified by reverting the edit** — chip list red, caption red, restored, green. Then **15 mutations** in `qa/i8h-faults.sh`, all red, and one by hand against the built product. |
+> | **The probes: re-pointed, not re-scored** | Six probes carried assertions that encoded a superseded clause. Each is re-pointed at the clause that replaced it, marked `[I-8h]` in place, **with the superseded rule kept beside it as the injected fault's oracle**: `qa/r36-atlas.mjs` (pane counts become geographic-pane counts; I1/I2/I3/I5 restated; the union-box extent is computed there and still measures 81.13°), `qa/r36-render.mjs` (three panes on screen, and *"no country is drawn in two panes"* becomes per-pane uniqueness plus the one named exception), `qa/r37-a48.mjs` (§B's NaN assertion, §E's pinned strings, §G's pane count and extent, §H's chip list, §J's surface count), `qa/r37-render.mjs` (§B's 50-code list is now the oracle, §C and §D hold the fix), `qa/i8g-render.mjs` (§A's `panes.length === 1` and its caption assertion), and four of `qa/i8g-faults.sh`'s mutations whose anchor lines A-49 rewrote. **Nothing was re-scored, deleted or weakened** — every re-pointed line is stricter than the one it replaces, because the old rule is now a fault the probe must still be able to see. |
+> | **Two of A-49's own claims that did not survive contact, filed rather than matched** | **KD-71:** A-49 I12's named injected fault — *"rank parts by summed area instead of by their greatest ring and `US` mismatches"* — is **vacuous on the shipped index**: the two rankings choose the same part on all 239 codes at all five thresholds (`US` is CONUS 7,976,690 km² against 1,516,703 km² summed). The rule is built exactly as A-49 writes it, because that is what makes I12 provable; a fault that **is** red (key a part off its own box) is substituted and named, and the vacuity is asserted as a test so a future index regeneration makes it visible. **KD-72:** A-49 Part 2's *"the in-frame set is exactly one component"* holds only for a pane that **is** one cluster — C5's no-split pane and C7's `inset-2` both hold several by definition, and a `US`+`JP` library measures **two**. C8′'s operative sentence is *"the union of the components containing at least one principal part"*, which is well defined either way and is what is implemented, so no behaviour follows; only the proof is over-stated. Both are pinned in tests in both directions. |
+> | **Objection to the design** | **None that blocks.** Three disclosures, all filed as KDs rather than as code that diverges: **KD-71** and **KD-72** above, and **KD-73** — A-49 Part 2 builds parts from rings of ≥ 3 points and `d` is emitted from a pane's parts, so a degenerate one- or two-point ring is now drawn nowhere, and a code whose rings are *all* degenerate goes to `missing` even though `countryKeyPoint`'s fallback still gives it a key. Unreachable from the committed artefact (all **1,033** rings of the 292 entries have ≥ 3 points, measured), so I11 holds over every real library; fixture-only, in the same class as R37-5. **Two contract-hygiene fixes made in passing and named here rather than buried:** the stray `---` in BUILD-NOTES §1 that had been cutting **KD-69** and **KD-70** out of `test/disclosure.test.ts`'s scanned section is removed (they were unscanned, so a source comment could cite them and nothing would check), and `test/views.test.ts`'s W1-class grep for `WorldMap.tsx` now runs over the raw file rather than the comment-stripped one. |
+> | **What I could not verify** | **Nothing was measured on a real phone**, only at 390 × 820 and 1440 × 700 Chromium viewports. **A-50's 239-library sweep is not 478 page loads**: the box rule is a pure function of `--pane-aspect`, `--pane-cap` and the available width, so `qa/i8h-render.mjs` §A sets the real custom property on the real `<svg>` in the real stylesheet and reads the computed layout back; §B then drives six libraries end to end at both viewports to check that premise against the app. The method is stated in the probe's own header. **The detached pane's layout was not tried at a third pane count**: I asserted four panes exist and are laid out, but only looked at the two-pane and three-pane cases in a browser. **`countryParts`' cost was not profiled beyond the existing suite** — it is one pass over the same 22,220 vertices `countryKeyPoint` already walks, plus `clusterPoints` over at most 177 ring points for `MV`, and the whole 239-code frame still builds inside the test run, but nobody has put a number on the per-pane in-frame pass. **A-49 residue 2's worst case (`FR`, `US` and `UM` in one library, so the detached pane spans the Pacific) was not looked at in a browser.** **The `MF`/`SX` pair was not attacked further** — A-48 residue 6 still defers it. |
+
+
 > **Addendum, on ROADMAP Phase 2 **I-8g** (revision 33) — ARCHITECTURE §4.4 **A-48**, which amends
 > **A-41** in place (C2′ the key point, C3′ the partition, C9 paint order, Part 6 the pane's
 > `aspect`, I2 restated, I8/I9/I10 added) and answers QA round 36's **R36-1**, **R36-2**, **R36-5**,
@@ -2846,7 +2891,6 @@ direction end to end at `--today 2026-08-14`, where the reference trip is `activ
 **Trigger:** a multi-trip fixture (I-8 will want one), at which point a clock with both a completed
 and an active trip in it is worth more than either of today's two.
 
----
 
 ### KD-69 — the world map's code-chip list is in paint order, not alphabetical, and §4.4 A-48 C9 says it is alphabetical
 
@@ -2869,6 +2913,14 @@ reaches its trips, which is the fallback A-48 residue 6 and A-41 constraint 3 ac
 
 **Trigger to revisit:** an architect's call — leave the sentence corrected, sort the chip list in the
 view (accepting the ceiling change), or put a canonical-order list on the frame for the list to read.
+
+> **Closed at I-8h** by §4.4 **A-49** Part 5 — the architect took the third option, which is also the
+> one A-49 forces: `frame.countries` becomes a **paint list** with a duplicate row per detached
+> country, so a view that rendered it as a country list would print `FR` twice with two identical
+> React keys. The frame carries **`codes`**, `WorldMap.tsx`'s `.codelist` renders that, and
+> `.sort(` / `new Set(` / `Object.keys(` are asserted absent from the file. A-48 C9 consequence 2's
+> *"unchanged and alphabetical"* is withdrawn as false in the document.
+
 
 ### KD-70 — the R36-1 library is one pane and is still 81° wide, so I-8g's ship-gate sentence is not met as worded
 
@@ -2893,6 +2945,84 @@ for the manager: `/tmp/cairn-i8g/i8g-fr-gr-390.png` (regenerate with `node qa/i8
 **Trigger to revisit:** the architect deciding that a pane's extent should be something other than
 `mapBounds` over every corner of every entry box — e.g. framing the principal ring and letting minor
 territories fall outside, which is a change to C8 and to A-42 (b)'s containment guarantee at once.
+
+> **Closed at I-8h** by §4.4 **A-49** C8′/C8″, which is exactly the trigger above: a pane's extent is
+> now `mapBounds` over its **in-frame parts**, and French Guiana is drawn in a `detached` pane rather
+> than framed or cropped. The library measures **31.20° × 16.23°** where this entry recorded 81.1°.
+> The 81.1° number survives in `packages/client/test/world-map.test.ts` as the injected fault's
+> oracle (`unionBoxExtent`), so restoring C8 goes red rather than silent.
+
+### KD-71 — A-49's named injected fault for I12 ("rank parts by summed area and `US` mismatches") cannot be red on the shipped index
+
+**Where:** `packages/core/test/countryParts.test.ts` · **§4.4 A-49 Part 8 (I12); ROADMAP I-8h,
+criterion *"the key point is preserved bit-for-bit"*.**
+
+A-49 I12's criterion names one injected fault: *"rank parts by summed area instead of by their
+greatest ring and `US` mismatches."* Swept over all **239** codes at all five of I12's thresholds
+(`{1, 100, 1000, 4000, 20000}` km), the two rankings choose the **same** part **every time** — 0
+distinguishing cases. On `US` specifically, CONUS is one ring of **7,976,690 km²** and the detached
+part is nine rings summing to **1,516,703 km²**, so the greatest-ring rule and the summed rule agree
+outright; `FR` (558,192 vs 85,620) and `UM` (23 vs 5) agree too, and they are the only other
+multi-part codes.
+
+**The rule is built exactly as A-49 writes it** — greatest ring, not sum — because that is what makes
+I12 *provable* (the greatest-area ring of a country is by construction the greatest-area ring of its
+own part) rather than merely measured. What is false is only that this particular fault can measure
+red. A fault that **is** red is substituted and named in the test: key a part off **its own box**
+rather than off its greatest ring, which is A-41 C2's superseded rule one level down and moves `FR`'s
+key from 46.75°N 1.75°E to 46.2643°N 2.4839°E, because the principal part is metropolitan France
+**plus Corsica**. The vacuity of A-49's own fault is asserted as a test rather than left as prose, so
+if a future index regeneration makes it reachable, that test goes red and this entry is stale.
+
+**Trigger to revisit:** a `countries.gen.ts` regenerated at a different scale (A-49 residue 3), which
+is the same trigger C9 and A-26 Part 4 already carry.
+
+### KD-72 — A-49 Part 2's *"the in-frame set is exactly one component"* holds only for a pane that is one cluster
+
+**Where:** `packages/client/src/selectors/worldMap.ts` (`inFrameOf`) ·
+`packages/client/test/world-map.test.ts` · **§4.4 A-49 Part 2 and C8′.**
+
+A-49 Part 2 justifies C8′ with: *"A pane's member codes are a connected component of the **country**
+graph … The members' principal parts are therefore all in one part-component. The in-frame set is
+that component."* **The premise is not true of two of the panes C7 can build.** C5 refuses to split a
+tie, so the single pane it then produces holds **every** cluster; and C7's `inset-2` is *"the union of
+every remaining cluster"* by definition. Measured: a `US` + `JP` library (weights 1 and 1) is one
+geographic pane whose principal parts form **two** components, not one.
+
+**No behaviour follows from this and nothing is built differently.** C8′'s own operative sentence is
+*"the union of the components containing at least one member code's principal part"*, which is well
+defined for any number of components, and that is implemented verbatim — one pass over
+`clusterPoints`' output, no tie-break, no scan order, no choice. What is over-stated is the *proof*,
+and the consequence is only that the in-frame set can be several components for a pane that was
+already several clusters — which is the pane's own shape, not a new arbitrariness. It is pinned as a
+test (`"the in-frame set is one component per pane ONLY when the pane is one cluster"`) so the claim
+is measured in both directions rather than assumed.
+
+**Trigger to revisit:** the architect either narrowing Part 2's proof to *"a pane that is one
+cluster"*, or ruling that a multi-cluster pane should frame only the component its **primary**
+cluster reaches — which would be a real behaviour change and is not built.
+
+### KD-73 — a ring of fewer than three points has no part, so a fixture carrying one loses that ring from the map
+
+**Where:** `packages/core/src/derive/country.ts` (`countryParts`) ·
+`packages/client/src/selectors/worldMap.ts` · **§4.4 A-49 Part 2 (P); A-41 constraint 1; I11.**
+
+A-49 Part 2 says parts are built from *"every ring … with at least three points"*, and `d` is emitted
+from a pane's **parts**. So a degenerate ring — one or two points — is in no part and is drawn
+nowhere, where before I-8h `subpath` emitted it. It also means a code whose rings are **all**
+degenerate has no parts and goes to `missing`, even though `countryKeyPoint`'s union-box fallback
+still gives it a key point; A-49 states that (*"the frame treats `[]` exactly as `countryKeyPoint`'s
+`null`"*) and it is built that way.
+
+**Unreachable from the shipped artefact and measured, not assumed:** all **1,033** rings of the 292
+committed entries have three or more points, so I11 (*"the rings emitted across a code's entries are
+its full ring set, each exactly once"*) holds over every real library and is asserted over a 239-code
+one. `tools/gen-countries.mjs` cannot emit a shorter ring. This is a **fixture-only** exposure, in the
+same class as KD-70's neighbour R37-5.
+
+**Trigger to revisit:** an index whose generator can emit a one- or two-point ring, or a test fixture
+that needs one drawn. The bounded remedy would be to attach a degenerate ring to the part its own
+point falls in; A-49 does not rule that and it is deliberately not built.
 
 ## 2. How to run it
 

@@ -241,10 +241,46 @@ the pane and every country's rendered bbox in css px; **D** the chip list's orde
 **E** the dark `--map-fill` against every surface the map is drawn over, including the legend
 swatch's own background.
 
-`r37-a48.mjs` reports **3 FAIL**, all of them **R37-2** (§J). `r37-render.mjs` is **ALL CLEAR**:
-R37-1, R37-3 and R37-4 are `NOTE` lines there, because each is a measurement whose interpretation
-is the finding rather than a broken expectation. Read `../docs/QA-FINDINGS.md`'s round-37 note
-before assuming either is broken.
+`r37-a48.mjs` reported **3 FAIL**, all of them **R37-2** (§J). `r37-render.mjs` reported **ALL
+CLEAR**: R37-1, R37-3 and R37-4 were `NOTE` lines there, because each is a measurement whose
+interpretation is the finding rather than a broken expectation. Read `../docs/QA-FINDINGS.md`'s
+round-37 note before assuming either is broken.
+
+**I-8h** (§4.4 **A-49** — a country's geometry is its *parts*, C8′'s extent, C8″'s `detached`
+pane, C7′'s cap, Part 5's `frame.codes` — and **A-50**, the pane box in both directions) adds two
+scripts and **re-points six probes at the rule that replaced the one they were written against**.
+Round 37's MAJOR was a defect in A-48 itself, so the assertions that encoded the superseded clause
+now encode the corrected one, each marked `[I-8h]` in place, with the superseded rule kept beside
+it as the injected fault's oracle — `r36-atlas.mjs` §B4 still computes A-48 C8's union-box extent
+and still measures **81.13°**; `r37-render.mjs` §B still lists the 50 codes that letterboxed under
+the static clamp; `r37-a48.mjs` §H still shows the paint list's order and its duplicate row.
+`r36-atlas.mjs`, `r36-render.mjs`, `r37-a48.mjs`, `r37-render.mjs` and `i8g-render.mjs` all report
+clean, and four of `i8g-faults.sh`'s fourteen mutations were re-pointed at lines A-49 rewrote (all
+fourteen still RED). `i8d-faults.sh` is untouched and still 13 of 13 RED.
+
+```bash
+bash qa/i8h-faults.sh                                    # 15 mutations in throwaway worktrees
+# with `npm run web:build && npm run serve` in another shell:
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/i8h-render.mjs
+```
+
+`i8h-render.mjs` has four sections: **A** A-50's symmetric no-letterboxing criterion over every
+pane of all **239** single-country libraries at **390 × 820 and 1440 × 700** — the method is
+stated in the probe's own header, because it is not one page load per library: the box rule is a
+pure function of `--pane-aspect`, `--pane-cap` and the available width, so the sweep sets the real
+custom property on the real `<svg>` and reads the real computed layout back; **B** six real
+libraries driven end to end at both viewports, which is what checks §A's premise against the app;
+**C** the `detached` pane on screen — last, its own class, captioned *"Distant parts of"* rather
+than *"Shown separately"*, tappable, and both of a twice-drawn country's paths carrying the
+identical attribution; **D** one chip per country on a library that draws one twice, with React's
+duplicate-key warning asserted absent.
+
+**One of A-49's own named injected faults cannot be red** — *"rank parts by summed area … and `US`
+mismatches"* — and `i8h-faults.sh`'s header says so rather than faking it; a substitute that is
+red is fault 3, and the vacuity is a test in `packages/core/test/countryParts.test.ts`. See
+**KD-71** in `../docs/BUILD-NOTES.md`. A-50's browser-side fault (restore `width: 100%` with the
+static `max-height`) needs a rebuild, so it is injected by hand against `i8h-render.mjs`; it
+measures **9 FAIL** and the numbers are in BUILD-NOTES.
 
 Browser probes need `npm run web:build && npm run serve` in one shell first, then:
 

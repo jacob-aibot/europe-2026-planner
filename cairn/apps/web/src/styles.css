@@ -611,32 +611,62 @@ textarea { resize: vertical; }
    where a pane sits or how big it is, because a measurement is what would bring the
    "cannot fit a hidden container" bug back. Placement and size are here, and only here. */
 .worldmap__panes { display: flex; flex-wrap: wrap; }
-.worldmap__pane { position: relative; min-width: 0; }
-.worldmap__pane--main { flex: 1 0 100%; }
-.worldmap__pane--inset { flex: 1 1 45%; border-top: var(--rule); }
+/* §4.4 A-50: the height cap is a custom property, so the box can be sized from it in BOTH
+   directions. The two values are the ones the stylesheet already had — they moved, they are
+   not new. `--pane-aspect` arrives per <svg> from the frame; `--pane-cap` is a property of the
+   pane's ROLE, which is layout and belongs here. */
+.worldmap__pane { position: relative; min-width: 0; --pane-cap: min(58vh, 460px); }
+.worldmap__pane--main { flex: 1 0 100%; --pane-cap: min(58vh, 460px); }
+.worldmap__pane--inset { flex: 1 1 45%; border-top: var(--rule); --pane-cap: min(22vh, 170px); }
 .worldmap__pane--inset + .worldmap__pane--inset { border-left: var(--rule); }
+/* §4.4 A-49 C8″ — the detached pane. It is laid out as an inset (it is a small captioned frame
+   beside the geographic ones) and carries an inset's cap; what differs is only its caption,
+   which A-49 Part 4 consequence 3 requires to say "distant parts of" rather than "shown
+   separately". */
+.worldmap__pane--detached { flex: 1 1 45%; border-top: var(--rule); --pane-cap: min(22vh, 170px); }
+.worldmap__pane--inset + .worldmap__pane--detached,
+.worldmap__pane--detached + .worldmap__pane--detached { border-left: var(--rule); }
 
 /* The sea is the element's own background as well as a rect, because `preserveAspectRatio`
    can leave user space visible OUTSIDE the world (a 109° × 57° pane in a 5.6:1 box shows
    longitudes past -180), and a white band beside a grey one reads as a rendering fault. The
    rect stays: it is the world in the frame's own coordinates, and it is what a future
    land/sea distinction would hang off. Neither is a measurement. */
-/* §4.4 A-48 Part 6 (QA R36-5): the box is sized from the PANE'S OWN aspect ratio, which the
-   frame computed and the component passed through as `--pane-aspect`. At 390 px the main pane
-   used to paint 356 × 196 px inside a 356 × 460 px box — 42.6%, i.e. 264 px of empty sea —
-   because the height was a constant and `preserveAspectRatio="xMidYMid meet"` letterboxed the
-   rest. The `max-height` is STATIC: it clamps a tall pane, it never decides the frame. Nothing
-   here is measured, no `viewBox` moves, and A-41 Part 7's "no per-screen-size rule" is
-   untouched — Part 6 clarifies that it forbids a frame that depends on a measurement, not a CSS
-   box that resolves at layout. The `height: auto` is the fallback for a pane with no custom
-   property (an aspect of 0 would collapse the box; there is none, but the rule is cheap). */
+/* §4.4 A-48 Part 6 (QA R36-5), COMPLETED BY A-50 (QA R37-4): the box is sized from the PANE'S
+   OWN aspect ratio, which the frame computed and the component passed through as
+   `--pane-aspect`. At 390 px the main pane used to paint 356 × 196 px inside a 356 × 460 px
+   box — 42.6%, i.e. 264 px of empty sea — because the height was a constant and
+   `preserveAspectRatio="xMidYMid meet"` letterboxed the rest.
+
+   Part 6's `aspect-ratio` + static `max-height` fixed only the WIDE direction. At 390 px the
+   box is 356 wide and clamped at 460 tall, so a pane filled it exactly when its aspect was
+   ≥ 356/460 = 0.774 — and 50 of 239 single-country libraries are narrower than that (`MV`
+   0.170, `CL` 0.258, measured at 33.4% of its box), while the same clamp letterboxed the
+   shipped sample HORIZONTALLY on a desktop (76.8% at 1440 × 700). A-50 makes the box the map
+   in both directions: it is the largest box of the pane's own aspect that fits the available
+   width and the height cap.
+
+   This does NOT make a narrow country bigger, and may not be described as if it does — the
+   Maldives in an equirectangular projection is a 78 px column at 390 px, and the only ways to
+   change that are a projection change or `preserveAspectRatio="none"`, both of which A-41
+   Part 7 forbids. What it removes is the WASTED BOX, not the narrowness; `margin-inline: auto`
+   centres what is left.
+
+   Still measurement-free: `min()` and `calc()` over a custom property resolve at layout and
+   measure nothing, no `viewBox` moves, no pane count or membership varies with screen size,
+   and the frame is byte-identical in bare Node. A-41 Part 7's "no per-screen-size rule" forbids
+   a FRAME that depends on a measurement, which is what Part 6 clarified and A-50 does not
+   touch. The fallbacks on `--pane-aspect` are for a pane with no custom property (an aspect of
+   0 would collapse the box; there is none, but the rule is cheap). */
 .worldmap__svg {
-  display: block; width: 100%; height: auto;
+  display: block;
+  width: min(100%, calc(var(--pane-cap) * var(--pane-aspect, 2)));
+  height: auto;
   aspect-ratio: var(--pane-aspect, 2);
-  max-height: min(58vh, 460px);
+  max-height: var(--pane-cap);
+  margin-inline: auto;
   background: var(--map-sea);
 }
-.worldmap__pane--inset .worldmap__svg { max-height: min(22vh, 170px); }
 .worldmap__sea { fill: var(--map-sea); }
 
 /* A-41 constraint 3: the outlier is named where it is drawn, not in a footnote. */

@@ -154,7 +154,9 @@ export function WorldMap({ state, onOpenTrip, onError }: Props) {
                 aria-label={
                   pane.role === 'main'
                     ? `${pane.codes.length} countries visited`
-                    : `${pane.codes.join(', ')}, shown in a separate frame`
+                    : pane.role === 'detached'
+                      ? `Distant parts of ${pane.codes.join(', ')}, shown in a separate frame`
+                      : `${pane.codes.join(', ')}, shown in a separate frame`
                 }
                 data-viewbox={pane.viewBox}
               >
@@ -197,6 +199,18 @@ export function WorldMap({ state, onOpenTrip, onError }: Props) {
               {pane.role === 'inset' ? (
                 <p className="worldmap__panecap">
                   <span className="worldmap__panecap-label">Shown separately</span>
+                  <span className="mono">{pane.codes.join(' ')}</span>
+                </p>
+              ) : null}
+              {/*
+                A-49 Part 4 consequence 3: the detached pane may NOT say "shown separately".
+                That phrase asserts the country is a distant part of the traveller's record;
+                here it is a distant part of the COUNTRY'S OWN GEOMETRY, and the country is
+                already drawn on another pane. The caption names the codes and says which.
+              */}
+              {pane.role === 'detached' ? (
+                <p className="worldmap__panecap">
+                  <span className="worldmap__panecap-label">Distant parts of</span>
                   <span className="mono">{pane.codes.join(' ')}</span>
                 </p>
               ) : null}
@@ -274,18 +288,35 @@ export function WorldMap({ state, onOpenTrip, onError }: Props) {
             </ul>
           </>
         ) : (
+          /*
+            **A-49 Part 5 (QA R37-3), and KD-69 closed.** This list renders `frame.codes` and
+            nothing else: every DRAWN code exactly once, in canonical row order, decided in the
+            selector. It may not render `frame.countries` — that is a PAINT list, one row per
+            (code, pane), so a country with a detached part is in it twice and this list would
+            print `FR` twice with two identical React keys; and C9 put it in paint order, which
+            is what made the chips read `US DE GB HU AT CZ HR`.
+
+            The view neither sorts nor dedupes. The three re-derivation idioms A-49 Part 5 names
+            are asserted **absent from this file, comments included** — that is why they are
+            described here rather than quoted — a greppable ceiling of the same kind as W1's.
+            `frame.countries` is still the source for the per-code attribution, found by string
+            equality and nothing else.
+          */
           <ul className="codelist">
-            {frame.countries.map((c) => (
-              <li key={c.code}>
-                <button
-                  className={'codechip' + (c.provisional ? ' codechip--provisional' : '')}
-                  onClick={() => setSelected(c.code)}
-                >
-                  <span className="mono">{c.code}</span>
-                  <span className="codechip__n mono">{c.tripIds.length}</span>
-                </button>
-              </li>
-            ))}
+            {frame.codes.map((code) => {
+              const row = frame.countries.find((c) => c.code === code);
+              return (
+                <li key={code}>
+                  <button
+                    className={'codechip' + (row?.provisional ? ' codechip--provisional' : '')}
+                    onClick={() => setSelected(code)}
+                  >
+                    <span className="mono">{code}</span>
+                    <span className="codechip__n mono">{row ? row.tripIds.length : 0}</span>
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>

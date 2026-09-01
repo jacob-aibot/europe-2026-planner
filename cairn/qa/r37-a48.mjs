@@ -245,12 +245,19 @@ ok(core.countryKeyPoint('XX', idxOf([{ code: 'XX', rings: [[5, 5, 7, 9]] }])) !=
   const f = core.countryKeyPoint('XX', idxOf([{ code: 'XX', rings: [[5, 5, 7, 9]] }]));
   ok(f.lng === 6 && f.lat === 7, 'the fallback really is the union-box centre', f);
 }
-ok(core.countryKeyPoint('XX', idxOf([{ code: 'XX', rings: [] }])) !== null,
-  'a code with NO rings at all still answers (the union box is [Inf,Inf,-Inf,-Inf] -> NaN, not a throw)');
+// [I-8h] R37-5 fixed: these two assertions are RE-POINTED, not re-scored. The finding was that
+// a code with no rings returned `{lat: NaN, lng: NaN}` — total, but not a coordinate. It now
+// returns `null`, which is the answer every caller already handles. The superseded behaviour is
+// kept below as the oracle: the union box IS [Inf,Inf,-Inf,-Inf], its average IS NaN, and the
+// assertion is that the function no longer hands that out.
 {
   const f = core.countryKeyPoint('XX', idxOf([{ code: 'XX', rings: [] }]));
-  note(`a code with zero rings yields ${JSON.stringify(f)} — totality kept, but the answer is not a coordinate`);
-  ok(Number.isNaN(f.lat) && Number.isNaN(f.lng), 'and it is NaN rather than a plausible wrong point', f);
+  const superseded = { lat: (Infinity + -Infinity) / 2, lng: (Infinity + -Infinity) / 2 };
+  ok(Number.isNaN(superseded.lat), 'the oracle: averaging an unbounded union box really is NaN');
+  ok(f === null, 'a code with NO rings at all returns null, not the NaN the union box averages to', f);
+  note(`a code with zero rings yields ${JSON.stringify(f)} — total, and the answer is a first-class null`);
+  ok(core.countryParts('XX', idxOf([{ code: 'XX', rings: [] }]), 4000).length === 0,
+    'A-49 P agrees with it: no rings, no parts, and the frame states the code as missing');
 }
 // a degenerate (zero-area, 3 collinear points) ring beats the fallback — is that C2′?
 {
@@ -494,13 +501,24 @@ const frameOf = (spec) => worldMapFrame(statsFor(spec.map(([c, n]) => rowOf(c, n
 
 const refStats = core.travelStats([core.tripSummary(trip, IDX)], '2026-08-31');
 const ref = worldMapFrame(refStats, IDX);
-ok(ref.panes.length === 2 &&
-   ref.panes[0].viewBox === '-8.1779 -59.2407 31.494 17.3663' &&
-   ref.panes[1].viewBox === '-173.8876 -73.4543 109.0195 56.6347',
-  'R33-1 not regressed: the two reference viewBox strings are byte-identical to I-8d\'s',
+// [I-8h] RE-POINTED, not re-scored. A-49 C8′/C8″ leave the MAIN pane byte-identical — which is
+// what R33-1 is about and what this assertion now holds — and move the US inset from the union
+// of every US box (104.83° wide) to CONUS (57.72°), with Alaska/Hawaii/the Aleutians in a third,
+// `detached` pane. All three strings are pinned by ROADMAP I-8h, and A-48's superseded inset
+// string is kept below as the oracle: if it comes back, C8 was restored.
+ok(ref.panes[0].viewBox === '-8.1779 -59.2407 31.494 17.3663',
+  'R33-1 not regressed: the reference MAIN pane is byte-identical to I-8d\'s',
+  ref.panes[0].viewBox);
+ok(ref.panes.length === 3 &&
+   ref.panes[1].viewBox === '-125.8416 -50.5435 60.0314 26.618' &&
+   ref.panes[2].viewBox === '-172.8399 -72.4066 43.9088 54.5393',
+  'A-49: the US inset narrows to CONUS and a third pane appears, at the strings I-8h pins',
   ref.panes.map((p) => p.viewBox));
+ok(ref.panes[1].viewBox !== '-173.8876 -73.4543 109.0195 56.6347',
+  'the oracle: A-48 C8\'s 109.02°-wide inset is gone (restoring C8 brings it back)');
 ok(JSON.stringify(ref.panes[0].codes) === '["AT","CZ","DE","GB","HR","HU"]' &&
-   JSON.stringify(ref.panes[1].codes) === '["US"]',
+   JSON.stringify(ref.panes[1].codes) === '["US"]' &&
+   JSON.stringify(ref.panes[2].codes) === '["US"]',
   'pane.codes is still canonical row order (I2)', ref.panes.map((p) => p.codes));
 // aspect: re-derived from the emitted viewBox string, not read off the field.
 let aspBad = 0, aspMin = Infinity, aspMax = 0, aspMaxAt = '', aspMinAt = '';
@@ -627,16 +645,39 @@ ok(rank.get('MF') < rank.get('SX'),
 head('G  KD-70 — the two-France-one-Greece library, with the ocean measured');
 
 const frgr = frameOf([['FR', 2], ['GR', 1]]);
-ok(frgr.panes.length === 1, "I-8g's literal ship criterion: ONE pane", frgr.panes.map((p) => p.codes));
+// [I-8h] RE-POINTED. I-8g's criterion was `panes.length === 1`; A-49 C8″ adds the detached pane
+// that holds French Guiana, so the criterion becomes ONE GEOGRAPHIC pane plus that one. The
+// clustering claim it was written for — FR and GR share a frame — is unchanged.
+ok(frgr.panes.filter((p) => p.role !== 'detached').length === 1,
+  "I-8g's ship criterion, re-pointed: ONE geographic pane", frgr.panes.map((p) => p.codes));
+ok(frgr.panes.length === 2 && frgr.panes[1].role === 'detached' &&
+   JSON.stringify(frgr.panes[1].codes) === '["FR"]',
+  'A-49 C8″: French Guiana is drawn in its own captioned pane, not cropped and not framed',
+  frgr.panes.map((p) => [p.role, p.codes]));
 ok(JSON.stringify(frgr.panes[0].codes) === '["FR","GR"]', 'and it contains both FR and GR', frgr.panes[0].codes);
 {
   const [x, y, w, h] = frgr.panes[0].viewBox.split(' ').map(Number);
   const bw = frgr.panes[0].bounds.east - frgr.panes[0].bounds.west;
   const bh = frgr.panes[0].bounds.north - frgr.panes[0].bounds.south;
   note(`KD-70 pane: viewBox ${frgr.panes[0].viewBox} -> PAINTED ${w.toFixed(1)}° x ${h.toFixed(1)}°, aspect ${frgr.panes[0].aspect.toFixed(3)}`);
-  ok(Math.abs(bw - 81.1) < 0.05 && Math.abs(bh - 49.1) < 0.05,
-    "BUILD-NOTES' 81.1° x 49.1° re-derived — but that is the UNPADDED `bounds`; the viewBox the user actually sees is "
-    + `${w.toFixed(1)}° x ${h.toFixed(1)}°`, [bw, bh]);
+  // [I-8h] RE-POINTED, with the superseded rule kept as the oracle beside it. Round 37 measured
+  // 81.13° x 49.10° unpadded; A-49 C8′ frames the pane's IN-FRAME PARTS and it is 31.20° x 16.23°.
+  ok(Math.abs(bw - 31.1965) < 0.005 && Math.abs(bh - 16.2285) < 0.005,
+    "A-49 C8′: the ship-gate library's main pane is 31.20° x 16.23° unpadded (the viewBox the user sees is "
+    + `${w.toFixed(1)}° x ${h.toFixed(1)}°)`, [bw, bh]);
+  {
+    // The oracle: A-48's C8, computed here, still produces the rectangle round 37 measured.
+    const corners = [];
+    for (const e of IDX.countries) {
+      if (e.code !== 'FR' && e.code !== 'GR') continue;
+      const [w0, s0, e0, n0] = e.box;
+      corners.push({ lat: s0, lng: w0 }, { lat: s0, lng: e0 }, { lat: n0, lng: e0 }, { lat: n0, lng: w0 });
+    }
+    const b = core.mapBounds(corners);
+    ok(Math.abs((b.east - b.west) - 81.13) < 0.01 && Math.abs((b.north - b.south) - 49.10) < 0.01,
+      'the oracle: A-48 C8 (mapBounds over every entry box) still measures 81.13° x 49.10°',
+      [b.east - b.west, b.north - b.south]);
+  }
   // how much of that rectangle is actually drawn land?
   const N = 220;
   let land = 0, total = 0;
@@ -688,18 +729,36 @@ ok(JSON.stringify(frgr.panes[0].codes) === '["FR","GR"]', 'and it contains both 
 head('H  KD-69 — the chip list\'s order, and R36-7\'s reachability fallback');
 
 {
-  const codes = ref.countries.map((c) => c.code);
-  const alpha = [...codes].sort();
-  ok(JSON.stringify(codes) !== JSON.stringify(alpha),
-    "KD-69 confirmed: frame.countries (what the chip list renders) is NOT alphabetical", codes);
-  note(`reference library chip order: ${codes.join(' ')}  (alphabetical would be ${alpha.join(' ')})`);
-  ok(codes.length === alpha.length && new Set(codes).size === codes.length,
-    'the list is still COMPLETE and duplicate-free — R36-7\'s fallback is intact');
-  const big = all239.countries.map((c) => c.code);
+  // [I-8h] RE-POINTED. R37-3 is FIXED, and it is fixed in the contract rather than in the view:
+  // `frame.countries` is now a PAINT list (one row per (code, pane), so `US` is in it twice on
+  // the reference library), and the chip list renders the new `frame.codes`. The superseded
+  // source of the list is kept here as the oracle — it is still not alphabetical and it is
+  // still not duplicate-free, which is exactly why the view may not render it.
+  const paint = ref.countries.map((c) => c.code);
+  const chips = ref.codes;
+  const alpha = [...chips].sort();
+  ok(JSON.stringify(paint) !== JSON.stringify([...paint].sort()),
+    'the oracle: frame.countries (what the chip list used to render) is still NOT alphabetical', paint);
+  ok(new Set(paint).size !== paint.length,
+    'the oracle: frame.countries now carries a DUPLICATE row (US, in two panes) — a country list may not come from it',
+    paint);
+  note(`reference paint order: ${paint.join(' ')}  ·  chip order now: ${chips.join(' ')}`);
+  ok(JSON.stringify(chips) === JSON.stringify(alpha),
+    'R37-3 fixed: frame.codes — what the chip list renders — is canonical, i.e. alphabetical here', chips);
+  ok(chips.length === new Set(chips).size && chips.length === new Set(paint).size,
+    'the list is COMPLETE and duplicate-free — R36-7\'s fallback is intact');
+  const big = all239.codes;
   ok(big.includes('MF') && big.includes('SX') && big.includes('AD'),
-    'MF, SX and AD are all still in the emitted list at 239 codes');
+    'MF, SX and AD are all still in the chip list at 239 codes');
+  ok(big.filter((c) => c === 'MF').length === 1 && big.filter((c) => c === 'SX').length === 1,
+    '…and each of them exactly once (I13)');
   const view = readFileSync(resolve(CAIRN, 'apps/web/src/views/WorldMap.tsx'), 'utf8');
-  ok(!/\.sort\(/.test(view), 'WorldMap.tsx still sorts nothing (A-40 Part 2 / the "renderer computes nothing" ceiling)');
+  for (const banned of ['.sort(', 'new Set(', 'Object.keys(']) {
+    ok(!view.includes(banned),
+      `WorldMap.tsx re-derives no order of its own: no ${banned} (A-49 Part 5's greppable ceiling)`);
+  }
+  ok(/frame\.codes\.map\(/.test(view) && !/frame\.countries\.map\(/.test(view),
+    'the chip list renders frame.codes, and nothing renders the paint list as a country list');
   const m = view.match(/codelist[\s\S]{0,400}/);
   note(`.codelist source: ${(m ? m[0] : '').replace(/\s+/g, ' ').slice(0, 220)}`);
 }
@@ -744,9 +803,11 @@ head('J  the shipped source vs. the ruling it cites');
   ok(/connected components/.test(cl), 'cluster.ts documents the connected-components rule');
   const idx = readFileSync(resolve(CAIRN, 'packages/core/src/index.ts'), 'utf8');
   ok(/countryKeyPoint/.test(idx), 'countryKeyPoint is on the export surface');
+  ok(/countryParts/.test(idx), 'countryParts is on the export surface (A-49 Part 9)');
   const surface = Object.keys(core).length;
   note(`packages/core export surface: ${surface} symbols (Object.keys on the built namespace)`);
-  ok(surface === 78, 'export surface is 78 (77 -> 78 for countryKeyPoint)', surface);
+  // [I-8h] RE-POINTED: 78 -> 79 for `countryParts` and nothing else.
+  ok(surface === 79, 'export surface is 79 (78 -> 79 for countryParts)', surface);
 }
 
 console.log(`\n${fails === 0 ? 'ALL CLEAR' : `${fails} FAIL(S)`}`);

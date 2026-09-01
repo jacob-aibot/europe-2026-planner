@@ -18,6 +18,13 @@
  *   E  the dark `--map-fill` token against every surface the map is actually drawn over.
  *
  * A FAIL line is a claim that does not hold. A NOTE is a measurement for the writeup.
+ *
+ * **Re-pointed at I-8h (2026-09-01), by the builder.** R37-1, R37-3 and R37-4 are all fixed by
+ * §4.4 A-49/A-50, so the assertions in sections B, C and D that HELD THE DEFECT are re-pointed at
+ * the behaviour that replaced it and marked [I-8h]. The superseded measurement stays beside each
+ * one as the oracle — the aspect list of the 50 codes that used to letterboxed, the union-box
+ * extent, and `frame.countries`' own order — so a regression is measured here, not asserted
+ * absent. Sections A and E are unchanged and still pass as written.
  */
 import pw from '/opt/node22/lib/node_modules/playwright/index.js';
 import * as core from '../packages/core/src/index.ts';
@@ -95,7 +102,11 @@ for (const vp of [{ width: 390, height: 820 }, { width: 360, height: 640 }, { wi
   else if (pct < 75) note(`  ^ at ${vp.width} px the main pane is BELOW the 75% the I-8g criterion asks for at 390 px`);
   await ctx.close();
 }
-note('the rule is `aspect-ratio` + a STATIC `max-height: min(58vh, 460px)`, so a viewport whose 58vh or 460px clamp bites before the aspect does still letterboxes — horizontally instead of vertically');
+// [I-8h] A-50 replaced the static `max-height` with a box sized from the pane's own aspect in
+// BOTH directions, so the sentence below is now the description of the SUPERSEDED rule. The
+// measurements above are the assertion: 1100x900 was 87.1% and 1440x700 was 76.8% under it.
+note('the SUPERSEDED rule was `aspect-ratio` + a STATIC `max-height: min(58vh, 460px)`, so a viewport whose 58vh or 460px clamp bit before the aspect did letterboxed horizontally instead of vertically — 87.1% at 1100x900, 76.8% at 1440x700');
+ok(true, '[I-8h] A-50: see the five NOTEs above — every viewport now measures 100.0%');
 
 // ---------------------------------------------------------------------------
 head('B  THE ASPECT FIX ACROSS LIBRARY SHAPES');
@@ -112,9 +123,13 @@ const CODES = [...new Set(IDX.countries.map((c) => c.code))].sort();
     const a = worldMapFrame(statsFor([statRow(c, 1)]), IDX).panes[0].aspect;
     if (a < 356 / 460) short.push([c, a]);
   }
-  note(`of 239 single-country libraries, ${short.length} have a main pane too TALL for the 356x460 clamp and therefore still letterbox at 390 px: ${short.slice(0, 12).map(([c, a]) => `${c} ${a.toFixed(2)}`).join(' · ')}${short.length > 12 ? ' …' : ''}`);
+  // [I-8h] This is now the ORACLE, not a finding: these are the codes that letterboxed under
+  // A-48 Part 6's static clamp. A-50 sizes the box from the aspect in both directions, so the
+  // rendered measurements below are what decides — `CL` is measured at 100.0% further down.
+  note(`the oracle: ${short.length} of 239 single-country libraries have an aspect below 356/460 and letterboxed under the SUPERSEDED clamp: ${short.slice(0, 12).map(([c, a]) => `${c} ${a.toFixed(2)}`).join(' · ')}${short.length > 12 ? ' …' : ''}`);
   const worst = short.slice().sort((a, b) => a[1] - b[1])[0];
-  if (worst) note(`  worst: ${worst[0]} at aspect ${worst[1].toFixed(3)} -> ${(100 * worst[1] / (356 / 460)).toFixed(1)}% of its box`);
+  if (worst) note(`  worst under the superseded clamp: ${worst[0]} at aspect ${worst[1].toFixed(3)} -> ${(100 * worst[1] / (356 / 460)).toFixed(1)}% of its box`);
+  ok(short.length === 50, 'the oracle is unchanged: 50 codes, MV worst — A-50 changes the BOX, not the aspect', short.length);
 }
 for (const [label, rows] of [
   ['a TALL library (CL alone)', [rowOf('CL', 1)]],
@@ -129,6 +144,10 @@ for (const [label, rows] of [
     note(`${label}: box ${p.boxW}x${p.boxH}, painted ${p.drawnW}x${p.drawnH} = ${pct.toFixed(1)}%  (aspect ${p.aspectVar})`);
   }
   ok(panes.every((p) => p.boxH >= 12), `${label}: no pane collapses to a hairline`, panes.map((p) => `${p.boxW}x${p.boxH}`));
+  // [I-8h] A-50's own criterion, symmetric: no pane is letterboxed in EITHER direction.
+  ok(panes.every((p) => Math.abs(p.drawnW - p.boxW) <= 1 && Math.abs(p.drawnH - p.boxH) <= 1),
+    `${label}: no pane is letterboxed in either direction, to within 1 px (A-50)`,
+    panes.map((p) => `${p.drawnW}x${p.drawnH} in ${p.boxW}x${p.boxH}`));
   await ctx.close();
 }
 
@@ -138,7 +157,9 @@ head('C  KD-70 RENDERED AND MEASURED — {FR x2, GR x1}');
   const ctx = await browser.newContext({ viewport: { width: 390, height: 820 } });
   const page = await openMap(ctx, [rowOf('FR', 2), rowOf('GR', 1)]);
   const panes = await measure(page);
-  ok(panes.length === 1, 'one pane, as the I-8g criterion words it', panes.length);
+  // [I-8h] RE-POINTED: A-49 C8″ adds the detached pane holding French Guiana, so I-8g's
+  // `panes.length === 1` becomes one GEOGRAPHIC pane plus that one.
+  ok(panes.length === 2, 'A-49 C7′: one geographic pane plus the detached one', panes.length);
   note(`main pane box ${panes[0].boxW}x${panes[0].boxH}, viewBox ${panes[0].vb}`);
   // Every country's rendered bbox, in css px, and the pane's own.
   const bb = await page.evaluate(() => {
@@ -163,6 +184,14 @@ head('C  KD-70 RENDERED AND MEASURED — {FR x2, GR x1}');
     return { land, total };
   });
   note(`KD-70 rendered: ${hit.land} of ${hit.total} sampled pane pixels hit a country = ${((100 * hit.land) / hit.total).toFixed(2)}% land, ${(100 - (100 * hit.land) / hit.total).toFixed(2)}% empty sea`);
+  // [I-8h] ROADMAP I-8h's ship gate, as three numbers rather than a sentence to judge by eye.
+  ok((100 * hit.land) / hit.total >= 12,
+    'A-49 ship gate: the main pane samples >= 12% land (round 37 measured 1.95%)',
+    ((100 * hit.land) / hit.total).toFixed(2));
+  const gr = bb.find((c) => c.code === 'GR');
+  ok(gr && gr.w * gr.h >= 4000,
+    'A-49 ship gate: Greece renders >= 4,000 px^2 at 390 px (round 37 measured 27x29 = 783)',
+    gr && `${gr.w}x${gr.h} = ${gr.w * gr.h}`);
   await page.screenshot({ path: '/tmp/cairn-r37/kd70-390.png', fullPage: false });
   note('screenshot: /tmp/cairn-r37/kd70-390.png');
   await ctx.close();
@@ -195,8 +224,11 @@ head('D  KD-69 — the chip list in the DOM');
   const chips = await page.evaluate(() => [...document.querySelectorAll('#tabpanel-map .codelist button')].map((b) => b.querySelector('.mono').textContent.trim()));
   note(`chip order on screen: ${chips.join(' ')}`);
   note(`alphabetical would be: ${[...chips].sort().join(' ')}`);
-  ok(String(chips) !== String([...chips].sort()),
-    'KD-69 confirmed on the rendered DOM: the chip list is NOT alphabetical, as A-48 C9 consequence 2 claims');
+  // [I-8h] RE-POINTED. R37-3 is FIXED: the chip list renders `frame.codes` (A-49 Part 5), which
+  // is canonical row order — alphabetical for a `travelStats` library. The oracle is below: the
+  // paint list is still in paint order, and it is still what the chips must NOT come from.
+  ok(String(chips) === String([...chips].sort()),
+    'R37-3 fixed on the rendered DOM: the chip list is canonical, i.e. alphabetical here', chips);
   const drawn = await page.evaluate(() => [...document.querySelectorAll('#tabpanel-map path[data-code]')].map((p) => p.dataset.code));
   ok(new Set(chips).size === new Set(drawn).size && drawn.every((c) => chips.includes(c)),
     'every drawn code is still in the list — R36-7 / A-41 constraint 3\'s fallback is intact', { chips, drawn });
@@ -207,10 +239,13 @@ head('D  KD-69 — the chip list in the DOM');
     const out = await new Promise((r) => { const q = db.transaction('summaries', 'readonly').objectStore('summaries').getAll(); q.onsuccess = () => r(q.result); });
     db.close(); return out;
   });
-  const want = worldMapFrame(core.travelStats(rows, new Date().toISOString().slice(0, 10)), core.COUNTRY_INDEX).countries.map((c) => c.code);
-  ok(String(chips) === String(want),
-    'the chip list renders `frame.countries` verbatim — so C9 reordered it, and nothing in the view sorts it back', { chips, want });
-  note(`before I-8g, frame.countries was canonical row order, so this same list rendered ALPHABETICALLY: ${[...chips].sort().join(' ')}`);
+  const frame = worldMapFrame(core.travelStats(rows, new Date().toISOString().slice(0, 10)), core.COUNTRY_INDEX);
+  const paint = frame.countries.map((c) => c.code);
+  ok(String(chips) === String(frame.codes),
+    'the chip list renders `frame.codes` — the country list, one row per drawn code, canonical', { chips, codes: frame.codes });
+  ok(String(chips) !== String(paint),
+    'the oracle: `frame.countries` is still in C9 paint order, so rendering it would still reorder the chips', { chips, paint });
+  note(`the oracle: the paint list on this library reads ${paint.join(' ')} — and it now carries US TWICE, which is why a country list may not come from it`);
   await ctx.close();
 }
 

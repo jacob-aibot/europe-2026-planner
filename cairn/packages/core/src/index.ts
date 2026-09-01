@@ -86,7 +86,16 @@ export type { CopyStopSource, CopyStopCtx } from './build/copyStop.ts';
 // a LABEL for a country, never an attribution of a coordinate: `countryOf`'s `null` stays
 // first-class and nothing may snap a point to the nearest key. The ring-area helper it needs is
 // module-private.
-export { countryOf, countryKeyPoint } from './derive/country.ts';
+// `countryParts` joins at Phase 2 I-8h under §4.4 **A-49** Part 9, on `countryKeyPoint`'s terms
+// verbatim: P2 (that section names it) and P1 (`worldMapFrame` calls it). A country's parts are
+// a geometric property of the index, as `box`, `countryOf` and the key point already are, and
+// deriving them in `packages/client` would put a second bounds computation there. It is a LABEL
+// for a country's geometry — *"which pieces is this country in, and where is each"* — never an
+// answer about a coordinate. It takes the threshold as an argument because the threshold is
+// framing policy and lives in the client (A-41 C4). `CountryPart` is a type and is not part of
+// §2.10's runtime set-equality count.
+export { countryOf, countryKeyPoint, countryParts } from './derive/country.ts';
+export type { CountryPart } from './derive/country.ts';
 export { COUNTRY_INDEX } from './geo/countries.gen.ts';
 export type { CountryIndex, CountryEntry, CountryEntryInit, CountryRing, CountryBox } from './geo/countryIndex.ts';
 // `lifecycle` joins in revision 10 under P2: §8.1 names it, and §8.9 is the documentation

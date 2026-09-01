@@ -319,13 +319,42 @@
 </style>
 </head>
 <body>
+<div class="callout" style="border-left:4px solid #eab308;padding:.75rem 1rem;margin:1rem 0;background:#fefce8">
+<p><strong>&#128993; THE MAP&rsquo;S NEW FRAME IS NOW BUILT &mdash; not yet attacked &mdash; as of
+2026-09-01</strong> (this block is the newest; it supersedes the redesign block below on
+<em>&ldquo;no code has been written for it yet&rdquo;</em>).</p>
+<p><strong>I-8h is designed &#9989; &middot; built &#9989; &middot; verified &#10060; (not yet
+attacked) &middot; shippable &#10060;.</strong> Everything the redesign block below describes is now
+code, and every number in it was re-derived by running it rather than copied: France&nbsp;+&nbsp;Greece
+measures <strong>31.20&deg; &times; 16.23&deg;</strong> and <strong>14.7% land on screen</strong> (it
+was 81.13&deg; &times; 49.10&deg; and 1.95%), Greece renders <strong>71 &times; 76&nbsp;px</strong> on
+a phone (it was 27 &times; 29), France alone goes <strong>64.08&deg; &rarr; 14.15&deg;</strong>, and
+your Europe 2026 main frame is <strong>byte-for-byte identical</strong> to the one that shipped.
+Alaska detaches from a US-only map and stays in frame the moment Canada is added &mdash; the test that
+proves the rule is geometric.</p>
+<p>The country-code chips are alphabetical again, and <strong>every map now fills its box in both
+directions</strong> &mdash; measured across all 239 single-country maps at a phone size and a desktop
+size, with no letterboxing beyond a single pixel. Chile went from 33% of its box to 100%.</p>
+<p><strong>Two honest notes, written down rather than smoothed over.</strong> (1) One of the
+architect&rsquo;s own &ldquo;prove this test can fail&rdquo; checks turned out to be unfalsifiable on
+the shipped map data; a different check that genuinely can fail was substituted and the original is
+recorded as <strong>KD-71</strong>. (2) The architect&rsquo;s proof that a map frames exactly one
+connected group is true for a map built from one cluster and not for the two kinds of map that hold
+several &mdash; the <em>behaviour</em> is unaffected, only the proof is over-stated
+(<strong>KD-72</strong>).</p>
+<p><strong>A tester has not attacked this yet.</strong> It widens the shared engine&rsquo;s public
+surface (78 &rarr; 79), so the adversarial round is mandatory before it counts as verified. I-8h does
+<strong>not</strong> block <strong>I-8b</strong> (the Profile screen); I-8b still waits on
+<strong>I-8f</strong>.</p>
+</div>
 <div class="callout" style="border-left:4px solid #ea580c;padding:.75rem 1rem;margin:1rem 0;background:#fff7ed">
-<p><strong>&#128992; THE MAP&rsquo;S FRAME HAS BEEN REDESIGNED AND IS NOT BUILT YET &mdash; as of
-2026-09-01</strong> (this block is the newest; it supersedes the round-37 block below on
-<em>&ldquo;shippable &mdash; the manager&rsquo;s call&rdquo;</em> and on I-8g&rsquo;s status).</p>
+<p><strong>&#128992; THE MAP&rsquo;S FRAME WAS REDESIGNED HERE &mdash; as of 2026-09-01</strong>
+(this block is superseded by the block above on <em>&ldquo;not built yet&rdquo;</em>; it supersedes
+the round-37 block below on <em>&ldquo;shippable &mdash; the manager&rsquo;s call&rdquo;</em> and on
+I-8g&rsquo;s status).</p>
 <p>The tester&rsquo;s finding went back to the architect, and the answer is written up as
 <strong>A-49</strong> and <strong>A-50</strong> in <code>ARCHITECTURE.md</code>, scheduled as
-<strong>I-8h</strong>. <strong>No code has been written for it yet.</strong></p>
+<strong>I-8h</strong>. <strong>No code had been written for it when this block was written.</strong></p>
 <p><strong>What was actually wrong, in one sentence.</strong> The last fix taught the map where a
 country <em>is</em> (the middle of its biggest landmass) but never taught it how far to <em>zoom
 out</em>, so it still stretched the frame far enough to include French Guiana &mdash; a map that knew
@@ -364,7 +393,8 @@ is a narrow column on any honest map &mdash; it removes the wasted box around it
 </ul>
 <p><strong>I-8g is built &#9989; &middot; verified &#9989; &middot; shippable &#10060; as the whole
 answer</strong> &mdash; the code does exactly what it was told to do and the ruling it was told to
-follow was incomplete. <strong>I-8h is designed &#9989; &middot; built &#10060;.</strong> I-8h does
+follow was incomplete. <strong>I-8h was designed &#9989; &middot; built &#10060; when this block was
+written; it is now built &mdash; see the block above.</strong> I-8h does
 <strong>not</strong> block <strong>I-8b</strong> (the Profile screen): which countries share a map is
 settled, and only how wide the map is is not. I-8b still waits on <strong>I-8f</strong>.</p>
 </div>

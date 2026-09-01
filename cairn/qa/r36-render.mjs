@@ -23,6 +23,12 @@
  *   E  A-42 (b) cross-check on the shipped sample from getBBox(), against the bare-Node
  *      numbers — the I-8a/I-8c breaker rounds' method, re-run on I-8d's output.
  */
+// **Re-pointed at I-8h (2026-09-01), by the builder.** §4.4 A-49 C8″ appends a `detached` pane
+// when a drawn country has geometry its own pane is not connected to, and A-49 Part 4
+// consequence 1 makes drawing a code in two panes the intended answer rather than a defect.
+// The three assertions below that counted panes, and the one that forbade a code appearing
+// twice, are re-pointed and marked [I-8h]; each is now stricter (per-pane uniqueness plus the
+// named exception) rather than weaker.
 import pw from '/opt/node22/lib/node_modules/playwright/index.js';
 import * as core from '../packages/core/src/index.ts';
 import { worldMapFrame } from '../packages/client/src/selectors/worldMap.ts';
@@ -99,7 +105,10 @@ for (const scheme of ['light', 'dark']) {
   const { ctx, page } = await boot({ viewport: { width: 1100, height: 900 }, colorScheme: scheme });
   const panes = await page.evaluate(readPanes);
   console.log(`  -- ${scheme} --`);
-  ok(panes.length === 2, `${scheme}: two panes are on screen`, panes.length);
+  // [I-8h] RE-POINTED: A-49 C8″ appends the detached pane holding Alaska/Hawaii/the Aleutians,
+  // so the reference sample renders THREE panes — two geographic, one detached.
+  ok(panes.length === 3 && panes.filter((p) => p.id !== 'detached').length === 2,
+    `${scheme}: two geographic panes plus the detached one are on screen`, panes.map((p) => p.id));
   const inset = panes.find((p) => p.id === 'inset-1');
   ok(!!inset && /Shown separately/i.test(inset.caption?.text ?? ''), `${scheme}: the inset carries its caption`, inset?.caption?.text);
   ok(inset?.caption?.text?.includes('US'), `${scheme}: the caption names the code (A-41 constraint 3)`, inset?.caption?.text);
@@ -185,7 +194,8 @@ head('C  390 px — THE PHONE (builder observation 2, measured)');
     .map((s) => ({ set: s.style.getPropertyValue('--pane-aspect'), used: getComputedStyle(s).aspectRatio })));
   ok(aspectVar.every((a) => a.set !== '' && Number(a.set) > 0),
     'A-48 Part 6: every pane carries its own `--pane-aspect`, straight from the frame', aspectVar);
-  ok(panes.length === 2, 'both panes still render at 390 px', panes.length);
+  // [I-8h] RE-POINTED, same reason as §A.
+  ok(panes.length === 3, 'all three panes still render at 390 px', panes.map((p) => p.id));
   ok(panes.every((p) => p.box.w > 0 && p.box.h > 0), 'neither pane collapses', panes.map((p) => p.box));
   // The caption must not overflow its pane at 390 px.
   const overflow = await page.evaluate(() => [...document.querySelectorAll('#tabpanel-map .worldmap__panecap')]
@@ -230,10 +240,28 @@ head('D  THREE PANES ON SCREEN (builder: "never on screen")');
   await page.waitForTimeout(500);
   const panes = await page.evaluate(readPanes);
   console.log(`  panes on screen: ${panes.map((p) => `${p.id}[${p.codes}] ${p.box.w}×${p.box.h}`).join('  ')}`);
-  ok(panes.length === 3, 'a five-cluster library renders exactly three panes (C7/I3), on screen', panes.length);
-  ok(panes.filter((p) => p.caption).length === 2, 'both insets carry a caption', panes.map((p) => !!p.caption));
+  // [I-8h] RE-POINTED at A-49 C7′: the cap is three GEOGRAPHIC panes, plus the detached one.
+  ok(panes.filter((p) => p.id !== 'detached').length === 3,
+    'a five-cluster library renders exactly three geographic panes (C7′/I3), on screen',
+    panes.map((p) => p.id));
+  ok(panes.length === 4 && panes[3].id === 'detached',
+    'C7′: the fourth pane on screen is the detached one, never a fourth cluster', panes.map((p) => p.id));
+  ok(panes.filter((p) => p.caption).length === 3,
+    'both insets AND the detached pane carry a caption', panes.map((p) => !!p.caption));
+  ok(/Distant parts of/i.test(panes[3].caption?.text ?? ''),
+    'A-49 Part 4 consequence 3: the detached pane does NOT say "shown separately"', panes[3].caption?.text);
   const drawn = panes.flatMap((p) => p.paths.map((x) => x.code)).sort();
-  ok(new Set(drawn).size === drawn.length, 'no country is drawn in two panes', drawn);
+  // [I-8h] A-49 Part 4 consequence 1: a code with a detached part is DELIBERATELY drawn in two
+  // panes — that is the only way A-41 constraint 1 and I4 can both hold. What must still be true
+  // is that no code is drawn twice WITHIN one pane, which is I2 restated.
+  for (const p of panes) {
+    const codes = p.paths.map((x) => x.code);
+    ok(new Set(codes).size === codes.length, `no country is drawn twice within pane ${p.id}`, codes);
+  }
+  const twice = [...new Set(drawn)].filter((c) => drawn.filter((x) => x === c).length > 1);
+  ok(String(twice) === 'US',
+    'the only code in two panes is the one with a detached part (US), and it is stated by A-49',
+    twice);
   // I4 on pane 3, from the browser's own measurement.
   for (const p of panes) {
     const [mx, my, w, h] = p.viewBox.split(' ').map(Number);

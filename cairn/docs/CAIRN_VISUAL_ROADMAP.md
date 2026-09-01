@@ -19,9 +19,35 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
-> **🟠 THE MAP'S FRAME HAS BEEN REDESIGNED AND IS NOT BUILT YET — as of 2026-09-01 (this block is
-> the newest; it supersedes the round-37 block below on *"shippable — the manager's call"* and on
-> I-8g's status).**
+> **🟡 THE MAP'S NEW FRAME IS NOW BUILT — not yet attacked — as of 2026-09-01 (this block is the
+> newest; it supersedes the redesign block below on *"no code has been written for it yet"*).**
+>
+> **I-8h is designed ✅ · built ✅ · verified ❌ (not yet attacked) · shippable ❌.** Everything the
+> redesign block below describes is now code, and every number in it was re-derived by running it
+> rather than copied: France + Greece measures **31.20° × 16.23°** and **14.7% land on screen**
+> (it was 81.13° × 49.10° and 1.95%), Greece renders **71 × 76 px** on a phone (it was 27 × 29),
+> France alone goes **64.08° → 14.15°**, and your Europe 2026 main frame is **byte-for-byte
+> identical** to the one that shipped. Alaska detaches from a US-only map and stays in frame the
+> moment Canada is added — the test that proves the rule is geometric.
+>
+> The country-code chips are alphabetical again, and **every map now fills its box in both
+> directions** — measured across all 239 single-country maps at a phone size and a desktop size,
+> with no letterboxing beyond a single pixel. Chile went from 33% of its box to 100%.
+>
+> **Two honest notes, written down rather than smoothed over.** (1) One of the architect's own
+> "prove this test can fail" checks turned out to be unfalsifiable on the shipped map data; a
+> different check that genuinely can fail was substituted and the original is recorded as
+> **KD-71**. (2) The architect's proof that a map frames exactly one connected group is true for a
+> map built from one cluster and not for the two kinds of map that hold several — the *behaviour*
+> is unaffected, only the proof is over-stated (**KD-72**).
+>
+> **A tester has not attacked this yet.** It widens the shared engine's public surface (78 → 79),
+> so the adversarial round is mandatory before it counts as verified. I-8h does **not** block
+> **I-8b** (the Profile screen); I-8b still waits on **I-8f**.
+
+> **🟠 THE MAP'S FRAME WAS REDESIGNED HERE — as of 2026-09-01 (this block is superseded by the
+> block above on *"not built yet"*; it supersedes the round-37 block below on *"shippable — the
+> manager's call"* and on I-8g's status).**
 >
 > The tester's finding went back to the architect, and the answer is written up as **A-49** and
 > **A-50** in `ARCHITECTURE.md`, scheduled as **I-8h**. **No code has been written for it yet.**
@@ -62,9 +88,10 @@ update to this file added that instruction).
 >   column on any honest map — it removes the wasted box around it.
 >
 > **I-8g is built ✅ · verified ✅ · shippable ❌ as the whole answer** — the code does exactly what
-> it was told to do and the ruling it was told to follow was incomplete. **I-8h is designed ✅ ·
-> built ❌.** I-8h does **not** block **I-8b** (the Profile screen): which countries share a map is
-> settled, and only how wide the map is is not. I-8b still waits on **I-8f**.
+> it was told to do and the ruling it was told to follow was incomplete. **I-8h was designed ✅ ·
+> built ❌ when this block was written; it is now built — see the block above.** I-8h does **not**
+> block **I-8b** (the Profile screen): which countries share a map is settled, and only how wide
+> the map is is not. I-8b still waits on **I-8f**.
 
 > **🟢 I-8g HAS NOW BEEN ATTACKED — the two map defects really are fixed, and one is not — as of
 > 2026-09-01 (this block is superseded by the redesign block above on *"shippable"*; it supersedes

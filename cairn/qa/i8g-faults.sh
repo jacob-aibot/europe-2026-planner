@@ -14,6 +14,12 @@
 #
 # `qa/i8d-faults.sh` is the previous increment's matrix and still runs; three of its thirteen
 # mutations were re-pointed at the lines A-48 replaced (marked [I-8g] there).
+#
+# [I-8h] Four of the fourteen mutations below target lines §4.4 A-49 rewrote (the union-box
+# fallback's finite guard, the paint sort's move onto (code, pane) rows, and the export line).
+# Each is re-pointed at the line that replaced it and marked [I-8h] in the mutation itself; the
+# fault each one injects is unchanged, and all fourteen are still RED. `qa/i8h-faults.sh` is
+# I-8h's own matrix.
 set -u
 cd "$(dirname "$0")/.." || exit 1
 CAIRN="$PWD"
@@ -65,7 +71,7 @@ open(p,'w').write(s)
 say '1. C2 (superseded) comes back in core — the key is the union of the code\x27s boxes'
 fault 'countryKeyPoint returns the union-box centre' \
   'packages/core/src/derive/country.ts' \
-  "s=s.replace('  if (!seen) return null;\n  if (principal === null) return { lat: (south + north) / 2, lng: (west + east) / 2 };','  if (!seen) return null;\n  return { lat: (south + north) / 2, lng: (west + east) / 2 };\n  if (principal === null) return { lat: (south + north) / 2, lng: (west + east) / 2 };')" \
+  "s=s.replace('  if (!seen) return null;\n  if (principal === null) {','  if (!seen) return null;\n  if (true) {  // [I-8h] re-pointed: the fallback is a block since R37-5\x27s finite guard landed')" \
   packages/core/test/countryKeyPoint.test.ts
 
 say '2. C2\x27 — the principal ring is the SMALLEST rather than the greatest'
@@ -117,13 +123,13 @@ fault 'key = entries[0] box centre' \
 say '8. C9 — countries are emitted in canonical order again (AD paints under FR)'
 fault 'no paint sort' \
   'packages/client/src/selectors/worldMap.ts' \
-  "s=s.replace('  const painted = drawn.map((_, i) => i)\n    .sort((a, b) => (lastEntryAt.get(drawn[b].code) ?? -1) - (lastEntryAt.get(drawn[a].code) ?? -1));','  const painted = drawn.map((_, i) => i);')" \
+  "s=s.replace('  rows.sort((a, b) =>\n    (lastEntryAt.get(drawn[b.owner].code) ?? -1) - (lastEntryAt.get(drawn[a.owner].code) ?? -1));','  // [I-8h] re-pointed: the emitted array is now one row per (code, pane) and is BUILT in\n  // canonical order, so removing the comparator restores canonical paint order exactly.\n  rows.sort(() => 0);')" \
   packages/client/test/world-map.test.ts
 
 say '9. C9 — paint order is ASCENDING index position (the small painted first)'
 fault 'ascending, not descending' \
   'packages/client/src/selectors/worldMap.ts' \
-  "s=s.replace('.sort((a, b) => (lastEntryAt.get(drawn[b].code) ?? -1) - (lastEntryAt.get(drawn[a].code) ?? -1));','.sort((a, b) => (lastEntryAt.get(drawn[a].code) ?? -1) - (lastEntryAt.get(drawn[b].code) ?? -1));')" \
+  "s=s.replace('(lastEntryAt.get(drawn[b.owner].code) ?? -1) - (lastEntryAt.get(drawn[a.owner].code) ?? -1));','(lastEntryAt.get(drawn[a.owner].code) ?? -1) - (lastEntryAt.get(drawn[b.owner].code) ?? -1));  // [I-8h] re-pointed')" \
   packages/client/test/world-map.test.ts
 
 say '10. C9 implementation note — sort `drawn` before clustering and pane.codes stops being canonical (I2)'
@@ -147,7 +153,7 @@ fault 'aspect = 1' \
 say '13. the export surface — countryKeyPoint is not exported'
 fault 'index.ts drops countryKeyPoint' \
   'packages/core/src/index.ts' \
-  "s=s.replace('export { countryOf, countryKeyPoint }','export { countryOf }')" \
+  "s=s.replace('export { countryOf, countryKeyPoint, countryParts }','export { countryOf, countryParts }')" \
   packages/core/test/surface.test.ts
 
 say '14. the standing guard — a distance function reaches derive/country.ts'

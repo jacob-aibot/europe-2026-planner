@@ -36,6 +36,16 @@
  * unchanged, and each superseded rule is kept in place as the **oracle for the injected fault** —
  * §A still computes A-41 C2's union-box keys, §B still runs a first-fit reference — so a
  * regression to either is measured here, not merely asserted absent.
+ *
+ * **Re-pointed again at I-8h (2026-09-01), by the builder.** Round 37's MAJOR (R37-1) was a defect
+ * in A-48 itself — C2′ moved the key point and left **C8** fitting the extent over every entry box
+ * — and the architect ruled §4.4 **A-49**, which supersedes **C8** (a pane frames the parts its
+ * subject is connected to), **C7**'s cap (three GEOGRAPHIC panes plus a `detached` one, so
+ * `panes.length` is 1…4), Part 5's frame shape (`countries` becomes a PAINT list, one row per
+ * (code, pane); the frame gains `codes`) and invariants I1, I3 and I5. Every assertion below that read
+ * `panes.length` as a count of *clusters* is re-pointed at the geographic panes and marked
+ * `[I-8h]`; the superseded rules are kept as oracles (§B4 still computes A-48 C8's union-box
+ * extent, and it still measures 81.13°). Nothing is re-scored, deleted or weakened.
  */
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -98,6 +108,22 @@ const statsFor = (rows) => ({
 });
 const frameOf = (spec) => worldMapFrame(statsFor(spec.map(([c, n]) => rowOf(c, n))), IDX);
 const shape = (f) => f.panes.map((p) => `${p.id}[${p.codes.join(',')}]w${p.weight}`).join(' ');
+// [I-8h] A-49 C7′: `panes` now holds up to three GEOGRAPHIC panes plus one `detached` pane, and
+// every clause about the partition (C5's dominance, C6's ranking, C7's cap, I3) is about the
+// geographic ones. The detached pane is a consequence of one country's geometry, not of the
+// traveller's record, and A-49 I15 forbids deriving anything from it.
+const geo = (f) => f.panes.filter((p) => p.role !== 'detached');
+/** A-48 C8, the superseded extent, kept as the oracle: `mapBounds` over every entry box. */
+const unionBoxExtent = (codes) => {
+  const corners = [];
+  for (const e of IDX.countries) {
+    if (!codes.includes(e.code)) continue;
+    const [w, s, ee, n] = e.box;
+    corners.push({ lat: s, lng: w }, { lat: s, lng: ee }, { lat: n, lng: ee }, { lat: n, lng: w });
+  }
+  const b = core.mapBounds(corners);
+  return { w: b.east - b.west, h: b.north - b.south };
+};
 
 // ---------------------------------------------------------------------------
 head('A  C2′ — ONE KEY POINT PER COUNTRY, AND HOW FAR IT IS FROM THE COUNTRY');
@@ -298,12 +324,19 @@ ok(dist('FR', 'DE') < dist('FR', 'MA') && dist('FR', 'CZ') < dist('FR', 'MA'),
 // B4. [I-8g] The two libraries A-41's own frame got wrong, re-run against C2′.
 const frGr = frameOf([['FR', 2], ['GR', 1]]);
 const w0 = frGr.panes[0].bounds.east - frGr.panes[0].bounds.west;
-ok(frGr.panes.length === 1 && String(frGr.panes[0].codes) === 'FR,GR',
-  '{FR 2 trips, GR 1 trip} is ONE pane holding both — it was FR alone with Greece in the inset', shape(frGr));
-note(`  A-48 residue 1′: C2′ fixed the KEY, not the EXTENT — that pane is still ${w0.toFixed(1)}° wide, because C8 frames FR's whole box and French Guiana is drawn.`);
+ok(geo(frGr).length === 1 && String(frGr.panes[0].codes) === 'FR,GR',
+  '{FR 2 trips, GR 1 trip} is ONE geographic pane holding both — it was FR alone with Greece in the inset', shape(frGr));
+// [I-8h] A-48 residue 1′ is CLOSED by A-49 C8′, and the superseded extent is the oracle beside it.
+ok(Math.abs(w0 - 31.1965) < 0.005,
+  `A-49 C8′: that pane is ${w0.toFixed(2)}° wide — it frames FR's in-frame PARTS, not FR's whole box`, w0);
+ok(Math.abs(unionBoxExtent(['FR', 'GR']).w - 81.13) < 0.01,
+  'the oracle: A-48 C8 (mapBounds over every entry box) still measures 81.13° — restoring it is measurable',
+  unionBoxExtent(['FR', 'GR']));
+ok(frGr.panes.length === 2 && frGr.panes[1].role === 'detached' && String(frGr.panes[1].codes) === 'FR',
+  'A-49 C8″: French Guiana gets a captioned pane of its own rather than being cropped or framed', shape(frGr));
 const usCu = frameOf([['US', 3], ['CU', 1]]);
-ok(usCu.panes.length === 1 && usCu.panes[0].codes.slice().sort().join(',') === 'CU,US',
-  '{US 3 trips, CU 1 trip} is ONE pane — Cuba is 150 km from Florida and is no longer a "distant outlier"',
+ok(geo(usCu).length === 1 && geo(usCu)[0].codes.slice().sort().join(',') === 'CU,US',
+  '{US 3 trips, CU 1 trip} is ONE geographic pane — Cuba is 150 km from Florida and is no longer a "distant outlier"',
   `${shape(usCu)} (US–CU key distance ${dist('US', 'CU').toFixed(0)} km)`);
 
 // ---------------------------------------------------------------------------
@@ -311,20 +344,22 @@ head('C  C5 — THE DOMINANCE TEST AT THE EXACT BOUNDARY');
 
 // Three far-apart anchors, so cluster membership is never in doubt: AU, DE, US.
 const c5 = (a, b, c) => frameOf(c === undefined ? [['AU', a], ['US', b]] : [['AU', a], ['DE', c], ['US', b]]);
-ok(c5(1, 1).panes.length === 1, 'a genuine tie (1 v 1) NEVER splits — 2·1 > 2 is false');
-ok(c5(3, 3).panes.length === 1, 'a genuine tie at 3 v 3 never splits either');
-ok(c5(4, 3).panes.length === 2, '4 v 3: 2·4 = 8 > 7, the closest split there is');
-ok(c5(3, 4).panes.length === 2 && String(c5(3, 4).panes[0].codes) === 'US', '3 v 4: the heavier cluster is primary regardless of ISO order');
-ok(c5(4, 3, 1).panes.length === 1, '4 v 3 v 1: 2·4 = 8 is NOT > 8 — one vote short of a split, and it does not split');
-ok(c5(5, 3, 1).panes.length === 3, '5 v 3 v 1: 2·5 = 10 > 9 — the very next step does split, into all three panes');
-ok(c5(3, 3, 3).panes.length === 1, 'three roughly-equal clusters do not split (A-41 C5: nothing to prioritise)');
+// [I-8h] `geo(...)` throughout: C5 decides how many GEOGRAPHIC panes there are. `US` carries a
+// detached part in every one of these fixtures, and A-49 I15 says it decides nothing.
+ok(geo(c5(1, 1)).length === 1, 'a genuine tie (1 v 1) NEVER splits — 2·1 > 2 is false');
+ok(geo(c5(3, 3)).length === 1, 'a genuine tie at 3 v 3 never splits either');
+ok(geo(c5(4, 3)).length === 2, '4 v 3: 2·4 = 8 > 7, the closest split there is');
+ok(geo(c5(3, 4)).length === 2 && String(c5(3, 4).panes[0].codes) === 'US', '3 v 4: the heavier cluster is primary regardless of ISO order');
+ok(geo(c5(4, 3, 1)).length === 1, '4 v 3 v 1: 2·4 = 8 is NOT > 8 — one vote short of a split, and it does not split');
+ok(geo(c5(5, 3, 1)).length === 3, '5 v 3 v 1: 2·5 = 10 > 9 — the very next step does split, into all three panes');
+ok(geo(c5(3, 3, 3)).length === 1, 'three roughly-equal clusters do not split (A-41 C5: nothing to prioritise)');
 { const f = c5(3, 3, 3); note(`  and the honest frame that leaves is ${(f.panes[0].bounds.east - f.panes[0].bounds.west).toFixed(1)}° × ${(f.panes[0].bounds.north - f.panes[0].bounds.south).toFixed(1)}° — one pane holding everything`); }
 // A single trip that touched two distant places.
 const oneTrip = worldMapFrame(statsFor([
   { code: 'JP', firstVisit: '2020-01-01', lastVisit: '2020-01-10', tripIds: ['solo'], provisional: false },
   { code: 'US', firstVisit: '2020-01-01', lastVisit: '2020-01-10', tripIds: ['solo'], provisional: false },
 ]), IDX);
-ok(oneTrip.panes.length === 1, 'a single trip with two distant countries never splits (weights 1 and 1)');
+ok(geo(oneTrip).length === 1, 'a single trip with two distant countries never splits (weights 1 and 1)');
 // C5's weight is Σ tripIds.length, so it counts country-attributions and NOT trips: a cluster's
 // weight rises with the number of countries in it. A-41 residue 4 discloses that weight ignores
 // duration ("a weekend and a month count the same"); it does not disclose this.
@@ -346,7 +381,7 @@ ok(oneVsFive.panes.length === 2 && String(oneVsFive.panes[0].codes) !== 'JP',
   shape(oneVsFive));
 
 // Can the top two ever tie AND split? Algebraically no; asserted so nobody re-derives it.
-ok(!frameOf([['AU', 4], ['DE', 4], ['US', 1]]).panes.length !== 1 && frameOf([['AU', 4], ['DE', 4], ['US', 1]]).panes.length === 1,
+ok(geo(frameOf([['AU', 4], ['DE', 4], ['US', 1]])).length === 1,
   'when the top two clusters tie on weight the frame can never split (2w > 2w+rest is unsatisfiable)');
 
 // ---------------------------------------------------------------------------
@@ -376,11 +411,21 @@ function invariants(label, spec) {
   const f = worldMapFrame(statsFor(rows), IDX);
   const inPanes = f.panes.flatMap((p) => p.codes);
   const claimed = rows.map((r) => r.code);
-  // I1
-  ok(claimed.every((c) => (inPanes.filter((x) => x === c).length + f.missing.filter((x) => x === c).length) === 1) &&
-     inPanes.length + f.missing.length === claimed.length,
-    `${label} · I1: every claimed code is in exactly one pane or exactly once in missing`,
-    { inPanes, missing: f.missing });
+  // I1, restated by A-49 Part 8: AT LEAST once in `countries` (a code with a detached part is
+  // drawn in two panes) or EXACTLY once in `missing`, never both and never neither.
+  ok(claimed.every((c) => {
+       const drawn = inPanes.filter((x) => x === c).length;
+       const gone = f.missing.filter((x) => x === c).length;
+       return (drawn >= 1 && gone === 0) || (drawn === 0 && gone === 1);
+     }) && new Set(inPanes).size + f.missing.length === claimed.length,
+    `${label} · I1: every claimed code is in at least one pane or exactly once in missing`,
+    { inPanes, missing: f.missing, codes: f.codes });
+  // [I-8h] I13: `frame.codes` is every DRAWN code exactly once, canonical, disjoint from missing.
+  ok(String(f.codes) === String(claimed.filter((c) => !f.missing.includes(c))) &&
+     new Set(f.codes).size === f.codes.length &&
+     f.codes.every((c) => !f.missing.includes(c)),
+    `${label} · I13: frame.codes is every drawn code exactly once, in canonical row order`,
+    { codes: f.codes, missing: f.missing });
   // I2, restated by A-48 Part 7: `pane.codes` stays CANONICAL row order; the `countries` array's
   // own order is C9's paint order, so membership is compared as a set and the canonical order is
   // asserted against the rows themselves.
@@ -389,17 +434,34 @@ function invariants(label, spec) {
   ok(f.countries.every((c) => f.panes.some((p) => p.id === c.paneId)) &&
      f.panes.every((p) => String(p.codes.slice().sort()) ===
        String(f.countries.filter((c) => c.paneId === p.id).map((c) => c.code).sort())) &&
+     // [I-8h] I2 restated: within ONE pane a code appears at most once, so W3's key stays unique.
+     f.panes.every((p) => new Set(f.countries.filter((c) => c.paneId === p.id).map((c) => c.code)).size
+       === f.countries.filter((c) => c.paneId === p.id).length) &&
      f.panes.every((p) => String(p.codes) === String(canonicalOf(p))),
     `${label} · I2: paneId names a pane, pane.codes is exactly its members AND is in canonical order`);
   // [I-8g] C9: the emitted array is in descending index position, and I10 follows from it.
   const posOf = (code) => IDX.countries.reduce((acc, e, i) => (e.code === code ? i : acc), -1);
   const painted = f.countries.map((c) => posOf(c.code));
-  ok(painted.every((p, i) => i === 0 || p < painted[i - 1]),
+  // [I-8h] A-49 Part 4: `countries` is a PAINT list, one row per (code, pane), so a code with a
+  // detached part contributes two ADJACENT rows at the same index position. C9's order is
+  // therefore non-increasing over the array and strictly decreasing over the distinct codes.
+  ok(painted.every((p, i) => i === 0 || p <= painted[i - 1]),
     `${label} · C9: countries are emitted in descending index position (largest painted first)`,
     f.countries.map((c) => c.code));
+  const distinctPainted = painted.filter((p, i) => i === 0 || p !== painted[i - 1]);
+  ok(distinctPainted.every((p, i) => i === 0 || p < distinctPainted[i - 1]) &&
+     new Set(distinctPainted).size === distinctPainted.length,
+    `${label} · C9: and each code's rows are adjacent, so the order over codes is still strict`,
+    f.countries.map((c) => `${c.code}@${c.paneId}`));
   // I5
-  ok(f.panes[0].role === 'main' && f.panes.slice(1).every((p) => p.role === 'inset'),
-    `${label} · I5: panes[0] is main, the rest are insets`);
+  // [I-8h] I5 restated by A-49 Part 8: panes[0] is main; a 'detached' pane, if present, is LAST
+  // and is the only one; every other pane is an inset.
+  const det = f.panes.filter((p) => p.role === 'detached');
+  ok(f.panes[0].role === 'main' && det.length <= 1 &&
+     (det.length === 0 || f.panes[f.panes.length - 1].role === 'detached') &&
+     geo(f).slice(1).every((p) => p.role === 'inset'),
+    `${label} · I5: panes[0] is main, the rest are insets, and a detached pane is last`,
+    f.panes.map((p) => p.role));
   // I6 — recompute and compare bytes
   ok(JSON.stringify(f) === JSON.stringify(worldMapFrame(statsFor(rows), IDX)),
     `${label} · I6: the same (stats, index) yields a byte-identical frame`);
@@ -425,9 +487,12 @@ invariants('1 cluster  ', [['AT', 1], ['CZ', 1], ['HU', 1]]);
 invariants('2 clusters ', [['AT', 3], ['US', 1]]);
 invariants('3 clusters ', [['AT', 6], ['JP', 1], ['US', 1]]);
 const five = invariants('5 clusters ', [['AT', 6], ['AU', 1], ['BR', 1], ['JP', 1], ['US', 1], ['ZA', 1]]);
-ok(five.panes.length === 3, 'I3/C7: ≥4 clusters give exactly three panes', five.panes.length);
-ok(String(five.panes[2].codes) === five.panes[2].codes.slice().sort().join(','),
-  'C7: pane 3 folds every remaining cluster, re-sorted into canonical row order', five.panes[2].codes);
+// [I-8h] C7′: the cap is three GEOGRAPHIC panes, plus the detached one when it exists (1…4).
+ok(geo(five).length === 3, 'I3/C7′: ≥4 clusters give exactly three geographic panes', geo(five).length);
+ok(five.panes.length === 4 && five.panes[3].role === 'detached',
+  'C7′: and the fourth pane is the detached one, never a fourth cluster', shape(five));
+ok(String(geo(five)[2].codes) === geo(five)[2].codes.slice().sort().join(','),
+  'C7: pane 3 folds every remaining cluster, re-sorted into canonical row order', geo(five)[2].codes);
 const withMissing = invariants('+ missing  ', [['AT', 1], ['ZZ', 1], ['US', 2]]);
 ok(String(withMissing.missing) === 'ZZ', 'a code the index cannot fill is stated, not dropped', withMissing.missing);
 
@@ -445,7 +510,8 @@ const payload = all.countries.reduce((n, c) => n + Buffer.byteLength(c.d, 'utf8'
 // [I-8g] Under C3′ the whole world is ONE component at 4,000 km — A-48 residue 5 says so in
 // writing ("the right answer for someone who has been everywhere"). Under first-fit it was 9
 // groups folded into 3 panes; the accounting clause — nothing lost — is what carries over.
-ok(all.panes.length === 1 && all.panes.flatMap((p) => p.codes).length === CODES.length,
+ok(geo(all).length === 1 && all.codes.length === CODES.length &&
+   String(all.codes) === String(CODES),
   `all ${CODES.length} codes: one honest world map, nothing lost (A-48 residue 5)`,
   all.panes.map((p) => p.codes.length));
 ok(payload < 512 * 1024, `all ${CODES.length} codes: d payload ${(payload / 1024).toFixed(1)} KB is under A-40 Part 5's 512 KB ceiling`, payload);
@@ -512,9 +578,18 @@ for (const p of ref.panes) {
   }
   console.log(`  note   ${p.id}: tightest inset ${m.toFixed(6)}° at ${at}`);
 }
-ok(ref.panes.length === 2 && ref.panes[0].viewBox === '-8.1779 -59.2407 31.494 17.3663' &&
-   ref.panes[1].viewBox === '-173.8876 -73.4543 109.0195 56.6347',
-  "BUILD-NOTES' reference viewBoxes re-derived byte-for-byte", ref.panes.map((p) => p.viewBox));
+// [I-8h] RE-POINTED. A-49 leaves the MAIN pane byte-identical (that is R33-1) and moves the US
+// inset from the union of every US box to CONUS, with a third `detached` pane. All three strings
+// are pinned by ROADMAP I-8h; A-48's inset string is kept below as the oracle.
+ok(ref.panes[0].viewBox === '-8.1779 -59.2407 31.494 17.3663',
+  "BUILD-NOTES' reference MAIN viewBox re-derived byte-for-byte", ref.panes[0].viewBox);
+ok(ref.panes.length === 3 &&
+   ref.panes[1].viewBox === '-125.8416 -50.5435 60.0314 26.618' &&
+   ref.panes[2].viewBox === '-172.8399 -72.4066 43.9088 54.5393',
+  'A-49: the US inset narrows to CONUS and Alaska gets a detached pane, at I-8h\'s pinned strings',
+  ref.panes.map((p) => p.viewBox));
+ok(ref.panes[1].viewBox !== '-173.8876 -73.4543 109.0195 56.6347',
+  "the oracle: A-48 C8's 109.02°-wide inset is gone (restoring C8 brings it back)");
 
 // ---------------------------------------------------------------------------
 head('G  PART 6 — ONE CLUSTERING KERNEL');

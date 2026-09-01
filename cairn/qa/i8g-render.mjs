@@ -13,6 +13,13 @@
  *
  * Screenshots are written next to this file's output directory so the frame can actually be
  * looked at rather than only measured. A FAIL is a clause of A-48 that does not hold on screen.
+ *
+ * **Re-pointed at I-8h (2026-09-01), by the builder.** §4.4 A-49 C8′/C8″ close A-48 residue 1′,
+ * which §A measured and disclosed rather than fixed: the extent is now over the pane's in-frame
+ * PARTS, and French Guiana gets a captioned `detached` pane. The two assertions that read
+ * `panes.length === 1` and *"no pane carries a caption"* are re-pointed at the geographic pane
+ * and marked [I-8h]; A-48's clustering claim — FR and GR share ONE frame, Greece is not the
+ * outlier — is unchanged and is what they still hold.
  */
 import pw from '/opt/node22/lib/node_modules/playwright/index.js';
 import * as core from '../packages/core/src/index.ts';
@@ -88,10 +95,22 @@ head('A  R36-1 — {FR ×2, GR ×1} ON A PHONE');
   const { ctx, page } = await bootWith([['FR', 2], ['GR', 1]]);
   const panes = await page.evaluate(readPanes);
   console.log(`  panes: ${panes.map((p) => `${p.id}[${p.codes}] ${p.box.w}×${p.box.h} vb="${p.viewBox}"`).join('  ')}`);
-  ok(panes.length === 1, 'ONE pane on screen — Greece is not in a "Shown separately" inset', panes.length);
+  // [I-8h] RE-POINTED at A-49 C7′: ONE GEOGRAPHIC pane, plus the detached pane French Guiana
+  // now gets. The clustering claim — Greece is not in a "Shown separately" inset — is unchanged
+  // and is asserted below.
+  ok(panes.filter((p) => p.id !== 'detached').length === 1,
+    'ONE geographic pane on screen — Greece is not in a "Shown separately" inset', panes.map((p) => p.id));
+  ok(panes.length === 2 && panes[1].id === 'detached',
+    'A-49 C8″: French Guiana is drawn in a captioned pane of its own', panes.map((p) => p.id));
   ok(panes[0].codes === 'FR GR' && panes[0].paths.sort().join(',') === 'FR,GR',
     'both countries are drawn in it', { codes: panes[0].codes, paths: panes[0].paths });
-  ok(panes.every((p) => p.caption === null), 'no pane carries the outlier caption', panes.map((p) => p.caption));
+  // [I-8h] RE-POINTED. The claim is that nothing on this library is captioned "Shown
+  // separately" — the phrase that asserts a country is a distant part of the traveller's RECORD.
+  // The detached pane's caption says "Distant parts of", which A-49 Part 4 consequence 3 requires.
+  ok(panes.every((p) => !/Shown separately/i.test(p.caption ?? '')),
+    'no pane carries the OUTLIER caption ("Shown separately")', panes.map((p) => p.caption));
+  ok(/Distant parts of/i.test(panes[1]?.caption ?? ''),
+    'and the detached pane names itself as geometry, not as a distant part of the record', panes[1]?.caption);
   // The frame is the selector's, byte for byte — the view computes nothing.
   const want = worldMapFrame(
     core.travelStats(await page.evaluate(async () => {
@@ -110,7 +129,8 @@ head('A  R36-1 — {FR ×2, GR ×1} ON A PHONE');
     { got: panes[0].aspect, want: want.panes[0].aspect });
   // What C2′ fixed, and what it did not: A-48 residue 1′, measured on screen.
   const b = want.panes[0].bounds;
-  note(`the pane spans ${(b.east - b.west).toFixed(1)}° × ${(b.north - b.south).toFixed(1)}° — A-48 residue 1′: C2′ fixed the KEY, not the EXTENT, and FR's own box reaches French Guiana (${b.west.toFixed(1)}°E)`);
+  note(`the pane spans ${(b.east - b.west).toFixed(1)}° × ${(b.north - b.south).toFixed(1)}° — [I-8h] A-49 C8′ closed A-48 residue 1′: the extent is over the pane's IN-FRAME PARTS, so it stops at metropolitan France's own west coast (${b.west.toFixed(1)}°E) instead of reaching French Guiana at -54.5°E`);
+  ok(b.east - b.west < 32, 'A-49 C8′: the pane is no longer the 81.1° union-box rectangle', b.east - b.west);
   // Tap Greece: the drill-down must reach it from the map itself, not only from the chip list.
   await page.click('#tabpanel-map path[data-code="GR"]', { force: true });
   await page.waitForTimeout(200);
