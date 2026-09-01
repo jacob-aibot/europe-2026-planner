@@ -19,9 +19,58 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
+> **🔵 THE MAP'S FRAMING MODEL IS UNDER ACTIVE RECONSIDERATION, AND THE ANSWER IS WAITING FOR
+> JACOB — as of 2026-09-01 (this block is the newest; it supersedes the block below on what
+> happens next, and nothing else).**
+>
+> **This is not a fifth patch. Jacob stopped the patching.** Four rounds in a row, the architect
+> added one more condition to the same rule, the builder built it faithfully, and the tester found
+> the same kind of defect one step further out. After round 38 measured that the fourth fix reaches
+> only the *minority* of maps (see the block below), Jacob told the architect to stop patching and
+> reconsider the idea itself.
+>
+> **The idea being replaced.** Today the map decides *once* whether your history has a "main"
+> region, then draws one big panel for it and small "shown separately" insets for everything else.
+> That is why a country's size on screen depends on **where else you have been** — France is a
+> comfortable 342 px wide on its own and 36 px wide the moment you add the United States, because
+> the United States stretched the one rectangle they share.
+>
+> **The recommendation: no main panel at all.** Every cluster of places you have been gets its own
+> equally-sized frame, in a grid, ordered so the region you travel most in comes first. Nothing is
+> demoted to an inset, nothing is a footnote, and **nothing you add anywhere in the world can shrink
+> a map you already had**. It is a *smaller* rule than the one it replaces — one grouping step
+> instead of three, one kind of panel instead of four, no "is one region dominant enough?" test, no
+> cap on panels, no alphabetical tie-break.
+>
+> **Measured before recommending, on real geometry:**
+> - **France + United States**: France goes from **899 px²** to **80,712 px²** (90×), and the sliver
+>   of French Guiana from **56 px²** to **64,224 px²**.
+> - **France + New Zealand**: from **0.48% land** (i.e. 99.5% ocean) to **19% at worst**.
+> - **Britain + Australia**: from **4% land** with Britain at 20 × 18 px, to **39%** with Britain at
+>   307 × 288 px.
+> - Across **all 28,441** two-country histories, panels wider than a third of the globe fall from
+>   **8,364 to 1,229** — and every one of the 1,229 left is one of five countries whose *own* outline
+>   wraps the globe (Antarctica, Russia, Fiji, Kiribati, the US minor islands), which is a separate,
+>   already-documented problem this does not claim to fix.
+> - **The Europe 2026 sample does not move at all** — the same three rectangles, to the character.
+>   A history that really is one region stays one map. A history covering all 239 countries stays
+>   **one honest world map**.
+>
+> **What it costs, stated rather than discovered:** a phone shows the panels stacked, so a history
+> with many far-apart places is a longer scroll (worst realistic case ~14 panels). And it does not
+> fix the two things no framing rule can — a micro-state like Monaco is still sub-pixel next to
+> France, and the US minor islands still stretch their own panel across the Pacific. Both stay
+> reachable through the country chip list under the map.
+>
+> **🛑 Nothing has been built and nothing will be until Jacob approves it.** He asked to decide this
+> himself before a builder pass, because the recommendation overturns his own earlier instruction to
+> use insets — while keeping the reason he gave for it. If he says no, today's map stands and the
+> defect stays on the record with its numbers. The full ruling is `ARCHITECTURE.md` §4.4 **A-51**
+> and **A-52**; the increment is **I-8i** in `ROADMAP.md`, marked not-dispatchable.
+
 > **🟢 THE MAP'S NEW FRAME HAS NOW BEEN ATTACKED — the France/Greece defect really is fixed, and
-> a bigger one behind it is not — as of 2026-09-01 (this block is the newest; it supersedes the
-> "not yet attacked" block below).**
+> a bigger one behind it is not — as of 2026-09-01 (this block is superseded on "what happens next"
+> by the block above, and is otherwise still the tester's verdict of record).**
 >
 > **I-8h is designed ✅ · built ✅ · verified ✅ · shippable — the manager's call, but the map
 > *track* is not finished.** A tester spent a round trying to break it and **could not find one

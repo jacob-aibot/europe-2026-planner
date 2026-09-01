@@ -319,10 +319,62 @@
 </style>
 </head>
 <body>
+<div class="callout" style="border-left:4px solid #2563eb;padding:.75rem 1rem;margin:1rem 0;background:#eff6ff">
+<p><strong>&#128309; THE MAP&rsquo;S FRAMING MODEL IS UNDER ACTIVE RECONSIDERATION, AND THE ANSWER
+IS WAITING FOR JACOB &mdash; as of 2026-09-01</strong> (this block is the newest; it supersedes the
+block below on <em>what happens next</em>, and nothing else).</p>
+<p><strong>This is not a fifth patch. Jacob stopped the patching.</strong> Four rounds in a row, the
+architect added one more condition to the same rule, the builder built it faithfully, and the tester
+found the same kind of defect one step further out. After round 38 measured that the fourth fix
+reaches only the <em>minority</em> of maps (see the block below), Jacob told the architect to stop
+patching and reconsider the idea itself.</p>
+<p><strong>The idea being replaced.</strong> Today the map decides <em>once</em> whether your history
+has a &ldquo;main&rdquo; region, then draws one big panel for it and small &ldquo;shown
+separately&rdquo; insets for everything else. That is why a country&rsquo;s size on screen depends on
+<strong>where else you have been</strong> &mdash; France is a comfortable 342&nbsp;px wide on its own
+and 36&nbsp;px wide the moment you add the United States, because the United States stretched the one
+rectangle they share.</p>
+<p><strong>The recommendation: no main panel at all.</strong> Every cluster of places you have been
+gets its own equally-sized frame, in a grid, ordered so the region you travel most in comes first.
+Nothing is demoted to an inset, nothing is a footnote, and <strong>nothing you add anywhere in the
+world can shrink a map you already had</strong>. It is a <em>smaller</em> rule than the one it
+replaces &mdash; one grouping step instead of three, one kind of panel instead of four, no &ldquo;is
+one region dominant enough?&rdquo; test, no cap on panels, no alphabetical tie-break.</p>
+<p><strong>Measured before recommending, on real geometry:</strong></p>
+<ul>
+<li><strong>France&nbsp;+&nbsp;United States</strong>: France goes from <strong>899&nbsp;px&sup2;</strong>
+to <strong>80,712&nbsp;px&sup2;</strong> (90&times;), and the sliver of French Guiana from
+<strong>56&nbsp;px&sup2;</strong> to <strong>64,224&nbsp;px&sup2;</strong>.</li>
+<li><strong>France&nbsp;+&nbsp;New Zealand</strong>: from <strong>0.48% land</strong> (i.e. 99.5%
+ocean) to <strong>19% at worst</strong>.</li>
+<li><strong>Britain&nbsp;+&nbsp;Australia</strong>: from <strong>4% land</strong> with Britain at
+20&nbsp;&times;&nbsp;18&nbsp;px, to <strong>39%</strong> with Britain at
+307&nbsp;&times;&nbsp;288&nbsp;px.</li>
+<li>Across <strong>all 28,441</strong> two-country histories, panels wider than a third of the globe
+fall from <strong>8,364 to 1,229</strong> &mdash; and every one of the 1,229 left is one of five
+countries whose <em>own</em> outline wraps the globe (Antarctica, Russia, Fiji, Kiribati, the US minor
+islands), which is a separate, already-documented problem this does not claim to fix.</li>
+<li><strong>The Europe 2026 sample does not move at all</strong> &mdash; the same three rectangles, to
+the character. A history that really is one region stays one map. A history covering all 239 countries
+stays <strong>one honest world map</strong>.</li>
+</ul>
+<p><strong>What it costs, stated rather than discovered:</strong> a phone shows the panels stacked, so
+a history with many far-apart places is a longer scroll (worst realistic case ~14 panels). And it does
+not fix the two things no framing rule can &mdash; a micro-state like Monaco is still sub-pixel next to
+France, and the US minor islands still stretch their own panel across the Pacific. Both stay reachable
+through the country chip list under the map.</p>
+<p><strong>&#128721; Nothing has been built and nothing will be until Jacob approves it.</strong> He
+asked to decide this himself before a builder pass, because the recommendation overturns his own
+earlier instruction to use insets &mdash; while keeping the reason he gave for it. If he says no,
+today&rsquo;s map stands and the defect stays on the record with its numbers. The full ruling is
+<code>ARCHITECTURE.md</code> &sect;4.4 <strong>A-51</strong> and <strong>A-52</strong>; the increment
+is <strong>I-8i</strong> in <code>ROADMAP.md</code>, marked not-dispatchable.</p>
+</div>
 <div class="callout" style="border-left:4px solid #16a34a;padding:.75rem 1rem;margin:1rem 0;background:#f0fdf4">
 <p><strong>&#128994; THE MAP&rsquo;S NEW FRAME HAS NOW BEEN ATTACKED &mdash; the France/Greece
 defect really is fixed, and a bigger one behind it is not &mdash; as of 2026-09-01</strong> (this
-block is the newest; it supersedes the &ldquo;not yet attacked&rdquo; block below).</p>
+block is superseded on <em>what happens next</em> by the block above, and is otherwise still the
+tester&rsquo;s verdict of record).</p>
 <p><strong>I-8h is designed &#9989; &middot; built &#9989; &middot; verified &#9989; &middot;
 shippable &mdash; the manager&rsquo;s call, but the map <em>track</em> is not finished.</strong>
 A tester spent a round trying to break it and <strong>could not find one place where the code
