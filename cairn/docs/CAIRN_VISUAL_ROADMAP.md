@@ -19,9 +19,56 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
+> **🟢 THE PROFILE SCREEN IS UNBLOCKED — as of 2026-09-01 (this block is the newest; it supersedes
+> every block below on *"shippable"*, on *"what gates I-8b"* and on *"Your tie-break question,
+> answered"*, and nothing else).**
+>
+> **I-8f is designed ✅ · built ✅ · verified ✅ · SHIPPABLE ✅ — manager's verdict SHIP.**
+> **I-8j is designed ✅ · built ✅ · verified ✅ · SHIPPABLE ✅ — manager's verdict SHIP.**
+> **I-8b (the Profile screen) is now permitted to open. Nothing on its blocker list is
+> outstanding.** Full detail in `REVIEW.md`, the *I-8f + I-8j* entry.
+>
+> Five rounds ago the manager stopped this project on three things. **All three are closed, and
+> the manager re-measured each one himself rather than accepting the reports:**
+>
+> - **The grey holes in the map card.** Re-measured at **nine screen widths nobody in this arc had
+>   used**, with the old rule put back so the "before" was measured rather than quoted. Before:
+>   **66.7 %** of the card bare in the worst case. After: **0.32 %** — the hairline between panels
+>   — and nothing spills outside the card at any width. The screenshots were opened and looked at:
+>   the grey block is gone and the leftover space is the card's own white.
+> - **The increment that was never built (I-8f).** It is built and wired into the real screens.
+>   Driven in a browser: plant a broken trip, tap it, and the card comes back saying it cannot be
+>   read, offering *"Save a copy"* and warning before Delete — and the saved file is **exactly the
+>   same bytes** as what is on the device. Also driven through the *"Browse another trip"* picker,
+>   which behaves the same and leaves the trip you have open untouched.
+> - **The map that could go blank without saying so.** Ten kinds of broken outline now produce a
+>   country **named on screen as unavailable** instead of an empty map. **Jacob's Europe 2026 map
+>   is byte-for-byte identical** to what it was before both changes — computed at both commits and
+>   compared.
+>
+> **⚠️ One thing waiting on Jacob, and it is about honesty rather than about the product.** The
+> block below headed *"Your tie-break question, answered"* tells Jacob **"You offered westmost or
+> largest."** He did not — those were the **manager's own two examples**, in the question he asked
+> Jacob five rounds ago, and there is no record anywhere in this repository of Jacob answering. The
+> rule that shipped (*panels are read north to south, then west to east*) is a **third** option and
+> is good for reasons that were measured independently, so **nothing about the map changes**. But
+> `ARCHITECTURE.md` A-54 Part 3 and the block below both have to stop crediting the suggestion to
+> Jacob. **Jacob: did you answer, and did we just not write it down?** If yes it gets recorded with
+> the date; if no, both documents get rewritten to say we asked, did not hear back, and chose on our
+> own reasoning — marked provisional until you rule. `REVIEW.md` **MGR-5**.
+>
+> **Also going back, none of it blocking:** three items to the builder (all in the test tooling,
+> none in the app — the fault harnesses run in a copy where one unrelated test already fails, so
+> some checks cannot prove what they claim; the manager re-ran **all 16** affected checks across the
+> whole arc against a clean baseline and **14 of 14 runnable ones are genuinely catching their bug**,
+> so nothing shipped rests on a false claim) and one to the architect (a sentence in the
+> architecture doc that promises more than the code delivers, for coordinates larger than anywhere
+> on Earth; unreachable from any real data, and the manager sharpened the tester's diagnosis of it).
+
+
 > **✅ BOTH OF THE THINGS BLOCKING THE PROFILE SCREEN HAVE NOW BEEN ATTACKED, AND BOTH SURVIVED —
-> as of 2026-09-01 (this block is the newest; it supersedes the two blocks below on *"verified ❌"*
-> and on *"nobody has attacked it yet"*, and nothing else).**
+> as of 2026-09-01 (this block is superseded on *"shippable"*, on *"what this unblocks"* and on the
+> tie-break attribution by the block above, and nothing else).**
 >
 > **I-8f is designed ✅ · built ✅ · verified ✅ · shippable — the manager's call.**
 > **I-8j is designed ✅ · built ✅ · verified ✅ · shippable — the manager's call.**
@@ -60,7 +107,8 @@ update to this file added that instruction).
 >
 > **What this unblocks:** **I-8b, the Profile screen** — the last thing standing between Cairn and
 > the travel-identity screen — now waits only on a manager's SHIP verdict for these two, not on
-> any further building or testing.
+> any further building or testing. **(That verdict has since been given: SHIP for both. See the
+> block above.)**
 
 
 > **🟡 THE GREY HOLES IN THE MAP CARD ARE GONE, AND YOUR TIE-BREAK QUESTION IS ANSWERED — BUILT
@@ -96,6 +144,11 @@ update to this file added that instruction).
 > growth figures were predicted by the architect and came out **on the number**. The leftover space
 > inside a panel is now the card's own colour instead of the divider grey, so it reads as margin
 > rather than as something that failed to load.
+>
+> **⚠️ ATTRIBUTION CORRECTION (manager's gate, `REVIEW.md` MGR-5): the two options this paragraph
+> says Jacob offered were the *manager's* examples, not Jacob's, and no answer from Jacob is on
+> record. The paragraph stands below as written, marked wrong on that point, until the architect
+> rewrites it. The rule itself is unaffected.**
 >
 > **Your tie-break question, answered: (b), and it is *northmost*, not westmost.** You offered
 > westmost or largest. **Largest is refused** — ordering by size would put "bigger rectangle first"

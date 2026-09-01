@@ -320,10 +320,63 @@
 </head>
 <body>
 <div class="callout" style="border-left:4px solid #16a34a;padding:.75rem 1rem;margin:1rem 0;background:#f0fdf4">
+<p><strong>&#128994; THE PROFILE SCREEN IS UNBLOCKED &mdash; as of 2026-09-01</strong> (this block
+is the newest; it supersedes every block below on <em>&ldquo;shippable&rdquo;</em>, on <em>&ldquo;what
+gates I-8b&rdquo;</em> and on <em>&ldquo;Your tie-break question, answered&rdquo;</em>, and nothing
+else).</p>
+<p><strong>I-8f is designed &#9989; &middot; built &#9989; &middot; verified &#9989; &middot;
+SHIPPABLE &#9989; &mdash; manager&rsquo;s verdict SHIP.</strong><br>
+<strong>I-8j is designed &#9989; &middot; built &#9989; &middot; verified &#9989; &middot;
+SHIPPABLE &#9989; &mdash; manager&rsquo;s verdict SHIP.</strong><br>
+<strong>I-8b (the Profile screen) is now permitted to open. Nothing on its blocker list is
+outstanding.</strong> Full detail in <code>REVIEW.md</code>, the <em>I-8f + I-8j</em> entry.</p>
+<p>Five rounds ago the manager stopped this project on three things. <strong>All three are closed,
+and the manager re-measured each one himself rather than accepting the reports:</strong></p>
+<ul>
+<li><strong>The grey holes in the map card.</strong> Re-measured at <strong>nine screen widths
+nobody in this arc had used</strong>, with the old rule put back so the &ldquo;before&rdquo; was
+measured rather than quoted. Before: <strong>66.7 %</strong> of the card bare in the worst case.
+After: <strong>0.32 %</strong> &mdash; the hairline between panels &mdash; and nothing spills
+outside the card at any width. The screenshots were opened and looked at: the grey block is gone and
+the leftover space is the card&rsquo;s own white.</li>
+<li><strong>The increment that was never built (I-8f).</strong> It is built and wired into the real
+screens. Driven in a browser: plant a broken trip, tap it, and the card comes back saying it cannot
+be read, offering <em>&ldquo;Save a copy&rdquo;</em> and warning before Delete &mdash; and the saved
+file is <strong>exactly the same bytes</strong> as what is on the device. Also driven through the
+<em>&ldquo;Browse another trip&rdquo;</em> picker, which behaves the same and leaves the trip you
+have open untouched.</li>
+<li><strong>The map that could go blank without saying so.</strong> Ten kinds of broken outline now
+produce a country <strong>named on screen as unavailable</strong> instead of an empty map.
+<strong>Jacob&rsquo;s Europe 2026 map is byte-for-byte identical</strong> to what it was before both
+changes &mdash; computed at both commits and compared.</li>
+</ul>
+<p><strong>&#9888;&#65039; One thing waiting on Jacob, and it is about honesty rather than about the
+product.</strong> The block below headed <em>&ldquo;Your tie-break question, answered&rdquo;</em>
+tells Jacob <strong>&ldquo;You offered westmost or largest.&rdquo;</strong> He did not &mdash; those
+were the <strong>manager&rsquo;s own two examples</strong>, in the question he asked Jacob five
+rounds ago, and there is no record anywhere in this repository of Jacob answering. The rule that
+shipped (<em>panels are read north to south, then west to east</em>) is a <strong>third</strong>
+option and is good for reasons that were measured independently, so <strong>nothing about the map
+changes</strong>. But <code>ARCHITECTURE.md</code> A-54 Part 3 and the block below both have to stop
+crediting the suggestion to Jacob. <strong>Jacob: did you answer, and did we just not write it
+down?</strong> If yes it gets recorded with the date; if no, both documents get rewritten to say we
+asked, did not hear back, and chose on our own reasoning &mdash; marked provisional until you rule.
+<code>REVIEW.md</code> <strong>MGR-5</strong>.</p>
+<p><strong>Also going back, none of it blocking:</strong> three items to the builder (all in the
+test tooling, none in the app &mdash; the fault harnesses run in a copy where one unrelated test
+already fails, so some checks cannot prove what they claim; the manager re-ran <strong>all 16</strong>
+affected checks across the whole arc against a clean baseline and <strong>14 of 14 runnable ones are
+genuinely catching their bug</strong>, so nothing shipped rests on a false claim) and one to the
+architect (a sentence in the architecture doc that promises more than the code delivers, for
+coordinates larger than anywhere on Earth; unreachable from any real data, and the manager sharpened
+the tester&rsquo;s diagnosis of it).</p>
+</div>
+
+<div class="callout" style="border-left:4px solid #16a34a;padding:.75rem 1rem;margin:1rem 0;background:#f0fdf4">
 <p><strong>&#9989; BOTH OF THE THINGS BLOCKING THE PROFILE SCREEN HAVE NOW BEEN ATTACKED, AND
-BOTH SURVIVED &mdash; as of 2026-09-01</strong> (this block is the newest; it supersedes the two
-blocks below on <em>&ldquo;verified &#10060;&rdquo;</em> and on <em>&ldquo;nobody has attacked it
-yet&rdquo;</em>, and nothing else).</p>
+BOTH SURVIVED &mdash; as of 2026-09-01</strong> (this block is superseded on
+<em>&ldquo;shippable&rdquo;</em>, on <em>&ldquo;what this unblocks&rdquo;</em> and on the tie-break
+attribution by the block above, and nothing else).</p>
 <p><strong>I-8f is designed &#9989; &middot; built &#9989; &middot; verified &#9989; &middot;
 shippable &mdash; the manager&rsquo;s call.</strong><br>
 <strong>I-8j is designed &#9989; &middot; built &#9989; &middot; verified &#9989; &middot;
@@ -361,7 +414,8 @@ coordinates larger than any real place on Earth; it goes back to the architect a
 correction.</p>
 <p><strong>What this unblocks:</strong> <strong>I-8b, the Profile screen</strong> &mdash; the last
 thing standing between Cairn and the travel-identity screen &mdash; now waits only on a
-manager&rsquo;s SHIP verdict for these two, not on any further building or testing.</p>
+manager&rsquo;s SHIP verdict for these two, not on any further building or testing.
+<strong>(That verdict has since been given: SHIP for both. See the block above.)</strong></p>
 </div>
 
 <div class="callout" style="border-left:4px solid #ca8a04;padding:.75rem 1rem;margin:1rem 0;background:#fefce8">
@@ -401,6 +455,11 @@ is <strong>3.9&times; the area</strong> it had at 640 px, and a Fiji-only map&rs
 architect and came out <strong>on the number</strong>. The leftover space inside a panel is now the
 card&rsquo;s own colour instead of the divider grey, so it reads as margin rather than as something
 that failed to load.</p>
+<p style="border-left:3px solid #ca8a04;padding-left:.75rem"><strong>&#9888;&#65039; ATTRIBUTION
+CORRECTION (manager&rsquo;s gate, <code>REVIEW.md</code> MGR-5): the two options the next paragraph
+says Jacob offered were the <em>manager&rsquo;s</em> examples, not Jacob&rsquo;s, and no answer from
+Jacob is on record. The paragraph stands below as written, marked wrong on that point, until the
+architect rewrites it. The rule itself is unaffected.</strong></p>
 <p><strong>Your tie-break question, answered: (b), and it is <em>northmost</em>, not
 westmost.</strong> You offered westmost or largest. <strong>Largest is refused</strong> &mdash;
 ordering by size would put &ldquo;bigger rectangle first&rdquo; back into the map one round after we

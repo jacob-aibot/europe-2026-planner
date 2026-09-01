@@ -1,13 +1,14 @@
 # Cairn — manager reviews
 
-**Five verdicts live in this file, newest first.** Phase 2 increment **I-8i** is the current
-one; the **I-8a**, **2b (data layer)**, **2a** and **Phase 1** verdicts below it are **closed
-and kept for the record**, not superseded — their routing discharged and their carried items
-re-placed downstream.
+**Six verdicts live in this file, newest first.** The **I-8f + I-8j prerequisite gate** is the
+current one; the **I-8i**, **I-8a**, **2b (data layer)**, **2a** and **Phase 1** verdicts below
+it are **closed and kept for the record**, not superseded — their routing discharged and their
+carried items re-placed downstream.
 
 | Verdict | Scope | Commit reviewed | Date | Result |
 |---|---|---|---|---|
-| **I-8i — the world-map lifetime framing rewrite** (the A-41 → A-53 atlas-frame arc, seven rounds) | `ROADMAP.md` Phase 2 increment **I-8i** (revisions 35–36) against `ARCHITECTURE.md` §4.4 **A-51**, **A-52**, **A-53** — **I-8b is not included** | `10455b9` (record `6ee6bf5`) | 2026-09-01 | **SHIP** (10 items routed; **3 gate I-8b**). **The frame's geometry closes as a track; A-51 G7's layout does not** |
+| **I-8f + I-8j — the manager-gated prerequisites for I-8b** (closes MGR-1, MGR-2 and R39-1 from the I-8i gate) | `ROADMAP.md` Phase 2 increments **I-8f** (`359234b`) against `ARCHITECTURE.md` §2.9 **A-47**, and **I-8j** (`3044bdd`) against §4.4 **A-54** — **I-8b is not included and does not ship here** | `3044bdd` (record `f622ab9`) | 2026-09-01 | **I-8f SHIP · I-8j SHIP.** **I-8b is permitted to open.** 5 items routed, **0 gate I-8b** |
+| **I-8i — the world-map lifetime framing rewrite** (the A-41 → A-53 atlas-frame arc, seven rounds) | `ROADMAP.md` Phase 2 increment **I-8i** (revisions 35–36) against `ARCHITECTURE.md` §4.4 **A-51**, **A-52**, **A-53** — **I-8b is not included** | `10455b9` (record `6ee6bf5`) | 2026-09-01 | **SHIP** (10 items routed; **3 gate I-8b**). **The frame's geometry closes as a track; A-51 G7's layout does not** — **all three discharged at the gate above** |
 | **I-8a — the tab shell, the world map, the token layer, the signal-collision fix** | `ROADMAP.md` Phase 2, step 2b, increment **I-8a** (revision 27) against `ARCHITECTURE.md` §4.4 **A-40** (revision 29) — **I-8b is not included, and 2b does not ship here** | `6b89c91` | 2026-08-31 | **SHIP** (7 items routed; 4 of them gate I-8b) |
 | **2b (data layer) — I-5 … I-7b** (geography attribution, `travelStats`, the summary-row read boundary) | `cairn/docs/ROADMAP.md` Phase 2, step 2b, increments I-5 through I-7b, A-26…A-39 — **I-8 (the Map/Profile surfaces) is not included** | `69e44d4` | 2026-08-29 | **SHIP** |
 | **2a — past trips and the lifecycle** (I-0 … I-4a) | `cairn/docs/ROADMAP.md` Phase 2, first of three steps | `67f5588` | 2026-08-28 | **SHIP** |
@@ -15,9 +16,489 @@ re-placed downstream.
 
 ---
 
+# I-8f + I-8j — the manager-gated prerequisites for I-8b (A-47 / A-54)
+
+> **Status: CURRENT.** Manager, stage 4. Reviewed `master` @ `3044bdd` (QA round 40's record
+> landed alongside at `f622ab9`), 2026-09-01, Node v22.22.2, Chromium via the system Playwright
+> at `/opt/node22/lib/node_modules/playwright`, `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers`.
+> **Verdict: I-8f SHIP. I-8j SHIP.** Scope was those two increments and nothing else; **I-8b is
+> not included and does not ship here.** Every claim below has a command in
+> **Verified — I-8f + I-8j** that I ran myself, on this tree.
+>
+> **The question Jacob asked, answered first: yes — I-8b is permitted to open.** All three
+> items my own I-8i gate marked *"gates I-8b"* (**MGR-1**, **MGR-2**, **R39-1**) are closed, and
+> I closed each of them by re-deriving it rather than by reading round 40's or the builder's
+> report. `ROADMAP.md` I-8b's dependency line names **I-8a, I-8c, I-8d, I-8e, I-8f, I-8g and
+> I-8j**; the first four already shipped under manager verdicts, and the last three ship or have
+> shipped as of this entry. **Nothing on that line is outstanding.**
+>
+> **Per Jacob's instruction for this pass I did not rubber-stamp round 40.** I re-ran the suite,
+> both fault matrices, all five render probes and all four of round 40's own evidence files; I
+> re-measured MGR-1 in Chromium **at nine widths and four libraries that neither A-54, the
+> builder nor round 40 used**, with the superseded A-51 G7 rule re-injected so my *"before"* was
+> measured on this tree rather than transcribed; I drove I-8f's failure path end to end through
+> the real browser on **both** `openTrip` and `browseTrip`; I re-derived predicate D and I19
+> against my own hand-built indices; and I computed the whole world-map frame at `91597b7` in a
+> worktree and diffed it against `HEAD` so the *"Jacob's map does not move"* claim is a
+> comparison I performed, not one I read.
+>
+> **I agree with round 40's verdict on both increments, I confirm all three of its MINORs, and I
+> found two things it did not.** **MGR-5** is an attribution defect: `A-54` Part 3 and the
+> visual roadmap credit Jacob with the tie-break candidates *"westmost"* and *"largest"*, and
+> the only traceable source of that pair in this repository is **my own `REVIEW.md` at
+> `91597b7`**, where I offered them as my examples in a question **to** him. **MGR-6** sharpens
+> R40-3 in a way that changes which fix will work.
+
+---
+
+## Verdict: **I-8f SHIP · I-8j SHIP · I-8b is permitted to open**
+
+**Both increments build exactly what their rulings specify, neither contains a stub, and the
+three defects that created this five-round follow-up arc are genuinely gone.** Not on anyone's
+word — on my own runs, on this tree:
+
+- **MGR-1 is closed, and I measured the *before* as well as the *after*.** My own A/B over
+  4 libraries × 9 widths (**430 · 600 · 700 · 850 · 1100 · 1200 · 1366 · 1800 · 3000** — none of
+  them in A-54's sweep, the builder's five or round 40's thirteen): with A-51 **G7** re-injected
+  as a stylesheet override the container goes to **66.737 %** bare on a one-pane library,
+  **45.562 %** on `FR`+`US` and **29.048 %** on the Europe 2026 fixture — reproducing to the
+  third decimal the three numbers I filed at the I-8i gate. On the shipped **G7′** the worst of
+  those 36 pairs is **0.318 % empty and 0.000 % overflow**, and **G7″ holds at every one**: zero
+  cells with a border, an outline, a box-shadow or a background differing from
+  `.worldmap__figure`'s. **I then looked at the screenshots.** The grey block under the Europe
+  2026 card is gone and the space is card-white; the one-pane library is a large centred map with
+  white beside it instead of a small map with two thirds grey. That is A-54 Part 1's stated
+  outcome, delivered.
+- **MGR-2 is closed, and I-8f is not a paper increment.** `openFailures` is real state in
+  `reducer.ts`; `noteOpenFailure` is called from the **actual `catch` blocks** around
+  `core.fromJSON` in both `openTrip` (`store.ts:1139`) and `browseTrip` (`:1174`), each
+  rethrowing the original error after the `set`; all **six** `...initialState()` transition sites
+  carry the field; `rowUnopenable`'s body is exactly A-47 Part 3's three disjuncts;
+  `rowDatesReadable` has **zero deleted lines**. I drove it in Chromium: on `openTrip` the card
+  goes from honestly unflagged → chip + hint + *"Save a copy"* + the *"save a copy first"* Delete
+  sentence, the meta line still reads `2026-08-07 → 2026-08-22 · 6 cities` through the **narrow**
+  gate, the rescue download is **140,511 bytes byte-identical** to storage and still carries
+  `2026-02-30` verbatim, and a reload clears the flag. **Round 40's claim about the `browseTrip`
+  path — the gap the I-8f builder itself declared unverified — is true, and I reproduced it
+  independently**: the Browse & copy picker lists the unopenable trip, selecting it prints
+  *"expected a real calendar date in YYYY-MM-DD (at `$.days[3].date`)"* rather than crashing, the
+  trip you have open is untouched, and after closing it the Trips list carries **1** chip, **1**
+  hint and **1** rescue control — on the broken card only, with the healthy clone unflagged.
+- **R39-1 is closed, and the guard is a property of core rather than of a build tool.** On my own
+  hand-built indices, **10 of 10** malformed ring shapes — `[]`, `[7]`, `[1,2,3]`, `[1,NaN]`,
+  `[1,Infinity]`, a string coordinate, a `null` coordinate, no rings at all, and the all-or-stated
+  case in **both** entry orders — give `countryParts → []`, `countryKeyPoint → null`, and reach
+  `missing: ["XX"]` through `worldMapFrame` with `viewBox` `-180 -90 360 180` and no `NaN`
+  anywhere. The four small rings A-52 insisted on (**1 point, 2 points, 2 identical points, a
+  `-0` coordinate**) are still **accepted** with finite boxes, so D excluded non-geometry without
+  reintroducing a vertex-count minimum. A malformed code beside a healthy one leaves the healthy
+  one drawn. On the shipped artefact: **292 entries · 239 distinct codes · 1,033 rings · shortest
+  ring 8 elements · 0 odd-length · 0 non-finite · 0 ring-less · max |coordinate| = 180 · 0 codes
+  rejected by D** — the census re-derived from the artefact, not quoted.
+- **Nothing on Jacob's own map moved, and this is a diff I performed.** I built a worktree at
+  `91597b7` and computed `worldMapFrame` at both commits. The **Europe 2026 fixture is identical
+  in every respect** — three panes, same order, `viewBox` strings byte-for-byte
+  (`-8.1779 -59.2407 31.494 17.3663` · `-125.8416 -50.5435 60.0314 26.618` ·
+  `-172.8399 -72.4066 43.9088 54.5393`), weights 6 · 1 · 0. `FR`+`US` keeps all four `viewBox`
+  strings and swaps **only** the two `weight 0` extent panes (Guiana · Alaska → **Alaska
+  N 71.4 · Guiana N 5.8**), which is A-54 Part 3's single stated user-visible delta and is the
+  proof that **G5′ is load-bearing** rather than agreeing with the key it replaced.
+- **The boundaries hold.** `packages/core/src/derive/cluster.ts` is a **zero-line diff** from
+  `91597b7` — third increment running, so the already-shipped day map cannot have moved.
+  `WorldMap.tsx` is a **zero-line diff**, as both A-54 Part 5 and ROADMAP I-8j require.
+  `packages/core` is a **zero-line diff across I-8f alone**, as A-47 Part 7 requires. Export
+  surface **79** by `Object.keys` on the built namespace. `package.json`/`package-lock.json`
+  **0** diff lines and `dependencies` absent entirely. `npm run golden && npm run sample` leaves
+  the tree **clean**. Root read-only boundary untouched: `git diff` over
+  `europe-2026-itinerary.html`, `docs/`, `tickets/` **empty**, `md5sum` still
+  `7c69df3208ef91c8be0fb59a56443188`.
+- **Nothing sensitive moved.** Over the whole `packages/` + `apps/` + `cli.ts` diff from
+  `91597b7`, **0** added lines match `console.|fetch(|XMLHttpRequest|sendBeacon|navigator.|
+  localStorage|sessionStorage|geolocation|watchPosition|imap|gmail|oauth|mailbox|EXIF|Date.now|
+  Math.random|crypto.`. `node qa/r2-redact.mjs` → **KNOWN_LEAKS hits: 0**; its three
+  `LEAKS FOUND` are the literal identifier strings `"OPTIONAL"` (×2) and `"BOOKINGS"` in the
+  bundle and its sourcemap — **the door PIN, the booking references and the ticket URLs are not
+  in any built asset**, which is §6.6 and Jacob's own 2026-08-25 decision holding. `openFailures`
+  holds an id and a parser message, and I watched it die on reload in the browser: **not
+  persisted, not exported, not in `history`.**
+- **The reported state is true.** `npm run typecheck` clean on both projects. `npm run test:tap`
+  **1165 pass / 0 fail / 0 skipped**. `bash qa/i8f-faults.sh` **ALL FAULTS RED, 17 of 17**, under
+  **3 green baselines** it asserts before trusting anything. `bash qa/i8j-faults.sh` **ALL FAULTS
+  RED, 20 red + 1 GREEN control** (fault 18, KD-80's deliberate one). `qa/i8f-render.mjs` **ALL
+  CLEAR**, `qa/i8j-render.mjs` **ALL PASS**, `qa/i8i-render.mjs` **ALL CLEAR**. `qa/r35-store.mjs`
+  **ALL CLEAR**. The standing FAIL counts are exactly the ones both reports publish and every one
+  maps onto a filed, non-gating finding: `r39-a51.mjs` **1** (R39-6), `r39-render.mjs` **7**
+  (5 × R39-6 + 2 × R39-7), `r35-render.mjs` **4**. All four of round 40's own evidence files run
+  and reproduce: `r40-openfail.mjs` **ALL CLEAR**, `r40-browse.mjs` **ALL CLEAR**,
+  `r40-layout.mjs` **ALL PASS**, `r40-a54.mjs` **1 FAIL** — which is R40-3 and is the only
+  assertion in this whole pass that fails.
+
+**Why this is a SHIP and not a SEND BACK, stated rather than assumed.** The three items that
+gated I-8b are closed on measurement, not on argument. The three findings round 40 filed are all
+about the **instrument**, not the product, and I proved that rather than accepting it — see
+**R40-1** below, where I re-ran every affected mutation across the whole arc. **MGR-5** is real
+and it matters, but it is an attribution error in two internal documents with no product
+consequence and no user-visible surface; holding a five-round prerequisite gate closed over a
+sentence in a design doc, when the ruling it describes stands on its own independently measured
+reasoning, would manufacture a round rather than close one. It is routed to the architect and
+put in front of Jacob directly, which is what the convention it breaks actually asks for.
+
+---
+
+## MGR-5 — two documents credit Jacob with a suggestion that is mine
+
+**MAJOR (attribution). Architect. Does not gate I-8b.**
+`ARCHITECTURE.md` §4.4 **A-54** Part 3 · `CAIRN_VISUAL_ROADMAP.md` line 100 (and its `.html`
+twin).
+
+A-54 Part 3 writes:
+
+> **Jacob's *"westmost"* is therefore taken as the *second* key** … **Jacob's other candidate,
+> *largest*, is refused.**
+
+and the visual roadmap — the file Jacob actually reads — says:
+
+> **Your tie-break question, answered: (b), and it is *northmost*, not westmost.** You offered
+> westmost or largest.
+
+**Jacob did not offer them. I did.** `git log -S"westmost" -- cairn/docs/` returns exactly two
+commits: `91597b7` — **my own I-8i gate**, where the string first enters the repository in *For
+Jacob — I-8i* item 3, phrased as my example inside a question **to** him —
+
+> break the tie by something geographic instead — **westmost first, say, or largest first**.
+> (a) is free; (b) is a small change … **Which would you prefer?**
+
+— and `3f92ac9`, the architect revision that turns my two examples into *"Jacob's westmost"* and
+*"Jacob's other candidate, largest"*. **There is no commit between the two recording an answer
+from Jacob**, and no grep over `docs/` finds one. The visual roadmap's *"answered: (b)"* is us
+answering our own question on his behalf and then reporting it back to him as his.
+
+This is the root `CLAUDE.md` convention that outranks the rest of them — *"Never present my
+suggestions as Jacob's/the user's own plan"* — broken in the two documents whose whole job is to
+tell Jacob where his project stands. It is worse, not better, that the answer chosen (*northmost*)
+is **neither** of the options credited to him.
+
+**What the architect must do, precisely.** Do **not** change G5′. The ruling is sound on its own
+evidence and I verified that evidence independently (the ±180 seam catching `AQ`/`FJ`/`RU`, and
+`north` distinct on all 242 single-country panes while `west` collides on 9). Change the
+**attribution**, at both sites, in one pass:
+
+1. **`ARCHITECTURE.md` A-54 Part 3** — replace *"Jacob's `westmost`"* and *"Jacob's other
+   candidate, `largest`"* with the true provenance: the manager's I-8i gate offered *westmost* and
+   *largest* as two examples of a geometric key while asking Jacob to choose between accepting the
+   alphabet in the open (option a) and replacing it (option b). Say plainly that **A-54 takes
+   option (b) on the architect's own reasoning and that Jacob's answer is not on record**, and mark
+   the whole of Part 3 as **provisional pending Jacob** in the same way §8.8 marks live presence.
+2. **`CAIRN_VISUAL_ROADMAP.md` line 100 and the `.html` twin** — the sentence must stop telling
+   Jacob what he offered. It should say: *we asked you a question, we have not had your answer,
+   and we implemented (b) with a third key you did not name because the two we suggested both have
+   a defect we then measured. Here is why, and here is how to overrule it.*
+3. **If Jacob did answer and it simply was not written down, record it** with the date, and this
+   item closes as a bookkeeping fix rather than an attribution one. That is his call to make, not
+   ours to assume — it is in *For Jacob* below.
+
+---
+
+## MGR-6 — R40-3 is right, is correctly MINOR, and is wrong about the mechanism in a way that decides the fix
+
+**MINOR. Architect. Does not gate I-8b.** Confirms round 40's severity and routing, and replaces
+its diagnosis. `ARCHITECTURE.md` §4.4 **A-54** Part 6 (**I19**) ·
+`packages/client/src/selectors/worldMap.ts:246` (`frameNum`) · `packages/core/src/derive/cluster.ts:197`
+(`mapBounds`).
+
+**I agree with round 40's grading, and I did the reachability work rather than repeating its
+sentence.** The only call site of `worldMapFrame` in shipped code is `WorldMap.tsx:112`, and its
+second argument is `COUNTRY_INDEX` **statically imported** from `packages/core/src/geo/countries.gen.ts`
+— I grepped every reference to `worldMapFrame`, `COUNTRY_INDEX`, `countryIndex(` and
+`decodeCountryIndex` across `apps/` and `packages/` to confirm there is **no port, no prop, no
+storage record and no user input** through which any other index can reach the frame. The shipped
+index's largest coordinate magnitude is **180**. To reach this defect you must be a programmer
+calling a public core export with a hand-built index carrying coordinates around **1e304**, and any
+plausible future injected index — a higher-resolution admin-0 layer, say — is WGS84 by definition
+and is 306 orders of magnitude away. **This is theoretical, it is correctly deferred, and it does
+not gate I-8b.** The builder implemented D exactly as ruled; this is the invariant's wording, not
+the code, exactly as round 40 says.
+
+**Where round 40 is wrong, and it matters.** Its finding says the overflow is in `east − west`,
+at *"m ≥ 1e306"*. I re-derived it and both halves are off:
+
+| library input | round 40 | measured by me |
+|---|---|---|
+| first magnitude that breaks | `m ≥ 1e306` | **`m ≈ 8.6e303`**, ~2.4 orders of magnitude lower |
+| the overflowing expression | `east − west` | **`frameNum`, `worldMap.ts:247` — `Math.round(n * 1e4) / 1e4`.** At `m = 1e304` the subtraction is still finite (`2.08e304 < MAX_VALUE`); it is the **× 1e4** rounding step that goes to `Infinity` first |
+
+**And there is a third regime nobody in this arc has seen, which is the reason this item cannot
+be closed by patching I19's NaN clause alone.** At **`m = 8.9e307`** the frame emits
+
+```
+viewBox="-0.0056 -0.0056 0.0112 0.0113"   aspect=0.9911504424778762   missing=[]
+```
+
+— a **finite, plausible, entirely wrong** frame. The mechanism is one level further out than
+either D or `frameNum`: `mapBounds`' span calculation goes non-finite, `raw >= MIN_SPAN_KM` is
+therefore false, and its **clamp branch** widens a 0.01°-ish box about the centroid `(0, 0)`
+while the country's `d` path spans `±8.9e307`. The result is a map framed on a hundredth of a
+degree at Null Island with the geometry nowhere near it: **a blank map, no `NaN`, no `Infinity`,
+`missing: []`, nothing stated** — R39-1's original harm, with I19 as literally written
+(*"no `viewBox` contains `NaN`, no `aspect` is non-finite, no `part.box` component is
+non-finite"*) reporting **pass**.
+
+**What the architect must do, precisely.**
+
+1. **Correct R40-3's two published numbers where A-54 records them** — the threshold is
+   ~`8.6e303`, and the site is `frameNum`'s `× 1e4`, not the subtraction. Repro:
+   `node --experimental-strip-types` over a one-entry index whose only ring is the square
+   `[-m,-m, m,-m, m,m, -m,m]`, sweeping `m` at `1e300 · 1e303 · 5e303 · 8.6e303 · 9e303 · 1e304 ·
+   1e305 · 8.9e307 · 1e308` and printing `worldMapFrame(...).viewBox`.
+2. **Rule I19's quantifier, and pick a form that also covers the finite-garbage regime.** Round
+   40 offers two cheap corrections; only one of them survives the `8.9e307` case. Scoping I19 to
+   *"every index whose coordinates lie in the WGS84 domain"* **does** cover it, because it excludes
+   the whole regime. Keeping *"every index"* and hardening D against non-finite **outputs** does
+   **not** — every output at `8.9e307` is finite. **Say which, and say why, so the next builder
+   does not implement the version that still measures false.**
+3. **If the domain clause is chosen, note in place that A-54 Part 2's *"no other test, and in
+   particular no minimum vertex count"* was an argument against a *resolution* filter, not against
+   a *coordinate-domain* one.** They are different questions and A-54 never actually weighed the
+   second. That is not a reversal; it is closing a gap the entry left open by not noticing it.
+
+---
+
+## R40-1, R40-2, R40-3 — confirmed as filed, and one of them extended
+
+**All three are correctly MINOR, all three are correctly routed, and none of them blocks either
+ship.** I re-ran each and confirmed it.
+
+**R40-1 (builder) — confirmed, and I measured the blast radius round 40 did not.** The defect is
+real and I reproduced it directly: in `qa/i8j-faults.sh`'s own `make_copy` — `cairn/` alone into a
+`mktemp` dir — the unmutated noise floor is `test/views.test.ts` **# pass 39 # fail 1**,
+`test/cli.test.ts` **# pass 3 # fail 24**, `packages/core/test/clusterPoints.test.ts` **# pass 12
+# fail 2**. In `qa/i8f-faults.sh`'s root-inclusive `make_copy` all three are **# fail 0**. So any
+fault scoped exclusively to one of those three suites reads `RED (expected)` unconditionally.
+
+**The retroactive question — does this change my confidence in what I already shipped at
+`91597b7`? No, and I checked rather than reasoned.** I enumerated every `fault`/`control`
+invocation in `i8d`, `i8g`, `i8h`, `i8i` and `i8j`'s matrices and filtered to those scoped
+**only** to a polluted suite: **16 of 72** (i8d 5/11, i8g 1/14, i8h 3/11, i8i 2/15, i8j 5/21). I
+then re-applied each mutation in a copy that includes the repo root's read-only half and whose
+baseline I asserted green first:
+
+> **14 re-runnable, 14 genuinely RED, 0 that stop measuring, 2 whose mutation text no longer
+> matches `HEAD`** (both `i8d`-vintage, in files three increments have since moved).
+
+**So the finding is cleanly contained to the test-infrastructure layer and has no product-behaviour
+implication.** Every *"ALL FAULTS RED"* claim I accepted in the `91597b7` verdict was true; some of
+it was true for the wrong reason, and none of it was false. I am not reopening I-8d, I-8g, I-8h or
+I-8i, and nothing shipped rests on an unverified claim.
+
+**Builder, do this:** port `qa/i8f-faults.sh`'s `make_copy` (which copies
+`europe-2026-itinerary.html`, `docs`, `tickets`, `index.html`, `manifest.json` into the temp
+**parent**, by copy and never symlink) **and** its `baseline()` step into `qa/i8d-faults.sh`,
+`qa/i8g-faults.sh`, `qa/i8h-faults.sh`, `qa/i8i-faults.sh` and `qa/i8j-faults.sh`. Correct
+**KD-78**'s stated trigger in `BUILD-NOTES.md`: it names *"the next matrix that names
+`test/cli.test.ts` or `test/boundaries.test.ts`"*, and the real condition is **any suite that reads
+the repo root**, of which `test/views.test.ts` and `packages/core/test/clusterPoints.test.ts` are
+two and `test/boundaries.test.ts` is **not** one (it is `# fail 0` in the bare copy — I measured
+it). While in `i8d-faults.sh`, re-point or retire the two mutations that no longer match.
+
+**R40-2 (builder) — confirmed, and it is one case wider than filed.** I reproduced the substitution:
+all five `i8j-faults.sh` layout mutations turn red on the single assertion `I-8j / A-54 G7′: the
+pane container is a wrapping flex line box, and G7″ leaves the cell unbordered`, and fault 5
+(*"masonry: the sequence the eye follows stops being DOM order"*) exercises no reading-order
+criterion at all. **The case round 40 missed:** in my re-run, `qa/i8i-faults.sh`'s *"the uniform
+`--pane-cap` is replaced by the main/inset pair"* now also turns red on that **I-8j** assertion
+rather than on anything of its own — KD-79's pattern, a third time, now crossing an increment
+boundary. Builder: give faults 2–5 an assertion that fails **for the reason the label names**, add
+the `i8i` one to that sweep, and close the gap that `qa/i8j-render.mjs` — which carries A-54 Part
+1's actual content — **is never fault-injected by any matrix**.
+
+**R40-3 (architect) — confirmed, routing upheld, superseded in substance by MGR-6 above.** Round
+40's judgement call is the right one and I am not overriding it: this is a clause of A-54 that
+measures false, not a gap in following A-54, so it belongs to the architect and not to the builder.
+Read it **with MGR-6**, which corrects its threshold, its mechanism, and — the load-bearing part —
+shows that one of its two suggested cheap fixes does not actually close it.
+
+---
+
+## MGR-7 — a BUILD-NOTES scope figure that does not re-derive, for the second increment running
+
+**MINOR. Builder. Does not gate I-8b.** `BUILD-NOTES.md`, the I-8j addendum's scope paragraph.
+
+It says **"Scope: 8 files changed, 2 added (plus this file and `qa/README.md`)"** and then
+enumerates, in the same paragraph, **eleven** changed files: `country.ts`, `worldMap.ts`,
+`styles.css`, `countryParts.test.ts`, `countryKeyPoint.test.ts`, `world-map.test.ts`,
+`views.test.ts` — *"and four QA probes (`i8i-faults.sh`, `i8i-render.mjs`, `r39-a51.mjs`,
+`r39-render.mjs`)"*. `git show --stat 3044bdd` is **17 files**, which is 11 changed + 2 added +
+`BUILD-NOTES.md` + `qa/README.md` + **both `CAIRN_VISUAL_ROADMAP` files**, none of which the
+paragraph counts. The list is right and the headline is wrong.
+
+Filed because this is the same class as **MGR-3** at the last gate and it is now consecutive, in a
+document whose whole value is that a reader can trust its numbers without re-deriving them. **The
+I-8f addendum's own figure is correct** — *"8 files changed, 3 added"* + `BUILD-NOTES` + both
+roadmap files + `qa/README.md` = the 15 files `git show --stat 359234b` reports, exactly. Builder:
+fix the I-8j figure, and count the visual-roadmap twins in future scope lines since
+`cairn/CLAUDE.md` requires updating them.
+
+---
+
+## Routing — I-8f + I-8j
+
+**Five items. None blocks either verdict. None gates I-8b — the gate is clear.** Round 40
+proposed routing for its three; I confirm all three as filed, extend two with my own
+measurements, and add two of my own.
+
+| id | severity | agent | gates I-8b | one line |
+|---|---|---|---|---|
+| **MGR-5** | MAJOR (attribution) | architect | no | A-54 Part 3 and the visual roadmap credit Jacob with *"westmost"*/*"largest"*; `git log -S` traces both to my own `REVIEW.md` at `91597b7`, and no answer from Jacob is on record |
+| **MGR-6** | MINOR | architect | no | R40-3's threshold is `8.6e303` not `1e306`, its overflow site is `frameNum`'s `× 1e4` not `east − west`, and at `8.9e307` the frame is finite-but-wrong — so I19's NaN clause alone cannot close it |
+| **R40-1** | MINOR | builder | no | five fault matrices measure their own zero; **16 affected mutations across the arc, 14 re-run, 14 genuinely red, 0 false** — contained to the harness |
+| **R40-2** | MINOR | builder | no | five layout faults share one assertion and fault 5's label describes nothing it tests; `i8i-faults.sh`'s `--pane-cap` fault is a sixth case; `i8j-render.mjs` is never fault-injected |
+| **MGR-7** | MINOR | builder | no | BUILD-NOTES' I-8j scope says *"8 files changed"* over its own list of 11; the commit is 17. Second consecutive increment (cf. MGR-3) |
+
+**Carried forward from the I-8i gate, unchanged, still non-gating:** **R39-6** (builder —
+`WorldMap.tsx:182`'s extent-pane `aria-label` claims *", shown in a separate frame"* where the
+visible caption does not; I confirmed it is still open, it is the single `r39-a51.mjs` FAIL and
+5 of the 7 `r39-render.mjs` FAILs), **R39-7** (architect — `FJ` at 342.2 × 2.2 px, now disclosed
+under A-51 residue 3 with the number attached; the other 2 `r39-render.mjs` FAILs), **R35-2**
+(builder — the hint line's 2.63:1 contrast, still visible on the card I rendered) and **R35-3**
+(builder — card-height inflation). **None of these gates I-8b and none of them is made worse by
+either increment.** The three stale *"grid cell (A-51 G7)"* comments in `WorldMap.tsx` are not a
+finding — the zero-line diff is required by two documents and I verified it — and should ride the
+next increment that has a legitimate reason to open that file.
+
+### architect — two items, both small, neither blocking
+
+- **MGR-5.** The three-step correction is written out above. **Do not change G5′.** The urgent
+  half is the visual roadmap, because it is addressed to Jacob in the second person and currently
+  tells him something about himself that is not true.
+- **MGR-6 / R40-3.** The three-step correction is written out above. The one thing that must not
+  happen: closing this by adding a `Number.isFinite` check on the frame's outputs, which passes at
+  `8.9e307` while the map is blank.
+
+### builder — three items, all in `qa/` and `BUILD-NOTES.md`, no product code
+
+- **R40-1.** Port `i8f-faults.sh`'s `make_copy` + `baseline()` into the other five matrices;
+  correct KD-78's trigger to *"any suite that reads the repo root"*; re-point or retire
+  `i8d-faults.sh`'s two now-unmatched mutations. Repro: `bash qa/r40-vacuity.sh`.
+- **R40-2.** Give `i8j-faults.sh` faults 2–5 assertions that fail for their own labelled reason;
+  add `i8i-faults.sh`'s `--pane-cap` fault to that sweep; put `qa/i8j-render.mjs` under at least
+  one injected fault so A-54 Part 1's container criterion has fault coverage.
+- **MGR-7.** Correct the I-8j scope figure and start counting the `CAIRN_VISUAL_ROADMAP` twins.
+
+### breaker — nothing is owed
+
+**Round 40 did its job and I am not routing anything back to it.** It treated two increments as two
+targets, re-derived every builder number rather than quoting it, closed the one gap the I-8f builder
+declared open (`browseTrip` through the browser) and found a defect in its own instrument and filed
+it against itself. The one thing I would have asked for — the blast-radius audit behind R40-1 — I
+did myself above and it came back clean, so there is nothing left to ask. R40-3's diagnosis is
+wrong in its mechanism, which MGR-6 corrects; the finding itself was right and finding it at all
+was the valuable act.
+
+---
+
+## Verified — I-8f + I-8j: what I ran, and what happened
+
+All from `/home/user/europe-2026-planner`, `master` @ `f622ab9` (product commits `359234b` and
+`3044bdd`), Node v22.22.2, Chromium via `/opt/node22/lib/node_modules/playwright` with
+`PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers`, served from a `node tools/serve.mjs` I started myself
+over a `dist` I built myself (`index-4PaVQ4kK.js`, confirmed by fetching `/`).
+`git status --porcelain` **empty** before and after; the worktree I created at `91597b7` for rows
+17–18 was removed and `git worktree list` shows only the main tree.
+
+| # | Command | Result |
+|---|---|---|
+| 1 | `npm run typecheck` | exit **0**, both projects; `pretypecheck` regenerated the redacted sample (`16 days, 112 stops, 31 pool, 95 places, 120 import issues, source 40955ca0b182, REDACTED per §6.6`) |
+| 2 | `npm run test:tap` | `# tests 1165 · # pass 1165 · # fail 0 · # skipped 0`, 28.7 s. **BUILD-NOTES' and round 40's 1165 are both accurate** |
+| 3 | `npm run golden && npm run sample && git status --porcelain` | tree **clean**; sha `40955ca0b182dddcc33540accadf2a65a329bc20b9e6ca109c9884e776bb06d2`. Byte-identical regeneration |
+| 4 | `git diff 91597b7 HEAD -- cairn/packages/core/src/derive/cluster.ts \| wc -l` | **0** — the day map cannot have moved. Third increment running, which is MGR-4's corrected count |
+| 5 | `git diff 91597b7 HEAD -- cairn/apps/web/src/views/WorldMap.tsx \| wc -l` | **0** — A-54 Part 5 and ROADMAP I-8j both require it |
+| 6 | `git diff 91597b7 359234b -- cairn/packages/core/ \| wc -l` | **0** — A-47 Part 7's *"`packages/core` is untouched — zero diff lines"* |
+| 7 | `Object.keys` on the built core namespace | **79** |
+| 8 | `git diff --stat 91597b7 HEAD -- cairn/package.json cairn/package-lock.json` | **empty**. No dependency added; `package.json` has `devDependencies` only, no `dependencies` key at all |
+| 9 | `git diff --stat 91597b7 HEAD -- europe-2026-itinerary.html docs/ tickets/` + `md5sum` | **empty**; `7c69df3208ef91c8be0fb59a56443188`, unmoved. The read-only boundary holds |
+| 10 | privacy grep over the whole `packages/`+`apps/`+`cli.ts` added-line diff | **0** matches across the full pattern set (network, storage, location, mailbox, EXIF, clock, RNG, crypto) |
+| 11 | `node qa/r2-redact.mjs` | **KNOWN_LEAKS hits: 0**. `LEAKS FOUND: 3` = `"OPTIONAL"` in the bundle, `"OPTIONAL"` and `"BOOKINGS"` in the sourcemap — identifier strings, not credentials. `PIN 0754` is **not** in any built asset |
+| 12 | my own D/I19 probe, hand-built indices, bare Node | **10/10** malformed ring shapes → `countryParts []`, `countryKeyPoint null`, `missing: ["XX"]`, `viewBox "-180 -90 360 180"`, no `NaN`. **4/4** small drawable rings (1 point, 2 points, 2 identical points, `-0`) accepted with finite boxes. All-or-stated holds in **both** entry orders. A bad code beside a healthy one leaves the healthy one drawn |
+| 13 | the shipped `COUNTRY_INDEX`, recomputed from the artefact | **292 entries · 239 distinct codes · 1,033 rings · shortest 8 elements · 0 odd-length · 0 non-finite · 0 ring-less · max abs coordinate 180 · 0 of 239 codes rejected by D** |
+| 14 | my own overflow sweep (**MGR-6**) | finite `viewBox` to `m = 8.6e303`; `Infinity` from `m = 9e303`; `NaN` at `m = 1e308`; **`viewBox="-0.0056 -0.0056 0.0112 0.0113"`, `aspect 0.991`, `missing: []` at `m = 8.9e307`** — finite, plausible and wrong. `countryParts`' own postcondition (every `part.box` component finite) holds at **every** magnitude |
+| 15 | trace of every `worldMapFrame` / `COUNTRY_INDEX` / `countryIndex(` / `decodeCountryIndex` reference in `apps/` + `packages/` | one shipped call site, `WorldMap.tsx:112`, with a **statically imported** `COUNTRY_INDEX`. **No port, no prop, no storage record** can inject an index — row 14 is unreachable from any data path |
+| 16 | my own MGR-1 A/B in Chromium — 4 libraries × 9 widths (**430 · 600 · 700 · 850 · 1100 · 1200 · 1366 · 1800 · 3000**, used by nobody in this arc), shipped G7′ vs. A-51 G7 re-injected as an override | **shipped: worst 0.318 % empty, 0.000 % overflow, 0 G7″ violations over all 36 pairs.** Re-injected G7: **66.737 %** (one-pane and `FJ`-alone at ≥ 1100), **45.562 %** (`FR`+`US`), **29.048 %** (Europe 2026) — the three numbers I filed at the I-8i gate, reproduced to three decimals |
+| 17 | screenshots of the Europe 2026, `FR`+`US` and one-pane cards at 1200 px, new vs. old, **which I opened and looked at** | old: a grey `var(--line)` block occupying the bottom-left of the card / two thirds of the one-pane card. New: the same maps with card-white space and the container's ink only in the 1 px separators. The one-pane map is visibly larger and centred |
+| 18 | `worldMapFrame` computed at `91597b7` in a worktree vs. `HEAD` | **Europe 2026: identical** — 3 panes, same order, all three `viewBox` strings byte-for-byte, weights 6 · 1 · 0. **`FR`+`US`: all four `viewBox` strings identical, only the two `weight 0` extent panes swap** (Guiana · Alaska → Alaska N 71.4 · Guiana N 5.8). I18 holds in both |
+| 19 | my own I-8f drive-through, Chromium, `openTrip` | before the tap: chip **0**, rescue **0**. After: chip **1**, hint **1**, rescue **1**, meta line still `2026-08-07 → 2026-08-22 · 6 cities`, Delete's confirm carries *"save a copy first"*, download `europe-2026.cairn-unreadable.json` **140,511 bytes = the stored bytes exactly** and still containing `2026-02-30`. After reload: **0 / 0**. **0 page errors** |
+| 20 | my own I-8f drive-through, Chromium, `browseTrip` (round 40's claim, re-derived) | the picker lists the unopenable trip; selecting it prints *"expected a real calendar date in YYYY-MM-DD (at `$.days[3].date`)"*; the open trip stays rendered and intact; after `closeTrip` the Trips list shows chip **1**, hint **1**, rescue **1** — **on the broken card only**, the healthy clone unflagged, both meta lines formatted; Delete's confirm carries *"save a copy first"*; after reload **0 / 0**. **0 page errors** |
+| 21 | `node cli.ts stats --today …` sweep | exit **2** with A-45's sentence on `2026-13-45`, `2026-02-30`, `2026-2-3`; exit **0** on `0000-01-01` and `9999-12-31` — A-47 Part 6's containment assertion holding at `IsoDate`'s own domain boundaries |
+| 22 | `grep '...initialState()'` in `store.ts`, and `rowUnopenable`'s body | **6** real transition sites (1077, 1104, 1144, 1208, 1247, 1379), **6** carrying `openFailures`; the other 4 hits are `...initialState().ui`. `rowUnopenable` is exactly A-47 Part 3's three disjuncts. `git diff … selectors/index.ts \| grep '^-'` → **0** deleted lines, so `rowDatesReadable` is byte-unchanged |
+| 23 | `bash qa/i8f-faults.sh` | **ALL FAULTS RED, 17 of 17**, under **3 green baselines** (`views.test.ts` 40/0, `cli.test.ts` 27/0, `open-failures.test.ts` 24/0) |
+| 24 | `bash qa/i8j-faults.sh` | **ALL FAULTS RED**, 20 red + **1 GREEN control** (fault 18, the canonical-position key — KD-80's deliberate one) |
+| 25 | `qa/i8f-render.mjs` · `qa/i8j-render.mjs` · `qa/i8i-render.mjs` | **ALL CLEAR** · **ALL PASS** · **ALL CLEAR** |
+| 26 | `qa/r39-a51.mjs` · `qa/r39-render.mjs` · `qa/r35-render.mjs` · `qa/r35-store.mjs` | **1 FAIL** (R39-6) · **7 FAIL** (5 × R39-6, 2 × R39-7, `FJ` at `<svg>` 356 × 16 / path 342.2 × 2.2) · **4 FAIL** (the four the I-8f report enumerates) · **ALL CLEAR** |
+| 27 | round 40's own four evidence files | `r40-openfail.mjs` **ALL CLEAR** · `r40-browse.mjs` **ALL CLEAR** · `r40-layout.mjs` **ALL PASS** · `r40-a54.mjs` **1 FAIL** = R40-3, the only failing assertion in this entire pass |
+| 28 | `bash qa/r40-vacuity.sh` | reproduces R40-1: `views.test.ts` **# fail 1** unmutated in the bare copy, all five G7 mutations **RED (real)** against a clean base |
+| 29 | my own noise-floor measurement in `i8j-faults.sh`'s exact `make_copy` | `views.test.ts` **39/1** · `cli.test.ts` **3/24** · `clusterPoints.test.ts` **12/2**, unmutated. In `i8f-faults.sh`'s root-inclusive copy: **40/0 · 27/0 · 14/0**, and `world-map.test.ts` **113/0**, `boundaries.test.ts` **8/0** in both |
+| 30 | my own blast-radius audit (**R40-1**) — every vacuously-scoped fault in `i8d`/`i8g`/`i8h`/`i8i`/`i8j`, re-applied against an asserted-green baseline | **16 of 72** invocations affected (5/11 · 1/14 · 3/11 · 2/15 · 5/21). Re-run: **14 genuinely RED, 0 that stop measuring, 2 whose mutation text no longer matches HEAD.** Nothing I shipped at `91597b7` rests on a false claim |
+| 31 | `git log -S"westmost" -- cairn/docs/` (**MGR-5**) | exactly two commits: **`91597b7`** — my own gate, where I offered the word as an example in a question to Jacob — and **`3f92ac9`**, where it becomes *"Jacob's westmost"*. No commit between them records an answer, and no grep over `docs/` finds one |
+| 32 | `git show --stat 359234b` / `git show --stat 3044bdd` (**MGR-7**) | **15 files** — matches the I-8f addendum's *"8 changed, 3 added"* + 4 doc files exactly. **17 files** — against the I-8j addendum's *"8 files changed, 2 added"* over its own enumeration of **11** changed, and it counts neither `CAIRN_VISUAL_ROADMAP` file |
+
+---
+
+## For Jacob — I-8f + I-8j
+
+**Both prerequisites pass. The Profile screen is unblocked and work on it can start.**
+
+Five rounds ago I stopped this project and said two things had to be fixed before the Profile
+screen could be built: the map card was leaving up to two thirds of itself as grey empty space,
+and a whole increment you had been told was scheduled had quietly never been built at all. A
+third item came from the tester: a malformed map outline could blank the map with no error and
+no message. **All three are now genuinely fixed, and I checked all three myself rather than
+taking the reports at their word.**
+
+- **The grey holes.** I re-measured the map card at nine screen widths that nobody in this arc
+  had used, with the old rule put back so I had a real before-and-after rather than a quoted one.
+  Before: **66.7 %** of the card bare in the worst case. After: **0.32 %**, which is the hairline
+  between panels. Nothing spills outside the card at any width. I opened the screenshots and
+  looked at them: the grey block is gone and the leftover space is now the card's own white.
+- **The missing increment (I-8f).** It is built, it is wired into the real screens, and I drove
+  it in a browser myself: plant a broken trip, tap it, and the card comes back saying it cannot be
+  read, offering *"Save a copy"*, and warning you before Delete. The saved file was **exactly the
+  same bytes** as what is on the device. I also did it through the *"Browse another trip"* picker
+  and it behaves the same without disturbing the trip you have open.
+- **The blank map.** Ten different kinds of broken outline all now produce a country **named on
+  screen as unavailable** instead of an empty map, and none of the 1,033 outlines actually shipped
+  is affected. I confirmed your **Europe 2026 map is byte-for-byte identical** to what it was
+  before these two changes — I computed it at both commits and compared.
+
+**One decision I need from you, and it is a small one about honesty rather than about the
+product.**
+
+Five rounds ago I asked you whether to accept that tied map panels are ordered alphabetically, or
+to break the tie by something geographic — and I gave *"westmost first, or largest first"* as my
+two examples. **The design document and your status board now both say those two options came from
+you.** They did not; I can trace them to my own review and to nowhere else, and I cannot find any
+record of you answering the question at all. The rule we shipped is a third option — **north to
+south, then west to east, the way you read a map** — which is a good rule for reasons we measured
+independently, and it does not need to change. But the documents crediting it to you do.
+
+**So: did you answer that question, and did I just fail to write it down?** If yes, tell me and I
+will record it with the date. If no — and this is the more likely case — I will have the
+architect rewrite both documents to say plainly that we asked, we did not hear back, and we chose
+on our own reasoning, marked provisional until you rule. Either way nothing about the map changes;
+this is about not letting our suggestion calcify into your decision, which is the one rule in this
+project I care most about not breaking.
+
+**Everything else can wait.** Three small items go back to the builder (all of them in the test
+tooling, none in the app) and one goes back to the architect (a sentence in the architecture
+document that promises slightly more than the code delivers, for coordinates larger than anywhere
+on Earth — I confirmed no real data can reach it, and sharpened the tester's diagnosis of it).
+**None of them blocks the Profile screen.**
+
+---
+
 # I-8i — the world-map lifetime framing rewrite (A-51 / A-52 / A-53)
 
-> **Status: CURRENT.** Manager, stage 4. Reviewed `master` @ `10455b9` (QA round 39's record
+> **Status: CLOSED.** Superseded on *"what still gates I-8b"* by the **I-8f + I-8j** entry above,
+> which discharges **MGR-1**, **MGR-2** and **R39-1** — the three items this verdict marked as
+> gating — and by nothing else. The verdict itself stands as written. Manager, stage 4. Reviewed `master` @ `10455b9` (QA round 39's record
 > landed alongside at `6ee6bf5`), 2026-09-01, Node v22.22.2, Chromium via the system Playwright
 > at `/opt/node22/lib/node_modules/playwright`, `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers`.
 > **Verdict: SHIP.** Scope was I-8i and nothing else; **I-8b is not included and does not ship
