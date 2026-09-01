@@ -555,6 +555,26 @@ investigated against real source and **rejected on semantics before the zero-dep
 its "Built" bullet moves, and its scope does not grow.** The 🛑 gate is **lifted in substance**: the
 remaining condition is Jacob's approval of A-51 itself, and **no further architect round is owed**.
 
+**Revision 37, 2026-09-01.** The **I-8i gate shipped** (`REVIEW.md`, SHIP, `10455b9`) and routed **ten
+items, three of which gate I-8b**. Two are architect items and are ruled as `ARCHITECTURE.md` §4.4
+**A-54**; the third (**MGR-2**, I-8f was never built) is a builder pass and is **not** in scope here. This
+file changes in three ways and **re-scopes nothing**: a new increment **I-8j** below I-8i, one corrected
+criterion **inside I-8i** (R39-4 — its census counts panes where it says libraries and is unsatisfiable as
+written), and **I-8j added to I-8b's blockers** beside I-8f.
+
+**What A-54 rules, in one paragraph.** **(1) MGR-1** — A-51 G7's grid leaves up to **66.7 %** of the map
+card as bare separator ink (a one-pane library gets one of three columns at ≥ 960 px; 45.6 % on `FR`+`US`,
+29.0 % on the Europe 2026 fixture, **0 %** before I-8i) and **overflows and clips** at 320 px.
+`.worldmap__panes` becomes a **wrapping flex line box whose cells fill their line**, which makes
+`Σ cell area = container area − gaps` *structurally*: measured **0.0–0.5 % empty, 0 % overflow** over 8
+libraries × 12 widths, with no map anywhere smaller and several larger. **(2) R39-1/R39-2** — a written
+predicate replaces the unwritten precondition A-52 left in a build tool, so an index carrying a malformed
+ring produces a **stated** `missing` entry instead of a silently blank map. **(3) R39-5** — the pane
+tie-break stops being the alphabet one indirection out and becomes the pane's own rectangle, read north to
+south then west to east. **A-51's geometry does not move**: pane membership, count, `viewBox` and `aspect`
+are byte-identical on every library, the Europe 2026 fixture is unchanged end to end, and the export
+surface, dependencies and stored data are all untouched.
+
 > **Phase numbers changed once, here.** Every heading below carries its old number, and every "Phase N"
 > written in `ARCHITECTURE.md` §1–§7, `BUILD-NOTES.md` or `QA-FINDINGS.md` before revision 9 means the
 > *named* phase it described: "Phase 2" = accounts/server (**now 3**), "Phase 3" = ingest (**now 4**),
@@ -1525,11 +1545,22 @@ disclosed defect.)*
 of A-51 or A-52**. Membership stays country geometry because the frame's input carries no coordinate finer
 than an ISO code; standing is `home`, priority is order, disclosure is the caption; **I18** pins that home
 panes come first; and the census pins that only `FR`, `UM` and `US` are multi-part, so **at most 3 extent
-panes exist planet-wide** and the 14-pane worst case has none. d3-geo and Turf were investigated against
+panes exist planet-wide** and the greedy worst case has none *(revision 37: that ceiling is **18** panes,
+not 14 — A-54 Part 4, QA R39-3; all 18 are home panes, so the claim survives the number)*. d3-geo and Turf were investigated against
 real source and rejected on semantics — `geoBounds` is winding-order sensitive and bounds great-circle
 arcs, `fitExtent` emits pixels the design exists to not compute, and turf's DBSCAN drops a lone part as
 *noise* — so **no dependency is added and the zero-dependency rule is not broken**. The increment's scope
 does not grow: two criteria and one docstring.)*
+
+*(Revision 37: **I-8j** carries §4.4 **A-54**, the two architect items the manager's I-8i gate routed as
+gating I-8b. It is not a fifth framing ruling — **A-51's geometry does not move**. What moves is the box the
+panes sit in (the grid left up to **66.7%** of the map card as bare background and clipped at 320 px; the
+container is now a wrapping flex line box whose cells fill their line, measured **0.0–0.5%** empty at every
+width), the tie-break (the pane's own latitude instead of the alphabet one indirection out), and one written
+predicate in `packages/core` so a malformed ring is **stated** rather than blanking the map silently. It
+sits directly after I-8i and is **owed before I-8b**, because I-8b puts a second surface on the same
+`travelStats`/index pair and neither failure mode is one to widen. **It is independent of I-8f** — different
+files, different finding, either order, never one session.)*
 
 *(Revision 26: **I-7b** carries §2.3 **A-35**, §8.4 **A-36** and §8.4 **A-37**, the four design findings QA
 round 29 found *under* I-7a — an exit criterion whose static port check a reassigned parameter walks past,
@@ -1555,6 +1586,12 @@ packages/core/src/
                             I-8i: keeps EVERY ring (the >= 6 filter comes out), so [] means "the
                             index carries no ring for this code" and core's two functions agree
                             — §4.4 A-52. countryKeyPoint is NOT modified and stays exported.
+                            I-8j: ONE private predicate — a ring is drawable iff its length is
+                            even, >= 2 and every element finite — used by BOTH functions, so []
+                            <=> null and a malformed ring reaches `missing` instead of a NaN
+                            viewBox. countryKeyPoint loses its >= 6 filter AND its entry-box
+                            fallback (a box centre is not a point of the country, I8)
+                            — §4.4 A-54 Part 2. No signature moves.
   serialize/  fromJSON.ts   isoDate() calls isIsoDate — I-8c, §2.9 A-45
   index.ts      + isIsoDate re-exported (76 → 77) — I-8e, §2.9 A-46; no new code in core
                 + countryKeyPoint (77 → 78) — I-8g, §4.4 A-48 Part 2
@@ -1576,7 +1613,10 @@ packages/client/src/
                             I-8i: ONE clusterPoints call over the canonical PART list, and every
                             component is a pane. C5/C6/C7/C7′/C8′/C8″ and `role` come OUT; the
                             pane gains `home` and an additive `weight` — §4.4 A-51 G2…G5
-                            (AWAITING JACOB'S APPROVAL — not dispatchable)
+                            (SHIPPED at 10455b9)
+                            I-8j: the pane comparator gains bounds.north desc + bounds.west asc
+                            between home.length and the canonical position, so the last tie is
+                            geography and the alphabet is the named last resort — §4.4 A-54 G5′
               index.ts      travelHistory — I-8a; + rowLifecycle — I-8c, §8.4 A-44
                             + rowDatesReadable — I-8e, §2.9 A-46 (isIsoDate on both stored dates)
                             + rowUnopenable(state, row) — I-8f, §2.9 A-47: the ONE union of the
@@ -3639,10 +3679,21 @@ two surfaces consume.)*
     183.1°, 161.1° and 270.2°.
   - **The census, not the anecdote** `[stated]`. Over **all 28,441** two-country / one-trip-each libraries:
     pane-count histogram **{1: 5,564 · 2: 22,360 · 3: 516 · 4: 1}** (shipped: **one** geographic pane in
-    **100%**), and panes wider than 120° fall **8,364 → 1,229**. **Every** one of the 1,229 contains one of
+    **100%**), and panes wider than 120° fall **8,364 → 1,229**. ~~**Every** one of the 1,229 contains one of
     `AQ`, `FJ`, `KI`, `RU`, `UM` — the five antimeridian-box codes A-51 residue 3 declares out of scope —
-    which is asserted as a set equality, not as a count. **Injected fault:** re-introduce the dominance test
+    which is asserted as a set equality, not as a count.~~ **Injected fault:** re-introduce the dominance test
     and the histogram collapses to `{1: 28,441}`.
+    > **Corrected by revision 37 (QA R39-4, `ARCHITECTURE.md` A-54 Part 4). The struck sentence counts
+    > panes where it says libraries and is unsatisfiable as written.** Re-derived twice independently, on
+    > the same 28,441 pairs: **1,236 panes** exceed 120° by **unpadded** bounds (**1,237** padded), of which
+    > **1,187 contain one of the five** and **49 do not**; **1,229** is the number of *libraries* holding at
+    > least one such pane, which is the figure the sentence above it uses and the reason the two got mixed.
+    > **What the criterion asserts is the three-way decomposition, with its base stated:** of the **1,236**
+    > panes, **1,187** contain one of `AQ FJ KI RU UM`; of the remaining **49**, **48 span more than 180°**
+    > — the planar-bounding-box artefact of a trans-antimeridian pair, e.g. `AS`+`MH` at 343.1° — and
+    > **exactly one is an honest wide frame, `CA`+`GL` at 128.8°**, two large neighbouring countries, which
+    > is not a defect and must not be counted as one. **Injected fault:** assert the old set equality and it
+    > goes red on 49 panes, which is what it should always have done.
   - **Tightness, as a theorem a test can hold** `[stated]` (A-51 **I16**). For every library in the fixture
     set, every pane's member parts admit a spanning tree over their key points with every edge
     `< WORLD_CLUSTER_THRESHOLD_KM`, and every cross-pane part pair is `≥` it. **Injected fault:** merge any
@@ -3736,6 +3787,149 @@ two surfaces consume.)*
   R38-2's own oracle and must flip); and the four libraries R38-2 named, driven through the real app at
   390 × 820, measure the four numbers pinned in the first criterion.
 
+#### I-8j — the cells tile the container, a malformed ring is stated instead of blanking the map, and the last tie is broken by latitude
+
+*(Revision 37. Carries `ARCHITECTURE.md` §4.4 **A-54** and answers the manager's I-8i gate items **MGR-1**
+(MAJOR) and **MGR-4**, plus QA **R39-1**, **R39-2**, **R39-3**, **R39-4**, **R39-5** and **R39-7**. **Runs
+after I-8i** (shipped) and **gates I-8b**. **Builder + breaker, mandatory** — it changes the semantics of
+two `packages/core` exports and the invariant a public one rests on, which is `cairn/CLAUDE.md`'s own
+trigger. **Scope discipline, stated because two gate items are open at once: this increment is layout +
+tie-break + the ring guard, and nothing else. `MGR-2` / `I-8f` is a separate builder pass on different
+files and may not be folded in.** A builder reads **A-54** first — it names which sentences of A-51, A-52
+and A-53 it supersedes — then A-51 G5/G7 and Part 8, then A-50, then A-40 Parts 2–5, and needs nothing else
+in `ARCHITECTURE.md` except §2.10's list.)*
+
+- **Built.** **`apps/web/src/styles.css`** — A-54 **G7′**: `.worldmap__panes` becomes `display: flex;
+  flex-wrap: wrap` with the existing `gap: 1px` and `background: var(--line)`; `grid-template-columns` and
+  `align-items: start` are **deleted** (`align-items` returns to its `stretch` default);
+  `.worldmap__pane` gains `flex: 1 1 var(--pane-min, 300px)` and `min-width: 0`. **G7″**: the cell keeps
+  `background: var(--card)` and gains **no** border, outline or box-shadow. `--pane-cap`, `--pane-min`, the
+  caption rule and **A-50's `.worldmap__svg` rule are unchanged, verbatim**; the comment block above
+  `.worldmap__panes` is rewritten to say why the container is a flex line box rather than why it is a grid.
+  **`packages/core/src/derive/country.ts`** — A-54 Part 2: one **module-private** predicate (a ring is
+  drawable iff its length is even, `>= 2`, and every element is a finite number) and one private per-code
+  gather, called by **both** `countryParts` and `countryKeyPoint`. `countryParts` returns `[]` when the code
+  has no entry, no ring, or **any** non-drawable ring. `countryKeyPoint` returns `null` under exactly the
+  same condition: its `ring.length < 6` filter and its `principal === null` entry-box fallback (with R37-5's
+  now-unreachable non-finite guard) come **out**. The A-52 docstring's *"`[]` iff the index carries no ring
+  at all"* is rewritten to A-54's biconditional. **No signature changes, no new export.**
+  **`packages/client/src/selectors/worldMap.ts`** — A-54 Part 3: the pane comparator gains
+  `bounds.north` descending and `bounds.west` ascending **between** `home.length` and the canonical
+  position, and the G5 comment block says which key is the alphabet and that it is the last one.
+  **Tests:** `packages/core/test/countryParts.test.ts` gains the four malformed-ring fixtures and the
+  biconditional; `packages/client/test/world-map.test.ts` gains the tie-break census and — **R39-5's builder
+  half, which does not wait on this increment** — replaces its order-**preserving** ISO relabel with an
+  order-**destroying** one. A render probe gains the container-occupancy assertion.
+  **No change to `WorldMap.tsx` (zero lines), `clusterPoints`, `clusterStops`, `focusCluster`, `mapBounds`,
+  `derive/cluster.ts`, the day map, `MapPort` or `tools/gen-countries.mjs`; no export-surface movement (79);
+  no `SUMMARY_VERSION` or `schemaVersion` bump; no port change, no reducer action, no new dependency, and no
+  stored byte of any trip.**
+- **User-visible outcome.** The map card stops having grey holes in it. On a laptop or tablet the panels
+  fill the card instead of leaving up to two thirds of it looking like a map that failed to load, and on a
+  small phone the map stops being clipped at the edge. Where two places tie, they are read **north to
+  south** — the way a map is read — instead of alphabetically. And an index that cannot draw a country now
+  says so, where before it drew nothing at all and said nothing.
+- **Architecture / data model.** A-54 in full. A-51's geometry (G1–G4, G6, G8, L1/L2/L4, I1–I18) and A-53
+  are untouched; A-41 Part 7's do-not-build list still binds in full.
+- **Verification.** Every criterion is `[stated]` against A-54, and every one has a fault that must measure red:
+  - **The container is tiled by its cells** `[stated]` (A-54 **G7′**, MGR-1). In Chromium, over **8**
+    libraries — Europe 2026, `FR`+`US`, `AT CZ DE HR HU SI`, sparse `CL NO JP MG`, worldwide 12, the
+    18-pane greedy library, the 239-code ceiling and `FJ` alone — at **320 · 390 · 640 · 960 · 1440 px**:
+    `Σ cell area ÷ container area` is **≥ 0.99 and ≤ 1.00** in every one of the 40 cells of that matrix
+    (measured: 0.995–1.000; the 0–0.5 % residue is the 1 px gap). **Both bounds are load-bearing** — the
+    upper one is the 320 px overflow. **Injected fault:** restore `display: grid` +
+    `grid-template-columns: repeat(auto-fill, minmax(var(--pane-min), 1fr))` + `align-items: start` and the
+    matrix returns to **66.7 %** empty (`AT CZ DE HR HU SI`, the 239-code ceiling and `FJ` at 960 and
+    1440), **45.6 %** (`FR`+`US` at 1440), **29.0 %** (Europe 2026 at 1440) and **104.6 %** occupancy —
+    i.e. overflow — at 320.
+  - **No cell draws a boundary of its own** `[stated]` (A-54 **G7″**). Computed style of every
+    `.worldmap__pane`: all four `border-*-width` are `0px`, `outline-style` is `none`, `box-shadow` is
+    `none`, and `background-color` equals `.worldmap__figure`'s. This is the clause that keeps **R38-3**
+    fixed now that its own cell criterion is withdrawn, and it is why the slack inside a cell is whitespace
+    rather than a letterbox. **Injected fault:** give `.worldmap__pane` a 1 px border and it goes red.
+  - **A-50 is unchanged and still holds** `[stated]`. Its criterion, verbatim: the painted map's rendered
+    width equals the `<svg>`'s rendered width and its height equals its height, to within 1 px, over all
+    **239** single-country libraries and the reference sample at **390 × 820** and **1440 × 700**.
+    **Injected fault:** A-50's own — restore `width: 100%` + a static `max-height` and `MV` returns to
+    22.0 % and `CL` to 33.4 %.
+  - **Nothing on screen gets smaller** `[stated]`. For every library in the occupancy matrix at
+    **390 px and above**, every pane's rendered `<svg>` area is **≥** the area the shipped grid gives it.
+    **At 320 px the comparison is deliberately the other way and must be stated as such**: the shipped
+    grid draws 12 px wider than the container that clips it, so the maps there are *smaller and whole*
+    rather than larger and cropped (Europe 2026 39,905 → 36,268 px²), and the criterion at that width is
+    the occupancy upper bound above, not this one. Pinned where it grows:
+    the 239-code ceiling **45,956 → 179,180 px²** at 640, `AT CZ DE HR HU SI` **71,851 → 118,817 px²** at
+    960, and `FJ` alone's own path **552 → 4,992 px²** at 960. Pinned where it must **not** move: Europe
+    2026, `FR`+`US`, worldwide 12 and the 18-pane library are **identical at every width**.
+  - **Reading order is untouched, and I18 still reads on screen** `[stated]`. DOM order equals frame order;
+    the geometric top-left ordering of the cells equals DOM order at one, two, three and four columns; and
+    no extent pane precedes a home pane in either. **This is the criterion that refuses masonry**, so it is
+    written even though nothing in the diff threatens it. **Injected fault:** `grid-auto-flow: dense` (or
+    `columns:`) on the container and the geometric order stops matching the DOM order.
+  - **A malformed ring is stated, not blanked** `[stated]` (A-54 **I19**, R39-1). Against a hand-built
+    index — not the shipped one — carrying, for one code, each of `rings: []`, `[[]]`, `[[7]]`, `[[1,2,3]]`
+    and `[[1, NaN]]`: `countryParts` returns `[]`, `countryKeyPoint` returns `null`, the code appears in
+    `frame.missing` **exactly once and never in `countries`**, and **no `viewBox` contains `NaN` and no
+    `aspect` is non-finite** anywhere in the frame. Driven to the DOM for at least the single-code case:
+    the surface **states the code in words** rather than painting an empty card. **Injected fault:** remove
+    the predicate and the same fixtures produce `viewBox: "NaN NaN NaN NaN"`, `aspect: NaN`, `d: ""` and
+    `missing: []` — which is the finding, reproduced.
+  - **The two core functions agree on every index, not just the shipped one** `[stated]` (R39-2, **I12**).
+    `countryParts(code, index, t) === []` **⇔** `countryKeyPoint(code, index) === null`, asserted in both
+    directions over all **239** shipped codes at the eight thresholds I12 already uses **and** over the
+    malformed fixtures above **and** over the two cases A-52 got wrong: an entry with a finite `box` and
+    `rings: []`, and a code whose only ring has two points. On the second, the principal part's `key` and
+    `countryKeyPoint`'s answer are **identical under `Object.is`** — which is what R39-2 measured as
+    `{5.5, 5.5}` vs `{0, 0}`. **Injected fault:** restore the `ring.length < 6` filter in `countryKeyPoint`
+    and the two-point case goes red.
+  - **The shipped index is untouched by the guard, and the guard does not depend on the generator**
+    `[stated]`. Asserted on `COUNTRY_INDEX` itself: **292 entries, 1,033 rings, shortest ring 8 elements,
+    0 odd-length rings, 0 non-finite coordinates, 0 entries with no ring** — so every ring is drawable and
+    **every frame in the suite is byte-identical to I-8i's**. The three reference `viewBox` strings still
+    read `"-8.1779 -59.2407 31.494 17.3663"`, `"-125.8416 -50.5435 60.0314 26.618"` and
+    `"-172.8399 -72.4066 43.9088 54.5393"`, and `npm run golden && npm run sample && git status --porcelain`
+    leaves the tree clean at sha `40955ca0b182…`. **Injected fault:** the vacuity control is the index
+    census — if any of those six numbers moves, the index changed and this increment is out of scope.
+  - **The tie-break is geography, and the alphabet is named where it survives** `[stated]` (A-54 **G5′**,
+    R39-5). Over **all 239** single-country, **all 28,441** two-country and **2,000** random 2–25-code
+    libraries: the third key is reached in **24,204** libraries and decides **25,454** adjacent pairs;
+    **`bounds.north` resolves every one**, `bounds.west` decides **0**, and the canonical-list position
+    decides **0**. **I18 is violated in 0**, and `panes[0].home.length > 0` wherever any code is drawn.
+    Pinned: the Europe 2026 fixture's pane order and all three `viewBox` strings are **unchanged**;
+    `FR`+`US` reads **FR · US · Alaska · Guiana** (France still first, now because N 51.1 > N 49.4, and the
+    two weight-0 panes swap); the 18-pane library reads **`GL RU RO PK MX EH VN MS GU RW IO SH AU FJ CL PN
+    TF AQ`**, Greenland to Antarctica. **Injected fault:** drop the `north`/`west` keys and 11,456 of the
+    30,680 libraries reorder, 10,636 of them at `panes[0]`.
+  - **Code-blindness, with the obligation L5 can actually carry** `[stated]` (A-54 Part 3, R39-5's builder
+    half). Under an **order-destroying** ISO relabel of the whole index, every pane's `viewBox`, `bounds`,
+    `codes`, `home` and `weight` is byte-identical **and — new under G5′ — so is pane order**, over the
+    library set round 38 used. **Injected fault:** the test must fail if run against the pre-G5′ comparator,
+    which is what makes it a real obligation rather than the order-preserving relabel that proved less than
+    it read.
+  - **The corrected numbers are asserted, not just written down** `[stated]` (R39-3, R39-4). The greedy
+    search's best independent library is **18 codes → 18 panes, all 18 `home`** (`AQ AU CL EH FJ GL GU IO
+    MS MX PK PN RO RU RW SH TF VN`), so A-53 Part 5's *"the ceiling contains zero extent panes"* holds at
+    the real ceiling. Over all 28,441 pairs, panes wider than 120° unpadded: **1,236**, of which **1,187**
+    contain one of `AQ FJ KI RU UM`; of the **49** that do not, **48 span more than 180°** and **exactly
+    one (`CA`+`GL`, 128.8°) does not**. **Injected fault:** assert I-8i's original set equality and it goes
+    red on 49 panes.
+  - **Nothing else moved** `[stated]`. `Object.keys(core).length` is **79**, re-counted rather than quoted;
+    `git diff` on `packages/core/src/derive/cluster.ts` is **0 lines** (third increment running);
+    `WorldMap.tsx` has a **0-line** diff and W1's ten identifiers still return 0 hits; `npm run typecheck`
+    and `npm run test:tap` green; `qa/r2-redact.mjs` **0 KNOWN_LEAKS**; `package.json`/`package-lock.json`
+    diff **0 lines**; the root planner's md5 is `7c69df3208ef91c8be0fb59a56443188` and `git diff` over
+    `europe-2026-itinerary.html`, `docs/` and `tickets/` at the repo root is empty.
+- **Dependencies / blockers.** I-8i (shipped). **Independent of I-8f / MGR-2** — different files, different
+  finding, and the two may be built in either order or in parallel, but **not in one session**.
+- **Ship gate.** Every criterion above has its injected fault red; the occupancy matrix is **≥ 0.99 and
+  ≤ 1.00 in all 40 cells**; the malformed-index fixtures all reach `missing` and no frame anywhere is
+  non-finite; the tie-break census reports **north 25,454 / west 0 / canonical 0**; the Europe 2026
+  fixture's three `viewBox` strings, its pane order and the day map's goldens are **byte-identical**; the
+  export surface is **79**, re-counted; and `qa/i8i-render.mjs` and `qa/r39-render.mjs` are re-run with
+  **every superseded assertion named rather than deleted** — in particular R38-3's cell criterion, which
+  A-54 withdraws and which must be replaced by the container criterion in the same pass rather than simply
+  removed.
+
 #### I-8b — Profile
 
 *(Revision 27. Takes the Profile half of I-8's spec above, unchanged, plus the tab registration I-8a left
@@ -3751,8 +3945,12 @@ for it. **2b ships here.** Revision 28 adds I-8c and I-8d to its blockers; revis
   rendered Profile with the same injected fault; the `travelStats` refusal boundary; `unattributed` and
   `unnamedCities` rendered rather than hidden, with the *"no places yet"* case distinguishable from *"all
   attributed"*; and the tab shell still carrying exactly three tabs.
-- **Dependencies / blockers.** I-8a, **I-8c, I-8d, I-8e, I-8f and I-8g** (revision 28 for the first two, revision
-  29 for I-8e, revision 32 for I-8f, revision 33 for I-8g; this is a hard gate rather than a preference). I-8c, because the Profile renders
+- **Dependencies / blockers.** I-8a, **I-8c, I-8d, I-8e, I-8f, I-8g and I-8j** (revision 28 for the first two, revision
+  29 for I-8e, revision 32 for I-8f, revision 33 for I-8g, **revision 37 for I-8j**; this is a hard gate rather than a preference).
+  **I-8j**, because the manager's I-8i gate routed three items that gate this increment and two of them are
+  ruled in it: I-8b puts a **second** surface on the same `travelStats`/index pair, and neither *"the map
+  card is two-thirds bare"* (MGR-1) nor *"the map is blank and says nothing"* (R39-1) is a failure mode to
+  widen onto a new screen. The third, **MGR-2 / I-8f**, is a builder pass and is already in this list. I-8c, because the Profile renders
   `travelStats`-derived numbers as a claim about the user's travel identity and would otherwise inherit
   A-45's wrong ones — and because it registers a **third** surface into a shell where one unreadable stored
   row still takes the whole app down (A-44). I-8d, because 2b ships here and the map is half of what 2b is.

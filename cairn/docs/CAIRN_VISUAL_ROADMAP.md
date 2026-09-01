@@ -19,6 +19,63 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
+> **🔵 THE GREY HOLES IN THE MAP CARD ARE DESIGNED OUT, AND YOUR TIE-BREAK QUESTION IS ANSWERED —
+> as of 2026-09-01 (this block is the newest; it supersedes the I-8i block below on *"Designed ❌ —
+> it goes back to the architect first"* and on *"One question is waiting on Jacob"*, and nothing
+> else).**
+>
+> **I-8j is designed ✅ · built ❌ · verified ❌ · shippable ❌.** The ruling is `ARCHITECTURE.md`
+> §4.4 **A-54**; the build order is `ROADMAP.md` **I-8j**. **No code has been written for it yet.**
+> Nothing about *which countries share a rectangle, or what rectangle they get* changes — that
+> question closed last round and it stays closed.
+>
+> **The grey areas, and why they are worse than the manager measured.** He found about a third of
+> the Europe 2026 map card and nearly half of the France + United States one going bare on a
+> laptop. Measuring the same thing on a *one-panel* history — a trip that stays in one region, or
+> the "I have been everywhere" case — it is **two thirds bare** at 960 px and wider, because one
+> panel sits in one of three columns and the other two columns are empty background. Nobody had
+> measured that, because every check in this arc was written about panels rather than about the
+> card holding them. And at the narrow end — a 320 px phone, which is a real phone — the panel is
+> **12 px wider than the card** and the map is silently clipped.
+>
+> **The fix, in one sentence:** the panels go back to filling their row, so the card is covered by
+> panels rather than by leftover background. Measured over 8 histories × 12 screen widths: the bare
+> area goes from as much as **66.7%** to **0.0–0.5%** (the 0.5% is the hairline between panels),
+> the clipping at 320 px is gone, **no map anywhere gets smaller**, and several get bigger — the
+> "everywhere" map is **3.9× the area** it had at 640 px, and a Fiji-only map's Fiji is **9× the
+> area** at 960 px. The leftover space inside a panel is now the card's own colour instead of the
+> divider grey, so it reads as margin rather than as something that failed to load.
+>
+> **Your tie-break question, answered: (b), and it is *northmost*, not westmost.** You offered
+> westmost or largest. **Largest is refused** — ordering by size would put "bigger rectangle first"
+> back into the map one round after we removed size as a claim. **Westmost is kept, but as the
+> second key rather than the first**, because longitude has a seam at the date line: of the 242
+> single-country panels, **three sit exactly on it** (Antarctica, Fiji, Russia), so a westmost rule
+> ties precisely the countries that are already the known problem and hands the decision straight
+> back to the alphabet. **Latitude has no seam.** So: **panels are read north to south, then west
+> to east — the way you read a map.**
+>
+> Measured over **30,680 histories**: the tie is reached in 24,204 of them, latitude settles
+> **every** one, longitude settles **0**, and the alphabet settles **0**. The alphabet stays in the
+> rule as the last resort — because two panels could in principle have identical rectangles, and
+> claiming otherwise would be the same false confidence the tester just caught — but it is now
+> **named in the open** rather than dressed up as "no tie is left". **Your Europe 2026 map does not
+> move at all**, and France + United States still reads France first — now because France is
+> further north, not because F comes before U.
+>
+> **One more thing, which is the kind of fault that only bites someone else's data.** The map's
+> country outlines are generated once and committed, and the generator throws away anything
+> malformed — so the drawing code stopped checking. If that ever slipped, a single bad outline
+> would produce **a completely blank map with no error and nothing said**, which breaks the rule
+> you set: *nothing is silently dropped, everything unrenderable is stated*. The check is being put
+> back where it belongs, in the drawing code, written down instead of assumed: a country whose
+> shape cannot be drawn is **named on screen as unavailable**, exactly like a country the map file
+> does not carry. Nothing about today's map changes — every one of the 1,033 outlines in the
+> shipped file is fine, and the frames come out byte-identical.
+>
+> **What this gates:** **I-8b, the Profile screen, waits on I-8j and on the tester round for I-8f**,
+> and on nothing else.
+
 > **🟡 I-8f IS NOW BUILT — a trip that will not open says so on its own card and offers to save
 > a copy, as of 2026-09-01 (this block is the newest; it supersedes the block below only on
 > *"I-8f … built ❌"*, and nothing else).**
