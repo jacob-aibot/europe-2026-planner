@@ -19,6 +19,50 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
+> **✅ BOTH OF THE THINGS BLOCKING THE PROFILE SCREEN HAVE NOW BEEN ATTACKED, AND BOTH SURVIVED —
+> as of 2026-09-01 (this block is the newest; it supersedes the two blocks below on *"verified ❌"*
+> and on *"nobody has attacked it yet"*, and nothing else).**
+>
+> **I-8f is designed ✅ · built ✅ · verified ✅ · shippable — the manager's call.**
+> **I-8j is designed ✅ · built ✅ · verified ✅ · shippable — the manager's call.**
+>
+> A tester spent a round trying to break both, treating them as two separate targets because they
+> share no files. **0 blockers. 0 things that do not work. 3 rough edges, all three about the
+> *test harness* rather than about the app, and all three against I-8j.** Full detail in
+> `QA-FINDINGS.md`, round 40.
+>
+> **What was checked, in plain terms.** For **I-8f** (a trip whose file will not open now says so
+> on its own card and offers to save a copy): the tester planted a broken trip, tapped it, and
+> confirmed the card comes back carrying the warning, the *"Save a copy"* button and the stronger
+> Delete confirmation — and that the saved copy is the **same bytes** as what is on the device,
+> not a tidied-up version. He then did the one thing the builder said he had not: he did the same
+> through the **"Browse another trip"** picker, in a real browser, and it behaves identically
+> **and** leaves the trip you have open untouched. He also swept the `--today` developer flag over
+> thirteen dates, including the ones that used to be silently accepted.
+>
+> For **I-8j** (the grey holes in the map card, the blank-map guard and the north-to-south pane
+> order): he re-measured the map card at **thirteen screen widths and eight country-lists of his
+> own choosing — 104 combinations, none of them the builder's** — and the worst leftover grey is
+> **0.46%**, with nothing ever spilling outside the card. He checked it in **dark mode**, which
+> nobody had. He built twenty deliberately-broken map shapes and none of them produced a blank or
+> a broken map. And he proved the new north-to-south ordering is doing real work by building a
+> case where the old alphabetical rule would have given a different answer.
+>
+> **The three rough edges, none of which changes what the app does.** Two are the same problem:
+> the automated *"break it on purpose and check the test notices"* harness for I-8j runs in a
+> stripped-down copy of the project where one unrelated test already fails, so five of its twenty
+> checks would report *"caught it"* no matter what. The tester re-ran those five properly and they
+> **do** all catch their bug — so nothing is actually untested, but the harness cannot currently
+> prove it. The fix already exists in the sibling harness written one commit earlier and just
+> needs copying across; it goes back to the builder. The third is a sentence in the architecture
+> doc that promises slightly more than the code can deliver for coordinates larger than any real
+> place on Earth; it goes back to the architect as a wording correction.
+>
+> **What this unblocks:** **I-8b, the Profile screen** — the last thing standing between Cairn and
+> the travel-identity screen — now waits only on a manager's SHIP verdict for these two, not on
+> any further building or testing.
+
+
 > **🟡 THE GREY HOLES IN THE MAP CARD ARE GONE, AND YOUR TIE-BREAK QUESTION IS ANSWERED — BUILT
 > as of 2026-09-01 (this block is the newest; it supersedes the I-8i block below on *"Designed ❌ —
 > it goes back to the architect first"* and on *"One question is waiting on Jacob"*, and nothing

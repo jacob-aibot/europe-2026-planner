@@ -518,6 +518,64 @@ KD-77); **D** the fact dying with the session across a reload; **E** a healthy l
 nothing. It reports **ALL CLEAR / 40 ok**. The three rendered injected faults ROADMAP I-8f names
 were run by hand with a rebuilt bundle and are recorded in BUILD-NOTES.
 
+## Round 40 (2026-09-01, `master` @ `3044bdd`) — the I-8f **and** I-8j breaker pass
+
+One pass over two unrelated increments, kept as two targets. Written from A-47 and A-54 and the
+shipped source; none of these re-points a builder probe or reuses a builder fixture. Run from
+`cairn/`:
+
+```bash
+node --experimental-strip-types qa/r40-openfail.mjs   # I-8f at the store layer — ALL CLEAR
+node --experimental-strip-types qa/r40-a54.mjs        # I-8j in bare Node — 1 FAIL (R40-3, §G)
+bash qa/r40-vacuity.sh                                # R40-1 / R40-2 — exits 1, which IS the finding
+# with `npm run web:build && npm run serve` in another shell:
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r40-layout.mjs   # ALL PASS
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r40-browse.mjs   # ALL CLEAR
+```
+
+`r40-openfail.mjs`, seven sections: **A** `rowUnopenable`'s three disjuncts one at a time, plus
+**A-47 Part 4's divergence** driven for real — a row that is `rowDatesReadable` *and*
+`rowUnopenable`, which is the only input for which having two predicates buys anything; **B** the
+carry through every transition that spreads `initialState()`, driven through a real store rather
+than grepped; **C** the clear sites, including the one A-47 says must not exist; **D**
+`browseTrip`'s failure path in bare Node; **E** `exportStoredDoc`'s precondition, both arms;
+**F** raced opens, a non-`Error` throw, and `dispatch`/`undo`/`redo`/`setUi`; **G** R35-1's exact
+repro with the rescue copy compared byte for byte.
+
+`r40-a54.mjs`, seven sections: **A** predicate **D** over 20 ring shapes distinct from the
+builder's (a string coordinate, `null`, `undefined`, a boolean, `-0`, a subnormal, `±Infinity`,
+odd lengths 3 and 5, all-or-stated in both entry orders and across two entries for one code);
+**B** **I19** through `worldMapFrame`, alone and beside a healthy code; **C** the shipped
+`COUNTRY_INDEX` census recomputed; **D** byte-neutrality of the D change against a
+re-implementation of the pre-I-8j `countryKeyPoint` written from the diff, over 239 codes and
+8 thresholds; **E** **G5′**'s key order read out of the source *and* a library where the
+**withdrawn** key gives a different answer from the new one; **F** `FR`+`US`, I18 over sampled
+two-country libraries, and an order-destroying ISO relabel; **G** **I19 vs D** — the one FAIL,
+and it is R40-3, not a broken probe.
+
+`r40-vacuity.sh` is R33-4's control re-pointed at `qa/i8j-faults.sh`. §1 reproduces that file's
+own `make_copy` byte for byte and runs each targeted suite **unmutated**; `test/views.test.ts`
+comes back `# fail 1` there, which makes every fault scoped to it vacuous. §2 re-runs the five
+G7′/G7″ mutations against a copy that *does* have a clean base, so the mutation's real colour is
+separable from the harness's noise floor — all five are genuinely red. **A non-zero exit is the
+finding, not a broken script.**
+
+`r40-layout.mjs` is the occupancy sweep at the widths and libraries `i8j-render.mjs` does not
+use: 8 libraries chosen for pane counts A-54's matrix never produces (2, 3, 5, 7, 9, 11) and for
+residue 11's aspect extremes, × 13 widths (the seven A-54 swept and the builder skipped, plus
+280, 1919 and 2560, which are outside A-54's range entirely) = **104 pairs**. It asserts the
+container criterion, the *absence* of overflow, **G7″ in dark mode** (which the builder states was
+not measured at all), the residue equalling the predicted 1 px gap area as an equation rather than
+a bound, and reading order equalling DOM order at every column count reached.
+
+`r40-browse.mjs` drives the half I-8f's BUILD-NOTES lists as unverified: `browseTrip`'s failure
+through the real Browse-and-copy `<select>`, with an unopenable document planted under a trip made
+through the real New-trip form. It checks the readable error, that the **open** trip is not closed
+or replaced, that F-D is recorded from the browse tap, that the Trips list then carries chip +
+hint + *"Save a copy"* + the *"save a copy first"* Delete warning while the meta line still prints
+a formatted range (A-47 Part 4's divergence, on screen), that the download is byte-identical to
+the stored bytes, and that a reload clears it (residue 1).
+
 ## Round 2 (2026-08-25, `master` @ `fcceb56`)
 
 Written against the re-delivery. `cairn/docs/QA-FINDINGS.md` names the finding each one
