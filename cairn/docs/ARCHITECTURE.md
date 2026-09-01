@@ -875,8 +875,40 @@ revision 37 carries it as **I-8j**, which **gates I-8b** alongside I-8f. Nothing
 **79**, no dependency, no `schemaVersion`/`SUMMARY_VERSION` bump, no port change, no reducer action, **no
 stored byte of any trip**, and `derive/cluster.ts` gets a zero-line diff for the third increment running.
 
+**Revision 38, 2026-09-01.** A bounded design-foundation pass at Jacob's instruction, opened after the
+I-8f/I-8j gate permitted I-8b. **No engine, no geometry, no persisted shape and no dependency moves**;
+A-40 → A-54 are untouched and are explicitly fenced out (§9.2). Three things change. **(1) The attribution
+in A-54 Part 3 is corrected** (manager's gate, `REVIEW.md` **MGR-5**): revision 37 wrote *"Jacob's
+`westmost`"* and *"Jacob's other candidate, `largest`"*, and `git log -S"westmost"` traces both to the
+**manager's own I-8i gate**, where they were **his** two examples inside a question **to** Jacob that no
+commit records an answer to. They were **proposed by the pipeline, not by Jacob**. What Jacob did settle is
+*replace alphabetical tie-breaking with a deterministic geographic one*; **G5′ takes that on the architect's
+own measured reasoning and ships a third key neither suggestion named**, and **it is not reopened** — the
+correction is to the record, not to the rule. The same correction lands in both `CAIRN_VISUAL_ROADMAP`
+twins, which is where Jacob actually reads it. **(2) A new §9 gives the product's visual direction an owner**
+— it had none: the visual language lived in `styles.css` comments, one ROADMAP bullet and an explicitly
+advisory checklist, which is why it kept being re-derived from conversation. **`cairn/docs/DESIGN.md` is
+created and is contract-grade**, carrying the nine visual principles, the shipped I-8a baseline, the
+**mobile-first responsive contract** (four `min-width` breakpoints, touch-target floors, safe-area handling,
+the `dvh`/`svh` rule), the **I-8b Profile design target** and the **rendered acceptance standard**.
+`VISUAL-TELLS.md` is unchanged and stays advisory and subordinate. **(3) A-55 rules the frontend tooling
+stack** — eight candidates, eight verdicts, every environment fact measured on this machine: Playwright
+**USE** (with device profiles, not bare viewports), Emil `emil-design-eng`+`animate` **USE** (vendored, MIT,
+no npm dependency), Impeccable **SELECTIVE USE** (skill only — no hooks, no CLI, no second severity rubric),
+UI/UX Pro Max **REJECT** (Jacob removed it from this repo himself, and its style catalogue is the aesthetic
+`DESIGN.md` is written against), 21st.dev **DEFER** (still unreachable by any agent tool here), Tailwind
+**REJECT** for `apps/web` (a build-toolchain change that would not even deliver the safe-area ergonomics it
+was proposed for), shadcn/Radix **DEFER** (trigger not hit by I-8b; shadcn's default moved to Base UI in
+July 2026), Vaul **REJECT** (no sheet surface exists; last published 2024-12-14). **A-55 Part 0 states the
+dependency line explicitly**: the zero-dep rule is `packages/core` and `packages/client` only and is
+untouched by every verdict; `apps/web` may take dependencies and **takes none new here**. `ROADMAP.md`
+revision 38 rewrites **I-8b** against `DESIGN.md` §5 and §6. Export surface **79**, no `package.json` diff,
+no stored byte.
+
 **Phase 1 is §2 and §4. The next phase is §8.1–§8.4.** Everything else is the shape those must not
 foreclose. See `ROADMAP.md` for sequencing and `PRODUCT-VISION.md` for why this order and not another.
+**What the product looks like is `DESIGN.md`, not this document** — §9 says why, and a builder of a screen
+reads that instead of entering §2 or §4.
 
 ## Read only your sections
 
@@ -918,6 +950,7 @@ supersedes, so reading it first is what tells you which of A-46 to skip** | 123k
 | 6 | Privacy, authorization, deletion cascade. **§6.6 is the build-artifact threshold; the copy threshold is §2.14 A-15 + A-18 (revisions 13 and 14) and they differ deliberately, in two named places — read them together or neither** | 4k | breaker, manager; builder for §6.2 |
 | 7 | Explicitly deferred | <1k | anyone about to build something not in the roadmap |
 | 8 | **The travel-history model** (revision 9) — trip lifecycle and past trips (§8.1), the feasibility/integrity rule class (§8.2), participants (§8.3), geography attribution, travel stats and the summary-row rule (§8.4); then the shapes the location, photo and social phases must land on (§8.5–§8.7) and what is refused (§8.8). **§8.10 is revision 10** — physical travel distance by mode and the four provenance bases that keep it honest; **it is not Phase 2 scope**, so a Phase 2 builder reads §8.1–§8.4 and stops. **Revision 11 amends §8.1, §8.2 and §8.4 by pointer only — the two rulings themselves live in §2.2 (A-10) and §2.7 (A-9), and a Phase 2 builder reads both; revision 12 amends §8.2 by pointer in the same way, and its four rulings live in §2.7 (A-11, A-12, A-13) and §2.14 (A-14)**. **A-26 is revision 20 and lives in §8.4** — the mixed-resolution country index, the withdrawal of the correctness floor's escalation mechanism, and the ruling that `null` is the right answer for a landform the dataset does not carry; **anyone touching `tools/gen-countries.mjs`, `geo/countryIndex.ts` or the attribution golden reads it first**, and it is what ROADMAP's I-5a builds; **A-27 is revision 21, sits directly under A-26 and is read *with* it, never instead of it** — it amends A-26 Part 4's block-quoted rule with a third clause (a filled code ships a **forgiveness entry** as well as a coverage entry), supersedes A-26 Part 5's two-residue list with three, lifts A-26 Part 6 item 3 for a docstring correction only, and is what ROADMAP's **I-5b** builds; **A-28 is revision 22, sits under A-27 and is read with both, never instead of them** — it supersedes A-27 Part 4's filter 2 (two arms, because the coverage index it compared against is mixed-resolution and answered generously) and A-27 Part 4's `overlaps` predicate (the vertex-mean probes come out), corrects A-27 Part 5's Macao sentence and every count in it, and is what ROADMAP's **I-5c** builds. **Anyone touching `tools/forgiveness.mjs` or the forgiveness pass reads A-28 first and A-27 second**; **A-29 is revision 23 and sits under A-28** — it is the only one of the four that is *not* about the index: it rules that a `City`'s **stated** `countryCode` fills a gap the coordinate cannot answer, never overrides one, and only through a gate ending in index membership, and it takes `SUMMARY_VERSION` to 3. **Anyone touching `derive/summary.ts` reads A-29 and §4.3's A-30 together** — A-29 changes what a row *says*, A-30 changes how it is *written*, and I-6a builds both; **A-31 is revision 24 and sits under A-29** — it is the `travelStats` specification (type, signature, algorithm, sort orders, residues), and it widens the row a second time with the **record census** clause 2's `unattributed` cannot be computed without, taking `SUMMARY_VERSION` to 4. **A builder of I-7 reads §8.4 clause 2, then A-31, and needs nothing else in this document except §2.10's list**; A-31 also rewrites ROADMAP exit criterion 6, so **anyone about to add a count to `TripSummaryRow` reads A-31 Part 6 first — widening that allow-list is an architect's ruling**; **A-33 and A-34 are revision 25 and sit under A-31** — **A-33 supersedes A-31 Part 6's two-half check entirely** (it grepped declarations while the danger is a *value*, and a persisted `countriesVisited` passed it), so read A-33 and treat Part 6 as the *principle* it block-quotes and nothing more; **A-34** adds `provisional` to `travelStats`' two row types and is the ruling that stops an active trip's unreached countries being printed as fact. **A builder of I-7a reads A-31, then A-33 and A-34, plus §2.1's A-32**; **A-36 and A-37 are revision 26 and sit under A-34** — **A-36 supersedes A-33 Part 3's 6b-1/6b-2/6b-4 split and Part 7 residue 2** (every `StoragePort` implementation is *executed* by the gate, including the web port, against a recording double; 6b-2 is demoted to a tripwire and its parameter grep withdrawn; 6b-4's Chromium read-back becomes a required recorded ship-gate condition), so **anyone touching a port implementation, `test/stats-storage.test.ts` or `ROW_KEYS` reads A-36 first and A-33 second**; **A-37** is the ruling that a stored summary row is not a validated document — two module-private read gates in `travelStats` (day numbers clamped into `IsoDate`'s domain, a stored country code read through `/^[A-Z]{2}$/`), and it is what makes A-32 Part 8 residue 3's bound and the composite key's docstring true rather than merely stated. **A builder of I-7b reads A-36 and A-37, plus §2.3's A-35**; **A-38 is revision 27 and sits under A-37** — it **widens A-36 Part 2's mechanism and Part 4's 6b-4 scope without touching A-36's sentence**: a port's coverage is its **write paths**, not its interface methods, so the recording double gains a **seed** (a pre-existing database, including a *legacy* record with no envelope version), 6b-1b becomes **five arms each with a stated starting state**, and 6b-4 gains a second seeded phase; **A-39 is revision 28, sits under A-38 and closes the arc** — it supersedes A-38 Part 7's *required property* sentence (which quantified over **faults** and so could never be discharged by a finite fixture list) and A-38 Part 3's arm **seeds**, replacing both with a claim quantified over the state `ensureReady()` can **read**: five axes derived line by line from the function, a **15-state pairwise covering set** in the same five arms, and — the part Jacob asked for — a **written boundary** saying what legitimately reopens this (a `SUMMARY_VERSION`/`SCHEMA_VERSION` bump, a new store, a new port, a fourth write path) and what does not (one more fault shape on an axis already covered, which is a **builder** finding against A-39 Part 5's table, not an architect's). **Anyone touching a port implementation, `recordingIdb`, `test/stats-storage.test.ts` or `qa/i7a-idb-rowkeys.mjs` reads A-39 first, A-38 second and A-36 third**; **A-44 is revision 30, sits at the end of §8.4 and is read with A-37 Part 2** — it is one paragraph plus a signature, and it says where `lifecycle`'s read gate goes (`packages/client`, once, beside `travelHistory`); **anyone rendering a stored summary row on a new surface reads it** | 65k | architect; the builder and breaker of the phase after Phase 1 (§8.1–§8.4 only). §8.10 is for the architect and for phases 4, 5 and 7. Read with `PRODUCT-VISION.md` |
+| 9 | **The design contract and the frontend tooling stack** (revision 38). §9.1 makes `docs/DESIGN.md` binding and says what is in it; §9.2 names the three fences a design pass may not cross; **A-55** is the eight-candidate tooling ruling, its Part 0 states where the dependency line actually is (`core`/`client` only — `apps/web` may take deps and takes none new), and its Part 4 is the tool hierarchy. **A builder of any web surface reads `DESIGN.md`, not this section**; this section is for the architect and for anyone about to add a frontend dependency | 4k | architect; anyone adding a frontend dependency |
 
 *(§8's figure is measured with `doc-section`, not estimated. §8.1–§8.4 — the Phase 2 model — are roughly
 five sixths of it since revisions 20–27 put A-26…A-29, A-31, A-33, A-34, A-36, A-37 and A-38 in §8.4; a Phase 2 builder
@@ -10288,6 +10321,30 @@ proof obligation (*"permuting every ISO code leaves every pane byte-identical"*)
 holds — pane **order** moves under an order-destroying relabel in 8 of 23 libraries, while every `viewBox`,
 `codes`, `home` and `weight` does not.
 
+**Whose suggestion this was — corrected at revision 38 (manager's I-8f/I-8j gate, `REVIEW.md` **MGR-5**), and
+read before the ruling.** Revision 37 wrote *"Jacob's `westmost`"* and *"Jacob's other candidate, `largest`"*.
+**That attribution is false and is withdrawn.** `git log -S"westmost" -- cairn/docs/` traces the pair to
+exactly one origin: the **manager's own I-8i gate** at `91597b7`, where *For Jacob — I-8i* item 3 offered
+them as **its** two examples of a geometric key, inside a question **to** Jacob — *"break the tie by
+something geographic instead — westmost first, say, or largest first … Which would you prefer?"* — and asked
+him to choose between (a) accepting the alphabet in the open and (b) replacing it. **No commit in this
+repository records an answer from Jacob.** *westmost* and *largest* were **proposed by the pipeline as
+options, not by Jacob**, and the root `CLAUDE.md` convention that outranks the others — *never present my
+suggestions as Jacob's own plan* — forbids restating them as his.
+
+**What Jacob did settle, and what he did not.** He approved **replacing alphabetical tie-breaking with a
+deterministic geographic tie-break** — that is option (b), and it is on record. He did **not** propose, rank
+or choose between *westmost* and *largest*. **G5′ takes option (b) on the architect's own reasoning**, and
+the key it actually ships — `bounds.north` descending — is a **third** option neither of the suggested two,
+chosen because each suggested key was then measured and found defective (the seam, and the area artefact,
+both below). **G5′ is not reopened by this correction and does not move**: its evidence was re-derived
+independently by the manager at the gate (`north` distinct on all 242 single-country panes; `west` colliding
+on 9; `AQ`/`FJ`/`RU` sitting exactly on the ±180 seam), and Jacob's standing instruction is *"do not reopen
+the shipped tie-break without new evidence."* **What is provisional is the record, not the rule:** if Jacob
+answered and it was simply not written down, this paragraph is replaced by his answer with its date, and the
+correction closes as bookkeeping. Until then, the shipped rule stands on the measurements below and on
+nothing else.
+
 **Ruling — G5's third key becomes the pane's own rectangle, read the way a map is read.**
 
 > **G5′ — the order is: `weight` descending, then `home.length` descending, then `bounds.north`
@@ -10308,12 +10365,13 @@ Why latitude first, and why this is geography rather than a different laundering
   projection, not of the world. Measured, and this is what decides it: of the 242 single-country panes the
   shipped index produces, **three have `west` exactly at the −180 seam (`AQ`, `FJ`, `RU`)**, so a westmost
   primary key ties precisely the codes A-51 residue 3 already discloses as broken and hands the decision
-  straight back to the alphabet. **Jacob's *"westmost"* is therefore taken as the *second* key, where the
-  seam can no longer decide anything.**
+  straight back to the alphabet. **The pipeline's own *"westmost"* suggestion is therefore demoted to the
+  *second* key, where the seam can no longer decide anything** — kept because it is a real geographic axis,
+  not because anyone asked for it.
 - **Latitude is very nearly injective on real geometry.** All **242** single-country panes have **distinct**
   `north` values (242 distinct of 242); `west` collides for 9 of them. So the key that does the work is also
   the key that discriminates.
-- **Jacob's other candidate, *largest*, is refused.** Ordering by pane area would put *"bigger rectangle
+- **The pipeline's other suggested candidate, *largest*, is refused.** Ordering by pane area would put *"bigger rectangle
   first"* into the reading order one ruling after A-51 and A-53 spent themselves establishing that a pane's
   size asserts nothing — and pane area is dominated by the same antimeridian artefact, so a globe-wide `FJ`
   pane would lead the map of a `FJ`+`FR` traveller.
@@ -14242,3 +14300,138 @@ architecture.** Three reasons, in order:
 invert the product's central privacy claim; nothing of that kind is true here. If Jacob wants loyalty
 balances later they are a separate capability with their own record class, their own credential handling and
 their own phase — sitting **beside** physical distance on a profile, never summed into it.
+
+---
+
+## 9. The design contract and the frontend tooling stack
+
+**Revision 38, 2026-09-01.** Added because this document had **no** section on what the product looks like.
+The visual language lived in three places, none of them a contract: comments in `apps/web/src/styles.css`,
+one bullet inside `ROADMAP.md` I-8a, and `docs/VISUAL-TELLS.md`, which says of itself that it is
+*"advisory … not a contract doc."* The consequence was that Cairn's visual direction existed only in
+conversation history, and a design decision that lives in a conversation is a design decision that gets
+re-made by the next agent. This section fixes the ownership; the content lives in a doc of its own.
+
+### 9.1 `docs/DESIGN.md` is the design contract
+
+**`cairn/docs/DESIGN.md` is binding.** Where a surface increment and `DESIGN.md` disagree, `DESIGN.md` is the
+spec and the increment is the defect — the same standing §2 has for the engine. It carries:
+
+- **§1** — the nine visual principles, and the translation of Jacob's named references into them;
+- **§2** — the shipped I-8a baseline (type, tokens, the three signal channels, the two permanent removals,
+  dark mode), which a design pass extends and does not re-litigate;
+- **§3** — the **mobile-first responsive contract**: four `min-width` breakpoints, per-surface
+  recomposition, touch-target floors, safe-area handling, and the `dvh`/`svh` rule;
+- **§5** — the **I-8b Profile** design target;
+- **§6** — the **rendered acceptance standard** every surface increment is measured against.
+
+**It is not in this document on purpose.** §2 is ~123k tokens and §4 ~59k; a builder of a screen should not
+have to enter either to find out what the product looks like. `DESIGN.md` is ~12k and self-contained, and
+`cairn/tools/doc-section DESIGN 3 6` cuts it further.
+
+**What does *not* move into it.** `docs/VISUAL-TELLS.md` stays exactly as it is — advisory, post-hoc, and
+explicitly subordinate: a hit on its list is a **question**, never a defect, and it may not overrule
+`DESIGN.md` §1 or an approved design pass. The two documents have different jobs and the boundary is the one
+VISUAL-TELLS already states about the Emil skills: **`DESIGN.md` decides, VISUAL-TELLS audits.**
+
+### 9.2 The three geometry fences this section does not touch
+
+Stated so a design pass cannot be read as reopening them:
+
+1. **The world map's geometry is closed.** A-40 → A-54: clustering, pane membership, framing, extent, pane
+   order and the tie-break. `DESIGN.md` §3.3 owns only how the map's *card* sits in a page and explicitly
+   forbids adding any media query to `.worldmap__panes` — a per-screen-size cell rule is one refactor away
+   from a per-screen-size frame rule, which A-41 Part 7 and W1 forbid outright.
+2. **`packages/core` and `packages/client` are unchanged by anything here**, in shape, surface (79) or
+   dependencies (zero).
+3. **A-54 Part 3's ruling (G5′) is not reopened.** Revision 38 corrects its *attribution* only — see the
+   correction paragraph inside Part 3.
+
+---
+
+#### A-55 — the frontend tooling ruling: what Cairn adopts, what it refuses, and where the dependency line actually is (revision 38, ROADMAP **I-8b**)
+
+> **STATUS: RULED.** Eight candidates, eight verdicts. **Two tools are adopted, both as vendored agent
+> skills with no npm dependency and no hook.** One is confirmed as required infrastructure. **Three are
+> refused, one on Jacob's own prior decision.** Two are deferred with named triggers. **No runtime
+> dependency is added to `apps/web`, no build tool changes, and `packages/core`/`packages/client` are
+> untouched by every one of these verdicts.**
+
+**Every fact below was checked on this machine or fetched today (2026-09-01), not recalled.** Where a claim
+could not be verified it is marked as such.
+
+**Part 0 — where the dependency line actually is, because this question keeps being asked in the wrong
+place.**
+
+`cairn-constraints` §2 says: *"No runtime dependencies in `packages/core` or `packages/client` … `apps/web`
+may take dependencies; nothing it depends on may leak back across the boundary. Adding a dep to either
+package needs Jacob."* **"Either package" means `core` and `client`, and nothing else.** So the zero-dep rule
+does **not** reach `apps/web` — which already ships `react`, `react-dom` and `leaflet` and has done since
+Phase 1. **The reason to refuse a frontend dependency below is therefore never "the zero-dep rule"; it is
+always a measured cost against a measured benefit**, and where I refuse one I say which. The boundary that
+*is* absolute and that no verdict here touches: `core`, `client` and `tokens` take **zero** runtime
+dependencies and import nothing from `apps/`, enforced by the import-direction test in §3.
+
+**Part 1 — the environment, measured.**
+
+- **Playwright 1.56.1** at `/opt/node22/lib/node_modules/playwright`, Node v22.22.2.
+- **`/opt/pw-browsers` contains chromium (141.0.7390.37), the headless shell and ffmpeg. `webkit` and
+  `firefox` are absent** — `browserType.launch` fails on both with *"Executable doesn't exist"*. I ran it.
+- **143 device descriptors are available**, including `iPhone SE` (320×568, DPR 2, touch), `iPhone 14`
+  (390×664, DPR 3), `iPhone 15 Pro` (393×659), `iPad Mini` (768×1024) and `Pixel 7` (412×839). **No probe in
+  `cairn/qa/` currently uses one** — every existing render probe calls `newContext({ viewport })`, which
+  emulates neither touch nor device pixel ratio.
+- **Installed agent skills, checked directly**: `cairn/.claude/skills/` holds `cairn-constraints`,
+  `test-driven-development`, `systematic-debugging`, `verification-before-completion`. `~/.claude/skills/`
+  holds only the platform's own synced set (docx/pdf/pptx/xlsx/skill-creator/…). **Neither `emil-design-eng`
+  nor `animate` nor any Impeccable payload is installed anywhere in this environment** — the earlier
+  "approved" status was an approval, not an installation, and this ruling closes that gap.
+- **Available MCP servers in this session: `github` only.** No 21st.dev connector, and no connector registry
+  to add one from.
+
+**Part 2 — the verdicts.**
+
+| Tool | Verdict | The evidence that decided it |
+|---|---|---|
+| **Playwright** | **USE — required infrastructure** | Already the rendered-verification tool for every breaker and manager pass. The change this ruling makes is that surface probes use `devices[...]` rather than bare viewports (Part 3) |
+| **Emil `emil-design-eng` + `animate`** | **USE — vendored, no dependency** | Fetched today: `skills/emil-design-eng/SKILL.md` **27,226 bytes** and `skills/animate/SKILL.md` **11,575 bytes**, MIT. They are *construction-time* guidance — should this animate, which curve, which duration, how it interrupts — which is exactly what `DESIGN.md` P6's budget needed a source for and did not have. **Not a design authority**: `DESIGN.md` §1 outranks them, and VISUAL-TELLS' own boundary paragraph (construction vs. post-hoc audit) is upheld. `pick-ui-library` is **not** taken — Cairn's library choices are ruled here |
+| **Impeccable** | **SELECTIVE USE — the prose reference stays; the skill may be vendored** | The prior call rested on an install conflict. Re-checked today: the skill is **Apache-2.0**, **standalone**, needs **no API key**, and its hooks are **explicitly optional** (*"the optional design hook … isn't mandatory for using commands"*). So the objection that actually held — *"no new runtime dependency, no hooks, no settings changes"* — is satisfiable by vendoring the skill payload alone, exactly as the four existing skills are vendored. **What it is good for is narrow and real: identifying generic AI-looking UI.** What is still refused: its CLI, its browser extension, its `PRODUCT.md`/`DESIGN.md` context files (Cairn has its own), any hook, and its five-dimension scored audit rubric — a second severity taxonomy competing with `QA-FINDINGS.md` is the overlap this project does not need, and that half was already refused for that reason |
+| **UI/UX Pro Max** | **REJECT — and it is not a new candidate** | The brief called it previously unevaluated. It is not: `cairn/.claude/skills/README.md` records it as **vendored into this repo once and removed by Jacob the same day**, as part of a 4.2 MB → 136 KB trim, described there as a *"3.5 MB design lookup database."* That is the product owner's own decision and it is not mine to reverse. Independently, the content argues the same way: the upstream README (fetched today) describes **79 searchable UI styles — "glassmorphism, claymorphism, minimalism, brutalism, neumorphism, bento grid"** — 192 palettes and 74 font pairings. **Cairn's design contract is written against most of that catalogue by name** (`DESIGN.md` P8, VISUAL-TELLS §2), it has settled type and colour (§2), and a searchable style database is the mechanism by which a screen acquires a generic aesthetic rather than the mechanism by which it avoids one. **Re-adoptable only by Jacob, explicitly** |
+| **21st.dev** | **DEFER — operationally, not architecturally** | Re-checked: `curl` reaches `21st.dev` (HTTP 200 — the previous 403 is gone), but **`WebFetch` is blocked for that domain by the egress proxy**, and there is still **no MCP connector** in this session. The `@21st-dev/magic` MCP package exists on npm (latest 0.2.2) and needs an API key. So an agent here cannot actually use it in any mode, including the advisory one. **Reopen when the proxy allows the domain or a connector appears**; the design argument for it (pattern/component discovery, advisory only) is unaffected and remains reasonable |
+| **Tailwind CSS** | **REJECT for `apps/web`** | Latest **4.3.3**, MIT, published 2026-07-16 — verified on the registry. Four measured reasons, none of them "our CSS works". (a) **It is a build-toolchain change, not a stylesheet change**: `@tailwindcss/vite` pulls `@tailwindcss/oxide`, a platform-specific native binary, into a repo whose stated virtue is that *"no build step stands between the source and the test run."* (b) **It would not deliver the thing it was proposed for.** The brief's case was *"modern viewport/safe-area ergonomics"* — but Tailwind v4 ships **no built-in safe-area utilities**; that is an open upstream proposal (`tailwindlabs/tailwindcss#20200`) served today by third-party plugins, so Cairn would still hand-write `env(safe-area-inset-*)` or take *another* dependency to get it. `dvh`/`svh` are one-line CSS either way. (c) **The costs it would impose are real and asymmetric**: `styles.css` is not ordinary CSS — it is ~840 lines of which a large fraction is *the reasoning behind rulings*, with A-50, A-54 G7′/G7″, R34-7 and R36-6 recorded at the declaration they govern. Utility classes in JSX have nowhere to put that, and *"the comment that explains why this declaration exists"* is this project's main defence against re-litigating a shipped ruling. (d) **It moves the browser floor** to Chrome 111 / Safari 16.4 / Firefox 128 for reasons Cairn gets nothing from. **Reopen if `apps/mobile` arrives and a shared styling system across web and native becomes the actual problem** — that is a different question and this ruling does not prejudge it |
+| **shadcn/ui + Radix** | **DEFER, trigger unchanged and not hit** | shadcn assumes Tailwind, so adopting it is Tailwind plus a component layer — the compound decision the previous ruling declined. It also **changed underneath the old ruling**: as of **July 2026 shadcn's default primitive library is Base UI, not Radix** (verified), so *"adopt shadcn"* no longer even names one primitive set. **The standing revisit trigger — the first surface needing a real modal *and* a combobox together — is not hit by I-8b**: the Profile has no dialog and no combobox (`DESIGN.md` §5.5 rules the country drill-down as an inline expansion, which is also the better interaction). **What stays open, and is the useful half:** an individual Radix (or Base UI) primitive may be adopted **on its own merits** when a surface needs focus-trapping, dismissal and inert-background correctness — that is genuinely hard to hand-roll and is where these libraries earn their keep. `@radix-ui/react-dialog` is 99 KB unpacked and pulls 15 transitive `@radix-ui/*` packages plus `aria-hidden` and `react-remove-scroll`; that is a fine price for a correct modal and a bad one for anything less |
+| **Vaul** | **REJECT** | Two independent reasons. (a) **Cairn has no bottom-sheet surface and I-8b does not create one** — I checked the actual scope: the Profile's only overlay-shaped interaction is the country drill-down, which `DESIGN.md` §5.5 rules as an inline expansion for reasons that have nothing to do with tooling; and `DESIGN.md` §3.3's shell rule turns navigation into a **bottom bar**, which is not a drawer. Adopting a drawer library before there is a drawer is the definition of premature. (b) **The package is stale and its ecosystem has moved**: latest **1.1.2, published 2024-12-14** — ~21 months old — it depends on `@radix-ui/react-dialog`, and **shadcn's own Drawer no longer uses it** (it moved to Base UI). **Reopen when a surface genuinely needs a sheet**, and evaluate `vaul` against Base UI's own drawer at that time rather than now |
+
+**Part 3 — the mechanical consequences, and there are only five.**
+
+1. `cairn/docs/DESIGN.md` is created and is contract-grade (§9.1).
+2. `cairn/CLAUDE.md`'s document cost map gains a `DESIGN.md` row, so the doc is discoverable by the rule the
+   project already uses to find documents.
+3. `cairn/.claude/skills/` gains `emil-design-eng` and `animate`, **vendored** per that directory's own
+   README convention (checked in, not installed as plugins, so every agent and every session sees the same
+   version). Their descriptions load eagerly and cost ≈ **0.2k tokens per Cairn session**; their bodies
+   (~7k and ~3k) load only on invocation. **Impeccable's skill is approved for vendoring on the same terms
+   and is not vendored by this pass** — it is the one adoption with a prior "installation conflict" on
+   record, and re-introducing it belongs in a pass where its behaviour can be watched, not in the same
+   commit as everything else here.
+4. **Surface render probes use `devices[...]` contexts** rather than bare viewports (`DESIGN.md` §6.1). No
+   existing probe is rewritten by this ruling; the standard binds new ones.
+5. **No `package.json` anywhere changes.** No `dependencies` key is added, no lockfile moves, the export
+   surface stays **79**, and `derive/cluster.ts` continues its zero-line-diff run.
+
+**Part 4 — the tool hierarchy, when two of them disagree.**
+
+**Cairn's product requirements and `DESIGN.md` are authoritative.** Below that, in descending order, and the
+list is short on purpose:
+
+1. `BRIEF.md` / `PRODUCT-VISION.md` / Jacob → 2. `ARCHITECTURE.md` + `DESIGN.md` → 3. Jacob's approved visual
+references (`DESIGN.md` §1's table — inputs, never overrides) → 4. **Impeccable** (visual critique and
+generic-UI detection; `VISUAL-TELLS.md` is its resident form) → 5. **Emil** (interaction and motion
+construction) → 6. **Playwright** (rendered verification — which settles every disagreement between 4 and 5,
+because it measures).
+
+**Two tools may not occupy the same rung.** Impeccable audits *static rendered output after the fact*; Emil
+decides *whether and how a thing moves before the code is written*. Different moment, different subject —
+that boundary is already written in `VISUAL-TELLS.md` and this ruling upholds it rather than restating it.
+**Nothing in this hierarchy may generate a finding that overrules a shipped ruling in this document**; a hit
+is a question, and the manager's gate is still the only thing that ships anything.

@@ -19,9 +19,62 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
-> **🟢 THE PROFILE SCREEN IS UNBLOCKED — as of 2026-09-01 (this block is the newest; it supersedes
-> every block below on *"shippable"*, on *"what gates I-8b"* and on *"Your tie-break question,
-> answered"*, and nothing else).**
+> **🎨 CAIRN NOW HAS A WRITTEN LOOK, AND THE PROFILE SCREEN HAS A DESIGN TO BUILD TO — as of
+> 2026-09-01 (this block is the newest; it supersedes every block below on *"what happens next"*
+> and on the tie-break attribution, and nothing else).**
+>
+> **I-8b is designed ✅ · built ❌ · verified ❌ · shippable ❌.** No code was written in this pass —
+> it was a design and tooling round, deliberately, before a builder touches the screen.
+>
+> **The problem this fixes.** Cairn's visual direction only existed in conversation. It was written
+> down in three places — comments inside the stylesheet, one bullet in the roadmap, and a checklist
+> that says of itself that it is only advice — so every new session had to re-derive what the
+> product is supposed to look like, and could quietly redesign it by accident. **There is now one
+> document that owns it: `cairn/docs/DESIGN.md`**, and the architecture doc makes it binding. It
+> holds nine principles, the responsive rules, the Profile design, and the checks that must pass on
+> a real rendered screen.
+>
+> **What the principles actually say**, in short: Cairn is a premium travel product, not a
+> dashboard — no wall of metric tiles. **The map is the signature surface.** **Past trips are alive,
+> not archived** — a finished trip is never greyed out, and that is now a *measured* rule, not a
+> sentiment. Hierarchy comes from typography and space, not from boxes inside boxes. Motion is
+> small, fast and purposeful, and off entirely if you have reduced motion switched on. And there is
+> a hard rule that a screen may only show **what exists** — no placeholder photos, no empty
+> achievement shelf, no "coming soon" tile, ever. Your references (Polarsteps, Strava, Airbnb,
+> Flighty, Apple Journal and the rest) are written down as what we take from each and what we
+> deliberately do not.
+>
+> **Mobile is now the primary experience, in writing.** The honest finding: the stylesheet was
+> **desktop-first with a single breakpoint**, and three real defects came out of measuring it.
+> (1) The page opts into the iPhone's notch area and then never pads for it — **zero** uses of the
+> safe-area inset in the whole stylesheet. (2) The tab bar is pinned to a hardcoded number that
+> assumes the bar above it never wraps. (3) **Touch targets are too small** — the little icon
+> buttons are 26 × 26 px, under the accessibility floor and well under the 44 px comfortable size,
+> sitting in rows of three. All three are fixed as part of the Profile screen, and **navigation
+> moves to the bottom of the screen on a phone** so it is reachable one-handed.
+>
+> **The Profile screen itself** is a travel identity, not an account page. One large typographic
+> line — *"7 countries · 19 cities · 46 days travelled"* — then your countries as a clean list of
+> hairline-separated rows with their cities under them, then the trips, then **an honest block
+> saying what we could not work out**. That last part is deliberate and it is the most
+> un-dashboard-like thing on the screen: no stats page admits its own gaps. **No new data, no new
+> backend, nothing invented to make it look fuller.**
+>
+> **On tooling, eight things were evaluated and six were turned down or postponed.** Kept:
+> Playwright (which is how any of this gets checked on a real rendered screen) and two small
+> design-craft skills for motion. **Turned down: Tailwind CSS** — it would change the build, and it
+> would not even deliver the iPhone safe-area handling it was proposed for; **a component library**
+> — nothing on this screen needs one; **a drawer library** — there is no drawer; and **a big design
+> "style database"** you removed from this repo yourself once already, whose catalogue is largely
+> the generic look we are explicitly avoiding. **No new dependency was added to the app. Nothing
+> about the map changed.**
+>
+> **What Jacob should look at:** the principles and the Profile design, in `cairn/docs/DESIGN.md`.
+> If the direction is wrong, this is the cheap moment to say so — before a screen is built to it.
+
+
+> **🟢 THE PROFILE SCREEN IS UNBLOCKED — as of 2026-09-01 (this block supersedes
+> every block below on *"shippable"* and on *"what gates I-8b"*, and nothing else).**
 >
 > **I-8f is designed ✅ · built ✅ · verified ✅ · SHIPPABLE ✅ — manager's verdict SHIP.**
 > **I-8j is designed ✅ · built ✅ · verified ✅ · SHIPPABLE ✅ — manager's verdict SHIP.**
@@ -46,16 +99,15 @@ update to this file added that instruction).
 >   is byte-for-byte identical** to what it was before both changes — computed at both commits and
 >   compared.
 >
-> **⚠️ One thing waiting on Jacob, and it is about honesty rather than about the product.** The
-> block below headed *"Your tie-break question, answered"* tells Jacob **"You offered westmost or
-> largest."** He did not — those were the **manager's own two examples**, in the question he asked
-> Jacob five rounds ago, and there is no record anywhere in this repository of Jacob answering. The
-> rule that shipped (*panels are read north to south, then west to east*) is a **third** option and
-> is good for reasons that were measured independently, so **nothing about the map changes**. But
-> `ARCHITECTURE.md` A-54 Part 3 and the block below both have to stop crediting the suggestion to
-> Jacob. **Jacob: did you answer, and did we just not write it down?** If yes it gets recorded with
-> the date; if no, both documents get rewritten to say we asked, did not hear back, and chose on our
-> own reasoning — marked provisional until you rule. `REVIEW.md` **MGR-5**.
+> **✅ The honesty item is fixed — 2026-09-01.** The block below headed *"Your tie-break question"*
+> used to tell Jacob **"You offered westmost or largest."** He did not: those were the **manager's
+> own two examples**, in a question he asked Jacob five rounds ago, and there is no record anywhere
+> in this repository of Jacob answering. Both documents have now been rewritten to say so plainly —
+> we asked, we did not hear back, and we chose a **third** option on our own measured reasoning.
+> **Nothing about the map changes**, and the shipped rule is not reopened: Jacob's instruction is
+> *"do not reopen the shipped tie-break without new evidence."* `REVIEW.md` **MGR-5**;
+> `ARCHITECTURE.md` **A-54 Part 3** carries the same correction. **Jacob: if you did answer and we
+> simply failed to write it down, say so and we will record it with the date.**
 >
 > **Also going back, none of it blocking:** three items to the builder (all in the test tooling,
 > none in the app — the fault harnesses run in a copy where one unrelated test already fails, so
@@ -145,19 +197,33 @@ update to this file added that instruction).
 > inside a panel is now the card's own colour instead of the divider grey, so it reads as margin
 > rather than as something that failed to load.
 >
-> **⚠️ ATTRIBUTION CORRECTION (manager's gate, `REVIEW.md` MGR-5): the two options this paragraph
-> says Jacob offered were the *manager's* examples, not Jacob's, and no answer from Jacob is on
-> record. The paragraph stands below as written, marked wrong on that point, until the architect
-> rewrites it. The rule itself is unaffected.**
+> **✅ REWRITTEN 2026-09-01 by the architect — this paragraph used to tell Jacob what he had
+> offered, and he had offered nothing.** (`REVIEW.md` MGR-5; `ARCHITECTURE.md` A-54 Part 3 carries
+> the same correction.) The two candidate rules were **ours, not yours.** Below is what is
+> actually true.
 >
-> **Your tie-break question, answered: (b), and it is *northmost*, not westmost.** You offered
-> westmost or largest. **Largest is refused** — ordering by size would put "bigger rectangle first"
-> back into the map one round after we removed size as a claim. **Westmost is kept, but as the
-> second key rather than the first**, because longitude has a seam at the date line: of the 242
-> single-country panels, **three sit exactly on it** (Antarctica, Fiji, Russia), so a westmost rule
-> ties precisely the countries that are already the known problem and hands the decision straight
-> back to the alphabet. **Latitude has no seam.** So: **panels are read north to south, then west
-> to east — the way you read a map.**
+> **The tie-break: we asked you a question, we never got an answer, and we chose on our own
+> reasoning. Here is the honest version.** You settled one thing and we have it on record:
+> **replace alphabetical tie-breaking with a deterministic geographic one.** Everything after that
+> was ours. The manager's question five rounds ago floated **westmost** and **largest** as *his own
+> two examples* of what "geographic" might mean; there is no record of you picking either, and the
+> earlier draft of this paragraph turned his examples into your suggestions and then reported them
+> back to you as your own. That was wrong and it is withdrawn.
+>
+> **What shipped is a third option neither of them**, because we then measured both and both were
+> defective. **Largest is refused** — ordering by size would put "bigger rectangle first" back into
+> the map one round after we removed size as a claim. **Westmost is demoted to the second key**,
+> because longitude has a seam at the date line: of the 242 single-country panels, **three sit
+> exactly on it** (Antarctica, Fiji, Russia), so a westmost-first rule ties precisely the countries
+> that are already the known problem and hands the decision straight back to the alphabet.
+> **Latitude has no seam.** So what the map does is: **panels are read north to south, then west to
+> east — the way you read a map.**
+>
+> **How to overrule us.** Say so and it changes. The rule is one comparator in one selector; the
+> panels themselves, which countries share one, and what rectangle each gets do **not** depend on
+> it. **Your Europe 2026 map is unaffected either way** — its three panels have no tie to break.
+> And if you *did* answer back then and we simply failed to write it down, tell us and we will
+> record it with the date instead of this paragraph.
 >
 > Measured over **30,680 histories**: the tie is reached in about 24,200 of them, latitude settles
 > **every** one, longitude settles **0**, and the alphabet settles **0**. (Re-derived in the build
@@ -258,7 +324,9 @@ update to this file added that instruction).
 > regions tie, the panel *order* is still alphabetical. The shapes and sizes are completely
 > independent of country names — that was tested by renaming every country and re-running — so
 > it is reading order only. Accept it and say so plainly, or break the tie geographically
-> (westmost first, or largest first)?
+> (westmost first, or largest first)? **(This is the question, preserved as it was asked. The two
+> options in it are ours, not Jacob's — see the two blocks above. It was never answered; we chose a
+> third option and shipped it, and we say so now instead of crediting it to him.)**
 
 > **🟢 THE NEW MAP FRAME HAS BEEN ATTACKED AND IT HELD — as of 2026-09-01 (this block is
 > superseded on *"shippable"* and on what happens next by the block above, and nothing else).**

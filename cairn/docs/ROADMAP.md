@@ -575,6 +575,20 @@ south then west to east. **A-51's geometry does not move**: pane membership, cou
 are byte-identical on every library, the Europe 2026 fixture is unchanged end to end, and the export
 surface, dependencies and stored data are all untouched.
 
+**Revision 38, 2026-09-01.** A bounded **design-foundation** pass at Jacob's instruction, opened after the
+I-8f/I-8j gate permitted I-8b. It **adds no increment, cuts none, reorders none, and does not touch Phase 2's
+scope or its exit criteria.** One increment is rewritten — **I-8b** — and only in its *Built* and
+*Verification* bullets, which now name a spec instead of implying one. The spec is
+**`cairn/docs/DESIGN.md`**, a new contract-grade document that `ARCHITECTURE.md` **§9** makes binding, and
+which exists because Cairn's visual direction previously lived only in `styles.css` comments, one bullet of
+I-8a below, and an explicitly advisory checklist — i.e. it did not survive a fresh session. It carries the
+nine visual principles, the shipped I-8a baseline, the **mobile-first responsive contract**, the **I-8b
+Profile design target** (§5) and the **rendered acceptance standard** (§6). `ARCHITECTURE.md` **A-55** rules
+the frontend tooling stack alongside it: **no new runtime dependency in `apps/web`**, no build-tool change,
+two vendored agent skills, and the zero-dep rule confirmed as `packages/core`/`packages/client` only.
+**Nothing in the settled map arc (A-40 → A-54) is reopened** — §9.2 fences it explicitly, and I-8b's
+`WorldMap.tsx` diff stays at zero lines for a fourth increment.
+
 > **Phase numbers changed once, here.** Every heading below carries its old number, and every "Phase N"
 > written in `ARCHITECTURE.md` §1–§7, `BUILD-NOTES.md` or `QA-FINDINGS.md` before revision 9 means the
 > *named* phase it described: "Phase 2" = accounts/server (**now 3**), "Phase 3" = ingest (**now 4**),
@@ -3933,18 +3947,73 @@ in `ARCHITECTURE.md` except §2.10's list.)*
 #### I-8b — Profile
 
 *(Revision 27. Takes the Profile half of I-8's spec above, unchanged, plus the tab registration I-8a left
-for it. **2b ships here.** Revision 28 adds I-8c and I-8d to its blockers; revision 33 adds I-8g.)*
+for it. **2b ships here.** Revision 28 adds I-8c and I-8d to its blockers; revision 33 adds I-8g;
+**revision 38 gives it a design spec — `cairn/docs/DESIGN.md` §5 — and a rendered acceptance standard,
+§6.** Revision 38 adds **no data, no domain concept and no backend**: the *Built* list below is I-8's own
+Profile half plus the four shell items §5.6 enumerates, and nothing else.)*
 
 - **Built.** `Profile.tsx` — countries, cities, trips, days travelled, first and last visit per country, and
   the honest count of what could not be attributed; the Profile tab registered into I-8a's shell; the rescan
   indicator from I-6 visible on screen and not merely in state. Cities appear as **text**, which is where
-  they need no geometry (A-40 Part 5).
-- **User-visible outcome.** A travel identity, and a screen that says what it does not know.
-- **Architecture / data model.** No new ruling. I-8's spec as written, minus the map clauses I-8a discharged.
+  they need no geometry (A-40 Part 5). **Built to `DESIGN.md` §5**, which is the spec rather than a
+  suggestion: the four movements (the claim · the record · its shape over time · what we do not know), the
+  identity line as **one typographic statement rather than three stat tiles**, the country record as
+  **hairline-separated rows rather than cards**, cities grouped under their country, and the unattributed
+  block as **content rather than a footnote**. Plus the five bounded shell items §5.6 enumerates and closes:
+  the third tab registration; the **bottom-anchored tab bar at phone widths** with safe-area padding
+  (§3.3 R1) and the sticky-stack fix that removes `.tabbar`'s hardcoded `top: 2.7rem` (R2);
+  `--pane-cap: min(38vh → 38svh, 300px)` (R3, one token, no `viewBox` moves); the **touch-target floors**
+  (§3.4 — `.icon`'s 26 × 26 hit area is the named failure); and arrow-key traversal on the tablist.
+  **No engine change, no `packages/core` or `packages/client` diff, no `SUMMARY_VERSION` bump, no export-surface
+  movement, no new runtime dependency, and `WorldMap.tsx` stays a zero-line diff** — fourth increment running.
+- **User-visible outcome.** A travel identity, and a screen that says what it does not know. **On a phone
+  first**: this is the increment where Cairn's navigation becomes reachable one-handed and its visual
+  direction becomes a written contract rather than a set of comments.
+- **Architecture / data model.** No new *domain* ruling — I-8's spec as written, minus the map clauses I-8a
+  discharged. Two documents bind that did not exist at revision 27: **`DESIGN.md`** (the design contract,
+  made binding by `ARCHITECTURE.md` §9.1) and **A-55** (the tooling ruling — which is why this increment
+  adds no dependency and needs no modal, no drawer and no component library; §5.5 rules the country
+  drill-down as an **inline expansion**, which is both the better interaction and the reason the standing
+  shadcn revisit trigger is not hit). **§9.2's fences apply**: the world map's geometry is closed, and no
+  media query may be added to `.worldmap__panes`.
 - **Verification.** I-8's remaining criteria, on this surface: the provisional treatment asserted on the
   rendered Profile with the same injected fault; the `travelStats` refusal boundary; `unattributed` and
   `unnamedCities` rendered rather than hidden, with the *"no places yet"* case distinguishable from *"all
-  attributed"*; and the tab shell still carrying exactly three tabs.
+  attributed"*; and the tab shell still carrying exactly three tabs. **Plus `DESIGN.md` §6 in full**, which
+  is the rendered acceptance standard and is where this increment's new criteria live rather than being
+  restated here. The five that carry an injected fault, named so the ship gate can be checked without
+  opening §6:
+  - **Touch targets** `[stated]`. Every `button, a[href], [role="button"], [role="tab"], input, select`
+    has a hit box **≥ 24 × 24 CSS px** at all five contexts (WCAG 2.2 SC 2.5.8) and **≥ 44 × 44** at the
+    three touch contexts for any primary target. **Injected fault:** restore `.icon`'s 26 × 26 hit area and
+    the assertion goes red at the three touch contexts and **stays green at the two desktop ones** — which
+    is what proves the probe is measuring the touch matrix and not the page.
+  - **No `vh`/`dvh` on a fixed-height scroll container** `[stated]`. A greppable ceiling over `styles.css`
+    in W1's shape: `38vh` may not appear on `--pane-cap` and `100dvh` may not appear on `.spine`'s
+    `max-height`. **Injected fault:** put `38vh` back and the grep goes red.
+  - **Motion budget** `[stated]`. Every non-zero `transition-duration`/`animation-duration` on the surface
+    is **≤ 300 ms**, no timing function is a bare `ease-in`, and under
+    `newContext({ reducedMotion: 'reduce' })` **every one resolves to `0s`**. **Injected fault:** give the
+    country-row expansion a 600 ms bounce and both halves go red.
+  - **The past is not decayed** (`DESIGN.md` P3) `[stated]`. The computed contrast of the `completed`
+    lifecycle chip is **≥** that of `planned`, in **both** colour schemes. **Injected fault:** drop
+    `.chip--life-completed` to `--ink-faint` and it goes red. *(This is a real risk on this screen: it is
+    the first surface where completed trips are the majority of the content.)*
+  - **`wide` adds no layout** `[stated]`. Every element inside the content column has an identical computed
+    width at **1280** and **1600**; only the container's left offset differs. **Injected fault:** add a
+    third column at `min-width: 1600px` and it goes red. *(A ceiling, not a floor — rule 4.)*
+
+  **Five contexts, and they are device profiles rather than bare widths** (§6.1): `devices['iPhone SE']`
+  320 × 568 · `devices['iPhone 14']` 390 × 664 · `devices['iPad Mini']` 768 × 1024 · `1280 × 800` ·
+  `1600 × 900`, each in **both** colour schemes. Interaction is **driven**, not inspected: tap the country
+  row, tap it again, reach it with `Enter`, cycle all three tabs, and drive the refusal, empty and
+  provisional paths. **The honest gap, which must be reported rather than claimed** (§6.4): only Chromium is
+  installed here, and it emulates neither iOS Safari's retracting chrome nor `env(safe-area-inset-*)`, which
+  it reports as `0px`. So the **safe-area assertions are not discharged by a Chromium run.** §6.4 gives the
+  order: install WebKit first (`playwright install webkit` — the CDN resolves through the proxy, probed
+  2026-09-01), and if it will not install, assert the declaration plus a forced-inset override and **record
+  the residue in `BUILD-NOTES.md` as an unverified claim**, which is this project's existing convention for
+  something that could not be run.
 - **Dependencies / blockers.** I-8a, **I-8c, I-8d, I-8e, I-8f, I-8g and I-8j** (revision 28 for the first two, revision
   29 for I-8e, revision 32 for I-8f, revision 33 for I-8g, **revision 37 for I-8j**; this is a hard gate rather than a preference).
   **I-8j**, because the manager's I-8i gate routed three items that gate this increment and two of them are
@@ -3962,8 +4031,13 @@ for it. **2b ships here.** Revision 28 adds I-8c and I-8d to its blockers; revis
   round 36 found that I-8d framed the *wrong* subject for a whole class of libraries and that the alphabet
   decided which country the surface calls *"shown separately"* — a claim this second surface inherits
   (QA R36-1, R36-2). *2b does not ship until the map is a map of the right subject, the numbers on it are
-  true, and no trip in the library can be lost without being offered.*
-- **Ship gate.** **2b is independently shippable here.** Criteria 4, 5, 6 and 7 all pass.
+  true, and no trip in the library can be lost without being offered.* **Revision 38 adds no blocker** — the
+  design pass produced a spec, not a dependency, and `REVIEW.md`'s I-8f/I-8j gate already recorded that
+  nothing on this line is outstanding.
+- **Ship gate.** **2b is independently shippable here.** Criteria 4, 5, 6 and 7 all pass. **Plus:**
+  `DESIGN.md` §6's matrix is run at all five contexts in both colour schemes, every criterion above has its
+  injected fault red, and any §6 assertion that could not be discharged in Chromium is **named as
+  unverified in `BUILD-NOTES.md`** rather than reported as passing.
 
 #### I-9 — Participants in core
 

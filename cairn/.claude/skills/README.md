@@ -3,6 +3,10 @@
 Third-party skills vendored into the repo, plus one written for this project. All MIT — see the
 `LICENSE.*` files here.
 
+**Adding one is an architect ruling, not a judgement call.** The current set is ruled by
+`cairn/docs/ARCHITECTURE.md` §9 **A-55**, which evaluated eight candidates and says why each is in or
+out. Read it before vendoring anything else; Jacob has trimmed this directory once already (below).
+
 **Why they live under `cairn/` and not the repo root.** These are directory-scoped: they apply to Cairn
 development, not to the Europe 2026 trip planner at the repo root. That planner is a live app Jacob edits
 in short data-only passes ("add X to Aug 14"), and the root `CLAUDE.md` requires those to be terse and to
@@ -20,6 +24,8 @@ version. Updating means re-copying from upstream, deliberately.
 | `test-driven-development` | [obra/superpowers](https://github.com/obra/superpowers) | RED-GREEN-REFACTOR. The enforcement mechanism for the golden-fixture and determinism rules in `ROADMAP.md`. |
 | `systematic-debugging` | obra/superpowers | Root-cause before fix. |
 | `verification-before-completion` | obra/superpowers | Evidence before "it works". Directly answers what the `manager` agent checks. |
+| `emil-design-eng` | [emilkowalski/skills](https://github.com/emilkowalski/skills) (MIT) | UI polish, component feel, and the invisible details. **Construction-time craft only** — `cairn/docs/DESIGN.md` §1 outranks it. A-55. |
+| `animate` | emilkowalski/skills (MIT) | Decides whether a thing should animate *before* picking a curve, duration, property and interruption. The source of `DESIGN.md` **P6**'s motion budget. A-55. |
 
 ## Deliberately not installed
 
@@ -27,6 +33,25 @@ version. Updating means re-copying from upstream, deliberately.
   response including clarifying questions". That hijacks every turn in the repo, including trip-planner
   edits, and contradicts `CLAUDE.md`'s concision rule. The individual skills work without it; the
   `superpowers:`-prefixed cross-references inside them were rewritten to the bare names used here.
+- **The other ten `emilkowalski/skills`** — `review-animations`, `improve-animations`,
+  `find-animation-opportunities`, `animation-vocabulary`, `animate-expo`, `apple-design`, `write-swift`,
+  `prototype`, `ask-sonner` and **`pick-ui-library`**. The last one is the load-bearing omission: Cairn's
+  library choices are ruled in **A-55**, and a skill that recommends a UI library would be a second
+  authority on the one question this project most needs a single answer to. The audit-shaped ones
+  (`review-animations`, `improve-animations`) overlap the breaker stage and `DESIGN.md` §6, which is the
+  same overlap Impeccable's scored rubric was refused for. `animate-expo`/`write-swift`/`apple-design`
+  become relevant only if `apps/mobile` is built.
+- **Impeccable** ([pbakaus/impeccable](https://github.com/pbakaus/impeccable), Apache-2.0) — **approved
+  for vendoring by A-55 and deliberately not vendored in the same pass**, so its behaviour can be watched
+  on its own. Its *content* is already here in resident form: `cairn/docs/VISUAL-TELLS.md` is a hand-picked
+  subset of its detector rules, restated as prose. If it is vendored: **the skill payload only** — no
+  hooks, no `settings.json` edit, no CLI, no browser extension, no npm dependency, and **not** its
+  five-dimension scored audit rubric, which would be a second severity taxonomy competing with
+  `QA-FINDINGS.md`.
+- **`ui-ux-pro-max`** — see *What was removed* below. Jacob removed it himself; **A-55 REJECTs
+  re-adoption** and only Jacob can reverse that. Its catalogue is 79 named UI styles (glassmorphism,
+  claymorphism, neumorphism, bento grid, …), which is substantially the aesthetic `DESIGN.md` P8 and
+  `VISUAL-TELLS.md` §2 are written *against*.
 - **Mem-Palace / cross-conversation memory skills** — this repo already keeps its memory in git:
   `CLAUDE.md`, `docs/HISTORY.md`, `docs/BOOKINGS.md` and `cairn/docs/*`. A parallel uncommitted store would
   become a second source of truth that drifts from those. `cairn-constraints` is the committed substitute.
@@ -43,10 +68,22 @@ Two mechanical rewrites, so upstream diffs stay readable:
 3. Two descriptions rewritten (bodies untouched): `taste`'s was 1,299 characters of trigger examples, paid
    for on **every** session in this directory; `design-taste-frontend`'s now states the scope limit its own
    body declares, so it stops firing on product UI it is not built for.
+4. **The two Emil skills each carry a Cairn fence** immediately under the frontmatter (bodies otherwise
+   byte-identical to upstream at `main`, fetched 2026-09-01): it names `DESIGN.md` §1 as outranking them,
+   restates P6's motion budget as the binding numbers, forbids the skill from introducing a runtime
+   dependency, and lists the sibling skills it cross-references that are **not** vendored.
+5. **One cross-reference rewritten in `animate/SKILL.md`** — its *"stop and invoke `pick-ui-library`"* now
+   points at `ARCHITECTURE.md` §9 A-55, which is where Cairn's library choices are actually ruled. The
+   sentence's underlying point (do not hand-roll a modal) is kept, because it is the reason A-55 leaves the
+   Radix / Base UI door open.
 
 ## What these cost
 
 Descriptions load eagerly — every session here pays for all of them. Bodies load only on invocation.
+
+**Measured at revision 38** (`wc -c`, this tree): `emil-design-eng` **28,182 B** and `animate` **12,805 B**
+of body, ≈ **7k** and **3k** tokens, loaded **only on invocation**. Their two descriptions add ≈ **0.2k** to
+the eager cost below. That is the whole price of A-55's two adoptions.
 
 | | ≈ tokens |
 |---|---|

@@ -15,17 +15,31 @@ adding, moving or trusting one.
 
 ## Document cost map
 
+**Every size below was re-measured at revision 38 (2026-09-01) and every one had drifted — most by
+10–30×.** The old figures (`ARCHITECTURE` 24k, `ROADMAP` 8.5k, `QA-FINDINGS` 8.3k) dated from before a
+year of rulings landed in them, and a table that under-reports cost by an order of magnitude causes the
+exact failure `cairn-constraints` §10 exists to prevent: an agent budgets for 8k, spends 106k, and does its
+worst work in what is left. **Re-measure when you land a revision** —
+`node -e "console.log(Math.round(require('fs').statSync('cairn/docs/X.md').size/4000)+'k')"` — and treat a
+row you did not verify as a lower bound.
+
+**Nothing in this column is a reading list.** Four of these documents are now large enough that reading one
+whole is a decision to spend a quarter of a context window; `doc-section` exists so you do not have to.
+
 | Doc | Size | Read whole when | Otherwise |
 |---|---|---|---|
-| `BRIEF.md` | ~2.3k tok | always (it's the contract) | — |
-| `ARCHITECTURE.md` | ~24k tok | no architecture yet; a broad design revision; you're the manager (the gate) | `cairn/tools/doc-section ARCHITECTURE <sections>` — see the table at the top of the doc for who needs what |
-| `ROADMAP.md` | ~8.5k tok | you're the architect planning the next phase | `cairn/tools/doc-section ROADMAP "Phase N" "Sequencing rules"` (also matches by heading text, not just number — see the tool's own `--help`) |
-| `BUILD-NOTES.md` | ~10k tok | you're the manager, or the divergence you're chasing isn't in §1 | `cairn/tools/doc-section BUILD-NOTES <sections>`; check the Status note at the top before trusting §4/§5's numbers |
-| `QA-FINDINGS.md` | ~8.3k tok | you're the manager | the Status note at the top + the specific finding(s) you were routed |
-| `REVIEW.md` | ~7.2k tok | you're the builder/breaker acting on its routing table | the Status note at the top tells you whether it's even current |
+| `BRIEF.md` | ~3k tok | always (it's the contract) | — |
+| `DESIGN.md` | ~12k tok | **you're building or reviewing any web surface** — it is the design contract, and `ARCHITECTURE.md` §9 makes it binding | `cairn/tools/doc-section DESIGN 3 6` gives the responsive contract + the rendered acceptance standard alone. §5 is the I-8b Profile spec |
+| `VISUAL-TELLS.md` | ~2k tok | once before writing CSS, once at rendered verification | **advisory, never a contract.** A hit is a question; it does not outrank `DESIGN.md` or a shipped ruling |
+| `PRODUCT-VISION.md` | ~10k tok | you're the architect and the question is *why this order* | Appendix A is Jacob's words verbatim — quote it, don't paraphrase it |
+| `ARCHITECTURE.md` | **~271k tok** | **never.** Not even for a broad design revision — read sections | `cairn/tools/doc-section ARCHITECTURE <sections>`; run it bare to list every section with its size, and see the table at the top of the doc for who needs what |
+| `ROADMAP.md` | **~106k tok** | **never** | `cairn/tools/doc-section ROADMAP "Phase N" "Sequencing rules"` (matches heading text as well as number — see the tool's `--help`). Phase 2 alone is ~69k; grep for your increment |
+| `BUILD-NOTES.md` | **~156k tok** | **never** | `cairn/tools/doc-section BUILD-NOTES <sections>`; check the Status note at the top before trusting §4/§5's numbers |
+| `QA-FINDINGS.md` | **~242k tok** | **never** — it is the largest document in the repo | the Status note at the top + the specific finding(s) you were routed |
+| `REVIEW.md` | ~45k tok | you're the builder/breaker acting on its routing table — and then only the current verdict | the Status note at the top tells you whether it's even current; the verdict table names which entries are closed |
 | `docs/HISTORY.md`, `cairn/docs/archive/*` | — | a finding or a comment cites it by name | never by default |
 | `europe-2026-itinerary.html` | ~44k tok | you're auditing render paths end to end (say so) | `node cairn/tools/extract-legacy.mjs`, or grep — see `cairn-constraints` §1 |
-| `CAIRN_VISUAL_ROADMAP.md` (+ its `.html` twin) | ~2k tok | you just made a phase-boundary decision or scope change (see below) | not a contract doc — skip it for a routine builder/breaker task |
+| `CAIRN_VISUAL_ROADMAP.md` (+ its `.html` twin) | ~34k tok | never — read the **newest block only**, which supersedes the ones below it | not a contract doc; skip it for a routine builder/breaker task, and see below for when to *update* it |
 
 ## Delegation — when a change needs which stage
 
