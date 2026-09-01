@@ -19,9 +19,49 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
+> **🟢 I-8g HAS NOW BEEN ATTACKED — the two map defects really are fixed, and one is not — as of
+> 2026-09-01 (this block is the newest; it supersedes the I-8g block below on *"verified ❌"*).**
+>
+> The tester spent a round trying to break I-8g and **could not find one place where the code
+> disagrees with the design**. Everything the builder claimed was re-measured from scratch, with a
+> second, independently written implementation of every calculation rather than by re-running the
+> builder's scripts: France's marker, the 203 km worst case, the 176 countries, the grouping being
+> order-proof (checked across **288,000** different orderings), Andorra being tappable, the map
+> filling its box, the dark-mode colour, and your Europe 2026 map still matching to four decimal
+> places. **Zero blockers.** The day map is byte-for-byte unchanged — including the exact rectangle
+> it zooms to, on every one of the 16 days.
+>
+> **What the round found, in plain terms.**
+>
+> - **The two-France-and-one-Greece map is still a picture of the ocean.** Both countries are on
+>   one map now and Greece is no longer labelled "shown separately" — that part is genuinely
+>   fixed. But **97.8% of that map is empty sea**, and **Greece is 35× smaller on screen than it
+>   was before this change**, because it used to get its own small box and now it is a 27 × 29
+>   pixel speck beside France. The cause is the one thing the ruling deliberately did not touch:
+>   the frame still has to stretch far enough to contain French Guiana. **This goes back to the
+>   architect** — it is the same "map of the wrong subject" problem as before, one step further
+>   downstream, and it is not something the builder can fix without a new ruling.
+> - **Three sentences in the code now say the opposite of what is true** (they describe the old
+>   grouping rule and quote a safety margin the architect withdrew as false). Cosmetic, but it is
+>   the one place a future reader goes to find out why a number is what it is. **Back to the
+>   builder**, one small edit.
+> - **The country-code chips under the map quietly stopped being alphabetical.** They now list
+>   largest country first. Nothing is unreachable — every country is still in the list and still
+>   clickable — but for someone with fifty countries it is harder to scan, and the ruling says
+>   this list did not change. **Architect's call.**
+> - **"The map fills its box" is true for wide maps and not for tall ones.** A Chile-only or
+>   Maldives-only map still leaves 2/3 of its box empty at phone width, and even your Europe map
+>   drops to 77% on a wide desktop screen. Not a regression — it is exactly what it was before —
+>   but it is only half a fix and nobody had written that down.
+>
+> **I-8g is built ✅ · verified ✅ · shippable — the manager's call.** The recommendation is *ship
+> the code and send the frame-width question back to the architect*, which is the same routing the
+> previous round gave. **I-8b (the Profile screen) is no longer blocked by the map's grouping** —
+> that question is settled — though it still waits on **I-8f**.
+
 > **🟡 I-8g IS BUILT — France is in France, and the alphabet no longer decides which country gets
-> exiled — as of 2026-09-01 (this block is the newest; it supersedes the I-8d block below on
-> *"I-8g is built ❌"*).**
+> exiled — as of 2026-09-01 (this block is superseded by the round-37 block above on
+> *"verified ❌"*; it supersedes the I-8d block below on *"I-8g is built ❌"*).**
 >
 > Both design defects the tester found in the map rule are now fixed in code, and the fixes are
 > measured rather than argued:

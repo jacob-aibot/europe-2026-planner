@@ -319,10 +319,52 @@
 </style>
 </head>
 <body>
+<div class="callout" style="border-left:4px solid #16a34a;padding:.75rem 1rem;margin:1rem 0;background:#f0fdf4">
+<p><strong>&#128994; I-8g HAS NOW BEEN ATTACKED &mdash; the two map defects really are fixed, and
+one is not &mdash; as of 2026-09-01</strong> (this block is the newest; it supersedes the I-8g block
+below on <em>&ldquo;verified &#10060;&rdquo;</em>).</p>
+<p>The tester spent a round trying to break I-8g and <strong>could not find one place where the code
+disagrees with the design</strong>. Everything the builder claimed was re-measured from scratch, with
+a second, independently written implementation of every calculation rather than by re-running the
+builder&rsquo;s scripts: France&rsquo;s marker, the 203&nbsp;km worst case, the 176 countries, the
+grouping being order-proof (checked across <strong>288,000</strong> different orderings), Andorra
+being tappable, the map filling its box, the dark-mode colour, and your Europe 2026 map still matching
+to four decimal places. <strong>Zero blockers.</strong> The day map is byte-for-byte unchanged &mdash;
+including the exact rectangle it zooms to, on every one of the 16 days.</p>
+<p><strong>What the round found, in plain terms.</strong></p>
+<ul>
+<li><strong>The two-France-and-one-Greece map is still a picture of the ocean.</strong> Both countries
+are on one map now and Greece is no longer labelled &ldquo;shown separately&rdquo; &mdash; that part is
+genuinely fixed. But <strong>97.8% of that map is empty sea</strong>, and <strong>Greece is 35&times;
+smaller on screen than it was before this change</strong>, because it used to get its own small box and
+now it is a 27&nbsp;&times;&nbsp;29 pixel speck beside France. The cause is the one thing the ruling
+deliberately did not touch: the frame still has to stretch far enough to contain French Guiana.
+<strong>This goes back to the architect</strong> &mdash; it is the same &ldquo;map of the wrong
+subject&rdquo; problem as before, one step further downstream.</li>
+<li><strong>Three sentences in the code now say the opposite of what is true</strong> (they describe
+the old grouping rule and quote a safety margin the architect withdrew as false). Cosmetic, but it is
+the one place a future reader goes to find out why a number is what it is. <strong>Back to the
+builder</strong>, one small edit.</li>
+<li><strong>The country-code chips under the map quietly stopped being alphabetical.</strong> They now
+list largest country first. Nothing is unreachable &mdash; every country is still in the list and still
+clickable &mdash; but for someone with fifty countries it is harder to scan, and the ruling says this
+list did not change. <strong>Architect&rsquo;s call.</strong></li>
+<li><strong>&ldquo;The map fills its box&rdquo; is true for wide maps and not for tall ones.</strong>
+A Chile-only or Maldives-only map still leaves 2/3 of its box empty at phone width, and even your
+Europe map drops to 77% on a wide desktop screen. Not a regression &mdash; it is exactly what it was
+before &mdash; but it is only half a fix and nobody had written that down.</li>
+</ul>
+<p><strong>I-8g is built &#9989; &middot; verified &#9989; &middot; shippable &mdash; the
+manager&rsquo;s call.</strong> The recommendation is <em>ship the code and send the frame-width
+question back to the architect</em>, which is the same routing the previous round gave.
+<strong>I-8b (the Profile screen) is no longer blocked by the map&rsquo;s grouping</strong> &mdash;
+that question is settled &mdash; though it still waits on <strong>I-8f</strong>.</p>
+</div>
 <div class="callout" style="border-left:4px solid #ca8a04;padding:.75rem 1rem;margin:1rem 0;background:#fefce8">
 <p><strong>&#128993; I-8g IS BUILT &mdash; France is in France, and the alphabet no longer decides
-which country gets exiled &mdash; as of 2026-09-01</strong> (this block is the newest; it supersedes
-the I-8d block below on <em>&ldquo;I-8g is built &#10060;&rdquo;</em>).</p>
+which country gets exiled &mdash; as of 2026-09-01</strong> (this block is superseded by the round-37
+block above on <em>&ldquo;verified &#10060;&rdquo;</em>; it supersedes the I-8d block below on
+<em>&ldquo;I-8g is built &#10060;&rdquo;</em>).</p>
 <p>Both design defects the tester found in the map rule are now fixed in code, and the fixes are
 measured rather than argued:</p>
 <ul>

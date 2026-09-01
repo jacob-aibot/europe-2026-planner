@@ -211,6 +211,41 @@ re-asserted on pane 3 from the browser's own `getBBox()`; **E** the shipped samp
 containment cross-checked in Chromium against the bare-Node numbers; **F** A-41 constraint 1's
 *"still tappable"*, tested by sampling every country's own filled interior (**R36-7**).
 
+**Round 37** is the adversarial pass over I-8g. Two probes, written from A-48 and the shipped
+source rather than by re-pointing an existing one — the builder re-pointed round 36's two probes
+at the rule that replaced the one they were written against, so a round that leaned on them would
+be grading the builder's own homework. Run from `cairn/`:
+
+```bash
+node qa/r37-a48.mjs                                  # A-48 clause by clause, second implementations
+# with `npm run web:build && npm run serve` in another shell:
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r37-render.mjs
+```
+
+`r37-a48.mjs` has ten sections and re-derives every quantity with a **second implementation**:
+a Lambert equal-area shoelace beside A-48's spherical formula, an independent point-in-polygon,
+a BFS connected-components reference, and a first-fit reference. **A** `countryKeyPoint` over all
+239 codes; **B** its edge cases — a bit-identical area tie in both orders, the union-box fallback,
+zero/2-point/3-point/odd-length rings, hostile input; **C** I9 across **288,000** partitions
+(400 six-point sets × all 720 orderings, every 3-subset of 24 codes × 6, every 4-subset of 12 × 24,
+plus 500 triples binary-searched onto the exact 4,000 km threshold), and `haversine`'s bit-exact
+symmetry, which is what I9 rests on; **D** the day map on the real fixture at 90 and 60 km;
+**E** `pane.aspect` re-derived from the emitted `viewBox`, and R33-1's pinned strings;
+**F** C9/I10 in bare geometry; **G** KD-70 with the ocean fraction measured; **H** KD-69;
+**I** cost; **J** the shipped source's comments against the ruling they cite.
+
+`r37-render.mjs` has five sections, all of them things the builder measured at one viewport and
+one library: **A** the aspect fix at five viewports; **B** across library shapes (a tall pane, a
+very wide pane, a four-country library); **C** KD-70 rendered, with `elementFromPoint` sampling
+the pane and every country's rendered bbox in css px; **D** the chip list's order in the DOM;
+**E** the dark `--map-fill` against every surface the map is drawn over, including the legend
+swatch's own background.
+
+`r37-a48.mjs` reports **3 FAIL**, all of them **R37-2** (§J). `r37-render.mjs` is **ALL CLEAR**:
+R37-1, R37-3 and R37-4 are `NOTE` lines there, because each is a measurement whose interpretation
+is the finding rather than a broken expectation. Read `../docs/QA-FINDINGS.md`'s round-37 note
+before assuming either is broken.
+
 Browser probes need `npm run web:build && npm run serve` in one shell first, then:
 
 ```bash
