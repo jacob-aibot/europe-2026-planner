@@ -408,9 +408,66 @@ BUILD-NOTES says was not done — 21 widths × 3 libraries, watching `auto-fill`
 columns; **E** KD-76's 35% figure and chip-list reachability for all five of `MF SX AI BL JE`;
 **F** the pixel floor at 390 × 820 (**R39-7**).
 
-`r39-a51.mjs` reports **12 FAIL** and `r39-render.mjs` **7 FAIL** at `10455b9`; every one is a
+`r39-a51.mjs` reported **12 FAIL** and `r39-render.mjs` **7 FAIL** at `10455b9`; every one was a
 round-39 finding, listed in `docs/QA-FINDINGS.md`. Neither script is broken — read the note
-before assuming it is.
+before assuming it is. **At I-8j they report 1 FAIL and 7 FAIL** — see the I-8j entry below for
+which eleven closed, which four assertions were re-pointed onto A-54's corrected statements, and
+why the survivors are R39-6 (aria/caption parity, a MINOR that A-54 does not rule) and R39-7's
+two L3 lines (which A-54 Part 4 widens L3's *exception* for rather than fixing).
+
+## I-8j (2026-09-01) — A-54: the cells tile the container, a malformed ring is stated, latitude breaks the last tie
+
+Three independent fixes, one increment. §4.4 **A-54** supersedes **A-51 G7** in full (layout),
+**A-51 G5**'s third key (the tie-break) and **A-52 clause 1** (the ring test), and corrects five
+published numbers. Two new files, five re-pointed.
+
+```bash
+bash qa/i8j-faults.sh                                    # 20 mutations + 1 CONTROL, ~15 min
+# with `npm run web:build && npm run serve` in another shell:
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/i8j-render.mjs
+```
+
+`i8j-faults.sh` is the successor to `i8i-faults.sh` **for the three clauses A-54 changes only** —
+`i8i-faults.sh`'s other thirteen are untouched and still red. Its 20 mutations cover **G7′/G7″**:
+A-51 G7's grid restored (1), the cell stops growing (2), the 320 px overflow restored via
+`flex: 1 0` (3), a 1 px border on the cell (4), masonry (5); **D**: the predicate removed, which
+reproduces R39-1's `viewBox: "NaN NaN NaN NaN"` with `missing: []` (6), each half of D alone
+(7, 8), all-or-stated relaxed to *"draw the good rings"* (9), `countryKeyPoint`'s `< 6` filter
+restored (10), its entry-box fallback restored (11), the guard pushed back into the build tool
+(12); **G5′**: the geographic keys dropped (13), latitude ascending (14), longitude first (15),
+`south` instead of `north` (16), the geographic keys promoted above `weight` so I18 falls (17);
+and three vacuity controls on A-54 Part 4's corrected numbers (19, 20, 21). **All 20 measure red.**
+
+**Fault 18 is a `control`, not a fault, and the distinction is the point.** A-54 Part 3 measures
+the canonical-position key — the alphabet, kept in the open as the last resort — as deciding
+**0** adjacent pairs over 30,680 libraries. No test on the shipped index can turn a mutation of it
+red, so filing it as a red fault would claim a coverage this suite has not got. It is run, the
+expected colour is **GREEN**, and a RED there would mean the key *is* reachable and A-54 Part 3's
+census is wrong.
+
+`i8j-render.mjs` has six sections, all real page loads: **A** the container-occupancy matrix —
+`Σ cell area ÷ container area` over A-54 Part 1's own **8 libraries × 5 widths** (320 · 390 · 640 ·
+960 · 1440), asserted **≥ 0.99 and ≤ 1.00** in all 40 cells, with the shipped grid's own figures
+printed beside each one; **A′** the mechanism (`display: flex`, `flex-wrap: wrap`,
+`align-items` back at `stretch`); **B** **G7″** — computed `border-*-width`, `outline-style`,
+`box-shadow` and `background-color` on every cell; **C** A-50 unchanged, the painted map filling
+its own `<svg>` in both directions; **D** A-54 Part 1's pinned growth numbers, and the 320 px
+clipping check; **E** reading order — DOM order = frame order = geometric top-left order, which is
+the criterion that **refuses masonry**; **F** **I19** on screen, a code the index cannot fill
+stated in words rather than painted as an empty card. It reports **ALL PASS / 353 ok**, worst empty
+fraction **0.51 %** and worst overflow **0.00 %**, against the shipped grid's **66.74 %** and
+**4.90 %** measured by the same probe before the fix.
+
+**Re-pointed, with each superseded assertion named rather than deleted.**
+
+| file | what moved |
+|---|---|
+| `i8i-render.mjs` §A | **R38-3's cell criterion is WITHDRAWN by A-54 Part 1** — it is false by construction once the cells tile their line, and it *passes on a container with a 46 % hole in it*, which is what R38-3 said about A-50's `<svg>` criterion one round earlier. The slack is still **measured and printed**; what is asserted in its place is the container criterion and **G7″**. A-50's own 239-library sweep is unchanged and still asserted. **ALL CLEAR** |
+| `i8i-faults.sh` fault 9 | **RETIRED** — it restored the flex row that A-51 G7 replaced, and A-54 G7′ restores it deliberately. The mutation text is kept in a comment; the successor (restore the grid, must go red) is `i8j-faults.sh` fault 1 |
+| `i8i-faults.sh` faults 7, 14, 16 | Re-pointed onto the lines A-54 moved. **Fault 14 is worth reading**: its old mutation (*push the atoms in descending index position*) never tested its own label — `owners` is sorted numerically, so `pane.codes` stayed canonical either way — and what it actually turned red was G5's third key, which G5′ replaces. It now mutates the `owners` sort, which is the clause the label names, and is red |
+| `r39-a51.mjs` `myFrame` | The probe's own oracle gains G5′'s two geographic keys. **Its L5 section, R39-5's builder half, now passes: the order-destroying ISO relabel leaves pane ORDER identical in 23 of 23 libraries** |
+| `r39-a51.mjs` §D/§G/§J/§N | Re-pointed onto A-54 Part 4's corrections: the greedy ceiling **14 → 18**, the >120° census from a false set equality to **1,236 / 1,187 / 49 / 48 + one honest `CA`+`GL`**, and L3's exception **widened to name residue 3** so the `FJ` pane is disclosed rather than unconditionally failed. **1 FAIL, down from 12** — R39-6, the aria/caption parity MINOR, which A-54 does not rule |
+| `r39-render.mjs` §D | R38-3's letterbox clause replaced by the container criterion, same as `i8i-render.mjs` §A; the sweep's third library goes from the 14-pane to the **18-pane** ceiling. **7 FAIL, unchanged** — 5 × R39-6 in §C and 2 × R39-7 in §F, all pre-existing and none touched by A-54 |
 
 Browser probes need `npm run web:build && npm run serve` in one shell first, then:
 

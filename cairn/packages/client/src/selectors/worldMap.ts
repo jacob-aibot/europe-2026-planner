@@ -390,14 +390,20 @@ export function worldMapFrame(stats: core.TravelStats, index: core.CountryIndex)
   // additive to `W` again (I5). **`weight` orders; it does not frame** — that is the whole of
   // what A-51 leaves it doing, and it is why the tie C5 could not break no longer exists.
   //
-  // G5's third key is the component's lowest position in the canonical part list. Positions are
-  // unique, so the order is total by construction and C6's tie-break-by-alphabet is withdrawn
-  // rather than kept as a fallback. **I18 falls out of the first key**: a code in
-  // `stats.countries` has at least one trip, so `home.length > 0 ⇒ weight >= 1` and
-  // `home.length === 0 ⇒ weight === 0`, and every home pane therefore precedes every extent
-  // pane — which is what stops an `FR`-only history opening on French Guiana, whose component
-  // is first in the RAW order (A-53 Part 5).
-  type Built = { members: number[]; codes: CountryCode[]; home: CountryCode[]; weight: number };
+  // **I18 falls out of the first key**: a code in `stats.countries` has at least one trip, so
+  // `home.length > 0 ⇒ weight >= 1` and `home.length === 0 ⇒ weight === 0`, and every home pane
+  // therefore precedes every extent pane — which is what stops an `FR`-only history opening on
+  // French Guiana, whose component is first in the RAW order (A-53 Part 5).
+  //
+  // The extent, unchanged in mechanism: `core.mapBounds` and nothing else, and the client still
+  // computes no bounds. It is taken here rather than after the sort because **G5′'s third and
+  // fourth keys are read off it** — the same `MapBounds` the pane carries, computed once, no new
+  // pass and no new field. `mapBounds` brings `MIN_SPAN_KM` with it, which on this surface is a
+  // degeneracy guard rather than a legibility one (A-42 (a)).
+  type Built = {
+    members: number[]; codes: CountryCode[]; home: CountryCode[];
+    weight: number; bounds: core.MapBounds;
+  };
   const built: Built[] = components.map((members) => {
     const owners = [...new Set(members.map((i) => atoms[i].owner))].sort((a, b) => a - b);
     const home = owners.filter((k) => members.some((i) => atoms[i].owner === k && atoms[i].part.principal));
@@ -406,18 +412,47 @@ export function worldMapFrame(stats: core.TravelStats, index: core.CountryIndex)
       codes: owners.map((k) => drawn[k].code),
       home: home.map((k) => drawn[k].code),
       weight: home.reduce((n, k) => n + drawn[k].tripIds.length, 0),
+      bounds: core.mapBounds(cornersOf(members)),
     };
   });
 
+  // ---- G5′ (A-54 Part 3, QA R39-5): weight, home.length, north, west, then the alphabet. ----
+  //
+  // A-51's third key was *"the component's lowest position in the canonical part list"*, and the
+  // canonical part list is built from `stats.countries` in **ascending ISO order** — so for two
+  // panes tied on `weight` and on `home.length` the effective tie-break was the alphabet, one
+  // indirection out: France's pane before the United States' because `F` < `U`. Round 39 measured
+  // that tie as the majority case, not the corner one: 22,765 of 22,877 (99.5%) two-country
+  // libraries with ≥ 2 panes have an adjacent pair separated by that key alone.
+  //
+  // The replacement reads only the pane's OWN rectangle, which is a function only of the parts in
+  // that pane. A code's identity is never consulted, and — unlike the canonical position — the
+  // key is **local**: it does not move when an unrelated code joins the library, which is the
+  // property I17 exists to protect, one size down.
+  //
+  // **Latitude before longitude, and the reason is the seam.** Longitude has a cut at ±180 and
+  // these bounds are planar, so a west-first rule sorts a pane at 179°E last and its neighbour at
+  // 179°W first — an artefact of the projection, not of the world. Of the 242 single-country
+  // panes the shipped index produces, **three sit exactly on the −180 seam (AQ, FJ, RU)**, so a
+  // westmost primary key ties precisely the codes A-51 residue 3 already discloses as broken and
+  // hands the decision straight back to the alphabet. Latitude has no seam and is very nearly
+  // injective on real geometry: all 242 panes have distinct `north`, while `west` collides for 9.
+  // Read as a sentence: *panes are read north to south, then west to east — the way you read a map.*
   built.sort((a, b) => {
     if (a.weight !== b.weight) return b.weight - a.weight;
     if (a.home.length !== b.home.length) return b.home.length - a.home.length;
-    // **KD-74:** on the shipped kernel this third key is a no-op — `clusterPoints` already emits
-    // its components in ascending lowest-member-index order and `sort` is stable, so it agrees
-    // with the array order it is sorting. It stays because it is what makes the ordering total
-    // *as a statement about the frame* rather than as an accident of the kernel's output
-    // convention, which is the class of assumption A-48 C3′ exists to remove. The fault that
-    // measures it is `qa/i8d-faults.sh` fault 7 — reverse it, and two equal-weight panes swap.
+    if (a.bounds.north !== b.bounds.north) return b.bounds.north - a.bounds.north;
+    if (a.bounds.west !== b.bounds.west) return a.bounds.west - b.bounds.west;
+    // **The last key is the alphabet, and A-54 names it rather than claiming it is unreachable.**
+    // Two panes with identical `weight`, `home.length`, `north` and `west` are not provably
+    // impossible on an arbitrary index, so the ordering is total BECAUSE of this key, not in
+    // spite of it. Measured over 30,680 libraries — all 239 single-country, all 28,441
+    // two-country, 2,000 random 2–25-code — the third key is reached in 24,204 and decides 25,454
+    // adjacent pairs: `north` resolves every one, `west` decides 0, and this line decides **0**.
+    // It is a documented safety net, not a live behaviour. On the shipped kernel it is also a
+    // no-op in the other direction (KD-74): `clusterPoints` emits components in ascending
+    // lowest-member-index order and `sort` is stable. The fault that measures it is
+    // `qa/i8d-faults.sh` fault 7 — reverse it, and two fully tied panes swap.
     return a.members[0] - b.members[0];
   });
 
@@ -434,10 +469,9 @@ export function worldMapFrame(stats: core.TravelStats, index: core.CountryIndex)
       else own.set(atoms[m].owner, [atoms[m].part]);
     }
     partsPerPane.push(own);
-    // The extent, unchanged in mechanism: `core.mapBounds` and nothing else, and the client
-    // still computes no bounds. `mapBounds` brings `MIN_SPAN_KM` with it, which on this
-    // surface is a degeneracy guard rather than a legibility one (A-42 (a)).
-    const bounds = core.mapBounds(cornersOf(group.members));
+    // The extent `built` already computed for G5′'s third and fourth keys — one `mapBounds` call
+    // per component, where there used to be one, and the same object the comparator read.
+    const bounds = group.bounds;
     const { viewBox, aspect } = paneFrame(bounds);
     return { id: `p${i}`, viewBox, bounds, codes: group.codes, home: group.home, weight: group.weight, aspect };
   });

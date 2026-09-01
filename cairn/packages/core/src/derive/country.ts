@@ -137,6 +137,60 @@ function ringAreaKm2(ring: CountryRing): number {
 }
 
 /**
+ * **D — a ring is *drawable* iff its length is even, at least 2, and every element is a finite
+ * number** (§4.4 **A-54** Part 2, QA R39-1/R39-2). Module-private, like the area helper.
+ *
+ * No other test, and in particular **no minimum vertex count**: A-52's principle stands — a ring
+ * the index carries is a ring the frame draws — and a 1- or 2-point ring has real vertices that
+ * belong in its part's `box` and in its `d`. What D excludes is a ring that is not geometry at
+ * all: no coordinate pair, a half pair, or a coordinate that is not a number.
+ */
+function drawableRing(ring: CountryRing): boolean {
+  const n = ring.length;
+  if (n < 2 || n % 2 !== 0) return false;
+  for (let i = 0; i < n; i++) if (!Number.isFinite(ring[i])) return false;
+  return true;
+}
+
+/**
+ * Every ring the index carries for `code`, in index order (entry order, then ring order), or
+ * `null` when **this index has no wholly drawable geometry for this code** — §4.4 **A-54** Part 2.
+ *
+ * `null` covers exactly three shapes, and they are one answer rather than three: the code has no
+ * entry, it has no ring, or **any** of its rings fails **D**. That last clause is *all-or-stated*
+ * and it is a judgement rather than a mechanism: a code with *some* drawable rings is **not**
+ * drawn from the good ones, because drawing a country minus a ring is R38-5's finding — the lost
+ * vertex ends up outside the frame it was dropped from and nothing on screen hints at it — and
+ * A-40 clause 3 prefers a stated hole to a silent one. It also keeps **I11** exactly as written:
+ * for every *drawn* code the emitted ring multiset is the index's ring set for that code, with no
+ * *"except the ones we skipped"* clause.
+ *
+ * **Why this lives here and not in `tools/gen-countries.mjs`.** `countryParts` and
+ * `countryKeyPoint` are public exports (§2.10) taking an **injected** index. A-52 rested their
+ * safety on the generator's `< 6` filter, which is true of today's artefact and is not a property
+ * of either function: on an injected index whose only ring for a code is `[]` or `[7]`, `ringBox`
+ * returned `[Infinity, Infinity, -Infinity, -Infinity]` and the frame emitted
+ * `viewBox: "NaN NaN NaN NaN"`, `aspect: NaN`, `d: ""` and `missing: []` — a blank map, no error,
+ * nothing stated. The generator's filter is not the guarantee; **D is** (A-54 Part 7 residue 13
+ * keeps both, deliberately).
+ *
+ * Called by **both** public functions, so **I12**'s biconditional —
+ * `countryParts(…) === []` ⇔ `countryKeyPoint(…) === null` — is true by construction rather than
+ * by two implementations agreeing.
+ */
+function drawableRingsOf(code: CountryCode, index: CountryIndex): CountryRing[] | null {
+  const rings: CountryRing[] = [];
+  for (const entry of index.countries) {
+    if (entry.code !== code) continue;
+    for (const ring of entry.rings) {
+      if (!drawableRing(ring)) return null;
+      rings.push(ring);
+    }
+  }
+  return rings.length === 0 ? null : rings;
+}
+
+/**
  * Where a country *is*, as one point: the bounding-box centre of its **principal ring** —
  * §4.4 **A-48** C2′.
  *
@@ -155,48 +209,32 @@ function ringAreaKm2(ring: CountryRing): number {
  * inverts near and far (FR–MA 1,339 km against FR–CZ 4,137 km). Under C2′ the worst key point
  * in the shipped index is 203 km from its own country (`NO`), against 16,598 km (`KI`).
  *
- * The union-box centre survives only as the **fallback** for a code carrying no ring of three
- * points, so the function is total on any index. It fires on **zero** of the 239 shipped codes.
+ * **§4.4 A-54 Part 2 (QA R39-2) withdraws the union-box fallback and the `ring.length < 6`
+ * filter that made it reachable.** `null` now means exactly one thing — **D** says this index has
+ * no wholly drawable geometry for this code — and that is the same condition `countryParts`
+ * answers `[]` to, which is what makes **I12**'s biconditional true in both directions for the
+ * first time. Two reasons, and the first is the ruling one:
  *
- * **QA R37-5.** *Total* meant total, not *"returns something"*: a code whose entries carry no
- * rings at all has a union box of `[Infinity, Infinity, -Infinity, -Infinity]`, and averaging
- * that gave `{lat: NaN, lng: NaN}` — a value that is not a coordinate, that flows into
- * `clusterPoints` (where `NaN < t` is false, so the code silently becomes its own component)
- * and into `mapBounds`. It is `null` instead, which every caller already handles because that
- * is the answer for a code the index does not carry. Fixture-only: `tools/gen-countries.mjs`
- * cannot emit such an entry.
+ *  - **A box centre is not a point of the country.** The centre of a union of entry boxes is a
+ *    point about a *rectangle*, which is exactly what C2′ superseded A-41 C2 for, and **I8** —
+ *    *every key point lies within the bounding box of its own principal ring* — is the invariant
+ *    that says a fallback cannot honour it. R37-5's non-finite guard on that fallback goes with
+ *    it, unreachable.
+ *  - **The `< 6` filter was an inconsistency, not a rule.** A-52 removed it from `countryParts`
+ *    and left it here, so a 2-point ring made the principal part's `key` `{5.5, 5.5}` while this
+ *    function answered the union box's `{0, 0}` — I12 broken on an index A-52 itself admits
+ *    (R39-2). D replaces it, and D has no minimum vertex count.
  */
 export function countryKeyPoint(code: CountryCode, index: CountryIndex): LatLng | null {
-  let principal: CountryRing | null = null;
-  let principalArea = -1;
-  let seen = false;
-  let west = Infinity, south = Infinity, east = -Infinity, north = -Infinity;
+  const rings = drawableRingsOf(code, index);
+  if (rings === null) return null;
 
-  for (const entry of index.countries) {
-    if (entry.code !== code) continue;
-    seen = true;
-    const box = entry.box;
-    if (box[0] < west) west = box[0];
-    if (box[1] < south) south = box[1];
-    if (box[2] > east) east = box[2];
-    if (box[3] > north) north = box[3];
-    for (const ring of entry.rings) {
-      if (ring.length < 6) continue;
-      const area = ringAreaKm2(ring);
-      // Strictly greater, so a tie keeps the earlier ring — index order, as C2′ specifies.
-      if (area > principalArea) { principalArea = area; principal = ring; }
-    }
-  }
-
-  if (!seen) return null;
-  if (principal === null) {
-    // R37-5: an entry with no rings has an unbounded union box, and the average of
-    // `Infinity` and `-Infinity` is `NaN`. `null` is the honest answer and the one every
-    // caller already handles.
-    if (!Number.isFinite(west) || !Number.isFinite(south) || !Number.isFinite(east) || !Number.isFinite(north)) {
-      return null;
-    }
-    return { lat: (south + north) / 2, lng: (west + east) / 2 };
+  let principal = rings[0];
+  let principalArea = ringAreaKm2(rings[0]);
+  for (let i = 1; i < rings.length; i++) {
+    const area = ringAreaKm2(rings[i]);
+    // Strictly greater, so a tie keeps the earlier ring — index order, as C2′ specifies.
+    if (area > principalArea) { principalArea = area; principal = rings[i]; }
   }
 
   let rw = Infinity, rs = Infinity, re = -Infinity, rn = -Infinity;
@@ -245,11 +283,17 @@ function ringBox(ring: CountryRing): CountryBox {
 /**
  * The **parts** of a country: the connected components of its own rings — §4.4 **A-49** Part 2.
  *
- * Pure; the index and the threshold are both injected. **`[]` iff the index carries no ring at
- * all for the code** — §4.4 **A-52** (QA R38-5) took out the `ring.length >= 6` filter, so `[]`
- * has exactly one meaning and it is the same one `countryKeyPoint`'s `null` has. A caller treats
- * `[]` as *"the index cannot fill this code"*: stated as unfillable, never dropped (A-40 clause
- * 3), and `worldMapFrame`'s `missing` test therefore has one answer rather than two.
+ * Pure; the index and the threshold are both injected. **`[]` iff this index has no wholly
+ * drawable geometry for the code** — §4.4 **A-54** Part 2's biconditional, which replaces A-52's
+ * *"`[]` iff the index carries no ring at all"*. `[]` therefore covers exactly three shapes and
+ * they are one answer: no entry, no ring, or **any** ring that fails **D** (even length, ≥ 2,
+ * every element finite). It is the same condition `countryKeyPoint`'s `null` has — both call the
+ * same private gather — so a caller treats `[]` as *"the index cannot fill this code"*: stated as
+ * unfillable, never dropped (A-40 clause 3), and `worldMapFrame`'s `missing` test therefore has
+ * one answer rather than two. **A-52 clause 1 is superseded**: its stated justification for
+ * removing the length filter — *"a degenerate ring … contributes its own points to its part's
+ * `box`"* — is false for a ring that has no points, and the safety of a public export taking an
+ * injected index may not rest on what `tools/gen-countries.mjs` happens to emit.
  *
  * **The rule, and it is the one A-48 already introduced, generalised.** A-48 ruled that a
  * country's *position* is a property of its principal landmass rather than of its bounding
@@ -286,18 +330,17 @@ export function countryParts(
   thresholdKm: number,
 ): CountryPart[] {
   // Index order: entry order, then ring order. **A-52 (QA R38-5): EVERY ring, with no length
-  // filter.** A ring the index carries is a ring the frame draws — the `ring.length >= 6` filter
-  // that used to be here dropped a degenerate ring from `d` AND from its part's `box`, so the
-  // lost vertex ended up outside the frame it was dropped from and nothing on screen hinted at
-  // it. A degenerate ring has zero spherical area, so the strict `>` below already keeps the
-  // earlier ring and such a ring can never be principal; it contributes its own points to its
-  // part's `box` and its own subpath to `d`, which is all it was ever entitled to.
-  const rings: CountryRing[] = [];
-  for (const entry of index.countries) {
-    if (entry.code !== code) continue;
-    for (const ring of entry.rings) rings.push(ring);
-  }
-  if (rings.length === 0) return [];
+  // filter** — a ring the index carries is a ring the frame draws, because the `ring.length >= 6`
+  // filter that used to be here dropped a degenerate ring from `d` AND from its part's `box`, so
+  // the lost vertex ended up outside the frame it was dropped from and nothing on screen hinted
+  // at it. A degenerate ring has zero spherical area, so the strict `>` below already keeps the
+  // earlier ring and such a ring can never be principal.
+  //
+  // **A-54 Part 2 (QA R39-1) adds the one test A-52 left to a build tool: D.** Every ring the
+  // gather returns is drawable, so every `ringBox` below is finite in all four components — which
+  // is the property this function's callers already assume and the frame had no way to check.
+  const rings = drawableRingsOf(code, index);
+  if (rings === null) return [];
 
   const boxes = rings.map(ringBox);
   const points = boxes.map((b) => ({ lat: (b[1] + b[3]) / 2, lng: (b[0] + b[2]) / 2 }));

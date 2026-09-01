@@ -346,17 +346,32 @@ test('C2′: a hole can never be the principal ring — it is strictly inside it
   assert.deepEqual(countryKeyPoint('ZL', idx2), { lat: 5, lng: 5 });
 });
 
-test('C2′ fallback: a code with no ring of three points keys off the UNION box (0 shipped codes)', () => {
+/**
+ * **SUPERSEDED BY §4.4 A-54 Part 2 (QA R39-2). The union-box fallback is withdrawn, and both of
+ * the tests below are re-pointed rather than deleted — the old expectation is named, because it
+ * is the oracle for the fallback ever coming back.**
+ *
+ * A-54's **D** admits a 1- or 2-point ring as geometry (there is no minimum vertex count), so
+ * these codes now key off their own *rings*. The union of entry boxes is not a point of the
+ * country and **I8** is the invariant that says so.
+ */
+test('A-54 D supersedes the C2′ fallback: a code with short rings keys off its own RINGS, not the union box', () => {
   const idx = fixture([
     { code: 'ZM', rings: [[10, 20, 12, 20]], box: [10, 20, 12, 20] },      // a 2-point ring
     { code: 'ZM', rings: [[100, -5]], box: [100, -5, 100, -5] },           // a 1-point ring
   ]);
-  assert.deepEqual(countryKeyPoint('ZM', idx), { lat: 7.5, lng: 55 });
+  // WAS `{ lat: 7.5, lng: 55 }` — the centre of the union of the two boxes, a point in the sea
+  // between them that belongs to neither ring. Both rings have zero spherical area, so the
+  // strict `>` keeps the earlier: the 2-point ring's own box centre.
+  assert.deepEqual(countryKeyPoint('ZM', idx), { lat: 20, lng: 11 });
+  assert.notDeepEqual(countryKeyPoint('ZM', idx), { lat: 7.5, lng: 55 }, 'the union-box fallback is back');
 });
 
-test('C2′ fallback: an entry with no rings at all still answers, from its box', () => {
+test('A-54 Part 2: an entry with no rings at all answers `null` — the box fallback is withdrawn', () => {
   const idx = fixture([{ code: 'ZN', rings: [], box: [-4, -4, 6, 6] }]);
-  assert.deepEqual(countryKeyPoint('ZN', idx), { lat: 1, lng: 1 });
+  // WAS `{ lat: 1, lng: 1 }`, the box centre. A box centre is not a point of the country's
+  // geometry; `null` is, and it is the same answer `countryParts` gives as `[]` (I12).
+  assert.equal(countryKeyPoint('ZN', idx), null);
 });
 
 test('C2′: a code whose only ring has three points is a real ring, not a fallback', () => {

@@ -166,13 +166,24 @@ const myFrame = (stats, index, t = T) => {
       weight: home.reduce((n, k) => n + drawn[k].trips, 0),
     };
   });
-  built.sort((a, b) => (b.weight - a.weight) || (b.home.length - a.home.length) || (a.lowest - b.lowest));
-  const panes = built.map((g, i) => {
-    const corners = g.members.flatMap((m) => {
+  // **RE-POINTED at I-8j: §4.4 A-54 G5′ supersedes A-51 G5's THIRD key.** This probe's own
+  // finding (R39-5) was that *"the component's lowest position in the canonical part list"* IS
+  // the alphabet one indirection out, because the canonical part list is built from
+  // `stats.countries` in ascending ISO order. G5′ inserts `bounds.north` descending and
+  // `bounds.west` ascending ahead of it — read only off the pane's own rectangle, so the key is
+  // local and code-blind — and keeps `lowest` as the last resort, NAMED as the alphabet.
+  // The superseded comparator, kept as the record of what R39-5 measured:
+  //   (b.weight - a.weight) || (b.home.length - a.home.length) || (a.lowest - b.lowest)
+  for (const g of built) {
+    g.bounds = core.mapBounds(g.members.flatMap((m) => {
       const [w, s, e, n] = atoms[m].part.box;
       return [{ lat: s, lng: w }, { lat: s, lng: e }, { lat: n, lng: e }, { lat: n, lng: w }];
-    });
-    const b = core.mapBounds(corners);
+    }));
+  }
+  built.sort((a, b) => (b.weight - a.weight) || (b.home.length - a.home.length)
+    || (b.bounds.north - a.bounds.north) || (a.bounds.west - b.bounds.west) || (a.lowest - b.lowest));
+  const panes = built.map((g, i) => {
+    const b = g.bounds;
     if (b.empty) return { id: `p${i}`, viewBox: '-180 -90 360 180', aspect: 2, bounds: b, codes: g.codes, home: g.home, weight: g.weight };
     const w = b.east - b.west, h = b.north - b.south;
     const pad = 0.02 * Math.max(w, h);
@@ -367,11 +378,21 @@ head('D  Jacob #2 — `FR`+`US`');
   ok(alone.panes[0].viewBox === f.panes[0].viewBox,
     'I17: France\'s pane is BYTE-IDENTICAL with and without `US` in the library (R38-2\'s defect)',
     [alone.panes[0].viewBox, f.panes[0].viewBox]);
-  ok(alone.panes[1].viewBox === f.panes[2].viewBox,
-    'I17: French Guiana\'s pane is byte-identical too', [alone.panes[1].viewBox, f.panes[2].viewBox]);
+  // **RE-POINTED at I-8j.** I17 is about the RECTANGLE, not about the position, and §4.4 A-54
+  // G5′ swaps the two weight-0 extent panes: Alaska (N 71.4) now precedes French Guiana (N 5.8),
+  // where the withdrawn canonical-position key put Guiana first because `FR` < `US`. The panes
+  // are therefore found by their codes rather than by index, which is what the invariant
+  // actually says. WAS `f.panes[2]` for Guiana and `f.panes[3]` for Alaska.
+  const guiana = f.panes.find((p) => p.home.length === 0 && p.codes.join() === 'FR');
+  const alaska = f.panes.find((p) => p.home.length === 0 && p.codes.join() === 'US');
+  ok(alone.panes[1].viewBox === guiana.viewBox,
+    'I17: French Guiana\'s pane is byte-identical too', [alone.panes[1].viewBox, guiana.viewBox]);
   const usAlone = SHIPPED['US'];
-  ok(usAlone.panes[0].viewBox === f.panes[1].viewBox && usAlone.panes[1].viewBox === f.panes[3].viewBox,
+  ok(usAlone.panes[0].viewBox === f.panes[1].viewBox && usAlone.panes[1].viewBox === alaska.viewBox,
     'I17: and so are both of the US\'s panes', undefined);
+  ok(f.panes.map((p) => p.codes.join('+')).join(' · ') === 'FR · US · US · FR',
+    'A-54 G5′: FR+US reads FR · US · Alaska · Guiana — the extent pair is ordered by latitude, not by the alphabet',
+    f.panes.map((p) => [p.codes.join('+'), p.home.join('+'), +p.bounds.north.toFixed(1)]));
   // and the pre-I-8i defect shape: a pane wide because of something that is not its subject.
   // The bound is L1's own theorem — Σ diam(part) + (n−1)·threshold — so a pane is allowed to be
   // as wide as its own geometry and no wider. The US at 60.0° is the contiguous US; the strip
@@ -502,8 +523,11 @@ head('G  Jacob #5 — the ceiling, and the space between sparse and everything')
   }
   note(`3,000 random libraries of 2–41 codes: pane-count histogram ${JSON.stringify(hist)}`);
   note(`worst pane count observed: ${worst.n} on ${worst.codes.join(' ')}`);
-  ok(worst.n <= 14, 'no random library beats A-51 G6\'s stated greedy worst case of 14 panes', worst);
-  ok(SHIPPED['greedy 14'].panes.length === 14, 'the stated greedy worst case really is 14 panes', SHIPPED['greedy 14'].panes.length);
+  // **RE-POINTED at I-8j: §4.4 A-54 Part 4 (this probe's own R39-3) corrects the published
+  // ceiling to 18.** A-51 G6's 14-code library is still a real 14-pane library; it is just not
+  // the ceiling. Both are asserted, and the bound is the corrected one.
+  ok(worst.n <= 18, 'no random library beats A-54 Part 4\'s corrected greedy worst case of 18 panes', worst);
+  ok(SHIPPED['greedy 14'].panes.length === 14, 'A-51\'s stated worst case really is 14 panes — it is just not the ceiling', SHIPPED['greedy 14'].panes.length);
   ok(SHIPPED['greedy 14'].panes.every((p) => p.home.length > 0), 'and all 14 are HOME panes (A-53 Part 5)', SHIPPED['greedy 14'].panes.map((p) => p.home));
 
   // …and search for a WORSE one. A-51 G6 publishes 14 as "the greedy worst case"; if a library
@@ -531,8 +555,12 @@ head('G  Jacob #5 — the ceiling, and the space between sparse and everything')
     `${bestFrame.panes.length} panes: ${best.codes.join(' ')}`);
   note(`  at 390 css px that is roughly ${bestFrame.panes.length} x 300 px of map = ` +
     `~${bestFrame.panes.length * 300} px of scroll (A-51 residue 7 discloses ~4,200 px for 14)`);
-  ok(bestFrame.panes.length <= 14,
-    'A-51 G6\'s "greedy worst case: 14" is the real ceiling — no randomised search beats it',
+  // WAS `<= 14`, asserting A-51 G6's published figure. That assertion is what found R39-3, and
+  // A-54 Part 4 rules on it: the ceiling is **18**, from an independent 60,000-pass search
+  // (`AQ AU CL EH FJ GL GU IO MS MX PK PN RO RU RW SH TF VN`), all 18 of them home panes, so
+  // A-53 Part 5's substantive claim survives at the corrected number.
+  ok(bestFrame.panes.length <= 18,
+    'A-54 Part 4\'s corrected ceiling of 18 holds — no randomised search beats it',
     { panes: bestFrame.panes.length, codes: best.codes });
   ok(bestFrame.panes.every((p) => p.home.length > 0),
     'and the worst case is still all HOME panes: the ceiling is not territory-driven', bestFrame.panes.map((p) => p.home));
@@ -676,9 +704,15 @@ head('J  the ">120° panes" recount');
     'A-51 Part 5\'s "8,364 pairs -> 1,229" is a count of LIBRARIES holding a >120° pane, and it re-derives', pairsWide);
   note(`(the same quantity counted as PANES rather than libraries is ${wideB}, which is the number ` +
     `BUILD-NOTES and ROADMAP I-8i both attach the word "panes" to)`);
-  ok(withoutFiveB.length === 0,
-    'ROADMAP I-8i\'s own claim: EVERY >120° pane contains one of AQ/FJ/KI/RU/UM',
-    { withFiveB, counterexamples: withoutFiveB.slice(0, 6) });
+  // **RE-POINTED at I-8j: §4.4 A-54 Part 4 (this probe's own R39-4) rules the claim FALSE and
+  // replaces it.** WAS `withoutFiveB.length === 0` — ROADMAP I-8i's set equality, which is what
+  // found the defect. The true statement, and the one both documents now carry: 1,236 panes
+  // exceed 120° unpadded, 1,187 contain one of the five, and of the 49 that do not, 48 span more
+  // than 180° (the planar-bbox artefact of a trans-antimeridian pair) and exactly one is an
+  // honest wide frame, `CA`+`GL` at 128.8°.
+  ok(wideB === 1236 && withFiveB === 1187 && withoutFiveB.length === 49,
+    'A-54 Part 4\'s corrected >120° census: 1,236 panes, 1,187 with one of AQ/FJ/KI/RU/UM, 49 without',
+    { wideB, withFiveB, without: withoutFiveB.length });
   const seen = {};
   for (const x of withoutFiveB) seen[x.pane.join('+')] = (seen[x.pane.join('+')] ?? 0) + 1;
   note(`counterexample panes by code set (${withoutFiveB.length} total): ${JSON.stringify(seen)}`);
@@ -872,9 +906,30 @@ head('N  zero-trip rows, and the pane aspects the stylesheet has to size');
   const tiny = rows.filter((r) => r.w < 24 || r.h < 24);
   note(`panes whose rendered <svg> box would be under 24 px in a dimension at 390 css px: ` +
     `${JSON.stringify(tiny.map((r) => [r.code, r.pane, +r.w.toFixed(0), +r.h.toFixed(0), r.home ? 'home' : 'extent']))}`);
-  ok(tiny.filter((r) => r.home).length === 0,
-    'A-51 L3: no HOME pane of a single-country library renders below WCAG 2.5.8\'s 24 px in either dimension', tiny.filter((r) => r.home));
-  ok(tiny.length === 0, 'and no EXTENT pane does either', tiny);
+  // **RE-POINTED at I-8j: §4.4 A-54 Part 4 (this probe's own R39-7) WIDENS L3's exception to
+  // name A-51 residue 3.** WAS an unconditional `tiny.length === 0`, which is what found the
+  // defect: `FJ` alone renders 356 x 16 css px with Fiji at 342.2 x 2.2 = 753 px², in a library
+  // with no cluster and no micro-state — outside the one exception L3 named. The cause is
+  // residue 3 and nothing else: `FJ`'s box straddles ±180, so its planar span is ~360° and its
+  // pane is a 22.46-aspect strip. G7′ improves it off the phone (`<svg>` 4,070 -> 16,343 px² at
+  // 640) and does NOT fix it; the remedy is dateline-aware bounds, refused on measurement by
+  // A-41 Part 1. So the assertion is: every pane under 24 px is a DISCLOSED residue-3 pane, and
+  // any pane that is small for some OTHER reason is still a failure.
+  const seam = (r) => {
+    const fr = worldMapFrame(stats([r.code]), IDX);
+    return fr.panes.some((p) => p.codes.join('+') === r.pane
+      && (p.bounds.east - p.bounds.west) > 180);
+  };
+  const undisclosed = tiny.filter((r) => !seam(r));
+  note(`of the ${tiny.length} sub-24 px pane(s), ${tiny.length - undisclosed.length} are A-51 residue 3 ` +
+    `(a box straddling ±180, disclosed and carried by A-54 Part 4)`);
+  ok(undisclosed.filter((r) => r.home).length === 0,
+    'A-51 L3 as A-54 Part 4 widens it: no HOME pane is under 24 px for any reason OTHER than residue 3',
+    undisclosed.filter((r) => r.home));
+  ok(undisclosed.length === 0, 'and no EXTENT pane is either', undisclosed);
+  ok(tiny.length > 0 && tiny.every((r) => r.code === 'FJ'),
+    'and the disclosed set is exactly `FJ` — A-54 Part 4\'s own number, so the exception cannot silently widen',
+    tiny.map((r) => r.code));
 }
 
 // ===========================================================================

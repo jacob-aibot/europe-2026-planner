@@ -365,9 +365,124 @@ test('R37-5: a code whose entries carry ZERO rings has no key point — `null`, 
   assert.deepEqual(countryParts('ZP', idx, 4000), []);
 });
 
-test('R37-5: a finite box with no ring of three points still answers — the fallback is not removed', () => {
+/**
+ * **SUPERSEDED BY §4.4 A-54 Part 2.** R37-5's own case is unchanged — no coordinate that is not
+ * one — but the answer is now `null` for a *second* reason: the entry-box fallback is **withdrawn**
+ * entirely. The centre of a union of entry boxes is not a point of the country's geometry, and
+ * **I8** is the invariant that says so. The test is kept, re-pointed, because it is the oracle for
+ * the fallback ever coming back.
+ */
+test('A-54 Part 2 supersedes R37-5\'s fallback: a finite box with no drawable ring answers `null`, not its box centre', () => {
   const idx = fixture([{ code: 'ZN', rings: [], box: [-4, -4, 6, 6] }]);
-  assert.deepEqual(countryKeyPoint('ZN', idx), { lat: 1, lng: 1 });
+  assert.equal(countryKeyPoint('ZN', idx), null,
+    'the entry-box fallback is withdrawn — a box centre is not a point of the country (I8)');
+  assert.deepEqual(countryParts('ZN', idx, 4000), [], 'and the biconditional holds on the same fixture');
+});
+
+// ---------------------------------------------------------------------------
+// A-54 Part 2 — predicate D, and I19's core half.
+//
+// `countryParts` is a public export taking an INJECTED index. Its safety may not live in
+// `tools/gen-countries.mjs`, which is what A-52 rested it on: on an index whose only ring for a
+// code is `[]` or `[7]`, `ringBox` returned `[Infinity, Infinity, -Infinity, -Infinity]`, the
+// part's `box` was non-finite, and the frame emitted `viewBox: "NaN NaN NaN NaN"` with
+// `missing: []` — a blank map, no error, nothing stated. That is A-40 clause 3's violation.
+// ---------------------------------------------------------------------------
+
+/** The five malformed shapes A-54 Part 6 names, plus the shape D deliberately ADMITS. */
+const MALFORMED: Array<[string, number[][]]> = [
+  ['rings: []', []],
+  ['[[]]', [[]]],
+  ['[[7]]', [[7]]],
+  ['[[1,2,3]]', [[1, 2, 3]]],
+  ['[[1, NaN]]', [[1, NaN]]],
+];
+
+test('A-54 D: a ring that is not geometry makes the whole code undrawable — `[]` and `null`, both directions', () => {
+  for (const [label, rings] of MALFORMED) {
+    const idx = fixture([{ code: 'ZQ', rings, box: [-4, -4, 6, 6] }]);
+    assert.deepEqual(countryParts('ZQ', idx, 4000), [], `${label}: countryParts must return []`);
+    assert.equal(countryKeyPoint('ZQ', idx), null, `${label}: countryKeyPoint must return null`);
+  }
+});
+
+test('A-54 D: Infinity is not a finite number either, and neither is a -Infinity box', () => {
+  const inf = fixture([{ code: 'ZQ', rings: [[0, 0, 1, Infinity, 2, 2]], box: [0, 0, 2, Infinity] }]);
+  assert.deepEqual(countryParts('ZQ', inf, 4000), []);
+  assert.equal(countryKeyPoint('ZQ', inf), null);
+});
+
+test('A-54 D: no MINIMUM VERTEX COUNT — a one-point and a two-point ring are drawable geometry', () => {
+  // A-52's principle stands: a ring the index carries is a ring the frame draws. What D excludes
+  // is a ring that is not geometry at all — no coordinate pair, a half pair, or a non-number.
+  // The entry `box` is deliberately WIDER than the ring, so the withdrawn fallback and the ring
+  // give different answers and this test cannot pass by coincidence.
+  const one = fixture([{ code: 'ZR', rings: [[100, -5]], box: [0, -50, 100, -5] }]);
+  assert.equal(countryParts('ZR', one, 4000).length, 1, 'a single point is a part');
+  assert.deepEqual(countryKeyPoint('ZR', one), { lat: -5, lng: 100 });
+  const two = fixture([{ code: 'ZS', rings: [[10, 20, 12, 20]], box: [-30, 0, 12, 20] }]);
+  assert.equal(countryParts('ZS', two, 4000).length, 1);
+  assert.deepEqual(countryKeyPoint('ZS', two), { lat: 20, lng: 11 });
+});
+
+test('A-54 D: ALL-OR-STATED — a code with some drawable rings and some not is not drawn from the good ones', () => {
+  // Drawing a country minus a ring is R38-5's finding: the lost vertex ends up outside the frame
+  // it was dropped from and nothing on screen hints at it. A-40 clause 3 prefers a stated hole.
+  const idx = fixture([
+    { code: 'ZU', rings: [square(0, 0, 10)], box: [0, 0, 10, 10] },
+    { code: 'ZU', rings: [[1, 2, 3]], box: [1, 2, 3, 2] },
+  ]);
+  assert.deepEqual(countryParts('ZU', idx, 4000), [],
+    'one undrawable ring makes the whole code undrawable — never "the good ones"');
+  assert.equal(countryKeyPoint('ZU', idx), null);
+});
+
+test('A-54 Part 2 / I12: the biconditional holds on the two cases A-52 got wrong', () => {
+  // (1) A finite `box` with `rings: []` gave `countryParts → []` and `countryKeyPoint → {5, 5}`.
+  const boxOnly = fixture([{ code: 'ZV', rings: [], box: [0, 0, 10, 10] }]);
+  assert.deepEqual(countryParts('ZV', boxOnly, 4000), []);
+  assert.equal(countryKeyPoint('ZV', boxOnly), null);
+  // (2) `countryKeyPoint`'s surviving `ring.length < 6` filter made the principal part's `key`
+  // `{5.5, 5.5}` while `countryKeyPoint` answered the union box's `{0, 0}` — I12 broken on an
+  // index A-52 itself admits. R39-2 measured exactly this pair.
+  const twoPoint = fixture([{ code: 'ZW', rings: [[5, 5, 6, 6]], box: [-5, -5, 5, 5] }]);
+  const principal = countryParts('ZW', twoPoint, 4000).find((p) => p.principal);
+  const key = countryKeyPoint('ZW', twoPoint) as LatLng;
+  assert.ok(principal, 'the two-point ring must still be a part');
+  assert.ok(key !== null, 'and it must still have a key point');
+  assert.ok(Object.is(principal.key.lat, key.lat) && Object.is(principal.key.lng, key.lng),
+    `I12 under Object.is: part ${JSON.stringify(principal.key)} vs key ${JSON.stringify(key)}`);
+  assert.deepEqual(key, { lat: 5.5, lng: 5.5 }, 'and the answer is the ring, not the entry box');
+});
+
+test('A-54 Part 2 / I12: `countryParts === []` ⇔ `countryKeyPoint === null` over all 239 shipped codes × 8 thresholds', () => {
+  const broken: string[] = [];
+  for (const t of [1, 100, 500, 900, 1000, 4000, 12000, 20000]) {
+    for (const code of [...CODES, 'ZZ', '', 'france']) {
+      const empty = countryParts(code, IDX, t).length === 0;
+      const nul = countryKeyPoint(code, IDX) === null;
+      if (empty !== nul) broken.push(`${code}@${t}`);
+    }
+  }
+  assert.deepEqual(broken, []);
+});
+
+test('A-54 Part 2: the shipped index is untouched by the guard — the census re-derived, not quoted', () => {
+  let rings = 0, odd = 0, nonFinite = 0, noRings = 0, shortest = Infinity;
+  for (const entry of IDX.countries) {
+    if (entry.rings.length === 0) noRings++;
+    for (const ring of entry.rings) {
+      rings++;
+      if (ring.length % 2 !== 0) odd++;
+      if (ring.length < shortest) shortest = ring.length;
+      for (const v of ring) if (!Number.isFinite(v)) nonFinite++;
+    }
+  }
+  assert.deepEqual({ entries: IDX.countries.length, rings, odd, nonFinite, noRings, shortest },
+    { entries: 292, rings: 1033, odd: 0, nonFinite: 0, noRings: 0, shortest: 8 },
+    'A-54 Part 2\'s census moved — the index changed and this guard is out of scope');
+  // …so every shipped ring is drawable and no part, key point, viewBox or `d` can move.
+  for (const code of CODES) assert.ok(countryParts(code, IDX, 4000).length >= 1, `${code} became undrawable`);
 });
 
 // ---------------------------------------------------------------------------

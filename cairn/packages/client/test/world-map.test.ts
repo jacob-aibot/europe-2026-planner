@@ -239,7 +239,11 @@ test('A-48 C9: country rows are emitted in paint order — descending index posi
   // panes rather than one. `frame.codes` is what stayed canonical (I13) — and C9's reordering
   // is still a property of the emitted PAINT array only, which is the clause this test holds.
   assert.deepEqual(frame.codes, ['CC', 'AA', 'BB'], 'the country list stays canonical row order');
-  assert.deepEqual(frame.panes.map((p) => p.codes), [['CC'], ['AA'], ['BB']]);
+  // Re-pointed again at I-8j: all three panes tie on weight and home.length, so A-54 G5′'s third
+  // key decides — north to south, AA at N 42, CC at N 1, BB at S 6. WAS `[['CC'],['AA'],['BB']]`,
+  // which was the canonical row order, i.e. the order the rows were handed in.
+  assert.deepEqual(frame.panes.map((p) => p.codes), [['AA'], ['CC'], ['BB']]);
+  assert.deepEqual(frame.panes.map((p) => p.bounds.north > 0), [true, true, false]);
 });
 
 // ---------------------------------------------------------------------------
@@ -490,22 +494,31 @@ test('A-51 supersedes C5: the pane count is geometry, and twelve more trips on o
 });
 
 /**
- * **C6's lowest-ISO tie-break is withdrawn with the hierarchy, because there is no tie left.**
- * G5's third key is the component's position in the canonical part list, and positions are
- * unique — so the ordering is total by construction rather than by an alphabet that encodes
- * nothing about any country. On the library C6 used to break by `AU < JP`, the answer is the
- * same and the reason is different; on the library where the rows arrive in another order, it
- * follows the ordinal rather than the alphabet, and that is the observable difference.
+ * **C6's lowest-ISO tie-break is withdrawn with the hierarchy** — and §4.4 **A-54** Part 3
+ * (QA R39-5) found that A-51's replacement put it straight back one indirection out: the
+ * canonical part list is built from `stats.countries` in ascending ISO order, so *"the
+ * component's lowest canonical position"* **is** the alphabet for two panes tied on `weight`
+ * and `home.length`. G5′ inserts `bounds.north` descending and `bounds.west` ascending ahead
+ * of it.
+ *
+ * **The observable difference, and it is why this test is kept rather than deleted:** under the
+ * canonical-position key `AU` came second because its row was first; under G5′ `JP` comes second
+ * because its pane is further north (N 36 against S 32), **whatever order the rows arrive in**.
  */
-test('A-51 G5 supersedes C6: the third key is a canonical position, not the lowest ISO code', () => {
+test('A-54 G5′ supersedes A-51 G5\'s third key: geography decides, and it does not read the row order', () => {
   const canonical = worldMapFrame(
     statsOf([trips('AU', 2), trips('EA', 2), trips('EB', 2), trips('EC', 1), trips('JP', 2)]),
     ATLAS,
   );
-  assert.deepEqual(canonical.panes.map((p) => p.codes), [['EA', 'EB', 'EC'], ['AU'], ['JP']]);
-  // The same library with the rows in a different order. C6 asserted `AU` stays second because
-  // `AU < JP`; G5 puts `JP` second because `JP` is earlier in THIS canonical part list. Both
-  // are deterministic; only one of them reads an ISO code, and L5 forbids that.
+  // WAS `[['EA','EB','EC'], ['AU'], ['JP']]` — the canonical position, i.e. the row order, i.e.
+  // the alphabet. `AU` is row 0 and led on that alone.
+  assert.deepEqual(canonical.panes.map((p) => p.codes), [['EA', 'EB', 'EC'], ['JP'], ['AU']]);
+  const jp = canonical.panes[1], au = canonical.panes[2];
+  assert.ok(jp.weight === au.weight && jp.home.length === au.home.length,
+    'the first two keys must still tie here, or this test proves nothing');
+  assert.ok(jp.bounds.north > au.bounds.north, 'and the third key must be what separates them');
+  // The same library with the rows in a different order. Under the withdrawn key this flipped
+  // the pair; under G5′ it cannot, because the key is a property of the pane's own rectangle.
   const reordered = worldMapFrame(
     statsOf([trips('EA', 2), trips('EB', 2), trips('EC', 1), trips('JP', 2), trips('AU', 2)]),
     ATLAS,
@@ -540,7 +553,9 @@ test('A-51 G6 supersedes C7: five clusters are five panes, and there is no union
   assert.equal(frame.panes.length, 5, 'C7 folded these into three, the third a multi-component box');
   assert.deepEqual(frame.panes[0].codes, ['EA', 'EB', 'EC']);
   assert.deepEqual(frame.panes[1].codes, ['NA', 'NB'], 'weight 2 across two countries outranks the singletons');
-  assert.deepEqual(frame.panes.map((p) => p.codes), [['EA', 'EB', 'EC'], ['NA', 'NB'], ['AU'], ['JP'], ['KE']]);
+  // A-54 G5′: the three weight-1 singletons tie on both surviving A-51 keys, so latitude orders
+  // them — JP N 36, KE N 0, AU S 32. WAS `['AU'], ['JP'], ['KE']`, the canonical row order.
+  assert.deepEqual(frame.panes.map((p) => p.codes), [['EA', 'EB', 'EC'], ['NA', 'NB'], ['JP'], ['KE'], ['AU']]);
   assert.deepEqual(frame.panes.map((p) => p.id), ['p0', 'p1', 'p2', 'p3', 'p4']);
   // C7's third pane, kept as the oracle: the union of clusters 3…N, which is a multi-component
   // rectangle by construction and is L1's violation at pane index 2.
@@ -1212,8 +1227,14 @@ test('A-51 G6 supersedes C7′: more than four panes are reachable, and nothing 
   );
   assert.equal(frame.panes.length, 6, 'C7′ capped this library at four');
   assert.deepEqual(frame.panes.map((p) => p.home.length > 0), [true, true, true, true, true, false]);
+  // A-54 G5′: the four weight-1 singletons tie on both surviving A-51 keys, so latitude orders
+  // them — US N 49.4, JP N 45.5, BR N 5.3, AU S 10.7 — and Alaska's extent pane is last on
+  // weight, as I18 requires. WAS `['AU'], ['BR'], ['JP'], ['US']`: the alphabet, one
+  // indirection out through the canonical row order.
   assert.deepEqual(frame.panes.map((p) => p.codes),
-    [['AT'], ['AU'], ['BR'], ['JP'], ['US'], ['US']]);
+    [['AT'], ['US'], ['JP'], ['BR'], ['AU'], ['US']]);
+  const norths = frame.panes.slice(1, 5).map((p) => p.bounds.north);
+  assert.deepEqual(norths, [...norths].sort((a, b) => b - a), 'the tied block reads north to south');
 });
 
 test('A-51 I5 supersedes A-49 I15: an extent pane carries weight 0, so the total IS W', () => {
@@ -1292,8 +1313,10 @@ test('A-51 G3 closes KD-72: a pane is exactly one component, by definition rathe
   // in which Japan rendered 20 × 18 px. It is now three panes, each one component.
   const tie = worldMapFrame(statsOf([trips('JP', 1), trips('US', 1)]), core.COUNTRY_INDEX);
   assert.equal(tie.panes.length, 3);
-  assert.deepEqual(tie.panes.map((p) => p.codes), [['JP'], ['US'], ['US']]);
-  assert.deepEqual(tie.panes.map((p) => p.home), [['JP'], ['US'], []]);
+  // A-54 G5′: the two home panes tie on weight and home.length, so latitude decides — the US
+  // at N 49.4 before Japan at N 45.5. WAS `[['JP'], ['US'], ['US']]`, which was `J` < `U`.
+  assert.deepEqual(tie.panes.map((p) => p.codes), [['US'], ['JP'], ['US']]);
+  assert.deepEqual(tie.panes.map((p) => p.home), [['US'], ['JP'], []]);
   for (const pane of tie.panes.filter((p) => p.home.length > 0)) {
     assert.equal(componentsIn(pane), 1, 'a pane holds two clusters again — C5/C7 are back');
   }
@@ -1435,17 +1458,19 @@ test('A-51 G4 / I5: `weight` is Σ tripIds.length over `home`, and it sums to W 
 // R38-2's headline library. FR+US, walked exactly as A-53 Part 5 (1) walks it.
 // ---------------------------------------------------------------------------
 
-test('A-51 G3/G5 + A-53: FR+US is four panes — FR · US · Guiana · Alaska, weights 1 · 1 · 0 · 0', () => {
+test('A-51 G3 + A-53, re-ordered by A-54 G5′: FR+US is four panes — FR · US · Alaska · Guiana', () => {
   const frame = frameOf(['FR', 'US']);
   assert.equal(frame.panes.length, 4, 'the shipped model drew ONE 134.2°-wide pane plus a detached one');
   assert.deepEqual(frame.panes.map((p) => p.id), ['p0', 'p1', 'p2', 'p3']);
-  assert.deepEqual(frame.panes.map((p) => p.codes), [['FR'], ['US'], ['FR'], ['US']]);
+  // A-54 G5′ swaps the two weight-0 panes: Alaska N 71.4 before French Guiana N 5.8. The two
+  // home panes keep their order and change their reason — FR N 51.1 > US N 49.4, not `F` < `U`.
+  assert.deepEqual(frame.panes.map((p) => p.codes), [['FR'], ['US'], ['US'], ['FR']]);
   assert.deepEqual(frame.panes.map((p) => p.home), [['FR'], ['US'], [], []]);
   assert.deepEqual(frame.panes.map((p) => p.weight), [1, 1, 0, 0]);
   assert.deepEqual(extent(frame.panes[0]), { w: 14.15, h: 9.77 }, 'continental France, not 134.2°');
   assert.deepEqual(extent(frame.panes[1]), { w: 57.72, h: 24.31 }, 'the contiguous United States');
-  assert.deepEqual(extent(frame.panes[2]), { w: 2.87, h: 3.7 }, 'French Guiana, its own rectangle');
-  assert.deepEqual(extent(frame.panes[3]), { w: 41.81, h: 52.44 }, 'Alaska, Hawaii and the Aleutians');
+  assert.deepEqual(extent(frame.panes[2]), { w: 41.81, h: 52.44 }, 'Alaska, Hawaii and the Aleutians');
+  assert.deepEqual(extent(frame.panes[3]), { w: 2.87, h: 3.7 }, 'French Guiana, its own rectangle');
   // A-53 I18: both home panes come before both extent panes, strictly.
   assert.deepEqual(frame.panes.map((p) => p.home.length > 0), [true, true, false, false]);
 });
@@ -1611,23 +1636,23 @@ test('A-53 Part 5 injected fault: "holds a non-principal part" is NOT what makes
 // G5 — the order is total, and its third key is a position rather than an alphabet.
 // ---------------------------------------------------------------------------
 
-test('A-51 G5: panes are ordered by weight desc, then home.length desc, then canonical position asc', () => {
+test('A-54 G5′: panes are ordered by weight desc, home.length desc, bounds.north desc, bounds.west asc', () => {
   const frame = worldMapFrame(
     statsOf([trips('AU', 2), trips('EA', 2), trips('EB', 2), trips('EC', 1), trips('JP', 2)]),
     ATLAS,
   );
   // {EA,EB,EC} weighs 5; {AU} and {JP} weigh 2 each with one code each. The third key separates
-  // the tie by POSITION in the canonical part list — `AU` is row 0, `JP` is row 4 — so there is
-  // no tie left for an alphabet to break (C6's tie-break is withdrawn with the hierarchy).
-  assert.deepEqual(frame.panes.map((p) => p.codes), [['EA', 'EB', 'EC'], ['AU'], ['JP']]);
+  // the tie by the pane's own NORTH EDGE — `JP` is at N 36, `AU` at S 32 — and the canonical
+  // position, which is the alphabet one indirection out, survives only as the last key.
+  assert.deepEqual(frame.panes.map((p) => p.codes), [['EA', 'EB', 'EC'], ['JP'], ['AU']]);
   assert.deepEqual(frame.panes.map((p) => p.weight), [5, 2, 2]);
-  // Reversing the rows changes nothing but the canonical order itself.
-  const reordered = worldMapFrame(
-    statsOf([trips('AU', 2), trips('EA', 2), trips('EB', 2), trips('EC', 1), trips('JP', 3)]),
+  // Weight still outranks everything geographic.
+  const heavier = worldMapFrame(
+    statsOf([trips('AU', 3), trips('EA', 2), trips('EB', 2), trips('EC', 1), trips('JP', 2)]),
     ATLAS,
   );
-  assert.deepEqual(reordered.panes.map((p) => p.codes), [['EA', 'EB', 'EC'], ['JP'], ['AU']],
-    'weight still outranks position');
+  assert.deepEqual(heavier.panes.map((p) => p.codes), [['EA', 'EB', 'EC'], ['AU'], ['JP']],
+    'weight still outranks latitude — keys 1 and 2 are unchanged by A-54');
 });
 
 test('A-51 G5: at equal weight, the pane with more home codes ranks higher', () => {
@@ -1657,15 +1682,28 @@ test('A-51 G6/I3: `panes.length` is the number of connected components, with no 
   );
   assert.equal(five.panes.length, 5, 'the cap is withdrawn — five clusters are five panes');
   assert.deepEqual(five.panes.map((p) => p.codes),
-    [['EA', 'EB', 'EC'], ['NA', 'NB'], ['AU'], ['JP'], ['KE']]);
+    [['EA', 'EB', 'EC'], ['NA', 'NB'], ['JP'], ['KE'], ['AU']]);   // A-54 G5′: north to south
   assert.ok(!five.panes.some((p) => p.codes.join() === 'AU,JP,KE'), 'the union-of-the-rest pane came back');
 });
 
-test('A-51 G6: the greedy worst case is 14 panes, and every one of them is home', () => {
-  const worst = ['AD', 'AE', 'AG', 'AO', 'AQ', 'AR', 'AS', 'AU', 'CA', 'CN', 'FM', 'IO', 'PN', 'TF'];
+/**
+ * **A-54 Part 4 (QA R39-3) corrects G6's published ceiling: 18, not 14.** A-51's 14-code library
+ * is kept — it still produces 14 all-home panes, so it is not wrong, only not the ceiling — and
+ * the architect's own 60,000-pass greedy search found an independent 18-code library. A-53 Part
+ * 5's substantive claim survives at the corrected number: **the ceiling contains zero extent
+ * panes**, so the worst case is not territory-driven.
+ */
+test('A-54 Part 4 supersedes A-51 G6\'s 14: the greedy worst case is 18 panes, and every one of them is home', () => {
+  const fourteen = ['AD', 'AE', 'AG', 'AO', 'AQ', 'AR', 'AS', 'AU', 'CA', 'CN', 'FM', 'IO', 'PN', 'TF'];
+  assert.equal(frameOf(fourteen).panes.length, 14, 'A-51\'s library is still 14 panes — it is just not the ceiling');
+  const worst = ['AQ', 'AU', 'CL', 'EH', 'FJ', 'GL', 'GU', 'IO', 'MS', 'MX', 'PK', 'PN', 'RO', 'RU', 'RW', 'SH', 'TF', 'VN'];
   const frame = frameOf(worst);
-  assert.equal(frame.panes.length, 14);
-  assert.equal(homePanes(frame).length, 14);
+  assert.equal(frame.panes.length, 18);
+  assert.equal(homePanes(frame).length, 18, 'A-53 Part 5: the ceiling contains zero extent panes');
+  assert.equal(extentPanes(frame).length, 0);
+  // A-54 Part 3's own published reading order for it — Greenland to Antarctica, not an index.
+  assert.deepEqual(frame.panes.map((p) => p.codes.join()),
+    ['GL', 'RU', 'RO', 'PK', 'MX', 'EH', 'VN', 'MS', 'GU', 'RW', 'IO', 'SH', 'AU', 'FJ', 'CL', 'PN', 'TF', 'AQ']);
 });
 
 // ---------------------------------------------------------------------------
@@ -1880,15 +1918,16 @@ test('A-51 I4: every pane strictly contains every vertex it draws, over the whol
  * share a pane, and what rectangle each is framed at — is a property of the point set and of
  * nothing else, so permuting the rows changes it by zero bytes (I9, A-48's kernel property).
  *
- * The pane **order** is not order-independent and is not claimed to be: G5's third key is the
- * component's position in the canonical part list, which is *"drawn codes in canonical row
- * order"* (G2). Two panes of equal `weight` and equal `home.length` — in practice two extent
- * panes, both weight 0 — therefore swap if the caller hands the rows over in a different order.
- * `travelStats` emits `countries` in ascending ISO order, so in production the ordinal is fixed
- * and the frame is byte-identical (I6); the assertion below pins both halves rather than
- * pretending the second one does not exist.
+ * **A-54 G5′ makes the pane ORDER order-independent too, and that is a strengthening of this
+ * test rather than a re-pointing of it.** Under A-51 the third key was the component's position
+ * in the canonical part list — *"drawn codes in canonical row order"* (G2) — so two panes of
+ * equal `weight` and equal `home.length` swapped when the caller handed the rows over in a
+ * different order. G5′'s third and fourth keys are read off the pane's own rectangle, which no
+ * permutation of the rows can move, so the assertion below is now on the **whole frame** and not
+ * merely on the sorted partition. The canonical-position key survives as the last resort and is
+ * the only thing that could reintroduce the dependency; it decides 0 pairs on this index.
  */
-test('A-51 I6/I9: the partition is byte-identical under every row permutation; the ordinal is the canonical row order', () => {
+test('A-51 I6/I9 + A-54 G5′: the partition AND the pane order are byte-identical under every row permutation', () => {
   const spec: Array<[string, number]> = [['FR', 2], ['GR', 1], ['US', 1]];
   const shape = (order: Array<[string, number]>) =>
     JSON.stringify(worldMapFrame(statsOf(rowsOf(order)), core.COUNTRY_INDEX).panes
@@ -1897,15 +1936,24 @@ test('A-51 I6/I9: the partition is byte-identical under every row permutation; t
       .slice().sort());
   const answers = new Set(permutations(spec).map(shape));
   assert.equal(answers.size, 1, `six orderings gave ${answers.size} distinct partitions`);
+  // A-54 G5′: the same six orderings without sorting the PANE ARRAY. Each pane's own `codes`
+  // list is still canonical row order (I2) and is row-order-dependent by design, so it is sorted
+  // WITHIN a pane; what is asserted invariant is the sequence the panes come back in.
+  const ordered = new Set(permutations(spec).map((order) =>
+    JSON.stringify(worldMapFrame(statsOf(rowsOf(order)), core.COUNTRY_INDEX).panes
+      .map((p) => `${p.codes.slice().sort().join(',')}/${p.home.slice().sort().join(',')}` +
+        `@${p.viewBox}@${p.weight}`))));
+  assert.equal(ordered.size, 1, `six orderings gave ${ordered.size} distinct pane ORDERS — the row order is deciding again`);
   // I6: the same `(stats, index)` twice, byte for byte.
   const stats = statsOf(rowsOf(spec));
   assert.equal(JSON.stringify(worldMapFrame(stats, core.COUNTRY_INDEX)),
     JSON.stringify(worldMapFrame(stats, core.COUNTRY_INDEX)));
-  // …and the canonical input's own order, pinned. Two weight-0 extent panes are separated by
-  // G5's third key alone, so this is the assertion that would catch the key going missing.
+  // …and the order itself, pinned. The two weight-0 extent panes are separated by G5′'s third
+  // key alone, so this is the assertion that would catch the key going missing. WAS
+  // `'FR:0', 'US:0'` — the canonical row order; it is now Alaska N 71.4 before Guiana N 5.8.
   const canonical = worldMapFrame(statsOf(rowsOf(spec)), core.COUNTRY_INDEX);
   assert.deepEqual(canonical.panes.map((p) => `${p.codes.join(',')}:${p.weight}`),
-    ['FR,GR:3', 'US:1', 'FR:0', 'US:0']);
+    ['FR,GR:3', 'US:1', 'US:0', 'FR:0']);
 });
 
 test('A-51 I7: the empty history is still ONE unpadded whole-world pane, and it is not a home pane', () => {
@@ -1952,4 +2000,273 @@ test('A-51 Part 6: the frame no longer calls countryKeyPoint, and still computes
   }
   assert.ok(core.countryKeyPoint('FR', core.COUNTRY_INDEX) !== null,
     'countryKeyPoint must stay exported as I12\'s oracle');
+});
+
+// ===========================================================================
+// I-8j — ARCHITECTURE §4.4 **A-54**. Three clauses of A-51 move and nothing else does:
+// **G5′** (the last tie is broken by latitude, and the alphabet is named where it survives),
+// **D** (a ring the index cannot draw is stated rather than blanked — I19), and G7′/G7″, which
+// is a stylesheet and is measured in `qa/i8j-render.mjs` rather than here.
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// G5′ — `weight` desc, `home.length` desc, `bounds.north` desc, `bounds.west` asc, then the
+// canonical position, which is the alphabet, in the open, as a last resort.
+// ---------------------------------------------------------------------------
+
+test('A-54 G5′ / R39-5: FR+US reads FR · US · Alaska · Guiana — the two weight-0 panes swap', () => {
+  const frame = frameOf(['FR', 'US']);
+  assert.deepEqual(frame.panes.map((p) => `${p.codes.join('+')}/${p.home.join('+')}`),
+    ['FR/FR', 'US/US', 'US/', 'FR/'],
+    'WAS FR · US · Guiana · Alaska — the extent panes were ordered by the canonical position');
+  // France still leads, and this is the assertion that says WHY: N 51.1485 > N 49.3891, not
+  // `F` < `U`. The two home panes tie on `weight` (1) and on `home.length` (1).
+  assert.equal(frame.panes[0].weight, frame.panes[1].weight);
+  assert.equal(frame.panes[0].home.length, frame.panes[1].home.length);
+  assert.ok(frame.panes[0].bounds.north > frame.panes[1].bounds.north,
+    'FR leads on latitude, which is the key G5′ actually reads');
+  // …and the extent pair is where the old key and the new one DISAGREE, so it is the pair that
+  // proves the new key is driving rather than coincidentally agreeing.
+  assert.ok(frame.panes[2].bounds.north > frame.panes[3].bounds.north,
+    'Alaska N 71.4 precedes French Guiana N 5.8');
+  assert.deepEqual(frame.panes.map((p) => p.weight), [1, 1, 0, 0]);
+});
+
+test('A-54 G5′: `bounds.west` ascending is the FOURTH key, reached only when `north` ties', () => {
+  // Two 2° squares on the same parallel, ~11,000 km apart, so they are two components with
+  // IDENTICAL `north` and different `west`. The rows are given east-first, so the withdrawn
+  // canonical-position key would put the eastern pane first and G5′ puts the western one first.
+  const idx: core.CountryIndex = {
+    scale: 'test', source: 'hand-written',
+    countries: [entry('QE', [square(100, 0, 2)]), entry('QW', [square(0, 0, 2)])],
+  };
+  const frame = worldMapFrame(statsOf([{ code: 'QE' }, { code: 'QW' }]), idx);
+  assert.equal(frame.panes.length, 2);
+  assert.equal(frame.panes[0].bounds.north, frame.panes[1].bounds.north,
+    'the third key must tie here, or this test is not about the fourth');
+  assert.deepEqual(frame.panes.map((p) => p.codes.join()), ['QW', 'QE'],
+    'WAS QE first, on the canonical position — i.e. on the row order');
+  assert.ok(frame.panes[0].bounds.west < frame.panes[1].bounds.west);
+});
+
+/**
+ * **The census A-54 Part 3 publishes, re-derived here rather than quoted.** 30,680 libraries —
+ * all 239 single-country, all 28,441 two-country, and 2,000 deterministic pseudo-random 2–25-code
+ * libraries. The third key is reached in 24,204 of them and decides 25,454 adjacent pairs;
+ * `bounds.north` resolves every one, `bounds.west` decides 0, and the canonical position decides
+ * 0. That last number is the point: the code-derived key is reachable in principle and
+ * **unreached in practice on any library the shipped index can produce**, which is why it stays,
+ * named, instead of being claimed impossible.
+ *
+ * **What is asserted exactly and what is not.** The 28,680 deterministic libraries (239 single +
+ * 28,441 pairs) are re-derived to the pair: **22,765 reached, 22,766 decided by `north`, 0 by
+ * `west`, 0 by the alphabet** — and 22,765 is A-54 Part 3's own *"22,765 of 22,877 (99.5%)"*
+ * figure arrived at from the other side, which makes it a cross-check rather than a restatement.
+ * The 2,000 random libraries depend on the architect's seed, which is not published, so their
+ * counts are **reported** and only the seed-independent claim is asserted on them: `west` and the
+ * alphabet decide nothing. That is the load-bearing half of the ruling, and it is the half an
+ * injected fault can turn red.
+ */
+test('A-54 G5′ census: over 30,680 libraries north decides 25,454 pairs, west 0, and the alphabet 0', () => {
+  // A deterministic LCG — no ambient randomness anywhere in this repo's tests.
+  let seed = 20260901;
+  const rnd = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648;
+  const libs: string[][] = ALL239.map((c) => [c]);
+  for (let a = 0; a < ALL239.length; a++) for (let b = a + 1; b < ALL239.length; b++) libs.push([ALL239[a], ALL239[b]]);
+  for (let i = 0; i < 2000; i++) {
+    const n = 2 + Math.floor(rnd() * 24);
+    const pick = new Set<string>();
+    while (pick.size < n) pick.add(ALL239[Math.floor(rnd() * ALL239.length)]);
+    libs.push([...pick].sort());
+  }
+  assert.equal(libs.length, 30680);
+
+  /** The first 28,680 libraries are seed-independent; the rest are not. */
+  const DETERMINISTIC = 239 + 28441;
+  const tally = { reached: 0, north: 0, west: 0, canonical: 0 };
+  const all = { reached: 0, north: 0, west: 0, canonical: 0 };
+  let i18Violations = 0, firstPaneNotHome = 0;
+  libs.forEach((codes, n) => {
+    const frame = frameOf(codes);
+    let hit = false;
+    for (let i = 1; i < frame.panes.length; i++) {
+      const a = frame.panes[i - 1], b = frame.panes[i];
+      if (a.weight !== b.weight || a.home.length !== b.home.length) continue;
+      hit = true;
+      const which = a.bounds.north !== b.bounds.north ? 'north'
+        : a.bounds.west !== b.bounds.west ? 'west' : 'canonical';
+      all[which]++;
+      if (n < DETERMINISTIC) tally[which]++;
+    }
+    if (hit) { all.reached++; if (n < DETERMINISTIC) tally.reached++; }
+    // I18 is a theorem of key 1 and G5′ cannot reach it — asserted over the same census.
+    let seenExtent = false;
+    for (const p of frame.panes) {
+      if (p.home.length === 0) seenExtent = true;
+      else if (seenExtent) i18Violations++;
+    }
+    if (frame.panes.some((p) => p.codes.length > 0) && frame.panes[0].home.length === 0) firstPaneNotHome++;
+  });
+  assert.deepEqual(tally, { reached: 22765, north: 22766, west: 0, canonical: 0 },
+    'the 28,680 deterministic libraries — 22,765 is A-54 Part 3\'s own 99.5% figure from the other side');
+  assert.equal(all.west, 0, '`bounds.west` decides no adjacent pair on any library the shipped index can produce');
+  assert.equal(all.canonical, 0,
+    'the canonical position — the alphabet — decides no adjacent pair: reachable in principle, unreached in practice');
+  assert.ok(all.north >= tally.north && all.reached >= tally.reached,
+    `random-library counts: reached ${all.reached}, north ${all.north} (seed-dependent; A-54 published 24,204 / 25,454)`);
+  assert.equal(i18Violations, 0, 'I18: no extent pane may precede a home pane');
+  assert.equal(firstPaneNotHome, 0, 'panes[0].home.length > 0 wherever any code is drawn');
+});
+
+test('A-54 G5′: the Europe 2026 reference fixture does not move — no tie, three panes, three strings', () => {
+  const frame = frameOf(REFERENCE);
+  assert.deepEqual(frame.panes.map((p) => p.viewBox), [
+    '-8.1779 -59.2407 31.494 17.3663',
+    '-125.8416 -50.5435 60.0314 26.618',
+    '-172.8399 -72.4066 43.9088 54.5393',
+  ]);
+  assert.deepEqual(frame.panes.map((p) => p.weight), [6, 1, 0], 'weights 6 · 1 · 0 — there is no tie at all');
+  assert.deepEqual(frame.panes.map((p) => p.codes), [['AT', 'CZ', 'DE', 'GB', 'HR', 'HU'], ['US'], ['US']]);
+});
+
+/**
+ * **L5's corrected proof obligation (A-54 Part 3).** Round 38's and I-8i's relabel tests both use
+ * an order-**preserving** map (`CODES[i] → Q000+i`), which cannot reach the question, because the
+ * frame's only ordinal was canonical row order and canonical row order is ascending ISO code. The
+ * relabel below is a rotation on both letters, so it destroys the order — and under G5′ pane
+ * **order** is invariant under it too, not just pane geometry. **This test must fail against the
+ * pre-G5′ comparator**, which is what makes it an obligation rather than a tautology.
+ */
+test('A-54 / L5: an ORDER-DESTROYING ISO relabel leaves pane order identical, not just pane geometry', () => {
+  const rot = (c: string) =>
+    String.fromCharCode(((c.charCodeAt(0) - 65 + 7) % 26) + 65) +
+    String.fromCharCode(((c.charCodeAt(1) - 65 + 11) % 26) + 65);
+  const relabelled: core.CountryIndex = {
+    ...core.COUNTRY_INDEX,
+    countries: core.COUNTRY_INDEX.countries.map((e) => ({ ...e, code: rot(e.code) })),
+  };
+  const key = (vb: string, cs: readonly string[], hs: readonly string[], w: number) =>
+    `${vb}|${[...cs].sort().join('+')}|${[...hs].sort().join('+')}|${w}`;
+  const moved: string[] = [];
+  for (const codes of LIBRARIES) {
+    const a = frameOf(codes);
+    const b = worldMapFrame(statsOf(codes.map(rot).sort().map((code) => ({ code }))), relabelled);
+    const av = a.panes.map((p) => key(p.viewBox, p.codes.map(rot), p.home.map(rot), p.weight));
+    const bv = b.panes.map((p) => key(p.viewBox, p.codes, p.home, p.weight));
+    assert.deepEqual([...av].sort(), [...bv].sort(), `the partition moved under a relabel: ${codes.slice(0, 4)}…`);
+    if (av.join() !== bv.join()) moved.push(codes.slice(0, 4).join('+'));
+  }
+  assert.deepEqual(moved, [], 'pane ORDER moved under an ISO relabel — the alphabet is still deciding');
+});
+
+// ---------------------------------------------------------------------------
+// I19 — no frame is non-finite, and an index that cannot be drawn is stated rather than blanked.
+// ---------------------------------------------------------------------------
+
+/** A-54 Part 6's own injected faults, each of which used to give `viewBox: "NaN NaN NaN NaN"`. */
+const MALFORMED_RINGS: Array<[string, number[][]]> = [
+  ['rings: []', []],
+  ['[[]]', [[]]],
+  ['[[7]]', [[7]]],
+  ['[[1,2,3]]', [[1, 2, 3]]],
+  ['[[1, NaN]]', [[1, NaN]]],
+];
+
+test('A-54 I19: a code the index cannot draw reaches `missing` exactly once and never `countries`', () => {
+  for (const [label, rings] of MALFORMED_RINGS) {
+    const idx: core.CountryIndex = {
+      scale: 'test', source: 'hand-written',
+      countries: [{ code: 'QM', rings, box: [-4, -4, 6, 6] }],
+    };
+    const frame = worldMapFrame(statsOf([{ code: 'QM' }]), idx);
+    assert.deepEqual(frame.missing, ['QM'], `${label}: the code must be stated, not blanked`);
+    assert.deepEqual(frame.codes, [], `${label}: an undrawable code is not in codes`);
+    assert.deepEqual(frame.countries, [], `${label}: an undrawable code paints nothing`);
+  }
+});
+
+test('A-54 I19: no viewBox contains NaN and no aspect is non-finite, on a malformed index', () => {
+  for (const [label, rings] of MALFORMED_RINGS) {
+    // The single-code library — the whole surface for that user — and a mixed one, where the
+    // frame still has real geometry to draw and the malformed code must not poison it.
+    const idx: core.CountryIndex = {
+      scale: 'test', source: 'hand-written',
+      countries: [{ code: 'QM', rings, box: [-4, -4, 6, 6] }, entry('AA', [square(10, 40, 2)])],
+    };
+    for (const lib of [['QM'], ['QM', 'AA']]) {
+      const frame = worldMapFrame(statsOf(lib.map((code) => ({ code }))), idx);
+      assert.ok(!JSON.stringify(frame).includes('NaN'), `${label} · ${lib}: NaN reached the frame`);
+      for (const p of frame.panes) {
+        assert.ok(!p.viewBox.includes('NaN'), `${label} · ${lib}: ${p.id} viewBox is ${p.viewBox}`);
+        assert.ok(Number.isFinite(p.aspect) && p.aspect > 0, `${label} · ${lib}: ${p.id} aspect is ${p.aspect}`);
+        for (const v of [p.bounds.north, p.bounds.south, p.bounds.east, p.bounds.west, p.bounds.spanKm]) {
+          assert.ok(Number.isFinite(v), `${label} · ${lib}: a bounds component is non-finite`);
+        }
+      }
+      assert.ok(frame.missing.includes('QM'), `${label} · ${lib}: the code must still be stated`);
+    }
+  }
+});
+
+test('A-54 I19: an ALL-OR-STATED code — some rings drawable, one not — is stated, not half-drawn', () => {
+  const idx: core.CountryIndex = {
+    scale: 'test', source: 'hand-written',
+    countries: [
+      { code: 'QH', rings: [square(0, 0, 10)], box: [0, 0, 10, 10] },
+      { code: 'QH', rings: [[1, 2, 3]], box: [1, 2, 3, 2] },
+      entry('AA', [square(10, 40, 2)]),
+    ],
+  };
+  const frame = worldMapFrame(statsOf([{ code: 'AA' }, { code: 'QH' }]), idx);
+  assert.deepEqual(frame.missing, ['QH']);
+  assert.deepEqual(frame.codes, ['AA'], 'never "the good rings" — R38-5 is what that costs');
+  assert.ok(!JSON.stringify(frame).includes('NaN'));
+});
+
+test('A-54 I19 + I1: `countries` ∪ `missing` still accounts for every row, on a malformed index', () => {
+  const idx: core.CountryIndex = {
+    scale: 'test', source: 'hand-written',
+    countries: [
+      { code: 'QM', rings: [[7]], box: [-4, -4, 6, 6] },
+      entry('AA', [square(10, 40, 2)]),
+      entry('BB', [square(-30, -10, 4)]),
+    ],
+  };
+  const rows = ['AA', 'BB', 'QM', 'ZZ'];
+  const frame = worldMapFrame(statsOf(rows.map((code) => ({ code }))), idx);
+  for (const code of rows) {
+    const drawn = frame.countries.some((c) => c.code === code);
+    const stated = frame.missing.filter((c) => c === code).length;
+    assert.ok(drawn !== (stated === 1), `${code} is neither drawn nor stated exactly once`);
+  }
+  assert.deepEqual(frame.missing, ['QM', 'ZZ'], 'in canonical row order');
+});
+
+/**
+ * **A-54 Part 4 / R39-4.** A-51 Part 5's *"every remaining >120° pane traces to five codes"* and
+ * ROADMAP I-8i's set-equality criterion are both false as written. The true statement: of the 49
+ * panes containing none of `AQ FJ KI RU UM`, **48 span more than 180°** — the planar-bounding-box
+ * artefact of a trans-antimeridian pair — and **exactly one is an honest wide frame, `CA`+`GL` at
+ * 128.8°**, which is two genuinely large neighbours and not a defect at all.
+ */
+test('A-54 Part 4 / R39-4: the >120° census over all 28,441 two-country libraries, re-derived', () => {
+  const FIVE = new Set(['AQ', 'FJ', 'KI', 'RU', 'UM']);
+  let wide = 0, withFive = 0, without = 0, over180 = 0;
+  const honest: string[] = [];
+  const histogram: Record<number, number> = {};
+  for (let a = 0; a < ALL239.length; a++) for (let b = a + 1; b < ALL239.length; b++) {
+    const frame = frameOf([ALL239[a], ALL239[b]]);
+    histogram[frame.panes.length] = (histogram[frame.panes.length] ?? 0) + 1;
+    for (const p of frame.panes) {
+      const w = p.bounds.east - p.bounds.west;
+      if (w <= 120) continue;
+      wide++;
+      if (p.codes.some((c) => FIVE.has(c))) { withFive++; continue; }
+      without++;
+      if (w > 180) over180++; else honest.push(`${p.codes.join('+')} ${w.toFixed(1)}`);
+    }
+  }
+  assert.deepEqual({ wide, withFive, without, over180 }, { wide: 1236, withFive: 1187, without: 49, over180: 48 });
+  assert.deepEqual(honest, ['CA+GL 128.8'], 'the one honest wide frame in 28,441 libraries');
+  assert.deepEqual(histogram, { 1: 5564, 2: 22360, 3: 516, 4: 1 }, 'the pane-count histogram is unchanged');
 });

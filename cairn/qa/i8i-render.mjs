@@ -140,7 +140,20 @@ const codeBox = (page, code) => page.evaluate((c) => {
 }, code);
 
 // ---------------------------------------------------------------------------
-head('A  R38-3 — THE CELL IS THE MAP, IN BOTH DIRECTIONS, AT TWO VIEWPORTS');
+head('A  R38-3 — WITHDRAWN BY A-54 G7′; THE CRITERION IS NOW AT THE CONTAINER');
+// **§4.4 A-54 Part 1 WITHDRAWS R38-3's cell criterion** (`cell.height − svg.height −
+// caption.height − padding <= 1 px`) and this section is re-pointed rather than deleted, which
+// is what ROADMAP I-8j's ship gate asks for. Two reasons, and the second is the ruling one:
+//   1. It is **false by construction** once the cells tile their line — a flex line's items are
+//      all the line's height (`align-items: stretch`), so a cell taller than its own map is what
+//      a full container costs.
+//   2. It is a criterion that **passes on a container with a 46% hole in it**, which is exactly
+//      what R38-3 said about A-50's `<svg>` criterion one round earlier. The pattern is named:
+//      *a criterion written about the box one level in cannot see the box one level out.*
+// The replacement is at the CONTAINER, the outermost box this surface has, and its full 8 x 5
+// matrix lives in `qa/i8j-render.mjs` section A. Here the old measurement is kept and REPORTED,
+// and what is asserted alongside it is the container criterion and **G7″** — no cell draws a
+// boundary of its own — which is what keeps R38-3's actual harm fixed.
 
 const REFERENCE = ['AT', 'CZ', 'DE', 'GB', 'HR', 'HU', 'US'];
 const FOUR_PANE = ['FR', 'US'];
@@ -151,9 +164,35 @@ for (const vp of VIEWPORTS) {
     const page = await openMap(ctx, lib.map((c) => [c, 1]));
     const cells = await measureCells(page);
     note(`${vp.width}x${vp.height} · ${label}: ${cells.map((c) => `${c.id}[${c.codes}] cell ${c.cellW.toFixed(0)}x${c.cellH.toFixed(0)} svg ${c.svgW.toFixed(0)}x${c.svgH.toFixed(0)} cap ${c.capH.toFixed(0)} slackY ${c.slackY.toFixed(1)}`).join(' | ')}`);
-    ok(cells.every((c) => c.slackY <= 1),
-      `${vp.width}x${vp.height} · ${label}: every CELL is filled vertically to within 1 px (R38-3: the US inset was 44.1%)`,
-      cells.filter((c) => c.slackY > 1).map((c) => [c.id, c.slackY]));
+    // R38-3's WITHDRAWN cell criterion — measured and reported, never asserted (A-54 Part 1).
+    note(`  R38-3 (withdrawn): vertical cell slack ${cells.map((c) => `${c.id}=${c.slackY.toFixed(1)}px`).join(' ')}` +
+      ` — card-coloured and unbordered under G7″, so it reads as whitespace, not as a hole`);
+    // **A-54 G7′'s replacement, at the container.**
+    const occ = await page.evaluate(() => {
+      const box = document.querySelector('#tabpanel-map .worldmap__panes').getBoundingClientRect();
+      const sum = [...document.querySelectorAll('#tabpanel-map .worldmap__pane')]
+        .reduce((n, c) => { const r = c.getBoundingClientRect(); return n + r.width * r.height; }, 0);
+      return sum / (box.width * box.height);
+    });
+    ok(occ >= 0.99 && occ <= 1.0001,
+      `${vp.width}x${vp.height} · ${label}: Σ cell area ÷ container area is in [0.99, 1.00] (A-54 G7′, MGR-1)`,
+      Number(occ.toFixed(4)));
+    // **G7″** — the clause that keeps R38-3 fixed now that its own criterion is withdrawn.
+    const boundaries = await page.evaluate(() => {
+      const fig = getComputedStyle(document.querySelector('#tabpanel-map .worldmap__figure')).backgroundColor;
+      return [...document.querySelectorAll('#tabpanel-map .worldmap__pane')].map((c) => {
+        const cs = getComputedStyle(c);
+        return {
+          id: c.dataset.pane,
+          borders: [cs.borderTopWidth, cs.borderRightWidth, cs.borderBottomWidth, cs.borderLeftWidth],
+          outline: cs.outlineStyle, shadow: cs.boxShadow, sameBg: cs.backgroundColor === fig,
+        };
+      }).filter((c) => c.borders.some((b) => parseFloat(b) !== 0) || c.outline !== 'none'
+        || c.shadow !== 'none' || !c.sameBg);
+    });
+    ok(boundaries.length === 0,
+      `${vp.width}x${vp.height} · ${label}: G7″ — no cell draws a border, outline or shadow, and every cell is card-coloured`,
+      boundaries);
     // **The width clause, as it is actually satisfiable.** ROADMAP I-8i asks for
     // `cell.width − svg.width − padding <= 1 px` unconditionally; A-51 G7 keeps A-50's `<svg>`
     // rule *"verbatim and unchanged"*, and that rule is
@@ -202,9 +241,11 @@ for (const vp of VIEWPORTS) {
         const sr = svg.getBoundingClientRect();
         const capH = cap ? cap.getBoundingClientRect().height : 0;
         const slackY = cr.height - sr.height - capH - padY;
-        // The painted map inside its own box (A-50, unchanged).
+        // **A-50, unchanged and still asserted** — the painted map fills its own box in both
+        // directions. R38-3's `slackY` clause is WITHDRAWN by A-54 Part 1 and is carried here as
+        // a reported number only; A-50's own rule is what this sweep exists for.
         const s = Math.min(sr.width / aspect, sr.height / 1);
-        if (slackY > 1 || Math.abs(s * aspect - sr.width) > 1 || Math.abs(s - sr.height) > 1) {
+        if (Math.abs(s * aspect - sr.width) > 1 || Math.abs(s - sr.height) > 1) {
           out.push({ label, aspect, cell: [cr.width, cr.height], svg: [sr.width, sr.height], capH, slackY });
         }
       }
@@ -212,7 +253,7 @@ for (const vp of VIEWPORTS) {
       return out;
     }, aspects);
     ok(bad.length === 0,
-      `${vp.width}x${vp.height}: no pane of any of the ${CODES.length} single-country libraries letterboxes its CELL or its <svg> beyond 1 px`,
+      `${vp.width}x${vp.height}: A-50 holds on every pane of all ${CODES.length} single-country libraries — the painted map fills its own <svg> (R38-3's CELL clause is withdrawn by A-54 Part 1)`,
       bad.slice(0, 6));
     await page.close();
     await ctx.close();

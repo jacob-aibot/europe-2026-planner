@@ -62,7 +62,11 @@ const LIBS = {
   'sparse CL NO JP MG': [['CL', 1], ['NO', 1], ['JP', 1], ['MG', 1]],
   'sparse SG GL UY': [['SG', 1], ['GL', 1], ['UY', 1]],
   'worldwide 12': [['US', 2], ['BR', 1], ['GB', 1], ['FR', 1], ['ZA', 1], ['EG', 1], ['IN', 1], ['JP', 1], ['AU', 1], ['NZ', 1], ['TH', 1], ['PE', 1]],
+  // **A-54 Part 4 (R39-3) corrects A-51 G6's published ceiling: 18 panes, not 14.** The 14-code
+  // library is kept — it is still 14 panes and is still a real library — and the real ceiling
+  // is added beside it, because residue 7's scroll figures are about the WORST case.
   'greedy 14': [['AD', 1], ['AE', 1], ['AG', 1], ['AO', 1], ['AQ', 1], ['AR', 1], ['AS', 1], ['AU', 1], ['CA', 1], ['CN', 1], ['FM', 1], ['IO', 1], ['PN', 1], ['TF', 1]],
+  'greedy 18': [['AQ', 1], ['AU', 1], ['CL', 1], ['EH', 1], ['FJ', 1], ['GL', 1], ['GU', 1], ['IO', 1], ['MS', 1], ['MX', 1], ['PK', 1], ['PN', 1], ['RO', 1], ['RU', 1], ['RW', 1], ['SH', 1], ['TF', 1], ['VN', 1]],
   'ceiling 239': CODES.map((c) => [c, 1]),
   'microstates': [['MF', 1], ['SX', 1], ['AI', 1], ['BL', 1], ['JE', 1], ['FR', 1]],
 };
@@ -222,8 +226,10 @@ head('D  the `--pane-min` sweep BUILD-NOTES says was not done (320…1600 px)');
 // ===========================================================================
 {
   const WIDTHS = [320, 340, 360, 390, 420, 480, 560, 640, 720, 800, 880, 900, 960, 1024, 1100, 1200, 1280, 1366, 1440, 1520, 1600];
-  const cases = ['FR+US', 'worldwide 12', 'greedy 14'];
+  const cases = ['FR+US', 'worldwide 12', 'greedy 18'];   // A-54 Part 4: 18 is the ceiling, not 14
   let bad = 0, colSeen = {};
+  /** R38-3's withdrawn cell criterion — collected and reported, never asserted (A-54 Part 1). */
+  const withdrawn = [];
   for (const name of cases) {
     for (const width of WIDTHS) {
       const ctx = await browser.newContext({ viewport: { width, height: 900 } });
@@ -235,21 +241,42 @@ head('D  the `--pane-min` sweep BUILD-NOTES says was not done (320…1600 px)');
       if (panes.length !== frame.panes.length) { bad++; note(`  ${name}@${width}: ${panes.length} panes rendered, ${frame.panes.length} expected`); }
       for (const p of panes) {
         if (p.w < 1 || p.h < 1) { bad++; note(`  ${name}@${width}: ${p.id} is ${p.w}x${p.h}`); }
-        // vertical letterboxing — the criterion R38-3 is about. Caption height is inside the cell.
+        // **R38-3's CELL criterion, WITHDRAWN by §4.4 A-54 Part 1 and kept here as the fault's
+        // oracle rather than deleted.** `cell.height − svg.height − caption − padding <= 1 px`
+        // is false by construction once the cells tile their line, and — this is why A-54
+        // withdrew it rather than relaxing it — it is a criterion that PASSES on a container
+        // with a 46% hole in it, which is exactly what R38-3 said about A-50's `<svg>`
+        // criterion one round earlier. The pattern is now named: a criterion written about the
+        // box one level in cannot see the box one level out. It is measured and REPORTED below;
+        // the assertion moved to the container, one box further out.
         const slack = p.h - p.svgH - (await page.evaluate((id) => {
           const cell = document.querySelector(`[data-pane="${id}"]`);
           const cap = cell.querySelector('.worldmap__panecap');
           const cs = getComputedStyle(cell);
           return (cap ? cap.getBoundingClientRect().height : 0) + parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
         }, p.id));
-        if (slack > 1.01) { bad++; note(`  ${name}@${width}: ${p.id} letterboxes vertically by ${slack.toFixed(1)} px`); }
+        if (slack > 1.01) withdrawn.push(`${name}@${width}:${p.id}=${slack.toFixed(1)}px`);
+      }
+      // **A-54 G7′'s replacement, at the CONTAINER** — the outermost box this surface has.
+      const occ = await page.evaluate(() => {
+        const box = document.querySelector('#tabpanel-map .worldmap__panes').getBoundingClientRect();
+        const cells = [...document.querySelectorAll('#tabpanel-map .worldmap__pane')];
+        const sum = cells.reduce((n, c) => { const r = c.getBoundingClientRect(); return n + r.width * r.height; }, 0);
+        return sum / (box.width * box.height);
+      });
+      if (!(occ >= 0.99 && occ <= 1.0001)) {
+        bad++;
+        note(`  ${name}@${width}: Σ cell area ÷ container area is ${(occ * 100).toFixed(1)}% (A-54 G7′: >= 99%, <= 100%)`);
       }
       await page.close();
       await ctx.close();
     }
   }
   note(`column counts observed: ${JSON.stringify(colSeen)}`);
-  ok(bad === 0, `${WIDTHS.length} widths x ${cases.length} libraries: no missing pane, no collapsed cell, no vertical letterbox`, bad);
+  note(`R38-3's WITHDRAWN cell criterion, measured not asserted — ${withdrawn.length} cells with vertical slack ` +
+    `(A-54 Part 7 residue 11: worst measured cell fill is 10.1%, and the space is card-coloured and unbordered): ` +
+    `${withdrawn.slice(0, 8).join(' ')}${withdrawn.length > 8 ? ' …' : ''}`);
+  ok(bad === 0, `${WIDTHS.length} widths x ${cases.length} libraries: no missing pane, no collapsed cell, and the CELLS TILE THE CONTAINER (A-54 G7′)`, bad);
 }
 
 // ===========================================================================

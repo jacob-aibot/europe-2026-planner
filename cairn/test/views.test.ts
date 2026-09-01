@@ -938,30 +938,59 @@ test('I-8h / A-50: the pane box is sized from the pane\'s own aspect in BOTH dir
 });
 
 /**
- * **I-8i / A-51 G7 (QA R38-3) — the panes are an equal grid, and one `--pane-cap` replaces the
- * two role-keyed ones.**
+ * **I-8j / A-54 G7′ + G7″ (manager's I-8i gate, MGR-1) — the panes are a wrapping flex line box
+ * whose cells fill their line, and no cell draws a boundary of its own.**
  *
- * A flex row stretches every cell to its tallest sibling, so the shipped sample's US inset
- * filled **44.1%** of its bordered cell at 390 px and a four-pane `inset-2` filled **21.3%** —
- * A-50 measured the `<svg>` and not the cell. `align-items: start` on a grid does not stretch,
- * and one uniform cap removes the asymmetry that made the stretch large.
+ * **A-51 G7's grid is SUPERSEDED IN FULL and its criterion is named here rather than deleted.**
+ * G7 made this a column grid with `align-items: start`; that fixed R38-3 (no cell letterboxes)
+ * and introduced a worse defect one box out — a grid row is as tall as its tallest cell and a
+ * grid's last row has as many cells as it has items, so anything the cells did not cover painted
+ * in `var(--line)`, the separator ink. Measured: **29.0%** of the Europe 2026 card, **45.6%** of
+ * `FR`+`US`, and **66.7%** of any one-pane library at ≥ 960 px. At 320 px the same rule
+ * overflowed its container by 12 px, because `minmax(300px, 1fr)` has a hard floor and the inner
+ * box is 288 px.
  *
- * `min()`, `calc()` and `auto-fill` resolve at layout and measure nothing: no `viewBox`, pane
- * count or pane membership varies with screen size, so the frame is byte-identical in bare Node
- * and A-41 Part 7's *"no per-screen-size **frame** rule"* is untouched. The rendered oracle is
- * `qa/i8i-render.mjs`.
+ * A flex line is always full (every item grows), its items are all its height (`stretch`, the
+ * default), and `min-width: 0` with a shrink factor of 1 lets a lone cell go below `--pane-min` —
+ * so `Σ cell area = container area − gaps`, **by construction rather than below a threshold**.
+ *
+ * **G7″ is what keeps R38-3 fixed** now that R38-3's own cell criterion is withdrawn: the cell
+ * has no border, outline or box-shadow and keeps `var(--card)`, so the residual slack reads as
+ * whitespace around a map rather than as a letterbox in a delimited box. The rendered oracle is
+ * `qa/i8j-render.mjs`; this is its source-level floor.
  */
-test('I-8i / A-51 G7: the pane container is a grid of equal cells, with ONE height cap', () => {
+test('I-8j / A-54 G7′: the pane container is a wrapping flex line box, and G7″ leaves the cell unbordered', () => {
   const css = stripComments(readFileSync(resolve(CAIRN, 'apps/web/src/styles.css'), 'utf8'));
   const panes = /\.worldmap__panes\s*\{([^}]*)\}/.exec(css);
   assert.ok(panes, 'there is no .worldmap__panes rule');
   const body = panes[1].replace(/\s+/g, ' ');
-  assert.match(body, /display:\s*grid/, 'the container is still a flex row — R38-3 comes back');
-  assert.match(body, /grid-template-columns:\s*repeat\(auto-fill,\s*minmax\(var\(--pane-min[^)]*\),\s*1fr\)\)/,
-    'the columns are not equal-weight auto-fill cells');
-  assert.match(body, /align-items:\s*start/, 'a grid without `align-items: start` stretches like flex did');
-  assert.ok(!/display:\s*flex/.test(body), 'display: flex survives on the pane container');
-  // ONE cap, and it is the pane's, not the role's.
+  assert.match(body, /display:\s*flex/, 'the container is not a flex line box — MGR-1 comes back');
+  assert.match(body, /flex-wrap:\s*wrap/, 'a flex line that cannot wrap is one row of squeezed cells');
+  // The superseded rule, named: any of these three coming back IS the defect A-54 fixed.
+  assert.ok(!/display:\s*grid/.test(body), 'A-51 G7\'s grid is back — up to 66.7% of the card paints as separator ink');
+  assert.ok(!/grid-template-columns/.test(body), 'the auto-fill track list is back, with its 300 px hard floor');
+  assert.ok(!/align-items:\s*start/.test(body),
+    '`align-items: start` is back — a cell shorter than its line leaves a hole in the container');
+  // The separator and the container ink are unchanged by A-54, verbatim.
+  assert.match(body, /gap:\s*1px/, 'the 1 px separator gap is not the separator any more');
+  assert.match(body, /background:\s*var\(--line\)/, 'the container no longer shows the separator colour');
+
+  // G7′ on the cell: grow 1, shrink 1, basis --pane-min, and a min-width that permits the shrink.
+  const pane = /\.worldmap__pane\s*\{([^}]*)\}/.exec(css);
+  assert.ok(pane, 'there is no .worldmap__pane rule');
+  const cell = pane[1].replace(/\s+/g, ' ');
+  assert.match(cell, /flex:\s*1 1 var\(--pane-min,\s*300px\)/,
+    'the cell does not grow to fill its line, or cannot shrink below --pane-min (the 320 px overflow)');
+  assert.match(cell, /min-width:\s*0/, 'without `min-width: 0` a flex item cannot shrink below its basis');
+
+  // **G7″** — no cell may draw a boundary of its own.
+  for (const banned of [/border\s*:/, /border-(top|right|bottom|left)\s*:/, /outline\s*:/, /box-shadow\s*:/]) {
+    assert.ok(!banned.test(cell), `G7″: the cell draws a boundary of its own — ${banned}`);
+  }
+  assert.match(cell, /background:\s*var\(--card\)/,
+    'G7″: the cell background must equal .worldmap__figure\'s, or the slack reads as a hole');
+
+  // ONE cap, and it is the pane's, not the role's — A-51 G7's surviving half, unchanged by A-54.
   assert.match(css, /\.worldmap__pane[^{-][^{]*\{[^}]*--pane-cap:\s*min\(38vh,\s*300px\)/,
     'the single uniform pane cap is missing');
   assert.ok(!/min\(58vh,\s*460px\)/.test(css), 'the main pane\'s role-keyed cap survives');
@@ -973,8 +1002,9 @@ test('I-8i / A-51 G7: the pane container is a grid of equal cells, with ONE heig
   }
   // The caption carries no margin of its own. `qa/i8i-render.mjs` measured 8 px of dead space
   // under every caption — the global `p` bottom margin — which a stretching flex row used to
-  // hide and `align-items: start` exposes. It is 8 px of slack inside the bordered cell, which
-  // is exactly what R38-3's criterion is written to catch.
+  // hide and `align-items: start` exposed. Under G7′ that space is inside a card-coloured,
+  // unbordered cell, so it is no longer visible ink; the rule stays because 8 px of dead space
+  // under a caption is still 8 px the map could have had.
   const cap = /\.worldmap__panecap\s*\{([^}]*)\}/.exec(css);
   assert.ok(cap, 'there is no .worldmap__panecap rule');
   assert.match(cap[1].replace(/\s+/g, ' '), /margin:\s*0/,

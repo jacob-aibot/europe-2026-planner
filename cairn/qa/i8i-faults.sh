@@ -116,9 +116,13 @@ fault 'home = only the codes whose parts are ALL principal here' \
   packages/client/test/world-map.test.ts
 
 say '7. A-52 / R38-5 — the `ring.length >= 6` filter comes back (a two-point ring is dropped)'
+# **RE-POINTED at I-8j.** The gather this mutated moved into `drawableRingsOf`, §4.4 A-54 Part 2's
+# one private per-code gather shared by `countryParts` and `countryKeyPoint`. The fault is the
+# same one and it still names A-52's clause: a ring the index carries is a ring the frame draws,
+# and A-54's D adds no minimum vertex count.
 fault 'countryParts skips a ring of fewer than three points' \
   'packages/core/src/derive/country.ts' \
-  "s=s.replace('    for (const ring of entry.rings) rings.push(ring);','    for (const ring of entry.rings) if (ring.length >= 6) rings.push(ring);')" \
+  "s=s.replace('      if (!drawableRing(ring)) return null;\n      rings.push(ring);','      if (!drawableRing(ring)) return null;\n      if (ring.length >= 6) rings.push(ring);')" \
   packages/core/test/countryParts.test.ts packages/client/test/world-map.test.ts
 
 say '8. A-51 G8 / A-53 — the extent pane is captioned as an ordinary pane'
@@ -127,11 +131,21 @@ fault 'the "Distant parts of" label is dropped' \
   "s=s.replace('<span className=\"worldmap__panecap-label\">Distant parts of</span>','<span className=\"worldmap__panecap-label\">Shown separately</span>')" \
   test/views.test.ts
 
-say '9. A-51 G7 / R38-3 — the pane container goes back to a stretching flex row'
-fault 'display: grid -> display: flex on .worldmap__panes' \
-  'apps/web/src/styles.css' \
-  "s=s.replace('  display: grid;\n  grid-template-columns: repeat(auto-fill, minmax(var(--pane-min, 300px), 1fr));\n  align-items: start;','  display: flex;\n  flex-wrap: wrap;')" \
-  test/views.test.ts
+say '9. A-51 G7 — WITHDRAWN by A-54 G7\x27, and the mutation is kept as the record of what G7 guaranteed'
+# **This fault is RETIRED.** A-51 G7 made the container a grid to stop a stretching flex row
+# letterboxing every cell (R38-3), and §4.4 **A-54** Part 1 supersedes it IN FULL: a grid row is
+# as tall as its tallest cell and a grid's last row has as many cells as it has items, so up to
+# 66.7% of the card painted in the separator ink, and at 320 px every cell overflowed its
+# container by 12 px. The successor mutation — restore the grid, which must now go RED — is
+# `qa/i8j-faults.sh` fault 1, and the container criterion that catches it is `qa/i8j-render.mjs`
+# section A. The mutation text is kept here so the record of what G7 guaranteed is not lost:
+#
+#   s.replace('  display: grid;\n  grid-template-columns: repeat(auto-fill, minmax(var(--pane-min, 300px), 1fr));\n  align-items: start;',
+#             '  display: flex;\n  flex-wrap: wrap;')
+#
+# G7's other half — ONE uniform `--pane-cap`, no role-keyed pair — survives A-54 verbatim and is
+# fault 10 below, which is unchanged and still red.
+echo '  RETIRED (A-54 G7\x27)   display: grid -> display: flex on .worldmap__panes   -> superseded; see qa/i8j-faults.sh fault 1'
 
 say '10. A-51 G7 — the two role-keyed height caps come back'
 fault 'the uniform --pane-cap is replaced by the main/inset pair' \
@@ -160,9 +174,22 @@ fault 'cluster the principal parts only, then attach the rest to their code\x27s
   packages/client/test/world-map.test.ts
 
 say '14. A-51 G2 — the canonical part list is built in paint order, so pane.codes stops being canonical'
-fault 'atoms are built in descending index position' \
+# **RE-POINTED at I-8j, and the reason is a real loss of coverage worth writing down.** The
+# mutation used to be *"push the atoms in descending index position"*:
+#
+#   s.replace('  for (let k = 0; k < drawn.length; k++) for (const part of drawn[k].parts) atoms.push({ owner: k, part });',
+#             '  for (let k = drawn.length - 1; k >= 0; k--) for (const part of drawn[k].parts) atoms.push({ owner: k, part });')
+#
+# That never tested its own label — `owners` is sorted numerically, so `pane.codes` stayed
+# canonical either way — and what it actually turned red was A-51 G5's THIRD key, `members[0]`,
+# which reads the canonical part list. §4.4 **A-54** G5′ replaces that key with the pane's own
+# `bounds`, so the old mutation is now unobservable: two parts of one code are >= the threshold
+# apart by definition and therefore never share a pane, so no `d`, no `codes` and no order moves.
+# The mutation is re-pointed onto the clause the label names — the `owners` sort, which is what
+# makes `pane.codes` canonical row order (I2) — and IS red.
+fault 'pane.codes is built in descending owner order' \
   'packages/client/src/selectors/worldMap.ts' \
-  "s=s.replace('  for (let k = 0; k < drawn.length; k++) for (const part of drawn[k].parts) atoms.push({ owner: k, part });','  for (let k = drawn.length - 1; k >= 0; k--) for (const part of drawn[k].parts) atoms.push({ owner: k, part });')" \
+  "s=s.replace('    const owners = [...new Set(members.map((i) => atoms[i].owner))].sort((a, b) => a - b);','    const owners = [...new Set(members.map((i) => atoms[i].owner))].sort((a, b) => b - a);')" \
   packages/client/test/world-map.test.ts
 
 say '15. the export surface — countryKeyPoint is dropped now that it has no production caller'
@@ -174,9 +201,13 @@ fault 'index.ts drops countryKeyPoint' \
   packages/core/test/surface.test.ts packages/core/test/countryParts.test.ts
 
 say '16. the kernel — clusterPoints is called per pane again (A-51 calls it exactly ONCE)'
+# **RE-POINTED at I-8j.** The `mapBounds` call this mutated moved up into the `built` map, because
+# A-54 G5\x27's third and fourth keys are read off the pane's own `bounds` and the comparator runs
+# before the pane array is assembled. It is still ONE call per component and still one
+# `clusterPoints` call for the whole frame.
 fault 'a second clusterPoints call inside the pane loop' \
   'packages/client/src/selectors/worldMap.ts' \
-  "s=s.replace('    const bounds = core.mapBounds(cornersOf(group.members));','    const sub = core.clusterPoints(group.members.map((m) => atoms[m].part.key), WORLD_CLUSTER_THRESHOLD_KM);\n    const bounds = core.mapBounds(cornersOf(sub[0].map((j) => group.members[j])));')" \
+  "s=s.replace('      bounds: core.mapBounds(cornersOf(members)),','      bounds: core.mapBounds(cornersOf(core.clusterPoints(members.map((m) => atoms[m].part.key), WORLD_CLUSTER_THRESHOLD_KM)[0].map((j) => members[j]))),')" \
   packages/client/test/world-map.test.ts
 
 if [ -n "$MISMATCH" ]; then

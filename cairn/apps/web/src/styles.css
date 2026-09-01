@@ -611,39 +611,85 @@ textarea { resize: vertical; }
    where a pane sits or how big it is, because a measurement is what would bring the
    "cannot fit a hidden container" bug back. Placement and size are here, and only here.
 
-   §4.4 A-51 G7 (QA R38-3): FLEX → GRID, and the cells are equal. A flex row stretches every
-   cell to its tallest sibling, so the shipped sample's US inset filled 44.1% of its bordered
-   cell at 390 px and a four-pane `inset-2` filled 21.3% — A-50 fixed the <svg> and not the
-   cell. `align-items: start` on a grid does not stretch, and one uniform `--pane-cap` removes
-   the asymmetry that made the stretch large.
+   §4.4 A-54 G7′ (manager's I-8i gate, MGR-1) SUPERSEDES A-51 G7 IN FULL: GRID → A WRAPPING
+   FLEX LINE BOX. A-51 G7 made this a column grid with `align-items: start`, which fixed R38-3
+   (no cell letterboxes) and introduced a worse defect one box out: a grid ROW is as tall as its
+   tallest cell and a grid's LAST row has as many cells as it has items, so anything the cells
+   did not cover painted in the container's own background — `var(--line)`, the separator ink.
+   Measured: 29.0% of the Europe 2026 card and 45.6% of `FR`+`US` bare at >= 640 px, and 66.7%
+   for any ONE-pane library (`AT CZ DE HR HU SI`, the 239-code ceiling, `FJ` alone) at >= 960 px.
+   At 320 px the defect ran the other way: the inner box is 288 px, `minmax(300px, 1fr)` cannot
+   go below 300, so every cell OVERFLOWED by 12 px and `.worldmap__figure`'s `overflow: hidden`
+   clipped the map.
 
-   An equal cell is also the ruling: A-51 withdraws the main/inset hierarchy, so there is no
-   role to size a cell from, and A-53 Part 7 states why that is right rather than merely
-   simpler — a cell is a viewport and asserts nothing; the claim is `weight`, and the priority
-   is the pane ORDER. Sizing a cell by `home.length` would additionally make a pane's screen
-   size depend on what else is in the library, which is the non-locality I17 forbids.
+   The replacement is smaller than what it replaces, and it is a property rather than a
+   threshold:
 
-   Still measurement-free: `min()`, `calc()` and `auto-fill` resolve at layout and measure
-   nothing. No `viewBox`, pane count or pane membership varies with screen size — the frame is
-   byte-identical in bare Node — so A-41 Part 7's "no per-screen-size FRAME rule" is untouched.
-   One column at 390 px, three at 1440 px for the reference sample. */
+     1. A flex line is always full. Every item has `flex-grow: 1`, so all free space on a line is
+        distributed to the items on it; a line with one item is one full-width cell. There is no
+        trailing hole, at any pane count, at any width — not below a threshold, BY CONSTRUCTION.
+     2. A flex line's items are all its height (`align-items: stretch`, the default), so no cell
+        is shorter than its line and interior dead space cannot exist.
+     3. Therefore `Σ cell area = container area − gaps`, identically.
+     4. `min-width: 0` with a shrink factor of 1 lets a lone cell shrink BELOW `--pane-min`,
+        which is what removes the 320 px overflow. A grid track cannot: `minmax(300px, 1fr)` has
+        a hard floor.
+     5. The column count does not change. Flex line-breaking uses each item's hypothetical main
+        size — the `flex-basis`, i.e. `--pane-min` — so lines break exactly where
+        `repeat(auto-fill, minmax(--pane-min, 1fr))` broke.
+
+   Where the residual slack goes, said plainly: a pane's aspect is fixed and its cell's is not,
+   so SOME space inside a cell is unavoidable; a cell can only stop having it by shrinking, which
+   is what put the hole in the container. G7′ moves that space INSIDE the cell, whose background
+   is `var(--card)` — the same colour `.worldmap__figure` paints — so it reads as whitespace
+   around a map instead of as a grey block where a map failed to load. G7″ below is what keeps it
+   reading that way, and it is what keeps R38-3 fixed now that R38-3's own cell criterion is
+   withdrawn (that criterion passed on a container with a 46% hole in it, which is the pattern
+   A-54 names: a criterion written about the box one level in cannot see the box one level out).
+
+   Equal cells are still the ruling, and A-54 refuses aspect-proportional cells on exactly that
+   ground: a cell is a viewport and asserts nothing; the claim is `weight`, and the priority is
+   the pane ORDER. Sizing a cell by its own aspect — or by `home.length` — would make a pane's
+   screen size depend on what else shares its line, which is the non-locality I17 forbids. The
+   masonry / `grid-auto-flow: dense` / multi-column family is refused for a different reason:
+   it changes the sequence the eye follows, and I18's claim is a claim about that sequence.
+
+   Still measurement-free: `flex-wrap` and `flex-basis` are resolved by the layout engine.
+   `packages/client` and `WorldMap.tsx` compute nothing, no `viewBox`, pane count or pane
+   membership varies with screen size — the frame is byte-identical in bare Node — so A-41
+   Part 7's "no per-screen-size FRAME rule" and W1 are untouched. One column at 390 px, three at
+   1440 px for the reference sample, exactly as before. */
 .worldmap__panes {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(var(--pane-min, 300px), 1fr));
-  align-items: start;
+  display: flex;
+  flex-wrap: wrap;
   /* The separator is a 1 px gap the container's own line colour shows through, rather than a
-     per-cell border: an adjacent-sibling border rule reads DOM order, and in an `auto-fill`
-     grid DOM order is not column position, so it would draw a left edge on the first cell of
-     every row but the first. This is a paint detail with no measurement in it. */
+     per-cell border: an adjacent-sibling border rule reads DOM order, and DOM order is not
+     column position once the line wraps, so it would draw a left edge on the first cell of
+     every line but the first. This is a paint detail with no measurement in it — and under G7″
+     it is now the ONLY ink between cells. */
   gap: 1px;
   background: var(--line);
 }
 /* §4.4 A-50: the height cap is a custom property, so the box can be sized from it in BOTH
    directions. §4.4 A-51 G7 replaces A-50's two role-keyed values with ONE, because there is no
    role. `--pane-aspect` arrives per <svg> from the frame; `--pane-cap` is layout and belongs
-   here. */
+   here.
+
+   §4.4 A-54 G7′: `flex: 1 1 var(--pane-min, 300px)` — grow 1 (so the line is always full),
+   shrink 1 and `min-width: 0` (so a lone cell may go below `--pane-min` rather than overflow a
+   288 px viewport), basis `--pane-min` (so the line breaks exactly where the grid's `auto-fill`
+   track did).
+
+   §4.4 A-54 G7″ — NO CELL MAY DRAW A BOUNDARY OF ITS OWN. No `border`, no `outline`, no
+   `box-shadow`, and `background` stays `var(--card)`, which is `.worldmap__figure`'s own colour.
+   A cell is not a frame around its map; the only ink between cells is the 1 px gap above. This
+   is the clause that keeps R38-3 fixed — R38-3's harm was a map painting 44.1% of a VISIBLY
+   DELIMITED box, and its own cell criterion is withdrawn by A-54 — and it is why the slack
+   inside a cell reads as whitespace rather than as a letterbox. */
 .worldmap__pane {
-  position: relative; min-width: 0;
+  position: relative;
+  flex: 1 1 var(--pane-min, 300px);
+  min-width: 0;
   background: var(--card);
   --pane-cap: min(38vh, 300px);
 }
