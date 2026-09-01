@@ -19,10 +19,44 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
-> **🟡 THE MAP'S NEW FRAME IS NOW BUILT — not yet attacked — as of 2026-09-01 (this block is the
-> newest; it supersedes the redesign block below on *"no code has been written for it yet"*).**
+> **🟢 THE MAP'S NEW FRAME HAS NOW BEEN ATTACKED — the France/Greece defect really is fixed, and
+> a bigger one behind it is not — as of 2026-09-01 (this block is the newest; it supersedes the
+> "not yet attacked" block below).**
 >
-> **I-8h is designed ✅ · built ✅ · verified ❌ (not yet attacked) · shippable ❌.** Everything the
+> **I-8h is designed ✅ · built ✅ · verified ✅ · shippable — the manager's call, but the map
+> *track* is not finished.** A tester spent a round trying to break it and **could not find one
+> place where the code disagrees with the ruling**: he rewrote the whole frame calculation a
+> second time, from scratch, and got the identical answer for every map he tried — same panes,
+> same rectangles, same numbers, down to the character. **0 blockers.** France + Greece is fixed
+> exactly as claimed (Greece is now **5,367 px²** on a phone against **783** before — 6.9× bigger),
+> the Alaska rule is genuine geometry (he re-ran everything on a map file with **every country
+> code scrambled** and got identical results), and the four-panel layout nobody had actually
+> looked at renders correctly at four screen sizes.
+>
+> **What he found instead is that the fix does not reach the commonest map there is.** If you have
+> been to two countries on two different continents, with one trip each, the map still refuses to
+> split into two panels — that rule is deliberate and four years of architecture notes explain why
+> — and the single panel it draws instead is the *same* "map of the wrong subject" the last two
+> rounds were about. **France + United States draws France at 36 × 25 pixels** in a 356 × 80 strip;
+> **France + New Zealand is 99.5% empty ocean.** **80% of all two-country histories are this
+> shape.** Nobody had ever measured it. That goes back to the architect as **R38-2 (MAJOR)** and is
+> why the map track needs a fifth design round rather than a ship.
+>
+> Three smaller things go back with it: a panel can still be more than half empty *box* even after
+> the "fill the box" fix, because the fix measures the drawing and not the panel (**R38-3**); a
+> distant island sharing its panel with another country's shrinks to **7 × 8 pixels** (**R38-4**);
+> and a malformed map file could silently lose a shape with nothing on screen to say so
+> (**R38-5** — not reachable from the shipped map data, flagged for later). One note goes back to
+> the builder: the "prove this test can fail" check recorded as **KD-71** *can* in fact fail — just
+> not on the country or at the distance the architect named (**R38-1**).
+>
+> The findings, the numbers and the exact commands are in `QA-FINDINGS.md`, round 38.
+
+> **🟡 THE MAP'S NEW FRAME WAS BUILT HERE — as of 2026-09-01 (this block is superseded by the
+> block above, which is the tester's verdict on it).**
+>
+> **I-8h was designed ✅ · built ✅ · verified ❌ when this block was written; it is now verified —
+> see the block above.** Everything the
 > redesign block below describes is now code, and every number in it was re-derived by running it
 > rather than copied: France + Greece measures **31.20° × 16.23°** and **14.7% land on screen**
 > (it was 81.13° × 49.10° and 1.95%), Greece renders **71 × 76 px** on a phone (it was 27 × 29),
@@ -41,9 +75,10 @@ update to this file added that instruction).
 > map built from one cluster and not for the two kinds of map that hold several — the *behaviour*
 > is unaffected, only the proof is over-stated (**KD-72**).
 >
-> **A tester has not attacked this yet.** It widens the shared engine's public surface (78 → 79),
-> so the adversarial round is mandatory before it counts as verified. I-8h does **not** block
-> **I-8b** (the Profile screen); I-8b still waits on **I-8f**.
+> **A tester had not attacked this when this block was written; he has now — see the block above.
+> KD-71's claim did not survive that round (R38-1); KD-72's did.** It widens the shared engine's
+> public surface (78 → 79), which is why the adversarial round was mandatory. I-8h does **not**
+> block **I-8b** (the Profile screen); I-8b still waits on **I-8f**.
 
 > **🟠 THE MAP'S FRAME WAS REDESIGNED HERE — as of 2026-09-01 (this block is superseded by the
 > block above on *"not built yet"*; it supersedes the round-37 block below on *"shippable — the

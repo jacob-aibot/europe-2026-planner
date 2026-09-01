@@ -278,9 +278,48 @@ duplicate-key warning asserted absent.
 **One of A-49's own named injected faults cannot be red** — *"rank parts by summed area … and `US`
 mismatches"* — and `i8h-faults.sh`'s header says so rather than faking it; a substitute that is
 red is fault 3, and the vacuity is a test in `packages/core/test/countryParts.test.ts`. See
-**KD-71** in `../docs/BUILD-NOTES.md`. A-50's browser-side fault (restore `width: 100%` with the
-static `max-height`) needs a rebuild, so it is injected by hand against `i8h-render.mjs`; it
-measures **9 FAIL** and the numbers are in BUILD-NOTES.
+**KD-71** in `../docs/BUILD-NOTES.md`. **Round 38 measured that vacuity claim as too wide** — it
+holds at the five thresholds A-49 I12 names and fails at seven others (`ID`@900 km is the sharpest,
+two parts 2,481 km apart), so A-49's own fault *is* red, just not on `US` and not at 4,000 km.
+**R38-1.** A-50's browser-side fault (restore `width: 100%` with the static `max-height`) needs a
+rebuild, so it is injected by hand against `i8h-render.mjs`; it measures **9 FAIL** and the numbers
+are in BUILD-NOTES.
+
+## Round 38 (2026-09-01, `master` @ `dea2c67`) — the I-8h / A-49 / A-50 breaker pass
+
+Two scripts, both written from A-49, A-50 and the shipped source rather than by re-pointing the
+builder's `i8h-*` probes — this is the **third** independent round on this area, so every quantity
+is re-derived from a second implementation in the probe itself: my own haversine, my own spherical
+ring area (Lambert cylindrical equal-area shoelace), my own connected components (BFS), my own
+`mapBounds`+padding, and a **complete second `worldMapFrame`** written straight off C1…C9/P/C8′/C8″
+and compared to the shipped one string for string.
+
+```bash
+node qa/r38-a49.mjs                                      # A-49 clause by clause, second implementations
+# with `npm run web:build && npm run serve` in another shell:
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r38-render.mjs
+```
+
+`r38-a49.mjs` has thirteen sections: **A** the index census (KD-73's ring claim); **B** KD-71 swept
+over **32** thresholds with both area formulas; **C** I12 over 8 thresholds / 1,912 comparisons;
+**D** the headline extents, each rebuilt by my own frame; **E** Alaska, with the part-graph edge
+lengths and with **every ISO code in the index permuted** so "nothing reads a code" is tested and
+not read; **F** KD-72's component counts; **G** I1/I2/I3/I5/I11/I13/I14/I15 over **643** libraries;
+**H** I6 under every row permutation; **I** KD-73 on a fixture that actually carries a degenerate
+ring; **J** the residual R37-1 shape and its census; **K0/K** cost, against `09f7ce4` on the same
+run; **L** the standing constraints; **M** degenerate inputs.
+
+`r38-render.mjs` has seven sections, all **real page loads** — it does not use the builder's
+`--pane-aspect` shortcut: **A** the four-pane layout at four viewports with screenshots (BUILD-NOTES
+says this was never looked at); **B** A-50 over 14 libraries × 4 viewports = **92 panes**, two of
+the viewports ones the builder never used; **C** browser `viewBox` vs bare Node; **D** `UM`'s
+344°-wide main pane and its 0.028° detached speck; **E** reachability on the four-pane library;
+**F** the pane **cell** rather than the `<svg>` (**R38-3**); **G** a detached part's rendered size
+(**R38-4**). Screenshots land in `/tmp/cairn-r38/`.
+
+`r38-a49.mjs` reports **4 FAIL** — three are **R38-1**, one is **R38-2**'s census. `r38-render.mjs`
+reports **2 FAIL** — **R38-3** and **R38-4**. Everything else in both is `ok`. Read
+`../docs/QA-FINDINGS.md`'s round-38 note before assuming either is broken.
 
 Browser probes need `npm run web:build && npm run serve` in one shell first, then:
 

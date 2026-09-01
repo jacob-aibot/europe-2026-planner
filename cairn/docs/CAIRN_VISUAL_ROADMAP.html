@@ -319,12 +319,47 @@
 </style>
 </head>
 <body>
+<div class="callout" style="border-left:4px solid #16a34a;padding:.75rem 1rem;margin:1rem 0;background:#f0fdf4">
+<p><strong>&#128994; THE MAP&rsquo;S NEW FRAME HAS NOW BEEN ATTACKED &mdash; the France/Greece
+defect really is fixed, and a bigger one behind it is not &mdash; as of 2026-09-01</strong> (this
+block is the newest; it supersedes the &ldquo;not yet attacked&rdquo; block below).</p>
+<p><strong>I-8h is designed &#9989; &middot; built &#9989; &middot; verified &#9989; &middot;
+shippable &mdash; the manager&rsquo;s call, but the map <em>track</em> is not finished.</strong>
+A tester spent a round trying to break it and <strong>could not find one place where the code
+disagrees with the ruling</strong>: he rewrote the whole frame calculation a second time, from
+scratch, and got the identical answer for every map he tried &mdash; same panes, same rectangles,
+same numbers, down to the character. <strong>0 blockers.</strong> France&nbsp;+&nbsp;Greece is fixed
+exactly as claimed (Greece is now <strong>5,367&nbsp;px&sup2;</strong> on a phone against
+<strong>783</strong> before &mdash; 6.9&times; bigger), the Alaska rule is genuine geometry (he
+re-ran everything on a map file with <strong>every country code scrambled</strong> and got identical
+results), and the four-panel layout nobody had actually looked at renders correctly at four screen
+sizes.</p>
+<p><strong>What he found instead is that the fix does not reach the commonest map there is.</strong>
+If you have been to two countries on two different continents, with one trip each, the map still
+refuses to split into two panels &mdash; that rule is deliberate and the architecture notes explain
+why &mdash; and the single panel it draws instead is the <em>same</em> &ldquo;map of the wrong
+subject&rdquo; the last two rounds were about. <strong>France&nbsp;+&nbsp;United States draws France
+at 36&nbsp;&times;&nbsp;25 pixels</strong> in a 356&nbsp;&times;&nbsp;80 strip;
+<strong>France&nbsp;+&nbsp;New Zealand is 99.5% empty ocean.</strong> <strong>80% of all two-country
+histories are this shape.</strong> Nobody had ever measured it. That goes back to the architect as
+<strong>R38-2 (MAJOR)</strong> and is why the map track needs a fifth design round rather than a
+ship.</p>
+<p>Three smaller things go back with it: a panel can still be more than half empty <em>box</em> even
+after the &ldquo;fill the box&rdquo; fix, because the fix measures the drawing and not the panel
+(<strong>R38-3</strong>); a distant island sharing its panel with another country&rsquo;s shrinks to
+<strong>7&nbsp;&times;&nbsp;8 pixels</strong> (<strong>R38-4</strong>); and a malformed map file
+could silently lose a shape with nothing on screen to say so (<strong>R38-5</strong> &mdash; not
+reachable from the shipped map data, flagged for later). One note goes back to the builder: the
+&ldquo;prove this test can fail&rdquo; check recorded as <strong>KD-71</strong> <em>can</em> in fact
+fail &mdash; just not on the country or at the distance the architect named
+(<strong>R38-1</strong>).</p>
+<p>The findings, the numbers and the exact commands are in <code>QA-FINDINGS.md</code>, round 38.</p>
+</div>
 <div class="callout" style="border-left:4px solid #eab308;padding:.75rem 1rem;margin:1rem 0;background:#fefce8">
-<p><strong>&#128993; THE MAP&rsquo;S NEW FRAME IS NOW BUILT &mdash; not yet attacked &mdash; as of
-2026-09-01</strong> (this block is the newest; it supersedes the redesign block below on
-<em>&ldquo;no code has been written for it yet&rdquo;</em>).</p>
-<p><strong>I-8h is designed &#9989; &middot; built &#9989; &middot; verified &#10060; (not yet
-attacked) &middot; shippable &#10060;.</strong> Everything the redesign block below describes is now
+<p><strong>&#128993; THE MAP&rsquo;S NEW FRAME WAS BUILT HERE &mdash; as of 2026-09-01</strong>
+(this block is superseded by the block above, which is the tester&rsquo;s verdict on it).</p>
+<p><strong>I-8h was designed &#9989; &middot; built &#9989; &middot; verified &#10060; when this
+block was written; it is now verified &mdash; see the block above.</strong> Everything the redesign block below describes is now
 code, and every number in it was re-derived by running it rather than copied: France&nbsp;+&nbsp;Greece
 measures <strong>31.20&deg; &times; 16.23&deg;</strong> and <strong>14.7% land on screen</strong> (it
 was 81.13&deg; &times; 49.10&deg; and 1.95%), Greece renders <strong>71 &times; 76&nbsp;px</strong> on
@@ -342,10 +377,11 @@ recorded as <strong>KD-71</strong>. (2) The architect&rsquo;s proof that a map f
 connected group is true for a map built from one cluster and not for the two kinds of map that hold
 several &mdash; the <em>behaviour</em> is unaffected, only the proof is over-stated
 (<strong>KD-72</strong>).</p>
-<p><strong>A tester has not attacked this yet.</strong> It widens the shared engine&rsquo;s public
-surface (78 &rarr; 79), so the adversarial round is mandatory before it counts as verified. I-8h does
-<strong>not</strong> block <strong>I-8b</strong> (the Profile screen); I-8b still waits on
-<strong>I-8f</strong>.</p>
+<p><strong>A tester had not attacked this when this block was written; he has now &mdash; see the
+block above. KD-71&rsquo;s claim did not survive that round (R38-1); KD-72&rsquo;s did.</strong> It
+widens the shared engine&rsquo;s public surface (78 &rarr; 79), which is why the adversarial round
+was mandatory. I-8h does <strong>not</strong> block <strong>I-8b</strong> (the Profile screen);
+I-8b still waits on <strong>I-8f</strong>.</p>
 </div>
 <div class="callout" style="border-left:4px solid #ea580c;padding:.75rem 1rem;margin:1rem 0;background:#fff7ed">
 <p><strong>&#128992; THE MAP&rsquo;S FRAME WAS REDESIGNED HERE &mdash; as of 2026-09-01</strong>
