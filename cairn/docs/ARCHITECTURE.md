@@ -799,13 +799,50 @@ revision 35 carries both as **I-8i**, which is **not dispatchable until Jacob ap
 Nothing else moves: no `schemaVersion` bump, no `SUMMARY_VERSION` bump, no port change, no reducer action,
 no new dependency, and **no stored byte of any trip**.
 
+**Revision 36, 2026-09-01.** Jacob put one bounded question to A-51 before approving it: *"the proposed
+'one pane per connected component of country geometry' rule may promote detached polygon
+components/territories into equal-weight travel subjects even when the user's actual travel did not
+independently occur there — the FR+US → 4-pane result makes this ambiguity concrete."* One ruling,
+**A-53** (§4.4, under A-52), and **A-51 and A-52 stand as written — no clause of either is superseded,
+withdrawn or amended.** The investigation went to the data first: `worldMapFrame`'s entire input is
+`TravelStats` + `CountryIndex`, and **there is no coordinate anywhere in it** — `TravelStatsCountry` is a
+code, `TravelStatsCity` is a *folded name*, `TripSummaryCity` is `{key, name, countryCode, countrySource}`,
+and `TripSummaryRow.attribution` counts coordinate-bearing records rather than carrying them. The
+coordinate is consumed at the mint by `countryOf` and does not survive into the row; opening the documents
+is refused by §4.2, and widening the row is A-31 Part 6 / A-33's allow-list, i.e. a `SUMMARY_VERSION` bump
+this ruling declines. **So the finest geographic fact the lifetime map can hold is an ISO code, every
+component of a visited country's geometry is exactly as attributed as every other, and demoting French
+Guiana needs either a territory carve-out (L5 forbids it, and round 38 verified the property by permuting
+every ISO code) or a size threshold that also demotes Alaska.** A-51 was then walked concretely on `FR`+`US`
+and **already makes the distinction the question asks for**: Guiana and Alaska come back `home: []`,
+`weight: 0`, captioned *"distant parts of"*, and **last** — panes are equal as *cells*, never as *claims*.
+What A-51 lacked was the vocabulary and the proof, so A-53 adds **home pane / extent pane** (derived from
+`home.length`, **no new field, no returning `role`**), **I18** (every home pane strictly precedes every
+extent pane — a theorem of G5, and without it an `FR`-only library **opens on French Guiana**, which is the
+raw component order), and the bound that closes the question: at 4,000 km on the shipped index **only `FR`,
+`UM` and `US` have more than one part, so a library can hold at most 3 extent panes, ever** — 372 of 400
+random libraries hold none, the 12-code worldwide library holds one (Alaska), and **the 14-pane worst case
+holds zero**. Prior art was investigated against real source: **`d3-geo`'s `geoBounds` is winding-order
+sensitive** (a clockwise France-sized ring returns the whole world), **bounds great-circle arcs** (a 50° N
+line bulges to 67.2°, which would make every frame *looser* than the geometry it frames) and returns
+**west > east** across the antimeridian, which A-51's `width = east − west` cannot represent; **`fitExtent`
+emits pixel scale/translate**, which A-40 Part 4's measurement-freedom exists to not have; and **turf's
+`clustersDbscan` labels a lone part `"noise"` and drops it** (an L4 violation), while `minPoints: 1`
+degenerates it to the connected components `core.clusterPoints` already computes. **None of the four
+defects in this arc lived in a primitive a library ships** — all four were framing *policy* — so the
+decision order resolves at option 3, the zero-dependency rule is not broken and is not asked to be, and the
+one place prior art genuinely wins (residue 3's antimeridian bounds) is recorded with **option 2** named as
+its route if it is ever reopened. **The minimum I-8i adjustment is two verification criteria and one
+docstring sentence; no executable line of the specified diff moves.** `ROADMAP.md` revision 36 carries it.
+**I-8i is DISPATCHABLE on Jacob's approval of A-51 and needs no further architect round.**
+
 **Phase 1 is §2 and §4. The next phase is §8.1–§8.4.** Everything else is the shape those must not
 foreclose. See `ROADMAP.md` for sequencing and `PRODUCT-VISION.md` for why this order and not another.
 
 ## Read only your sections
 
-This document is ~264k tokens (re-measured at revision 35, with
-`cairn/tools/doc-section ARCHITECTURE` — §2 is ~123k of it and §8 ~65k, and §4 grew 13k → 18k when A-41/A-42 landed in §4.4, 18k → 25k when A-48 joined them, 25k → 32k when A-49/A-50 did and 32k → **42k** when A-51/A-52 did; the per-section figures below were stale by a third before revision 11 and are
+This document is ~271k tokens (re-measured at revision 36, with
+`cairn/tools/doc-section ARCHITECTURE` — §2 is ~123k of it and §8 ~65k, and §4 grew 13k → 18k when A-41/A-42 landed in §4.4, 18k → 25k when A-48 joined them, 25k → 32k when A-49/A-50 did, 32k → 42k when A-51/A-52 did and 42k → **49k** when A-53 did; the per-section figures below were stale by a third before revision 11 and are
 re-measured, not estimated, whenever a revision lands). Nothing needs all of it, and a fresh agent that reads it whole starts a sixth
 of the way into its context before writing a line. Pull what you need:
 
@@ -837,7 +874,7 @@ rendering a stored summary row on the Trips list, adding an export path, or abou
 outside core reads A-47, then A-46, then A-45, then §8.4 A-44 — A-47 names which of A-46's sentences it
 supersedes, so reading it first is what tells you which of A-46 to skip** | 123k | builder, breaker |
 | 3 | Module boundaries | <1k | builder |
-| 4 | **The Phase 1 client.** §4.2 rule 6 (a pending write is never outlived by its document) is new in revision 3 — QA R3-2; rule 6a′ and the `savedDoc` predicate are revision 4 — QA R4-1; **rule 6a″ (the flush bound and its exits) and rule 6c's "delete goes on the chain" are revision 5** — QA R6-1/R6-2/R7-3; **rule 5's retirement carve-out is revision 6** — QA R8-1, read with §2.7; **rule 4a is revision 8** — QA R11-1, read with §2.2a A-7; **§4.3's A-30 is revision 23** — the `refreshSummary` port method, the fence's meaning stated once, and the rescan's uniform per-row link — and **anyone touching `runRescan`, `StoragePort` or a port implementation reads it first**, with §8.4 clause 3 beside it; **§4.4's A-40 is revision 29** — the lifetime map is a plain component over a pure `packages/client` frame function, not a second `MapPort`, and **anyone building or reviewing `WorldMap.tsx` reads it first** (it is ~3k and self-contained; the trip map's port is unchanged and needs no re-reading); **§4.4's A-41 and A-42 are revision 30 and are read *with* A-40, never instead of it** — A-41 is the atlas frame (geographic clustering, one primary pane and up to two insets, padding, and the **W3** renderer clause) and it amends A-40 clause 2 and withdraws A-40 Part 7 residue 1's diagnosis; A-42 withdraws A-40 clause 2's min-span *claim* and rules that no second constant is created. **A builder of I-8d reads A-40 Parts 3–5, then A-41 and A-42, and needs nothing else in this document except §2.10's list**; **§4.4's A-48 is revision 33, sits directly under A-42 and is read *with* A-41, never instead of it** — QA round 36 measured A-41's own C2 and C3 as wrong (a key point that lands in the ocean, and a partition that depends on the alphabet), and A-48 supersedes **C2**, **C3** and Part 8 residues 1′ and 4 in place, withdraws C4's margin claim, adds **C9** (paint order) and one pane field (`aspect`), and changes the semantics of core's `clusterPoints` to connected components. **A builder of I-8g reads A-48 first — it names which of A-41's clauses to skip — then A-41's C1/C5/C6/C7/C8 and Parts 4–7, then A-40 Parts 3–5**; **§4.4's A-49 and A-50 are revision 34, sit directly under A-48 and are read *with* A-41 and A-48, never instead of them** — QA round 37 measured A-48's own C8 as the clause A-48 forgot (the key point moved onto the country and the *extent* did not), and A-49 supersedes **C8**, **C7**'s cap and A-41's I1/I2/I3/I5 in place, withdraws A-48 C9 consequence 2's chip-list sentence as false, adds `countryParts` to core, a `'detached'` pane, a `codes` array on the frame and invariants **I11–I15**; A-50 completes A-48 Part 6 for the *tall* direction in one CSS declaration. **A builder of I-8h reads A-49 and A-50 first — A-49 names which of A-41's and A-48's clauses it supersedes — then A-48's C2′/C3′/C9 and Part 6, then A-41's C1/C5/C6/C7 and Parts 4–7, and needs nothing else in this document except §2.10's list**; **§4.4's A-51 and A-52 are revision 35, sit directly under A-50, and are the entry point to the whole atlas-frame family — read A-51 first and it names which of A-41/A-48/A-49 to skip** — A-51 reopened the framing abstraction itself at Jacob's instruction (QA **R38-2**, MAJOR) and **supersedes A-41's C5/C6/C7, A-49's C7′/C8′/C8″ and the `role` field in place**: the frame is **one pane per connected component of country parts**, equally weighted, ordered by weight rather than framed by it, and its Part 7 is the **consolidated** I1…I17 list that replaces three rounds of *"restated by"* pointers. A-52 is one paragraph beside it (a ring the index carries is a ring the frame draws). **A-51 is RULED AND HELD FOR JACOB'S APPROVAL — no builder pass may be dispatched against it until he has ruled**; until then A-41…A-50 are what is shipped. **A builder of I-8i reads A-51, then A-52, then A-41 C1 + Part 4, A-48 C2′/C3′/C4′/C9 + Part 6, A-49 Part 2, A-50 and A-40 Parts 2–5, and needs nothing else in this document except §2.10's list** | 42k | builder |
+| 4 | **The Phase 1 client.** §4.2 rule 6 (a pending write is never outlived by its document) is new in revision 3 — QA R3-2; rule 6a′ and the `savedDoc` predicate are revision 4 — QA R4-1; **rule 6a″ (the flush bound and its exits) and rule 6c's "delete goes on the chain" are revision 5** — QA R6-1/R6-2/R7-3; **rule 5's retirement carve-out is revision 6** — QA R8-1, read with §2.7; **rule 4a is revision 8** — QA R11-1, read with §2.2a A-7; **§4.3's A-30 is revision 23** — the `refreshSummary` port method, the fence's meaning stated once, and the rescan's uniform per-row link — and **anyone touching `runRescan`, `StoragePort` or a port implementation reads it first**, with §8.4 clause 3 beside it; **§4.4's A-40 is revision 29** — the lifetime map is a plain component over a pure `packages/client` frame function, not a second `MapPort`, and **anyone building or reviewing `WorldMap.tsx` reads it first** (it is ~3k and self-contained; the trip map's port is unchanged and needs no re-reading); **§4.4's A-41 and A-42 are revision 30 and are read *with* A-40, never instead of it** — A-41 is the atlas frame (geographic clustering, one primary pane and up to two insets, padding, and the **W3** renderer clause) and it amends A-40 clause 2 and withdraws A-40 Part 7 residue 1's diagnosis; A-42 withdraws A-40 clause 2's min-span *claim* and rules that no second constant is created. **A builder of I-8d reads A-40 Parts 3–5, then A-41 and A-42, and needs nothing else in this document except §2.10's list**; **§4.4's A-48 is revision 33, sits directly under A-42 and is read *with* A-41, never instead of it** — QA round 36 measured A-41's own C2 and C3 as wrong (a key point that lands in the ocean, and a partition that depends on the alphabet), and A-48 supersedes **C2**, **C3** and Part 8 residues 1′ and 4 in place, withdraws C4's margin claim, adds **C9** (paint order) and one pane field (`aspect`), and changes the semantics of core's `clusterPoints` to connected components. **A builder of I-8g reads A-48 first — it names which of A-41's clauses to skip — then A-41's C1/C5/C6/C7/C8 and Parts 4–7, then A-40 Parts 3–5**; **§4.4's A-49 and A-50 are revision 34, sit directly under A-48 and are read *with* A-41 and A-48, never instead of them** — QA round 37 measured A-48's own C8 as the clause A-48 forgot (the key point moved onto the country and the *extent* did not), and A-49 supersedes **C8**, **C7**'s cap and A-41's I1/I2/I3/I5 in place, withdraws A-48 C9 consequence 2's chip-list sentence as false, adds `countryParts` to core, a `'detached'` pane, a `codes` array on the frame and invariants **I11–I15**; A-50 completes A-48 Part 6 for the *tall* direction in one CSS declaration. **A builder of I-8h reads A-49 and A-50 first — A-49 names which of A-41's and A-48's clauses it supersedes — then A-48's C2′/C3′/C9 and Part 6, then A-41's C1/C5/C6/C7 and Parts 4–7, and needs nothing else in this document except §2.10's list**; **§4.4's A-51 and A-52 are revision 35, sit directly under A-50, and are the entry point to the whole atlas-frame family — read A-51 first and it names which of A-41/A-48/A-49 to skip** — A-51 reopened the framing abstraction itself at Jacob's instruction (QA **R38-2**, MAJOR) and **supersedes A-41's C5/C6/C7, A-49's C7′/C8′/C8″ and the `role` field in place**: the frame is **one pane per connected component of country parts**, equally weighted, ordered by weight rather than framed by it, and its Part 7 is the **consolidated** I1…I17 list that replaces three rounds of *"restated by"* pointers. A-52 is one paragraph beside it (a ring the index carries is a ring the frame draws). **A-51 is RULED AND HELD FOR JACOB'S APPROVAL — no builder pass may be dispatched against it until he has ruled**; until then A-41…A-50 are what is shipped. **§4.4's A-53 is revision 36, sits directly under A-52, and supersedes nothing** — it is the pane-*membership* contract Jacob asked for before approving A-51 (membership is country geometry because an ISO code is the only geographic evidence the record carries; standing is `home`; priority is order; disclosure is the caption), and it adds **I18**, the ≤ 3-extent-panes-planet-wide bound, and the d3-geo/Turf prior-art ruling. **A builder of I-8i reads A-51, then A-52, then A-53 Parts 4 and 8, then A-41 C1 + Part 4, A-48 C2′/C3′/C4′/C9 + Part 6, A-49 Part 2, A-50 and A-40 Parts 2–5, and needs nothing else in this document except §2.10's list** | 44k | builder |
 | 5 | The four hard subsystems | 2k | breaker; builder from Phase 3 on |
 | 6 | Privacy, authorization, deletion cascade. **§6.6 is the build-artifact threshold; the copy threshold is §2.14 A-15 + A-18 (revisions 13 and 14) and they differ deliberately, in two named places — read them together or neither** | 4k | breaker, manager; builder for §6.2 |
 | 7 | Explicitly deferred | <1k | anyone about to build something not in the roadmap |
@@ -9557,6 +9594,355 @@ code whose every ring is degenerate, while `countryParts` returns `[]`.
 
 **Byte-neutral on the shipped artefact** (no ring is under 4 points), correct for any future index, and it
 removes an invariant that could not fail. §2.10 does not move; no signature changes.
+
+#### A-53 — pane *membership* is country geometry because country attribution is the only geographic evidence the record carries; a pane's *claim* is `home`, and it always was (revision 36, Jacob's pane-membership question on A-51/A-52; ROADMAP **I-8i**)
+
+> **STATUS: RULED. A-51 AND A-52 STAND AS WRITTEN — no clause of either is superseded, withdrawn or
+> amended.** This entry adds **one invariant (I18)**, **one docstring sentence**, **two verification
+> criteria** and **two residues**. It changes **no line** of the production diff I-8i already specifies.
+> It exists because A-51's *vocabulary* — *"one kind of pane"*, *"equally weighted"* — reads as a claim
+> about travel that A-51's own `home`/`weight`/`G5`/`G8` machinery already refuses to make, and the gap
+> between the words and the mechanism is what Jacob's question found.
+
+*(Read with **A-51**, never instead of it. This ruling supersedes nothing. A builder of I-8i reads A-51,
+then A-52, then **A-53 Parts 4 and 8**, then A-41 C1 + Part 4, A-48 C2′/C3′/C4′/C9 + Part 6, A-49 Part 2,
+A-50 and A-40 Parts 2–5.)*
+
+**Part 1 — the question, and the one thing it turns on.**
+
+Jacob, on A-51:
+
+> *"The proposed 'one pane per connected component of country geometry' rule may promote detached polygon
+> components/territories into equal-weight travel subjects even when the user's actual travel did not
+> independently occur there. The FR+US → 4-pane result makes this ambiguity concrete."*
+
+The FR+US result is real and it is four panes. The question is whether pane membership should be keyed to
+**country geometry** (`countryParts`, A-51 G2/G3) or to **where travel actually occurred inside that
+geometry**. That question has a factual precondition — *does a finer-grained record exist?* — and everything
+else follows from it. So Part 2 answers that first, from the shipped types rather than from the wish.
+
+**Part 2 — what the lifetime map actually receives. Measured against the source, not the design intent.**
+
+`worldMapFrame(stats: core.TravelStats, index: core.CountryIndex)` is the whole input. Walking it down:
+
+| record | geographic content | coordinate? |
+|---|---|---|
+| `TravelStats.countries[]` | `{ code, firstVisit, lastVisit, tripIds, provisional }` | **no** |
+| `TravelStats.cities[]` | `{ nameKey, name, countryCode, tripIds, provisional }` | **no** — `nameKey` is `normalizeCityName(name)`, a fold of a user-typed string |
+| `TripSummaryRow.countryCodes` | `CountryCode[]`, distinct and sorted | **no** |
+| `TripSummaryRow.cities[]` (`TripSummaryCity`) | `{ key, name, countryCode, countrySource }` | **no** — `key` is an opaque minted id (§2.2 A-10), never parsed |
+| `TripSummaryRow.attribution` | `{ places: {located, attributed}, stops: {located, attributed} }` | **no** — counts of coordinate-bearing records, not the coordinates |
+
+**There is no coordinate anywhere in the lifetime map's input.** `City.centre` and `Place.at` exist in the
+*document*, and `tripSummary` reads them — through `countryOf` — and emits a **country code**. The
+coordinate is consumed at the mint and does not survive into the row. §8.4 A-31 Part 1 is where this was
+decided and it is decided against exactly this kind of reopening:
+
+> *"**Why this is not solved by loading the documents.** §4.2's "exactly ONE trip in memory at a time" is
+> not negotiable here, and the lifetime map is precisely the screen that would want forty."*
+
+So the two routes to finer evidence are both closed, and closed **elsewhere**, not by this ruling:
+
+1. **Open the documents.** §4.2's one-document rule. A lifetime map over forty trips is the case it names.
+2. **Carry coordinates in `TripSummaryRow`.** A `SUMMARY_VERSION` bump, a rewrite of every stored row, a
+   widening of A-31 Part 6 / **A-33**'s allow-list — *"widening that allow-list is an architect's ruling"*
+   — and it would put per-city location data into an index the user never asked to have one built of, which
+   §6.1 position 3 is written against. **I decline it, and I-8i may not do it**: it is a Phase-2-model
+   change wearing a framing question's clothes, and the increment forbids `SUMMARY_VERSION` movement in so
+   many words.
+
+**Therefore: the finest geographic fact this map can know about a traveller is an ISO 3166-1 alpha-2 code.**
+Not a subdivision, not a city point, not a region. `FR` means *France*, and the record does not and cannot
+say *"continental France"*.
+
+**Part 3 — what follows, and the two alternatives, rejected on evidence rather than on taste.**
+
+Given Part 2, *"the user's actual travel did not independently occur there"* is **not a fact the system
+holds**. It is a plausible inference about a particular traveller that the record does not support and
+cannot contradict. A rule that acts on it must manufacture the evidence, and there are exactly two ways to
+do that:
+
+- **(a) A territory carve-out** — a table of *"these components of these codes are overseas/secondary"*.
+  This is **L5** (geometry-derived), A-41 constraint 2 and A-48's *"no carve-out anywhere"* refused
+  verbatim, three rounds running, and it is the property round 38 verified by **permuting every ISO code
+  in the index and getting byte-identical panes**. It is also a political judgement Cairn has no standing
+  to make: Guadeloupe and Réunion are French *départements*, not colonies of the map.
+- **(b) A size or distance heuristic** — *"a part below X km² / beyond Y km from the principal part is not
+  a subject"*. The killer is **Alaska**: 1.5 M km², 5,400 km from the contiguous US, and A-49's own
+  headline result was that it *"stays in-frame the moment Canada is present"*, which is the general
+  geometric rule working with no carve-out. Any threshold that demotes French Guiana (83,500 km²) either
+  demotes Alaska too, or is a threshold chosen to separate two named territories — which is (a) with
+  arithmetic in front of it. And **the heuristic answers the wrong question anyway**: a traveller with `US`
+  is exactly as likely to have been only to Alaska as only to Ohio, and the record says the same word for
+  both.
+
+A third alternative deserves naming because it is the strongest one and it is still wrong: **draw only each
+code's principal part, and state the rest in words.** It does not hide anything (the words are there) and it
+does not promote anything. It fails on three counts. It drops Alaska and Hawaii from the map of a US trip,
+which is not a framing improvement but a factual one in the wrong direction; it needs (b) to decide *which*
+parts, so it inherits (b)'s failure; and it re-creates the exact defect **I11** and **A-52** exist to catch
+— *"we made the frame tighter by dropping geometry"* — one round after A-52 finished making that invariant
+able to fail. **Rejected.**
+
+**So the membership unit stays `countryParts`, and this is the honest answer rather than the convenient
+one:** every component of a visited country's geometry is *exactly as attributed* as every other, because
+the attribution is the country. Rendering French Guiana at 64,224 px² is not a claim that Jacob went to
+Cayenne. It is the claim that **France** is on his map, drawn completely — which is the claim his record
+actually makes.
+
+**Part 4 — the pane-membership semantic, stated so a reader cannot get it wrong.**
+
+A-51 already computes the distinction Jacob is asking for; it just never names it. Two kinds of pane, both
+derived from `home`, **no new field and no returning `role`**:
+
+> **A pane is a rectangle to look through. It is not a destination.** Every pane is one connected component
+> of the canonical part list (A-51 G3), and its `codes` are the codes with geometry inside it.
+>
+> - A **home pane** is a pane with `home.length > 0` — at least one code's **principal** part is in it.
+>   `weight ≥ 1`. This is a place the record attributes travel to. Its caption names its `codes`.
+> - An **extent pane** is a pane with `home.length === 0` and therefore `weight === 0`. It holds only
+>   non-principal parts: geography that belongs to a country the traveller visited, framed where it is
+>   because it is not near anything else on the map. Its caption is **"distant parts of"** its codes, it may
+>   **never** say *"shown separately"* and it may never be phrased as a destination — **A-51 G8 and A-49
+>   Part 4 consequence 3, verbatim and unchanged**.
+>
+> **`weight` is the claim; the grid cell is not.** `weight` is `Σ tripIds.length` over `home`, it is
+> additive to `W` (I5), and it is the only quantity in the frame that asserts *"travel happened here"*.
+> Cell size asserts nothing — it is a viewport.
+
+And the property that makes this operative rather than decorative, which A-51 leaves as an accident of G5:
+
+> **I18 (new) — home panes come first, and the ordering is what carries the claim.** Every pane with
+> `home.length > 0` precedes every pane with `home.length === 0`, strictly. **This is a theorem of G5, not
+> a second sort:** a code in `stats.countries` has `tripIds.length ≥ 1`, so `home.length > 0 ⇒ weight ≥ 1`
+> and `home.length === 0 ⇒ weight === 0`, and G5's first key is `weight` descending. It is written down and
+> tested because **without it the frame leads with a territory** — see Part 5, where the raw component order
+> of an `FR`-only library puts French Guiana at index 0.
+
+That is the whole membership contract. **Membership is geometry; standing is `home`; priority is order;
+disclosure is the caption.** Four mechanisms, all of them already in A-51, now stated as one rule instead of
+being spread across G4, G5, G8 and a docstring.
+
+**Part 5 — evidence. Every number below is my own, from `core.countryParts` / `core.clusterPoints` on the
+shipped `COUNTRY_INDEX` at `WORLD_CLUSTER_THRESHOLD_KM = 4000`.**
+
+**(1) `FR` + `US`, walked concretely — the case the question names.** Raw component order out of G3, then
+G5's ordering:
+
+| | raw order (G3) | codes | `home` | `weight` | span | after G5 |
+|---|---|---|---|---|---|---|
+| French Guiana | 0 | `FR` | `[]` | **0** | 2.87° × 3.70° | **3rd** |
+| continental France | 1 | `FR` | `[FR]` | 1 | 14.15° × 9.77° | **1st** |
+| contiguous US | 2 | `US` | `[US]` | 1 | 57.72° × 24.31° | **2nd** |
+| Alaska | 3 | `US` | `[]` | **0** | 41.81° × 52.44° | **4th** |
+
+So **A-51 as written does not promote Alaska or French Guiana to equal-weight travel subjects.** It gives
+them a legible rectangle — which is what R38-4 filed as a defect when they got 7 × 8 px — while recording
+`weight 0`, `home []`, a *"distant parts of"* caption, and last place in reading order. The two panes that
+carry the traveller's record are the two he reads first, at full size, and they are France and the United
+States. **The four-pane result is right, and it is right for the reason the data gives: `FR` and `US` are
+what the record says, and this is what `FR` and `US` look like when neither is allowed to shrink the other.**
+
+**(2) The thing that turns out not to be a risk at all: how many extent panes can exist, ever.** At
+4,000 km on the shipped 239-code index, the codes with more than one part are **`FR` (2), `UM` (2),
+`US` (2)** — and nothing else. **Total non-principal parts on the entire planet: 3.**
+
+> **The number of extent panes in any library is at most 3, and is 0 unless the traveller has visited
+> France, the United States, or the US Minor Outlying Islands.** It is not a function of library size, of
+> how much of the world is covered, or of anything a user does. The "territories flood the grid" failure
+> mode is bounded at three rectangles, planet-wide, and two of them are Alaska and French Guiana.
+
+Measured, not argued:
+
+| library | panes | of which **extent** |
+|---|---|---|
+| `AT CZ DE GB HR HU US` (Europe 2026 fixture) | 3 | **1** (Alaska) |
+| `FR` alone | 2 | 1 |
+| `FR`+`US` | 4 | 2 |
+| `FR`+`GR` | 2 | 1 |
+| `FR`+`NZ` | 3 | 1 |
+| `GB`+`AU` | 2 | **0** |
+| `US`+`JP` | 3 | 1 |
+| `AT CZ DE HR HU SI` | 1 | **0** |
+| `FR DE IT JP PE` | 3 | **0** — Guiana is 2,700 km from Peru, joins that component, and the pane is a **home** pane (`home = [PE]`) |
+| **12-code worldwide** `US BR GB FR ZA EG IN JP AU NZ TH PE` | 8 | **1** |
+| **all 239 codes** | **1** | **0** |
+| **greedy 14-pane worst case** `AD AE AG AO AQ AR AS AU CA CN FM IO PN TF` | **14** | **0** |
+| 239 single-country libraries | 236 × 1, 3 × 2 | 3 libraries have 1; **236 have 0** |
+| 400 pseudo-random libraries, 1–25 codes | median 4, max 8 | **372 of 400 have 0; max is 1** |
+
+Three of those rows carry the ruling.
+
+- **The 14-pane ceiling contains zero extent panes.** The worst case A-51 G6 discloses is fourteen
+  *genuinely visited countries* on fourteen continents' worth of separation. **The membership question does
+  not touch the ceiling, its distribution, or its ergonomics** — A-51 residue 7's scroll cost and its
+  layout-only reopen trigger stand exactly as written, and no part of it is territory-driven.
+- **The worldwide 12-code library is 8 panes, 7 of them home.** The one extent pane is Alaska. A traveller
+  who has been to four continents does not get a grid diluted by territories; he gets seven places he went
+  and Alaska.
+- **`FR DE IT JP PE` is the case that proves membership is geometry and not a list.** French Guiana is an
+  *extent* pane on `FR`+`US` and part of a **home** pane on `FR DE IT JP PE` — the same geometry, classified
+  differently, by distance to the rest of the traveller's own map and by nothing else. No territory table
+  could produce that, and it is A-49 residue 1's own reopen trigger answered.
+
+**(3) The finding that made I18 worth writing.** On an `FR`-only library the raw G3 component order is
+**French Guiana first, continental France second** — Guiana's ring appears earlier in the index. Nothing but
+G5's `weight`-descending key stops *"my trip to France"* from opening on a 2.87° × 3.70° rectangle of South
+America. That is Jacob's concern, exactly, in its sharpest available form; A-51 already prevents it, and
+**nothing in A-51 or in I-8i's criteria asserts that it does**. I18 and its criterion are the fix, and they
+are a test, not a code change.
+
+**Part 6 — prior art: d3-geo and Turf.js, investigated before writing another Cairn-specific rule.**
+
+I read the shipped source of both, not the documentation, and measured real bundles with `esbuild --bundle
+--minify` against the published packages. **Ruling first: neither should be adopted, and — this is the part
+worth Jacob's attention — the zero-dependency rule is not the reason.** Both fail on semantics before the
+constraint is reached.
+
+**Sizes and licences, measured (`d3-geo@3.1.1`, `@turf/clusters-dbscan@7.4.0`):**
+
+| candidate | licence | tree-shaken, minified | gzipped | surface Cairn would use |
+|---|---|---|---|---|
+| `d3-geo` `geoBounds` only | **ISC** | **4.0 KB** | 1.8 KB | **1 of 46 exported symbols — 2.2%** |
+| `d3-geo` real framing pipeline (`geoBounds` + `geoPath` + `geoEquirectangular` + `geoClipAntimeridian`) | ISC | 22.1 KB | 8.6 KB | ~9% |
+| whole `d3-geo` UMD | ISC | 36.3 KB | 13.1 KB | — |
+| `@turf/clusters-dbscan` (pulls `rbush`, `@turf/clone`, `@turf/distance`, `@turf/helpers`, `@turf/meta`, `tslib`) | **MIT** | **10.6 KB** | 4.2 KB | 1 of ~290 turf functions — **0.3%** |
+
+For scale: `apps/web/dist/assets/index-*.js` is already **991 KB** (the bundled country index is 374 KB of
+source on its own) and I-8a's four font faces are **91.7 KB**. **Bytes are not the deciding factor here and
+it would be dishonest to pretend they are** — 4 KB is 0.4% of the bundle. The decision is made on behaviour.
+
+**d3-geo `geoBounds` is the wrong function, and I can show it in three lines.** Run against the shipped
+`d3-geo@3.1.1`:
+
+```
+geoBounds(Polygon, France-sized box, wound CW)   → [[-180,-90],[180,90]]   // the WHOLE WORLD
+geoBounds(Polygon, same box, wound CCW)          → [[-4.8,42.3],[8.2,51.2804…]]
+geoBounds(LineString, [-120,50] → [0,50])        → north = 67.2395…°       // planar answer: 50°
+geoBounds(Polygon, Fiji-like, straddling 180°)   → [[177,-19.01],[-179,-17]]   // west > east
+```
+
+Three disqualifying properties, each verified by running it:
+
+1. **It is winding-order sensitive.** A d3 spherical polygon wound the "wrong" way is the *complement* of
+   itself, and `geoBounds` returns the sphere. Cairn's index rings (`tools/gen-countries.mjs`) carry **no
+   winding guarantee** and nothing in the pipeline normalises one. A drop-in would frame the whole world for
+   any ring that happens to be clockwise, silently.
+2. **It bounds great-circle arcs; Cairn draws straight lines in plate carrée.** The 50° N line above bulges
+   to 67.2° in d3's answer. A frame computed from it would be *taller than the geometry it frames* — lower
+   land fraction, a bigger rectangle for the same country. That is a **regression against the exact metric
+   this entire arc (R33-1 → R38-2) has been optimising**. Only `MultiPoint` gives the planar answer, and the
+   planar bound of a vertex set is precisely what `core.mapBounds` already computes, in about fifteen lines.
+3. **Its antimeridian answer is unrepresentable downstream.** `[[177,…],[-179,…]]` has west > east; A-51's
+   `viewBox` arithmetic is `width = east − west` and would emit a negative width. Consuming d3's *correct*
+   spherical answer requires also cutting the rings (`geoClipAntimeridian`) and generating paths through
+   `geoPath` + a d3 projection — i.e. **adopting d3's whole stream/projection pipeline**, replacing A-40's
+   projection and A-51's `subpath` emit. That is a mapping-stack migration, and it is out of bounds.
+
+**`fitExtent`/`fitSize` do not fit either, and for a structural reason rather than a byte one.** Read: they
+run the object through `boundsStream`, then call `projection.scale(150 * k).translate([x, y])` — they
+produce **pixel scale and translate on a d3 projection object**. A-40 Part 2 / W1 forbid the renderer
+computing coordinates at all, and A-40 Part 4's measurement-freedom (the property the whole design rests on)
+comes from *not* having a pixel number anywhere: A-51's fit is `viewBox` + `aspect-ratio` + `min()`, resolved
+by CSS at layout, byte-identical in bare Node. `fitExtent` is a solution to a problem Cairn deliberately
+does not have.
+
+**Turf's `clustersDbscan` is Cairn's own kernel with a defect bolted on.** From its source: `minPoints`
+defaults to **3**, and any point with fewer than `minPoints` neighbours is labelled
+`properties.dbscan = "noise"` with **no cluster id**. On Cairn's data that is French Guiana — a lone part —
+**dropped from every cluster**, i.e. a direct violation of **L4** and of the one non-negotiable that has held
+through this entire arc. To make it correct for Cairn you must pass `minPoints: 1`, at which point DBSCAN
+**degenerates exactly to single-linkage connected components** — which is `core.clusterPoints`, already
+written, already order-independent (I9), already the one kernel (A-41 Part 6). You would be adding rbush,
+GeoJSON `Feature` wrapping, a `mutate` option that defaults to cloning, and a cluster-id assignment that
+*is* iteration-order-dependent, in exchange for the algorithm you already have. Turf has no single-linkage
+function; `clustersKmeans` needs a `k` and is not deterministic in the required sense.
+
+**The decision-order question, answered honestly rather than deflected.** The prompt's premise is that four
+correctness defects in hand-rolled geometry (A-41 → A-48 → A-49 → A-51) are what an established library
+would have prevented. I checked each against what the libraries actually provide:
+
+| defect | was it in a primitive a library ships? |
+|---|---|
+| **A-48** — the key point was a bounding-box centre and landed in the ocean | **No, and d3 would have made it worse.** The nearest primitive is `d3.geoCentroid`, which is area-weighted across *all* of a country's polygons — for France it is pulled toward Guiana and Réunion, i.e. the same class of bug (a "position" that is not a point of the country). A-48's fix — *the centre of the greatest-area ring* — is not a d3 or turf function |
+| **A-41 C3** — the partition depended on row order | **No, and turf would have made it worse**: `clustersDbscan` assigns cluster ids in feature order |
+| **A-49** — two different answers to *"where is this country"* | **No.** A design-consistency defect between two Cairn call sites. No library has an opinion |
+| **A-51 / R38-2** — main+inset, a weight-based split test, non-locality | **No.** This is product framing policy. No cartography library ships a "which rectangles should a travel history be drawn in" rule |
+
+**None of the four lived in a primitive.** All four lived in the framing *policy*, which is genuinely unique
+to Cairn and has no prior art. The primitives Cairn does hand-roll — haversine distance, planar bbox,
+threshold-graph connected components — are each a few dozen lines, each match their turf counterparts
+(`@turf/distance` is the same haversine; `@turf/bbox` is the same planar min/max), and each are already
+covered by goldens, an order-permutation test and an ISO-code-permutation test. So the decision order
+resolves at **option 3** — but as a *finding*, not as a default: option 1 was checked against real source
+and fails on semantics; option 2 has nothing worth copying for this question, because the algorithm being
+copied would be identical to the one already there.
+
+**The zero-dependency rule, ruled on explicitly as asked.** `cairn-constraints` §2 says *"adding a dep to
+either package needs Jacob, not your judgement"*, and `packages/client` is where `worldMapFrame` lives, so
+a `d3-geo` import there is squarely in tension with it. **This is not the case that justifies breaking it,
+and I am not asking Jacob to.** Nor is the escape hatch available: `apps/web` may take dependencies, but
+moving the frame computation there to get one would violate A-40 Part 2 and W1, which forbid the view
+computing geometry at all — the boundary that keeps this frame testable in bare Node. **I-8i takes no
+dependency.**
+
+**The one place prior art genuinely beats Cairn, recorded rather than built.** A-51 residue 3 — `AQ FJ KI
+RU UM` producing globe-wide panes in **1,229 of 28,441** two-country libraries — is a real defect that
+Cairn's planar `mapBounds` structurally cannot fix, and **d3-geo's `bounds.js` is a known-correct solution
+to exactly it** (its `ranges` accumulation and its longest-gap merge are the algorithm). It stays out of
+scope: it needs dateline-aware *rendering* as well as dateline-aware bounds, which is A-41 Part 7's
+do-not-build list and A-51 residue 3 unchanged. **What changes is only that the residue now names its
+remedy**: if it is ever reopened, the route is **option 2** — adapt the ~60 relevant lines of d3-geo's
+`bounds.js` antimeridian range-merge (ISC, compatible) into `packages/core`, with attribution, and not a
+dependency. That is a finding for a future round, and this ruling does not schedule it.
+
+**Part 7 — what survives from A-51 and A-52. All of it.**
+
+| thing | verdict |
+|---|---|
+| **A-51 G1–G8** (population, parts as atoms, one partition, the pane type, the order, no cap, the grid, the caption) | **Survive verbatim.** G4 gains one docstring sentence (Part 8) and no field |
+| **A-51 Part 5's measured table**, all 11 libraries and all three censuses | **Unchanged**, and independently re-derived here for the pane counts of every row |
+| **A-51 Part 6's survival table** | Unchanged |
+| **A-51 Part 7's I1…I17** | Unchanged. **I18 is added**, and it is a theorem of G5 rather than a new rule |
+| **A-51 Part 8's residues 1–8** | Unchanged. **Residues 9 and 10 are added** (Part 9) |
+| **A-52** | Unchanged in full |
+| **Equal grid cells (G7)** | **Correct, and re-affirmed on the geometries the question names.** A cell is a viewport, not a claim; the claim is `weight` and the priority is order. Unequal cells *is* the main/inset hierarchy A-51 withdrew, and R38-2's 899 px² France and R38-4's 56 px² French Guiana are its measured cost. Sizing a cell by `home.length` would additionally make a pane's screen size depend on **what else is in the library** — adding `SR` to `FR`+`US` merges Suriname's principal part into Guiana's component and turns an extent pane into a home pane — which is a softer instance of the exact non-locality **I17** exists to forbid. **Equal cells stay** |
+| **`packages/core`** | **Nothing beyond A-52.** No new symbol, no signature change, export surface **79** |
+| **Stored data** | Nothing. No `schemaVersion` bump, no `SUMMARY_VERSION` bump, no port change, no reducer action, **no dependency**, no stored byte of any trip |
+| **A-40, A-41 Part 7, A-42, A-48, A-49 Part 2, A-50** | Untouched. The day map, `MapPort`, `clusterStops`, `focusCluster` and `derive/cluster.ts` are not in this ruling's reach and `cluster.ts` still gets a zero-line diff |
+
+**Part 8 — the minimum I-8i adjustment. Two tests and a comment; no executable line moves.**
+
+1. **A docstring sentence on `WorldMapPane`, beside `home`** — the Part 4 block quote's first three
+   sentences, in the source, so a future reader of the type cannot read *"one kind of pane"* as *"every
+   pane is a place you went"*. Comment only.
+2. **I18 becomes a stated criterion** with its injected fault. Both sides are already computed.
+3. **The extent-pane census becomes a stated criterion**: over all 239 single-country libraries and the
+   28,441 two-country libraries, the count of panes with `home.length === 0` is **≤ 3** in every library and
+   is **> 0 only** for a library containing `FR`, `UM` or `US`.
+
+`home` is already in A-51 G4; `weight` is already `Σ` over `home`; G5 already sorts by `weight`; G8 already
+branches on `home.length`. **Every input to both criteria exists in the frame I-8i already builds.** No
+*executable* line of I-8i's "Built" bullet changes — the only source edit is item 1's comment, in a file
+that bullet already lists as changed. This ruling **adds two tests and one docstring and removes nothing**,
+which is inside I-8i's scope rather than a widening of it.
+
+**Part 9 — residues, stated rather than solved.**
+
+9. **A home pane's caption names every code with a part in it, including a code present only by a
+   *non-principal* part.** On `FR DE IT JP PE` the South-American pane is captioned `FR PE` although France
+   is there only as Guiana. It is not false — that geometry is France — and the alternative is a caption
+   that omits a code whose geometry is drawn in the pane, which is worse. **Reopen only if a pane ever gains
+   a name source** (A-51 residue 4), because the honest fix is a name, not a filtered code list.
+10. **Nothing here narrows the gap between *"visited `FR`"* and *"visited continental France"*, and nothing
+    can until the record carries a finer fact.** The two things that would change this answer are named so a
+    future round does not re-derive them: **§8.5's `Visit`** (observed travel, with a coordinate, never a
+    mutation of a `Stop`) and any decision to carry sub-country attribution into `TripSummaryRow`. **If
+    either lands, this ruling is reopened on its own terms** — the membership unit could then legitimately
+    become *"components of the geography the record places the traveller in"*, and the extent-pane class
+    would shrink to *"parts of a visited country with no visit inside them"*. **That is a strictly larger
+    ruling than I-8i and it is not scheduled.** Until then, Part 2's table is the whole of the evidence and
+    Part 3 is what follows from it.
 
 ### 4.5 What Jacob can do at the end of Phase 1
 

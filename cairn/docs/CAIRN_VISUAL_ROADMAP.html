@@ -320,9 +320,10 @@
 </head>
 <body>
 <div class="callout" style="border-left:4px solid #2563eb;padding:.75rem 1rem;margin:1rem 0;background:#eff6ff">
-<p><strong>&#128309; THE MAP&rsquo;S FRAMING MODEL IS UNDER ACTIVE RECONSIDERATION, AND THE ANSWER
-IS WAITING FOR JACOB &mdash; as of 2026-09-01</strong> (this block is the newest; it supersedes the
-block below on <em>what happens next</em>, and nothing else).</p>
+<p><strong>&#128309; THE MAP&rsquo;S FRAMING MODEL WAS RECONSIDERED, JACOB&rsquo;S FOLLOW-UP QUESTION
+IS ANSWERED, AND THE DESIGN IS NOW WAITING ONLY ON HIS APPROVAL &mdash; as of 2026-09-01</strong>
+(this block is the newest; it supersedes the block below on <em>what happens next</em>, and nothing
+else).</p>
 <p><strong>This is not a fifth patch. Jacob stopped the patching.</strong> Four rounds in a row, the
 architect added one more condition to the same rule, the builder built it faithfully, and the tester
 found the same kind of defect one step further out. After round 38 measured that the fourth fix
@@ -363,12 +364,59 @@ a history with many far-apart places is a longer scroll (worst realistic case ~1
 not fix the two things no framing rule can &mdash; a micro-state like Monaco is still sub-pixel next to
 France, and the US minor islands still stretch their own panel across the Pacific. Both stay reachable
 through the country chip list under the map.</p>
+<p><strong>Jacob&rsquo;s one question about it, answered &mdash; and the answer is that the map
+already does the right thing (2026-09-01, <code>ARCHITECTURE.md</code> &sect;4.4 A-53).</strong> He
+asked: if France gets one panel and French Guiana gets another, hasn&rsquo;t the map just told me I
+went to South America when I only went to Paris? <strong>Fair question, and the answer turned out to
+be no.</strong> Three things:</p>
+<ul>
+<li><strong>The app does not know you only went to Paris.</strong> The lifetime map is built from a
+small summary row per trip, and that row records <strong>countries</strong>, not places &mdash; the
+coordinates are used once, to work out <em>which country</em>, and are not kept. So &ldquo;France&rdquo;
+is the whole of what the record says, and French Guiana is exactly as much a part of France as
+Provence is. <strong>Leaving it off would be the app deciding which bits of a country count</strong>,
+which it has no business doing and no evidence for. (The same rule keeps <strong>Alaska</strong> on
+the map of a US trip &mdash; no one wants that dropped, and no rule can drop Guiana without dropping
+Alaska too.)</li>
+<li><strong>The panels are not all making the same claim, and they never were.</strong> A panel
+holding a country&rsquo;s <em>main</em> landmass carries that country&rsquo;s trip count and is
+captioned by name. A panel holding only a far-flung piece carries <strong>zero</strong>, is captioned
+<strong><em>&ldquo;distant parts of France&rdquo;</em></strong>, and is sorted <strong>after</strong>
+every real destination. So France and the United States are what you see first, at full size; Guiana
+and Alaska are last, labelled as what they are. Equal <em>rectangles</em>, not equal <em>claims</em>.</li>
+<li><strong>It cannot get out of hand, and this is now measured rather than hoped.</strong> Across
+every country on Earth, only <strong>three</strong> &mdash; France, the United States and the US minor
+islands &mdash; have geography far enough from their own mainland to produce one of these panels at
+all. <strong>The most any history can ever have is three</strong>, 372 of 400 randomly generated
+histories have <strong>none</strong>, and the 14-panel worst case has <strong>none</strong>.
+Territories cannot flood the grid.</li>
+</ul>
+<p>One thing did get fixed by the question: nothing was checking that the real destinations sort
+first. Without that ordering rule, a France-only history would actually <strong>open on French
+Guiana</strong> &mdash; that is the raw order the geometry comes out in. The rule was already there;
+now it is written down and tested.</p>
+<p><strong>Established mapping libraries were checked first, not assumed away.</strong> Before writing
+another Cairn-specific geography rule, the architect read the actual source of <strong>D3 Geo</strong>
+and <strong>Turf.js</strong> &mdash; the two standard tools for this &mdash; to see whether Cairn is
+reinventing something. Findings, with real numbers: D3&rsquo;s bounding-box function returns <em>the
+whole world</em> for a country outline drawn in the wrong direction, and stretches boxes taller than
+the shapes inside them (it measures curved paths across a globe; Cairn draws flat ones), so it would
+make the exact problem being fixed <strong>worse</strong>. Turf&rsquo;s clustering function
+<strong>throws away</strong> a lone island as &ldquo;noise&rdquo;, which is the one thing this whole
+effort is not allowed to do. And all four real bugs found in this area over the past month were in
+Cairn&rsquo;s <em>own</em> choice of what to frame, not in any calculation a library provides.
+<strong>So: no new dependency, nothing installed, 0&nbsp;KB added.</strong> The one place D3 genuinely
+is better &mdash; countries whose outlines wrap around the date line, like Fiji and Russia &mdash; is
+a known, separate, already-documented problem, and the note now says which 60 lines of D3 to borrow if
+it is ever tackled.</p>
 <p><strong>&#128721; Nothing has been built and nothing will be until Jacob approves it.</strong> He
 asked to decide this himself before a builder pass, because the recommendation overturns his own
 earlier instruction to use insets &mdash; while keeping the reason he gave for it. If he says no,
-today&rsquo;s map stands and the defect stays on the record with its numbers. The full ruling is
-<code>ARCHITECTURE.md</code> &sect;4.4 <strong>A-51</strong> and <strong>A-52</strong>; the increment
-is <strong>I-8i</strong> in <code>ROADMAP.md</code>, marked not-dispatchable.</p>
+today&rsquo;s map stands and the defect stays on the record with its numbers. <strong>The design side
+is now closed</strong> &mdash; the membership question above was the last open one, and no further
+architect round is owed. The full ruling is <code>ARCHITECTURE.md</code> &sect;4.4 <strong>A-51</strong>,
+<strong>A-52</strong> and <strong>A-53</strong>; the increment is <strong>I-8i</strong> in
+<code>ROADMAP.md</code>, still marked not-dispatchable, waiting on him and on nothing else.</p>
 </div>
 <div class="callout" style="border-left:4px solid #16a34a;padding:.75rem 1rem;margin:1rem 0;background:#f0fdf4">
 <p><strong>&#128994; THE MAP&rsquo;S NEW FRAME HAS NOW BEEN ATTACKED &mdash; the France/Greece
@@ -1162,7 +1210,7 @@ hands you a trip file with no owner recorded in it.</p>
   <div class="brand">
     <h1>CAIRN</h1>
     <div class="tagline">"You are here"</div>
-    <div class="updated">Updated 2026-08-28 · against <code>master</code>, after the <strong>manager's 2a gate — verdict SHIP</strong> (<code>67f5588</code>). Step 2a (past trips and the trip lifecycle) is built, verified and <strong>shipped</strong>; step 2b (the lifetime map) is unblocked and next. Seven follow-ups routed, none blocking; the sharing/friends/public-link block is <em>not</em> lifted. Previously: QA round 21, the closure round — the seven-round copy-path arc closed.</div>
+    <div class="updated">Updated 2026-09-01 · against <code>master</code>, after the architect's <strong>A-53</strong> ruling — the lifetime map's pane-membership question is closed and <strong>I-8i is waiting only on Jacob's approval of A-51</strong>. Previously: 2026-08-28, after the <strong>manager's 2a gate — verdict SHIP</strong> (<code>67f5588</code>). Step 2a (past trips and the trip lifecycle) is built, verified and <strong>shipped</strong>; step 2b (the lifetime map) is unblocked and next. Seven follow-ups routed, none blocking; the sharing/friends/public-link block is <em>not</em> lifted. Previously: QA round 21, the closure round — the seven-round copy-path arc closed.</div>
   </div>
 
   <!-- ============ DECISION CALLOUT ============ -->

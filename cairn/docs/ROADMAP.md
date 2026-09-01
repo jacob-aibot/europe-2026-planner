@@ -536,6 +536,25 @@ No phase re-scoped, no change to the order, **no new external dependency**, no `
 `schemaVersion` bump, no `StoragePort`/`FilePort`/`MapPort` change, **no stored byte of any trip**, and no
 change to what is drawn once framed. **The export surface does not move: it stays at 79.**
 
+**Revision 36, 2026-09-01.** Jacob put **one bounded question** to A-51 before approving it — whether
+*"one pane per connected component of country geometry"* promotes territories into equal-weight travel
+subjects, with `FR`+`US` → 4 panes as the concrete case. One ruling, `ARCHITECTURE.md` §4.4 **A-53**, and
+**A-51 and A-52 stand as written; nothing is superseded.** The finding: `worldMapFrame`'s entire input
+(`TravelStats` + `CountryIndex`) **carries no coordinate at all**, so an ISO code is the finest geographic
+fact the lifetime map can hold, every component of a visited country is exactly as attributed as every
+other, and A-51 **already** refuses to promote them — Guiana and Alaska come back `home: []`, `weight: 0`,
+captioned *"distant parts of"* and ordered **last**. A-53 names that distinction (**home pane / extent
+pane**, derived from `home.length`, no new field), adds **I18** (home panes strictly precede extent panes —
+without it an `FR`-only library opens on French Guiana, which is the raw component order), and bounds the
+worry: at 4,000 km only `FR`, `UM` and `US` have more than one part, so **at most 3 extent panes can exist
+in any library, ever**, and the **14-pane worst case contains zero**. Prior art (`d3-geo`, Turf) was
+investigated against real source and **rejected on semantics before the zero-dependency rule is reached**;
+**no dependency is added** and none is requested.
+
+**The consequence for `I-8i` is two verification criteria and one docstring sentence. No executable line of
+its "Built" bullet moves, and its scope does not grow.** The 🛑 gate is **lifted in substance**: the
+remaining condition is Jacob's approval of A-51 itself, and **no further architect round is owed**.
+
 > **Phase numbers changed once, here.** Every heading below carries its old number, and every "Phase N"
 > written in `ARCHITECTURE.md` §1–§7, `BUILD-NOTES.md` or `QA-FINDINGS.md` before revision 9 means the
 > *named* phase it described: "Phase 2" = accounts/server (**now 3**), "Phase 3" = ingest (**now 4**),
@@ -1421,7 +1440,12 @@ revision 35 as §4.4 **A-51** — the split test, the pane cap, the union-of-the
 and the main/inset hierarchy are all withdrawn, and the frame becomes **one pane per connected component of
 country parts**, equally weighted, ordered by weight rather than framed by it — with **A-52** beside it for
 R38-5, and scheduled as **I-8i**, which carries R38-3 and R38-4 as structural consequences and R38-1 as a
-builder line. **I-8i is gated on Jacob's approval of A-51 and is not dispatchable until he has ruled** |
+builder line. **Revision 36** answers his one follow-up — whether a component of a country's *geometry*
+becomes an equal-weight travel *subject* — as §4.4 **A-53**: the frame's input holds no coordinate, so an
+ISO code is the only geographic evidence there is, A-51 already separates the claim (`home`/`weight`/
+caption/order) from the cell, and **at most 3 extent panes can exist planet-wide**. A-51 and A-52 are
+unchanged; A-53 adds **I18**, two criteria and a docstring. **I-8i is gated on Jacob's approval of A-51 and
+on nothing else — the design is closed and no further architect round is owed** |
 | **2c — participants** | `Trip.participants`, three build functions, the participants editor, *"people you have travelled with"* on the profile | you can say the trip was with your girlfriend and her family, and it grants them nothing | Not started; gated on 2b |
 
 **Mapped onto the increment sequence below** (revision 10): **2a = I-1 → I-4**, **2b = I-5 → I-8**,
@@ -1495,6 +1519,17 @@ I-8b, and is owed before the phase gate. **It is gated on Jacob's written approv
 overturns the mechanism half of his own framing direction while keeping its purpose clause, and he asked to
 decide that himself before a builder pass. Until he rules, A-41…A-50 are what ships and R38-2 is an open,
 disclosed defect.)*
+
+*(Revision 36: **I-8i** also carries §4.4 **A-53**, which answers Jacob's one question about A-51 —
+*does a component of a country's geometry become an equal-weight travel subject?* — and **changes no clause
+of A-51 or A-52**. Membership stays country geometry because the frame's input carries no coordinate finer
+than an ISO code; standing is `home`, priority is order, disclosure is the caption; **I18** pins that home
+panes come first; and the census pins that only `FR`, `UM` and `US` are multi-part, so **at most 3 extent
+panes exist planet-wide** and the 14-pane worst case has none. d3-geo and Turf were investigated against
+real source and rejected on semantics — `geoBounds` is winding-order sensitive and bounds great-circle
+arcs, `fitExtent` emits pixels the design exists to not compute, and turf's DBSCAN drops a lone part as
+*noise* — so **no dependency is added and the zero-dependency rule is not broken**. The increment's scope
+does not grow: two criteria and one docstring.)*
 
 *(Revision 26: **I-7b** carries §2.3 **A-35**, §8.4 **A-36** and §8.4 **A-37**, the four design findings QA
 round 29 found *under* I-7a — an exit criterion whose static port check a reassigned parameter walks past,
@@ -3535,13 +3570,15 @@ consume.)*
 
 #### I-8i — the frame stops having a "main" pane, because that is what made a country's size depend on the rest of the library
 
-*(Revision 35. Carries `ARCHITECTURE.md` §4.4 **A-51** and **A-52** and answers QA **R38-2** (MAJOR),
-**R38-3**, **R38-4** and **R38-5**, plus **R38-1** as a routed builder line. **Runs after I-8h.** It does
-**not** gate I-8b — which countries are attributed is unchanged; only how many rectangles they are drawn in
-moves — but it must land before the Phase 2 exit gate. A builder reads **A-51 first** — it names which of
-A-41/A-48/A-49 to skip — then A-52, A-41 C1 + Part 4, A-48 C2′/C3′/C4′/C9 + Part 6, A-49 Part 2, A-50 and
-A-40 Parts 2–5, and needs nothing else in `ARCHITECTURE.md` except §2.10's list. **Builder + breaker,
-mandatory**: it changes the shape of a frame two surfaces consume.)*
+*(Revision 35; **revision 36** adds A-53. Carries `ARCHITECTURE.md` §4.4 **A-51**, **A-52** and **A-53**
+and answers QA **R38-2** (MAJOR), **R38-3**, **R38-4** and **R38-5**, plus **R38-1** as a routed builder
+line. **Runs after I-8h.** It does **not** gate I-8b — which countries are attributed is unchanged; only
+how many rectangles they are drawn in moves — but it must land before the Phase 2 exit gate. A builder
+reads **A-51 first** — it names which of A-41/A-48/A-49 to skip — then A-52, then **A-53 Parts 4 and 8**
+(the pane-membership contract; it supersedes nothing and is two tests and a comment), then A-41 C1 + Part 4,
+A-48 C2′/C3′/C4′/C9 + Part 6, A-49 Part 2, A-50 and A-40 Parts 2–5, and needs nothing else in
+`ARCHITECTURE.md` except §2.10's list. **Builder + breaker, mandatory**: it changes the shape of a frame
+two surfaces consume.)*
 
 > **🛑 GATE: NOT DISPATCHABLE UNTIL JACOB APPROVES A-51.** He asked for the framing abstraction to be
 > reconsidered rather than patched a fifth time, and to approve the answer **before** a builder pass. A-51
@@ -3549,12 +3586,25 @@ mandatory**: it changes the shape of a frame two surfaces consume.)*
 > (no distant point compresses the primary geography). **Do not open a builder session against this
 > increment until he has ruled.** If he declines it, A-41…A-50 stand unchanged, this increment is struck,
 > and R38-2 stays open as a disclosed defect.
+>
+> **Revision 36 — the pane-membership question is closed and no further architect round is owed.** Jacob's
+> follow-up (*does a component of a country's geometry become an equal-weight travel subject?*) is ruled in
+> **A-53**: `worldMapFrame`'s input holds no coordinate, so an ISO code is the only geographic evidence
+> there is; A-51 already separates the **claim** (`home`/`weight`/caption/order) from the **cell**; and at
+> most **3** extent panes can exist planet-wide. **A-51 and A-52 are unchanged**, this increment's "Built"
+> bullet is unchanged line for line, and **two criteria and one docstring sentence** are added below. The
+> only condition still on this gate is Jacob's own approval of A-51.
 
 - **Built.** **`packages/client/src/selectors/worldMap.ts`:** the C5/C6/C7 block (`weightOf`, `lowestCode`,
   `totalWeight`, `ranked`, `split`, `paneGroups`), `inFrameOf`'s per-pane second `clusterPoints` call and
   the `detachedParts` block are **deleted** and replaced by **one** `clusterPoints` call over the canonical
   part list plus one `.map` to panes (A-51 G2/G3/G4). `WorldMapPane` loses `role` and gains `home`;
-  `weight` becomes `Σ tripIds.length` over `home` and is additive again. `frameNum`, `subpath`, `paneFrame`,
+  `weight` becomes `Σ tripIds.length` over `home` and is additive again. **`home` carries A-53 Part 4's
+  block quote as its docstring** — *a pane is a rectangle to look through, not a destination; a **home
+  pane** has `home.length > 0`; an **extent pane** has `home.length === 0`, `weight === 0`, and holds only
+  geography belonging to a country visited elsewhere; `weight` is the claim and the grid cell is not* — so
+  *"one kind of pane"* can never be read as *"every pane is a place you went"*. **Comment only: A-53
+  supersedes no clause of A-51, adds no field and brings back no `role`.** `frameNum`, `subpath`, `paneFrame`,
   `cornersOf`, `WHOLE_WORLD`, `FRAME_PAD_FRACTION`, `WORLD_CLUSTER_THRESHOLD_KM`, C1's population loop, the
   `missing` handling and the C9 emit block are **unchanged**. **The file gets shorter.**
   **`packages/core/src/derive/country.ts`:** A-52 — `countryParts` drops the `ring.length >= 6` filter, so
@@ -3597,6 +3647,25 @@ mandatory**: it changes the shape of a frame two surfaces consume.)*
     set, every pane's member parts admit a spanning tree over their key points with every edge
     `< WORLD_CLUSTER_THRESHOLD_KM`, and every cross-pane part pair is `≥` it. **Injected fault:** merge any
     two panes and the spanning-tree edge across them exceeds the threshold.
+  - **Home panes come first, and an `FR`-only library does not open on French Guiana** `[stated]`
+    (**A-53**, A-51 **I18**). Over the fixture set and all 239 single-country libraries: every pane with
+    `home.length > 0` precedes every pane with `home.length === 0`, strictly, and `panes[0].home.length > 0`
+    whenever any code is drawn. Pinned concretely: on `["FR"]` the **raw** G3 component order is
+    `[French Guiana (home []), continental France (home [FR])]` and the **framed** order after G5 is the
+    reverse, `panes[0].bounds` spanning **14.15° × 9.77°**; on `["FR","US"]` the order is
+    **FR · US · Guiana · Alaska** with weights **1 · 1 · 0 · 0**. **Injected fault:** order panes by their
+    component's canonical position instead of by G5 and the `FR` library opens on a 2.87° × 3.70° rectangle
+    of South America — which is what the un-ordered partition actually produces, not a hypothetical.
+  - **Territories cannot flood the grid, and the bound is a property of the index** `[stated]` (**A-53**
+    Part 5). At `WORLD_CLUSTER_THRESHOLD_KM` the only codes with more than one part are **`FR`, `UM`, `US`**
+    (asserted as a set equality over all 239 codes, not as a count), so over all 239 single-country and all
+    **28,441** two-country libraries the number of panes with `home.length === 0` is **≤ 3** in every
+    library and is **> 0 only** for a library containing one of those three codes. Re-pinned on the named
+    fixtures: `AT CZ DE GB HR HU US` → 3 panes / **1** extent; the 12-code worldwide library → 8 panes /
+    **1** extent; **the 14-pane greedy worst case → 14 panes / 0 extent**; all 239 codes → 1 pane / 0
+    extent. **Injected fault:** count a pane as extent whenever it holds any non-principal part and the
+    `FR DE IT JP PE` South-American pane (`home === ["PE"]`) goes red — which is the case that proves
+    membership is decided by geometry and never by a territory list.
   - **Locality — the invariant three rounds could not see** `[stated]` (A-51 **I17**). For **200** random
     (library `A`, code `x ∉ A`) pairs: in `A ∪ {x}`, every pane of `A` whose component gains no part of `x`
     has a **byte-identical** `viewBox`, `bounds` and `codes`. **This criterion must be written over a pair of

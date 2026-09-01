@@ -19,9 +19,9 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
-> **🔵 THE MAP'S FRAMING MODEL IS UNDER ACTIVE RECONSIDERATION, AND THE ANSWER IS WAITING FOR
-> JACOB — as of 2026-09-01 (this block is the newest; it supersedes the block below on what
-> happens next, and nothing else).**
+> **🔵 THE MAP'S FRAMING MODEL WAS RECONSIDERED, JACOB'S FOLLOW-UP QUESTION IS ANSWERED, AND THE
+> DESIGN IS NOW WAITING ONLY ON HIS APPROVAL — as of 2026-09-01 (this block is the newest; it
+> supersedes the block below on what happens next, and nothing else).**
 >
 > **This is not a fifth patch. Jacob stopped the patching.** Four rounds in a row, the architect
 > added one more condition to the same rule, the builder built it faithfully, and the tester found
@@ -62,11 +62,56 @@ update to this file added that instruction).
 > France, and the US minor islands still stretch their own panel across the Pacific. Both stay
 > reachable through the country chip list under the map.
 >
+> **Jacob's one question about it, answered — and the answer is that the map already does the right
+> thing (2026-09-01, `ARCHITECTURE.md` §4.4 A-53).** He asked: if France gets one panel and French
+> Guiana gets another, hasn't the map just told me I went to South America when I only went to
+> Paris? **Fair question, and the answer turned out to be no.** Three things:
+>
+> - **The app does not know you only went to Paris.** The lifetime map is built from a small
+>   summary row per trip, and that row records **countries**, not places — the coordinates are used
+>   once, to work out *which country*, and are not kept. So "France" is the whole of what the record
+>   says, and French Guiana is exactly as much a part of France as Provence is. **Leaving it off
+>   would be the app deciding which bits of a country count**, which it has no business doing and no
+>   evidence for. (The same rule keeps **Alaska** on the map of a US trip — no one wants that
+>   dropped, and no rule can drop Guiana without dropping Alaska too.)
+> - **The panels are not all making the same claim, and they never were.** A panel holding a
+>   country's *main* landmass carries that country's trip count and is captioned by name. A panel
+>   holding only a far-flung piece carries **zero**, is captioned ***"distant parts of France"***,
+>   and is sorted **after** every real destination. So France and the United States are what you see
+>   first, at full size; Guiana and Alaska are last, labelled as what they are. Equal *rectangles*,
+>   not equal *claims*.
+> - **It cannot get out of hand, and this is now measured rather than hoped.** Across every country
+>   on Earth, only **three** — France, the United States and the US minor islands — have geography
+>   far enough from their own mainland to produce one of these panels at all. **The most any history
+>   can ever have is three**, 372 of 400 randomly generated histories have **none**, and the 14-panel
+>   worst case has **none**. Territories cannot flood the grid.
+>
+> One thing did get fixed by the question: nothing was checking that the real destinations sort
+> first. Without that ordering rule, a France-only history would actually **open on French Guiana**
+> — that is the raw order the geometry comes out in. The rule was already there; now it is written
+> down and tested.
+>
+> **Established mapping libraries were checked first, not assumed away.** Before writing another
+> Cairn-specific geography rule, the architect read the actual source of **D3 Geo** and **Turf.js**
+> — the two standard tools for this — to see whether Cairn is reinventing something. Findings, with
+> real numbers: D3's bounding-box function returns *the whole world* for a country outline drawn in
+> the wrong direction, and stretches boxes taller than the shapes inside them (it measures curved
+> paths across a globe; Cairn draws flat ones), so it would make the exact problem being fixed
+> **worse**. Turf's clustering function **throws away** a lone island as "noise", which is the one
+> thing this whole effort is not allowed to do. And all four real bugs found in this area over the
+> past month were in Cairn's *own* choice of what to frame, not in any calculation a library
+> provides. **So: no new dependency, nothing installed, 0 KB added.** The one place D3 genuinely is
+> better — countries whose outlines wrap around the date line, like Fiji and Russia — is a known,
+> separate, already-documented problem, and the note now says which 60 lines of D3 to borrow if it
+> is ever tackled.
+>
 > **🛑 Nothing has been built and nothing will be until Jacob approves it.** He asked to decide this
 > himself before a builder pass, because the recommendation overturns his own earlier instruction to
 > use insets — while keeping the reason he gave for it. If he says no, today's map stands and the
-> defect stays on the record with its numbers. The full ruling is `ARCHITECTURE.md` §4.4 **A-51**
-> and **A-52**; the increment is **I-8i** in `ROADMAP.md`, marked not-dispatchable.
+> defect stays on the record with its numbers. **The design side is now closed** — the membership
+> question above was the last open one, and no further architect round is owed. The full ruling is
+> `ARCHITECTURE.md` §4.4 **A-51**, **A-52** and **A-53**; the increment is **I-8i** in `ROADMAP.md`,
+> still marked not-dispatchable, waiting on him and on nothing else.
 
 > **🟢 THE MAP'S NEW FRAME HAS NOW BEEN ATTACKED — the France/Greece defect really is fixed, and
 > a bigger one behind it is not — as of 2026-09-01 (this block is superseded on "what happens next"
