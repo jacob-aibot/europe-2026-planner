@@ -19,9 +19,46 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
-> **🟢 THE NEW MAP FRAME HAS BEEN ATTACKED AND IT HELD — as of 2026-09-01 (this block is the
-> newest; it supersedes the block below on *"verified ❌"* and on what happens next, and nothing
-> else).**
+> **🟢 THE NEW MAP FRAME IS SHIPPED — the manager's verdict is SHIP, as of 2026-09-01 (this
+> block is the newest; it supersedes every block below on *"shippable"* and on what happens
+> next, and nothing else).**
+>
+> **I-8i is designed ✅ · built ✅ · verified ✅ · shippable ✅.** The verdict is in
+> `REVIEW.md` (*I-8i — the world-map lifetime framing rewrite*, `master` @ `10455b9`). The
+> manager re-ran the whole build, both fault sets and both browser probes, and then rendered
+> **France + United States** and the **Europe 2026 sample** himself and looked at the pictures
+> before reading anyone's numbers. France measures **342 × 236 px** where round 38 measured
+> **36 × 25**; the Europe 2026 map is unchanged to the character and every one of Britain,
+> Germany, Czechia, Austria, Hungary and Croatia is separately legible and tappable.
+>
+> **What is closed as a track:** the *framing* question — which countries share a rectangle and
+> what rectangle they get. That is the seven-round arc (A-41 → A-53) and it is finished.
+>
+> **What is NOT closed, and both of these block the Profile screen (I-8b):**
+>
+> - **A new cosmetic problem the manager found and nobody else did.** On a laptop or tablet —
+>   **not** on a phone — the map card now has large empty grey areas: about **29%** of it on the
+>   Europe 2026 map and **46%** on France + United States, at any window wider than ~640 px.
+>   Nothing is missing or wrong; the panels are no longer stretched to match each other (which
+>   was last round's fix for a different problem), so the leftover space in each grid row is bare
+>   background and it reads as though something failed to load. It was **0%** before this
+>   increment. **Designed ❌ — it goes back to the architect first**, because the obvious repairs
+>   each undo something already ruled.
+> - **I-8f was never built.** Scheduled at the end of August, fully designed, and skipped:
+>   the fix that makes a trip which will not open **say so on its own card and offer to save a
+>   copy**, instead of showing a healthy-looking card whose only button is Delete. Three later
+>   increments (I-8g, I-8h, I-8i) were built past its declared dependency. **Designed ✅ ·
+>   built ❌**, unchanged since revision 32 — the board has said so the whole time; what was
+>   missing was a gate to stop and ask. It is queued now.
+>
+> **One question is waiting on Jacob** (`REVIEW.md`, *For Jacob — I-8i*, item 3): when two
+> regions tie, the panel *order* is still alphabetical. The shapes and sizes are completely
+> independent of country names — that was tested by renaming every country and re-running — so
+> it is reading order only. Accept it and say so plainly, or break the tie geographically
+> (westmost first, or largest first)?
+
+> **🟢 THE NEW MAP FRAME HAS BEEN ATTACKED AND IT HELD — as of 2026-09-01 (this block is
+> superseded on *"shippable"* and on what happens next by the block above, and nothing else).**
 >
 > **I-8i is designed ✅ · built ✅ · verified ✅ · shippable — the manager's call.** A tester spent
 > a round trying to break it and, for the first time in this seven-round arc, could not. He wrote

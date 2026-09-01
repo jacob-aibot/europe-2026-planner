@@ -1,12 +1,13 @@
 # Cairn — manager reviews
 
-**Four verdicts live in this file, newest first.** Phase 2 increment **I-8a** is the current
-one; the **2b (data layer)**, **2a** and **Phase 1** verdicts below it are **closed and kept
-for the record**, not superseded — their routing discharged and their carried items re-placed
-downstream.
+**Five verdicts live in this file, newest first.** Phase 2 increment **I-8i** is the current
+one; the **I-8a**, **2b (data layer)**, **2a** and **Phase 1** verdicts below it are **closed
+and kept for the record**, not superseded — their routing discharged and their carried items
+re-placed downstream.
 
 | Verdict | Scope | Commit reviewed | Date | Result |
 |---|---|---|---|---|
+| **I-8i — the world-map lifetime framing rewrite** (the A-41 → A-53 atlas-frame arc, seven rounds) | `ROADMAP.md` Phase 2 increment **I-8i** (revisions 35–36) against `ARCHITECTURE.md` §4.4 **A-51**, **A-52**, **A-53** — **I-8b is not included** | `10455b9` (record `6ee6bf5`) | 2026-09-01 | **SHIP** (10 items routed; **3 gate I-8b**). **The frame's geometry closes as a track; A-51 G7's layout does not** |
 | **I-8a — the tab shell, the world map, the token layer, the signal-collision fix** | `ROADMAP.md` Phase 2, step 2b, increment **I-8a** (revision 27) against `ARCHITECTURE.md` §4.4 **A-40** (revision 29) — **I-8b is not included, and 2b does not ship here** | `6b89c91` | 2026-08-31 | **SHIP** (7 items routed; 4 of them gate I-8b) |
 | **2b (data layer) — I-5 … I-7b** (geography attribution, `travelStats`, the summary-row read boundary) | `cairn/docs/ROADMAP.md` Phase 2, step 2b, increments I-5 through I-7b, A-26…A-39 — **I-8 (the Map/Profile surfaces) is not included** | `69e44d4` | 2026-08-29 | **SHIP** |
 | **2a — past trips and the lifecycle** (I-0 … I-4a) | `cairn/docs/ROADMAP.md` Phase 2, first of three steps | `67f5588` | 2026-08-28 | **SHIP** |
@@ -14,9 +15,501 @@ downstream.
 
 ---
 
+# I-8i — the world-map lifetime framing rewrite (A-51 / A-52 / A-53)
+
+> **Status: CURRENT.** Manager, stage 4. Reviewed `master` @ `10455b9` (QA round 39's record
+> landed alongside at `6ee6bf5`), 2026-09-01, Node v22.22.2, Chromium via the system Playwright
+> at `/opt/node22/lib/node_modules/playwright`, `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers`.
+> **Verdict: SHIP.** Scope was I-8i and nothing else; **I-8b is not included and does not ship
+> here.** Every claim below has a command in **Verified — I-8i** that I ran myself, on this tree.
+>
+> **Per Jacob's instruction for this pass I re-derived the decisive claims rather than reading
+> them.** Round 39's SHIP recommendation is advisory and I treated it as such: I ran the suite,
+> the fault sets and both render probes, and then rendered `FR`+`US` and the Europe 2026 fixture
+> in Chromium from my own script and **looked at the screenshots** before reading anyone's pixel
+> numbers for them.
+>
+> **I agree with round 39's verdict and I found something round 39 did not.** Every number the
+> builder and the breaker published that I checked re-derived exactly. But neither of them
+> measured the pane **container**, only the pane **cells** — and A-51 G7's grid leaves **29.0 %
+> of the Europe 2026 map card, and 45.6 % of the `FR`+`US` card, as empty background at every
+> viewport ≥ 640 px**, where the model it replaced left **0 %**. That is **MGR-1**, it is new at
+> I-8i, it is on the fixture Jacob sees first, and it is why the atlas-frame track does not close
+> here even though the frame's geometry does.
+>
+> **A second thing this gate exists to catch, found outside the increment:** **I-8f has never
+> been built.** It is a fully specified ROADMAP increment carrying `ARCHITECTURE.md` §2.9
+> **A-47**, answering QA **R35-1**, with a stated user-visible outcome — and `openFailures`,
+> `rowUnopenable` and `noteOpenFailure` return **zero** matches in the tree. I-8g, I-8h and I-8i
+> each shipped past its own declared dependency on it. That is **MGR-2**.
+
+---
+
+## Verdict: **SHIP**
+
+**I-8i builds exactly what A-51, A-52 and A-53 specify, nothing in it is a stub, and the defect
+seven rounds were chasing is genuinely gone.** I did not take that on the breaker's word. On my
+own runs, on this tree:
+
+- **`FR`+`US` — the case that made Jacob reopen the framing model.** Four panes, in the order
+  `FR (home, weight 1) · US (home, weight 1) · extent FR (weight 0) · extent US (weight 0)`.
+  **France renders 342.3 × 236.3 px** and **French Guiana 223.3 × 288.4 px** in Chromium at
+  390 × 820, against round 38's **36 × 25 = 899 px²** France (R38-2) and **7 × 8 = 56 px²**
+  Guiana (R38-4) — 90× and 1,150×. No pane exceeds **60.03° × 54.54°**, against
+  the single 134.2° Atlantic strip that opened this arc's last round. I looked at the
+  screenshot: it is a map of France above a map of the United States. That is the product
+  outcome ROADMAP I-8i promises, delivered.
+- **The Europe 2026 fixture — the library Jacob actually has.** Three panes, `viewBox` strings
+  byte-identical to I-8d's, I-8g's and I-8h's, `codes` `[AT CZ DE GB HR HU] · [US] · [US]`,
+  `home` the same minus the third, weights **6 · 1 · 0** summing to `W = 7`. I rendered it and
+  looked: GB, DE, CZ, AT, HU and HR are individually legible and individually tappable, the US
+  is a full-width map below it, and Alaska/Hawaii sit last under **DISTANT PARTS OF US**. **No
+  regression.**
+- **The claim that protects a completely different, already-shipped surface holds.**
+  `git diff 027a7a9 10455b9 -- cairn/packages/core/src/derive/cluster.ts` is **empty, 0 lines**.
+  The day map cannot have moved, and `npm run golden && npm run sample && git status
+  --porcelain` regenerates **byte-identically** — I ran it, the tree stayed clean, sample source
+  sha still `40955ca0b182`.
+- **The boundaries hold.** Export surface **79** by `Object.keys` on the built namespace.
+  `package.json`/`package-lock.json` diff **0 lines** — no dependency was added, which is the
+  ruling A-53 Part 6 makes explicitly and the one `cairn-constraints` §2 reserves to Jacob.
+  Inside `packages/core/src` only `derive/country.ts` moved, **14 insertions / 7 deletions**,
+  and the executable part of it is three lines. The root read-only boundary is intact:
+  `git diff -- europe-2026-itinerary.html docs/ tickets/` empty, `md5sum` still
+  `7c69df3208ef91c8be0fb59a56443188`.
+- **Nothing sensitive moved.** Over the whole `packages/` + `apps/` diff, **0** added lines
+  match `console.|fetch(|XMLHttpRequest|sendBeacon|navigator.|localStorage|sessionStorage|
+  geolocation|watchPosition|EXIF|Date.now|Math.random|crypto.`. No mailbox path, no friend's
+  location, no coordinate: the increment is pure geometry over the **bundled** country index,
+  and the two new DOM attributes (`data-pane-kind`, `data-pane-weight`) are a `.length` check
+  and a trip count.
+- **The reported state is true.** `npm run typecheck` clean on both projects. `npm run test:tap`
+  **1121 pass / 0 fail / 0 skipped**. `bash qa/i8i-faults.sh` **16 of 16 RED**, zero green.
+  `node qa/i8i-render.mjs` **ALL CLEAR, 121 `ok` lines** — I counted them. `node qa/r39-a51.mjs`
+  **12 FAIL**, `node qa/r39-render.mjs` **7 FAIL**, both exactly the counts `qa/README.md`
+  publishes for them, and every FAIL maps onto a filed R39-n rather than onto a regression.
+
+**Why this is not a SEND BACK, stated rather than assumed.** MGR-1 is real and it is new, but it
+is a **layout** defect with no correctness, data or privacy consequence: every pane is at full
+size, every country is drawn, nothing is hidden, and the phone — the reference viewport every
+A-51 criterion is written at — is **0.3 % empty**. Sending a seven-round arc back for a CSS
+consequence of one ruled clause, when the arc's actual defect is fixed and measured, would
+manufacture a round rather than close one. It is routed as a **MAJOR that gates I-8b**, which is
+the same shape the I-8a verdict used and is enough.
+
+---
+
+## MGR-1 — the measurement nobody in this arc took: the grid row, not the cell
+
+**MAJOR. Architect. Gates I-8b.** `apps/web/src/styles.css` — A-51 **G7**.
+
+A-51 G7 makes `.worldmap__panes` `display: grid; grid-template-columns: repeat(auto-fill,
+minmax(var(--pane-min, 300px), 1fr)); align-items: start`, and gives every cell one
+`--pane-cap: min(38vh, 300px)`. `align-items: start` was chosen deliberately, to fix R38-3: *"a
+flex row stretches every cell to its tallest sibling … `align-items: start` on a grid does not
+stretch."* It works — no cell letterboxes, which is what R38-3 asked for.
+
+**What it also does, which no criterion in the arc can see:** a grid *row* is still as tall as
+its tallest cell. A pane's height is `--pane-cap ÷ aspect`, so a wide home pane (the US, 2.26
+aspect → 170 px) and a tall extent pane (Alaska, 0.80 aspect → 331 px) land in the same row, and
+the difference becomes card background. R38-3's fix moved the criterion from the `<svg>` to the
+**cell**; the defect moved one level further out, to the **row**. That is the same *"one clause
+further out"* pattern Part 1 of A-51 diagnoses, arriving one more time.
+
+Measured by me, `.worldmap__panes` container area minus the summed area of its cells:
+
+| library | 390 px | 640 px | 960 px | 1440 px |
+|---|---|---|---|---|
+| **Europe 2026 fixture** | 0.3 % | **34.7 %** | **30.1 %** | **29.0 %** |
+| **`FR`+`US`** | — | — | — | **45.6 %** |
+| **worldwide 12** | — | — | — | **23.5 %** |
+
+And at `027a7a9` — I built the pre-increment tree in a worktree, served it on port 4174 and ran
+the identical script against it — the same fixture is **0 % at all eleven widths I swept**
+(390 · 560 · 640 · 768 · 820 · 900 · 960 · 1024 · 1280 · 1440 · 1600). So it is unambiguously
+**new at I-8i**, not a pre-existing residue.
+
+It reads, on screen, as a large grey block where a map failed to load. On `FR`+`US` at 1440 px
+the entire second half of the second grid row — two of three columns — is empty. This is a
+presentation-honesty problem of the kind the original visual direction names (*"no placeholder
+UI, presentation stays honest"*): nothing is false, but the surface looks broken.
+
+**Why the architect and not the builder.** `align-items: start` is a ruled clause with a stated
+reason, and the three obvious repairs each trade against something A-50 or A-51 already ruled —
+stretching the cell brings R38-3's letterbox back unless the cell's background stops being the
+card's; a masonry/dense flow changes reading order and therefore I18's on-screen meaning; a
+per-row cap is a per-screen-size rule that A-41 Part 7 forbids for the *frame* and would need
+its layout/frame boundary stated. Picking one is a design decision, not a patch.
+
+---
+
+## MGR-2 — I-8f was never built, and three increments shipped past its dependency
+
+**MAJOR. Builder + breaker. Gates I-8b.**
+
+`ROADMAP.md` §I-8f (revision 32) is a complete increment: five named files, a stated
+user-visible outcome (*"Tapping a trip that will not open now leaves you looking at a card that
+says so and offers to save the copy"*), and `ARCHITECTURE.md` §2.9 **A-47** behind it. It
+answers QA **R35-1** plus R35-4 and R35-5. Its own entry says **"Builder + breaker,
+mandatory."**
+
+It does not exist. Greps over `packages/` and `apps/`:
+
+- `openFailures` — **0 matches**
+- `rowUnopenable` — **0 matches**
+- `noteOpenFailure` — **0 matches**
+- `cli.ts:68` still reads `function todayIsValid() { try { core.weekdayOf(today); … } }`, the
+  pre-A-47 form, with the comment block A-47 Part 6 was to delete still above it
+- `docs/BUILD-NOTES.md` — **0 matches for `I-8f`**
+
+Meanwhile ROADMAP revision 33 sequences I-8g *"after I-8f"*, I-8g's dependency line reads *"I-8d
+(shipped) and I-8f"*, and `CAIRN_VISUAL_ROADMAP.md` has repeated *"I-8b still waits on I-8f"* in
+five separate blocks while I-8g, I-8h and I-8i were built and attacked. **Nothing hid this** —
+the visual roadmap has said `I-8f is designed ✅ · built ❌` since revision 32 and still does, so
+this is an honest board with a skipped step, not a false claim. But no gate ran between I-8a and
+this one, so nobody stopped and asked. That is exactly the failure a phase gate exists to catch,
+and it is being caught two increments late.
+
+**This is not an architect item.** A-47 is ruled, I-8f's *Built* bullets are written, and no
+design question is open. It is a builder pass that was skipped.
+
+---
+
+## Routing — I-8i
+
+**Ten items. None blocks this verdict. Three block I-8b, and that is a hard gate.** Round 39
+proposed routing for its seven; I confirm five as filed, sharpen two, and add three of my own.
+
+| id | severity | agent | gates I-8b | one line |
+|---|---|---|---|---|
+| **MGR-1** | MAJOR | architect | **yes** | A-51 G7's grid leaves 29–46 % of the map card empty at ≥ 640 px; 0 % before I-8i |
+| **MGR-2** | MAJOR | builder + breaker | **yes** | I-8f (A-47, R35-1) was never built; three increments shipped past its declared dependency |
+| **R39-1** | MINOR | architect | **yes** | A-52's filter removal makes `worldMapFrame` able to violate A-40 clause 3; safe only by an unwritten precondition in `tools/gen-countries.mjs` |
+| **R39-2** | MINOR | architect (+ 1-line builder) | no | A-52's *"[] iff no ring at all"* is false with the sign flipped; the disagreement moved instead of closing, and I12 breaks on an index A-52 now admits |
+| **R39-3** | MINOR | architect | no | A-51 G6's *"greedy worst case 14"* is at least 18; residue 7's ~4,200 px becomes ~5,400 px; A-53 Part 5's *"the 14-pane ceiling contains zero extent panes"* fails at the real ceiling |
+| **R39-4** | MINOR | architect + builder | no | ROADMAP I-8i's set-equality criterion counts libraries where it says panes and is unsatisfiable as written; BUILD-NOTES' correction is arithmetic on the wrong base |
+| **R39-5** | MINOR | architect (+ builder test) | no | G5's third key is ISO-alphabetical one indirection out; G5's *"there is no tie left for the alphabet to break"* and L5's proof obligation are both wrong as written |
+| **R39-6** | MINOR | builder | no | `WorldMap.tsx:182` — the extent pane's `aria-label` says *", shown in a separate frame"*; its visible caption does not |
+| **R39-7** | MINOR | architect | no | L3's stated exception does not cover the case that fails it: a single-country `FJ` library renders Fiji at **342.2 × 2.2 px = 753 px²** |
+| **MGR-3/4** | MINOR | builder | no | two BUILD-NOTES figures that do not re-derive (see below) |
+
+### architect — one pass, and it is a small one
+
+- **MGR-1 — rule how a grid row is sized when its cells have unequal aspect-derived heights.**
+  Evidence and numbers above and in **Verified** rows 14–16. The clause to move is A-51 **G7**'s
+  `align-items: start`, or the cell's background, or both; A-50's `<svg>` rule is not in
+  question and should stay verbatim. **The criterion has to become the *row* or the container**
+  — `container.height × container.width − Σ cell area ≤ ε` over the library set A-50 already
+  uses, at 390 · 640 · 960 · 1440 — because *"the cell is not letterboxed"* is now a criterion
+  that passes while the surface has a hole in it, which is precisely what R38-3 said about the
+  `<svg>` criterion one round ago. **Trigger: I-8b does not ship until this is ruled and built.**
+- **R39-1 — decide whether A-40 clause 3 is an invariant of the frame or a property of the
+  generator, and write it down either way.** I reproduced it: an index entry whose only ring is
+  `[]` or `[7]` yields `viewBox: "NaN NaN NaN NaN"`, `aspect: NaN`, `d: ""`, `missing: []` — a
+  blank map, no error, nothing stated. Under I-8h the same input went to `missing` and was
+  stated in words. **My own reading, which differs from round 39's framing:** *"unreachable by
+  construction"* is accurate — `tools/gen-countries.mjs:426` drops every ring under three
+  distinct points at the mint and `countries.gen.ts` has no other producer — so **MINOR is the
+  right severity and it does not block**. But it is **not a documentation item**, and it must
+  not be filed as one: `countryParts` is a public core export taking an injected index, its
+  safety now depends on a filter in a different module that nowhere says it is load-bearing, and
+  A-52's stated justification (*"a degenerate ring … contributes its own points to its part's
+  `box`"*) is **false for a ring with no points**. A-52 bought byte-neutrality on the shipped
+  artefact and paid for it with a silent total failure on any other index. Rule one of: restore
+  a guard inside `countryParts`; or make `worldMapFrame`'s `missing` test total on a non-finite
+  `box`; or state the generator's filter as `countryParts`' precondition with a test that fails
+  if the generator loses it. **Trigger: I-8b does not ship until this is ruled** — I-8b puts a
+  second surface on the same `travelStats`/index pair, and *"the map is blank and says nothing"*
+  is not a failure mode to widen.
+- **R39-2 — the *"iff"* in A-52 clause 1.** Measured: an entry with a finite `box` and
+  `rings: []` gives `countryParts → []` but `countryKeyPoint → {lat: 5, lng: 5}`; and because
+  `countryKeyPoint:184` **still carries** the `ring.length < 6` filter A-52 removed from
+  `countryParts`, a 2-point ring makes the principal part's key `{5.5, 5.5}` while
+  `countryKeyPoint` answers `{0, 0}` — **I12 broken on an index A-52 itself now admits**. Fix
+  the ruling, then the docstring. Rule with R39-1; they are one question.
+- **R39-3 — the published ceiling.** I did not re-run the 60,000-iteration search, so this is
+  round 39's number and I say so; what I did confirm is that `qa/r39-a51.mjs` §G reports it and
+  that A-51 G6 and A-53 Part 5 both state 14 as a maximum rather than as a found value. Correct
+  G6, residue 7's px estimate, and A-53 Part 5's *"zero extent panes at the ceiling"* bullet.
+- **R39-4 — ROADMAP I-8i's third criterion is unsatisfiable as written.** I ran the recount:
+  **1,236** panes wider than 120° by unpadded bounds (1,237 padded), of which **1,187** contain
+  one of `AQ FJ KI RU UM` and **49** do not; **1,229** is the count of *libraries* holding at
+  least one such pane. Rewrite the criterion so the base is stated and the three-way
+  decomposition (48 trans-antimeridian pairs + one honest `CA`+`GL` at 128.8°) is what is
+  asserted, since that is what is true.
+- **R39-5 — and this one deserves a decision, not only a wording fix.** My own reading:
+  **round 39 graded it correctly at MINOR, and the reason is sharper than *"reading order is
+  harmless."*** I re-ran the order-destroying relabel: over 23 libraries the **pane set, every
+  `viewBox`, every `codes`/`home` membership and every `weight` come back identical** — so
+  A-51/A-53's actual design principle, *geometry is code-blind*, **holds**. What moves is
+  presentation order, in 8 of 23. So the principle is intact and two things around it are not:
+  (a) G5's sentence *"unlike C6 there is no tie left for the alphabet to break"* is false —
+  **22,765 of 22,877 (99.5 %)** two-country libraries with ≥ 2 panes have an adjacent pair
+  separated by that key alone, and C6's objection was renamed rather than answered; (b) L5's
+  stated proof obligation (*"permuting every ISO code leaves every pane byte-identical"*) is
+  **stronger than what holds**, so a test written to it either fails or — as both round 38's and
+  I-8i's do — quietly uses an order-**preserving** relabel and proves less than it reads.
+  Correct both sentences, and rule explicitly whether an equal-weight, equal-`home.length` tie
+  should be broken by a geometric key (westmost part, greatest area) or whether the canonical
+  position is accepted **with the alphabet named in the open**. Either answer is fine; leaving
+  G5 claiming there is no tie is not.
+- **R39-7 — L3's exception clause.** I reproduced it in the DOM: a single-country `FJ` library
+  renders an `<svg>` of **356 × 16 css px** with Fiji at **342.2 × 2.2 px = 753 px²** — smaller
+  than the 783 px² and 899 px² rounds 37 and 38 filed as MAJOR, in a library with no cluster and
+  no micro-state, i.e. outside the one exception L3 names. Not a regression (round 39 confirmed
+  the `viewBox` byte-identical at `027a7a9`; A-51 residue 3 owns it). Widen L3's exception to
+  name residue 3, and carry the pixel number so the next round does not re-derive it.
+- **MGR-4 (architect half) — A-51's parenthetical says `derive/cluster.ts` *"gets a zero-line
+  diff for the third increment running."*** The invariant is true and I verified it; the count is
+  not. `cluster.ts` last changed at **I-8g / `53cdcc1`**, so I-8h and I-8i are the only two
+  consecutive zero-diff increments. One word.
+
+### builder
+
+- **MGR-2 — build I-8f as ROADMAP §I-8f and §2.9 A-47 specify**, then hand it to the breaker,
+  which that increment's own entry already requires. Do not re-scope it and do not fold it into
+  another increment: it changes who can reach an export surface, which is `cairn/CLAUDE.md`'s
+  mandatory-breaker trigger. **Trigger: I-8b does not ship until this is built and attacked.**
+- **R39-6 — `apps/web/src/views/WorldMap.tsx:182`.** The extent branch reads
+  `` `Distant parts of ${pane.codes.join(', ')}, shown in a separate frame` ``. A-51 G8 says a
+  pane with `home.length === 0` *"may **never** say 'shown separately'"* and that *"`aria-label`
+  follows the same two branches"*; the visible caption is `DISTANT PARTS OF FR` and nothing
+  more. Make the label carry the same claim and no larger one. **Add the parity assertion**, not
+  only the string — `qa/i8i-render.mjs` §C greps the caption for the literal *"shown
+  separately"* and passes, which is why this survived I-8d, I-8h and I-8i. Repro:
+  `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r39-render.mjs` §C, and
+  `node qa/r39-a51.mjs` §M.
+- **R39-2's docstring half — `packages/core/src/derive/country.ts:248`.** The shipped docstring
+  repeats A-52's false *"iff"* verbatim (*"`[]` iff the index carries no ring at all for the
+  code … the same one `countryKeyPoint`'s `null` has"*). One line, **after** the architect rules
+  R39-1/R39-2, not before.
+- **R39-5's test half — `packages/client/test/world-map.test.ts`.** Replace the
+  order-**preserving** ISO relabel (`CODES[i] → Q000+i`) with an order-**destroying** one, and
+  assert what actually holds: the pane set, every `viewBox`, every `codes`/`home` and every
+  `weight` are invariant; pane *order* is not asserted invariant. This is independently correct
+  and does **not** wait on the architect.
+- **R39-4's BUILD-NOTES half.** *"measured, **1,180** do"* is `1,229 − 49`, arithmetic on the
+  library count. The pane figures are 1,187 of 1,236.
+- **MGR-3 — BUILD-NOTES' own scope line for I-8i is wrong twice.** It says *"Scope: **20 files
+  changed, 2 added**"*; `git show --stat 10455b9` is **22 changed, 2 added, 24 total**. Its
+  enumerated *Changed:* list omits `docs/CAIRN_VISUAL_ROADMAP.md` and
+  `docs/CAIRN_VISUAL_ROADMAP.html`, which the same commit changed (41 and 45 lines) and which
+  I-8h's entry does list. Round 39 published the correct 24/22/2 and did not flag the mismatch.
+- **MGR-4 — BUILD-NOTES says `cluster.ts` has a zero-line diff *"for the fourth increment
+  running."*** The zero-line diff across I-8i is real and I verified it; the count is not.
+  `cluster.ts` last moved at I-8g / `53cdcc1` (57 insertions / 14 deletions), so I-8i is the
+  **second** consecutive zero-diff increment. Same correction as the architect's half above.
+
+### breaker
+
+- **MGR-1 — the class, not the instance.** Round 39 is the strongest adversarial pass in this
+  arc and I am **not** routing it a re-run. One gap: §A measured *"every pane cell is in the
+  document, has a non-zero box, does not overlap a sibling"* and §D measured *"no cell
+  letterboxes vertically"* at 21 widths — both are cell-scoped, and both pass on a container
+  that is 46 % empty. **Add a container-occupancy assertion to the render probe set**
+  (`Σ cell area ÷ container area`, over the standard library set, at the widths §D already
+  sweeps) so a layout hole cannot pass a cell-shaped criterion again. That assertion is what
+  would have caught this at round 39 and it is three lines.
+- **Verify MGR-2's I-8f build when the builder lands it** — mandatory per ROADMAP §I-8f, not at
+  my discretion.
+- **Everything else in round 39 stands.** I re-ran `qa/r39-a51.mjs` (12 FAIL) and
+  `qa/r39-render.mjs` (7 FAIL) and every FAIL is a filed finding with a section reference; there
+  is no unreproduced finding and no attack list that missed a sensitive path — the privacy,
+  redaction, constraint and root-boundary greps are all present and all clean on my own run.
+
+---
+
+## My own reading of round 39's seven MINORs — do any of them deserve MAJOR?
+
+Jacob asked specifically about R39-1 and R39-5. Both times my answer is **no, MINOR is right**,
+and both times the reason matters more than the grade.
+
+**R39-1 — is *"unreachable by construction"* enough for something Jacob's family will use?**
+For *severity*, yes, and I checked the construction rather than accepting the phrase.
+`COUNTRY_INDEX` is `packages/core/src/geo/countries.gen.ts`, a committed artefact with exactly
+one producer, `tools/gen-countries.mjs`, whose line 426 reads `if (flat.length < 6) { dropped++;
+continue; }` under the comment *"A ring needs three distinct points to enclose anything."* There
+is no user input path into the index, no runtime index construction, and no second producer. So
+the user-facing probability today is **zero**, not *small* — which is the difference between
+MINOR and MAJOR in this project's grading, and round 39 graded it correctly.
+
+For *routing*, no — and this is where I override round 39's own framing rather than its grade.
+It filed all five architect items together as *"documentation/ruling accuracy."* R39-1 is not
+that. It is a **cross-module precondition that nothing states**: a public core export's safety
+now rests on a filter in a build tool, and the failure it prevents is a total silent failure of
+the surface (`viewBox: "NaN NaN NaN NaN"`, `missing: []`, blank map, no error) rather than a
+degraded one. A-52 traded a *stated, safe* degradation for an *unstated, catastrophic* one and
+bought byte-neutrality with it. **It must be ruled before I-8b, not deferred to whenever the
+architect next opens §4.4** — that is the escalation, and it is the only one I am making on the
+seven.
+
+**R39-5 — is the alphabet tie-break cosmetic, or does it undermine A-51/A-53's design
+principle?** Cosmetic — but only because I measured which half moves. The principle A-51 L5 and
+A-53 defend is *"nothing reads which country a code is to decide geometry."* Under an
+order-destroying relabel (`FR → MC`, `US → BD`, not round 38's order-preserving `Q000…Q238`) the
+**partition, every `viewBox`, every membership and every `weight` are byte-identical** across 23
+libraries. Geometry is genuinely code-blind. What moves is the sequence of equal-weight,
+equal-size panes, in 8 of 23. C6's original objection was that the alphabet decided which
+country got **framed as main and shrunk to an inset** — i.e. it decided size. Under A-51 it
+decides reading order among panes that are the same size by construction. That is a
+categorically smaller thing, and A-51 Part 6's *"reading order is the harmless half"* is
+defensible.
+
+So the design principle is not undermined. **Two sentences are false, and one test is weaker
+than it reads**, which is why it routes as it does. If the architect wants a geometric tie-break
+that is a legitimate improvement; what is not acceptable is G5 continuing to assert *"there is
+no tie left for the alphabet to break"* while 99.5 % of two-pane libraries have exactly that
+tie.
+
+**The other five.** R39-3, R39-4 and R39-7 are measurement corrections to published numbers, in
+documents, with no code consequence — MINOR is generous if anything. R39-2 is a false clause in
+a ruling plus its copy in a docstring; it is one question with R39-1 and should be ruled beside
+it. **R39-6 is the only one of the seven that is a defect in shipped code**, it is one string,
+and MINOR is right: *"shown in a separate frame"* is a statement about layout, not about travel,
+so no screen-reader user is being told Jacob went to Cayenne. The rule it violates says
+*"verbatim and unchanged"* and it is not verbatim; that is the whole of it.
+
+**None of the seven invalidates the shipped contract.** I confirm round 39 on that.
+
+---
+
+## Is the atlas-frame track closed? Partly, and I am saying which part
+
+**Closed, and marked shippable as a track: the frame's *geometry*.** A-41 → A-48 → A-49 → A-51
+G1–G6/G8, A-52, A-53 and invariants I1–I18. R38-2, R38-3, R38-4 and R38-5 are fixed; I17 — the
+invariant that needed a *pair* of libraries and is the reason three adversarial rounds could not
+see the original defect — holds on the exact case that defined it (adding `US` to an `FR`
+library moves France's pane by zero bytes; I re-derived that myself). The model is right, the
+implementation matches the ruling clause for clause, and there is no reason to expect an
+eighth round on *which rectangle a country is drawn in*.
+
+**Not closed: A-51 G7, the layout clause.** MGR-1 is open, it is new at this increment, and it
+is on the same surface. The track closes when G7 is ruled and built.
+
+`CAIRN_VISUAL_ROADMAP.md` and its `.html` twin are updated in this pass to say exactly that.
+
+---
+
+## Pipeline hygiene, checked because this is a phase-relevant gate
+
+- **`CAIRN_VISUAL_ROADMAP.md` + `.html` twin — honestly synced, and honest about what is open.**
+  Both carry the same newest block (*"THE NEW MAP FRAME HAS BEEN ATTACKED AND IT HELD"*), both
+  say `I-8i is designed ✅ · built ✅ · verified ✅ · shippable — the manager's call`, which was
+  the correct state until this file. Neither overclaims: both still carry `I-8f is designed ✅ ·
+  built ❌` and *"I-8b still waits on I-8f"*, which is what let me confirm MGR-2 rather than
+  discover a contradiction. Both are updated by this verdict.
+- **`BUILD-NOTES.md`'s status note — accurate on every technical claim I checked, wrong on two
+  bookkeeping figures.** MGR-3 (file count and the omitted roadmap files) and MGR-4 (the
+  zero-diff increment count). Everything else in it — 1121/1097, 16/16 red, 121 ok, surface 79,
+  0 dependency lines, byte-identical goldens, the three reference `viewBox` strings — re-derived
+  exactly on my runs.
+- **`qa/README.md` — indexes round 39's probes correctly.** Both `r39-a51.mjs` and
+  `r39-render.mjs` are listed with their run commands, their section maps, and the expected
+  **12 FAIL / 7 FAIL** at `10455b9`. I got 12 and 7.
+- **`QA-FINDINGS.md`'s status note** names the commit range, the four product files and all
+  seven findings with `file:line` and a repro command each. Every repro I tried reproduced.
+
+---
+
+## Verified — I-8i: what I ran, and what happened
+
+All from `/home/user/europe-2026-planner`, `master` @ `6ee6bf5` (product commit `10455b9`),
+Node v22.22.2, Chromium via `/opt/node22/lib/node_modules/playwright` with
+`PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers`. `git status --porcelain` **empty** before and
+after; the one worktree I created at `027a7a9` for row 16 was removed and `git worktree list`
+shows only the main tree.
+
+| # | Command | Result |
+|---|---|---|
+| 1 | `npm run typecheck` | exit **0**, both projects; `pretypecheck` regenerated the redacted sample (`16 days, 112 stops, 31 pool, 95 places, 120 import issues, source 40955ca0b182, REDACTED per §6.6`) |
+| 2 | `npm run test:tap` | `# tests 1121 · # pass 1121 · # fail 0 · # skipped 0`, 18.1 s. **BUILD-NOTES' and round 39's 1121 are both accurate** |
+| 3 | `npm run golden && npm run sample && git status --porcelain` | tree **clean**; sha `40955ca0b182…`. Byte-identical regeneration — the day map and every core golden are unmoved |
+| 4 | `git diff 027a7a9 HEAD -- cairn/packages/core/src/derive/cluster.ts \| wc -l` | **0**. The invariant that protects the already-shipped day map holds. `git log 6b89c91..HEAD -- …/cluster.ts` shows its last change was **I-8g / `53cdcc1`**, which is MGR-4 |
+| 5 | `Object.keys(core).length` on the built namespace | **79** |
+| 6 | `git diff 027a7a9 HEAD -- cairn/package.json cairn/package-lock.json \| wc -l` | **0**. No dependency added — A-53 Part 6's ruling holds in the artefact |
+| 7 | `git diff --stat 027a7a9 HEAD -- cairn/packages/core/src/` | `derive/country.ts` only, **14 insertions / 7 deletions**; the executable change is the three lines removing `if (ring.length >= 6)` |
+| 8 | `git show --stat 10455b9` | **24 files, 22 changed + 2 added**, 2717 insertions / 633 deletions. Round 39's figure; **BUILD-NOTES says 20 + 2** — MGR-3 |
+| 9 | `bash qa/i8i-faults.sh` | `ALL FAULTS RED`; **16** `RED (expected)` lines, **0** green. I grepped for green/NOT RED/WARN and got nothing |
+| 10 | `node qa/r39-a51.mjs` | **12 FAIL**, matching `qa/README.md`. §A reproduces R39-1 (`viewBox: "NaN NaN NaN NaN"`, `missing: []`) and R39-2 (`countryParts []` vs `countryKeyPoint {5,5}`; I12 `{5.5,5.5}` vs `{0,0}`). §B: my-implementation-vs-shipped identical on **24 libraries**. §J: 1236 panes / 1187 with the five / 49 without. §L: 99.5 % and the 8-of-23 reorder. §M: constraint greps all clean |
+| 11 | `PLAYWRIGHT_BROWSERS_PATH=… node qa/i8i-render.mjs` | `ALL CLEAR`; **121** `ok` lines, counted with `grep -c` |
+| 12 | `PLAYWRIGHT_BROWSERS_PATH=… node qa/r39-render.mjs` | **7 FAIL**, matching `qa/README.md`; all seven are R39-6 (aria parity) and R39-7 (`FJ` 356 × 16, Fiji 342.2 × 2.2) |
+| 13 | **my own script**, not any `qa/` probe: load the app, drive IndexedDB to an `FR`+`US` library, screenshot and read every pane | 4 panes; order `FR(home,1) · US(home,1) · FR(extent,0) · US(extent,0)`; **France 342.3 × 236.3**, **Guiana 223.3 × 288.4**; every pane `display:block / visible / opacity 1`; viewBoxes `-4.8753 -51.4315 14.7184 10.3346`, `-125.8416 -50.5435 60.0314 26.618`, `-54.5989 -5.8306 3.0151 3.8512`, `-172.8399 -72.4066 43.9088 54.5393`. **I looked at the PNG.** It is a map of France, then a map of the USA, then two captioned territory frames |
+| 14 | same script, Europe 2026 fixture at 390 × 820 and 1440 × 900 | 3 panes; the three `viewBox` strings **byte-identical** to I-8d/I-8g/I-8h; weights 6 · 1 · 0; smallest home subject **CZ 74.7 × 29.0 px** at 390. **I looked at the PNG**: GB, DE, CZ, AT, HU, HR individually legible. **No regression** |
+| 15 | **my own measurement**: `container area − Σ cell area` on `.worldmap__panes`, 4 libraries × 4 viewports | Europe 2026 **0.3 % / 34.7 % / 30.1 % / 29.0 %** at 390 / 640 / 960 / 1440; `FR`+`US` **45.6 %** at 1440; worldwide-12 **23.5 %**. `display: grid`, `align-items: start` — **MGR-1** |
+| 16 | **the control for MGR-1**: `git worktree add … 027a7a9`, `npm run web:build`, `PORT=4174 node tools/serve.mjs`, identical script against it | **0 % at all eleven widths swept** (390 → 1600); `display: flex`, `align-items: normal`. **MGR-1 is new at I-8i** |
+| 17 | `grep -rn "openFailures\|rowUnopenable\|noteOpenFailure" packages/ apps/` | **0 matches each**; `cli.ts:68` still the pre-A-47 `todayIsValid`; `grep I-8f docs/BUILD-NOTES.md` **0**. **MGR-2** |
+| 18 | privacy sweep over the added lines of the whole `packages/` + `apps/` diff | **0** matches for `console.\|fetch(\|XMLHttpRequest\|sendBeacon\|navigator.\|localStorage\|sessionStorage\|geolocation\|watchPosition\|EXIF\|Date.now\|Math.random\|crypto.` |
+| 19 | root boundary, from the repo root | `git diff 027a7a9 HEAD -- europe-2026-itinerary.html docs/ tickets/` **empty**; `md5sum europe-2026-itinerary.html` = **`7c69df3208ef91c8be0fb59a56443188`**, unmoved since round 33 |
+| 20 | `sed -n '415,435p' tools/gen-countries.mjs` | `if (flat.length < 6) { dropped++; continue; }` at **:426**, under *"A ring needs three distinct points to enclose anything."* R39-1's *"unreachable by construction"* is accurate, and `packages/core/src/index.ts:99` confirms `COUNTRY_INDEX` has exactly one producer |
+| 21 | `grep -n r39 qa/README.md` | both probes indexed, with commands, section maps and the expected **12 FAIL / 7 FAIL** at `10455b9` |
+
+**What I did not do.** No real phone — Chromium viewports only, the same gap the builder and the
+breaker both disclosed. I did not re-run round 39's 60,000-iteration greedy search (R39-3 is its
+number, attributed). I did not re-run the full 28,441-pair censuses independently of
+`qa/r39-a51.mjs`; I ran that probe, which computes them from its own primitives, and checked its
+outputs against A-51 Part 5 rather than re-implementing a third time. I did not attack
+`apps/mobile`, ingestion or location — I-8i touches none of them.
+
+---
+
+## For Jacob — I-8i
+
+**Ship it. The map problem you reopened is fixed, and I checked it with my own eyes rather than
+taking the tester's word.**
+
+You asked, four rounds ago, why a trip to France and a trip to America drew France 36 pixels
+wide in a strip of empty Atlantic. It now draws a map of France, then a map of the United
+States, then two smaller frames for French Guiana and Alaska labelled *"distant parts of"*.
+France is **342 × 236 pixels** — about ninety times the area it had. I loaded it in a browser
+and looked at the picture before I read anybody's numbers.
+
+**Your Europe 2026 map has not changed at all** — same three panels, same frames to the byte,
+and Britain, Germany, Czechia, Austria, Hungary and Croatia are each clearly visible and
+tappable. That was the thing most at risk in a rewrite this size and it is intact.
+
+**The question you put to the architect before approving this — whether calling every panel
+"equal" quietly promotes a territory into a place you went — was answered correctly and I
+verified the answer.** Alaska and French Guiana get a panel each so they are visible, but they
+carry a weight of **zero**, they are captioned *"distant parts of"*, and they always come after
+the places you actually went. I confirmed that in the rendered page, not just in the data.
+
+**Three things need you to know about them, one of which needs a decision.**
+
+1. **A new cosmetic problem, which I found and nobody else did.** On a laptop or tablet — not on
+   a phone — the map card now has large empty grey areas: about **a third** of it on your Europe
+   2026 map and **nearly half** on the France + America one. It happens because the panels sit in
+   a grid and are no longer stretched to match each other, which was the fix for a different
+   problem last round. Nothing is missing or wrong; it just looks like something failed to load.
+   On your phone it is fine. **I am shipping the increment and routing this to the architect as
+   the next thing to fix; it is a CSS-shaped decision, not a rebuild.**
+2. **An increment was skipped and nobody noticed.** Back at the end of August we scheduled
+   **I-8f** — the fix that makes a trip which won't open *say so on its card and offer to save a
+   copy*, instead of showing a healthy-looking card whose only button is Delete. It was fully
+   designed and it was never built, and three later increments were built past it. It is queued
+   now and it has to land before the Profile screen. **Nothing was hidden from you** — the status
+   board has said "designed ✅ · built ❌" the whole time — but no gate ran between then and now to
+   stop and ask, which is my process failing rather than anyone's work.
+3. **The decision I need from you.** The tester found that the panel order, when two places tie,
+   is still decided alphabetically — France before the United States because F comes before U.
+   The *shapes and sizes* are completely independent of country names (I checked this by renaming
+   every country in the data and re-running: identical maps). It is only the reading order. Two
+   options: **(a)** accept it and say so plainly in the design doc, or **(b)** break the tie by
+   something geographic instead — westmost first, say, or largest first. (a) is free; (b) is a
+   small change and arguably more honest to the "nothing about this map reads a country's name"
+   principle you have been holding us to. **Which would you prefer?**
+
+**What I am marking closed:** the framing question itself. Seven rounds, four architect
+rulings, and this is the first one where the tester rebuilt the whole calculation independently
+and got the identical answer on 24 different travel histories — and where I could not find a
+counterexample either. **What I am leaving open:** the layout around it (item 1), and I-8f
+(item 2). Both gate the Profile screen, which is the next thing.
+
+---
+
 # I-8a — the tab shell, the world map, and the token layer
 
-> **Status: CURRENT.** Manager, stage 4. Reviewed `master` @ `6b89c91` (QA round 33's record
+> **Status: CLOSED, kept for the record.** Superseded as the current verdict by **I-8i** above;
+> nothing in it is retracted. Manager, stage 4. Reviewed `master` @ `6b89c91` (QA round 33's record
 > landed alongside at `e15c80d`), 2026-08-31, Node v22.22.2, Chromium via the system
 > Playwright at `/opt/node22/lib/node_modules/playwright`. **Verdict: SHIP. I-8a is closed;
 > I-8b may open, and four of the seven routed items gate it.**
