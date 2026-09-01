@@ -319,10 +319,60 @@
 </style>
 </head>
 <body>
+<div class="callout" style="border-left:4px solid #ea580c;padding:.75rem 1rem;margin:1rem 0;background:#fff7ed">
+<p><strong>&#128992; THE MAP&rsquo;S FRAME HAS BEEN REDESIGNED AND IS NOT BUILT YET &mdash; as of
+2026-09-01</strong> (this block is the newest; it supersedes the round-37 block below on
+<em>&ldquo;shippable &mdash; the manager&rsquo;s call&rdquo;</em> and on I-8g&rsquo;s status).</p>
+<p>The tester&rsquo;s finding went back to the architect, and the answer is written up as
+<strong>A-49</strong> and <strong>A-50</strong> in <code>ARCHITECTURE.md</code>, scheduled as
+<strong>I-8h</strong>. <strong>No code has been written for it yet.</strong></p>
+<p><strong>What was actually wrong, in one sentence.</strong> The last fix taught the map where a
+country <em>is</em> (the middle of its biggest landmass) but never taught it how far to <em>zoom
+out</em>, so it still stretched the frame far enough to include French Guiana &mdash; a map that knew
+France was in France and then drew the Atlantic anyway. Two different answers to the same question, in
+the same map.</p>
+<p><strong>The new rule, in plain terms.</strong> A country is treated as its <strong>pieces</strong>
+&mdash; mainland France and French Guiana are two pieces, the mainland US and Alaska are two pieces
+&mdash; using exactly the same 4,000&nbsp;km rule that already decides which countries share a map. A
+map frames the pieces its subject is actually connected to; the pieces that are far away get
+<strong>their own small map</strong> underneath, labelled with the country, still tappable. Nothing is
+cropped, nothing is hidden, and nothing anywhere in the rule knows what an &ldquo;overseas
+territory&rdquo; is.</p>
+<p><strong>Measured, before it was written down:</strong></p>
+<ul>
+<li><strong>France + Greece:</strong> the map goes from <strong>81&deg; &times; 49&deg; and 2%
+land</strong> to <strong>31&deg; &times; 16&deg; and 14% land</strong>, and Greece is nearly
+<strong>8&times; bigger</strong>. French Guiana gets its own frame at 60% land &mdash; bigger than it
+has ever been drawn.</li>
+<li><strong>France on its own:</strong> <strong>64&deg; wide &rarr; 14&deg; wide.</strong></li>
+<li><strong>Your Europe 2026 map does not move at all</strong> &mdash; the main frame is byte-for-byte
+identical. The US inset narrows from 105&deg; to 58&deg; (the lower 48), and Alaska and Hawaii move to
+a third small frame. That is a visible change to your sample and it is written down as one.</li>
+<li><strong>Alaska is the test that proves it is a rule and not a hack:</strong> on a US-only map
+Alaska is far enough away to get its own frame; add Canada to the map and Alaska stays in the main
+frame, because it is genuinely connected to it. Same rule, different answer, no special case.</li>
+</ul>
+<p><strong>Two smaller decisions, both made:</strong></p>
+<ul>
+<li><strong>The country-code chips go back to alphabetical.</strong> The fix is in the data the screen
+is handed, not in the screen &mdash; the new design makes the paint list contain a country twice, so a
+screen that used it as a country list would print France twice.</li>
+<li><strong>&ldquo;The map fills its box&rdquo; is fixed for tall maps too.</strong> Chile and the
+Maldives stop leaving two thirds of their box empty, and your Europe map stops leaving a quarter of it
+empty on a wide desktop. Said honestly: this does not make a narrow country wider &mdash; the Maldives
+is a narrow column on any honest map &mdash; it removes the wasted box around it.</li>
+</ul>
+<p><strong>I-8g is built &#9989; &middot; verified &#9989; &middot; shippable &#10060; as the whole
+answer</strong> &mdash; the code does exactly what it was told to do and the ruling it was told to
+follow was incomplete. <strong>I-8h is designed &#9989; &middot; built &#10060;.</strong> I-8h does
+<strong>not</strong> block <strong>I-8b</strong> (the Profile screen): which countries share a map is
+settled, and only how wide the map is is not. I-8b still waits on <strong>I-8f</strong>.</p>
+</div>
 <div class="callout" style="border-left:4px solid #16a34a;padding:.75rem 1rem;margin:1rem 0;background:#f0fdf4">
 <p><strong>&#128994; I-8g HAS NOW BEEN ATTACKED &mdash; the two map defects really are fixed, and
-one is not &mdash; as of 2026-09-01</strong> (this block is the newest; it supersedes the I-8g block
-below on <em>&ldquo;verified &#10060;&rdquo;</em>).</p>
+one is not &mdash; as of 2026-09-01</strong> (this block is superseded by the redesign block above on
+<em>&ldquo;shippable&rdquo;</em>; it supersedes the I-8g block below on
+<em>&ldquo;verified &#10060;&rdquo;</em>).</p>
 <p>The tester spent a round trying to break I-8g and <strong>could not find one place where the code
 disagrees with the design</strong>. Everything the builder claimed was re-measured from scratch, with
 a second, independently written implementation of every calculation rather than by re-running the

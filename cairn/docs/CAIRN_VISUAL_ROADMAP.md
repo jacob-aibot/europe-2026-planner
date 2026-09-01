@@ -19,8 +19,56 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
+> **🟠 THE MAP'S FRAME HAS BEEN REDESIGNED AND IS NOT BUILT YET — as of 2026-09-01 (this block is
+> the newest; it supersedes the round-37 block below on *"shippable — the manager's call"* and on
+> I-8g's status).**
+>
+> The tester's finding went back to the architect, and the answer is written up as **A-49** and
+> **A-50** in `ARCHITECTURE.md`, scheduled as **I-8h**. **No code has been written for it yet.**
+>
+> **What was actually wrong, in one sentence.** The last fix taught the map where a country *is*
+> (the middle of its biggest landmass) but never taught it how far to *zoom out*, so it still
+> stretched the frame far enough to include French Guiana — a map that knew France was in France
+> and then drew the Atlantic anyway. Two different answers to the same question, in the same map.
+>
+> **The new rule, in plain terms.** A country is treated as its **pieces** — mainland France and
+> French Guiana are two pieces, the mainland US and Alaska are two pieces — using exactly the same
+> 4,000 km rule that already decides which countries share a map. A map frames the pieces its
+> subject is actually connected to; the pieces that are far away get **their own small map**
+> underneath, labelled with the country, still tappable. Nothing is cropped, nothing is hidden, and
+> nothing anywhere in the rule knows what an "overseas territory" is.
+>
+> **Measured, before it was written down:**
+>
+> - **France + Greece:** the map goes from **81° × 49° and 2% land** to **31° × 16° and 14% land**,
+>   and Greece is nearly **8× bigger**. French Guiana gets its own frame at 60% land — bigger than
+>   it has ever been drawn.
+> - **France on its own:** **64° wide → 14° wide.**
+> - **Your Europe 2026 map does not move at all** — the main frame is byte-for-byte identical. The
+>   US inset narrows from 105° to 58° (the lower 48), and Alaska and Hawaii move to a third small
+>   frame. That is a visible change to your sample and it is written down as one.
+> - **Alaska is the test that proves it is a rule and not a hack:** on a US-only map Alaska is far
+>   enough away to get its own frame; add Canada to the map and Alaska stays in the main frame,
+>   because it is genuinely connected to it. Same rule, different answer, no special case.
+>
+> **Two smaller decisions, both made:**
+>
+> - **The country-code chips go back to alphabetical.** The fix is in the data the screen is handed,
+>   not in the screen — the new design makes the paint list contain a country twice, so a screen
+>   that used it as a country list would print France twice.
+> - **"The map fills its box" is fixed for tall maps too.** Chile and the Maldives stop leaving two
+>   thirds of their box empty, and your Europe map stops leaving a quarter of it empty on a wide
+>   desktop. Said honestly: this does not make a narrow country wider — the Maldives is a narrow
+>   column on any honest map — it removes the wasted box around it.
+>
+> **I-8g is built ✅ · verified ✅ · shippable ❌ as the whole answer** — the code does exactly what
+> it was told to do and the ruling it was told to follow was incomplete. **I-8h is designed ✅ ·
+> built ❌.** I-8h does **not** block **I-8b** (the Profile screen): which countries share a map is
+> settled, and only how wide the map is is not. I-8b still waits on **I-8f**.
+
 > **🟢 I-8g HAS NOW BEEN ATTACKED — the two map defects really are fixed, and one is not — as of
-> 2026-09-01 (this block is the newest; it supersedes the I-8g block below on *"verified ❌"*).**
+> 2026-09-01 (this block is superseded by the redesign block above on *"shippable"*; it supersedes
+> the I-8g block below on *"verified ❌"*).**
 >
 > The tester spent a round trying to break I-8g and **could not find one place where the code
 > disagrees with the design**. Everything the builder claimed was re-measured from scratch, with a
