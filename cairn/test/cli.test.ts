@@ -17,6 +17,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, symlinkSync, w
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
+import * as core from '../packages/core/src/index.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CAIRN = resolve(HERE, '..');
@@ -288,7 +289,7 @@ for (const cmd of ['stats', 'conflicts', 'trip']) {
     for (const bad of ['bogus', '', '20260814', '2026-8-7', 'tomorrow', '2026-08-07T00:00:00Z']) {
       const r = cli(cmd, '--today', bad);
       assert.notEqual(r.code, 0, `"${bad}" was accepted by ${cmd} (exit ${r.code}):\n${r.out}`);
-      assert.match(r.out, /--today must be a date in YYYY-MM-DD/, r.out);
+      assert.match(r.out, /--today must be a real calendar date in YYYY-MM-DD/, r.out);
       assert.equal(/at .*cli\.ts:\d+/.test(r.out + r.err), false, `a stack trace reached the user:\n${r.err}`);
       assert.equal(/invalid IsoDate/.test(r.err), false, `the raw core error reached stderr:\n${r.err}`);
       assert.equal(new RegExp(`today = ${bad}`).test(r.out), false, `the garbage was echoed as fact:\n${r.out}`);
@@ -297,21 +298,46 @@ for (const cmd of ['stats', 'conflicts', 'trip']) {
 }
 
 /**
- * The other side of the same rule, asserted so it is a decision and not an oversight: a
- * **shape-valid, calendar-invalid** `--today` is ACCEPTED and rolls over, exactly as `fromJSON`
- * accepts one in a stored document and `validateTrip` reports rather than refuses it (§2.9
- * A-20, §2.1 A-32 Part 4). Refusing it here would be a second, narrower definition of
- * `IsoDate`'s domain living in a surface, which A-32 Part 5 refuses — and `isIsoDate`, the
- * calendar half, is off §2.10's surface, which criterion E ceiling (1) forbids `cli.ts`
- * reaching past the index for.
+ * **§2.9 A-47 Part 6 (QA R35-4), revision 32 — this test is re-pointed at the refusal.**
+ *
+ * It used to assert the opposite: that a **shape-valid, calendar-invalid** `--today` was
+ * ACCEPTED and rolled over, on the ground that `isIsoDate` was off §2.10's surface and a
+ * stricter rule reached for locally would be A-32 Part 5's second definition of the domain.
+ * **A-46 Part 2 put `isIsoDate` on the surface (76 → 77) and A-47 ruled the refusal**: what
+ * shipped was `stats --today 2026-13-45` printing *"travel statistics as of 2026-13-45"* over
+ * numbers computed for 2027-02-14, which is the same *confident, plausible, false* shape R34-4
+ * was, one surface over. The label and the numbers now describe the same day or the command
+ * refuses.
  */
-test('cli stats accepts a rolled-over --today, as every other date path in Cairn does', () => {
-  const rolled = cli('stats', '--today', '2026-13-45');   // = 2027-02-14
-  assert.equal(rolled.code ?? 0, 0, rolled.err);
-  const real = cli('stats', '--today', '2027-02-14');
-  assert.equal(
-    rolled.out.split('\n').slice(1).join('\n'),
-    real.out.split('\n').slice(1).join('\n'),
-    'a rolled-over --today did not answer as the date it rolls over to',
-  );
+test('R35-4 / A-47 Part 6: cli refuses a calendar-invalid --today with exit 2, rather than echoing it', () => {
+  for (const bad of ['2026-13-45', '2026-02-30', '2026-00-10', '2026-01-32', '0000-00-00']) {
+    for (const cmd of ['stats', 'conflicts', 'trip']) {
+      const r = cli(cmd, '--today', bad);
+      assert.equal(r.code, 2, `${cmd} --today ${bad} exited ${r.code}, not 2:\n${r.out}`);
+      assert.match(r.out, new RegExp(`--today must be a real calendar date in YYYY-MM-DD, got "${bad}"`), r.out);
+      assert.equal(r.out.includes('as of'), false, `statistics were printed anyway:\n${r.out}`);
+      assert.equal(/at .*cli\.ts:\d+/.test(r.out + r.err), false, `a stack trace reached the user:\n${r.err}`);
+    }
+  }
+});
+
+test('A-47 Part 6: real calendar dates still work, including the one the old behaviour rolled to', () => {
+  for (const good of ['2027-02-14', '2026-02-28', '2024-02-29', '2026-08-24']) {
+    const r = cli('stats', '--today', good);
+    assert.equal(r.code ?? 0, 0, `${good} was refused:\n${r.out}${r.err}`);
+    assert.match(r.out, new RegExp(`travel statistics as of ${good}\\b`), r.out);
+  }
+});
+
+/**
+ * **The containment the replaced guard depends on, asserted rather than assumed** (A-47 Part 6).
+ * `isIsoDate` replaces a `try { core.weekdayOf(today) }`, which is only sound if `isIsoDate`
+ * strictly contains it — i.e. nothing `isIsoDate` accepts can still make `weekdayOf` throw. The
+ * interesting inputs are `IsoDate`'s own domain boundaries (§2.1 A-32).
+ */
+test('A-47 Part 6: core.weekdayOf does not throw at IsoDate’s boundaries — the replacement is sound', () => {
+  for (const edge of ['0000-01-01', '9999-12-31', '0000-02-29', '2026-08-07']) {
+    assert.equal(core.isIsoDate(edge), true, `${edge} is not in isIsoDate's domain`);
+    assert.doesNotThrow(() => core.weekdayOf(edge as core.IsoDate), `weekdayOf threw at ${edge}`);
+  }
 });

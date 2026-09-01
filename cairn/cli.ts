@@ -46,34 +46,33 @@ const today = flag('today') ?? FIXTURE_TODAY;
  * `parseIsoDate` (BUILD-NOTES **KD-66**; ROADMAP criterion E ceiling (1) forbids this file
  * reaching past the index).
  *
- * So this refuses what is not `YYYY-MM-DD` and **accepts a shape-valid, calendar-invalid date**
- * such as `2026-13-45`, which rolls over to 2027-02-14 exactly as `dayNumber` does everywhere
- * else in this system (§2.1 A-32 Part 4).
+ * **§2.9 A-47 Part 6 (QA R35-4), revision 32: it now refuses a calendar-invalid date too, and
+ * the `weekdayOf` try/catch is REPLACED rather than stacked.** `node cli.ts stats --today
+ * 2026-13-45` used to print *"travel statistics as of 2026-13-45"* over statistics computed for
+ * **2027-02-14** — the header names a string and the numbers answer for a date up to 14 months
+ * away. This file's earlier comment left the question open on the ground that a stricter rule
+ * reached for locally would be the second, narrower definition of the domain A-32 Part 5
+ * refuses; **that objection was correct when it was written and A-46 Part 2 removed it** by
+ * putting `isIsoDate` on §2.10's surface (76 → 77). The check is not a second definition — it is
+ * *the* definition, called by name, exactly as `rowDatesReadable` calls it.
  *
- * **Corrected at revision 31 (QA R34-6), on both halves.** This paragraph used to justify that
- * acceptance with *"`fromJSON` accepts one in a stored document"* — §2.9 **A-45** made that
- * false; `fromJSON` now refuses a calendar-invalid date at all five sites. And it said
- * `isIsoDate` is *"deliberately off §2.10's surface"* — §2.9 **A-46** Part 2 put it on
- * (76 → 77), so this file *could* now refuse `--today 2026-02-30`.
+ * `isIsoDate` strictly **contains** the guard it replaces (every shape-invalid string fails it
+ * too), which is why stacking the two would be the same predicate written twice. The containment
+ * is asserted rather than assumed, in `test/cli.test.ts`: `core.weekdayOf` does not throw at
+ * `0000-01-01` or `9999-12-31`, `IsoDate`'s domain boundaries.
  *
- * It still does not, and that is a choice rather than an oversight: A-46 rules on the Trips
- * list and explicitly moves nothing else, and `--today` is a *developer* knob whose whole job
- * is to drive the clock to an arbitrary point — including one `dayNumber` normalises. What is
- * true today, verifiably: `node cli.ts stats --today 2026-02-30` prints *"travel statistics as
- * of 2026-02-30"*. **Whether that should tighten now that `isIsoDate` is reachable is an open
- * question for the architect** (QA R34-6's second half), not something to settle here — a
- * stricter rule reached for locally would be the second, narrower definition of the domain
- * A-32 Part 5 refuses.
+ * Refusal rather than an echo (*"as of 2027-02-14 (normalised from 2026-13-45)"*) because an
+ * echo keeps a path where the CLI computes for a date the user did not type, and surfaces A-32
+ * Part 4's normalisation as a user-facing concept — a repair-and-proceed, which A-45 Part 3 and
+ * A-32 Part 5 both refuse. **No capability is lost**: every date `dayNumber` would normalise to
+ * is itself typeable.
  */
 function todayIsValid(): boolean {
-  try {
-    core.weekdayOf(today);
-    return true;
-  } catch {
-    out(`--today must be a date in YYYY-MM-DD, got ${JSON.stringify(today)}`);
-    process.exitCode = 2;
-    return false;
-  }
+  if (core.isIsoDate(today)) return true;
+  // A-45's parser sentence, so the two surfaces say the same thing about the same input.
+  out(`--today must be a real calendar date in YYYY-MM-DD, got ${JSON.stringify(today)}`);
+  process.exitCode = 2;
+  return false;
 }
 
 type Loaded = { trip: core.Trip; issues: core.Issue[]; cityRangeCheck?: unknown; unmatchedNames?: string[] };

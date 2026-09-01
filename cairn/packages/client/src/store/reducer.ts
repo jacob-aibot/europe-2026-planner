@@ -138,6 +138,34 @@ export type AppState = {
    * sites in `store.ts`, each of which carries it across exactly as it carries `library`.
    */
   rescan: RescanState;
+  /**
+   * Documents a **real open attempt** failed to parse, in this session — §2.9 **A-47** Part 2,
+   * ROADMAP Phase 2 **I-8f**. The fourth fact, F-D.
+   *
+   * A-46 gave the Trips list a predicate over the summary **row**'s two dates and used it as a
+   * proxy for *"will this document open?"*. QA **R35-1** measured the cost: A-45 refuses at five
+   * sites and **three of them have no counterpart on a `TripSummaryRow` at all**
+   * (`$.days[n].date`, `$.bookings[n].startsAt.date`, `$.bookings[n].endsAt.date`) — 16 day-date
+   * fields against 2 trip-date fields on the shipped sample. A proxy that covers an eighth of
+   * its target is a guarantee that reads true and measures false. **The fix is to stop proxying
+   * and start recording**: a parse failure is the document stating the fact itself (§0.6), and
+   * nobody was writing it down.
+   *
+   * Written at the point of failure by `openTrip`/`browseTrip` — through `store.ts`'s single
+   * `noteOpenFailure`, which is the only site that assigns this field — not inferred later and
+   * not discovered by a scheduled pass. Cleared for an id the moment that id opens successfully,
+   * and when the trip is deleted.
+   *
+   * **Not persisted, not exported, not in `history`** — it is an observation about the last
+   * attempt, the same posture `RescanState.unreadable` already has, for the same reason. A
+   * durable *"this failed to parse once"* would be a reader's inference written into the record,
+   * going stale the moment the document is repaired: word for word the R26-2 defect.
+   *
+   * Library-scoped exactly as `rescan` is, so every `set({ ...initialState(), … })` site in
+   * `store.ts` carries it across. A carry that is missed is a fact silently lost on the next
+   * transition.
+   */
+  openFailures: ReadonlyArray<{ id: string; message: string }>;
 };
 
 export const INITIAL_UI: UiState = {
@@ -162,6 +190,7 @@ export function initialState(): AppState {
     persistence: { savedDoc: null, savedVersion: null, status: 'idle' },
     retired: null,
     rescan: { running: false, unreadable: [] },
+    openFailures: [],
   };
 }
 

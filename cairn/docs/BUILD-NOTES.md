@@ -1,5 +1,43 @@
 # Cairn — build notes, Phase 1 (and Phase 2 in progress)
 
+> **Addendum, on ROADMAP Phase 2 **I-8f** (revision 32) — ARCHITECTURE §2.9 **A-47** (the trigger
+> is *"this document will not open"*, not *"this row's dates are wrong"*; F-D is written where the
+> failure is and is never persisted), answering QA round 35's **R35-1** (MAJOR), **R35-4** and
+> **R35-5**.** One builder pass over A-47's "Built" bullets and nothing else. **I-8f was scheduled
+> after I-8e and before I-8b, and was skipped — I-8g, I-8h and I-8i all shipped with it listed as a
+> dependency; the manager's I-8i gate found the gap (`REVIEW.md`, `91597b7`) and Jacob required it
+> closed before I-8b opens. This addendum is that increment, built late and in its ruled order
+> relative to nothing else.**
+>
+> **`packages/core` has a ZERO-LINE diff**, as A-47 Part 7 requires — `git diff --stat --
+> packages/core/` is empty. **The world-map/lifetime-map area is untouched by construction:**
+> `packages/client/src/selectors/worldMap.ts`, `apps/web/src/views/WorldMap.tsx`,
+> `apps/web/src/styles.css`, `packages/core/src/derive/country.ts` and
+> `packages/core/src/derive/cluster.ts` are **0** diff lines each (a concurrent architect pass owns
+> that area). No `SUMMARY_VERSION` bump, no `schemaVersion` bump, no port change, no new reducer
+> action, no new dependency (`package.json`/`package-lock.json` diff **0** lines), no new chip, no
+> new token, no new colour, **no golden and no sample diff** (sample source sha still
+> `40955ca0b182`).
+>
+> Scope: **8 files changed, 3 added.** Changed: `packages/client/src/store/reducer.ts`,
+> `packages/client/src/store/store.ts`, `packages/client/src/selectors/index.ts`,
+> `apps/web/src/views/Library.tsx`, `cli.ts`, `test/views.test.ts`, `test/cli.test.ts`,
+> `qa/r35-store.mjs`. Added: `packages/client/test/open-failures.test.ts`, `qa/i8f-faults.sh`,
+> `qa/i8f-render.mjs`. (Plus `docs/BUILD-NOTES.md` and both `CAIRN_VISUAL_ROADMAP` files.)
+>
+> | | |
+> |---|---|
+> | **What runs, and the exact command** | `cd cairn && npm run typecheck && npm run test:tap` — clean on both projects, **1148 pass / 0 fail / 0 skipped**. The **1121** baseline was re-derived by running the suite at `91597b7` before touching anything, not quoted: **1121 → 1148, +27** (`open-failures.test.ts` +24 new; `cli.test.ts` 25 → 27; `views.test.ts` 39 → 40). `npm run golden && npm run sample && git status --porcelain` → **nothing under `fixtures/` or `apps/web/src/sample/`**. `bash qa/i8f-faults.sh` → **ALL FAULTS RED, 17 of 17**, under **3 green baselines**. `node --experimental-strip-types qa/r35-store.mjs` → **ALL CLEAR** (it was **1 FAIL**, R35-5, now re-pointed at the refusal per A-47 Part 5's *"one consequence for QA"*). With `npm run web:build && npm run serve` in another shell: `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/i8f-render.mjs` → **ALL CLEAR, 40 ok**; `qa/i8e-render.mjs` → **ALL CLEAR**, unchanged; `qa/r35-render.mjs` → **4 FAIL, down from 7** (see the row below for exactly which three closed and why the four remain). `node qa/r2-redact.mjs` → **KNOWN_LEAKS hits: 0**. Root boundary intact: `git status --porcelain -- europe-2026-itinerary.html docs/ tickets/` at the repo root is empty and `md5sum europe-2026-itinerary.html` = `7c69df3208ef91c8be0fb59a56443188`, unmoved. |
+> | **What was built, against A-47's bullets** | `reducer.ts`: `AppState.openFailures: ReadonlyArray<{id, message}>`, `[]` in `initialState()`, library-scoped exactly as `rescan`. `store.ts`: one module-local `noteOpenFailure(id, err)` — **the only site that assigns the field** — plus a `clearOpenFailure(id)` helper that is simultaneously the clear and the carry; called from `openTrip`'s and `browseTrip`'s `core.fromJSON` catch, each rethrowing **the original error object unchanged** after the `set`; cleared on `openTrip`/`browseTrip` success and on `deleteTrip` (both branches); carried by **all six** `...initialState()` transitions; `importDoc` carries and deliberately does **not** clear. Plus `exportStoredDoc(id)`'s active-trip precondition throw. `selectors/index.ts`: `rowUnopenable(state, row)` — `!rowDatesReadable(row) \|\| state.rescan.unreadable.some(…) \|\| state.openFailures.some(…)`, and nothing else; `rowDatesReadable` is **byte-unchanged and still exported**. `Library.tsx`: A-46's single `unreadableRow` becomes two gates — `unopenable` (wide: chip, hint, "Save a copy", Delete's warning) and `datesReadable` (narrow: the meta line only); `ScanNote`'s header count still reads `scan.unreadable.length` and does not widen. `cli.ts`: `todayIsValid()` is `core.isIsoDate(today)`, the `weekdayOf` try/catch **replaced not stacked**, message *"--today must be a real calendar date in YYYY-MM-DD, got …"*, exit **2**, and the now-false comment block deleted for a pointer to A-47 Part 6. |
+> | **R35-1 closed, measured on rendered output rather than argued** | `qa/i8f-render.mjs` §A drives round 35's exact repro — the shipped Europe 2026 sample with its stored `days[3].date` rewritten to `2026-02-30`, the ROW left alone (which is not two records disagreeing: `tripSummary` copies `trip.startDate`/`endDate` and never reads a day's date, so a pre-A-45 build wrote exactly this pair in one transaction). **Before the tap**, the honest floor: `row-unreadable` **0**, `save-copy` **0**, controls `["Europe 2026 PAST TRIP", "Delete"]` — round 35's measurement, reproduced. **After the tap, on the same screen as the banner**: `row-unreadable` **1**, `save-copy` **1**, hint present, controls now include *"Save a copy"*, the banner still reads *"That trip's file could not be read: expected a real calendar date in YYYY-MM-DD (at `$.days[3].date`)"* — and clicking the control downloads **140,511 bytes byte-identical** to what IndexedDB holds, named `europe-2026.cairn-unreadable.json`, which `core.fromJSON` still refuses at the same site. §B: Delete's confirmation is the ordinary sentence before the tap and carries *"save a copy first"* after it, **with the control on screen beside it** — the conflation R35-1 measured. |
+> | **The three rendered injected faults, run by hand with a rebuilt bundle** | ROADMAP I-8f names three and each was injected into `Library.tsx`, rebuilt (`npm run web:build`) and re-run against `qa/i8f-render.mjs`. **(1)** `unopenable = !rowDatesReadable(row)` — I-8e's own shipped predicate: post-tap counts go to **0/0** while the banner stays, **4 FAIL**. **(2)** `const ask = !datesReadable` — the confirm reverts to *"Delete "Europe 2026"? This cannot be undone."* with the rescue control still beside it, **2 FAIL**. **(3)** the meta line pointed at `unopenable` — **2 FAIL**. `Library.tsx` was restored from a copy and the bundle rebuilt after each. All three are also injected in `qa/i8f-faults.sh` against `test/views.test.ts`'s source-level floors, where they are red too. |
+> | **KD-77 — fault 3 is GREEN unless the row carries a non-exact `datePrecision`, and I found that by running it** | The first version of §C asserted the meta line on the `exact`-precision sample, and the injected fault came back **ALL CLEAR**. The reason is that at `exact` precision `dateRangeLabel(row)` and `storedDatesLabel(row)` emit the *same* string for two real dates, so the meta line cannot distinguish A-47 Part 4's two gates at all. §C now drives the same planted document with the row's `datePrecision` rewritten to `'month'`, where the two diverge: correct → *"August 2026 · 6 cities"*, faulted → *"2026-08-07 → 2026-08-22 · 6 cities"*. This is the same insight `qa/i8e-render.mjs` §B1 already carried for R34-4 and it applies one gate over. See KD-77 below. |
+> | **KD-78 — `qa/i8f-faults.sh` measures its own zero, because `test/cli.test.ts` cannot run in a `cairn`-only copy** | The fault harness every increment uses copies `cairn/` into a `mktemp` dir. `test/cli.test.ts` resolves the live planner as `../europe-2026-itinerary.html` and `fixtures/loadEurope2026.mjs` reads it, so in that copy **24 of its 27 tests fail before any mutation** — both `cli.ts` faults read RED for entirely the wrong reason, which is what the first run of this matrix actually did. `make_copy` now also copies the repo root's read-only half into the temp parent (copies, never symlinks), and a `baseline` step asserts each suite is green **unmutated** before any fault below it is trusted. With that in place the two `cli.ts` faults read **26 pass / 1 fail** rather than 3/24. See KD-78 below. |
+> | **`qa/r35-render.mjs`'s remaining 4 FAILs, enumerated so nobody re-derives them** | 7 → **4**. **Closed:** three of §A's four — *"AFTER being told it cannot be read, a rescue control appears"*, *"there is SOME way to get the bytes out of this trip"*, and *"Delete warns that the stored copy is the only one"*, all now `ok`. **Remaining, and none is a defect in this increment:** (1) §A's *"A-46 Part 7 residue 1: the rescue copy is reachable from the card **either way**"*, asserted **before** the tap — that is the sentence **A-47 Part 8 residue 2 explicitly withdraws and replaces** (*"reachable … immediately after the tap that establishes it. It is **not** 'reachable either way, always'"*), so the probe is now measuring a withdrawn claim. I left the breaker's round-35 evidence file alone: A-47 Part 5 routed exactly one probe edit to me (`r35-store.mjs` §A) and I did not widen that. (2) and (3) **R35-2**, the hint line's 2.63:1 / 2.86:1 contrast — a builder finding against I-8e that A-47 Part 7 explicitly does **not** rule and that does not block. (4) §D's *"no markup survives into it"* line, a pre-existing probe artefact on the slug `-etc-passwd-script-.cairn-unreadable.json` (the round-35 record already counts it separately). **R35-3** (card-height inflation) is untouched, as A-47 Part 7 says. |
+> | **Test-first, and where it was watched fail** | `packages/client/test/open-failures.test.ts` was written and run first: it would not even import (`does not provide an export named 'rowUnopenable'`). The carry test was then red-green verified in place by deleting `openFailures` from `closeTrip`'s `...initialState()` site on the real tree and watching cases 10 and 11 go red before restoring. `test/cli.test.ts`'s rolled-over-`--today` case, which asserted the **old** behaviour, was re-pointed at the refusal rather than deleted, and its docstring records that it used to assert the opposite and why the ground moved. Then **17 mutations** in `qa/i8f-faults.sh`, every one red against a green baseline, plus the three rendered ones above. |
+> | **Objection to the design** | **None.** A-47 is a correction to a guarantee that measured false and I implemented it as ruled, including the two clauses I would have argued about if they had been open: gating Delete's warning and the rescue control on the **same** boolean (Part 4 states the reasoning and it is right — the warning's content is a lie without the control), and refusing rather than flushing in `exportStoredDoc` (Part 5's *"a rescue read must not queue behind the save chain"* is the stronger property). One number in A-47 is **stale rather than wrong**: Part 7 says *"§2.10 stays at **77**"*, written at revision 32 before I-8g (+`countryKeyPoint`) and I-8h (+`countryParts`). The surface is **79**, re-counted with `Object.keys` on the built namespace, and the clause A-47 actually depends on — *"`packages/core` is untouched — zero diff lines"* — holds exactly. §2.10's own header already records 78 → 79 at I-8h. |
+> | **What I could not verify** | **Nothing was measured on a real phone**, only in Chromium at the probe's default viewport. **`browseTrip`'s failure path is exercised in bare Node only** — no shipped surface reaches it with an unopenable document today (the Browse & copy pane lists the same library, but I did not drive it in the browser), so its rendered consequence is untested. **The rescan source (F-A) is exercised as a state literal, not through a real `SUMMARY_VERSION` rescan** in `rowUnopenable`'s own tests; `summary-rescan.test.ts` still covers the rescan itself and is unchanged. **`openFailures` has no cap** (A-47 Part 8 residue 4) and I did not measure what a session that taps hundreds of broken trips costs. **The `--today` change was not swept over every command** — `stats`, `conflicts` and `trip` are asserted; `day`, `cost`, `validate`, `import` and `export` do not read `today` and were not re-checked. |
+
 > **Addendum, on ROADMAP Phase 2 **I-8i** (revisions 35–36) — ARCHITECTURE §4.4 **A-51** (the frame
 > is one pane per geographic cluster; the split test, the "main" pane, the inset hierarchy and the
 > cap are withdrawn), **A-52** (a ring the index carries is a ring the frame draws) and **A-53**
@@ -3151,6 +3189,63 @@ probe's assertion is re-pointed to the measured deferred set with the reason nam
 loosened to a threshold. **Trigger to revisit:** an architect ruling on the cap for the
 single-pane case, where there is no grid to fit and no sibling to be equal to. That is a real
 question and it is A-51 residue 1's territory, not mine.
+
+### KD-77 — I-8f criterion 3's injected fault is GREEN at `exact` precision, and the ROADMAP does not say so (no single source: it lives in `qa/`, which `test/disclosure.test.ts` does not walk)
+
+**Where:** `qa/i8f-render.mjs` §C · `apps/web/src/format.ts` (`dateRangeLabel`, `storedDatesLabel`) ·
+**§2.9 A-47 Part 4; ROADMAP I-8f criterion 3; QA R34-4.**
+
+ROADMAP I-8f criterion 3 says *"on that same card the range still reads `2026-08-07 → 2026-08-22 ·
+6 cities` through `dateRangeLabel` — **not** two raw strings … **Injected fault:** point the meta
+line at `rowUnopenable` and the first assertion goes red."* On the population the criterion names —
+the shipped sample, whose row is `datePrecision: 'exact'` — **it does not go red.** Measured: with
+the meta line re-gated on `unopenable`, a rebuilt bundle and the probe re-run, §C reported
+**ALL CLEAR**.
+
+The reason is not a bug in either label. At `exact` precision `dateRangeLabel(row)` emits
+`startDate → endDate` and `storedDatesLabel(row)` emits `startDate → endDate`; for a row whose two
+dates are *real* — which is exactly this population, by construction — the two are the same
+characters. The meta line therefore carries **no information about which gate it is on** until the
+row's `datePrecision` is `month` or `year`, where `dateRangeLabel` reaches `MONTHS[m-1]`.
+
+**What I did:** §C keeps the criterion's literal case (it is a true assertion and a regression
+floor) and adds the **discriminating** one immediately below it — the same planted document with
+the row's `datePrecision` rewritten to `'month'`. Correct code prints *"August 2026 · 6 cities"*;
+the fault prints *"2026-08-07 → 2026-08-22 · 6 cities"*, **2 FAIL**. `datePrecision` is a stored row
+field and a trip recorded as "August 2026" is an ordinary product state (P2-6), so this is not a
+contrived input. `qa/i8e-render.mjs` §B1 already carried exactly this insight for R34-4, one gate
+over, which is what made it findable.
+
+**Not a design defect and not routed anywhere:** the criterion's *behaviour* is right, its *witness*
+is under-specified. Recorded so the breaker does not re-derive it, and so nobody "simplifies" §C
+back to the one case.
+
+### KD-78 — the fault harness could not measure `cli.ts`, and every prior increment's copy has the same blind spot (no single source: it lives in `qa/`, which `test/disclosure.test.ts` does not walk)
+
+**Where:** `qa/i8f-faults.sh` (`make_copy`, `baseline`) · `test/cli.test.ts` ·
+**root `CLAUDE.md`'s read-only boundary.**
+
+The `make_copy` harness this project has used since I-8d copies `cairn/` alone into a `mktemp`
+directory. `test/cli.test.ts` resolves the live planner as `resolve(CAIRN, '..')/europe-2026-itinerary.html`
+and `fixtures/loadEurope2026.mjs` reads it for every no-`--file` invocation, so **inside that copy
+24 of its 27 tests fail before any mutation is applied.** The first run of this increment's matrix
+reported both `cli.ts` faults as `# pass 3 # fail 24` — RED, and entirely uninformative: a mutation
+that changed nothing would have read identically.
+
+**Two changes, and the second is the one that generalises.** (1) `make_copy` now also copies
+`europe-2026-itinerary.html`, `docs/`, `tickets/`, `index.html` and `manifest.json` into the temp
+**parent**, so the copied tree has the repo shape its tests assume. **Copies, never symlinks** — a
+mutation that broke `cmdExport`'s path guard must be able to destroy a throwaway and must not be
+able to reach Jacob's phone. (2) A `baseline` step runs each suite **unmutated** in a fresh copy
+first and records a MISMATCH if it is not green. *An instrument that does not measure its own zero
+is not measuring.* With both in place the two `cli.ts` faults read **26 pass / 1 fail**.
+
+**What this implies for the earlier matrices, stated rather than fixed:** `qa/i8d-faults.sh`,
+`i8g-faults.sh`, `i8h-faults.sh` and `i8i-faults.sh` share the original `make_copy` and none of them
+targets `test/cli.test.ts`, so none is currently mis-measuring — but the blind spot is one
+`cli.ts`-touching fault away in any of them. I did not edit four other increments' probes in an
+I-8f pass; the trigger is *"the next matrix that names `test/cli.test.ts` or `test/boundaries.test.ts`"*,
+and the `baseline` helper is there to copy.
 
 ## 2. How to run it
 

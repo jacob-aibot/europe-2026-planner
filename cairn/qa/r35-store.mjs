@@ -4,8 +4,14 @@
  *
  *   Run: node --experimental-strip-types qa/r35-store.mjs   (from cairn/)
  *
- *   A  Does the rescue export hand back **stale** bytes? A-46 says "no flush", so a document
- *      with an in-flight debounced write exports its previous version — measured, not argued.
+ *   A  Does the rescue export hand back **stale** bytes? A-46 said "no flush", so a document
+ *      with an in-flight debounced write exported its previous version — measured, not argued.
+ *      **Re-pointed at revision 32 (§2.9 A-47 Part 5, ROADMAP I-8f).** The ruling is a
+ *      *precondition*, not a flush: `exportStoredDoc(id)` now refuses `id === activeTripId` as a
+ *      programmer error, because `exportActive()` is the correct export for the open document
+ *      and, by construction, the active document parsed. So §A asserts the refusal instead of
+ *      recording a FAIL, and it re-drives the staleness underneath it, on a trip that is NOT
+ *      active, to show that "no flush" is intact.
  *   B  Can it be pointed at a trip other than the one whose card carried the control?
  *      (No ownership check is deliberate; no *identity* check is the question.)
  *   C  Does it survive a storage port that fails, and does it leak the failure sanely?
@@ -18,7 +24,7 @@
  */
 import {
   createStore, memoryStorage, memoryFile, fixedClockPort, sequentialIdPort,
-  immediateScheduler, manualScheduler, core, rowDatesReadable, rowLifecycle,
+  immediateScheduler, manualScheduler, core, rowDatesReadable, rowLifecycle, rowUnopenable,
 } from '../packages/client/src/index.ts';
 
 let fails = 0;
@@ -41,7 +47,7 @@ const INIT = {
 };
 
 // ===========================================================================
-head('A — stale bytes: the export explicitly does not flush');
+head('A — A-47 Part 5: the active trip is REFUSED, and "no flush" survives underneath it');
 {
   const sched = manualScheduler();
   const p = mkPorts(sched);
@@ -52,22 +58,35 @@ head('A — stale bytes: the export explicitly does not flush');
   const before = (await p.storage.load(id)).doc;
   note('stored title before the edit: ' + JSON.parse(before).title);
 
-  // An edit that debounces — nothing has landed in storage yet.
+  // An edit that debounces — nothing has landed in storage yet. This is R35-5's exact setup.
   store.dispatch({ type: 'setTripMeta', patch: { title: 'Renamed while the export runs' } });
   const pending = (await p.storage.load(id)).doc;
   note('stored title with the write still pending: ' + JSON.parse(pending).title);
 
-  const exported = await store.exportStoredDoc(id);
-  const exportedTitle = JSON.parse(exported).title;
-  const inMemoryTitle = store.getState().doc.title;
-  note(`in memory: ${JSON.stringify(inMemoryTitle)}  exported: ${JSON.stringify(exportedTitle)}`);
-  ok(exportedTitle === inMemoryTitle,
-     'the rescue export returns what the user is looking at, not a superseded copy',
-     { inMemoryTitle, exportedTitle });
-  // Whatever the answer, record whether the debounce is still pending afterwards.
+  let refusal = null;
+  try { await store.exportStoredDoc(id); } catch (e) { refusal = e.message; }
+  note('refusal: ' + JSON.stringify(refusal));
+  ok(refusal !== null, 'exportStoredDoc no longer refuses the active trip — R35-5 is reachable again');
+  ok(refusal !== null && refusal.includes('exportActive()'),
+     'the refusal does not name the export that IS correct for an open document', { refusal });
+  ok(p.file.exported.length === 0, 'the refused export still handed bytes to the FilePort',
+     p.file.exported.map((f) => f.name));
+
   sched.runAll?.();
   await store.flush();
   note('after flush, stored title: ' + JSON.parse((await p.storage.load(id)).doc).title);
+
+  // …and the property A-47 declined to trade away: this is still a plain read with no flush.
+  // Driven on a trip that is NOT active, which is the only shape the precondition now allows.
+  await store.closeTrip();
+  const other = (await store.createTrip({ ...INIT, title: 'Japan 2027' })).doc.id;
+  await store.flush();
+  const savesBefore = p.storage.saveCount;
+  const rescued = await store.exportStoredDoc(id);
+  ok(p.storage.saveCount === savesBefore, 'the rescue export queued behind / triggered the save chain',
+     { savesBefore, after: p.storage.saveCount });
+  ok(store.getState().activeTripId === other, 'the rescue export moved the active trip');
+  ok(JSON.parse(rescued).id === id, 'the rescue export returned the wrong document');
 }
 
 // ===========================================================================
@@ -205,16 +224,30 @@ head('E — the readable ROW / unopenable DOCUMENT population, at the client lay
   const row = store.getState().library.find((r) => r.id === id);
   note('row dates: ' + JSON.stringify({ s: row.startDate, e: row.endDate }));
   ok(rowDatesReadable(row) === true, 'the ROW is readable — nothing on the card can know', row.startDate);
+  // **A-47 Part 8 residue 1, the stated floor**: before anything tries to open it, the card is
+  // honestly unflagged. Closing that would need a full-library parse at boot (refused, A-46
+  // Part 2) or a durable flag (refused, A-47 Part 2 — a reader's inference that goes stale).
+  ok(rowUnopenable(store.getState(), row) === false,
+     'something claims to know this document will not open before anything has tried');
   let openErr = null;
   try { await store.openTrip(id); } catch (e) { openErr = e.message; }
   note('openTrip: ' + JSON.stringify(openErr));
   ok(openErr !== null, 'and the DOCUMENT will not open');
   ok(/days\[1\]\.date/.test(openErr ?? ''), 'the refusal names the field', openErr);
-  // The store CAN rescue it; the question is whether any surface offers it.
+  // **A-47 Part 2/3, and the closure of R35-1**: the failure was recorded where it happened, so
+  // immediately after the tap the same row is flagged — chip, rescue control and Delete's
+  // warning all follow this one boolean.
+  const after = store.getState();
+  ok(after.openFailures.some((f) => f.id === id), 'the parse failure was not recorded', after.openFailures);
+  ok(rowUnopenable(after, row) === true,
+     'the card still looks healthy after the refusal — R35-1 unchanged');
+  ok(rowDatesReadable(row) === true,
+     'the narrow predicate widened, so the meta line would lose its proper label (R34-4 regression)');
+  // The store CAN rescue it, and now the surface offers it.
   const rescued = await store.exportStoredDoc(id);
-  ok(rescued === mangled, 'store.exportStoredDoc rescues it perfectly well — the gap is the SURFACE');
-  note('so: `unreadableRow` is false for this row, and Library.tsx gates BOTH the rescue control');
-  note('    and Delete\'s warning on `unreadableRow`. See qa/r35-render.mjs §A for the rendered proof.');
+  ok(rescued === mangled, 'store.exportStoredDoc rescues it byte-perfectly');
+  note('so: `rowUnopenable` is TRUE for this row after the tap and `rowDatesReadable` is still true —');
+  note('    the two-gate split A-47 Part 4 rules. See qa/i8f-render.mjs for the rendered proof.');
 }
 
 console.log(fails === 0 ? '\nALL CLEAR' : `\n${fails} FAIL(S)`);

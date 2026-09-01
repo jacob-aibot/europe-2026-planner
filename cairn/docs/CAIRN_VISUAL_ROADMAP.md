@@ -19,9 +19,45 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
+> **🟡 I-8f IS NOW BUILT — a trip that will not open says so on its own card and offers to save
+> a copy, as of 2026-09-01 (this block is the newest; it supersedes the block below only on
+> *"I-8f … built ❌"*, and nothing else).**
+>
+> **I-8f is designed ✅ · built ✅ · verified ❌ (not yet attacked) · shippable ❌.**
+>
+> **What it does, in one sentence.** Before this, a trip whose stored file Cairn cannot read
+> showed a completely healthy-looking card — a normal date range, normal counts, a normal chip —
+> and the only button on it was **Delete**. Tapping it told you the file could not be read, and
+> then left you looking at the same healthy card, with no way to save the file before deleting
+> it. Now, the moment Cairn actually tries to open a trip and fails, that trip's card changes:
+> it says *"This trip's file could not be read"*, it grows a **"Save a copy"** button that hands
+> you the file exactly as stored, and Delete's confirmation warns you that the copy on this
+> device is the only one there is.
+>
+> **Why this needed a second increment at all.** I-8e shipped a version of this in August, and a
+> tester measured that it covered roughly **an eighth** of the trips it claimed to cover. It
+> guessed at *"will this file open?"* by looking at the trip's start and end dates — but most of
+> the dates in a trip file are on individual **days**, not on the trip, and a bad day date is
+> invisible from the list. I-8f stops guessing: it **writes down the failure when a real attempt
+> to open the file actually fails**, and the card is driven by that. The measurement, on the
+> Europe 2026 trip with a bad day date planted in storage: before, after tapping, the card showed
+> **0** warnings and **0** save buttons; now it shows **1** and **1**, on the same screen as the
+> message, and the saved bytes are byte-identical (140,511 of them) to what is on the device.
+>
+> **Three honest limits, stated rather than hidden.** (1) On a fresh reload the card looks healthy
+> again until something tries to open the trip — closing that would mean opening every trip in the
+> library at startup, which the architecture refuses for good reasons. (2) The date shown on the
+> card is still the trip's real date range when the trip's own dates are fine; only the *file* is
+> broken, and pretending otherwise would make a different label wrong. (3) The developer command
+> line now refuses `--today 2026-13-45` instead of quietly computing for February 2027 and
+> labelling it as the 45th of the 13th month.
+>
+> **What is still owed:** a tester has not attacked it yet. That pass is **mandatory** for this
+> change (it moves who can reach an export), and **I-8b — the Profile screen — stays blocked
+> until it happens.**
+
 > **🟢 THE NEW MAP FRAME IS SHIPPED — the manager's verdict is SHIP, as of 2026-09-01 (this
-> block is the newest; it supersedes every block below on *"shippable"* and on what happens
-> next, and nothing else).**
+> block is superseded on *"I-8f … built ❌"* by the block above, and nothing else).**
 >
 > **I-8i is designed ✅ · built ✅ · verified ✅ · shippable ✅.** The verdict is in
 > `REVIEW.md` (*I-8i — the world-map lifetime framing rewrite*, `master` @ `10455b9`). The
@@ -49,7 +85,8 @@ update to this file added that instruction).
 >   copy**, instead of showing a healthy-looking card whose only button is Delete. Three later
 >   increments (I-8g, I-8h, I-8i) were built past its declared dependency. **Designed ✅ ·
 >   built ❌**, unchanged since revision 32 — the board has said so the whole time; what was
->   missing was a gate to stop and ask. It is queued now.
+>   missing was a gate to stop and ask. It is queued now. **(Superseded by the block above:
+>   I-8f is built as of 2026-09-01 and now waits on a tester, not on a builder.)**
 >
 > **One question is waiting on Jacob** (`REVIEW.md`, *For Jacob — I-8i*, item 3): when two
 > regions tie, the panel *order* is still alphabetical. The shapes and sizes are completely

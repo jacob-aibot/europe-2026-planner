@@ -12,7 +12,7 @@
  */
 import { useState } from 'react';
 import type { AppState } from '@cairn/client';
-import { rowDatesReadable, rowLifecycle, summaryScan } from '@cairn/client';
+import { rowDatesReadable, rowLifecycle, rowUnopenable, summaryScan } from '@cairn/client';
 import type { IsoDate, Lifecycle, Trip } from '@cairn/core';
 import { clock, store } from '../store.ts';
 import { dateRangeLabel, lifecycleLabel, storedDatesLabel } from '../format.ts';
@@ -103,7 +103,6 @@ export function Library({ state, onError, sample }: Props) {
   // as unreadable rather than being quietly dropped or quietly left looking complete.
   const scan = summaryScan(state);
   const outdated = new Set(scan.outdated);
-  const unreadable = new Set(scan.unreadable.map((u) => u.id));
 
   /**
    * QA **R34-2**, the builder half. `store.openTrip` rejects with a `TripParseError` whose
@@ -187,28 +186,40 @@ export function Library({ state, onError, sample }: Props) {
       <ul className="triplist">
         {state.library.map((row) => {
           /*
-            §2.9 **A-46** Part 3: **one boolean per row**, from both sources, driving the whole
-            card. Two facts, and neither alone is the answer:
+            §2.9 **A-47** Part 4: **two correctly-scoped gates per row, not one and not three.**
+            A-46 shipped a single `unreadableRow` boolean doing three jobs, and QA **R35-1**
+            measured the cost — `rowDatesReadable` reads the summary ROW, and three of A-45's
+            five refusal sites (`$.days[n].date`, `$.bookings[n].startsAt.date`,
+            `$.bookings[n].endsAt.date`) have no counterpart on that record at all. On the
+            shipped sample that is 16 day-date fields against 2, so a document with a bad
+            `days[3].date` rendered as one completely healthy card whose only affordance was
+            Delete — R34-2's harm, unchanged, for the larger population.
 
-              F-A  we opened this document and `fromJSON` threw — `scan.unreadable`, which is
-                   fed only by the `SUMMARY_VERSION` rescan, so it is available only for rows
-                   already stale by version;
-              F-C  this row's own dates are not real calendar dates — `rowDatesReadable`, on
-                   every render.
+              unopenable   — WIDE. `rowUnopenable(state, row)`, the union of the row's own dates
+                             (F-B/F-C), the rescan's `unreadable` (F-A) and a real open attempt
+                             that failed in this session (F-D, A-47 Part 2). It is the
+                             WHOLE-CARD statement, and it gates the chip, its hint, the rescue
+                             control and Delete's warning. Those last two are two halves of one
+                             sentence — "this stored copy is the only one, save a copy first" is
+                             a lie on a card with no save control, and a save control with a
+                             silent Delete beside it is R34-2 unchanged — so they share one
+                             boolean deliberately. What was wrong before was not the sharing; it
+                             was that the boolean they shared was the narrow one.
 
-            It is **not** `rowLifecycle(row, today) === null` (A-44's question, which is a
-            different one). That predicate is strictly weaker than what `fromJSON` now refuses:
-            `2026-02-30` classifies as `completed` through §2.1 A-32 Part 4's normalisation, and
-            QA R34-2 measured exactly such a row rendering as a perfectly healthy card whose
-            only affordance was Delete. `rowDatesReadable` strictly contains that null case, so
-            there is one signal here rather than two.
+              datesReadable — NARROW. `rowDatesReadable(row)`, unchanged from A-46 Part 2, and it
+                             gates one thing: whether the meta line can FORMAT these two strings.
+                             A row with good dates over an unopenable document has a perfectly
+                             good range, and printing it raw would be a regression R34-4 does not
+                             ask for. R34-4 is discharged by this predicate and stays discharged.
 
-            **The signal is not complete and this card may not imply that it is.** A row can be
-            perfectly readable while its document carries a bad `days[3].date`; only opening it
-            finds that. So the claim is "this trip's file could not be read" when it is known,
-            and never "every other trip here will open."
+            **The signal is not complete and this card may not imply that it is.** A fresh boot
+            still shows a healthy card for an unopenable document until something tries to open
+            it (A-47 Part 8 residue 1 — the alternative is a full-library parse at boot, refused,
+            or a durable flag, refused). So the claim is "this trip's file could not be read"
+            when it is known, and never "every other trip here will open."
           */
-          const unreadableRow = unreadable.has(row.id) || !rowDatesReadable(row);
+          const unopenable = rowUnopenable(state, row);
+          const datesReadable = rowDatesReadable(row);
           return (
           <li key={row.id} className="tripcard">
             <button className="tripcard__open" onClick={() => void openRow(row.id)}>
@@ -229,8 +240,12 @@ export function Library({ state, onError, sample }: Props) {
                     A-46 Part 3 clause 2 / QA R34-4: unless the dates cannot be read, in which
                     case there is no precision to honour and no month to name — round 34
                     measured `MONTHS[NaN - 1] ?? 'not'` printing "a not" under a chip saying the
-                    dates could not be read. The two strings in the file, verbatim, instead. */}
-                {unreadableRow ? storedDatesLabel(row) : dateRangeLabel(row)} · {row.cityCount}{' '}
+                    dates could not be read. The two strings in the file, verbatim, instead.
+
+                    A-47 Part 4 keeps this on the NARROW predicate: this clause asks whether
+                    THESE TWO STRINGS can be formatted, and a row whose own dates are fine must
+                    keep its proper label even when its document will not open. */}
+                {datesReadable ? dateRangeLabel(row) : storedDatesLabel(row)} · {row.cityCount}{' '}
                 {row.cityCount === 1 ? 'city' : 'cities'}
               </span>
               <span className="tripcard__meta tripcard__meta--dim">
@@ -242,7 +257,8 @@ export function Library({ state, onError, sample }: Props) {
                   ? ` · ${row.countryCodes.join(' ')}`
                   : ''}
               </span>
-              {unreadableRow ? (
+              {/* A-47 Part 4: the whole-card statement, on the WIDE predicate. */}
+              {unopenable ? (
                 <>
                   <span className="chip chip--warn" data-testid="row-unreadable">
                     This trip’s file could not be read
@@ -265,8 +281,14 @@ export function Library({ state, onError, sample }: Props) {
               bytes verbatim with **no parse**, which is the only thing that can work here:
               parsing is what fails. QA R34-2 measured this card's only affordance as Delete,
               with the bytes sitting intact in IndexedDB.
+
+              A-47 Part 4 re-gates it on the WIDE predicate: "the unreadable branch" now means
+              `rowUnopenable(state, row)`, which is what makes A-46's own guarantee true for the
+              population R35-1 measured. Putting the control on EVERY card was reconsidered in
+              round 35's light and refused again — a readable trip would get a second export
+              whose `.cairn-unreadable.json` filename lies about it.
             */}
-            {unreadableRow && (
+            {unopenable && (
               <button
                 className="btn btn--quiet"
                 data-testid="save-copy"
@@ -284,8 +306,13 @@ export function Library({ state, onError, sample }: Props) {
                   you type ever silently vanishes", applied to the one screen where the only
                   affordance was destructive — R34-2 was one step from BLOCKER for exactly
                   this: no warning before the Delete that destroys the only copy there is.
+
+                  A-47 Part 4: the SAME wide boolean as the rescue control above, stated plainly
+                  because R35-1 asked. There is no input for which one should fire and the other
+                  should not — the warning's whole content is "save a copy first", which is a lie
+                  on a card that has no save control.
                 */
-                const ask = unreadableRow
+                const ask = unopenable
                   ? `Delete “${row.title}”? Cairn cannot read this trip’s file, so the copy stored on this device is the only one that will exist after this — save a copy first if you want to keep it. This cannot be undone.`
                   : `Delete “${row.title}”? This cannot be undone.`;
                 if (confirm(ask)) run(store.deleteTrip(row.id));

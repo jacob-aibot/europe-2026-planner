@@ -155,6 +155,15 @@ assertions prove the filename carries no separator, no traversal and no extensio
 `r35-store.mjs` reports **1 FAIL**, R35-5, deliberately: the behaviour is A-46 Part 4's own
 choice and the assertion is the record of what that choice costs.
 
+> **Both counts moved at I-8f (2026-09-01).** `r35-store.mjs` §A is **re-pointed** — §2.9 **A-47**
+> Part 5 ruled R35-5 as a *precondition* rather than a flush, so §A now asserts the refusal and
+> re-drives the staleness on a non-active trip underneath it; §E gained the closure assertions.
+> It reports **ALL CLEAR**. `r35-render.mjs` is **untouched** and now reports **4 FAIL(S)**: three
+> of §A's four closed, and the one that remains asserts A-46 Part 7 residue 1's *"reachable
+> **either way**"* **before** the tap — a sentence A-47 Part 8 residue 2 explicitly withdraws and
+> replaces with *"reachable immediately after the tap that establishes it."* The other three are
+> R35-2 (× 2, unruled, does not block) and §D's known artefact. See `i8f-render.mjs` below.
+
 **I-8d** (§4.4 **A-41**, the atlas frame, and **A-42**) has three scripts. *They shipped at
 `6814f73` and were never indexed here — round 36 added this block; if you looked for them in
 this file before then, they were not missing, they were unlisted.*
@@ -416,6 +425,41 @@ A "FAIL" line in this directory means the probe found what it was looking for. R
 finding in `../docs/QA-FINDINGS.md` before assuming a script is broken.
 
 ---
+
+
+## I-8f (2026-09-01) — A-47: the trigger is *"this document will not open"*
+
+Built **after** I-8g/I-8h/I-8i despite being scheduled before them; the manager's I-8i gate found
+the gap. Nothing here touches the world map.
+
+```bash
+bash qa/i8f-faults.sh                                    # 17 mutations, under 3 green baselines
+# with `npm run web:build && npm run serve` in another shell:
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/i8f-render.mjs
+```
+
+`i8f-faults.sh` differs from its siblings in one way worth copying: `make_copy` also copies the
+repo root's read-only half into the temp parent, and a **`baseline`** step asserts each suite is
+green *unmutated* before any fault below it is trusted. Without that, `test/cli.test.ts` fails 24
+of 27 in a `cairn`-only copy — it resolves the live planner as `../europe-2026-itinerary.html` —
+and every `cli.ts` fault reads RED for the wrong reason. BUILD-NOTES **KD-78**.
+
+Its 17 mutations cover **A-47 Part 4** (the wide gate re-pointed at I-8e's own shipped predicate;
+the union inlined in the view; Delete's warning on the narrow gate; the meta line on the wide one),
+**Part 2** (`noteOpenFailure` dropped from `openTrip` and from `browseTrip`; the record written
+without emitting; the `closeTrip` carry dropped; the success clear dropped; the `deleteTrip` clear
+dropped; an absent document recorded as an open failure), **Part 3** (each of `rowUnopenable`'s
+three terms removed in turn), **Part 5** (the precondition removed) and **Part 6** (the `weekdayOf`
+guard restored; a local shape regex instead of `isIsoDate`). **All 17 measure red.**
+
+`i8f-render.mjs` has five sections: **A** R35-1's exact repro — the sample with its stored
+`days[3].date` rewritten, unflagged **before** the tap (A-47 Part 8 residue 1's stated floor) and
+chip + *"Save a copy"* + byte-identical download **after** it, on the same screen as the banner;
+**B** Delete's confirmation, before and after; **C** the meta line, at `exact` precision **and at
+`month` precision, which is the only case that can distinguish A-47 Part 4's two gates** (BUILD-NOTES
+KD-77); **D** the fact dying with the session across a reload; **E** a healthy library claiming
+nothing. It reports **ALL CLEAR / 40 ok**. The three rendered injected faults ROADMAP I-8f names
+were run by hand with a rebuilt bundle and are recorded in BUILD-NOTES.
 
 ## Round 2 (2026-08-25, `master` @ `fcceb56`)
 

@@ -341,6 +341,53 @@ export function rowDatesReadable(row: { startDate: string; endDate: string }): b
 }
 
 /**
+ * Is this row's document known-or-suspected **unopenable**? ARCHITECTURE §2.9 **A-47** Part 3,
+ * ROADMAP Phase 2 **I-8f**.
+ *
+ * The union of three independent facts, computed in ONE place so no surface re-derives it:
+ *
+ *   - **F-C/F-B** the row's own dates are not `IsoDate`s — `rowDatesReadable`, a *prediction*,
+ *     no read;
+ *   - **F-A** a `SUMMARY_VERSION` rescan opened it and `fromJSON` threw — `state.rescan.unreadable`;
+ *   - **F-D** a real open attempt in this session failed — `state.openFailures` (A-47 Part 2).
+ *
+ * Pure, total, never throws, **opens nothing**. `true` means *"something has established that
+ * this document will not open."* `false` means *"nothing here has established that it will not
+ * open"* — it has never meant, and may never be rendered as, *"it will open."*
+ *
+ * **Why this exists at all** (QA **R35-1**): `rowDatesReadable` was never a wrong predicate — it
+ * is a correct answer to *"are this row's two strings dates?"*, and it keeps that job below.
+ * A-46 pressed it into service as a **proxy** for a different question, *"will this document
+ * open?"*, and A-45 refuses at five sites of which **three have no counterpart on a
+ * `TripSummaryRow` at all** (`$.days[n].date`, `$.bookings[n].startsAt.date`,
+ * `$.bookings[n].endsAt.date`) — 16 day-date fields against 2 trip-date fields on the shipped
+ * sample. A proxy that covers an eighth of its target is a guarantee that reads true and
+ * measures false.
+ *
+ * It reads `state.rescan.unreadable` **directly** rather than `summaryScan(state).unreadable`:
+ * that selector's only difference is pruning ids no longer in the library, and this predicate is
+ * asked about a row that is in the library by construction.
+ *
+ * **A `boolean`, not a message**, deliberately: the card's sentence is A-46 Part 3 clause 1's
+ * existing one, and giving each card its own parser string is new vocabulary on a surface A-47
+ * does not redesign. `state.openFailures`' `message` exists for a future ruling and for
+ * debugging; no shipped surface reads it.
+ *
+ * After this there is exactly **one** expression in the codebase that decides whether a card is
+ * flagged, and it is this function.
+ */
+export function rowUnopenable(
+  state: Pick<AppState, 'rescan' | 'openFailures'>,
+  row: { id: string; startDate: string; endDate: string },
+): boolean {
+  return (
+    !rowDatesReadable(row) ||
+    state.rescan.unreadable.some((u) => u.id === row.id) ||
+    state.openFailures.some((f) => f.id === row.id)
+  );
+}
+
+/**
  * The lifetime map's frame — ARCHITECTURE §4.4 **A-40**, ROADMAP I-8a. Re-exported here
  * rather than written here because it is ~140 lines of one subject; it follows exactly the
  * `dayMapPoints` precedent above — a view model for a map, computed in `packages/client`,

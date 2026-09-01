@@ -208,6 +208,36 @@ export function createStore(opts: StoreOptions) {
     return n;
   }
 
+  /**
+   * **The ONE place F-D is recorded** — ARCHITECTURE §2.9 **A-47** Part 2, ROADMAP **I-8f**.
+   *
+   * Every open path routes its `core.fromJSON` failure here, and nothing else in this file may
+   * assign `openFailures`. One write site is the R3-3 pattern: no path can opt out by forgetting
+   * to call something.
+   *
+   * The `set` is what makes the Trips list re-render carrying the chip and the rescue control,
+   * so every caller must do it **before** rethrowing — the card the user just tapped has to come
+   * back changed. The entry replaces any earlier one for the same id rather than accumulating.
+   *
+   * An **absent** document is deliberately not recorded here: it has no bytes to rescue, that is
+   * R26-3's `missing`, and merging the two is the error `runRescan` already declines to make.
+   */
+  function noteOpenFailure(id: string, err: unknown): void {
+    const message = (err as Error)?.message || String(err);
+    set({ ...state, openFailures: [...state.openFailures.filter((f) => f.id !== id), { id, message }] });
+  }
+
+  /**
+   * `openFailures` with `id` dropped — A-47 Part 2's two clear sites, `openTrip`/`browseTrip`
+   * **success** and `deleteTrip`, and simultaneously the carry those transitions owe the field.
+   *
+   * R26-2's lesson applied here: a record that has since been repaired (hand-edited, or restored
+   * over) stops being reported without anything having to remember that it was.
+   */
+  function clearOpenFailure(id: string): AppState['openFailures'] {
+    return state.openFailures.filter((f) => f.id !== id);
+  }
+
   /** A trip's own retired rows, as a ledger. §2.7 A-5's "reconstructed on load". */
   function marksOf(doc: Trip | null): ReadonlyMap<string, string> {
     const marks = new Map<string, string>();
@@ -1047,6 +1077,7 @@ export function createStore(opts: StoreOptions) {
         ...initialState(),
         library: state.library,
         rescan: state.rescan,
+        openFailures: state.openFailures,
         activeTripId: doc.id,
         doc,
         ui: { ...initialState().ui, activeDayId: doc.days[0]?.id ?? null, activeCityKey: doc.cities[0]?.key ?? null },
@@ -1073,6 +1104,7 @@ export function createStore(opts: StoreOptions) {
         ...initialState(),
         library: state.library,
         rescan: state.rescan,
+        openFailures: state.openFailures,
         activeTripId: doc.id,
         doc,
         ui: { ...initialState().ui, activeDayId: doc.days[0]?.id ?? null, activeCityKey: doc.cities[0]?.key ?? null },
@@ -1095,12 +1127,25 @@ export function createStore(opts: StoreOptions) {
       if (!(await flushForTransition())) return state;
       const stored = await ports.storage.load(id);
       if (stored === null) throw new Error(`openTrip: no trip ${id} in storage`);
-      const doc = core.fromJSON(stored.doc);
+      // §2.9 **A-47** Part 2. The failure is recorded where it happens and the ORIGINAL error is
+      // rethrown unchanged — `App.tsx`'s banner and `Library.tsx`'s `openRow` catch are unmoved,
+      // same class, same message, same JSON path. The `set` is before the rethrow so subscribers
+      // re-render and the card the user just tapped comes back carrying the chip and the rescue
+      // control (A-47 Part 8 residue 2: reachable *immediately after* the tap that establishes it).
+      let doc: Trip;
+      try {
+        doc = core.fromJSON(stored.doc);
+      } catch (err) {
+        noteOpenFailure(id, err);
+        throw err;
+      }
       cache = null;
       set({
         ...initialState(),
         library: state.library,
         rescan: state.rescan,
+        // Success clears this id and carries the rest: the clear is per id, never a wipe.
+        openFailures: clearOpenFailure(id),
         activeTripId: doc.id,
         doc,
         // Both come from the port result and from nowhere else — §2.2a rule 1, §2.2b F2.
@@ -1120,8 +1165,16 @@ export function createStore(opts: StoreOptions) {
     async browseTrip(id: string): Promise<Trip> {
       const stored = await ports.storage.load(id);
       if (stored === null) throw new Error(`browseTrip: no trip ${id} in storage`);
-      const doc = core.fromJSON(stored.doc);
-      set({ ...state, browsing: doc });
+      // §2.9 **A-47** Part 2, the same treatment as `openTrip`: browsing is a real open attempt
+      // on a real document (§2.14) and it fails for exactly the same reason.
+      let doc: Trip;
+      try {
+        doc = core.fromJSON(stored.doc);
+      } catch (err) {
+        noteOpenFailure(id, err);
+        throw err;
+      }
+      set({ ...state, browsing: doc, openFailures: clearOpenFailure(id) });
       return doc;
     },
 
@@ -1152,7 +1205,7 @@ export function createStore(opts: StoreOptions) {
     async closeTrip(): Promise<AppState> {
       if (!(await flushForTransition())) return state;
       cache = null;
-      set({ ...initialState(), library: state.library, rescan: state.rescan }, { reseed: true });
+      set({ ...initialState(), library: state.library, rescan: state.rescan, openFailures: state.openFailures }, { reseed: true });
       return state;
     },
 
@@ -1186,10 +1239,13 @@ export function createStore(opts: StoreOptions) {
       await chainOntoSaving(async () => {
         await ports.storage.delete(id);
         const library = state.library.filter((r) => r.id !== id);
+        // §2.9 A-47 Part 2: the row is gone, so an observation about a record that no longer
+        // exists is not an observation. Dropped in the same `set`, on both branches.
+        const openFailures = clearOpenFailure(id);
         if (state.activeTripId === id) {
           cache = null;
-          set({ ...initialState(), library, rescan: state.rescan }, { reseed: true });
-        } else set({ ...state, library });
+          set({ ...initialState(), library, rescan: state.rescan, openFailures }, { reseed: true });
+        } else set({ ...state, library, openFailures });
       });
       return state;
     },
@@ -1233,16 +1289,32 @@ export function createStore(opts: StoreOptions) {
      *     cannot be performed anyway, because parsing is the thing that fails. **This is safe
      *     only while storage is single-owner (`LOCAL_OWNER`) and must be revisited when Phase 3
      *     accounts can put another person's document on the device.**
-     *   - **It touches no state:** no flush, no `set()`, no transition, no `activeTripId`. It is
-     *     a read, so it does not queue behind the save chain and cannot disturb an open trip.
+     *   - **It touches no state:** no flush, no `set()`, no transition. It is a read, so it does
+     *     not queue behind the save chain and cannot disturb an open trip. **Amended by §2.9
+     *     A-47 Part 5 (QA R35-5): it gains a PRECONDITION rather than losing that property.**
+     *     `id === state.activeTripId` is refused as a programmer error, because the stored bytes
+     *     for the open document may be superseded by a pending debounced write and
+     *     `exportActive()` is the correct export for it. The fix is deliberately *not* a flush:
+     *     making a **rescue** read queue behind the save chain would make the rescue fail in
+     *     exactly the state the app is unhealthy (`persistence.status === 'conflict'`), which is
+     *     the worst possible coupling for the one path that exists to get a user's bytes out. It
+     *     costs no behaviour anyone can reach — by construction the active document *parsed*, so
+     *     it has `exportActive()` and never needs the rescue path.
      *
      * The title for the filename comes from the **library row**, not from the document: reading
      * it out of the document would be a parse. A row that is not in the library falls back to
      * the id.
      *
+     * @throws {Error} if `id` is the active trip (§2.9 A-47 Part 5 — a programmer error).
      * @throws {Error} if nothing is stored under `id`.
      */
     async exportStoredDoc(id: string): Promise<string> {
+      if (id === state.activeTripId) {
+        throw new Error(
+          `exportStoredDoc: ${JSON.stringify(id)} is the active trip — use exportActive(); ` +
+            'the stored bytes may be superseded by a pending write.',
+        );
+      }
       const stored = await ports.storage.load(id);
       if (!stored) throw new Error(`exportStoredDoc: nothing is stored under ${JSON.stringify(id)}`);
       const text = stored.doc;
@@ -1307,6 +1379,10 @@ export function createStore(opts: StoreOptions) {
         ...initialState(),
         library: state.library,
         rescan: state.rescan,
+        // Carried, and deliberately **not cleared** (A-47 Part 2): `importDoc` never overwrites
+        // an existing document — on an id collision it mints a fresh id above — so it cannot
+        // repair an id already in `openFailures`. A clear here would be code that can never fire.
+        openFailures: state.openFailures,
         activeTripId: doc.id,
         doc,
         ui: { ...initialState().ui, activeDayId: doc.days[0]?.id ?? null, activeCityKey: doc.cities[0]?.key ?? null },

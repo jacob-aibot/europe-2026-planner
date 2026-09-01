@@ -603,7 +603,7 @@ test('I-8c / BLD-3: the tab boundary can be reset and offers a recovery outside 
  * fault I-8e names — *"the fix a reasonable builder would have written"* — so it is asserted
  * against here, at the one place a builder would write it.
  */
-test('I-8e / A-46: the card\'s unreadable signal is `scan.unreadable || !rowDatesReadable(row)`', () => {
+test('I-8f / A-47 Part 4: the card carries TWO gates — the wide `rowUnopenable` and the narrow `rowDatesReadable`', () => {
   const src = stripComments(readFileSync(resolve(VIEWS, 'Library.tsx'), 'utf8'));
   assert.match(
     src,
@@ -612,17 +612,61 @@ test('I-8e / A-46: the card\'s unreadable signal is `scan.unreadable || !rowDate
   );
   assert.match(
     src,
-    /unreadableRow\s*=\s*unreadable\.has\(row\.id\)\s*\|\|\s*!rowDatesReadable\(row\)/,
-    'the row boolean is not A-46 Part 3\'s: both sources, one signal',
+    /import\s*\{[^}]*\browUnopenable\b[^}]*\}\s*from\s*'@cairn\/client'/,
+    'rowUnopenable must come from @cairn/client — A-47 Part 3: the union lives in ONE place',
   );
-  // The two wrong predicates, named so the fault is red rather than merely absent.
+  assert.match(
+    src,
+    /const\s+unopenable\s*=\s*rowUnopenable\(state,\s*row\)/,
+    'the wide gate is not A-47 Part 3\'s selector, called once per row',
+  );
+  assert.match(
+    src,
+    /const\s+datesReadable\s*=\s*rowDatesReadable\(row\)/,
+    'the narrow gate is gone — A-47 Part 4 keeps the meta line on `rowDatesReadable`',
+  );
+  // A-46's single boolean is withdrawn (A-47 Part 3). Its NAME going is not the point; its
+  // being the thing that gates the chip, the control and Delete is.
   assert.ok(
-    !/unreadableRow\s*=[^;]*rowLifecycle\(/.test(src),
+    !/unreadableRow/.test(src),
+    'A-46\'s single `unreadableRow` boolean survives — A-47 Part 3 withdraws it: it did three jobs with one predicate',
+  );
+  // The wrong predicates, named so the fault is red rather than merely absent.
+  assert.ok(
+    !/(unopenable|unreadableRow)\s*=[^;]*rowLifecycle\(/.test(src),
     'the card signal is rowLifecycle-based — A-46 Part 1: `2026-02-30` classifies as `completed` and the chip goes silent',
   );
   assert.ok(
     !/isIsoDate\s*\(/.test(src),
     'the view calls isIsoDate itself instead of the client selector — the predicate is asked once, in one place',
+  );
+});
+
+/**
+ * **A-47 Part 3, the centralisation clause, as a ceiling rather than a spot check.** *"After
+ * this there is exactly one expression in the codebase that decides whether a card is
+ * flagged."* The injected fault is inlining the union in `Library.tsx`, which is what a builder
+ * reaching for `state.openFailures` directly would produce.
+ *
+ * `ScanNote`'s header count is the one exemption, and it is `scan.unreadable.length` — a
+ * statement about a *pass*, not about a card. A-47 Part 4 states explicitly that it does not
+ * widen: *"their details are the last ones we managed to work out"* is true only of the rescan
+ * population, and widening it would make it false.
+ */
+test('I-8f / A-47 Part 3: no view re-derives the union — `openFailures` and `rescan.unreadable` are read once, in the selector', () => {
+  const offenders: string[] = [];
+  for (const name of readdirSync(resolve(CAIRN, 'apps/web/src'), { recursive: true, encoding: 'utf8' })) {
+    if (!/\.tsx?$/.test(name)) continue;
+    const src = stripComments(readFileSync(resolve(CAIRN, 'apps/web/src', name), 'utf8'));
+    if (/openFailures|rescan\.unreadable/.test(src)) offenders.push(name);
+  }
+  assert.deepEqual(offenders, [], 'a view reaches past `rowUnopenable` for the raw facts');
+
+  const client = stripComments(readFileSync(resolve(CAIRN, 'packages/client/src/selectors/index.ts'), 'utf8'));
+  assert.equal(
+    (client.match(/export function rowUnopenable/g) ?? []).length,
+    1,
+    'rowUnopenable has more than one definition',
   );
 });
 
@@ -642,10 +686,18 @@ test('I-8e / A-46: the card\'s unreadable signal is `scan.unreadable || !rowDate
  */
 test('I-8e / A-46 / R34-4: an unreadable row prints its stored strings, a readable one prints the honest label', () => {
   const src = stripComments(readFileSync(resolve(VIEWS, 'Library.tsx'), 'utf8'));
+  // **A-47 Part 4 keeps this clause on the NARROW predicate**, and that is the whole finding
+  // here: a row with good dates over a document with a bad `days[3].date` has a perfectly good
+  // range, and printing it raw would be a regression R34-4 does not ask for. Pointing this at
+  // `unopenable` is I-8f's third injected fault.
   assert.match(
     src,
-    /unreadableRow\s*\?\s*storedDatesLabel\(row\)\s*:\s*dateRangeLabel\(row\)/,
-    'the meta line does not branch A-46 Part 3 clause 2\'s way',
+    /datesReadable\s*\?\s*dateRangeLabel\(row\)\s*:\s*storedDatesLabel\(row\)/,
+    'the meta line does not branch A-46 Part 3 clause 2\'s way, on A-47 Part 4\'s narrow predicate',
+  );
+  assert.ok(
+    !/unopenable\s*\?\s*storedDatesLabel/.test(src),
+    'the meta line is gated on the WIDE predicate — A-47 Part 4: a readable row must keep its proper label',
   );
   const fmt = stripComments(readFileSync(resolve(CAIRN, 'apps/web/src/format.ts'), 'utf8'));
   const fn = /export function storedDatesLabel\(([\s\S]*?)\n}\n/.exec(fmt);
@@ -666,10 +718,16 @@ test('I-8e / A-46 / R34-4: an unreadable row prints its stored strings, a readab
 test('I-8e / A-46 Part 4: the rescue export is offered on the unreadable branch and nowhere else', () => {
   const src = stripComments(readFileSync(resolve(VIEWS, 'Library.tsx'), 'utf8'));
   assert.match(src, /store\.exportStoredDoc\(row\.id\)/, 'the card offers no way to save an unopenable trip');
+  // A-47 Part 4: *"the unreadable branch"* now means `rowUnopenable(state, row)`. Gating it on
+  // `rowDatesReadable` alone — I-8e's shipped predicate — is I-8f's first injected fault.
   assert.match(
     src,
-    /unreadableRow\s*&&[\s\S]{0,600}store\.exportStoredDoc/,
-    'the rescue export is not gated on the unreadable branch',
+    /\{unopenable\s*&&[\s\S]{0,900}store\.exportStoredDoc/,
+    'the rescue export is not gated on A-47\'s wide predicate',
+  );
+  assert.ok(
+    !/datesReadable\s*&&[\s\S]{0,900}store\.exportStoredDoc/.test(src),
+    'the rescue export is gated on the narrow predicate — R35-1 measured exactly that gap',
   );
   assert.ok(
     !/store\.exportActive\(/.test(src),
@@ -699,7 +757,16 @@ test('I-8e / A-46 Part 3: Delete on an unreadable row says the stored copy is th
   assert.match(src, /if \(confirm\(/, 'Library.tsx no longer confirms a delete at all');
   const ask = /const ask =([\s\S]{0,900}?);\n/.exec(src);
   assert.ok(ask, 'the delete confirmation is no longer built from a branch this test can read');
-  assert.match(ask[1], /unreadableRow\s*\?/, 'the confirmation does not distinguish the unreadable case');
+  // A-47 Part 4, stated plainly because R35-1 asked: Delete's warning and the rescue control
+  // share ONE wide boolean. They are two halves of one sentence — a warning that says "save a
+  // copy first" on a card with no save control is a lie, and a save control with a silent
+  // Delete beside it is R34-2 unchanged. Gating this on `datesReadable` is I-8f's second
+  // injected fault: the ordinary sentence with the rescue control still on screen beside it.
+  assert.match(ask[1], /\bunopenable\s*\?/, 'the confirmation is not on A-47\'s wide predicate');
+  assert.ok(
+    !/\bdatesReadable\s*\?/.test(ask[1]),
+    'Delete\'s warning is on the narrow predicate — the exact conflation R35-1 measured',
+  );
   assert.match(ask[1], /only one/i, 'the confirmation does not say the stored copy is the only one');
   assert.match(ask[1], /save a copy first/i, 'the confirmation does not point at the rescue export');
   assert.match(ask[1], /cannot be undone/, 'the ordinary confirmation lost its own warning');
