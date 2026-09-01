@@ -317,9 +317,51 @@ the viewports ones the builder never used; **C** browser `viewBox` vs bare Node;
 **F** the pane **cell** rather than the `<svg>` (**R38-3**); **G** a detached part's rendered size
 (**R38-4**). Screenshots land in `/tmp/cairn-r38/`.
 
-`r38-a49.mjs` reports **4 FAIL** — three are **R38-1**, one is **R38-2**'s census. `r38-render.mjs`
-reports **2 FAIL** — **R38-3** and **R38-4**. Everything else in both is `ok`. Read
-`../docs/QA-FINDINGS.md`'s round-38 note before assuming either is broken.
+`r38-a49.mjs` reported **4 FAIL** at `dea2c67` — three were **R38-1**, one was **R38-2**'s census.
+`r38-render.mjs` reported **2 FAIL** — **R38-3** and **R38-4**. **All six are fixed at I-8i**, so
+both scripts now report clean; see the I-8i entry below for which assertions flipped and which are
+marked `SUPER`. Read `../docs/QA-FINDINGS.md`'s round-38 note before assuming either is broken.
+
+## I-8i (2026-09-01) — A-51 / A-52 / A-53: one pane per geographic cluster
+
+`worldMapFrame`'s framing model was reopened rather than patched a fifth time, so this increment
+touches **every** world-map probe in this directory. Two new files, and eight re-pointed.
+
+```bash
+bash qa/i8i-faults.sh                                    # 16 mutations in throwaway worktrees
+# with `npm run web:build && npm run serve` in another shell:
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/i8i-render.mjs
+```
+
+`i8i-faults.sh` is the successor to `i8d-faults.sh`/`i8g-faults.sh`/`i8h-faults.sh` for this area.
+Its 16 mutations cover **A-51**: C5 restored (1), every component folded into one pane (2), the
+zero-weight components dropped (3), **A-53 I18** — order by canonical position and an `FR`-only
+library opens on French Guiana (4) — `weight` summed over `codes` rather than `home` (5), the
+extent-pane rule keyed on *"holds a non-principal part"* so `FR DE IT JP PE` misclassifies (6),
+**A-52**'s `ring.length >= 6` filter restored (7), the *"Distant parts of"* caption dropped (8),
+flex instead of grid (9), the two role-keyed caps restored (10), `role` restored (11), a second
+geometric input at the population loop (12), the partition over country key points instead of
+parts (13), the canonical part list built in paint order (14), `countryKeyPoint` dropped from the
+export surface now that it has no production caller (15), and a second `clusterPoints` call inside
+the pane loop (16). **All 16 measure red.**
+
+`i8i-render.mjs` has five sections, all real page loads: **A** R38-3's criterion on the bordered
+**cell** at 390 × 820 and 1440 × 700 over the reference sample, a four-pane library and all 239
+single-country libraries; **B** the three libraries Jacob asked the breaker to re-attack — `FR`
+alone (I18's sharpest case), `FR`+`US`, and the 239-code ceiling; **C** A-53 on screen (the caption
+is the disclosure, and no pane ever says *"shown separately"*); **D** nothing is hidden — every
+pane is in the document with a non-zero box, every code is tappable and chipped; **E** R38-2's four
+libraries as the pixel numbers the ROADMAP pins. It reports **ALL CLEAR / 121 ok**.
+
+**Re-pointed, with each superseded assertion named rather than deleted.** `r36-atlas.mjs` reports
+**0 FAIL · 11 SUPERSEDED**, `r38-a49.mjs` **ALL CLEAR · 8 SUPERSEDED** (its §B and §I flip — R38-1
+and R38-5 are fixed — and its §J census, R38-2's own oracle, flips and gains A-51's replacement
+histogram); `r37-a48.mjs`, `i8g-faults.sh`, `i8d-faults.sh` (2 RETIRED), `i8h-faults.sh`
+(4 RETIRED), `i8d-render.mjs`, `i8g-render.mjs`, `i8h-render.mjs`, `r36-render.mjs` and
+`r38-render.mjs` all report clean. A `SUPER`/`RETIRED` line is an assertion whose *clause* A-51
+withdrew: it is printed with the ruling that withdrew it and with what the same fixture measures
+now, so the record of what the old rule guaranteed survives without pretending the product is
+broken.
 
 Browser probes need `npm run web:build && npm run serve` in one shell first, then:
 

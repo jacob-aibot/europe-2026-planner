@@ -1,5 +1,46 @@
 # Cairn — build notes, Phase 1 (and Phase 2 in progress)
 
+> **Addendum, on ROADMAP Phase 2 **I-8i** (revisions 35–36) — ARCHITECTURE §4.4 **A-51** (the frame
+> is one pane per geographic cluster; the split test, the "main" pane, the inset hierarchy and the
+> cap are withdrawn), **A-52** (a ring the index carries is a ring the frame draws) and **A-53**
+> (pane membership is country geometry; standing is `home`; **I18**: home panes precede extent
+> panes), answering QA round 38's **R38-2** (MAJOR), **R38-3**, **R38-4**, **R38-5** and the routed
+> builder line **R38-1**.** One builder pass over A-51/A-52/A-53's "Built" bullets and nothing else.
+> **`clusterPoints`, `clusterStops`, `focusCluster`, `mapBounds`, `countryKeyPoint`'s rule,
+> `travelStats`, `MapPort`, `StoragePort`, `Profile.tsx` and the day map are untouched;
+> `packages/core/src/derive/cluster.ts` has a ZERO-LINE diff** for the fourth increment running,
+> which is what makes A-48's I9 and the day map's byte-identity untouched by construction.
+> Scope: **20 files changed, 2 added.** Changed: `packages/core/src/derive/country.ts`,
+> `packages/core/test/countryParts.test.ts`, `packages/client/src/selectors/worldMap.ts`,
+> `packages/client/test/world-map.test.ts`, `apps/web/src/views/WorldMap.tsx`,
+> `apps/web/src/styles.css`, `test/views.test.ts`, `qa/r36-atlas.mjs`, `qa/r36-render.mjs`,
+> `qa/r37-a48.mjs`, `qa/r38-a49.mjs`, `qa/r38-render.mjs`, `qa/i8d-faults.sh`,
+> `qa/i8d-render.mjs`, `qa/i8g-faults.sh`, `qa/i8g-render.mjs`, `qa/i8h-faults.sh`,
+> `qa/i8h-render.mjs`, `qa/README.md`, `docs/BUILD-NOTES.md`. Added: `qa/i8i-faults.sh`,
+> `qa/i8i-render.mjs`. **`packages/core`'s export surface is 79, unmoved** (re-counted with
+> `Object.keys` on the built namespace). Inside `packages/core/src`, `git diff --stat` touches
+> **`derive/country.ts` and nothing else**. No `SUMMARY_VERSION` bump, no `schemaVersion` bump, no
+> port change, no reducer action, no new dependency (`package.json`/`package-lock.json` diff **0**
+> lines), **no golden and no sample diff** (sample source sha still `40955ca0b182`).
+>
+> | | |
+> |---|---|
+> | **What runs, and the exact command** | `cd cairn && npm run typecheck && npm run test:tap` — clean on both projects, **1121 pass / 0 fail / 0 skipped**. The **1097** baseline was re-derived by running the suite at `027a7a9` before touching anything, not quoted: **1097 → 1121, +24** (`world-map.test.ts` 80 → 103 as the C5/C6/C7 block was rewritten and the A-51/A-53 block added; `countryParts.test.ts` 22 → 23; `views.test.ts` 39 → 39). `npm run golden && npm run sample && git status --porcelain` → **nothing under `fixtures/` or `apps/web/src/sample/`**. `bash qa/i8i-faults.sh` → **ALL FAULTS RED, 16 of 16**. `bash qa/i8h-faults.sh` → **ALL FAULTS RED · 4 RETIRED**. `bash qa/i8g-faults.sh` → **ALL FAULTS RED, 14 of 14** (2 re-pointed). `bash qa/i8d-faults.sh` → **ALL FAULTS RED · 2 RETIRED** (2 re-pointed). `node qa/r36-atlas.mjs` → **0 FAIL, 0 FOUND · 11 SUPERSEDED**. `node qa/r37-a48.mjs` → **ALL CLEAR** (it was 2 FAIL). `node qa/r38-a49.mjs` → **ALL CLEAR · 8 SUPERSEDED** (it was **4 FAIL** — 3 × R38-1 and R38-2's census; all four now flip to assert the fix). With `npm run web:build && npm run serve` in another shell: `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/i8i-render.mjs` → **ALL CLEAR, 121 ok**; `qa/i8h-render.mjs` → **ALL CLEAR**; `qa/r38-render.mjs` → **ALL CLEAR** (it was 2 FAIL — R38-3 and R38-4); `qa/r36-render.mjs` → **0 FAIL, 0 FOUND**; `qa/i8g-render.mjs` → **0 FAIL**; `qa/i8d-render.mjs` → **ALL CLEAR**; `qa/r37-render.mjs`, `qa/i8c-render.mjs`, `qa/i8e-render.mjs` → **0 FAIL**, untouched. `node qa/r2-redact.mjs` → **KNOWN_LEAKS hits: 0**, byte-identical to the same run at `027a7a9`. `node qa/r2-constraints.mjs` → unchanged, including its one round-2-vintage FAIL. Root boundary intact: `git diff -- europe-2026-itinerary.html docs/ tickets/` at the repo root is empty and `md5sum europe-2026-itinerary.html` = `7c69df3208ef91c8be0fb59a56443188`, unmoved since round 33. |
+> | **A-51 G1–G6 — what replaced the middle of `worldMapFrame`** | Deleted: `weightOf`, `lowestCode`, `totalWeight`, `ranked`, `split` (C5), `paneGroups` (C7), `inFrameOf` with its **per-pane second `clusterPoints` call** (C8′) and the whole `detachedParts` block (C8″). What replaces them is **one** `clusterPoints` call over the flat canonical part list and one `.map` to panes. `frameNum`, `subpath`, `paneFrame`, `cornersOf`, `WHOLE_WORLD`, `FRAME_PAD_FRACTION`, `WORLD_CLUSTER_THRESHOLD_KM`, C1's population loop, `missing` and the C9 emit block are unchanged or near-verbatim. **The file gets shorter as ruled, and it is measured rather than asserted: 189 → 148 executable lines** (comments and blanks excluded; the whole file grows 489 → 504 lines because A-53 Part 5's block quote is now a docstring). The kernel is called **once** where it was called `1 + panes.length` times. |
+> | **A-53 Part 5's own walk of `FR`+`US`, reproduced exactly** | Raw G3 component order: French Guiana (0), continental France (1), contiguous US (2), Alaska (3). After G5: **FR · US · Guiana · Alaska**, `home` `["FR"] · ["US"] · [] · []`, `weight` **1 · 1 · 0 · 0**, spans **14.15°×9.77° · 57.72°×24.31° · 2.87°×3.70° · 41.81°×52.44°**. On screen at 390 × 820 (`qa/i8i-render.mjs` §B): continental France **342 × 236 = 80,869 px²** against R38-2's **899**, French Guiana **223 × 288 = 64,224 px²** against R38-4's **56**, and both home panes are read before both extent panes. |
+> | **A-53 I18 — the criterion that is a test rather than a code change** | On an `FR`-only library the RAW G3 order really does put French Guiana first — `core.countryParts('FR', …)[0].principal === false`, asserted from core so the risk is measured and not hypothesised — and only G5's `weight`-descending key stops the map opening on a 2.87° × 3.70° rectangle of South America. Asserted in bare Node over the fixture set **and all 239 single-country libraries**, and in Chromium over six libraries in DOM order. **Injected fault:** `qa/i8i-faults.sh` fault 4 replaces G5 with the component's canonical position and the `FR` library opens on Guiana — red. |
+> | **A-53's extent-pane bound, computed rather than hardcoded** | The codes that can EVER produce a non-principal part at 4,000 km over the whole 239-country index are exactly **`{FR, UM, US}`** — verified by computing it, asserted as a **set equality** — and there are **3** non-principal parts on the planet. Over all 239 single-country **and all 28,441 two-country** libraries (the full census runs in the unit suite; it costs ~2 s), the count of panes with `home.length === 0` is **≤ 3 in every library**, is **> 0 only** for a library containing one of those three, and its measured maximum is **2** (`FR`+`US`). Re-pinned on the named fixtures: reference sample 3 panes / **1** extent; `FR`+`US` 4 / **2**; `FR`+`GR` 2 / 1; `FR`+`NZ` 3 / 1; `GB`+`AU` 2 / **0**; `US`+`JP` 3 / 1; `AT CZ DE HR HU SI` 1 / 0; **`FR DE IT JP PE` 3 / 0**; the 12-code worldwide library **8 / 1**; the greedy worst case **14 / 0**; all 239 codes **1 / 0**. **Injected fault:** `qa/i8i-faults.sh` fault 6 keys "extent" on *"holds a non-principal part"* and the `FR DE IT JP PE` South-American pane (`home === ["PE"]`, France present by Guiana alone) goes red. |
+> | **R33-1 and the two ceilings — byte identity, as literal strings** | The reference library's **three** `viewBox` strings are byte-identical to I-8d's, I-8g's and I-8h's: `-8.1779 -59.2407 31.494 17.3663`, `-125.8416 -50.5435 60.0314 26.618`, `-172.8399 -72.4066 43.9088 54.5393`, with `codes` `[AT CZ DE GB HR HU] · [US] · [US]`, `home` `[AT CZ DE GB HR HU] · [US] · []` and weights **6 · 1 · 0** summing to `W = 7`. `AT CZ DE HR HU SI` is **1 pane**, `5.6543 -55.3175 17.3907 13.172`, 16.72° × 12.50°. All **239** codes is **1 pane**, `-187.2 -90.8451 374.4 188.0451`. `FR`+`GR`'s European pane is unchanged at 31.20° × 16.23° (`viewBox` width `32.4444`, height `17.4764`). What moves and is re-pinned: ids become `p0…pN`, `role` is gone, `panes[2].home === []`, and that pane is laid out **242 × 300 px** instead of 137 × 170. |
+> | **I5, I16 and I17 — the three invariants the old model could not state** | **I5** is additive again: every drawn code is `home` in exactly one pane and `Σ pane.weight === W` exactly, over the whole fixture set — A-49 Part 4 consequence 2's *"do not re-derive `W` from panes"* caveat disappears with the detached pane rather than being managed. **I16** (tightness) is asserted with the ONE kernel as the distance oracle: every pane's parts are one component and every cross-pane part pair is at or beyond the threshold. **I17** (locality) is the one that had to be a **pair** of libraries and is why three adversarial rounds could not see R38-2: over 60 deterministic (library, code) pairs, every pane of `A` whose component gains no part of `x` is byte-identical in `A ∪ {x}` — `viewBox`, `bounds` and `codes`. Pinned concretely: adding `US` to an `FR` library moves France's pane by **zero bytes** (it went 14.15° → 134.2° under the shipped model). |
+> | **A-52, and R38-1's one line** | `countryParts` drops the `ring.length >= 6` filter, so `[]` means *"the index carries no ring for this code"* and nothing else — the same condition `countryKeyPoint` answers `null` to. **Byte-neutral on the shipped artefact** (1,033 rings, smallest 4 points, re-measured). The frame's `missing` test loses its second clause, and with it **`countryKeyPoint`'s production caller** (A-51 Part 6): the symbol stays exported at 79 as I12's oracle, and `qa/i8i-faults.sh` fault 15 is the mutation that catches *"nothing uses it, so delete it"*. **R38-1:** `900` joins `countryParts.test.ts`'s threshold list, I12's sweep widens from 5 to **8** thresholds (239 × 8 = 1,912 comparisons, 0 mismatches), and the vacuity assertion flips — A-49's own named fault **is** reachable, at **`ID`@900 km**, where the greatest-ring rule keys off Borneo (533,066 km² summed, 0.0998 N) and the summed-area rule off Papua/Sulawesi/Maluku (852,459 km², 4.7437 S). KD-71's wording is corrected in place. |
+> | **The view and the stylesheet** | `WorldMap.tsx`: the three `role` branches collapse to **one shared rendering path with only the caption differing** — A-51 Part 6's survival table says *"the three `role` branches collapse into two keyed on `pane.home.length`"*, and since the only difference is a label, the honest reading is one `<p className="worldmap__panecap">` with one `pane.home.length === 0` branch inside it. Every pane now carries a caption (G8). `role` returns **0** hits in the file; `'main'`/`'inset'`/`'detached'` return 0 in the stripped source; *"shown separately"* returns 0. Two new data attributes, both `.length` checks and neither a coordinate: `data-pane-kind` (`home`/`extent`) and `data-pane-weight`, published for the probes. W1's ten identifiers, `.sort(`, `new Set(` and `Object.keys(` still return **0** over the raw file. `styles.css`: `.worldmap__panes` is `display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--pane-min, 300px), 1fr)); align-items: start`, one `--pane-cap: min(38vh, 300px)` replaces the two role-keyed ones, the three `--main`/`--inset`/`--detached` modifiers are gone, and **`.worldmap__svg` is A-50's rule verbatim**. One fix the render probe found and the source-level test now covers: `.worldmap__panecap` gains `margin: 0`, because the global `p` bottom margin was 8 px of dead space inside every bordered cell that a stretching flex row hid. |
+> | **R38-3, measured on the cell** | `qa/i8i-render.mjs` §A: at 390 × 820 and 1440 × 700, over the reference sample, a four-pane library and **all 239 single-country libraries**, `cell.height − svg.height − caption.height − padding` is **0.0 px** on every pane. `qa/r38-render.mjs` §F, re-pointed to the vertical axis, measures the emptiest cell in its five cases at **100.0% full** — round 38 measured **44.1%** for the sample's US inset and **21.3%** for a four-pane `inset-2`. The width clause is KD-75. **Injected fault:** `qa/i8i-faults.sh` fault 9 restores `display: flex` — red. |
+> | **Test-first, and where it was watched fail** | The A-52 pair in `countryParts.test.ts` was written and run first: **2 red**, *"the two-point ring was dropped (the >= 6 filter)"*. The 24-case A-51/A-53 block in `world-map.test.ts` was written and run against the shipped frame: **22 red of 24**, and the two that passed are the ones A-51 leaves alone (the `{FR, UM, US}` set equality, which is a property of `countryParts`, and I4's containment). The two `test/views.test.ts` cases were red against the shipped view and stylesheet before the edit. R38-1's fix was red-green verified by removing `900` from the threshold list and watching it fail. Then **16 mutations** in `qa/i8i-faults.sh`, every one red. |
+> | **The probes: re-pointed and retired, never re-scored** | Ten probes carried assertions written against a clause A-51 withdrew. Three treatments, and which one applies is stated per assertion in the file: **(1) re-pointed** where the clause survives at a new address (`role` → `home.length`, `'detached'` → `home.length === 0`, `panes[0].viewBox` → the same string under a new id) — `r37-a48.mjs`, `i8g-faults.sh`, `i8d-faults.sh` (2), `i8d-render.mjs`, `i8g-render.mjs`, `i8h-render.mjs`, `r36-render.mjs`, `r38-render.mjs`; **(2) flipped** where the finding is now FIXED and re-asserting it would re-assert a false claim — `r38-a49.mjs` §B (R38-1), §I (R38-5) and §J (R38-2's own census, which now carries A-51's replacement histogram); **(3) marked `SUPER`/`RETIRED`** where the clause itself is gone, with the ruling that withdrew it and what the fixture measures now printed beside it — 11 in `r36-atlas.mjs`, 8 in `r38-a49.mjs`, 4 in `i8h-faults.sh`, 2 in `i8d-faults.sh`. **Nothing was deleted and nothing was loosened to pass.** `r38-a49.mjs` keeps its complete second implementation of the **withdrawn** model as `myFrameA49` and gains a second one of A-51, built on the same independent primitives, so §D still compares two implementations rather than one to itself — and it reproduces the shipped frame **byte for byte on all 11 libraries**. |
+> | **A-51 Part 5's census, re-derived rather than quoted** | `qa/r38-a49.mjs` §J now computes the pane-count histogram over **all 28,441** two-country libraries: **{1: 5,564 · 2: 22,360 · 3: 516 · 4: 1}**, exactly A-51's numbers, against *one geographic pane in 100%* under the shipped model. Panes wider than 120° fall **8,364 → 1,229**, also exact. |
+> | **Objection to the design** | **None that blocks, and A-51 is the right call.** Three disclosures, all filed as KDs rather than as code that diverges: **KD-74** — G5's third key is a no-op on the shipped kernel (`clusterPoints` already emits ascending-lowest-index components and `sort` is stable), so the obvious `return 0` fault is green; the key stays as written and the red fault is *reverse it*. **KD-75** — ROADMAP I-8i's cell criterion has a **width** clause that A-50's own `<svg>` rule, which A-51 G7 preserves verbatim, cannot satisfy for a cap-limited narrow pane; the height clause is asserted at ≤ 1 px with no escape and the width clause is asserted in the form that is true. **KD-76** — A-51 G7's single `min(38vh, 300px)` cap makes a **one-pane** library 35% shorter than A-50's main-pane cap did, and three more microstates (`AI`, `BL`, `JE`) join `MF`/`SX` in A-48 residue 6's deferred set; I built G7 as ruled and re-pointed the probe to the measured set with the reason named. **One place where A-51 Part 5's prose is more careful than ROADMAP I-8i's criterion, and the criterion is what is wrong:** the ROADMAP says *"**Every** one of the 1,229 [>120° panes] contains one of `AQ`, `FJ`, `KI`, `RU`, `UM` — asserted as a set equality"*. Measured, **1,180** do; the other 49 are **48** trans-antimeridian Pacific pairs (the same planar-bbox artefact reached without those five codes) and **one** honest wide pane, `CA`+`GL` at **128.8°**, which is L1 working correctly — Canada and Greenland are a genuine chain of ground under the threshold. `r38-a49.mjs` asserts the three-way decomposition. |
+> | **What I could not verify** | **Nothing was measured on a real phone**, only at 390 × 820, 360 × 640, 1100 × 900 and 1440 × 700 Chromium viewports. **The 239-library cell sweep is not 478 page loads**: the box rule is a pure function of `--pane-aspect`, `--pane-cap` and the available width, so `qa/i8i-render.mjs` §A sets the real custom property on the real element in the real stylesheet and reads the computed layout back; §A's first half then drives two libraries end to end at both viewports to check that premise. The method is stated in the probe's own header. **A-51 residue 7's scroll cost was not looked at**: the 8-pane worldwide library renders and every pane is measured, but nobody has scrolled the 14-pane worst case on a phone and formed a view about whether ~4,200 px is acceptable. **`--pane-min: 300px` was not swept**: I checked one column at 390 px and three at 1440 px on the reference sample and did not try the widths in between, where `auto-fill` changes column count. **The `UM` chain (A-51 residue 2) is neither improved nor worsened and I did not re-photograph it.** **Two panes' *reading* order was checked, their visual scan order on a 3-column desktop grid was not** — `p0` is top-left, which is right for a left-to-right reader and unexamined for anything else. |
+
 > **Addendum, on ROADMAP Phase 2 **I-8h** (revision 34) — ARCHITECTURE §4.4 **A-49** (a country's
 > geometry is its *parts*; a pane frames the parts its subject is connected to, C8′; the rest get a
 > `detached` pane, C8″; C7′'s cap; Part 4's frame shape; Part 5's `codes`; I1/I2/I3/I5 restated and
@@ -2922,7 +2963,7 @@ view (accepting the ceiling change), or put a canonical-order list on the frame 
 > *"unchanged and alphabetical"* is withdrawn as false in the document.
 
 
-### KD-70 — the R36-1 library is one pane and is still 81° wide, so I-8g's ship-gate sentence is not met as worded
+### KD-70 — the R36-1 library is one pane and is still 81° wide, so I-8g's ship-gate sentence is not met as worded — CLOSED at I-8i (doc-only: the `inFrameOf` block that carried the citation is deleted)
 
 **Where:** `packages/client/src/selectors/worldMap.ts` (C8, unchanged) · **§4.4 A-48 Part 9 residue 1′; ROADMAP I-8g ship gate.**
 
@@ -3002,7 +3043,7 @@ is measured in both directions rather than assumed.
 cluster"*, or ruling that a multi-cluster pane should frame only the component its **primary**
 cluster reaches — which would be a real behaviour change and is not built.
 
-### KD-73 — a ring of fewer than three points has no part, so a fixture carrying one loses that ring from the map
+### KD-73 — a ring of fewer than three points has no part, so a fixture carrying one loses that ring from the map — CLOSED by A-52 at I-8i (doc-only: the `ring.length >= 6` filter no longer exists)
 
 **Where:** `packages/core/src/derive/country.ts` (`countryParts`) ·
 `packages/client/src/selectors/worldMap.ts` · **§4.4 A-49 Part 2 (P); A-41 constraint 1; I11.**
@@ -3023,6 +3064,93 @@ same class as KD-70's neighbour R37-5.
 **Trigger to revisit:** an index whose generator can emit a one- or two-point ring, or a test fixture
 that needs one drawn. The bounded remedy would be to attach a degenerate ring to the part its own
 point falls in; A-49 does not rule that and it is deliberately not built.
+
+**CLOSED at I-8i by §4.4 A-52 (QA R38-5).** The `ring.length >= 6` filter is out of `countryParts`:
+a ring the index carries is a ring the frame draws. A degenerate ring has zero spherical area, so
+the strict `>` in the principal-ring comparison already keeps the earlier ring and such a ring can
+never be principal; it contributes its own points to its part's `box` and its own subpath to `d`.
+`countryParts` returns `[]` **iff** the index carries no ring at all for the code — the same
+condition `countryKeyPoint` answers `null` to — so core's two functions stop disagreeing and
+`worldMapFrame`'s `missing` test has one answer. Byte-neutral on the shipped artefact (the smallest
+committed ring is 4 points); the fixture round 38 built is now green under I11 with the **index** as
+its oracle. Also closed: **KD-70**, whose citation lived in the `inFrameOf` block A-51 G3 deletes.
+
+### KD-74 — G5's third key is redundant on the shipped kernel, so `return 0` is not a red fault
+
+**Where:** `packages/client/src/selectors/worldMap.ts` (`built.sort`) · `qa/i8d-faults.sh` fault 7 ·
+**§4.4 A-51 G5.**
+
+A-51 G5 orders panes by `weight` descending, then `home.length` descending, then *"the component's
+lowest position in the canonical part list ascending"*, and calls the third key *"total by
+construction"*. It is — but on the shipped kernel it is also **a no-op**: `core.clusterPoints`
+already emits its components in ascending lowest-member-index order (that is its own documented
+output convention, and it is what makes it `Map`-iteration-free), and `Array.prototype.sort` is
+stable. So `return a.members[0] - b.members[0]` agrees with the array order it is sorting, and
+deleting it changes no frame on any library.
+
+**Consequence for the fault matrix, and it is the only one:** the obvious mutation — make the third
+key `return 0` — is **green**, and a criterion whose fault cannot be red is not a criterion. The
+mutation that measures it is the one that makes the key **disagree** with the kernel's convention:
+reverse it, and two equal-weight panes swap. `qa/i8d-faults.sh` fault 7 is that mutation and it is
+red. The key stays in the source as written, because it is what makes the ordering total *as a
+statement about the frame* rather than as an accident of the kernel's output order — which is
+exactly the class of assumption A-48 C3′ was written to remove.
+
+**Trigger to revisit:** any change to `clusterPoints`' output convention, or a sort that is not
+stable. Either makes the key load-bearing and the `return 0` fault red on its own.
+
+### KD-75 — ROADMAP I-8i's cell criterion has a width clause A-50's own `<svg>` rule cannot satisfy
+
+**Where:** `apps/web/src/styles.css` (`.worldmap__svg`, A-50's rule, unchanged) · `qa/i8i-render.mjs`
+§A · **ROADMAP I-8i verification, *"No pane cell is letterboxed, in either direction"*; §4.4 A-50;
+A-51 G7.**
+
+ROADMAP I-8i asks for `cell.height − svg.height − caption.height − padding <= 1 px` **and**
+`cell.width − svg.width − padding <= 1 px`, unconditionally. The height clause holds everywhere and
+is what R38-3 is about. **The width clause cannot hold as written**, and the reason is a rule A-51
+G7 explicitly preserves: A-50's `<svg>` is
+`width: min(100%, calc(var(--pane-cap) * var(--pane-aspect)))` with `margin-inline: auto`, so a pane
+whose aspect is below `cellWidth / cap` is **cap-limited by design** and is centred with space
+either side. A-50 says so in as many words — *"this does NOT make a narrow country bigger … what it
+removes is the WASTED BOX, not the narrowness; `margin-inline: auto` centres what is left"*.
+Measured: at 390 × 820 the reference sample's third pane is aspect 0.81, so its `<svg>` is 242 px in
+a 356 px cell; French Guiana's is 0.78 → 235 px. Both are exactly `cap × aspect`.
+
+**What is built:** A-50's rule verbatim, as A-51 G7 requires, and `qa/i8i-render.mjs` §A asserts the
+satisfiable form — *a cell is filled horizontally, **or** its `<svg>` is exactly the width A-50's
+rule produces*, with the cap-limited panes named in a `NOTE` line rather than hidden. Nothing was
+weakened to make a test pass: the height clause is asserted at `<= 1 px` with no escape.
+
+**Trigger to revisit:** an architect ruling that a narrow pane should be *stretched* to its cell
+(`preserveAspectRatio="none"`, forbidden by A-41 Part 7) or that the grid should size a column to
+its content. Until then the criterion's width clause is over-stated, not unmet.
+
+### KD-76 — A-51 G7's uniform cap makes a one-pane library 35% shorter, and three more microstates lose their self-hit
+
+**Where:** `apps/web/src/styles.css` (`--pane-cap: min(38vh, 300px)`) · `qa/r36-render.mjs` §E ·
+**§4.4 A-51 G7; A-48 residue 6; A-51 residue 1.**
+
+A-51 G7 replaces A-50's two role-keyed caps — `min(58vh, 460px)` for the main pane,
+`min(22vh, 170px)` for an inset — with **one** `min(38vh, 300px)`. For a library that is genuinely
+**one** cluster (the 239-code ceiling is exactly that, and so is `AT CZ DE HR HU SI`) the cap is the
+only limit, so the map is drawn **300 px tall where it was 460** — 35% shorter — at any viewport
+above 790 px.
+
+**Measured consequence, and it is a widening rather than a new class:** `qa/r36-render.mjs` §E
+hit-tests every one of the 239 codes at a 40 × 40 sample of its own bounding box. At `dea2c67` the
+only codes with no self-hit-testable pixel were `MF`/`SX`; at I-8i they are `MF`, `SX`, `AI`, `BL`
+and `JE` — three more halves-of-one-small-island that now share a screen pixel with their
+neighbour. C9's paint order is unchanged and `AD` still hit-tests to itself, so this is scale and
+not paint order. **A-51 residue 1 is the ruling that covers it** (*"a micro-state inside a large
+cluster is sub-pixel … the only remedies are per-country insets or a distorting projection, both of
+which A-41 Part 7 forbids"*), and **A-48 residue 6's guarantee is intact and is asserted**: the
+code-chip list names and reaches every drawn country unconditionally, `AI`/`BL`/`JE` included.
+
+**I built G7 as written** — the cap is a ruled constant and a builder does not re-tune it — and the
+probe's assertion is re-pointed to the measured deferred set with the reason named rather than
+loosened to a threshold. **Trigger to revisit:** an architect ruling on the cap for the
+single-pane case, where there is no grid to fit and no sibling to be equal to. That is a real
+question and it is A-51 residue 1's territory, not mine.
 
 ## 2. How to run it
 

@@ -25,10 +25,27 @@
  *    entry of `frame.panes`, that pane's `viewBox` verbatim, and the countries whose
  *    `paneId` **string-equals** that pane's `id`. How many panes there are, what each frames
  *    and which country is in which were all decided in `worldMapFrame` — in bare Node, from
- *    data alone, never from a measured figure or a media query. Inset placement and size are
- *    CSS. An inset names its codes and its countries carry the identical tap handler the
- *    main pane's do, so *"an outlier stays visibly represented and attributable"* is
- *    structural rather than decorative.
+ *    data alone, never from a measured figure or a media query. Placement and size are CSS.
+ *    Every pane names its codes and every pane's countries carry the identical tap handler,
+ *    so *"an outlier stays visibly represented and attributable"* is structural rather than
+ *    decorative.
+ *  - **§4.4 A-51 / A-53 at I-8i: there is one kind of pane, and one shared rendering path.**
+ *    The `'main' | 'inset' | 'detached'` hierarchy is withdrawn along with the split test that
+ *    produced it, so this file has no `role` to read and no per-role cell size. What the two
+ *    kinds of pane differ in is the **claim**, not the cell: a **home** pane (`home.length >
+ *    0`) is a place the record attributes travel to; an **extent** pane (`home.length === 0`,
+ *    `weight === 0`) holds only geography belonging to a country visited elsewhere and is
+ *    captioned *"Distant parts of"*. The cell is a viewport and asserts nothing — which is why
+ *    A-51 G7 makes every grid cell equal, and why the caption is the only branch below.
+ *
+ * Two disclosures about the cell, both in `styles.css` and neither a divergence from the ruling:
+ * **KD-75** — ROADMAP I-8i's *"no cell is letterboxed in either direction"* has a **width** clause
+ * A-50's own `<svg>` rule cannot satisfy, because a pane narrower than `cellWidth / cap` is
+ * cap-limited by design and `margin-inline: auto` centres it; the height clause holds everywhere
+ * and is what R38-3 is about. **KD-76** — A-51 G7's single `--pane-cap: min(38vh, 300px)` makes a
+ * ONE-pane library 35% shorter than A-50's main-pane cap did, so three more sub-pixel microstates
+ * (`AI`, `BL`, `JE`) join `MF`/`SX` in A-48 residue 6's deferred set. The chip list below is the
+ * guarantee that covers all five, and it is unconditional.
  *  - **A-40 Part 5: filled countries, and no city pins.** `TripSummaryRow` carries no
  *    coordinate for a city, and manufacturing one is a `SUMMARY_VERSION` ruling rather than a
  *    UI decision. The gap is deferred in writing instead of half-built; what could not be
@@ -119,8 +136,8 @@ export function WorldMap({ state, onOpenTrip, onError }: Props) {
           W3: one <svg> per pane, each with THAT PANE'S `viewBox` verbatim, containing the
           countries whose `paneId` equals the pane's `id` — a string equality filter and
           nothing else. Which pane exists, what it frames and what is in it were all decided
-          in `worldMapFrame`, in bare Node, from data alone. Placement and size are CSS
-          (`.worldmap__pane--main` / `--inset`), which is what keeps this file free of the
+          in `worldMapFrame`, in bare Node, from data alone. Placement and size are CSS — one
+          equal grid cell per pane (A-51 G7) — which is what keeps this file free of the
           measurement that would bring the hidden-container bug back.
 
           The backdrop rect is the whole world in the frame's own coordinate space — a
@@ -131,9 +148,18 @@ export function WorldMap({ state, onOpenTrip, onError }: Props) {
           {frame.panes.map((pane) => (
             <div
               key={pane.id}
-              className={`worldmap__pane worldmap__pane--${pane.role}`}
+              className="worldmap__pane"
               data-pane={pane.id}
               data-pane-codes={pane.codes.join(' ')}
+              /*
+                §4.4 A-53 Part 4. **One kind of pane**, so there is no role modifier and no
+                per-role cell size — every cell is an equal grid cell (A-51 G7), because a cell
+                is a viewport and asserts nothing. What the two kinds differ in is the CLAIM,
+                and the claim is `weight`, `home` and the caption. This attribute is a length
+                check published for tests and probes, never a size input.
+              */
+              data-pane-kind={pane.home.length === 0 ? 'extent' : 'home'}
+              data-pane-weight={pane.weight}
             >
               <svg
                 className="worldmap__svg"
@@ -152,11 +178,9 @@ export function WorldMap({ state, onOpenTrip, onError }: Props) {
                 preserveAspectRatio="xMidYMid meet"
                 role="img"
                 aria-label={
-                  pane.role === 'main'
-                    ? `${pane.codes.length} countries visited`
-                    : pane.role === 'detached'
-                      ? `Distant parts of ${pane.codes.join(', ')}, shown in a separate frame`
-                      : `${pane.codes.join(', ')}, shown in a separate frame`
+                  pane.home.length === 0
+                    ? `Distant parts of ${pane.codes.join(', ')}, shown in a separate frame`
+                    : `Countries visited: ${pane.codes.join(', ')}`
                 }
                 data-viewbox={pane.viewBox}
               >
@@ -189,31 +213,27 @@ export function WorldMap({ state, onOpenTrip, onError }: Props) {
                   ))}
               </svg>
               {/*
-                A-41 constraint 3: an outlier stays visibly represented and attributable, so
-                the inset NAMES its codes and its countries carry the identical tap handler
-                the main pane's do. The caption is written from `pane.codes` and from nothing
-                else — `pane.weight` counts trip-attributions rather than trips (A-41 residue
-                4), so printing it beside a multi-country pane would read as a trip count it
-                is not.
-              */}
-              {pane.role === 'inset' ? (
-                <p className="worldmap__panecap">
-                  <span className="worldmap__panecap-label">Shown separately</span>
-                  <span className="mono">{pane.codes.join(' ')}</span>
-                </p>
-              ) : null}
-              {/*
-                A-49 Part 4 consequence 3: the detached pane may NOT say "shown separately".
-                That phrase asserts the country is a distant part of the traveller's record;
+                **A-51 G8 — the caption, derived rather than roled.** EVERY pane names its
+                codes now (A-41 constraint 3, applied uniformly): under C7 the main pane had no
+                caption because it was *"the"* map, and there is no *"the"* map any more. The
+                caption is written from `pane.codes` and from nothing else — `pane.weight`
+                counts trip-attributions rather than trips (A-41 residue 4), so printing it
+                beside a multi-country pane would read as a trip count it is not.
+
+                The one branch is A-49 Part 4 consequence 3, verbatim and unchanged, now derived
+                from `home` rather than from a `role` string: a pane holding only NON-PRINCIPAL
+                parts is captioned "Distant parts of" and may never say "shown separately".
+                That phrase asserts the country is a distant part of the traveller's RECORD;
                 here it is a distant part of the COUNTRY'S OWN GEOMETRY, and the country is
-                already drawn on another pane. The caption names the codes and says which.
+                already drawn on another pane. `pane.home.length === 0` is a `.length` check,
+                not arithmetic over coordinates: A-40 Part 2 is intact and W3 is unchanged.
               */}
-              {pane.role === 'detached' ? (
-                <p className="worldmap__panecap">
+              <p className="worldmap__panecap">
+                {pane.home.length === 0 ? (
                   <span className="worldmap__panecap-label">Distant parts of</span>
-                  <span className="mono">{pane.codes.join(' ')}</span>
-                </p>
-              ) : null}
+                ) : null}
+                <span className="mono">{pane.codes.join(' ')}</span>
+              </p>
             </div>
           ))}
         </div>

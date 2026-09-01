@@ -791,25 +791,48 @@ test('I-8h / A-49 Part 5: the code-chip list renders frame.codes and derives no 
 });
 
 /**
- * **A-49 Part 4 consequence 3 — the detached pane may not say *"shown separately"*.** That
- * phrase asserts the country is a distant part of the traveller's *record*; a detached pane is
- * a distant part of the country's own *geometry*, and the country is already on another pane.
+ * **I-8i / A-51 G8 + A-53 Part 4 — three `role` branches collapse into two, keyed on
+ * `pane.home.length`, and EVERY pane gets a caption.**
+ *
+ * Under C7 the main pane had no caption because it was *"the"* map; A-51 withdraws the
+ * hierarchy, so there is no *"the"* map any more and a pane that names nothing is a pane whose
+ * countries are unattributable. The one branch that survives is the one A-49 Part 4 consequence
+ * 3 ruled on, now derived from `home` rather than from a `role` string: an **extent** pane
+ * (`home.length === 0`) is captioned *"Distant parts of"* and may **never** say *"shown
+ * separately"*, because that phrase asserts the country is a distant part of the traveller's
+ * *record* when it is a distant part of the country's own *geometry*.
+ *
+ * `pane.home.length === 0` is a length check, not arithmetic over coordinates: A-40 Part 2 and
+ * W1 are intact and W3 is unchanged.
  */
-test('I-8h / A-49 C8″: the detached pane has its own caption and its own aria-label', () => {
-  const src = stripComments(readFileSync(resolve(VIEWS, 'WorldMap.tsx'), 'utf8'));
-  assert.match(src, /pane\.role === 'detached'/, 'the renderer has no branch for the third role');
-  // The CAPTION branch specifically, not just the aria-label: A-41 constraint 3 is about what
-  // is on screen beside the frame, and A-49 requires this one to read differently.
+test('I-8i / A-51 G8: the caption is derived from `home.length`, and `role` is gone from the view', () => {
+  const raw = readFileSync(resolve(VIEWS, 'WorldMap.tsx'), 'utf8');
+  const src = stripComments(raw);
+  assert.ok(!raw.includes('pane.role'), 'the withdrawn `role` field is still read by the view');
+  // The role STRINGS may be named in a comment that explains the withdrawal — that is the
+  // record, not the mechanism — but not in code the renderer runs.
+  assert.ok(!src.includes("'main'") && !src.includes("'inset'") && !src.includes("'detached'"),
+    'the withdrawn role strings survive in the renderer');
+  assert.match(src, /pane\.home\.length === 0/, 'the caption is not derived from `home`');
+  // The extent branch specifically, on the CAPTION and not just the aria-label: A-41 constraint
+  // 3 is about what is on screen beside the frame.
   assert.match(
     src,
-    /pane\.role === 'detached' \? \(\s*<p className="worldmap__panecap">\s*<span className="worldmap__panecap-label">Distant parts of</,
-    'the detached pane has no caption of its own, or is captioned as an ordinary inset',
+    /pane\.home\.length === 0 \? \(\s*<span className="worldmap__panecap-label">Distant parts of<\/span>\s*\) : null/,
+    'the extent pane has no caption of its own, or is captioned as an ordinary pane',
   );
-  assert.match(src, /Distant parts of \$\{pane\.codes\.join/, 'the aria-label has no detached branch');
-  // …and every caption is still written from `pane.codes`, never re-derived.
-  // Five: the `data-pane-codes` attribute, the two `aria-label` branches that name codes, and
-  // the two captions (inset and detached).
-  assert.equal((src.match(/pane\.codes\.join/g) ?? []).length, 5,
+  assert.match(src, /Distant parts of \$\{pane\.codes\.join/, 'the aria-label has no extent branch');
+  assert.ok(!/shown separately/i.test(src),
+    'a pane says "shown separately" — A-49 Part 4 consequence 3, unchanged by A-51');
+  assert.match(raw, /may never say "shown separately"/,
+    'the rule is no longer stated where the branch that obeys it lives');
+  // Every pane carries the caption element, unconditionally — there is no `role` test around it.
+  assert.match(src, /<p className="worldmap__panecap">/);
+  assert.equal((src.match(/<p className="worldmap__panecap">/g) ?? []).length, 1,
+    'there is more than one caption path — that is the hierarchy coming back');
+  // …and every caption is still written from `pane.codes`, never re-derived. Four: the
+  // `data-pane-codes` attribute, the two `aria-label` branches, and the one caption.
+  assert.equal((src.match(/pane\.codes\.join/g) ?? []).length, 4,
     'a pane caption or label stopped being written from pane.codes');
 });
 
@@ -839,9 +862,6 @@ test('I-8h / A-50: the pane box is sized from the pane\'s own aspect in BOTH dir
   assert.match(body, /max-height:\s*var\(--pane-cap\)/, 'the height cap is not the custom property');
   assert.match(body, /margin-inline:\s*auto/, 'a narrow box is not centred');
   assert.ok(!/max-height:\s*min\(/.test(body), 'the static max-height clamp is still there');
-  // The two caps A-50 names, moved to the pane and not invented.
-  assert.match(css, /\.worldmap__pane--main[^{]*\{[^}]*--pane-cap:\s*min\(58vh,\s*460px\)/);
-  assert.match(css, /--pane-cap:\s*min\(22vh,\s*170px\)/);
   // Still measurement-free: no media query decides a pane's size.
   const paneRules = [...css.matchAll(/@media[^{]*\{[\s\S]*?\}\s*\}/g)].map((m) => m[0]);
   for (const q of paneRules) {
@@ -850,8 +870,46 @@ test('I-8h / A-50: the pane box is sized from the pane\'s own aspect in BOTH dir
   }
 });
 
-/** The detached pane needs a box of its own, or it inherits the main pane's 58vh cap. */
-test('I-8h / A-50: the detached pane is laid out like an inset, with an inset\'s cap', () => {
+/**
+ * **I-8i / A-51 G7 (QA R38-3) — the panes are an equal grid, and one `--pane-cap` replaces the
+ * two role-keyed ones.**
+ *
+ * A flex row stretches every cell to its tallest sibling, so the shipped sample's US inset
+ * filled **44.1%** of its bordered cell at 390 px and a four-pane `inset-2` filled **21.3%** —
+ * A-50 measured the `<svg>` and not the cell. `align-items: start` on a grid does not stretch,
+ * and one uniform cap removes the asymmetry that made the stretch large.
+ *
+ * `min()`, `calc()` and `auto-fill` resolve at layout and measure nothing: no `viewBox`, pane
+ * count or pane membership varies with screen size, so the frame is byte-identical in bare Node
+ * and A-41 Part 7's *"no per-screen-size **frame** rule"* is untouched. The rendered oracle is
+ * `qa/i8i-render.mjs`.
+ */
+test('I-8i / A-51 G7: the pane container is a grid of equal cells, with ONE height cap', () => {
   const css = stripComments(readFileSync(resolve(CAIRN, 'apps/web/src/styles.css'), 'utf8'));
-  assert.match(css, /\.worldmap__pane--detached/, 'the stylesheet has no rule for the third role');
+  const panes = /\.worldmap__panes\s*\{([^}]*)\}/.exec(css);
+  assert.ok(panes, 'there is no .worldmap__panes rule');
+  const body = panes[1].replace(/\s+/g, ' ');
+  assert.match(body, /display:\s*grid/, 'the container is still a flex row — R38-3 comes back');
+  assert.match(body, /grid-template-columns:\s*repeat\(auto-fill,\s*minmax\(var\(--pane-min[^)]*\),\s*1fr\)\)/,
+    'the columns are not equal-weight auto-fill cells');
+  assert.match(body, /align-items:\s*start/, 'a grid without `align-items: start` stretches like flex did');
+  assert.ok(!/display:\s*flex/.test(body), 'display: flex survives on the pane container');
+  // ONE cap, and it is the pane's, not the role's.
+  assert.match(css, /\.worldmap__pane[^{-][^{]*\{[^}]*--pane-cap:\s*min\(38vh,\s*300px\)/,
+    'the single uniform pane cap is missing');
+  assert.ok(!/min\(58vh,\s*460px\)/.test(css), 'the main pane\'s role-keyed cap survives');
+  assert.ok(!/min\(22vh,\s*170px\)/.test(css), 'the inset\'s role-keyed cap survives');
+  // The three role modifiers are withdrawn with `role` — a stylesheet rule for one is a
+  // hierarchy the frame no longer computes.
+  for (const banned of ['worldmap__pane--main', 'worldmap__pane--inset', 'worldmap__pane--detached']) {
+    assert.ok(!css.includes(banned), `a withdrawn role modifier survives in the stylesheet: ${banned}`);
+  }
+  // The caption carries no margin of its own. `qa/i8i-render.mjs` measured 8 px of dead space
+  // under every caption — the global `p` bottom margin — which a stretching flex row used to
+  // hide and `align-items: start` exposes. It is 8 px of slack inside the bordered cell, which
+  // is exactly what R38-3's criterion is written to catch.
+  const cap = /\.worldmap__panecap\s*\{([^}]*)\}/.exec(css);
+  assert.ok(cap, 'there is no .worldmap__panecap rule');
+  assert.match(cap[1].replace(/\s+/g, ' '), /margin:\s*0/,
+    'the pane caption inherits a bottom margin, so every cell has slack under it');
 });

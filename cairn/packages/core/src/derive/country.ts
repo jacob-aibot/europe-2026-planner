@@ -245,9 +245,11 @@ function ringBox(ring: CountryRing): CountryBox {
 /**
  * The **parts** of a country: the connected components of its own rings — §4.4 **A-49** Part 2.
  *
- * Pure; the index and the threshold are both injected; `[]` for a code the index does not carry
- * and for a code carrying no ring of three points. A caller treats `[]` exactly as
- * `countryKeyPoint`'s `null`: the code is stated as unfillable, never dropped (A-40 clause 3).
+ * Pure; the index and the threshold are both injected. **`[]` iff the index carries no ring at
+ * all for the code** — §4.4 **A-52** (QA R38-5) took out the `ring.length >= 6` filter, so `[]`
+ * has exactly one meaning and it is the same one `countryKeyPoint`'s `null` has. A caller treats
+ * `[]` as *"the index cannot fill this code"*: stated as unfillable, never dropped (A-40 clause
+ * 3), and `worldMapFrame`'s `missing` test therefore has one answer rather than two.
  *
  * **The rule, and it is the one A-48 already introduced, generalised.** A-48 ruled that a
  * country's *position* is a property of its principal landmass rather than of its bounding
@@ -260,7 +262,7 @@ function ringBox(ring: CountryRing): CountryBox {
  * France framed French Guiana anyway — 81.1° × 49.1° at 1.95% land.
  *
  * Take every ring of every entry carrying the code (§8.4 A-27 allows two entries; they are one
- * country) with at least three points, give each the centre of its own bounding box, and take
+ * country), give each the centre of its own bounding box, and take
  * `clusterPoints`' connected components of those centres. **That is the one kernel** (A-41
  * Part 6, A-48 C3′) — not a second implementation, and the reason there is still no distance
  * function in this file.
@@ -283,12 +285,17 @@ export function countryParts(
   index: CountryIndex,
   thresholdKm: number,
 ): CountryPart[] {
-  // Index order: entry order, then ring order. A ring of fewer than three points is not a
-  // polygon and has no part (A-49 Part 2) — the shipped index carries none.
+  // Index order: entry order, then ring order. **A-52 (QA R38-5): EVERY ring, with no length
+  // filter.** A ring the index carries is a ring the frame draws — the `ring.length >= 6` filter
+  // that used to be here dropped a degenerate ring from `d` AND from its part's `box`, so the
+  // lost vertex ended up outside the frame it was dropped from and nothing on screen hinted at
+  // it. A degenerate ring has zero spherical area, so the strict `>` below already keeps the
+  // earlier ring and such a ring can never be principal; it contributes its own points to its
+  // part's `box` and its own subpath to `d`, which is all it was ever entitled to.
   const rings: CountryRing[] = [];
   for (const entry of index.countries) {
     if (entry.code !== code) continue;
-    for (const ring of entry.rings) if (ring.length >= 6) rings.push(ring);
+    for (const ring of entry.rings) rings.push(ring);
   }
   if (rings.length === 0) return [];
 

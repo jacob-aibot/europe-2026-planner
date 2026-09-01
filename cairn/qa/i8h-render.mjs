@@ -105,7 +105,8 @@ head('A  A-50 — NO LETTERBOXING IN EITHER DIRECTION, ALL 239 LIBRARIES x 2 VIE
 // else on the real element.
 const aspects = [];
 for (const code of CODES) {
-  for (const pane of frameOf([[code, 1]]).panes) aspects.push([`${code}/${pane.id}`, pane.aspect, pane.role]);
+  // [I-8i] `role` is withdrawn (A-51 G4); a pane's standing is `home` (A-53 Part 4).
+  for (const pane of frameOf([[code, 1]]).panes) aspects.push([`${code}/${pane.id}`, pane.aspect, pane.home.length > 0 ? 'home' : 'extent']);
 }
 note(`${CODES.length} single-country libraries produce ${aspects.length} panes; aspect range ${Math.min(...aspects.map((a) => a[1])).toFixed(3)} … ${Math.max(...aspects.map((a) => a[1])).toFixed(3)}`);
 
@@ -113,7 +114,7 @@ for (const vp of VIEWPORTS) {
   const ctx = await browser.newContext({ viewport: vp });
   const page = await openMap(ctx);
   const bad = await page.evaluate((specs) => {
-    const svg = document.querySelector('#tabpanel-map .worldmap__pane--main .worldmap__svg');
+    const svg = document.querySelector('#tabpanel-map .worldmap__pane .worldmap__svg');
     const before = svg.style.getPropertyValue('--pane-aspect');
     const out = [];
     for (const [label, aspect] of specs) {
@@ -137,7 +138,7 @@ for (const vp of VIEWPORTS) {
     bad.slice(0, 6));
   // …and the four A-50 names, printed as the box each one now gets.
   const sample = await page.evaluate((specs) => {
-    const svg = document.querySelector('#tabpanel-map .worldmap__pane--main .worldmap__svg');
+    const svg = document.querySelector('#tabpanel-map .worldmap__pane .worldmap__svg');
     const before = svg.style.getPropertyValue('--pane-aspect');
     const out = specs.map(([label, aspect]) => {
       svg.style.setProperty('--pane-aspect', String(aspect));
@@ -185,14 +186,20 @@ head('C  A-49 C8″ — THE DETACHED PANE ON SCREEN');
   const panes = await page.evaluate(() => [...document.querySelectorAll('#tabpanel-map .worldmap__pane')].map((el) => ({
     id: el.dataset.pane,
     cls: el.className,
+    kind: el.dataset.paneKind,
     caption: el.querySelector('.worldmap__panecap')?.textContent ?? null,
     aria: el.querySelector('svg').getAttribute('aria-label'),
     codes: [...el.querySelectorAll('path[data-code]')].map((p) => p.dataset.code),
     keys: [...el.querySelectorAll('path[data-code]')].length,
   })));
   note(`panes: ${panes.map((p) => `${p.id}[${p.codes}]`).join('  ')}`);
-  ok(panes.length === 2 && panes[1].id === 'detached', 'the detached pane is on screen and is LAST', panes.map((p) => p.id));
-  ok(/worldmap__pane--detached/.test(panes[1].cls), 'it carries its own class, so the stylesheet can size it', panes[1].cls);
+  // [I-8i] RE-POINTED. A-51 G3 supersedes C8'' — a detached part is a component, therefore an
+  // ordinary pane — and A-51 G4 withdraws `role` and the role-keyed CSS modifiers. The claim is
+  // unchanged and is read off `data-pane-kind`, which is a `home.length` check in the view.
+  ok(panes.length === 2 && panes[1].id === 'p1', 'the extent pane is on screen and is LAST', panes.map((p) => p.id));
+  ok(panes[1].kind === 'extent' && panes[0].kind === 'home',
+    'it is typed by `home`, not by a role modifier — one kind of pane, two kinds of claim',
+    panes.map((p) => p.kind));
   ok(/Distant parts of/i.test(panes[1].caption ?? ''), 'A-49 Part 4 consequence 3: it is NOT captioned "Shown separately"', panes[1].caption);
   ok(!/Shown separately/i.test(panes.map((p) => p.caption).join(' ')), 'and nothing on this library says "Shown separately"');
   ok(/Distant parts of FR/i.test(panes[1].aria ?? ''), 'its aria-label has the matching third branch', panes[1].aria);
@@ -202,7 +209,7 @@ head('C  A-49 C8″ — THE DETACHED PANE ON SCREEN');
   const labels = await page.evaluate(() => [...document.querySelectorAll('#tabpanel-map path[data-code="FR"]')].map((p) => p.getAttribute('aria-label')));
   ok(labels.length === 2 && labels[0] === labels[1],
     'both FR paths carry the identical attribution — the tap is the same fact in both panes', labels);
-  await page.locator('#tabpanel-map .worldmap__pane--detached path[data-code="FR"]').click();
+  await page.locator('#tabpanel-map [data-pane-kind="extent"] path[data-code="FR"]').click();
   const drill = await page.locator('#tabpanel-map .worldmap__drill h2').textContent();
   ok(drill.trim() === 'FR', 'the detached pane is tappable and drills down to the same country', drill);
   await ctx.close();

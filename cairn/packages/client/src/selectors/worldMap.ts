@@ -24,9 +24,19 @@
  * the same function the day map fits with; and at **I-8h** a country's own geometry arrives
  * the same way, as core's `countryParts` (§4.4 **A-49**). §4.4's *"the client never computes
  * bounds"* is honoured as written: there is no second bounds implementation, no second
- * clustering loop and no second guard. What this file adds on top of core is exactly three
- * things, all of them framing policy — `WORLD_CLUSTER_THRESHOLD_KM`, the dominance/ranking
- * rule, and `FRAME_PAD_FRACTION`.
+ * clustering loop and no second guard.
+ *
+ * **At I-8i (§4.4 A-51) the framing model itself was reopened rather than patched a fifth
+ * time.** Four rounds ruled on *"which countries does the default frame show, and at what
+ * rectangle"* by deciding **once** whether to split and then drawing one thing called *the main
+ * pane*; round 38 measured the consequence — a country's rendered size depended on where the
+ * traveller's **other** countries were, so `FR`+`US` painted France at 899 px² in a 134°-wide
+ * strip. A-51 replaces the split test, the hierarchy and the cap with one rule: **every
+ * connected component of the canonical part list is a pane**, equally weighted, ordered by how
+ * much of the record each carries. `role` is withdrawn; `home` is what says whether a pane is a
+ * place the record attributes travel to (A-53). What this file adds on top of core is now
+ * exactly two things, both framing policy — `WORLD_CLUSTER_THRESHOLD_KM` and
+ * `FRAME_PAD_FRACTION`. The ranking rule is an ordering, not a frame.
  *
  * `MIN_SPAN_KM` still arrives with `mapBounds`, but **A-42** withdrew the claim A-40 made
  * about it: on this surface it is a **degeneracy guard** — it is what stops `mapBounds`
@@ -65,19 +75,17 @@ export type WorldMapCountry = {
 };
 
 /**
- * One frame of the atlas — ARCHITECTURE §4.4 **A-41** Part 5.
+ * One frame of the atlas — ARCHITECTURE §4.4 **A-51** G4, read with **A-53** Part 4.
  *
- * A pane is a rectangle to look through, plus the list of countries seen through it. There
- * are at most three **geographic** ones (C7): the primary, and up to two insets, the last of
- * which is the union of every remaining cluster — **plus the `detached` pane** when a drawn
- * country has geometry its own pane is not connected to (§4.4 **A-49** C8″/C7′), so
- * `panes.length` is 1…4. Placement and size on screen are CSS; nothing here is a pixel.
+ * A pane is a rectangle to look through, plus the list of countries seen through it. **There is
+ * exactly one kind of pane and there is no hierarchy**: every connected component of the
+ * canonical part list is a pane (G3), no pane is a union of clusters, there is no cap, and
+ * `role` is withdrawn along with the split test that produced it. Placement and size on screen
+ * are CSS; nothing here is a pixel.
  */
 export type WorldMapPane = {
-  /** `'main' | 'inset-1' | 'inset-2' | 'detached'`. Positional, stable, deterministic. */
+  /** `p0`…`pN`. Positional, stable, deterministic. */
   id: string;
-  /** **A-49 C8″** adds the third value, and a `'detached'` pane is always last (I5). */
-  role: 'main' | 'inset' | 'detached';
   /** `"minX minY width height"`, padded per A-41 Part 4. The ONLY fit mechanism. */
   viewBox: string;
   /** Core's own `MapBounds` for this pane's countries, UNpadded. */
@@ -85,14 +93,43 @@ export type WorldMapPane = {
   /** The codes drawn in this pane, in canonical row order. The pane's caption is written from these. */
   codes: CountryCode[];
   /**
-   * Σ `tripIds.length` over `codes` — the weight C6 ranked by, so the surface never re-derives
-   * it.
+   * The codes whose **principal** part is here. Every drawn code is `home` in exactly one pane.
    *
-   * **A-49 Part 4 consequence 2: this no longer sums to `W` across panes.** The detached pane
-   * repeats a weight already counted in the pane holding the same code's principal part. It is
-   * kept per pane so a caption can honestly say *"US · 1 trip"*, and **nothing may re-derive
-   * `W` from `panes`** — C5's total and C6's ordering run over clusters, before any pane
-   * exists (I15).
+   * **§4.4 A-53 Part 4 — read this before reading *"one kind of pane"* as *"every pane is a
+   * place you went"*:**
+   *
+   * > **A pane is a rectangle to look through. It is not a destination.** Every pane is one
+   * > connected component of the canonical part list (A-51 G3), and its `codes` are the codes
+   * > with geometry inside it.
+   * >
+   * > - A **home pane** is a pane with `home.length > 0` — at least one code's **principal**
+   * >   part is in it. `weight >= 1`. This is a place the record attributes travel to. Its
+   * >   caption names its `codes`.
+   * > - An **extent pane** is a pane with `home.length === 0` and therefore `weight === 0`. It
+   * >   holds only non-principal parts: geography that belongs to a country the traveller
+   * >   visited, framed where it is because it is not near anything else on the map. Its caption
+   * >   is **"distant parts of"** its codes, it may **never** say *"shown separately"* and it
+   * >   may never be phrased as a destination.
+   * >
+   * > **`weight` is the claim; the grid cell is not.** `weight` is `Σ tripIds.length` over
+   * > `home`, it is additive to `W` (I5), and it is the only quantity in the frame that asserts
+   * > *"travel happened here"*. Cell size asserts nothing — it is a viewport.
+   *
+   * Membership is geometry (`countryParts`, and the record carries no finer geographic fact than
+   * an ISO code — A-53 Part 2); standing is `home`; priority is order (**I18**: every home pane
+   * precedes every extent pane, strictly, as a theorem of G5); disclosure is the caption (G8).
+   * At `WORLD_CLUSTER_THRESHOLD_KM` over the shipped index only `FR`, `UM` and `US` have a
+   * non-principal part at all, so **at most three extent panes can exist planet-wide**.
+   */
+  home: CountryCode[];
+  /**
+   * Σ `tripIds.length` over **`home`** — A-51 G4, and the only quantity in the frame that
+   * claims travel happened somewhere.
+   *
+   * **Additive**: every code has exactly one principal part (A-48 C2′) and therefore exactly one
+   * home pane, so `Σ pane.weight === W` for every library (I5). A-49 Part 4 consequence 2's
+   * caveat — that the detached pane repeated a weight already counted — disappears with the
+   * detached pane rather than being managed.
    */
   weight: number;
   /**
@@ -111,7 +148,8 @@ export type WorldMapFrame = {
   viewBox: string;
   /**
    * **The PAINT list** — §4.4 **A-49** Part 4: one entry per **(code, pane)**, so a country
-   * with a detached part appears twice, with the same `tripIds` and `provisional` in both.
+   * whose geometry reaches two panes appears twice, with the same `tripIds` and `provisional`
+   * in both.
    *
    * Ordered by §4.4 **A-48** C9: descending index position, so the largest paints first and
    * the smallest ends up on top and stays hit-testable. It is NOT a country list and it is NOT
@@ -128,8 +166,10 @@ export type WorldMapFrame = {
   /** `=== panes[0].bounds`. Core's own `MapBounds` — `clamped` included, and nothing renders it (A-42 (c)). */
   bounds: core.MapBounds;
   /**
-   * 1…4 entries; `panes[0].role === 'main'`; the geographic insets follow in C6 order; a
-   * `'detached'` pane, when it exists, is last and is the only one (A-49 C7′, I3, I5).
+   * **One pane per connected component of the canonical part list** — A-51 G3/G6. No cap, no
+   * union-of-the-rest pane, no hierarchy. Ordered by G5: `weight` descending, then `home.length`
+   * descending, then the component's lowest position in the canonical part list ascending — so
+   * `panes[0]` is the cluster carrying most of the record and, by I18, is always a **home** pane.
    */
   panes: WorldMapPane[];
   /** Codes `travelStats` named that the shipped index cannot fill. Rendered as a stated hole. */
@@ -271,171 +311,145 @@ function paneFrame(bounds: core.MapBounds): { viewBox: string; aspect: number } 
  * @param index the bundled country index, or a test fixture; an argument, never a global.
  */
 export function worldMapFrame(stats: core.TravelStats, index: core.CountryIndex): WorldMapFrame {
-  // ---- C1: the population. Canonical row order, minus the codes the index cannot fill. ----
+  // ---- G1 (A-41 C1): the population. Canonical row order, minus the codes the index cannot
+  // fill. Unchanged by A-51. ----
   type Drawn = {
     code: CountryCode;
     provisional: boolean;
     tripIds: string[];
     /** A-49 P: the country's own landmasses, core's answer, at the frame's own threshold. */
     parts: core.CountryPart[];
-    /** C2′: ONE key point per code, core's own `countryKeyPoint`. */
-    key: core.LatLng;
   };
   const drawn: Drawn[] = [];
   const missing: CountryCode[] = [];
 
   for (const row of stats.countries) {
-    // C2′ (A-48) and P (A-49): ONE key point and ONE set of parts per code, and **core**
-    // decides both. The client may not derive either — where a country is, and which pieces
-    // it is in, are geometric properties of the index exactly as `box` and `countryOf` are,
-    // and computing them here would be the second bounds computation A-40 clause 2 forbids.
-    // A code may carry more than one entry (§8.4 A-27's union) and both are the same country;
-    // `countryParts` unions them for the same reason `countryKeyPoint` does.
-    const key = core.countryKeyPoint(row.code, index);
+    // **P (A-49), and it is now the ONLY geometric input to the frame** (A-51 G2, Part 6).
+    // Core decides which pieces a country is in; the client may not derive it — that is a
+    // geometric property of the index exactly as `box` and `countryOf` are, and computing it
+    // here would be the second bounds computation A-40 clause 2 forbids. A code may carry more
+    // than one entry (§8.4 A-27's union) and both are the same country; `countryParts` unions
+    // them. `countryKeyPoint` is no longer called here: G3 clusters PARTS, and the principal
+    // part's `key` IS the country key point bit-for-bit (I12), so C2′'s content survives as a
+    // property of `countryParts` and the frame stops having two answers to "where is this
+    // country" — A-51 Part 6.
     const parts = core.countryParts(row.code, index, WORLD_CLUSTER_THRESHOLD_KM);
-    // `null` and `[]` are the same answer — the index cannot fill this code — and A-40
-    // clause 3 says what happens then: it is stated, never dropped. A code whose every ring
-    // is degenerate has a key point and no parts, and A-49 sends it here; KD-73.
-    if (key === null || parts.length === 0) {
+    // **A-52**: `[]` means "the index carries no ring for this code", and nothing else — the
+    // `ring.length >= 6` filter came out, so this is the same condition `countryKeyPoint`
+    // answers `null` to and the `missing` test has ONE answer rather than two. A-40 clause 3
+    // says what happens then: it is stated, never dropped.
+    if (parts.length === 0) {
       missing.push(row.code);
       continue;
     }
-    drawn.push({ code: row.code, provisional: row.provisional, tripIds: row.tripIds, parts, key });
+    drawn.push({ code: row.code, provisional: row.provisional, tripIds: row.tripIds, parts });
   }
 
-  // ---- C3/C4: the partition. Core owns the algorithm; this file owns the threshold. ----
-  const clusters = core.clusterPoints(drawn.map((x) => x.key), WORLD_CLUSTER_THRESHOLD_KM);
-  const weightOf = (group: readonly number[]) => group.reduce((n, i) => n + drawn[i].tripIds.length, 0);
-  const lowestCode = (group: readonly number[]) =>
-    group.map((i) => drawn[i].code).reduce((a, b) => (b < a ? b : a), group.length ? drawn[group[0]].code : '');
-  const totalWeight = weightOf(drawn.map((_, i) => i));
-
-  // ---- C6: ranking — weight desc, then country count desc, then lowest ISO code asc. The
-  // last key is a tie-break only and encodes nothing about any country's identity. ----
-  const ranked = clusters.slice().sort((a, b) => {
-    const wa = weightOf(a), wb = weightOf(b);
-    if (wa !== wb) return wb - wa;
-    if (a.length !== b.length) return b.length - a.length;
-    const la = lowestCode(a), lb = lowestCode(b);
-    return la < lb ? -1 : la > lb ? 1 : 0;
-  });
-
-  // ---- C5: the dominance test. Clusters alone never split the frame — a frame HAS a subject
-  // only when one part of the history dominates it, and a genuine tie is not broken by
-  // alphabet, because that would demote half a traveller's history on a coin flip. ----
-  const split = ranked.length >= 2 && 2 * weightOf(ranked[0]) > totalWeight;
-
-  // ---- C7: at most three panes, and every drawn country is in exactly one of them. The
-  // third is the union of every remaining cluster, re-sorted into canonical row order. ----
-  let paneGroups: number[][];
-  if (!split) {
-    paneGroups = [drawn.map((_, i) => i)];
-  } else if (ranked.length === 2) {
-    paneGroups = [ranked[0], ranked[1]];
-  } else {
-    paneGroups = [ranked[0], ranked[1], ranked.slice(2).flat().sort((a, b) => a - b)];
-  }
-
-  // ---- C8′ (A-49): a pane frames the parts its subject is CONNECTED TO. ----
+  // ---- G2: the atoms are PARTS, and the canonical part list is the frame's only ordinal. ----
   //
-  // This is the clause A-48 did not reach, and R37-1 is what it cost: C2′ decided clustering
-  // from a country's principal ring while C8 still fitted `mapBounds` over the union of every
-  // index entry's box, so a pane that knew France was in France framed French Guiana anyway
-  // (81.1° × 49.1° and 1.95% land for a France-and-Greece library). Both decisions are now the
-  // same rule at the same threshold, over the same kind of point.
-  //
-  // For each pane: take every part of every member code, cluster their key points with the ONE
-  // kernel at the ONE threshold, and keep the components that contain at least one member's
-  // PRINCIPAL part. Everything else is detached and goes to its own pane (C8″) rather than
-  // being cropped — constraint 1 and I4 cannot both hold any other way. This closes KD-70.
-  type Assigned = { owner: number; part: core.CountryPart };
-  const detachedParts: Assigned[] = [];
+  // Drawn codes in canonical row order, each code's parts in `countryParts`' own order. Every
+  // ordering decision below is a position in this list, so no `Map`/`Set` iteration order and
+  // no second sort key is ever needed (A-51 G2/G5).
+  type Atom = { owner: number; part: core.CountryPart };
+  const atoms: Atom[] = [];
+  for (let k = 0; k < drawn.length; k++) for (const part of drawn[k].parts) atoms.push({ owner: k, part });
 
-  const inFrameOf = (group: readonly number[]): Assigned[] => {
-    const flat: Assigned[] = [];
-    for (const k of group) for (const part of drawn[k].parts) flat.push({ owner: k, part });
-    if (flat.length === 0) return flat;
-    const components = core.clusterPoints(flat.map((f) => f.part.key), WORLD_CLUSTER_THRESHOLD_KM);
-    const inFrame: Assigned[] = [];
-    for (const component of components) {
-      // A-49 Part 2's premise — "a pane's member codes are one component of the country graph"
-      // — holds for a pane that IS one cluster, and not for the two panes C7 can build out of
-      // several (the no-split pane, and `inset-2`'s union of clusters 3…N). C8′ is written as
-      // the UNION of the components holding a principal part, which is well defined either
-      // way, so this loop is the clause verbatim and needs no tie-break, scan order or choice.
-      // KD-72.
-      if (component.some((i) => flat[i].part.principal)) {
-        for (const i of component) inFrame.push(flat[i]);
-      } else {
-        for (const i of component) detachedParts.push(flat[i]);
-      }
-    }
-    return inFrame;
-  };
+  // ---- G3 + C4: ONE partition, and every component is a pane. ----
+  //
+  // This is the whole of A-51. **One** `clusterPoints` call, at A-48 C3′'s connected-components
+  // semantics, over the flat part list — A-41 Part 6's one kernel, called once where the model
+  // it replaces called it `1 + panes.length` times. It subsumes C3′'s country-level call (two
+  // countries share a pane iff two of their parts are within the threshold), and it deletes
+  // **C5** (there is no split decision left to make), **C7/C7′** (no cap, no union-of-the-rest
+  // pane), **C8′** (a pane IS one component, so "frame the parts your subject is connected to"
+  // is the definition rather than a repair) and **C8″** (a detached part is simply a component,
+  // therefore a pane, therefore already drawn, captioned and tappable).
+  //
+  // Every pane satisfies L1 by definition — its parts admit a spanning tree every edge of which
+  // is under the threshold — so a pane can be wide only because its own countries are big or
+  // because a genuine chain of visited ground spans it, never because two things it shows are
+  // far apart (I16). And it satisfies L2 by construction: a component is a function of its own
+  // members, so a country's rendered extent no longer depends on where the traveller's OTHER
+  // countries are (I17), which is the defect R38-2 measured on 80% of two-country libraries.
+  const components = core.clusterPoints(atoms.map((a) => a.part.key), WORLD_CLUSTER_THRESHOLD_KM);
 
   /** The four corners of a part's box — what `mapBounds` fits. */
-  const cornersOf = (parts: readonly Assigned[]): core.LatLng[] =>
-    parts.flatMap(({ part }) => {
-      const [minLng, minLat, maxLng, maxLat] = part.box;
+  const cornersOf = (members: readonly number[]): core.LatLng[] =>
+    members.flatMap((i) => {
+      const [minLng, minLat, maxLng, maxLat] = atoms[i].part.box;
       return [
         { lat: minLat, lng: minLng }, { lat: minLat, lng: maxLng },
         { lat: maxLat, lng: maxLng }, { lat: maxLat, lng: minLng },
       ];
     });
 
-  /** `(code, pane)` → the parts of that code drawn in that pane, in index order. */
-  const partsPerPane: Array<Map<number, core.CountryPart[]>> = [];
-  const push = (into: Map<number, core.CountryPart[]>, a: Assigned) => {
-    const list = into.get(a.owner);
-    if (list) list.push(a.part);
-    else into.set(a.owner, [a.part]);
-  };
+  // ---- G4/G5: one pane per component, ordered by how much of the record each carries. ----
+  //
+  // `home` is the codes whose PRINCIPAL part is in this component, so every drawn code is home
+  // in exactly one pane (A-48 C2′ gives each code exactly one principal part) and `weight` is
+  // additive to `W` again (I5). **`weight` orders; it does not frame** — that is the whole of
+  // what A-51 leaves it doing, and it is why the tie C5 could not break no longer exists.
+  //
+  // G5's third key is the component's lowest position in the canonical part list. Positions are
+  // unique, so the order is total by construction and C6's tie-break-by-alphabet is withdrawn
+  // rather than kept as a fallback. **I18 falls out of the first key**: a code in
+  // `stats.countries` has at least one trip, so `home.length > 0 ⇒ weight >= 1` and
+  // `home.length === 0 ⇒ weight === 0`, and every home pane therefore precedes every extent
+  // pane — which is what stops an `FR`-only history opening on French Guiana, whose component
+  // is first in the RAW order (A-53 Part 5).
+  type Built = { members: number[]; codes: CountryCode[]; home: CountryCode[]; weight: number };
+  const built: Built[] = components.map((members) => {
+    const owners = [...new Set(members.map((i) => atoms[i].owner))].sort((a, b) => a - b);
+    const home = owners.filter((k) => members.some((i) => atoms[i].owner === k && atoms[i].part.principal));
+    return {
+      members,
+      codes: owners.map((k) => drawn[k].code),
+      home: home.map((k) => drawn[k].code),
+      weight: home.reduce((n, k) => n + drawn[k].tripIds.length, 0),
+    };
+  });
 
-  const panes: WorldMapPane[] = paneGroups.map((group, i) => {
-    const inFrame = inFrameOf(group);
+  built.sort((a, b) => {
+    if (a.weight !== b.weight) return b.weight - a.weight;
+    if (a.home.length !== b.home.length) return b.home.length - a.home.length;
+    // **KD-74:** on the shipped kernel this third key is a no-op — `clusterPoints` already emits
+    // its components in ascending lowest-member-index order and `sort` is stable, so it agrees
+    // with the array order it is sorting. It stays because it is what makes the ordering total
+    // *as a statement about the frame* rather than as an accident of the kernel's output
+    // convention, which is the class of assumption A-48 C3′ exists to remove. The fault that
+    // measures it is `qa/i8d-faults.sh` fault 7 — reverse it, and two equal-weight panes swap.
+    return a.members[0] - b.members[0];
+  });
+
+  /** `(code, pane)` → the parts of that code drawn in that pane, in canonical part-list order. */
+  const partsPerPane: Array<Map<number, core.CountryPart[]>> = [];
+
+  const panes: WorldMapPane[] = built.map((group, i) => {
     const own = new Map<number, core.CountryPart[]>();
-    for (const a of inFrame) push(own, a);
+    // `members` is ascending (`clusterPoints`' own output convention), and the canonical part
+    // list is code-major, so each code's parts land in index order without a sort.
+    for (const m of group.members) {
+      const list = own.get(atoms[m].owner);
+      if (list) list.push(atoms[m].part);
+      else own.set(atoms[m].owner, [atoms[m].part]);
+    }
     partsPerPane.push(own);
     // The extent, unchanged in mechanism: `core.mapBounds` and nothing else, and the client
     // still computes no bounds. `mapBounds` brings `MIN_SPAN_KM` with it, which on this
     // surface is a degeneracy guard rather than a legibility one (A-42 (a)).
-    const bounds = core.mapBounds(cornersOf(inFrame));
+    const bounds = core.mapBounds(cornersOf(group.members));
     const { viewBox, aspect } = paneFrame(bounds);
-    return {
-      id: i === 0 ? 'main' : `inset-${i}`,
-      role: (i === 0 ? 'main' : 'inset') as 'main' | 'inset',
-      viewBox,
-      bounds,
-      // Every member code keeps at least its principal part in frame, so `pane.codes` is the
-      // group in canonical row order exactly as C7 left it.
-      codes: group.map((k) => drawn[k].code),
-      weight: weightOf(group),
-      aspect,
-    };
+    return { id: `p${i}`, viewBox, bounds, codes: group.codes, home: group.home, weight: group.weight, aspect };
   });
 
-  // ---- C8″: nothing is cropped. The detached pane, appended after the geographic ones. ----
-  //
-  // It exists iff at least one part is detached, is never `panes[0]`, is not ranked, and does
-  // not participate in C5's `W` or C6's ordering (I15) — all three of those were computed
-  // above, over clusters, before any pane existed.
-  if (detachedParts.length > 0) {
-    const own = new Map<number, core.CountryPart[]>();
-    // Canonical row order: the owners are drawn indices, and `drawn` is C1's canonical list.
-    for (const a of detachedParts.slice().sort((x, y) => x.owner - y.owner)) push(own, a);
-    const bounds = core.mapBounds(cornersOf(detachedParts));
+  // I7, unchanged: `bounds.empty` ⇒ exactly one pane, `WHOLE_WORLD`, no padding. There is no
+  // component when there is no part, and "the whole world" is the honest answer to "show me
+  // everywhere I have been" when the answer is nowhere.
+  if (panes.length === 0) {
+    const bounds = core.mapBounds([]);
     const { viewBox, aspect } = paneFrame(bounds);
-    const codes = [...own.keys()].map((k) => drawn[k].code);
-    partsPerPane.push(own);
-    panes.push({
-      id: 'detached',
-      role: 'detached',
-      viewBox,
-      bounds,
-      codes,
-      weight: [...own.keys()].reduce((n, k) => n + drawn[k].tripIds.length, 0),
-      aspect,
-    });
+    partsPerPane.push(new Map());
+    panes.push({ id: 'p0', viewBox, bounds, codes: [], home: [], weight: 0, aspect });
   }
 
   // ---- C9 (A-48 Part 5): paint order, and ONLY on the emitted array. ----
@@ -451,7 +465,8 @@ export function worldMapFrame(stats: core.TravelStats, index: core.CountryIndex)
   //
   // A-49 Part 4: the emitted array is now one row per **(code, pane)**. The rows are built in
   // canonical-code order, then pane order, and the sort below is stable — so the two rows of a
-  // code with a detached part keep their pane order, and nothing depends on a tie-break.
+  // code whose geometry reaches two panes keep their pane order, and nothing depends on a
+  // tie-break.
   const lastEntryAt = new Map<string, number>();
   index.countries.forEach((entry, i) => lastEntryAt.set(entry.code, i));
 

@@ -78,6 +78,7 @@ const readPanes = () => [...document.querySelectorAll('#tabpanel-map .worldmap__
   const cs = getComputedStyle(svg);
   return {
     id: p.getAttribute('data-pane'),
+    kind: p.getAttribute('data-pane-kind'),
     codes: p.getAttribute('data-pane-codes'),
     viewBox: svg.getAttribute('viewBox'),
     box: { w: Math.round(r.width), h: Math.round(r.height) },
@@ -107,25 +108,32 @@ for (const scheme of ['light', 'dark']) {
   console.log(`  -- ${scheme} --`);
   // [I-8h] RE-POINTED: A-49 C8″ appends the detached pane holding Alaska/Hawaii/the Aleutians,
   // so the reference sample renders THREE panes — two geographic, one detached.
-  ok(panes.length === 3 && panes.filter((p) => p.id !== 'detached').length === 2,
-    `${scheme}: two geographic panes plus the detached one are on screen`, panes.map((p) => p.id));
-  const inset = panes.find((p) => p.id === 'inset-1');
-  ok(!!inset && /Shown separately/i.test(inset.caption?.text ?? ''), `${scheme}: the inset carries its caption`, inset?.caption?.text);
+  // [I-8i] RE-POINTED again: A-51 G3/G4 withdraw `role` and the inset hierarchy, so the
+  // reference sample is three EQUAL panes — Europe, the contiguous US, and Alaska as an extent
+  // pane. The captions this section measures for contrast are now on every pane (G8), and the
+  // "Shown separately" label is withdrawn with the hierarchy that justified it.
+  ok(panes.length === 3 && panes.filter((p) => p.kind === 'home').length === 2,
+    `${scheme}: two home panes plus the extent one are on screen`, panes.map((p) => `${p.id}/${p.kind}`));
+  const inset = panes.find((p) => p.id === 'p1');
+  ok(!!inset && (inset.caption?.text ?? '') !== '', `${scheme}: the second pane carries its caption (G8: EVERY pane does)`, inset?.caption?.text);
+  ok(!panes.some((p) => /Shown separately/i.test(p.caption?.text ?? '')),
+    `${scheme}: nothing says "Shown separately" — the phrase is withdrawn with the hierarchy`,
+    panes.map((p) => p.caption?.text));
   ok(inset?.caption?.text?.includes('US'), `${scheme}: the caption names the code (A-41 constraint 3)`, inset?.caption?.text);
-  ok(inset?.paths.length === 1 && inset.paths[0].code === 'US', `${scheme}: the inset draws the United States`, inset?.paths.map((p) => p.code));
+  ok(inset?.paths.length === 1 && inset.paths[0].code === 'US', `${scheme}: the second pane draws the United States`, inset?.paths.map((p) => p.code));
   // Every fill and the sea must be a real colour, not a broken var() fallback.
   const badFill = panes.flatMap((p) => p.paths).filter((x) => !/^rgba?\(/.test(x.fill) || /rgba\(0, 0, 0, 0\)/.test(x.fill));
   ok(badFill.length === 0, `${scheme}: every country path resolves to an opaque fill`, badFill.slice(0, 2));
   ok(panes.every((p) => !/rgba\(0, 0, 0, 0\)/.test(p.sea)), `${scheme}: every pane's sea background resolves`, panes.map((p) => p.sea));
   // The main pane's fill and the inset's must be the same ink — an inset is not a dimmer map.
   const mainFill = panes[0].paths[0]?.fill, insetFill = inset?.paths[0]?.fill;
-  ok(mainFill === insetFill, `${scheme}: the inset uses the same confirmed ink as the main pane`, { mainFill, insetFill });
+  ok(mainFill === insetFill, `${scheme}: every pane uses the same confirmed ink — no pane is a dimmer map`, { mainFill, insetFill });
   // Contrast of the two new text elements (A-41's caption), measured against the composited figure.
   if (inset?.caption) {
     const cLabel = contrast(inset.caption.colour, inset.caption.bg);
     const cCode = contrast(inset.caption.codeColour, inset.caption.bg);
-    note(`${scheme}: caption "SHOWN SEPARATELY" ${inset.caption.colour} on ${inset.caption.bg} = ${cLabel.toFixed(2)}:1 at ${inset.caption.size}; the code span = ${cCode.toFixed(2)}:1`);
-    if (cLabel < 4.5) found(`${scheme}: the "SHOWN SEPARATELY" caption is ${cLabel.toFixed(2)}:1 at ${inset.caption.size} — under WCAG AA's 4.5:1 for text below 18.66 px`);
+    note(`${scheme}: caption "${inset.caption.text}" ${inset.caption.colour} on ${inset.caption.bg} = ${cLabel.toFixed(2)}:1 at ${inset.caption.size}; the code span = ${cCode.toFixed(2)}:1`);
+    if (cLabel < 4.5) found(`${scheme}: the pane caption is ${cLabel.toFixed(2)}:1 at ${inset.caption.size} — under WCAG AA's 4.5:1 for text below 18.66 px`);
     ok(cCode >= 4.5, `${scheme}: the code span beside it clears 4.5:1`, cCode.toFixed(2));
   }
   // Country fill vs sea: the map has to be legible as a map.
@@ -200,10 +208,10 @@ head('C  390 px — THE PHONE (builder observation 2, measured)');
   // The caption must not overflow its pane at 390 px.
   const overflow = await page.evaluate(() => [...document.querySelectorAll('#tabpanel-map .worldmap__panecap')]
     .map((c) => ({ scroll: c.scrollWidth, client: c.clientWidth })));
-  ok(overflow.every((o) => o.scroll <= o.client + 1), 'the inset caption does not overflow at 390 px', overflow);
+  ok(overflow.every((o) => o.scroll <= o.client + 1), 'no pane caption overflows at 390 px', overflow);
   // The inset pane must still be big enough to be a map rather than a smear.
-  const inset = panes.find((p) => p.id === 'inset-1');
-  note(`inset pane box at 390 px: ${inset.box.w}×${inset.box.h} px`);
+  const second = panes.find((p) => p.id === 'p1');
+  note(`second pane box at 390 px: ${second.box.w}×${second.box.h} px`);
   await ctx.close();
 }
 
@@ -240,16 +248,21 @@ head('D  THREE PANES ON SCREEN (builder: "never on screen")');
   await page.waitForTimeout(500);
   const panes = await page.evaluate(readPanes);
   console.log(`  panes on screen: ${panes.map((p) => `${p.id}[${p.codes}] ${p.box.w}×${p.box.h}`).join('  ')}`);
-  // [I-8h] RE-POINTED at A-49 C7′: the cap is three GEOGRAPHIC panes, plus the detached one.
-  ok(panes.filter((p) => p.id !== 'detached').length === 3,
-    'a five-cluster library renders exactly three geographic panes (C7′/I3), on screen',
-    panes.map((p) => p.id));
-  ok(panes.length === 4 && panes[3].id === 'detached',
-    'C7′: the fourth pane on screen is the detached one, never a fourth cluster', panes.map((p) => p.id));
-  ok(panes.filter((p) => p.caption).length === 3,
-    'both insets AND the detached pane carry a caption', panes.map((p) => !!p.caption));
-  ok(/Distant parts of/i.test(panes[3].caption?.text ?? ''),
-    'A-49 Part 4 consequence 3: the detached pane does NOT say "shown separately"', panes[3].caption?.text);
+  // [I-8i] RE-POINTED at A-51 G6: the cap is WITHDRAWN, so a five-cluster library renders five
+  // home panes plus the extent one. The claims this block holds — nothing is folded away,
+  // nothing is drawn twice inside a pane, every pane is captioned, and the extent pane never
+  // says "shown separately" — are unchanged.
+  const homes = panes.filter((p) => p.kind === 'home');
+  const extents = panes.filter((p) => p.kind === 'extent');
+  ok(homes.length === 6,
+    'the planted library is SIX clusters, and it renders six home panes on screen (C7′ capped it at three)',
+    panes.map((p) => `${p.id}/${p.kind}`));
+  ok(extents.length === 1 && panes[panes.length - 1].kind === 'extent',
+    'A-53 I18: the extent pane is last, and there is one of it', panes.map((p) => p.kind));
+  ok(panes.every((p) => p.caption), 'A-51 G8: EVERY pane carries a caption', panes.map((p) => !!p.caption));
+  ok(/Distant parts of/i.test(panes[panes.length - 1].caption?.text ?? ''),
+    'A-49 Part 4 consequence 3, unchanged by A-51: the extent pane does NOT say "shown separately"',
+    panes[panes.length - 1].caption?.text);
   const drawn = panes.flatMap((p) => p.paths.map((x) => x.code)).sort();
   // [I-8h] A-49 Part 4 consequence 1: a code with a detached part is DELIBERATELY drawn in two
   // panes — that is the only way A-41 constraint 1 and I4 can both hold. What must still be true
@@ -378,8 +391,16 @@ head('F  A-41 CONSTRAINT 1 — "STILL DRAWN, STILL ATTRIBUTED, STILL TAPPABLE"')
   // screen pixel — and is the ONE stated exception; a second entry here is a new finding.
   const ad = res.find((r) => r.code === 'AD');
   ok(ad && ad.self > 0, 'R36-7: AD hit-tests to itself where it had 0 self-hits under canonical paint order', ad);
-  ok(untappable.length <= 1 && untappable.every((r) => r.code === 'MF' || r.code === 'SX'),
-    'the only country with no self-hit-testable pixel is the MF/SX pair A-48 residue 6 defers',
+  // [I-8i] **RE-POINTED, and the widening is a disclosed cost of A-51 G7 rather than a defect in
+  // paint order — BUILD-NOTES KD-76.** The uniform `--pane-cap: min(38vh, 300px)` replaces
+  // A-50's main-pane `min(58vh, 460px)`, so a ONE-PANE library (the 239-code ceiling is exactly
+  // that) is drawn 35% shorter and three more sub-pixel microstates lose their self-hit. C9's
+  // paint order is unchanged and `AD` still hit-tests to itself; the set below is the same class
+  // A-48 residue 6 defers — two halves of one small island sharing a screen pixel — and A-51
+  // residue 1 is explicit that the chip list is the guarantee that covers them.
+  const DEFERRED = ['MF', 'SX', 'AI', 'BL', 'JE'];
+  ok(untappable.every((r) => DEFERRED.includes(r.code)),
+    'every country with no self-hit-testable pixel is in A-48 residue 6 / A-51 residue 1\'s deferred set',
     untappable.map((r) => `${r.code} under ${r.over}`));
   for (const r of untappable) note(`  A-48 residue 6: ${r.code} has ${r.inside} interior sample points, 0 self-hits, ${r.over} on top at every one — a scale collision, which no paint order fixes`);
   // The fallback that keeps this a rough edge rather than a lost country: the code chip list.
@@ -398,7 +419,7 @@ head('F  A-41 CONSTRAINT 1 — "STILL DRAWN, STILL ATTRIBUTED, STILL TAPPABLE"')
   // [I-8g] Why: paint order is now DESCENDING INDEX POSITION (A-48 C9), and the index is ordered
   // by ascending summed ring area, so a country whose fill contains another's is painted first and
   // the contained one ends up on top. Asserted on the DOM, in the order the browser paints it.
-  const order = await page.evaluate(() => [...document.querySelectorAll('#tabpanel-map .worldmap__pane--main path[data-code]')].map((n) => n.dataset.code));
+  const order = await page.evaluate(() => [...document.querySelectorAll('#tabpanel-map [data-pane="p0"] path[data-code]')].map((n) => n.dataset.code));
   const lastPos = new Map();
   core.COUNTRY_INDEX.countries.forEach((e, i) => lastPos.set(e.code, i));
   const positions = order.map((c) => lastPos.get(c));

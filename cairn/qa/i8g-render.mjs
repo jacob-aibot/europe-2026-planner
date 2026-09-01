@@ -80,6 +80,7 @@ const readPanes = () => [...document.querySelectorAll('#tabpanel-map .worldmap__
   const r = svg.getBoundingClientRect();
   return {
     id: p.getAttribute('data-pane'),
+    kind: p.getAttribute('data-pane-kind'),
     codes: p.getAttribute('data-pane-codes'),
     viewBox: svg.getAttribute('viewBox'),
     aspect: svg.style.getPropertyValue('--pane-aspect'),
@@ -98,10 +99,14 @@ head('A  R36-1 — {FR ×2, GR ×1} ON A PHONE');
   // [I-8h] RE-POINTED at A-49 C7′: ONE GEOGRAPHIC pane, plus the detached pane French Guiana
   // now gets. The clustering claim — Greece is not in a "Shown separately" inset — is unchanged
   // and is asserted below.
-  ok(panes.filter((p) => p.id !== 'detached').length === 1,
-    'ONE geographic pane on screen — Greece is not in a "Shown separately" inset', panes.map((p) => p.id));
-  ok(panes.length === 2 && panes[1].id === 'detached',
-    'A-49 C8″: French Guiana is drawn in a captioned pane of its own', panes.map((p) => p.id));
+  // [I-8i] RE-POINTED again: A-51 G3 supersedes C8'' — a detached part is a component, therefore
+  // an ordinary pane — and `role` is withdrawn. A pane's standing is `data-pane-kind`, derived
+  // from `home.length`. The clustering claim is unchanged.
+  ok(panes.filter((p) => p.kind === 'home').length === 1,
+    'ONE home pane on screen — Greece is not in a "Shown separately" inset', panes.map((p) => `${p.id}/${p.kind}`));
+  ok(panes.length === 2 && panes[1].kind === 'extent',
+    'A-51 G3 (was A-49 C8″): French Guiana is drawn in a captioned pane of its own',
+    panes.map((p) => `${p.id}/${p.kind}`));
   ok(panes[0].codes === 'FR GR' && panes[0].paths.sort().join(',') === 'FR,GR',
     'both countries are drawn in it', { codes: panes[0].codes, paths: panes[0].paths });
   // [I-8h] RE-POINTED. The claim is that nothing on this library is captioned "Shown
@@ -155,7 +160,7 @@ head('B  R36-2 — {AE, AT, GR} IN THREE ROW ORDERS, READ OFF THE DOM');
     await ctx.close();
   }
   ok(new Set(seen).size === 1, 'every row order renders the identical frame (A-48 I9, on screen)', seen);
-  ok(seen[0] === 'main[AE,AT,GR]', 'and the frame is one pane holding all three — Austria is not the outlier', seen[0]);
+  ok(seen[0] === 'p0[AE,AT,GR]', 'and the frame is one pane holding all three — Austria is not the outlier', seen[0]);
 }
 
 await browser.close();

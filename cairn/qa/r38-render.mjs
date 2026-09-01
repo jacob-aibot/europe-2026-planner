@@ -91,7 +91,9 @@ const measure = (page) => page.evaluate(() => [...document.querySelectorAll('#ta
   const s = Math.min(r.width / w, r.height / h);
   const cap = getComputedStyle(pane).getPropertyValue('--pane-cap').trim();
   return {
-    id: pane.dataset.pane, role: pane.className.replace(/.*worldmap__pane--(\w+).*/, '$1'),
+    // [I-8i] `role` and its CSS modifiers are withdrawn (A-51 G4); standing is `data-pane-kind`,
+    // which the view derives from `pane.home.length` (A-53 Part 4).
+    id: pane.dataset.pane, role: pane.dataset.paneKind,
     viewBox: vb, codes: pane.dataset.paneCodes,
     boxW: Math.round(r.width * 100) / 100, boxH: Math.round(r.height * 100) / 100,
     drawnW: Math.round(w * s * 100) / 100, drawnH: Math.round(h * s * 100) / 100,
@@ -122,19 +124,28 @@ head('A  the FOUR-PANE layout, looked at — A-49 residue 2\'s worst case');
     const page = await openMap(ctx, FOUR);
     const panes = await measure(page);
     await page.screenshot({ path: `${SHOTS}/four-${vp.width}x${vp.height}.png`, fullPage: true });
-    ok(panes.length === 4, `${vp.label}: four panes are on screen`, panes.map((p) => p.id));
+    // [I-8i] RE-POINTED at A-51 G6: no cap, so this library is FIVE panes — FR, the FR/UM/US
+    // cluster, JP, UM's own chain and Alaska — where C7′ folded it into four. The claim this
+    // block holds (every pane is on screen, none has collapsed, none letterboxes) is unchanged.
+    ok(panes.length === bare.panes.length,
+      `${vp.label}: every pane the frame computed is on screen (${bare.panes.length})`,
+      [panes.map((p) => p.id), bare.panes.map((p) => p.id)]);
     for (const p of panes) {
       note(`${vp.width}px ${p.id} [${p.role}] codes=${p.codes} box ${p.boxW}x${p.boxH} painted ${p.drawnW}x${p.drawnH} at (${p.left},${p.top}) cap=${p.cap} paths=${p.paths.join(',')}`);
       ok(Math.abs(p.drawnW - p.boxW) <= 1 && Math.abs(p.drawnH - p.boxH) <= 1,
         `${vp.width}px ${p.id}: A-50 — no letterboxing in either direction`, [p.boxW, p.boxH, p.drawnW, p.drawnH]);
       ok(p.boxW >= 1 && p.boxH >= 1, `${vp.width}px ${p.id}: the pane has not collapsed`, [p.boxW, p.boxH]);
     }
-    const det = panes.find((p) => p.role === 'detached');
-    ok(det !== undefined && panes[panes.length - 1].role === 'detached', `${vp.label}: the detached pane is LAST`, panes.map((p) => p.role));
-    ok(det.codes === 'FR US', `${vp.label}: it carries BOTH codes with a distant part`, det.codes);
+    const det = panes.find((p) => p.role === 'extent');
+    ok(det !== undefined && panes[panes.length - 1].role === 'extent',
+      `${vp.label}: A-53 I18 — the extent pane is LAST`, panes.map((p) => p.role));
+    // [I-8i] It carries ONE code, not two: A-51 G3 gives each non-principal part its own
+    // component, so there is no union-of-detached pane left to hold both. That is R38-4 fixed
+    // structurally — French Guiana joined FR's own cluster here, and Alaska is the only extent.
+    ok(det.codes === 'US', `${vp.label}: the extent pane carries its own code, not a union`, det.codes);
     ok(/Distant parts of/i.test(det.caption ?? ''), `${vp.label}: captioned "Distant parts of", not "Shown separately"`, det.caption);
     ok(!/shown separately/i.test(det.caption ?? ''), `${vp.label}: and the outlier caption is absent from it`, det.caption);
-    ok(/Distant parts of FR, US/.test(det.aria ?? ''), `${vp.label}: the aria-label names both codes`, det.aria);
+    ok(/Distant parts of US/.test(det.aria ?? ''), `${vp.label}: the aria-label names the extent pane's code`, det.aria);
     // legibility, stated as a number rather than as a feeling
     const strip = panes.filter((p) => p.boxH < 60);
     if (strip.length) note(`${vp.width}px: pane(s) under 60 px tall — ${strip.map((p) => `${p.id} ${p.boxW}x${p.boxH} (aspect ${Number(p.aspectVar).toFixed(2)})`).join(' · ')}`);
@@ -208,7 +219,7 @@ head('D  UM — a 344°-wide main pane and a 0.028° detached speck, on screen')
   const panes = await measure(page);
   await page.screenshot({ path: `${SHOTS}/um-390.png`, fullPage: true });
   for (const p of panes) note(`UM ${p.id} [${p.role}] box ${p.boxW}x${p.boxH} painted ${p.drawnW}x${p.drawnH} aspect ${Number(p.aspectVar).toFixed(3)} paths=${p.paths.join(',')}`);
-  ok(panes.length === 2 && panes[1].role === 'detached', 'UM alone gets a detached pane (Navassa Island)', panes.map((p) => p.role));
+  ok(panes.length === 2 && panes[1].role === 'extent', 'UM alone gets an EXTENT pane (Navassa Island)', panes.map((p) => p.role));
   ok(panes[1].paths.length === 1 && panes[1].paths[0] === 'UM', 'and it draws UM', panes[1].paths);
   const mainH = panes[0].boxH;
   note(`UM's MAIN pane is ${panes[0].boxW} x ${mainH} px — a 344° world in a ${mainH} px strip (A-48 residue: there is no min-height)`);
@@ -283,44 +294,56 @@ head('F  R38-3 — A-50 measures the <svg>, not the pane the user sees');
         svg: [Math.round(sr.width), Math.round(sr.height)],
         capH: cr ? Math.round(cr.height) : 0,
         fill: (sr.width * sr.height) / (pr.width * (pr.height - (cr ? cr.height : 0))),
+        // [I-8i] The VERTICAL fill, which is what R38-3 is actually about: a flex row stretched
+        // every cell to its tallest sibling, and `align-items: start` on A-51 G7's grid does not.
+        // The HORIZONTAL leftover is A-50's `margin-inline: auto` centring a cap-limited narrow
+        // map, which A-50 states in as many words — see BUILD-NOTES KD-75.
+        fillY: sr.height / (pr.height - (cr ? cr.height : 0)),
       };
     }));
     for (const c of cells) {
-      const pct = 100 * c.fill;
-      note(`${vw}px ${label} · ${c.id}: cell ${c.cell.join('x')} (caption ${c.capH}px), <svg> ${c.svg.join('x')} — the map fills ${pct.toFixed(1)}% of the cell's map area`);
+      const pct = 100 * c.fillY;
+      note(`${vw}px ${label} · ${c.id}: cell ${c.cell.join('x')} (caption ${c.capH}px), <svg> ${c.svg.join('x')} — the map fills ${pct.toFixed(1)}% of the cell's HEIGHT and ${(100 * c.fill).toFixed(1)}% of its area`);
       if (worst === null || pct < worst[0]) worst = [pct, `${vw}px ${label} · ${c.id}`];
     }
     await page.close();
     await ctx.close();
   }
   note(`emptiest pane cell measured: ${worst[0].toFixed(1)}% full (${worst[1]}) — R37-4 filed CL at 33.4% of its box`);
-  note('for the shipped sample at 390px this cell was 95.0% full at 09f7ce4 (I-8g) and is 44.1% now: the detached pane halves the inset\'s flex row and `align-items: stretch` keeps the cell tall. Reproduce with `git worktree add /tmp/cairn-r38-wt 09f7ce4`, build, serve on 4174.');
-  ok(worst[0] >= 75, 'R38-3: no pane cell is more than a quarter empty once A-50 has landed', worst);
+  note('for the shipped sample at 390px this cell was 95.0% full at 09f7ce4 (I-8g) and 44.1% at I-8h: the detached pane halved the inset\'s flex row and `align-items: stretch` kept the cell tall. Reproduce with `git worktree add /tmp/cairn-r38-wt 09f7ce4`, build, serve on 4174.');
+  // [I-8i] RE-POINTED at A-51 G7 and measured on the VERTICAL axis, which is the one a flex row
+  // stretched and a grid with `align-items: start` does not. The area metric is kept in the note
+  // beside it, because a cap-limited narrow pane is centred by A-50's own rule (KD-75).
+  ok(worst[0] >= 99, 'R38-3: no pane cell is letterboxed vertically once A-51 G7 has landed', worst);
 }
 
 // ---------------------------------------------------------------------------
 head('G  R38-4 — how big a detached part actually renders when the pane is shared');
 {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 820 } });
+  // [I-8i] RE-POINTED. There is no `'detached'` pane id any more (A-51 G3); the pane holding a
+  // code's non-principal geometry is selected by `data-pane-kind="extent"`, which the view
+  // derives from `home.length`. **R38-4 is fixed structurally**: French Guiana no longer shares a
+  // rectangle with Alaska, so the "shared pane" case this section was written for cannot occur.
   const CASES = [
-    ['FR + GR (A-49 Part 1\'s own table)', [['FR', 2], ['GR', 1]], 'FR', 'detached'],
-    ['FR alone', [['FR', 1]], 'FR', 'detached'],
-    ['FR + US (two countries, one trip each)', [['FR', 1], ['US', 1]], 'FR', 'detached'],
-    ['four-pane', FOUR, 'FR', 'detached'],
+    ['FR + GR (A-49 Part 1\'s own table)', [['FR', 2], ['GR', 1]], 'FR'],
+    ['FR alone', [['FR', 1]], 'FR'],
+    ['FR + US (two countries, one trip each)', [['FR', 1], ['US', 1]], 'FR'],
+    ['four-pane', FOUR, 'US'],
   ];
   let worst = null;
-  for (const [label, spec, code, paneId] of CASES) {
+  for (const [label, spec, code] of CASES) {
     const page = await openMap(ctx, spec);
-    const sizes = await page.evaluate(({ code, paneId }) => [...document.querySelectorAll(`#tabpanel-map .worldmap__pane[data-pane="${paneId}"] path[data-code="${code}"]`)]
-      .map((p) => { const r = p.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)]; }), { code, paneId });
+    const sizes = await page.evaluate(({ code }) => [...document.querySelectorAll(`#tabpanel-map .worldmap__pane[data-pane-kind="extent"] path[data-code="${code}"]`)]
+      .map((p) => { const r = p.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)]; }), { code });
     for (const [w, h] of sizes) {
-      note(`${label}: ${code}'s detached part renders ${w} x ${h} css px = ${w * h} px²`);
+      note(`${label}: ${code}'s non-principal part renders ${w} x ${h} css px = ${w * h} px² in its own EXTENT pane`);
       if (worst === null || w * h < worst[0]) worst = [w * h, `${label} ${w}x${h}`];
     }
     await page.close();
   }
-  note(`smallest detached part measured: ${worst[0]} px² (${worst[1]}). Round 37 filed R37-1 MAJOR on Greece at 783 px²; WCAG 2.5.8 asks 24x24 = 576 px² of target.`);
-  ok(worst[0] >= 576, 'R38-4: every detached part is at least a 24x24 css px target', worst);
+  note(`smallest non-principal part measured: ${worst[0]} px² (${worst[1]}). Round 38 filed R38-4 on French Guiana at 7x8 = 56 px²; WCAG 2.5.8 asks 24x24 = 576 px² of target.`);
+  ok(worst[0] >= 576, 'R38-4 (FIXED by A-51 G3): every non-principal part is at least a 24x24 css px target', worst);
   await ctx.close();
 }
 

@@ -59,12 +59,40 @@ test('A-49 P: a code the index does not carry has NO parts — `[]`, never a gue
   assert.deepEqual(countryParts('france', IDX, 4000), []);
 });
 
-test('A-49 P: a code carrying no ring of three points has no parts — the frame treats it as `missing`', () => {
+/**
+ * **A-52 (QA R38-5) supersedes A-49 P's `ring.length >= 6` filter.** A ring the index carries is
+ * a ring the frame draws. A skipped ring was dropped from `d` **and** from the part's `box`, so
+ * the lost vertex sat outside the frame it was dropped from and nothing on screen hinted at it;
+ * and A-49's I11 could not see it, because I11 compared `countryParts`' output to itself.
+ *
+ * A degenerate ring has zero spherical area, so the strict `>` in the principal-ring comparison
+ * already keeps the earlier ring and a degenerate ring can never be principal. `countryParts`
+ * returns `[]` **iff** the index carries no ring at all for the code, which is exactly when
+ * `countryKeyPoint` returns `null` — so core's two functions stop disagreeing and
+ * `worldMapFrame`'s `missing` test has one answer rather than two.
+ */
+test('A-52 / R38-5: a two-point ring is a part, not a silent drop — the frame draws what the index carries', () => {
   const idx = fixture([
-    { code: 'ZM', rings: [[10, 20, 12, 20]], box: [10, 20, 12, 20] },   // a 2-point ring
-    { code: 'ZM', rings: [], box: [-4, -4, 6, 6] },                     // no rings at all
+    { code: 'ZM', rings: [square(10, 20, 2), [40, 20, 42, 20]], box: [10, 20, 42, 22] },
   ]);
-  assert.deepEqual(countryParts('ZM', idx, 4000), []);
+  const parts = countryParts('ZM', idx, 100);
+  assert.equal(parts.flatMap((p) => p.rings).length, 2, 'the two-point ring was dropped (the >= 6 filter)');
+  const thin = parts.find((p) => p.rings.some((r) => r.length === 4));
+  assert.ok(thin, 'the two-point ring reached no part at all');
+  assert.equal(thin.principal, false, 'a zero-area ring can never be principal');
+  assert.deepEqual([...thin.box], [40, 20, 42, 20], 'the ring contributes its own points to its part box');
+});
+
+test('A-52 / R38-5: `[]` means "the index carries no ring for this code", and nothing else', () => {
+  const none = fixture([{ code: 'ZM', rings: [], box: [-4, -4, 6, 6] }]);
+  assert.deepEqual(countryParts('ZM', none, 4000), [], 'no ring at all is still no part');
+  // The only surviving `[]` shapes: no entry, and an entry with no rings.
+  assert.deepEqual(countryParts('ZZ', none, 4000), []);
+  // …and a code whose ONLY ring is degenerate is now drawable, so it is no longer `missing`.
+  const thin = fixture([{ code: 'ZT', rings: [[10, 20, 12, 20]], box: [10, 20, 12, 20] }]);
+  assert.equal(countryParts('ZT', thin, 4000).length, 1);
+  assert.notEqual(countryKeyPoint('ZT', thin), null,
+    'countryKeyPoint and countryParts must agree about whether the code exists');
 });
 
 test('A-49 P: every code the shipped index carries has at least one part', () => {
@@ -167,11 +195,17 @@ test('A-49 P: `box` is the union of the part\'s own rings, never of the whole co
 // I12 — the key point is preserved bit-for-bit. A-49 Part 8.
 // ---------------------------------------------------------------------------
 
-test('A-49 I12: the principal part\'s key IS countryKeyPoint, 239 codes × 5 thresholds, 0 mismatches', () => {
+/**
+ * **R38-1 widens this sweep from five thresholds to eight, `900` among them.** Round 38's
+ * finding was that a five-point sample was asserting a property of the whole index; `900` is the
+ * threshold at which `ID` splits three ways and the two candidate ranking rules disagree, so it
+ * is the one that turns I12's own injected fault red (below) rather than leaving it vacuous.
+ */
+test('A-49 I12 / R38-1: the principal part\'s key IS countryKeyPoint, 239 codes × 8 thresholds, 0 mismatches', () => {
   assert.equal(CODES.length, 239, 'the shipped index no longer carries 239 codes');
   let checked = 0;
   const mismatches: string[] = [];
-  for (const t of [1, 100, 1000, 4000, 20000]) {
+  for (const t of [1, 100, 500, 900, 1000, 4000, 12000, 20000]) {
     for (const code of CODES) {
       const principal = countryParts(code, IDX, t).find((p) => p.principal);
       const key = countryKeyPoint(code, IDX) as LatLng;
@@ -181,7 +215,7 @@ test('A-49 I12: the principal part\'s key IS countryKeyPoint, 239 codes × 5 thr
       }
     }
   }
-  assert.equal(checked, 239 * 5);
+  assert.equal(checked, 239 * 8);
   assert.deepEqual(mismatches, [], `${mismatches.length} codes disagree with countryKeyPoint`);
 });
 
@@ -217,17 +251,23 @@ test('the injected fault: keying a part off its own BOX rather than its greatest
 });
 
 /**
- * **A-49's own named injected fault does not reproduce, and that is recorded rather than
- * quietly re-scored.** The ruling says *"rank parts by summed area instead of by their greatest
- * ring and `US` mismatches"*. Swept over all 239 codes at all five of I12's thresholds, the two
- * rankings choose the **same** part every time — on `US`, CONUS's single ring (7.98 M km²) beats
- * Alaska + Hawaii + the Aleutians summed (1.52 M km²) outright. The rule stays as A-49 writes it
- * (it is the rule that makes I12 *provable* rather than merely measured); what is false is that
- * this particular fault can be red. **KD-71.**
+ * **A-49's own named injected fault IS reachable, and this is the test that makes it red —
+ * QA R38-1.** KD-71 claimed *"the two rankings choose the same part every time"* and asserted it
+ * as `differ === []` over `{1, 100, 1000, 4000, 20000}` km. Round 38 swept 32 thresholds and
+ * found **seven** (code, threshold) pairs where they disagree; the sharpest is **`ID`@900 km**,
+ * where the greatest-ring rule picks Borneo (533,066 km² summed) and the summed-area rule picks
+ * the 11-ring Papua/Sulawesi/Maluku part (852,459 km²) — **2,481 km apart**. KD-71's claim was
+ * true only of `US` and only at 4,000 km, which is why it read as vacuous.
+ *
+ * **The one-line fix is `900` in the threshold list**, and the assertion flips: A-49's ruling
+ * *"rank parts by summed area instead of by their greatest ring and the key moves"* is the fault,
+ * it is red, and `ID` is what names it. No behaviour follows at 4,000 km — the frame's only
+ * caller — where `FR`/`UM`/`US` are the only multi-part codes and all three agree; what this
+ * buys is a tripwire that can actually fail if the index is ever regenerated.
  */
-test('A-49\'s "rank by summed area" fault is vacuous on the shipped index — 0 codes distinguish it', () => {
+test('R38-1: A-49\'s "rank by summed area" injected fault is REACHABLE, and ID@900 is what names it', () => {
   const differ: string[] = [];
-  for (const t of [1, 100, 1000, 4000, 20000]) {
+  for (const t of [1, 100, 900, 1000, 4000, 20000]) {
     for (const code of CODES) {
       const parts = countryParts(code, IDX, t);
       if (parts.length < 2) continue;
@@ -237,8 +277,21 @@ test('A-49\'s "rank by summed area" fault is vacuous on the shipped index — 0 
       if (!parts[best].principal) differ.push(`${code}@${t}`);
     }
   }
-  assert.deepEqual(differ, [], 'summed-area ranking now differs somewhere — A-49\'s fault is reachable after all');
-  // The `US` case the ruling names, with both numbers, so the claim is falsified by evidence.
+  assert.deepEqual(differ, ['ID@900'],
+    'the summed-area fault stopped being reachable at the thresholds this test samples');
+  // The two keys the fault moves between, so the red is a measurement rather than a label.
+  const id = countryParts('ID', IDX, 900);
+  const idSummed = id.map((p) => p.rings.reduce((n, r) => n + ringArea(r), 0));
+  const principal = id.findIndex((p) => p.principal);
+  let best = 0;
+  for (let i = 1; i < id.length; i++) if (idSummed[i] > idSummed[best]) best = i;
+  assert.notEqual(principal, best, 'ID@900 no longer distinguishes the two rankings');
+  assert.equal(round4(id[principal].key.lat), 0.0998, 'the greatest-ring rule keys off Borneo');
+  assert.equal(round4(id[best].key.lat), -4.7437, 'the summed-area rule keys off Papua/Sulawesi/Maluku');
+  assert.equal(Math.round(idSummed[principal]), 533066);
+  assert.equal(Math.round(idSummed[best]), 852459);
+  // `US` at 4,000 km — the case A-49's wording named, where the two rankings DO agree. This is
+  // what KD-71 generalised from, and it is kept so the correction is legible rather than erased.
   const us = countryParts('US', IDX, 4000);
   const summed = us.map((p) => p.rings.reduce((n, r) => n + ringArea(r), 0));
   assert.equal(Math.round(summed[0]), 7976690, 'CONUS');

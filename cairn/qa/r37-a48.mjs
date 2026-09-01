@@ -648,12 +648,16 @@ const frgr = frameOf([['FR', 2], ['GR', 1]]);
 // [I-8h] RE-POINTED. I-8g's criterion was `panes.length === 1`; A-49 C8″ adds the detached pane
 // that holds French Guiana, so the criterion becomes ONE GEOGRAPHIC pane plus that one. The
 // clustering claim it was written for — FR and GR share a frame — is unchanged.
-ok(frgr.panes.filter((p) => p.role !== 'detached').length === 1,
-  "I-8g's ship criterion, re-pointed: ONE geographic pane", frgr.panes.map((p) => p.codes));
-ok(frgr.panes.length === 2 && frgr.panes[1].role === 'detached' &&
+// [I-8i] RE-POINTED AGAIN, and the superseded rule is named rather than deleted: A-51 G3
+// withdraws `role` and C8″'s single trailing `'detached'` pane. A pane's standing is now
+// `home` — a pane with `home.length === 0` holds only non-principal geometry (A-53 Part 4) —
+// and the two assertions below are the identical claims read off `home` instead of `role`.
+ok(frgr.panes.filter((p) => p.home.length > 0).length === 1,
+  "I-8g's ship criterion, re-pointed: ONE home pane", frgr.panes.map((p) => p.codes));
+ok(frgr.panes.length === 2 && frgr.panes[1].home.length === 0 &&
    JSON.stringify(frgr.panes[1].codes) === '["FR"]',
-  'A-49 C8″: French Guiana is drawn in its own captioned pane, not cropped and not framed',
-  frgr.panes.map((p) => [p.role, p.codes]));
+  'A-51 G3 (was A-49 C8″): French Guiana is its own captioned pane, not cropped and not framed',
+  frgr.panes.map((p) => [p.home, p.codes]));
 ok(JSON.stringify(frgr.panes[0].codes) === '["FR","GR"]', 'and it contains both FR and GR', frgr.panes[0].codes);
 {
   const [x, y, w, h] = frgr.panes[0].viewBox.split(' ').map(Number);

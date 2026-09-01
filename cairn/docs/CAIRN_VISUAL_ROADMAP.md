@@ -105,13 +105,40 @@ update to this file added that instruction).
 > separate, already-documented problem, and the note now says which 60 lines of D3 to borrow if it
 > is ever tackled.
 >
-> **🛑 Nothing has been built and nothing will be until Jacob approves it.** He asked to decide this
-> himself before a builder pass, because the recommendation overturns his own earlier instruction to
-> use insets — while keeping the reason he gave for it. If he says no, today's map stands and the
-> defect stays on the record with its numbers. **The design side is now closed** — the membership
-> question above was the last open one, and no further architect round is owed. The full ruling is
-> `ARCHITECTURE.md` §4.4 **A-51**, **A-52** and **A-53**; the increment is **I-8i** in `ROADMAP.md`,
-> still marked not-dispatchable, waiting on him and on nothing else.
+> **✅ APPROVED BY JACOB AND NOW BUILT — 2026-09-01.** He approved the equal-pane model and the
+> home-pane/extent-pane answer to his membership question, and the builder pass has landed.
+> **I-8i is designed ✅ · built ✅ · verified ❌ — nobody has attacked it yet, and a tester round is
+> mandatory before it counts as anything more than "the code exists".**
+>
+> What actually changed, in one line each:
+>
+> - **France and the United States now get a map each.** Before, that history drew one 134°-wide
+>   strip of Atlantic with France 36 px across; now France is **342 × 236 px** — ninety times the
+>   area — and the United States is beside it at its own scale.
+> - **A country's size on your map no longer depends on where else you went.** Adding the US to a
+>   France history moves France's rectangle by *nothing at all*. That was the actual defect, and it
+>   was invisible to three previous testing rounds because you can only see it by comparing two
+>   different histories.
+> - **A trip to France opens on France.** The map's own geometry file happens to list French Guiana
+>   before mainland France, so without the ordering rule the page would have opened on a small
+>   rectangle of South America. It is now ordered by where you actually travelled, and there is a
+>   test that would catch it coming back.
+> - **Nothing is a footnote any more.** Every panel is the same size and every panel is labelled.
+>   A panel holding only distant territory of a country you visited elsewhere says *"distant parts
+>   of"* and carries a travel count of zero — it is never presented as a place you went.
+> - **Territories cannot flood the screen.** Measured over every one of the 28,441 possible
+>   two-country histories: at most **three** such panels can exist anywhere on Earth, and only if
+>   you have been to France, the United States, or the US Minor Outlying Islands.
+> - **The rest of the app is untouched** — the day map, the trip data, the saved files and the
+>   shared-code list are all byte-identical, and no dependency was added.
+>
+> Three things the builder disclosed rather than hid, all for the tester and the architect to look
+> at: a single-panel history (everywhere-you've-been at once) is drawn **35% shorter** than before,
+> because every panel now shares one height limit — which costs three more tiny island states their
+> tappable pixel, though every country is still reachable from the chip list; one line of the
+> written test plan asks for something the layout rule it inherits cannot do (a narrow map is
+> centred, not stretched); and one ordering rule is correct but currently redundant. All three are
+> written up in `BUILD-NOTES.md` as KD-74, KD-75 and KD-76.
 
 > **🟢 THE MAP'S NEW FRAME HAS NOW BEEN ATTACKED — the France/Greece defect really is fixed, and
 > a bigger one behind it is not — as of 2026-09-01 (this block is superseded on "what happens next"

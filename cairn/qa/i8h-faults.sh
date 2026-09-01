@@ -69,17 +69,32 @@ open(p,'w').write(s)
   rm -rf "$(dirname "$wt")"
 }
 
+# [I-8i] retired <label> <clause> <what-the-fault-used-to-mutate>
+# ARCHITECTURE §4.4 A-51 deletes the code some of these faults mutate — C5's split test, C7's
+# cap, C8''s detached pane, the `role` field. A mutation that matches nothing is not a MISMATCH
+# (the criterion did not stop being load-bearing; the clause it guarded was withdrawn), and it is
+# not deleted either: the mutation text is kept so a future reader can see what the rule was.
+# The live matrix for the model that replaced it is `qa/i8i-faults.sh`.
+RETIRED=0
+retired() {
+  RETIRED=$((RETIRED + 1))
+  printf '  RETIRED          %s\n                   withdrawn by %s; the fault mutated: %s\n' "$1" "$2" "$3"
+}
+
 say '1. C8 (superseded) comes back — the extent is the union of every entry box again'
+# [I-8i] Re-pointed at A-51's own extent line, which is the same clause at a new address: a
+# pane's bounds are `mapBounds` over ITS OWN component's part boxes. The fault widens it to every
+# part of every member code, which is A-48 C8 exactly.
 fault 'mapBounds over every entry box, per A-48 C8' \
   'packages/client/src/selectors/worldMap.ts' \
-  "s=s.replace('    const bounds = core.mapBounds(cornersOf(inFrame));','    const bounds = core.mapBounds(cornersOf(group.flatMap((k) => drawn[k].parts.map((part) => ({ owner: k, part })))));')" \
+  "s=s.replace('    const bounds = core.mapBounds(cornersOf(group.members));','    const bounds = core.mapBounds(cornersOf(atoms.map((_, i) => i).filter((i) => group.codes.includes(drawn[atoms[i].owner].code))));')" \
   packages/client/test/world-map.test.ts
 
 say '2. C8\x27 — the in-frame set is seeded with EVERY part, so nothing ever detaches'
-fault 'every component is in frame' \
-  'packages/client/src/selectors/worldMap.ts' \
-  "s=s.replace('      if (component.some((i) => flat[i].part.principal)) {','      if (true) {')" \
-  packages/client/test/world-map.test.ts
+retired 'every component is in frame' 'A-51 G3 (C8'"'"' is now the DEFINITION of a pane, not a repair)' \
+  "if (component.some((i) => flat[i].part.principal)) { -> if (true) {"
+# The A-51 successor: a pane is one component. `qa/i8i-faults.sh` fault 2 collapses every
+# component into one pane, which is the same defect at the new address.
 
 say '3. A-49 P — a part keys off its own BOX rather than its greatest ring (the C2 error, one level down)'
 fault 'part.key = the part box centre' \
@@ -88,16 +103,15 @@ fault 'part.key = the part box centre' \
   packages/core/test/countryParts.test.ts packages/client/test/world-map.test.ts
 
 say '4. C8\x27\x27 — the detached parts are DROPPED instead of drawn (I11 goes red for FR)'
-fault 'detached parts are discarded' \
-  'packages/client/src/selectors/worldMap.ts' \
-  "s=s.replace('  if (detachedParts.length > 0) {','  if (false) {')" \
-  packages/client/test/world-map.test.ts
+retired 'detached parts are discarded' 'A-51 G3 (there is no detached pane — a detached part IS a component)' \
+  "if (detachedParts.length > 0) { -> if (false) {"
+# The A-51 successor: drop the zero-weight components. `qa/i8i-faults.sh` fault 3.
 
 say '5. C8\x27 — detachment is decided PER COUNTRY instead of per pane (CA MX US grows a pane it must not have)'
-fault 'per-country detachment' \
-  'packages/client/src/selectors/worldMap.ts' \
-  "s=s.replace('    for (const k of group) for (const part of drawn[k].parts) flat.push({ owner: k, part });','    for (const k of group) for (const part of drawn[k].parts) flat.push({ owner: k, part });\n    if (group.length > 1) {\n      const out = [];\n      for (const a of flat) { if (a.part.principal) out.push(a); else detachedParts.push(a); }\n      return out;\n    }')" \
-  packages/client/test/world-map.test.ts
+retired 'per-country detachment' 'A-51 G3 (there is no per-pane detachment pass left to be per-country)' \
+  "seed inFrameOf with the principal parts only and push the rest to detachedParts"
+# The A-51 successor: `qa/i8i-faults.sh` fault 6 gives every non-principal part its own pane
+# unconditionally, which is the same "decide it per country, not by geometry" error.
 
 say '6. A-49 P — the parts are not clustered at all: every ring is its own part'
 fault 'countryParts ignores the threshold' \
@@ -124,10 +138,10 @@ fault 'the view renders frame.countries' \
   test/views.test.ts
 
 say '10. A-49 I5 — the detached pane is an ordinary inset, and is not last'
-fault 'the detached pane is unshifted and typed as an inset' \
-  'packages/client/src/selectors/worldMap.ts' \
-  "s=s.replace(\"      id: 'detached',\n      role: 'detached',\",\"      id: 'inset-9',\n      role: 'inset',\")" \
-  packages/client/test/world-map.test.ts
+retired 'the detached pane is unshifted and typed as an inset' 'A-51 G4 (`role` is withdrawn; standing is `home`)' \
+  "id: 'detached', role: 'detached', -> id: 'inset-9', role: 'inset',"
+# The A-51 successor: I18 — order the panes by canonical position instead of G5 and an FR-only
+# library opens on French Guiana. `qa/i8i-faults.sh` fault 4.
 
 say '11. R37-5 — the union-box fallback returns NaN again'
 fault 'the finite guard is removed' \
@@ -163,4 +177,4 @@ if [ -n "$MISMATCH" ]; then
   printf '\nMISMATCHES — these criteria are NOT load-bearing:%b\n\n' "$MISMATCH"
   exit 1
 fi
-printf '\nALL FAULTS RED\n\n'
+printf '\nALL FAULTS RED%s\n\n' "$([ "$RETIRED" -gt 0 ] && printf ' · %d RETIRED by A-51/A-52 (I-8i) — see qa/i8i-faults.sh' "$RETIRED")"

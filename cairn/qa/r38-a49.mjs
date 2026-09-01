@@ -43,6 +43,18 @@ const CAIRN = resolve(HERE, '..');
 let fails = 0;
 const ok = (c, l, x) => { if (c) console.log(`  ok     ${l}`); else { fails++; console.log(`  FAIL   ${l}${x === undefined ? '' : `  -> ${JSON.stringify(x)}`}`); } };
 const note = (s) => console.log(`  NOTE   ${s}`);
+/**
+ * **[I-8i] A superseded assertion, named rather than deleted.** ARCHITECTURE §4.4 **A-51**
+ * withdraws C5, C6's tie-break, C7/C7′ and A-49's C8″ and `role`; **A-52** takes out
+ * `countryParts`' `ring.length >= 6` filter. An assertion written against a withdrawn clause is
+ * no longer an oracle: FAILing it would say the product is broken, and deleting it would lose
+ * the record. It is printed with the clause that withdrew it and what the fixture measures now.
+ */
+let sups = 0;
+const sup = (l, why, now) => {
+  sups++;
+  console.log(`  SUPER  ${l}\n           withdrawn by ${why}; the same fixture now measures ${JSON.stringify(now)}`);
+};
 const head = (s) => console.log(`\n== ${s} ==`);
 
 const IDX = core.COUNTRY_INDEX;
@@ -112,12 +124,19 @@ const myRingBox = (ring) => {
   return [w, s, e, n];
 };
 
-/** Every ring of every entry of `code`, in index order, with >= 3 points. */
+/**
+ * Every ring of every entry of `code`, in index order. **[I-8i] A-52 (R38-5) removed the
+ * `ring.length >= 6` filter**: a ring the index carries is a ring the frame draws. The
+ * superseded filter is kept beside it as the injected fault's oracle — `ringsOfA49` is what §I
+ * measures the loss against.
+ */
 const ringsOf = (code, index = IDX) => {
   const out = [];
-  for (const e of index.countries) if (e.code === code) for (const r of e.rings) if (r.length >= 6) out.push(r);
+  for (const e of index.countries) if (e.code === code) for (const r of e.rings) out.push(r);
   return out;
 };
+/** A-49's superseded rule: skip any ring of fewer than three points. Kept as §I's oracle. */
+const ringsOfA49 = (code, index = IDX) => ringsOf(code, index).filter((r) => r.length >= 6);
 
 /** My own countryParts, from A-49 Part 2's words. */
 const myParts = (code, t, index = IDX) => {
@@ -140,9 +159,13 @@ const myParts = (code, t, index = IDX) => {
   });
 };
 
-/** My own countryKeyPoint: the box centre of the code's greatest-area ring. */
+/**
+ * My own countryKeyPoint: the box centre of the code's greatest-area ring. **Unchanged by
+ * A-52** — `countryKeyPoint` keeps its own `>= 3 points` rule, which is why it is `ringsOfA49`
+ * here and `ringsOf` in `myParts`.
+ */
 const myKey = (code, index = IDX) => {
-  const rings = ringsOf(code, index);
+  const rings = ringsOfA49(code, index);
   if (rings.length === 0) return null;
   let pr = 0;
   const areas = rings.map(myRingArea);
@@ -173,10 +196,11 @@ const myBounds = (boxes) => {
 };
 
 /**
- * My own worldMapFrame, straight off A-41 C1/C5/C6/C7, A-48 C2′/C3′/C9 and A-49 P/C8′/C8″.
- * Returns { panes: [{id, role, codes, viewBox, weight}], codes, missing, paint }.
+ * **The SUPERSEDED model, kept as the oracle** — my own worldMapFrame straight off A-41
+ * C1/C5/C6/C7, A-48 C2′/C3′/C9 and A-49 P/C8′/C8″. §J's census is measured against it, which is
+ * what makes R38-2's own number flip rather than merely disappear.
  */
-const myFrame = (rows, index = IDX) => {
+const myFrameA49 = (rows, index = IDX) => {
   const drawn = [], missing = [];
   for (const r of rows) {
     const parts = myParts(r.code, T, index);
@@ -227,6 +251,52 @@ const myFrame = (rows, index = IDX) => {
       weight: owners.reduce((n, k) => n + drawn[k].tripIds.length, 0),
       viewBox: myViewBox(b), bounds: b, inFrame: detached,
     });
+  }
+  return { panes, codes: drawn.map((d) => d.code), missing, drawn };
+};
+
+/**
+ * **[I-8i] My own worldMapFrame under A-51, written from G1…G6 and nothing else.** One
+ * `clusterPoints` call over the canonical PART list; every component is a pane; `home` is the
+ * codes whose principal part is in it; `weight` is Σ tripIds.length over `home`; the order is
+ * weight desc, `home.length` desc, lowest canonical position asc. No split test, no cap, no
+ * union pane, no role. Built on the SAME independent primitives (`myParts`, `myComponents`,
+ * `myBounds`, `myViewBox`) as the A-49 reference above, so §D still compares two implementations
+ * rather than one implementation to itself.
+ */
+const myFrame = (rows, index = IDX) => {
+  const drawn = [], missing = [];
+  for (const r of rows) {
+    const parts = myParts(r.code, T, index);
+    if (parts.length === 0) { missing.push(r.code); continue; }   // A-52: one answer, not two
+    drawn.push({ ...r, parts });
+  }
+  const atoms = [];
+  for (let k = 0; k < drawn.length; k++) for (const part of drawn[k].parts) atoms.push({ owner: k, part });
+  const built = myComponents(atoms.map((a) => a.part.key), T).map((members) => {
+    const owners = [...new Set(members.map((i) => atoms[i].owner))].sort((a, b) => a - b);
+    const home = owners.filter((k) => members.some((i) => atoms[i].owner === k && atoms[i].part.principal));
+    return {
+      members,
+      codes: owners.map((k) => drawn[k].code),
+      home: home.map((k) => drawn[k].code),
+      weight: home.reduce((n, k) => n + drawn[k].tripIds.length, 0),
+      inFrame: members.map((i) => atoms[i]),
+    };
+  });
+  built.sort((a, b) =>
+    (a.weight !== b.weight ? b.weight - a.weight
+      : a.home.length !== b.home.length ? b.home.length - a.home.length
+        : a.members[0] - b.members[0]));
+  const panes = built.map((g, i) => {
+    const b = myBounds(g.inFrame.map((a) => a.part.box));
+    return {
+      id: `p${i}`, codes: g.codes, home: g.home, weight: g.weight,
+      viewBox: b === null ? '-180 -90 360 180' : myViewBox(b), bounds: b, inFrame: g.inFrame,
+    };
+  });
+  if (panes.length === 0) {
+    panes.push({ id: 'p0', codes: [], home: [], weight: 0, viewBox: '-180 -90 360 180', bounds: null, inFrame: [] });
   }
   return { panes, codes: drawn.map((d) => d.code), missing, drawn };
 };
@@ -292,9 +362,12 @@ head('B  KD-71 — is A-49\'s named injected fault really vacuous?');
   }
   note(`multi-part codes per threshold — ${perT.join(' ')}`);
   note(`${multiSeen} (code, threshold) multi-part cases swept across ${THRESH.length} thresholds`);
-  ok(differ.length === 0,
-    'KD-71 stands under a 32-threshold sweep with an INDEPENDENT area formula: summed-area ranking never differs',
-    differ.slice(0, 20));
+  // [I-8i] R38-1 is FIXED, so this assertion FLIPS: the finding was that the fault is reachable,
+  // and the builder's test now samples `900` and names `ID`. Asserting `differ.length === 0`
+  // would re-assert the false claim the round filed.
+  ok(differ.length === 7 && differ.includes('ID@900'),
+    'R38-1 (FIXED): the summed-area fault IS reachable — 7 (code, threshold) pairs, `ID`@900 among them',
+    differ);
 
   // The spot check the round was asked for: codes whose parts are of COMPARABLE magnitude.
   const close = [];
@@ -320,7 +393,7 @@ head('B  KD-71 — is A-49\'s named injected fault really vacuous?');
     if (worst === null || ratio > worst[1]) worst = [`${code}@${t}km`, ratio];
   }
   note(`the closest the fault ever comes to being red: ${worst[0]} at ${(worst[1] * 100).toFixed(2)}% of the principal part's summed area`);
-  ok(worst[1] < 1, 'R38-1: the fault would be vacuous only if no part ever out-summed the principal one', worst);
+  ok(worst[1] > 1, 'R38-1 (FIXED): a non-principal part DOES out-sum the principal one, so the fault can be red', worst);
 
   // R38-1, the detail. The same sweep with the SOURCE's own area formula, so the finding cannot
   // be blamed on my second implementation.
@@ -350,8 +423,8 @@ head('B  KD-71 — is A-49\'s named injected fault really vacuous?');
     const si = summed.indexOf(Math.max(...summed));
     note(`${code}@${t}km — greatest-ring rule picks part ${pi} (${Math.round(summed[pi])} km² summed, key ${parts[pi].key.lat.toFixed(3)},${parts[pi].key.lng.toFixed(3)}); summed-area rule picks part ${si} (${Math.round(summed[si])} km², key ${parts[si].key.lat.toFixed(3)},${parts[si].key.lng.toFixed(3)}) — ${km(parts[pi].key, parts[si].key).toFixed(0)} km apart`);
   }
-  ok(differSrc.length === 0,
-    'R38-1: BUILD-NOTES KD-71 — "the two rankings choose the same part every time" — holds over the whole index',
+  ok(differSrc.length === 7 && differSrc.includes('ID@900'),
+    'R38-1 (FIXED): with the SOURCE\'s own area formula the same 7 pairs differ — KD-71\'s claim is corrected, not re-asserted',
     differSrc);
   // The five thresholds the builder's own test samples, in isolation: THIS is what is true.
   const five = [];
@@ -363,7 +436,20 @@ head('B  KD-71 — is A-49\'s named injected fault really vacuous?');
     for (let i = 1; i < parts.length; i++) if (summed[i] > summed[best]) best = i;
     if (!parts[best].principal) five.push(`${code}@${t}`);
   }
-  ok(five.length === 0, 'at the FIVE thresholds A-49 I12 names, the fault really is vacuous — the narrower claim is true', five);
+  ok(five.length === 0, 'at the FIVE thresholds A-49 I12 named, the fault really is vacuous — the narrower claim is true', five);
+  // …and at the EIGHT the builder's test now samples, it is not. That is R38-1's one-line fix.
+  const eight = [];
+  for (const t of [1, 100, 500, 900, 1000, 4000, 12000, 20000]) for (const code of CODES) {
+    const parts = core.countryParts(code, IDX, t);
+    if (parts.length < 2) continue;
+    const summed = parts.map((p) => p.rings.reduce((n, r) => n + srcArea(r), 0));
+    let best = 0;
+    for (let i = 1; i < parts.length; i++) if (summed[i] > summed[best]) best = i;
+    if (!parts[best].principal) eight.push(`${code}@${t}`);
+  }
+  ok(eight.length === 1 && eight[0] === 'ID@900',
+    'R38-1 (FIXED): at the EIGHT thresholds the shipped test now samples, `ID`@900 is red — the tripwire can fire',
+    eight);
 }
 
 // ===========================================================================
@@ -494,14 +580,17 @@ head('E  Alaska — the generalisation, with the edge lengths, and with every IS
   ok(dCa < T, 'Alaska IS within the threshold of Canada, so a CA+US pane frames it', dCa);
 
   const usAlone = frameOf([['US', 1]]);
-  ok(usAlone.panes.length === 2 && usAlone.panes[1].role === 'detached', 'US alone: one main pane + a detached pane', usAlone.panes.map((p) => p.role));
+  // [I-8i] `role` is withdrawn (A-51 G4); a pane's standing is `home` (A-53 Part 4). Same claim.
+  ok(usAlone.panes.length === 2 && usAlone.panes[1].home.length === 0,
+    'US alone: one HOME pane (CONUS) + one EXTENT pane (Alaska)', usAlone.panes.map((p) => p.home));
   ok(Math.abs((usAlone.panes[0].bounds.east - usAlone.panes[0].bounds.west) - 57.7225) < 5e-4
      && Math.abs((usAlone.panes[1].bounds.east - usAlone.panes[1].bounds.west) - 41.8111) < 5e-4,
     'US alone: 57.72° main + 41.81° detached', [usAlone.panes[0].bounds.east - usAlone.panes[0].bounds.west, usAlone.panes[1].bounds.east - usAlone.panes[1].bounds.west]);
   for (const spec of [[['CA', 1], ['US', 1]], [['CA', 1], ['MX', 1], ['US', 1]]]) {
     const f = frameOf(spec);
-    ok(f.panes.every((p) => p.role !== 'detached'),
-      `${spec.map((s) => s[0]).join('+')}: NO detached pane — Alaska is chained to the pane's subject`, f.panes.map((p) => [p.role, p.codes]));
+    ok(f.panes.every((p) => p.home.length > 0),
+      `${spec.map((s) => s[0]).join('+')}: NO extent pane — Alaska is chained to the pane's subject`,
+      f.panes.map((p) => [p.home, p.codes]));
   }
   {
     const f = frameOf([['CA', 1], ['MX', 1], ['US', 1]]);
@@ -516,9 +605,9 @@ head('E  Alaska — the generalisation, with the edge lengths, and with every IS
     const mxAlaska = km(core.countryKeyPoint('MX', IDX), alaska.key);
     note(`MX principal <-> Alaska part = ${mxAlaska.toFixed(1)} km`);
     ok(mxAlaska > T, 'MX is beyond the threshold of Alaska', mxAlaska);
-    ok(f.panes.some((p) => p.role === 'detached'),
-      'so MX+US STILL detaches Alaska — the rule is not "does the pane have a companion", it is connectivity',
-      f.panes.map((p) => [p.role, p.codes]));
+    ok(f.panes.some((p) => p.home.length === 0),
+      'so MX+US STILL frames Alaska separately — the rule is not "does the pane have a companion", it is connectivity',
+      f.panes.map((p) => [p.home, p.codes]));
   }
 
   // Nothing reads a code: permute every ISO code in the index and re-run.
@@ -548,7 +637,7 @@ head('F  KD-72 — components per pane, counted directly');
   for (const [label, spec] of CASES) {
     const mine = myFrame(rowsOf(spec));
     for (const p of mine.panes) {
-      if (p.role === 'detached') continue;
+      if (p.home.length === 0) continue;
       const nComp = myComponents(p.inFrame.map((a) => a.part.key), T).length;
       const nClusters = myComponents(p.codes.map((c) => myKey(c)), T).length;
       note(`${label} · ${p.id}: ${p.codes.length} codes, ${nClusters} country-clusters, in-frame parts ${p.inFrame.length} in ${nComp} component(s)`);
@@ -556,15 +645,22 @@ head('F  KD-72 — components per pane, counted directly');
         `${label} · ${p.id}: A-49 Part 2's proof holds when the pane IS one cluster`, [nClusters, nComp]);
     }
   }
+  // [I-8i] **KD-72 is CLOSED by A-51 G3, and the superseded measurement is the oracle.** Under
+  // C5/C7 the US+JP frame was ONE pane holding two clusters, so A-49 Part 2's "exactly one
+  // component" was false as written; that is R38-2 one level out. Under A-51 a pane IS one
+  // component by definition, so the old measurement is printed and the new one is asserted.
+  const usjpA49 = myFrameA49(rowsOf([['US', 1], ['JP', 1]]));
+  sup('KD-72 confirmed: the US+JP pane\'s in-frame set is TWO components, so A-49 Part 2\'s "exactly one component" is false as written',
+    'A-51 G3 (a pane is one component by definition)',
+    myComponents(usjpA49.panes[0].inFrame.map((a) => a.part.key), T).length);
   const usjp = myFrame(rowsOf([['US', 1], ['JP', 1]]));
-  const main = usjp.panes[0];
-  ok(myComponents(main.inFrame.map((a) => a.part.key), T).length === 2,
-    'KD-72 confirmed: the US+JP pane\'s in-frame set is TWO components, so A-49 Part 2\'s "exactly one component" is false as written',
-    myComponents(main.inFrame.map((a) => a.part.key), T).length);
-  // and the implemented rule really is "the union of the components containing a principal part"
+  ok(usjp.panes.every((p) => myComponents(p.inFrame.map((a) => a.part.key), T).length === 1),
+    'A-51 G3/I16: every pane of the US+JP frame is EXACTLY one component — the premise is now a definition',
+    usjp.panes.map((p) => myComponents(p.inFrame.map((a) => a.part.key), T).length));
+  // and the shipped code implements exactly A-51's rule (two implementations, compared)
   const shipped = frameOf([['US', 1], ['JP', 1]]);
-  ok(JSON.stringify(shipped.panes.map((p) => [p.role, p.viewBox])) === JSON.stringify(usjp.panes.map((p) => [p.role, p.viewBox])),
-    'and the shipped code implements exactly that union rule (my independent frame agrees byte for byte)',
+  ok(JSON.stringify(shipped.panes.map((p) => [p.home, p.viewBox])) === JSON.stringify(usjp.panes.map((p) => [p.home, p.viewBox])),
+    'and the shipped code implements exactly that rule (my independent A-51 frame agrees byte for byte)',
     [shipped.panes.map((p) => p.viewBox), usjp.panes.map((p) => p.viewBox)]);
 }
 
@@ -597,7 +693,7 @@ head('G  I1 / I2 / I3 / I5 / I11 / I13 / I14 / I15 over a wide sweep');
     const label = spec.map((s) => s[0]).join('+');
     const paneIds = new Set(f.panes.map((p) => p.id));
     maxPanes = Math.max(maxPanes, f.panes.length);
-    if (f.panes.some((p) => p.role === 'detached')) detachedLibs++;
+    if (f.panes.some((p) => p.home.length === 0)) detachedLibs++;
 
     // I1: every stats code appears at least once in `countries` or exactly once in `missing`.
     for (const [c] of spec) {
@@ -615,12 +711,33 @@ head('G  I1 / I2 / I3 / I5 / I11 / I13 / I14 / I15 over a wide sweep');
       const canon = f.codes.filter((c) => p.codes.includes(c));
       if (JSON.stringify(canon) !== JSON.stringify(p.codes)) { bad.i2++; firstBad.i2 ??= [label, p.id, 'order', p.codes, canon]; }
     }
-    // I3 / I5: pane count and roles.
-    const geo = f.panes.filter((p) => p.role !== 'detached');
-    const det = f.panes.filter((p) => p.role === 'detached');
-    if (geo.length < 1 || geo.length > 3 || det.length > 1 || f.panes.length > 4) { bad.i3++; firstBad.i3 ??= [label, f.panes.map((p) => p.role)]; }
-    if (f.panes[0].role !== 'main' || f.panes.slice(1, 1 + geo.length - 1).some((p) => p.role !== 'inset')
-      || (det.length === 1 && f.panes[f.panes.length - 1].role !== 'detached')) { bad.i5++; firstBad.i5 ??= [label, f.panes.map((p) => p.role)]; }
+    // I3 / I5 / I18, re-pointed at I-8i. A-51 G6 withdraws C7′'s cap, so I3 is now "the pane
+    // count IS the component count", re-derived here from my own primitives. I5 is "every drawn
+    // code is home in exactly one pane and Σ weight === W", and I18 is "every home pane precedes
+    // every extent pane, strictly" — A-53's addition, and the one that stops an FR-only library
+    // opening on French Guiana.
+    const geo = f.panes.filter((p) => p.home.length > 0);
+    const det = f.panes.filter((p) => p.home.length === 0);
+    const myComps = myFrame(rowsOf(spec)).panes.length;
+    if (f.panes.length !== myComps) { bad.i3++; firstBad.i3 ??= [label, f.panes.length, myComps]; }
+    if (det.length > 3) { bad.i3++; firstBad.i3 ??= [label, 'more than 3 extent panes', det.length]; }
+    if (det.length > 0 && !spec.some(([c]) => c === 'FR' || c === 'UM' || c === 'US')) {
+      bad.i3++; firstBad.i3 ??= [label, 'an extent pane without FR/UM/US', det.map((p) => p.codes)];
+    }
+    {
+      const flags = f.panes.map((p) => p.home.length > 0);
+      const firstExtent = flags.indexOf(false);
+      const totalW = spec.filter(([c]) => !f.missing.includes(c)).reduce((n, sp) => n + sp[1], 0);
+      const homedOnce = f.codes.every((c) => f.panes.filter((pp) => pp.home.includes(c)).length === 1);
+      const additive = f.panes.reduce((n, pp) => n + pp.weight, 0) === totalW;
+      const ordered = firstExtent < 0 || !flags.slice(firstExtent).includes(true);
+      const opensHome = f.codes.length === 0 || flags[0] === true;
+      if (!(homedOnce && additive && ordered && opensHome)) {
+        bad.i5++;
+        firstBad.i5 ??= [label, { homedOnce, additive, ordered, opensHome },
+          f.panes.map((pp) => `${pp.codes.join(',')}/home=${pp.home.join(',')}/w${pp.weight}`)];
+      }
+    }
 
     // I11: the multiset of rings drawn across a code's rows is exactly its full ring set, once.
     for (const c of f.codes) {
@@ -665,7 +782,9 @@ head('G  I1 / I2 / I3 / I5 / I11 / I13 / I14 / I15 over a wide sweep');
   note(`${libs.length} libraries swept (239 single-country + 400 pseudo-random + 4 hand-built); ${detachedLibs} produced a detached pane; max panes ${maxPanes}`);
   note(`tightest containment margin over every drawn vertex of every pane: ${worstPad.toExponential(3)} degrees`);
   for (const k of Object.keys(bad)) ok(bad[k] === 0, `${k.toUpperCase()} holds across the sweep`, [bad[k], firstBad[k]]);
-  ok(maxPanes === 4, 'a four-pane frame is actually reachable and was exercised', maxPanes);
+  sup('a four-pane frame is actually reachable and was exercised',
+    'A-51 G6 (the cap is withdrawn — the sweep now reaches more)', maxPanes);
+  ok(maxPanes >= 4, `A-51 G6: the sweep reached ${maxPanes} panes with no cap in the way`, maxPanes);
 }
 
 // ===========================================================================
@@ -680,17 +799,28 @@ head('H  I6 — byte identity under row permutation, with a detached pane presen
     let codesTrack = true;
     for (const p of perms(spec)) {
       const f = frameOf(p);
-      geom.add(JSON.stringify(f.panes.map((q) => [q.role, q.viewBox, q.aspect, q.weight])));
-      paint.add(JSON.stringify(f.countries.map((c) => `${c.code}@${c.paneId}`)));
+      // [I-8i] The PARTITION is a function of the point set (I9) and is compared as a SET.
+      // The pane ORDER is not, and A-51 G5 says so: its third key is the component's position
+      // in the canonical PART list, which is "drawn codes in canonical row order" (G2). Two
+      // panes of equal weight and equal `home.length` — in practice two weight-0 extent panes —
+      // therefore swap when the caller hands the rows over in another order. `travelStats`
+      // emits `countries` in ascending ISO order, so the production ordinal is fixed (I6, and
+      // it is asserted below on the canonical input). Sorting here measures I9, not I6.
+      geom.add(JSON.stringify(f.panes.map((q) => `${q.home.slice().sort().join(',')}|${q.viewBox}|${q.aspect}|${q.weight}`).slice().sort()));
+      paint.add(JSON.stringify(f.countries.map((c) => `${c.code}@${f.panes.find((q) => q.id === c.paneId).viewBox}`).slice().sort()));
       if (JSON.stringify(f.codes) !== JSON.stringify(p.map((s) => s[0]))) codesTrack = false;
       for (const q of f.panes) {
         if (JSON.stringify(q.codes) !== JSON.stringify(f.codes.filter((c) => q.codes.includes(c)))) codesTrack = false;
       }
     }
     const label = `${spec.map((s) => s[0]).join('+')} (${perms(spec).length} orders)`;
-    ok(geom.size === 1, `${label}: every row order gives ONE geometry — panes, viewBoxes, aspects, weights`, [...geom]);
-    ok(paint.size === 1, `${label}: and ONE paint order (C9 is over the index, not the rows)`, [...paint]);
+    ok(geom.size === 1, `${label}: every row order gives ONE partition — the same panes, viewBoxes, aspects, weights`, [...geom]);
+    ok(paint.size === 1, `${label}: and ONE paint assignment (C9 is over the index, not the rows)`, [...paint]);
     ok(codesTrack, `${label}: pane.codes and frame.codes are the row order, as I2/I13 specify`);
+    // I6 proper: the CANONICAL input, twice, byte for byte, order included.
+    const canonical = spec.slice().sort((a, b) => (a[0] < b[0] ? -1 : 1));
+    ok(JSON.stringify(frameOf(canonical)) === JSON.stringify(frameOf(canonical)),
+      `${label}: I6 — the same (stats, index) yields a byte-identical frame, pane order included`);
   }
 }
 
@@ -709,22 +839,54 @@ head('I  KD-73 — what a degenerate ring actually costs, on a fixture');
   const parts = core.countryParts('XA', idx, T);
   const key = core.countryKeyPoint('XA', idx);
   note(`XA: 2 rings in the index, countryParts gives ${parts.length} part(s) holding ${parts.reduce((n, p) => n + p.rings.length, 0)} ring(s); countryKeyPoint = ${JSON.stringify(key)}`);
-  ok(parts.reduce((n, p) => n + p.rings.length, 0) === 1,
-    'KD-73 confirmed: the two-point ring is in NO part', parts.map((p) => p.rings.length));
+  // [I-8i] **R38-5 is FIXED by A-52, so all four of this section's assertions FLIP.** The
+  // `ring.length >= 6` filter is out of `countryParts`: a ring the index carries is a ring the
+  // frame draws. The superseded rule is kept beside each as the oracle — `ringsOfA49` is what
+  // the filter used to keep, and it is the injected fault for every line below.
+  sup('KD-73 confirmed: the two-point ring is in NO part',
+    'A-52 (the >= 6 filter is removed)', parts.map((p) => p.rings.length));
+  ok(parts.reduce((n, p) => n + p.rings.length, 0) === 2,
+    'R38-5 (FIXED): the two-point ring IS in a part — the frame draws what the index carries',
+    parts.map((p) => p.rings.length));
+  ok(ringsOfA49('XA', idx).length === 1 && ringsOf('XA', idx).length === 2,
+    'the fault\'s oracle: A-49\'s >= 6 filter kept 1 of the 2 rings, so restoring it is measurable',
+    [ringsOfA49('XA', idx).length, ringsOf('XA', idx).length]);
+  // A degenerate ring has zero spherical area, so the strict `>` in the principal-ring
+  // comparison keeps the earlier ring: the KEY POINT is untouched by A-52, and I12 still holds
+  // on a fixture that reaches the removed filter. (Here the two rings are 2,500 km apart and
+  // therefore one part — which is the honest answer, not a special case.)
+  ok(JSON.stringify(parts.find((pp) => pp.principal).key) === JSON.stringify(key),
+    'A-52: I12 still holds on a fixture with a degenerate ring — the key point is untouched',
+    [parts.find((pp) => pp.principal).key, key]);
   const f = worldMapFrame(statsFor([statRow('XA')]), idx);
   const subpaths = f.countries.reduce((n, c) => n + (c.d.match(/Z/g) ?? []).length, 0);
-  ok(subpaths === 1, 'and it is drawn nowhere — I11 fails on this fixture, silently', subpaths);
-  note(`XA's pane is ${(f.panes[0].bounds.east - f.panes[0].bounds.west).toFixed(3)}° wide; the dropped ring sits at lng 10…40, OUTSIDE it`);
-  const [x, y, w, h] = f.panes[0].viewBox.split(' ').map(Number);
-  ok(!(40 > x && 40 < x + w), 'the dropped vertex is outside the pane it was dropped from — so nothing on screen hints at it', [x, w]);
+  sup('and it is drawn nowhere — I11 fails on this fixture, silently',
+    'A-52 + A-51 I11 restated (the oracle is the INDEX, not countryParts\' output)', subpaths);
+  ok(subpaths === 2, 'R38-5 (FIXED): both rings reach `d`, and I11 can now see the difference', subpaths);
+  // …and every vertex is inside the pane it is drawn in, which is the half round 38 did not expect.
+  let allInside = true;
+  for (const pane of f.panes) {
+    const [px, py, pw, ph] = pane.viewBox.split(' ').map(Number);
+    for (const c of f.countries.filter((x) => x.paneId === pane.id)) {
+      for (const m of c.d.matchAll(/[ML](-?[\d.eE+]+),(-?[\d.eE+]+)/g)) {
+        const vx = +m[1], vy = +m[2];
+        if (!(vx > px && vx < px + pw && vy > py && vy < py + ph)) allInside = false;
+      }
+    }
+  }
+  sup('the dropped vertex is outside the pane it was dropped from — so nothing on screen hints at it',
+    'A-52 (nothing is dropped, so there is no vertex outside its own pane)', allInside);
+  ok(allInside, 'R38-5 (FIXED): every vertex of every ring is strictly inside the pane that draws it (I4)');
   // and the all-degenerate code
   const idx2 = { scale: 'test', source: 'r38', countries: [mk([degenerate])] };
   const f2 = worldMapFrame(statsFor([statRow('XA')]), idx2);
-  ok(f2.missing.includes('XA') && f2.codes.length === 0,
-    'a code whose every ring is degenerate goes to `missing` — stated, not dropped (this half is honest)', [f2.missing, f2.codes]);
-  ok(core.countryKeyPoint('XA', idx2) !== null,
-    'though countryKeyPoint still answers for it, so core\'s two functions disagree about whether the code exists',
-    core.countryKeyPoint('XA', idx2));
+  sup('a code whose every ring is degenerate goes to `missing` — stated, not dropped (this half is honest)',
+    'A-52 (such a code is now DRAWABLE, and `[]` means "the index carries no ring")', [f2.missing, f2.codes]);
+  ok(f2.missing.length === 0 && f2.codes.includes('XA'),
+    'R38-5 (FIXED): a code whose only ring is degenerate is drawn rather than declared missing', [f2.missing, f2.codes]);
+  ok(core.countryKeyPoint('XA', idx2) !== null && core.countryParts('XA', idx2, T).length > 0,
+    'A-52: core\'s two functions now AGREE about whether the code exists — `[]` iff `null`',
+    [core.countryKeyPoint('XA', idx2), core.countryParts('XA', idx2, T).length]);
 }
 
 // ===========================================================================
@@ -786,8 +948,58 @@ head('J  the residual R37-1 shape — a pane C5 refuses to split');
     const ki = core.countryKeyPoint(CODES[i], IDX), kj = core.countryKeyPoint(CODES[j], IDX);
     if (ki && kj && km(ki, kj) >= T) multi++;
   }
-  note(`of all ${tot} two-country / one-trip-each libraries, ${multi} (${((100 * multi) / tot).toFixed(1)}%) have two clusters and a weight tie, so C5 refuses to split and ONE pane frames both`);
-  ok(multi / tot < 0.5, 'R38-2: the multi-cluster no-split pane is a minority shape', `${((100 * multi) / tot).toFixed(1)}%`);
+  note(`of all ${tot} two-country / one-trip-each libraries, ${multi} (${((100 * multi) / tot).toFixed(1)}%) have two clusters and a weight tie, so C5 refused to split and ONE pane framed both`);
+  // [I-8i] **R38-2's own oracle, and it MUST flip.** The finding was that C5's abstention was
+  // its majority case; A-51 withdraws the split test, so the shape it names no longer exists.
+  sup('R38-2: the multi-cluster no-split pane is a minority shape',
+    'A-51 (C5 withdrawn — there is no no-split pane left to be a majority)',
+    `${((100 * multi) / tot).toFixed(1)}% of pairs held two clusters`);
+  ok(multi / tot > 0.5,
+    `R38-2 re-derived: ${((100 * multi) / tot).toFixed(1)}% of two-country libraries held two clusters, which is why C5's abstention was the majority case`,
+    `${((100 * multi) / tot).toFixed(1)}%`);
+  // …and the census A-51 replaces it with: the pane-count histogram over every pair, plus the
+  // >120°-wide count, both re-derived here rather than quoted from the ruling.
+  {
+    const hist = new Map();
+    let wide = 0;
+    const wideCodes = new Set();
+    for (let i = 0; i < CODES.length; i++) for (let j = i + 1; j < CODES.length; j++) {
+      const f = frameOf([[CODES[i], 1], [CODES[j], 1]]);
+      hist.set(f.panes.length, (hist.get(f.panes.length) ?? 0) + 1);
+      if (f.panes.some((pp) => pp.bounds.east - pp.bounds.west > 120)) {
+        wide++;
+        wideCodes.add(CODES[i]); wideCodes.add(CODES[j]);
+      }
+    }
+    const asObj = [...hist.entries()].sort((a, b) => a[0] - b[0]).map(([k, v]) => `${k}:${v}`).join(' · ');
+    note(`A-51 pane-count histogram over all ${tot} two-country libraries: ${asObj}`);
+    note(`panes wider than 120°: ${wide} pairs (A-51 Part 5 predicts 1,229, down from 8,364)`);
+    ok(hist.get(1) === 5564 && hist.get(2) === 22360 && hist.get(3) === 516 && hist.get(4) === 1,
+      'A-51 Part 5\'s census, re-derived: {1: 5,564 · 2: 22,360 · 3: 516 · 4: 1}', asObj);
+    ok(wide === 1229, 'A-51 Part 5: panes wider than 120° fall to 1,229 (it was 8,364)', wide);
+    // A-51 residue 3, decomposed rather than asserted as a slogan. ROADMAP I-8i's criterion says
+    // *"**Every** one of the 1,229 contains one of AQ, FJ, KI, RU, UM"*; measured, **1,180** do,
+    // and A-51 Part 5's own prose is the careful version (*"the rest are Pacific micro-states"*).
+    // The other 49 split into 48 trans-antimeridian Pacific pairs — the same planar-bbox artefact
+    // by a different route — and **one** honest wide pane, `CA`+`GL` at 128.8°, which is L1
+    // working: Canada and Greenland are a genuine 128.8° chain of ground under the threshold.
+    const five = ['AQ', 'FJ', 'KI', 'RU', 'UM'];
+    let traced = 0, straddle = 0, honest = [];
+    for (let i = 0; i < CODES.length; i++) for (let j = i + 1; j < CODES.length; j++) {
+      const f = frameOf([[CODES[i], 1], [CODES[j], 1]]);
+      const pp = f.panes.find((q) => q.bounds.east - q.bounds.west > 120);
+      if (!pp) continue;
+      if (five.includes(CODES[i]) || five.includes(CODES[j])) { traced++; continue; }
+      const lngs = pp.codes.flatMap((c) => core.countryParts(c, IDX, T).flatMap((q) => [q.box[0], q.box[2]]));
+      if (Math.min(...lngs) < -150 && Math.max(...lngs) > 150) straddle++;
+      else honest.push(`${CODES[i]}+${CODES[j]}@${(pp.bounds.east - pp.bounds.west).toFixed(1)}°`);
+    }
+    note(`the 1,229 wide panes decompose as: ${traced} containing one of ${five.join('/')}, ${straddle} trans-antimeridian Pacific pairs, ${honest.length} genuinely-wide land chain(s) — ${honest.join(' ')}`);
+    ok(traced === 1180 && straddle === 48 && honest.length === 1 && honest[0].startsWith('CA+GL'),
+      'A-51 residue 3, measured: 1,180 + 48 antimeridian artefacts + ONE honest 128.8° land chain (CA+GL)',
+      [traced, straddle, honest]);
+    ok(traced + straddle + honest.length === 1229, 'and the three buckets account for every wide pane');
+  }
 }
 
 // ===========================================================================
@@ -879,16 +1091,24 @@ head('L  the standing constraints, re-checked on the files this increment touche
 head('M  degenerate inputs — the frame must still be a frame');
 {
   const empty = worldMapFrame(statsFor([]), IDX);
-  ok(empty.panes.length === 1 && empty.panes[0].role === 'main' && empty.panes[0].viewBox === '-180 -90 360 180'
-     && empty.panes[0].aspect === 2 && empty.codes.length === 0 && empty.missing.length === 0,
-    'an empty library is one main pane showing the whole world (A-41 I7), aspect 2', empty.panes);
+  ok(empty.panes.length === 1 && empty.panes[0].id === 'p0' && empty.panes[0].viewBox === '-180 -90 360 180'
+     && empty.panes[0].aspect === 2 && empty.panes[0].home.length === 0 && empty.panes[0].weight === 0
+     && empty.codes.length === 0 && empty.missing.length === 0,
+    'an empty library is ONE pane showing the whole world (A-41 I7), aspect 2, home [], weight 0', empty.panes);
   const unknown = worldMapFrame(statsFor([statRow('ZZ'), statRow('FR')]), IDX);
   ok(unknown.missing.join() === 'ZZ' && unknown.codes.join() === 'FR',
     'a code the index cannot fill is stated in `missing` and is not in `codes` (A-40 clause 3, I13)', [unknown.missing, unknown.codes]);
   const zero = worldMapFrame(statsFor([statRow('FR', 0), statRow('JP', 0)]), IDX);
-  ok(zero.panes[0].weight === 0 && zero.panes.filter((p) => p.role !== 'detached').length === 1,
-    'two zero-weight clusters do not split (C5 needs a strict majority of zero, which does not exist)',
-    zero.panes.map((p) => [p.role, p.weight]));
+  // [I-8i] C5 is withdrawn, so "a strict majority of zero" no longer decides anything. The
+  // superseded assertion is the oracle; what matters now is that a weight-0 library still gets
+  // one pane per cluster, that G5's ordering stays total when every weight ties at 0, and that
+  // I18 still separates the home panes from the extent one.
+  sup('two zero-weight clusters do not split (C5 needs a strict majority of zero, which does not exist)',
+    'A-51 (C5 withdrawn)', zero.panes.map((pp) => [pp.home, pp.weight]));
+  ok(zero.panes.length === 3 && zero.panes.every((pp) => pp.weight === 0) &&
+     zero.panes.map((pp) => pp.home.length > 0).join() === 'true,true,false',
+    'A-51 G5/I18: a weight-0 library still gets one pane per cluster, home panes first, ordering still total',
+    zero.panes.map((pp) => [pp.codes, pp.home, pp.weight]));
   const allMissing = worldMapFrame(statsFor([statRow('ZZ'), statRow('YY')]), IDX);
   ok(allMissing.panes.length === 1 && allMissing.panes[0].viewBox === '-180 -90 360 180' && allMissing.missing.length === 2,
     'a library the index cannot fill AT ALL is still one whole-world pane, not a crash', allMissing.panes);
@@ -899,5 +1119,5 @@ head('M  degenerate inputs — the frame must still be a frame');
     'and both carry the identical tripIds, so the tap is the same fact in both panes');
 }
 
-console.log(`\n${fails === 0 ? 'ALL CLEAR' : `${fails} FAIL`}`);
+console.log(`\n${fails === 0 ? 'ALL CLEAR' : `${fails} FAIL`}${sups ? ` · ${sups} SUPERSEDED by A-51/A-52/A-53 (I-8i)` : ''}`);
 process.exit(0);

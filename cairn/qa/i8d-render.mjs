@@ -119,20 +119,34 @@ const drawn = await page.evaluate(() => {
   return panes.map((p) => ({
     id: p.getAttribute('data-pane'),
     cls: p.className,
+    kind: p.getAttribute('data-pane-kind'),
     codes: [...p.querySelectorAll('path[data-code]')].map((el) => el.getAttribute('data-code')),
     caption: p.querySelector('.worldmap__panecap')?.innerText.replace(/\s+/g, ' ').trim() ?? null,
   }));
 });
 console.log('  ' + JSON.stringify(drawn));
-ok(drawn.length === 2, 'two panes are drawn', drawn.length);
-ok(String(drawn[0]?.codes) === 'AT,CZ,DE,GB,HR,HU', 'the main pane draws the six European countries', drawn[0]?.codes);
-ok(String(drawn[1]?.codes) === 'US', 'the inset draws the United States', drawn[1]?.codes);
-ok(/main/.test(drawn[0]?.cls ?? '') && /inset/.test(drawn[1]?.cls ?? ''), 'the roles reach the class names', drawn.map((d) => d.cls));
-ok(/US/.test(drawn[1]?.caption ?? ''), 'the inset NAMES its code on screen', drawn[1]?.caption);
-ok(drawn.flatMap((d) => d.codes).length === 7, 'all seven countries are still on the map', drawn.flatMap((d) => d.codes));
+// [I-8i] RE-POINTED. §4.4 A-51 G3 makes every component a pane and withdraws `role` with the
+// hierarchy, so the reference sample is THREE panes — Europe, the contiguous US, and Alaska as
+// an EXTENT pane (`home === []`) rather than as a `'detached'` one. The clause this block holds
+// — every country is on the map, in a named pane, and the outlier's pane names its code — is
+// unchanged; what moves is the pane count and the class names. The superseded expectations are
+// kept beside each as the fault's oracle.
+ok(drawn.length === 3, 'three panes are drawn (A-51 G3; the withdrawn model drew two + a detached)', drawn.length);
+ok(String(drawn[0]?.codes.slice().sort()) === 'AT,CZ,DE,GB,HR,HU', 'the FIRST pane draws the six European countries', drawn[0]?.codes);
+ok(String(drawn[1]?.codes) === 'US', 'the second draws the contiguous United States', drawn[1]?.codes);
+ok(drawn.every((d) => d.cls.trim() === 'worldmap__pane'),
+  'A-51 G4: no role reaches the class names — one kind of pane, one equal grid cell',
+  drawn.map((d) => d.cls));
+ok(drawn.every((d) => d.kind === 'home' || d.kind === 'extent') && drawn.map((d) => d.kind).join() === 'home,home,extent',
+  'A-53: standing is `data-pane-kind`, derived from `home.length`, and the extent pane is last',
+  drawn.map((d) => d.kind));
+ok(/US/.test(drawn[1]?.caption ?? ''), 'the second pane NAMES its code on screen', drawn[1]?.caption);
+ok(drawn.flatMap((d) => d.codes).length === 8,
+  'all seven countries are still on the map, and US is painted in both of its panes (L4)',
+  drawn.flatMap((d) => d.codes));
 
 // A-41 constraint 3: the inset's country carries the identical tap handler.
-await page.click('#tabpanel-map .worldmap__pane--inset path[data-code="US"]');
+await page.click('#tabpanel-map [data-pane="p1"] path[data-code="US"]');
 await page.waitForTimeout(200);
 const drill = await page.locator('.worldmap__drill').innerText();
 ok(/US/.test(drill), 'tapping the inset country drills down to its trips', drill.replace(/\s+/g, ' ').slice(0, 140));

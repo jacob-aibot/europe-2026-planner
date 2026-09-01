@@ -609,23 +609,44 @@ textarea { resize: vertical; }
 }
 /* §4.4 A-41 W3 — the atlas frame. One <svg> per pane; the component decides NOTHING about
    where a pane sits or how big it is, because a measurement is what would bring the
-   "cannot fit a hidden container" bug back. Placement and size are here, and only here. */
-.worldmap__panes { display: flex; flex-wrap: wrap; }
+   "cannot fit a hidden container" bug back. Placement and size are here, and only here.
+
+   §4.4 A-51 G7 (QA R38-3): FLEX → GRID, and the cells are equal. A flex row stretches every
+   cell to its tallest sibling, so the shipped sample's US inset filled 44.1% of its bordered
+   cell at 390 px and a four-pane `inset-2` filled 21.3% — A-50 fixed the <svg> and not the
+   cell. `align-items: start` on a grid does not stretch, and one uniform `--pane-cap` removes
+   the asymmetry that made the stretch large.
+
+   An equal cell is also the ruling: A-51 withdraws the main/inset hierarchy, so there is no
+   role to size a cell from, and A-53 Part 7 states why that is right rather than merely
+   simpler — a cell is a viewport and asserts nothing; the claim is `weight`, and the priority
+   is the pane ORDER. Sizing a cell by `home.length` would additionally make a pane's screen
+   size depend on what else is in the library, which is the non-locality I17 forbids.
+
+   Still measurement-free: `min()`, `calc()` and `auto-fill` resolve at layout and measure
+   nothing. No `viewBox`, pane count or pane membership varies with screen size — the frame is
+   byte-identical in bare Node — so A-41 Part 7's "no per-screen-size FRAME rule" is untouched.
+   One column at 390 px, three at 1440 px for the reference sample. */
+.worldmap__panes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--pane-min, 300px), 1fr));
+  align-items: start;
+  /* The separator is a 1 px gap the container's own line colour shows through, rather than a
+     per-cell border: an adjacent-sibling border rule reads DOM order, and in an `auto-fill`
+     grid DOM order is not column position, so it would draw a left edge on the first cell of
+     every row but the first. This is a paint detail with no measurement in it. */
+  gap: 1px;
+  background: var(--line);
+}
 /* §4.4 A-50: the height cap is a custom property, so the box can be sized from it in BOTH
-   directions. The two values are the ones the stylesheet already had — they moved, they are
-   not new. `--pane-aspect` arrives per <svg> from the frame; `--pane-cap` is a property of the
-   pane's ROLE, which is layout and belongs here. */
-.worldmap__pane { position: relative; min-width: 0; --pane-cap: min(58vh, 460px); }
-.worldmap__pane--main { flex: 1 0 100%; --pane-cap: min(58vh, 460px); }
-.worldmap__pane--inset { flex: 1 1 45%; border-top: var(--rule); --pane-cap: min(22vh, 170px); }
-.worldmap__pane--inset + .worldmap__pane--inset { border-left: var(--rule); }
-/* §4.4 A-49 C8″ — the detached pane. It is laid out as an inset (it is a small captioned frame
-   beside the geographic ones) and carries an inset's cap; what differs is only its caption,
-   which A-49 Part 4 consequence 3 requires to say "distant parts of" rather than "shown
-   separately". */
-.worldmap__pane--detached { flex: 1 1 45%; border-top: var(--rule); --pane-cap: min(22vh, 170px); }
-.worldmap__pane--inset + .worldmap__pane--detached,
-.worldmap__pane--detached + .worldmap__pane--detached { border-left: var(--rule); }
+   directions. §4.4 A-51 G7 replaces A-50's two role-keyed values with ONE, because there is no
+   role. `--pane-aspect` arrives per <svg> from the frame; `--pane-cap` is layout and belongs
+   here. */
+.worldmap__pane {
+  position: relative; min-width: 0;
+  background: var(--card);
+  --pane-cap: min(38vh, 300px);
+}
 
 /* The sea is the element's own background as well as a rect, because `preserveAspectRatio`
    can leave user space visible OUTSIDE the world (a 109° × 57° pane in a 5.6:1 box shows
@@ -669,9 +690,16 @@ textarea { resize: vertical; }
 }
 .worldmap__sea { fill: var(--map-sea); }
 
-/* A-41 constraint 3: the outlier is named where it is drawn, not in a footnote. */
+/* A-41 constraint 3, applied uniformly by §4.4 A-51 G8: EVERY pane is named where it is drawn,
+   not in a footnote — under C7 the main pane had no caption because it was "the" map, and there
+   is no "the" map any more.
+
+   `margin: 0` is load-bearing rather than tidy: the global `p` bottom margin put 8 px of dead
+   space inside every bordered cell, which a stretching flex row hid and `align-items: start`
+   exposes. That is exactly the slack R38-3's criterion measures — `qa/i8i-render.mjs` §A. */
 .worldmap__panecap {
   display: flex; gap: .5rem; align-items: baseline; flex-wrap: wrap;
+  margin: 0;
   padding: .3rem .7rem .45rem;
   font-size: var(--ui-text-floor); color: var(--ink-dim);
 }

@@ -409,14 +409,43 @@ Cairn&rsquo;s <em>own</em> choice of what to frame, not in any calculation a lib
 is better &mdash; countries whose outlines wrap around the date line, like Fiji and Russia &mdash; is
 a known, separate, already-documented problem, and the note now says which 60 lines of D3 to borrow if
 it is ever tackled.</p>
-<p><strong>&#128721; Nothing has been built and nothing will be until Jacob approves it.</strong> He
-asked to decide this himself before a builder pass, because the recommendation overturns his own
-earlier instruction to use insets &mdash; while keeping the reason he gave for it. If he says no,
-today&rsquo;s map stands and the defect stays on the record with its numbers. <strong>The design side
-is now closed</strong> &mdash; the membership question above was the last open one, and no further
-architect round is owed. The full ruling is <code>ARCHITECTURE.md</code> &sect;4.4 <strong>A-51</strong>,
-<strong>A-52</strong> and <strong>A-53</strong>; the increment is <strong>I-8i</strong> in
-<code>ROADMAP.md</code>, still marked not-dispatchable, waiting on him and on nothing else.</p>
+<p><strong>&#9989; APPROVED BY JACOB AND NOW BUILT &mdash; 2026-09-01.</strong> He approved the
+equal-pane model and the home-pane/extent-pane answer to his membership question, and the builder
+pass has landed. <strong>I-8i is designed &#9989; &middot; built &#9989; &middot; verified &#10060;
+&mdash; nobody has attacked it yet, and a tester round is mandatory before it counts as anything
+more than &ldquo;the code exists&rdquo;.</strong></p>
+<p>What actually changed, in one line each:</p>
+<ul>
+<li><strong>France and the United States now get a map each.</strong> Before, that history drew one
+134&deg;-wide strip of Atlantic with France 36&nbsp;px across; now France is <strong>342 &times;
+236&nbsp;px</strong> &mdash; ninety times the area &mdash; and the United States is beside it at its
+own scale.</li>
+<li><strong>A country&rsquo;s size on your map no longer depends on where else you went.</strong>
+Adding the US to a France history moves France&rsquo;s rectangle by <em>nothing at all</em>. That was
+the actual defect, and it was invisible to three previous testing rounds because you can only see it
+by comparing two different histories.</li>
+<li><strong>A trip to France opens on France.</strong> The map&rsquo;s own geometry file happens to
+list French Guiana before mainland France, so without the ordering rule the page would have opened on
+a small rectangle of South America. It is now ordered by where you actually travelled, and there is a
+test that would catch it coming back.</li>
+<li><strong>Nothing is a footnote any more.</strong> Every panel is the same size and every panel is
+labelled. A panel holding only distant territory of a country you visited elsewhere says
+<em>&ldquo;distant parts of&rdquo;</em> and carries a travel count of zero &mdash; it is never
+presented as a place you went.</li>
+<li><strong>Territories cannot flood the screen.</strong> Measured over every one of the 28,441
+possible two-country histories: at most <strong>three</strong> such panels can exist anywhere on
+Earth, and only if you have been to France, the United States, or the US Minor Outlying
+Islands.</li>
+<li><strong>The rest of the app is untouched</strong> &mdash; the day map, the trip data, the saved
+files and the shared-code list are all byte-identical, and no dependency was added.</li>
+</ul>
+<p>Three things the builder disclosed rather than hid, all for the tester and the architect to look
+at: a single-panel history (everywhere-you&rsquo;ve-been at once) is drawn <strong>35%
+shorter</strong> than before, because every panel now shares one height limit &mdash; which costs
+three more tiny island states their tappable pixel, though every country is still reachable from the
+chip list; one line of the written test plan asks for something the layout rule it inherits cannot do
+(a narrow map is centred, not stretched); and one ordering rule is correct but currently redundant.
+All three are written up in <code>BUILD-NOTES.md</code> as KD-74, KD-75 and KD-76.</p>
 </div>
 <div class="callout" style="border-left:4px solid #16a34a;padding:.75rem 1rem;margin:1rem 0;background:#f0fdf4">
 <p><strong>&#128994; THE MAP&rsquo;S NEW FRAME HAS NOW BEEN ATTACKED &mdash; the France/Greece

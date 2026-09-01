@@ -115,10 +115,14 @@ fault 'haversine <= thresholdKm' \
   packages/core/test/clusterPoints.test.ts
 
 say '7. the frame keys off the first entry\x27s box instead of core\x27s countryKeyPoint'
-fault 'key = entries[0] box centre' \
-  'packages/client/src/selectors/worldMap.ts' \
-  "s=s.replace('const key = core.countryKeyPoint(row.code, index);','const e0 = index.countries.find((c) => c.code === row.code);\n    const key = e0 ? { lat: (e0.box[1] + e0.box[3]) / 2, lng: (e0.box[0] + e0.box[2]) / 2 } : null;')" \
-  packages/client/test/world-map.test.ts
+# [I-8i] RE-POINTED. A-51 Part 6 removes `countryKeyPoint`'s production caller: G3 clusters
+# PARTS, and the principal part's key IS the country key point (I12). The clause this fault
+# guards — "the frame does not derive a position from a bounding rectangle" — is unchanged, so
+# the mutation moves one level down, onto the PART key core hands over.
+fault 'part key = the part box centre (A-41 C2\x27s error, one level down)' \
+  'packages/core/src/derive/country.ts' \
+  "s=s.replace('      key: points[key],','      key: { lat: (s + n) / 2, lng: (w + e) / 2 },')" \
+  packages/client/test/world-map.test.ts packages/core/test/countryParts.test.ts
 
 say '8. C9 — countries are emitted in canonical order again (AD paints under FR)'
 fault 'no paint sort' \
@@ -133,9 +137,12 @@ fault 'ascending, not descending' \
   packages/client/test/world-map.test.ts
 
 say '10. C9 implementation note — sort `drawn` before clustering and pane.codes stops being canonical (I2)'
-fault 'drawn sorted into paint order before C3\x27' \
+# [I-8i] RE-POINTED at A-51 G2's marker: the canonical PART list is built from `drawn` in
+# canonical row order, and sorting `drawn` into paint order first destroys both `pane.codes`'
+# canonical order (I2) and G5's third key. Same defect, new address.
+fault 'drawn sorted into paint order before G2 builds the canonical part list' \
   'packages/client/src/selectors/worldMap.ts' \
-  "s=s.replace('  // ---- C3/C4: the partition. Core owns the algorithm; this file owns the threshold. ----','  {\n    const pos = new Map<string, number>();\n    index.countries.forEach((e, i) => pos.set(e.code, i));\n    drawn.sort((a, b) => (pos.get(b.code) ?? -1) - (pos.get(a.code) ?? -1));\n  }\n  // ---- C3/C4: the partition. Core owns the algorithm; this file owns the threshold. ----')" \
+  "s=s.replace('  // ---- G2: the atoms are PARTS','  {\n    const pos = new Map<string, number>();\n    index.countries.forEach((e, i) => pos.set(e.code, i));\n    drawn.sort((a, b) => (pos.get(b.code) ?? -1) - (pos.get(a.code) ?? -1));\n  }\n  // ---- G2: the atoms are PARTS')" \
   packages/client/test/world-map.test.ts
 
 say '11. Part 6 — the pane\x27s aspect is height / width'

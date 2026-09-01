@@ -63,6 +63,20 @@ const ok = (cond, label, extra) => {
   else { fails++; console.log(`  FAIL   ${label}${extra === undefined ? '' : `  -> ${JSON.stringify(extra)}`}`); }
 };
 const found = (label) => { founds++; console.log(`  FOUND  ${label}`); };
+/**
+ * **[I-8i] A superseded assertion, named rather than deleted.** ARCHITECTURE §4.4 **A-51**
+ * withdraws C5 (the dominance/split test), C6's lowest-ISO tie-break, C7/C7′ (the three-pane cap
+ * and the union-of-the-rest pane), A-49 C8″ (the `'detached'` pane) and the `role` field. An
+ * assertion written against one of those clauses is no longer an oracle for anything: reporting
+ * it as FAIL would say the product is broken, and deleting it would lose the record of what the
+ * rule used to guarantee. It is printed with the clause that withdrew it and what the same
+ * fixture measures now. The ROADMAP I-8i ship gate asks for exactly this.
+ */
+let sups = 0;
+const sup = (label, why, now) => {
+  sups++;
+  console.log(`  SUPER  ${label}\n           withdrawn by ${why}; the same fixture now measures ${JSON.stringify(now)}`);
+};
 const head = (s) => console.log(`\n== ${s} ==`);
 const note = (s) => console.log(`  note   ${s}`);
 
@@ -112,7 +126,9 @@ const shape = (f) => f.panes.map((p) => `${p.id}[${p.codes.join(',')}]w${p.weigh
 // every clause about the partition (C5's dominance, C6's ranking, C7's cap, I3) is about the
 // geographic ones. The detached pane is a consequence of one country's geometry, not of the
 // traveller's record, and A-49 I15 forbids deriving anything from it.
-const geo = (f) => f.panes.filter((p) => p.role !== 'detached');
+// [I-8i] `role` is withdrawn (A-51 G4). A pane's standing is `home`: a HOME pane holds at least
+// one code's principal part; an EXTENT pane holds only non-principal geometry (A-53 Part 4).
+const geo = (f) => f.panes.filter((p) => p.home.length > 0);
 /** A-48 C8, the superseded extent, kept as the oracle: `mapBounds` over every entry box. */
 const unionBoxExtent = (codes) => {
   const corners = [];
@@ -332,8 +348,11 @@ ok(Math.abs(w0 - 31.1965) < 0.005,
 ok(Math.abs(unionBoxExtent(['FR', 'GR']).w - 81.13) < 0.01,
   'the oracle: A-48 C8 (mapBounds over every entry box) still measures 81.13° — restoring it is measurable',
   unionBoxExtent(['FR', 'GR']));
-ok(frGr.panes.length === 2 && frGr.panes[1].role === 'detached' && String(frGr.panes[1].codes) === 'FR',
-  'A-49 C8″: French Guiana gets a captioned pane of its own rather than being cropped or framed', shape(frGr));
+// [I-8i] A-51 G3 supersedes C8″ in place: a detached part is simply a component, therefore a
+// pane. The claim is unchanged and is read off `home` instead of `role`.
+ok(frGr.panes.length === 2 && frGr.panes[1].home.length === 0 && String(frGr.panes[1].codes) === 'FR',
+  'A-51 G3 (was A-49 C8″): French Guiana gets a captioned pane of its own rather than being cropped or framed',
+  shape(frGr));
 const usCu = frameOf([['US', 3], ['CU', 1]]);
 ok(geo(usCu).length === 1 && geo(usCu)[0].codes.slice().sort().join(',') === 'CU,US',
   '{US 3 trips, CU 1 trip} is ONE geographic pane — Cuba is 150 km from Florida and is no longer a "distant outlier"',
@@ -346,20 +365,43 @@ head('C  C5 — THE DOMINANCE TEST AT THE EXACT BOUNDARY');
 const c5 = (a, b, c) => frameOf(c === undefined ? [['AU', a], ['US', b]] : [['AU', a], ['DE', c], ['US', b]]);
 // [I-8h] `geo(...)` throughout: C5 decides how many GEOGRAPHIC panes there are. `US` carries a
 // detached part in every one of these fixtures, and A-49 I15 says it decides nothing.
-ok(geo(c5(1, 1)).length === 1, 'a genuine tie (1 v 1) NEVER splits — 2·1 > 2 is false');
-ok(geo(c5(3, 3)).length === 1, 'a genuine tie at 3 v 3 never splits either');
-ok(geo(c5(4, 3)).length === 2, '4 v 3: 2·4 = 8 > 7, the closest split there is');
-ok(geo(c5(3, 4)).length === 2 && String(c5(3, 4).panes[0].codes) === 'US', '3 v 4: the heavier cluster is primary regardless of ISO order');
-ok(geo(c5(4, 3, 1)).length === 1, '4 v 3 v 1: 2·4 = 8 is NOT > 8 — one vote short of a split, and it does not split');
-ok(geo(c5(5, 3, 1)).length === 3, '5 v 3 v 1: 2·5 = 10 > 9 — the very next step does split, into all three panes');
-ok(geo(c5(3, 3, 3)).length === 1, 'three roughly-equal clusters do not split (A-41 C5: nothing to prioritise)');
+//
+// [I-8i] **THE WHOLE OF THIS SECTION IS SUPERSEDED, and that is R38-2's verdict rather than a
+// convenience.** A-51 withdraws C5 outright: the split test asked how much of the traveller's
+// RECORD one cluster carries, of a question about GEOMETRY, and its stated abstention (a tie is
+// not broken by alphabet) was also its majority case — 80.0% of two-country / one-trip-each
+// libraries held two clusters in one un-split pane. Every boundary case below is kept, with the
+// arithmetic that used to decide it and the pane count that now does. **The oracle survives: if
+// any of these ever splits differently from its 1-v-1 twin, weight has started framing again.**
+const c5Geo = (a, b, c) => geo(c5(a, b, c)).length;
+sup('a genuine tie (1 v 1) NEVER splits — 2·1 > 2 is false', 'A-51 (C5 withdrawn)', c5Geo(1, 1));
+sup('a genuine tie at 3 v 3 never splits either', 'A-51 (C5 withdrawn)', c5Geo(3, 3));
+ok(c5Geo(4, 3) === 2, '4 v 3 is two panes — and now so is 1 v 1, which is the fix');
+ok(c5Geo(3, 4) === 2, '3 v 4 is two panes, and the weights decided nothing');
+sup('4 v 3 v 1: 2·4 = 8 is NOT > 8 — one vote short of a split, and it does not split',
+  'A-51 (C5 withdrawn)', c5Geo(4, 3, 1));
+ok(c5Geo(5, 3, 1) === 3, '5 v 3 v 1 is three panes — unchanged, because the geometry is three clusters');
+sup('three roughly-equal clusters do not split (A-41 C5: nothing to prioritise)',
+  'A-51 (C5 withdrawn)', c5Geo(3, 3, 3));
+// **L2 / I17, the property C5 could not have**: the SAME three clusters give the SAME three
+// rectangles at every weighting. Under C5 the 1-v-1 and 4-v-3 fixtures differed by a hemisphere.
+{
+  const shapes = [[1, 1], [3, 3], [4, 3], [3, 4]].map(([a, b]) =>
+    geo(c5(a, b)).map((p) => p.viewBox).slice().sort().join(' | '));
+  ok(new Set(shapes).size === 1,
+    'A-51 L2: the same two clusters give the same two rectangles at every weighting — C5\'s defect, gone',
+    shapes);
+}
 { const f = c5(3, 3, 3); note(`  and the honest frame that leaves is ${(f.panes[0].bounds.east - f.panes[0].bounds.west).toFixed(1)}° × ${(f.panes[0].bounds.north - f.panes[0].bounds.south).toFixed(1)}° — one pane holding everything`); }
 // A single trip that touched two distant places.
 const oneTrip = worldMapFrame(statsFor([
   { code: 'JP', firstVisit: '2020-01-01', lastVisit: '2020-01-10', tripIds: ['solo'], provisional: false },
   { code: 'US', firstVisit: '2020-01-01', lastVisit: '2020-01-10', tripIds: ['solo'], provisional: false },
 ]), IDX);
-ok(geo(oneTrip).length === 1, 'a single trip with two distant countries never splits (weights 1 and 1)');
+sup('a single trip with two distant countries never splits (weights 1 and 1)',
+  'A-51 (C5 withdrawn)', geo(oneTrip).length);
+ok(geo(oneTrip).length === 2,
+  'A-51: JP and US are two clusters, so a single two-continent trip is two legible frames rather than one 270° strip');
 // C5's weight is Σ tripIds.length, so it counts country-attributions and NOT trips: a cluster's
 // weight rises with the number of countries in it. A-41 residue 4 discloses that weight ignores
 // duration ("a weekend and a month count the same"); it does not disclose this.
@@ -381,8 +423,9 @@ ok(oneVsFive.panes.length === 2 && String(oneVsFive.panes[0].codes) !== 'JP',
   shape(oneVsFive));
 
 // Can the top two ever tie AND split? Algebraically no; asserted so nobody re-derives it.
-ok(geo(frameOf([['AU', 4], ['DE', 4], ['US', 1]])).length === 1,
-  'when the top two clusters tie on weight the frame can never split (2w > 2w+rest is unsatisfiable)');
+sup('when the top two clusters tie on weight the frame can never split (2w > 2w+rest is unsatisfiable)',
+  'A-51 (C5 withdrawn) — the unsatisfiable case was the majority case, which is R38-2',
+  geo(frameOf([['AU', 4], ['DE', 4], ['US', 1]])).length);
 
 // ---------------------------------------------------------------------------
 head('D  C6 — THE THREE RANKING KEYS, ONE OBSERVABLE TEST EACH');
@@ -393,8 +436,13 @@ ok(String(k1.panes[0].codes) === 'US', 'key 1 (weight desc) decides the primary'
 // must tie on weight and differ on count, with a dominant primary above them.
 const k2 = frameOf([['AU', 2], ['BR', 1], ['CL', 1], ['DE', 7], ['JP', 2]]);
 note(`  key-2 fixture: ${shape(k2)}`);
-ok(k2.panes.length === 3 && String(k2.panes[1].codes) === 'BR,CL',
-  'key 2 (country count desc) puts the 2-country runner-up in inset-1 ahead of the 1-country one of equal weight', shape(k2));
+// [I-8i] Re-pointed: G5 keeps this key, renamed to `home.length` desc, and drops the cap that
+// made "inset-1" a place. The claim — a 2-country pane outranks a 1-country pane of equal
+// weight — is unchanged; what moves is that the remaining clusters get panes of their own.
+ok(String(k2.panes[1].codes) === 'BR,CL',
+  'key 2 (home.length desc) puts the 2-country runner-up SECOND, ahead of the 1-country ones of equal weight',
+  shape(k2));
+sup('…and C7 capped the frame at three panes here', 'A-51 G6 (the cap withdrawn)', k2.panes.length);
 // key 3 (lowest ISO asc). With canonical rows it is unobservable — assert THAT, since it is
 // what makes the builder's own fault matrix need a non-canonical input.
 const canonicalAgrees = core.clusterPoints(CODES.map((c) => KEY[c]), WORLD_CLUSTER_THRESHOLD_KM)
@@ -456,12 +504,18 @@ function invariants(label, spec) {
   // I5
   // [I-8h] I5 restated by A-49 Part 8: panes[0] is main; a 'detached' pane, if present, is LAST
   // and is the only one; every other pane is an inset.
-  const det = f.panes.filter((p) => p.role === 'detached');
-  ok(f.panes[0].role === 'main' && det.length <= 1 &&
-     (det.length === 0 || f.panes[f.panes.length - 1].role === 'detached') &&
-     geo(f).slice(1).every((p) => p.role === 'inset'),
-    `${label} · I5: panes[0] is main, the rest are insets, and a detached pane is last`,
-    f.panes.map((p) => p.role));
+  // [I-8i] RE-POINTED to A-51 I5 + A-53 I18, which is the same accounting without the roles:
+  // every drawn code is HOME in exactly one pane, `Σ weight === W` exactly, and every home pane
+  // strictly precedes every extent pane. The role clause is gone with `role`.
+  const flags = f.panes.map((p) => p.home.length > 0);
+  const firstExtent = flags.indexOf(false);
+  ok(f.codes.every((c) => f.panes.filter((p) => p.home.includes(c)).length === 1) &&
+     f.panes.reduce((n, p) => n + p.weight, 0) ===
+       rows.filter((r) => !f.missing.includes(r.code)).reduce((n, r) => n + r.tripIds.length, 0) &&
+     (firstExtent < 0 || !flags.slice(firstExtent).includes(true)) &&
+     (f.codes.length === 0 || flags[0] === true),
+    `${label} · I5/I18: every code is home in exactly one pane, Σ weight === W, home panes come first`,
+    f.panes.map((p) => `${p.codes.join(',')}/home=${p.home.join(',')}/w${p.weight}`));
   // I6 — recompute and compare bytes
   ok(JSON.stringify(f) === JSON.stringify(worldMapFrame(statsFor(rows), IDX)),
     `${label} · I6: the same (stats, index) yields a byte-identical frame`);
@@ -488,11 +542,18 @@ invariants('2 clusters ', [['AT', 3], ['US', 1]]);
 invariants('3 clusters ', [['AT', 6], ['JP', 1], ['US', 1]]);
 const five = invariants('5 clusters ', [['AT', 6], ['AU', 1], ['BR', 1], ['JP', 1], ['US', 1], ['ZA', 1]]);
 // [I-8h] C7′: the cap is three GEOGRAPHIC panes, plus the detached one when it exists (1…4).
-ok(geo(five).length === 3, 'I3/C7′: ≥4 clusters give exactly three geographic panes', geo(five).length);
-ok(five.panes.length === 4 && five.panes[3].role === 'detached',
-  'C7′: and the fourth pane is the detached one, never a fourth cluster', shape(five));
-ok(String(geo(five)[2].codes) === geo(five)[2].codes.slice().sort().join(','),
-  'C7: pane 3 folds every remaining cluster, re-sorted into canonical row order', geo(five)[2].codes);
+// [I-8i] The cap is WITHDRAWN (A-51 G6): `panes.length` IS the component count. The three
+// assertions below are kept as the oracle — if any of them goes green again, C7 is back and
+// with it the union-of-the-rest pane, which is a multi-component rectangle by construction.
+sup('I3/C7′: ≥4 clusters give exactly three geographic panes', 'A-51 G6 (the cap withdrawn)', geo(five).length);
+sup('C7′: and the fourth pane is the detached one, never a fourth cluster',
+  'A-51 G3 (a detached part is a component, therefore a pane)', shape(five));
+sup('C7: pane 3 folds every remaining cluster, re-sorted into canonical row order',
+  'A-51 G6 (there is no union-of-the-rest pane)', geo(five).map((p) => p.codes.join(',')));
+ok(geo(five).length === 6 && five.panes.length === 7 &&
+   five.panes.every((p) => p.codes.length === 1 || p.home.length === p.codes.length),
+  'A-51 G6/I3: six clusters are six home panes plus one extent pane, and no pane is a union of clusters',
+  shape(five));
 const withMissing = invariants('+ missing  ', [['AT', 1], ['ZZ', 1], ['US', 2]]);
 ok(String(withMissing.missing) === 'ZZ', 'a code the index cannot fill is stated, not dropped', withMissing.missing);
 
@@ -688,14 +749,20 @@ for (const [label, re] of [
   ['no fourth pane', /inset-3/],
   ['no drop-the-outlier option', /dropOutlier|hideOutlier|excludeCountry/i],
 ]) ok(!re.test(surface), `Part 7: ${label}`);
-ok(/panes\.slice\(2\)|ranked\.slice\(2\)/.test(wmSrc) && !/inset-3/.test(wmCode),
-  'Part 7: cluster 3…N folds into pane 3 rather than into a fourth pane');
+// [I-8i] A-51 Part 7 keeps the do-not-build list MINUS the pane cap, which is withdrawn. The
+// superseded assertion is kept as the oracle: the fold-into-pane-3 idiom must be ABSENT, because
+// its return is C7's union-of-the-rest rectangle returning with it.
+sup('Part 7: cluster 3…N folds into pane 3 rather than into a fourth pane',
+  'A-51 G6 (the pane cap is withdrawn from Part 7\'s do-not-build list)',
+  /panes\.slice\(2\)|ranked\.slice\(2\)/.test(wmSrc));
+ok(!/panes\.slice\(2\)|ranked\.slice\(2\)/.test(wmCode) && !/inset-3/.test(wmCode),
+  'Part 7, as A-51 leaves it: there is no fold-into-the-last-pane step and no fourth-pane id');
 // The media queries the stylesheet does have, so the reading of Part 7 is checked rather than assumed.
 const mqs = [...css.matchAll(/@media[^{]*\{/g)].map((m) => m[0].trim());
 note(`  media queries in styles.css: ${mqs.join(' | ')}`);
 ok(!mqs.some((m) => /worldmap__pane|viewBox/.test(m)), 'Part 7: no media query decides a pane or a viewBox');
 
-console.log(`\n${fails} FAIL, ${founds} FOUND\n`);
+console.log(`\n${fails} FAIL, ${founds} FOUND, ${sups} SUPERSEDED by A-51/A-53 (I-8i)\n`);
 // A FAIL is a clause of A-41/A-42 that does not hold as implemented. A FOUND is a finding:
 // the code does what the ruling says and the ruling produces the wrong map. Either exits 1.
 process.exit(fails === 0 && founds === 0 ? 0 : 1);
