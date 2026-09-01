@@ -48,6 +48,7 @@
  * one surface that summarises a whole travel life.
  */
 import { useState } from 'react';
+import type { CSSProperties } from 'react';
 import type { AppState } from '@cairn/client';
 import { travelHistory, worldMapFrame } from '@cairn/client';
 import { COUNTRY_INDEX } from '@cairn/core';
@@ -137,6 +138,17 @@ export function WorldMap({ state, onOpenTrip, onError }: Props) {
               <svg
                 className="worldmap__svg"
                 viewBox={pane.viewBox}
+                /*
+                  A-48 Part 6 (QA R36-5): the pane's own aspect ratio, passed straight through
+                  as a custom property. The stylesheet sizes the box with it
+                  (`aspect-ratio: var(--pane-aspect)`, with a static max-height clamp) so the
+                  map fills the box instead of painting 42.6% of it. The ratio is COMPUTED IN
+                  THE FRAME — deriving it here would mean parsing `viewBox` and dividing two
+                  coordinates, which A-40 Part 2 forbids — and nothing here measures anything,
+                  so W1 is intact and A-41 Part 7's "no per-screen-size rule" is untouched: the
+                  frame is identical in bare Node.
+                */
+                style={{ '--pane-aspect': pane.aspect } as CSSProperties}
                 preserveAspectRatio="xMidYMid meet"
                 role="img"
                 aria-label={

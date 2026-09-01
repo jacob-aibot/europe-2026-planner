@@ -136,7 +136,14 @@
     --good: #3fa873;
     --shadow: 0 1px 0 rgb(0 0 0 / 40%);
     --shadow-md: 0 2px 10px rgb(0 0 0 / 40%);
-    --map-fill: #59637a;
+    /* QA R36-6: the previous `#59637a` measured **2.87:1** against `--map-sea` (`--panel-alt`,
+       #171b23), under WCAG 1.4.11's 3:1 floor for a non-text graphical object — and a filled
+       country against the sea is exactly that. `#6d7794` measures **3.87:1** against the sea and
+       4.10:1 against `--paper`, so it clears the floor with headroom on both surfaces the map
+       is drawn over rather than sitting on it. Light mode is unchanged at 7.16:1. A-34's
+       provisional treatment is a different ink entirely (`--map-provisional-fill` + a dashed
+       stroke) and stays visibly distinct from this in both schemes. */
+    --map-fill: #6d7794;
     --map-line: var(--paper);
   }
 }
@@ -614,8 +621,22 @@ textarea { resize: vertical; }
    longitudes past -180), and a white band beside a grey one reads as a rendering fault. The
    rect stays: it is the world in the frame's own coordinates, and it is what a future
    land/sea distinction would hang off. Neither is a measurement. */
-.worldmap__svg { display: block; width: 100%; height: min(58vh, 460px); background: var(--map-sea); }
-.worldmap__pane--inset .worldmap__svg { height: min(22vh, 170px); }
+/* §4.4 A-48 Part 6 (QA R36-5): the box is sized from the PANE'S OWN aspect ratio, which the
+   frame computed and the component passed through as `--pane-aspect`. At 390 px the main pane
+   used to paint 356 × 196 px inside a 356 × 460 px box — 42.6%, i.e. 264 px of empty sea —
+   because the height was a constant and `preserveAspectRatio="xMidYMid meet"` letterboxed the
+   rest. The `max-height` is STATIC: it clamps a tall pane, it never decides the frame. Nothing
+   here is measured, no `viewBox` moves, and A-41 Part 7's "no per-screen-size rule" is
+   untouched — Part 6 clarifies that it forbids a frame that depends on a measurement, not a CSS
+   box that resolves at layout. The `height: auto` is the fallback for a pane with no custom
+   property (an aspect of 0 would collapse the box; there is none, but the rule is cheap). */
+.worldmap__svg {
+  display: block; width: 100%; height: auto;
+  aspect-ratio: var(--pane-aspect, 2);
+  max-height: min(58vh, 460px);
+  background: var(--map-sea);
+}
+.worldmap__pane--inset .worldmap__svg { max-height: min(22vh, 170px); }
 .worldmap__sea { fill: var(--map-sea); }
 
 /* A-41 constraint 3: the outlier is named where it is drawn, not in a footnote. */

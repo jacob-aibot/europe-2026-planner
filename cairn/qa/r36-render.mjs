@@ -7,6 +7,13 @@
  *   Needs: npm run web:build && npm run serve   (in another shell)
  *   Run:   PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r36-render.mjs
  *
+ * **Re-pointed at I-8g (2026-08-31), by the builder, at the manager's instruction.** §4.4 **A-48**
+ * fixes R36-5 (the pane carries its own `aspect`), R36-6 (the dark `--map-fill` token) and half of
+ * R36-7 (C9's paint order), so the three assertions that encoded the defect now encode the fix, each
+ * marked `[I-8g]`, with the measured "before" figure kept beside it. The `MF`/`SX` half of R36-7 is
+ * A-48 residue 6 — a shared screen pixel, not a containment — and is deliberately still open: it is
+ * asserted as the ONE stated exception plus its code-chip route, so a second one would be a finding.
+ *
  *   A  DARK MODE — the inset pane, its caption, and the contrast of every new text element.
  *   B  REDUCED MOTION — the one transition I-8d's countries carry.
  *   C  390 px — the phone. The builder's own "observation 2 for the manager", measured
@@ -115,7 +122,26 @@ for (const scheme of ['light', 'dark']) {
   // Country fill vs sea: the map has to be legible as a map.
   const seaVsInk = contrast(panes[0].paths[0].fill, panes[0].sea);
   note(`${scheme}: country ink ${panes[0].paths[0].fill} on sea ${panes[0].sea} = ${seaVsInk.toFixed(2)}:1`);
-  if (seaVsInk < 3) found(`${scheme}: filled country vs sea is only ${seaVsInk.toFixed(2)}:1 — under WCAG's 3:1 floor for a non-text graphical object`);
+  // [I-8g] R36-6: dark measured 2.87:1 here, under WCAG 1.4.11's 3:1 for a graphical object.
+  ok(seaVsInk >= 3, `${scheme}: filled country vs sea clears WCAG's 3:1 floor for a graphical object (dark was 2.87:1)`, seaVsInk.toFixed(2));
+  // [I-8g] A-34: the provisional treatment must stay a DIFFERENT ink in BOTH schemes, which is
+  // the half of R36-6 a token change could break. The shipped sample has no active trip, so the
+  // tokens are read from :root and compared rather than sampled off a path that is not there.
+  const tokens = await page.evaluate(() => {
+    const cs = getComputedStyle(document.documentElement);
+    const probe = document.createElement('span');
+    document.body.appendChild(probe);
+    const resolve = (name) => { probe.style.color = `var(${name})`; return getComputedStyle(probe).color; };
+    const out = {
+      fill: resolve('--map-fill'), sea: resolve('--map-sea'),
+      prov: resolve('--map-provisional-fill'), provLine: resolve('--map-provisional-line'),
+      raw: cs.getPropertyValue('--map-fill').trim(),
+    };
+    probe.remove();
+    return out;
+  });
+  ok(tokens.fill !== tokens.prov, `${scheme}: A-34's provisional fill is not the confirmed ink`, tokens);
+  note(`${scheme}: --map-fill ${tokens.raw} · confirmed vs provisional = ${contrast(tokens.fill, tokens.prov).toFixed(2)}:1 · provisional stroke vs sea = ${contrast(tokens.provLine, tokens.sea).toFixed(2)}:1`);
   await ctx.close();
 }
 
@@ -149,8 +175,16 @@ head('C  390 px — THE PHONE (builder observation 2, measured)');
   for (const p of painted) {
     const usedPct = 100 * (p.drawnW * p.drawnH) / (p.boxW * p.boxH);
     note(`box ${p.boxW}×${p.boxH} px, frame ${p.frameW.toFixed(1)}:${p.frameH.toFixed(1)} → map paints ${p.drawnW}×${p.drawnH} px = ${usedPct.toFixed(1)}% of the box`);
-    if (usedPct < 60) found(`at 390 px the map occupies only ${usedPct.toFixed(1)}% of its own ${p.boxW}×${p.boxH} box — ${p.boxH - p.drawnH} px of empty sea above and below`);
   }
+  // [I-8g] R36-5: the main pane painted 356×196 inside a 356×460 box — 42.6%, 264 px of empty
+  // sea — because the height was a constant. A-48 Part 6 puts `aspect` on the pane and the
+  // stylesheet sizes the box with it. The ROADMAP criterion is ≥ 75% on the main pane.
+  const mainUsed = 100 * (painted[0].drawnW * painted[0].drawnH) / (painted[0].boxW * painted[0].boxH);
+  ok(mainUsed >= 75, `the main pane paints ≥75% of its box at 390 px (it was 42.6%)`, `${mainUsed.toFixed(1)}%`);
+  const aspectVar = await page.evaluate(() => [...document.querySelectorAll('#tabpanel-map .worldmap__svg')]
+    .map((s) => ({ set: s.style.getPropertyValue('--pane-aspect'), used: getComputedStyle(s).aspectRatio })));
+  ok(aspectVar.every((a) => a.set !== '' && Number(a.set) > 0),
+    'A-48 Part 6: every pane carries its own `--pane-aspect`, straight from the frame', aspectVar);
   ok(panes.length === 2, 'both panes still render at 390 px', panes.length);
   ok(panes.every((p) => p.box.w > 0 && p.box.h > 0), 'neither pane collapses', panes.map((p) => p.box));
   // The caption must not overflow its pane at 390 px.
@@ -311,12 +345,15 @@ head('F  A-41 CONSTRAINT 1 — "STILL DRAWN, STILL ATTRIBUTED, STILL TAPPABLE"')
   const tooSmall = res.filter((r) => r.inside === 0).map((r) => r.code);
   ok(res.length === codes.length, `all ${codes.length} codes are drawn`, res.length);
   note(`${tooSmall.length} codes are smaller than a 40×40 sample of their own bbox and are inconclusive: ${tooSmall.join(' ')}`);
-  if (untappable.length) {
-    found(`${untappable.length} of ${codes.length} drawn countries have NO point anywhere in their own fill that hit-tests to themselves: ` +
-      untappable.map((r) => `${r.code} (covered by ${r.over})`).join(', ') +
-      ' — A-41 constraint 1 says every country stays tappable');
-    for (const r of untappable) note(`  ${r.code}: ${r.inside} interior sample points, 0 self-hits, ${r.over} on top at every one`);
-  }
+  // [I-8g] C9 fixes the CONTAINMENT half of R36-7: `AD` had 0 self-hits under `FR` and now paints
+  // on top of it. The `MF`/`SX` half is A-48 residue 6 — two halves of one 90 km² island sharing a
+  // screen pixel — and is the ONE stated exception; a second entry here is a new finding.
+  const ad = res.find((r) => r.code === 'AD');
+  ok(ad && ad.self > 0, 'R36-7: AD hit-tests to itself where it had 0 self-hits under canonical paint order', ad);
+  ok(untappable.length <= 1 && untappable.every((r) => r.code === 'MF' || r.code === 'SX'),
+    'the only country with no self-hit-testable pixel is the MF/SX pair A-48 residue 6 defers',
+    untappable.map((r) => `${r.code} under ${r.over}`));
+  for (const r of untappable) note(`  A-48 residue 6: ${r.code} has ${r.inside} interior sample points, 0 self-hits, ${r.over} on top at every one — a scale collision, which no paint order fixes`);
   // The fallback that keeps this a rough edge rather than a lost country: the code chip list.
   for (const r of untappable) {
     await page.click(`.codelist button:has(span:text-is("${r.code}"))`);
@@ -330,10 +367,21 @@ head('F  A-41 CONSTRAINT 1 — "STILL DRAWN, STILL ATTRIBUTED, STILL TAPPABLE"')
     await page.getByRole('tab', { name: 'Map' }).click();
     await page.waitForSelector('.codelist');
   }
-  // Why: the paint order is canonical ISO, so an enclave is only lost when its code sorts
-  // BEFORE the polygon that swallows it at this index's resolution.
+  // [I-8g] Why: paint order is now DESCENDING INDEX POSITION (A-48 C9), and the index is ordered
+  // by ascending summed ring area, so a country whose fill contains another's is painted first and
+  // the contained one ends up on top. Asserted on the DOM, in the order the browser paints it.
   const order = await page.evaluate(() => [...document.querySelectorAll('#tabpanel-map .worldmap__pane--main path[data-code]')].map((n) => n.dataset.code));
-  ok(String(order) === String([...order].sort()), 'paths are painted in canonical ISO order, so the later code is always on top');
+  const lastPos = new Map();
+  core.COUNTRY_INDEX.countries.forEach((e, i) => lastPos.set(e.code, i));
+  const positions = order.map((c) => lastPos.get(c));
+  ok(positions.every((p, i) => i === 0 || p < positions[i - 1]),
+    'A-48 C9: paths are painted in descending index position — the large first, the small on top');
+  ok(String(order) !== String([...order].sort()),
+    'and the canonical-ISO order this replaced is measurably gone (the vacuity control)');
+  for (const [small, host] of [['AD', 'FR'], ['MC', 'FR'], ['VA', 'IT'], ['SM', 'IT'], ['LI', 'AT'], ['GI', 'ES']]) {
+    ok(order.indexOf(host) < order.indexOf(small), `A-48 I10: ${host} is painted before ${small}`,
+      { host: order.indexOf(host), small: order.indexOf(small) });
+  }
   await page.evaluate(async () => {
     const db = await new Promise((r) => { const q = indexedDB.open('cairn'); q.onsuccess = () => r(q.result); });
     const tx = db.transaction('summaries', 'readwrite');

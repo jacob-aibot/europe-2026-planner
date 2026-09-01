@@ -186,6 +186,23 @@ with the reference `viewBox`es re-derived byte-for-byte; **G** Part 6's one kern
 list and A-42 (c). It exits **0 FAIL** — every clause of A-41 holds *as implemented*; the
 findings are its **FOUND** lines, which are cases where the ruling is what is wrong.
 
+**I-8g** (§4.4 **A-48** — C2′'s key point, C3′'s partition, C9's paint order, Part 6's `aspect`)
+adds one script and **re-points both round-36 probes at the rule that replaced the one they were
+written against**. The two round-36 MAJORs were defects in A-41 itself, so the assertions that
+encoded the superseded clauses now encode the corrected ones, each marked `[I-8g]` in place, with
+the superseded rule kept beside it as the injected fault's oracle (§A still computes C2's
+union-box keys; §B still runs a first-fit reference). Both now report **0 FAIL, 0 FOUND**.
+
+```bash
+bash qa/i8g-faults.sh                                    # 14 mutations in throwaway worktrees
+```
+
+Three of `i8d-faults.sh`'s thirteen mutations were re-pointed at the lines A-48 replaced (marked
+`[I-8g]` there); all thirteen are still RED. The two browser-side I-8g criteria — the main pane
+filling ≥75% of its box (R36-5) and dark mode clearing 3:1 (R36-6) — have their faults injected by
+hand against `r36-render.mjs` §A/§C, because they need a rebuild; the measurements are in
+BUILD-NOTES.
+
 `r36-render.mjs` has six sections: **A** dark mode on the new inset and its caption, the two
 things the builder could not verify (**R36-6**); **B** reduced motion, with a control;
 **C** 390 px, where the builder's own "observation 2" is measured (**R36-5**); **D** three

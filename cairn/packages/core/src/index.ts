@@ -1,11 +1,12 @@
 /**
  * `@cairn/core` — the public surface of ARCHITECTURE §2.10 and nothing else.
  *
- * **77 runtime symbols, one list, set equality in both directions** (69 at revision 5, QA R2-12,
+ * **78 runtime symbols, one list, set equality in both directions** (69 at revision 5, QA R2-12,
  * BUILD-NOTES KD-33; +`reassertRetirements` at revision 6; +`lifecycle` at Phase 2 I-1;
  * +`countryOf` and `COUNTRY_INDEX` at Phase 2 I-5; +`SUMMARY_VERSION` at Phase 2 I-6;
  * +`travelStats` at Phase 2 I-7; +`clusterPoints` at Phase 2 I-8d, §4.4 A-41 Part 6;
- * +`isIsoDate` at Phase 2 I-8e, §2.9 A-46 Part 2). It used to be 110 against a 50-name list plus a 60-name "beyond §2.10,
+ * +`isIsoDate` at Phase 2 I-8e, §2.9 A-46 Part 2; +`countryKeyPoint` at Phase 2 I-8g,
+ * §4.4 A-48 Part 2). It used to be 110 against a 50-name list plus a 60-name "beyond §2.10,
  * each with a justification" list, which made the acceptance criterion true by construction:
  * 110 = 50 + 60 for *any* 110 exports. A boundary the Phase 2 server and the Phase 4 native
  * app are written against cannot be "110 against 50, enumerated".
@@ -72,13 +73,20 @@ export { acceptCandidate, rejectCandidate } from './build/candidates.ts';
 export { copyStopInto } from './build/copyStop.ts';
 export type { CopyStopSource, CopyStopCtx } from './build/copyStop.ts';
 
-// ---- derive (25) -------------------------------------------------------------
+// ---- derive (26) -------------------------------------------------------------
 // `countryOf` and `COUNTRY_INDEX` join in revision 20's terms under Phase 2 I-5: §8.4 clause 1
 // names `countryOf(at, index)` as a callable (P2), and the same clause's revision-10 consequence
 // says the index "is generated code inside `packages/core` and is exported as a value from
 // `index.ts` so every call site can pass it" — which `tools/gen-golden.mjs` already is (P1),
 // since §2.10 ceiling (1) forbids it reaching into `geo/countries.gen.ts` by module path.
-export { countryOf } from './derive/country.ts';
+// `countryKeyPoint` joins at Phase 2 I-8g under §4.4 **A-48** Part 2 (P2 — that section names
+// it) and P1 (`packages/client`'s `worldMapFrame` calls it). A key point is a geometric
+// property of the index, as `box` and `countryOf` are, and computing it in the client would put
+// a second bounds computation there — which §4.4 A-40 clause 2 forbids in as many words. It is
+// a LABEL for a country, never an attribution of a coordinate: `countryOf`'s `null` stays
+// first-class and nothing may snap a point to the nearest key. The ring-area helper it needs is
+// module-private.
+export { countryOf, countryKeyPoint } from './derive/country.ts';
 export { COUNTRY_INDEX } from './geo/countries.gen.ts';
 export type { CountryIndex, CountryEntry, CountryEntryInit, CountryRing, CountryBox } from './geo/countryIndex.ts';
 // `lifecycle` joins in revision 10 under P2: §8.1 names it, and §8.9 is the documentation

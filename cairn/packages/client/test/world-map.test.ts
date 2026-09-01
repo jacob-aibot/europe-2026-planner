@@ -11,8 +11,13 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
 import * as core from '../src/deps.ts';
 import { worldMapFrame, WORLD_CLUSTER_THRESHOLD_KM } from '../src/selectors/worldMap.ts';
+
+const HERE = dirname(fileURLToPath(import.meta.url));
 
 // ---------------------------------------------------------------------------
 // Fixtures. Hand-written rings, so the projection is checkable by eye.
@@ -188,8 +193,10 @@ test('A-34: `provisional` is carried verbatim from the TravelStatsCountry row', 
     statsOf([{ code: 'AA', provisional: false }, { code: 'BB', provisional: true }]),
     FIXTURE,
   );
+  // `countries` is emitted in C9's paint order (A-48 Part 5), so this is BB before AA in the
+  // fixture's index order; the flag each row carries is the assertion.
   assert.deepEqual(
-    frame.countries.map((c) => [c.code, c.provisional]),
+    frame.countries.map((c) => [c.code, c.provisional]).sort(),
     [['AA', false], ['BB', true]],
   );
 });
@@ -199,9 +206,18 @@ test('`tripIds` is carried verbatim, in canonical row order — it drives "tap f
   assert.deepEqual(frame.countries[0].tripIds, ['b', 'a', 'c']);
 });
 
-test('country rows keep the canonical stats order', () => {
+/**
+ * **Changed at I-8g by A-48 C9** — and the change is the fix, not a side effect. `countries`
+ * used to be canonical row order, which paints the alphabetically later code on top of the
+ * earlier one and left `AD` with no self-hit-testable pixel anywhere inside France (QA R36-7).
+ * It is now **descending index position**, and the index is ordered by ascending ring area, so
+ * the large paint first and the small end up on top. `pane.codes` is what stayed canonical (I2).
+ */
+test('A-48 C9: country rows are emitted in paint order — descending index position', () => {
   const frame = worldMapFrame(statsOf([{ code: 'CC' }, { code: 'AA' }, { code: 'BB' }]), FIXTURE);
-  assert.deepEqual(frame.countries.map((c) => c.code), ['CC', 'AA', 'BB']);
+  // FIXTURE's entry order is AA, BB, CC, CC, TT; CC's LAST entry is the latest of the three.
+  assert.deepEqual(frame.countries.map((c) => c.code), ['CC', 'BB', 'AA']);
+  assert.deepEqual(frame.panes[0].codes, ['CC', 'AA', 'BB'], 'pane.codes stays canonical row order');
 });
 
 // ---------------------------------------------------------------------------
@@ -347,14 +363,10 @@ test('A-41 C4: the threshold is 4,000 km and it lives in the client, not in core
 
 test('A-41 C4: at 4,000 km the reference key points are 2 groups; at 8,000 km they are 1', () => {
   // The injected fault the ROADMAP names, measured on the kernel rather than by rebuilding
-  // the frame: raise the threshold and the split disappears.
-  const keys = REFERENCE.map((code) => {
-    const boxes = core.COUNTRY_INDEX.countries.filter((c) => c.code === code).map((c) => c.box);
-    return {
-      lat: (Math.min(...boxes.map((b) => b[1])) + Math.max(...boxes.map((b) => b[3]))) / 2,
-      lng: (Math.min(...boxes.map((b) => b[0])) + Math.max(...boxes.map((b) => b[2]))) / 2,
-    };
-  });
+  // the frame: raise the threshold and the split disappears. The key points come from core's
+  // own `countryKeyPoint` (A-48 C2′) — the client has no second way to derive one.
+  const keys = REFERENCE.map((code) => core.countryKeyPoint(code, core.COUNTRY_INDEX) as core.LatLng);
+  assert.ok(keys.every((k) => k !== null));
   assert.equal(core.clusterPoints(keys, WORLD_CLUSTER_THRESHOLD_KM).length, 2);
   assert.equal(core.clusterPoints(keys, 8000).length, 1);
 });
@@ -363,20 +375,37 @@ test('A-41 C4: at 4,000 km the reference key points are 2 groups; at 8,000 km th
 // C2 — one key point per COUNTRY, from the union of its entries' boxes.
 // ---------------------------------------------------------------------------
 
-test('A-41 C2: a two-entry code keys off the UNION of its boxes, not off its first entry', () => {
-  // `DD`'s entries sit at lng 0 and lng 179; the union centre is lng 89.5, which is where
-  // `EE` is. Keying off the first entry alone puts them 10,000 km apart and splits the frame.
+/**
+ * **A-48 C2′ (supersedes C2).** A country's key point is the box centre of its **principal
+ * ring** — the ring of greatest absolute spherical area — and not the centre of the union of
+ * its boxes, which is a point about a rectangle and can be in the open ocean (QA R36-1).
+ *
+ * `DD` here is the `FR` shape: an 8° mainland plus a 2° territory a hemisphere away. Under C2
+ * its key is the union-box centre, 4,700 km from `EE` — which sits 550 km off the mainland —
+ * and the frame splits, exiling the near neighbour to an inset. Under C2′ it is one pane.
+ */
+test('A-48 C2′: a code keys off its PRINCIPAL RING, so a distant territory cannot move it', () => {
   const index: core.CountryIndex = {
     scale: 'test', source: 'hand-written',
     countries: [
-      entry('DD', [square(-1, -1, 2)]),
-      entry('DD', [square(178, -1, 2)]),
-      entry('EE', [square(88.5, -1, 2)]),
+      entry('DD', [square(0, 42, 8), square(-100, -30, 2)]),   // mainland + a far territory
+      entry('EE', [square(10, 45, 2)]),                        // 550 km from the mainland's centre
     ],
   };
   const frame = worldMapFrame(statsOf([trips('DD', 6), trips('EE', 1)]), index);
-  assert.equal(frame.panes.length, 1, 'one key point per code, and the two are 55 km apart');
+  assert.equal(frame.panes.length, 1, 'the key point is on the mainland, and EE is 550 km from it');
   assert.deepEqual(frame.panes[0].codes, ['DD', 'EE']);
+  // The client does not derive the key itself: it is core's answer, verbatim.
+  assert.deepEqual(core.countryKeyPoint('DD', index), { lat: 46, lng: 4 });
+});
+
+test('A-48 C2′: the client computes no key point of its own — the union-box rule is gone', () => {
+  const src = readFileSync(resolve(HERE, '..', 'src', 'selectors', 'worldMap.ts'), 'utf8');
+  assert.match(src, /core\.countryKeyPoint\(/, 'the frame does not call core.countryKeyPoint');
+  const stripped = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+  for (const banned of ['(south + north) / 2', '(west + east) / 2', 'haversine', '6371']) {
+    assert.ok(!stripped.includes(banned), `worldMap.ts computes geometry of its own: ${banned}`);
+  }
 });
 
 // ---------------------------------------------------------------------------
@@ -486,9 +515,14 @@ test('A-41 I1/I2: every code is in exactly one pane or in `missing`, at 1, 2, 3 
     assert.equal(new Set(inPanes).size, inPanes.length, 'a code is in two panes');
     for (const code of frame.missing) assert.ok(!inPanes.includes(code), `${code} is both drawn and missing`);
     assert.ok(frame.panes.length <= 3);
-    // I2: pane membership and `paneId` are the same fact, both ways.
+    // I2 (restated by A-48 Part 7): pane membership and `paneId` are the same fact, both ways —
+    // but `pane.codes` is canonical row order while `frame.countries` is C9's paint order, so
+    // the comparison is over the SET, plus the canonical-order assertion beside it.
     for (const pane of frame.panes) {
-      assert.deepEqual(pane.codes, frame.countries.filter((c) => c.paneId === pane.id).map((c) => c.code));
+      const members = frame.countries.filter((c) => c.paneId === pane.id).map((c) => c.code);
+      assert.deepEqual(pane.codes.slice().sort(), members.slice().sort());
+      assert.deepEqual(pane.codes, rows.map((r) => r.code).filter((c) => pane.codes.includes(c)),
+        'pane.codes is not in canonical row order');
       assert.equal(pane.weight, frame.countries.filter((c) => c.paneId === pane.id)
         .reduce((n, c) => n + c.tripIds.length, 0));
     }
@@ -592,4 +626,186 @@ test('A-41 Part 5: pane ids are exactly the three positional strings W3 filters 
   const frame = worldMapFrame(statsOf(rows), ATLAS);
   for (const p of frame.panes) assert.ok(['main', 'inset-1', 'inset-2'].includes(p.id), `bad pane id ${p.id}`);
   for (const c of frame.countries) assert.equal(typeof c.paneId, 'string');
+});
+
+// ===========================================================================
+// I-8g — ARCHITECTURE §4.4 **A-48**. C2′ (the key point is a point of the country),
+// C3′ (the partition is the connected components), C9 (paint order) and Part 6 (`aspect`).
+//
+// A-41's C1, C5, C6, C7, C8, Part 4 and Part 5's I1/I3–I7 are unchanged and are still held by
+// the tests above; nothing below may cost one of them.
+// ===========================================================================
+
+/** The stats rows of a library, in whatever order the caller hands them over. */
+const rowsOf = (spec: Array<[string, number]>) => spec.map(([code, n]) => trips(code, n));
+
+/** Pane membership as a comparable string, independent of pane order. */
+const membership = (frame: ReturnType<typeof worldMapFrame>): string =>
+  frame.panes.map((p) => p.codes.slice().sort().join(',')).sort().join(' | ');
+
+// ---------------------------------------------------------------------------
+// R36-1 — France. The library A-41's own frame got wrong.
+// ---------------------------------------------------------------------------
+
+test('A-48 C2′ / R36-1: two France trips and one Greece trip are ONE pane, not FR + an inset', () => {
+  const frame = worldMapFrame(statsOf([trips('FR', 2), trips('GR', 1)]), core.COUNTRY_INDEX);
+  assert.equal(frame.panes.length, 1, 'FR and GR are 1,900 km apart and belong in one frame');
+  assert.deepEqual(frame.panes[0].codes, ['FR', 'GR']);
+  assert.equal(frame.panes[0].weight, 3);
+  // **A-48 residue 1′, made visible rather than assumed away.** C2′ fixes the KEY, not the
+  // EXTENT: C8 is unchanged, so the pane still spans every corner of FR's own index box —
+  // French Guiana included, because French Guiana is drawn — and the frame is 81.1° wide.
+  // What changed is that Greece is no longer captioned "Shown separately" while sitting 1,900
+  // km from the country the frame is built around.
+  const w = frame.panes[0].bounds.east - frame.panes[0].bounds.west;
+  assert.equal(Math.round(w * 10) / 10, 81.1, 'the extent is FR box ∪ GR box, per C8 unchanged');
+});
+
+test('A-48 C2′ / R36-1: France clusters with Europe, and no longer with Morocco alone', () => {
+  const km = (a: string, b: string) => {
+    const ka = core.countryKeyPoint(a, core.COUNTRY_INDEX) as core.LatLng;
+    const kb = core.countryKeyPoint(b, core.COUNTRY_INDEX) as core.LatLng;
+    // The kernel's own answer, not a hand-rolled distance: one point apart at the threshold.
+    return core.clusterPoints([ka, kb], WORLD_CLUSTER_THRESHOLD_KM).length;
+  };
+  assert.equal(km('FR', 'DE'), 1, 'FR–DE is 804 km and must merge');
+  assert.equal(km('FR', 'CZ'), 1, 'FR–CZ is 1,075 km and must merge (it was 4,137 km under C2)');
+  assert.equal(km('FR', 'MA'), 1, 'FR–MA is 2,227 km and still merges — the fix is the ORDER, not the set');
+  const frame = worldMapFrame(statsOf([trips('CZ', 1), trips('FR', 2), trips('MA', 1)]), core.COUNTRY_INDEX);
+  assert.equal(frame.panes.length, 1, 'all three are one European/North-African cluster');
+});
+
+// ---------------------------------------------------------------------------
+// R36-2 / I9 — the partition is a function of the point set, not of the row order.
+// ---------------------------------------------------------------------------
+
+/** Every ordering of a list, as arrays. */
+function permutations<T>(xs: T[]): T[][] {
+  return xs.length <= 1 ? [xs] : xs.flatMap((x, i) => permutations([...xs.slice(0, i), ...xs.slice(i + 1)]).map((p) => [x, ...p]));
+}
+
+test('A-48 I9 / R36-2: {AE, AT, GR} gives the identical partition under all six orderings', () => {
+  const spec: Array<[string, number]> = [['AE', 1], ['AT', 1], ['GR', 3]];
+  const answers = new Set(
+    permutations(spec).map((order) => membership(worldMapFrame(statsOf(rowsOf(order)), core.COUNTRY_INDEX))),
+  );
+  assert.equal(answers.size, 1, `six orderings gave ${answers.size} partitions: ${[...answers].join(' / ')}`);
+  // And the answer itself: one pane. Under first-fit the canonical order framed the UAE
+  // (3,281 km from Greece) with Greece and exiled Austria (1,326 km) to the inset.
+  const canonical = worldMapFrame(statsOf(rowsOf(spec)), core.COUNTRY_INDEX);
+  assert.equal(canonical.panes.length, 1);
+  assert.deepEqual(canonical.panes[0].codes, ['AE', 'AT', 'GR']);
+});
+
+test('A-48 I9 / R36-2: HU and SI — 350 km apart — are never separated, in any ordering', () => {
+  const spec: Array<[string, number]> = [['FR', 1], ['HU', 1], ['SI', 1]];
+  for (const order of permutations(spec)) {
+    const frame = worldMapFrame(statsOf(rowsOf(order)), core.COUNTRY_INDEX);
+    assert.equal(frame.panes.length, 1, `{${order.map((o) => o[0]).join(',')}} split`);
+    const pane = frame.panes.find((p) => p.codes.includes('HU')) as { codes: string[] };
+    assert.ok(pane.codes.includes('SI'), 'Hungary and Slovenia are in different panes');
+  }
+});
+
+test('A-48 I9: permuting a five-country library changes nothing but the row order', () => {
+  const spec: Array<[string, number]> = [['AU', 1], ['DE', 6], ['FR', 2], ['JP', 1], ['US', 1]];
+  const answers = new Set(
+    permutations(spec).map((order) => membership(worldMapFrame(statsOf(rowsOf(order)), core.COUNTRY_INDEX))),
+  );
+  assert.equal(answers.size, 1, `120 orderings gave ${answers.size} distinct partitions`);
+});
+
+// ---------------------------------------------------------------------------
+// R33-1 — the reference frame, byte for byte. A-48 may not cost I-8d its fix.
+// ---------------------------------------------------------------------------
+
+test('A-48: R33-1 is not regressed — the reference frame is byte-identical to I-8d\'s', () => {
+  const frame = worldMapFrame(statsOf(REFERENCE.map((code) => ({ code }))), core.COUNTRY_INDEX);
+  assert.equal(frame.panes.length, 2);
+  assert.deepEqual(frame.panes[0].codes, ['AT', 'CZ', 'DE', 'GB', 'HR', 'HU']);
+  assert.deepEqual(frame.panes[1].codes, ['US']);
+  assert.equal(frame.panes[0].weight, 6);
+  assert.equal(frame.panes[1].weight, 1);
+  assert.ok(2 * frame.panes[0].weight > 7, 'C5 dominance: 12 > 7');
+  const round4 = (n: number) => Math.round(n * 1e4) / 1e4;
+  assert.equal(round4(frame.panes[0].bounds.east - frame.panes[0].bounds.west), 30.2827);
+  assert.equal(round4(frame.panes[0].bounds.north - frame.panes[0].bounds.south), 16.155);
+  // The two strings I-8d shipped, pinned. A key point that moved a pane would move these.
+  assert.equal(frame.panes[0].viewBox, '-8.1779 -59.2407 31.494 17.3663');
+  assert.equal(frame.panes[1].viewBox, '-173.8876 -73.4543 109.0195 56.6347');
+  assert.equal(frame.viewBox, frame.panes[0].viewBox);
+});
+
+// ---------------------------------------------------------------------------
+// A-48 Part 6 — a pane carries its own aspect ratio (R36-5).
+// ---------------------------------------------------------------------------
+
+test('A-48 Part 6: every pane carries `aspect` = width / height of its PADDED viewBox', () => {
+  const frame = worldMapFrame(statsOf(REFERENCE.map((code) => ({ code }))), core.COUNTRY_INDEX);
+  for (const pane of frame.panes) {
+    const [, , w, h] = pane.viewBox.split(' ').map(Number);
+    assert.equal(pane.aspect, w / h, `${pane.id}: aspect must equal the viewBox's own w / h`);
+    assert.ok(pane.aspect > 0 && Number.isFinite(pane.aspect));
+  }
+  // The main pane at 390 px painted 356 × 196 inside a 356 × 460 box — 42.6% — because the
+  // stylesheet had a fixed height and the view may not derive a ratio (A-40 Part 2).
+  assert.equal(Math.round(frame.panes[0].aspect * 1e4) / 1e4, Math.round((31.494 / 17.3663) * 1e4) / 1e4);
+});
+
+test('A-48 Part 6: the empty frame\'s aspect is the whole world\'s, 2', () => {
+  assert.equal(worldMapFrame(statsOf([]), FIXTURE).panes[0].aspect, 2);
+});
+
+test('A-48 Part 6: a single clamped country still has a positive, finite aspect', () => {
+  const va = worldMapFrame(statsOf([{ code: 'VA' }]), core.COUNTRY_INDEX);
+  assert.ok(va.panes[0].aspect > 0 && Number.isFinite(va.panes[0].aspect));
+  const tt = worldMapFrame(statsOf([{ code: 'TT' }]), FIXTURE);
+  assert.ok(tt.panes[0].aspect > 0 && Number.isFinite(tt.panes[0].aspect));
+});
+
+// ---------------------------------------------------------------------------
+// A-48 C9 / I10 — nothing is painted out of reach.
+// ---------------------------------------------------------------------------
+
+test('A-48 C9: `countries` is emitted in descending index position over the shipped index', () => {
+  const codes = [...new Set(core.COUNTRY_INDEX.countries.map((c) => c.code))].sort();
+  const frame = worldMapFrame(statsOf(codes.map((code) => ({ code }))), core.COUNTRY_INDEX);
+  const lastPos = new Map<string, number>();
+  core.COUNTRY_INDEX.countries.forEach((c, i) => lastPos.set(c.code, i));
+  const emitted = frame.countries.map((c) => lastPos.get(c.code) as number);
+  assert.equal(emitted.length, codes.length);
+  for (let i = 1; i < emitted.length; i++) {
+    assert.ok(emitted[i] < emitted[i - 1], `paint order is not descending at ${frame.countries[i].code}`);
+  }
+});
+
+/**
+ * **I10 — nothing is painted out of reach.** The index is ordered by ascending summed absolute
+ * spherical ring area (§8.4 A-26 Part 4), so if A's fill contains B's then `area(A) > area(B)`,
+ * A is later in the index, and C9 paints A **first** — leaving B on top and hit-testable. These
+ * six pairs are the containments QA R36-7 measured in the browser; `AD` under `FR` is the case
+ * that had 0 self-hits under canonical order.
+ */
+test('A-48 I10 / R36-7: a contained microstate is emitted AFTER the country that surrounds it', () => {
+  const pairs: Array<[string, string]> = [
+    ['AD', 'FR'], ['MC', 'FR'], ['VA', 'IT'], ['SM', 'IT'], ['LI', 'AT'], ['GI', 'ES'],
+  ];
+  const codes = [...new Set(pairs.flat())].sort();
+  const frame = worldMapFrame(statsOf(codes.map((code) => ({ code }))), core.COUNTRY_INDEX);
+  const at = (code: string) => frame.countries.findIndex((c) => c.code === code);
+  for (const [small, host] of pairs) {
+    assert.ok(at(host) >= 0 && at(small) >= 0, `${small}/${host} missing from the frame`);
+    assert.ok(at(host) < at(small), `${host} must paint before ${small}, or ${small} is unreachable`);
+  }
+});
+
+test('A-48 C9: paint order is a property of the emitted array only — pane.codes stays canonical', () => {
+  const rows = [trips('AT', 6), trips('AU', 1), trips('JP', 1), trips('US', 1)];
+  const frame = worldMapFrame(statsOf(rows), core.COUNTRY_INDEX);
+  const canonical = rows.map((r) => r.code);
+  for (const pane of frame.panes) {
+    assert.deepEqual(pane.codes, canonical.filter((c) => pane.codes.includes(c)));
+  }
+  assert.notDeepEqual(frame.countries.map((c) => c.code), canonical, 'the emitted array is not paint-ordered');
+  assert.deepEqual(frame.countries.map((c) => c.code).sort(), canonical.slice().sort(), 'a code was lost');
 });

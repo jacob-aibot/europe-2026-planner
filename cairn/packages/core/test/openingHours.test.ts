@@ -351,10 +351,12 @@ test('A-20 assertion 6: isOpeningHours is NOT on the public surface (§2.10 is 7
   // `clusterPoints` under §4.4 A-41 Part 6; **77 since Phase 2 I-8e added `isIsoDate` under
   // §2.9 A-46 Part 2** — the date predicate `packages/client`'s `rowDatesReadable` calls, so
   // that the Trips list can ask the question A-45 made `fromJSON` answer without growing a
-  // second calendar. The assertion
+  // second calendar; **78 since Phase 2 I-8g added `countryKeyPoint` under §4.4 A-48 Part 2**,
+  // the atlas frame's key point, which is a geometric property of the index and may not be
+  // recomputed in `packages/client`. The assertion
   // this test exists for is the loop below — the size is the tripwire that says a widening
   // happened at all, and it is re-derived by counting, never quoted.
-  assert.equal(Object.keys(core).length, 77);
+  assert.equal(Object.keys(core).length, 78);
   for (const name of ['isClockTime', 'readWeeklyEntry', 'isOpeningHours']) {
     assert.equal(name in core, false, `${name} widened §2.10's surface`);
   }

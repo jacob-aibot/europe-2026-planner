@@ -1,5 +1,47 @@
 # Cairn — build notes, Phase 1 (and Phase 2 in progress)
 
+> **Addendum, on ROADMAP Phase 2 **I-8g** (revision 33) — ARCHITECTURE §4.4 **A-48**, which amends
+> **A-41** in place (C2′ the key point, C3′ the partition, C9 paint order, Part 6 the pane's
+> `aspect`, I2 restated, I8/I9/I10 added) and answers QA round 36's **R36-1**, **R36-2**, **R36-5**,
+> **R36-6** and the containment half of **R36-7**.** One builder pass over A-48's "Built" bullet and
+> nothing else. **R36-3 and R36-4 needed no code** (the architect fixed a false sentence and an
+> under-disclosed residue in the document); the **`MF`/`SX`** half of R36-7 is A-48 residue 6 and is
+> deliberately still open. **`Profile.tsx`/I-8b, `fromJSON.ts`, `Library.tsx`, `App.tsx`,
+> `ports/map.ts`, `MapPort`, `StoragePort`, `core.mapBounds` and `travelStats` are untouched.**
+> Scope: **17 files changed, 3 added.** Changed: `packages/core/src/derive/country.ts`,
+> `packages/core/src/derive/cluster.ts`, `packages/core/src/index.ts`,
+> `packages/core/test/surface.test.ts`, `packages/core/test/openingHours.test.ts`,
+> `packages/core/test/clusterPoints.test.ts`, `packages/client/src/selectors/worldMap.ts`,
+> `packages/client/test/world-map.test.ts`, `apps/web/src/views/WorldMap.tsx`,
+> `apps/web/src/styles.css`, `qa/r36-atlas.mjs`, `qa/r36-render.mjs`, `qa/i8d-faults.sh`,
+> `qa/README.md`, `docs/BUILD-NOTES.md`, `docs/CAIRN_VISUAL_ROADMAP.md` + its `.html` twin
+> (updated in the same pass, as `cairn/CLAUDE.md` requires — I-8g is marked **built, not
+> verified**). Added: `packages/core/test/countryKeyPoint.test.ts`,
+> `qa/i8g-faults.sh`, `qa/i8g-render.mjs`. **`packages/core`'s export surface moves 77 → 78** for
+> `countryKeyPoint` and nothing else (re-counted with `Object.keys`, not quoted). Inside
+> `packages/core/src`, `git diff --stat` touches **`derive/country.ts`, `derive/cluster.ts` and
+> `index.ts`** and no other source file. No `SUMMARY_VERSION` bump, no `schemaVersion` bump, no
+> port change, no reducer action, no new dependency (`package.json`/`package-lock.json` diff **0**
+> lines), **no golden and no sample diff** (sample source sha still `40955ca0b182`).
+>
+> | | |
+> |---|---|
+> | **What runs, and the exact command** | `cd cairn && npm run typecheck && npm run test:tap` — clean on both projects, **1046 pass / 0 fail / 0 skipped**. The **1009** baseline was re-derived by running the suite on `99b507c` in a throwaway worktree, not quoted: **1009 → 1046, +37** (+21 the new `packages/core/test/countryKeyPoint.test.ts`; +3 `clusterPoints.test.ts`, 11 → 14; +13 `world-map.test.ts`, 42 → 55). `npm run golden && npm run sample && git status --porcelain` → **nothing under `fixtures/` or `apps/web/src/sample/`**. `bash qa/i8g-faults.sh` → **ALL FAULTS RED, 14 of 14**. `bash qa/i8d-faults.sh` → **ALL FAULTS RED, 13 of 13** (three mutations re-pointed, below). `node qa/r36-atlas.mjs` → **0 FAIL, 0 FOUND** (it was 0 FAIL / 5 FOUND). With `npm run web:build && npm run serve` in another shell: `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r36-render.mjs` → **0 FAIL, 0 FOUND** (it was 1 FOUND), and `node qa/i8g-render.mjs` → **0 FAIL**. `node qa/r2-redact.mjs` → **KNOWN_LEAKS hits: 0**, unchanged. `node qa/r2-constraints.mjs` → unchanged, including its one round-2-vintage FAIL (the determinism grep does not walk the reducer). Root boundary intact: `git diff -- europe-2026-itinerary.html docs/ tickets/` empty, `md5sum europe-2026-itinerary.html` = `7c69df3208ef91c8be0fb59a56443188`, unmoved since round 33. |
+> | **C2′ — `countryKeyPoint(code, index)`, and the numbers it was ruled on** | New in `packages/core/src/derive/country.ts`, beside `countryOf`: the box centre of the code's **principal ring** — greatest absolute spherical area across every entry carrying the code, ties by index order (strict `>`), union-box centre only when no ring of three points exists. The area helper (`ringAreaKm2`) is module-private and is the closed form A-48 prints, `R = 6371`, one pass, `(i+2) % n` for the implicit closing edge. **Every measurement A-48 states re-derived on the first run rather than tuned to**: worst key-to-own-geometry distance **203 km at `NO`** (≤ 250 km over all 239 codes), **176 of 239** keys inside their own rings, `FR` at **46.75°N 1.75°E** inside France, FR–DE **804** / FR–CZ **1,075** / FR–MA **2,227** km, **75** codes move and only **35** move more than 100 km, and C4′'s ten outcome pairs (US–IS 5,707 … PT–FI 3,569) exact to the kilometre. **Injected fault:** key off the union of the boxes and the worst is `KI` at **16,598 km** — the oracle is kept in the test file, so the fix is a differential and not an assertion. |
+> | **C3′ — `clusterPoints` is the connected components, and the day map inherits it** | `packages/core/src/derive/cluster.ts`: union-find over the `n(n−1)/2` pairs, root always the component's smallest index, so the output-order convention (members ascending, groups by smallest member) falls out of one ascending pass rather than a sort — and out of no `Map`/`Set` iteration order at all (I6). `haversine(` still appears exactly **twice** in the file (Part 6's one-kernel grep), `clusterStops` and `focusCluster` are unchanged and still delegate. **A-48 Part 3's blast-radius measurement, re-derived as a test, not quoted:** over the Europe 2026 fixture at 90 km, first-fit and connected components agree on **all 16** days with two or more located stops and on the whole **112**-stop set (**8** groups either way); at **60 km exactly one** day differs — which is the vacuity control, and it is asserted in the same test, so "they agree" can never be true because the two references are the same code. |
+> | **What R36-2 cost, measured before and after** | `{AE, AT, GR}`: **one** partition across all six orderings now, `main[AE,AT,GR]`; under first-fit the same six gave **three** distinct partitions (`AE,GR \| AT` · `AE,AT,GR` · `AE \| AT,GR`), and the one the product always took exiled Austria at 1,326 km while keeping the UAE at 3,281. Swept over round 36's own 69-code set: **0** three-country libraries now separate two connected neighbours, against **95** under first-fit at the C2′ keys (round 36 measured 122 at the C2 keys). Driven through the **real app** in Chromium as well as in Node — `qa/i8g-render.mjs` §B plants the three rows in three different orders and reads the frame off the DOM each time. |
+> | **C9 — paint order, and why `AD` is now reachable** | Only the **emitted** `countries` array is sorted, by descending index position of the code's last entry; the working list stays canonical, so `pane.codes` is still canonical row order (I2). Measured in Chromium over a 239-country library (`qa/r36-render.mjs` §F, the breaker's own method): **`AD` hit-tests to itself**, where round 36 measured 997 interior sample points and **0** self-hits under `FR`. The untappable list is now **`MF` alone** — A-48 residue 6, a shared screen pixel rather than a containment — and the probe asserts that it is the *only* one and that it is still reachable from the code-chip list. I10's six host/enclave pairs (`AD`/`MC` under `FR`, `VA`/`SM` under `IT`, `LI` under `AT`, `GI` under `ES`) are asserted both in bare Node and on the rendered DOM. |
+> | **Part 6 / R36-5 — the pane's own aspect** | `WorldMapPane.aspect` = `width / height` of the **padded, rounded** `viewBox`, computed from the emitted numbers so the ratio the stylesheet sizes with is the ratio the browser paints. `WorldMap.tsx` gains exactly one expression — `style={{ '--pane-aspect': pane.aspect }}` on the `<svg>` — and `styles.css` uses `aspect-ratio: var(--pane-aspect, 2)` with `height: auto` and a **static** `max-height: min(58vh, 460px)` clamp. Measured at 390×820: the main pane paints **356×196 inside 356×196 — 100.0%** of its box, against round 36's **42.6%** (356×196 inside 356×460, 264 px of empty sea); the inset is 91.9%, unchanged. **Injected fault, run by hand because it needs a rebuild:** restore the fixed `height` rule, `npm run web:build`, re-serve → `qa/r36-render.mjs` §C reports **42.6%** and goes red, reproducing round 36's figure exactly. |
+> | **R36-6 — the dark token, against the measured floor** | `--map-fill` dark `#59637a` → **`#6d7794`**. Measured in Chromium through the app's own composited colours, not from the source: dark **2.87:1 → 3.87:1** against `--map-sea`, and 4.10:1 against `--paper` (the other surface the map is drawn over), so it clears WCAG 1.4.11's 3:1 with headroom on both. Light is **7.16:1**, unmoved. A-34's provisional treatment stays a different ink in both schemes — asserted by resolving `--map-fill` and `--map-provisional-fill` at `:root` and comparing (confirmed vs provisional **7.03:1** light, **3.49:1** dark), because the shipped sample has no active trip and there is no provisional path on screen to sample. **Injected fault:** restore `#59637a`, rebuild, re-serve → §A dark reports **2.87:1** and goes red. |
+> | **Test-first, and where it was watched fail** | `countryKeyPoint.test.ts` (21) written and run **before** the function existed — module has no export `countryKeyPoint`. `clusterPoints.test.ts`'s three new cases red against the shipped first-fit kernel (the merge case, I9's 120 permutations, the fixture differential). `world-map.test.ts`'s 13 new cases red against the shipped frame (C2′, aspect ×3, C9 ×3, I10, R36-1, R33-1's pin, I9 ×3). Then, separately, **14 mutations** in `qa/i8g-faults.sh` and **2** by hand against the built product. Two of A-48's own numbers did not survive contact and are recorded below rather than quietly matched. |
+> | **R33-1 is not regressed, and it is pinned rather than hoped** | The reference library still gives `panes.length === 2`, `panes[0].codes === ["AT","CZ","DE","GB","HR","HU"]`, `panes[1].codes === ["US"]`, weights **6** and **1**, dominance `12 > 7`, main span **30.2827° × 16.1550°**, and both `viewBox` strings byte-identical to I-8d's — `-8.1779 -59.2407 31.494 17.3663` and `-173.8876 -73.4543 109.0195 56.6347` — asserted as string equality in `world-map.test.ts` and re-derived independently in `qa/r36-atlas.mjs` §F and from the browser's `getBBox()` in `qa/r36-render.mjs` §E. |
+> | **The probes: re-pointed, not re-scored** | Round 36's two probes encoded A-41's superseded clauses, so five of their FOUNDs and several `ok`s were assertions that the *old* rule held. Each was re-pointed at the clause that replaced it, marked `[I-8g]` in place, **with the superseded rule kept beside it as the injected fault's oracle** — §A still computes C2's union-box keys (and still measures `KI` at 16,598 km), §B still runs a first-fit reference (and still reports 3 partitions for `{AE,AT,GR}` and 95 broken libraries). R36-3 and R36-4's FOUNDs became pinned assertions, because the architect ruled both as document fixes with no code change. Three of `qa/i8d-faults.sh`'s thirteen mutations targeted lines A-48 deleted; they are re-pointed (marked `[I-8g]` there) and all thirteen are still RED. `qa/README.md` gains the I-8g block. **I did not re-score anything, delete a probe, or weaken an assertion to make it pass** — every re-pointed line is stricter than the one it replaces, because the old rule is now a fault the probe must still be able to see. |
+> | **The one criterion I could not meet as its ship gate words it — and it is the architect's, not a build defect** | I-8g's ship gate ends *"the two-France-and-one-Greece library, driven through the real app and **looked at**, is a map of Europe rather than of the Atlantic."* The **criterion** as written is met — `panes.length === 1` holding `FR` and `GR`, no *"Shown separately"* caption, both tappable, verified in Chromium (`qa/i8g-render.mjs` §A, screenshot at `/tmp/cairn-i8g/i8g-fr-gr-390.png`). **The sentence is not.** C2′ moves the *key*; **C8 is unchanged**, so the pane's extent is still `mapBounds` over `FR`'s whole index box, and the frame is **81.1° × 49.1°** — French Guiana bottom-left, metropolitan France top-right, Greece a speck. I looked at it: it is still mostly ocean, and it is *wider* than the 64.1° main pane I-8d produced for this library. A-48 Part 9 residue 1′ predicts exactly this (*"what survives is about the **extent**, not the key"*) and A-41 Part 1 refuses the fix on measurement, so **I built what A-48 says and did not widen it into an extent change** — that is an architect's call. What genuinely improved for this library: Greece is no longer captioned as the distant outlier, and both countries share one frame. Recorded in the test as a pinned number (`81.1°`) rather than hidden behind an inequality. |
+> | **Two of A-48's own measurements, corrected in the test rather than matched** | **(1)** A-48 Part 2's *"six worst under C2"* row prints `KI 3 · FJ 37 · UM 1 · SH 4 · FR 0 · RU 0` under **two different metrics**: `FR`/`RU` use the ROADMAP criterion's *"zero when the point is inside its own rings"*, while `FJ`/`UM`/`KI`/`SH` are raw nearest-vertex distances. Under one consistent metric `FJ` and `UM` are **0** as well (both keys are inside their own rings; `FJ`'s nearest vertex is 37 km away, `UM`'s 0.5 km). The test asserts both halves separately and says so. **(2)** The ROADMAP criterion's own metric is the one I implemented against, and under it the argmax is `NO` at 203 km — which is only true *with* the zero-when-inside rule: on raw nearest-vertex distance `FR` scores 240 km and would be the argmax. Neither is a defect in the rule; both are places where quoting A-48's table without re-deriving it would produce a wrong test. |
+> | **Objection: A-48 C9 consequence 2 is now inaccurate, and I left the code alone** | C9 says *"Tab order follows paint order, large to small… The **alphabetical** keyboard route to every country is the code-chip list under the map, which is unchanged and complete."* The chip list renders `frame.countries`, so it is now in **paint order too** — large to small, not alphabetical. Adding a sort in the view would have been one line, and I did not, for two reasons: I-8g's *"the renderer still computes nothing"* criterion says **"the only new expression is passing `pane.aspect` into a style value"**, and A-40 Part 2 puts every ordering decision in the selector. **Nothing is lost** — the list is still complete and every code, `MF` and `SX` included, is still reachable from it (asserted in `qa/r36-render.mjs` §F) — so R36-7's fallback holds; what is false is the word *"alphabetical"*. The architect's call: leave it, sort the chip list in the view, or emit a canonical order on the frame for the list to use. |
+> | **What I could not verify** | **The `MF`/`SX` pair was not attacked further** — A-48 residue 6 defers it and the probe now asserts it is the *only* untappable code, so a second one would be a finding; I did not try to find one at other viewport sizes. **Nothing was measured on a real phone**, only at a 390×820 Chromium viewport. **The aspect-ratio box has no lower bound**: a pane wider than about 6:1 paints short (a `RU`-only library frames a 360°-wide box; at 356 px that is a ~40 px strip). A-48 Part 6 specifies `aspect-ratio` plus a **static `max-height`** and nothing else, so I built exactly that and did not add a `min-height` — it is disclosed here rather than invented. **A 239-code library now renders as ONE pane** where I-8d gave three (single linkage chains the whole world at 4,000 km — A-48 residue 5 predicts it in writing); I asserted it but did not look at it in a browser. **The `--map-fill` change was not checked against the `.legend__key--confirmed` swatch's own background** in dark, only against the sea and the paper. **`countryKeyPoint`'s cost was not profiled**: `worldMapFrame` calls it once per drawn code, each a full pass over the 292-entry index, so a 239-code library walks it 239 times — measurably fine at this size (the whole 239-code frame builds inside the existing test run) but it is O(codes × entries) and nobody has put a number on it. |
+
+
 > **Addendum, on ROADMAP Phase 2 **I-8e** (revision 29) — ARCHITECTURE §2.9 **A-46** — plus QA
 > round 34's **R34-1** and four of its six MINORs.** One builder pass over the Trips list and its
 > error handling. **I-8b and `Profile.tsx` are untouched** (I-8b's blocker list is now clear:
@@ -2805,6 +2847,52 @@ direction end to end at `--today 2026-08-14`, where the reference trip is `activ
 and an active trip in it is worth more than either of today's two.
 
 ---
+
+### KD-69 — the world map's code-chip list is in paint order, not alphabetical, and §4.4 A-48 C9 says it is alphabetical
+
+**Where:** `apps/web/src/views/WorldMap.tsx`'s `.codelist` · **§4.4 A-48 Part 5 (C9), consequence 2; ROADMAP I-8g's *"the renderer still computes nothing"* criterion.**
+
+C9 reorders `frame.countries` into paint order — descending index position, so a large country
+paints under a small one and `AD` stops being unreachable inside `FR` (QA R36-7). Its second stated
+consequence is *"Tab order follows paint order, large to small, deterministic. The **alphabetical**
+keyboard route to every country is the code-chip list under the map, which is unchanged and
+complete."* The chip list is `frame.countries.map(...)`, so **it is now in paint order too**: it is
+unchanged and complete, and it is not alphabetical.
+
+Left as built, deliberately. Sorting it in the view is one line, but I-8g's own criterion says *"the
+only new expression is passing `pane.aspect` into a style value"*, and §4.4 A-40 Part 2 puts every
+ordering decision in the selector rather than in the renderer — a `.sort()` over codes in
+`WorldMap.tsx` is the first crack in the rule that keeps this surface reproducible in bare Node.
+**Nothing is lost by it:** every drawn code including `MF` and `SX` is still in the list and still
+reaches its trips, which is the fallback A-48 residue 6 and A-41 constraint 3 actually rest on, and
+`qa/r36-render.mjs` §F asserts that reachability rather than assuming it.
+
+**Trigger to revisit:** an architect's call — leave the sentence corrected, sort the chip list in the
+view (accepting the ceiling change), or put a canonical-order list on the frame for the list to read.
+
+### KD-70 — the R36-1 library is one pane and is still 81° wide, so I-8g's ship-gate sentence is not met as worded
+
+**Where:** `packages/client/src/selectors/worldMap.ts` (C8, unchanged) · **§4.4 A-48 Part 9 residue 1′; ROADMAP I-8g ship gate.**
+
+I-8g's ship gate ends *"the two-France-and-one-Greece library, driven through the real app and
+**looked at**, is a map of Europe rather than of the Atlantic."* The **verification criterion** above
+it asks only for `panes.length === 1` containing `FR` and `GR`, and that is met and asserted three
+ways (bare Node, `qa/r36-atlas.mjs` §B4, and `qa/i8g-render.mjs` §A in Chromium at 390×820). **The
+sentence is not met.** A-48 C2′ moves the clustering **key** onto France's principal ring; **C8 is
+explicitly unchanged**, so the pane's extent is still `core.mapBounds` over `FR`'s whole index box —
+which reaches French Guiana — and the frame is **81.1° × 49.1°**: French Guiana bottom-left,
+metropolitan France top-right, Greece a speck. That is *wider* than the 64.1° main pane I-8d
+produced for the same library, though it now holds both countries and captions neither as an outlier.
+
+Built as ruled rather than widened into an extent change: A-48 Part 9 residue 1′ states this outcome
+(*"what survives is about the **extent**, not the key"*), and A-41 Part 1 refuses dateline/extent work
+on measurement. The number is pinned in `packages/client/test/world-map.test.ts` as `81.1` rather
+than hidden behind an inequality, so a future extent fix moves a test rather than nothing. Screenshot
+for the manager: `/tmp/cairn-i8g/i8g-fr-gr-390.png` (regenerate with `node qa/i8g-render.mjs`).
+
+**Trigger to revisit:** the architect deciding that a pane's extent should be something other than
+`mapBounds` over every corner of every entry box — e.g. framing the principal ring and letting minor
+territories fall outside, which is a change to C8 and to A-42 (b)'s containment guarantee at once.
 
 ## 2. How to run it
 

@@ -72,11 +72,25 @@ export type WorldMapPane = {
   codes: CountryCode[];
   /** Σ `tripIds.length` over `codes` — the weight C6 ranked by, so the surface never re-derives it. */
   weight: number;
+  /**
+   * `width / height` of the **padded** `viewBox` — §4.4 **A-48** Part 6.
+   *
+   * Carried so the view does no arithmetic: it cannot derive this from `viewBox` without
+   * computing over coordinates, which A-40 Part 2 forbids, and without it the stylesheet has to
+   * guess a height (the main pane painted 42.6% of its box at 390 px — QA R36-5). The view
+   * passes it through as a CSS custom property and sets no other geometry.
+   */
+  aspect: number;
 };
 
 export type WorldMapFrame = {
   /** `=== panes[0].viewBox`. Kept so the existing consumer and its byte-identity test keep their meaning. */
   viewBox: string;
+  /**
+   * Every drawn country, in **paint order** — §4.4 **A-48** C9: descending index position, so
+   * the largest paints first and the smallest ends up on top and stays hit-testable. It is NOT
+   * canonical row order; `pane.codes` is what stayed canonical (I2).
+   */
   countries: WorldMapCountry[];
   /** `=== panes[0].bounds`. Core's own `MapBounds` — `clamped` included, and nothing renders it (A-42 (c)). */
   bounds: core.MapBounds;
@@ -166,19 +180,28 @@ function subpath(ring: core.CountryRing): string {
 
 /**
  * One pane's rectangle: its `bounds`, expanded on all four sides by `FRAME_PAD_FRACTION` of
- * its own longer side (A-41 Part 4). Pure.
+ * its own longer side (A-41 Part 4), plus that rectangle's own aspect ratio (A-48 Part 6).
+ * Pure.
  *
  * The empty box is the one case that is not padded — there is nothing to contain, and A-40's
  * `WHOLE_WORLD` constant is the honest answer to *"show me everywhere I have been"* when the
- * answer is nowhere (A-41 I7).
+ * answer is nowhere (A-41 I7). Its aspect is the whole world's: 360 / 180.
+ *
+ * `aspect` is computed from the **emitted** numbers rather than from the raw ones, so the ratio
+ * the stylesheet sizes the box with is the ratio of the `viewBox` the browser actually paints —
+ * the two cannot disagree by a rounding step.
  */
-function paneViewBox(bounds: core.MapBounds): string {
-  if (bounds.empty) return WHOLE_WORLD;
+function paneFrame(bounds: core.MapBounds): { viewBox: string; aspect: number } {
+  if (bounds.empty) return { viewBox: WHOLE_WORLD, aspect: 2 };
   const w = bounds.east - bounds.west;
   const h = bounds.north - bounds.south;
   const pad = FRAME_PAD_FRACTION * Math.max(w, h);
-  return `${frameNum(bounds.west - pad)} ${frameNum(-(bounds.north + pad))} ` +
-    `${frameNum(w + 2 * pad)} ${frameNum(h + 2 * pad)}`;
+  const width = frameNum(w + 2 * pad);
+  const height = frameNum(h + 2 * pad);
+  return {
+    viewBox: `${frameNum(bounds.west - pad)} ${frameNum(-(bounds.north + pad))} ${width} ${height}`,
+    aspect: Number(width) / Number(height),
+  };
 }
 
 /**
@@ -209,8 +232,8 @@ export function worldMapFrame(stats: core.TravelStats, index: core.CountryIndex)
     tripIds: string[];
     /** The four corners of every entry's box — what `mapBounds` fits (C8). */
     corners: Array<{ lat: number; lng: number }>;
-    /** C2: ONE key point per code, the centre of the union of its entries' boxes. */
-    key: { lat: number; lng: number };
+    /** C2′: ONE key point per code, core's own `countryKeyPoint`. */
+    key: core.LatLng;
   };
   const drawn: Drawn[] = [];
   const missing: CountryCode[] = [];
@@ -219,13 +242,18 @@ export function worldMapFrame(stats: core.TravelStats, index: core.CountryIndex)
     // A code may carry more than one entry (§8.4 A-27's union), and both are the same
     // country: one row, one `d`, every ring, and — C2 — one key point.
     const entries = index.countries.filter((c) => c.code === row.code);
-    if (entries.length === 0) {
+    // C2′ (A-48): ONE key point per code, and **core** decides where a country is. The client
+    // may not derive it — a key point is a geometric property of the index, as `box` and
+    // `countryOf` are, and computing it here would be the second bounds computation A-40
+    // clause 2 forbids. `null` means the index does not carry the code, which is the same
+    // answer `entries.length === 0` gives; both go to `missing`, stated rather than dropped.
+    const key = core.countryKeyPoint(row.code, index);
+    if (entries.length === 0 || key === null) {
       missing.push(row.code);
       continue;
     }
     let d = '';
     const corners: Array<{ lat: number; lng: number }> = [];
-    let west = Infinity, south = Infinity, east = -Infinity, north = -Infinity;
     for (const entry of entries) {
       for (const ring of entry.rings) d += subpath(ring);
       const [minLng, minLat, maxLng, maxLat] = entry.box;
@@ -233,19 +261,14 @@ export function worldMapFrame(stats: core.TravelStats, index: core.CountryIndex)
         { lat: minLat, lng: minLng }, { lat: minLat, lng: maxLng },
         { lat: maxLat, lng: maxLng }, { lat: maxLat, lng: minLng },
       );
-      west = Math.min(west, minLng); east = Math.max(east, maxLng);
-      south = Math.min(south, minLat); north = Math.max(north, maxLat);
     }
-    // C2, in one line: the box centre of the UNION. Not per entry, not per ring — a country
-    // is one thing on this map, and per-ring points would let an archipelago outvote a
-    // continent.
     drawn.push({
       code: row.code,
       d,
       provisional: row.provisional,
       tripIds: row.tripIds,
       corners,
-      key: { lat: (south + north) / 2, lng: (west + east) / 2 },
+      key,
     });
   }
 
@@ -287,24 +310,41 @@ export function worldMapFrame(stats: core.TravelStats, index: core.CountryIndex)
     // client still computes no bounds. `mapBounds` brings `MIN_SPAN_KM` with it, which on
     // this surface is a degeneracy guard rather than a legibility one (A-42 (a)).
     const bounds = core.mapBounds(group.flatMap((k) => drawn[k].corners));
+    const { viewBox, aspect } = paneFrame(bounds);
     return {
       id: i === 0 ? 'main' : `inset-${i}`,
       role: i === 0 ? 'main' : 'inset',
-      viewBox: paneViewBox(bounds),
+      viewBox,
       bounds,
       codes: group.map((k) => drawn[k].code),
       weight: weightOf(group),
+      aspect,
     };
   });
 
   const paneIdOf = new Array<string>(drawn.length);
   for (let i = 0; i < paneGroups.length; i++) for (const k of paneGroups[i]) paneIdOf[k] = panes[i].id;
 
-  const countries: WorldMapCountry[] = drawn.map((x, i) => ({
-    code: x.code,
-    d: x.d,
-    provisional: x.provisional,
-    tripIds: x.tripIds,
+  // ---- C9 (A-48 Part 5): paint order, and ONLY on the emitted array. ----
+  //
+  // The working list above stays canonical, because `pane.codes` is written from it and I2
+  // says that order is the row order. What is sorted is the array the renderer paints, by
+  // **descending index position** — the position of the code's LAST entry in `index.countries`.
+  // The generated index is already ordered by ascending summed absolute ring area (§8.4 A-26
+  // Part 4), so reading it backwards paints the large first and the small last, and a country
+  // whose fill is contained in another's is therefore always on top of it. That is a proof
+  // rather than a heuristic: if A's fill contains B's, `area(A) > area(B)`, so A is later in
+  // the index and paints first. It costs no computation of its own.
+  const lastEntryAt = new Map<string, number>();
+  index.countries.forEach((entry, i) => lastEntryAt.set(entry.code, i));
+  const painted = drawn.map((_, i) => i)
+    .sort((a, b) => (lastEntryAt.get(drawn[b].code) ?? -1) - (lastEntryAt.get(drawn[a].code) ?? -1));
+
+  const countries: WorldMapCountry[] = painted.map((i) => ({
+    code: drawn[i].code,
+    d: drawn[i].d,
+    provisional: drawn[i].provisional,
+    tripIds: drawn[i].tripIds,
     paneId: paneIdOf[i],
   }));
 

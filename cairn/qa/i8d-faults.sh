@@ -85,10 +85,13 @@ fault 'panes[2] = ranked[2] only, not the union' \
   "s=s.replace('paneGroups = [ranked[0], ranked[1], ranked.slice(2).flat().sort((a, b) => a - b)];','paneGroups = [ranked[0], ranked[1], ranked[2]];')" \
   packages/client/test/world-map.test.ts
 
-say '6. C2 — key off the first entry box instead of the union of a code\x27s boxes'
+# [I-8g] Re-pointed: §4.4 A-48 C2′ replaced C2's union-box centre with `core.countryKeyPoint`,
+# so the line this mutated is gone. The fault it stands for — the frame deciding where a country
+# is from a box of its own — is injected at the call site instead. Also `qa/i8g-faults.sh` §7.
+say '6. C2\x27 [I-8g] — key off the first entry box instead of core\x27s countryKeyPoint'
 fault 'key = entries[0] box centre' \
   'packages/client/src/selectors/worldMap.ts' \
-  "s=s.replace('key: { lat: (south + north) / 2, lng: (west + east) / 2 },','key: { lat: (entries[0].box[1] + entries[0].box[3]) / 2, lng: (entries[0].box[0] + entries[0].box[2]) / 2 },')" \
+  "s=s.replace('const key = core.countryKeyPoint(row.code, index);','const e0 = index.countries.find((c) => c.code === row.code);\n    const key = e0 ? { lat: (e0.box[1] + e0.box[3]) / 2, lng: (e0.box[0] + e0.box[2]) / 2 } : null;')" \
   packages/client/test/world-map.test.ts
 
 say '7. C6 — drop the lowest-ISO tie-break and ranking stops being total'
@@ -97,16 +100,29 @@ fault 'tie-break returns 0' \
   "s=s.replace('    const la = lowestCode(a), lb = lowestCode(b);\n    return la < lb ? -1 : la > lb ? 1 : 0;','    return 0;')" \
   packages/client/test/world-map.test.ts
 
-say '8. C3 — clusterPoints becomes nearest-fit instead of first-fit'
-fault 'nearest group wins' \
+# [I-8g] Re-pointed: A-48 C3′ made the kernel the connected components of the threshold graph,
+# so "nearest-fit vs first-fit" is no longer the distinction to inject. The fault that matters now
+# is the superseded rule itself. Also `qa/i8g-faults.sh` §5.
+say '8. C3\x27 [I-8g] — clusterPoints goes back to first-fit'
+fault 'first-fit, not connected components' \
   'packages/core/src/derive/cluster.ts' \
-  "s=s.replace('const g = groups.find((gr) => gr.some((j) => haversine(points[j], points[i]) < thresholdKm));','const cands = groups.filter((gr) => gr.some((j) => haversine(points[j], points[i]) < thresholdKm));\n    const g = cands.slice().sort((x, y) => Math.min(...x.map((j) => haversine(points[j], points[i]))) - Math.min(...y.map((j) => haversine(points[j], points[i]))))[0];')" \
+  "import re
+s=re.sub(r'export function clusterPoints\(points: readonly LatLng\[\], thresholdKm: number\): number\[\]\[\] \{.*?\n\}\n', '''export function clusterPoints(points: readonly LatLng[], thresholdKm: number): number[][] {
+  const groups: number[][] = [];
+  for (let i = 0; i < points.length; i++) {
+    const g = groups.find((gr) => gr.some((j) => haversine(points[j], points[i]) < thresholdKm));
+    if (g) g.push(i);
+    else groups.push([i]);
+  }
+  return groups;
+}
+''', s, count=1, flags=re.S)" \
   packages/core/test/clusterPoints.test.ts
 
 say '9. C3 — the threshold comparison widens from < to <='
 fault 'haversine <= thresholdKm' \
   'packages/core/src/derive/cluster.ts' \
-  "s=s.replace('haversine(points[j], points[i]) < thresholdKm','haversine(points[j], points[i]) <= thresholdKm')" \
+  "s=s.replace('haversine(points[i], points[j]) < thresholdKm','haversine(points[i], points[j]) <= thresholdKm')" \
   packages/core/test/clusterPoints.test.ts
 
 say '10. Part 6 — clusterStops stops delegating and writes the loop out again'

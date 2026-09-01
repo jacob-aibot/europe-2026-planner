@@ -319,6 +319,46 @@
 </style>
 </head>
 <body>
+<div class="callout" style="border-left:4px solid #ca8a04;padding:.75rem 1rem;margin:1rem 0;background:#fefce8">
+<p><strong>&#128993; I-8g IS BUILT &mdash; France is in France, and the alphabet no longer decides
+which country gets exiled &mdash; as of 2026-09-01</strong> (this block is the newest; it supersedes
+the I-8d block below on <em>&ldquo;I-8g is built &#10060;&rdquo;</em>).</p>
+<p>Both design defects the tester found in the map rule are now fixed in code, and the fixes are
+measured rather than argued:</p>
+<ul>
+<li><strong>A country&rsquo;s position is now the middle of its single largest landmass.</strong>
+France lands in central France, Russia in Siberia, Kiribati on its biggest island. The worst error
+across all 239 countries falls from <strong>16,598&nbsp;km to 203&nbsp;km</strong>, and
+<strong>176 countries</strong> now have their marker inside their own borders. France is once again
+nearer to Germany (804&nbsp;km) and Czechia (1,075&nbsp;km) than to Morocco (2,227&nbsp;km) &mdash;
+the numbers were 3,891 / 4,137 / 1,339.</li>
+<li><strong>Grouping is computed for the whole set at once</strong>, so the order countries arrive in
+cannot change the answer. The UAE / Austria / Greece example is <strong>one map in all six
+orders</strong>, checked both in a test and by planting it in the real app three different ways. Of
+the three-country combinations that used to split neighbours apart, <strong>none do now</strong>.</li>
+<li><strong>Andorra is tappable again.</strong> Big countries are drawn first, so the small ones sit
+on top. In a real browser, over a library holding all 239 countries, Andorra now hits itself where it
+had <strong>zero</strong> tappable pixels before.</li>
+<li><strong>The map fills its box on a phone</strong>: <strong>42.6% &rarr; 100%</strong> at 390&nbsp;px
+wide, i.e. the 264&nbsp;px of empty sea is gone. And the <strong>dark-mode</strong> country colour goes
+from <strong>2.87:1 to 3.87:1</strong> against the sea, clearing the 3:1 accessibility floor with room
+to spare (light mode is unchanged).</li>
+<li><strong>Your Europe 2026 map is untouched, to four decimal places</strong> &mdash; that was pinned
+as a test before anything else was written, and it still passes.</li>
+</ul>
+<p><strong>One thing it does not fix, said plainly.</strong> A traveller with two France trips and one
+Greece trip now gets <strong>one map holding both</strong> instead of Greece exiled to the side box
+&mdash; but that map is still <strong>81&deg; wide</strong>, because France&rsquo;s <em>drawn shape</em>
+includes French Guiana and the frame has to contain everything it draws. It is a better map than before
+and it is still mostly ocean. The architect&rsquo;s ruling covers where a country <em>is</em> for
+grouping, not how wide the frame around it gets; changing that is a separate decision and is written up
+as <strong>KD-70</strong> in the build notes.</p>
+<p><strong>I-8g is built &#9989; &middot; verified &#10060; (not yet attacked) &middot; shippable
+&#10060;</strong> &mdash; it changes a shared piece of the engine (the same grouping code the day map
+uses) and adds one function to the core boundary, so a breaker round is mandatory before it can ship.
+<strong>I-8d&rsquo;s two design defects are fixed but not yet re-attacked.</strong> I-8b (the Profile
+screen) still waits on <strong>I-8f</strong>.</p>
+</div>
 <div class="callout" style="border-left:4px solid #ea580c;padding:.75rem 1rem;margin:1rem 0;background:#fff7ed">
 <p><strong>&#128992; I-8d HAS NOW BEEN ATTACKED, AND THE THING THAT&rsquo;S WRONG IS THE RULE I
 WROTE, NOT THE CODE &mdash; as of 2026-08-31</strong> (this block is the newest; it supersedes the
