@@ -422,7 +422,7 @@ The first surface increment measured against `cairn/docs/DESIGN.md` §6, which `
 at the end, which matters more than usual here).
 
 ```bash
-bash qa/i8b-faults.sh                                    # 16 mutations, bare Node, ~12 min
+bash qa/i8b-faults.sh                                    # baseline gate + 29 mutations, bare Node
 # with `npm run web:build && npm run serve` in another shell:
 PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/i8b-render.mjs          # full matrix + faults
 PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/i8b-render.mjs --faults # section H alone
@@ -430,7 +430,7 @@ PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/i8b-render.mjs --faults # sect
 
 `i8b-faults.sh` is the **source-level half and deliberately not the whole matrix**: three of
 I-8b's five criteria are claims about computed style and geometry, and §6's first line is that a
-design decision that was not rendered was not verified. Its 16 mutations cover the five ROADMAP
+design decision that was not rendered was not verified. Its mutations cover the five ROADMAP
 criteria (`.icon`'s hit area 1; `38vh`/`100dvh` back on a capped scroll container 2, 2b; a 600 ms
 row expansion and a bare `ease-in` 3, 3b; `.chip--life-completed` back to `--ink-faint` 4; a fifth
 breakpoint at 1600 5) plus the responsive contract itself (`top: 2.7rem` restored 6; the bottom
@@ -438,7 +438,25 @@ bar loses its safe-area padding 7; a `max-width` query returns 8; a media query 
 `.worldmap__panes` — §9.2 fence 1 — 9; the tablist stops being a single tab stop and loses
 `ArrowLeft` 10, 10b) and the Profile's own composition (the claim back to stat tiles 11; the
 lifecycle counts stop leading with `completed` 12; the two surfaces' refusal wording drifts apart
-13; the Profile invents an achievement shelf 14; a fourth tab is registered 15). **All 16 red.**
+13; the Profile invents an achievement shelf 14; a fourth tab is registered 15), and **round 41's
+eleven repairs** (the claim's plural agreement 16; the `·` back to trailing its pair 17; the trip
+count breaking from its unit 18; the ISO code abutting the facts line 19; `columns: 2` back over
+the record 20; the refusal's duplicate eyebrow 21; `.crow__cities` losing `overflow-wrap` 22;
+`.row` losing `flex-wrap` 23; the expanded row's trips back to non-wrapping cards 24; the shared
+refusal growing a sentence the map has not got 25; the refusal inverting its row-id branch 26).
+**29 in all, all red.**
+
+> **Two corrections to this section's own record, both from QA round 41.** The count above read
+> **16** and the file had **18** mutations at `c08c70f` (R41-12); it now has **29**. And the count
+> was the smaller of the two problems: `fault()` reads nothing but *"did anything fail?"*, and
+> `make_copy` did not carry the repo-root planner HTML that `test/views.test.ts` reads through
+> `fixtures/loadEurope2026.mjs` — so the copy's baseline was already `# fail 1` **before any
+> mutation was applied** and every RED in this matrix was vacuous. `baseline_gate` now refuses to
+> run unless an unmutated copy is green, and the first thing it found was a real **MISMATCH**:
+> fault **2b** (`100dvh` back on `.spine`'s `max-height`) had never been load-bearing, because the
+> assertion behind it tested `/\bdvh\b/` and there is no word boundary between the `0` and the `d`
+> in `100dvh`. Both are fixed. **A fault matrix that cannot go green is exactly as worthless as an
+> assertion that cannot go red**, which is R41-1 one level down.
 
 `i8b-render.mjs` is §6's matrix: **five device contexts** (`devices['iPhone SE']`,
 `devices['iPhone 14']`, `devices['iPad Mini']`, 1280 × 800, 1600 × 900 — profiles, not bare

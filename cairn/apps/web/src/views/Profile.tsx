@@ -70,10 +70,15 @@ export function Profile({ state, onOpenTrip, onError }: Props) {
   // words the other surface uses (`Refusal.tsx` says why it is a component).
   const history = travelHistory(state, today);
   if (!history.ok) {
+    // QA **R41-9**: one surface, one header. The refusal used to print `Travel record` as an
+    // eyebrow and `Your travel record` as an `h1` immediately under it — the same two words
+    // twice — and the `h1` fell through to the global 25 px display rule while the healthy
+    // path's is an 11 px tracked mono micro-label. The screen a user only sees when something
+    // is wrong is the last one that should change type register. Same `h1`, same class, no
+    // eyebrow — which is also what the world map's refusal does (§5.5).
     return (
       <main className="profile profile--refused">
-        <p className="eyebrow">Travel record</p>
-        <h1>Your travel record</h1>
+        <h1 className="profile__kicker">Your travel record</h1>
         <HistoryRefusal refusal={history} />
       </main>
     );
@@ -107,109 +112,47 @@ export function Profile({ state, onOpenTrip, onError }: Props) {
               already taken — this record fills itself from your library.
             </p>
           ) : (
-            <ul className="crlist" aria-labelledby="profile-countries">
-              {stats.countries.map((c) => {
-                const cities = stats.cities.filter((city) => city.countryCode === c.code);
-                const isOpen = open === c.code;
-                const span =
-                  monthYearLabel(c.firstVisit) === monthYearLabel(c.lastVisit)
-                    ? monthYearLabel(c.firstVisit)
-                    : `${monthYearLabel(c.firstVisit)} – ${monthYearLabel(c.lastVisit)}`;
-                return (
-                  <li
-                    key={c.code}
-                    className={'crow' + (c.provisional ? ' crow--provisional' : '') + (isOpen ? ' crow--open' : '')}
-                    data-code={c.code}
-                    data-provisional={c.provisional ? 'true' : 'false'}
-                  >
-                    {/*
-                      §5.5: tapping a country row **selects it and reveals its trips inline**. It
-                      does not navigate away and it does not open a modal — which is also why
-                      A-55's standing shadcn revisit trigger is not hit by this increment. The
-                      row is the accordion; `aria-expanded` is the state a screen reader reads,
-                      and the same Enter/Space that activates any `<button>` drives it, so there
-                      is no keyboard path to add.
-                    */}
-                    <button
-                      className="crow__head"
-                      type="button"
-                      aria-expanded={isOpen}
-                      aria-controls={`crow-trips-${c.code}`}
-                      onClick={() => setOpen(isOpen ? null : c.code)}
-                    >
-                      <span className="crow__code mono">{c.code}</span>
-                      <span className="crow__facts mono">
-                        {span}
-                        <span className="crow__dot" aria-hidden="true"> · </span>
-                        {c.tripIds.length} {c.tripIds.length === 1 ? 'trip' : 'trips'}
-                      </span>
-                      {/*
-                        §5.3 / P3 / P5: cities are **text**, grouped under their country rather
-                        than listed separately — a run of names on one wrapped line. This is
-                        where cities cost nothing and read as content (A-40 Part 5 is why they
-                        are text and not pins: the row carries no coordinate).
-                      */}
-                      <span className="crow__cities">
-                        {cities.length === 0
-                          ? <span className="crow__nocity">no named city recorded</span>
-                          : cities.map((city) => city.name).join(' · ')}
-                      </span>
-                      {/*
-                        A-34's provisional treatment, on the profile: a **mark**, outlined and
-                        dashed, plus a dashed rule down the row — never the confirmed ink at
-                        lower strength (P5 channel 3). The root CLAUDE.md convention on the one
-                        surface that summarises a whole travel life: a trip you are on is not
-                        yet a visit you have completed, and a traveller standing in Vienna is
-                        not told they have never been.
-                      */}
-                      {c.provisional && (
-                        <span className="pill crow__prov" data-testid="profile-provisional">
-                          On a trip you are on now
-                        </span>
-                      )}
-                    </button>
+            /*
+              **QA R41-8 — the two-column record is a GRID OF TWO LISTS, not `columns: 2`.**
+              §5.4 permits either (*"`columns: 2` on the list, or a two-column grid — either is
+              acceptable"*) and only one of them is honest: CSS multi-column re-flows the WHOLE
+              list on any height change, so expanding `AT` moved an unrelated country ~314 px
+              across the gutter (measured at 5, 9, 13 and 21 countries, at 1280 and 1600). P6's
+              last clause — *"nothing changes layout of other content unless it is the thing the
+              user just opened"* — is what that breaks.
 
-                    <div className="crow__trips" id={`crow-trips-${c.code}`}>
-                      <div className="crow__clip">
-                        <ul className="triprows crow__triplist">
-                          {c.tripIds.map((id) => {
-                            const row = state.library.find((r) => r.id === id);
-                            if (!row) {
-                              return (
-                                <li key={id} className="triprow triprow--gone">
-                                  <span className="mono">{id}</span>
-                                  <span className="hint">no longer in your library</span>
-                                </li>
-                              );
-                            }
-                            return (
-                              <li key={id} className="triprow">
-                                <button
-                                  className="triprow__open"
-                                  type="button"
-                                  tabIndex={isOpen ? 0 : -1}
-                                  onClick={() => {
-                                    try {
-                                      onOpenTrip(row.id);
-                                    } catch (e) {
-                                      onError((e as Error).message);
-                                    }
-                                  }}
-                                >
-                                  <span className="triprow__title">{row.title}</span>
-                                  <span className="triprow__meta mono">{dateRangeLabel(row)}</span>
-                                </button>
-                                <LifecycleChip trip={row} today={today} />
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      </div>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
+              Two lists, split by count and not by width, fix it by construction: each column is
+              its own formatting context, so a row that grows grows its own column and no other
+              row moves. Reading order and tab order stay down-then-across because that is DOM
+              order. **The split is the same at every width** — at base and split the second
+              list simply follows the first in one column, which is visually indistinguishable
+              from one list (the closing hairline lives on `.crcols`, so it is not doubled).
+            */
+            <div className="crcols">
+              {recordColumns(stats.countries).map((group, gi) => (
+                <ul
+                  key={group[0].code}
+                  className="crlist"
+                  {...(gi === 0
+                    ? { 'aria-labelledby': 'profile-countries' }
+                    : { 'aria-label': 'The countries, continued' })}
+                >
+                  {group.map((c) => (
+                    <CountryRow
+                      key={c.code}
+                      country={c}
+                      cities={stats.cities.filter((city) => city.countryCode === c.code)}
+                      isOpen={open === c.code}
+                      onToggle={() => setOpen(open === c.code ? null : c.code)}
+                      library={state.library}
+                      today={today}
+                      onOpenTrip={onOpenTrip}
+                      onError={onError}
+                    />
+                  ))}
+                </ul>
+              ))}
+            </div>
           )}
         </div>
 
@@ -224,6 +167,161 @@ export function Profile({ state, onOpenTrip, onError }: Props) {
         </aside>
       </div>
     </main>
+  );
+}
+
+type Country = TravelStats['countries'][number];
+type City = TravelStats['cities'][number];
+
+/**
+ * The record's column groups — **arithmetic on the data, never a measurement of the layout.**
+ *
+ * QA **R41-8**. One list becomes two so that the ≥ 1280 two-column form can be a grid of two
+ * independent lists instead of `columns: 2`, which rebalances every row whenever one row's
+ * height changes. The split is by count and is the same at every viewport width, so this file
+ * keeps its own rule (*"it measures no layout … the same DOM renders at every width"*): the
+ * BREAKPOINT is still CSS's, and only the mechanism it drives has changed.
+ *
+ * The first column is the longer one when the count is odd, which is what keeps reading order
+ * down-then-across natural. A single country yields a single group, so a small record is one
+ * `<ul>` and not one `<ul>` plus an empty one. Pure.
+ */
+function recordColumns<T>(rows: readonly T[]): T[][] {
+  if (rows.length < 2) return [rows.slice()];
+  const half = Math.ceil(rows.length / 2);
+  return [rows.slice(0, half), rows.slice(half)];
+}
+
+/**
+ * One country: the ISO code in its marginal column, the facts line, the run of cities, and the
+ * inline trip expansion. Extracted from `Profile` when the record became two lists (R41-8) —
+ * the markup is unchanged from the single-list form except where a finding names it.
+ */
+function CountryRow({
+  country: c, cities, isOpen, onToggle, library, today, onOpenTrip, onError,
+}: {
+  country: Country;
+  cities: readonly City[];
+  isOpen: boolean;
+  onToggle: () => void;
+  library: AppState['library'];
+  today: string;
+  onOpenTrip: (id: string) => void;
+  onError: (m: string) => void;
+}) {
+  const span =
+    monthYearLabel(c.firstVisit) === monthYearLabel(c.lastVisit)
+      ? monthYearLabel(c.firstVisit)
+      : `${monthYearLabel(c.firstVisit)} – ${monthYearLabel(c.lastVisit)}`;
+  return (
+    <li
+      className={'crow' + (c.provisional ? ' crow--provisional' : '') + (isOpen ? ' crow--open' : '')}
+      data-code={c.code}
+      data-provisional={c.provisional ? 'true' : 'false'}
+    >
+      {/*
+        §5.5: tapping a country row **selects it and reveals its trips inline**. It does not
+        navigate away and it does not open a modal — which is also why A-55's standing shadcn
+        revisit trigger is not hit by this increment. The row is the accordion; `aria-expanded`
+        is the state a screen reader reads, and the same Enter/Space that activates any
+        `<button>` drives it, so there is no keyboard path to add.
+      */}
+      <button
+        className="crow__head"
+        type="button"
+        aria-expanded={isOpen}
+        aria-controls={`crow-trips-${c.code}`}
+        onClick={onToggle}
+      >
+        {/*
+          **The spaces between these three children are load-bearing** (QA R41-7). A row's
+          accessible name is its text content with the `aria-hidden` subtrees removed, and the
+          `·` separator used to be the ONLY whitespace between the visit year and the trip
+          count — so hiding it, correctly, fused them: `AT Aug 20191 trip Vienna`, a five-digit
+          year read aloud. Every separator on this row is now a real text node OUTSIDE the
+          hidden span. They generate no boxes (whitespace-only text between grid items is not a
+          grid item), so nothing moves on screen.
+        */}
+        <span className="crow__code mono">{c.code}</span>{' '}
+        <span className="crow__facts mono">
+          <span className="crow__span">{span}</span>{' '}
+          {/*
+            QA **R41-6**: the count and the word it counts are ONE unbreakable run. At 1280 the
+            record is two ~214 px columns and a two-month span pushed the line over, breaking
+            `1` / `trip` across two lines — the same defect class as the trip row's date range
+            one element over. The separator rides inside the run rather than before it, so a
+            wrap never leaves a `·` dangling at the end of a finished line either.
+          */}
+          <span className="crow__count">
+            <span className="crow__dot" aria-hidden="true">·</span> {c.tripIds.length}{' '}
+            {c.tripIds.length === 1 ? 'trip' : 'trips'}
+          </span>{' '}
+        </span>
+        {/*
+          §5.3 / P3 / P5: cities are **text**, grouped under their country rather than listed
+          separately — a run of names on one wrapped line. This is where cities cost nothing and
+          read as content (A-40 Part 5 is why they are text and not pins: the row carries no
+          coordinate). A city name is FREE TEXT off an imported row, so the wrapping of this
+          element is a layout invariant and not a nicety — see `.crow__cities` in the
+          stylesheet, and QA R41-3 for what one unbreakable 58-character name did without it.
+        */}
+        <span className="crow__cities">
+          {cities.length === 0
+            ? <span className="crow__nocity">no named city recorded</span>
+            : cities.map((city) => city.name).join(' · ')}
+        </span>
+        {/*
+          A-34's provisional treatment, on the profile: a **mark**, outlined and dashed, plus a
+          dashed rule down the row — never the confirmed ink at lower strength (P5 channel 3).
+          The root CLAUDE.md convention on the one surface that summarises a whole travel life:
+          a trip you are on is not yet a visit you have completed, and a traveller standing in
+          Vienna is not told they have never been.
+        */}
+        {c.provisional && (
+          <span className="pill crow__prov" data-testid="profile-provisional">
+            On a trip you are on now
+          </span>
+        )}
+      </button>
+
+      <div className="crow__trips" id={`crow-trips-${c.code}`}>
+        <div className="crow__clip">
+          <ul className="triprows crow__triplist">
+            {c.tripIds.map((id) => {
+              const row = library.find((r) => r.id === id);
+              if (!row) {
+                return (
+                  <li key={id} className="triprow triprow--gone">
+                    <span className="mono">{id}</span>
+                    <span className="hint">no longer in your library</span>
+                  </li>
+                );
+              }
+              return (
+                <li key={id} className="triprow">
+                  <button
+                    className="triprow__open"
+                    type="button"
+                    tabIndex={isOpen ? 0 : -1}
+                    onClick={() => {
+                      try {
+                        onOpenTrip(row.id);
+                      } catch (e) {
+                        onError((e as Error).message);
+                      }
+                    }}
+                  >
+                    <span className="triprow__title">{row.title}</span>
+                    <span className="triprow__meta mono">{dateRangeLabel(row)}</span>
+                  </button>
+                  <LifecycleChip trip={row} today={today} />
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      </div>
+    </li>
   );
 }
 
@@ -248,20 +346,37 @@ function Claim({ stats, travelled }: { stats: TravelStats; travelled: number }) 
     (a, c) => (a === null || c.lastVisit > a ? c.lastVisit : a),
     null,
   );
+  /*
+    QA **R41-4**: the largest type on the screen has to agree in number. It printed
+    `1 COUNTRIES · 1 CITIES · 1 DAYS TRAVELLED` — reached by the most ordinary first-run state
+    there is, one recorded past trip — on a surface that pluralises *"The country"*, *"1 trip"*
+    and *"1 city is"* correctly three lines below it. The `dd` is moved in front of the `dt` by
+    CSS, so the READER sees `1 Country` while the accessibility tree keeps `Country, 1`, which
+    is the order that reads as a sentence either way.
+  */
+  const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
   const pairs: Array<[string, number]> = [
-    ['Countries', stats.countries.length],
-    ['Cities', stats.cities.length],
-    ['Days travelled', stats.daysTravelled],
+    [plural(stats.countries.length, 'Country', 'Countries'), stats.countries.length],
+    [plural(stats.cities.length, 'City', 'Cities'), stats.cities.length],
+    [plural(stats.daysTravelled, 'Day travelled', 'Days travelled'), stats.daysTravelled],
   ];
   return (
     <header className="profile__claim">
       <h1 className="profile__kicker">Your travel record</h1>
       <dl className="claim" data-testid="profile-claim">
+        {/*
+          QA **R41-5**: the separator belongs to the pair that FOLLOWS it, never to the pair it
+          follows. Inside the preceding pair it stayed on the finished line when the claim
+          wrapped — `5 COUNTRIES · 7 CITIES ·` / `30 DAYS TRAVELLED` — which at 30–58 px is the
+          most visible piece of typographic slack on the screen. It is 2 danglers at 320 px.
+          `.claim__sep` carries `order: -2` so it still renders before the value the CSS pulls
+          forward; the accessibility tree never sees it at all.
+        */}
         {pairs.map(([label, value], i) => (
           <div className="claim__pair" key={label}>
+            {i > 0 && <span className="claim__sep" aria-hidden="true">·</span>}
             <dt>{label}</dt>
             <dd className="mono">{value}</dd>
-            {i < pairs.length - 1 && <span className="claim__sep" aria-hidden="true">·</span>}
           </div>
         ))}
       </dl>

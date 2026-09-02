@@ -319,8 +319,23 @@
 </style>
 </head>
 <body>
+<div class="callout" style="border-left:4px solid #1d7a4c;padding:.75rem 1rem;margin:1rem 0;background:#f1faf4">
+<p><strong>&#128295; THE THREE THINGS THAT SENT THE PROFILE BACK ARE FIXED &mdash; as of 2026-09-02 (this block is the newest; it supersedes every block below on I-8b&#x27;s status and on <em>&quot;what happens next&quot;</em>, and nothing else).</strong></p>
+<p><strong>I-8b is designed &#9989; &middot; built &#9989; &middot; verified &#8987; (the fixes have not been attacked yet) &middot; shippable &#10060;.</strong></p>
+<p>One builder pass over QA round 41&#x27;s send-back. <strong>All three blocking problems are fixed, and twelve of the fourteen smaller ones.</strong></p>
+<ul>
+<li><strong>The word cut in half is gone.</strong> Open a country on a laptop and the label beside each trip reads <strong>PAST TRIP</strong> in full. The trip rows inside a country are now plain ruled lines rather than little white cards, which is both what the design asks for and what removed the width problem in one change.</li>
+<li><strong>A long city name no longer pushes the navigation off screen.</strong> Long names wrap inside their own column, so the page never widens sideways and the Profile tab stays where it is. Checked with the 58-letter Welsh village name that found it.</li>
+<li><strong>The check that could not fail can now fail.</strong> It measures against the actual screen instead of a number that grows with the page, and a deliberate 2,400&nbsp;px block now turns it red at <strong>all five</strong> screen sizes rather than two.</li>
+</ul>
+<p><strong>The smaller ones, in plain terms.</strong> With one trip recorded the headline now reads <em>&quot;1 COUNTRY &middot; 1 CITY &middot; 1 DAY TRAVELLED&quot;</em>. The <code>&middot;</code> separators no longer dangle at the end of a line. <em>&quot;1 trip&quot;</em> no longer breaks across two lines. A screen reader now hears <em>&quot;Aug 2019, 1 trip&quot;</em> instead of a five-digit year. Opening one country no longer makes an unrelated country jump to the other column. Turning a phone sideways now leaves the country list visible. The &quot;could not be read&quot; screen no longer says the same two words twice in two different type styles.</p>
+<p><strong>Two are deliberately still open</strong>, both by the tester&#x27;s own routing: a low-contrast grey used as text <strong>on the Trips screen</strong> (not this one, and not made worse by it &mdash; it is for whichever pass next opens that screen), and one genuine contradiction between two rules of the design document, which is the architect&#x27;s call and is being made separately.</p>
+<p><strong>One thing found while fixing, worth naming.</strong> The bare-Node fault matrix &mdash; the harness that proves each check can actually fail &mdash; had been reporting every one of its mutations as &quot;caught&quot; for a reason unrelated to the mutations: it ran in a copy of the tree that was already failing an unrelated test before anything was changed. With that fixed, one of the eighteen turned out never to have been load-bearing. It is now, and the harness refuses to run at all unless its unmutated baseline is clean.</p>
+<p><strong>Next:</strong> this goes straight back to the tester for another adversarial round &mdash; a new screen and a changed shell always do &mdash; and only then does a manager decide whether Phase 2b ships.</p>
+</div>
+
 <div class="callout" style="border-left:4px solid #b91c1c;padding:.75rem 1rem;margin:1rem 0;background:#fef2f2">
-<p><strong>&#128269; THE PROFILE SCREEN HAS NOW BEEN ATTACKED, AND IT IS GOING BACK &mdash; as of 2026-09-02, QA round 41 (this block is the newest; it supersedes every block below on I-8b&#x27;s status and on <em>&quot;what happens next&quot;</em>, and nothing else).</strong></p>
+<p><strong>&#128269; THE PROFILE SCREEN HAS NOW BEEN ATTACKED, AND IT IS GOING BACK &mdash; as of 2026-09-02, QA round 41 (superseded by the block above on the three MAJORs and twelve MINORs; everything else in it still stands).</strong></p>
 <p><strong>I-8b is designed &#9989; &middot; built &#9989; &middot; verified &#9989; (adversarially, and it did not pass) &middot; shippable &#10060;.</strong> A breaker round rendered it at every size in both light and dark mode, fed it the shapes of real travel data, and found <strong>three things that have to be fixed before it can ship</strong>, plus thirteen smaller ones. <strong>No privacy problem, no lost data, nobody&#x27;s trip showing up on anyone else&#x27;s screen</strong> &mdash; nothing in this round is that kind of finding.</p>
 <p><strong>The three that send it back.</strong></p>
 <ol>

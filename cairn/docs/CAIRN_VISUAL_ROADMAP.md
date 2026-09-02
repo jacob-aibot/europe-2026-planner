@@ -19,9 +19,53 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
+> **🔧 THE THREE THINGS THAT SENT THE PROFILE BACK ARE FIXED — as of 2026-09-02 (this block is the
+> newest; it supersedes every block below on I-8b's status and on *"what happens next"*, and
+> nothing else).**
+>
+> **I-8b is designed ✅ · built ✅ · verified ⏳ (the fixes have not been attacked yet) · shippable ❌.**
+>
+> One builder pass over QA round 41's send-back. **All three blocking problems are fixed, and
+> twelve of the fourteen smaller ones.**
+>
+> - **The word cut in half is gone.** Open a country on a laptop and the label beside each trip
+>   reads **`PAST TRIP`** in full. The trip rows inside a country are now plain ruled lines rather
+>   than little white cards, which is both what the design asks for and what removed the width
+>   problem in one change.
+> - **A long city name no longer pushes the navigation off screen.** Long names wrap inside their
+>   own column, so the page never widens sideways and the Profile tab stays where it is. Checked
+>   with the 58-letter Welsh village name that found it.
+> - **The check that could not fail can now fail.** It measures against the actual screen instead
+>   of a number that grows with the page, and a deliberate 2,400 px block now turns it red at
+>   **all five** screen sizes rather than two.
+>
+> **The smaller ones, in plain terms.** With one trip recorded the headline now reads *"1 COUNTRY ·
+> 1 CITY · 1 DAY TRAVELLED"*. The `·` separators no longer dangle at the end of a line. *"1 trip"*
+> no longer breaks across two lines. A screen reader now hears *"Aug 2019, 1 trip"* instead of a
+> five-digit year. Opening one country no longer makes an unrelated country jump to the other
+> column. Turning a phone sideways now leaves the country list visible. The "could not be read"
+> screen no longer says the same two words twice in two different type styles.
+>
+> **Two are deliberately still open**, both by the tester's own routing: a low-contrast grey used
+> as text **on the Trips screen** (not this one, and not made worse by it — it is for whichever
+> pass next opens that screen), and one genuine contradiction between two rules of the design
+> document, which is the architect's call and is being made separately.
+>
+> **One thing found while fixing, worth naming.** The bare-Node fault matrix — the harness that
+> proves each check can actually fail — had been reporting every one of its mutations as "caught"
+> for a reason unrelated to the mutations: it ran in a copy of the tree that was already failing
+> an unrelated test before anything was changed. With that fixed, one of the eighteen turned out
+> never to have been load-bearing. It is now, and the harness refuses to run at all unless its
+> unmutated baseline is clean.
+>
+> **Next:** this goes straight back to the tester for another adversarial round — a new screen and
+> a changed shell always do — and only then does a manager decide whether Phase 2b ships.
+>
+> ---
+>
 > **🔎 THE PROFILE SCREEN HAS NOW BEEN ATTACKED, AND IT IS GOING BACK — as of 2026-09-02, QA
-> round 41 (this block is the newest; it supersedes every block below on I-8b's status and on
-> *"what happens next"*, and nothing else).**
+> round 41 (superseded by the block above on the three MAJORs and twelve MINORs; everything else
+> in it still stands).**
 >
 > **I-8b is designed ✅ · built ✅ · verified ✅ (adversarially, and it did not pass) · shippable ❌.**
 > A breaker round rendered it at every size in both light and dark mode, fed it the shapes of real

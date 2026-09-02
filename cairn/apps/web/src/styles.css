@@ -115,8 +115,18 @@
    * at 1280 and 1600 — §6.2's *"wide changes nothing but margins"*.
    *
    * It is one token, on one surface. `--t-display` is unchanged and the world map still uses it.
+   *
+   * **QA R41-17 added the height term.** `9vw` alone scales on WIDTH, and in landscape the
+   * constraint is HEIGHT: at 750 × 340 (`iPhone 14 landscape`) `9vw` hit the 58 px cap, the
+   * claim block alone was 116 px, and with the chrome and the bottom bar the first screen held
+   * the eyebrow, the claim, the span line, *"THE COUNTRIES"* sliced by the bar and **zero
+   * country rows** — §5.2's movement 2, the thing the screen is about, entirely off screen.
+   * `min(9vw, 12svh)` is still a width-only breakpoint set and still no `orientation` query
+   * (§3.4 forbids one), and it changes nothing at any of §6.1's five contexts: 12svh exceeds
+   * 9vw at all five, so the claim is byte-identical at 320, 390, 768, 1280 and 1600. `svh`
+   * rather than `vh` for R3's reason — it must not change as Safari's chrome retracts.
    */
-  --t-claim: clamp(30px, 9vw, 58px);
+  --t-claim: clamp(30px, min(9vw, 12svh), 58px);
 
   /* ---- touch, and the chrome's own height (DESIGN §3.3 R1/R2, §3.4) ------
    * `--tap` is §3.4's primary target: **44 × 44 CSS px**, Apple HIG and WCAG 2.2 SC 2.5.5.
@@ -438,7 +448,14 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .library__head h1 { flex: 1; margin: 0; }
 .library__scan { margin: -.5rem 0 1rem; font-size: .82rem; color: var(--ink-dim); }
 
-.triplist { display: grid; gap: .6rem; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); }
+/* `min(17rem, 100%)` rather than a bare `17rem`: DESIGN §3.3 rules that this grid *"already
+   degrades to one column at 320 px … and it is the correct behaviour, so it stays"*, and it
+   does — but a bare `minmax(17rem, …)` is a **272 px floor on the track itself**, so below
+   272 px of available width the card overflows its own container instead of shrinking. That is
+   reachable without a small phone: §3.5's *"at 200 % browser zoom on a 390 px viewport, nothing
+   may be clipped or become unreachable"* puts the layout viewport at 195 px. Same one column,
+   same behaviour above 272 px, no floor below it. */
+.triplist { display: grid; gap: .6rem; grid-template-columns: repeat(auto-fill, minmax(min(17rem, 100%), 1fr)); }
 .tripcard {
   display: flex; align-items: stretch; gap: .4rem;
   background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
@@ -741,9 +758,24 @@ input, select, textarea {
 input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 textarea { resize: vertical; }
 
-.row { display: flex; gap: .6rem; align-items: flex-end; }
+/*
+ * QA **R41-11** — mobile-first, and the last place the shipped desktop-first stylesheet still
+ * overflowed a phone. `.row` was a NON-WRAPPING flex line, and the library head's is four
+ * buttons whose min-content width is **332 px**: at 320 the DOCUMENT scrolled sideways by
+ * 12 px, which is the exact overflow DESIGN §6.1 names iPhone SE for. It was pre-existing and
+ * harmless until I-8b made `.tabbar` `position: fixed` — the bar then sized to the 332 px
+ * LAYOUT viewport and 12 px of the **Profile tab** sat outside the 320 px screen, i.e. a form
+ * on another tab made the navigation unreachable. (The finding attributes the offending `.row`
+ * to `.newtrip`; rendered, it is `.library__head`'s. Same rule, same 332 px.)
+ *
+ * Wrapping is unconditional rather than a base-only rule with a `nowrap` above it: a flex line
+ * only wraps when it does not fit, so at every width where these lines fit — which is every
+ * width above 320 — nothing moves. `.row--wrap`'s distinguishing property was never the wrap;
+ * it is `align-items: center`, and it keeps it.
+ */
+.row { display: flex; gap: .6rem; align-items: flex-end; flex-wrap: wrap; }
 .row--end { justify-content: flex-end; }
-.row--wrap { flex-wrap: wrap; align-items: center; }
+.row--wrap { align-items: center; }
 .grow { flex: 1; }
 
 .hint { font-size: .78rem; color: var(--ink-dim); margin: 0; }
@@ -1110,7 +1142,12 @@ textarea { resize: vertical; }
   text-transform: uppercase; letter-spacing: var(--caps-track);
   color: var(--ink);
 }
-.claim__pair { display: inline-flex; align-items: baseline; gap: .22em; }
+/* `flex-wrap: wrap` so the pair's min-content width is the WIDEST of its parts rather than the
+   SUM of them. Without it the pair is an unbreakable run at display size, and at §3.5's 200 %
+   zoom on a 390 px viewport — a 195 px layout viewport — `· 30 DAYS TRAVELLED` was 11 px wider
+   than the page. It only ever wraps when the pair does not fit, so nothing moves at any of
+   §6.1's five contexts. */
+.claim__pair { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: .22em; }
 .claim__pair dt { color: var(--ink); }
 .claim__pair dd {
   order: -1; margin: 0;
@@ -1118,7 +1155,11 @@ textarea { resize: vertical; }
   font-variant-numeric: tabular-nums; letter-spacing: -.02em;
   color: var(--ink);
 }
-.claim__sep { color: var(--ink-dim); }
+/* QA **R41-5** — the separator LEADS the pair it belongs to rather than trailing the pair
+   before it, so a wrap can never leave a `·` alone at the end of a finished line. `-2` because
+   the value above is already pulled to `-1`; the DOM order is sep → label → value and the
+   rendered order is sep → value → label. */
+.claim__sep { order: -2; color: var(--ink-dim); }
 .claim__span {
   margin: .9rem 0 0; max-width: 34rem;
   font-size: var(--t-body); color: var(--ink-dim);
@@ -1140,14 +1181,23 @@ textarea { resize: vertical; }
 /* Hairlines, not cards. The rule is on the ROW's top edge and the list closes with one of its
    own, which is what lets the two-column desktop form (below) give every column's first row a
    rule without doubling it anywhere. */
-.crlist { border-bottom: var(--rule-soft); }
+/* QA **R41-8**: the record is a GRID OF LISTS, one per column, and not `columns: 2`. At base
+   there is one column and the groups simply stack, which is why the list's closing hairline
+   lives on the container — two `<ul>`s stacked would otherwise print two rules where the reader
+   sees one join. See `Profile.tsx`'s `recordColumns` for why the DOM splits at every width. */
+.crcols { border-bottom: var(--rule-soft); }
 .crow { border-top: var(--rule-soft); }
 
 .crow__head {
   display: grid;
-  grid-template-columns: 2.75rem minmax(0, 1fr);
+  /* The marginal column is 2.5rem + a .5rem gutter, down from 2.75rem + .75rem. An ISO code is
+     two glyphs — ~23 px at `--t-h2` mono — so 40 px still holds it with the column dead
+     straight, and the 8 px it hands back is what puts the longest ordinary facts run
+     (`Mar 2021 – Jun 2021 · 1 trip`, 224 px) inside a desktop column's 228 px track instead of
+     4 px outside it. QA R41-6: measured, not chosen. */
+  grid-template-columns: 2.5rem minmax(0, 1fr);
   grid-template-areas: "code facts" "code cities" "code prov";
-  align-items: baseline; column-gap: .75rem; row-gap: .15rem;
+  align-items: baseline; column-gap: .5rem; row-gap: .15rem;
   width: 100%; min-height: var(--tap);
   padding: .85rem 0; margin: 0;
   background: none; border: 0; cursor: pointer;
@@ -1166,12 +1216,29 @@ textarea { resize: vertical; }
   font-family: var(--font-mono); font-size: var(--t-small);
   font-variant-numeric: tabular-nums; color: var(--ink-dim);
 }
+/* QA **R41-6** — two unbreakable runs, and the line breaks BETWEEN them or not at all. A visit
+   span is a date and a count is a count-plus-its-unit; `Mar 2021 – Jun 2021 · 1` / `trip` broke
+   both. `.crow__count` carries the separator, so the wrap point is before the `·` and never
+   after it. Neither run is wide enough to floor the column: the longest is ~118 px inside a
+   158 px track at 1280, which is the width R41-2 says a min-content floor must respect. */
+.crow__span, .crow__count { white-space: nowrap; }
 /* `--ink-faint` is below WCAG AA as TEXT on `--paper` (2.4:1, measured in Chromium); it is an
    ink for a rule, not for a glyph. Every text ink on this surface is `--ink-dim` or stronger. */
 .crow__dot { color: var(--ink-dim); }
 /* Cities: text, at body size, in soft ink — §5.3's *"a run of names on one wrapped line"*. This
    is where cities cost nothing and read as content. */
-.crow__cities { grid-area: cities; font-size: var(--t-body); color: var(--ink-soft); }
+/* `overflow-wrap: anywhere` is a LAYOUT INVARIANT here, not typographic polish — QA **R41-3**.
+   A city name is free text on an imported `TripSummaryRow`, and one real signposted Welsh
+   place name (58 characters, unbreakable) made this element 405 px wide inside a 232 px track.
+   Chromium then widens the LAYOUT viewport to shrink-to-fit the overflow, and because the tab
+   bar is `position: fixed` it sizes to that widened viewport — so a single city name pushed the
+   Profile tab itself off a 320 px screen. `anywhere` rather than `break-word` because only
+   `anywhere` also lowers the element's MIN-CONTENT width, which is what the layout viewport is
+   computed from; `break-word` breaks the glyphs and leaves the floor exactly where it was. */
+.crow__cities {
+  grid-area: cities; font-size: var(--t-body); color: var(--ink-soft);
+  overflow-wrap: anywhere;
+}
 .crow__nocity { color: var(--ink-dim); font-style: italic; }
 
 /* Hover is REINFORCEMENT; the open state is the one that has to be readable without a pointer,
@@ -1223,11 +1290,39 @@ textarea { resize: vertical; }
  * range breaks mid-range (`2019-08-03 → 2019-` / `08-17`), which states a date that is not a
  * date. Stacking the two and holding the range on one line is a layout adjustment to a reused
  * component, not a second treatment of it: same element, same ink, same chip beside it.
+ *
+ * **QA R41-2 and R41-16, and they had one cause.** Holding the range on one line put a 299 px
+ * MIN-CONTENT floor under a row living in a 270 px column, and `.crow__clip`'s `overflow:hidden`
+ * — which exists for the vertical accordion — then sliced the `Past trip` chip through the
+ * middle of a word: `PAST TRI`, no ellipsis, no affordance, at 1280 and 1600 in both schemes.
+ * Two changes, and each is needed:
+ *
+ *   1. **The chip wraps to its own line** instead of sharing one with the stacked title/date.
+ *      `flex-wrap: wrap` drops the row's min-content width from the SUM of the two runs to the
+ *      MAX of them — 299 px → ~150 px — which is what actually clears a 270 px column.
+ *   2. **The card becomes a hairline row.** §5.3 rules the whole screen card-free and R41-16
+ *      recorded this as the one place it was not: a white bordered panel in a composition made
+ *      entirely of rules, and the only place the surface looked like a component library. The
+ *      element, the ink and the chip are unchanged — this is `.triprow`'s box, restyled where
+ *      it is nested, exactly as §5.5's *"the existing treatment, reused"* already licenses the
+ *      stacking above.
  */
-.crow__triplist { padding: 0 0 .9rem; }
-.crow__triplist .triprow__open { flex-direction: column; align-items: flex-start; gap: .15rem; }
+/* Indented by the marginal column's own width (2.5rem + the .5rem gutter), so an expanded
+   country's trips line up with that country's facts and cities rather than with the ISO codes.
+   Looked at, not derived: without it the trip title starts on the same x as `AT` and the atlas
+   index momentarily stops having a margin. */
+.crow__triplist { padding: .1rem 0 .9rem 3rem; }
+.crow__triplist .triprow {
+  flex-wrap: wrap; row-gap: .15rem;
+  border: 0; border-radius: 0; background: none;
+  border-top: var(--rule-soft); padding: .45rem 0 .1rem;
+}
+.crow__triplist .triprow--gone { border-top-style: dashed; padding: .45rem 0 .1rem; }
+.crow__triplist .triprow__open { flex-direction: column; align-items: flex-start; gap: .15rem; padding-inline: 0; }
+.crow__triplist .triprow__open:hover { background: none; color: var(--accent); }
+.crow__triplist .triprow__title { overflow-wrap: anywhere; }
 .crow__triplist .triprow__meta { white-space: nowrap; }
-.crow__triplist .chip--life { white-space: nowrap; margin-right: .5rem; }
+.crow__triplist .chip--life { white-space: nowrap; margin-right: 0; }
 @media (prefers-reduced-motion: reduce) { .crow__trips { transition: none; } }
 
 /* ---- movement 3: the shape of it over time ---------------------------- */
@@ -1256,7 +1351,8 @@ textarea { resize: vertical; }
 .profile__gap p { margin: 0 0 .55rem; }
 .profile__gap p:last-child { margin-bottom: 0; }
 .profile__gap b { color: var(--ink); font-weight: 600; }
-.profile__citylist { color: var(--ink-soft); }
+/* Free text off an imported row, same as `.crow__cities` — R41-3's reason applies verbatim. */
+.profile__citylist { color: var(--ink-soft); overflow-wrap: anywhere; }
 
 .profile__meta { margin-top: 2.5rem; }
 .profile--refused .banner { border: 1px solid var(--danger); border-radius: var(--radius); }
@@ -1303,10 +1399,23 @@ textarea { resize: vertical; }
     display: grid; grid-template-columns: minmax(0, 1fr) 20rem;
     gap: 2.5rem; align-items: start;
   }
+  /*
+   * QA **R41-15**: a capped sticky column is a NESTED SCROLL REGION, and a nested scroll region
+   * with overlay scrollbars has nothing on screen that says so — with 60 unplaced cities its
+   * `scrollHeight` was 1015 against a 670 `clientHeight` and the tail was unreachable from the
+   * page scroll. The cap stays (a sticky column taller than the viewport pins its own tail
+   * off-screen, which is worse), and it gets a **permanent, classic scrollbar** instead: in
+   * Chromium and WebKit `scrollbar-width: thin` opts the element out of overlay scrollbars, and
+   * `scrollbar-gutter: stable` reserves the track at every scroll position so the affordance
+   * does not depend on the user already scrolling. `overscroll-behavior` keeps a flick inside
+   * the column from chaining into the page, which is the other half of the confusion.
+   */
   .profile__meta {
     margin-top: 0;
     position: sticky; top: calc(var(--chrome-h) + 1.25rem);
     max-height: calc(100svh - var(--chrome-h) - 2.5rem); overflow-y: auto;
+    scrollbar-width: thin; scrollbar-gutter: stable; overscroll-behavior-y: contain;
+    padding-right: .35rem;
   }
 }
 
@@ -1314,12 +1423,27 @@ textarea { resize: vertical; }
 @media (min-width: 1280px) {
   /*
    * §5.4: *"two columns of rows … the rows must stay hairline-separated and must keep reading
-   * order down-then-across."* Multi-column is the mechanism that gives that order for free —
-   * a two-track CSS grid fills across-then-down, which would put row 2 beside row 1 and break
-   * both the reading order and the tab order. `break-inside: avoid` keeps an expanded row whole.
+   * order down-then-across."* §5.4 offers two mechanisms and **QA R41-8 rules out the first**:
+   * `columns: 2` re-flows the entire list on any height change, so expanding one country threw
+   * an unrelated one ~314 px across the gutter (5, 9, 13 and 21 countries; 1280 and 1600).
+   *
+   * The second mechanism is this: a two-track grid whose ITEMS ARE THE TWO LISTS, not the rows.
+   * A grid of rows would fill across-then-down and break both reading and tab order; a grid of
+   * lists keeps DOM order — column 1 top to bottom, then column 2 — and each list is its own
+   * formatting context, so a row that grows grows only its own column. `align-items: start` so
+   * a short second column does not stretch its last hairline down the page.
+   *
+   * The gutter is **2rem, not the 2.75rem the multi-column form used**, and the 12 px it buys
+   * back is measured rather than chosen: a country column is 300 px instead of 270, and the
+   * facts line's longest ordinary run — `Mar 2021 – Jun 2021 · 1 trip`, a span crossing two
+   * months — needs **224 px** against a **214 px** track at 2.75rem. Ten pixels short is what
+   * R41-6 actually was. 2rem gives the run 244 px and leaves room for a two-digit trip count.
    */
-  .crlist { columns: 2; column-gap: 2.75rem; }
-  .crow { break-inside: avoid; }
+  .crcols {
+    display: grid; grid-template-columns: 1fr 1fr; column-gap: 2rem;
+    align-items: start; border-bottom: 0;
+  }
+  .crcols .crlist { border-bottom: var(--rule-soft); }
 }
 
 /* ---- wide (≥ 1600): NO new layout ------------------------------------

@@ -1088,7 +1088,13 @@ test('I-8b / DESIGN §3.3 R3: no `vh` or `dvh` survives on a fixed-height scroll
   // Every `max-height` in the file, wherever it is: a scroll container's cap is the case R3 is
   // about, and there is no `max-height` in this stylesheet that is not one.
   const caps = [...css.matchAll(/max-height:\s*([^;}]+)/g)].map((m) => m[1].trim());
-  const bad = caps.filter((v) => /\bdvh\b/.test(v) || /\d\s*vh\b/.test(v));
+  // `\d\s*d?vh\b` and NOT `\bdvh\b`: in `100dvh` the `0` and the `d` are both word characters,
+  // so there is no word boundary in front of `dvh` and the leading `\b` never matches. That is
+  // why `qa/i8b-faults.sh` fault **2b** — putting `100dvh` back on `.spine`'s `max-height` —
+  // stayed GREEN, which nobody could see while the harness's own copy was failing an unrelated
+  // test before any mutation was applied. Both halves are fixed together; see that file's
+  // `baseline_gate`. `100svh` is not matched: after the digit comes `s`, not `d` or `v`.
+  const bad = caps.filter((v) => /\d\s*d?vh\b/.test(v));
   assert.deepEqual(bad, [], 'a capped-height container is sized in `vh`/`dvh` and will resize mid-scroll');
 
   // `.app`'s `min-height: 100dvh` is the ONE correct `dvh` and it stays — it is the full-bleed
@@ -1306,17 +1312,52 @@ test('I-8b / DESIGN §5.5: "could not be read" is one vocabulary across both sur
   // §5.5 asks for *"the same component and the same words"* as the world map; §5.6 fences
   // `WorldMap.tsx` as a zero-line diff for this increment. The mechanical fence wins and the
   // duplication is kept honest by this assertion rather than by intent — see `Refusal.tsx`.
+  //
+  // **QA R41-13 — this is now the equivalence check it was already described as.** It used to
+  // be a three-sentence allow-list: rewording a LISTED sentence went red, but adding a fourth
+  // sentence to `Refusal.tsx` that `WorldMap.tsx` did not have stayed green, and so did
+  // inverting the `rowId` branch so the Profile printed *"the stored record for trip undefined
+  // is not readable"*. The guard was real for one case and the CLAIM about it — *"every
+  // sentence this component renders appears verbatim in `WorldMap.tsx`"* — was what a future
+  // reader would rely on when deciding the duplication is safe. So: every sentence-shaped
+  // literal in `Refusal.tsx`, extracted rather than listed, must appear in `WorldMap.tsx`, and
+  // the three that carry the meaning must still be in both.
   const refusal = readFileSync(resolve(VIEWS, 'Refusal.tsx'), 'utf8');
   const map = readFileSync(resolve(VIEWS, 'WorldMap.tsx'), 'utf8');
-  const sentences = [
+  const anchors = [
     'We could not read your travel history.',
     'is not readable.',
     'One of the stored trip records is not readable.',
   ];
-  for (const s of sentences) {
+  for (const s of anchors) {
     assert.ok(refusal.includes(s), `the shared refusal lost the sentence: ${s}`);
     assert.ok(map.includes(s), `the world map's refusal drifted from the shared one: ${s}`);
   }
+
+  // Every prose literal the component can render, taken out of the source rather than named
+  // here — string literals and JSX text runs, anything with a space and a letter in it, with
+  // the import specifiers, the class names and the JSX attribute values removed.
+  const body = stripComments(refusal);
+  const literals = new Set<string>();
+  for (const m of body.matchAll(/'([^'\\\n]{6,})'|"([^"\\\n]{6,})"|`([^`\\\n$]{6,})`/g)) {
+    literals.add((m[1] ?? m[2] ?? m[3]).trim());
+  }
+  // JSX text runs: what sits between a `>` and a `<` on the same line.
+  for (const m of body.matchAll(/>([^<>{}\n]{6,})</g)) literals.add(m[1].trim());
+  const prose = [...literals].filter((s) => /[a-z] [a-z]/i.test(s)
+    && !/^(?:@|\.\.?\/)/.test(s) && !/[<>{}]/.test(s));
+  assert.ok(prose.length >= anchors.length,
+    'no prose was extracted from Refusal.tsx — the extractor, not the component, is broken');
+  const drifted = prose.filter((s) => !map.includes(s));
+  assert.deepEqual(drifted, [],
+    'Refusal.tsx renders wording the world map does not have — §5.5 asks for the same words, '
+    + 'and while §5.6 keeps them two copies this assertion is the only thing holding them equal');
+
+  // The branch itself, not only the vocabulary: a refusal that carries a row id names it, and
+  // one that does not falls through to the generic sentence. Inverting the two is the mutation
+  // that stayed green when this test only counted sentences.
+  assert.match(body, /[^!\w]refusal\.rowId\s*\?[\s\S]{0,400}?The stored record for trip/,
+    'the refusal no longer names the row id on the branch that HAS one');
   assert.match(readFileSync(resolve(VIEWS, 'Profile.tsx'), 'utf8'), /HistoryRefusal/,
     'the Profile writes its own refusal instead of using the shared one');
 });
@@ -1331,6 +1372,95 @@ test('I-8b / DESIGN §5.5: the country drill-down is an inline expansion, not a 
   assert.match(src, /aria-controls=\{`crow-trips-/, 'the expanded panel is not associated with its row');
   // A collapsed panel may not hold a tab stop.
   assert.match(src, /tabIndex=\{isOpen \? 0 : -1\}/, 'a collapsed row still holds focusable controls');
+});
+
+/*
+ * Round 41's builder-routed findings, as source-level ceilings. Each is *also* asserted on
+ * rendered output — `qa/i8b-render.mjs` and the round's own `qa/r41-shell.mjs` are where the
+ * defects were found and are the instrument that says they are gone. These are the floor: they
+ * are what a fault matrix can flip in bare Node, and what stops the same shape coming back.
+ */
+test('I-8b / QA R41-4, R41-5: the claim agrees in number, and no separator trails a pair', () => {
+  const src = stripComments(PROFILE());
+  // R41-4: `1 COUNTRIES · 1 CITIES · 1 DAYS TRAVELLED` on the largest type on the screen,
+  // reached by the most ordinary first-run state there is — one recorded past trip.
+  for (const [one, many] of [['Country', 'Countries'], ['City', 'Cities'], ['Day travelled', 'Days travelled']]) {
+    assert.ok(src.includes(`'${one}', '${many}'`),
+      `the claim hard-codes the plural label ${many} — it must agree with its own number`);
+  }
+  // R41-5: the separator belongs to the pair that FOLLOWS it. Inside the preceding pair it
+  // stays on the finished line when the claim wraps.
+  assert.ok(!/claim__sep[\s\S]{0,40}\}\s*\n?\s*\{i < pairs\.length - 1/.test(src)
+    && /\{i > 0 && <span className="claim__sep"/.test(src),
+    'the claim\'s `·` still trails the pair before it — a wrap leaves it dangling');
+});
+
+test('I-8b / QA R41-6, R41-7: a country row\'s facts line breaks between runs, never inside one', () => {
+  const src = stripComments(PROFILE());
+  // R41-6: the count and its unit are one run, and the separator rides inside it.
+  assert.match(src, /className="crow__count"/, 'the trip count is not an unbreakable run');
+  assert.match(src, /className="crow__span"/, 'the visit span is not an unbreakable run');
+  const css = stripComments(readFileSync(resolve(CAIRN, 'apps/web/src/styles.css'), 'utf8'));
+  assert.match(css, /\.crow__span,\s*\.crow__count\s*\{[^}]*white-space:\s*nowrap/,
+    '`1` may break away from `trip` — the same defect class as the trip row\'s date range');
+  // R41-7: a row's accessible name is its text content with the `aria-hidden` subtrees removed,
+  // so the `·` may not be the only whitespace anywhere in the row: `AT Aug 20191 trip Vienna`.
+  assert.ok(!/\{span\}\s*\n\s*<span className="crow__dot"/.test(src),
+    'the hidden separator is still the only whitespace before the trip count');
+  assert.match(src, /<span className="crow__code mono">\{c\.code\}<\/span>\{' '\}/,
+    'the ISO code abuts the facts line with no whitespace — `ATAug` in the accessible name');
+});
+
+test('I-8b / QA R41-8: the two-column record is a grid of lists, not `columns: 2`', () => {
+  const css = stripComments(readFileSync(resolve(CAIRN, 'apps/web/src/styles.css'), 'utf8'));
+  // §5.4 permits either mechanism; multi-column re-flows the WHOLE list on any height change,
+  // so expanding one country threw an unrelated one across the gutter (P6's last clause).
+  assert.ok(!/[^-\w]columns:\s*2\b/.test(css),
+    '`columns: 2` is back — expanding one country moves a different country across the page');
+  assert.match(css, /@media \(min-width: 1280px\) \{[\s\S]*?\.crcols \{[^}]*grid-template-columns/,
+    'the record has no two-column form at desktop — §5.4 requires one');
+  const src = stripComments(PROFILE());
+  assert.match(src, /function recordColumns/, 'the record is not split into column groups');
+  // It is arithmetic on the data, not a measurement: this file measures no layout.
+  assert.ok(!/matchMedia|innerWidth|getBoundingClientRect|offsetWidth/.test(src),
+    'the Profile measures the viewport to decide its own layout');
+});
+
+test('I-8b / QA R41-9: the refusal path keeps the surface\'s own type register', () => {
+  const src = stripComments(PROFILE());
+  const refused = src.slice(src.indexOf('profile--refused'), src.indexOf('const stats'));
+  assert.ok(!/eyebrow/.test(refused),
+    'the refusal prints `Travel record` above `Your travel record` — the same two words twice');
+  assert.match(refused, /<h1 className="profile__kicker">/,
+    'the refusal\'s `h1` falls through to the global display rule where the healthy path\'s is '
+    + 'an 11 px tracked mono micro-label — one surface, two headers');
+});
+
+test('I-8b / QA R41-3, R41-11: free text wraps, and no flex line floors a 320 px phone', () => {
+  const css = stripComments(readFileSync(resolve(CAIRN, 'apps/web/src/styles.css'), 'utf8'));
+  // R41-3: a city name is free text on an imported row. One unbreakable 58-character name
+  // widened the LAYOUT viewport to 477 px, and the `position: fixed` bar sized to it — so the
+  // Profile tab itself left a 320 px screen. `anywhere`, not `break-word`: only `anywhere`
+  // lowers the element's min-content width, which is what shrink-to-fit is computed from.
+  for (const sel of ['.crow__cities', '.profile__citylist']) {
+    const rule = new RegExp(`\\${sel}[^{]*\\{[^}]*overflow-wrap:\\s*anywhere`);
+    assert.match(css, rule, `${sel} does not wrap — one long city name widens the whole document`);
+  }
+  // R41-11: the pre-existing 12 px overflow on the Trips tab at 320, which the fixed bar turned
+  // into 12 px of the Profile tab sitting off screen.
+  assert.match(css, /\n\.row \{[^}]*flex-wrap:\s*wrap/,
+    'a bare flex `.row` still has a 332 px min-content width at a 320 px viewport');
+});
+
+test('I-8b / QA R41-2, R41-16: the trip rows inside an expanded country are hairlines, not cards', () => {
+  const css = stripComments(readFileSync(resolve(CAIRN, 'apps/web/src/styles.css'), 'utf8'));
+  const block = css.slice(css.indexOf('.crow__triplist'));
+  const row = block.slice(0, block.indexOf('@media'));
+  // The 299 px min-content floor inside a 270 px column is what sliced `Past trip` to `PAST TRI`.
+  assert.match(row, /\.crow__triplist \.triprow \{[^}]*flex-wrap:\s*wrap/,
+    'the reused trip row cannot wrap, so its min-content width is the SUM of its runs');
+  assert.match(row, /\.crow__triplist \.triprow \{[^}]*border:\s*0/,
+    '§5.3 rules this screen card-free and this is the one bordered card on it (R41-16)');
 });
 
 test('I-8b: `WorldMap.tsx` is a zero-line diff, and `packages/` is untouched by this surface', () => {

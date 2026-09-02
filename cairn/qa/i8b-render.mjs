@@ -110,6 +110,15 @@ const PROVISIONAL = [
     [city('Vienna', 'AT'), city('London', 'GB')]),
 ];
 
+/**
+ * QA **R41-3**: a city name is free text on an imported `TripSummaryRow`, and this is a real,
+ * signposted UK place name. 58 characters with no break opportunity in them.
+ */
+const LONGCITY = [
+  row('lc', 'Wales 2023', '2023-05-01', '2023-05-06', ['GB'],
+    [city('Llanfairpwllgwyngyllgogerychwyrndrobwllllantysiliogogogoch', 'GB')]),
+];
+
 /** A-31 Part 4's duplicate-row-id throw, which is the one that carries a row id in its message. */
 const REFUSED = [
   row('dup', 'One', '2020-01-01', '2020-01-05', ['AT'], []),
@@ -302,22 +311,51 @@ if (!FAULTS_ONLY) {
       await page.waitForSelector('#tabpanel-profile .profile');
 
       // ---- A. layout integrity ------------------------------------------
-      const layout = await page.evaluate(() => {
+      const layout = await page.evaluate((declaredWidth) => {
         const root = document.querySelector('#tabpanel-profile .profile');
         const K = window.__cairn;
+        /*
+         * **QA R41-1 — the denominator, and it is the whole assertion.** A1 and A2 used to
+         * compare against `innerWidth`. Under a §6.1 DEVICE PROFILE (`isMobile: true`, which
+         * §6.1 mandates over a bare viewport) `innerWidth` is the LAYOUT viewport, and Chromium
+         * widens the layout viewport to shrink-to-fit whatever overflows — so `scrollWidth` and
+         * `innerWidth` grew together and the difference was always ≤ 1. Injecting a 2,400 px box
+         * into `.profile` left A1 **green at iPhone SE, iPhone 14 and iPad Mini** and red only
+         * at 1280/1600, where the viewport is fixed regardless of content. Three of the five
+         * contexts §6.1 exists for could not fail the first assertion §6.2 names.
+         *
+         * The correct denominator is the **visible** viewport, which does not grow with content:
+         * `document.scrollingElement.clientWidth`, cross-checked against the context's own
+         * declared `viewport.width` so a bug in one cannot hide a bug in the other. Fault 6
+         * below is the standing vacuity control, and it is red at all five contexts.
+         */
+        const vw = Math.min(
+          document.scrollingElement.clientWidth,
+          visualViewport ? visualViewport.width : Infinity,
+          declaredWidth,
+        );
         const past = K.boxes(document.body)
-          .filter((el) => el.getBoundingClientRect().right > innerWidth + 1)
+          .filter((el) => el.getBoundingClientRect().right > vw + 1)
           .map(K.label);
-        // Deliberate clippers: a collapsed accordion and an ellipsised title are clipping ON
-        // PURPOSE, and a criterion that cannot say so would forbid both.
-        const CLIP_OK = ['crow__clip', 'topbar__title'];
+        /*
+         * Deliberate clippers, **per axis** (QA R41-2). A collapsed accordion is clipping on
+         * purpose on the VERTICAL axis — that is where `grid-template-rows: 0fr` lives — and an
+         * ellipsised title on the HORIZONTAL one. Written for both axes, the exemption also
+         * blanket-forgave the horizontal clip that sliced the `Past trip` chip in half, which is
+         * exactly the defect §6.2's clause is for. One axis each, named.
+         */
+        const CLIP_OK = { crow__clip: 'y', topbar__title: 'x' };
         const clipped = [];
         for (const el of K.boxes(document.body)) {
           const cs = getComputedStyle(el);
           if (!/hidden|clip|auto|scroll/.test(cs.overflowX + cs.overflowY)) continue;
-          if (CLIP_OK.some((k) => (el.className || '').toString().includes(k))) continue;
-          if (el.scrollWidth > el.clientWidth + 1) clipped.push(K.label(el) + ' x');
-          if (/hidden|clip/.test(cs.overflowY) && el.scrollHeight > el.clientHeight + 1) {
+          const cls = (el.className || '').toString();
+          const exempt = Object.keys(CLIP_OK).filter((k) => cls.includes(k)).map((k) => CLIP_OK[k]);
+          if (!exempt.includes('x') && el.scrollWidth > el.clientWidth + 1) {
+            clipped.push(K.label(el) + ' x');
+          }
+          if (!exempt.includes('y') && /hidden|clip/.test(cs.overflowY)
+            && el.scrollHeight > el.clientHeight + 1) {
             clipped.push(K.label(el) + ' y');
           }
         }
@@ -341,15 +379,31 @@ if (!FAULTS_ONLY) {
         }
         return {
           scrollWidth: document.scrollingElement.scrollWidth,
-          inner: innerWidth,
+          inner: vw,
+          layoutWidth: innerWidth,
           past, clipped, gap, vh: innerHeight,
           left: Math.round(rr.left),
           widths,
         };
-      });
+      }, c.w);
       ok(layout.scrollWidth <= layout.inner + 1, `A1 no horizontal overflow — ${tag}`,
-        [layout.scrollWidth, layout.inner]);
+        [layout.scrollWidth, layout.inner, `layoutViewport=${layout.layoutWidth}`]);
       ok(layout.past.length === 0, `A2 nothing extends past the viewport — ${tag}`, layout.past);
+      /*
+       * **A2b — no separator is left dangling at the end of a line** (QA R41-5). Measured by
+       * GEOMETRY and not by DOM position: a `·` dangles when nothing on its own line box sits
+       * to its right. Stated that way it is independent of which pair the separator lives in,
+       * which matters because the fix moves it from the pair it followed to the pair it leads —
+       * a predicate written around the old DOM order reports the corrected markup as broken.
+       */
+      const sep = await page.evaluate(() => {
+        const items = [...document.querySelectorAll('#tabpanel-profile .claim__pair > *')]
+          .map((el) => { const r = el.getBoundingClientRect(); return { el, top: r.top, l: r.left, r: r.right }; });
+        return items.filter((s) => s.el.classList.contains('claim__sep'))
+          .filter((s) => !items.some((o) => o !== s && Math.abs(o.top - s.top) < 4 && o.l >= s.r - 1))
+          .map((s) => Math.round(s.l) + ',' + Math.round(s.top));
+      });
+      ok(sep.length === 0, `A2b no claim separator ends a line — ${tag}`, sep);
       ok(layout.clipped.length === 0, `A3 nothing is clipped — ${tag}`, layout.clipped);
       const deadCap = c.touch ? 0.25 : 0.33;
       ok(layout.gap <= layout.vh * deadCap,
@@ -724,6 +778,34 @@ if (!FAULTS_ONLY) {
     await kc.close();
   }
 
+  /*
+   * **F11 — expanding one country moves no OTHER country.** QA R41-8, and P6's last clause:
+   * *"nothing changes layout of other content unless it is the thing the user just opened."*
+   * `columns: 2` re-flows the whole list on any height change, so opening `AT` threw an
+   * unrelated country ~314 px across the gutter. Driven at the two contexts where the record is
+   * two columns, and it is the assertion fault 8 below has to be able to turn red.
+   */
+  for (const ci of [3, 4]) {
+    const c = CONTEXTS[ci];
+    const { ctx, page } = await openProfile(c, 'light', REFERENCE);
+    await page.waitForSelector('.crow__head');
+    const at = (sel) => page.evaluate((s) => Object.fromEntries(
+      [...document.querySelectorAll(s)].map((el) => {
+        const r = el.getBoundingClientRect();
+        return [el.dataset.code, Math.round(r.left) + ',' + Math.round(r.top + scrollY)];
+      })), sel);
+    const before = await at('.crow');
+    await page.click('.crow[data-code="AT"] .crow__head');
+    await page.waitForTimeout(300);
+    const after = await at('.crow');
+    const moved = Object.keys(before)
+      .filter((k) => k !== 'AT' && before[k].split(',')[0] !== after[k].split(',')[0])
+      .map((k) => [k, before[k], after[k]]);
+    ok(moved.length === 0,
+      `F11 expanding one country moves no other country between columns — ${c.name}`, moved);
+    await ctx.close();
+  }
+
   // =========================================================================
   head('F7–F10 — the refusal, empty, provisional and rescan paths, driven');
   // =========================================================================
@@ -909,6 +991,108 @@ const FAULTS = [
       return of('AT') !== of('GB');
     }),
   },
+  /*
+   * **6 — the standing vacuity control for §6.2's FIRST assertion** (QA R41-1). This is the
+   * fault that was missing: A1 as originally written compared `scrollWidth` against
+   * `innerWidth`, and under a device profile Chromium widens the layout viewport to absorb
+   * overflow, so both grew together and the assertion could not fail at iPhone SE, iPhone 14 or
+   * iPad Mini — three of the five contexts §6.1 exists for. A 2,400 px box is not a subtle
+   * fault; the point is that the criterion has to be able to see even this one. It runs at
+   * **all five contexts and is red at all five**, which is the property the old form lacked.
+   */
+  {
+    name: '6. no horizontal overflow — a deliberate 2,400 px box is injected into the Profile',
+    css: '#tabpanel-profile .profile::after { content: ""; display: block; width: 2400px; height: 4px; background: red }',
+    contexts: [0, 1, 2, 3, 4],
+    expectRed: [true, true, true, true, true],
+    check: (page, want, c) => page.evaluate((declaredWidth) => {
+      const vw = Math.min(
+        document.scrollingElement.clientWidth,
+        visualViewport ? visualViewport.width : Infinity,
+        declaredWidth,
+      );
+      return document.scrollingElement.scrollWidth <= vw + 1;
+    }, c.w),
+  },
+  /*
+   * **7 — the clipping criterion's HORIZONTAL axis** (QA R41-2). `.crow__clip` is clipping on
+   * purpose vertically; the exemption was written for both axes, so it also forgave the
+   * horizontal clip that sliced the `Past trip` chip to `PAST TRI` at 1280 and 1600. This
+   * restores the card box and the non-wrapping row that put a 299 px min-content floor under a
+   * 270 px column, and the narrowed exemption has to see it.
+   */
+  {
+    name: '7. no clipping (x) — the trip row goes back to a non-wrapping card inside a 270 px column',
+    css: '.crow__triplist .triprow { flex-wrap: nowrap !important; border: var(--rule) !important;'
+      + ' border-radius: var(--radius) !important; background: var(--card) !important }'
+      + ' .crow__triplist .triprow__open { padding-left: .7rem !important; padding-right: .7rem !important }'
+      + ' .crow__triplist .chip--life { margin-right: .6rem !important }',
+    contexts: [3, 4],
+    expectRed: [true, true],
+    check: (page) => page.evaluate(() => [...document.querySelectorAll('.crow__clip')]
+      .every((el) => el.scrollWidth <= el.clientWidth + 1)),
+  },
+  /*
+   * **8 — the two-column record does not rebalance** (QA R41-8). Puts CSS multi-column back
+   * over the grid of lists; F11's assertion has to turn red.
+   */
+  {
+    name: '8. the record rebalances — `columns: 2` is put back over the grid of lists',
+    css: '.crcols { display: block !important; columns: 2 !important; column-gap: 2.75rem !important }'
+      + ' .crcols .crlist { border-bottom: 0 !important }',
+    contexts: [3],
+    expectRed: [true],
+    check: async (page) => {
+      const at = () => page.evaluate(() => Object.fromEntries(
+        [...document.querySelectorAll('.crow')].map((el) => {
+          const r = el.getBoundingClientRect();
+          return [el.dataset.code, Math.round(r.left)];
+        })));
+      const before = await at();
+      await page.click('.crow[data-code="AT"] .crow__head');
+      await page.waitForTimeout(300);
+      const after = await at();
+      return Object.keys(before).every((k) => k === 'AT' || before[k] === after[k]);
+    },
+  },
+  /*
+   * **9 — the claim's separator goes back to trailing the pair before it** (QA R41-5). `order`
+   * is the whole mechanism, so inverting it is the whole fault.
+   */
+  {
+    name: '9. a `·` trails its pair again and dangles at the end of a wrapped line',
+    css: '.claim__sep { order: 99 !important }',
+    contexts: [0, 1],
+    expectRed: [true, true],
+    check: (page) => page.evaluate(() => {
+      const items = [...document.querySelectorAll('#tabpanel-profile .claim__pair > *')]
+        .map((el) => { const r = el.getBoundingClientRect(); return { el, top: r.top, l: r.left, r: r.right }; });
+      return items.filter((s) => s.el.classList.contains('claim__sep'))
+        .every((s) => items.some((o) => o !== s && Math.abs(o.top - s.top) < 4 && o.l >= s.r - 1));
+    }),
+  },
+  /*
+   * **10 — one long city name widens the document** (QA R41-3, the MAJOR). Free text off an
+   * imported row, and without `overflow-wrap: anywhere` a single unbreakable token widens the
+   * LAYOUT viewport, which the `position: fixed` bar then sizes itself to. Red at the two phone
+   * contexts, which is where the bar is fixed and where the Profile tab left the screen.
+   */
+  {
+    name: '10. no horizontal overflow — `.crow__cities` stops wrapping a 58-character city name',
+    css: '.crow__cities { overflow-wrap: normal !important; word-break: normal !important }',
+    contexts: [0, 1],
+    expectRed: [true, true],
+    rows: LONGCITY,
+    check: (page, want, c) => page.evaluate((declaredWidth) => {
+      const vw = Math.min(
+        document.scrollingElement.clientWidth,
+        visualViewport ? visualViewport.width : Infinity,
+        declaredWidth,
+      );
+      const bar = document.querySelector('.tabbar').getBoundingClientRect();
+      return document.scrollingElement.scrollWidth <= vw + 1 && bar.right <= vw + 1;
+    }, c.w),
+  },
 ];
 
 for (const f of FAULTS) {
@@ -922,7 +1106,7 @@ for (const f of FAULTS) {
     await page.evaluate(KIT);
     if (f.setup) await f.setup(page);
     await page.evaluate(KIT);
-    const green = await f.check(page, want);
+    const green = await f.check(page, want, c);
     const colour = green ? 'GREEN' : 'RED';
     const expected = wantRed ? 'RED' : 'GREEN';
     if (colour === expected) {

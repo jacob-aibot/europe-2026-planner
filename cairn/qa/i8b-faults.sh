@@ -29,6 +29,18 @@ say() { printf '\n== %s ==\n' "$1"; }
 # A throwaway copy: source copied for real, `node_modules` HARD-LINKED so the copy is instant.
 # Same helper as `qa/i8j-faults.sh`; kept local rather than sourced, because a fault matrix that
 # depends on another fault matrix still running is one more thing that can quietly stop working.
+#
+# **The repo-root planner is symlinked in, and that is load-bearing rather than tidy** (found
+# while repairing QA R41-1, the round's other instrument defect). `test/views.test.ts` reads
+# `../europe-2026-itinerary.html` through `fixtures/loadEurope2026.mjs`; a copy that does not
+# have it fails that one test with ENOENT **before any mutation is applied**, so the copy's
+# baseline is `# fail 1` and `fault()` — which reads nothing but "did anything fail?" — would
+# report every mutation RED whether or not it is load-bearing. A fault matrix that cannot go
+# green is exactly as worthless as an assertion that cannot go red. `baseline_gate` below
+# refuses to run the matrix at all unless an UNMUTATED copy is green.
+#
+# It is a symlink, not a copy: `CLAUDE.md`'s read-only boundary means nothing in this file may
+# write to the planner, and a symlink makes an accidental write loud instead of silent.
 make_copy() {
   local wt; wt="$(mktemp -d)/cairn"
   mkdir -p "$wt"
@@ -40,7 +52,24 @@ make_copy() {
     esac
   done
   rm -rf "$wt/apps/web/dist"
+  for f in europe-2026-itinerary.html docs tickets; do
+    [ -e "$CAIRN/../$f" ] && ln -sfn "$CAIRN/../$f" "$(dirname "$wt")/$f"
+  done
   printf '%s' "$wt"
+}
+
+# The vacuity control for the harness itself: an unmutated copy must be GREEN.
+baseline_gate() {
+  local wt; wt="$(make_copy)"
+  local out; out="$(cd "$wt" && node --test "$@" 2>&1 | grep -E '^# (pass|fail)' | tr '\n' ' ')"
+  local failed; failed="$(printf '%s' "$out" | sed -n 's/.*# fail \([0-9]*\).*/\1/p')"
+  rm -rf "$(dirname "$wt")"
+  if [ "${failed:-1}" -gt 0 ]; then
+    printf '\n== BASELINE ==\n  NOT GREEN in an unmutated copy -> %s\n' "$out"
+    printf '  Every RED below would be vacuous. Nothing was run.\n\n'
+    exit 1
+  fi
+  printf '\n== BASELINE ==\n  an unmutated copy is GREEN -> %s\n' "$out"
 }
 
 # fault <label> <file> <python-replace-script> <test-files...>
@@ -68,6 +97,8 @@ open(p,'w').write(s)
   fi
   rm -rf "$(dirname "$wt")"
 }
+
+baseline_gate test/views.test.ts
 
 # ---------------------------------------------------------------------------
 # ROADMAP I-8b's five named criteria, in its own order.
@@ -197,6 +228,79 @@ say '15. the vacuity control — the shell registry census moves'
 fault 'a fourth tab is registered' \
   'apps/web/src/App.tsx' \
   "s=s.replace(\"  {\n    id: 'profile',\",\"  {\n    id: 'discover',\n    label: 'Discover',\n    render: () => null,\n  },\n  {\n    id: 'profile',\")" \
+  test/views.test.ts
+
+# ---------------------------------------------------------------------------
+# QA round 41's builder-routed findings. Each repaired criterion gets its own mutation, for the
+# same reason the fifteen above have one: a criterion nobody can turn red is not a criterion.
+# ---------------------------------------------------------------------------
+
+say '16. R41-4 — the claim goes back to hard-coded plural labels (`1 COUNTRIES`)'
+fault 'the identity line stops agreeing in number with itself' \
+  'apps/web/src/views/Profile.tsx' \
+  "s=s.replace(\"[plural(stats.countries.length, 'Country', 'Countries'), stats.countries.length],\",\"['Countries', stats.countries.length],\")" \
+  test/views.test.ts
+
+say '17. R41-5 — the `.` separator goes back to trailing the pair before it'
+fault 'the separator is emitted after its pair again' \
+  'apps/web/src/views/Profile.tsx' \
+  "s=s.replace('{i > 0 && <span className=\"claim__sep\"','{i < pairs.length - 1 && <span className=\"claim__sep\"')" \
+  test/views.test.ts
+
+say '18. R41-6 — the trip count stops being one unbreakable run with its unit'
+fault 'the facts line can break between `1` and `trip`' \
+  'apps/web/src/styles.css' \
+  "s=s.replace('.crow__span, .crow__count { white-space: nowrap; }','.crow__span { white-space: nowrap; }')" \
+  test/views.test.ts
+
+say '19. R41-7 — the ISO code abuts the facts line with no whitespace (`ATAug` in the a11y name)'
+fault 'the only whitespace before the trip count is inside the aria-hidden separator' \
+  'apps/web/src/views/Profile.tsx' \
+  "s=s.replace('<span className=\"crow__code mono\">{c.code}</span>{\\' \\'}','<span className=\"crow__code mono\">{c.code}</span>')" \
+  test/views.test.ts
+
+say '20. R41-8 — `columns: 2` comes back over the record'
+fault 'the two-column record rebalances every row when one expands' \
+  'apps/web/src/styles.css' \
+  "s=s.replace('    display: grid; grid-template-columns: 1fr 1fr; column-gap: 2rem;','    columns: 2; column-gap: 2rem;')" \
+  test/views.test.ts
+
+say '21. R41-9 — the refusal grows its duplicate eyebrow back'
+fault 'the refusal prints `Travel record` above `Your travel record`' \
+  'apps/web/src/views/Profile.tsx' \
+  "s=s.replace('        <h1 className=\"profile__kicker\">Your travel record</h1>','        <p className=\"eyebrow\">Travel record</p>\n        <h1>Your travel record</h1>')" \
+  test/views.test.ts
+
+say '22. R41-3 — `.crow__cities` stops wrapping, and one long city name widens the document'
+fault 'a free-text city name has no break opportunity' \
+  'apps/web/src/styles.css' \
+  "s=s.replace('  grid-area: cities; font-size: var(--t-body); color: var(--ink-soft);\n  overflow-wrap: anywhere;','  grid-area: cities; font-size: var(--t-body); color: var(--ink-soft);')" \
+  test/views.test.ts
+
+say '23. R41-11 — `.row` goes back to a non-wrapping flex line (332 px at a 320 px viewport)'
+fault 'a bare flex row floors the page at 332 px' \
+  'apps/web/src/styles.css' \
+  "s=s.replace('.row { display: flex; gap: .6rem; align-items: flex-end; flex-wrap: wrap; }','.row { display: flex; gap: .6rem; align-items: flex-end; }')" \
+  test/views.test.ts
+
+say '24. R41-2 / R41-16 — the expanded row.s trips go back to non-wrapping cards'
+fault 'the reused trip row is a bordered card with a 299 px min-content floor again' \
+  'apps/web/src/styles.css' \
+  "s=s.replace('  flex-wrap: wrap; row-gap: .15rem;\n  border: 0; border-radius: 0; background: none;','  border: var(--rule); border-radius: var(--radius); background: var(--card);')" \
+  test/views.test.ts
+
+say '25. R41-13 — the shared refusal grows a sentence the world map does not have'
+# The mutation R41-13 measured GREEN against the three-sentence allow-list. It is the case the
+# guard was DESCRIBED as covering, and it is now the case it actually covers.
+fault 'Refusal.tsx renders wording WorldMap.tsx has never seen' \
+  'apps/web/src/views/Refusal.tsx' \
+  "s=s.replace('        <p className=\"hint mono\">{refusal.message}</p>','        <p className=\"hint mono\">{refusal.message}</p>\n        <p className=\"hint\">Your other trips are unaffected.</p>')" \
+  test/views.test.ts
+
+say '26. R41-13 — the refusal inverts its own row-id branch'
+fault 'the Profile prints "the stored record for trip undefined is not readable"' \
+  'apps/web/src/views/Refusal.tsx' \
+  "s=s.replace('          {refusal.rowId','          {!refusal.rowId')" \
   test/views.test.ts
 
 if [ -n "$MISMATCH" ]; then
