@@ -492,6 +492,41 @@ since I-8c fixed what it was watching, as its own comment says), and the new one
 are prior rounds' evidence; re-pointing them from a builder pass would be editing someone else's
 measurement.
 
+### Round 41's three probes over the same increment (2026-09-02, breaker)
+
+`i8b-render.mjs` and `i8b-faults.sh` above are the **builder's** acceptance run and both reproduce
+exactly (293 ok / 0 FAIL / 0 MISMATCH; ALL FAULTS RED — **18 mutations, not the 16 the README and
+`BUILD-NOTES.md` claim**). These three are the complement: they measure what that run does not, or
+measure the same thing with a different denominator. Every FAIL in them is a round-41 finding.
+
+```bash
+# with `npm run web:build && npm run serve` in another shell:
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r41-shell.mjs
+  # V the vacuity control on §6.2's FIRST assertion   O real overflow, vs clientWidth not innerWidth
+  # O2 the fixed bar vs the visible viewport          C §6.2 "no clipping" on the reused `.triprow`
+  # S the same-month claim line (builder fix 1)       K focus + tab order, driven by real Tab presses
+  # H touch-only interaction                          R `columns: 2` rebalancing on expand
+  # F `--ink-faint` as text                           P plural agreement + a dangling separator
+  # Q the facts line's mid-phrase break + the accessible name
+
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r41-look.mjs [outdir]
+  # The SCREENSHOTS `i8b-render.mjs` does not take: five §6.1 contexts x both schemes, the expanded
+  # row, and five data shapes the reference library has none of (a 58-char city name, 30 countries,
+  # a country with no city, a 180-char trip title, a library whose only trip is planned). Plus
+  # Z 200 % browser zoom on a 390 px viewport (DESIGN §3.5, which no assertion covers), L a
+  # landscape phone, B the bar vs `.app`'s reserved padding, N what a screen reader is handed.
+
+# once, needs root:
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers \
+  node /opt/node22/lib/node_modules/playwright/cli.js install-deps webkit
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r41-webkit.mjs
+  # §6.4 option 1, which the builder could not run. WebKit 26.0 launches once the ~20 host
+  # libraries are installed. W1 boot at five contexts x two schemes  W2 R1/R2  W3 the one
+  # animation really interpolates  W4 svh/dvh/lvh  W5 the forced 34 px inset  W6 overflow
+  # W7 the clipped `.triprow`. Closes the ENGINE half of §6.4 and NOT the device half:
+  # WebKit on Linux has no notch, so `env(safe-area-inset-*)` is `0px` there too.
+```
+
 ## I-8j (2026-09-01) — A-54: the cells tile the container, a malformed ring is stated, latitude breaks the last tie
 
 Three independent fixes, one increment. §4.4 **A-54** supersedes **A-51 G7** in full (layout),

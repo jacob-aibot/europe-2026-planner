@@ -19,6 +19,58 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
+> **🔎 THE PROFILE SCREEN HAS NOW BEEN ATTACKED, AND IT IS GOING BACK — as of 2026-09-02, QA
+> round 41 (this block is the newest; it supersedes every block below on I-8b's status and on
+> *"what happens next"*, and nothing else).**
+>
+> **I-8b is designed ✅ · built ✅ · verified ✅ (adversarially, and it did not pass) · shippable ❌.**
+> A breaker round rendered it at every size in both light and dark mode, fed it the shapes of real
+> travel data, and found **three things that have to be fixed before it can ship**, plus thirteen
+> smaller ones. **No privacy problem, no lost data, nobody's trip showing up on anyone else's
+> screen** — nothing in this round is that kind of finding.
+>
+> **The three that send it back.**
+>
+> 1. **On a laptop, opening a country shows a word cut in half.** Tap a country and its trips slide
+>    open; on a laptop or a desktop the little *"PAST TRIP"* label beside each trip is sliced
+>    through the middle and reads **`PAST TRI`**. The trip row is 299 px wide and the column it
+>    sits in is 270 px, and the extra is simply cut off. It happens in both light and dark mode.
+> 2. **One long city name pushes the navigation off the screen.** City names come from your trips,
+>    so they can be anything — and a genuinely long one (there is a Welsh village with a
+>    58-letter name) is wider than a phone. The page then widens sideways, and because the tab bar
+>    is now pinned to the bottom of the *page* rather than the *screen*, the **Profile tab slides
+>    off the right edge** and you have to scroll sideways to reach it.
+> 3. **The check that should have caught both of those cannot fail on a phone.** The automated
+>    "nothing runs off the side of the screen" test compares the page against a number that grows
+>    whenever the page runs off the side of the screen — so on the three phone-and-tablet sizes it
+>    is always satisfied. Deliberately putting a 2,400 px block on the page leaves it green. That
+>    is why the two problems above got through 293 passing checks.
+>
+> **Thirteen smaller ones**, the pick of which: with one trip recorded the biggest line on the
+> screen reads **"1 COUNTRIES · 1 CITIES · 1 DAYS TRAVELLED"**; the `·` separators are left
+> dangling at the end of a wrapped line; on a laptop *"1 trip"* breaks across two lines; a screen
+> reader hears *"Aug 20191 trip"* because the year and the count run together; on a laptop,
+> opening one country makes an **unrelated** country jump across to the other column; and turning
+> a phone sideways fills the whole first screen with the headline, leaving **none** of the country
+> list visible.
+>
+> **What the round confirmed as genuinely right.** Every number the build reported was re-derived
+> and held. All five of the problems the builder found by *looking* at screenshots really are
+> fixed. Focus outlines, keyboard order, touch targets, tapping with no mouse at all, hostile
+> city names, an empty library and the "we could not read this" path were all attacked and all
+> held.
+>
+> **And one honest gap got half-closed.** The build said iPhone notch/home-indicator behaviour was
+> unverified because a second browser engine would not start. This round had the access to install
+> what it needed, and **Safari's engine now runs**: the whole screen was re-checked on it and
+> behaves correctly. That still is **not** an iPhone — a Linux machine has no notch — so the real
+> notch spacing remains unverified, and this board still does not claim it.
+>
+> **Next:** the builder fixes what is routed, then this comes back for another round, then a
+> manager decides whether Phase 2b ships. `cairn/docs/QA-FINDINGS.md` round 41 has all seventeen
+> findings with a repro command for each.
+
+
 > **🧭 THE PROFILE SCREEN IS BUILT — as of 2026-09-02 (this block is the newest; it supersedes
 > every block below on *"what happens next"* and on I-8b's status, and nothing else).**
 >
