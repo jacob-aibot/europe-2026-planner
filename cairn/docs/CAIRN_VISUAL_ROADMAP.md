@@ -19,11 +19,58 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
-> **🔧 THE THREE THINGS THAT SENT THE PROFILE BACK ARE FIXED — as of 2026-09-02 (this block is the
-> newest; it supersedes every block below on I-8b's status and on *"what happens next"*, and
-> nothing else).**
+> **✅ THE PROFILE HAS SHIPPED — as of 2026-09-02 (this block is the newest; it supersedes every
+> block below on I-8b's status and on *"what happens next"*, and nothing else).**
 >
-> **I-8b is designed ✅ · built ✅ · verified ⏳ (the fixes have not been attacked yet) · shippable ❌.**
+> **I-8b is designed ✅ · built ✅ · verified ✅ · shippable ✅ — SHIPPED.**
+> Manager verdict **SHIP** at `dac9595` (`REVIEW.md`, the I-8b entry, 2026-09-02). **0 blockers,
+> 0 major problems.** Four small things are tracked as ordinary follow-up and none of them held
+> the screen back.
+>
+> **Cairn now has its first screen built to a written design contract rather than to taste**, and
+> the contract (`DESIGN.md`) plus the rendered acceptance standard it carries are now the bar every
+> future screen is measured against.
+>
+> **What you can actually do with it.** Open the Profile tab and you get your travel record as one
+> large headline — *"5 COUNTRIES · 6 CITIES · 30 DAYS TRAVELLED"* — then your countries as a plain
+> ruled list with the cities under each, then your trip counts, then a block headed **"What we do
+> not know"** that says how many of your records could not be placed on a country. Tap a country
+> and its trips open underneath it. A country you are in the middle of visiting right now is marked
+> **"ON A TRIP YOU ARE ON NOW"**, so a trip you have not finished never quietly counts as somewhere
+> you have been. With nothing recorded the screen shows zeroes and names the two ways to fill it —
+> it never invents content to look busy.
+>
+> **The navigation moved to the bottom of the screen on phones.** That is the structural change
+> underneath this increment, and it is why Cairn is now usable one-handed.
+>
+> **The manager checked this independently rather than taking the tester's word.** The suite
+> (1185 tests), the fault harness (29 deliberate breakages, all caught), and the rendered
+> acceptance run (311 checks) were all re-run; the screen was rendered and **looked at** at three
+> phone and desktop sizes in both light and dark mode on **two** browser engines; and the settled
+> world-map file was confirmed untouched across the whole arc.
+>
+> **Four things tracked, none blocking.** One is visible: on a narrow phone the `·` separators in
+> the big headline wrap to the start of the next line, so it reads slightly like a bulleted list —
+> cosmetic, no number wrong, and it is the **first** thing the next builder pass fixes. Two are
+> weaknesses in our own test equipment rather than in the app, and the manager checked by hand that
+> neither hides a real problem. The fourth is a sentence in the design document that needs
+> tightening so the next several screens do not each re-argue it.
+>
+> **One thing genuinely not verified, and it is deliberately called out rather than buried.**
+> **Nobody has opened Cairn on a real iPhone.** Every round, including the manager's, ran in a
+> simulated browser. Simulators cannot show the notch, the home indicator, or the way Safari's
+> address bar slides away as you scroll — and those are exactly what the new bottom navigation bar
+> has to sit correctly against. Everything checkable around that gap was checked, including by
+> forcing the values by hand on the correct browser engine, and it holds. **Two minutes with a real
+> phone would close it properly**, and that is the one open question for Jacob.
+
+
+> **🔧 THE THREE THINGS THAT SENT THE PROFILE BACK ARE FIXED — as of 2026-09-02. (Superseded by the
+> block above, which is the newest. Kept for the record: this is the repair pass, before the
+> re-test and the ship verdict.)**
+>
+> **I-8b at the time of this block: designed ✅ · built ✅ · verified ⏳ (the fixes had not been
+> attacked yet) · shippable ❌.**
 >
 > One builder pass over QA round 41's send-back. **All three blocking problems are fixed, and
 > twelve of the fourteen smaller ones.**

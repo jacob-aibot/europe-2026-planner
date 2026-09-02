@@ -1,12 +1,13 @@
 # Cairn — manager reviews
 
-**Six verdicts live in this file, newest first.** The **I-8f + I-8j prerequisite gate** is the
-current one; the **I-8i**, **I-8a**, **2b (data layer)**, **2a** and **Phase 1** verdicts below
-it are **closed and kept for the record**, not superseded — their routing discharged and their
-carried items re-placed downstream.
+**Seven verdicts live in this file, newest first.** The **I-8b (Profile)** gate is the current
+one; the **I-8f + I-8j**, **I-8i**, **I-8a**, **2b (data layer)**, **2a** and **Phase 1** verdicts
+below it are **closed and kept for the record**, not superseded — their routing discharged and
+their carried items re-placed downstream.
 
 | Verdict | Scope | Commit reviewed | Date | Result |
 |---|---|---|---|---|
+| **I-8b — Profile: the first UI proof of `DESIGN.md` and the mobile-first responsive contract** | `ROADMAP.md` Phase 2 increment **I-8b** (revision 27/38) against `DESIGN.md` §5 (composition) and §6 (the rendered acceptance standard), plus the five bounded shell items §5.6 enumerates | `dac9595` (build `adcce5e`+`ade9d42`+`652c2c3`, record `dac9595`) | 2026-09-02 | **SHIP.** 0 blockers, 0 MAJOR. **3 MINOR routed to builder (R42-1, R42-2, R42-3), 1 MINOR to architect (MGR-8)** — none gating. Real-iOS residue listed separately |
 | **I-8f + I-8j — the manager-gated prerequisites for I-8b** (closes MGR-1, MGR-2 and R39-1 from the I-8i gate) | `ROADMAP.md` Phase 2 increments **I-8f** (`359234b`) against `ARCHITECTURE.md` §2.9 **A-47**, and **I-8j** (`3044bdd`) against §4.4 **A-54** — **I-8b is not included and does not ship here** | `3044bdd` (record `f622ab9`) | 2026-09-01 | **I-8f SHIP · I-8j SHIP.** **I-8b is permitted to open.** 5 items routed, **0 gate I-8b** |
 | **I-8i — the world-map lifetime framing rewrite** (the A-41 → A-53 atlas-frame arc, seven rounds) | `ROADMAP.md` Phase 2 increment **I-8i** (revisions 35–36) against `ARCHITECTURE.md` §4.4 **A-51**, **A-52**, **A-53** — **I-8b is not included** | `10455b9` (record `6ee6bf5`) | 2026-09-01 | **SHIP** (10 items routed; **3 gate I-8b**). **The frame's geometry closes as a track; A-51 G7's layout does not** — **all three discharged at the gate above** |
 | **I-8a — the tab shell, the world map, the token layer, the signal-collision fix** | `ROADMAP.md` Phase 2, step 2b, increment **I-8a** (revision 27) against `ARCHITECTURE.md` §4.4 **A-40** (revision 29) — **I-8b is not included, and 2b does not ship here** | `6b89c91` | 2026-08-31 | **SHIP** (7 items routed; 4 of them gate I-8b) |
@@ -16,9 +17,331 @@ carried items re-placed downstream.
 
 ---
 
+# I-8b — Profile: the first surface built to the design contract
+
+> **Status: CURRENT.** Manager, stage 4. Reviewed `master` @ `dac9595`, 2026-09-02, Node v22.22.2,
+> Playwright 1.56.1 at `/opt/node22/lib/node_modules/playwright`,
+> `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers`. **This session is root and
+> `/opt/pw-browsers` carries `webkit-2215` as well as `chromium-1194`, so I ran the surface on
+> WebKit 26.0 myself rather than taking round 42's word that it launches.**
+>
+> **VERDICT — I-8b: SHIP.** 0 blockers, 0 MAJOR. Three MINORs go to the builder as ordinary
+> follow-up (R42-1, R42-2, R42-3) and one MINOR to the architect (MGR-8). **None gates this
+> verdict.** The increment delivers every named deliverable in `ROADMAP.md` I-8b's *Built* list
+> and every composition clause in `DESIGN.md` §5 — I checked them one at a time against rendered
+> output, not against the reports.
+>
+> **I did not rubber-stamp round 42.** I re-ran the suite, the fault matrix and the rendered
+> acceptance probe; I re-derived the two fences (`WorldMap.tsx`, the dependency line) from
+> `bce2cfb` myself; and I wrote my **own** probe — it is not a re-point of anything in `qa/` —
+> which renders the surface at iPhone SE 320×568, iPhone 14 390×664 and 1280×800 in **both**
+> colour schemes on **both** engines, and asks the questions a gate cares about rather than the
+> ones the increment was built to pass. **I looked at the screenshots.** Two of my own probe's
+> assertions were wrong before they were right, and I fixed my instrument rather than filing its
+> output — both cases are recorded below, because one of them is load-bearing for how R42-3 gets
+> fixed.
+>
+> ---
+>
+> ## The judgement calls Jacob asked for, answered first
+>
+> **1. Does the claim line genuinely read as the dominant element (§5.2 movement 1)? Yes.**
+> Measured, scoped to the `.claim` `<dl>` block against the largest painted non-claim text on the
+> surface: **30 px vs 19 px = 1.58× at iPhone SE · 35.1 px vs 19 px = 1.85× at iPhone 14 · 58 px
+> vs 19 px = 3.05× at 1280.** The distinct rendered sizes on the surface are
+> `[30, 27, 19, 14, 12.5, 11]` at 320 and `[58, 52.2, 19, 14, 12.5, 11]` at 1280 — the claim owns
+> the top two steps and there is a real gap under it, which is P4's "steep, and not made of
+> containers". Looking at the screenshots confirms the number: at every width the first thing the
+> eye lands on is the claim, and nothing competes with it.
+>
+> **2. Does the composition avoid the SaaS-dashboard / card-collection / default-component-library
+> anti-patterns (§1 P1)? Yes, and by construction rather than by luck.** My own count of
+> **fully-bordered boxes** under `#tabpanel-profile`: **8 at every context, and all 8 are 11 px
+> outlined annotation chips** — five `PAST TRIP` provenance pills inside expanded rows and the
+> three lifecycle counts. **Zero bordered boxes carry body-or-larger type.** The primary content is
+> a display head over hairline-separated rows over a `border-left` prose block, which is exactly
+> §5.3's stated structure. There is no KPI grid, no bento wall, no icon-in-the-corner card. The
+> `.statrow` three-box treatment the Map still wears is **not** on this screen — §5.3's typographic
+> statement replaced it here, and the Map's survival is the bounded, scheduled divergence §7
+> records. I looked at all six base screenshots and the three state screenshots and I do not think
+> this reads as a generic UI; it reads as an editorial page.
+>
+> **3. R42-1 — do I agree it is MINOR? Yes, and I confirm the grade rather than the framing.**
+> I reproduced it independently, with my own geometric predicate asked in **both** directions
+> ("is anything painted to this separator's right / left on its own line box?"), at three contexts
+> × two schemes × two engines. **Trailing orphans: 0 everywhere** — R41-5 as measured really is
+> fixed. **Leading orphans: 2 at iPhone SE, 1 at iPhone 14, 1 at 1280**, identical on Chromium and
+> WebKit. Rendered at 320 the claim is:
+>
+> ```
+> 5 COUNTRIES
+> ·  6 CITIES
+> ·  30 DAYS TRAVELLED
+> ```
+>
+> Round 42's characterisation is accurate and, having looked at it, I will put it more bluntly than
+> it did: at 320 px this reads as a **two-item bulleted list**, because the first line has no `·`
+> and the next two do. That is a real artefact on the single most important element of the product's
+> first designed screen. **It does not, however, undermine §5.2.** The claim is still 1.58× the next
+> element and still unambiguously dominant; no number is wrong, nothing is unreachable, nothing is
+> mis-attributed. It is polish on a screen with no users yet, and this project has shipped MINORs at
+> every previous gate. **MINOR confirmed, SHIP not blocked** — but see the routing: I am not filing
+> it as ordinary backlog. It is the **first** item of the next builder pass, ahead of R42-2 and
+> R42-3, and it should land before any further surface increment ships, because this screen is the
+> reference every subsequent one will be built against.
+>
+> **4. R42-2 and R42-3 — are they correctly MINOR, or masking something larger? Correctly MINOR.
+> Both are instrument gaps with NO live product consequence, and I established that independently
+> rather than inheriting round 42's "no live defect" claim** — which mattered, because round 42's
+> claim for R42-3 rested on the very check it had just declared blind (`H0`/`H0b` can only see
+> `opacity: 0`).
+>
+> - **R42-2 has no live divergence.** I read the **`innerText` of the active panel's
+>   `.banner--error`** — the strong measure R42-2 itself names as the one-line fix — on Map and
+>   Profile in one session, on **both** branches of the message, on **both** engines. All four
+>   comparisons are **byte-identical**:
+>   *duplicate id:* `We could not read your travel history. The stored record for trip d1 is not
+>   readable. travelStats: duplicate summary id "d1"` ·
+>   *malformed date:* `We could not read your travel history. One of the stored trip records is not
+>   readable. invalid IsoDate: "not-a-date"`.
+>   The two surfaces say the same words today. The guard is weaker than the property it guards; the
+>   property holds.
+> - **R42-3 has no live violation.** I re-implemented §6.2's own wording — *non-`none` `display`,
+>   non-`hidden` `visibility`, non-`0` `opacity`* — over every element carrying a `:hover` rule:
+>   **20 `:hover` selectors, 38 elements checked, 0 offenders.** No control on this surface exists
+>   only at `:hover`.
+>
+>   **The load-bearing detail for whoever fixes R42-3, which I found by getting it wrong first.**
+>   My first run reported **10 offenders**, all `.triprow__open`, all `visibility: hidden`. They are
+>   false positives: `.crow__trips` is `visibility: hidden` when the accordion is **collapsed**
+>   (`styles.css:1280`, and the comment above it says why — it takes the collapsed panel out of the
+>   a11y tree and the tab order, which is correct). My exclusion clause had used
+>   `closest('[aria-expanded="false"]')`, and `aria-expanded` lives on a **sibling** button, not an
+>   ancestor. **A naive widening of B4 to `display`/`visibility` will light up ten elements on the
+>   shipped build.** The exclusion has to be *"inside a `.crow__trips` that is not inside a
+>   `.crow--open`"*. That is in the routing.
+>
+> ---
+>
+> ## Verified — every claim in this entry has a command I ran on this tree
+>
+> **The suite and the instruments.** `cd cairn && npm run typecheck` → clean on both projects
+> (`tsc -p tsconfig.json` and `tsc -p apps/web/tsconfig.json`, after `pretypecheck` regenerated the
+> sample: *"16 days, 112 stops, 31 pool, 95 places, 120 import issues … REDACTED per ARCHITECTURE
+> §6.6"*). `npm run test:tap` → **`# tests 1185 / # pass 1185 / # fail 0 / # skipped 0`**, matching
+> BUILD-NOTES and round 42 exactly. `npm run web:build` → clean. `bash qa/i8b-faults.sh` →
+> **`ALL FAULTS RED`**, and I counted rather than read the banner:
+> `grep -c 'RED (expected)'` = **29**, `grep -c '^== '` = **30** (29 mutations + the baseline
+> heading), and `baseline_gate` is present at `qa/i8b-faults.sh:62` and invoked at `:101`.
+> `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/i8b-render.mjs` → **`0 FAIL, 0 MISMATCH`**
+> with `grep -c '^  ok '` = **311**. Every number BUILD-NOTES and round 42 report is true.
+>
+> **The two fences, re-derived from before I-8b started rather than across the repair.**
+> `git diff bce2cfb HEAD -- cairn/apps/web/src/views/WorldMap.tsx` → **empty**, and the file does
+> not appear in `git diff --stat bce2cfb HEAD -- cairn/` at all. **A genuine zero-line diff across
+> the entire arc — fourth increment running.**
+> `git diff bce2cfb HEAD -- cairn/package.json cairn/package-lock.json cairn/apps/web/package.json`
+> → **empty**, and `git diff --stat bce2cfb HEAD -- '*package.json' '*package-lock.json'` → **empty**
+> repo-wide. **No dependency was added anywhere.** `git diff --stat bce2cfb HEAD -- cairn/packages`
+> → **empty**. `grep -n "worldmap__panes" apps/web/src/styles.css` → three hits, one rule and two
+> comments stating no media query is added; **§9.2 fence 1 intact**. UI/UX Pro Max: two hits across
+> the whole arc diff, **both prose in `QA-FINDINGS.md` describing the REJECT ruling**; the only
+> files mentioning it are `QA-FINDINGS.md`, `DESIGN.md` and `ARCHITECTURE.md`. **Not reopened.**
+>
+> **The read-only boundary and privacy.**
+> `git status --porcelain -- europe-2026-itinerary.html docs/ tickets/` → **empty**.
+> `md5sum europe-2026-itinerary.html` → **`7c69df3208ef91c8be0fb59a56443188`**, the same value
+> rounds 40–42 record. `node qa/r2-redact.mjs` → **`KNOWN_LEAKS hits: 0`** (`LEAKS FOUND: 3` are the
+> long-standing `2700`/`1061`/`1054` numeric artefacts in prose, unchanged). Over
+> `git diff bce2cfb HEAD -- cairn/apps cairn/packages cairn/cli.ts`, added lines matching
+> `console.|fetch(|XMLHttpRequest|sendBeacon|navigator.|localStorage|sessionStorage|geolocation|watchPosition|imap|gmail|oauth|mailbox|EXIF|Date.now|Math.random|crypto.`
+> → **0**. **No friend's location, no mailbox, no coordinate leaves this surface**; the Profile
+> reads `state.library` and `travelStats` and writes nothing.
+>
+> **Rendered, by me, on two engines.** My probe launched **Chromium 141** and **WebKit 26.0**
+> (`browser.version()` printed `26.0`) and produced identical results on both for every measurement
+> below. At iPhone SE 320×568, iPhone 14 390×664 and 1280×800, in light **and** dark:
+>
+> - **No horizontal overflow**, against `min(scrollingElement.clientWidth, visualViewport.width,
+>   the context's declared width)` — the three-source denominator R41-1 introduced: document width
+>   equals visible width at every context, and **0** elements under `#tabpanel-profile`, `.tabbar`
+>   or `.topbar` have a `right` past the viewport. **0 page errors** at every context.
+> - **P1:** 8 fully-bordered boxes, all 11 px chips, **0** carrying body-or-larger type.
+> - **P4:** largest:smallest rendered type = **2.73× / 3.19× / 5.27×**, all over §6.2's 2.5× floor.
+> - **P3 asserted, not assumed:** `completed` computes **14.56:1** (dashed border, full ink) against
+>   `planned`'s **5.1:1**. `completed ≥ planned` is **true**. All three chips have `opacity: 1`.
+> - **P5:** on the provisional path, the confirmed row and the provisional row both compute
+>   `opacity: 1` — the state is carried by a mark, never by attenuation.
+> - **`wide` adds no layout:** 42 shared elements compared between **1280** and **1600**;
+>   **0 differ in width.**
+> - **Motion:** at `reducedMotion: 'no-preference'`, 14 non-zero durations, all **0.12 s**, all on
+>   `cubic-bezier(0.23, 1, 0.32, 1)`; **0** over 300 ms and **0** bare `ease-in`. At
+>   `reducedMotion: 'reduce'`, **0 non-zero durations — every one resolves to `0s`.** The row
+>   expansion is `--dur-row: 160ms` (`styles.css:159`), under §5.5's 180 ms ceiling.
+> - **Touch targets by rect** at both phone contexts: **0** controls under 24×24, **0** under 44×44.
+> - **Tablist keyboard, driven by real key presses:** `ArrowRight` from the last tab wraps to the
+>   first, `ArrowLeft` from the first wraps to the last, `Home` → first, `End` → last, and exactly
+>   one tab carries `aria-selected="true"` throughout. §5.6 item 5 is real, not declared.
+> - **The accordion, driven:** clicking a country row flips `aria-expanded` to `true` at every
+>   context in both schemes, and the expanded `PAST TRIP` chip renders **whole** at 1280 and 1600 —
+>   R41-2 confirmed fixed by my own look, not by the repair's test. The expanded row is a hairline,
+>   not a card (R41-16). Expanding `AT` at 1280 moved **nothing** in the right-hand column (R41-8).
+> - **The provisional path, driven** with one `completed` trip to `AT` and one `active` trip to
+>   `AT`+`GB`: `AT` renders confirmed with no mark; `GB` renders `data-provisional="true"` with the
+>   dashed side rule and an outlined dashed badge reading **`ON A TRIP YOU ARE ON NOW`**, at full
+>   ink. This is `CLAUDE.md`'s *"never present a suggestion as the user's own plan"* rendered
+>   correctly, and it is the clearest single piece of evidence on the screen.
+> - **The empty path, driven:** zeroes rather than placeholders, the two-ways-forward sentence
+>   (*"Record a past trip, or open one you have already taken — this record fills itself from your
+>   library."*), and *"No places yet."* as the distinguished branch. **No illustration, no ghost
+>   cards, no invented content** — §0 rule B honoured.
+> - **The refusal path, driven:** the banner carries the row id and the parser message in the same
+>   11 px tracked-mono kicker register as the healthy path (R41-9), and the **Trips tab still works**
+>   behind it on both branches.
+>
+> **The five §5.6 shell items all landed**, checked in source and then driven: `TabId` gains
+> `'profile'` (`App.tsx:43`, `TABS` entry at `:85`); the bottom bar is
+> `position: fixed; inset: auto 0 0 0` with `padding-bottom: env(safe-area-inset-bottom, 0px)`
+> (`styles.css:348`–`354`) and `.app` reserves
+> `calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px))` (`:313`); `--chrome-h` replaces the
+> hardcoded `top: 2.7rem` (`:146`, `:1375`); `--pane-cap: min(38svh, 300px)` (`:951`) with `.spine`
+> at `calc(100svh - var(--chrome-h))` (`:505`); `--tap: 44px` (`:143`) applied at eight call sites;
+> arrow-key traversal at `App.tsx:296`–`305`.
+>
+> ---
+>
+> ## Routing
+>
+> | id | severity | agent | what must be done |
+> |---|---|---|---|
+> | **R42-1** | MINOR | **builder** | **Do this one first, ahead of R42-2 and R42-3, and land it before any further surface increment ships.** The `·` in the claim no longer trails a wrapped line — it now **leads** the next one, so at 320 px the claim renders as `5 COUNTRIES` / `· 6 CITIES` / `· 30 DAYS TRAVELLED` and reads as a bulleted list. I measured **2 leading orphans at iPhone SE, 1 at iPhone 14, 1 at 1280**, identical on Chromium 141 and WebKit 26.0, in both schemes. Files: `apps/web/src/views/Profile.tsx:377` (`{i > 0 && <span className="claim__sep" aria-hidden="true">·</span>}`) and `apps/web/src/styles.css:1162` (`.claim__sep { order: -2 }`). **Take R41-5's second option, not its first**: suppress the separator at a line break rather than moving which pair owns it — emit it as a `::before` on the following pair *and* hide it when it begins a line box, or use a `text-wrap` control that keeps the separator bound to the run before it. **Fix the instrument in the same pass:** `qa/i8b-render.mjs:429`–`442` (`A2b`) asserts only *"nothing sits to this separator's right on its own line box"*; add the mirror clause *"…and nothing sits to its left"*, so the assertion can see both failure directions. `qa/r41-shell.mjs` §P4 is stale by construction and must **not** be re-pointed — it is a prior round's evidence. Repro: `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r42-attack.mjs` §F2. |
+> | **R42-2** | MINOR | **builder** | The refusal-equivalence criterion (`DESIGN.md` §6.2, the check that replaces R41-13's allow-list) compares a **text-node walk** (`qa/i8b-render.mjs:306`–`322`, `PAINTED_TEXT`, used at `:864`–`:870` in `F12`), so it honours none of `display: none`, `visibility: hidden` or `text-transform`. **Substitute `innerText` on the active panel**, which subsumes the `::before`/`::after` case the walk was written for and closes all three. **I verified there is no live divergence to fix behind this** — Map and Profile produce byte-identical `innerText` on both branches on both engines — so this is guard-hardening, not a product repair, and it must not be allowed to grow into a `WorldMap.tsx` diff: find the map's banner by class, never by a test id (§5.6's fence). Add the three CSS-only divergences as rendered faults in `qa/i8b-faults.sh` so the widened criterion has a control. Repro: `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r42-attack.mjs` §G2. |
+> | **R42-3** | MINOR | **builder** | §6.2's *"no control exists only at `:hover`"* names three conditions; `B4` can only ever fire on one. `qa/i8b-render.mjs:462`–`465` filters candidates through `vis` (`width > .5 && height > .5 && visibility !== 'hidden'`) before `:492`–`:495`/`:506` test the predicate, so a `display: none` control never enters the set and a `visibility: hidden` one is excluded by name — only `opacity: 0` survives. Evaluate the predicate over **every element carrying a `:hover` rule**, before any visibility filter. **The trap, which I hit myself and which will otherwise be filed as a false regression:** `.crow__trips` computes `visibility: hidden` while the accordion is collapsed (`styles.css:1280`), which is deliberate and correct, so a naive widening lights up **10** `.triprow__open` elements on the shipped build. The exclusion must be *"inside a `.crow__trips` that is not inside a `.crow--open`"* — **not** `closest('[aria-expanded="false"]')`, because `aria-expanded` is on a sibling button. With that exclusion I measure **20 `:hover` selectors, 38 elements, 0 offenders**, so the widened check must be **green** on the shipped build; if it is red, the exclusion is wrong, not the product. Repro: `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r42-attack.mjs` §H. |
+> | **MGR-8** | MINOR | **architect** | **§6.2's dead-space criterion does not say what to do about the page below the content column, and two consecutive rounds have now measured that number and declined to route it.** §6.2 reads *"the tallest run of vertical space containing no rendered ink is ≤ 25 % of viewport height at contexts 1–3 and ≤ 33 % at 4–5"* with a parenthetical scoping it container-level. The shipped assertion implements the parenthetical and is correctly green. But the space **below** `.profile`'s container is outside the criterion by construction, and round 41 recorded it at iPad Mini, round 42 at **35 % (1280)** and **42 % (1600)**, both above §6.2's own stated figure — each time as an unrouted observation. I confirm the shipped assertion is right and the screen is **not** defective: at five countries the page is honestly short, and filling it would violate §0 rule B. **The defect is in the contract, not the code.** Rule once, in §6.2's sentence rather than its parenthetical, whether "space below the content column at desktop" is ever a criterion on any surface — and if it is not, say so, so the next eight UI increments' breakers do not each re-derive this and each decide not to file it. One sentence. **Explicitly not a licence to add content to Profile.** |
+>
+> **Not reopened, and correctly so.** **R41-10** (`--ink-faint` at 2.63:1) is byte-unchanged by this
+> arc — I confirmed `git diff bce2cfb HEAD -- apps/web/src/styles.css | grep -E '^[+-].*(ink-faint|tripcard__meta)'`
+> returns only comment lines — is on the **Library**, not this surface, and stays routed to
+> whichever increment next opens the Library. **R39-6**, **R33-7**, **R35-2/3**, **R39-7**,
+> **R40-1/2/3** are unchanged and remain where they were routed. The two stale-by-design probes
+> (`qa/r33-a11y.mjs:85`, `qa/i8a-signals.mjs:252`/`:260`) and round 42's two additions
+> (`qa/r41-shell.mjs` §V, §P4) are prior rounds' evidence and **must not be re-pointed by a builder
+> pass.**
+>
+> **No routing to the architect on the design itself.** Nothing in this increment was painful to
+> build for a reason that traces to the spec. The one genuine spec contradiction this arc surfaced —
+> §5.5's *"same component"* against §5.6's zero-line fence — was found by the builder, filed by the
+> breaker as **R41-14**, ruled by the architect in `DESIGN.md` revision 2 / `ARCHITECTURE.md`
+> revision 39 **while the repair was in flight**, and implemented in the same pass. I checked the
+> ruling's three parts myself: the fence holds (zero-line diff), the shared component exists and the
+> Profile uses it (`apps/web/src/views/Refusal.tsx`), and the two surfaces render identical text on
+> both branches. **That is the pipeline working as designed**, and it is the reason this increment
+> only needed one send-back.
+>
+> ---
+>
+> ## Genuinely unverified on real iOS / WebKit-on-device — stated separately, per Jacob's instruction
+>
+> **This is not part of the ship decision above and must not be read as covered by it.** No round in
+> this arc — 41, 42, or this one — has run Cairn on an actual iPhone. I re-confirmed the engine-level
+> limit myself rather than inheriting it: **Chromium 141 and WebKit 26.0 both report
+> `env(safe-area-inset-bottom)` as `0px` in this environment** (measured with a live
+> `height: env(safe-area-inset-bottom, 0px)` probe element, not read from a report). WebKit is the
+> right *engine* — it is what iOS Safari uses — but WebKit-on-Linux has no notch, no home indicator
+> and no retracting browser chrome. **The engine half of §6.4 is closed. The device half is not.**
+>
+> What that leaves genuinely unverified, itemised:
+>
+> 1. **Real safe-area insets.** The notch, the home indicator and landscape's left/right insets have
+>    never resolved to a non-zero value in any run. *Mitigation I verified:* forcing the inset to
+>    34 px over the shipped build leaves the last ink **31 px clear of the bar with 0 px of sideways
+>    overflow, on Chromium and on WebKit.* That is §6.4's option-2 fallback and it is the best
+>    available substitute. It is not a discharge.
+> 2. **iOS Safari's retracting chrome, and therefore the whole reason R3 prefers `svh` over `dvh`.**
+>    On Linux WebKit `svh === dvh === lvh`, so the token change at `--pane-cap` and `.spine` is
+>    correct **by inspection and by a greppable ceiling**, and its real behaviour — the map card and
+>    the spine not resizing mid-scroll as the address bar retracts — has never been observed.
+> 3. **The virtual-keyboard rule** in §3.4 (*"the bottom bar hides while an input in that surface has
+>    focus"*). Profile has no input, so nothing exercises it. The rule is written and untested; the
+>    first surface with a focused input inside a bottom-fixed container is where it gets its first
+>    real test.
+> 4. **Real touch behaviour on device** — momentum scrolling, rubber-banding, Safari's tap highlight,
+>    and how the fixed bar behaves over the home indicator during an overscroll. Driven `page.tap`
+>    under a device profile is not the same thing.
+> 5. **A real screen reader.** Every accessibility claim in this arc — including §3.5's
+>    *"Countries, 7"* — is the computed accessibility tree, not VoiceOver output.
+>
+> **My recommendation to Jacob: ship anyway.** The residue is bounded, it is the same residue the
+> product has carried since I-8a, the mitigations are verified on the correct engine, and there is
+> no user on a phone yet. The right moment to close it is the first time Jacob opens Cairn on his
+> own iPhone — which costs him two minutes and is worth more than any further emulation. **The one
+> decision I need from him is whether he wants that to happen before the next UI increment opens, or
+> whether it can run in parallel.** See *For Jacob* below.
+>
+> ---
+>
+> ## Two corrections to my own instrument, recorded because this file is evidence
+>
+> Neither changed the verdict; both would have produced a false finding if I had filed the first
+> output I got.
+>
+> 1. **My `:hover` sweep initially found 0 selectors** — vacuously green. `CSSStyleRule` exposes an
+>    **empty but truthy** `.cssRules` under CSS nesting, so my walk recursed into every style rule
+>    and never reached the `selectorText` branch. Testing `selectorText` **before** recursing gives
+>    20 selectors over 38 elements. **An assertion that examined nothing reported success**, which is
+>    the same class as R41-1 and R42-3 and is worth naming as this project keeps meeting it.
+> 2. **My claim-dominance assertion initially reported a 1.00× margin.** `.claim` is a `<dl>` (as
+>    §3.5 requires), so the largest text node sits on an unclassed `<dt>`, and my
+>    `closest('.claim, [class*=claim]')` resolved to `.claim__pair` — an element **inside** the claim
+>    — leaving the rest of the claim in the "outside" comparison set. Scoped to the `.claim` block
+>    the real margins are 1.58× / 1.85× / 3.05×.
+>
+> ---
+>
+> ## For Jacob
+>
+> **The Profile screen is done and I am shipping it.** It is the first Cairn screen built to a
+> written design contract instead of to taste, and it holds up: I opened it myself at three phone
+> and desktop sizes, in light and dark, on two browser engines, and looked at every screenshot.
+>
+> **What it actually does.** It opens with your travel record as one large typographic line —
+> *"5 COUNTRIES · 6 CITIES · 30 DAYS TRAVELLED"* — then your countries as a plain ruled list with the
+> cities you visited under each, then your trip counts, then a block headed **"What we do not know"**
+> that tells you how many of your records could not be placed on a country. That last block is the
+> part I would point at: no travel app admits its own gaps, and it is the thing that stops this
+> looking like a dashboard. When you have nothing recorded it shows zeroes and tells you the two ways
+> to fill it — it does not invent fake content to look busy. A country you are visiting *right now*
+> is marked **"ON A TRIP YOU ARE ON NOW"** in a dashed badge, so a place you are only partway through
+> never silently counts as somewhere you have been.
+>
+> **The navigation moved to the bottom of the screen on phones.** That is the one structural change,
+> and it is why the app is now usable one-handed.
+>
+> **What is left, and none of it blocks.** Four small things, all tracked:
+>
+> - **One you can see.** On a narrow phone the `·` separators in that big headline wrap onto the
+>   start of the next line, so it reads a bit like a bulleted list. It is cosmetic — no number is
+>   wrong — but it is on the biggest text on the screen, so I have made it the **first** thing the
+>   builder does next, before any other screen gets built.
+> - **Three you cannot.** Two are weaknesses in our own test equipment rather than in the app; I
+>   checked by hand that neither is hiding a real problem, and neither is. The third is a sentence in
+>   the design document that needs tightening so the next eight screens do not each re-argue it.
+>
+> **One decision I need from you.** Nobody has opened Cairn on a real iPhone — every round, including
+> mine, has run it in a simulated browser. Simulators cannot show the notch, the home indicator, or
+> the way Safari's address bar slides away as you scroll, and those are exactly what the bottom
+> navigation bar has to sit correctly against. I have tested everything I can around that gap and
+> forced the values by hand, and it holds. **But two minutes with the real thing on your phone would
+> close it properly.** Do you want that done before the next screen is built, or is it fine to run
+> alongside? If you would rather just look at it: `cd cairn && npm run web:build && npm run serve`,
+> then open it on your phone on the same network.
+
+---
+
 # I-8f + I-8j — the manager-gated prerequisites for I-8b (A-47 / A-54)
 
-> **Status: CURRENT.** Manager, stage 4. Reviewed `master` @ `3044bdd` (QA round 40's record
+> **Status: CLOSED.** Superseded as the *current* verdict by the **I-8b** gate above; its own
+> verdict and routing stand as written. Manager, stage 4. Reviewed `master` @ `3044bdd` (QA round 40's record
 > landed alongside at `f622ab9`), 2026-09-01, Node v22.22.2, Chromium via the system Playwright
 > at `/opt/node22/lib/node_modules/playwright`, `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers`.
 > **Verdict: I-8f SHIP. I-8j SHIP.** Scope was those two increments and nothing else; **I-8b is
