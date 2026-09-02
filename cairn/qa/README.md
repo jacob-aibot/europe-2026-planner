@@ -556,6 +556,66 @@ PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r41-webkit.mjs
   # WebKit on Linux has no notch, so `env(safe-area-inset-*)` is `0px` there too.
 ```
 
+### Round 42's four probes over the I-8b repair (2026-09-02, re-breaker)
+
+The repair pass (`adcce5e`, `ade9d42`) closed round 41's 3 MAJOR and 12 of 14 MINOR. These four
+re-derive its claims with **different instruments and different data** rather than re-running the
+tests written alongside the fix. Every one of round 41's own probes still runs and is recorded in
+`docs/QA-FINDINGS.md` round 42; **`qa/r41-shell.mjs` is now 5 FAIL and all five are stale by
+construction or deliberately open — read that round's row before assuming it is broken.**
+
+```bash
+# bare Node, no browser, no server:
+R42_WT_02B3259=/path/to/worktree bash qa/r42-vacuity.sh
+  # THE VACUITY CLAIM, re-derived from the other side. Rebuilds `make_copy` as it shipped at
+  # 02b3259 (no repo-root planner symlink), runs it UNMUTATED on a worktree at 02b3259, and gets
+  # `# pass 53 # fail 1` with an ENOENT — a red before any mutation, which is what made every
+  # RED in the original 18-mutation matrix vacuous. The same copy WITH the symlink is 54/0, and
+  # at HEAD it is 60/0. Needs a `git worktree add <dir> 02b3259`; the parent of `<dir>/cairn`
+  # must hold the root planner, which a worktree gives you for free.
+
+bash qa/r42-attrib.sh [fault-number]
+  # THE ATTRIBUTION CONTROL `qa/i8b-faults.sh` DOES NOT RUN ON ITSELF. `baseline_gate` proves a
+  # red is not free; it does not prove the red belongs to the fault's own label (KD-79). This
+  # re-applies all 29 mutations and prints the NAME of every failing test. It asserts nothing —
+  # the output is the evidence. At `652c2c3` all 29 name their own criterion; fault 2 turns two
+  # tests red (its own plus I-8j's G7′, which reads `--pane-cap` for another reason).
+
+# with `npm run web:build && npm run serve` in another shell:
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r42-attack.mjs [outdir]
+  # A R41-1's new denominator at 12/40/137/400/2400 px x 4 mechanisms x 5 contexts, with an
+  #   UNINJECTED control and an "did ink really escape?" gate so an inert injection is not
+  #   reported as a missed detection.
+  # B R41-2's chip as painted glyphs (`scrollWidth > clientWidth`) + the exemption's axis.
+  # C R41-3 with a 69-char German compound and a 300-char token, every tab TAPPED.
+  # D 200 % zoom as a real device profile at the halved viewport (§Z uses a bare one), plus
+  #   §D4: restoring `.triplist`'s 17rem track floor reopens the §Z1 overflow below 272 px.
+  # E a zero-day trip, a duplicate import, an inverted range, a cityless country, 40 countries,
+  #   a 300-char title, an empty library.
+  # F the `·` separators by LINE BOX: F1 none ends a line (green), F2 none begins one (RED —
+  #   that is R42-1).
+  # G refusal equivalence attacked from the MAP's side and through pseudo-content, with
+  #   `innerText` on the ACTIVE panel recorded beside it (RED x6 — R42-2).
+  # H the vacuity control on §6.2's "no control exists only at :hover" (RED x2 — R42-3).
+  # 18 FAILs at `652c2c3`: 10 x F2, 6 x G2, 2 x H1. Each one is a round-42 finding.
+
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r42-look.mjs [outdir]
+  # ALL CLEAR at `652c2c3`. R R41-8's replacement swept at 5/9/13/21/40 countries x 1280/1600 x
+  # both schemes, in BOTH axes  S dead space on the VIEWPORT (notes, not assertions — §6.2's
+  # ceiling is container-scoped by design)  T targets and spacing by rect, with B3's stated
+  # "both already full-size" exemption re-derived rather than assumed  V hover-only content,
+  # with the collapsed accordion excluded  K focus by real Tab presses in both schemes
+  # O tab order down-then-across with a row EXPANDED, keyed on the ancestor <ul> and stopping
+  #   at the first repeat; plus three short viewports  P the screenshots.
+```
+
+Two measurement traps are written into these files so the next probe does not pay for them
+again: **an inactive `role="tabpanel"` is `display: none`, and `innerText` on a hidden subtree
+degrades to `textContent` semantics** — so reading the map's banner *after* switching to Profile
+silently answers a different question; and **CSS `zoom` on `:root` is not browser zoom** in
+Chromium, because it does not shrink the initial containing block, so it manufactures overflow
+that a real zoom does not.
+
 ## I-8j (2026-09-01) — A-54: the cells tile the container, a malformed ring is stated, latitude breaks the last tie
 
 Three independent fixes, one increment. §4.4 **A-54** supersedes **A-51 G7** in full (layout),
