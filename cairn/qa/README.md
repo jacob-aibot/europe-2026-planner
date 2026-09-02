@@ -458,6 +458,17 @@ refusal growing a sentence the map has not got 25; the refusal inverting its row
 > in `100dvh`. Both are fixed. **A fault matrix that cannot go green is exactly as worthless as an
 > assertion that cannot go red**, which is R41-1 one level down.
 
+**`i8b-render.mjs` F12 is `DESIGN.md` revision 2 §6.2's refusal-equivalence criterion** (the
+R41-14 ruling's replacement for R41-13's source allow-list): Map and Profile, same session, same
+planted library, `.banner--error`'s **painted** text compared on both branches — a duplicate
+summary id (`rowId` non-null) and a malformed stored date (`rowId` null). *"Painted"* is not a
+flourish: `textContent` does not see `::before`/`::after`, and rendered fault **11** — a sentence
+added to one banner by CSS — stays GREEN against it. The map's banner is located by class and
+**may not be given a test id**; that would be the `WorldMap.tsx` diff the criterion sits under.
+The **source-level** fault harness for the same criterion is `qa/r41-refusal-drift.sh`, named as
+such by the ruling; all three of its mutations are RED, so it now prints *"R41-13 did NOT
+reproduce"*.
+
 `i8b-render.mjs` is §6's matrix: **five device contexts** (`devices['iPhone SE']`,
 `devices['iPhone 14']`, `devices['iPad Mini']`, 1280 × 800, 1600 × 900 — profiles, not bare
 viewports, so touch and DPR are emulated) × **both colour schemes**, plus the driven paths.

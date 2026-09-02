@@ -125,6 +125,16 @@ const REFUSED = [
   { ...row('dup', 'Two', '2020-02-01', '2020-02-05', ['CZ'], []), __key: 'dup-2' },
 ];
 
+/**
+ * The **other** refusal branch — `rowId: null`. `travelStats`'s malformed-date throw names no
+ * row (`packages/client` §`travelHistory` says why, and says the alternative is a second
+ * implementation of `parseIsoDate`), so the two surfaces print the generic sentence. DESIGN §6.2
+ * requires the equivalence check on **both** branches, and this is the second one.
+ */
+const REFUSED_NO_ROW = [
+  row('bad', 'A trip with dates we cannot read', 'not-a-date', 'also-not-a-date', ['AT'], []),
+];
+
 /** A row minted by an older build — the I-6 rescan indicator, on screen and not merely in state. */
 const STALE = [
   { ...row('s1', 'Old row', '2021-04-01', '2021-04-08', ['AT'], [city('Vienna', 'AT')]), summaryVersion: 1 },
@@ -283,6 +293,32 @@ const KIT = () => {
       return (el.tagName + '.' + (el.className || '').toString().split(' ')[0]).slice(0, 48);
     },
   };
+};
+
+/**
+ * **What a reader actually sees inside an element**, as one normalised string: the text nodes
+ * *and* the `::before`/`::after` content, in document order. `textContent` skips pseudo-elements
+ * entirely, which would let a sentence painted by CSS sit on one surface and not the other while
+ * an equivalence check compared the two as equal — measured, not assumed: rendered fault 11 is
+ * exactly that mutation, and it stays GREEN against `textContent`. §5.5's ruling is about the
+ * **words on screen**, so the measurement has to be too.
+ */
+const PAINTED_TEXT = (sel) => {
+  const root = document.querySelector(sel);
+  if (!root) return null;
+  const pseudo = (el, which) => {
+    const c = getComputedStyle(el, which).content;
+    return !c || c === 'none' || c === 'normal' ? '' : c.replace(/^"|"$/g, '');
+  };
+  const walk = (el) => {
+    let s = pseudo(el, '::before');
+    for (const n of el.childNodes) {
+      if (n.nodeType === 3) s += n.data;
+      else if (n.nodeType === 1) s += walk(n);
+    }
+    return s + pseudo(el, '::after');
+  };
+  return walk(root).replace(/\s+/g, ' ').trim();
 };
 
 const INTERACTIVE = 'button, a[href], [role="button"], [role="tab"], input, select, textarea';
@@ -806,6 +842,40 @@ if (!FAULTS_ONLY) {
     await ctx.close();
   }
 
+  /*
+   * **F12 — the refusal equivalence criterion.** `DESIGN.md` revision 2 §5.5's ruling on R41-14:
+   * §5.6's zero-line fence on `WorldMap.tsx` wins, §5.5 *"yields its mechanism and keeps its
+   * words"*, and while the duplication exists the two surfaces are held equal by a **rendered**
+   * assertion over **both** refusal branches — not by a source-substring check, which R41-13
+   * mutation-tested green against an added sentence and an inverted `rowId` conditional.
+   *
+   * Compared: the `.banner--error` subtree's normalised text content, on Map and on Profile, in
+   * the same session and from the same planted library. The subtree only — §5.5 is explicit that
+   * the two surfaces' own `<h1>`s differ by design — and the map's banner is found by class
+   * because it carries no test id and **may not be given one**: that would be a `WorldMap.tsx`
+   * diff, which is the fence this criterion exists underneath.
+   */
+  for (const [branch, rows] of [['rowId non-null (duplicate summary id)', REFUSED],
+    ['rowId null (malformed stored date)', REFUSED_NO_ROW]]) {
+    const { ctx, page, errors } = await openProfile(CONTEXTS[1], 'light', rows, { tab: null });
+    const bannerText = async (tab, panel) => {
+      await page.getByRole('tab', { name: tab }).click();
+      await page.waitForSelector(`${panel} .banner--error`, { timeout: 4000 });
+      return page.evaluate(([fn, p]) => new Function('sel', `return (${fn})(sel)`)(`${p} .banner--error`),
+        [PAINTED_TEXT.toString(), panel]);
+    };
+    const mapText = await bannerText('Map', '#tabpanel-map');
+    const profileText = await bannerText('Profile', '#tabpanel-profile');
+    ok(mapText.length > 0 && mapText === profileText,
+      `F12 Map and Profile refuse in identical words — ${branch}`, [mapText, profileText]);
+    // …and the branch really is the one this case is for, so neither run is silently the other.
+    const named = /The stored record for trip /.test(profileText);
+    ok(named === /non-null/.test(branch),
+      `F12b ... and it is the ${/non-null/.test(branch) ? 'named-row' : 'generic'} sentence`, profileText);
+    ok(errors.length === 0, `F12c ... with no page error on either tab — ${branch}`, errors.slice(0, 2));
+    await ctx.close();
+  }
+
   // =========================================================================
   head('F7–F10 — the refusal, empty, provisional and rescan paths, driven');
   // =========================================================================
@@ -1092,6 +1162,31 @@ const FAULTS = [
       const bar = document.querySelector('.tabbar').getBoundingClientRect();
       return document.scrollingElement.scrollWidth <= vw + 1 && bar.right <= vw + 1;
     }, c.w),
+  },
+  /*
+   * **11 — the two refusals drift apart on screen** (`DESIGN.md` rev 2 §6.2's equivalence
+   * criterion, the one R41-14's ruling put in place of the source allow-list). The *source*
+   * faults are `qa/r41-refusal-drift.sh`'s three, which the ruling names as this criterion's
+   * fault harness; this is the **rendered** half, and it is the case that harness cannot reach:
+   * one surface's banner gains a sentence at paint time. F12 has to see it.
+   */
+  {
+    name: '11. refusal equivalence — the Profile\'s banner gains a sentence the map has not got',
+    css: '#tabpanel-profile .banner--error p.hint:first-of-type::after'
+      + ' { content: " Your other trips are unaffected." }',
+    contexts: [1],
+    expectRed: [true],
+    rows: REFUSED,
+    tab: null,
+    check: async (page) => {
+      const read = async (tab, panel) => {
+        await page.getByRole('tab', { name: tab }).click();
+        await page.waitForSelector(`${panel} .banner--error`, { timeout: 4000 });
+        return page.evaluate(([fn, p]) => new Function('sel', `return (${fn})(sel)`)(`${p} .banner--error`),
+          [PAINTED_TEXT.toString(), panel]);
+      };
+      return (await read('Map', '#tabpanel-map')) === (await read('Profile', '#tabpanel-profile'));
+    },
   },
 ];
 
