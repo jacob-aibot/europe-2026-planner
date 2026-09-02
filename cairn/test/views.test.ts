@@ -436,7 +436,9 @@ test('I-8a: the tab shell registers only tabs that have content — no empty slo
   const registry = /const TABS: TabSpec\[\] = \[([\s\S]*?)\n\];/.exec(src);
   assert.ok(registry, 'App.tsx has no `TABS` registry — the shell is not a registry');
   const ids = [...registry[1].matchAll(/id: '([a-z]+)'/g)].map((m) => m[1]);
-  assert.deepEqual(ids, ['trips', 'map'], 'I-8a registers Trips and Map, and nothing else');
+  // I-8a registered two and said the third was *"a registration, not a second shell"*. I-8b is
+  // the registration. Three is also the ceiling: I-8's "no DISCOVER tab" is asserted below.
+  assert.deepEqual(ids, ['trips', 'map', 'profile'], 'the shell registers Trips, Map and Profile, and nothing else');
   for (const id of ids) {
     assert.match(
       registry[1],
@@ -991,7 +993,9 @@ test('I-8j / A-54 G7′: the pane container is a wrapping flex line box, and G7�
     'G7″: the cell background must equal .worldmap__figure\'s, or the slack reads as a hole');
 
   // ONE cap, and it is the pane's, not the role's — A-51 G7's surviving half, unchanged by A-54.
-  assert.match(css, /\.worldmap__pane[^{-][^{]*\{[^}]*--pane-cap:\s*min\(38vh,\s*300px\)/,
+  // I-8b / DESIGN §3.3 R3 changes the UNIT and nothing else: `38vh` → `38svh`. See the dedicated
+  // greppable ceiling further down, which is the criterion with the injected fault behind it.
+  assert.match(css, /\.worldmap__pane[^{-][^{]*\{[^}]*--pane-cap:\s*min\(38svh,\s*300px\)/,
     'the single uniform pane cap is missing');
   assert.ok(!/min\(58vh,\s*460px\)/.test(css), 'the main pane\'s role-keyed cap survives');
   assert.ok(!/min\(22vh,\s*170px\)/.test(css), 'the inset\'s role-keyed cap survives');
@@ -1009,4 +1013,335 @@ test('I-8j / A-54 G7′: the pane container is a wrapping flex line box, and G7�
   assert.ok(cap, 'there is no .worldmap__panecap rule');
   assert.match(cap[1].replace(/\s+/g, ' '), /margin:\s*0/,
     'the pane caption inherits a bottom margin, so every cell has slack under it');
+});
+
+// ---------------------------------------------------------------------------
+// ROADMAP Phase 2 **I-8b** — the Profile, the shell's five bounded changes, and the
+// mobile-first responsive contract. `docs/DESIGN.md` §3, §5 and §6; `ARCHITECTURE.md` §9.1
+// makes that document binding, so a rule below is a clause of it and not a preference.
+//
+// Everything here is a SOURCE-LEVEL ceiling, in the shape A-40's W1 grep established: it is the
+// floor under the rendered matrix, not a substitute for it. What a stylesheet says and what a
+// browser computes are different claims, and §6's whole first line is *"a design decision that
+// was not rendered was not verified."* The rendered half is `qa/i8b-render.mjs`.
+
+/** Every `@media` prelude in the stylesheet, comments stripped. */
+function mediaQueries(css: string): string[] {
+  return [...stripComments(css).matchAll(/@media([^{]+)\{/g)].map((m) => m[1].trim());
+}
+
+test('I-8b / DESIGN §3.2: the stylesheet is mobile-first — `min-width` only, and four breakpoints', () => {
+  const css = readFileSync(resolve(CAIRN, 'apps/web/src/styles.css'), 'utf8');
+  const queries = mediaQueries(css);
+
+  // The measured starting point §3.1 states plainly: the entire shipped layout system was **two
+  // `max-width: 900px` rules**, i.e. a desktop-first stylesheet with one breakpoint. A single
+  // `max-width` anywhere is that pattern coming back, because a `max-width` rule is by
+  // construction an exception carved out of a desktop base.
+  const maxWidth = queries.filter((q) => /max-width/.test(q));
+  assert.deepEqual(maxWidth, [], 'a `max-width` media query is back — the base case is not the phone');
+
+  // §3.2: four breakpoints, named once, and **no new breakpoint without a measured reason
+  // recorded there**. 900 is kept deliberately: it is the threshold `.trip` already shipped with.
+  const widths = [...new Set(
+    queries.flatMap((q) => [...q.matchAll(/min-width:\s*(\d+)px/g)].map((m) => Number(m[1]))),
+  )].sort((a, b) => a - b);
+  assert.deepEqual(widths, [600, 900, 1280],
+    'the breakpoint set is not §3.2\'s — a new one needs a measured reason in DESIGN.md first');
+
+  // The two feature queries that are not layout. They are allowed and they are the whole
+  // remainder: a third kind of `@media` would be a layout mechanism nobody named.
+  const features = queries.filter((q) => !/min-width/.test(q));
+  assert.deepEqual(
+    [...new Set(features)].sort(),
+    ['(prefers-color-scheme: dark)', '(prefers-reduced-motion: reduce)'],
+    'an unnamed media feature is deciding layout',
+  );
+
+  // §3.5 / §3.4: no layout may depend on `orientation` — the breakpoints are width-only, so a
+  // landscape phone is simply a **wide phone**.
+  assert.ok(!/orientation/.test(stripComments(css)), 'a rule branches on orientation');
+});
+
+test('I-8b / §9.2 fence 1: no media query reaches the world map\'s pane grid', () => {
+  // A-41 Part 7 and W1 forbid a per-screen-size FRAME rule; §3.3 forbids adding any media query
+  // to `.worldmap__panes`, because a per-screen-size CELL rule is one refactor away from being
+  // one. Asserted over the block bodies, not the preludes.
+  const css = stripComments(readFileSync(resolve(CAIRN, 'apps/web/src/styles.css'), 'utf8'));
+  const blocks = [...css.matchAll(/@media[^{]+\{((?:[^{}]|\{[^{}]*\})*)\}/g)].map((m) => m[1]);
+  const offenders = blocks.filter((b) => /\.worldmap__panes?\b/.test(b));
+  assert.deepEqual(offenders, [], 'a media query sizes the atlas frame — §9.2 fence 1');
+});
+
+test('I-8b / DESIGN §3.3 R3: no `vh` or `dvh` survives on a fixed-height scroll container', () => {
+  // ROADMAP I-8b criterion 2, verbatim: *"`38vh` may not appear on `--pane-cap` and `100dvh` may
+  // not appear on `.spine`'s `max-height`."* The rule of thumb behind both, written once in
+  // §3.3: **`svh` for anything with a fixed/sticky height that must not move while scrolling;
+  // `dvh` only for a full-bleed element that should follow the chrome.**
+  const css = stripComments(readFileSync(resolve(CAIRN, 'apps/web/src/styles.css'), 'utf8'));
+
+  const cap = /--pane-cap:\s*([^;]+);/.exec(css);
+  assert.ok(cap, 'there is no `--pane-cap` declaration');
+  assert.match(cap[1], /38svh/, '`--pane-cap` is not the small viewport unit');
+  assert.ok(!/\d\s*vh\b/.test(cap[1]), '`--pane-cap` is back on `vh` — it moves when Safari\'s chrome does');
+
+  // Every `max-height` in the file, wherever it is: a scroll container's cap is the case R3 is
+  // about, and there is no `max-height` in this stylesheet that is not one.
+  const caps = [...css.matchAll(/max-height:\s*([^;}]+)/g)].map((m) => m[1].trim());
+  const bad = caps.filter((v) => /\bdvh\b/.test(v) || /\d\s*vh\b/.test(v));
+  assert.deepEqual(bad, [], 'a capped-height container is sized in `vh`/`dvh` and will resize mid-scroll');
+
+  // `.app`'s `min-height: 100dvh` is the ONE correct `dvh` and it stays — it is the full-bleed
+  // case, not a scroll container. Asserting it present keeps the fix from being "delete all dvh".
+  assert.match(css, /\.app\s*\{[^}]*min-height:\s*100dvh/,
+    '`.app`\'s `min-height: 100dvh` is gone — R3 keeps it; it is the full-bleed case');
+});
+
+test('I-8b / DESIGN §3.3 R1+R2: the tab bar is a bottom bar at base, and the chrome is one sticky stack', () => {
+  const css = stripComments(readFileSync(resolve(CAIRN, 'apps/web/src/styles.css'), 'utf8'));
+  const app = stripComments(readFileSync(resolve(CAIRN, 'apps/web/src/App.tsx'), 'utf8'));
+
+  // R2. The number this replaces, named so it cannot come back by hand.
+  assert.ok(!/top:\s*2\.7rem/.test(css),
+    '`.tabbar`\'s hardcoded `top: 2.7rem` is back — a topbar wrap stacks the two bars');
+  assert.match(css, /\.chrome\s*\{[^}]*position:\s*sticky[^}]*top:\s*0/s,
+    'there is no single sticky wrapper over the topbar and the tab bar');
+  // The topbar must NOT be sticky in its own right any more — two sticky bars is the defect.
+  const topbar = /\.topbar\s*\{([^}]*)\}/.exec(css);
+  assert.ok(topbar, 'there is no .topbar rule');
+  assert.ok(!/position:\s*sticky/.test(topbar[1]), 'the topbar is sticky inside a sticky wrapper');
+  // The input that made the old number wrong: a topbar that can wrap is a topbar whose height is
+  // not the token claiming to be its height.
+  assert.match(topbar[1], /flex-wrap:\s*nowrap/, 'the topbar can wrap, so `--chrome-h` is a guess');
+
+  // R1, base. Bottom-anchored, opaque, above the home-indicator inset.
+  const bar = /\n\.tabbar\s*\{([^}]*)\}/.exec(css);
+  assert.ok(bar, 'there is no .tabbar rule');
+  assert.match(bar[1], /position:\s*fixed/, 'the tab bar is not bottom-anchored at base (R1)');
+  assert.match(bar[1], /bottom:\s*0|inset:\s*auto 0 0 0/, 'the fixed tab bar is not at the bottom');
+  assert.match(bar[1], /padding-bottom:\s*env\(safe-area-inset-bottom/,
+    'the bottom bar does not clear the home indicator');
+  assert.match(bar[1], /background:\s*var\(--paper\)/, 'the bottom bar is not opaque (P8)');
+  assert.ok(!/backdrop-filter/.test(bar[1]), 'the bottom bar is blurred — I-8a removal 1 is permanent');
+
+  // R1's consequence: the page clears the bar, so the last row of any list is reachable.
+  assert.match(css, /\.app\s*\{[^}]*padding-bottom:\s*calc\(var\(--tabbar-h\)\s*\+\s*env\(safe-area-inset-bottom/s,
+    'the page does not reserve room for the fixed bottom bar');
+
+  // R1, split. **Same DOM, same tablist** — the reposition is CSS, so there is exactly one
+  // `role="tablist"` in the shell and exactly one `.tabbar` element.
+  assert.equal((app.match(/role="tablist"/g) ?? []).length, 1, 'a second navigation appeared');
+  assert.equal((app.match(/className="tabbar"/g) ?? []).length, 1, 'the bar is rendered twice');
+  const split = [...css.matchAll(/@media \(min-width: 900px\) \{((?:[^{}]|\{[^{}]*\})*)\}/g)]
+    .map((m) => m[1]).join('\n');
+  assert.ok(split.length > 0, 'there is no split breakpoint block');
+  assert.match(split, /\.tabbar\s*\{[^}]*position:\s*static/,
+    'the bar does not return to the sticky stack from split up');
+});
+
+test('I-8b / DESIGN §3.1 defect 1: `viewport-fit=cover` is paid for with real safe-area padding', () => {
+  const html = readFileSync(resolve(CAIRN, 'apps/web/index.html'), 'utf8');
+  const css = stripComments(readFileSync(resolve(CAIRN, 'apps/web/src/styles.css'), 'utf8'));
+
+  // The combination §3.1 measured: the meta tag opts into the display cutout and the stylesheet
+  // used `env(safe-area-inset-*)` **zero** times, which is what puts content under the home
+  // indicator and behind the notch in landscape.
+  assert.match(html, /viewport-fit=cover/, 'the viewport meta no longer opts into the cutout');
+  const uses = [...css.matchAll(/env\(safe-area-inset-(top|right|bottom|left)/g)].map((m) => m[1]);
+  for (const side of ['top', 'right', 'bottom', 'left']) {
+    assert.ok(uses.includes(side), `no rule pads for the ${side} safe-area inset`);
+  }
+  // Every one carries a fallback, so a browser that does not support `env()` gets `0px` rather
+  // than an invalid declaration that drops the whole property.
+  const bare = [...css.matchAll(/env\(safe-area-inset-[a-z]+\s*\)/g)].map((m) => m[0]);
+  assert.deepEqual(bare, [], 'an `env(safe-area-inset-*)` has no fallback value');
+});
+
+test('I-8b / DESIGN §3.4: the four named touch targets clear the 44 px primary floor', () => {
+  const css = stripComments(readFileSync(resolve(CAIRN, 'apps/web/src/styles.css'), 'utf8'));
+  assert.match(css, /--tap:\s*44px/, 'the primary touch target is not declared once as a token');
+
+  // §5.6 item 4 names exactly these, and §3.1 defect 3 has the measured numbers: `.icon` 26 × 26,
+  // `.tabbar__tab` ≈ 35 px, `.btn`/`.chip` ≈ 31 px.
+  for (const sel of ['\\.tabbar__tab', '\\.btn', 'button\\.chip, label\\.chip']) {
+    const rule = new RegExp(`${sel}\\s*\\{[^}]*min-height:\\s*var\\(--tap\\)`);
+    assert.ok(rule.test(css), `${sel} does not carry the 44 px floor`);
+  }
+  // `.icon` is the named failure and the named FIX is different in kind: *"its hit area grows to
+  // 44 × 44 (padding or a pseudo-element), its visual box may stay 26."*
+  assert.match(css, /\.icon\s*\{[^}]*width:\s*26px[^}]*height:\s*26px/s, '`.icon`\'s visual box moved — §3.4 says it may stay 26');
+  assert.match(css, /\.icon::after\s*\{[^}]*width:\s*var\(--tap\)[^}]*height:\s*var\(--tap\)/s,
+    '`.icon` has no 44 × 44 hit area');
+  // The grown hit area is only safe over §3.4's ≥ 8 px adjacent spacing; the shipped gap was 2.4.
+  const tools = /\.stop__tools\s*\{([^}]*)\}/.exec(css);
+  assert.ok(tools, 'there is no .stop__tools rule');
+  const gap = /gap:\s*([\d.]+)rem/.exec(tools[1]);
+  assert.ok(gap && Number(gap[1]) * 16 >= 8, `adjacent icon targets are ${gap?.[1]}rem apart — §3.4 wants ≥ 8 px`);
+});
+
+test('I-8b / DESIGN §3.4: the tablist takes arrow keys, Home and End, with a roving tabindex', () => {
+  const src = stripComments(readFileSync(resolve(CAIRN, 'apps/web/src/App.tsx'), 'utf8'));
+  for (const key of ['ArrowRight', 'ArrowLeft', 'Home', 'End']) {
+    assert.ok(src.includes(`'${key}'`), `the tablist does not handle ${key}`);
+  }
+  assert.match(src, /tabIndex=\{t\.id === tab \? 0 : -1\}/,
+    'the tablist is not a single tab stop — every tab is in the tab order');
+  assert.match(src, /aria-selected=\{t\.id === tab\}/, 'the tabs lost their selected state');
+});
+
+test('I-8b / DESIGN §1 P6: the motion budget holds in the stylesheet', () => {
+  const css = stripComments(readFileSync(resolve(CAIRN, 'apps/web/src/styles.css'), 'utf8'));
+
+  // Every duration in the file, in ms. §6.2: **≤ 300 ms** for anything, and §5.5 caps the one
+  // animation on the Profile at **180 ms**.
+  const durations = [...css.matchAll(/(?:transition|animation)[^;{}]*?([\d.]+)(m?s)/g)]
+    .map((m) => (m[2] === 's' ? Number(m[1]) * 1000 : Number(m[1])));
+  assert.ok(durations.length > 0, 'no duration was found at all — the parser is wrong, not the CSS');
+  assert.deepEqual(durations.filter((d) => d > 300), [], 'a transition is over P6\'s 300 ms ceiling');
+  assert.match(css, /--dur-row:\s*(\d+)ms/, 'the row expansion has no named duration');
+  assert.ok(Number(/--dur-row:\s*(\d+)ms/.exec(css)![1]) <= 180, 'the row expansion is over §5.5\'s 180 ms');
+
+  // P6: *"easing is a named curve, never `ease`/`ease-in-out` defaults, and never bounce or
+  // elastic."* `ease-in` is the one §6.2 names outright — it delays the moment the user is
+  // watching. The `--ease-out` value is the vendored `animate` skill's table entry, not an
+  // approximation, which is that skill's own hard rule 2.
+  assert.ok(!/\bease-in\b/.test(css), 'a bare `ease-in` timing function is in the stylesheet');
+  assert.match(css, /--ease-out:\s*cubic-bezier\(0\.23,\s*1,\s*0\.32,\s*1\)/,
+    'the named easing curve is missing or was re-approximated');
+  // Nothing bounces, overshoots or springs: a negative or >1 control point on the Y axis is what
+  // an elastic curve looks like, and P6 forbids the family rather than one instance.
+  for (const [, y1, y2] of css.matchAll(/cubic-bezier\(\s*[\d.-]+\s*,\s*([\d.-]+)\s*,\s*[\d.-]+\s*,\s*([\d.-]+)\s*\)/g)) {
+    for (const y of [Number(y1), Number(y2)]) {
+      assert.ok(y >= 0 && y <= 1.001, `a curve overshoots (${y}) — P6 forbids bounce and elastic`);
+    }
+  }
+
+  // Every animated selector has a reduced-motion reset. Asserted per selector rather than as a
+  // count, because *"the stylesheet already honours it in two places and must honour it
+  // everywhere"* is the clause, and a count passes while a third selector goes unhandled.
+  const reduced = [...css.matchAll(/@media \(prefers-reduced-motion: reduce\) \{((?:[^{}]|\{[^{}]*\})*)\}/g)]
+    .map((m) => m[1]).join('\n');
+  const animated = [...css.matchAll(/([^{}]+)\{[^}]*\btransition:\s*(?!none)[^;}]+/g)]
+    .map((m) => m[1].trim().split(/\s*,\s*/)).flat()
+    .map((s) => s.replace(/:{1,2}[a-z-]+(\([^)]*\))?/g, '').trim())
+    .filter((s) => s && !s.startsWith('@') && !s.startsWith(':root'));
+  for (const sel of new Set(animated)) {
+    assert.ok(reduced.includes(sel), `${sel} animates and has no prefers-reduced-motion reset`);
+  }
+});
+
+test('I-8b / DESIGN §1 P3: the completed lifecycle chip is not the quietest ink on the screen', () => {
+  const css = stripComments(readFileSync(resolve(CAIRN, 'apps/web/src/styles.css'), 'utf8'));
+  const chip = (stage: string) => {
+    const m = new RegExp(`\\.chip--life-${stage}\\s*\\{([^}]*)\\}`).exec(css);
+    assert.ok(m, `there is no .chip--life-${stage} rule`);
+    return /(?:^|;)\s*color:\s*var\((--[a-z-]+)\)/.exec(m[1])?.[1] ?? null;
+  };
+  // P3: *"`completed` is a dashed outline, never lower contrast, never lower ink."* The ink
+  // ladder, quietest first — `completed` may not sit below `planned` on it. The rendered
+  // assertion (computed contrast, both colour schemes) is `qa/i8b-render.mjs`.
+  const LADDER = ['--ink-faint', '--ink-dim', '--ink-soft', '--ink'];
+  const completed = chip('completed');
+  const planned = chip('planned');
+  assert.ok(completed && planned, 'a lifecycle chip has no ink of its own');
+  assert.ok(
+    LADDER.indexOf(completed) >= LADDER.indexOf(planned),
+    `completed (${completed}) is quieter than planned (${planned}) — the past is being archived`,
+  );
+  // The distinction that carries the meaning is a channel neither other stage uses.
+  assert.match(css, /\.chip--life-completed\s*\{[^}]*border-style:\s*dashed/s,
+    'completed lost its dashed outline, which is what distinguishes it without dimming it');
+});
+
+// ---------------------------------------------------------------------------
+// I-8b — the Profile surface itself.
+
+const PROFILE = () => readFileSync(resolve(VIEWS, 'Profile.tsx'), 'utf8');
+
+test('I-8b / DESIGN §5.2: the Profile renders all four movements, and no fifth thing', () => {
+  const src = stripComments(PROFILE());
+
+  // 1. the claim — one typographic statement, marked up as pairs (§3.5) rather than three tiles.
+  assert.match(src, /<dl className="claim"/, 'the identity line is not a `<dl>` — a stat reads as a pair');
+  assert.ok(!/statrow/.test(src), '`.statrow`\'s three boxes are what §5.3 replaces');
+  // 2. the record — hairline rows, no card, no chevron.
+  assert.match(src, /className="crlist"/, 'there is no country record');
+  assert.ok(!/\bcard\b/.test(src), 'a section of this screen is a card — §5.3: no section on this screen is a card');
+  assert.ok(!/chevron|›|▸|▾/.test(src), 'a disclosure chevron appeared — §5.3 forbids it');
+  // 3. its shape over time — the lifecycle counts, `completed` FIRST (P3).
+  const stages = [...src.matchAll(/\{ stage: '(completed|active|planned)', label:/g)].map((m) => m[1]);
+  assert.deepEqual(stages, ['completed', 'active', 'planned'], 'the lifecycle counts do not lead with `completed`');
+  // 4. what we do not know — content, in the shipped gap idiom.
+  assert.match(src, /className="profile__gap"/, 'the unattributed block is missing');
+
+  // §5.1's fence, as a grep. **A screen that needs one of these to look good has failed §0 rule
+  // B**, and the failure mode is a builder adding a slot for a thing the roadmap has not built.
+  for (const forbidden of [
+    'photo', 'avatar', 'achievement', 'badge', 'streak', 'goal', 'participant',
+    'distance', 'discover', 'coming soon', 'placeholder',
+  ]) {
+    assert.ok(!new RegExp(forbidden, 'i').test(src), `the Profile invents ${forbidden} — DESIGN §0 rule B / §5.1`);
+  }
+});
+
+test('I-8b / DESIGN §5.1: the Profile computes no statistic of its own', () => {
+  const src = stripComments(PROFILE());
+  // Every number on this screen is read off `TravelStats`. §8.4 clause 2 and §0.7 one layer up:
+  // a count assembled in a view is a second answer to a question core already answers — and
+  // `state.library.length` is NOT the number of trips this record is made of, because a
+  // `planned` trip contributes nothing to it.
+  assert.ok(!/state\.library\.length/.test(src), 'the Profile counts the library itself');
+  assert.ok(!/\.filter\([^)]*\)\.length/.test(src.replace(/unplacedCities|cities\.length/g, '')),
+    'the Profile derives a count by filtering instead of reading TravelStats');
+  assert.match(src, /travelHistory\(/, 'the Profile does not read `travelStats` through its gate');
+  // The refusal boundary — ROADMAP I-8's own criterion, on this surface.
+  assert.match(src, /history\.ok/, 'the Profile does not branch on the read gate');
+  assert.match(src, /HistoryRefusal/, 'the Profile has no refusal path');
+  // The I-6 rescan indicator, on screen and not merely in state.
+  assert.match(src, /summaryScan\(/, 'the Profile never asks how current its rows are');
+  assert.match(src, /Recomputing/, 'nothing on the Profile says a rescan is running');
+});
+
+test('I-8b / DESIGN §5.5: "could not be read" is one vocabulary across both surfaces', () => {
+  // §5.5 asks for *"the same component and the same words"* as the world map; §5.6 fences
+  // `WorldMap.tsx` as a zero-line diff for this increment. The mechanical fence wins and the
+  // duplication is kept honest by this assertion rather than by intent — see `Refusal.tsx`.
+  const refusal = readFileSync(resolve(VIEWS, 'Refusal.tsx'), 'utf8');
+  const map = readFileSync(resolve(VIEWS, 'WorldMap.tsx'), 'utf8');
+  const sentences = [
+    'We could not read your travel history.',
+    'is not readable.',
+    'One of the stored trip records is not readable.',
+  ];
+  for (const s of sentences) {
+    assert.ok(refusal.includes(s), `the shared refusal lost the sentence: ${s}`);
+    assert.ok(map.includes(s), `the world map's refusal drifted from the shared one: ${s}`);
+  }
+  assert.match(readFileSync(resolve(VIEWS, 'Profile.tsx'), 'utf8'), /HistoryRefusal/,
+    'the Profile writes its own refusal instead of using the shared one');
+});
+
+test('I-8b / DESIGN §5.5: the country drill-down is an inline expansion, not a dialog', () => {
+  const src = stripComments(PROFILE());
+  // §5.5 rules it as an inline expansion, *"which is both the better interaction and the reason
+  // the standing shadcn revisit trigger is not hit"* (A-55). A dialog here would be a component
+  // library decision made by a builder.
+  assert.ok(!/role="dialog"|<dialog|Modal|createPortal/.test(src), 'the drill-down opens a dialog');
+  assert.match(src, /aria-expanded=\{isOpen\}/, 'the row does not report its own expanded state');
+  assert.match(src, /aria-controls=\{`crow-trips-/, 'the expanded panel is not associated with its row');
+  // A collapsed panel may not hold a tab stop.
+  assert.match(src, /tabIndex=\{isOpen \? 0 : -1\}/, 'a collapsed row still holds focusable controls');
+});
+
+test('I-8b: `WorldMap.tsx` is a zero-line diff, and `packages/` is untouched by this surface', () => {
+  // §5.6's *"Explicitly not in I-8b"* list, as far as a test in this repo can see it: the Profile
+  // imports the map's renderer nowhere, adds no dependency, and bumps no version.
+  const src = stripComments(PROFILE());
+  assert.ok(!/WorldMap|worldMapFrame|COUNTRY_INDEX/.test(src),
+    'the Profile draws a map — A-40 Part 5: `TripSummaryRow` carries no city coordinate');
+  const pkg = JSON.parse(readFileSync(resolve(CAIRN, 'apps/web/package.json'), 'utf8')) as {
+    dependencies?: Record<string, string>;
+  };
+  assert.deepEqual(Object.keys(pkg.dependencies ?? {}).sort(), ['leaflet', 'react', 'react-dom'],
+    'a runtime dependency was added to apps/web — that is an architect decision (A-55 Part 0)');
 });

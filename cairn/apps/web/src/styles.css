@@ -36,7 +36,24 @@
   --panel-alt: #e7e9e4;
   --ink: #1b1f27;
   --ink-soft: #454b57;
-  --ink-dim: #6d7482;
+  /*
+   * **I-8b, measured on rendered output — the same discipline as R34-7 (`--warn`) and R36-6
+   * (`--map-fill`), and the same kind of finding.** This was `#6d7482`, which is **4.14:1** on
+   * `--paper` and **3.70:1** on `--line-soft` at the 11–14 px it carries — under WCAG 1.4.3's
+   * 4.5:1 for text below 18.66 px. It is this palette's *secondary text* ink: `.eyebrow`,
+   * `.hint`, `.statrow dt`, `.tripcard__meta`, `.worldmap__gap`, `.leg` and now most of the
+   * Profile's second voice, so the failure was on every surface rather than on the new one — it
+   * was found here because `DESIGN.md` §6.2 is the first acceptance standard that measures it.
+   *
+   * `#5f6673` clears 4.5:1 on all four light surfaces this can land on: `--card` 5.78,
+   * `--paper` 5.10, `--panel-alt` 4.72, `--line-soft` 4.55. Dark mode's `#8b93a3` was already
+   * ≥ 4.78:1 on all four of its surfaces and is unchanged.
+   *
+   * `--ink-faint` is deliberately NOT moved: it is 2.4:1 and it is a **rule and mark** ink, not
+   * a text ink. Its one remaining text use is `.tripcard__meta--dim` on the Library, which is
+   * outside this increment's surface and is recorded in BUILD-NOTES rather than changed here.
+   */
+  --ink-dim: #5f6673;
   --ink-faint: #9aa0ab;
   --line: #d7dad5;
   --line-soft: #e3e5e0;
@@ -83,6 +100,53 @@
   --ui-text-floor: 11px;
   --label-track: .09em;
   --caps-track: .06em;
+
+  /*
+   * THE IDENTITY LINE'S OWN SIZE — `docs/DESIGN.md` §5.2 movement 1, *"the largest type on the
+   * screen"*, and it is a **measured** addition to §2's settled scale rather than a taste one.
+   *
+   * §5.3 asks for the claim at `--t-display`. `--t-display` is `clamp(26px, 4.2vw, 38px)`, which
+   * at the 320 px reference viewport resolves to its own floor: **26 px**. DESIGN §6.2's P4
+   * assertion is that *"the largest and smallest rendered font sizes on the surface differ by
+   * ≥ 2.5×"*, and the smallest is fixed by `--ui-text-floor` at 11 px — so the largest must be
+   * ≥ 27.5 px at every context and `--t-display` is 1.5 px short at the one context that matters
+   * most. 30 px is the floor that clears it (30 ÷ 11 = 2.73) and 9vw is the same rate of growth
+   * the display head has, capped so the claim stops growing at **desktop** and is byte-identical
+   * at 1280 and 1600 — §6.2's *"wide changes nothing but margins"*.
+   *
+   * It is one token, on one surface. `--t-display` is unchanged and the world map still uses it.
+   */
+  --t-claim: clamp(30px, 9vw, 58px);
+
+  /* ---- touch, and the chrome's own height (DESIGN §3.3 R1/R2, §3.4) ------
+   * `--tap` is §3.4's primary target: **44 × 44 CSS px**, Apple HIG and WCAG 2.2 SC 2.5.5.
+   * Written down once here for the same reason `--ui-text-floor` is, so it stops being
+   * re-decided per surface. The hard floor for *every* pointer target is 24 × 24 (SC 2.5.8) and
+   * is not a token because nothing should ever be sized *to* it.
+   *
+   * `--chrome-h` is what R2 replaces `.tabbar`'s hardcoded `top: 2.7rem` with. It is **derived
+   * from the tokens that size the chrome** rather than transcribed from a screenshot, so it
+   * cannot drift from the thing it measures; and the topbar cannot wrap (`flex-wrap: nowrap`
+   * plus an ellipsised title), which is the input that made the old number wrong. At base the
+   * chrome is the topbar alone — the tab bar is at the bottom of the viewport — so the two
+   * values differ by exactly the bar. */
+  --tap: 44px;
+  --topbar-h: 2.75rem;
+  --tabbar-h: max(var(--tap), 2.75rem);
+  --chrome-h: calc(var(--topbar-h) + 1px + env(safe-area-inset-top, 0px));
+
+  /* ---- motion (DESIGN §1 P6) -------------------------------------------
+   * ONE curve and one duration, because P6's vocabulary is small on purpose: *"Cairn animates
+   * state changes the user caused … it does not animate page entrances, does not stagger lists
+   * on load, does not have a scroll-reveal, and has no decorative motion of any kind."*
+   *
+   * The curve is taken from the vendored `animate` skill's table (A-55: Emil is the source of
+   * P6's budget), not invented — its hard rule 2 is *"no approximated values"*. `--ease-out`
+   * is that table's *"strong ease-out for UI"*. Entrances decelerate; there is no bounce and no
+   * elastic anywhere in this file. `--dur-row` is the country row's expansion and is the ONLY
+   * animation on the Profile: DESIGN §5.5 caps it at **180 ms**. */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --dur-row: 160ms;
 
   /* ---- rules and radii: hairlines and small corners --------------------- */
   --hair: 1px;
@@ -224,28 +288,76 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 }
 .statrow dd { margin: .1rem 0 0; font-size: 22px; font-weight: 600; color: var(--gold-ink); line-height: 1.1; }
 
-.app { min-height: 100dvh; display: flex; flex-direction: column; }
+/*
+ * `100dvh` here is correct and stays — DESIGN §3.3 **R3**: *"`svh` for anything with a
+ * fixed/sticky height that must not move while scrolling; `dvh` only for a full-bleed element
+ * that should follow the chrome."* `.app` is the second case: it is the page, it is not a
+ * scroll container with a capped height, and it should grow as Safari's chrome retracts.
+ *
+ * The bottom padding is the other half of R1: with the tab bar `position: fixed` at the bottom
+ * of the viewport, the last row of any list is unreachable without it. It clears the bar AND
+ * the home-indicator inset, which is the combination `viewport-fit=cover` opts into.
+ */
+.app {
+  min-height: 100dvh; display: flex; flex-direction: column;
+  padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px));
+}
 .tabpanel { display: contents; }
 .tabpanel[hidden] { display: none; }
 
-/* ---------------------------------------------------------------- tab bar */
+/* ------------------------------------------------------- the chrome stack
+ * DESIGN §3.3 **R2**: the topbar and the tab bar are **one sticky stacking context** — a single
+ * `position: sticky; top: 0` wrapper — so the second element's offset is the first element's
+ * real height, whatever it turns out to be. What this replaces is `.tabbar`'s
+ * `position: sticky; top: 2.7rem`: a hardcoded number equal to the topbar's height at its
+ * current content, which any topbar wrap (a long trip title, a large text-size setting) made
+ * wrong by stacking the two bars on top of each other.
+ *
+ * The wrapper is sticky at **every** width, including base, where the only thing in flow inside
+ * it is the topbar. `position: sticky` does not establish a containing block for `fixed`
+ * descendants, so the tab bar below still positions against the viewport. */
+.chrome {
+  position: sticky; top: 0; z-index: 500;
+  background: var(--paper);
+  padding-top: env(safe-area-inset-top, 0px);
+}
 
+/* ---------------------------------------------------------------- tab bar
+ * DESIGN §3.3 **R1**, and the reason is measured rather than asserted: the shipped bar sat at
+ * `top: 2.7rem` on a 390 × 664 viewport, which is the least reachable region of a phone held
+ * one-handed, and it is the product's *only* top-level navigation.
+ *
+ * **Same DOM, same `role="tablist"`, same buttons, same order** — this is a CSS reposition and
+ * not a second navigation. At base it is a bottom bar; from **split** (≥ 900) it returns to its
+ * shipped position under the topbar, inside the sticky stack above.
+ *
+ * It is **opaque** — `--paper` and a hairline — never translucent and never blurred (P8, and
+ * the `backdrop-filter` removal is permanent). The active indicator sits on the edge FACING THE
+ * CONTENT: the top edge when the bar is at the bottom, the bottom edge when it is at the top. */
 .tabbar {
+  position: fixed; inset: auto 0 0 0; z-index: 480;
   display: flex; gap: 0; align-items: stretch;
-  border-bottom: var(--rule); background: var(--paper);
-  position: sticky; top: 2.7rem; z-index: 490;
+  background: var(--paper);
+  border-top: var(--rule);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
 }
 .tabbar__tab {
+  flex: 1 1 0; min-width: 0;
+  display: flex; align-items: center; justify-content: center;
   appearance: none; background: none; border: 0;
-  border-bottom: 2px solid transparent; margin-bottom: -1px;
-  padding: .55rem 1.1rem; cursor: pointer;
+  /* §3.4: the primary touch target. The shipped tab computed to ≈ 35 px tall. */
+  min-height: var(--tap);
+  border-top: 2px solid transparent;
+  padding: .55rem .75rem; cursor: pointer;
   font-family: var(--font-mono); font-size: var(--t-label); font-weight: 600;
   text-transform: uppercase; letter-spacing: var(--label-track);
   color: var(--ink-dim);
-  transition: color .12s ease, border-color .12s ease;
+  transition: color .12s var(--ease-out), border-color .12s var(--ease-out);
 }
 .tabbar__tab:hover { color: var(--ink); }
-.tabbar__tab--on { color: var(--ink); border-bottom-color: var(--ink); }
+.tabbar__tab--on { color: var(--ink); border-top-color: var(--ink); }
 @media (prefers-reduced-motion: reduce) { .tabbar__tab { transition: none; } }
 
 /* ---------------------------------------------------------------- topbar */
@@ -256,16 +368,30 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
  * makes the bar's contrast depend on whatever scrolls under it, which on a dense timeline is
  * a different answer every scroll position.
  */
+/*
+ * No longer sticky in its own right — `.chrome` above is the one sticky stacking context (R2).
+ *
+ * `flex-wrap: nowrap` plus an ellipsised title is load-bearing rather than tidy: `--chrome-h`
+ * is derived from `--topbar-h`, and a topbar that can wrap is a topbar whose height is not the
+ * token that claims to be its height. That was the input that made `top: 2.7rem` wrong.
+ *
+ * The inline padding carries the landscape display cutout — `index.html` sets
+ * `viewport-fit=cover`, and opting into the cutout without padding for it is what puts content
+ * behind the notch (DESIGN §3.1 defect 1).
+ */
 .topbar {
-  position: sticky; top: 0; z-index: 500;
-  display: flex; align-items: center; gap: .75rem;
-  padding: .45rem 1rem;
+  display: flex; align-items: center; gap: .75rem; flex-wrap: nowrap;
+  min-height: var(--topbar-h);
+  padding-block: 0;
+  padding-left: calc(1rem + env(safe-area-inset-left, 0px));
+  padding-right: calc(1rem + env(safe-area-inset-right, 0px));
   background: var(--paper);
   border-bottom: var(--rule);
 }
 .topbar__brand {
-  display: flex; align-items: center; gap: .45rem;
+  display: flex; align-items: center; gap: .45rem; flex: none;
   background: none; border: 0; cursor: pointer; padding: 0;
+  min-height: var(--tap);
   color: inherit;
   font-family: var(--font-display); font-weight: 800; font-size: 19px;
   text-transform: uppercase; letter-spacing: var(--caps-track);
@@ -283,6 +409,7 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .topbar__title {
   color: var(--ink-dim); font-family: var(--font-mono);
   font-size: var(--t-label); text-transform: uppercase; letter-spacing: var(--caps-track);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
 }
 .topbar__spacer { flex: 1; }
 .savestate {
@@ -291,14 +418,18 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 }
 .savestate--error {
   background: none; color: var(--danger); border: 1px solid currentColor; cursor: pointer;
-  border-radius: var(--radius-pill); padding: .15rem .55rem;
+  border-radius: var(--radius-pill); padding: .15rem .55rem; min-height: 28px;
   font-family: var(--font-mono); font-size: var(--ui-text-floor); font-weight: 600;
   text-transform: uppercase; letter-spacing: var(--label-track);
 }
 
 .banner { display: flex; gap: .75rem; align-items: center; padding: .6rem 1rem; font-size: .9rem; }
 .banner--error { background: color-mix(in srgb, var(--danger) 14%, var(--paper)); border-bottom: 1px solid var(--line); }
-.banner button { margin-left: auto; background: none; border: 0; font-size: 1.1rem; cursor: pointer; color: inherit; }
+.banner button {
+  margin-left: auto; background: none; border: 0; font-size: 1.1rem; cursor: pointer; color: inherit;
+  /* §3.4: a dismiss/retry control in a banner is still a pointer target. */
+  min-height: var(--tap); min-width: var(--tap); padding: 0 .5rem;
+}
 
 /* ---------------------------------------------------------------- library */
 
@@ -329,20 +460,43 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 
 /* ---------------------------------------------------------------- trip */
 
-.trip { display: grid; grid-template-columns: 15rem minmax(0, 1fr); gap: 0; flex: 1; align-items: start; }
-@media (max-width: 900px) { .trip { grid-template-columns: 1fr; } }
+/*
+ * MOBILE-FIRST, `min-width` only — DESIGN §3.2. What was here was the whole of the shipped
+ * layout system: two `max-width: 900px` rules, i.e. a desktop-first stylesheet with one
+ * breakpoint. The threshold **900 is kept deliberately** (it has shipped through a manager
+ * gate); what changes is that it is written `min-width` and the base case is the phone.
+ */
+.trip { display: grid; grid-template-columns: 1fr; gap: 0; flex: 1; align-items: start; }
 
+/*
+ * **R3 — `dvh` is not used for anything the user scrolls in on iOS.** At base the spine is a
+ * static block with **no** height constraint: `max-height: calc(100dvh - …)` on a scroll
+ * container is the exact combination that resizes mid-scroll as Safari's chrome retracts. From
+ * **split** it is a sticky column and the cap becomes `svh`, which does not move.
+ *
+ * The sticky offset is `--chrome-h`, not the shipped `3.1rem`: the chrome is one sticky stack
+ * (R2) and its height is derived from the tokens that size it.
+ */
 .spine {
-  position: sticky; top: 3.1rem; align-self: start; max-height: calc(100dvh - 3.1rem);
-  overflow-y: auto; padding: 1rem .6rem 3rem; border-right: 1px solid var(--line);
+  position: static; max-height: none;
+  padding: 1rem .6rem 1.5rem; border-bottom: 1px solid var(--line);
 }
-@media (max-width: 900px) { .spine { position: static; max-height: none; border-right: 0; border-bottom: 1px solid var(--line); } }
+@media (min-width: 900px) {
+  .trip { grid-template-columns: 15rem minmax(0, 1fr); }
+  .spine {
+    position: sticky; top: var(--chrome-h); align-self: start;
+    max-height: calc(100svh - var(--chrome-h));
+    overflow-y: auto; padding-bottom: 3rem;
+    border-right: 1px solid var(--line); border-bottom: 0;
+  }
+}
 
 .spine__city { margin-bottom: .9rem; }
 .spine__cityhead {
-  display: flex; gap: .4rem; align-items: baseline; width: 100%;
+  display: flex; gap: .4rem; align-items: center; width: 100%;
   background: none; border: 0; cursor: pointer; font: inherit; color: inherit;
   padding: .3rem .5rem; border-radius: 7px; font-weight: 640;
+  min-height: var(--tap);
 }
 .spine__cityhead.is-on, .spine__cityhead:hover { background: var(--line-soft); }
 .spine__range { margin-left: auto; font-size: .74rem; font-weight: 400; color: var(--ink-dim); }
@@ -351,6 +505,7 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
   display: flex; gap: .5rem; align-items: center; width: 100%;
   padding: .3rem .5rem .3rem 1rem; border: 0; border-radius: 7px;
   background: none; cursor: pointer; font: inherit; color: inherit; text-align: left;
+  min-height: var(--tap);
 }
 .spine__day:hover { background: var(--line-soft); }
 .spine__day.is-on { background: color-mix(in srgb, var(--accent) 12%, transparent); font-weight: 600; }
@@ -369,6 +524,7 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
   display: flex; align-items: center; gap: .35rem;
   padding: .45rem .8rem; background: none; border: 0; border-bottom: 2px solid transparent;
   cursor: pointer; font: inherit; font-size: .9rem; color: var(--ink-dim);
+  min-height: var(--tap);
 }
 .tab--on { color: var(--ink); border-bottom-color: var(--accent); font-weight: 620; }
 .tab__badge {
@@ -454,7 +610,10 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .sev--warning { border-left-color: var(--warn); }
 .sev--note { border-left-color: var(--ink-dim); }
 
-.stop__tools { display: flex; gap: .15rem; flex-wrap: wrap; justify-content: flex-end; max-width: 11rem; }
+/* `gap: .15rem` (2.4 px) was below §3.4's ≥ 8 px, and it is what made `.icon`'s grown hit area
+   unsafe: 9 px of hit box either side over a 2.4 px gap lands inside the neighbour's visual
+   box. .6rem = 9.6 px, so no hit area reaches a neighbour's ink. */
+.stop__tools { display: flex; gap: .6rem; flex-wrap: wrap; justify-content: flex-end; max-width: 13rem; }
 
 /*
  * Badges are OUTLINED, not filled — recovered from the planner's own `.badge`, which is
@@ -497,9 +656,20 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 
 /* ---------------------------------------------------------------- controls */
 
+/*
+ * ---- DESIGN §3.4: the touch-target floors, and where each one lands ----
+ *
+ * Two numbers, decided once: **44 × 44 CSS px** for a primary target (Apple HIG, WCAG 2.2
+ * SC 2.5.5) and a **hard floor of 24 × 24** for every pointer target without exception
+ * (SC 2.5.8). The shipped stylesheet cleared neither in three places — `.icon` at 26 × 26,
+ * `.tabbar__tab` at ≈ 35 px and `.btn`/`.chip` at ≈ 31 px — and §5.6 item 4 names those four as
+ * I-8b's scope. `min-height` rather than a re-sized box: **the visual boxes do not move**, so no
+ * other surface's composition changes.
+ */
 .btn {
   padding: .4rem .8rem; border-radius: 8px; border: 1px solid var(--line);
   background: var(--card); color: inherit; font: inherit; font-size: .88rem; cursor: pointer;
+  min-height: var(--tap); display: inline-flex; align-items: center; justify-content: center;
 }
 .btn:hover:not(:disabled) { border-color: var(--ink-dim); }
 .btn:disabled { opacity: .45; cursor: not-allowed; }
@@ -507,19 +677,49 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .btn--quiet { background: none; }
 
 .icon {
+  position: relative;
   width: 26px; height: 26px; display: grid; place-items: center;
   border: 1px solid var(--line); border-radius: 6px; background: var(--card);
   cursor: pointer; font-size: .8rem; color: var(--ink-dim); padding: 0;
 }
+/*
+ * §3.4, verbatim: *"`.icon` at 26 × 26 clears the floor and fails the target … Its **hit area**
+ * grows to 44 × 44 (padding or a pseudo-element), its **visual** box may stay 26."* This is the
+ * pseudo-element form, so the six tools in a stop's row keep the size and rhythm they shipped
+ * with. `.stop__tools`' gap grows to 9.6 px in the same pass, because a 44 px hit area over a
+ * 2.4 px gap would put one control's hit box inside its neighbour's visual box — §3.4's
+ * *"spacing between adjacent targets ≥ 8 px"* is what makes the grown area safe.
+ */
+.icon::after {
+  content: ""; position: absolute; left: 50%; top: 50%;
+  width: var(--tap); height: var(--tap);
+  transform: translate(-50%, -50%);
+}
 .icon:hover:not(:disabled) { color: var(--ink); border-color: var(--ink-dim); }
 .icon:disabled { opacity: .3; cursor: not-allowed; }
 .icon--danger:hover { color: var(--danger); border-color: var(--danger); }
-.icon--select { width: auto; padding: 0 .25rem; font-size: .72rem; }
+/*
+ * **The one named exception, with its reason.** A native `<select>` renders no `::after`, so the
+ * pseudo-element hit area is not available to it, and giving it a 44 px box would make it the
+ * tallest thing in a row of 26 px tools. It clears the 24 × 24 **hard floor** at its shipped
+ * size and it is not the main action of its row (that is Edit), so §3.4's primary rule does not
+ * reach it. Recorded here rather than left as a gap for a probe to rediscover.
+ */
+.icon--select { width: auto; min-width: 26px; padding: 0 .25rem; font-size: .72rem; }
+.icon--select::after { content: none; }
 
 .chip {
   padding: .2rem .6rem; border-radius: 999px; border: 1px solid var(--line);
   background: var(--card); font: inherit; font-size: .78rem; cursor: pointer; color: var(--ink-dim);
 }
+/*
+ * The floor applies to the chips that are **controls**, which is what §3.4 is about — a pointer
+ * target. `.chip--life`, `.chip--dim` and `.chip--warn` render on a `<span>` with
+ * `cursor: default`: they are annotations, they are not in the `button, a[href], [role="button"],
+ * input, select` set §6.2 measures, and giving them a 44 px box would put a tally chip's height
+ * above the line of text it annotates.
+ */
+button.chip, label.chip { min-height: var(--tap); display: inline-flex; align-items: center; }
 .chip--on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
 .chip--dim { border-style: dashed; opacity: .8; cursor: default; }
 /*
@@ -565,7 +765,10 @@ textarea { resize: vertical; }
 .stop__time--journey { color: var(--ink, inherit); font-style: normal; }
 .stop__role { display: flex; flex-wrap: wrap; gap: .4rem; align-items: baseline;
   font-size: .8rem; color: var(--ink-dim, #5c6570); margin: .15rem 0 0; }
-.stop__role .btn { font-size: .78rem; padding: .1rem .45rem; }
+/* Two inline choices inside a sentence, not the main action of a row: they take the 24 px hard
+   floor rather than the 44 px primary target, because a 44 px box inside a running line of body
+   copy breaks the line it is asking a question in. §3.4's floor, met with headroom. */
+.stop__role .btn { font-size: .78rem; padding: .1rem .45rem; min-height: 32px; }
 .browse { border-top: 1px solid var(--line); padding: .75rem 1rem; }
 .browse__head { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; margin-bottom: .5rem; }
 .browse__list { list-style: none; margin: 0; padding: 0; display: grid; gap: .35rem; }
@@ -581,7 +784,23 @@ textarea { resize: vertical; }
 }
 .chip--life-planned { border-color: var(--line); color: var(--ink-dim); }
 .chip--life-active { border-color: var(--ink); color: var(--ink); font-weight: 600; }
-.chip--life-completed { background: transparent; border-style: dashed; color: var(--ink-dim); }
+/*
+ * **P3 — the past is alive, not archived.** `docs/DESIGN.md` §1 P3: the lifecycle chips are
+ * *"status, not decay: `completed` is a dashed outline, **never lower contrast, never lower
+ * ink**. A finished trip is the product's most valuable content, and it must read that way."*
+ *
+ * This was `color: var(--ink-dim)` — the same ink as `planned`, i.e. a completed trip rendered
+ * exactly as quietly as one that has not happened. The distinction that carries the meaning is
+ * the **border style** (dashed), which is a channel neither of the other two stages uses; the
+ * ink goes to full strength. §6.2's rendered assertion is that `completed`'s computed contrast
+ * is **≥** `planned`'s in both colour schemes, and ROADMAP I-8b names dropping this back to
+ * `--ink-faint` as the injected fault. This is the first surface where completed trips are the
+ * majority of the content, which is why the risk is real enough to have a test.
+ */
+.chip--life-completed {
+  background: transparent; border-style: dashed;
+  color: var(--ink); border-color: var(--ink-dim);
+}
 
 .chip--choice { display: inline-flex; align-items: center; gap: .35rem; }
 .chip--choice input { margin: 0; }
@@ -691,7 +910,13 @@ textarea { resize: vertical; }
   flex: 1 1 var(--pane-min, 300px);
   min-width: 0;
   background: var(--card);
-  --pane-cap: min(38vh, 300px);
+  /* **`svh`, not `vh` — DESIGN §3.3 R3, and this is the one token that changes here.** A
+     viewport-unit height cap inside a scrolling page is the one place `vh` is wrong on iOS: it
+     does not retract with Safari's chrome, so the map card's height changes when the address bar
+     does, mid-scroll. `svh` is the small viewport and does not move. This moves no `viewBox`,
+     changes no pane count and touches no frame rule — §3.3 forbids adding any media query to
+     `.worldmap__panes` and none is added. */
+  --pane-cap: min(38svh, 300px);
 }
 
 /* The sea is the element's own background as well as a rect, because `preserveAspectRatio`
@@ -812,7 +1037,9 @@ textarea { resize: vertical; }
 .codelist { display: flex; flex-wrap: wrap; gap: .35rem; }
 .codechip {
   display: inline-flex; align-items: center; gap: .4rem;
-  padding: .2rem .5rem; border: var(--rule); border-radius: var(--radius-sm);
+  /* §3.4 names *"every map country chip"* as a primary touch target. */
+  min-height: var(--tap);
+  padding: .2rem .6rem; border: var(--rule); border-radius: var(--radius-sm);
   background: var(--card); color: var(--ink); cursor: pointer;
   font-family: var(--font-mono); font-size: var(--t-label); font-weight: 600;
   letter-spacing: var(--caps-track);
@@ -828,7 +1055,8 @@ textarea { resize: vertical; }
 }
 .triprow--gone { border-style: dashed; padding: .5rem .7rem; gap: .6rem; }
 .triprow__open {
-  flex: 1; display: flex; align-items: baseline; gap: .7rem; flex-wrap: wrap;
+  flex: 1; display: flex; align-items: center; gap: .7rem; flex-wrap: wrap;
+  min-height: var(--tap);
   padding: .55rem .7rem; background: none; border: 0; cursor: pointer;
   color: inherit; font: inherit; text-align: left;
 }
@@ -839,3 +1067,264 @@ textarea { resize: vertical; }
 
 .worldmap--refused .banner { border: 1px solid var(--danger); border-radius: var(--radius); }
 .worldmap--refused .hint.mono { font-size: var(--t-label); word-break: break-word; }
+
+/* ================================================================= profile
+   ROADMAP Phase 2 **I-8b**, built to `docs/DESIGN.md` §5 — the identity register (P7): *"the
+   screen is about a person, not about a dataset."*
+
+   **The whole composition is: display head → hairline-separated rows → a marked prose block.**
+   §5.3's last line calls that *"the P1 rendered test passing by construction"*, and it is the
+   reason there is not one `border-radius` on a container in this section: **no section on this
+   screen is a card.** The only bordered boxes are the three lifecycle tallies and the
+   provisional mark, which are annotations at 11 px, and the trip rows inside an expanded
+   country, which are the shipped `.triprow` treatment §5.5 says to reuse.
+
+   Mobile-first: everything below the breakpoints is the 320 px layout. */
+
+.profile { max-width: 62rem; margin: 0 auto; padding: 1.25rem 1rem 2rem; width: 100%; }
+.profile .empty { font-size: var(--t-body); padding: .35rem 0 1rem; max-width: 34rem; }
+
+/* ---- movement 1: the claim ------------------------------------------- */
+
+.profile__claim { margin-bottom: 2.5rem; }
+/* The page's `<h1>`. It is a LABEL, not the statement — the statement is the claim below it, and
+   §5.2 is explicit that the claim is the largest type on the screen. Set at the UI text floor in
+   tracked mono, which is this product's micro-label idiom (P9 #2). */
+.profile__kicker {
+  font-family: var(--font-mono); font-size: var(--ui-text-floor); font-weight: 600;
+  text-transform: uppercase; letter-spacing: var(--label-track);
+  color: var(--ink-dim); margin: 0 0 .5rem;
+}
+
+/*
+ * **One typographic statement, not three stat tiles.** `.statrow`'s three `dt`/`dd` boxes are
+ * what this replaces (§5.3). The pair markup survives because §3.5 requires it — a screen
+ * reader must get *"Countries, 7"* — and only the VALUE's visual position moves, by `order`.
+ * The accessibility tree keeps label-then-value, which is the order that reads as a sentence.
+ */
+.claim {
+  display: flex; flex-wrap: wrap; align-items: baseline;
+  column-gap: .35em; row-gap: 0; margin: 0;
+  font-family: var(--font-display); font-weight: 800;
+  font-size: var(--t-claim); line-height: 1.0;
+  text-transform: uppercase; letter-spacing: var(--caps-track);
+  color: var(--ink);
+}
+.claim__pair { display: inline-flex; align-items: baseline; gap: .22em; }
+.claim__pair dt { color: var(--ink); }
+.claim__pair dd {
+  order: -1; margin: 0;
+  font-family: var(--font-mono); font-weight: 600; font-size: .9em;
+  font-variant-numeric: tabular-nums; letter-spacing: -.02em;
+  color: var(--ink);
+}
+.claim__sep { color: var(--ink-dim); }
+.claim__span {
+  margin: .9rem 0 0; max-width: 34rem;
+  font-size: var(--t-body); color: var(--ink-dim);
+}
+
+/* ---- the section labels ---------------------------------------------- */
+
+/* Every section head on this screen is a tracked mono micro-label at the floor. It is not an
+   `h2` at 19 px on purpose: 19 px is the ISO CODE's size, and a section head competing with the
+   record's leading element is the "three sizes that are almost the same size" failure P4 names. */
+.profile__secthead {
+  font-family: var(--font-mono); font-size: var(--ui-text-floor); font-weight: 600;
+  text-transform: uppercase; letter-spacing: var(--label-track);
+  color: var(--ink-dim); margin: 0 0 .35rem;
+}
+
+/* ---- movement 2: the record ------------------------------------------ */
+
+/* Hairlines, not cards. The rule is on the ROW's top edge and the list closes with one of its
+   own, which is what lets the two-column desktop form (below) give every column's first row a
+   rule without doubling it anywhere. */
+.crlist { border-bottom: var(--rule-soft); }
+.crow { border-top: var(--rule-soft); }
+
+.crow__head {
+  display: grid;
+  grid-template-columns: 2.75rem minmax(0, 1fr);
+  grid-template-areas: "code facts" "code cities" "code prov";
+  align-items: baseline; column-gap: .75rem; row-gap: .15rem;
+  width: 100%; min-height: var(--tap);
+  padding: .85rem 0; margin: 0;
+  background: none; border: 0; cursor: pointer;
+  color: inherit; font: inherit; text-align: left;
+}
+/* The leading element, and the country's identity on this product — it is already the map's
+   vocabulary. Mono at h2 scale (§5.3), in its own marginal column, so the record reads like an
+   atlas index rather than like a table with a first cell. */
+.crow__code {
+  grid-area: code;
+  font-family: var(--font-mono); font-weight: 600; font-size: var(--t-h2);
+  letter-spacing: .02em; color: var(--ink); line-height: 1.1;
+}
+.crow__facts {
+  grid-area: facts;
+  font-family: var(--font-mono); font-size: var(--t-small);
+  font-variant-numeric: tabular-nums; color: var(--ink-dim);
+}
+/* `--ink-faint` is below WCAG AA as TEXT on `--paper` (2.4:1, measured in Chromium); it is an
+   ink for a rule, not for a glyph. Every text ink on this surface is `--ink-dim` or stronger. */
+.crow__dot { color: var(--ink-dim); }
+/* Cities: text, at body size, in soft ink — §5.3's *"a run of names on one wrapped line"*. This
+   is where cities cost nothing and read as content. */
+.crow__cities { grid-area: cities; font-size: var(--t-body); color: var(--ink-soft); }
+.crow__nocity { color: var(--ink-dim); font-style: italic; }
+
+/* Hover is REINFORCEMENT; the open state is the one that has to be readable without a pointer,
+   because a touch device has no hover to lose. Both land on the code, which is the row's identity. */
+.crow__head:hover .crow__code, .crow--open .crow__code { color: var(--accent); }
+
+/* A-34 / P5 channel 3 — provisional is a DIFFERENT TREATMENT, never the confirmed ink at lower
+   strength. The dashed left rule is the shipped `.spine__day.is-unaccepted` idiom, reused rather
+   than reinvented, and the outlined mark carries the words. Nothing here attenuates anything. */
+/* The negative margin is load-bearing rather than tidy: the ISO code is a MARGINAL COLUMN and
+   the record reads as an atlas index because that column is straight. Indenting a provisional row
+   by the width of its own mark would make the column ragged exactly where the reader is scanning,
+   so the dashed rule hangs into the page margin and the row's content stays on the column. */
+.crow--provisional {
+  border-left: 2px dashed var(--map-provisional-line);
+  padding-left: .7rem; margin-left: -.7rem;
+}
+.crow__prov {
+  grid-area: prov; justify-self: start; margin-top: .3rem;
+  color: var(--map-provisional-line); border-style: dashed;
+}
+
+/*
+ * **The one animation on this screen** (§5.5: *"Motion budget for this screen: one animation"*).
+ *
+ * `grid-template-rows: 0fr → 1fr` is the height transition that needs no measured pixel value,
+ * which matters here for the same reason it matters on the map: a measured height is a
+ * measurement taken at a moment, and this panel's moment can be inside a `display: none` tab.
+ * Duration 160 ms — under §5.5's 180 ms ceiling — on `--ease-out`, a named decelerating curve
+ * from the vendored `animate` skill's table. It is interruptible by construction (a CSS
+ * transition re-targets from wherever it is), it changes the layout only of the row the user
+ * just opened (P6's last clause), and it is **off entirely** under `prefers-reduced-motion`.
+ *
+ * `visibility` rides the same transition so the collapsed panel leaves the accessibility tree
+ * and the tab order: it flips to `visible` at the start of an opening transition and back at the
+ * end of a closing one, which is CSS's own rule for it and is exactly the behaviour wanted.
+ */
+.crow__trips {
+  display: grid; grid-template-rows: 0fr; visibility: hidden;
+  transition: grid-template-rows var(--dur-row) var(--ease-out),
+              visibility var(--dur-row) var(--ease-out);
+}
+.crow--open .crow__trips { grid-template-rows: 1fr; visibility: visible; }
+.crow__clip { overflow: hidden; min-height: 0; }
+/*
+ * The reused `.triprow` (§5.5) in the ONE place it is narrower than it was designed for: at
+ * **desktop** the record is two columns inside a 62rem page, so a trip row has ~240 px rather
+ * than the ~600 px it gets on the map's drill-down. Left as a row, the title wraps and the date
+ * range breaks mid-range (`2019-08-03 → 2019-` / `08-17`), which states a date that is not a
+ * date. Stacking the two and holding the range on one line is a layout adjustment to a reused
+ * component, not a second treatment of it: same element, same ink, same chip beside it.
+ */
+.crow__triplist { padding: 0 0 .9rem; }
+.crow__triplist .triprow__open { flex-direction: column; align-items: flex-start; gap: .15rem; }
+.crow__triplist .triprow__meta { white-space: nowrap; }
+.crow__triplist .chip--life { white-space: nowrap; margin-right: .5rem; }
+@media (prefers-reduced-motion: reduce) { .crow__trips { transition: none; } }
+
+/* ---- movement 3: the shape of it over time ---------------------------- */
+
+.profile__shape { margin-bottom: 1.75rem; }
+.lifecycle { display: flex; flex-wrap: wrap; gap: .4rem; margin: 0; }
+/* The tallies are `dt`/`dd` pairs (§3.5) wearing the shipped lifecycle chip, so P3's rendered
+   assertion has the real element to measure. `completed` is FIRST in the DOM and at full ink. */
+.lifecycle__row {
+  display: inline-flex; align-items: baseline; gap: .45rem;
+  margin-left: 0; padding: .25rem .55rem;
+}
+.lifecycle__row dt { font-weight: inherit; }
+.lifecycle__row dd { margin: 0; font-variant-numeric: tabular-nums; font-weight: 600; }
+
+/* ---- movement 4: what we do not know ---------------------------------- */
+
+/* The shipped `.worldmap__gap` idiom — a 2 px rule down the left and prose beside it — reused
+   rather than reinvented, because *"one vocabulary for what we could not do"* is already the
+   rule on the other surface. §5.2: this is content, not a footnote and not an error state. */
+.profile__gap {
+  border-left: 2px solid var(--line); padding-left: .8rem;
+  font-size: var(--t-body); color: var(--ink-dim);
+}
+.profile__gap .profile__secthead { margin-bottom: .45rem; }
+.profile__gap p { margin: 0 0 .55rem; }
+.profile__gap p:last-child { margin-bottom: 0; }
+.profile__gap b { color: var(--ink); font-weight: 600; }
+.profile__citylist { color: var(--ink-soft); }
+
+.profile__meta { margin-top: 2.5rem; }
+.profile--refused .banner { border: 1px solid var(--danger); border-radius: var(--radius); }
+.profile--refused .hint.mono { font-size: var(--t-label); word-break: break-word; }
+
+/* ============================================== the breakpoints, min-width
+   DESIGN §3.2. Four of them, named there, and **no new breakpoint may be added without a
+   measured reason recorded here**. Nothing below adds a media query to `.worldmap__panes` or to
+   `.worldmap__pane` — §9.2 fence 1, and A-41 Part 7 forbids a per-screen-size frame rule. */
+
+/* ---- wide phone (≥ 600): one column, more air. No layout change. ------ */
+@media (min-width: 600px) {
+  .profile { padding: 1.75rem 1.5rem 2.5rem; }
+  .library, .worldmap { padding-left: 1.5rem; padding-right: 1.5rem; }
+  .claim__span { margin-top: 1.1rem; }
+}
+
+/* ---- split (≥ 900): side content becomes persistent ------------------- */
+@media (min-width: 900px) {
+  :root { --chrome-h: calc(var(--topbar-h) + var(--tabbar-h) + 2px + env(safe-area-inset-top, 0px)); }
+
+  /* The page no longer clears a bottom bar, because there is no bottom bar. */
+  .app { padding-bottom: 0; }
+
+  /* R1's other half: the bar returns to its shipped position under the topbar, inside the one
+     sticky stack (R2). Same DOM, same tablist, same three buttons, same order. */
+  .tabbar {
+    position: static; padding: 0;
+    border-top: 0; border-bottom: var(--rule);
+  }
+  .tabbar__tab {
+    flex: 0 0 auto;
+    border-top: 0; border-bottom: 2px solid transparent; margin-bottom: -1px;
+    padding-inline: 1.1rem;
+  }
+  .tabbar__tab--on { border-bottom-color: var(--ink); }
+
+  /*
+   * §5.4: **desktop shows more at once; it does not show the same thing bigger.** The metadata
+   * about the record sits BESIDE the record instead of after it. `svh`, not `dvh` — R3: this is
+   * a sticky column with a capped height, which is the case that must not move while scrolling.
+   */
+  .profile__body {
+    display: grid; grid-template-columns: minmax(0, 1fr) 20rem;
+    gap: 2.5rem; align-items: start;
+  }
+  .profile__meta {
+    margin-top: 0;
+    position: sticky; top: calc(var(--chrome-h) + 1.25rem);
+    max-height: calc(100svh - var(--chrome-h) - 2.5rem); overflow-y: auto;
+  }
+}
+
+/* ---- desktop (≥ 1280): the record goes to two columns of rows --------- */
+@media (min-width: 1280px) {
+  /*
+   * §5.4: *"two columns of rows … the rows must stay hairline-separated and must keep reading
+   * order down-then-across."* Multi-column is the mechanism that gives that order for free —
+   * a two-track CSS grid fills across-then-down, which would put row 2 beside row 1 and break
+   * both the reading order and the tab order. `break-inside: avoid` keeps an expanded row whole.
+   */
+  .crlist { columns: 2; column-gap: 2.75rem; }
+  .crow { break-inside: avoid; }
+}
+
+/* ---- wide (≥ 1600): NO new layout ------------------------------------
+   §3.2: *"Margins grow, content does not. Verified, not designed."* The content ceiling is
+   `max-width: 62rem`, already on `.profile`, `.library` and `.worldmap`, so there is deliberately
+   no rule here — and §6.2 asserts that every element inside the content column has an identical
+   computed width at 1280 and 1600, with only the container's left offset differing. A rule in
+   this file at 1600 would be the injected fault. */

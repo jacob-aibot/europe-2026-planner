@@ -415,6 +415,83 @@ which eleven closed, which four assertions were re-pointed onto A-54's corrected
 why the survivors are R39-6 (aria/caption parity, a MINOR that A-54 does not rule) and R39-7's
 two L3 lines (which A-54 Part 4 widens L3's *exception* for rather than fixing).
 
+## I-8b (2026-09-02) — the Profile, the mobile-first shell, and `DESIGN.md` §6's rendered standard
+
+The first surface increment measured against `cairn/docs/DESIGN.md` §6, which `ARCHITECTURE.md`
+§9.1 makes binding. Two new files; **no existing probe was edited** (see the stale-assertion note
+at the end, which matters more than usual here).
+
+```bash
+bash qa/i8b-faults.sh                                    # 16 mutations, bare Node, ~12 min
+# with `npm run web:build && npm run serve` in another shell:
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/i8b-render.mjs          # full matrix + faults
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/i8b-render.mjs --faults # section H alone
+```
+
+`i8b-faults.sh` is the **source-level half and deliberately not the whole matrix**: three of
+I-8b's five criteria are claims about computed style and geometry, and §6's first line is that a
+design decision that was not rendered was not verified. Its 16 mutations cover the five ROADMAP
+criteria (`.icon`'s hit area 1; `38vh`/`100dvh` back on a capped scroll container 2, 2b; a 600 ms
+row expansion and a bare `ease-in` 3, 3b; `.chip--life-completed` back to `--ink-faint` 4; a fifth
+breakpoint at 1600 5) plus the responsive contract itself (`top: 2.7rem` restored 6; the bottom
+bar loses its safe-area padding 7; a `max-width` query returns 8; a media query reaches
+`.worldmap__panes` — §9.2 fence 1 — 9; the tablist stops being a single tab stop and loses
+`ArrowLeft` 10, 10b) and the Profile's own composition (the claim back to stat tiles 11; the
+lifecycle counts stop leading with `completed` 12; the two surfaces' refusal wording drifts apart
+13; the Profile invents an achievement shelf 14; a fourth tab is registered 15). **All 16 red.**
+
+`i8b-render.mjs` is §6's matrix: **five device contexts** (`devices['iPhone SE']`,
+`devices['iPhone 14']`, `devices['iPad Mini']`, 1280 × 800, 1600 × 900 — profiles, not bare
+viewports, so touch and DPR are emulated) × **both colour schemes**, plus the driven paths.
+Sections: **A** layout integrity (no overflow, nothing past the viewport, no clipping, the dead-space
+ceiling, and *wide adds no layout* by diffing every content width at 1280 against 1600);
+**B** touch and pointer; **C** safe area and viewport units; **D** focus, keyboard and semantics;
+**E** visual identity (11 px floor, the two I-8a removals, WCAG AA in both schemes, P3, P4's
+≥ 2.5× ratio and the three-levels rule, the nesting ceiling, P6's budget); **F** driven interaction
+(tap/tap-again/`Enter` on a country row, `prefers-reduced-motion`, arrow-key tab traversal, all
+three tabs cycled with the world map's `viewBox` compared before and after, then the refusal,
+empty, provisional and rescan paths); **G** the map gesture ceiling; **H** the injected faults,
+rendered. It reports **293 ok / 0 FAIL / 0 MISMATCH**.
+
+**Three things in it are worth copying into the next surface probe.**
+
+1. **Hit areas are measured with `elementFromPoint`, not with `getBoundingClientRect`.** `.icon`'s
+   44 × 44 target is a **pseudo-element**, which has no rect, so a rect-based probe can see neither
+   the fix nor the fault. Two corrections were needed and both are recorded in the file: probe the
+   **edge midpoints**, never the corners (hit-testing honours `border-radius`, so a corner probe
+   misses a 26 × 26 control with a 6 px radius by 1.5 px and reports a rounding artefact as a
+   target-size defect), and **nudge a point off the viewport edge by a sub-pixel** (a bottom bar's
+   own bottom edge *is* `innerHeight`, which `elementFromPoint` rejects).
+2. **Section H injects each fault as a stylesheet over the shipped build.** One page load per
+   fault, no `vite build`, so a rendered fault matrix is affordable. It is also the only place
+   ROADMAP I-8b's touch-target criterion can be fully discharged: restoring `.icon`'s 26 × 26 hit
+   area is **RED at the three touch contexts and GREEN at the two desktop ones**, which is what
+   proves the probe measures the touch matrix and not the page.
+3. **The nesting ceiling counts a *box*, not a *border*** — three or more visible sides. P4's rule
+   is about enclosure; counting a hairline separator would forbid the hairline-separated rows §5.3
+   asks for. Stated in the probe so the next reader does not "tighten" it into the wrong check.
+
+**§6.4's honest gap, and what was actually attempted.** `playwright install webkit` was run first,
+as §6.4 orders: the **download succeeded** (`/opt/pw-browsers/webkit-2215` is complete) and the
+**launch fails** on missing host libraries (`libgtk-4.so.1`, `libgraphene-1.0.so.0`,
+`libwoff2dec.so.1.0.2`, `libvpx.so.9` and ~15 more), which `playwright install-deps` would need
+root apt for. So §6.4 option 2 is what section C does: assert the `env(safe-area-inset-*)`
+declaration survives into the cascade, record that Chromium resolves it to `0px`, and re-assert the
+layout with the inset **forced to 34 px**. **Real iOS/WebKit safe-area behaviour is unverified**
+and is recorded as such in `BUILD-NOTES.md`.
+
+**Two prior probes now carry stale assertions, and neither was edited.** Measured before and after
+by stashing, so the attribution is not a guess. `qa/r33-a11y.mjs` went **3 FAIL → 2 FAIL** — I-8b
+*fixes* two of round 33's own findings (`ArrowRight moves between tabs`, `the tablist is a single
+tab stop`); what is left is `tabs.length === 2` at line 85, **stale by design** because I-8b
+registers the third tab, and `mapStops < 60` → **478** at line 106, **pre-existing** and about the
+world map's per-country `tabIndex={0}`. `qa/i8a-signals.mjs` went **1 FAIL → 2 FAIL** — the
+pre-existing one is *"the Trips tab reports its own failure instead of blanking"* (line 260, stale
+since I-8c fixed what it was watching, as its own comment says), and the new one is
+`.tabbar__tab` count `=== 2` at line 252, stale for the same reason as `r33-a11y`'s. Both files
+are prior rounds' evidence; re-pointing them from a builder pass would be editing someone else's
+measurement.
+
 ## I-8j (2026-09-01) — A-54: the cells tile the container, a malformed ring is stated, latitude breaks the last tie
 
 Three independent fixes, one increment. §4.4 **A-54** supersedes **A-51 G7** in full (layout),

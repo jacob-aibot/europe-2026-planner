@@ -6,9 +6,21 @@
  * **The shell is a registry** (ROADMAP I-8a). Navigation is sized for **Trips · Map ·
  * Profile** and no fourth slot — I-8's *"no DISCOVER tab: a slot that exists to promise
  * something is the opposite of what this product's conventions say about presenting things
- * that are not yet true."* By the same rule, only the two tabs that have content are
- * registered here; **Profile is registered by I-8b, not stubbed now**. Adding it is one entry
- * in `TABS`, not a second shell.
+ * that are not yet true."* By the same rule, only tabs that have content are registered here.
+ * **I-8b registers the third**, which is the registration I-8a said it would be: one entry in
+ * `TABS`, not a second shell.
+ *
+ * **Navigation is bottom-anchored on phones — `docs/DESIGN.md` §3.3 R1**, and it is a CSS
+ * reposition rather than a second navigation: **same DOM, same `role="tablist"`, same three
+ * buttons, same order**. The reason is measured rather than asserted — the shipped bar sat at
+ * `top: 2.7rem` on a 390 × 664 viewport, which is the least reachable region of a phone held
+ * one-handed, and it is this product's only top-level navigation. From **split** (≥ 900) the bar
+ * returns above the content, inside the one sticky stacking context R2 rules (`.chrome` below),
+ * which is what removes the hardcoded `top: 2.7rem` the tab bar used to carry.
+ *
+ * **The tablist takes arrow keys** (§3.4). It was click-only, which is a real WAI-ARIA tabs gap,
+ * and §3.4 puts it in *"the increment that next opens `App.tsx`"* — this one. Roving tabindex,
+ * automatic activation, `Home`/`End`, and the arrows wrap.
  *
  * **Every registered panel stays mounted, and the inactive ones are `hidden`.** That is
  * deliberate on both maps. The trip map's Leaflet instance keeps its handle and its
@@ -25,9 +37,10 @@ import { store, useAppState, useDerived } from './store.ts';
 import { Library } from './views/Library.tsx';
 import { TripView } from './views/TripView.tsx';
 import { WorldMap } from './views/WorldMap.tsx';
+import { Profile } from './views/Profile.tsx';
 import { hasSample, sampleTrip } from './sample.ts';
 
-type TabId = 'trips' | 'map';
+type TabId = 'trips' | 'map' | 'profile';
 
 type TabContext = {
   state: AppState;
@@ -59,6 +72,20 @@ const TABS: TabSpec[] = [
     label: 'Map',
     render: ({ state, onError, go }) => (
       <WorldMap
+        state={state}
+        onError={onError}
+        onOpenTrip={(id) => {
+          go('trips');
+          void store.openTrip(id).catch((e: Error) => onError(e.message));
+        }}
+      />
+    ),
+  },
+  {
+    id: 'profile',
+    label: 'Profile',
+    render: ({ state, onError, go }) => (
+      <Profile
         state={state}
         onError={onError}
         onOpenTrip={(id) => {
@@ -255,8 +282,39 @@ export function App() {
         run: () => window.location.reload(),
       };
 
+  /**
+   * WAI-ARIA tabs keyboard support — `DESIGN.md` §3.4. Automatic activation (the arrow both
+   * moves focus and selects), which is the correct pattern for tabs whose panels are already
+   * mounted: every panel is rendered and only the inactive ones are `hidden`, so selecting one
+   * costs nothing and a manual-activation two-step would be ceremony over a free operation.
+   *
+   * Arrows wrap; `Home`/`End` go to first/last. The list is horizontal at every width — a bottom
+   * position is not a different widget (§3.5) — so `ArrowUp`/`ArrowDown` are deliberately left
+   * to the page, where they scroll.
+   */
+  const onTabKey = (e: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
+    const last = TABS.length - 1;
+    let next: number;
+    if (e.key === 'ArrowRight') next = index === last ? 0 : index + 1;
+    else if (e.key === 'ArrowLeft') next = index === 0 ? last : index - 1;
+    else if (e.key === 'Home') next = 0;
+    else if (e.key === 'End') next = last;
+    else return;
+    e.preventDefault();
+    setTab(TABS[next].id);
+    document.getElementById(`tabbtn-${TABS[next].id}`)?.focus();
+  };
+
   return (
     <div className="app">
+      {/*
+        **R2 — one sticky stacking context.** The topbar and the tab bar are sticky *together*,
+        as a single `position: sticky; top: 0` wrapper, so the second element's offset is the
+        first element's real height whatever it turns out to be. What this replaces is the tab
+        bar's `top: 2.7rem`: a hardcoded number equal to the topbar's height at its current
+        content, which any topbar wrap made wrong by stacking the two on top of each other.
+      */}
+      <div className="chrome">
       <header className="topbar">
         <button
           className="topbar__brand"
@@ -286,9 +344,13 @@ export function App() {
         The tab bar. `role="tablist"` with real `aria-selected` state, because these are the
         product's top-level surfaces and a screen reader has to be able to tell which one is
         showing. Rendered from `TABS` — a tab cannot appear without something to render.
+
+        **A bottom position is not a different widget** (§3.5): at base this is `position: fixed`
+        at the bottom of the viewport and it is still exactly this markup. `tabIndex` is a roving
+        one, so the tablist is a single tab stop and the arrows move inside it.
       */}
       <nav className="tabbar" role="tablist" aria-label="Cairn">
-        {TABS.map((t) => (
+        {TABS.map((t, i) => (
           <button
             key={t.id}
             id={`tabbtn-${t.id}`}
@@ -297,12 +359,15 @@ export function App() {
             type="button"
             aria-selected={t.id === tab}
             aria-controls={`tabpanel-${t.id}`}
+            tabIndex={t.id === tab ? 0 : -1}
+            onKeyDown={(e) => onTabKey(e, i)}
             onClick={() => setTab(t.id)}
           >
             {t.label}
           </button>
         ))}
       </nav>
+      </div>
 
       {error && (
         <div className="banner banner--error" role="alert">

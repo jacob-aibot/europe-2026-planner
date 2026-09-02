@@ -19,6 +19,59 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
+> **🧭 THE PROFILE SCREEN IS BUILT — as of 2026-09-02 (this block is the newest; it supersedes
+> every block below on *"what happens next"* and on I-8b's status, and nothing else).**
+>
+> **I-8b is designed ✅ · built ✅ · verified ❌ · shippable ❌.** The screen exists and runs. It has
+> **not** been through an adversarial round yet, and nobody has said it may ship — those are the
+> next two steps and they are deliberately not skipped.
+>
+> **What you can do now.** Open Cairn on a phone and there is a third tab, **Profile**. It opens on
+> one large line — *"6 countries · 8 cities · 36 days travelled"* — and under it your countries, one
+> per line, each with the months you were there, how many trips, and the cities underneath. Tap a
+> country and its trips slide open in place; tap again and they close. At the bottom, a short block
+> that says plainly **what we could not work out** — how many of your located records we could not
+> put on a country, and out of how many. Nothing on the screen is invented: no photos, no badges,
+> no "coming soon".
+>
+> **Navigation moved to the bottom of the screen on a phone.** That is the biggest practical change
+> in this pass: the tabs used to sit near the top, which is the hardest part of a phone to reach
+> one-handed, and they are now a bar at the bottom, above the home indicator. On a tablet or a
+> desktop they go back to the top, where there is room. It is the *same* three tabs either way —
+> just repositioned — and the arrow keys now move between them for keyboard users.
+>
+> **The three phone defects the design round found are fixed.** The app now pads for the iPhone's
+> notch and home-indicator area (it previously opted into that space and never allowed for it); the
+> tab bar no longer sits at a hardcoded offset that a long trip title could break; and **every
+> button is now at least 44 × 44 px to a finger** — the little icon buttons keep their small look
+> and gain an invisible larger tap area, and the gaps between them grew so they cannot be hit by
+> mistake.
+>
+> **Two contrast fixes came out of measuring, and they affect every screen, not just this one.**
+> The grey used for secondary text everywhere in Cairn was **below the accessibility standard** for
+> small text — it has been darkened until it clears it on every background it lands on. And a
+> finished trip's chip was exactly as quiet as a trip that has not happened yet; a past trip now
+> reads at **full strength**, which is a rule the design document sets out and a test now enforces.
+>
+> **How it was checked.** The screen was rendered and measured at five real device sizes — iPhone
+> SE, iPhone 14, iPad Mini, a laptop and a wide desktop — **in both light and dark mode**, 293
+> separate checks, all passing: nothing overflows or gets clipped, every control is big enough to
+> tap, focus is always visible, the reading order matches what you see, text meets the contrast
+> standard, and the one animation on the screen is short and turns off entirely if you have reduced
+> motion switched on. Every rule also had a **deliberately broken version run against it** to prove
+> the check would actually catch the problem — 16 in plain Node, 9 in the browser, all caught.
+> Screenshots were taken at every size and looked at; five real problems were found by looking that
+> no automated check had caught, and all five were fixed.
+>
+> **One thing is honestly not verified: how the iPhone notch and home-indicator spacing behaves on
+> a real iPhone.** Only one browser engine is installed in this environment, and it does not
+> simulate that. The correct code is there and was checked with the spacing forced on artificially,
+> but **nobody has run this on an actual iPhone**, and this board does not claim otherwise.
+>
+> **No new dependency was added. The map is untouched.** Phase 2b still needs the adversarial round
+> and a manager's decision before it can be called shipped.
+
+
 > **🎨 CAIRN NOW HAS A WRITTEN LOOK, AND THE PROFILE SCREEN HAS A DESIGN TO BUILD TO — as of
 > 2026-09-01 (this block is the newest; it supersedes every block below on *"what happens next"*
 > and on the tie-break attribution, and nothing else).**

@@ -67,11 +67,12 @@ export function lifecycleLabel(stage: Lifecycle): string {
  * the month or the year, printing "1 March – 31 March" would state something they did not
  * claim, which is the one convention `CLAUDE.md` calls absolute. Pure.
  */
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'];
+
 export function dateRangeLabel(
   trip: { startDate: string; endDate: string; datePrecision: DatePrecision },
 ): string {
-  const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'];
   const [y, m] = trip.startDate.split('-');
   if (trip.datePrecision === 'year') return y;
   if (trip.datePrecision === 'month') return `${MONTHS[Number(m) - 1] ?? m} ${y}`;
@@ -98,4 +99,23 @@ export function dateRangeLabel(
  */
 export function storedDatesLabel(trip: { startDate: string; endDate: string }): string {
   return `${trip.startDate} → ${trip.endDate}`;
+}
+
+/**
+ * A month and a year from an `IsoDate`, for the Profile's span line — ROADMAP Phase 2
+ * **I-8b**, `docs/DESIGN.md` §5.3 (*"across 3 trips, from Aug 2019 to Aug 2026"*).
+ *
+ * **This is not `dateRangeLabel` and may not be routed through it.** That function answers
+ * *"how does this TRIP's range read given how sure the user was"* and branches on
+ * `datePrecision`. Its subject here is a `TravelStatsCountry.firstVisit` — a value core
+ * **derived** from the whole library, which carries no precision of its own and belongs to no
+ * single trip. Applying a trip's precision to it would be a claim about a value that has none.
+ *
+ * A month name is the deliberate ceiling on what this prints: the day of a first visit is a
+ * fact about one trip, and the span line is a fact about a travel life. Pure.
+ */
+export function monthYearLabel(iso: string): string {
+  const [y, m] = iso.split('-');
+  const name = MONTHS[Number(m) - 1];
+  return name ? `${name.slice(0, 3)} ${y}` : iso;
 }
