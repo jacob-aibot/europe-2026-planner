@@ -26,6 +26,9 @@ version. Updating means re-copying from upstream, deliberately.
 | `verification-before-completion` | obra/superpowers | Evidence before "it works". Directly answers what the `manager` agent checks. |
 | `emil-design-eng` | [emilkowalski/skills](https://github.com/emilkowalski/skills) (MIT) | UI polish, component feel, and the invisible details. **Construction-time craft only** — `cairn/docs/DESIGN.md` §1 outranks it. A-55. |
 | `animate` | emilkowalski/skills (MIT) | Decides whether a thing should animate *before* picking a curve, duration, property and interruption. The source of `DESIGN.md` **P6**'s motion budget. A-55. |
+| `prototype` | emilkowalski/skills (MIT) @ `d23d7f8` | Builds several **genuinely different** alternatives behind a picker and stops for the user to choose. **Vendored 2026-09-02 under Jacob's visual-direction ruling**, which names it by name. `PICKER.md` is copied verbatim and is not a design decision. |
+| `review-animations` | emilkowalski/skills (MIT) @ `d23d7f8` | Reviews motion against ten non-negotiable standards; default is to flag, approval is earned. **Vendored 2026-09-02 under the same ruling** ("animation review before any motion is approved"). |
+| `impeccable` | [pbakaus/impeccable](https://github.com/pbakaus/impeccable) (Apache-2.0) @ `c0f4952`, skill 4.1.3 | Design guidance + a **deterministic detector** (`scripts/detect.mjs`) that scans rendered URLs and source files for anti-patterns. **Vendored 2026-09-02 under Jacob's ruling**, which upgrades A-55's "selective use" to mandatory operational use. Pin in `impeccable/PINNED-REVISION.txt`. Its detector needs four npm parser modules and puppeteer; those are installed **outside the repo** and symlinked in for a scan, so Cairn still takes no dependency. **Its design hook is deliberately NOT installed** — `REFERENCE-BOARD.md` §9 says why. Advisory: it never outranks the reference board or Jacob's approval. |
 
 ## Deliberately not installed
 
@@ -33,15 +36,18 @@ version. Updating means re-copying from upstream, deliberately.
   response including clarifying questions". That hijacks every turn in the repo, including trip-planner
   edits, and contradicts `CLAUDE.md`'s concision rule. The individual skills work without it; the
   `superpowers:`-prefixed cross-references inside them were rewritten to the bare names used here.
-- **The other ten `emilkowalski/skills`** — `review-animations`, `improve-animations`,
+- **The other eight `emilkowalski/skills`** *(was ten; `prototype` and `review-animations` were
+  vendored on 2026-09-02 — see the table above)* — `improve-animations`,
   `find-animation-opportunities`, `animation-vocabulary`, `animate-expo`, `apple-design`, `write-swift`,
-  `prototype`, `ask-sonner` and **`pick-ui-library`**. The last one is the load-bearing omission: Cairn's
+  `ask-sonner` and **`pick-ui-library`**. The last one is the load-bearing omission: Cairn's
   library choices are ruled in **A-55**, and a skill that recommends a UI library would be a second
   authority on the one question this project most needs a single answer to. The audit-shaped ones
   (`review-animations`, `improve-animations`) overlap the breaker stage and `DESIGN.md` §6, which is the
   same overlap Impeccable's scored rubric was refused for. `animate-expo`/`write-swift`/`apple-design`
   become relevant only if `apps/mobile` is built.
-- **Impeccable** ([pbakaus/impeccable](https://github.com/pbakaus/impeccable), Apache-2.0) — **approved
+- **Impeccable** — *this entry is superseded.* It was **vendored on 2026-09-02**; see the table above.
+  The original reasoning is kept below because the fences it describes still apply.
+  Historically: **approved
   for vendoring by A-55 and deliberately not vendored in the same pass**, so its behaviour can be watched
   on its own. Its *content* is already here in resident form: `cairn/docs/VISUAL-TELLS.md` is a hand-picked
   subset of its detector rules, restated as prose. If it is vendored: **the skill payload only** — no

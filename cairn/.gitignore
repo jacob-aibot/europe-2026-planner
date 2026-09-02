@@ -2,3 +2,8 @@
 # generated at build time from the adjacent planner — never committed (ARCHITECTURE §2.11)
 apps/web/src/sample/europe2026.json
 apps/web/dist/
+
+# Impeccable's detector needs htmlparser2/css-select/css-tree/domutils (and puppeteer for URL
+# scans). Cairn takes no new runtime or dev dependency for them: they are installed outside the
+# repo and symlinked here for the duration of a scan. See docs/design/DIRECTIONS.md §4.1.
+.claude/skills/impeccable/node_modules/
