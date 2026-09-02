@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cairn — Direction C · Spatial exploration</title>
+<link rel="stylesheet" href="../tokens.css">
+<style>
+/* =============================================================================
+   DIRECTION C — SPATIAL EXPLORATION
+
+   Composition thesis: one continuous canvas, near-achromatic and very light — Cosmos's own
+   register, measured off the board (its most saturated pixel is #e2e1de, median luma 245).
+   Confidence comes from scale, space and weight, not from colour. Controlled asymmetry: labels
+   sit off-axis against the geography they belong to, at deliberately unequal sizes.
+
+   Interaction thesis: SEMANTIC ZOOM. Three levels, and moving between them changes WHAT things
+   are, not how big they are:
+      World     — a journey is one mark; its size is days travelled.
+      Countries — countries resolve; each carries its own years and journeys.
+      Places    — the real trip's cities and stops resolve, with times.
+   Drag to pan at every level. This is neither A's drill-in nor B's narrative scroll.
+
+   Map rule (tokens.css) holds: all land always drawn, visited as an overlay, one accent.
+   ========================================================================== */
+
+html, body { height: 100%; overflow: hidden; background: var(--ground); }
+
+#canvas { position: fixed; inset: 0; cursor: grab; touch-action: none; overflow: hidden; }
+#canvas[data-drag] { cursor: grabbing; }
+/* THE ONE AUTHORED MOTION IN ALL THREE DIRECTIONS.
+   Justified (standard 1): moving between semantic zoom levels changes what every mark MEANS, and
+   the pan reset that comes with it would otherwise teleport. 260ms (standard 4, under 300).
+   `cubic-bezier(.22,.61,.36,1)` — decelerating, a real curve, never `ease-in` (standard 3).
+   `transform` only, GPU (standard 7). A CSS transition rather than keyframes, so a second zoom
+   press retargets from wherever the first got to (standard 6). Suppressed entirely while a drag
+   is in progress, because a direct-manipulation gesture must track the finger with no easing at
+   all, and zeroed under `prefers-reduced-motion` (standard 8). */
+#layer { position: absolute; inset: 0; transform-origin: 0 0;
+         transition: transform 260ms var(--ease); will-change: transform; }
+#canvas[data-drag] #layer { transition: none; }
+@media (prefers-reduced-motion: reduce) { #layer { transition: none; } }
+
+svg { display: block; width: 100%; }   /* height is set per level in draw(); see the band note */
+.land      { fill: #e2ddd2; stroke: #d3cdc0; stroke-width: .4; }
+.seen      { fill: #cfd8cf; stroke: #8f9a8c; stroke-width: .9; }
+.planned   { fill: none; stroke: #a9a396; stroke-width: 1.1; stroke-dasharray: 4 3; }
+.route     { fill: none; stroke: var(--ink); stroke-width: 1.6; stroke-linecap: round;
+             stroke-linejoin: round; }
+.route--planned { stroke-dasharray: 5 4; stroke: var(--ink-2); }
+.dot       { fill: var(--ground); stroke: var(--ink); stroke-width: 2; }
+.dot--sel  { fill: var(--accent); stroke: var(--ground); stroke-width: 2.5; }
+
+/* --- the marks: asymmetric, deliberately unequal ------------------------- */
+.mark { position: absolute; transform: translate(-50%, -50%); pointer-events: auto; }
+.mark button { display: block; text-align: left; padding: 8px 10px; border-radius: 10px;
+               min-height: 44px; min-width: 44px; }
+.mark button:focus-visible { background: rgba(22,23,20,.06); }
+@media (hover: hover) and (pointer: fine) {
+  .mark button:hover { background: rgba(22,23,20,.06); }
+}
+.mark .big   { font-size: clamp(1.35rem, 3.4vw, 2.4rem); font-weight: 700; letter-spacing: -.035em;
+               line-height: .96; }
+.mark .mid   { font-size: 1.05rem; font-weight: 700; letter-spacing: -.02em; }
+.mark .small { font-size: var(--t-small); font-weight: 600; }
+.mark .sub   { display: block; font-size: var(--t-micro); color: var(--ink-2); font-weight: 600;
+               letter-spacing: .05em; text-transform: uppercase; margin-top: 3px; }
+.mark[data-planned] .big, .mark[data-planned] .mid { color: var(--ink-2); }
+.mark[data-sel] .big, .mark[data-sel] .mid { color: var(--accent-ink); }
+.mark .tick { display: block; width: 1px; height: 26px; background: var(--ink-2); margin: 0 auto 2px;
+              opacity: .45; }
+
+/* A journey's weight at World level: the disc IS the days travelled. */
+.orb { position: absolute; transform: translate(-50%, -50%); border-radius: 50%;
+       background: rgba(22,23,20,.1); border: 1.5px solid rgba(22,23,20,.35); pointer-events: none; }
+.orb[data-planned] { background: none; border-style: dashed; }
+/* Keeps a moved label attached to the geography it belongs to. */
+.leader { position: absolute; width: 1px; background: rgba(22,23,20,.28); transform: translateX(-50%);
+          pointer-events: none; }
+
+/* --- chrome: minimal, top-left; the canvas is the product ---------------- */
+.brand { position: fixed; top: calc(16px + var(--safe-t)); left: 20px; z-index: 5;
+         display: flex; align-items: baseline; gap: 10px; }
+.brand b { font-size: 19px; font-weight: 800; letter-spacing: -.03em; }
+.brand span { font-size: var(--t-micro); letter-spacing: .09em; text-transform: uppercase;
+              font-weight: 700; color: var(--accent-ink); }
+
+.zoom { position: fixed; z-index: 5; left: 50%; transform: translateX(-50%);
+        bottom: calc(18px + var(--safe-b)); display: flex; gap: 2px; padding: 4px;
+        background: rgba(242,239,233,.92); backdrop-filter: blur(8px);
+        border: 1px solid rgba(22,23,20,.14); border-radius: var(--r-pill); }
+.zoom button { min-height: 44px; padding: 0 16px; border-radius: var(--r-pill);
+               font-size: var(--t-small); font-weight: 700; color: var(--ink-2); }
+.zoom button[aria-pressed="true"] { background: var(--ink); color: var(--ground); }
+
+.readout { position: fixed; z-index: 5; top: calc(14px + var(--safe-t)); right: 16px;
+           text-align: right; max-width: 46vw; }
+.readout b { display: block; font-size: var(--t-small); font-weight: 700; }
+.readout span { display: block; font-size: var(--t-micro); color: var(--ink-2); margin-top: 2px;
+                line-height: 1.4; }
+
+/* --- the gaps note, pinned low-left; part of the composition ------------- */
+.holes { position: fixed; z-index: 5; left: 20px; bottom: calc(20px + var(--safe-b));
+         max-width: 15rem; font-size: var(--t-micro); color: var(--ink-2); line-height: 1.5;
+         border-left: 1px solid rgba(22,23,20,.2); padding-left: 11px; }
+.holes b { color: var(--ink); font-variant-numeric: tabular-nums; }
+@media (max-width: 899px) { .holes { display: none; } }
+
+/* ========================= DESKTOP RECOMPOSITION =========================
+   The phone is canvas-only: you pan and zoom, and the readout tells you where you are.
+   Desktop keeps the canvas AND opens a permanent index beside it — everything the record
+   holds, always legible, highlighting with the canvas. Two ways to hold the same space. */
+#index { display: none; }
+@media (min-width: 1000px) {
+  #canvas { left: 320px; }
+  .brand { left: 26px; }
+  .zoom { left: calc(320px + (100vw - 320px) / 2); }
+  .holes { left: 26px; max-width: 268px; }
+
+  #index { display: block; position: fixed; z-index: 4; top: 0; bottom: 0; left: 0; width: 320px;
+           background: var(--ground-2); border-right: 1px solid var(--hair);
+           padding: 76px 24px 200px; overflow-y: auto; }
+  #index h2 { font-size: var(--t-micro); letter-spacing: .1em; text-transform: uppercase;
+              color: var(--ink-2); margin-bottom: 6px; }
+  .ix { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; width: 100%; text-align: left;
+        padding: 12px 0; min-height: 52px; border-top: 1px solid var(--hair); align-items: center; }
+  .ix b { font-weight: 700; letter-spacing: -.015em; }
+  .ix small { grid-column: 1; font-size: var(--t-small); color: var(--ink-2); }
+  .ix i { grid-column: 2; grid-row: 1 / span 2; font-style: normal; font-size: var(--t-micro);
+          font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); }
+  .ix[data-sel] b { color: var(--accent-ink); }
+  @media (hover: hover) and (pointer: fine) { .ix:hover { background: rgba(22,23,20,.04); } }
+}
+</style>
+</head>
+<body>
+<div class="brand"><b>Cairn</b><span>Everywhere</span></div>
+<div class="readout" id="readout"></div>
+<aside id="index"></aside>
+
+<div id="canvas">
+  <div id="layer">
+    <svg id="map" role="img" aria-label="Your travel, laid out in space"></svg>
+    <div id="marks"></div>
+  </div>
+</div>
+
+<div class="holes" id="holes"></div>
+
+<nav class="zoom" aria-label="Zoom level">
+  <button type="button" data-z="0" aria-pressed="true">World</button>
+  <button type="button" data-z="1" aria-pressed="false">Countries</button>
+  <button type="button" data-z="2" aria-pressed="false">Places</button>
+</nav>
+
+<script type="module">
+import { loadData, plate, ringPath, linePath, greatCircle, fitWindow, fmtSpan, nights, el }
+  from '../shared.js';
+import { buildModel } from '../model.js';
+
+const data = await loadData();
+const M = buildModel(data);
+const { world, region } = data;
+const trip = M.realTrip;
+
+const canvas = document.getElementById('canvas');
+const layer = document.getElementById('layer');
+const svg = document.getElementById('map');
+const marks = document.getElementById('marks');
+
+/* Three levels. Each names its own window as a LITERAL — nothing measures a container. */
+const LEVELS = [
+  { name: 'World',     win: [-165, -58, 178, 78] },   /* mobile shifts this band up — see draw() */
+  { name: 'Countries', win: [-14, 34, 44, 62] },
+  { name: 'Places',    win: [12.6, 41.6, 20.4, 51.2] },
+];
+let z = 0, pan = { x: 0, y: 0 }, sel = null;
+
+function box() { const r = canvas.getBoundingClientRect(); return { w: Math.round(r.width), h: Math.round(r.height) }; }
+
+function draw() {
+  const { w, h } = box();
+  /* On a phone the World band is drawn in the upper half and the labels take the lower half.
+     `plate()` still receives one explicit window; only the box it is fitted into changes. */
+  const mapH = (z === 0 && w < 700) ? Math.round(h * 0.42) : h;
+  const proj = plate({ win: fitWindow(LEVELS[z].win, w, mapH), w, h: mapH });
+  svg.setAttribute('viewBox', `0 0 ${w} ${mapH}`);
+  svg.style.height = `${mapH}px`;
+  svg.textContent = '';
+  marks.textContent = '';
+
+  const src = z === 0 ? world : region;
+  for (const c of src.countries) {
+    const d = c.r.map((r) => ringPath(r, proj)).join('');
+    if (d) svg.appendChild(el('path', { class: 'land', d }));
+  }
+  for (const c of src.countries) {
+    const seen = M.visited.has(c.c), plan = M.plannedOnly.has(c.c);
+    if (!seen && !plan) continue;
+    const d = c.r.map((r) => ringPath(r, proj)).join('');
+    if (d) svg.appendChild(el('path', { class: seen ? 'seen' : 'planned', d }));
+  }
+
+  if (z === 0) drawWorld(proj);
+  else if (z === 1) drawCountries(proj);
+  else drawPlaces(proj);
+
+  readout();
+  index();
+}
+
+/* --- level 0: a journey is ONE mark, and its size is how long it lasted ---- */
+function drawWorld(proj) {
+  /* Four of the five journeys sit inside Europe, so at world scale their labels land on top of
+     one another — the first mobile render stacked "Central Europe 2019", "Europe 2026",
+     "London 2026" and "Croatia 2022" into an illegible pile. The orb stays on the geography;
+     the LABEL is allowed to move, and a leader line keeps the two attached. This is label
+     placement, not geography: no coordinate is changed and no clustering is invented. */
+  const placed = [];
+  const { w, h } = box();
+  const narrow = w < 700;
+
+  for (const j of M.journeys) {
+    const pts = M.anchorsOf(j);
+    if (!pts.length) continue;
+    const lat = pts.reduce((n, p) => n + p.lat, 0) / pts.length;
+    const lng = pts.reduce((n, p) => n + p.lng, 0) / pts.length;
+    const [x, y] = proj.project(lng, lat);
+    const days = nights(j.start, j.end) + 1;
+    const r = 12 + days * 1.4;                       /* the disc IS the duration */
+    marks.appendChild(el('div', { class: 'orb', 'data-planned': j.state === 'planned' || null,
+      style: `left:${x}px;top:${y}px;width:${r * 2}px;height:${r * 2}px` }));
+    placed.push({ j, x, y, r, days });
+  }
+
+  /* De-collide downward, in reading order, with a real minimum gap. On a phone the labels drop
+     into the band below the map, which is where the dead space was. */
+  const GAP = narrow ? 54 : 74;
+  placed.sort((a, b) => a.y - b.y || a.x - b.x);
+  let floor = narrow ? h * 0.44 : 0;
+  for (const p of placed) {
+    p.ly = Math.max(p.y - p.r - 30, floor);
+    if (p.ly < floor) p.ly = floor;
+    floor = p.ly + GAP;
+    p.lx = narrow ? Math.min(Math.max(p.x, 96), w - 96) : p.x;
+  }
+
+  for (const p of placed) {
+    const { j, days } = p;
+    if (Math.abs(p.ly - (p.y - p.r)) > 14) {
+      const line = el('div', { class: 'leader', style:
+        `left:${p.x}px;top:${Math.min(p.y, p.ly)}px;height:${Math.abs(p.ly - p.y)}px` });
+      marks.appendChild(line);
+    }
+    const m = el('div', { class: 'mark', 'data-planned': j.state === 'planned' || null,
+      'data-sel': sel === j.id || null, style: `left:${p.lx}px;top:${p.ly}px` });
+    const b = el('button', { type: 'button', onclick: () => pick(j) });
+    b.appendChild(el('span', { class: days > 12 && !narrow ? 'big' : 'mid', text: j.name }));
+    b.appendChild(el('span', { class: 'sub', text: `${days} days · ${j.countries.join(' ')}` }));
+    m.appendChild(b);
+    marks.appendChild(m);
+  }
+  /* The real trip's long-haul leg, still drawn: it is the only thing at this scale that shows
+     the record has a shape rather than a set of positions. */
+  if (M.home) {
+    const d = linePath(greatCircle(M.home, trip.cities[0].at, 64), proj);
+    if (d) svg.appendChild(el('path', { class: 'route', d }));
+  }
+}
+
+/* --- level 1: countries resolve, each with its own years ------------------ */
+function drawCountries(proj) {
+  const byCode = new Map();
+  for (const j of M.journeys) for (const c of j.countries) {
+    if (!byCode.has(c)) byCode.set(c, []);
+    byCode.get(c).push(j);
+  }
+  for (const [code, js] of byCode) {
+    const pt = js.flatMap((j) => (j.detail === 'full'
+      ? j.cities.filter((c) => c.country === code).map((c) => c.at)
+      : (j.points ?? []).filter((p) => p.code === code).map((p) => p.at)))[0];
+    if (!pt) continue;
+    const [x, y] = proj.project(pt.lng, pt.lat);
+    if (x < -80 || y < -80 || x > box().w + 80 || y > box().h + 80) continue;
+    const years = [...new Set(js.map((j) => j.start.slice(0, 4)))].sort();
+    const allPlanned = js.every((j) => j.state === 'planned');
+    const m = el('div', { class: 'mark', 'data-planned': allPlanned || null,
+      'data-sel': sel === code || null, style: `left:${x}px;top:${y}px` });
+    const b = el('button', { type: 'button', onclick: () => { sel = code; draw(); } });
+    b.appendChild(el('span', { class: 'tick' }));
+    b.appendChild(el('span', { class: js.length > 1 ? 'big' : 'mid', text: M.countryName(code) }));
+    b.appendChild(el('span', { class: 'sub', text: `${years.join(' · ')} · ${js.length} journey${js.length > 1 ? 's' : ''}` }));
+    m.appendChild(b);
+    marks.appendChild(m);
+  }
+  const seq = M.sequence(trip, null);
+  for (let i = 0; i < seq.length - 1; i++) {
+    const d = linePath(greatCircle(seq[i], seq[i + 1], 24), proj);
+    if (d) svg.appendChild(el('path', { class: 'route', d }));
+  }
+}
+
+/* --- level 2: the real trip's cities and stops, with times ---------------- */
+function drawPlaces(proj) {
+  const seq = trip.cities.map((c) => ({ ...c.at, name: c.name, key: c.key }));
+  for (let i = 0; i < seq.length - 1; i++) {
+    const d = linePath(greatCircle(seq[i], seq[i + 1], 24), proj);
+    if (d) svg.appendChild(el('path', { class: 'route', d }));
+  }
+  for (const day of trip.days) {
+    for (const s of day.stops) {
+      if (!s.at) continue;
+      const [x, y] = proj.project(s.at.lng, s.at.lat);
+      svg.appendChild(el('circle', { class: 'dot', cx: x.toFixed(1), cy: y.toFixed(1), r: 2.4,
+        'stroke-width': 1.2 }));
+    }
+  }
+  seq.forEach((c, i) => {
+    const [x, y] = proj.project(c.lng, c.lat);
+    svg.appendChild(el('circle', { class: sel === c.key ? 'dot dot--sel' : 'dot',
+      cx: x.toFixed(1), cy: y.toFixed(1), r: 6 }));
+    const days = trip.days.filter((d) => d.city === c.key);
+    const stops = days.flatMap((d) => d.stops).length;
+    const m = el('div', { class: 'mark', 'data-sel': sel === c.key || null,
+      style: `left:${x}px;top:${y - 30}px` });
+    const b = el('button', { type: 'button', onclick: () => { sel = c.key; draw(); } });
+    b.appendChild(el('span', { class: i % 2 ? 'mid' : 'big', text: c.name }));
+    b.appendChild(el('span', { class: 'sub', text: `${days.length} days · ${stops} stops` }));
+    m.appendChild(b);
+    marks.appendChild(m);
+  });
+}
+
+function pick(j) { sel = j.id; if (z === 0) setZoom(1); else draw(); }
+
+/* ------------------------------------------------------------------ chrome */
+function readout() {
+  const r = document.getElementById('readout');
+  r.textContent = '';
+  r.appendChild(el('b', { text: LEVELS[z].name }));
+  r.appendChild(el('span', { text: z === 0
+    ? `${M.journeys.length} journeys · ${M.visited.size} countries · ${M.daysTravelled} days`
+    : z === 1 ? `${M.visited.size} countries visited, ${M.plannedOnly.size} planned`
+      : `${trip.name} · ${trip.counts.stops} stops, all with a coordinate` }));
+}
+
+function index() {
+  const ix = document.getElementById('index');
+  ix.textContent = '';
+  ix.appendChild(el('h2', { text: 'The record' }));
+  for (const j of M.journeys) {
+    const b = el('button', { class: 'ix', type: 'button', 'data-sel': sel === j.id || null,
+      onclick: () => pick(j) });
+    b.appendChild(el('b', { text: j.name }));
+    b.appendChild(el('small', { text:
+      `${fmtSpan(j.start, j.end)} · ${nights(j.start, j.end) + 1} days · ${j.countries.join(' ')}`
+      + (j.detail === 'full' ? '' : ' · country-level') }));
+    b.appendChild(el('i', { text: M.stateLabel(j.state) }));
+    ix.appendChild(b);
+  }
+}
+
+{
+  const h = document.getElementById('holes');
+  h.appendChild(el('b', { text: String(M.unattributed) }));
+  h.appendChild(document.createTextNode(
+    ` of ${M.census.located} located records could not be matched to a country — they are nowhere on this canvas. `));
+  h.appendChild(document.createTextNode(
+    'Trips recorded afterwards hold a country and no coordinates, so they never resolve past Countries.'));
+}
+
+/* --- zoom + pan ----------------------------------------------------------- */
+function setZoom(n) {
+  z = Math.max(0, Math.min(2, n));
+  pan = { x: 0, y: 0 };
+  layer.style.transform = 'translate(0px, 0px)';
+  for (const b of document.querySelectorAll('.zoom button')) {
+    b.setAttribute('aria-pressed', String(+b.dataset.z === z));
+  }
+  draw();
+}
+for (const b of document.querySelectorAll('.zoom button')) {
+  b.addEventListener('click', () => setZoom(+b.dataset.z));
+}
+document.addEventListener('keydown', (e) => {
+  if (/^(INPUT|TEXTAREA)$/.test(e.target.tagName)) return;
+  if (e.key === '+' || e.key === '=' || e.key === 'ArrowDown') setZoom(z + 1);
+  if (e.key === '-' || e.key === '_' || e.key === 'ArrowUp') setZoom(z - 1);
+});
+
+let drag = null;
+canvas.addEventListener('pointerdown', (e) => {
+  if (e.target.closest('button')) return;
+  drag = { x: e.clientX - pan.x, y: e.clientY - pan.y };
+  canvas.setAttribute('data-drag', ''); canvas.setPointerCapture(e.pointerId);
+});
+canvas.addEventListener('pointermove', (e) => {
+  if (!drag) return;
+  pan = { x: e.clientX - drag.x, y: e.clientY - drag.y };
+  layer.style.transform = `translate(${pan.x}px, ${pan.y}px)`;
+});
+const end = () => { drag = null; canvas.removeAttribute('data-drag'); };
+canvas.addEventListener('pointerup', end);
+canvas.addEventListener('pointercancel', end);
+
+let t; addEventListener('resize', () => { clearTimeout(t); t = setTimeout(draw, 120); });
+setZoom(0);
+</script>
+</body>
+</html>

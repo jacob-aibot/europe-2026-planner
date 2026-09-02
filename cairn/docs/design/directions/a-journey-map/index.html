@@ -1,0 +1,577 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cairn — Direction A · Immersive journey map</title>
+<link rel="stylesheet" href="../tokens.css">
+<style>
+/* =============================================================================
+   DIRECTION A — IMMERSIVE JOURNEY MAP
+
+   Composition thesis: there is no page. A dark map occupies the whole viewport at every
+   width and every state. A single WHITE sheet rides on it — the tonal split Polarsteps uses,
+   read off the board, and the opposite of the grey-on-grey the rejected direction shipped.
+
+   Interaction thesis: ONE gesture — drill in. World → journey → day. Each step re-frames the
+   map and re-fills the one sheet. Back is the same gesture reversed.
+
+   Map rule (tokens.css): ALL land is always drawn. Visited is a wash laid over it. The route
+   is white, dashed where not yet travelled. The accent is spent only on what is selected.
+   ========================================================================== */
+
+html, body { height: 100%; overflow: hidden; background: var(--space); }
+
+#stage { position: fixed; inset: 0; background: var(--space); }
+
+/* --- the map ------------------------------------------------------------- */
+#map { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: pan-y; }
+#map .ocean      { fill: url(#ocean); }
+#map .limb       { fill: none; stroke: url(#limb); stroke-width: 16; opacity: .9; }
+#map .star       { fill: #cfe3ee; }
+#map .grat       { fill: none; stroke: #0f3347; stroke-width: .5; opacity: .55; }
+
+/* Land is ALWAYS drawn, continuously, in one tone. The world is never fragments. */
+#map .land       { fill: var(--land); stroke: var(--land-edge); stroke-width: .4; }
+/* Visited is an OVERLAY on that land, never a replacement for it. */
+#map .seen       { fill: var(--land-seen); fill-opacity: .95; stroke: #eaf5fb; stroke-width: .6; }
+/* Planned is an outline only, and it is never filled — it has not happened. */
+#map .planned    { fill: none; stroke: var(--provisional); stroke-width: 1.2; stroke-dasharray: 4 3; }
+
+#map .route      { fill: none; stroke: var(--route); stroke-width: 2.2; stroke-linecap: round;
+                   stroke-linejoin: round; }
+#map .route-case { fill: none; stroke: rgba(4,18,28,.55); stroke-width: 5; stroke-linecap: round; }
+#map .route--planned { stroke-dasharray: 6 5; opacity: .8; }
+#map .node       { fill: var(--space); stroke: var(--route); stroke-width: 2.4; }
+#map .node--live { fill: var(--live); stroke: #fff; stroke-width: 3; }
+#map .node--sel  { stroke: var(--accent); stroke-width: 3.4; }
+/* `color` as well as `fill`: an SVG <text> that only sets `fill` still computes `color` from
+   its inherited ink, and a contrast checker that reads `color` sees dark-on-dark. Driving the
+   fill from currentColor keeps the two in agreement. */
+#map .label      { font-family: var(--sans); font-size: 11.5px; font-weight: 600;
+                   color: #fff; fill: currentColor;
+                   paint-order: stroke; stroke: rgba(4,18,28,.9); stroke-width: 3.5px; }
+#map .nodenum    { font-family: var(--sans); font-size: 11px; font-weight: 800;
+                   color: var(--space); fill: currentColor;
+                   text-anchor: middle; font-variant-numeric: tabular-nums; }
+#map .hit        { cursor: pointer; }
+#map .hit-disc   { fill: transparent; cursor: pointer; }
+#map .hit:focus-visible .seen { fill: #fff; }
+@media (hover: hover) and (pointer: fine) {
+  #map .hit:hover .seen { fill: #fff; }
+}
+
+/* MOTION, and the whole of it on this direction: NONE.
+   The map re-frame was prototyped as a transition and deleted. Emil's review, standard 1: a
+   re-frame between two different projections is not a tween — the shapes are not the same shapes
+   — so an opacity fade over a re-render is decoration pretending to be continuity. The shipped
+   product also fences an animated re-frame (ARCHITECTURE A-40 W1: the frame is measurement-free
+   by ruling, and animating it is the fastest route back to the hidden-container bug). Deleting it
+   is the honest answer, and remedial-hierarchy step 1. */
+
+/* --- floating chrome ------------------------------------------------------ */
+.float { position: absolute; z-index: 3; }
+
+#brand { top: calc(16px + var(--safe-t)); left: 18px; display: flex; align-items: baseline; gap: 10px;
+         text-shadow: 0 1px 10px rgba(4,18,28,.85); }
+#brand b { font-size: 19px; font-weight: 800; letter-spacing: -.03em; color: #fff; }
+#brand span { font-size: var(--t-micro); color: rgba(255,255,255,.62); letter-spacing: .07em;
+              text-transform: uppercase; font-weight: 600; }
+
+#back { top: calc(12px + var(--safe-t)); right: 14px; display: none; align-items: center; gap: 7px;
+        min-height: 44px; min-width: 44px; padding: 0 16px 0 12px; border-radius: var(--r-pill);
+        background: #fff; color: var(--ink); font-size: var(--t-small); font-weight: 650;
+        box-shadow: 0 4px 14px rgba(4,18,28,.4); }
+#back[data-on] { display: flex; }
+#back svg { width: 15px; height: 15px; }
+
+/* --- the sheet: WHITE on the dark map ------------------------------------- */
+#sheet {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 4;
+  background: var(--ground-2);
+  color: var(--ink);
+  border-radius: var(--r-sheet) var(--r-sheet) 0 0;
+  padding-bottom: var(--safe-b);
+  /* PEEK, not full. The map is the page; the sheet must not eat it. 54svh leaves the whole
+     globe legible above the fold — the first render took 68 and cropped the globe at the
+     equator, which is the "fragments" failure arriving by a different route. */
+  max-height: 54svh;
+  display: flex; flex-direction: column;
+  box-shadow: 0 -14px 44px rgba(4,18,28,.55);
+}
+#grip { flex: none; height: 24px; display: grid; place-items: center; }
+#grip::after { content: ''; width: 40px; height: 4px; border-radius: 99px; background: #d3d0c9; }
+#sheetscroll { overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 2px 20px 24px; }
+
+/* --- the claim ------------------------------------------------------------ */
+.claim { font-size: var(--t-head); font-weight: 700; letter-spacing: -.03em; line-height: 1.06;
+         margin: 4px 0 8px; }
+.claim .n { font-variant-numeric: tabular-nums; }
+.undertone { color: var(--ink-2); font-size: var(--t-small); margin: 0 0 4px; max-width: 48ch;
+             line-height: 1.45; }
+
+.rowhead { font-size: var(--t-micro); letter-spacing: .1em; text-transform: uppercase;
+           color: var(--ink-2); font-weight: 700; margin: 22px 0 2px; }
+
+/* --- journeys ------------------------------------------------------------- */
+.j { display: grid; grid-template-columns: 1fr auto; gap: 2px 14px; width: 100%; text-align: left;
+     padding: 14px 0; min-height: 56px; align-items: center; border-top: 1px solid var(--hair); }
+.j-name { font-size: 1.06rem; font-weight: 700; letter-spacing: -.02em; grid-column: 1; }
+.j-meta { grid-column: 1; font-size: var(--t-small); color: var(--ink-2); }
+.j-side { grid-column: 2; grid-row: 1 / span 2; text-align: right; }
+.j-state { font-size: var(--t-micro); letter-spacing: .06em; text-transform: uppercase; font-weight: 700;
+           color: var(--ink-2); }
+.j-state[data-s="active"]  { color: var(--live); }
+.j-state[data-s="planned"] { color: var(--ink-2); }
+.j-swatch { display: block; width: 26px; height: 5px; border-radius: 99px; margin: 6px 0 0 auto;
+            background: var(--ink); }
+.j-swatch[data-planned] { background: none; border-top: 2px dashed var(--ink-2); height: 0; }
+.j:focus-visible .j-name { color: var(--accent-ink); }
+@media (hover: hover) and (pointer: fine) {
+  .j:hover .j-name { color: var(--accent-ink); }
+}
+
+/* --- days ----------------------------------------------------------------- */
+.day { display: block; width: 100%; text-align: left; padding: 13px 0; min-height: 56px;
+       border-top: 1px solid var(--hair); }
+.day-top { display: flex; align-items: baseline; gap: 10px; }
+.day-n { font-size: .95rem; font-weight: 800; color: var(--accent); min-width: 2.2em;
+         font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.day-city { font-size: var(--t-micro); color: var(--ink-2); letter-spacing: .08em;
+            text-transform: uppercase; font-weight: 700; }
+.day-title { font-size: var(--t-body); margin-top: 3px; line-height: 1.35; }
+.day[data-on] .day-title { color: var(--accent); font-weight: 600; }
+
+/* --- stops ---------------------------------------------------------------- */
+.stop { display: grid; grid-template-columns: 3.5em 1fr; gap: 3px 12px; padding: 11px 0;
+        border-top: 1px solid var(--hair); }
+.stop time { font-size: var(--t-small); color: var(--ink-2); }
+.stop-name { font-size: var(--t-body); line-height: 1.35; }
+.stop-sub { grid-column: 2; font-size: var(--t-small); color: var(--ink-2); }
+.tag { display: inline-block; font-size: var(--t-micro); letter-spacing: .05em; text-transform: uppercase;
+       font-weight: 700; color: var(--gold); border: 1px solid currentColor; border-radius: 5px;
+       padding: 1px 5px; vertical-align: 1px; }
+
+/* --- what we do not know -------------------------------------------------- */
+.gap { margin: 20px 0 2px; padding: 12px 14px; border-radius: var(--r-tile);
+       background: rgba(22,23,20,.045); color: var(--ink-2); font-size: var(--t-small);
+       line-height: 1.5; }
+.gap b { color: var(--ink); font-variant-numeric: tabular-nums; }
+
+/* --- legend, which is content -------------------------------------------- */
+.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 16px 0 0; font-size: var(--t-micro);
+          color: var(--ink-2); font-weight: 600; }
+.legend i { display: inline-block; width: 14px; height: 8px; border-radius: 2px; margin-right: 6px;
+            vertical-align: 0; }
+
+/* ========================= DESKTOP RECOMPOSITION =========================
+   Not the phone stretched. On the phone you see one thing at a time and the sheet is the
+   whole interface. On desktop the sheet becomes a permanent left rail AND a years ribbon
+   appears along the bottom: three things at once instead of one. */
+#ribbon { display: none; }
+
+@media (min-width: 900px) {
+  #sheet {
+    top: 0; bottom: 0; left: 0; right: auto; width: 400px; max-height: none;
+    border-radius: 0; box-shadow: 14px 0 60px rgba(4,18,28,.5);
+  }
+  #grip { display: none; }
+  #sheetscroll { padding: 30px 32px 34px; }
+  .claim { font-size: 1.95rem; }
+  #brand { left: 432px; top: 26px; }
+  #back { right: auto; left: 432px; top: 22px; }
+  #brand[data-hidden] { display: none; }
+
+  #ribbon {
+    display: flex; position: absolute; z-index: 3; left: 400px; right: 0; bottom: 0; height: 80px;
+    align-items: stretch; padding: 0 26px 0 30px;
+    /* The ribbon sits on the dark map, so it must not inherit body ink. Impeccable measured the
+       inherited #161714 on #04121c at 1.1:1. */
+    color: rgba(255,255,255,.72);
+    background: linear-gradient(0deg, rgba(4,18,28,.94), rgba(4,18,28,0));
+  }
+  .yr { flex: 1 1 0; display: flex; flex-direction: column; justify-content: flex-end;
+        padding: 0 0 14px 10px; border-left: 1px solid rgba(255,255,255,.13); min-width: 0; }
+  .yr-bar { height: 4px; border-radius: 99px; background: rgba(255,255,255,.14); margin-bottom: 8px; }
+  .yr[data-has="yes"] .yr-bar { background: #fff; }
+  .yr[data-has="planned"] .yr-bar { background: none; border-top: 2px dashed rgba(255,255,255,.55);
+                                    height: 0; margin-bottom: 10px; }
+  .yr b { font-size: var(--t-micro); color: rgba(255,255,255,.5); font-weight: 700;
+          font-variant-numeric: tabular-nums; letter-spacing: .04em; }
+  .yr[data-has] b { color: #fff; }
+  .yr small { font-size: var(--t-micro); color: rgba(255,255,255,.55); overflow: hidden;
+              text-overflow: ellipsis; white-space: nowrap; }
+}
+</style>
+</head>
+<body>
+<div id="stage" class="on-dark">
+  <svg id="map" role="img" aria-label="Everywhere you have been, drawn on the world"></svg>
+
+  <div class="float" id="brand"><b>Cairn</b><span id="brandctx">Your world</span></div>
+
+  <button class="float" id="back" type="button">
+    <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3 5 8l5 5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span id="backlabel">Back to the world</span>
+  </button>
+
+  <div id="ribbon" aria-hidden="true"></div>
+
+  <section id="sheet" aria-label="Travel record">
+    <div id="grip" aria-hidden="true"></div>
+    <div id="sheetscroll"></div>
+  </section>
+</div>
+
+<script type="module">
+import { loadData, ortho, plate, ringPath, linePath, graticule, greatCircle, distanceKm,
+         fmtSpan, nights, lifecycleOf, fitWindow, el } from '../shared.js';
+import { buildModel } from '../model.js';
+
+const data = await loadData();
+const M = buildModel(data);
+const { world, region } = data;
+
+let view = { kind: 'world' };
+
+const svg = document.getElementById('map');
+let W = 0, H = 0;
+
+/* A deterministic star field — seeded, so two screenshots of the same design are comparable. */
+const STARS = (() => {
+  let s = 20260902; const rnd = () => (s = (s * 1103515245 + 12345) % 2147483648) / 2147483648;
+  return Array.from({ length: 110 }, () => ({ x: rnd(), y: rnd(), r: .4 + rnd() * .9, o: .1 + rnd() * .34 }));
+})();
+
+function defs(rad, cx, cy) {
+  return el('defs', {}, [
+    el('radialGradient', { id: 'ocean', cx: '36%', cy: '30%', r: '80%' }, [
+      el('stop', { offset: '0%', 'stop-color': '#0a2c40' }),
+      el('stop', { offset: '58%', 'stop-color': '#061c2a' }),
+      el('stop', { offset: '100%', 'stop-color': '#030d14' }),
+    ]),
+    el('radialGradient', { id: 'limb', cx: '50%', cy: '50%', r: '50%' }, [
+      el('stop', { offset: '88%', 'stop-color': 'rgba(0,62,96,0)' }),
+      el('stop', { offset: '97%', 'stop-color': 'rgba(0,62,96,.85)' }),
+      el('stop', { offset: '100%', 'stop-color': 'rgba(0,62,96,0)' }),
+    ]),
+  ]);
+}
+
+function draw() {
+  const r = svg.getBoundingClientRect();
+  W = Math.round(r.width); H = Math.round(r.height);
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.textContent = '';
+  const g = el('g', { id: 'frame' });
+  svg.appendChild(g);
+  (view.kind === 'world' ? drawWorld : drawJourney)(g);
+}
+
+/* --- S0: the world -------------------------------------------------------- */
+function drawWorld(g) {
+  const desktop = W >= 900;
+  const L = desktop ? 400 : 0;
+  const cx = L + (W - L) / 2;
+  const cy = desktop ? H / 2 - 24 : H * 0.245;
+  const rad = Math.min((W - L) * (desktop ? .40 : .60), desktop ? H * .40 : H * .225);
+  /* Centred on the Atlantic, so BOTH ends of the record's only long-haul leg are on the near
+     side of the globe at once. Centring on Europe put Los Angeles behind the horizon and left
+     the arc running off to nowhere. */
+  const proj = ortho({ lam0: -28, phi0: 34, r: rad, cx, cy });
+
+  svg.insertBefore(defs(), svg.firstChild);
+  for (const s of STARS) {
+    g.appendChild(el('circle', { class: 'star', cx: (s.x * W).toFixed(1), cy: (s.y * H).toFixed(1),
+      r: s.r.toFixed(2), opacity: s.o.toFixed(2) }));
+  }
+  g.appendChild(el('circle', { class: 'ocean', cx, cy, r: rad }));
+  for (const d of graticule(proj, 30)) g.appendChild(el('path', { class: 'grat', d }));
+
+  /* 1. ALL land, continuously. The world is never fragments. */
+  for (const c of world.countries) {
+    const d = c.r.map((ring) => ringPath(ring, proj)).join('');
+    if (d) g.appendChild(el('path', { class: 'land', d }));
+  }
+  /* 2. Then the visited wash, laid OVER it. */
+  for (const c of world.countries) {
+    if (!M.visited.has(c.c) && !M.plannedOnly.has(c.c)) continue;
+    const d = c.r.map((ring) => ringPath(ring, proj)).join('');
+    if (!d) continue;
+    const j = M.journeys.find((x) => x.countries.includes(c.c));
+    /* The country SHAPE stays tappable, but it is not a second accessible target: a country's
+       own bounding box is 8-25px at world scale and would fail the 24x24 floor. The semantics
+       (role, tabindex, label, keyboard) live on the 44px hit disc below, which is what a finger
+       and a screen reader both actually get. */
+    const hit = el('g', { class: 'hit', 'aria-hidden': 'true', onclick: () => open(j) });
+    hit.appendChild(el('path', { class: M.visited.has(c.c) ? 'seen' : 'planned', d }));
+    g.appendChild(hit);
+  }
+  /* 3. The atmosphere — the most alive thing on the primary reference. */
+  g.appendChild(el('circle', { class: 'limb', cx, cy, r: rad - 8 }));
+
+  /* 4. The real long-haul leg, as a great circle: the shape it actually is. */
+  const home = M.home;
+  if (home) {
+    const d = linePath(greatCircle(home, M.realTrip.cities[0].at, 64), proj);
+    if (d) { g.appendChild(el('path', { class: 'route-case', d }));
+             g.appendChild(el('path', { class: 'route', d })); }
+  }
+
+  /* The home base carries a coordinate but NO country code, so it is not counted among the
+     visited countries and the United States is deliberately not lit. Labelling the origin is how
+     that stays legible instead of looking like a bug. */
+  if (home && proj.visible(home.lng, home.lat)) {
+    const [x, y] = proj.project(home.lng, home.lat);
+    g.appendChild(el('circle', { class: 'node', cx: x.toFixed(1), cy: y.toFixed(1), r: 5 }));
+    label(g, x, y, `${M.homeName} · home`, W);
+  }
+
+  /* 5. The accent, spent on exactly one thing: the most recent journey. Board rule — the
+     chromatic mark is reserved for what is selected or what is now, never for the route. */
+  const latest = M.journeys.find((j) => j.state !== 'planned');
+  const anchor = latest && M.anchorsOf(latest)[0];
+  if (anchor && proj.visible(anchor.lng, anchor.lat)) {
+    const [x, y] = proj.project(anchor.lng, anchor.lat);
+    g.appendChild(el('circle', { class: 'node node--sel', cx: x.toFixed(1), cy: y.toFixed(1), r: 7 }));
+    label(g, x, y + 18, latest.name, W);   /* below the node: the route runs through this point */
+  }
+
+  /* 44px invisible discs: a small country is not a precision tap. */
+  for (const j of M.journeys) {
+    for (const p of M.anchorsOf(j)) {
+      if (!p || !proj.visible(p.lng, p.lat)) continue;
+      const [x, y] = proj.project(p.lng, p.lat);
+      g.appendChild(el('circle', { class: 'hit-disc', cx: x.toFixed(1), cy: y.toFixed(1), r: 22,
+        role: 'button', tabindex: '0', 'aria-label': `Open ${j.name}`, onclick: () => open(j),
+        onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(j); } } }));
+    }
+  }
+}
+
+/**
+ * A map label that cannot leave the viewport. The first render put "Europe 2026 · most recent"
+ * half off the right edge of a 390px phone; flipping the anchor is the fix, and it is a rule
+ * rather than a nudge so the next label added here inherits it.
+ */
+function label(parent, x, y, text, width, leftEdge = 0) {
+  const flip = x > leftEdge + (width - leftEdge) * 0.55;
+  parent.appendChild(el('text', {
+    class: 'label', x: (flip ? x - 13 : x + 13).toFixed(1), y: (y + 4).toFixed(1),
+    'text-anchor': flip ? 'end' : 'start', text,
+  }));
+}
+
+/* --- S1/S2: one journey --------------------------------------------------- */
+function drawJourney(g) {
+  const j = view.journey;
+  const desktop = W >= 900;
+  const L = desktop ? 400 : 0;
+  const box = { w: W - L, h: desktop ? H : H * 0.50 };
+  const pts = M.framePoints(j, view.day);
+  /* A country-level record is framed at country scale (>=9 degrees), never tighter: the frame
+     may not imply precision the record does not have. */
+  const minSpan = j.detail === 'full' ? (view.day ? 0.25 : 1.2) : 9;
+  const proj = plate({ win: fitWindow(M.padWindow(pts, view.day ? .40 : .55, minSpan), box.w, box.h),
+    w: box.w, h: box.h });
+
+  svg.insertBefore(defs(), svg.firstChild);
+  const off = el('g', { transform: `translate(${L} 0)` });
+  g.appendChild(off);
+  off.appendChild(el('rect', { x: 0, y: 0, width: box.w, height: box.h, fill: 'url(#ocean)' }));
+
+  const src = proj.win[2] - proj.win[0] < 60 ? region : world;
+  for (const c of src.countries) {
+    const d = c.r.map((ring) => ringPath(ring, proj)).join('');
+    if (d) off.appendChild(el('path', { class: 'land', d }));
+  }
+  for (const c of src.countries) {
+    if (!j.countries.includes(c.c)) continue;
+    const d = c.r.map((ring) => ringPath(ring, proj)).join('');
+    if (d) off.appendChild(el('path', { class: j.state === 'planned' ? 'planned' : 'seen', d }));
+  }
+
+  const seq = M.sequence(j, view.day);
+  const planned = j.state === 'planned';
+  for (let i = 0; i < seq.length - 1; i++) {
+    const d = linePath(greatCircle(seq[i], seq[i + 1], 24), proj);
+    if (!d) continue;
+    off.appendChild(el('path', { class: 'route-case', d }));
+    off.appendChild(el('path', { class: 'route' + (planned ? ' route--planned' : ''), d }));
+  }
+  /* Numbered nodes. This trip genuinely doubles back on itself — Vienna → Dubrovnik → Split →
+     Prague → Budapest → London is not a geographic sequence — so an unnumbered polyline reads as
+     a scribble rather than a journey. The numbers carry the ORDER, which is the information the
+     crossing lines destroy. Nothing is straightened to make the picture tidier. */
+  seq.forEach((p, i) => {
+    const [x, y] = proj.project(p.lng, p.lat);
+    const last = i === seq.length - 1;
+    const r = view.day ? 4 : 10;
+    off.appendChild(el('circle', {
+      class: 'node' + (j.state === 'active' && last ? ' node--live' : ''),
+      cx: x.toFixed(1), cy: y.toFixed(1), r }));
+    if (!view.day) {
+      off.appendChild(el('text', { class: 'nodenum', x: x.toFixed(1), y: (y + 3.4).toFixed(1),
+        text: String(i + 1) }));
+    }
+    if (!view.day || seq.length <= 9) label(off, x, y, p.name, box.w);
+  });
+}
+
+/* ---------------------------------------------------------------- the sheet */
+const scroll = document.getElementById('sheetscroll');
+const back = document.getElementById('back');
+const backlabel = document.getElementById('backlabel');
+const brand = document.getElementById('brand');
+const brandctx = document.getElementById('brandctx');
+
+function open(j) { if (!j) return; view = { kind: 'journey', journey: j, day: null }; render(); }
+function openDay(id) { view = { ...view, day: id }; render(); }
+function goBack() { view = view.day ? { ...view, day: null } : { kind: 'world' }; render(); }
+back.addEventListener('click', goBack);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && view.kind !== 'world') goBack(); });
+
+function sheetWorld() {
+  const f = document.createDocumentFragment();
+  f.appendChild(el('h1', { class: 'claim' }, [
+    el('span', { class: 'n', text: String(M.visited.size) }), ' countries · ',
+    el('span', { class: 'n', text: String(M.cityCount) }), ' cities · ',
+    el('span', { class: 'n', text: String(M.daysTravelled) }), ' days on the road',
+  ]));
+  f.appendChild(el('p', { class: 'undertone', text:
+    `${M.journeys.length} journeys since ${M.firstYear}. Tap a lit country, or a journey below.` }));
+
+  f.appendChild(el('div', { class: 'rowhead', text: 'Journeys' }));
+  for (const j of M.journeys) {
+    const b = el('button', { class: 'j', type: 'button', onclick: () => open(j) });
+    b.appendChild(el('span', { class: 'j-name', text: j.name }));
+    b.appendChild(el('span', { class: 'j-meta', text:
+      `${fmtSpan(j.start, j.end)} · ${nights(j.start, j.end) + 1} days · ${j.countries.join(' ')}` }));
+    b.appendChild(el('span', { class: 'j-side' }, [
+      el('span', { class: 'j-state', 'data-s': j.state, text: M.stateLabel(j.state) }),
+      el('i', { class: 'j-swatch', 'data-planned': j.state === 'planned' || null }),
+    ]));
+    f.appendChild(b);
+  }
+
+  const gap = el('div', { class: 'gap' });
+  gap.appendChild(el('b', { text: String(M.unattributed) }));
+  gap.appendChild(document.createTextNode(
+    ` of ${M.census.located} located records could not be matched to a country, so they are on no shape above.`));
+  if (M.unnamedPlaces) gap.appendChild(document.createTextNode(
+    ` One place on Croatia 2022 was recorded without a name — "Somewhere at sea". It is counted and it is not drawn.`));
+  if (M.home) gap.appendChild(el('span', {}, [
+    ` ${M.homeName} is where the trip starts and ends, but the record stores it as a coordinate `
+    + 'with no country, so it is not lit above and not counted as a country visited.']));
+  f.appendChild(gap);
+
+  f.appendChild(el('div', { class: 'legend' }, [
+    el('span', {}, [el('i', { style: 'background:var(--land-seen);outline:1px solid #b9cfdb' }), 'Been there']),
+    el('span', {}, [el('i', { style: 'background:none;border-top:2px dashed var(--provisional);height:0' }), 'Planned']),
+    el('span', {}, [el('i', { style: 'background:var(--ink)' }), 'A journey you took']),
+  ]));
+  return f;
+}
+
+function sheetJourney() {
+  const j = view.journey;
+  const f = document.createDocumentFragment();
+  f.appendChild(el('h1', { class: 'claim', text: j.name }));
+
+  if (j.detail === 'full') {
+    const km = j.cities.reduce((n, c, i) => (i ? n + distanceKm(j.cities[i - 1].at, c.at) : 0), 0);
+    f.appendChild(el('p', { class: 'undertone', text:
+      `${fmtSpan(j.start, j.end)} · ${j.days.length} days · ${j.counts.stops} stops · `
+      + `${km.toLocaleString('en')} km between cities.` }));
+    f.appendChild(el('p', { class: 'undertone', text: j.cities.map((c) => c.name).join('  →  ') }));
+
+    if (!view.day) {
+      f.appendChild(el('div', { class: 'rowhead', text: 'Day by day' }));
+      j.days.forEach((d, i) => {
+        const b = el('button', { class: 'day', type: 'button', onclick: () => openDay(d.id) });
+        b.appendChild(el('span', { class: 'day-top' }, [
+          el('span', { class: 'day-n', text: String(i + 1) }),
+          el('span', { class: 'day-city', text: M.cityName(j, d) }),
+        ]));
+        b.appendChild(el('span', { class: 'day-title', text: d.title ?? '—' }));
+        f.appendChild(b);
+      });
+    } else {
+      const d = j.days.find((x) => x.id === view.day);
+      f.appendChild(el('div', { class: 'rowhead', text: `Day ${j.days.indexOf(d) + 1} · ${M.cityName(j, d)}` }));
+      f.appendChild(el('p', { class: 'undertone', text: d.title ?? '' }));
+      for (const s of d.stops) {
+        const row = el('div', { class: 'stop' });
+        row.appendChild(el('time', { class: 'meas', text: s.time ?? '—' }));
+        const nm = el('span', { class: 'stop-name' }, [s.name]);
+        if (s.ticketed) { nm.appendChild(document.createTextNode(' ')); nm.appendChild(el('span', { class: 'tag', text: 'ticket' })); }
+        row.appendChild(nm);
+        const bits = [];
+        if (s.mode) bits.push(`${s.mode}${s.mins ? ` · ${s.mins} min` : ''}`);
+        if (s.cost) bits.push(s.cost);
+        if (!s.at) bits.push('no location on this stop');
+        if (bits.length) row.appendChild(el('span', { class: 'stop-sub', text: bits.join('  ·  ') }));
+        f.appendChild(row);
+      }
+    }
+  } else {
+    f.appendChild(el('p', { class: 'undertone', text:
+      `${fmtSpan(j.start, j.end)} · ${nights(j.start, j.end) + 1} days · ${j.countries.join(', ')}` }));
+    f.appendChild(el('div', { class: 'rowhead', text: 'What this record holds' }));
+    f.appendChild(el('p', { class: 'undertone', text:
+      `Recorded afterwards, so it carries countries and city names — ${j.cityNames.join(', ')} — and no `
+      + 'day-by-day itinerary. Nothing is placed more precisely than the country, because nothing more '
+      + 'precise was ever recorded.' }));
+    if (j.census) {
+      const missed = j.census.located - j.census.attributed;
+      const g = el('div', { class: 'gap' });
+      if (missed === 0) {
+        /* "0 of 32 could not be matched" is technically true and reads as a defect. The shipped
+           product already distinguishes these two sentences; so does this. */
+        g.appendChild(document.createTextNode('Every one of its '));
+        g.appendChild(el('b', { text: String(j.census.located) }));
+        g.appendChild(document.createTextNode(' located records was matched to a country.'));
+      } else {
+        g.appendChild(el('b', { text: String(missed) }));
+        g.appendChild(document.createTextNode(
+          ` of ${j.census.located} located records on this trip could not be matched to a country.`));
+      }
+      f.appendChild(g);
+    }
+    if (j.state === 'planned') f.appendChild(el('p', { class: 'undertone', text:
+      'Not travelled yet, so it is outlined rather than filled, and it counts towards nothing above.' }));
+  }
+  return f;
+}
+
+function ribbon() {
+  const r = document.getElementById('ribbon');
+  r.textContent = '';
+  for (let y = M.firstYear; y <= M.lastYear; y++) {
+    const on = M.journeys.filter((j) => +j.start.slice(0, 4) <= y && +j.end.slice(0, 4) >= y);
+    const cell = el('div', { class: 'yr',
+      'data-has': on.length ? (on.every((j) => j.state === 'planned') ? 'planned' : 'yes') : null });
+    cell.appendChild(el('div', { class: 'yr-bar' }));
+    cell.appendChild(el('b', { text: String(y) }));
+    cell.appendChild(el('small', { text: on.map((j) => j.name).join(', ') || '—' }));
+    r.appendChild(cell);
+  }
+}
+
+function render() {
+  scroll.textContent = '';
+  scroll.appendChild(view.kind === 'world' ? sheetWorld() : sheetJourney());
+  scroll.scrollTop = 0;
+  back.toggleAttribute('data-on', view.kind !== 'world');
+  backlabel.textContent = view.day ? 'Back to the journey' : 'Back to the world';
+  brand.toggleAttribute('data-hidden', view.kind !== 'world' && W >= 900);
+  brandctx.textContent = view.kind === 'world' ? 'Your world' : view.day ? view.journey.name : 'A journey';
+  draw();
+  ribbon();
+}
+
+let t; addEventListener('resize', () => { clearTimeout(t); t = setTimeout(render, 120); });
+render();
+</script>
+</body>
+</html>

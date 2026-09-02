@@ -1,0 +1,175 @@
+/* =============================================================================
+   Cairn visual directions — the shared token system.
+
+   **EVERY VALUE IN THE PALETTE BELOW WAS SAMPLED FROM THE ACTUAL REFERENCE BOARD**
+   (`../references/cairn-visual-reference-board.png`, 3600×5000) by scanning rectangles and
+   taking their extremes, not by describing the image in words and inventing a hex from the
+   description. The scan script is `docs/design/sample-board.mjs`; re-run it to re-derive these.
+
+   Revision 2 (2026-09-02, after reading the real PNG). Revision 1 was written from a text
+   description and got three things wrong; §"Corrections" in REFERENCE-BOARD.md records them. The
+   largest was type: revision 1 paired a Fraunces serif display with a grotesque body. **There is
+   no serif anywhere on the board** — not in its own headline, not in Cosmos's hero, not in
+   Polarsteps' sheets, not in Apple Journal. A serif display would import exactly the "editorial
+   report" register Jacob rejected. Fraunces is deleted.
+
+   Emil's `prototype` skill, hard rule 2: sharing tokens is NOT convergence. The three directions
+   diverge on composition, interaction model and TONAL WORLD; they agree on hue meanings.
+   ========================================================================== */
+
+@font-face {
+  font-family: 'Schibsted Grotesk';
+  src: url('./data/schibsted-grotesk-latin-var.woff2') format('woff2-variations');
+  font-weight: 400 800; font-display: swap;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  src: url('./data/ibm-plex-mono-latin-500.woff2') format('woff2');
+  font-weight: 500; font-display: swap;
+}
+
+:root {
+  /* === SAMPLED FROM THE BOARD ============================================
+     value            where it was measured                                  */
+  --ground:   #f2efe9;  /* the board's own ground, sampled at two locations  */
+  --ground-2: #ffffff;  /* Polarsteps' sheet; Cosmos's card; Journal         */
+  --ink:      #161714;  /* the board's headline                              */
+  --ink-2:    #676a62;  /* the board's subhead — warm grey, not neutral      */
+  --accent:   #d4503a;  /* THE "CAIRN" EYEBROW AND THE "PRIMARY" PILL.
+                           Jacob's own accent on his own board. Sampled
+                           independently in two regions and identical in
+                           both. Brick/vermilion — deeper and less orange
+                           than the #e4622c revision 1 invented.             */
+  --accent-ink: #b8412c; /* THE SAME accent, darkened until it passes WCAG AA (4.5:1) as TEXT on
+                           `--ground`. Measured: #d4503a on #f2efe9 is 3.7:1 and fails; #b8412c is
+                           4.78:1. The board's accent is a MARK colour — a pill, an eyebrow, a dot
+                           — and marks answer to 3:1, not 4.5:1. Use `--accent` for fills and
+                           strokes; use `--accent-ink` whenever it is a word someone must read. */
+  --live:     #da005a;  /* Polarsteps' current-position dot and the ring on
+                           its selected marker. "Now", and nothing else.     */
+  --space:    #04121c;  /* the darkest end of Polarsteps' space              */
+  --space-2:  #003e60;  /* its cyan atmospheric limb; also its deep ocean    */
+  --sand:     #f9eec8;  /* the Condé Nast dune                               */
+  --trail:    #7fbf5f;  /* AllTrails' route green, desaturated one step      */
+
+  /* === DERIVED, and each one says what it is for ======================== */
+  --route:      #ffffff;  /* Polarsteps draws the route WHITE. Not the accent. */
+  --route-soft: rgba(255,255,255,.42);
+  --land:       #123243;  /* land, ALWAYS drawn — see the map rule below      */
+  --land-edge:  #1c4256;
+  --land-seen:  #cfe4ef;  /* the visited wash, laid OVER land, never instead  */
+  --sea:        #061a26;
+  --sea-deep:   #04121c;
+
+  --hair:      rgba(22,23,20,.12);
+  --hair-dark: rgba(255,255,255,.14);
+  --gold:      #8f5816;   /* provenance: system-supplied, not yet accepted. This is the shipped
+                             product's own measured value (QA R34-7: >=4.5:1 on all three light
+                             surfaces at 11px). #b8862c was tried here first and measured 2.8:1. */
+  --provisional: #7fa6bb; /* counted from a trip you are on now               */
+  --warn:      #8f5816;   /* shipped, contrast-measured (QA R34-7). Unchanged */
+
+  /* === TYPE — one family, hierarchy by weight and scale ==================
+     This is the board's own method: its header, Cosmos, Polarsteps and Journal all run a
+     single grotesque and let weight, size and colour do the work. */
+  --sans: 'Schibsted Grotesk', system-ui, -apple-system, sans-serif;
+  --meas: 'IBM Plex Mono', ui-monospace, monospace;  /* MEASUREMENT ONLY: a clock time or a
+                                                        coordinate. Never a label, never a
+                                                        count, never a costume for "technical". */
+
+  --t-hero:  clamp(2.1rem, 8.4vw, 3.6rem);
+  --t-head:  clamp(1.5rem, 5.2vw, 2.1rem);
+  --t-sub:   1.0625rem;
+  --t-body:  0.9375rem;
+  --t-small: 0.8125rem;
+  --t-micro: 0.6875rem;   /* 11px — the shipped rendered-text floor, and it is a floor */
+
+  /* Generous radii. The board is round: cards ~16–20, sheets ~24, every marker a circle.
+     The rejected direction shipped 4–6px and hairlines. */
+  --r-sheet: 22px;
+  --r-card:  16px;
+  --r-tile:  12px;
+  --r-pill:  999px;
+
+  --ease: cubic-bezier(.22, .61, .36, 1);   /* decelerating; entrances only */
+  --dur:  180ms;
+  --dur-sheet: 260ms;
+
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-t: env(safe-area-inset-top, 0px);
+}
+
+/* =============================================================================
+   THE MAP RULE — the single most important correction the real pixels forced.
+
+   Polarsteps' map has NO country fills, NO borders and NO graticule. The ground is a
+   continuous satellite image; the journey is a white line with circular photo markers; the
+   only chromatic mark is the current position. Its "visited" state is a TRANSLUCENT WASH LAID
+   OVER the terrain — the land is still visible underneath.
+
+   Cairn has no imagery and cannot get any (offline, no tile service — a settled constraint).
+   What transfers is not the texture but the STRUCTURE:
+
+     1. ALL LAND IS ALWAYS DRAWN, continuously, in one tone. The world is never a set of
+        fragments. This is the direct fix for Jacob's "disconnected geographic fragments
+        without a clear world or journey context".
+     2. VISITED IS AN OVERLAY, not a substitution. `--land-seen` sits ON `--land`.
+     3. THE ROUTE IS WHITE. Solid where travelled, dashed where not yet — AllTrails' own
+        convention, read off the board.
+     4. THE ACCENT IS SPENT ON ONE THING: what is selected, or what is happening now.
+     5. TONAL CONTRAST BETWEEN MAP AND DATA IS ALWAYS STRONG — white sheet on a dark map
+        (Polarsteps), or a dark card on a light map (AllTrails/Strava). Never grey on grey.
+   ========================================================================== */
+
+* { box-sizing: border-box; }
+
+html { margin: 0; padding: 0; background: var(--ground); }
+/* `font-size` is set on BODY only. Setting it on `html` redefines what `rem` means, which
+   silently scaled every `rem`-based token by 0.9375 and pushed the 11px micro label to
+   10.3125px on all three directions — caught by Impeccable's `undersized-ui-text` rule, not
+   by eye. */
+body {
+  margin: 0; padding: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: var(--t-body);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overscroll-behavior-y: none;
+}
+
+/* craft-floor.md: "the parts you did not draw still carry the design". */
+::selection { background: var(--accent); color: #fff; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: rgba(22,23,20,.2); border-radius: 99px; }
+::-webkit-scrollbar-track { background: transparent; }
+* { scrollbar-color: rgba(22,23,20,.2) transparent; scrollbar-width: thin; }
+
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+.on-dark :focus-visible, .on-dark:focus-visible { outline-color: #fff; }
+
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+
+h1, h2, h3 { margin: 0; font-weight: 700; line-height: 1.03; letter-spacing: -.025em; }
+
+/* Counted numbers are tabular in the BODY face. Monospace is not a costume for "data". */
+.num  { font-variant-numeric: tabular-nums; font-feature-settings: 'tnum' 1; }
+/* Genuine measurement — a clock time, a coordinate — and nothing else. */
+.meas { font-family: var(--meas); font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+
+/* An empty photographic slot. NEVER filled with a stand-in image: Cairn has no photo pipeline
+   until Phase 6 and a fake photograph is the exact failure DESIGN.md §0 rule B names. */
+.photoslot {
+  display: grid; place-items: center; text-align: center;
+  border: 1px dashed rgba(22,23,20,.28); border-radius: var(--r-tile);
+  color: var(--ink-2); font-size: var(--t-micro); letter-spacing: .04em;
+  text-transform: uppercase; padding: 10px; background: rgba(22,23,20,.03);
+}
+.on-dark .photoslot { border-color: rgba(255,255,255,.3); color: rgba(255,255,255,.66);
+  background: rgba(255,255,255,.05); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0s !important; transition-duration: 0s !important; }
+}

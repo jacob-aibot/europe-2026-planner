@@ -1,9 +1,59 @@
 # Cairn — the design contract
 
-**Status: CONTRACT. Revision 2, 2026-09-02 (architect).** *(Revision 1, 2026-09-01, created it. Revision 2
-rules QA round 41's **R41-14** — the §5.5/§5.6 precedence question — and changes nothing else: §5.3 gains a
-scope clause, §5.5 gains the precedence ruling, §5.6 states what its fence is for, §6.2 gains the
-equivalence criterion that replaces a hand-kept allow-list, and §7 gains one deferred row.)*
+> # ⚠ REVISION 3, 2026-09-02 — §1 IS VOID. THIS DOCUMENT IS NO LONGER THE VISUAL AUTHORITY.
+>
+> **Jacob has rejected the visual direction this document produced, in full.** Not as a polish
+> request: *"unattractive, bland, overly typographic, and emotionally empty… reads more like a
+> technical report, transit atlas, or typeset database than a premium consumer travel product."*
+>
+> **The visual authority is now `docs/design/REFERENCE-BOARD.md`**, and above that, the file it
+> points to: **`docs/design/references/cairn-visual-reference-board.png`**. Open the PNG. A written
+> description of it is not a substitute — `REFERENCE-BOARD.md` §8 records what went wrong the one
+> time that was tried.
+>
+> **What this means for you, by section — the triage Jacob asked for:**
+>
+> | | Sections | Status |
+> |---|---|---|
+> | **Product-truth and accessibility rules that SURVIVE** | **§0** (provenance is visible; a screen may only show what exists), **§2**'s measured contrast decisions and the 11px floor, **§3.4** (touch targets, focus, keyboard, virtual keyboard, orientation), **§3.5** (landmarks, `<dl>` pairs, map `role`/`tabIndex`/`aria-label`, 200% zoom), **§6** (the rendered acceptance standard and its five device contexts), **§6.3**, **§6.4** (what Chromium cannot verify) | **BINDING, unchanged.** None of this was rejected. §0 in particular is *strengthened*: it is the reason the new directions render empty photo slots instead of stock imagery |
+> | **Implementation guidance that REMAINS USEFUL** | **§3.1–§3.3** (the measured starting point, mobile-first breakpoints, what recomposes per surface), **§3**'s R1/R2/R3 rulings, **§4** (the tooling ruling — but see the amendments below), **§5.6**'s fence on `WorldMap.tsx`, **§7**'s deferral table | **ADVISORY until a direction is selected.** These are sound mechanics that assume the rejected composition. Re-read them against the selected direction; expect R1 (bottom bar) and §3.3 to survive and §5.3–§5.5 to be replaced wholesale |
+> | **Rejected aesthetic prescriptions that MUST BE REPLACED** | **§1 entirely** — all nine principles, and especially **P4** (hierarchy is typographic), **P8**'s restraint list, **P9**'s four "non-negotiable" characteristics, and the reference-translation table at the end of §1. **§2**'s type stack. **§5.1–§5.5** (the I-8b Profile spec) | **VOID.** Do not build from them, do not cite them, do not polish inside them |
+>
+> **Three specific reversals, so no one re-derives them from §1's text:**
+>
+> 1. **P9.1's condensed uppercase display type and P9.3's hairlines-and-small-radii are the "transit
+>    atlas".** There is **no serif and no condensed uppercase display anywhere on the board**, and the
+>    board's own radii are generous (cards ≈16–20px, sheets ≈24px). Big Shoulders is not the voice.
+> 2. **P9.2 — "mono for every number, code, time, count and micro-label" — is reversed.** Impeccable
+>    names it directly: *"monospace as a costume for 'technical' rather than for code, data, or
+>    measurement."* Mono is now for genuine measurement only (a clock time, a coordinate); counts use
+>    the body face with tabular figures.
+> 3. **P2's "nothing map-shaped is faked to fill the space" stands, but its corollary was over-read.**
+>    Rule B forbids fake *content*; it was read as forbidding *composition at photographic scale*, and
+>    that is how every large surface in the product became type.
+>
+> **The gate.** Jacob's explicit visual selection is required before broad UI implementation. A
+> passing test suite is not visual approval; a green Impeccable audit is not visual approval; a
+> manager's SHIP verdict is not visual approval — I-8b had one. `REFERENCE-BOARD.md` §6.
+>
+> **Where the replacement is being worked out:** `docs/design/DIRECTIONS.md` and the three rendered
+> prototypes under `docs/design/directions/`. When Jacob selects one, **this document is rewritten
+> from it in that same pass** and this banner comes off.
+>
+> **Amendments to §4's tooling ruling, made by revision 3 under Jacob's instruction:**
+> **Impeccable** moves from *selective use* to **vendored and operationally required** (pinned at
+> `c0f4952`; `PINNED-REVISION.txt`); Emil's **`prototype`** and **`review-animations`** are vendored
+> alongside the existing two; **UI/UX Pro Max** stays REJECTED and untouched; **21st.dev** stays
+> unavailable and unused; Anthropic's **frontend-design** plugin is **absent from this environment**
+> and its upstream skill source was read as a document instead. `REFERENCE-BOARD.md` §9 has the
+> evidence, the pins, and the one instruction that was not followed literally (the design hook, which
+> is repo-root-scoped and would fire on the live trip planner).
+
+**Status: CONTRACT for everything the banner above marks as surviving. Revision 3, 2026-09-02
+(architect).** *(Revision 1, 2026-09-01, created it. Revision 2 ruled QA round 41's R41-14 — the
+§5.5/§5.6 precedence question. Revision 3 carries Jacob's rejection of the visual direction and does
+not otherwise edit the body: the sections below are left intact deliberately, so the triage above can
+point at them and so the record of what was rejected survives verbatim.)*
 `ARCHITECTURE.md` **§9 / A-55** makes this
 document binding: where a surface increment and this document disagree, this document is the spec and the
 increment is the defect. It sits beside `ARCHITECTURE.md` rather than inside it because `ARCHITECTURE.md`

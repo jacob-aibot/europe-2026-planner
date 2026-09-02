@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cairn — Direction B · Photography and cartography</title>
+<link rel="stylesheet" href="../tokens.css">
+<style>
+/* =============================================================================
+   DIRECTION B — PHOTOGRAPHY AND CARTOGRAPHY
+
+   Composition thesis: a LIGHT editorial page (the board's own `#f2efe9` ground), paced by
+   full-bleed PLATES — one place, rendered as cartography at photographic scale. The plate is
+   the emotional surface Cairn can honestly make today: real coastline, real route, real stops.
+
+   Interaction thesis: a vertical narrative SCROLL. Not drill-in, not pan-zoom. The story runs
+   top to bottom and the plates arrive as you go. On desktop the plate becomes STICKY and the
+   narrative scrolls beside it — the plate changes when the section beside it changes.
+
+   The photography problem, answered honestly: Cairn has no photo library until Phase 6. Every
+   photographic slot on this page is rendered EMPTY and labelled. Apple Journal's own cluster
+   (see the board) puts a MAP TILE in the grid beside its photographs — so the map plates here
+   are peers in that cluster, not substitutes pretending to be pictures.
+   ========================================================================== */
+
+html, body { height: 100%; }
+body { background: var(--ground); }
+
+/* MOTION on this direction: NONE, deliberately. The sticky plate changing as the narrative
+   scrolls past is the browser's own scroll, not an animation, and Emil's standard 2 puts scrolling
+   in the 100+/session bucket where the correct amount of motion is zero. `scroll-behavior: smooth`
+   affects programmatic jumps only and is turned off under reduced motion. */
+#scroller { height: 100svh; overflow-y: auto; scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { #scroller { scroll-behavior: auto; } }
+
+/* --- masthead ------------------------------------------------------------- */
+.mast { display: flex; align-items: baseline; gap: 10px; padding: calc(18px + var(--safe-t)) 20px 0; }
+.mast b { font-size: 19px; font-weight: 800; letter-spacing: -.03em; }
+.mast span { font-size: var(--t-micro); letter-spacing: .09em; text-transform: uppercase;
+             font-weight: 700; color: var(--accent-ink); }
+
+/* --- the opening claim ---------------------------------------------------- */
+.opening { padding: 26px 20px 30px; }
+.opening h1 { font-size: var(--t-hero); letter-spacing: -.035em; line-height: .98; max-width: 15ch; }
+.opening p { color: var(--ink-2); font-size: var(--t-sub); margin: 16px 0 0; max-width: 40ch;
+             line-height: 1.45; }
+.opening .n { font-variant-numeric: tabular-nums; }
+
+/* --- a PLATE: cartography at photographic scale --------------------------- */
+.plate { position: relative; margin: 0 0 4px; background: var(--space); overflow: hidden; }
+.plate svg { display: block; width: 100%; height: 100%; }
+.plate--hero { height: 62svh; }
+.plate--city { height: 46svh; }
+.plate__cap {
+  position: absolute; left: 0; right: 0; bottom: 0; padding: 46px 20px 18px;
+  background: linear-gradient(0deg, rgba(4,18,28,.92) 12%, rgba(4,18,28,0));
+  color: #fff;
+}
+.plate__cap h2 { font-size: clamp(1.5rem, 6vw, 2.1rem); letter-spacing: -.03em; }
+.plate__cap p { margin: 6px 0 0; font-size: var(--t-small); color: rgba(255,255,255,.78);
+                max-width: 46ch; line-height: 1.45; }
+.plate__badge {
+  position: absolute; top: 14px; left: 16px; display: inline-flex; align-items: center; gap: 7px;
+  background: rgba(255,255,255,.94); color: var(--ink); border-radius: var(--r-pill);
+  padding: 7px 13px; font-size: var(--t-micro); font-weight: 700; letter-spacing: .05em;
+  text-transform: uppercase;
+}
+.plate__badge i { width: 7px; height: 7px; border-radius: 99px; background: var(--ink); }
+.plate__badge[data-planned] i { background: none; border: 1.5px dashed var(--ink-2); }
+
+/* AllTrails' own move, read off the board: a DARK data card floating on the map. */
+.readout {
+  position: absolute; right: 14px; top: 14px; min-width: 132px;
+  background: #071722; color: #fff;   /* solid: at .9 over the light visited wash the worst-case
+                                         pixel contrast measured 1.2:1 */
+  border-radius: var(--r-card); padding: 12px 14px;
+}
+.readout dl { margin: 0; display: grid; grid-template-columns: 1fr auto; gap: 5px 14px; }
+.readout dt { font-size: var(--t-micro); color: rgba(255,255,255,.62); letter-spacing: .05em;
+              text-transform: uppercase; font-weight: 700; }
+.readout dd { margin: 0; font-size: var(--t-small); font-weight: 700; text-align: right;
+              font-variant-numeric: tabular-nums; }
+
+/* --- the narrative column ------------------------------------------------- */
+.col { padding: 26px 20px 34px; }
+.byline { font-size: var(--t-small); color: var(--ink-2); margin: 8px 0 0; font-weight: 600; }
+.rechead { font-size: 1.1rem; letter-spacing: -.02em; margin-bottom: 4px; }
+.col h3 { font-size: clamp(1.25rem, 4.6vw, 1.55rem); letter-spacing: -.025em; margin-bottom: 10px; }
+.col p { font-size: var(--t-body); line-height: 1.6; color: #2c2f2b; max-width: 62ch; margin: 0 0 12px; }
+
+.daylist { margin: 14px 0 0; }
+.dayrow { display: grid; grid-template-columns: 2.4em 1fr; gap: 3px 12px; padding: 12px 0;
+          border-top: 1px solid var(--hair); }
+.dayrow b { font-variant-numeric: tabular-nums; color: var(--accent-ink); font-weight: 800; }
+.dayrow span { line-height: 1.4; }
+.dayrow small { grid-column: 2; color: var(--ink-2); font-size: var(--t-small); }
+
+.stoplist { margin: 20px 0 0; border-top: 1px solid var(--hair); }
+.stoprow { display: grid; grid-template-columns: 3.6em 1fr; gap: 2px 12px; padding: 10px 0;
+           border-bottom: 1px solid var(--hair); }
+.stoprow time { font-size: var(--t-small); color: var(--ink-2); }
+.stoprow span { line-height: 1.4; }
+.stoprow small { grid-column: 2; font-size: var(--t-small); color: var(--ink-2); }
+.tick { font-style: normal; font-size: var(--t-micro); font-weight: 700; letter-spacing: .05em;
+        text-transform: uppercase; color: var(--gold); border: 1px solid currentColor;
+        border-radius: 5px; padding: 1px 5px; }
+
+/* --- the memory cluster (Apple Journal, honestly) ------------------------- */
+.cluster { display: grid; grid-template-columns: 1.35fr 1fr 1fr; grid-auto-rows: 96px; gap: 7px;
+           margin: 18px 0 14px; }
+.cluster > * { border-radius: var(--r-tile); overflow: hidden; }
+.cluster .tall { grid-row: span 2; }
+.cluster .maptile { background: var(--space); position: relative; }
+.cluster .maptile svg { width: 100%; height: 100%; display: block; }
+.cluster .maptile b { position: absolute; left: 9px; bottom: 7px; color: #fff; font-size: var(--t-micro);
+                      font-weight: 700; text-shadow: 0 1px 6px rgba(4,18,28,.9); }
+
+.note { margin: 16px 0 0; padding: 14px 16px; border-radius: var(--r-card);
+        background: rgba(22,23,20,.05); color: var(--ink-2); font-size: var(--t-small);
+        line-height: 1.55; }
+.note b { color: var(--ink); font-variant-numeric: tabular-nums; }
+
+/* --- the record strip: completed vs planned ------------------------------- */
+.record { border-top: 1px solid var(--hair); padding: 22px 20px calc(40px + var(--safe-b)); }
+.rec { display: grid; grid-template-columns: 74px 1fr auto; gap: 4px 14px; align-items: center;
+       width: 100%; text-align: left; padding: 13px 0; min-height: 56px;
+       border-top: 1px solid var(--hair); }
+.rec:first-of-type { border-top: 0; }
+.rec__thumb { grid-row: 1 / span 2; width: 74px; height: 52px; border-radius: 9px; overflow: hidden;
+              background: var(--space); }
+.rec__thumb svg { width: 100%; height: 100%; display: block; }
+.rec__name { font-weight: 700; letter-spacing: -.015em; }
+.rec__meta { grid-column: 2; font-size: var(--t-small); color: var(--ink-2); }
+.rec__state { grid-column: 3; grid-row: 1 / span 2; font-size: var(--t-micro); font-weight: 700;
+              letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); }
+.rec__state[data-s="planned"] { color: var(--ink-2); border: 1px dashed var(--ink-2);
+                                border-radius: var(--r-pill); padding: 4px 9px; }
+
+/* ========================= DESKTOP RECOMPOSITION =========================
+   The phone reads one plate at a time, in sequence. Desktop splits the page: the plate
+   becomes a STICKY half that changes as the narrative beside it scrolls past. Two things at
+   once, and the relationship between map and text becomes visible rather than remembered. */
+@media (min-width: 1000px) {
+  .mast, .opening, .col, .record { max-width: none; }
+  .mast { padding: 26px 40px 0; }
+  .opening { padding: 34px 40px 40px; max-width: 62rem; }
+
+  .spread { display: grid; grid-template-columns: 1fr 1fr; align-items: start; }
+  .spread__plate { position: sticky; top: 0; height: 100svh; }
+  .spread__plate .plate { height: 100%; margin: 0; }
+  .spread__text { padding: 0; }
+  /* No forced 100svh and no vertical centering. The first desktop render did both, which made
+     every spread exactly one viewport tall — so the sticky plate had nothing to stick THROUGH
+     and the right column opened with half a screen of empty paper. The column is now as tall as
+     its real content, which for every city here is taller than the viewport. */
+  .spread__text .col { padding: 56px 48px 64px; }
+  .spread__text .col + .col { border-top: 1px solid var(--hair); }
+  .record { padding: 34px 40px 60px; }
+  .rec { grid-template-columns: 110px 1fr auto; }
+  .rec__thumb { width: 110px; height: 68px; }
+  .cluster { grid-auto-rows: 120px; }
+}
+</style>
+</head>
+<body>
+<div id="scroller">
+  <header class="mast"><b>Cairn</b><span>Travel record</span></header>
+  <section class="opening" id="opening"></section>
+  <main id="body"></main>
+  <section class="record" id="record"></section>
+</div>
+
+<script type="module">
+import { loadData, plate, ringPath, linePath, greatCircle, distanceKm, fmtSpan, fmtDate, nights,
+         fitWindow, el } from '../shared.js';
+import { buildModel } from '../model.js';
+
+const data = await loadData();
+const M = buildModel(data);
+const { world, region } = data;
+const trip = M.realTrip;
+
+/* ---------------------------------------------------------------- plates */
+/**
+ * A plate: real cartography drawn at photographic scale. Land is always drawn (the map rule);
+ * the subject's country carries the visited wash; the route and its stops are white.
+ * There is no invented terrain, no fake relief and no stand-in imagery.
+ */
+function plateSVG(win, { route = [], stops = [], w = 800, h = 600, seenCodes = [], dots = true,
+                         numbered = false } = {}) {
+  const proj = plate({ win: fitWindow(win, w, h), w, h });
+  /* `meet`, never `slice`. The projection already fits the window inside the viewBox, so
+     `slice` cropped the very route the plate exists to show — visible on the first desktop
+     render as Croatia running off-frame with half its stops outside the plate. */
+  const svg = el('svg', { viewBox: `0 0 ${w} ${h}`, preserveAspectRatio: 'xMidYMid meet',
+    role: 'img', 'aria-hidden': 'true' });
+  svg.appendChild(el('defs', {}, [
+    el('linearGradient', { id: `g${w}${h}${Math.round(win[0])}`, x1: '0', y1: '0', x2: '0', y2: '1' }, [
+      el('stop', { offset: '0%', 'stop-color': '#0a2536' }),
+      el('stop', { offset: '100%', 'stop-color': '#04121c' }),
+    ]),
+  ]));
+  svg.appendChild(el('rect', { x: 0, y: 0, width: w, height: h,
+    fill: `url(#g${w}${h}${Math.round(win[0])})` }));
+
+  const src = win[2] - win[0] < 60 ? region : world;
+  for (const c of src.countries) {
+    const d = c.r.map((r) => ringPath(r, proj)).join('');
+    if (d) svg.appendChild(el('path', { class: 'land', d, fill: 'var(--land)',
+      stroke: 'var(--land-edge)', 'stroke-width': .5 }));
+  }
+  for (const c of src.countries) {
+    if (!seenCodes.includes(c.c)) continue;
+    const d = c.r.map((r) => ringPath(r, proj)).join('');
+    if (d) svg.appendChild(el('path', { class: 'seen', d, fill: 'var(--land-seen)',
+      'fill-opacity': .9, stroke: '#eaf5fb', 'stroke-width': .6 }));
+  }
+  for (let i = 0; i < route.length - 1; i++) {
+    const d = linePath(greatCircle(route[i], route[i + 1], 24), proj);
+    if (!d) continue;
+    svg.appendChild(el('path', { d, fill: 'none', stroke: 'rgba(4,18,28,.5)', 'stroke-width': 5,
+      'stroke-linecap': 'round' }));
+    svg.appendChild(el('path', { d, fill: 'none', stroke: '#fff', 'stroke-width': 2.2,
+      'stroke-linecap': 'round', 'stroke-linejoin': 'round' }));
+  }
+  /* Numbers carry the ORDER. This trip doubles back on itself, so the polyline alone reads as a
+     scribble; nothing is straightened to make the picture tidier. */
+  if (dots) stops.forEach((s, i) => {
+    const [x, y] = proj.project(s.lng, s.lat);
+    const r = numbered ? 10 : (s.big ? 6 : 3.4);
+    svg.appendChild(el('circle', { cx: x.toFixed(1), cy: y.toFixed(1), r,
+      fill: s.live ? 'var(--live)' : 'var(--space)', stroke: '#fff',
+      'stroke-width': numbered || s.big ? 2.6 : 1.8 }));
+    if (numbered) svg.appendChild(el('text', { x: x.toFixed(1), y: (y + 3.8).toFixed(1),
+      'text-anchor': 'middle', fill: '#fff', 'font-size': 11, 'font-weight': 800,
+      'font-family': 'var(--sans)', text: String(i + 1) }));
+  });
+  return svg;
+}
+
+const winFor = (pts, pad) => M.padWindow(pts, pad);
+
+/* ---------------------------------------------------------------- opening */
+{
+  const o = document.getElementById('opening');
+  o.appendChild(el('h1', {}, [
+    'You have been to ', el('span', { class: 'n', text: String(M.visited.size) }), ' countries.',
+  ]));
+  o.appendChild(el('p', { text:
+    `${M.cityCount} cities, ${M.daysTravelled} days on the road, across ${M.journeys.length} journeys `
+    + `since ${M.firstYear}. The most recent one finished ${fmtSpan(trip.start, trip.end).split('–').pop().trim()}.` }));
+}
+
+/* ---------------------------------------------------------------- the body */
+const body = document.getElementById('body');
+
+/* HERO PLATE — the whole most-recent journey, at full width. */
+{
+  const cities = trip.cities.map((c) => ({ ...c.at, name: c.name }));
+  const km = trip.cities.reduce((n, c, i) => (i ? n + distanceKm(trip.cities[i - 1].at, c.at) : 0), 0);
+  const p = el('figure', { class: 'plate plate--hero', style: 'margin:0' });
+  p.appendChild(plateSVG(winFor(cities, .45), {
+    route: cities, stops: cities.map((c) => ({ ...c, big: true })),
+    seenCodes: trip.countries, w: 900, h: 820, numbered: true,
+  }));
+  p.appendChild(el('div', { class: 'plate__badge' }, [el('i', {}), 'Travelled']));
+  p.appendChild(el('div', { class: 'readout' }, [
+    el('dl', {}, [
+      el('dt', { text: 'Days' }), el('dd', { text: String(trip.days.length) }),
+      el('dt', { text: 'Cities' }), el('dd', { text: String(trip.cities.length) }),
+      el('dt', { text: 'Stops' }), el('dd', { text: String(trip.counts.stops) }),
+      el('dt', { text: 'Between cities' }), el('dd', { text: `${km.toLocaleString('en')} km` }),
+    ]),
+  ]));
+  p.appendChild(el('figcaption', { class: 'plate__cap' }, [
+    el('h2', { text: trip.name }),
+    el('p', { text: `${fmtSpan(trip.start, trip.end)} · ${trip.cities.map((c) => c.name).join(' → ')}` }),
+  ]));
+  body.appendChild(p);
+}
+
+/* THREE CITY SPREADS — plate + narrative. On desktop the plate sticks and the text scrolls. */
+const FEATURED = ['dubrovnik', 'split', 'prague'];
+for (const key of FEATURED) {
+  const city = trip.cities.find((c) => c.key === key);
+  const days = trip.days.filter((d) => d.city === key);
+  if (!city || !days.length) continue;
+  const stops = days.flatMap((d) => d.stops).filter((s) => s.at);
+
+  const spread = el('section', { class: 'spread' });
+  const left = el('div', { class: 'spread__plate' });
+  const fig = el('figure', { class: 'plate plate--city', style: 'margin:0' });
+  fig.appendChild(plateSVG(winFor(stops.map((s) => s.at), .55), {
+    route: stops.map((s) => s.at), seenCodes: [city.country], w: 900, h: 820,
+    stops: stops.map((s) => ({ ...s.at })),
+  }));
+  fig.appendChild(el('div', { class: 'readout' }, [
+    el('dl', {}, [
+      el('dt', { text: 'Days here' }), el('dd', { text: String(days.length) }),
+      el('dt', { text: 'Stops' }), el('dd', { text: String(stops.length) }),
+      el('dt', { text: 'Ticketed' }), el('dd', { text: String(stops.filter((s) => s.ticketed).length) }),
+    ]),
+  ]));
+  fig.appendChild(el('figcaption', { class: 'plate__cap' }, [
+    el('h2', { text: city.name }),
+    el('p', { text: `${days.length} days · ${stops.length} stops with a location` }),
+  ]));
+  left.appendChild(fig);
+
+  const right = el('div', { class: 'spread__text' });
+  const col = el('div', { class: 'col' });
+  /* No kicker above this heading. Impeccable bans the eyebrow outright ("no brief earns it
+     back"), and it is one of the three tells cited as evidence against the rejected direction —
+     shipping it here would be indefensible. The place is already named on the plate; the byline
+     goes UNDER the heading, where it is a byline and not a label. */
+  col.appendChild(el('h3', { text: days[0].title ?? city.name }));
+  col.appendChild(el('p', { class: 'byline', text:
+    `${city.name}, ${city.country} \u00b7 ${days.length} day${days.length > 1 ? 's' : ''} \u00b7 `
+    + `${stops.length} located stops` }));
+  col.appendChild(el('div', { class: 'daylist' }, days.map((d, i) => {
+    const row = el('div', { class: 'dayrow' });
+    row.appendChild(el('b', { text: String(trip.days.indexOf(d) + 1) }));
+    row.appendChild(el('span', { text: d.title ?? '—' }));
+    const withTime = d.stops.filter((s) => s.time);
+    row.appendChild(el('small', { text:
+      `${d.stops.length} stops${withTime.length ? ` · first at ${withTime[0].time}` : ''}` }));
+    return row;
+  })));
+  /* The stops themselves. Real content, and it is what makes the column tall enough for the
+     sticky plate to be doing something on desktop. */
+  const list = el('div', { class: 'stoplist' });
+  for (const d of days) {
+    for (const st of d.stops) {
+      const row = el('div', { class: 'stoprow' });
+      row.appendChild(el('time', { class: 'meas', text: st.time ?? '—' }));
+      const nm = el('span', {}, [st.name]);
+      if (st.ticketed) { nm.appendChild(document.createTextNode(' ')); nm.appendChild(el('em', { class: 'tick', text: 'ticket' })); }
+      row.appendChild(nm);
+      const bits = [];
+      if (st.mode) bits.push(`${st.mode}${st.mins ? ` · ${st.mins} min` : ''}`);
+      if (st.cost) bits.push(st.cost);
+      if (bits.length) row.appendChild(el('small', { text: bits.join('  ·  ') }));
+      list.appendChild(row);
+    }
+  }
+  col.appendChild(list);
+
+  right.appendChild(col);
+  spread.appendChild(left); spread.appendChild(right);
+  body.appendChild(spread);
+}
+
+/* THE MEMORY CLUSTER — Apple Journal's structure, with only what exists in it. */
+{
+  const sec = el('section', { class: 'col', id: 'memory' });
+  const d = trip.days.find((x) => x.city === 'split' && x.stops.some((s) => s.at)) ?? trip.days[7];
+  sec.appendChild(el('h3', { text: d.title ?? 'A day' }));
+  sec.appendChild(el('p', { class: 'byline', text: `Day ${trip.days.indexOf(d) + 1} \u00b7 ${fmtDate(d.date)}` }));
+
+  const cluster = el('div', { class: 'cluster' });
+  const withAt = d.stops.filter((s) => s.at).slice(0, 3);
+  /* Tile 1 — the day's own route, as a map. Journal puts a map tile in this grid; so do we. */
+  const t1 = el('div', { class: 'maptile tall' });
+  t1.appendChild(plateSVG(winFor(withAt.map((s) => s.at), .6), {
+    route: withAt.map((s) => s.at), stops: withAt.map((s) => ({ ...s.at })),
+    seenCodes: ['HR'], w: 400, h: 500,
+  }));
+  t1.appendChild(el('b', { text: 'The day\u2019s route' }));
+  cluster.appendChild(t1);
+  /* A second real tile: one stop, at its own scale. Apple Journal's grid mixes a map tile in
+     among photographs; these are the two tiles Cairn can honestly fill today. */
+  const focus = withAt[withAt.length - 1] ?? withAt[0];
+  if (focus) {
+    const t2 = el('div', { class: 'maptile' });
+    t2.appendChild(plateSVG(M.padWindow([focus.at], 4), {
+      stops: [{ ...focus.at, big: true }], seenCodes: ['HR'], w: 300, h: 220 }));
+    t2.appendChild(el('b', { text: focus.name.slice(0, 26) }));
+    cluster.appendChild(t2);
+  }
+  /* The rest are photographic slots and they are EMPTY, because there is no photo library until
+     Phase 6. An invented picture here is the exact failure the product rules name. */
+  cluster.appendChild(el('div', { class: 'photoslot', text: 'Photo \u00b7 none yet' }));
+  cluster.appendChild(el('div', { class: 'photoslot', text: 'Photo \u00b7 none yet' }));
+  sec.appendChild(cluster);
+
+  sec.appendChild(el('p', { text:
+    `Cairn holds ${d.stops.length} stops for this day, ${withAt.length ? 'each with a coordinate' : 'none located'}, `
+    + 'and the times they were planned for. It does not hold a single photograph.' }));
+  sec.appendChild(el('div', { class: 'note' }, [
+    el('b', { text: 'No photo library is connected.' }),
+    ' The four empty frames are where photographs will sit once Cairn can read them. They are drawn '
+    + 'empty on purpose, and nothing on this page is a stand-in picture.',
+  ]));
+  body.appendChild(sec);
+}
+
+/* WHAT WE DO NOT KNOW */
+{
+  const sec = el('section', { class: 'col' });
+  sec.appendChild(el('h3', { text: 'What this record cannot tell you' }));
+  sec.appendChild(el('div', { class: 'note' }, [
+    el('b', { text: String(M.unattributed) }),
+    ` of ${M.census.located} located records could not be matched to a country, so they are counted `
+    + 'in nothing above and drawn on nothing below.',
+  ]));
+  sec.appendChild(el('div', { class: 'note' }, [
+    'Croatia 2022 carries a place recorded only as ', el('b', { text: '"Somewhere at sea"' }),
+    '. It is counted as a city, and it can never be drawn.',
+  ]));
+  sec.appendChild(el('div', { class: 'note' }, [
+    'Trips recorded after the fact hold a country and a list of city names, and ',
+    el('b', { text: 'no coordinates' }),
+    '. They are shown at country scale because that is the only scale they are true at.',
+  ]));
+  body.appendChild(sec);
+}
+
+/* ---------------------------------------------------------------- the record */
+{
+  const r = document.getElementById('record');
+  r.appendChild(el('h3', { class: 'rechead', text: 'Everything, in order' }));
+  for (const j of M.journeys) {
+    const row = el('button', { class: 'rec', type: 'button' });
+    const th = el('div', { class: 'rec__thumb' });
+    const pts = M.anchorsOf(j);
+    th.appendChild(plateSVG(M.padWindow(pts, .5, j.detail === 'full' ? 1.2 : 9), {
+      route: j.detail === 'full' ? M.sequence(j, null) : [], seenCodes: j.countries,
+      stops: pts.map((p) => ({ ...p })), w: 220, h: 150, dots: j.detail === 'full',
+    }));
+    row.appendChild(th);
+    row.appendChild(el('span', { class: 'rec__name', text: j.name }));
+    row.appendChild(el('span', { class: 'rec__meta', text:
+      `${fmtSpan(j.start, j.end)} · ${nights(j.start, j.end) + 1} days · ${j.countries.join(' ')}`
+      + (j.detail === 'full' ? '' : ' · country-level record') }));
+    row.appendChild(el('span', { class: 'rec__state', 'data-s': j.state, text: M.stateLabel(j.state) }));
+    r.appendChild(row);
+  }
+}
+</script>
+</body>
+</html>
