@@ -1,6 +1,10 @@
 # Cairn — the design contract
 
-**Status: CONTRACT. Revision 1, 2026-09-01 (architect).** `ARCHITECTURE.md` **§9 / A-55** makes this
+**Status: CONTRACT. Revision 2, 2026-09-02 (architect).** *(Revision 1, 2026-09-01, created it. Revision 2
+rules QA round 41's **R41-14** — the §5.5/§5.6 precedence question — and changes nothing else: §5.3 gains a
+scope clause, §5.5 gains the precedence ruling, §5.6 states what its fence is for, §6.2 gains the
+equivalence criterion that replaces a hand-kept allow-list, and §7 gains one deferred row.)*
+`ARCHITECTURE.md` **§9 / A-55** makes this
 document binding: where a surface increment and this document disagree, this document is the spec and the
 increment is the defect. It sits beside `ARCHITECTURE.md` rather than inside it because `ARCHITECTURE.md`
 is ~271k tokens and no builder of a screen should have to enter it to find out what the product looks like.
@@ -436,7 +440,12 @@ Single column, `padding: 1.25rem 1rem`, bottom padding clearing the bottom bar a
   with a quieter body line under it naming the span — *"across 3 trips, from Aug 2019 to Aug 2026"* — built
   from `trips` and the min/max of `firstVisit`/`lastVisit`. Numbers in `--font-mono` with
   `font-variant-numeric: tabular-nums`; labels in tracked mono at the 11px floor. **This replaces
-  `.statrow`'s three boxes with one typographic statement**, and it is the P1/P4 proof.
+  `.statrow`'s three boxes with one typographic statement**, and it is the P1/P4 proof. **Scope, ruled
+  (R41-14):** *on this screen*. The Map keeps `.statrow` until the increment that opens `WorldMap.tsx`
+  (§5.6's fence, §7), so for the duration of I-8b the same three numbers are deliberately set two ways one
+  tab apart. That is a **stated and bounded** divergence with a named end, not a licence for a third
+  treatment and not a defect to re-file: the Map's stat row converges in the same pass that adopts §5.5's
+  shared refusal.
 - **The country record.** A single-column list, one row per country, `--rule-soft` hairline between rows —
   **no card, no border box, no chevron**. Each row: the **ISO code in mono at h2 scale** as the leading
   element (it is the country's identity on this product and it is already the map's vocabulary), the
@@ -484,7 +493,31 @@ a marked prose block. That composition is the P1 rendered test passing by constr
   taken) — the same wording register as `WorldMap`'s empty state. **No illustration, no ghost cards.**
 - **Refusal.** `travelHistory(state, today).ok === false` renders the same *"We could not read your travel
   history"* banner the world map renders, with the offending row id and the parser message — **the same
-  component and the same words**, because one vocabulary for "could not be read" is already the rule.
+  words**, because one vocabulary for "could not be read" is already the rule. A user meets this failure on
+  two tabs one tap apart; two wordings for one fact is the product defect, and it is the *words* that carry
+  that, not the file the JSX lives in.
+
+  **Precedence, ruled — R41-14.** Revision 1 asked for *"the same component and the same words"* while §5.6
+  fenced `WorldMap.tsx` at a zero-line diff, and one import cannot be both. **§5.6 wins; §5.5 yields its
+  mechanism and keeps its words.** Concretely, for the duration of the fence:
+  1. The shared component **exists** and the Profile uses it — `apps/web/src/views/Refusal.tsx`. The world
+     map keeps its inline copy and **adopts the component in the first increment that opens `WorldMap.tsx`
+     for a reason of its own** (§7 carries that as a deferral with its trigger, so it is scheduled rather
+     than remembered).
+  2. While the duplication exists it is held equal by a **rendered equivalence assertion over both refusal
+     branches** (§6.2) — the two surfaces' banners must produce **identical text on screen**. A list of
+     sentences asserted to appear in both *source files* does **not** discharge this: R41-13 mutation-tested
+     exactly that shape and it passes a fourth sentence added to one side and an inverted `rowId` branch.
+     An allow-list is a duplication nobody is watching, wearing the costume of one that is watched.
+  3. Neither surface's refusal may gain a sentence, a branch or a control the other does not have. The way
+     to add one is to adopt the component first.
+
+  *Why not the alternatives, in a sentence each.* Extracting the strings to a shared module still needs a new
+  import in `WorldMap.tsx` (it inlines them today) and the only module it already imports is `@cairn/client`,
+  which §5.6 fences and which is the wrong home for UI copy. Carving a "text-only refactor" exception out of
+  the fence destroys the property that makes the fence cheap — that nobody has to adjudicate what counts as
+  text-only. And withdrawing the identity requirement in favour of *"the same idea"* makes drift **legal**
+  rather than merely unwatched, which is the worse of the two failures.
 - **Error inside the surface** is caught by the shell's per-tab `TabBoundary`, which already exists and
   which Profile inherits by being registered.
 
@@ -503,6 +536,17 @@ a marked prose block. That composition is the P1 rendered test passing by constr
 **Explicitly not in I-8b:** any change to `WorldMap.tsx` (it is a zero-line diff for three increments
 running and there is no reason for this to be the fourth), any change to the world map's geometry, any
 change to `packages/core` or `packages/client`, any new dependency, any `SUMMARY_VERSION` bump.
+
+**What the `WorldMap.tsx` fence is, and is not — R41-14.** It is a *mechanical proxy* for
+`ARCHITECTURE.md` §9.2 fence 1, the settled map arc A-40 → A-54. What it actually protects is the
+geometry and the rendering logic — the frame, the panes, the `viewBox`, W1's identifier counts — and its
+whole value is that it costs no judgement: `git diff --stat` decides, and no reviewer has to rule on whether
+a particular diff was "only text." **That is why it is not narrowed here.** An exception carved for one
+text-only extraction would have to be re-argued for the next one, and the increment that would carry it is
+the one currently going back with three MAJOR findings; opening the map file mid-send-back converts a
+zero-risk item into a re-verification of the map. The fence therefore stands, and its two visible costs are
+named rather than left to be discovered by the next reader: the duplicated refusal (§5.5, held equal by
+§6.2) and the Map's surviving `.statrow` (§5.3). Both end in the same future increment, and §7 records it.
 
 ---
 
@@ -603,6 +647,17 @@ with a pass/fail:
   assertion, re-run because Profile adds a third mounted panel)*.
 - **Refusal path, driven:** plant an unreadable summary row, open Profile, assert the refusal banner with
   the row id — and assert the **other two tabs still work**, which is what the per-tab error boundary is for.
+- **Refusal equivalence, driven — §5.5's ruling, and the criterion that replaces R41-13's allow-list.**
+  With one planted library, open **Map** and **Profile** in the same session and assert that each surface's
+  `.banner--error` has **identical normalised text content** (collapse whitespace; compare the banner
+  subtree only — the surfaces' own `<h1>`s differ by design, and the map's banner carries no test id and
+  **may not be given one**, because that is a `WorldMap.tsx` diff). Assert it on **both** branches of the
+  message, both of which are reachable from real storage: a **duplicate summary id** (`rowId` non-null) and
+  a **malformed stored date** (`rowId` null — `packages/client` §`travelHistory`). **A source-substring
+  check over the two files does not discharge this criterion.** **Injected fault:** each of R41-13's three
+  mutations of `Refusal.tsx` — reword a listed sentence, add a fourth sentence the map does not have, invert
+  the `rowId` conditional — must go **red**; `qa/r41-refusal-drift.sh` already applies all three and reads
+  the colour, so it is the fault harness, not a new one. This criterion retires with the duplication (§7).
 - **Empty path, driven:** an empty library renders zeroes and the two-ways-forward sentence, and **zero**
   elements matching the country-row selector.
 - **Provisional path, driven** *(I-8b's inherited criterion)*: one `completed` trip to `AT` and one `active`
@@ -659,4 +714,5 @@ are not a substitute for any assertion above.
 | **Custom scroll-driven or view-transition effects** | P6's budget, and `@view-transition` is not baseline across the two engines we would have to verify in | both engines verified in this environment |
 | **A component library of any kind** | §4; Cairn has one screen family and it is not big enough to have a component-library problem yet | a surface needs a real modal **and** a combobox together (the standing shadcn trigger) |
 | **Light/dark manual toggle** | `prefers-color-scheme` is honoured and there is no place to put a setting; adding one is a settings screen, which Profile is explicitly not | a settings surface exists |
+| **The Map adopting `views/Refusal.tsx`, and the Map's `.statrow` becoming §5.3's typographic statement** | Both are `WorldMap.tsx` diffs, and §5.6's zero-line fence outranks §5.5's *"same component"* (R41-14). Neither is invisible in the meantime: the words are held equal by §6.2's rendered equivalence check, and §5.3 names the two-treatment divergence | the **first increment that opens `WorldMap.tsx` for a reason of its own** — it does both in that pass, and §6.2's equivalence criterion retires with the duplication |
 | **`MGR-6` / `R40-3`** — I19's quantifier for non-WGS84 coordinate domains | an architect item, correctly MINOR, unreachable from any real data, and **inside the settled geometry arc this pass is fenced out of** | the next architect pass that opens §4.4 for a reason of its own |

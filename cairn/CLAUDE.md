@@ -29,7 +29,7 @@ whole is a decision to spend a quarter of a context window; `doc-section` exists
 | Doc | Size | Read whole when | Otherwise |
 |---|---|---|---|
 | `BRIEF.md` | ~3k tok | always (it's the contract) | — |
-| `DESIGN.md` | ~12k tok | **you're building or reviewing any web surface** — it is the design contract, and `ARCHITECTURE.md` §9 makes it binding | `cairn/tools/doc-section DESIGN 3 6` gives the responsive contract + the rendered acceptance standard alone. §5 is the I-8b Profile spec |
+| `DESIGN.md` | ~13k tok | **you're building or reviewing any web surface** — it is the design contract, and `ARCHITECTURE.md` §9 makes it binding | `cairn/tools/doc-section DESIGN 3 6` gives the responsive contract + the rendered acceptance standard alone. §5 is the I-8b Profile spec |
 | `VISUAL-TELLS.md` | ~2k tok | once before writing CSS, once at rendered verification | **advisory, never a contract.** A hit is a question; it does not outrank `DESIGN.md` or a shipped ruling |
 | `PRODUCT-VISION.md` | ~10k tok | you're the architect and the question is *why this order* | Appendix A is Jacob's words verbatim — quote it, don't paraphrase it |
 | `ARCHITECTURE.md` | **~271k tok** | **never.** Not even for a broad design revision — read sections | `cairn/tools/doc-section ARCHITECTURE <sections>`; run it bare to list every section with its size, and see the table at the top of the doc for who needs what |

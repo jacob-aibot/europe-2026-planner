@@ -589,6 +589,18 @@ two vendored agent skills, and the zero-dep rule confirmed as `packages/core`/`p
 **Nothing in the settled map arc (A-40 → A-54) is reopened** — §9.2 fences it explicitly, and I-8b's
 `WorldMap.tsx` diff stays at zero lines for a fourth increment.
 
+**Revision 39, 2026-09-02.** One finding, one ruling, nothing else: QA round 41's **R41-14**, the genuine
+contradiction between `DESIGN.md` §5.5 (*"the same component and the same words"* as the world map's
+refusal) and §5.6 (`WorldMap.tsx` is a zero-line diff). **§5.6 wins and is not narrowed** — its worth is
+that it needs no judgement to check, and the exception on offer was a text-only extraction that would have
+to be re-argued next time. §5.5 keeps its *words* and yields its *mechanism*: the shared component ships on
+the Profile, the map keeps its copy, and the two are held equal by a **rendered** equivalence assertion over
+both refusal branches instead of the three-sentence source allow-list that shipped at `c08c70f` and that
+round 41 mutation-tested green against an added sentence and an inverted branch (**R41-13**). **No increment
+is added, cut or reordered; Phase 2's scope and exit criteria are untouched; nothing in A-40 → A-54 is
+reopened.** Only I-8b's *Verification* bullet moves here; the ruling itself lives in `DESIGN.md` §5.3, §5.5,
+§5.6, §6.2 and §7, with `ARCHITECTURE.md` §9.2 fence 1 recording why the fence held.
+
 > **Phase numbers changed once, here.** Every heading below carries its old number, and every "Phase N"
 > written in `ARCHITECTURE.md` §1–§7, `BUILD-NOTES.md` or `QA-FINDINGS.md` before revision 9 means the
 > *named* phase it described: "Phase 2" = accounts/server (**now 3**), "Phase 3" = ingest (**now 4**),
@@ -3977,7 +3989,10 @@ Profile half plus the four shell items §5.6 enumerates, and nothing else.)*
   shadcn revisit trigger is not hit). **§9.2's fences apply**: the world map's geometry is closed, and no
   media query may be added to `.worldmap__panes`.
 - **Verification.** I-8's remaining criteria, on this surface: the provisional treatment asserted on the
-  rendered Profile with the same injected fault; the `travelStats` refusal boundary; `unattributed` and
+  rendered Profile with the same injected fault; the `travelStats` refusal boundary — **including revision
+  39's equivalence criterion**: the Map's and the Profile's refusal banners must render **identical text**,
+  asserted on both branches of the message and on rendered output rather than on source substrings
+  (`DESIGN.md` §5.5, §6.2); `unattributed` and
   `unnamedCities` rendered rather than hidden, with the *"no places yet"* case distinguishable from *"all
   attributed"*; and the tab shell still carrying exactly three tabs. **Plus `DESIGN.md` §6 in full**, which
   is the rendered acceptance standard and is where this increment's new criteria live rather than being

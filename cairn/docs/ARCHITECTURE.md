@@ -905,6 +905,16 @@ untouched by every verdict; `apps/web` may take dependencies and **takes none ne
 revision 38 rewrites **I-8b** against `DESIGN.md` §5 and §6. Export surface **79**, no `package.json` diff,
 no stored byte.
 
+**Revision 39, 2026-09-02.** One MINOR finding, one ruling, no engine and no geometry: QA round 41's
+**R41-14**, a contradiction *inside* `DESIGN.md` between §5.5 (*"the same component and the same words"* for
+the refusal banner the Map and the Profile share) and §5.6 (`WorldMap.tsx` is a zero-line diff). **The fence
+holds and is not narrowed** — §9.2 fence 1 now says why in its own words, because the fence's value is that
+`git diff --stat` decides it and no reviewer has to rule on what counts as a text-only diff. §5.5 keeps its
+*words* and yields its *mechanism*, and the duplication it leaves is held equal by a **rendered** equivalence
+assertion over both refusal branches rather than the source allow-list round 41 mutation-tested green
+(**R41-13**). **Everything else lives in `DESIGN.md`** (§5.3, §5.5, §5.6, §6.2, §7) and `ROADMAP.md`
+revision 39. Nothing in A-40 → A-54 is reopened; no export, dependency, port, action or stored byte moves.
+
 **Phase 1 is §2 and §4. The next phase is §8.1–§8.4.** Everything else is the shape those must not
 foreclose. See `ROADMAP.md` for sequencing and `PRODUCT-VISION.md` for why this order and not another.
 **What the product looks like is `DESIGN.md`, not this document** — §9 says why, and a builder of a screen
@@ -14326,7 +14336,7 @@ spec and the increment is the defect — the same standing §2 has for the engin
 - **§6** — the **rendered acceptance standard** every surface increment is measured against.
 
 **It is not in this document on purpose.** §2 is ~123k tokens and §4 ~59k; a builder of a screen should not
-have to enter either to find out what the product looks like. `DESIGN.md` is ~12k and self-contained, and
+have to enter either to find out what the product looks like. `DESIGN.md` is ~13k and self-contained, and
 `cairn/tools/doc-section DESIGN 3 6` cuts it further.
 
 **What does *not* move into it.** `docs/VISUAL-TELLS.md` stays exactly as it is — advisory, post-hoc, and
@@ -14341,7 +14351,14 @@ Stated so a design pass cannot be read as reopening them:
 1. **The world map's geometry is closed.** A-40 → A-54: clustering, pane membership, framing, extent, pane
    order and the tie-break. `DESIGN.md` §3.3 owns only how the map's *card* sits in a page and explicitly
    forbids adding any media query to `.worldmap__panes` — a per-screen-size cell rule is one refactor away
-   from a per-screen-size frame rule, which A-41 Part 7 and W1 forbid outright.
+   from a per-screen-size frame rule, which A-41 Part 7 and W1 forbid outright. **`WorldMap.tsx`'s zero-line
+   diff is this fence's mechanical proxy** and it holds through I-8b: asked by QA round 41 (**R41-14**)
+   whether a text-only extraction of the shared refusal banner could be excepted from it, the answer is
+   **no** — the fence's value is that `git diff --stat` decides it and no reviewer has to adjudicate what
+   counts as text-only. `DESIGN.md` §5.5 yields its *"same component"* mechanism to it (keeping its *words*,
+   held equal by a rendered equivalence check, §6.2), §5.3 states the Map's surviving `.statrow` as a bounded
+   divergence, and `DESIGN.md` §7 carries both as deferrals triggered by the first increment that opens
+   `WorldMap.tsx` for a reason of its own.
 2. **`packages/core` and `packages/client` are unchanged by anything here**, in shape, surface (79) or
    dependencies (zero).
 3. **A-54 Part 3's ruling (G5′) is not reopened.** Revision 38 corrects its *attribution* only — see the
