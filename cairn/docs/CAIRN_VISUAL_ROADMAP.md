@@ -19,6 +19,40 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
+> **🏗️ CITY-LEVEL HISTORY IS NOW BUILT — as of 2026-09-03. This block is the newest. It changes
+> exactly one thing below: the first of the two "designed, not built" capabilities in the block
+> underneath is now **built**. Everything else in that block still stands, including the stop on
+> new screens.**
+>
+> **What this means in plain English.** When a trip finishes, Cairn now remembers **where each
+> city is** and **which days you were there** — not just the city's name. Vienna is no longer
+> *"Vienna"*; it is *"Vienna, Austria, 8–10 August"*, with a point on the globe attached. That is
+> the raw material a map of your travels, a route drawing, or a dated stamp is made of, and until
+> today it was thrown away the moment a trip ended.
+>
+> **You cannot see it yet, and that is on purpose.** No screen changed — not one file that draws
+> anything was opened, and a test enforces that. The visual direction is still unpicked (block
+> below), so this was built underneath the screens where the look does not reach. The one place
+> it is visible today is the command line: `stats` now prints `AT  Vienna  2026-08-08 →
+> 2026-08-10` where it used to print `AT  Vienna`.
+>
+> **Two deliberate limits, both decided by the architect rather than by the build.** It stops at
+> the **city** — Cairn will not claim you stood at 112 specific spots on a trip where some of them
+> were only ever ideas on a list. And **countries deliberately do not get date ranges** even
+> though cities now do, because a country can end up on your map through a saved place that
+> carries no date at all, and one field that sometimes means a real range and sometimes means
+> nothing is worse than not having it.
+>
+> **Every existing trip is updated automatically.** The record Cairn keeps per trip carries a
+> version stamp; that stamp moved, so on the next launch every stored trip is recomputed from its
+> own document. Nothing is left half-old, and nothing is patched up from the old record — each one
+> is worked out again from scratch.
+>
+> **Status on this board:** city-level history is **designed ✅ · built ✅ · verified ❌ ·
+> shippable ❌** — an adversarial round has not tried to break it yet, which is the next step.
+> **Photos (the other half of step 2d) are unchanged: designed ✅ · built ❌.**
+
+
 > **📐 THE LOOK IS BACK OPEN, AND THE WORK UNDER IT CARRIES ON — as of 2026-09-03. This block is the
 > newest and supersedes every block below on *"what happens next"* and on the visual direction. It does
 > not change anything below about what is built.**

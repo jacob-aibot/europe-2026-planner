@@ -23,12 +23,26 @@ import { normalizeCityName } from '../src/model/cityName.ts';
 const TODAY: IsoDate = '2026-06-15';
 
 let seq = 0;
-function city(name: string, countryCode: CountryCode | null): TripSummaryCity {
+/**
+ * `days` is A-56's `firstDay`/`lastDay` pair. It defaults to `null`/`null` — *"this city
+ * occupies no day"* — which is the majority shape for a completed trip and the branch A-56
+ * Part 7 clause 2's trip-range fallback exists for.
+ */
+function city(
+  name: string,
+  countryCode: CountryCode | null,
+  days: { first: IsoDate; last: IsoDate } | null = null,
+): TripSummaryCity {
   return {
     key: `city-${++seq}` as CityKey,
     name,
     countryCode,
     countrySource: countryCode === null ? null : 'coordinate',
+    // A-56. A stored row carries the document's own `City.centre`; nothing in `travelStats`
+    // reads it, and this test file asserts that (residue 2 is a ceiling, not a feature).
+    centre: { lat: 0, lng: 0 },
+    firstDay: days === null ? null : days.first,
+    lastDay: days === null ? null : days.last,
   };
 }
 
@@ -59,7 +73,7 @@ function row(init: {
       places: init.places ?? { located: 0, attributed: 0 },
       stops: init.stops ?? { located: 0, attributed: 0 },
     },
-    summaryVersion: 4,
+    summaryVersion: 5,
   };
 }
 
@@ -762,7 +776,7 @@ test('A-37: a date that is not even SHAPE-valid still throws — stated as a dec
  */
 test('A-37: a stored `--` is not a country code — it reads as null and does not collide with the sentinel', () => {
   const a = row({ id: 'a', startDate: '2024-04-01', endDate: '2024-04-02', cities: [city('--' as CountryCode, null)] });
-  a.cities = [{ key: 'k-a' as CityKey, name: 'Paris', countryCode: '--' as CountryCode, countrySource: 'stated' }];
+  a.cities = [{ ...city('Paris', null), key: 'k-a' as CityKey, countryCode: '--' as CountryCode, countrySource: 'stated' }];
   const b = row({ id: 'b', startDate: '2024-05-01', endDate: '2024-05-02', cities: [city('Paris', null)] });
   const s = travelStats([a, b], TODAY);
   // A-37 Part 4: the correct answer is ONE row and it is not a collision — `'--'` is not a
@@ -777,7 +791,7 @@ test('A-37: a stored `--` is not a country code — it reads as null and does no
 test('A-37: `\'\'`, `\'hr\'`, `\'A|\'` and a non-string all read as null — counted, and emitted as null', () => {
   for (const bad of ['', 'hr', 'A|', 'AUT', 'A', 42, {}, null, undefined]) {
     const r = row({ id: 'x', startDate: '2024-04-01', endDate: '2024-04-02' });
-    r.cities = [{ key: 'k' as CityKey, name: 'Paris', countryCode: bad as unknown as CountryCode, countrySource: 'stated' }];
+    r.cities = [{ ...city('Paris', null), key: 'k' as CityKey, countryCode: bad as unknown as CountryCode, countrySource: 'stated' }];
     const s = travelStats([r], TODAY);
     assert.equal(s.cities.length, 1, `${JSON.stringify(bad)}: lost the city`);
     assert.equal(s.cities[0].countryCode, null, `${JSON.stringify(bad)}: was read as a country code`);
@@ -799,9 +813,9 @@ test('A-37: a real minted code is still read as one — the gate is not simply r
 
 test('A-37: the composite key stays unambiguous — `A|` + `x` and `A` + `|x` are TWO rows', () => {
   const a = row({ id: 'a', startDate: '2024-04-01', endDate: '2024-04-02' });
-  a.cities = [{ key: 'k-a' as CityKey, name: 'x', countryCode: 'A|' as CountryCode, countrySource: 'stated' }];
+  a.cities = [{ ...city('x', null), key: 'k-a' as CityKey, countryCode: 'A|' as CountryCode, countrySource: 'stated' }];
   const b = row({ id: 'b', startDate: '2024-05-01', endDate: '2024-05-02' });
-  b.cities = [{ key: 'k-b' as CityKey, name: '|x', countryCode: 'A' as CountryCode, countrySource: 'stated' }];
+  b.cities = [{ ...city('|x', null), key: 'k-b' as CityKey, countryCode: 'A' as CountryCode, countrySource: 'stated' }];
   const s = travelStats([a, b], TODAY);
   assert.equal(s.cities.length, 2, 'two genuinely different rows were merged by an ambiguous key');
   assert.deepEqual(s.cities.map((c) => c.nameKey).sort(), ['x', '|x']);
@@ -812,4 +826,253 @@ test('A-37: a malformed `countryCodes[]` entry produces no TravelStatsCountry at
   r.countryCodes = ['HR', '--', '', 'hr', 'AUT', 42 as unknown as string] as CountryCode[];
   const s = travelStats([r], TODAY);
   assert.deepEqual(s.countries.map((c) => c.code), ['HR'], 'a code the index cannot contain has no honest rendering');
+});
+
+// ---------------------------------------------------------------------------
+// §8.4 **A-56** Part 7 — `TravelStatsCity` gains `firstVisit`/`lastVisit`, and A-31 Part 5
+// residue 1 closes **FOR CITIES ONLY**.
+//
+// Residue 1 named its own trigger: *"a summary that carries city date ranges (`cityRange`
+// already computes them per document)"*. I-12 fires it. Countries do **not** get this, and the
+// refusal has a reason: a country reaches `countryCodes` from a city, *or* from a `Place.at`,
+// *or* from a stop's coordinate, and a place carries no day edge at all — so a country
+// attributed only through a place would have a null range while another country in the same
+// trip had a real one. One field, two meanings, in one list.
+//
+// > **Widen where the document already carries the edge; refuse where it would have to be
+// > invented.**
+// ---------------------------------------------------------------------------
+
+test('A-56: a city\'s firstVisit/lastVisit are ITS OWN days, not the whole trip\'s range', () => {
+  const s = travelStats(
+    [
+      row({
+        id: 't1',
+        startDate: '2026-03-01',
+        endDate: '2026-03-20',
+        countryCodes: ['AT' as CountryCode],
+        cities: [
+          city('Vienna', 'AT' as CountryCode, { first: '2026-03-02', last: '2026-03-05' }),
+          city('Salzburg', 'AT' as CountryCode, { first: '2026-03-11', last: '2026-03-14' }),
+        ],
+      }),
+    ],
+    TODAY,
+  );
+  assert.deepEqual(
+    s.cities.map((c) => [c.name, c.firstVisit, c.lastVisit]),
+    [
+      ['Salzburg', '2026-03-11', '2026-03-14'],
+      ['Vienna', '2026-03-02', '2026-03-05'],
+    ],
+  );
+});
+
+test('A-56 Part 7 clause 3: the COUNTRY keeps the trip range — residue 1 stands unchanged for countries', () => {
+  // The same rows. Austria's dates are still the *trip's*, which is the residue this ruling
+  // deliberately does NOT close: a country can be attributed through a `Place.at` with no day
+  // edge, and a city cannot.
+  const s = travelStats(
+    [
+      row({
+        id: 't1',
+        startDate: '2026-03-01',
+        endDate: '2026-03-20',
+        countryCodes: ['AT' as CountryCode],
+        cities: [city('Vienna', 'AT' as CountryCode, { first: '2026-03-02', last: '2026-03-05' })],
+      }),
+    ],
+    TODAY,
+  );
+  assert.deepEqual(
+    s.countries.map((c) => [c.code, c.firstVisit, c.lastVisit]),
+    [['AT', '2026-03-01', '2026-03-20']],
+  );
+});
+
+test('A-56 Part 7 clause 3: TravelStatsCountry gains NO field — its key set is exactly the five', () => {
+  const s = travelStats(
+    [row({ id: 't1', startDate: '2026-03-01', endDate: '2026-03-20', countryCodes: ['AT' as CountryCode] })],
+    TODAY,
+  );
+  assert.equal(s.countries.length, 1, 'INCONCLUSIVE: no country row to inspect');
+  assert.deepEqual(
+    Object.keys(s.countries[0]).sort(),
+    ['code', 'firstVisit', 'lastVisit', 'provisional', 'tripIds'],
+    'a field was added to TravelStatsCountry. A-56 Part 7 clause 3 refuses country date ranges ' +
+      'explicitly — widening this is an architect\'s ruling, not a symmetry fix.',
+  );
+});
+
+test('A-56 Part 7 clause 2: a city with NO days falls back to its trip\'s own range, never null and never year zero', () => {
+  const s = travelStats(
+    [
+      row({
+        id: 't1',
+        startDate: '2019-03-01',
+        endDate: '2019-03-31',
+        countryCodes: ['JP' as CountryCode],
+        // "March 2019", recorded from memory: cities and no day→city edges.
+        cities: [city('Kyoto', 'JP' as CountryCode)],
+      }),
+    ],
+    TODAY,
+  );
+  assert.deepEqual(
+    s.cities.map((c) => [c.name, c.firstVisit, c.lastVisit]),
+    [['Kyoto', '2019-03-01', '2019-03-31']],
+  );
+});
+
+test('A-56 Part 7 clause 1: an ACTIVE trip\'s city visit is clamped at today, never a future date', () => {
+  const s = travelStats(
+    [
+      row({
+        id: 't1',
+        startDate: '2026-06-10',
+        endDate: '2026-06-30',
+        countryCodes: ['HR' as CountryCode],
+        // The plan says the traveller is in Split until the 25th. Today is the 15th.
+        cities: [city('Split', 'HR' as CountryCode, { first: '2026-06-12', last: '2026-06-25' })],
+      }),
+    ],
+    TODAY,
+  );
+  assert.equal(s.trips.active, 1, 'INCONCLUSIVE: the fixture trip is not active');
+  assert.deepEqual(
+    s.cities.map((c) => [c.firstVisit, c.lastVisit]),
+    [['2026-06-12', TODAY]],
+  );
+});
+
+test('A-56 Part 7 clause 1: a city dated OUTSIDE its own row\'s range is clamped into it', () => {
+  // A hand-edited row. A-37: a stored row is not a validated document, and a city that claims
+  // days before its trip started or after it ended may not report them.
+  const s = travelStats(
+    [
+      row({
+        id: 't1',
+        startDate: '2024-05-10',
+        endDate: '2024-05-20',
+        countryCodes: ['FR' as CountryCode],
+        cities: [city('Paris', 'FR' as CountryCode, { first: '1999-01-01', last: '2099-01-01' })],
+      }),
+    ],
+    TODAY,
+  );
+  assert.deepEqual(
+    s.cities.map((c) => [c.firstVisit, c.lastVisit]),
+    [['2024-05-10', '2024-05-20']],
+  );
+});
+
+test('A-56 Part 7 clause 1: a city whose lastDay precedes its firstDay degenerates to its start', () => {
+  const s = travelStats(
+    [
+      row({
+        id: 't1',
+        startDate: '2024-05-10',
+        endDate: '2024-05-20',
+        countryCodes: ['FR' as CountryCode],
+        cities: [city('Paris', 'FR' as CountryCode, { first: '2024-05-18', last: '2024-05-12' })],
+      }),
+    ],
+    TODAY,
+  );
+  assert.deepEqual(s.cities.map((c) => [c.firstVisit, c.lastVisit]), [['2024-05-18', '2024-05-18']]);
+});
+
+test('A-56: across two trips, a city row takes the EARLIEST first and the LATEST last', () => {
+  const s = travelStats(
+    [
+      row({
+        id: 't-late',
+        startDate: '2024-09-01',
+        endDate: '2024-09-10',
+        countryCodes: ['JP' as CountryCode],
+        cities: [city('Tokyo', 'JP' as CountryCode, { first: '2024-09-03', last: '2024-09-08' })],
+      }),
+      row({
+        id: 't-early',
+        startDate: '2019-04-01',
+        endDate: '2019-04-10',
+        countryCodes: ['JP' as CountryCode],
+        cities: [city('Tokyo', 'JP' as CountryCode, { first: '2019-04-02', last: '2019-04-04' })],
+      }),
+    ],
+    TODAY,
+  );
+  assert.equal(s.cities.length, 1, 'the two Tokyos did not group');
+  assert.equal(s.cities[0].firstVisit, '2019-04-02');
+  assert.equal(s.cities[0].lastVisit, '2024-09-08');
+  // Canonical row order is by `startDate`, so the earlier trip is first in `tripIds`.
+  assert.deepEqual(s.cities[0].tripIds, ['t-early', 't-late']);
+});
+
+test('A-56: firstVisit <= lastVisit holds for EVERY city and country row, over every fixture here', () => {
+  const rows = [
+    row({
+      id: 'a', startDate: '2026-06-10', endDate: '2026-06-30', countryCodes: ['HR' as CountryCode],
+      cities: [city('Split', 'HR' as CountryCode, { first: '2026-06-12', last: '2026-06-25' })],
+    }),
+    row({
+      id: 'b', startDate: '2024-05-20', endDate: '2024-05-10', countryCodes: ['FR' as CountryCode],
+      cities: [city('Paris', 'FR' as CountryCode, { first: '2024-05-18', last: '2024-05-12' })],
+    }),
+    row({
+      id: 'c', startDate: '2019-03-01', endDate: '2019-03-31', countryCodes: ['JP' as CountryCode],
+      cities: [city('Kyoto', 'JP' as CountryCode)],
+    }),
+    row({
+      id: 'd', startDate: '2024-01-01', endDate: '2024-01-05', countryCodes: ['IT' as CountryCode],
+      cities: [city('Rome', 'IT' as CountryCode, { first: '1999-01-01', last: '2099-12-31' })],
+    }),
+  ];
+  const s = travelStats(rows, TODAY);
+  assert.ok(s.cities.length >= 4, 'INCONCLUSIVE: the fixtures collapsed into fewer rows');
+  for (const c of [...s.cities, ...s.countries]) {
+    assert.ok(c.firstVisit <= c.lastVisit, `${JSON.stringify(c)}: firstVisit is after lastVisit`);
+    assert.ok(c.lastVisit <= TODAY, `${JSON.stringify(c)}: a visit is dated in the future`);
+  }
+});
+
+test('A-56: a gen-4 row with no firstDay/lastDay KEY AT ALL falls back, exactly as a null does', () => {
+  // `refreshLibrary()` installs the stored rows and the rescan brings them current afterwards,
+  // so the library legitimately holds a version-4 row in between. A missing key is `undefined`,
+  // and `?? row.startDate` reads it identically to `null`.
+  const stale = row({
+    id: 'gen4',
+    startDate: '2020-02-01',
+    endDate: '2020-02-09',
+    countryCodes: ['ES' as CountryCode],
+    cities: [city('Madrid', 'ES' as CountryCode)],
+  });
+  delete (stale.cities[0] as Partial<TripSummaryCity>).firstDay;
+  delete (stale.cities[0] as Partial<TripSummaryCity>).lastDay;
+  const s = travelStats([stale], TODAY);
+  assert.deepEqual(s.cities.map((c) => [c.firstVisit, c.lastVisit]), [['2020-02-01', '2020-02-09']]);
+});
+
+test('A-56 residue 2: travelStats never reads `centre` — a city with a wrong centre is unaffected', () => {
+  const good = city('Lisbon', 'PT' as CountryCode, { first: '2023-07-02', last: '2023-07-06' });
+  const bad: TripSummaryCity = { ...good, key: `${good.key}-b` as CityKey, centre: { lat: 89, lng: -179 } };
+  const mk = (c: TripSummaryCity) =>
+    travelStats([row({ id: 't', startDate: '2023-07-01', endDate: '2023-07-10', countryCodes: ['PT' as CountryCode], cities: [c] })], TODAY);
+  assert.deepEqual(mk(good).cities, mk(bad).cities, '`centre` reached an answer it may never feed');
+  assert.deepEqual(mk(good).countries, mk(bad).countries);
+});
+
+test('A-56: the reference trip\'s city dates come through travelStats intact', () => {
+  const { trip } = europe2026();
+  const summary = tripSummary(trip, COUNTRY_INDEX);
+  const s = travelStats([summary], '2026-08-24');
+  assert.equal(s.trips.completed, 1, 'INCONCLUSIVE: the reference trip is not completed at this clock');
+  for (const c of summary.cities) {
+    const hit = s.cities.find((x) => x.name === c.name);
+    assert.ok(hit, `${c.name} is missing from travelStats`);
+    assert.equal(hit.firstVisit, c.firstDay, `${c.name}: firstVisit is not the row's own firstDay`);
+    assert.equal(hit.lastVisit, c.lastDay, `${c.name}: lastVisit is not the row's own lastDay`);
+  }
+  // And the six are genuinely different dates, so this is not one range six times.
+  assert.ok(new Set(s.cities.map((c) => c.firstVisit)).size > 1, 'INCONCLUSIVE: every city shares one first visit');
 });

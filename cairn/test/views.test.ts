@@ -348,10 +348,15 @@ test('I-8a / A-40 W2: the map hit-tests through the DOM, not through coordinates
 });
 
 /**
- * A-40 Part 5, as a ceiling rather than a promise: **city pins are not in the world map**,
- * because `TripSummaryRow.cities[]` carries no coordinate and manufacturing one is a
- * `SUMMARY_VERSION` ruling. If a later pass adds one it will have to delete this test, which
- * is the point — the deferral is in writing and the code holds it.
+ * A-40 Part 5, as a ceiling rather than a promise: **city pins are not in the world map.**
+ *
+ * **The reason changed at §8.4 A-56 (I-12) and the ceiling did not.** It used to be that
+ * `TripSummaryRow.cities[]` carried no coordinate at all, so a pin was unbuildable and
+ * manufacturing one was a `SUMMARY_VERSION` ruling. That ruling has now been made: the row
+ * carries `cities[].centre` from `SUMMARY_VERSION` 5. A-56 explicitly *"does not touch §4.4 —
+ * A-40 → A-54 are unmoved"*, and it schedules no screen, so the deferral is now a **choice**
+ * rather than a limitation — which makes this test more load-bearing, not less. If a later pass
+ * adds pins it will have to delete this test, which is the point.
  */
 test('I-8a / A-40 Part 5: the world map draws no city pins', () => {
   const src = readFileSync(resolve(VIEWS, 'WorldMap.tsx'), 'utf8')
@@ -359,7 +364,8 @@ test('I-8a / A-40 Part 5: the world map draws no city pins', () => {
     .replace(/(^|[^:])\/\/.*$/gm, '$1');
   // `stats.cities` is the `TravelStatsCity[]` a pin would have to come from; the *counts* on
   // `stats.unattributed` are not geometry and are exactly what the surface must state.
-  for (const banned of ['<circle', 'stats.cities', 'MapPoint', 'MapPort']) {
+  // `.centre` is A-56's new field and is the only thing on the row that could BE a pin.
+  for (const banned of ['<circle', 'stats.cities', '.centre', 'MapPoint', 'MapPort']) {
     assert.ok(!src.includes(banned), `WorldMap.tsx reaches for city geometry or the Leaflet port: ${banned}`);
   }
 });

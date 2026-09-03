@@ -168,8 +168,12 @@ export function cityRange(trip: Trip, cityKey: CityKey): string | null {
  *     record census `countryCodes` was computed from. No existing field's derivation moved;
  *     the stamp goes up because a version-3 row cannot answer a question a version-4 row can,
  *     and `travelStats` reads that answer.
+ *   - **5** — Phase 2 I-12 (§8.4 **A-56**): `cities[]` gains `centre` — the document's own
+ *     `City.centre`, copied verbatim — and `firstDay`/`lastDay`, the ends of the days that
+ *     city occupies. No existing field's derivation moved. `ROW_KEYS` does not grow, because
+ *     the widening is *inside* `cities[]` rather than beside it; `ROW_PATHS` goes 20 → 24.
  */
-export const SUMMARY_VERSION = 4;
+export const SUMMARY_VERSION = 5;
 
 /**
  * A city's **stated** country code, accepted or refused — §8.4 **A-29** Part 3. Module-private:
@@ -227,6 +231,48 @@ export type TripSummaryCity = {
    * country's inclusion on it, because inclusion is decided here.
    */
   countrySource: 'coordinate' | 'stated' | null;
+  /**
+   * The document's own `City.centre`, copied verbatim — §8.4 **A-56**. Non-nullable, because
+   * `City.centre` is (§2.2), which is also why the city census needs no `AttributionCensus`
+   * (A-31 Part 2).
+   *
+   * This is the **same coordinate the document already stores, in the same database, on the
+   * same device**. It is not new exposure and §8.4 clause 3's *"a country code is not location
+   * data of the kind §6.1 governs"* paragraph applies to it unchanged and for the same reason:
+   * the subject of that table is *observed* location. It is still not a licence to log it —
+   * A-56 Part 5 makes that mechanical: no golden, no log line, no CLI output.
+   *
+   * **A-56 residue 2, and it is a permanent boundary.** This is a label for *where to draw the
+   * city*, in the same sense §4.4 A-48's `countryKeyPoint` is a label and not an attribution.
+   * It may never be used to answer *"which country was this record in"* — that is `countryOf`'s
+   * job and `countrySource` is the field that records which evidence won. A reviewer who finds
+   * `centre` feeding an attribution has found a defect.
+   */
+  centre: LatLng;
+  /**
+   * The first and last `Day.date` of the days this city occupies — `trip.days.filter(d =>
+   * d.cities.includes(key))`, first and last, **in document order**. Exactly the days
+   * `cityRange` and `daysForCity` filter; A-56 keeps that filter and throws away the
+   * *formatting*, because a display string in a stored row is an i18n retrofit (§2.1) and a
+   * pair of `IsoDate`s is not.
+   *
+   * **`null` for both when the city occupies no day**, which is not an edge case: `ensureDays`
+   * marks a blank day `primaryCity: 'transit'`, so any trip whose days were never assigned to
+   * its cities is in exactly this state, and that is the majority of the population this
+   * ruling exists for.
+   *
+   * As precise as `datePrecision` says and no more. A reader that renders these without reading
+   * `datePrecision` beside them prints *"Kyoto, 1–31 March 2019"* about a trip whose owner said
+   * *"March 2019"*.
+   *
+   * **A-56 residue 1:** a day spanning two cities contributes to both, so two cities can each
+   * claim the same day and their ranges overlap. That is correct — the traveller *was* in both
+   * — and it means `Σ (lastDay − firstDay + 1)` over cities exceeds `dayCount` on a multi-city
+   * day, so **no surface may sum city day ranges into a total**. The honest answer to "days per
+   * city" is a union-of-intervals sweep, exactly as `daysTravelled` already does.
+   */
+  firstDay: IsoDate | null;
+  lastDay: IsoDate | null;
 };
 
 /**
@@ -336,13 +382,36 @@ export function tripSummary(trip: Trip, index: CountryIndex): TripSummaryRow {
   }
   // Built once per call, not per city — 292 entries, 239 distinct codes (§8.4 A-29 Part 3).
   const drawable = new Set<string>(index.countries.map((e) => e.code));
+  /**
+   * §8.4 **A-56**. The day range each city occupies, from **one pass over `trip.days`** rather
+   * than one `filter` per city: `cityRange`'s own filter, run once for every city at once.
+   * Document order, so `first` is the first day seen and `last` the last — which is exactly
+   * what `cityRange` reads off `days[0]` and `days[days.length - 1]`, and a test asserts the
+   * two programs agree on all six cities of the reference trip.
+   */
+  const dayRange = new Map<CityKey, { first: IsoDate; last: IsoDate }>();
+  for (const d of trip.days) {
+    for (const key of d.cities) {
+      const hit = dayRange.get(key);
+      if (hit) hit.last = d.date;
+      else dayRange.set(key, { first: d.date, last: d.date });
+    }
+  }
   const cities: TripSummaryCity[] = orderedCities(trip).map((c) => {
+    // A-56: `centre` is the document's own coordinate and the days are the document's own
+    // days. Neither is derived from the other, and neither is derived from another row.
+    const range = dayRange.get(c.key) ?? null;
+    const place = {
+      centre: c.centre,
+      firstDay: range === null ? null : range.first,
+      lastDay: range === null ? null : range.last,
+    };
     // §8.4 A-29: the coordinate is asked first and its answer is final when it has one. Only
     // where it is `null` — the dataset has no evidence, which A-26 ruled is the *correct*
     // answer rather than a hole to fill by snapping — is the city's own stated code consulted.
     const derived = countryOf(c.centre, index);
     if (derived !== null) {
-      return { key: c.key, name: c.name, countryCode: derived, countrySource: 'coordinate' };
+      return { key: c.key, name: c.name, countryCode: derived, countrySource: 'coordinate', ...place };
     }
     const stated = acceptStatedCountry(c.countryCode, drawable);
     return {
@@ -350,6 +419,7 @@ export function tripSummary(trip: Trip, index: CountryIndex): TripSummaryRow {
       name: c.name,
       countryCode: stated,
       countrySource: stated === null ? null : 'stated',
+      ...place,
     };
   });
   const codes = new Set<CountryCode>();

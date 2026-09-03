@@ -6,7 +6,7 @@
   "tripIds": [
     "trip-europe-2026"
   ],
-  "summaryVersion": 4,
+  "summaryVersion": 5,
   "clocks": {
     "fixtureToday": {
       "today": "2026-08-01",
@@ -110,7 +110,9 @@
             "tripIds": [
               "trip-europe-2026"
             ],
-            "provisional": false
+            "provisional": false,
+            "firstVisit": "2026-08-18",
+            "lastVisit": "2026-08-21"
           },
           {
             "nameKey": "dubrovnik",
@@ -119,7 +121,9 @@
             "tripIds": [
               "trip-europe-2026"
             ],
-            "provisional": false
+            "provisional": false,
+            "firstVisit": "2026-08-10",
+            "lastVisit": "2026-08-12"
           },
           {
             "nameKey": "london",
@@ -128,7 +132,9 @@
             "tripIds": [
               "trip-europe-2026"
             ],
-            "provisional": false
+            "provisional": false,
+            "firstVisit": "2026-08-21",
+            "lastVisit": "2026-08-22"
           },
           {
             "nameKey": "prague",
@@ -137,7 +143,9 @@
             "tripIds": [
               "trip-europe-2026"
             ],
-            "provisional": false
+            "provisional": false,
+            "firstVisit": "2026-08-15",
+            "lastVisit": "2026-08-18"
           },
           {
             "nameKey": "split",
@@ -146,7 +154,9 @@
             "tripIds": [
               "trip-europe-2026"
             ],
-            "provisional": false
+            "provisional": false,
+            "firstVisit": "2026-08-12",
+            "lastVisit": "2026-08-15"
           },
           {
             "nameKey": "vienna",
@@ -155,7 +165,9 @@
             "tripIds": [
               "trip-europe-2026"
             ],
-            "provisional": false
+            "provisional": false,
+            "firstVisit": "2026-08-08",
+            "lastVisit": "2026-08-10"
           }
         ],
         "trips": {

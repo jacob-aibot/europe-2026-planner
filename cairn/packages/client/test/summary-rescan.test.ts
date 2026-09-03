@@ -509,3 +509,140 @@ test('I-6: a storage failure mid-rescan is reported, not swallowed, and the pass
   assert.equal(summaryScan(store.getState()).phase, 'complete');
   assert.deepEqual(rowFor(store.getState(), 'e-hr').countryCodes, ['HR']);
 });
+
+// ---------------------------------------------------------------------------
+// **§8.4 A-56 Part 3 (ROADMAP I-12)** — *"what triggers a rescan for trips that are already
+// summarised?"* **Nothing new does. The bump IS the trigger.**
+//
+// `SUMMARY_VERSION` moved 4 → 5 in core, and every stored row in the wild now satisfies
+// `(row.summaryVersion ?? 0) < 5` — so `summaryScan(state).phase` becomes `'stale'` on the next
+// boot and `outdated` names every trip. There are exactly **two** readers of that comparison
+// (`store.ts:70` and `selectors/index.ts:213`), neither cares what the constant is, and
+// `test/views.test.ts` asserts no view is a third. **No client file changed for this bump**;
+// a builder editing one has found a third reader, which is a finding rather than a chore.
+//
+// The other half A-56 Part 3 states, and the half that is actually attackable: **there is no
+// backfill that reads the old row.** The new fields come from the `Trip`, never from the
+// version-4 row beside them — a summary computed from a summary is what clause 1 forbids — so
+// the fixture below seeds a version-4 row whose surviving fields **disagree with its own
+// document** and asserts the document wins on every one of them.
+// ---------------------------------------------------------------------------
+
+/** A version-4 row: the shape before A-56, i.e. `cities[]` with no centre and no dates. */
+function gen4Row(doc: core.Trip): TripSummaryRow {
+  const current = core.tripSummary(doc, core.COUNTRY_INDEX);
+  return {
+    ...current,
+    summaryVersion: 4,
+    cities: current.cities.map((c) => {
+      const aged = { ...c } as Partial<core.TripSummaryCity>;
+      delete aged.centre;
+      delete aged.firstDay;
+      delete aged.lastDay;
+      return aged as core.TripSummaryCity;
+    }),
+  };
+}
+
+test('A-56: a stored version-4 row is stale on boot, and the GENERIC rescan brings it to 5', async () => {
+  const storage = memoryStorage();
+  const docs = [makeTrip('v4-at', 'vienna'), makeTrip('v4-hr', 'dubrovnik'), makeTrip('v4-cz', 'prague')];
+  for (const d of docs) await seed(storage, d, gen4Row(d));
+
+  // Precondition: the rows really are version 4, and really do lack the A-56 fields.
+  for (const r of await storage.listTrips()) {
+    assert.equal(r.summaryVersion, 4, 'INCONCLUSIVE: the seed is not a version-4 row');
+    for (const c of r.cities) {
+      assert.equal('centre' in c, false, 'INCONCLUSIVE: the seeded row already carries a centre');
+      assert.equal('firstDay' in c, false);
+    }
+  }
+
+  const store = createStore({ ports: ports(storage) });
+  const phases: string[] = [];
+  store.subscribe((s) => phases.push(summaryScan(s).phase));
+
+  await store.refreshLibrary();
+  const onBoot = summaryScan(store.getState());
+  assert.equal(onBoot.phase, 'stale', 'the version bump did not make an existing library stale');
+  assert.deepEqual(onBoot.outdated.slice().sort(), ['v4-at', 'v4-cz', 'v4-hr']);
+  assert.equal(onBoot.current, 0);
+
+  await store.rescanSummaries();
+
+  assert.equal(phases[0], 'stale');
+  assert.ok(phases.slice(0, -1).includes('recomputing'), `nothing ever said "recomputing": ${phases.join(' → ')}`);
+  assert.equal(phases[phases.length - 1], 'complete');
+  assert.equal(phases.slice(0, -1).includes('complete'), false, `completeness was claimed mid-rescan: ${phases.join(' → ')}`);
+
+  // EVERY row's own `summaryVersion` reads current — the selector's answer, never "a pass
+  // reached its end" (§0.6).
+  const after = summaryScan(store.getState());
+  assert.equal(after.phase, 'complete');
+  assert.deepEqual(after.outdated, []);
+  for (const r of await storage.listTrips()) {
+    assert.equal(r.summaryVersion, 5, `${r.id} was left below the version`);
+    assert.equal(r.cities.length, 1, `${r.id} lost its city`);
+    assert.ok(r.cities[0].centre, `${r.id} was brought to version 5 with no centre`);
+  }
+});
+
+test('A-56 Part 3: the recomputed row comes from the DOCUMENT, never from the version-4 row beside it', async () => {
+  const storage = memoryStorage();
+  const doc = makeTrip('v4-lies', 'vienna');
+  // A version-4 row whose every surviving field disagrees with its own document. A backfill
+  // that read the old row and only filled the gaps would keep all of this.
+  const lying: TripSummaryRow = {
+    ...gen4Row(doc),
+    title: 'A title the document does not have',
+    countryCodes: ['ZZ' as core.CountryCode],
+    cities: [{
+      key: 'not-a-key' as core.CityKey,
+      name: 'Atlantis',
+      countryCode: 'ZZ' as core.CountryCode,
+      countrySource: 'stated',
+    } as core.TripSummaryCity],
+    cityCount: 99,
+  };
+  await seed(storage, doc, lying);
+  // The fixture really does lie, on every field asserted below — otherwise this test could be
+  // green because the seed happened to be right.
+  const truth = core.tripSummary(doc, core.COUNTRY_INDEX);
+  assert.notEqual(lying.title, truth.title);
+  assert.notDeepEqual(lying.countryCodes, truth.countryCodes);
+  assert.notEqual(lying.cityCount, truth.cityCount);
+  assert.notEqual(lying.cities[0].name, truth.cities[0].name);
+
+  const store = createStore({ ports: ports(storage) });
+  await store.refreshLibrary();
+  await store.rescanSummaries();
+
+  const expected = core.tripSummary(doc, core.COUNTRY_INDEX);
+  const [row] = await storage.listTrips();
+  assert.deepEqual(row, expected, 'the rescanned row is not what tripSummary makes of the document');
+  // Said again field by field, so a red names which claim broke.
+  assert.equal(row.summaryVersion, 5);
+  assert.equal(row.title, doc.title, 'the stale title survived');
+  assert.deepEqual(row.countryCodes, ['AT'], 'the stale countryCodes survived');
+  assert.equal(row.cityCount, 1, 'the stale cityCount survived');
+  assert.equal(row.cities[0].name, 'Vienna', 'the stale city name survived');
+  // …and `centre` is the DOCUMENT's own `City.centre`, which is A-56's whole point.
+  assert.deepEqual(row.cities[0].centre, doc.cities[0].centre);
+  assert.deepEqual(row.cities[0].centre, { lat: 48.2082, lng: 16.3738 });
+});
+
+test('A-56 Part 3: the trigger is NOT vacuous — a row already at version 5 is complete and is not rewritten', async () => {
+  // The control. Without it, the two tests above could be green because every library is
+  // rescanned unconditionally, which would say nothing about the version comparison.
+  const storage = memoryStorage();
+  const doc = makeTrip('v5-at', 'vienna');
+  await seed(storage, doc, core.tripSummary(doc, core.COUNTRY_INDEX));
+  const writesBefore = storage.refreshCount;
+
+  const store = createStore({ ports: ports(storage) });
+  await store.refreshLibrary();
+  assert.equal(summaryScan(store.getState()).phase, 'complete', 'a current library was reported stale');
+
+  await store.rescanSummaries();
+  assert.equal(storage.refreshCount, writesBefore, 'a current row was rewritten by a pass with nothing to do');
+});

@@ -18,10 +18,13 @@ import { europe2026, golden } from './fixture.ts';
 import {
   COUNTRY_INDEX,
   SUMMARY_VERSION,
+  cityRange,
   countryOf,
   createTrip,
+  daysForCity,
   orderedCities,
   sequentialIds,
+  setDayMeta,
   stopLatLng,
   tripSummary,
 } from '../src/index.ts';
@@ -283,7 +286,13 @@ test('A-29 non-override: a coordinate that answers WINS over a stated code that 
 test('A-29 gate: an empty stated code is refused', () => {
   // `''` is `createTrip`'s own default (`c.countryCode ?? ''`), so this is the ordinary case
   // for every city created inside the product today.
-  assert.deepEqual(gateRow(''), { key: gateRow('').key, name: 'Stated', countryCode: null, countrySource: null });
+  const c = gateRow('');
+  // The A-29 fields only: A-56 added `centre`/`firstDay`/`lastDay` beside them and this test is
+  // about the acceptance gate, not about the entry's whole shape (which `ROW_PATHS` pins).
+  assert.deepEqual(
+    { key: c.key, name: c.name, countryCode: c.countryCode, countrySource: c.countrySource },
+    { key: c.key, name: 'Stated', countryCode: null, countrySource: null },
+  );
 });
 
 test('A-29 gate: a lowercase two-letter code is normalised, not refused', () => {
@@ -381,8 +390,8 @@ test('A-29: a stated code on a city does NOT rescue that city\'s places and stop
   assert.equal(row.stopCount, 0, 'INCONCLUSIVE: the fixture grew stops');
 });
 
-test('A-31: SUMMARY_VERSION is 4 — the row gained a census, so the stamp moves', () => {
-  assert.equal(SUMMARY_VERSION, 4);
+test('A-56: SUMMARY_VERSION is 5 — the city entry gained a place and dates, so the stamp moves', () => {
+  assert.equal(SUMMARY_VERSION, 5);
 });
 
 test('A-29 non-regression: the reference trip does not move, and every city is coordinate-derived', () => {
@@ -532,4 +541,192 @@ test('A-31: a located record the index cannot name is located and NOT attributed
   };
   const row = tripSummary(withPlaces, TWO_POLYGONS);
   assert.deepEqual(row.attribution.places, { located: 2, attributed: 1 });
+});
+
+// ---------------------------------------------------------------------------
+// §8.4 **A-56** (ROADMAP I-12) — a city entry carries WHERE it is and WHEN it was.
+//
+// `TripSummaryCity` already survived summarization with `{key, name, countryCode,
+// countrySource}`. Two things a memory / route / stamp surface is made of were thrown away at
+// the moment they were cheapest to keep: a point to draw the city at, and the days the
+// traveller was in it. Both are computable inside `tripSummary` from the document in front of
+// it, and `cityRange` has been computing the second one — as a display string — since Phase 1.
+//
+// **`centre` may not reach a golden, a log line or the CLI** (A-56 Part 5). Its correctness is
+// asserted here instead, and deliberately more strongly than a golden could: an equality
+// against the document's own `City.centre`, which catches a wrong coordinate that a transcribed
+// literal never would.
+// ---------------------------------------------------------------------------
+
+/** `cityRange`'s own month table, so the oracle below parses what that function formats. */
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** `"Aug 8–10"` / `"Aug 30–Sep 2"` / `"Aug 8"` → the two `{m, d}` ends it names. */
+function parseCityRange(s: string): { first: { m: number; d: number }; last: { m: number; d: number } } {
+  const [head, tail] = s.split('–');
+  const [hm, hd] = head.split(' ');
+  const first = { m: MONTHS.indexOf(hm) + 1, d: Number(hd) };
+  if (tail === undefined) return { first, last: first };
+  return tail.includes(' ')
+    ? { first, last: { m: MONTHS.indexOf(tail.split(' ')[0]) + 1, d: Number(tail.split(' ')[1]) } }
+    : { first, last: { m: first.m, d: Number(tail) } };
+}
+
+test('A-56: every city entry\'s `centre` IS the document\'s own City.centre — an equality against the source', () => {
+  const { trip } = europe2026();
+  const row = tripSummary(trip, COUNTRY_INDEX);
+  const cities = orderedCities(trip);
+  assert.equal(row.cities.length, cities.length);
+  assert.ok(cities.length > 1, 'INCONCLUSIVE: one city cannot show a swap');
+  for (let i = 0; i < cities.length; i++) {
+    assert.deepEqual(
+      row.cities[i].centre,
+      cities[i].centre,
+      `cities[${i}] (${cities[i].name}) carries a coordinate that is not its own City.centre`,
+    );
+  }
+  // …and the six are pairwise distinct, so "every entry equals the source" is a claim these
+  // assertions could have caught being false by carrying one city's centre six times.
+  const seen = new Set(row.cities.map((c) => `${c.centre.lat},${c.centre.lng}`));
+  assert.equal(seen.size, cities.length, 'two city entries share one coordinate');
+});
+
+test('A-56: `centre` is the CITY\'s centre and never the country\'s — residue 2, as a ceiling', () => {
+  // A-56 Part 5 residue 2: `centre` is a label for where to draw the city, in the same sense
+  // §4.4 A-48's `countryKeyPoint` is. It may never answer *"which country was this record
+  // in"* — `countrySource` is the field that records which evidence won.
+  const { trip } = europe2026();
+  const row = tripSummary(trip, COUNTRY_INDEX);
+  for (const c of row.cities) {
+    assert.equal(typeof c.centre.lat, 'number');
+    assert.equal(typeof c.centre.lng, 'number');
+  }
+  // Two cities in the same country carry two different centres, which a country key point
+  // could not do.
+  const byCountry = new Map<string, Set<string>>();
+  for (const c of row.cities) {
+    if (c.countryCode === null) continue;
+    const hit = byCountry.get(c.countryCode) ?? new Set<string>();
+    hit.add(`${c.centre.lat},${c.centre.lng}`);
+    byCountry.set(c.countryCode, hit);
+  }
+  const hr = byCountry.get('HR');
+  assert.ok(hr && hr.size > 1, 'INCONCLUSIVE: the reference trip no longer has two Croatian cities');
+});
+
+test('A-56: firstDay/lastDay reproduce cityRange\'s ends for every city of the reference trip', () => {
+  // A SECOND PROGRAM's answer to the same question — `cityRange` filters the same days and
+  // formats their ends as a display string. A-56 keeps the filter and throws away the
+  // formatting, because a display string in a stored row is an i18n retrofit (§2.1).
+  const { trip } = europe2026();
+  const row = tripSummary(trip, COUNTRY_INDEX);
+  let checked = 0;
+  for (const c of row.cities) {
+    const label = cityRange(trip, c.key);
+    if (label === null) {
+      assert.equal(c.firstDay, null, `${c.name}: cityRange says no days and the row named one`);
+      assert.equal(c.lastDay, null);
+      continue;
+    }
+    assert.ok(c.firstDay !== null && c.lastDay !== null, `${c.name}: cityRange found days and the row did not`);
+    const want = parseCityRange(label);
+    const got = {
+      first: { m: Number(c.firstDay.slice(5, 7)), d: Number(c.firstDay.slice(8, 10)) },
+      last: { m: Number(c.lastDay.slice(5, 7)), d: Number(c.lastDay.slice(8, 10)) },
+    };
+    assert.deepEqual(got, want, `${c.name}: firstDay/lastDay disagree with cityRange "${label}"`);
+    checked++;
+  }
+  assert.equal(checked, 6, 'INCONCLUSIVE: the reference trip no longer has six dated cities');
+});
+
+test('A-56: firstDay/lastDay are the ends of daysForCity, in document order', () => {
+  const { trip } = europe2026();
+  const row = tripSummary(trip, COUNTRY_INDEX);
+  for (const c of row.cities) {
+    const days = daysForCity(trip, c.key);
+    assert.equal(c.firstDay, days.length ? days[0].date : null, `${c.name}: firstDay`);
+    assert.equal(c.lastDay, days.length ? days[days.length - 1].date : null, `${c.name}: lastDay`);
+  }
+});
+
+test('A-56: a city that occupies no day carries null for BOTH — not the trip\'s range, not a guess', () => {
+  // `createTrip` mints its day skeleton through `ensureDays`, which marks every blank day
+  // `primaryCity: 'transit'` — so a trip whose days were never assigned to its city is exactly
+  // this state, and it is the majority population for a completed trip recorded from memory.
+  const trip = createTrip(
+    {
+      title: 'A city on no day',
+      startDate: '2026-03-01',
+      endDate: '2026-03-04',
+      homeCurrency: 'EUR',
+      cities: [{ key: 'inside', name: 'Inside', countryCode: 'AA', centre: { lat: 10, lng: 10 } }],
+    },
+    ctx(),
+  );
+  assert.ok(trip.days.length > 0, 'INCONCLUSIVE: the fixture has no day skeleton at all');
+  assert.deepEqual(daysForCity(trip, 'inside' as never), [], 'INCONCLUSIVE: the fixture\'s city occupies a day');
+  const row = tripSummary(trip, TWO_POLYGONS);
+  assert.equal(row.cities[0].firstDay, null);
+  assert.equal(row.cities[0].lastDay, null);
+  // …and the coordinate is still there. "No days" is not "no city".
+  assert.deepEqual(row.cities[0].centre, { lat: 10, lng: 10 });
+});
+
+test('A-56 residue 1: a day spanning two cities contributes to BOTH, so the ranges overlap', () => {
+  const trip = createTrip(
+    {
+      title: 'One day, two cities',
+      startDate: '2026-03-01',
+      endDate: '2026-03-03',
+      homeCurrency: 'EUR',
+      cities: [
+        { key: 'a', name: 'Aaa', countryCode: 'AA', centre: { lat: 10, lng: 10 } },
+        { key: 'b', name: 'Bbb', countryCode: 'BB', centre: { lat: 50, lng: 50 } },
+      ],
+    },
+    ctx(),
+  );
+  const withDays = setDayMeta(
+    setDayMeta(
+      setDayMeta(trip, '2026-03-01' as never, { primaryCity: 'a' as never, cities: ['a'] as never }),
+      '2026-03-02' as never,
+      // The handover day: the traveller was in both.
+      { primaryCity: 'a' as never, cities: ['a', 'b'] as never },
+    ),
+    '2026-03-03' as never,
+    { primaryCity: 'b' as never, cities: ['b'] as never },
+  );
+  const row = tripSummary(withDays, TWO_POLYGONS);
+  assert.deepEqual(
+    row.cities.map((c) => [c.key, c.firstDay, c.lastDay]),
+    [
+      ['a', '2026-03-01', '2026-03-02'],
+      ['b', '2026-03-02', '2026-03-03'],
+    ],
+  );
+  // Σ (last − first + 1) = 2 + 2 = 4 over a 3-day trip. A-56 residue 1 in one assertion: NO
+  // SURFACE MAY SUM CITY DAY RANGES INTO A TOTAL — the honest answer is a union sweep.
+  assert.equal(row.dayCount, 3);
+});
+
+test('A-56: the day index is built from the trip, so two trips cannot contaminate one another', () => {
+  const { trip } = europe2026();
+  const a = tripSummary(trip, COUNTRY_INDEX);
+  const other = createTrip(
+    {
+      title: 'Elsewhere entirely',
+      startDate: '1999-01-01',
+      endDate: '1999-01-02',
+      homeCurrency: 'EUR',
+      cities: [{ key: 'inside', name: 'Inside', countryCode: 'AA', centre: { lat: 10, lng: 10 } }],
+    },
+    ctx(),
+  );
+  tripSummary(other, TWO_POLYGONS);
+  assert.deepEqual(tripSummary(trip, COUNTRY_INDEX), a, 'tripSummary is not pure across calls');
+  for (const c of a.cities) {
+    if (c.firstDay === null) continue;
+    assert.ok(c.firstDay >= trip.startDate && c.lastDay! <= trip.endDate, `${c.name} is dated outside its own trip`);
+  }
 });

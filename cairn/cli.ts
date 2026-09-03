@@ -238,7 +238,14 @@ function cmdStats() {
   }
   if (s.cities.length) out('');
   for (const c of s.cities) {
-    out(`  ${(c.countryCode ?? '··').padEnd(3)} ${c.name}${c.provisional ? MARKER : ''}`);
+    // §8.4 **A-56** Part 7: a city now carries its own dates, so it prints them the way a
+    // country does. **No coordinate** — `TripSummaryCity.centre` exists and A-56 Part 5 forbids
+    // it reaching a log line, a golden or this output; `travelStats` never sees it and this
+    // command never asks for it.
+    out(
+      `  ${(c.countryCode ?? '··').padEnd(3)} ${c.name.padEnd(18)} ` +
+        `${c.firstVisit} → ${c.lastVisit}${c.provisional ? MARKER : ''}`,
+    );
   }
   // The legend prints once, and only when something is actually marked.
   if (provisional) out(LEGEND);

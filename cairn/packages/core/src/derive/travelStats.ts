@@ -54,6 +54,18 @@ export type TravelStatsCity = {
   tripIds: string[];
   /** **A-34.** True when no `completed` trip contributed this row. See `TravelStatsCountry`. */
   provisional: boolean;
+  /**
+   * **§8.4 A-56** Part 7. The earliest `cities[].firstDay` over the contributing rows, clamped
+   * exactly as a country's is — and this is what closes **A-31 Part 5 residue 1 for cities**.
+   *
+   * A row that carries no day range for the city (`firstDay === null`, or a version-4 row with
+   * no such key) falls back to **the trip's own range**: *"this city has no days"* is not
+   * *"this city has no dates"*. The answer is then never worse than residue 1's own behaviour,
+   * and a past trip recorded without a day skeleton still gets a date on its stamp.
+   */
+  firstVisit: IsoDate;
+  /** The latest `lastDay`, clamped — never after `today`, never before `firstVisit`. */
+  lastVisit: IsoDate;
 };
 
 /**
@@ -282,7 +294,7 @@ export function travelStats(summaries: readonly TripSummaryRow[], today: IsoDate
   // 7. `cities` — grouped on the pair `(nameKey, countryCode)`. A `CityKey` is opaque and
   //    per-trip (§2.2 A-10), so two trips to Tokyo carry two of them and only the name can join
   //    them; the country is in the key because the same name in two countries must be two rows.
-  const cityMap = new Map<string, TravelStatsCity>();
+  const cityMap = new Map<string, TravelStatsCity & { firstNum: number; lastNum: number }>();
   let unnamedCities = 0;
   let locatedCities = 0;
   let unattributedCities = 0;
@@ -290,7 +302,7 @@ export function travelStats(summaries: readonly TripSummaryRow[], today: IsoDate
   let unattributedPlaces = 0;
   let locatedStops = 0;
   let unattributedStops = 0;
-  for (const { row, done } of travelled) {
+  for (const { row, a, b, done } of travelled) {
     // **QA R28-3.** A row minted before `SUMMARY_VERSION` 4 carries no `attribution`, and this
     // used to throw — non-uniformly, because only travelled rows are walked, so the same stale
     // row was fatal when the trip was `completed` and silent when it was `planned`. It is not a
@@ -337,13 +349,47 @@ export function travelStats(summaries: readonly TripSummaryRow[], today: IsoDate
         unnamedCities++;
         continue;
       }
+      // **§8.4 A-56 Part 7 clause 1**, and the clamp is A-31 Part 4 step 4's, unchanged: the
+      // row's own `[a, b]` is already `today`-clamped for an active trip and already collapsed
+      // to its start day for a row whose `endDate` precedes its `startDate`. A city's dates are
+      // then clamped INTO that interval, so an active trip cannot report a city visit in the
+      // future and a hand-edited row whose `firstDay` sits outside its own trip cannot either.
+      //
+      // **Clause 2.** `firstDay === null` — or absent, on a version-4 row the rescan has not
+      // reached yet — is *"this city has no days"*, not *"this city has no dates"*. The trip has
+      // dates and the city is in it, so the fallback is the trip's own range.
+      //
+      // **A-37 Part 2**, sites 4 and 5. `inDomain` for the same reason `startDate` gets it: a
+      // stored row is not a validated document and these two strings were never revalidated.
+      const cityA = Math.min(b, Math.max(a, inDomain(dayNumber(c.firstDay ?? row.startDate))));
+      const cityB = Math.max(cityA, Math.min(b, Math.max(a, inDomain(dayNumber(c.lastDay ?? row.endDate)))));
       const key = `${countryCode ?? NO_COUNTRY}|${nameKey}`;
       const hit = cityMap.get(key);
       if (!hit) {
         // `provisional` accumulates as for a country (**A-34**), per row and not per city.
-        cityMap.set(key, { nameKey, name: c.name, countryCode, tripIds: [row.id], provisional: !done });
+        cityMap.set(key, {
+          nameKey,
+          name: c.name,
+          countryCode,
+          tripIds: [row.id],
+          provisional: !done,
+          firstVisit: fromDayNumber(cityA),
+          lastVisit: fromDayNumber(cityB),
+          firstNum: cityA,
+          lastNum: cityB,
+        });
       } else {
         if (done) hit.provisional = false;
+        // The earliest first and the latest last over every contributing row — the same fold a
+        // country's dates take, one granularity down.
+        if (cityA < hit.firstNum) {
+          hit.firstNum = cityA;
+          hit.firstVisit = fromDayNumber(cityA);
+        }
+        if (cityB > hit.lastNum) {
+          hit.lastNum = cityB;
+          hit.lastVisit = fromDayNumber(cityB);
+        }
         if (hit.tripIds[hit.tripIds.length - 1] !== row.id) {
           // At most once per trip, even if the trip holds two cities that fold to the same key.
           hit.tripIds.push(row.id);
@@ -351,14 +397,26 @@ export function travelStats(summaries: readonly TripSummaryRow[], today: IsoDate
       }
     }
   }
-  const cities = [...cityMap.values()].sort((x, y) => {
-    if (x.nameKey !== y.nameKey) return x.nameKey < y.nameKey ? -1 : 1;
-    // `null` last: an unattributed row is the honest hole, and it sorts after the answer.
-    if (x.countryCode === y.countryCode) return 0;
-    if (x.countryCode === null) return 1;
-    if (y.countryCode === null) return -1;
-    return x.countryCode < y.countryCode ? -1 : 1;
-  });
+  const cities: TravelStatsCity[] = [...cityMap.values()]
+    .sort((x, y) => {
+      if (x.nameKey !== y.nameKey) return x.nameKey < y.nameKey ? -1 : 1;
+      // `null` last: an unattributed row is the honest hole, and it sorts after the answer.
+      if (x.countryCode === y.countryCode) return 0;
+      if (x.countryCode === null) return 1;
+      if (y.countryCode === null) return -1;
+      return x.countryCode < y.countryCode ? -1 : 1;
+    })
+    // The two day numbers are the fold's own bookkeeping and are not on the type — projected
+    // out here exactly as a country's are, so no output carries a field §2.10 does not name.
+    .map((c) => ({
+      nameKey: c.nameKey,
+      name: c.name,
+      countryCode: c.countryCode,
+      tripIds: c.tripIds,
+      provisional: c.provisional,
+      firstVisit: c.firstVisit,
+      lastVisit: c.lastVisit,
+    }));
 
   return {
     countries,

@@ -13,7 +13,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
@@ -270,6 +270,67 @@ test('cli stats marks a country an active trip has not confirmed reaching', () =
   for (const code of ['AT', 'CZ', 'DE', 'GB', 'HR', 'HU', 'US']) {
     assert.match(r.out, new RegExp(`\\b${code}\\b`), `${code} was hidden rather than marked:\n${r.out}`);
   }
+});
+
+/**
+ * §8.4 **A-56** Part 5, half 2 — **`centre` is in a row, and that is not a licence to print
+ * it.** `TripSummaryCity` gained `centre: LatLng` at `SUMMARY_VERSION` 5, so clause 3's
+ * standing *"no coordinate in any log line"* rule now has a field that could violate it. The
+ * check is the one §6.1 cross-cutting rule 1 already licenses: grep this command's own output
+ * for a coordinate-shaped float pair.
+ *
+ * `travelStats` never reads `centre` and `cmdStats` never touches a row's `cities[]` directly,
+ * so this is a ceiling on both at once — and it is deliberately a grep over the *rendered*
+ * bytes rather than an assertion about which function was called.
+ */
+test('A-56 Part 5: cli stats prints city DATES and no coordinate of any kind', () => {
+  const r = cli('stats', '--today', '2026-08-24');
+  assert.equal(r.code ?? 0, 0, r.err);
+  // The dates are there — this is what I-12 makes visible on the CLI today.
+  assert.match(r.out, /AT\s+Vienna\s+2026-08-08 → 2026-08-10/, r.out);
+  assert.match(r.out, /HR\s+Dubrovnik\s+2026-08-10 → 2026-08-12/, r.out);
+  // …and no coordinate. A decimal number at all is enough to fail here: `stats` prints
+  // integers, ISO dates and country codes, and `centre.lat` is the only decimal anywhere near
+  // this path.
+  const decimals = r.out.match(/-?\d+\.\d+/g) ?? [];
+  assert.deepEqual(decimals, [], `a coordinate-shaped float reached the CLI:\n${r.out}`);
+  // The pair form, stated separately so the reason survives a future formatting change.
+  assert.equal(
+    /-?\d+\.\d+\s*[,\s]\s*-?\d+\.\d+/.test(r.out),
+    false,
+    `a coordinate PAIR reached the CLI:\n${r.out}`,
+  );
+});
+
+/**
+ * §8.4 **A-56** Part 5, half 1 — **the goldens stay coordinate-free.** `countries.json` and
+ * `travel-stats.json` both carry *"NO COORDINATES: ids and names only"* in their own header and
+ * that discipline is kept, not excepted; the *"every number is an integer"* walk that enforces
+ * it for those two lives in `packages/core/test/country.test.ts` and `travelStats.test.ts` and
+ * is unchanged. What A-56 adds is a field that could violate it, so this is the field-shaped
+ * half: no golden carries a `centre` at all.
+ *
+ * `centre`'s correctness is asserted somewhere strictly stronger —
+ * `packages/core/test/summary.test.ts` compares it to `orderedCities(trip)[i].centre`, an
+ * equality against the source, which catches a wrong coordinate a transcribed literal never
+ * could.
+ */
+test('A-56 Part 5: `centre` reached no committed golden, and travel-stats.json carries the city DATES', () => {
+  const dir = join(CAIRN, 'fixtures', 'golden');
+  const names = readdirSync(dir).filter((n) => n.endsWith('.json'));
+  assert.ok(names.length >= 10, `INCONCLUSIVE: only ${names.length} goldens were scanned`);
+  const offenders: string[] = [];
+  for (const name of names) {
+    const text = readFileSync(join(dir, name), 'utf8');
+    if (/"centre"/.test(text)) offenders.push(name);
+  }
+  assert.deepEqual(offenders, [], `\`centre\` reached a golden: ${offenders.join(', ')}`);
+  // …and the scan is running over a file this increment actually changed, so it is not green
+  // because nothing moved. `travel-stats.json` gained `firstVisit`/`lastVisit` per city — dates,
+  // which are not coordinates, and which the "NO COORDINATES" header does not forbid.
+  const stats = readFileSync(join(dir, 'travel-stats.json'), 'utf8');
+  assert.match(stats, /"firstVisit": "2026-08-08"/, 'travel-stats.json has no city dates in it');
+  assert.match(stats, /"summaryVersion": 5/, 'travel-stats.json was not regenerated at SUMMARY_VERSION 5');
 });
 
 test('cli stats prints no marker and no legend when the trip is over', () => {

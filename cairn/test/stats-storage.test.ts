@@ -113,15 +113,24 @@ const ROW_KEYS: Record<keyof TripSummaryRow, true> = {
  * **Runtime, every leaf.** The dotted leaf paths a minted row carries, with array indices
  * collapsed to `[]`, transcribed in full. This is the assertion `daysAbroad: number` could not
  * walk past, because it does not ask what a field is *called*.
+ *
+ * **20 → 24 at §8.4 A-56 Part 6 (ROADMAP I-12).** `cities[]` gains `centre`, `firstDay` and
+ * `lastDay`; `centre` is a plain object, so `leafPaths` descends into it and it contributes
+ * **two** leaves rather than one. `ROW_KEYS` is unchanged at the top level, and that is a
+ * deliberate property of doing the widening *inside* `cities[]` rather than beside it.
  */
 const ROW_PATHS = [
   'attribution.places.attributed',
   'attribution.places.located',
   'attribution.stops.attributed',
   'attribution.stops.located',
+  'cities[].centre.lat',
+  'cities[].centre.lng',
   'cities[].countryCode',
   'cities[].countrySource',
+  'cities[].firstDay',
   'cities[].key',
+  'cities[].lastDay',
   'cities[].name',
   'cityCount',
   'countryCodes[]',
@@ -172,7 +181,13 @@ function countShaped(name: string): boolean {
   return DOMAIN.test(name) && SHAPE.test(name);
 }
 
-/** The eight count-shaped fields §8.4 A-31 Part 6 permits on the row, as dotted paths. */
+/**
+ * The eight count-shaped fields §8.4 A-31 Part 6 permits on the row, as dotted paths.
+ *
+ * **A-56 Part 6: this does not move, and that is a real check on the widening rather than a
+ * formality.** It is what fails if someone later adds `cities[].dayCount` here instead of
+ * deriving one from `firstDay`/`lastDay`. A ninth entry means a count was stored.
+ */
 const ROW_COUNT_FIELDS = [
   'attribution.places.attributed',
   'attribution.places.located',
@@ -185,8 +200,19 @@ const ROW_COUNT_FIELDS = [
 ];
 
 // ---------------------------------------------------------------------------
-// The three rows the leaf-path union is taken over. One row cannot cover the set, because an
+// The rows the leaf-path union is taken over. One row cannot cover the set, because an
 // empty collection contributes no path (A-33 Part 2 assertion 3).
+//
+// **A-56 Part 6 adds a fourth**: a trip with one city that occupies **no day**, so the
+// `firstDay: null` / `lastDay: null` branch ships exercised rather than assumed. That is 2a's
+// own population — `ensureDays` marks every blank day `primaryCity: 'transit'`, so a trip whose
+// days were never assigned to its cities is in exactly this state.
+//
+// *(Measured while building it, and recorded because A-56 Part 6 assumes the opposite: the
+// first two fixtures ALREADY reach `firstDay: null`, for the same `'transit'` reason, and the
+// reference trip is the only fixture here that reaches a NON-null one. The fourth fixture is
+// added as ruled, and the union test below now pins **both** branches explicitly rather than
+// resting on which fixture happens to reach which.)*
 // ---------------------------------------------------------------------------
 
 const referenceRow = () => tripSummary((loadEurope2026() as { trip: Trip }).trip, COUNTRY_INDEX);
@@ -216,10 +242,35 @@ function emptyRow(): TripSummaryRow {
   return tripSummary(trip, COUNTRY_INDEX);
 }
 
-const THREE_ROWS = () => [referenceRow(), nullCountryRow(), emptyRow()];
+/**
+ * **A-56 Part 6's fourth fixture.** One city, and no day of the trip carries it — the shape
+ * that makes `firstDay`/`lastDay` null, and the majority population for a completed trip.
+ */
+function cityWithNoDaysRow(): TripSummaryRow {
+  const trip = createTrip(
+    {
+      title: 'A city on no day',
+      startDate: '2019-03-01',
+      endDate: '2019-03-31',
+      datePrecision: 'month',
+      homeCurrency: 'EUR',
+      cities: [{ key: 'kyoto', name: 'Kyoto', centre: { lat: 35.0116, lng: 135.7681 } }],
+    },
+    { ids: sequentialIds('nodays-'), now: '2026-06-15' },
+  );
+  assert.ok(trip.days.length > 0, 'INCONCLUSIVE: the fixture has no day skeleton at all');
+  assert.deepEqual(
+    trip.days.flatMap((d) => d.cities).filter((k) => k === 'kyoto'),
+    [],
+    'INCONCLUSIVE: the fixture\'s city occupies a day, so it no longer reaches the null branch',
+  );
+  return tripSummary(trip, COUNTRY_INDEX);
+}
+
+const UNION_ROWS = () => [referenceRow(), nullCountryRow(), emptyRow(), cityWithNoDaysRow()];
 
 test('exit 6a: a minted row\'s TOP-LEVEL keys are exactly the type\'s — no more, no fewer', () => {
-  for (const row of THREE_ROWS()) {
+  for (const row of UNION_ROWS()) {
     assert.deepEqual(
       Object.keys(row).sort(),
       Object.keys(ROW_KEYS).sort(),
@@ -230,9 +281,9 @@ test('exit 6a: a minted row\'s TOP-LEVEL keys are exactly the type\'s — no mor
   }
 });
 
-test('exit 6a: the union of three rows\' LEAF PATHS is exactly ROW_PATHS', () => {
+test('exit 6a: the union of four rows\' LEAF PATHS is exactly ROW_PATHS', () => {
   const union = new Set<string>();
-  for (const row of THREE_ROWS()) for (const p of leafPaths(row)) union.add(p);
+  for (const row of UNION_ROWS()) for (const p of leafPaths(row)) union.add(p);
   assert.deepEqual(
     [...union].sort(),
     [...ROW_PATHS].sort(),
@@ -242,20 +293,31 @@ test('exit 6a: the union of three rows\' LEAF PATHS is exactly ROW_PATHS', () =>
   );
   // Each row individually is a SUBSET, which is what catches an injection into a row that is
   // not the reference one.
-  for (const row of THREE_ROWS()) {
+  for (const row of UNION_ROWS()) {
     const extra = leafPaths(row).filter((p) => !ROW_PATHS.includes(p));
     assert.deepEqual(extra, [], `a row carries leaves the type does not: ${extra.join(', ')}`);
   }
 });
 
-test('exit 6a: the three rows are genuinely different, so the union is not one row three times', () => {
-  const [ref, nul, empty] = THREE_ROWS();
+test('exit 6a: the four rows are genuinely different, so the union is not one row four times', () => {
+  const [ref, nul, empty, noDays] = UNION_ROWS();
   assert.ok(leafPaths(ref).includes('cities[].countryCode'));
   assert.equal(nul.cities.length, 1, 'the null-country row lost its city');
   assert.equal(nul.cities[0].countryCode, null, 'the "unplaceable" city was placed after all');
   assert.deepEqual(empty.cities, [], 'the empty row is not empty');
   assert.deepEqual(empty.countryCodes, []);
   assert.equal(leafPaths(empty).includes('cities[].name'), false, 'an empty collection contributed a path');
+  // **A-56 Part 6.** Both branches of the new pair are reached, and by name rather than by
+  // whichever fixture happens to produce them: a city with days, and a city with none.
+  assert.ok(
+    ref.cities.some((c) => c.firstDay !== null && c.lastDay !== null),
+    'no fixture reaches a NON-null firstDay, so the dated branch ships unexercised',
+  );
+  assert.equal(noDays.cities.length, 1, 'the no-days row lost its city');
+  assert.equal(noDays.cities[0].firstDay, null, 'the fourth fixture no longer reaches firstDay: null');
+  assert.equal(noDays.cities[0].lastDay, null);
+  // …and it still carries the coordinate. "No days" is not "no city" (§8.4 A-56 Part 2).
+  assert.deepEqual(noDays.cities[0].centre, { lat: 35.0116, lng: 135.7681 });
 });
 
 test('exit 6a: the count-shaped fields are exactly the eight — an assertion ABOUT the set, not the filter that decides it', () => {
@@ -675,20 +737,21 @@ function assertSeedLanded(db: Recording, records: readonly SeedRecord[], where: 
 //
 // Five axes, derived line by line in A-39 Part 3/4:
 //
-//   **V** envelope-version presence      {present, absent}                          domain 2
-//   **S** summary-row generation         {gen-1, gen-2, gen-3, gen-4, gen-future}    domain 5
-//   **C** row content                    {rich, degenerate, unattributed}            domain 3
-//   **D** document generation            {v1} — `SCHEMA_VERSION` is 1                domain 1
-//   **N** loop population                {0, ≥1 uniform, ≥2 spanning both V}         domain 3
+//   **V** envelope-version presence      {present, absent}                             domain 2
+//   **S** summary-row generation   {gen-1 … gen-5, gen-future}  domain 6  (5 until A-56/I-12)
+//   **C** row content                    {rich, degenerate, unattributed}               domain 3
+//   **D** document generation            {v1} — `SCHEMA_VERSION` is 1                   domain 1
+//   **N** loop population                {0, ≥1 uniform, ≥2 spanning both V}            domain 3
 //
 // The cover is **pairwise over {V, S, C}** and structural over N and P (fixture provenance).
 // The lower bound on a pairwise covering array is the product of the two largest domains —
-// `|S| × |C| = 5 × 3 = 15` — and the table below achieves it, so **15 is minimal, not chosen**.
+// `|S| × |C| = 6 × 3 = 18` — and the table below achieves it, so **18 is minimal, not chosen**.
 // 3-wise is refused on the record (A-39 Part 5): a fault requiring three simultaneous state
 // conditions is not a single edit and has no instance among the seventeen faults in the matrix.
 //
-// **What reopens this** (A-39 Part 11): a `SUMMARY_VERSION` bump (→ 18 rows), a `SCHEMA_VERSION`
-// bump (→ 15 rows, D absorbed), `DatePrecision`/`countrySource` gaining a member (→ 20 rows), a
+// **What reopens this** (A-39 Part 11): a `SUMMARY_VERSION` bump (→ 3 more rows; fired once
+// already, at A-56/I-12, which is what took this table from 15 to 18), a `SCHEMA_VERSION`
+// bump (no new rows, D absorbed), `DatePrecision`/`countrySource` gaining a member (→ +6), a
 // new object store, a new `StoragePort`, a fourth write path, or `onupgradeneeded` growing a
 // body that writes records. **What does NOT**: *"here is one more fault shape whose guard reads
 // a field already on V, S, C, D or N."* If such a fault is green, the covering set has been
@@ -697,8 +760,8 @@ function assertSeedLanded(db: Recording, records: readonly SeedRecord[], where: 
 // table itself as the oracle.
 // ===========================================================================
 
-/** Axis S's five states, in ledger order. */
-type GenName = 'gen-1' | 'gen-2' | 'gen-3' | 'gen-4' | 'gen-future';
+/** Axis S's six states, in ledger order. **Five until A-56 (I-12) fired Part 11 item 1.** */
+type GenName = 'gen-1' | 'gen-2' | 'gen-3' | 'gen-4' | 'gen-5' | 'gen-future';
 
 type GenEntry = {
   name: GenName;
@@ -732,8 +795,13 @@ const LEDGER: readonly GenEntry[] = [
   { name: 'gen-2', version: 2, absent: ['attribution'], absentInCity: ['countrySource'] },
   // 3 — Phase 2 I-6a (A-29): `cities[]` gains `countrySource`. Still no `attribution`.
   { name: 'gen-3', version: 3, absent: ['attribution'], absentInCity: [] },
-  // 4 — Phase 2 I-7 (A-31): the row gains `attribution`. Current.
-  { name: 'gen-4', version: 4, absent: [], absentInCity: [] },
+  // 4 — Phase 2 I-7 (A-31): the row gains `attribution`. `cities[]` still carries no
+  //     coordinate and no dates.
+  { name: 'gen-4', version: 4, absent: [], absentInCity: ['centre', 'firstDay', 'lastDay'] },
+  // 5 — Phase 2 I-12 (A-56): `cities[]` gains `centre`, `firstDay` and `lastDay`. No new
+  //     TOP-LEVEL key, which is why `absent` is empty and the whole widening is nested.
+  //     Current.
+  { name: 'gen-5', version: 5, absent: [], absentInCity: [] },
 ];
 
 /**
@@ -758,7 +826,7 @@ function generation(name: GenName): GenEntry {
 }
 
 /** The current generation, by the ledger rather than by position-in-a-comment. */
-const CURRENT_GEN = generation('gen-4');
+const CURRENT_GEN = generation('gen-5');
 
 /** A generation's top-level key set: `ROW_KEYS` minus that generation's own removals. */
 function expectedKeys(gen: GenEntry): string[] {
@@ -770,11 +838,20 @@ function expectedKeys(gen: GenEntry): string[] {
  * source this file already has for the row's leaves, and **never a second hand-written list**
  * (the reason A-39 Part 6 pin 3 checks the ledger's arithmetic against `ROW_KEYS` rather than
  * against a copy of it).
+ *
+ * **A-56.** `cities[].centre` is an OBJECT, so `ROW_PATHS` carries its two leaves
+ * (`centre.lat`, `centre.lng`) and not the key itself. `Object.keys(city)` answers `centre`, so
+ * the derivation takes the **first segment** after the prefix and de-duplicates — which keeps
+ * the single-source property while surviving a nested field. A `.split('.')[0]` and nothing
+ * more: if a future entry nests two levels, this still names the key the entry actually has.
  */
-const CITY_KEYS: readonly string[] = ROW_PATHS
-  .filter((p) => p.startsWith('cities[].'))
-  .map((p) => p.slice('cities[].'.length))
-  .sort();
+const CITY_KEYS: readonly string[] = [
+  ...new Set(
+    ROW_PATHS
+      .filter((p) => p.startsWith('cities[].'))
+      .map((p) => p.slice('cities[].'.length).split('.')[0]),
+  ),
+].sort();
 
 /** A generation's `cities[]`-entry key set: `CITY_KEYS` minus that generation's NESTED removals. */
 function expectedCityKeys(gen: GenEntry): string[] {
@@ -954,11 +1031,17 @@ const contentRow = (content: ContentName, id: string): TripSummaryRow =>
   tripSummary(contentTrip(content, id), COUNTRY_INDEX);
 
 // ---------------------------------------------------------------------------
-// **A-39 Part 5 — the covering table.** 5 summary-row generations × 3 row-content
-// representatives = 15 `S×C` pairs, each carrying a `V` value chosen so that every generation
-// carries both V values (10 `V×S` pairs) and every content class carries both (6 `V×C` pairs).
+// **A-39 Part 5 — the covering table.** 6 summary-row generations × 3 row-content
+// representatives = 18 `S×C` pairs, each carrying a `V` value chosen so that every generation
+// carries both V values (12 `V×S` pairs) and every content class carries both (6 `V×C` pairs).
 //
-// This is DATA, not fifteen near-duplicate test bodies, and the test below asserts those three
+// **15 → 18 at §8.4 A-56 (ROADMAP I-12).** A-39 Part 11 item 1 fires by construction the moment
+// `SUMMARY_VERSION` moves — *"axis S gains a state; the ledger gains an entry; the table goes
+// 15 → 18 (three C-values against the new generation)"* — and Part 6's pin 1 below is what
+// stops it being forgotten. The lower bound is still `|S| × |C|`, now `6 × 3 = 18`, and the
+// table achieves it, so **18 is minimal, not chosen**.
+//
+// This is DATA, not eighteen near-duplicate test bodies, and the test below asserts those three
 // counts **from the table itself** — so a row deleted or duplicated during maintenance fails
 // loudly rather than silently shrinking the cover.
 // ---------------------------------------------------------------------------
@@ -978,9 +1061,14 @@ const COVERING_SET: readonly CoverCell[] = [
   { n: 10, s: 'gen-4',      c: 'rich',         v: 'absent',  arm: 3 },
   { n: 11, s: 'gen-4',      c: 'degenerate',   v: 'present', arm: 2 },
   { n: 12, s: 'gen-4',      c: 'unattributed', v: 'absent',  arm: 3 },
-  { n: 13, s: 'gen-future', c: 'rich',         v: 'present', arm: 2 },
-  { n: 14, s: 'gen-future', c: 'degenerate',   v: 'absent',  arm: 3 },
-  { n: 15, s: 'gen-future', c: 'unattributed', v: 'present', arm: 2 },
+  // A-56's three new rows, in ledger position rather than appended, so the table reads in the
+  // same order as `LEDGER` and `gen-future` stays last.
+  { n: 13, s: 'gen-5',      c: 'rich',         v: 'present', arm: 2 },
+  { n: 14, s: 'gen-5',      c: 'degenerate',   v: 'absent',  arm: 3 },
+  { n: 15, s: 'gen-5',      c: 'unattributed', v: 'present', arm: 2 },
+  { n: 16, s: 'gen-future', c: 'rich',         v: 'absent',  arm: 3 },
+  { n: 17, s: 'gen-future', c: 'degenerate',   v: 'present', arm: 2 },
+  { n: 18, s: 'gen-future', c: 'unattributed', v: 'absent',  arm: 3 },
 ];
 
 const coverId = (cell: CoverCell) => `t-cov${String(cell.n).padStart(2, '0')}-${cell.s}-${cell.c}`;
@@ -1053,12 +1141,12 @@ test('exit 6b-1b (A-39 pin 1): the generation ledger\'s NEWEST entry IS SUMMARY_
     'SUMMARY_VERSION moved and the ledger did not. Add the new generation to LEDGER (with the ' +
       'keys that generation did NOT carry, transcribed from SUMMARY_VERSION\'s own docstring in ' +
       'packages/core/src/derive/summary.ts), and add THREE ROWS to COVERING_SET — one per Axis C ' +
-      'representative — taking the table from 15 to 18. This is §8.4 A-39 Part 11 item 1, and ' +
+      'representative — taking the table from 18 to 21. This is §8.4 A-39 Part 11 item 1, and ' +
       'this pin is what stops it being forgotten.',
   );
   assert.deepEqual(
     LEDGER.map((g) => g.name),
-    ['gen-1', 'gen-2', 'gen-3', 'gen-4'],
+    ['gen-1', 'gen-2', 'gen-3', 'gen-4', 'gen-5'],
     'the ledger holds one entry per SHIPPED SUMMARY_VERSION, in order',
   );
   assert.equal(GEN_FUTURE.version, SUMMARY_VERSION + 1, 'gen-future must sit exactly one above current');
@@ -1176,25 +1264,28 @@ test('exit 6b-1b (A-39 Part 6): the three Axis-C fixtures still ARE the states t
   );
 });
 
-test('exit 6b-1b (A-39 Part 5): the covering table covers 15 S×C, 10 V×S and 6 V×C pairs — COUNTED FROM THE TABLE', () => {
+test('exit 6b-1b (A-39 Part 5): the covering table covers 18 S×C, 12 V×S and 6 V×C pairs — COUNTED FROM THE TABLE', () => {
   const distinct = (f: (c: CoverCell) => string) => new Set(COVERING_SET.map(f)).size;
-  assert.equal(COVERING_SET.length, 15, 'the covering set is not 15 rows. |S| × |C| = 5 × 3 = 15 is the pairwise lower bound AND is achieved, so 15 is minimal — a row was deleted or duplicated (§8.4 A-39 Part 5).');
-  assert.equal(distinct((c) => `${c.s}|${c.c}`), 15, 'the 15 S×C pairs are not distinct — the cover has shrunk while the row count says otherwise');
-  assert.equal(distinct((c) => `${c.v}|${c.s}`), 10, 'not every generation carries BOTH envelope-version states (10 V×S pairs)');
+  const cells = GENERATIONS.length * CONTENTS.length;
+  assert.equal(cells, 18, 'the axis domains moved: |S| × |C| is no longer 6 × 3 (§8.4 A-39 Part 11)');
+  assert.equal(COVERING_SET.length, cells, 'the covering set is not |S| × |C| rows. That product is the pairwise lower bound AND is achieved, so it is minimal — a row was deleted or duplicated (§8.4 A-39 Part 5).');
+  assert.equal(distinct((c) => `${c.s}|${c.c}`), cells, 'the S×C pairs are not distinct — the cover has shrunk while the row count says otherwise');
+  assert.equal(distinct((c) => `${c.v}|${c.s}`), 2 * GENERATIONS.length, 'not every generation carries BOTH envelope-version states (12 V×S pairs)');
   assert.equal(distinct((c) => `${c.v}|${c.c}`), 6, 'not every content class carries BOTH envelope-version states (6 V×C pairs)');
-  assert.deepEqual(COVERING_SET.map((c) => c.n), Array.from({ length: 15 }, (_, i) => i + 1), 'the table rows are not numbered 1..15');
+  assert.deepEqual(COVERING_SET.map((c) => c.n), Array.from({ length: cells }, (_, i) => i + 1), 'the table rows are not numbered 1..18');
   // The domains are exactly Part 4's, so a state cannot be dropped by dropping its rows.
   assert.deepEqual([...new Set(COVERING_SET.map((c) => c.s))].sort(), GENERATIONS.map((g) => g.name).slice().sort(), 'the table does not exercise every generation');
   assert.deepEqual([...new Set(COVERING_SET.map((c) => c.c))].sort(), [...CONTENTS].sort(), 'the table does not exercise every content representative');
-  // Arm assignment IS the V axis, and the split is 8/7. A-39 Part 5 counts them in writing.
+  // Arm assignment IS the V axis, and the split is 9/9 (8/7 before A-56 took the table to
+  // 18). A-39 Part 5 counts them in writing.
   for (const cell of COVERING_SET) {
     assert.equal(cell.arm, cell.v === 'present' ? 2 : 3, `row ${cell.n} is assigned to an arm whose starting state does not match its V value`);
   }
-  assert.equal(COVERING_SET.filter((c) => c.arm === 2).length, 8, 'arm 2 does not carry the eight V=present rows');
-  assert.equal(COVERING_SET.filter((c) => c.arm === 3).length, 7, 'arm 3 does not carry the seven V=absent rows');
+  assert.equal(COVERING_SET.filter((c) => c.arm === 2).length, 9, 'arm 2 does not carry the nine V=present rows');
+  assert.equal(COVERING_SET.filter((c) => c.arm === 3).length, 9, 'arm 3 does not carry the nine V=absent rows');
   // And the ids the seed is keyed by are unique, or two table rows share one record.
   const ids = COVERING_SET.map(coverId);
-  assert.equal(new Set(ids).size, 15, 'two table rows collide on one seeded id');
+  assert.equal(new Set(ids).size, cells, 'two table rows collide on one seeded id');
 });
 
 test('exit 6b-1b-1: STARTING STATE = an EMPTY database. The web port EXECUTED — every value that reaches its summary store is clean', async () => {
@@ -1312,7 +1403,7 @@ test('exit 6b-1b-1: the arm is not vacuous — a port that widens its rows FAILS
 // fixture-fidelity cross-check, a different and smaller job.
 // ===========================================================================
 
-test('exit 6b-1b-2: STARTING STATE = an existing CURRENT database (no upgrade), seeded with A-39\'s EIGHT V=present covering records. The upcast runs and correctly does nothing — PER ID', async () => {
+test('exit 6b-1b-2: STARTING STATE = an existing CURRENT database (no upgrade), seeded with A-39\'s NINE V=present covering records. The upcast runs and correctly does nothing — PER ID', async () => {
   const records = coveringSeed(2);
   await driveWebPort(
     async (port, db) => {
@@ -1335,7 +1426,7 @@ test('exit 6b-1b-2: STARTING STATE = an existing CURRENT database (no upgrade), 
       }
       assert.equal(db._store('versions').size, records.length, 'the upcast added a version for a record with no document');
       assert.equal(db._summaries().size, records.length, 'the upcast added or dropped a summary row');
-      assert.equal(records.length, 8, 'A-39 Part 5: arm 2 carries the EIGHT V=present rows of the covering table');
+      assert.equal(records.length, 9, 'A-39 Part 5: arm 2 carries the NINE V=present rows of the covering table');
       assert.deepEqual(
         records.map((r) => r.gen.name),
         COVERING_SET.filter((c) => c.arm === 2).map((c) => c.s),
@@ -1346,7 +1437,7 @@ test('exit 6b-1b-2: STARTING STATE = an existing CURRENT database (no upgrade), 
   );
 });
 
-test('exit 6b-1b-3: STARTING STATE = an existing LEGACY database (NO version), seeded with A-39\'s SEVEN V=absent covering records. The stamping branch runs — this is the arm G13 dies in', async () => {
+test('exit 6b-1b-3: STARTING STATE = an existing LEGACY database (NO version), seeded with A-39\'s NINE V=absent covering records. The stamping branch runs — this is the arm G13 dies in', async () => {
   const records = coveringSeed(3);
   await driveWebPort(
     async (port, db) => {
@@ -1355,7 +1446,7 @@ test('exit 6b-1b-3: STARTING STATE = an existing LEGACY database (NO version), s
 
       // The stamp: `versions` was empty and gains EXACTLY SEVEN non-empty entries.
       assert.equal(db._store('versions').size, records.length, 'the upcast did not stamp every versionless record exactly once');
-      assert.equal(records.length, 7, 'A-39 Part 5: arm 3 carries the SEVEN V=absent rows of the covering table');
+      assert.equal(records.length, 9, 'A-39 Part 5: arm 3 carries the NINE V=absent rows of the covering table');
       const minted = new Set<string>();
       for (const r of records) {
         const token = db._store('versions').get(r.trip.id);

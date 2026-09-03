@@ -34,7 +34,7 @@
  * the double cannot model — structured clone, real transaction lifetimes, `versionchange`. So it
  * does **not** take the 15-state array. It seeds **two** records instead of one:
  *
- *   `t-legacy`     `ROW(id, 4)`      — the current shape
+ *   `t-legacy`     `ROW(id, 5)`      — the current shape (gen-5, §8.4 A-56)
  *   `t-legacy-g1`  `ROW_GEN1(id)`    — the gen-1 shape: no `summaryVersion`, no `countryCodes`,
  *                                      no `cities`, no `attribution`
  *
@@ -182,7 +182,14 @@ const ROW = (id, ver) => ({
   id, title: `T ${id}`, startDate: '2026-08-07', endDate: '2026-08-09', datePrecision: 'exact',
   cityCount: 1, dayCount: 3, stopCount: 7, poolCount: 2, revision: 1,
   countryCodes: ['HR', 'AT'],
-  cities: [{ key: 'hvar', name: 'Hvar', countryCode: 'HR', countrySource: 'stated' }],
+  // **§8.4 A-56 (I-12).** The gen-5 `cities[]` entry: `centre` (the document's own
+  // `City.centre`, copied verbatim) plus `firstDay`/`lastDay`. This literal is the CURRENT
+  // shape, so it has to carry them or phase 2's "gen-current vs gen-1" pair stops being the
+  // widest separation on Axis S that it claims to be.
+  cities: [{
+    key: 'hvar', name: 'Hvar', countryCode: 'HR', countrySource: 'stated',
+    centre: { lat: 43.1729, lng: 16.4413 }, firstDay: '2026-08-07', lastDay: '2026-08-08',
+  }],
   attribution: { places: { located: 9, attributed: 8 }, stops: { located: 7, attributed: 7 } },
   summaryVersion: ver,
 });
@@ -226,9 +233,25 @@ function assertClean(result, where, expected = {}) {
   ok(!/countriesVisited|daysTravelled|citiesVisited|daysAbroad/.test(blob),
     `${where}: no lifetime count of any name is in the persisted bytes`,
     (blob.match(/countriesVisited|daysTravelled|citiesVisited|daysAbroad/g) ?? []).slice(0, 4));
-  // And no coordinate (§5/§6, carried forward from rounds 26-28).
-  const floats = (blob.match(/-?\d+\.\d+/g) ?? []);
-  ok(floats.length === 0, `${where}: and no coordinate-shaped float`, floats.slice(0, 5));
+  // And no coordinate (§5/§6, carried forward from rounds 26-28) **outside `cities[].centre`**.
+  //
+  // **Narrowed at §8.4 A-56 (I-12), and narrowed rather than dropped.** A-56 Part 2 puts the
+  // city's own `City.centre` on the row deliberately — *"the same coordinate the document
+  // already stores, in the same database, on the same device"* — and Part 5 makes the ceiling
+  // mechanical somewhere else: no golden, no log line, no CLI. What this probe still owes is
+  // that no OTHER float reaches the persisted bytes, so `centre` is stripped by key and
+  // everything else is asserted exactly as before.
+  const stripped = JSON.stringify(result.persisted, (k, v) => (k === 'centre' ? undefined : v));
+  const floats = (stripped.match(/-?\d+\.\d+/g) ?? []);
+  ok(floats.length === 0, `${where}: and no coordinate-shaped float outside cities[].centre`, floats.slice(0, 5));
+  // The narrowing is not a hole: a centre that is NOT a bare {lat, lng} pair still fails.
+  for (const rec of result.persisted) {
+    for (const c of rec.cities ?? []) {
+      if (c.centre === undefined) continue;
+      ok(Object.keys(c.centre).sort().join() === 'lat,lng',
+        `${where}: cities[].centre is a bare {lat, lng} and nothing else`, Object.keys(c.centre));
+    }
+  }
 }
 
 const FAULT_TAG = FAULT === null ? '' : `  [${FAULT.toUpperCase()} FAULT APPLIED]`;
@@ -246,7 +269,7 @@ const phase1 = await page.evaluate(async (arg) => {
   // Both mutating methods, so both `SUMMARIES.put` sites are exercised.
   const a = await storage.saveIfVersion('t1', null, arg.doc, arg.rowA);
   const b = await storage.saveIfVersion('t2', null, arg.doc, arg.rowB);
-  await storage.refreshSummary('t1', a.version, arg.rowA4);
+  await storage.refreshSummary('t1', a.version, arg.rowA5);
   // Read the raw records, bypassing the port entirely: this is the persisted bytes.
   const persisted = await new Promise((res, rej) => {
     const r = indexedDB.open('cairn');
@@ -260,7 +283,7 @@ const phase1 = await page.evaluate(async (arg) => {
     r.onerror = () => rej(r.error);
   });
   return { persisted, viaPort: await storage.listTrips(), seeded: [a.ok, b.ok] };
-}, { doc: JSON.stringify({ hello: 'world' }), rowA: ROW('t1', 3), rowA4: ROW('t1', 4), rowB: ROW('t2', 4) });
+}, { doc: JSON.stringify({ hello: 'world' }), rowA: ROW('t1', 4), rowA5: ROW('t1', 5), rowB: ROW('t2', 5) });
 
 ok(phase1.seeded.every(Boolean) && phase1.persisted.length === 2, 'phase 1: two records were written', phase1.seeded);
 assertClean(phase1, 'phase 1');
@@ -273,7 +296,7 @@ note(`persisted bytes for one row: ${JSON.stringify(phase1.persisted[1]).length}
 // `ensureReady()`'s stamping branch — the write path phase 1 structurally cannot reach, because
 // it deletes the database first — is what runs.
 // ===========================================================================
-head(`phase 2: a LEGACY database (no \`versions\` entry), TWO records — gen-4 and gen-1 — seeded RAW, then opened by the port${FAULT_TAG}`);
+head(`phase 2: a LEGACY database (no \`versions\` entry), TWO records — gen-5 and gen-1 — seeded RAW, then opened by the port${FAULT_TAG}`);
 // **Wrapped, from A-39 Part 8 on.** Phase 2 now holds a **gen-1** record, and a fault whose
 // guard dereferences a key that generation never carried — A-38's own G13 reads
 // `r.countryCodes.length` — throws inside the browser instead of widening a row. A throw is not
@@ -352,7 +375,7 @@ phase2 = await page.evaluate(async (arg) => {
   // **A-39 Part 8.** Two records, the widest separation on Axis S, differing in KEY SET as well
   // as in version — so both a numeric staleness guard (G16) and a key-presence guard are live.
   records: [
-    { id: 't-legacy', row: ROW('t-legacy', 4) },
+    { id: 't-legacy', row: ROW('t-legacy', 5) },
     { id: 't-legacy-g1', row: ROW_GEN1('t-legacy-g1') },
   ],
   });
@@ -375,7 +398,7 @@ ok(phase2.seedKeys.docs.join() === PHASE2_IDS.join() && phase2.seedKeys.summarie
 ok(phase2.seedKeys.versions.length === 0,
   'phase 2: and `versions` is EMPTY before the port runs — this is the legacy state', phase2.seedKeys.versions);
 ok(PHASE2_EXPECTED['t-legacy'].join() === [...ROW_KEYS].sort().join(),
-  'phase 2: the gen-4 seeded row is ROW_KEYS-shaped BEFORE the port runs', PHASE2_EXPECTED['t-legacy']);
+  'phase 2: the gen-5 seeded row is ROW_KEYS-shaped BEFORE the port runs', PHASE2_EXPECTED['t-legacy']);
 {
   const g1 = PHASE2_EXPECTED['t-legacy-g1'];
   const gone = ['summaryVersion', 'countryCodes', 'cities', 'attribution'];
