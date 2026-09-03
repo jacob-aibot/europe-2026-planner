@@ -2984,3 +2984,51 @@ PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r33-a11y.mjs
 
 A FAIL in `r33-render.mjs` §F and §H, and a non-zero exit from `r33-vacuity.sh`, are the
 findings — not broken probes.
+
+---
+
+## Round 43 (2026-09-03, `master` @ `8b50889`) — the I-12 breaker pass (§8.4 **A-56**)
+
+One probe, thirteen sections, bare Node. Written against A-56 and the shipped source; it does
+**not** call, extend or re-point `packages/core/test/summary.test.ts`, `travelStats.test.ts`,
+`packages/client/test/summary-rescan.test.ts` or `test/stats-storage.test.ts`, all four of which
+were written by the builder of this increment. Run from `cairn/`:
+
+```bash
+node --experimental-strip-types qa/r43-a56.mjs
+   # A  the fence over `git diff 4b5643b 8b50889` + cairn-constraints on the ADDED production
+   #    lines only; A-56 Part 4 measured (6 coordinates for 112 stops, not 112).
+   # B  ROW_PATHS 20 -> 24 re-derived with MY leaf walker over MY four rows, against A-56
+   #    Part 6 typed in from ARCHITECTURE.md; ROW_KEYS 14; ROW_COUNT_FIELDS 8 under a MORE
+   #    generous classifier than the shipped one; the `ensureDays` -> `['transit']` mechanism
+   #    behind R43-6(a) measured on the document.
+   # C  THE HAND ORACLE. `cityStops`' six {lat,lng,note} triples and the 16 DAYS `cities:[…]`
+   #    arrays, transcribed by hand from europe-2026-itinerary.html into this file. All six
+   #    cities match on centre AND on date range; residue 1 measured live (Sigma 20 > 16).
+   # D  the rescan from GENUINE version-4 rows (minted, then aged by deleting exactly
+   #    centre/firstDay/lastDay), through the shipped store, with a control that proves the
+   #    pass is not unconditional; and the two-readers-of-SUMMARY_VERSION grep.
+   # E  the clamp at every edge A-56 Part 7 clause 1 names: null, absent, before, after,
+   #    inverted, wholly-outside, the active ceiling, the IsoDate domain walls, the fold.
+   # F  R43-2 part 1 — the throw, four ways, and its blast radius (2 -> 2+2N per row).
+   # G  TravelStatsCountry untouched, in type AND in behaviour.
+   # H  containment: goldens, `cli stats`, core strings, export, the views ceiling.
+   #    R43-4 — the rendered face of the clamp at --today 2026-08-12.
+   # I  R43-1 — purity, determinism, and `centre` ALIASING the live document.
+   # J  real data: zero-day, inverted, duplicate import, multi-city days, reversed days.
+   # K  R43-3 — the narrowed persisted-bytes float check, driven as a pure function.
+   # L  failure modes during the rescan: unreadable doc, refused refresh, missing doc,
+   #    travelStats over a MIXED v4/v5 library.
+   # M  R43-2 part 2 — end to end through rowLifecycle / rowDatesReadable / travelHistory:
+   #    every existing row-level gate says the corrupt row is healthy, and the refusal is
+   #    anonymous.
+```
+
+**5 FAIL lines carrying 4 finding ids (R43-1 twice, R43-2, R43-3, R43-4) are the findings**, not
+a broken probe; every other line is `ok`. `cairn/docs/QA-FINDINGS.md` round 43 names each one.
+
+Re-run, not re-written, this round and all green/as-claimed: `bash qa/i7a-exit6b.sh` (baseline
+46/0, six faults RED), `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node
+--experimental-strip-types qa/i7a-idb-rowkeys.mjs` (ALL OK; `--fault=g1` and `--fault=g16` both
+3 FAIL(S)). `qa/i6-summary.mjs` (1 FAIL) and `qa/i6a-bookkeeping.mjs` (4 FAIL) are **stale by
+design and pre-existing** — both re-derived in a worktree at `4b5643b` with identical content.

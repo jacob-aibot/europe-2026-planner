@@ -19,10 +19,44 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
-> **🏗️ CITY-LEVEL HISTORY IS NOW BUILT — as of 2026-09-03. This block is the newest. It changes
+> **🔎 CITY-LEVEL HISTORY HAS NOW BEEN ATTACKED, AND IT HELD — as of 2026-09-03. This block is
+> the newest and it supersedes exactly one line of the block underneath: `verified ❌` becomes
+> `verified ✅`.**
+>
+> **What happened.** An adversarial round spent a session trying to break the thing built earlier
+> the same day, without trusting a single number the build reported. It re-ran the whole test
+> suite at the old commit and the new one to check the *"+24 tests"* claim by counting rather
+> than by reading; it rebuilt a set of *old-format* stored trips by hand and watched them get
+> recomputed on the next launch; and — the part that matters most — it checked Vienna's point on
+> the globe and its 8–10 August dates **against the trip planner's own file**, typed in by hand,
+> rather than against the app's answer to its own question. All six cities matched, on both.
+>
+> **Nothing was broken, and nothing leaked.** No city coordinate reaches a log, a saved test
+> file, the command line, or any screen. Turn the network off, corrupt a trip file, make saving
+> fail halfway through the update — the app reports it and keeps every trip; it does not lose one
+> and does not half-write one.
+>
+> **Six small things were found, none of them blocking.** The most interesting one: the city's
+> coordinate on the summary record is not a *copy* of the trip's coordinate — it is the *same
+> object*, so in principle writing to one writes to the other. Nothing in Cairn does that today,
+> and the phone/browser database makes its own copy anyway, so nothing is wrong on screen; it is
+> a one-line tidy-up. Two of the six were already written down by the build itself, honestly, and
+> confirmed here. Two are about the *tests* rather than the app. One is a comment on a screen file
+> that is now out of date. And one is a genuine question for the architect: while you are
+> mid-trip, a city you have **not reached yet** prints today's date as if you had been there — it
+> is marked *"in progress"*, but the country line for the same place prints something more honest,
+> and the two should agree.
+>
+> **Status on this board:** city-level history is **designed ✅ · built ✅ · verified ✅ ·
+> shippable ❌** — shippable is a whole-phase decision and Phase 2 is not there yet. **Photos
+> (the other half of step 2d) are unchanged: designed ✅ · built ❌.** Detail:
+> `cairn/docs/QA-FINDINGS.md` round 43.
+
+
+> **🏗️ CITY-LEVEL HISTORY IS NOW BUILT — as of 2026-09-03. It changes
 > exactly one thing below: the first of the two "designed, not built" capabilities in the block
 > underneath is now **built**. Everything else in that block still stands, including the stop on
-> new screens.**
+> new screens. *(Its `verified ❌` line is superseded by the block above.)*
 >
 > **What this means in plain English.** When a trip finishes, Cairn now remembers **where each
 > city is** and **which days you were there** — not just the city's name. Vienna is no longer
