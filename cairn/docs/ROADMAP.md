@@ -630,7 +630,24 @@ are. What moves earlier is the record class those things suggest **into** — th
 
 **I-12 and I-13 are numbered above the gate and sequenced below it.** Sequencing rule 7 forbids renumbering
 forty cross-references for a tidy sequence, so the numbers are labels: the order is
-I-0 … I-10, **I-12, I-13**, then **I-11, the gate**, which now depends on all of them.
+I-0 … I-10, **I-12, I-12a, I-13**, then **I-11, the gate**, which now depends on all of them.
+
+*(**I-12a** is revision 41, from QA round 43's breaker pass over I-12 — `ARCHITECTURE.md` §8.4 **A-59** and
+**A-60**. Two narrow gaps in what `travelStats` does with the fields I-12 added: an unreadable stored city
+date throws anonymously and takes the whole library's statistics down, and a city range the clock has
+clamped entirely away prints a specific day the traveller was not there. It reopens nothing in A-56 and
+opens no view. **Orderable before or after I-13**; it is placed after I-12 because it only exists because of
+it.)*
+
+**Revision 41, 2026-09-03.** **One increment added, nothing re-scoped: `I-12a`.** QA round 43 shipped I-12
+(SHIP, 0 blockers, 6 MINOR) and routed three of the six to me. Two are design gaps in what `travelStats`
+does with the fields I-12 added, and they are ruled as `ARCHITECTURE.md` §8.4 **A-59** (an unreadable stored
+city date throws anonymously and takes the whole library's statistics down, with no selector in the
+A-44/A-46/A-47 lineage able to name the row) and **A-60** (a city range the clock has clamped entirely away
+prints as a specific day the traveller was not there — strictly more assertive than the country line beside
+it). The third was documentation-only and is corrected in place inside A-56 with no fixture, test, field or
+clause moving. **Phase 2's scope, boundaries and gates are exactly as revision 40 left them**; I-12a opens
+no view, bumps no version and adds no runtime symbol.
 
 > **Phase numbers changed once, here.** Every heading below carries its old number, and every "Phase N"
 > written in `ARCHITECTURE.md` §1–§7, `BUILD-NOTES.md` or `QA-FINDINGS.md` before revision 9 means the
@@ -1524,10 +1541,10 @@ caption/order) from the cell, and **at most 3 extent panes can exist planet-wide
 unchanged; A-53 adds **I18**, two criteria and a docstring. **I-8i is gated on Jacob's approval of A-51 and
 on nothing else — the design is closed and no further architect round is owed** |
 | **2c — participants** | `Trip.participants`, three build functions, the participants editor, *"people you have travelled with"* on the profile | you can say the trip was with your girlfriend and her family, and it grants them nothing | Not started; gated on 2b |
-| **2d — the memory data layer** *(revision 40)* | **I-12**: `TripSummaryCity` gains `centre` + `firstDay`/`lastDay`, `SUMMARY_VERSION` → 5, `TravelStatsCity` gains dates (§8.4 **A-56**). **I-13**: the `PhotoAsset` record class, multi-file import, two byte stores, a pure EXIF reader, the two-derivative resolution rule, the loading-state selectors (**§10**, **A-57**, **A-58**) | a past trip stops being a list of country codes — it knows *where in* each country and *when* — and a photograph can be attached to a day of it at all, which it could not before. Both are exercisable end to end with `node --test` and the CLI, on a machine with no browser | Not started. **Gated on 2b's *data layer*, which shipped (`REVIEW.md` "2b (data layer)", SHIP, `69e44d4`) — not on 2b's surfaces and not on 2c.** Orderable before or after 2c. **Opens no `.tsx` file** |
+| **2d — the memory data layer** *(revision 40)* | **I-12**: `TripSummaryCity` gains `centre` + `firstDay`/`lastDay`, `SUMMARY_VERSION` → 5, `TravelStatsCity` gains dates (§8.4 **A-56**). **I-13**: the `PhotoAsset` record class, multi-file import, two byte stores, a pure EXIF reader, the two-derivative resolution rule, the loading-state selectors (**§10**, **A-57**, **A-58**). **I-12a** *(revision 41, QA round 43)*: an unreadable stored city date stops taking the whole library's statistics down anonymously, and a city range the clock erased stops printing as a specific day (§8.4 **A-59**, **A-60**) | a past trip stops being a list of country codes — it knows *where in* each country and *when* — and a photograph can be attached to a day of it at all, which it could not before. Both are exercisable end to end with `node --test` and the CLI, on a machine with no browser | Not started. **Gated on 2b's *data layer*, which shipped (`REVIEW.md` "2b (data layer)", SHIP, `69e44d4`) — not on 2b's surfaces and not on 2c.** Orderable before or after 2c. **Opens no `.tsx` file** |
 
 **Mapped onto the increment sequence below** (revision 10): **2a = I-1 → I-4**, **2b = I-5 → I-8**,
-**2c = I-9 → I-10**, **2d = I-12 → I-13** *(revision 40)*, with **I-0** before all of them and **I-11** the
+**2c = I-9 → I-10**, **2d = I-12 → I-12a → I-13** *(revision 40; I-12a added at revision 41)*, with **I-0** before all of them and **I-11** the
 gate — which is now numbered below two increments it waits for; sequencing rule 7 is why the labels are not
 renumbered. Each of the three steps is
 genuinely shippable at its own increment — the phase can stop after I-4 or I-8 and still have delivered
@@ -4185,6 +4202,93 @@ dependency is real rather than a preference** — see I-13's *Dependencies* bull
   pass); §2.10's export total **unmoved** — I-12 adds no runtime symbol, and a builder adding one has found
   a design question.
 
+#### I-12a — a city date that cannot be read names its row, and a city range the clock erased says so (§8.4 A-59, A-60)
+
+*Revision 41, from QA round 43's breaker pass over I-12 (**R43-2**, **R43-4**). I-12 shipped with a manager
+verdict of SHIP and this does not reopen it: A-56's data model, its refusal of stop-level geometry and its
+refusal to widen country date ranges are all unchanged. Two narrow gaps in what `travelStats` does with the
+fields A-56 added, plus one docstring correction. **It opens no view and adds no screen.***
+
+- **Built.**
+  1. **A-59 Part 2** — `travelStats` reads `cities[].firstDay`/`lastDay` through `core.isIsoDate` and treats
+     a present-but-unreadable value as *"no usable day edge"*, taking A-56 Part 7 clause 2's existing
+     fallback to the trip's range. One unreadable end makes the pair unusable. `inDomain` at sites 4 and 5
+     **stays**.
+  2. **A-59 Part 3** — `TravelStats` gains `unreadableCityDates: number`, counted per `cities[]` entry;
+     `cli.ts stats` prints it on the conditional line beside `unnamedCities`. **No `SUMMARY_VERSION` bump.**
+  3. **A-59 Part 4** — `packages/client`'s selectors gain `rowStatsReadable(row)` (`2 + 2N` date fields,
+     `core.isIsoDate` and nothing else) beside `rowDatesReadable`, which is **unchanged**;
+     `TravelHistoryResult`'s failure branch gains `unreadableRows: readonly string[]`, and `rowId` gains its
+     second populated case — the single suspect. `travelHistory`'s docstring sentence claiming core exposes
+     no way to re-validate a date is deleted; it has been false since `isIsoDate` joined §2.10 at revision 31.
+  4. **A-60 Part 2** — a city range disjoint from its row's clamp interval `[a, b]` takes the same fallback
+     instead of collapsing onto the interval's edge.
+- **User-visible outcome.** On the CLI today, `stats --today 2026-08-12`: **Budapest, London and Prague stop
+  claiming `2026-08-12 → 2026-08-12`** — a specific day the traveller is provably elsewhere — and print
+  their trip's range, exactly as their country lines already do; **Split keeps `2026-08-12 → 2026-08-12`**,
+  because that is its real arrival day. And a library with one hand-corrupted city date keeps working
+  instead of refusing wholesale, with the affected entries counted.
+- **Architecture / data model.** §8.4 **A-59** and **A-60**, read with **A-56** Part 7 and §2.9 **A-47**
+  Part 3. Four things a builder does not get to decide, because the rulings decided them: **`rowStatsReadable`
+  is not folded into `rowDatesReadable` or `rowUnopenable`** (A-59 Part 4 states both refusals, and the
+  second would put a healthy document behind a `.cairn-unreadable.json` rescue export); **the fallback is
+  clause 2's, not a new rule** — three triggers, one answer; **`cli.ts` does not re-derive the clamp** to
+  decide what to print (A-34 Part 2); and **no *"not yet reached"* indicator** is invented (A-60 Part 3).
+  The Trips-list treatment A-59 Part 5 specifies is **deliberately not in this increment** — it opens
+  `Library.tsx` and needs a new store method, which is builder **and** breaker under `cairn/CLAUDE.md`'s
+  delegation table.
+- **Verification.**
+  - `[stated]` **Injected fault, the gate, both directions (A-59 Part 6).** Gate always-true: a row with
+    `cities[0].firstDay: 'not-a-date'` throws out of `travelStats` again and the fallback test goes red.
+    Gate always-false: the reference trip's six cities all report the trip's range and
+    `unreadableCityDates` reads **6**, so the *"a city's dates are ITS OWN days"* test goes red. Both
+    directions asserted — a boolean tested on one side is a boolean that will be inverted (A-34 Part 4).
+  - `[stated]` **Four corrupt shapes, one answer.** `'not-a-date'`, `'2026-3-1'`, a number and an object in
+    `cities[0].firstDay` each yield: no throw; that city reporting its **trip's** range;
+    `unreadableCityDates === 1`; and **every other row in the library unaffected**, which is the property
+    R43-2 measured as absent.
+  - `[stated]` `null`, an **absent key** (a gen-4 row) and a **valid** date each leave
+    `unreadableCityDates` at **0**. An absent key is a value, not a defect.
+  - `[stated]` **Attribution.** A two-row library, one row with a shape-invalid `startDate`:
+    `travelHistory` returns `ok: false` with `unreadableRows` naming exactly that row and `rowId` equal to
+    it. With **two** bad rows: `unreadableRows` names both, in library order, and `rowId` is `null`.
+    Injected fault — return `[]` from `unreadableRows` unconditionally and the first assertion goes red.
+  - `[stated]` **`rowStatsReadable` reads `2 + 2N` fields, and each one matters.** Over a row with three
+    cities: corrupting `startDate`, `endDate`, `cities[1].firstDay` or `cities[2].lastDay` each makes it
+    `false` independently, and a clean row is `true`. Four separate corruptions, not one.
+  - `[stated]` **`rowDatesReadable` did not move.** A row with good trip dates and a corrupt
+    `cities[1].firstDay` is still `rowDatesReadable === true` and still `rowUnopenable === false` — the
+    A-47 Part 4 meta-line split and the rescue-export gate are both unchanged. This is the ceiling on the
+    fix, and it is what fails if someone folds the new predicate into an old one.
+  - `[stated]` **A-60's rendered output, all six cities, `--today 2026-08-12`:** Vienna `08-08 → 08-10`,
+    Dubrovnik `08-10 → 08-12`, Split `08-12 → 08-12`, and Prague, Budapest and London all `08-07 → 08-12`
+    — each equal to its own country line at the same clock. A **ceiling, not a floor**: no city line may be
+    narrower than its country's.
+  - `[stated]` **A-60 breaks no shipped test, and that is asserted rather than hoped.** The three A-56
+    clamp tests (`A-56 Part 7 clause 1: an ACTIVE trip's city visit is clamped at today`, `… dated OUTSIDE
+    its own row's range`, `… lastDay precedes its firstDay`) all pass **unmodified**. A builder who edits
+    one of them to go green has found a defect in the implementation, not in the ruling.
+  - `[snapshot]` + `[stated]` **The golden moves exactly once, for exactly one reason.**
+    `fixtures/golden/travel-stats.json` gains `unreadableCityDates: 0` in both clock blocks (A-59) and
+    **nothing else changes in it** (A-60's two clocks are `planned` and `completed`, so nothing clamps).
+    `npm run golden && npm run sample && git status --porcelain` is empty on the second run.
+  - `[stated]` **The fences.** `git diff --stat` shows **zero** files under `apps/web/src/`;
+    `SUMMARY_VERSION` still reads **5** and `ROW_PATHS` still has exactly **24** entries with
+    `ROW_COUNT_FIELDS` at **eight**; §2.10's export total is **unmoved at 77** — `unreadableCityDates` is a
+    type field and `rowStatsReadable` is a `packages/client` selector, so neither is a core symbol.
+  - `[stated]` **`unreadableCityDates` is not count-shaped and `SOURCE_ALLOW` gains no entry** —
+    `countShaped('unreadableCityDates')` is `false` under `test/stats-storage.test.ts`'s own classifier, and
+    a test asserts that rather than leaving the absence to be read as an omission.
+- **Dependencies / blockers.** I-12 (SHIP, `8b50889`). **Not** gated on I-13, 2c or any surface. **A-39 Part
+  11 does not fire** — no `SUMMARY_VERSION`/`SCHEMA_VERSION` bump, no new store, no new port, no fourth
+  write path — so the covering set stays at **18** and `qa/i7a-idb-rowkeys.mjs` needs no change. If a builder
+  finds themselves editing it, that is a finding.
+- **Ship gate.** Every criterion above; `npm test` and `npm run typecheck` clean; the golden regenerating
+  idempotently with the single documented diff; and the **breaker's own `qa/r43-a56.mjs` §F, §H and §M
+  re-run**, where the four finding lines it currently emits for R43-2 and R43-4 must go green **without the
+  probe being edited** — it is the breaker's instrument, and a fix that needs it rewritten has not fixed
+  what it measured.
+
 #### I-13 — the photo foundation: a record class, bytes that are not in the document, and no new dependency (§10, A-57, A-58)
 
 - **Built.** `ARCHITECTURE.md` **§10** in full — A-57 Part 6 is the file-by-file list and it is the brief.
@@ -4259,8 +4363,8 @@ from.)*
   this is the pass that clears it.
 - **Verification.** All exit criteria below, each re-derived; the whole Phase 1 suite unchanged; the
   attack list for this phase run end to end.
-- **Dependencies / blockers.** I-0 through I-10, **and I-12 and I-13** (revision 40, step 2d — numbered
-  above this increment and sequenced below it).
+- **Dependencies / blockers.** I-0 through I-10, **and I-12, I-12a and I-13** (revision 40, step 2d —
+  numbered above this increment and sequenced below it; I-12a added at revision 41).
 - **Ship gate.** A manager verdict of **SHIP**. Nothing else counts as the phase being done.
 
 ### Exit criteria — the Phase 2 ship gate

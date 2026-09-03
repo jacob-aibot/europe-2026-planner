@@ -19,6 +19,43 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
+> **🧭 THE THREE QUESTIONS THAT ROUND CAME BACK WITH ARE ANSWERED — as of 2026-09-03. This block
+> is the newest. It adds one small piece of work to the list and changes nothing else: city-level
+> history stays designed ✅ · built ✅ · verified ✅ · shippable ❌.**
+>
+> **What was asked.** The adversarial round below ended with three questions for the architect
+> rather than three bugs. All three are now ruled, and two of them need a short piece of building
+> — tracked as **I-12a**, a small follow-on to the city-level history work, not a new capability
+> and not a new screen.
+>
+> **1. "A city you have not reached yet prints today's date as if you had been there."** Ruled:
+> it should print the *trip's* dates, exactly as the country line for the same place already does.
+> If you are in Split on the 12th, Budapest — which you reach on the 18th — should say *"7–12
+> August, in progress"*, the same coarse-but-true thing the Hungary line says, and never *"12
+> August → 12 August"*, which names the one day you were provably somewhere else. Split itself
+> keeps its single day, because the 12th really is the day you arrived there — the fix removes
+> the false precision without throwing away the real precision.
+>
+> **2. "If one saved date is corrupted, all your travel statistics disappear and nothing says
+> which trip did it."** This was the sharpest of the three. Cairn already has three separate
+> checks that catch a corrupted trip and point at the offending trip in your list — none of them
+> looked at the new per-city dates, so a single bad character could blank the whole travel
+> history with no way to find the culprit. Ruled in two halves: Cairn now **treats an unreadable
+> city date as a missing one** — it falls back to the trip's own dates, which it already knows how
+> to do, so the rest of your history keeps working — **and counts them**, so the absorption is
+> visible rather than silent. And the refusal, when there is one, can now **name the trip**. The
+> matching warning on the trip card itself is written down but deliberately not built yet: it
+> needs a screen, and screens are still on hold until the visual direction is picked.
+>
+> **3. Two paragraphs of the design document explained themselves backwards.** Corrected in
+> place, with the correction marked. No test, fixture or behaviour moved — they were wrong
+> *reasons* for right things, which is the cheapest kind of defect to find and the easiest kind to
+> leave rotting.
+>
+> **Status on this board:** **I-12a — designed ✅ · built ❌.** Nothing else changes. Detail:
+> `ARCHITECTURE.md` §8.4 A-59 and A-60, `ROADMAP.md` I-12a.
+
+
 > **🔎 CITY-LEVEL HISTORY HAS NOW BEEN ATTACKED, AND IT HELD — as of 2026-09-03. This block is
 > the newest and it supersedes exactly one line of the block underneath: `verified ❌` becomes
 > `verified ✅`.**

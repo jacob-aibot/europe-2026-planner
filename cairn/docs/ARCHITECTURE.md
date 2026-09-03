@@ -945,8 +945,8 @@ reads that instead of entering §2 or §4.
 
 ## Read only your sections
 
-This document is **~311k tokens** (re-measured at **revision 40**, with `doc-section` — §8 grew 65k → **70k**
-when A-56 landed in §8.4, and §10 is **13k** and new; the previous figure was ~271k at revision 36, with
+This document is **~318k tokens** (re-measured at **revision 41**, with `doc-section` — §8 grew 65k → 70k
+when A-56 landed in §8.4 and 70k → **77k** when A-59/A-60 joined it, and §10 is **13k**; the previous figure was ~271k at revision 36, with
 `cairn/tools/doc-section ARCHITECTURE` — §2 is ~123k of it and §8 ~65k, and §4 grew 13k → 18k when A-41/A-42 landed in §4.4, 18k → 25k when A-48 joined them, 25k → 32k when A-49/A-50 did, 32k → 42k when A-51/A-52 did, 42k → 49k when A-53 did and 49k → **59k** when A-54 did — the figure below is `doc-section`'s own, re-measured at revision 37; the per-section figures below were stale by a third before revision 11 and are
 re-measured, not estimated, whenever a revision lands). Nothing needs all of it, and a fresh agent that reads it whole starts a sixth
 of the way into its context before writing a line. Pull what you need:
@@ -983,7 +983,7 @@ supersedes, so reading it first is what tells you which of A-46 to skip** | 123k
 | 5 | The four hard subsystems | 2k | breaker; builder from Phase 3 on |
 | 6 | Privacy, authorization, deletion cascade. **§6.6 is the build-artifact threshold; the copy threshold is §2.14 A-15 + A-18 (revisions 13 and 14) and they differ deliberately, in two named places — read them together or neither** | 4k | breaker, manager; builder for §6.2 |
 | 7 | Explicitly deferred | <1k | anyone about to build something not in the roadmap |
-| 8 | **The travel-history model** (revision 9) — trip lifecycle and past trips (§8.1), the feasibility/integrity rule class (§8.2), participants (§8.3), geography attribution, travel stats and the summary-row rule (§8.4); then the shapes the location, photo and social phases must land on (§8.5–§8.7) and what is refused (§8.8). **§8.10 is revision 10** — physical travel distance by mode and the four provenance bases that keep it honest; **it is not Phase 2 scope**, so a Phase 2 builder reads §8.1–§8.4 and stops. **Revision 11 amends §8.1, §8.2 and §8.4 by pointer only — the two rulings themselves live in §2.2 (A-10) and §2.7 (A-9), and a Phase 2 builder reads both; revision 12 amends §8.2 by pointer in the same way, and its four rulings live in §2.7 (A-11, A-12, A-13) and §2.14 (A-14)**. **A-26 is revision 20 and lives in §8.4** — the mixed-resolution country index, the withdrawal of the correctness floor's escalation mechanism, and the ruling that `null` is the right answer for a landform the dataset does not carry; **anyone touching `tools/gen-countries.mjs`, `geo/countryIndex.ts` or the attribution golden reads it first**, and it is what ROADMAP's I-5a builds; **A-27 is revision 21, sits directly under A-26 and is read *with* it, never instead of it** — it amends A-26 Part 4's block-quoted rule with a third clause (a filled code ships a **forgiveness entry** as well as a coverage entry), supersedes A-26 Part 5's two-residue list with three, lifts A-26 Part 6 item 3 for a docstring correction only, and is what ROADMAP's **I-5b** builds; **A-28 is revision 22, sits under A-27 and is read with both, never instead of them** — it supersedes A-27 Part 4's filter 2 (two arms, because the coverage index it compared against is mixed-resolution and answered generously) and A-27 Part 4's `overlaps` predicate (the vertex-mean probes come out), corrects A-27 Part 5's Macao sentence and every count in it, and is what ROADMAP's **I-5c** builds. **Anyone touching `tools/forgiveness.mjs` or the forgiveness pass reads A-28 first and A-27 second**; **A-29 is revision 23 and sits under A-28** — it is the only one of the four that is *not* about the index: it rules that a `City`'s **stated** `countryCode` fills a gap the coordinate cannot answer, never overrides one, and only through a gate ending in index membership, and it takes `SUMMARY_VERSION` to 3. **Anyone touching `derive/summary.ts` reads A-29 and §4.3's A-30 together** — A-29 changes what a row *says*, A-30 changes how it is *written*, and I-6a builds both; **A-31 is revision 24 and sits under A-29** — it is the `travelStats` specification (type, signature, algorithm, sort orders, residues), and it widens the row a second time with the **record census** clause 2's `unattributed` cannot be computed without, taking `SUMMARY_VERSION` to 4. **A builder of I-7 reads §8.4 clause 2, then A-31, and needs nothing else in this document except §2.10's list**; A-31 also rewrites ROADMAP exit criterion 6, so **anyone about to add a count to `TripSummaryRow` reads A-31 Part 6 first — widening that allow-list is an architect's ruling**; **A-33 and A-34 are revision 25 and sit under A-31** — **A-33 supersedes A-31 Part 6's two-half check entirely** (it grepped declarations while the danger is a *value*, and a persisted `countriesVisited` passed it), so read A-33 and treat Part 6 as the *principle* it block-quotes and nothing more; **A-34** adds `provisional` to `travelStats`' two row types and is the ruling that stops an active trip's unreached countries being printed as fact. **A builder of I-7a reads A-31, then A-33 and A-34, plus §2.1's A-32**; **A-36 and A-37 are revision 26 and sit under A-34** — **A-36 supersedes A-33 Part 3's 6b-1/6b-2/6b-4 split and Part 7 residue 2** (every `StoragePort` implementation is *executed* by the gate, including the web port, against a recording double; 6b-2 is demoted to a tripwire and its parameter grep withdrawn; 6b-4's Chromium read-back becomes a required recorded ship-gate condition), so **anyone touching a port implementation, `test/stats-storage.test.ts` or `ROW_KEYS` reads A-36 first and A-33 second**; **A-37** is the ruling that a stored summary row is not a validated document — two module-private read gates in `travelStats` (day numbers clamped into `IsoDate`'s domain, a stored country code read through `/^[A-Z]{2}$/`), and it is what makes A-32 Part 8 residue 3's bound and the composite key's docstring true rather than merely stated. **A builder of I-7b reads A-36 and A-37, plus §2.3's A-35**; **A-38 is revision 27 and sits under A-37** — it **widens A-36 Part 2's mechanism and Part 4's 6b-4 scope without touching A-36's sentence**: a port's coverage is its **write paths**, not its interface methods, so the recording double gains a **seed** (a pre-existing database, including a *legacy* record with no envelope version), 6b-1b becomes **five arms each with a stated starting state**, and 6b-4 gains a second seeded phase; **A-39 is revision 28, sits under A-38 and closes the arc** — it supersedes A-38 Part 7's *required property* sentence (which quantified over **faults** and so could never be discharged by a finite fixture list) and A-38 Part 3's arm **seeds**, replacing both with a claim quantified over the state `ensureReady()` can **read**: five axes derived line by line from the function, a **15-state pairwise covering set** in the same five arms, and — the part Jacob asked for — a **written boundary** saying what legitimately reopens this (a `SUMMARY_VERSION`/`SCHEMA_VERSION` bump, a new store, a new port, a fourth write path) and what does not (one more fault shape on an axis already covered, which is a **builder** finding against A-39 Part 5's table, not an architect's). **Anyone touching a port implementation, `recordingIdb`, `test/stats-storage.test.ts` or `qa/i7a-idb-rowkeys.mjs` reads A-39 first, A-38 second and A-36 third**; **A-44 is revision 30, sits at the end of §8.4 and is read with A-37 Part 2** — it is one paragraph plus a signature, and it says where `lifecycle`'s read gate goes (`packages/client`, once, beside `travelHistory`); **anyone rendering a stored summary row on a new surface reads it**; **A-56 is revision 40, sits at the very end of §8.4 and is the newest entry in the section** — the city entry gains `centre` and `firstDay`/`lastDay`, `SUMMARY_VERSION` goes to **5**, A-33 Part 2's `ROW_KEYS`/`ROW_PATHS` are widened, stop-level geometry is refused with its trigger, and A-31 Part 5 residue 1 is closed **for cities only**. **A builder of I-12 reads A-56, then A-31 Parts 2 and 4, then A-33 Part 2, then A-39 Part 11 item 1, and needs nothing else in this document except §2.10's list** | 70k | architect; the builder and breaker of the phase after Phase 1 (§8.1–§8.4 only). §8.10 is for the architect and for phases 4, 5 and 7. Read with `PRODUCT-VISION.md` |
+| 8 | **The travel-history model** (revision 9) — trip lifecycle and past trips (§8.1), the feasibility/integrity rule class (§8.2), participants (§8.3), geography attribution, travel stats and the summary-row rule (§8.4); then the shapes the location, photo and social phases must land on (§8.5–§8.7) and what is refused (§8.8). **§8.10 is revision 10** — physical travel distance by mode and the four provenance bases that keep it honest; **it is not Phase 2 scope**, so a Phase 2 builder reads §8.1–§8.4 and stops. **Revision 11 amends §8.1, §8.2 and §8.4 by pointer only — the two rulings themselves live in §2.2 (A-10) and §2.7 (A-9), and a Phase 2 builder reads both; revision 12 amends §8.2 by pointer in the same way, and its four rulings live in §2.7 (A-11, A-12, A-13) and §2.14 (A-14)**. **A-26 is revision 20 and lives in §8.4** — the mixed-resolution country index, the withdrawal of the correctness floor's escalation mechanism, and the ruling that `null` is the right answer for a landform the dataset does not carry; **anyone touching `tools/gen-countries.mjs`, `geo/countryIndex.ts` or the attribution golden reads it first**, and it is what ROADMAP's I-5a builds; **A-27 is revision 21, sits directly under A-26 and is read *with* it, never instead of it** — it amends A-26 Part 4's block-quoted rule with a third clause (a filled code ships a **forgiveness entry** as well as a coverage entry), supersedes A-26 Part 5's two-residue list with three, lifts A-26 Part 6 item 3 for a docstring correction only, and is what ROADMAP's **I-5b** builds; **A-28 is revision 22, sits under A-27 and is read with both, never instead of them** — it supersedes A-27 Part 4's filter 2 (two arms, because the coverage index it compared against is mixed-resolution and answered generously) and A-27 Part 4's `overlaps` predicate (the vertex-mean probes come out), corrects A-27 Part 5's Macao sentence and every count in it, and is what ROADMAP's **I-5c** builds. **Anyone touching `tools/forgiveness.mjs` or the forgiveness pass reads A-28 first and A-27 second**; **A-29 is revision 23 and sits under A-28** — it is the only one of the four that is *not* about the index: it rules that a `City`'s **stated** `countryCode` fills a gap the coordinate cannot answer, never overrides one, and only through a gate ending in index membership, and it takes `SUMMARY_VERSION` to 3. **Anyone touching `derive/summary.ts` reads A-29 and §4.3's A-30 together** — A-29 changes what a row *says*, A-30 changes how it is *written*, and I-6a builds both; **A-31 is revision 24 and sits under A-29** — it is the `travelStats` specification (type, signature, algorithm, sort orders, residues), and it widens the row a second time with the **record census** clause 2's `unattributed` cannot be computed without, taking `SUMMARY_VERSION` to 4. **A builder of I-7 reads §8.4 clause 2, then A-31, and needs nothing else in this document except §2.10's list**; A-31 also rewrites ROADMAP exit criterion 6, so **anyone about to add a count to `TripSummaryRow` reads A-31 Part 6 first — widening that allow-list is an architect's ruling**; **A-33 and A-34 are revision 25 and sit under A-31** — **A-33 supersedes A-31 Part 6's two-half check entirely** (it grepped declarations while the danger is a *value*, and a persisted `countriesVisited` passed it), so read A-33 and treat Part 6 as the *principle* it block-quotes and nothing more; **A-34** adds `provisional` to `travelStats`' two row types and is the ruling that stops an active trip's unreached countries being printed as fact. **A builder of I-7a reads A-31, then A-33 and A-34, plus §2.1's A-32**; **A-36 and A-37 are revision 26 and sit under A-34** — **A-36 supersedes A-33 Part 3's 6b-1/6b-2/6b-4 split and Part 7 residue 2** (every `StoragePort` implementation is *executed* by the gate, including the web port, against a recording double; 6b-2 is demoted to a tripwire and its parameter grep withdrawn; 6b-4's Chromium read-back becomes a required recorded ship-gate condition), so **anyone touching a port implementation, `test/stats-storage.test.ts` or `ROW_KEYS` reads A-36 first and A-33 second**; **A-37** is the ruling that a stored summary row is not a validated document — two module-private read gates in `travelStats` (day numbers clamped into `IsoDate`'s domain, a stored country code read through `/^[A-Z]{2}$/`), and it is what makes A-32 Part 8 residue 3's bound and the composite key's docstring true rather than merely stated. **A builder of I-7b reads A-36 and A-37, plus §2.3's A-35**; **A-38 is revision 27 and sits under A-37** — it **widens A-36 Part 2's mechanism and Part 4's 6b-4 scope without touching A-36's sentence**: a port's coverage is its **write paths**, not its interface methods, so the recording double gains a **seed** (a pre-existing database, including a *legacy* record with no envelope version), 6b-1b becomes **five arms each with a stated starting state**, and 6b-4 gains a second seeded phase; **A-39 is revision 28, sits under A-38 and closes the arc** — it supersedes A-38 Part 7's *required property* sentence (which quantified over **faults** and so could never be discharged by a finite fixture list) and A-38 Part 3's arm **seeds**, replacing both with a claim quantified over the state `ensureReady()` can **read**: five axes derived line by line from the function, a **15-state pairwise covering set** in the same five arms, and — the part Jacob asked for — a **written boundary** saying what legitimately reopens this (a `SUMMARY_VERSION`/`SCHEMA_VERSION` bump, a new store, a new port, a fourth write path) and what does not (one more fault shape on an axis already covered, which is a **builder** finding against A-39 Part 5's table, not an architect's). **Anyone touching a port implementation, `recordingIdb`, `test/stats-storage.test.ts` or `qa/i7a-idb-rowkeys.mjs` reads A-39 first, A-38 second and A-36 third**; **A-44 is revision 30, sits at the end of §8.4 and is read with A-37 Part 2** — it is one paragraph plus a signature, and it says where `lifecycle`'s read gate goes (`packages/client`, once, beside `travelHistory`); **anyone rendering a stored summary row on a new surface reads it**; **A-56 is revision 40, sits at the very end of §8.4 and is the newest entry in the section** — the city entry gains `centre` and `firstDay`/`lastDay`, `SUMMARY_VERSION` goes to **5**, A-33 Part 2's `ROW_KEYS`/`ROW_PATHS` are widened, stop-level geometry is refused with its trigger, and A-31 Part 5 residue 1 is closed **for cities only**. **A builder of I-12 reads A-56, then A-31 Parts 2 and 4, then A-33 Part 2, then A-39 Part 11 item 1, and needs nothing else in this document except §2.10's list**; **A-59 and A-60 are revision 41, sit directly under A-56 and are read *with* it, never instead of it** — QA round 43 measured A-56 Part 7 clause 1's *read* of a stored city date as an anonymous throw that takes the whole library's statistics down with no selector naming the row (A-59: the read is gated, the fallback is clause 2's, the absorption is counted in a new `TravelStats.unreadableCityDates`, and a new `rowStatsReadable` selector plus a widened `TravelHistoryResult` make the row nameable), and its *clamp* as printing a specific single day for a city the traveller has not reached (A-60: a range disjoint from the clamp interval falls back to the trip's range, so the city line is never more assertive than its country's). **A-59 and A-60 also carry the three in-place corrections R43-6 made to A-56's own prose** (Part 2's `firstDay` docstring, Part 6's fourth-fixture justification, Part 8 item 6's `gen-golden.mjs` line), none of which moves a fixture, a test or a clause. **A builder of I-12a reads A-59, then A-60, then A-56 Part 7, then §2.9 A-47 Part 3, and needs nothing else** | 77k | architect; the builder and breaker of the phase after Phase 1 (§8.1–§8.4 only). §8.10 is for the architect and for phases 4, 5 and 7. Read with `PRODUCT-VISION.md` |
 | 9 | **The design contract and the frontend tooling stack** (revision 38). §9.1 makes `docs/DESIGN.md` binding and says what is in it; §9.2 names the three fences a design pass may not cross; **A-55** is the eight-candidate tooling ruling, its Part 0 states where the dependency line actually is (`core`/`client` only — `apps/web` may take deps and takes none new), and its Part 4 is the tool hierarchy. **A builder of any web surface reads `DESIGN.md`, not this section**; this section is for the architect and for anyone about to add a frontend dependency | 4k | architect; anyone adding a frontend dependency |
 | 10 | **The photo foundation** (revision 40). §10.1 the record class and where the bytes are not; §10.2 import and the hand-rolled EXIF reader; §10.3 storage and the two new object stores; §10.4 the resolution discipline; §10.5 privacy and redaction; §10.6 the loading-state signals a consuming UI needs. **A-57** is the consolidated ruling and **A-58** is the dependency verdict. **A builder of I-13 reads §10 whole — it is self-contained — plus §2.8 (provenance), §2.10's list, `serialize/migrate.ts`'s own docstring, §8.6 and §8.4 A-39 Part 11.** It does **not** need the rest of §2 or §4 | 13k | builder and breaker of I-13; architect |
 
@@ -6046,6 +6046,17 @@ is not widened — it answers a narrower question that Part 4 still needs, and w
 `rowUnopenable` is where the composition lives, once. **The centralisation argument A-46 made for
 `rowDatesReadable` is upheld and extended, not re-fragmented**: after this there is exactly one expression
 in the codebase that decides whether a card is flagged, and it is this function.
+
+> **Extended by one sibling at revision 41 — §8.4 A-59 Part 4, QA R43-2. `rowUnopenable` itself does not
+> move.** A-56 put two more date fields *per city* on the summary row, and a corrupt one makes
+> `travelStats` refuse for the whole library while F-A…F-D all call the row healthy. That is a **fifth**
+> fact — *"this row's own stored dates are not all dates"* (`rowStatsReadable`) — and it is deliberately
+> **not** folded in here, because `rowUnopenable` drives the *"This trip's file could not be read"* chip
+> and the `.cairn-unreadable.json` rescue export, and a corrupt **row** says nothing about its **document**
+> — the row is a derived cache (§4.3 A-30) and the document behind it is almost certainly fine. Folding it
+> in would hand the user a healthy trip under a filename that lies about it, which is Part 1's own
+> proxy-that-reads-true diagnosis committed in the opposite direction. The affordance F-E implies is
+> *recompute*, not *rescue*. A-59 Part 4 states both refusals; read it before adding a fourth disjunct here.
 
 **A `boolean`, not a message.** A caller cannot ask *why*, deliberately: the card's sentence is A-46 Part 3
 clause 1's existing one, and giving each card its own parser string is new vocabulary on a surface this
@@ -14033,6 +14044,19 @@ movement.
 only**, widens **A-33 Part 2's `ROW_KEYS`/`ROW_PATHS`**, and fires **A-39 Part 11 item 1**. It changes no
 clause of A-29, A-34, A-36 or A-37, and it does not touch §4.4 — A-40 → A-54 are unmoved.)*
 
+> **Amended at revision 41 by A-59 and A-60 (QA round 43), and corrected in three places by R43-6.** The
+> ruling stands; four things move, all of them inside Part 7 or in this ruling's own prose:
+>
+> - **Part 7 clause 1's read of `cities[].firstDay`/`lastDay` is superseded by A-59** — an unreadable
+>   stored city date stops throwing and takes clause 2's fallback, and the absorption is counted.
+> - **Part 7 clause 1's clamp is superseded by A-60** — a city range the clock has clamped *entirely* away
+>   falls back to the trip's own range instead of collapsing onto a single day the traveller was not there.
+> - **Part 2's `firstDay` docstring, Part 6's fourth-fixture justification and Part 8 item 6** each stated
+>   something measurably false. All three are corrected **in place** below, marked as corrections. No
+>   fixture, test, field, version or clause moves for them — they were wrong *reasons* for right things.
+>
+> Parts 1, 3, 4, 5 and 9 are untouched, and **`SUMMARY_VERSION` does not move again** for any of it.
+
 **Part 1 — the premise, measured, because half of it was wrong.**
 
 The claim this ruling was opened on is that *"a completed trip's `TripSummaryRow` only carries country-level
@@ -14083,9 +14107,20 @@ export type TripSummaryCity = {
   /**
    * The first and last `Day.date` of the days this city occupies — `trip.days.filter(d =>
    * d.cities.includes(key))`, first and last, in document order. **`null` for both when the
-   * city occupies no day**, which is not an edge case: a past trip recorded through 2a's flow
-   * carries cities and no day skeleton, and that is the majority of the population this
-   * ruling exists for.
+   * city occupies no day**, which is not an edge case.
+   *
+   * **Corrected at revision 41 (QA R43-6).** This paragraph used to say the null population was
+   * *"a past trip recorded through 2a's flow, which carries cities and no day skeleton."*
+   * Measured, that is wrong twice over. `createTrip` always mints a **dense** day skeleton
+   * (§2.3), and `blankDay` sets `cities: primaryCity === 'transit' ? ['transit'] : [primaryCity]`
+   * (`build/days.ts`), so a `createTrip`-built trip has days and its **named cities occupy none
+   * of them** — that is the shape that produces `null`, and it is reached by every trip nobody
+   * has day-assigned, including most test and fixture trips. 2a's own form is **not** that
+   * shape: `PastTripForm` dispatches `setDayMeta` with `cities: [key]` for `cities[0]` over
+   * every day after `createTrip` returns, so a past trip recorded through the form gives its
+   * **first** city the full trip range and `null` to every other city it names. Both still print
+   * the trip's range, because Part 7 clause 2 makes `null` fall back to it — which is why the
+   * wrong reason cost nothing.
    *
    * As precise as `datePrecision` says and no more. A reader that renders these without
    * reading `datePrecision` beside them prints *"Kyoto, 1–31 March 2019"* about a trip whose
@@ -14202,12 +14237,29 @@ startDate · stopCount · summaryVersion · title
 ROW_COUNT_FIELDS` must still hold at exactly eight entries, which is a real check on this widening rather
 than a formality: it is what fails if someone later adds `cities[].dayCount` here instead of deriving it.
 
-**The third row of A-33 Part 2 assertion 3's union needs one more member.** The union is taken over three
-rows — the reference trip, a one-city row with a `null` country, and a row from a trip with no city, no
-place and no stop. The third contributes no `cities[]` path at all, and the first two both have days, so
-**no existing fixture reaches `firstDay: null`**. Add a fourth: **a trip with one city and no days** — 2a's
-own "record a past trip" output — which is the shape that makes `firstDay`/`lastDay` null, and which is the
-majority population for a completed trip. Without it the null branch ships unexercised.
+**A-33 Part 2 assertion 3's union needs one more member, and the reason is *deliberateness*, not reach.**
+The union is taken over three rows — the reference trip, a one-city row with a `null` country, and a row
+from a trip with no city, no place and no stop. The third contributes no `cities[]` path at all. Of the
+other two, **the reference trip is the only one that reaches a non-`null` `firstDay`**, and the
+`null`-country row reaches `firstDay: null` already, for the reason Part 2's docstring now states: it is
+built by `createTrip`, its days carry `['transit']`, and its city occupies none of them. So both branches
+are already *reachable*. What they are not is **named**: the null branch would be covered incidentally, by
+a fixture that exists to test `countryCode: null`, and on the day `createTrip`'s day-assignment behaviour
+changes that coverage would vanish with nothing saying so. Add a fourth whose whole purpose is that branch
+— **a trip with one city that no day of the trip carries**, `datePrecision: 'month'`, the shape a completed
+trip recorded without a day-by-day plan actually has — which asserts its own reachability (INCONCLUSIVE if
+its city ever occupies a day), and **pin both branches by name in the union test** rather than resting on
+which fixture happens to reach which.
+
+> **Corrected at revision 41 — QA R43-6(a), and it hides no coverage gap.** This paragraph originally read
+> *"the first two both have days, so **no existing fixture reaches `firstDay: null`**"*, and justified the
+> fourth fixture as the only way to reach the null branch. That is exactly inverted: the `createTrip`-built
+> fixtures are the ones reaching `null`, and the reference trip is the only one reaching non-`null`. The
+> builder measured the inversion while implementing I-12 and recorded it in `test/stats-storage.test.ts`'s
+> own comment; the breaker re-derived it independently over four rows of its own. **Nothing but the reason
+> was wrong** — the fixture ships, the union is still exactly 24 paths, and the shipped union test pins
+> both branches by name (`ref.cities.some(c => c.firstDay !== null)` and
+> `noDays.cities[0].firstDay === null`), which is what makes the coverage independent of the bad reasoning.
 
 **Part 7 — `travelStats` gains city dates, and A-31 Part 5 residue 1 closes for cities only.**
 
@@ -14234,6 +14286,15 @@ Three clauses and a builder needs no others:
    `cityA = clamp(dayNumber(firstDay ?? row.startDate), a, b)` and the same for `cityB`, then
    `cityB = max(cityA, cityB)`. An active trip cannot report a city visit in the future, and a hand-edited
    row whose `firstDay` sits outside its own trip cannot either.
+
+   > **Superseded in two places at revision 41 — read A-59 and A-60 below, then this clause.** The clamp
+   > itself is upheld and is still A-31 Part 4 step 4's; what moves is what happens at the two edges of it.
+   > **A-59** (QA R43-2): `dayNumber(firstDay ?? row.startDate)` is a bare read of a stored string and
+   > **throws** on one that is not a date, anonymously, taking the whole library's statistics down — the
+   > read is gated and the value takes clause 2's fallback instead. **A-60** (QA R43-4): a city range that
+   > the clamp interval does not intersect **collapses onto a single day the traveller was not there**,
+   > which is more assertive than the country line for the same place at the same clock — a disjoint range
+   > takes clause 2's fallback too. Clause 2 and clause 3 are unchanged by both.
 2. **A null day range falls back to the trip's own range.** `firstDay === null` is *"this city has no days"*,
    not *"this city has no dates"* — the trip has dates and the city is in it. Falling back means the answer
    is never worse than today's, which is the whole of residue 1's current behaviour, and it means a past trip
@@ -14260,8 +14321,16 @@ nothing, and A-34's precedent (`provisional` is a property of a statistic, never
 5. `qa/i7a-idb-rowkeys.mjs` and the A-39 covering set — **A-39 Part 11 item 1 fires**: axis S gains a state,
    the ledger gains an entry, and the pairwise table goes **15 → 18**. Part 6's pin 1 fails the moment
    `SUMMARY_VERSION` moves, so this cannot be skipped by forgetting.
-6. `tools/gen-golden.mjs` — Part 5's `hasCentre` treatment; `cli.ts stats` — city dates in the text output,
-   no coordinate.
+6. `cli.ts stats` — city dates in the text output, no coordinate. **`tools/gen-golden.mjs` correctly needs
+   no change**, and this item used to say it did.
+
+   > **Corrected at revision 41 — QA R43-6(b), verified.** This item named `tools/gen-golden.mjs` as a file
+   > the builder implements Part 5's `hasCentre` treatment in, and the builder's zero-line diff on it was
+   > right. `gen-golden.mjs` mints a row (`const statsRows = [core.tripSummary(trip, COUNTRY_INDEX)]`)
+   > **only as an input to `travelStats`** and writes the *statistics*; `grep '"centre"' fixtures/golden/`
+   > is **0** and no golden emits a summary row at all. Part 5 clause 1 is therefore a **standing rule with
+   > no current subject** — it binds the first golden that ever emits a row, and none does — not a task.
+   > Part 5 stands exactly as written; this item stops naming a file with nothing to do in it.
 
 **Part 9 — the residues, three, disclosed rather than discovered.**
 
@@ -14283,6 +14352,313 @@ nothing, and A-34's precedent (`provisional` is a property of a statistic, never
    which is a **consumer's** decision, not a stored one. **Trigger:** a surface that needs the two to be
    reconciled *in storage*, at which point the question is whether `City.order` should be derived from days,
    which is a §2 question about the document and not a §8.4 question about the row.
+
+#### A-59 — a stored city date is read like every other stored value: the throw becomes a fallback, the fallback is counted, and the row is nameable (revision 41, QA **R43-2**, ROADMAP **I-12a**)
+
+*(Read with **A-37** Part 2 — this is that ruling's own failure class arriving on the two fields A-56 added
+— and with §2.9 **A-46** Part 1 and **A-47** Parts 1 and 3, whose F-A…F-D table this extends by one fact.
+It supersedes **A-56 Part 7 clause 1's read** and nothing else of A-56. `packages/core`'s export surface
+does not move, `SUMMARY_VERSION` does not move, and no `.tsx` file is opened.)*
+
+**Part 1 — the gap, stated as the breaker measured it.**
+
+A-56 Part 7 clause 1 reads a stored city date with a bare `dayNumber(c.firstDay ?? row.startDate)`.
+`'not-a-date'`, the near-miss `'2026-3-1'`, a number and an object all throw `invalid IsoDate: …` out of
+`travelStats`, and **one corrupt city date in one row takes the whole library's statistics down**, not just
+its own row. The builder implemented that deliberately and defended it as symmetric with the grandfathered
+`startDate`/`endDate` throw A-37 Part 2 sanctioned. **The symmetry does not hold, and the reason is the
+half of A-37 Part 2 that lives above core.** A-37 sanctioned that throw and then placed an obligation
+beside it — *"the Profile and Map render `travelStats` behind a boundary that shows a refusal … with the
+row id"* — and three shipped mechanisms discharge it for the trip's own two dates:
+
+| # | fact | predicate | covers `cities[].firstDay`? |
+|---|---|---|---|
+| F-B | the row's dates are not `YYYY-MM-DD`-shaped | `rowLifecycle(row, today) === null` (A-44) | **no** — it reads two fields |
+| F-C | the row's dates are shape-valid but not real dates | `rowDatesReadable(row) === false` (A-46 Part 2) | **no** — same two fields |
+| F-D | a real open attempt failed | `state.openFailures` (A-47 Part 2) | **no** — it is about the *document* |
+
+All three call a row with a corrupt `cities[].firstDay` **healthy**, and `travelHistory`'s only row-id
+extractor is `DUPLICATE_ROW_ID_RE`, which does not match a date error. So the user gets *"we could not read
+your travel history"* over a Trips list of perfect-looking cards, with **nothing anywhere naming the
+culprit**. That is the anonymous failure the whole A-44 → A-46 → A-47 lineage was built to prevent for
+every other field, arriving through the one field nobody extended it to.
+
+**The count, checked because the routing asked.** A-37 Part 2's `inDomain` is applied at **five** sites
+today, not two: `todayNum`, `a` and `rawB` from A-37 itself, plus `cityA` and `cityB`, which the shipped
+code labels *"A-37 Part 2, sites 4 and 5"* in its own comment. The count is right and it is beside the
+point — `inDomain` clamps a **number**, and a shape-invalid string throws inside `dayNumber` before
+`inDomain` ever sees it. Extending A-37 Part 2 to five sites would change nothing about this defect. The
+missing gate is a different gate.
+
+**Part 2 — ruled (a). `travelStats` stops throwing on a city date, because unlike the trip's own dates
+there is an honest answer to fall back to.**
+
+> **A `cities[].firstDay`/`lastDay` that is present but is not an `IsoDate` is read as *"this city has no
+> usable day edge"* — which is exactly what `null` means — and takes A-56 Part 7 clause 2's fallback to the
+> trip's own range. The value is read through `core.isIsoDate`, once per field, and nothing else.**
+
+**Why this is not a reversal of A-37 Part 2's grandfathered throw.** A-37 kept `startDate`/`endDate`
+throwing because *"such a row cannot be placed in a lifecycle at all … and inventing a lifecycle for it is
+a lie"* — those two fields decide whether the row participates at all, and there is nothing to degrade to.
+A city date decides **none** of that. The row's own dates are fine, the trip is classified, counted,
+mapped and dated; only one city entry's cached day-edge is garbage, and clause 2 already defines the honest
+answer for a missing edge. A corrupt edge is strictly *less* informative than an absent one, so treating it
+as absent invents nothing. The line, stated generally so the next field does not need a ruling: **a stored
+value that gates the record's participation throws; a stored value the record has a documented fallback
+for takes the fallback.**
+
+**One end unreadable makes the pair unusable.** If either of the two is present-and-unreadable, *both* fall
+back — not one end clamped and the other invented. `tripSummary` sets both or neither, so a half-corrupt
+pair is hand-edited storage, and a range with one known end has an invented width. Stated because the
+`?? row.startDate` form the code replaces would silently have done the other thing.
+
+**`inDomain` at sites 4 and 5 stays.** After this gate every value reaching `dayNumber` there is an
+`isIsoDate`-valid string, so the clamp is a no-op and a builder will be tempted to delete it. Do not: it is
+one call, and A-46 Part 5's precedent for `LifecycleChip`'s drill-down gate applies unchanged — deleting a
+gate because the guard above it currently makes it unreachable is how the guard's next narrowing becomes a
+defect. **Trigger to remove it: none.**
+
+**Part 3 — ruled (b). The absorption is counted, because a silently absorbed value is A-37 Part 5 residue
+2's mistake repeated.**
+
+```ts
+export type TravelStats = {
+  /* … */
+  /** Cities whose name folds to `''` — counted, never merged into a blank row. */
+  unnamedCities: number;
+  /**
+   * §8.4 A-59. City entries whose STORED `firstDay`/`lastDay` was present and unreadable, so
+   * the entry fell back to its trip's range. Counted **per entry**, not per field: the maximum
+   * is one per `cities[]` entry across the whole library. `null` and absent are values, not
+   * defects, and are NOT counted — a version-4 row the rescan has not reached carries neither
+   * key, and A-56 Part 7 clause 2 is its correct answer.
+   */
+  unreadableCityDates: number;
+};
+```
+
+This is `unnamedCities`' own idiom, one field over, and for its stated reason — *"skipping it without
+counting would be silent loss, which is why the count is a field."* `cli.ts stats` prints it on the same
+conditional line the `unnamedCities` count already uses (`cities with unreadable stored dates: N`), so the
+absorption is visible on the one surface that exists.
+
+**`SUMMARY_VERSION` does not move.** `TravelStats` is derived and never stored — A-34's precedent for
+`provisional`, and `test/stats-storage.test.ts`'s 6b-5 pins it mechanically. `fixtures/golden/travel-stats.json`
+regenerates with the new field reading `0` in both clock blocks, which is a golden diff and not a behaviour
+change, exactly as A-34's was. **`unreadableCityDates` is not count-shaped** under `test/stats-storage.test.ts`'s
+`countShaped` (it ends in `Dates`, which is neither `PLURAL` nor `SHAPE`), so `SOURCE_ALLOW` gains **no**
+entry — stated so a builder does not helpfully add one and a reviewer does not read its absence as an
+omission.
+
+**Part 4 — ruled (c). The row is nameable, and the predicate goes where the other three went.**
+
+`packages/client`'s selectors gain, beside `rowDatesReadable`:
+
+```ts
+/**
+ * Does every date-shaped field THIS ROW carries read as an `IsoDate`? §8.4 A-59 Part 4.
+ *
+ * `startDate`, `endDate`, and each `cities[].firstDay`/`lastDay` where present and non-null —
+ * `2 + 2N` fields, which is the point: the count grows with the row, so it is asked in ONE
+ * place and no surface re-derives it. `core.isIsoDate` and nothing else (A-46 Part 2's rule).
+ *
+ * `false` means "this row's own stored dates are not all dates." It does NOT mean the document
+ * will not open, and it may never be rendered as that — see `rowUnopenable`.
+ */
+export function rowStatsReadable(row: core.TripSummaryRow): boolean;
+```
+
+and `travelHistory`'s refusal gains the attribution it has been unable to make:
+
+```ts
+export type TravelHistoryResult =
+  | { ok: true; stats: core.TravelStats }
+  | { ok: false; message: string; rowId: string | null; unreadableRows: readonly string[] };
+```
+
+- **`unreadableRows`** — every library row failing `rowStatsReadable`, in library order. Computed only on
+  the failure branch; `[]` when nothing fails, which is the honest *"the refusal is not a date"* answer.
+- **`rowId` gains a second populated case and no surface changes.** When the message is not the duplicate-id
+  one and `unreadableRows` has **exactly one** member, `rowId` is that id. Two or more stays `null`,
+  because *"one of these three"* is not an attribution and the surface's copy names one row. `WorldMap.tsx`'s
+  already-shipped named-row arm simply becomes reachable by a second fault, which is precisely what A-46
+  Part 5 said should happen the moment `travelStats`' refusal set changed. **Zero `.tsx` diff.**
+- Like A-47's `openFailures.message`, `unreadableRows` may exceed what a shipped surface reads today. It is
+  the fact, recorded once, for the surface in Part 5.
+
+**One docstring correction, and it is load-bearing.** `travelHistory`'s docstring currently justifies
+`rowId: null` for the date case with *"nothing on `@cairn/core`'s surface lets a caller re-validate a date
+without reimplementing `parseIsoDate` — which is exactly the second implementation of a core function
+ARCHITECTURE's sequencing rules forbid."* **That has been false since revision 31**, when A-46 Part 2 put
+`isIsoDate` on §2.10's surface (76 → 77) for this exact class of caller. The sentence is replaced by a
+pointer here, and the gap it was excusing is closed with the function it said did not exist.
+
+**Why not fold this into a predicate that already exists** — both refusals stated, because both are the
+obvious wrong move:
+
+- **Not into `rowDatesReadable`.** That predicate gates whether the card's meta line prints
+  `dateRangeLabel` or the two raw strings (A-47 Part 4). A row with good trip dates and a bad
+  `cities[3].firstDay` has a **perfectly good range**, and printing it raw would be R34-4 re-created. A-47
+  Part 3 already ruled that this predicate is not widened; this ruling upholds that and adds a sibling.
+- **Not into `rowUnopenable`.** `rowUnopenable` means *"this document will not open"*, and it drives the
+  *"This trip's file could not be read"* chip **and the `.cairn-unreadable.json` rescue export**. A corrupt
+  row says nothing about the document: the row is a **derived cache** (§4.3 A-30 exists because it is), and
+  the document behind it is almost certainly fine. Flagging it would hand the user a healthy trip under a
+  filename that lies about it — A-47's own *"a proxy that reads true and measures false"*, committed a
+  second time in the opposite direction. **F-E is a fifth fact, not a fourth instance of F-A…F-D**, and the
+  affordance it implies is *recompute*, not *rescue*.
+
+**Part 5 — the Trips-list treatment: fixed here, built by the next increment that opens `Library.tsx`.**
+
+The vocabulary is fixed now so nobody invents it, and the work is deliberately not scheduled into I-12a,
+which opens no view:
+
+1. **The sentence is about the saved summary, not the file.** Not `chip--warn`'s existing *"This trip's
+   file could not be read"* — that sentence is A-46 Part 3 clause 1's and it belongs to `rowUnopenable`.
+2. **The affordance is recompute, not rescue.** The row is re-derivable from the document, and re-deriving
+   it repairs exactly this corruption.
+3. **The existing rescan cannot do it, and that is the piece of work.** `runRescan` visits rows where
+   `(row.summaryVersion ?? 0) < SUMMARY_VERSION`; a hand-corrupted row at the current version is not
+   outdated, so the rescan skips it forever. A per-id forced recompute is a **new store method** and
+   therefore builder **and** breaker under `cairn/CLAUDE.md`'s delegation table. It is not built now
+   because the population is hand-edited storage and A-59 Parts 2–4 already stop it being fatal or
+   anonymous.
+
+**Part 6 — the injected faults, so this ships checkable (§0.5).**
+
+1. Set the gate to `() => true` (every stored value accepted): a row with `firstDay: 'not-a-date'` throws
+   again, out of `travelStats`, and the fallback test goes red.
+2. Set it to `() => false` (nothing accepted): the reference trip's six cities all report the trip's range,
+   `unreadableCityDates` reads 6, and the *"a city's dates are ITS OWN days"* test goes red. A one-sided
+   test on a gate is a gate that will be inverted (A-34 Part 4).
+3. Drop the `unreadableCityDates` increment: the corrupt-row test still passes on dates and fails on the
+   count — which is the whole reason the count is a field.
+4. Return `[]` from `unreadableRows` unconditionally: the attribution test names no row and goes red.
+
+**Part 7 — residues.**
+
+1. **This covers dates, not the row.** A `centre.lat` of `"x"` is not caught by anything here, because
+   nothing computes with `centre` yet (round 43 measured it: no view, no golden, no CLI line, no core
+   string). **Trigger:** the first derivation that computes with a non-date row field, at which point the
+   question is whether `rowStatsReadable` becomes `rowUsable` rather than whether a second predicate is
+   added.
+2. **The predicate is stricter than the throw, deliberately.** `isIsoDate` rejects a *calendar*-invalid
+   `'2026-02-30'`, which `travelStats` would have normalised through A-32 Part 4 to `'2026-03-02'`. So
+   `rowStatsReadable` reports rows that would not have thrown, and the Part 2 fallback now fires for them
+   too. That is the same choice A-46 Part 2 made for the trip's own two dates (F-C over F-B), for the same
+   reason — one predicate over all `2 + 2N` fields is worth more than one that traces the throw's exact
+   boundary — and it replaces a **guessed** date (`2026-03-02`, which nobody typed) with a declared
+   fallback, which is A-45 Part 3's rule pointing the same way.
+3. **A corrupt row still reports plausible wrong dates.** The city gets its trip's range, and only
+   `unreadableCityDates` says anything happened. That is A-37 Part 5 residue 1's trade, unchanged, and it
+   reopens on the same trigger: a `TravelStats` with an `Issue`-like channel.
+4. **`unreadableRows` has no consumer until Part 5 is built.** Stated rather than deferred silently; A-47's
+   `openFailures.message` set the precedent and the reasoning is the same.
+
+#### A-60 — a city's reported range is evidence, not a clamp artefact: a range the clock has clamped entirely away falls back to the trip's own (revision 41, QA **R43-4**, ROADMAP **I-12a**)
+
+*(Read with **A-56** Part 7 clauses 1 and 2 and with **A-34**. It supersedes A-56 Part 7 clause 1's clamp
+in one case and changes nothing else — not clause 2, not clause 3, not the cross-row fold, not
+`TravelStatsCountry`, not the data model, and not a single field on any type.)*
+
+**Part 1 — what is printed, and why it is worse than the country line beside it.**
+
+`node cli.ts stats --today 2026-08-12` on the reference trip prints
+
+```
+  HU  2026-08-07 → 2026-08-12  (1 trip)  ·  in progress          ← the country
+  HU  Budapest           2026-08-12 → 2026-08-12  ·  in progress ← the city
+```
+
+for a city the traveller reaches on **2026-08-18**. London and Prague print the same. The mechanism is
+clause 1's clamp doing exactly what it says: Budapest's `[08-18, 08-21]` is clamped into the row's
+`[08-07, 08-12]`, both ends land on the ceiling, and the pair collapses onto **today** — the one day in the
+whole window the traveller is provably *not* in Budapest, since they are in Split. The country form of the
+same fact is the trip's own range, which is coarse and true; the city form is a **specific day**, and it is
+false. **The finer granularity is the more assertive claim, and A-56 exists to make the finer granularity
+available — so it may not be the less honest one.**
+
+A-34's `· in progress` marker and its legend both print beside these lines, which is why round 43 filed
+this MINOR and not MAJOR. But A-34 exists, in its own words, to stop *"an active trip's unreached countries
+being printed as fact"*, and a collapse to a single named day reintroduces that shape one granularity down,
+under the marker A-34 put there to cover the coarser version of it.
+
+**Part 2 — the ruling. Clause 2's fallback gains a third trigger.**
+
+> **A city whose own day range does not intersect its row's clamp interval `[a, b]` reports `[a, b]` —
+> A-56 Part 7 clause 2's fallback — instead of collapsing onto whichever end of the interval it was
+> clamped to.** Where the two intersect, clause 1's clamp is unchanged.
+
+The per-row computation, whole, so a builder needs nothing else. `a` and `b` are A-31 Part 4 step 4's,
+unchanged:
+
+```
+rawA = inDomain(dayNumber(firstDay))            // A-59 has already guaranteed both are IsoDates
+rawB = max(rawA, inDomain(dayNumber(lastDay)))  // an inverted pair collapses onto its first — unchanged
+if (firstDay is null/absent/unreadable)  → [a, b]        // A-56 clause 2, A-59 Part 2
+else if (rawB < a || rawA > b)           → [a, b]        // A-60: disjoint
+else  cityA = min(b, max(a, rawA)); cityB = max(cityA, min(b, max(a, rawB)))   // A-56 clause 1
+```
+
+**One fallback, three triggers** — *no day edge*, *no readable day edge*, *no day edge inside the window* —
+and they are the same sentence each time: **the row carries nothing usable about when this city was
+visited, so the answer is what the trip itself says.** That is why this is clause 2's rule rather than a
+new one.
+
+**What it prints, `--today 2026-08-12`, stated so it can be pinned:** Vienna `08-08 → 08-10` and Dubrovnik
+`08-10 → 08-12` are unchanged; **Split stays `08-12 → 08-12`** and is *correct* — the traveller arrives in
+Split on the 12th, so the single day is evidence, not an artefact, and any rule that erased it would be
+throwing away the precision A-56 bought; Budapest, London and Prague become `08-07 → 08-12`, matching their
+own country lines exactly. **After this the city line is never more assertive than its country's line at
+the same clock, and every day it names is either a day the city's own range contains or the trip's whole
+window.**
+
+**Part 3 — clause 1's stated intent is satisfied, and the two alternatives are refused.**
+
+Clause 1's intent is *"an active trip cannot report a city visit in the future, and a hand-edited row whose
+`firstDay` sits outside its own trip cannot either."* The fallback satisfies both: `[a, b]` never extends
+past `today` for an active trip, because `b` is already `min(endDate, today)`, and never leaves the row's
+own range. Nothing is loosened.
+
+- **A distinct *"not yet reached"* indicator instead of a range — refused.** It reads as the more honest
+  option and it is not available honestly. `TravelStatsCity` cannot express it: the CLI cannot tell
+  Budapest's clamped `[08-12, 08-12]` from Split's genuine one without re-reading the rows, which is A-34
+  Part 2's *"a second expression of the population rule in every surface, diverging on the first edge
+  case."* Expressing it would mean a new field carrying *"this city's plan is entirely in the future"* —
+  which is a **planned** fact wearing an **observed** fact's clothes, and §8.5 principle 2 is that the two
+  stay distinguishable. A-34 also already refused the negative reading: *"provisional says the evidence is
+  from a trip you are on; it does not say you have not been here."*
+- **Doing this in `cli.ts` rather than in `travelStats` — refused**, same sentence. The CLI would have to
+  re-derive the clamp to know which ranges are artefacts. The statistic carries the honest answer; the
+  surface prints it. A-34 Part 2's *"why on the type and not computed by the caller"* is this argument, and
+  it has not changed.
+
+**Part 4 — the blast radius, measured rather than asserted.**
+
+- **No shipped test changes.** The three A-56 clamp tests are all *intersecting* cases and are re-derived
+  under the new rule unchanged: the active-trip clamp (`[06-12, 06-25]` ∩ `[06-10, 06-15]` = `[06-12,
+  06-15]`), the outside-its-range case (`[1999, 2099]` **contains** `[a, b]`), and the inverted pair
+  (`[05-18, 05-12]` normalises to `[05-18, 05-18]`, inside the trip). A builder finding one of them going
+  red has found a defect in the implementation, not in this ruling.
+- **No golden changes.** `travel-stats.json`'s two clocks are `FIXTURE_TODAY` (before `startDate` — the
+  trip is `planned` and contributes nothing) and `2026-08-24` (completed — `b` is `endDate`, so nothing
+  clamps). `npm run golden && git status --porcelain` must stay **empty** for this change alone, and that
+  is a real check: it says the change is confined to the mid-trip path. *(A-59's new field does move the
+  golden; A-60 must not.)*
+- **`TravelStatsCountry` is untouched**, in type and in behaviour. A-56 Part 7 clause 3 stands: a country
+  can be attributed through a `Place.at` that carries no day edge, so it gets no range of its own.
+- **No new field, no new symbol, no `SUMMARY_VERSION` bump, no client file, no `.tsx` file.**
+
+**Part 5 — residues.**
+
+1. **An unreached city and a city visited across the whole trip now print identically.** Both read the
+   trip's range with `· in progress` beside them. That is the same coarseness the country line has always
+   had, and it is the honest floor for a row whose evidence is a plan. **Trigger:** §8.5's `Visit` —
+   observed, dated travel — which is what lets *"has this city been reached"* be answered rather than
+   marked, and which is A-34 Part 5's trigger too.
+2. **A trip that ends before it starts still collapses.** Step 4's `b = max(a, b)` makes `[a, b]` a single
+   day, so every city of that row reports it. That is A-31 Part 3's *"counting it small beats making a
+   malformed row invisible"* and is not reopened here.
 
 ### 8.5 Observed travel — the shape Phase 5 must be able to land on
 
