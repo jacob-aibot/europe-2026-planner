@@ -915,6 +915,29 @@ assertion over both refusal branches rather than the source allow-list round 41 
 (**R41-13**). **Everything else lives in `DESIGN.md`** (§5.3, §5.5, §5.6, §6.2, §7) and `ROADMAP.md`
 revision 39. Nothing in A-40 → A-54 is reopened; no export, dependency, port, action or stored byte moves.
 
+**Revision 40, 2026-09-03.** The **memory data layer** — two capabilities that any future visual direction
+needs and that none of them decides. Neither touches the paused visual track (`docs/design/`), and neither
+reopens the world-map geometry (A-40 → A-54).
+
+1. **A completed trip's summary row carries its cities forward with a place and a time, not just a name.**
+   §8.4 **A-56**. The design-track's premise was measured and is **half wrong**: `TripSummaryRow.cities` has
+   carried `{key, name, countryCode, countrySource}` since A-10/A-29, so the **names** survive. What does not
+   survive is any **coordinate** and any **date**, which is why nothing can draw where in a country someone
+   went, or when, without opening the document. A-56 widens the city entry by exactly two fields — `centre`
+   and a day range — takes `SUMMARY_VERSION` to **5**, widens A-33's `ROW_KEYS`/`ROW_PATHS` allow-list (an
+   architect's ruling, as A-31 Part 6 requires), and **refuses stop-level geometry** with the reason and the
+   trigger written down. It closes A-31 Part 5 residue 1 **for cities only**.
+2. **Cairn gets a photo record class, from nothing.** New **§10**, ruled as **A-57** (the model, the
+   attachment granularity, the storage split and the loading-state signals) and **A-58** (the EXIF and
+   thumbnailing dependency verdict — **no dependency**, and the reason is *where the code has to live*, not
+   the zero-dep rule, which A-55 Part 0 already established does not reach `apps/web`). Photos take
+   `SCHEMA_VERSION` to **2** under `serialize/migrate.ts`'s own stated rule, add two object stores, and fire
+   **A-39 Part 11** items 2 and 4. The **suggestion** engine (`suggestPhotoStops`, library enumeration,
+   native EXIF) does not move and stays Phase 6; what moves earlier is the record class it will suggest into.
+
+`ROADMAP.md` revision 40 carries both as **step 2d**, increments **I-12** and **I-13**, in that order, and
+narrows Phase 6's deliverable list to match. §7 gains four deferrals; §6.1 and §6.6 each gain a row.
+
 **Phase 1 is §2 and §4. The next phase is §8.1–§8.4.** Everything else is the shape those must not
 foreclose. See `ROADMAP.md` for sequencing and `PRODUCT-VISION.md` for why this order and not another.
 **What the product looks like is `DESIGN.md`, not this document** — §9 says why, and a builder of a screen
@@ -922,7 +945,8 @@ reads that instead of entering §2 or §4.
 
 ## Read only your sections
 
-This document is ~271k tokens (re-measured at revision 36, with
+This document is **~311k tokens** (re-measured at **revision 40**, with `doc-section` — §8 grew 65k → **70k**
+when A-56 landed in §8.4, and §10 is **13k** and new; the previous figure was ~271k at revision 36, with
 `cairn/tools/doc-section ARCHITECTURE` — §2 is ~123k of it and §8 ~65k, and §4 grew 13k → 18k when A-41/A-42 landed in §4.4, 18k → 25k when A-48 joined them, 25k → 32k when A-49/A-50 did, 32k → 42k when A-51/A-52 did, 42k → 49k when A-53 did and 49k → **59k** when A-54 did — the figure below is `doc-section`'s own, re-measured at revision 37; the per-section figures below were stale by a third before revision 11 and are
 re-measured, not estimated, whenever a revision lands). Nothing needs all of it, and a fresh agent that reads it whole starts a sixth
 of the way into its context before writing a line. Pull what you need:
@@ -934,7 +958,7 @@ cairn/tools/doc-section ARCHITECTURE         # lists the sections and their size
 
 | § | Contents | ≈ cost | Who needs it |
 |---|---|---|---|
-| 0 | Six positions, stated up front | <1k | everyone — read it, it is 20 lines |
+| 0 | Nine positions, stated up front | ~1k | everyone — read it, it is 35 lines |
 | 1 | Stack decision and the capability checks behind it | 3k | architect. Settled; do not re-litigate |
 | 2 | **Domain model — the builder's contract.** §2.12 `travelRole`, §2.13 geography and §2.14 import/copy are new in revision 2 and are where the Phase 1 rework lives; **§2.2a (the `StorageVersion` write fence, revision 3) and §2.2b (the freshness rule it turned out to be one instance of, revision 4) are read together with §4.2 and §4.3, never alone**; §2.10 (the export surface) and §2.13's copied-record row are settled in revision 5; **§2.7's retirement ledger (A-5) and §2.13's copy-borne `Place` rule (A-6) are revision 6**; **§2.2a's A-7 (the fence a declined write may not move) is revision 8** and is read with §4.2 rule 4a; **§2.2's A-10 (a `CityKey` is a minted opaque id) and §2.7's A-9 (retirement is decided against the un-gated set) are revision 11** — a Phase 2 builder needs both; **A-11, A-12 and A-13 (§2.7) and A-14 (§2.14) are revision 12** and are read *with* A-9 and A-10, never instead of them — A-11 replaces A-9's greppable invariant, A-12 narrows A-9 point 1, A-13 rewrites A-9 assertion 4, and A-14 corrects A-10's change table; **A-15 and A-16 (§2.14) and A-17 (§2.7) are revision 13** — A-15 is the copy path's redaction rule and is read with §6.6, A-16 withdraws A-14's *"within one trip is unchanged"* paragraph, A-17 narrows A-11 assertion 5; **A-18 and A-19 (§2.14) are revision 14** — A-18 is the copy path's redaction rule for the *stop's own* nested records (`cost`, `arrival`) and generalises A-15 to *no spread at any depth*, A-19 rules that the `placement` **argument** is validated against the target and never re-filed. **Anyone touching `copyStopInto` reads A-14, A-15 and A-16 as one rule 4, and A-18 with rules 3 and 5**; **A-20 is revision 15 and lives in §2.9, not §2.14** — it is where the *shape* of a document is decided, it amends A-15's `hours` row and A-18's *"changes nothing in `fromJSON`"* paragraph, and **anyone touching `Place.hours` at any layer reads it first**; **A-21 is revision 16, lives in §2.9 beside A-20 and is read with it** — it replaces A-20's `isWeeklyEntry` with a reader that returns what it read, and imposes one read per field on `copyStop.ts`, so **anyone touching a predicate over an `unknown`, or any function in `copyStop.ts`, reads A-21 with A-15 and A-18**; **A-21a is a revision-16 addendum in the same place** and is what makes A-21's file-wide rule actually total — it is read with A-21, never instead of it; **A-22 and A-23 are revision 17, in the same place again** — A-22 closes the four sites A-21/A-21a's searches missed and **supersedes A-21a's read-count table one level down** (read A-22 Part 2's table, not A-21a's), and **A-23 is the standing census test that replaces the hand search** — *anyone adding a branch to `copyStopInto`, or a field to `Stop` or `Place`, reads A-23 first, because the scenario matrix and the allow-list are part of the contract and widening the allow-list is an architect's ruling*; **A-24 is revision 18 and is read *with* A-23, never instead of it** — it supersedes A-23's `opaque` set, its ten-row matrix and its fixture list, and nothing else about A-23 moves; **A-25 is revision 19 and is the last of the chain — it is read with A-23 and A-24 and closes the arc**, adding `City` rows to the roots, a fifteenth matrix row, an eighth `ALLOWED` entry, the structural fixture-completeness tests, and the **written closing criterion** in its Part 6 that a manager or a future session checks rather than takes on trust. **QA round 21 ran that criterion and all six clauses hold, so the arc is closed rather than closeable** — Part 6 records the verification and Part 5's class-A residue list was completed **in place** with the three instances round 21's re-derivation added (R21-1); that correction carries **no revision number** because no rule, entry, root, row, gate or line of code moved. **A-32 is revision 25 and lives in §2.1**, at the other end of the section from the copy chain — the civil-calendar implementation of `dayNumber`/`fromDayNumber`/`weekdayOf` and the first written statement of `IsoDate`'s **domain**; it is ~4k on its own, and **anyone touching a date helper, or minting an `IsoDate` from user input, reads it and needs nothing else in §2**; **A-35 is revision 26 and lives in §2.3** — the day skeleton's span cap (`MAX_TRIP_SPAN_DAYS = 3653`, in `ensureDays`, in core), which is A-32 Part 5's own trigger firing on the branch that Part does not cover, so **anyone touching `ensureDays`, `createTrip`'s date validation or either trip form reads A-35, and reads A-32 Part 5 only for why the Year field still has no floor**; **A-45 is revision 30 and lives in §2.9, at
 the end, beside A-20/A-21** — `fromJSON` stops hand-rolling a second date predicate and refuses a
@@ -959,8 +983,9 @@ supersedes, so reading it first is what tells you which of A-46 to skip** | 123k
 | 5 | The four hard subsystems | 2k | breaker; builder from Phase 3 on |
 | 6 | Privacy, authorization, deletion cascade. **§6.6 is the build-artifact threshold; the copy threshold is §2.14 A-15 + A-18 (revisions 13 and 14) and they differ deliberately, in two named places — read them together or neither** | 4k | breaker, manager; builder for §6.2 |
 | 7 | Explicitly deferred | <1k | anyone about to build something not in the roadmap |
-| 8 | **The travel-history model** (revision 9) — trip lifecycle and past trips (§8.1), the feasibility/integrity rule class (§8.2), participants (§8.3), geography attribution, travel stats and the summary-row rule (§8.4); then the shapes the location, photo and social phases must land on (§8.5–§8.7) and what is refused (§8.8). **§8.10 is revision 10** — physical travel distance by mode and the four provenance bases that keep it honest; **it is not Phase 2 scope**, so a Phase 2 builder reads §8.1–§8.4 and stops. **Revision 11 amends §8.1, §8.2 and §8.4 by pointer only — the two rulings themselves live in §2.2 (A-10) and §2.7 (A-9), and a Phase 2 builder reads both; revision 12 amends §8.2 by pointer in the same way, and its four rulings live in §2.7 (A-11, A-12, A-13) and §2.14 (A-14)**. **A-26 is revision 20 and lives in §8.4** — the mixed-resolution country index, the withdrawal of the correctness floor's escalation mechanism, and the ruling that `null` is the right answer for a landform the dataset does not carry; **anyone touching `tools/gen-countries.mjs`, `geo/countryIndex.ts` or the attribution golden reads it first**, and it is what ROADMAP's I-5a builds; **A-27 is revision 21, sits directly under A-26 and is read *with* it, never instead of it** — it amends A-26 Part 4's block-quoted rule with a third clause (a filled code ships a **forgiveness entry** as well as a coverage entry), supersedes A-26 Part 5's two-residue list with three, lifts A-26 Part 6 item 3 for a docstring correction only, and is what ROADMAP's **I-5b** builds; **A-28 is revision 22, sits under A-27 and is read with both, never instead of them** — it supersedes A-27 Part 4's filter 2 (two arms, because the coverage index it compared against is mixed-resolution and answered generously) and A-27 Part 4's `overlaps` predicate (the vertex-mean probes come out), corrects A-27 Part 5's Macao sentence and every count in it, and is what ROADMAP's **I-5c** builds. **Anyone touching `tools/forgiveness.mjs` or the forgiveness pass reads A-28 first and A-27 second**; **A-29 is revision 23 and sits under A-28** — it is the only one of the four that is *not* about the index: it rules that a `City`'s **stated** `countryCode` fills a gap the coordinate cannot answer, never overrides one, and only through a gate ending in index membership, and it takes `SUMMARY_VERSION` to 3. **Anyone touching `derive/summary.ts` reads A-29 and §4.3's A-30 together** — A-29 changes what a row *says*, A-30 changes how it is *written*, and I-6a builds both; **A-31 is revision 24 and sits under A-29** — it is the `travelStats` specification (type, signature, algorithm, sort orders, residues), and it widens the row a second time with the **record census** clause 2's `unattributed` cannot be computed without, taking `SUMMARY_VERSION` to 4. **A builder of I-7 reads §8.4 clause 2, then A-31, and needs nothing else in this document except §2.10's list**; A-31 also rewrites ROADMAP exit criterion 6, so **anyone about to add a count to `TripSummaryRow` reads A-31 Part 6 first — widening that allow-list is an architect's ruling**; **A-33 and A-34 are revision 25 and sit under A-31** — **A-33 supersedes A-31 Part 6's two-half check entirely** (it grepped declarations while the danger is a *value*, and a persisted `countriesVisited` passed it), so read A-33 and treat Part 6 as the *principle* it block-quotes and nothing more; **A-34** adds `provisional` to `travelStats`' two row types and is the ruling that stops an active trip's unreached countries being printed as fact. **A builder of I-7a reads A-31, then A-33 and A-34, plus §2.1's A-32**; **A-36 and A-37 are revision 26 and sit under A-34** — **A-36 supersedes A-33 Part 3's 6b-1/6b-2/6b-4 split and Part 7 residue 2** (every `StoragePort` implementation is *executed* by the gate, including the web port, against a recording double; 6b-2 is demoted to a tripwire and its parameter grep withdrawn; 6b-4's Chromium read-back becomes a required recorded ship-gate condition), so **anyone touching a port implementation, `test/stats-storage.test.ts` or `ROW_KEYS` reads A-36 first and A-33 second**; **A-37** is the ruling that a stored summary row is not a validated document — two module-private read gates in `travelStats` (day numbers clamped into `IsoDate`'s domain, a stored country code read through `/^[A-Z]{2}$/`), and it is what makes A-32 Part 8 residue 3's bound and the composite key's docstring true rather than merely stated. **A builder of I-7b reads A-36 and A-37, plus §2.3's A-35**; **A-38 is revision 27 and sits under A-37** — it **widens A-36 Part 2's mechanism and Part 4's 6b-4 scope without touching A-36's sentence**: a port's coverage is its **write paths**, not its interface methods, so the recording double gains a **seed** (a pre-existing database, including a *legacy* record with no envelope version), 6b-1b becomes **five arms each with a stated starting state**, and 6b-4 gains a second seeded phase; **A-39 is revision 28, sits under A-38 and closes the arc** — it supersedes A-38 Part 7's *required property* sentence (which quantified over **faults** and so could never be discharged by a finite fixture list) and A-38 Part 3's arm **seeds**, replacing both with a claim quantified over the state `ensureReady()` can **read**: five axes derived line by line from the function, a **15-state pairwise covering set** in the same five arms, and — the part Jacob asked for — a **written boundary** saying what legitimately reopens this (a `SUMMARY_VERSION`/`SCHEMA_VERSION` bump, a new store, a new port, a fourth write path) and what does not (one more fault shape on an axis already covered, which is a **builder** finding against A-39 Part 5's table, not an architect's). **Anyone touching a port implementation, `recordingIdb`, `test/stats-storage.test.ts` or `qa/i7a-idb-rowkeys.mjs` reads A-39 first, A-38 second and A-36 third**; **A-44 is revision 30, sits at the end of §8.4 and is read with A-37 Part 2** — it is one paragraph plus a signature, and it says where `lifecycle`'s read gate goes (`packages/client`, once, beside `travelHistory`); **anyone rendering a stored summary row on a new surface reads it** | 65k | architect; the builder and breaker of the phase after Phase 1 (§8.1–§8.4 only). §8.10 is for the architect and for phases 4, 5 and 7. Read with `PRODUCT-VISION.md` |
+| 8 | **The travel-history model** (revision 9) — trip lifecycle and past trips (§8.1), the feasibility/integrity rule class (§8.2), participants (§8.3), geography attribution, travel stats and the summary-row rule (§8.4); then the shapes the location, photo and social phases must land on (§8.5–§8.7) and what is refused (§8.8). **§8.10 is revision 10** — physical travel distance by mode and the four provenance bases that keep it honest; **it is not Phase 2 scope**, so a Phase 2 builder reads §8.1–§8.4 and stops. **Revision 11 amends §8.1, §8.2 and §8.4 by pointer only — the two rulings themselves live in §2.2 (A-10) and §2.7 (A-9), and a Phase 2 builder reads both; revision 12 amends §8.2 by pointer in the same way, and its four rulings live in §2.7 (A-11, A-12, A-13) and §2.14 (A-14)**. **A-26 is revision 20 and lives in §8.4** — the mixed-resolution country index, the withdrawal of the correctness floor's escalation mechanism, and the ruling that `null` is the right answer for a landform the dataset does not carry; **anyone touching `tools/gen-countries.mjs`, `geo/countryIndex.ts` or the attribution golden reads it first**, and it is what ROADMAP's I-5a builds; **A-27 is revision 21, sits directly under A-26 and is read *with* it, never instead of it** — it amends A-26 Part 4's block-quoted rule with a third clause (a filled code ships a **forgiveness entry** as well as a coverage entry), supersedes A-26 Part 5's two-residue list with three, lifts A-26 Part 6 item 3 for a docstring correction only, and is what ROADMAP's **I-5b** builds; **A-28 is revision 22, sits under A-27 and is read with both, never instead of them** — it supersedes A-27 Part 4's filter 2 (two arms, because the coverage index it compared against is mixed-resolution and answered generously) and A-27 Part 4's `overlaps` predicate (the vertex-mean probes come out), corrects A-27 Part 5's Macao sentence and every count in it, and is what ROADMAP's **I-5c** builds. **Anyone touching `tools/forgiveness.mjs` or the forgiveness pass reads A-28 first and A-27 second**; **A-29 is revision 23 and sits under A-28** — it is the only one of the four that is *not* about the index: it rules that a `City`'s **stated** `countryCode` fills a gap the coordinate cannot answer, never overrides one, and only through a gate ending in index membership, and it takes `SUMMARY_VERSION` to 3. **Anyone touching `derive/summary.ts` reads A-29 and §4.3's A-30 together** — A-29 changes what a row *says*, A-30 changes how it is *written*, and I-6a builds both; **A-31 is revision 24 and sits under A-29** — it is the `travelStats` specification (type, signature, algorithm, sort orders, residues), and it widens the row a second time with the **record census** clause 2's `unattributed` cannot be computed without, taking `SUMMARY_VERSION` to 4. **A builder of I-7 reads §8.4 clause 2, then A-31, and needs nothing else in this document except §2.10's list**; A-31 also rewrites ROADMAP exit criterion 6, so **anyone about to add a count to `TripSummaryRow` reads A-31 Part 6 first — widening that allow-list is an architect's ruling**; **A-33 and A-34 are revision 25 and sit under A-31** — **A-33 supersedes A-31 Part 6's two-half check entirely** (it grepped declarations while the danger is a *value*, and a persisted `countriesVisited` passed it), so read A-33 and treat Part 6 as the *principle* it block-quotes and nothing more; **A-34** adds `provisional` to `travelStats`' two row types and is the ruling that stops an active trip's unreached countries being printed as fact. **A builder of I-7a reads A-31, then A-33 and A-34, plus §2.1's A-32**; **A-36 and A-37 are revision 26 and sit under A-34** — **A-36 supersedes A-33 Part 3's 6b-1/6b-2/6b-4 split and Part 7 residue 2** (every `StoragePort` implementation is *executed* by the gate, including the web port, against a recording double; 6b-2 is demoted to a tripwire and its parameter grep withdrawn; 6b-4's Chromium read-back becomes a required recorded ship-gate condition), so **anyone touching a port implementation, `test/stats-storage.test.ts` or `ROW_KEYS` reads A-36 first and A-33 second**; **A-37** is the ruling that a stored summary row is not a validated document — two module-private read gates in `travelStats` (day numbers clamped into `IsoDate`'s domain, a stored country code read through `/^[A-Z]{2}$/`), and it is what makes A-32 Part 8 residue 3's bound and the composite key's docstring true rather than merely stated. **A builder of I-7b reads A-36 and A-37, plus §2.3's A-35**; **A-38 is revision 27 and sits under A-37** — it **widens A-36 Part 2's mechanism and Part 4's 6b-4 scope without touching A-36's sentence**: a port's coverage is its **write paths**, not its interface methods, so the recording double gains a **seed** (a pre-existing database, including a *legacy* record with no envelope version), 6b-1b becomes **five arms each with a stated starting state**, and 6b-4 gains a second seeded phase; **A-39 is revision 28, sits under A-38 and closes the arc** — it supersedes A-38 Part 7's *required property* sentence (which quantified over **faults** and so could never be discharged by a finite fixture list) and A-38 Part 3's arm **seeds**, replacing both with a claim quantified over the state `ensureReady()` can **read**: five axes derived line by line from the function, a **15-state pairwise covering set** in the same five arms, and — the part Jacob asked for — a **written boundary** saying what legitimately reopens this (a `SUMMARY_VERSION`/`SCHEMA_VERSION` bump, a new store, a new port, a fourth write path) and what does not (one more fault shape on an axis already covered, which is a **builder** finding against A-39 Part 5's table, not an architect's). **Anyone touching a port implementation, `recordingIdb`, `test/stats-storage.test.ts` or `qa/i7a-idb-rowkeys.mjs` reads A-39 first, A-38 second and A-36 third**; **A-44 is revision 30, sits at the end of §8.4 and is read with A-37 Part 2** — it is one paragraph plus a signature, and it says where `lifecycle`'s read gate goes (`packages/client`, once, beside `travelHistory`); **anyone rendering a stored summary row on a new surface reads it**; **A-56 is revision 40, sits at the very end of §8.4 and is the newest entry in the section** — the city entry gains `centre` and `firstDay`/`lastDay`, `SUMMARY_VERSION` goes to **5**, A-33 Part 2's `ROW_KEYS`/`ROW_PATHS` are widened, stop-level geometry is refused with its trigger, and A-31 Part 5 residue 1 is closed **for cities only**. **A builder of I-12 reads A-56, then A-31 Parts 2 and 4, then A-33 Part 2, then A-39 Part 11 item 1, and needs nothing else in this document except §2.10's list** | 70k | architect; the builder and breaker of the phase after Phase 1 (§8.1–§8.4 only). §8.10 is for the architect and for phases 4, 5 and 7. Read with `PRODUCT-VISION.md` |
 | 9 | **The design contract and the frontend tooling stack** (revision 38). §9.1 makes `docs/DESIGN.md` binding and says what is in it; §9.2 names the three fences a design pass may not cross; **A-55** is the eight-candidate tooling ruling, its Part 0 states where the dependency line actually is (`core`/`client` only — `apps/web` may take deps and takes none new), and its Part 4 is the tool hierarchy. **A builder of any web surface reads `DESIGN.md`, not this section**; this section is for the architect and for anyone about to add a frontend dependency | 4k | architect; anyone adding a frontend dependency |
+| 10 | **The photo foundation** (revision 40). §10.1 the record class and where the bytes are not; §10.2 import and the hand-rolled EXIF reader; §10.3 storage and the two new object stores; §10.4 the resolution discipline; §10.5 privacy and redaction; §10.6 the loading-state signals a consuming UI needs. **A-57** is the consolidated ruling and **A-58** is the dependency verdict. **A builder of I-13 reads §10 whole — it is self-contained — plus §2.8 (provenance), §2.10's list, `serialize/migrate.ts`'s own docstring, §8.6 and §8.4 A-39 Part 11.** It does **not** need the rest of §2 or §4 | 13k | builder and breaker of I-13; architect |
 
 *(§8's figure is measured with `doc-section`, not estimated. §8.1–§8.4 — the Phase 2 model — are roughly
 five sixths of it since revisions 20–27 put A-26…A-29, A-31, A-33, A-34, A-36, A-37 and A-38 in §8.4; a Phase 2 builder
@@ -986,7 +1011,7 @@ crosses a section boundary. Otherwise this table is the contract.
 
 ---
 
-## 0. Six positions, stated up front
+## 0. Nine positions, stated up front
 
 1. **The brief's two hard constraints hold, and one is worse than the brief says.** They force a native
    shell for pillars 4 and 5 — not a native-first architecture. Jacob has confirmed the end state:
@@ -1021,6 +1046,17 @@ crosses a section boundary. Otherwise this table is the contract.
    trip whose end date has passed; participation, access, friendship and location-sharing are four
    different edges; and every statistic — countries, cities, days, goals — is derived from the trips it
    claims to summarise, so it cannot drift from them and cannot be inflated by typing. §8.
+8. **A summary row carries what a surface can draw without opening forty documents, and stops exactly
+   there.** Added at revision 40. A city entry that carries a name but no coordinate cannot be put on a map;
+   a row carrying every stop's coordinate would be a second copy of the corpus. The line is **the
+   granularity at which the document's own claim is true** — a trip says *"I was in Vienna, Aug 8–10"*, it
+   does not say *"I stood at these 112 points"* — and below that line the answer is clause 4's and has been
+   since revision 9: open the document. §8.4 **A-56**.
+9. **A photo in Cairn is a derivative, never an original, and the bytes are never inside the document.**
+   Added at revision 40. The trip document holds a reference and metadata; two re-encoded sizes live in
+   object stores of their own; the original file is not stored at all and its EXIF block does not survive
+   import. That is §6.6's redaction-on-generation rule obtained **by construction** rather than by
+   remembering — a canvas re-encode has no metadata left to leak. §10, **A-57**.
 
 ---
 
@@ -10646,6 +10682,7 @@ things qualify. They are §6.1–§6.4. §6.5 lists what is explicitly *not* bei
 | **Simplified day trace** | derived on demand | only on an explicit per-day share: one polyline, one trip, members only, deletable | anything outside the shared day |
 | **Private-zone fixes** | excluded before simplification, by radius | never, even inside a shared day | — |
 | **Photo library index** (ids, timestamps, GPS, thumbnails) | in memory / local index | **nothing**, in every phase | the index |
+| **An imported photo** (§10, from revision 40) | **two re-encoded derivatives** in IndexedDB beside the trip, plus metadata inside the trip document | **nothing in Phase 2 — there is no server.** From Phase 3, only what §6.3's export/sync cascade carries for the trip it belongs to | **the original file** and **the original EXIF block**, in every phase. Neither is stored anywhere, so neither can be transmitted. §10.5 |
 | **A photo attached to a shared trip** | original stays in the library | that one image + `stopId`, **EXIF GPS stripped by default**, per-photo opt-in to keep it | every photo not explicitly attached |
 | **Mailbox refresh token** | never on a device | encrypted under KMS, decryptable only by `services/ingest` | to any client, ever |
 | **Message bodies** | — | a scan buffer, encrypted, **deleted within 24 h of parsing** | retained bodies, mailbox-wide search, any body content in logs |
@@ -10771,6 +10808,7 @@ artifact*, not of the model.
 | **Tickets** | every `Ticket` → `null`, for all three kinds. A URL is an access credential; an `attachment` names a mailbox message; a `bundled` path points at `tickets/`, which is not deployed and would 404. The stop keeps `flags += 'ticketed'` so the badge still demonstrates. |
 | **Free text** — `Stop.note`, `Day.subtitle`, `Trip.title`, `Place.note`, `meta.poolNotes` | passed through a redactor whose patterns live in **one exported array** in `tools/redact.mjs`: a keyword followed by an alphanumeric token (`PIN`, `code`, `conf`, `ref`, `order`, `booking`, `seat`, case-insensitive), any run of 6+ digits with optional spacing (`338 441 5948`), any 6+ character uppercase-alphanumeric token containing both letters and digits (`YZGDTS`, `IU1TUY`, `D8WQHO`), any `https?://` URL, and any email address. Each replaced with `[redacted]`. |
 | **Links** | `Stop.links[].href` and any `book.u` survivor → dropped; the label is kept. |
+| **Photos** *(revision 40, §10.5)* | `Trip.photos` → `[]`. Not "redact the caption" — **drop the collection**. A photo's `at` is a real coordinate of a real place a real person stood, its `capturedAt` is a timestamp of their day, and its bytes are not in the document to be dropped later. The reference trip carries no photos today, so this rule ships **before** the first one exists, which is the only moment it is free. `redactForSample` sets the field and the sample sha does not move. |
 
 **This table is the *build-artifact* threshold. The *copy* threshold is §2.14 A-15, and the two differ
 deliberately (revision 13, QA R14-4).** A build artifact is published to anyone with no user in the loop, so
@@ -10846,6 +10884,23 @@ bundle, and the dependency-direction test of §3 asserts it.
   non-goals, restated so nobody re-adds them.
 - **Public share pages with SEO/OG rendering** — the accounts phase. They are the one surface where a
   permission bug is publicly visible, so they get their own attack pass.
+- **Everything §10 deliberately leaves out of the photo foundation** (revision 40), each with its trigger:
+  - **Photo → `Place` attachment.** §8.6's model permits it; §10.1 ships `trip`, `day` and `stop` and not
+    `place`, because a photo is `Place`'s second referent kind and §2.13 **A-6a**'s closing paragraph then
+    requires `removeStop`'s single-row prune to become a **reference-counted delete with a user-visible
+    affordance**. That is a `Place`-lifecycle ruling with nothing to do with photos, and bundling it makes
+    one increment two. **Trigger:** the increment that adds place attachment does A-6a's reference-counted
+    delete **first**, in its own pass.
+  - **Photo bytes in an export.** `exportDoc` is one JSON file (§2.10) and a photo is megabytes. The export
+    carries the **metadata**, so a restore knows what is missing and says so — `availability: 'missing'` is
+    a state §10.6 needs anyway, for eviction. **Trigger:** §6.3's zip export, which is where the blobs were
+    always going to live.
+  - **HEIC, PNG, WebP and XMP metadata.** §10.2's reader is JPEG/TIFF-EXIF only and reports
+    `reason: 'unsupported_container'` for the rest. **Trigger:** `apps/mobile`, where `expo-media-library`
+    answers this natively and the parser is not the mechanism at all — A-58 Part 4.
+  - **Any re-encode setting a user can change, any crop, any rotation UI, any album or ordering model
+    beyond the attachment edge.** A photo attaches, or it does not. **Trigger:** a measured complaint about
+    the two fixed sizes, not a preference for a slider.
 
 *(§8 adds to this list and, in two places, takes something off it. Read §8.8 with this section.)*
 
@@ -11189,7 +11244,10 @@ against a document it does not carry is not a summary. **Revision 23: the city e
 decides where a city entry's `countryCode` may come from. **Revision 24: the row gains
 `attribution: {places: {located, attributed}, stops: {located, attributed}}` and `SUMMARY_VERSION` goes to
 4 — A-31, which is what makes clause 2's `unattributed` computable at all. Cities get no such field: a
-`City.centre` is non-nullable, so the city census is already derivable from `cities[]`.**)*
+`City.centre` is non-nullable, so the city census is already derivable from `cities[]`.** **Revision 40: the
+city entry gains `centre: LatLng` and `firstDay`/`lastDay: IsoDate | null` and `SUMMARY_VERSION` goes to 5 —
+**A-56** at the end of this section, which is also where the refusal of stop-level geometry and the widened
+`ROW_PATHS` allow-list live. No top-level row key is added.)*
 
 A summary is a **copy**, so §0.6 applies to it and four clauses discharge it:
 
@@ -13969,6 +14027,263 @@ selector, three call sites, no copies.
 builder finding, and are not ruled here. No core change, no `SUMMARY_VERSION` bump, no export-surface
 movement.
 
+#### A-56 — a city entry carries where it is and when it was, and stop-level geometry is refused (revision 40, ROADMAP **I-12**)
+
+*(Read with **A-31** Parts 2 and 4 and **A-33** Part 2. A-56 supersedes **A-31 Part 5 residue 1 for cities
+only**, widens **A-33 Part 2's `ROW_KEYS`/`ROW_PATHS`**, and fires **A-39 Part 11 item 1**. It changes no
+clause of A-29, A-34, A-36 or A-37, and it does not touch §4.4 — A-40 → A-54 are unmoved.)*
+
+**Part 1 — the premise, measured, because half of it was wrong.**
+
+The claim this ruling was opened on is that *"a completed trip's `TripSummaryRow` only carries country-level
+attribution — no city names, no coordinates survive."* Measured against `packages/core/src/derive/summary.ts`
+at revision 39, the shipped row is:
+
+```ts
+type TripSummaryCity = { key: CityKey; name: string; countryCode: CountryCode | null;
+                         countrySource: 'coordinate' | 'stated' | null };
+```
+
+So **city names do survive**, and have since `SUMMARY_VERSION` 2 under §2.2 **A-10** — which exists precisely
+because *"an opaque key alone can neither label a pin nor join two trips."* The row also preserves **display
+order**, because `tripSummary` maps over `orderedCities(trip)` and an array is ordered. Two things are
+genuinely absent and both are load-bearing:
+
+| A memory / route / stamp surface needs | The row has | Verdict |
+|---|---|---|
+| a point to draw the city at | nothing — `City.centre` is read by `countryOf` and then discarded | **not derivable** |
+| the order the cities were visited in | `cities[]` is in `City.order` order | already there |
+| which country the city is in | `countryCode` + `countrySource` | already there (A-29) |
+| when the traveller was in that city | nothing — the row has only the **trip's** `startDate`/`endDate` | **not derivable** |
+| how precise those dates are | `datePrecision` | already there |
+
+The second and fourth rows are the whole defect. Everything a route-as-artifact card, a memory map or a
+city-level stamp wants to say — *this city, here, on these days* — is computable inside `tripSummary` from
+the document in front of it, and is thrown away at the moment it is cheapest to keep.
+
+**Part 2 — the widening. Two fields on an entry that already exists.**
+
+```ts
+export type TripSummaryCity = {
+  key: CityKey;
+  name: string;
+  countryCode: CountryCode | null;
+  countrySource: 'coordinate' | 'stated' | null;
+  /**
+   * The document's own `City.centre`, copied verbatim. Non-nullable, because `City.centre` is
+   * (§2.2) — which is also why the city census needs no `AttributionCensus` (A-31 Part 2).
+   *
+   * This is the **same coordinate the document already stores, in the same database, on the
+   * same device**. It is not new exposure and §8.4 clause 3's *"a country code is not location
+   * data of the kind §6.1 governs"* paragraph applies to it unchanged and for the same reason:
+   * the subject of that table is *observed* location. It is still not a licence to log it —
+   * Part 5 makes that mechanical.
+   */
+  centre: LatLng;
+  /**
+   * The first and last `Day.date` of the days this city occupies — `trip.days.filter(d =>
+   * d.cities.includes(key))`, first and last, in document order. **`null` for both when the
+   * city occupies no day**, which is not an edge case: a past trip recorded through 2a's flow
+   * carries cities and no day skeleton, and that is the majority of the population this
+   * ruling exists for.
+   *
+   * As precise as `datePrecision` says and no more. A reader that renders these without
+   * reading `datePrecision` beside them prints *"Kyoto, 1–31 March 2019"* about a trip whose
+   * owner said *"March 2019"*.
+   */
+  firstDay: IsoDate | null;
+  lastDay: IsoDate | null;
+};
+```
+
+**These are the two `cityRange` already computes.** `derive/summary.ts:137`'s `cityRange(trip, cityKey)`
+filters exactly this set of days and formats its ends as a display string; A-56 keeps the **filter** and
+throws away the **formatting**, because a display string in a stored row is an i18n retrofit (§2.1) and a
+pair of `IsoDate`s is not. `cityRange` itself does not move and keeps its caller.
+
+`SUMMARY_VERSION = 5`, with its own line in the constant's docstring. **A-29 Part 5's argument holds for the
+fifth time and is not re-made:** the rescan is generic — `store.ts:70` and `selectors/index.ts:213` are both
+`(row.summaryVersion ?? 0) < core.SUMMARY_VERSION` and neither cares what the constant is — so **no client
+code changes and a builder editing one to accommodate this bump has found a third reader, which is a finding
+rather than a chore** (`test/views.test.ts:274` already asserts no view is one).
+
+**Part 3 — what triggers the rescan for trips that are already summarised, stated because it is the question
+that was asked.**
+
+**Nothing new does.** The bump *is* the trigger, and the mechanism has shipped since I-6:
+
+1. `SUMMARY_VERSION` moves 4 → 5 in core.
+2. Every stored row in the wild now satisfies `(row.summaryVersion ?? 0) < 5`, so `summaryScan(state).phase`
+   becomes `'stale'` on the next boot and `outdated` names every trip.
+3. `App.tsx` calls the store's rescan; `runRescan` loads each document, recomputes the row with
+   `tripSummary(trip, COUNTRY_INDEX)`, and writes it back through `refreshSummary` — the summary-only,
+   non-minting write §4.3 **A-30** exists for. A background pass does not put a live tab into `'conflict'`.
+4. `summaryScan` reports `'recomputing'` while it runs and `'complete'` only when **every row's own
+   `summaryVersion`** reads current — never because a pass reached its end (§0.6).
+5. A document the pass cannot read is reported through `summaryScan(state).unreadable`, not dropped.
+
+Two consequences a builder must not try to improve on. **There is no partial rescan and there must not be
+one**: a row is recomputed whole, from its own document, inside one chained step (clause 1). And **there is
+no backfill that reads the old row** — the new fields come from the `Trip`, never from the version-4 row
+beside them, because a summary computed from a summary is exactly what clause 1 forbids.
+
+**Part 4 — why city-level, and why stop-level is refused.**
+
+Stop-level geometry — a coordinate per stop, or per place — is the alternative, and it is refused on four
+grounds, in descending order of how decisive each is.
+
+1. **It re-creates the problem the row exists to solve.** Clause 3's first sentence is *"the lifetime map
+   must not load forty trip documents"* and §4.2's *"exactly ONE trip in memory at a time"* is not negotiable
+   here. The reference trip carries **6 cities**, **112 stops** and **94 places** (§2.13's own measured
+   numbers). A stop-level row is ~30× the city-level one, and forty of them held in `state.library` at once
+   is the corpus, in memory, wearing a summary's name. A city-level row grows by two numbers and two short
+   strings per city.
+2. **It asserts a precision the source data does not have.** A stop coordinate is a **plan**. A-31 Part 5
+   residue 4 already discloses that a *pooled* stop is a plan and still counts toward `countryCodes`; at
+   country granularity that over-report is invisible, but painted as 112 pins on a memory map it becomes a
+   claim that the traveller stood in 112 specific places, including the ones they pooled and never did. §0.3
+   and the root `CLAUDE.md` convention both forbid presenting our inference as the user's own record.
+3. **§8.5 is the record class that answers this honestly, and pre-empting it is a one-way door.** A `Visit`
+   is observed travel with a `confidence`, and principle 2 — *planned and observed must stay
+   distinguishable* — is the thing a stop-pin memory map quietly destroys, because nothing on the surface
+   would tell the two apart. The correct sequence is: city-level from the plan now, stop-level from
+   observation when there is observation.
+4. **Clause 4 already covers the detail case.** *"Every drill-down reads the document."* The row answers
+   *"which cities, where, roughly when"*; the moment the user taps one, the trip is opened and the stops come
+   from `Trip`, at full fidelity, with their `travelRole`, their `placement` and their conflicts intact. A
+   surface that needs stop geometry for **one** trip has always been able to have it. A surface that needs it
+   for **forty at once** has not shown why.
+
+**The trigger to reopen, so this is a decision and not a wall:** §8.5's `Visit` shipping (observed, dated,
+per-day coordinates, which would go in a record of their own and not in this row), **or** a measured surface
+requirement that cannot be met by opening one document — at which point the thing to design is a
+**second, per-trip, lazily-loaded geometry record**, not a wider library row.
+
+**Part 5 — `centre` is in a row, and that is not a licence to print it.**
+
+Two mechanical checks, both cheap, both belonging to this ruling because a coordinate entering a new artefact
+is exactly where this project has leaked before:
+
+1. **The goldens stay coordinate-free.** `fixtures/golden/countries.json` and `travel-stats.json` both carry
+   *"NO COORDINATES: ids and names only"* in their own header (`tools/gen-golden.mjs:281`, `:334`), and that
+   discipline is **kept, not excepted**. A golden that includes a summary row emits `centre` as the boolean
+   `hasCentre` and nothing else. The correctness of `centre` is asserted somewhere strictly stronger: a unit
+   test in `packages/core/test/summary.test.ts` asserting `row.cities[i].centre` is **identical to**
+   `orderedCities(trip)[i].centre` — an equality against the source, which catches a wrong coordinate that a
+   transcribed literal in a golden never could.
+2. **`cli.ts stats` prints no coordinate**, and the existing *"no coordinate in any log line"* rule (clause
+   3's closing paragraph) is unchanged and now has a field that could violate it. The check is the one §6.1
+   cross-cutting rule 1 already licenses: grep the CLI's output for a coordinate-shaped float pair.
+
+**Part 6 — the allow-list widening, which is why this is an architect's ruling.**
+
+A-33 Part 2 pins **every** leaf path a minted row carries, and says in its own words that *"a field added to
+the row, count-shaped or not, fails the run until the list is widened, and widening it is an architect's
+ruling."* This is that ruling. `ROW_KEYS` is unchanged at the top level — no new top-level key is added, and
+that is a deliberate property of doing this inside `cities[]` rather than beside it. `ROW_PATHS` gains
+**exactly four** entries — `centre` is a plain object, so `leafPaths` descends into it and it contributes
+two leaves rather than one:
+
+```
+cities[].centre.lat · cities[].centre.lng · cities[].firstDay · cities[].lastDay
+```
+
+The list, transcribed in full and in sorted order, goes 20 → **24**:
+
+```
+attribution.places.attributed · attribution.places.located · attribution.stops.attributed ·
+attribution.stops.located · cities[].centre.lat · cities[].centre.lng · cities[].countryCode ·
+cities[].countrySource · cities[].firstDay · cities[].key · cities[].lastDay · cities[].name ·
+cityCount · countryCodes[] · datePrecision · dayCount · endDate · id · poolCount · revision ·
+startDate · stopCount · summaryVersion · title
+```
+
+**`ROW_COUNT_FIELDS` does not move.** A-33's surviving assertion `ROW_PATHS.filter(countShaped) ===
+ROW_COUNT_FIELDS` must still hold at exactly eight entries, which is a real check on this widening rather
+than a formality: it is what fails if someone later adds `cities[].dayCount` here instead of deriving it.
+
+**The third row of A-33 Part 2 assertion 3's union needs one more member.** The union is taken over three
+rows — the reference trip, a one-city row with a `null` country, and a row from a trip with no city, no
+place and no stop. The third contributes no `cities[]` path at all, and the first two both have days, so
+**no existing fixture reaches `firstDay: null`**. Add a fourth: **a trip with one city and no days** — 2a's
+own "record a past trip" output — which is the shape that makes `firstDay`/`lastDay` null, and which is the
+majority population for a completed trip. Without it the null branch ships unexercised.
+
+**Part 7 — `travelStats` gains city dates, and A-31 Part 5 residue 1 closes for cities only.**
+
+Residue 1 says `firstVisit`/`lastVisit` are trip-range, not country- or city-range, and names its own
+trigger: *"a summary that carries city date ranges (`cityRange` already computes them per document)."* That
+trigger is now fired, so the residue is discharged **for cities** in the same increment:
+
+```ts
+export type TravelStatsCity = {
+  nameKey: string; name: string; countryCode: CountryCode | null;
+  tripIds: string[]; provisional: boolean;
+  /** A-56. The earliest `firstDay` over contributing rows, clamped exactly as a country's is. */
+  firstVisit: IsoDate;
+  /** The latest `lastDay`, clamped — never after `today`. */
+  lastVisit: IsoDate;
+};
+```
+
+Three clauses and a builder needs no others:
+
+1. **The clamp is A-31 Part 4 step 4's, unchanged.** Per contributing row, `a = dayNumber(row.startDate)`
+   and `b = lifecycle === 'active' ? min(dayNumber(row.endDate), dayNumber(today)) : dayNumber(row.endDate)`,
+   then `b = max(a, b)`. A city's dates are then clamped **into `[a, b]`**:
+   `cityA = clamp(dayNumber(firstDay ?? row.startDate), a, b)` and the same for `cityB`, then
+   `cityB = max(cityA, cityB)`. An active trip cannot report a city visit in the future, and a hand-edited
+   row whose `firstDay` sits outside its own trip cannot either.
+2. **A null day range falls back to the trip's own range.** `firstDay === null` is *"this city has no days"*,
+   not *"this city has no dates"* — the trip has dates and the city is in it. Falling back means the answer
+   is never worse than today's, which is the whole of residue 1's current behaviour, and it means a past trip
+   recorded without a day skeleton still gets a date on its stamp.
+3. **Countries do not get this and the refusal has a reason.** A country reaches `countryCodes` from a city,
+   *or* from a `Place.at`, *or* from a stop's coordinate. A place carries no day edge at all, so a country
+   attributed only through a place would have a null range while another country in the same trip had a real
+   one — one field, two different meanings, in one list. **A-31 Part 5 residue 1 therefore stands unchanged
+   for countries**, with its original trigger. The line this ruling draws, and it is the general one: **widen
+   where the document already carries the edge; refuse where the edge would have to be invented.**
+
+**`SUMMARY_VERSION` does not move a second time for this** — `travelStats` is computed on read and stores
+nothing, and A-34's precedent (`provisional` is a property of a statistic, never stored) is exactly this.
+
+**Part 8 — what a builder implements.**
+
+1. `packages/core/src/derive/summary.ts` — `TripSummaryCity`'s two new fields, populated in the existing
+   `orderedCities(trip).map(...)` walk from a **day index built once per call** (`Map<CityKey, {first, last}>`
+   over `trip.days`, one pass), not per city; `SUMMARY_VERSION = 5` with its docstring line.
+2. `packages/core/src/derive/travelStats.ts` — Part 7.
+3. `packages/core/src/index.ts` — no new runtime symbol. `TripSummaryCity` and `TravelStatsCity` are types
+   and §2.10's count does not move. **If a builder finds themselves adding a symbol here, that is a finding.**
+4. `test/stats-storage.test.ts` — Part 6's `ROW_PATHS` and the fourth union fixture.
+5. `qa/i7a-idb-rowkeys.mjs` and the A-39 covering set — **A-39 Part 11 item 1 fires**: axis S gains a state,
+   the ledger gains an entry, and the pairwise table goes **15 → 18**. Part 6's pin 1 fails the moment
+   `SUMMARY_VERSION` moves, so this cannot be skipped by forgetting.
+6. `tools/gen-golden.mjs` — Part 5's `hasCentre` treatment; `cli.ts stats` — city dates in the text output,
+   no coordinate.
+
+**Part 9 — the residues, three, disclosed rather than discovered.**
+
+1. **A city's day range is only as good as `Day.cities`.** A day that spans two cities contributes to both,
+   so two cities can each claim the same day and their ranges overlap. That is correct — the traveller *was*
+   in both — and it is the same property `daysForCity` and the live planner's city tabs have always had. It
+   does mean `Σ (lastDay − firstDay + 1)` over cities exceeds `dayCount` on a multi-city day, so **no surface
+   may sum city day ranges into a total**. **Trigger:** the first surface that wants "days per city" as a
+   statistic, at which point the honest answer is a union-of-intervals sweep, exactly as `daysTravelled`
+   already does (A-31 Part 4 step 5), and not a sum.
+2. **`centre` is the city's centre, not the traveller's position.** It is a label for where to draw the city,
+   in the same sense §4.4 A-48's `countryKeyPoint` is a label and not an attribution, and it may never be
+   used to answer *"which country was this record in"* — that is `countryOf`'s job and `countrySource` is the
+   field that records which evidence won. **Trigger:** none; this is a permanent boundary, and a reviewer who
+   finds `centre` feeding an attribution has found a defect.
+3. **The row still carries no *route*.** `cities[]` is in `City.order`, which is the user's own display
+   order and is usually chronological but is not guaranteed to be. A route surface that wants strict
+   chronology sorts by `firstDay` and falls back to `order` where it is null — which the row now supports and
+   which is a **consumer's** decision, not a stored one. **Trigger:** a surface that needs the two to be
+   reconciled *in storage*, at which point the question is whether `City.order` should be derived from days,
+   which is a §2 question about the document and not a §8.4 question about the row.
+
 ### 8.5 Observed travel — the shape Phase 5 must be able to land on
 
 Not built now. Three decisions taken now, because each is a one-way door:
@@ -14002,6 +14317,16 @@ Country attribution then runs over visits with the same `countryOf`, and the pro
 cares most about.
 
 ### 8.6 Photos — the shape, and the one thing it triggers
+
+> **⚠ Superseded in scope at revision 40 — read §10 first.** *"Not built now"* was true when this section
+> was written and is no longer the plan. §10 (**A-57**, **A-58**) builds the record class, the import path,
+> the storage split and the resolution discipline **in Phase 2**, on the argument that the manual half of
+> pillar 5 — *"these are my photos from this day"* — needs no native capability and is what a memory surface
+> is made of. What §10 does **not** move is the half this section was actually about: library enumeration,
+> `suggestPhotoStops` and the suggestion queue stay in **Phase 6**, unchanged. **The paragraph below is
+> upheld in full as the association model and §10 implements it, with one narrowing §10.1 states and
+> justifies: `place` attachment is not in the first increment, which is what keeps the A-6a trigger below
+> from being fired by an increment that has nothing to do with `Place` lifecycle.**
 
 Not built now. §5.4 and §6.1 already hold the flow and the privacy rules; the thesis adds only the
 association model, and it is deliberately narrow:
@@ -14452,3 +14777,735 @@ decides *whether and how a thing moves before the code is written*. Different mo
 that boundary is already written in `VISUAL-TELLS.md` and this ruling upholds it rather than restating it.
 **Nothing in this hierarchy may generate a finding that overrules a shipped ruling in this document**; a hit
 is a question, and the manager's gate is still the only thing that ships anything.
+
+---
+
+## 10. The photo foundation
+
+**Revision 40, 2026-09-03.** Added because Cairn has **zero** photo capability — no record class, no import,
+no storage, no thumbnailing, no metadata extraction, no way to attach an image to anything — and every
+surface the product thesis calls a *memory* is made of photographs. §5.4 holds the eventual native flow and
+§6.1 holds the privacy rules; §8.6 holds the association model and is upheld. **What was missing is the
+layer underneath all three**, and it is this section.
+
+**What this section is not.** It is not the suggestion engine. `suggestPhotoStops`, library enumeration by
+trip window, `expo-media-library`, `getLocationAsync` and the Android `ACCESS_MEDIA_LOCATION` trap all stay
+exactly where `ROADMAP.md` Phase 6 has them. The split is clean and it is the split Jacob's own principle 10
+implies — *"the base product must be valuable before automatic location, social discovery or gamification
+exist"*: **attaching a photo you chose to a day you chose needs no native capability at all**, and the
+automatic half is worth nothing until the record class it suggests into exists. So the record class ships
+first, and Phase 6 gains a source of candidates rather than a mechanism — the same shape §5.2 already used
+for `copyStopInto`, which shipped in Phase 1 against two local trips so that the provenance rule was
+exercised long before a friend existed to break it.
+
+**It is also not a photo manager.** Cairn stores derivatives of photos you attached to trips. It is not a
+backup, not a library, not an editor, and §7 records the four things it deliberately is not.
+
+### 10.1 The record class
+
+```ts
+export type PhotoId = string;                                    // model/ids.ts, opaque
+
+export type PhotoDerivative = {
+  /** Pixel dimensions of THIS derivative, after downscale and after orientation is baked in. */
+  w: number;
+  h: number;
+  /** Byte length of the stored encoding. Carried so a surface can budget without a read. */
+  bytes: number;
+};
+
+/**
+ * §8.6: exactly one trip, and at most one of a stop, a day or a place. `'trip'` is the
+ * "somewhere on this trip, I do not know where" case and is a real answer, not a default.
+ *
+ * `'place'` is permitted by §8.6 and is NOT built in the first increment — §7, and A-57
+ * Part 3 for why. The union carries it so adding it is a build change and not a schema one.
+ *
+ * Named, rather than inlined on `PhotoAsset`, because §10.6's `photosFor(state, ref)` takes
+ * one and a second spelling of the same union is how two readers come to disagree.
+ */
+export type PhotoAttachRef =
+  | { kind: 'trip' }
+  | { kind: 'day'; dayId: DayId }
+  | { kind: 'stop'; stopId: StopId }
+  | { kind: 'place'; placeId: PlaceId };
+
+export type PhotoAsset = {
+  id: PhotoId;
+  attach: PhotoAttachRef;
+  /**
+   * What the user typed. Free text, and therefore subject to §6.6's redactor on every path
+   * that crosses a boundary — the sample path and the copy path both, exactly as `Stop.note`
+   * is (§2.14 A-15/A-18).
+   */
+  caption: string;
+  /**
+   * When the photograph was taken, as the photograph says. **Local wall-clock, no zone** —
+   * which is not a compromise, it is what EXIF `DateTimeOriginal` actually is, and it is
+   * already core's model for every other time (§2.1). `null` when the file carried no usable
+   * date, which on iOS Safari is the common case (§10.2).
+   *
+   * This is NOT "when it was imported" and there is no field for that: an import timestamp is
+   * a fact about our software, and §0.6's subject is exactly this class of second fact.
+   */
+  capturedAt: { date: IsoDate; time: ClockTime } | null;
+  /**
+   * Where the photograph says it was taken. `null` when absent, refused, or stripped by the
+   * platform before we ever saw the bytes. **Never inferred** — not from the stop it is
+   * attached to, not from the day's cities, not from anything. A photo whose coordinate we
+   * guessed is a photo that will one day contradict the trace §8.5 records.
+   */
+  at: LatLng | null;
+  /**
+   * How `at` and `capturedAt` were obtained. `'exif'` — read out of the file. `'user'` — the
+   * person typed or corrected it. `null` — there is nothing to say because both are null.
+   * A surface renders an `'exif'` date differently from a `'user'` one only if it wants to;
+   * nothing may *gate* on this, for §8.4 A-29's reason about `countrySource`.
+   */
+  metaSource: 'exif' | 'user' | null;
+  /** The source file's own pixel dimensions, before any downscale. `null` if undecodable. */
+  source: { w: number; h: number } | null;
+  /** §10.4. Both are minted at import and both are stored. Neither is ever the original. */
+  thumb: PhotoDerivative;
+  display: PhotoDerivative;
+  /**
+   * §2.8, in full, exactly as `Stop`, `Day` and `Booking` carry it. A-57 Part 4 argues why a
+   * photo is not the simpler thing it looks like.
+   */
+  provenance: Provenance;
+};
+```
+
+and on the document:
+
+```ts
+export type Trip = {
+  …
+  /** §10. Ordered by the user; the order is the order. Empty for every trip that has none. */
+  photos: PhotoAsset[];
+  schemaVersion: 2;                                   // was 1 — §10.3, and migrate.ts's own rule
+};
+```
+
+**Four things about that shape, each of which is a decision.**
+
+**1. The record lives in the document; the bytes never do.** `Trip.photos` is metadata — a few hundred bytes
+per photo — so it rides the existing autosave, the existing undo history, the existing export and the
+existing §2.2a write fence, and attaching a photo is undoable for free because history is a `Trip` snapshot
+(§2.7 A-6a point 4's precedent). The **bytes** are in object stores of their own (§10.3). Base64 in the
+document would put megabytes into a JSON string that is rewritten on every keystroke's debounce, snapshotted
+fifty deep in history, and handed whole to `exportDoc`. That is not a tuning problem, it is a category error:
+`TripDoc` is `string`.
+
+**2. Attachment is one edge, not a graph.** §8.6: *"exactly one trip and at most one of a stop, a place or a
+day."* Not many-to-many, not tags, not albums. A photo that belongs to two stops belongs to the trip.
+
+**3. `capturedAt` and `at` are what the *file* said, and `metaSource` records that.** They are not a
+placement and they are not an attribution. Nothing derives a country from `PhotoAsset.at` in this phase —
+§8.4's `countryCodes` walk is over cities, places and stops and is **not** widened here, because a photo is
+not travel the way a stop is a plan or a `Visit` is an observation, and the first thing to decide when it
+becomes one is §8.5's question, not this one.
+
+**4. There is no `PhotoAsset.status`.** Liveness is not a document fact. §2.9 **A-47** already ruled this
+shape once, for `openFailures`: *"the fact is written when a real open fails, and it is an observation, not
+a record."* Import progress, decode failure and missing bytes are all session-scoped or derived — §10.6.
+
+### 10.2 Import, and the metadata reader
+
+**The port shape.** `packages/client` gains one port and it is deliberately shaped like the existing
+`FilePort` rather than like something new:
+
+```ts
+export interface PhotoPort {
+  /**
+   * Multi-select picker. The Safari-compatible one: `<input type=file multiple accept="image/*">`,
+   * for exactly the reason `FilePort`'s own header gives — the File System Access API is
+   * Chromium-only and Safari supports only the Origin Private File System (§1.1).
+   *
+   * Returns raw bytes, one entry per file, in the order the picker gave them. `null` is a
+   * cancel, which is not an error.
+   */
+  pickImages(): Promise<Array<{ name: string; type: string; bytes: Uint8Array }> | null>;
+  /**
+   * Decode and downscale, once, at import. §10.4. `null` when the platform cannot decode the
+   * bytes at all — which is an answer, not a throw.
+   */
+  derive(bytes: Uint8Array, type: string): Promise<{
+    source: { w: number; h: number };
+    thumb: { bytes: Uint8Array; w: number; h: number };
+    display: { bytes: Uint8Array; w: number; h: number };
+  } | null>;
+  /** Bytes for one derivative, or `null` if the record is gone. §10.3, §10.6. */
+  read(id: PhotoId, size: 'thumb' | 'display'): Promise<Uint8Array | null>;
+  /** Writes both derivatives under one id, in one atomic step. §10.3. */
+  write(id: PhotoId, thumb: Uint8Array, display: Uint8Array): Promise<void>;
+  /** Removes both. Idempotent. */
+  remove(id: PhotoId): Promise<void>;
+  /** Which of these ids have bytes. One call, not N — §10.6's availability read. */
+  present(ids: readonly PhotoId[]): Promise<ReadonlySet<PhotoId>>;
+}
+```
+
+`pickImages` and `derive` are DOM work and live in `apps/web/src/ports/photo.ts`. `read`/`write`/`remove`/
+`present` are storage and live beside `indexedDbStorage` in `apps/web/src/ports/storage.ts` — same database,
+so a trip delete can cascade in one transaction (§10.3). They are one interface because a caller wants one
+capability; they are two files because the fences are different.
+
+**The metadata reader is pure, and it is in core.**
+
+```ts
+// packages/core/src/photo/exif.ts
+export type ExifRead = {
+  capturedAt: { date: IsoDate; time: ClockTime } | null;
+  at: LatLng | null;
+  pixel: { w: number; h: number } | null;
+  orientation: 1|2|3|4|5|6|7|8 | null;
+  /** Why the answer is as thin as it is. Always set, including on success. */
+  reason: 'ok' | 'unsupported_container' | 'no_exif' | 'malformed' | 'truncated';
+};
+
+/** Pure, total, bounded. NEVER throws, for any byte sequence. */
+export function readExif(bytes: Uint8Array): ExifRead;
+```
+
+**It is in `packages/core` and that placement is the load-bearing part of A-58.** It is byte arithmetic over
+a `Uint8Array`: no DOM, no network, no clock, no randomness. It is exactly the kind of pure derivation core
+exists to hold, it is testable on bare Node with `node --test`, and putting it in `apps/web` to accommodate a
+dependency would put domain logic above the port boundary, which sequencing rule 1 calls a design defect.
+
+**What it reads**, and the list is short on purpose: JPEG `APP1` with the `Exif\0\0` marker, then a TIFF
+header (both endiannesses), then IFD0, the Exif sub-IFD (`0x8769`) and the GPS IFD (`0x8825`). Tags:
+`0x9003 DateTimeOriginal` (with `0x0132 DateTime` as the fallback), `0x0112 Orientation`,
+`0xA002`/`0xA003 PixelXDimension`/`PixelYDimension`, and GPS `0x0001`…`0x0004`.
+
+**What it refuses, honestly.** HEIC/HEIF, AVIF, PNG, WebP and bare TIFF all return
+`reason: 'unsupported_container'` with every field `null`. XMP, IPTC, ICC and maker notes are not read at
+all. **A refusal is a first-class answer here for the same reason `null` is in §8.4**: a system that guesses
+a photo's date or place is a system whose memory map is quietly wrong, and a wrong map is worse than an
+honest hole.
+
+**Five rules the reader obeys, each because the input is a file a user picked and not a value we produced:**
+
+1. **Total.** No input throws. Every failure path sets `reason` and returns nulls.
+2. **Bounded.** An `APP1` segment is capped at its own 16-bit length (65,533 bytes by JPEG's own definition)
+   and nothing outside it is read. An IFD's claimed entry count is capped, every offset is range-checked
+   against the segment before it is followed, and a sub-IFD is followed **at most once each** so a
+   self-referential offset terminates rather than looping. These are stated because a parser over
+   attacker-controlled bytes that can loop or allocate unboundedly is a defect class, not a bug.
+3. **One calendar.** `DateTimeOriginal` is `"YYYY:MM:DD HH:MM:SS"`. It is rewritten to `YYYY-MM-DD` and
+   `HH:MM` and validated through core's **existing** `isIsoDate` (§2.9 **A-45**) and the existing time
+   pattern. It does not get a second date parser, and a value those refuse becomes `null` — not a clamp, not
+   a guess. `"0000:00:00 00:00:00"` — which cameras genuinely emit — falls out of this for free.
+4. **GPS is rationals plus a reference character.** Three `[num, den]` pairs to decimal degrees; a zero
+   denominator, a ref character outside `NSEW`, a latitude outside ±90 or a longitude outside ±180 all
+   yield `at: null`. **Exact `(0, 0)` is read as absent**, and that is a judgement disclosed in A-57 Part 9
+   residue 3: a zeroed GPS block is overwhelmingly more common than a photograph taken in the Gulf of
+   Guinea, and the cost of the rule is one false negative against many false pins.
+5. **Deterministic.** No `Date`, no `Math.random`, no ambient anything — §4 of `cairn-constraints`, so the
+   golden fixture over a committed corpus is stable.
+
+**The flow, end to end, and the failure mode that matters.**
+
+1. `pickImages()` → N files, or `null`.
+2. Per file, in order: `readExif(bytes)` (pure, core) → `derive(bytes, type)` (port, async).
+3. `derive` returns `null` ⇒ **no asset is created**. The file is reported as a failure in session state
+   (§10.6) with its name and a reason, and the next file is processed. One bad file does not fail an import.
+4. `write(id, thumb, display)` — **bytes first**.
+5. `dispatch(addPhoto(...))` — the document second, through the ordinary reducer → autosave → `saveIfVersion`
+   chain. Nothing about the photo path bypasses the fence, and nothing about it is a new write path to the
+   document.
+
+**Failure mode: the write between the bytes and the document.** Bytes-then-document leaves **orphaned bytes**
+if the document write is refused; document-then-bytes leaves a **dangling reference** if the byte write
+fails. The order is bytes-first and the reason is that the two failures are not symmetric: a dangling
+reference is a record the user can see and cannot fix, while orphaned bytes are invisible, bounded, and
+reclaimable. Both states are handled rather than prevented, because **the platform produces the second one
+anyway**: Safari evicts script-created storage under storage pressure and under ITP's non-interaction rule
+(§1.1), and an export/restore round trip carries metadata without bytes (§7). So `availability: 'missing'`
+is a **designed state, not an error path** — the same principle as §5.3's gappy trace: a record that admits
+a hole beats one that pretends to be whole. Orphaned bytes are **reported by a selector and deleted only by
+an explicit user action**, never swept silently — §6.3's *"a nightly sweeper … fails loudly, it does not
+silently delete"*, applied on-device.
+
+### 10.3 Storage
+
+**Same database, two new object stores.** `apps/web/src/ports/storage.ts` goes `DB_VERSION` 3 → **4** and
+`onupgradeneeded` creates `photos` and `photoThumbs`, keyed by `PhotoId`, each holding a bare
+**`ArrayBuffer`**.
+
+**Why the same database and not a second one.** §6.3's invariant is *"no row and no blob without a live
+tenancy reference."* Deleting a trip must remove its documents, its summary row, its fence **and** its photo
+bytes, and IndexedDB transactions do not span databases. One database means `delete(tripId)` stays one
+atomic step; two databases means an orphan window on every delete, which is precisely the failure §6.3
+exists to make impossible.
+
+**Why separate stores and not a field on the `docs` record.** The `docs` record is rewritten by every
+`saveIfVersion`. A 3 MB derivative sitting in it would be re-serialised and re-written on every debounced
+edit of the trip's title. Photo bytes are written **once**, at import, and never updated — so they belong in
+a store whose access pattern matches.
+
+**Why `ArrayBuffer` and not `Blob`.** Two reasons, and the first is sufficient on its own. (a) **Consistency
+with what already exists**: `FilePort.importDoc` already produces `new Uint8Array(await file.arrayBuffer())`
+and `PhotoPort` returns `Uint8Array`, so the port boundary already speaks buffers and a `Blob` would be a
+second binary type crossing it for no gain — `packages/client` may not touch the DOM (`cairn-constraints`
+§5) and `Blob` is a DOM type. (b) `Blob`-in-IndexedDB has a documented history of WebKit-specific defects
+(WebKit **#198278**, *"Cannot store blobs in IndexedDB on iOS in Private Browsing mode"*). **I could not
+verify its current status — `bugs.webkit.org` is blocked by this environment's egress proxy (checked
+2026-09-03) — so this is recorded as a marked risk and not as a claim**, and it is the weaker of the two
+reasons precisely because it is unverified. `ArrayBuffer` is a structured-clone primitive with no such
+history. The `Blob` is reconstructed in `apps/web` at render time, where DOM types belong.
+
+**No `StorageVersion` on a photo record, and here is why that is not an oversight.** §2.2a's fence exists
+because two tabs can edit **the same mutable document** concurrently. A photo byte record is written once
+under a freshly minted id and is never updated — there is no second writer to lose to. Its *reference* is
+in the trip document and **is** fenced, by the existing mechanism, unchanged. A fence over an immutable,
+write-once record would be ceremony, and §2.2b's rule is about not deriving freshness from the wrong thing,
+not about putting a token on everything.
+
+**The delete cascade, stated in one place** (§6.3's table gains no row because these are the same rows):
+
+| Deleting | Also removes |
+|---|---|
+| a **photo** | both derivatives, in the same transaction as the document write that drops the asset — bytes **after** the document here, which is the inverse of import and for the same reason: the reachable-but-absent state is the safe one |
+| a **stop** or a **day** | nothing automatically. Its photos' `attach` **falls back to `{kind:'trip'}`** rather than being deleted. A photograph is not a plan and deleting a plan may not destroy a memory of it. This is the one place the model deliberately loosens rather than cascades, and A-57 Part 9 residue 2 records it |
+| a **trip** | `docs`, `summaries`, `versions`, `photos` and `photoThumbs` for every one of its assets, one transaction |
+
+**Quota, measured rather than assumed.** *(Verified 2026-09-03, [WebKit — Updates to Storage
+Policy](https://webkit.org/blog/14403/updates-to-storage-policy/), fetched and read in full.)* Since Safari
+17.0 / iOS 17 an origin's quota in a **browser app** is *"up to 60% of the total disk space"* and the
+overall quota is *"up to 80%"*; **a home-screen web app has the same origin and overall quota as the
+browser**; and Safari 17.0 **no longer prompts** about a site wanting more space. This supersedes the
+often-quoted 1 GiB figure. Three consequences:
+
+1. **Quota is not the binding constraint** — a few hundred derivatives at the sizes §10.4 fixes are far
+   inside it — so there is no per-trip hard cap and there must not be one invented.
+2. **Eviction still is.** The same document: eviction happens on overall-quota pressure, on system storage
+   pressure, and under ITP's non-interaction rule, *"unless the origin's storage is in persistent mode."*
+   So `apps/web` calls `navigator.storage.persist()` once, at boot, and records the answer — WebKit *"grants
+   a request based on heuristics like whether the website is opened as a Home Screen Web App"*, which is the
+   installability §1.1 already told us to ship.
+3. **`QuotaExceededError` is refused visibly, never half-written.** An import that cannot write its bytes
+   creates no asset and reports the reason, exactly like a decode failure. `navigator.storage.estimate()`
+   backs the message with a real number, and the WebKit post's own warning is honoured: *"the quota is an
+   upper limit … there is no guarantee that a site can store that much, so error handling for
+   `QuotaExceededError` is necessary."*
+
+### 10.4 The resolution discipline
+
+**Rule, and it is a criterion rather than a preference: no surface ever renders an image at a resolution it
+does not need, and "scaled down by CSS" is not a thumbnail.** A 4,000 px JPEG in a 96 px grid cell costs the
+full decode, the full decoded bitmap in memory (4000 × 3000 × 4 bytes ≈ 48 MB, per image), and the full
+transfer — and does it forty times on a screen that shows forty.
+
+**Two derivatives, both minted at import, both stored, neither optional:**
+
+| | Long edge | Encoding | For |
+|---|---|---|---|
+| `thumb` | **320 px** | `image/jpeg`, quality **0.72** | grids, lists, a stop's photo strip, anything showing more than one |
+| `display` | **1600 px** | `image/jpeg`, quality **0.82** | the single-photo view, at up to 3× DPR on a 390 pt phone and 1× on a laptop |
+
+**The original is not stored.** Cairn is not a photo backup (§7, and the brief's non-goals) and the user's
+own library still has it. Storing 3–12 MB originals against an eviction policy we do not control would be a
+promise the platform will not keep.
+
+**How the downscale is done, and the one platform fact that decides it.** `createImageBitmap`'s
+`resizeWidth`/`resizeHeight`/`resizeQuality` options are **not supported in Safari** *(verified 2026-09-03;
+searched, and the finding is consistent across MDN's compatibility data, caniuse and the Firefox tracking
+bug 1363861 — I could not read MDN or caniuse directly, both are blocked by this environment's egress proxy,
+so this is a search-result verification of the kind §1.1 already marks and not a page read end to end)*. So
+the resize is **`drawImage` onto a `<canvas>`**, which is universal, and the port is:
+
+1. `createImageBitmap(blob)` when present; otherwise an `HTMLImageElement` over an object URL with
+   `await img.decode()`. Both are in `apps/web`, behind the port, so the fallback costs nothing above it.
+2. **Halve repeatedly until within 2× of the target, then one final `drawImage`.** A single large-ratio
+   `drawImage` aliases badly — this is the standard mitigation, it is about fifteen lines, and it needs no
+   dependency.
+3. `canvas.toBlob('image/jpeg', q)` → `arrayBuffer()`.
+4. **EXIF `orientation` is applied to the canvas transform** so the stored derivative is upright and no
+   consumer needs to know the tag exists. `null` orientation means 1.
+5. The object URL, if one was made, is revoked.
+
+**And the property that falls out of step 3 for free, which is the whole of §10.5's mechanism: a canvas
+re-encode carries no metadata.** The derivative has no EXIF block, no GPS, no maker note, no thumbnail of
+its own. It cannot leak what it does not contain.
+
+**Why the dimensions are on the record and not read from the bytes.** `thumb.w/h` and `display.w/h` are
+stored so a consuming surface can reserve the right box **before** the bytes arrive — no layout shift, an
+honest skeleton with the right aspect ratio, and a grid that does not reflow as images land. That is a
+data-layer requirement of §10.6 and it is why these fields exist.
+
+### 10.5 Privacy and redaction
+
+The four questions §6 asks of everything, answered for a photo.
+
+**1. What is stored.** Metadata in the document (§10.1) and two re-encoded derivatives in IndexedDB
+(§10.3). **The original file is never stored. The original EXIF block is never stored.** `readExif` runs on
+bytes held in memory for the length of one import and extracts at most four values; everything else in that
+block — camera serial, lens, software, maker note, the embedded preview thumbnail, XMP — is discarded by
+never being read.
+
+**2. Where the stripping happens, and the answer is "on import, by construction."** §6.1's table says an
+attached photo goes to a server *"with EXIF GPS stripped by default"*. §10 makes that unnecessary rather
+than optional: there is no path by which a photo's original metadata reaches storage, so there is nothing at
+upload time to strip. **This is §6.6's redaction-on-generation rule obtained mechanically** — the same shape
+as §6.6's *"the sample path fails closed"* observation, one layer down. The retained `at` is a single
+coordinate the user can see, edit and clear, which is the difference between data and a hidden payload.
+
+**3. Who can read it.** In Phase 2, only the device. There is no server (§10.2's flow has no network call
+and `packages/client` may not make one). When Phase 3 arrives, a photo inherits its **trip's** authorization
+exactly as every other row does — §6.2 rule 1's tenancy column is `trip_id`, and an object key is
+`trip/{tripId}/photo/{photoId}`, so a blob's owner is recoverable from its key alone.
+
+**4. What may never appear.** Three mechanical checks, and each is a test rather than a habit:
+
+- **`Trip.photos` → `[]` in `redactForSample`** (§6.6's table now carries the row). The build artifact ships
+  no photo, no caption, no coordinate and no timestamp. This lands **before** the reference trip has a
+  photo, which is the only moment it is free, and it fails closed thereafter.
+- **A photo does not cross a person boundary.** `copyStopInto` copies a stop; it copies **no photo**, for
+  §2.14 rule 3's reason applied to a heavier object — a `Ticket` and a `bookingId` are dropped because they
+  are the source person's, and a photograph is more theirs than either. **This needs no change to
+  `copyStop.ts` and that is the point**: photos hang off `Trip`, not off `Stop`, so the copied stop simply
+  has none pointing at it and §2.13 **A-23**'s standing census over `Stop`/`Place` fields does not move.
+  It is stated here so that a future builder does not "improve" the copy by carrying them.
+- **`caption` is free text and is redacted on every crossing.** §6.6's *"Free text"* row gains it, and
+  §2.14 **A-18**'s rule — *no spread at any depth* — means the copy path would have to classify it
+  explicitly if photos ever crossed, which they do not.
+
+**And the cross-cutting rule §6.1 already carries, restated because a new coordinate field is exactly where
+it gets broken: no coordinate in any log line, ever.** `PhotoAsset.at` may not be logged, may not appear in
+a golden fixture, and may not be printed by `cli.ts` — the same three checks §8.4 **A-56** Part 5 imposes on
+`TripSummaryCity.centre`, for the same reason, and they should be one shared assertion rather than two.
+
+### 10.6 Loading, empty and error states — the signals the data layer owes a UI
+
+The UI is a later increment. **The signals are not**, because a surface built on the wrong signals produces
+dishonest states — a spinner that never resolves, an "empty" that is really a failure, a broken image icon
+where a sentence belongs. Three selectors in `packages/client`, all pure, all derived:
+
+```ts
+/** Import in flight. Session-scoped — §2.9 A-47's shape: an observation, not a record. */
+export type PhotoImport = {
+  /** Files still being decoded and written. 0 when nothing is running. */
+  pending: number;
+  /** Files in this batch, total. `pending`/`total` is an honest progress fraction. */
+  total: number;
+  /** Per-file failures, kept until the user dismisses them. Never silently dropped. */
+  failures: ReadonlyArray<{ name: string; reason: PhotoImportFailure }>;
+};
+export type PhotoImportFailure =
+  | 'unsupported_type'     // the picker returned something we cannot decode
+  | 'decode_failed'        // the platform said no. Truncated, corrupt, or a codec we lack
+  | 'too_large'            // above the byte ceiling the port refuses before decoding
+  | 'quota_exceeded'       // §10.3 — the bytes did not fit, and no asset was created
+  | 'storage_failed';      // the write rejected for any other reason
+export function photoImport(state: Pick<AppState, 'photos'>): PhotoImport;
+
+/** What a surface renders for one attachment point. Pure. */
+export type PhotoListing = {
+  /**
+   * `'loading'` — availability has not been read yet for this trip. `'empty'` — read, and
+   * there are none. `'ready'` — read, and there is at least one.
+   *
+   * `'empty'` and `'loading'` are DIFFERENT and a surface that collapses them shows
+   * "no photos yet" to someone whose photos are one tick away. This is A-31 Part 4's
+   * "no places yet" sentence, on a second subject.
+   */
+  phase: 'loading' | 'empty' | 'ready';
+  items: ReadonlyArray<{
+    asset: PhotoAsset;
+    /** `'missing'` is EXPECTED, not an error: eviction, or a restored export. §10.2. */
+    availability: 'ready' | 'missing';
+  }>;
+  /** How many of `items` are `'missing'`, so a surface can say so once instead of N times. */
+  missing: number;
+};
+export function photosFor(state: AppState, ref: PhotoAttachRef): PhotoListing;
+
+/** Byte records no live asset references — §10.2's reclaimable orphans. Never auto-deleted. */
+export function orphanPhotoBytes(state: Pick<AppState, 'photos'>): readonly PhotoId[];
+```
+
+**Four properties a consuming surface can rely on, and they are the contract:**
+
+1. **Aspect ratio is known before bytes are.** `asset.thumb.w/h` is on the record, so a skeleton is the
+   right shape and nothing reflows. §10.4.
+2. **`'loading'` and `'empty'` are never the same value.** Availability for a trip is read **once**, on
+   open, through `present(ids)` — one port call, not one per photo — into session state.
+3. **`'missing'` is a sentence, not a broken image.** The asset is still there, still has its caption, its
+   date and its place; only the bytes are gone. A surface says *"this photo's image is no longer stored on
+   this device"* and offers re-import, and it never renders a `null` object URL.
+4. **A failure is attributable.** `failures` carries the **file name**, so *"3 of 12 photos could not be
+   added"* can name which three and why. A count with no names is the *"a count is not a result"* failure
+   ROADMAP sequencing rule 5 forbids.
+
+**`packages/client` never holds photo bytes.** It holds ids, metadata and availability. Bytes go from the
+port to the view and back, which keeps the store's memory bounded, keeps `cairn-constraints` §5 trivially
+true, and means the object-URL lifecycle (`createObjectURL`/`revokeObjectURL`) lives in exactly one place —
+`apps/web` — where DOM lifetimes belong.
+
+---
+
+#### A-57 — the photo record class: one edge, two derivatives, no originals, and the bytes are not in the document (revision 40, ROADMAP **I-13**)
+
+> **STATUS: RULED.** Cairn had no photo capability at all. §10 is the contract; this entry is the record of
+> what was decided, what was refused, and what is disclosed. **A-58 is the dependency verdict and is read
+> with it.** Nothing in §2, §4 or §8.4 moves except the three things Part 6 names. **A-40 → A-54 are not
+> reopened; `WorldMap.tsx`'s zero-line diff (§9.2 fence 1) is untouched by this ruling.**
+
+**Part 1 — the state of the art, measured, so the scope is a fact and not an impression.**
+
+`grep -ril 'photo' cairn/packages cairn/apps` at revision 39 returns **nothing** in any source file. There
+is no `PhotoAsset`, no import, no store, no thumbnail, no EXIF, no attachment. §5.4 describes a native flow
+that does not exist, §6.1 has two table rows about data nothing produces, §8.6 is eleven lines and says
+*"not built now"*, and `ROADMAP.md` Phase 6 is the plan. This is the layer under all of them.
+
+**Part 2 — the scope decision, and it is a change to the roadmap rather than to a phase's contents.**
+
+Photos move from *"all of it in Phase 6"* to *"the record class in Phase 2, the suggestion engine in Phase
+6."* Three reasons and one is Jacob's own words:
+
+1. *"The base product must be valuable before automatic location, social discovery or gamification exist"*
+   and *"do not build continuous background tracking simply because it is part of the vision"*
+   (`BRIEF.md`, the 2026-08-27 thesis). Attaching photos you picked to a day you picked is the base product
+   half. It needs no library permission, no background task and no native shell.
+2. **Phase 6 is worth more with this done than without it.** Its own text is *"a suggestion queue"* and
+   *"every photo suggestion is `{source:'system', state:'candidate'}` and `displayStatus()` returns
+   `'suggested'` until accepted"* — a suggestion queue needs something to suggest **into**. Building the
+   record class inside the same increment as the scoring engine is the pattern §5.2 already refused for
+   sharing, where `copyStopInto` shipped in Phase 1 so that the provenance rule was exercised before a
+   friend existed to break it.
+3. **A memory surface is unbuildable without it**, and A-56 just made the other half of a memory surface
+   available. Shipping city geometry with nothing to hang on it is half a capability.
+
+**What does not move**, stated so Phase 6 is not quietly hollowed out: library enumeration by trip window,
+`getAssetsAsync`, `getExifAsync`/`getLocationAsync`, the Android `ACCESS_MEDIA_LOCATION` trap and its
+injected-fault criterion, `suggestPhotoStops` and its scoring, and the Play Store appropriate-access review
+gate. `ROADMAP.md` Phase 6's *"Ships"* line is narrowed by exactly the model/storage/thumbnail clause it
+never enumerated, and it **gains** the sentence that the record class already exists and has been exercised.
+
+**Part 3 — attachment granularity: `trip`, `day` and `stop` now; `place` deferred, with the reason.**
+
+§8.6's model — one trip, at most one of a stop, a place or a day — is **upheld in full** and §10.1's type
+carries all four arms so that adding `place` is a build change and not a schema change. Only three are
+*built*, and the reason is not photos at all:
+
+§8.6's own closing paragraph, and §2.13 **A-6a**'s, both say that the moment `Place` gains a second referent
+kind, `removeStop`'s single-row prune **must become a reference-counted delete with a user-visible
+affordance**. A-6a's prune deletes a copy-borne `Place` when the last stop referencing it goes; with photos
+referencing places, that prune can delete a `Place` a photograph still points at. Fixing it properly means
+counting referents across two record classes and giving the user a say — a `Place`-lifecycle ruling with its
+own tests, its own fixtures and its own four assertions, which A-6a already wrote out.
+
+**So the deferral is a scoping decision with a named trigger, not an oversight**: the increment that adds
+`place` attachment does A-6a's reference-counted delete **first**, as its own pass. §7 records it. What
+this costs today is *"pin this photo on the museum rather than on the visit to it"*, which `stop` covers for
+every photo taken during a trip and which is the only population that exists.
+
+**Part 4 — a photo carries full `Provenance`, and it is not the simpler thing it looks like.**
+
+The tempting shape is *"a photo the user picked is obviously the user's; skip the provenance block."* It is
+wrong on three counts:
+
+1. **Phase 6 requires the candidate state**, in `ROADMAP.md`'s own words, and `displayStatus()` (§2.8)
+   already turns `{source, state}` into `'own' | 'suggested' | 'candidate' | 'imported' | 'rejected'` with
+   no new machinery. Retrofitting provenance onto a record class after a user has five hundred of them is
+   the expensive migration this project has now refused four times.
+2. **The root `CLAUDE.md` convention is not conditional on the source.** *"Never present a suggestion as the
+   user's own plan"* has to be expressible for a photo or Phase 6's suggestion queue has nowhere to record
+   that a match was **ours**. `acceptCandidate`/`rejectCandidate` then work on photos unchanged.
+3. **The `origin` block is where an imported photo's story goes** if it ever has one.
+
+A photo the user picked and attached is `{source: 'user', state: 'accepted', confidence: 'confirmed'}` and
+`displayStatus` returns `'own'`. That is the whole of the common case, and it costs one existing type.
+
+**Part 5 — `SCHEMA_VERSION` goes to 2, and the rule that decides it is already written.**
+
+`serialize/migrate.ts`'s docstring: *"a field that is additive with a total default does not earn a
+`schemaVersion` bump, because an older client reading a newer document loses nothing it could have used. A
+bump is reserved for a value widening that an older client would silently drop (§8.5's `source:'device'` is
+the one that earns it)."*
+
+`Trip.photos` has a total default (`[]`), so the first half seems to apply — and it does not, on the second
+half's own words. §8.5's example earns a bump because an older client would *"silently drop records it does
+not understand."* `photos` **is records**, and the drop is not a lost field value like `datePrecision`: an
+old build opening a new document and saving it deletes the user's photo attachments *and* orphans megabytes
+of bytes it cannot see. That is the exact harm the sentence names. **`SCHEMA_VERSION = 2`**, `migrateDoc`
+gains a v1 → v2 case supplying `photos: []`, `Trip.schemaVersion` becomes the literal `2`, and an older
+build refuses the document loudly — which is the correct outcome, and the one the existing
+*"document is schemaVersion N; this build reads up to M. Update the app."* message was written for.
+
+**Part 6 — what a builder implements, and it is bounded.**
+
+| Where | What |
+|---|---|
+| `packages/core/src/model/ids.ts` | `PhotoId` |
+| `packages/core/src/model/types.ts` | `PhotoDerivative`, `PhotoAsset`, `PhotoAttachRef`; `Trip.photos`; `SCHEMA_VERSION = 2` |
+| `packages/core/src/photo/exif.ts` | `readExif`, `ExifRead` — §10.2, pure, total, bounded |
+| `packages/core/src/build/photos.ts` | `addPhoto`, `removePhoto`, `updatePhoto` (caption / `at` / `capturedAt` / `attach`), pure `(trip, args) => Trip`, `revision` bumped once each |
+| `packages/core/src/serialize/{fromJSON,toJSON,migrate}.ts` | parse and emit `photos`; the v1 → v2 case |
+| `packages/core/src/validate/validateTrip.ts` | new `IssueCode`s: `photo_attach_dangling` (a `dayId`/`stopId` no longer in the document — **an issue, never a throw**, and §10.3's fallback-to-`trip` is the repair the *action* performs, not the validator), `photo_coords_out_of_range` |
+| `packages/core/src/index.ts` | the three build functions and `readExif`. **§2.10's total is derived by counting, in this pass, and pinned in §2.10 and ROADMAP criterion E in the same commit — §8.9's rule. No number is quoted here, because nobody has counted it** |
+| `packages/client/src/ports/types.ts` | `PhotoPort` (§10.2); `Ports.photo?` |
+| `packages/client/src/ports/memory.ts` | `memoryPhotos()` — the in-memory implementation, without which the whole subsystem is untestable in plain Node (`cairn-constraints` §5) |
+| `packages/client/src/store/` | the import saga's session state (`state.photos`), the three actions, availability read on trip open |
+| `packages/client/src/selectors/` | `photoImport`, `photosFor`, `orphanPhotoBytes` — §10.6 |
+| `apps/web/src/ports/photo.ts` | `pickImages`, `derive` — §10.2, §10.4 |
+| `apps/web/src/ports/storage.ts` | `DB_VERSION` 3 → 4; `photos` + `photoThumbs`; `read`/`write`/`remove`/`present`; the trip-delete cascade |
+| `tools/redact.mjs` | `photos: []` in `redactForSample`; the §6.6 test asserts it |
+| `fixtures/` | a small committed corpus of real JPEG headers for the `readExif` golden — **headers, not photographs**, and no coordinate in the golden's output |
+
+**Three things a builder must not do**, each because it looks helpful: do not put bytes in `TripDoc`; do not
+add a `PhotoAsset.status` field (§10.1 point 4); do not make `copyStopInto` carry photos (§10.5).
+
+**Part 7 — the injected-fault criteria, because §0.5 applies to every rule here.**
+
+A rule that cannot catch its own bug does not ship. Each of these names the exact fault and the exact
+required output:
+
+| | Fault | Required behaviour |
+|---|---|---|
+| **P1** | `readExif` over a **truncated** APP1 segment (length says 4,000 bytes, buffer has 900) | returns `reason: 'truncated'`, every field `null`, **does not throw** |
+| **P2** | an IFD whose sub-IFD offset points **at itself** | terminates; `reason: 'malformed'` |
+| **P3** | an IFD claiming **65,535** entries in a 200-byte segment | terminates; `reason: 'malformed'`; allocates nothing proportional to the claim |
+| **P4** | GPS rationals with a **zero denominator** | `at: null`, and `capturedAt` is still returned if it was readable — one bad field is not a bad file |
+| **P5** | `DateTimeOriginal` = `"0000:00:00 00:00:00"` | `capturedAt: null`. **Not** `0000-01-01`, which `isIsoDate` would accept as a real date (§2.1 A-32's domain) and which would put a trip in year zero on the lifetime map |
+| **P6** | GPS reading exactly **(0, 0)** | `at: null` — Part 9 residue 3 |
+| **P7** | a **HEIC** file (real bytes) | `reason: 'unsupported_container'`, all null, no throw. This is the **expected iOS case**, not an exotic one — A-58 Part 2 |
+| **P8** | `PhotoPort.derive` returns `null` for file 3 of 5 | 4 assets created, 1 failure reported **by name**, import completes |
+| **P9** | `write` rejects with `QuotaExceededError` | **no asset created**, `reason: 'quota_exceeded'`, no orphaned byte record, no partial document write |
+| **P10** | bytes deleted out from under a live asset (simulating eviction) | `photosFor` reports `availability: 'missing'`, `phase: 'ready'`, `missing: 1`; **no throw, no broken image, no `'empty'`** |
+| **P11** | a document with `photos` written by a **v1** build (field absent) | `migrateDoc` supplies `[]`; a **v2** document handed to a v1 reader is refused with the schemaVersion message |
+| **P12** | `redactForSample` over a trip carrying a photo with a caption, an `at` and a `capturedAt` | output's `photos` is `[]`; the §6.6 walk finds no surviving string; the bundle grep finds no coordinate |
+| **P13** | a source-tree grep for a coordinate reaching a log line or a golden from `PhotoAsset.at` | zero — the same assertion A-56 Part 5 imposes on `centre`, shared, not duplicated |
+
+**Part 8 — what this reopens in the storage gate, named so it is not discovered.**
+
+**A-39 Part 11 fires on two of its seven items.** Item **2** (`SCHEMA_VERSION` is bumped): *"Axis D stops
+being degenerate. Note the cost is zero new rows"* — the covering table absorbs it. Item **4** (a new object
+store is added to the port's database): *"a genuinely new axis; Part 3's table is re-derived."* That
+re-derivation is **in scope for I-13** and is the largest single piece of work in it that is not photo code.
+A-39 Part 11's closing sentence applies unchanged: *"here is one more fault shape whose guard reads a field
+already on an axis"* is a builder finding, not a design one.
+
+**Part 9 — the residues, six, disclosed rather than left to be discovered.**
+
+1. **Cairn stores derivatives, so the original is gone from Cairn's point of view.** A user who deletes the
+   photo from their own library and later wants the full-resolution file back cannot get it from here. This
+   is deliberate (§10.4) and it is what *"not a backup"* means, but it must be **said on the surface** at
+   import time, not buried. **Trigger:** a request for full-resolution retention, at which point the honest
+   design is an opt-in per-photo original with a visible storage cost, not a silent default.
+2. **Deleting a stop or a day does not delete its photos**, it re-attaches them to the trip. That is the
+   loosening §10.3's table records, and its cost is a trip that accumulates unplaced photos as its plan is
+   edited. Accepted, because the alternative deletes a memory to tidy up a plan. **Trigger:** a user report
+   of an unmanageable trip-level pile, at which point the answer is a surface for re-attaching them, not a
+   cascade.
+3. **Exact (0, 0) GPS reads as absent.** A photograph genuinely taken at Null Island is unplaced. The
+   alternative puts a pin in the Gulf of Guinea for every camera and every stripping tool that zeroes the
+   block, which is many. **Trigger:** none realistic; recorded so the behaviour is a decision.
+4. **`metaSource` is per-asset, not per-field.** A photo whose date came from EXIF and whose coordinate the
+   user typed reports one value. Bounded and cheap to widen. **Trigger:** the first surface that renders the
+   two differently.
+5. **Availability is read once per trip open.** Bytes evicted *while* a trip is open read as `'ready'` until
+   the next open, and the render then fails. `photosFor` cannot see that without polling. Mitigation: the
+   render path treats a `null` from `read()` as `'missing'` and says so, so the failure is honest at the one
+   moment it is visible. **Trigger:** a measured occurrence, not a theory.
+6. **Nothing derives geography from `PhotoAsset.at`.** §8.4's `countryCodes` walk is unchanged, so a photo
+   in a country no stop, place or city reached does not put that country on the lifetime map. Correct for
+   now — a photo is not evidence of a *trip's* itinerary the way a stop is — and it is the same boundary
+   §8.5 draws for `Visit`. **Trigger:** §8.5 shipping, at which point *both* questions are answered together
+   and by the same rule, which is the reason for not answering this one early.
+
+#### A-58 — EXIF and thumbnailing take no dependency, and the reason is where the code has to live (revision 40, ROADMAP **I-13**)
+
+> **STATUS: RULED. No runtime dependency is added, to any package.** Judged on the standard A-55 Part 0
+> established — a measured cost against a measured benefit, **not** the zero-dependency rule, which does not
+> reach `apps/web`. Two candidates were measured against the registry today; both are real, one is good, and
+> both are refused for reasons that are specific to this case rather than to dependencies in general.
+
+**Part 1 — the candidates, measured 2026-09-03 against `registry.npmjs.org` directly.**
+
+| | Version | Licence | Deps | Unpacked | Files | Published | HEIC |
+|---|---|---|---|---|---|---|---|
+| **`exifr`** | 7.1.3 | MIT | **0** | 1,291,466 B | 82 | **2021-08-05** (registry `modified` 2022-05-01) | yes |
+| **`exifreader`** | 4.44.0 | **MPL-2.0** | 0 direct | 1,189,253 B | 79 | **2026-08-21** | yes |
+
+`exifreader` documents that a build restricted to a few tags tree-shakes to *"as small as ~9 KiB
+(Brotli)"* / *"4 KB gzipped"*; that is **its own claim, not measured here**, and it is the strongest fact on
+the dependency's side. `exifr` is otherwise the natural pick and is disqualified before the argument even
+starts: **five years without a release, on code whose job is parsing attacker-supplied binary.**
+
+**Part 2 — the fact that decides it, and it is not about the libraries.**
+
+**On iOS Safari — the platform Jacob actually uses — a photo picked through a file input arrives with its
+EXIF already gone.** §1.1's own table has said so since 2026-08-24 (*"iOS strips sensitive EXIF — including
+GPS — from photos uploaded through a Safari file input (WebKit #207088, long-standing, unresolved)"*), and
+its conclusion was *"there is no partial web version of pillar 5."*
+
+**Corroborated today from an independent angle**, because `bugs.webkit.org` is blocked by this environment's
+egress proxy and the primary source could not be re-read: iOS Safari **auto-converts HEIC to JPEG** at the
+file input regardless of the `accept` attribute, and **the EXIF block does not survive that conversion** —
+which is a second, sufficient mechanism for the same outcome and is widely reported by developers hitting
+it (searched 2026-09-03; the specific write-ups are on `zenn.dev` and `qiita.com`, both blocked here, so
+this is a search-result verification of the kind §1.1 already marks, **not** a page read end to end). ⚠ It
+is worth two minutes on a real iPhone to confirm which mechanism is operating, and it does not change the
+verdict either way, because both produce no EXIF.
+
+So: **the capability that separates a library from a hand-roll — HEIC, PNG, WebP, XMP, maker notes — buys
+nothing on the primary target.** What is left to parse is JPEG-with-EXIF, which is what desktop uploads,
+Android uploads, and iPhones set to *"Most Compatible"* produce, and which is about 250 lines.
+
+**Part 3 — the reason that would hold even if Part 2 were false.**
+
+**The parser has to live in `packages/core`, and `packages/core` takes zero dependencies — full stop, not
+negotiable, and not mine to widen** (`cairn-constraints` §2: *"adding a dep to either package needs Jacob,
+not your judgement"*).
+
+That is not a technicality. `readExif` is pure byte arithmetic with no DOM, no clock and no randomness; it
+is a derivation, and derivations live in core because that is where they are testable on bare Node against a
+golden, and where `apps/web`, `apps/mobile`, `services/api` and the CLI can all reach the same answer.
+Moving it to `apps/web` in order to accommodate a dependency would put domain logic **above** the port
+boundary and give the native app a second implementation of the same parse — which sequencing rule 1 calls a
+design defect and routes back to me. **The dependency is refused because of where the code belongs. That
+argument does not depend on any measurement and does not expire.**
+
+**Part 4 — and the third reason, which is that the dependency has no future consumer either.**
+
+`apps/mobile` will not call `readExif`. Phase 6 gets metadata from `expo-media-library`'s
+`getExifAsync`/`getLocationAsync` — a native call against the OS's own index, not a byte parse — which is
+also the only way to get the *library* enumeration pillar 5 needs. So the parser's only consumer, ever, is
+the web import path, which is the **degraded** mode of one platform. A permanent dependency for the degraded
+mode of one platform is the wrong trade under any accounting.
+
+**Part 5 — thumbnailing, same verdict, shorter argument.**
+
+No dependency (`browser-image-compression`, `pica`, `blueimp-load-image` and friends are not evaluated
+individually and do not need to be). The mechanism is `createImageBitmap` → `<canvas>` `drawImage` →
+`toBlob`, about sixty lines including the halving loop and the orientation transform, using only APIs
+`apps/web` already depends on the existence of. The one platform fact that shapes it — Safari does not
+support `createImageBitmap`'s resize options — is §10.4's, verified there. A library would buy Web Worker
+offloading and better resampling filters; neither is worth a dependency for two fixed output sizes on
+images the user is watching import. **Trigger to reopen:** a measured main-thread stall on a real device
+during a real multi-file import — at which point the answer is likely a Worker, which is also not a
+dependency.
+
+**Part 6 — what would change the verdict, written down so it is a decision and not a wall.**
+
+1. **iOS begins preserving EXIF through the file input** (or Cairn acquires a path that does not go through
+   it), *and* HEIC becomes the dominant format Cairn actually receives. Then `exifreader`'s HEIC support is
+   real value on the primary platform, and the placement problem of Part 3 has to be solved rather than
+   avoided — most likely by a narrow `MetadataPort` whose web implementation may take the dependency and
+   whose native implementation calls Expo. **That is a genuinely different design and it needs a ruling, not
+   a `package.json` edit.**
+2. **The hand-rolled reader accumulates its own defects.** Two or more real parsing findings against
+   `photo/exif.ts` that a maintained library would not have had is evidence, and it is the kind that
+   reverses this. **One** is not — Part 7's fault matrix exists so the first one is caught here rather than
+   in the field.
+3. **Jacob says so.** `packages/core`'s dependency line is his, explicitly.
+
+**Part 7 — the obligation the refusal creates.**
+
+Hand-rolling a parser over attacker-controlled bytes is only the cheaper choice if it is **bounded and
+total**, so A-57 Part 7's **P1–P7** are not optional extras — they are the price of this verdict, and a
+builder who ships `readExif` without them has taken the dependency's cost and none of its safety. The
+committed fixture corpus is **JPEG headers, not photographs**, and its golden carries **no coordinate**
+(§10.5, and `tools/gen-golden.mjs`'s existing *"NO COORDINATES"* discipline).

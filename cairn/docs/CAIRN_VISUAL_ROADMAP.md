@@ -19,8 +19,66 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
-> **✅ THE PROFILE HAS SHIPPED — as of 2026-09-02 (this block is the newest; it supersedes every
-> block below on I-8b's status and on *"what happens next"*, and nothing else).**
+> **📐 THE LOOK IS BACK OPEN, AND THE WORK UNDER IT CARRIES ON — as of 2026-09-03. This block is the
+> newest and supersedes every block below on *"what happens next"* and on the visual direction. It does
+> not change anything below about what is built.**
+>
+> **Two things happened, and they are separate.**
+>
+> **1. Jacob has rejected the visual direction — all of it — and that is recorded here for the first
+> time.** On 2026-09-02 he saw the Profile and the World Map on his own phone and said they read as *"a
+> technical report, transit atlas, or typeset database"* rather than a premium consumer travel product.
+> **Nothing about the data, the geography, the accessibility or the architecture was rejected** — only how
+> it looks. Three replacement directions have been rendered as screenshots (`docs/design/directions/`) and
+> a visual reference board is now the authority (`docs/design/REFERENCE-BOARD.md`). **Jacob has not picked
+> one yet, and until he does no new screen gets built.** That is a deliberate stop, not a stall: building a
+> screen now would mean building it in the direction he just turned down.
+>
+> **2. So the next work is underneath the screens, where the look does not reach.** Two capabilities are
+> now designed and waiting for a builder (`ARCHITECTURE.md` revision 40, `ROADMAP.md` revision 40, Phase 2
+> **step 2d**). Neither opens a single screen file, and that is enforced rather than promised.
+>
+> **City-level history — what a past trip remembers.** Right now, when a trip is finished, Cairn keeps the
+> **names** of the cities you went to but throws away **where they are** and **when you were there**. So it
+> can tell you *"you have been to Croatia"* and it cannot draw you a map of it, or a route, or a stamp with
+> a date on it. This adds those two facts back — a point and a date range per city — to the small record
+> Cairn keeps about every finished trip. **It deliberately stops at the city.** Keeping every individual
+> stop would mean pretending we know you stood at 112 exact spots on a trip where some of them were only
+> ever ideas on a list, and would make the *"here is everywhere I have been"* screen load your entire
+> travel history to draw one map.
+>
+> **Photos — the foundation, not the feature.** Cairn today has **no** photo capability at all. Not a
+> reduced one; none. This builds the part that needs no phone permissions and no app store: pick photos,
+> attach them to a trip or a day or a stop, keep them, show them. Four decisions worth knowing about:
+>
+> - **Cairn stores a resized copy, never your original.** Two sizes — a small one for grids and a larger
+>   one for viewing. Your photo library still has the original; Cairn is not a backup and does not pretend
+>   to be. This is also what makes the next point true for free.
+> - **A photo's hidden data does not survive the door.** Cameras write your exact GPS location and a lot
+>   else into a photo file. Cairn reads at most the date and the coordinate, shows them to you, and the
+>   copy it stores is re-encoded — which means it physically has no hidden data left in it. There is
+>   nothing to leak later, rather than a rule about not leaking it.
+> - **On your iPhone, the location usually will not be there at all, and Cairn will say so instead of
+>   guessing.** iOS strips that data out of photos handed to a web page. Cairn reports *"no place on this
+>   photo"* rather than inventing one from the stop you attached it to. The full version of this — *"here
+>   are 40 photos from Aug 13, and here is the stop you were standing at"* — is the native app, and it is
+>   still Phase 6.
+> - **No new third-party code was added to build any of it.** The two obvious libraries were measured
+>   against the registry and both were turned down, with the reasons written down.
+>
+> **What this changes about the plan.** Phase 2 gains a fourth step (**2d**) and the photo phase (6) keeps
+> everything that genuinely needs a phone — it just no longer has to invent a data model at the end of the
+> road. **Neither of these has been built yet.** They are designed, reviewed by nobody but the architect,
+> and waiting for a build pass — so on this board they are **designed ✅ · built ❌ · verified ❌ ·
+> shippable ❌**.
+>
+> **The one open question for Jacob is still the same one, plus one more.** Two minutes with a real iPhone
+> on the shipped Profile (below) — **and pick a visual direction** from the three rendered options, because
+> that is what unblocks every remaining screen.
+
+
+> **✅ THE PROFILE HAS SHIPPED — as of 2026-09-02 (this block supersedes every
+> block below on I-8b's status, and is itself superseded above on *"what happens next"*).**
 >
 > **I-8b is designed ✅ · built ✅ · verified ✅ · shippable ✅ — SHIPPED.**
 > Manager verdict **SHIP** at `dac9595` (`REVIEW.md`, the I-8b entry, 2026-09-02). **0 blockers,

@@ -15,8 +15,8 @@ adding, moving or trusting one.
 
 ## Document cost map
 
-**Every size below was re-measured at revision 38 (2026-09-01) and every one had drifted — most by
-10–30×.** The old figures (`ARCHITECTURE` 24k, `ROADMAP` 8.5k, `QA-FINDINGS` 8.3k) dated from before a
+**`ARCHITECTURE.md` and `ROADMAP.md` were re-measured at revision 40 (2026-09-03); the rest date from
+revision 38 (2026-09-01), when every size in this table had drifted — most by 10–30×.** The old figures (`ARCHITECTURE` 24k, `ROADMAP` 8.5k, `QA-FINDINGS` 8.3k) dated from before a
 year of rulings landed in them, and a table that under-reports cost by an order of magnitude causes the
 exact failure `cairn-constraints` §10 exists to prevent: an agent budgets for 8k, spends 106k, and does its
 worst work in what is left. **Re-measure when you land a revision** —
@@ -35,8 +35,8 @@ whole is a decision to spend a quarter of a context window; `doc-section` exists
 | `DESIGN.md` | ~14k tok | **you're building or reviewing any web surface** — but **read its revision-3 banner first: §1 and §5.1–§5.5 are VOID** and the visual authority moved to the board | `cairn/tools/doc-section DESIGN 3 6` gives the responsive contract + the rendered acceptance standard — the two parts that survive intact |
 | `VISUAL-TELLS.md` | ~2k tok | once before writing CSS, once at rendered verification | **advisory, never a contract.** A hit is a question; it does not outrank `DESIGN.md` or a shipped ruling |
 | `PRODUCT-VISION.md` | ~10k tok | you're the architect and the question is *why this order* | Appendix A is Jacob's words verbatim — quote it, don't paraphrase it |
-| `ARCHITECTURE.md` | **~271k tok** | **never.** Not even for a broad design revision — read sections | `cairn/tools/doc-section ARCHITECTURE <sections>`; run it bare to list every section with its size, and see the table at the top of the doc for who needs what |
-| `ROADMAP.md` | **~106k tok** | **never** | `cairn/tools/doc-section ROADMAP "Phase N" "Sequencing rules"` (matches heading text as well as number — see the tool's `--help`). Phase 2 alone is ~69k; grep for your increment |
+| `ARCHITECTURE.md` | **~311k tok** | **never.** Not even for a broad design revision — read sections | `cairn/tools/doc-section ARCHITECTURE <sections>`; run it bare to list every section with its size, and see the table at the top of the doc for who needs what. §2 is 123k, §8 is 70k, §4 is 60k; **§10 (photos, revision 40) is 13k and self-contained** |
+| `ROADMAP.md` | **~112k tok** | **never** | `cairn/tools/doc-section ROADMAP "Phase N" "Sequencing rules"` (matches heading text as well as number — see the tool's `--help`). Phase 2 alone is ~75k; grep for your increment |
 | `BUILD-NOTES.md` | **~156k tok** | **never** | `cairn/tools/doc-section BUILD-NOTES <sections>`; check the Status note at the top before trusting §4/§5's numbers |
 | `QA-FINDINGS.md` | **~242k tok** | **never** — it is the largest document in the repo | the Status note at the top + the specific finding(s) you were routed |
 | `REVIEW.md` | ~45k tok | you're the builder/breaker acting on its routing table — and then only the current verdict | the Status note at the top tells you whether it's even current; the verdict table names which entries are closed |

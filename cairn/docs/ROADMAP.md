@@ -601,6 +601,37 @@ is added, cut or reordered; Phase 2's scope and exit criteria are untouched; not
 reopened.** Only I-8b's *Verification* bullet moves here; the ruling itself lives in `DESIGN.md` §5.3, §5.5,
 §5.6, §6.2 and §7, with `ARCHITECTURE.md` §9.2 fence 1 recording why the fence held.
 
+**Revision 40, 2026-09-03.** **A fourth step in Phase 2 — `2d`, the memory data layer — and one narrowing
+of Phase 6.** Opened while the visual direction is paused (Jacob rejected I-8b's aesthetic on 2026-09-02 and
+has not yet selected a replacement), on the principle that the work which does not depend on that decision
+should not wait for it. Two capabilities, `ARCHITECTURE.md` revision 40:
+
+- **I-12 — city-level history**, `ARCHITECTURE.md` §8.4 **A-56**. A completed trip's `TripSummaryRow` keeps
+  its cities' **names** (it has since A-10) and throws away their **coordinates** and their **dates**, so
+  nothing can say *where in a country* or *when* without opening the document. The city entry gains
+  `centre`, `firstDay` and `lastDay`; `SUMMARY_VERSION` goes to **5**, which is itself the rescan trigger
+  for every already-summarised trip; A-33's `ROW_PATHS` allow-list is widened; **stop-level geometry is
+  refused**, with the reason and the trigger written down; and A-31 Part 5 residue 1 closes **for cities**.
+- **I-13 — the photo foundation**, `ARCHITECTURE.md` **§10** (**A-57**, **A-58**). Cairn has no photo
+  capability of any kind. I-13 builds the record class, the multi-file import over the existing
+  Safari-compatible `FilePort` shape, two object stores for bytes, a hand-rolled EXIF reader in
+  `packages/core`, the two-derivative resolution discipline, and the selectors an eventual UI needs for
+  honest loading, empty and error states. **No new dependency, anywhere** — A-58, decided on merits and not
+  on the zero-dep rule, which A-55 Part 0 already established does not reach `apps/web`.
+
+**Neither increment opens a `.tsx` file, and that is a fence rather than an accident**: no surface is
+scheduled until Jacob has selected a visual direction, so building one now would be building against a
+direction he rejected. `git diff --stat` decides it, the same way §9.2 fence 1 is decided.
+
+**Phase 6 is narrowed, not gutted**: library enumeration, `suggestPhotoStops`, the suggestion queue, the
+Android `ACCESS_MEDIA_LOCATION` fault criterion and the Play Store access review all stay exactly where they
+are. What moves earlier is the record class those things suggest **into** — the same shape as
+`copyStopInto` shipping in Phase 1 with no friend to exercise it.
+
+**I-12 and I-13 are numbered above the gate and sequenced below it.** Sequencing rule 7 forbids renumbering
+forty cross-references for a tidy sequence, so the numbers are labels: the order is
+I-0 … I-10, **I-12, I-13**, then **I-11, the gate**, which now depends on all of them.
+
 > **Phase numbers changed once, here.** Every heading below carries its old number, and every "Phase N"
 > written in `ARCHITECTURE.md` §1–§7, `BUILD-NOTES.md` or `QA-FINDINGS.md` before revision 9 means the
 > *named* phase it described: "Phase 2" = accounts/server (**now 3**), "Phase 3" = ingest (**now 4**),
@@ -1493,9 +1524,12 @@ caption/order) from the cell, and **at most 3 extent panes can exist planet-wide
 unchanged; A-53 adds **I18**, two criteria and a docstring. **I-8i is gated on Jacob's approval of A-51 and
 on nothing else — the design is closed and no further architect round is owed** |
 | **2c — participants** | `Trip.participants`, three build functions, the participants editor, *"people you have travelled with"* on the profile | you can say the trip was with your girlfriend and her family, and it grants them nothing | Not started; gated on 2b |
+| **2d — the memory data layer** *(revision 40)* | **I-12**: `TripSummaryCity` gains `centre` + `firstDay`/`lastDay`, `SUMMARY_VERSION` → 5, `TravelStatsCity` gains dates (§8.4 **A-56**). **I-13**: the `PhotoAsset` record class, multi-file import, two byte stores, a pure EXIF reader, the two-derivative resolution rule, the loading-state selectors (**§10**, **A-57**, **A-58**) | a past trip stops being a list of country codes — it knows *where in* each country and *when* — and a photograph can be attached to a day of it at all, which it could not before. Both are exercisable end to end with `node --test` and the CLI, on a machine with no browser | Not started. **Gated on 2b's *data layer*, which shipped (`REVIEW.md` "2b (data layer)", SHIP, `69e44d4`) — not on 2b's surfaces and not on 2c.** Orderable before or after 2c. **Opens no `.tsx` file** |
 
 **Mapped onto the increment sequence below** (revision 10): **2a = I-1 → I-4**, **2b = I-5 → I-8**,
-**2c = I-9 → I-10**, with **I-0** before all of them and **I-11** the gate. Each of the three steps is
+**2c = I-9 → I-10**, **2d = I-12 → I-13** *(revision 40)*, with **I-0** before all of them and **I-11** the
+gate — which is now numbered below two increments it waits for; sequencing rule 7 is why the labels are not
+renumbered. Each of the three steps is
 genuinely shippable at its own increment — the phase can stop after I-4 or I-8 and still have delivered
 something better than what it started with. *(Revision 11: **I-3a** and **I-4a** carry the two design
 rulings QA round 12 routed to the architect — `ARCHITECTURE.md` §2.7 **A-9** and §2.2 **A-10**. They sit
@@ -4093,6 +4127,125 @@ Profile half plus the four shell items §5.6 enumerates, and nothing else.)*
 - **Ship gate.** **2c is independently shippable here.** The two conformance runs diff to nothing; the
   grouping surface states its own limitation in rendered text, not in a code comment.
 
+**I-12 and I-13 are revision 40, and are step 2d.** They sit here in the sequence — after I-10, before the
+gate — and carry their numbers from above it, per sequencing rule 7. **Neither is gated on 2c**; both are
+gated on 2b's data layer, which has a manager verdict of SHIP at `69e44d4`. **I-12 before I-13, and the
+dependency is real rather than a preference** — see I-13's *Dependencies* bullet.
+
+#### I-12 — a city keeps its place and its dates when the trip is over (§8.4 A-56)
+
+- **Built.** `TripSummaryCity` gains `centre: LatLng` and `firstDay`/`lastDay: IsoDate | null`, populated in
+  `tripSummary`'s existing `orderedCities` walk from a day index built **once per call**;
+  `SUMMARY_VERSION = 5` with its own docstring line; `TravelStatsCity` gains `firstVisit`/`lastVisit`,
+  clamped by A-31 Part 4 step 4's existing rule and falling back to the trip's own range when the city has
+  no days; A-33 Part 2's `ROW_PATHS` widened by four leaves with `ROW_KEYS` unchanged; a **fourth** union
+  fixture (a trip with one city and **no days**) so the null branch is exercised; `cli.ts stats` prints
+  city dates; `travel-stats.json` regenerated.
+- **User-visible outcome.** On the CLI today: *"Vienna, AT — Aug 8–10"* instead of *"Vienna, AT"*. On any
+  future memory, route or stamp surface: the two facts such a surface is made of, available without loading
+  forty documents. **No screen changes in this increment and none may.**
+- **Architecture / data model.** §8.4 **A-56**, read with **A-31** Parts 2 and 4 and **A-33** Part 2. Three
+  things a builder does not get to decide, because A-56 decided them: **stop-level geometry is refused**
+  (Part 4); **countries get no date range** while cities do, because a country can be attributed through a
+  `Place.at` that carries no day edge (Part 7 clause 3); and **`centre` may not reach a golden, a log line
+  or the CLI** (Part 5). A-56 Part 3 is the answer to *"what triggers a rescan of already-summarised
+  trips"*: **the bump is the trigger**, the mechanism is the one I-6 shipped, and **no client file changes**
+   — a builder editing one has found a third reader of `SUMMARY_VERSION`, which is a finding.
+- **Verification.**
+  - `[stated]` `row.cities[i].centre` is **identical to** `orderedCities(trip)[i].centre` for every city of
+    the reference trip — an equality against the source, which is why the golden does not carry the
+    coordinate and does not need to.
+  - `[stated]` For each of the reference trip's six cities, `firstDay`/`lastDay` reproduce the ends of the
+    existing `cityRange(trip, key)` string, which is a **second program's** answer to the same question and
+    is the closest thing to an external oracle available here — the same move A-31's `countries.json`
+    cross-check makes.
+  - `[stated]` **Injected fault, the null branch:** a trip with one city and zero days yields
+    `firstDay === null && lastDay === null`, and `travelStats` over its row reports that city's
+    `firstVisit`/`lastVisit` **equal to the trip's own clamped range** — not `null`, not a throw, not year
+    zero.
+  - `[stated]` **Injected fault, the clamp:** an `active` trip whose city days run past `today` reports
+    `lastVisit === today`, not the future date, and `firstVisit <= lastVisit` holds for **every** row.
+  - `[stated]` **Ceiling:** `ROW_PATHS` is exactly the 24 leaves A-56 Part 6 transcribes, and
+    `ROW_PATHS.filter(countShaped)` is still exactly the **eight** entries `ROW_COUNT_FIELDS` names — a
+    ninth means someone stored a count instead of deriving one.
+  - `[stated]` **The rescan, end to end, in plain Node:** seed `memoryStorage` with a version-4 row, boot
+    the store, and assert `summaryScan` goes `'stale'` → `'recomputing'` → `'complete'` with **every** row
+    reading `summaryVersion === 5` — and that the recomputed row's `centre` came from the **document**, by
+    seeding a version-4 row whose stale fields disagree with it.
+  - `[stated]` **No coordinate escapes:** grep `fixtures/golden/*.json` and the output of `cli.ts stats`
+    for a coordinate-shaped float pair; expect **zero**. §6.1 cross-cutting rule 1.
+  - `[stated]` **The fence:** `git diff --stat` shows **zero** files under `apps/web/src/views/`.
+- **Dependencies / blockers.** 2b's data layer (SHIP, `69e44d4`). Not I-8b, not I-8i/I-8j, not the visual
+  direction. **`ARCHITECTURE.md` §8.4 A-39 Part 11 item 1 fires**: axis S gains a state, `SUMMARY_VERSION`'s
+  ledger gains an entry, and the pairwise covering table goes **15 → 18**. Part 6's pin 1 fails the moment
+  the constant moves, so this cannot be skipped by forgetting it.
+- **Ship gate.** Every criterion above; the A-39 covering set re-derived at 18 rows with its faults still
+  red; `qa/i7a-idb-rowkeys.mjs` re-run and its result **recorded** (A-36 Part 4 makes it a required,
+  recorded condition for anything touching `ROW_KEYS`, and "no browser available" is a disclosed gap, not a
+  pass); §2.10's export total **unmoved** — I-12 adds no runtime symbol, and a builder adding one has found
+  a design question.
+
+#### I-13 — the photo foundation: a record class, bytes that are not in the document, and no new dependency (§10, A-57, A-58)
+
+- **Built.** `ARCHITECTURE.md` **§10** in full — A-57 Part 6 is the file-by-file list and it is the brief.
+  In summary: `PhotoId`, `PhotoAsset`, `PhotoDerivative`, `Trip.photos` and `SCHEMA_VERSION = 2` with its
+  `migrateDoc` case; `packages/core/src/photo/exif.ts` — a pure, total, bounded JPEG/TIFF-EXIF reader;
+  `build/photos.ts` (`addPhoto`, `removePhoto`, `updatePhoto`); serializer and validator support;
+  `PhotoPort` and `memoryPhotos()`; the import saga and its session state; `photoImport`, `photosFor` and
+  `orphanPhotoBytes`; `apps/web/src/ports/photo.ts` (picker + canvas derive) and `DB_VERSION` 3 → 4 with the
+  `photos` and `photoThumbs` stores and the trip-delete cascade; `redactForSample` dropping `photos`; and a
+  committed corpus of **JPEG headers, not photographs**, for the `readExif` golden.
+- **User-visible outcome.** **None on screen** — the model and its guards land first, exactly as I-9's do,
+  and no surface is scheduled while the visual direction is unselected. On the CLI: `cli.ts photos <file>`
+  reports what a JPEG's metadata actually says, which is the fastest way to see A-58's central fact for
+  yourself on your own photos.
+- **Architecture / data model.** **§10** whole; it is self-contained and a builder needs nothing else from
+  `ARCHITECTURE.md` except §2.8, §2.10's list, `serialize/migrate.ts`'s docstring, §8.6 and §8.4 A-39 Part
+  11. Five things a builder does not get to decide: **bytes are never in `TripDoc`** (§10.1); there is **no
+  `PhotoAsset.status` field** (§10.1 point 4 — liveness is A-47-shaped session or derived state);
+  **`place` attachment is not built** and the increment that adds it does §2.13 A-6a's reference-counted
+  delete first (A-57 Part 3); **`copyStopInto` carries no photo** and needs no change to do so (§10.5); and
+  **no dependency is added to any package** (A-58).
+- **Verification.** A-57 Part 7's fault matrix — **P1 through P13, each one red before the fix and green
+  after, each recorded** — is the spine, and it is not optional: it is the price of A-58's refusal to take a
+  parsing dependency. Plus:
+  - `[stated]` **Round-trip:** a trip with three photos, two attachments and one `at` survives
+    `toJSON`→`fromJSON` **byte-identical**; undo/redo restores photos exactly at depth 50.
+  - `[stated]` **Ceiling on the document:** `toJSON(trip).length` for a trip with 20 photos is within
+    **4 KB** of the same trip with none. A run that is megabytes has put bytes in the document.
+  - `[stated]` **The port is exercisable with no browser:** the whole import → attach → read → detach →
+    delete path runs against `memoryPhotos()` under `node --test`. `packages/client` must never hold a
+    photo's bytes — assert it holds ids and metadata only.
+  - `[stated]` **The cascade:** deleting a trip with 5 photos leaves **zero** records in `photos` and
+    `photoThumbs`; deleting a **day** leaves its photos present with `attach.kind === 'trip'`.
+  - `[stated]` **Resolution, measured, not asserted:** import a 4000 × 3000 JPEG and assert the stored
+    `thumb` is ≤ 320 px on its long edge and the stored `display` ≤ 1600 px, that both decode, and that
+    `thumb.bytes` is **at least 20× smaller** than the source. §10.4 exists to be measured.
+  - `[stated]` **The re-encode carries no metadata:** run `readExif` over the **stored derivative** of a
+    photo that had GPS and a date, and assert `reason: 'no_exif'` with every field `null`. This is §10.5's
+    whole mechanism and it is one assertion.
+  - `[stated]` **Redaction:** P12 — `redactForSample` over a trip carrying a captioned, placed, dated photo
+    emits `photos: []`; the §6.6 recursive string walk finds nothing; the `dist` grep finds no coordinate.
+  - `[stated]` **The fence:** `git diff --stat` shows **zero** files under `apps/web/src/views/`.
+- **Dependencies / blockers.** **I-12 first, and the reason is the storage gate rather than the code.** The
+  two increments touch different files and neither imports the other; but I-13 fires **A-39 Part 11 items 2
+  and 4** (a `SCHEMA_VERSION` bump, and *"a new object store … a genuinely new axis; Part 3's table is
+  re-derived"*) while I-12 fires **item 1**. Landing them together means the covering set is re-derived once
+  for three tangled causes and nobody can say which change a red arm is about. Sequenced, the gate reopens
+  twice for two stated reasons, and I-12's `ROW_PATHS` widening is proven before a schema change lands on
+  top of it. **Not gated on 2c, not on the visual direction, not on I-8i/I-8j.**
+- **Ship gate.** P1–P13 recorded with their measured results; A-39 Part 3's table **re-derived** over the
+  two new stores and the new schema version, with the arms' starting states restated; §2.10's export total
+  **re-counted in this pass** and written into §2.10 and criterion E in the same commit (§8.9's rule — no
+  number is quoted in advance, in this file or in `ARCHITECTURE.md`); `npm test`, `npm run typecheck` and
+  the sample build all green with **no `package.json` diff and no lockfile movement**, which is A-58's
+  verdict as a mechanical check.
+
+*(**I-14 — the photo surface — is deliberately not written.** It is a screen, and no screen is scheduled
+until Jacob has selected a visual direction. Writing its criteria now would bake in assumptions about a
+direction he has rejected. §10.6 exists so that whoever writes it has honest signals to build honest states
+from.)*
+
 #### I-11 — The phase gate
 
 - **Built.** Nothing new. The full chain: a breaker round over the whole phase, then the manager's
@@ -4104,9 +4257,10 @@ Profile half plus the four shell items §5.6 enumerates, and nothing else.)*
   into §2.10 and criterion E together. `CAIRN_VISUAL_ROADMAP.md` and its `.html` twin are rebuilt against the
   post-revision-9 phase order **in the same pass** — that board is currently flying a staleness banner and
   this is the pass that clears it.
-- **Verification.** All eight exit criteria below, each re-derived; the whole Phase 1 suite unchanged; the
+- **Verification.** All exit criteria below, each re-derived; the whole Phase 1 suite unchanged; the
   attack list for this phase run end to end.
-- **Dependencies / blockers.** I-0 through I-10.
+- **Dependencies / blockers.** I-0 through I-10, **and I-12 and I-13** (revision 40, step 2d — numbered
+  above this increment and sequenced below it).
 - **Ship gate.** A manager verdict of **SHIP**. Nothing else counts as the phase being done.
 
 ### Exit criteria — the Phase 2 ship gate
@@ -4311,6 +4465,25 @@ first.
   with participant edits in the step chooser, and no new path assigns `state.doc` (the closed list of six
   is still six) `[stated]`
 
+**Added at revision 40, for step 2d.** Three criteria, and each is a ceiling rather than a floor:
+
+- **A summary row is exactly what the allow-list says and no more.** `ROW_PATHS` is exactly the 24 leaves
+  §8.4 **A-56** Part 6 transcribes, `ROW_KEYS` is exactly the 14 top-level keys A-33 Part 2 transcribes, and
+  `ROW_PATHS.filter(countShaped)` is exactly the **eight** entries of `ROW_COUNT_FIELDS`. **Injected fault:**
+  add `cities[].dayCount` to the minted row and every one of the three goes red — a count that could have
+  been derived does not get to be stored, which is A-31 Part 6's rule with a value-shaped check behind it
+  `[stated]`
+- **No coordinate leaves the device's own storage.** Grep `fixtures/golden/*.json`, every emitted asset
+  under `apps/web/dist/`, and the full output of every `cli.ts` command for a coordinate-shaped float pair:
+  expect **zero**. Two new fields can violate this — `TripSummaryCity.centre` and `PhotoAsset.at` — and
+  they share one assertion rather than having one each. **Injected fault:** print `centre` from
+  `cli.ts stats` and the grep goes red `[stated]`
+- **The photo subsystem is exercisable, and refusable, with no browser.** A-57 Part 7's **P1–P13** all run
+  under `node --test` against `memoryPhotos()`, each is recorded with its measured result, and each was red
+  before its fix. **Ceiling:** `npm test` and `npm run typecheck` are green with **no `package.json` diff
+  and no lockfile movement** anywhere in the repo — which is A-58's *"no dependency"* verdict expressed as
+  something a machine checks rather than something a reviewer remembers `[stated]`
+
 ### What the tester should attack (plain `node`, no network)
 
 A past trip with `endDate` before `startDate` · a trip whose dates straddle `today` (feasibility rules must
@@ -4358,12 +4531,35 @@ named `Transit`, `''` or a single emoji** (§2.2 A-10) · **a conflict dismissed
 then left alone while the clock crosses `endDate`, opened, reopened, undone and redone** (§2.7 A-9 × the
 retirement ledger) · and every Phase 1 attack in the list above, re-run.
 
+**Added at revision 40, for step 2d.** A city whose days are **non-contiguous** — Vienna on day 1 and again
+on day 12 — where `firstDay`/`lastDay` span the gap and must be read as a range and not as a stay · a day
+listing **two** cities, so both claim it and the city ranges legitimately overlap (A-56 residue 1: no
+surface may sum them) · a trip with cities and **zero days**, which is 2a's own past-trip output and is the
+majority population of the thing being built · a stored version-4 row whose `cities` disagree with its
+document, to prove the rescan reads the **document** · a `startDate` after `endDate` crossed with a city
+range · a photo attached to a `stopId` that is then **deleted** · a photo attached to a `dayId` in a trip
+whose day skeleton is then **re-minted** · **the byte stores emptied under a live trip** (eviction:
+`availability` must read `'missing'`, `phase` must stay `'ready'`, nothing may throw and nothing may render
+`'empty'`) · a 12-file import where files 2 and 7 are a **text file renamed `.jpg`** and a **truncated
+JPEG** (10 assets, 2 named failures, import completes) · a `QuotaExceededError` on the 5th of 8 files (no
+asset, no orphan, no partial document write) · **a HEIC file**, which is the expected iOS case and must
+produce `unsupported_container` rather than a plausible wrong answer · an EXIF block with a
+self-referential IFD offset, 65,535 claimed entries, a zero GPS denominator, `"0000:00:00 00:00:00"` and an
+exact `(0, 0)` coordinate — **each must terminate, each must set `reason`, none may throw** · and a photo
+whose caption is a booking reference inside a URL inside a sentence, through `redactForSample`.
+
 ### Explicitly not in Phase 2
 
 No server, no accounts, no auth *enforcement* (the predicates still only define), no sync, no location, no
-photos, no device. **No stop-level participants.** No trip invitations. No public profile. No goals or
+device. **No stop-level participants.** No trip invitations. No public profile. No goals or
 achievements — §8.8 architects them as derived and this phase does not implement them. **No in-trip delete
 control** (see the routed items below). No renumbering of anything in Phase 1.
+
+*(**Revision 40 removes "no photos" from that list and replaces it with a narrower one.** Step 2d builds the
+photo **record class** — §10, A-57. What this phase still does **not** build: library enumeration,
+`suggestPhotoStops`, any suggestion queue, `place` attachment, photo bytes in an export, any non-JPEG
+metadata reader, and **any photo screen at all** — no surface is scheduled while the visual direction is
+unselected. `ARCHITECTURE.md` §7 carries each with its trigger.)*
 
 **And, added at revision 10: no travel distance or mileage of any kind, in any mode.** `ARCHITECTURE.md`
 §8.10 architects it and schedules it across phases 4, 5b and 7; **nothing about it is built here.** In
@@ -4574,10 +4770,21 @@ in any log call in `apps/mobile` `[stated]`.
 
 ## Phase 6 *(was Phase 5)* — photos
 
+> **Narrowed at revision 40, and it is a narrowing rather than a cut.** Phase 2 step **2d / I-13** builds
+> the **record class** this phase suggests into — `PhotoAsset`, manual import, storage, thumbnailing, the
+> EXIF reader and the loading-state selectors (`ARCHITECTURE.md` **§10**). What remains here is everything
+> that genuinely needs the phone: **library enumeration, native EXIF/location read, `suggestPhotoStops`,
+> the suggestion queue, and the two non-engineering gates below.** Nothing in this phase's *reasoning*
+> changes; it gains a foundation that has already been attacked. Two consequences worth naming: this phase
+> no longer designs a data model under time pressure at the end of the roadmap, and `readExif` is
+> **not** what native uses — `expo-media-library`'s `getExifAsync`/`getLocationAsync` are, which is
+> **A-58** Part 4's argument for why the web parser never earned a dependency.
+
 **Ships:** on-device library enumeration by trip window, EXIF/location read, `suggestPhotoStops` scoring in
 core, a suggestion queue, and opt-in attach with EXIF GPS stripped on upload (§5.4). The association model
 is §8.6 and it is deliberately narrow: one trip, at most one of a stop/place/day, optionally participants,
-candidate until accepted.
+candidate until accepted — **and `place` attachment arrives with §2.13 A-6a's reference-counted delete,
+which I-13 deliberately did not fire (`ARCHITECTURE.md` §7 and A-57 Part 3)**.
 
 **Independently useful:** "here are 40 photos from Aug 13, and here is the stop you were standing at" is the
 pillar-5 payoff and needs nothing from Phase 7.
