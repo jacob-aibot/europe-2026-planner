@@ -239,10 +239,28 @@ function assertClean(result, where, expected = {}) {
   // city's own `City.centre` on the row deliberately — *"the same coordinate the document
   // already stores, in the same database, on the same device"* — and Part 5 makes the ceiling
   // mechanical somewhere else: no golden, no log line, no CLI. What this probe still owes is
-  // that no OTHER float reaches the persisted bytes, so `centre` is stripped by key and
-  // everything else is asserted exactly as before.
-  const stripped = JSON.stringify(result.persisted, (k, v) => (k === 'centre' ? undefined : v));
-  const floats = (stripped.match(/-?\d+\.\d+/g) ?? []);
+  // that no OTHER float reaches the persisted bytes.
+  //
+  // **The strip is keyed to the PATH `cities[].centre`, not to the name `centre` (round 43,
+  // R43-3).** It used to be a `JSON.stringify` replacer testing `k === 'centre'`, which
+  // exempted a `centre` key at any depth in any context — while the bare-`{lat, lng}` shape
+  // assertion below, the thing that is supposed to make the exemption safe, only ever walks
+  // `rec.cities[].centre`. A float under, say, a `home.centre` key was therefore invisible to
+  // both halves. The two now cover exactly the same path: one record's `cities` array, one
+  // level down, and nowhere else. (A float smuggled INSIDE `cities[].centre` is still the
+  // shape assertion's job, by design — that is the division of labour, not a gap.)
+  const withoutCityCentres = result.persisted.map((rec) => {
+    if (!Array.isArray(rec.cities)) return rec;
+    return {
+      ...rec,
+      cities: rec.cities.map((c) => {
+        if (c === null || typeof c !== 'object' || !('centre' in c)) return c;
+        const { centre, ...rest } = c;
+        return rest;
+      }),
+    };
+  });
+  const floats = (JSON.stringify(withoutCityCentres).match(/-?\d+\.\d+/g) ?? []);
   ok(floats.length === 0, `${where}: and no coordinate-shaped float outside cities[].centre`, floats.slice(0, 5));
   // The narrowing is not a hole: a centre that is NOT a bare {lat, lng} pair still fails.
   for (const rec of result.persisted) {

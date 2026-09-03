@@ -730,3 +730,56 @@ test('A-56: the day index is built from the trip, so two trips cannot contaminat
     assert.ok(c.firstDay >= trip.startDate && c.lastDay! <= trip.endDate, `${c.name} is dated outside its own trip`);
   }
 });
+
+test('A-56 / R43-1: `centre` is COPIED verbatim, not aliased — a row is a value, not a view into the document', () => {
+  // A-56 Part 2 says the centre is *"copied verbatim"*, and verbatim means the **values**.
+  // `centre` is the first non-primitive leaf ever put on `TripSummaryRow` — every other field
+  // is a string, a number, or a freshly allocated array/object (`countryCodes`, `attribution`,
+  // the city entry itself) — so *"a stored row is a value"* had been true by construction until
+  // now. Round 43 R43-1 measured it false: the row's `centre` WAS the document's own `LatLng`,
+  // so `row.cities[0].centre.lat = 0` wrote `0` into the live trip. Live in `memoryStorage`
+  // (the CLI and every test), latent behind the web port's structured clone.
+  //
+  // Built locally rather than from `europe2026()`, whose trip is cached and shared across this
+  // file: a regression test for aliasing must not itself mutate a fixture other tests read.
+  const trip = createTrip(
+    {
+      title: 'A row is a value',
+      startDate: '2026-03-01',
+      endDate: '2026-03-02',
+      homeCurrency: 'EUR',
+      cities: [
+        { key: 'a', name: 'Aaa', countryCode: 'AA', centre: { lat: 10, lng: 10 } },
+        { key: 'b', name: 'Bbb', countryCode: 'BB', centre: { lat: 50, lng: 50 } },
+      ],
+    },
+    ctx(),
+  );
+  const source = orderedCities(trip);
+  const row = tripSummary(trip, TWO_POLYGONS);
+  assert.equal(row.cities.length, 2, 'INCONCLUSIVE: the fixture lost a city');
+  // The values match — A-56 Part 2's actual requirement, unchanged…
+  for (let i = 0; i < source.length; i++) {
+    assert.deepEqual(row.cities[i].centre, source[i].centre, `cities[${i}]: the centre is not the document's`);
+    // …and the identity does NOT, which is the whole finding.
+    assert.notEqual(
+      row.cities[i].centre,
+      source[i].centre,
+      `cities[${i}]: the row carries the document's own LatLng object, so writing to one writes to both`,
+    );
+  }
+
+  // Direction 1 — mutating the row cannot reach the trip.
+  row.cities[0].centre.lat = 0;
+  row.cities[0].centre.lng = 0;
+  assert.deepEqual(source[0].centre, { lat: 10, lng: 10 }, 'writing to the row wrote through to the trip document');
+
+  // Direction 2 — mutating the trip cannot reach a row already minted from it.
+  const fresh = tripSummary(trip, TWO_POLYGONS);
+  source[1].centre.lat = 99;
+  source[1].centre.lng = 99;
+  assert.deepEqual(fresh.cities[1].centre, { lat: 50, lng: 50 }, 'writing to the trip wrote through to a minted row');
+
+  // And the copy is a plain `LatLng` — exactly two keys, no smuggled prototype or extra leaf.
+  assert.deepEqual(Object.keys(fresh.cities[1].centre).sort(), ['lat', 'lng']);
+});

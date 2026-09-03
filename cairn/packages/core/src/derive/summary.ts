@@ -402,7 +402,12 @@ export function tripSummary(trip: Trip, index: CountryIndex): TripSummaryRow {
     // days. Neither is derived from the other, and neither is derived from another row.
     const range = dayRange.get(c.key) ?? null;
     const place = {
-      centre: c.centre,
+      // A-56 Part 2's *"copied verbatim"* is the **values**, not the reference (round 43
+      // R43-1). `centre` is the first non-primitive leaf on `TripSummaryRow`; handing back
+      // `c.centre` itself made the stored row a view into the live document, so a write to
+      // `row.cities[i].centre.lat` landed in `trip.cities[i].centre.lat`. Every other field
+      // on the row is a primitive or freshly allocated, and this one now is too.
+      centre: { lat: c.centre.lat, lng: c.centre.lng },
       firstDay: range === null ? null : range.first,
       lastDay: range === null ? null : range.last,
     };
