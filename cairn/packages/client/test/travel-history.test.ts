@@ -67,11 +67,20 @@ test("I-8: a duplicate row id comes back ok:false with the row's own id", () => 
   assert.equal(result.rowId, 'dup-1');
 });
 
-test('I-8: a malformed date comes back ok:false with rowId null — travelStats names no row', () => {
+/**
+ * **Amended at I-12a (§8.4 A-59 Part 4).** This test used to assert `rowId === null` here, on
+ * the reasoning that *"nothing on `@cairn/core`'s surface lets a caller re-validate a date"* —
+ * false since `isIsoDate` joined §2.10 at revision 31. `rowId` now gains its second populated
+ * case: the message is not the duplicate-id one, `rowStatsReadable` finds exactly one suspect
+ * row, and that row is named. The `null` answer survives where it is honest — two suspects, or
+ * none — and `row-stats-readable.test.ts` pins both of those.
+ */
+test('A-59: a malformed date comes back ok:false, and the single suspect row is now NAMED', () => {
   const library = [row({ id: 't-1', startDate: 'not-a-date' as IsoDate, endDate: '2026-01-05' })];
   const result = travelHistory({ library }, TODAY);
   assert.equal(result.ok, false);
   if (result.ok) return;
   assert.match(result.message, /invalid IsoDate/);
-  assert.equal(result.rowId, null);
+  assert.equal(result.rowId, 't-1');
+  assert.deepEqual(result.unreadableRows, ['t-1']);
 });

@@ -335,6 +335,24 @@ test('exit 6a: the count-shaped fields are exactly the eight — an assertion AB
   assert.ok(ROW_PATHS.includes('revision') && ROW_PATHS.includes('summaryVersion'));
 });
 
+/**
+ * §8.4 **A-59** Part 3 — `TravelStats.unreadableCityDates` is **not** count-shaped under this
+ * file's own classifier, so `SOURCE_ALLOW` gains no entry.
+ *
+ * Asserted rather than left to be read as an omission: a reviewer finding no allow-list line
+ * for a new `TravelStats` number should be able to see *why* there isn't one, and a builder
+ * should not helpfully add one. It ends in `Dates`, which is neither `PLURAL` nor `SHAPE` —
+ * and it is a count of **defects absorbed on the read**, not of anything a traveller did.
+ */
+test('A-59 Part 3: `unreadableCityDates` is not count-shaped, so the allow-list stays as it is', () => {
+  assert.equal(countShaped('unreadableCityDates'), false);
+  // The classifier is not simply blind here: `unnamedCities` beside it IS caught and IS
+  // allow-listed, so the negative above is a property of the name and not of the filter.
+  assert.equal(countShaped('unnamedCities'), true);
+  assert.ok('packages/core/src/derive/travelStats.ts::unnamedCities' in SOURCE_ALLOW);
+  assert.equal('packages/core/src/derive/travelStats.ts::unreadableCityDates' in SOURCE_ALLOW, false);
+});
+
 // ===========================================================================
 // (6b-1) The rows a REAL PORT actually holds, read back after a real write.
 //

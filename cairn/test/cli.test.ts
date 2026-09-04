@@ -273,6 +273,41 @@ test('cli stats marks a country an active trip has not confirmed reaching', () =
 });
 
 /**
+ * §8.4 **A-60** — the rendered face of the fix, at the exact clock QA **R43-4** measured.
+ *
+ * Mid-trip, `stats --today 2026-08-12` printed `HU  Budapest  2026-08-12 → 2026-08-12` for a
+ * city the traveller reaches on the 18th, beside `HU  2026-08-07 → 2026-08-12  (1 trip)` for
+ * the same place — the country form coarse and true, the city form a **specific day**, and that
+ * day the one in the whole window the traveller is provably elsewhere (they are in Split).
+ * **The finer granularity is the more assertive claim, so it may not be the less honest one.**
+ *
+ * A ceiling, not a floor: no city line may be narrower than its own country's at the same
+ * clock. And `cli.ts` re-derives nothing to know this — the statistic carries the honest
+ * answer and the surface prints it (A-60 Part 3, A-34 Part 2).
+ */
+test('A-60: cli stats mid-trip prints no city range the clock erased, and keeps the ones it did not', () => {
+  const r = cli('stats', '--today', '2026-08-12');
+  assert.equal(r.code ?? 0, 0, r.err);
+  // Unchanged — their own days intersect the row's clamp window [08-07, 08-12].
+  assert.match(r.out, /AT\s+Vienna\s+2026-08-08 → 2026-08-10/, r.out);
+  assert.match(r.out, /HR\s+Dubrovnik\s+2026-08-10 → 2026-08-12/, r.out);
+  // Split's single day is its REAL arrival day. A rule that erased it would be throwing away
+  // the precision A-56 bought, which is why this is asserted beside the three that change.
+  assert.match(r.out, /HR\s+Split\s+2026-08-12 → 2026-08-12/, r.out);
+  // Not yet reached — the trip's own range, matching their country lines exactly.
+  for (const [code, name] of [['CZ', 'Prague'], ['HU', 'Budapest'], ['GB', 'London']]) {
+    assert.match(r.out, new RegExp(`${code}\\s+${name}\\s+2026-08-07 → 2026-08-12`), r.out);
+    assert.match(r.out, new RegExp(`^\\s+${code}\\s+2026-08-07 → 2026-08-12\\s`, 'm'), r.out);
+  }
+  // The finding's own shape, stated as an absence so a future regression is caught by name.
+  const collapsed = r.out.split('\n').filter((l) => /(Budapest|London|Prague)\s+2026-08-12 → 2026-08-12/.test(l));
+  assert.deepEqual(collapsed, [], `a clamp artefact is being printed as a visit:\n${r.out}`);
+  // A-34's marker and legend are unchanged and still print beside them.
+  assert.match(r.out, /·\s+in progress/, r.out);
+  assert.match(r.out, /in progress — from a trip you are on/, r.out);
+});
+
+/**
  * §8.4 **A-56** Part 5, half 2 — **`centre` is in a row, and that is not a licence to print
  * it.** `TripSummaryCity` gained `centre: LatLng` at `SUMMARY_VERSION` 5, so clause 3's
  * standing *"no coordinate in any log line"* rule now has a field that could violate it. The

@@ -256,6 +256,12 @@ function cmdStats() {
       `stops ${s.unattributed.stops}`,
   );
   if (s.unnamedCities) out(`  cities with no usable name: ${s.unnamedCities}`);
+  // §8.4 **A-59** Part 3. The absorption is visible on the one surface that exists: a stored
+  // `cities[].firstDay`/`lastDay` that is present and unreadable no longer takes the whole
+  // library's statistics down (QA R43-2) — it takes A-56 Part 7 clause 2's fallback to the
+  // trip's own range — and a silently absorbed value is A-37 Part 5 residue 2's mistake
+  // repeated. Same conditional idiom as `unnamedCities` above, one line over, deliberately.
+  if (s.unreadableCityDates) out(`  cities with unreadable stored dates: ${s.unreadableCityDates}`);
 }
 
 /**

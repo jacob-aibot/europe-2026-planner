@@ -244,18 +244,40 @@ export function summaryScan(state: Pick<AppState, 'library' | 'rescan'>): Summar
  * could not read your travel history' … rather than a blank screen or an unhandled
  * rejection."* This is that catch, once, as a selector — not duplicated in two views.
  *
- * **`rowId` is populated only for the duplicate-id case.** `travelStats`'s duplicate-id error
- * embeds the offending id in its message (`travelStats: duplicate summary id "…"`), and this
- * selector extracts it. The malformed-date error names no row: `travelStats` throws from
- * inside a loop over every travelled row with no per-row context carried into the message, and
- * nothing on `@cairn/core`'s surface lets a caller re-validate a date without reimplementing
- * `parseIsoDate` — which is exactly the second implementation of a core function ARCHITECTURE's
- * sequencing rules forbid. So `rowId: null` in that case is an honest *"unknown,"* not a gap
- * this selector left unfilled.
+ * **`rowId` has two populated cases** — §8.4 **A-59** Part 4.
+ *
+ *   1. `travelStats`'s duplicate-id error embeds the offending id in its message
+ *      (`travelStats: duplicate summary id "…"`), and this selector extracts it.
+ *   2. Otherwise, when `rowStatsReadable` finds **exactly one** suspect row in the library,
+ *      that row is named. Two or more stays `null`, because *"one of these three"* is not an
+ *      attribution and the surface's copy names one row.
+ *
+ * The malformed-date error still names no row of its own — `travelStats` throws from inside a
+ * loop over every travelled row with no per-row context carried into the message — so the
+ * attribution is made **beside** the throw rather than out of it, by re-reading the library
+ * through `core.isIsoDate`. *(This docstring used to justify `rowId: null` for the date case
+ * with "nothing on `@cairn/core`'s surface lets a caller re-validate a date without
+ * reimplementing `parseIsoDate`". **That has been false since revision 31**, when A-46 Part 2
+ * put `isIsoDate` on §2.10's surface for this exact class of caller; A-59 Part 4 deletes the
+ * sentence and closes the gap it was excusing with the function it said did not exist.)*
  */
 export type TravelHistoryResult =
   | { ok: true; stats: core.TravelStats }
-  | { ok: false; message: string; rowId: string | null };
+  | {
+      ok: false;
+      message: string;
+      rowId: string | null;
+      /**
+       * Every library row failing `rowStatsReadable`, in library order. Computed **only on the
+       * failure branch**; `[]` when nothing fails, which is the honest *"the refusal is not a
+       * date"* answer for the duplicate-id case.
+       *
+       * Like A-47's `openFailures.message`, this may exceed what a shipped surface reads today
+       * — it is the fact, recorded once, for the Trips-list treatment A-59 Part 5 specifies and
+       * deliberately does not schedule here.
+       */
+      unreadableRows: readonly string[];
+    };
 
 const DUPLICATE_ROW_ID_RE = /^travelStats: duplicate summary id (".*")$/;
 
@@ -265,7 +287,9 @@ export function travelHistory(state: Pick<AppState, 'library'>, today: core.IsoD
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     const m = DUPLICATE_ROW_ID_RE.exec(message);
-    return { ok: false, message, rowId: m ? (JSON.parse(m[1]) as string) : null };
+    if (m) return { ok: false, message, rowId: JSON.parse(m[1]) as string, unreadableRows: [] };
+    const unreadableRows = state.library.filter((r) => !rowStatsReadable(r)).map((r) => r.id);
+    return { ok: false, message, rowId: unreadableRows.length === 1 ? unreadableRows[0] : null, unreadableRows };
   }
 }
 
@@ -338,6 +362,55 @@ export function rowLifecycle(
  */
 export function rowDatesReadable(row: { startDate: string; endDate: string }): boolean {
   return core.isIsoDate(row.startDate) && core.isIsoDate(row.endDate);
+}
+
+/**
+ * Does every date-shaped field THIS ROW carries read as an `IsoDate`? ARCHITECTURE §8.4
+ * **A-59** Part 4, ROADMAP Phase 2 **I-12a**.
+ *
+ * `startDate`, `endDate`, and each `cities[].firstDay`/`lastDay` where present and non-null —
+ * `2 + 2N` fields, which is the point: the count grows with the row, so it is asked in ONE
+ * place and no surface re-derives it. `core.isIsoDate` and nothing else (A-46 Part 2's rule).
+ *
+ * `false` means *"this row's own stored dates are not all dates."* It does NOT mean the
+ * document will not open, and it may never be rendered as that — see `rowUnopenable`.
+ *
+ * **This is F-E, a fifth fact, not a fourth instance of F-A…F-D** (A-46 Part 1's table). QA
+ * **R43-2** measured all three shipped facts calling a row with a corrupt `cities[].firstDay`
+ * healthy: F-B and F-C read the row's own two dates, F-D is about the *document*, and A-56 put
+ * `2N` more date fields on the row that nothing extended the gate to. The result was
+ * `travelHistory` refusing the whole library over a Trips list of perfect-looking cards with
+ * nothing anywhere naming the culprit.
+ *
+ * Two things it is deliberately **not**, both refused by name in A-59 Part 4:
+ *
+ *   - **Not folded into `rowDatesReadable`.** That predicate gates whether the card's meta line
+ *     prints `dateRangeLabel` or the two raw strings (A-47 Part 4). A row with good trip dates
+ *     and a bad `cities[3].firstDay` has a **perfectly good range**, and printing it raw would
+ *     be R34-4 re-created.
+ *   - **Not folded into `rowUnopenable`.** That means *"this document will not open"* and it
+ *     drives the `.cairn-unreadable.json` rescue export. A corrupt row says nothing about the
+ *     document: the row is a **derived cache** (§4.3 A-30), and the document behind it is
+ *     almost certainly fine. Flagging it would hand the user a healthy trip under a filename
+ *     that lies about it. The affordance F-E implies is **recompute**, not rescue (A-59 Part 5,
+ *     which is fixed as vocabulary and deliberately not built here).
+ *
+ * It covers **dates, not the row** (residue 1): a `centre.lat` of `"x"` is not caught here,
+ * because nothing computes with `centre` yet. And it is **stricter than the throw it names**
+ * (residue 2): `isIsoDate` rejects a calendar-invalid `'2026-02-30'` that `travelStats` would
+ * have normalised to `'2026-03-02'` — the same choice A-46 Part 2 made for the trip's own two.
+ *
+ * Pure, total, never throws, opens nothing.
+ */
+export function rowStatsReadable(row: core.TripSummaryRow): boolean {
+  if (!rowDatesReadable(row)) return false;
+  for (const c of row.cities) {
+    // `null` and absent are **values, not defects** — a version-4 row the rescan has not
+    // reached carries neither key, and A-56 Part 7 clause 2 is its correct answer.
+    if (c.firstDay !== null && c.firstDay !== undefined && !core.isIsoDate(c.firstDay)) return false;
+    if (c.lastDay !== null && c.lastDay !== undefined && !core.isIsoDate(c.lastDay)) return false;
+  }
+  return true;
 }
 
 /**

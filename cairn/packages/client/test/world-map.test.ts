@@ -77,6 +77,9 @@ function statsOf(
     located: { cities: 0, places: 0, stops: 0 },
     unattributed: { cities: 0, places: 0, stops: 0 },
     unnamedCities: 0,
+    // §8.4 **A-59** Part 3. A hand-built `TravelStats` must carry every field of the type, so
+    // this fixture is what fails if the field is added and a reader is left reading `undefined`.
+    unreadableCityDates: 0,
   };
 }
 

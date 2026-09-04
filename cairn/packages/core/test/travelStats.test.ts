@@ -1076,3 +1076,236 @@ test('A-56: the reference trip\'s city dates come through travelStats intact', (
   // And the six are genuinely different dates, so this is not one range six times.
   assert.ok(new Set(s.cities.map((c) => c.firstVisit)).size > 1, 'INCONCLUSIVE: every city shares one first visit');
 });
+
+// ---------------------------------------------------------------------------
+// §8.4 **A-59** — a stored city date is read like every other stored value.
+//
+// A-56 Part 7 clause 1 read `cities[].firstDay` with a bare `dayNumber(c.firstDay ??
+// row.startDate)`, so `'not-a-date'` threw `invalid IsoDate: …` out of `travelStats` and **one
+// corrupt city date in one row took the whole library's statistics down** (QA **R43-2**). The
+// throw becomes clause 2's existing fallback and the absorption is counted.
+//
+// The line, stated generally so the next field does not need a ruling: *a stored value that
+// gates the record's participation throws; a stored value the record has a documented fallback
+// for takes the fallback.* `startDate`/`endDate` still throw (A-37 Part 2, grandfathered): a row
+// whose own dates are unreadable cannot be placed in a lifecycle at all.
+// ---------------------------------------------------------------------------
+
+/** The four shapes QA R43-2 drove, verbatim. */
+const CORRUPT: unknown[] = ['not-a-date', '2026-3-1', 12345, {}];
+
+test('A-59 Part 2: a corrupt cities[].firstDay does not throw — the city takes its TRIP\'s range', () => {
+  for (const bad of CORRUPT) {
+    const r = row({
+      id: 't1', startDate: '2024-05-10', endDate: '2024-05-20', countryCodes: ['FR' as CountryCode],
+      cities: [city('Paris', 'FR' as CountryCode, { first: '2024-05-12', last: '2024-05-14' })],
+    });
+    (r.cities[0] as { firstDay: unknown }).firstDay = bad;
+    const s = travelStats([r], TODAY);
+    assert.deepEqual(
+      s.cities.map((c) => [c.firstVisit, c.lastVisit]),
+      [['2024-05-10', '2024-05-20']],
+      `${JSON.stringify(bad)}: the fallback is the trip's own range`,
+    );
+    assert.equal(s.unreadableCityDates, 1, `${JSON.stringify(bad)}: the absorption was not counted`);
+  }
+});
+
+test('A-59 Part 2: a corrupt cities[].lastDay is the same answer — one end makes the PAIR unusable', () => {
+  for (const bad of CORRUPT) {
+    const r = row({
+      id: 't1', startDate: '2024-05-10', endDate: '2024-05-20', countryCodes: ['FR' as CountryCode],
+      cities: [city('Paris', 'FR' as CountryCode, { first: '2024-05-12', last: '2024-05-14' })],
+    });
+    (r.cities[0] as { lastDay: unknown }).lastDay = bad;
+    const s = travelStats([r], TODAY);
+    // NOT `['2024-05-12', '2024-05-20']` — a range with one known end has an invented width.
+    assert.deepEqual(
+      s.cities.map((c) => [c.firstVisit, c.lastVisit]),
+      [['2024-05-10', '2024-05-20']],
+      `${JSON.stringify(bad)}: one end was kept and the other invented`,
+    );
+    assert.equal(s.unreadableCityDates, 1, `${JSON.stringify(bad)}: the absorption was not counted`);
+  }
+});
+
+test('A-59 Part 2: ONE corrupt city date no longer takes down every row beside it', () => {
+  const bad = row({
+    id: 't-bad', startDate: '2024-05-10', endDate: '2024-05-20', countryCodes: ['FR' as CountryCode],
+    cities: [city('Paris', 'FR' as CountryCode, { first: '2024-05-12', last: '2024-05-14' })],
+  });
+  (bad.cities[0] as { firstDay: unknown }).firstDay = 'not-a-date';
+  const good = row({
+    id: 't-good', startDate: '2019-04-01', endDate: '2019-04-09', countryCodes: ['JP' as CountryCode],
+    cities: [city('Tokyo', 'JP' as CountryCode, { first: '2019-04-02', last: '2019-04-04' })],
+  });
+  const s = travelStats([bad, good], TODAY);
+  assert.equal(s.trips.completed, 2, 'a row was lost');
+  const tokyo = s.cities.find((c) => c.name === 'Tokyo');
+  assert.ok(tokyo, 'the healthy row lost its city');
+  assert.deepEqual([tokyo.firstVisit, tokyo.lastVisit], ['2019-04-02', '2019-04-04'],
+    'the healthy row paid for its neighbour\'s corruption');
+  assert.equal(s.unreadableCityDates, 1, 'the count is per corrupt ENTRY, not per library');
+});
+
+test('A-59 Part 3: null, an ABSENT key and a valid date each leave unreadableCityDates at 0', () => {
+  const withNulls = row({
+    id: 'a', startDate: '2019-03-01', endDate: '2019-03-31', countryCodes: ['JP' as CountryCode],
+    cities: [city('Kyoto', 'JP' as CountryCode)],
+  });
+  const gen4 = row({
+    id: 'b', startDate: '2020-02-01', endDate: '2020-02-09', countryCodes: ['ES' as CountryCode],
+    cities: [city('Madrid', 'ES' as CountryCode)],
+  });
+  delete (gen4.cities[0] as Partial<TripSummaryCity>).firstDay;
+  delete (gen4.cities[0] as Partial<TripSummaryCity>).lastDay;
+  const dated = row({
+    id: 'c', startDate: '2024-09-01', endDate: '2024-09-10', countryCodes: ['JP' as CountryCode],
+    cities: [city('Osaka', 'JP' as CountryCode, { first: '2024-09-03', last: '2024-09-08' })],
+  });
+  for (const r of [withNulls, gen4, dated]) {
+    assert.equal(travelStats([r], TODAY).unreadableCityDates, 0,
+      `${r.id}: a value was counted as a defect`);
+  }
+  assert.equal(travelStats([withNulls, gen4, dated], TODAY).unreadableCityDates, 0);
+});
+
+test('A-59 Part 3: the count is one per ENTRY, not one per field — both ends corrupt is still 1', () => {
+  const r = row({
+    id: 't1', startDate: '2024-05-10', endDate: '2024-05-20', countryCodes: ['FR' as CountryCode],
+    cities: [
+      city('Paris', 'FR' as CountryCode, { first: '2024-05-12', last: '2024-05-14' }),
+      city('Lyon', 'FR' as CountryCode, { first: '2024-05-15', last: '2024-05-16' }),
+    ],
+  });
+  (r.cities[0] as { firstDay: unknown }).firstDay = 'x';
+  (r.cities[0] as { lastDay: unknown }).lastDay = 'y';
+  assert.equal(travelStats([r], TODAY).unreadableCityDates, 1);
+  (r.cities[1] as { lastDay: unknown }).lastDay = 42;
+  assert.equal(travelStats([r], TODAY).unreadableCityDates, 2, 'a second entry is a second count');
+});
+
+test('A-59 residue 2: the predicate is `isIsoDate`, so a CALENDAR-invalid date falls back too', () => {
+  // `'2026-02-30'` is shape-valid and `dayNumber` would have normalised it to `2026-03-02` —
+  // a date nobody typed. A declared fallback beats a guessed date (A-45 Part 3).
+  const r = row({
+    id: 't1', startDate: '2026-02-01', endDate: '2026-02-28', countryCodes: ['FR' as CountryCode],
+    cities: [city('Paris', 'FR' as CountryCode, { first: '2026-02-30' as IsoDate, last: '2026-02-20' })],
+  });
+  const s = travelStats([r], TODAY);
+  assert.deepEqual(s.cities.map((c) => [c.firstVisit, c.lastVisit]), [['2026-02-01', '2026-02-28']]);
+  assert.equal(s.unreadableCityDates, 1);
+});
+
+test('A-59: `startDate` still throws — the grandfathered A-37 Part 2 throw is not reversed', () => {
+  const r = row({ id: 't1', startDate: 'not-a-date' as IsoDate, endDate: '2024-05-20' });
+  assert.throws(() => travelStats([r], TODAY), /invalid IsoDate/);
+});
+
+test('A-59 Part 3: unreadableCityDates is 0 on the reference trip, and the field is always present', () => {
+  const { trip } = europe2026();
+  const s = travelStats([tripSummary(trip, COUNTRY_INDEX)], '2026-08-24');
+  assert.equal(s.unreadableCityDates, 0);
+  assert.equal(travelStats([], TODAY).unreadableCityDates, 0, 'the field is absent on an empty library');
+});
+
+// ---------------------------------------------------------------------------
+// §8.4 **A-60** — a city's reported range is evidence, not a clamp artefact.
+//
+// QA **R43-4**: mid-trip, a city the traveller reaches in six days had its `[08-18, 08-21]`
+// clamped into the row's `[08-07, 08-12]`, both ends landed on the ceiling, and the pair
+// collapsed onto **today** — the one day in the window the traveller is provably elsewhere.
+// The country line for the same place printed the trip's whole range, which is coarse and true.
+// **The finer granularity may not be the less honest one.**
+//
+// One fallback, three triggers — *no day edge*, *no readable day edge*, *no day edge inside the
+// window* — and clause 2's answer each time.
+// ---------------------------------------------------------------------------
+
+test('A-60: a city range entirely AFTER the clamp window falls back to the trip\'s own range', () => {
+  const s = travelStats(
+    [
+      row({
+        id: 't1', startDate: '2026-06-01', endDate: '2026-06-30', countryCodes: ['HU' as CountryCode],
+        // Today is 2026-06-15, so the row's window is [06-01, 06-15].
+        cities: [city('Budapest', 'HU' as CountryCode, { first: '2026-06-20', last: '2026-06-25' })],
+      }),
+    ],
+    TODAY,
+  );
+  assert.equal(s.trips.active, 1, 'INCONCLUSIVE: the fixture trip is not active');
+  assert.deepEqual(s.cities.map((c) => [c.firstVisit, c.lastVisit]), [['2026-06-01', TODAY]]);
+  // The ceiling A-60 states: the city line is never more assertive than its country's.
+  assert.deepEqual(s.countries.map((c) => [c.firstVisit, c.lastVisit]), [['2026-06-01', TODAY]]);
+});
+
+test('A-60: a city range entirely BEFORE the clamp window falls back too — the trigger is disjointness', () => {
+  const s = travelStats(
+    [
+      row({
+        id: 't1', startDate: '2024-05-10', endDate: '2024-05-20', countryCodes: ['FR' as CountryCode],
+        cities: [city('Paris', 'FR' as CountryCode, { first: '1999-01-01', last: '1999-01-05' })],
+      }),
+    ],
+    TODAY,
+  );
+  assert.deepEqual(s.cities.map((c) => [c.firstVisit, c.lastVisit]), [['2024-05-10', '2024-05-20']]);
+});
+
+test('A-60: a range that TOUCHES the window at one day is not disjoint and keeps its own dates', () => {
+  // The boundary the disjoint test is easiest to get wrong: `rawA === b` intersects.
+  const s = travelStats(
+    [
+      row({
+        id: 't1', startDate: '2026-06-01', endDate: '2026-06-30', countryCodes: ['HR' as CountryCode],
+        cities: [city('Split', 'HR' as CountryCode, { first: TODAY, last: '2026-06-25' })],
+      }),
+    ],
+    TODAY,
+  );
+  assert.deepEqual(s.cities.map((c) => [c.firstVisit, c.lastVisit]), [[TODAY, TODAY]],
+    'a genuine arrival day is evidence, not an artefact — erasing it throws away what A-56 bought');
+});
+
+test('A-60: the OTHER boundary — a range ending exactly on `a` is not disjoint either', () => {
+  // `rawB === a`. Stated separately from the `rawA === b` case above because a `<=`/`<` slip on
+  // either end of the disjointness test erases a real day at exactly one of the two edges.
+  const s = travelStats(
+    [
+      row({
+        id: 't1', startDate: '2024-05-10', endDate: '2024-05-20', countryCodes: ['FR' as CountryCode],
+        cities: [city('Paris', 'FR' as CountryCode, { first: '2024-05-01', last: '2024-05-10' })],
+      }),
+    ],
+    TODAY,
+  );
+  assert.deepEqual(s.cities.map((c) => [c.firstVisit, c.lastVisit]), [['2024-05-10', '2024-05-10']]);
+});
+
+test('A-60: the reference trip mid-trip — three cities keep their dates, three take the trip\'s range', () => {
+  const { trip } = europe2026();
+  const s = travelStats([tripSummary(trip, COUNTRY_INDEX)], '2026-08-12' as IsoDate);
+  assert.equal(s.trips.active, 1, 'INCONCLUSIVE: the reference trip is not active at this clock');
+  const by = (name: string) => {
+    const hit = s.cities.find((c) => c.name === name);
+    assert.ok(hit, `${name} is missing`);
+    return [hit.firstVisit, hit.lastVisit];
+  };
+  // Unchanged — their own days intersect [08-07, 08-12].
+  assert.deepEqual(by('Vienna'), ['2026-08-08', '2026-08-10']);
+  assert.deepEqual(by('Dubrovnik'), ['2026-08-10', '2026-08-12']);
+  // Split's single day is its REAL arrival day, not a collapse.
+  assert.deepEqual(by('Split'), ['2026-08-12', '2026-08-12']);
+  // Not yet reached — disjoint from the window, so the trip's own range.
+  for (const name of ['Prague', 'Budapest', 'London']) {
+    assert.deepEqual(by(name), ['2026-08-07', '2026-08-12'], `${name} still prints a clamp artefact`);
+  }
+  // The ceiling, asserted rather than described: no city line is narrower than its country's.
+  for (const c of s.cities) {
+    if (c.countryCode === null) continue;
+    const ctry = s.countries.find((x) => x.code === c.countryCode);
+    assert.ok(ctry, `${c.name}: no country row`);
+    assert.ok(c.firstVisit >= ctry.firstVisit && c.lastVisit <= ctry.lastVisit,
+      `${c.name} ${c.firstVisit}→${c.lastVisit} escapes ${ctry.code} ${ctry.firstVisit}→${ctry.lastVisit}`);
+  }
+});

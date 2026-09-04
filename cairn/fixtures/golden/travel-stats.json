@@ -30,7 +30,8 @@
           "places": 0,
           "stops": 0
         },
-        "unnamedCities": 0
+        "unnamedCities": 0,
+        "unreadableCityDates": 0
       }
     },
     "afterTheTrip": {
@@ -186,7 +187,8 @@
           "places": 3,
           "stops": 4
         },
-        "unnamedCities": 0
+        "unnamedCities": 0,
+        "unreadableCityDates": 0
       }
     }
   }

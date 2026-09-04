@@ -20,6 +20,10 @@ import type { CountryCode, IsoDate } from '../model/ids.ts';
 import type { TripSummaryRow } from './summary.ts';
 import { dayNumber, fromDayNumber } from './summary.ts';
 import { lifecycle } from './lifecycle.ts';
+// By module path, exactly as `normalizeCityName` below is: `isIsoDate` is already on §2.10's
+// surface (76 → 77, §2.9 A-46 Part 2) for `packages/client`'s row gates, and §8.4 **A-59** adds
+// no symbol to it. This is core calling core, and the import shape does not grow the surface.
+import { isIsoDate } from '../model/ids.ts';
 // By module path on purpose. `normalizeCityName` is deliberately **off** `index.ts` (§2.14
 // A-14): nothing outside `packages/core` needs to fold a city name, and §2.10's surface does
 // not grow to let one module inside core call another.
@@ -62,6 +66,12 @@ export type TravelStatsCity = {
    * no such key) falls back to **the trip's own range**: *"this city has no days"* is not
    * *"this city has no dates"*. The answer is then never worse than residue 1's own behaviour,
    * and a past trip recorded without a day skeleton still gets a date on its stamp.
+   *
+   * **That fallback has three triggers, not one** — §8.4 **A-59** Part 2 (a stored edge that is
+   * present and not an `IsoDate`, counted in `unreadableCityDates`) and **A-60** Part 2 (an
+   * edge pair the row's own clamp interval does not intersect) each take the same answer, for
+   * the same stated reason: the row carries nothing usable about *when*, so the trip's own
+   * range is what there is to say.
    */
   firstVisit: IsoDate;
   /** The latest `lastDay`, clamped — never after `today`, never before `firstVisit`. */
@@ -91,6 +101,21 @@ export type TravelStats = {
   unattributed: TravelRecordCensus;
   /** Cities whose name folds to `''` — counted, never merged into a blank row. */
   unnamedCities: number;
+  /**
+   * §8.4 **A-59**. City entries whose STORED `firstDay`/`lastDay` was present and unreadable, so
+   * the entry fell back to its trip's range. Counted **per entry**, not per field: the maximum
+   * is one per `cities[]` entry across the whole library. `null` and absent are values, not
+   * defects, and are NOT counted — a version-4 row the rescan has not reached carries neither
+   * key, and A-56 Part 7 clause 2 is its correct answer.
+   *
+   * This is `unnamedCities`' own idiom, one field over, and for its stated reason: skipping it
+   * without counting would be silent loss, which is why the count is a field. A-37 Part 5
+   * residue 2 is the mistake it exists not to repeat.
+   *
+   * **`SUMMARY_VERSION` does not move for it.** `TravelStats` is derived and never stored
+   * (A-34's precedent for `provisional`), and `test/stats-storage.test.ts`'s 6b-5 pins that.
+   */
+  unreadableCityDates: number;
 };
 
 /**
@@ -137,6 +162,28 @@ const inDomain = (n: number): number => Math.min(DOMAIN_MAX, Math.max(DOMAIN_MIN
 const isMintedCode = (v: unknown): v is CountryCode => typeof v === 'string' && /^[A-Z]{2}$/.test(v);
 
 /**
+ * §8.4 **A-59** Part 2 — the third read gate, and the one A-37 never reached.
+ *
+ * A stored `cities[].firstDay`/`lastDay` that is **present and not an `IsoDate`** is read as
+ * *"this city has no usable day edge"* — exactly what `null` means — and takes A-56 Part 7
+ * clause 2's fallback to the trip's own range. It does not throw, and the reason it does not is
+ * not a reversal of A-37 Part 2's grandfathered `startDate`/`endDate` throw: **a stored value
+ * that gates the record's participation throws; a stored value the record has a documented
+ * fallback for takes the fallback.** The row's own dates decide whether it is classified,
+ * counted, mapped and dated at all, and there is nothing to degrade to; a city's cached day
+ * edge decides none of that, and a corrupt edge is strictly *less* informative than an absent
+ * one, so treating it as absent invents nothing.
+ *
+ * `null`/absent is `false` here — it is not *unreadable*, it is a value — and the caller reads
+ * the two apart. **`core.isIsoDate` and nothing else** (A-46 Part 2's rule): a hand-rolled
+ * calendar check is the second-implementation defect A-20, A-21, A-37 and A-45 each treated
+ * once. It is deliberately stricter than the throw it replaces — a calendar-invalid
+ * `'2026-02-30'` would have normalised through A-32 Part 4 to `2026-03-02`, a date nobody
+ * typed, and a declared fallback beats a guessed date (residue 2).
+ */
+const isUnreadableDay = (v: unknown): boolean => v !== null && v !== undefined && !isIsoDate(v);
+
+/**
  * Everywhere the traveller has actually been, derived from the library's summary rows. Pure.
  *
  * **The population is the travelled rows only** (§8.4 A-31 Part 3). `lifecycle(row, today)`
@@ -176,8 +223,12 @@ const isMintedCode = (v: unknown): v is CountryCode => typeof v === 'string' && 
  * bug — `refreshLibrary()` installs the stored rows and the rescan brings them current
  * *afterwards*, so the library legitimately holds a stale row in between.
  *
- * @throws {Error} programmer error only — a duplicate row id, or a malformed date. **Two, and
- *         the list is exhaustive** (A-31 Part 4).
+ * @throws {Error} programmer error only — a duplicate row id, or a malformed **trip** date
+ *         (`startDate`/`endDate`, A-37 Part 2's grandfathered throw). **Two, and the list is
+ *         exhaustive** (A-31 Part 4). A malformed `cities[].firstDay`/`lastDay` used to be a
+ *         third and is not: §8.4 **A-59** Part 2 makes it take clause 2's fallback and counts
+ *         it in `unreadableCityDates`, because one corrupt city date in one row was taking the
+ *         whole library's statistics down anonymously (QA R43-2).
  */
 export function travelStats(summaries: readonly TripSummaryRow[], today: IsoDate): TravelStats {
   // **A-37 Part 2**, site 1 of 3. Every day number this function lets reach an output is
@@ -296,6 +347,10 @@ export function travelStats(summaries: readonly TripSummaryRow[], today: IsoDate
   //    them; the country is in the key because the same name in two countries must be two rows.
   const cityMap = new Map<string, TravelStatsCity & { firstNum: number; lastNum: number }>();
   let unnamedCities = 0;
+  // **A-59** Part 3. Incremented where the city's dates are read, which is after the unnamed
+  // check below: an entry that folds to `''` produces no city row and therefore falls back to
+  // nothing. It is already counted, once, in `unnamedCities`.
+  let unreadableCityDates = 0;
   let locatedCities = 0;
   let unattributedCities = 0;
   let locatedPlaces = 0;
@@ -355,14 +410,43 @@ export function travelStats(summaries: readonly TripSummaryRow[], today: IsoDate
       // then clamped INTO that interval, so an active trip cannot report a city visit in the
       // future and a hand-edited row whose `firstDay` sits outside its own trip cannot either.
       //
-      // **Clause 2.** `firstDay === null` — or absent, on a version-4 row the rescan has not
-      // reached yet — is *"this city has no days"*, not *"this city has no dates"*. The trip has
-      // dates and the city is in it, so the fallback is the trip's own range.
+      // **Clause 2 is ONE fallback with THREE triggers** — *no day edge* (clause 2 itself),
+      // *no readable day edge* (**A-59** Part 2), *no day edge inside the window* (**A-60**
+      // Part 2) — and it is the same sentence each time: the row carries nothing usable about
+      // when this city was visited, so the answer is what the trip itself says. `[a, b]` is
+      // that answer, and it is exactly what the city's country line prints at the same clock.
       //
+      // Trigger 1, clause 2's own. `firstDay === null` — or absent, on a version-4 row the
+      // rescan has not reached yet — is *"this city has no days"*, not *"this city has no
+      // dates"*. The trip has dates and the city is in it.
+      //
+      // Trigger 2, **A-59** Part 2. **One unreadable end makes the PAIR unusable**: not one end
+      // clamped and the other invented. `tripSummary` sets both or neither, so a half-corrupt
+      // pair is hand-edited storage and a range with one known end has an invented width. The
+      // absorption is counted (Part 3) — a silently absorbed value is A-37 Part 5 residue 2's
+      // mistake repeated.
+      const unreadableDays = isUnreadableDay(c.firstDay) || isUnreadableDay(c.lastDay);
+      if (unreadableDays) unreadableCityDates++;
       // **A-37 Part 2**, sites 4 and 5. `inDomain` for the same reason `startDate` gets it: a
       // stored row is not a validated document and these two strings were never revalidated.
-      const cityA = Math.min(b, Math.max(a, inDomain(dayNumber(c.firstDay ?? row.startDate))));
-      const cityB = Math.max(cityA, Math.min(b, Math.max(a, inDomain(dayNumber(c.lastDay ?? row.endDate)))));
+      // After A-59's gate every value reaching `dayNumber` here is `isIsoDate`-valid and the
+      // clamp is a no-op — it **stays** anyway (A-59 Part 2, A-46 Part 5's precedent): deleting
+      // a gate because the guard above it currently makes it unreachable is how the guard's
+      // next narrowing becomes a defect. Trigger to remove it: none.
+      const rawA = inDomain(dayNumber((unreadableDays ? null : c.firstDay) ?? row.startDate));
+      // An inverted stored pair still collapses onto its first — A-56 clause 1, unchanged, and
+      // it happens BEFORE the disjointness test so `[rawA, rawB]` is a real interval.
+      const rawB = Math.max(rawA, inDomain(dayNumber((unreadableDays ? null : c.lastDay) ?? row.endDate)));
+      // Trigger 3, **A-60** Part 2. A range the clamp interval does not intersect would collapse
+      // onto whichever end of `[a, b]` it was clamped to — for a city the traveller reaches next
+      // week, that is **today**, the one day in the window they are provably somewhere else
+      // (QA R43-4). The country form of the same fact is the trip's range, coarse and true; the
+      // finer granularity may not be the less honest one. Where the two intersect — including a
+      // range that merely touches `[a, b]` at one day, which is a real arrival day and evidence
+      // rather than an artefact — clause 1's clamp is unchanged.
+      const disjoint = rawB < a || rawA > b;
+      const cityA = unreadableDays || disjoint ? a : Math.min(b, Math.max(a, rawA));
+      const cityB = unreadableDays || disjoint ? b : Math.max(cityA, Math.min(b, Math.max(a, rawB)));
       const key = `${countryCode ?? NO_COUNTRY}|${nameKey}`;
       const hit = cityMap.get(key);
       if (!hit) {
@@ -430,5 +514,6 @@ export function travelStats(summaries: readonly TripSummaryRow[], today: IsoDate
       stops: unattributedStops,
     },
     unnamedCities,
+    unreadableCityDates,
   };
 }
