@@ -438,6 +438,18 @@ export function createStore(opts: StoreOptions) {
     | { kind: 'cleared' };   // no active document: §10.6 has no listing to report
 
   /**
+   * The `photoAvailability` sequence the answer now in `state.photos` was written under —
+   * **§4.2 A-70 Part 4**.
+   *
+   * Closure state beside `cache`, `merging` and `saving`: never in `AppState`, never persisted,
+   * never a selector input, never visible to a subscriber, and **not shared between two stores
+   * over one `memoryStorage`** — A-67 Part 3 item 3's reason, one field over. `null` means *"no
+   * answer has been written by this store instance yet"*, and `current(slot, null)` is `false`,
+   * which is what makes an unstamped reseed install read as unanswered rather than as current.
+   */
+  let availabilityAt: Ticket | null = null;
+
+  /**
    * **The ONE place the availability triple is written** — A-69 Part 5. The R3-3 pattern, one
    * field over.
    *
@@ -448,8 +460,17 @@ export function createStore(opts: StoreOptions) {
    * install the triple as part of `...initialState()`, and that is precisely the case
    * `settleAvailability`'s boundary exists for (A-69 Part 5's last paragraph — neither mechanism
    * alone is the ruling).
+   *
+   * **It also stamps** — §4.2 **A-70** Part 4b. A-69 Part 5 having closed the incremental writers
+   * to this one function is what makes the stamp complete by construction rather than by
+   * discipline, which is why there is no second assignment site and adding one is a defect.
    */
   function setAvailability(answer: AvailabilityAnswer): void {
+    // **A-70 Part 4.** Taken beside the write, with no `await` between, so it records the sequence
+    // this answer is an answer FOR. `sequenceOf` and not `observe`: the caller that writes an
+    // answer is usually the claimer holding this slot's window open, where `observe` is `null` by
+    // design (A-67 Part 3 item 2) — which is the one place `observe` is the wrong question.
+    availabilityAt = guard.sequenceOf('photoAvailability');
     switch (answer.kind) {
       case 'ready':
         // Copied into a set this store owns: the port's return value is `ReadonlySet` by type and
@@ -517,6 +538,14 @@ export function createStore(opts: StoreOptions) {
    * settled, either `state.doc === null`, or `photos.available !== null`, or
    * `photos.availabilityError !== null`.** A-68 Part 4.1's table still describes what each exit
    * does; it is no longer why the listing settles.
+   *
+   * **§4.2 A-70 strengthens that invariant without moving either site** (BUILD-NOTES **KD-84**):
+   * an *answer* is not enough, it must be an answer **no bump has invalidated since it was
+   * written** — so `setAvailability` stamps and `availabilityUnanswered` asks the guard. A failed
+   * read therefore stops being permanently "answered": a byte write or delete this store performs
+   * after it re-opens the question, and this function is re-issued to restate the failure with
+   * current information or to succeed. It is still not the automatic retry A-63 Part 3 forbids,
+   * because a failure restamps and so never re-reads itself.
    *
    * R46-3 asked *"is this answer for the trip that is open?"* and that is the wrong question
    * asked of the right subject. It covered two overlapping opens of two *different* trips and
@@ -615,10 +644,8 @@ export function createStore(opts: StoreOptions) {
   }
 
   /**
-   * §10.6 property 5 as a question about right now — **§4.2 A-69 Part 4**. True exactly when this
-   * store is showing a listing that nothing is going to answer: a document is open, no answer has
-   * been written, no read is in flight to write one, and no transition window is open that owes
-   * one.
+   * §10.6 property 5 as a question about right now — **§4.2 A-69 Part 4, narrowed at A-70 Part
+   * 4**. True exactly when this store is showing a listing that nothing is going to answer.
    *
    * `observe(slot) !== null` is A-67 Part 3's own busy test, read for the one thing it is good at:
    * while a claim is open somebody is already responsible, so `observe` answers `null` and this
@@ -630,23 +657,46 @@ export function createStore(opts: StoreOptions) {
    * **The two `observe` terms are load-bearing and are not defensive checks to be tidied**
    * (ROADMAP I-13g): they are what stop the boundary issuing a read while somebody is already
    * responsible for one, which is the whole of A-69 Part 12's **G19** and **G23**.
+   *
+   * **Why the body below is a disjunction and not a fourth conjunct about the error field**
+   * (A-70 Parts 3 and 4c, BUILD-NOTES **KD-84**). A-69 shipped
+   * `state.photos.availabilityError === null` as a third conjunct, which reads a *consequence* of
+   * an obligation — *"a past question was answered"* — as though it were the *record* of one. The
+   * obligation actually in play is *"a bump of this slot has not been replaced"*, and **the record
+   * of that obligation is the slot's sequence**, not the value of a field: a byte write's
+   * unconditional `supersede` (A-68 Part 5a, kept) invalidates the only answer the store had
+   * whenever R45-4's value guard is false, and a field cannot know that happened. So the answer on
+   * display is stamped at `setAvailability` and this asks the guard. The two disjuncts are two
+   * different facts — *"nothing has ever answered"* and *"what answered is an answer to a question
+   * this store has since changed"* — and reading them as one is what produced this entry.
    */
   function availabilityUnanswered(): boolean {
-    return state.doc !== null
-      && state.photos.available === null
-      && state.photos.availabilityError === null
-      && guard.observe('photoAvailability') !== null
-      && guard.observe('doc') !== null;
+    if (state.doc === null) return false;
+    if (guard.observe('photoAvailability') === null) return false;
+    if (guard.observe('doc') === null) return false;
+    // (1) No answer has ever been written for this document — A-69's own disjunct, unchanged.
+    if (state.photos.available === null && state.photos.availabilityError === null) return true;
+    // (2) **A-70.** There is an answer, and a bump of this slot has invalidated it with nothing
+    // written in its place. `current(slot, null)` is `false`, so an unstamped answer — which only
+    // a whole-`AppState` reseed install can produce, and a reseed installs nulls — cannot reach
+    // here and claim to be current.
+    return !guard.current('photoAvailability', availabilityAt);
   }
 
   /**
    * The repair. At most one `present()`, and only when the alternative is a permanent spinner.
    *
-   * **It repairs an ABSENT answer and never a wrong one** (A-69 Part 6 item 3). A stale-but-present
-   * answer — `deleteTrip`'s G12 scenario, where `available` is a non-null set over bytes that are
-   * now gone — makes this predicate false, and staleness has one mechanism and it is the
-   * `supersede` at the write. This is also why it is not the automatic retry A-63 Part 3 forbids:
-   * a failed read writes `availabilityError`, which makes the predicate false.
+   * **It repairs an ABSENT answer and never a wrong one** (A-69 Part 6 item 3, upheld unchanged at
+   * A-70 Part 5 item 2). A stale-but-present answer — `deleteTrip`'s G12 scenario, where
+   * `available` is a non-null set over bytes that are now gone — makes this predicate false,
+   * because **nothing bumped the slot on that path** (`photo.removeTrip` is not a supersede site
+   * and no reseed happened), so the stamp is still current. Staleness has one mechanism and it is
+   * the `supersede` at the write.
+   *
+   * This is also why it is not the automatic retry A-63 Part 3 forbids: a failed read
+   * **restamps**, which makes the predicate false, so a failure never re-reads itself. Only a bump
+   * *this store took* re-opens the question — A-68 Part 5d's distinction, now enforced by the
+   * guard rather than asserted in prose.
    */
   async function settleAvailability(): Promise<void> {
     if (availabilityUnanswered()) await readPhotoAvailability(state.doc);

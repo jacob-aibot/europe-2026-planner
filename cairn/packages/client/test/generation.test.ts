@@ -117,7 +117,7 @@ function mk(prefix = '', shared: { storage?: GatedStorage; photo?: GatedPhotos; 
     clock: fixedClockPort(TODAY),
     ids: sequentialIdPort(prefix),
   } as Ports & { photo: GatedPhotos; storage: GatedStorage };
-  const store = watch(createStore({ ports: p, ...(shared.debounceMs !== undefined ? { debounceMs: shared.debounceMs } : {}) }));
+  const store = watch(createStore({ ports: p, ...(shared.debounceMs !== undefined ? { debounceMs: shared.debounceMs } : {}) }), p.photo);
   return { p, store };
 }
 

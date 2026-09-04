@@ -126,7 +126,7 @@ function mk(prefix = '', shared: { storage?: GatedStorage; photo?: GatedPhotos }
     clock: fixedClockPort(TODAY),
     ids: sequentialIdPort(prefix),
   } as Ports & { photo: GatedPhotos; storage: GatedStorage };
-  return { p, store: watch(createStore({ ports: p })) };
+  return { p, store: watch(createStore({ ports: p }), p.photo) };
 }
 
 const listing = (store: Store) => photosFor(store.getState(), { kind: 'trip' });
@@ -365,10 +365,10 @@ test('G12: a delete whose cascade rejects re-reads availability rather than repo
  *
  * **The fixture moved at I-13g (§4.2 A-69) and the move is the finding, not a tidy-up.** It used
  * to park a *Try again* behind a `present()` that had **failed**, which left `availabilityError`
- * set — and A-69 Part 4's predicate is false whenever `availabilityError !== null`, deliberately
- * (*"the boundary repairs an absent answer and never a wrong one"*). So the owed read is no longer
- * issued on that path. **BUILD-NOTES KD-84** carries it as an open finding for the architect, and
- * `G13b` below pins what the store does there now.
+ * set — and A-69 Part 4's predicate was false whenever `availabilityError !== null`, so the owed
+ * read was not issued on that path (BUILD-NOTES **KD-84**, disclosed rather than patched).
+ * **§4.2 A-70 ruled it**: the predicate now asks the slot's sequence rather than the error field,
+ * and the failed fixture is **G26** below, which reaches the same outcome this one does.
  *
  * Three files, one owed read: the boundary is what keeps the batch at one port call.
  */
@@ -403,23 +403,27 @@ test('G13: an import with availability unread never reads `missing`, and owes ex
 });
 
 /**
- * **G13b — the shape G13 used to have, pinned because A-69 changed its outcome.**
- * **OPEN FINDING, BUILD-NOTES KD-84 — routed to the architect, not worked around here.**
+ * **G26 — §4.2 A-70 Part 6, KD-84 face 1.** *(This is `G13b` re-cut: the fixture is unchanged and
+ * is exactly right — a `present()` that **failed**, a *Try again* parked behind it, three files
+ * imported underneath. What A-70 changes is the expected outcome and the injected fault.)*
  *
- * A `present()` that **failed**, a *Try again* parked behind it, and an import underneath. The
- * *ordering* half of R48-1 face 1 still holds and is asserted below: the stale answer is
- * invalidated by the byte write and never lands, so **no photograph on disk reads `'missing'`**.
+ * The *ordering* half of R48-1 face 1 is unmoved and is asserted throughout, not just at the end:
+ * the stale answer is invalidated by the byte write and never lands, so **no photograph whose
+ * bytes are on disk ever reads `'missing'`** at any observed instant.
  *
- * What A-69 changed is the *liveness* half. A-68 Part 5d ruled that this read is owed because
- * *"the store changed the answer"* rather than because a read failed, so `availabilityOwed`
- * discharged it and the listing became `'ready'`. A-69 Part 4's predicate is false whenever
- * `availabilityError !== null`, so nothing is issued and the listing keeps the **previous
- * failure's message** over a trip whose bytes have since changed. §10.6 property 6's *Try again*
- * is the only exit, and taking it answers correctly — which is asserted last, so the state is
- * pinned as *recoverable* rather than merely described.
+ * The *liveness* half is what A-70 restores. A-69's third conjunct
+ * (`availabilityError === null`) declined to discharge the byte write's `supersede` because an
+ * *earlier* read had failed, so the listing kept the **previous failure's message** over a trip
+ * whose bytes had since changed — and the user's own parked *Try again* was eaten with it. A-70
+ * replaces the conjunct with a disjunct over the **slot's sequence**: the answer on display was
+ * written under a sequence a byte write has since bumped, so it is not an answer to the question
+ * this store is now being asked, and the boundary re-asks it. **Once for the whole batch.**
+ *
+ * **Injected fault: restore `state.photos.availabilityError === null` as a conjunct of
+ * `availabilityUnanswered` → zero extra reads and the previous failure's message stands → red.**
  */
-test('G13b: after a FAILED read, an import leaves `unreadable` standing — A-69 vs A-68 Part 5d', async () => {
-  const { p, store, A } = await tripWithOnePhoto('g13b');
+test('G26: after a FAILED read, an import re-asks the question and costs exactly one read — A-70', async () => {
+  const { p, store, A } = await tripWithOnePhoto('g26');
   await store.closeTrip();
 
   p.photo.slowPresent = true;
@@ -434,6 +438,23 @@ test('G13b: after a FAILED read, an import leaves `unreadable` standing — A-69
   await tick();
   assert.equal(p.photo.presentGates.length, 1, 'INCONCLUSIVE: the retry is not parked');
 
+  // The ordering half, watched at EVERY emitted state rather than only at the end. The subject is
+  // the photograph that was already on disk before the batch: a stale answer landing mid-batch
+  // knows nothing of any of the three new files, so **it** would report `'missing'` over bytes on
+  // disk — R45-4's rendered defect, which is what A-68 Part 5a's hoisted `supersede` prevents and
+  // which A-70 must not have moved. (A file *inside* the batch reads `'missing'` for the one emit
+  // between its `addPhoto` and the optimistic availability write beside it; that transient is
+  // `importPhotos`' own statement order and predates this arc.)
+  const established = store.getState().doc!.photos[0]!.id;
+  const missingOverBytes: string[] = [];
+  const off = store.subscribe((s) => {
+    for (const item of photosFor(s, { kind: 'trip' }).items) {
+      if (item.asset.id === established && item.availability === 'missing') {
+        missingOverBytes.push(`${item.asset.id}@${s.doc!.photos.length}`);
+      }
+    }
+  });
+
   p.photo.slowPresent = false;
   const before = p.photo.presentCount;
   p.photo.next = [file('2.jpg'), file('3.jpg'), file('4.jpg')];
@@ -446,21 +467,30 @@ test('G13b: after a FAILED read, an import leaves `unreadable` standing — A-69
   await p.photo.release(2);
   await imp;
   await tick(); await tick();
+  off();
 
   assert.equal(store.getState().doc!.photos.length, 4, 'INCONCLUSIVE: the batch did not land');
-  assert.equal(store.getState().photos.available, null,
-    'A-68 Part 5a still holds: the stale answer was invalidated by the byte write and must not have landed');
-  assert.equal(p.photo.presentCount - before, 0,
-    'KD-84: A-69 Part 4\'s predicate is false while `availabilityError` is set, so the supersede\'s promise is not discharged here');
-  assert.equal(listing(store).phase, 'unreadable',
-    'KD-84: the listing keeps the PREVIOUS failure\'s message over a trip whose bytes have since changed');
+  assert.equal(p.photo.thumbs.size, 4, 'INCONCLUSIVE: the bytes are not actually on disk');
 
-  // …and it is recoverable rather than terminal-wrong: §10.6 property 6's exit answers correctly.
-  await store.refreshPhotoAvailability();
   const l = listing(store);
-  assert.equal(l.phase, 'ready');
+  assert.equal(l.phase, 'ready',
+    'A-70 Part 4: a bump this store took invalidated the failure, so the boundary re-asked and the listing is terminal');
   assert.equal(l.missing, 0,
-    `a photograph whose bytes are on disk reads 'missing': ${JSON.stringify(l.items.map((i) => i.availability))}`);
+    `A-70 Part 1 face 1: a photograph whose bytes are on disk reads 'missing': ${JSON.stringify(l.items.map((i) => i.availability))}`);
+  assert.equal(p.photo.presentCount - before, 1,
+    'A-70 Part 2: the cost is ONE extra `present()` for the whole batch, regardless of file count');
+  assert.deepEqual(missingOverBytes, [],
+    'A-68 Part 5a still holds: the stale answer was invalidated by the byte write and must never have landed');
+
+  // §10.6 property 6's exit still answers, and it now restates the ordinary path rather than a
+  // disclosed defect: a second tap changes nothing because nothing is outstanding.
+  const again = p.photo.presentCount;
+  await store.refreshPhotoAvailability();
+  const l2 = listing(store);
+  assert.equal(l2.phase, 'ready');
+  assert.equal(l2.missing, 0);
+  assert.equal(p.photo.presentCount - again, 1,
+    'INCONCLUSIVE: the explicit refresh is one read and one only');
 });
 
 /**
@@ -475,9 +505,10 @@ test('G13b: after a FAILED read, an import leaves `unreadable` standing — A-69
  * block); it reddens **G13** alone, where the write is an add rather than a delete.
  *
  * **The fixture moved with the criterion** — it used to park a `present()` that had **failed**,
- * which sets `availabilityError` and makes A-69 Part 4's predicate false, so the corrected
- * criterion's own stated fault (`'loading'` forever) could not be produced from it. `G14b` pins
- * what that path does now; **BUILD-NOTES KD-84** carries it.
+ * which sets `availabilityError` and made A-69 Part 4's predicate false, so the corrected
+ * criterion's own stated fault (`'loading'` forever) could not be produced from it. The failed
+ * fixture is **G27** below, and §4.2 **A-70 Part 6** makes their agreement the criterion: this is
+ * §10 A-65 **T1** on the unread fixture and G27 is T1 on the previously-failed one.
  */
 test('G14: removePhoto + undo reads `missing` even when availability was never read', async () => {
   const { p, store } = await parkedRead('g14');
@@ -500,19 +531,25 @@ test('G14: removePhoto + undo reads `missing` even when availability was never r
 });
 
 /**
- * **G14b — the shape G14 used to have. OPEN FINDING, BUILD-NOTES KD-84.**
+ * **G27 — §4.2 A-70 Part 6, KD-84 face 2, which is §10 A-65 T1.** *(This is `G14b` re-cut: the
+ * fixture is unchanged and is exactly right — `removePhoto` + `undo` after a **failed**
+ * availability read. What A-70 changes is the expected outcome and the injected fault.)*
  *
- * `removePhoto` + `undo` after a **failed** availability read. §10 **A-65 T1** requires the
- * restored record to read `'missing'` and says **never `'unreadable'`**; under A-69 it reads
- * `'unreadable'`, because the boundary's predicate is false while `availabilityError` is set and
- * A-68 Part 5b's owed read — which used to answer here — is deleted.
+ * §10 **A-65 T1** requires the restored record to read **`'missing'`** — *"never `'empty'`, never
+ * `'unreadable'`, never a throw"* — and **A-70 Part 5 item 6 upholds T1 unamended**, on both of
+ * the availability fixtures a store can be in when the removal happens. **G14 above is T1 on the
+ * unread fixture and this is T1 on the previously-failed one; the two must agree in outcome, and
+ * that agreement is the criterion.**
  *
- * Pinned rather than hidden: this test goes red the moment the architect rules on KD-84, which is
- * the intent. The recovery path is asserted last, so what is disclosed is *"one tap away"* rather
- * than *"wrong forever"*.
+ * `removePhoto`'s `supersede` invalidates the failure the store was displaying — the bytes it is
+ * *about* are the bytes this store has just deleted — so the boundary re-asks and answers, and it
+ * answers **without** the explicit refresh the recovery path used to need.
+ *
+ * **Two injected faults, both red:** restore `availabilityError === null` as a conjunct of
+ * `availabilityUnanswered` → `'unreadable'`; make `settleAvailability` a no-op → nothing answers.
  */
-test('G14b: after a FAILED read, removePhoto + undo reads `unreadable` — A-69 vs §10 A-65 T1', async () => {
-  const { p, store, A } = await tripWithOnePhoto('g14b');
+test('G27: after a FAILED read, removePhoto + undo reads `missing` — §10 A-65 T1, A-70', async () => {
+  const { p, store, A } = await tripWithOnePhoto('g27');
   const photoId = store.getState().doc!.photos[0]!.id;
   await store.closeTrip();
 
@@ -529,14 +566,21 @@ test('G14b: after a FAILED read, removePhoto + undo reads `unreadable` — A-69 
   assert.equal(p.photo.thumbs.size, 0, 'INCONCLUSIVE: the bytes were not removed');
   store.undo();
 
+  // **No `refreshPhotoAvailability()` between the undo and this assertion** — that is the half of
+  // the criterion the previous revision could not meet.
   assert.equal(store.getState().doc!.photos.length, 1, 'INCONCLUSIVE: undo did not restore the record');
-  assert.equal(listing(store).phase, 'unreadable',
-    'KD-84: §10 A-65 T1 says the restored record is `missing` and never `unreadable`; A-69 Part 4 leaves the stale failure standing');
-
-  await store.refreshPhotoAvailability();
   const l = listing(store);
-  assert.equal(l.phase, 'ready', 'the state is at least recoverable — §10.6 property 6\'s exit');
-  assert.equal(l.items[0]?.availability, 'missing', '§10 A-65 T1, reached one tap later');
+  assert.equal(l.phase, 'ready',
+    '§10 A-65 T1: never `empty`, never `unreadable`, never a throw — the stale failure was invalidated by this store\'s own delete');
+  assert.equal(l.items[0]?.availability, 'missing',
+    '§10 A-65 T1: "the whole memory except the picture" — the record is back and the bytes are not');
+  assert.equal(l.missing, 1);
+
+  // §10.6 property 6's exit still works and now restates the same answer rather than repairing it.
+  await store.refreshPhotoAvailability();
+  const l2 = listing(store);
+  assert.equal(l2.phase, 'ready', 'the ordinary path, one tap later');
+  assert.equal(l2.items[0]?.availability, 'missing', '§10 A-65 T1, unchanged by an explicit re-read');
 });
 
 // ---------------------------------------------------------------------------------------------

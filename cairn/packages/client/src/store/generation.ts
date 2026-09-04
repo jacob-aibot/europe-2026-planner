@@ -39,6 +39,20 @@ export interface GenerationGuard {
   current(slot: GuardedSlot, t: Ticket | null): boolean;
   /** A SYNCHRONOUS replacement of a slot, which has no window: invalidate, then write. */
   supersede(slot: GuardedSlot): void;
+  /**
+   * This slot's sequence **right now**, regardless of whether a claim is open — **A-70 Part 4**.
+   *
+   * **This is NOT a substitute for `observe` and must never gate a write.** `observe` answers
+   * *"may I write through this slot"* and correctly refuses inside somebody else's window (A-67
+   * Part 3 item 2, which is load-bearing). This answers a question about the **past**: *under
+   * what sequence was the answer that is now in state written?* Its only legitimate caller is the
+   * function that writes that answer, immediately beside the write — `sequenceOf` deliberately
+   * ignores `busy`, which is exactly what makes it wrong for every other question.
+   *
+   * It reads and returns: no lock, no counter movement, nothing gated. A-67 Part 3's four
+   * properties below are untouched by it, and A-70 **G28** publishes its one call site.
+   */
+  sequenceOf(slot: GuardedSlot): Ticket;
 }
 
 /**
@@ -80,5 +94,6 @@ export function createGenerationGuard(): GenerationGuard {
     observe: (s) => (busy[s] > 0 ? null : seq[s]),
     current: (s, t) => t !== null && seq[s] === t,
     supersede: (s) => { seq[s]++; },
+    sequenceOf: (s) => seq[s],
   };
 }
