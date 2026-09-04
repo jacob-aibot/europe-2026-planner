@@ -442,7 +442,9 @@ export type DisplayStatus = 'own' | 'suggested' | 'candidate' | 'imported' | 're
 // ------------------------------------------------------------------ the trip
 
 /**
- * **1 → 2 at Phase 2 I-13 (§10.3, A-57 Part 5).** The ledger, and the rule that decides it:
+ * **2 → 3 at Phase 2 I-9a (§8.3, A-72).** The ledger, and the rule that decides it — which now
+ * lives in `serialize/migrate.ts`'s docstring in three clauses, so the next record class needs no
+ * ruling:
  *
  *   - **1** — Phase 1, and everything through I-12. `datePrecision` (§8.1) arrived inside it,
  *     because `migrate.ts`'s rule is that *"a field that is additive with a total default does
@@ -455,8 +457,16 @@ export type DisplayStatus = 'own' | 'suggested' | 'candidate' | 'imported' | 're
  *     attachments *and* orphans megabytes of bytes it cannot see. `migrateDoc` gains a v1 → v2
  *     case supplying `photos: []`, and an older build refuses a v2 document loudly — which is
  *     the correct outcome and the one the existing *"Update the app."* message was written for.
+ *   - **3** — `Trip.participants` (§8.3). The same decision, one record class later, and **A-72**
+ *     is the ruling that generalises A-57 Part 5 rather than superseding it: an array of records
+ *     on `TripDoc` **always** earns a bump. I-9 shipped the field without one (**KD-96**), which
+ *     made the loss reachable and silent — a pre-I-9 build reads `schemaVersion: 2`, finds it
+ *     equal to its own constant, takes `migrateDoc`'s pass-through exit, opens the document,
+ *     drops the field it has never heard of, and writes the trip back without its people on the
+ *     next save. Photos' equivalent channel was closed by `DB_VERSION` as well; participants add
+ *     no object store, so **this constant is the only thing standing there**.
  */
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 export type TripMeta = {
   /** Pool section headings, carried over from `OPTIONAL[city].title/note`. */
@@ -528,7 +538,7 @@ export type Trip = {
    */
   participants: Participant[];
   revision: number;
-  schemaVersion: 2;
+  schemaVersion: 3;
   meta?: TripMeta;
 };
 

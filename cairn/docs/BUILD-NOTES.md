@@ -1,5 +1,32 @@
 # Cairn — build notes, Phase 1 (and Phase 2 in progress)
 
+> **Addendum — ROADMAP `I-9a`: the two rulings on I-9's disclosed objections (ARCHITECTURE **§8.3**
+> **A-72** and **A-73**). `SCHEMA_VERSION` → 3 with `migrateDoc` rebuilt as a ladder, and one home
+> for `duplicate_participant_id`.**
+> Builds on `bab1322` (architecture revision 54 / ROADMAP revision 56). **A builder follow-up, not a
+> new capability** — no field, no type, no port, no selector, no action, no export symbol, so §2.10's
+> count does not move and §8.9's re-count rule does not fire. `DB_VERSION` and `SUMMARY_VERSION` do
+> not move; `build/participants.ts` is not touched. **Edited, seven files:**
+> `packages/core/src/model/types.ts`, `serialize/migrate.ts`, `serialize/fromJSON.ts`,
+> `validate/validateTrip.ts` (one comment, no code), `packages/core/test/participants.test.ts`,
+> `packages/core/test/photos.test.ts`, `packages/core/test/datePrecision.test.ts`, plus
+> `test/cli.test.ts` and this document. **Zero `.tsx`, zero `qa/`, zero `docs/design/`, zero new
+> dependency.** `fixtures/legacy/trip-598cd7f.v1.json` **did not move**.
+>
+> | | |
+> |---|---|
+> | **What runs, and the exact commands** | `cd cairn && npm run test:tap` → **1505 tests, 1505 pass, 0 fail, 0 skipped, 0 cancelled**. Baseline **measured on this tree before the pass**, same command at `bab1322` → **1498 pass / 0 fail**, so **+7 tests**: S1–S4 and T2/T3/T4 are new, and T1 replaces the test it inverts. `cd cairn && npm run typecheck` → **clean on both projects, exit 0** (it runs `npm run sample` first, so the regenerated sample is executed by the typecheck command). |
+> | **A-72 — the bump, and the ladder** | `SCHEMA_VERSION = 3`; `Trip.schemaVersion`'s **literal type** `2` → `3`; the ledger docstring gains a v2 → v3 entry citing A-72. `v2ToV3` is `v1ToV2`'s exact shape including the *"a document that somehow already carries the field keeps it"* clause. **`migrateDoc` is a ladder, not a second `if`**: object/`null` guard, `typeof v !== 'number'` refusal, `v > SCHEMA_VERSION` refusal, then successive upgrades from a version-indexed `UPGRADES` table (keyed by the version each step upgrades **from**) while `at < SCHEMA_VERSION`, then `withDefaults`. Adding a version means adding a row and nothing else. |
+> | **The four refusal messages, byte-for-byte** | `expected a trip document object` `$` · `missing schemaVersion` `$.schemaVersion` · `document is schemaVersion ${v}; this build reads up to ${SCHEMA_VERSION}. Update the app.` `$.schemaVersion` · `no migration path from schemaVersion ${v}` `$.schemaVersion`. **Verified by diffing the four literals against `git show HEAD:…/migrate.ts`, not by eye**: identical, and the last one still interpolates `v`, the **original** version the document claimed, not an intermediate the ladder carried it to. S2 and S4 assert the rendered strings including the `(at $.schemaVersion)` suffix `TripParseError` appends. |
+> | **The ladder's exit, and the one behaviour I had to preserve on purpose** | A naïve `while (at < SCHEMA_VERSION)` silently **accepts** `schemaVersion: NaN` — `NaN < 3` is `false`, so the loop never runs and the document falls through to `withDefaults`. The old four-`if` shape threw. The ladder therefore breaks out of the loop when the table has no rung and then requires `at === SCHEMA_VERSION` before returning, which routes `0`, `1.5`, `NaN` and `-0` to the unchanged *"no migration path"* refusal exactly as before. |
+> | **A-73 — one home for the duplicate check** | The `Set<string>` is out of `parseParticipants`, which is now `arr(v, path).map(...)` and nothing else. **Every per-field refusal inside `parseParticipant` stays** — `str(o.id)`, `str(o.displayName)`, `oneOf(o.kind)`, the `userId` arm — and T4 is the test that says so. `validate/validateTrip.ts` is **unchanged in code**; its comment paragraph claiming `fromJSON` refuses at the parser is corrected, which is the one line A-73 left open. |
+> | **The inverted test** | `participants.test.ts`'s *"fromJSON rejects a document with a duplicate participant id, naming the path"* became **"A-73 T1: fromJSON OPENS a document with a duplicate participant id, and validateTrip is what reports it"** — inverted, not deleted, per A-73 Part 6 item 5. It now asserts both rows survive in document order with both ids intact, and that `validateTrip` returns **exactly one** `duplicate_participant_id` at `level:'error'` naming both display names with `participantId` in `params`. |
+> | **S1–S5 and T1–T4, each with the fault it catches named in the test** | **S1** the real `fixtures/legacy/trip-598cd7f.v1.json` reaches `schemaVersion === 3` with `photos: []` **and** `participants: []`, through `migrateDoc` and through `fromJSON`. **S2** a `schemaVersion: 99` document keeps the *"Update the app."* sentence and `$.schemaVersion`. **S3** two participants round-trip in order at 3, second `toJSON` byte-identical. **S4** `0` → *"no migration path from schemaVersion 0"*, `'1'` → *"missing schemaVersion"*, both at `$.schemaVersion`. **S5** the two pins, in `photos.test.ts` and `datePrecision.test.ts`, each still naming the **literal** `3` — neither was relaxed to compare the constant against itself. **T1** above. **T2** a document with a duplicated id survives `toJSON` → `fromJSON` → `toJSON` byte-identically, which is what makes the withdrawn *"the export would fail to re-import"* justification **false** rather than merely dropped. **T3** two `kind:'self'` rows still open and still report once with `kind:'self'` in `params`. **T4** `participants[0].id = 7` still throws at `$.participants[0].id`. |
+> | **Red-before-green, run rather than asserted** | Before the source change: S1, S2, S3, T1, T2 and both S5 pins **failed**; S4, T3 and T4 passed, which is correct — those three are preservation criteria and exist to catch a wrong *removal*. Separately, **S1's own claim was tested**: `migrateDoc`'s body was temporarily replaced with the forbidden second-`if` shape (`v===1 → v1ToV2`, `v===2 → v2ToV3`, no chaining), the suite was re-run, and **S1 was the only test that reddened** — the v1 fixture stopped at 2. The ladder was then restored from the pre-injection copy and the file re-verified to contain no injected line. |
+> | **Two tests outside the ruling's file list, both consequential and neither relaxed** | `photos.test.ts`'s **P11** asserted `migrated.schemaVersion === 2` and used `schemaVersion: 3` as its *"document from the future"*; both numbers moved (the v1 document now climbs to 3 and the future document is 4) and the property is unchanged. `test/cli.test.ts` pinned `/^\{\s*"schemaVersion": 2/` on the CLI's export output at two sites; both now pin `3`. Also `photos.test.ts`'s R45-1 future-document case, same one-number move. |
+> | **What I could NOT verify** | **The downgrade itself is still reasoned, not executed** — I did not check out a pre-I-9 build and open a post-I-9a document with it. What is executed is the mechanism the reasoning turns on: the refusal fires for a document above the build's constant, with its message and path asserted. **Nothing rendered, nothing on a browser, no `qa/` probe run** — this pass is fenced out of `qa/`, and A-72 Part 6 routes `qa/i7a-idb-rowkeys.mjs`'s Axis-D reassignment to the breaker, so I did not touch it. Four `qa/` probes (`r45-i13.mjs`, `i13b-gate.mjs`, `r48-i13d.mjs`, `r50-i13h.mjs`) assert `SCHEMA_VERSION` is 2 as tripwires for their own increments and are **expected to fire**; they are not in `npm test` and I did not run them. |
+> | **Objection to the design — one, and it is a factual correction rather than a disagreement** | **KD-98**: A-72 Part 5 item 6 and ROADMAP I-9a both require the regenerated `apps/web/src/sample/europe2026.json` to be **committed in the same commit**. It cannot be: the file is in `cairn/.gitignore` under ARCHITECTURE **§2.11** and the root `CLAUDE.md`'s read-only boundary — *"no copy of `DAYS` is ever committed under `cairn/`"* — which is the one rule that is not mine to break for a scheduling convenience. It **was** regenerated and it now reads `"schemaVersion": 3`; the reason the ruling gave for requiring the commit (*"otherwise the tree is dirty the moment anyone typechecks"*) is already satisfied by the ignore, so nothing is lost. |
+
 > **Addendum — ROADMAP `I-9`: participants in core (ARCHITECTURE **§8.3**). `Participant`,
 > `Trip.participants`, three build functions, two validation codes — and no screen.**
 > Builds on `4b02206` (I-12a item 5). **Route: builder + breaker, mandatory** — it widens
@@ -4398,6 +4425,13 @@ the breaker to re-cut, with the evidence that the properties they assert still h
 
 ### KD-96 — `Trip.participants` **is records**, and `migrate.ts`'s own rule as applied to `photos` would earn a `SCHEMA_VERSION` bump. I-9 authorises none, so none was taken (doc-only, architect)
 
+> **CLOSED at ROADMAP `I-9a` — UPHELD IN FULL by §8.3 A-72 (architect revision 54).** The bump was
+> taken: `SCHEMA_VERSION` is **3**, `migrateDoc` is a ladder, and `migrate.ts`'s rule is restated in
+> three clauses. The one thing this entry got **wrong** is its measurement of the exposure — A-72
+> Part 2 finds it *wider* than photos', not narrower, because photos also moved `DB_VERSION` and
+> participants add no object store, so the export-file channel is open with nothing in front of it.
+> The text below is left as written, as the record of what was disclosed.
+
 **Where:** `packages/core/src/serialize/fromJSON.ts` (`participants:`) · `packages/core/src/serialize/migrate.ts`
 · `packages/core/src/model/types.ts` (`SCHEMA_VERSION`'s ledger) · ARCHITECTURE §8.3, §10.3 **A-57**
 Part 5 · ROADMAP **I-9**.
@@ -4428,6 +4462,14 @@ rules for a bump, the change is `SCHEMA_VERSION = 3`, a `migrateDoc` case supply
 `validateTrip`, nor either serializer's participant code.
 
 ### KD-97 — `fromJSON` refuses a duplicate participant id, which is the far side of A-20's split from where `duplicate_city_key` sits (design tension, architect)
+
+> **CLOSED at ROADMAP `I-9a` — UPHELD by §8.3 A-73 (architect revision 54), and it resolves against
+> the parser.** The seen-set is out of `parseParticipants`; `duplicate_participant_id` has one home,
+> `validateTrip`. **A-20 is unamended** — this was A-20 applied, not corrected. A-73 Part 3 refuses
+> this entry's load-bearing *"the population is empty"* argument specifically: emptiness of a
+> population never converted a meaning violation into a shape violation, and A-73 Part 5 shows the
+> population is not empty anyway (`importDoc` reads the user's own untrusted backup). The text below
+> is left as written, as the record of what was disclosed.
 
 **Where:** `packages/core/src/serialize/fromJSON.ts` (`parseParticipants`) ·
 `packages/core/src/validate/validateTrip.ts` (participants block) · ARCHITECTURE §2.9, §2.14 **A-20**,
@@ -4460,12 +4502,35 @@ leaves `validateTrip` covering the case and reddens exactly one test
 (`packages/core/test/participants.test.ts`, *"fromJSON rejects a document with a duplicate
 participant id, naming the path"*), which is then ROADMAP I-9's own verification bullet to withdraw.
 
+### KD-98 — the regenerated sample document cannot be "committed in the same commit", because §2.11 forbids committing it at all (no single source: it is a `.gitignore` line, architect)
+
+**Where:** `cairn/.gitignore` line 3 · `cairn/tools/gen-sample.mjs` · ARCHITECTURE **§2.11** and the
+root `CLAUDE.md`'s read-only boundary · §8.3 **A-72** Part 5 item 6 · ROADMAP **I-9a** *Built, group 1*.
+
+A-72 Part 5 item 6 and ROADMAP I-9a both say the same thing: *"`npm run sample` regenerates
+`apps/web/src/sample/europe2026.json` at `"schemaVersion": 3`. It is a committed artifact and
+`pretypecheck` regenerates it, so it lands in the same commit or the tree is dirty the moment anyone
+typechecks."* **It is not a committed artifact.** `cairn/.gitignore` has carried the line since the
+generator was written, with its reason on the line above it — *"generated at build time from the
+adjacent planner — never committed (ARCHITECTURE §2.11)"* — and `gen-sample.mjs`'s own header repeats
+it: *"No copy of `DAYS` is committed."* That is the root `CLAUDE.md`'s **one rule that must never
+drift between the two halves of this repo**, and un-ignoring the file to satisfy a scheduling
+sentence would break it.
+
+**What I did instead:** ran `npm run sample`, confirmed the output now reads `"schemaVersion": 3`,
+and left the file ignored. Nothing is lost — the ruling's stated *reason* for requiring the commit is
+that the tree would otherwise be dirty on the next typecheck, and an ignored file is never dirty.
+`npm run typecheck` regenerates it and passes.
+
+**For the architect:** the fix is one sentence in A-72 Part 5 item 6 and one in ROADMAP I-9a —
+*"regenerated, not committed; it is `.gitignore`d under §2.11"*. No code changes either way.
+
 ## 2. How to run it
 
 ```bash
 cd cairn
 npm install
-npm test          # 1498 tests as of I-9. Plain node, no browser, no network.
+npm test          # 1505 tests as of I-9a. Plain node, no browser, no network.
                   # (387 from Phase 1 until R44-4, then 1239 until R45-17, then 1332 through the
                   #  round-45 fix pass, 1348 at I-13b, 1359 at the round-46 fix pass, 1376 at
                   #  I-13d, 1430 at the round-50 fix pass; re-measured each time by running

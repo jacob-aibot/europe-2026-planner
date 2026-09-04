@@ -40,8 +40,18 @@ const basePhoto = {
   display: derivative(1600, 1200, 240_000),
 };
 
-test('SCHEMA_VERSION is 2 — A-57 Part 5', () => {
-  assert.equal(SCHEMA_VERSION, 2);
+/**
+ * **A-72 S5, pin 1.** The number this test pins is `photos`' — A-57 Part 5 is what put it at 2 and
+ * is not superseded. What moved it to **3** is §8.3 **A-72**, one record class later: `participants`
+ * is an array of records on `TripDoc` and earns a bump on A-57 Part 5's own argument.
+ *
+ * **It may not be relaxed to `assert.equal(SCHEMA_VERSION, SCHEMA_VERSION)`.** A pin that reads the
+ * value it is pinning is not a pin, and this one plus `datePrecision.test.ts`'s is what makes A-72
+ * Part 4's rule catch its own violation: a records class added without a bump reddens nothing at
+ * all if these two stop naming a literal.
+ */
+test('SCHEMA_VERSION is 3 — A-57 Part 5 put it at 2, A-72 moved it for `participants`', () => {
+  assert.equal(SCHEMA_VERSION, 3);
 });
 
 test('a new trip carries an empty photos array', () => {
@@ -225,19 +235,25 @@ test('fromJSON refuses an unknown attach kind', () => {
   assert.throws(() => fromJSON(JSON.stringify(doc)), /\$\.photos\[0\]\.attach\.kind/);
 });
 
-/** P11 — both halves. */
-test('P11: a v1 document migrates to photos: [], and a v2 document is refused by a v1 reader', () => {
+/**
+ * P11 — both halves. **The numbers moved at I-9a and the property did not** (§8.3 A-72): a v1
+ * document now climbs the whole ladder to 3 rather than stopping at photos' rung, which is the
+ * half `participants.test.ts`'s S1 states against the real v1 fixture.
+ */
+test('P11: a v1 document migrates to photos: [], and a document from a later version is refused', () => {
   const { trip, c } = tripWithDays();
-  const v2 = JSON.parse(toJSON(addPhoto(trip, { attach: { kind: 'trip' }, ...basePhoto }, c)));
-  const v1 = { ...v2, schemaVersion: 1 };
+  const current = JSON.parse(toJSON(addPhoto(trip, { attach: { kind: 'trip' }, ...basePhoto }, c)));
+  const v1 = { ...current, schemaVersion: 1 };
   delete v1.photos;
-  const migrated = migrateDoc(v1) as { schemaVersion: number; photos: unknown[] };
-  assert.equal(migrated.schemaVersion, 2);
+  delete v1.participants;
+  const migrated = migrateDoc(v1) as { schemaVersion: number; photos: unknown[]; participants: unknown[] };
+  assert.equal(migrated.schemaVersion, 3, 'the ladder stopped at photos\' rung');
   assert.deepEqual(migrated.photos, []);
+  assert.deepEqual(migrated.participants, []);
   assert.equal(fromJSON(migrated).photos.length, 0);
-  // The other half: a build that reads up to 1 refuses a 2. `migrateDoc` states that in the
+  // The other half: a build that reads up to 3 refuses a 4. `migrateDoc` states that in the
   // message the existing "Update the app." sentence was written for.
-  assert.throws(() => migrateDoc({ ...v2, schemaVersion: 3 }), /this build reads up to 2\. Update the app\./);
+  assert.throws(() => migrateDoc({ ...current, schemaVersion: 4 }), /this build reads up to 3\. Update the app\./);
 });
 
 /**
@@ -272,7 +288,7 @@ test('R45-1: fromJSON reads a document written by the previous release, with no 
 test('R45-1: a document from a newer build is still refused, with the "Update the app." message', () => {
   const { trip, c } = tripWithDays();
   const doc = JSON.parse(toJSON(addPhoto(trip, { attach: { kind: 'trip' }, ...basePhoto }, c)));
-  assert.throws(() => fromJSON(JSON.stringify({ ...doc, schemaVersion: 3 })), /Update the app\./);
+  assert.throws(() => fromJSON(JSON.stringify({ ...doc, schemaVersion: 4 })), /Update the app\./);
   assert.throws(() => fromJSON(JSON.stringify({ ...doc, schemaVersion: 0 })), /no migration path from schemaVersion 0/);
   const noVersion = { ...doc };
   delete noVersion.schemaVersion;

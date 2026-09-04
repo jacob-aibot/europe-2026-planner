@@ -491,36 +491,26 @@ function parseParticipant(v: unknown, path: string): Participant {
 }
 
 /**
- * **ROADMAP I-9: `fromJSON` rejects a document with a duplicate participant id** — refused here,
- * at the offending index, with the path.
+ * The `map`, and nothing else — **§8.3 A-73** (BUILD-NOTES **KD-97**).
  *
- * A note on where this sits, because it is the one place participants depart from the pattern
- * §2.9 uses for `duplicate_city_key`, and the departure was ordered rather than chosen
- * (**KD-97**). A-20's
- * split is *"`fromJSON` decides whether a document IS a `Trip`; `validateTrip` decides whether a
- * `Trip` says something wrong"*, and a duplicate `CityKey` is deliberately on the second side:
- * documents already carry the `"-"` collision, and refusing to parse one would make it
- * unopenable (QA P2-7). No document carries a duplicate `ParticipantId` — the record class is
- * new and its ids come only from the injected factory — so the refusal strands nobody's data,
- * and the increment's own verification bullet asks for it by name.
+ * I-9 carried a `Set<string>` across this loop and threw at `$.participants[n].id` on a repeated
+ * id. That refusal is **out**, and this is where it was. A-20's split decides it: *"`fromJSON`
+ * decides whether a document **is** a `Trip`; `validateTrip` decides whether a `Trip` says
+ * something wrong."* A document whose `participants` carries one id twice is a **structurally
+ * perfect** `Trip` — every row correctly typed, the array a perfect `Participant[]`. What is wrong
+ * is what it **means**, and that is `duplicate_city_key`'s case in the same words.
  *
- * `validateTrip`'s `duplicate_participant_id` is **not** made redundant by this and is not dead
- * code: it is the exact shape `place_hours_malformed` has since A-20 — *this in-memory document
- * holds something `fromJSON` would refuse* — and it reports the trips built past the type system
- * (a cast, a native bridge, a future untyped writer), including the one whose export would
- * therefore fail to re-import. Without it the user learns their backup is unrestorable at
- * restore time.
+ * `duplicate_participant_id` therefore has **one home, `validate/validateTrip.ts`**, where it is an
+ * `Issue` at `level:'error'` naming both people — which is a defect the user can *repair*, on a
+ * trip that *opens*. A parser refusal makes the trip unopenable and offers a JSON path against a
+ * file the user has no way to edit; that is QA **P2-7**'s harm verbatim, and P2-7 is the finding
+ * that put `duplicate_city_key` where it is.
+ *
+ * **Every per-field refusal inside `parseParticipant` stays.** A-73 moved an id-uniqueness check
+ * and no type check at all.
  */
 function parseParticipants(v: unknown, path: string): Participant[] {
-  const seen = new Set<string>();
-  return arr(v, path).map((p, i) => {
-    const parsed = parseParticipant(p, `${path}[${i}]`);
-    if (seen.has(parsed.id)) {
-      throw new TripParseError(`duplicate participant id ${JSON.stringify(parsed.id)}`, `${path}[${i}].id`);
-    }
-    seen.add(parsed.id);
-    return parsed;
-  });
+  return arr(v, path).map((p, i) => parseParticipant(p, `${path}[${i}]`));
 }
 
 function parseResolution(v: unknown, path: string): ConflictResolution {
@@ -609,12 +599,14 @@ export function fromJSON(input: string | unknown): Trip {
     // migrated object without depending on which of the two ran first. A PRESENT value is
     // hand-validated in full, exactly like every other array here.
     photos: o.photos === undefined ? [] : arr(o.photos, '$.photos').map((p, i) => parsePhoto(p, `$.photos[${i}]`)),
-    // §8.3. **Absent is accepted and means `[]`** — every document written before I-9 is one,
-    // and `[]` is a total default, so this earns no `SCHEMA_VERSION` bump under `migrate.ts`'s
-    // first half. The second half of that rule (`photos` earned a bump because it *is* records)
-    // reads onto this field too, and I-9 authorises no bump: **KD-96**, flagged for the
-    // architect rather than settled here. A PRESENT value is hand-validated in full, and a
-    // duplicate id inside it is refused — see `parseParticipants`.
+    // §8.3, A-72. **Absent is accepted and means `[]`** — not because the field is optional
+    // (`SCHEMA_VERSION` went to 3 precisely because it is not: `participants` is an array of
+    // records on `TripDoc`, which is `migrate.ts`'s third clause with no exception available to
+    // it), but because `migrateDoc` is the layer that supplies it and this parser must stay
+    // callable on a migrated object without depending on which of the two ran first. Exactly as
+    // `photos`' default above, and neither is redundant with the other. A PRESENT value is
+    // hand-validated in full; a duplicate id inside it is `validateTrip`'s, not this parser's
+    // (A-73 — see `parseParticipants`).
     participants: o.participants === undefined ? [] : parseParticipants(o.participants, '$.participants'),
     resolutions: arr(o.resolutions, '$.resolutions').map((r, i) => parseResolution(r, `$.resolutions[${i}]`)),
     revision: numOf(o.revision, '$.revision'),

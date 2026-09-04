@@ -177,17 +177,21 @@ test('QA P2-6: the summary row the Library lists carries datePrecision', () => {
 /**
  * **`datePrecision` still earns no bump of its own** — the point of this test is unchanged, and
  * what moved is the number underneath it. `SCHEMA_VERSION` went 1 → 2 at Phase 2 I-13 for
- * `Trip.photos` (§10.3, A-57 Part 5), which is a *records* widening; `datePrecision` is a field
- * with a total default and would still be riding version 1 if photos had not arrived.
+ * `Trip.photos` (§10.3, A-57 Part 5) and 2 → 3 at I-9a for `Trip.participants` (§8.3, **A-72**);
+ * both are *records* widenings. `datePrecision` is a field with a total default and would still be
+ * riding version 1 if neither had arrived — that is `migrate.ts`'s **first** clause, and it is the
+ * clause A-72 Part 4 left exactly as it was.
  *
- * Asserted as "whatever `SCHEMA_VERSION` says, and nothing of `datePrecision`'s doing" rather
- * than as a literal, so this test stops being a second place the version number is written down.
+ * The first two assertions are "whatever `SCHEMA_VERSION` says, and nothing of `datePrecision`'s
+ * doing". The third is **A-72 S5, pin 2**, and it names a literal on purpose: it may not be relaxed
+ * to compare the constant against itself, because a pin that reads the value it is pinning cannot
+ * catch a records class that took no bump.
  */
 test('no schemaVersion bump for datePrecision — the field is additive with a total default', () => {
   assert.equal(base().schemaVersion, SCHEMA_VERSION);
   assert.equal(JSON.parse(toJSON(base())).schemaVersion, SCHEMA_VERSION);
-  // The bump that DID happen is photos', and it is stated where it is decided.
-  assert.equal(SCHEMA_VERSION, 2);
+  // The bumps that DID happen are photos' and participants', each stated where it is decided.
+  assert.equal(SCHEMA_VERSION, 3);
 });
 
 /**

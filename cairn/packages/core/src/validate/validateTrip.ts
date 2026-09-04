@@ -597,13 +597,16 @@ export function validateTrip(trip: Trip): Issue[] {
   // Two codes, three checks, and **all three are reports rather than throws** — §2.9's standing
   // reason: a document already carrying one must OPEN, so the user can see it and act.
   //
-  // The population is documents built past the type system. `addParticipant` mints its id from
-  // the injected factory and takes none from a caller, and `fromJSON` refuses a duplicate id at
-  // the parser (ROADMAP I-9's own verification bullet), so what is left for these to catch is a
-  // cast, a hand-built `Trip`, a native bridge, or the in-memory document whose EXPORT would
-  // fail to re-import — which is exactly `place_hours_malformed`'s shape since A-20, and exactly
-  // why it is not dead code: without this the user learns the backup is unrestorable at restore
-  // time.
+  // **This is `duplicate_participant_id`'s one home — §8.3 A-73.** I-9 also refused a duplicate id
+  // at the parser; that refusal came out at I-9a, because a duplicate id is a `Trip` saying
+  // something wrong and not a document failing to be a `Trip` (A-20), and because a refusal makes
+  // the trip unopenable and so removes the only surface on which the defect is repairable (QA
+  // P2-7). `fromJSON` now OPENS such a document and this check is what reports it.
+  //
+  // The population is every document built past the type system — a cast, a hand-built `Trip`, a
+  // native bridge, `importDoc` reading the user's own untrusted backup (R15-1), and the later
+  // build that merges two participant lists, which §8.3's `userId` paragraph exists precisely to
+  // keep readable rather than rejected.
   //
   // **No participant id reaches a `message`.** A `ParticipantId` is an opaque minted string
   // (§2.1) and `Issue.message` is the sentence shown in the Issues panel — the same argument

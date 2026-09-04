@@ -17,10 +17,11 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import {
   addParticipant, updateParticipant, removeParticipant,
   createTrip, ensureDays, addStop, copyStopInto, fromJSON, toJSON, validateTrip, sequentialIds,
-  can, canView,
+  can, canView, migrateDoc,
   TripParseError,
 } from '../src/index.ts';
 import type { BuildCtx, Issue, Participant, Trip } from '../src/index.ts';
@@ -206,19 +207,82 @@ test('a document with no participants key parses to an empty array', () => {
 });
 
 /**
- * ROADMAP I-9's *"`fromJSON` rejects a document with a duplicate participant id"*.
+ * **A-73 T1 — the inverted test.** This was ROADMAP I-9's *"`fromJSON` rejects a document with a
+ * duplicate participant id, naming the path"*; §8.3 **A-73** withdrew that bullet and ruled the
+ * check has **one home, `validateTrip`**. It is inverted rather than deleted (A-73 Part 6 item 5),
+ * because deleting it would trade a wrong assertion for no assertion.
  *
- * The refusal carries the JSON path, which is the whole point of hand-rolled parsing here.
+ * The fault this catches: a parser that still refuses a **structurally perfect** `Trip` — every
+ * `Participant` correctly typed, one id used twice — and so makes the document unopenable on the
+ * one surface (`validateTrip`'s `level:'error'` issue) where the user could have repaired it.
+ * That is QA P2-7's harm, and it is why `duplicate_city_key` sits where it sits.
  */
-test('fromJSON rejects a document with a duplicate participant id, naming the path', () => {
+test('A-73 T1: fromJSON OPENS a document with a duplicate participant id, and validateTrip is what reports it', () => {
   const { trip, c } = tripWithDays();
-  const t = addParticipant(trip, { displayName: 'Ada' }, c);
+  let t = addParticipant(trip, { displayName: 'Ada' }, c);
+  t = addParticipant(t, { displayName: 'Grace' }, c);
   const doc = JSON.parse(toJSON(t)) as Record<string, unknown>;
-  (doc.participants as unknown[]).push(JSON.parse(JSON.stringify((doc.participants as unknown[])[0])));
+  const rows = doc.participants as Record<string, unknown>[];
+  rows[1].id = rows[0].id;                                   // one id, two records
+
+  // 1. It opens, and both rows survive in document order with both ids intact.
+  const parsed = fromJSON(JSON.stringify(doc));
+  assert.equal(parsed.participants.length, 2, 'the parser dropped or refused a structurally valid row');
+  assert.deepEqual(parsed.participants.map((p) => p.displayName), ['Ada', 'Grace'], 'document order moved');
+  assert.equal(parsed.participants[0].id, parsed.participants[1].id, 'the parser rewrote an id');
+
+  // 2. `validateTrip` reports it — exactly once, at `error`, naming both people, id in `params`.
+  const hits = of(validateTrip(parsed), 'duplicate_participant_id');
+  assert.equal(hits.length, 1, 'the duplicate is now reported by nobody at all');
+  assert.equal(hits[0].level, 'error');
+  assert.match(hits[0].message, /"Ada"/);
+  assert.match(hits[0].message, /"Grace"/);
+  assert.equal(hits[0].params.participantId, parsed.participants[0].id);
+});
+
+/**
+ * **A-73 T2.** The withdrawn parser refusal justified itself with *"the in-memory document whose
+ * EXPORT would fail to re-import"*. With the refusal out, that claim is not merely withdrawn — it
+ * is **false**, and this is the assertion that says so: the export re-imports, and re-exports to
+ * the same bytes.
+ */
+test('A-73 T2: a document with a duplicated participant id survives toJSON → fromJSON → toJSON byte-identically', () => {
+  const { trip, c } = tripWithDays();
+  let t = addParticipant(trip, { displayName: 'Ada' }, c);
+  t = addParticipant(t, { displayName: 'Grace' }, c);
+  const dup: Trip = { ...t, participants: [t.participants[0], { ...t.participants[1], id: t.participants[0].id }] };
+  const once = toJSON(dup);
+  assert.equal(toJSON(fromJSON(once)), once, 'the export of a duplicated id did not re-import to the same bytes');
+});
+
+/**
+ * **A-73 T3.** Present so the parser refusal's removal cannot be "fixed" by widening the parser to
+ * §8.3's *other* half instead. Two `kind:'self'` rows have always opened; they still do, and
+ * `validateTrip` still carries them on `duplicate_participant_id` with `kind:'self'` in `params`.
+ */
+test('A-73 T3: two kind:"self" rows open, and validateTrip reports them with kind:"self" in params', () => {
+  const { trip, c } = tripWithDays();
+  let t = addParticipant(trip, { displayName: 'Jacob', kind: 'self' }, c);
+  t = addParticipant(t, { displayName: 'Also Jacob', kind: 'self' }, c);
+  const parsed = fromJSON(toJSON(t));
+  assert.equal(parsed.participants.length, 2);
+  const hits = of(validateTrip(parsed), 'duplicate_participant_id');
+  assert.equal(hits.length, 1);
+  assert.equal(hits[0].params.kind, 'self');
+});
+
+/**
+ * **A-73 T4.** The fault: a builder who takes the **type** checks out along with the seen-set.
+ * A-73 Part 6 item 2 — this ruling moved an id-uniqueness check and no type check at all.
+ */
+test('A-73 T4: fromJSON still refuses a non-string participant id, at $.participants[0].id', () => {
+  const { trip, c } = tripWithDays();
+  const doc = JSON.parse(toJSON(addParticipant(trip, { displayName: 'Ada' }, c))) as any;
+  doc.participants[0].id = 7;
   let err: unknown = null;
   try { fromJSON(JSON.stringify(doc)); } catch (e) { err = e; }
-  assert.ok(err instanceof TripParseError, 'a duplicate participant id parsed cleanly');
-  assert.equal((err as TripParseError).path, '$.participants[1].id');
+  assert.ok(err instanceof TripParseError, 'a numeric participant id parsed cleanly');
+  assert.equal((err as TripParseError).path, '$.participants[0].id');
 });
 
 test('fromJSON rejects an unknown participant kind', () => {
@@ -245,6 +309,100 @@ test('fromJSON round-trips a participant carrying a userId a later build wrote',
   const parsed = fromJSON(JSON.stringify(doc));
   assert.equal(parsed.participants[0].userId, 'user-7');
   assert.equal(toJSON(parsed), JSON.stringify(doc, null, 2));
+});
+
+// ------------------------------------------- A-72: the version, and the ladder
+//
+// **§8.3 A-72 (BUILD-NOTES KD-96).** `participants` is an array of **records** on `TripDoc`, so it
+// earns a `SCHEMA_VERSION` bump under `migrate.ts`'s third clause — I-9 shipped it without one, and
+// the loss that made reachable is silent and total: a pre-I-9 build sees `schemaVersion: 2`, equal
+// to its own constant, takes `migrateDoc`'s pass-through exit, opens the document, drops a field it
+// has never heard of, and on the next save writes the user's own trip back without its people.
+// Unlike photos', that channel has no `DB_VERSION` standing in front of it (A-72 Part 2).
+//
+// S1–S4 are A-72 Part 7's criteria. **S5 is the two pins** — `photos.test.ts`'s
+// *"SCHEMA_VERSION is 3"* and `datePrecision.test.ts`'s `assert.equal(SCHEMA_VERSION, 3)` — and it
+// lives there rather than here, because a pin that reads the constant it is pinning is not a pin.
+
+/**
+ * **A-72 S1.** The real v1 document — minted by the build at `598cd7f`, not aged from today's
+ * `toJSON` — arrives at the **current** version with both record arrays supplied.
+ *
+ * The fault this catches, and the reason it is the criterion that carries the most weight: a
+ * `migrateDoc` extended with a **second `if`** rather than rebuilt as a ladder. Such a build sends
+ * the v1 document through `v1ToV2` and stops at 2, and this is the only assertion that says so.
+ */
+test('A-72 S1: the real v1 fixture arrives at schemaVersion 3 with photos: [] AND participants: []', () => {
+  const text = readFileSync(new URL('../../../fixtures/legacy/trip-598cd7f.v1.json', import.meta.url), 'utf8');
+  const raw = JSON.parse(text) as Record<string, unknown>;
+  assert.equal(raw.schemaVersion, 1, 'INCONCLUSIVE: the fixture is not a version-1 document');
+  assert.equal('participants' in raw, false, 'INCONCLUSIVE: the fixture already carries a `participants` key');
+
+  const migrated = migrateDoc(raw) as Record<string, unknown>;
+  assert.equal(migrated.schemaVersion, 3, 'the ladder stopped short — a v1 document did not reach 3');
+  assert.deepEqual(migrated.photos, []);
+  assert.deepEqual(migrated.participants, []);
+
+  const parsed = fromJSON(text);
+  assert.equal(parsed.schemaVersion, 3);
+  assert.deepEqual(parsed.photos, []);
+  assert.deepEqual(parsed.participants, []);
+});
+
+/**
+ * **A-72 S2.** The refusal a newer document gets from an older build, **unchanged in wording and
+ * path**. It is the only sentence a user ever sees from this ruling, `qa/attack7.mjs` asserts it,
+ * and the fault this catches is a ladder that reworded it while moving the number.
+ */
+test('A-72 S2: a document from the future keeps its "Update the app." refusal, byte-for-byte', () => {
+  const { trip } = tripWithDays();
+  const doc = { ...(JSON.parse(toJSON(trip)) as Record<string, unknown>), schemaVersion: 99 };
+  let err: unknown = null;
+  try { migrateDoc(doc); } catch (e) { err = e; }
+  assert.ok(err instanceof TripParseError, 'a schemaVersion 99 document was accepted');
+  assert.equal(
+    (err as TripParseError).message,
+    'document is schemaVersion 99; this build reads up to 3. Update the app. (at $.schemaVersion)',
+  );
+  assert.equal((err as TripParseError).path, '$.schemaVersion');
+});
+
+/**
+ * **A-72 S3.** The bump is not allowed to cost the round trip: participants survive it in order,
+ * the emitted version is the new one, and a second `toJSON` is byte-identical to the first.
+ */
+test('A-72 S3: two participants round-trip in order, at schemaVersion 3, byte-identically', () => {
+  const { trip, c } = tripWithDays();
+  let t = addParticipant(trip, { displayName: 'Ada' }, c);
+  t = addParticipant(t, { displayName: 'Grace', note: 'her mother' }, c);
+  const once = toJSON(t);
+  assert.equal((JSON.parse(once) as Record<string, unknown>).schemaVersion, 3, 'toJSON emitted the old version');
+  const parsed = fromJSON(once);
+  assert.deepEqual(parsed.participants, t.participants);
+  assert.equal(toJSON(parsed), once, 'the second toJSON is not byte-identical to the first');
+});
+
+/**
+ * **A-72 S4.** The two refusals below the ladder. The fault: a ladder that turns either into a
+ * loop, a different message, or an acceptance — and, specifically, a
+ * `no migration path from schemaVersion 0` that has been "helpfully" updated to name an
+ * intermediate version instead of the **original** one the document actually claimed.
+ */
+test('A-72 S4: schemaVersion 0 and schemaVersion "1" keep their own refusals, naming the original version', () => {
+  const { trip } = tripWithDays();
+  const doc = JSON.parse(toJSON(trip)) as Record<string, unknown>;
+
+  let zero: unknown = null;
+  try { migrateDoc({ ...doc, schemaVersion: 0 }); } catch (e) { zero = e; }
+  assert.ok(zero instanceof TripParseError, 'schemaVersion 0 was accepted');
+  assert.equal((zero as TripParseError).message, 'no migration path from schemaVersion 0 (at $.schemaVersion)');
+  assert.equal((zero as TripParseError).path, '$.schemaVersion');
+
+  let str: unknown = null;
+  try { migrateDoc({ ...doc, schemaVersion: '1' }); } catch (e) { str = e; }
+  assert.ok(str instanceof TripParseError, 'a string schemaVersion was accepted');
+  assert.equal((str as TripParseError).message, 'missing schemaVersion (at $.schemaVersion)');
+  assert.equal((str as TripParseError).path, '$.schemaVersion');
 });
 
 // ---------------------------------------------------------------- validateTrip

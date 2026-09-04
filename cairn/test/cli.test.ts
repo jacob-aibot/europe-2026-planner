@@ -77,7 +77,7 @@ test('cli export still writes a file inside cairn/', () => {
 
 test('cli export with no target still prints to stdout', () => {
   const r = cli('export');
-  assert.match(r.out.slice(0, 60), /^\{\s*"schemaVersion": 2/);
+  assert.match(r.out.slice(0, 60), /^\{\s*"schemaVersion": 3/);
 });
 
 test('the live planner is not writable through any cli command', () => {
@@ -161,7 +161,7 @@ test('cli export --force overwrites deliberately', () => {
     writeFileSync(target, 'STALE');
     const r = cli('export', target, '--force');
     assert.equal(r.code, 0, r.err);
-    assert.match(readFileSync(target, 'utf8').slice(0, 40), /^\{\s*"schemaVersion": 2/);
+    assert.match(readFileSync(target, 'utf8').slice(0, 40), /^\{\s*"schemaVersion": 3/);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
