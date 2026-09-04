@@ -520,7 +520,12 @@ test('G8: exactly two claimTransition call sites, and exactly seven reseeding in
     `claimTransition call sites: flushForTransition's success exit and deleteTrip's rule-6c branch, and nothing else — found ${calls.length}`);
   assert.match(STORE_SRC, /if \(!state\.doc \|\| skip\) return claimTransition\(\);/,
     'the claim is no longer flushForTransition\'s last synchronous act beside the dirty() read — A-67 Part 5');
-  assert.match(STORE_SRC, /if \(state\.activeTripId === id\) \{ cancelTimer\(\); claimTransition\(\); \}/,
+  // The predicate is hoisted into `wasActive` at revision 49 — **A-68 Part 6** gives this line
+  // verbatim — so its failure path can re-read availability with the trip still open. Same
+  // expression, same branch, same claim: only the name of the fact moved.
+  assert.match(STORE_SRC, /const wasActive = state\.activeTripId === id;/,
+    'A-68 Part 6: deleteTrip no longer hoists its own branch predicate, so its catch cannot read it');
+  assert.match(STORE_SRC, /if \(wasActive\) \{ cancelTimer\(\); claimTransition\(\); \}/,
     'deleteTrip\'s rule-6c branch no longer claims — A-67 Part 6');
 
   assert.equal((STORE_SRC.match(/reseed:\s*true/g) ?? []).length, 7,

@@ -438,10 +438,21 @@ export function createStore(opts: StoreOptions) {
    * open read as `'ready'` until the next open, and the render path's `read() === null` is what
    * makes that failure honest at the one moment it is visible.
    *
-   * Every branch writes an answer, which is what makes property 5's *"exactly one terminal state
-   * follows every `'loading'`"* true by construction rather than by inspection — **and the
-   * answer that stands is the NEWEST one, ordered by TIME and not by trip** (§4.2 rule **6d**,
-   * **A-67**; QA **R46-3**, then **R47-2**).
+   * Every branch writes an answer **or a newer bump of this slot has taken responsibility for
+   * one**, which is what makes property 5's *"exactly one terminal state follows every
+   * `'loading'`"* true by construction rather than by inspection — **and the answer that stands
+   * is the NEWEST one, ordered by TIME and not by trip** (§4.2 rule **6d**, **A-67**; QA
+   * **R46-3**, then **R47-2**).
+   *
+   * **That second clause is A-68 Part 3 and it is new** (QA **R48-2**). A-67 put a `return` in
+   * front of all four branches, which made the sentence above false: a read whose ticket had been
+   * invalidated wrote nothing at all, and if the thing that invalidated it installed no document
+   * and issued no replacement read, nothing ever answered. The property is restored by the
+   * **pairing rule** rather than by the branches — *a bump of a slot's sequence is a promise to
+   * replace the answer it invalidated.* A-68 Part 7 enumerates the ten bumps in this file and the
+   * answer each one names, and the invariant they add up to is directly testable: **when
+   * everything has settled, either `state.doc === null`, or `photos.available !== null`, or
+   * `photos.availabilityError !== null`.**
    *
    * R46-3 asked *"is this answer for the trip that is open?"* and that is the wrong question
    * asked of the right subject. It covered two overlapping opens of two *different* trips and
@@ -456,8 +467,9 @@ export function createStore(opts: StoreOptions) {
    * data).
    *
    * The cross-trip case R46-3 was written for is still covered, and by the same line: every
-   * replacement of `state.doc` claims `photoAvailability` too (`claimTransition`), so a read
-   * issued for the outgoing document is invalidated by the incoming one's claim.
+   * replacement of `state.doc` **supersedes** this slot at its reseed (A-68 Part 4 — it used to
+   * *claim* it, which is R48-2), so a read issued for the outgoing document is invalidated one
+   * synchronous statement before the incoming document is installed.
    *
    * **The guard is a drop, never a retarget** — `scheduleSave`'s rule for a late timer (QA R3-2),
    * one subsystem over. The losing read is discarded rather than re-aimed at a document it never
@@ -695,6 +707,12 @@ export function createStore(opts: StoreOptions) {
       });
       return;
     }
+    // **A-68 Part 4.2 item 2 — this install deliberately gets NO supersede, and it is the second
+    // of the two sites a builder "completing the set" would break.** It is the seventh reseeding
+    // install and it is `doMerge`'s alone, but it spreads `...state` and replaces **neither** `photos` nor
+    // `browsing`, so there is nothing here to invalidate. `doMerge` already issues its own
+    // `readPhotoAvailability` after the chain, **whose claim is itself the invalidation**. A merge
+    // is still not a transition and still claims nothing (A-67 Part 7's last row).
     set({
       ...state,
       ...(stillOurs ? { doc: toWrite } : {}),
@@ -839,27 +857,40 @@ export function createStore(opts: StoreOptions) {
   }
 
   /**
-   * **The ONE place a live-document transition begins** — §4.2 rule **6d**, **A-67** Part 5.
+   * **The ONE place a live-document transition begins** — §4.2 rule **6d**, **A-68** Part 4.
    *
-   * It claims **every slot a reseed replaces**, because that is a rule a builder can apply
-   * without judgement: a reseeding `set` replaces `doc`/`activeTripId`/`persistence`/`history`/
-   * `ui`, `browsing` and the whole `photos` block together.
+   * **It claims `doc` and NOTHING else, and the reason is written here because a reader who
+   * finds a one-slot claim with no explanation will "restore" the other two** (QA **R48-2**).
+   * Revision 47 claimed every slot a reseed replaces — `browsing` and `photoAvailability` as
+   * well — on the rule *"the fields a reseed replaces"*, which a builder can apply without
+   * judgement. It is the wrong rule, because **a claim is a promise to answer** (A-68 Part 3): it
+   * invalidates whatever was in flight and undertakes to replace it on **every** exit, including
+   * the throws. **Nine** exits of this function's holders install no document and issue no
+   * replacement read — a delete of a *non*-active trip, an `openTrip` for a missing id, an
+   * `openTrip` for a corrupt document, `importDoc`'s three refusals, an `adoptTrip` whose `load`
+   * rejects, and `deleteTrip`'s rejecting cascade on both branches — so the availability read for
+   * the trip that **stayed open** was dropped and nothing ever answered: `phase: 'loading'`
+   * forever, which is §10 **A-63**'s unresolving spinner rebuilt (A-68 Part 4.1's table).
    *
-   * A transition never *checks* `browsing` or `photoAvailability`. Those two claims exist to
-   * invalidate other people's in-flight work — A-67 Part 4's second half: **a write that changes
-   * the subject an in-flight read is reading must invalidate that read.**
+   * The two ancillary slots are **superseded at the reseed that replaces them** instead, which is
+   * where A-67 Part 4's own criterion puts them: a transition's write into `photos` and
+   * `browsing` is `initialState()`'s constants, computed at the instant of writing, so it is a
+   * synchronous replacement — invalidate, then write — and not a claim. An exit that never took
+   * the claim cannot strand anything, which is how one line of deletion closes all nine.
    */
   function claimTransition(): Ticket {
-    guard.claim('browsing');
-    guard.claim('photoAvailability');
     return guard.claim('doc');
   }
 
-  /** **The ONE place a live-document transition ends.** Always in a `finally`, on every exit. */
+  /**
+   * **The ONE place a live-document transition ends.** Always in a `finally`, on every exit.
+   *
+   * One slot, for the reason `claimTransition` gives above (A-68 Part 4). Releasing slots this
+   * function never claimed would drive `busy` negative and make `observe` hand out tickets
+   * inside somebody else's window.
+   */
   function releaseTransition(): void {
     guard.release('doc');
-    guard.release('photoAvailability');
-    guard.release('browsing');
   }
 
   /**
@@ -1343,6 +1374,14 @@ export function createStore(opts: StoreOptions) {
         doc = core.createTrip(init, ctx());
         // The last statement before the write, with no `await` between them — A-67 Part 3.
         if (!guard.current('doc', t)) throw new Error(TRANSITION_SUPERSEDED_MESSAGE);
+        // **A-68 Part 4, and it is the same call at all six reseed sites.** The reseed replaces
+        // `photos` and `browsing` with `initialState()`'s values, so it is a *synchronous*
+        // replacement of both slots: invalidate, then write (A-67 Part 3's own sentence for a
+        // supersede). This is `closeBrowse`'s shipped pattern applied to the six writers that
+        // were using a claim instead — see `claimTransition` for why a claim was wrong here.
+        // Last statements before the install, with no `await` between them.
+        guard.supersede('photoAvailability');
+        guard.supersede('browsing');
         cache = null;
         set({
           ...initialState(),
@@ -1389,6 +1428,9 @@ export function createStore(opts: StoreOptions) {
         const existing = await ports.storage.load(doc.id);
         if (existing !== null) return await this.openTrip(doc.id);
         if (!guard.current('doc', t)) throw new Error(TRANSITION_SUPERSEDED_MESSAGE);
+        // A-68 Part 4 — reseed site 2 of 6. See `createTrip` and `claimTransition`.
+        guard.supersede('photoAvailability');
+        guard.supersede('browsing');
         cache = null;
         set({
           ...initialState(),
@@ -1447,6 +1489,9 @@ export function createStore(opts: StoreOptions) {
         // is also what makes an OLDER transition unable to install over a newer one — two
         // `openTrip` calls whose `load`s resolve out of order (Part 10, G7).
         if (!guard.current('doc', t)) return state;
+        // A-68 Part 4 — reseed site 3 of 6. See `createTrip` and `claimTransition`.
+        guard.supersede('photoAvailability');
+        guard.supersede('browsing');
         cache = null;
         set({
           ...initialState(),
@@ -1541,6 +1586,10 @@ export function createStore(opts: StoreOptions) {
       if (t === null) return state;
       try {
         if (!guard.current('doc', t)) return state;
+        // A-68 Part 4 — reseed site 4 of 6. See `createTrip` and `claimTransition`. The document
+        // goes to `null` here, so §10.6 has no listing to answer for and nothing is owed after it.
+        guard.supersede('photoAvailability');
+        guard.supersede('browsing');
         cache = null;
         set({ ...initialState(), library: state.library, rescan: state.rescan, openFailures: state.openFailures }, { reseed: true });
       } finally {
@@ -1559,14 +1608,23 @@ export function createStore(opts: StoreOptions) {
      * §4.2 rule **6d** (**A-67** Part 6): **this is the one transition that claims and never
      * checks.** Its install is computed from `state` at the instant of writing
      * (`if (state.activeTripId === id)`), which is Part 4's criterion answering the question for
-     * it. It still claims, because the delete must invalidate an availability read and an import
-     * for a trip it is destroying — and R46-1 face 3's requirement (*no byte record written for a
-     * file that had not reached its `write`*) is now met by the same check as everything else.
+     * it. It still claims the **`doc`** slot, because the delete must invalidate an import for a
+     * trip it is destroying — and R46-1 face 3's requirement (*no byte record written for a file
+     * that had not reached its `write`*) is met by the same check as everything else.
      * **`ports.storage.delete` and the library-row removal are never conditional on a ticket**;
      * only a document *install* is.
+     *
+     * **A-68 Parts 4 and 6 give this method three things, and two of them are absences.** The
+     * **active** branch's reseed supersedes the two ancillary slots (site 5 of 6); the
+     * **non**-active branch's install deliberately gets nothing at all, for the reason written
+     * beside it; and the `catch` below re-reads availability when the cascade rejects with the
+     * trip still open, which is the one exit §10 **A-65 T1** could otherwise be violated through.
      */
     async deleteTrip(id: string): Promise<AppState> {
-      if (state.activeTripId === id) { cancelTimer(); claimTransition(); }
+      // Hoisted to the first line so the failure path below can read it — **A-68 Part 6**. It is
+      // the same expression the install is computed from, evaluated before anything can move it.
+      const wasActive = state.activeTripId === id;
+      if (wasActive) { cancelTimer(); claimTransition(); }
       else if ((await flushForTransition()) === null) return state;
       // §4.2 rule 6c, revision 5 (QA R7-3). **The exception is about not WRITING. It is not
       // about not ORDERING.** A write already queued on the chain can settle *after*
@@ -1627,10 +1685,37 @@ export function createStore(opts: StoreOptions) {
           // exists is not an observation. Dropped in the same `set`, on both branches.
           const openFailures = clearOpenFailure(id);
           if (state.activeTripId === id) {
+            // A-68 Part 4 — reseed site 5 of 6. See `createTrip` and `claimTransition`.
+            guard.supersede('photoAvailability');
+            guard.supersede('browsing');
             cache = null;
             set({ ...initialState(), library, rescan: state.rescan, openFailures }, { reseed: true });
-          } else set({ ...state, library, openFailures });
+          } else {
+            // **A-68 Part 4.2 item 1 — this branch deliberately gets NOTHING, and a builder who
+            // "completes the set" here has introduced R48-2 at a new site.** It spreads `...state`
+            // and replaces neither `photos` nor `browsing`, so there is nothing to invalidate; and
+            // `ports.photo.removeTrip(id)` above is a key-range delete over *another* trip's key
+            // space (§10 **A-62**), so it cannot change what `present()` would answer for the trip
+            // that is open. A-67 Part 4's second-half rule is satisfied by doing nothing, and
+            // R48-2's face 1 closes **correctly** rather than by compensation: the in-flight read
+            // was never stale, so it must be allowed to land.
+            set({ ...state, library, openFailures });
+          }
         });
+      } catch (err) {
+        // **A-68 Part 6 — the tenth exit, which is neither finding's.** The cascade threw with the
+        // trip still open and `ports.photo.removeTrip` may already have run, so what `present()`
+        // would answer has changed and no reseed happened to record it. Without this line the
+        // listing keeps reading `'ready'` over bytes that are gone — §10 **A-65 T1**'s exact
+        // prohibition, produced by a fault path rather than by a race. Ask the port instead.
+        //
+        // `readPhotoAvailability`'s own claim **is** the invalidation, so there is no supersede
+        // here; it touches a different slot from the `doc` claim this still holds, and it
+        // dispatches nothing. The happy path is unchanged and costs nothing: the reseed's own
+        // supersede covers `removeTrip` there, and a document-less state has no listing to answer
+        // for.
+        if (wasActive) await readPhotoAvailability(state.doc);
+        throw err;
       } finally {
         releaseTransition();
       }
@@ -1723,6 +1808,10 @@ export function createStore(opts: StoreOptions) {
         total: (joining ? state.photos.total : 0) + picked.length,
       });
       let remaining = picked.length;
+      // **A-68 Part 5b.** A supersede that cannot write the answer OWES one, and the flag — not an
+      // `await` inside the loop — is what keeps that at **one** port read per batch rather than
+      // one per file.
+      let availabilityOwed = false;
 
       for (const f of picked) {
         const fail = (reason: PhotoImportFailure) => {
@@ -1829,17 +1918,31 @@ export function createStore(opts: StoreOptions) {
               // pre-existing photo then read `'missing'`, which §10.6 property 3 renders as *"this
               // photo's image is no longer stored on this device"* over bytes that are on disk.
               // Leaving `null` alone keeps the listing `'loading'` — honestly unknown, not wrong.
+              //
+              // **A write that changes the subject an in-flight read is reading must invalidate
+              // that read** — §4.2 **A-67** Part 4, and the rule is **unconditional** (**A-68**
+              // Part 5a, QA **R48-1**). Revision 47 shipped this call *inside* R45-4's value guard
+              // below, so with `available === null` a byte `write` invalidated nothing and an
+              // availability read issued *before* those bytes existed landed *after* them and
+              // reported `'missing'` over them — R45-4's own rendered defect, reached through a
+              // third door. It is hoisted out, and R45-4's guard is **kept verbatim, nested inside
+              // it**: the two answer different questions (*"is this answer the newest one"* versus
+              // *"was availability ever read for this trip"*) and only the first is about ordering.
+              //
+              // Unconditional within the subject: the step-5 `guard.current('doc', g)` check is
+              // one statement up with no `await` since, so `state.doc` is still the document these
+              // bytes were written for. A synchronous replacement has no window: invalidate, then
+              // write.
+              guard.supersede('photoAvailability');
               if (state.photos.available !== null && state.photos.tripId === state.doc.id) {
                 const available = new Set(state.photos.available);
                 available.add(id);
-                // **A write that changes the subject an in-flight read is reading must invalidate
-                // that read** — §4.2 **A-67** Part 4. The `write` above changed what `present()`
-                // would answer, so an availability read issued *before* those bytes existed must
-                // not land *after* them and report `'missing'` over them. That is R45-4 reached
-                // through a third door, closed by one call. A synchronous replacement has no
-                // window: invalidate, then write.
-                guard.supersede('photoAvailability');
                 setPhotos({ available });
+                availabilityOwed = false;
+              } else {
+                // **A-68 Part 3: a supersede that cannot write the answer OWES one.** Discharged
+                // once, after the loop — never here, or the batch costs a port round trip per file.
+                availabilityOwed = true;
               }
             }
           }
@@ -1855,6 +1958,17 @@ export function createStore(opts: StoreOptions) {
       // Settle THIS batch and no other: a flat `pending: 0` would report a concurrent batch as
       // finished (R45-11). `remaining` is 0 unless the loop above was cut short.
       if (remaining > 0) setPhotos({ pending: Math.max(0, state.photos.pending - remaining) });
+      // **A-68 Part 3's pairing rule, discharged** — after the settle above, so the fraction
+      // reaches `0/0` first. Guarded on the ticket because a batch that ended on a transition owes
+      // nothing: that transition superseded this slot itself and issued its own read.
+      //
+      // **This is not the automatic retry A-63 Part 3 forbids** (A-68 Part 5d). A-63 forbids the
+      // store re-running a read *because the read failed*; this runs because **the store changed
+      // the answer** — it wrote bytes and then invalidated the only answer it had. Once per batch,
+      // never in a loop, and only when availability was unknown going in, which after any
+      // successful `openTrip`/`createTrip`/`adoptTrip`/`importDoc` it is not. §10.6 property 2's
+      // *"once per trip open"* is unmoved: this is a write recording itself.
+      if (availabilityOwed && guard.current('doc', g)) await readPhotoAvailability(state.doc);
       return state;
     },
 
@@ -1920,35 +2034,69 @@ export function createStore(opts: StoreOptions) {
      * (§10.1 point 4).
      *
      * @throws {Error} if there is no active trip, or no photo with that id — both §2.1.
+     * @throws {Error} `TRANSITION_IN_PROGRESS_MESSAGE` — thrown **through its own `this.dispatch`**
+     *         while a document transition is in flight (§4.2 rule **6d**, QA **R48-3**'s second
+     *         note). The record is not removed and no byte is touched.
      */
     async removePhoto(photoId: string): Promise<AppState> {
       if (!state.doc) throw new Error('removePhoto: no active trip');
       const tripId = state.doc.id;
       this.dispatch({ type: 'removePhoto', photoId });
+      // **A-68 Part 5c — the `doc` observation this method has never had, and the hoist below is
+      // what makes its absence load-bearing.** `observe` and not `claim`: this writes THROUGH the
+      // document slot, exactly as `importPhotos` does, so it must not invalidate anybody. Taken
+      // after the `dispatch`, whose own refusal (A-67 Part 6) means a transition window cannot be
+      // open here; `current(slot, null)` is `false` anyway, so no narrowing is needed.
+      //
+      // Until A-68 a transition landing inside the `remove` below was absorbed *by accident* — the
+      // reseed leaves `available === null`, so the value guard did nothing. With the supersede
+      // hoisted out of that guard it would fire against the trip the user moved to and drop
+      // **that** trip's read: R48-2 committed from a new site by R48-1's own fix.
+      const g = guard.observe('doc');
       if (!ports.photo) return state;
+      let availabilityOwed = false;
       try {
         await ports.photo.remove(tripId, photoId);
-        // R45-4's rule, on the other side of the same distinction: an UNREAD availability stays
-        // unread. Manufacturing `new Set()` here would answer *"read, and none of this trip's
-        // photos have bytes"* on the strength of one delete.
-        if (state.photos.available !== null) {
-          const available = new Set(state.photos.available);
-          available.delete(photoId);
-          // A-67 Part 4, the same call for the same reason as `importPhotos`': the `remove` above
-          // changed what `present()` would answer, so a read issued before it must not land after
-          // it and report bytes that are gone as present.
+        // **The whole tail is the subject's**, and a transition landing in the `remove` above takes
+        // it away: `state.photos` has already been reseeded for another trip, so an availability
+        // write here would edit that trip's set and an orphan appended here would be reported
+        // against it (§10 **A-66** Part 3, the same rule the import loop keeps).
+        if (guard.current('doc', g)) {
+          // A-67 Part 4, hoisted for the same reason as `importPhotos`' (A-68 Part 5a): the
+          // `remove` above changed what `present()` would answer, so a read issued before it must
+          // not land after it and report bytes that are gone as present — and the rule does not
+          // stop applying because this store has not read availability yet.
           guard.supersede('photoAvailability');
-          setPhotos({ available });
+          // R45-4's rule, on the other side of the same distinction, kept verbatim and now nested
+          // inside the ordering call: an UNREAD availability stays unread. Manufacturing
+          // `new Set()` here would answer *"read, and none of this trip's photos have bytes"* on
+          // the strength of one delete.
+          //
+          // **No `tripId` conjunct is added** and A-68 Part 5c says why: under `current('doc', g)`
+          // the document has not been replaced, and `photos.tripId` is `null` only when
+          // `available` is `null` too, because `readPhotoAvailability` writes the pair together. A
+          // conjunct that can never change an outcome is a third answer to R45-4's question.
+          if (state.photos.available !== null) {
+            const available = new Set(state.photos.available);
+            available.delete(photoId);
+            setPhotos({ available });
+          } else availabilityOwed = true;
+          setPhotos({ orphans: state.photos.orphans.filter((id) => id !== photoId) });
         }
-        setPhotos({ orphans: state.photos.orphans.filter((id) => id !== photoId) });
       } catch {
-        // The record is gone and the bytes are not. Observed, recorded, never swept.
-        setPhotos({
-          orphans: state.photos.orphans.includes(photoId)
-            ? state.photos.orphans
-            : [...state.photos.orphans, photoId],
-        });
+        // The record is gone and the bytes are not. Observed, recorded, never swept — and reported
+        // against the trip it happened to, or not at all.
+        if (guard.current('doc', g)) {
+          setPhotos({
+            orphans: state.photos.orphans.includes(photoId)
+              ? state.photos.orphans
+              : [...state.photos.orphans, photoId],
+          });
+        }
       }
+      // A-68 Part 3's pairing rule, discharged — the same one-read-per-operation discipline as
+      // `importPhotos`', and for the same reason it is not A-63's forbidden retry (Part 5d).
+      if (availabilityOwed && guard.current('doc', g)) await readPhotoAvailability(state.doc);
       return state;
     },
 
@@ -2119,6 +2267,9 @@ export function createStore(opts: StoreOptions) {
           doc = { ...doc, id: fresh, title: `${doc.title} (imported)` };
         }
         if (!guard.current('doc', t)) throw new Error(TRANSITION_SUPERSEDED_MESSAGE);
+        // A-68 Part 4 — reseed site 6 of 6. See `createTrip` and `claimTransition`.
+        guard.supersede('photoAvailability');
+        guard.supersede('browsing');
         cache = null;
         set({
           ...initialState(),
