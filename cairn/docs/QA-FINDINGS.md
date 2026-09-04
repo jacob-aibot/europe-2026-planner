@@ -1,4 +1,156 @@
-# Cairn — QA findings, Phase 1 **rounds 2–11** and Phase 2 **rounds 12 (2a), 13 (I-3a / I-4a), 14 (A-11…A-14), 15 (A-15…A-17), 16 (A-18 / A-19), 17 (A-20 / R16-1), 18 (A-21 / A-21a), 19 (A-22 / A-23), 20 (A-24 / R19-1 / R19-2 / KD-50), 21 (A-25 — the closure round), 22 (I-5 / I-5a — A-26's mixed-resolution country index), 23 (I-5b — A-27's forgiveness entry), 24 (I-5c — A-28's second arm for filter 2), 25 (the I-5 closure round), 26 (I-6 — the widened `TripSummaryRow` and the `SUMMARY_VERSION` rescan), 27 (I-6a — A-29's stated-country gate and A-30's `refreshSummary`) 28 (I-7 — `travelStats` and the row's record census), 29 (I-7a — A-32's civil calendar, A-33's exit criterion 6, A-34's `provisional`) 30 (I-7b — A-35's span cap, A-36's executed port gate, A-37's row read gates) 31 (A-38 — the seeded double and `ensureReady`'s upcast) 32 (A-39 — the finite covering set and the boundary that closes the arc), 33 (I-8a — the tab shell, the world map, the token layer and the signal-collision fix), 34 (I-8c — A-45's calendar gate, A-44's lifecycle read gate, BLD-3's way out) 35 (I-8e — A-46's unreadable row, its rescue export, and R34-1's ordering fix) 36 (I-8d — A-41's atlas frame and A-42's withdrawn min-span claim; I-8d's first adversarial round) 37 (I-8g — A-48's `countryKeyPoint`, the connected-components partition, C9's paint order and the pane's `aspect`) 38 (I-8h — A-49's `countryParts`, C8′'s extent, C8″'s detached pane and A-50's symmetric pane box) 39 (I-8i — A-51's one-pane-per-cluster frame, A-52's ring filter and A-53's home/extent panes + I18) 40 (I-8f + I-8j together — A-47's `openFailures`/`rowUnopenable`, and A-54's G7′/G7″ layout, D/I19 ring guard and G5′ tie-break) 41 (I-8b — the Profile, the mobile-first shell, and `DESIGN.md` §5/§6's first rendered acceptance standard) 42 (I-8b's repair pass — the mandatory re-breaker over round 41's 3 MAJOR / 14 MINOR, `DESIGN.md` revision 2 §6.2's refusal-equivalence criterion, and the vacuous fault harness) and **43 (I-12 — A-56's `cities[].centre` + `firstDay`/`lastDay`, `SUMMARY_VERSION` 4 → 5, and `TravelStatsCity`'s city dates) 44 (I-12a — A-59's counted city-date fallback and nameable row, A-60's clamp-artefact fix) 45 (I-13 — the photo foundation: §10's record class, EXIF reader, byte stores and loading-state selectors, A-57/A-58/A-61) and **46 (I-13b — the confirmation round over the whole photo repair arc: A-62's `[tripId, photoId]` byte key, A-63's fourth `PhotoListing` phase, A-64's withdrawn provenance claim)****
+# Cairn — QA findings, Phase 1 **rounds 2–11** and Phase 2 **rounds 12 (2a), 13 (I-3a / I-4a), 14 (A-11…A-14), 15 (A-15…A-17), 16 (A-18 / A-19), 17 (A-20 / R16-1), 18 (A-21 / A-21a), 19 (A-22 / A-23), 20 (A-24 / R19-1 / R19-2 / KD-50), 21 (A-25 — the closure round), 22 (I-5 / I-5a — A-26's mixed-resolution country index), 23 (I-5b — A-27's forgiveness entry), 24 (I-5c — A-28's second arm for filter 2), 25 (the I-5 closure round), 26 (I-6 — the widened `TripSummaryRow` and the `SUMMARY_VERSION` rescan), 27 (I-6a — A-29's stated-country gate and A-30's `refreshSummary`) 28 (I-7 — `travelStats` and the row's record census), 29 (I-7a — A-32's civil calendar, A-33's exit criterion 6, A-34's `provisional`) 30 (I-7b — A-35's span cap, A-36's executed port gate, A-37's row read gates) 31 (A-38 — the seeded double and `ensureReady`'s upcast) 32 (A-39 — the finite covering set and the boundary that closes the arc), 33 (I-8a — the tab shell, the world map, the token layer and the signal-collision fix), 34 (I-8c — A-45's calendar gate, A-44's lifecycle read gate, BLD-3's way out) 35 (I-8e — A-46's unreadable row, its rescue export, and R34-1's ordering fix) 36 (I-8d — A-41's atlas frame and A-42's withdrawn min-span claim; I-8d's first adversarial round) 37 (I-8g — A-48's `countryKeyPoint`, the connected-components partition, C9's paint order and the pane's `aspect`) 38 (I-8h — A-49's `countryParts`, C8′'s extent, C8″'s detached pane and A-50's symmetric pane box) 39 (I-8i — A-51's one-pane-per-cluster frame, A-52's ring filter and A-53's home/extent panes + I18) 40 (I-8f + I-8j together — A-47's `openFailures`/`rowUnopenable`, and A-54's G7′/G7″ layout, D/I19 ring guard and G5′ tie-break) 41 (I-8b — the Profile, the mobile-first shell, and `DESIGN.md` §5/§6's first rendered acceptance standard) 42 (I-8b's repair pass — the mandatory re-breaker over round 41's 3 MAJOR / 14 MINOR, `DESIGN.md` revision 2 §6.2's refusal-equivalence criterion, and the vacuous fault harness) and **43 (I-12 — A-56's `cities[].centre` + `firstDay`/`lastDay`, `SUMMARY_VERSION` 4 → 5, and `TravelStatsCity`'s city dates) 44 (I-12a — A-59's counted city-date fallback and nameable row, A-60's clamp-artefact fix) 45 (I-13 — the photo foundation: §10's record class, EXIF reader, byte stores and loading-state selectors, A-57/A-58/A-61) and **46 (I-13b — the confirmation round over the whole photo repair arc: A-62's `[tripId, photoId]` byte key, A-63's fourth `PhotoListing` phase, A-64's withdrawn provenance claim) 47 (I-13c — the confirmation round over the round-46 repair pass and revisions 45/46: A-62 Part 8 residue 4, A-65's refused deferred delete, A-66's five-armed failure union)****
+
+> **Status (as of `master` @ `c440170`, independently verified 2026-09-04 — round 47, the
+> confirmation-breaker pass over the round-46 repair pass (`a6c5d04`), architect revisions 45 and
+> 46 (`9bd8418`, `4105bb8`) and I-13c group 3 (`c440170`). Surface: `git diff 7cb5965 c440170` —
+> **19 files, 1,323 insertions / 39 deletions**, of which 156 lines are added production code and
+> **24 of those are outside comments**. Rounds 2–46 are unaffected below, except that this round
+> re-cut `qa/r45-i13.mjs` §K and `qa/r46-i13b.mjs` §G and §K — see the row on that.**
+>
+> **VERDICT — I-13 + I-13b + I-13c: SEND BACK. 0 BLOCKERS, 2 MAJOR (R47-1, R47-2), 1 MINOR
+> (R47-3).** Everything routed out of round 46 is genuinely fixed and I could not break any of the
+> three fixes *on the case it was written for*. R46-1's trip-identity check survives a three-state
+> transition (A → B → C) and the return trip (A → B → A) that its `!==` cannot distinguish;
+> R46-2's `doMerge` line survives a two-tab merge of my own construction that takes in three of
+> another tab's photographs; R46-3's guard drops the losing read exactly as it should. **A-65 T1–T5
+> and A-66 U1–U5 all hold**, re-derived here rather than read off the two re-cut probes, and both
+> rulings' refusals are checkable and checked. The compound key, the escaped double and
+> `fromJSON`'s new NUL refusal survived a 100 × 100 adversarial fuzz for injectivity and
+> prefix-freeness.
+>
+> **Both MAJORs are the same shape and it is the shape this arc keeps producing: a guard that
+> checks the right fact at a moment that is not the right moment.** R47-1 — `importPhotos`' dispatch
+> guard asks *"is `tripId` still the open document?"* and gets a true answer, but a dispatch is not
+> durable until a flush runs for it, and `openTrip`'s flush has already happened by then: there is
+> a `storage.load` await between `flushForTransition()` and the reseeding `set`, and everything
+> dispatched inside it is discarded with `persistence.status: 'idle'`. **Four photographs picked,
+> four decoded, four written to disk, three silently gone, nothing reported** — measured. R47-2 —
+> `readPhotoAvailability`'s new guard orders answers by **trip** and not by **time**, so two
+> overlapping reads *for the same trip* still let the older one land last. One of its three faces
+> reproduces **R46-2's own measured end state on R46-2's own fix**.
+>
+> **Neither is a regression that this repair pass introduced**, and that matters for how it is
+> read: R47-1's window predates the photo arc entirely (`importPhotos` is merely the first thing in
+> this app that dispatches from a promise the user did not just create), and R47-2 is the
+> unclosed half of R46-3 — whose own finding text offered *"or carry a generation counter"* as the
+> alternative that would have closed both. The repair pass took the narrower option twice, and
+> twice the narrower option is exactly right for the case it was routed and exactly not enough for
+> the neighbouring one.
+>
+> | | |
+> |---|---|
+> | **BLOCKERS** | **0, and no privacy defect.** Over `git diff 7cb5965 c440170 -- cairn/packages/*/src cairn/apps/web/src cairn/cli.ts` — 156 added lines, **24 outside comments** — **0** matching `console.*`, `fetch(`, `XMLHttpRequest`/`sendBeacon`, `localStorage`/`sessionStorage`, `geolocation`/`watchPosition`, `Date.now`/`new Date(`, `Math.random`/`crypto.randomUUID`, `imap`/`gmail`/`oauth`/`mailbox`, a `lat:`/`lng:` literal, or `setTimeout`/`setInterval` (A-65 **T5**'s own refusal, checked as a fence). **No DOM reference in any added `packages/core` or `packages/client` line** (`cairn-constraints` §5). The one new *message* in the range is `fromJSON`'s *"a trip id may not contain the character U+0000"* — I asserted it carries no document content and no raw NUL. `node cli.ts photos fixtures/photo/*.jpg` still emits **no decimal at all**. `SCHEMA_VERSION` is still **2**, `DB_VERSION` still **5**, core's runtime export surface still **83**. `package.json`/`package-lock.json` **zero-line diff** across all four commits. **Zero `.tsx`.** `docs/design/` untouched. Nothing outside `cairn/`; `git status --porcelain -- europe-2026-itinerary.html docs/ tickets/` empty. |
+> | **Does it even run, from clean?** | BUILD-NOTES §2's commands, literally. `npm run test:tap` → **1359 pass / 0 fail / 0 skipped / 0 cancelled**, which is what §2's code block and the two newest addenda both state; the probe asserts the published figure against the measured one rather than pinning a literal. `npm run typecheck` clean on both projects, **exit 0** (`pretypecheck` generated the sample from nothing). `node cli.ts photos …` prints what each file's EXIF says. `node qa/r3-loss.mjs` and `node qa/r4-switch.mjs` — the two probes that own §4.2 rule 6 — are still green, and **that is a finding about them rather than a reassurance**: see R47-1. |
+> | **R46-1's fix, attacked rather than re-run** | `qa/r47-i13c.mjs` §B. **A → B → C mid-decode**: nothing reaches B or C, every byte the abandoned batch wrote is under A's key, no failure is reported, and exactly one derivative pair is stranded. The two-state guard is not fooled by a three-state transition. **A → B → A**: the guard passes on the return, correctly — the batch completes into the trip it was picked from, B gets nothing, and the `{kind:'day'}` attach still resolves, so `validateTrip` reports no `photo_attach_dangling`. §C drives the abort's unwind on a five-file batch with the switch after file 2: the two files that had landed are still trip A's **and are persisted**, B holds none of them, `pending`/`total` settle to `0/0` on the trip the user moved to, and `orphanPhotoBytes` does not pretend to have observed the stranded pair. **A-66 U1, U2 and U4, green.** |
+> | **A-65 and A-66, re-derived rather than read** | `qa/r47-i13c.mjs` §J and §K, independent of the two re-cut probes. **T1** record back with every field intact, both derivatives gone, `{phase:'ready', missing:1, availability:'missing'}` after a *fresh* read, no throw. **T2** the in-session set agrees with the fresh read. **T3** `PhotoPort.remove` called exactly once across remove → undo → redo; `redo` issues no port call and adds no orphan. **T4** a rejecting `remove` is recorded in `orphans`, and after the undo `reclaimPhotoBytes` both refuses the id and drops it from the report. **T5** no timer, no pending-delete queue, no tombstone in any executable line of the photo path; `removePhoto`'s docstring names no future ruling; `PhotoAsset` gained no liveness field. **U3** `deleteTrip` mid-decode: no failure, no unhandled rejection, no byte written for a file that had not reached its `write`. **U4** one pair in *each* store, `orphanPhotoBytes` empty, `validateTrip` silent. **U5** exactly five string-literal arms, and no sixth under another name anywhere in `packages/client`. |
+> | **The compound key and the double, fuzzed** | §L. `photoByteKey` is **injective over 100 × 100 adversarial id pairs** built from `''`, U+0000, U+0001 and their two orderings — R46-6's escape is a real model of the array key and not a patch on one case. **No trip's key range is a prefix of another's**, which is the property `IDBKeyRange.bound([t], [t, []])` gives for free and the flattened key had to earn. `removeTrip('t')` no longer sweeps a record belonging to a trip id of `t` + NUL + `photo-1` — R46-6's exact repro, dead. `fromJSON` refuses a NUL trip id with a `TripParseError` whose message carries no document content. **What it deliberately does not cover, recorded rather than filed**: a *photo* id carrying U+0000 still round-trips (correct — the fuzz shows the escaped key handles it), and `validateTrip` still says nothing about id charsets, which R46-6 named as the wider fix and which was not taken. |
+> | **The sensitive paths** | Email ingestion: **not touched by this range at all** — the four source files that moved are `store.ts`, `memory.ts`, `fromJSON.ts` and `storage.ts` (comment-only), and I listed them rather than assuming. Location traces: **no `PhotoAsset` field moved**, `at` is untouched, and the only new string anywhere in the range is the NUL refusal's message. The one thing worth saying that is not a defect: **the two orphan classes this round measures are derivative *images*, which §10.5 calls the sensitive data, and today nothing in the shipped product can reclaim either of them except deleting the whole trip** — `PhotoPort` cannot even enumerate a trip's stored keys. That is disclosed (A-62 Part 8 residue 2, A-66 Part 9 residue 2) and it is *why* R47-1's unbounded multiplication matters more than a one-pair leak would. |
+> | **A-62 Part 8 residue 2's sweep — the sole safety net, checked for existence** | §I. **It does not exist as code, and that is correct and disclosed.** No sweeper, no key-range enumeration, no port method that could support one: `PhotoPort` is `derive · pickImages · present · read · remove · removeTrip · write`, and `present(tripId, ids)` answers only about ids the caller already holds. A-62 Part 8 residue 2 says it is deliberately unbuilt, residue 4e says it is nonetheless the *only* recovery for a trip-delete orphan, and A-66 Part 9 residue 2 already records that its stated predicate is **narrower than the orphan population**. All three are in writing and were in writing before this round reached them, which is the difference between a ruling that leans on an unbuilt mechanism and one that hides behind it. **Recorded as confirmed-by-design, not filed.** |
+> | **What I attacked and could NOT break** | R46-1's guard under a third trip and under a return trip. R46-2's fix under a two-tab merge that takes in three photographs, and under a merge that carries no photo change. R46-3's fix for the cross-trip case, including *"still not `'loading'` a moment later"*. The whole of A-65 and the whole of A-66, criterion by criterion. The escaped compound key, fuzzed. `fromJSON`'s refusal. The delete cascade for an active trip, a trip whose `removeTrip` rejects, and a trip whose `storage.delete` rejects **as well** (residue 4b's *"a failed trip delete is a consistent state"* — the delete does not silently succeed). The abort's unwind, on the files that had already landed. And **I could not find a single new privacy defect anywhere in the range.** |
+> | **What I did NOT do** | **No rendered/`.tsx` check** — this pass is fenced out of `.tsx`, and the range opens none. **No browser run.** `qa/r46-idb-keys.mjs` and `qa/i7a-idb-rowkeys.mjs` were both green on Chromium and WebKit at round 46 and the only `apps/web` change in this range is **six comment lines** in `storage.ts` (R46-5's citation fix), so re-running them would re-confirm a number I have no reason to doubt. **No iOS measurement** — A-58 Part 2's file-input fact is still unmeasured and still disclosed. **`write`'s atomicity under a real `QuotaExceededError` in a browser** is still unmeasured, four passes running. **I did not re-run rounds 2–44's probes** other than `qa/r3-loss.mjs` and `qa/r4-switch.mjs`, which R47-1 made relevant. **I attacked nothing outside the photo arc and the store transitions it reaches** — no `access/`, no world-map geometry, no `travelStats`, no `readExif` re-sweep. |
+> | **`qa/r45-i13.mjs` §K and `qa/r46-i13b.mjs` §G and §K, re-cut by this round** | **A-65 Part 8 names the two §K lines and says the re-cut is *"the confirming breaker's job, not the builder's"*; it also names `qa/r46-i13b.mjs` §G as *"the same shape, one section over."* All three are done.** I read A-65 Part 6's **T1** and A-62 Part 8 residue 4c/4d/4e in full before touching anything rather than working from a summary. **§K (both files)** now asserts T1 verbatim: record back, `read(tripId, id, 'thumb')` is `null`, `{phase:'ready', missing:1}` with that item `'missing'`, never `'empty'`, never `'unreadable'`, never a throw. **§G** now asserts what residue 4 actually ruled — the delete is **not** blocked (4c), the orphan is **not** reported (4d, *"refused, and not for economy"*), and residue 2's unbuilt sweep is the only recovery (4e) — instead of round 46's *"either leaves nothing behind or REPORTS what it left"*, which residue 4 refuses in both halves. **Every re-cut line has a vacuity control** in `qa/r47-i13c.mjs` §N: plant a `remove` that keeps the bytes and T1 goes red; make the braces fail too and the delete stops silently succeeding. **`qa/r45-i13.mjs` and `qa/r46-i13b.mjs` are now green end to end** — every finding they carry is closed or ruled, and a `FAIL` in either is a regression rather than an open item. |
+>
+> **Round 47's findings, one row each. Three in all: 0 BLOCKERS, 2 MAJOR, 1 MINOR.** Every row's
+> repro is a `FAIL` line in `node --experimental-strip-types qa/r47-i13c.mjs` (9 `FAIL` lines,
+> 3 ids). `--fast` skips only §A's suite measurement.
+>
+> | id | severity | file:line | defect | repro | routing |
+> |---|---|---|---|---|---|
+> | **R47-1** | **MAJOR** | `packages/client/src/store/store.ts:1261` (`openTrip`: `await flushForTransition()`) against `:1262` (`const stored = await ports.storage.load(id);`) and `:1277` (the reseeding `set`) — with `importPhotos`' dispatch guard at `:1541` as the reachable producer. Same shape in `adoptTrip` (`:1232`–`:1236`) and `importDoc` (`:1813`–`:1838`) | **A document mutation dispatched after `flushForTransition()` has returned and before the transition replaces `state.doc` is silently discarded, and `persistence.status` reads `'idle'` over it.** For photographs this is unbounded, not off-by-one: four files picked, four decoded, four written to disk, **three lost**, no failure reported. Full reasoning below the table. | `qa/r47-i13c.mjs` §D (4 FAIL, three faces) | implementation → **builder**, with one line for the **architect** (below) |
+> | **R47-2** | **MAJOR** | `packages/client/src/store/store.ts:427` and `:435` (`if (state.doc?.id !== doc.id) return;`, the R46-3 fix, on the success and the failure branch) reaching `packages/client/src/selectors/photos.ts` | **The R46-3 guard orders availability answers by TRIP and not by TIME, so two overlapping `readPhotoAvailability` calls for the *same* trip still let the older answer land last and win.** Three faces, all measured: (1) a double-tap on one library card plus an import → the stale set stamps, and a photograph whose bytes are on disk under `[A, …]` reads `'missing'` — **R45-4's exact defect**, reached through the availability read instead of through `importPhotos`; (2) an older `refreshPhotoAvailability` landing after `doMerge`'s new read → `{phase:'ready', missing:1, items:['bphoto-1:missing']}` over bytes on disk, which is **R46-2's own measured end state on R46-2's own fix**; (3) two *Try again* taps where the earlier read fails and the later one succeeds → the successful retry is reverted to `{phase:'unreadable', message:'IndexedDB: UnknownError'}`, so §10.6 property 6's *"an `'unreadable'` listing carries an action, not just a diagnosis"* is defeated by the action working. `refreshPhotoAvailability`'s own docstring says it deliberately has **no in-flight flag** and pushes the busy state onto a surface nobody has built, so two overlapping reads is one gesture, not a contrivance. **The fix is the alternative R46-3's own finding named and the pass did not take**: a generation counter, stamped and compared, rather than a trip-id comparison. | `qa/r47-i13c.mjs` §E (3 FAIL, three faces) | implementation → **builder** |
+> | **R47-3** | MINOR | `packages/client/src/store/store.ts:1392` (*"A failure here leaves reclaimable orphans, not a broken delete"*) and `:1397` (`catch { /* orphaned bytes are reclaimable; a failed byte delete may not block one */ }`) | **`deleteTrip` still carries the two sentences A-62 Part 8 residue 4a rules false and orders removed.** Residue 4a: *"The **first** is false on this path and has to come out of the code."* `reclaimPhotoBytes` needs an active document and an observed id, and a deleted trip has neither, permanently. This is **ROADMAP I-13c group 1 item 1**, which is the one item of I-13c that has not landed; both BUILD-NOTES' newest addendum and ROADMAP's own revision-46 status line already record it as owed, so this row confirms rather than discovers it. **It gates nothing** — I-13c group 1 item 3 says so in advance (*"if it slipped a pass it would be a tracked residue and not a ship condition"*) — and it is filed only because it is still true. | `qa/r47-i13c.mjs` §H (2 FAIL) | implementation → **builder** |
+>
+> **R47-1 in full, because the reasoning is the evidence.**
+>
+> **The symptom is a lost photograph. The cause is not in the photo path.**
+>
+> Round 46's R46-1 fix put two guards in `importPhotos`: `isLiveTrip(tripId)` before the `write`,
+> and `state.doc?.id !== tripId` before the `dispatch`. Both are correct, and §B of this round's
+> probe could not fool either of them — not with a third trip, not with a return trip. What the
+> second guard cannot know is that **passing it is not the same as the record surviving.**
+>
+> `openTrip` is:
+>
+> ```ts
+> if (!(await flushForTransition())) return state;          // :1261 — rule 6a, the flush
+> const stored = await ports.storage.load(id);              // :1262 — a real IndexedDB read
+> …
+> set({ ...initialState(), …, doc }, { reseed: true });     // :1277 — state.doc moves
+> ```
+>
+> §4.2 rule 6a is *"a pending write is never outlived by its document"*, and `flushForTransition`'s
+> own body already knows why that is hard: QA **R5-1** established that *"a flush is not a moment —
+> it is an `await` long enough for the user to type into"*, which is why its loop re-asserts
+> `dirty()` **after every write** rather than sampling it once. **That insight stops at the loop's
+> closing brace.** `ports.storage.load(id)` is another await, on the far side of it, and nothing
+> re-asserts `dirty()` across it. Anything dispatched there lands in a document that `set` is about
+> to replace; the `scheduleSave()` it armed fires against `forTripId = A` when `state.doc` is `B`,
+> and `attemptSave`'s *"a late timer is dropped, never retargeted"* — which is right, and is R3-2's
+> own fix — drops it. The edit is gone and `persistence.status` is `'idle'`.
+>
+> **Face 1 is that statement with no photographs in it**, and it is how I found the cause rather
+> than the symptom: park `openTrip`'s `storage.load`, `dispatch({type:'setTripMeta', …})` inside
+> the window, let the transition finish. In memory the title is `"EDITED IN THE WINDOW"`; in
+> storage it is `"A"`; the indicator says `'idle'`. `qa/r4-switch.mjs` §9's standing assertion is
+> *"no tab renders 'Saved' over a document storage does not hold"* — this is that, on a sequence
+> that probe does not drive. **It is latent rather than live**: `openTrip` is only reached from the
+> Library, the Map tab and the Profile tab, and none of them has an editable field mounted, so
+> today nothing in `apps/web` can dispatch a *typed* edit into that window.
+>
+> **Face 2 is the producer that can.** `importPhotos` is the only thing in this application that
+> dispatches from a promise the user did not just create, and §10.4's halving loop makes `derive`
+> *deliberately* seconds of canvas work per file. A decode resolving inside `storage.load` passes
+> the `:1541` guard honestly — `state.doc.id` really is still `tripId` at that instant — writes the
+> record into a document the next line discards, and the batch then breaks on the following file
+> with its bytes already written. **Two stranded derivative pairs, against A-66 Part 7's *"exactly
+> one derivative pair per abandoned batch"*.**
+>
+> **Face 3 is why this is MAJOR and not a bound that is off by one.** The batch only ends when the
+> dispatch guard *fails*, and re-opening the **same** trip never fails it — `state.doc?.id ===
+> tripId` on both sides of the transition. So the loop runs on, and every re-open whose
+> `storage.load` swallows a decode costs one more photograph. Measured, with the store's own
+> `defaultScheduler` and its real debounce (which is what `apps/web` runs on — `apps/web/src/store.ts`
+> passes no scheduler port): **four files picked, four decoded, four written, three lost, one kept,
+> `failures: []`, `pending: 0`.** The user never left trip A. They tapped it again — from the Map or
+> the Profile tab, which is exactly where `App.tsx:79` and `:93` call `openTrip` — while their
+> photographs were still importing, which is the single most natural thing to do when you are
+> waiting for photographs to import.
+>
+> **Why that is not covered by A-66.** A-66 Part 5 item 3 is the sentence that makes the silent
+> drop honest: *"the outcome is self-evident and the remedy is the affordance they just used. The
+> user returns to trip A and sees fewer photographs than they picked."* Every clause of that rests
+> on the user having **navigated away** — Part 5 item 1's cancel precedent, Part 4's
+> session-versus-file distinction, Part 3's observation that the transition is what reset the
+> report. Here they did not navigate away, nothing was abandoned, and the store's own guard said
+> the photograph had been added. And A-66's *"the trigger that reopens this ruling"* is **a
+> producer of abandoned files that is not a user navigation** — which is precisely what this is,
+> one layer down. I am not asking for the sixth arm: Part 3's misattribution argument is untouched
+> and I agree with it. I am reporting that the ruling's factual premise — *"exactly one file has
+> written derivatives with no record"* — is false, and that the leak it makes acceptable is
+> unbounded.
+>
+> **Why MAJOR and not BLOCKER.** The originals are untouched in the user's own library (A-57 Part 9
+> residue 1), so the recovery is a re-pick; nothing crosses a person boundary; no other trip's data
+> is reached. That is the same reckoning rounds 45 and 46 applied to R45-3 and R46-1, both
+> *"unreachable and unreportable"* and both MAJOR.
+>
+> **The fix, and it is small.** `openTrip`, `adoptTrip` and `importDoc` each need `dirty()`
+> re-asserted across the awaits that follow their flush — either by moving `flushForTransition()`
+> to just before the `set`, or by re-running it if the document moved. The store already owns the
+> idiom twice: `flushForTransition`'s own R5-1 loop, and `doMerge`'s `if (state.doc !== doc)` check
+> *inside* its `chainOntoSaving` link, which exists for exactly this reason one subsystem over and
+> whose comment says so (*"checking before `chainOntoSaving` is a check-then-act with an
+> interleaving point in the middle"*). The photo half needs nothing beyond that.
+>
+> **The one line for the architect**, and it is a sentence rather than a mechanism: **A-66 Part 7's
+> bound is stated as a fact about the loop and read as a fact about the system.** It is right about
+> the loop. Once R47-1 is fixed the two coincide again — but the sentence *"bounded at one
+> derivative pair per abandoned batch, swept by `removeTrip`"* is doing real load-bearing work in
+> A-66 Part 7 and in A-62 Part 8 residue 2's trigger, and a reader should know it is a property of
+> one function's control flow and not an invariant anything enforces.
+
+---
+
 
 > **Status (as of `master` @ `70b9ee6`, independently verified 2026-09-04 — round 46, the
 > confirmation-breaker pass over the whole I-13 repair arc: architect revision 44 (`61b4836`,

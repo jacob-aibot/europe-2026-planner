@@ -25,15 +25,21 @@
  *      over bytes that are on disk. R45-4's defect on the one path the fix pass did not cover.
  *   F  **R46-3, MAJOR.** `'loading'` is not transient: two overlapping `openTrip` calls leave it
  *      permanently — the unresolving spinner A-63 was written to forbid.
- *   G  **R46-4, MINOR.** A failed `removeTrip` inside `deleteTrip` strands every byte record of a
- *      trip that no longer exists, and nothing can name them.
+ *   G  **A-62 Part 8 residue 4** (was R46-4). RE-CUT at round 47: the finding is RULED at revision
+ *      45 — the delete is not blocked, the orphan is not reported, and residue 2's unbuilt sweep
+ *      is the only recovery. §G asserts that, not round 46's refused proposal.
  *   H  **R46-5, MINOR.** The shipped port cites a `qa/i7a-idb-rowkeys.mjs` *phase 5* that does
  *      not exist as the measurement behind A-62's platform claim.
  *   I  **R46-6, MINOR.** `memoryPhotos`'s flattened key diverges from the shipped array key for a
  *      `tripId` holding U+0000, and `fromJSON` accepts one.
  *   J  **R46-7, MINOR.** `qa/i13b-gate.mjs` carries a literal NUL byte, so the increment's own
  *      ship-gate probe is `Bin 0 -> 17304 bytes` in `git diff`.
- *   K  **R45-14** — still open, re-derived on the code as it stands after `70b9ee6`.
+ *   K  **A-65 T1** (was R45-14). RE-CUT at round 47: revision 46 ruled it and REFUSED the
+ *      deferred byte delete, so §K asserts T1 — record back, bytes gone, `{ready, missing:1}`.
+ *
+ * **RE-CUT at round 47 (§G and §K), by the breaker, on A-65 Part 8's own instruction.** Both
+ * lines asserted a fix an architect has since refused by name. This probe is now green end to
+ * end; a `FAIL` here is a regression, not an open finding.
  *   L  **A-63 held** where it is not §F: `refreshPhotoAvailability` really re-reads, R5 holds.
  *   M  **A-64 held**, re-derived from the sources rather than from the gate probe.
  *   N  the previous release's document (`fixtures/legacy/trip-598cd7f.v1.json`) end to end.
@@ -366,23 +372,33 @@ head('§F — **R46-3, MAJOR**: `\'loading\'` is not transient, which is the one
 
 // --------------------------------------------------------------------------- §G
 
-head('§G — **R46-4, MINOR**: a failed cascade strands bytes nothing can name');
+head('§G — **A-62 Part 8 residue 4** (R46-4, RULED at revision 45): the trip goes either way, and nothing reports');
 {
+  // **RE-CUT at QA round 47, by the breaker, on A-65 Part 8's own instruction** — it names this
+  // line as *"the same shape"* as §K, one section over. The old assertion was *"either leaves
+  // nothing behind or REPORTS what it left"*, which is round 46's proposed fix; **A-62 Part 8
+  // residue 4 refuses both halves of it** — 4c refuses the abort/rollback, 4d refuses the report
+  // ("not for economy"), and 4e rules that residue 2's unbuilt key-range sweep is the only
+  // recovery. What is checkable is therefore the RULED behaviour, and it is asserted here.
   const [p, store] = mk();
   await store.createTrip({ title: 'A', startDate: '2026-08-07', endDate: '2026-08-09' });
   p.photo.next = [file('a.jpg'), file('b.jpg')];
   await store.importPhotos({ kind: 'trip' }); await store.flush();
   const A = store.getState().doc.id;
   p.photo.removeTrip = async () => { throw new Error('IndexedDB: UnknownError'); };
-  await store.deleteTrip(A);
+  let threw = null;
+  try { await store.deleteTrip(A); } catch (e) { threw = String(e); }
   const orphans = client.orphanPhotoBytes(store.getState());
-  ok(p.photo.thumbs.size === 0 || orphans.length === 2,
-    'FINDING R46-4: a failed byte cascade either leaves nothing behind or REPORTS what it left (§6.3, §10.2)',
-    { byteKeys: keys(p), orphansReported: orphans, library: store.getState().library.map((r) => r.id) });
-  note('`deleteTrip`\'s own comment says *"a failure here leaves reclaimable orphans, not a broken');
-  note('delete"*. Nothing can reclaim them: the document is gone, the library row is gone, no');
-  note('future `removeTrip` names that id, and `orphanPhotoBytes` reports what this session');
-  note('OBSERVED — which is nothing, because A-62 Part 4 removed the id list that would have said.');
+  const st = store.getState();
+  ok(threw === null && st.library.every((r) => r.id !== A) && st.doc === null
+     && (await p.storage.load(A)) === null && orphans.length === 0,
+    'residue 4c/4d: a rejected `removeTrip` does NOT block the delete, and no orphan is reported (the report would need a document that is gone)',
+    { threw, byteKeys: keys(p), orphansReported: orphans, library: st.library.map((r) => r.id),
+      docAfter: st.doc, storedDoc: await p.storage.load(A) });
+  note('The bytes DO stay — residue 4e: `reclaimPhotoBytes` needs an active document and an');
+  note('observed id and a deleted trip has neither, so **residue 2\'s unbuilt sweep is the only');
+  note('recovery**. That is ruled, disclosed and non-blocking; what is still owed in CODE is the');
+  note('comment (see `qa/r47-i13c.mjs` §H) and nothing else.');
 }
 
 // --------------------------------------------------------------------------- §H
@@ -450,8 +466,17 @@ head('§J — **R46-7, MINOR**: the increment\'s own ship-gate probe is a binary
 
 // --------------------------------------------------------------------------- §K
 
-head('§K — **R45-14**, still open, re-derived on the code as it stands at `70b9ee6`');
+head('§K — **A-65 T1** (R45-14, RULED at revision 46): undo restores the record, never the photograph');
 {
+  // **RE-CUT at QA round 47, by the breaker, per A-65 Part 8.** This line asserted
+  // `bytesBack === true` — round 45's own PROPOSED fix (a deferred byte delete), which **A-65
+  // Part 3 clause 1 refuses by name** and A-65 Part 4 argues out in four reasons. A probe that
+  // keeps asserting a since-ruled-away proposal is round 44's **R44-3** repeating, and A-65
+  // Part 8 says in as many words that re-cutting it is *"the confirming breaker's job, not the
+  // builder's"*. What it asserts now is **A-65 Part 6's T1**, verbatim from the criterion:
+  // the record is back, `read(tripId, id, 'thumb')` is `null`, and a FRESH availability read
+  // says `{phase:'ready', missing:1}` with that item `'missing'` — never `'empty'`, never
+  // `'unreadable'`, never a throw, never a `'ready'` item over bytes that are gone.
   const [p, store] = mk();
   await store.createTrip({ title: 'T', startDate: '2026-08-07', endDate: '2026-08-09' });
   p.photo.next = [file('a.jpg')];
@@ -462,16 +487,18 @@ head('§K — **R45-14**, still open, re-derived on the code as it stands at `70
   await store.removePhoto(pid);
   const during = keys(p);
   store.undo();
+  const recordBack = store.getState().doc.photos.length === 1;
   const bytesBack = (await p.photo.read(trip, pid, 'thumb')) !== null;
-  await store.refreshPhotoAvailability();   // …and the answer survives a real re-read, not a stale set
+  let threw = null;
+  try { await store.refreshPhotoAvailability(); } catch (e) { threw = String(e); }  // a FRESH read, not a stale set
   const l = shape(listing(store));
-  ok(bytesBack,
-    'FINDING R45-14: undoing a photo removal restores the photograph, not only the record',
-    { keysBefore: before, keysAfterRemove: during, recordBack: store.getState().doc.photos.length === 1,
-      bytesBack, listingAfterAFreshRead: l });
-  note('routed design → architect at round 45; revision 44 ruled A-62, A-63 and A-64 and did not');
-  note('rule this, so it is correctly still open. The repro is re-derived here because the byte key,');
-  note('`removePhoto`\'s signature and the listing\'s phase union all moved underneath it at `70b9ee6`.');
+  ok(recordBack && !bytesBack && threw === null
+     && l.phase === 'ready' && l.missing === 1 && l.items.join() === `${pid}:missing`,
+    'A-65 **T1**: `removePhoto` + `undo` + a fresh `refreshPhotoAvailability()` — record back, bytes gone, `{ready, missing:1}`',
+    { keysBefore: before, keysAfterRemove: during, recordBack, bytesBack, threw, listingAfterAFreshRead: l });
+  note('R45-14 was routed design → architect at round 45 and is RULED at revision 46 as **A-65**:');
+  note('§10.3\'s synchronous cascade is upheld and the deferred delete is REFUSED (A-65 Part 4).');
+  note('`\'missing\'` with §10.6 property 3\'s offer to re-import is the honest state, not a defect.');
 }
 
 // --------------------------------------------------------------------------- §L

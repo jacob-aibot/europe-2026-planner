@@ -31,7 +31,18 @@
  *
  * The I-13b builder raised exactly this in `BUILD-NOTES.md` and was right on every count; round 46
  * verified the reading against A-62 Part 3, A-64 Part 3 and A-64 Part 5 before touching anything.
- * **§K's R45-14 line is deliberately still red** — revision 44 did not rule it, so it is open.
+ *
+ * **RE-CUT again at QA round 47, one more line, and by the breaker for the same reason.**
+ *
+ *   §K R45-14  asserted that undo brings a removed photograph's BYTES back. **§10 A-65 (revision
+ *              46) refuses that** — the deferred byte delete is argued out in Part 4 and §10.3's
+ *              synchronous cascade is upheld — and **A-65 Part 8 names this exact line and says
+ *              re-cutting it is the confirming breaker's job, not the builder's.** It asserts
+ *              **A-65 Part 6's T1** now: record back, bytes gone, `{phase:'ready', missing:1}`
+ *              after a FRESH availability read.
+ *
+ * **This probe is now green end to end.** Every finding it carries is closed or ruled; a `FAIL`
+ * here is a regression against rounds 45/46, not an open item.
  *
  * Twelve sections, all in **plain Node** against `memoryPhotos()`/`memoryStorage()` — which is
  * the property `cairn-constraints` §5 exists for, and it is why the two BLOCKERs below need no
@@ -748,19 +759,31 @@ head('§K — R45-13 … R45-16');
     'FINDING R45-13: a store method exists to dismiss the import failure report (§10.6)',
     { photoMethods: Object.keys(store).filter((k) => /photo/i.test(k)) });
 
-  // R45-14: undo restores the record; the bytes are gone for good.
+  // R45-14 → **A-65 T1**. **RE-CUT at QA round 47, by the breaker, per A-65 Part 8.** This line
+  // asserted `p.photo.thumbs.has(pid)` — that undo brings the BYTES back, which was round 45's
+  // own proposed fix. **A-65 (revision 46) refuses it**: §10.3's synchronous cascade is upheld,
+  // the deferred byte delete is argued out in A-65 Part 4, and undo's subject is the document
+  // (§4.2 rules 4 and 5). Re-cutting a probe that asserts a since-ruled-away proposal is the
+  // breaker's own job — round 44 **R44-3**, and round 46's own re-cut of §C/§E/§G above.
   await store.createTrip({ title: 'T', startDate: '2026-08-07', endDate: '2026-08-09' });
   p.photo.next = [file('a.jpg')];
   await store.importPhotos({ kind: 'trip' });
+  const trip14 = store.getState().doc.id;
   const pid = store.getState().doc.photos[0].id;
   await store.removePhoto(pid);
   store.undo();
-  ok(p.photo.thumbs.has(pid),
-    'FINDING R45-14: undoing a photo removal restores the photograph, not only the record',
-    { recordBack: store.getState().doc.photos.length === 1, bytesBack: p.photo.thumbs.has(pid),
-      listing: client.photosFor(store.getState(), { kind: 'trip' }).items.map((i) => i.availability) });
-  note('§10.1 point 1: *"attaching a photo is undoable for free because history is a `Trip`');
-  note('snapshot."* Detaching one is not undoable at all, and A-57 Part 9 does not disclose it.');
+  const recordBack14 = store.getState().doc.photos.length === 1;
+  const bytesBack14 = (await p.photo.read(trip14, pid, 'thumb')) !== null;
+  let threw14 = null;
+  try { await store.refreshPhotoAvailability(); } catch (e) { threw14 = String(e); }
+  const l14 = client.photosFor(store.getState(), { kind: 'trip' });
+  ok(recordBack14 && !bytesBack14 && threw14 === null
+     && l14.phase === 'ready' && l14.missing === 1 && l14.items[0]?.availability === 'missing',
+    'A-65 **T1** (was R45-14): undo restores the record and NOT the photograph — `{ready, missing:1}` after a fresh read',
+    { recordBack: recordBack14, bytesBack: bytesBack14, threw: threw14,
+      listing: { phase: l14.phase, missing: l14.missing, items: l14.items.map((i) => i.availability) } });
+  note('§10.1 point 1\'s *"undoable for free"* is scoped to `addPhoto` at revision 46; A-65 Part 3');
+  note('clause 2 rules the removal half, and A-57 Part 9\'s silence is closed by A-65 Part 7.');
 
   // R45-15: the id census claims day/place/booking/stop and not photo.
   const ctx = { ids: core.sequentialIds(), now: '2026-08-07', actorUserId: 'u1' };

@@ -3236,3 +3236,78 @@ Re-run rather than re-written this round, all green: `qa/i13b-gate.mjs` (ALL OK)
 (ALL OK on both engines), and `qa/r3-upcast.mjs` — **7 ok, 0 FAIL**, which is R45-1's rendered face
 going green after being the round-45 BLOCKER's proof. It still needs `npm run web:build && node
 tools/serve.mjs` in another shell.
+
+---
+
+## Round 47 (2026-09-04, `master` @ `c440170`) — the I-13c confirmation pass (§10 **A-62 Part 8 residue 4**, **A-65**, **A-66**)
+
+One new probe, bare Node, plus a **re-cut of `qa/r45-i13.mjs` §K and `qa/r46-i13b.mjs` §G and §K**.
+Verdict: **SEND BACK — 0 BLOCKERS, 2 MAJOR (R47-1, R47-2), 1 MINOR (R47-3).**
+
+```bash
+node --experimental-strip-types qa/r47-i13c.mjs           # from cairn/
+node --experimental-strip-types qa/r47-i13c.mjs --fast    # skips §A's 30 s suite measurement
+   # A  the fences over 7cb5965..HEAD (the fix pass, revisions 45/46, I-13c group 3): zero
+   #    .tsx, zero dependency movement, docs/design/ untouched, nothing outside cairn/, no
+   #    console/fetch/storage/clock/random/mailbox/coordinate/**setTimeout** in any added
+   #    production line, no DOM in packages/{core,client}; SCHEMA_VERSION 2, export surface 83;
+   #    and BUILD-NOTES §2's published test count measured rather than quoted.
+   # B  **R46-1's fix attacked, not re-run.** A -> B -> C mid-decode (a THIRD trip, against a
+   #    guard written for a two-state transition) and A -> B -> A (the return trip its `!==`
+   #    cannot distinguish). Both hold; the day-attach still resolves on the return.
+   # C  the abort's unwind on a five-file batch: the files that already landed stay attached to
+   #    the ORIGINAL trip and are persisted. A-66 U1, U2, U4.
+   # D  **R47-1, MAJOR — 4 FAIL, three faces.** `flushForTransition()` is not the last thing
+   #    `openTrip` does before it replaces the document; `storage.load` sits between them and a
+   #    dispatch landing in that window is discarded with `persistence.status: 'idle'`.
+   #    Face 1 an ordinary `setTripMeta` edit (the root cause, latent — no shipped surface can
+   #    dispatch there today). Face 2 a photo record the `:1541` guard ACCEPTED, plus a second
+   #    stranded derivative pair against A-66 Part 7's "exactly one". Face 3 the bound is
+   #    UNBOUNDED: four files picked, four written, **three lost**, nothing reported.
+   #    Uses the store's own `defaultScheduler` and a real debounce — under
+   #    `immediateScheduler` this window is invisible, which is why the suite does not see it.
+   # E  **R47-2, MAJOR — 3 FAIL, three faces.** R46-3's guard orders availability reads by TRIP,
+   #    never by TIME, so two overlapping reads for the SAME trip let the older answer win.
+   #    (1) a double-tap on one library card + an import -> R45-4's false 'missing' over bytes
+   #    on disk; (2) an older refresh landing after `doMerge`'s new read -> **R46-2's own
+   #    measured end state on R46-2's own fix**; (3) two "Try again" taps -> a successful retry
+   #    reverted to 'unreadable', defeating §10.6 property 6.
+   # F  **R46-2's fix HELD** under a two-tab merge of my own: three of another tab's
+   #    photographs taken in, `missing: 0`; and a merge with no photo change leaves it alone.
+   # G  **R46-3's fix HELD** for the cross-trip case, including "still not 'loading' later".
+   # H  **R47-3, MINOR — 2 FAIL.** `deleteTrip` still carries the two sentences A-62 Part 8
+   #    residue 4a rules false (ROADMAP I-13c group 1 item 1, the one item of I-13c not landed).
+   # I  A-62 Part 8 residue 2's sweep: **does not exist as code, correctly and disclosed.**
+   #    `PhotoPort` cannot even enumerate a trip's stored keys. Confirmed-by-design, not filed.
+   # J  **A-65 T1 … T5**, re-derived independently of the two re-cut probes. All green.
+   # K  **A-66 U1 … U5.** All green, including U5's exactly-five-arms grep.
+   # L  the escaped compound key fuzzed for **injectivity and prefix-freeness** over 100 x 100
+   #    adversarial id pairs built from '', U+0000 and U+0001; R46-6's exact repro, dead;
+   #    `fromJSON`'s NUL refusal, and what it deliberately does not cover.
+   # M  A-62 Part 8 residue 4f's third route (a decode settling inside `deleteTrip`'s cascade),
+   #    **recorded as a documented residue rather than filed** — residue 4f says so in advance.
+   # N  vacuity controls for this round's own re-cuts: a `remove` that keeps the bytes turns
+   #    A-65 T1 red; braces that fail too stop the delete silently succeeding.
+```
+
+**9 FAIL lines carrying 3 finding ids (R47-1 ×4, R47-2 ×3, R47-3 ×2) are the findings**, not a
+broken probe. No literal NUL byte anywhere in it (R46-7's own lesson, applied to §L's fuzz
+alphabet: the separator and the escape are `String.fromCharCode`d rather than typed).
+
+**`qa/r45-i13.mjs` §K and `qa/r46-i13b.mjs` §G and §K were re-cut by this round, and both probes
+are now green end to end.** All three lines asserted a fix an architect has since **refused by
+name**, which is round 44's R44-3 shape and round 46's own precedent — and **A-65 Part 8 names the
+two §K lines explicitly** (*"re-cutting it is the confirming breaker's job, not the builder's"*)
+and calls §G *"the same shape, one section over."* §K now asserts **A-65 Part 6's T1**: the record
+comes back, `read(tripId, id, 'thumb')` is `null`, and a fresh `refreshPhotoAvailability()` gives
+`{phase:'ready', missing:1}` with that item `'missing'` — never `'empty'`, never `'unreadable'`,
+never a throw. §G now asserts **A-62 Part 8 residue 4c/4d/4e**: the delete is not blocked, the
+orphan is not reported, and residue 2's unbuilt sweep is the only recovery. A `FAIL` in either
+file is now a **regression**, not an open finding.
+
+Not re-run this round, deliberately: `qa/r46-idb-keys.mjs`, `qa/i7a-idb-rowkeys.mjs`,
+`qa/i13b-gate.mjs`, `qa/i13-photo-browser.mjs` and `qa/r3-upcast.mjs`. All were green on both
+engines at round 46, and the only `apps/web` change in this round's range is **six comment lines**
+in `ports/storage.ts` — re-running them would re-confirm a number with no reason to doubt it.
+`qa/r3-loss.mjs` and `qa/r4-switch.mjs` **were** re-run (both green), because R47-1 lives one await
+past the window they cover.

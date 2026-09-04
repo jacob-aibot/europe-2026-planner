@@ -19,8 +19,53 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
-> **🟡 THE LAST TWO PHOTO QUESTIONS ARE ANSWERED — BOTH BY SAYING NO — as of 2026-09-04. This block is
-> the newest.** Step 2d's photo half is **designed ✅ · built ✅ · verified ⚠️ · shippable ❌** — unchanged
+> **🔴 THE PHOTO WORK GOES BACK ONE MORE TIME — AND THIS TIME THE CAUSE IS NOT IN THE PHOTO CODE — as
+> of 2026-09-04. This block is the newest.** Step 2d's photo half stays **designed ✅ · built ✅ ·
+> verified ⚠️ · shippable ❌**. Two problems, both real, both small to fix, neither of them created by
+> the repair work below.
+>
+> **First, the good news, and it is most of the news.** Everything the last round sent back is fixed and
+> I could not break any of it on the case it was written for. Switching trips while photos are
+> processing no longer files a photograph in the wrong place — I tried a *three*-trip switch and a
+> switch-and-come-straight-back, which is the awkward case, and both behave. The two-tab merge fix holds
+> under a merge that takes in three of the other tab's photographs. Both of the decisions in the block
+> below — *undo does not bring a deleted picture back*, and *walking away mid-import tells you nothing* —
+> are now exactly what the code does, checked criterion by criterion. And the photo-file naming, which
+> was the big fix two rounds ago, survived a hundred-by-hundred fuzz of deliberately awful trip and photo
+> names.
+>
+> **Problem 1 — the one that costs photographs. If you tap your own trip *again* while its photos are
+> still importing, some of them silently vanish.** Not switch to another trip — tap the *same* trip, from
+> the Map or Profile screen, which is the most natural thing in the world to do while you are waiting for
+> photos to arrive. Cairn saves the outgoing trip before it opens a trip, then reads the trip's file from
+> the database, and only *then* swaps the trip over. The photograph that finishes decoding in the gap
+> between the save and the swap gets added to a copy of the trip that is about to be thrown away — and
+> the app's own indicator says "saved". **Measured: four photographs picked, all four decoded and written
+> to disk, three gone, and Cairn said nothing about any of them.** Their pictures are still sitting in
+> Cairn's storage with nothing pointing at them, and their originals are still safe in the phone's own
+> photo library, so nothing is unrecoverable — but you would have to notice and add them again.
+>
+> **The cause is not photographs.** Any change made in that gap is discarded the same way; photo
+> importing is simply the only thing in Cairn today that finishes a piece of work *by itself*, seconds
+> after you started it. The fix is to re-check "is there anything unsaved?" one step later than Cairn
+> currently checks it — the app already does exactly this in two other places for exactly this reason.
+>
+> **Problem 2 — Cairn can say "this photo's image is no longer on this device" about a photograph that
+> is.** When Cairn checks which photos still have their pictures, two of those checks can be in flight at
+> once — tapping a trip card twice, or pressing *Try again* twice, or a merge landing while a check is
+> running. Last round's fix made sure a check for *another* trip can't overwrite one for *this* trip. It
+> doesn't order two checks for the **same** trip, so the older, staler answer can arrive last and win. It
+> is the same wrong sentence the last two rounds were spent removing, arriving by a different door, and
+> one of its three forms undoes the *Try again* button: the retry works, then the failed check that
+> preceded it lands and puts the error back.
+>
+> **What happens next:** a short repair pass for both — one of them was already named as the alternative
+> fix in the last round's write-up and not taken — plus one comment correction that was owed from the
+> round before and did not land. Then one more confirmation round. Detail: `cairn/docs/QA-FINDINGS.md`
+> round 47, and `cairn/qa/r47-i13c.mjs` reproduces everything above in plain Node in a couple of seconds.
+
+> **🟡 THE LAST TWO PHOTO QUESTIONS ARE ANSWERED — BOTH BY SAYING NO — as of 2026-09-04. This block was
+> the newest until the block above.** Step 2d's photo half is **designed ✅ · built ✅ · verified ⚠️ · shippable ❌** — unchanged
 > from the block below, because nothing here adds or removes a capability. What changed is that **the
 > photo work has no open design questions left.**
 >
