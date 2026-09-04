@@ -972,6 +972,26 @@ narrower than it. `ROADMAP.md` revision 42 folds the clause into **I-12a**'s rep
 going back to a builder for round 44's MAJOR. **Nothing else in this document moves**, and R44-3 (a ROADMAP
 criterion, also architect-routed) is **not** ruled here and stays open.
 
+**Revision 43, 2026-09-04.** **A criterion of mine was wrong and is corrected; the record class it measured
+does not move by one field.** I-13 shipped the photo foundation and its builder reported **KD-81**: ROADMAP
+I-13's *"20 photos within **4 KB** of the same trip with none"* budgets ~200 bytes per `PhotoAsset` and
+§10.1's own field list — the one A-57 ruled — costs **768 bytes at `toJSON`'s default indent, 439 compact**.
+The builder implemented §10.1, refused to shrink a ruled record to make a number true, refused to quietly
+relax the number either, and routed it here. **Ruled as §10 A-61**: the 4 KB figure ties to no other
+constraint in this repository — it is §10.1's own *"a few hundred bytes"* multiplied by twenty, costed
+without the `Provenance` block A-57 Part 4 deliberately put on the record and as if the serialization were
+compact when the persisted document is indent-2 — so it is *"How a criterion is written"* rule 5, committed
+by the revision that wrote both halves in one pass, and the defect is mine. The criterion becomes **two**,
+each with its oracle and its outcome clause: a **structural** check (the longest string in the document is
+under 128 characters over a fixture whose strings are short by construction), which is strictly stronger
+than a byte total at catching the base64-in-the-document fault it was written for and is now the primary
+one; and a **growth ceiling of 20 KB for 20 photos**, derived from §10.1's measured 768 B with one
+`Provenance` block of headroom, whose run **records** the measured figure rather than only asserting it.
+§10.1 point 1's *"a few hundred bytes per photo"* is corrected in place to the measured value. **No field,
+fixture, golden, port, selector, export symbol or schema version moves**, `ROADMAP.md` revision 43 carries
+the criterion text plus a test-and-comment-only **I-13a**, and **R44-3 stays open** — A-61 Part 8 residue 3
+says what a third instance of this class would earn.
+
 **Phase 1 is §2 and §4. The next phase is §8.1–§8.4.** Everything else is the shape those must not
 foreclose. See `ROADMAP.md` for sequencing and `PRODUCT-VISION.md` for why this order and not another.
 **What the product looks like is `DESIGN.md`, not this document** — §9 says why, and a builder of a screen
@@ -979,8 +999,8 @@ reads that instead of entering §2 or §4.
 
 ## Read only your sections
 
-This document is **~323k tokens** (re-measured at **revision 42**, with `doc-section` — §8 grew 65k → 70k
-when A-56 landed in §8.4, 70k → 77k when A-59/A-60 joined it and 77k → **81k** when A-60 gained its Part 6, and §10 is **13k**; the previous figure was ~271k at revision 36, with
+This document is **~327k tokens** (re-measured at **revision 43**, with `doc-section` — §8 grew 65k → 70k
+when A-56 landed in §8.4, 70k → 77k when A-59/A-60 joined it and 77k → **81k** when A-60 gained its Part 6, and §10 grew 13k → **16k** when A-61 landed at revision 43; the previous figure was ~271k at revision 36, with
 `cairn/tools/doc-section ARCHITECTURE` — §2 is ~123k of it and §8 ~65k, and §4 grew 13k → 18k when A-41/A-42 landed in §4.4, 18k → 25k when A-48 joined them, 25k → 32k when A-49/A-50 did, 32k → 42k when A-51/A-52 did, 42k → 49k when A-53 did and 49k → **59k** when A-54 did — the figure below is `doc-section`'s own, re-measured at revision 37; the per-section figures below were stale by a third before revision 11 and are
 re-measured, not estimated, whenever a revision lands). Nothing needs all of it, and a fresh agent that reads it whole starts a sixth
 of the way into its context before writing a line. Pull what you need:
@@ -1019,7 +1039,7 @@ supersedes, so reading it first is what tells you which of A-46 to skip** | 123k
 | 7 | Explicitly deferred | <1k | anyone about to build something not in the roadmap |
 | 8 | **The travel-history model** (revision 9) — trip lifecycle and past trips (§8.1), the feasibility/integrity rule class (§8.2), participants (§8.3), geography attribution, travel stats and the summary-row rule (§8.4); then the shapes the location, photo and social phases must land on (§8.5–§8.7) and what is refused (§8.8). **§8.10 is revision 10** — physical travel distance by mode and the four provenance bases that keep it honest; **it is not Phase 2 scope**, so a Phase 2 builder reads §8.1–§8.4 and stops. **Revision 11 amends §8.1, §8.2 and §8.4 by pointer only — the two rulings themselves live in §2.2 (A-10) and §2.7 (A-9), and a Phase 2 builder reads both; revision 12 amends §8.2 by pointer in the same way, and its four rulings live in §2.7 (A-11, A-12, A-13) and §2.14 (A-14)**. **A-26 is revision 20 and lives in §8.4** — the mixed-resolution country index, the withdrawal of the correctness floor's escalation mechanism, and the ruling that `null` is the right answer for a landform the dataset does not carry; **anyone touching `tools/gen-countries.mjs`, `geo/countryIndex.ts` or the attribution golden reads it first**, and it is what ROADMAP's I-5a builds; **A-27 is revision 21, sits directly under A-26 and is read *with* it, never instead of it** — it amends A-26 Part 4's block-quoted rule with a third clause (a filled code ships a **forgiveness entry** as well as a coverage entry), supersedes A-26 Part 5's two-residue list with three, lifts A-26 Part 6 item 3 for a docstring correction only, and is what ROADMAP's **I-5b** builds; **A-28 is revision 22, sits under A-27 and is read with both, never instead of them** — it supersedes A-27 Part 4's filter 2 (two arms, because the coverage index it compared against is mixed-resolution and answered generously) and A-27 Part 4's `overlaps` predicate (the vertex-mean probes come out), corrects A-27 Part 5's Macao sentence and every count in it, and is what ROADMAP's **I-5c** builds. **Anyone touching `tools/forgiveness.mjs` or the forgiveness pass reads A-28 first and A-27 second**; **A-29 is revision 23 and sits under A-28** — it is the only one of the four that is *not* about the index: it rules that a `City`'s **stated** `countryCode` fills a gap the coordinate cannot answer, never overrides one, and only through a gate ending in index membership, and it takes `SUMMARY_VERSION` to 3. **Anyone touching `derive/summary.ts` reads A-29 and §4.3's A-30 together** — A-29 changes what a row *says*, A-30 changes how it is *written*, and I-6a builds both; **A-31 is revision 24 and sits under A-29** — it is the `travelStats` specification (type, signature, algorithm, sort orders, residues), and it widens the row a second time with the **record census** clause 2's `unattributed` cannot be computed without, taking `SUMMARY_VERSION` to 4. **A builder of I-7 reads §8.4 clause 2, then A-31, and needs nothing else in this document except §2.10's list**; A-31 also rewrites ROADMAP exit criterion 6, so **anyone about to add a count to `TripSummaryRow` reads A-31 Part 6 first — widening that allow-list is an architect's ruling**; **A-33 and A-34 are revision 25 and sit under A-31** — **A-33 supersedes A-31 Part 6's two-half check entirely** (it grepped declarations while the danger is a *value*, and a persisted `countriesVisited` passed it), so read A-33 and treat Part 6 as the *principle* it block-quotes and nothing more; **A-34** adds `provisional` to `travelStats`' two row types and is the ruling that stops an active trip's unreached countries being printed as fact. **A builder of I-7a reads A-31, then A-33 and A-34, plus §2.1's A-32**; **A-36 and A-37 are revision 26 and sit under A-34** — **A-36 supersedes A-33 Part 3's 6b-1/6b-2/6b-4 split and Part 7 residue 2** (every `StoragePort` implementation is *executed* by the gate, including the web port, against a recording double; 6b-2 is demoted to a tripwire and its parameter grep withdrawn; 6b-4's Chromium read-back becomes a required recorded ship-gate condition), so **anyone touching a port implementation, `test/stats-storage.test.ts` or `ROW_KEYS` reads A-36 first and A-33 second**; **A-37** is the ruling that a stored summary row is not a validated document — two module-private read gates in `travelStats` (day numbers clamped into `IsoDate`'s domain, a stored country code read through `/^[A-Z]{2}$/`), and it is what makes A-32 Part 8 residue 3's bound and the composite key's docstring true rather than merely stated. **A builder of I-7b reads A-36 and A-37, plus §2.3's A-35**; **A-38 is revision 27 and sits under A-37** — it **widens A-36 Part 2's mechanism and Part 4's 6b-4 scope without touching A-36's sentence**: a port's coverage is its **write paths**, not its interface methods, so the recording double gains a **seed** (a pre-existing database, including a *legacy* record with no envelope version), 6b-1b becomes **five arms each with a stated starting state**, and 6b-4 gains a second seeded phase; **A-39 is revision 28, sits under A-38 and closes the arc** — it supersedes A-38 Part 7's *required property* sentence (which quantified over **faults** and so could never be discharged by a finite fixture list) and A-38 Part 3's arm **seeds**, replacing both with a claim quantified over the state `ensureReady()` can **read**: five axes derived line by line from the function, a **15-state pairwise covering set** in the same five arms, and — the part Jacob asked for — a **written boundary** saying what legitimately reopens this (a `SUMMARY_VERSION`/`SCHEMA_VERSION` bump, a new store, a new port, a fourth write path) and what does not (one more fault shape on an axis already covered, which is a **builder** finding against A-39 Part 5's table, not an architect's). **Anyone touching a port implementation, `recordingIdb`, `test/stats-storage.test.ts` or `qa/i7a-idb-rowkeys.mjs` reads A-39 first, A-38 second and A-36 third**; **A-44 is revision 30, sits at the end of §8.4 and is read with A-37 Part 2** — it is one paragraph plus a signature, and it says where `lifecycle`'s read gate goes (`packages/client`, once, beside `travelHistory`); **anyone rendering a stored summary row on a new surface reads it**; **A-56 is revision 40, sits at the very end of §8.4 and is the newest entry in the section** — the city entry gains `centre` and `firstDay`/`lastDay`, `SUMMARY_VERSION` goes to **5**, A-33 Part 2's `ROW_KEYS`/`ROW_PATHS` are widened, stop-level geometry is refused with its trigger, and A-31 Part 5 residue 1 is closed **for cities only**. **A builder of I-12 reads A-56, then A-31 Parts 2 and 4, then A-33 Part 2, then A-39 Part 11 item 1, and needs nothing else in this document except §2.10's list**; **A-59 and A-60 are revision 41, sit directly under A-56 and are read *with* it, never instead of it** — QA round 43 measured A-56 Part 7 clause 1's *read* of a stored city date as an anonymous throw that takes the whole library's statistics down with no selector naming the row (A-59: the read is gated, the fallback is clause 2's, the absorption is counted in a new `TravelStats.unreadableCityDates`, and a new `rowStatsReadable` selector plus a widened `TravelHistoryResult` make the row nameable), and its *clamp* as printing a specific single day for a city the traveller has not reached (A-60: a range disjoint from the clamp interval falls back to the trip's range, so no city line escapes the country line beside it — *"never more assertive than its country's"* was A-60 Part 2's own wording and is **superseded at revision 42** by Part 6.4, which states the property as escape rather than width). **A-59 and A-60 also carry the three in-place corrections R43-6 made to A-56's own prose** (Part 2's `firstDay` docstring, Part 6's fourth-fixture justification, Part 8 item 6's `gen-golden.mjs` line), none of which moves a fixture, a test or a clause. **A builder of I-12a reads A-59, then A-60, then A-56 Part 7, then §2.9 A-47 Part 3, and needs nothing else**; **A-60 Part 6 is revision 42** and closes QA R44-2, an ambiguity in A-60's own Part 2 — a `null` city day edge is a **value** and keeps A-56 clause 1's per-field fallback (the shipped behaviour is **upheld**; the literal pair-wide reading is refused, because it deletes a real observation to arrive at a less precise version of the same invention), while A-60's disjointness test is generalised to read **the edges the row supplied** rather than the substitutes standing in for the missing ones — which is what makes a lone `lastDay` before `a` stop printing a fully-invented single day. **Part 2's pseudocode and Part 2's closing claim are both superseded by Part 6's**, and **a builder of the I-12a repair pass builds from Part 6.3's block and nothing else in this ruling** | 81k | architect; the builder and breaker of the phase after Phase 1 (§8.1–§8.4 only). §8.10 is for the architect and for phases 4, 5 and 7. Read with `PRODUCT-VISION.md` |
 | 9 | **The design contract and the frontend tooling stack** (revision 38). §9.1 makes `docs/DESIGN.md` binding and says what is in it; §9.2 names the three fences a design pass may not cross; **A-55** is the eight-candidate tooling ruling, its Part 0 states where the dependency line actually is (`core`/`client` only — `apps/web` may take deps and takes none new), and its Part 4 is the tool hierarchy. **A builder of any web surface reads `DESIGN.md`, not this section**; this section is for the architect and for anyone about to add a frontend dependency | 4k | architect; anyone adding a frontend dependency |
-| 10 | **The photo foundation** (revision 40). §10.1 the record class and where the bytes are not; §10.2 import and the hand-rolled EXIF reader; §10.3 storage and the two new object stores; §10.4 the resolution discipline; §10.5 privacy and redaction; §10.6 the loading-state signals a consuming UI needs. **A-57** is the consolidated ruling and **A-58** is the dependency verdict. **A builder of I-13 reads §10 whole — it is self-contained — plus §2.8 (provenance), §2.10's list, `serialize/migrate.ts`'s own docstring, §8.6 and §8.4 A-39 Part 11.** It does **not** need the rest of §2 or §4 | 13k | builder and breaker of I-13; architect |
+| 10 | **The photo foundation** (revision 40). §10.1 the record class and where the bytes are not; §10.2 import and the hand-rolled EXIF reader; §10.3 storage and the two new object stores; §10.4 the resolution discipline; §10.5 privacy and redaction; §10.6 the loading-state signals a consuming UI needs. **A-57** is the consolidated ruling and **A-58** is the dependency verdict. **A builder of I-13 reads §10 whole — it is self-contained — plus §2.8 (provenance), §2.10's list, `serialize/migrate.ts`'s own docstring, §8.6 and §8.4 A-39 Part 11.** It does **not** need the rest of §2 or §4. **A-61 is revision 43, sits at the end of the section and supersedes nothing in §10 except one clause of §10.1 point 1's own prose, corrected in place** — it is the ruling on BUILD-NOTES **KD-81** (ROADMAP I-13's 4 KB document-growth criterion against §10.1's measured 768 B record), it moves **no field**, and **a builder of I-13a reads A-61 Parts 5 and 7 and needs nothing else in this document** | 16k | builder and breaker of I-13; architect |
 
 *(§8's figure is measured with `doc-section`, not estimated. §8.1–§8.4 — the Phase 2 model — are roughly
 five sixths of it since revisions 20–27 put A-26…A-29, A-31, A-33, A-34, A-36, A-37 and A-38 in §8.4; a Phase 2 builder
@@ -15536,8 +15556,11 @@ export type Trip = {
 
 **Four things about that shape, each of which is a decision.**
 
-**1. The record lives in the document; the bytes never do.** `Trip.photos` is metadata — a few hundred bytes
-per photo — so it rides the existing autosave, the existing undo history, the existing export and the
+**1. The record lives in the document; the bytes never do.** `Trip.photos` is metadata — **768 bytes per
+fully-populated photo at `toJSON`'s default indent, 439 compact, measured at I-13 and pinned by A-61**
+(this sentence read *"a few hundred bytes per photo"* until revision 43, which is true of the compact
+figure and was the arithmetic behind a ROADMAP criterion that could not be met — A-61 Part 2) — so it rides
+the existing autosave, the existing undo history, the existing export and the
 existing §2.2a write fence, and attaching a photo is undoable for free because history is a `Trip` snapshot
 (§2.7 A-6a point 4's precedent). The **bytes** are in object stores of their own (§10.3). Base64 in the
 document would put megabytes into a JSON string that is rewritten on every keystroke's debounce, snapshotted
@@ -16156,3 +16179,180 @@ total**, so A-57 Part 7's **P1–P7** are not optional extras — they are the p
 builder who ships `readExif` without them has taken the dependency's cost and none of its safety. The
 committed fixture corpus is **JPEG headers, not photographs**, and its golden carries **no coordinate**
 (§10.5, and `tools/gen-golden.mjs`'s existing *"NO COORDINATES"* discipline).
+
+#### A-61 — the document-growth criterion was wrong and the record is not: 768 bytes is what §10.1 costs, and the check that catches the fault is structural (revision 43, ROADMAP **I-13**, BUILD-NOTES **KD-81**)
+
+> **STATUS: RULED. The criterion moves; the record does not move by one field.** I-13's builder measured
+> ROADMAP I-13's *"20 photos within **4 KB** of the same trip with none"* against the record class A-57
+> ruled and found it unmeetable by a factor of 2–4, implemented §10.1 faithfully, and routed the
+> inconsistency here rather than shrinking a ruled record or quietly relaxing a number. **That was the
+> correct call and this ruling says so in writing.** The defect is mine: it is *"How a criterion is
+> written"* rule 5 — *no criterion may demand a number the spec derives differently* — committed by the
+> revision that wrote both halves in the same pass. Nothing in §10.1, §10.2, §10.3, §10.4, §10.5 or §10.6
+> changes. No field is added, dropped, renamed or made optional. `SCHEMA_VERSION` does not move. No
+> fixture, golden, port, selector or export symbol moves.
+
+**Part 1 — the measurement, re-run here rather than taken on report.**
+
+Twenty fully-populated photos added to a three-day trip, through `addPhoto`, serialized with `toJSON`
+(re-measured 2026-09-04, independently of the builder's run; the two agree exactly):
+
+| | 20 photos | per photo |
+|---|---|---|
+| `toJSON(trip)` — indent 2, **which is what `saveIfVersion` writes** | **15,354 B** | **767.7** |
+| the same document compact (`toJSON(trip, 0)`) | **8,771 B** | **438.6** |
+| 20 photos with **no** caption, no `capturedAt`, no `at`, no `source` — the iOS-Safari case (A-58 Part 2) | 12,003 B | 600.2 |
+
+And where the 439 compact bytes of one record actually are — measured field by field, including the
+separator each field costs:
+
+| field | B | | field | B |
+|---|---|---|---|---|
+| `provenance` | **150** | | `thumb` | 39 |
+| `capturedAt` | 49 | | `at` | 34 |
+| `display` | 44 | | `source` | 28 |
+| `caption` | 25 | | `attach` | 24 |
+| `metaSource` | 19 | | `id` | 15 |
+
+`provenance` is **34 %** of the record on its own. The nine other fields together are 277 bytes, and six of
+them are numbers.
+
+**Part 2 — where 4 KB came from, and it is two arithmetic errors rather than a different design.**
+
+The figure was written at revision 40, in the same pass as §10.1, and it ties to **no other stated
+constraint in this repository**: not a sync payload budget (there is no server until Phase 3), not an
+IndexedDB quota (§10.3 measured the quota and concluded *"quota is not the binding constraint"*), not a
+mobile-data figure, not §2.3's document-span cap. I grepped for a second occurrence of it and there is
+none. It is §10.1 point 1's own prose — *"a few hundred bytes per photo"* — multiplied by twenty, and it
+went wrong twice:
+
+1. **It costed a record without its `Provenance` block.** A-57 Part 4 put full provenance on a photo for
+   three stated reasons and that block is 150 compact bytes — most of the gap between the 200 bytes the
+   criterion budgeted and the 439 the record costs.
+2. **It quoted `toJSON(trip).length` and budgeted as if the string were compact.** `toJSON`'s default
+   indent is **2**, `packages/client/src/store/store.ts` calls `core.toJSON(toWrite)` with that default,
+   and so the persisted document — the one that matters — is the pretty one. Indent 2 costs **1.75×**.
+   **768, not 439, is the operative per-record figure**, and §10.1 point 1 now says so.
+
+The criterion's *second sentence* — *"a run that is megabytes has put bytes in the document"* — is the
+sentence that says what it was for, and it survives all of this intact. What failed is the number in front
+of it, which is exactly the failure mode rule 5 names.
+
+**Part 3 — the record does not shrink, and this is the option I am refusing on the record.**
+
+I considered dropping fields to meet the number and refuse it, field by field, because *"make the record fit
+the criterion"* is the reading that would have been cheapest to write and is wrong:
+
+- **`provenance` (150 B, the only field big enough to matter).** A-57 Part 4 ruled it in with three reasons,
+  the first of which is Phase 6's suggestion queue and the third of which is that retrofitting provenance
+  onto a record class after a user has five hundred of them is *"the expensive migration this project has
+  now refused four times."* A photo-only slimmer provenance would be a **second spelling of a block `Stop`,
+  `Day` and `Booking` all carry** — the precise failure §10.1 already refuses one paragraph earlier, for
+  `PhotoAttachRef`: *"a second spelling of the same union is how two readers come to disagree."* Trimming
+  `Provenance` **for every record class** is a different and much larger ruling, it is not photo-shaped, and
+  nothing has asked for it.
+- **`thumb.bytes` / `display.bytes` (≈ 12 B together).** These are the only two fields with a plausible
+  derived-not-stored argument: the byte length could be read back out of the object store. It buys **1.5 %
+  of the record** in exchange for turning a synchronous, pure selector into one that awaits a port — and
+  §10.6's whole contract is that a surface can size and budget **before the bytes arrive**. Refused on the
+  merits, not on the size.
+- **`capturedAt`, `at`, `source`, `metaSource`, `caption`, `attach`, `id`.** None is derivable from anything
+  else in the document. They are facts a file asserted or a person typed, and the derived-not-stored
+  discipline does not reach a fact no other field implies. §10.1 point 3 is explicit that `at` and
+  `capturedAt` are *never inferred*, which is the same statement from the other direction.
+
+**The arithmetic settles it even if the judgement did not.** Strip `Provenance` entirely — the largest cut
+available — and a record is 289 compact / ~505 pretty. Twenty of them is 10.1 KB. **The 4 KB figure is
+unreachable by any deletion short of gutting the record**, so *"shrink to fit"* was never actually on the
+table; only *"delete the design"* was.
+
+**Part 4 — what the criterion is for, and it is two properties that were conflated into one number.**
+
+The fault the criterion exists to catch is *"a builder put a base64 derivative in `TripDoc`."* A **byte
+total** is a poor detector of it and a **string-length bound** is a good one, and the arithmetic shows why:
+
+| | a byte-total ceiling of 20 KB / 20 photos | the longest-string bound of 128 chars |
+|---|---|---|
+| §10.4's `thumb` inlined (≈ 18 KB → 24 KB base64) | fails, on **one** photo | fails, by ~190× |
+| a 200-byte data URI on **every** record (4 KB total, inside the ceiling's 5.1 KB of slack) | **passes** | fails, by 1.6× |
+| a single 400-byte data URI smuggled into **one** record | **passes** | **fails** |
+
+So the structural check is **strictly stronger** than the total at the job the criterion was written for, and
+the builder's stopgap was not a weaker substitute for the 4 KB figure — it was the criterion the 4 KB figure
+was trying and failing to be. It is promoted to the primary check. The total stays as the secondary one,
+because it catches a different thing the string bound cannot: **a record class that has quietly grown by a
+third** without any single field becoming long.
+
+**Part 5 — the replacement criterion, as `ROADMAP.md` I-13 now carries it.**
+
+Two criteria, not one, each with its oracle tag and its outcome clause (*"How a criterion is written"* rules
+1 and 2):
+
+> - `[stated]` **No byte payload in the document — the structural check, and it is the primary one.** Over a
+>   fixture whose every string is short **by construction** (captions under 32 characters, ids from
+>   `sequentialIds`), the longest string anywhere in `toJSON(trip)` is **under 128 characters**. The outcome
+>   clause: a derivative encoded into the document fails this by one to four orders of magnitude, and a
+>   byte total alone does not. **The 128 is a property of the fixture, not an invariant on user documents**
+>   — `caption` is uncapped free text, like `Stop.note` and `Trip.title` — so a builder who lengthens a
+>   fixture caption re-derives the bound against the fixture rather than raising it to fit.
+> - `[stated]` **Growth, measured and recorded, with a ceiling derived from §10.1's field list.** A trip
+>   with 20 fully-populated photos is within **20 KB (20,480 B)** of the same trip with none, and the run
+>   **records the measured delta and the per-photo figure** rather than only asserting the ceiling. The
+>   stated value is §10.1's **768 B per photo at `toJSON`'s default indent** ⇒ **15,354 B** expected; the
+>   ceiling is **1,024 B per photo**, i.e. 33 % headroom, which is **about one more `Provenance`-sized
+>   block** (226 B at indent 2). The outcome clause: a run that exceeds the ceiling is a record class that
+>   has grown, and widening it is an architect's ruling, not a test edit.
+
+**Why 20,480 and not 16,384.** 16 KB is 6.7 % over the measured value, and the measurement is taken with
+`sequentialIds` (`"photo-41"`, 8 chars). Production ids are `browserIds()`'s `photo_` + 12 hex — 18 chars —
+which adds ~10 B per photo, and a fixture caption one word longer adds more. A ceiling that a legitimate id
+factory can breach is a ceiling that gets raised by whoever trips over it, which is how a criterion stops
+meaning anything. **20 KB is a round number chosen for headroom, and this paragraph is the derivation that
+rule 2's `[stated]` tag requires it to have.**
+
+**Part 6 — the budget in context, because a ceiling with no denominator is the error I am correcting.**
+
+- The redacted reference trip is **229,380 B** of `toJSON` output (measured 2026-09-04, `tools/gen-sample.mjs`).
+  Twenty photos are **6.7 %** of it; one hundred are 33 %.
+- §2.3's `MAX_TRIP_SPAN_DAYS` already permits a **1.79 MB** document (§2.3 A-35) and the IndexedDB port's own
+  docstring is written around a 176 KB trip. A thousand photos — a number no Phase 2 surface can even
+  produce, since import is one picker at a time — is 768 KB, inside a document size this system has already
+  blessed.
+- **The autosave is where per-record bytes are actually spent**, since `saveIfVersion` rewrites the whole
+  document on every debounce. At 768 B, a hundred photos add 77 KB to a rewrite that is already 229 KB.
+  That is a 33 % increase in the cost of a save, not a change in its character.
+- **Undo history does not multiply this.** `history.past` holds `Trip` **object** snapshots with structural
+  sharing, not serialized text, so an unchanged `photos` array is one reference fifty times over. §10.1
+  point 1's *"snapshotted fifty deep in history"* is about **megabyte** payloads and is correct about them;
+  it is not an argument about hundreds of bytes.
+
+The number that would actually be a problem is the one §10.1 point 1 was written against, and it is four
+orders of magnitude away: a base64 derivative at 24 KB per photo puts 2.4 MB in the document at a hundred
+photos and rewrites it on every keystroke's debounce. **That is the failure. 768 versus 200 is not.**
+
+**Part 7 — what a builder does, and it is the smallest increment in `ROADMAP.md`.**
+
+The shipped test already asserts both properties at the right values — `delta < 20_480` and `longest < 128`
+— so **no assertion changes and no source file is touched.** What is owed is the part that makes them
+criteria rather than assertions: the run must **report** the measured delta and the per-photo figure (rule
+1's outcome clause; a ceiling that only speaks when it fails publishes nothing when it passes), and the
+128-char bound must carry the comment saying it is **fixture-scoped** so the next builder re-derives it
+instead of raising it. `ROADMAP.md` carries this as **I-13a**, it touches
+`packages/core/test/photos.test.ts` and nothing else, and it does not gate I-11 on its own.
+
+**Part 8 — the residues, three, disclosed rather than left to be discovered.**
+
+1. **`caption` is uncapped free text and so `TripDoc` can legitimately hold an arbitrarily long string.**
+   No cap is invented here: core caps no free-text field anywhere (`Stop.note`, `Trip.title`, `Place.name`
+   are all uncapped), and a photo-only cap would be an asymmetry with no argument behind it. What this
+   costs is that the 128-char bound can only ever be a fixture property. **Trigger:** a document-size
+   finding from a real trip, or the first surface that renders captions — at which point the ruling is a
+   free-text policy for *every* field, not for this one.
+2. **The 768 B figure is pinned by measurement and will drift if `Provenance` widens.** The pin is in §10.1
+   point 1 and the ceiling has one `Provenance` block of headroom. **Trigger:** the ceiling going red, which
+   is a routing to me and not a number to raise.
+3. **This is the second criterion-writing defect in three revisions**, after QA **R44-3** (I-12a's ship-gate
+   wording, architect-routed at revision 42 and **still open**). Both are rule 5's subject. I am not folding
+   R44-3 into this ruling — it is about how a criterion may be *written*, and this one is about a specific
+   number being wrong — but if a third lands, the answer is a pass over *"How a criterion is written"*
+   itself rather than a third individual correction. **Trigger:** a third instance.

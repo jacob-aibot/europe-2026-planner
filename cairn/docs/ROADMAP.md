@@ -630,7 +630,7 @@ are. What moves earlier is the record class those things suggest **into** — th
 
 **I-12 and I-13 are numbered above the gate and sequenced below it.** Sequencing rule 7 forbids renumbering
 forty cross-references for a tidy sequence, so the numbers are labels: the order is
-I-0 … I-10, **I-12, I-12a, I-13**, then **I-11, the gate**, which now depends on all of them.
+I-0 … I-10, **I-12, I-12a, I-13, I-13a**, then **I-11, the gate**, which now depends on all of them.
 
 *(**I-12a** is revision 41, from QA round 43's breaker pass over I-12 — `ARCHITECTURE.md` §8.4 **A-59** and
 **A-60**. Two narrow gaps in what `travelStats` does with the fields I-12 added: an unreadable stored city
@@ -666,6 +666,21 @@ property is restated as escape rather than width.
 opened. **R44-3 — I-12a's own Ship-gate wording, also architect-routed — is deliberately NOT ruled here**
 and stays open: it is a change to how a criterion may be written (sequencing rule 5's own subject) and it
 deserves its own pass rather than a footnote in someone else's.
+
+**Revision 43, 2026-09-04.** **One criterion of mine was wrong and is replaced; one increment is added and
+it is the smallest in this document.** I-13 shipped (`1820813`) and its builder reported **KD-81**: I-13's
+*"20 photos within **4 KB** of the same trip with none"* budgets ~200 bytes per `PhotoAsset`, and
+`ARCHITECTURE.md` §10.1's own field list — ruled as **A-57** and implemented faithfully — measures **768
+bytes at `toJSON`'s default indent, 439 compact**. The builder implemented the ruled record, refused both
+to shrink it and to quietly relax the number, and routed the inconsistency to me. **Ruled as
+`ARCHITECTURE.md` §10 A-61** (revision 43): the 4 KB figure ties to no other constraint anywhere in this
+repository — not a sync budget, not a quota, not a mobile-data figure — it is §10.1's own *"a few hundred
+bytes"* × 20, costed without the `Provenance` block A-57 Part 4 put on the record and as if the
+serialization were compact when the persisted document is indent-2. That is **How a criterion is written**
+rule 5, and the defect is mine. **The record does not move by one field**; the criterion becomes the two
+below, and **I-13a** — a test-and-comment pass over `packages/core/test/photos.test.ts`, no source file, no
+assertion value changed — carries what is still owed. Phase 2's scope, boundaries, sequence and gates are
+otherwise untouched; no version moves, no runtime symbol is added, no `.tsx` file is opened.
 
 > **Phase numbers changed once, here.** Every heading below carries its old number, and every "Phase N"
 > written in `ARCHITECTURE.md` §1–§7, `BUILD-NOTES.md` or `QA-FINDINGS.md` before revision 9 means the
@@ -1559,10 +1574,10 @@ caption/order) from the cell, and **at most 3 extent panes can exist planet-wide
 unchanged; A-53 adds **I18**, two criteria and a docstring. **I-8i is gated on Jacob's approval of A-51 and
 on nothing else — the design is closed and no further architect round is owed** |
 | **2c — participants** | `Trip.participants`, three build functions, the participants editor, *"people you have travelled with"* on the profile | you can say the trip was with your girlfriend and her family, and it grants them nothing | Not started; gated on 2b |
-| **2d — the memory data layer** *(revision 40)* | **I-12**: `TripSummaryCity` gains `centre` + `firstDay`/`lastDay`, `SUMMARY_VERSION` → 5, `TravelStatsCity` gains dates (§8.4 **A-56**). **I-13**: the `PhotoAsset` record class, multi-file import, two byte stores, a pure EXIF reader, the two-derivative resolution rule, the loading-state selectors (**§10**, **A-57**, **A-58**). **I-12a** *(revision 41, QA round 43; amended at revision 42 by QA round 44)*: an unreadable stored city date stops taking the whole library's statistics down anonymously, and a city range the clock erased stops printing as a specific day (§8.4 **A-59**, **A-60**). **I-12a is SEND BACK at round 44** — a repair pass is owed for R44-1, and revision 42 folds §8.4 **A-60 Part 6** (R44-2) into it as item 5 | a past trip stops being a list of country codes — it knows *where in* each country and *when* — and a photograph can be attached to a day of it at all, which it could not before. Both are exercisable end to end with `node --test` and the CLI, on a machine with no browser | Not started. **Gated on 2b's *data layer*, which shipped (`REVIEW.md` "2b (data layer)", SHIP, `69e44d4`) — not on 2b's surfaces and not on 2c.** Orderable before or after 2c. **Opens no `.tsx` file** |
+| **2d — the memory data layer** *(revision 40)* | **I-12**: `TripSummaryCity` gains `centre` + `firstDay`/`lastDay`, `SUMMARY_VERSION` → 5, `TravelStatsCity` gains dates (§8.4 **A-56**). **I-13**: the `PhotoAsset` record class, multi-file import, two byte stores, a pure EXIF reader, the two-derivative resolution rule, the loading-state selectors (**§10**, **A-57**, **A-58**). **I-12a** *(revision 41, QA round 43; amended at revision 42 by QA round 44)*: an unreadable stored city date stops taking the whole library's statistics down anonymously, and a city range the clock erased stops printing as a specific day (§8.4 **A-59**, **A-60**). **I-12a is SEND BACK at round 44** — a repair pass is owed for R44-1, and revision 42 folds §8.4 **A-60 Part 6** (R44-2) into it as item 5. **I-13 is built (`1820813`) and not yet broken**; its builder's KD-81 is ruled at revision 43 as §10 **A-61** — the 4 KB document-growth criterion was mine and wrong, the `PhotoAsset` record does not move by one field, and **I-13a** is the one-file test-and-comment pass that closes it | a past trip stops being a list of country codes — it knows *where in* each country and *when* — and a photograph can be attached to a day of it at all, which it could not before. Both are exercisable end to end with `node --test` and the CLI, on a machine with no browser | **In progress** *(status corrected at revision 43 — this cell still read "Not started" after three increments had landed)*: I-12 SHIP (`8b50889`), I-12a **SEND BACK** and owed a repair pass, I-13 **built** (`1820813`) and not yet broken, **I-13a queued**. **Gated on 2b's *data layer*, which shipped (`REVIEW.md` "2b (data layer)", SHIP, `69e44d4`) — not on 2b's surfaces and not on 2c.** Orderable before or after 2c. **Opens no `.tsx` file** |
 
 **Mapped onto the increment sequence below** (revision 10): **2a = I-1 → I-4**, **2b = I-5 → I-8**,
-**2c = I-9 → I-10**, **2d = I-12 → I-12a → I-13** *(revision 40; I-12a added at revision 41)*, with **I-0** before all of them and **I-11** the
+**2c = I-9 → I-10**, **2d = I-12 → I-12a → I-13 → I-13a** *(revision 40; I-12a added at revision 41, I-13a at revision 43)*, with **I-0** before all of them and **I-11** the
 gate — which is now numbered below two increments it waits for; sequencing rule 7 is why the labels are not
 renumbered. Each of the three steps is
 genuinely shippable at its own increment — the phase can stop after I-4 or I-8 and still have delivered
@@ -4354,6 +4369,12 @@ fields A-56 added, plus one docstring correction. **It opens no view and adds no
 
 #### I-13 — the photo foundation: a record class, bytes that are not in the document, and no new dependency (§10, A-57, A-58)
 
+> **Status: BUILT at `1820813`, not yet broken.** One criterion below was **replaced at revision 43** — the
+> builder's **KD-81** measured I-13's original *"20 photos within 4 KB"* against `ARCHITECTURE.md` §10.1's
+> own field list and found it short by 2–4×. Ruled as §10 **A-61**: the figure was mine and wrong, the
+> record does not move by one field, and the two `[stated]` bullets in *Verification* are what replaced it.
+> **I-13a** carries the small remainder.
+
 - **Built.** `ARCHITECTURE.md` **§10** in full — A-57 Part 6 is the file-by-file list and it is the brief.
   In summary: `PhotoId`, `PhotoAsset`, `PhotoDerivative`, `Trip.photos` and `SCHEMA_VERSION = 2` with its
   `migrateDoc` case; `packages/core/src/photo/exif.ts` — a pure, total, bounded JPEG/TIFF-EXIF reader;
@@ -4378,8 +4399,24 @@ fields A-56 added, plus one docstring correction. **It opens no view and adds no
   parsing dependency. Plus:
   - `[stated]` **Round-trip:** a trip with three photos, two attachments and one `at` survives
     `toJSON`→`fromJSON` **byte-identical**; undo/redo restores photos exactly at depth 50.
-  - `[stated]` **Ceiling on the document:** `toJSON(trip).length` for a trip with 20 photos is within
-    **4 KB** of the same trip with none. A run that is megabytes has put bytes in the document.
+  - `[stated]` **No byte payload in the document — the structural check, and it is the primary one**
+    *(revision 43, replacing the 4 KB figure; `ARCHITECTURE.md` §10 **A-61**, BUILD-NOTES **KD-81**)*. Over a
+    fixture whose every string is short **by construction** — captions under 32 characters, ids from
+    `sequentialIds` — the longest string anywhere in `toJSON(trip)` is **under 128 characters**. Outcome
+    clause: a derivative encoded into the document fails this by one to four orders of magnitude, where a
+    byte total alone can be passed by a small payload on every record or a large one on a single record
+    (A-61 Part 4's table). **The 128 is a property of the fixture, not an invariant on user documents** —
+    `caption` is uncapped free text, like `Stop.note` — so a builder who lengthens a fixture caption
+    re-derives the bound against the fixture rather than raising it to fit.
+  - `[stated]` **Growth, measured and recorded, with the ceiling derived from §10.1's field list**
+    *(revision 43; the same replacement)*. A trip with 20 fully-populated photos is within **20 KB
+    (20,480 B)** of the same trip with none, and the run **records the measured delta and the per-photo
+    figure** rather than only asserting the ceiling. The stated value is §10.1's **768 B per photo at
+    `toJSON`'s default indent** — which is what `saveIfVersion` writes — so **15,354 B** is expected and the
+    ceiling is **1,024 B per photo**: 33 % headroom, about one more `Provenance`-sized block. Outcome
+    clause: a run over the ceiling is a record class that has grown, and widening it is an architect's
+    ruling, not a test edit. A run that is megabytes has put bytes in the document, which is what the
+    withdrawn 4 KB figure was reaching for and could not express.
   - `[stated]` **The port is exercisable with no browser:** the whole import → attach → read → detach →
     delete path runs against `memoryPhotos()` under `node --test`. `packages/client` must never hold a
     photo's bytes — assert it holds ids and metadata only.
@@ -4413,6 +4450,35 @@ until Jacob has selected a visual direction. Writing its criteria now would bake
 direction he has rejected. §10.6 exists so that whoever writes it has honest signals to build honest states
 from.)*
 
+#### I-13a — the photo document-growth criterion says what it measured (§10 A-61, BUILD-NOTES KD-81)
+
+> **The smallest increment in this document, and it exists because the defect was mine.** I-13's builder met
+> both halves of A-61's replacement criterion **before it was written** — `packages/core/test/photos.test.ts`
+> already asserts `delta < 20_480` and `longest < 128` — so **no assertion value changes and no source file
+> is touched**. What is owed is the part that makes them criteria rather than assertions.
+
+- **Built.** Two changes to `packages/core/test/photos.test.ts` and nothing else in the repository:
+  1. The size case **reports** the measured delta and the per-photo figure on a **passing** run — into the
+     test's own output and from there into `BUILD-NOTES.md` — not only in an assertion message that speaks
+     when it fails. **How a criterion is written** rule 1: a ceiling that publishes nothing when it passes
+     is a number nobody can check has drifted.
+  2. The 128-character bound gains the comment saying it is **fixture-scoped** — `caption` is uncapped free
+     text (A-61 Part 8 residue 1) — so the next builder who lengthens a fixture caption re-derives the bound
+     against the fixture instead of raising it to fit.
+- **User-visible outcome.** None, and it is not pretending otherwise. What it buys is that the next person
+  to read a green run learns what the record actually costs, which is the fact the 4 KB figure got wrong for
+  a whole revision because nobody had printed it.
+- **Architecture / data model.** **Nothing moves.** `PhotoAsset` keeps every field A-57 ruled;
+  `SCHEMA_VERSION` stays 2; no fixture, golden, port, selector or export symbol changes. A builder reads
+  `ARCHITECTURE.md` §10 **A-61 Parts 5 and 7** and needs nothing else in that document.
+- **Verification.** `npm test` green with the two criteria above stated in I-13's *Verification* list; the
+  measured delta and per-photo figure recorded in `BUILD-NOTES.md` beside KD-81, which is thereby closed;
+  `git diff --stat` shows **one file**, under `packages/core/test/`.
+- **Dependencies / blockers.** I-13 (shipped, `1820813`). **Orderable anywhere after it**, including as a
+  ride-along in any later pass that opens `photos.test.ts` for another reason — it is listed as its own
+  increment so it cannot be silently dropped, not because it deserves a session of its own. **Route: builder
+  only** (`cairn/CLAUDE.md`'s delegation table, row 1 — behaviour is unchanged).
+
 #### I-11 — The phase gate
 
 - **Built.** Nothing new. The full chain: a breaker round over the whole phase, then the manager's
@@ -4426,8 +4492,10 @@ from.)*
   this is the pass that clears it.
 - **Verification.** All exit criteria below, each re-derived; the whole Phase 1 suite unchanged; the
   attack list for this phase run end to end.
-- **Dependencies / blockers.** I-0 through I-10, **and I-12, I-12a and I-13** (revision 40, step 2d —
-  numbered above this increment and sequenced below it; I-12a added at revision 41).
+- **Dependencies / blockers.** I-0 through I-10, **and I-12, I-12a, I-13 and I-13a** (revision 40, step 2d —
+  numbered above this increment and sequenced below it; I-12a added at revision 41, I-13a at revision 43).
+  **I-13a is a one-file test-and-comment pass** and may land inside any earlier commit that opens
+  `photos.test.ts`; it is named here so that it cannot reach the gate unbuilt.
 - **Ship gate.** A manager verdict of **SHIP**. Nothing else counts as the phase being done.
 
 ### Exit criteria — the Phase 2 ship gate

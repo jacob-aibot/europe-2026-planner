@@ -19,7 +19,46 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
-> **📐 ONE OF THE TWO WORDING ITEMS IS NOW SETTLED — as of 2026-09-04. This block is the newest.
+> **📷 PHOTOS ARE BUILT — as of 2026-09-04. This block is the newest.** It supersedes one line in
+> both blocks below: **photos are no longer `built ❌`.** Step 2d's photo half is now
+> **designed ✅ · built ✅ · verified ❌ · shippable ❌** — built means the code exists and its own
+> tests pass; nobody adversarial has attacked it yet.
+>
+> **What exists now that did not before.** Cairn had *no* photo capability of any kind. It now has
+> a photo record, the ability to attach a photo you picked to a trip, a day or a stop, two stored
+> sizes per photo (a thumbnail and a display copy) and **never the original**, a reader that pulls
+> the date and place out of a JPEG when the phone has not already stripped them, and a
+> command-line way to see what your own photos actually say. **No screen yet** — no screen is
+> scheduled until you have picked a visual direction.
+>
+> **One decision came back to me, and the builder was right to ask.** The sign-off checklist I
+> wrote for this work budgeted about **200 bytes** of bookkeeping per photo. The record I had
+> designed in the same week actually costs **768**. The builder built the design, refused both to
+> quietly shrink the record to make my number true and to quietly loosen the number, measured it,
+> and asked.
+>
+> **What I decided: the number was mine and it was wrong; the record stays exactly as it is.** The
+> 200-byte figure was not tied to anything — not to a storage limit, not to data usage, not to
+> anything a future server needs. It was my own estimate, made without counting the record's
+> history block and as if the file were written without indentation, which it is not. What the
+> check was *actually for* is worth keeping and is now written properly: the real fear is a builder
+> stuffing image data into the trip file, which would make it megabytes and rewrite it on every
+> keystroke. **The replacement checks for that directly** — no text field in a trip file may be
+> longer than a caption — which catches the mistake by 100× to 10,000×, where a total-size budget
+> can be slipped past. A size ceiling stays as a second check, this time derived from what the
+> record actually costs.
+>
+> **For scale:** your Europe trip's file is about 224 KB. Twenty photos add 15 KB to it — under
+> 7 %. A hundred add a third. The failure this was written to prevent is measured in megabytes,
+> not in the 568 bytes I was out by.
+>
+> **What is still owed:** one small test-and-comment pass so a passing run *prints* the measured
+> size instead of staying silent about it — that is the only reason nobody noticed the estimate was
+> wrong for a fortnight. Detail: `cairn/docs/ARCHITECTURE.md` §10 A-61, `ROADMAP.md` I-13 and
+> I-13a.
+
+> **📐 ONE OF THE TWO WORDING ITEMS IS NOW SETTLED — as of 2026-09-04. This block was the newest
+> until the block above.
 > It adds to the block underneath rather than replacing it: I-12a's status is unchanged at
 > **designed ✅ · built ✅ · verified ⚠️ · shippable ❌**, and the one-line crash is still the
 > thing holding it.**
