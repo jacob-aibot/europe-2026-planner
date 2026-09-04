@@ -132,6 +132,25 @@ test('the generator is deterministic — the same state renders byte-identically
   assert.ok(a.includes('wrote'));
 });
 
+/**
+ * The committed page must be a pure function of STATE.json.
+ *
+ * It briefly was not: the "N commits are not on master" count was rendered into the HTML, and
+ * that number changes on EVERY commit — so the committed file was perpetually dirty, and a
+ * regenerate-on-any-commit loop was the only way to keep it clean. A static page also cannot
+ * re-check git at the moment someone opens it, so a live claim there is a claim that rots.
+ * The live signal lives in `--check` and `--text`, which are run on demand.
+ */
+test('the page carries no live git state — only what STATE.json says', () => {
+  const page = readFileSync(resolve(ROOT, 'docs', 'HUB.html'), 'utf8');
+  assert.ok(page.includes(state.commit), 'the page does not name the commit it describes');
+  assert.doesNotMatch(page, /commits? (are not on|behind)/, 'live git drift was rendered into the page');
+  const head = execFileSync('git', ['rev-parse', '--short', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).trim();
+  if (head !== state.commit) {
+    assert.ok(!page.includes(head), 'the live HEAD sha leaked into the committed page');
+  }
+});
+
 test('the rendered page escapes state text rather than pasting it into the DOM', () => {
   const page = readFileSync(resolve(ROOT, 'docs', 'HUB.html'), 'utf8');
   // The state carries a literal double quote (the "accept" control decision); it must arrive escaped.

@@ -109,18 +109,15 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
 function html() {
   const maxSeverity = Math.max(...state.rounds.map(severity), 1);
 
-  const banners = [
-    stale
-      ? `<div class="banner bad"><strong>This board is ${behind} commit${behind === 1 ? '' : 's'} behind.</strong>
-         Written against <code>${esc(state.commit)}</code> on ${esc(state.updatedAt)}; HEAD is <code>${esc(head)}</code>.
-         Update <code>cairn/docs/STATE.json</code> and run <code>npm run hub</code>.</div>`
-      : `<div class="banner ok"><strong>Current.</strong> This board matches <code>${esc(state.commit)}</code>, the tip of <code>${esc(branch ?? 'HEAD')}</code>.</div>`,
-    offMaster
-      ? `<div class="banner bad"><strong>${aheadOfMaster} commits are not on <code>master</code>.</strong>
-         They exist only on <code>${esc(branch)}</code>. This repo has previously stranded Cairn work on a
-         <code>claude/*</code> branch while <code>master</code> went stale.</div>`
-      : '',
-  ].join('\n');
+  // The page is a PURE FUNCTION OF STATE.json — no HEAD sha, no drift count, nothing that
+  // moves with every commit. Baking live git state into a committed file makes the file
+  // perpetually dirty (the master-drift count alone changes on every single commit) and makes
+  // it lie the moment anyone opens it, since a static page cannot re-check git at view time.
+  // The live signal belongs to `--check` and `--text`, which are run on demand.
+  const banners = `<div class="banner anchor"><strong>This board describes <code>${esc(state.commit)}</code></strong>,
+       written ${esc(state.updatedAt)}. It is only as current as its last update —
+       run <code>node cairn/tools/gen-hub.mjs --check</code> to confirm, or
+       <code>npm run hub</code> to rebuild it.</div>`;
 
   const stepper = state.phases
     .map((p) => {
@@ -200,6 +197,8 @@ h3{font-size:1rem;margin:0 0 .4rem}
 .banner{border-radius:9px;padding:.7rem .9rem;margin:.5rem 0;font-size:.9rem;border:1px solid}
 .banner.bad{background:var(--back-bg);border-color:color-mix(in srgb,var(--back) 40%,transparent)}
 .banner.ok{background:var(--ship-bg);border-color:color-mix(in srgb,var(--ship) 35%,transparent)}
+.banner.anchor{background:var(--panel);border-color:var(--line);color:var(--dim)}
+.banner.anchor code{color:var(--ink)}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:1rem 1.1rem}
 
 /* phase stepper */
