@@ -1301,6 +1301,30 @@ the parser can put a value outside the enum into it; a cast is not a producer.* 
 census nothing currently stands on and the exact producer A-45 names as live for dates. `ROADMAP.md`
 revision 57 carries the ledger entry.
 
+**Revision 56, 2026-09-04.** **The last user-visible string in the product that prints a record as an opaque
+id, and it prints ten record classes that way.** **A-75** (§2.2, QA **R53-1**) — the merge banner
+`describeMerge` writes identifies each overridden record as `` `${entity}:${id}` ``, so a two-tab collision
+over a person reads *"overrode 2 (participant:participant-1, …)"* while `validateTrip`, since R52-4, spells
+the same person out. The breaker was right to route this here rather than to a builder — the convention is
+uniform, and fixing participants alone is R16-2's *one property, two guards* — and **two of the facts it
+rested on turned out to be wrong in ways that change the answer**. It is **ten** entity labels, not eight
+(`trip` and, crucially, **`stop`** are pushed outside `mergeTrips`' body and were not in the count), and it
+is **not** developer-facing text: `App.tsx` renders `persistence.lastMerge.message` **alone**, in a
+`role="status"` banner, with nothing beside it — which is checked, not assumed, and which removes the only
+principled defence of the id form. Three things then decide it: `cairn-constraints` §6 already prescribes
+message-plus-`params`, and this function has it **backwards** (`lastMerge.report` is the structured half and
+is carried unchanged, so the message is re-printing it as prose); **A-10's `geoOutlier` row is this case one
+string family over**, and was never a cities rule; and **no surface in Cairn can resolve `stop-501`**, so the
+token refers to nothing its reader can reach. **The ruling is not "swap the id for the name"** — a bare name
+is *worse*, because one flat list over ten heterogeneous classes needs the class to stay legible — it is
+**class noun always, name appended when the record has one**, with one class-free blank rule and one
+truncation rule so R52-4's shared-phrase-helper defect cannot recur. Its architectural half is Part 6:
+`describeMerge` **does not take a `Trip`**; the label is stamped onto the `MergeNote` at the moment the merge
+decided, because resolving ids later against a document that has moved on is §0.6's error in a new place.
+**No `IssueCode`, no `SCHEMA_VERSION`/`SUMMARY_VERSION`/`DB_VERSION` movement, no export-count movement, no
+`.tsx`, no `qa/`, and not one merge *decision* changes** — only what the merge says. `ROADMAP.md` revision 58
+carries the ledger entry and **I-9c**.
+
 **Phase 1 is §2 and §4. The next phase is §8.1–§8.4.** Everything else is the shape those must not
 foreclose. See `ROADMAP.md` for sequencing and `PRODUCT-VISION.md` for why this order and not another.
 **What the product looks like is `DESIGN.md`, not this document** — §9 says why, and a builder of a screen
@@ -1367,7 +1391,15 @@ fails, splits A-46's single card boolean into the two correctly-scoped ones it w
 and settles `cli.ts --today` (R35-4) and `exportStoredDoc`'s pending-write staleness (R35-5); **anyone
 rendering a stored summary row on the Trips list, adding an export path, or about to call `isIsoDate` from
 outside core reads A-47, then A-46, then A-45, then §8.4 A-44 — A-47 names which of A-46's sentences it
-supersedes, so reading it first is what tells you which of A-46 to skip** | 125k | builder, breaker |
+supersedes, so reading it first is what tells you which of A-46 to skip**; **A-75 is revision 56, lives in
+§2.2 directly under A-10 and is read *with* A-10, never instead of it** — it is the merge banner's naming
+convention (QA R53-1): `describeMerge` stops printing `` `${entity}:${id}` `` and prints the product's own
+noun for the record class plus the record's displayed identity, across **ten** entity labels, with the ids
+left where they already were in `lastMerge.report`. It is ~5k, it is self-contained, and **a builder of
+ROADMAP `I-9c` reads A-75 whole and needs nothing else in this document** — not A-10, not §2.9, not §4.
+**Anyone adding a record array to `Trip` reads A-75 Part 4 in the same breath as §10.1's "add it to
+`mergeTrips`" rule**, because the label row and the merge call are one change, and R52-1 is what happens
+when half of it is forgotten | 128k | builder, breaker |
 | 3 | Module boundaries | <1k | builder |
 | 4 | **The Phase 1 client.** §4.2 rule 6 (a pending write is never outlived by its document) is new in revision 3 — QA R3-2; rule 6a′ and the `savedDoc` predicate are revision 4 — QA R4-1; **rule 6a″ (the flush bound and its exits) and rule 6c's "delete goes on the chain" are revision 5** — QA R6-1/R6-2/R7-3; **rule 5's retirement carve-out is revision 6** — QA R8-1, read with §2.7; **rule 4a is revision 8** — QA R11-1, read with §2.2a A-7; **§4.3's A-30 is revision 23** — the `refreshSummary` port method, the fence's meaning stated once, and the rescan's uniform per-row link — and **anyone touching `runRescan`, `StoragePort` or a port implementation reads it first**, with §8.4 clause 3 beside it; **§4.4's A-40 is revision 29** — the lifetime map is a plain component over a pure `packages/client` frame function, not a second `MapPort`, and **anyone building or reviewing `WorldMap.tsx` reads it first** (it is ~3k and self-contained; the trip map's port is unchanged and needs no re-reading); **§4.4's A-41 and A-42 are revision 30 and are read *with* A-40, never instead of it** — A-41 is the atlas frame (geographic clustering, one primary pane and up to two insets, padding, and the **W3** renderer clause) and it amends A-40 clause 2 and withdraws A-40 Part 7 residue 1's diagnosis; A-42 withdraws A-40 clause 2's min-span *claim* and rules that no second constant is created. **A builder of I-8d reads A-40 Parts 3–5, then A-41 and A-42, and needs nothing else in this document except §2.10's list**; **§4.4's A-48 is revision 33, sits directly under A-42 and is read *with* A-41, never instead of it** — QA round 36 measured A-41's own C2 and C3 as wrong (a key point that lands in the ocean, and a partition that depends on the alphabet), and A-48 supersedes **C2**, **C3** and Part 8 residues 1′ and 4 in place, withdraws C4's margin claim, adds **C9** (paint order) and one pane field (`aspect`), and changes the semantics of core's `clusterPoints` to connected components. **A builder of I-8g reads A-48 first — it names which of A-41's clauses to skip — then A-41's C1/C5/C6/C7/C8 and Parts 4–7, then A-40 Parts 3–5**; **§4.4's A-49 and A-50 are revision 34, sit directly under A-48 and are read *with* A-41 and A-48, never instead of them** — QA round 37 measured A-48's own C8 as the clause A-48 forgot (the key point moved onto the country and the *extent* did not), and A-49 supersedes **C8**, **C7**'s cap and A-41's I1/I2/I3/I5 in place, withdraws A-48 C9 consequence 2's chip-list sentence as false, adds `countryParts` to core, a `'detached'` pane, a `codes` array on the frame and invariants **I11–I15**; A-50 completes A-48 Part 6 for the *tall* direction in one CSS declaration. **A builder of I-8h reads A-49 and A-50 first — A-49 names which of A-41's and A-48's clauses it supersedes — then A-48's C2′/C3′/C9 and Part 6, then A-41's C1/C5/C6/C7 and Parts 4–7, and needs nothing else in this document except §2.10's list**; **§4.4's A-51 and A-52 are revision 35, sit directly under A-50, and are the entry point to the whole atlas-frame family — read A-51 first and it names which of A-41/A-48/A-49 to skip** — A-51 reopened the framing abstraction itself at Jacob's instruction (QA **R38-2**, MAJOR) and **supersedes A-41's C5/C6/C7, A-49's C7′/C8′/C8″ and the `role` field in place**: the frame is **one pane per connected component of country parts**, equally weighted, ordered by weight rather than framed by it, and its Part 7 is the **consolidated** I1…I17 list that replaces three rounds of *"restated by"* pointers. A-52 is one paragraph beside it (a ring the index carries is a ring the frame draws). **A-51 is RULED AND HELD FOR JACOB'S APPROVAL — no builder pass may be dispatched against it until he has ruled**; until then A-41…A-50 are what is shipped. **§4.4's A-53 is revision 36, sits directly under A-52, and supersedes nothing** — it is the pane-*membership* contract Jacob asked for before approving A-51 (membership is country geometry because an ISO code is the only geographic evidence the record carries; standing is `home`; priority is order; disclosure is the caption), and it adds **I18**, the ≤ 3-extent-panes-planet-wide bound, and the d3-geo/Turf prior-art ruling. **A builder of I-8i reads A-51, then A-52, then A-53 Parts 4 and 8, then A-41 C1 + Part 4, A-48 C2′/C3′/C4′/C9 + Part 6, A-49 Part 2, A-50 and A-40 Parts 2–5, and needs nothing else in this document except §2.10's list**; **§4.4's A-54 is revision 37, sits under A-53 and is the newest entry in the family — it supersedes A-51 **G7** in full, A-51 **G5**'s third key and A-52's **clause 1**, widens L3's exception, adds **I19**, and corrects five published numbers, so **anyone reading A-51 for the layout, the pane order or the ring filter reads A-54 first and it names what to skip**. **A builder of I-8j reads A-54, then A-51 G5/G7 and Part 8, then A-50 and A-40 Parts 2–5, and needs nothing else**; **§4.2's A-67 is revision 47 and is the newest entry in the section — it is the only one that is *not* about the map, and it sits at the end of §4.2 rather than in §4.4** — the store's **generation guard**, ruling QA **R47-1** and **R47-2** as one defect: `flushForTransition` returns a **ticket** instead of a boolean, three guarded slots order every asynchronous install, and **R46-1's and R46-3's shipped point-fixes are deleted rather than layered under** (Part 7 rules each site). It adds new rule **6d** to §4.2 and amends §10 **A-66 Part 7** by pointer. **A builder of I-13d reads A-67 Parts 3–7 and 10, plus §4.2 rule 6 whole and §10 A-66 Part 10, and needs nothing else in this document** — it is ~12k and self-contained, and it needs none of §4.4. **A-67 gained a Part 7a at revision 48** (the I-13d builder's report against `4316167`): Part 7's *"every existing R46-1/R46-3 test stays exactly as it is"* was too strong by one assertion and contradicted ROADMAP **G3**, so it is narrowed to **final-state** assertions and the one assertion pinning the old guard's byte-write side effect is corrected. **Anyone reading Part 7 reads Part 7a with it**; Part 7a also rules who touches `qa/` (**breaker**) versus `packages/client/test/` (**builder**). **No mechanism, slot, call site or criterion moves**. **A-68 is revision 49 and sits directly under A-67 — read the two together, always, and A-68 first if you are implementing anything from A-67 Parts 4, 5, 6, 7a or 11.** Round 48 attacked A-67's mechanism and could not break it; both of its MAJORs are at A-67's **call sites**, and A-68 rules them as one missing sentence — *a bump of a slot's sequence is a promise to replace the answer it invalidated*. It moves Part 5's three-slot claim to a **one**-slot claim (the reseed supersedes the other two), hoists Part 6's two byte-write supersedes **out of** R45-4's value guard and gives them the read they owe, corrects Part 7a item 4 and Part 11 residue 4, and **changes `generation.ts` not at all**. **A builder of I-13e reads A-68 whole (~11k) plus A-67 Parts 3–7 for context, and needs nothing else in this document.** **A-69 is revision 50 and sits directly under A-68 — it is now the newest entry in §4 and the FIRST one to read in this family.** QA round 49 found A-68's own fix re-opened seven of the nine exits it closed, because Part 5b discharged the owed read under the **`doc`** slot's ticket — the slot those nine exits all bump (**R49-1**) — and found an **eleventh** exit that installs its document and still answers nothing, which no enumeration of *non*-installing exits could contain (**R49-5**). A-69 rules the **class**: **no correctness argument in the store may rest on an enumeration of control-flow exits** (Part 3). §10.6 property 5 becomes a predicate repaired at two non-opt-in sites — a wrapper over `createStore`'s whole returned literal and `readPhotoAvailability`'s own tail — `availabilityOwed` is **deleted**, `setAvailability` becomes the sole typed writer of the availability triple, and A-68 Part 4.1's and Part 7's tables are demoted to documentation. It also fixes **R49-4** (a browse pane outliving its deleted trip, with `copyStopInto` reading it) and corrects three of A-68's published mutants and its *"§K is green"* claim. **A builder of I-13g reads A-69 whole (~12k), then A-68 Parts 4.2, 5a and 5c and A-67 Part 3, and needs nothing else in this document** — and reads A-68's and A-67's amendment banners, which name every line of theirs that no longer holds. **A-70 is revision 51, sits directly under A-69, and is now the FIRST entry to read in this family** — it is short (~7k) and it is the only one that changes `generation.ts`. The I-13g builder implemented A-69's predicate verbatim, could not keep two shipped criteria green with it, and routed the contradiction rather than resolving it (BUILD-NOTES **KD-84**): A-69's `availabilityError === null` conjunct also declines to discharge a **byte write's** `supersede` after an earlier failed read, which leaves a stale failure message over changed bytes and regresses §10 **A-65 T1**. A-70 **upholds A-65 T1 unamended and narrows the predicate**, replacing the conjunct with a second disjunct over the **slot's sequence** — the record of the obligation rather than a consequence of it (Part 3, rule 6d's fourth half) — stamped at `setAvailability`, the one writer A-69's own type fence closed. It also corrects **three text defects in A-69** in place: site **S2**'s printed placement was unreachable (KD-85), **G18**'s nine reds are eight and **G23**'s fault is a no-op (KD-86), and **G21**/**G24**'s counts are of functions and sites rather than of tokens (KD-83). **A builder of I-13h reads A-70 whole and needs nothing else in this document except A-69 Parts 4, 5 and 6 for the code it keeps.** **A-71 is revision 52, sits directly under A-70, and is the newest entry in §4 — it is also the only one in this family that is not about the generation guard at all, so it is read on its own rather than after the other four.** QA round 50 closed the A-67…A-70 arc (the boundary and the stamp survived every attack) and filed **R50-5** beside it: `emit()` runs subscribers **synchronously**, so a subscriber throwing while rendering a **successful** answer throws from inside whatever `try` the store was holding, and the `catch` records the view's exception as its own subject's failure and swallows it. A-71 measured **five faces in two subsystems** — a successful `present()` read as *"could not be read"*, deleted bytes read as an orphan, a photograph that landed read as `'storage_failed'` by name, and a **write that landed with the fence advanced** read as `persistence.status: 'error'` — and rules the class rather than the site, because five narrowed `try`s is A-69 Part 3's forbidden enumeration: `emit` **brands** what a subscriber throws and one classifier, **`attempt`**, rethrows a branded error and returns everything else as a value, deleting **seven** `catch` blocks. It amends **A-69 Part 7** and narrows **Part 13 residue 1** to two costs; `emit`'s stop-at-the-first behaviour, A-67's guard, A-68's wiring, A-69's boundary and A-70's stamp are all untouched. **A builder of I-13i reads A-71 whole (~10k) and §10 A-66 Part 11 (~2k), plus A-69 Part 7 and Part 13 residue 1 for what it amends, and needs nothing else in this document.** **A-71 and A-70 both carry revision-53 amendment banners (QA round 51) and the banners are read first**: the mechanism shipped clean and survived the confirmation round, and every correction is to this document's own text — G35's control names the tests it actually reddens (R51-1), Part 4a no longer calls a false-positive brand *"conservative"* (R51-2), the method this entry called **`saveAs`** is named as what exists, `doMerge`'s two chained writes (R51-3), Part 4d's *"every exit"* is scoped to the exits the `finally` reaches with the remaining one filed as residue 6 (R51-4), and **A-70 Part 7 item 3 is no longer a table of measured counts but the *count rule* that forbids them** (R51-6, after the same row was wrong in three consecutive revisions). **Anybody about to write a number into this document reads that rule first.** | 114k | builder |
 | 5 | The four hard subsystems | 2k | breaker; builder from Phase 3 on |
@@ -2091,6 +2123,153 @@ distinct, non-reserved, non-empty city keys), `detectConflicts` is unchanged at 
 round-trip goldens are byte-identical. The single expected-string change in the whole repo is the
 injected-fault `geo_outlier` case, which now reads *"the Vienna map"* rather than *"the vienna map"* — and
 that is the fix, not a casualty.
+
+#### A-75 — the merge banner names records the way the product names them; the ids stay in the report (revision 56, QA **R53-1**)
+
+**The finding, and the two things about it I checked before ruling.** `describeMerge` builds the sentence a
+user reads after pressing *Merge and save*, and it identifies each overridden record as `` `${entity}:${id}` ``.
+After I-9's fix, a two-tab collision over a person renders *"…overrode 2 (participant:participant-1,
+participant:participant-21)"* — while `validateTrip`'s two participant issues, since **R52-4**, deliberately
+spell the person out through `personPhrase`. The breaker filed this as MINOR and routed it here rather than
+to a builder, because the opaque form is **pre-existing and uniform** and changing it for participants alone
+is R16-2's *one property, two guards*. That framing is right, and the routing is right. **Two of its
+supporting facts are not, and both matter to the answer:**
+
+1. **It is not eight entity labels. It is ten.** The breaker counted `mergeById`'s call sites in
+   `mergeTrips`' body — `city`, `day`, `poolStop`, `place`, `booking`, `resolution`, `photo`, `participant`
+   — and missed the two that are pushed elsewhere: `trip`, from the `TRIP_FIELDS` loop, and **`stop`**, from
+   `mergeDay`'s nested `mergeById` and from `dedupePlacements`. `stop` is the highest-frequency label of the
+   ten. A ruling that says "all eight" would leave the common case unfixed, so the count is stated here as a
+   design count and the builder is told all ten by name (Part 4).
+2. **It is not developer-facing text, and I checked rather than assumed.** `store.ts`' `doMerge` passes
+   `core.describeMerge(merged.report)` to `writeAndSettle` as `{ message, report }`, which lands in
+   `persistence.lastMerge`; `apps/web/src/App.tsx` renders **`state.persistence.lastMerge.message` alone**,
+   in a `role="status"` banner, with a dismiss button and **nothing else** — no id column, no report dump, no
+   developer detail beside it. The "opaque ids are fine because this is debugging output" defence is
+   available in the abstract and is **false about this string**. It is the only place a merge report is
+   surfaced at all.
+
+**The three facts that decide it, in the order they bind.**
+
+- **`cairn-constraints` §6 / §2.1 already prescribe the split, and this function has it backwards.** The
+  rule is *"every user-facing string core produces carries structured `params` beside it"* — `Issue.message`
+  + `Issue.params`, `Conflict.summary` + `Conflict.params`. `describeMerge` **already** has its structured
+  half: `lastMerge.report` is carried beside the message, unaltered, and holds every `{entity, id, field}`.
+  So the ids are not at risk and never were. What the message does is print the structured half **again, as
+  prose**, which is the one thing the split exists to stop.
+- **A-10's `geoOutlier` row is this case, one string family over.** *"Two label helpers interpolate a key
+  into a user-visible summary. They resolve the key to `City.name`… `params.cityKey` stays the key: it is
+  structured data."* That is not a cities rule; it is the general rule, and cities were merely where it was
+  first paid for. R52-4 paid for it a second time at participants. This is the third and last user-visible
+  string family in the product that interpolates an id, and there is no argument available for it that was
+  not already rejected for the other two.
+- **The id has no referential power for the reader, and the name does.** There is no surface anywhere in
+  Cairn where a user can look up `participant-1` or `stop-501` — not a URL (there is no router), not a
+  detail panel, not a search box. So the token is not merely unhelpful; it is prose that *looks* precise and
+  refers to nothing the reader can reach, over a disclosure of data loss. `Stop.name`, `City.name`,
+  `Participant.displayName` and `Day.date` are exactly what the product prints everywhere else.
+
+**So: change, and change all ten — but the ruling is *not* "swap the id for the name."** A bare name is
+**worse** than the status quo, and this is the trap in the obvious fix: the sentence is one flat list over a
+heterogeneous set of record classes, so *"overrode 2 (\"Zoë\", \"Hostel Bar\")"* deletes the reader's only
+clue that one of those is a person and the other is a stop. The class is load-bearing here in a way it is
+not in an `Issue`, which carries a `code` and a `ref` and sits in a panel that groups by subject. **The
+class noun is therefore always printed, and the name is appended to it when one exists.**
+
+**Part 3 — the rule.**
+
+> **`describeMerge` identifies a record by the noun the product uses for its class, plus the record's own
+> displayed identity when it has one. No `MergeNote.id` and no `MergeNote.field` appears in the message. The
+> identity is captured at the moment the merge decided about the record, onto the note, and is never
+> resolved later from a document.**
+
+**Part 4 — the ten labels, and there is no eleventh.** Adding a record array to `Trip` means adding a row
+here in the same change that adds it to `mergeTrips` (§10.1's rule, and R52-1 is what happens when the
+second half is forgotten).
+
+| `entity` | named form | unnamed form | label captured from |
+|---|---|---|---|
+| `trip` | — | `the trip itself` | **none — never labelled.** The trip is the sentence's subject already (*"This trip was edited elsewhere"*); naming it twice says less, not more |
+| `city` | `the city "X"` | `a city` | `City.name` |
+| `day` | `the day 2026-08-09` | `a day` | `Day.date`. **No quotation marks** — a date is not a name, and quoting it would read as one |
+| `stop` | `the stop "X"` | `a stop` | `Stop.name` |
+| `poolStop` | `the optional stop "X"` | `an optional stop` | `Stop.name`. **"Optional", not "pool"** — `TripView.tsx`'s tab is labelled `Optional` and A-10's own worked example says *"the split optional list"*. The user has never seen the word "pool" |
+| `place` | `the place "X"` | `a place` | `Place.name` |
+| `booking` | `the booking with "X"` | `a booking` | `Booking.operator`. **Never `Booking.reference`** — §6.6 is not violated by rendering one locally, but a booking reference in a status banner is the field this project redacts on every boundary, and the operator is the half a person recognises anyway |
+| `resolution` | — | `a conflict resolution` | **none.** A `ConflictResolution` has no human identity; inventing one from `conflictId` would be this defect again |
+| `photo` | `the photo "X"` | `a photo` | `PhotoAsset.caption` |
+| `participant` | `the person "X"` | `a person` | `Participant.displayName` |
+
+**Part 5 — the two rules that make this R52-4-proof by construction.** R52-4 was a shared phrase helper
+(`namePhrase`) reused across record classes, which rendered a nameless person as *"a city with no name"*.
+This design cannot reproduce that, because:
+
+1. **There is exactly one blank rule and it is class-free:** a captured label that is not a non-empty string
+   after `.trim()` **is not a label**, and the unnamed form in the table above is used. There is no
+   *"…with no name"* phrasing anywhere in this function, for any class. The unnamed form already names the
+   class, which is the whole content that phrasing was carrying.
+2. **There is exactly one truncation rule:** a label longer than **40 characters** after trimming is cut to
+   40 and suffixed `…`. `PhotoAsset.caption` and `Stop.name` are free text and a banner is one line. 40 is a
+   stated design constant, not a measurement.
+
+**Part 6 — `describeMerge` does not take a `Trip`, and that is the architectural half of this ruling.** The
+tempting implementation is `describeMerge(report, trip)`, resolving each `id` against the merged document at
+render time. **That is §0.6's error in a new place.** A merge banner is a statement about a moment that has
+already passed; `state.doc` moves on with the next keystroke, and a rename after the merge would silently
+rewrite what the banner claims was overridden — the banner would then be a fact about a resource read
+somewhere other than where the resource stated it. So:
+
+- **`MergeNote` gains `label?: string`.** It is stamped at the push site, from the record the merge actually
+  decided about — `mergeById` takes an optional `labelOf?: (x: T) => string | undefined` and reads it from
+  the **local** record, or from the **remote** record for the two remote-only notes (`added`,
+  `deleted_locally`); `mergeDay`'s per-field pushes stamp `lv.date`; `dedupePlacements` stamps `s.name`; the
+  `TRIP_FIELDS` loop stamps nothing.
+- **`label` is stamped on notes in *both* lists**, `fromRemote` and `overwritten`, even though only the
+  second is printed today. `MergeNote` is one type; a field that is populated on one list and silently absent
+  on the other is a trap for the next surface that reads the report.
+- `describeMerge` keeps its signature `(report: MergeReport) => string` and stays pure. No clock, no ids, no
+  document.
+
+**Part 7 — the sentence, exactly.** Minimal delta from the shipped one; its shape is not the defect.
+
+- Unchanged when nothing moved: `Merged with changes saved elsewhere.`
+- Both counts count **distinct records** — `entity` + `id`, first occurrence wins, in `report` order (which
+  is local-document order, so it is deterministic per §4). Today they count *notes*, so a day with two
+  conflicting fields is reported as two losses of the same day; with names attached that would print the
+  same phrase twice, which is how the double-count became visible.
+- Kept clause: `kept 3 records changed in another tab` / `kept 1 record changed in another tab`.
+- Lost clause: `overrode 2 (the person "Zoë", the day 2026-08-09)`.
+- **At most three are named**, then `and N more`, where N is distinct records minus 3:
+  `overrode 7 (the stop "Schönbrunn Palace", the stop "Belvedere", the person "Zoë", and 4 more)`. The list
+  is unbounded today; it was tolerable only because nobody read it.
+- The full sentence keeps its frame: `This trip was edited elsewhere while you were working: ${parts.join('; ')}.`
+
+**Part 8 — what does *not* move, so nobody widens this.** No `IssueCode`. No `Trip` field, so **no
+`SCHEMA_VERSION` bump** — `MergeNote` is never serialized; `persistence.lastMerge` is in-memory client state
+and is not written to storage. No `SUMMARY_VERSION`, no `DB_VERSION`. §2.10's **export surface does not
+move**: `MergeNote` is already exported and gains an optional field, which changes no export count, so
+§8.9's re-count rule does not fire. No `.tsx` — `App.tsx` already renders `lastMerge.message` and needs no
+edit, which is what keeps this inside the visual-direction fence. No `qa/` file. `mergeTrips`' merge
+*decisions* are untouched at every rule: this ruling changes what the merge **says**, never what it **does**.
+
+**Part 9 — verification, in §0.5's injected-fault form.** `describeMerge`'s output is asserted **nowhere in
+the suite today**, which is the second reason this survived to round 53: it is the only user-facing string
+family core produces with no test on it.
+
+1. **The general assertion, quantified over the report rather than over a literal.** Merge a conflict that
+   touches a participant, a stop and a day, then assert **for every note in `report.overwritten`, its `id`
+   does not appear as a substring of the message**. Injected fault: put `` `${n.entity}:${n.id}` `` back into
+   one branch and this must redden. An assertion that names one expected sentence would not.
+2. **The R52-4 guard, one record class over.** A participant whose `displayName` is `'   '` renders
+   `a person` — and the message must contain neither `a city with no name` nor an empty pair of quotes.
+3. **The class is preserved.** A merge overriding one participant and one pooled stop produces a message
+   containing both `the person` and `an optional stop`; the bare-name form would fail this.
+4. **The cap.** Four distinct overridden records produce exactly three phrases and `and 1 more`; two notes on
+   the same day produce one phrase and the count `1`.
+
+*(Alternative considered and rejected in one sentence: print the class noun alone and drop identity
+entirely — cheapest, needs no `labelOf`, but it throws away the one thing that lets a reader go and check
+the record, which is the entire purpose of a loss disclosure.)*
 
 ### 2.2a `Trip.revision` is a content counter. The write fence is a separate opaque `StorageVersion`
 

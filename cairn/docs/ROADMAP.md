@@ -630,7 +630,7 @@ are. What moves earlier is the record class those things suggest **into** — th
 
 **I-12 and I-13 are numbered above the gate and sequenced below it.** Sequencing rule 7 forbids renumbering
 forty cross-references for a tidy sequence, so the numbers are labels: the order is
-I-0 … I-10, **I-12, I-12a, I-13, I-13a, I-13b, I-13c, I-13d, I-13e, I-13g, I-13h, I-13i**, then **I-11, the gate**, which now depends on all of them. (**I-13f** is a queued `.tsx` follow-up, not a scheduled increment — revision 49. **`I-10` is deferred at revision 55, by Jacob's decision** — it is the one screen left in this phase, the `.tsx` fence bars it, and the gate does not wait for it; the order above is otherwise unchanged and I-10 keeps its place in it for whenever its trigger fires. **`I-9a` is added at revision 56** — the builder follow-up carrying `ARCHITECTURE.md` A-72 and A-73 — and sits directly after **I-9**; it does **not** block **I-11**, but it should land before the gate rather than after it.)
+I-0 … I-10, **I-12, I-12a, I-13, I-13a, I-13b, I-13c, I-13d, I-13e, I-13g, I-13h, I-13i**, then **I-11, the gate**, which now depends on all of them. (**I-13f** is a queued `.tsx` follow-up, not a scheduled increment — revision 49. **`I-10` is deferred at revision 55, by Jacob's decision** — it is the one screen left in this phase, the `.tsx` fence bars it, and the gate does not wait for it; the order above is otherwise unchanged and I-10 keeps its place in it for whenever its trigger fires. **`I-9a` is added at revision 56** — the builder follow-up carrying `ARCHITECTURE.md` A-72 and A-73 — and sits directly after **I-9**; it does **not** block **I-11**, but it should land before the gate rather than after it. **`I-9b` is added at revision 57** — one test — and **`I-9c` at revision 58** — the merge banner's naming convention, `ARCHITECTURE.md` **A-75**. Neither blocks **I-11**, and **I-9c is not part of 2c's capability at all**: it is a cross-cutting core fix over all ten of `describeMerge`'s record classes that took a number in this series only because QA round 53 found it while confirming the participants arc.)
 
 *(**I-12a** is revision 41, from QA round 43's breaker pass over I-12 — `ARCHITECTURE.md` §8.4 **A-59** and
 **A-60**. Two narrow gaps in what `travelStats` does with the fields I-12 added: an unreadable stored city
@@ -1007,6 +1007,23 @@ shape, and the answer when one of them acquires a *reachable* unvalidated caller
 builder** — `qa/r52-participants.mjs`'s *"validateTrip reports the unrestorable kind"* assertion, which is
 the executable form of KD-99, is withdrawn by A-74 **and** is already dead code under R52-3's throw. That
 file is the breaker's; the routing is stated in I-9b so it is not discovered later.
+
+**Revision 58, 2026-09-04.** **One increment added — `I-9c` — and it is a wording ruling with a mechanism
+under it.** `ARCHITECTURE.md` revision 56's **A-75** answers QA **R53-1**: `describeMerge`'s banner names
+every overridden record as `` `${entity}:${id}` ``, which after I-9 means the product's one user-facing
+sentence about a *person* calls her `participant:participant-1`. The breaker routed it here rather than to a
+builder because the convention is uniform and participants-only would be R16-2's *one property, two guards*
+— correct — and **A-75 changes all of it**, after checking the two facts the finding rested on and finding
+both wrong in ways that decide the answer: it is **ten** entity labels rather than eight (`trip` and `stop`
+are pushed outside `mergeTrips`' body), and the string is **not** developer-facing (`App.tsx` renders
+`lastMerge.message` alone in a `role="status"` banner). The rule is **class noun always, name appended when
+the record has one** — never a bare name, which would delete the reader's only clue that one entry is a
+person and another is a stop — with one class-free blank rule and one truncation rule, so R52-4's shared
+phrase helper cannot recur. **`describeMerge` keeps its `(report) => string` signature and never takes a
+`Trip`**: the label is stamped onto the `MergeNote` at the instant the merge decided, because resolving ids
+later against a document that has moved on is §0.6's error in a new place. **No phase, step, gate, criterion
+or dependency moves**; `I-9c` does not block `I-11`, touches no `.tsx`, no `qa/` and no `docs/design/`, and
+moves no version constant and no export count.
 
 > **Phase numbers changed once, here.** Every heading below carries its old number, and every "Phase N"
 > written in `ARCHITECTURE.md` §1–§7, `BUILD-NOTES.md` or `QA-FINDINGS.md` before revision 9 means the
@@ -4623,6 +4640,53 @@ participant `kind` outside `PARTICIPANT_KINDS` **cannot reach `validateTrip`** a
   census row it stands for, per *How a criterion is written* rule 3. **Zero files touched outside
   `packages/core/test/participants.test.ts`** — no `src`, no `qa/`, no `.tsx`, no `docs/design/`.
 
+#### I-9c — The merge banner stops calling a person by her id, in all ten record classes (revision 58)
+
+**One function's output strings, one optional field on one type, and the tests that were never written for
+either.** It is the whole code consequence of `ARCHITECTURE.md` revision 56's **A-75** (QA **R53-1**).
+**Read A-75 whole — it is ~5k and self-contained — and nothing else in `ARCHITECTURE.md`.** Do not read
+A-10, §2.9 or §4 for this; A-75 quotes what it needs from them.
+
+- **Built.** Three things, all in `packages/core/src/merge/mergeTrips.ts`:
+  1. **`MergeNote` gains `label?: string`.** `mergeById` gains an optional
+     `labelOf?: (x: T) => string | undefined` and stamps `label` on every note it pushes — from the **local**
+     record, or from the **remote** record for the two remote-only notes (`added`, `deleted_locally`).
+     `mergeDay`'s per-field pushes stamp `lv.date`; `dedupePlacements` stamps `s.name`; the `TRIP_FIELDS`
+     loop stamps nothing. Labels are stamped on notes in **both** lists, not only `overwritten` — A-75
+     Part 6 says why.
+  2. **`describeMerge` composes A-75 Part 4's ten rows** — the exact nouns, named and unnamed forms, and
+     label sources are in that table and are not the builder's to choose. `entity` values that are not in
+     the table cannot occur; if one somehow does, fall back to the unnamed form `a record`.
+  3. **A-75 Part 7's sentence**, exactly: distinct records rather than notes in both counts, at most three
+     named then `and N more`, the existing frame otherwise unchanged.
+  Plus tests in `packages/core/test/` for all four of A-75 Part 9's criteria.
+- **Not built, and named so nobody adds it.** **`describeMerge` does not take a `Trip`** and its signature
+  does not change — that is A-75 Part 6 and it is the point of the increment, not an implementation detail.
+  No `IssueCode`, no new export, no phrase helper shared between two record classes (R52-4), no *"…with no
+  name"* phrasing for any class, no `Booking.reference` anywhere in the message, no `field` value in the
+  message. **Zero `.tsx`** — `App.tsx` already renders `lastMerge.message` and is not opened, which is what
+  keeps this inside the visual-direction fence. **Zero `qa/`**, zero `docs/design/`, zero new dependency.
+- **User-visible outcome.** After a two-tab collision the banner reads *"This trip was edited elsewhere while
+  you were working: kept 3 records changed in another tab; overrode 2 (the person "Zoë", the day
+  2026-08-09)."* — a sentence whose every noun the user can go and find in the app.
+- **Architecture / data model.** Unchanged. `SCHEMA_VERSION`, `DB_VERSION` and `SUMMARY_VERSION` do not
+  move; `MergeNote` is never serialized and `persistence.lastMerge` is in-memory client state. §2.10's
+  export surface does not move — `MergeNote` is already exported and gains an optional field — so **§8.9's
+  re-count rule does not fire**. **No merge *decision* changes at any of the five rules**; this increment
+  changes what the merge says, never what it does, and a golden that moves is a defect in the change.
+- **Verification.** A-75 Part 9's four criteria, and criterion 1 is the one that must be written in its
+  stated form: assert **for every note in `report.overwritten` that its `id` is not a substring of the
+  message**, quantified over the report rather than against an expected sentence. Injected fault: restore
+  `` `${n.entity}:${n.id}` `` in one branch — criterion 1 must redden and an expected-string test would not.
+  Run red-before-green against that injection.
+- **Dependencies / blockers.** None. Independent of I-9a and I-9b (different files) and of I-10's deferral
+  (no surface). **Does not block `I-11`.**
+- **Ship gate.** `npm test` green; the four criteria present and criterion 1 written as quantified over the
+  report; every round-trip golden and sample byte-identical. **Zero files touched outside
+  `packages/core/src/merge/mergeTrips.ts` and `packages/core/test/`.** Route: **builder**, with the breaker
+  picking it up at the next adversarial pass — it is a string family and an optional type field, not an
+  `access/`-class path, so the delegation table's mandatory-breaker row does not fire.
+
 #### I-10 — The participants editor, the profile grouping, and the access double-run — **DEFERRED at revision 55; 2c ships without it**
 
 > **Status: DEFERRED, by Jacob's decision of 2026-09-04.** Asked directly whether to **(a)** defer I-10 and
@@ -6296,6 +6360,13 @@ disclosed as *unreachable* for two revisions and is reachable today.*
     phase names `SCHEMA_VERSION`, `migrateDoc` or the parser's duplicate refusal**, and none of the four
     criteria enumerated above touches either group. It should nonetheless land **before** the gate rather
     than after it, because a schema bump taken after a gate is taken against a larger corpus of documents.
+    **Revision 57 adds `I-9b` and revision 58 adds `I-9c`; NEITHER is a dependency of this gate.** I-9b is
+    one test pinning `importLegacyDays`' `participants: []` (A-74's census) and adds no behaviour at all.
+    **I-9c is not a 2c increment and is not part of the participants capability** — it carries A-75, the
+    merge banner's naming convention across **all ten** of `describeMerge`'s record classes, and it took a
+    number in this series only because QA round 53 found it while confirming the participants arc. No exit
+    criterion of this phase names `describeMerge`, `MergeNote` or any merge banner text, and I-9c opens no
+    file that I-9, I-9a or I-9b opens. Both may land before or after the gate.
   - ***`I-10` is DEFERRED and does NOT block this gate*** — Jacob's decision of 2026-09-04, recorded at
     revision 55, on the same footing revision 54 gave **I-13f**. It is real, specified and needed for the
     whole of 2c, and it is the **only increment left in this phase that requires a screen**
