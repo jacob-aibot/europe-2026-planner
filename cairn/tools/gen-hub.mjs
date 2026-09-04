@@ -39,7 +39,18 @@ function git(...args) {
 }
 
 const head = git('rev-parse', '--short', 'HEAD');
-const behind = head && head !== state.commit ? Number(git('rev-list', '--count', `${state.commit}..HEAD`)) : 0;
+// Commits that touch ONLY the board's own files cannot invalidate the board — otherwise
+// re-anchoring STATE.json would itself mark the board stale, forever, one commit at a time.
+const BOARD_FILES = [
+  ':(top,exclude)cairn/docs/STATE.json',
+  ':(top,exclude)cairn/docs/HUB.html',
+  ':(top,exclude)cairn/tools/gen-hub.mjs',
+  ':(top,exclude)cairn/test/hub.test.ts',
+];
+const behind =
+  head && head !== state.commit
+    ? Number(git('rev-list', '--count', `${state.commit}..HEAD`, '--', ...BOARD_FILES)) || 0
+    : 0;
 const stale = behind > 0;
 const branch = git('rev-parse', '--abbrev-ref', 'HEAD');
 const aheadOfMaster = Number(git('rev-list', '--count', 'master..HEAD')) || 0;

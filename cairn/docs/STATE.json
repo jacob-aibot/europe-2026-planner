@@ -8,7 +8,7 @@
   ],
 
   "updatedAt": "2026-09-04",
-  "commit": "43d0d20",
+  "commit": "68e478e",
 
   "phases": [
     {
@@ -121,7 +121,7 @@
   "health": {
     "tests": 1404,
     "typecheck": "clean",
-    "asOf": "43d0d20",
+    "asOf": "68e478e",
     "note": "Re-measured at I-13e. 1376 -> 1404 with the new liveness.test.ts."
   },
 
