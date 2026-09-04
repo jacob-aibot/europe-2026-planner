@@ -19,8 +19,59 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
-> **🔴 THE CONFIRMATION ROUND ON THE PHOTO FOUNDATION: NOT YET — as of 2026-09-04. This block is
-> the newest.** Step 2d's photo half stays **designed ✅ · built ✅ · verified ⚠️ · shippable ❌**.
+> **🟠 BOTH SERIOUS PROBLEMS ARE RULED, AND THE ANSWER IS ONE SENTENCE THE LAST DESIGN WAS
+> MISSING — as of 2026-09-04. This block is the newest.** Step 2d's photo half stays **designed ✅ ·
+> built ✅ · verified ⚠️ · shippable ❌** — nothing is built in this pass, so nothing moves. What is
+> new is that the two serious problems in the block below are **decided**, and they turned out to be
+> two halves of one omission rather than two bugs.
+>
+> **The mechanism stays. It was attacked and it held.** The "numbered receipt" design is not being
+> redone — the round below could not break it, and the file that implements it does not change by a
+> single character in the repair pass. What was wrong is how it was **wired in** at four places.
+>
+> **The missing sentence, in plain English.** The receipt system knows how to say *"that answer is
+> out of date, throw it away."* It never says *"and now somebody has to go and ask again."* Written
+> down properly it is: **throwing an answer away is a promise to replace it.** Everything below is
+> that rule applied where it was missing.
+>
+>   1. **The spinner that never stops.** The old code told the app *"a trip switch is starting, so
+>      cancel any photo check in flight"* — on **every** switch, including nine kinds of switch that
+>      then do nothing at all (deleting a *different* trip, tapping a trip whose file is damaged,
+>      opening a trip that is no longer there, importing a broken backup). Cancelled, and nobody
+>      re-asks. **The fix is to stop cancelling so early.** The cancel now happens at the exact moment
+>      the new trip is actually loaded in — so a switch that never happens cancels nothing, and the
+>      trip you still have open keeps its answer. **Only three of those nine cases had been found; the
+>      other six would have come back as a sixth round.**
+>   2. **"No longer stored on this device", over a photograph that is.** The rule *"writing a photo
+>      makes any check in flight out of date"* was written inside an `if` that skips it precisely when
+>      no answer is on file yet — which is exactly the failed-check case where you would tap **Try
+>      again**. It moves out of that `if`. But moving it alone would have created problem 1 at a new
+>      place, so it comes with the promise attached: **when Cairn cannot work out the new answer for
+>      itself, it asks the disk once, at the end of the import.** One extra question per import, and
+>      only when the answer was unknown.
+>   3. **Two more places nobody had looked.** Deleting a photo needed the same "ask again" promise, and
+>      needed a check it never had — without it, the fix above would have cancelled the *next* trip's
+>      photo check. And a trip deletion that fails **after** its pictures are already gone now re-asks
+>      rather than leaving a listing claiming those pictures are still there.
+>
+> **The three small ones, ruled too.** The Ctrl/Cmd+Z problem is real and the design note that called
+> it unreachable is corrected in writing — but the store is **right** to refuse an undo mid-switch,
+> and silently swallowing the keypress was considered and refused. What is owed is a two-line catch in
+> the screen code so the existing error banner shows the message that was already written for you.
+> **That is a `.tsx` change and this whole run of work is deliberately fenced out of `.tsx`**, so it
+> is written down as a named, owed item that lands with the first screen work — not quietly dropped.
+> The stale test count is a one-line fix folded into the repair pass. And the three old test lines are
+> ruled: all three should now expect the new behaviour, including one that shows a real cost — leaving
+> an importing trip and coming back now stops the import rather than finishing it. That is the price of
+> the fix that stopped photographs being lost silently, it is disclosed rather than hidden, and telling
+> you about an abandoned import is handed to the increment that builds the photo screen.
+>
+> **What happens next:** a builder lands the repair pass (**I-13e**), then a sixth confirmation round
+> over the whole photo foundation. Nothing here is shippable until that round passes and the manager
+> gives a verdict.
+
+> **🔴 THE CONFIRMATION ROUND ON THE PHOTO FOUNDATION: NOT YET — as of 2026-09-04. This block was
+> the newest until the block above.** Step 2d's photo half stays **designed ✅ · built ✅ · verified ⚠️ · shippable ❌**.
 > The fifth adversarial round over this one piece of work finished with **two serious problems and
 > three small ones**, so the whole photo foundation — I-13, I-13b, I-13c and I-13d together — goes
 > back one more time. **Nothing on your phone changes either way**: there is still no photo screen,

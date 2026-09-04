@@ -1101,6 +1101,39 @@ and its single `FAIL` at the I-13d gate is a disclosed expected result rather th
 stays 2, `DB_VERSION` stays 5, `SUMMARY_VERSION` stays 5, and §10 **A-66 Part 10** is unchanged — it
 already stated the behaviour Part 7's sentence failed to notice.
 
+**Revision 49, 2026-09-04.** **The mechanism survived the attack it was written for; its wiring did not.**
+QA round 48 threw a three-way race, a worst-case answer ordering and a nine-case release battery at A-67's
+generation guard and **found nothing wrong with it** — every slot always releases, the newest claim always
+wins. Both MAJORs are at A-67's own call sites, and they are two halves of one question the ruling never
+asked: *what happens to the read you just invalidated?* **R48-1** — Part 4's *"a write that changes the
+subject an in-flight read is reading must invalidate that read"* was implemented **conditionally**, because
+Part 6 put the `supersede` inside R45-4's `available !== null` value guard, so a byte write or remove
+invalidates nothing in exactly the case that needs it (a photograph whose bytes are on disk reads
+`'missing'`; `removePhoto` + `undo` reads `'ready'` over bytes that are gone, where §10 **A-65 T1**
+requires `'missing'`). **R48-2**, a regression this arc introduced — `claimTransition()` claimed
+`photoAvailability` on **every** transition while **nine** of its exits install no document and issue no
+replacement read, so the invalidated read is dropped and nothing answers: **A-63's unresolving spinner**,
+reached through three gestures including §2.9 **A-47**'s own designed corrupt-document banner path.
+**A-68** (§4.2, at the end, directly under A-67) rules both as one, and the missing sentence is its Part 3:
+**a bump of a slot's sequence is a promise to replace the answer it invalidated** — `claim` promises one
+later and may only be taken by an operation that writes one on every exit; `supersede` promises one now, in
+the same synchronous block. Applied: `claimTransition` claims **`doc` only** and the six reseed installs
+**supersede** the two ancillary slots (which is Part 4's own criterion, never applied to the transition's
+own write, and `closeBrowse`'s shipped pattern); the two byte-write supersedes are **hoisted out** of
+R45-4's guard, which is kept nested inside them, and a supersede that cannot write the answer owes **one**
+port read; `removePhoto` gets the `guard.observe('doc')` it never had, without which the hoist commits
+R48-2 from a new site; and `deleteTrip`'s rejecting cascade gets one read on the way out. **No new module,
+no new slot, no new type, no `AppState` field, no port method, no `.tsx`, and `generation.ts` does not
+change by a character.** Two MINORs are also ruled: **R48-3** — A-67 Part 11 residue 4's *"unreachable from
+today's `apps/web`"* is **false** (a bare `window` keydown calls `store.undo()` with no `try`, and a trip
+delete holds the claim across its cascade); the refusal stays a **throw**, a silent no-op and a queued undo
+are both refused with reasons, and the two-line `catch` is scheduled into the first increment that opens
+`App.tsx` rather than deferred. **R48-5** — Part 7a item 4's *"no other test changes"* is wrong for the
+second revision running; three more `qa/` assertions move, one of them a **final-state** one (the
+`A → B → A` return trip, correct behaviour and A-67 residue 3's cost paid by a case residue 3 did not
+name), and the enumeration is replaced by a **predicate** whose list is derived by running the probes.
+`ROADMAP.md` revision 49 carries the implementation as **I-13e**.
+
 **Phase 1 is §2 and §4. The next phase is §8.1–§8.4.** Everything else is the shape those must not
 foreclose. See `ROADMAP.md` for sequencing and `PRODUCT-VISION.md` for why this order and not another.
 **What the product looks like is `DESIGN.md`, not this document** — §9 says why, and a builder of a screen
@@ -1108,7 +1141,9 @@ reads that instead of entering §2 or §4.
 
 ## Read only your sections
 
-This document is **~364k tokens** (re-measured at **revision 48**, with `doc-section` — **§4 grew 69k →
+This document is **~376k tokens** (re-measured at **revision 49**, with `doc-section` — **§4 grew 71k →
+82k when A-68 landed under A-67**; nothing else moved and §10 is still 37k. Revision 48's own note follows
+and is unedited — this document was **~364k tokens** then, with **§4 grown 69k →
 71k when A-67 gained its Part 7a**; nothing else moved and §10 is still 37k. Revision 47's own note
 follows and is unedited — this document was **~361k tokens** then, with **§4 grown 59k →
 69k when A-67 landed in §4.2 and §10 36k → 37k when A-66 gained its Part 10**; the figures below are
@@ -1147,7 +1182,7 @@ rendering a stored summary row on the Trips list, adding an export path, or abou
 outside core reads A-47, then A-46, then A-45, then §8.4 A-44 — A-47 names which of A-46's sentences it
 supersedes, so reading it first is what tells you which of A-46 to skip** | 123k | builder, breaker |
 | 3 | Module boundaries | <1k | builder |
-| 4 | **The Phase 1 client.** §4.2 rule 6 (a pending write is never outlived by its document) is new in revision 3 — QA R3-2; rule 6a′ and the `savedDoc` predicate are revision 4 — QA R4-1; **rule 6a″ (the flush bound and its exits) and rule 6c's "delete goes on the chain" are revision 5** — QA R6-1/R6-2/R7-3; **rule 5's retirement carve-out is revision 6** — QA R8-1, read with §2.7; **rule 4a is revision 8** — QA R11-1, read with §2.2a A-7; **§4.3's A-30 is revision 23** — the `refreshSummary` port method, the fence's meaning stated once, and the rescan's uniform per-row link — and **anyone touching `runRescan`, `StoragePort` or a port implementation reads it first**, with §8.4 clause 3 beside it; **§4.4's A-40 is revision 29** — the lifetime map is a plain component over a pure `packages/client` frame function, not a second `MapPort`, and **anyone building or reviewing `WorldMap.tsx` reads it first** (it is ~3k and self-contained; the trip map's port is unchanged and needs no re-reading); **§4.4's A-41 and A-42 are revision 30 and are read *with* A-40, never instead of it** — A-41 is the atlas frame (geographic clustering, one primary pane and up to two insets, padding, and the **W3** renderer clause) and it amends A-40 clause 2 and withdraws A-40 Part 7 residue 1's diagnosis; A-42 withdraws A-40 clause 2's min-span *claim* and rules that no second constant is created. **A builder of I-8d reads A-40 Parts 3–5, then A-41 and A-42, and needs nothing else in this document except §2.10's list**; **§4.4's A-48 is revision 33, sits directly under A-42 and is read *with* A-41, never instead of it** — QA round 36 measured A-41's own C2 and C3 as wrong (a key point that lands in the ocean, and a partition that depends on the alphabet), and A-48 supersedes **C2**, **C3** and Part 8 residues 1′ and 4 in place, withdraws C4's margin claim, adds **C9** (paint order) and one pane field (`aspect`), and changes the semantics of core's `clusterPoints` to connected components. **A builder of I-8g reads A-48 first — it names which of A-41's clauses to skip — then A-41's C1/C5/C6/C7/C8 and Parts 4–7, then A-40 Parts 3–5**; **§4.4's A-49 and A-50 are revision 34, sit directly under A-48 and are read *with* A-41 and A-48, never instead of them** — QA round 37 measured A-48's own C8 as the clause A-48 forgot (the key point moved onto the country and the *extent* did not), and A-49 supersedes **C8**, **C7**'s cap and A-41's I1/I2/I3/I5 in place, withdraws A-48 C9 consequence 2's chip-list sentence as false, adds `countryParts` to core, a `'detached'` pane, a `codes` array on the frame and invariants **I11–I15**; A-50 completes A-48 Part 6 for the *tall* direction in one CSS declaration. **A builder of I-8h reads A-49 and A-50 first — A-49 names which of A-41's and A-48's clauses it supersedes — then A-48's C2′/C3′/C9 and Part 6, then A-41's C1/C5/C6/C7 and Parts 4–7, and needs nothing else in this document except §2.10's list**; **§4.4's A-51 and A-52 are revision 35, sit directly under A-50, and are the entry point to the whole atlas-frame family — read A-51 first and it names which of A-41/A-48/A-49 to skip** — A-51 reopened the framing abstraction itself at Jacob's instruction (QA **R38-2**, MAJOR) and **supersedes A-41's C5/C6/C7, A-49's C7′/C8′/C8″ and the `role` field in place**: the frame is **one pane per connected component of country parts**, equally weighted, ordered by weight rather than framed by it, and its Part 7 is the **consolidated** I1…I17 list that replaces three rounds of *"restated by"* pointers. A-52 is one paragraph beside it (a ring the index carries is a ring the frame draws). **A-51 is RULED AND HELD FOR JACOB'S APPROVAL — no builder pass may be dispatched against it until he has ruled**; until then A-41…A-50 are what is shipped. **§4.4's A-53 is revision 36, sits directly under A-52, and supersedes nothing** — it is the pane-*membership* contract Jacob asked for before approving A-51 (membership is country geometry because an ISO code is the only geographic evidence the record carries; standing is `home`; priority is order; disclosure is the caption), and it adds **I18**, the ≤ 3-extent-panes-planet-wide bound, and the d3-geo/Turf prior-art ruling. **A builder of I-8i reads A-51, then A-52, then A-53 Parts 4 and 8, then A-41 C1 + Part 4, A-48 C2′/C3′/C4′/C9 + Part 6, A-49 Part 2, A-50 and A-40 Parts 2–5, and needs nothing else in this document except §2.10's list**; **§4.4's A-54 is revision 37, sits under A-53 and is the newest entry in the family — it supersedes A-51 **G7** in full, A-51 **G5**'s third key and A-52's **clause 1**, widens L3's exception, adds **I19**, and corrects five published numbers, so **anyone reading A-51 for the layout, the pane order or the ring filter reads A-54 first and it names what to skip**. **A builder of I-8j reads A-54, then A-51 G5/G7 and Part 8, then A-50 and A-40 Parts 2–5, and needs nothing else**; **§4.2's A-67 is revision 47 and is the newest entry in the section — it is the only one that is *not* about the map, and it sits at the end of §4.2 rather than in §4.4** — the store's **generation guard**, ruling QA **R47-1** and **R47-2** as one defect: `flushForTransition` returns a **ticket** instead of a boolean, three guarded slots order every asynchronous install, and **R46-1's and R46-3's shipped point-fixes are deleted rather than layered under** (Part 7 rules each site). It adds new rule **6d** to §4.2 and amends §10 **A-66 Part 7** by pointer. **A builder of I-13d reads A-67 Parts 3–7 and 10, plus §4.2 rule 6 whole and §10 A-66 Part 10, and needs nothing else in this document** — it is ~12k and self-contained, and it needs none of §4.4. **A-67 gained a Part 7a at revision 48** (the I-13d builder's report against `4316167`): Part 7's *"every existing R46-1/R46-3 test stays exactly as it is"* was too strong by one assertion and contradicted ROADMAP **G3**, so it is narrowed to **final-state** assertions and the one assertion pinning the old guard's byte-write side effect is corrected. **Anyone reading Part 7 reads Part 7a with it**; Part 7a also rules who touches `qa/` (**breaker**) versus `packages/client/test/` (**builder**). **No mechanism, slot, call site or criterion moves** | 71k | builder |
+| 4 | **The Phase 1 client.** §4.2 rule 6 (a pending write is never outlived by its document) is new in revision 3 — QA R3-2; rule 6a′ and the `savedDoc` predicate are revision 4 — QA R4-1; **rule 6a″ (the flush bound and its exits) and rule 6c's "delete goes on the chain" are revision 5** — QA R6-1/R6-2/R7-3; **rule 5's retirement carve-out is revision 6** — QA R8-1, read with §2.7; **rule 4a is revision 8** — QA R11-1, read with §2.2a A-7; **§4.3's A-30 is revision 23** — the `refreshSummary` port method, the fence's meaning stated once, and the rescan's uniform per-row link — and **anyone touching `runRescan`, `StoragePort` or a port implementation reads it first**, with §8.4 clause 3 beside it; **§4.4's A-40 is revision 29** — the lifetime map is a plain component over a pure `packages/client` frame function, not a second `MapPort`, and **anyone building or reviewing `WorldMap.tsx` reads it first** (it is ~3k and self-contained; the trip map's port is unchanged and needs no re-reading); **§4.4's A-41 and A-42 are revision 30 and are read *with* A-40, never instead of it** — A-41 is the atlas frame (geographic clustering, one primary pane and up to two insets, padding, and the **W3** renderer clause) and it amends A-40 clause 2 and withdraws A-40 Part 7 residue 1's diagnosis; A-42 withdraws A-40 clause 2's min-span *claim* and rules that no second constant is created. **A builder of I-8d reads A-40 Parts 3–5, then A-41 and A-42, and needs nothing else in this document except §2.10's list**; **§4.4's A-48 is revision 33, sits directly under A-42 and is read *with* A-41, never instead of it** — QA round 36 measured A-41's own C2 and C3 as wrong (a key point that lands in the ocean, and a partition that depends on the alphabet), and A-48 supersedes **C2**, **C3** and Part 8 residues 1′ and 4 in place, withdraws C4's margin claim, adds **C9** (paint order) and one pane field (`aspect`), and changes the semantics of core's `clusterPoints` to connected components. **A builder of I-8g reads A-48 first — it names which of A-41's clauses to skip — then A-41's C1/C5/C6/C7/C8 and Parts 4–7, then A-40 Parts 3–5**; **§4.4's A-49 and A-50 are revision 34, sit directly under A-48 and are read *with* A-41 and A-48, never instead of them** — QA round 37 measured A-48's own C8 as the clause A-48 forgot (the key point moved onto the country and the *extent* did not), and A-49 supersedes **C8**, **C7**'s cap and A-41's I1/I2/I3/I5 in place, withdraws A-48 C9 consequence 2's chip-list sentence as false, adds `countryParts` to core, a `'detached'` pane, a `codes` array on the frame and invariants **I11–I15**; A-50 completes A-48 Part 6 for the *tall* direction in one CSS declaration. **A builder of I-8h reads A-49 and A-50 first — A-49 names which of A-41's and A-48's clauses it supersedes — then A-48's C2′/C3′/C9 and Part 6, then A-41's C1/C5/C6/C7 and Parts 4–7, and needs nothing else in this document except §2.10's list**; **§4.4's A-51 and A-52 are revision 35, sit directly under A-50, and are the entry point to the whole atlas-frame family — read A-51 first and it names which of A-41/A-48/A-49 to skip** — A-51 reopened the framing abstraction itself at Jacob's instruction (QA **R38-2**, MAJOR) and **supersedes A-41's C5/C6/C7, A-49's C7′/C8′/C8″ and the `role` field in place**: the frame is **one pane per connected component of country parts**, equally weighted, ordered by weight rather than framed by it, and its Part 7 is the **consolidated** I1…I17 list that replaces three rounds of *"restated by"* pointers. A-52 is one paragraph beside it (a ring the index carries is a ring the frame draws). **A-51 is RULED AND HELD FOR JACOB'S APPROVAL — no builder pass may be dispatched against it until he has ruled**; until then A-41…A-50 are what is shipped. **§4.4's A-53 is revision 36, sits directly under A-52, and supersedes nothing** — it is the pane-*membership* contract Jacob asked for before approving A-51 (membership is country geometry because an ISO code is the only geographic evidence the record carries; standing is `home`; priority is order; disclosure is the caption), and it adds **I18**, the ≤ 3-extent-panes-planet-wide bound, and the d3-geo/Turf prior-art ruling. **A builder of I-8i reads A-51, then A-52, then A-53 Parts 4 and 8, then A-41 C1 + Part 4, A-48 C2′/C3′/C4′/C9 + Part 6, A-49 Part 2, A-50 and A-40 Parts 2–5, and needs nothing else in this document except §2.10's list**; **§4.4's A-54 is revision 37, sits under A-53 and is the newest entry in the family — it supersedes A-51 **G7** in full, A-51 **G5**'s third key and A-52's **clause 1**, widens L3's exception, adds **I19**, and corrects five published numbers, so **anyone reading A-51 for the layout, the pane order or the ring filter reads A-54 first and it names what to skip**. **A builder of I-8j reads A-54, then A-51 G5/G7 and Part 8, then A-50 and A-40 Parts 2–5, and needs nothing else**; **§4.2's A-67 is revision 47 and is the newest entry in the section — it is the only one that is *not* about the map, and it sits at the end of §4.2 rather than in §4.4** — the store's **generation guard**, ruling QA **R47-1** and **R47-2** as one defect: `flushForTransition` returns a **ticket** instead of a boolean, three guarded slots order every asynchronous install, and **R46-1's and R46-3's shipped point-fixes are deleted rather than layered under** (Part 7 rules each site). It adds new rule **6d** to §4.2 and amends §10 **A-66 Part 7** by pointer. **A builder of I-13d reads A-67 Parts 3–7 and 10, plus §4.2 rule 6 whole and §10 A-66 Part 10, and needs nothing else in this document** — it is ~12k and self-contained, and it needs none of §4.4. **A-67 gained a Part 7a at revision 48** (the I-13d builder's report against `4316167`): Part 7's *"every existing R46-1/R46-3 test stays exactly as it is"* was too strong by one assertion and contradicted ROADMAP **G3**, so it is narrowed to **final-state** assertions and the one assertion pinning the old guard's byte-write side effect is corrected. **Anyone reading Part 7 reads Part 7a with it**; Part 7a also rules who touches `qa/` (**breaker**) versus `packages/client/test/` (**builder**). **No mechanism, slot, call site or criterion moves**. **A-68 is revision 49 and sits directly under A-67 — read the two together, always, and A-68 first if you are implementing anything from A-67 Parts 4, 5, 6, 7a or 11.** Round 48 attacked A-67's mechanism and could not break it; both of its MAJORs are at A-67's **call sites**, and A-68 rules them as one missing sentence — *a bump of a slot's sequence is a promise to replace the answer it invalidated*. It moves Part 5's three-slot claim to a **one**-slot claim (the reseed supersedes the other two), hoists Part 6's two byte-write supersedes **out of** R45-4's value guard and gives them the read they owe, corrects Part 7a item 4 and Part 11 residue 4, and **changes `generation.ts` not at all**. **A builder of I-13e reads A-68 whole (~11k) plus A-67 Parts 3–7 for context, and needs nothing else in this document.** | 82k | builder |
 | 5 | The four hard subsystems | 2k | breaker; builder from Phase 3 on |
 | 6 | Privacy, authorization, deletion cascade. **§6.6 is the build-artifact threshold; the copy threshold is §2.14 A-15 + A-18 (revisions 13 and 14) and they differ deliberately, in two named places — read them together or neither** | 4k | breaker, manager; builder for §6.2 |
 | 7 | Explicitly deferred | <1k | anyone about to build something not in the roadmap |
@@ -1214,6 +1249,9 @@ crosses a section boundary. Otherwise this table is the contract.
    consecutive rounds found four faces of it (R45-4, R46-1/R46-3, R47-1/R47-2) — and §4.2 rule **6d** and
    **A-67** are the mechanism: *a flush is not a moment, and neither is a transition*, so the flush returns
    a **ticket** rather than a boolean and every guarded write re-asserts it at the instant of writing.
+   **Revision 49 adds the half a ticket cannot carry** (QA R48-1/R48-2, **A-68**): ordering says which
+   answer wins, and something still has to say that an answer arrives. *A bump of a slot's sequence is a
+   promise to replace the answer it invalidated.*
 7. **A trip does not end when the itinerary ends, and nothing about the history is stored as a count.**
    Added at revision 9 from Jacob's product thesis. The lifecycle is derived from dates; a past trip is a
    trip whose end date has passed; participation, access, friendship and location-sharing are four
@@ -8135,6 +8173,10 @@ Six rules, each of which exists because of a specific failure:
    that has already passed by the time the caller acts on it. **The answer is `A-67` below: the flush stops
    returning a boolean and starts returning a ticket.** Read A-67 with 6a″ — it is what makes 6a's
    guarantee survive its own function's return, and it is the mechanism R47-2 needs as well.
+   **And read A-68 with A-67** (revision 49, QA **R48-1**/**R48-2**): a ticket answers *which* install
+   wins and says nothing about *whether* the operation it invalidated is ever replaced. The second half of
+   6d is A-68 Part 3 — **a bump of a slot's sequence is a promise to replace the answer it invalidated**,
+   and it is what keeps §10.6's *"exactly one terminal state follows every `'loading'`"* true.
 
 #### A-67 — a flush is not a moment and neither is a transition: the store's generation guard (revision 47, QA **R47-1** MAJOR, **R47-2** MAJOR; ROADMAP **I-13d**)
 
@@ -8148,6 +8190,18 @@ Six rules, each of which exists because of a specific failure:
 > **Amended at revision 48 by Part 7a**, which narrows Part 7's *"every existing test stays exactly as it
 > is"* to final-state assertions only. **Anyone reading Part 7 reads Part 7a with it.** Nothing else in
 > this entry moves — no mechanism, no slot, no call site, no criterion.
+>
+> **Amended again at revision 49 by A-68**, immediately below, which corrects **three wiring defects at
+> this entry's own call sites** and leaves the mechanism untouched (round 48 attacked it and could not
+> break it — Part 3 stands entire). What moves: **Part 5**'s unconditional three-slot claim becomes a
+> **one**-slot claim on `doc`, with `photoAvailability` and `browsing` **superseded at the reseed** that
+> replaces them, because nine transition exits install nothing and were stranding an availability read
+> for the trip that stayed open (QA **R48-2**); **Part 6**'s two `supersede('photoAvailability')` rows
+> move **out of** R45-4's value guard and gain the answer they owe, and `deleteTrip` gains one line on its
+> failure path (QA **R48-1**); **Part 7a** item 4's *"no other test changes"* is wrong for the second
+> revision running and is replaced by a predicate (QA **R48-5**); and **Part 11 residue 4**'s
+> *"unreachable from today's `apps/web`"* is **false** (QA **R48-3**). **Anyone reading Parts 4, 5, 6, 7a
+> or 11 reads A-68 with them.**
 
 **Part 1 — the two findings are one defect, and it is not in the photo code.**
 
@@ -8304,6 +8358,12 @@ half of the rule —
 > availability read issued *before* those bytes existed from landing *after* them and reporting
 > `'missing'` over them. That is R45-4 reached through a third door and it is closed by one call.
 
+*(**Amended at revision 49 — A-68 Part 5, QA R48-1.** The rule above is right and unconditional; Part 6's
+**placement** of the call was not. It shipped **inside** R45-4's `available !== null` value guard, so it did
+not fire in the one case that needed it. A-68 hoists it out and keeps R45-4's guard nested inside it — and
+adds the half this paragraph never states: **the invalidated read must be replaced.** A supersede that
+cannot write the answer itself owes a port read. A-68 Part 3.)*
+
 **Part 5 — where the claim happens, and why it is inside `flushForTransition` rather than on the
 transition's first line.**
 
@@ -8339,17 +8399,18 @@ async function flushForTransition(): Promise<Ticket | null> {
   }
 }
 
-/** The ONE place a live-document transition begins. Claims every slot a reseed replaces. */
+/** SUPERSEDED at revision 49 — A-68 Part 4. Both bodies below are now ONE line: the `doc` slot only.
+ *  The other two are `supersede`d at the reseed. Do not build the version below. */
 function claimTransition(): Ticket {
-  guard.claim('browsing');
-  guard.claim('photoAvailability');
+  guard.claim('browsing');             // ← deleted at A-68
+  guard.claim('photoAvailability');    // ← deleted at A-68
   return guard.claim('doc');           // the ticket callers hold and check
 }
 /** The ONE place a live-document transition ends. Always in a `finally`. */
 function releaseTransition(): void {
   guard.release('doc');
-  guard.release('photoAvailability');
-  guard.release('browsing');
+  guard.release('photoAvailability');  // ← deleted at A-68
+  guard.release('browsing');           // ← deleted at A-68
 }
 ```
 
@@ -8367,7 +8428,23 @@ function costs**: the skip that existed to avoid rewriting 176 KB is where the w
 One conservative stop on a rare gesture is the cheaper failure, and it is disclosed rather than
 discovered.
 
+*(**Superseded in part at revision 49 — A-68 Part 4, QA R48-2.** `flushForTransition` still claims
+unconditionally with no opt-out parameter, and the deliberate false positive above is unchanged — but it
+claims **`doc` only**. `claimTransition()` no longer claims `photoAvailability` or `browsing`: **nine** of
+its exits install no document and issue no replacement read, so a claim on either was a promise nine paths
+do not keep, and the cost was §10.6 property 5's unresolving spinner on the trip that stayed open. Those
+two slots are **superseded at the reseed that replaces them**, which is where Part 4's own criterion puts
+them.)*
+
 **Part 6 — every call site, exhaustively. This table is the builder's contract.**
+
+> **Four rows of this table are amended at revision 49 by A-68 and a fifth gains a line — read it before
+> implementing any of them.** `flushForTransition`/`claimTransition` claim **`doc` only** and the six
+> reseed installs gain `supersede('photoAvailability')` + `supersede('browsing')` (A-68 Part 4);
+> `importPhotos`' and `removePhoto`'s `supersede` rows move **out of** R45-4's value guard and gain the
+> owed read, and `removePhoto` gains a `guard.observe('doc')` it never had (A-68 Part 5); `deleteTrip`
+> gains one `readPhotoAvailability` on the exit where its cascade rejects (A-68 Part 6). Everything else
+> in the table below is unchanged and correct.
 
 | Function | What it does | Checks? |
 |---|---|---|
@@ -8480,9 +8557,16 @@ to observe one key, and that empty array is the whole of the difference.
    old assertion should be allowed to protect.* **Its inversion is the proof that A-67 landed**, which is
    what G3 is for, and it is the only assertion in this repository with that property.
 4. **Nothing else in Part 7 moves.** Every row of Part 7's table stands, the four kept guards stay kept,
-   and the deletions are the deletions. **No other test, in `packages/client/test/` or in `qa/`, changes
-   for this** — a builder who finds a second one has found something this ruling did not, and reports it
-   rather than editing it.
+   and the deletions are the deletions. ~~**No other test, in `packages/client/test/` or in `qa/`, changes
+   for this**~~ — a builder who finds a second one has found something this ruling did not, and reports it
+   rather than editing it. *(**The struck sentence is FALSE and is corrected at revision 49 — A-68 Part 9,
+   QA R48-5.** Three more `qa/` assertions move — `qa/r47-i13c.mjs:210`, `:231` and `:263` — and one of
+   them is a **final-state** assertion, which item 3 above says does not happen. It is the `A → B → A`
+   return trip, it is correct behaviour, and it moved because the old guard got the right answer by the
+   mechanism that lost photographs elsewhere. **This is the second consecutive revision to under-count
+   this blast radius, so A-68 Part 9 replaces the enumeration with a predicate and requires the list to be
+   derived by running the probes.** The reporting instruction in the surviving half of this item stands
+   and is what the round-48 breaker correctly followed.)*
 
 **The exact corrections owed, one per artifact, and they are the same single observable.**
 
@@ -8603,13 +8687,25 @@ G1–G7 are behavioural and belong in `packages/client/test/`; G8 and G9 are the
    increment that opens `App.tsx` — it makes that call conditional on `state.activeTripId !== id`, which
    removes the whole scenario at the surface. That is a `.tsx` change and it is deliberately not in
    I-13d, which is fenced out of `.tsx` like the rest of this arc. §10 **A-66** Part 6's owed sentence is
-   widened at revision 47 to cover it in the meantime.
-4. **`dispatch`/`undo`/`redo` refusing during a window is unreachable from today's `apps/web`** — the
-   round-47 breaker confirmed no editable field is mounted on any surface that calls `openTrip`. It ships
-   as a **fence**, and its first user-visible appearance would be a surface that lets a user type while a
-   transition is in flight. **Trigger:** that surface — at which point the ruling to make is whether the
-   surface disables editing during a transition (preferred, and it needs a derived signal this ruling
-   deliberately does not add — Part 9 reason 4) or whether the throw is caught and rendered.
+   widened at revision 47 to cover it in the meantime. *(**Widened at revision 49 — A-68 Part 9, QA
+   R48-5.** The same cost is paid by **`A → B → A`**, a user who leaves an importing trip and comes back,
+   and the `.tsx` change named above does **not** remove that one. Measured: the batch stops and files
+   nothing, reported as nothing per §10 **A-66 Part 3** — whose reason, *"the report would land against
+   whatever trip the user moved to"*, is true of a batch abandoned **into** another trip and false of one
+   abandoned by a round trip that returns. A-68 Part 9 scopes A-66 Part 3 rather than overturning it and
+   hands the report question to the increment that builds the photo surface.)*
+4. ~~**`dispatch`/`undo`/`redo` refusing during a window is unreachable from today's `apps/web`**~~ —
+   ~~the round-47 breaker confirmed no editable field is mounted on any surface that calls `openTrip`. It
+   ships as a **fence**, and its first user-visible appearance would be a surface that lets a user type
+   while a transition is in flight.~~ **FALSE, and corrected at revision 49 — A-68 Part 8 (QA R48-3).**
+   The round-47 confirmation answered a narrower question than this residue asked: the reachable caller is
+   **not a field**. `apps/web/src/App.tsx:232–243` binds Ctrl/Cmd+Z on **`window`**, for the whole app,
+   with no trip check and **no `try`**, and `deleteTrip` holds its `doc` claim across a cascade during
+   which the active trip stays interactive — so a keyboard undo during a trip delete reaches this refusal
+   **today**, as an uncaught throw inside a DOM event listener where no error boundary can see it. **The
+   refusal itself is ruled correct and does not change** (A-68 Part 8 refuses both a silent no-op and a
+   queued undo, with reasons); what is owed is a two-line `catch` in `App.tsx`, scheduled into the first
+   increment that opens that file — ROADMAP **I-13e**'s `.tsx` follow-up, alongside residue 3's own.
 
 **The trigger that reopens this ruling**, stated so it is a decision and not a wall: **a store operation
 that must survive a transition rather than be dropped by one.** Every line above rests on *dropped, never
@@ -8617,6 +8713,495 @@ retargeted* — R3-2's rule for a late timer, A-66's rule for an abandoned batch
 read. An operation whose work genuinely cannot be re-done by the user (a native background import, a
 server sync applying a remote change) breaks that premise, and its increment decides where such work is
 parked and re-applied — in one ruling, and not on the way to something else.
+
+#### A-68 — a claim is a promise to answer: the wiring A-67 left at its own call sites (revision 49, QA **R48-1** MAJOR, **R48-2** MAJOR, **R48-3** MINOR, **R48-5** MINOR; ROADMAP **I-13e**)
+
+> **STATUS: RULED. The mechanism is not on trial and does not move.** `packages/client/src/store/generation.ts`
+> does not change **by a character** — no new slot, no new method, no signature change, no new module, no new
+> type, no `AppState` field, no selector, no port method, no persisted value, nothing in `packages/core`, no
+> `SCHEMA_VERSION`/`DB_VERSION`/`SUMMARY_VERSION` movement, and **no `.tsx`**. Everything below is
+> `packages/client/src/store/store.ts` plus the tests that measure it.
+>
+> **What moves in A-67:** Part 5's three-slot claim becomes a **one**-slot claim; Part 6's `claimTransition`,
+> `importPhotos`-supersede, `removePhoto`-supersede and `deleteTrip` rows; Part 7a item 4's blast-radius
+> claim; Part 11 residue 4's *"unreachable"*. **Anyone reading A-67 Parts 4, 5, 6, 7a or 11 reads this entry
+> with them.**
+
+**Part 1 — what round 48 established, and why this entry is short on argument.**
+
+Round 48 threw the battery A-67 was written to survive at the mechanism itself and could not break it: a
+four-transition sequence around a live four-file import, three `openTrip`s answering in the worst order, two
+browses against a close and against a transition, two async writers on one slot, and a **nine**-case release
+battery covering every throwing exit. Every slot always releases; the newest claim always wins. **Part 3's
+four properties hold under attack and are not re-litigated here.**
+
+Both MAJORs are in what A-67 asked *callers* to do with the mechanism, and both are the same missing
+sentence. A-67 reasoned about **ordering** — which of two answers wins — for eleven parts, and never once
+about **liveness** — whether any answer arrives at all. R48-2's breaker put it in one line and it is the
+finding: *"A drop is the right disposal for a **losing** read, because a winner is coming behind it. It is
+the wrong disposal for an **orphaned** one, and A-67 does not distinguish them."* That distinction is Part 3
+below, and Parts 4–6 are it applied to the four sites where it is missing.
+
+**Part 2 — the two defects, in the shipped code, stated once.**
+
+- **R48-1** (`store.ts:1832`/`:1841` in `importPhotos`, `:1934`/`:1940` in `removePhoto`). Part 4's second
+  half is unconditional — *"a write that changes the subject an in-flight read is reading must invalidate
+  that read"* — and Part 6's table put the `supersede` *"immediately before"* the optimistic `setPhotos`,
+  which is **inside** R45-4's `if (state.photos.available !== null …)`. So is the `supersede`. With
+  `available === null` a byte `write` and a byte `remove` invalidate **nothing**, and Part 7 row 5 says of
+  that enclosing guard, in as many words, that it *"answers a different question … a fact about the value,
+  not about the ordering."* The ordering call is then nested inside it. Two measured faces: a photograph
+  whose bytes are on disk reads `'missing'` after an import that raced a *Try again*; and `removePhoto` +
+  `undo` reads `'ready'` over bytes that are **gone**, where §10 **A-65 T1** requires `'missing'`. It
+  reproduces at `4430e34`, so it is **R47-2's fourth face** and not a regression — which is the point.
+- **R48-2** (`readPhotoAvailability`'s four `return`s against `claimTransition`). A claim on
+  `photoAvailability` **drops** an in-flight read, and `claimTransition()` claims that slot on **every**
+  transition, including transitions that install no document and issue no replacement read. Nothing ever
+  answers: `available` stays `null`, `availabilityError` stays `null`, `photosFor` reports `'loading'` for
+  as long as the trip stays open. `readPhotoAvailability`'s own docstring says §10.6 property 5 is true
+  *"by construction rather than by inspection"* **because every branch writes an answer**; A-67 put a
+  `return` in front of all four and did not notice the docstring one screen up. This is **A-63's unresolving
+  spinner**, reached by three gestures that could not reach it at `4430e34`, one of which is §2.9 **A-47**'s
+  own designed banner path.
+
+They are two halves of one question, and the proof is that **fixing either alone makes the other worse**:
+hoist R48-1's `supersede` out of the value guard and it now fires exactly when `available === null`, which
+is exactly when nothing will re-establish it — R48-1's fix manufactures R48-2's defect at a new site. This
+entry therefore rules them together, and a builder who lands one without the other has shipped the trade
+rather than the fix.
+
+**Part 3 — the rule, and it is the sentence A-67 is missing.**
+
+> **A bump of a slot's sequence is a promise to replace the answer it invalidated. `claim` promises an
+> answer *later* and may only be taken by an operation that writes one on **every** exit, including its
+> throws. `supersede` promises an answer *now*, in the same synchronous block, with no `await` between the
+> two. An operation that can bump a slot and then exit having written nothing to it is a defect, however
+> correct its ordering is.**
+
+Three consequences, and they decide every site below:
+
+1. **Ordering and liveness are separate obligations and the same primitive discharges only the first.**
+   A-67 Part 3's docstrings are about ordering; nothing in the module can enforce liveness, because
+   liveness is a property of the caller's exits.
+2. **A slot whose value has a *pending* representation carries the obligation; one whose values are all
+   terminal does not.** `photos.available === null` with `availabilityError === null` **is**
+   `phase: 'loading'` (§10.6 property 5, A-63) — a pending representation, and the one state in this store
+   that a user can sit in forever. `browsing === null` is *"no pane is open"*, which is terminal and
+   correct. `doc` is replaced by the claimer itself. **That is why R48-2 is an unresolving spinner on one
+   slot and a lost gesture on another**, and why the rule below is stricter for `photoAvailability`.
+3. **The primitive follows Part 4's own criterion applied to the *writer*, not only to the field.**
+   Part 4 says a field needs a slot when an async operation installs a value into it *computed from a
+   snapshot taken before an `await`*. A transition's write into `photos` and `browsing` is
+   `initialState().photos` and `null` — **constants, computed at the instant of writing.** Part 4's
+   criterion, applied to that write, says *no claim*. A-67 applied the criterion to
+   `readPhotoAvailability`'s write and never to the transition's own write into the same slot. That
+   oversight is the whole of R48-2.
+
+**Part 4 — R48-2 ruled: a transition claims `doc` and supersedes the other two at the reseed.**
+
+Of the three shapes R48-2 offers, **(b) narrow the claim** is chosen, and (a) and (c) are refused:
+
+- **(a) re-issue a dropped read** needs a bound so two invalidations cannot loop, needs every throwing exit
+  to run an `await` inside a `catch` before its rethrow, and would have to be added at **nine** exits (Part
+  4.1) — of which the finding found three. A ruling whose correctness depends on a builder finding all nine
+  is the ruling that produced this finding.
+- **(c) give the drop a terminal state** — the losing read writes `'unreadable'` — is the cheapest and is
+  the one that lies. §10.6 property 6 renders `'unreadable'` as a read that was attempted and failed, with
+  a *Try again* that will succeed immediately, over a store that is working perfectly.
+- **(b) is one line of deletion and six of addition, and it closes all nine exits at once** — including the
+  six the finding did not name — because an exit that never took the claim cannot strand anything.
+
+**4.1 — Part 6's table re-derived against the shipped code, exhaustively.** Every exit of every
+`claimTransition()` holder, and whether it installs a document and issues a read. **Nine exits strand an
+availability read, not three** — the finding measured three and stopped:
+
+| # | Exit | Installs? | Issues a read? | Stranded at `4316167`? |
+|---|---|---|---|---|
+| 1 | `createTrip` / `adoptTrip` / `openTrip` / `importDoc` success | yes | yes, after the release | no |
+| 2 | `closeTrip`, `deleteTrip` of the **active** trip | yes (document-less reseed) | no, and none is owed — no `doc`, no listing | no |
+| 3 | `deleteTrip` of a **non**-active trip | **no** | no | **yes** — the finding's face 1 |
+| 4 | `openTrip`, id not in storage (`:1432`) | **no** | no | **yes** — face 2 |
+| 5 | `openTrip`, corrupt document (`:1443`) | **no** | no | **yes** — face 3, and it is A-47's banner path |
+| 6 | `importDoc`, `core.fromJSON` throws on garbage (`:2097`) | **no** | no | **yes**, unnamed by the finding |
+| 7 | `importDoc`, `ForeignDocumentError` (`:2107`) | **no** | no | **yes**, unnamed |
+| 8 | `importDoc`, id-minting exhausted (`:2117`) | **no** | no | **yes**, unnamed |
+| 9 | `createTrip`/`adoptTrip`/`importDoc`, `TRANSITION_SUPERSEDED_MESSAGE` | **no** | no | no — a **newer** transition is in flight and owns the answer |
+| 10 | `openTrip`/`closeTrip` supersession `return state` | **no** | no | no — same reason |
+| 11 | `adoptTrip`, `ports.storage.load` rejects | **no** | no | **yes**, unnamed |
+| 12 | `deleteTrip`, the `chainOntoSaving` link rejects, **either** branch | **no** | no | **yes**, unnamed — and Part 6 below owes it more than a claim removal |
+
+Row 12 is two exits, one per branch, so the strandable count is **nine**: rows 3, 4, 5, 6, 7, 8, 11 and 12
+twice. Rows 6, 7, 8, 11 and 12 are the six the round did not reach, and **they are the reason this is
+ruled as a class and not as three patches.** (`core.createTrip` throwing inside `createTrip`'s window is a
+tenth in principle and is **not** counted: core throws only on programmer error — §2.1 — and it is closed
+by this ruling anyway, since the claim it would have stranded is no longer taken.)
+
+**4.2 — the change.**
+
+```ts
+/** The ONE place a live-document transition begins. It claims `doc` and NOTHING else — A-68 Part 4.
+ *  The two ancillary slots are SUPERSEDED at the reseed that replaces them, because that replacement
+ *  is synchronous and its values are constants (Part 4's criterion, applied to the transition's own
+ *  write). A claim here promised an answer that nine exits do not give (QA R48-2). */
+function claimTransition(): Ticket {
+  return guard.claim('doc');
+}
+/** The ONE place a live-document transition ends. Always in a `finally`. */
+function releaseTransition(): void {
+  guard.release('doc');
+}
+```
+
+and, at **each of the six** `set(…, { reseed: true })` transitions — `createTrip`, `adoptTrip`, `openTrip`,
+`closeTrip`, `deleteTrip`'s active branch, `importDoc` — immediately before the `set`, after the ticket
+check, **with no `await` between**:
+
+```ts
+        // A-68 Part 4. The reseed replaces `photos` and `browsing` with `initialState()`'s values, so
+        // it is a synchronous replacement of both slots: invalidate, then write (A-67 Part 3's own
+        // sentence for `supersede`). This is `closeBrowse`'s shipped pattern, applied to the six
+        // writers that were using a claim instead.
+        guard.supersede('photoAvailability');
+        guard.supersede('browsing');
+        cache = null;
+        set({ ...initialState(), … }, { reseed: true });
+```
+
+Three things that are the ruling and not the implementation:
+
+1. **`deleteTrip`'s non-active `else set({ ...state, library, openFailures })` gets NO supersede.** It
+   replaces neither slot. `ports.photo.removeTrip(id)` on that branch is a key-range delete over *another*
+   trip's key space (§10 **A-62**), so it does not change what `present()` would answer for the trip that
+   is open, and Part 4's second-half rule is satisfied by doing nothing. Face 1 of R48-2 closes here, and
+   it closes **correctly** rather than by compensation: the read was never stale.
+2. **`writeAndSettle`'s merge install gets NO supersede**, and G8's seventh `{ reseed: true }` site stays
+   the odd one out. It spreads `...state` and replaces neither `photos` nor `browsing`; `doMerge` already
+   issues its own `readPhotoAvailability` after the chain, whose **claim is itself the invalidation**. A
+   merge is still not a transition and still claims nothing (A-67 Part 7's last row).
+3. **Ordering is not weakened by one instant.** The supersede is the last statement before the install with
+   no `await` between them, so a read resolving after it is dropped, and a read resolving *before* it
+   stamps into a state the reseed overwrites one statement later. R46-3's cross-trip case, G4 and G7 are
+   unaffected — and after the install every installing transition issues a read whose claim is newer than
+   anything issued inside the window, which is what made the old claim redundant for ordering in the first
+   place.
+
+**4.3 — `browsing` moves for the same reason and is not collateral.** A `browseTrip` in flight when a
+transition **fails** currently returns its parsed document without installing the pane, and without
+clearing that id from `openFailures` — a gesture silently dropped by a transition that did nothing. With
+the claim gone it completes, which is correct, because nothing replaced it. `closeBrowse` has used
+`supersede` for this exact write since revision 47; the six transitions were the inconsistency.
+
+**Part 5 — R48-1 ruled: the hoist, and the three things that make the hoist safe.**
+
+**The finding's one-line fix is correct and incomplete.** Hoisting the `supersede` out of R45-4's value
+guard is right — Part 4's sentence is unconditional and Part 7 row 5 already says the two guards answer
+different questions — but it fires precisely when `available === null`, and that is precisely when nothing
+re-establishes it. **Alone, it converts R48-1's wrong answer into R48-2's absent one.** Three clauses, all
+three required, and a builder who lands one or two has not landed this ruling:
+
+**5a. The supersede is hoisted out of the value guard, and the value guard is kept, unchanged, nested
+inside it.** R45-4's guard is a fact about the value and is still true; it just stops being the gate on the
+ordering call.
+
+**5b. A supersede that cannot write the answer sets a flag, and the answer is a port read issued once.**
+`importPhotos`, at the site that is `:1832`–`:1843` today, with `let availabilityOwed = false;` declared
+beside `let remaining = picked.length;`:
+
+```ts
+              // A-68 Part 5. Unconditional within the subject: the step-5 `guard.current('doc', g)`
+              // check is one statement up with no `await` since, so `state.doc` is still the document
+              // these bytes were written for. The `write` above changed what `present()` would answer
+              // (A-67 Part 4), and an availability read issued before those bytes existed must not
+              // land after them and report `'missing'` over them — R45-4 through a third door.
+              guard.supersede('photoAvailability');
+              // R45-4's guard, kept verbatim and now INSIDE the ordering call rather than around it:
+              // `available: null` means *"never read"*, not *"read, and empty"*, and a set built here
+              // would hold exactly the ids this batch wrote and make every older photograph `'missing'`.
+              if (state.photos.available !== null && state.photos.tripId === state.doc.id) {
+                const available = new Set(state.photos.available);
+                available.add(id);
+                setPhotos({ available });
+                availabilityOwed = false;
+              } else {
+                // A-68 Part 3: a supersede that cannot write the answer OWES one. Once per batch, not
+                // once per file — the flag, not an `await` here, is what keeps the loop one port call.
+                availabilityOwed = true;
+              }
+```
+
+and, **after** the `remaining > 0` settle so the fraction reaches `0/0` first:
+
+```ts
+      // A-68 Part 3's pairing rule, discharged. Guarded on the ticket because a batch that ended on a
+      // transition owes nothing: that transition superseded this slot itself and issued its own read.
+      if (availabilityOwed && guard.current('doc', g)) await readPhotoAvailability(state.doc);
+```
+
+**5c. `removePhoto` gets the `doc` observation it never had, because the hoist makes its absence
+load-bearing.** `removePhoto` dispatches, then awaits `ports.photo.remove`, then writes three things to
+`state.photos` with **no ticket of any kind**. A transition landing inside that await today is absorbed by
+the value guard (the reseed leaves `available === null`, so nothing happens). Hoist the supersede out of
+that guard and it fires against the trip the user moved to, dropping *its* read — **R48-2 committed from a
+new site by R48-1's own fix.** So:
+
+```ts
+    async removePhoto(photoId: string): Promise<AppState> {
+      if (!state.doc) throw new Error('removePhoto: no active trip');
+      const tripId = state.doc.id;
+      this.dispatch({ type: 'removePhoto', photoId });
+      // A-68 Part 5c. `observe` and not `claim`: this writes THROUGH the document slot, exactly as
+      // `importPhotos` does. Taken after the dispatch, whose own refusal (A-67 Part 6) means a window
+      // cannot be open here; `current(slot, null)` is `false` anyway, so no narrowing is needed.
+      const g = guard.observe('doc');
+      if (!ports.photo) return state;
+      let availabilityOwed = false;
+      try {
+        await ports.photo.remove(tripId, photoId);
+        // The whole tail is the subject's, and a transition landing in the `remove` above takes it
+        // away: `state.photos` has already been reseeded for another trip, so an availability write
+        // here would edit that trip's set and an orphan appended here would be reported against it
+        // (§10 A-66 Part 3, the same rule the import loop keeps).
+        if (guard.current('doc', g)) {
+          guard.supersede('photoAvailability');
+          if (state.photos.available !== null) {
+            const available = new Set(state.photos.available);
+            available.delete(photoId);
+            setPhotos({ available });
+          } else availabilityOwed = true;
+          setPhotos({ orphans: state.photos.orphans.filter((id) => id !== photoId) });
+        }
+      } catch {
+        // The record is gone and the bytes are not. Observed, recorded, never swept — and reported
+        // against the trip it happened to, or not at all.
+        if (guard.current('doc', g)) setPhotos({ orphans: /* unchanged append */ });
+      }
+      if (availabilityOwed && guard.current('doc', g)) await readPhotoAvailability(state.doc);
+      return state;
+    },
+```
+
+`removePhoto`'s value guard stays `available !== null` with **no** `tripId` conjunct added: under
+`current('doc', g)` the document has not been replaced, and `photos.tripId` is `null` only when `available`
+is `null` too, because `readPhotoAvailability` writes the pair together. A conjunct that can never change
+an outcome is a third answer to R45-4's question and Part 8 item 2's reason for refusing one applies.
+
+**5d. Why the owed read is not a retry, and does not violate A-63 Part 3's *"there is no automatic
+retry"*.** A-63 forbids the store re-running a read *because the read failed*. This read runs because **the
+store changed the answer** — it wrote or deleted bytes and then invalidated the only answer it had. It is
+issued once per operation, never in a loop, and if it fails it writes `'unreadable'` with the *Try again*
+that §10.6 property 6 requires. The cost is **at most one extra `present()` per import batch and per
+removal, and only when availability was unknown** — which after any successful `openTrip`, `createTrip`,
+`adoptTrip` or `importDoc` it is not. §10.6 property 2's *"once per trip open"* is unmoved: this is a write
+recording itself, not a second establishment.
+
+**Part 6 — the ninth exit, which is neither finding's and would have been the sixth face.**
+
+`deleteTrip`'s `chainOntoSaving` link can reject (`ports.storage.delete` refusing) **after**
+`ports.photo.removeTrip(id)` has already run. On the active branch the reseed then never happens: the trip
+stays open, every byte it owns is gone, and the listing keeps reading `'ready'` over them — §10 **A-65
+T1**'s exact prohibition, produced by a fault path rather than by a race. Part 4's rule says a write that
+changes what `present()` would answer must invalidate the read; Part 3 says it then owes an answer. Both,
+in one line, on a path that is already failing and where a port round trip costs nothing:
+
+```ts
+    async deleteTrip(id: string): Promise<AppState> {
+      const wasActive = state.activeTripId === id;
+      if (wasActive) { cancelTimer(); claimTransition(); }
+      else if ((await flushForTransition()) === null) return state;
+      …
+      try {
+        await chainOntoSaving(async () => { /* unchanged */ });
+      } catch (err) {
+        // A-68 Part 6. The cascade threw with the trip still open and `ports.photo.removeTrip` may
+        // already have run, so what `present()` would answer has changed and no reseed happened to
+        // record it. Ask the port rather than leave a listing reading `'ready'` over bytes that are
+        // gone (§10 A-65 T1). `readPhotoAvailability`'s own claim IS the invalidation, so there is no
+        // `supersede` here; it touches a different slot from the `doc` claim this still holds, and it
+        // dispatches nothing.
+        if (wasActive) await readPhotoAvailability(state.doc);
+        throw err;
+      } finally {
+        releaseTransition();
+      }
+      return state;
+    },
+```
+
+The happy path is unchanged and costs nothing: the reseed's own supersede (Part 4) covers `removeTrip`
+there, and a document-less state has no listing to answer for.
+
+**Part 7 — the liveness proof, which is what makes this checkable rather than believed.**
+
+**Every** bump of `seq['photoAvailability']` in `store.ts` after this ruling, exhaustively — **ten sites,
+and each one names its answer**:
+
+| Bump | Answer that replaces the one it invalidated |
+|---|---|
+| `readPhotoAvailability`'s `claim` (1 site) | its own four branches, one of which always writes — **unless** it is itself superseded, in which case the superseder's row below answers |
+| the six reseed installs' `supersede` (6 sites) | the reseed writes `initialState().photos` **and** the transition then either issues a read (`createTrip`, `adoptTrip`, `openTrip`, `importDoc`) or leaves `doc === null`, where §10.6 has no listing to report (`closeTrip`, active `deleteTrip`) |
+| `importPhotos`' `supersede` (1 site) | the optimistic `setPhotos({ available })`, or `availabilityOwed` → one read after the loop |
+| `removePhoto`'s `supersede` (1 site) | the same pair |
+| `deleteTrip`'s failure path (1 site — a `claim`, inside `readPhotoAvailability`) | that read's own branches |
+
+**Therefore, and this is the invariant a test asserts directly:** when every promise this store has made has
+settled, either `state.doc === null`, or `photos.available !== null`, or `photos.availabilityError !==
+null`. **`'loading'` is transient again**, by construction and not by inspection — §10.6 property 5, A-63,
+restored to the form `readPhotoAvailability`'s docstring already claims for it. That docstring's sentence
+*"every branch writes an answer"* becomes true again, and the builder **updates it** to say what now makes
+it true (every branch writes an answer, or a newer bump has taken responsibility for one).
+
+**Part 8 — R48-3 ruled: residue 4's claim is false, the refusal is right anyway, and the `.tsx` fix is
+scheduled rather than deferred.**
+
+**The claim is corrected.** A-67 Part 11 residue 4 says the `dispatch`/`undo`/`redo` refusal is
+*"unreachable from today's `apps/web`"* and that its trigger would be *"a surface that lets a user type
+while a transition is in flight."* Both are wrong, and the round-47 confirmation that produced them
+answered a narrower question than residue 4 asked (no editable **field** is mounted on a surface that calls
+`openTrip` — true, and the reachable caller is not a field). `apps/web/src/App.tsx:232–243` (the `keydown` listener; the two calls are at `:239` and `:240`) binds
+Ctrl/Cmd+Z and Shift+Ctrl/Cmd+Z on **`window`**, for the whole application, with no trip check, no history
+check and **no `try`**; `deleteTrip` holds its `doc` claim across a cascade that drains the save chain,
+runs `photo.removeTrip` and then `storage.delete`, while the active trip stays open and interactive. A
+keyboard undo during a trip delete therefore reaches the refusal **today**, and its first user-visible
+appearance is an **uncaught error inside a DOM event listener**, where no React error boundary can see it.
+
+**The behaviour is ruled correct and does not change.** Three shapes were available:
+
+1. **Queue the undo and apply it after the transition.** Refused. It is *dropped, never retargeted* broken
+   on the one path where the retarget is a document mutation with no gesture behind it — the user pressed
+   Cmd+Z against a screen that no longer exists, and A-67's own closing trigger names "an operation that
+   must survive a transition" as the thing that reopens the whole ruling. An undo is the cheapest gesture
+   in the application to repeat; it does not qualify.
+2. **Refuse silently — return `state` unchanged.** Refused, and it is the tempting one. It makes a real
+   user gesture vanish with no record on a path where the screen may not change at all (a delete of a
+   **non**-active trip leaves the user's own document exactly where it was), which is **R6-1's own defect**
+   — a silent abort leaving the user on an unchanged screen with no explanation. It also removes the
+   only thing that makes the fence checkable in a test.
+3. **Keep the throw, and require the caller to catch it.** **Chosen.** The store's answer is uniform across
+   `dispatch`, `undo` and `redo`, `TRANSITION_IN_PROGRESS_MESSAGE` was written for a user's eyes
+   (*"A trip is being opened or closed; that edit was not applied. Try again in a moment."*), and
+   `App.tsx` already owns a banner (`setError`) and a helper (`run`) built for exactly this. **The defect
+   is an uncaught throw in a listener, and it belongs to the surface that installed the listener.**
+
+**Urgency, ruled explicitly rather than left to drift.** The `.tsx` correction is **two lines** — wrap the
+two `store.undo()`/`store.redo()` calls in `try { … } catch (e) { setError((e as Error).message); }` — and
+it is **not** urgent: today the whole user-visible consequence is that a keystroke does nothing and the
+console records an error, on a gesture that would not have undone the delete anyway. It is **not deferred
+indefinitely either.** It lands in **the first increment that opens `apps/web/src/App.tsx`**, together with
+A-67 Part 11 residue 3's own `.tsx` item (making the Map/Profile `openTrip` call conditional on
+`state.activeTripId !== id`), and it is a **ship condition of that increment**. ROADMAP I-13e carries it as
+an explicitly `.tsx`-touching follow-up so it is scheduled work rather than a residue nobody owns. **This
+arc stays fenced out of `.tsx`; I-13e does not open it.**
+
+**The two smaller notes in the same finding are builder work and are in I-13e**: `removePhoto`'s `@throws`
+list does not mention `TRANSITION_IN_PROGRESS_MESSAGE`, which it throws through its own `this.dispatch`;
+and residue 4's trigger sentence is replaced by the paragraph above.
+
+**Part 9 — R48-5 ruled: all three assertions invert, none is a defect, and Part 7a item 4 is replaced by a
+predicate rather than a longer list.**
+
+**First, the addresses, because the finding's are off by a section and a builder will go looking.** The
+three are `qa/r47-i13c.mjs:210` and `:231` (both §B) and `:263` (**§C**, not §K — §K is green). Measured
+here, this revision, at `d03eac8`: `node --experimental-strip-types qa/r47-i13c.mjs` prints exactly four
+`FAIL` lines, one of which is R48-4's stale `npm test` count.
+
+| Line | Now asserts | Must assert | Why |
+|---|---|---|---|
+| §B `:210` | `keys(p.photo).length === 1` — *"one derivative pair is stranded and no more"* | `keys(p.photo).length === 0`, over **both** derivative stores | Identical in kind to Part 7a's own `qa/r46-i13b.mjs:259`: it pins the OLD guard's byte-write side effect, and the new step-4 guard fires **before** `ports.photo.write`. A-66 **Part 10** item 2 already states the new bound |
+| §C `:263` | `orphans.length === 1` — A-66 **U4** | `orphans.length === 0`, and `orphanPhotoBytes` still `[]` | The same inversion at a second site. **U4's contract is *"the store never claims to have observed a stranded pair it cannot name"*, which is green and unedited; only the count of pairs the old guard created moves** |
+| §B `:231` | A → B → A: *"the batch completes into the trip it was picked from"* — 2 records in A | zero records in A, zero in B, **zero** byte records anywhere, `failures: []`, `pending`/`total` at `0/0`, and `validateTrip(dA)` still clean | A **final-state** assertion, and it moves. Ruled below |
+
+**The return trip is not a defect, and the reasoning is the whole of this Part.** Round 47 measured that
+`A → B → A` let the batch complete into A and asserted it as correct. It **was** the right outcome, and it
+was produced by the wrong mechanism: `state.doc?.id !== tripId` passed on the return trip because
+id-identity is true of two different document instances — **which is R47-1 face 3 in one sentence**, the
+same false positive that, on `A → A`, silently lost three photographs of four while reporting `failures:
+[]` and `pending: 0`. **You cannot keep the good outcome without keeping the mechanism that produces the
+bad one.** That is why A-67 chose generation identity, and this assertion is the bill.
+
+What replaces it is also strictly better as a *state*: a **stopped** batch, not a half-lost one. Nothing is
+written, nothing is stranded, the document validates, memory and storage agree, and the gesture is
+repeatable. A silently half-completed import is undetectable by the user; a batch that produced nothing is
+not. **So: the assertion inverts, with A-67 Part 11 residue 3 named in its message.**
+
+**And the cost is disclosed rather than absorbed.** A-67 residue 3 discloses *"a user who re-opens the trip
+they are importing into now stops the import"* and names its trigger as the `.tsx` change that stops
+`App.tsx` re-opening the active trip. **Residue 3 is widened here to cover `A → B → A`**, which that `.tsx`
+change does **not** remove: a user who leaves an importing trip and comes back loses the batch, silently,
+because §10 **A-66 Part 3** reports an abandoned batch as nothing. A-66's reason — *"the report would land
+against whatever trip the user moved to"* — is **true of a batch abandoned into another trip and false of
+one abandoned by a round trip that returns**, and that distinction is real but the mechanism to act on it
+is not free: `PhotoImportFailure` is closed at five arms (A-66, `U5`) and a batch-level report is a new
+shape. **Deferred with a named owner: the increment that builds the photo surface decides how an abandoned
+batch is told to the user, and A-66 Part 3 is scoped rather than overturned in the meantime.** No mechanism
+is added at the end of a repair arc to close a case a surface does not yet exist to show.
+
+**Part 7a item 4 is corrected, and the correction is a predicate, not a fourth list.** Its sentence *"No
+other test, in `packages/client/test/` or in `qa/`, changes for this"* was wrong by three lines, which is
+the **second** consecutive revision to under-count the same blast radius. Enumerating harder is not the
+answer; the enumeration was never the reliable part. It is replaced by:
+
+> **The assertions that move under A-67 are exactly those whose expected value was produced by (i) a guard
+> that fired *after* `ports.photo.write` — any count of stranded derivative pairs or orphan byte keys — or
+> (ii) id-identity passing on a **return** trip, so that a batch abandoned by an intermediate transition
+> completed anyway. Both are the deleted mechanism's own artefacts. Every other assertion — which trip a
+> record lands in, a listing's phase, `pending`/`total`/`failures`, readability, `orphanPhotoBytes`'
+> refusal to claim what it did not observe — stays exactly as it is. **The list of lines is derived by
+> running the probes, not by reading this entry**, and a red line matching neither clause is a finding
+> against A-67 routed to the architect rather than a line to re-cut.
+
+**Whose hand: the breaker's, unchanged.** All three are in `qa/`, and round 44's `qa/r43-a56.mjs`, round
+46's six lines of `qa/r45-i13.mjs`, A-65 Part 8's `qa/r46-i13b.mjs` §K and Part 7a's own ruling are four
+standing precedents. The **round-49** breaker re-cuts them, each watched red first against the mutant that
+restores `isLiveTrip(tripId)` at the step-4 guard (for `:210` and `:263`) and against the mutant that
+restores `state.doc?.id !== tripId` at step 5 (for `:231`) — an assertion that a set is empty passes
+trivially against a probe that imported nothing, and the control is what separates the two. **Until then,
+`qa/r47-i13c.mjs` printing these three `FAIL`s is an expected, disclosed result and is not an I-13e ship
+condition.** A `FAIL` on any **other** line of that probe is a regression and still blocks. Their expected
+values are stable across I-13e: nothing in Parts 4–6 touches the `doc` slot's ordering.
+
+**Part 10 — the injected-fault criteria. Eight, each red before and green after.**
+
+| | Fault | Required behaviour |
+|---|---|---|
+| **G10** | Trip A open with a slow `present()` in flight; `deleteTrip(B)`, a trip that is not active | A's listing reaches `{phase:'ready'}` and **not** `'loading'`; the delete is unaffected; the disclosed false positive on the `doc` slot (A-67 Part 11 residue 2, a stopped import) is **unchanged** and still measured. **Mutation: restore `guard.claim('photoAvailability')` in `claimTransition` → `'loading'` forever → red** |
+| **G11** | The same in-flight read, against `openTrip('no-such-id')`, `openTrip(corruptDoc)`, `importDoc('{{{')`, `importDoc(foreignOwner)` and an `adoptTrip` whose `storage.load` rejects | All five throw exactly what they throw today — A-47's `noteOpenFailure` chip and banner unchanged, `ForeignDocumentError` unchanged — **and A's listing reaches `'ready'` in every one**. **Same mutation → five reds** |
+| **G12** | `deleteTrip` of the **active** trip with `ports.storage.delete` rejecting, photographs on disk | The delete still fails loudly and the trip is still open; the listing does **not** report `'ready'` over removed bytes — it re-reads and reports what is actually there. **Mutation: drop Part 6's `catch` read → `'ready'` over gone bytes → red** |
+| **G13** | Availability unknown (`present()` failed once, or its first read still in flight); import one file into the open trip | The new photograph never reads `'missing'`; the listing reaches a terminal state; **exactly one** extra `present()` is issued for the whole batch regardless of file count. **Mutation: put the `supersede` back inside R45-4's value guard → `'missing'` over bytes on disk (R45-4's rendered defect) → red. Second mutation: drop the owed read → `'loading'` forever → red** |
+| **G14** | The same unknown availability; `removePhoto` then `undo` | The restored record reads **`'missing'`** — §10 **A-65 T1**, *"never `'empty'`, never `'unreadable'`, never a throw"*. **Both mutations above → red** |
+| **G15** | A trip transition landing inside `ports.photo.remove`, i.e. `removePhoto` racing an `openTrip` | The trip the user moved to keeps its listing (it reaches a terminal state), no orphan is reported against it, and no availability set is edited for it. **Mutation: drop Part 5c's `current('doc', g)` → the incoming trip's read is dropped and never re-issued → red** |
+| **G16** | *Still true.* `grep` the slot names in `packages/client/src` | `claim('photoAvailability')` — **exactly one** site, `readPhotoAvailability`. `claim('browsing')` — **exactly one**, `browseTrip`. `supersede('photoAvailability')` — **exactly eight**: the six reseed installs, `importPhotos`, `removePhoto`. `supersede('browsing')` — **exactly seven**: the six reseeds and `closeBrowse`. `claimTransition(` — still **exactly two** call sites (A-67 **G8**, unchanged). A ninth or a third is a defect until it names the answer it owes (Part 3) |
+| **G17** | *Still true.* A-67 **G1…G9** re-run unchanged | All nine still red-before/green-after. **G4, G5, G6 and G7 are the ones this ruling could plausibly have broken** — they must stay green with the transition's `photoAvailability` claim removed, and the mutation that proves the replacement carries them is **deleting the `supersede` before a reseed install** → an older read lands over a newer trip's state → red |
+
+G10–G15 are behavioural and belong in `packages/client/test/`; G16 and G17 are the A-64 **S5**-shaped
+"still true" greps.
+
+**Part 11 — what deliberately does not change, named so a builder does not tidy it.**
+
+1. **A-67 Part 8's list stands entire.** `retireResolutions`, `noteOpenFailure`, `setUi`, the
+   `chainOntoSaving` links, `reclaimPhotoBytes` and the eleven read-only methods still get nothing. Part 8
+   item 5's premise is still literal.
+2. **No fourth slot.** Part 11 residue 2's *"a fourth slot separating 'the document is being replaced' from
+   'some document is being flushed'"* was one candidate answer to R48-2 and is **not** taken: with the
+   ancillary claims gone, the only slot a flush-without-install takes is `doc`, which is the slot it is
+   genuinely contending for. The residue stays open for its **own** trigger (a measured report of a
+   stopped import), unchanged.
+3. **`refreshLibrary` is still Part 11 residue 1**, still has no slot, and its premise (one caller, on
+   boot) was re-checked by round 48 with a grep. Untouched.
+4. **The merge's transient is disclosed and not fixed.** A read issued before a merge can land between the
+   merge's install and `doMerge`'s own `readPhotoAvailability`, briefly reporting taken-in records as
+   `'missing'`. The **final** state is always the merge's read (its claim is newer), so property 5 holds
+   and G5 is green; the flicker is R46-2's shape reduced to milliseconds and it costs a port call to
+   close. **Trigger:** a surface that renders the listing during a merge and a measured report of it.
+5. **`PhotoImportFailure` still has five arms** (A-66, `U5`), and nothing here adds a sixth.
+6. **`packages/core` is not reached**, `SCHEMA_VERSION` stays 2, `DB_VERSION` stays 5, `SUMMARY_VERSION`
+   stays 5, and core's runtime export surface stays **83**.
+
+**The trigger that reopens this entry** is the same one that reopens A-67, and it is now stated with its
+liveness half: **a store operation that must survive a transition rather than be dropped by one, or a
+guarded slot whose pending state a user can sit in.** Every line above rests on *dropped, never
+retargeted*, plus *and somebody always answers*. A third guarded slot with a `'loading'` of its own — a
+future `library` slot on a surface that shows a spinner, most plausibly — inherits Part 3 whole, and its
+increment states its answer at every exit before it takes its first claim.
 
 ### 4.3 Ports — the honesty-to-native mechanism
 
