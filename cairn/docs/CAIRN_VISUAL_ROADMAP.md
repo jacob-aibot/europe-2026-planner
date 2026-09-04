@@ -19,8 +19,54 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
-> **🟢 THE FIX IS BUILT, AND THE TESTER COULD NOT BREAK IT — as of 2026-09-04. This block is the
-> newest.** Step 2d's photo half stays **designed ✅ · built ✅ · verified ✅ · shippable ❌**.
+> **🟩 THE SIX CORRECTIONS ARE DONE, AND THE PHOTO STRETCH NOW OWES NO REPAIR PASS — as of
+> 2026-09-04. This block is the newest.** Step 2d's photo half stays **designed ✅ · built ✅ ·
+> verified ✅ · shippable ❌**, and the reason for that last ❌ is now **only** the missing photo
+> screen (**I-13f**) and the manager's verdict — **not an unfixed defect**.
+>
+> **The one-sentence version.** Everything the tester found last round was a wrong sentence or a
+> wrong number in Cairn's own design documents; those are now fixed, **no app code changed**, and
+> for the first time in nine repair passes there is nothing owed back to the builder except one
+> line in a build report.
+>
+> **What was corrected, in plain English.**
+>
+> 1. **A check that claimed more than it could deliver.** The design published a test meant to prove
+>    the new "invisible mark" matters everywhere. It doesn't — it matters at the three places where
+>    saving happens, and it *cannot* matter at the other four, because the design's own rules keep
+>    screen-drawing out of those places entirely. The check now says which parts it actually
+>    controls. **The fix is still load-bearing; the claim about it was too broad.**
+> 2. **"Fails safely" was not true.** One rare mix-up was described as failing in the cautious
+>    direction. It doesn't: it would leave *"Saving…"* on screen forever over unsaved work, which is
+>    worse than saying *"error"*. It is **unreachable in the app as shipped** — the tester tried to
+>    reach it and could not — so the mechanism is unchanged, but the sentence now tells the truth
+>    and there is a written trigger for when it would need fixing.
+> 3. **A function that never existed.** The ruling named a piece of Cairn — `saveAs` — three times.
+>    There is no such thing. The builder had quietly built the right thing anyway; the design now
+>    names what is actually there (the two writes inside "merge with the stored version").
+> 4. **"Settles on every exit" — except one.** The progress bar for a photo import is guaranteed to
+>    stop, on every way out of the import *except* one: the screen crashing on the very first thing
+>    the import draws. That gap is older than this work. The promise is now stated accurately, the
+>    fix is written out in full for whoever next opens that file, and it is tracked rather than
+>    forgotten.
+> 5. **A published number that has now been wrong three revisions running — and the rule that
+>    stops it.** A count in the design document was corrected last revision *specifically* to stop
+>    it drifting — and the correction was made wrong, in the same revision, by the other change
+>    shipped alongside it. **So it has not been corrected a fourth time.** The rule changed
+>    instead: design documents may state things the design decides (*"three places write this"*)
+>    and may **no longer** print the number a search of the code returns today. That number now
+>    lives in the test that checks it, which is re-run every time the code moves. This is the
+>    project's fourth finding of this exact kind and it is the last one that can happen this way.
+>
+> **What this changes about status.** The photo work is **built and checked, with nothing owed
+> back**. What stands between here and "shippable" is the photo screen itself (**I-13f**, two known
+> lines plus the surface) and the manager's sign-off on the whole stretch — not a bug, and not a
+> disagreement about whether the mechanism is sound.
+>
+> **Still nothing on your phone changes.**
+
+> **🟢 THE FIX IS BUILT, AND THE TESTER COULD NOT BREAK IT — as of 2026-09-04. This block was the
+> newest until the block above.** Step 2d's photo half stays **designed ✅ · built ✅ · verified ✅ · shippable ❌**.
 > **I-13i is built** and it survived a full adversarial round: **0 blockers, 0 major problems.**
 >
 > **The one-sentence version.** All five of the false statements the block below describes are
@@ -86,7 +132,9 @@ update to this file added that instruction).
 >    **"couldn't save"**. This is the one that decided the shape of the fix: it has nothing to do with
 >    photographs and everything to do with the single most important thing this app has to be honest
 >    about.
-> 5. The same as 4, on the "save a copy" and "merge with the stored version" paths.
+> 5. The same as 4, on the two writes inside "merge with the stored version". *(This line said
+>    "save a copy" when it was written, copying an error in the design ruling: Cairn has no such
+>    feature. Corrected 2026-09-04 — see item 3 of the newest block.)*
 >
 > **Why the fix is one change and not five.** Patching each of the five is exactly the mistake this
 > project has been punished for eight rounds running — you fix the five you can see and the sixth one

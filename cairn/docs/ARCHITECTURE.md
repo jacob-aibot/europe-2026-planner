@@ -1226,6 +1226,34 @@ field, no `PhotoSession` field, no selector, no port method, no core change, no 
 movement, and `generation.ts` does not change by a character.** `ROADMAP.md` revision 52 carries the
 implementation as **I-13i**.
 
+**Revision 53, 2026-09-04.** **The mechanism shipped clean and this document did not: five corrections to
+my own text, no code, and one standing rule replaced.** QA round 51 confirmed A-71's brand and classifier
+and §10 A-66 Part 11's `setBatch` — **SHIP, 0 blockers, 0 MAJOR, and it could not break the mechanism on
+any axis it constructed**. All five findings routed here are **wrong sentences and wrong numbers in §4.2's
+ruling text**. **R51-1**: A-71 Part 6's **G35** claimed its control reddens G31–G34 at once; measured, it
+reddens **G34 (×3) and G37** and G31/G32/G33 stay green — and the reason is A-71's **own Part 4b**, which
+forbids an `emit` inside `attempt`'s scope, so at the four sites whose callback is a bare port call the
+brand is never consulted and cannot be load-bearing. The criterion is narrowed to what it controls;
+**widening `attempt` to make it reproduce as printed would violate Part 4b** and is refused. **R51-2**:
+Part 4a called a false-positive brand *"the conservative arm"*. It is not — it converts a reported failure
+into a **stuck `'saving'` over a dirty document**, which is §10.6's unresolving spinner. The asymmetry is
+now stated, the mechanism is unchanged (the state is unreachable from today's `apps/web`), and it is
+residue 5 with a trigger. **R51-3**: A-71 named a store method — **`saveAs`** — that has never existed, in
+three places. All three now name `doMerge`'s two chained writes, which is what the builder correctly
+shipped and did not flag. **R51-4** *(pre-existing)*: Part 4d's *"settles on EVERY exit"* is false for the
+one exit **above** the `try` — a subscriber throwing on the batch's opening `setBatch` strands the
+fraction. The sentence is narrowed to the truth, the fix is specified in full, and it is residue 6.
+**R51-6, and it is the one worth naming as a failure**: A-70 Part 7 item 3's correction table — published
+at revision 52 *expressly* to stop a count drifting, carrying the new rule *"publish the command beside the
+number"* — **was wrong in the same revision that published it**, because A-71 merged a call site away. That
+is the **third consecutive revision** in which G21's row is wrong. **So the number is not fixed a fourth
+time.** The rule is replaced: **this document states design counts and never states the value a grep
+returns over source** — that value is owned by the assertion that checks it, and this document names the
+assertion and the command's *meaning*, or the drift-proof *relationship*, instead. Applied to A-70 Part 7
+item 3, A-70 **G28** and A-69 Part 12's **G21**/**G24** rows in place. **No code, no `.tsx`, no `qa/`, no
+test, no criterion's mechanism, no slot, no field, no version movement; §4.2's rulings A-67…A-71 all stand
+and I-13i is unaffected as shipped.** `ROADMAP.md` revision 53 carries the ledger entry.
+
 **Phase 1 is §2 and §4. The next phase is §8.1–§8.4.** Everything else is the shape those must not
 foreclose. See `ROADMAP.md` for sequencing and `PRODUCT-VISION.md` for why this order and not another.
 **What the product looks like is `DESIGN.md`, not this document** — §9 says why, and a builder of a screen
@@ -1233,7 +1261,12 @@ reads that instead of entering §2 or §4.
 
 ## Read only your sections
 
-This document is **~411k tokens** (re-measured at **revision 52**, with `doc-section` — **§4 grew 102k →
+This document is **~416k tokens** (re-measured at **revision 53**, with `doc-section` — **§4 grew 109k →
+114k** with revision 53's five in-place corrections to A-70 and A-71 (QA round 51: R51-1/2/3/4/6) and the
+**count rule** that replaces *"publish the command beside the number"*; **§10 did not move and is 40k**, and
+nothing else moved. **A-71 is now ~10k and carries a revision-53 amendment banner naming all four of its
+corrections; A-70 Part 7 item 3 is the count rule and is read by anybody about to write a number into this
+document, and §4's own read-map row below carries the same pointer.** Revision 52's own note follows: this document was ~411k, with **§4 grown 102k →
 109k when A-71 landed under A-70** and **§10 38k → 40k** with A-66's **Part 11**; nothing else moved.
 **A-71 is ~8k and A-66 Part 11 is ~2k, and together they are exactly what a builder of I-13i reads** —
 plus A-69 Part 7 and Part 13 residue 1, both of which now carry A-71's amendment banner. Revision 51's own
@@ -1282,7 +1315,7 @@ rendering a stored summary row on the Trips list, adding an export path, or abou
 outside core reads A-47, then A-46, then A-45, then §8.4 A-44 — A-47 names which of A-46's sentences it
 supersedes, so reading it first is what tells you which of A-46 to skip** | 123k | builder, breaker |
 | 3 | Module boundaries | <1k | builder |
-| 4 | **The Phase 1 client.** §4.2 rule 6 (a pending write is never outlived by its document) is new in revision 3 — QA R3-2; rule 6a′ and the `savedDoc` predicate are revision 4 — QA R4-1; **rule 6a″ (the flush bound and its exits) and rule 6c's "delete goes on the chain" are revision 5** — QA R6-1/R6-2/R7-3; **rule 5's retirement carve-out is revision 6** — QA R8-1, read with §2.7; **rule 4a is revision 8** — QA R11-1, read with §2.2a A-7; **§4.3's A-30 is revision 23** — the `refreshSummary` port method, the fence's meaning stated once, and the rescan's uniform per-row link — and **anyone touching `runRescan`, `StoragePort` or a port implementation reads it first**, with §8.4 clause 3 beside it; **§4.4's A-40 is revision 29** — the lifetime map is a plain component over a pure `packages/client` frame function, not a second `MapPort`, and **anyone building or reviewing `WorldMap.tsx` reads it first** (it is ~3k and self-contained; the trip map's port is unchanged and needs no re-reading); **§4.4's A-41 and A-42 are revision 30 and are read *with* A-40, never instead of it** — A-41 is the atlas frame (geographic clustering, one primary pane and up to two insets, padding, and the **W3** renderer clause) and it amends A-40 clause 2 and withdraws A-40 Part 7 residue 1's diagnosis; A-42 withdraws A-40 clause 2's min-span *claim* and rules that no second constant is created. **A builder of I-8d reads A-40 Parts 3–5, then A-41 and A-42, and needs nothing else in this document except §2.10's list**; **§4.4's A-48 is revision 33, sits directly under A-42 and is read *with* A-41, never instead of it** — QA round 36 measured A-41's own C2 and C3 as wrong (a key point that lands in the ocean, and a partition that depends on the alphabet), and A-48 supersedes **C2**, **C3** and Part 8 residues 1′ and 4 in place, withdraws C4's margin claim, adds **C9** (paint order) and one pane field (`aspect`), and changes the semantics of core's `clusterPoints` to connected components. **A builder of I-8g reads A-48 first — it names which of A-41's clauses to skip — then A-41's C1/C5/C6/C7/C8 and Parts 4–7, then A-40 Parts 3–5**; **§4.4's A-49 and A-50 are revision 34, sit directly under A-48 and are read *with* A-41 and A-48, never instead of them** — QA round 37 measured A-48's own C8 as the clause A-48 forgot (the key point moved onto the country and the *extent* did not), and A-49 supersedes **C8**, **C7**'s cap and A-41's I1/I2/I3/I5 in place, withdraws A-48 C9 consequence 2's chip-list sentence as false, adds `countryParts` to core, a `'detached'` pane, a `codes` array on the frame and invariants **I11–I15**; A-50 completes A-48 Part 6 for the *tall* direction in one CSS declaration. **A builder of I-8h reads A-49 and A-50 first — A-49 names which of A-41's and A-48's clauses it supersedes — then A-48's C2′/C3′/C9 and Part 6, then A-41's C1/C5/C6/C7 and Parts 4–7, and needs nothing else in this document except §2.10's list**; **§4.4's A-51 and A-52 are revision 35, sit directly under A-50, and are the entry point to the whole atlas-frame family — read A-51 first and it names which of A-41/A-48/A-49 to skip** — A-51 reopened the framing abstraction itself at Jacob's instruction (QA **R38-2**, MAJOR) and **supersedes A-41's C5/C6/C7, A-49's C7′/C8′/C8″ and the `role` field in place**: the frame is **one pane per connected component of country parts**, equally weighted, ordered by weight rather than framed by it, and its Part 7 is the **consolidated** I1…I17 list that replaces three rounds of *"restated by"* pointers. A-52 is one paragraph beside it (a ring the index carries is a ring the frame draws). **A-51 is RULED AND HELD FOR JACOB'S APPROVAL — no builder pass may be dispatched against it until he has ruled**; until then A-41…A-50 are what is shipped. **§4.4's A-53 is revision 36, sits directly under A-52, and supersedes nothing** — it is the pane-*membership* contract Jacob asked for before approving A-51 (membership is country geometry because an ISO code is the only geographic evidence the record carries; standing is `home`; priority is order; disclosure is the caption), and it adds **I18**, the ≤ 3-extent-panes-planet-wide bound, and the d3-geo/Turf prior-art ruling. **A builder of I-8i reads A-51, then A-52, then A-53 Parts 4 and 8, then A-41 C1 + Part 4, A-48 C2′/C3′/C4′/C9 + Part 6, A-49 Part 2, A-50 and A-40 Parts 2–5, and needs nothing else in this document except §2.10's list**; **§4.4's A-54 is revision 37, sits under A-53 and is the newest entry in the family — it supersedes A-51 **G7** in full, A-51 **G5**'s third key and A-52's **clause 1**, widens L3's exception, adds **I19**, and corrects five published numbers, so **anyone reading A-51 for the layout, the pane order or the ring filter reads A-54 first and it names what to skip**. **A builder of I-8j reads A-54, then A-51 G5/G7 and Part 8, then A-50 and A-40 Parts 2–5, and needs nothing else**; **§4.2's A-67 is revision 47 and is the newest entry in the section — it is the only one that is *not* about the map, and it sits at the end of §4.2 rather than in §4.4** — the store's **generation guard**, ruling QA **R47-1** and **R47-2** as one defect: `flushForTransition` returns a **ticket** instead of a boolean, three guarded slots order every asynchronous install, and **R46-1's and R46-3's shipped point-fixes are deleted rather than layered under** (Part 7 rules each site). It adds new rule **6d** to §4.2 and amends §10 **A-66 Part 7** by pointer. **A builder of I-13d reads A-67 Parts 3–7 and 10, plus §4.2 rule 6 whole and §10 A-66 Part 10, and needs nothing else in this document** — it is ~12k and self-contained, and it needs none of §4.4. **A-67 gained a Part 7a at revision 48** (the I-13d builder's report against `4316167`): Part 7's *"every existing R46-1/R46-3 test stays exactly as it is"* was too strong by one assertion and contradicted ROADMAP **G3**, so it is narrowed to **final-state** assertions and the one assertion pinning the old guard's byte-write side effect is corrected. **Anyone reading Part 7 reads Part 7a with it**; Part 7a also rules who touches `qa/` (**breaker**) versus `packages/client/test/` (**builder**). **No mechanism, slot, call site or criterion moves**. **A-68 is revision 49 and sits directly under A-67 — read the two together, always, and A-68 first if you are implementing anything from A-67 Parts 4, 5, 6, 7a or 11.** Round 48 attacked A-67's mechanism and could not break it; both of its MAJORs are at A-67's **call sites**, and A-68 rules them as one missing sentence — *a bump of a slot's sequence is a promise to replace the answer it invalidated*. It moves Part 5's three-slot claim to a **one**-slot claim (the reseed supersedes the other two), hoists Part 6's two byte-write supersedes **out of** R45-4's value guard and gives them the read they owe, corrects Part 7a item 4 and Part 11 residue 4, and **changes `generation.ts` not at all**. **A builder of I-13e reads A-68 whole (~11k) plus A-67 Parts 3–7 for context, and needs nothing else in this document.** **A-69 is revision 50 and sits directly under A-68 — it is now the newest entry in §4 and the FIRST one to read in this family.** QA round 49 found A-68's own fix re-opened seven of the nine exits it closed, because Part 5b discharged the owed read under the **`doc`** slot's ticket — the slot those nine exits all bump (**R49-1**) — and found an **eleventh** exit that installs its document and still answers nothing, which no enumeration of *non*-installing exits could contain (**R49-5**). A-69 rules the **class**: **no correctness argument in the store may rest on an enumeration of control-flow exits** (Part 3). §10.6 property 5 becomes a predicate repaired at two non-opt-in sites — a wrapper over `createStore`'s whole returned literal and `readPhotoAvailability`'s own tail — `availabilityOwed` is **deleted**, `setAvailability` becomes the sole typed writer of the availability triple, and A-68 Part 4.1's and Part 7's tables are demoted to documentation. It also fixes **R49-4** (a browse pane outliving its deleted trip, with `copyStopInto` reading it) and corrects three of A-68's published mutants and its *"§K is green"* claim. **A builder of I-13g reads A-69 whole (~12k), then A-68 Parts 4.2, 5a and 5c and A-67 Part 3, and needs nothing else in this document** — and reads A-68's and A-67's amendment banners, which name every line of theirs that no longer holds. **A-70 is revision 51, sits directly under A-69, and is now the FIRST entry to read in this family** — it is short (~7k) and it is the only one that changes `generation.ts`. The I-13g builder implemented A-69's predicate verbatim, could not keep two shipped criteria green with it, and routed the contradiction rather than resolving it (BUILD-NOTES **KD-84**): A-69's `availabilityError === null` conjunct also declines to discharge a **byte write's** `supersede` after an earlier failed read, which leaves a stale failure message over changed bytes and regresses §10 **A-65 T1**. A-70 **upholds A-65 T1 unamended and narrows the predicate**, replacing the conjunct with a second disjunct over the **slot's sequence** — the record of the obligation rather than a consequence of it (Part 3, rule 6d's fourth half) — stamped at `setAvailability`, the one writer A-69's own type fence closed. It also corrects **three text defects in A-69** in place: site **S2**'s printed placement was unreachable (KD-85), **G18**'s nine reds are eight and **G23**'s fault is a no-op (KD-86), and **G21**/**G24**'s counts are of functions and sites rather than of tokens (KD-83). **A builder of I-13h reads A-70 whole and needs nothing else in this document except A-69 Parts 4, 5 and 6 for the code it keeps.** **A-71 is revision 52, sits directly under A-70, and is the newest entry in §4 — it is also the only one in this family that is not about the generation guard at all, so it is read on its own rather than after the other four.** QA round 50 closed the A-67…A-70 arc (the boundary and the stamp survived every attack) and filed **R50-5** beside it: `emit()` runs subscribers **synchronously**, so a subscriber throwing while rendering a **successful** answer throws from inside whatever `try` the store was holding, and the `catch` records the view's exception as its own subject's failure and swallows it. A-71 measured **five faces in two subsystems** — a successful `present()` read as *"could not be read"*, deleted bytes read as an orphan, a photograph that landed read as `'storage_failed'` by name, and a **write that landed with the fence advanced** read as `persistence.status: 'error'` — and rules the class rather than the site, because five narrowed `try`s is A-69 Part 3's forbidden enumeration: `emit` **brands** what a subscriber throws and one classifier, **`attempt`**, rethrows a branded error and returns everything else as a value, deleting **seven** `catch` blocks. It amends **A-69 Part 7** and narrows **Part 13 residue 1** to two costs; `emit`'s stop-at-the-first behaviour, A-67's guard, A-68's wiring, A-69's boundary and A-70's stamp are all untouched. **A builder of I-13i reads A-71 whole (~8k) and §10 A-66 Part 11 (~2k), plus A-69 Part 7 and Part 13 residue 1 for what it amends, and needs nothing else in this document.** | 109k | builder |
+| 4 | **The Phase 1 client.** §4.2 rule 6 (a pending write is never outlived by its document) is new in revision 3 — QA R3-2; rule 6a′ and the `savedDoc` predicate are revision 4 — QA R4-1; **rule 6a″ (the flush bound and its exits) and rule 6c's "delete goes on the chain" are revision 5** — QA R6-1/R6-2/R7-3; **rule 5's retirement carve-out is revision 6** — QA R8-1, read with §2.7; **rule 4a is revision 8** — QA R11-1, read with §2.2a A-7; **§4.3's A-30 is revision 23** — the `refreshSummary` port method, the fence's meaning stated once, and the rescan's uniform per-row link — and **anyone touching `runRescan`, `StoragePort` or a port implementation reads it first**, with §8.4 clause 3 beside it; **§4.4's A-40 is revision 29** — the lifetime map is a plain component over a pure `packages/client` frame function, not a second `MapPort`, and **anyone building or reviewing `WorldMap.tsx` reads it first** (it is ~3k and self-contained; the trip map's port is unchanged and needs no re-reading); **§4.4's A-41 and A-42 are revision 30 and are read *with* A-40, never instead of it** — A-41 is the atlas frame (geographic clustering, one primary pane and up to two insets, padding, and the **W3** renderer clause) and it amends A-40 clause 2 and withdraws A-40 Part 7 residue 1's diagnosis; A-42 withdraws A-40 clause 2's min-span *claim* and rules that no second constant is created. **A builder of I-8d reads A-40 Parts 3–5, then A-41 and A-42, and needs nothing else in this document except §2.10's list**; **§4.4's A-48 is revision 33, sits directly under A-42 and is read *with* A-41, never instead of it** — QA round 36 measured A-41's own C2 and C3 as wrong (a key point that lands in the ocean, and a partition that depends on the alphabet), and A-48 supersedes **C2**, **C3** and Part 8 residues 1′ and 4 in place, withdraws C4's margin claim, adds **C9** (paint order) and one pane field (`aspect`), and changes the semantics of core's `clusterPoints` to connected components. **A builder of I-8g reads A-48 first — it names which of A-41's clauses to skip — then A-41's C1/C5/C6/C7/C8 and Parts 4–7, then A-40 Parts 3–5**; **§4.4's A-49 and A-50 are revision 34, sit directly under A-48 and are read *with* A-41 and A-48, never instead of them** — QA round 37 measured A-48's own C8 as the clause A-48 forgot (the key point moved onto the country and the *extent* did not), and A-49 supersedes **C8**, **C7**'s cap and A-41's I1/I2/I3/I5 in place, withdraws A-48 C9 consequence 2's chip-list sentence as false, adds `countryParts` to core, a `'detached'` pane, a `codes` array on the frame and invariants **I11–I15**; A-50 completes A-48 Part 6 for the *tall* direction in one CSS declaration. **A builder of I-8h reads A-49 and A-50 first — A-49 names which of A-41's and A-48's clauses it supersedes — then A-48's C2′/C3′/C9 and Part 6, then A-41's C1/C5/C6/C7 and Parts 4–7, and needs nothing else in this document except §2.10's list**; **§4.4's A-51 and A-52 are revision 35, sit directly under A-50, and are the entry point to the whole atlas-frame family — read A-51 first and it names which of A-41/A-48/A-49 to skip** — A-51 reopened the framing abstraction itself at Jacob's instruction (QA **R38-2**, MAJOR) and **supersedes A-41's C5/C6/C7, A-49's C7′/C8′/C8″ and the `role` field in place**: the frame is **one pane per connected component of country parts**, equally weighted, ordered by weight rather than framed by it, and its Part 7 is the **consolidated** I1…I17 list that replaces three rounds of *"restated by"* pointers. A-52 is one paragraph beside it (a ring the index carries is a ring the frame draws). **A-51 is RULED AND HELD FOR JACOB'S APPROVAL — no builder pass may be dispatched against it until he has ruled**; until then A-41…A-50 are what is shipped. **§4.4's A-53 is revision 36, sits directly under A-52, and supersedes nothing** — it is the pane-*membership* contract Jacob asked for before approving A-51 (membership is country geometry because an ISO code is the only geographic evidence the record carries; standing is `home`; priority is order; disclosure is the caption), and it adds **I18**, the ≤ 3-extent-panes-planet-wide bound, and the d3-geo/Turf prior-art ruling. **A builder of I-8i reads A-51, then A-52, then A-53 Parts 4 and 8, then A-41 C1 + Part 4, A-48 C2′/C3′/C4′/C9 + Part 6, A-49 Part 2, A-50 and A-40 Parts 2–5, and needs nothing else in this document except §2.10's list**; **§4.4's A-54 is revision 37, sits under A-53 and is the newest entry in the family — it supersedes A-51 **G7** in full, A-51 **G5**'s third key and A-52's **clause 1**, widens L3's exception, adds **I19**, and corrects five published numbers, so **anyone reading A-51 for the layout, the pane order or the ring filter reads A-54 first and it names what to skip**. **A builder of I-8j reads A-54, then A-51 G5/G7 and Part 8, then A-50 and A-40 Parts 2–5, and needs nothing else**; **§4.2's A-67 is revision 47 and is the newest entry in the section — it is the only one that is *not* about the map, and it sits at the end of §4.2 rather than in §4.4** — the store's **generation guard**, ruling QA **R47-1** and **R47-2** as one defect: `flushForTransition` returns a **ticket** instead of a boolean, three guarded slots order every asynchronous install, and **R46-1's and R46-3's shipped point-fixes are deleted rather than layered under** (Part 7 rules each site). It adds new rule **6d** to §4.2 and amends §10 **A-66 Part 7** by pointer. **A builder of I-13d reads A-67 Parts 3–7 and 10, plus §4.2 rule 6 whole and §10 A-66 Part 10, and needs nothing else in this document** — it is ~12k and self-contained, and it needs none of §4.4. **A-67 gained a Part 7a at revision 48** (the I-13d builder's report against `4316167`): Part 7's *"every existing R46-1/R46-3 test stays exactly as it is"* was too strong by one assertion and contradicted ROADMAP **G3**, so it is narrowed to **final-state** assertions and the one assertion pinning the old guard's byte-write side effect is corrected. **Anyone reading Part 7 reads Part 7a with it**; Part 7a also rules who touches `qa/` (**breaker**) versus `packages/client/test/` (**builder**). **No mechanism, slot, call site or criterion moves**. **A-68 is revision 49 and sits directly under A-67 — read the two together, always, and A-68 first if you are implementing anything from A-67 Parts 4, 5, 6, 7a or 11.** Round 48 attacked A-67's mechanism and could not break it; both of its MAJORs are at A-67's **call sites**, and A-68 rules them as one missing sentence — *a bump of a slot's sequence is a promise to replace the answer it invalidated*. It moves Part 5's three-slot claim to a **one**-slot claim (the reseed supersedes the other two), hoists Part 6's two byte-write supersedes **out of** R45-4's value guard and gives them the read they owe, corrects Part 7a item 4 and Part 11 residue 4, and **changes `generation.ts` not at all**. **A builder of I-13e reads A-68 whole (~11k) plus A-67 Parts 3–7 for context, and needs nothing else in this document.** **A-69 is revision 50 and sits directly under A-68 — it is now the newest entry in §4 and the FIRST one to read in this family.** QA round 49 found A-68's own fix re-opened seven of the nine exits it closed, because Part 5b discharged the owed read under the **`doc`** slot's ticket — the slot those nine exits all bump (**R49-1**) — and found an **eleventh** exit that installs its document and still answers nothing, which no enumeration of *non*-installing exits could contain (**R49-5**). A-69 rules the **class**: **no correctness argument in the store may rest on an enumeration of control-flow exits** (Part 3). §10.6 property 5 becomes a predicate repaired at two non-opt-in sites — a wrapper over `createStore`'s whole returned literal and `readPhotoAvailability`'s own tail — `availabilityOwed` is **deleted**, `setAvailability` becomes the sole typed writer of the availability triple, and A-68 Part 4.1's and Part 7's tables are demoted to documentation. It also fixes **R49-4** (a browse pane outliving its deleted trip, with `copyStopInto` reading it) and corrects three of A-68's published mutants and its *"§K is green"* claim. **A builder of I-13g reads A-69 whole (~12k), then A-68 Parts 4.2, 5a and 5c and A-67 Part 3, and needs nothing else in this document** — and reads A-68's and A-67's amendment banners, which name every line of theirs that no longer holds. **A-70 is revision 51, sits directly under A-69, and is now the FIRST entry to read in this family** — it is short (~7k) and it is the only one that changes `generation.ts`. The I-13g builder implemented A-69's predicate verbatim, could not keep two shipped criteria green with it, and routed the contradiction rather than resolving it (BUILD-NOTES **KD-84**): A-69's `availabilityError === null` conjunct also declines to discharge a **byte write's** `supersede` after an earlier failed read, which leaves a stale failure message over changed bytes and regresses §10 **A-65 T1**. A-70 **upholds A-65 T1 unamended and narrows the predicate**, replacing the conjunct with a second disjunct over the **slot's sequence** — the record of the obligation rather than a consequence of it (Part 3, rule 6d's fourth half) — stamped at `setAvailability`, the one writer A-69's own type fence closed. It also corrects **three text defects in A-69** in place: site **S2**'s printed placement was unreachable (KD-85), **G18**'s nine reds are eight and **G23**'s fault is a no-op (KD-86), and **G21**/**G24**'s counts are of functions and sites rather than of tokens (KD-83). **A builder of I-13h reads A-70 whole and needs nothing else in this document except A-69 Parts 4, 5 and 6 for the code it keeps.** **A-71 is revision 52, sits directly under A-70, and is the newest entry in §4 — it is also the only one in this family that is not about the generation guard at all, so it is read on its own rather than after the other four.** QA round 50 closed the A-67…A-70 arc (the boundary and the stamp survived every attack) and filed **R50-5** beside it: `emit()` runs subscribers **synchronously**, so a subscriber throwing while rendering a **successful** answer throws from inside whatever `try` the store was holding, and the `catch` records the view's exception as its own subject's failure and swallows it. A-71 measured **five faces in two subsystems** — a successful `present()` read as *"could not be read"*, deleted bytes read as an orphan, a photograph that landed read as `'storage_failed'` by name, and a **write that landed with the fence advanced** read as `persistence.status: 'error'` — and rules the class rather than the site, because five narrowed `try`s is A-69 Part 3's forbidden enumeration: `emit` **brands** what a subscriber throws and one classifier, **`attempt`**, rethrows a branded error and returns everything else as a value, deleting **seven** `catch` blocks. It amends **A-69 Part 7** and narrows **Part 13 residue 1** to two costs; `emit`'s stop-at-the-first behaviour, A-67's guard, A-68's wiring, A-69's boundary and A-70's stamp are all untouched. **A builder of I-13i reads A-71 whole (~10k) and §10 A-66 Part 11 (~2k), plus A-69 Part 7 and Part 13 residue 1 for what it amends, and needs nothing else in this document.** **A-71 and A-70 both carry revision-53 amendment banners (QA round 51) and the banners are read first**: the mechanism shipped clean and survived the confirmation round, and every correction is to this document's own text — G35's control names the tests it actually reddens (R51-1), Part 4a no longer calls a false-positive brand *"conservative"* (R51-2), the method this entry called **`saveAs`** is named as what exists, `doMerge`'s two chained writes (R51-3), Part 4d's *"every exit"* is scoped to the exits the `finally` reaches with the remaining one filed as residue 6 (R51-4), and **A-70 Part 7 item 3 is no longer a table of measured counts but the *count rule* that forbids them** (R51-6, after the same row was wrong in three consecutive revisions). **Anybody about to write a number into this document reads that rule first.** | 114k | builder |
 | 5 | The four hard subsystems | 2k | breaker; builder from Phase 3 on |
 | 6 | Privacy, authorization, deletion cascade. **§6.6 is the build-artifact threshold; the copy threshold is §2.14 A-15 + A-18 (revisions 13 and 14) and they differ deliberately, in two named places — read them together or neither** | 4k | breaker, manager; builder for §6.2 |
 | 7 | Explicitly deferred | <1k | anyone about to build something not in the roadmap |
@@ -9895,12 +9928,13 @@ written and was falsified by a site it did not contain, twice. **The proof is re
 > `setAvailability` and by a whole-state `set` at the six reseeds; (iii) no un-awaited asynchronous work
 > touches `photos` or `doc`. **G21, G24 and G25 check exactly these three**, which is why they are the
 > criteria that matter more than the behavioural ones. *(**Revision 51 — A-70 Part 7 item 3, as
-> corrected at revision 52 (QA R50-1):** G21's *"three"* and G24's *"two"* are counts of **writing
-> functions** and of **logical sites**. Each number now comes with the command that produces it, because
-> a number published without one drifted twice on these same two rows: the **call** counts are **6** and
-> **3** (`grep -rhoP '(?<!function )…'`, which is what `settling.test.ts` asserts) and the **literal**
-> counts are **7** and **4** (`grep -rho '…'`, which also matches each function's declaration). All four
-> are expected. A check written as a token count fails this proof's own criteria for the wrong reason.)*
+> rewritten at revision 53 (QA R51-6), which supersedes revision 52's four published values:** G21's
+> *"three"* and G24's *"two"* are counts of **writing functions** and of **logical sites**, they are what
+> this proof depends on, and they are unchanged. **The call and literal counts are deliberately not
+> printed here** — they are owned by `settling.test.ts`, which asserts the `(?<!function )` form, and the
+> literal form returns exactly one more because it also matches each function's declaration. Publishing
+> those two values is what drifted on these same two rows in three consecutive revisions. A check written
+> as a token count fails this proof's own criteria for the wrong reason.)*
 >
 > *(**Revision 51 — A-70 Part 4 strengthens the claim this proof establishes, and the proof itself is
 > unchanged in shape.** The claim above is the *absence* of an answer; A-70 shows it is not the whole
@@ -9922,10 +9956,10 @@ thirteenth exit is no longer a defect in the design. Part 3 is why.
 | **G18** | Availability unknown (an establishing `present()` parked); import **two** files into the open trip; during file 2's `derive`, run each of A-68 Part 4.1's non-installing exits in turn — rows 3, 4, 5, 6, 7, 8, 11 and 12 on **both** branches | Every one: the trip that stayed open reaches a **terminal** state (`available !== null` or `availabilityError !== null`); each exit still throws or returns exactly what it does today, §2.9 **A-47**'s chip and banner unchanged. ~~**Mutation: make `settleAvailability` a no-op → nine reds**~~ *(**corrected at revision 51 — A-70 Part 7 item 2, BUILD-NOTES KD-86.** **Eight reds, not nine.** The nine cases are eight rows plus row 12's two branches; row **12b** — `deleteTrip` of the **ACTIVE** trip whose cascade rejects — stays **green** under that mutation because **A-68 Part 6's `catch` read answers it directly**, which is the mechanism A-69 Part 6 item 3 explicitly keeps. It is not a ninth independent case for this fault and never was. Row 12b is separately red under **its own** fault, which is **G12**'s — drop A-68 Part 6's `catch` read → `'ready'` over gone bytes. **Corrected criterion: nine cases run, eight redden under the settle mutation, and the ninth is green for a named reason that has its own criterion.**)* each reporting `phase:'loading'` — which is R49-1's own measurement |
 | **G19** | The same, with **two overlapping batches** both owing, ended by one gesture | Both settle, and **one** extra `present()` is issued in total, not two. **Same mutation → red** |
 | **G20** | A subscriber that **throws** inside the reseeding `set` of `openTrip`, `createTrip`, `adoptTrip` and `importDoc` — R49-5 | The document is installed, the subscriber's original error propagates **unchanged** to the caller, **and the listing reaches a terminal state** (`presentCalls` ≥ 1). **Mutation: settle only on the success arm of the wrapper (drop the rejection arm) → four reds** |
-| **G21** | *Still true, and it is a typecheck rather than a test.* Write `setPhotos({ available: new Set() })` anywhere | `npm run typecheck` **fails**, naming `available` as not present in `setPhotos`' parameter type. And `setAvailability(` is called from **exactly three functions** — `readPhotoAvailability` (via `readAvailabilityOnce`), `importPhotos` and `removePhoto`. **A fourth writing function is a defect until it names how it settles.** *(**Clarified at revision 51 — A-70 Part 7 item 3, BUILD-NOTES KD-83. The published three is a count of writing FUNCTIONS, not of tokens.** A literal `grep -c 'setAvailability('` over `packages/client/src` returns ~~**six**~~ **7**, and 7 is correct: `readAvailabilityOnce` alone calls it four times, once per branch, which is Part 5's own *"`readPhotoAvailability`'s four branches become the three arms"*, plus `importPhotos` and `removePhoto` — **and the seventh match is `setAvailability`'s own declaration**. **The number a check asserts is three distinct enclosing functions and three union arms; six is the CALL count** (`grep -rhoP '(?<!function )setAvailability\(' packages/client/src | wc -l`, which is the form `settling.test.ts` uses) **and seven is the literal count** (`grep -rho 'setAvailability(' packages/client/src | wc -l`) — **neither is a finding, and the command is published beside each number because publishing the number alone is what went wrong twice.** The mechanical form is a shape assertion per site, not an occurrence count. **The ~~six~~ → 7 correction is revision 52, QA R50-1 — see A-70 Part 7 item 3's table.**)* |
+| **G21** | *Still true, and it is a typecheck rather than a test.* Write `setPhotos({ available: new Set() })` anywhere | `npm run typecheck` **fails**, naming `available` as not present in `setPhotos`' parameter type. And `setAvailability(` is called from **exactly three functions** — `readPhotoAvailability` (via `readAvailabilityOnce`), `importPhotos` and `removePhoto`. **A fourth writing function is a defect until it names how it settles.** *(**Rewritten at revision 53 under A-70 Part 7 item 3's count rule — QA R51-6, and this row is the one that has drifted in three consecutive revisions.** The published **three** is a count of writing FUNCTIONS, it is what this ruling owns, and it is **still exactly three**: `readAvailabilityOnce`, `importPhotos`, `removePhoto`. **The token counts this row used to print are struck** — ~~six~~, ~~7~~ — not because they were wrong twice but because they are values a grep produces over live source, which §4.2 A-71's own Part 4c moved by merging two of `readAvailabilityOnce`'s branches into one. **What owns the call count is `packages/client/test/settling.test.ts`'s G21 test**, which asserts it with the `(?<!function )setAvailability\(` form and was correctly re-cut when A-71 merged the branch (BUILD-NOTES **KD-92**). **The relationship, which does not drift:** the literal form (`grep -rho 'setAvailability(' …`) also matches `setAvailability`'s own declaration, so it returns **exactly one more** than the calls-only form. The mechanical check is a shape assertion per site, not an occurrence count.)* |
 | **G22** | `browseTrip(B)`, then `deleteTrip(B)` where B is **not** active — R49-4 | `state.browsing` is `null`; the library row is gone. **And the control:** `browseTrip(B)` then `deleteTrip(C)` leaves the pane intact. **Mutation: restore `set({ ...state, library, openFailures })` → the pane survives → red** |
 | **G23** | The ordinary path: `openTrip` a trip with photographs, then import three files | **Zero** extra `present()` calls — the predicate is false throughout, so the boundary costs nothing in normal use. ~~**Mutation: move the settle inside the import loop → three extra reads → red.**~~ *(**corrected at revision 51 — A-70 Part 7 item 2, BUILD-NOTES KD-86.** That mutation **does not reproduce**, and the two statements in this row could never both have been true: `settleAvailability` is **predicate-guarded**, and on this criterion's own path the predicate is false throughout, so calling it per file is a no-op rather than a fault. **The two mutations that do reproduce, and both are run:** (i) an **unguarded** per-file read in the loop — `await readPhotoAvailability(state.doc)` under the `observe` terms alone → **exactly three** extra `present()` calls → red, which is the cost this criterion defends against; and (ii) **delete `state.photos.available === null` from `availabilityUnanswered`'s first disjunct** → the boundary repairs a **present** answer, which A-69 Part 6 item 3 forbids, and it **does not terminate** — both suites hang, which is Part 4's termination argument being load-bearing rather than decorative.)* This is the criterion that stops the repair becoming a per-file port call |
-| **G24** | *Still true.* `grep` `packages/client/src` | `createStore` has **exactly one** `return` of its literal and it is `return settling(`; `settleAvailability(` is called from **exactly two logical sites** (the S1 wrapper, and `readPhotoAvailability`'s `finally`); `availabilityOwed` appears **nowhere**; `supersede('photoAvailability')` is still **exactly eight** and `claim('photoAvailability')` still **exactly one** (A-68 **G16**, unchanged). *(**Clarified at revision 51 — A-70 Part 7 item 3, BUILD-NOTES KD-83. The published two is a count of SITES, not of tokens.** A literal `grep -c 'settleAvailability('` returns ~~**three**~~ **4**, and 4 is correct: **S1 is one site with two arms** and A-69 Part 4's own printed wrapper awaits it in both — which is exactly what G20's injected fault (drop the rejection arm) exists to protect — plus `readPhotoAvailability`'s `finally`, **plus `settleAvailability`'s own declaration**. **The number a check asserts is two sites — the wrapper's two arms pinned by one shape assertion, and the `finally` by another; three is the CALL count** (`grep -rhoP '(?<!function )settleAvailability\(' packages/client/src | wc -l`, the form `settling.test.ts` uses) **and four is the literal count** (`grep -rho 'settleAvailability(' packages/client/src | wc -l`) — **neither is a finding.** `supersede('photoAvailability')`'s **eight**, `claim('photoAvailability')`'s **one** and `availabilityOwed`'s **zero** are token counts, were measured as such, and re-measure correctly at `37cf4f0`. **The ~~three~~ → 4 correction is revision 52, QA R50-1 — see A-70 Part 7 item 3's table for every command.**)* |
+| **G24** | *Still true.* `grep` `packages/client/src` | `createStore` has **exactly one** `return` of its literal and it is `return settling(`; `settleAvailability(` is called from **exactly two logical sites** (the S1 wrapper, and `readPhotoAvailability`'s `finally`); `availabilityOwed` appears **nowhere**; `supersede('photoAvailability')` and `claim('photoAvailability')` keep the occurrence fences A-68 **G16** set and `settling.test.ts` asserts (unchanged). *(**Rewritten at revision 53 under A-70 Part 7 item 3's count rule — QA R51-6.** The published **two** is a count of SITES, it is what this ruling owns, and it is unchanged: **S1 is one site with two arms** — A-69 Part 4's printed wrapper awaits it in both, which is what G20's injected fault (drop the rejection arm) exists to protect — plus `readPhotoAvailability`'s `finally`. **The token values are struck** — ~~three~~, ~~4~~ — under rule 2: they are owned by `packages/client/test/settling.test.ts`'s G24 test, which asserts the calls-only form. **The relationship:** the literal form also matches `settleAvailability`'s own declaration and so returns exactly one more. **These two rows measured correctly at revision 53's head and are struck anyway**, because being right today is not the property that failed — being stable across the next ruling is.)* |
 | **G25** | *Still true.* A-67 **G1…G9** and A-68 **G10…G17** re-run, **G14 and G17 as corrected by Part 10** | All seventeen red-before/green-after. **G12 and G13 are the ones this ruling could plausibly have broken** — G12 because the boundary must *not* repair a stale answer (Part 6 item 3) and G13 because its "exactly one extra `present()`" must survive the deletion of `availabilityOwed` |
 
 The standing test-side form: **one helper asserting the invariant, called at the end of every test in
@@ -9965,13 +9999,27 @@ writing *"the N places that must remember to X"*, the ruling is wrong before it 
 
 #### A-70 — a failed answer is not a current answer: the boundary asks the slot, not the field (revision 51, BUILD-NOTES **KD-84** the ruling, **KD-83**/**KD-85**/**KD-86** text corrections; ROADMAP **I-13h**)
 
+> **AMENDED AGAIN AT REVISION 53 (QA R51-6), and the amendment retires the fix below rather than
+> repeating it.** The revision-52 table this entry published *to stop a count drifting* was **wrong at the
+> head of the revision that published it** — A-71, ruled in the same revision, merged a `setAvailability`
+> call away, so the literal count it printed as **7** returns **6** and the calls-only count it printed as
+> **6** returns **5**. That is the **third consecutive revision** in which G21's row carries a wrong number,
+> and the second in which the *correction* is the error. **The number is not corrected a fourth time.**
+> Part 7 item 3 now states the **count rule** that replaces *"publish the command beside the number"*: this
+> document states **design counts** and never states the value a grep returns over source. The **G21**,
+> **G24** and **G28** rows are rewritten to that rule in place, as are A-69 Part 12's **G21**/**G24**.
+> **No mechanism moves, no criterion's subject moves and no test changes** — `settling.test.ts` was right
+> at revision 51, was re-cut correctly by the I-13i builder (BUILD-NOTES **KD-92**), and is right now.
+>
 > **AMENDED AT REVISION 52 (QA R50-1), and the amendment is two numbers.** Part 7 item 3's published
 > grep-occurrence counts — *"six"* and *"three"* — are the **call** counts, not what the literal commands
 > it invites a reader to run return (**7** and **4**, because each literal grep also matches the
 > function's own declaration). Part 7 item 3 now carries a table of every command and every value; the
 > **G21**, **G24** and **G28** rows carry theirs. **No mechanism moves and no test changes** — the shipped
 > tests use a `(?<!function )` lookbehind and were right. **§4.2 A-71, below, is the revision's ruling**
-> and does not touch this entry's predicate, stamp or boundary.
+> and does not touch this entry's predicate, stamp or boundary. *(**Superseded in form at revision 53**,
+> immediately above: both figures in this paragraph were already stale when it was written, and the fix
+> was the wrong shape rather than the wrong arithmetic.)*
 >
 > **STATUS: RULED, and it is one disjunct plus one read-only accessor.** A-69's boundary is upheld whole
 > — both sites, the type fence, the deletions, Part 3's standing rule and Part 8's browse clause all stand
@@ -10217,7 +10265,7 @@ and no artificial bound ships.
 |---|---|---|
 | **G26** | The `G13b` fixture, re-cut: a `present()` that **failed**, a *Try again* parked behind it, three files imported underneath | The listing reaches **`'ready'`** with `missing: 0` over bytes that are on disk; **exactly one** extra `present()` for the whole batch regardless of file count; and the ordering half is unmoved — no photograph on disk ever reads `'missing'`. **Mutation: delete the second disjunct (restore `availabilityError === null` as a conjunct) → zero reads, the listing keeps the previous failure's message → red.** This is `KD-84`'s face 1 |
 | **G27** | The `G14b` fixture, re-cut: the same failed read, then `removePhoto`, then `undo` | The restored record reads **`'missing'`** — §10 **A-65 T1**, *"never `'empty'`, never `'unreadable'`, never a throw"* — with **no** `refreshPhotoAvailability()` in between. **Two mutations, both red: delete the second disjunct → `'unreadable'`; make `settleAvailability` a no-op → `'loading'`.** G14 (the unread fixture) and G27 (the failed fixture) must now agree in outcome, and that agreement is the criterion |
-| **G28** | *Still true, and it is the misuse fence.* `grep` `packages/client/src` | `sequenceOf(` has **exactly one** call site and it is inside `setAvailability`; `availabilityAt` is **assigned** in exactly one place (`setAvailability`) and **read** in exactly one place (`availabilityUnanswered`); it appears in **no** type in `packages/client/src/store/state.ts` and in no selector. **A second `sequenceOf` caller is a defect until it says why `observe` is wrong for it.** *(**Command published at revision 52, R50-1's rule applied one row over before it drifts**: `grep -rho 'sequenceOf(' packages/client/src \| wc -l` returns **2** at `37cf4f0` — the call in `setAvailability` **and `GenerationGuard`'s method declaration in `generation.ts`**. The criterion is *one call site*, so 2 is the expected literal value and 3 is the finding.)* |
+| **G28** | *Still true, and it is the misuse fence.* `grep` `packages/client/src` | `sequenceOf(` has **exactly one** call site and it is inside `setAvailability`; `availabilityAt` is **assigned** in exactly one place (`setAvailability`) and **read** in exactly one place (`availabilityUnanswered`); it appears in **no** type in `packages/client/src/store/state.ts` and in no selector. **A second `sequenceOf` caller is a defect until it says why `observe` is wrong for it.** *(**Rewritten at revision 53 under Part 7 item 3's count rule** — the literal value this row published at revision 52 is struck, because it is the class of number that has now drifted three revisions running. The command is `grep -rho 'sequenceOf(' packages/client/src \| wc -l`, and **what it means** is: the one call in `setAvailability` **plus `GenerationGuard`'s method declaration in `generation.ts`**, so **the literal form returns exactly one more than the criterion's count of call sites**. The criterion is *one call site*. A second **call** is the finding; a declaration is not, and neither is a value this document does not print.)* |
 | **G29** | *Strengthened.* The standing invariant helper, called at the end of every test in `generation.test.ts`, `liveness.test.ts` and `settling.test.ts` | It asserts **`!availabilityUnanswered()`** rather than A-69's three-way disjunction — the disjunction is now the weaker consequence. **Mutation: any of G26's or G27's → red at the helper as well as at the criterion.** If an existing test reddens on the strengthened form and the store's behaviour is otherwise correct, that is **a finding routed to the architect**, not a line to re-cut (A-68 Part 9's precedent) |
 | **G30** | *Still true.* **S2's placement**, which KD-85 corrected | With S2 as `readPhotoAvailability`'s `finally` around `readAvailabilityOnce`, **deleting it reddens the S2-isolating test and nothing else.** **Control: move S2 to a statement after the `try`/`finally` (A-69's printed placement) → the S2-isolating test is red WITH the line present**, because every drop path is a `return` inside the `try`. The control is what separates a mechanism from a comment |
 
@@ -10243,38 +10291,69 @@ None of these changes a mechanism; all three are this document being wrong about
    import loop"* is a **no-op**, because `settleAvailability` is predicate-guarded — a fault that cannot
    fire is not a fault, and the two that do are now published in the row. Both corrected in place.
 3. **KD-83 — two published counts are counts of sites, not of tokens.** **G21**'s *"three"* is three
-   **writing functions** (grep occurrences: **six**, because `readAvailabilityOnce` calls it once per
-   branch) and **G24**'s *"two"* is two **logical sites** (grep occurrences: **three**, because S1 is one
-   site with two arms and both are load-bearing under **G20**). Both rows now publish the site count, the
-   token count and which one a check asserts, so a grep-based gate cannot fail for the wrong reason.
+   **writing functions** (the grep returns more, because `readAvailabilityOnce` calls it once per branch)
+   and **G24**'s *"two"* is two **logical sites** (the grep returns more, because S1 is one site with two
+   arms and both are load-bearing under **G20**). Both rows now publish the site count and name which
+   check owns the token count, so a grep-based gate cannot fail for the wrong reason. *(**The two token
+   values this item published at revision 51, and the six it re-published at revision 52, are struck at
+   revision 53 under the count rule below** — they were the drift, not the fix.)*
    **No code moved to make a number come out**, which was the builder's call and is upheld: the numbers
    were right about the design and wrong about the arithmetic.
 
-   > **CORRECTED AT REVISION 52 (QA R50-1), and the correction is KD-83's own class one level down.**
-   > The two *"grep occurrences"* figures published above — **six** and **three** — are the counts a
-   > **call**-only grep returns, and they are what the shipped tests assert. **They are not what the
-   > literal commands this item invites a reader to run return**, because each literal grep also matches
-   > the function's own **declaration**. So the sentence written to stop a gate failing for the wrong
-   > reason would itself have failed for the wrong reason. **The rule this correction adopts, and it is
-   > the only durable one: publish the command beside the number.** Measured at `37cf4f0`,
-   > 2026-09-04, over `cairn/`:
+   > ~~**CORRECTED AT REVISION 52 (QA R50-1)**, and the correction is KD-83's own class one level down.
+   > … **The rule this correction adopts, and it is the only durable one: publish the command beside the
+   > number.** … a table of six commands and six values, measured at `37cf4f0`.~~
    >
-   > | number | the exact command | value |
+   > **RETIRED AT REVISION 53 (QA R51-6). The table above was wrong at the head of the revision that
+   > published it, and the number is not being fixed a fourth time.** §4.2 **A-71** — ruled in that same
+   > revision 52 — merges two of `readAvailabilityOnce`'s four `setAvailability` branches into one
+   > (A-71 Part 4c), so the moment revision 52 shipped, G21's *literal* row was one high and its
+   > *calls-only* row — **the row labelled *"what `settling.test.ts` asserts"*** — was one higher than what
+   > the shipped test actually asserts. The builder re-cut the test correctly and disclosed it
+   > (**KD-92**); this document did not follow, because nothing makes it. **Three consecutive revisions,
+   > one row, and twice the correction was the error.** The defect is therefore **not arithmetic**; it is
+   > that a value produced by running a command over live source was written into a contract document at
+   > all.
+   >
+   > **The count rule — revision 53, and it supersedes *"publish the command beside the number"* wherever
+   > that rule is cited.**
+   >
+   > 1. **This document may state a *design* count.** *"Three writing functions"*, *"two logical sites"*,
+   >    *"one legitimate caller"*, *"exactly five arms"* — a number **a ruling owns**, that only a ruling
+   >    changes, and that a **shape** assertion checks (a regex pinning a call's form at its site, a
+   >    typecheck, a union's arms). These are prose about the design and they belong here.
+   > 2. **This document may NOT state the value a grep returns over `packages/*/src`.** That number is
+   >    owned by **the assertion that checks it**. Name the assertion — file and test title — and publish
+   >    the command with **what it means**; never with what it returned on the day the ruling was written.
+   >    A value nothing asserts drifts silently; a value something asserts is already published, once,
+   >    where it is re-derived on every run.
+   > 3. **Where the arithmetic itself is the useful part, state the *relationship*, not the result.**
+   >    *"The literal form also matches the function's own declaration, so it returns one more than the
+   >    call count"* is true at every commit; *"it returns 7"* was true for one. **Relationships survive
+   >    the code moving. Values do not.**
+   > 4. **A measured value with a commit stamp belongs in `BUILD-NOTES.md` or in the test**, both of which
+   >    are re-derived when the code moves. This document is not, and four rounds (KD-83, R50-1, and R51-6
+   >    twice over) are the evidence. **A stamp alone does not rescue a value** — the retired table above
+   >    carried one. A stamped value may be published only where it is **labelled as history** (*"13 before
+   >    the fix, at `37cf4f0`"*) and **no criterion depends on it being current**; the moment a row says
+   >    *"what the test asserts"*, it is a present-tense claim and rule 2 applies.
+   >
+   > **This rule binds every contract document — `ARCHITECTURE.md`, `ROADMAP.md` and `BRIEF.md` — not only
+   > this entry.** `ROADMAP.md`'s criteria are written to it from revision 53 onward.
+   >
+   > **Applied here, in place of the retired table:**
+   >
+   > | the design count this ruling owns | what checks it | the command, and what it means |
    > |---|---|---|
-   > | **G21**, literal | `grep -rho 'setAvailability(' packages/client/src \| wc -l` | **7** |
-   > | **G21**, calls only *(what `settling.test.ts` asserts)* | `grep -rhoP '(?<!function )setAvailability\(' packages/client/src \| wc -l` | **6** |
-   > | **G21**, writing functions *(what the ruling means)* | — `readAvailabilityOnce` ×4, `importPhotos` ×1, `removePhoto` ×1 | **3** |
-   > | **G24**, literal | `grep -rho 'settleAvailability(' packages/client/src \| wc -l` | **4** |
-   > | **G24**, calls only *(what `settling.test.ts` asserts)* | `grep -rhoP '(?<!function )settleAvailability\(' packages/client/src \| wc -l` | **3** |
-   > | **G24**, logical sites *(what the ruling means)* | — S1's two arms are one site; `readPhotoAvailability`'s `finally` is the other | **2** |
+   > | **G21** — the availability triple has **three** writing functions (`readAvailabilityOnce`, `importPhotos`, `removePhoto`) and **three** union arms | `packages/client/test/settling.test.ts`, the **G21** test — a per-site shape assertion plus one call-count assertion **whose number that test owns** | `grep -rhoP '(?<!function )setAvailability\(' packages/client/src \| wc -l` counts **calls**: one per branch of `readAvailabilityOnce` plus the two optimistic writes. `grep -rho 'setAvailability(' …` counts calls **and the declaration**, so it returns exactly one more. **A fourth writing function is the finding; a call count that moved for a reason a ruling states is not** |
+   > | **G24** — `settleAvailability` has **two** logical sites (S1's wrapper, whose two arms are one site; `readPhotoAvailability`'s `finally`) | the same file's **G24** test, one shape assertion per site | the same two forms, with the same +1 relationship for the declaration |
+   > | **G24** — `supersede('photoAvailability')`, `claim('photoAvailability')` and `availabilityOwed` | the same file, as **token** counts, which is what they were written as | these three are genuine occurrence fences: the number is the criterion, the test asserts it, and the test is where it is published. **Rule 2 does not exempt them from being checked; it moves where the number lives** |
    >
-   > **The shipped tests were right and this document's arithmetic was wrong, for the second time in
-   > two revisions on the same two rows.** `settling.test.ts` uses the `(?<!function )` lookbehind and
-   > gets 6 and 3; nothing in code moves for this correction and no criterion changes. The other counts
-   > G24 publishes were measured as token counts when they were written and still are:
-   > `grep -rho "supersede('photoAvailability')" packages/client/src | wc -l` → **8**,
-   > `grep -rho "claim('photoAvailability')" packages/client/src | wc -l` → **1**,
-   > `grep -rho 'availabilityOwed' packages/client/src | wc -l` → **0**.
+   > **What this costs and why it is worth it.** A reader can no longer eyeball a value here against a
+   > command's output. They can run the test, which is stronger, and the test's failure message names this
+   > entry. **What it buys is that the next ruling that moves a call site cannot make this document wrong
+   > by existing** — which is precisely what A-71 did to the table above, in the same revision, with the
+   > new rule printed at the top of it.
 
 **Part 8 — residues, disclosed.**
 
@@ -10302,6 +10381,22 @@ obligation and read **that**.
 
 #### A-71 — an emit is foreign code: a `catch` that names a failure may not enclose one (revision 52, QA **R50-5** MAJOR and four more faces measured here; ROADMAP **I-13i**)
 
+> **AMENDED AT REVISION 53 (QA round 51 — R51-1, R51-2, R51-3, R51-4). The mechanism SHIPPED and survived
+> the confirmation round on every axis it was attacked from; all four amendments are to this entry's own
+> text.** **(1) R51-3, and it is the most embarrassing of the four**: this entry named a store method,
+> **`saveAs`**, that **has never existed in this codebase** — in Part 1 face 5, in Part 4c table row 6 and
+> in Part 6 **G34**. The I-13i builder read row 6 correctly as `doMerge`'s write-it-back branch, shipped
+> the right code and **did not flag the name back to me**; the breaker found it independently a round
+> later. All three now name what exists. **I wrote a function name from memory rather than from the file,
+> which is the same failure as writing a count from memory (R51-6) and it is the reason the count rule is
+> phrased as *"read the source, or name the thing that does"*.** **(2) R51-1**: Part 6 **G35**'s control
+> does not reproduce as printed and **cannot**, because Part 4b forbids what would make it — narrowed
+> below to the tests it actually controls. **(3) R51-2**: Part 4a's *"the conservative arm"* is wrong
+> about the direction a false-positive brand fails in — corrected, with the asymmetry stated and residue
+> 5 added. **(4) R51-4** *(pre-existing, measured identical at `8d69ff1`)*: Part 4d's *"on EVERY exit"* is
+> false for the one exit above the `try` — narrowed, with the fix specified and ordered as residue 6.
+> **No mechanism moves, no criterion's subject moves, no code moves, and nothing here reopens I-13i.**
+>
 > **STATUS: RULED.** It adds **two small functions** to `packages/client/src/store/store.ts` — a brand at
 > `emit` and one classifier, `attempt` — and **deletes seven `catch` blocks** by routing them through the
 > classifier. It adds no slot, no port method, no `AppState` field, no `PhotoSession` field, no selector,
@@ -10335,7 +10430,18 @@ than the class (A-69 Part 3). **Four more faces, all measured in plain Node agai
 | **2** *(new)* | `removePhoto` with a subscriber that throws in the tail | `orphans: ['photo-1']` — *"the record is gone and the bytes are not"* | the bytes **are** gone: `photo.read(trip, id, 'thumb')` is `null`; **`removePhoto` resolves** |
 | **3** *(new)* | `importPhotos` with a subscriber that throws on the `addPhoto` emit | `failures: [{name: 'holiday.jpg', reason: 'storage_failed'}]` | the record **is in the document** and both derivatives are written; **`importPhotos` resolves**, `pending` reaches 0 |
 | **4** *(new, and it is not a photo defect)* | `flush()` with a subscriber that throws on `writeAndSettle`'s install | `persistence.status: 'error'`, `lastError:` the subscriber's string | the write **landed**: `savedVersion` advanced to the version storage now holds; **`flush` resolves** |
-| **5** *(the same `catch`, one arm over)* | `saveAs` and `doMerge` | the same `'error'` + subscriber string | same |
+| **5** *(the same `catch`, one arm over)* | `doMerge`'s **two chained writes** — the `stored === null` write-it-back branch, and the merge write itself | the same `'error'` + subscriber string | same |
+
+*(**Face 5's row is corrected at revision 53, QA R51-3.** As printed at revision 52 it read *"`saveAs` and
+`doMerge`"*, and **`saveAs` has never existed in this store** — `grep -rn saveAs cairn/packages cairn/apps
+cairn/cli.ts` finds it only in the title of the test the builder named after this row. **The face itself
+was measured and is real**: the two sites are `doMerge`'s `stored === null` write-it-back branch and
+`doMerge`'s merge write, both of which the shipped code labels *site 6* and *site 7* after Part 4c's table,
+and round 51 drove both through a real two-tab merge. What was wrong is the label, and a wrong label on a
+row marked **measured** is a claim a reader cannot check — which is why this is corrected rather than
+foot-noted. **A residue of the error survives in a test title** — `packages/client/test/subscriber-error.test.ts`'s
+*"G34: the same, on saveAs — `doMerge`'s write-it-back branch…"* — which is a string in a test name, gates
+nothing, and may be corrected by any pass that opens that file.)*
 
 **Face 4 is the one that settles what kind of entry this is.** It is in the persistence subsystem, it is
 governed by §2.2a **A-7** and §2.2b's freshness rule, it has nothing to do with photographs, and it lies
@@ -10420,9 +10526,31 @@ the store can now recognise it:
 Three properties worth stating because a builder will be tempted to simplify each away. **A `WeakSet` and
 not a property on the error**: the thrown object belongs to the subscriber and this store does not write to
 it. **A non-object throw is wrapped**, because a `WeakSet` cannot hold a string — the only case where the
-caller sees something other than exactly what was thrown, and `String(e)` keeps the message. **The brand's
-failure direction is safe**: a false positive (the same `Error` instance thrown twice, once by a subscriber
-and once by a port) makes `attempt` **rethrow** rather than misclassify, which is the conservative arm.
+caller sees something other than exactly what was thrown, and `String(e)` keeps the message.
+
+**The brand's two failure directions, corrected at revision 53 (QA R51-2), because revision 52 called one
+of them *"the conservative arm"* and it is not.** They are **asymmetric, and neither is unconditionally
+safe**:
+
+- **A false *negative*** — a subscriber's exception that reaches a `catch` unbranded — is exactly the
+  pre-A-71 store: a wrong message, recorded, **visible**, and falsifiable by the user (they can see the
+  photographs are there). It is the defect this entry exists to fix and it fails **loudly**.
+- **A false *positive*** — a port rejecting with an error object a subscriber has previously thrown, so
+  `attempt` rethrows instead of returning `{ok: false}` — is **not** conservative. Measured by the round-51
+  breaker with an identical instance at the write fence: `attemptSave` has already set
+  `persistence.status: 'saving'` before the write, the rethrow skips the `if (!r.ok)` that would record
+  `'error'`, and the store is left **`'saving'` forever over a dirty, unsaved document** with `lastError`
+  untouched. The unbranded control correctly reports `'error'` with the port's message. **It trades a
+  visible wrong message for §10.6's unresolving spinner** — the shape that section's opening sentence
+  exists to forbid.
+
+**The design accepts this direction, and the reason is reachability rather than harmlessness.** A false
+positive requires **object identity** between something a subscriber threw and something a port later
+rejects with; `apps/web`'s IndexedDB ports reject with fresh `DOMException`s and the round-51 breaker could
+construct **no path in the shipped app** that reaches it. **What is refused is the alternative**: having
+`attempt` record a failure *before* rethrowing would make every subscriber exception write a port failure —
+Part 1's defect, restored, on a path that is reachable, to protect one that is not. **Residue 5 carries the
+trigger.**
 
 **4b — `attempt` is the one place that decides what a failure was.**
 
@@ -10492,8 +10620,8 @@ The other six, each a two-line change of the same shape:
 | 3 | `importPhotos`' `derive` | `derived === null` inside the wide per-file `try` | `const d = await attempt(() => ports.photo!.derive(f.bytes, f.type));` — `!d.ok` is `'storage_failed'` (an unexpected throw from the port), `d.value === null` is `'decode_failed'` (§10.2 rule 1's contract) |
 | 4 | `importPhotos`' `write` | `try { await write } catch { fail(…); throw new Error('handled'); }` | `const w = await attempt(() => ports.photo!.write(…)); if (!w.ok) { fail(writeFailureReason(w.error)); continue; }` — **and the `'handled'` sentinel is deleted**, along with the per-file `catch` that existed to read it |
 | 5 | `attemptSave` | `try { await writeAndSettle(…) } catch (err) { set(persistence 'error') }` | `const r = await attempt(() => writeAndSettle(…)); if (!r.ok) set(persistence 'error')` |
-| 6 | `saveAs`'s chained write | the same | the same |
-| 7 | `doMerge`'s chained write | the same | the same |
+| 6 | `doMerge`'s **write-it-back branch** — the `stored === null` arm, chained onto `saving` *(**corrected at revision 53, QA R51-3**: this row said `saveAs`, which does not exist and never has. The builder read the row's intent correctly and shipped this site, labelled `A-71 Part 4c, site 6` in the source)* | the same | the same |
+| 7 | `doMerge`'s **merge write** — the chained write carrying `stored.version` as its expectation, labelled `site 7` in the source | the same | the same |
 
 **4d — `importPhotos` loses its per-file catch-all, so its progress fraction moves into a `finally`.** With
 `derive` and `write` classified by `attempt`, **no awaited port call is left inside the per-file `try`** —
@@ -10505,9 +10633,9 @@ deliberate:
 1. **An unexpected throw from inside the loop now ends the batch instead of skipping one file.** That is
    §2.1's rule (a programmer error throws) and it is honest: the exception reaches the caller, and
    `settling`'s rejection arm settles availability on the way out exactly as A-69 Part 4 says.
-2. **The fraction must still settle, and the deleted `catch` was providing that by accident.** The
-   batch-closing subtraction becomes the loop's `finally` — the same move, for the same reason, that
-   KD-85 made for site S2:
+2. **The fraction must still settle on every exit the loop can take, and the deleted `catch` was providing
+   that by accident.** The batch-closing subtraction becomes the loop's `finally` — the same move, for the
+   same reason, that KD-85 made for site S2:
 
 ```ts
       try {
@@ -10523,6 +10651,39 @@ deliberate:
 `setBatch` is **§10 A-66 Part 11**'s, ruled in the same revision for the same increment: it is `setPhotos`
 gated on `guard.current('doc', g)`, and it is what stops this line subtracting trip A's remaining files from
 trip B's fraction (**R50-2**). The two rulings meet here and nowhere else.
+
+> **The scope of *"EVERY exit"*, corrected at revision 53 (QA R51-4). The claim as printed was too wide by
+> exactly one statement, and this is a correction to the sentence, not to the mechanism.**
+>
+> **What the `finally` covers, which is what the criterion should have said:** *every exit from the point
+> where control enters the `try`* — the loop's normal completion, a `break`, a `return` from inside it, and
+> a throw propagating out of any file's body, including a subscriber's exception from any emit the loop
+> runs. **That set is closed and no enumeration maintains it**, which is A-69 Part 3 satisfied, and round
+> 51's **§G3** is the positive control that says so: a throw one emit *inside* the `try` stranded the
+> fraction at 2 of 3 at `8d69ff1` and settles to **0** here. **The `finally` closed a real exit.**
+>
+> **The one exit it does not cover, and it is above the block.** The batch's opening write —
+> `setBatch({ pending: pending + picked.length, total: … })` — sits **before** the `try`. `set` mutates and
+> then emits synchronously, so a subscriber that throws on *that* emit leaves the fraction already
+> incremented, `remaining` not yet meaningful, and control leaving `importPhotos` without ever entering the
+> block. Measured: `photos.pending` stranded at **3 of 3** with nothing in flight and no file landed —
+> §10.6's opening sentence, one statement above the code written to prevent it.
+>
+> **This is PRE-EXISTING and this entry did not cause it** (measured identical at `8d69ff1`, before A-71):
+> the deleted per-file `catch` was inside the loop and never covered the opening write either. It is
+> **residue 6**, not a defect in what shipped, and it does not reopen I-13i.
+>
+> **The fix, specified so the next pass does not re-derive it, and it is three lines in one function:**
+> hoist `let remaining = picked.length;` **above** the `try`, and move the opening `setBatch` **inside**
+> it, as the first statement. Then a throw from the opening emit exits through the `finally` with
+> `remaining` already set, and the subtraction removes exactly what the write added. **The ordering is
+> load-bearing and is why this is a ruling rather than an edit**: `remaining` must be assigned *before*
+> the write, because `set` mutates state before it emits, so on the throwing path the increment **has
+> landed** and must be subtracted. Assigning it after the write — the obvious shape — settles nothing on
+> the one path the change exists for. The mirror hazard R45-11 names (subtracting `remaining` from a
+> `pending` this batch never incremented) is what forbids the *other* obvious shape, moving the write in
+> and leaving `remaining = 0` until after it; the guarded gate on `setBatch` cannot refuse here anyway,
+> because the explicit `current('doc', g)` check is one statement up with no `await` between.
 
 **Part 5 — what deliberately does not change, named so a builder does not tidy it.**
 
@@ -10552,17 +10713,18 @@ trip B's fraction (**R50-2**). The two rulings meet here and nowhere else.
    subscriber error travels it exactly like any other.
 
 **Part 6 — the injected-fault criteria. Eight, each red before and green after, and G35 is the control
-that proves the brand is load-bearing.**
+that proves the brand is load-bearing *where it is consulted*.** *(**That qualifier is revision 53's, QA
+R51-1.** As printed at revision 52, G35 claimed more than this design can deliver — see its row.)*
 
 | | Fault | Required behaviour |
 |---|---|---|
 | **G31** | **R50-5 itself.** A trip with one photograph whose bytes are on disk; a subscriber that throws on the availability emit; `openTrip` | `photos.availabilityError` is **`null`**, `photos.available` is the real set, and the subscriber's error **reaches the caller** (`openTrip` rejects with the subscriber's own `Error`, message unchanged). `presentCount` is **1**. Then, with the subscriber disarmed, `refreshPhotoAvailability()` is a no-op-shaped success rather than a repeat of a wrong message. **Mutation: move `setAvailability` back inside the `try` → red on the first assertion** |
 | **G32** | The same subscriber, thrown in `removePhoto`'s tail, on a `remove` that **succeeds** | `photos.orphans` is **`[]`** and the bytes are gone. **Mutation: restore the wide `try` → `orphans: ['photo-1']` over deleted bytes → red** |
 | **G33** | The same subscriber, thrown on `importPhotos`' `addPhoto` emit, with a `write` that **succeeds** | `photos.failures` is **`[]`**, the record is in the document, and `photos.pending` settles to **0** through the new `finally`. **Two mutations, both red:** restore the per-file `catch` → a `'storage_failed'` naming a file that landed; delete the `finally` → `pending` stranded above 0, which is §10.6's opening sentence |
-| **G34** | The same subscriber, thrown on `writeAndSettle`'s install, behind `flush()` | `persistence.status` is **`'idle'`**, `savedVersion` is the version storage holds, `lastError` is untouched. **Mutation: restore `attemptSave`'s wide `try` → `status: 'error'` with the fence advanced → red.** Run for `saveAs` and `doMerge` too |
-| **G35** | *The control.* Make `emit` rethrow **unbranded** (delete the `WeakSet.add`) | **G31, G32, G33 and G34 all go red at once.** A mechanism whose removal reddens nothing is a comment; this is what separates the two |
+| **G34** | The same subscriber, thrown on `writeAndSettle`'s install, behind `flush()` | `persistence.status` is **`'idle'`**, `savedVersion` is the version storage holds, `lastError` is untouched. **Mutation: restore `attemptSave`'s wide `try` → `status: 'error'` with the fence advanced → red.** Run for **both of `doMerge`'s chained writes** too — the `stored === null` write-it-back branch and the merge write — so G34 is **three** variants in all *(**corrected at revision 53, QA R51-3**: this row said *"run for `saveAs` and `doMerge` too"*, and `saveAs` does not exist, which made the criterion unfulfillable as printed. The shipped suite has the three variants and is right)* |
+| **G35** | *The control, and **what it controls is face 4**.* Make `emit` rethrow **unbranded** (delete the `WeakSet.add`) | **G34 — all three variants — and G37 go red. G31, G32 and G33 stay GREEN, and that is the criterion, not a shortfall.** *(**Rewritten at revision 53, QA R51-1, which measured the mutation rather than reading it, and confirms the builder's own KD-93 independently.** The reason is **Part 4b**, this entry's own rule: `attempt`'s callback is *one port call or one internal function whose failure has exactly one meaning*, and at four of the seven sites — `photo.present`, `photo.derive`, `photo.write`, `photo.remove` — that callback is a **bare port call with no `set` in it**, so **no `emit` ever runs inside the classifier's `try` there and the brand is never consulted**. G31/G32/G33 are green because the *recording moved out of the `catch`*, which is the `attempt` restructuring; the brand is load-bearing at exactly the **three** sites whose callback is `writeAndSettle` — `attemptSave` and `doMerge`'s two chained writes — because `writeAndSettle` itself calls `set`, and therefore emits, **inside** the protected scope. **Making this control redden G31–G34 as originally printed would require widening `attempt` to enclose the emits at the other four sites, which Part 4b forbids and residue 3 files as a finding — so the criterion is narrowed and the design is not.** G37 reddens because its shape assertion pins `fromSubscriber.add(` at one occurrence, which is the brand's other half being pinned in source rather than in behaviour.)* **The sharper second mutation, and it must be run beside this one: delete `attempt`'s `if (isSubscriberError(error)) throw error;` → the same four go red and no others**, which is the useful positive result — the two halves of the brand are **one** mechanism with **one** consulting site set. A mechanism whose removal reddens nothing is a comment; a control that claims to redden tests it cannot reach is the same failure one level up |
 | **G36** | *Still true, from the other side.* A `present()` that genuinely rejects, a `remove` that genuinely rejects, a `write` that throws `QuotaExceededError`, a `saveIfVersion` that rejects — **no subscriber involved** | Every recorded outcome is byte-identical to the pre-A-71 store: the port's message in `availabilityError`, the id in `orphans`, `'quota_exceeded'` in `failures`, the port's message in `lastError`. **This is the criterion that says the fix changed nothing except who gets blamed** |
-| **G37** | *The fence, and its number is measured rather than published from the design* (R50-1's rule). `grep` `packages/client/src/store/store.ts` | **`attempt(` is the only classifier**: every `catch` clause in the file is one of — inside `attempt`, inside `emit`, a `try` whose body is a single `core.fromJSON(...)` (three sites), a `try` whose body is a single `await ports.photo.remove(...)` (`reclaimPhotoBytes`), or one of `deleteTrip`'s two cascade clauses (Part 5 item 4). **The builder publishes the measured post-fix count of `grep -coE '\}\s*catch\b\|^\s*catch\b' packages/client/src/store/store.ts` in BUILD-NOTES beside that command** — it is **13** at `37cf4f0` and it goes down. **A `catch` this list does not name is a defect until this entry names it** |
+| **G37** | *The fence, and its number lives in BUILD-NOTES and in the test rather than here* (**A-70 Part 7 item 3's count rule**, revision 53, which supersedes R50-1's *"publish the command beside the number"*; the `37cf4f0` value below is stamped **history** and no criterion depends on it). `grep` `packages/client/src/store/store.ts` | **`attempt(` is the only classifier**: every `catch` clause in the file is one of — inside `attempt`, inside `emit`, a `try` whose body is a single `core.fromJSON(...)` (three sites), a `try` whose body is a single `await ports.photo.remove(...)` (`reclaimPhotoBytes`), or one of `deleteTrip`'s two cascade clauses (Part 5 item 4). **The builder publishes the measured post-fix count of `grep -coE '\}\s*catch\b\|^\s*catch\b' packages/client/src/store/store.ts` in BUILD-NOTES beside that command** — it is **13** at `37cf4f0` and it goes down. **A `catch` this list does not name is a defect until this entry names it** |
 | **G38** | *Still true.* A-67's **G1…G9**, A-68's **G10…G17**, A-69's **G18…G25** and A-70's **G26…G30** all re-run | All green, with A-69's G18/G21/G23/G24 as corrected. **G12, G13, G26 and G29 are the four this ruling could plausibly have broken** — G12 and G13 because `readAvailabilityOnce`'s branch structure moves, G26 because its `present()` count must not, and G29 because `!availabilityUnanswered()` must still hold at rest on every path a branded throw now travels |
 
 **Part 7 — residues, disclosed.**
@@ -10582,7 +10744,30 @@ that proves the brand is load-bearing.**
 4. **The five faces were measured against the memory ports in plain Node.** Faces 1–3 and 5 have no
    browser-specific behaviour; **face 4 has not been measured against `apps/web`'s IndexedDB storage
    port**, and it does not need to be for the ruling (the misattribution is in `store.ts`), but a
-   round that attacks persistence should say so rather than assume it was.
+   round that attacks persistence should say so rather than assume it was. *(**Still open at revision 53
+   — round 51 drove face 4 against the memory port only and said so explicitly**, which is the disclosure
+   this residue asks for.)*
+5. **A false-positive brand converts a reportable failure into a stuck `'saving'`** (Part 4a, as corrected
+   at revision 53 — QA **R51-2**). It needs object identity between something a subscriber threw and
+   something a port later rejects with, and no such path exists in today's `apps/web`; the round-51
+   breaker looked for one and found none. **It is disclosed rather than fixed because the fix — recording
+   before rethrowing — reintroduces Part 1's defect on the reachable path to protect an unreachable one.**
+   **Trigger, and it is checkable rather than atmospheric: a port implementation that can reject with an
+   error object it received from this store** (a port that rethrows a callback's error, a wrapper that
+   caches and re-rejects an `Error` instance, a test double that reuses one). At that point the answer is
+   not a second brand but a **clearing** one — `attempt` removes the brand from an error it rethrows, so
+   an instance can only be attributed to a subscriber once.
+6. **The import batch's progress fraction does not settle on the one exit above the `try`** (Part 4d's
+   corrected scope box — QA **R51-4**, **pre-existing and measured identical at `8d69ff1`**). A subscriber
+   throwing on the batch's **opening** `setBatch` strands `pending` at N of N with nothing in flight.
+   **The fix is written out in full in Part 4d and is three lines in one function**; it is a residue and
+   not a ship condition of I-13i because A-71 neither introduced it nor was scoped to it, because the
+   caller *is* told (the exception propagates — this is a stranded fraction, not one of Part 1's silent
+   lies), and because reaching it requires a view that throws on the first emit of an import. **Trigger,
+   whichever comes first: the increment that opens `apps/web`'s subscriber wiring (residue 1's trigger,
+   because that pass is already reasoning about a throwing listener), or the first surface that renders
+   the import fraction.** That pass also corrects the shipped `finally`'s comment, which carries the same
+   over-wide *"on EVERY exit"* wording this document has just narrowed.
 
 **The trigger that reopens this entry**: **a second synchronous callout to code this store does not own.**
 `emit` is the only one today. A port that takes a callback, a middleware hook, a `derive` that calls back
