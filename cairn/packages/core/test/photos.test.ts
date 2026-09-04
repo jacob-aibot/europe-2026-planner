@@ -214,6 +214,45 @@ test('P11: a v1 document migrates to photos: [], and a v2 document is refused by
   assert.throws(() => migrateDoc({ ...v2, schemaVersion: 3 }), /this build reads up to 2\. Update the app\./);
 });
 
+/**
+ * **QA R45-1, the BLOCKER.** `SCHEMA_VERSION` went 1 → 2 and `migrateDoc` had **zero production
+ * callers**, so every document and every backup written by the previous release was refused by
+ * the one entry point every reader goes through. The migration was correct; only the wiring was
+ * missing, and the wiring belongs *inside* `fromJSON` rather than at each of `store.ts`'s five
+ * `core.fromJSON` call sites — that is where every reader already goes, and a per-site fix is one
+ * a sixth reader silently misses.
+ *
+ * The property is *"a document written by the PREVIOUS release opens"*, not *"a hand-built object
+ * at the current version opens"* — which is why the fixture is aged from a real `toJSON` output
+ * rather than written as a literal.
+ */
+test('R45-1: fromJSON reads a document written by the previous release, with no explicit migrateDoc', () => {
+  const { trip, c } = tripWithDays();
+  const aged = JSON.parse(toJSON(addPhoto(trip, { attach: { kind: 'trip' }, ...basePhoto }, c)));
+  delete aged.photos;            // a pre-I-13 build wrote no `photos` key at all
+  aged.schemaVersion = 1;        // …which is what schemaVersion 1 means
+
+  const fromText = fromJSON(JSON.stringify(aged));
+  assert.deepEqual(fromText.photos, [], 'a v1 document did not upcast to photos: []');
+  assert.equal(fromText.schemaVersion, SCHEMA_VERSION);
+  // The object arm too: `store.ts` hands strings, `cli.ts` and the tests hand objects.
+  assert.deepEqual(fromJSON(aged).photos, []);
+  // And the migration stays idempotent under an explicit call in front of it, because
+  // `packages/core/test`, `test/stats-storage.test.ts` and `qa/` all still do that.
+  assert.deepEqual(fromJSON(migrateDoc(aged)).photos, []);
+});
+
+/** R45-1's other half: the refusal for a document from the FUTURE keeps its own sentence. */
+test('R45-1: a document from a newer build is still refused, with the "Update the app." message', () => {
+  const { trip, c } = tripWithDays();
+  const doc = JSON.parse(toJSON(addPhoto(trip, { attach: { kind: 'trip' }, ...basePhoto }, c)));
+  assert.throws(() => fromJSON(JSON.stringify({ ...doc, schemaVersion: 3 })), /Update the app\./);
+  assert.throws(() => fromJSON(JSON.stringify({ ...doc, schemaVersion: 0 })), /no migration path from schemaVersion 0/);
+  const noVersion = { ...doc };
+  delete noVersion.schemaVersion;
+  assert.throws(() => fromJSON(JSON.stringify(noVersion)), /missing schemaVersion/);
+});
+
 // ---------------------------------------------------------------- validation
 
 test('a photo attached to a day that is not in the document is an ISSUE, never a throw', () => {
@@ -224,6 +263,43 @@ test('a photo attached to a day that is not in the document is an ISSUE, never a
   assert.equal(found.length, 1, JSON.stringify(issues.map((i) => i.code)));
   assert.equal(found[0].ref.kind, 'trip');
   assert.equal(found[0].params.dayId, '2099-01-01');
+});
+
+/**
+ * **QA R45-15.** The id census claimed day, place, booking and stop ids and gained no photo arm,
+ * and a duplicate `PhotoId` is more dangerous than a duplicate `Stop` id because it names records
+ * in a **global byte-key space**: `removePhoto('dup')` removes both records and `updatePhoto`
+ * edits only the first, while the two share one pair of byte records.
+ *
+ * Not reachable from `importPhotos` — ids come from the injected factory — but reachable from
+ * `fromJSON`, which is the population `validateTrip` exists for: a hand-edited file, a restored
+ * export, a future native bridge.
+ *
+ * The `ref` is the **trip**, exactly as every other photo issue in this file is, because
+ * `RefKind` has no `'photo'` arm and widening core's export surface is an architect's ruling
+ * (QA R45-6, routed there). `params.kind` is `'photo'`, which is what a surface reads.
+ */
+test('R45-15: two photos with the same id are a duplicate_id issue', () => {
+  const { trip, c } = tripWithDays();
+  const one = addPhoto(trip, { id: 'dup', ...basePhoto, caption: 'first' }, c);
+  const two = addPhoto(one, { id: 'dup', ...basePhoto, caption: 'second' }, c);
+  const dupes = validateTrip(two).filter((i) => i.code === 'duplicate_id' && i.params.kind === 'photo');
+  assert.equal(dupes.length, 1, JSON.stringify(validateTrip(two).map((i) => i.code)));
+  assert.equal(dupes[0].level, 'error');
+  assert.equal(dupes[0].params.id, 'dup');
+  assert.equal(dupes[0].ref.kind, 'trip');
+  // Distinct ids raise nothing, so the census is not simply always firing.
+  const clean = addPhoto(addPhoto(trip, { id: 'p1', ...basePhoto }, c), { id: 'p2', ...basePhoto }, c);
+  assert.deepEqual(validateTrip(clean).filter((i) => i.code === 'duplicate_id'), []);
+});
+
+/** A photo id and a stop id that happen to match are NOT a collision — the census is per kind. */
+test('R45-15: the photo census is per kind — a photo may share an id with a stop', () => {
+  const { trip, c } = tripWithDays();
+  const withStop = addStop(trip, { kind: 'scheduled', dayId: '2026-03-02', time: '10:00', order: 0 }, { name: 'S', category: 'sight' }, c);
+  const stopId = withStop.days.find((d) => d.id === '2026-03-02')!.stops[0].id;
+  const t = addPhoto(withStop, { id: stopId, ...basePhoto }, c);
+  assert.deepEqual(validateTrip(t).filter((i) => i.code === 'duplicate_id'), []);
 });
 
 test('a photo coordinate outside the legal range is reported, and the message carries no coordinate', () => {

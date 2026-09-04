@@ -244,7 +244,11 @@ export function memoryPhotos(): MemoryPhotos {
       port.deriveCount++;
       // §10.2: the one thing `derive` may not do is throw for bytes it cannot read. `null` is
       // the answer, and the caller turns it into a named, reported failure.
-      if (!type.startsWith('image/')) return null;
+      //
+      // An EMPTY type is treated as JPEG, exactly as `apps/web/src/ports/photo.ts` does
+      // (`new Blob([bytes], { type: type || 'image/jpeg' })`) — QA R45-12. A double that refuses
+      // an input the production port accepts is a double that hides the production behaviour.
+      if (!(type || 'image/jpeg').startsWith('image/')) return null;
       if (bytes.length === 0) return null;
       if (port.failDeriveFor.has(fileTag(bytes))) return null;
       return {

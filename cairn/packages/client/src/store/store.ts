@@ -415,6 +415,38 @@ export function createStore(opts: StoreOptions) {
     }
   }
 
+  /**
+   * Every `PhotoId` the **stored** document for `id` references — QA **R45-3**.
+   *
+   * `deleteTrip`'s cascade needs the doomed ids, and for a trip that is not the open one they
+   * exist in exactly one place: the bytes on disk. `apps/web`'s `StoragePort` does the same read
+   * inside its own delete transaction (`photoIdsOf`), which is what makes the sweep atomic
+   * *there*; this is the belt, so the in-memory port and any future port — `apps/mobile`'s
+   * storage cannot span the same transaction — get the cascade too.
+   *
+   * **Total, and it never throws.** A document that will not parse yields no ids: the consequence
+   * is strictly bounded (some byte records are not swept, which is §10.2's reclaimable-orphan
+   * state) and *"a corrupt stored document may not make a trip undeletable"* — §2.9 A-46's rescue
+   * export exists precisely because such documents are on disk.
+   *
+   * It reads `id` and nothing else — no caption, no coordinate, no date. §10.5's cross-cutting
+   * rule is easiest to break exactly here.
+   */
+  async function photoIdsOfStored(id: string): Promise<string[]> {
+    try {
+      const stored = await ports.storage.load(id);
+      if (!stored) return [];
+      const parsed: unknown = JSON.parse(stored.doc);
+      const photos = (parsed as { photos?: unknown } | null)?.photos;
+      if (!Array.isArray(photos)) return [];
+      return photos
+        .map((p) => (p as { id?: unknown } | null)?.id)
+        .filter((pid): pid is string => typeof pid === 'string' && pid !== '');
+    } catch {
+      return [];
+    }
+  }
+
   /** `err.name` is the platform's own word for a full disk. Everything else is `'storage_failed'`. */
   function writeFailureReason(err: unknown): PhotoImportFailure {
     const name = (err as { name?: string } | null)?.name ?? '';
@@ -1321,7 +1353,20 @@ export function createStore(opts: StoreOptions) {
       // any future port get the cascade whether or not their storage can span it.
       //
       // A failure here leaves reclaimable orphans, not a broken delete: the trip goes either way.
-      const doomed = state.activeTripId === id ? (state.doc?.photos ?? []).map((p) => p.id) : [];
+      //
+      // **QA R45-3.** This used to read `state.doc` and therefore only fired for the trip that
+      // happened to be OPEN — deleting any other trip from the library left every one of its byte
+      // records behind, unreachable (the document is gone) *and* unreportable (`orphanPhotoBytes`
+      // reads what this session observed, and nothing observed these). For a non-active trip the
+      // ids come from `ports.storage.load(id)`, which is the only place they exist.
+      //
+      // `photoIdsOfStored` is total: a document that will not parse yields no ids, because *"a
+      // corrupt stored document does not make a trip undeletable"* (§2.9 A-46's rescue path is the
+      // whole reason that document is still on disk) and a delete that throws is worse than a
+      // delete that leaves reclaimable bytes.
+      const doomed = state.activeTripId === id
+        ? (state.doc?.photos ?? []).map((p) => p.id)
+        : await photoIdsOfStored(id);
       await chainOntoSaving(async () => {
         if (ports.photo) {
           for (const photoId of doomed) {
@@ -1371,6 +1416,13 @@ export function createStore(opts: StoreOptions) {
      * exists. It comes from the injected `IdPort` like every other id — no `crypto.randomUUID`,
      * no `Math.random` (`cairn-constraints` §4).
      *
+     * **Re-entrancy, and it is QA R45-11's subject.** `importPhotos` takes no guard — a double-tap
+     * on an import control starts two of these — so nothing here may be batch-local state written
+     * over session state. `failures` accumulates onto `state.photos.failures` one at a time and
+     * is cleared only by `dismissPhotoFailures` (§10.6: *"kept until the user dismisses them.
+     * Never silently dropped"*), and `pending`/`total` add to an in-flight batch rather than
+     * replacing it, so the fraction counts the files actually being processed.
+     *
      * @throws {Error} if there is no active trip — a programmer error, per §2.1.
      */
     async importPhotos(attach: PhotoAttachRef = { kind: 'trip' }): Promise<AppState> {
@@ -1380,17 +1432,31 @@ export function createStore(opts: StoreOptions) {
       // A cancel. Not an error, not a failure, and it does not clear an earlier batch's report.
       if (picked === null || picked.length === 0) return state;
 
-      const failures: Array<{ name: string; reason: PhotoImportFailure }> = [];
-      setPhotos({ pending: picked.length, total: picked.length, failures: [] });
+      // An idle store starts a fresh fraction; a store with a batch in flight joins it. Read
+      // after the `await` above, because that is where the other batch can have started.
+      const joining = state.photos.pending > 0;
+      setPhotos({
+        pending: state.photos.pending + picked.length,
+        total: (joining ? state.photos.total : 0) + picked.length,
+      });
+      let remaining = picked.length;
 
       for (const f of picked) {
         const fail = (reason: PhotoImportFailure) => {
-          failures.push({ name: f.name, reason });
+          // Appended to what the SESSION holds, never to a batch-local array: two overlapping
+          // imports must not write over each other's reports (R45-11).
+          setPhotos({ failures: [...state.photos.failures, { name: f.name, reason }] });
         };
         try {
           // Refused BEFORE the decode, both of them: a ceiling enforced after `createImageBitmap`
           // has already allocated the bitmap is not a ceiling.
-          if (!f.type.startsWith('image/')) fail('unsupported_type');
+          //
+          // **An EMPTY type is not a refusal** (R45-12). Browsers report `File.type === ''` for
+          // extensions they do not recognise, and §10.6 defines `'unsupported_type'` as *"the
+          // picker returned something we **cannot decode**"* — a claim this layer cannot make
+          // without asking. `apps/web`'s port already handles it (`type || 'image/jpeg'`), so
+          // refusing here made that line unreachable and the two files disagree.
+          if (f.type !== '' && !f.type.startsWith('image/')) fail('unsupported_type');
           else if (f.bytes.length > PHOTO_MAX_INPUT_BYTES) fail('too_large');
           else {
             // Pure, in core, and it never throws for any byte sequence (§10.2 rule 1).
@@ -1425,9 +1491,19 @@ export function createStore(opts: StoreOptions) {
                 },
               });
               // The asset exists, so its bytes are available in this session without a re-read.
-              const available = new Set(state.photos.available ?? []);
-              available.add(id);
-              setPhotos({ tripId: state.doc.id, available });
+              //
+              // **Only if availability was actually read for THIS trip** — QA R45-4. `available:
+              // null` means *"not read"* and not *"read, and empty"*, which is the whole of §10.6
+              // property 2; `?? []` collapsed the two, so one import after a failed `present()`
+              // built a set holding just the id it had written and stamped `tripId` on it. Every
+              // pre-existing photo then read `'missing'`, which §10.6 property 3 renders as *"this
+              // photo's image is no longer stored on this device"* over bytes that are on disk.
+              // Leaving `null` alone keeps the listing `'loading'` — honestly unknown, not wrong.
+              if (state.photos.available !== null && state.photos.tripId === state.doc.id) {
+                const available = new Set(state.photos.available);
+                available.add(id);
+                setPhotos({ available });
+              }
             }
           }
         } catch (err) {
@@ -1436,9 +1512,25 @@ export function createStore(opts: StoreOptions) {
           // silent failure is the one thing §10.6 exists to stop.
           if ((err as Error)?.message !== 'handled') fail('storage_failed');
         }
-        setPhotos({ pending: Math.max(0, state.photos.pending - 1), failures: [...failures] });
+        remaining--;
+        setPhotos({ pending: Math.max(0, state.photos.pending - 1) });
       }
-      setPhotos({ pending: 0, failures: [...failures] });
+      // Settle THIS batch and no other: a flat `pending: 0` would report a concurrent batch as
+      // finished (R45-11). `remaining` is 0 unless the loop above was cut short.
+      if (remaining > 0) setPhotos({ pending: Math.max(0, state.photos.pending - remaining) });
+      return state;
+    },
+
+    /**
+     * Clears the import failure report — §10.6's *"kept until the user **dismisses** them"*, which
+     * had no dismisser at all (QA **R45-13**).
+     *
+     * It touches `failures` and nothing else: not the document, not availability, not the
+     * orphan list. A dismissal is a statement about a **report**, not about the photographs, and
+     * it is `void` rather than `Promise` because no port is involved. Idempotent.
+     */
+    dismissPhotoFailures(): AppState {
+      if (state.photos.failures.length > 0) setPhotos({ failures: [] });
       return state;
     },
 
@@ -1459,9 +1551,15 @@ export function createStore(opts: StoreOptions) {
       if (!ports.photo) return state;
       try {
         await ports.photo.remove(photoId);
-        const available = new Set(state.photos.available ?? []);
-        available.delete(photoId);
-        setPhotos({ available, orphans: state.photos.orphans.filter((id) => id !== photoId) });
+        // R45-4's rule, on the other side of the same distinction: an UNREAD availability stays
+        // unread. Manufacturing `new Set()` here would answer *"read, and none of this trip's
+        // photos have bytes"* on the strength of one delete.
+        if (state.photos.available !== null) {
+          const available = new Set(state.photos.available);
+          available.delete(photoId);
+          setPhotos({ available });
+        }
+        setPhotos({ orphans: state.photos.orphans.filter((id) => id !== photoId) });
       } catch {
         // The record is gone and the bytes are not. Observed, recorded, never swept.
         setPhotos({

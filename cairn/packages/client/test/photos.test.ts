@@ -382,3 +382,197 @@ test('a reclaim that fails keeps reporting the orphan rather than forgetting it'
   assert.deepEqual(orphanPhotoBytes(store.getState()), [id], 'a failed reclaim silently dropped the report');
   assert.ok(p.photo.thumbs.has(id), 'INCONCLUSIVE: the fault did not fire');
 });
+
+// ------------------------------------------------------------ QA round 45, builder-routed
+
+/**
+ * **R45-1, the BLOCKER, at the layer the user meets it.** `openTrip` and `importDoc` both hand a
+ * stored/imported string to `core.fromJSON`, and `fromJSON` refused every `schemaVersion: 1`
+ * document — so a user who had trips before this release could open none of them and could
+ * restore no backup. The fix is inside `fromJSON` (see its docstring); these are the two store
+ * paths that prove the wiring reaches them.
+ *
+ * The fixture is **aged from a real `toJSON` output**, not written as a literal: the property is
+ * *"a document written by the previous release opens"*, and a hand-built object at the current
+ * shape does not have it.
+ */
+function agedToV1(text: string): string {
+  const doc = JSON.parse(text);
+  delete doc.photos;          // a pre-I-13 build wrote no `photos` key at all
+  doc.schemaVersion = 1;
+  return JSON.stringify(doc, null, 2);
+}
+
+test('R45-1: openTrip opens a trip stored by the previous release', async () => {
+  const p = ports();
+  const store = await storeWithTrip(p);
+  await store.flush();
+  const id = store.getState().doc!.id;
+  p.storage.docs.set(id, agedToV1(p.storage.docs.get(id)!));
+
+  const opened = await store.openTrip(id);
+  assert.ok(opened.doc, `the previous release's trip would not open: ${JSON.stringify(opened.openFailures)}`);
+  assert.deepEqual(opened.doc!.photos, []);
+  assert.deepEqual(opened.openFailures, [], 'the open was recorded as a failure');
+});
+
+test('R45-1: importDoc restores a backup exported by the previous release', async () => {
+  const p = ports();
+  const store = await storeWithTrip(p);
+  await store.flush();
+  const backup = agedToV1(await store.exportActive());
+
+  const p2 = ports();
+  const store2 = createStore({ ports: p2 });
+  await store2.importDoc(backup);
+  assert.equal(store2.getState().doc!.title, TRIP_INIT.title);
+  assert.deepEqual(store2.getState().doc!.photos, []);
+});
+
+/**
+ * **R45-3, MAJOR.** The cascade read the doomed ids from `state.doc`, which is only populated for
+ * the ACTIVE trip — so deleting any other trip from the library left every one of its byte
+ * records behind, unreachable (the document is gone) *and* unreportable (`orphanPhotoBytes` reads
+ * session-observed orphans, and nothing observed these).
+ *
+ * `apps/web` is covered one layer down, because `indexedDbStorage.delete` re-reads the stored
+ * document and sweeps from it. What this asserts is `store.ts`'s own belt, whose comment claims
+ * *"the in-memory port **and any future port** get the cascade whether or not their storage can
+ * span it"* — `apps/mobile` is exactly such a port.
+ */
+test('R45-3: deleting a NON-active trip removes its photo bytes too', async () => {
+  const p = ports();
+  const store = await storeWithTrip(p);
+  p.photo.next = ['a', 'b', 'c'].map((n) => file(`${n}.jpg`));
+  await store.importPhotos({ kind: 'trip' });
+  await store.flush();
+  const doomed = store.getState().doc!.id;
+  assert.equal(p.photo.thumbs.size, 3, 'INCONCLUSIVE: three byte pairs did not land');
+
+  // A second trip becomes the active one, so `doomed` is now a library row and nothing else.
+  await store.createTrip({ ...TRIP_INIT, title: 'Second' });
+  await store.flush();
+  assert.notEqual(store.getState().activeTripId, doomed, 'INCONCLUSIVE: the doomed trip is still active');
+
+  await store.deleteTrip(doomed);
+  assert.equal(p.photo.thumbs.size, 0, "a non-active trip's photo bytes outlived it");
+  assert.equal(p.photo.displays.size, 0);
+});
+
+test('R45-3: deleting a non-active trip whose document cannot be read still deletes the trip', async () => {
+  const p = ports();
+  const store = await storeWithTrip(p);
+  await store.flush();
+  const doomed = store.getState().doc!.id;
+  p.storage.docs.set(doomed, '{ this is not JSON');
+  await store.createTrip({ ...TRIP_INIT, title: 'Second' });
+  await store.flush();
+
+  await store.deleteTrip(doomed);
+  assert.equal(store.getState().library.some((r) => r.id === doomed), false, 'an unreadable document made a trip undeletable');
+  assert.equal(await p.storage.load(doomed), null);
+});
+
+/**
+ * **R45-4, MAJOR.** `readPhotoAvailability` is careful that `available: null` means *"not read"*
+ * and not *"read, and empty"* — §10.6 property 2 is exactly that distinction. The import saga's
+ * optimistic update then collapsed it with `?? []`, built a set containing only the id it had
+ * just written, and stamped `tripId` — so `photosFor` left `'loading'` and reported every
+ * pre-existing photo `'missing'`. §10.6 property 3 renders that as *"this photo's image is no
+ * longer stored on this device"*, over three photographs that are on disk.
+ */
+test('R45-4: an import after a FAILED availability read does not call the rest of the trip missing', async () => {
+  const p = ports();
+  const store = await storeWithTrip(p);
+  p.photo.next = ['a', 'b', 'c'].map((n) => file(`${n}.jpg`));
+  await store.importPhotos({ kind: 'trip' });
+  await store.flush();
+  const id = store.getState().doc!.id;
+
+  const good = p.photo.present.bind(p.photo);
+  p.photo.present = async () => { throw new Error('IndexedDB: UnknownError'); };
+  await store.openTrip(id);
+  assert.equal(photosFor(store.getState(), { kind: 'trip' }).phase, 'loading',
+    'INCONCLUSIVE: a rejected present() did not leave availability unread');
+
+  p.photo.next = [file('d.jpg')];
+  await store.importPhotos({ kind: 'trip' });
+  p.photo.present = good;
+
+  const l = photosFor(store.getState(), { kind: 'trip' });
+  assert.equal(p.photo.thumbs.size, 4, 'INCONCLUSIVE: the four photographs are not all on disk');
+  assert.equal(l.missing, 0,
+    `${l.missing} photograph(s) on disk were reported gone: ${JSON.stringify(l.items.map((i) => i.availability))}`);
+});
+
+/**
+ * **R45-11, MINOR.** `importPhotos` takes no re-entrancy guard — a double-tap on an import
+ * control is enough — and each call reset `pending`/`total`/`failures` from its own batch. §10.6
+ * says failures are *"kept until the user dismisses them. **Never silently dropped**"* and that
+ * `pending`/`total` is *"an honest progress fraction"*; both were false for the first batch.
+ */
+test('R45-11: two overlapping imports keep both batches\' failures and count both batches\' files', async () => {
+  const p = ports();
+  const store = await storeWithTrip(p);
+  p.photo.failDeriveFor.add('bad1.jpg');
+  p.photo.next = [file('a.jpg'), file('bad1.jpg')];
+  const first = store.importPhotos({ kind: 'trip' });
+  p.photo.next = [file('x.jpg'), file('y.jpg')];
+  const second = store.importPhotos({ kind: 'trip' });
+  await Promise.all([first, second]);
+
+  const report = photoImport(store.getState());
+  assert.ok(report.failures.some((f) => f.name === 'bad1.jpg'),
+    `the first batch's failure was dropped: ${JSON.stringify(report)}`);
+  assert.equal(report.total, 4, 'total counted one batch of the two that were processed');
+  assert.equal(report.pending, 0, 'the progress fraction did not settle');
+  assert.equal(store.getState().doc!.photos.length, 3);
+});
+
+/**
+ * **R45-12, MINOR.** Browsers return `File.type === ''` for extensions they do not recognise.
+ * §10.6 defines `'unsupported_type'` as *"the picker returned something we **cannot decode**"* —
+ * a claim the saga had not tested, because it refused an empty type before the decoder was ever
+ * asked, while `apps/web/src/ports/photo.ts` was written specifically for that case
+ * (`new Blob([bytes], { type: type || 'image/jpeg' })`).
+ */
+test('R45-12: a file the picker gave no MIME type for is offered to the decoder', async () => {
+  const p = ports();
+  const store = await storeWithTrip(p);
+  p.photo.next = [{ name: 'photo.jpg', type: '', bytes: taggedBytes('photo.jpg') }];
+  await store.importPhotos({ kind: 'trip' });
+  assert.ok(p.photo.deriveCount > 0, 'the decoder was never asked');
+  assert.equal(store.getState().doc!.photos.length, 1, 'an empty type is decodable and was not decoded');
+  assert.deepEqual(photoImport(store.getState()).failures, []);
+});
+
+test('R45-12: a type the decoder genuinely refuses is still unsupported_type, and named', async () => {
+  const p = ports();
+  const store = await storeWithTrip(p);
+  p.photo.next = [file('clip.mov', 'video/quicktime')];
+  await store.importPhotos({ kind: 'trip' });
+  assert.deepEqual(photoImport(store.getState()).failures, [{ name: 'clip.mov', reason: 'unsupported_type' }]);
+  assert.equal(p.photo.deriveCount, 0, 'a declared non-image was decoded anyway');
+});
+
+/**
+ * **R45-13, MINOR.** §10.6: failures are *"kept until the user dismisses them"* — and nothing
+ * dismissed them. The only thing that cleared `failures` was starting another import, so a
+ * surface implementing the stated contract had nothing to call.
+ */
+test('R45-13: dismissPhotoFailures clears the report and nothing else', async () => {
+  const p = ports();
+  const store = await storeWithTrip(p);
+  p.photo.failDeriveFor.add('bad.jpg');
+  p.photo.next = [file('a.jpg'), file('bad.jpg')];
+  await store.importPhotos({ kind: 'trip' });
+  assert.equal(photoImport(store.getState()).failures.length, 1, 'INCONCLUSIVE: no failure to dismiss');
+
+  store.dismissPhotoFailures();
+  assert.deepEqual(photoImport(store.getState()).failures, []);
+  assert.equal(store.getState().doc!.photos.length, 1, 'dismissing a report touched the document');
+  assert.equal(photosFor(store.getState(), { kind: 'trip' }).missing, 0, 'dismissing a report lost availability');
+  // Idempotent, and safe with nothing to dismiss.
+  store.dismissPhotoFailures();
+  assert.deepEqual(photoImport(store.getState()).failures, []);
+});

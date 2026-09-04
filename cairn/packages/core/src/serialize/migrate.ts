@@ -7,7 +7,7 @@
  * rather than being retrofitted into every reader; this is that migration arriving.
  */
 import { SCHEMA_VERSION } from '../model/types.ts';
-import { TripParseError } from './fromJSON.ts';
+import { TripParseError } from './parseError.ts';
 
 export { SCHEMA_VERSION };
 

@@ -100,6 +100,44 @@ test('P6: GPS reading exactly (0, 0) is read as absent', () => {
   assert.deepEqual(r.capturedAt, { date: '2023-07-04', time: '12:00' });
 });
 
+/**
+ * **QA R45-8.** `sub()` set `malformed` for a sub-IFD pointer that is zero, out of range, of an
+ * unreadable type or already visited, and the function's tail then returned every field null —
+ * the exact opposite of the rule `exif.ts` states two functions earlier for a bad *value* offset
+ * (*"drops the ONE entry, not the file: a camera that writes a bad thumbnail pointer still has a
+ * date"*) and of P4's *"one bad field is not a bad file"*.
+ *
+ * The reason is still `'malformed'`, because the file IS malformed and saying so is the honest
+ * half. What changed is that saying so no longer costs the fields that read.
+ */
+test('R45-8: a zeroed GPS sub-IFD pointer drops the coordinate and keeps the date', () => {
+  const r = readExif(load('jpeg-gps-badptr.jpg'));
+  assert.deepEqual(r.capturedAt, { date: '2021-09-17', time: '15:42' }, 'a bad pointer discarded a readable date');
+  assert.equal(r.at, null, 'a GPS block that could not be followed produced a coordinate anyway');
+  assert.equal(r.reason, 'malformed', 'the file is malformed and the reason must still say so');
+});
+
+test('R45-8: P2\'s self-referential sub-IFD is still malformed, and still terminates', () => {
+  const r = readExif(load('jpeg-selfref-ifd.jpg'));
+  assert.equal(r.reason, 'malformed');
+  // The cycle is in the EXIF pointer, so `0x9003` was never reached and there is no date to keep.
+  assert.equal(r.capturedAt, null);
+});
+
+/**
+ * **QA R45-9.** `exif.ts`'s own comment read *"SOS: image data begins and no EXIF was found. EOI
+ * likewise"* — but `0xd9` fell into the standalone-marker branch above it and the scan carried on
+ * into whatever followed. Data appended after EOI is common (motion-photo containers, app
+ * trailers), and §10.1 point 3 is explicit that `at` and `capturedAt` are *"what the **file**
+ * said"* and *"never inferred"*. A trailer is not what the image said.
+ */
+test('R45-9: EXIF appended after the EOI marker is not read as the photograph\'s own metadata', () => {
+  const r = readExif(load('jpeg-trailer-after-eoi.jpg'));
+  assert.equal(r.capturedAt, null, 'a trailer after EOI supplied the photograph\'s date');
+  assert.equal(r.reason, 'no_exif');
+  assert.deepEqual([r.at, r.pixel, r.orientation], [null, null, null]);
+});
+
 test('P7: a HEIC file is refused as an unsupported container, with no throw', () => {
   const r = readExif(load('heic-ftyp.heic'));
   assert.equal(r.reason, 'unsupported_container');

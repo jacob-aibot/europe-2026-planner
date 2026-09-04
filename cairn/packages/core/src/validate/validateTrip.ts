@@ -266,13 +266,13 @@ export function validateTrip(trip: Trip): Issue[] {
 
   // --- ids unique across the document -----------------------------------------
   const seen = new Map<string, string>();
-  const claim = (kind: string, id: string, refKind: Issue['ref']['kind']) => {
+  const claim = (kind: string, id: string, refKind: Issue['ref']['kind'], refId: string = id) => {
     const key = `${kind}:${id}`;
     if (seen.has(key)) {
       push({
         level: 'error',
         code: 'duplicate_id',
-        ref: { kind: refKind, id },
+        ref: { kind: refKind, id: refId },
         message: `Duplicate ${kind} id "${id}".`,
         params: { kind, id },
       });
@@ -281,6 +281,17 @@ export function validateTrip(trip: Trip): Issue[] {
   for (const d of trip.days) claim('day', d.id, 'day');
   for (const p of trip.places) claim('place', p.id, 'place');
   for (const b of trip.bookings) claim('booking', b.id, 'booking');
+  // **Photos — QA R45-15.** The census gained no photo arm at I-13, and a duplicate `PhotoId` is
+  // worse than a duplicate `Stop` id: it names records in the **global byte-key space** §10.3
+  // creates, so `removePhoto` drops both records while `updatePhoto` edits only the first and the
+  // two share one pair of byte records. Unreachable from `importPhotos` (ids come from the
+  // injected factory) and reachable from `fromJSON` — a hand-edited file, a restored export, a
+  // future native bridge — which is exactly the population this function exists for.
+  //
+  // The `ref` is the **trip**, as every other photo issue below is: `RefKind` has no `'photo'`
+  // arm, and widening core's export surface is an architect's ruling (QA R45-6), not a check's to
+  // take. `params.kind` is `'photo'`, which is what a surface actually reads.
+  for (const p of trip.photos ?? []) claim('photo', p.id, 'trip', trip.id);
 
   const allStops: Array<{ stop: Stop; dayId: string | null }> = [];
   for (const d of trip.days) for (const s of d.stops) allStops.push({ stop: s, dayId: d.id });

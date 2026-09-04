@@ -199,12 +199,19 @@ function read(bytes: Uint8Array): ExifRead {
       marker = bytes[cursor];
       cursor++;
     }
-    // Standalone markers carry no length.
-    if (marker === 0x01 || (marker >= 0xd0 && marker <= 0xd9)) {
+    // **EOI ends the image, and the scan ends with it** — QA R45-9. It has to be tested BEFORE
+    // the standalone-marker branch below, because `0xd9` is inside that branch's `0xd0…0xd9`
+    // range and used to fall into it, so the scan walked on into whatever followed. Data
+    // appended after EOI is common — motion-photo containers, app trailers — and §10.1 point 3
+    // is explicit that `at` and `capturedAt` are *"what the FILE said"* and *"never inferred"*.
+    // A trailer is not what the image said.
+    if (marker === 0xd9) return empty('no_exif');
+    // Standalone markers carry no length. (`0xd0`…`0xd8`: RSTn, SOI, TEM.)
+    if (marker === 0x01 || (marker >= 0xd0 && marker <= 0xd8)) {
       at = cursor;
       continue;
     }
-    // SOS: image data begins and no EXIF was found. EOI likewise.
+    // SOS: image data begins and no EXIF was found.
     if (marker === 0xda) return empty('no_exif');
     if (cursor + 1 >= bytes.length) return empty('truncated');
     const len = (bytes[cursor] << 8) | bytes[cursor + 1];
@@ -309,6 +316,13 @@ function read(bytes: Uint8Array): ExifRead {
     }
   }
 
-  if (malformed) return empty('malformed');
-  return { capturedAt, at: atLatLng, pixel, orientation, reason: 'ok' };
+  // **A malformed sub-IFD pointer costs that sub-IFD, not the file** — QA R45-8. This used to be
+  // `return empty('malformed')`, which threw away a `DateTimeOriginal` that had read perfectly
+  // because a GPS pointer was zeroed — the shape several EXIF strippers leave behind. That is the
+  // opposite of the rule `readIfd` states above for a bad *value* offset (*"drops the ONE entry,
+  // not the file"*) and of P4's *"one bad field is not a bad file"*. The reason still says
+  // `'malformed'`, because the file is; only the fields it costs have changed. Every value here
+  // has already been through its own validation — `parseExifDateTime`, the orientation range, the
+  // GPS ref/range/Null-Island checks — so a partial answer is a checked answer, not a salvaged one.
+  return { capturedAt, at: atLatLng, pixel, orientation, reason: malformed ? 'malformed' : 'ok' };
 }

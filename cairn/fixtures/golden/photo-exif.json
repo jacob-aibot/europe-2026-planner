@@ -52,6 +52,18 @@
       "hasCoordinate": false
     },
     {
+      "name": "jpeg-gps-badptr.jpg",
+      "bytes": 194,
+      "reason": "malformed",
+      "capturedAt": {
+        "date": "2021-09-17",
+        "time": "15:42"
+      },
+      "orientation": null,
+      "pixel": null,
+      "hasCoordinate": false
+    },
+    {
       "name": "jpeg-gps-nullisland.jpg",
       "bytes": 194,
       "reason": "ok",
@@ -98,13 +110,22 @@
       "bytes": 92,
       "reason": "malformed",
       "capturedAt": null,
+      "orientation": 1,
+      "pixel": null,
+      "hasCoordinate": false
+    },
+    {
+      "name": "jpeg-trailer-after-eoi.jpg",
+      "bytes": 98,
+      "reason": "no_exif",
+      "capturedAt": null,
       "orientation": null,
       "pixel": null,
       "hasCoordinate": false
     },
     {
       "name": "jpeg-truncated-app1.jpg",
-      "bytes": 62,
+      "bytes": 900,
       "reason": "truncated",
       "capturedAt": null,
       "orientation": null,

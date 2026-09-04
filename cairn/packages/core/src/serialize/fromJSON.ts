@@ -13,16 +13,12 @@ import type {
 import { DATE_PRECISIONS, SCHEMA_VERSION } from '../model/types.ts';
 import { isClockTime } from '../model/openingHours.ts';
 import { isIsoDate } from '../model/ids.ts';
+import { TripParseError } from './parseError.ts';
+import { migrateDoc } from './migrate.ts';
 
-/** Thrown by `fromJSON` for any malformed document. Carries a JSON path. */
-export class TripParseError extends Error {
-  path: string;
-  constructor(message: string, path: string) {
-    super(`${message} (at ${path || '$'})`);
-    this.name = 'TripParseError';
-    this.path = path;
-  }
-}
+// It is defined in `parseError.ts` since QA R45-1 (see that file for why) and re-exported here,
+// so `index.ts` and every existing importer are unchanged.
+export { TripParseError };
 
 type Obj = Record<string, unknown>;
 
@@ -464,7 +460,20 @@ function parseResolution(v: unknown, path: string): ConflictResolution {
 /**
  * Parses a trip document. Accepts a JSON string or an already-parsed object.
  *
- * Pure. @throws {TripParseError} on malformed JSON, a wrong schema version, a missing
+ * **The upcast runs here, and that placement is QA R45-1's fix.** `SCHEMA_VERSION` went 1 → 2 at
+ * I-13 and `migrateDoc` shipped with **zero production callers**, so every document and every
+ * exported backup written by the previous release was refused — the whole library read *"could
+ * not be read"* and the I-8e rescue export was unrestorable. The five `core.fromJSON` call sites
+ * in `store.ts` could each have gained a `migrateDoc(...)`, and that is the version a sixth
+ * reader silently misses. This is the one entry point every reader already goes through, §2.10
+ * exposes it, and putting the migration in front of the validation is what makes the refusal a
+ * user sees the one written for a document from the **future** (*"Update the app."*) rather than
+ * one written for their own file.
+ *
+ * `migrateDoc` is a pass-through for a current document and is idempotent, so a caller that
+ * already ran it — `packages/core/test`, `test/stats-storage.test.ts`, `qa/` — is unaffected.
+ *
+ * Pure. @throws {TripParseError} on malformed JSON, an unmigratable schema version, a missing
  * required field, or an unknown enum value — always with the JSON path.
  */
 export function fromJSON(input: string | unknown): Trip {
@@ -476,14 +485,9 @@ export function fromJSON(input: string | unknown): Trip {
       throw new TripParseError(`not valid JSON: ${(e as Error).message}`, '$');
     }
   }
-  const o = obj(raw, '$');
-  const version = o.schemaVersion;
-  if (version !== SCHEMA_VERSION) {
-    throw new TripParseError(
-      `unsupported schemaVersion ${JSON.stringify(version)} — this build reads version ${SCHEMA_VERSION}`,
-      '$.schemaVersion',
-    );
-  }
+  // Throws `TripParseError` at `$.schemaVersion` for a missing version, a version from the
+  // future, and a version too old to have a path — all three of which used to be one message.
+  const o = obj(migrateDoc(obj(raw, '$')), '$');
   const party = obj(o.party, '$.party');
   return {
     id: str(o.id, '$.id'),

@@ -99,7 +99,7 @@ function makeIfd(entries, ifdOffset, be, nextIfd = 0) {
  * IFD0's own value area has been sized. The pointers are LONG/count-1 and therefore inline, so
  * the second pass is byte-for-byte the same size as the first — which is what makes this safe.
  */
-function makeTiff({ be = true, ifd0 = [], exif = null, gps = null, exifPointerOverride = null }) {
+function makeTiff({ be = true, ifd0 = [], exif = null, gps = null, exifPointerOverride = null, gpsPointerOverride = null }) {
   const build = (exifOff, gpsOff) => {
     const dir0 = [...ifd0];
     if (exif) dir0.push(eLong(0x8769, exifOff, be));
@@ -115,7 +115,7 @@ function makeTiff({ be = true, ifd0 = [], exif = null, gps = null, exifPointerOv
   const gpsBlock = gps ? makeIfd(gps, gpsOffset, be) : null;
   // Pass 2 — with the real pointers. `exifPointerOverride` is how the self-reference fault
   // is built: the sub-IFD pointer is made to name IFD0's own offset.
-  const final = build(exifPointerOverride ?? exifOffset, gpsOffset);
+  const final = build(exifPointerOverride ?? exifOffset, gpsPointerOverride ?? gpsOffset);
   const header = cat(be ? new Uint8Array([0x4d, 0x4d]) : new Uint8Array([0x49, 0x49]), u16(42, be), u32(8, be));
   return cat(header, final.first.bytes, ...(exifBlock ? [exifBlock.bytes] : []), ...(gpsBlock ? [gpsBlock.bytes] : []));
 }
@@ -251,6 +251,50 @@ files['png-header.png'] = cat(
 
 // 12 — two bytes that are not a container at all.
 files['not-an-image.bin'] = new Uint8Array([0x00, 0x01]);
+
+// 13 — QA R45-8. A GPS sub-IFD pointer that is ZERO, beside a date that reads perfectly.
+// This is what several EXIF strippers leave behind: the pointer entry survives, the block it
+// names does not. `exif.ts:130` already states the rule for a bad VALUE offset — *"drops the ONE
+// entry, not the file: a camera that writes a bad thumbnail pointer still has a date"* — and a
+// bad POINTER used to throw the whole file away instead.
+files['jpeg-gps-badptr.jpg'] = jpegWithExif(
+  makeTiff({
+    be: true,
+    ifd0: [],
+    exif: [eAscii(0x9003, '2021:09:17 15:42:10')],
+    gps: [
+      eAscii(0x0001, 'N'),
+      eRational(0x0002, [[48, 1], [12, 1], [0, 1]], true),
+      eAscii(0x0003, 'E'),
+      eRational(0x0004, [[16, 1], [22, 1], [0, 1]], true),
+    ],
+    gpsPointerOverride: 0,
+  }),
+);
+
+// 14 — QA R45-9. A JPEG with no EXIF, terminated with EOI, with an APP1 Exif block appended
+// AFTER it — a motion-photo container or an app trailer. §10.1 point 3: `at` and `capturedAt`
+// are *"what the FILE said"* and *"never inferred"*, and a trailer is not what the image said.
+{
+  const EOI = new Uint8Array([0xff, 0xd9]);
+  const trailer = makeTiff({
+    be: true,
+    ifd0: [],
+    exif: [eAscii(0x9003, '2031:01:02 03:04:05')],
+  });
+  files['jpeg-trailer-after-eoi.jpg'] = cat(
+    SOI,
+    new Uint8Array([0xff, 0xe0]),
+    u16(16, true),
+    new Uint8Array([0x4a, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00]),
+    EOI,
+    new Uint8Array([0xff, 0xe1]),
+    u16(cat(EXIF_ID, trailer).length + 2, true),
+    EXIF_ID,
+    trailer,
+    EOI,
+  );
+}
 
 mkdirSync(OUT, { recursive: true });
 for (const [name, bytes] of Object.entries(files)) {
