@@ -3071,3 +3071,78 @@ I-12a's *"§F, §H, §M must go green"* gate was unsatisfiable. Re-pointed at th
 replaced them (A-59 Parts 2–4, A-60 Part 2, and R43-3's path-keyed strip as shipped at
 `28ed249`), it is **ALL OK**, and §K now checks its own transcription against the file it
 copies so it cannot go stale unnoticed a second time. The file's header records what moved.
+
+---
+
+## Round 45 (2026-09-04, `master` @ `497c116`) — the I-13 breaker pass (§10 **A-57** / **A-58** / **A-61**)
+
+One new probe, twelve sections, **all in bare Node** — which is the point: both of this round's
+BLOCKERs reproduce in under a second with no browser, through `memoryPhotos()`/`memoryStorage()`.
+Run from `cairn/`:
+
+```bash
+node --experimental-strip-types qa/r45-i13.mjs
+   # A  the fences over `git diff 598cd7f 497c116`: zero .tsx, zero package.json/lock movement,
+   #    nothing outside cairn/, and `cairn-constraints` (no console/fetch/storage/geolocation/
+   #    ambient clock/ambient randomness/mailbox in any ADDED production line; no DOM in any
+   #    added packages/core or packages/client line). Core's export surface counted: 79 -> 83.
+   # B  **R45-1, BLOCKER** — `SCHEMA_VERSION` 1 -> 2 and `migrateDoc` has ZERO production call
+   #    sites. A document written by a build at 598cd7f is refused by core.fromJSON, by
+   #    openTrip, by importDoc and by the summary rescan.
+   # C  **R45-2, BLOCKER** — `importDoc` re-mints the TRIP id and not the PHOTO ids, and §10.3
+   #    keys the byte stores by bare PhotoId: deleting the restored copy of your own backup
+   #    destroys the ORIGINAL trip's photographs (3 of 3, measured).
+   # D  **R45-3** — the store's delete cascade fires only for the ACTIVE trip; a non-active
+   #    trip's bytes survive AND `orphanPhotoBytes` reports none.
+   # E  **R45-4** — one import after a failed availability read reports three photographs that
+   #    are on disk as `missing` (§10.6 property 3's "no longer stored on this device").
+   # F  **R45-5** — `photosFor` cannot express "availability could not be read": a rejected
+   #    present() is phase:'loading' forever, and the store has no retry method.
+   # G  **R45-6** — a photo's Provenance has no transition. acceptCandidate/rejectCandidate
+   #    throw `unsupported ref kind photo`; RefKind has no photo arm; updatePhoto names them.
+   # H  readExif: 200,000 adversarial inputs (16x the builder's sweep) — 0 throws, worst call
+   #    0.68 ms, 0 out-of-range coordinates; a 5,000-entry IFD and 2,000 APP1 segments both
+   #    terminate fast; P5 holds. Then **R45-8** (a bad sub-IFD pointer discards a readable
+   #    date), **R45-9** (the scan runs past EOI), **R45-10** (`24:00` reaches capturedAt).
+   # I  the saga: **R45-11** (concurrent imports drop a failure report), **R45-12** (an empty
+   #    MIME type is refused undecoded); and P8/P9/P10 + the before-decode ceiling, all green.
+   # J  what could NOT be broken: P12 with a PLANTED photo, copyStopInto, the byte-identical
+   #    round trip, A-61's two criteria re-derived (748.2 B/photo, longest string 13),
+   #    `cli photos`' no-decimal rule, the golden's no-coordinate rule, the `place` throw,
+   #    §10.3's day-delete re-attachment.
+   # K  **R45-13** … **R45-17**: no dismiss method; undo restores the record and not the bytes;
+   #    validateTrip's id census has no photo arm; navigator.storage.persist() is called
+   #    nowhere; BUILD-NOTES §2 says 1239 and the suite is 1316.
+   # L  the shape of Jacob's actual trip carrying photos — a one-day trip, a day in two cities,
+   #    a stop with no coordinates, an overnight leg photographed after midnight, the same file
+   #    picked twice. **All six green.**
+```
+
+**28 FAIL lines carrying 16 finding ids are the findings**, not a broken probe; the probe exits 1.
+`../docs/QA-FINDINGS.md` round 45 names each one, and R45-1 and R45-2 carry their reasoning in
+prose below the table.
+
+**`qa/i13-photo-browser.mjs` was re-cut by this round** — it now takes `--engine=chromium|webkit`:
+
+```bash
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node --experimental-strip-types qa/i13-photo-browser.mjs
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node --experimental-strip-types qa/i13-photo-browser.mjs --engine=webkit
+```
+
+Both are **ALL OK**. The re-cut is **R45-7**: the file (and I-13's BUILD-NOTES row) said *"this
+probe cannot run WebKit"*, and `/opt/pw-browsers/webkit-2215` is installed and launches. On WebKit,
+§10.4's halving loop is worth **284×** — thumb red-channel variance **1.18** with it against
+**336.15** for a single large-ratio `drawImage`, where Chromium measures 1.15 both ways. The loop is
+not unverifiable code; it is load-bearing on the engine Jacob's phone uses, and §10.5's
+no-metadata-in-a-canvas-re-encode claim and §10.3's storage shape now hold there too.
+
+Re-run, not re-written, this round: `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node
+--experimental-strip-types qa/i7a-idb-rowkeys.mjs` (**ALL OK**, three phases; `--fault=g26` →
+**2 FAIL**). Its "dead since `1820813`" story checks out — a `git worktree` at `1820813` reproduces
+`SyntaxError: Unexpected token 'export'` on every run, and `497c116`'s fix is real.
+
+**`qa/r3-upcast.mjs` is now RED and that is R45-1's rendered face, not a broken probe.** It plants a
+genuine `schemaVersion: 1` document into a real IndexedDB and boots the production bundle over it;
+at `497c116` the app prints *"One trip's file could not be read"* and the probe times out at §3
+waiting for *"Add a stop"*. It needs `npm run web:build && node tools/serve.mjs` in another shell.
+It was not in I-13's list of what was run, and it would have caught the blocker in one command.

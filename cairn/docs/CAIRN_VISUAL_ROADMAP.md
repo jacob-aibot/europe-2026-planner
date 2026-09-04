@@ -19,6 +19,59 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
+> **🔴 PHOTOS HAVE NOW BEEN ATTACKED, AND THEY DO NOT SHIP YET — as of 2026-09-04. This block is
+> the newest.** It supersedes one line in the block below: step 2d's photo half is now
+> **designed ✅ · built ✅ · verified ⚠️ · shippable ❌**. *Verified* is a warning rather than a
+> cross because the tester ran the full adversarial pass and it found things — two of them serious
+> enough to stop the work here.
+>
+> **The photo layer itself came through well.** The metadata reader was fed **200,000** deliberately
+> broken image files — random bytes, truncated files, files with a handful of bytes flipped — and it
+> never once crashed, never took longer than a millisecond, and never invented a location. Nothing
+> leaks: the stored copies genuinely have no hidden data in them, the sample build carries no photo
+> at all, and copying a stop from someone's trip carries none of their photographs. The record costs
+> what I said it costs after the correction. **None of the findings are about photographs going
+> somewhere they should not.**
+>
+> **The first stopper has nothing to do with photos, and it is the serious one.** Adding photos meant
+> giving the trip file a new version number — sensible, and the code to upgrade an old file to the
+> new version was written and tested. **It is never actually called.** Nothing in the app runs it. So
+> a trip file saved by the previous version of Cairn is now refused with *"this build reads version
+> 2 — update the app"*, and there is no app to update to. **Every trip you already have would still
+> be listed and none of it would open**, and every backup file you have ever exported would refuse to
+> restore, including the emergency export built for exactly this situation. A test that has existed
+> since round 3, which plants an old file and boots the real app over it, catches this in one
+> command; it was not run.
+>
+> **The second stopper is about photos, and it is about restoring a backup.** If you restore a backup
+> of a trip you still have, Cairn correctly gives the restored copy a new trip identity — but the
+> photographs inside it keep their old identities, and photo files are stored under those identities
+> alone. So the original and the copy end up sharing one set of stored images. Delete the restored
+> copy, and **the photographs disappear from the original trip too.** Measured: three photos in, three
+> photos gone. That needs no unusual input and no second person — just restoring your own backup and
+> then deleting the copy.
+>
+> **Four smaller things that do not work.** Deleting a trip that is not the one currently open leaves
+> its photo files behind, invisibly. If reading which photos are stored fails once, importing one more
+> photo makes Cairn tell you the rest of that trip's photographs are *"no longer stored on this
+> device"* when they are sitting right there. There is no way for a future screen to tell *"still
+> loading"* apart from *"could not read"*, which is the exact dishonest-loading-state problem the
+> design document opens by forbidding. And a photo can never be marked as accepted or rejected —
+> which matters because the whole reason photos carry that bookkeeping is the automatic
+> photo-suggestion feature in Phase 6.
+>
+> **One finding is good news.** The design says thumbnails must be shrunk in halving steps rather than
+> in one jump, and the last two rounds recorded that as unverifiable because the necessary browser
+> engine was said to be unavailable here. **It is available**, and on it the halving step is worth
+> **284×**: without it a detailed thumbnail turns to noise; with it, it is clean. On Chrome the two are
+> identical, which is why nobody had seen it. The code kept on faith turns out to be the thing that
+> stops thumbnails looking broken on an iPhone.
+>
+> **What happens next:** the two stoppers and the four smaller items go back — most to the builder as
+> straightforward fixes, three to the architect as decisions (how photo files should be named so they
+> cannot be shared between trips, whether a screen needs a fourth loading state, and whether a photo
+> should be acceptable/rejectable at all yet). Detail: `cairn/docs/QA-FINDINGS.md` round 45.
+
 > **📷 PHOTOS ARE BUILT — as of 2026-09-04. This block is the newest.** It supersedes one line in
 > both blocks below: **photos are no longer `built ❌`.** Step 2d's photo half is now
 > **designed ✅ · built ✅ · verified ❌ · shippable ❌** — built means the code exists and its own

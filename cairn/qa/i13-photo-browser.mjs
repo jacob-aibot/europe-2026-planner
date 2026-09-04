@@ -1,13 +1,25 @@
 /**
- * **I-13 — the `apps/web` half of the photo port, in real Chromium.**
+ * **I-13 — the `apps/web` half of the photo port, in a real browser engine.**
  *
  *   Run: PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers \
  *        node --experimental-strip-types qa/i13-photo-browser.mjs      (from cairn/)
+ *   Engine: `--engine=chromium` (default) or `--engine=webkit`.
  *   Faults: `--fault=p2` (the byte stores put in a SECOND database, so the cascade cannot be
  *           atomic), `--fault=p3` (`write` stores only the thumb, so `read(id,'display')` is
  *           null). **There is no `p1`, and §B explains why in a measurement rather than a
  *           sentence: on Chromium, deleting §10.4's halving loop changes nothing this probe can
  *           see, so filing it as a red fault would claim a coverage the suite has not got.**
+ *
+ * **QA round 45 re-cut — `--engine=webkit`.** As delivered this file said, in §B and in its own
+ * header, that *"this probe cannot run WebKit"*, and I-13's BUILD-NOTES row carried the same
+ * sentence as the reason for keeping §10.4's halving loop unverified. **That was wrong**:
+ * `/opt/pw-browsers/webkit-2215` is installed in this environment and `pw.webkit.launch()`
+ * succeeds (Safari 26 / AppleWebKit 605.1.15). §10.4's citation is a WebKit one and §10.5's
+ * privacy mechanism (*"a canvas re-encode carries no metadata"*) had only ever been measured on
+ * the engine Jacob does **not** use, so the engine is now a flag and both are runnable. R45-6.
+ * *(WebKit-on-Linux is not iOS Safari and this probe does not claim it is — a file input's
+ * EXIF-stripping behaviour, A-58 Part 2's central fact, is an iOS platform behaviour and stays
+ * unmeasured here. What is now measured is the rendering/encoding engine's own behaviour.)*
  *
  * **Why this file exists at all.** `packages/client`'s photo tests run against `memoryPhotos()`,
  * which deliberately does not decode anything — there is no canvas in Node and A-58 Part 5 refuses
@@ -37,7 +49,12 @@ import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import pw from '/opt/node22/lib/node_modules/playwright/index.js';
 
-const { chromium } = pw;
+const ENGINE_ARG = process.argv.find((a) => a.startsWith('--engine='));
+const ENGINE = ENGINE_ARG === undefined ? 'chromium' : ENGINE_ARG.split('=')[1].toLowerCase();
+if (!['chromium', 'webkit'].includes(ENGINE)) {
+  throw new Error(`unknown engine ${JSON.stringify(ENGINE)} — one of: chromium, webkit`);
+}
+const launcher = ENGINE === 'webkit' ? pw.webkit : pw.chromium;
 const FAULT_ARG = process.argv.find((a) => a === '--fault' || a.startsWith('--fault='));
 const FAULT = FAULT_ARG === undefined ? null : (FAULT_ARG.split('=')[1] ?? 'p2').toLowerCase();
 if (FAULT !== null && !['p2', 'p3'].includes(FAULT)) {
@@ -172,10 +189,11 @@ const server = createServer((_req, res) => {
 await new Promise((r) => server.listen(0, '127.0.0.1', r));
 const port = server.address().port;
 
-const browser = await chromium.launch();
+const browser = await launcher.launch();
 const page = await browser.newPage();
 page.on('pageerror', (e) => console.log(`  page error: ${e.message}`));
 await page.goto(`http://127.0.0.1:${port}/`);
+note(`engine: ${ENGINE} — ${await page.evaluate(() => navigator.userAgent)}`);
 await page.evaluate(prelude + '\n' + injected);
 
 // --------------------------------------------------------------------------- the source image
@@ -369,9 +387,10 @@ if (derived) {
     return sumSq / n - (sum / n) ** 2;
   }, derived.thumbBytes);
 
-  note(`thumb red-channel variance — shipped (halving loop): ${variance.toFixed(2)}; single large-ratio draw: ${quality.naive.toFixed(2)}`);
-  note('on Chromium these are the same number: its own resampler already averages. §10.4\'s loop is');
-  note('for the engines whose resampler does not, and WebKit is not reachable from this probe.');
+  note(`thumb red-channel variance on ${ENGINE} — shipped (halving loop): ${variance.toFixed(2)}; single large-ratio draw: ${quality.naive.toFixed(2)}`);
+  // R45-6: run this with `--engine=webkit` as well. §10.4's own citation is a WebKit one, so a
+  // number measured only on Chromium says nothing about the ruling it is supposed to support.
+  note(`ratio naive/shipped on ${ENGINE}: ${(quality.naive / Math.max(variance, 1e-9)).toFixed(2)} (1.00 = the loop bought nothing measurable on this engine)`);
   ok(variance < 1500,
     'the shipped path AVERAGES a 1-px checkerboard rather than point-sampling it (§10.4)',
     { variance, naive: quality.naive });
