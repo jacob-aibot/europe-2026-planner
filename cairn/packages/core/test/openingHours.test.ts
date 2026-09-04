@@ -343,7 +343,7 @@ test('A-20 assertion 5: the clock-shape regex appears exactly once in packages/c
   assert.match(matches[0], /^model\/openingHours\.ts:/);
 });
 
-test('A-20 assertion 6: isOpeningHours is NOT on the public surface (§2.10 is 83, and none of them is this)', async () => {
+test('A-20 assertion 6: isOpeningHours is NOT on the public surface (§2.10 is 86, and none of them is this)', async () => {
   const core = await import('../src/index.ts');
   // 71 at revision 19; 73 since Phase 2 I-5 added `countryOf` and `COUNTRY_INDEX` under §8.4
   // clause 1; 74 since Phase 2 I-6 added `SUMMARY_VERSION` under §8.4 clause 3; 75 since
@@ -356,11 +356,14 @@ test('A-20 assertion 6: isOpeningHours is NOT on the public surface (§2.10 is 8
   // recomputed in `packages/client`; **79 since Phase 2 I-8h added `countryParts` under §4.4
   // A-49 Part 9; 83 since Phase 2 I-13 added `addPhoto`, `removePhoto`, `updatePhoto` and
   // `readExif` under §10.1/§10.2, A-57 Part 6** — the photo record class's three build
-  // functions and the pure EXIF reader A-58 keeps in core rather than take a dependency for.
+  // functions and the pure EXIF reader A-58 keeps in core rather than take a dependency for;
+  // **86 since Phase 2 I-9 added `addParticipant`, `updateParticipant` and `removeParticipant`
+  // under §8.3/§8.9** — one build function per action, which is what §4.2 rule 1 needs from the
+  // reducer's side.
   // The assertion
   // this test exists for is the loop below — the size is the tripwire that says a widening
   // happened at all, and it is re-derived by counting, never quoted.
-  assert.equal(Object.keys(core).length, 83);
+  assert.equal(Object.keys(core).length, 86);
   for (const name of ['isClockTime', 'readWeeklyEntry', 'isOpeningHours']) {
     assert.equal(name in core, false, `${name} widened §2.10's surface`);
   }

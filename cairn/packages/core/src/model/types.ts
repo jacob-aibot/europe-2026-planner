@@ -6,7 +6,7 @@
  */
 import type {
   BookingId, CityKey, ClockTime, ConflictId, Currency, DayId, IsoDate,
-  PhotoId, PlaceId, RuleId, StopId, TripId, UserId,
+  ParticipantId, PhotoId, PlaceId, RuleId, StopId, TripId, UserId,
 } from './ids.ts';
 
 export type LatLng = { lat: number; lng: number };
@@ -141,6 +141,54 @@ export type PhotoAsset = {
    * after a user has five hundred of them is the migration this project has refused four times.
    */
   provenance: Provenance;
+};
+
+// --------------------------------------------------------- participants (§8.3)
+
+/**
+ * §8.3. `'self'` is the trip owner appearing in their own participant list; everyone else is a
+ * `'contact'`. Two members, and there is deliberately no `'friend'`: a social relationship is a
+ * `Connection` (§8.7) and is a different edge entirely.
+ */
+export type ParticipantKind = 'self' | 'contact';
+
+/** The two legal values, in one place, so the parser and the builder cannot disagree. */
+export const PARTICIPANT_KINDS: readonly ParticipantKind[] = ['self', 'contact'];
+
+/**
+ * §8.3 — *"principle 3's first entity, shipped before there is anything to grant"*.
+ *
+ * **Participation grants nothing. Not a read, not a comment, not a coordinate.** A participant
+ * is a statement about *who was on the trip*. Access is `TripMember`/`TripShare`, visibility of
+ * a location trace is `LocationShare`, a social relationship is `Connection` — five edges
+ * (§8.7) that may never be collapsed into one another. This ships now **precisely because**
+ * there is nothing to grant yet: the separation is free today and is a migration the day it is
+ * not. Nothing in `access/predicates.ts` reads this type, and nothing may: `Relationship`
+ * carries no participant field, which is the structural form of that sentence.
+ */
+export type Participant = {
+  id: ParticipantId;
+  /**
+   * A person's only identity here, and therefore the field `participant_name_empty` (§2.9,
+   * §8.3) protects: *a participant with no name renders as a ghost row and can never be
+   * re-identified.* Emptiness is the rule — a name in any script, including one that is only an
+   * emoji, is a name.
+   */
+  displayName: string;
+  kind: ParticipantKind;
+  /**
+   * §8.3: `null` *"until that person has an account AND the user links them"*. There are no
+   * accounts before Phase 3, so **every participant this build writes carries `null`, and that
+   * is correct rather than a gap** — `addParticipant` does not read a supplied one and
+   * `updateParticipant` refuses the key. The field is carried and round-trips so that linking
+   * an account is a build change and not a schema migration, exactly as `PhotoAttachRef`'s
+   * unbuilt `'place'` arm is (§10.1, A-57 Part 3).
+   *
+   * §8.3's *"cross-trip identity is therefore derived"*: a surface groups by this where it is
+   * non-null and by a normalised `displayName` otherwise, **and says that is what it is doing**.
+   */
+  userId: UserId | null;
+  note?: string;
 };
 
 // ---------------------------------------------------------------- trip (§2.2)
@@ -347,6 +395,14 @@ export type IssueCode =
   // what the FILE said and a stop's is what the plan said, and a surface answers them
   // differently.
   | 'photo_attach_dangling' | 'photo_coords_out_of_range'
+  // §8.3 / ROADMAP I-9. Both are ERRORS and both are reports rather than throws, for §2.9's
+  // standing reason: a document already carrying one must **open**, so the user can see it and
+  // act. `duplicate_participant_id` carries the third check too — *at most one `'self'`* —
+  // because §8.3 says that check "rides on the first two's mechanism" and names no third code:
+  // two rows both claiming to be the trip owner are two rows claiming one identity, which is
+  // what this code already means. `participant_name_empty` is §8.3's own argument verbatim: a
+  // participant with no name renders as a ghost row and can never be re-identified.
+  | 'duplicate_participant_id' | 'participant_name_empty'
   // QA R15-2, **ratified by §2.14 A-20 (revision 15)** with its meaning narrowed: it means
   // *this in-memory document holds a `Place.hours` that `fromJSON` would refuse*. `parsePlace`
   // used to cast `hours` through unvalidated, so six shapes the parser accepted were not
@@ -458,6 +514,19 @@ export type Trip = {
    * keystroke's debounce, snapshotted fifty deep in history and handed whole to `exportDoc`.
    */
   photos: PhotoAsset[];
+  /**
+   * §8.3. Ordered by the user; the order is the order. **At most one `'self'`**, which
+   * `validateTrip` reports rather than the build functions refusing — a document that arrives
+   * with two must open. Empty for every trip that has none, which is most of them.
+   *
+   * **Embedded in the document, not a second persisted structure.** §8.3 is explicit that a
+   * store-level people record is §2.7 **A-5**'s rejected option verbatim: it buys cross-trip
+   * identity and costs a second storage record, its own place in the §6.3 cascade, its own
+   * export/round-trip parity, its own migration and its own index that can drift from the
+   * documents. Embedding gives round-trip parity, deletion and undo for free — undo because
+   * history is a `Trip` snapshot (§4.2 rule 5) and this is part of the `Trip`.
+   */
+  participants: Participant[];
   revision: number;
   schemaVersion: 2;
   meta?: TripMeta;

@@ -6,11 +6,11 @@
  * is useless when a document has 112 stops.
  */
 import type {
-  Booking, City, CostEstimate, DatePrecision, Day, Money, OpeningHours, PhotoAsset,
+  Booking, City, CostEstimate, DatePrecision, Day, Money, OpeningHours, Participant, PhotoAsset,
   PhotoAttachRef, PhotoDerivative, Place, PlaceLink,
   Provenance, Stop, StopPlacement, Ticket, Trip, ConflictResolution,
 } from '../model/types.ts';
-import { DATE_PRECISIONS, SCHEMA_VERSION } from '../model/types.ts';
+import { DATE_PRECISIONS, PARTICIPANT_KINDS, SCHEMA_VERSION } from '../model/types.ts';
 import { isClockTime } from '../model/openingHours.ts';
 import { isIsoDate } from '../model/ids.ts';
 import { TripParseError } from './parseError.ts';
@@ -468,6 +468,61 @@ function parsePhoto(v: unknown, path: string): PhotoAsset {
   };
 }
 
+/**
+ * §8.3's `Participant`, hand-validated like every other record here (no zod —
+ * `cairn-constraints` §2). Each field is rebuilt by name, so an unenumerated key cannot survive
+ * the parser at all.
+ *
+ * **`userId` is parsed, not refused.** It is `null` on everything this build writes (§8.3), and
+ * the field is carried so that a document from a later build — one where the user has linked an
+ * account — is readable rather than rejected. That is `PhotoAttachRef`'s unbuilt `'place'` arm,
+ * one record over: the union carries the arm so adding it is a build change and not a schema
+ * one, and `build/participants.ts` is where the deferral is enforced.
+ */
+function parseParticipant(v: unknown, path: string): Participant {
+  const o = obj(v, path);
+  return {
+    id: str(o.id, `${path}.id`),
+    displayName: str(o.displayName, `${path}.displayName`),
+    kind: oneOf(o.kind, PARTICIPANT_KINDS, `${path}.kind`),
+    userId: o.userId === undefined || o.userId === null ? null : str(o.userId, `${path}.userId`),
+    ...(o.note !== undefined ? { note: str(o.note, `${path}.note`) } : {}),
+  };
+}
+
+/**
+ * **ROADMAP I-9: `fromJSON` rejects a document with a duplicate participant id** — refused here,
+ * at the offending index, with the path.
+ *
+ * A note on where this sits, because it is the one place participants depart from the pattern
+ * §2.9 uses for `duplicate_city_key`, and the departure was ordered rather than chosen
+ * (**KD-97**). A-20's
+ * split is *"`fromJSON` decides whether a document IS a `Trip`; `validateTrip` decides whether a
+ * `Trip` says something wrong"*, and a duplicate `CityKey` is deliberately on the second side:
+ * documents already carry the `"-"` collision, and refusing to parse one would make it
+ * unopenable (QA P2-7). No document carries a duplicate `ParticipantId` — the record class is
+ * new and its ids come only from the injected factory — so the refusal strands nobody's data,
+ * and the increment's own verification bullet asks for it by name.
+ *
+ * `validateTrip`'s `duplicate_participant_id` is **not** made redundant by this and is not dead
+ * code: it is the exact shape `place_hours_malformed` has since A-20 — *this in-memory document
+ * holds something `fromJSON` would refuse* — and it reports the trips built past the type system
+ * (a cast, a native bridge, a future untyped writer), including the one whose export would
+ * therefore fail to re-import. Without it the user learns their backup is unrestorable at
+ * restore time.
+ */
+function parseParticipants(v: unknown, path: string): Participant[] {
+  const seen = new Set<string>();
+  return arr(v, path).map((p, i) => {
+    const parsed = parseParticipant(p, `${path}[${i}]`);
+    if (seen.has(parsed.id)) {
+      throw new TripParseError(`duplicate participant id ${JSON.stringify(parsed.id)}`, `${path}[${i}].id`);
+    }
+    seen.add(parsed.id);
+    return parsed;
+  });
+}
+
 function parseResolution(v: unknown, path: string): ConflictResolution {
   const o = obj(v, path);
   return {
@@ -554,6 +609,13 @@ export function fromJSON(input: string | unknown): Trip {
     // migrated object without depending on which of the two ran first. A PRESENT value is
     // hand-validated in full, exactly like every other array here.
     photos: o.photos === undefined ? [] : arr(o.photos, '$.photos').map((p, i) => parsePhoto(p, `$.photos[${i}]`)),
+    // §8.3. **Absent is accepted and means `[]`** — every document written before I-9 is one,
+    // and `[]` is a total default, so this earns no `SCHEMA_VERSION` bump under `migrate.ts`'s
+    // first half. The second half of that rule (`photos` earned a bump because it *is* records)
+    // reads onto this field too, and I-9 authorises no bump: **KD-96**, flagged for the
+    // architect rather than settled here. A PRESENT value is hand-validated in full, and a
+    // duplicate id inside it is refused — see `parseParticipants`.
+    participants: o.participants === undefined ? [] : parseParticipants(o.participants, '$.participants'),
     resolutions: arr(o.resolutions, '$.resolutions').map((r, i) => parseResolution(r, `$.resolutions[${i}]`)),
     revision: numOf(o.revision, '$.revision'),
     schemaVersion: SCHEMA_VERSION,

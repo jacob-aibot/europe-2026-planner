@@ -15,6 +15,14 @@ export type ConflictId = string;
 export type UserId = string;
 /** §10.1. Opaque, like every other id here; minted by the injected `IdFactory`, never parsed. */
 export type PhotoId = string;
+/**
+ * §8.3. Opaque, like every other id here; minted by the injected `IdFactory`, never parsed.
+ *
+ * It is **not** a `UserId` and may never be treated as one. A participant is a statement about
+ * who was on the trip; `Participant.userId` is the separate, nullable link to an account, and
+ * collapsing the two is the first of the five collapses §8.7 forbids.
+ */
+export type ParticipantId = string;
 export type CityKey = string;
 export type RuleId = string;
 /**

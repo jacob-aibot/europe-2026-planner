@@ -145,6 +145,15 @@ export function redactForSample(trip) {
     // and it fails CLOSED thereafter: the field is written unconditionally, so a trip that
     // acquires photos later does not need anyone to remember this line exists.
     photos: [],
+    // ARCHITECTURE §8.3 / §6.6 — the same move, for the same reason and on the same terms. A
+    // participant is **a named third party**: `displayName` is a real person's name and `note`
+    // is free text about them, neither of which belongs in a shipped bundle anyone can fetch,
+    // and neither of which is the sample's to demonstrate. DROPPED, not redacted.
+    //
+    // **It lands before the reference trip has a participant, which is the only moment it is
+    // free**, and it fails CLOSED thereafter: the field is written unconditionally, so a trip
+    // that acquires participants later does not need anyone to remember this line exists.
+    participants: [],
     ...(trip.meta ? { meta: trip.meta } : {}),
   }));
 }

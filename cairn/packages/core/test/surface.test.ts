@@ -42,7 +42,14 @@
  * `readExif` is both as well, and A-58 Part 3 is why it is in core rather than in `apps/web`.
  * `reattachDanglingPhotos` stays internal: it is §10.3's repair applied by `removeStop` and
  * `ensureDays`, and exporting it would publish a way to rewrite a photo's attachment with no
- * gate — R5-5's argument, one record class over.)
+ * gate — R5-5's argument, one record class over.
+ * **`addParticipant`, `updateParticipant` and `removeParticipant` join at Phase 2 I-9** under
+ * §8.3 — 83 → 86. All three are P2 (§8.9 names them outright as *"the participant build
+ * functions"*) and P1 (`packages/client`'s `ACTION_SPECS` resolves `core[spec.coreFn]` off this
+ * index for all three). `PARTICIPANT_KINDS` stays internal for `DATE_PRECISIONS`' reason: it is
+ * the parser's and the builder's shared enum and a caller that can read it is a caller that will
+ * grow a second copy. `Participant`, `ParticipantKind`, `ParticipantId`, `ParticipantInit` and
+ * `ParticipantPatch` are **types** and do not count.)
  * A symbol added to `index.ts` without
  * being added to §2.10 fails; a symbol in §2.10 that is not exported fails. Widening the
  * surface is a documentation change first — add the caller or add the section that names
@@ -60,18 +67,20 @@ import * as core from '../src/index.ts';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CAIRN = resolve(HERE, '..', '..', '..');
 
-/** §2.10, transcribed. Runtime symbols only — 83 of them, grouped as the section groups them. */
+/** §2.10, transcribed. Runtime symbols only — 86 of them, grouped as the section groups them. */
 const THE_LIST = [
   // model (8)
   'LOCAL_OWNER', 'SCHEMA_VERSION', 'sequentialIds', 'formatRange', 'costFromDisplay',
   'TripParseError', 'ForeignDocumentError',
   'isIsoDate',
-  // build (20) — +addPhoto/removePhoto/updatePhoto at Phase 2 I-13, §10.1, A-57 Part 6
+  // build (23) — +addPhoto/removePhoto/updatePhoto at Phase 2 I-13, §10.1, A-57 Part 6
+  //            — +addParticipant/updateParticipant/removeParticipant at Phase 2 I-9, §8.3/§8.9
   'createTrip', 'ensureDays', 'setTripMeta', 'setDayMeta',
   'addStop', 'updateStop', 'removeStop', 'moveStop', 'reorderStop',
   'scheduleFromPool', 'returnToPool', 'poolFor',
   'acceptCandidate', 'rejectCandidate', 'copyStopInto', 'upsertBooking', 'linkBooking',
   'addPhoto', 'removePhoto', 'updatePhoto',
+  'addParticipant', 'updateParticipant', 'removeParticipant',
   // photo (1) — §10.2
   'readExif',
   // derive (29)
@@ -102,9 +111,9 @@ const THE_LIST = [
 const runtimeExports = () =>
   Object.keys(core).filter((k) => typeof (core as Record<string, unknown>)[k] !== 'undefined');
 
-test('§2.10 is 83 symbols, and the list in this file is exactly that long', () => {
-  assert.equal(THE_LIST.length, 83, 'the transcribed list is no longer §2.10\'s stated size');
-  assert.equal(new Set(THE_LIST).size, 83, 'the list has a duplicate');
+test('§2.10 is 86 symbols, and the list in this file is exactly that long', () => {
+  assert.equal(THE_LIST.length, 86, 'the transcribed list is no longer §2.10\'s stated size');
+  assert.equal(new Set(THE_LIST).size, 86, 'the list has a duplicate');
 });
 
 test('the index exports exactly §2.10\'s list — set equality, both directions', () => {

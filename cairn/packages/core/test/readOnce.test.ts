@@ -133,6 +133,13 @@ const TRIP_SKELETON: ReadonlySet<string> = new Set([
   // needs no change to `copyStop.ts`"* — and `packages/core/test/photos.test.ts` asserts it
   // directly, on the output, which is strictly stronger than a read count.
   'photos',
+  // §8.3, Phase 2 I-9. `participants` joins on `photos`' terms exactly: it is a collection of the
+  // document skeleton, a `{...trip}` on the copy path reads it, and what would be censused is the
+  // spread rather than a decision about a row. The property this file would otherwise be
+  // asserting — that `copyStopInto` carries no participant — is stated directly on the OUTPUT in
+  // `packages/core/test/participants.test.ts` (the copy target's `participants` stays `[]`),
+  // which is strictly stronger than a read count.
+  'participants',
 ]);
 
 function censusTrip(trip: Trip, counts: Counts, path: string, opaque: ReadonlySet<unknown>): Trip {
@@ -199,8 +206,8 @@ const ALLOWED: Record<string, { max: number; why: string }> = {
 const CENSUS_TRIP_FIELDS: Record<keyof Trip, true> = {
   id: true, title: true, ownerId: true, startDate: true, endDate: true, datePrecision: true,
   homeCurrency: true, homeBase: true, party: true, cities: true, days: true, pool: true,
-  places: true, bookings: true, resolutions: true, photos: true, revision: true,
-  schemaVersion: true, meta: true,
+  places: true, bookings: true, resolutions: true, photos: true, participants: true,
+  revision: true, schemaVersion: true, meta: true,
 };
 const CENSUS_STOP_FIELDS: Record<keyof Stop, true> = {
   id: true, placement: true, name: true, category: true, place: true, note: true, cost: true,

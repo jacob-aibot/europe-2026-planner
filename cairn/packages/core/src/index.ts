@@ -1,14 +1,16 @@
 /**
  * `@cairn/core` — the public surface of ARCHITECTURE §2.10 and nothing else.
  *
- * **83 runtime symbols, one list, set equality in both directions** (69 at revision 5, QA R2-12,
+ * **86 runtime symbols, one list, set equality in both directions** (69 at revision 5, QA R2-12,
  * BUILD-NOTES KD-33; +`reassertRetirements` at revision 6; +`lifecycle` at Phase 2 I-1;
  * +`countryOf` and `COUNTRY_INDEX` at Phase 2 I-5; +`SUMMARY_VERSION` at Phase 2 I-6;
  * +`travelStats` at Phase 2 I-7; +`clusterPoints` at Phase 2 I-8d, §4.4 A-41 Part 6;
  * +`isIsoDate` at Phase 2 I-8e, §2.9 A-46 Part 2; +`countryKeyPoint` at Phase 2 I-8g,
  * §4.4 A-48 Part 2; **+`addPhoto`, `removePhoto`, `updatePhoto` and `readExif` at Phase 2 I-13,
  * §10.1/§10.2, A-57 Part 6 — 79 → 83, counted in this pass and pinned in §2.10 and ROADMAP
- * criterion E in the same commit, which is §8.9's rule**). It used to be 110 against a 50-name list plus a 60-name "beyond §2.10,
+ * criterion E in the same commit, which is §8.9's rule**; **+`addParticipant`,
+ * `updateParticipant` and `removeParticipant` at Phase 2 I-9, §8.3/§8.9 — 83 → 86, counted in
+ * that pass**). It used to be 110 against a 50-name list plus a 60-name "beyond §2.10,
  * each with a justification" list, which made the acceptance criterion true by construction:
  * 110 = 50 + 60 for *any* 110 exports. A boundary the Phase 2 server and the Phase 4 native
  * app are written against cannot be "110 against 50, enumerated".
@@ -38,9 +40,10 @@ export type {
   Leg, Issue, IssueCode, Ref, RefKind, LatLng, StopCategory, StopFlag, TravelMode, TravelRole,
   MoveOverride, CostRollUp, DisplayStatus, OpeningHours, Link, TripCtx, TripMeta, DatePrecision,
   PhotoAsset, PhotoAttachRef, PhotoDerivative,
+  Participant, ParticipantKind,
 } from './model/types.ts';
 export { SCHEMA_VERSION, LOCAL_OWNER } from './model/types.ts';
-export type { TripId, DayId, StopId, PlaceId, PhotoId, BookingId, ConflictId, UserId, CityKey, RuleId, CountryCode, IsoDate, ClockTime, Currency, IdFactory, ClockPort } from './model/ids.ts';
+export type { TripId, DayId, StopId, PlaceId, PhotoId, ParticipantId, BookingId, ConflictId, UserId, CityKey, RuleId, CountryCode, IsoDate, ClockTime, Currency, IdFactory, ClockPort } from './model/ids.ts';
 export { sequentialIds } from './model/ids.ts';
 // §2.9 **A-46** Part 2 / §2.10, Phase 2 I-8e. A **predicate, not a parser**: A-45 made this the
 // definition of a date for the whole system and left it reachable only from inside core, so
@@ -82,6 +85,13 @@ export type { CopyStopSource, CopyStopCtx } from './build/copyStop.ts';
 // it would publish a way to rewrite a photo's attachment with no gate.
 export { addPhoto, removePhoto, updatePhoto } from './build/photos.ts';
 export type { PhotoInit, PhotoPatch } from './build/photos.ts';
+// §8.3, Phase 2 **I-9**. Three build functions, one per action, on both P1's and P2's terms:
+// `packages/client` dispatches all three through `ACTION_SPECS`, which resolves
+// `core[spec.coreFn]` off THIS index and nothing else, and §8.9 names all three by name as the
+// participant build functions §2.10's list gains. `ParticipantInit` deliberately carries neither
+// `id` nor `userId` — see `build/participants.ts` for why both omissions are load-bearing.
+export { addParticipant, updateParticipant, removeParticipant } from './build/participants.ts';
+export type { ParticipantInit, ParticipantPatch } from './build/participants.ts';
 
 // ---- derive (26) -------------------------------------------------------------
 // `countryOf` and `COUNTRY_INDEX` join in revision 20's terms under Phase 2 I-5: §8.4 clause 1

@@ -1,5 +1,31 @@
 # Cairn — build notes, Phase 1 (and Phase 2 in progress)
 
+> **Addendum — ROADMAP `I-9`: participants in core (ARCHITECTURE **§8.3**). `Participant`,
+> `Trip.participants`, three build functions, two validation codes — and no screen.**
+> Builds on `4b02206` (I-12a item 5). **Route: builder + breaker, mandatory** — it widens
+> `packages/core`'s export surface, which is `cairn/CLAUDE.md`'s delegation trigger. **New files:**
+> `packages/core/src/build/participants.ts`, `packages/core/test/participants.test.ts`,
+> `packages/client/test/participants.test.ts`. **Edited:** `model/ids.ts`, `model/types.ts`,
+> `build/createTrip.ts`, `serialize/toJSON.ts`, `serialize/fromJSON.ts`, `validate/validateTrip.ts`,
+> `index.ts`, `import/legacyDays.ts`, `packages/client/src/store/actions.ts`, `tools/redact.mjs`,
+> four pinned-count sites in tests, and `ARCHITECTURE.md` §2.10 / `ROADMAP.md` criterion E / this
+> document. **Zero `.tsx`, zero `qa/`, zero `docs/design/`, zero new dependency.**
+>
+> | | |
+> |---|---|
+> | **What runs, and the exact commands** | `cd cairn && npm run test:tap` → **1498 tests, 1498 pass, 0 fail, 0 skipped, 0 cancelled**. Baseline **measured, not quoted**: `git stash -u` at `4b02206` → **1454 pass / 0 fail**, so **+44 tests**, which is exactly this pass's 38 core + 6 client. `cd cairn && npm run typecheck` → **clean on both projects, exit 0** (it runs `npm run sample` first, so `tools/redact.mjs`'s new line is executed by the typecheck command as well). |
+> | **The model** | `Participant = { id, displayName, kind: 'self'\|'contact', userId: UserId \| null, note? }` and `Trip.participants: Participant[]`, transcribed from §8.3. `ParticipantId` is a new opaque alias in `model/ids.ts`; `PARTICIPANT_KINDS` is the parser's and the builder's shared enum and is **not** exported. **Embedded in the document, not a second persisted structure** — §8.3 refuses that as §2.7 A-5's rejected option — so round-trip parity, deletion and undo needed no new machinery and are asserted rather than built. |
+> | **The three build functions** | `addParticipant(trip, init, ctx)` · `updateParticipant(trip, participantId, patch)` · `removeParticipant(trip, participantId)`. Pure, immutable, `revision` bumped **once** each. **`ParticipantInit` carries neither `id` nor `userId`, and both omissions are load-bearing**: the id comes only from the injected `IdFactory`, which is what makes a duplicate unmintable from any shipped path rather than merely checked; and `userId` is `null` until Phase 3 (§8.3), so no caller can assert that a participant *is* an account holder. `updateParticipant`'s runtime allowlist refuses `id` and `userId` on key **presence**, `undefined` included — `updatePhoto`'s idiom, §2.1's rule. |
+> | **Participation grants nothing, and the strongest form of the claim is structural** | `access/predicates.ts` takes a `Relationship`, which has no participant field, so there is no expression a participant can appear in. Two tests state the observable half: a participant who is neither owner, member nor share holder is denied **all five** operations including `view`, and handing `canView` a relationship object with `participants` bolted on returns the identical answer. `copyStopInto` carries no participant, asserted on the **output**. `travelStats`, `tripSummary` and `SUMMARY_VERSION` are untouched — a participant reaches no summary row. |
+> | **Two validation codes, three checks, every one with an injected fault** | `duplicate_participant_id` (error) and `participant_name_empty` (error), plus **at most one `'self'`** riding on the first's code and mechanism, which is what §8.3 asks for when it says the third check *"rides on the first two's mechanism"* and names no third code. All three are `Issue`s and not throws (§2.9: a document carrying one must **open**). The `ref` is the **trip** — `RefKind` has no `'participant'` arm and widening it is an architect's ruling (QA R45-6) — and **no participant id reaches a `message`**, which is A-10/R13-7's rule for `CityKey` applied to a second opaque id, asserted by its own test. |
+> | **The attack list, item by item** | **200 participants** — clean, 200 distinct ids, round-trips byte-identically. **Same name, different ids** — allowed; names are not unique and §8.3's grouping is explicitly a *derived*, named limitation. **Same id twice** — `duplicate_participant_id`, and `fromJSON` refuses it outright at `$.participants[1].id`. **`displayName: ''`** — `participant_name_empty`; whitespace-only too. **Emoji-only name** — **allowed**, and deliberately: the rule is emptiness, and §8.3's argument is re-identification, which `🐈` satisfies. **`kind:'self'` twice** — rejected, reported once on the second row. **`kind:'self'` zero times** — **allowed**, because §8.3 says *at most one*, never *exactly one*; a rule requiring one would fire on every trip that exists. |
+> | **Undo/redo at depth 50, both layers** | In core, 50 snapshots taken and restored, with the oldest asserted **empty** so the test cannot pass by aliasing. Through the real store, `HISTORY_LIMIT + 10` dispatches that do **not** touch `participants`, then 50 `undo()` and 50 `redo()` — `datePrecision`'s I-2 test, one record class over. Plus: `undo` of a `removeParticipant` restores the row exactly, and the list survives a save/reopen through `StoragePort`. |
+> | **1:1 onto core, no domain logic in the reducer** | Three entries in `ACTION_SPECS`, three distinct `coreFn`s, `args` doing marshalling only — the defaults (`kind:'contact'`, `userId:null`) are core's. `store.test.ts`'s existing "no switch over action types" and "every action names a core export" tests cover the new rows automatically; `packages/client/test/participants.test.ts` additionally pins that the three names are distinct and that a dispatch bumps `revision` exactly once. **No store method was added** — nothing on screen calls one yet, and I-10 is deferred. |
+> | **Export surface: 83 → 86, re-counted** | `node --experimental-strip-types -e "import('./packages/core/src/index.ts').then(m => console.log(Object.keys(m).length))"` → **86**. Written into §2.10's list, ROADMAP criterion E, `surface.test.ts`, `index.ts`'s header and the two other pinned sites (`packages/client/test/generation.test.ts` G9, `packages/core/test/openingHours.test.ts` A-20 assertion 6) in this commit. **§2.10's prose was 79 and the code was 83** — I-13 updated `index.ts` and `surface.test.ts` but not the section, which is `SUMMARY_VERSION`'s revision-24 correction verbatim; the photo four are folded in here so the list is complete at 86 rather than complete at 82 and wrong. §2.10 gains a `photo (1)` group for `readExif`, which had no group at all. |
+> | **§6.6 — the sample generator drops participants** | `tools/redact.mjs` writes `participants: []` unconditionally, on `photos`' terms and for `photos`' reason: `displayName` is **a named third party** and `note` is free text about them. It lands before the reference trip has a participant, which is the only moment it is free, and it fails **closed** thereafter. |
+> | **What I could NOT verify** | **Nothing rendered, and nothing on the CLI.** I-9 ships no screen by its own *User-visible outcome* line and I-10 is deferred, so there is no surface to check; `cli.ts` prints no participant and was not changed or run. **No browser, no Playwright, no `qa/` probe run** — this pass is fenced out of `qa/` and none of the existing probes touch participants. The **downgrade** scenario in KD-96 is reasoned, not executed: I did not build an old client and open a new document with it. |
+> | **Objections to the design — two, both written up rather than acted on** | **KD-96** is the one worth a manager's eye: `participants` **is records** by `migrate.ts`'s own rule as A-57 Part 5 applied it to `photos`, so an older build opening a new document and saving it silently deletes the user's record of who they travelled with — and I-9 authorises no `SCHEMA_VERSION` bump, so none was taken. **KD-97** records that `fromJSON` refusing a duplicate participant id (ROADMAP I-9 asks for it by name) sits on the far side of A-20's split from where `duplicate_city_key` deliberately sits; both mechanisms were built, the pair is coherent, and the note says exactly what to delete if the architect prefers one side. |
+
 > **Addendum — ROADMAP `I-12a` item 5: the disjointness test reads the edges the row SUPPLIED, and
 > the half-null fork is pinned on both sides (§8.4 **A-60 Part 6**, architect revision 42, `598cd7f`).
 > Closes QA round 44's **R44-2**.**
@@ -4370,12 +4396,76 @@ the breaker to re-cut, with the evidence that the properties they assert still h
    merge removes exactly one call; that published number is correct again by accident and is worth
    an architect's eye rather than a builder's edit.
 
+### KD-96 — `Trip.participants` **is records**, and `migrate.ts`'s own rule as applied to `photos` would earn a `SCHEMA_VERSION` bump. I-9 authorises none, so none was taken (doc-only, architect)
+
+**Where:** `packages/core/src/serialize/fromJSON.ts` (`participants:`) · `packages/core/src/serialize/migrate.ts`
+· `packages/core/src/model/types.ts` (`SCHEMA_VERSION`'s ledger) · ARCHITECTURE §8.3, §10.3 **A-57**
+Part 5 · ROADMAP **I-9**.
+
+`migrate.ts` states the rule in two halves: *"a field that is additive with a total default does not
+earn a bump — a bump is reserved for a value widening that an older client would silently drop."*
+`photos` went to `SCHEMA_VERSION` 2 on the **second** half, in A-57 Part 5's own words: `[]` is a
+total default, so the first half seems to apply and does not, because *"`photos` **is** records"* and
+an older build opening a v2 document and saving it deletes them.
+
+**`participants` is records by the identical argument.** An older build (anything at or before
+`552c439`) opening a document written after I-9 parses it — `fromJSON` ignores unknown keys — and
+`toJSON` then re-emits the document **without** the participants, silently deleting the user's record
+of who they travelled with. That is the same harm, one record class over.
+
+**No bump was taken, deliberately.** §8.3 says nothing about `SCHEMA_VERSION`, ROADMAP I-9's *Built*
+and *Ship gate* bullets say nothing about it, and A-57 Part 5 is the *ruling* that authorised the
+last one. Bumping to 3 makes every current build refuse every new document (*"Update the app."*),
+adds a `migrateDoc` v2 → v3 case, and moves a number that three test files and several `qa/` probes
+pin — that is an architect's decision, not a builder's, and this project's rule is to implement the
+architecture and write the objection down rather than redesign in code.
+
+**What the exposure actually is, measured:** the only build that can write `participants` is this
+one, and the only build that would drop them is one older than this commit. There is no release in
+between, so the window is *"a user who downgrades"*, not *"a user who upgrades"*. If the architect
+rules for a bump, the change is `SCHEMA_VERSION = 3`, a `migrateDoc` case supplying
+`participants: []`, and the three pinned counts — it touches neither `build/participants.ts`,
+`validateTrip`, nor either serializer's participant code.
+
+### KD-97 — `fromJSON` refuses a duplicate participant id, which is the far side of A-20's split from where `duplicate_city_key` sits (design tension, architect)
+
+**Where:** `packages/core/src/serialize/fromJSON.ts` (`parseParticipants`) ·
+`packages/core/src/validate/validateTrip.ts` (participants block) · ARCHITECTURE §2.9, §2.14 **A-20**,
+§8.3 · ROADMAP **I-9** *Verification*.
+
+ROADMAP I-9 asks, by name, for *"`fromJSON` rejects a duplicate participant id"*, and it is built:
+`TripParseError` at `$.participants[n].id`. That is a **parser** refusal, and A-20's split is
+*"`fromJSON` decides whether a document IS a `Trip`; `validateTrip` decides whether a `Trip` says
+something wrong"* — under which a duplicate id looks like the second kind. §2.9 says so explicitly
+for `duplicate_city_key`: a document already carrying the `"-"` collision *must open*, because
+refusing to parse it makes it unopenable (QA P2-7), and `duplicate_id` for days, places, bookings,
+stops and photos is on the same side.
+
+**Both were built, and the pair is coherent rather than redundant.** The parser refuses;
+`validateTrip` reports `duplicate_participant_id` for a `Trip` that never met the parser — a cast, a
+hand-built document, a native bridge — which is precisely the population `place_hours_malformed` has
+had since A-20 (*"this in-memory document holds something `fromJSON` would refuse"*), including the
+in-memory document whose **export would fail to re-import**. Without the validation code the user
+learns their backup is unrestorable at restore time.
+
+**Why the parser refusal is defensible here specifically and not in general:** no document in
+existence carries a duplicate `ParticipantId`. The record class is new, `addParticipant` takes no
+caller-supplied id, and the only source of one is the injected factory — so the refusal strands
+nobody's data, which is the exact fact §2.9's *"must open"* argument turns on. That reasoning does
+**not** transfer to `duplicate_city_key`, and nothing here proposes moving it.
+
+Recorded because the two sit on opposite sides of a stated split and a reader comparing them will
+notice. If the architect prefers one side, deleting the six-line seen-set in `parseParticipants`
+leaves `validateTrip` covering the case and reddens exactly one test
+(`packages/core/test/participants.test.ts`, *"fromJSON rejects a document with a duplicate
+participant id, naming the path"*), which is then ROADMAP I-9's own verification bullet to withdraw.
+
 ## 2. How to run it
 
 ```bash
 cd cairn
 npm install
-npm test          # 1441 tests as of I-13i. Plain node, no browser, no network.
+npm test          # 1498 tests as of I-9. Plain node, no browser, no network.
                   # (387 from Phase 1 until R44-4, then 1239 until R45-17, then 1332 through the
                   #  round-45 fix pass, 1348 at I-13b, 1359 at the round-46 fix pass, 1376 at
                   #  I-13d, 1430 at the round-50 fix pass; re-measured each time by running

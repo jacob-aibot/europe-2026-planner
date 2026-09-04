@@ -7,7 +7,7 @@
  * Structural problems are `error`. Things that are probably wrong but might be deliberate
  * are `warn`. Nothing here throws and nothing here mutates.
  */
-import type { Issue, Provenance, Ref, Stop, Trip } from '../model/types.ts';
+import type { Issue, Participant, Provenance, Ref, Stop, Trip } from '../model/types.ts';
 import { addDays, dayNumber } from '../derive/summary.ts';
 import { attribution } from '../derive/display.ts';
 import { inRange, stopLatLng } from '../derive/geo.ts';
@@ -590,6 +590,76 @@ export function validateTrip(trip: Trip): Issue[] {
         message: `${label} has no provenance.`,
         params: { photoId: p.id },
       });
+    }
+  }
+
+  // --- participants (§8.3, ROADMAP I-9) -------------------------------------------
+  // Two codes, three checks, and **all three are reports rather than throws** — §2.9's standing
+  // reason: a document already carrying one must OPEN, so the user can see it and act.
+  //
+  // The population is documents built past the type system. `addParticipant` mints its id from
+  // the injected factory and takes none from a caller, and `fromJSON` refuses a duplicate id at
+  // the parser (ROADMAP I-9's own verification bullet), so what is left for these to catch is a
+  // cast, a hand-built `Trip`, a native bridge, or the in-memory document whose EXPORT would
+  // fail to re-import — which is exactly `place_hours_malformed`'s shape since A-20, and exactly
+  // why it is not dead code: without this the user learns the backup is unrestorable at restore
+  // time.
+  //
+  // **No participant id reaches a `message`.** A `ParticipantId` is an opaque minted string
+  // (§2.1) and `Issue.message` is the sentence shown in the Issues panel — the same argument
+  // A-10/R13-7 made for `CityKey`. The ids go in `params`, where a surface can decide.
+  //
+  // The `ref` is the **trip**, as every photo issue above is: `RefKind` has no `'participant'`
+  // arm, and widening core's export surface is an architect's ruling (QA R45-6), not a check's.
+  const tripRef = { kind: 'trip' as const, id: trip.id };
+  const participantIdsSeen = new Map<string, string>();
+  let selfSeen: Participant | null = null;
+  for (const p of trip.participants ?? []) {
+    const first = participantIdsSeen.get(p.id);
+    if (first !== undefined) {
+      // Structurally broken, not merely untidy: `updateParticipant` edits the first row and
+      // `removeParticipant` deletes both, so the two can never be told apart or edited apart.
+      push({
+        level: 'error',
+        code: 'duplicate_participant_id',
+        ref: tripRef,
+        message:
+          `Two people on this trip — ${namePhrase(first)} and ${namePhrase(p.displayName)} — share one ` +
+          `record, so editing or removing either one affects both.`,
+        params: { tripId: trip.id, participantId: p.id },
+      });
+    } else participantIdsSeen.set(p.id, p.displayName);
+
+    if (!p.displayName.trim()) {
+      // §8.3 verbatim: a participant with no name renders as a ghost row and can never be
+      // re-identified. A name in any script is a name — emptiness is the whole rule.
+      push({
+        level: 'error',
+        code: 'participant_name_empty',
+        ref: tripRef,
+        message:
+          'Someone on this trip has no name, so nothing can label them and nobody can tell who ' +
+          'they were meant to be.',
+        params: { tripId: trip.id, participantId: p.id },
+      });
+    }
+
+    // §8.3's third check, riding on the first's code and mechanism: `'self'` IS `trip.ownerId`,
+    // so two `'self'` rows are two rows asserting one identity. **Zero is legal** — §8.3 says
+    // "at most one", never "exactly one", and a trip whose owner has not recorded themselves is
+    // an ordinary trip. Reported once, on the second row, not once per row after it.
+    if (p.kind === 'self') {
+      if (selfSeen !== null) {
+        push({
+          level: 'error',
+          code: 'duplicate_participant_id',
+          ref: tripRef,
+          message:
+            `Two people on this trip — ${namePhrase(selfSeen.displayName)} and ` +
+            `${namePhrase(p.displayName)} — are both marked as you, and a trip has one owner.`,
+          params: { tripId: trip.id, participantId: p.id, otherParticipantId: selfSeen.id, kind: 'self' },
+        });
+      } else selfSeen = p;
     }
   }
 

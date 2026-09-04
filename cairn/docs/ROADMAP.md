@@ -1457,11 +1457,16 @@ not decoration.
 - **`cli export` refuses any path that normalises outside `cairn/`** `[stated]`
 - **The dependency-direction test exists and passes**, including "nothing under `apps/` imports
   `tools/extract-legacy.mjs`" `[stated]`
-- **`packages/core/src/index.ts`'s runtime exports equal §2.10's list exactly — 75 symbols** (69 in revision
+- **`packages/core/src/index.ts`'s runtime exports equal §2.10's list exactly — 86 symbols** (69 in revision
   5; `reassertRetirements` joins in revision 6 under P1, §2.7 A-5; `lifecycle` joins in revision 10 under
   P2, §8.1/§8.9, counted in Phase 2 I-1's own pass; `countryOf` under P2 and `COUNTRY_INDEX` under P1,
   §8.4 clause 1, counted in Phase 2 I-5's own pass; **`SUMMARY_VERSION` under P1 at I-6** — the client's
-  rescan compares against it — **and `travelStats` under both P1 and P2 at I-7**, §8.4 clause 2 / A-31),
+  rescan compares against it — **and `travelStats` under both P1 and P2 at I-7**, §8.4 clause 2 / A-31;
+  `clusterPoints` at I-8d, `isIsoDate` at I-8e, `countryKeyPoint` at I-8g and `countryParts` at I-8h take it
+  to **79**; **`addPhoto`, `removePhoto`, `updatePhoto` and `readExif` at I-13** under §10.1/§10.2, A-57
+  Part 6, take it to **83**; **`addParticipant`, `updateParticipant` and `removeParticipant` at I-9** under
+  §8.3/§8.9 take it to **86**, re-counted in I-9's own pass and written into §2.10 and this line in the same
+  commit),
   **one list, set equality in both directions** `[stated]`. *(**Revision 25, QA R28-8.** This number said
   **73** from I-5 until now: the count was not updated in I-6's commit or I-7's, which the increment
   sequence's own rule — *"an increment that adds an export updates §2.10's list and criterion E's count in

@@ -124,6 +124,10 @@ export function createTrip(init: TripInit, ctx: BuildCtx): Trip {
     resolutions: [],
     // §10.1. Every trip has the field; an empty trip has none of them.
     photos: [],
+    // §8.3. Same shape, same reason — and `createTrip` mints no `'self'` row: recording that
+    // you were on your own trip is a statement the user makes, not one the system makes for
+    // them (root `CLAUDE.md`: nothing the system added is presented as the user's own plan).
+    participants: [],
     revision: 0,
     schemaVersion: SCHEMA_VERSION,
     ...(init.meta ? { meta: init.meta } : {}),

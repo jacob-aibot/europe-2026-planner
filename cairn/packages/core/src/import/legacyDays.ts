@@ -346,6 +346,9 @@ export function importLegacyDays(legacy: LegacyConstants, opts: ImportOpts): Imp
     resolutions: [],
     // §10.1. The legacy planner has no photos to import; the field is not optional.
     photos: [],
+    // §8.3. The legacy planner records no participants either — it is single-user by
+    // construction — and importing one would be the system asserting who Jacob travelled with.
+    participants: [],
     revision: 0,
     schemaVersion: SCHEMA_VERSION,
     meta: { poolNotes, ...(opts.sourceHash ? { sourceHash: opts.sourceHash } : {}) },

@@ -247,6 +247,14 @@ export function toDoc(trip: Trip): Record<string, unknown> {
     // §10.1. Always written, never omitted: `[]` is a total default, so writing it keeps the
     // round trip byte-identical from the first save on — `datePrecision`'s reasoning exactly.
     photos: (trip.photos ?? []).map(photo),
+    // §8.3. Always written, never omitted — `photos`' and `datePrecision`'s reasoning exactly:
+    // `[]` is a total default, so writing it keeps the round trip byte-identical from the first
+    // save on rather than only from the second. Written field by field, never `{...p}`, per
+    // §2.14 **A-18** — a spread re-emits an unenumerated key a cast-built document carried, and
+    // `userId` in particular must be re-emitted as the parser will read it back.
+    participants: trip.participants.map((p) =>
+      omitUndef({ id: p.id, displayName: p.displayName, kind: p.kind, userId: p.userId ?? null, note: p.note }),
+    ),
     revision: trip.revision,
     meta: trip.meta,
   });

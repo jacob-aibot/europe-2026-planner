@@ -567,7 +567,7 @@ test('G9: nothing leaked into AppState, history, toJSON, core or the export surf
       assert.ok(!text.includes(needle), `\`${needle}\` reached packages/core/src/${name} — core has no store`);
     }
   }
-  assert.equal(Object.keys(core).length, 83, 'core\'s runtime export surface moved');
+  assert.equal(Object.keys(core).length, 86, 'core\'s runtime export surface moved');
 });
 
 // ---------------------------------------------------------------------------------------------

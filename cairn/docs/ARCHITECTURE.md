@@ -6559,8 +6559,29 @@ Phase 2 I-5, 73 → 74 at Phase 2 I-6 (recorded late — see below), 74 → 75 a
 Phase 2 **I-8d** (`clusterPoints`, §4.4 **A-41** Part 6 — the single-linkage kernel `clusterStops`,
 `focusCluster` and the world map's frame all delegate to, so that the third copy of that loop is never
 written), 76 → 77 at Phase 2 **I-8e** (`isIsoDate`, §2.9 **A-46** Part 2), 77 → 78 at Phase 2 **I-8g**
-(`countryKeyPoint`, §4.4 **A-48** Part 2), and 78 → 79 at Phase 2 **I-8h** (`countryParts`, §4.4 **A-49**
-Part 2), each for a stated reason.**
+(`countryKeyPoint`, §4.4 **A-48** Part 2), 78 → 79 at Phase 2 **I-8h** (`countryParts`, §4.4 **A-49**
+Part 2), **79 → 83 at Phase 2 I-13** (`addPhoto`, `removePhoto`, `updatePhoto` and `readExif`, §10.1 and
+§10.2, **A-57** Part 6) and **83 → 86 at Phase 2 I-9** (`addParticipant`, `updateParticipant`,
+`removeParticipant`, §8.3 and §8.9), each for a stated reason.**
+
+**The photo four and the participant three, and one correction they carry.** *(The photo four joined
+`index.ts` and `surface.test.ts` at I-13 and this block was not updated in that commit, so §2.10's prose
+stood at 79 while the code stood at 83 — `SUMMARY_VERSION`'s correction at revision 24, verbatim, and for
+the same reason: set equality is between `index.ts` and `surface.test.ts`, and the prose count is the one
+thing neither of them can check. Both are folded in here in I-9's pass, and the list below is complete at
+**86**.)* **`addPhoto` / `removePhoto` / `updatePhoto` join under P1** — `packages/client`'s `ACTION_SPECS`
+resolves `core[spec.coreFn]` off this index for all three — **and under P2**, since §10.1 names them;
+`readExif` is both as well, and §10.2 **A-58** Part 3 is why it is in core rather than in `apps/web`.
+`reattachDanglingPhotos` stays internal: it is §10.3's repair applied by `removeStop` and `ensureDays`, and
+exporting it would publish a way to rewrite a photo's attachment with no gate. **`addParticipant` /
+`updateParticipant` / `removeParticipant` join on identical terms** — P2 because §8.9 names them outright
+as *"the participant build functions"*, P1 because `ACTION_SPECS` resolves all three the same way — and
+§8.3 is the model. One build function per action is what §4.2 rule 1 needs from the reducer's side; the
+reducer holds no domain logic, so a fourth participant capability is a fourth core function, never a branch
+in the client. `PARTICIPANT_KINDS` stays internal for `DATE_PRECISIONS`' reason — it is the parser's and the
+builder's shared enum, and a caller that can read it is a caller that will grow a second copy. `Participant`,
+`ParticipantKind`, `ParticipantId`, `ParticipantInit` and `ParticipantPatch` are **types** and are not part
+of the set-equality count.
 
 **`countryParts(code, index, thresholdKm)` joins at Phase 2 I-8h** under **P2** — §4.4 A-49 Part 2 specifies
 it by name — and under **P1**, because `worldMapFrame` calls it. It is in core for `countryKeyPoint`'s reason
@@ -6622,7 +6643,7 @@ rule.
 
 §2.10's own enforcement
 rule is *"widening the surface is a documentation change
-first"*, and these lines are that change. The list below is the whole contract: **79 runtime symbols**,
+first"*, and these lines are that change. The list below is the whole contract: **86 runtime symbols**,
 one list, asserted as set equality in both directions against the runtime exports of
 `packages/core/src/index.ts`. It replaces a two-list arrangement — 50 "in §2.10" plus 60 "beyond §2.10, each
 with a justification" — that made the criterion true by construction against 110 exports. A boundary the
@@ -6642,7 +6663,10 @@ revision 6, **20 in revision 10**, **21 at Phase 2 I-5**, **22 at Phase 2 I-7**,
 (`clusterPoints`, §4.4 A-41 Part 6 — also a P1 join, since `packages/client`'s `worldMapFrame` calls it),
 **24 at Phase 2 I-8e** (`isIsoDate`, §2.9 A-46 Part 2 — also a P1 join, since `rowDatesReadable` calls it),
 **25 at Phase 2 I-8g** (`countryKeyPoint`, §4.4 A-48 Part 2 — also a P1 join, since `worldMapFrame` calls
-it), **26 at Phase 2 I-8h** (`countryParts`, §4.4 A-49 Part 2 — also a P1 join, same caller) —
+it), **26 at Phase 2 I-8h** (`countryParts`, §4.4 A-49 Part 2 — also a P1 join, same caller), **30 at Phase
+2 I-13** (`addPhoto`, `removePhoto`, `updatePhoto`, §10.1, and `readExif`, §10.2 — all four also P1 joins),
+**33 at Phase 2 I-9** (`addParticipant`, `updateParticipant`, `removeParticipant`, §8.3 and §8.9 — all
+three also P1 joins, since `ACTION_SPECS` resolves them) —
 things a phase has no
 caller for yet, or that a section names outright: the access predicates (§6.2), `geoCheck`/`GEO_LIMIT_KM`
 (§2.13), `clusterStops`/`MIN_SPAN_KM` (§2.5), `SCHEMA_VERSION`/`migrateDoc` (serialization),
@@ -6657,12 +6681,12 @@ would make every internal public. The un-export pass therefore rewrites some pro
 index to the module path; that is the expected shape of the change, not a regression.
 
 ```
-packages/core/src/index.ts re-exports exactly this and nothing else — 79 runtime symbols:
+packages/core/src/index.ts re-exports exactly this and nothing else — 86 runtime symbols:
 
   model (8)      LOCAL_OWNER · SCHEMA_VERSION · sequentialIds · formatRange · costFromDisplay
                  TripParseError · ForeignDocumentError
                  isIsoDate(v)                           // I-8e, §2.9 A-46 — a PREDICATE, not a parser
-  build (17)     createTrip(init) · ensureDays(trip) · setTripMeta(trip, patch) · setDayMeta(trip, dayId, patch)
+  build (23)     createTrip(init) · ensureDays(trip) · setTripMeta(trip, patch) · setDayMeta(trip, dayId, patch)
                  addStop(trip, placement, stop) · updateStop(trip, stopId, patch) · removeStop(trip, stopId)
                  moveStop(trip, stopId, placement)      // day↔day, day↔pool, reorder — ONE function
                  reorderStop(trip, stopId, delta)
@@ -6670,6 +6694,13 @@ packages/core/src/index.ts re-exports exactly this and nothing else — 79 runti
                  acceptCandidate / rejectCandidate(trip, ref, actorUserId: UserId, at)  // NOT nullable — §2.14
                  copyStopInto(target, source, placement, ctx)        // §2.14 — the social primitive
                  upsertBooking · linkBooking
+                 addPhoto(trip, init, ctx) · updatePhoto(trip, photoId, patch) · removePhoto(trip, photoId)
+                                                                     // §10.1 A-57 Part 6 — I-13; the bytes never
+                                                                     // reach the document, so undo is free
+                 addParticipant(trip, init, ctx)                     // §8.3 — I-9; participation grants NOTHING
+                 updateParticipant(trip, participantId, patch)       // no `id`, no `userId`: both are refused
+                 removeParticipant(trip, participantId)              // nothing cascades — nothing refers to one
+  photo (1)      readExif(bytes)                                     // §10.2 A-58 Part 3 — pure byte arithmetic
   derive (29)    computeLegs(day, trip) · dayMovingMinutes(day, trip) · dayDistanceKm(day, trip) · fmtMins
                  clusterStops · focusCluster · fitSpanKm · MIN_SPAN_KM · mapBounds · stopPoints · stopLatLng
                  clusterPoints(points, thresholdKm)                  // §4.4 A-41 Part 6 — ONE single-linkage kernel

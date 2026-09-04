@@ -11,8 +11,8 @@
  * anything about a trip.
  */
 import type {
-  Booking, BuildCtx, DayMetaPatch, PhotoInit, PhotoPatch, Ref, ResolutionInit, StopInit, StopPatch,
-  StopPlacement, Trip, TripMetaPatch,
+  Booking, BuildCtx, DayMetaPatch, ParticipantInit, ParticipantPatch, PhotoInit, PhotoPatch, Ref,
+  ResolutionInit, StopInit, StopPatch, StopPlacement, Trip, TripMetaPatch,
 } from '../deps.ts';
 
 export type Action =
@@ -38,7 +38,13 @@ export type Action =
   // document half, so nothing about the photo path is a new write path (§10.2's step 5).
   | { type: 'addPhoto'; photo: PhotoInit }
   | { type: 'removePhoto'; photoId: string }
-  | { type: 'updatePhoto'; photoId: string; patch: PhotoPatch };
+  | { type: 'updatePhoto'; photoId: string; patch: PhotoPatch }
+  // §8.3, Phase 2 I-9. Three actions, three core build functions, 1:1 as rule 1 requires. There
+  // is no saga and no port: a participant is a record in the document and nothing else, which is
+  // the whole of §8.3's "embedded, not a second persisted structure".
+  | { type: 'addParticipant'; participant: ParticipantInit }
+  | { type: 'updateParticipant'; participantId: string; patch: ParticipantPatch }
+  | { type: 'removeParticipant'; participantId: string };
 
 export type ActionType = Action['type'];
 
@@ -98,6 +104,24 @@ export const ACTION_SPECS: Record<ActionType, ActionSpec> = {
     coreFn: 'updatePhoto',
     args: (a) => [(a as { photoId: string }).photoId, (a as { patch: PhotoPatch }).patch],
   },
+  // §8.3, Phase 2 I-9. Marshalling only — the defaults (`kind:'contact'`, `userId:null`) are
+  // core's, not the client's, which is what keeps web and native agreeing on what a participant
+  // is. **Participation grants nothing**, so no access, share or member state is touched here.
+  addParticipant: {
+    coreFn: 'addParticipant',
+    args: (a, ctx) => [(a as { participant: ParticipantInit }).participant, ctx],
+  },
+  updateParticipant: {
+    coreFn: 'updateParticipant',
+    args: (a) => [
+      (a as { participantId: string }).participantId,
+      (a as { patch: ParticipantPatch }).patch,
+    ],
+  },
+  removeParticipant: {
+    coreFn: 'removeParticipant',
+    args: (a) => [(a as { participantId: string }).participantId],
+  },
   copyStopInto: {
     coreFn: 'copyStopInto',
     args: (a, ctx) => {
@@ -134,6 +158,12 @@ export function describeAction(a: Action): string {
       return 'remove a photo';
     case 'updatePhoto':
       return 'edit a photo';
+    case 'addParticipant':
+      return `add “${a.participant.displayName}”`;
+    case 'updateParticipant':
+      return 'edit someone on this trip';
+    case 'removeParticipant':
+      return 'remove someone from this trip';
     default:
       return a.type;
   }
