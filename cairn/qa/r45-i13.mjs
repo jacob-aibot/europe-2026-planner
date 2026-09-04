@@ -2,11 +2,36 @@
  * **QA round 45 — the I-13 breaker pass.** ARCHITECTURE §10 (**A-57**, **A-58**, **A-61**),
  * ROADMAP **I-13**, `master` @ `497c116` (`1820813` → `7e8c0f3` → `497c116`).
  *
- *   node --experimental-strip-types qa/r45-i13.mjs        (from cairn/)
+ *   node --experimental-strip-types qa/r45-i13.mjs           (from cairn/)
+ *   node --experimental-strip-types qa/r45-i13.mjs --fast    (skips §K's suite measurement)
  *
  * **A `FAIL` line is a finding, not a broken probe.** Every `FAIL` below carries its finding id
  * in the label, and `docs/QA-FINDINGS.md` round 45 names each one. `note` lines are measurements
  * that are facts rather than unmet expectations.
+ *
+ * ---
+ *
+ * **RE-CUT at QA round 46, and the re-cut is the breaker's own work rather than a builder's.**
+ * Six of this probe's lines asserted the fix this round *proposed*; ARCHITECTURE revision 44 ruled
+ * differently on three findings, and a probe that keeps asserting pre-ruling behaviour is round
+ * 44's **R44-3** repeating (`qa/r43-a56.mjs`, the same class). Maintaining a prior round's
+ * adversarial probes is this project's breaker convention, so round 46 re-cut them here:
+ *
+ *   §C line 1  wanted `importDoc` to re-mint photo ids. **A-62 Part 3 clause 3 refuses it by
+ *              name** — the ids stay stable and the byte KEY gains the tenancy instead. It now
+ *              asserts the ruling, plus the parenthetical A-62 attaches to it (the restored
+ *              copy's photos read `missing`). §C's other two lines — the actual data loss — are
+ *              unchanged and were red at `9635207`.
+ *   §E guard   wanted `phase === 'loading'` for a rejected `present()`. **A-63 replaced that
+ *              value with `'unreadable'`.** The guard's job is unchanged; its value moved.
+ *   §G ×3      wanted `acceptCandidate`/`rejectCandidate` to work on a photo and `RefKind` to
+ *              carry a `'photo'` arm. **A-64 Part 3 defers both and Part 5's S5 forbids the
+ *              arm.** They now assert A-64 Part 4's three corrected strings and S5's grep.
+ *   §K R45-17  pinned the literal `1316`. It measures the suite now.
+ *
+ * The I-13b builder raised exactly this in `BUILD-NOTES.md` and was right on every count; round 46
+ * verified the reading against A-62 Part 3, A-64 Part 3 and A-64 Part 5 before touching anything.
+ * **§K's R45-14 line is deliberately still red** — revision 44 did not rule it, so it is open.
  *
  * Twelve sections, all in **plain Node** against `memoryPhotos()`/`memoryStorage()` — which is
  * the property `cairn-constraints` §5 exists for, and it is why the two BLOCKERs below need no
@@ -18,18 +43,19 @@
  *   B  **R45-1, BLOCKER.** `SCHEMA_VERSION` 1 → 2 with `migrateDoc` wired to nothing: a genuine
  *      pre-I-13 document, minted by a build at `598cd7f`, is refused by `openTrip`, by
  *      `browseTrip`, by `importDoc` and by the summary rescan.
- *   C  **R45-2, BLOCKER.** `importDoc` re-mints a colliding TRIP id and leaves the PHOTO ids
- *      alone, and the byte stores are keyed by bare `PhotoId` — so deleting the restored copy
- *      destroys the original trip's photographs.
+ *   C  **R45-2, BLOCKER.** Deleting a restored backup destroyed the original trip's
+ *      photographs, because the byte stores were keyed by bare `PhotoId`. Re-cut at round 46
+ *      against A-62: the ids stay, the KEY carries the tenancy.
  *   D  **R45-3, MAJOR.** Deleting a NON-active trip cascades no photo bytes, and
  *      `orphanPhotoBytes` reports none, so the bytes are unreachable AND unreportable.
  *   E  **R45-4, MAJOR.** One import after a failed availability read marks every OTHER photo of
  *      the trip `'missing'` — a false *"no longer stored on this device"* over bytes that are
  *      there.
- *   F  **R45-5, MAJOR.** `photosFor` cannot express *"availability could not be read"*: a
- *      rejecting `present()` is `phase:'loading'` with no retry method on the store.
- *   G  **R45-6, MAJOR.** A photo's `Provenance` has no transition. `acceptCandidate` /
- *      `rejectCandidate` throw on a photo ref while `updatePhoto` names them as the way.
+ *   F  **R45-5, MAJOR.** `photosFor` could not express *"availability could not be read"*: a
+ *      rejecting `present()` was `phase:'loading'` with no retry method on the store. A-63.
+ *   G  **R45-6, MAJOR.** A photo's `Provenance` has no transition and A-57 Part 4 said it did.
+ *      Re-cut at round 46 against A-64: the claim is WITHDRAWN, not implemented, so what is
+ *      checkable is the three corrected messages and S5's `RefKind` grep.
  *   H  `readExif`: totality and boundedness re-derived at 200,000 inputs (**holds**), then the
  *      three parsing findings — **R45-8** (a bad sub-IFD pointer discards a readable date),
  *      **R45-9** (the scan runs past EOI), **R45-10** (`24:00` reaches `capturedAt`).
@@ -224,7 +250,7 @@ head('§B — **R45-1, BLOCKER**: `SCHEMA_VERSION` 1 → 2, and `migrateDoc` is 
 
 // --------------------------------------------------------------------------- §C R45-2
 
-head('§C — **R45-2, BLOCKER**: a restored backup shares its `PhotoId`s, and the byte stores are keyed by id alone');
+head('§C — **R45-2, BLOCKER**: restoring a backup destroys the original trip\'s photographs');
 {
   const p = ports();
   const store = client.createStore({ ports: p });
@@ -237,10 +263,22 @@ head('§C — **R45-2, BLOCKER**: a restored backup shares its `PhotoId`s, and t
   await store.importDoc(backup);          // restore my own backup beside the original
   const B = store.getState().doc;
   ok(A.id !== B.id, 'INCONCLUSIVE guard: `importDoc` did mint a fresh TRIP id on the collision', { a: A.id, b: B.id });
+  // **RE-CUT at round 46.** This line asserted *"the restored copy has photo ids of its own"* —
+  // which was round 45's PROPOSED fix and is the one **A-62 Part 3 clause 3 refuses by name**:
+  // *"`importDoc` re-mints nothing new, and its diff for this finding is zero lines. A restored
+  // copy's photo records keep their own ids because they are the document's own facts and
+  // rewriting them buys nothing once tenancy is in the key."* Round 44 hit this exact class with
+  // `qa/r43-a56.mjs` (R44-3): a probe asserting pre-ruling behaviour is a probe that will be
+  // waived. So the line now asserts the ruling — the ids are STABLE, and what makes the finding
+  // closed is the byte KEY, which the two lines below measure.
   const shared = A.photos.map((x) => x.id).filter((id) => B.photos.some((y) => y.id === id));
-  ok(shared.length === 0,
-    'FINDING R45-2: the restored copy has photo ids of its own, as it has a trip id of its own',
-    { sharedPhotoIds: shared });
+  ok(shared.length === A.photos.length,
+    'A-62 Part 3 clause 3: the restored copy keeps its own photo ids — tenancy moved into the byte key, not into `importDoc`',
+    { sharedPhotoIds: shared, originalIds: A.photos.map((x) => x.id) });
+  const restored = client.photosFor(store.getState(), { kind: 'trip' });
+  ok(restored.phase === 'ready' && restored.missing === A.photos.length,
+    'A-62 Part 3 clause 3, its parenthetical: the restored copy\'s photos read `missing` — §7 has always said an export carries metadata without bytes',
+    { phase: restored.phase, missing: restored.missing, of: restored.items.length });
 
   await store.flush();
   await store.deleteTrip(B.id);           // "that restored copy was a mistake"
@@ -267,9 +305,9 @@ head('§C — **R45-2, BLOCKER**: a restored backup shares its `PhotoId`s, and t
     'FINDING R45-2: removing one photo from the restored copy left the original\'s copy of it',
     { missing: l2.missing, items: l2.items.map((i) => `${i.asset.id}:${i.availability}`) });
 
-  note('§6.2 rule 1 already states the shape that would prevent this: *"an object key is');
+  note('§6.2 rule 1 already stated the shape that prevents this: *"an object key is');
   note('`trip/{tripId}/photo/{photoId}`, so a blob\'s owner is recoverable from its key alone."*');
-  note('§10.3 keys by bare `PhotoId`, so tenancy is recoverable only by parsing the document.');
+  note('A-62 applied it on-device: the byte key is `[tripId, photoId]` as of `DB_VERSION` 5.');
 }
 
 // --------------------------------------------------------------------------- §D R45-3
@@ -311,8 +349,14 @@ head('§E — **R45-4, MAJOR**: one import after a failed availability read call
   const good = p.photo.present.bind(p.photo);
   p.photo.present = async () => { throw new Error('IndexedDB: UnknownError'); };
   await store.openTrip(id);
-  ok(client.photosFor(store.getState(), { kind: 'trip' }).phase === 'loading',
-    'INCONCLUSIVE guard: a rejected `present()` leaves `available` unread');
+  // **RE-CUT at round 46.** This guard asserted `phase === 'loading'`, which is the value **A-63
+  // replaced**: a read that was attempted and failed is `'unreadable'`, and `'loading'` now means
+  // *"no answer yet"* and nothing else. The guard's JOB — "the port really did refuse, so the
+  // finding line below is measuring something" — is unchanged; only the value it looks for moved.
+  const guard = client.photosFor(store.getState(), { kind: 'trip' });
+  ok(guard.phase === 'unreadable' && guard.message !== null,
+    'INCONCLUSIVE guard: a rejected `present()` leaves availability UNREAD and says so (A-63)',
+    { phase: guard.phase, message: guard.message });
   p.photo.next = [file('d.jpg')];
   await store.importPhotos({ kind: 'trip' });
   const l = client.photosFor(store.getState(), { kind: 'trip' });
@@ -350,7 +394,7 @@ head('§F — **R45-5, MAJOR**: `photosFor` cannot say *"availability could not 
 
 // --------------------------------------------------------------------------- §G R45-6
 
-head('§G — **R45-6, MAJOR**: a photo\'s `Provenance` state machine has no transition');
+head('§G — **R45-6, MAJOR**: A-57 Part 4\'s transition claim, withdrawn by A-64 rather than implemented');
 {
   const ctx = { ids: core.sequentialIds(), now: '2026-08-07', actorUserId: 'u1' };
   let trip = core.createTrip({ title: 'T', startDate: '2026-08-07', endDate: '2026-08-09', ownerId: 'u1' }, ctx);
@@ -365,24 +409,38 @@ head('§G — **R45-6, MAJOR**: a photo\'s `Provenance` state machine has no tra
   ok(core.displayStatus(photo.provenance) === 'suggested',
     'INCONCLUSIVE guard: a `{system, candidate}` photo does read as `suggested` — A-57 Part 4 reason 1');
 
+  // **RE-CUT at round 46.** These three lines asserted that `acceptCandidate`/`rejectCandidate`
+  // work on a photo and that `RefKind` carries a `'photo'` arm — round 45's PROPOSED fix, and the
+  // one **A-64 Part 3 refuses**: *"`RefKind` does not gain a `'photo'` arm in Phase 2"*, with
+  // Part 5's **S5** requiring `grep "'photo'"` against `RefKind` to find nothing, so a builder who
+  // adds the arm has taken an architect's decision. What A-64 Part 4 rules IS a change — three
+  // strings — and that is what these lines measure now. The finding is closed by a correction to
+  // A-57 Part 4's second reason, not by a mechanism, and the probe says which.
   let acceptErr = null;
   try { core.acceptCandidate(trip, { kind: 'photo', id: photo.id }, 'u1', '2026-08-08'); }
   catch (e) { acceptErr = e; }
-  ok(acceptErr === null,
-    'FINDING R45-6: `acceptCandidate` works on a photo — A-57 Part 4: *"`acceptCandidate`/`rejectCandidate` then work on photos unchanged"*',
+  ok(acceptErr !== null && acceptErr.message.startsWith('acceptCandidate:')
+    && /A-64/.test(acceptErr.message) && !/unsupported ref kind/.test(acceptErr.message),
+    'A-64 Part 4 item 2 (**S2**): a photo ref refuses by naming this ruling and its trigger, not *"unsupported ref kind"*',
     { message: acceptErr?.message });
 
   let rejectErr = null;
   try { core.rejectCandidate(trip, { kind: 'photo', id: photo.id }, 'u1', '2026-08-08'); }
   catch (e) { rejectErr = e; }
-  ok(rejectErr === null, 'FINDING R45-6: `rejectCandidate` works on a photo', { message: rejectErr?.message });
+  ok(rejectErr !== null && rejectErr.message.startsWith('rejectCandidate:') && /A-64/.test(rejectErr.message),
+    'A-64 Part 4 item 1 (**S1**): and `rejectCandidate` names ITSELF, never `acceptCandidate`',
+    { message: rejectErr?.message });
 
   let patchErr = null;
   try { core.updatePhoto(trip, photo.id, { provenance: suggested }); } catch (e) { patchErr = e; }
-  note(`and \`updatePhoto\` refuses the field while naming those two: ${JSON.stringify(patchErr?.message)}`);
+  ok(patchErr !== null && !/acceptCandidate|rejectCandidate/.test(patchErr.message),
+    'A-64 Part 4 item 3 (**S3**): `updatePhoto` still refuses `provenance`, and no longer points at two functions that throw',
+    { message: patchErr?.message });
   const typesSrc = readFileSync(resolve(CAIRN, 'packages/core/src/model/types.ts'), 'utf8');
   const refKind = /export type RefKind = ([^\n;]+);/.exec(typesSrc)?.[1] ?? '?';
-  ok(/'photo'/.test(refKind), 'FINDING R45-6: `RefKind` carries a `photo` arm', { refKind });
+  ok(!/'photo'/.test(refKind),
+    'A-64 Part 5 (**S5**): `RefKind` has NO `photo` arm — the deferral is checkable, and adding it is an architect\'s decision',
+    { refKind });
 }
 
 // --------------------------------------------------------------------------- §H readExif
@@ -732,13 +790,26 @@ head('§K — R45-13 … R45-16');
   note('days. §10.2 designs `availability: "missing"` for that, so it degrades honestly — but no');
   note('ROADMAP increment owns the call, and "recorded so it is not lost" is not a mechanism.');
 
-  // BUILD-NOTES §2's own run instruction, still stale.
+  // BUILD-NOTES §2's own run instruction, against the suite.
+  //
+  // **RE-CUT at round 46.** This line pinned the literal `'1316'`, which was the suite's size at
+  // `9635207` and can never match a suite that has grown — a probe that goes red whenever the
+  // number it polices is *corrected* is a probe that measures its own age. It MEASURES now: the
+  // same `npm run test:tap | grep '^# pass'` BUILD-NOTES §2 tells a reader to run. That costs
+  // ~30 s, so `--fast` skips it and says so rather than asserting silently.
   const bn = readFileSync(resolve(CAIRN, 'docs/BUILD-NOTES.md'), 'utf8');
   // §2's own code block, not the R44-4 row that quotes the old figure.
   const stated = /^npm test\s+# (\d+) tests/m.exec(bn)?.[1];
-  ok(stated === '1316',
-    'FINDING R45-17: BUILD-NOTES §2\'s `npm test` count matches the suite — re-run `npm run test:tap | grep "^# pass"`',
-    { statedInSection2: stated, measured: 1316 });
+  if (process.argv.includes('--fast')) {
+    note(`R45-17 skipped (--fast). BUILD-NOTES §2 states ${stated}; run \`npm run test:tap | grep '^# pass'\` to check it.`);
+  } else {
+    const tap = execFileSync('npm', ['run', '--silent', 'test:tap'], { cwd: CAIRN, encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 });
+    const measured = /^# pass (\d+)$/m.exec(tap)?.[1] ?? null;
+    const failed = /^# fail (\d+)$/m.exec(tap)?.[1] ?? null;
+    ok(stated === measured && failed === '0',
+      'FINDING R45-17: BUILD-NOTES §2\'s `npm test` count matches the suite, and the suite is green',
+      { statedInSection2: stated, measured, failing: failed });
+  }
 }
 
 // --------------------------------------------------------------------------- §L real data

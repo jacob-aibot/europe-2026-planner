@@ -19,8 +19,51 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
+> **🔴 THE PHOTO REPAIRS LANDED AND HELD — BUT ONE OF THEM BROKE SOMETHING ELSE — as of 2026-09-04.
+> This block is the newest.** Step 2d's photo half is still
+> **designed ✅ · built ✅ · verified ⚠️ · shippable ❌**, and it goes back one more time. The reason is
+> narrower than last time and it is worth reading, because most of the news is good.
+>
+> **Both stoppers from the last round are genuinely fixed, and I tried hard to break the fixes.** Old
+> trip files open again — the upgrade step is now inside the one function every reader already goes
+> through, so nothing can miss it, and the test that plants a real old file and boots the real app over
+> it goes green in one command. And the photo-filing fix is the strongest work in this whole stretch. A
+> photo file is now named after *the trip plus the photo*, and I attacked that naming from every angle I
+> could invent: eleven deliberately awkward trip names in one database at once, a photo name four
+> thousand characters long, a real browser database left over from the broken version, a database from a
+> *newer* version of Cairn, and — the one nobody had tried — **an upgrade interrupted half way through**,
+> which is what happens if you close the tab at the wrong second. All of it, on both browser engines
+> Cairn has to work on. **None of it broke.** Restoring your backup and deleting the copy now leaves
+> every photograph in the trip you kept, which was the stopper.
+>
+> **What sends it back is one new problem and two smaller ones, all in the same place: what happens if
+> you move around the app while photos are still being processed.** Photos are decoded and shrunk one at
+> a time, which takes real seconds for a batch, and Cairn stays usable while it happens. **If you tap
+> away to another trip during that, the photograph is filed under the trip you left and recorded in the
+> trip you moved to.** The two halves no longer agree, and because the new naming ties a photo file to
+> its trip, the picture is simply gone — Cairn shows it as present for the rest of the session and then,
+> next time you open that trip, tells you *"this photo's image is no longer stored on this device"* about
+> a photograph that is very much on this device, filed under the other trip. **This is new**: before the
+> naming fix, the same slip left you with a viewable photo in the wrong trip, which is annoying rather
+> than lossy. The fix is small — Cairn already knows which trip it started with, it just never checks
+> that it is still there — but it needs doing before photos ship.
+>
+> **The two smaller ones are the same shape.** If you have Cairn open in two tabs and merge them, photos
+> added in one tab get reported as missing in the other, even though they are right there. And tapping
+> two trips in quick succession can leave the photo area spinning for ever, which is the exact thing the
+> new *"could not check"* state was added last round to prevent. Neither loses anything; both tell you
+> something untrue.
+>
+> **Nothing leaks, and I looked properly.** No coordinate reaches a log, a file, or the sample build.
+> Nothing new touches email or location. No new libraries were added, no phone-screen code was touched,
+> and the live Europe planner is untouched. The 1,348 automated tests all pass, and I checked seven of
+> them by deliberately breaking the code they cover to confirm they actually notice — they do.
+>
+> **What happens next:** one more builder pass on the "moving around while photos process" problem and
+> its two relatives, then a short confirmation round. Detail: `cairn/docs/QA-FINDINGS.md` round 46.
+
 > **🟠 THE THREE PHOTO DECISIONS ARE MADE, AND THE REPAIR WORK IS WRITTEN DOWN — as of 2026-09-04. This
-> block is the newest.** It does not change the status the block below reports: step 2d's photo half is
+> block was the newest until round 46 (above).** It does not change the status the block below reports: step 2d's photo half is
 > still **designed ✅ · built ✅ · verified ⚠️ · shippable ❌**. What changes is that the three questions
 > the tester sent to me are answered, so what is left is a builder's job rather than an open question.
 > It is one pass, called **I-13b**.

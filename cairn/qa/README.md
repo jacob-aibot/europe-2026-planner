@@ -3146,3 +3146,93 @@ genuine `schemaVersion: 1` document into a real IndexedDB and boots the producti
 at `497c116` the app prints *"One trip's file could not be read"* and the probe times out at §3
 waiting for *"Add a stop"*. It needs `npm run web:build && node tools/serve.mjs` in another shell.
 It was not in I-13's list of what was run, and it would have caught the blocker in one command.
+
+---
+
+## Round 46 (2026-09-04, `master` @ `70b9ee6`) — the I-13b confirmation pass (§10 **A-62** / **A-63** / **A-64**)
+
+Two new probes — one bare Node, one browser — plus a **re-cut of `qa/r45-i13.mjs`**. Verdict:
+**SEND BACK. 0 BLOCKERS, 3 MAJOR (R46-1 … R46-3), 4 MINOR (R46-4 … R46-7).** Run from `cairn/`:
+
+```bash
+node --experimental-strip-types qa/r46-i13b.mjs
+   # A  the fences over the WHOLE arc, `git diff 9635207 70b9ee6` (not round 45's surface):
+   #    zero .tsx, zero package.json/lock movement, nothing outside cairn/, docs/design/
+   #    untouched, and `cairn-constraints` over the 248 non-comment added production lines.
+   # B  **A-62 held.** Three trips sharing two PhotoIds interleaved in one store; Q3/Q4/Q5
+   #    re-derived independently of qa/i13b-gate.mjs; the delete cascade for an ACTIVE and a
+   #    NON-ACTIVE trip; reclaimPhotoBytes across the trip boundary (A-62 Part 4's 3rd claim).
+   # C  **A-62 held.** R45-2's exact repro (restore beside the original, delete the copy — all
+   #    three photographs survive), removePhoto on the restored copy, and restore-after-delete.
+   # D  **R46-1, MAJOR (a REGRESSION)** — an import that spans a trip transition files the bytes
+   #    under trip A and the record under trip B. Three faces: a `ready` listing over bytes that
+   #    are not there, a `photo_attach_dangling` document the store wrote itself, and a byte
+   #    record that outlives the trip it belongs to. At 9635207 the same tap sequence produced a
+   #    VIEWABLE photo in the wrong trip; A-62 made it a lost one.
+   # E  **R46-2, MAJOR** — the two-tab merge takes in the other tab's photo records against a
+   #    stale availability set, so §10.6 property 3's "no longer stored on this device" fires
+   #    over bytes on disk. R45-4's defect on the path the fix pass did not cover.
+   # F  **R46-3, MAJOR** — `'loading'` is not transient. Two overlapping openTrip calls (tap
+   #    trip A, then trip B) let the earlier answer land last and the listing sits at 'loading'
+   #    for ever. §10.6 property 5 and readPhotoAvailability's "true by construction" are false.
+   # G  **R46-4, MINOR** — a failed removeTrip inside deleteTrip strands every byte record with
+   #    no document, no row and no orphan report, under a comment claiming they are reclaimable.
+   # H  **R46-5, MINOR** — apps/web/src/ports/storage.ts:77 and this probe's own header cite a
+   #    `qa/i7a-idb-rowkeys.mjs` "phase 5" that does not exist. That probe runs four phases.
+   # I  **R46-6, MINOR** — memoryPhotos' flattened key diverges from the shipped array key for a
+   #    tripId containing U+0000, and fromJSON accepts one with no charset check.
+   # J  **R46-7, MINOR** — qa/i13b-gate.mjs holds a literal NUL byte, so the increment's own
+   #    ship-gate probe reads `Bin 0 -> 17304 bytes` in git diff.
+   # K  **R45-14**, still open (design -> architect, never ruled), re-derived on the code as it
+   #    stands after 70b9ee6 rather than quoted from round 45.
+   # L  **A-63 held** everywhere §F does not reach: R1/R3/R4/R5/R6, and refreshPhotoAvailability
+   #    issuing a REAL present() against bytes evicted behind the store's back.
+   # M  **A-64 held** — S1/S2/S3/S4/S5, re-derived from the sources rather than from the gate.
+   # N  fixtures/legacy/trip-598cd7f.v1.json end to end: openTrip, rescan, importDoc with a
+   #    fresh id; plus a v99 document ("Update the app.") and one with no schemaVersion.
+```
+
+**16 FAIL lines carrying 8 finding ids (R46-1 ×7, R46-2, R46-3, R46-4, R46-5 ×2, R46-6 ×2, R46-7,
+R45-14) are the findings**, not a broken probe.
+
+```bash
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node --experimental-strip-types qa/r46-idb-keys.mjs
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node --experimental-strip-types qa/r46-idb-keys.mjs --engine=webkit
+   # A  A-62 Part 5's ORDERING asked of indexedDB.cmp directly, not cited: number < date <
+   #    string < binary < array, prefix-first, item-by-item, ['t','￿'x1024] < ['t',[]],
+   #    ['t',[]] < ['t2']. Part 5 marks its own facts as a SEARCH RESULT; these are measured.
+   # B  eleven adversarial trip ids in ONE store — '', 't', 't2', 't-', 'ta', 'T', one carrying
+   #    U+0000, 't￿', 'trip-1', 'trip-10', 'é' — each read, each `present`ed, then
+   #    removeTrip('t') takes exactly one of them.
+   # C  eight adversarial photo ids including '' and a 4096-character one: all readable, all
+   #    swept, and the neighbouring trip's record untouched.
+   # D  **Q6 in a real engine** (the builder measured it against the recording double): a
+   #    genuine DB_VERSION 4 database with genuine BARE keys, upgraded by the shipped
+   #    onupgradeneeded — both stores empty, docs/summaries/versions BYTE-IDENTICAL.
+   # E  an INTERRUPTED upgrade: the versionchange transaction aborted after one
+   #    deleteObjectStore. It rolls back whole, stays at 4 with the old key shape, and the next
+   #    open re-runs the migration to completion.
+   # F  a database from a FUTURE build (version 6): refused with VersionError, left intact.
+   # G  a version-3 database, from before the byte stores existed: straight to 5, no delete
+   #    attempted on an absent store, first write lands under a COMPOUND key.
+```
+
+**ALL OK on Chromium and on WebKit.** This is the section behind round 46's *"I could not break
+A-62"*: nothing in it is a re-run of `qa/i7a-idb-rowkeys.mjs` phase 4.
+
+**`qa/r45-i13.mjs` was re-cut by this round, and it now prints exactly one `FAIL` (R45-14).** Six
+lines asserted round 45's *proposed* fixes rather than revision 44's chosen ones — the same class
+as round 44's R44-3 over `qa/r43-a56.mjs`. §C line 1 wanted `importDoc` to re-mint photo ids, which
+**A-62 Part 3 clause 3 refuses by name**; §E's guard wanted `phase === 'loading'`, which **A-63
+replaced with `'unreadable'`**; §G's three wanted a `'photo'` `RefKind` arm, which **A-64 Part 3
+defers and Part 5's S5 forbids**; §K's R45-17 line pinned the literal `1316` and now **measures**
+the suite (`--fast` skips the 30 s measurement). Every re-cut line was watched red in a
+`git worktree` at `9635207`, except S5, which is a *"still true"* criterion and is green on both
+sides. The I-13b builder raised this objection in `BUILD-NOTES.md` and was correct on every count;
+maintaining a prior round's adversarial probes is the breaker's own job, not a builder's.
+
+Re-run rather than re-written this round, all green: `qa/i13b-gate.mjs` (ALL OK),
+`qa/i7a-idb-rowkeys.mjs` (ALL OK, four phases, chromium **and** webkit), `qa/i13-photo-browser.mjs`
+(ALL OK on both engines), and `qa/r3-upcast.mjs` — **7 ok, 0 FAIL**, which is R45-1's rendered face
+going green after being the round-45 BLOCKER's proof. It still needs `npm run web:build && node
+tools/serve.mjs` in another shell.
