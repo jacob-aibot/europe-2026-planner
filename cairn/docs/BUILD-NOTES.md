@@ -1,5 +1,32 @@
 # Cairn — build notes, Phase 1 (and Phase 2 in progress)
 
+> **Addendum — ROADMAP `I-13a`: the document-growth criterion says what it measured — the delta and
+> the per-photo figure are published on a PASSING run, and the 128-character bound says it belongs
+> to the fixture (§10 **A-61** Parts 5, 7 and 8 residue 1). Closes BUILD-NOTES **KD-81**.**
+> Builds on `f7fb6ff` (ROADMAP revision 55), which landed while this pass ran; the isolated
+> verification worktree below is cut at its parent `552c439`, and the two trees are identical for
+> everything this pass touches — revision 55 moved `ROADMAP.md`, `CLAUDE.md` and the visual
+> roadmap and no code. **One test file and this document: `packages/core/test/photos.test.ts`,
+> `docs/BUILD-NOTES.md`.** No source file, no fixture, no golden, no port, no selector, no export
+> symbol; `SCHEMA_VERSION` stays 2 and **no assertion value changes** — `delta < 20_480` and
+> `longest < 128` are the values I-13 shipped and A-61 ruled. `git diff --name-only` shows **zero**
+> `.tsx`, **zero** `qa/`, zero `cairn/docs/design/`, nothing under `packages/client`, `apps/web` or
+> `packages/core/src`, no `package.json` and no lockfile movement. **Route: builder only** — I-13a's
+> own routing line, and `cairn/CLAUDE.md`'s delegation table row 1.
+>
+> | | |
+> |---|---|
+> | **What runs, and the exact commands** | `cd cairn && npm run typecheck` → **clean on both projects, exit 0** (`pretypecheck` regenerated the sample). `cd cairn && npm run test:tap` → **1441 tests, 1441 pass, 0 fail, 0 skipped, 0 cancelled** — the same count as the `552c439` baseline, which is the expected outcome: this pass adds no test and moves no assertion. Count re-measured with `npm run test:tap \| grep -E '^# (pass\|fail)'`, not copied forward. **Both numbers were taken in a detached worktree at `552c439` carrying only this pass's two files**, because three other builder passes were in flight in the shared working directory when this one ran and two of them were red there (`participants.test.ts`, and `travelStats.test.ts:1562` tripping `test/disclosure.test.ts`' undisclosed-comment scan — **neither is this pass's and neither is touched by it**). The same worktree with **no** files applied is the 1441/0 baseline, measured rather than quoted. |
+> | **Change 1 — the ceiling publishes on a green run** | Two `t.diagnostic()` lines in the `20 photos cost kilobytes…` case, each emitted **before** its assertion so a red run reports the number too, and the test's callback takes the `TestContext` (`() =>` → `(t) =>`; the local trip variable is renamed `t` → `tr`, which is the whole of the rest of the diff's body). **A-61 Part 7's owed half**: *"a ceiling that only speaks when it fails publishes nothing when it passes"* — the 4 KB figure stayed wrong for a whole revision because nobody had printed what the record costs. |
+> | **What a green run now prints, measured at this commit** | `# A-61 growth: 20 photos add 15354 B at toJSON indent 2 = 767.7 B/photo (§10.1 states 768; ceiling 20480 B = 1024 B/photo)` and `# A-61 payload: longest string in the document is 15 characters, quotes included (fixture-scoped bound 128)`. **15,354 / 767.7 is A-61 Part 1's independently re-run measurement to the byte**, three revisions later, which is the drift check the reporting exists to make possible. Headroom: 15,354 of 20,480 is **75 % of the ceiling used**, which is A-61's stated 33 % of headroom over the measured value — about one more `Provenance`-sized block. Read it with `npm run test:tap \| grep 'A-61'`. |
+> | **Change 2 — the 128 is fixture-scoped, in writing** | A six-line comment on the `longest < 128` assertion: `caption` is uncapped free text like `Stop.note`, `Trip.title` and `Place.name` (A-61 Part 8 residue 1), so a real document may legitimately carry a longer string; the bound is meaningful **here** because the fixture's strings are short by construction; and a builder who lengthens a fixture caption **re-derives it against the fixture** rather than raising it to fit. |
+> | **Why 128 is comfortable for THIS fixture, measured** | The longest string the fixture serializes is **15 characters** including its quotes (`"schemaVersion"` — a key, not a caption; the fixture's own caption is `the courtyard`). 128 is **8.5×** that, and still **one to four orders of magnitude** below any encoded derivative — §10.4's `thumb` inlines to ~24 KB of base64. The comment does **not** pin the 15 in prose (**How a criterion is written** rule 6, the count rule); the diagnostic prints it, so it cannot go stale. |
+> | **Change 3 — one thing beyond I-13a's two, disclosed** | The case's docblock still opened *"the ceiling here is 20 KB, not ROADMAP I-13's stated 4 KB, and that is a disclosed divergence"* — **false since revision 43**: ROADMAP I-13's stated ceiling *is* 20 KB and the 4 KB figure was withdrawn. I-13a's *Built* says two changes; correcting a comment that misdescribes the very ruling this pass lands is inside *"a test-and-comment pass"* and I would rather over-disclose it than leave the file asserting a superseded divergence. The rewritten docblock cites A-61 and keeps the `KD-81` reference — which is load-bearing: KD-81's heading carries no `doc-only` marker, so `test/disclosure.test.ts`' orphan check fails if that citation is dropped. |
+> | **Red → green, because a diagnostic has no assertion to fail** | **Before**: `node --test packages/core/test/photos.test.ts` → `ok 11 - 20 photos cost kilobytes…` and no number anywhere in the file's output (`grep -i 'delta\|per photo'` → nothing but the subtest name). **After**: the same command prints both `# A-61 …` lines under the passing subtest, `# pass 28`, `# fail 0`. That is the whole of what changed observably. |
+> | **KD-81, corrected** | §1's KD-81 still read **"Routed to the architect"** eleven revisions after A-61 ruled it. It now carries a `RULED … and CLOSED` banner in the KD-82 house style: the figure moved, the record did not, **this note's own measurement is the ruled value**, and the stopgap it improvised became the primary criterion. The body below the banner is left as written — it is the record of the routing, not a claim about today. |
+> | **Not verified** | **Nothing rendered, and there is nothing to render** — I-13a's own *User-visible outcome* is "none". **`npm test` (the dot reporter) prints neither diagnostics nor stdout**, so the two figures are visible under `npm run test:tap` and not under `npm test`; measured both ways rather than assumed. That is the reporter's behaviour, not the test's, and it is why the row above publishes the command. `npm run web:build` was not run (no `apps/web` file moved; `npm run typecheck` covers its project). No `qa/` probe was re-run — none of them reads this file, and the fence forbids editing them. |
+> | **Objections to the design** | **None.** A-61 Part 7 specifies exactly what this pass does and the shipped assertions already met it. |
+
 > **Addendum — ROADMAP `I-13i`: a subscriber's exception is not the store's failure — one brand,
 > one classifier, seven `catch` blocks deleted, and one gated writer for the import batch
 > (§4.2 **A-71** and §10 **A-66 Part 11**, architect revision 52, `8d69ff1`). Closes QA round 50's
@@ -3893,6 +3920,25 @@ addendum row at the top of this file. A `control()` beside `fault()`, whose expe
 GREEN, because A-54 Part 3 measures the key it mutates as deciding zero adjacent pairs.
 
 ### KD-81 — ROADMAP I-13's 4 KB document-growth criterion cannot be met by ARCHITECTURE §10.1's own field list
+
+> **RULED at architect revision 43 as §10 A-61, and CLOSED at ROADMAP I-13a. The status line below
+> — *"Routed to the architect"* — is the state this note was written in and is no longer the state
+> it is in.** A-61 went the first of the two ways this note offered: **the figure moved and the
+> record did not move by one field**. 4 KB was two arithmetic errors (a record costed without its
+> 150-byte `Provenance` block, and budgeted compact when `toJSON`'s default indent — the one
+> `saveIfVersion` writes — is 2), it ties to no other constraint in the repository, and A-61 Part 3
+> refuses *"shrink to fit"* field by field on the merits. **This note's own measurement is the
+> ruled value**: A-61 Part 1 re-ran it independently and *"the two agree exactly"* — 15,354 B for
+> 20 photos, 767.7 B each at indent 2, 8,771 / 438.6 compact. **The stopgap became the criterion**:
+> A-61 Part 4 measures the 128-character string bound as *strictly stronger* than any byte total at
+> the fault the criterion exists to catch, promotes it to the primary check, and keeps the total as
+> the secondary one for a record class that has grown without any single field becoming long — with
+> the ceiling restated as **20,480 B / 1,024 B per photo**. Nothing was owed by the code. What was
+> owed was reporting, and **I-13a paid it** (`packages/core/test/photos.test.ts`, this addendum's
+> own entry at the top of this file): the delta and the per-photo figure are now emitted on a
+> **passing** run, and the 128 carries the comment saying it is fixture-scoped. **No further
+> routing.** The one live residue is A-61 Part 8 residue 2 — the 768 B figure is pinned by
+> measurement and drifts if `Provenance` widens — whose trigger is the ceiling going red.
 
 **Where:** `packages/core/test/photos.test.ts` (the `20 photos cost kilobytes` case) ·
 `packages/core/src/model/types.ts` (`PhotoAsset`) · ROADMAP **I-13** *Verification*, bullet 2.

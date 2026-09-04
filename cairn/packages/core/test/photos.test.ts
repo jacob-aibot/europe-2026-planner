@@ -156,33 +156,58 @@ test('a trip with three photos round-trips byte-identically', () => {
  * §10.1 point 1 as a measurement rather than a promise — *"a run that is megabytes has put
  * bytes in the document."*
  *
- * **The ceiling here is 20 KB, not ROADMAP I-13's stated 4 KB, and that is a disclosed
- * divergence rather than a weakened test.** I-13's criterion reads *"`toJSON(trip).length` for
- * a trip with 20 photos is within 4 KB of the same trip with none"*, which budgets ~200 bytes
- * per photo — and §10.1's OWN field list cannot fit in it. Measured, with `toJSON`'s default
- * indent of 2 and a fully-populated record (caption, `capturedAt`, `at`, `metaSource`,
- * `source`, both derivatives and full `Provenance`): **768 bytes per photo pretty-printed, 439
- * compact**. The two documents disagree, the record class is the ruled one, and a builder does
- * not get to shrink `PhotoAsset` to make a number true — **KD-81** carries the measurement and
- * routes the choice to the architect.
+ * **Both bounds are the ruled ones** (ARCHITECTURE §10 **A-61** Parts 5 and 7; ROADMAP
+ * **I-13a**). The 4 KB figure this test used to record a divergence from was **withdrawn at
+ * revision 43**: it costed the record without its 150-byte `Provenance` block and budgeted as
+ * if the document were compact when `toJSON`'s default indent — the one `saveIfVersion` writes
+ * — is 2. Measured over a fully-populated record (caption, `capturedAt`, `at`, `metaSource`,
+ * `source`, both derivatives and full `Provenance`): **768 B per photo pretty-printed, 439
+ * compact**, so the ceiling is **20,480 B for 20 photos, i.e. 1,024 B per photo** — about one
+ * more `Provenance`-sized block of headroom. **KD-81 is closed by A-61**; nothing here routes
+ * to the architect any more, but a run *over* the ceiling does: it is a record class that has
+ * grown, and widening the number is a ruling, not a test edit.
+ *
+ * **A ceiling that speaks only when it fails publishes nothing when it passes**, which is how
+ * the 4 KB figure stayed wrong for a whole revision — nobody had printed what the record
+ * actually costs. So the measured delta, the per-photo figure and the longest string are
+ * emitted with `t.diagnostic` **before** their assertions, and a green run therefore reports
+ * them: `npm run test:tap`, grep `A-61`. (`npm test`'s dot reporter suppresses diagnostics and
+ * stdout alike — that is the reporter's choice, not this test's.)
  *
  * What the criterion is actually FOR is asserted exactly, and it is the second and third
  * assertions: kilobytes rather than megabytes, and **no string anywhere in the serialized
  * document is longer than a caption** — which is what "no base64 in `TripDoc`" means when you
  * check it instead of promising it.
  */
-test('20 photos cost kilobytes, not megabytes, and put no byte payload in the document', () => {
+test('20 photos cost kilobytes, not megabytes, and put no byte payload in the document', (t) => {
   const { trip, c } = tripWithDays();
   const bare = toJSON(trip).length;
-  let t = trip;
-  for (let i = 0; i < 20; i++) t = addPhoto(t, { attach: { kind: 'trip' }, ...basePhoto }, c);
-  const text = toJSON(t);
+  let tr = trip;
+  for (let i = 0; i < 20; i++) tr = addPhoto(tr, { attach: { kind: 'trip' }, ...basePhoto }, c);
+  const text = toJSON(tr);
   const delta = text.length - bare;
+  t.diagnostic(`A-61 growth: 20 photos add ${delta} B at toJSON indent 2 = ${(delta / 20).toFixed(1)} B/photo (§10.1 states 768; ceiling 20480 B = 1024 B/photo)`);
   assert.ok(delta > 0, 'INCONCLUSIVE: the photos were not serialized at all');
   assert.ok(delta < 20_480, `20 photos added ${delta} bytes to the document (${Math.round(delta / 20)} each)`);
   // The real property: `TripDoc` is a string, and a derivative encoded into it would show up
   // as one very long string. The longest string in this document is a field value, not a file.
   const longest = (JSON.stringify(JSON.parse(text)).match(/"[^"]*"/g) ?? []).reduce((m, s) => Math.max(m, s.length), 0);
+  t.diagnostic(`A-61 payload: longest string in the document is ${longest} characters, quotes included (fixture-scoped bound 128)`);
+  // **128 is a property of THIS FIXTURE, not an invariant on a user's document** — A-61 Part 5,
+  // and Part 8 residue 1 is why: `caption` is uncapped free text, exactly like `Stop.note`,
+  // `Trip.title` and `Place.name`, and core caps no free-text field anywhere. A real document
+  // may legitimately carry a 500-character caption and be perfectly well-formed.
+  //
+  // The bound is meaningful *here* because every string this fixture serializes is short **by
+  // construction**: captions under 32 characters, ids from `sequentialIds`. 128 is chosen to sit
+  // comfortably above the longest of them — the diagnostic above prints what that actually is,
+  // so the margin is a measurement and not a claim in a comment — while still being one to four
+  // orders of magnitude below any encoded derivative (§10.4's `thumb` inlines to ~24 KB of
+  // base64).
+  //
+  // So: a builder who lengthens a fixture caption **re-derives this bound against the fixture**.
+  // Raising it to fit is how a check stops meaning anything, and it is the failure A-61 Part 4's
+  // table exists to prevent — a byte total alone passes a 200-byte data URI on every record.
   assert.ok(longest < 128, `a ${longest}-character string is in the document — are the bytes in it?`);
 });
 
