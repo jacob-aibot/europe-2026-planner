@@ -670,6 +670,62 @@ test('G15: a FAILING remove during a transition reports no orphan against the in
 });
 
 // ---------------------------------------------------------------------------------------------
+// R50-3 — the one photo method A-68 Part 5c was never applied to.
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * **QA R50-3.** `reclaimPhotoBytes` is the only photo method with no `doc` observation at all, and
+ * its `setPhotos({ orphans: kept })` sits after an `await ports.photo.remove`. So a reclaim whose
+ * byte delete **fails** after the user has navigated reports trip A's orphan against trip B — the
+ * same defect A-68 Part 5c gated `removePhoto`'s tail for (*"they stop this operation writing into
+ * another trip's session"*), from the one method that was never given the gate.
+ *
+ * This adds **no** `supersede`: A-68 Part 8 item 5 and A-69 Part 11 item 1 both rule that this
+ * method's subject is ids that are *not* in `state.doc.photos`, so no `present()` query set
+ * contains them and no availability read is stale because of it. Only the observation and the
+ * gate over the tail are new.
+ *
+ * **Injected fault: drop the `guard.current('doc', g)` around `setPhotos({ orphans: kept })`** →
+ * B's session shows an orphan id B has never held.
+ */
+test('R50-3: a FAILING reclaim during a transition reports no orphan against the incoming trip', async () => {
+  const { p, store, A } = await tripWithOnePhoto('r503');
+  const photoId = store.getState().doc!.photos[0]!.id;
+  await store.flush();
+  await store.createTrip({ ...TRIP, title: 'B', startDate: '2026-09-01', endDate: '2026-09-02' });
+  const B = store.getState().doc!.id;
+  await store.flush();
+  await store.openTrip(A);
+
+  // A byte delete that fails leaves trip A with a REPORTED orphan — §10.2. Nothing sweeps it.
+  p.photo.slowRemove = true;
+  const removing = store.removePhoto(photoId);
+  await tick();
+  assert.equal(p.photo.removeGates.length, 1, 'INCONCLUSIVE: the byte remove is not parked');
+  p.photo.removeGates.shift()!.fail(new Error('remove failed'));
+  await tick();
+  await removing;
+  assert.deepEqual(orphanPhotoBytes(store.getState()), [photoId],
+    'INCONCLUSIVE: trip A has no orphan to reclaim');
+
+  // The user asks to reclaim it, then moves to B while the delete is still parked.
+  const reclaiming = store.reclaimPhotoBytes([photoId]);
+  await tick();
+  assert.equal(p.photo.removeGates.length, 1, 'INCONCLUSIVE: the reclaim\'s byte remove is not parked');
+  await store.openTrip(B);
+  assert.equal(store.getState().doc?.id, B, 'INCONCLUSIVE: B did not install');
+  assert.deepEqual(orphanPhotoBytes(store.getState()), [], 'INCONCLUSIVE: B was seeded with an orphan');
+
+  p.photo.removeGates.shift()!.fail(new Error('still refused'));
+  await tick();
+  await reclaiming;
+  p.photo.slowRemove = false;
+
+  assert.deepEqual(orphanPhotoBytes(store.getState()), [],
+    'A-68 Part 5c: an orphan observed for trip A was reported against trip B by `reclaimPhotoBytes`');
+});
+
+// ---------------------------------------------------------------------------------------------
 // G17 — the ordering A-67 bought with the claim, carried by the supersede that replaced it.
 // ---------------------------------------------------------------------------------------------
 

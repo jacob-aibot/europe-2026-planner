@@ -2353,11 +2353,26 @@ export function createStore(opts: StoreOptions) {
      * its subject is now the active trip's key range, so the two agree by construction — an
      * orphan observed while trip B was open can no longer be reclaimed against trip A. With no
      * active trip there is no key range to reclaim within, so it is a no-op.
+     *
+     * **The `doc` observation is A-68 Part 5c, applied to the one photo method that never had it**
+     * (QA **R50-3**). `kept` is a claim about the document that was open when the loop started, and
+     * `setPhotos({ orphans: kept })` sits after an `await`: a reclaim whose byte delete fails while
+     * the user navigates would otherwise report trip A's orphan against trip B, which is Part 5c's
+     * *"they stop this operation writing into another trip's session"* from a second site. Same
+     * pattern as `removePhoto`'s — `observe` and not `claim`, because this writes THROUGH the
+     * document slot rather than replacing it, and `current(slot, null)` is `false`, so a reclaim
+     * begun inside somebody else's transition window writes nothing rather than writing blind.
+     *
+     * **No `supersede`, and that is ruled rather than omitted** — §4.2 **A-68** Part 8 item 5, kept
+     * verbatim by **A-69** Part 11 item 1: this method's subject is ids that are *not* in
+     * `state.doc.photos`, so no `present()` query set contains them and no availability read is
+     * stale because of it. Nothing else in the method moves.
      */
     async reclaimPhotoBytes(ids: readonly string[]): Promise<AppState> {
       if (!ports.photo || !state.doc) return state;
       const tripId = state.doc.id;
       const live = new Set(state.doc.photos.map((p) => p.id));
+      const g = guard.observe('doc');
       const kept: string[] = [];
       for (const id of state.photos.orphans) {
         if (!ids.includes(id) || live.has(id)) {
@@ -2370,7 +2385,9 @@ export function createStore(opts: StoreOptions) {
           kept.push(id); // still there, still reported
         }
       }
-      setPhotos({ orphans: kept });
+      // The report belongs to the trip it was observed for, or to nothing — §10 **A-66** Part 3,
+      // the rule `removePhoto`'s tail and the import loop both keep.
+      if (guard.current('doc', g)) setPhotos({ orphans: kept });
       return state;
     },
 
