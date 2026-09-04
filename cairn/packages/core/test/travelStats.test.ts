@@ -1300,7 +1300,10 @@ test('A-60: the reference trip mid-trip — three cities keep their dates, three
   for (const name of ['Prague', 'Budapest', 'London']) {
     assert.deepEqual(by(name), ['2026-08-07', '2026-08-12'], `${name} still prints a clamp artefact`);
   }
-  // The ceiling, asserted rather than described: no city line is narrower than its country's.
+  // The ceiling, asserted rather than described. **A-60 Part 6.4** restates what this is: the
+  // property is about **escaping**, not width — Split's genuine `08-12 → 08-12` is legitimately
+  // NARROWER than HR's `08-10 → 08-12`, and that narrowness is the precision A-56 bought. The
+  // assertion below was always the escape one; only the sentence above it was wrong.
   for (const c of s.cities) {
     if (c.countryCode === null) continue;
     const ctry = s.countries.find((x) => x.code === c.countryCode);
@@ -1308,4 +1311,287 @@ test('A-60: the reference trip mid-trip — three cities keep their dates, three
     assert.ok(c.firstVisit >= ctry.firstVisit && c.lastVisit <= ctry.lastVisit,
       `${c.name} ${c.firstVisit}→${c.lastVisit} escapes ${ctry.code} ${ctry.firstVisit}→${ctry.lastVisit}`);
   }
+});
+
+// ---------------------------------------------------------------------------
+// §8.4 **A-60 Part 6** (revision 42, QA **R44-2**) — a `null` edge is a VALUE and keeps its
+// per-field fallback; a *substituted* edge bounds nothing and may not rescue a pair from the
+// disjointness test.
+//
+// Two halves, and the first is a no-op that must be **pinned rather than assumed**:
+//
+//   **6.2** — the literal pair-wide reading of Part 2's `if (firstDay is null/absent/unreadable)`
+//   is REFUSED. A `null` or absent edge keeps A-56 Part 7 clause 1's per-field `??`, and
+//   `unreadableCityDates` still counts it **0**. Round 44 injected the literal reading and the
+//   whole 1235-test suite stayed green, which is why the fork was live at all: **these are the
+//   assertions that make it visible.**
+//
+//   **6.3** — trigger 3 is evaluated over the edges the entry actually SUPPLIED (`obsA`/`obsB`),
+//   before any `??` substitution. Where both are supplied it is Part 2's test unchanged; where
+//   only one is, the entry bounds a **ray** and the ray is tested: a lone `lastDay` before `a` is
+//   disjoint, a lone `firstDay` after `b` is disjoint, and nothing else is.
+//
+// The four injected faults Part 6.6 names are the shape of this block: (1) revert the ray arms to
+// the post-substitution test, (2) take the literal pair-wide reading, (3) widen a ray arm to
+// `<=`/`>=`, (4) increment `unreadableCityDates` on a half-null pair.
+// ---------------------------------------------------------------------------
+
+/**
+ * A city entry whose two day edges are supplied **independently** — the shape `city()` above
+ * cannot express, because `tripSummary` sets both or neither and the helper mirrors the mint.
+ * Every input in this block is therefore hand-edited storage, which is A-60 Part 6.7 residue 1.
+ */
+function cityEdges(
+  name: string,
+  code: CountryCode | null,
+  first: IsoDate | null,
+  last: IsoDate | null,
+): TripSummaryCity {
+  return { ...city(name, code), firstDay: first, lastDay: last };
+}
+
+/** The same, with one key **absent** rather than `null` — a version-4 row the rescan has not reached. */
+function cityEdgeAbsent(
+  name: string,
+  code: CountryCode | null,
+  which: 'firstDay' | 'lastDay',
+  other: IsoDate | null,
+): TripSummaryCity {
+  const c = cityEdges(name, code, which === 'firstDay' ? null : other, which === 'firstDay' ? other : null);
+  delete (c as Partial<TripSummaryCity>)[which];
+  return c;
+}
+
+/** `[2026-03-10, 2026-03-20]`, completed at `TODAY` — A-60 Part 6.2's and 6.3's own example trip. */
+const halfNullRow = (cities: TripSummaryCity[]): TripSummaryRow =>
+  row({ id: 't1', startDate: '2026-03-10', endDate: '2026-03-20', countryCodes: ['HR' as CountryCode], cities });
+
+const ranges = (s: { cities: TravelStatsCityShape[] }): Array<[string, string]> =>
+  s.cities.map((c) => [c.firstVisit, c.lastVisit] as [string, string]);
+
+type TravelStatsCityShape = { firstVisit: IsoDate; lastVisit: IsoDate };
+
+test('A-60 Part 6.2: a lone `lastDay` is KEPT — the pair-wide reading is refused', () => {
+  // The whole of 6.2's grounding: the left end the literal reading would print (`startDate`) is
+  // EXACTLY the left end the per-field `??` prints anyway, so the literal reading buys nothing on
+  // the left and pays for it by deleting the one real observation on the right.
+  const s = travelStats([halfNullRow([cityEdges('Split', 'HR' as CountryCode, null, '2026-03-14')])], TODAY);
+  assert.deepEqual(ranges(s), [['2026-03-10', '2026-03-14']],
+    'the supplied `lastDay` was discarded — this is the literal pair-wide reading, which A-60 Part 6.2 refuses');
+  assert.equal(s.unreadableCityDates, 0, 'a `null` is a VALUE, not a defect (6.2, A-59 Part 3 unmoved)');
+});
+
+test('A-60 Part 6.2: a lone `firstDay` is kept too — the fork is pinned on BOTH sides', () => {
+  const s = travelStats([halfNullRow([cityEdges('Split', 'HR' as CountryCode, '2026-03-14', null)])], TODAY);
+  assert.deepEqual(ranges(s), [['2026-03-14', '2026-03-20']]);
+  assert.equal(s.unreadableCityDates, 0);
+});
+
+test('A-60 Part 6.2: an ABSENT half is a value exactly as a `null` half is', () => {
+  // A version-4 row carries neither key; a hand-edited one can carry one. Both are *absent
+  // evidence*, and absent evidence does not poison the field beside it.
+  const s = travelStats(
+    [halfNullRow([cityEdgeAbsent('Split', 'HR' as CountryCode, 'firstDay', '2026-03-14')])],
+    TODAY,
+  );
+  assert.deepEqual(ranges(s), [['2026-03-10', '2026-03-14']]);
+  assert.equal(s.unreadableCityDates, 0);
+  const t = travelStats(
+    [halfNullRow([cityEdgeAbsent('Split', 'HR' as CountryCode, 'lastDay', '2026-03-14')])],
+    TODAY,
+  );
+  assert.deepEqual(ranges(t), [['2026-03-14', '2026-03-20']]);
+  assert.equal(t.unreadableCityDates, 0);
+});
+
+test('A-60 Part 6.2: corrupted evidence poisons its pair; absent evidence does not', () => {
+  // The asymmetry with A-59 Part 2, which is the whole of the distinction and is stated
+  // generally so the next stored-optional field does not need its own ruling.
+  const corrupt = travelStats(
+    [halfNullRow([cityEdges('Split', 'HR' as CountryCode, 'not-a-date' as IsoDate, '2026-03-14')])],
+    TODAY,
+  );
+  assert.deepEqual(ranges(corrupt), [['2026-03-10', '2026-03-20']], 'A-59 Part 2: one unreadable end kills the pair');
+  assert.equal(corrupt.unreadableCityDates, 1);
+  const absent = travelStats([halfNullRow([cityEdges('Split', 'HR' as CountryCode, null, '2026-03-14')])], TODAY);
+  assert.deepEqual(ranges(absent), [['2026-03-10', '2026-03-14']], 'a `null` is not a corruption');
+  assert.equal(absent.unreadableCityDates, 0);
+});
+
+test('A-60 Part 6.3: a lone `lastDay` strictly BEFORE `a` is disjoint — R44-2\'s repro', () => {
+  // The one input shape Part 6.5's table moves. Shipped before Part 6: `[2026-03-10,
+  // 2026-03-10]` — a specific named day NEITHER END OF WHICH the row supplied, because the left
+  // end is a substitute for the `null` and the right end is that same substitute having eaten the
+  // one stored value through `max()`. R43-4's artefact class exactly, one trigger short.
+  const s = travelStats([halfNullRow([cityEdges('Split', 'HR' as CountryCode, null, '2020-01-01')])], TODAY);
+  assert.deepEqual(ranges(s), [['2026-03-10', '2026-03-20']],
+    'a substituted edge rescued the pair from trigger 3 — Part 6.3\'s ray test is not being applied');
+  assert.equal(s.unreadableCityDates, 0, 'trigger 3 is not unreadability and is not counted (residue 2)');
+  // And the country line beside it, which is what makes this a defect rather than a preference.
+  assert.deepEqual(s.countries.map((c) => [c.firstVisit, c.lastVisit]), [['2026-03-10', '2026-03-20']]);
+});
+
+test('A-60 Part 6.3: an absent `firstDay` beside a `lastDay` before `a` is the same answer', () => {
+  const s = travelStats(
+    [halfNullRow([cityEdgeAbsent('Split', 'HR' as CountryCode, 'firstDay', '2020-01-01')])],
+    TODAY,
+  );
+  assert.deepEqual(ranges(s), [['2026-03-10', '2026-03-20']]);
+});
+
+test('A-60 Part 6.3: a lone `firstDay` strictly AFTER `b` is disjoint — the other ray', () => {
+  const s = travelStats([halfNullRow([cityEdges('Split', 'HR' as CountryCode, '2030-01-01', null)])], TODAY);
+  assert.deepEqual(ranges(s), [['2026-03-10', '2026-03-20']]);
+});
+
+test('A-60 Part 6.3: the ray boundaries are STRICT — a lone `lastDay` exactly on `a` keeps its day', () => {
+  // Injected fault 3: widen this arm to `<=` and the day goes away. A range touching `[a, b]` on
+  // one day names a real arrival or departure day, and that day is evidence.
+  const s = travelStats([halfNullRow([cityEdges('Split', 'HR' as CountryCode, null, '2026-03-10')])], TODAY);
+  assert.deepEqual(ranges(s), [['2026-03-10', '2026-03-10']]);
+});
+
+test('A-60 Part 6.3: the other ray boundary — a lone `firstDay` exactly on `b` keeps its day', () => {
+  // `[b, b]`, not `[a, b]`. Widen the `>` arm to `>=` and this goes red.
+  const s = travelStats([halfNullRow([cityEdges('Split', 'HR' as CountryCode, '2026-03-20', null)])], TODAY);
+  assert.deepEqual(ranges(s), [['2026-03-20', '2026-03-20']]);
+});
+
+test('A-60 Part 6.3: a lone edge pointing INTO the window is not disjoint — the ray is a ray', () => {
+  // A lone `lastDay` bounds `(−∞, lastDay]`, so one after `a` intersects however far out it is;
+  // a lone `firstDay` bounds `[firstDay, +∞)`, so one before `b` does too. Both are clamped, and
+  // the active row is used so that `[a, b]` is narrower than the row's own dates and the answers
+  // are distinguishable from the fallback.
+  const active = (cities: TripSummaryCity[]): TripSummaryRow =>
+    row({ id: 't2', startDate: '2026-06-01', endDate: '2026-06-30', countryCodes: ['HU' as CountryCode], cities });
+  // Today is 2026-06-15, so `[a, b]` is [06-01, 06-15].
+  const inside = travelStats([active([cityEdges('Budapest', 'HU' as CountryCode, null, '2026-06-10')])], TODAY);
+  assert.deepEqual(ranges(inside), [['2026-06-01', '2026-06-10']], 'the supplied right end was not kept');
+  const beyond = travelStats([active([cityEdges('Budapest', 'HU' as CountryCode, null, '2026-06-25')])], TODAY);
+  assert.deepEqual(ranges(beyond), [['2026-06-01', '2026-06-15']], 'the ray intersects; the clamp is clause 1\'s');
+  const early = travelStats([active([cityEdges('Budapest', 'HU' as CountryCode, '2020-01-01', null)])], TODAY);
+  assert.deepEqual(ranges(early), [['2026-06-01', '2026-06-15']]);
+});
+
+/**
+ * **A-60 Part 6.5, swept rather than asserted** — and it is the sweep the ruling itself ran.
+ *
+ * Over the cross product of `{null, absent, six day values spanning before-`a`, `a`, interior,
+ * `b`, after-`b`, past `endDate`}` for each of `firstDay` and `lastDay`, at four shapes of clamp
+ * interval, this checks three claims at once:
+ *
+ * 1. **Part 6.4's ceiling**, both halves, on every one of the 256 inputs.
+ * 2. **Zero fully-supplied pairs change answer.** Part 2's shipped expression is re-implemented
+ *    here over ISO strings (which compare chronologically) and every both-supplied pair must
+ *    still agree with it — Part 6.3's *"where the both-supplied arm differs from the shipped
+ *    code: nowhere."*
+ * 3. **The diff is exactly Part 6.5's one-row table.** Every input on which the two disagree has
+ *    a `null`/absent `firstDay` and a `lastDay` strictly before `a`, prints `[a, b]` where the
+ *    old expression printed `[a, a]`, and there are **zero** such inputs in the two degenerate
+ *    intervals where `b = a` — which is what keeps Part 5 residue 2 alive.
+ */
+const INTERVALS = [
+  // label, startDate, endDate, a, b — `a`/`b` are A-31 Part 4 step 4's, at `TODAY` = 2026-06-15.
+  { label: 'completed', startDate: '2026-03-10', endDate: '2026-03-20', a: '2026-03-10', b: '2026-03-20',
+    days: ['2020-01-01', '2026-03-10', '2026-03-15', '2026-03-20', '2026-03-25', '2026-04-01'] },
+  { label: 'active, b = today', startDate: '2026-06-01', endDate: '2026-06-30', a: '2026-06-01', b: '2026-06-15',
+    days: ['2020-01-01', '2026-06-01', '2026-06-08', '2026-06-15', '2026-06-20', '2026-07-05'] },
+  { label: 'endDate precedes startDate', startDate: '2026-03-20', endDate: '2026-03-10', a: '2026-03-20', b: '2026-03-20',
+    days: ['2020-01-01', '2026-03-20', '2026-03-20', '2026-03-20', '2026-03-25', '2026-04-01'] },
+  { label: 'active on its first day', startDate: '2026-06-15', endDate: '2026-06-30', a: '2026-06-15', b: '2026-06-15',
+    days: ['2020-01-01', '2026-06-15', '2026-06-15', '2026-06-15', '2026-06-20', '2026-07-05'] },
+] as const;
+
+test('A-60 Part 6.4/6.5: the ceiling holds and the diff is exactly one row of the table', () => {
+  const sMin = (x: string, y: string): string => (x < y ? x : y);
+  const sMax = (x: string, y: string): string => (x > y ? x : y);
+  let diffs = 0;
+  let checked = 0;
+  for (const iv of INTERVALS) {
+    // `null`, absent (`undefined` here, then the key is deleted), and the six day values.
+    const supply: Array<IsoDate | null | undefined> = [null, undefined, ...(iv.days as readonly string[])] as Array<
+      IsoDate | null | undefined
+    >;
+    for (const fd of supply) {
+      for (const ld of supply) {
+        checked++;
+        const c = cityEdges('Split', 'HR' as CountryCode, fd ?? null, ld ?? null);
+        if (fd === undefined) delete (c as Partial<TripSummaryCity>).firstDay;
+        if (ld === undefined) delete (c as Partial<TripSummaryCity>).lastDay;
+        const s = travelStats(
+          [row({ id: 'sweep', startDate: iv.startDate as IsoDate, endDate: iv.endDate as IsoDate,
+            countryCodes: ['HR' as CountryCode], cities: [c] })],
+          TODAY,
+        );
+        const where = `${iv.label} · firstDay=${String(fd)} lastDay=${String(ld)}`;
+        assert.equal(s.cities.length, 1, `${where}: the city vanished`);
+        assert.equal(s.unreadableCityDates, 0, `${where}: nothing here is unreadable`);
+        const got: [string, string] = [s.cities[0]!.firstVisit, s.cities[0]!.lastVisit];
+
+        // 1a. Every day a city line names lies inside its row's `[a, b]`.
+        assert.ok(got[0] >= iv.a && got[1] <= iv.b && got[0] <= got[1],
+          `${where}: ${got[0]}→${got[1]} escapes [${iv.a}, ${iv.b}]`);
+        // 1b. Every range either IS `[a, b]` entire, or has at least one end the row supplied.
+        const entire = got[0] === iv.a && got[1] === iv.b;
+        const suppliedEnd = (fd != null && got[0] === fd) || (ld != null && got[1] === ld);
+        assert.ok(entire || suppliedEnd,
+          `${where}: ${got[0]}→${got[1]} is neither [a, b] entire nor anchored on a supplied edge`);
+
+        // 2/3. Part 2's shipped expression, over the same input.
+        const rawA = (fd ?? iv.startDate) as string;
+        const rawB = sMax(rawA, (ld ?? iv.endDate) as string);
+        const oldDisjoint = rawB < iv.a || rawA > iv.b;
+        const oldA = oldDisjoint ? iv.a : sMin(iv.b, sMax(iv.a, rawA));
+        const oldB = oldDisjoint ? iv.b : sMax(oldA, sMin(iv.b, sMax(iv.a, rawB)));
+        if (got[0] === oldA && got[1] === oldB) continue;
+        diffs++;
+        assert.ok(fd == null, `${where}: a pair with a supplied firstDay changed answer — Part 6.5 says none does`);
+        assert.ok(ld != null && ld < iv.a, `${where}: the only shape that may move is a lone lastDay before \`a\``);
+        assert.deepEqual([oldA, oldB], [iv.a, iv.a], `${where}: the old answer was not the invented single day`);
+        assert.deepEqual(got, [iv.a, iv.b], `${where}: the new answer is not the trip's own range`);
+        assert.notEqual(iv.a, iv.b, `${where}: a degenerate interval may not differ at all (Part 5 residue 2)`);
+      }
+    }
+  }
+  assert.equal(checked, 256, 'the sweep did not run — 4 intervals × 8 × 8');
+  // Two intervals are non-degenerate, and each moves on exactly {null, absent} × {before `a`}.
+  assert.equal(diffs, 4, 'the diff set is not Part 6.5\'s one row');
+});
+
+test('A-60 Part 6.4: no reference-trip city line escapes its country line, at six clocks', () => {
+  // I-12a's A-60 rendered-output bullet, corrected at revision 42 by Part 6.4: asserted as a
+  // PROPERTY at six clocks rather than as six literals, and about **escaping** rather than width.
+  const { trip } = europe2026();
+  const rowOf = tripSummary(trip, COUNTRY_INDEX);
+  const clocks: IsoDate[] = ['2026-08-06', '2026-08-07', '2026-08-10', '2026-08-12', '2026-08-18', '2026-08-24'];
+  let travelledClocks = 0;
+  for (const clock of clocks) {
+    const s = travelStats([rowOf], clock);
+    if (s.cities.length === 0) continue; // 2026-08-06: the trip is `planned` and contributes nothing.
+    travelledClocks++;
+    for (const c of s.cities) {
+      assert.ok(c.firstVisit <= c.lastVisit, `${clock} ${c.name}: inverted`);
+      const ctry = s.countries.find((x) => x.code === c.countryCode);
+      assert.ok(ctry, `${clock} ${c.name}: no country row`);
+      assert.ok(c.firstVisit >= ctry.firstVisit && c.lastVisit <= ctry.lastVisit,
+        `${clock}: ${c.name} ${c.firstVisit}→${c.lastVisit} escapes ${ctry.code} ${ctry.firstVisit}→${ctry.lastVisit}`);
+    }
+  }
+  assert.equal(travelledClocks, 5, 'INCONCLUSIVE: the clock set does not exercise five travelled clocks');
+});
+
+test('A-60 Part 6.5: the reference trip mid-trip is byte-identical to Part 2\'s stated six', () => {
+  // Part 6.5's *"zero CLI change"*, at the statistic rather than at the surface: no minted row can
+  // reach the shape 6.3 changes, because `tripSummary` sets both city edges or neither.
+  const { trip } = europe2026();
+  const s = travelStats([tripSummary(trip, COUNTRY_INDEX)], '2026-08-12' as IsoDate);
+  const seen = s.cities.map((c) => `${c.name} ${c.firstVisit}→${c.lastVisit}`).sort();
+  assert.deepEqual(seen, [
+    'Budapest 2026-08-07→2026-08-12',
+    'Dubrovnik 2026-08-10→2026-08-12',
+    'London 2026-08-07→2026-08-12',
+    'Prague 2026-08-07→2026-08-12',
+    'Split 2026-08-12→2026-08-12',
+    'Vienna 2026-08-08→2026-08-10',
+  ]);
 });

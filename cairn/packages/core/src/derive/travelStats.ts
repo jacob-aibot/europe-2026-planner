@@ -72,6 +72,19 @@ export type TravelStatsCity = {
    * edge pair the row's own clamp interval does not intersect) each take the same answer, for
    * the same stated reason: the row carries nothing usable about *when*, so the trip's own
    * range is what there is to say.
+   *
+   * **A `null` or absent edge is a VALUE and keeps its per-field `??`** (§8.4 **A-60 Part
+   * 6.2**): a city supplying exactly one readable edge reports that edge, with the trip's own
+   * corresponding end standing in for the other. Only *unreadable* evidence poisons the field
+   * beside it. **Trigger 3 is read over the edges the entry supplied** (Part 6.3) — a lone
+   * `lastDay` before the window is disjoint even though the substitute for its missing
+   * `firstDay` would have landed inside it.
+   *
+   * **The ceiling, §8.4 A-60 Part 6.4, superseding Part 2's:** every day a city line names lies
+   * inside its row's `[a, b]`, so no city line ever escapes the country line beside it at the
+   * same clock; and every range a city line names either is `[a, b]` entire or has at least one
+   * end the row actually supplied. It is **not** a claim about width — a city line may be
+   * legitimately narrower than its country's, and that precision is what A-56 bought.
    */
   firstVisit: IsoDate;
   /** The latest `lastDay`, clamped — never after `today`, never before `firstVisit`. */
@@ -427,26 +440,56 @@ export function travelStats(summaries: readonly TripSummaryRow[], today: IsoDate
       // mistake repeated.
       const unreadableDays = isUnreadableDay(c.firstDay) || isUnreadableDay(c.lastDay);
       if (unreadableDays) unreadableCityDates++;
+      // **§8.4 A-60 Part 6.3** — and the ORDER below is the fix, not a rearrangement. Part 6.7
+      // residue 3 names the defect it repairs, and it generalises: *decide what the row supplied
+      // before computing with it.* A-60 was stated in prose about *"a range"* and then written as
+      // pseudocode over two scalars that might be **substitutes**, so trigger 3 was applied to a
+      // value the row never said. `obsA`/`obsB` are what the entry actually supplies; `rawA`/
+      // `rawB` — which may be substitutes — are computed last and are read by the clamp alone.
+      //
+      // **A-60 Part 6.2**: `null` and an absent key are **values**, not defects, and they keep
+      // A-56 Part 7 clause 1's per-field `??` below. The pair-wide reading of trigger 1 was
+      // refused: it buys nothing on the missing end — the substitute is the same trip edge the
+      // fallback would have printed — and pays for it by deleting the one real observation on
+      // the end the row did supply. **Corrupted evidence poisons its pair; absent evidence does
+      // not**, which is why A-59's `unreadableDays` is pair-wide here and `??` is per-field.
+      const obsA: IsoDate | null = unreadableDays ? null : (c.firstDay ?? null);
+      const obsB: IsoDate | null = unreadableDays ? null : (c.lastDay ?? null);
       // **A-37 Part 2**, sites 4 and 5. `inDomain` for the same reason `startDate` gets it: a
       // stored row is not a validated document and these two strings were never revalidated.
       // After A-59's gate every value reaching `dayNumber` here is `isIsoDate`-valid and the
       // clamp is a no-op — it **stays** anyway (A-59 Part 2, A-46 Part 5's precedent): deleting
       // a gate because the guard above it currently makes it unreachable is how the guard's
       // next narrowing becomes a defect. Trigger to remove it: none.
-      const rawA = inDomain(dayNumber((unreadableDays ? null : c.firstDay) ?? row.startDate));
-      // An inverted stored pair still collapses onto its first — A-56 clause 1, unchanged, and
-      // it happens BEFORE the disjointness test so `[rawA, rawB]` is a real interval.
-      const rawB = Math.max(rawA, inDomain(dayNumber((unreadableDays ? null : c.lastDay) ?? row.endDate)));
-      // Trigger 3, **A-60** Part 2. A range the clamp interval does not intersect would collapse
-      // onto whichever end of `[a, b]` it was clamped to — for a city the traveller reaches next
-      // week, that is **today**, the one day in the window they are provably somewhere else
-      // (QA R43-4). The country form of the same fact is the trip's range, coarse and true; the
-      // finer granularity may not be the less honest one. Where the two intersect — including a
-      // range that merely touches `[a, b]` at one day, which is a real arrival day and evidence
-      // rather than an artefact — clause 1's clamp is unchanged.
-      const disjoint = rawB < a || rawA > b;
-      const cityA = unreadableDays || disjoint ? a : Math.min(b, Math.max(a, rawA));
-      const cityB = unreadableDays || disjoint ? b : Math.max(cityA, Math.min(b, Math.max(a, rawB)));
+      const numA = obsA === null ? null : inDomain(dayNumber(obsA));
+      const numB = obsB === null ? null : inDomain(dayNumber(obsB));
+      // Triggers 1 and 2 together — the entry supplies no usable edge at all.
+      const noEdge = numA === null && numB === null;
+      // Trigger 3, **A-60** Part 2 as generalised by Part 6.3. A range the clamp interval does
+      // not intersect would collapse onto whichever end of `[a, b]` it was clamped to — for a
+      // city the traveller reaches next week, that is **today**, the one day in the window they
+      // are provably somewhere else (QA R43-4). The country form of the same fact is the trip's
+      // range, coarse and true; the finer granularity may not be the less honest one.
+      //
+      // Read over the SUPPLIED edges. Where both are supplied this is Part 2's test unchanged —
+      // `numA` is Part 2's `rawA` and `max(numA, numB)` is its `rawB`, the same expression.
+      // Where only one is supplied the entry bounds a **ray**, not an interval, and the ray is
+      // what is tested: a lone `lastDay` before `a` is disjoint, a lone `firstDay` after `b` is
+      // disjoint, and nothing else is. Both arms are STRICT — a range touching `[a, b]` at one
+      // day names a real arrival or departure day, which is evidence and not an artefact.
+      const disjoint =
+        numA === null
+          ? numB !== null && numB < a // the ray (−∞, lastDay]
+          : numB === null
+            ? numA > b // the ray [firstDay, +∞)
+            : Math.max(numA, numB) < a || numA > b; // Part 2's test, unchanged
+      const fallback = noEdge || disjoint;
+      // A-56 Part 7 clause 1's clamp, over clause 1's per-field fallbacks — Part 6.2, unchanged.
+      const rawA = inDomain(dayNumber(obsA ?? row.startDate));
+      // An inverted stored pair still collapses onto its first — A-56 clause 1, unchanged.
+      const rawB = Math.max(rawA, inDomain(dayNumber(obsB ?? row.endDate)));
+      const cityA = fallback ? a : Math.min(b, Math.max(a, rawA));
+      const cityB = fallback ? b : Math.max(cityA, Math.min(b, Math.max(a, rawB)));
       const key = `${countryCode ?? NO_COUNTRY}|${nameKey}`;
       const hit = cityMap.get(key);
       if (!hit) {
