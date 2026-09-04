@@ -3032,3 +3032,42 @@ Re-run, not re-written, this round and all green/as-claimed: `bash qa/i7a-exit6b
 --experimental-strip-types qa/i7a-idb-rowkeys.mjs` (ALL OK; `--fault=g1` and `--fault=g16` both
 3 FAIL(S)). `qa/i6-summary.mjs` (1 FAIL) and `qa/i6a-bookkeeping.mjs` (4 FAIL) are **stale by
 design and pre-existing** — both re-derived in a worktree at `4b5643b` with identical content.
+
+---
+
+## Round 44 (2026-09-04, `master` @ `b574dc5`) — the I-12a breaker pass (§8.4 **A-59** / **A-60**)
+
+One new probe, eight sections, bare Node, plus a **re-cut of round 43's own probe**. Run from
+`cairn/`:
+
+```bash
+node --experimental-strip-types qa/r44-a59.mjs
+   # A  the fence over `git diff 7ef18c9 b574dc5` + cairn-constraints on the ADDED production
+   #    lines; core's runtime surface counted (79) and `isIsoDate` confirmed imported by
+   #    MODULE PATH; SUMMARY_VERSION still 5; root-planner md5.
+   # B  `unreadableCityDates` at every input shape: null, absent, one end, both ends, a number,
+   #    an object, the near-miss, a calendar-invalid date; per-entry across entries and rows;
+   #    the unnamed-AND-corrupt entry; a PLANNED row (never walked, never counted).
+   # C  `rowStatsReadable`'s 2 + 2N matrix, every field of a three-city row individually, and
+   #    the ceiling — `rowDatesReadable` / `rowLifecycle` / `rowUnopenable` did not move.
+   # D  `unreadableRows` / `rowId`: zero suspects, one, two, one row corrupt at BOTH levels,
+   #    the duplicate-id case, and an innocent-but-flagged row in the suspect set.
+   # E  **R44-1** — a GENUINE version-1 row (no `cities` key, per SUMMARY_VERSION's own
+   #    ledger) driven through the shipped store: `rowStatsReadable` throws, and so now does
+   #    `travelHistory`, out of the catch block that exists to stop exactly that.
+   # F  **R44-2** — A-60's HALF-NULL fork, and the closing ceiling claim it falsifies.
+   # G  A-60's disjointness boundary at every edge, and the ceiling as a PROPERTY over the
+   #    reference trip at six clocks and over a mixed corrupt/clean library.
+   # H  purity, determinism, order-independence of the new count, and the six rendered CLI
+   #    values A-60 Part 2 states.
+
+node --experimental-strip-types qa/r43-a56.mjs      # re-cut; ALL OK at b574dc5
+```
+
+**6 FAIL lines carrying 2 finding ids (R44-1 ×5, R44-2 ×1) are the findings**, not a broken
+probe. `qa/r43-a56.mjs` was **re-cut by the breaker** — §E, §F, §K and §M asserted the defects
+round 43 filed, three of which are now fixed, so it read 9 FAIL at `b574dc5` and ROADMAP
+I-12a's *"§F, §H, §M must go green"* gate was unsatisfiable. Re-pointed at the contracts that
+replaced them (A-59 Parts 2–4, A-60 Part 2, and R43-3's path-keyed strip as shipped at
+`28ed249`), it is **ALL OK**, and §K now checks its own transcription against the file it
+copies so it cannot go stale unnoticed a second time. The file's header records what moved.

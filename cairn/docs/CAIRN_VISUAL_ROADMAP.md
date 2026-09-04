@@ -19,8 +19,48 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
+> **🛠 THE TWO FIXES ARE BUILT AND HAVE BEEN ATTACKED — as of 2026-09-04. This block is the
+> newest. It supersedes one line of the block underneath: I-12a is now **designed ✅ · built ✅
+> · verified ⚠️ — one thing to fix before it counts as done.**
+>
+> **What was built.** Both answers from the block below, exactly as ruled and with no new screen.
+> A city you have not reached yet now prints the trip's own dates instead of today's: mid-trip on
+> 12 August, Budapest, London and Prague each print *"7–12 August, in progress"* — word for word
+> what their country lines already said — while Split keeps its genuine *"12 August"*, because
+> that really is the day you arrive. And a single corrupted city date no longer blanks the whole
+> travel history: it falls back to the trip's dates, the app counts how many it absorbed, and a
+> refusal that does happen can now name the trip that caused it.
+>
+> **The adversarial round checked all of that by running it, not by reading the report**, and
+> every one of those outcomes holds. It also re-ran the fault battery — deliberately breaking the
+> new code in six different ways to confirm the tests notice — and all six went red, in both
+> directions.
+>
+> **One real problem, and it is one line.** The new *"which trip is corrupted"* check assumes
+> every saved trip record carries a list of cities. The very oldest saved records — from before
+> cities were stored at all — do not. On those, the check crashes, and because it runs inside the
+> safety net that is supposed to turn a crash into a polite *"we could not read your travel
+> history"*, the safety net now crashes too. In practice the app's per-tab guard catches it and
+> shows *"The Profile tab could not be shown"* instead of the friendlier message, and only until
+> the app finishes bringing old records up to date — but that is a step backwards from what it
+> did the day before, on the exact kind of damaged data this whole change exists to survive. It
+> needs one guard added, and adding it breaks nothing.
+>
+> **Two smaller items go back to the architect**, both about wording rather than behaviour: one
+> paragraph of the ruling contradicts itself about a half-empty date pair (a case only
+> hand-edited data can reach), and the checklist that was supposed to sign this work off asked
+> for the old test file to pass unchanged — which it cannot, because that file's whole job was to
+> prove the old behaviour, and the old behaviour is what got fixed. The tester re-cut that file
+> against the new rules instead, and it now passes.
+>
+> **Status on this board:** **I-12a — designed ✅ · built ✅ · verified ⚠️ (one fix outstanding)
+> · shippable ❌.** City-level history itself (I-12) is unchanged: designed ✅ · built ✅ ·
+> verified ✅ · shippable ❌. **Photos (the other half of step 2d) are unchanged: designed ✅ ·
+> built ❌.** Detail: `cairn/docs/QA-FINDINGS.md` round 44.
+
+
 > **🧭 THE THREE QUESTIONS THAT ROUND CAME BACK WITH ARE ANSWERED — as of 2026-09-03. This block
-> is the newest. It adds one small piece of work to the list and changes nothing else: city-level
+> was the newest until the one above it. It adds one small piece of work to the list and changes nothing else: city-level
 > history stays designed ✅ · built ✅ · verified ✅ · shippable ❌.**
 >
 > **What was asked.** The adversarial round below ended with three questions for the architect

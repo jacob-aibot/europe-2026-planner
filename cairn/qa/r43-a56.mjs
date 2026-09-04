@@ -3,6 +3,27 @@
  * revision 40): `TripSummaryCity` gains `centre` + `firstDay`/`lastDay`, `SUMMARY_VERSION`
  * 4 → 5, `TravelStatsCity` gains `firstVisit`/`lastVisit`.
  *
+ * **RE-CUT at round 44, `master` @ `b574dc5`, by the breaker who wrote it — sections E, F, K
+ * and M.** Three of round 43's own findings were fixed between the two rounds, and this file
+ * asserted the *defects* rather than the contracts, so re-running it unchanged reported the
+ * fixes as 9 FAILs (3 → 9) and made ROADMAP I-12a's ship gate — *"§F, §H and §M must go
+ * green"* — literally unsatisfiable. The builder of I-12a correctly declined to edit it; that
+ * is the breaker's call and this is the breaker making it. What moved, and nothing else did:
+ *
+ *   - **§E ×2** — the two assertions pinning A-56 clause 1's clamp-collapse, which **A-60 Part
+ *     2 supersedes**. Same inputs, the ruled answer, plus the two touching-at-one-day edges the
+ *     ruling explicitly keeps.
+ *   - **§F ×5** — the four corrupt-date throws and the whole-library blast radius, which
+ *     **A-59 Part 2** removes. Re-cut to the fallback and its count.
+ *   - **§K ×1** — a hand-typed copy of `qa/i7a-idb-rowkeys.mjs`'s pre-fix float check, stale
+ *     since **R43-3** was fixed at `28ed249`. Re-transcribed, and the transcription is now
+ *     *checked against the file* so it cannot silently drift again.
+ *   - **§M ×1** — `res.rowId !== null`, which after A-59 Part 2 passed **vacuously** on the
+ *     `ok: true` branch. Re-cut to demand the naming on a library that is still refused.
+ *
+ * Sections A–D and G–L are round 43's, unchanged. The **new** contract's own adversarial
+ * pass is `qa/r44-a59.mjs`; this file is not it.
+ *
  *   node --experimental-strip-types qa/r43-a56.mjs      (bare Node, no browser, no server)
  *
  * Written from A-56 and the shipped source. It re-derives every builder claim with its own
@@ -396,19 +417,34 @@ head('E. `travelStats` clamping, driven at every edge A-56 Part 7 clause 1 names
   const inv = cityOf(withCity({ firstDay: '2026-03-18', lastDay: '2026-03-12' }));
   ok(inv.firstVisit === '2026-03-18' && inv.lastVisit === '2026-03-18',
     `an INVERTED pair collapses rather than emitting last < first (${inv.firstVisit} → ${inv.lastVisit})`);
+  // ---- RE-CUT at round 44, against A-60 as ruled. -------------------------------------
+  // These two assertions used to pin A-56 clause 1's collapse — a range the clamp interval
+  // does not intersect landing on whichever end of `[a, b]` it was clamped to. That IS R43-4,
+  // which this section's own `note` described in those words, and **A-60 Part 2 supersedes
+  // it**: a disjoint range takes clause 2's fallback to `[a, b]` instead. Left in place and
+  // re-pointed rather than deleted, because the input is the same and only the ruled answer
+  // moved — a reader comparing rounds should see which line changed and why.
   const both = cityOf(withCity({ firstDay: '1900-01-01', lastDay: '1900-02-01' }));
-  ok(both.firstVisit === '2026-03-10' && both.lastVisit === '2026-03-10',
-    `a range entirely OUTSIDE the trip collapses onto the trip's own edge (${both.firstVisit} → ${both.lastVisit})`);
+  ok(both.firstVisit === '2026-03-10' && both.lastVisit === '2026-03-20',
+    `A-60: a range entirely OUTSIDE the trip takes the trip's own RANGE, not its edge (${both.firstVisit} → ${both.lastVisit})`);
 
-  // The active-trip ceiling.
+  // The active-trip ceiling — R43-4's own shape, at the granularity that filed it.
   const act = withCity({ firstDay: '2026-03-25', lastDay: '2026-03-28' },
     { startDate: '2026-03-10', endDate: '2026-03-31' });
   const ac = cityOf(act, '2026-03-20');
-  ok(ac.lastVisit === '2026-03-20' && ac.firstVisit === '2026-03-20',
-    `an ACTIVE trip cannot report a city visit in the future — clamped to today (${ac.firstVisit} → ${ac.lastVisit})`);
-  ok(ac.provisional === true, 'and it is flagged provisional');
-  note('  ^ the clamp is A-56 Part 7 clause 1 exactly. It does mean a city NOT YET VISITED is');
-  note('    reported with today\'s date rather than being withheld — provisional is the only tell.');
+  ok(ac.firstVisit === '2026-03-10' && ac.lastVisit === '2026-03-20',
+    `A-60: a city the ACTIVE trip has not reached reports [a, b], not today (${ac.firstVisit} → ${ac.lastVisit})`);
+  ok(ac.provisional === true, 'and it is still flagged provisional — A-34 is untouched');
+  note('  ^ A-60 Part 2. The clamp is upheld everywhere the two intervals intersect; what moved');
+  note('    is the disjoint case, which used to name a single day the traveller was NOT there.');
+  // The edge the ruling explicitly keeps: touching at one day is intersecting, and that day is
+  // evidence. A `<`/`<=` slip either side of it erases a real arrival day.
+  const touchA = cityOf(withCity({ firstDay: '2026-03-05', lastDay: '2026-03-10' }));
+  ok(touchA.firstVisit === '2026-03-10' && touchA.lastVisit === '2026-03-10',
+    `a range touching [a, b] on ONE day keeps that day — it is evidence, not an artefact (${touchA.firstVisit} → ${touchA.lastVisit})`);
+  const touchB = cityOf(withCity({ firstDay: '2026-03-20', lastDay: '2026-03-25' }));
+  ok(touchB.firstVisit === '2026-03-20' && touchB.lastVisit === '2026-03-20',
+    `and the same at the other end (${touchB.firstVisit} → ${touchB.lastVisit})`);
 
   // IsoDate domain: `inDomain` at both walls.
   const dom = cityOf(withCity({ firstDay: '0001-01-01', lastDay: '9999-12-31' },
@@ -435,43 +471,63 @@ head('E. `travelStats` clamping, driven at every edge A-56 Part 7 clause 1 names
 }
 
 // ===========================================================================
-head('F. the no-shape-gate throw — reproduced, and its blast radius counted');
+head('F. R43-2 — RE-CUT at round 44: the throw is a counted fallback (A-59 Parts 2 and 3)');
 // ===========================================================================
+// This section used to assert the defect it filed: four shapes of corrupt `cities[].firstDay`
+// each throwing `invalid IsoDate` out of `travelStats`, and one of them taking the whole
+// library down. **A-59 Part 2 removes exactly that**, so those five assertions cannot pass
+// after the fix and re-running them unchanged measures nothing. They are re-cut here to the
+// contract that replaced them — same four inputs, same blast-radius question, the ruled answer
+// — and the old expectation is kept in the message so the two rounds stay comparable.
 {
   const t = makeTrip('t-f', 'vienna', '2026-03-10', '2026-03-20');
   const good = core.tripSummary(t, core.COUNTRY_INDEX);
   const bad = (patch) => { const r = JSON.parse(JSON.stringify(good)); Object.assign(r.cities[0], patch); return r; };
-  const throws = (row, today = '2026-06-01') => {
-    try { core.travelStats([row], today); return null; } catch (e) { return e.message; }
+  const stats = (row, today = '2026-06-01') => {
+    try { return core.travelStats([row], today); } catch (e) { return { threw: e.message }; }
   };
-  const m1 = throws(bad({ firstDay: 'not-a-date' }));
-  ok(m1 !== null, `a malformed cities[].firstDay THROWS from travelStats: ${JSON.stringify(m1)}`);
-  const m2 = throws(bad({ lastDay: '2026-3-1' }));
-  ok(m2 !== null, `a near-miss cities[].lastDay ("2026-3-1") throws too: ${JSON.stringify(m2)}`);
-  const m3 = throws(bad({ firstDay: 12345 }));
-  ok(m3 !== null, `a NUMBER in cities[].firstDay throws: ${JSON.stringify(m3)}`);
-  const m4 = throws(bad({ firstDay: {} }));
-  ok(m4 !== null, `an OBJECT in cities[].firstDay throws: ${JSON.stringify(m4)}`);
-  // The symmetry claim: startDate already did this.
+  // A-59 Part 2's fallback is A-56 clause 2's: the trip's own range, `[2026-03-10, 2026-03-20]`.
+  const absorbed = (label, patch) => {
+    const s = stats(bad(patch));
+    if (s.threw) return ok(false, `${label}: must NOT throw (A-59 Part 2)`, s.threw);
+    const c = s.cities[0];
+    ok(c.firstVisit === '2026-03-10' && c.lastVisit === '2026-03-20' && s.unreadableCityDates === 1,
+      `${label} → the trip's range, counted once (${c.firstVisit} → ${c.lastVisit}, n=${s.unreadableCityDates})`,
+      { span: [c.firstVisit, c.lastVisit], unreadableCityDates: s.unreadableCityDates });
+  };
+  absorbed('a malformed cities[].firstDay (was: THREW)', { firstDay: 'not-a-date' });
+  absorbed('a near-miss cities[].lastDay "2026-3-1" (was: THREW)', { lastDay: '2026-3-1' });
+  absorbed('a NUMBER in cities[].firstDay (was: THREW)', { firstDay: 12345 });
+  absorbed('an OBJECT in cities[].firstDay (was: THREW)', { firstDay: {} });
+  // A-59 Part 2 keeps the grandfathered throw on the row's OWN two dates, and says why: those
+  // decide whether the row participates at all, and there is nothing to degrade to.
   const s = JSON.parse(JSON.stringify(good)); s.startDate = 'not-a-date';
-  ok(throws(s) !== null, 'symmetry claim holds: a malformed row.startDate already threw before I-12');
-  // The blast radius: how many unvalidated date strings per row reach `dayNumber`.
+  ok(stats(s).threw !== undefined,
+    'A-37 Part 2 is NOT reversed: a malformed row.startDate still throws — it gates participation');
+  // The blast radius question, asked again and answered the other way.
   const ref = core.tripSummary(loadRef(), core.COUNTRY_INDEX);
-  const before = 2, now = 2 + 2 * ref.cities.length;
-  note(`unvalidated date strings read per row: ${before} (startDate/endDate) → ${now} on the reference row`);
-  note('  A-37 gates day NUMBERS (inDomain) and country CODES, and does not gate date SHAPE.');
-  note('  One malformed city date in one row takes down travelStats for the WHOLE library.');
-  // Does the whole library die, or only the row? Measure.
+  note(`date strings read per row: 2 (startDate/endDate, still ungated) + ${2 * ref.cities.length} ` +
+    `on the reference row (cities[], now gated by \`isIsoDate\`)`);
   const g2 = core.tripSummary(makeTrip('t-f2', 'tokyo', '2020-01-01', '2020-01-05'), core.COUNTRY_INDEX);
-  let all = null;
-  try { core.travelStats([bad({ firstDay: 'x' }), g2], '2026-06-01'); } catch (e) { all = e.message; }
-  ok(all !== null, 'ONE corrupt city date makes travelStats throw for the ENTIRE library, not just its own row');
-  // And what the client does with it — is there a read gate above?
+  const all = stats2([bad({ firstDay: 'x' }), g2]);
+  ok(all.threw === undefined && all.cities.length === 2 && all.unreadableCityDates === 1,
+    'ONE corrupt city date no longer takes the ENTIRE library down — both trips still report',
+    all.threw ?? { cities: all.cities.length, n: all.unreadableCityDates });
+  // The count is the difference between absorbing and swallowing (A-37 Part 5 residue 2).
+  ok(stats(bad({ firstDay: 'x', lastDay: 'y' })).unreadableCityDates === 1,
+    'both ends corrupt is ONE entry, counted once — A-59 Part 3 counts per entry, not per field');
+  ok(stats(bad({ firstDay: null })).unreadableCityDates === 0,
+    '`null` is a value and is NOT counted — the count means "a defect was absorbed", not "no days"');
+  // And what the client does with it now: a read gate finally exists above core.
   const prof = readdirSync(join(CAIRN, 'apps/web/src/views')).filter((f) => /Profile/.test(f));
   const src = prof.map((f) => readFileSync(join(CAIRN, 'apps/web/src/views', f), 'utf8')).join('\n');
-  const guarded = /try\s*\{[\s\S]{0,400}travelStats/.test(src) || /travelHistory/.test(src);
-  note(`Profile.tsx reaches travelStats via ${guarded ? 'a client selector (travelHistory)' : 'a direct call'}; ` +
-    'A-44 put lifecycle\'s read gate in packages/client — there is no equivalent for the row\'s date SHAPE.');
+  ok(/travelHistory/.test(src),
+    'Profile.tsx still reaches `travelStats` only through the `travelHistory` selector');
+  note('A-59 Part 4 adds the gate this section said did not exist: `rowStatsReadable` reads all');
+  note('2 + 2N date fields in packages/client, beside `rowDatesReadable`. §M drives it end to end.');
+}
+function stats2(rows, today = '2026-06-01') {
+  try { return core.travelStats(rows, today); } catch (e) { return { threw: e.message }; }
 }
 
 // ===========================================================================
@@ -676,31 +732,45 @@ head('J. real-data shapes');
 head('K. the narrowed float check in `qa/i7a-idb-rowkeys.mjs`, driven as a pure function');
 // ===========================================================================
 {
-  // The exact expression the probe now uses, lifted verbatim from `assertClean`.
+  // RE-CUT at round 44. This block held a HAND-TYPED copy of the pre-fix expression
+  // (`JSON.stringify(persisted, (k, v) => k === 'centre' ? undefined : v)`), which the
+  // R43-1/R43-3 fix-up at `28ed249` replaced with a PATH-keyed strip. The transcription went
+  // stale the moment the fix landed, so this section kept reporting a closed finding as open.
+  // It is re-cut against the shipped expression, and the transcription is now checked against
+  // the file rather than trusted — a hand copy that cannot notice it has drifted is the defect
+  // this section was written to find, one level up.
+  const shipped = readFileSync(join(CAIRN, 'qa/i7a-idb-rowkeys.mjs'), 'utf8');
+  ok(/const withoutCityCentres = result\.persisted\.map\(\(rec\) => \{/.test(shipped)
+    && /if \(!Array\.isArray\(rec\.cities\)\) return rec;/.test(shipped)
+    && /const \{ centre, \.\.\.rest \} = c;/.test(shipped),
+    'the shipped strip is PATH-keyed (`cities[].centre`), which is what this transcription copies');
+  ok(!/\(k, v\) => \(k === 'centre' \? undefined : v\)/.test(shipped),
+    'and the NAME-keyed replacer R43-3 filed is gone from the file');
+  /** The shipped `assertClean` float check, transcribed from the two assertions above. */
   const narrowed = (persisted) => {
-    const stripped = JSON.stringify(persisted, (k, v) => (k === 'centre' ? undefined : v));
-    return (stripped.match(/-?\d+\.\d+/g) ?? []);
+    const withoutCityCentres = persisted.map((rec) => {
+      if (!Array.isArray(rec.cities)) return rec;
+      return { ...rec, cities: rec.cities.map((c) => {
+        if (c === null || typeof c !== 'object' || !('centre' in c)) return c;
+        const { centre, ...rest } = c; void centre; return rest;
+      }) };
+    });
+    return (JSON.stringify(withoutCityCentres).match(/-?\d+\.\d+/g) ?? []);
   };
   const rec = (extra) => [{ id: 't1', cities: [{ key: 'k', centre: { lat: 43.17, lng: 16.44 } }], ...extra }];
-  ok(narrowed(rec({})).length === 0, 'the shipped narrowing hides cities[].centre, as intended');
+  ok(narrowed(rec({})).length === 0, 'the narrowing still hides cities[].centre, as intended');
   ok(narrowed(rec({ dwellRadiusKm: 1.25 })).length === 1,
     'a float under ANY OTHER key still fails — the narrowing is not a blanket exemption');
-  // …but `centre` is stripped by NAME at any depth, and the shape assertion beside it only
-  // walks `rec.cities[].centre`. A float that hides under a `centre` key anywhere else is
-  // invisible to BOTH halves.
-  // R43-3. `centre` is stripped by NAME at any depth, and the bare-{lat,lng} assertion beside
-  // it walks `rec.cities[].centre` ONLY. So a float under a `centre` key anywhere ELSE in the
-  // record is invisible to both halves.
   const elsewhere = narrowed(rec({ home: { centre: { lat: 1.5, lng: 2.5, accuracyM: 12.5 } } }));
-  ok(elsewhere.length > 0,
-    `FINDING R43-3: a float under a \`centre\` key OUTSIDE cities[] must still be caught (saw ${elsewhere.length})`,
+  ok(elsewhere.length === 3,
+    `R43-3 CLOSED: a float under a \`centre\` key OUTSIDE cities[] is caught again (saw ${elsewhere.length})`,
     { floats: elsewhere });
   const inside = narrowed([{ id: 't1', cities: [{ centre: { lat: 1, lng: 2, accuracyM: 9.5 } }] }]);
   ok(inside.length === 0,
-    `the float check alone is also blind to a THIRD float inside cities[].centre (${inside.length} seen) — only the bare-{lat,lng} shape assertion catches that one`,
+    `a THIRD float INSIDE cities[].centre is still the bare-{lat,lng} shape assertion's job (${inside.length} seen here) — that division of labour is by design`,
     { floats: inside });
-  note('the two halves cover different sets, and neither covers a `centre` key elsewhere in the');
-  note('record. No such key exists today, so this is the guard, not the thing guarded.');
+  note('The two halves now cover the same path and nothing else. R43-3 is fixed at 28ed249 and');
+  note('this section is the evidence, re-cut rather than left asserting the old expression.');
 }
 
 // ===========================================================================
@@ -766,39 +836,58 @@ head('L. failure modes during the rescan the bump now triggers for every stored 
 }
 
 // ===========================================================================
-head('M. R43-2 — what the corrupt city date does END TO END, through the client\'s own gates');
+head('M. R43-2 — RE-CUT at round 44: the row is nameable, and the anonymity is measured, not assumed');
 // ===========================================================================
+// This section used to assert `res.rowId !== null` on a library `travelStats` refused. After
+// A-59 Part 2 that library is no longer refused, so the assertion passed **vacuously** —
+// `res` is the `ok: true` branch and `rowId` is `undefined`, which is `!== null`. A green line
+// that can no longer measure what it was written to demand is worse than a red one, so the
+// section is re-cut to demand the naming on a library that IS still refused, and to demand the
+// non-refusal separately.
 {
-  const { travelHistory, rowLifecycle, rowDatesReadable } = await import('../packages/client/src/selectors/index.ts');
+  const { travelHistory, rowLifecycle, rowDatesReadable, rowStatsReadable } =
+    await import('../packages/client/src/selectors/index.ts');
   const good = core.tripSummary(makeTrip('t-m1', 'vienna', '2026-03-10', '2026-03-20'), core.COUNTRY_INDEX);
   const other = core.tripSummary(makeTrip('t-m2', 'tokyo', '2019-04-01', '2019-04-09'), core.COUNTRY_INDEX);
   const rot = JSON.parse(JSON.stringify(good));
   rot.cities[0].firstDay = 'not-a-date';
 
-  // Every gate A-37 / A-44 / A-46 already put on the row passes this row.
-  ok(rowLifecycle(rot, '2026-06-01') !== null, 'A-44 rowLifecycle: the row classifies fine');
-  ok(rowDatesReadable(rot) === true, 'A-46 rowDatesReadable: the row\'s own dates are readable');
+  // The three older gates still call this row healthy, exactly as round 43 measured — that part
+  // of the finding was never about the gates being wrong, only about there being no fourth one.
+  ok(rowLifecycle(rot, '2026-06-01') !== null, 'A-44 rowLifecycle: the row still classifies fine');
+  ok(rowDatesReadable(rot) === true, 'A-46 rowDatesReadable: the row\'s own two dates are still readable');
   ok(!('summaryVersion' in rot) || rot.summaryVersion === 5, 'and it is stamped current, so no rescan will visit it');
+  // …and the fourth gate now exists and is the one that sees it. That is A-59 Part 4's F-E.
+  ok(rowStatsReadable(rot) === false,
+    'A-59 F-E: `rowStatsReadable` is the gate that DOES see it — a fifth fact, not a fourth instance');
 
+  // The library is no longer refused at all, which is the half of R43-2 A-59 Part 2 closed.
   const res = travelHistory({ library: [rot, other] }, '2026-06-01');
-  ok(res.ok === false, `travelHistory refuses the WHOLE library (ok=${res.ok})`);
-  ok(res.rowId !== null,
-    `FINDING R43-2: the refusal must be able to name the offending trip (rowId=${JSON.stringify(res.rowId)}) — the duplicate-id regex is the only extractor, so a bad city date is anonymous`,
-    res);
-  note(`message: ${JSON.stringify(res.message)}`);
-  ok(travelHistory({ library: [other] }, '2026-06-01').ok === true,
-    'the OTHER trip alone is fine — one row takes down the history of every trip beside it');
-  // The pre-I-12 equivalent, for the symmetry claim.
-  const oldRot = JSON.parse(JSON.stringify(good)); oldRot.startDate = 'not-a-date';
-  const oldRes = travelHistory({ library: [oldRot, other] }, '2026-06-01');
-  ok(oldRes.ok === false,
-    'the same class existed before I-12 via `startDate` — BUT that one IS caught by rowLifecycle/rowDatesReadable');
-  ok(rowLifecycle(oldRot, '2026-06-01') === null && rowDatesReadable(oldRot) === false,
-    'and those two gates DO see it, so a surface can single the bad row out; there is no such gate for a city date',
-    { lifecycle: rowLifecycle(oldRot, '2026-06-01'), readable: rowDatesReadable(oldRot) });
-  note('That asymmetry is the finding: the row-level gates A-37/A-44/A-46 built cover the two');
-  note('dates the row already had and are blind to the 2N A-56 added. `travelHistory`\'s');
-  note('try/catch means the surface DEGRADES rather than collapses — this is not a blocker.');
+  ok(res.ok === true,
+    `R43-2 half 1 CLOSED: one corrupt city date no longer refuses the whole library (ok=${res.ok})`, res);
+  const st = core.travelStats([rot, other], '2026-06-01');
+  ok(st.unreadableCityDates === 1 && st.cities.length === 2,
+    'both trips still report, and the absorption is counted once',
+    { n: st.unreadableCityDates, cities: st.cities.length });
+
+  // The other half — the naming — measured on a library that IS still refused, so the assertion
+  // cannot pass by the refusal having gone away.
+  const stillBad = JSON.parse(JSON.stringify(good));
+  stillBad.id = 't-m3'; stillBad.startDate = 'not-a-date';
+  const named = travelHistory({ library: [other, stillBad] }, '2026-06-01');
+  ok(named.ok === false, 'a malformed TRIP date still refuses — A-37 Part 2 is not reversed');
+  ok(named.rowId === 't-m3',
+    `R43-2 half 2 CLOSED: the refusal names the offending trip (rowId=${JSON.stringify(named.rowId)})`, named);
+  ok(JSON.stringify(named.unreadableRows) === '["t-m3"]',
+    'and `unreadableRows` lists it — the fact A-59 Part 4 records for the Trips-list treatment',
+    named.unreadableRows);
+  // Two suspects: the design degrades to null rather than picking one.
+  const two = JSON.parse(JSON.stringify(stillBad)); two.id = 't-m4';
+  const pair = travelHistory({ library: [stillBad, two] }, '2026-06-01');
+  ok(pair.rowId === null && pair.unreadableRows.length === 2,
+    'two suspects → `rowId` null and both listed: "one of these two" is not an attribution', pair);
+  note('R43-2 is closed on both halves. What replaced it is measured in `qa/r44-a59.mjs` §D and');
+  note('§E, including the version-1 row on which `rowStatsReadable` throws (R44-1).');
 }
 
 console.log(fails === 0 ? '\nALL OK' : `\n${fails} FAIL(S)`);
