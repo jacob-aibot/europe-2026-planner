@@ -109,7 +109,12 @@ purpose; `cairn/tools/gen-hub.mjs` renders it to `cairn/docs/HUB.html`, which is
 double-clicking, no server) and `docs/HUB.fragment.html` (the same body with no document wrapper,
 for publishing to a web host that supplies its own). They cannot drift: the fragment is a slice of
 the page, and `test/hub.test.ts` fails if the page stops containing it. If the board is published
-somewhere, re-publish the fragment in the same pass and record the URL in `STATE.json`.
+somewhere, re-publish the fragment in the same pass.
+
+**The board is published at
+<https://claude.ai/code/artifact/aec1ae50-80d7-4136-a3d7-7221dd62e7a6>** (also in `STATE.json` as
+`artifactUrl`). Re-publish `docs/HUB.fragment.html` **to that URL** — publishing without it creates
+a second board, which is how two sources of truth start.
 
 That is ~15 lines of JSON, and `test/hub.test.ts` will fail the build if the result is incoherent —
 a step marked shippable that nothing verified, a gap in the round history, a `now` that points at a

@@ -45,6 +45,7 @@ const head = git('rev-parse', '--short', 'HEAD');
 const BOARD_FILES = [
   ':(top,exclude)cairn/docs/STATE.json',
   ':(top,exclude)cairn/docs/HUB.html',
+  ':(top,exclude)cairn/docs/HUB.fragment.html',
   ':(top,exclude)cairn/tools/gen-hub.mjs',
   ':(top,exclude)cairn/test/hub.test.ts',
 ];
