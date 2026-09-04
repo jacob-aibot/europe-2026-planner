@@ -401,10 +401,31 @@ export function rowDatesReadable(row: { startDate: string; endDate: string }): b
  * have normalised to `'2026-03-02'` — the same choice A-46 Part 2 made for the trip's own two.
  *
  * Pure, total, never throws, opens nothing.
+ *
+ * **Total means total over a STORED row, which is not a validated document** (A-37 Part 2) — QA
+ * **R44-1**. This shipped walking `row.cities` unguarded, and a **version-1** row carries no
+ * `cities` key at all: `SUMMARY_VERSION`'s own ledger says `cities` arrives at version **2**, and
+ * a library mid-rescan legitimately holds one. Because `travelHistory` calls this from inside its
+ * own `catch`, the `TypeError` came out of the one boundary that exists to absorb throws. Three
+ * shapes are separated here, deliberately:
+ *
+ *   - **`cities` absent or `null`** — *"no cities recorded"*, and `true` is the honest answer to
+ *     *"does every date-shaped field THIS ROW carries read as an `IsoDate`"* when it carries none.
+ *     `false` would put a stale-but-fine version-1 row under a sentence about corruption, which
+ *     A-59 Part 4's naming semantics do not cover (Part 7 residue 1: dates, not the row).
+ *   - **`cities` present but not a list** — no version ever produced it, nothing can be read from
+ *     it, and it is `false`. A string is *iterable*, so the unguarded loop walked its characters
+ *     and called a garbage row readable: the same missing guard with the quieter symptom.
+ *   - **an entry that is not an object** — likewise `false`, for the same reason and not by
+ *     throwing over it.
  */
 export function rowStatsReadable(row: core.TripSummaryRow): boolean {
   if (!rowDatesReadable(row)) return false;
-  for (const c of row.cities) {
+  const cities: unknown = row.cities;
+  if (cities === undefined || cities === null) return true;
+  if (!Array.isArray(cities)) return false;
+  for (const c of cities as readonly core.TripSummaryCity[]) {
+    if (c === null || typeof c !== 'object') return false;
     // `null` and absent are **values, not defects** — a version-4 row the rescan has not
     // reached carries neither key, and A-56 Part 7 clause 2 is its correct answer.
     if (c.firstDay !== null && c.firstDay !== undefined && !core.isIsoDate(c.firstDay)) return false;

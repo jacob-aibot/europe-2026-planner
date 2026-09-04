@@ -100,6 +100,65 @@ test('A-59 Part 4: `null` and an ABSENT key are values, not defects — the row 
   assert.equal(rowStatsReadable(noCities), true);
 });
 
+/**
+ * QA **R44-1**. `rowStatsReadable` shipped documented *"pure, total, never throws"* and walked
+ * `row.cities` unguarded. A **version-1** row carries no `cities` key at all — that is the shape
+ * `SUMMARY_VERSION`'s own ledger defines, the shape `qa/i7a-idb-rowkeys.mjs`'s `ROW_GEN1` fixture
+ * holds, and the shape a browser mid-rescan legitimately hands `travelHistory`. Walking it threw a
+ * `TypeError` **from inside `travelHistory`'s `catch`**, so the one boundary A-37 Part 2 mandates
+ * propagated the throw it exists to absorb.
+ *
+ * `true` is the honest answer for a row carrying no cities: the question is *"does every
+ * date-shaped field THIS ROW carries read as an `IsoDate`"*, and it carries none. `false` would
+ * name a stale-but-fine version-1 row as a date suspect under a sentence about corruption.
+ */
+function versionOneRow(init: { id: string; startDate: string; endDate: string }): TripSummaryRow {
+  const r = row(init) as Partial<TripSummaryRow>;
+  // The ten Phase-1 / Phase-2a keys and nothing else; `cities` arrives at version 2.
+  delete r.countryCodes;
+  delete r.cities;
+  delete r.attribution;
+  delete r.summaryVersion;
+  return r as TripSummaryRow;
+}
+
+test('R44-1: a version-1 row carries no `cities` key at all, and the predicate stays TOTAL over it', () => {
+  const v1 = versionOneRow({ id: 't-v1', startDate: '2019-04-01', endDate: '2019-04-09' });
+  assert.equal('cities' in v1, false, 'INCONCLUSIVE: the fixture is not a version-1 row');
+  assert.equal(rowStatsReadable(v1), true, 'a version-1 row is not a date suspect');
+});
+
+test('R44-1: a version-1 row does not take `travelHistory`\'s refusal boundary down with it', () => {
+  const v1 = versionOneRow({ id: 't-v1', startDate: '2019-04-01', endDate: '2019-04-09' });
+  const res = travelHistory({ library: [v1] }, TODAY);
+  assert.equal(res.ok, false, 'INCONCLUSIVE: `travelStats` no longer refuses a version-1 row');
+  if (res.ok) return;
+  assert.equal(res.rowId, null, 'a version-1 row was named as a date suspect');
+  assert.deepEqual(res.unreadableRows, []);
+});
+
+test('R44-1: a `cities` that is not a list is a defect, not a walkable value', () => {
+  // A string is iterable, so the unguarded loop ran over its characters, every `c.firstDay` read
+  // `undefined`, and a garbage row came back READABLE — the same missing guard, silently.
+  const strung = healthy();
+  (strung as { cities: unknown }).cities = 'nope';
+  assert.equal(rowStatsReadable(strung), false);
+
+  const nulled = healthy();
+  (nulled as { cities: unknown }).cities = null;
+  assert.equal(rowStatsReadable(nulled), true, 'absent and null both mean "no cities recorded"');
+});
+
+test('R44-1: a malformed `cities` ENTRY is named rather than thrown over', () => {
+  const r = healthy();
+  (r as { cities: unknown }).cities = [null];
+  assert.equal(rowStatsReadable(r), false);
+  const res = travelHistory({ library: [r] }, TODAY);
+  assert.equal(res.ok, false, 'INCONCLUSIVE: `travelStats` no longer refuses a null city entry');
+  if (res.ok) return;
+  assert.equal(res.rowId, 'ok', 'the single suspect row was not named');
+});
+
 test('A-59 residue 2: the predicate is `core.isIsoDate`, so a CALENDAR-invalid city date fails it', () => {
   // Stricter than the throw it replaces, deliberately — `2026-02-30` would have normalised to
   // `2026-03-02`, a date nobody typed. The same choice A-46 Part 2 made for the trip's own two.
