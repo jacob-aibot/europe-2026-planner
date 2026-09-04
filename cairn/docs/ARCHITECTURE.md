@@ -1016,6 +1016,22 @@ instruments, and it falsified a correct read-only accessor the A-39 pass had dis
 field moves, `SCHEMA_VERSION` stays 2, A-61's two criteria and their numbers stand, and A-58's
 no-dependency verdict is untouched.** `ROADMAP.md` revision 44 carries all of it as **I-13b**.
 
+**Revision 45, 2026-09-04.** **One residue, no new mechanism, and the honest half of a comment is now the
+ruled half.** QA round 46 — the confirmation pass over the whole I-13 repair arc — could not break A-62's
+compound key on either engine and routed exactly one finding here: **R46-4 (MINOR)**, a fourth residue on
+**A-62 Part 8**. A `removeTrip` that rejects inside `deleteTrip` leaves that trip's byte records with no
+document, no library row and no report, under a comment claiming they are *"reclaimable"* — which they are
+not, because `reclaimPhotoBytes` needs an active document and an observed id and this path has neither,
+Part 4 having deliberately removed the id list. **Ruled:** the trip is still deleted (§4.2 rule 6c's own
+reason — an ancillary storage failure may not make a trip undeletable, and the port's `removeTrip` aborts
+whole, so there is nothing to roll back); the failure is **not** pushed into `orphanPhotoBytes` and the id
+list is **not** re-introduced to feed it (both re-open what Part 4 closed, and `packages/client` may not
+log); and the class of orphan this produces — which also has QA **R46-1** face 3 and `closeTrip`-mid-decode
+in it — is answered by **residue 2's sweep and by nothing before it**, whose trigger is widened in place to
+name it. **What lands in code is a comment correction and nothing else** — no `AppState` field, no
+selector, no rollback. `ROADMAP.md` revision 45 carries it as a **non-blocking** item in **I-13c**, the
+round-46 repair pass.
+
 **Phase 1 is §2 and §4. The next phase is §8.1–§8.4.** Everything else is the shape those must not
 foreclose. See `ROADMAP.md` for sequencing and `PRODUCT-VISION.md` for why this order and not another.
 **What the product looks like is `DESIGN.md`, not this document** — §9 says why, and a builder of a screen
@@ -1023,8 +1039,8 @@ reads that instead of entering §2 or §4.
 
 ## Read only your sections
 
-This document is **~338k tokens** (re-measured at **revision 44**, with `doc-section` — §8 grew 65k → 70k
-when A-56 landed in §8.4, 70k → 77k when A-59/A-60 joined it, 77k → 81k when A-60 gained its Part 6 and 81k → **82k** when A-38 Part 5's line was restated at revision 44, and §10 grew 13k → 16k when A-61 landed at revision 43 and 16k → **25k** when A-62/A-63/A-64 landed at revision 44; the previous figure was ~271k at revision 36, with
+This document is **~340k tokens** (re-measured at **revision 45**, with `doc-section` — §8 grew 65k → 70k
+when A-56 landed in §8.4, 70k → 77k when A-59/A-60 joined it, 77k → 81k when A-60 gained its Part 6 and 81k → **82k** when A-38 Part 5's line was restated at revision 44, and §10 grew 13k → 16k when A-61 landed at revision 43, 16k → 25k when A-62/A-63/A-64 landed at revision 44 and 25k → **27k** when A-62 Part 8 gained its fourth residue at revision 45; the previous figure was ~271k at revision 36, with
 `cairn/tools/doc-section ARCHITECTURE` — §2 is ~123k of it and §8 ~65k, and §4 grew 13k → 18k when A-41/A-42 landed in §4.4, 18k → 25k when A-48 joined them, 25k → 32k when A-49/A-50 did, 32k → 42k when A-51/A-52 did, 42k → 49k when A-53 did and 49k → **59k** when A-54 did — the figure below is `doc-section`'s own, re-measured at revision 37; the per-section figures below were stale by a third before revision 11 and are
 re-measured, not estimated, whenever a revision lands). Nothing needs all of it, and a fresh agent that reads it whole starts a sixth
 of the way into its context before writing a line. Pull what you need:
@@ -1063,7 +1079,7 @@ supersedes, so reading it first is what tells you which of A-46 to skip** | 123k
 | 7 | Explicitly deferred | <1k | anyone about to build something not in the roadmap |
 | 8 | **The travel-history model** (revision 9) — trip lifecycle and past trips (§8.1), the feasibility/integrity rule class (§8.2), participants (§8.3), geography attribution, travel stats and the summary-row rule (§8.4); then the shapes the location, photo and social phases must land on (§8.5–§8.7) and what is refused (§8.8). **§8.10 is revision 10** — physical travel distance by mode and the four provenance bases that keep it honest; **it is not Phase 2 scope**, so a Phase 2 builder reads §8.1–§8.4 and stops. **Revision 11 amends §8.1, §8.2 and §8.4 by pointer only — the two rulings themselves live in §2.2 (A-10) and §2.7 (A-9), and a Phase 2 builder reads both; revision 12 amends §8.2 by pointer in the same way, and its four rulings live in §2.7 (A-11, A-12, A-13) and §2.14 (A-14)**. **A-26 is revision 20 and lives in §8.4** — the mixed-resolution country index, the withdrawal of the correctness floor's escalation mechanism, and the ruling that `null` is the right answer for a landform the dataset does not carry; **anyone touching `tools/gen-countries.mjs`, `geo/countryIndex.ts` or the attribution golden reads it first**, and it is what ROADMAP's I-5a builds; **A-27 is revision 21, sits directly under A-26 and is read *with* it, never instead of it** — it amends A-26 Part 4's block-quoted rule with a third clause (a filled code ships a **forgiveness entry** as well as a coverage entry), supersedes A-26 Part 5's two-residue list with three, lifts A-26 Part 6 item 3 for a docstring correction only, and is what ROADMAP's **I-5b** builds; **A-28 is revision 22, sits under A-27 and is read with both, never instead of them** — it supersedes A-27 Part 4's filter 2 (two arms, because the coverage index it compared against is mixed-resolution and answered generously) and A-27 Part 4's `overlaps` predicate (the vertex-mean probes come out), corrects A-27 Part 5's Macao sentence and every count in it, and is what ROADMAP's **I-5c** builds. **Anyone touching `tools/forgiveness.mjs` or the forgiveness pass reads A-28 first and A-27 second**; **A-29 is revision 23 and sits under A-28** — it is the only one of the four that is *not* about the index: it rules that a `City`'s **stated** `countryCode` fills a gap the coordinate cannot answer, never overrides one, and only through a gate ending in index membership, and it takes `SUMMARY_VERSION` to 3. **Anyone touching `derive/summary.ts` reads A-29 and §4.3's A-30 together** — A-29 changes what a row *says*, A-30 changes how it is *written*, and I-6a builds both; **A-31 is revision 24 and sits under A-29** — it is the `travelStats` specification (type, signature, algorithm, sort orders, residues), and it widens the row a second time with the **record census** clause 2's `unattributed` cannot be computed without, taking `SUMMARY_VERSION` to 4. **A builder of I-7 reads §8.4 clause 2, then A-31, and needs nothing else in this document except §2.10's list**; A-31 also rewrites ROADMAP exit criterion 6, so **anyone about to add a count to `TripSummaryRow` reads A-31 Part 6 first — widening that allow-list is an architect's ruling**; **A-33 and A-34 are revision 25 and sit under A-31** — **A-33 supersedes A-31 Part 6's two-half check entirely** (it grepped declarations while the danger is a *value*, and a persisted `countriesVisited` passed it), so read A-33 and treat Part 6 as the *principle* it block-quotes and nothing more; **A-34** adds `provisional` to `travelStats`' two row types and is the ruling that stops an active trip's unreached countries being printed as fact. **A builder of I-7a reads A-31, then A-33 and A-34, plus §2.1's A-32**; **A-36 and A-37 are revision 26 and sit under A-34** — **A-36 supersedes A-33 Part 3's 6b-1/6b-2/6b-4 split and Part 7 residue 2** (every `StoragePort` implementation is *executed* by the gate, including the web port, against a recording double; 6b-2 is demoted to a tripwire and its parameter grep withdrawn; 6b-4's Chromium read-back becomes a required recorded ship-gate condition), so **anyone touching a port implementation, `test/stats-storage.test.ts` or `ROW_KEYS` reads A-36 first and A-33 second**; **A-37** is the ruling that a stored summary row is not a validated document — two module-private read gates in `travelStats` (day numbers clamped into `IsoDate`'s domain, a stored country code read through `/^[A-Z]{2}$/`), and it is what makes A-32 Part 8 residue 3's bound and the composite key's docstring true rather than merely stated. **A builder of I-7b reads A-36 and A-37, plus §2.3's A-35**; **A-38 is revision 27 and sits under A-37** — it **widens A-36 Part 2's mechanism and Part 4's 6b-4 scope without touching A-36's sentence**: a port's coverage is its **write paths**, not its interface methods, so the recording double gains a **seed** (a pre-existing database, including a *legacy* record with no envelope version), 6b-1b becomes **five arms each with a stated starting state**, and 6b-4 gains a second seeded phase; **A-39 is revision 28, sits under A-38 and closes the arc** — it supersedes A-38 Part 7's *required property* sentence (which quantified over **faults** and so could never be discharged by a finite fixture list) and A-38 Part 3's arm **seeds**, replacing both with a claim quantified over the state `ensureReady()` can **read**: five axes derived line by line from the function, a **15-state pairwise covering set** in the same five arms, and — the part Jacob asked for — a **written boundary** saying what legitimately reopens this (a `SUMMARY_VERSION`/`SCHEMA_VERSION` bump, a new store, a new port, a fourth write path) and what does not (one more fault shape on an axis already covered, which is a **builder** finding against A-39 Part 5's table, not an architect's). **Anyone touching a port implementation, `recordingIdb`, `test/stats-storage.test.ts` or `qa/i7a-idb-rowkeys.mjs` reads A-39 first, A-38 second and A-36 third**; **A-44 is revision 30, sits at the end of §8.4 and is read with A-37 Part 2** — it is one paragraph plus a signature, and it says where `lifecycle`'s read gate goes (`packages/client`, once, beside `travelHistory`); **anyone rendering a stored summary row on a new surface reads it**; **A-56 is revision 40, sits at the very end of §8.4 and is the newest entry in the section** — the city entry gains `centre` and `firstDay`/`lastDay`, `SUMMARY_VERSION` goes to **5**, A-33 Part 2's `ROW_KEYS`/`ROW_PATHS` are widened, stop-level geometry is refused with its trigger, and A-31 Part 5 residue 1 is closed **for cities only**. **A builder of I-12 reads A-56, then A-31 Parts 2 and 4, then A-33 Part 2, then A-39 Part 11 item 1, and needs nothing else in this document except §2.10's list**; **A-59 and A-60 are revision 41, sit directly under A-56 and are read *with* it, never instead of it** — QA round 43 measured A-56 Part 7 clause 1's *read* of a stored city date as an anonymous throw that takes the whole library's statistics down with no selector naming the row (A-59: the read is gated, the fallback is clause 2's, the absorption is counted in a new `TravelStats.unreadableCityDates`, and a new `rowStatsReadable` selector plus a widened `TravelHistoryResult` make the row nameable), and its *clamp* as printing a specific single day for a city the traveller has not reached (A-60: a range disjoint from the clamp interval falls back to the trip's range, so no city line escapes the country line beside it — *"never more assertive than its country's"* was A-60 Part 2's own wording and is **superseded at revision 42** by Part 6.4, which states the property as escape rather than width). **A-59 and A-60 also carry the three in-place corrections R43-6 made to A-56's own prose** (Part 2's `firstDay` docstring, Part 6's fourth-fixture justification, Part 8 item 6's `gen-golden.mjs` line), none of which moves a fixture, a test or a clause. **A builder of I-12a reads A-59, then A-60, then A-56 Part 7, then §2.9 A-47 Part 3, and needs nothing else**; **A-60 Part 6 is revision 42** and closes QA R44-2, an ambiguity in A-60's own Part 2 — a `null` city day edge is a **value** and keeps A-56 clause 1's per-field fallback (the shipped behaviour is **upheld**; the literal pair-wide reading is refused, because it deletes a real observation to arrive at a less precise version of the same invention), while A-60's disjointness test is generalised to read **the edges the row supplied** rather than the substitutes standing in for the missing ones — which is what makes a lone `lastDay` before `a` stop printing a fully-invented single day. **Part 2's pseudocode and Part 2's closing claim are both superseded by Part 6's**, and **a builder of the I-12a repair pass builds from Part 6.3's block and nothing else in this ruling** | 81k | architect; the builder and breaker of the phase after Phase 1 (§8.1–§8.4 only). §8.10 is for the architect and for phases 4, 5 and 7. Read with `PRODUCT-VISION.md` |
 | 9 | **The design contract and the frontend tooling stack** (revision 38). §9.1 makes `docs/DESIGN.md` binding and says what is in it; §9.2 names the three fences a design pass may not cross; **A-55** is the eight-candidate tooling ruling, its Part 0 states where the dependency line actually is (`core`/`client` only — `apps/web` may take deps and takes none new), and its Part 4 is the tool hierarchy. **A builder of any web surface reads `DESIGN.md`, not this section**; this section is for the architect and for anyone about to add a frontend dependency | 4k | architect; anyone adding a frontend dependency |
-| 10 | **The photo foundation** (revision 40). §10.1 the record class and where the bytes are not; §10.2 import and the hand-rolled EXIF reader; §10.3 storage and the two new object stores; §10.4 the resolution discipline; §10.5 privacy and redaction; §10.6 the loading-state signals a consuming UI needs. **A-57** is the consolidated ruling and **A-58** is the dependency verdict. **A builder of I-13 reads §10 whole — it is self-contained — plus §2.8 (provenance), §2.10's list, `serialize/migrate.ts`'s own docstring, §8.6 and §8.4 A-39 Part 11.** It does **not** need the rest of §2 or §4. **A-61 is revision 43, sits at the end of the section and supersedes nothing in §10 except one clause of §10.1 point 1's own prose, corrected in place** — it is the ruling on BUILD-NOTES **KD-81** (ROADMAP I-13's 4 KB document-growth criterion against §10.1's measured 768 B record), it moves **no field**, and **a builder of I-13a reads A-61 Parts 5 and 7 and needs nothing else in this document**. **A-62, A-63 and A-64 are revision 44** — round 45's three architect-routed findings against I-13: the photo byte key gains its tenancy (`[tripId, photoId]`, `DB_VERSION` 4 → 5, `PhotoPort`'s signatures, R45-2 BLOCKER), `PhotoListing` gains an `'unreadable'` phase and a retry (R45-5), and A-57 Part 4's transition claim is withdrawn with `RefKind` unmoved (R45-6). They amend §10.2, §10.3 and §10.6 **in place**; §10.1's record class and A-58 do not move. **A builder of I-13b reads §10.2, §10.3, §10.6 and A-62/A-63/A-64, plus §8.4 A-38 Part 5 and A-39 Part 5 for the fixture re-cut** | 25k | builder and breaker of I-13; architect |
+| 10 | **The photo foundation** (revision 40). §10.1 the record class and where the bytes are not; §10.2 import and the hand-rolled EXIF reader; §10.3 storage and the two new object stores; §10.4 the resolution discipline; §10.5 privacy and redaction; §10.6 the loading-state signals a consuming UI needs. **A-57** is the consolidated ruling and **A-58** is the dependency verdict. **A builder of I-13 reads §10 whole — it is self-contained — plus §2.8 (provenance), §2.10's list, `serialize/migrate.ts`'s own docstring, §8.6 and §8.4 A-39 Part 11.** It does **not** need the rest of §2 or §4. **A-61 is revision 43, sits at the end of the section and supersedes nothing in §10 except one clause of §10.1 point 1's own prose, corrected in place** — it is the ruling on BUILD-NOTES **KD-81** (ROADMAP I-13's 4 KB document-growth criterion against §10.1's measured 768 B record), it moves **no field**, and **a builder of I-13a reads A-61 Parts 5 and 7 and needs nothing else in this document**. **A-62, A-63 and A-64 are revision 44** — round 45's three architect-routed findings against I-13: the photo byte key gains its tenancy (`[tripId, photoId]`, `DB_VERSION` 4 → 5, `PhotoPort`'s signatures, R45-2 BLOCKER), `PhotoListing` gains an `'unreadable'` phase and a retry (R45-5), and A-57 Part 4's transition claim is withdrawn with `RefKind` unmoved (R45-6). They amend §10.2, §10.3 and §10.6 **in place**; §10.1's record class and A-58 do not move. **A builder of I-13b reads §10.2, §10.3, §10.6 and A-62/A-63/A-64, plus §8.4 A-38 Part 5 and A-39 Part 5 for the fixture re-cut**. **A-62 Part 8 gained a fourth residue at revision 45** (QA **R46-4**) — a failed byte cascade during `deleteTrip` does not block the delete, is not reported into `orphanPhotoBytes`, and is answered only by residue 2's unbuilt sweep, whose trigger is widened in place; **it changes no mechanism, and a builder of I-13c reads residue 4 alone** | 27k | builder and breaker of I-13; architect |
 
 *(§8's figure is measured with `doc-section`, not estimated. §8.1–§8.4 — the Phase 2 model — are roughly
 five sixths of it since revisions 20–27 put A-26…A-29, A-31, A-33, A-34, A-36, A-37 and A-38 in §8.4; a Phase 2 builder
@@ -16619,7 +16635,9 @@ own oracle — A-39 Part 11's *"not a legitimate reason"* clause, read forwards.
 | **Q7** | A fresh database (`oldVersion` 0) | both stores are created once, at version 5, with no delete attempted on a store that does not exist |
 | **Q8** | The real browser, both engines: write two trips' bytes, range-read each | exactly its own records, in **Chromium and WebKit** (`/opt/pw-browsers/webkit-2215`, which R45-7 established is installed). This is the assertion that makes Part 5 a measurement instead of a search result |
 
-**Part 8 — the residues, three.**
+**Part 8 — the residues, ~~three~~ four.** *(The fourth was added at revision 45, QA **R46-4**. It
+supersedes nothing above it; it names a cost of Part 4 that Part 8 should have named when Part 4 was
+written, and it widens residue 2's trigger in place.)*
 
 1. **Byte records written by the send-back build are dropped by the 4 → 5 upgrade.** Part 6 is the argument;
    the visible consequence is `'missing'` on a record that keeps everything except its image. **Trigger:**
@@ -16630,12 +16648,103 @@ own oracle — A-39 Part 11's *"not a legitimate reason"* clause, read forwards.
    `orphans` is A-47-shaped — *"the fact is written when a real failure happens"* — and §6.3's *"a nightly
    sweeper fails loudly, it does not silently delete"* still governs. **Trigger:** a measured accumulation,
    at which point the affordance is *"reclaim N stored images no trip uses"* with a count the user can see,
-   and never an automatic delete.
+   and never an automatic delete. *(**Trigger widened at revision 45, residue 4 below:** a measured
+   accumulation **or** evidence that a trip delete has left bytes behind on a host whose `StoragePort`
+   cannot span them. Residue 4 establishes that for one class of orphan this sweep is not a convenience —
+   it is the **only** recovery, because that class can never be observed by a session.)*
 3. **`PhotoPort` grew a parameter on four methods and one new method, and `apps/mobile` does not exist
    yet.** The signature is the one the native port will also want (SQLite's natural key here is
    `(trip_id, photo_id)` too), so this is a residue only in the sense that it is a port surface fixed
    before its second implementation exists. **Trigger:** Phase 5's port, which A-39 Part 11 item 5 already
    sends through its own arms.
+4. **A trip whose document is gone can leave byte records that no session observed and no shipped
+   mechanism reclaims — and residue 2's sweep is the only thing that will ever answer for them.**
+   *(Added at revision 45, QA **R46-4**, MINOR.)*
+
+   **a. The finding is right, and the comment beside the code is half false.** `deleteTrip` calls
+   `ports.photo.removeTrip(id)` inside a `try`/`catch` whose comment reads *"orphaned bytes are
+   reclaimable; a failed byte delete may not block one."* The **second** clause is ruled correct in (c)
+   below. The **first** is false on this path and has to come out of the code. `reclaimPhotoBytes` needs
+   two things this path cannot supply: an **active document** — its `live` guard is `state.doc.photos`,
+   and Part 4 is what made that guard sound — and an **observed id** in `state.photos.orphans`. After a
+   trip delete there is neither, permanently: the document is gone, and Part 4 deliberately removed the id
+   list that would have named the photographs. `orphanPhotoBytes` is A-47-shaped, reporting what a session
+   observed, and this session observed nothing. So the bytes are orphaned, unreported, and — until residue
+   2 is built — unreclaimable. §6.3's *"no row and no blob without a live tenancy reference"* is broken
+   with no account of itself, which is the one thing §10.2's whole orphan argument turns on not happening.
+
+   **b. Where it is reachable, which the ruling turns on and the measurement does not distinguish.** On
+   `apps/web`, `StoragePort.delete` issues the identical `[tripId, …]` range delete over `photos` and
+   `photoThumbs` **inside the same transaction that drops the document** — §10.3's third table row, and
+   the whole reason the byte stores are in that database. `ports.photo.removeTrip` is the **belt**;
+   `storage.delete` is the **braces**. For the measured state to arise on the shipped host, the belt's
+   transaction must abort and the braces' transaction must then commit the same range delete over the same
+   stores in the same database, one line apart. And if the braces fail too, `deleteTrip` rejects, the
+   document and the library row both survive, and nothing is orphaned — **a failed trip delete is a
+   consistent state.** The state the finding measured is reachable on a host whose `StoragePort.delete`
+   cannot span the byte stores: `memoryStorage`, which deletes `docs`/`summaries`/`versions` and nothing
+   else, and any future native port where the two are separate stores (Phase 5's, residue 3). That is the
+   host the finding ran on and it is the right one to measure the belt on. **The double is not to be
+   "fixed" by giving `memoryStorage` a cascade** — the belt's only test coverage is that it does not have
+   one, which is exactly what round 46's M4 mutant measures. This is *not* R46-6's shape: a double that
+   reaches a worse state than production is the safe direction for a double.
+
+   **c. A failed byte delete does NOT abort the trip delete. Refused, and the precedent is one function
+   up.** §4.2 rule 6c already decided this class: a refused *write* does not block a delete, because
+   *"blocking on a refused flush would make a conflicted trip undeletable."* A refused *byte* delete is
+   the same shape — an ancillary storage failure standing between a user and a destruction they explicitly
+   asked for. Three further reasons. (i) **There is nothing to roll back.** The port's `removeTrip` is one
+   `readwrite` transaction over both stores, so a rejection means it aborted **whole** and the byte side is
+   intact rather than half-deleted; aborting would mean *"do not delete the trip"*, not *"undo a partial
+   delete"*. (ii) §10.2's asymmetry, read forwards: *"a dangling reference is a record the user can see and
+   cannot fix, while orphaned bytes are invisible, bounded, and reclaimable."* An undeletable trip is the
+   first kind of harm; stranded derivatives are the second, and they are bounded by §10.4's fixed
+   two-derivative budget for one trip's photographs. (iii) On the shipped host an abort would refuse a
+   delete the braces would have completed anyway. **The trip goes either way**, and that half of the
+   comment is now ruled rather than merely asserted.
+
+   **d. The failure is NOT counted by `orphanPhotoBytes`, and not reported anywhere else either.** Refused,
+   and not for economy. `orphans` is a list of `PhotoId`s scoped to the **active** trip, and
+   `reclaimPhotoBytes` reads the active document to decide which of them are safe to delete; an entry made
+   here would be a claim no consumer could act on, and the `live` guard would be asked to read a document
+   that does not exist — re-opening precisely what Part 4 closed. **Nor is the id list to be
+   re-introduced** so that there is something to report: reading the doomed document before the cascade is
+   the superseded R45-3 fix that Part 4 deleted, and re-adding it to improve a diagnostic would trade a
+   structural property for a message. There is no third place either: `packages/client` may not log
+   (`cairn-constraints` §5), and §10.6's standard is that a signal the data layer emits is one a surface is
+   obliged to render — so a trip-scoped orphan fact means a new `AppState` field, a new selector and a new
+   screen element, for a failure mode that on the shipped host requires two contradictory transaction
+   outcomes. **That is more machinery than the risk carries, and residue 2 is where it belongs when the
+   risk is carried.**
+
+   **e. What is true instead, and it is the sentence the code must carry.** These bytes are reclaimed by
+   **residue 2's sweep and by nothing before it** — and the sweep needs no bookkeeping from this path at
+   all. Its predicate is *"a `[tripId, …]` key range whose `tripId` has no document"*, which is exactly
+   what this failure produces, and the compound key is what makes that predicate computable without a
+   document parse. So this residue asks for no fourth mechanism. It widens residue 2's trigger (done, in
+   place, above) and records that for this class of orphan the sweep is the **only** recovery rather than a
+   convenience for a class that also has a session report.
+
+   **f. And it is not only the `catch`.** Every path that leaves `[tripId, …]` bytes after the trip's
+   document is gone lands in the same place with the same absence of a report: the failed belt above, QA
+   **R46-1** face 3 (a `write` from an in-flight import settling *after* `deleteTrip`'s cascade has run),
+   and `closeTrip` mid-decode followed by a delete. R46-1's race is a builder fix and it narrows the
+   window; it does not close the **class**, and a native port, a merge, or a future
+   move-this-photo-to-my-other-trip affordance re-opens it wider. **This residue is the design home for
+   the class and residue 2
+   is its answer.** A builder fixing R46-1 does not also owe this, and a breaker who reaches this state by
+   a third route is measuring a documented residue rather than finding a new defect.
+
+   **Trigger:** residue 2's, as widened above.
+
+   **What lands in code: a comment, and nothing else.** In `deleteTrip`, *"orphaned bytes are
+   reclaimable"* is replaced by the two facts ruled here — the trip goes either way (with rule 6c's
+   reason), and the bytes are **not** reclaimable by `reclaimPhotoBytes` on this path, only by residue 2's
+   unbuilt sweep, and on `apps/web` the braces below usually take them anyway. **No `AppState` field, no
+   selector, no change to `orphanPhotoBytes`, no rollback, no id list.** `ROADMAP.md` revision 45 carries
+   it in **I-13c** as a **non-blocking** item: a false comment is a MINOR documentation defect, it gates
+   nothing, and it rides with the round-46 repair pass because that pass is already editing this function
+   for R46-1 face 3.
 
 #### A-63 — `PhotoListing` gains a fourth phase, because a data layer that cannot say *"the read failed"* forces a surface to lie (revision 44, ROADMAP **I-13b**, QA **R45-5** MAJOR)
 

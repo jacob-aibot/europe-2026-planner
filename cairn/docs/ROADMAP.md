@@ -630,7 +630,7 @@ are. What moves earlier is the record class those things suggest **into** — th
 
 **I-12 and I-13 are numbered above the gate and sequenced below it.** Sequencing rule 7 forbids renumbering
 forty cross-references for a tidy sequence, so the numbers are labels: the order is
-I-0 … I-10, **I-12, I-12a, I-13, I-13a, I-13b**, then **I-11, the gate**, which now depends on all of them.
+I-0 … I-10, **I-12, I-12a, I-13, I-13a, I-13b, I-13c**, then **I-11, the gate**, which now depends on all of them.
 
 *(**I-12a** is revision 41, from QA round 43's breaker pass over I-12 — `ARCHITECTURE.md` §8.4 **A-59** and
 **A-60**. Two narrow gaps in what `travelStats` does with the fields I-12 added: an unreadable stored city
@@ -701,6 +701,22 @@ are listed under I-13b's *Built* so nothing in the round is unowned. **I-13 stay
 lands.** Phase 2's scope, boundaries and order are otherwise untouched: no phase moves, `SCHEMA_VERSION`
 stays 2, `SUMMARY_VERSION` stays 5, no `PhotoAsset` field moves and A-58's no-dependency verdict is
 unchanged.
+
+**Revision 45, 2026-09-04.** **One increment added — `I-13c`, the round-46 repair pass — and nothing
+re-scoped.** QA round 46, the confirmation pass over the whole I-13 arc, returned **SEND BACK** with 0
+BLOCKERS, 3 MAJOR and 4 MINOR, and could not break A-62's compound key on either engine. Exactly one
+finding was routed to the architect — **R46-4**, ruled at `ARCHITECTURE.md` revision 45 as a **fourth
+residue on A-62 Part 8**: a failed `removeTrip` inside `deleteTrip` strands that trip's byte records with
+no document and no report, under a comment that calls them reclaimable when nothing shipped can reclaim
+them. **The ruling adds no mechanism.** The trip is still deleted (§4.2 rule 6c's reason); the failure is
+not pushed into `orphanPhotoBytes` and the id list A-62 Part 4 removed is not re-introduced to feed it;
+the whole class — which also holds R46-1 face 3 and `closeTrip`-mid-decode — is answered by residue 2's
+unbuilt sweep, whose trigger is widened in place to name it. So I-13c's architect-owned item is **one
+comment correction, explicitly non-blocking**; the increment's weight is round 46's six builder-routed
+findings, one of them a regression this arc introduced. **I-13 and I-13b stay SEND BACK until I-13c
+lands.** Phase 2's scope, boundaries and order are otherwise untouched: no phase moves, `SCHEMA_VERSION`
+stays 2, `SUMMARY_VERSION` stays 5, no `PhotoAsset` field moves, `RefKind` does not move, and A-58's
+no-dependency verdict is unchanged.
 
 > **Phase numbers changed once, here.** Every heading below carries its old number, and every "Phase N"
 > written in `ARCHITECTURE.md` §1–§7, `BUILD-NOTES.md` or `QA-FINDINGS.md` before revision 9 means the
@@ -1594,10 +1610,10 @@ caption/order) from the cell, and **at most 3 extent panes can exist planet-wide
 unchanged; A-53 adds **I18**, two criteria and a docstring. **I-8i is gated on Jacob's approval of A-51 and
 on nothing else — the design is closed and no further architect round is owed** |
 | **2c — participants** | `Trip.participants`, three build functions, the participants editor, *"people you have travelled with"* on the profile | you can say the trip was with your girlfriend and her family, and it grants them nothing | Not started; gated on 2b |
-| **2d — the memory data layer** *(revision 40)* | **I-12**: `TripSummaryCity` gains `centre` + `firstDay`/`lastDay`, `SUMMARY_VERSION` → 5, `TravelStatsCity` gains dates (§8.4 **A-56**). **I-13**: the `PhotoAsset` record class, multi-file import, two byte stores, a pure EXIF reader, the two-derivative resolution rule, the loading-state selectors (**§10**, **A-57**, **A-58**). **I-12a** *(revision 41, QA round 43; amended at revision 42 by QA round 44)*: an unreadable stored city date stops taking the whole library's statistics down anonymously, and a city range the clock erased stops printing as a specific day (§8.4 **A-59**, **A-60**). **I-12a is SEND BACK at round 44** — a repair pass is owed for R44-1, and revision 42 folds §8.4 **A-60 Part 6** (R44-2) into it as item 5. **I-13 is SEND BACK at round 45**; its builder's KD-81 is ruled at revision 43 as §10 **A-61** — the 4 KB document-growth criterion was mine and wrong, the `PhotoAsset` record does not move by one field, and **I-13a** is the one-file test-and-comment pass that closes it. **I-13b** *(revision 44, QA round 45)*: the photo byte stores get their tenancy in the key so restoring a backup cannot destroy the original trip's photographs, a failed availability read becomes a state a surface can name and retry, and A-57 Part 4's false claim about provenance transitions is withdrawn (§10 **A-62**, **A-63**, **A-64**) | a past trip stops being a list of country codes — it knows *where in* each country and *when* — and a photograph can be attached to a day of it at all, which it could not before. Both are exercisable end to end with `node --test` and the CLI, on a machine with no browser | **In progress** *(status corrected at revision 43 — this cell still read "Not started" after three increments had landed; re-stated at revision 44)*: I-12 SHIP (`8b50889`), I-12a **SEND BACK** and owed a repair pass, I-13 **SEND BACK at round 45** (`497c116`) and owed **I-13b**, **I-13a queued**. **Gated on 2b's *data layer*, which shipped (`REVIEW.md` "2b (data layer)", SHIP, `69e44d4`) — not on 2b's surfaces and not on 2c.** Orderable before or after 2c. **Opens no `.tsx` file** |
+| **2d — the memory data layer** *(revision 40)* | **I-12**: `TripSummaryCity` gains `centre` + `firstDay`/`lastDay`, `SUMMARY_VERSION` → 5, `TravelStatsCity` gains dates (§8.4 **A-56**). **I-13**: the `PhotoAsset` record class, multi-file import, two byte stores, a pure EXIF reader, the two-derivative resolution rule, the loading-state selectors (**§10**, **A-57**, **A-58**). **I-12a** *(revision 41, QA round 43; amended at revision 42 by QA round 44)*: an unreadable stored city date stops taking the whole library's statistics down anonymously, and a city range the clock erased stops printing as a specific day (§8.4 **A-59**, **A-60**). **I-12a is SEND BACK at round 44** — a repair pass is owed for R44-1, and revision 42 folds §8.4 **A-60 Part 6** (R44-2) into it as item 5. **I-13 is SEND BACK at round 45**; its builder's KD-81 is ruled at revision 43 as §10 **A-61** — the 4 KB document-growth criterion was mine and wrong, the `PhotoAsset` record does not move by one field, and **I-13a** is the one-file test-and-comment pass that closes it. **I-13b** *(revision 44, QA round 45)*: the photo byte stores get their tenancy in the key so restoring a backup cannot destroy the original trip's photographs, a failed availability read becomes a state a surface can name and retry, and A-57 Part 4's false claim about provenance transitions is withdrawn (§10 **A-62**, **A-63**, **A-64**). **I-13b is SEND BACK at round 46** — the key held under every attack, but three photo writes cross a trip boundary a key cannot police, one of them a regression this arc introduced; **I-13c** *(revision 45, QA round 46)* is the repair pass, and its one architect-owned item is §10 **A-62 Part 8 residue 4** — a failed byte cascade during a trip delete does not block the delete and is answered only by residue 2's unbuilt sweep, so what lands is a corrected comment and no new machinery | a past trip stops being a list of country codes — it knows *where in* each country and *when* — and a photograph can be attached to a day of it at all, which it could not before. Both are exercisable end to end with `node --test` and the CLI, on a machine with no browser | **In progress** *(status corrected at revision 43 — this cell still read "Not started" after three increments had landed; re-stated at revision 44)*: I-12 SHIP (`8b50889`), I-12a **SEND BACK** and owed a repair pass, I-13 **SEND BACK at round 45** (`497c116`) and owed I-13b, **I-13a queued**; **I-13b built (`70b9ee6`) and SEND BACK at round 46**, owed **I-13c** *(re-stated at revision 45)*. **Gated on 2b's *data layer*, which shipped (`REVIEW.md` "2b (data layer)", SHIP, `69e44d4`) — not on 2b's surfaces and not on 2c.** Orderable before or after 2c. **Opens no `.tsx` file** |
 
 **Mapped onto the increment sequence below** (revision 10): **2a = I-1 → I-4**, **2b = I-5 → I-8**,
-**2c = I-9 → I-10**, **2d = I-12 → I-12a → I-13 → I-13a → I-13b** *(revision 40; I-12a added at revision 41, I-13a at revision 43, I-13b at revision 44)*, with **I-0** before all of them and **I-11** the
+**2c = I-9 → I-10**, **2d = I-12 → I-12a → I-13 → I-13a → I-13b → I-13c** *(revision 40; I-12a added at revision 41, I-13a at revision 43, I-13b at revision 44, I-13c at revision 45)*, with **I-0** before all of them and **I-11** the
 gate — which is now numbered below two increments it waits for; sequencing rule 7 is why the labels are not
 renumbered. Each of the three steps is
 genuinely shippable at its own increment — the phase can stop after I-4 or I-8 and still have delivered
@@ -4633,6 +4649,95 @@ builder-routed findings, worked as one pass because they are the same three file
   Then a **breaker round over I-13 and I-13b together** — round 45 returned SEND BACK on I-13 and it is
   I-13b that has to earn the reversal, not this file.
 
+#### I-13c — the round-46 repair pass: an import stops crossing a trip boundary, `'loading'` becomes transient again, and a comment stops promising a reclaim it cannot deliver (QA round 46; §10 **A-62 Part 8 residue 4**)
+
+*Revision 45, from QA round 46's confirmation pass over I-13 + I-13b (**SEND BACK** — 0 BLOCKERS, 3 MAJOR,
+4 MINOR). The key A-62 ruled survived every attack the round could construct, on Chromium and WebKit; what
+did not survive is the three places a photo write crosses a trip boundary that a key cannot police. **One
+finding was the architect's and it is ruled without new machinery** — everything else here is builder
+repair against `QA-FINDINGS.md` round 46's routing column. No `PhotoAsset` field moves, `SCHEMA_VERSION`
+stays 2, `DB_VERSION` stays 5, `RefKind` does not move, and `package.json` and the lockfile keep a
+zero-line diff. **It opens no view and adds no screen.***
+
+> **Read order for the builder.** `QA-FINDINGS.md` round 46 (the table, plus the R46-1 prose below it —
+> the reasoning there *is* the evidence). Then `ARCHITECTURE.md` §10 **A-62 Part 8 residue 4** — and
+> **residue 4 alone**, not A-62 whole, because it changes no mechanism. §10.6 properties 3, 5 and 6 for
+> R46-2 and R46-3. `cairn/qa/r46-i13b.mjs` and `qa/r46-idb-keys.mjs` are the breaker's own instruments and
+> the sections named below go green **without the probes being edited**.
+
+- **Built.** Two groups: the architect's one item, then round 46's builder-routed findings.
+
+  **1. A-62 Part 8 residue 4 — the comment in `deleteTrip` stops claiming a reclaim it cannot deliver
+  (R46-4, MINOR). NON-BLOCKING.**
+  1. `packages/client/src/store/store.ts`, `deleteTrip`: the `catch`'s
+     `/* orphaned bytes are reclaimable; a failed byte delete may not block one */` is replaced by the two
+     facts residue 4 rules. **The trip goes either way** — that half was already right and is now ruled,
+     with §4.2 rule 6c's reason (an ancillary storage failure may not make a trip undeletable) and the
+     fact that the port's `removeTrip` is one transaction, so a rejection means it aborted whole and there
+     is nothing to roll back. **The bytes are NOT reclaimable on this path** — `reclaimPhotoBytes` needs
+     an active document and an observed id and a deleted trip has neither, so residue 2's unbuilt sweep is
+     the only recovery; on `apps/web` the `ports.storage.delete` below repeats the same range delete in
+     the transaction that drops the document, so the bytes usually go anyway and the belt-only hosts are
+     `memoryStorage` and a future native port. The paragraph above the `chainOntoSaving` call that says
+     *"A failure here leaves reclaimable orphans"* is corrected in the same edit and for the same reason.
+  2. **Five things this item does not get to do**, and they are the ruling rather than a preference: **no
+     rollback or abort of the trip delete**; **no entry in `state.photos.orphans` and no change to
+     `orphanPhotoBytes`** (the list is `PhotoId`-scoped to the active trip and `reclaimPhotoBytes`'
+     `live` guard would be asked to read a document that does not exist); **no re-introduction of the
+     doomed-id list** (that is the superseded R45-3 fix A-62 Part 4 deleted); **no new `AppState` field
+     and no new selector**; and **no cascade added to `memoryStorage`** — the belt's only test coverage is
+     that the double does not have one, which is what round 46's M4 mutant measures.
+  3. **Scheduling: this item blocks nothing.** A false comment is a MINOR documentation defect. It is
+     listed first because it is one edit in a function group 2 is already opening, not because it gates
+     the increment; if it slipped a pass it would be a tracked residue and not a ship condition.
+
+  **2. Round 46's builder-routed findings**, per `QA-FINDINGS.md` round 46's routing column, worked in the
+  same pass because they are the same two files: **R46-1 (MAJOR, a regression this arc introduced)** —
+  `importPhotos` pins the byte side to the trip captured before its first `await` and lets the record side
+  land in whatever trip is open when the decode finishes; three faces, including one that writes a
+  document `validateTrip` calls invalid. **R46-2 (MAJOR)** — `doMerge` takes in the other tab's photo
+  records against a stale availability set, which is R45-4's defect on the one path the fix pass missed;
+  the fix is the line `importDoc` already got. **R46-3 (MAJOR)** — two overlapping `openTrip` calls let
+  the earlier trip's availability answer land last, so `'loading'` becomes terminal and §10.6 property 5's
+  *"true by construction"* is false. **R46-5**, **R46-6** and **R46-7** (MINOR) — a dangling probe-phase
+  citation in the shipped port, the in-memory double's flattened byte key disagreeing with the array key
+  for an id `fromJSON` will accept, and a literal NUL byte making the increment's own ship-gate probe a
+  binary file to git.
+- **User-visible outcome.** **None on screen** — there is still no photo surface. What changes is that a
+  photograph imported while the user navigates away is no longer lost, and a trip opened twice in quick
+  succession no longer shows a spinner that never resolves.
+- **Architecture / data model.** `ARCHITECTURE.md` §10 **A-62 Part 8 residue 4** and nothing else moved at
+  revision 45. **Four things a builder does not get to decide:** the five refusals in group 1 item 2; that
+  R46-1's fix narrows a window rather than closing the orphan class residue 4 names (so a builder does not
+  also owe a sweeper); `SCHEMA_VERSION`, `DB_VERSION`, `SUMMARY_VERSION` and core's export surface all
+  stay where they are; and **no dependency is added to any package** (A-58, unchanged).
+- **Verification.**
+  - `[stated]` **The breaker's own probes, unedited.** `node --experimental-strip-types qa/r46-i13b.mjs`
+    §D, §E, §F, §H, §I and §J go green **without the probe being edited**. **§G is the exception and it is
+    the point**: residue 4 rules that the measured state is *documented*, not fixed, so §G asserting a
+    reclaim that does not exist is a line the **breaker** re-cuts to assert the residue — it is not a
+    builder edit and it is not a defect in this pass. §K (R45-14) stays red; that ruling is still owed.
+  - `[stated]` **R46-1, driven rather than reasoned about.** All three faces of the round's §D, with a
+    slow `derive` and nothing else injected: trip-switch mid-import, the `{kind:'day'}` variant that
+    produces `photo_attach_dangling`, and a delete mid-decode. Outcome clause: a fix that pins the record
+    side without pinning the attach ref leaves face 2 open.
+  - `[stated]` **The comment says what residue 4 says.** A reviewer reading `deleteTrip`'s `catch` learns
+    that the trip goes either way and that the bytes are not reclaimable by any shipped mechanism. This is
+    checkable by reading and it is stated so the ship gate has a line for it, not because a test can
+    assert English.
+  - `[stated]` **The fence:** `git diff --name-only` shows **zero** files under `cairn/docs/design/` and
+    no `package.json`/lockfile movement.
+- **Dependencies / blockers.** I-13b (built, `70b9ee6`). **Nothing else** — orderable immediately, and it
+  blocks I-11. **It does not fire A-39 Part 11**: no store is added, no version moves, and the upgrade
+  writes no record.
+- **Ship gate.** Round 46's six builder-routed findings each red before and green after, recorded;
+  `qa/r46-i13b.mjs` green except §G (re-cut by the breaker) and §K (R45-14, still owed); `qa/r46-idb-keys.mjs`,
+  `qa/i13b-gate.mjs`, `qa/i7a-idb-rowkeys.mjs` and `qa/i13-photo-browser.mjs` green on **both** engines;
+  `npm test`, `npm run typecheck` and the sample build green with **no `package.json` diff and no lockfile
+  movement**. Then a **breaker round over I-13, I-13b and I-13c together** — rounds 45 and 46 both returned
+  SEND BACK and it is I-13c that has to earn the reversal. **Group 1 item 1 is not a gate condition**; it
+  is checked at the gate and reported, and its absence is a tracked residue rather than a hold.
+
 #### I-11 — The phase gate
 
 - **Built.** Nothing new. The full chain: a breaker round over the whole phase, then the manager's
@@ -4646,10 +4751,11 @@ builder-routed findings, worked as one pass because they are the same three file
   this is the pass that clears it.
 - **Verification.** All exit criteria below, each re-derived; the whole Phase 1 suite unchanged; the
   attack list for this phase run end to end.
-- **Dependencies / blockers.** I-0 through I-10, **and I-12, I-12a, I-13, I-13a and I-13b** (revision 40,
+- **Dependencies / blockers.** I-0 through I-10, **and I-12, I-12a, I-13, I-13a, I-13b and I-13c** (revision 40,
   step 2d — numbered above this increment and sequenced below it; I-12a added at revision 41, I-13a at
   revision 43, **I-13b at revision 44 — it is the repair pass for round 45's SEND BACK on I-13 and the
-  phase cannot be gated with it unbuilt**).
+  phase cannot be gated with it unbuilt**, and **I-13c at revision 45, the repair pass for round 46's
+  SEND BACK on I-13b, on the same terms**).
   **I-13a is a one-file test-and-comment pass** and may land inside any earlier commit that opens
   `photos.test.ts`; it is named here so that it cannot reach the gate unbuilt.
 - **Ship gate.** A manager verdict of **SHIP**. Nothing else counts as the phase being done.
