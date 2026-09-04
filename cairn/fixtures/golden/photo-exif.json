@@ -1,0 +1,133 @@
+{
+  "$generatedBy": "cairn/tools/gen-golden.mjs",
+  "$source": "cairn/fixtures/photo/ — JPEG headers, not photographs (tools/gen-photo-fixtures.mjs)",
+  "$what": "readExif() over the committed corpus. NO COORDINATES: a GPS read is recorded as a boolean and never as a number (§10.5, A-58 Part 7).",
+  "files": [
+    {
+      "name": "heic-ftyp.heic",
+      "bytes": 24,
+      "reason": "unsupported_container",
+      "capturedAt": null,
+      "orientation": null,
+      "pixel": null,
+      "hasCoordinate": false
+    },
+    {
+      "name": "jpeg-date-zeros.jpg",
+      "bytes": 80,
+      "reason": "ok",
+      "capturedAt": null,
+      "orientation": null,
+      "pixel": null,
+      "hasCoordinate": false
+    },
+    {
+      "name": "jpeg-exif-gps.jpg",
+      "bytes": 262,
+      "reason": "ok",
+      "capturedAt": {
+        "date": "2024-05-11",
+        "time": "08:14"
+      },
+      "orientation": 6,
+      "pixel": {
+        "w": 4032,
+        "h": 3024
+      },
+      "hasCoordinate": true
+    },
+    {
+      "name": "jpeg-exif-le.jpg",
+      "bytes": 116,
+      "reason": "ok",
+      "capturedAt": {
+        "date": "2019-03-02",
+        "time": "19:45"
+      },
+      "orientation": 1,
+      "pixel": {
+        "w": 1600,
+        "h": 1200
+      },
+      "hasCoordinate": false
+    },
+    {
+      "name": "jpeg-gps-nullisland.jpg",
+      "bytes": 194,
+      "reason": "ok",
+      "capturedAt": {
+        "date": "2023-07-04",
+        "time": "12:00"
+      },
+      "orientation": null,
+      "pixel": null,
+      "hasCoordinate": false
+    },
+    {
+      "name": "jpeg-gps-zerodenom.jpg",
+      "bytes": 194,
+      "reason": "ok",
+      "capturedAt": {
+        "date": "2022-11-09",
+        "time": "06:30"
+      },
+      "orientation": null,
+      "pixel": null,
+      "hasCoordinate": false
+    },
+    {
+      "name": "jpeg-huge-ifd.jpg",
+      "bytes": 206,
+      "reason": "malformed",
+      "capturedAt": null,
+      "orientation": null,
+      "pixel": null,
+      "hasCoordinate": false
+    },
+    {
+      "name": "jpeg-noexif.jpg",
+      "bytes": 24,
+      "reason": "no_exif",
+      "capturedAt": null,
+      "orientation": null,
+      "pixel": null,
+      "hasCoordinate": false
+    },
+    {
+      "name": "jpeg-selfref-ifd.jpg",
+      "bytes": 92,
+      "reason": "malformed",
+      "capturedAt": null,
+      "orientation": null,
+      "pixel": null,
+      "hasCoordinate": false
+    },
+    {
+      "name": "jpeg-truncated-app1.jpg",
+      "bytes": 62,
+      "reason": "truncated",
+      "capturedAt": null,
+      "orientation": null,
+      "pixel": null,
+      "hasCoordinate": false
+    },
+    {
+      "name": "not-an-image.bin",
+      "bytes": 2,
+      "reason": "unsupported_container",
+      "capturedAt": null,
+      "orientation": null,
+      "pixel": null,
+      "hasCoordinate": false
+    },
+    {
+      "name": "png-header.png",
+      "bytes": 33,
+      "reason": "unsupported_container",
+      "capturedAt": null,
+      "orientation": null,
+      "pixel": null,
+      "hasCoordinate": false
+    }
+  ]
+}

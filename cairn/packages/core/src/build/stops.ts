@@ -18,6 +18,7 @@ import { timeVal } from '../derive/legs.ts';
 import { attribution } from '../derive/display.ts';
 import type { BuildCtx } from './createTrip.ts';
 import { userProvenance } from '../model/provenance.ts';
+import { reattachDanglingPhotos } from './photos.ts';
 
 /** §2.4 ordering: by time ascending, untimed last, ties broken by `order`. Pure. */
 export function compareStops(a: Stop, b: Stop): number {
@@ -188,7 +189,14 @@ export function updateStop(trip: Trip, stopId: StopId, patch: StopPatch): Trip {
   return pruneOrphanedCopyPlace({ ...trip, pool, revision: trip.revision + 1 }, before);
 }
 
-/** Removes a stop from wherever it is. Pure. @throws {Error} if it does not exist. */
+/**
+ * Removes a stop from wherever it is. Pure. @throws {Error} if it does not exist.
+ *
+ * §10.3, and it is deliberately a **re-attachment and not a cascade**: a photo pointing at this
+ * stop falls back to `{kind:'trip'}` rather than being deleted, because *"a photograph is not a
+ * plan and deleting a plan may not destroy a memory of it."* Its bytes are untouched.
+ * `reattachDanglingPhotos` runs after the removal and does not bump `revision` again.
+ */
 export function removeStop(trip: Trip, stopId: StopId): Trip {
   const removed = findStop(trip, stopId);
   let found = false;
@@ -197,11 +205,15 @@ export function removeStop(trip: Trip, stopId: StopId): Trip {
     found = true;
     return { ...day, stops: reindex(day.stops.filter((s) => s.id !== stopId), day.id) };
   });
-  if (found) return pruneOrphanedCopyPlace({ ...trip, days, revision: trip.revision + 1 }, removed);
+  if (found) {
+    return reattachDanglingPhotos(pruneOrphanedCopyPlace({ ...trip, days, revision: trip.revision + 1 }, removed));
+  }
   if (!trip.pool.some((s) => s.id === stopId)) throw new Error(`removeStop: no such stop ${stopId}`);
-  return pruneOrphanedCopyPlace(
-    { ...trip, pool: trip.pool.filter((s) => s.id !== stopId), revision: trip.revision + 1 },
-    removed,
+  return reattachDanglingPhotos(
+    pruneOrphanedCopyPlace(
+      { ...trip, pool: trip.pool.filter((s) => s.id !== stopId), revision: trip.revision + 1 },
+      removed,
+    ),
   );
 }
 

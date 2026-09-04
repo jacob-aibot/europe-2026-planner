@@ -7,6 +7,7 @@
  *   node cli.ts cost                 per-day and whole-trip roll-ups
  *   node cli.ts validate             validateTrip issues
  *   node cli.ts stats                lifetime travel statistics, derived (§8.4 A-31)
+ *   node cli.ts photos a.jpg …       what each file's EXIF block actually says (§10.2, A-58)
  *   node cli.ts import               the legacy import report
  *   node cli.ts export [file] [--force]
  *                                    the trip as JSON on stdout, or to a NEW file inside
@@ -344,6 +345,69 @@ function cmdExport() {
   } else process.stdout.write(`${text}\n`);
 }
 
+/**
+ * `photos <file>…` — ARCHITECTURE §10.2, ROADMAP **I-13**'s only user-visible outcome.
+ *
+ * *"Reports what a JPEG's metadata actually says, which is the fastest way to see A-58's central
+ * fact for yourself on your own photos."* That fact is A-58 Part 2's: **on iOS Safari a photo
+ * picked through a file input arrives with its EXIF already gone**, so the capability that
+ * separates a parsing library from a hand-roll buys nothing on the primary target. It is worth
+ * being checkable against a real file rather than taken from a ruling, so this command exists.
+ *
+ * It calls `core.readExif` — the same pure, total, bounded parser `apps/web`'s import path uses,
+ * reached through §2.10's index like everything else here (criterion E ceiling (1)).
+ *
+ * **No coordinate is printed** (§10.5, and §8.4 A-56 Part 5's identical rule for
+ * `TripSummaryCity.centre`): the report says whether a location is present, never what it is.
+ * A photograph's coordinate is the single most sensitive field this model holds, a terminal
+ * scrollback is a log, and *"no coordinate in any log line"* has no exception for a CLI the user
+ * ran themselves. `test/cli.test.ts` greps this command's own output for a decimal.
+ *
+ * **Reads are confined to `cairn/`** by the same `safeWritePath` the export path uses — the
+ * function is a containment check on a resolved path, and it is as correct for a read as for a
+ * write. Cairn reads the live planner through the extractor and by no other route; a `photos`
+ * command that would happily open `../tickets/*.pdf` is a file-disclosure primitive.
+ */
+function cmdPhotos() {
+  const targets = argv.slice(1).filter((a) => !a.startsWith('--'));
+  if (targets.length === 0) {
+    out('usage: node cli.ts photos <file.jpg> [more…]');
+    out('Reports what each file\'s own EXIF block says. Paths must be inside cairn/.');
+    process.exitCode = 2;
+    return;
+  }
+  for (const target of targets) {
+    const abs = safeWritePath(target);
+    if (abs === null || !existsSync(abs)) {
+      out(`refusing to read outside ${CAIRN_ROOT}: ${target}`);
+      process.exitCode = 2;
+      return;
+    }
+    const bytes = new Uint8Array(readFileSync(abs));
+    const r = core.readExif(bytes);
+    const when = r.capturedAt ? `${r.capturedAt.date} ${r.capturedAt.time}` : '—';
+    const px = r.pixel ? `${r.pixel.w} × ${r.pixel.h}` : '—';
+    out(`${basename(abs)}  (${bytes.length} bytes)`);
+    out(`  read       ${r.reason}`);
+    out(`  taken      ${when}`);
+    out(`  pixels     ${px}`);
+    out(`  rotation   ${r.orientation ?? '—'}`);
+    // Present or none. Never the value — §10.5.
+    out(`  location   ${r.at ? 'present' : 'none'}`);
+    if (r.reason === 'unsupported_container') {
+      out('  note       not a JPEG with an Exif APP1 segment. HEIC/HEIF, AVIF, PNG, WebP and');
+      // No section number here, and that is not fussiness: `test/cli.test.ts` greps this
+      // command's whole output for a decimal, because a decimal could only be a coordinate
+      // (§10.5). A citation like "10.2" is a false positive that would blunt a real check.
+      out('             bare TIFF are refused rather than guessed at.');
+    }
+    if (r.reason === 'no_exif' || r.reason === 'unsupported_container') {
+      out('  why        This is the EXPECTED result for a photo picked on iOS: Safari strips');
+      out('             EXIF at the file input, and converts HEIC to JPEG without it (A-58).');
+    }
+  }
+}
+
 const commands: Record<string, () => void> = {
   trip: cmdTrip,
   day: cmdDay,
@@ -353,6 +417,7 @@ const commands: Record<string, () => void> = {
   stats: cmdStats,
   import: cmdImport,
   export: cmdExport,
+  photos: cmdPhotos,
 };
 
 const run = commands[cmd];

@@ -19,7 +19,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, relative, resolve, sep } from 'node:path';
-import { COUNTRY_INDEX, createTrip, fromJSON, migrateDoc, sequentialIds, setTripMeta, toJSON, tripSummary, TripParseError } from '../src/index.ts';
+import { COUNTRY_INDEX, SCHEMA_VERSION, createTrip, fromJSON, migrateDoc, sequentialIds, setTripMeta, toJSON, tripSummary, TripParseError } from '../src/index.ts';
 import type { BuildCtx, Trip } from '../src/index.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -174,9 +174,20 @@ test('QA P2-6: the summary row the Library lists carries datePrecision', () => {
   assert.equal(tripSummary(base(), COUNTRY_INDEX).datePrecision, 'exact');
 });
 
-test('no schemaVersion bump — the field is additive with a total default', () => {
-  assert.equal(base().schemaVersion, 1);
-  assert.equal(JSON.parse(toJSON(base())).schemaVersion, 1);
+/**
+ * **`datePrecision` still earns no bump of its own** — the point of this test is unchanged, and
+ * what moved is the number underneath it. `SCHEMA_VERSION` went 1 → 2 at Phase 2 I-13 for
+ * `Trip.photos` (§10.3, A-57 Part 5), which is a *records* widening; `datePrecision` is a field
+ * with a total default and would still be riding version 1 if photos had not arrived.
+ *
+ * Asserted as "whatever `SCHEMA_VERSION` says, and nothing of `datePrecision`'s doing" rather
+ * than as a literal, so this test stops being a second place the version number is written down.
+ */
+test('no schemaVersion bump for datePrecision — the field is additive with a total default', () => {
+  assert.equal(base().schemaVersion, SCHEMA_VERSION);
+  assert.equal(JSON.parse(toJSON(base())).schemaVersion, SCHEMA_VERSION);
+  // The bump that DID happen is photos', and it is stated where it is decided.
+  assert.equal(SCHEMA_VERSION, 2);
 });
 
 /**

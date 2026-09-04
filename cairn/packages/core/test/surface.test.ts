@@ -12,7 +12,7 @@
  * against cannot be "110 against 50, enumerated". BUILD-NOTES KD-33, which supersedes
  * KD-19 — the entry that recorded the gap as enumerated rather than narrowed.
  *
- * So: one array, 79 entries, set equality both ways. (69 in revision 5; `reassertRetirements`
+ * So: one array, 83 entries, set equality both ways. (69 in revision 5; `reassertRetirements`
  * joins in revision 6 under §2.7 A-5; `lifecycle` joins in revision 10 under §8.1/§8.9,
  * Phase 2 I-1; `countryOf` and `COUNTRY_INDEX` join under §8.4 clause 1, Phase 2 I-5; `SUMMARY_VERSION`
  * joins under §8.4 clause 3, Phase 2 I-6; `travelStats` joins under §8.4 clause 2 / A-31, Phase 2 I-7;
@@ -35,7 +35,14 @@
  * attribution, and it owns no threshold — the threshold is an argument, because framing policy
  * lives in `packages/client`. `CountryPart` is a type and does not count.
  * `daysInMonth` and `ISO_DATE_RE` stay internal for the same reason they
- * always were — a caller that can count days in a month grows a second calendar.)
+ * always were — a caller that can count days in a month grows a second calendar.
+ * **`addPhoto`, `removePhoto`, `updatePhoto` and `readExif` join at Phase 2 I-13** under §10.1
+ * and §10.2, A-57 Part 6 — 79 → 83. The three build functions are P1 (`packages/client`'s
+ * `ACTION_SPECS` resolves `core[spec.coreFn]` off this index) and P2 (§10.1 names them);
+ * `readExif` is both as well, and A-58 Part 3 is why it is in core rather than in `apps/web`.
+ * `reattachDanglingPhotos` stays internal: it is §10.3's repair applied by `removeStop` and
+ * `ensureDays`, and exporting it would publish a way to rewrite a photo's attachment with no
+ * gate — R5-5's argument, one record class over.)
  * A symbol added to `index.ts` without
  * being added to §2.10 fails; a symbol in §2.10 that is not exported fails. Widening the
  * surface is a documentation change first — add the caller or add the section that names
@@ -53,17 +60,20 @@ import * as core from '../src/index.ts';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CAIRN = resolve(HERE, '..', '..', '..');
 
-/** §2.10, transcribed. Runtime symbols only — 79 of them, grouped as the section groups them. */
+/** §2.10, transcribed. Runtime symbols only — 83 of them, grouped as the section groups them. */
 const THE_LIST = [
   // model (8)
   'LOCAL_OWNER', 'SCHEMA_VERSION', 'sequentialIds', 'formatRange', 'costFromDisplay',
   'TripParseError', 'ForeignDocumentError',
   'isIsoDate',
-  // build (17)
+  // build (20) — +addPhoto/removePhoto/updatePhoto at Phase 2 I-13, §10.1, A-57 Part 6
   'createTrip', 'ensureDays', 'setTripMeta', 'setDayMeta',
   'addStop', 'updateStop', 'removeStop', 'moveStop', 'reorderStop',
   'scheduleFromPool', 'returnToPool', 'poolFor',
   'acceptCandidate', 'rejectCandidate', 'copyStopInto', 'upsertBooking', 'linkBooking',
+  'addPhoto', 'removePhoto', 'updatePhoto',
+  // photo (1) — §10.2
+  'readExif',
   // derive (29)
   'computeLegs', 'dayMovingMinutes', 'dayDistanceKm', 'fmtMins',
   'clusterStops', 'focusCluster', 'fitSpanKm', 'MIN_SPAN_KM', 'mapBounds', 'stopPoints', 'stopLatLng',
@@ -92,9 +102,9 @@ const THE_LIST = [
 const runtimeExports = () =>
   Object.keys(core).filter((k) => typeof (core as Record<string, unknown>)[k] !== 'undefined');
 
-test('§2.10 is 79 symbols, and the list in this file is exactly that long', () => {
-  assert.equal(THE_LIST.length, 79, 'the transcribed list is no longer §2.10\'s stated size');
-  assert.equal(new Set(THE_LIST).size, 79, 'the list has a duplicate');
+test('§2.10 is 83 symbols, and the list in this file is exactly that long', () => {
+  assert.equal(THE_LIST.length, 83, 'the transcribed list is no longer §2.10\'s stated size');
+  assert.equal(new Set(THE_LIST).size, 83, 'the list has a duplicate');
 });
 
 test('the index exports exactly §2.10\'s list — set equality, both directions', () => {

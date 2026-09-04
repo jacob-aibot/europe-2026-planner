@@ -27,18 +27,50 @@
  * not a CSPRNG and its collision behaviour is not the one rule 2(b) is claiming, so if no
  * CSPRNG is present the port **throws** and the store shows `'error'`. A fence fails closed.
  */
-import type { SaveOutcome, StoragePort, StoredDoc, StorageVersion, TripDoc } from '@cairn/client';
-import type { TripSummaryRow } from '@cairn/core';
+import type { PhotoPort, SaveOutcome, StoragePort, StoredDoc, StorageVersion, TripDoc } from '@cairn/client';
+import type { PhotoId, TripSummaryRow } from '@cairn/core';
 
 const DB_NAME = 'cairn';
 /**
  * 2 added `versions` and `meta` — the §2.2a envelope.
  * 3 drops `meta` again: R4-2 deleted the epoch and the storage-wide counter it held.
+ * 4 adds `photos` and `photoThumbs` — ARCHITECTURE §10.3, Phase 2 I-13.
+ *
+ * **Why the same database and not a second one.** §6.3's invariant is *"no row and no blob
+ * without a live tenancy reference."* Deleting a trip must remove its documents, its summary
+ * row, its fence **and** its photo bytes, and **IndexedDB transactions do not span databases**.
+ * One database means `delete(tripId)` stays one atomic step; two databases means an orphan
+ * window on every delete, which is precisely the failure §6.3 exists to make impossible.
  */
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 const DOCS = 'docs';
 const SUMMARIES = 'summaries';
 const VERSIONS = 'versions';
+/**
+ * §10.3's two byte stores, keyed by `PhotoId`, each holding a bare **`ArrayBuffer`**.
+ *
+ * **Why separate stores and not a field on the `docs` record.** The `docs` record is rewritten by
+ * every `saveIfVersion`; a 3 MB derivative sitting in it would be re-serialised and re-written on
+ * every debounced edit of the trip's title. Photo bytes are written **once**, at import, and
+ * never updated — so they belong in a store whose access pattern matches.
+ *
+ * **Why `ArrayBuffer` and not `Blob`.** (a) Consistency with what already exists:
+ * `FilePort.importDoc` already produces `new Uint8Array(await file.arrayBuffer())` and
+ * `PhotoPort` speaks `Uint8Array`, so the port boundary already speaks buffers — and
+ * `packages/client` may not touch the DOM (`cairn-constraints` §5), which `Blob` is. (b) A
+ * documented history of WebKit-specific `Blob`-in-IndexedDB defects (WebKit #198278), recorded by
+ * §10.3 as a **marked risk rather than a claim** because the tracker was unreachable when it was
+ * written. (a) is sufficient on its own. The `Blob` is reconstructed in the view layer, where DOM
+ * types belong.
+ *
+ * **No `StorageVersion` on a photo byte record, and that is not an oversight.** §2.2a's fence
+ * exists because two tabs can edit the same MUTABLE document concurrently. A photo byte record is
+ * written once under a freshly minted id and is never updated — there is no second writer to lose
+ * to. Its *reference* lives in the trip document and **is** fenced, by the existing mechanism,
+ * unchanged.
+ */
+const PHOTOS = 'photos';
+const PHOTO_THUMBS = 'photoThumbs';
 /** The store revision 2 kept the epoch and counter in. Deleted on upgrade, never recreated. */
 const DEAD_META = 'meta';
 
@@ -50,6 +82,10 @@ function open(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains(DOCS)) db.createObjectStore(DOCS);
       if (!db.objectStoreNames.contains(SUMMARIES)) db.createObjectStore(SUMMARIES);
       if (!db.objectStoreNames.contains(VERSIONS)) db.createObjectStore(VERSIONS);
+      // §10.3, DB_VERSION 4. Created empty; every existing database gains them on next open,
+      // and a build that predates them simply never opens version 4.
+      if (!db.objectStoreNames.contains(PHOTOS)) db.createObjectStore(PHOTOS);
+      if (!db.objectStoreNames.contains(PHOTO_THUMBS)) db.createObjectStore(PHOTO_THUMBS);
       // Nothing reads it and nothing may start: a value a token was derived from is exactly
       // what §2.2b F3 forbids remembering, so it does not get to sit there looking useful.
       if (db.objectStoreNames.contains(DEAD_META)) db.deleteObjectStore(DEAD_META);
@@ -57,6 +93,34 @@ function open(): Promise<IDBDatabase> {
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error ?? new Error('indexedDB.open failed'));
   });
+}
+
+/**
+ * Every `PhotoId` a stored trip document references — read from the DOCUMENT, inside the caller's
+ * transaction, so the cascade needs no second index to go stale.
+ *
+ * **Total, and it never throws**, for the same reason §2.2a stopped parsing the document to run
+ * the write fence: *"a guard that depends on parsing user-controlled bytes is a guard whose
+ * refusal behaviour is decided by an attacker's JSON."* Here the consequence of a failed parse is
+ * strictly bounded — some byte records are not swept, which is §10.2's **reclaimable orphan**
+ * state, reported by `orphanPhotoBytes` and deleted only by an explicit user action. A corrupt
+ * document may not make a trip undeletable.
+ *
+ * It reads `id` and nothing else: no caption, no coordinate, no date. §10.5's cross-cutting rule
+ * is easiest to break exactly here, so this function never touches a field that could break it.
+ */
+function photoIdsOf(doc: unknown): string[] {
+  try {
+    if (typeof doc !== 'string') return [];
+    const parsed: unknown = JSON.parse(doc);
+    const photos = (parsed as { photos?: unknown } | null)?.photos;
+    if (!Array.isArray(photos)) return [];
+    return photos
+      .map((p) => (p as { id?: unknown } | null)?.id)
+      .filter((id): id is string => typeof id === 'string' && id !== '');
+  } catch {
+    return [];
+  }
 }
 
 function run<T>(store: string, mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBRequest<T>): Promise<T> {
@@ -298,12 +362,127 @@ export function indexedDbStorage(): StoragePort {
       await ensureReady();
       const db = await open();
       await new Promise<void>((resolve, reject) => {
-        const tx = db.transaction([DOCS, SUMMARIES, VERSIONS], 'readwrite');
-        tx.objectStore(DOCS).delete(id);
-        tx.objectStore(SUMMARIES).delete(id);
-        tx.objectStore(VERSIONS).delete(id);
+        // §10.3's third table row, and §6.3's invariant: *"no row and no blob without a live
+        // tenancy reference."* All five stores in **one** `readwrite` transaction — which is the
+        // whole reason §10.3 put the byte stores in this database rather than in a second one,
+        // because IndexedDB transactions do not span databases and two databases would mean an
+        // orphan window on every delete.
+        //
+        // The document is READ first, in the same transaction, to learn which `PhotoId`s to
+        // sweep; every request is issued from the previous one's `onsuccess`, which keeps the
+        // transaction alive across them exactly as `saveIfVersion` does. Returning to the event
+        // loop in between would end it and put the orphan window back.
+        const tx = db.transaction([DOCS, SUMMARIES, VERSIONS, PHOTOS, PHOTO_THUMBS], 'readwrite');
+        const readDoc = tx.objectStore(DOCS).get(id) as IDBRequest<TripDoc | undefined>;
+        readDoc.onsuccess = () => {
+          for (const photoId of photoIdsOf(readDoc.result)) {
+            tx.objectStore(PHOTOS).delete(photoId);
+            tx.objectStore(PHOTO_THUMBS).delete(photoId);
+          }
+          tx.objectStore(DOCS).delete(id);
+          tx.objectStore(SUMMARIES).delete(id);
+          tx.objectStore(VERSIONS).delete(id);
+        };
         tx.oncomplete = () => resolve();
         tx.onerror = () => reject(tx.error ?? new Error('delete failed'));
+        tx.onabort = () => reject(tx.error ?? new Error('delete aborted'));
+      }).finally(() => db.close());
+    },
+  };
+}
+
+/**
+ * The **storage half** of `PhotoPort` — ARCHITECTURE §10.2, §10.3.
+ *
+ * It lives here rather than in `ports/photo.ts` because it is storage and belongs beside
+ * `indexedDbStorage`, in the same database, for §10.3's cascade reason. `pickImages` and `derive`
+ * are DOM work and live in `ports/photo.ts`; §10.2 says the split in as many words: *"they are one
+ * interface because a caller wants one capability; they are two files because the fences are
+ * different."*
+ *
+ * Bytes cross this boundary as `Uint8Array` and are stored as `ArrayBuffer` — a structured-clone
+ * primitive. The `Uint8Array` is copied into a standalone buffer on the way in rather than having
+ * its `.buffer` handed over: a `Uint8Array` may be a **view onto a larger buffer** (every
+ * `bytes.slice()` in a decoder is one), and storing `.buffer` would silently persist the whole
+ * backing allocation — potentially the entire source image, which §10.4 says is never stored.
+ *
+ * Impure: talks to IndexedDB. Every method rejects rather than swallowing, so a
+ * `QuotaExceededError` reaches the import saga and becomes `'quota_exceeded'` by name (§10.6)
+ * rather than a silent half-import.
+ */
+export function indexedDbPhotoBytes(): Pick<PhotoPort, 'read' | 'write' | 'remove' | 'present'> {
+  /** A standalone `ArrayBuffer` holding exactly these bytes and no more. */
+  const detach = (bytes: Uint8Array): ArrayBuffer => {
+    const out = new ArrayBuffer(bytes.byteLength);
+    new Uint8Array(out).set(bytes);
+    return out;
+  };
+
+  return {
+    async read(id: PhotoId, size: 'thumb' | 'display'): Promise<Uint8Array | null> {
+      const store = size === 'thumb' ? PHOTO_THUMBS : PHOTOS;
+      const db = await open();
+      return new Promise<Uint8Array | null>((resolve, reject) => {
+        const tx = db.transaction(store, 'readonly');
+        const req = tx.objectStore(store).get(id) as IDBRequest<ArrayBuffer | undefined>;
+        tx.oncomplete = () => resolve(req.result === undefined ? null : new Uint8Array(req.result));
+        tx.onerror = () => reject(tx.error ?? new Error('photo read failed'));
+        tx.onabort = () => reject(tx.error ?? new Error('photo read aborted'));
+      }).finally(() => db.close());
+    },
+
+    /**
+     * Both derivatives under one id, in **one** `readwrite` transaction over both stores — so a
+     * quota failure on the second put aborts the first as well and no half-written pair is ever
+     * reachable. That is what §10.2's *"in one atomic step"* buys: an asset is created only after
+     * this resolves, so a refused write leaves nothing behind at all (**P9**).
+     */
+    async write(id: PhotoId, thumb: Uint8Array, display: Uint8Array): Promise<void> {
+      const db = await open();
+      await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction([PHOTOS, PHOTO_THUMBS], 'readwrite');
+        tx.objectStore(PHOTO_THUMBS).put(detach(thumb), id);
+        tx.objectStore(PHOTOS).put(detach(display), id);
+        tx.oncomplete = () => resolve();
+        // The name is preserved: `QuotaExceededError` is what the import saga turns into
+        // `'quota_exceeded'`, and a wrapped `new Error(...)` would lose exactly that.
+        tx.onerror = () => reject(tx.error ?? new Error('photo write failed'));
+        tx.onabort = () => reject(tx.error ?? new Error('photo write aborted — storage quota?'));
+      }).finally(() => db.close());
+    },
+
+    /** Removes both. Idempotent: IndexedDB's `delete` succeeds for a key that is not there. */
+    async remove(id: PhotoId): Promise<void> {
+      const db = await open();
+      await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction([PHOTOS, PHOTO_THUMBS], 'readwrite');
+        tx.objectStore(PHOTOS).delete(id);
+        tx.objectStore(PHOTO_THUMBS).delete(id);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error ?? new Error('photo remove failed'));
+        tx.onabort = () => reject(tx.error ?? new Error('photo remove aborted'));
+      }).finally(() => db.close());
+    },
+
+    /**
+     * §10.6 property 2 — **one call, not N.** `getAllKeys()` over the thumb store once, then a
+     * set intersection: forty photos are one request, not forty transactions.
+     *
+     * It asks the THUMB store, deliberately: `write` puts both in one transaction, so a thumb key
+     * implies a display key, and a surface that can render a grid can render a viewer.
+     */
+    async present(ids: readonly PhotoId[]): Promise<ReadonlySet<PhotoId>> {
+      if (ids.length === 0) return new Set<PhotoId>();
+      const db = await open();
+      return new Promise<ReadonlySet<PhotoId>>((resolve, reject) => {
+        const tx = db.transaction(PHOTO_THUMBS, 'readonly');
+        const req = tx.objectStore(PHOTO_THUMBS).getAllKeys();
+        tx.oncomplete = () => {
+          const have = new Set(req.result.map((k) => String(k)));
+          resolve(new Set(ids.filter((id) => have.has(id))));
+        };
+        tx.onerror = () => reject(tx.error ?? new Error('photo availability read failed'));
+        tx.onabort = () => reject(tx.error ?? new Error('photo availability read aborted'));
       }).finally(() => db.close());
     },
   };

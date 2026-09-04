@@ -136,6 +136,15 @@ export function redactForSample(trip) {
       sourceDoc: undefined,
       ...(b.route ? { route: { fromName: redactText(b.route.fromName), toName: redactText(b.route.toName) } } : {}),
     })),
+    // ARCHITECTURE §10.5 / A-57 Part 6 — **P12**. The shipped bundle carries no photo: no caption,
+    // no coordinate, no capture time, no attachment. Not "redacted" — DROPPED, because a photo's
+    // caption is free text, its `at` is a coordinate §6.1's cross-cutting rule forbids anywhere
+    // near a build, and its `capturedAt` says where Jacob was on a given evening.
+    //
+    // **It lands before the reference trip has a photo, which is the only moment it is free**,
+    // and it fails CLOSED thereafter: the field is written unconditionally, so a trip that
+    // acquires photos later does not need anyone to remember this line exists.
+    photos: [],
     ...(trip.meta ? { meta: trip.meta } : {}),
   }));
 }

@@ -10,6 +10,7 @@ import { createStore } from '@cairn/client';
 import type { AppState, DerivedCache, Store } from '@cairn/client';
 import { indexedDbStorage } from './ports/storage.ts';
 import { downloadFile } from './ports/file.ts';
+import { browserPhotos } from './ports/photo.ts';
 import { browserIds, systemClock } from './ports/env.ts';
 
 /**
@@ -23,6 +24,9 @@ export const store: Store = createStore({
   ports: {
     storage: indexedDbStorage(),
     file: downloadFile(),
+    // §10.2, Phase 2 I-13. Two DOM methods from `ports/photo.ts` and four storage methods from
+    // `ports/storage.ts`, sharing the trip database so a trip delete cascades in one transaction.
+    photo: browserPhotos(),
     clock,
     ids: browserIds(),
   },

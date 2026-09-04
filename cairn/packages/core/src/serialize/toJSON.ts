@@ -8,7 +8,7 @@
  * Undefined optional fields are omitted rather than written as `null`, and they are omitted
  * the same way on the way back in.
  */
-import type { Booking, City, Day, Place, Stop, Trip } from '../model/types.ts';
+import type { Booking, City, Day, PhotoAsset, PhotoDerivative, Place, Stop, Trip } from '../model/types.ts';
 
 function omitUndef<T extends Record<string, unknown>>(o: T): T {
   const out: Record<string, unknown> = {};
@@ -187,6 +187,40 @@ function booking(b: Booking) {
   });
 }
 
+/**
+ * §10.1, written field by field like every other record here — never `{...p}`.
+ *
+ * §2.14 **A-18**'s rule (*no spread at any depth*) applies to a new record class on the day it
+ * is added, not after a finding: a spread re-emits an unenumerated key a cast-built document
+ * carried, and the derivative objects are rebuilt from their three fields for the same reason.
+ * `attach` is rebuilt per arm so an extra key on it cannot survive an export either.
+ */
+function attachOut(a: PhotoAsset['attach']) {
+  if (a.kind === 'day') return { kind: 'day', dayId: a.dayId };
+  if (a.kind === 'stop') return { kind: 'stop', stopId: a.stopId };
+  if (a.kind === 'place') return { kind: 'place', placeId: a.placeId };
+  return { kind: 'trip' };
+}
+
+function derivative(d: PhotoDerivative) {
+  return { w: d.w, h: d.h, bytes: d.bytes };
+}
+
+function photo(p: PhotoAsset) {
+  return omitUndef({
+    id: p.id,
+    attach: attachOut(p.attach),
+    caption: p.caption,
+    capturedAt: p.capturedAt ? { date: p.capturedAt.date, time: p.capturedAt.time } : null,
+    at: p.at ? { lat: p.at.lat, lng: p.at.lng } : null,
+    metaSource: p.metaSource,
+    source: p.source ? { w: p.source.w, h: p.source.h } : null,
+    thumb: derivative(p.thumb),
+    display: derivative(p.display),
+    provenance: provenance(p.provenance),
+  });
+}
+
 /** The plain-object form of a trip, key order fixed. Pure. */
 export function toDoc(trip: Trip): Record<string, unknown> {
   return omitUndef({
@@ -210,6 +244,9 @@ export function toDoc(trip: Trip): Record<string, unknown> {
     resolutions: trip.resolutions.map((r) =>
       omitUndef({ conflictId: r.conflictId, state: r.state, by: r.by, at: r.at, note: r.note, retiredAt: r.retiredAt ?? null }),
     ),
+    // §10.1. Always written, never omitted: `[]` is a total default, so writing it keeps the
+    // round trip byte-identical from the first save on — `datePrecision`'s reasoning exactly.
+    photos: (trip.photos ?? []).map(photo),
     revision: trip.revision,
     meta: trip.meta,
   });

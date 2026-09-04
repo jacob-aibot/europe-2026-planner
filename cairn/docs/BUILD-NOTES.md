@@ -1,5 +1,49 @@
 # Cairn — build notes, Phase 1 (and Phase 2 in progress)
 
+> **Addendum — ROADMAP Phase 2 **I-13**: the photo foundation. `ARCHITECTURE.md` **§10**
+> (**A-57**, **A-58**).** The record class, the import saga, the two byte stores, the pure EXIF
+> reader, the two-derivative resolution rule and §10.6's three selectors. **No screen**, which is
+> I-13's own stated user-visible outcome: *"none on screen — the model and its guards land first,
+> exactly as I-9's do."*
+>
+> **Scope: 22 files changed, 11 added.** Production — core: `model/ids.ts`, `model/types.ts`,
+> `photo/exif.ts` (**new**), `build/photos.ts` (**new**), `build/stops.ts`, `build/days.ts`,
+> `build/createTrip.ts`, `import/legacyDays.ts`, `merge/mergeTrips.ts`, `serialize/{toJSON,
+> fromJSON,migrate}.ts`, `validate/validateTrip.ts`, `index.ts`. Client: `ports/types.ts`,
+> `ports/memory.ts`, `store/{reducer,actions,store}.ts`, `selectors/photos.ts` (**new**),
+> `selectors/index.ts`, `index.ts`. Web: `ports/photo.ts` (**new**), `ports/storage.ts`,
+> `store.ts`. Tools/CLI: `tools/redact.mjs`, `tools/gen-golden.mjs`,
+> `tools/gen-photo-fixtures.mjs` (**new**), `cli.ts`. Tests/fixtures/probes:
+> `packages/core/test/{photoExif,photos}.test.ts` (**new** ×2), `packages/client/test/photos.test.ts`
+> (**new**), `packages/core/test/{surface,datePrecision,openingHours,readOnce}.test.ts`,
+> `test/{cli,redact}.test.ts`, `fixtures/photo/` (**new**, 12 files),
+> `fixtures/golden/photo-exif.json` (**new**), `qa/i13-photo-browser.mjs` (**new**).
+>
+> **Zero-line diffs, each verified with `git status --porcelain` before the commit:** every
+> `.tsx` file (**0** — `git status --porcelain | grep -c '\.tsx'` returns `0`);
+> `docs/design/`; `package.json`, `package-lock.json`, `apps/web/package.json` and both package
+> manifests — **no dependency added to any package**, which is A-58's verdict as a mechanical
+> check; every pre-existing file in `fixtures/golden/` (`npm run golden` adds `photo-exif.json`
+> and changes nothing else); `qa/i7a-idb-rowkeys.mjs` and the A-39 covering-set machinery.
+> Root planner untouched: `git status --porcelain -- europe-2026-itinerary.html docs/ tickets/`
+> at the repo root is empty.
+>
+> | | |
+> |---|---|
+> | **What runs, and the exact commands** | `cd cairn && npm run typecheck` — **clean on both projects, exit 0**. `npm run test:tap` → **1300 pass / 0 fail / 0 skipped** (1239 before this pass; +61). `node cli.ts photos fixtures/photo/*.jpg` prints what each file's EXIF actually says. `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node --experimental-strip-types qa/i13-photo-browser.mjs` → **ALL OK, 25 assertions, real Chromium**; `--fault=p2` → **4 FAILs**, `--fault=p3` → **3 FAILs**. `npm run golden && npm run sample && git status --porcelain` adds `fixtures/golden/photo-exif.json` and moves nothing else. |
+> | **A-57 Part 7's fault matrix — P1…P13, each red before the fix and green after** | **P1–P7** (`readExif`) are `packages/core/test/photoExif.test.ts`, all seven red against a missing module and green after, plus a **12,000-mutation deterministic sweep** over the whole corpus in which nothing throws and no coordinate escapes range. **P8/P9/P10** are `packages/client/test/photos.test.ts` against `memoryPhotos()`'s injectable faults (`failDeriveFor`, `failWriteFor`+`failWriteAs`, and deleting bytes out from under a live asset). **P11** is `packages/core/test/photos.test.ts` — both halves, the v1→v2 migration and the *"this build reads up to 2. Update the app."* refusal. **P12** is `test/redact.test.ts`, with a **planted** captioned/placed/dated photo, because a rule that only runs over empty data is untested. **P13** is `test/cli.test.ts`'s decimal grep over `cli photos`' whole rendered output, the same assertion shape A-56 Part 5 imposes on `centre`. |
+> | **§10.4 and §10.5 are MEASURED, in a real browser, not asserted** | `memoryPhotos()` deliberately decodes nothing (no canvas in Node; A-58 Part 5 refuses the dependency that would provide one), so `qa/i13-photo-browser.mjs` evaluates the **shipped** `ports/photo.ts` and `ports/storage.ts`, byte for byte, in Chromium against a generated 4000 × 3000 JPEG with a real EXIF block. Measured: thumb **320 × 240**, display **1600 × 1200**, both **decode at the dimensions the record claims**, thumb **≈128× smaller** than the source (I-13 asks for 20×). §10.5's whole mechanism is one assertion and it holds: `readExif` over the stored derivative returns `no_exif` with every field null, and the raw bytes contain **no APP1 segment and no `Exif\0\0` marker at all**. §D checks the persisted `ArrayBuffer`s in the real database and the delete cascade. |
+> | **The halving loop is unobservable on Chromium, and that is reported rather than dressed up** | §10.4 step 2's halving loop was first filed as an injected fault (`--fault=p1`, the loop deleted). It measured **GREEN**: on a 1-px checkerboard — the worst case for aliasing — the shipped path and a single large-ratio `drawImage` produce **red-channel variance 1.15 both ways**, because Chromium's `imageSmoothingQuality: 'high'` already box-filters. Filing it as a red fault would have claimed coverage the suite has not got (KD-80's precedent), so the fault is **deleted** and §B **measures both paths in the same page** and prints the pair. The loop is kept because §10.4 rules it and its own citation is a WebKit one, **and this probe cannot run WebKit** — that is the disclosed gap, not a reason to remove it. |
+> | **KD-81 — I-13's 4 KB criterion cannot be met by §10.1's own field list, and I did not shrink the record to make it true** | Measured: 20 fully-populated photos add **15,354 bytes** at `toJSON`'s default indent (**768 each**) and **8,771 compact** (**439 each**), against a criterion that budgets ~200. Nothing in `PhotoAsset` is optional under §10.1 and a builder does not get to redesign a ruled record class. The test asserts the criterion's *purpose* instead — < 20 KB, and **no string anywhere in the serialized document longer than 128 characters**, which is what *"no bytes in `TripDoc`"* means when you check it. **Routed to the architect** (sequencing rule 5): either the figure moves to a measured one or §10.1 drops fields. §1 KD-81. |
+> | **`orphanPhotoBytes` is an OBSERVATION, not a sweep — a design reading, disclosed** | §10.6 types it `(state: Pick<AppState,'photos'>) => readonly PhotoId[]`, so the answer must come out of session state alone — but *"byte records no live asset references"* is a diff between storage's keys and the document's, and §10.2's `PhotoPort` has no method that enumerates all stored keys. I implemented it as A-47's shape: the store records an orphan **when a real byte delete fails after the document write succeeded**, which is the one way this code path can create one. It is therefore **complete for orphans this session caused and silent about orphans it inherited** (a previous session's crash, a restored export). Widening it needs a `PhotoPort` method, which is §10.2's to add, not mine. |
+> | **A-39 Part 11 item 4 — the covering-set re-derivation is NOT done, and it is a ship-gate item** | A-57 Part 8 says I-13 fires A-39 Part 11 items **2** (`SCHEMA_VERSION` bumped — *"the covering table absorbs it, zero new rows"*) and **4** (*"a new object store … a genuinely new axis; Part 3's table is re-derived"*), and calls item 4 *"the largest single piece of work in it that is not photo code."* **I was scoped away from `qa/i7a-idb-rowkeys.mjs` and the A-39 machinery by my task instruction and did not touch either.** What I did instead is the narrower thing that is unambiguously mine: `qa/i13-photo-browser.mjs` §D reads the **actual persisted bytes** of the two new stores out of the real database and asserts the value type, the store membership and the cascade. That is evidence about the new axis; it is **not** the re-derived covering table. **Owner: the breaker round, or the architect if Part 3's table needs restating.** |
+> | **Three things A-57 forbids, and the check that each is really absent** | **No bytes in `TripDoc`** — asserted as a 128-character ceiling on every string in the serialized document, which a base64 derivative would miss by four orders of magnitude. **No `PhotoAsset.status`** — `Object.keys` of the record is the ten fields §10.1 lists and no eleventh; liveness is `state.photos`, which is not persisted, not exported and not in `history`. **`copyStopInto` carries no photo** — asserted on its OUTPUT (`copied.photos` is `[]` with the stop itself confirmed copied), and `copyStop.ts` has a **zero-line diff**, which is §10.5's actual point. |
+> | **`place` attachment is refused, loudly** | §10.1's union carries all four arms and `fromJSON` parses all four, so a later build's document is readable and adding the arm is a build change rather than a schema one. `addPhoto`/`updatePhoto` **throw** on `{kind:'place'}`, naming A-6a's reference-counted `Place` delete as the pass that must land first (A-57 Part 3). A deferral that the type system advertises and nothing enforces is a deferral somebody ships by accident. |
+> | **Two files changed that are not photo code, both because a new record array on `Trip` is not free** | `merge/mergeTrips.ts` gains `out.photos = mergeById(...)`: a record array added to `Trip` and **not** added there is silently taken from `local`, so the other tab's photo is dropped with nothing reported — QA P2-3's finding, one record class over. `build/days.ts`'s `ensureDays` gains §10.3's re-attachment, because it is the only function in core that can make a `dayId` stop existing. |
+> | **What I did NOT do, and did not measure** | **No `.tsx` file opened**, so nothing here has been seen rendered and there is no photo surface — that is I-13's scope, and I-14 is deliberately unwritten until a visual direction exists. **No WebKit/iOS measurement**: A-58 Part 2's central fact (iOS Safari strips EXIF at the file input) is taken from the ruling, and `cli.ts photos` exists so Jacob can check it against his own files in two minutes. **`write`'s atomicity under a real `QuotaExceededError` is not measured in a browser** — there is no way to induce one on demand in headless Chromium; P9 covers the saga's behaviour given a rejecting port, in plain Node. **A-39 Part 11's covering-set re-derivation is not done** (row above). **`navigator.storage.persist()` is not called** — §10.3 quota consequence 2 asks for it at boot and it belongs in `App.tsx`, which is a `.tsx` file this pass may not open; recorded here so it is not lost. **No `CAIRN_VISUAL_ROADMAP.md` update** — a data-layer increment that opens no screen moves nothing on that board, and the next pass that does open one should carry it. |
+> | **Objection to the design: one, and it is KD-81** | ROADMAP I-13's 4 KB figure and ARCHITECTURE §10.1's field list are inconsistent. I implemented §10.1 and reported the measurement rather than choosing between them. Everything else in §10 I would build the same way again — in particular A-58's refusal, which measured well: `photo/exif.ts` is 250 lines, it survived 12,000 mutations without throwing, and the seven fault shapes A-57 Part 7 names are each caught by a named test. |
+>
+
 > **Addendum — QA round 44's routed fix on I-12a: **R44-1** (MAJOR, the send-back) and **R44-4**
 > (MINOR, documentation).** Not a new increment. R44-1 is one function's missing guard;
 > R44-4 is four numbers in the addendum below this one, corrected in place. **R44-2 and R44-3 are
@@ -3491,6 +3535,49 @@ targets `test/cli.test.ts`, so none is currently mis-measuring — but the blind
 `cli.ts`-touching fault away in any of them. I did not edit four other increments' probes in an
 I-8f pass; the trigger is *"the next matrix that names `test/cli.test.ts` or `test/boundaries.test.ts`"*,
 and the `baseline` helper is there to copy.
+
+### KD-79 — `i8i-faults.sh` fault 14 was never testing its own label, and G5′ is what exposed it (no single source: it lives in `qa/`, which `test/disclosure.test.ts` does not walk)
+
+**Registered here at I-13, not written here.** The entry's substance is the I-8j addendum table at
+the top of this file, which minted the id `KD-79` and then left it out of §1 — so the section the
+manager reads first did not carry it. This heading is the registration; the addendum row is the
+text, and it is not restated. Trigger for a fuller entry: anyone reopening `qa/i8i-faults.sh`.
+
+### KD-80 — one fault in the I-8j matrix must stay GREEN, and saying so is more honest than deleting it (no single source: it lives in `qa/`, which `test/disclosure.test.ts` does not walk)
+
+**Registered here at I-13, on KD-79's terms and for the same reason.** The text is the I-8j
+addendum row at the top of this file. A `control()` beside `fault()`, whose expected colour is
+GREEN, because A-54 Part 3 measures the key it mutates as deciding zero adjacent pairs.
+
+### KD-81 — ROADMAP I-13's 4 KB document-growth criterion cannot be met by ARCHITECTURE §10.1's own field list
+
+**Where:** `packages/core/test/photos.test.ts` (the `20 photos cost kilobytes` case) ·
+`packages/core/src/model/types.ts` (`PhotoAsset`) · ROADMAP **I-13** *Verification*, bullet 2.
+
+ROADMAP I-13 states: *"`toJSON(trip).length` for a trip with 20 photos is within **4 KB** of the
+same trip with none. A run that is megabytes has put bytes in the document."* That budgets about
+**200 bytes per photo**, and §10.1's `PhotoAsset` does not fit in it. Measured on the implemented
+record — `id`, `attach`, `caption`, `capturedAt`, `at`, `metaSource`, `source`, two
+`PhotoDerivative`s and a full `Provenance` block, which is exactly A-57's list with nothing added:
+
+| | 20 photos | per photo |
+|---|---|---|
+| `toJSON(trip)` — indent 2, which is what the criterion calls | **15,354 bytes** | 768 |
+| the same document compact | **8,771 bytes** | 439 |
+
+`Provenance` alone is six fields and about 150 bytes compact; the two derivatives are six numbers.
+Nothing here is optional under §10.1 and **a builder does not get to shrink a ruled record class to
+make a criterion's number true**, so the record is A-57's and the number is reported.
+
+**What the test asserts instead**, and it is deliberately the criterion's *purpose* rather than a
+relaxed version of its figure: (a) 20 photos add **< 20 KB** — kilobytes, not megabytes; (b) the
+longest string anywhere in the serialized document is **< 128 characters**, which is what *"no byte
+payload in `TripDoc`"* means when you check it rather than promise it. A base64 derivative would
+fail (b) by four orders of magnitude, which is the failure the criterion was written to catch.
+
+**Routed to the architect**, not patched around: either the figure moves to a measured one, or
+§10.1 drops fields. This is not the builder's call (sequencing rule 5), and both readings are
+honest — I have implemented the record class and reported the number.
 
 ## 2. How to run it
 

@@ -343,7 +343,7 @@ test('A-20 assertion 5: the clock-shape regex appears exactly once in packages/c
   assert.match(matches[0], /^model\/openingHours\.ts:/);
 });
 
-test('A-20 assertion 6: isOpeningHours is NOT on the public surface (§2.10 is 79, and none of them is this)', async () => {
+test('A-20 assertion 6: isOpeningHours is NOT on the public surface (§2.10 is 83, and none of them is this)', async () => {
   const core = await import('../src/index.ts');
   // 71 at revision 19; 73 since Phase 2 I-5 added `countryOf` and `COUNTRY_INDEX` under §8.4
   // clause 1; 74 since Phase 2 I-6 added `SUMMARY_VERSION` under §8.4 clause 3; 75 since
@@ -353,10 +353,14 @@ test('A-20 assertion 6: isOpeningHours is NOT on the public surface (§2.10 is 7
   // that the Trips list can ask the question A-45 made `fromJSON` answer without growing a
   // second calendar; **78 since Phase 2 I-8g added `countryKeyPoint` under §4.4 A-48 Part 2**,
   // the atlas frame's key point, which is a geometric property of the index and may not be
-  // recomputed in `packages/client`. The assertion
+  // recomputed in `packages/client`; **79 since Phase 2 I-8h added `countryParts` under §4.4
+  // A-49 Part 9; 83 since Phase 2 I-13 added `addPhoto`, `removePhoto`, `updatePhoto` and
+  // `readExif` under §10.1/§10.2, A-57 Part 6** — the photo record class's three build
+  // functions and the pure EXIF reader A-58 keeps in core rather than take a dependency for.
+  // The assertion
   // this test exists for is the loop below — the size is the tripwire that says a widening
   // happened at all, and it is re-derived by counting, never quoted.
-  assert.equal(Object.keys(core).length, 79);
+  assert.equal(Object.keys(core).length, 83);
   for (const name of ['isClockTime', 'readWeeklyEntry', 'isOpeningHours']) {
     assert.equal(name in core, false, `${name} widened §2.10's surface`);
   }

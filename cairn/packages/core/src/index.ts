@@ -1,12 +1,14 @@
 /**
  * `@cairn/core` — the public surface of ARCHITECTURE §2.10 and nothing else.
  *
- * **78 runtime symbols, one list, set equality in both directions** (69 at revision 5, QA R2-12,
+ * **83 runtime symbols, one list, set equality in both directions** (69 at revision 5, QA R2-12,
  * BUILD-NOTES KD-33; +`reassertRetirements` at revision 6; +`lifecycle` at Phase 2 I-1;
  * +`countryOf` and `COUNTRY_INDEX` at Phase 2 I-5; +`SUMMARY_VERSION` at Phase 2 I-6;
  * +`travelStats` at Phase 2 I-7; +`clusterPoints` at Phase 2 I-8d, §4.4 A-41 Part 6;
  * +`isIsoDate` at Phase 2 I-8e, §2.9 A-46 Part 2; +`countryKeyPoint` at Phase 2 I-8g,
- * §4.4 A-48 Part 2). It used to be 110 against a 50-name list plus a 60-name "beyond §2.10,
+ * §4.4 A-48 Part 2; **+`addPhoto`, `removePhoto`, `updatePhoto` and `readExif` at Phase 2 I-13,
+ * §10.1/§10.2, A-57 Part 6 — 79 → 83, counted in this pass and pinned in §2.10 and ROADMAP
+ * criterion E in the same commit, which is §8.9's rule**). It used to be 110 against a 50-name list plus a 60-name "beyond §2.10,
  * each with a justification" list, which made the acceptance criterion true by construction:
  * 110 = 50 + 60 for *any* 110 exports. A boundary the Phase 2 server and the Phase 4 native
  * app are written against cannot be "110 against 50, enumerated".
@@ -35,9 +37,10 @@ export type {
   ProvenanceConfidence, Conflict, ConflictKind, ConflictResolution, ConflictSeverity,
   Leg, Issue, IssueCode, Ref, RefKind, LatLng, StopCategory, StopFlag, TravelMode, TravelRole,
   MoveOverride, CostRollUp, DisplayStatus, OpeningHours, Link, TripCtx, TripMeta, DatePrecision,
+  PhotoAsset, PhotoAttachRef, PhotoDerivative,
 } from './model/types.ts';
 export { SCHEMA_VERSION, LOCAL_OWNER } from './model/types.ts';
-export type { TripId, DayId, StopId, PlaceId, BookingId, ConflictId, UserId, CityKey, RuleId, CountryCode, IsoDate, ClockTime, Currency, IdFactory, ClockPort } from './model/ids.ts';
+export type { TripId, DayId, StopId, PlaceId, PhotoId, BookingId, ConflictId, UserId, CityKey, RuleId, CountryCode, IsoDate, ClockTime, Currency, IdFactory, ClockPort } from './model/ids.ts';
 export { sequentialIds } from './model/ids.ts';
 // §2.9 **A-46** Part 2 / §2.10, Phase 2 I-8e. A **predicate, not a parser**: A-45 made this the
 // definition of a date for the whole system and left it reachable only from inside core, so
@@ -72,6 +75,13 @@ export { upsertBooking, linkBooking } from './build/bookings.ts';
 export { acceptCandidate, rejectCandidate } from './build/candidates.ts';
 export { copyStopInto } from './build/copyStop.ts';
 export type { CopyStopSource, CopyStopCtx } from './build/copyStop.ts';
+// §10.1, Phase 2 **I-13** (A-57 Part 6). Three build functions, on P1's terms: `packages/client`
+// dispatches all three through `ACTION_SPECS`, which resolves `core[spec.coreFn]` off THIS index
+// and nothing else. `reattachDanglingPhotos` deliberately stays internal — it is §10.3's repair
+// applied by `removeStop`/`ensureDays`, not a capability a caller gets to invoke, and exporting
+// it would publish a way to rewrite a photo's attachment with no gate.
+export { addPhoto, removePhoto, updatePhoto } from './build/photos.ts';
+export type { PhotoInit, PhotoPatch } from './build/photos.ts';
 
 // ---- derive (26) -------------------------------------------------------------
 // `countryOf` and `COUNTRY_INDEX` join in revision 20's terms under Phase 2 I-5: §8.4 clause 1
@@ -154,6 +164,16 @@ export type { Principal, Relationship, Role, Operation } from './access/predicat
 export { toJSON } from './serialize/toJSON.ts';
 export { fromJSON, TripParseError, ForeignDocumentError } from './serialize/fromJSON.ts';
 export { migrateDoc } from './serialize/migrate.ts';
+
+// ---- photo (1) — §10.2 --------------------------------------------------------
+// `readExif` is on the surface under P2 (§10.2 names it as a callable) and P1 (`apps/web`'s
+// import path and `cli.ts photos` both call it). **A-58 Part 3 is why it is in core at all**:
+// it is pure byte arithmetic with no DOM, no clock and no randomness — a derivation — and
+// derivations live in core because that is where they are testable on bare Node against a
+// golden and where `apps/web`, `apps/mobile`, `services/api` and the CLI reach the same answer.
+// `ExifRead` is a type and does not count.
+export { readExif } from './photo/exif.ts';
+export type { ExifRead } from './photo/exif.ts';
 
 // ---- import (1) --------------------------------------------------------------
 export { importLegacyDays } from './import/legacyDays.ts';

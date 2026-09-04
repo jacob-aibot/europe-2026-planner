@@ -122,6 +122,8 @@ export function createTrip(init: TripInit, ctx: BuildCtx): Trip {
     places: [],
     bookings: [],
     resolutions: [],
+    // §10.1. Every trip has the field; an empty trip has none of them.
+    photos: [],
     revision: 0,
     schemaVersion: SCHEMA_VERSION,
     ...(init.meta ? { meta: init.meta } : {}),

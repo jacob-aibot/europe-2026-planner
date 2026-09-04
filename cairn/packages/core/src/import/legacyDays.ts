@@ -344,6 +344,8 @@ export function importLegacyDays(legacy: LegacyConstants, opts: ImportOpts): Imp
     places,
     bookings: [],
     resolutions: [],
+    // §10.1. The legacy planner has no photos to import; the field is not optional.
+    photos: [],
     revision: 0,
     schemaVersion: SCHEMA_VERSION,
     meta: { poolNotes, ...(opts.sourceHash ? { sourceHash: opts.sourceHash } : {}) },

@@ -490,4 +490,8 @@ export function rowUnopenable(
 export { worldMapFrame, WORLD_CLUSTER_THRESHOLD_KM } from './worldMap.ts';
 export type { WorldMapFrame, WorldMapCountry, WorldMapPane } from './worldMap.ts';
 
+/** §10.6, Phase 2 I-13 — the three signals a photo surface is owed before it exists. */
+export { photoImport, photosFor, orphanPhotoBytes } from './photos.ts';
+export type { PhotoImport, PhotoListing } from './photos.ts';
+
 export { core };

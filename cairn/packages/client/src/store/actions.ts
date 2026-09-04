@@ -10,7 +10,10 @@
  * `spec.args` is argument marshalling ONLY. It may reorder and default; it may not decide
  * anything about a trip.
  */
-import type { Booking, BuildCtx, DayMetaPatch, Ref, ResolutionInit, StopInit, StopPatch, StopPlacement, Trip, TripMetaPatch } from '../deps.ts';
+import type {
+  Booking, BuildCtx, DayMetaPatch, PhotoInit, PhotoPatch, Ref, ResolutionInit, StopInit, StopPatch,
+  StopPlacement, Trip, TripMetaPatch,
+} from '../deps.ts';
 
 export type Action =
   | { type: 'setTripMeta'; patch: TripMetaPatch }
@@ -29,7 +32,13 @@ export type Action =
   | { type: 'linkBooking'; stopId: string; bookingId: string | null }
   | { type: 'resolveConflict'; resolution: ResolutionInit }
   | { type: 'unresolveConflict'; conflictId: string }
-  | { type: 'copyStopInto'; source: { trip: Trip; stopId: string }; placement: StopPlacement };
+  | { type: 'copyStopInto'; source: { trip: Trip; stopId: string }; placement: StopPlacement }
+  // §10.1, Phase 2 I-13. Three actions, three core build functions, 1:1 as rule 1 requires —
+  // the import saga in `store.ts` does the ports and the ordering, and dispatches THIS for the
+  // document half, so nothing about the photo path is a new write path (§10.2's step 5).
+  | { type: 'addPhoto'; photo: PhotoInit }
+  | { type: 'removePhoto'; photoId: string }
+  | { type: 'updatePhoto'; photoId: string; patch: PhotoPatch };
 
 export type ActionType = Action['type'];
 
@@ -83,6 +92,12 @@ export const ACTION_SPECS: Record<ActionType, ActionSpec> = {
   unresolveConflict: { coreFn: 'unresolveConflict', args: (a) => [(a as { conflictId: string }).conflictId] },
   // §2.14's social primitive. The reducer holds no domain logic: this maps 1:1 onto
   // `core.copyStopInto`, which is where the provenance stamp is built.
+  addPhoto: { coreFn: 'addPhoto', args: (a, ctx) => [(a as { photo: PhotoInit }).photo, ctx] },
+  removePhoto: { coreFn: 'removePhoto', args: (a) => [(a as { photoId: string }).photoId] },
+  updatePhoto: {
+    coreFn: 'updatePhoto',
+    args: (a) => [(a as { photoId: string }).photoId, (a as { patch: PhotoPatch }).patch],
+  },
   copyStopInto: {
     coreFn: 'copyStopInto',
     args: (a, ctx) => {
@@ -113,6 +128,12 @@ export function describeAction(a: Action): string {
       return 'resolve a conflict';
     case 'copyStopInto':
       return 'copy a stop from another trip';
+    case 'addPhoto':
+      return 'add a photo';
+    case 'removePhoto':
+      return 'remove a photo';
+    case 'updatePhoto':
+      return 'edit a photo';
     default:
       return a.type;
   }

@@ -517,6 +517,71 @@ export function validateTrip(trip: Trip): Issue[] {
     checkActor(b.provenance, ref, `Booking ${b.operator} ${b.reference ?? b.id}`);
   }
 
+  // --- photos (§10.1, A-57 Part 6) -----------------------------------------------
+  // Two codes, and BOTH are reports rather than throws. §10.3's fallback-to-`trip` is the
+  // repair the *actions* perform (`removeStop`, `ensureDays`); this is the half that catches a
+  // document which never went through one — an import, a hand edit, a native bridge.
+  //
+  // No coordinate reaches a `message` here. §10.5's cross-cutting rule ("no coordinate in any
+  // log line, ever") and §2.1's structured-`params` rule point the same way: the numbers go in
+  // `params`, where a surface can decide whether to show them, and the sentence does not.
+  const dayIds = new Set(trip.days.map((d) => d.id));
+  const allStopIds = new Set<string>();
+  for (const d of trip.days) for (const s of d.stops) allStopIds.add(s.id);
+  for (const s of trip.pool) allStopIds.add(s.id);
+  for (const p of trip.photos ?? []) {
+    const ref = { kind: 'trip' as const, id: trip.id };
+    const label = p.caption.trim() ? `"${p.caption.trim()}"` : 'A photo';
+    // Read into a local once, so the narrowing survives the closure below — A-21's rule
+    // (`toJSON`'s `weekly`) applied to a discriminated union rather than to an accessor.
+    const attach = p.attach;
+    if (attach.kind === 'day' && !dayIds.has(attach.dayId)) {
+      push({
+        level: 'warn',
+        code: 'photo_attach_dangling',
+        ref,
+        message: `${label} is attached to a day this trip no longer has.`,
+        params: { photoId: p.id, dayId: attach.dayId },
+      });
+    } else if (attach.kind === 'stop' && !allStopIds.has(attach.stopId)) {
+      push({
+        level: 'warn',
+        code: 'photo_attach_dangling',
+        ref,
+        message: `${label} is attached to a stop this trip no longer has.`,
+        params: { photoId: p.id, stopId: attach.stopId },
+      });
+    } else if (attach.kind === 'place' && !trip.places.some((pl) => pl.id === attach.placeId)) {
+      // Not built (A-57 Part 3), and parsed anyway (`fromJSON`) so a later build's document is
+      // readable. If one arrives dangling it is reported like any other dangling attachment.
+      push({
+        level: 'warn',
+        code: 'photo_attach_dangling',
+        ref,
+        message: `${label} is attached to a place this trip no longer has.`,
+        params: { photoId: p.id, placeId: attach.placeId },
+      });
+    }
+    if (p.at && !inRange(p.at)) {
+      push({
+        level: 'error',
+        code: 'photo_coords_out_of_range',
+        ref,
+        message: `${label} carries a location outside the legal range.`,
+        params: { photoId: p.id, lat: p.at.lat, lng: p.at.lng },
+      });
+    }
+    if (!p.provenance) {
+      push({
+        level: 'error',
+        code: 'provenance_missing',
+        ref,
+        message: `${label} has no provenance.`,
+        params: { photoId: p.id },
+      });
+    }
+  }
+
   // --- resolutions ---------------------------------------------------------------
   // §2.7: `trip.resolutions` accumulates retired rows forever with nothing collecting them.
   const retired = trip.resolutions.filter((r) => r.retiredAt).length;

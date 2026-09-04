@@ -13,6 +13,8 @@ export type PlaceId = string;
 export type BookingId = string;
 export type ConflictId = string;
 export type UserId = string;
+/** §10.1. Opaque, like every other id here; minted by the injected `IdFactory`, never parsed. */
+export type PhotoId = string;
 export type CityKey = string;
 export type RuleId = string;
 /**

@@ -19,7 +19,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import vm from 'node:vm';
 import { extractLegacy, lastScriptBlock, LEGACY_HTML } from './extract-legacy.mjs';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { loadEurope2026, FIXTURE_TODAY } from '../fixtures/loadEurope2026.mjs';
 import * as core from '../packages/core/src/index.ts';
 
@@ -356,3 +356,39 @@ function writeJson(name, value) {
   process.stdout.write(`wrote fixtures/golden/${name}\n`);
 }
 process.stdout.write(`wrote fixtures/europe2026.sha256 (${sha256})\n`);
+
+/**
+ * `readExif()` over the committed corpus in `fixtures/photo/` — ARCHITECTURE §10.2, A-58 Part 7.
+ *
+ * A **third** kind of golden, and its header says so: its source is not the live planner, so it
+ * carries no `$sourceSha256`. What it snapshots is a hand-rolled parser's answer for a fixed set
+ * of bytes, which is exactly what A-58 Part 7 calls *"the price of this verdict"*.
+ *
+ * **NO COORDINATES.** The two fixtures with a GPS block reduce to `hasCoordinate: true|false`
+ * and no number is written — §10.5's *"no coordinate in any log line, ever"*, and this file's
+ * own standing discipline. `packages/core/test/photoExif.test.ts` asserts the absence by grep,
+ * so weakening this line fails the suite rather than passing quietly.
+ */
+{
+  const dir = resolve(HERE, '..', 'fixtures', 'photo');
+  const names = readdirSync(dir).sort();
+  writeJson('photo-exif.json', {
+    $generatedBy: 'cairn/tools/gen-golden.mjs',
+    $source: 'cairn/fixtures/photo/ — JPEG headers, not photographs (tools/gen-photo-fixtures.mjs)',
+    $what:
+      'readExif() over the committed corpus. NO COORDINATES: a GPS read is recorded as a ' +
+      'boolean and never as a number (§10.5, A-58 Part 7).',
+    files: names.map((name) => {
+      const r = core.readExif(new Uint8Array(readFileSync(resolve(dir, name))));
+      return {
+        name,
+        bytes: readFileSync(resolve(dir, name)).length,
+        reason: r.reason,
+        capturedAt: r.capturedAt,
+        orientation: r.orientation,
+        pixel: r.pixel,
+        hasCoordinate: r.at !== null,
+      };
+    }),
+  });
+}

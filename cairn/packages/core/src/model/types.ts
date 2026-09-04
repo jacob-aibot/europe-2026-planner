@@ -6,7 +6,7 @@
  */
 import type {
   BookingId, CityKey, ClockTime, ConflictId, Currency, DayId, IsoDate,
-  PlaceId, RuleId, StopId, TripId, UserId,
+  PhotoId, PlaceId, RuleId, StopId, TripId, UserId,
 } from './ids.ts';
 
 export type LatLng = { lat: number; lng: number };
@@ -54,6 +54,93 @@ export type Provenance = {
   addedAt: IsoDate;
   acceptedAt: IsoDate | null;
   actorUserId: UserId | null;
+};
+
+// --------------------------------------------------------------- photos (§10)
+
+/** §10.1. One stored derivative's shape and weight. Never the original — §10.4. */
+export type PhotoDerivative = {
+  /** Pixel dimensions of THIS derivative, after downscale and after orientation is baked in. */
+  w: number;
+  h: number;
+  /** Byte length of the stored encoding. Carried so a surface can budget without a read. */
+  bytes: number;
+};
+
+/**
+ * §8.6: exactly one trip, and at most one of a stop, a day or a place. `'trip'` is the
+ * "somewhere on this trip, I do not know where" case and is a real answer, not a default.
+ *
+ * `'place'` is permitted by §8.6 and is NOT built in the first increment — A-57 Part 3: the
+ * moment `Place` gains a second referent kind, §2.13 **A-6a**'s single-row prune must become a
+ * reference-counted delete with a user-visible affordance, and that is its own ruling with its
+ * own tests. The union carries the arm so adding it is a build change and not a schema one;
+ * `build/photos.ts` refuses it until that pass lands.
+ *
+ * Named, rather than inlined on `PhotoAsset`, because §10.6's `photosFor(state, ref)` takes one
+ * and a second spelling of the same union is how two readers come to disagree.
+ */
+export type PhotoAttachRef =
+  | { kind: 'trip' }
+  | { kind: 'day'; dayId: DayId }
+  | { kind: 'stop'; stopId: StopId }
+  | { kind: 'place'; placeId: PlaceId };
+
+/**
+ * §10.1. **The record lives in the document; the bytes never do** — `Trip.photos` is metadata,
+ * a few hundred bytes per photo, so it rides the existing autosave, the existing undo history,
+ * the existing export and the existing §2.2a write fence. The derivatives live in object stores
+ * of their own (§10.3).
+ *
+ * **There is no `status` field**, and that is point 4 of §10.1 rather than an oversight:
+ * liveness is not a document fact. §2.9 **A-47** already ruled this shape once for
+ * `openFailures` — *"the fact is written when a real open fails, and it is an observation, not
+ * a record."* Import progress, decode failure and missing bytes are session-scoped or derived,
+ * and §10.6's three selectors are where they live.
+ */
+export type PhotoAsset = {
+  id: PhotoId;
+  attach: PhotoAttachRef;
+  /**
+   * What the user typed. Free text, and therefore subject to §6.6's redactor on every path
+   * that crosses a boundary — exactly as `Stop.note` is (§2.14 A-15/A-18).
+   */
+  caption: string;
+  /**
+   * When the photograph was taken, as the photograph says. **Local wall-clock, no zone** —
+   * which is what EXIF `DateTimeOriginal` actually is, and already core's model for every other
+   * time (§2.1). `null` when the file carried no usable date, which on iOS Safari is the common
+   * case (§10.2, A-58 Part 2).
+   *
+   * This is NOT "when it was imported" and there is deliberately no field for that: an import
+   * timestamp is a fact about our software, and §0.6's subject is exactly that class of second
+   * fact.
+   */
+  capturedAt: { date: IsoDate; time: ClockTime } | null;
+  /**
+   * Where the photograph says it was taken. `null` when absent, refused, or stripped by the
+   * platform before we ever saw the bytes. **Never inferred** — not from the stop it is attached
+   * to, not from the day's cities, not from anything. A photo whose coordinate we guessed is a
+   * photo that will one day contradict the trace §8.5 records.
+   */
+  at: LatLng | null;
+  /**
+   * How `at` and `capturedAt` were obtained. `'exif'` — read out of the file. `'user'` — the
+   * person typed or corrected it. `null` — there is nothing to say because both are null.
+   * Nothing may *gate* on this, for §8.4 A-29's reason about `countrySource`.
+   */
+  metaSource: 'exif' | 'user' | null;
+  /** The source file's own pixel dimensions, before any downscale. `null` if undecodable. */
+  source: { w: number; h: number } | null;
+  /** §10.4. Both are minted at import and both are stored. Neither is ever the original. */
+  thumb: PhotoDerivative;
+  display: PhotoDerivative;
+  /**
+   * §2.8, in full, exactly as `Stop`, `Day` and `Booking` carry it. A-57 Part 4: Phase 6's
+   * suggestion queue needs the candidate state, and retrofitting provenance onto a record class
+   * after a user has five hundred of them is the migration this project has refused four times.
+   */
+  provenance: Provenance;
 };
 
 // ---------------------------------------------------------------- trip (§2.2)
@@ -252,6 +339,14 @@ export type IssueCode =
   // §2.2 A-10 (revision 11, QA P2-2). A key that is minted is not thereby a key that is
   // trusted: all three arrive by import, by hand-edit, or from a build predating the ruling.
   | 'duplicate_city_key' | 'reserved_city_key' | 'city_name_empty'
+  // §10.1 / A-57 Part 6. `photo_attach_dangling` is an ISSUE and **never a throw**: §10.3's
+  // fallback-to-`trip` is the repair the *action* performs (`removeStop`, `ensureDays`), and
+  // this reports the documents that never went through one — an import, a hand edit, a future
+  // untyped writer. `photo_coords_out_of_range` is |lat| > 90 territory, exactly as
+  // `lat_lng_out_of_range` is for a stop; it is a separate code because a photo's coordinate is
+  // what the FILE said and a stop's is what the plan said, and a surface answers them
+  // differently.
+  | 'photo_attach_dangling' | 'photo_coords_out_of_range'
   // QA R15-2, **ratified by §2.14 A-20 (revision 15)** with its meaning narrowed: it means
   // *this in-memory document holds a `Place.hours` that `fromJSON` would refuse*. `parsePlace`
   // used to cast `hours` through unvalidated, so six shapes the parser accepted were not
@@ -290,7 +385,22 @@ export type DisplayStatus = 'own' | 'suggested' | 'candidate' | 'imported' | 're
 
 // ------------------------------------------------------------------ the trip
 
-export const SCHEMA_VERSION = 1;
+/**
+ * **1 → 2 at Phase 2 I-13 (§10.3, A-57 Part 5).** The ledger, and the rule that decides it:
+ *
+ *   - **1** — Phase 1, and everything through I-12. `datePrecision` (§8.1) arrived inside it,
+ *     because `migrate.ts`'s rule is that *"a field that is additive with a total default does
+ *     not earn a bump — a bump is reserved for a value widening that an older client would
+ *     silently drop."*
+ *   - **2** — `Trip.photos`. `[]` is a total default, so the first half of that rule seems to
+ *     apply and does not, on the second half's own words: §8.5's example earns a bump because
+ *     an older client would *"silently drop records it does not understand"*, and `photos` **is
+ *     records**. An old build opening a new document and saving it deletes the user's photo
+ *     attachments *and* orphans megabytes of bytes it cannot see. `migrateDoc` gains a v1 → v2
+ *     case supplying `photos: []`, and an older build refuses a v2 document loudly — which is
+ *     the correct outcome and the one the existing *"Update the app."* message was written for.
+ */
+export const SCHEMA_VERSION = 2;
 
 export type TripMeta = {
   /** Pool section headings, carried over from `OPTIONAL[city].title/note`. */
@@ -340,8 +450,16 @@ export type Trip = {
   places: Place[];
   bookings: Booking[];
   resolutions: ConflictResolution[];
+  /**
+   * §10. Ordered by the user; the order is the order. Empty for every trip that has none.
+   *
+   * Metadata only — the bytes are in `photos`/`photoThumbs` object stores of their own
+   * (§10.3). Base64 in the document would put megabytes into a JSON string rewritten on every
+   * keystroke's debounce, snapshotted fifty deep in history and handed whole to `exportDoc`.
+   */
+  photos: PhotoAsset[];
   revision: number;
-  schemaVersion: 1;
+  schemaVersion: 2;
   meta?: TripMeta;
 };
 

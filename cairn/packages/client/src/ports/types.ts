@@ -9,7 +9,7 @@
  * `packages/client` may not import the DOM, React or the network. Everything platform-shaped
  * goes through this file.
  */
-import type { IsoDate, TripSummaryRow } from '../deps.ts';
+import type { IsoDate, PhotoId, TripSummaryRow } from '../deps.ts';
 
 export type TripDoc = string;
 
@@ -136,6 +136,61 @@ export interface FilePort {
   importDoc(): Promise<{ name: string; bytes: Uint8Array } | null>;
 }
 
+/** One file as the picker handed it over, before anything has decoded it. §10.2. */
+export type PickedImage = { name: string; type: string; bytes: Uint8Array };
+
+/** The two derivatives §10.4 fixes, as `derive` produces them. Never the original. */
+export type DerivedImage = {
+  source: { w: number; h: number };
+  thumb: { bytes: Uint8Array; w: number; h: number };
+  display: { bytes: Uint8Array; w: number; h: number };
+};
+
+/**
+ * `PhotoPort` — ARCHITECTURE §10.2, deliberately shaped like `FilePort` rather than like
+ * something new.
+ *
+ * **Six methods, two implementations, one interface, and that split is stated in §10.2:**
+ * `pickImages` and `derive` are DOM work and live in `apps/web/src/ports/photo.ts`;
+ * `read`/`write`/`remove`/`present` are storage and live beside `indexedDbStorage` in
+ * `apps/web/src/ports/storage.ts` — **same database**, so a trip delete can cascade in one
+ * transaction (§10.3, §6.3's *"no row and no blob without a live tenancy reference"*). *"They
+ * are one interface because a caller wants one capability; they are two files because the
+ * fences are different."*
+ *
+ * **Bytes are `Uint8Array` at this boundary and never `Blob`** (§10.3): `packages/client` may
+ * not touch the DOM (`cairn-constraints` §5), `Blob` is a DOM type, and `FilePort.importDoc`
+ * already speaks buffers. `apps/web` reconstructs the `Blob` at render time, where DOM
+ * lifetimes belong — and that is also the one place `createObjectURL`/`revokeObjectURL` live.
+ */
+export interface PhotoPort {
+  /**
+   * Multi-select picker: `<input type=file multiple accept="image/*">`, for the reason
+   * `FilePort`'s own header gives — the File System Access API is Chromium-only and Safari
+   * supports only the Origin Private File System (§1.1).
+   *
+   * Returns raw bytes, one entry per file, in the order the picker gave them. `null` is a
+   * **cancel, which is not an error**.
+   */
+  pickImages(): Promise<PickedImage[] | null>;
+  /**
+   * Decode and downscale, once, at import (§10.4). `null` when the platform cannot decode the
+   * bytes at all — **which is an answer, not a throw.**
+   */
+  derive(bytes: Uint8Array, type: string): Promise<DerivedImage | null>;
+  /** Bytes for one derivative, or `null` if the record is gone. §10.3, §10.6. */
+  read(id: PhotoId, size: 'thumb' | 'display'): Promise<Uint8Array | null>;
+  /** Writes both derivatives under one id, in one atomic step. §10.3. */
+  write(id: PhotoId, thumb: Uint8Array, display: Uint8Array): Promise<void>;
+  /** Removes both. Idempotent. */
+  remove(id: PhotoId): Promise<void>;
+  /**
+   * Which of these ids have bytes. **One call, not N** — §10.6's availability read, which
+   * happens once on trip open and is what keeps `'loading'` and `'empty'` distinguishable.
+   */
+  present(ids: readonly PhotoId[]): Promise<ReadonlySet<PhotoId>>;
+}
+
 export type MapPoint = { id: string; lat: number; lng: number; label: string; category: string };
 
 export type MapBoundsLike = {
@@ -179,6 +234,13 @@ export interface SchedulerPort {
 export type Ports = {
   storage: StoragePort;
   file?: FilePort;
+  /**
+   * §10.2. Optional, exactly as `file` is: a host with no photo capability is a real
+   * configuration (the CLI, a test that is not about photos), and the store degrades honestly
+   * rather than throwing — an import with no port creates nothing and reports nothing, and
+   * availability reads as *"no bytes"*, which is true.
+   */
+  photo?: PhotoPort;
   clock: ClockPort;
   ids: IdPort;
   scheduler?: SchedulerPort;

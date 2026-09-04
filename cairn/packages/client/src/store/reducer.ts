@@ -93,6 +93,66 @@ export type RescanState = {
   unreadable: ReadonlyArray<{ id: string; message: string }>;
 };
 
+/**
+ * Why one file could not be added — §10.6, and every arm is a distinguishable next action.
+ *
+ * `unsupported_type` and `too_large` are refused **before** the port decodes anything, so a
+ * 40 MB RAW file costs one length check rather than a decode; `decode_failed` is the platform
+ * saying no; `quota_exceeded` and `storage_failed` are the two halves of §10.3's write refusal,
+ * separated because *"free up space"* and *"something went wrong"* are different sentences.
+ */
+export type PhotoImportFailure =
+  | 'unsupported_type'
+  | 'decode_failed'
+  | 'too_large'
+  | 'quota_exceeded'
+  | 'storage_failed';
+
+/**
+ * The photo subsystem's **session** state — §10.6, and A-47's shape exactly: an observation,
+ * not a record.
+ *
+ * **Not persisted, not exported, not in `history`.** §10.1 point 4 is the ruling it implements:
+ * *"there is no `PhotoAsset.status`. Liveness is not a document fact."* Import progress, decode
+ * failures and byte availability are facts about this session and this device, and writing any
+ * of them into the document would be the R26-2 defect — a reader's inference stored as a record,
+ * going stale the moment another writer touches the bytes.
+ *
+ * Library-scoped in exactly one respect and document-scoped in the rest, which is why `tripId`
+ * is here: `available` answers *"which of THIS trip's photos have bytes"*, and a set carried
+ * across a trip switch would answer for the wrong trip. Every `set({...initialState(), …})` site
+ * in `store.ts` therefore lets this field reset rather than carrying it — the opposite of
+ * `rescan` and `openFailures`, and for the opposite reason.
+ */
+export type PhotoSession = {
+  /** The trip `available` was read for. `null` means it was not read, or was read for no trip. */
+  tripId: string | null;
+  /**
+   * The ids `PhotoPort.present()` found bytes for, read **once** on trip open — §10.6 property
+   * 2. `null` is *"not read yet"*, and it is the whole reason `'loading'` and `'empty'` are
+   * different values: *"a surface that collapses them shows 'no photos yet' to someone whose
+   * photos are one tick away."*
+   */
+  available: ReadonlySet<string> | null;
+  /** Files still being decoded and written. 0 when nothing is running. */
+  pending: number;
+  /** Files in the current batch, total. `pending`/`total` is an honest progress fraction. */
+  total: number;
+  /** Per-file failures, kept until dismissed. **Never silently dropped**, and each names a file. */
+  failures: ReadonlyArray<{ name: string; reason: PhotoImportFailure }>;
+  /**
+   * §10.2's reclaimable orphans: byte records this session **observed** outliving their asset.
+   *
+   * Written when a real byte-delete fails after the document write succeeded — A-47's shape
+   * again, *"the fact is written when a real failure happens"*. Deliberately **not** a diff of
+   * every stored key against the document: that would need a port method §10.2 does not have,
+   * and a swept list of "probably orphaned" ids is exactly the second copy of a fact §0.6
+   * forbids. **Never auto-deleted** — §6.3's *"a nightly sweeper fails loudly, it does not
+   * silently delete"*, applied on-device.
+   */
+  orphans: readonly string[];
+};
+
 export type AppState = {
   library: core.TripSummaryRow[];
   activeTripId: string | null;
@@ -166,6 +226,8 @@ export type AppState = {
    * transition.
    */
   openFailures: ReadonlyArray<{ id: string; message: string }>;
+  /** §10.6. Session-scoped photo facts — see `PhotoSession`. Never persisted, never exported. */
+  photos: PhotoSession;
 };
 
 export const INITIAL_UI: UiState = {
@@ -191,6 +253,9 @@ export function initialState(): AppState {
     retired: null,
     rescan: { running: false, unreadable: [] },
     openFailures: [],
+    // `available: null` is the honest starting point: nothing has been read, so nothing is
+    // known, so `photosFor` says `'loading'` rather than `'empty'`.
+    photos: { tripId: null, available: null, pending: 0, total: 0, failures: [], orphans: [] },
   };
 }
 

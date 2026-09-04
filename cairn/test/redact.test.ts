@@ -128,6 +128,69 @@ test('redactForSample drops the things that are credentials by construction', ()
   assert.ok(out.bookings.some((b) => b.reference === null), 'bookings must still exist');
 });
 
+/**
+ * **P12** — ARCHITECTURE §10.5, and A-57 Part 6's `tools/redact.mjs` row.
+ *
+ * *"`Trip.photos` → `[]` in `redactForSample`. The build artifact ships no photo, no caption, no
+ * coordinate and no timestamp. This lands **before** the reference trip has a photo, which is the
+ * only moment it is free, and it fails closed thereafter."*
+ *
+ * The fixture therefore plants a photo the reference trip does not have, with all three of the
+ * things that may not ship: a captioned, placed, dated asset. A rule that only ever runs over
+ * data with nothing in it is a rule nobody has tested.
+ */
+test('P12: redactForSample emits photos: [] — no caption, no coordinate, no timestamp', () => {
+  const trip = sampleSource() as Record<string, unknown>;
+  const planted = {
+    ...trip,
+    photos: [
+      {
+        id: 'photo-1',
+        attach: { kind: 'trip' },
+        caption: 'Door code is PIN 0754 — the courtyard gate',
+        capturedAt: { date: '2026-08-13', time: '18:40' },
+        // An INVENTED coordinate, never one transcribed from the live planner (KD-27's rule):
+        // a real city's centre also appears legitimately elsewhere in the sample, so a grep for
+        // it would be green for the wrong reason.
+        at: { lat: 12.3456, lng: -65.4321 },
+        metaSource: 'exif',
+        source: { w: 4032, h: 3024 },
+        thumb: { w: 320, h: 240, bytes: 18000 },
+        display: { w: 1600, h: 1200, bytes: 240000 },
+        provenance: {
+          source: 'user', state: 'accepted', confidence: 'confirmed',
+          addedAt: '2026-08-13', acceptedAt: '2026-08-13', actorUserId: 'local:self',
+        },
+      },
+    ],
+  };
+  const out = redact.redactForSample(planted) as { photos: unknown[] };
+  assert.deepEqual(out.photos, [], 'a photo reached the sample');
+
+  // The §6.6 recursive string walk finds nothing of it. Asserted on the WHOLE output rather
+  // than on `photos` alone: a field dropped from one place and copied into another is exactly
+  // the shape this walk exists to catch.
+  const text = JSON.stringify(out);
+  assert.equal(text.includes('the courtyard'), false, 'the caption survived somewhere else');
+  assert.equal(text.includes('PIN 0754'), false);
+  assert.equal(text.includes('-65.4321'), false, 'a coordinate from a photo reached the sample');
+  assert.equal(text.includes('12.3456'), false);
+  // The capture TIME is asserted structurally rather than by value: `HH:MM` strings are all
+  // over a legitimate itinerary, so a grep for one would be green for the wrong reason. What
+  // must not appear is the FIELD — and with it every other key only a `PhotoAsset` has.
+  // (`"display"` is deliberately NOT in this list: `CostEstimate.display` is a legitimate,
+  // unrelated field of every priced stop, and asserting on it would fail for the wrong reason.)
+  for (const key of ['"capturedAt"', '"metaSource"', '"thumb"', '"attach"']) {
+    assert.equal(text.includes(key), false, `${key} reached the sample`);
+  }
+  for (const s of redact.allStrings(out)) assert.deepEqual(redact.redactionHits(s), [], s.slice(0, 90));
+});
+
+test('P12: the rule fails CLOSED — a trip with no photos still emits the field as []', () => {
+  const out = redact.redactForSample(sampleSource()) as { photos: unknown[] };
+  assert.deepEqual(out.photos, []);
+});
+
 test('importLegacyDays output is UNCHANGED by redaction — parity is untouched', async () => {
   const { loadEurope2026 } = (await import('../fixtures/loadEurope2026.mjs')) as {
     loadEurope2026: () => { trip: unknown };

@@ -6,9 +6,10 @@
  * `StoragePort.save` surfaces as `persistence.status === 'error'` and never silently drops
  * an edit.
  */
-import type { IsoDate, TripSummaryRow } from '../deps.ts';
+import type { IsoDate, PhotoId, TripSummaryRow } from '../deps.ts';
 import type {
-  ClockPort, FilePort, IdPort, SchedulerPort, StoragePort, StorageVersion, TripDoc,
+  ClockPort, DerivedImage, FilePort, IdPort, PhotoPort, PickedImage, SchedulerPort, StoragePort,
+  StorageVersion, TripDoc,
 } from './types.ts';
 
 export type MemoryStorage = StoragePort & {
@@ -161,6 +162,126 @@ export function memoryFile(): MemoryFile {
       const n = port.next;
       port.next = null;
       return n;
+    },
+  };
+  return port;
+}
+
+export type MemoryPhotos = PhotoPort & {
+  /** Stored bytes, by id — §10.3's two object stores, as two maps. */
+  thumbs: Map<PhotoId, Uint8Array>;
+  displays: Map<PhotoId, Uint8Array>;
+  /** What the next `pickImages()` returns. `null` is a cancel; consumed on read, like `memoryFile`. */
+  next: PickedImage[] | null;
+  /** File TAGS whose `derive` returns `null` — A-57 Part 7's **P8** fault, injectable. */
+  failDeriveFor: Set<string>;
+  /** Photo ids OR file tags whose `write` rejects — **P9**. `failWriteAs` names the error. */
+  failWriteFor: Set<string>;
+  failWriteAs: string;
+  /** Photo ids whose `remove` rejects — §10.2's reclaimable-orphan path. */
+  failRemoveFor: Set<string>;
+  /** How many times `derive` was actually called: a ceiling enforced after decoding is not one. */
+  deriveCount: number;
+  /** How many times `present` was called: §10.6 property 2 is *once per trip open, not per photo*. */
+  presentCount: number;
+};
+
+/**
+ * The **file tag** — how a fault is aimed at one file of five without changing `PhotoPort`.
+ *
+ * §10.2's `derive(bytes, type)` and `write(id, thumb, display)` are given no file name, and
+ * widening the interface so a test could inject a fault would be the test dictating the
+ * production contract. So the in-memory port reads the tag out of the BYTES: a fixture's bytes
+ * begin with its own name in ASCII, and `failDeriveFor`/`failWriteFor` hold names. Real bytes
+ * from a real picker simply have no tag, and every fault set is empty in production anyway.
+ */
+function fileTag(bytes: Uint8Array): string {
+  let s = '';
+  for (let i = 0; i < Math.min(bytes.length, 64); i++) {
+    const c = bytes[i];
+    if (c < 0x20 || c > 0x7e) break;
+    s += String.fromCharCode(c);
+  }
+  return s;
+}
+
+/**
+ * The in-memory `PhotoPort` — **without which the whole subsystem is untestable in plain Node**
+ * (A-57 Part 6, `cairn-constraints` §5).
+ *
+ * `derive` does **not** decode anything: there is no canvas in Node and there is deliberately no
+ * dependency that would provide one (A-58 Part 5). What it models is §10.4's *contract* — two
+ * derivatives, long edges 320 and 1600, the thumb strictly smaller than the display, both
+ * produced from the input and neither of them the original. The real downscale lives in
+ * `apps/web/src/ports/photo.ts` and is measured against a real browser in `qa/`, not here.
+ *
+ * `failDeriveFor` / `failWriteFor` / `failRemoveFor` exist for the same reason
+ * `memoryStorage.failNextSave` does: a failure path nobody can inject is a failure path nobody
+ * has tested (§0.5).
+ *
+ * Impure only in that it holds state. No clock, no randomness: every output is a pure function
+ * of the input, so an import is reproducible.
+ */
+export function memoryPhotos(): MemoryPhotos {
+  const port: MemoryPhotos = {
+    thumbs: new Map<PhotoId, Uint8Array>(),
+    displays: new Map<PhotoId, Uint8Array>(),
+    next: null,
+    failDeriveFor: new Set<string>(),
+    failWriteFor: new Set<string>(),
+    failWriteAs: 'QuotaExceededError',
+    failRemoveFor: new Set<string>(),
+    deriveCount: 0,
+    presentCount: 0,
+
+    async pickImages(): Promise<PickedImage[] | null> {
+      const n = port.next;
+      port.next = null;
+      return n;
+    },
+
+    async derive(bytes: Uint8Array, type: string): Promise<DerivedImage | null> {
+      port.deriveCount++;
+      // §10.2: the one thing `derive` may not do is throw for bytes it cannot read. `null` is
+      // the answer, and the caller turns it into a named, reported failure.
+      if (!type.startsWith('image/')) return null;
+      if (bytes.length === 0) return null;
+      if (port.failDeriveFor.has(fileTag(bytes))) return null;
+      return {
+        source: { w: 4032, h: 3024 },
+        thumb: { bytes: bytes.slice(0, Math.max(1, Math.min(bytes.length, 16))), w: 320, h: 240 },
+        display: { bytes: bytes.slice(0, Math.max(2, Math.min(bytes.length, 64))), w: 1600, h: 1200 },
+      };
+    },
+
+    async read(id: PhotoId, size: 'thumb' | 'display'): Promise<Uint8Array | null> {
+      return (size === 'thumb' ? port.thumbs : port.displays).get(id) ?? null;
+    },
+
+    /**
+     * Both derivatives under one id, in one step — atomic by construction, because everything
+     * below runs in one synchronous block. `memoryStorage.saveIfVersion`'s rule applies here for
+     * the same reason: **no `await` in this method**, or a half-written pair becomes reachable.
+     */
+    async write(id: PhotoId, thumb: Uint8Array, display: Uint8Array): Promise<void> {
+      if (port.failWriteFor.has(id) || port.failWriteFor.has(fileTag(thumb))) {
+        const err = new Error(`${port.failWriteAs}: the write did not fit`);
+        err.name = port.failWriteAs;
+        throw err;
+      }
+      port.thumbs.set(id, thumb);
+      port.displays.set(id, display);
+    },
+
+    async remove(id: PhotoId): Promise<void> {
+      if (port.failRemoveFor.has(id)) throw new Error(`remove(${id}) failed`);
+      port.thumbs.delete(id);
+      port.displays.delete(id);
+    },
+
+    async present(ids: readonly PhotoId[]): Promise<ReadonlySet<PhotoId>> {
+      port.presentCount++;
+      return new Set(ids.filter((id) => port.thumbs.has(id) || port.displays.has(id)));
     },
   };
   return port;

@@ -6,7 +6,8 @@
  * is useless when a document has 112 stops.
  */
 import type {
-  Booking, City, CostEstimate, DatePrecision, Day, Money, OpeningHours, Place, PlaceLink,
+  Booking, City, CostEstimate, DatePrecision, Day, Money, OpeningHours, PhotoAsset,
+  PhotoAttachRef, PhotoDerivative, Place, PlaceLink,
   Provenance, Stop, StopPlacement, Ticket, Trip, ConflictResolution,
 } from '../model/types.ts';
 import { DATE_PRECISIONS, SCHEMA_VERSION } from '../model/types.ts';
@@ -384,6 +385,69 @@ function parseBooking(v: unknown, path: string): Booking {
   };
 }
 
+/**
+ * §10.1's `PhotoAsset`, hand-validated like every other record here (no zod —
+ * `cairn-constraints` §2). Every failure carries the JSON path, because *"invalid trip" with no
+ * path is useless when a document has 112 stops* — and worse when it has 400 photos.
+ *
+ * Each field is rebuilt by name, so an unenumerated key cannot survive the parser at all —
+ * `parseLinks`' construction, one record over, and §2.14 **A-20**'s line applied on the day the
+ * record class is added rather than after a finding.
+ *
+ * **`place` is parsed even though it is not built** (A-57 Part 3): the union carries the arm so
+ * that adding it is a build change and not a schema one, and a document written by a later build
+ * must still be readable rather than refused at the parser. `build/photos.ts` is where the
+ * deferral is enforced.
+ */
+function parseAttach(v: unknown, path: string): PhotoAttachRef {
+  const o = obj(v, path);
+  const kind = oneOf(o.kind, ['trip', 'day', 'stop', 'place'] as const, `${path}.kind`);
+  if (kind === 'day') return { kind, dayId: str(o.dayId, `${path}.dayId`) };
+  if (kind === 'stop') return { kind, stopId: str(o.stopId, `${path}.stopId`) };
+  if (kind === 'place') return { kind, placeId: str(o.placeId, `${path}.placeId`) };
+  return { kind: 'trip' };
+}
+
+function parseDerivative(v: unknown, path: string): PhotoDerivative {
+  const o = obj(v, path);
+  return {
+    w: numOf(o.w, `${path}.w`),
+    h: numOf(o.h, `${path}.h`),
+    bytes: numOf(o.bytes, `${path}.bytes`),
+  };
+}
+
+function parseWH(v: unknown, path: string): { w: number; h: number } | null {
+  if (v === null || v === undefined) return null;
+  const o = obj(v, path);
+  return { w: numOf(o.w, `${path}.w`), h: numOf(o.h, `${path}.h`) };
+}
+
+function parsePhoto(v: unknown, path: string): PhotoAsset {
+  const o = obj(v, path);
+  const capturedAt = o.capturedAt === null || o.capturedAt === undefined ? null : obj(o.capturedAt, `${path}.capturedAt`);
+  const at = o.at === null || o.at === undefined ? null : obj(o.at, `${path}.at`);
+  return {
+    id: str(o.id, `${path}.id`),
+    attach: parseAttach(o.attach, `${path}.attach`),
+    caption: str(o.caption, `${path}.caption`),
+    // §10.1: local wall-clock, no zone — validated through the same two predicates every other
+    // date and time in this parser goes through, and refused rather than repaired.
+    capturedAt: capturedAt
+      ? { date: isoDate(capturedAt.date, `${path}.capturedAt.date`), time: clock(capturedAt.time, `${path}.capturedAt.time`) }
+      : null,
+    at: at ? { lat: numOf(at.lat, `${path}.at.lat`), lng: numOf(at.lng, `${path}.at.lng`) } : null,
+    metaSource:
+      o.metaSource === null || o.metaSource === undefined
+        ? null
+        : oneOf(o.metaSource, ['exif', 'user'] as const, `${path}.metaSource`),
+    source: parseWH(o.source, `${path}.source`),
+    thumb: parseDerivative(o.thumb, `${path}.thumb`),
+    display: parseDerivative(o.display, `${path}.display`),
+    provenance: parseProvenance(o.provenance, `${path}.provenance`),
+  };
+}
+
 function parseResolution(v: unknown, path: string): ConflictResolution {
   const o = obj(v, path);
   return {
@@ -455,6 +519,12 @@ export function fromJSON(input: string | unknown): Trip {
     pool: arr(o.pool, '$.pool').map((s, i) => parseStop(s, `$.pool[${i}]`)),
     places: arr(o.places, '$.places').map((p, i) => parsePlace(p, `$.places[${i}]`)),
     bookings: arr(o.bookings, '$.bookings').map((b, i) => parseBooking(b, `$.bookings[${i}]`)),
+    // §10.1, A-57 Part 5. **Absent is accepted and means `[]`** — not because the field is
+    // optional (`SCHEMA_VERSION` went to 2 precisely because it is not), but because
+    // `migrateDoc` is the layer that supplies it and this parser must stay callable on a
+    // migrated object without depending on which of the two ran first. A PRESENT value is
+    // hand-validated in full, exactly like every other array here.
+    photos: o.photos === undefined ? [] : arr(o.photos, '$.photos').map((p, i) => parsePhoto(p, `$.photos[${i}]`)),
     resolutions: arr(o.resolutions, '$.resolutions').map((r, i) => parseResolution(r, `$.resolutions[${i}]`)),
     revision: numOf(o.revision, '$.revision'),
     schemaVersion: SCHEMA_VERSION,

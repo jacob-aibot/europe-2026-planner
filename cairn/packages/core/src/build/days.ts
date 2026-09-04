@@ -10,6 +10,7 @@ import type { Day, Trip } from '../model/types.ts';
 import type { CityKey, DayId, IsoDate } from '../model/ids.ts';
 import { addDays, dayNumber } from '../derive/summary.ts';
 import { userProvenance } from '../model/provenance.ts';
+import { reattachDanglingPhotos } from './photos.ts';
 import type { BuildCtx } from './createTrip.ts';
 
 /**
@@ -78,13 +79,17 @@ export function ensureDays(trip: Trip, ctx: BuildCtx, alreadyBumped = false): Tr
     const existing = byDate.get(date);
     days.push(existing ?? blankDay(date, 'transit', ctx.now));
   }
-  return {
+  // §10.3: this is the ONE function in core that can make a `dayId` stop existing (an empty day
+  // outside the range is dropped above). A photo pointing at a dropped day falls back to
+  // `{kind:'trip'}` rather than being deleted — A-57 Part 9 residue 2. It does not bump
+  // `revision` a second time, and it returns the trip by reference when nothing dangles.
+  return reattachDanglingPhotos({
     ...trip,
     startDate: start,
     endDate: end,
     days,
     revision: alreadyBumped ? trip.revision : trip.revision + 1,
-  };
+  });
 }
 
 export type DayMetaPatch = Partial<Pick<Day, 'primaryCity' | 'cities' | 'title' | 'subtitle' | 'provenance' | 'legacyFlag' | 'tzId'>>;

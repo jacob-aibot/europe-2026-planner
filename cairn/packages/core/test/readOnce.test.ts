@@ -126,6 +126,13 @@ function censusDeep<T>(v: T, counts: Counts, path: string, opaque: ReadonlySet<u
  */
 const TRIP_SKELETON: ReadonlySet<string> = new Set([
   'days', 'cities', 'places', 'pool', 'bookings', 'resolutions',
+  // §10.1, Phase 2 I-13. `photos` joins the collections for the same reason the other six are
+  // here: a `{...trip}` anywhere on the copy path reads every enumerable field, so a counted
+  // getter on a collection measures the spread and not a decision about a row. §10.5 states the
+  // property this file would otherwise be asserting — *"copyStopInto copies no photo, and this
+  // needs no change to `copyStop.ts`"* — and `packages/core/test/photos.test.ts` asserts it
+  // directly, on the output, which is strictly stronger than a read count.
+  'photos',
 ]);
 
 function censusTrip(trip: Trip, counts: Counts, path: string, opaque: ReadonlySet<unknown>): Trip {
@@ -192,7 +199,8 @@ const ALLOWED: Record<string, { max: number; why: string }> = {
 const CENSUS_TRIP_FIELDS: Record<keyof Trip, true> = {
   id: true, title: true, ownerId: true, startDate: true, endDate: true, datePrecision: true,
   homeCurrency: true, homeBase: true, party: true, cities: true, days: true, pool: true,
-  places: true, bookings: true, resolutions: true, revision: true, schemaVersion: true, meta: true,
+  places: true, bookings: true, resolutions: true, photos: true, revision: true,
+  schemaVersion: true, meta: true,
 };
 const CENSUS_STOP_FIELDS: Record<keyof Stop, true> = {
   id: true, placement: true, name: true, category: true, place: true, note: true, cost: true,
@@ -678,7 +686,7 @@ function nullPaths(v: unknown, path: string, out: string[]): void {
   for (const k of Object.keys(from)) nullPaths(from[k], `${path}.${k}`, out);
 }
 
-/** The six collections are handed back bare by `censusTrip`, so they are not watched and their
+/** The seven collections are handed back bare by `censusTrip`, so they are not watched and their
  *  nulls are not this test's business — their ROWS are separate roots with their own sweep. */
 function tripNullPaths(t: Trip, path: string, out: string[]): void {
   const from = t as unknown as Record<string, unknown>;

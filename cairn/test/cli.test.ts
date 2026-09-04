@@ -77,7 +77,7 @@ test('cli export still writes a file inside cairn/', () => {
 
 test('cli export with no target still prints to stdout', () => {
   const r = cli('export');
-  assert.match(r.out.slice(0, 60), /^\{\s*"schemaVersion": 1/);
+  assert.match(r.out.slice(0, 60), /^\{\s*"schemaVersion": 2/);
 });
 
 test('the live planner is not writable through any cli command', () => {
@@ -161,7 +161,7 @@ test('cli export --force overwrites deliberately', () => {
     writeFileSync(target, 'STALE');
     const r = cli('export', target, '--force');
     assert.equal(r.code, 0, r.err);
-    assert.match(readFileSync(target, 'utf8').slice(0, 40), /^\{\s*"schemaVersion": 1/);
+    assert.match(readFileSync(target, 'utf8').slice(0, 40), /^\{\s*"schemaVersion": 2/);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -436,4 +436,75 @@ test('A-47 Part 6: core.weekdayOf does not throw at IsoDate’s boundaries — t
     assert.equal(core.isIsoDate(edge), true, `${edge} is not in isIsoDate's domain`);
     assert.doesNotThrow(() => core.weekdayOf(edge as core.IsoDate), `weekdayOf threw at ${edge}`);
   }
+});
+
+/**
+ * `cli photos <file>` — ROADMAP **I-13**'s only user-visible outcome.
+ *
+ * *"`cli.ts photos <file>` reports what a JPEG's metadata actually says, which is the fastest way
+ * to see A-58's central fact for yourself on your own photos."* That fact is that an iPhone photo
+ * picked through a Safari file input arrives with no EXIF at all, and it is worth being able to
+ * check against a real file rather than taking it from a ruling.
+ *
+ * **P13**, on this surface: §10.5's cross-cutting rule is *"no coordinate in any log line, ever"*,
+ * and this command is the one place in the repo where a `PhotoAsset.at`-shaped value could reach
+ * stdout. It is the same assertion `A-56 Part 5` imposes on `TripSummaryCity.centre` — a grep of
+ * the command's own rendered bytes for a coordinate-shaped float — reused rather than reinvented.
+ */
+const PHOTO_FIXTURES = join(CAIRN, 'fixtures', 'photo');
+
+test('cli photos reports the date, the container and whether a location is present', () => {
+  const r = cli('photos', join(PHOTO_FIXTURES, 'jpeg-exif-gps.jpg'));
+  assert.equal(r.code ?? 0, 0, r.err);
+  assert.match(r.out, /jpeg-exif-gps\.jpg/, r.out);
+  assert.match(r.out, /2024-05-11 08:14/, r.out);
+  assert.match(r.out, /4032\s*×\s*3024/, r.out);
+  // Present, and NOT printed — the sentence says a location is there, never where.
+  assert.match(r.out, /location\s+present/i, r.out);
+});
+
+test('cli photos says so honestly when a file carries no EXIF, and when it is a HEIC', () => {
+  const none = cli('photos', join(PHOTO_FIXTURES, 'jpeg-noexif.jpg'));
+  assert.equal(none.code ?? 0, 0, none.err);
+  assert.match(none.out, /no_exif/, none.out);
+  assert.match(none.out, /location\s+none/i, none.out);
+
+  const heic = cli('photos', join(PHOTO_FIXTURES, 'heic-ftyp.heic'));
+  assert.equal(heic.code ?? 0, 0, heic.err);
+  assert.match(heic.out, /unsupported_container/, heic.out);
+  // A-58 Part 2's central fact, said on the surface rather than only in a ruling.
+  assert.match(heic.out, /iOS|Safari|file input/i, heic.out);
+});
+
+test('cli photos accepts several files at once and never throws on a non-image', () => {
+  const r = cli(
+    'photos',
+    join(PHOTO_FIXTURES, 'jpeg-truncated-app1.jpg'),
+    join(PHOTO_FIXTURES, 'png-header.png'),
+    join(PHOTO_FIXTURES, 'not-an-image.bin'),
+  );
+  assert.equal(r.code ?? 0, 0, r.err);
+  assert.match(r.out, /truncated/, r.out);
+  assert.equal(r.out.split('\n').filter((l) => /\.(jpg|png|bin)/.test(l)).length >= 3, true, r.out);
+});
+
+test('cli photos refuses a path outside cairn/, with no read attempted', () => {
+  const r = cli('photos', '../europe-2026-itinerary.html');
+  assert.notEqual(r.code, 0, `the CLI read outside cairn/:\n${r.out}`);
+  assert.match(r.out, /refus/i, r.out);
+});
+
+test('P13: cli photos prints no coordinate of any kind', () => {
+  const r = cli('photos', ...readdirSync(PHOTO_FIXTURES).map((n) => join(PHOTO_FIXTURES, n)));
+  assert.equal(r.code ?? 0, 0, r.err);
+  assert.ok(r.out.length > 200, `INCONCLUSIVE: only ${r.out.length} bytes of output`);
+  // The same rule and the same shape as A-56 Part 5's `centre` check: `photos` prints names,
+  // integers, ISO dates, `HH:MM` and reason words, and a decimal could only be a coordinate.
+  const decimals = r.out.match(/-?\d+\.\d+/g) ?? [];
+  assert.deepEqual(decimals, [], `a coordinate-shaped float reached the CLI:\n${r.out}`);
+  assert.equal(
+    /-?\d+\.\d+\s*[,\s]\s*-?\d+\.\d+/.test(r.out),
+    false,
+    `a coordinate PAIR reached the CLI:\n${r.out}`,
+  );
 });

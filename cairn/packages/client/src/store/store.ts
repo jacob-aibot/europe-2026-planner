@@ -15,10 +15,10 @@
  *      that changes `state.doc` flushes first, and a refused flush aborts the transition.
  */
 import * as core from '../deps.ts';
-import type { BuildCtx, Trip } from '../deps.ts';
+import type { BuildCtx, PhotoAttachRef, Trip } from '../deps.ts';
 import type { Ports, SchedulerPort, StorageVersion } from '../ports/types.ts';
 import type { Action } from './actions.ts';
-import type { AppState, UiState } from './reducer.ts';
+import type { AppState, PhotoImportFailure, PhotoSession, UiState } from './reducer.ts';
 import { initialState, redo, reduce, setUi, undo } from './reducer.ts';
 import type { DerivedCache } from './derived.ts';
 import { derivedFor } from './derived.ts';
@@ -99,6 +99,22 @@ export const CONFLICT_MESSAGE =
  */
 export const FLUSH_EXHAUSTED_MESSAGE =
   "Couldn't finish saving before switching. Your edit is still here.";
+
+/**
+ * The byte ceiling `importPhotos` refuses **before** anything is decoded — §10.6's
+ * `'too_large'`.
+ *
+ * 48 MiB, and the number is a decode-cost budget rather than a storage one: §10.3's measured
+ * quota (*"up to 60% of the total disk space"* since Safari 17) says storage is not the binding
+ * constraint, but `createImageBitmap` over a 100 MP file allocates its full decoded bitmap —
+ * `w × h × 4` bytes — on a phone, and that is where an import actually dies. Every JPEG a phone
+ * or a camera produces is far inside it; a multi-hundred-megapixel scan or a video mistyped as
+ * an image is not, and gets a named refusal instead of a tab crash.
+ *
+ * Checked in `packages/client` rather than in the port so that both port implementations get it
+ * and neither has to remember to — the R3-3 pattern.
+ */
+export const PHOTO_MAX_INPUT_BYTES = 48 * 1024 * 1024;
 
 const defaultScheduler: SchedulerPort = {
   schedule(fn, ms) {
@@ -352,6 +368,57 @@ export function createStore(opts: StoreOptions) {
     const marks = new Map(ledger.marks);
     marks.delete(conflictId);
     state = { ...state, retired: { tripId: ledger.tripId, marks } };
+  }
+
+  // ---- photos (§10.2, §10.3, §10.6) --------------------------------------------------------
+
+  /** Patches the session-scoped photo block through `set`, so subscribers see every step. */
+  function setPhotos(patch: Partial<PhotoSession>) {
+    set({ ...state, photos: { ...state.photos, ...patch } });
+  }
+
+  /**
+   * §10.6 property 2 — **availability is read once, on open, through one port call.**
+   *
+   * `present(ids)` and not `read(id)` per photo: forty photos must not be forty transactions,
+   * and the answer this produces is what keeps `'loading'` and `'empty'` distinguishable.
+   *
+   * A trip with no photos still records an answer (`available: new Set()`, `tripId` set): *"read,
+   * and there are none"* is `'empty'`, and skipping the read would leave that trip permanently
+   * `'loading'`. A store with **no photo port** records the same empty answer, which is honest —
+   * on that host nothing has bytes.
+   *
+   * **A failed read is `'loading'`, not `'empty'`.** It leaves `available` at `null`, so a
+   * surface says "not yet" rather than "none". A-57 Part 9 residue 5 is the disclosed cost of
+   * reading once: bytes evicted *while* a trip is open read as `'ready'` until the next open,
+   * and the render path's `read() === null` is what makes that failure honest at the one moment
+   * it is visible.
+   */
+  async function readPhotoAvailability(doc: Trip | null): Promise<void> {
+    if (!doc) {
+      setPhotos({ tripId: null, available: null });
+      return;
+    }
+    const ids = doc.photos.map((p) => p.id);
+    if (!ports.photo || ids.length === 0) {
+      setPhotos({ tripId: doc.id, available: new Set<string>() });
+      return;
+    }
+    try {
+      const present = await ports.photo.present(ids);
+      // Copied into a set this store owns: the port's return value is `ReadonlySet` by type and
+      // by nothing else, and a port that hands back its own live collection would let a later
+      // write mutate state a subscriber is already holding (QA R43-1's shape, one port over).
+      setPhotos({ tripId: doc.id, available: new Set(present) });
+    } catch {
+      setPhotos({ tripId: doc.id, available: null });
+    }
+  }
+
+  /** `err.name` is the platform's own word for a full disk. Everything else is `'storage_failed'`. */
+  function writeFailureReason(err: unknown): PhotoImportFailure {
+    const name = (err as { name?: string } | null)?.name ?? '';
+    return name === 'QuotaExceededError' ? 'quota_exceeded' : 'storage_failed';
   }
 
   /**
@@ -1082,6 +1149,9 @@ export function createStore(opts: StoreOptions) {
         doc,
         ui: { ...initialState().ui, activeDayId: doc.days[0]?.id ?? null, activeCityKey: doc.cities[0]?.key ?? null },
       }, { reseed: true });
+      // §10.6 property 2. A new trip has no photos, and recording that ANSWER is what makes
+      // `photosFor` say `'empty'` rather than sitting at `'loading'` forever.
+      await readPhotoAvailability(doc);
       await save();
       return state;
     },
@@ -1109,6 +1179,7 @@ export function createStore(opts: StoreOptions) {
         doc,
         ui: { ...initialState().ui, activeDayId: doc.days[0]?.id ?? null, activeCityKey: doc.cities[0]?.key ?? null },
       }, { reseed: true });
+      await readPhotoAvailability(doc);
       await save();
       return state;
     },
@@ -1152,6 +1223,9 @@ export function createStore(opts: StoreOptions) {
         persistence: { savedDoc: doc, savedVersion: stored.version, status: 'idle' },
         ui: { ...initialState().ui, activeDayId: doc.days[0]?.id ?? null, activeCityKey: doc.cities[0]?.key ?? null },
       }, { reseed: true });
+      // §10.6 property 2 — **once per trip open**, one port call for all of them, and the one
+      // moment `available` is allowed to be established. A-57 Part 9 residue 5 records the cost.
+      await readPhotoAvailability(doc);
       return state;
     },
 
@@ -1236,7 +1310,26 @@ export function createStore(opts: StoreOptions) {
       // had already committed to before the user asked for the deletion, and a conflicted
       // trip is still deletable (BUILD-NOTES KD-31) — a refused write ahead of the delete reports its own failure
       // and the delete still runs behind it.
+      // §10.3's third table row and §6.3's invariant — *"no row and no blob without a live
+      // tenancy reference."* The photo bytes for this trip's assets go with it.
+      //
+      // **The ids come from the document, read before the delete**, because the port's byte
+      // stores are keyed by `PhotoId` and know nothing about trips. `apps/web`'s `StoragePort`
+      // does the same cascade one layer down, inside the single IndexedDB transaction that
+      // removes the document — which is what makes it atomic there and is the whole reason §10.3
+      // puts the two new stores in the SAME database. This is the belt: the in-memory port and
+      // any future port get the cascade whether or not their storage can span it.
+      //
+      // A failure here leaves reclaimable orphans, not a broken delete: the trip goes either way.
+      const doomed = state.activeTripId === id ? (state.doc?.photos ?? []).map((p) => p.id) : [];
       await chainOntoSaving(async () => {
+        if (ports.photo) {
+          for (const photoId of doomed) {
+            try {
+              await ports.photo.remove(photoId);
+            } catch { /* orphaned bytes are reclaimable; a failed byte delete may not block one */ }
+          }
+        }
         await ports.storage.delete(id);
         const library = state.library.filter((r) => r.id !== id);
         // §2.9 A-47 Part 2: the row is gone, so an observation about a record that no longer
@@ -1247,6 +1340,163 @@ export function createStore(opts: StoreOptions) {
           set({ ...initialState(), library, rescan: state.rescan, openFailures }, { reseed: true });
         } else set({ ...state, library, openFailures });
       });
+      return state;
+    },
+
+    /**
+     * **The import saga** — ARCHITECTURE §10.2's five-step flow, in order, and the order is the
+     * ruling rather than a preference.
+     *
+     *   1. `pickImages()` → N files, or `null`. **A cancel is not an error.**
+     *   2. Per file, in order: `readExif(bytes)` — pure, core, no port — then
+     *      `derive(bytes, type)`.
+     *   3. `derive` returns `null` ⇒ **no asset is created.** The file is reported as a failure
+     *      by NAME with a reason, and the next file is processed. *"One bad file does not fail
+     *      an import."*
+     *   4. `write(id, thumb, display)` — **bytes first**.
+     *   5. `dispatch(addPhoto(...))` — the document second, through the ordinary reducer →
+     *      autosave → `saveIfVersion` chain. **Nothing about the photo path bypasses the fence,
+     *      and nothing about it is a new write path to the document.**
+     *
+     * **Why bytes first**, since it is the one ordering decision here: bytes-then-document
+     * leaves orphaned bytes if the document write is refused; document-then-bytes leaves a
+     * dangling reference if the byte write fails. The two failures are not symmetric — *"a
+     * dangling reference is a record the user can see and cannot fix, while orphaned bytes are
+     * invisible, bounded, and reclaimable"* — and the platform produces the second state anyway
+     * (Safari evicts under storage pressure and under ITP's non-interaction rule, and an
+     * export/restore round trip carries metadata without bytes). So `availability: 'missing'` is
+     * a **designed state, not an error path**.
+     *
+     * The id is minted HERE rather than by `addPhoto`, because step 4 needs it before step 5
+     * exists. It comes from the injected `IdPort` like every other id — no `crypto.randomUUID`,
+     * no `Math.random` (`cairn-constraints` §4).
+     *
+     * @throws {Error} if there is no active trip — a programmer error, per §2.1.
+     */
+    async importPhotos(attach: PhotoAttachRef = { kind: 'trip' }): Promise<AppState> {
+      if (!state.doc) throw new Error('importPhotos: no active trip');
+      if (!ports.photo) return state;
+      const picked = await ports.photo.pickImages();
+      // A cancel. Not an error, not a failure, and it does not clear an earlier batch's report.
+      if (picked === null || picked.length === 0) return state;
+
+      const failures: Array<{ name: string; reason: PhotoImportFailure }> = [];
+      setPhotos({ pending: picked.length, total: picked.length, failures: [] });
+
+      for (const f of picked) {
+        const fail = (reason: PhotoImportFailure) => {
+          failures.push({ name: f.name, reason });
+        };
+        try {
+          // Refused BEFORE the decode, both of them: a ceiling enforced after `createImageBitmap`
+          // has already allocated the bitmap is not a ceiling.
+          if (!f.type.startsWith('image/')) fail('unsupported_type');
+          else if (f.bytes.length > PHOTO_MAX_INPUT_BYTES) fail('too_large');
+          else {
+            // Pure, in core, and it never throws for any byte sequence (§10.2 rule 1).
+            const meta = core.readExif(f.bytes);
+            const derived = await ports.photo.derive(f.bytes, f.type);
+            if (derived === null) fail('decode_failed');
+            else {
+              const id = ports.ids.newId('photo');
+              try {
+                await ports.photo.write(id, derived.thumb.bytes, derived.display.bytes);
+              } catch (err) {
+                // P9: no asset is created, no orphaned byte record, no partial document write.
+                fail(writeFailureReason(err));
+                throw new Error('handled');
+              }
+              this.dispatch({
+                type: 'addPhoto',
+                photo: {
+                  id,
+                  attach,
+                  caption: '',
+                  // §10.1: what the FILE said, and `metaSource` records that it was the file.
+                  // Never inferred from the stop, the day or anything else.
+                  capturedAt: meta.capturedAt,
+                  at: meta.at,
+                  metaSource: meta.capturedAt || meta.at ? 'exif' : null,
+                  // The port's decoded dimensions are authoritative over EXIF's claim: EXIF
+                  // describes the file's intent, the decoder describes what came out.
+                  source: derived.source,
+                  thumb: { w: derived.thumb.w, h: derived.thumb.h, bytes: derived.thumb.bytes.length },
+                  display: { w: derived.display.w, h: derived.display.h, bytes: derived.display.bytes.length },
+                },
+              });
+              // The asset exists, so its bytes are available in this session without a re-read.
+              const available = new Set(state.photos.available ?? []);
+              available.add(id);
+              setPhotos({ tripId: state.doc.id, available });
+            }
+          }
+        } catch (err) {
+          // `'handled'` is the write failure above, already recorded by name. Anything else is
+          // an unexpected throw from the port, and it is reported rather than swallowed — a
+          // silent failure is the one thing §10.6 exists to stop.
+          if ((err as Error)?.message !== 'handled') fail('storage_failed');
+        }
+        setPhotos({ pending: Math.max(0, state.photos.pending - 1), failures: [...failures] });
+      }
+      setPhotos({ pending: 0, failures: [...failures] });
+      return state;
+    },
+
+    /**
+     * Removes a photo: **the document record first, the bytes second** — §10.3's table, which is
+     * the inverse of import *"and for the same reason: the reachable-but-absent state is the
+     * safe one."*
+     *
+     * A byte delete that fails leaves a **reported** orphan rather than a silent one (§10.2), and
+     * nothing sweeps it: reclaiming is an explicit user action, per §6.3's *"a nightly sweeper
+     * fails loudly, it does not silently delete."*
+     *
+     * @throws {Error} if there is no active trip, or no photo with that id — both §2.1.
+     */
+    async removePhoto(photoId: string): Promise<AppState> {
+      if (!state.doc) throw new Error('removePhoto: no active trip');
+      this.dispatch({ type: 'removePhoto', photoId });
+      if (!ports.photo) return state;
+      try {
+        await ports.photo.remove(photoId);
+        const available = new Set(state.photos.available ?? []);
+        available.delete(photoId);
+        setPhotos({ available, orphans: state.photos.orphans.filter((id) => id !== photoId) });
+      } catch {
+        // The record is gone and the bytes are not. Observed, recorded, never swept.
+        setPhotos({
+          orphans: state.photos.orphans.includes(photoId)
+            ? state.photos.orphans
+            : [...state.photos.orphans, photoId],
+        });
+      }
+      return state;
+    },
+
+    /**
+     * Deletes byte records the user has explicitly asked to reclaim — §10.2's *"deleted only by
+     * an explicit user action"*, and the only path in this store that removes bytes without a
+     * document write in front of it.
+     *
+     * It refuses any id that a live asset still references, rather than trusting the caller's
+     * list: an orphan is a claim about the document, and the document is right here.
+     */
+    async reclaimPhotoBytes(ids: readonly string[]): Promise<AppState> {
+      if (!ports.photo) return state;
+      const live = new Set((state.doc?.photos ?? []).map((p) => p.id));
+      const kept: string[] = [];
+      for (const id of state.photos.orphans) {
+        if (!ids.includes(id) || live.has(id)) {
+          if (!live.has(id)) kept.push(id);
+          continue;
+        }
+        try {
+          await ports.photo.remove(id);
+        } catch {
+          kept.push(id); // still there, still reported
+        }
+      }
+      setPhotos({ orphans: kept });
       return state;
     },
 
