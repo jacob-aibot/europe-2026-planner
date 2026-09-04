@@ -133,6 +133,24 @@ const SUMMARY_VERSION = Number(
 if (!Number.isInteger(SUMMARY_VERSION)) throw new Error('SUMMARY_VERSION could not be read from core');
 
 /**
+ * **`SCHEMA_VERSION` — A-39 **Axis D**, read from core rather than transcribed (QA round 53).**
+ *
+ * A-39 Part 4 measured Axis D as *domain 1 — degenerate*, at `SCHEMA_VERSION = 1`. Part 11 item 2
+ * names a bump as the legitimate reason to revisit, and it has now fired **twice**: §10 A-57
+ * Part 5 took it to 2 and §8.3 **A-72** takes it to 3. Revision 54's amendment to the Axis-D
+ * paragraph routes the assignment to this file, as the breaker's, for the pass over I-9a.
+ *
+ * The assignment is in `DOC_WITH_PHOTOS`' docstring below. This constant is READ so that the
+ * next bump moves the fixture with it, exactly as `SUMMARY_VERSION` above does for Axis S.
+ */
+const SCHEMA_VERSION = Number(
+  /^export const SCHEMA_VERSION = (\d+);$/m.exec(
+    readFileSync(new URL('../packages/core/src/model/types.ts', import.meta.url), 'utf8'),
+  )?.[1],
+);
+if (!Number.isInteger(SCHEMA_VERSION)) throw new Error('SCHEMA_VERSION could not be read from core');
+
+/**
  * **G1 — the write-path class (A-36, QA R29-1).** `refreshSummary`'s parameter renamed to `row`,
  * a local `const summary = { ...row, countriesVisited, daysTravelled }` above the unchanged
  * `put(summary, id)`. Exit criterion 6 was 14/14 green under it, the suite green, `tsc` clean.
@@ -330,14 +348,29 @@ const PHOTO_ORPHAN = 'photo-orphan-nothing-references-me';
  * coordinate, no capture time** — §10.5's cross-cutting rule, at the one place a fixture can
  * break it by accident.
  */
-const DOC_WITH_PHOTOS = (tripId, ids) => JSON.stringify({
+const DOC_WITH_PHOTOS = (tripId, ids, schemaVersion = SCHEMA_VERSION) => JSON.stringify({
   hello: 'legacy',
   // **§10 A-62.** The document carries its own `id` now, because a byte key is `[tripId,
   // photoId]` and a sweep fault therefore has to decide tenancy from the document as well as
   // from the key. Without it G26 degenerates into "sweep everything", which is a louder fault
   // than the one that arm was derived to catch.
   id: tripId,
-  schemaVersion: 2,
+  // **A-39 Part 11 item 2, second firing — the Axis-D assignment (QA round 53).** `schemaVersion`
+  // used to be hard-coded `2` here, which was the whole of Axis D's domain when this fixture was
+  // written. §8.3 **A-72** took `SCHEMA_VERSION` to **3**, so D's domain is now `{1, 2, 3}` and
+  // the axis stops being degenerate. Per Part 11 item 2 the cost is **zero new rows** — a
+  // domain-3 factor is absorbed into the existing 15 (15 ≥ 3×5 and 15 ≥ 3×3) — so D is assigned
+  // ACROSS the table the probe already seeds rather than added beside it:
+  //
+  //   D=3 (current)  phase 2, `t-legacy`      — a document this build wrote
+  //   D=2 (previous) phase 2, `t-legacy-g1`   — a document the pre-I-9a build wrote and that
+  //                                             `migrateDoc` will lift on the next open
+  //   D=1 (floor)    phase 3, `t-old`/`t-old-g1` (`DOC_V1`) — a pre-photos document, in a
+  //                                             database that also predates the two byte stores
+  //
+  // `SCHEMA_VERSION` is READ from `model/types.ts` rather than transcribed, so the day it moves
+  // again this fixture moves with it and the D=current cell cannot silently become D=stale.
+  schemaVersion,
   photos: ids.map((id) => ({ id })),
 });
 
@@ -430,6 +463,38 @@ function assertClean(result, where, expected = {}) {
 }
 
 const FAULT_TAG = FAULT === null ? '' : `  [${FAULT.toUpperCase()} FAULT APPLIED]`;
+
+// ===========================================================================
+// AXIS D — the assignment §8.3 A-72 Part 6 / A-39 Part 11 item 2 routed here (QA round 53).
+// ===========================================================================
+// A-39 Part 6's pin 1 makes Axis S's assignment fail the moment `SUMMARY_VERSION` moves, so it
+// cannot be forgotten. Axis D now needs the same, and this is it: the three document
+// generations this file seeds must be **distinct** and must span the floor, the previous
+// version and the current one. The day `SCHEMA_VERSION` moves again, this reddens here rather
+// than degenerating quietly into three copies of one value.
+head('axis D: the document-generation assignment across the existing table');
+{
+  const gens = {
+    'phase 2, t-legacy': JSON.parse(DOC_WITH_PHOTOS('x', [], SCHEMA_VERSION)).schemaVersion,
+    'phase 2, t-legacy-g1': JSON.parse(DOC_WITH_PHOTOS('x', [], SCHEMA_VERSION - 1)).schemaVersion,
+    'phase 3, t-old / t-old-g1': JSON.parse(DOC_V1).schemaVersion,
+  };
+  for (const [where, v] of Object.entries(gens)) note(`${where}: schemaVersion ${v}`);
+  ok(SCHEMA_VERSION >= 3,
+    `axis D is no longer degenerate — SCHEMA_VERSION is ${SCHEMA_VERSION}, and A-39 Part 4's ` +
+      '"domain 1" measurement is superseded by A-72',
+    SCHEMA_VERSION);
+  ok(new Set(Object.values(gens)).size === 3,
+    'axis D: the table seeds three DISTINCT document generations, so the axis is covered at ' +
+      'zero new rows (A-39 Part 11 item 2: 15 >= 3x5 and 15 >= 3x3)',
+    gens);
+  ok(Object.values(gens).includes(SCHEMA_VERSION)
+    && Object.values(gens).includes(SCHEMA_VERSION - 1)
+    && Object.values(gens).includes(1),
+    'axis D: the three cells are {floor, previous, CURRENT} — a fixture pinned to a stale ' +
+      '"current" is the failure this pin exists to catch',
+    gens);
+}
 
 // ===========================================================================
 // PHASE 1 — a FRESH database, one port instance, both mutating methods.
@@ -604,12 +669,16 @@ phase2 = await page.evaluate(async (arg) => {
   // as in version — so both a numeric staleness guard (G16) and a key-presence guard are live.
   //
   // **§10 A-57 Part 8 gives them Axis B positions too.** `t-legacy`'s document references a
-  // photo whose bytes ARE stored (`present`); `t-legacy-g1`'s references none (`none`). Both are
-  // v2 documents — a v1 one is phase 3's business, because a v1 document belongs to a database
-  // that also predates the two stores.
+  // photo whose bytes ARE stored (`present`); `t-legacy-g1`'s references none (`none`).
+  //
+  // **And Axis D positions, since A-72 (QA round 53).** The pair used to be two v2 documents; it
+  // is now one at the CURRENT `SCHEMA_VERSION` and one at the previous one, so the two records
+  // this phase walks in a single `ensureReady()` run differ on S, on key set, on B **and** on D.
+  // A v1 document stays phase 3's business, because a v1 document belongs to a database that
+  // also predates the two byte stores — that is D's floor cell and it is covered there.
   records: [
-    { id: 't-legacy', row: ROW('t-legacy', 5), doc: DOC_WITH_PHOTOS('t-legacy', [PHOTO_PRESENT]) },
-    { id: 't-legacy-g1', row: ROW_GEN1('t-legacy-g1'), doc: DOC_WITH_PHOTOS('t-legacy-g1', []) },
+    { id: 't-legacy', row: ROW('t-legacy', 5), doc: DOC_WITH_PHOTOS('t-legacy', [PHOTO_PRESENT], SCHEMA_VERSION) },
+    { id: 't-legacy-g1', row: ROW_GEN1('t-legacy-g1'), doc: DOC_WITH_PHOTOS('t-legacy-g1', [], SCHEMA_VERSION - 1) },
   ],
   // The referenced pair, and the ORPHAN — Axis O's live cell. Both inside `t-legacy`'s key
   // range, which is where an orphan is hardest: a range sweep over a live trip would take it.

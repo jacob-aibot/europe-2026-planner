@@ -3632,3 +3632,71 @@ no photo path and no map. `qa/i7a-idb-rowkeys.mjs` is **deliberately not run her
 item 2's Axis-D assignment belongs to the pass over **I-9a**, where `SCHEMA_VERSION` actually
 moves, and four probes that pin `SCHEMA_VERSION === 2` (`r45-i13.mjs`, `i13b-gate.mjs`,
 `r48-i13d.mjs`, `r50-i13h.mjs`) are expected to fire in that round, not this one.
+
+---
+
+**Round 53** is the confirmation-breaker pass over the whole participants arc — `17da01a`
+(**I-9a**: A-72's `SCHEMA_VERSION` 3 + ladder, A-73's one home for `duplicate_participant_id`),
+`20c1cd7` (**round 52's repair pass**, R52-1 … R52-7) and `1672f19` (**A-74**, docs only). It
+**re-cut `r52-participants.mjs` whole** and **discharged A-39 Part 11 item 2's Axis-D assignment
+in `i7a-idb-rowkeys.mjs`**, which round 52 deferred to this pass by name.
+
+```bash
+node --experimental-strip-types qa/r52-participants.mjs            # 18 sections; 1 FAIL at 1672f19 (R53-1)
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers \
+  node --experimental-strip-types qa/i7a-idb-rowkeys.mjs           # ALL OK; --fault=g1|g13|g16|g26 still redden 3/2/6/2
+```
+
+**`r52-participants.mjs` — what changed, and why each change was owed.** The round-52 file
+**aborted** at §A after the fixes it asked for landed, so its 19-FAIL figure was never
+re-derivable. Six sites moved:
+
+1. **Five call sites wrapped in `threw()`** — §A's `{kind:'owner'}`, §B's `{displayName:
+   undefined}` and `{kind:'owner'}`, §K's two dispatches. Each now asserts the **refusal** R52-2
+   and R52-3 asked for instead of calling into it bare.
+2. **§C's three tripwires INVERTED**, exactly as they were labelled to be: A-73 landed, so
+   `fromJSON` **opens** a duplicate-id document and `validateTrip` is the one home that reports
+   it — now asserted at `level:'error'`, naming both people, with the ids in `params`, which is
+   ROADMAP I-9's revision-56 replacement bullet asserted literally.
+3. **§F re-cut for A-72** — it was a **sixth** abort site (the old build now correctly refuses a
+   v3 document). It asserts the refusal, with the version-spoofed-back control printed beside it
+   so KD-96's channel is shown to be closed *by the number* and by nothing else.
+4. **§L's fixture defect fixed** — it advanced the id factory for `remote` and not for `local`,
+   so its own local document carried one id twice and rule 5 fired on a collision the probe had
+   minted. Every side now draws from its own id namespace, which is what `browserIds()` gives.
+   The collision is kept as its **own** labelled case.
+5. **KD-99's assertion withdrawn and re-pointed at the parser**, per §8.3 **A-74** Part 5 item 4,
+   which routes that line to the breaker by name.
+6. **`store.save?.()` → `store.flush()`** in §E and §K. There is no `save` method; the optional
+   call was a silent no-op, so neither section was testing the save it named.
+
+**Five new sections** carry round 53's own attacks: **N** `mergeById<Participant>`'s
+*completeness* — a four-participant three-way divergence driving all five documented merge rules
+in one merge, plus order, `revision`, immutability, a local/remote swap, and the same scenario
+through the **real store**'s `saveIfVersion` conflict → `mergeWithStored` path; **O**
+`assertParticipantKind`'s coverage, including **A-74 Part 2's eight-row producer census
+re-derived from `grep`** rather than read from the table, plus the ninth rung outside its scope
+(`adoptTrip`); **P** `participantName()`'s coercion traced to storage over six non-string values;
+**Q** R52-6's exact adversarial patches (`{note: undefined}` removes, `{note: {}}` throws); **R**
+A-72's ladder attacked (v1 walks the whole ladder to 3; six illegal versions each refused at
+`$.schemaVersion`). The run ends with a **`COMPLETE`** marker, and a `GAP` helper exists for a
+routed-and-open design question so it can never be mistaken for a `FAIL`.
+
+**`i7a-idb-rowkeys.mjs` — the Axis-D assignment.** A-39 Part 4 measured Axis D (document
+generation) as *domain 1 — degenerate*; it has since fired twice (A-57 Part 5 → 2, A-72 → 3), so
+D's domain is **3** and Part 11 item 2's cost is **zero new rows**. Phase 2's two seeded records
+go from *two v2 documents* to one at the **current** `SCHEMA_VERSION` and one at the **previous**,
+and phase 3's `DOC_V1` is the floor — so the two records one `ensureReady()` run walks now differ
+on S, on key set, on B **and** on D. `SCHEMA_VERSION` is **read from `model/types.ts`**, as
+`SUMMARY_VERSION` already was, and a new **axis-D section** asserts the three cells are distinct
+and are `{floor, previous, CURRENT}` — A-39 Part 6's pin 1, one axis over, so the fixture cannot
+rot into three copies of one value.
+
+**The six plain-Node I-13 probes were all run and none was re-cut — see QA-FINDINGS R53-3 for
+why, and for the per-probe counts.** In short: `r45-i13` **3**, `r46-i13b` **ALL OK**,
+`r47-i13c` **2**, `r48-i13d` **6**, `r49-i13e` **2**, `r50-i13h` **4**, `r51-i13i` **12**, each
+run to its own terminal marker. Most of the movement is two constants this range moved
+(`SCHEMA_VERSION` 2 → 3, the export surface 83 → 86) pinned as assertions about `HEAD` rather
+than about each probe's own range; the live ones are R48-3's three and R50-1's second count.
+`BUILD-NOTES` §2's published `npm test` count is **1505** against a suite of **1524** —
+**R53-2**, detected independently by `r45-i13` (R45-17), `r47-i13c` and `r51-i13i` (H1).

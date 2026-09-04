@@ -19,8 +19,49 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
+> **✅ THE "WHO WAS ON THE TRIP" DATA IS FIXED, RE-ATTACKED AND CLEARED — as of 2026-09-04. This
+> block is the newest.** Step **2c (participants)** becomes **designed ✅ · built ✅ · verified ✅ ·
+> shippable ✅**. All three problems in the block below are closed, the two known design questions
+> under them are ruled and built, and a second adversarial round went at the fixes and could not
+> break them.
+>
+> **What was wrong is now right, and the tester checked each one by *using* it rather than by
+> reading the change.**
+> 1. **Two tabs no longer eat each other's people.** Opened twice, with both copies edited and
+>    saved, the app now keeps everyone: the people added in each tab, the note one tab wrote on
+>    someone the other tab left alone, and — the case that is easy to get backwards — the person
+>    one tab deleted *stays* deleted, unless the other tab was editing them at the same moment,
+>    in which case the edit wins and the app **says so**. The banner now tells you all three
+>    things instead of saying nothing.
+> 2. **A bad edit can no longer make a trip impossible to open.** Both ways in are shut, and the
+>    app refuses the bad edit at the moment you make it rather than at the moment you next open
+>    the trip. The tester threw seven kinds of bad value at each door, plus six malformed
+>    instructions from outside; every one was refused, the trip was unchanged, and it reopened.
+> 3. **A nameless person now reads "someone with no name."** Not a city.
+>
+> **And the file-format problem is closed too.** The version number on the file moved, so an
+> *older* copy of Cairn now stops and says *"Update the app"* instead of quietly deleting the
+> people. The tester ran the old copy against the new file to confirm the refusal, and ran it
+> again with the version number faked backwards to confirm that the number really is the whole of
+> what protects you. The reverse direction — a file written by the previous version, with real
+> people in it — opens, upgrades and keeps everyone, which is the case that would have been
+> Jacob's own.
+>
+> **What the second round found: three small things, none of them in the participants data.**
+> The one worth a sentence: when two tabs disagree about the *same* person, the banner names them
+> by an internal reference (`participant:…`) instead of by their name — correct, but unreadable,
+> and the same sentence names a *place* the same way, so it is a wording decision for the
+> designer across the whole message rather than a bug here. The other two are a test count in a
+> developer document that is nineteen short, and a batch of the tester's own scripts that check
+> the file-format version number by looking at today's value instead of at what their own change
+> did — both housekeeping, neither visible to you.
+>
+> **What this changes about the Phase 2 sign-off.** The participants data no longer holds it up.
+
+---
+
 > **🟧 THE "WHO WAS ON THE TRIP" DATA IS BUILT AND TESTED — AND IT GOES BACK TO THE BUILDER WITH
-> THREE REAL PROBLEMS — as of 2026-09-04. This block is the newest.** Step **2c (participants)**
+> THREE REAL PROBLEMS — as of 2026-09-04. This block was the newest until the block above.** Step **2c (participants)**
 > becomes **designed ✅ · built ✅ · verified ✅ · shippable ❌**. The ❌ is a *send back*, not a
 > *not-yet*: the work exists, an adversarial round ran against it, and three things it found have
 > to be fixed before it counts as shipped.
@@ -2841,7 +2882,7 @@ own call, made explicitly rather than left implicit.
 | Phase | You'll be able to... | Status |
 |---|---|---|
 | **1 — Core planner** | Plan trips like the old single-trip app, but as many trips as you want, safely — nothing you type ever silently vanishes | 🟢 **COMPLETE — SHIPPED** |
-| **2 — Travel history** | Record the trips you've already taken, see your whole travel life on one map, and say who you went with — a new Cairn doesn't start empty | 🟡 **IN PROGRESS** — 2a shipped; 2b's data layer (I-5…I-7b) shipped, its Map/Profile screens (I-8) paused pending design; 2c narrowed — data half in progress, participants screen deferred by Jacob's decision (2026-09-04) until the new visual direction exists |
+| **2 — Travel history** | Record the trips you've already taken, see your whole travel life on one map, and say who you went with — a new Cairn doesn't start empty | 🟡 **IN PROGRESS** — 2a shipped; 2b's data layer (I-5…I-7b) shipped, its Map/Profile screens (I-8) paused pending design; 2c narrowed — its **data half is built, attacked twice and cleared** (2026-09-04, see the newest block at the top of this file), its participants screen deferred by Jacob's decision until the new visual direction exists |
 | **3 — Accounts, server & sharing** | Have your trips follow you across devices, and let friends see them and copy a stop into their own | ⚪ NOT STARTED |
 | **4 — Email ingestion** | Forward a booking confirmation and have Cairn find it, file it on the right day, and attach the ticket | ⚪ NOT STARTED |
 | **5 — Phone app & live path** | Carry Cairn on your phone, fully offline, and have it quietly draw the route you actually traveled next to the plan | ⚪ NOT STARTED |
