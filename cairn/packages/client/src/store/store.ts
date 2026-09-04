@@ -22,6 +22,8 @@ import type { AppState, PhotoImportFailure, PhotoSession, UiState } from './redu
 import { initialState, redo, reduce, setUi, undo } from './reducer.ts';
 import type { DerivedCache } from './derived.ts';
 import { derivedFor } from './derived.ts';
+import type { Ticket } from './generation.ts';
+import { createGenerationGuard } from './generation.ts';
 
 export const AUTOSAVE_DEBOUNCE_MS = 400;
 
@@ -101,6 +103,33 @@ export const FLUSH_EXHAUSTED_MESSAGE =
   "Couldn't finish saving before switching. Your edit is still here.";
 
 /**
+ * What a **superseded** transition says — §4.2 rule **6d**, **A-67** Part 6.
+ *
+ * A supersession throws for a *creation* (`createTrip`, `adoptTrip`, `importDoc`) and returns
+ * for a *navigation* (`openTrip`, `closeTrip`, `browseTrip`), and the split is a rule rather
+ * than a list. A navigation aborts silently because *the outcome is on the screen*: a newer
+ * transition is installing, and what the user is about to see is what their newest gesture
+ * asked for. A creation has nothing on screen that will show it did not happen, and all three
+ * creation paths have a caller that awaits and can render an error.
+ */
+export const TRANSITION_SUPERSEDED_MESSAGE =
+  'Another trip was opened while this one was being prepared. Nothing was changed — try again.';
+
+/**
+ * What `dispatch`/`undo`/`redo` say while a `doc` claim is open — §4.2 rule **6d**, **A-67**
+ * Part 6's last row.
+ *
+ * The window between `flushForTransition`'s return and the reseeding `set` used to accept an
+ * edit and then discard it, with `persistence.status` reading `'idle'` over the loss (QA
+ * **R47-1** face 1). Refusing is loud where accepting was silent. **This is a fence**: A-67
+ * Part 11 residue 4 records that no surface in today's `apps/web` mounts an editable field on a
+ * screen that calls `openTrip`, so nothing can reach it yet — and the first surface that can is
+ * the one that decides whether to disable editing during a transition or to render this.
+ */
+export const TRANSITION_IN_PROGRESS_MESSAGE =
+  'A trip is being opened or closed; that edit was not applied. Try again in a moment.';
+
+/**
  * The byte ceiling `importPhotos` refuses **before** anything is decoded — §10.6's
  * `'too_large'`.
  *
@@ -177,6 +206,18 @@ export function createStore(opts: StoreOptions) {
    * same rows against each other's expectations. A second call **joins** the first.
    */
   let rescanning: Promise<void> | null = null;
+  /**
+   * §4.2 rule **6d** / **A-67** — the generation guard, **one per store instance**.
+   *
+   * Closure state beside `merging`, `rescanning`, `saving` and `cancelPending`, and it is the
+   * same classification all four of those carry: not in `AppState`, not in `history`, not in
+   * `toJSON`, not exported (A-67 Part 9). A generation is a fact about an *operation*, and
+   * operations are not part of the model — in `AppState` it would be snapshotted by `history`
+   * (so `undo` would restore a generation, which is R8-1's defect class) and a subscriber could
+   * render off it, and there is no honest thing to render for a window measured in
+   * milliseconds.
+   */
+  const guard = createGenerationGuard();
   // `baseDoc` used to live here as a module-level `let`. It is now
   // `persistence.savedDoc` (§2.2b F2): exactly one pointer to "the last document this store
   // and storage agreed about", answering both the merge's common-ancestor question and
@@ -399,48 +440,69 @@ export function createStore(opts: StoreOptions) {
    *
    * Every branch writes an answer, which is what makes property 5's *"exactly one terminal state
    * follows every `'loading'`"* true by construction rather than by inspection — **and the
-   * answer is only ever stamped for the document the store still holds** (QA **R46-3**). Two
-   * overlapping `openTrip` calls are one tap on trip A and then one on trip B, and an ordinary
-   * latency difference between their two `present()` reads is enough to land the earlier trip's
-   * answer last. Stamping it wrote `photos.tripId` for a trip that was no longer open, and
-   * `photosFor` returns `'loading'` for exactly that mismatch — permanently, with §10.6 property
-   * 6's **Try again** attached to `'unreadable'` rather than to `'loading'`. That is the
-   * unresolving spinner this section opens by forbidding, reached by a double tap.
+   * answer that stands is the NEWEST one, ordered by TIME and not by trip** (§4.2 rule **6d**,
+   * **A-67**; QA **R46-3**, then **R47-2**).
+   *
+   * R46-3 asked *"is this answer for the trip that is open?"* and that is the wrong question
+   * asked of the right subject. It covered two overlapping opens of two *different* trips and
+   * could not see two overlapping reads of the **same** one — a double-tap on a library card, an
+   * older `refreshPhotoAvailability` landing behind `doMerge`'s newer read, or a *Try again* that
+   * succeeded being reverted by the failing read that preceded it. All three stamp an answer that
+   * is stale rather than foreign, and a trip-id comparison is true of both. So the check is now a
+   * **ticket on the `photoAvailability` slot**, claimed on line 1 before every branch and
+   * asserted immediately before every `setPhotos` in this function: it is the same check with a
+   * key fine enough to see time, and the old one is deleted rather than kept beside it (A-67
+   * Part 7 — it is not weaker-but-independent, it is false in exactly the direction that costs
+   * data).
+   *
+   * The cross-trip case R46-3 was written for is still covered, and by the same line: every
+   * replacement of `state.doc` claims `photoAvailability` too (`claimTransition`), so a read
+   * issued for the outgoing document is invalidated by the incoming one's claim.
    *
    * **The guard is a drop, never a retarget** — `scheduleSave`'s rule for a late timer (QA R3-2),
-   * one subsystem over. Whichever open sets `state.doc` last also issues the read that stamps,
-   * so the answer the store keeps is that trip's own, and the losing read is discarded rather
-   * than re-aimed at a document it never asked about.
+   * one subsystem over. The losing read is discarded rather than re-aimed at a document it never
+   * asked about.
    */
   async function readPhotoAvailability(doc: Trip | null): Promise<void> {
-    if (!doc) {
-      setPhotos({ tripId: null, available: null, availabilityError: null });
-      return;
-    }
-    const ids = doc.photos.map((p) => p.id);
-    if (!ports.photo || ids.length === 0) {
-      setPhotos({ tripId: doc.id, available: new Set<string>(), availabilityError: null });
-      return;
-    }
+    // A-67 Part 6: claimed on line 1, before every branch, and released in a `finally` that
+    // covers every exit. A read is a replacement of this slot, so it claims rather than observes.
+    const t = guard.claim('photoAvailability');
     try {
-      const present = await ports.photo.present(doc.id, ids);
-      if (state.doc?.id !== doc.id) return;
-      // Copied into a set this store owns: the port's return value is `ReadonlySet` by type and
-      // by nothing else, and a port that hands back its own live collection would let a later
-      // write mutate state a subscriber is already holding (QA R43-1's shape, one port over).
-      setPhotos({ tripId: doc.id, available: new Set(present), availabilityError: null });
-    } catch (err) {
-      // The same drop, on the failing branch: an `'unreadable'` stamped for a trip that is no
-      // longer open is the same wrong answer as a `'ready'` one, and it is terminal.
-      if (state.doc?.id !== doc.id) return;
-      // The port's own words, recorded once — `travelHistory`'s `{ok:false, message}` shape one
-      // subject over. It carries no photo id, no caption and no coordinate (§6.1 rule 1), and
-      // nothing logs it.
-      setPhotos({
-        tripId: doc.id,
-        available: null,
-        availabilityError: (err as Error | null)?.message || 'the photo store could not be read',
-      });
+      if (!doc) {
+        if (!guard.current('photoAvailability', t)) return;
+        setPhotos({ tripId: null, available: null, availabilityError: null });
+        return;
+      }
+      const ids = doc.photos.map((p) => p.id);
+      if (!ports.photo || ids.length === 0) {
+        if (!guard.current('photoAvailability', t)) return;
+        setPhotos({ tripId: doc.id, available: new Set<string>(), availabilityError: null });
+        return;
+      }
+      try {
+        const present = await ports.photo.present(doc.id, ids);
+        if (!guard.current('photoAvailability', t)) return;
+        // Copied into a set this store owns: the port's return value is `ReadonlySet` by type and
+        // by nothing else, and a port that hands back its own live collection would let a later
+        // write mutate state a subscriber is already holding (QA R43-1's shape, one port over).
+        setPhotos({ tripId: doc.id, available: new Set(present), availabilityError: null });
+      } catch (err) {
+        // The same drop, on the failing branch: an `'unreadable'` stamped over a newer answer is
+        // the same wrong answer as a `'ready'` one, and it is terminal — §10.6 property 6's
+        // *"an `'unreadable'` listing carries an action"* is defeated by the action working and
+        // then being undone (R47-2 face 3).
+        if (!guard.current('photoAvailability', t)) return;
+        // The port's own words, recorded once — `travelHistory`'s `{ok:false, message}` shape one
+        // subject over. It carries no photo id, no caption and no coordinate (§6.1 rule 1), and
+        // nothing logs it.
+        setPhotos({
+          tripId: doc.id,
+          available: null,
+          availabilityError: (err as Error | null)?.message || 'the photo store could not be read',
+        });
+      }
+    } finally {
+      guard.release('photoAvailability');
     }
   }
 
@@ -453,18 +515,17 @@ export function createStore(opts: StoreOptions) {
    * says so in both directions so the two passes do not fight.
    */
 
-  /**
-   * True while this store still holds a trip under `id` — open, or a row in the library.
-   *
-   * The question an in-flight batch has to ask before it writes anything else for a trip it
-   * captured seconds ago (QA **R46-1**): a trip that has been deleted can never reference,
-   * reclaim or even report a byte record, so writing one for it is a guaranteed orphan.
-   * `state.library` and `state.activeTripId` are both this store's own state and both are
-   * updated by `deleteTrip`'s link, so the answer needs no port read and cannot itself await.
+  /*
+   * **`isLiveTrip` was deleted at I-13d, and its deletion is the fix** (§4.2 **A-67** Part 7).
+   * R46-1's guard asked *"does this store still hold a trip under this id?"* immediately before
+   * `importPhotos`' byte `write`. It is subsumed by `guard.current('doc', g)`, which is strictly
+   * stronger and fires one step earlier: the only way a live batch's trip can be deleted is a
+   * `deleteTrip` of the **active** trip, which claims; and a batch cannot be live for a
+   * non-active trip, because opening any other trip claims and breaks it first. Keeping the old
+   * check beside the new one would add nothing — the two run at the same instant — and a weaker
+   * check left beside a stronger one is how round 46's readers came to believe the case was
+   * closed.
    */
-  function isLiveTrip(id: string): boolean {
-    return state.activeTripId === id || state.library.some((r) => r.id === id);
-  }
 
   /** `err.name` is the platform's own word for a full disk. Everything else is `'storage_failed'`. */
   function writeFailureReason(err: unknown): PhotoImportFailure {
@@ -663,14 +724,41 @@ export function createStore(opts: StoreOptions) {
    * clicked "Back to all trips", the timer fired against a document that was no longer
    * there, and the edit was gone with nothing on screen. One click, no second tab.
    *
-   * Returns **false** when the transition must not happen (rule 6b): the flush was refused
+   * Returns **`null`** when the transition must not happen (rule 6b): the flush was refused
    * (`'conflict'`) or failed (`'error'`), so the old document stays active and still holds
    * the edit. Discarding it with a notice would satisfy the letter of "the app says so" and
    * violate the product — the user's content is authoritative and conflicts are surfaced,
    * not resolved by guessing. The refusal reaches the screen through the conflict/error
    * banner that is already there; this is not a new mechanism.
+   *
+   * **On success it returns a `Ticket`, not `true`** — §4.2 rule **6d**, **A-67** (QA R47-1).
+   * That is the whole of the generalisation, in one sentence: R5-1 made this loop re-assert
+   * `dirty()` after every write; A-67 makes the **answer** it returns carry an expiry. A `true`
+   * said *"there was nothing unwritten a moment ago"*, which is a fact about an instant that has
+   * already passed by the time the caller acts on it — and `openTrip`'s `ports.storage.load(id)`
+   * is another await on the far side of the closing brace, with nothing re-asserting `dirty()`
+   * across it. A ticket says *"there is nothing unwritten now, and here is how you will know when
+   * that stops being true."* Callers compare against `null`, never on truthiness.
+   *
+   * **The claim is this function's last synchronous act, in the same block as the `dirty()` read
+   * it attests to**, and neither obvious alternative is allowed (A-67 Part 5). Not the
+   * transition's first line: a dispatch that lands *during* the flush is not lost today — the
+   * loop writes it and `openTrip`'s subsequent `load` reads it straight back — so claiming there
+   * would make `dispatch` refuse an edit that currently survives correctly, a regression against
+   * R5-1 paid to fix R5-1's successor. And not the line after the flush: `await
+   * flushForTransition()` resumes in a microtask, and a `derive` promise resolving in exactly
+   * that gap dispatches after the loop's last `dirty()` read and before the caller's first
+   * statement.
+   *
+   * **It claims unconditionally, with no opt-out parameter, and that costs one deliberate false
+   * positive** (A-67 Part 5, Part 11 residue 2): a `deleteTrip` of a **non**-active trip flushes
+   * but installs no document, so its claim needlessly stops an import in flight for the trip that
+   * *is* active — the batch stops, having kept and persisted everything it had already
+   * dispatched. Rule 6a′ is this file's own record of what an opt-out on this exact function
+   * costs, so the conservative stop is the cheaper failure and it is disclosed rather than
+   * discovered.
    */
-  async function flushForTransition(): Promise<boolean> {
+  async function flushForTransition(): Promise<Ticket | null> {
     // §4.2 rule 6a″ (QA R5-1). The loop is the fix, and the reason it is a loop rather than
     // one pass is that a flush is not a moment — it is a `await` long enough for the user to
     // type into. Revision 3 flushed once and then decided from `persistence.status`, which is
@@ -706,7 +794,9 @@ export function createStore(opts: StoreOptions) {
       cancelTimer();
       const idle = state.persistence.status === 'idle';
       const skip = idle && !timerPending && !dirty();
-      if (!state.doc || skip) return true;
+      // A-67 Part 5: the claim, beside the `dirty()` read it attests to, with no `await` between
+      // them. Both success exits go through it.
+      if (!state.doc || skip) return claimTransition();
       // The bound is spent. Nothing has been discarded — the document is still active and
       // still dirty — but a store that cannot land a stable write must not be allowed to
       // proceed as though it had (rule 6b's spirit: a flush that did not succeed aborts the
@@ -734,7 +824,7 @@ export function createStore(opts: StoreOptions) {
           persistence: { ...state.persistence, status: 'error', lastError: FLUSH_EXHAUSTED_MESSAGE },
         });
         if (dirty()) scheduleSave();
-        return false;
+        return null;
       }
       await save();
       await saving;
@@ -744,8 +834,32 @@ export function createStore(opts: StoreOptions) {
       // every 400 ms; the user must merge or export. On `'error'` the port is failing and the
       // banner's Retry is the deliberate act. Only the bound-exhausted exit above re-arms,
       // because it is the only one where nothing has actually refused anything.
-      if (status === 'conflict' || status === 'error') return false;
+      if (status === 'conflict' || status === 'error') return null;
     }
+  }
+
+  /**
+   * **The ONE place a live-document transition begins** — §4.2 rule **6d**, **A-67** Part 5.
+   *
+   * It claims **every slot a reseed replaces**, because that is a rule a builder can apply
+   * without judgement: a reseeding `set` replaces `doc`/`activeTripId`/`persistence`/`history`/
+   * `ui`, `browsing` and the whole `photos` block together.
+   *
+   * A transition never *checks* `browsing` or `photoAvailability`. Those two claims exist to
+   * invalidate other people's in-flight work — A-67 Part 4's second half: **a write that changes
+   * the subject an in-flight read is reading must invalidate that read.**
+   */
+  function claimTransition(): Ticket {
+    guard.claim('browsing');
+    guard.claim('photoAvailability');
+    return guard.claim('doc');
+  }
+
+  /** **The ONE place a live-document transition ends.** Always in a `finally`, on every exit. */
+  function releaseTransition(): void {
+    guard.release('doc');
+    guard.release('photoAvailability');
+    guard.release('browsing');
   }
 
   /**
@@ -1063,8 +1177,19 @@ export function createStore(opts: StoreOptions) {
       return () => listeners.delete(fn);
     },
 
-    /** Applies one action. @throws {Error} if there is no active trip or the action is unknown. */
+    /**
+     * Applies one action.
+     *
+     * @throws {Error} if there is no active trip or the action is unknown.
+     * @throws {Error} `TRANSITION_IN_PROGRESS_MESSAGE` while a document transition is in flight
+     *         — §4.2 rule **6d**, **A-67** Part 6. The window between `flushForTransition`'s
+     *         return and the reseeding `set` used to *accept* the edit and then discard it with
+     *         `persistence.status` reading `'idle'` over the loss (QA R47-1 face 1). Refusing is
+     *         loud where accepting was silent, and it is the only honest answer: the store cannot
+     *         apply an edit to a document it is one statement away from replacing.
+     */
     dispatch(action: Action): AppState {
+      if (guard.observe('doc') === null) throw new Error(TRANSITION_IN_PROGRESS_MESSAGE);
       // §2.7 A-5's release, and its whole closed list: exactly these two action types, both
       // of which are a deliberate user act ON that exact conflict. Nothing else releases.
       if (action.type === 'resolveConflict') releaseRetirement(action.resolution.conflictId);
@@ -1074,7 +1199,9 @@ export function createStore(opts: StoreOptions) {
       return state;
     },
 
+    /** @throws {Error} `TRANSITION_IN_PROGRESS_MESSAGE` — see `dispatch` (§4.2 rule 6d). */
     undo(): AppState {
+      if (guard.observe('doc') === null) throw new Error(TRANSITION_IN_PROGRESS_MESSAGE);
       set(undo(state));
       scheduleSave();
       return state;
@@ -1101,8 +1228,11 @@ export function createStore(opts: StoreOptions) {
      * count (nothing to protect), undoing anything else leaves it equal (R8-1's own case, and
      * releasing there would be the defect), and the one shape a rowsFor-based rule WOULD catch
      * on undo — undoing an `unresolveConflict` — is exactly where staying silent is correct.
+     *
+     * @throws {Error} `TRANSITION_IN_PROGRESS_MESSAGE` — see `dispatch` (§4.2 rule 6d).
      */
     redo(): AppState {
+      if (guard.observe('doc') === null) throw new Error(TRANSITION_IN_PROGRESS_MESSAGE);
       const next = redo(state);
       const doc = next.doc;
       if (doc && state.doc && doc !== state.doc && state.retired && state.retired.tripId === doc.id) {
@@ -1198,22 +1328,39 @@ export function createStore(opts: StoreOptions) {
      * Creates a trip and makes it active.
      * §4.2 rule 6a: the outgoing document's pending write is flushed first, and rule 6b:
      * if that flush cannot succeed the new trip is not created.
+     *
+     * §4.2 rule **6d** (**A-67** Part 6): a supersession **throws**, because nothing else on the
+     * screen would show that the creation did not happen and this method's caller awaits it.
+     *
+     * @throws {Error} `TRANSITION_SUPERSEDED_MESSAGE` if a newer transition claimed the document
+     *         while this one was being prepared. Nothing is installed and nothing is written.
      */
     async createTrip(init: core.TripInit): Promise<AppState> {
-      if (!(await flushForTransition())) return state;
-      const doc = core.createTrip(init, ctx());
-      cache = null;
-      set({
-        ...initialState(),
-        library: state.library,
-        rescan: state.rescan,
-        openFailures: state.openFailures,
-        activeTripId: doc.id,
-        doc,
-        ui: { ...initialState().ui, activeDayId: doc.days[0]?.id ?? null, activeCityKey: doc.cities[0]?.key ?? null },
-      }, { reseed: true });
+      const t = await flushForTransition();
+      if (t === null) return state;
+      let doc: Trip | null = null;
+      try {
+        doc = core.createTrip(init, ctx());
+        // The last statement before the write, with no `await` between them — A-67 Part 3.
+        if (!guard.current('doc', t)) throw new Error(TRANSITION_SUPERSEDED_MESSAGE);
+        cache = null;
+        set({
+          ...initialState(),
+          library: state.library,
+          rescan: state.rescan,
+          openFailures: state.openFailures,
+          activeTripId: doc.id,
+          doc,
+          ui: { ...initialState().ui, activeDayId: doc.days[0]?.id ?? null, activeCityKey: doc.cities[0]?.key ?? null },
+        }, { reseed: true });
+      } finally {
+        releaseTransition();
+      }
       // §10.6 property 2. A new trip has no photos, and recording that ANSWER is what makes
       // `photosFor` say `'empty'` rather than sitting at `'loading'` forever.
+      //
+      // **After the release**, so this read claims its own `photoAvailability` ticket rather than
+      // sitting inside the transition's claim (A-67 Part 6).
       await readPhotoAvailability(doc);
       await save();
       return state;
@@ -1227,21 +1374,34 @@ export function createStore(opts: StoreOptions) {
      * the copy Jacob has been editing — the same class of loss as F-2.
      *
      * §4.2 rule 6a/6b: the outgoing document is flushed first, and a refused flush aborts.
+     *
+     * §4.2 rule **6d** (**A-67** Part 6): a supersession **throws**, as for every creation path.
+     * The `finally` covers the `openTrip` delegation too — that nested transition takes its own
+     * claim, which is correct, and settles first.
+     *
+     * @throws {Error} `TRANSITION_SUPERSEDED_MESSAGE` if a newer transition claimed the document
+     *         while this one was being prepared.
      */
     async adoptTrip(doc: Trip): Promise<AppState> {
-      if (!(await flushForTransition())) return state;
-      const existing = await ports.storage.load(doc.id);
-      if (existing !== null) return this.openTrip(doc.id);
-      cache = null;
-      set({
-        ...initialState(),
-        library: state.library,
-        rescan: state.rescan,
-        openFailures: state.openFailures,
-        activeTripId: doc.id,
-        doc,
-        ui: { ...initialState().ui, activeDayId: doc.days[0]?.id ?? null, activeCityKey: doc.cities[0]?.key ?? null },
-      }, { reseed: true });
+      const t = await flushForTransition();
+      if (t === null) return state;
+      try {
+        const existing = await ports.storage.load(doc.id);
+        if (existing !== null) return await this.openTrip(doc.id);
+        if (!guard.current('doc', t)) throw new Error(TRANSITION_SUPERSEDED_MESSAGE);
+        cache = null;
+        set({
+          ...initialState(),
+          library: state.library,
+          rescan: state.rescan,
+          openFailures: state.openFailures,
+          activeTripId: doc.id,
+          doc,
+          ui: { ...initialState().ui, activeDayId: doc.days[0]?.id ?? null, activeCityKey: doc.cities[0]?.key ?? null },
+        }, { reseed: true });
+      } finally {
+        releaseTransition();
+      }
       await readPhotoAvailability(doc);
       await save();
       return state;
@@ -1255,40 +1415,58 @@ export function createStore(opts: StoreOptions) {
      * revision 2's pending write was executed against whatever `state.doc` had become, so
      * trip A's edit landed in trip B (QA R3-2).
      *
+     * §4.2 rule **6d** (**A-67** Part 6): a supersession **returns** and installs nothing, and
+     * the silence is honest because *the outcome is on the screen* — a newer transition is
+     * installing, and what the user is about to see is what their newest gesture asked for. That
+     * is the case R6-1 distinguished from: R6-1's silent abort left the user on an **unchanged**
+     * screen with no explanation, which is why the flush's bound-exhausted exit grew a banner.
+     *
      * @throws {Error} if the id is not in storage or the stored document is corrupt.
      */
     async openTrip(id: string): Promise<AppState> {
-      if (!(await flushForTransition())) return state;
-      const stored = await ports.storage.load(id);
-      if (stored === null) throw new Error(`openTrip: no trip ${id} in storage`);
-      // §2.9 **A-47** Part 2. The failure is recorded where it happens and the ORIGINAL error is
-      // rethrown unchanged — `App.tsx`'s banner and `Library.tsx`'s `openRow` catch are unmoved,
-      // same class, same message, same JSON path. The `set` is before the rethrow so subscribers
-      // re-render and the card the user just tapped comes back carrying the chip and the rescue
-      // control (A-47 Part 8 residue 2: reachable *immediately after* the tap that establishes it).
-      let doc: Trip;
+      const t = await flushForTransition();
+      if (t === null) return state;
+      let installed: Trip | null = null;
       try {
-        doc = core.fromJSON(stored.doc);
-      } catch (err) {
-        noteOpenFailure(id, err);
-        throw err;
+        const stored = await ports.storage.load(id);
+        if (stored === null) throw new Error(`openTrip: no trip ${id} in storage`);
+        // §2.9 **A-47** Part 2. The failure is recorded where it happens and the ORIGINAL error is
+        // rethrown unchanged — `App.tsx`'s banner and `Library.tsx`'s `openRow` catch are unmoved,
+        // same class, same message, same JSON path. The `set` is before the rethrow so subscribers
+        // re-render and the card the user just tapped comes back carrying the chip and the rescue
+        // control (A-47 Part 8 residue 2: reachable *immediately after* the tap that establishes it).
+        // Both stay inside the window, and both stay unchanged.
+        let doc: Trip;
+        try {
+          doc = core.fromJSON(stored.doc);
+        } catch (err) {
+          noteOpenFailure(id, err);
+          throw err;
+        }
+        // A-67 Part 6: the last statement before the install, with no `await` between them. This
+        // is also what makes an OLDER transition unable to install over a newer one — two
+        // `openTrip` calls whose `load`s resolve out of order (Part 10, G7).
+        if (!guard.current('doc', t)) return state;
+        cache = null;
+        set({
+          ...initialState(),
+          library: state.library,
+          rescan: state.rescan,
+          // Success clears this id and carries the rest: the clear is per id, never a wipe.
+          openFailures: clearOpenFailure(id),
+          activeTripId: doc.id,
+          doc,
+          // Both come from the port result and from nowhere else — §2.2a rule 1, §2.2b F2.
+          persistence: { savedDoc: doc, savedVersion: stored.version, status: 'idle' },
+          ui: { ...initialState().ui, activeDayId: doc.days[0]?.id ?? null, activeCityKey: doc.cities[0]?.key ?? null },
+        }, { reseed: true });
+        installed = doc;
+      } finally {
+        releaseTransition();
       }
-      cache = null;
-      set({
-        ...initialState(),
-        library: state.library,
-        rescan: state.rescan,
-        // Success clears this id and carries the rest: the clear is per id, never a wipe.
-        openFailures: clearOpenFailure(id),
-        activeTripId: doc.id,
-        doc,
-        // Both come from the port result and from nowhere else — §2.2a rule 1, §2.2b F2.
-        persistence: { savedDoc: doc, savedVersion: stored.version, status: 'idle' },
-        ui: { ...initialState().ui, activeDayId: doc.days[0]?.id ?? null, activeCityKey: doc.cities[0]?.key ?? null },
-      }, { reseed: true });
       // §10.6 property 2 — **once per trip open**, one port call for all of them, and the one
       // moment `available` is allowed to be established. A-57 Part 9 residue 5 records the cost.
-      await readPhotoAvailability(doc);
+      await readPhotoAvailability(installed);
       return state;
     },
 
@@ -1297,25 +1475,41 @@ export function createStore(opts: StoreOptions) {
      * (§2.14). It does **not** become the active document, is never dispatched against and
      * is never written back.
      *
+     * §4.2 rule **6d** (**A-67** Parts 4 and 6): `browsing` is a guarded slot of its own. It does
+     * not flush and never has — nothing here replaces the active document — so it claims on line
+     * 1 instead. Two overlapping browses would otherwise let the **older** pane win, and
+     * `copyStopInto` reads that pane. A supersession **returns the parsed document** (this method
+     * is a navigation, so the abort is silent) without installing it.
+     *
      * @throws {Error} if the id is not in storage or the stored document is corrupt.
      */
     async browseTrip(id: string): Promise<Trip> {
-      const stored = await ports.storage.load(id);
-      if (stored === null) throw new Error(`browseTrip: no trip ${id} in storage`);
-      // §2.9 **A-47** Part 2, the same treatment as `openTrip`: browsing is a real open attempt
-      // on a real document (§2.14) and it fails for exactly the same reason.
-      let doc: Trip;
+      const t = guard.claim('browsing');
       try {
-        doc = core.fromJSON(stored.doc);
-      } catch (err) {
-        noteOpenFailure(id, err);
-        throw err;
+        const stored = await ports.storage.load(id);
+        if (stored === null) throw new Error(`browseTrip: no trip ${id} in storage`);
+        // §2.9 **A-47** Part 2, the same treatment as `openTrip`: browsing is a real open attempt
+        // on a real document (§2.14) and it fails for exactly the same reason. Unchanged, and
+        // inside the window.
+        let doc: Trip;
+        try {
+          doc = core.fromJSON(stored.doc);
+        } catch (err) {
+          noteOpenFailure(id, err);
+          throw err;
+        }
+        if (!guard.current('browsing', t)) return doc;
+        set({ ...state, browsing: doc, openFailures: clearOpenFailure(id) });
+        return doc;
+      } finally {
+        guard.release('browsing');
       }
-      set({ ...state, browsing: doc, openFailures: clearOpenFailure(id) });
-      return doc;
     },
 
     async closeBrowse(): Promise<AppState> {
+      // A SYNCHRONOUS replacement of the slot, which has no window: invalidate, then write
+      // (A-67 Part 3). A browse still in flight must not install its pane over a close.
+      guard.supersede('browsing');
       set({ ...state, browsing: null });
       return state;
     },
@@ -1338,11 +1532,20 @@ export function createStore(opts: StoreOptions) {
     /**
      * "Back to all trips" (App.tsx's brand button). §4.2 rule 6a/6b: the pending write is
      * flushed and awaited first, and a refused flush leaves the trip open with its edit.
+     *
+     * §4.2 rule **6d** (**A-67** Part 6): a supersession **returns** and installs nothing, as for
+     * every navigation.
      */
     async closeTrip(): Promise<AppState> {
-      if (!(await flushForTransition())) return state;
-      cache = null;
-      set({ ...initialState(), library: state.library, rescan: state.rescan, openFailures: state.openFailures }, { reseed: true });
+      const t = await flushForTransition();
+      if (t === null) return state;
+      try {
+        if (!guard.current('doc', t)) return state;
+        cache = null;
+        set({ ...initialState(), library: state.library, rescan: state.rescan, openFailures: state.openFailures }, { reseed: true });
+      } finally {
+        releaseTransition();
+      }
       return state;
     },
 
@@ -1352,10 +1555,19 @@ export function createStore(opts: StoreOptions) {
      * for that document to be destroyed, and blocking on a refused flush would make a
      * conflicted trip undeletable. Deleting some *other* trip is an ordinary transition and
      * flushes the active document first.
+     *
+     * §4.2 rule **6d** (**A-67** Part 6): **this is the one transition that claims and never
+     * checks.** Its install is computed from `state` at the instant of writing
+     * (`if (state.activeTripId === id)`), which is Part 4's criterion answering the question for
+     * it. It still claims, because the delete must invalidate an availability read and an import
+     * for a trip it is destroying — and R46-1 face 3's requirement (*no byte record written for a
+     * file that had not reached its `write`*) is now met by the same check as everything else.
+     * **`ports.storage.delete` and the library-row removal are never conditional on a ticket**;
+     * only a document *install* is.
      */
     async deleteTrip(id: string): Promise<AppState> {
-      if (state.activeTripId === id) cancelTimer();
-      else if (!(await flushForTransition())) return state;
+      if (state.activeTripId === id) { cancelTimer(); claimTransition(); }
+      else if ((await flushForTransition()) === null) return state;
       // §4.2 rule 6c, revision 5 (QA R7-3). **The exception is about not WRITING. It is not
       // about not ORDERING.** A write already queued on the chain can settle *after*
       // `ports.storage.delete(id)` returns, and an expect-absent write (`expectedVersion:
@@ -1389,23 +1601,39 @@ export function createStore(opts: StoreOptions) {
       // the in-memory port and any future port get the cascade whether or not their storage can
       // span it.
       //
-      // A failure here leaves reclaimable orphans, not a broken delete: the trip goes either way.
-      await chainOntoSaving(async () => {
-        if (ports.photo) {
-          try {
-            await ports.photo.removeTrip(id);
-          } catch { /* orphaned bytes are reclaimable; a failed byte delete may not block one */ }
-        }
-        await ports.storage.delete(id);
-        const library = state.library.filter((r) => r.id !== id);
-        // §2.9 A-47 Part 2: the row is gone, so an observation about a record that no longer
-        // exists is not an observation. Dropped in the same `set`, on both branches.
-        const openFailures = clearOpenFailure(id);
-        if (state.activeTripId === id) {
-          cache = null;
-          set({ ...initialState(), library, rescan: state.rescan, openFailures }, { reseed: true });
-        } else set({ ...state, library, openFailures });
-      });
+      // **The trip goes either way, and the bytes it leaves are NOT reclaimable** — §10 **A-62**
+      // Part 8 residue 4 (QA R46-4, then R47-3). A failed byte delete does not abort the delete,
+      // for §4.2 rule 6c's own reason one function up: an ancillary storage failure may not stand
+      // between a user and a destruction they explicitly asked for, and `removeTrip` is one
+      // transaction over both stores, so a rejection means it aborted WHOLE rather than half-way.
+      //
+      // What it leaves behind is unreachable, not recoverable. `reclaimPhotoBytes` needs an
+      // active document (its `live` guard is `state.doc.photos`) and an id in
+      // `state.photos.orphans`, and after a trip delete there is neither, permanently — the
+      // document is gone and A-62 Part 4 deliberately removed the id list that would have named
+      // the photographs. So these bytes are reclaimed by **A-62 Part 8 residue 2's unbuilt sweep
+      // and by nothing before it**; on `apps/web` the braces below (`storage.delete`'s range
+      // delete, inside the transaction that drops the document) usually take them anyway.
+      try {
+        await chainOntoSaving(async () => {
+          if (ports.photo) {
+            try {
+              await ports.photo.removeTrip(id);
+            } catch { /* not reclaimable by any shipped mechanism; a failed byte delete may not block a delete */ }
+          }
+          await ports.storage.delete(id);
+          const library = state.library.filter((r) => r.id !== id);
+          // §2.9 A-47 Part 2: the row is gone, so an observation about a record that no longer
+          // exists is not an observation. Dropped in the same `set`, on both branches.
+          const openFailures = clearOpenFailure(id);
+          if (state.activeTripId === id) {
+            cache = null;
+            set({ ...initialState(), library, rescan: state.rescan, openFailures }, { reseed: true });
+          } else set({ ...state, library, openFailures });
+        });
+      } finally {
+        releaseTransition();
+      }
       return state;
     },
 
@@ -1438,14 +1666,23 @@ export function createStore(opts: StoreOptions) {
      * no `Math.random` (`cairn-constraints` §4).
      *
      * **A batch belongs to ONE trip, and steps 4 and 5 each check that it still does** (QA
-     * **R46-1**). `tripId` is captured before the first `await` and is the only trip this batch
-     * may write to — bytes *or* record. Between the picker returning and a file's decode
-     * finishing the user can open another trip, close this one, or delete it, so the loop stops
-     * at the first file that finds `tripId` no longer live (step 4) or no longer the open
-     * document (step 5). It stops rather than retargeting, and the abandoned files are reported as
-     * **nothing** — §10.6 **A-66** (BUILD-NOTES KD-82, ruled): `PhotoSession` resets at every
-     * reseed site, so by the time the loop notices, a failure entry would land against the trip the
-     * user moved to and name files that trip never had. `PhotoImportFailure` stays at five arms.
+     * **R46-1**, then **R47-1**). `tripId` is captured before the first `await` and is the only
+     * trip this batch may write to — bytes *or* record.
+     *
+     * **The check is a generation, not a trip id** — §4.2 rule **6d**, **A-67** Parts 6 and 7.
+     * `guard.observe('doc')` is taken in the same synchronous block as `tripId`, so the two agree
+     * by construction, and both loop guards ask *"is the document generation I observed still the
+     * current one?"* rather than *"is a trip with this id still around?"*. Identity by id is true
+     * of two different document instances for one trip, which is why re-opening the **same** trip
+     * mid-batch used to pass both of R46-1's guards on both sides of the transition and cost one
+     * photograph per tap, unbounded and unreported (R47-1 face 3: four picked, four decoded, four
+     * written, three lost, `failures: []`). A generation is false the instant any transition
+     * claims, so the batch stops at the first file whose decode completes on or after it.
+     *
+     * It stops rather than retargeting, and the abandoned files are reported as **nothing** —
+     * §10.6 **A-66** (BUILD-NOTES KD-82, ruled): `PhotoSession` resets at every reseed site, so by
+     * the time the loop notices, a failure entry would land against the trip the user moved to and
+     * name files that trip never had. `PhotoImportFailure` stays at five arms.
      *
      * **Re-entrancy, and it is QA R45-11's subject.** `importPhotos` takes no guard — a double-tap
      * on an import control starts two of these — so nothing here may be batch-local state written
@@ -1464,9 +1701,19 @@ export function createStore(opts: StoreOptions) {
       // `state.doc.id` read after an await could name a different trip (§4.2 rule 6's shape, one
       // subsystem over) and would file the bytes under a tenancy that never asked for them.
       const tripId = state.doc.id;
+      // A-67 Part 6, in the SAME synchronous block as `tripId`, and **before** `pickImages()`.
+      // `observe` and not `claim`: this batch writes THROUGH the document slot rather than
+      // replacing it. `null` means a transition's window is already open — a ticket taken inside
+      // it would capture the value that transition has already minted and would survive its
+      // install, so it is unrepresentable rather than merely discouraged (A-67 Part 3 item 2).
+      const g = guard.observe('doc');
+      if (g === null) return state;
       const picked = await ports.photo.pickImages();
       // A cancel. Not an error, not a failure, and it does not clear an earlier batch's report.
       if (picked === null || picked.length === 0) return state;
+      // The picker is a modal and the app is frozen behind it — but not on every host, and the
+      // fraction must not move for a batch that can no longer land anything.
+      if (!guard.current('doc', g)) return state;
 
       // An idle store starts a fresh fraction; a store with a batch in flight joins it. Read
       // after the `await` above, because that is where the other batch can have started.
@@ -1500,15 +1747,23 @@ export function createStore(opts: StoreOptions) {
             const derived = await ports.photo.derive(f.bytes, f.type);
             if (derived === null) fail('decode_failed');
             else {
-              // **The trip this batch belongs to is gone** — QA **R46-1**, face 3. `deleteTrip`'s
-              // cascade has already run, so a byte record written now has no document, no library
-              // row and nothing that can ever name it: §6.3's *"no row and no blob without a live
-              // tenancy reference"*, broken by a race rather than by a missing cascade. The batch
-              // stops here, before the write, and the user is not told `'storage_failed'` for a
-              // trip they deleted themselves. **Nothing is reported at all** — §10.6 **A-66**
-              // (KD-82, ruled): `deleteTrip` has already reseeded `state.photos`, so a failure
-              // entry appended now would land against whatever trip the user moved to.
-              if (!isLiveTrip(tripId)) break;
+              // **The document this batch belongs to is gone** — QA **R46-1** face 3, then
+              // **R47-1**. `deleteTrip`'s cascade may already have run, so a byte record written
+              // now can have no document, no library row and nothing that can ever name it:
+              // §6.3's *"no row and no blob without a live tenancy reference"*, broken by a race
+              // rather than by a missing cascade. The batch stops here, **before the write**, and
+              // the user is not told `'storage_failed'` for a trip they deleted themselves.
+              // **Nothing is reported at all** — §10.6 **A-66** (KD-82, ruled): the transition has
+              // already reseeded `state.photos`, so a failure entry appended now would land
+              // against whatever trip the user moved to.
+              //
+              // This is the guard that used to be `isLiveTrip(tripId)`, deleted at I-13d (A-67
+              // Part 7). The generation is strictly stronger — a trip cannot be deleted or
+              // re-opened without a claim — and §10 **A-66 Part 10** item 2 is what it buys:
+              // §10.4's halving loop makes `derive` seconds of canvas work per file, so the
+              // overwhelmingly likely place for a transition to land is inside the decode, where
+              // breaking here costs **zero** stranded bytes.
+              if (!guard.current('doc', g)) break;
               const id = ports.ids.newId('photo');
               try {
                 await ports.photo.write(tripId, id, derived.thumb.bytes, derived.display.bytes);
@@ -1534,11 +1789,19 @@ export function createStore(opts: StoreOptions) {
               // holds exactly one document in memory, so the record cannot be filed into trip A
               // from here, and filing it into trip B would be writing a photograph into a trip
               // that was never asked for it. The bytes stay under their own trip's key, where
-              // they are that trip's to reclaim — §10.6 **A-66** Part 7 (KD-82, ruled): bounded at
-              // one derivative pair per abandoned batch, and swept by `removeTrip`. Nothing is
-              // reported either, because `openTrip`/`closeTrip` have already reseeded
+              // they are that trip's to reclaim — §10 **A-66 Part 10**: **at most one derivative
+              // pair per abandoned batch, and it is a property enforced by a check rather than by
+              // where two guards happen to sit.** The residual window is the duration of the
+              // `write` above and nothing wider; `removeTrip` is still its only reaper.
+              //
+              // **The check is `guard.current('doc', g)` and NOT `state.doc?.id !== tripId`**
+              // (A-67 Part 7). The old form was R47-1 face 3 in one sentence: identity by id is
+              // true of two different document instances for one trip, so re-opening the trip the
+              // batch is importing into passed it on both sides of the transition and the record
+              // was accepted into a document the reseed was one statement away from replacing.
+              // Nothing is reported either, because the transition has already reseeded
               // `state.photos` and the report would land against the wrong trip (A-66 Part 3).
-              if (state.doc?.id !== tripId) break;
+              if (!guard.current('doc', g)) break;
               this.dispatch({
                 type: 'addPhoto',
                 photo: {
@@ -1569,6 +1832,13 @@ export function createStore(opts: StoreOptions) {
               if (state.photos.available !== null && state.photos.tripId === state.doc.id) {
                 const available = new Set(state.photos.available);
                 available.add(id);
+                // **A write that changes the subject an in-flight read is reading must invalidate
+                // that read** — §4.2 **A-67** Part 4. The `write` above changed what `present()`
+                // would answer, so an availability read issued *before* those bytes existed must
+                // not land *after* them and report `'missing'` over them. That is R45-4 reached
+                // through a third door, closed by one call. A synchronous replacement has no
+                // window: invalidate, then write.
+                guard.supersede('photoAvailability');
                 setPhotos({ available });
               }
             }
@@ -1664,6 +1934,10 @@ export function createStore(opts: StoreOptions) {
         if (state.photos.available !== null) {
           const available = new Set(state.photos.available);
           available.delete(photoId);
+          // A-67 Part 4, the same call for the same reason as `importPhotos`': the `remove` above
+          // changed what `present()` would answer, so a read issued before it must not land after
+          // it and report bytes that are gone as present.
+          guard.supersede('photoAvailability');
           setPhotos({ available });
         }
         setPhotos({ orphans: state.photos.orphans.filter((id) => id !== photoId) });
@@ -1806,48 +2080,62 @@ export function createStore(opts: StoreOptions) {
      * §4.2 rule 6a/6b: the outgoing document is flushed first, and a refused flush aborts
      * the import rather than replacing an unsaved trip with the restored one.
      *
+     * §4.2 rule **6d** (**A-67** Part 6): a supersession **throws**, as for every creation path.
+     * The window covers `fromJSON`, the ownership refusal and the whole id-minting loop — which
+     * is several `ports.storage.load` awaits, and is exactly the shape R47-1 measured in
+     * `openTrip`.
+     *
      * @throws {TripParseError} with a JSON path for a malformed file.
      * @throws {Error} for a document owned by another person.
+     * @throws {Error} `TRANSITION_SUPERSEDED_MESSAGE` if a newer transition claimed the document
+     *         while this one was being prepared. Nothing is installed and nothing is written.
      */
     async importDoc(text: string): Promise<AppState> {
-      if (!(await flushForTransition())) return state;
-      let doc = core.fromJSON(text);
-      const owner = localOwner();
-      // §2.14 rule 1 refuses a document whose `ownerId` is "present and is neither the local
-      // user … nor absent" — so the refusal is on a PRESENT, foreign owner, and an ownerless
-      // document (an old export, a build older than the field) is a backup of this user's own
-      // trip. It is adopted here rather than in `fromJSON`, because this is the only layer
-      // that knows who the local user is; core carries absence through as `''` and
-      // `validateTrip` reports `owner_missing` for anything that reaches it still ownerless.
-      // Adopting an ownerless file is not rule 1's "it does not adopt ownership": that
-      // sentence is about the document owned by somebody else, which is still refused.
-      if (doc.ownerId && doc.ownerId !== owner) throw new core.ForeignDocumentError(doc.ownerId, owner);
-      if (!doc.ownerId) doc = { ...doc, ownerId: owner };
-      if ((await ports.storage.load(doc.id)) !== null) {
-        // The injected `IdFactory` is deterministic (it must be, for goldens), so a fresh
-        // id can itself collide with a stored one. Keep minting until it does not.
-        let fresh = ports.ids.newId('trip');
-        for (let i = 0; i < 100 && (await ports.storage.load(fresh)) !== null; i++) {
-          fresh = ports.ids.newId('trip');
+      const t = await flushForTransition();
+      if (t === null) return state;
+      try {
+        let doc = core.fromJSON(text);
+        const owner = localOwner();
+        // §2.14 rule 1 refuses a document whose `ownerId` is "present and is neither the local
+        // user … nor absent" — so the refusal is on a PRESENT, foreign owner, and an ownerless
+        // document (an old export, a build older than the field) is a backup of this user's own
+        // trip. It is adopted here rather than in `fromJSON`, because this is the only layer
+        // that knows who the local user is; core carries absence through as `''` and
+        // `validateTrip` reports `owner_missing` for anything that reaches it still ownerless.
+        // Adopting an ownerless file is not rule 1's "it does not adopt ownership": that
+        // sentence is about the document owned by somebody else, which is still refused.
+        if (doc.ownerId && doc.ownerId !== owner) throw new core.ForeignDocumentError(doc.ownerId, owner);
+        if (!doc.ownerId) doc = { ...doc, ownerId: owner };
+        if ((await ports.storage.load(doc.id)) !== null) {
+          // The injected `IdFactory` is deterministic (it must be, for goldens), so a fresh
+          // id can itself collide with a stored one. Keep minting until it does not.
+          let fresh = ports.ids.newId('trip');
+          for (let i = 0; i < 100 && (await ports.storage.load(fresh)) !== null; i++) {
+            fresh = ports.ids.newId('trip');
+          }
+          if ((await ports.storage.load(fresh)) !== null) {
+            throw new Error('Import could not mint a free trip id; nothing was written.');
+          }
+          doc = { ...doc, id: fresh, title: `${doc.title} (imported)` };
         }
-        if ((await ports.storage.load(fresh)) !== null) {
-          throw new Error('Import could not mint a free trip id; nothing was written.');
-        }
-        doc = { ...doc, id: fresh, title: `${doc.title} (imported)` };
+        if (!guard.current('doc', t)) throw new Error(TRANSITION_SUPERSEDED_MESSAGE);
+        cache = null;
+        set({
+          ...initialState(),
+          library: state.library,
+          rescan: state.rescan,
+          // Carried, and deliberately **not cleared** (A-47 Part 2): `importDoc` never overwrites
+          // an existing document — on an id collision it mints a fresh id above — so it cannot
+          // repair an id already in `openFailures`. A clear here would be code that can never fire.
+          openFailures: state.openFailures,
+          activeTripId: doc.id,
+          doc,
+          ui: { ...initialState().ui, activeDayId: doc.days[0]?.id ?? null, activeCityKey: doc.cities[0]?.key ?? null },
+        }, { reseed: true });
+      } finally {
+        releaseTransition();
       }
-      cache = null;
-      set({
-        ...initialState(),
-        library: state.library,
-        rescan: state.rescan,
-        // Carried, and deliberately **not cleared** (A-47 Part 2): `importDoc` never overwrites
-        // an existing document — on an id collision it mints a fresh id above — so it cannot
-        // repair an id already in `openFailures`. A clear here would be code that can never fire.
-        openFailures: state.openFailures,
-        activeTripId: doc.id,
-        doc,
-        ui: { ...initialState().ui, activeDayId: doc.days[0]?.id ?? null, activeCityKey: doc.cities[0]?.key ?? null },
-      }, { reseed: true });
+      // Both **after the release** — A-67 Part 6.
       await save();
       // §10.6 property 5's terminal guarantee — **A-63**. A restored document becomes the active
       // one without going through `openTrip`, so nothing here used to establish availability and

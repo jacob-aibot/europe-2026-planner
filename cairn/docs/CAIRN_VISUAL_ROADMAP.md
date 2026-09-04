@@ -19,8 +19,34 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
+> **🟢 THE NUMBERED-RECEIPT FIX IS BUILT — as of 2026-09-04. This block is the newest.** Step 2d's
+> photo half moves to **designed ✅ · built ✅ · verified ⚠️ · shippable ❌**. The design in the block
+> below is now code: every one of the nine checks it had to pass is passing, and each one was
+> confirmed to *fail* when the fix is deliberately taken back out, so they are measuring the fix
+> rather than measuring nothing.
+>
+> **What is different if you use it.** Tapping your own trip again while photographs are importing
+> keeps every photograph that had already arrived, and stops the rest cleanly instead of losing
+> them one per tap — and now **nothing is decoded, written to disk and then thrown away at all**,
+> where before the best case still left one picture stranded. Cairn can no longer report a
+> photograph as *"no longer stored on this device"* when it is, a successful **Try again** can no
+> longer be undone by the failed check before it, and tapping two trips in quick succession can no
+> longer leave the first one open. **Nothing on screen changes** — there is still no photo screen,
+> and no `.tsx` file was opened.
+>
+> **One honest snag, and it is a question for the architect rather than a bug.** Two older test
+> scripts still expect the old behaviour on one specific point: they check that a photograph
+> abandoned mid-import leaves its *picture* on disk with nothing pointing at it. The new fix stops
+> that from happening at all — which is the improvement the design asked for — so those two lines
+> now read "nothing on disk" where they were written to read "one picture on disk". I have left
+> both scripts untouched rather than quietly editing them to agree with me; the architect decides
+> which sentence is right. Everything else in them passes.
+>
+> **What happens next:** the confirmation round over the whole photo arc — I-13, I-13b, I-13c and
+> I-13d together. Nothing here is shippable until that round and the manager's verdict.
+
 > **🟠 THE FIX FOR BOTH PROBLEMS IS DESIGNED, AND IT IS ONE FIX RATHER THAN TWO — as of
-> 2026-09-04. This block is the newest.** Step 2d's photo half stays **designed ✅ · built ✅ ·
+> 2026-09-04. This block was the newest until the block above.** Step 2d's photo half stays **designed ✅ · built ✅ ·
 > verified ⚠️ · shippable ❌** — nothing is built yet, so nothing has moved. What is new is that the two
 > problems in the block below turned out to have **one** cause, that cause has now been found four rounds
 > running wearing four different disguises, and this pass rules the whole shape of it instead of patching

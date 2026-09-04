@@ -15,6 +15,8 @@ adding, moving or trusting one.
 
 ## Document cost map
 
+**Two rows re-measured at I-13d (2026-09-04)** — `BUILD-NOTES` 193k → **195k** with I-13d's addendum
+and `CAIRN_VISUAL_ROADMAP` 47k → **49k** with its newest block; the other four did not move.
 **Two rows re-measured at revision 47 (2026-09-04)** — `ARCHITECTURE` 350k → **361k** with §4.2's **A-67**
 (§4 alone went 59k → **69k**; §10 36k → **37k** with A-66's Part 10) and `ROADMAP` 126k → **130k** with
 **I-13d**; the other four did not move. **Three rows were re-measured at QA round 47 (2026-09-04)** — `QA-FINDINGS` 287k → **293k** with round 47, `BUILD-NOTES` 192k → **193k** with I-13c group 3's addendum, and `CAIRN_VISUAL_ROADMAP` 46k → **47k**. **Every row below was re-measured at revision 46 (2026-09-04)** — the **third** re-measure in one day, and
@@ -50,12 +52,12 @@ whole is a decision to spend a quarter of a context window; `doc-section` exists
 | `PRODUCT-VISION.md` | ~10k tok | you're the architect and the question is *why this order* | Appendix A is Jacob's words verbatim — quote it, don't paraphrase it |
 | `ARCHITECTURE.md` | **~361k tok** | **never.** Not even for a broad design revision — read sections | `cairn/tools/doc-section ARCHITECTURE <sections>`; run it bare to list every section with its size, and see the table at the top of the doc for who needs what. §2 is 124k, §8 is **82k** (revision 41: A-59/A-60 joined §8.4; revision 42: A-60 gained Part 6; revision 44: A-38 Part 5's checkable line restated), **§4 is 69k** — revision 47 put **A-67** (the store's generation guard) at the end of §4.2, 59k → 69k, and it is the one entry in §4 that is *not* about the map, so a builder of I-13d reads A-67 and needs none of §4.4; **§10 (photos) is 37k and self-contained** — revision 40 built it, revision 43 added A-61, revision 44 added **A-62/A-63/A-64** (16k → 25k), revision 45 added A-62 Part 8's fourth residue (25k → 27k), revision 46 added **A-65/A-66** (27k → 36k), revision 47 added A-66's **Part 10** (36k → 37k) |
 | `ROADMAP.md` | **~130k tok** | **never** | `cairn/tools/doc-section ROADMAP "Phase N" "Sequencing rules"` (matches heading text as well as number — see the tool's `--help`). Phase 2 alone is ~85k; grep for your increment |
-| `BUILD-NOTES.md` | **~193k tok** | **never** | `cairn/tools/doc-section BUILD-NOTES <sections>`; check the Status note at the top before trusting §4/§5's numbers |
+| `BUILD-NOTES.md` | **~195k tok** | **never** | `cairn/tools/doc-section BUILD-NOTES <sections>`; check the Status note at the top before trusting §4/§5's numbers |
 | `QA-FINDINGS.md` | **~293k tok** | **never** — it is the largest document in the repo | the Status note at the top + the specific finding(s) you were routed |
 | `REVIEW.md` | ~52k tok | you're the builder/breaker acting on its routing table — and then only the current verdict | the Status note at the top tells you whether it's even current; the verdict table names which entries are closed |
 | `docs/HISTORY.md`, `cairn/docs/archive/*` | — | a finding or a comment cites it by name | never by default |
 | `europe-2026-itinerary.html` | ~44k tok | you're auditing render paths end to end (say so) | `node cairn/tools/extract-legacy.mjs`, or grep — see `cairn-constraints` §1 |
-| `CAIRN_VISUAL_ROADMAP.md` (+ its `.html` twin) | ~47k tok | never — read the **newest block only**, which supersedes the ones below it | not a contract doc; skip it for a routine builder/breaker task, and see below for when to *update* it |
+| `CAIRN_VISUAL_ROADMAP.md` (+ its `.html` twin) | ~49k tok | never — read the **newest block only**, which supersedes the ones below it | not a contract doc; skip it for a routine builder/breaker task, and see below for when to *update* it |
 
 ## Delegation — when a change needs which stage
 
