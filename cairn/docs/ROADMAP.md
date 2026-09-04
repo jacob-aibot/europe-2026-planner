@@ -988,6 +988,26 @@ replaced** below. **No phase, step, gate, criterion or dependency moves**; I-11 
 A-39 Part 11 item 2's Axis-D assignment in `qa/i7a-idb-rowkeys.mjs` — is **routed to the breaker**, not to
 I-9a's builder, because that file is the breaker's.
 
+**Revision 57, 2026-09-04.** **One increment added — `I-9b` — and it is one test, because the defect it
+answers turned out not to exist.** `ARCHITECTURE.md` revision 55's **A-74** rules on BUILD-NOTES **KD-99**,
+the third and last objection from the participants arc: should `validateTrip` report a participant `kind`
+outside `PARTICIPANT_KINDS`? **No — it can never see one.** `parseParticipant` has read `kind` through
+`oneOf(o.kind, PARTICIPANT_KINDS, …)` since I-9, A-73 Part 6 item 2 preserved that refusal by name, and
+`packages/core/test/participants.test.ts` already asserts it at `$.participants[0].kind`, so the
+hand-crafted-document channel KD-99 worried about was closed **before** R52-3 shut the two build-function
+doors. A-74 prints the full eight-row producer census for `Trip.participants` and every rung is closed;
+`migrateDoc` is not a rung at all, because it returns a **document** and not a `Trip`. **So: no new
+`IssueCode`, no `src` change, no export-surface movement, nothing under `qa/`, and no phase, step, gate,
+criterion or dependency moves.** What is queued is the one rung of that census nothing stands on —
+`importLegacyDays` emits `participants: []` — because A-74's ruling rests entirely on the census being
+right, and §0.5 does not let a claim like that ship without a check that reddens when it stops being true.
+The residue A-74 names is general rather than participants': eighteen `oneOf`-constrained fields share the
+shape, and the answer when one of them acquires a *reachable* unvalidated caller is **another door guard in
+`build/` on R52-3's model, not an `Issue`.** **One item is routed to the breaker rather than to I-9b's
+builder** — `qa/r52-participants.mjs`'s *"validateTrip reports the unrestorable kind"* assertion, which is
+the executable form of KD-99, is withdrawn by A-74 **and** is already dead code under R52-3's throw. That
+file is the breaker's; the routing is stated in I-9b so it is not discovered later.
+
 > **Phase numbers changed once, here.** Every heading below carries its old number, and every "Phase N"
 > written in `ARCHITECTURE.md` §1–§7, `BUILD-NOTES.md` or `QA-FINDINGS.md` before revision 9 means the
 > *named* phase it described: "Phase 2" = accounts/server (**now 3**), "Phase 3" = ingest (**now 4**),
@@ -4562,6 +4582,46 @@ criterion below.
 - **Ship gate.** `npm test` green; `npm run typecheck` green **with the regenerated sample committed**;
   S1–S5 and T1–T4 all present as tests with the fault they catch named in the test, per *How a criterion is
   written*; the four refusal messages unchanged, asserted rather than assumed.
+
+#### I-9b — One test: the last unpinned rung of A-74's producer census (revision 57)
+
+**The smallest increment in this document, and it is a test and nothing else.** It is the whole code
+consequence of `ARCHITECTURE.md` revision 55's **A-74** (BUILD-NOTES **KD-99**), which ruled that a
+participant `kind` outside `PARTICIPANT_KINDS` **cannot reach `validateTrip`** and therefore earns **no new
+`Issue` code**. **Read A-74 Parts 5–6 and nothing else in `ARCHITECTURE.md`.**
+
+- **Built.** **One test** in `packages/core/test/participants.test.ts`, asserting that
+  **`importLegacyDays` emits `participants: []`**. It is the single row of A-74 Part 2's eight-row producer
+  census that no existing test stands on — `createTrip`'s is pinned by *"a new trip carries an empty
+  participants array"*, `fromJSON`'s by *"fromJSON rejects an unknown participant kind"*, the two build
+  doors by R52-3's tests, `copyStopInto`'s by *"a participant crossed the copy boundary"*, and
+  `mergeTrips`' needs none because it can only propagate a value that was already inside a `Trip`.
+- **Not built, and named so nobody adds it.** **No new `IssueCode`** — §2.9's list does not move. **No
+  change to any file under `packages/core/src`**, in particular not `validate/validateTrip.ts`,
+  `serialize/fromJSON.ts`, `build/participants.ts` or `import/legacyDays.ts` itself. Zero `.tsx`, zero
+  `qa/`, zero `docs/design/`, zero new dependency. `SCHEMA_VERSION`, `DB_VERSION`, `SUMMARY_VERSION` and
+  §2.10's export surface do not move, so **§8.9's re-count rule does not fire**.
+- **User-visible outcome.** None, and that is the point: A-74's finding is that the user-visible outcome the
+  round-52 repro was reaching for **already exists**, in the parser, with its JSON path.
+- **Architecture / data model.** Unchanged. This increment exists so that A-74's one load-bearing claim —
+  *the producer census is closed* — has a mechanical check, per §0.5.
+- **Verification.** A-74 Part 6's **K1**, and it is the only criterion: make `import/legacyDays.ts` emit a
+  participant derived from any legacy field, and **the new test must redden while nothing else in the suite
+  does**. A test that stays green under that injection is not the test A-74 asked for. Run red-before-green
+  against the injected fault rather than asserting it.
+- **Dependencies / blockers.** None. I-9 is built (`0e556a0`) and I-9a is queued independently; this
+  increment touches neither's files and can land before or after either. **Does not block `I-11`.**
+- **Routed to the breaker, not to this builder.** `qa/r52-participants.mjs`'s assertion *"R52:
+  `validateTrip` reports the unrestorable kind (`place_hours_malformed`'s shape)"* is **withdrawn by
+  A-74** — there is no such `Issue` and there will not be one — and it is **already dead code**, because
+  the `core.updateParticipant(t1, id1, { kind: 'owner' })` two lines above it now throws under R52-3, so
+  the chain beneath it does not execute what it claims. It comes out, or is re-pointed at the refusal that
+  *is* real: `fromJSON` at `$.participants[n].kind`. **That file is the breaker's**, so it belongs to the
+  next adversarial pass and **not** to this increment. A builder who edits `qa/` on this increment has gone
+  outside it.
+- **Ship gate.** `npm test` green with exactly one test added; the test names `importLegacyDays` and the
+  census row it stands for, per *How a criterion is written* rule 3. **Zero files touched outside
+  `packages/core/test/participants.test.ts`** — no `src`, no `qa/`, no `.tsx`, no `docs/design/`.
 
 #### I-10 — The participants editor, the profile grouping, and the access double-run — **DEFERRED at revision 55; 2c ships without it**
 

@@ -1279,6 +1279,28 @@ withdrawn. **No code is written here.** Both changes are queued as ROADMAP **I-9
 their preserved refusal messages, their pins and nine injected-fault criteria; `ROADMAP.md` revision 56
 carries the ledger entry.
 
+**Revision 55, 2026-09-04.** **A third objection from the participants arc, and this one is answered by
+reading the code rather than by ruling on a trade-off: the gap does not exist.** **A-74** (§8.3,
+BUILD-NOTES **KD-99**) — the round-52 breaker's missing assertion was that `validateTrip` should report a
+participant `kind` outside `PARTICIPANT_KINDS`. It should not, because **it can never see one**.
+`parseParticipant` has read `kind` through `oneOf(o.kind, PARTICIPANT_KINDS, …)` since I-9, A-73 Part 6
+item 2 preserved that by name, and `packages/core/test/participants.test.ts` already asserts the refusal at
+`$.participants[0].kind` — so the hand-crafted-document channel KD-99 worried about was closed **before**
+R52-3 shut the two build-function doors. A-74 prints the **full producer census** for `Trip.participants`
+(eight rows, from `grep`): two emit the literal `[]`, three refuse at their own door, one filters, one only
+propagates values already inside a `Trip`, and `migrateDoc` returns a **document** rather than a `Trip` and
+so is not a producer at all. **No new `IssueCode`, no `src` change, no export-surface movement, nothing
+under `qa/`.** What is left after the census is a `Trip` obtained past the type system by a cast, which is
+not a document class and has no user who could repair it — and the class is general, since eighteen
+`oneOf`-constrained fields have the identical shape, so a code for `participant.kind` alone would be
+R16-2's *one property, two guards* verbatim. A-74 Part 4 separates the one precedent that looks like a
+counter-example (§2.9 **A-45 Part 3** keeps `invalid_calendar_date` as defence in depth) and turns it into a
+**rule**: *an enum-constrained field earns a `validateTrip` code when some producer of a `Trip` other than
+the parser can put a value outside the enum into it; a cast is not a producer.* The only work queued is
+**one test** — ROADMAP **I-9b** — pinning `importLegacyDays`'s `participants: []`, the single rung of the
+census nothing currently stands on and the exact producer A-45 names as live for dates. `ROADMAP.md`
+revision 57 carries the ledger entry.
+
 **Phase 1 is §2 and §4. The next phase is §8.1–§8.4.** Everything else is the shape those must not
 foreclose. See `ROADMAP.md` for sequencing and `PRODUCT-VISION.md` for why this order and not another.
 **What the product looks like is `DESIGN.md`, not this document** — §9 says why, and a builder of a screen
@@ -1286,7 +1308,10 @@ reads that instead of entering §2 or §4.
 
 ## Read only your sections
 
-This document is **~424k tokens** (re-measured at **revision 54**, with `doc-section` — **§8 grew 82k →
+This document is **~428k tokens** (re-measured at **revision 55**, with `doc-section` — **§8 grew 88k →
+90k** with §8.3's **A-74**; nothing else moved, and §2 is 125k, §4 is 114k, §10 is 40k). **A-74 is ~3k and
+Parts 5–6 are the whole read for a builder of ROADMAP I-9b**, plus §8.3's banner; it needs none of §2, §4 or
+§10. Revision 54's own note follows: the document was ~424k, with **§8 grown 82k →
 88k** with §8.3's **A-72** and **A-73** and §8.4's one bracketed Axis-D amendment, and **§2 and §10 each
 gained one pointer banner** (§2 is 125k, §10 is unmoved at 40k). **A-72 and A-73 together are ~6k and are
 exactly what a builder of ROADMAP I-9a reads**, plus §8.3 itself; neither needs §2, §4 or §10. Revision
@@ -1348,7 +1373,7 @@ supersedes, so reading it first is what tells you which of A-46 to skip** | 125k
 | 5 | The four hard subsystems | 2k | breaker; builder from Phase 3 on |
 | 6 | Privacy, authorization, deletion cascade. **§6.6 is the build-artifact threshold; the copy threshold is §2.14 A-15 + A-18 (revisions 13 and 14) and they differ deliberately, in two named places — read them together or neither** | 4k | breaker, manager; builder for §6.2 |
 | 7 | Explicitly deferred | <1k | anyone about to build something not in the roadmap |
-| 8 | **The travel-history model** (revision 9) — trip lifecycle and past trips (§8.1), the feasibility/integrity rule class (§8.2), participants (§8.3), geography attribution, travel stats and the summary-row rule (§8.4); then the shapes the location, photo and social phases must land on (§8.5–§8.7) and what is refused (§8.8). **§8.10 is revision 10** — physical travel distance by mode and the four provenance bases that keep it honest; **it is not Phase 2 scope**, so a Phase 2 builder reads §8.1–§8.4 and stops. **Revision 11 amends §8.1, §8.2 and §8.4 by pointer only — the two rulings themselves live in §2.2 (A-10) and §2.7 (A-9), and a Phase 2 builder reads both; revision 12 amends §8.2 by pointer in the same way, and its four rulings live in §2.7 (A-11, A-12, A-13) and §2.14 (A-14)**. **A-26 is revision 20 and lives in §8.4** — the mixed-resolution country index, the withdrawal of the correctness floor's escalation mechanism, and the ruling that `null` is the right answer for a landform the dataset does not carry; **anyone touching `tools/gen-countries.mjs`, `geo/countryIndex.ts` or the attribution golden reads it first**, and it is what ROADMAP's I-5a builds; **A-27 is revision 21, sits directly under A-26 and is read *with* it, never instead of it** — it amends A-26 Part 4's block-quoted rule with a third clause (a filled code ships a **forgiveness entry** as well as a coverage entry), supersedes A-26 Part 5's two-residue list with three, lifts A-26 Part 6 item 3 for a docstring correction only, and is what ROADMAP's **I-5b** builds; **A-28 is revision 22, sits under A-27 and is read with both, never instead of them** — it supersedes A-27 Part 4's filter 2 (two arms, because the coverage index it compared against is mixed-resolution and answered generously) and A-27 Part 4's `overlaps` predicate (the vertex-mean probes come out), corrects A-27 Part 5's Macao sentence and every count in it, and is what ROADMAP's **I-5c** builds. **Anyone touching `tools/forgiveness.mjs` or the forgiveness pass reads A-28 first and A-27 second**; **A-29 is revision 23 and sits under A-28** — it is the only one of the four that is *not* about the index: it rules that a `City`'s **stated** `countryCode` fills a gap the coordinate cannot answer, never overrides one, and only through a gate ending in index membership, and it takes `SUMMARY_VERSION` to 3. **Anyone touching `derive/summary.ts` reads A-29 and §4.3's A-30 together** — A-29 changes what a row *says*, A-30 changes how it is *written*, and I-6a builds both; **A-31 is revision 24 and sits under A-29** — it is the `travelStats` specification (type, signature, algorithm, sort orders, residues), and it widens the row a second time with the **record census** clause 2's `unattributed` cannot be computed without, taking `SUMMARY_VERSION` to 4. **A builder of I-7 reads §8.4 clause 2, then A-31, and needs nothing else in this document except §2.10's list**; A-31 also rewrites ROADMAP exit criterion 6, so **anyone about to add a count to `TripSummaryRow` reads A-31 Part 6 first — widening that allow-list is an architect's ruling**; **A-33 and A-34 are revision 25 and sit under A-31** — **A-33 supersedes A-31 Part 6's two-half check entirely** (it grepped declarations while the danger is a *value*, and a persisted `countriesVisited` passed it), so read A-33 and treat Part 6 as the *principle* it block-quotes and nothing more; **A-34** adds `provisional` to `travelStats`' two row types and is the ruling that stops an active trip's unreached countries being printed as fact. **A builder of I-7a reads A-31, then A-33 and A-34, plus §2.1's A-32**; **A-36 and A-37 are revision 26 and sit under A-34** — **A-36 supersedes A-33 Part 3's 6b-1/6b-2/6b-4 split and Part 7 residue 2** (every `StoragePort` implementation is *executed* by the gate, including the web port, against a recording double; 6b-2 is demoted to a tripwire and its parameter grep withdrawn; 6b-4's Chromium read-back becomes a required recorded ship-gate condition), so **anyone touching a port implementation, `test/stats-storage.test.ts` or `ROW_KEYS` reads A-36 first and A-33 second**; **A-37** is the ruling that a stored summary row is not a validated document — two module-private read gates in `travelStats` (day numbers clamped into `IsoDate`'s domain, a stored country code read through `/^[A-Z]{2}$/`), and it is what makes A-32 Part 8 residue 3's bound and the composite key's docstring true rather than merely stated. **A builder of I-7b reads A-36 and A-37, plus §2.3's A-35**; **A-38 is revision 27 and sits under A-37** — it **widens A-36 Part 2's mechanism and Part 4's 6b-4 scope without touching A-36's sentence**: a port's coverage is its **write paths**, not its interface methods, so the recording double gains a **seed** (a pre-existing database, including a *legacy* record with no envelope version), 6b-1b becomes **five arms each with a stated starting state**, and 6b-4 gains a second seeded phase; **A-39 is revision 28, sits under A-38 and closes the arc** — it supersedes A-38 Part 7's *required property* sentence (which quantified over **faults** and so could never be discharged by a finite fixture list) and A-38 Part 3's arm **seeds**, replacing both with a claim quantified over the state `ensureReady()` can **read**: five axes derived line by line from the function, a **15-state pairwise covering set** in the same five arms, and — the part Jacob asked for — a **written boundary** saying what legitimately reopens this (a `SUMMARY_VERSION`/`SCHEMA_VERSION` bump, a new store, a new port, a fourth write path) and what does not (one more fault shape on an axis already covered, which is a **builder** finding against A-39 Part 5's table, not an architect's). **Anyone touching a port implementation, `recordingIdb`, `test/stats-storage.test.ts` or `qa/i7a-idb-rowkeys.mjs` reads A-39 first, A-38 second and A-36 third**; **A-44 is revision 30, sits at the end of §8.4 and is read with A-37 Part 2** — it is one paragraph plus a signature, and it says where `lifecycle`'s read gate goes (`packages/client`, once, beside `travelHistory`); **anyone rendering a stored summary row on a new surface reads it**; **A-56 is revision 40, sits at the very end of §8.4 and is the newest entry in the section** — the city entry gains `centre` and `firstDay`/`lastDay`, `SUMMARY_VERSION` goes to **5**, A-33 Part 2's `ROW_KEYS`/`ROW_PATHS` are widened, stop-level geometry is refused with its trigger, and A-31 Part 5 residue 1 is closed **for cities only**. **A builder of I-12 reads A-56, then A-31 Parts 2 and 4, then A-33 Part 2, then A-39 Part 11 item 1, and needs nothing else in this document except §2.10's list**; **A-59 and A-60 are revision 41, sit directly under A-56 and are read *with* it, never instead of it** — QA round 43 measured A-56 Part 7 clause 1's *read* of a stored city date as an anonymous throw that takes the whole library's statistics down with no selector naming the row (A-59: the read is gated, the fallback is clause 2's, the absorption is counted in a new `TravelStats.unreadableCityDates`, and a new `rowStatsReadable` selector plus a widened `TravelHistoryResult` make the row nameable), and its *clamp* as printing a specific single day for a city the traveller has not reached (A-60: a range disjoint from the clamp interval falls back to the trip's range, so no city line escapes the country line beside it — *"never more assertive than its country's"* was A-60 Part 2's own wording and is **superseded at revision 42** by Part 6.4, which states the property as escape rather than width). **A-59 and A-60 also carry the three in-place corrections R43-6 made to A-56's own prose** (Part 2's `firstDay` docstring, Part 6's fourth-fixture justification, Part 8 item 6's `gen-golden.mjs` line), none of which moves a fixture, a test or a clause. **A builder of I-12a reads A-59, then A-60, then A-56 Part 7, then §2.9 A-47 Part 3, and needs nothing else**; **A-60 Part 6 is revision 42** and closes QA R44-2, an ambiguity in A-60's own Part 2 — a `null` city day edge is a **value** and keeps A-56 clause 1's per-field fallback (the shipped behaviour is **upheld**; the literal pair-wide reading is refused, because it deletes a real observation to arrive at a less precise version of the same invention), while A-60's disjointness test is generalised to read **the edges the row supplied** rather than the substitutes standing in for the missing ones — which is what makes a lone `lastDay` before `a` stop printing a fully-invented single day. **Part 2's pseudocode and Part 2's closing claim are both superseded by Part 6's**, and **a builder of the I-12a repair pass builds from Part 6.3's block and nothing else in this ruling**. **A-72 and A-73 are revision 54 and are the first rulings to land in §8.3** — they close the two objections the I-9 builder disclosed rather than resolved: **A-72** takes `SCHEMA_VERSION` to **3** (`participants` is records; `migrateDoc` becomes a ladder; `migrate.ts`'s rule is restated in three clauses so the next record class needs no ruling) and fires **A-39 Part 11 item 2** a second time, which is why §8.4's Axis D paragraph carries a bracketed amendment; **A-73** gives `duplicate_participant_id` **one home, `validateTrip`**, takes the parser refusal out and leaves **A-20 unamended**. **Neither moves a field, a type, a port, a selector or a screen**, and **a builder of ROADMAP I-9a reads A-72 Parts 5–7 and A-73 Parts 6–7 and needs nothing else in this document** | 88k | architect; the builder and breaker of the phase after Phase 1 (§8.1–§8.4 only). §8.10 is for the architect and for phases 4, 5 and 7. Read with `PRODUCT-VISION.md` |
+| 8 | **The travel-history model** (revision 9) — trip lifecycle and past trips (§8.1), the feasibility/integrity rule class (§8.2), participants (§8.3), geography attribution, travel stats and the summary-row rule (§8.4); then the shapes the location, photo and social phases must land on (§8.5–§8.7) and what is refused (§8.8). **§8.10 is revision 10** — physical travel distance by mode and the four provenance bases that keep it honest; **it is not Phase 2 scope**, so a Phase 2 builder reads §8.1–§8.4 and stops. **Revision 11 amends §8.1, §8.2 and §8.4 by pointer only — the two rulings themselves live in §2.2 (A-10) and §2.7 (A-9), and a Phase 2 builder reads both; revision 12 amends §8.2 by pointer in the same way, and its four rulings live in §2.7 (A-11, A-12, A-13) and §2.14 (A-14)**. **A-26 is revision 20 and lives in §8.4** — the mixed-resolution country index, the withdrawal of the correctness floor's escalation mechanism, and the ruling that `null` is the right answer for a landform the dataset does not carry; **anyone touching `tools/gen-countries.mjs`, `geo/countryIndex.ts` or the attribution golden reads it first**, and it is what ROADMAP's I-5a builds; **A-27 is revision 21, sits directly under A-26 and is read *with* it, never instead of it** — it amends A-26 Part 4's block-quoted rule with a third clause (a filled code ships a **forgiveness entry** as well as a coverage entry), supersedes A-26 Part 5's two-residue list with three, lifts A-26 Part 6 item 3 for a docstring correction only, and is what ROADMAP's **I-5b** builds; **A-28 is revision 22, sits under A-27 and is read with both, never instead of them** — it supersedes A-27 Part 4's filter 2 (two arms, because the coverage index it compared against is mixed-resolution and answered generously) and A-27 Part 4's `overlaps` predicate (the vertex-mean probes come out), corrects A-27 Part 5's Macao sentence and every count in it, and is what ROADMAP's **I-5c** builds. **Anyone touching `tools/forgiveness.mjs` or the forgiveness pass reads A-28 first and A-27 second**; **A-29 is revision 23 and sits under A-28** — it is the only one of the four that is *not* about the index: it rules that a `City`'s **stated** `countryCode` fills a gap the coordinate cannot answer, never overrides one, and only through a gate ending in index membership, and it takes `SUMMARY_VERSION` to 3. **Anyone touching `derive/summary.ts` reads A-29 and §4.3's A-30 together** — A-29 changes what a row *says*, A-30 changes how it is *written*, and I-6a builds both; **A-31 is revision 24 and sits under A-29** — it is the `travelStats` specification (type, signature, algorithm, sort orders, residues), and it widens the row a second time with the **record census** clause 2's `unattributed` cannot be computed without, taking `SUMMARY_VERSION` to 4. **A builder of I-7 reads §8.4 clause 2, then A-31, and needs nothing else in this document except §2.10's list**; A-31 also rewrites ROADMAP exit criterion 6, so **anyone about to add a count to `TripSummaryRow` reads A-31 Part 6 first — widening that allow-list is an architect's ruling**; **A-33 and A-34 are revision 25 and sit under A-31** — **A-33 supersedes A-31 Part 6's two-half check entirely** (it grepped declarations while the danger is a *value*, and a persisted `countriesVisited` passed it), so read A-33 and treat Part 6 as the *principle* it block-quotes and nothing more; **A-34** adds `provisional` to `travelStats`' two row types and is the ruling that stops an active trip's unreached countries being printed as fact. **A builder of I-7a reads A-31, then A-33 and A-34, plus §2.1's A-32**; **A-36 and A-37 are revision 26 and sit under A-34** — **A-36 supersedes A-33 Part 3's 6b-1/6b-2/6b-4 split and Part 7 residue 2** (every `StoragePort` implementation is *executed* by the gate, including the web port, against a recording double; 6b-2 is demoted to a tripwire and its parameter grep withdrawn; 6b-4's Chromium read-back becomes a required recorded ship-gate condition), so **anyone touching a port implementation, `test/stats-storage.test.ts` or `ROW_KEYS` reads A-36 first and A-33 second**; **A-37** is the ruling that a stored summary row is not a validated document — two module-private read gates in `travelStats` (day numbers clamped into `IsoDate`'s domain, a stored country code read through `/^[A-Z]{2}$/`), and it is what makes A-32 Part 8 residue 3's bound and the composite key's docstring true rather than merely stated. **A builder of I-7b reads A-36 and A-37, plus §2.3's A-35**; **A-38 is revision 27 and sits under A-37** — it **widens A-36 Part 2's mechanism and Part 4's 6b-4 scope without touching A-36's sentence**: a port's coverage is its **write paths**, not its interface methods, so the recording double gains a **seed** (a pre-existing database, including a *legacy* record with no envelope version), 6b-1b becomes **five arms each with a stated starting state**, and 6b-4 gains a second seeded phase; **A-39 is revision 28, sits under A-38 and closes the arc** — it supersedes A-38 Part 7's *required property* sentence (which quantified over **faults** and so could never be discharged by a finite fixture list) and A-38 Part 3's arm **seeds**, replacing both with a claim quantified over the state `ensureReady()` can **read**: five axes derived line by line from the function, a **15-state pairwise covering set** in the same five arms, and — the part Jacob asked for — a **written boundary** saying what legitimately reopens this (a `SUMMARY_VERSION`/`SCHEMA_VERSION` bump, a new store, a new port, a fourth write path) and what does not (one more fault shape on an axis already covered, which is a **builder** finding against A-39 Part 5's table, not an architect's). **Anyone touching a port implementation, `recordingIdb`, `test/stats-storage.test.ts` or `qa/i7a-idb-rowkeys.mjs` reads A-39 first, A-38 second and A-36 third**; **A-44 is revision 30, sits at the end of §8.4 and is read with A-37 Part 2** — it is one paragraph plus a signature, and it says where `lifecycle`'s read gate goes (`packages/client`, once, beside `travelHistory`); **anyone rendering a stored summary row on a new surface reads it**; **A-56 is revision 40, sits at the very end of §8.4 and is the newest entry in the section** — the city entry gains `centre` and `firstDay`/`lastDay`, `SUMMARY_VERSION` goes to **5**, A-33 Part 2's `ROW_KEYS`/`ROW_PATHS` are widened, stop-level geometry is refused with its trigger, and A-31 Part 5 residue 1 is closed **for cities only**. **A builder of I-12 reads A-56, then A-31 Parts 2 and 4, then A-33 Part 2, then A-39 Part 11 item 1, and needs nothing else in this document except §2.10's list**; **A-59 and A-60 are revision 41, sit directly under A-56 and are read *with* it, never instead of it** — QA round 43 measured A-56 Part 7 clause 1's *read* of a stored city date as an anonymous throw that takes the whole library's statistics down with no selector naming the row (A-59: the read is gated, the fallback is clause 2's, the absorption is counted in a new `TravelStats.unreadableCityDates`, and a new `rowStatsReadable` selector plus a widened `TravelHistoryResult` make the row nameable), and its *clamp* as printing a specific single day for a city the traveller has not reached (A-60: a range disjoint from the clamp interval falls back to the trip's range, so no city line escapes the country line beside it — *"never more assertive than its country's"* was A-60 Part 2's own wording and is **superseded at revision 42** by Part 6.4, which states the property as escape rather than width). **A-59 and A-60 also carry the three in-place corrections R43-6 made to A-56's own prose** (Part 2's `firstDay` docstring, Part 6's fourth-fixture justification, Part 8 item 6's `gen-golden.mjs` line), none of which moves a fixture, a test or a clause. **A builder of I-12a reads A-59, then A-60, then A-56 Part 7, then §2.9 A-47 Part 3, and needs nothing else**; **A-60 Part 6 is revision 42** and closes QA R44-2, an ambiguity in A-60's own Part 2 — a `null` city day edge is a **value** and keeps A-56 clause 1's per-field fallback (the shipped behaviour is **upheld**; the literal pair-wide reading is refused, because it deletes a real observation to arrive at a less precise version of the same invention), while A-60's disjointness test is generalised to read **the edges the row supplied** rather than the substitutes standing in for the missing ones — which is what makes a lone `lastDay` before `a` stop printing a fully-invented single day. **Part 2's pseudocode and Part 2's closing claim are both superseded by Part 6's**, and **a builder of the I-12a repair pass builds from Part 6.3's block and nothing else in this ruling**. **A-72 and A-73 are revision 54 and are the first rulings to land in §8.3** — they close the two objections the I-9 builder disclosed rather than resolved: **A-72** takes `SCHEMA_VERSION` to **3** (`participants` is records; `migrateDoc` becomes a ladder; `migrate.ts`'s rule is restated in three clauses so the next record class needs no ruling) and fires **A-39 Part 11 item 2** a second time, which is why §8.4's Axis D paragraph carries a bracketed amendment; **A-73** gives `duplicate_participant_id` **one home, `validateTrip`**, takes the parser refusal out and leaves **A-20 unamended**. **Neither moves a field, a type, a port, a selector or a screen**, and **a builder of ROADMAP I-9a reads A-72 Parts 5–7 and A-73 Parts 6–7 and needs nothing else in this document**; **A-74 is revision 55, sits under A-73 and closes the arc** — it answers BUILD-NOTES **KD-99** by reading the code rather than by ruling on a trade-off: a participant `kind` outside `PARTICIPANT_KINDS` **can never reach `validateTrip`**, because `parseParticipant` has refused it through `oneOf` since I-9, so there is **no new `Issue` code and no `src` change**. Its lasting content is Part 2's **eight-row producer census** for `Trip.participants` and Part 4's rule — *an enum-constrained field earns a `validateTrip` code when some producer of a `Trip` other than the parser can put a value outside the enum into it; a cast is not a producer* — which is what separates this case from §2.9 **A-45 Part 3**'s `invalid_calendar_date` and decides the remaining seventeen `oneOf` fields without a ruling. **Anyone tempted to add a validation code for a field the parser already refuses reads A-74 Part 4 first**; a builder of ROADMAP **I-9b** reads A-74 Parts 5–6 and nothing else | 90k | architect; the builder and breaker of the phase after Phase 1 (§8.1–§8.4 only). §8.10 is for the architect and for phases 4, 5 and 7. Read with `PRODUCT-VISION.md` |
 | 9 | **The design contract and the frontend tooling stack** (revision 38). §9.1 makes `docs/DESIGN.md` binding and says what is in it; §9.2 names the three fences a design pass may not cross; **A-55** is the eight-candidate tooling ruling, its Part 0 states where the dependency line actually is (`core`/`client` only — `apps/web` may take deps and takes none new), and its Part 4 is the tool hierarchy. **A builder of any web surface reads `DESIGN.md`, not this section**; this section is for the architect and for anyone about to add a frontend dependency | 4k | architect; anyone adding a frontend dependency |
 | 10 | **The photo foundation** (revision 40). §10.1 the record class and where the bytes are not; §10.2 import and the hand-rolled EXIF reader; §10.3 storage and the two new object stores; §10.4 the resolution discipline; §10.5 privacy and redaction; §10.6 the loading-state signals a consuming UI needs. **A-57** is the consolidated ruling and **A-58** is the dependency verdict. **A builder of I-13 reads §10 whole — it is self-contained — plus §2.8 (provenance), §2.10's list, `serialize/migrate.ts`'s own docstring, §8.6 and §8.4 A-39 Part 11.** It does **not** need the rest of §2 or §4. **A-61 is revision 43, sits at the end of the section and supersedes nothing in §10 except one clause of §10.1 point 1's own prose, corrected in place** — it is the ruling on BUILD-NOTES **KD-81** (ROADMAP I-13's 4 KB document-growth criterion against §10.1's measured 768 B record), it moves **no field**, and **a builder of I-13a reads A-61 Parts 5 and 7 and needs nothing else in this document**. **A-62, A-63 and A-64 are revision 44** — round 45's three architect-routed findings against I-13: the photo byte key gains its tenancy (`[tripId, photoId]`, `DB_VERSION` 4 → 5, `PhotoPort`'s signatures, R45-2 BLOCKER), `PhotoListing` gains an `'unreadable'` phase and a retry (R45-5), and A-57 Part 4's transition claim is withdrawn with `RefKind` unmoved (R45-6). They amend §10.2, §10.3 and §10.6 **in place**; §10.1's record class and A-58 do not move. **A builder of I-13b reads §10.2, §10.3, §10.6 and A-62/A-63/A-64, plus §8.4 A-38 Part 5 and A-39 Part 5 for the fixture re-cut**. **A-62 Part 8 gained a fourth residue at revision 45** (QA **R46-4**) — a failed byte cascade during `deleteTrip` does not block the delete, is not reported into `orphanPhotoBytes`, and is answered only by residue 2's unbuilt sweep, whose trigger is widened in place; **it changes no mechanism, and a builder of I-13c reads residue 4 alone**. **A-65 and A-66 are revision 46 and close the two items that had been routed here and never ruled** — A-65 (QA **R45-14**) upholds §10.3's synchronous byte delete and rules that undo restores the **record** and not the photograph, refusing the deferred delete with its reasons, and it amends §10.1 point 1 and §10.3's cascade row **in place**; A-66 (BUILD-NOTES **KD-82**, QA **R46-1**) closes `PhotoImportFailure` at **exactly five arms** and rules that a batch abandoned by a trip transition is reported as nothing, and it amends §10.6's union block in place. **Neither moves a type, a field, a selector or a port method**, and **a builder of I-13c group 3 reads A-65 Part 5 and A-66 Part 6 and needs nothing else in this document**. **A-66 gained a Part 10 at revision 47 (QA R47-1) and it is read FIRST** — Part 7's *"bounded at one derivative pair"* was true of `importPhotos`' loop and false of the system, Part 5 item 3's premise is narrowed and Part 6's owed sentence is widened; the union still does not widen and `U5` still holds. **The mechanism Part 10 depends on is §4.2 A-67, and the two are read together or neither**. **A-65 Part 6's T1 gains a scope sentence at revision 51 and gains nothing else** — §4.2 **A-70** upheld T1 **unamended** against a §4.2 criterion that had contradicted it (BUILD-NOTES **KD-84**), and the sentence records that T1's prohibition holds on **both** availability fixtures, unread and previously-failed. **No row of §10 moves and nothing in §10 is a builder's work at revision 51**. **A-66 gained a Part 11 at revision 52 (QA R50-2) and, like Part 10, it is read FIRST by anyone reading Part 3** — Part 3's misattribution argument was written about a *hypothetical* sixth arm and is true of `'decode_failed'` and `'storage_failed'` **as shipped**, because `fail()` and the batch's progress settlement write into `state.photos` after an `await` with no gate: a file picked in trip A is reported by name on trip B, and an abandoned four-file batch subtracts four from B's own in-flight fraction. **The union still does not widen, `U5` still holds and Part 3's conclusion stands** — what changes is that Part 3 becomes a property one gated writer (`setBatch`) enforces, Part 6's surface sentence gains a clause, and Part 8 gains **U6**/**U7**, written so the shipped code fails them. **It is read with §4.2 A-71**, which moves the batch's closing settlement into a `finally` in the same increment (**I-13i**); the two meet at that one line and nowhere else. **Revision 54 adds one banner and no content**: **A-57 Part 5 is upheld and is no longer the whole rule** — §8.3's **A-72** generalises it (*a new array of records on `TripDoc` always earns a bump; a new scalar with a total default does not*) and takes `SCHEMA_VERSION` to **3**, so anyone reading Part 5 to decide a **new** field reads A-72 Part 4 instead. No row of §10 moves | 40k | builder and breaker of I-13; architect |
 
@@ -13978,6 +14003,12 @@ answer it with (§8.5), not by leaving a rule firing where nobody can act on it.
 > has **one home, `validateTrip`**, and takes the parser refusal back out. Nothing in the model below
 > moves — no field, no type, no code, no port. A builder of **ROADMAP I-9a** reads A-72 Parts 5–7 and
 > A-73 Parts 6–7 and needs nothing else in this document.
+>
+> **Revision 55.** A third ruling joins them: **A-74** (BUILD-NOTES **KD-99**) answers *"should
+> `validateTrip` report a participant `kind` outside `PARTICIPANT_KINDS`?"* with **no — the scenario is
+> unreachable and always was**, and states the rule that decides the same question for every other
+> enum-constrained field without a ruling. **No new `Issue` code, no `src` change.** A builder of **ROADMAP
+> I-9b** reads A-74 Parts 5–6 and needs nothing else.
 
 ```ts
 type Participant = {
@@ -14308,6 +14339,156 @@ such a document (edit the first row, delete both). That is `duplicate_city_key`'
 deliberate: core's build functions are total and report nothing. **Trigger:** the day any build function is
 given a refusal path. At that point every `duplicate_*` code gets one, together, as one ruling — not
 participants alone, and not in the parser.
+
+---
+
+#### A-74 — an out-of-enum `kind` never reaches `validateTrip`, and the producer census is what says so: no new `Issue` code (revision 55, BUILD-NOTES **KD-99**)
+
+> **KD-99 is the right question, correctly filed, and the answer is no new code.** The scenario the round-52
+> breaker's assertion was written for — a hand-crafted or corrupted document whose participant `kind` sits
+> outside `PARTICIPANT_KINDS`, opened through `fromJSON` and then *reported* by `validateTrip` — **is
+> unreachable, and it was unreachable before R52-3 as well.** `parseParticipant` has validated `kind`
+> against the enum since I-9 shipped. What remains after that is not a document class at all, and §2.9 does
+> not architect against casts. **The gap does not exist**; the documentation that implied it did is
+> corrected here.
+
+**Part 1 — read rather than reasoned: the parser has always refused it, and there is already a green test.**
+
+`serialize/fromJSON.ts`'s `parseParticipant` is five lines and the third is
+
+```ts
+kind: oneOf(o.kind, PARTICIPANT_KINDS, `${path}.kind`),
+```
+
+`oneOf` calls `str` and then throws `TripParseError('expected one of self|contact, got "spouse"')` at
+`$.participants[0].kind`. It is one of **eighteen `oneOf` call sites** in that file (plus `datePrecision`'s
+hand-rolled equivalent), it was **not** added by R52-3 — which touched `build/participants.ts` and nothing
+else — and **A-73 Part 6 item 2 preserved it by name**: *"Every per-field refusal inside `parseParticipant`
+stays… a builder who removes anything `str`, `oneOf` or `obj` is doing the opposite of what it says."*
+
+The test exists too. `packages/core/test/participants.test.ts`'s *"fromJSON rejects an unknown participant
+kind"* sets `doc.participants[0].kind = 'ghost'` and asserts a `TripParseError` at `$.participants[0].kind`.
+**So the assertion the round-52 repro was reaching for is already green — in the parser, which is exactly
+where A-20 puts it.** The `validateTrip` form of that assertion could never have gone green, because
+`validateTrip` is never handed such a document.
+
+**Part 2 — the census, because "unreachable" is a claim about every producer and not about one.**
+
+Everything that can put a `Participant` into a `Trip`, from `grep` over `packages/core/src` rather than from
+memory:
+
+| Producer | What it can mint |
+|---|---|
+| `build/createTrip.ts:130` | `participants: []` — a literal |
+| `import/legacyDays.ts:351` | `participants: []` — a literal; *"the legacy planner records no participants either — it is single-user by construction"* |
+| `serialize/fromJSON.ts:487` | `oneOf(…, PARTICIPANT_KINDS, …)` — refuses, with the JSON path |
+| `build/participants.ts` — `addParticipant`, `updateParticipant` | `assertParticipantKind` — throws at the door (R52-3) |
+| `build/participants.ts` — `removeParticipant` | filters an existing array; mints nothing |
+| `build/copyStop.ts` — `copyStopInto` | carries no participant across the boundary, asserted on the **output** (I-9) |
+| `merge/mergeTrips.ts:249` | `mergeById<Participant>` over **three `Trip`s** — it can only propagate a value that was already in one of them, so it **inherits** this table rather than extending it |
+| `serialize/migrate.ts:83` | **not a producer of a `Trip` at all** |
+
+The last row is the one worth spelling out, because `v2ToV3`'s
+`participants: Array.isArray(doc.participants) ? doc.participants : []` passes the array through untouched
+and *looks* like a hole. It is not one: `migrateDoc(doc: unknown): unknown` returns a **document**, it is
+called **inside** `fromJSON` in front of the parse (A-72 / QA R45-1 put it there), and every array it hands
+on still goes through `parseParticipant`. Nothing typed `Trip` comes out of that file.
+
+Every rung is closed. Note also that the channel **A-73 Part 5** named — *"a later build that merges two
+participant lists"* — is row seven, and the census sorts the two cases exactly: `mergeTrips` **can** produce
+a duplicated `id`, which is why `duplicate_participant_id` exists as an `Issue`; it **cannot** produce an
+out-of-enum `kind`, which is why this one does not.
+
+**Part 3 — what is actually left, and why it is not participants' business.**
+
+KD-99's own sentence is precise about the residue: *"a `kind` outside `PARTICIPANT_KINDS` can now only reach
+a `Trip` past the type system (a cast, a native bridge)."* That is correct, and it is the reason the answer
+is no.
+
+A `Trip` obtained by a cast is not a document class and has no population a validation rule could serve.
+**§2.1's own line settles it before any of the above:** *core throws only on programmer error; domain
+problems come back as `Issue[]`.* A `kind` that exists only because a caller wrote
+`as unknown as Participant` **is programmer error** — it is the definitional case — so if anything is owed
+there it is a throw at a door, which is what R52-3 already built for the two doors that had a reachable
+caller. It is not an `Issue`. And `validateTrip` returns `Issue`s a user is meant to **read and repair** —
+`level`, `ref`, a sentence with both people's names, `params` — with no screen on which a user repairs a
+value the type system was lied to about. And the class is general: eighteen enum-constrained
+fields reach a `Trip` through `oneOf`, and `Stop.category`, `Booking.kind` and `datePrecision` have the
+identical shape. A code for `participant.kind` alone is **R16-2's shape** — one property, two guards, two
+definitions, landing in two commits — and a code for all eighteen is a validator that re-checks the type
+system at every field, which is the opposite of what §2.9 is for. KD-99 says this itself (*"every other
+field with this shape has the same gap … so fixing it for participants alone would be inconsistent"*), and
+it is upheld on its own reasoning.
+
+**Part 4 — the one precedent that looks like a counter-example, and the line that separates it.**
+
+§2.9 **A-45 Part 3** keeps `invalid_calendar_date` *after* the parser was tightened, explicitly as
+*"defence in depth for objects that never passed through `fromJSON`: the legacy importer, `migrateDoc`,
+hand-built test trips."* That is a genuine precedent for a `validateTrip` code over a value the parser also
+refuses, and a future reader will find it and ask why it does not carry here. It does not, and the reason is
+mechanical rather than a matter of taste.
+
+**It turns on whether a producer other than the parser can mint the bad value — not on whether the parser
+refuses it.** Dates are **computed**: the legacy importer builds `Day.date` by arithmetic, and a hand-built
+test `Trip` writes a date string with no ceremony at all. `kind` is computed nowhere. Two of A-45's three
+named producers emit the literal `[]` for `participants`, and the third does not produce a `Trip`. Part 2's
+table *is* that difference, made mechanical.
+
+**The rule, stated so the next enum-constrained field needs no ruling:**
+
+> An enum-constrained field earns a `validateTrip` code when some producer of a `Trip` **other than the
+> parser** can put a value outside the enum into it. Where the producer census is **closed** — every
+> non-parser producer either emits a constant, refuses at its own door, or only propagates values that were
+> already inside a `Trip` — the parser is the whole answer and **no code is added**. **A cast is not a
+> producer**, and neither is a function that returns a document rather than a `Trip`.
+
+Under that rule `invalid_calendar_date` is decided as A-45 decided it, `participant.kind` is decided here,
+and the remaining seventeen `oneOf` fields are decided by a builder rather than by a ruling.
+
+**Part 5 — what changes. One test, queued as ROADMAP `I-9b`; nothing in `src`.**
+
+1. **No new `IssueCode`.** §2.9's list does not move and its *"a code arrives with a ruling"* paragraph is
+   untouched, because no code arrives.
+2. **`validate/validateTrip.ts` is not touched.** Neither is `serialize/fromJSON.ts`,
+   `build/participants.ts`, `model/types.ts`, any `.tsx`, or anything under `qa/`. `SCHEMA_VERSION`,
+   `DB_VERSION`, `SUMMARY_VERSION` and §2.10's export surface do not move; **§8.9's re-count rule does not
+   fire.**
+3. **One test, added to `packages/core/test/participants.test.ts`**, and it is the single rung of Part 2's
+   table that nothing currently stands on: **`importLegacyDays` emits `participants: []`.** `createTrip`'s
+   rung is pinned (*"a new trip carries an empty participants array"*), the parser's is pinned (Part 1),
+   R52-3's two doors are pinned, `copyStopInto`'s is pinned (*"a participant crossed the copy boundary"*),
+   and `mergeTrips`' needs no pin because its argument is structural. The legacy importer's is unpinned —
+   and it is precisely the producer **A-45 Part 3 names as a live channel for the analogous field**. That
+   asymmetry is the whole reason the pin is worth writing.
+4. **Routed to the breaker, not to this builder — one probe assertion is withdrawn by this ruling.**
+   `qa/r52-participants.mjs` carries *"R52: `validateTrip` reports the unrestorable kind
+   (`place_hours_malformed`'s shape)"*, which is KD-99's assertion in executable form and is the artifact
+   that produced the objection. **It is invalid and it comes out or is re-pointed at the parser**, for two
+   independent reasons: the ruling above (there is no such `Issue` and there will not be one), and the fact
+   that the two lines feeding it — `core.updateParticipant(t1, id1, { kind: 'owner' })` — now **throw**
+   under R52-3, so the chain beneath them no longer executes what it claims to. `qa/` is the breaker's, so
+   this is routed to the next adversarial pass rather than queued as builder work, and ROADMAP **I-9b**
+   says so rather than leaving it to be discovered. **The replacement assertion, if one is wanted, is
+   Part 1's**: `fromJSON` refuses at `$.participants[n].kind`, which is already true and already tested.
+5. **This ruling reddens nothing in `npm test`** before item 3 lands.
+
+**Part 6 — the injected-fault criterion (§0.5), one, because the ruling makes one claim.**
+
+| | Fault | Required behaviour |
+|---|---|---|
+| **K1** | `import/legacyDays.ts`'s `participants: []` is changed to emit a participant derived from any legacy field | the new test reddens, naming `importLegacyDays` as a participant producer. This is the criterion for **Part 2's census**, which is the only load-bearing claim in this ruling: the day the census is wrong, this ruling is wrong, and **nothing else in the suite would say so** |
+
+**Part 7 — the residue, one, with its trigger.**
+
+The *unopenable-after-save* shape KD-99 describes is real and it is general, not participants': a `Trip`
+obtained past the type system, holding an out-of-enum value in **any** of the eighteen `oneOf` fields,
+validates clean and then cannot be re-opened from its own `toJSON`. R52-3 closed it at the two participant
+doors because that pair had a *reachable* caller — the client's action marshalling, where a value arrives
+from a surface rather than from a literal. **Trigger:** the first reachable caller that can hand core an
+unvalidated enum value for one of the other seventeen fields; a native bridge in Phase 5 is the named
+candidate. At that point the answer is **another door guard in `build/`, on R52-3's model — not an
+`Issue`.** The harm is an unopenable document, and the only place that is still repairable is the door
+(QA **P2-7**, found again as R52-3).
 
 ### 8.4 Geography attribution, travel statistics, and the lifetime map
 
