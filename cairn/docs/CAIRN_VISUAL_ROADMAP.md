@@ -19,8 +19,53 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
+> **🔵 THE APP HAS BEEN BLAMING YOUR DATA FOR ITS OWN CRASHES, IN FIVE PLACES — as of 2026-09-04.
+> This block is the newest.** Step 2d's photo half stays **designed ✅ · built ✅ · verified ✅ ·
+> shippable ❌**. **Nothing new is built yet** — this is a design ruling, and the repair pass it
+> queues is **I-13i**.
+>
+> **The one-sentence version.** When part of Cairn crashes while drawing something on screen, Cairn
+> catches its own crash by mistake, decides that the *thing it was doing* must have failed, tells you
+> so, and then throws the crash away — so you get a false statement about your own data and nobody
+> finds out about the real bug.
+>
+> **The tester found one instance. Looking for the shape rather than the instance found five**, in
+> two completely different parts of the app, and all five were measured rather than reasoned about:
+>
+> 1. Your photographs are all on your device, and Cairn says **"the photo store could not be read"** —
+>    with a *Try again* that can never work, because it re-reads successfully and hits the same crash.
+> 2. A photograph's files were **deleted successfully**, and Cairn lists it as leftover clutter that
+>    needs cleaning up.
+> 3. A photograph **was added**, and Cairn tells you *"holiday.jpg — couldn't be saved"*, by name.
+> 4. **Your trip was saved** — it is in storage and the save fence has moved — and Cairn says
+>    **"couldn't save"**. This is the one that decided the shape of the fix: it has nothing to do with
+>    photographs and everything to do with the single most important thing this app has to be honest
+>    about.
+> 5. The same as 4, on the "save a copy" and "merge with the stored version" paths.
+>
+> **Why the fix is one change and not five.** Patching each of the five is exactly the mistake this
+> project has been punished for eight rounds running — you fix the five you can see and the sixth one
+> ships next month. So instead: when a screen crashes, Cairn now puts an invisible mark on that crash,
+> and there is **one** place in the whole store that is allowed to decide *"what failed and why"*,
+> which refuses to claim anything carrying that mark. **Seven blocks of guesswork are deleted.** The
+> crash still reaches whoever called — it is a real bug and it stays loud — but it is no longer
+> laundered into a lie about your trip.
+>
+> **The second finding is fixed in the same pass.** Leaving a trip mid-import putting that trip's
+> report on the next trip's screen (the previous block's item 2) is one gate on one function. The
+> design note that says this must never happen turned out to be describing something the code was
+> *already* doing on two paths — so the note is now backed by a check rather than by an argument, and
+> two new tests exist that the old code fails. The two old tests that were supposed to catch this
+> stay, and the honest reason they missed it is written down: one had nothing to report and the
+> other's second trip was idle.
+>
+> **Still nothing on your phone changes.** There is still no photo screen — that is **I-13f**.
+>
+> **What happens next:** the **I-13i** repair pass builds both of the above; then **I-13f**, the
+> actual photo screen; then a manager verdict on the whole photo stretch.
+
 > **🟢 THE STORE MECHANISM IS SOUND AND THE EIGHT-ROUND ARC IS CLOSED — as of 2026-09-04. This
-> block is the newest.** Step 2d's photo half moves to **designed ✅ · built ✅ · verified ✅ ·
+> block was the newest until the block above.** Step 2d's photo half moves to **designed ✅ · built ✅ · verified ✅ ·
 > shippable ❌**. **I-13h is built and the design behind it survived its final adversarial round.**
 > **I-13 is still not shippable**, and the honest reason is below rather than buried: the *mechanism*
 > is done, but the breaker found two real defects in the code sitting next to it, and one queued
