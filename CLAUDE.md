@@ -24,6 +24,8 @@ docs/PLANNER.md              the DAYS data model, PWA quirks, and how to verify 
 docs/EMAIL-ROUTINE.md        the "check email" workflow and its Gmail/attachment constraints
 cairn/                       the Cairn app — this planner, generalised into a product
 cairn/CLAUDE.md              Cairn-specific rules, the four-agent pipeline, and delegation/routing
+cairn/docs/HUB.html          where Cairn is — generated status board; `npm run hub`, or
+                             `node cairn/tools/gen-hub.mjs --text` for the terminal view
 ```
 
 Open the HTML by double-clicking it. There is no dev server, no package.json, nothing to install.
@@ -47,5 +49,8 @@ as a pointer back to this paragraph, not an independent copy.
 
 - Editing the itinerary (`DAYS`, a stop, a booking link)? Read `docs/PLANNER.md` first.
 - Jacob said "check email"? Read `docs/EMAIL-ROUTINE.md` — the incremental-scan rule and the Gmail account/attachment constraints live there.
+- Wondering where Cairn actually is? Open `cairn/docs/HUB.html`, or run
+  `node cairn/tools/gen-hub.mjs --text`. It is generated from `cairn/docs/STATE.json` and warns when
+  it is stale — don't answer "where is Cairn" from the 2,600-line `CAIRN_VISUAL_ROADMAP.md` archive.
 - Working in `cairn/`? Read `cairn/CLAUDE.md` — the pipeline, the doc-cost map, and when to delegate.
 - Before changing planner content of any kind: `docs/BOOKINGS.md` holds the confirmed flight refs and two **deliberately unresolved** conflicts. Don't "fix" them by picking a side.

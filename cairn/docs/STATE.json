@@ -1,0 +1,137 @@
+{
+  "_comment": [
+    "The Cairn status board's SOURCE OF TRUTH. Hand-maintained; small on purpose.",
+    "Render it with `npm run hub` (cairn/tools/gen-hub.mjs), which writes docs/HUB.html.",
+    "NEVER hand-edit HUB.html. Edit this file and regenerate.",
+    "Keep built/verified/shippable as three separate facts - cairn/CLAUDE.md forbids",
+    "collapsing them into one 'done'."
+  ],
+
+  "updatedAt": "2026-09-04",
+  "commit": "43d0d20",
+
+  "phases": [
+    {
+      "id": 1,
+      "name": "the core engine and a working multi-trip planner",
+      "state": "shipped",
+      "verdict": { "value": "SHIP", "at": "b32ef9a", "on": "2026-08-27" }
+    },
+    {
+      "id": 2,
+      "name": "travel history: past trips, the lifetime map, and who you went with",
+      "state": "in-progress",
+      "steps": [
+        {
+          "id": "2a",
+          "name": "past trips and the lifecycle",
+          "built": true, "verified": true, "shippable": true,
+          "verdict": { "value": "SHIP", "at": "67f5588", "on": "2026-08-28" },
+          "note": "Verified over rounds 12-21. Seven routed items, none blocking."
+        },
+        {
+          "id": "2b",
+          "name": "the lifetime map and travel identity",
+          "built": true, "verified": true, "shippable": "partial",
+          "verdict": { "value": "SHIP", "at": "69e44d4", "on": "2026-08-29", "scope": "data layer only" },
+          "note": "The data layer shipped (I-5 through I-7b). I-8b - the Map and Profile screens - is NOT started: its UI is paused pending a new native-iOS design process, not blocked on anything technical."
+        },
+        {
+          "id": "2c",
+          "name": "participants",
+          "built": false, "verified": false, "shippable": false,
+          "note": "Not started; gated on 2b."
+        },
+        {
+          "id": "2d",
+          "name": "the memory data layer",
+          "built": true, "verified": false, "shippable": false,
+          "note": "I-12 shipped. The photo half (I-13 -> I-13e) has been sent back six consecutive rounds. Opens no .tsx file."
+        }
+      ]
+    },
+    { "id": 3, "name": "server, accounts, the social graph, and share links", "state": "not-started" },
+    { "id": 4, "name": "mailbox ingestion", "state": "not-started" },
+    { "id": 5, "name": "the native app, the live path, and observed travel", "state": "not-started" },
+    { "id": 6, "name": "photos", "state": "not-started" },
+    { "id": 7, "name": "discovery through the network, the recap, and polish", "state": "not-started" }
+  ],
+
+  "now": {
+    "phase": 2,
+    "step": "2d",
+    "increment": "I-13e",
+    "stage": "architect",
+    "round": 49,
+    "verdict": "SEND BACK",
+    "findings": { "blockers": 0, "major": 1, "minor": 4 },
+    "headline": "A photo listing can still load forever - the same symptom this repair pass was written to remove, reached by a different route.",
+    "detail": "Import two photographs, and while the second is still resizing, delete some OTHER trip (or tap a damaged trip, or restore a broken backup). The trip you are still looking at is left with a photo list that loads forever. Nothing is lost - the pictures are on disk and re-opening the trip fixes it.",
+    "next": "An architect ruling on R49-1 and the four MINORs, then a repair pass, then a seventh confirmation round.",
+    "nothingChangesOnYourPhone": true
+  },
+
+  "rounds": [
+    { "n": 40, "increment": "I-8f + I-8j", "verdict": "SHIP",      "blockers": 0, "major": 0, "minor": 3 },
+    { "n": 41, "increment": "I-8b",        "verdict": "SEND BACK", "blockers": 0, "major": 3, "minor": 14 },
+    { "n": 42, "increment": "I-8b",        "verdict": "SHIP",      "blockers": 0, "major": 0, "minor": 3 },
+    { "n": 43, "increment": "I-12",        "verdict": "SHIP",      "blockers": 0, "major": 0, "minor": 6 },
+    { "n": 44, "increment": "I-12a",       "verdict": "SEND BACK", "blockers": 0, "major": 1, "minor": 3 },
+    { "n": 45, "increment": "I-13",        "verdict": "SEND BACK", "blockers": 2, "major": 4, "minor": 12 },
+    { "n": 46, "increment": "I-13b",       "verdict": "SEND BACK", "blockers": 0, "major": 3, "minor": 4 },
+    { "n": 47, "increment": "I-13c",       "verdict": "SEND BACK", "blockers": 0, "major": 2, "minor": 1 },
+    { "n": 48, "increment": "I-13d",       "verdict": "SEND BACK", "blockers": 0, "major": 2, "minor": 3 },
+    { "n": 49, "increment": "I-13e",       "verdict": "SEND BACK", "blockers": 0, "major": 1, "minor": 4 }
+  ],
+  "roundsBefore": {
+    "count": 38,
+    "note": "Rounds 2-39 predate the explicit VERDICT line in QA-FINDINGS.md; their outcomes are recorded in prose only and are deliberately not restated here rather than guessed."
+  },
+
+  "decisions": [
+    {
+      "id": "ownerless-import",
+      "since": "2026-08-28",
+      "question": "What should happen to a trip file with no owner in it?",
+      "why": "If someone exports a trip and sends it to you, the app correctly refuses it. But if that file carries no owner at all, the app adopts the whole thing as yours - and 91 of the activities inside stay quietly stamped with the other person's name, with nothing on screen saying so. Nothing leaks and nothing breaks; the app would just be telling you a trip is yours when it isn't.",
+      "options": [
+        "Refuse anything that isn't provably yours",
+        "Accept it, but visibly badge the whole trip as imported from someone else",
+        "Leave it until real accounts exist in Phase 3"
+      ],
+      "blocking": ["friend sharing", "public share links"],
+      "blockingToday": false
+    },
+    {
+      "id": "accept-control",
+      "since": "Phase 1",
+      "question": "Do you want an \"accept\" control?",
+      "why": "Copying an activity from one of your trips into another leaves it permanently badged \"from a friend\" - there's no button that says \"yes, this is mine now.\" That's the safe default, but it's the kind of thing you'd notice the first time you used it. Cheap to add now; otherwise it ships with the Phase 3 accounts work.",
+      "options": ["Add it now", "Let it ship with Phase 3 accounts"],
+      "blocking": [],
+      "blockingToday": false
+    }
+  ],
+
+  "owed": [
+    { "id": "I-13f", "what": "The two-line .tsx catch for Ctrl/Cmd+Z", "note": "Lands with the first screen work. Queued, nobody owned it." },
+    { "id": "browse-panel", "what": "A browse-another-trip panel outlives the trip it is showing", "note": "Older rough edge, deliberately owed." }
+  ],
+
+  "health": {
+    "tests": 1404,
+    "typecheck": "clean",
+    "asOf": "43d0d20",
+    "note": "Re-measured at I-13e. 1376 -> 1404 with the new liveness.test.ts."
+  },
+
+  "docs": [
+    { "file": "BRIEF.md",         "size": "~3k tok",   "read": "always - it's the contract" },
+    { "file": "ARCHITECTURE.md",  "size": "~376k tok", "read": "never whole", "how": "cairn/tools/doc-section ARCHITECTURE <sections>" },
+    { "file": "ROADMAP.md",       "size": "~137k tok", "read": "never whole", "how": "cairn/tools/doc-section ROADMAP \"Phase 2\"" },
+    { "file": "QA-FINDINGS.md",   "size": "~305k tok", "read": "never whole", "how": "the Status note at the top + the findings you were routed" },
+    { "file": "BUILD-NOTES.md",   "size": "~199k tok", "read": "never whole", "how": "cairn/tools/doc-section BUILD-NOTES <sections>" },
+    { "file": "REVIEW.md",        "size": "~52k tok",  "read": "the current verdict only", "how": "the Status note at the top says whether it's current" },
+    { "file": "CAIRN_VISUAL_ROADMAP.md", "size": "~52k tok", "read": "narrative archive", "how": "the newest block only - this hub replaced it as the status board" }
+  ]
+}

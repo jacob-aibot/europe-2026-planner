@@ -58,6 +58,7 @@ whole is a decision to spend a quarter of a context window; `doc-section` exists
 
 | Doc | Size | Read whole when | Otherwise |
 |---|---|---|---|
+| **`HUB.html`** (from `STATE.json`) | **~4k tok** | **first, to answer "where are we"** — it is generated, current-by-construction, and says so in red when it is not | `node cairn/tools/gen-hub.mjs --text` for the same board in ~20 lines, without a browser |
 | `BRIEF.md` | ~3k tok | always (it's the contract) | — |
 | **`docs/design/references/cairn-visual-reference-board.png`** | **an image** | **before ANY visual decision, every time.** It is the visual authority and it outranks every text description of itself, including `REFERENCE-BOARD.md` | there is no cheaper substitute. Open it |
 | `docs/design/REFERENCE-BOARD.md` | ~9k tok | **with the PNG open**, before any visual work — reference weighting, extracted qualities, anti-patterns, the approval gate, the tooling pins | §0 (the rule) + §4 (anti-patterns) + §7 (measured values) if you are only writing CSS |
@@ -72,7 +73,7 @@ whole is a decision to spend a quarter of a context window; `doc-section` exists
 | `REVIEW.md` | ~52k tok | you're the builder/breaker acting on its routing table — and then only the current verdict | the Status note at the top tells you whether it's even current; the verdict table names which entries are closed |
 | `docs/HISTORY.md`, `cairn/docs/archive/*` | — | a finding or a comment cites it by name | never by default |
 | `europe-2026-itinerary.html` | ~44k tok | you're auditing render paths end to end (say so) | `node cairn/tools/extract-legacy.mjs`, or grep — see `cairn-constraints` §1 |
-| `CAIRN_VISUAL_ROADMAP.md` (+ its `.html` twin) | ~52k tok | never — read the **newest block only**, which supersedes the ones below it | not a contract doc; skip it for a routine builder/breaker task, and see below for when to *update* it |
+| `CAIRN_VISUAL_ROADMAP.md` (+ its `.html` twin) | ~52k tok | **never — this is the narrative archive, not the status board.** `HUB.html` replaced it above | the **newest block only**, and only when you want the prose behind a change; updating it is now optional |
 
 ## Delegation — when a change needs which stage
 
@@ -89,23 +90,39 @@ Not every change earns the full pipeline. Route by what the change actually touc
 
 When unsure which row applies, treat it as the more expensive route. This table optimizes the common case; it does not override `manager.md`'s judgment on any individual review.
 
-## Keep the visual roadmap in sync
+## Keep the status board in sync
 
-`cairn/docs/CAIRN_VISUAL_ROADMAP.md` and its `.html` twin are a plain-English status board for
-Jacob — not part of the contract (`BRIEF.md`/`ARCHITECTURE.md`/`ROADMAP.md`), and nothing enforces
-that they stay current automatically. **Update both files, in the same pass**, whenever:
+**`cairn/docs/STATE.json` is the status board's source of truth.** It is small and structured on
+purpose; `cairn/tools/gen-hub.mjs` renders it to `cairn/docs/HUB.html`, which is the front door for
+"where is Cairn" — for Jacob and for you. **Never hand-edit `HUB.html`.**
 
-- a phase-boundary decision is made (a manager SHIP/SEND BACK verdict);
+**Update `STATE.json` and run `npm run hub`, in the same pass**, whenever:
+
+- a phase-boundary decision is made (a manager SHIP/SEND BACK verdict) — add the round to
+  `rounds[]` and update `now`;
 - a builder/architect pass changes what's actually built vs. left, for a phase currently in
-  progress (e.g. a routed fix lands, a new gap is found);
-- the project's scope changes (a phase added, cut, or reordered; a new capability that isn't
-  already in the journey list).
+  progress (a routed fix lands, a new gap is found);
+- the project's scope changes (a phase added, cut, or reordered);
+- a decision lands on Jacob's plate, or one of his is answered (`decisions[]`).
 
-A routine single-finding builder pass doesn't need this — see the delegation table above. When in
-doubt, a stale roadmap is worse than a skipped update on a trivial change, so err toward updating
-it. Keep the same three-way distinction the doc already uses — **built** (code exists) vs.
-**verified** (an adversarial round tried to break it) vs. **shippable** (a manager verdict of
-SHIP) — rather than collapsing them into a single "done."
+That is ~15 lines of JSON, and `test/hub.test.ts` will fail the build if the result is incoherent —
+a step marked shippable that nothing verified, a gap in the round history, a `now` that points at a
+phase not marked in progress. **The board also reports its own staleness**: `gen-hub.mjs` compares
+`STATE.json`'s `commit` against HEAD and renders a red banner (and `--check` exits non-zero) when
+the board has fallen behind. That is deliberate — the board this replaced had no such signal, and
+its step-2d cell read *"Not started"* for three increments after work had landed.
+
+Keep the three-way distinction the schema enforces — **built** (code exists) vs. **verified** (an
+adversarial round tried to break it) vs. **shippable** (a manager verdict of SHIP) — rather than
+collapsing them into a single "done."
+
+`cairn/docs/CAIRN_VISUAL_ROADMAP.md` and its `.html` twin are **no longer the status board** — they
+are the **narrative archive**, and they are 2,671 lines of 320 append-only blocks precisely because
+they were asked to be both. Adding a prose block to them is now **optional**: do it when a change
+genuinely needs explaining in Jacob's terms, not as bookkeeping. If you do, still update both files
+in the same pass. Nothing there is a contract (`BRIEF.md`/`ARCHITECTURE.md`/`ROADMAP.md` are).
+
+A routine single-finding builder pass needs neither — see the delegation table above.
 
 ## Task sizing
 
@@ -131,7 +148,16 @@ start rather than discovering it mid-session.
 
 ### Resuming from a fresh session
 
-To pick up Cairn cold, without re-deriving history: `git log -1` on `master` for the current commit, then
-the Status note at the top of `QA-FINDINGS.md`, then the Status note at the top of `BUILD-NOTES.md`, then
-grep `ROADMAP.md` for the current phase's increment to find its dependency/"still owed" line. That's the
-whole checkpoint — no archive reading, no full `ARCHITECTURE.md` pass.
+```
+node cairn/tools/gen-hub.mjs --text
+```
+
+That is the checkpoint: current phase and step, every step's built/verified/shippable, the
+increment and round in flight with its verdict and finding counts, what happens next, what is
+waiting on Jacob, and a warning if the board itself is stale or if the work is not on `master`.
+
+If it reports itself stale, or you need detail it does not carry, the manual path still works:
+`git log -1` on `master` for the current commit, then the Status note at the top of
+`QA-FINDINGS.md`, then the Status note at the top of `BUILD-NOTES.md`, then grep `ROADMAP.md` for
+the current phase's increment to find its dependency/"still owed" line. No archive reading, no full
+`ARCHITECTURE.md` pass.

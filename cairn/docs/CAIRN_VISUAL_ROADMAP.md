@@ -1,7 +1,19 @@
 # Cairn Visual Roadmap
 
-**Read this file, not your memory of a past session, before answering "where is Cairn."** It is
-the plain-English companion to `ARCHITECTURE.md` and `ROADMAP.md` — those are the contract; this
+> ## 📍 This is the archive. The status board moved.
+>
+> **To see where Cairn is, open [`HUB.html`](HUB.html)** — or run `node cairn/tools/gen-hub.mjs --text`.
+> It is generated from `cairn/docs/STATE.json`, and it tells you when it is out of date instead of
+> looking current while being stale.
+>
+> This file is now the **narrative archive**: 320 append-only blocks, newest first, kept for the
+> reasoning behind past changes. Its status sections (§1 "Where we are" onward) start ~2,200 lines
+> down and are **no longer maintained as the source of truth** — that is exactly the problem the hub
+> was built to fix.
+
+
+**Superseded as the status board by `HUB.html` (see above).** What follows is the archive's original
+header, kept as written. It is the plain-English companion to `ARCHITECTURE.md` and `ROADMAP.md` — those are the contract; this
 is the status board. It does not redefine anything they say. There is also an HTML version of
 this same content at `cairn/docs/CAIRN_VISUAL_ROADMAP.html` — open it in a browser (phone or
 desktop) for the visual version. **Keep the two in sync**: when the state below changes, update

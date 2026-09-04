@@ -21,6 +21,7 @@
     "web:dev": "npm --prefix apps/web run dev",
     "web:build": "npm --prefix apps/web run build",
     "sample": "node tools/gen-sample.mjs",
+    "hub": "node tools/gen-hub.mjs",
     "pretypecheck": "npm run sample"
   },
   "devDependencies": {
