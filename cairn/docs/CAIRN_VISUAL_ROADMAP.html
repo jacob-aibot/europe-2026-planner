@@ -319,8 +319,19 @@
 </style>
 </head>
 <body>
+<div class="callout" style="border-left:4px solid #1565c0;padding:.75rem 1rem;margin:1rem 0;background:#e3f2fd">
+<p><strong>&#128998; YOUR CALL IS RECORDED: THE &ldquo;WHO WAS ON THE TRIP&rdquo; SCREEN WAITS FOR THE NEW LOOK, AND THE PHASE 2 SIGN-OFF DOES NOT WAIT FOR IT &mdash; as of 2026-09-04. This block is the newest.</strong> Step <strong>2c (participants)</strong> becomes <strong>designed &#9989; &middot; built &#9203; &middot; verified &#10060; &middot; shippable &#10060;</strong>, and it ships <strong>narrowed</strong>: the data half is being built now, the screen half is <strong>deferred on purpose</strong>.</p>
+<p><strong>The one-sentence version.</strong> You were asked whether to (a) build only the data half of &ldquo;who was on this trip&rdquo;, (b) make a one-off exception to the no-new-screens rule, or (c) stop the Phase 2 sign-off work altogether &mdash; <strong>you chose (a)</strong>, and this board and the roadmap now say so permanently, so no future session quietly re-opens it.</p>
+<p><strong>What Cairn will and will not do when this lands.</strong> It <strong>will</strong> know that a trip was with your girlfriend and her family; it will keep that through save, reload and undo; and it will prove &mdash; mechanically, on a laptop with no browser open &mdash; that being named on a trip grants a person <strong>nothing</strong>: not a view of it, not a comment, not a coordinate. It <strong>will not</strong> yet have a screen where you type those names in, or a &ldquo;people you have travelled with&rdquo; list on your profile. That is a real gap and it is written down as one.</p>
+<p><strong>Why the screen waits.</strong> You rejected the previous visual direction on 2026-09-02 and are redoing it separately. Since then nothing in Cairn has opened a screen file, deliberately &mdash; building a screen against a look that does not exist yet means building it twice. The participants editor is the last piece of Phase 2 that needs a screen, so it is the last piece to get the same treatment nine other pieces already got.</p>
+<p><strong>The question that actually had to be answered &mdash; and it was checked, not assumed.</strong> Phase 2 has a written list of things that must be true before it can be signed off. <strong>Four of them mention participants</strong>, and if any one of them needed the screen, deferring the screen would have stopped the sign-off too. All four were traced to the files that run them: every one runs in plain Node, against the data and the rules, with no browser and nothing drawn. <strong>So the sign-off can go ahead on the data half alone.</strong> If the tester finds a fifth that does need the screen, that is a mistake in this ruling and it comes back to the designer.</p>
+<p><strong>What is still owed before the Phase 2 sign-off can be dispatched:</strong> the participants data work (in progress), one small statistics fix that was written down but never built, and one test-and-comment pass on the photo tests. <strong>Three things, not four</strong> &mdash; the screen came off that list here.</p>
+<p><strong>One correction to the block below.</strong> It says the only thing standing between the photo work and &ldquo;shippable&rdquo; is <em>the missing photo screen (I-13f)</em>. That was wrong twice over: <strong>I-13f is not a screen</strong> &mdash; it is two defensive lines inside an existing file &mdash; and what actually stands there is the three unbuilt items named above. Corrected here.</p>
+<p><strong>Still nothing on your phone changes.</strong></p>
+</div>
+
 <div class="callout" style="border-left:4px solid #1b5e20;padding:.75rem 1rem;margin:1rem 0;background:#dcedc8">
-<p><strong>&#129001; THE SIX CORRECTIONS ARE DONE, AND THE PHOTO STRETCH NOW OWES NO REPAIR PASS &mdash; as of 2026-09-04. This block is the newest.</strong> Step 2d&rsquo;s photo half stays <strong>designed &#9989; &middot; built &#9989; &middot; verified &#9989; &middot; shippable &#10060;</strong>, and the reason for that last &#10060; is now <strong>only</strong> the missing photo screen (<strong>I-13f</strong>) and the manager&rsquo;s verdict &mdash; <strong>not an unfixed defect</strong>.</p>
+<p><strong>&#129001; THE SIX CORRECTIONS ARE DONE, AND THE PHOTO STRETCH NOW OWES NO REPAIR PASS &mdash; as of 2026-09-04. This block was the newest until the block above.</strong> Step 2d&rsquo;s photo half stays <strong>designed &#9989; &middot; built &#9989; &middot; verified &#9989; &middot; shippable &#10060;</strong>, and the reason for that last &#10060; is now <strong>only</strong> the missing photo screen (<strong>I-13f</strong>) and the manager&rsquo;s verdict &mdash; <strong>not an unfixed defect</strong>.</p>
 <p><strong>The one-sentence version.</strong> Everything the tester found last round was a wrong sentence or a wrong number in Cairn&rsquo;s own design documents; those are now fixed, <strong>no app code changed</strong>, and for the first time in nine repair passes there is nothing owed back to the builder except one line in a build report.</p>
 <p><strong>What was corrected, in plain English.</strong></p>
 <ol>
@@ -2058,7 +2069,10 @@ hands you a trip file with no owner recorded in it.</p>
         and Profile screens, 2b's last increment — is not started; its UI is paused pending a new
         native-iOS design process</strong>, not blocked on anything technical. Step 2c
         (participants) is
-        <span class="pill grey">⚪ NOT STARTED</span></p>
+        <span class="pill grey">⚪ NOT STARTED</span> <em>(superseded by the newest block at the top
+        of this page, 2026-09-04: 2c is <strong>narrowed</strong> — its data half is in progress, its
+        screen half is <strong>deferred by Jacob's decision</strong> until the new visual direction
+        exists, and the Phase 2 sign-off does not wait for that screen)</em></p>
       <h4>2b's first increment found a real gap, and it is the good kind of finding</h4>
       <p>The builder was told that two Croatian island stops (the Blue Cave on Biševo, Stiniva Cove on
         Vis) had to come out as Croatia, and that if they didn't, the fix was a more detailed world
@@ -2285,7 +2299,7 @@ hands you a trip file with no owner recorded in it.</p>
       <div class="journey-row now">
         <div class="badge">2</div>
         <div class="txt"><div class="name">Travel history — IN PROGRESS</div>
-          <div class="outcome">Record the trips you've already taken, see your whole travel life on one map, and say who you went with — a new Cairn doesn't start empty. 2a shipped; 2b's data layer (I-5…I-7b) shipped, its Map/Profile screens (I-8) paused pending design; 2c not started.</div></div>
+          <div class="outcome">Record the trips you've already taken, see your whole travel life on one map, and say who you went with — a new Cairn doesn't start empty. 2a shipped; 2b's data layer (I-5…I-7b) shipped, its Map/Profile screens (I-8) paused pending design; 2c narrowed — data half in progress, participants screen deferred by Jacob's decision (2026-09-04) until the new visual direction exists.</div></div>
       </div>
       <div class="journey-row">
         <div class="badge">3</div>

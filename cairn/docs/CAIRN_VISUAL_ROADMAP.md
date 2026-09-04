@@ -19,8 +19,50 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
+> **🟦 YOUR CALL IS RECORDED: THE "WHO WAS ON THE TRIP" SCREEN WAITS FOR THE NEW LOOK, AND THE
+> PHASE 2 SIGN-OFF DOES NOT WAIT FOR IT — as of 2026-09-04. This block is the newest.** Step **2c
+> (participants)** becomes **designed ✅ · built ⏳ · verified ❌ · shippable ❌**, and it ships
+> **narrowed**: the data half is being built now, the screen half is **deferred on purpose**.
+>
+> **The one-sentence version.** You were asked whether to (a) build only the data half of
+> "who was on this trip", (b) make a one-off exception to the no-new-screens rule, or (c) stop the
+> Phase 2 sign-off work altogether — **you chose (a)**, and this board and the roadmap now say so
+> permanently, so no future session quietly re-opens it.
+>
+> **What Cairn will and will not do when this lands.** It **will** know that a trip was with your
+> girlfriend and her family; it will keep that through save, reload and undo; and it will prove —
+> mechanically, on a laptop with no browser open — that being named on a trip grants a person
+> **nothing**: not a view of it, not a comment, not a coordinate. It **will not** yet have a screen
+> where you type those names in, or a "people you have travelled with" list on your profile. That
+> is a real gap and it is written down as one.
+>
+> **Why the screen waits.** You rejected the previous visual direction on 2026-09-02 and are
+> redoing it separately. Since then nothing in Cairn has opened a screen file, deliberately —
+> building a screen against a look that does not exist yet means building it twice. The
+> participants editor is the last piece of Phase 2 that needs a screen, so it is the last piece to
+> get the same treatment nine other pieces already got.
+>
+> **The question that actually had to be answered — and it was checked, not assumed.** Phase 2 has
+> a written list of things that must be true before it can be signed off. **Four of them mention
+> participants**, and if any one of them needed the screen, deferring the screen would have stopped
+> the sign-off too. All four were traced to the files that run them: every one runs in plain Node,
+> against the data and the rules, with no browser and nothing drawn. **So the sign-off can go ahead
+> on the data half alone.** If the tester finds a fifth that does need the screen, that is a mistake
+> in this ruling and it comes back to the designer.
+>
+> **What is still owed before the Phase 2 sign-off can be dispatched:** the participants data work
+> (in progress), one small statistics fix that was written down but never built, and one test-and-
+> comment pass on the photo tests. **Three things, not four** — the screen came off that list here.
+>
+> **One correction to the block below.** It says the only thing standing between the photo work and
+> "shippable" is *the missing photo screen (I-13f)*. That was wrong twice over: **I-13f is not a
+> screen** — it is two defensive lines inside an existing file — and what actually stands there is
+> the three unbuilt items named above. Corrected here.
+>
+> **Still nothing on your phone changes.**
+
 > **🟩 THE SIX CORRECTIONS ARE DONE, AND THE PHOTO STRETCH NOW OWES NO REPAIR PASS — as of
-> 2026-09-04. This block is the newest.** Step 2d's photo half stays **designed ✅ · built ✅ ·
+> 2026-09-04. This block was the newest until the block above.** Step 2d's photo half stays **designed ✅ · built ✅ ·
 > verified ✅ · shippable ❌**, and the reason for that last ❌ is now **only** the missing photo
 > screen (**I-13f**) and the manager's verdict — **not an unfixed defect**.
 >
@@ -2549,7 +2591,9 @@ boundary (A-38, A-39) — are all **built ✅ · verified ✅ · shippable ✅**
 `6cd7187`, verdict SHIP** (`REVIEW.md`, "Phase 2, step 2b (data layer) — I-5 … I-7b"). **I-8 — the
 Map and Profile screens, 2b's last increment — is not started; its UI is paused pending a new
 native-iOS design process**, not blocked on anything technical. Step **2c** (participants) is
-⚪ **NOT STARTED**.
+⚪ **NOT STARTED** *(superseded by the newest block at the top of this file, 2026-09-04: 2c is
+**narrowed** — its data half is in progress, its screen half is **deferred by Jacob's decision**
+until the new visual direction exists, and the Phase 2 sign-off does not wait for that screen)*.
 
 **2b's first increment found a real gap, and it is the good kind of finding.** The builder was told
 that two Croatian island stops (the Blue Cave on Biševo, Stiniva Cove on Vis) had to come out as
@@ -2754,7 +2798,7 @@ own call, made explicitly rather than left implicit.
 | Phase | You'll be able to... | Status |
 |---|---|---|
 | **1 — Core planner** | Plan trips like the old single-trip app, but as many trips as you want, safely — nothing you type ever silently vanishes | 🟢 **COMPLETE — SHIPPED** |
-| **2 — Travel history** | Record the trips you've already taken, see your whole travel life on one map, and say who you went with — a new Cairn doesn't start empty | 🟡 **IN PROGRESS** — 2a shipped; 2b's data layer (I-5…I-7b) shipped, its Map/Profile screens (I-8) paused pending design; 2c not started |
+| **2 — Travel history** | Record the trips you've already taken, see your whole travel life on one map, and say who you went with — a new Cairn doesn't start empty | 🟡 **IN PROGRESS** — 2a shipped; 2b's data layer (I-5…I-7b) shipped, its Map/Profile screens (I-8) paused pending design; 2c narrowed — data half in progress, participants screen deferred by Jacob's decision (2026-09-04) until the new visual direction exists |
 | **3 — Accounts, server & sharing** | Have your trips follow you across devices, and let friends see them and copy a stop into their own | ⚪ NOT STARTED |
 | **4 — Email ingestion** | Forward a booking confirmation and have Cairn find it, file it on the right day, and attach the ticket | ⚪ NOT STARTED |
 | **5 — Phone app & live path** | Carry Cairn on your phone, fully offline, and have it quietly draw the route you actually traveled next to the plan | ⚪ NOT STARTED |

@@ -630,7 +630,7 @@ are. What moves earlier is the record class those things suggest **into** — th
 
 **I-12 and I-13 are numbered above the gate and sequenced below it.** Sequencing rule 7 forbids renumbering
 forty cross-references for a tidy sequence, so the numbers are labels: the order is
-I-0 … I-10, **I-12, I-12a, I-13, I-13a, I-13b, I-13c, I-13d, I-13e, I-13g, I-13h, I-13i**, then **I-11, the gate**, which now depends on all of them. (**I-13f** is a queued `.tsx` follow-up, not a scheduled increment — revision 49.)
+I-0 … I-10, **I-12, I-12a, I-13, I-13a, I-13b, I-13c, I-13d, I-13e, I-13g, I-13h, I-13i**, then **I-11, the gate**, which now depends on all of them. (**I-13f** is a queued `.tsx` follow-up, not a scheduled increment — revision 49. **`I-10` is deferred at revision 55, by Jacob's decision** — it is the one screen left in this phase, the `.tsx` fence bars it, and the gate does not wait for it; the order above is otherwise unchanged and I-10 keeps its place in it for whenever its trigger fires.)
 
 *(**I-12a** is revision 41, from QA round 43's breaker pass over I-12 — `ARCHITECTURE.md` §8.4 **A-59** and
 **A-60**. Two narrow gaps in what `travelStats` does with the fields I-12 added: an unreadable stored city
@@ -934,6 +934,42 @@ screen"*, which it has never been. **I-11's dependency bullet is now the authori
 **No code, no `.tsx`, no `qa/`, no `cairn/docs/design/`, no test, no dependency, no version movement — and
 no criterion changed**; what changed is that the gate can no longer be ordered against an unbuilt chain,
 which is stated as a precondition on I-11's *Ship gate* rather than left to be discovered by the breaker.
+
+**Revision 55, 2026-09-04.** **One increment deferred by Jacob's decision — `I-10` — and step `2c` is
+narrowed rather than dropped.** Revision 54 found the whole of 2c unbuilt and named it as blocking the
+gate. Jacob was asked directly which of three things to do: **(a)** defer I-10 and build only I-9, **(b)**
+authorise a one-off `.tsx` exception for `Participants.tsx`, or **(c)** pause all Phase 2 gate work. **He
+chose (a).** This revision records that so it is durable and does not get silently re-litigated.
+
+**What was decided, and the reasoning behind the determination this revision had to make.** I-10 is the
+only increment left in Phase 2 that needs a **screen** — a new `Participants.tsx` plus a new grouping on
+`Profile.tsx` — and the fence against opening any `.tsx` while the visual direction is unresolved predates
+it (Jacob rejected I-8b's aesthetic on 2026-09-02; *Explicitly not in Phase 2* therefore schedules no
+surface of any kind). So the question this revision had to answer was **not** *may we skip a screen* but
+**does skipping it make Phase 2's gate un-runnable** — because two of this phase's exit criteria mention
+participants and revision 54 said both were blocked on I-9 **and** I-10. **The answer is that the gate can
+proceed on I-9 alone**, and it is a measured answer rather than a convenient one: **four** criteria in this
+phase touch participants — the §6.2 access conformance double-run, the round-trip/undo parity clause, §4.2
+rule 1's action↔build-function mapping, and NO SILENT LOSS's 200-step dirty walk — and **every one of them
+runs in plain Node with no browser and no screen**. The conformance set is `packages/core/test/access.test.ts`
+and `qa/access.mjs`, whose predicates take a `TripRelationship` and a clock and never a rendered surface;
+the dirty walk is `packages/client/test/dirty.test.ts`'s seeded step chooser. **No exit criterion names
+`Participants.tsx`, the profile grouping, or any rendered text.** The double-run sat in I-10's *Built*
+bullet because 2c *shipped* there — placement, not dependency. What genuinely needs I-10 is **I-10's own
+ship gate**, which is a step gate and not a phase gate.
+
+**So: `2c` ships narrowed at I-9 — participants as a core-and-store capability with no editor — `I-10` is
+deferred with a written trigger, and `I-11` is NOT deferred.** I-11's *Dependencies / blockers* is
+corrected accordingly and I-10 is moved onto the same footing revision 54 gave **I-13f**: named, explained,
+explicitly not blocking, with the difference between the two triggers stated (I-13f rides along in a file
+someone else opens; a screen rides along with nobody). **This is not a claim about I-9's soundness or
+completeness** — I-9 is unaffected by the fence, its scope is unchanged, and the store-side half it already
+owes in its own *Verification* bullet (actions, undo/redo at depth 50) is what the third and fourth criteria
+above rest on. **No criterion is changed, weakened or removed**; what changed is which increment discharges
+each. **No code, no `.tsx`, no `qa/`, no `cairn/docs/design/`, no test, no dependency, no version movement,
+and `ARCHITECTURE.md` is untouched** — §8.3's *"cross-trip identity is derived and the view says so"* is an
+obligation on a surface, so with no surface it is **unfired rather than violated**, and it becomes a ship
+condition of I-10 the day I-10 lands.
 
 > **Phase numbers changed once, here.** Every heading below carries its old number, and every "Phase N"
 > written in `ARCHITECTURE.md` §1–§7, `BUILD-NOTES.md` or `QA-FINDINGS.md` before revision 9 means the
@@ -1839,11 +1875,11 @@ ISO code is the only geographic evidence there is, A-51 already separates the cl
 caption/order) from the cell, and **at most 3 extent panes can exist planet-wide**. A-51 and A-52 are
 unchanged; A-53 adds **I18**, two criteria and a docstring. **I-8i is gated on Jacob's approval of A-51 and
 on nothing else — the design is closed and no further architect round is owed** |
-| **2c — participants** | `Trip.participants`, three build functions, the participants editor, *"people you have travelled with"* on the profile | you can say the trip was with your girlfriend and her family, and it grants them nothing | Not started; gated on 2b |
+| **2c — participants** | `Trip.participants`, three build functions and their actions (**I-9**); ~~the participants editor, *"people you have travelled with"* on the profile~~ (**I-10 — deferred at revision 55**) | **narrowed at revision 55**: the model can say the trip was with your girlfriend and her family, and it grants them nothing — provable in plain Node — but **nothing on screen enters or shows a participant** until I-10 lands | **Narrowed to I-9 at revision 55, by Jacob's decision.** I-9 dispatched 2026-09-04; **I-10 deferred, with its trigger written into its own entry**. I-11's *Dependencies / blockers* is the authoritative status |
 | **2d — the memory data layer** *(revision 40)* | **I-12**: `TripSummaryCity` gains `centre` + `firstDay`/`lastDay`, `SUMMARY_VERSION` → 5, `TravelStatsCity` gains dates (§8.4 **A-56**). **I-13**: the `PhotoAsset` record class, multi-file import, two byte stores, a pure EXIF reader, the two-derivative resolution rule, the loading-state selectors (**§10**, **A-57**, **A-58**). **I-12a** *(revision 41, QA round 43; amended at revision 42 by QA round 44)*: an unreadable stored city date stops taking the whole library's statistics down anonymously, and a city range the clock erased stops printing as a specific day (§8.4 **A-59**, **A-60**). **I-12a is SEND BACK at round 44** — a repair pass is owed for R44-1, and revision 42 folds §8.4 **A-60 Part 6** (R44-2) into it as item 5. **I-13 is SEND BACK at round 45**; its builder's KD-81 is ruled at revision 43 as §10 **A-61** — the 4 KB document-growth criterion was mine and wrong, the `PhotoAsset` record does not move by one field, and **I-13a** is the one-file test-and-comment pass that closes it. **I-13b** *(revision 44, QA round 45)*: the photo byte stores get their tenancy in the key so restoring a backup cannot destroy the original trip's photographs, a failed availability read becomes a state a surface can name and retry, and A-57 Part 4's false claim about provenance transitions is withdrawn (§10 **A-62**, **A-63**, **A-64**). **I-13b is SEND BACK at round 46** — the key held under every attack, but three photo writes cross a trip boundary a key cannot police, one of them a regression this arc introduced; **I-13c** *(revision 45, QA round 46)* is the repair pass, and its one architect-owned item is §10 **A-62 Part 8 residue 4** — a failed byte cascade during a trip delete does not block the delete and is answered only by residue 2's unbuilt sweep, so what lands is a corrected comment and no new machinery. **Revision 46 adds group 3 to I-13c** — §10 **A-65** (undo restores a removed photo's record, never its bytes; the deferred byte delete is refused and §10.3's synchronous cascade is upheld) and **A-66** (`PhotoImportFailure` is closed at five arms; a batch abandoned because the user left the trip is correctly reported as nothing, because the report would land against the trip they moved to) — **two more comment corrections, no new machinery, and the arc has no unruled question left**. **I-13c is SEND BACK at round 47**, and the two MAJORs are one defect that is **not in the photo code**: a document mutation dispatched between `flushForTransition()`'s return and the reseeding `set` is silently discarded (unbounded — every re-open of the batch's own trip costs one more photograph), and `readPhotoAvailability` orders answers by trip and not by time. Four consecutive rounds have now found four faces of that one gap, so revision 47 rules the class: §4.2 rule **6d** and **A-67**, the store's **generation guard** — `flushForTransition` returns a **ticket** instead of a boolean, three guarded slots order every asynchronous install, and R46-1's and R46-3's point-fixes are **deleted** rather than layered under. **I-13d** *(revision 47)* builds it, folds in I-13c's one still-owed comment, and is a `packages/client` **store** increment that opens no `.tsx` | a past trip stops being a list of country codes — it knows *where in* each country and *when* — and a photograph can be attached to a day of it at all, which it could not before. Both are exercisable end to end with `node --test` and the CLI, on a machine with no browser | **In progress** *(status corrected at revision 43 — this cell still read "Not started" after three increments had landed; re-stated at revision 44)*: I-12 SHIP (`8b50889`), I-12a **SEND BACK** and owed a repair pass, I-13 **SEND BACK at round 45** (`497c116`) and owed I-13b, **I-13a queued**; **I-13b built (`70b9ee6`) and SEND BACK at round 46**, owed **I-13c**, whose group 2 built at **`a6c5d04`** and whose three documentation items are still owed *(re-stated at revision 46)*; **I-13c SEND BACK at round 47 (`4430e34`) and owed I-13d** *(revision 47 — the generation guard, §4.2 **A-67**; two of I-13c's three owed documentation items landed at `c440170`, and the third is folded into I-13d as its group 4)*; **I-13d built (`4316167`) and SEND BACK at round 48 (`d03eac8`), owed I-13e** *(revision 48 — the builder found A-67 Part 7's "no existing test moves" contradicting this increment's own **G3** and correctly declined to resolve it; A-67 **Part 7a** rules it, and I-13d gains a **group 5** of two assertion inversions — one builder, one breaker — that gate nothing. **Revision 49**: round 48 attacked the generation guard itself and **could not break it** — every slot releases, the newest claim always wins — but both of its MAJORs are A-67's **wiring** at its own call sites: the byte-write `supersede` shipped inside R45-4's value guard so it does not fire when availability is unknown (**R48-1**, R47-2's fourth face), and `claimTransition` claimed the photo slot on **every** transition while nine of its exits install nothing and issue no replacement read, which is **A-63's unresolving spinner** rebuilt (**R48-2**, a regression). §4.2 **A-68** rules both as one missing sentence — *a bump of a slot's sequence is a promise to replace the answer it invalidated* — and **I-13e** builds it; **I-13f** is the queued two-line `.tsx` follow-up nobody owned)*; **I-13e built (`106bbd3`/`4398de5`) and SEND BACK at round 49 (`43d0d20`), owed I-13g** *(revision 50 — round 49 could not break the mechanism or any of A-68's three groups either, but A-68's **own discharge gate** for the owed availability read is a check on the `doc` slot, which is the slot all nine of its Part 4.1 exits bump, so the fix for R48-2 re-opened seven of the nine (**R49-1**); and an eleventh exit exists that installs its document and still answers nothing (**R49-5**). **Three enumerations of "the sites that need special handling" in three rounds, each wrong within one round**, so §4.2 **A-69** rules the class: *no correctness argument in this store may rest on an enumeration of control-flow exits.* The invariant is repaired at a boundary every path must pass through, `availabilityOwed` is deleted, the availability triple gets a single typed writer, and **R49-4** — a browse pane outliving the trip it shows, with `copyStopInto` reading it — is fixed in the same pass rather than tracked)*; **I-13g built (`ae075db`) and owed I-13h** *(revision 51 — not a QA finding but the I-13g **builder's own disclosure**, which is the pipeline working: they implemented A-69's predicate verbatim, found it could not keep §10 **A-65 T1** and two shipped criteria green at once, declined to pick a side, and pinned both paths with tests (BUILD-NOTES **KD-84**). §4.2 **A-70** rules it — A-69's `availabilityError === null` conjunct also declines to discharge a **byte write's** `supersede` after an earlier failed read, so an import leaves a stale failure standing over changed bytes and `removePhoto` + `undo` reads `'unreadable'` where A-65 T1 says never. **T1 is upheld unamended and the predicate is narrowed**: the record of the obligation is the **slot's sequence**, not the value of the error field, so the answer is stamped at `setAvailability` and the predicate asks the guard. Three of the builder's other disclosures are text corrections to A-69, applied in place)*; **I-13h built (`e051306`), QA round 50 run (`08b09fb`) with its MINOR fix pass at `37cf4f0`, and owed I-13i** *(revision 52 — **round 50 closed the A-67…A-70 arc**: it attacked the settling boundary as a mechanism rather than as a list, on every axis it could construct, and could not break it. Its two MAJORs are **pre-existing, outside that arc's subject, and measured identical before it landed**. **R50-5**: `emit()` runs subscribers synchronously, so a subscriber throwing while rendering a **successful** answer throws from inside whatever `try` the store was holding and the `catch` records the view's exception as its own subject's failure — then swallows it. §4.2 **A-71** measured **five faces in two subsystems**, including a **write that landed with the fence advanced** reported as `persistence.status: 'error'`, and rules the class rather than the site: `emit` **brands** what a subscriber throws, one classifier **`attempt`** rethrows a branded error, and **seven `catch` blocks are deleted**. **R50-2**: §10 A-66 Part 3 refused a sixth failure arm to avoid a misattribution that **two of the five arms it kept already ship**, plus the batch's progress settlement — **A-66 Part 11** rules one gated writer, `setBatch`, and adds the two criteria U1/U2 were too weak to catch. **I-13i** builds both)*; **I-13i built (`032a4cb`) and CONFIRMED at round 51 (`119d336`)** *(revision 53 — the breaker attacked A-71's brand and A-66 Part 11's `setBatch` as mechanisms and **could not break either**: 0 BLOCKERS, 0 MAJOR, 6 MINOR, and **all six are wrong sentences or wrong numbers in documents, not defects in code**. Five are corrected in `ARCHITECTURE.md` revision 53 and one is a builder's BUILD-NOTES row. **No repair pass is owed** — the first time in nine increments — and what stands between this arc and Phase 2's gate is **I-11**'s full chain plus **I-13f**'s two queued `.tsx` lines, which are ship conditions of the first increment that opens `App.tsx` and are not a claim about the store mechanism)*. **Gated on 2b's *data layer*, which shipped (`REVIEW.md` "2b (data layer)", SHIP, `69e44d4`) — not on 2b's surfaces and not on 2c.** Orderable before or after 2c. **Opens no `.tsx` file** |
 
 **Mapped onto the increment sequence below** (revision 10): **2a = I-1 → I-4**, **2b = I-5 → I-8**,
-**2c = I-9 → I-10**, **2d = I-12 → I-12a → I-13 → I-13a → I-13b → I-13c → I-13d → I-13e** *(revision 40; I-12a added at revision 41, I-13a at revision 43, I-13b at revision 44, I-13c at revision 45, I-13d at revision 47, I-13e at revision 49 — and the last two are `packages/client` **store** increments that happen to close the arc, not photo ones)*, with **I-0** before all of them and **I-11** the
+**2c = I-9 → ~~I-10~~** *(revision 55: **2c = I-9 alone** for this phase; I-10 is deferred and keeps its number for whenever its trigger fires)*, **2d = I-12 → I-12a → I-13 → I-13a → I-13b → I-13c → I-13d → I-13e** *(revision 40; I-12a added at revision 41, I-13a at revision 43, I-13b at revision 44, I-13c at revision 45, I-13d at revision 47, I-13e at revision 49 — and the last two are `packages/client` **store** increments that happen to close the arc, not photo ones)*, with **I-0** before all of them and **I-11** the
 gate — which is now numbered below two increments it waits for; sequencing rule 7 is why the labels are not
 renumbered. Each of the three steps is
 genuinely shippable at its own increment — the phase can stop after I-4 or I-8 and still have delivered
@@ -4425,7 +4461,37 @@ Profile half plus the four shell items §5.6 enumerates, and nothing else.)*
 - **Ship gate.** Three build functions on §2.10's list with the count re-counted; validation codes have
   injected-fault tests (a rule with no injected-fault criterion does not ship).
 
-#### I-10 — The participants editor, the profile grouping, and the access double-run — **2c ships here**
+**2c ships narrowed, at I-9 — revision 55.** With **I-10 deferred** (below), step 2c's shippable unit is
+I-9 by itself: `Trip.participants` exists, validates, round-trips, undoes at depth 50 and **grants
+nothing**, and all of that is provable with `node --test` and `qa/access.mjs` on a machine with no browser.
+What 2c does **not** ship in this phase is its **surface** — no participant can be entered or seen in the
+app. That is a capability with no screen, which is the same trade step 2d already made for §10's photo
+record class, made for the same stated reason, and it is stated here so nobody reads "2c shipped" as
+"participants are usable." **Nothing in this note re-scopes I-9**, whose bullets above are unchanged.
+
+#### I-10 — The participants editor, the profile grouping, and the access double-run — **DEFERRED at revision 55; 2c ships without it**
+
+> **Status: DEFERRED, by Jacob's decision of 2026-09-04.** Asked directly whether to **(a)** defer I-10 and
+> build only I-9, **(b)** authorise a one-off `.tsx` exception for `Participants.tsx`, or **(c)** pause all
+> Phase 2 gate work, Jacob chose **(a)**. **This entry is not withdrawn and not weakened** — it is real, it
+> is fully specified below, and it is what completes 2c. It is **not built now**, and **it does not block
+> `I-11`**. Its trigger is the last bullet of this entry.
+>
+> **Why it is deferred.** I-10 is the only increment left in Phase 2 that requires a UI screen: a new
+> `Participants.tsx` **and** a new grouping on `Profile.tsx`. The project-wide fence — no `.tsx` is opened
+> while the visual-direction track is unresolved — **predates this increment** (Jacob rejected I-8b's
+> aesthetic on 2026-09-02 and is redoing the direction separately, with other tools), and it is why
+> *Explicitly not in Phase 2* schedules **no surface of any kind** and why **I-13f**'s two `.tsx` lines have
+> stayed queued through nine increments. Building I-10 now is building a screen against a direction that
+> does not exist yet, and then rebuilding it. Nothing in the backend or data work may assume any outcome of
+> that track, and this deferral assumes none.
+>
+> **What this is not.** It is **not a claim about I-9** — not about its soundness, its completeness or its
+> scope. I-9 is core-and-store work with no screen, the fence does not touch it, and **every Phase 2 exit
+> criterion that mentions participants is discharged by I-9 alone**; the enumeration and the reasoning are
+> in I-11's *Dependencies / blockers*, which is the authoritative list. Deferring I-10 defers a **surface**,
+> not a capability and not a guarantee. It is also **not** a deferral of `I-11`: the gate proceeds without
+> this increment, and revision 55's ledger entry says why in full.
 
 - **Built.** `Participants.tsx`; *"people you have travelled with"* on the profile, grouped by `userId` where
   it is non-null and by a **normalised `displayName`** otherwise, **with the surface saying that is what it
@@ -4439,9 +4505,32 @@ Profile half plus the four shell items §5.6 enumerates, and nothing else.)*
 - **Verification.** Exit criterion 8, mechanically: the two conformance runs are **identical, cell for
   cell**, and a participant who is neither a member nor a share holder is denied every operation *including*
   `view`. This is principle 3 with a test behind it **before** there is any server that could get it wrong.
-- **Dependencies / blockers.** I-9.
-- **Ship gate.** **2c is independently shippable here.** The two conformance runs diff to nothing; the
-  grouping surface states its own limitation in rendered text, not in a code comment.
+- **Dependencies / blockers.** I-9 — **and, since revision 55, a resolved visual direction**, which is the
+  blocker that deferred this increment rather than one it waits on incidentally.
+- **Ship gate.** ~~**2c is independently shippable here.**~~ *(Withdrawn at revision 55: 2c is
+  independently shippable at **I-9**, narrowed — see the note above this entry. What ships **here**,
+  whenever this lands, is 2c's **surface** half.)* The two conformance runs diff to nothing; the grouping
+  surface states its own limitation in rendered text, not in a code comment. **The double-run half of this
+  gate is not deferred with the rest** — it is a Phase 2 exit criterion, it runs in plain Node against
+  `qa/access.mjs` and `packages/core/test/access.test.ts`, and **I-9 discharges it**; re-running it here is
+  then a re-derivation, not a first run.
+- **Trigger — and it is deliberately not `I-13f`'s shape.** I-13f is two lines inside a file that some
+  later increment opens anyway, so a ride-along trigger works for it. **A screen rides along with nobody**,
+  so I-10's trigger is stated as an event rather than as an inheritance. **Whichever of these comes first:**
+  1. **The visual-direction track resuming** — Jacob selecting a direction — at which point I-10 is
+     scheduled as an ordinary increment against that direction, in whatever phase is current then. This is
+     the expected trigger.
+  2. **The first increment that opens `Participants.tsx` or `Profile.tsx` for a reason of its own** and can
+     carry this work in the same pass. Possible, not expected: no surface is scheduled while the direction
+     is unselected, which is exactly why this deferral exists.
+  3. **The first surface anywhere that groups participants across trips.** That fires `ARCHITECTURE.md`
+     §8.3's *"cross-trip identity is derived, and the view says so"* clause — the rendered-limitation half
+     of this entry — and **no such surface may ship without it**. Until then that obligation is **unfired,
+     not violated**, because there is no view to mislead anyone.
+
+  Until one of the three fires, `Trip.participants` is a capability with no surface, and **this entry is
+  where it is tracked so that "deferred forever because nobody owns it" cannot happen to it** — the same
+  reason I-13f is written down.
 
 **I-12 and I-13 are revision 40, and are step 2d.** They sit here in the sequence — after I-10, before the
 gate — and carry their numbers from above it, per sequencing rule 7. **Neither is gated on 2c**; both are
@@ -6024,21 +6113,45 @@ disclosed as *unreachable* for two revisions and is reachable today.*
   `photos.test.ts`; it is named here so that it cannot reach the gate unbuilt.
 
   ***Measured at revision 54, against `git log` on `master` rather than against this document's own status
-  cells, immediately before the gate was to be dispatched. Four of the dependencies named above are NOT
-  BUILT, and the full chain may not be ordered until they are.*** This bullet is the authoritative list;
+  cells, immediately before the gate was to be dispatched. Four of the dependencies named above were NOT
+  BUILT, and the full chain may not be ordered until the ones that remain required are.*** **Revision 55
+  resolves one of the four rather than building it: `I-10` is deferred by Jacob's decision and is no longer
+  a dependency of this gate — three remain (`I-9`, `I-12a` item 5, `I-13a`), and the sub-bullets below are
+  updated in place.** This bullet is the authoritative list;
   where the 2d status cell above, the revision-53 ledger entry or `CAIRN_VISUAL_ROADMAP.md` says the only
   thing standing between here and the gate is I-11's own chain, **they are wrong and are superseded here**.
 
-  - ***`I-9` and `I-10` — the whole of step 2c — are not started.*** The step table's own 2c cell says
-    *"Not started; gated on 2b"* and it is the cell that is right: there is no `Participant` type in
-    `packages/core/src/model/types.ts`, no `packages/core/src/build/participants.ts`, no
-    `duplicate_participant_id` or `participant_name_empty` in `validateTrip.ts`, and no `Participants.tsx`
-    under `apps/web/src/views/`. **Two of this phase's own exit criteria cannot be run at all without
-    them** — *"Participation grants nothing, asserted mechanically"* (the §6.2 access conformance set run
-    twice, with and without participants, diffing to nothing) and the round-trip/undo parity clause over
-    `Trip.participants` — and a criterion that cannot be run is not a criterion that passed. The revision-40
-    note above is still true that 2d is *"orderable before or after 2c"*; it never made 2c optional, and
-    **I-11 is below both**.
+  - ***`I-9` is required and was not started at revision 54.*** Measured against `master`: no `Participant`
+    type in `packages/core/src/model/types.ts`, no `packages/core/src/build/participants.ts`, no
+    `duplicate_participant_id` or `participant_name_empty` in `validateTrip.ts`. **A builder was dispatched
+    to it on 2026-09-04** and this bullet is discharged when its commit is on `master`, not when it is in a
+    working tree. **`I-9` alone discharges every participant-touching exit criterion in this phase**, and
+    revision 55 enumerated them rather than assuming: **(1)** *"Participation grants nothing, asserted
+    mechanically"* — the §6.2 access conformance set run twice, with and without participants, diffing to
+    nothing — whose implementation is `packages/core/test/access.test.ts` and `qa/access.mjs`, where the
+    predicates take a `TripRelationship` and a clock and never a rendered surface; **(2)** the round-trip
+    and undo parity clause over `Trip.participants`, at depth 50; **(3)** §4.2 rule 1's *every new action
+    maps 1:1 onto a core build function*; and **(4)** NO SILENT LOSS's 200-step dirty walk *"with
+    participant edits in the step chooser"*, which is `packages/client/test/dirty.test.ts` under
+    `node --test`. **All four run in plain Node with no browser and no screen**, so (3) and (4) are what pin
+    the **store-side half of I-9** that its own *Verification* bullet already requires; an I-9 that landed
+    core-only would owe that half **to I-9**, not to I-10, and nothing about it opens a `.tsx`.
+  - ***`I-10` is DEFERRED and does NOT block this gate*** — Jacob's decision of 2026-09-04, recorded at
+    revision 55, on the same footing revision 54 gave **I-13f**. It is real, specified and needed for the
+    whole of 2c, and it is the **only increment left in this phase that requires a screen**
+    (`Participants.tsx`, plus the grouping on `Profile.tsx`), which the standing `.tsx` fence bars while the
+    visual direction is unresolved — the same rule *Explicitly not in Phase 2* applies to *"any photo screen
+    at all"*. **No exit criterion of this phase names `Participants.tsx`, the profile grouping, or any
+    rendered participant text**; the §6.2 double-run sat in I-10's *Built* bullet because 2c **shipped**
+    there, which is placement and not dependency. What genuinely waits for I-10 is **I-10's own ship gate**
+    — a step gate, not this one. **So Phase 2 ships with participants as a core-and-store capability with no
+    surface**, which is a stated deferral rather than an unbuilt dependency, and §8.3's *"the view says so"*
+    obligation is **unfired rather than violated** because there is no view. **This is not a claim about
+    I-9**: I-9 stays required, above. I-10's trigger is written into its own entry — the visual-direction
+    track resuming, an increment that opens either file for a reason of its own, or the first surface
+    anywhere that groups participants across trips, whichever comes first.
+  - **The revision-40 note above is still true that 2d is *"orderable before or after 2c"***; it never made
+    2c optional, and **I-11 is below 2c as narrowed** — that is, below **I-9**.
   - ***`I-12a` item 5 (§8.4 A-60 Part 6) is not built.*** The entry has said *"owed by the repair pass, not
     yet built"* since revision 42 and it is still accurate — but the repair pass it was owed by
     (`74a2762`) **landed before revision 42 wrote the item** (`598cd7f`), so nothing has carried it since.
@@ -6072,15 +6185,27 @@ disclosed as *unreachable* for two revisions and is reachable today.*
   error and A-67 Part 11 residue 3's redundant `openTrip` **disclosed and ruled non-urgent**, which is a
   stated deferral rather than an unbuilt dependency. **`CAIRN_VISUAL_ROADMAP.md`'s two newest blocks call
   I-13f *"the actual photo screen"* and say it is what stands between here and shippable; that is wrong on
-  both halves** — I-13f is not a screen, and what actually stands there is the four unbuilt increments
+  both halves** — I-13f is not a screen, and what actually stands there is the three unbuilt increments
   above. Correcting it is part of the board rebuild this increment's *Architecture / data model* bullet
-  already owns.
+  already owns, and **revision 55 has already corrected it on the board in that revision's own block**.
+
+  **`I-10` now sits beside `I-13f` on this list rather than above it** (revision 55): both are named, both
+  are specified, both are barred by the same `.tsx` fence, and **neither blocks this gate**. The difference
+  worth keeping straight is the trigger — I-13f's two lines **ride along** in a file a later increment opens
+  anyway, while I-10 is a screen that rides along with nobody and therefore has an **event** for a trigger.
+  Neither may be dropped, and both are written down here for exactly that reason.
 - **Ship gate.** A manager verdict of **SHIP**. Nothing else counts as the phase being done. **And one
   precondition on ordering the chain at all**, added at revision 54 because it was nearly missed: the
   breaker round is *over the whole phase*, so **every increment named in the bullet above is built first**.
-  Dispatching it against four unbuilt dependencies does not produce a SEND BACK with findings — it produces
-  a round that reports two exit criteria as un-runnable, which costs a full adversarial pass and decides
-  nothing.
+  Dispatching it against unbuilt dependencies does not produce a SEND BACK with findings — it produces a
+  round that reports exit criteria as un-runnable, which costs a full adversarial pass and decides nothing.
+  **Revision 55 sharpens what "every increment named above" means**: it is every increment the bullet still
+  lists as **required** — three, at revision 55 — and **not** the two it names as deferred with a trigger
+  (`I-10`, `I-13f`). A deferral this document states, with what it costs written down, is a thing the gate
+  **certifies**; an unbuilt dependency is a thing the gate **cannot see**. The breaker's round is expected
+  to report both deferrals as disclosed and to attack whether the disclosure is complete — in I-10's case,
+  whether any Phase 2 exit criterion in fact needs a rendered participant surface. **Revision 55's answer is
+  that none does; a round that finds one has found a defect in this ruling and it is architect-routed.**
 
 ### Exit criteria — the Phase 2 ship gate
 
@@ -6379,6 +6504,17 @@ photo **record class** — §10, A-57. What this phase still does **not** build:
 `suggestPhotoStops`, any suggestion queue, `place` attachment, photo bytes in an export, any non-JPEG
 metadata reader, and **any photo screen at all** — no surface is scheduled while the visual direction is
 unselected. `ARCHITECTURE.md` §7 carries each with its trigger.)*
+
+*(**Revision 55 adds one more, and it is a deferral rather than a scope cut**, by Jacob's decision of
+2026-09-04: **no participants editor and no *"people you have travelled with"* grouping** — **`I-10`**. The
+same sentence above does the work: no surface is scheduled while the visual direction is unselected, and
+I-10 is the last increment in this phase that needs one. **What this phase still ships is the whole of
+`I-9`** — `Trip.participants`, its three build functions and their actions, its two validation codes, and
+*participation grants nothing* proved by the §6.2 conformance double-run in plain Node. **What it does not
+ship is the ability to enter or see a participant in the app.** I-10's entry is unchanged, is not
+withdrawn, and carries its own trigger; **it does not block `I-11`**, and I-11's *Dependencies / blockers*
+is where that is adjudicated. This is the same treatment **I-13f** already has, which is the precedent it
+was written against.)*
 
 **And, added at revision 10: no travel distance or mileage of any kind, in any mode.** `ARCHITECTURE.md`
 §8.10 architects it and schedules it across phases 4, 5b and 7; **nothing about it is built here.** In
