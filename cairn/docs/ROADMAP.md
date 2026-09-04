@@ -630,7 +630,7 @@ are. What moves earlier is the record class those things suggest **into** — th
 
 **I-12 and I-13 are numbered above the gate and sequenced below it.** Sequencing rule 7 forbids renumbering
 forty cross-references for a tidy sequence, so the numbers are labels: the order is
-I-0 … I-10, **I-12, I-12a, I-13, I-13a, I-13b, I-13c, I-13d, I-13e, I-13g, I-13h, I-13i**, then **I-11, the gate**, which now depends on all of them. (**I-13f** is a queued `.tsx` follow-up, not a scheduled increment — revision 49. **`I-10` is deferred at revision 55, by Jacob's decision** — it is the one screen left in this phase, the `.tsx` fence bars it, and the gate does not wait for it; the order above is otherwise unchanged and I-10 keeps its place in it for whenever its trigger fires.)
+I-0 … I-10, **I-12, I-12a, I-13, I-13a, I-13b, I-13c, I-13d, I-13e, I-13g, I-13h, I-13i**, then **I-11, the gate**, which now depends on all of them. (**I-13f** is a queued `.tsx` follow-up, not a scheduled increment — revision 49. **`I-10` is deferred at revision 55, by Jacob's decision** — it is the one screen left in this phase, the `.tsx` fence bars it, and the gate does not wait for it; the order above is otherwise unchanged and I-10 keeps its place in it for whenever its trigger fires. **`I-9a` is added at revision 56** — the builder follow-up carrying `ARCHITECTURE.md` A-72 and A-73 — and sits directly after **I-9**; it does **not** block **I-11**, but it should land before the gate rather than after it.)
 
 *(**I-12a** is revision 41, from QA round 43's breaker pass over I-12 — `ARCHITECTURE.md` §8.4 **A-59** and
 **A-60**. Two narrow gaps in what `travelStats` does with the fields I-12 added: an unreadable stored city
@@ -970,6 +970,23 @@ each. **No code, no `.tsx`, no `qa/`, no `cairn/docs/design/`, no test, no depen
 and `ARCHITECTURE.md` is untouched** — §8.3's *"cross-trip identity is derived and the view says so"* is an
 obligation on a surface, so with no surface it is **unfired rather than violated**, and it becomes a ship
 condition of I-10 the day I-10 lands.
+
+**Revision 56, 2026-09-04.** **One increment added — `I-9a` — from the two objections the I-9 builder
+disclosed rather than resolved, and both are upheld.** `ARCHITECTURE.md` revision 54 rules them as §8.3's
+**A-72** and **A-73**; this revision queues the code. **KD-96 / A-72:** `participants` **is records**, and
+the silent-loss scenario the builder feared **is reachable** — `migrateDoc`'s refusals are all keyed on the
+version *number*, so a pre-I-9 build reads a post-I-9 document as its own version, passes it through,
+drops the field it has never heard of and re-emits without it; and because I-9 moved no `DB_VERSION`, that
+build opens the live library rather than failing on it, which is the channel photos never had. So
+**`SCHEMA_VERSION` goes to 3**, `migrateDoc` becomes a **ladder** rather than a second `if`, and two test
+pins and the generated sample move with it. **KD-97 / A-73:** `duplicate_participant_id` gets **one home,
+`validateTrip`**, and the parser refusal comes out — **and the defect is in this document**, not in the
+builder's work: **I-9's *Verification* bullet ordered the parser refusal by name, against `ARCHITECTURE.md`
+§8.3's own text**, which had already put the code in `validateTrip`. That bullet is **withdrawn and
+replaced** below. **No phase, step, gate, criterion or dependency moves**; I-11 does not wait on I-9a
+(*Dependencies / blockers*, below); `I-10` stays deferred exactly as revision 55 left it; and one item —
+A-39 Part 11 item 2's Axis-D assignment in `qa/i7a-idb-rowkeys.mjs` — is **routed to the breaker**, not to
+I-9a's builder, because that file is the breaker's.
 
 > **Phase numbers changed once, here.** Every heading below carries its old number, and every "Phase N"
 > written in `ARCHITECTURE.md` §1–§7, `BUILD-NOTES.md` or `QA-FINDINGS.md` before revision 9 means the
@@ -1880,11 +1897,11 @@ ISO code is the only geographic evidence there is, A-51 already separates the cl
 caption/order) from the cell, and **at most 3 extent panes can exist planet-wide**. A-51 and A-52 are
 unchanged; A-53 adds **I18**, two criteria and a docstring. **I-8i is gated on Jacob's approval of A-51 and
 on nothing else — the design is closed and no further architect round is owed** |
-| **2c — participants** | `Trip.participants`, three build functions and their actions (**I-9**); ~~the participants editor, *"people you have travelled with"* on the profile~~ (**I-10 — deferred at revision 55**) | **narrowed at revision 55**: the model can say the trip was with your girlfriend and her family, and it grants them nothing — provable in plain Node — but **nothing on screen enters or shows a participant** until I-10 lands | **Narrowed to I-9 at revision 55, by Jacob's decision.** I-9 dispatched 2026-09-04; **I-10 deferred, with its trigger written into its own entry**. I-11's *Dependencies / blockers* is the authoritative status |
+| **2c — participants** | `Trip.participants`, three build functions and their actions (**I-9**); the two rulings on I-9's disclosed objections — `SCHEMA_VERSION` → 3 and one home for `duplicate_participant_id` (**I-9a**, revision 56); ~~the participants editor, *"people you have travelled with"* on the profile~~ (**I-10 — deferred at revision 55**) | **narrowed at revision 55**: the model can say the trip was with your girlfriend and her family, and it grants them nothing — provable in plain Node — but **nothing on screen enters or shows a participant** until I-10 lands | **Narrowed to I-9 at revision 55, by Jacob's decision.** I-9 dispatched 2026-09-04; **I-10 deferred, with its trigger written into its own entry**. I-11's *Dependencies / blockers* is the authoritative status |
 | **2d — the memory data layer** *(revision 40)* | **I-12**: `TripSummaryCity` gains `centre` + `firstDay`/`lastDay`, `SUMMARY_VERSION` → 5, `TravelStatsCity` gains dates (§8.4 **A-56**). **I-13**: the `PhotoAsset` record class, multi-file import, two byte stores, a pure EXIF reader, the two-derivative resolution rule, the loading-state selectors (**§10**, **A-57**, **A-58**). **I-12a** *(revision 41, QA round 43; amended at revision 42 by QA round 44)*: an unreadable stored city date stops taking the whole library's statistics down anonymously, and a city range the clock erased stops printing as a specific day (§8.4 **A-59**, **A-60**). **I-12a is SEND BACK at round 44** — a repair pass is owed for R44-1, and revision 42 folds §8.4 **A-60 Part 6** (R44-2) into it as item 5. **I-13 is SEND BACK at round 45**; its builder's KD-81 is ruled at revision 43 as §10 **A-61** — the 4 KB document-growth criterion was mine and wrong, the `PhotoAsset` record does not move by one field, and **I-13a** is the one-file test-and-comment pass that closes it. **I-13b** *(revision 44, QA round 45)*: the photo byte stores get their tenancy in the key so restoring a backup cannot destroy the original trip's photographs, a failed availability read becomes a state a surface can name and retry, and A-57 Part 4's false claim about provenance transitions is withdrawn (§10 **A-62**, **A-63**, **A-64**). **I-13b is SEND BACK at round 46** — the key held under every attack, but three photo writes cross a trip boundary a key cannot police, one of them a regression this arc introduced; **I-13c** *(revision 45, QA round 46)* is the repair pass, and its one architect-owned item is §10 **A-62 Part 8 residue 4** — a failed byte cascade during a trip delete does not block the delete and is answered only by residue 2's unbuilt sweep, so what lands is a corrected comment and no new machinery. **Revision 46 adds group 3 to I-13c** — §10 **A-65** (undo restores a removed photo's record, never its bytes; the deferred byte delete is refused and §10.3's synchronous cascade is upheld) and **A-66** (`PhotoImportFailure` is closed at five arms; a batch abandoned because the user left the trip is correctly reported as nothing, because the report would land against the trip they moved to) — **two more comment corrections, no new machinery, and the arc has no unruled question left**. **I-13c is SEND BACK at round 47**, and the two MAJORs are one defect that is **not in the photo code**: a document mutation dispatched between `flushForTransition()`'s return and the reseeding `set` is silently discarded (unbounded — every re-open of the batch's own trip costs one more photograph), and `readPhotoAvailability` orders answers by trip and not by time. Four consecutive rounds have now found four faces of that one gap, so revision 47 rules the class: §4.2 rule **6d** and **A-67**, the store's **generation guard** — `flushForTransition` returns a **ticket** instead of a boolean, three guarded slots order every asynchronous install, and R46-1's and R46-3's point-fixes are **deleted** rather than layered under. **I-13d** *(revision 47)* builds it, folds in I-13c's one still-owed comment, and is a `packages/client` **store** increment that opens no `.tsx` | a past trip stops being a list of country codes — it knows *where in* each country and *when* — and a photograph can be attached to a day of it at all, which it could not before. Both are exercisable end to end with `node --test` and the CLI, on a machine with no browser | **In progress** *(status corrected at revision 43 — this cell still read "Not started" after three increments had landed; re-stated at revision 44)*: I-12 SHIP (`8b50889`), I-12a **SEND BACK** and owed a repair pass, I-13 **SEND BACK at round 45** (`497c116`) and owed I-13b, **I-13a queued**; **I-13b built (`70b9ee6`) and SEND BACK at round 46**, owed **I-13c**, whose group 2 built at **`a6c5d04`** and whose three documentation items are still owed *(re-stated at revision 46)*; **I-13c SEND BACK at round 47 (`4430e34`) and owed I-13d** *(revision 47 — the generation guard, §4.2 **A-67**; two of I-13c's three owed documentation items landed at `c440170`, and the third is folded into I-13d as its group 4)*; **I-13d built (`4316167`) and SEND BACK at round 48 (`d03eac8`), owed I-13e** *(revision 48 — the builder found A-67 Part 7's "no existing test moves" contradicting this increment's own **G3** and correctly declined to resolve it; A-67 **Part 7a** rules it, and I-13d gains a **group 5** of two assertion inversions — one builder, one breaker — that gate nothing. **Revision 49**: round 48 attacked the generation guard itself and **could not break it** — every slot releases, the newest claim always wins — but both of its MAJORs are A-67's **wiring** at its own call sites: the byte-write `supersede` shipped inside R45-4's value guard so it does not fire when availability is unknown (**R48-1**, R47-2's fourth face), and `claimTransition` claimed the photo slot on **every** transition while nine of its exits install nothing and issue no replacement read, which is **A-63's unresolving spinner** rebuilt (**R48-2**, a regression). §4.2 **A-68** rules both as one missing sentence — *a bump of a slot's sequence is a promise to replace the answer it invalidated* — and **I-13e** builds it; **I-13f** is the queued two-line `.tsx` follow-up nobody owned)*; **I-13e built (`106bbd3`/`4398de5`) and SEND BACK at round 49 (`43d0d20`), owed I-13g** *(revision 50 — round 49 could not break the mechanism or any of A-68's three groups either, but A-68's **own discharge gate** for the owed availability read is a check on the `doc` slot, which is the slot all nine of its Part 4.1 exits bump, so the fix for R48-2 re-opened seven of the nine (**R49-1**); and an eleventh exit exists that installs its document and still answers nothing (**R49-5**). **Three enumerations of "the sites that need special handling" in three rounds, each wrong within one round**, so §4.2 **A-69** rules the class: *no correctness argument in this store may rest on an enumeration of control-flow exits.* The invariant is repaired at a boundary every path must pass through, `availabilityOwed` is deleted, the availability triple gets a single typed writer, and **R49-4** — a browse pane outliving the trip it shows, with `copyStopInto` reading it — is fixed in the same pass rather than tracked)*; **I-13g built (`ae075db`) and owed I-13h** *(revision 51 — not a QA finding but the I-13g **builder's own disclosure**, which is the pipeline working: they implemented A-69's predicate verbatim, found it could not keep §10 **A-65 T1** and two shipped criteria green at once, declined to pick a side, and pinned both paths with tests (BUILD-NOTES **KD-84**). §4.2 **A-70** rules it — A-69's `availabilityError === null` conjunct also declines to discharge a **byte write's** `supersede` after an earlier failed read, so an import leaves a stale failure standing over changed bytes and `removePhoto` + `undo` reads `'unreadable'` where A-65 T1 says never. **T1 is upheld unamended and the predicate is narrowed**: the record of the obligation is the **slot's sequence**, not the value of the error field, so the answer is stamped at `setAvailability` and the predicate asks the guard. Three of the builder's other disclosures are text corrections to A-69, applied in place)*; **I-13h built (`e051306`), QA round 50 run (`08b09fb`) with its MINOR fix pass at `37cf4f0`, and owed I-13i** *(revision 52 — **round 50 closed the A-67…A-70 arc**: it attacked the settling boundary as a mechanism rather than as a list, on every axis it could construct, and could not break it. Its two MAJORs are **pre-existing, outside that arc's subject, and measured identical before it landed**. **R50-5**: `emit()` runs subscribers synchronously, so a subscriber throwing while rendering a **successful** answer throws from inside whatever `try` the store was holding and the `catch` records the view's exception as its own subject's failure — then swallows it. §4.2 **A-71** measured **five faces in two subsystems**, including a **write that landed with the fence advanced** reported as `persistence.status: 'error'`, and rules the class rather than the site: `emit` **brands** what a subscriber throws, one classifier **`attempt`** rethrows a branded error, and **seven `catch` blocks are deleted**. **R50-2**: §10 A-66 Part 3 refused a sixth failure arm to avoid a misattribution that **two of the five arms it kept already ship**, plus the batch's progress settlement — **A-66 Part 11** rules one gated writer, `setBatch`, and adds the two criteria U1/U2 were too weak to catch. **I-13i** builds both)*; **I-13i built (`032a4cb`) and CONFIRMED at round 51 (`119d336`)** *(revision 53 — the breaker attacked A-71's brand and A-66 Part 11's `setBatch` as mechanisms and **could not break either**: 0 BLOCKERS, 0 MAJOR, 6 MINOR, and **all six are wrong sentences or wrong numbers in documents, not defects in code**. Five are corrected in `ARCHITECTURE.md` revision 53 and one is a builder's BUILD-NOTES row. **No repair pass is owed** — the first time in nine increments — and what stands between this arc and Phase 2's gate is **I-11**'s full chain plus **I-13f**'s two queued `.tsx` lines, which are ship conditions of the first increment that opens `App.tsx` and are not a claim about the store mechanism)*. **Gated on 2b's *data layer*, which shipped (`REVIEW.md` "2b (data layer)", SHIP, `69e44d4`) — not on 2b's surfaces and not on 2c.** Orderable before or after 2c. **Opens no `.tsx` file** |
 
 **Mapped onto the increment sequence below** (revision 10): **2a = I-1 → I-4**, **2b = I-5 → I-8**,
-**2c = I-9 → ~~I-10~~** *(revision 55: **2c = I-9 alone** for this phase; I-10 is deferred and keeps its number for whenever its trigger fires)*, **2d = I-12 → I-12a → I-13 → I-13a → I-13b → I-13c → I-13d → I-13e** *(revision 40; I-12a added at revision 41, I-13a at revision 43, I-13b at revision 44, I-13c at revision 45, I-13d at revision 47, I-13e at revision 49 — and the last two are `packages/client` **store** increments that happen to close the arc, not photo ones)*, with **I-0** before all of them and **I-11** the
+**2c = I-9 → I-9a → ~~I-10~~** *(revision 55: **2c = I-9 alone** for this phase; I-10 is deferred and keeps its number for whenever its trigger fires. Revision 56 adds **I-9a**, the builder follow-up for A-72/A-73 — it re-scopes nothing in I-9 and does not block the gate)*, **2d = I-12 → I-12a → I-13 → I-13a → I-13b → I-13c → I-13d → I-13e** *(revision 40; I-12a added at revision 41, I-13a at revision 43, I-13b at revision 44, I-13c at revision 45, I-13d at revision 47, I-13e at revision 49 — and the last two are `packages/client` **store** increments that happen to close the arc, not photo ones)*, with **I-0** before all of them and **I-11** the
 gate — which is now numbered below two increments it waits for; sequencing rule 7 is why the labels are not
 renumbered. Each of the three steps is
 genuinely shippable at its own increment — the phase can stop after I-4 or I-8 and still have delivered
@@ -4456,8 +4473,12 @@ Profile half plus the four shell items §5.6 enumerates, and nothing else.)*
   is A-5's rejected option and it is rejected here for the same reasons; embedding gives round-trip parity,
   deletion and undo for free. **Participation grants nothing**: not a read, not a comment, not a coordinate.
   `userId` stays permanently `null` until Phase 3, and that is correct, not a gap.
-- **Verification.** Round-trip byte-identical with participants present; `fromJSON` rejects a duplicate
-  participant id; undo/redo restores participants exactly at depth 50; every new action maps 1:1 onto a core
+- **Verification.** Round-trip byte-identical with participants present; ~~`fromJSON` rejects a duplicate
+  participant id~~ *(**withdrawn at revision 56** — this bullet contradicted `ARCHITECTURE.md` §8.3, which
+  had already put the code in `validateTrip`, and it is the defect **A-73** rules on. **Replaced by:**
+  `fromJSON` **opens** a document with a duplicate participant id and `validateTrip` reports
+  `duplicate_participant_id` at `level:'error'` naming both people — I-9a)*; undo/redo restores participants
+  exactly at depth 50; every new action maps 1:1 onto a core
   build function and the reducer holds no domain logic. Attack list: 200 participants; two participants with
   the same name and different ids, and the same id twice; a name of `''` and a name that is only an emoji;
   `kind:'self'` twice and zero times.
@@ -4473,6 +4494,74 @@ What 2c does **not** ship in this phase is its **surface** — no participant ca
 app. That is a capability with no screen, which is the same trade step 2d already made for §10's photo
 record class, made for the same stated reason, and it is stated here so nobody reads "2c shipped" as
 "participants are usable." **Nothing in this note re-scopes I-9**, whose bullets above are unchanged.
+
+#### I-9a — The two rulings on I-9's disclosed objections: `SCHEMA_VERSION` 3, and one home for `duplicate_participant_id` (revision 56)
+
+**A builder follow-up, not a new capability.** It is the code for `ARCHITECTURE.md` revision 54's **A-72**
+(BUILD-NOTES **KD-96**) and **A-73** (BUILD-NOTES **KD-97**). Both objections were disclosed by the I-9
+builder rather than resolved in code, which was the correct behaviour; both are upheld. **Read A-72 Parts
+5–7 and A-73 Parts 6–7 and nothing else in `ARCHITECTURE.md`** — they carry the file lists and every
+criterion below.
+
+- **Built — group 1, A-72 (`SCHEMA_VERSION` → 3).**
+  - `packages/core/src/model/types.ts`: `SCHEMA_VERSION = 3`; `Trip.schemaVersion`'s **literal type** `2` →
+    `3`; the ledger docstring above the constant gains a v2 → v3 entry citing A-72.
+  - `packages/core/src/serialize/migrate.ts`: `v2ToV3` in `v1ToV2`'s exact shape, including the *"a
+    document that somehow already carries the field keeps it"* clause; **`migrateDoc` becomes a ladder**
+    (a version-indexed table applied while `v < SCHEMA_VERSION`, then `withDefaults`) **and not a second
+    `if`** — a v1 document must arrive at 3, and the next bump must not depend on anyone remembering;
+    the docstring's rule is restated in A-72 Part 4's **three clauses**.
+  - **All four existing refusal messages and their JSON paths are preserved byte-for-byte**, including
+    `no migration path from schemaVersion 0` naming the **original** version. They are the only
+    user-visible artifact of this increment and `qa/attack7.mjs` asserts them.
+  - `packages/core/src/serialize/fromJSON.ts`: the comment beside `participants:` reasoning *"this earns no
+    `SCHEMA_VERSION` bump"* is now false and is replaced by a pointer to A-72. The
+    `o.participants === undefined ? []` default **stays**, exactly as `photos`' does.
+  - Pins: `packages/core/test/photos.test.ts`'s *"SCHEMA_VERSION is 2 — A-57 Part 5"* (retitled to cite
+    A-72 for why the number moved) and `packages/core/test/datePrecision.test.ts`'s
+    `assert.equal(SCHEMA_VERSION, 2)`. **Neither may be relaxed to compare the constant against itself.**
+  - `npm run sample` regenerates `apps/web/src/sample/europe2026.json` at `"schemaVersion": 3`, **committed
+    in the same commit** — `pretypecheck` regenerates it, so otherwise the tree is dirty on the next
+    typecheck. `fixtures/legacy/trip-598cd7f.v1.json` **does not move**; it is the v1 fixture the ladder is
+    tested with.
+- **Built — group 2, A-73 (one home for the duplicate check).**
+  - `packages/core/src/serialize/fromJSON.ts`: the seen-set comes out of `parseParticipants`, which becomes
+    the `map` over `parseParticipant` and nothing else. **Every per-field refusal inside `parseParticipant`
+    stays** — this moves an id-uniqueness check, not a type check.
+  - `packages/core/src/validate/validateTrip.ts`: **unchanged.** It was already the ruling's home; its
+    comment's sentence about `fromJSON` refusing at the parser is the one line that is corrected.
+  - `packages/core/test/participants.test.ts`: *"fromJSON rejects a document with a duplicate participant
+    id, naming the path"* is **inverted, not deleted** (A-73 T1). Deleting it trades a wrong assertion for
+    no assertion.
+- **User-visible outcome.** None on screen — I-9 shipped no surface and this ships none. The one
+  user-facing change is that a build older than this one now refuses a document written by it, loudly and
+  with the existing *"Update the app."* sentence, instead of opening it and deleting the participants.
+- **Architecture / data model.** No field, no type, no port, no selector, no action, no export symbol.
+  §2.10's count does not move and §8.9's re-count rule does not fire. `DB_VERSION` and `SUMMARY_VERSION` do
+  not move. `build/participants.ts` is not touched.
+- **Verification.** A-72 Part 7's **S1–S5** and A-73 Part 7's **T1–T4**, each already written as a fault
+  and its required output. The two that carry the most weight and must not be softened: **S1** (the real
+  v1 fixture arrives at `schemaVersion === 3` with `photos: []` **and** `participants: []` — this is the
+  only thing that catches the ladder built as a second `if`) and **T2** (a document with a duplicated id
+  survives `toJSON` → `fromJSON` → `toJSON` byte-identical, which is what makes the withdrawn
+  *"the export would fail to re-import"* justification demonstrably false rather than merely dropped).
+- **Dependencies / blockers.** I-9, which is built (`0e556a0`). **Does not block `I-11`, the phase gate**:
+  no Phase 2 exit criterion names `SCHEMA_VERSION`, `migrateDoc` or the parser's duplicate refusal, and the
+  four criteria that touch participants (the §6.2 access double-run, round-trip/undo parity, §4.2 rule 1's
+  action↔build-function mapping, NO SILENT LOSS's 200-step dirty walk) are discharged by I-9 as shipped and
+  are unaffected by either group. It should land **before** the gate rather than after, because a
+  `SCHEMA_VERSION` bump taken after a gate is a bump taken against a larger corpus of documents.
+- **Routed to the breaker, not to this builder.** **A-39 Part 11 item 2 fires a second time** — Axis D is
+  no longer degenerate (domain 3) and needs assigning across the existing 15-row covering set in
+  `qa/i7a-idb-rowkeys.mjs`. **Zero new rows** (15 ≥ 3×5 and 15 ≥ 3×3). That file is the breaker's, so it
+  belongs to the adversarial pass over I-9a. In the same pass, four `qa/` probes assert `SCHEMA_VERSION`
+  is 2 as tripwires for **their own** increments (`r45-i13.mjs`, `i13b-gate.mjs`, `r48-i13d.mjs`,
+  `r50-i13h.mjs`); they are **expected to fire**, because the number moved by a ruling, and a probe that
+  fires for the reason it was written for is working. They are not in `npm test` and do not redden the
+  suite.
+- **Ship gate.** `npm test` green; `npm run typecheck` green **with the regenerated sample committed**;
+  S1–S5 and T1–T4 all present as tests with the fault they catch named in the test, per *How a criterion is
+  written*; the four refusal messages unchanged, asserted rather than assumed.
 
 #### I-10 — The participants editor, the profile grouping, and the access double-run — **DEFERRED at revision 55; 2c ships without it**
 
@@ -6141,6 +6230,12 @@ disclosed as *unreachable* for two revisions and is reachable today.*
     `node --test`. **All four run in plain Node with no browser and no screen**, so (3) and (4) are what pin
     the **store-side half of I-9** that its own *Verification* bullet already requires; an I-9 that landed
     core-only would owe that half **to I-9**, not to I-10, and nothing about it opens a `.tsx`.
+    ***I-9 landed on `master` at `0e556a0` and this sub-bullet is discharged.*** **Revision 56 adds `I-9a`
+    and it is NOT a dependency of this gate**: it is the builder follow-up for `ARCHITECTURE.md` A-72
+    (`SCHEMA_VERSION` → 3) and A-73 (`duplicate_participant_id` has one home), **no exit criterion of this
+    phase names `SCHEMA_VERSION`, `migrateDoc` or the parser's duplicate refusal**, and none of the four
+    criteria enumerated above touches either group. It should nonetheless land **before** the gate rather
+    than after it, because a schema bump taken after a gate is taken against a larger corpus of documents.
   - ***`I-10` is DEFERRED and does NOT block this gate*** — Jacob's decision of 2026-09-04, recorded at
     revision 55, on the same footing revision 54 gave **I-13f**. It is real, specified and needed for the
     whole of 2c, and it is the **only increment left in this phase that requires a screen**
