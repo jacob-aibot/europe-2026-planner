@@ -19,8 +19,49 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
-> **🟠 THE SIXTH ADVERSARIAL ROUND IS DONE, AND IT SENDS ONE THING BACK — as of 2026-09-04. This
+> **🟠 THE DESIGNER HAS RULED, AND THIS TIME THE RULING CHANGES THE METHOD — as of 2026-09-04. This
 > block is the newest.** Step 2d's photo half stays **designed ✅ · built ✅ · verified ⚠️ ·
+> shippable ❌**. **I-13 stays sent back and is not shippable.** The next repair pass is
+> **I-13g**, and it is the first one in this stretch that changes *how the design argues it is
+> right*, not just what the code does.
+>
+> **Why, in one paragraph.** Three rounds running, the design note has answered a problem by listing
+> the places that need special care — *"here are the three places"*, then *"actually nine"*, then
+> *"and a tenth"*. Each time the list was written carefully, and each time the next round found
+> something the list did not have: this round found an eleventh place, and — more damningly — found
+> that the fix for the nine had quietly re-opened seven of them, because it checked the wrong thing
+> to decide whether somebody else had already answered. A list that has been wrong three times is
+> not a list that needs a fourth pass. **So the rule is now: Cairn's design may not argue that
+> something is correct by listing the places it happens.** It has to be a check that every path is
+> forced through — a single door on the way out — or something the compiler itself refuses to let
+> you get wrong.
+>
+> **What that means concretely.** Instead of every operation remembering to re-ask *"which of this
+> trip's pictures are on the disk?"* on the way out, Cairn now asks one question at the door: *is a
+> trip open with a picture list that nothing is going to answer?* If yes, it asks. That door is
+> wrapped around every operation automatically, including the ones that fail with an error — which
+> is precisely the case a list can never cover, because a crash does not read the list. Alongside it,
+> the one piece of state this whole stretch has been about can now only be written through a single
+> named function, and writing it any other way is a **compile error** rather than a code-review note.
+>
+> **Two smaller things ruled at the same time.** The browse-another-trip panel that stayed open after
+> you deleted the trip it was showing gets **fixed now** rather than tracked — you could copy an
+> activity out of a trip you had just destroyed, and deleting something should actually delete it.
+> And three of the design note's own "prove the test can fail" recipes were wrong as written (the
+> code was right, the recipes were not); they are corrected to describe what really happens, along
+> with one claim that turned out to have been written from a test script that had silently stopped
+> running.
+>
+> **Still nothing on your phone changes.** There is still no photo screen — which is still exactly
+> why this is being fixed now rather than after one exists.
+>
+> **What happens next:** the repair pass (**I-13g**), then a seventh confirmation round over the
+> whole photo stretch together. **Nothing here is shippable until a manager verdict.** One named
+> item stays deliberately owed: the two-line `.tsx` catch for Ctrl/Cmd+Z, which lands with the
+> first screen work.
+
+> **🟠 THE SIXTH ADVERSARIAL ROUND IS DONE, AND IT SENDS ONE THING BACK — as of 2026-09-04. This
+> block was the newest until the block above.** Step 2d's photo half stays **designed ✅ · built ✅ · verified ⚠️ ·
 > shippable ❌**. Six rounds in, the foundation is very close, but it is **not** shippable yet:
 > the tester found **one serious problem and four small ones**, and the serious one is the same
 > symptom this repair pass was written to remove, reached by a different route.
