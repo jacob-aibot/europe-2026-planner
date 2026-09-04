@@ -19,8 +19,43 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
-> **🛠 THE TWO FIXES ARE BUILT AND HAVE BEEN ATTACKED — as of 2026-09-04. This block is the
-> newest. It supersedes one line of the block underneath: I-12a is now **designed ✅ · built ✅
+> **📐 ONE OF THE TWO WORDING ITEMS IS NOW SETTLED — as of 2026-09-04. This block is the newest.
+> It adds to the block underneath rather than replacing it: I-12a's status is unchanged at
+> **designed ✅ · built ✅ · verified ⚠️ · shippable ❌**, and the one-line crash is still the
+> thing holding it.**
+>
+> **What was ambiguous.** The rule for *"a city whose dates the app cannot place inside the trip"*
+> was written down in two ways that disagreed with each other, for the case where a city has
+> **one** of its two dates and not the other — only hand-edited data can produce that, but the
+> rule has to say something. One reading threw away the date it *did* have and printed the whole
+> trip's range; the other kept it. Nothing in 1235 tests noticed the difference, which is why it
+> sat unnoticed until the tester went looking.
+>
+> **What was decided.** Keep the real date. A missing date is *"not known yet"*, not *"broken"* —
+> and throwing away the one real date the app has, to print a vaguer version of the same guess, is
+> not more honest, it is just less useful. That is what the app already does, so **no behaviour
+> changes here**; what changes is that the rule now says so unambiguously, and a test will pin it
+> so the question cannot reopen by accident.
+>
+> **One genuine bug fell out of looking.** In one narrow shape — no arrival date, and a departure
+> date from before the trip even started — the app was printing a **single specific day** that it
+> had no evidence for at all. That is exactly the bug this whole change set out to remove, one
+> case short. The fix is one expression in one function: decide what the record actually told you
+> *before* filling in blanks, not after. It has been swept against every combination of dates and
+> trip shapes and it moves **exactly one** input; nothing else in the app changes, and no saved
+> file, sample or CLI output moves.
+>
+> **A wrong sentence in the checklist was corrected too.** It claimed no city's dates may be
+> narrower than its country's — but Split's genuine single day *is* narrower than Croatia's, and
+> that precision is the point of the feature. The real rule is that a city's dates may never fall
+> **outside** the trip's own.
+>
+> **Both go to the builder in the same repair pass** as the one-line crash, since they are the same
+> file. The second wording item (the sign-off checklist) is still with the architect. Detail:
+> `cairn/docs/ARCHITECTURE.md` §8.4 A-60 Part 6, and `ROADMAP.md` I-12a item 5.
+
+> **🛠 THE TWO FIXES ARE BUILT AND HAVE BEEN ATTACKED — as of 2026-09-04. This block was the
+> newest until the block above. It supersedes one line of the block underneath: I-12a is now **designed ✅ · built ✅
 > · verified ⚠️ — one thing to fix before it counts as done.**
 >
 > **What was built.** Both answers from the block below, exactly as ruled and with no new screen.

@@ -649,6 +649,24 @@ it). The third was documentation-only and is corrected in place inside A-56 with
 clause moving. **Phase 2's scope, boundaries and gates are exactly as revision 40 left them**; I-12a opens
 no view, bumps no version and adds no runtime symbol.
 
+**Revision 42, 2026-09-04.** **No increment added, no increment re-scoped, one clause folded into `I-12a`.**
+QA round 44's breaker pass over I-12a returned **SEND BACK** (0 blockers, 1 MAJOR, 3 MINOR), so I-12a is
+already owed a repair pass. One of the MINORs was architect-routed and is ruled at `ARCHITECTURE.md`
+revision 42 as §8.4 **A-60 Part 6** (R44-2): A-60 Part 2's pseudocode and its closing claim contradicted each
+other on a half-null city date pair, and **nothing in a 1235-test suite pinned either reading**. Ruled — the
+shipped per-field fallback for a `null` edge is **upheld** and the literal pair-wide reading refused, while
+A-60's disjointness test is generalised to read the edges the row **supplied** rather than the substitutes
+standing in for the missing ones. That lands in I-12a as **Built item 5** plus three verification bullets,
+one of which **corrects a criterion this document had wrong** — I-12a's A-60 rendered-output bullet asserted
+*"no city line may be narrower than its country's"*, which Split's own genuine single day falsifies, and the
+property is restated as escape rather than width.
+
+**Phase 2's scope, boundaries, sequence and gates are untouched.** No increment is added, cut or reordered;
+`SUMMARY_VERSION` does not move; no runtime symbol is added; A-39 Part 11 does not fire; no `.tsx` file is
+opened. **R44-3 — I-12a's own Ship-gate wording, also architect-routed — is deliberately NOT ruled here**
+and stays open: it is a change to how a criterion may be written (sequencing rule 5's own subject) and it
+deserves its own pass rather than a footnote in someone else's.
+
 > **Phase numbers changed once, here.** Every heading below carries its old number, and every "Phase N"
 > written in `ARCHITECTURE.md` §1–§7, `BUILD-NOTES.md` or `QA-FINDINGS.md` before revision 9 means the
 > *named* phase it described: "Phase 2" = accounts/server (**now 3**), "Phase 3" = ingest (**now 4**),
@@ -1541,7 +1559,7 @@ caption/order) from the cell, and **at most 3 extent panes can exist planet-wide
 unchanged; A-53 adds **I18**, two criteria and a docstring. **I-8i is gated on Jacob's approval of A-51 and
 on nothing else — the design is closed and no further architect round is owed** |
 | **2c — participants** | `Trip.participants`, three build functions, the participants editor, *"people you have travelled with"* on the profile | you can say the trip was with your girlfriend and her family, and it grants them nothing | Not started; gated on 2b |
-| **2d — the memory data layer** *(revision 40)* | **I-12**: `TripSummaryCity` gains `centre` + `firstDay`/`lastDay`, `SUMMARY_VERSION` → 5, `TravelStatsCity` gains dates (§8.4 **A-56**). **I-13**: the `PhotoAsset` record class, multi-file import, two byte stores, a pure EXIF reader, the two-derivative resolution rule, the loading-state selectors (**§10**, **A-57**, **A-58**). **I-12a** *(revision 41, QA round 43)*: an unreadable stored city date stops taking the whole library's statistics down anonymously, and a city range the clock erased stops printing as a specific day (§8.4 **A-59**, **A-60**) | a past trip stops being a list of country codes — it knows *where in* each country and *when* — and a photograph can be attached to a day of it at all, which it could not before. Both are exercisable end to end with `node --test` and the CLI, on a machine with no browser | Not started. **Gated on 2b's *data layer*, which shipped (`REVIEW.md` "2b (data layer)", SHIP, `69e44d4`) — not on 2b's surfaces and not on 2c.** Orderable before or after 2c. **Opens no `.tsx` file** |
+| **2d — the memory data layer** *(revision 40)* | **I-12**: `TripSummaryCity` gains `centre` + `firstDay`/`lastDay`, `SUMMARY_VERSION` → 5, `TravelStatsCity` gains dates (§8.4 **A-56**). **I-13**: the `PhotoAsset` record class, multi-file import, two byte stores, a pure EXIF reader, the two-derivative resolution rule, the loading-state selectors (**§10**, **A-57**, **A-58**). **I-12a** *(revision 41, QA round 43; amended at revision 42 by QA round 44)*: an unreadable stored city date stops taking the whole library's statistics down anonymously, and a city range the clock erased stops printing as a specific day (§8.4 **A-59**, **A-60**). **I-12a is SEND BACK at round 44** — a repair pass is owed for R44-1, and revision 42 folds §8.4 **A-60 Part 6** (R44-2) into it as item 5 | a past trip stops being a list of country codes — it knows *where in* each country and *when* — and a photograph can be attached to a day of it at all, which it could not before. Both are exercisable end to end with `node --test` and the CLI, on a machine with no browser | Not started. **Gated on 2b's *data layer*, which shipped (`REVIEW.md` "2b (data layer)", SHIP, `69e44d4`) — not on 2b's surfaces and not on 2c.** Orderable before or after 2c. **Opens no `.tsx` file** |
 
 **Mapped onto the increment sequence below** (revision 10): **2a = I-1 → I-4**, **2b = I-5 → I-8**,
 **2c = I-9 → I-10**, **2d = I-12 → I-12a → I-13** *(revision 40; I-12a added at revision 41)*, with **I-0** before all of them and **I-11** the
@@ -4209,6 +4227,14 @@ verdict of SHIP and this does not reopen it: A-56's data model, its refusal of s
 refusal to widen country date ranges are all unchanged. Two narrow gaps in what `travelStats` does with the
 fields A-56 added, plus one docstring correction. **It opens no view and adds no screen.***
 
+> **Status: SEND BACK at QA round 44** (0 blockers, 1 MAJOR, 3 MINOR — `QA-FINDINGS.md` round 44). A repair
+> pass is owed, and **revision 42 adds one clause to it**: `ARCHITECTURE.md` §8.4 **A-60 Part 6** rules
+> R44-2, the ambiguity round 44 found in A-60's own Part 2. The clause is item **5** below. It is folded
+> into this increment rather than given its own, because I-12a is already going back to a builder for the
+> MAJOR (R44-1) and this is one expression in the same function; splitting it would cost two passes over
+> `travelStats.ts` to save nothing. **R44-3 — this increment's own Ship gate wording — is architect-routed
+> and still open**; it is not ruled at revision 42 and the gate below is unchanged pending it.
+
 - **Built.**
   1. **A-59 Part 2** — `travelStats` reads `cities[].firstDay`/`lastDay` through `core.isIsoDate` and treats
      a present-but-unreadable value as *"no usable day edge"*, taking A-56 Part 7 clause 2's existing
@@ -4223,6 +4249,19 @@ fields A-56 added, plus one docstring correction. **It opens no view and adds no
      no way to re-validate a date is deleted; it has been false since `isIsoDate` joined §2.10 at revision 31.
   4. **A-60 Part 2** — a city range disjoint from its row's clamp interval `[a, b]` takes the same fallback
      instead of collapsing onto the interval's edge.
+  5. **A-60 Part 6** *(revision 42, QA **R44-2** — owed by the repair pass, not yet built)*. Two halves,
+     and the first one is a **no-op that must be pinned rather than assumed**:
+     - **6.2 upholds what shipped.** A `null` or absent `firstDay`/`lastDay` keeps A-56 Part 7 clause 1's
+       **per-field** `??`; the pair-wide fallback stays scoped to A-59's *unreadable*. **No code change**,
+       and `unreadableCityDates` still counts a half-null pair as **0**. What is owed is a **test**: nothing
+       in the suite currently distinguishes this from the literal pair-wide reading, which is why the fork
+       was live at all.
+     - **6.3 is the one behaviour change.** A-60's disjointness test is evaluated over the edges the entry
+       **supplied**, not over the substitutes `??` manufactures for the missing ones. Build from **A-60
+       Part 6.3's block, whole** — it computes `obsA`/`obsB` first and `rawA`/`rawB` last, and that ordering
+       is the fix. Exactly one input shape moves: a `null`/absent `firstDay` beside a readable `lastDay`
+       **strictly before `a`**, which prints `[a, a]` today — a single day neither end of which the row
+       supplied — and must print `[a, b]`.
 - **User-visible outcome.** On the CLI today, `stats --today 2026-08-12`: **Budapest, London and Prague stop
   claiming `2026-08-12 → 2026-08-12`** — a specific day the traveller is provably elsewhere — and print
   their trip's range, exactly as their country lines already do; **Split keeps `2026-08-12 → 2026-08-12`**,
@@ -4261,9 +4300,31 @@ fields A-56 added, plus one docstring correction. **It opens no view and adds no
     A-47 Part 4 meta-line split and the rescue-export gate are both unchanged. This is the ceiling on the
     fix, and it is what fails if someone folds the new predicate into an old one.
   - `[stated]` **A-60's rendered output, all six cities, `--today 2026-08-12`:** Vienna `08-08 → 08-10`,
-    Dubrovnik `08-10 → 08-12`, Split `08-12 → 08-12`, and Prague, Budapest and London all `08-07 → 08-12`
-    — each equal to its own country line at the same clock. A **ceiling, not a floor**: no city line may be
-    narrower than its country's.
+    Dubrovnik `08-10 → 08-12`, Split `08-12 → 08-12`, and Prague, Budapest and London all `08-07 → 08-12`.
+    **Corrected at revision 42 (A-60 Part 6.4).** This bullet used to close *"a ceiling, not a floor: no
+    city line may be narrower than its country's"*, which is **false and always was** — Split's genuine
+    `08-12 → 08-12` is narrower than HR's `08-10 → 08-12`, and that narrowness is the precision A-56 was
+    built to buy. The property is about **escaping**, not width: **no day a city line names may fall
+    outside its row's `[a, b]`**, so no city line escapes the country line beside it at the same clock.
+    Asserted as a property over the reference trip at six clocks, not as six literals.
+  - `[stated]` **A-60 Part 6.2 — a supplied edge is kept, and this is the assertion that pins the fork.**
+    `{firstDay: null, lastDay: '2026-03-14'}` in a trip `[2026-03-10, 2026-03-20]` reports
+    `2026-03-10 → 2026-03-14`, and `{firstDay: '2026-03-14', lastDay: null}` reports
+    `2026-03-14 → 2026-03-20`. Both keep the real edge. `unreadableCityDates` is **0** for each — a `null`
+    is a value. **Injected fault:** take the literal pair-wide reading (fall back whenever *either* edge is
+    `null`/absent) and both assertions go red. Round 44 measured that this fault is currently **invisible**
+    to the whole 1235-test suite; a criterion that leaves it invisible has not been written.
+  - `[stated]` **A-60 Part 6.3 — a substituted edge does not rescue a pair from the disjointness test.**
+    `{firstDay: null, lastDay: '2020-01-01'}` in a trip `[2026-03-10, 2026-03-20]` reports
+    `2026-03-10 → 2026-03-20`, not `2026-03-10 → 2026-03-10`. **Injected faults, three:** (a) revert to the
+    post-substitution test (`rawB < a || rawA > b`) and this goes red — it is R44-2's repro, `qa/r44-a59.mjs`
+    §F; (b) widen either ray arm to `<=`/`>=` and round 44 §G's touching-`a` and touching-`b` cases go red,
+    because a range touching `[a, b]` on one day names a real arrival or departure day; (c) increment
+    `unreadableCityDates` on a half-null pair and the counting tests go red.
+  - `[stated]` **A-60 Part 6 breaks nothing fully-supplied, and it is asserted rather than hoped.** All nine
+    of `qa/r44-a59.mjs` §G's boundary assertions and all three A-56 clamp tests pass **unmodified**, and
+    `qa/r44-a59.mjs` §F's FAIL line goes green **without the probe being edited** — §F asserts the contract
+    Part 6 establishes, not one it removes, which is the distinction R44-3 is about.
   - `[stated]` **A-60 breaks no shipped test, and that is asserted rather than hoped.** The three A-56
     clamp tests (`A-56 Part 7 clause 1: an ACTIVE trip's city visit is clamped at today`, `… dated OUTSIDE
     its own row's range`, `… lastDay precedes its firstDay`) all pass **unmodified**. A builder who edits
@@ -4271,7 +4332,9 @@ fields A-56 added, plus one docstring correction. **It opens no view and adds no
   - `[snapshot]` + `[stated]` **The golden moves exactly once, for exactly one reason.**
     `fixtures/golden/travel-stats.json` gains `unreadableCityDates: 0` in both clock blocks (A-59) and
     **nothing else changes in it** (A-60's two clocks are `planned` and `completed`, so nothing clamps).
-    `npm run golden && npm run sample && git status --porcelain` is empty on the second run.
+    `npm run golden && npm run sample && git status --porcelain` is empty on the second run. **A-60 Part 6
+    contributes zero to the golden as well, for a stronger reason** — `tripSummary` sets both city edges or
+    neither, so no minted row can reach the shape 6.3 changes at all.
   - `[stated]` **The fences.** `git diff --stat` shows **zero** files under `apps/web/src/`;
     `SUMMARY_VERSION` still reads **5** and `ROW_PATHS` still has exactly **24** entries with
     `ROW_COUNT_FIELDS` at **eight**; §2.10's export total is **unmoved at 77** — `unreadableCityDates` is a
