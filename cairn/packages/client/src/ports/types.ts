@@ -9,7 +9,7 @@
  * `packages/client` may not import the DOM, React or the network. Everything platform-shaped
  * goes through this file.
  */
-import type { IsoDate, PhotoId, TripSummaryRow } from '../deps.ts';
+import type { IsoDate, PhotoId, TripId, TripSummaryRow } from '../deps.ts';
 
 export type TripDoc = string;
 
@@ -178,17 +178,36 @@ export interface PhotoPort {
    * bytes at all — **which is an answer, not a throw.**
    */
   derive(bytes: Uint8Array, type: string): Promise<DerivedImage | null>;
-  /** Bytes for one derivative, or `null` if the record is gone. §10.3, §10.6. */
-  read(id: PhotoId, size: 'thumb' | 'display'): Promise<Uint8Array | null>;
-  /** Writes both derivatives under one id, in one atomic step. §10.3. */
-  write(id: PhotoId, thumb: Uint8Array, display: Uint8Array): Promise<void>;
-  /** Removes both. Idempotent. */
-  remove(id: PhotoId): Promise<void>;
   /**
-   * Which of these ids have bytes. **One call, not N** — §10.6's availability read, which
-   * happens once on trip open and is what keeps `'loading'` and `'empty'` distinguishable.
+   * Bytes for one derivative, or `null` if the record is gone. §10.3, §10.6.
+   *
+   * **Every byte method takes the owning `TripId` first** — §10 **A-62**, revision 44. A
+   * `PhotoId` names a record inside one document, exactly as a `DayId` and a `StopId` do; it
+   * does not name a row in a device-wide key space, and it never did. §10.3's key is
+   * `[tripId, photoId]`, which is §6.2 rule 1's `trip/{tripId}/photo/{photoId}` applied
+   * on-device. Restoring your own backup used to produce two live trips over one key space, and
+   * deleting the restored copy destroyed the original's photographs (QA **R45-2**, BLOCKER).
    */
-  present(ids: readonly PhotoId[]): Promise<ReadonlySet<PhotoId>>;
+  read(tripId: TripId, id: PhotoId, size: 'thumb' | 'display'): Promise<Uint8Array | null>;
+  /** Writes both derivatives under one key, in one atomic step. §10.3. */
+  write(tripId: TripId, id: PhotoId, thumb: Uint8Array, display: Uint8Array): Promise<void>;
+  /** Removes both. Idempotent. */
+  remove(tripId: TripId, id: PhotoId): Promise<void>;
+  /**
+   * Which of these ids have bytes, **within this trip**. **One call, not N** — §10.6's
+   * availability read, which happens once on trip open and is what keeps `'loading'` and
+   * `'empty'` distinguishable. One key-range read over `[tripId, …]`, intersected with `ids`.
+   */
+  present(tripId: TripId, ids: readonly PhotoId[]): Promise<ReadonlySet<PhotoId>>;
+  /**
+   * Every byte record belonging to one trip, removed in one step — §10.3's third cascade row.
+   *
+   * It takes **no id list**, and that is the point (A-62 Part 4): with tenancy in the key the
+   * cascade is a key-range delete, so a caller does not have to parse a document to learn what
+   * to delete and cannot get the list wrong for a trip it does not have open (QA **R45-3**).
+   * Idempotent; a trip with no photos is a no-op, not an error.
+   */
+  removeTrip(tripId: TripId): Promise<void>;
 }
 
 export type MapPoint = { id: string; lat: number; lng: number; label: string; category: string };

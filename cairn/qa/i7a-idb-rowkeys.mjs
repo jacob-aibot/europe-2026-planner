@@ -83,7 +83,21 @@ import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import pw from '/opt/node22/lib/node_modules/playwright/index.js';
 
-const { chromium } = pw;
+/**
+ * **§10 A-62 Part 7 Q8 (revision 44): the engine is a flag now.** Phase 5 asserts IndexedDB's
+ * array-key ORDERING — the fact `IDBKeyRange.bound([tripId], [tripId, []])` rests on — and a
+ * platform claim measured on one engine is measured on one engine. WebKit is installed here
+ * (`/opt/pw-browsers/webkit-2215`, established by QA R45-7), so both are runnable:
+ *
+ *   PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node --experimental-strip-types qa/i7a-idb-rowkeys.mjs
+ *   PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node --experimental-strip-types qa/i7a-idb-rowkeys.mjs --engine=webkit
+ */
+const ENGINE_ARG = process.argv.find((a) => a.startsWith('--engine='));
+const ENGINE = ENGINE_ARG === undefined ? 'chromium' : ENGINE_ARG.split('=')[1];
+if (ENGINE !== 'chromium' && ENGINE !== 'webkit') {
+  throw new Error(`unknown engine ${JSON.stringify(ENGINE)} — one of: chromium, webkit`);
+}
+const launcher = ENGINE === 'webkit' ? pw.webkit : pw.chromium;
 const FAULT_ARG = process.argv.find((a) => a === '--fault' || a.startsWith('--fault='));
 const FAULT = FAULT_ARG === undefined ? null : (FAULT_ARG.split('=')[1] ?? 'g1').toLowerCase();
 const FAULTS = ['g1', 'g13', 'g16', 'g26'];
@@ -210,12 +224,15 @@ function applyG26(s) {
     + '                  const referenced = new Set<string>();\n'
     + '                  for (const rawDoc of docsAll.result) {\n'
     + '                    try {\n'
-    + '                      const parsedDoc = JSON.parse(String(rawDoc)) as { photos?: Array<{ id?: unknown }> };\n'
-    + '                      if (Array.isArray(parsedDoc.photos)) for (const p of parsedDoc.photos) referenced.add(String(p?.id));\n'
+    + '                      const parsedDoc = JSON.parse(String(rawDoc)) as { id?: unknown; photos?: Array<{ id?: unknown }> };\n'
+    // §10 A-62: a byte key is `[tripId, photoId]`, so "referenced" is a pair too — otherwise the
+    // fault degenerates into "sweep EVERYTHING", which is a louder fault than the one this arm
+    // was derived to catch and would report green for the wrong reason.
+    + '                      if (Array.isArray(parsedDoc.photos)) for (const p of parsedDoc.photos) referenced.add(String(parsedDoc.id) + "|" + String(p?.id));\n'
     + '                    } catch { /* a document we cannot read references nothing */ }\n'
     + '                  }\n'
     + '                  for (const k of photoKeys.result) {\n'
-    + '                    if (referenced.has(String(k))) continue;\n'
+    + '                    if (referenced.has(Array.isArray(k) ? k.join("|") : String(k))) continue;\n'
     + '                    thumbs.delete(k);\n'
     + '                    blobs.delete(k);\n'
     + '                  }\n'
@@ -241,9 +258,10 @@ const src = stripTypeScriptTypes(raw, { mode: 'strip' });
  * since. It is stripped by pattern now, and the count is asserted, so the next export added to
  * the port is an UNRUN error here rather than a stack trace.
  */
-const EXPORTED = [...src.matchAll(/^export function (\w+)/gm)].map((m) => m[1]);
+const EXPORTED = [...src.matchAll(/^export (?:async )?function (\w+)/gm)].map((m) => m[1]);
 if (!EXPORTED.includes('indexedDbStorage')) throw new Error('the export shape moved — `indexedDbStorage` is not an exported function');
-const injected = src.replace(/^export function /gm, 'function ') +
+// `async` too, since I-13b: `requestPersistentStorage` is an `export async function` (R45-16).
+const injected = src.replace(/^export (async )?function /gm, '$1function ') +
   `\n${EXPORTED.map((n) => `globalThis.${n} = ${n};`).join('\n')}\n`;
 if (/^export /m.test(injected)) throw new Error('an export survived the strip — the page evaluates this as a script');
 note(`port exports evaluated in the page: ${EXPORTED.join(', ')}`);
@@ -255,7 +273,7 @@ const server = createServer((_req, res) => {
 await new Promise((r) => server.listen(0, '127.0.0.1', r));
 const port = server.address().port;
 
-const browser = await chromium.launch();
+const browser = await launcher.launch();
 const page = await browser.newPage();
 page.on('pageerror', (e) => console.log(`  page error: ${e.message}`));
 await page.goto(`http://127.0.0.1:${port}/`);
@@ -310,8 +328,13 @@ const PHOTO_ORPHAN = 'photo-orphan-nothing-references-me';
  * coordinate, no capture time** — §10.5's cross-cutting rule, at the one place a fixture can
  * break it by accident.
  */
-const DOC_WITH_PHOTOS = (ids) => JSON.stringify({
+const DOC_WITH_PHOTOS = (tripId, ids) => JSON.stringify({
   hello: 'legacy',
+  // **§10 A-62.** The document carries its own `id` now, because a byte key is `[tripId,
+  // photoId]` and a sweep fault therefore has to decide tenancy from the document as well as
+  // from the key. Without it G26 degenerates into "sweep everything", which is a louder fault
+  // than the one that arm was derived to catch.
+  id: tripId,
   schemaVersion: 2,
   photos: ids.map((id) => ({ id })),
 });
@@ -516,9 +539,12 @@ phase2 = await page.evaluate(async (arg) => {
     }
     // **§10 A-57 Part 8, Axis B and Axis O.** A referenced derivative pair, and an ORPHANED one.
     // Stored as `ArrayBuffer`s, which is what §10.3 stores and what a structured clone carries.
-    for (const id of arg.bytes) {
-      tx.objectStore(arg.photoThumbs).put(new Uint8Array([1, 2, 3]).buffer, id);
-      tx.objectStore(arg.photos).put(new Uint8Array([4, 5, 6, 7]).buffer, id);
+    // **§10 A-62 (revision 44): the key is `[tripId, photoId]`.** The seed is re-cut with it —
+    // a bare `PhotoId` is a state this port can no longer produce, and a fixture that still used
+    // one would be measuring a shape nothing writes.
+    for (const [tripId, id] of arg.bytes) {
+      tx.objectStore(arg.photoThumbs).put(new Uint8Array([1, 2, 3]).buffer, [tripId, id]);
+      tx.objectStore(arg.photos).put(new Uint8Array([4, 5, 6, 7]).buffer, [tripId, id]);
     }
   });
   // Seed integrity, BEFORE the port is constructed: a seed that did not land degrades this
@@ -580,11 +606,12 @@ phase2 = await page.evaluate(async (arg) => {
   // v2 documents — a v1 one is phase 3's business, because a v1 document belongs to a database
   // that also predates the two stores.
   records: [
-    { id: 't-legacy', row: ROW('t-legacy', 5), doc: DOC_WITH_PHOTOS([PHOTO_PRESENT]) },
-    { id: 't-legacy-g1', row: ROW_GEN1('t-legacy-g1'), doc: DOC_WITH_PHOTOS([]) },
+    { id: 't-legacy', row: ROW('t-legacy', 5), doc: DOC_WITH_PHOTOS('t-legacy', [PHOTO_PRESENT]) },
+    { id: 't-legacy-g1', row: ROW_GEN1('t-legacy-g1'), doc: DOC_WITH_PHOTOS('t-legacy-g1', []) },
   ],
-  // The referenced pair, and the ORPHAN — Axis O's live cell.
-  bytes: [PHOTO_PRESENT, PHOTO_ORPHAN],
+  // The referenced pair, and the ORPHAN — Axis O's live cell. Both inside `t-legacy`'s key
+  // range, which is where an orphan is hardest: a range sweep over a live trip would take it.
+  bytes: [['t-legacy', PHOTO_PRESENT], ['t-legacy', PHOTO_ORPHAN]],
   });
 } catch (e) {
   phase2Error = String((e && e.message) || e);
@@ -628,13 +655,14 @@ for (const id of PHASE2_IDS) {
 }
 assertClean(phase2, 'phase 2', PHASE2_EXPECTED);
 // **§10 A-57 Part 8.** The seed landed on Axis B and Axis O, before the port ran…
-ok(phase2.seedKeys[PHOTO_THUMBS].join() === [PHOTO_PRESENT, PHOTO_ORPHAN].sort().join()
-  && phase2.seedKeys[PHOTOS].join() === [PHOTO_PRESENT, PHOTO_ORPHAN].sort().join(),
+const SEEDED_BYTE_KEYS = [`t-legacy,${PHOTO_PRESENT}`, `t-legacy,${PHOTO_ORPHAN}`].sort();
+ok(phase2.seedKeys[PHOTO_THUMBS].join() === SEEDED_BYTE_KEYS.join()
+  && phase2.seedKeys[PHOTOS].join() === SEEDED_BYTE_KEYS.join(),
   'phase 2: a REFERENCED derivative pair and an ORPHANED one landed before the port ran — ' +
     'without the orphan, the sweep fault has nothing to sweep and reports green',
   { thumbs: phase2.seedKeys[PHOTO_THUMBS], photos: phase2.seedKeys[PHOTOS] });
 // …and it is all still there afterwards. This is the assertion G26 dies on.
-assertBytesIntact(phase2, 'phase 2', [PHOTO_PRESENT, PHOTO_ORPHAN]);
+assertBytesIntact(phase2, 'phase 2', SEEDED_BYTE_KEYS);
 ok(phase2.photoTypes.every((t) => t === '[object ArrayBuffer]'),
   'phase 2: a derivative comes back out of a REAL database as a bare ArrayBuffer (§10.3)', phase2.photoTypes);
 }
@@ -783,7 +811,116 @@ for (const id of PHASE3_IDS) {
 }
 }
 
+// ===========================================================================
+// PHASE 4 — **§10 A-62 Part 7, Q8.** The compound key in a real engine: two trips' byte records
+// written through the shipped port, each range-read, each getting exactly its own.
+//
+// A-62 Part 5 states three platform facts and marks them as a search-result verification,
+// because MDN and the W3C are blocked by this environment's egress proxy: an array is a valid
+// key; the total order is number < date < string < binary < array; arrays compare item by item.
+// Everything the trip-delete cascade and the availability read do rests on the third one —
+// `IDBKeyRange.bound([tripId], [tripId, []])` is one trip's records and nobody else's. **This
+// phase is what turns those three sentences into measurements**, and it runs on both engines
+// because a platform claim measured on one engine is measured on one engine.
+//
+// The prefix pair `'t'` / `'t2'` is the case a string-prefix range would get wrong and an
+// array-prefix range gets right.
+// ===========================================================================
+head(`phase 4 (§10 A-62, Q8): the COMPOUND KEY in a real engine — two trips' bytes, range-read${FAULT_TAG}`);
+let phase4 = null;
+let phase4Error = null;
+try {
+phase4 = await page.evaluate(async (arg) => {
+  await new Promise((res) => {
+    const del = indexedDB.deleteDatabase('cairn');
+    del.onsuccess = del.onerror = del.onblocked = () => res();
+  });
+  const bytes = (n) => new Uint8Array([n, n + 1, n + 2, n + 3]);
+  const photos = globalThis.indexedDbPhotoBytes();
+  // Two trips whose ids are a string prefix pair, and a `PhotoId` they SHARE — which A-62 makes
+  // legal, because a `PhotoId` is document-scoped again.
+  await photos.write('t', 'photo-1', bytes(1), bytes(11));
+  await photos.write('t2', 'photo-1', bytes(2), bytes(22));
+  await photos.write('t2', 'photo-2', bytes(3), bytes(33));
+
+  const rawKeys = await new Promise((res, rej) => {
+    const r = indexedDB.open('cairn');
+    r.onsuccess = () => {
+      const d = r.result;
+      const tx = d.transaction(arg.photoThumbs, 'readonly');
+      const store = tx.objectStore(arg.photoThumbs);
+      const all = store.getAllKeys();
+      const justT = store.getAllKeys(IDBKeyRange.bound(['t'], ['t', []]));
+      const justT2 = store.getAllKeys(IDBKeyRange.bound(['t2'], ['t2', []]));
+      tx.oncomplete = () => {
+        d.close();
+        res({ all: all.result, justT: justT.result, justT2: justT2.result });
+      };
+      tx.onerror = () => { d.close(); rej(tx.error); };
+    };
+    r.onerror = () => rej(r.error);
+  });
+
+  const readOwn = {
+    t: [...(await photos.read('t', 'photo-1', 'thumb'))],
+    t2: [...(await photos.read('t2', 'photo-1', 'thumb'))],
+    absent: await photos.read('t', 'photo-2', 'thumb'),
+  };
+  const presentT = [...(await photos.present('t', ['photo-1', 'photo-2']))];
+  const presentT2 = [...(await photos.present('t2', ['photo-1', 'photo-2']))];
+
+  await photos.removeTrip('t');
+  const afterKeys = await new Promise((res, rej) => {
+    const r = indexedDB.open('cairn');
+    r.onsuccess = () => {
+      const d = r.result;
+      const tx = d.transaction([arg.photos, arg.photoThumbs], 'readonly');
+      const t = tx.objectStore(arg.photoThumbs).getAllKeys();
+      const b = tx.objectStore(arg.photos).getAllKeys();
+      tx.oncomplete = () => { d.close(); res({ thumbs: t.result, blobs: b.result }); };
+      tx.onerror = () => { d.close(); rej(tx.error); };
+    };
+    r.onerror = () => rej(r.error);
+  });
+  let emptyThrew = null;
+  try { await photos.removeTrip('t-nothing-here'); } catch (e) { emptyThrew = String(e && e.message); }
+  return { rawKeys, readOwn, presentT, presentT2, afterKeys, emptyThrew };
+}, { photos: PHOTOS, photoThumbs: PHOTO_THUMBS });
+} catch (e) {
+  phase4Error = String((e && e.message) || e);
+}
+
+ok(phase4 !== null,
+  'phase 4: the port ran to completion in the browser — an array key the engine refused is not green',
+  phase4Error === null ? undefined : phase4Error.split('\n')[0].slice(0, 200));
+if (phase4 !== null) {
+const flat = (ks) => ks.map((k) => (Array.isArray(k) ? k.join('/') : `NOT-AN-ARRAY:${String(k)}`)).sort();
+// Fact 1: an array really is a valid key, and the engine hands it back as an array.
+ok(flat(phase4.rawKeys.all).join() === ['t/photo-1', 't2/photo-1', 't2/photo-2'].sort().join(),
+  'phase 4: all three records are stored under ARRAY keys and come back as arrays', flat(phase4.rawKeys.all));
+// Fact 3, and it is the one everything rests on: the bound range is exactly one trip's records,
+// and `'t'` does not reach `'t2'` — which a string-prefix range would.
+ok(flat(phase4.rawKeys.justT).join() === ['t/photo-1'].join(),
+  'phase 4: `bound([t], [t, []])` is EXACTLY `t`\'s records — the prefix `t2` is not in it', flat(phase4.rawKeys.justT));
+ok(flat(phase4.rawKeys.justT2).join() === ['t2/photo-1', 't2/photo-2'].join(),
+  'phase 4: and `bound([t2], [t2, []])` is exactly `t2`\'s two', flat(phase4.rawKeys.justT2));
+// The port's own methods, over the same state.
+ok(phase4.readOwn.t[0] === 1 && phase4.readOwn.t2[0] === 2 && phase4.readOwn.absent === null,
+  'phase 4: `read` answers for its own trip — two trips sharing one `PhotoId` get their own bytes',
+  phase4.readOwn);
+ok(phase4.presentT.join() === 'photo-1' && phase4.presentT2.sort().join() === 'photo-1,photo-2',
+  'phase 4: `present` is one bounded request and returns only this trip\'s ids',
+  { t: phase4.presentT, t2: phase4.presentT2 });
+ok(flat(phase4.afterKeys.thumbs).join() === ['t2/photo-1', 't2/photo-2'].join()
+  && flat(phase4.afterKeys.blobs).join() === ['t2/photo-1', 't2/photo-2'].join(),
+  'phase 4: `removeTrip("t")` took every `["t", …]` record from BOTH stores and left every `["t2", …]` one',
+  { thumbs: flat(phase4.afterKeys.thumbs), blobs: flat(phase4.afterKeys.blobs) });
+ok(phase4.emptyThrew === null,
+  'phase 4: `removeTrip` over a trip with no records resolves and throws nothing (Q3, in a real engine)',
+  phase4.emptyThrew);
+}
+
 await browser.close();
 server.close();
-console.log(`\n${fails === 0 ? 'ALL OK' : `${fails} FAIL(S)`}${FAULT === null ? '' : `  (fault: ${FAULT})`}`);
+console.log(`\n${fails === 0 ? 'ALL OK' : `${fails} FAIL(S)`}  [engine: ${ENGINE}]${FAULT === null ? '' : `  (fault: ${FAULT})`}`);
 process.exit(0);

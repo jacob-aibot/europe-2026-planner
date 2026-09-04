@@ -28,13 +28,22 @@
  * CSPRNG is present the port **throws** and the store shows `'error'`. A fence fails closed.
  */
 import type { PhotoPort, SaveOutcome, StoragePort, StoredDoc, StorageVersion, TripDoc } from '@cairn/client';
-import type { PhotoId, TripSummaryRow } from '@cairn/core';
+import type { PhotoId, TripId, TripSummaryRow } from '@cairn/core';
 
 const DB_NAME = 'cairn';
 /**
  * 2 added `versions` and `meta` — the §2.2a envelope.
  * 3 drops `meta` again: R4-2 deleted the epoch and the storage-wide counter it held.
  * 4 adds `photos` and `photoThumbs` — ARCHITECTURE §10.3, Phase 2 I-13.
+ * 5 **re-keys both byte stores to `[tripId, photoId]`** — §10 **A-62**, I-13b, QA R45-2. The
+ *   4 → 5 arm **deletes and recreates them** and writes no record: re-keying would mean learning
+ *   each bare key's owner, and the only source of that is `docs`, so the upgrade would have to
+ *   walk and parse every stored document inside `onupgradeneeded` — A-39 Part 11 item 7, which
+ *   A-38 Part 6 puts beyond the recording double's reach by construction. The only bytes that
+ *   can exist under a bare key were written by a build that cannot open any document the
+ *   previous release wrote (R45-1), so no released database ever held one; and a dropped
+ *   derivative leaves its record whole, reading `availability: 'missing'` — a designed state
+ *   with an offer to re-import, not silent data loss (A-62 Part 6).
  *
  * **Why the same database and not a second one.** §6.3's invariant is *"no row and no blob
  * without a live tenancy reference."* Deleting a trip must remove its documents, its summary
@@ -42,12 +51,31 @@ const DB_NAME = 'cairn';
  * One database means `delete(tripId)` stays one atomic step; two databases means an orphan
  * window on every delete, which is precisely the failure §6.3 exists to make impossible.
  */
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 const DOCS = 'docs';
 const SUMMARIES = 'summaries';
 const VERSIONS = 'versions';
 /**
- * §10.3's two byte stores, keyed by `PhotoId`, each holding a bare **`ArrayBuffer`**.
+ * §10.3's two byte stores, keyed by the compound key **`[tripId, photoId]`**, each holding a
+ * bare **`ArrayBuffer`**.
+ *
+ * **Why the trip is in the key** (§10 **A-62**, QA R45-2, a BLOCKER). A bare `PhotoId` made this
+ * a device-wide id space — the only one in this system except `TripId` — while `PhotoId` is a
+ * *document-scoped* id like `DayId` and `StopId`, which is what `validateTrip`'s per-document
+ * census is built to police. `importDoc` re-mints a colliding **trip** id and deliberately not
+ * the photo ids inside it, so restoring your own backup put two live trips over one key space
+ * and deleting the restored copy destroyed the original's photographs. Tenancy in the key is
+ * §6.2 rule 1's own shape — *"an object key is `trip/{tripId}/photo/{photoId}`, so a blob's
+ * owner is recoverable from its key alone"* — applied on-device, so sync maps one to the other
+ * rather than inventing an owner.
+ *
+ * **Array keys, and the three facts the range read depends on.** An array is a valid IndexedDB
+ * key when every item is; the spec defines one total order across all key types
+ * (number < date < string < binary < array); and two arrays compare item by item. So
+ * `IDBKeyRange.bound([tripId], [tripId, []])` is exactly one trip's records — the upper bound
+ * outranks every `[tripId, <string>]` because an array outranks a string. That is a search-result
+ * verification in A-62 Part 5 and a **measurement** in `qa/i7a-idb-rowkeys.mjs` phase 5, which
+ * runs it on Chromium and WebKit.
  *
  * **Why separate stores and not a field on the `docs` record.** The `docs` record is rewritten by
  * every `saveIfVersion`; a 3 MB derivative sitting in it would be re-serialised and re-written on
@@ -77,15 +105,22 @@ const DEAD_META = 'meta';
 function open(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
-    req.onupgradeneeded = () => {
+    req.onupgradeneeded = (ev) => {
       const db = req.result;
       if (!db.objectStoreNames.contains(DOCS)) db.createObjectStore(DOCS);
       if (!db.objectStoreNames.contains(SUMMARIES)) db.createObjectStore(SUMMARIES);
       if (!db.objectStoreNames.contains(VERSIONS)) db.createObjectStore(VERSIONS);
-      // §10.3, DB_VERSION 4. Created empty; every existing database gains them on next open,
-      // and a build that predates them simply never opens version 4.
-      if (!db.objectStoreNames.contains(PHOTOS)) db.createObjectStore(PHOTOS);
-      if (!db.objectStoreNames.contains(PHOTO_THUMBS)) db.createObjectStore(PHOTO_THUMBS);
+      // §10.3, DB_VERSION 4 created these; **DB_VERSION 5 re-keys them** to `[tripId, photoId]`
+      // (§10 A-62). The arm deletes and recreates rather than re-keying, and it **writes no
+      // record** — see the ledger above `DB_VERSION` for why the document-walking re-key was
+      // refused. `deleteObjectStore` is guarded, so a fresh database (`oldVersion` 0) creates
+      // both once and attempts no delete on a store that does not exist (**Q7**).
+      if (ev.oldVersion < 5) {
+        if (db.objectStoreNames.contains(PHOTOS)) db.deleteObjectStore(PHOTOS);
+        if (db.objectStoreNames.contains(PHOTO_THUMBS)) db.deleteObjectStore(PHOTO_THUMBS);
+        db.createObjectStore(PHOTOS);
+        db.createObjectStore(PHOTO_THUMBS);
+      }
       // Nothing reads it and nothing may start: a value a token was derived from is exactly
       // what §2.2b F3 forbids remembering, so it does not get to sit there looking useful.
       if (db.objectStoreNames.contains(DEAD_META)) db.deleteObjectStore(DEAD_META);
@@ -96,31 +131,21 @@ function open(): Promise<IDBDatabase> {
 }
 
 /**
- * Every `PhotoId` a stored trip document references — read from the DOCUMENT, inside the caller's
- * transaction, so the cascade needs no second index to go stale.
+ * One trip's whole byte-key range — `[tripId] … [tripId, []]`, inclusive at both ends.
  *
- * **Total, and it never throws**, for the same reason §2.2a stopped parsing the document to run
- * the write fence: *"a guard that depends on parsing user-controlled bytes is a guard whose
- * refusal behaviour is decided by an attacker's JSON."* Here the consequence of a failed parse is
- * strictly bounded — some byte records are not swept, which is §10.2's **reclaimable orphan**
- * state, reported by `orphanPhotoBytes` and deleted only by an explicit user action. A corrupt
- * document may not make a trip undeletable.
+ * **`photoIdsOf` used to live here and A-62 deleted it.** The cascade parsed the stored document
+ * to learn which `PhotoId`s to sweep, which needed a total, never-throwing parser over
+ * user-controlled bytes and still could not answer the question *"whose bytes are these?"* for
+ * anyone else. With tenancy in the key there is nothing to parse: the owner is the key's first
+ * item, and a key range says so.
  *
- * It reads `id` and nothing else: no caption, no coordinate, no date. §10.5's cross-cutting rule
- * is easiest to break exactly here, so this function never touches a field that could break it.
+ * The upper bound is `[tripId, []]` and not a string: IndexedDB orders an array above every
+ * string, so `[tripId, []]` is greater than `[tripId, <any photoId>]` and lower than
+ * `[tripId + anything, …]`. That is why `'t'` does not reach `'t2'`'s records (**Q5**) — this is
+ * an array-prefix range and not a string-prefix one.
  */
-function photoIdsOf(doc: unknown): string[] {
-  try {
-    if (typeof doc !== 'string') return [];
-    const parsed: unknown = JSON.parse(doc);
-    const photos = (parsed as { photos?: unknown } | null)?.photos;
-    if (!Array.isArray(photos)) return [];
-    return photos
-      .map((p) => (p as { id?: unknown } | null)?.id)
-      .filter((id): id is string => typeof id === 'string' && id !== '');
-  } catch {
-    return [];
-  }
+function tripByteRange(tripId: string): IDBKeyRange {
+  return IDBKeyRange.bound([tripId], [tripId, []]);
 }
 
 function run<T>(store: string, mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBRequest<T>): Promise<T> {
@@ -368,21 +393,18 @@ export function indexedDbStorage(): StoragePort {
         // because IndexedDB transactions do not span databases and two databases would mean an
         // orphan window on every delete.
         //
-        // The document is READ first, in the same transaction, to learn which `PhotoId`s to
-        // sweep; every request is issued from the previous one's `onsuccess`, which keeps the
-        // transaction alive across them exactly as `saveIfVersion` does. Returning to the event
-        // loop in between would end it and put the orphan window back.
+        // **No document read and no id list** — §10 A-62 Part 4. The byte halves are one
+        // key-range delete each, issued in the same transaction as the three record deletes, so
+        // the whole cascade is still one atomic step and no request has to wait on another's
+        // `onsuccess` to know what to ask for. The previous shape read the document first to
+        // learn which `PhotoId`s to sweep; tenancy in the key made that unnecessary and made the
+        // sweep correct for a trip whose document will not parse.
         const tx = db.transaction([DOCS, SUMMARIES, VERSIONS, PHOTOS, PHOTO_THUMBS], 'readwrite');
-        const readDoc = tx.objectStore(DOCS).get(id) as IDBRequest<TripDoc | undefined>;
-        readDoc.onsuccess = () => {
-          for (const photoId of photoIdsOf(readDoc.result)) {
-            tx.objectStore(PHOTOS).delete(photoId);
-            tx.objectStore(PHOTO_THUMBS).delete(photoId);
-          }
-          tx.objectStore(DOCS).delete(id);
-          tx.objectStore(SUMMARIES).delete(id);
-          tx.objectStore(VERSIONS).delete(id);
-        };
+        tx.objectStore(PHOTOS).delete(tripByteRange(id));
+        tx.objectStore(PHOTO_THUMBS).delete(tripByteRange(id));
+        tx.objectStore(DOCS).delete(id);
+        tx.objectStore(SUMMARIES).delete(id);
+        tx.objectStore(VERSIONS).delete(id);
         tx.oncomplete = () => resolve();
         tx.onerror = () => reject(tx.error ?? new Error('delete failed'));
         tx.onabort = () => reject(tx.error ?? new Error('delete aborted'));
@@ -410,7 +432,7 @@ export function indexedDbStorage(): StoragePort {
  * `QuotaExceededError` reaches the import saga and becomes `'quota_exceeded'` by name (§10.6)
  * rather than a silent half-import.
  */
-export function indexedDbPhotoBytes(): Pick<PhotoPort, 'read' | 'write' | 'remove' | 'present'> {
+export function indexedDbPhotoBytes(): Pick<PhotoPort, 'read' | 'write' | 'remove' | 'present' | 'removeTrip'> {
   /** A standalone `ArrayBuffer` holding exactly these bytes and no more. */
   const detach = (bytes: Uint8Array): ArrayBuffer => {
     const out = new ArrayBuffer(bytes.byteLength);
@@ -419,12 +441,12 @@ export function indexedDbPhotoBytes(): Pick<PhotoPort, 'read' | 'write' | 'remov
   };
 
   return {
-    async read(id: PhotoId, size: 'thumb' | 'display'): Promise<Uint8Array | null> {
+    async read(tripId: TripId, id: PhotoId, size: 'thumb' | 'display'): Promise<Uint8Array | null> {
       const store = size === 'thumb' ? PHOTO_THUMBS : PHOTOS;
       const db = await open();
       return new Promise<Uint8Array | null>((resolve, reject) => {
         const tx = db.transaction(store, 'readonly');
-        const req = tx.objectStore(store).get(id) as IDBRequest<ArrayBuffer | undefined>;
+        const req = tx.objectStore(store).get([tripId, id]) as IDBRequest<ArrayBuffer | undefined>;
         tx.oncomplete = () => resolve(req.result === undefined ? null : new Uint8Array(req.result));
         tx.onerror = () => reject(tx.error ?? new Error('photo read failed'));
         tx.onabort = () => reject(tx.error ?? new Error('photo read aborted'));
@@ -437,12 +459,12 @@ export function indexedDbPhotoBytes(): Pick<PhotoPort, 'read' | 'write' | 'remov
      * reachable. That is what §10.2's *"in one atomic step"* buys: an asset is created only after
      * this resolves, so a refused write leaves nothing behind at all (**P9**).
      */
-    async write(id: PhotoId, thumb: Uint8Array, display: Uint8Array): Promise<void> {
+    async write(tripId: TripId, id: PhotoId, thumb: Uint8Array, display: Uint8Array): Promise<void> {
       const db = await open();
       await new Promise<void>((resolve, reject) => {
         const tx = db.transaction([PHOTOS, PHOTO_THUMBS], 'readwrite');
-        tx.objectStore(PHOTO_THUMBS).put(detach(thumb), id);
-        tx.objectStore(PHOTOS).put(detach(display), id);
+        tx.objectStore(PHOTO_THUMBS).put(detach(thumb), [tripId, id]);
+        tx.objectStore(PHOTOS).put(detach(display), [tripId, id]);
         tx.oncomplete = () => resolve();
         // The name is preserved: `QuotaExceededError` is what the import saga turns into
         // `'quota_exceeded'`, and a wrapped `new Error(...)` would lose exactly that.
@@ -452,12 +474,12 @@ export function indexedDbPhotoBytes(): Pick<PhotoPort, 'read' | 'write' | 'remov
     },
 
     /** Removes both. Idempotent: IndexedDB's `delete` succeeds for a key that is not there. */
-    async remove(id: PhotoId): Promise<void> {
+    async remove(tripId: TripId, id: PhotoId): Promise<void> {
       const db = await open();
       await new Promise<void>((resolve, reject) => {
         const tx = db.transaction([PHOTOS, PHOTO_THUMBS], 'readwrite');
-        tx.objectStore(PHOTOS).delete(id);
-        tx.objectStore(PHOTO_THUMBS).delete(id);
+        tx.objectStore(PHOTOS).delete([tripId, id]);
+        tx.objectStore(PHOTO_THUMBS).delete([tripId, id]);
         tx.oncomplete = () => resolve();
         tx.onerror = () => reject(tx.error ?? new Error('photo remove failed'));
         tx.onabort = () => reject(tx.error ?? new Error('photo remove aborted'));
@@ -465,20 +487,44 @@ export function indexedDbPhotoBytes(): Pick<PhotoPort, 'read' | 'write' | 'remov
     },
 
     /**
-     * §10.6 property 2 — **one call, not N.** `getAllKeys()` over the thumb store once, then a
-     * set intersection: forty photos are one request, not forty transactions.
+     * §10.3's third cascade row — **every** `[tripId, …]` record, in one transaction, with no id
+     * list and no document parse (A-62 Part 4).
+     *
+     * `IDBObjectStore.delete` takes a key range, so this is two requests regardless of how many
+     * photographs the trip has. Idempotent: a range that matches nothing deletes nothing and
+     * throws nothing (**Q3**), and the range is an array-prefix one, so a `tripId` that is a
+     * string prefix of another leaves the other's records alone (**Q5**).
+     */
+    async removeTrip(tripId: TripId): Promise<void> {
+      const db = await open();
+      await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction([PHOTOS, PHOTO_THUMBS], 'readwrite');
+        tx.objectStore(PHOTOS).delete(tripByteRange(tripId));
+        tx.objectStore(PHOTO_THUMBS).delete(tripByteRange(tripId));
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error ?? new Error('photo trip remove failed'));
+        tx.onabort = () => reject(tx.error ?? new Error('photo trip remove aborted'));
+      }).finally(() => db.close());
+    },
+
+    /**
+     * §10.6 property 2 — **one call, not N.** One `getAllKeys()` over the thumb store, bounded to
+     * **this trip's key range**, then a set intersection: forty photos are one request, not forty
+     * transactions, and A-62 did not cost that property (Part 5's closing note).
      *
      * It asks the THUMB store, deliberately: `write` puts both in one transaction, so a thumb key
      * implies a display key, and a surface that can render a grid can render a viewer.
      */
-    async present(ids: readonly PhotoId[]): Promise<ReadonlySet<PhotoId>> {
+    async present(tripId: TripId, ids: readonly PhotoId[]): Promise<ReadonlySet<PhotoId>> {
       if (ids.length === 0) return new Set<PhotoId>();
       const db = await open();
       return new Promise<ReadonlySet<PhotoId>>((resolve, reject) => {
         const tx = db.transaction(PHOTO_THUMBS, 'readonly');
-        const req = tx.objectStore(PHOTO_THUMBS).getAllKeys();
+        const req = tx.objectStore(PHOTO_THUMBS).getAllKeys(tripByteRange(tripId));
         tx.oncomplete = () => {
-          const have = new Set(req.result.map((k) => String(k)));
+          // Each key is `[tripId, photoId]`; the range already fixed the first item, so only the
+          // second is read. A key of any other shape is not one this port wrote.
+          const have = new Set(req.result.map((k) => String((k as unknown[])[1])));
           resolve(new Set(ids.filter((id) => have.has(id))));
         };
         tx.onerror = () => reject(tx.error ?? new Error('photo availability read failed'));
@@ -486,4 +532,45 @@ export function indexedDbPhotoBytes(): Pick<PhotoPort, 'read' | 'write' | 'remov
       }).finally(() => db.close());
     },
   };
+}
+
+/**
+ * Asks the browser to make this origin's storage **persistent** — ARCHITECTURE §10.3, quota
+ * consequence 2, and QA **R45-16**, which found it called nowhere.
+ *
+ * *"Eviction still is [the binding constraint]. … eviction happens on overall-quota pressure, on
+ * system storage pressure, and under ITP's non-interaction rule, **unless the origin's storage is
+ * in persistent mode**. So `apps/web` calls `navigator.storage.persist()` once, at boot, and
+ * records the answer."* WebKit *"grants a request based on heuristics like whether the website is
+ * opened as a Home Screen Web App"*, which is the installability §1.1 already told us to ship —
+ * so this is a request and not a guarantee, and the honest thing to do with a `false` is to
+ * record it rather than to retry it.
+ *
+ * **Total: it never throws and never rejects.** A boot sequence may not be able to fail because
+ * a permission the product does not require was refused, and `Navigator.storage` is absent in
+ * older WebKit and in every non-browser host that imports this module (the CLI does not, but the
+ * type-check does). `'unsupported'` is that answer and is not an error.
+ *
+ * It is here, in the storage port, rather than in `App.tsx` — which is where I-13's builder
+ * parked it — for two reasons: the fact is about this database, and no `.tsx` file may be opened
+ * while the visual direction is unselected. `apps/web/src/store.ts` calls it once at module init,
+ * which is this app's boot.
+ */
+export async function requestPersistentStorage(): Promise<{
+  persisted: boolean;
+  outcome: 'granted' | 'refused' | 'unsupported' | 'failed';
+  message: string | null;
+}> {
+  const s = (globalThis.navigator as Navigator | undefined)?.storage as
+    | { persist?: () => Promise<boolean>; persisted?: () => Promise<boolean> }
+    | undefined;
+  if (!s || typeof s.persist !== 'function') {
+    return { persisted: false, outcome: 'unsupported', message: 'navigator.storage.persist is not available' };
+  }
+  try {
+    const granted = await s.persist();
+    return { persisted: granted, outcome: granted ? 'granted' : 'refused', message: null };
+  } catch (err) {
+    return { persisted: false, outcome: 'failed', message: (err as Error | null)?.message ?? 'persist() rejected' };
+  }
 }

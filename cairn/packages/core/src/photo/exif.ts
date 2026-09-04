@@ -149,6 +149,18 @@ function scalar(t: Tiff, e: Entry): number | null {
  * Rule 3: the two predicates are core's own — `isIsoDate` (the ONE date validator, §2.9 A-45)
  * and `isClockTime` (§2.14 A-20). There is deliberately no arithmetic and no normalisation
  * here, which is what makes `"0000:00:00 00:00:00"` come back `null` (P5) instead of year zero.
+ *
+ * **The range check is this function's own, and QA R45-10 is why.** The two predicates are not
+ * comparable: `isIsoDate` validates the **calendar** — that is A-45's whole point, `2026-02-30`
+ * is refused — while `isClockTime` is a shape test (digits, a colon, two digits) and nothing
+ * more, and A-20 assertion 5 keeps that pattern to exactly one file. So
+ * `"2024:05:11 24:00:00"`, `"23:60"` and `"99:99"` all read as shape-valid `ClockTime`s straight
+ * out of attacker-supplied file bytes, and round-trip through `fromJSON` unchanged. The
+ * asymmetry was harmless while a `ClockTime` came from a form or the legacy importer; §10 is the
+ * increment that makes one arrive from a picked file. **It is checked here rather than inside
+ * `isClockTime`**, because widening that predicate is a §2.1-wide change to every caller of
+ * `OpeningHours` and is an architect's ruling, not a parser's. `readExif` stays total: an
+ * out-of-range time is `null`, exactly as `"0000:00:00"` is, and never a throw (A-58).
  */
 function parseExifDateTime(raw: string | null): { date: IsoDate; time: ClockTime } | null {
   if (raw === null) return null;
@@ -157,6 +169,11 @@ function parseExifDateTime(raw: string | null): { date: IsoDate; time: ClockTime
   const date = `${m[1]}-${m[2]}-${m[3]}`;
   const time = `${m[4]}:${m[5]}`;
   if (!isIsoDate(date) || !isClockTime(time)) return null;
+  // A civil wall-clock time. 24:00 is a valid ISO 8601 end-of-day and is NOT a valid instant a
+  // photograph was taken at, so it is refused with the rest — §2.9 A-32's civil calendar.
+  const hh = Number(m[4]);
+  const mm = Number(m[5]);
+  if (hh > 23 || mm > 59) return null;
   return { date, time };
 }
 

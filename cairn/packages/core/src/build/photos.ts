@@ -64,6 +64,12 @@ export function addPhoto(trip: Trip, init: PhotoInit, ctx: BuildCtx): Trip {
     display: { w: init.display.w, h: init.display.h, bytes: init.display.bytes },
     // A-57 Part 4: full `Provenance`, not the simpler thing it looks like. A photo the user
     // picked and attached is `{user, accepted, confirmed}` and `displayStatus` returns `'own'`.
+    //
+    // **`init.provenance` is deliberately NOT narrowed to `userProvenance`** — §10 A-64's
+    // closing paragraph, and it survives the withdrawal of A-57 Part 4's transition claim.
+    // Locking it here would make the candidate state unreachable and turn Phase 6's first
+    // increment into a change to core's BUILD surface, which is exactly the retrofit the field
+    // was carried to avoid. `fromJSON` round-trips a candidate photo for the same reason.
     provenance: init.provenance ?? userProvenance(ctx.now, ctx.actorUserId ?? null),
   };
   return { ...trip, photos: [...trip.photos, photo], revision: trip.revision + 1 };
@@ -88,7 +94,10 @@ export type PhotoPatch = {
  * - `thumb`/`display` describe bytes that were written once at import and are never rewritten
  *   (§10.3), so a patched dimension is a lie about a file on disk.
  * - `provenance` turns a system suggestion into the user's own plan — the one convention the
- *   root `CLAUDE.md` calls absolute. Use `acceptCandidate` / `rejectCandidate`.
+ *   root `CLAUDE.md` calls absolute. There is **no transition for it in this phase** (§10
+ *   **A-64**, QA R45-6): this used to say *"use acceptCandidate / rejectCandidate"* and those
+ *   two throw for a photo, because `RefKind` has no `'photo'` arm and no shipped path mints a
+ *   `{source:'system'}` photo for them to act on.
  */
 const FORBIDDEN_PHOTO_PATCH_KEYS = ['id', 'thumb', 'display', 'provenance'] as const;
 
@@ -99,7 +108,17 @@ function assertPatchable(patch: object): void {
       throw new Error(
         `updatePhoto: "${k}" may not be patched — ` +
           (k === 'provenance'
-            ? 'use acceptCandidate / rejectCandidate'
+            // **A-64 Part 4 item 3 (QA R45-6).** The refusal is correct and stays — patching
+            // `provenance` is what turns a system suggestion into the user's own plan, the one
+            // convention the root `CLAUDE.md` calls absolute. What was false is the remedy it
+            // named: `acceptCandidate`/`rejectCandidate` THROW for a photo, because `RefKind`
+            // has no `'photo'` arm and nothing yet produces a `{source:'system'}` photo to
+            // transition. So the message says what is true instead of pointing at two functions
+            // that cannot help.
+            ? 'a photo\'s provenance has no transition in this phase — ARCHITECTURE §10 A-64. '
+              + 'The field is carried and round-trips; the accept/reject transitions land with '
+              + 'Phase 6\'s first {source:"system"} photo producer, which is the trigger A-64 '
+              + 'Part 3 names.'
             : k === 'id'
               ? 'a photo id is immutable, and its byte records are stored under it'
               : 'a derivative describes bytes that were written once at import (§10.3)'),

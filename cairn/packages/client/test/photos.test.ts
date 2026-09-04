@@ -10,11 +10,12 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 import {
   createStore, initialState, memoryStorage, memoryFile, memoryPhotos,
   fixedClockPort, sequentialIdPort, immediateScheduler,
-  photoImport, photosFor, orphanPhotoBytes, PHOTO_MAX_INPUT_BYTES,
+  photoImport, photosFor, orphanPhotoBytes, PHOTO_MAX_INPUT_BYTES, photoByteKey,
 } from '../src/index.ts';
 import type { MemoryPhotos, Ports } from '../src/index.ts';
 
@@ -257,9 +258,10 @@ test('import, attach, read the bytes back, re-attach and delete — the whole pa
   await store.importPhotos({ kind: 'day', dayId: '2026-08-08' });
   const id = store.getState().doc!.photos[0].id;
 
-  const display = await p.photo.read(id, 'display');
+  const tripId = store.getState().doc!.id;
+  const display = await p.photo.read(tripId, id, 'display');
   assert.ok(display instanceof Uint8Array && display.length > 0, 'the full-resolution derivative did not read back');
-  const thumb = await p.photo.read(id, 'thumb');
+  const thumb = await p.photo.read(tripId, id, 'thumb');
   assert.ok(thumb instanceof Uint8Array && thumb.length !== display.length, 'thumb and display are the same bytes');
 
   store.dispatch({ type: 'updatePhoto', photoId: id, patch: { attach: { kind: 'trip' }, caption: 'the courtyard' } });
@@ -272,7 +274,7 @@ test('import, attach, read the bytes back, re-attach and delete — the whole pa
   assert.equal(store.getState().doc!.photos[0].caption, 'the courtyard');
 
   await store.removePhoto(id);
-  assert.equal(await p.photo.read(id, 'display'), null);
+  assert.equal(await p.photo.read(tripId, id, 'display'), null);
 });
 
 /** §10.3's table, third row: deleting a trip removes every one of its byte records. */
@@ -430,6 +432,58 @@ test('R45-1: importDoc restores a backup exported by the previous release', asyn
 });
 
 /**
+ * **I-13b's own criterion, and it is the one the two tests above cannot meet.** ROADMAP I-13b:
+ * *"a document written by a build at `598cd7f` — **minted from that revision**, not hand-built at
+ * the current one — opens, restores through `importDoc`, and does not appear in
+ * `rescan.unreadable`."*
+ *
+ * `agedToV1` above is a good fixture and it is still a **derived** one: it takes today's
+ * `toJSON` output and removes what today's build added. If the previous release also wrote a
+ * field this build stopped writing, or wrote one differently, ageing cannot know. So this
+ * fixture was produced by checking `598cd7f` out into a worktree and running **that build's**
+ * `createTrip`/`ensureDays`/`addStop`/`toJSON` — the commit is the one round 45's own surface
+ * diff starts from, which is to say the last commit before the photo foundation landed, and
+ * therefore the shape of every document on Jacob's phone right now.
+ *
+ * It is committed at `fixtures/legacy/trip-598cd7f.v1.json` and **is not regenerated**: a fixture
+ * a later build can re-mint is a fixture a later build can quietly re-shape.
+ */
+test('I-13b: a document MINTED by the build at 598cd7f opens, imports, and is not unreadable', async () => {
+  const text = readFileSync(new URL('../../../fixtures/legacy/trip-598cd7f.v1.json', import.meta.url), 'utf8');
+  const raw = JSON.parse(text) as Record<string, unknown>;
+  assert.equal(raw.schemaVersion, 1, 'INCONCLUSIVE: the fixture is not a version-1 document');
+  assert.equal('photos' in raw, false, 'INCONCLUSIVE: the fixture carries a `photos` key, so it is not pre-I-13');
+
+  // 1. It opens, through the store's own read path.
+  const p = ports();
+  const seedTrip = await storeWithTrip(p);
+  await seedTrip.flush();
+  const id = raw.id as string;
+  p.storage.docs.set(id, text);
+  p.storage.versions.set(id, 'seeded-fence');
+  p.storage.summaries.set(id, { ...p.storage.summaries.values().next().value!, id, title: raw.title as string });
+  const store = createStore({ ports: p });
+  await store.refreshLibrary();
+  const opened = await store.openTrip(id);
+  assert.ok(opened.doc, `the previous release's own document would not open: ${JSON.stringify(opened.openFailures)}`);
+  assert.equal(opened.doc!.title, raw.title);
+  assert.deepEqual(opened.doc!.photos, [], 'the migration did not supply `photos: []`');
+  assert.equal(opened.doc!.days.length, (raw.days as unknown[]).length, 'the migration lost a day');
+
+  // 2. It restores through `importDoc` — the backup path, which is a different call site.
+  const p2 = ports();
+  const store2 = createStore({ ports: p2 });
+  await store2.importDoc(text);
+  assert.equal(store2.getState().doc!.title, raw.title);
+  assert.deepEqual(store2.getState().doc!.photos, []);
+
+  // 3. And the summary rescan does not call it unreadable — §2.9 A-46's row, which is what a
+  //    library full of previous-release trips would have been made of.
+  await store.rescanSummaries();
+  assert.deepEqual(store.getState().rescan.unreadable, [], 'the rescan called the previous release\'s document unreadable');
+});
+
+/**
  * **R45-3, MAJOR.** The cascade read the doomed ids from `state.doc`, which is only populated for
  * the ACTIVE trip — so deleting any other trip from the library left every one of its byte
  * records behind, unreachable (the document is gone) *and* unreportable (`orphanPhotoBytes` reads
@@ -457,6 +511,171 @@ test('R45-3: deleting a NON-active trip removes its photo bytes too', async () =
   await store.deleteTrip(doomed);
   assert.equal(p.photo.thumbs.size, 0, "a non-active trip's photo bytes outlived it");
   assert.equal(p.photo.displays.size, 0);
+});
+
+/**
+ * **I-13b's restatement of I-13's cascade criterion — A-62 Part 7 Q1, and it is the BLOCKER.**
+ *
+ * Restore your own backup beside the original, decide the copy was a mistake, delete it. Under a
+ * bare `PhotoId` key both trips named the same byte records and the delete took the ORIGINAL's
+ * photographs — three of three, measured by round 45. With `[tripId, photoId]` the copy's photos
+ * read `'missing'` (an export carries metadata without bytes, which §7 has always said) and the
+ * original's are untouched.
+ */
+test('A-62 / Q1: deleting a RESTORED backup leaves the original trip\'s photographs whole', async () => {
+  const p = ports();
+  const store = await storeWithTrip(p);
+  p.photo.next = ['a', 'b', 'c'].map((n) => file(`${n}.jpg`));
+  await store.importPhotos({ kind: 'trip' });
+  await store.flush();
+  const original = store.getState().doc!;
+  await store.importDoc(await store.exportActive());
+  const restored = store.getState().doc!;
+  assert.notEqual(restored.id, original.id, 'INCONCLUSIVE: importDoc did not mint a fresh trip id');
+  assert.deepEqual(
+    restored.photos.map((x) => x.id),
+    original.photos.map((x) => x.id),
+    'INCONCLUSIVE: the restored copy re-minted its photo ids — A-62 Part 3 clause 3 says it does not, ' +
+      'and the whole point is that keeping them is now SAFE',
+  );
+  // The restored copy has no bytes of its own: an export carries metadata, never derivatives.
+  assert.equal(photosFor(store.getState(), { kind: 'trip' }).missing, 3, 'INCONCLUSIVE: the restored copy has bytes it was never given');
+
+  await store.flush();
+  await store.deleteTrip(restored.id);
+  await store.openTrip(original.id);
+  const l = photosFor(store.getState(), { kind: 'trip' });
+  assert.equal(l.items.length, 3);
+  assert.equal(l.missing, 0, 'deleting the restored copy destroyed the ORIGINAL trip\'s photographs (R45-2)');
+  for (const a of original.photos) {
+    assert.ok(p.photo.thumbs.has(photoByteKey(original.id, a.id)), `the original's bytes for ${a.id} are gone`);
+  }
+});
+
+/** A-62 Part 7 **Q2** — the same defect through `removePhoto`, which is its one-photo form. */
+test('A-62 / Q2: removing a photo from a restored copy leaves the original\'s copy of it', async () => {
+  const p = ports();
+  const store = await storeWithTrip(p);
+  p.photo.next = [file('a.jpg'), file('b.jpg')];
+  await store.importPhotos({ kind: 'trip' });
+  await store.flush();
+  const original = store.getState().doc!;
+  await store.importDoc(await store.exportActive());
+  await store.flush();
+  await store.removePhoto(original.photos[0].id);
+
+  await store.openTrip(original.id);
+  assert.equal(photosFor(store.getState(), { kind: 'trip' }).missing, 0, 'the original lost a photograph to the copy\'s edit');
+  assert.ok(p.photo.thumbs.has(photoByteKey(original.id, original.photos[0].id)));
+});
+
+/**
+ * A-62 Part 7 **Q4** and **Q5**, at the port. Two trips may now hold the same `PhotoId` — that is
+ * what "document-scoped" means — and a `tripId` that is a string PREFIX of another must not be
+ * reached by its range, because `bound([t], [t, []])` is an array-prefix range and not a string
+ * one.
+ */
+test('A-62 / Q4, Q5: the port answers per trip, and a prefix trip id is not a prefix key', async () => {
+  const port = memoryPhotos();
+  const b = (n: number) => new Uint8Array([n, n, n]);
+  await port.write('t', 'photo-1', b(1), b(11));
+  await port.write('t2', 'photo-1', b(2), b(22));
+  await port.write('t2', 'photo-2', b(3), b(33));
+
+  assert.deepEqual(await port.read('t', 'photo-1', 'thumb'), b(1), 'read crossed a trip boundary');
+  assert.deepEqual(await port.read('t2', 'photo-1', 'thumb'), b(2));
+  assert.deepEqual([...(await port.present('t', ['photo-1', 'photo-2']))], ['photo-1']);
+  assert.deepEqual([...(await port.present('t2', ['photo-1', 'photo-2']))], ['photo-1', 'photo-2']);
+
+  await port.removeTrip('t');
+  assert.equal(port.thumbs.has(photoByteKey('t', 'photo-1')), false, 'removeTrip left its own record');
+  assert.equal(port.thumbs.has(photoByteKey('t2', 'photo-1')), true, 'removeTrip("t") reached into "t2" — the range is behaving like a string prefix');
+  assert.equal(port.thumbs.has(photoByteKey('t2', 'photo-2')), true);
+  assert.equal(port.displays.size, 2, 'the two stores disagree after a range delete');
+});
+
+/** A-62 Part 7 **Q3** — idempotent, and a trip with nothing is a no-op rather than an error. */
+test('A-62 / Q3: removeTrip over a trip with no byte records resolves and deletes nothing', async () => {
+  const port = memoryPhotos();
+  await port.write('t', 'photo-1', new Uint8Array([1]), new Uint8Array([2]));
+  await port.removeTrip('nothing-here');
+  assert.equal(port.thumbs.size, 1, 'a no-op removeTrip took someone else\'s record');
+  await port.removeTrip('t');
+  await port.removeTrip('t');
+  assert.equal(port.thumbs.size, 0);
+});
+
+/**
+ * **A-63, and it is the whole of it** — R1 through R5. A failed availability read is a state a
+ * surface can name, `items` stays populated with `'unknown'`, and there is an exit.
+ */
+test('A-63 / R1-R3: a failed availability read is `unreadable`, and `refreshPhotoAvailability` is the way out', async () => {
+  const p = ports();
+  const store = await storeWithTrip(p);
+  p.photo.next = [file('a.jpg'), file('b.jpg')];
+  await store.importPhotos({ kind: 'trip' });
+  await store.flush();
+  const id = store.getState().doc!.id;
+  const healthy = p.photo.present.bind(p.photo);
+  p.photo.present = async () => { throw new Error('IndexedDB: UnknownError'); };
+  await store.openTrip(id);
+
+  // R1.
+  const l = photosFor(store.getState(), { kind: 'trip' });
+  assert.equal(l.phase, 'unreadable');
+  assert.equal(l.items.length, 2);
+  assert.deepEqual(l.items.map((i) => i.availability), ['unknown', 'unknown']);
+  assert.equal(l.missing, 0, '`missing` counts what is KNOWN to be missing, and nothing is');
+  assert.match(l.message ?? '', /UnknownError/, 'the port\'s own words did not reach the listing');
+
+  // R3 — a retry against a still-failing port stays put and does not throw.
+  await store.refreshPhotoAvailability();
+  const still = photosFor(store.getState(), { kind: 'trip' });
+  assert.equal(still.phase, 'unreadable');
+  assert.equal(still.items.length, 2);
+
+  // R2 — and with the port healthy it resolves, clearing the message.
+  p.photo.present = healthy;
+  await store.refreshPhotoAvailability();
+  const done = photosFor(store.getState(), { kind: 'trip' });
+  assert.equal(done.phase, 'ready');
+  assert.deepEqual(done.items.map((i) => i.availability), ['ready', 'ready']);
+  assert.equal(done.message, null, '`message` is non-null on `unreadable` and null on every other phase');
+});
+
+/** A-63 **R5** — §10.6 property 5's terminal guarantee, on the two paths that skip the port. */
+test('A-63 / R5: a trip with no photos and a host with no photo port both terminate at `empty`', async () => {
+  const withPort = await storeWithTrip();
+  const l1 = photosFor(withPort.getState(), { kind: 'trip' });
+  assert.equal(l1.phase, 'empty');
+  assert.equal(l1.message, null);
+
+  const noPort = createStore({ ports: { ...ports(), photo: undefined } as unknown as Ports });
+  await noPort.createTrip(TRIP_INIT);
+  const l2 = photosFor(noPort.getState(), { kind: 'trip' });
+  assert.equal(l2.phase, 'empty');
+  assert.equal(l2.message, null);
+});
+
+/** A-63: `available: null` may not mean two things. The session distinguishes them. */
+test('A-63: an UNREAD availability is `loading`, and a FAILED one is `unreadable`', async () => {
+  const p = ports();
+  const store = await storeWithTrip(p);
+  p.photo.next = [file('a.jpg')];
+  await store.importPhotos({ kind: 'trip' });
+  await store.flush();
+  const id = store.getState().doc!.id;
+
+  // Unread: the session says nothing has been read for this trip.
+  const fresh = createStore({ ports: p });
+  await fresh.refreshLibrary();
+  assert.equal(fresh.getState().photos.available, null);
+  assert.equal(fresh.getState().photos.availabilityError, null, 'a store that has read nothing must not claim a failure');
+
+  p.photo.present = async () => { throw new Error('IndexedDB: UnknownError'); };
+  await fresh.openTrip(id);
+  assert.equal(fresh.getState().photos.available, null);
+  assert.match(fresh.getState().photos.availabilityError ?? '', /UnknownError/);
 });
 
 test('R45-3: deleting a non-active trip whose document cannot be read still deletes the trip', async () => {
@@ -492,8 +711,12 @@ test('R45-4: an import after a FAILED availability read does not call the rest o
   const good = p.photo.present.bind(p.photo);
   p.photo.present = async () => { throw new Error('IndexedDB: UnknownError'); };
   await store.openTrip(id);
-  assert.equal(photosFor(store.getState(), { kind: 'trip' }).phase, 'loading',
-    'INCONCLUSIVE: a rejected present() did not leave availability unread');
+  // A-63 (revision 44) gave the failed read its own phase. The guard is the same guard — it
+  // proves the fault fired — and the value it asserts moved from `'loading'` to `'unreadable'`
+  // because that is now what a rejected `present()` produces. R45-4's own assertion, below, is
+  // untouched.
+  assert.equal(photosFor(store.getState(), { kind: 'trip' }).phase, 'unreadable',
+    'INCONCLUSIVE: a rejected present() did not record a failed read');
 
   p.photo.next = [file('d.jpg')];
   await store.importPhotos({ kind: 'trip' });
@@ -503,6 +726,8 @@ test('R45-4: an import after a FAILED availability read does not call the rest o
   assert.equal(p.photo.thumbs.size, 4, 'INCONCLUSIVE: the four photographs are not all on disk');
   assert.equal(l.missing, 0,
     `${l.missing} photograph(s) on disk were reported gone: ${JSON.stringify(l.items.map((i) => i.availability))}`);
+  assert.ok(l.items.every((i) => i.availability !== 'missing'),
+    'A-63: an unchecked photograph reads `unknown`, never `missing` — property 3\'s sentence is not said over bytes on disk');
 });
 
 /**

@@ -125,7 +125,7 @@ function applyP2(s) {
  * given a rejecting port is `packages/client`'s **P9**, in plain Node.
  */
 function applyP3(s) {
-  const put = '        tx.objectStore(PHOTOS).put(detach(display), id);';
+  const put = '        tx.objectStore(PHOTOS).put(detach(display), [tripId, id]);';
   if (!s.includes(put)) throw new Error('the write puts moved — re-derive the fault');
   return s.replace(put, '        // FAULT P3: the display derivative is never stored.', 1);
 }
@@ -152,7 +152,10 @@ const injected = [
   strip(storageSrc)
     .replace(/^import[^\n]*\n/gm, '')
     .replace('export function indexedDbStorage', 'function indexedDbStorage')
-    .replace('export function indexedDbPhotoBytes', 'function indexedDbPhotoBytes'),
+    .replace('export function indexedDbPhotoBytes', 'function indexedDbPhotoBytes')
+    // I-13b (R45-16) added `export async function requestPersistentStorage`. Every export has to
+    // go — the page evaluates this as a script — and the assertion below is what says so.
+    .replace(/^export (async )?function /gm, '$1function '),
   'globalThis.indexedDbStorage = indexedDbStorage; globalThis.indexedDbPhotoBytes = indexedDbPhotoBytes;',
   strip(photoSrc)
     .replace(/^import[^\n]*\n/gm, '')
@@ -426,8 +429,8 @@ if (derived) {
 
 // --------------------------------------------------------------------------- §D storage
 
-head('§D — §10.3: two stores at DB_VERSION 4, ArrayBuffer values, one atomic cascade');
-ok(DB_VERSION === 4, 'the shipped port is at DB_VERSION 4', { DB_VERSION });
+head('§D — §10.3: two stores at DB_VERSION 5, `[tripId, photoId]` keys, ArrayBuffer values, one atomic cascade');
+ok(DB_VERSION === 5, 'the shipped port is at DB_VERSION 5 — §10 A-62 re-keyed the byte stores', { DB_VERSION });
 
 const storage = await page.evaluate(async ({ thumb, display }) => {
   await new Promise((r) => { const q = indexedDB.deleteDatabase('cairn'); q.onsuccess = q.onerror = q.onblocked = r; });
@@ -455,15 +458,21 @@ const storage = await page.evaluate(async ({ thumb, display }) => {
     ],
   });
   const saved = await port.saveIfVersion('t1', null, doc, row);
-  await photos.write('photo-1', new Uint8Array(thumb), new Uint8Array(display));
-  await photos.write('photo-2', new Uint8Array(thumb), new Uint8Array(display));
-  // A byte record belonging to NO trip: it must survive the cascade, because a cascade that
-  // sweeps by anything other than the deleted document's own reference list is a data-loss bug.
-  await photos.write('photo-orphan', new Uint8Array(thumb), new Uint8Array(display));
+  // **§10 A-62 (revision 44): the owning `TripId` comes first, and the key is `[tripId, id]`.**
+  await photos.write('t1', 'photo-1', new Uint8Array(thumb), new Uint8Array(display));
+  await photos.write('t1', 'photo-2', new Uint8Array(thumb), new Uint8Array(display));
+  // A byte record belonging to ANOTHER trip: it must survive `t1`'s cascade. Under the bare key
+  // this was "a record no trip references"; under the compound key the sharper case is a record
+  // that is a DIFFERENT trip's, because the cascade is now a key range and a range that reached
+  // one trip too far would be the R45-2 defect in a second place.
+  await photos.write('t2', 'photo-orphan', new Uint8Array(thumb), new Uint8Array(display));
 
-  const before = await photos.present(['photo-1', 'photo-2', 'photo-orphan']);
-  const readBack = await photos.read('photo-1', 'display');
-  const missing = await photos.read('photo-nope', 'thumb');
+  const before = [
+    ...(await photos.present('t1', ['photo-1', 'photo-2'])),
+    ...(await photos.present('t2', ['photo-orphan'])),
+  ];
+  const readBack = await photos.read('t1', 'photo-1', 'display');
+  const missing = await photos.read('t1', 'photo-nope', 'thumb');
 
   // The raw persisted VALUE type, read outside the port — the only place in this repo where the
   // actual stored bytes of the actual shipped port are checked.
@@ -473,8 +482,8 @@ const storage = await page.evaluate(async ({ thumb, display }) => {
       const db = req.result;
       const names = [...db.objectStoreNames];
       const tx = db.transaction(['photos', 'photoThumbs'], 'readonly');
-      const a = tx.objectStore('photos').get('photo-1');
-      const b = tx.objectStore('photoThumbs').get('photo-1');
+      const a = tx.objectStore('photos').get(['t1', 'photo-1']);
+      const b = tx.objectStore('photoThumbs').get(['t1', 'photo-1']);
       tx.oncomplete = () => {
         resolve({
           names, version: db.version,
@@ -491,13 +500,16 @@ const storage = await page.evaluate(async ({ thumb, display }) => {
   });
 
   await port.delete('t1');
-  const after = await photos.present(['photo-1', 'photo-2', 'photo-orphan']);
+  const after = [
+    ...(await photos.present('t1', ['photo-1', 'photo-2'])),
+    ...(await photos.present('t2', ['photo-orphan'])),
+  ];
   const docAfter = await port.load('t1');
 
   return {
     savedOk: saved.ok === true,
-    before: [...before].sort(),
-    after: [...after].sort(),
+    before: before.sort(),
+    after: after.sort(),
     readBackLength: readBack ? readBack.length : null,
     readBackIsUint8: readBack instanceof Uint8Array,
     missingIsNull: missing === null,
@@ -519,7 +531,8 @@ ok(storage.readBackIsUint8 && storage.readBackLength === storage.raw.displayByte
 ok(storage.missingIsNull, 'read() of an id that is not there is null, not a throw');
 ok(storage.before.join() === 'photo-1,photo-2,photo-orphan', 'present() found all three before the delete', storage.before);
 ok(storage.after.join() === 'photo-orphan',
-  'deleting the trip removed BOTH of its photos\' byte records, in the same transaction as the document — and left the unreferenced one alone',
+  'deleting the trip removed BOTH of its photos\' byte records — one key-range delete, in the same '
+    + 'transaction as the document (§10 A-62) — and left the OTHER trip\'s record alone',
   { after: storage.after });
 ok(storage.docAfter === null, 'the document itself is gone');
 

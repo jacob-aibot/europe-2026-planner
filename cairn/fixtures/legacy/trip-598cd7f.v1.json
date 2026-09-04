@@ -1,0 +1,121 @@
+{
+  "schemaVersion": 1,
+  "id": "trip-1",
+  "title": "Europe 2026",
+  "ownerId": "local:self",
+  "startDate": "2026-08-07",
+  "endDate": "2026-08-09",
+  "datePrecision": "exact",
+  "homeCurrency": "EUR",
+  "homeBase": null,
+  "party": {
+    "adults": 1,
+    "children": 0
+  },
+  "cities": [
+    {
+      "key": "vienna",
+      "name": "Vienna",
+      "countryCode": "",
+      "centre": {
+        "lat": 48.2082,
+        "lng": 16.3738
+      },
+      "order": 0
+    }
+  ],
+  "days": [
+    {
+      "id": "2026-08-07",
+      "date": "2026-08-07",
+      "primaryCity": "transit",
+      "cities": [
+        "transit"
+      ],
+      "title": "",
+      "subtitle": "",
+      "stops": [
+        {
+          "id": "stop-1",
+          "placement": {
+            "kind": "scheduled",
+            "dayId": "2026-08-07",
+            "time": null,
+            "order": 0
+          },
+          "name": "Schonbrunn",
+          "category": "sight",
+          "place": {
+            "kind": "none"
+          },
+          "note": "",
+          "cost": null,
+          "arrival": null,
+          "travelRole": "transfer",
+          "bookingId": null,
+          "flags": [],
+          "provenance": {
+            "source": "user",
+            "state": "accepted",
+            "confidence": "confirmed",
+            "addedAt": "2026-08-01",
+            "acceptedAt": "2026-08-01",
+            "actorUserId": "local:self"
+          },
+          "durationMins": null
+        }
+      ],
+      "provenance": {
+        "source": "user",
+        "state": "accepted",
+        "confidence": "confirmed",
+        "addedAt": "2026-08-01",
+        "acceptedAt": "2026-08-01",
+        "actorUserId": null
+      }
+    },
+    {
+      "id": "2026-08-08",
+      "date": "2026-08-08",
+      "primaryCity": "transit",
+      "cities": [
+        "transit"
+      ],
+      "title": "",
+      "subtitle": "",
+      "stops": [],
+      "provenance": {
+        "source": "user",
+        "state": "accepted",
+        "confidence": "confirmed",
+        "addedAt": "2026-08-01",
+        "acceptedAt": "2026-08-01",
+        "actorUserId": null
+      }
+    },
+    {
+      "id": "2026-08-09",
+      "date": "2026-08-09",
+      "primaryCity": "transit",
+      "cities": [
+        "transit"
+      ],
+      "title": "",
+      "subtitle": "",
+      "stops": [],
+      "provenance": {
+        "source": "user",
+        "state": "accepted",
+        "confidence": "confirmed",
+        "addedAt": "2026-08-01",
+        "acceptedAt": "2026-08-01",
+        "actorUserId": null
+      }
+    }
+  ],
+  "pool": [],
+  "places": [],
+  "bookings": [],
+  "resolutions": [],
+  "revision": 3
+}

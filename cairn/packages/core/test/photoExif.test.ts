@@ -94,6 +94,26 @@ test('P5: DateTimeOriginal "0000:00:00 00:00:00" is null, not year zero', () => 
   assert.equal(r.reason, 'ok');
 });
 
+/**
+ * **QA R45-10.** §10.2 rule 3 validates `capturedAt` *"through core's existing `isIsoDate` (§2.9
+ * A-45) and the existing time pattern"*, and the two are not comparable: `isIsoDate` validates
+ * the **calendar** — that is A-45's whole point — while the time predicate is a shape test. So
+ * `24:00`, `23:60` and `99:99` all read as valid `ClockTime`s out of attacker-supplied file bytes
+ * and round-tripped through `fromJSON` unchanged. The range check is `parseExifDateTime`'s own,
+ * deliberately not `isClockTime`'s: widening that predicate changes every caller of
+ * `OpeningHours` and is a §2.1-wide ruling.
+ *
+ * `readExif` stays **total** (A-58): each of these is `null`, exactly as `0000:00:00` is, and the
+ * reason stays `'ok'` because the file is well-formed — it is the value that is not a time.
+ */
+test('R45-10: an out-of-range capture time is null, as `0000:00:00` is', () => {
+  for (const name of ['jpeg-time-24.jpg', 'jpeg-time-2360.jpg']) {
+    const r = readExif(load(name));
+    assert.equal(r.capturedAt, null, `${name}: a garbage time reached capturedAt`);
+    assert.equal(r.reason, 'ok', `${name}: a well-formed file was called malformed`);
+  }
+});
+
 test('P6: GPS reading exactly (0, 0) is read as absent', () => {
   const r = readExif(load('jpeg-gps-nullisland.jpg'));
   assert.equal(r.at, null);

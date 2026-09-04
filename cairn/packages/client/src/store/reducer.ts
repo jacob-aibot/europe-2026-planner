@@ -134,6 +134,19 @@ export type PhotoSession = {
    * photos are one tick away."*
    */
   available: ReadonlySet<string> | null;
+  /**
+   * The port's own words for why the availability read **failed**, or `null`.
+   *
+   * §10.6 property 5, **A-63** (QA R45-5). `available: null` may not mean two things: it means
+   * *"not read yet"*, and this field is what makes *"read, and it failed"* a different fact. The
+   * pair `(available, availabilityError)` has exactly three reachable states — unread
+   * (`null, null`), read (`Set, null`) and failed (`null, string`) — and `photosFor` maps them
+   * onto `'loading'`, `'empty'`/`'ready'` and `'unreadable'`.
+   *
+   * It carries no photo id, no caption and no coordinate (§6.1 rule 1), it is session-scoped
+   * like everything else here, and nothing logs it.
+   */
+  availabilityError: string | null;
   /** Files still being decoded and written. 0 when nothing is running. */
   pending: number;
   /** Files in the current batch, total. `pending`/`total` is an honest progress fraction. */
@@ -253,9 +266,13 @@ export function initialState(): AppState {
     retired: null,
     rescan: { running: false, unreadable: [] },
     openFailures: [],
-    // `available: null` is the honest starting point: nothing has been read, so nothing is
-    // known, so `photosFor` says `'loading'` rather than `'empty'`.
-    photos: { tripId: null, available: null, pending: 0, total: 0, failures: [], orphans: [] },
+    // `available: null` with no `availabilityError` is the honest starting point: nothing has
+    // been read, so nothing is known, so `photosFor` says `'loading'` rather than `'empty'` —
+    // and rather than `'unreadable'`, which is a read that was attempted and failed (A-63).
+    photos: {
+      tripId: null, available: null, availabilityError: null,
+      pending: 0, total: 0, failures: [], orphans: [],
+    },
   };
 }
 

@@ -115,6 +115,24 @@
       "hasCoordinate": false
     },
     {
+      "name": "jpeg-time-2360.jpg",
+      "bytes": 80,
+      "reason": "ok",
+      "capturedAt": null,
+      "orientation": null,
+      "pixel": null,
+      "hasCoordinate": false
+    },
+    {
+      "name": "jpeg-time-24.jpg",
+      "bytes": 80,
+      "reason": "ok",
+      "capturedAt": null,
+      "orientation": null,
+      "pixel": null,
+      "hasCoordinate": false
+    },
+    {
       "name": "jpeg-trailer-after-eoi.jpg",
       "bytes": 98,
       "reason": "no_exif",

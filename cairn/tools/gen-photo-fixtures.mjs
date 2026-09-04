@@ -296,6 +296,22 @@ files['jpeg-gps-badptr.jpg'] = jpegWithExif(
   );
 }
 
+// 15 — QA **R45-10**. A shape-valid `ClockTime` that is not a time: `24:00`. §10.2 rule 3 says
+// the value is validated *"through core's existing `isIsoDate` … and the existing time pattern"*,
+// and the two are not comparable — `isIsoDate` validates the CALENDAR (`2026-02-30` is refused)
+// while the time predicate is a shape test. So the date half was guarded and the time half was
+// not, and a garbage time reached `capturedAt` straight out of file bytes and round-tripped
+// through `fromJSON`. `readExif` stays total: this reads `null`, exactly as `0000:00:00` does.
+files['jpeg-time-24.jpg'] = jpegWithExif(
+  makeTiff({ be: true, ifd0: [], exif: [eAscii(0x9003, '2024:05:11 24:00:00')] }),
+);
+
+// 16 — the same finding's other half: a minute out of range, with a valid hour. Two fixtures
+// because `hh > 23` and `mm > 59` are two guards and one of them can be dropped alone.
+files['jpeg-time-2360.jpg'] = jpegWithExif(
+  makeTiff({ be: true, ifd0: [], exif: [eAscii(0x9003, '2024:05:11 23:60:00')] }),
+);
+
 mkdirSync(OUT, { recursive: true });
 for (const [name, bytes] of Object.entries(files)) {
   writeFileSync(join(OUT, name), bytes);

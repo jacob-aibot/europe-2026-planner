@@ -12,8 +12,9 @@ import assert from 'node:assert/strict';
 import {
   addPhoto, createTrip, ensureDays, addStop, removeStop, removePhoto, updatePhoto,
   fromJSON, toJSON, migrateDoc, validateTrip, sequentialIds, displayStatus,
-  SCHEMA_VERSION, copyStopInto,
+  SCHEMA_VERSION, copyStopInto, acceptCandidate, rejectCandidate,
 } from '../src/index.ts';
+import { readFileSync } from 'node:fs';
 import type { BuildCtx, PhotoAsset, Trip } from '../src/index.ts';
 
 const ctx = (): BuildCtx => ({ ids: sequentialIds(), now: '2026-03-01', actorUserId: 'local:self' });
@@ -362,4 +363,89 @@ test('a photo attachment survives 50 snapshots taken and restored', () => {
   assert.deepEqual(restored.photos, [], 'the oldest snapshot acquired photos it never had');
   const asserted: PhotoAsset[] = t.photos;
   assert.equal(asserted[49].caption, 'photo 49');
+});
+
+// ---------------------------------------------------------------- A-64 (QA R45-6)
+
+/**
+ * **A-64 — the withdrawn claim, and its four checkable consequences (S1–S5).**
+ *
+ * A-57 Part 4 appended one sentence to its second reason: *"`acceptCandidate`/`rejectCandidate`
+ * then work on photos unchanged."* They do not, and revision 44 **withdraws the sentence rather
+ * than implementing it**: `RefKind` gains no `'photo'` arm in this phase, because nothing yet
+ * produces a `{source:'system'}` photo for the transitions to act on and *"reject"* does not yet
+ * have a meaning for a record whose derivatives are megabytes. What lands is three corrected
+ * strings — and the field itself, which every one of Part 4's three real reasons is about, does
+ * not move.
+ */
+test('A-64 / S1: an unsupported ref reached from rejectCandidate names rejectCandidate', () => {
+  const { trip, c } = tripWithDays();
+  void c;
+  const grab = (f: () => unknown): string => {
+    try { f(); return ''; } catch (e) { return (e as Error).message; }
+  };
+  const fromReject = grab(() => rejectCandidate(trip, { kind: 'place', id: 'nope' }, 'u1', '2026-03-02'));
+  const fromAccept = grab(() => acceptCandidate(trip, { kind: 'place', id: 'nope' }, 'u1', '2026-03-02'));
+  assert.match(fromReject, /^rejectCandidate:/, 'the throw named another function');
+  assert.doesNotMatch(fromReject, /acceptCandidate/);
+  assert.match(fromAccept, /^acceptCandidate:/);
+});
+
+test('A-64 / S2: a `photo` ref names this ruling and its trigger, not "unsupported ref kind"', () => {
+  const { trip, c } = tripWithDays();
+  const withPhoto = addPhoto(trip, { ...basePhoto }, c);
+  const id = withPhoto.photos[0].id;
+  // `{kind:'photo'}` does not typecheck — S5 is exactly that — so this is the untyped caller
+  // every runtime guard in this project exists for (§2.1).
+  const photoRef = { kind: 'photo', id } as unknown as Parameters<typeof acceptCandidate>[1];
+  for (const [name, fn] of [['acceptCandidate', acceptCandidate], ['rejectCandidate', rejectCandidate]] as const) {
+    let message = '';
+    try { fn(withPhoto, photoRef, 'u1', '2026-03-02'); } catch (e) { message = (e as Error).message; }
+    assert.match(message, new RegExp(`^${name}:`), 'the throw named another function');
+    assert.match(message, /A-64/, 'the message does not say where the reason lives');
+    assert.match(message, /Phase 6/, 'the message does not name the trigger');
+    assert.doesNotMatch(message, /^\w+: unsupported ref kind photo$/, 'the message still reads as an omission');
+  }
+});
+
+test('A-64 / S3: updatePhoto still refuses `provenance`, without naming two functions that throw', () => {
+  const { trip, c } = tripWithDays();
+  const withPhoto = addPhoto(trip, { ...basePhoto }, c);
+  let message = '';
+  try {
+    updatePhoto(withPhoto, withPhoto.photos[0].id, {
+      provenance: withPhoto.photos[0].provenance,
+    } as unknown as Parameters<typeof updatePhoto>[2]);
+  } catch (e) { message = (e as Error).message; }
+  assert.notEqual(message, '', 'the refusal itself was dropped — it is correct and it stays');
+  assert.doesNotMatch(message, /acceptCandidate|rejectCandidate/, 'the remedy still points at two functions that throw');
+  assert.match(message, /A-64/);
+});
+
+test('A-64 / S4: addPhoto still accepts any Provenance, and a candidate photo round-trips', () => {
+  const { trip, c } = tripWithDays();
+  const suggested = {
+    source: 'system' as const, state: 'candidate' as const, confidence: 'inferred' as const,
+    addedAt: '2026-03-01', acceptedAt: null, actorUserId: null,
+  };
+  const withPhoto = addPhoto(trip, { ...basePhoto, provenance: suggested }, c);
+  assert.deepEqual(withPhoto.photos[0].provenance, suggested, '`addPhoto` narrowed the provenance it was handed');
+  assert.equal(displayStatus(withPhoto.photos[0].provenance), 'suggested');
+  const back = fromJSON(toJSON(withPhoto));
+  assert.equal(toJSON(back), toJSON(withPhoto), 'a candidate photo did not round-trip byte-identically');
+  assert.equal(displayStatus(back.photos[0].provenance), 'suggested', 'the candidate state did not survive fromJSON');
+});
+
+test('A-64 / S5: `RefKind` has no `photo` arm — the deferral is checkable', () => {
+  const src = readFileSync(new URL('../src/model/types.ts', import.meta.url), 'utf8');
+  const refKind = /export type RefKind = ([^\n;]+);/.exec(src)?.[1];
+  assert.ok(refKind, 'RefKind is no longer a one-line type alias — re-derive this check');
+  assert.doesNotMatch(
+    refKind,
+    /'photo'/,
+    'a `photo` arm was added to `RefKind`. That widens core\'s export surface (§2.10) and is an ' +
+      'architect\'s ruling: A-64 Part 3 names the trigger — the first code path that produces a ' +
+      '`{source:\'system\'}` PhotoAsset — and that increment adds the arm, the `mapRef` branch and ' +
+      'the reject semantics together.',
+  );
 });

@@ -8,7 +8,7 @@
 import { useCallback, useSyncExternalStore } from 'react';
 import { createStore } from '@cairn/client';
 import type { AppState, DerivedCache, Store } from '@cairn/client';
-import { indexedDbStorage } from './ports/storage.ts';
+import { indexedDbStorage, requestPersistentStorage } from './ports/storage.ts';
 import { downloadFile } from './ports/file.ts';
 import { browserPhotos } from './ports/photo.ts';
 import { browserIds, systemClock } from './ports/env.ts';
@@ -31,6 +31,21 @@ export const store: Store = createStore({
     ids: browserIds(),
   },
 });
+
+/**
+ * §10.3 quota consequence 2, called **once at boot** — QA **R45-16**, which found it called
+ * nowhere at all. This module is imported once and its body runs once, which is what "at boot"
+ * means in this app; it is deliberately not in a React effect, because the request is about this
+ * origin's storage and not about a component's lifetime.
+ *
+ * The answer is *recorded* rather than acted on. Nothing retries it: WebKit grants persistence on
+ * heuristics (chiefly whether the app was added to the Home Screen), so a refusal today is a fact
+ * about how the app was opened and not a transient error. It is exported so the surface that
+ * eventually explains eviction to Jacob — *"images may be removed if you do not open this for a
+ * week"* — reads a measurement rather than an assumption. **Never awaited on a render path**, and
+ * `requestPersistentStorage` never rejects, so no unhandled rejection can come from this line.
+ */
+export const storagePersistence = requestPersistentStorage();
 
 export function useAppState(): AppState {
   return useSyncExternalStore(

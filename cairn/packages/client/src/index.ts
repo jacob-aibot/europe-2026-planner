@@ -19,8 +19,8 @@ export type {
   PhotoPort, PickedImage, DerivedImage,
 } from './ports/types.ts';
 export {
-  memoryStorage, memoryFile, memoryPhotos, fixedClockPort, sequentialIdPort, manualScheduler,
-  immediateScheduler,
+  memoryStorage, memoryFile, memoryPhotos, photoByteKey, fixedClockPort, sequentialIdPort,
+  manualScheduler, immediateScheduler,
 } from './ports/memory.ts';
 export type { MemoryStorage, MemoryFile, MemoryPhotos, ManualScheduler } from './ports/memory.ts';
 export { registerPageExit } from './store/pageExit.ts';

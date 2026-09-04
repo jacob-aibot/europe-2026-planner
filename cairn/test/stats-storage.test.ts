@@ -512,6 +512,49 @@ type Seed = {
   stores?: Record<string, Record<string, unknown>>;
 };
 
+/**
+ * **§10 A-62: a key may be an ARRAY now**, so the recorder canonicalises one into a string it can
+ * hold in a `Map` and hands the original shape back from `getAllKeys`. `\u0001` cannot appear in
+ * a minted id and marks the encoding, so a compound key and a string key can never collide.
+ *
+ * This is state-shaping, not behaviour: every value is still handed back verbatim and nothing
+ * branches on record content. The **ordering** claim underneath the range — that `[t, a]` sorts
+ * inside `[t] … [t, []]` and `['t2', …]` does not — is A-62 Part 5's, and it is measured in a
+ * real engine by `qa/i7a-idb-rowkeys.mjs` phase 5. What the recorder owes is that the port's
+ * range delete RUNS, not that a double agrees with itself about ordering.
+ */
+const RECORDER_ARRAY_KEY = '\u0001';
+const encodeKey = (k: unknown): string =>
+  (Array.isArray(k) ? `${RECORDER_ARRAY_KEY}${JSON.stringify(k)}` : String(k));
+const decodeKey = (s: string): unknown =>
+  (s.startsWith(RECORDER_ARRAY_KEY) ? JSON.parse(s.slice(1)) : s);
+
+/** IndexedDB's key order, for the two key types this port uses: string < array, item by item. */
+function cmpKey(a: unknown, b: unknown): number {
+  const aa = Array.isArray(a);
+  const bb = Array.isArray(b);
+  if (aa !== bb) return aa ? 1 : -1;                       // an array outranks a string
+  if (!aa || !bb) return String(a) < String(b) ? -1 : String(a) > String(b) ? 1 : 0;
+  const A = a as unknown[];
+  const B = b as unknown[];
+  for (let i = 0; i < Math.min(A.length, B.length); i++) {
+    const c = cmpKey(A[i], B[i]);
+    if (c !== 0) return c;
+  }
+  return A.length - B.length;                              // a prefix sorts first
+}
+
+/** The slice of `IDBKeyRange` this port uses — `bound(lower, upper)`, inclusive both ends. */
+class RecorderKeyRange {
+  readonly lower: unknown;
+  readonly upper: unknown;
+  constructor(lower: unknown, upper: unknown) { this.lower = lower; this.upper = upper; }
+  includes(key: unknown): boolean {
+    return cmpKey(key, this.lower) >= 0 && cmpKey(key, this.upper) <= 0;
+  }
+}
+const recorderKeyRange = { bound: (l: unknown, u: unknown) => new RecorderKeyRange(l, u) };
+
 function recordingIdb(seed?: Seed) {
   const stores = new Map<string, Map<string, unknown>>();
   const at = (n: string) => { if (!stores.has(n)) stores.set(n, new Map()); return stores.get(n)!; };
@@ -544,12 +587,21 @@ function recordingIdb(seed?: Seed) {
       if (!names.includes(name)) throw new Error(`store ${name} not in transaction scope`);
       const m = at(name);
       return {
-        put: (v: unknown, k: string) => request(() => { m.set(k, v); return k; }),
-        get: (k: string) => request(() => m.get(k)),
-        getKey: (k: string) => request(() => (m.has(k) ? k : undefined)),
+        put: (v: unknown, k: unknown) => request(() => { m.set(encodeKey(k), v); return k; }),
+        get: (k: unknown) => request(() => m.get(encodeKey(k))),
+        getKey: (k: unknown) => request(() => (m.has(encodeKey(k)) ? k : undefined)),
         getAll: () => request(() => [...m.values()]),
-        getAllKeys: () => request(() => [...m.keys()]),
-        delete: (k: string) => request(() => { m.delete(k); return undefined; }),
+        // A-62: `getAllKeys(range)` — the port's availability read is one bounded request.
+        getAllKeys: (range?: RecorderKeyRange) => request(() => [...m.keys()]
+          .map(decodeKey)
+          .filter((k) => range === undefined || range.includes(k))),
+        // A-62: `delete(range)` — the trip-delete cascade is one request per store, no id list.
+        delete: (k: unknown) => request(() => {
+          if (k instanceof RecorderKeyRange) {
+            for (const enc of [...m.keys()]) if (k.includes(decodeKey(enc))) m.delete(enc);
+          } else m.delete(encodeKey(k));
+          return undefined;
+        }),
       };
     };
     return tx;
@@ -562,11 +614,25 @@ function recordingIdb(seed?: Seed) {
         req.result = {
           objectStoreNames: { contains: (n: string) => stores.has(n) },
           createObjectStore: (n: string) => at(n),
-          deleteObjectStore: (n: string) => stores.delete(n),
+          deleteObjectStore: (n: string) => {
+            // A real `deleteObjectStore` throws `NotFoundError` for a store that is not there,
+            // and A-62's 4 → 5 arm guards its two deletes because of it (**Q7**). An unguarded
+            // delete on a FRESH database would be an exception inside `onupgradeneeded`, which is
+            // a port that cannot open at all — so the recorder models the throw rather than the
+            // convenience.
+            if (!stores.has(n)) throw new Error(`NotFoundError: no object store named ${n}`);
+            stores.delete(n);
+          },
           transaction: (n: string | string[]) => makeTx(Array.isArray(n) ? n : [n]),
           close: () => {},
         };
-        if (version < want) { version = want; req.onupgradeneeded?.(); }   // once, like a real upgrade
+        // Once, like a real upgrade — and with the EVENT, because `DB_VERSION` 5's arm reads
+        // `oldVersion` to decide whether the byte stores are being re-keyed (§10 A-62 Part 6).
+        if (version < want) {
+          const oldVersion = version;
+          version = want;
+          req.onupgradeneeded?.({ oldVersion, newVersion: want });
+        }
         req.onsuccess?.();
       });
       return req;
@@ -613,7 +679,13 @@ async function driveWebPort(
   const db = recordingIdb(opts.seed);
   const had = 'indexedDB' in globalThis;
   const prior = (globalThis as Record<string, unknown>).indexedDB;
+  // **§10 A-62.** The port's cascade and its availability read both take a key RANGE, so the
+  // global the browser supplies has to be here too. Installed and removed with `indexedDB`, for
+  // the same reason and with the same restore.
+  const hadRange = 'IDBKeyRange' in globalThis;
+  const priorRange = (globalThis as Record<string, unknown>).IDBKeyRange;
   (globalThis as Record<string, unknown>).indexedDB = db;
+  (globalThis as Record<string, unknown>).IDBKeyRange = recorderKeyRange;
   try {
     const make = await loadWebPort(opts.source);
     opts.beforeConstruct?.(db);
@@ -621,6 +693,8 @@ async function driveWebPort(
   } finally {
     if (had) (globalThis as Record<string, unknown>).indexedDB = prior;
     else delete (globalThis as Record<string, unknown>).indexedDB;
+    if (hadRange) (globalThis as Record<string, unknown>).IDBKeyRange = priorRange;
+    else delete (globalThis as Record<string, unknown>).IDBKeyRange;
   }
 }
 
@@ -719,6 +793,15 @@ type SeedRecord = {
 const ORPHAN_PHOTO_ID = 'photo-orphan-no-document-references-me';
 
 /**
+ * **§10 A-62's fixture re-cut.** The byte stores are keyed by `[tripId, photoId]`, so every
+ * seeded record and every key assertion below is re-keyed: a bare `PhotoId` is not a key any
+ * more, and a fixture that still used one would be seeding a state the port cannot produce.
+ * A-39 Part 11's *"not a legitimate reason"* clause read forwards — the table is its own oracle
+ * and the re-cut is mechanical, so it is done here rather than negotiated.
+ */
+const byteKey = (tripId: string, photoId: string): string => encodeKey([tripId, photoId]);
+
+/**
  * A whole starting state. **Minted through `createTrip`/`tripSummary`, never hand-typed** — a
  * literal row would go stale the next time the row is widened and would defeat the very key
  * assertion it is the subject of, and it is load-bearing at run time too (`listTrips()` sorts on
@@ -743,14 +826,18 @@ function seededDb(records: readonly SeedRecord[], opts: { orphan?: boolean } = {
     // metadata without bytes). `b: 'none'` has no reference to seed.
     if (r.b === 'present') {
       for (const id of r.photoIds) {
-        photoThumbs[id] = photoBytes(id, 'thumb');
-        photos[id] = photoBytes(id, 'display');
+        photoThumbs[byteKey(r.trip.id, id)] = photoBytes(id, 'thumb');
+        photos[byteKey(r.trip.id, id)] = photoBytes(id, 'display');
       }
     }
   }
+  // Axis O's orphan sits **inside a live trip's key range** (A-62): that is the harder case and
+  // the one `orphanPhotoBytes`/`reclaimPhotoBytes` are about, because a range sweep over that
+  // trip would take it. `records[0]` always exists — `coveringSeed` never returns an empty list.
   if (opts.orphan === true) {
-    photoThumbs[ORPHAN_PHOTO_ID] = photoBytes(ORPHAN_PHOTO_ID, 'thumb');
-    photos[ORPHAN_PHOTO_ID] = photoBytes(ORPHAN_PHOTO_ID, 'display');
+    const owner = records[0].trip.id;
+    photoThumbs[byteKey(owner, ORPHAN_PHOTO_ID)] = photoBytes(ORPHAN_PHOTO_ID, 'thumb');
+    photos[byteKey(owner, ORPHAN_PHOTO_ID)] = photoBytes(ORPHAN_PHOTO_ID, 'display');
   }
   // All five stores are named even when empty, so `versions: {}` is an EXISTING empty store
   // rather than an absent one — which is exactly the legacy database's shape.
@@ -834,19 +921,19 @@ function assertSeedLanded(
     );
     for (const photoId of r.photoIds) {
       assert.equal(
-        db._store('photoThumbs').has(photoId),
+        db._store('photoThumbs').has(byteKey(r.trip.id, photoId)),
         r.b === 'present',
         `${where}: ${r.trip.id} claims Axis B = ${r.b} and its byte records say otherwise. A ` +
           '`missing` fixture whose bytes are actually there covers nothing, and a `present` one ' +
           'whose bytes are absent is the same failure inverted.',
       );
-      assert.equal(db._store('photos').has(photoId), r.b === 'present', `${where}: ${r.trip.id} — the two byte stores disagree, which \`write\`'s one transaction makes unreachable`);
+      assert.equal(db._store('photos').has(byteKey(r.trip.id, photoId)), r.b === 'present', `${where}: ${r.trip.id} — the two byte stores disagree, which \`write\`'s one transaction makes unreachable`);
     }
   }
   // Axis O, before the port runs: an orphan that did not land degrades the sweep fault into a
   // no-op that reports green, which is A-38 Part 4's whole argument one store over.
   assert.equal(
-    db._store('photoThumbs').has(ORPHAN_PHOTO_ID),
+    db._store('photoThumbs').has(byteKey(records[0].trip.id, ORPHAN_PHOTO_ID)),
     opts.orphan === true,
     `${where}: the ORPHANED byte record ${opts.orphan === true ? 'did not land' : 'is present in an arm that states it has none'} — Axis O is not in the state this arm names`,
   );
@@ -1474,8 +1561,8 @@ function assertSeededBytesUnchanged(
   opts: { orphan?: boolean } = {},
 ): void {
   const want = [
-    ...records.filter((r) => r.b === 'present').flatMap((r) => r.photoIds),
-    ...(opts.orphan === true ? [ORPHAN_PHOTO_ID] : []),
+    ...records.filter((r) => r.b === 'present').flatMap((r) => r.photoIds.map((id) => byteKey(r.trip.id, id))),
+    ...(opts.orphan === true ? [byteKey(records[0].trip.id, ORPHAN_PHOTO_ID)] : []),
   ].sort();
   for (const store of ['photoThumbs', 'photos'] as const) {
     assert.deepEqual(
@@ -1749,7 +1836,15 @@ test('exit 6b-1b (§10 A-57 Part 8, Axis B pin): the three byte-state fixtures s
   const stores = seeded.stores as Record<string, Record<string, unknown>>;
   assert.deepEqual(Object.keys(stores).sort(), ['docs', 'photoThumbs', 'photos', 'summaries', 'versions'].sort(), 'the seed does not name all five of the port\'s object stores');
   assert.deepEqual(Object.keys(stores.photos).sort(), Object.keys(stores.photoThumbs).sort(), '`write` puts both derivatives in one transaction, so a seed in which the two stores disagree is not a reachable state');
-  assert.ok(Object.keys(stores.photoThumbs).includes(ORPHAN_PHOTO_ID), 'INCONCLUSIVE: the orphan did not land, so Axis O is not exercised');
+  assert.ok(
+    Object.keys(stores.photoThumbs).some((k) => k.includes(ORPHAN_PHOTO_ID)),
+    'INCONCLUSIVE: the orphan did not land, so Axis O is not exercised',
+  );
+  assert.ok(
+    Object.keys(stores.photoThumbs).every((k) => k.startsWith(RECORDER_ARRAY_KEY)),
+    'A-62: a seeded byte key is `[tripId, photoId]` and not a bare `PhotoId` — a bare-keyed ' +
+      'fixture is a state the port can no longer produce (A-62 Part 6\'s fixture re-cut)',
+  );
 });
 
 test('exit 6b-1b-1: STARTING STATE = an EMPTY database. The web port EXECUTED — every value that reaches its summary store is clean', async () => {
@@ -1914,7 +2009,7 @@ test('exit 6b-1b-2: STARTING STATE = an existing CURRENT database (no upgrade), 
         'INCONCLUSIVE: arm 2 no longer holds all three byte states, so Axis B is not exercised here',
       );
       assert.ok(
-        db._store('photoThumbs').has(ORPHAN_PHOTO_ID),
+        db._store('photoThumbs').has(byteKey(records[0].trip.id, ORPHAN_PHOTO_ID)),
         'INCONCLUSIVE: arm 2\'s orphaned byte record is gone before the assertions ran, so Axis O is not exercised here',
       );
     },
@@ -1975,7 +2070,7 @@ test('exit 6b-1b-3: STARTING STATE = an existing LEGACY database (NO version), s
         'INCONCLUSIVE: arm 3 no longer holds all three byte states, so Axis B is not exercised here',
       );
       assert.equal(
-        db._store('photoThumbs').has(ORPHAN_PHOTO_ID),
+        db._store('photoThumbs').has(byteKey(records[0].trip.id, ORPHAN_PHOTO_ID)),
         false,
         'arm 3 states Axis O = clean; an orphan here would make it a second copy of arm 2',
       );
@@ -2149,6 +2244,110 @@ test('exit 6b-1b-6 (§10 A-57 Part 8): STARTING STATE = a database at the PREVIO
         );
         assertSeedLanded(db, records, 'arm 6');
       },
+    },
+  );
+});
+
+test('exit 6b-1b-7 (§10 A-62, Q6): STARTING STATE = a `DB_VERSION` 4 database holding BARE-KEYED byte records — the 4 → 5 arm empties both stores and touches no document', async () => {
+  // **The seventh arm, and A-62 Part 6 is what creates it.** `DB_VERSION` went 4 → 5 and the arm
+  // *deletes and recreates* the two byte stores rather than re-keying them, because re-keying
+  // means walking and parsing every stored document inside `onupgradeneeded` — A-39 Part 11 item
+  // 7, which A-38 Part 6 puts beyond the recorder by construction.
+  //
+  // The criterion is A-62 Part 7's **Q6**, and both halves of it matter: both byte stores are
+  // empty afterwards, and `docs`, `summaries` and `versions` are **byte-identical** to their
+  // seeded values. A migration that touched a document would be the thing that was NOT ruled.
+  //
+  // It contributes no S×C/D/B coverage cell. Like arms 4 and 6 it is kept for one structural
+  // reason: it is the only arm whose starting state holds byte records under the key shape the
+  // upgrade exists to remove.
+  const current = webRow('t-rekey-current');
+  const legacy = webRow('t-rekey-legacy');
+  const records: SeedRecord[] = [
+    legacyDoc(current.trip, current.summary, SEEDED_FENCE, CURRENT_GEN),
+    legacyDoc(legacy.trip, legacy.summary, null, CURRENT_GEN),
+  ];
+  const full = seededDb(records).stores as Record<string, Record<string, unknown>>;
+  // **Bare `PhotoId` keys** — the shape the send-back build wrote, and the only shape a
+  // `DB_VERSION` 4 database can hold. Not `byteKey`: that is the NEW shape, and seeding it here
+  // would make this arm a slower copy of arm 2.
+  const BARE = ['photo-bare-1', 'photo-bare-2'];
+  const seed: Seed = {
+    dbVersion: 4,
+    stores: {
+      docs: full.docs,
+      summaries: full.summaries,
+      versions: full.versions,
+      photos: Object.fromEntries(BARE.map((id) => [id, photoBytes(id, 'display')])),
+      photoThumbs: Object.fromEntries(BARE.map((id) => [id, photoBytes(id, 'thumb')])),
+    },
+  };
+  const seededDocs = { ...full.docs };
+  const seededSummaries = JSON.parse(JSON.stringify(full.summaries)) as Record<string, unknown>;
+  await driveWebPort(
+    async (port, db) => {
+      const rows = await port.listTrips();
+
+      // Q6, half one: both stores are EMPTY. The records that were there were unreachable — no
+      // key in them names a trip — and their assets survive whole, reading `'missing'`, which
+      // §10.2 designs as a state with an offer to re-import rather than an error path.
+      assert.equal(db._store('photos').size, 0, 'a bare-keyed byte record survived the 4 → 5 re-key');
+      assert.equal(db._store('photoThumbs').size, 0, 'a bare-keyed thumb record survived the 4 → 5 re-key');
+      assert.deepEqual(
+        db._names(),
+        ['docs', 'photoThumbs', 'photos', 'summaries', 'versions'].sort(),
+        'the 4 → 5 upgrade did not leave the database with exactly the port\'s five object stores',
+      );
+
+      // Q6, half two: the documents are BYTE-IDENTICAL. The upgrade migrated nothing, which is
+      // core\'s job and not the port\'s — the same sentence phase 3 of `qa/i7a-idb-rowkeys.mjs`
+      // makes about a v1 document.
+      for (const id of Object.keys(seededDocs)) {
+        assert.equal(db._store('docs').get(id), seededDocs[id], `the upgrade rewrote the document for ${id}`);
+      }
+      assert.deepEqual(
+        JSON.parse(JSON.stringify(db._store('summaries').get(current.trip.id))),
+        seededSummaries[current.trip.id],
+        'the upgrade rewrote a summary row',
+      );
+      assert.equal(db._store('versions').get(current.trip.id), SEEDED_FENCE, 'the upgrade moved a fence the port did not mint');
+      assertSeededRowsUnchanged(db, records, rows, 'the web port, upgraded 4 → 5');
+      assertRowsAreClean(rows, 'the web port, upgraded 4 → 5: listTrips');
+    },
+    {
+      seed,
+      beforeConstruct: (db) => {
+        assert.deepEqual(
+          db._names(),
+          ['docs', 'photoThumbs', 'photos', 'summaries', 'versions'].sort(),
+          'INCONCLUSIVE: the starting state is not a DB_VERSION 4 database — the two byte stores have to EXIST for the re-key arm to have anything to re-key',
+        );
+        assert.equal(db._store('photoThumbs').size, BARE.length, 'INCONCLUSIVE: the bare-keyed seed did not land, so the re-key sweeps nothing');
+        assert.ok(
+          [...db._store('photoThumbs').keys()].every((k) => !k.startsWith(RECORDER_ARRAY_KEY)),
+          'INCONCLUSIVE: the seed is compound-keyed, which is the state AFTER the upgrade, not before it',
+        );
+      },
+    },
+  );
+});
+
+test('exit 6b-1b-7 (§10 A-62, Q7): a FRESH database creates both byte stores once, and attempts no delete on a store that does not exist', async () => {
+  // Q7. The recorder throws `NotFoundError` for a delete of an absent store, exactly as a real
+  // `IDBDatabase` does — so an unguarded `deleteObjectStore` in the 4 → 5 arm is not a stylistic
+  // question here, it is a port that cannot open at all. `oldVersion` is 0 on this path.
+  await driveWebPort(
+    async (port, db) => {
+      const { trip, summary } = webRow('t-fresh-rekey');
+      const saved = await port.saveIfVersion(trip.id, null, JSON.stringify(trip), summary);
+      assert.ok(saved.ok, 'INCONCLUSIVE: the port could not write to a database it had just created');
+      assert.deepEqual(
+        db._names(),
+        ['docs', 'photoThumbs', 'photos', 'summaries', 'versions'].sort(),
+        'a fresh database did not gain exactly the five stores',
+      );
+      assert.equal(db._store('photos').size, 0, 'a fresh database gained a byte record from its own creation');
+      assert.equal(db._store('photoThumbs').size, 0, 'a fresh database gained a thumb record from its own creation');
     },
   );
 });
@@ -2573,7 +2772,7 @@ function storeGuardedUpcastFault(label: string, guard: string): string {
       '              for (const key of docKeys.result) {\n                if (have.has(String(key))) continue;',
       '              const photoKeys = thumbs.getAllKeys() as IDBRequest<IDBValidKey[]>;\n'
         + '              photoKeys.onsuccess = () => {\n'
-        + '                const stored = new Set(photoKeys.result.map((k) => String(k)));\n'
+        + '                const stored = new Set(photoKeys.result.map((k) => (Array.isArray(k) ? k.join("|") : String(k))));\n'
         + '                const all = sums.getAll() as IDBRequest<TripSummaryRow[]>;\n'
         + '                all.onsuccess = () => {\n'
         + '                  for (const r of all.result) {\n'
@@ -2601,13 +2800,13 @@ const A57_FAULTS: ReadonlyArray<{ id: string; guard: string; axis: string; fires
   },
   {
     id: 'G25',
-    guard: 'refs.length > 0 && refs.some((p: string) => !stored.has(p))',
+    guard: 'refs.length > 0 && refs.some((p: string) => !stored.has(r.id + "|" + p))',
     axis: "Axis B's `missing` cell — a photo whose bytes are gone (§10.2's DESIGNED state)",
     fires: 'the records that reference a PhotoId with no byte record',
   },
   {
     id: 'G27',
-    guard: 'refs.length > 0 && refs.every((p: string) => stored.has(p))',
+    guard: 'refs.length > 0 && refs.every((p: string) => stored.has(r.id + "|" + p))',
     axis: "Axis B's `present` cell — the bytes are there",
     fires: 'the records whose every referenced PhotoId has bytes',
   },
@@ -2645,12 +2844,12 @@ function orphanSweepFault(): string {
         + '                  const referenced = new Set<string>();\n'
         + '                  for (const rawDoc of docsAll.result) {\n'
         + '                    try {\n'
-        + '                      const parsed = JSON.parse(String(rawDoc)) as { photos?: Array<{ id?: unknown }> };\n'
-        + '                      if (Array.isArray(parsed.photos)) for (const p of parsed.photos) referenced.add(String(p?.id));\n'
+        + '                      const parsed = JSON.parse(String(rawDoc)) as { id?: unknown; photos?: Array<{ id?: unknown }> };\n'
+        + '                      if (Array.isArray(parsed.photos)) for (const p of parsed.photos) referenced.add(String(parsed.id) + "|" + String(p?.id));\n'
         + '                    } catch { /* a document we cannot read references nothing */ }\n'
         + '                  }\n'
         + '                  for (const k of photoKeys.result) {\n'
-        + '                    if (referenced.has(String(k))) continue;\n'
+        + '                    if (referenced.has(Array.isArray(k) ? k.join("|") : String(k))) continue;\n'
         + '                    thumbs.delete(k);\n'
         + '                    blobs.delete(k);\n'
         + '                  }\n'
@@ -2772,13 +2971,13 @@ const A57_NEGATIVES: ReadonlyArray<{
   },
   {
     id: 'G25',
-    guard: 'refs.length > 0 && refs.some((p: string) => !stored.has(p))',
+    guard: 'refs.length > 0 && refs.some((p: string) => !stored.has(r.id + "|" + p))',
     seed: () => degradedSeed({ b: 'present' }),
     why: 'every referenced photo HAS its bytes — the happy path, and §10.2\'s `missing` state absent',
   },
   {
     id: 'G27',
-    guard: 'refs.length > 0 && refs.every((p: string) => stored.has(p))',
+    guard: 'refs.length > 0 && refs.every((p: string) => stored.has(r.id + "|" + p))',
     seed: () => degradedSeed({ b: 'none' }),
     why: 'no record references a photo at all — every fixture in this file before I-13',
   },

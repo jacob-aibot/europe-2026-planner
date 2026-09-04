@@ -6,7 +6,7 @@
  * `StoragePort.save` surfaces as `persistence.status === 'error'` and never silently drops
  * an edit.
  */
-import type { IsoDate, PhotoId, TripSummaryRow } from '../deps.ts';
+import type { IsoDate, PhotoId, TripId, TripSummaryRow } from '../deps.ts';
 import type {
   ClockPort, DerivedImage, FilePort, IdPort, PhotoPort, PickedImage, SchedulerPort, StoragePort,
   StorageVersion, TripDoc,
@@ -167,10 +167,64 @@ export function memoryFile(): MemoryFile {
   return port;
 }
 
+/**
+ * §10.3's compound key `[tripId, photoId]`, flattened into one string so a `Map` can hold it.
+ *
+ * A `Map` compares keys by identity, so an array key would make every lookup miss. The
+ * separator is `\u0000` because it cannot occur in an id minted by `IdFactory` and cannot be
+ * typed into one — a `tripId` ending in the separator is the only way to forge a collision, and
+ * nothing in this system mints one.
+ */
+export function photoByteKey(tripId: TripId, id: PhotoId): string {
+  return `${tripId}\u0000${id}`;
+}
+
+/**
+ * The two byte stores, as maps keyed by `photoByteKey` — with **bare-`PhotoId` lookups kept
+ * working**, meaning *"in any trip"*.
+ *
+ * This is a property of the double and not of the port. A-62 puts tenancy in the key, so the
+ * honest key here is the compound one; but almost every test that inspects these maps has one
+ * trip, and `thumbs.has(id)` is what it means to say there. So `has`/`get`/`delete` accept
+ * either shape: a compound key is looked up exactly, and a bare id matches any trip's record.
+ * A test that is **about** tenancy (A-62 Part 7's Q4 and Q5) uses `photoByteKey` and gets the
+ * exact answer; a test that is about anything else does not have to care.
+ */
+class PhotoByteMap extends Map<string, Uint8Array> {
+  /** Every compound key whose photo half is `id`. Empty for a key that is already compound. */
+  #matching(id: string): string[] {
+    const suffix = `\u0000${id}`;
+    const out: string[] = [];
+    for (const k of super.keys()) if (k.endsWith(suffix)) out.push(k);
+    return out;
+  }
+
+  override has(key: string): boolean {
+    return super.has(key) || this.#matching(key).length > 0;
+  }
+
+  override get(key: string): Uint8Array | undefined {
+    const exact = super.get(key);
+    if (exact !== undefined) return exact;
+    const [first] = this.#matching(key);
+    return first === undefined ? undefined : super.get(first);
+  }
+
+  override delete(key: string): boolean {
+    if (super.delete(key)) return true;
+    let hit = false;
+    for (const k of this.#matching(key)) hit = super.delete(k) || hit;
+    return hit;
+  }
+}
+
 export type MemoryPhotos = PhotoPort & {
-  /** Stored bytes, by id — §10.3's two object stores, as two maps. */
-  thumbs: Map<PhotoId, Uint8Array>;
-  displays: Map<PhotoId, Uint8Array>;
+  /**
+   * Stored bytes — §10.3's two object stores, as two maps keyed by `photoByteKey(tripId, id)`.
+   * A bare `PhotoId` still reads and deletes, meaning *"in any trip"* — see `PhotoByteMap`.
+   */
+  thumbs: PhotoByteMap;
+  displays: PhotoByteMap;
   /** What the next `pickImages()` returns. `null` is a cancel; consumed on read, like `memoryFile`. */
   next: PickedImage[] | null;
   /** File TAGS whose `derive` returns `null` — A-57 Part 7's **P8** fault, injectable. */
@@ -224,8 +278,8 @@ function fileTag(bytes: Uint8Array): string {
  */
 export function memoryPhotos(): MemoryPhotos {
   const port: MemoryPhotos = {
-    thumbs: new Map<PhotoId, Uint8Array>(),
-    displays: new Map<PhotoId, Uint8Array>(),
+    thumbs: new PhotoByteMap(),
+    displays: new PhotoByteMap(),
     next: null,
     failDeriveFor: new Set<string>(),
     failWriteFor: new Set<string>(),
@@ -258,34 +312,58 @@ export function memoryPhotos(): MemoryPhotos {
       };
     },
 
-    async read(id: PhotoId, size: 'thumb' | 'display'): Promise<Uint8Array | null> {
-      return (size === 'thumb' ? port.thumbs : port.displays).get(id) ?? null;
+    async read(tripId: TripId, id: PhotoId, size: 'thumb' | 'display'): Promise<Uint8Array | null> {
+      return (size === 'thumb' ? port.thumbs : port.displays).get(photoByteKey(tripId, id)) ?? null;
     },
 
     /**
-     * Both derivatives under one id, in one step — atomic by construction, because everything
+     * Both derivatives under one key, in one step — atomic by construction, because everything
      * below runs in one synchronous block. `memoryStorage.saveIfVersion`'s rule applies here for
      * the same reason: **no `await` in this method**, or a half-written pair becomes reachable.
      */
-    async write(id: PhotoId, thumb: Uint8Array, display: Uint8Array): Promise<void> {
+    async write(tripId: TripId, id: PhotoId, thumb: Uint8Array, display: Uint8Array): Promise<void> {
       if (port.failWriteFor.has(id) || port.failWriteFor.has(fileTag(thumb))) {
         const err = new Error(`${port.failWriteAs}: the write did not fit`);
         err.name = port.failWriteAs;
         throw err;
       }
-      port.thumbs.set(id, thumb);
-      port.displays.set(id, display);
+      port.thumbs.set(photoByteKey(tripId, id), thumb);
+      port.displays.set(photoByteKey(tripId, id), display);
     },
 
-    async remove(id: PhotoId): Promise<void> {
+    async remove(tripId: TripId, id: PhotoId): Promise<void> {
       if (port.failRemoveFor.has(id)) throw new Error(`remove(${id}) failed`);
-      port.thumbs.delete(id);
-      port.displays.delete(id);
+      // `Map.delete` on the EXACT compound key: `PhotoByteMap`'s bare-id fallback is for a test
+      // reading the double, and using it here would let one trip's remove take another's bytes,
+      // which is the whole defect A-62 closes.
+      Map.prototype.delete.call(port.thumbs, photoByteKey(tripId, id));
+      Map.prototype.delete.call(port.displays, photoByteKey(tripId, id));
     },
 
-    async present(ids: readonly PhotoId[]): Promise<ReadonlySet<PhotoId>> {
+    async present(tripId: TripId, ids: readonly PhotoId[]): Promise<ReadonlySet<PhotoId>> {
       port.presentCount++;
-      return new Set(ids.filter((id) => port.thumbs.has(id) || port.displays.has(id)));
+      return new Set(ids.filter((id) => {
+        const key = photoByteKey(tripId, id);
+        return Map.prototype.has.call(port.thumbs, key) || Map.prototype.has.call(port.displays, key);
+      }));
+    },
+
+    /**
+     * §10.3's third cascade row — every `[tripId, …]` record, in one step, with no id list.
+     *
+     * The real port does this with `IDBKeyRange.bound([tripId], [tripId, []])`; here it is the
+     * same range expressed over the flattened key. Idempotent: a trip with no records is a
+     * no-op and not an error (**Q3**), and a `tripId` that is a string prefix of another
+     * (`'t'` vs `'t2'`) takes only its own, because the separator terminates the trip half
+     * (**Q5**).
+     */
+    async removeTrip(tripId: TripId): Promise<void> {
+      const prefix = `${tripId}\u0000`;
+      for (const map of [port.thumbs, port.displays]) {
+        for (const k of [...map.keys()]) {
+          if (String(k).startsWith(prefix)) Map.prototype.delete.call(map, k);
+        }
+      }
     },
   };
   return port;

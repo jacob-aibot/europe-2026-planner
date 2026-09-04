@@ -388,64 +388,54 @@ export function createStore(opts: StoreOptions) {
    * `'loading'`. A store with **no photo port** records the same empty answer, which is honest —
    * on that host nothing has bytes.
    *
-   * **A failed read is `'loading'`, not `'empty'`.** It leaves `available` at `null`, so a
-   * surface says "not yet" rather than "none". A-57 Part 9 residue 5 is the disclosed cost of
-   * reading once: bytes evicted *while* a trip is open read as `'ready'` until the next open,
-   * and the render path's `read() === null` is what makes that failure honest at the one moment
-   * it is visible.
+   * **A failed read is `'unreadable'`, and it is a fourth state rather than a slower
+   * `'loading'`** — §10.6 property 5, **A-63** (QA R45-5). It leaves `available` at `null` *and*
+   * writes `availabilityError`, so the two facts *"not read yet"* and *"read, and it failed"* are
+   * distinguishable by the selector; `available: null` alone used to mean both, which left a
+   * surface with a spinner it could never resolve and no method to retry with. A-57 Part 9
+   * residue 5 is the separate, disclosed cost of reading once: bytes evicted *while* a trip is
+   * open read as `'ready'` until the next open, and the render path's `read() === null` is what
+   * makes that failure honest at the one moment it is visible.
+   *
+   * Every branch writes an answer, which is what makes property 5's *"exactly one terminal state
+   * follows every `'loading'`"* true by construction rather than by inspection.
    */
   async function readPhotoAvailability(doc: Trip | null): Promise<void> {
     if (!doc) {
-      setPhotos({ tripId: null, available: null });
+      setPhotos({ tripId: null, available: null, availabilityError: null });
       return;
     }
     const ids = doc.photos.map((p) => p.id);
     if (!ports.photo || ids.length === 0) {
-      setPhotos({ tripId: doc.id, available: new Set<string>() });
+      setPhotos({ tripId: doc.id, available: new Set<string>(), availabilityError: null });
       return;
     }
     try {
-      const present = await ports.photo.present(ids);
+      const present = await ports.photo.present(doc.id, ids);
       // Copied into a set this store owns: the port's return value is `ReadonlySet` by type and
       // by nothing else, and a port that hands back its own live collection would let a later
       // write mutate state a subscriber is already holding (QA R43-1's shape, one port over).
-      setPhotos({ tripId: doc.id, available: new Set(present) });
-    } catch {
-      setPhotos({ tripId: doc.id, available: null });
+      setPhotos({ tripId: doc.id, available: new Set(present), availabilityError: null });
+    } catch (err) {
+      // The port's own words, recorded once — `travelHistory`'s `{ok:false, message}` shape one
+      // subject over. It carries no photo id, no caption and no coordinate (§6.1 rule 1), and
+      // nothing logs it.
+      setPhotos({
+        tripId: doc.id,
+        available: null,
+        availabilityError: (err as Error | null)?.message || 'the photo store could not be read',
+      });
     }
   }
 
-  /**
-   * Every `PhotoId` the **stored** document for `id` references — QA **R45-3**.
-   *
-   * `deleteTrip`'s cascade needs the doomed ids, and for a trip that is not the open one they
-   * exist in exactly one place: the bytes on disk. `apps/web`'s `StoragePort` does the same read
-   * inside its own delete transaction (`photoIdsOf`), which is what makes the sweep atomic
-   * *there*; this is the belt, so the in-memory port and any future port — `apps/mobile`'s
-   * storage cannot span the same transaction — get the cascade too.
-   *
-   * **Total, and it never throws.** A document that will not parse yields no ids: the consequence
-   * is strictly bounded (some byte records are not swept, which is §10.2's reclaimable-orphan
-   * state) and *"a corrupt stored document may not make a trip undeletable"* — §2.9 A-46's rescue
-   * export exists precisely because such documents are on disk.
-   *
-   * It reads `id` and nothing else — no caption, no coordinate, no date. §10.5's cross-cutting
-   * rule is easiest to break exactly here.
+  /*
+   * **`photoIdsOfStored` was deleted at I-13b, and its deletion is the fix.** QA R45-3's first
+   * repair read the doomed `PhotoId`s out of `ports.storage.load(id)` so a non-active trip's
+   * bytes could be swept. §10 **A-62** supersedes it: with tenancy in the key the cascade is a
+   * key-range delete (`PhotoPort.removeTrip`), so no caller parses a document to learn what to
+   * delete and no caller can get the list wrong for a trip it does not have open. A-62 Part 4
+   * says so in both directions so the two passes do not fight.
    */
-  async function photoIdsOfStored(id: string): Promise<string[]> {
-    try {
-      const stored = await ports.storage.load(id);
-      if (!stored) return [];
-      const parsed: unknown = JSON.parse(stored.doc);
-      const photos = (parsed as { photos?: unknown } | null)?.photos;
-      if (!Array.isArray(photos)) return [];
-      return photos
-        .map((p) => (p as { id?: unknown } | null)?.id)
-        .filter((pid): pid is string => typeof pid === 'string' && pid !== '');
-    } catch {
-      return [];
-    }
-  }
 
   /** `err.name` is the platform's own word for a full disk. Everything else is `'storage_failed'`. */
   function writeFailureReason(err: unknown): PhotoImportFailure {
@@ -1345,35 +1335,25 @@ export function createStore(opts: StoreOptions) {
       // §10.3's third table row and §6.3's invariant — *"no row and no blob without a live
       // tenancy reference."* The photo bytes for this trip's assets go with it.
       //
-      // **The ids come from the document, read before the delete**, because the port's byte
-      // stores are keyed by `PhotoId` and know nothing about trips. `apps/web`'s `StoragePort`
-      // does the same cascade one layer down, inside the single IndexedDB transaction that
-      // removes the document — which is what makes it atomic there and is the whole reason §10.3
-      // puts the two new stores in the SAME database. This is the belt: the in-memory port and
-      // any future port get the cascade whether or not their storage can span it.
+      // **It takes no id list, and that is the point** (§10 **A-62** Part 4, QA **R45-3**). With
+      // `[tripId, photoId]` in the key, `removeTrip` is a key-range delete: this store does not
+      // parse a document to learn what to delete, cannot get the list wrong for a trip it does
+      // not have OPEN, and cannot reach across into another trip's records. The first repair for
+      // R45-3 read the doomed ids from `ports.storage.load(id)`; A-62 deleted it, because a
+      // second mechanism in a caller is what the key shape makes unnecessary.
+      //
+      // `apps/web`'s `StoragePort` does the same range delete one layer down, inside the single
+      // IndexedDB transaction that removes the document — which is what makes it atomic there and
+      // is the whole reason §10.3 puts the two new stores in the SAME database. This is the belt:
+      // the in-memory port and any future port get the cascade whether or not their storage can
+      // span it.
       //
       // A failure here leaves reclaimable orphans, not a broken delete: the trip goes either way.
-      //
-      // **QA R45-3.** This used to read `state.doc` and therefore only fired for the trip that
-      // happened to be OPEN — deleting any other trip from the library left every one of its byte
-      // records behind, unreachable (the document is gone) *and* unreportable (`orphanPhotoBytes`
-      // reads what this session observed, and nothing observed these). For a non-active trip the
-      // ids come from `ports.storage.load(id)`, which is the only place they exist.
-      //
-      // `photoIdsOfStored` is total: a document that will not parse yields no ids, because *"a
-      // corrupt stored document does not make a trip undeletable"* (§2.9 A-46's rescue path is the
-      // whole reason that document is still on disk) and a delete that throws is worse than a
-      // delete that leaves reclaimable bytes.
-      const doomed = state.activeTripId === id
-        ? (state.doc?.photos ?? []).map((p) => p.id)
-        : await photoIdsOfStored(id);
       await chainOntoSaving(async () => {
         if (ports.photo) {
-          for (const photoId of doomed) {
-            try {
-              await ports.photo.remove(photoId);
-            } catch { /* orphaned bytes are reclaimable; a failed byte delete may not block one */ }
-          }
+          try {
+            await ports.photo.removeTrip(id);
+          } catch { /* orphaned bytes are reclaimable; a failed byte delete may not block one */ }
         }
         await ports.storage.delete(id);
         const library = state.library.filter((r) => r.id !== id);
@@ -1428,6 +1408,11 @@ export function createStore(opts: StoreOptions) {
     async importPhotos(attach: PhotoAttachRef = { kind: 'trip' }): Promise<AppState> {
       if (!state.doc) throw new Error('importPhotos: no active trip');
       if (!ports.photo) return state;
+      // Captured before the first `await`: every byte written by this batch belongs to the trip
+      // the user was looking at when they picked the files, and §10.3's key now says so. A
+      // `state.doc.id` read after an await could name a different trip (§4.2 rule 6's shape, one
+      // subsystem over) and would file the bytes under a tenancy that never asked for them.
+      const tripId = state.doc.id;
       const picked = await ports.photo.pickImages();
       // A cancel. Not an error, not a failure, and it does not clear an earlier batch's report.
       if (picked === null || picked.length === 0) return state;
@@ -1466,7 +1451,7 @@ export function createStore(opts: StoreOptions) {
             else {
               const id = ports.ids.newId('photo');
               try {
-                await ports.photo.write(id, derived.thumb.bytes, derived.display.bytes);
+                await ports.photo.write(tripId, id, derived.thumb.bytes, derived.display.bytes);
               } catch (err) {
                 // P9: no asset is created, no orphaned byte record, no partial document write.
                 fail(writeFailureReason(err));
@@ -1535,6 +1520,25 @@ export function createStore(opts: StoreOptions) {
     },
 
     /**
+     * Re-reads byte availability for the active trip — §10.6 property 6, **A-63** Part 3.
+     *
+     * `'unreadable'` is a terminal state, and *"a terminal error state with no exit is the
+     * unresolving spinner moved one card to the right"*: this is the exit. It is named for
+     * `refreshLibrary`/`refreshSummary` rather than `retry…` because it is the same idea — read
+     * the fact again, on demand.
+     *
+     * Two things it deliberately is not. **There is no automatic retry** — a read that failed
+     * because IndexedDB is unavailable will fail again, and a loop is not honesty. **There is no
+     * in-flight flag**: during a refresh the listing keeps the previous answer until the new one
+     * lands, so it does not flicker back through `'loading'`, and the busy state of a *Try again*
+     * button belongs to the surface that owns the button.
+     */
+    async refreshPhotoAvailability(): Promise<AppState> {
+      await readPhotoAvailability(state.doc);
+      return state;
+    },
+
+    /**
      * Removes a photo: **the document record first, the bytes second** — §10.3's table, which is
      * the inverse of import *"and for the same reason: the reachable-but-absent state is the
      * safe one."*
@@ -1543,14 +1547,26 @@ export function createStore(opts: StoreOptions) {
      * nothing sweeps it: reclaiming is an explicit user action, per §6.3's *"a nightly sweeper
      * fails loudly, it does not silently delete."*
      *
+     * **Disclosed, and it is QA R45-14: undo restores the record and cannot restore the
+     * photograph.** History is a `Trip` snapshot, so §10.1 point 1's *"attaching a photo is
+     * undoable for free"* is true for `addPhoto` and false here — after `removePhoto` + `undo`
+     * the asset is back and its bytes are gone, reported honestly as `availability: 'missing'`
+     * with §10.6 property 3's offer to re-import. The fix is a **deferred** byte delete (hold the
+     * derivatives until the removal leaves the undo window), and that is not written here because
+     * §10.3's cascade table rules the opposite in as many words — *"both derivatives, in the same
+     * transaction as the document write that drops the asset"* — and I-13's own criterion asserts
+     * it. Changing when the bytes go is an architect's ruling, not a builder's test edit; revision
+     * 44 ruled A-62, A-63 and A-64 and did not rule this. **Trigger:** that ruling.
+     *
      * @throws {Error} if there is no active trip, or no photo with that id — both §2.1.
      */
     async removePhoto(photoId: string): Promise<AppState> {
       if (!state.doc) throw new Error('removePhoto: no active trip');
+      const tripId = state.doc.id;
       this.dispatch({ type: 'removePhoto', photoId });
       if (!ports.photo) return state;
       try {
-        await ports.photo.remove(photoId);
+        await ports.photo.remove(tripId, photoId);
         // R45-4's rule, on the other side of the same distinction: an UNREAD availability stays
         // unread. Manufacturing `new Set()` here would answer *"read, and none of this trip's
         // photos have bytes"* on the strength of one delete.
@@ -1578,10 +1594,16 @@ export function createStore(opts: StoreOptions) {
      *
      * It refuses any id that a live asset still references, rather than trusting the caller's
      * list: an orphan is a claim about the document, and the document is right here.
+     *
+     * **The `live` guard became sound at A-62.** Its set is the ACTIVE document's photo ids and
+     * its subject is now the active trip's key range, so the two agree by construction — an
+     * orphan observed while trip B was open can no longer be reclaimed against trip A. With no
+     * active trip there is no key range to reclaim within, so it is a no-op.
      */
     async reclaimPhotoBytes(ids: readonly string[]): Promise<AppState> {
-      if (!ports.photo) return state;
-      const live = new Set((state.doc?.photos ?? []).map((p) => p.id));
+      if (!ports.photo || !state.doc) return state;
+      const tripId = state.doc.id;
+      const live = new Set(state.doc.photos.map((p) => p.id));
       const kept: string[] = [];
       for (const id of state.photos.orphans) {
         if (!ids.includes(id) || live.has(id)) {
@@ -1589,7 +1611,7 @@ export function createStore(opts: StoreOptions) {
           continue;
         }
         try {
-          await ports.photo.remove(id);
+          await ports.photo.remove(tripId, id);
         } catch {
           kept.push(id); // still there, still reported
         }
@@ -1736,6 +1758,13 @@ export function createStore(opts: StoreOptions) {
         ui: { ...initialState().ui, activeDayId: doc.days[0]?.id ?? null, activeCityKey: doc.cities[0]?.key ?? null },
       }, { reseed: true });
       await save();
+      // §10.6 property 5's terminal guarantee — **A-63**. A restored document becomes the active
+      // one without going through `openTrip`, so nothing here used to establish availability and
+      // its listing sat at `'loading'` until the trip was closed and re-opened: the unresolving
+      // spinner §10.6 opens by forbidding, on the one path a user takes right after a restore.
+      // The answer it gets is `'ready'` with every photo `'missing'`, which is exactly right — §7
+      // has always said an export carries metadata without bytes.
+      await readPhotoAvailability(state.doc);
       return state;
     },
 
