@@ -1,5 +1,24 @@
 # Cairn — build notes, Phase 1 (and Phase 2 in progress)
 
+> **Addendum — ROADMAP `I-13c` group 3: two comments stop pointing at open questions (§10 **A-65**,
+> **A-66**; architect revision 46, `4105bb8`).**
+> Not an increment and not a behaviour change — **comment and docstring text only**, in one file.
+> This closes **I-13c group 3**, both items. Builds on `a6c5d04` (group 2).
+>
+> | | |
+> |---|---|
+> | **What runs, and the exact commands** | `cd cairn && npm run typecheck` — **clean on both projects, exit 0**. `npm run test:tap` → **1359 pass / 0 fail / 0 skipped / 0 cancelled** — the same count as `a6c5d04`, which is the expected result for a comment-only diff. |
+> | **A-65 (QA R45-14) — `removePhoto`'s docstring stops naming a future ruling that went the other way** | The shipped disclosure said the fix was a **deferred** byte delete awaiting a ruling (*"**Trigger:** that ruling"*). A-65 is that ruling and it **refuses** the deferral, so the forward reference is gone. What replaces it states the ruled behaviour plainly: undo restores the record — every field of it — and never the photograph; the byte delete is synchronous **by design** (§10.3's cascade row, upheld); the resulting `availability: 'missing'` with §10.6 property 3's offer to re-import is the **honest** state, not a degraded one; and the deferral is refused because `history` is never persisted and is cleared at every reseed site, so the undo window is not a condition anything below the store can key off. **A-65 Part 4** is cited for the argument rather than re-run. No sentence in that docstring now promises a future ruling that will change when the bytes go (A-65 **T5**). |
+> | **A-66 (KD-82, QA R46-1) — the abandoned-import comments cite a ruling instead of an open question** | Three citations of the open build note **KD-82** in `importPhotos` now name **§10.6 A-66** and state the ruled reason: a report appended after the `break` would land in the session state of the trip the user moved to, because `PhotoSession` resets at every reseed site before the loop notices. ROADMAP names two of the three (the docstring sentence and the byte-tenancy comment); the third — the `isLiveTrip` break's *"not told `'storage_failed'` for a trip they deleted themselves (KD-82)"* — is the same open citation on the same ruling and is corrected with them. The byte comment also picks up **A-66 Part 7**: bounded at one derivative pair per abandoned batch, reaped by `removeTrip`. **That is the entire change for A-66 — citations.** |
+> | **What I did not touch, deliberately** | **No code.** `removePhoto`, `importPhotos`' guards, `PhotoImportFailure` (still exactly five arms), `PhotoSession`, `PhotoPort`, `orphanPhotoBytes`, `reclaimPhotoBytes` and every test value are unchanged. **`qa/r45-i13.mjs` §K and `qa/r46-i13b.mjs` §K are untouched** — A-65 Part 8 makes the re-cut the breaker's job, and a parallel breaker pass owns those files. No `.tsx`, no `cairn/docs/design/`, no dependency. |
+> | **Still owed on I-13c, and it is not this task** | **Group 1 item 1** (A-62 Part 8 residue 4) has **not** landed: `deleteTrip` still carries *"A failure here leaves reclaimable orphans"* (line ~1392) and the `catch`'s *"orphaned bytes are reclaimable; a failed byte delete may not block one"* (line ~1397), both of which residue 4 rules false — the bytes are **not** reclaimable on that path. It is the same class of MINOR documentation defect and it was out of this task's routing. |
+> | **What I could not verify** | Nothing rendered, nothing measured beyond typecheck and the suite — there is nothing behavioural in this diff to measure. The two `[stated]` criteria for this group are *"checkable by reading"* by ROADMAP's own wording, so a reviewer, not a test, closes them. |
+> | **The fence** | `git diff --name-only` for this commit is exactly `cairn/packages/client/src/store/store.ts` and `cairn/docs/BUILD-NOTES.md`. Zero `.tsx`, zero under `cairn/docs/design/`, zero `package.json`/lockfile movement, nothing outside `cairn/`, and none of the four files the parallel breaker pass owns. |
+>
+> **No objection.** Both rulings refuse a mechanism and ask for English, and the English was cheaper
+> to write than the mechanism would have been to argue with.
+
+
 > **Addendum — QA round 46's builder-routed findings: the import saga gains the other half of its
 > tenancy check, and three smaller repairs (`docs/QA-FINDINGS.md` round 46 — **R46-1**, **R46-2**,
 > **R46-3**, **R46-5**, **R46-6**, **R46-7**).**
@@ -3708,6 +3727,14 @@ fail (b) by four orders of magnitude, which is the failure the criterion was wri
 honest — I have implemented the record class and reported the number.
 
 ### KD-82 — an import abandoned by a trip transition reports nothing, because §10.6's failure vocabulary has no arm for it
+
+> **RULED at architect revision 46 as §10 A-66, and it went this way:** `PhotoImportFailure` is
+> **closed at five arms**, the silent drop is correct, and the mid-flight file's bytes stay under
+> their own trip's key. The decisive reason is one this note did not have: a report appended after
+> the `break` would land in the session state of the trip the user moved to, because `PhotoSession`
+> resets at every reseed site before the loop notices — so a sixth arm converts an absence into a
+> misattribution. The *"what it would take"* costing below is therefore **not a plan**; it is the
+> refused proposal. The code's citations were updated to name A-66 in I-13c group 3.
 
 **Where:** `packages/client/src/store/store.ts` (`importPhotos`, the two R46-1 guards) ·
 ARCHITECTURE **§10.6** (`PhotoImportFailure`) · QA round 46 **R46-1**.

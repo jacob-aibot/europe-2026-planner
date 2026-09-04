@@ -1442,8 +1442,10 @@ export function createStore(opts: StoreOptions) {
      * may write to — bytes *or* record. Between the picker returning and a file's decode
      * finishing the user can open another trip, close this one, or delete it, so the loop stops
      * at the first file that finds `tripId` no longer live (step 4) or no longer the open
-     * document (step 5). It stops rather than retargeting, and see KD-82 for what the abandoned
-     * files do and do not report.
+     * document (step 5). It stops rather than retargeting, and the abandoned files are reported as
+     * **nothing** — §10.6 **A-66** (BUILD-NOTES KD-82, ruled): `PhotoSession` resets at every
+     * reseed site, so by the time the loop notices, a failure entry would land against the trip the
+     * user moved to and name files that trip never had. `PhotoImportFailure` stays at five arms.
      *
      * **Re-entrancy, and it is QA R45-11's subject.** `importPhotos` takes no guard — a double-tap
      * on an import control starts two of these — so nothing here may be batch-local state written
@@ -1503,7 +1505,9 @@ export function createStore(opts: StoreOptions) {
               // row and nothing that can ever name it: §6.3's *"no row and no blob without a live
               // tenancy reference"*, broken by a race rather than by a missing cascade. The batch
               // stops here, before the write, and the user is not told `'storage_failed'` for a
-              // trip they deleted themselves (KD-82).
+              // trip they deleted themselves. **Nothing is reported at all** — §10.6 **A-66**
+              // (KD-82, ruled): `deleteTrip` has already reseeded `state.photos`, so a failure
+              // entry appended now would land against whatever trip the user moved to.
               if (!isLiveTrip(tripId)) break;
               const id = ports.ids.newId('photo');
               try {
@@ -1530,7 +1534,10 @@ export function createStore(opts: StoreOptions) {
               // holds exactly one document in memory, so the record cannot be filed into trip A
               // from here, and filing it into trip B would be writing a photograph into a trip
               // that was never asked for it. The bytes stay under their own trip's key, where
-              // they are that trip's to reclaim (KD-82).
+              // they are that trip's to reclaim — §10.6 **A-66** Part 7 (KD-82, ruled): bounded at
+              // one derivative pair per abandoned batch, and swept by `removeTrip`. Nothing is
+              // reported either, because `openTrip`/`closeTrip` have already reseeded
+              // `state.photos` and the report would land against the wrong trip (A-66 Part 3).
               if (state.doc?.id !== tripId) break;
               this.dispatch({
                 type: 'addPhoto',
@@ -1622,16 +1629,25 @@ export function createStore(opts: StoreOptions) {
      * nothing sweeps it: reclaiming is an explicit user action, per §6.3's *"a nightly sweeper
      * fails loudly, it does not silently delete."*
      *
-     * **Disclosed, and it is QA R45-14: undo restores the record and cannot restore the
-     * photograph.** History is a `Trip` snapshot, so §10.1 point 1's *"attaching a photo is
-     * undoable for free"* is true for `addPhoto` and false here — after `removePhoto` + `undo`
-     * the asset is back and its bytes are gone, reported honestly as `availability: 'missing'`
-     * with §10.6 property 3's offer to re-import. The fix is a **deferred** byte delete (hold the
-     * derivatives until the removal leaves the undo window), and that is not written here because
-     * §10.3's cascade table rules the opposite in as many words — *"both derivatives, in the same
-     * transaction as the document write that drops the asset"* — and I-13's own criterion asserts
-     * it. Changing when the bytes go is an architect's ruling, not a builder's test edit; revision
-     * 44 ruled A-62, A-63 and A-64 and did not rule this. **Trigger:** that ruling.
+     * **Undo restores the record and never the photograph** — §10 **A-65** (QA R45-14), which
+     * rules this behaviour and is why it is stated plainly rather than as a defect. History is a
+     * `Trip` snapshot, so §10.1 point 1's *"attaching a photo is undoable for free"* is scoped to
+     * `addPhoto` and does not hold here: after `removePhoto` + `undo` the asset is back with every
+     * field intact — caption, `capturedAt`, `at`, both derivative descriptors, `provenance` — and
+     * its bytes are gone, reported as `availability: 'missing'` with §10.6 property 3's offer to
+     * re-import. That is the **honest** state, not a degraded one, and the byte delete below is
+     * synchronous **by design**: §10.3's cascade table (*"both derivatives, in the same transaction
+     * as the document write that drops the asset"*), upheld at A-65.
+     *
+     * **This is not a gap awaiting a later fix.** A *deferred* byte delete — hold the derivatives
+     * until the removal leaves the undo window — was proposed and **refused**. The reason is
+     * mechanical: `history` is never persisted and is cleared wholesale at every reseed site in
+     * this file (`openTrip`, `closeTrip`, `deleteTrip`, `importDoc`), so *"still in the undo
+     * window"* is not a condition anything below the store can key off, and a reload or a trip
+     * switch would strand the derivatives of every photograph removed that session, permanently and
+     * unreported. **A-65 Part 4** is the argument and it is not re-run here. No timer, no
+     * pending-delete queue, no tombstone and no `PhotoAsset` liveness field belongs on this path
+     * (§10.1 point 4).
      *
      * @throws {Error} if there is no active trip, or no photo with that id — both §2.1.
      */
