@@ -19,8 +19,55 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
+> **🟠 THE BUILDER FOUND A CONTRADICTION IN THE DESIGN AND SAID SO INSTEAD OF PICKING A SIDE — as
+> of 2026-09-04. This block is the newest.** Step 2d's photo half stays **designed ✅ · built ✅ ·
+> verified ⚠️ · shippable ❌**. **I-13 stays sent back and is not shippable.** **I-13g is built.**
+> The next pass is **I-13h**, and it is the smallest in the whole stretch: one condition, one bookmark
+> and one one-line accessor.
+>
+> **What happened, and it is the pipeline working rather than failing.** The builder implemented the
+> new "single door on the way out" exactly as designed, and then found that it could not be right and
+> keep two already-agreed promises at the same time. Rather than quietly choosing one, they built it as
+> written, wrote two extra tests that pin the broken behaviour *on purpose*, said in the build notes
+> that these tests are waiting for the designer to rule, and handed it back. That is exactly what this
+> pipeline is for.
+>
+> **The problem, in plain terms.** If Cairn ever fails to read the picture store — a real thing that
+> happens on phones — it shows you *"couldn't read your photos, try again"*. Fair enough. But the new
+> door was written to never re-ask after a failure, on the reasonable ground that a store shouldn't
+> retry forever behind your back. The trouble is that it also stopped re-asking after **Cairn itself
+> changed the answer**. So: import three photographs after one of those failures and Cairn keeps
+> showing you the *old* error over a trip that now has three more pictures in it — and if you tapped
+> *Try again* while the import was running, your tap was thrown away with nothing to show for it.
+> Worse, remove a photograph and undo it, and instead of the honest **"the picture is gone, the memory
+> is not"** it says *"couldn't read your photos"* — which an earlier ruling had specifically said it
+> must never say.
+>
+> **The ruling.** The earlier promise stands, unchanged: **a store that has just deleted your
+> photograph does not get to refuse to tell you what it did** because something unrelated failed
+> earlier. So the door's question is fixed instead. It used to ask *"is there an error message?"* as a
+> stand-in for *"is somebody already answering?"* — and that is the same wrong-question mistake the
+> last two rulings each diagnosed in the one before them. Now Cairn writes down **which version of the
+> question each answer was an answer to**, and the door simply checks whether that answer is still
+> about the current question. Retrying because a read failed is still forbidden; re-asking because
+> *Cairn changed the answer* is now required. The cost is at most one extra check per import and per
+> removal, and none at all in ordinary use.
+>
+> **Three smaller corrections, all of them the design note being wrong about code that is right.** One
+> line of the design was literally unreachable where it was printed (the builder shipped the working
+> version and flagged it); one "prove the test can fail" recipe counted nine failures where eight is
+> correct and another described a change that does nothing at all; and two published "count these in
+> the source" numbers were counts of *functions* being read as counts of *words*, which would have
+> failed a future check for the wrong reason. All corrected in place.
+>
+> **Still nothing on your phone changes.** There is still no photo screen. What changes underneath is
+> that after a read failure Cairn stops holding that failure over you.
+>
+> **What happens next:** the small repair pass (**I-13h**), then the seventh confirmation round over
+> the whole photo stretch together. **Nothing here is shippable until a manager verdict.**
+
 > **🟠 THE DESIGNER HAS RULED, AND THIS TIME THE RULING CHANGES THE METHOD — as of 2026-09-04. This
-> block is the newest.** Step 2d's photo half stays **designed ✅ · built ✅ · verified ⚠️ ·
+> block was the newest until the block above.** Step 2d's photo half stays **designed ✅ · built ✅ · verified ⚠️ ·
 > shippable ❌**. **I-13 stays sent back and is not shippable.** The next repair pass is
 > **I-13g**, and it is the first one in this stretch that changes *how the design argues it is
 > right*, not just what the code does.
