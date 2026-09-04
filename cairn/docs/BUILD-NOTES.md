@@ -1,5 +1,20 @@
 # Cairn — build notes, Phase 1 (and Phase 2 in progress)
 
+> **Addendum — ROADMAP `I-13d` group 5 item 1: the one assertion that inverts (§4.2 **A-67 Part 7a**,
+> architect revision 48). Builder half only; the `qa/` half is the breaker's.**
+> Builds on `4316167`. **One test file and this document. No source file, no `.tsx`, no `qa/`, no
+> dependency, no version movement.**
+>
+> | | |
+> |---|---|
+> | **What changed** | `packages/client/test/photos.test.ts`, in *"R46-1: a trip switch mid-decode does not file the record in the trip the user switched to"*. `deepEqual([...p.photo.thumbs.keys()], [photoByteKey(A, 'photo-1')])` → `deepEqual([...p.photo.thumbs.keys()], [])`, **plus the same assertion over `p.photo.displays`** (the memory port's display store — one `ports.photo.write` call fills both, and asserting over one alone is how a half-write goes unseen). The message becomes *"no bytes are written at all for a file whose decode outlives the trip it was picked from — the guard precedes the `write` (A-67 Part 7a, ROADMAP G3)"*, with a three-line comment above it citing Part 7a and G3. |
+> | **Why** | A-67 Part 7a: the step-4 `guard.current('doc', g)` is the statement immediately before `ports.photo.write`, where the deleted `isLiveTrip(tripId)` fired after it, so the abandoned file's byte pair is never created. **`4316167`'s report was the finding; this is the ruled correction to it.** The addendum below (I-13d) predicted exactly this line. |
+> | **The other four assertions did not move** | Confirmed by running, not by reading. Before the edit the test failed **at this assertion only** — the two before it (`doc.id === B`, `doc.photos` empty) had already passed and the two after it (`photosFor(...).phase === 'empty'`, `photoImport(...).pending === 0`) were never reached. After the edit all six assertions execute and the test is green, so the final-state four Part 7a keeps are green **unedited**. Nothing routed back to the architect. |
+> | **Non-vacuity** | Not re-derived by mutation: the same file already asserts the positive at lines 78–83 (`thumbs.size === 3`, `displays.size === 3`, per-asset `has`) and at 505/727, so an empty key set is a measurable claim rather than a store nobody ever writes to. The pre-edit red (`+ []` vs `- ['trip-1\x00photo-1']`) is itself the observation that the behaviour changed. |
+> | **Verified** | `npm run typecheck` → clean on both projects, exit 0. `npm run test:tap` → **1376 tests, 1376 pass, 0 fail, 0 skipped, 0 cancelled** (was 1375/1 at `4316167`; the one failure was this assertion). |
+> | **Not verified** | **`qa/r46-i13b.mjs` §D face 1 is still expected to `FAIL`** — it is the breaker's re-cut per Part 7a and ROADMAP's narrowed ship gate, and I did not run or edit it. `qa/r45-i13.mjs` §L shells out to `npm run test:tap`; that now has zero failures, but I did not re-run the probe. **Nothing rendered** — no `.tsx` opened. |
+> | **Objection** | None. |
+
 > **Addendum — ROADMAP `I-13d`: the store's generation guard — a flush stops returning a boolean
 > and starts returning a ticket (§4.2 rule **6d** and **A-67**, §10 **A-66 Part 10**; architect
 > revision 47, `5d69c51`). Folds in I-13c group 1 item 1 (QA **R47-3**).**

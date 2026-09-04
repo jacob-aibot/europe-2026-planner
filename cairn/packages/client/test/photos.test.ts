@@ -861,8 +861,14 @@ test('R46-1: a trip switch mid-decode does not file the record in the trip the u
   assert.equal(store.getState().doc!.id, B, 'INCONCLUSIVE: the trip switch did not happen');
   assert.deepEqual(store.getState().doc!.photos, [],
     'the record landed in trip B while its bytes were keyed to trip A — a photograph nothing can read');
-  assert.deepEqual([...p.photo.thumbs.keys()], [photoByteKey(A, 'photo-1')],
-    'the bytes belong to the trip the files were picked from, and stay there');
+  // A-67 Part 7a / ROADMAP G3: the step-4 generation guard is the statement immediately before
+  // `ports.photo.write`, where the deleted `isLiveTrip(tripId)` fired after it. Both derivative
+  // stores are asserted because one `write` call produces both, and checking one alone is how a
+  // half-write goes unseen.
+  assert.deepEqual([...p.photo.thumbs.keys()], [],
+    'no bytes are written at all for a file whose decode outlives the trip it was picked from — the guard precedes the `write` (A-67 Part 7a, ROADMAP G3)');
+  assert.deepEqual([...p.photo.displays.keys()], [],
+    'no bytes are written at all for a file whose decode outlives the trip it was picked from — the guard precedes the `write` (A-67 Part 7a, ROADMAP G3)');
   assert.equal(photosFor(store.getState(), { kind: 'trip' }).phase, 'empty',
     'trip B reports a photograph it does not have');
   // R45-11's honest fraction survives the abandoned batch: a stopped import still settles.
