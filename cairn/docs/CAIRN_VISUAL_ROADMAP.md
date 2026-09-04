@@ -19,7 +19,58 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
-> **🟢 THE NUMBERED-RECEIPT FIX IS BUILT — as of 2026-09-04. This block is the newest.** Step 2d's
+> **🔴 THE CONFIRMATION ROUND ON THE PHOTO FOUNDATION: NOT YET — as of 2026-09-04. This block is
+> the newest.** Step 2d's photo half stays **designed ✅ · built ✅ · verified ⚠️ · shippable ❌**.
+> The fifth adversarial round over this one piece of work finished with **two serious problems and
+> three small ones**, so the whole photo foundation — I-13, I-13b, I-13c and I-13d together — goes
+> back one more time. **Nothing on your phone changes either way**: there is still no photo screen,
+> so none of this is visible yet. That is precisely why it is worth fixing now.
+>
+> **The good news first, because it is most of the story.** The redesign in the block below —
+> the "numbered receipt" — **works**. I attacked the receipt mechanism itself rather than re-running
+> the builder's own checks: four trips switched in a row while photographs were importing, three
+> trips opened at once with the disk answering in the wrong order, two different jobs writing to the
+> same place at the same time, and nine different ways of making the app fail mid-switch to see
+> whether it ever forgets to unlock afterwards. It never does. The one thing that would have been
+> catastrophic — a lock left on forever, so that every later edit is refused and every later import
+> silently does nothing — does not happen on any path I could find. **The mechanism is sound.**
+>
+> **The two problems are both about what happens to a question the app decides to ignore.** The new
+> receipt lets Cairn spot an answer that arrived too late and throw it away, which is right. What it
+> never says is whether anybody then asks the question again.
+>
+>   1. **A photo screen that never stops spinning.** If you have a trip open and Cairn is still
+>      checking which of its photographs are stored on this device, then you delete a *different*
+>      trip — or tap a trip whose file is damaged and get the "could not be read" message — the
+>      check is thrown away and never re-asked. The trip you still have open sits on a spinner for
+>      the rest of the session. This one is **new**: it did not happen before the redesign, so it is
+>      a step backwards and not an old gap.
+>   2. **"No longer stored on this device", over a photograph that is.** The rule that says *"if you
+>      write a photo to disk, any check that was already running is now out of date"* is only applied
+>      when Cairn already has an answer on file. If the last check failed — which is exactly when you
+>      would tap **Try again** — the rule is skipped, and an out-of-date answer can land on top of a
+>      photograph you have just imported and call it missing. The mirror of it is worse: delete a
+>      photo, undo the delete, and Cairn can report the picture as present when it is gone. This one
+>      is **not** new — it is the fourth face of a problem three rounds have now found, and the
+>      redesign was the thing meant to end that family.
+>
+> **The three small ones.** Cairn's Ctrl/Cmd+Z shortcut is wired to the whole window, so pressing
+> undo during the second or so a trip deletion takes throws an error nothing catches — the design
+> note said that could not be reached from any screen, and it can. A published test count in the
+> build notes is stale by seventeen. And three lines in two older test scripts still expect the old
+> behaviour on the point the architect ruled on last night, where the ruling said only one such line
+> existed; I have left them alone and reported it rather than editing them to agree with me.
+>
+> **The one thing I was asked to do, done.** The architect ruled that one line of an old adversarial
+> script had to be inverted — it was pinning damage the fix has removed. It is inverted, and it was
+> first watched *failing* against a deliberately broken build, so it is measuring the fix rather
+> than measuring nothing.
+>
+> **What happens next:** the architect rules on the two serious problems (both are choices, not
+> typos), a builder lands them, and then a sixth confirmation round. Nothing here is shippable until
+> that round passes and the manager gives a verdict.
+
+> **🟢 THE NUMBERED-RECEIPT FIX IS BUILT — as of 2026-09-04. This block was the newest until the block above.** Step 2d's
 > photo half moves to **designed ✅ · built ✅ · verified ⚠️ · shippable ❌**. The design in the block
 > below is now code: every one of the nine checks it had to pass is passing, and each one was
 > confirmed to *fail* when the fix is deliberately taken back out, so they are measuring the fix

@@ -3311,3 +3311,75 @@ engines at round 46, and the only `apps/web` change in this round's range is **s
 in `ports/storage.ts` — re-running them would re-confirm a number with no reason to doubt it.
 `qa/r3-loss.mjs` and `qa/r4-switch.mjs` **were** re-run (both green), because R47-1 lives one await
 past the window they cover.
+
+## Round 48 (2026-09-04, `master` @ `ae62326`) — the I-13d confirmation pass (§4.2 **A-67**, the store's generation guard, + revision 48's **Part 7a**)
+
+One new probe and two control scripts, all bare Node, plus the **one re-cut A-67 Part 7a rules
+breaker work** — `qa/r46-i13b.mjs` §D face 1.
+Verdict: **SEND BACK — 0 BLOCKERS, 2 MAJOR (R48-1, R48-2), 3 MINOR (R48-3, R48-4, R48-5).**
+
+```bash
+node --experimental-strip-types qa/r48-i13d.mjs                  # from cairn/; 8 FAIL, 3 ids
+R48_ONLY=E,F node --experimental-strip-types qa/r48-i13d.mjs     # just the two MAJORs
+   # A  the fences over 4430e34..HEAD: zero .tsx, zero dependency movement, docs/design/
+   #    untouched, nothing outside cairn/, and the privacy greps over all 568 added production
+   #    lines (217 outside comments) — console/fetch/storage/clock/random/mailbox/coordinate/
+   #    setTimeout/DOM, all zero. `generation.ts` imports nothing at all. Exactly four files
+   #    moved under packages/ + apps/, all in packages/client. Export surface 83, SCHEMA 2.
+   # B  **A-67 HELD** where G1-G9 do not go: A -> B -> C -> A around a live four-file import
+   #    (R47-1 face 3 inverted: one kept and persisted, zero bytes for the rest, 0/0, no
+   #    failures); three openTrips answered out of order (C, A, B); two browses; a browse vs
+   #    closeBrowse; a browse vs a trip transition; importPhotos vs importDoc on one slot.
+   # C  **A-67 HELD.** The release battery — nine throwing exits, one at a time, and after
+   #    each the `doc` slot is still usable. No path leaves a slot claimed forever.
+   # D  **A-67 HELD.** deleteTrip vs openTrip, both orders, both branches, including a
+   #    rejecting storage.delete.
+   # E  **R48-1, MAJOR — 2 FAIL.** Both `guard.supersede('photoAvailability')` calls sit INSIDE
+   #    R45-4's `state.photos.available !== null` guard, so with `available === null` a byte
+   #    write/remove invalidates nothing. (1) an import racing a *Try again* -> the new
+   #    photograph reads `missing` over bytes on disk (R45-4's exact rendered defect);
+   #    (2) removePhoto + undo -> `ready` over bytes that are GONE, where A-65 T1 requires
+   #    `missing`. Reproduces at 4430e34 too: R47-2's FOURTH face, not a regression.
+   # F  **R48-2, MAJOR (a REGRESSION) — 3 FAIL.** An invalidated availability read is dropped
+   #    and never re-issued, so the listing sits at `loading` forever — A-63's unresolving
+   #    spinner. Three producers, all leaving the STILL-OPEN trip stranded: a deleteTrip of
+   #    another trip; an openTrip of a missing id; an openTrip of a CORRUPT document (A-47's
+   #    own banner path). Green at 4430e34, red here.
+   # G  **R48-3, MINOR — 3 FAIL.** A-67 Part 11 residue 4's "unreachable from today's apps/web"
+   #    is false: App.tsx:233-244 binds Ctrl/Cmd+Z to store.undo() on `window`, uncaught, and
+   #    deleteTrip holds a doc claim across its whole cascade. undo/redo/dispatch/removePhoto
+   #    all throw while the active trip is open and interactive.
+   # H  A-66 Part 10 item 3's residual, MEASURED: a transition inside ports.photo.write strands
+   #    exactly one pair (thumb AND display), files no record, reports nothing, settles 0/0.
+   # I  A-67 Part 4's criterion RE-DERIVED against the current code. No fourth slot is owed.
+   #    residue 1's premise re-checked by grep; `persistence`'s pre-await install measured.
+   # J  G8 and G9 re-derived: two claimTransition() call sites, seven `{reseed:true}` sites,
+   #    the three deleted guards gone, the four kept guards kept, nothing on any export surface.
+```
+
+Two controls, each in a throwaway worktree; neither touches the working tree:
+
+```bash
+bash qa/r48-g3-vacuity.sh    # the REQUIRED vacuity control for this round's one re-cut
+bash qa/r48-controls.sh      # C1: §F green at 4430e34 (R48-2 is a regression).
+                             # C2: the G2 note, resolved — §H red under a step-5-only mutant
+```
+
+**`qa/r46-i13b.mjs` §D face 1 was re-cut by this round**, on **A-67 Part 7a**'s own instruction
+(*"`qa/r46-i13b.mjs:259` is breaker work"*). It asserted one stranded derivative pair — the OLD
+guard's collateral, since `isLiveTrip(tripId)` fired *after* `ports.photo.write`. It now asserts
+that **both** derivative stores are empty, because the generation check fires *before* the write.
+`qa/r48-g3-vacuity.sh` watches that line **red** against G3's own mutant (`isLiveTrip` restored),
+where it reports `["trip-1/photo-1"]` — the old assertion's exact expected value. **That probe is
+green end to end again.**
+
+`qa/r45-i13.mjs` reports **1 FAIL** and `qa/r47-i13c.mjs` **4 FAIL**. One in each is **R48-4**
+(BUILD-NOTES §2's stale `1359`, measured rather than pinned — the probes are working). The other
+three are **R48-5**: assertions of the same class as the one Part 7a re-cut, which Part 7a says do
+not exist. **Left red and disclosed rather than re-cut** — a ruling that enumerates exactly one
+line is the architect's to widen, not the breaker's.
+
+Not re-run this round, deliberately: `qa/r46-idb-keys.mjs`, `qa/i7a-idb-rowkeys.mjs`,
+`qa/i13b-gate.mjs`, `qa/i13-photo-browser.mjs`. The I-13d range touches **no `apps/web` file at
+all** — two source files moved, both in `packages/client` — so a browser run would re-confirm a
+number with no reason to doubt it.

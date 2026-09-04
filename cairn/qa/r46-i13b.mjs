@@ -256,9 +256,21 @@ head('§D — **R46-1, MAJOR (a regression)**: an import that spans a trip trans
   await inflight; await store.flush();
 
   const landedIn = store.getState().doc.photos.length === 1 ? B : A;
-  ok(landedIn === A && keys(p).join() === `${A}/photo-1`,
-    'FINDING R46-1: the photo record lands in the trip whose bytes were written, not in whichever trip is open when the decode finishes',
-    { recordLandedIn: landedIn, byteKeys: keys(p), activeWhenSettled: store.getState().doc.id });
+  // **RE-CUT at round 48, by the breaker, on A-67 Part 7a's own instruction** (revision 48;
+  // ROADMAP **G3**). This line used to require `keys(p).join() === `${A}/photo-1`` — *one* stranded
+  // derivative pair, under the trip the files were picked from. That was the OLD guard's collateral
+  // damage, not the contract: R46-1's `isLiveTrip(tripId)` fired *after* `ports.photo.write`, so an
+  // abandoned decode always paid for a pair of derivatives nothing could ever name. §4.2 **A-67**
+  // moved the check to the statement immediately BEFORE the `write`, so the pair is never created —
+  // no write, no cleanup, no window (A-66 Part 10 item 2). The empty set is therefore the PROOF that
+  // A-67 landed, and the reason is spelled out here so a reader does not mistake it for the probe
+  // failing to observe anything: watched RED against a build with `isLiveTrip(tripId)` restored at
+  // the step-4 guard — G3's own mutant — where it reports `["trip-1/photo-1"]`.
+  // Both derivative stores are asserted, because one `write` call produces both and an assertion
+  // over one store only is how a half-write goes unseen (Part 7a's own reason, applied here too).
+  ok(landedIn === A && keys(p).length === 0 && [...p.photo.displays.keys()].length === 0,
+    'FINDING R46-1 (re-cut at round 48 — A-67 Part 7a / G3): the record does not land in the trip the user switched to, and NO derivative bytes are written at all for a decode that outlives its trip — the generation check precedes the `write` where `isLiveTrip` followed it',
+    { recordLandedIn: landedIn, thumbKeys: keys(p), displayKeys: [...p.photo.displays.keys()], activeWhenSettled: store.getState().doc.id });
   ok(shape(listing(store)).items.every((s) => !s.endsWith(':ready')) || landedIn === A,
     'FINDING R46-1: no listing reports `ready` for a photo whose bytes are under another trip\'s key',
     { listing: shape(listing(store)), byteKeys: keys(p), read: await p.photo.read(B, 'photo-1', 'thumb') });
