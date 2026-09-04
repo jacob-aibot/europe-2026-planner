@@ -19,8 +19,51 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
+> **🟧 THE "WHO WAS ON THE TRIP" DATA IS BUILT AND TESTED — AND IT GOES BACK TO THE BUILDER WITH
+> THREE REAL PROBLEMS — as of 2026-09-04. This block is the newest.** Step **2c (participants)**
+> becomes **designed ✅ · built ✅ · verified ✅ · shippable ❌**. The ❌ is a *send back*, not a
+> *not-yet*: the work exists, an adversarial round ran against it, and three things it found have
+> to be fixed before it counts as shipped.
+>
+> **The good news first, and it is the part that mattered.** You can now record that a trip was
+> with your girlfriend and her family, and **being named on a trip grants that person nothing** —
+> not a view of your trip, not a comment, not a coordinate. The tester attacked that from every
+> angle he could find (bolting a fake participant list onto the permission check, making a
+> participant claim to be you, making a participant "accept" one of the app's own suggestions) and
+> **could not make it grant anything**. Saving, reloading, undo and redo all keep the list exactly,
+> including with 30 edits of other kinds interleaved. The names are kept out of the demo bundle
+> that ships with the app, and that stays true even once a real trip has real names in it.
+>
+> **The three problems, in plain terms.**
+> 1. **Two tabs can eat each other's people.** If the app is open twice and both copies save, the
+>    people added in one tab are silently thrown away — with nothing saying so. This is the same
+>    bug the app already fixed once for photos and once for dates; the fix is one line, and it was
+>    simply not written this time.
+> 2. **One bad edit can make a trip impossible to open again.** Two different ways of editing a
+>    participant let a value into the file that the app then refuses to read back. Nothing can do
+>    that today because there is no screen yet — but the screen is the next thing built, so it has
+>    to be closed first.
+> 3. **A nameless person is described as "a city with no name."** A message written for cities got
+>    reused for people. Cosmetic, but it is the sentence a user would actually see.
+>
+> **And one that was already known and is already ruled.** An *older* copy of the app, opening a
+> file written by this one, quietly deletes the people from it. The builder flagged this himself
+> rather than papering over it, the designer has already ruled that the file format's version
+> number must move to stop it, and that work is queued as its own small increment (**I-9a**). The
+> tester's contribution was to stop arguing about it and **actually run it** — an old build, a new
+> file, and the people gone — which confirmed it is real and that it is slightly worse than first
+> described. Nobody can lose anything today: there is only one copy of Cairn, on one machine, and
+> no older version that can write a participant at all.
+>
+> **What this changes about the Phase 2 sign-off.** Nothing about the *order*. The sign-off still
+> does not wait for the participants screen. It should wait for the three fixes above and for I-9a,
+> because all four are small and all four are in the data the sign-off is about.
+>
+> **Still nothing on your phone changes.**
+
 > **🟦 YOUR CALL IS RECORDED: THE "WHO WAS ON THE TRIP" SCREEN WAITS FOR THE NEW LOOK, AND THE
-> PHASE 2 SIGN-OFF DOES NOT WAIT FOR IT — as of 2026-09-04. This block is the newest.** Step **2c
+> PHASE 2 SIGN-OFF DOES NOT WAIT FOR IT — as of 2026-09-04. This block was the newest until the
+> block above.** Step **2c
 > (participants)** becomes **designed ✅ · built ⏳ · verified ❌ · shippable ❌**, and it ships
 > **narrowed**: the data half is being built now, the screen half is **deferred on purpose**.
 >

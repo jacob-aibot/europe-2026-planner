@@ -3593,3 +3593,42 @@ Not re-run this round, deliberately: `qa/r46-idb-keys.mjs`, `qa/i7a-idb-rowkeys.
 browser run would re-confirm a number with no reason to doubt it. **A-71 Part 7 residue 4 stands
 unmeasured**: face 4 has still not been driven against `apps/web`'s IndexedDB storage port, and §C
 drives it against the memory port only.
+
+---
+
+**Round 52** is the mandatory adversarial pass over **I-9** (participants in core, ARCHITECTURE
+**§8.3**). One probe, plain Node, no browser, run from anywhere:
+
+```bash
+node --experimental-strip-types qa/r52-participants.mjs   # 13 sections; 19 FAIL at 0e556a0
+```
+
+Thirteen sections, and the `FAIL` lines are the findings: **A** every `updateParticipant` escape
+shape (plain / `undefined` / enumerable-defineProperty / non-enumerable / inherited `id` and
+`userId`, `__proto__` out of `JSON.parse`) — all refused, plus the two that are not (**R52-6**,
+the spread; **R52-3**, the `kind` enum); **B** the type-legal corruption chain
+(`{displayName: undefined}` → `validateTrip` throws → the export cannot be re-imported —
+**R52-2**); **C** the parser against ten hostile document shapes, 200 rows, an unenumerated key
+and a later build's `userId` — **all clear**, but its three duplicate-id assertions are
+**tripwires that A-73 / ROADMAP I-9a will invert on purpose** and are labelled inline; **D**
+*participation grants nothing*, attacked on every read path including `validateTrip`'s own member
+set, `tripSummary`, `travelStats` and `copyStopInto` — **all clear**; **E** undo/redo with 30
+dispatches **interleaved** across four record classes, walked back and forward step by step, plus
+branch-and-redo and save/reopen — **all clear**; **F** **KD-96 executed, not reasoned**: it creates
+a `git worktree` at `4b02206`, opens a post-I-9 document with that build and re-saves it, and the
+participants are gone (the worktree is removed afterwards; `R52_OLD_BUILD=<path>` skips the
+creation); **G** the shipped sample, including `redactForSample` **fail-closed** over a trip that
+does carry a named participant; **H** the 83 → 86 export count and every site that pins it;
+**I** the U+200B gap measured on `participant_name_empty` **and** `city_name_empty` in the same
+run — they agree, so the builder's consistency defence holds and it is **not** a finding;
+**J** a `Trip` that predates the field (**R52-5**); **K** the untyped action boundary through the
+**real store** — one dispatch and a save leave the trip unopenable (**R52-3**), and the derived
+cache dies (**R52-2**); **L** `mergeTrips`, which never merges `participants` (**R52-1**, the
+round's worst finding); **M** what the two issues actually say — a nameless person rendered as
+*"a city with no name"* (**R52-4**) and the miscounted-suppression comment (**R52-7**).
+
+No existing probe was re-cut and none was re-run: I-9 touches no `apps/web` file, no store method,
+no photo path and no map. `qa/i7a-idb-rowkeys.mjs` is **deliberately not run here** — A-39 Part 11
+item 2's Axis-D assignment belongs to the pass over **I-9a**, where `SCHEMA_VERSION` actually
+moves, and four probes that pin `SCHEMA_VERSION === 2` (`r45-i13.mjs`, `i13b-gate.mjs`,
+`r48-i13d.mjs`, `r50-i13h.mjs`) are expected to fire in that round, not this one.
