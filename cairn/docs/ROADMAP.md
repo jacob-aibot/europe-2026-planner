@@ -718,6 +718,21 @@ lands.** Phase 2's scope, boundaries and order are otherwise untouched: no phase
 stays 2, `SUMMARY_VERSION` stays 5, no `PhotoAsset` field moves, `RefKind` does not move, and A-58's
 no-dependency verdict is unchanged.
 
+**Revision 46, 2026-09-04.** **No increment added, no scope moved: `I-13c` gains a third group of two
+items and both are non-blocking.** The two design questions the photo arc had left open — one since round
+45, one raised by the round-46 fix-pass builder — are ruled at `ARCHITECTURE.md` revision 46 as **A-65**
+and **A-66**, and **both refuse to add a mechanism.** A-65 (QA **R45-14**): undo restores a removed
+photo's record and not its bytes, the **deferred** byte delete the finding proposed is refused, §10.3's
+synchronous cascade row is upheld, and what lands is `removePhoto`'s docstring plus one obligation on the
+unbuilt remove affordance. A-66 (BUILD-NOTES **KD-82**, QA **R46-1**): `PhotoImportFailure` is closed at
+**exactly five arms**, a batch abandoned because the user left the trip is correctly reported as nothing,
+and what lands is one comment pointer. **Neither ruling moves a type, a field, a selector, a port method
+or a test value**, and neither gates I-13's confirmation — but **both of the round's two remaining `FAIL`
+lines are now measuring rulings that exist**, so the §K probe lines that assert the refused proposal are
+re-cut by the **breaker**, not by a builder, exactly as round 46 re-cut six lines of `qa/r45-i13.mjs`
+after revision 44. `SCHEMA_VERSION` stays 2, `DB_VERSION` stays 5, `SUMMARY_VERSION` stays 5, `RefKind`
+does not move, and A-58's no-dependency verdict is unchanged.
+
 > **Phase numbers changed once, here.** Every heading below carries its old number, and every "Phase N"
 > written in `ARCHITECTURE.md` §1–§7, `BUILD-NOTES.md` or `QA-FINDINGS.md` before revision 9 means the
 > *named* phase it described: "Phase 2" = accounts/server (**now 3**), "Phase 3" = ingest (**now 4**),
@@ -1610,7 +1625,7 @@ caption/order) from the cell, and **at most 3 extent panes can exist planet-wide
 unchanged; A-53 adds **I18**, two criteria and a docstring. **I-8i is gated on Jacob's approval of A-51 and
 on nothing else — the design is closed and no further architect round is owed** |
 | **2c — participants** | `Trip.participants`, three build functions, the participants editor, *"people you have travelled with"* on the profile | you can say the trip was with your girlfriend and her family, and it grants them nothing | Not started; gated on 2b |
-| **2d — the memory data layer** *(revision 40)* | **I-12**: `TripSummaryCity` gains `centre` + `firstDay`/`lastDay`, `SUMMARY_VERSION` → 5, `TravelStatsCity` gains dates (§8.4 **A-56**). **I-13**: the `PhotoAsset` record class, multi-file import, two byte stores, a pure EXIF reader, the two-derivative resolution rule, the loading-state selectors (**§10**, **A-57**, **A-58**). **I-12a** *(revision 41, QA round 43; amended at revision 42 by QA round 44)*: an unreadable stored city date stops taking the whole library's statistics down anonymously, and a city range the clock erased stops printing as a specific day (§8.4 **A-59**, **A-60**). **I-12a is SEND BACK at round 44** — a repair pass is owed for R44-1, and revision 42 folds §8.4 **A-60 Part 6** (R44-2) into it as item 5. **I-13 is SEND BACK at round 45**; its builder's KD-81 is ruled at revision 43 as §10 **A-61** — the 4 KB document-growth criterion was mine and wrong, the `PhotoAsset` record does not move by one field, and **I-13a** is the one-file test-and-comment pass that closes it. **I-13b** *(revision 44, QA round 45)*: the photo byte stores get their tenancy in the key so restoring a backup cannot destroy the original trip's photographs, a failed availability read becomes a state a surface can name and retry, and A-57 Part 4's false claim about provenance transitions is withdrawn (§10 **A-62**, **A-63**, **A-64**). **I-13b is SEND BACK at round 46** — the key held under every attack, but three photo writes cross a trip boundary a key cannot police, one of them a regression this arc introduced; **I-13c** *(revision 45, QA round 46)* is the repair pass, and its one architect-owned item is §10 **A-62 Part 8 residue 4** — a failed byte cascade during a trip delete does not block the delete and is answered only by residue 2's unbuilt sweep, so what lands is a corrected comment and no new machinery | a past trip stops being a list of country codes — it knows *where in* each country and *when* — and a photograph can be attached to a day of it at all, which it could not before. Both are exercisable end to end with `node --test` and the CLI, on a machine with no browser | **In progress** *(status corrected at revision 43 — this cell still read "Not started" after three increments had landed; re-stated at revision 44)*: I-12 SHIP (`8b50889`), I-12a **SEND BACK** and owed a repair pass, I-13 **SEND BACK at round 45** (`497c116`) and owed I-13b, **I-13a queued**; **I-13b built (`70b9ee6`) and SEND BACK at round 46**, owed **I-13c** *(re-stated at revision 45)*. **Gated on 2b's *data layer*, which shipped (`REVIEW.md` "2b (data layer)", SHIP, `69e44d4`) — not on 2b's surfaces and not on 2c.** Orderable before or after 2c. **Opens no `.tsx` file** |
+| **2d — the memory data layer** *(revision 40)* | **I-12**: `TripSummaryCity` gains `centre` + `firstDay`/`lastDay`, `SUMMARY_VERSION` → 5, `TravelStatsCity` gains dates (§8.4 **A-56**). **I-13**: the `PhotoAsset` record class, multi-file import, two byte stores, a pure EXIF reader, the two-derivative resolution rule, the loading-state selectors (**§10**, **A-57**, **A-58**). **I-12a** *(revision 41, QA round 43; amended at revision 42 by QA round 44)*: an unreadable stored city date stops taking the whole library's statistics down anonymously, and a city range the clock erased stops printing as a specific day (§8.4 **A-59**, **A-60**). **I-12a is SEND BACK at round 44** — a repair pass is owed for R44-1, and revision 42 folds §8.4 **A-60 Part 6** (R44-2) into it as item 5. **I-13 is SEND BACK at round 45**; its builder's KD-81 is ruled at revision 43 as §10 **A-61** — the 4 KB document-growth criterion was mine and wrong, the `PhotoAsset` record does not move by one field, and **I-13a** is the one-file test-and-comment pass that closes it. **I-13b** *(revision 44, QA round 45)*: the photo byte stores get their tenancy in the key so restoring a backup cannot destroy the original trip's photographs, a failed availability read becomes a state a surface can name and retry, and A-57 Part 4's false claim about provenance transitions is withdrawn (§10 **A-62**, **A-63**, **A-64**). **I-13b is SEND BACK at round 46** — the key held under every attack, but three photo writes cross a trip boundary a key cannot police, one of them a regression this arc introduced; **I-13c** *(revision 45, QA round 46)* is the repair pass, and its one architect-owned item is §10 **A-62 Part 8 residue 4** — a failed byte cascade during a trip delete does not block the delete and is answered only by residue 2's unbuilt sweep, so what lands is a corrected comment and no new machinery. **Revision 46 adds group 3 to I-13c** — §10 **A-65** (undo restores a removed photo's record, never its bytes; the deferred byte delete is refused and §10.3's synchronous cascade is upheld) and **A-66** (`PhotoImportFailure` is closed at five arms; a batch abandoned because the user left the trip is correctly reported as nothing, because the report would land against the trip they moved to) — **two more comment corrections, no new machinery, and the arc has no unruled question left** | a past trip stops being a list of country codes — it knows *where in* each country and *when* — and a photograph can be attached to a day of it at all, which it could not before. Both are exercisable end to end with `node --test` and the CLI, on a machine with no browser | **In progress** *(status corrected at revision 43 — this cell still read "Not started" after three increments had landed; re-stated at revision 44)*: I-12 SHIP (`8b50889`), I-12a **SEND BACK** and owed a repair pass, I-13 **SEND BACK at round 45** (`497c116`) and owed I-13b, **I-13a queued**; **I-13b built (`70b9ee6`) and SEND BACK at round 46**, owed **I-13c**, whose group 2 built at **`a6c5d04`** and whose three documentation items are still owed *(re-stated at revision 46)*. **Gated on 2b's *data layer*, which shipped (`REVIEW.md` "2b (data layer)", SHIP, `69e44d4`) — not on 2b's surfaces and not on 2c.** Orderable before or after 2c. **Opens no `.tsx` file** |
 
 **Mapped onto the increment sequence below** (revision 10): **2a = I-1 → I-4**, **2b = I-5 → I-8**,
 **2c = I-9 → I-10**, **2d = I-12 → I-12a → I-13 → I-13a → I-13b → I-13c** *(revision 40; I-12a added at revision 41, I-13a at revision 43, I-13b at revision 44, I-13c at revision 45)*, with **I-0** before all of them and **I-11** the
@@ -4649,7 +4664,11 @@ builder-routed findings, worked as one pass because they are the same three file
   Then a **breaker round over I-13 and I-13b together** — round 45 returned SEND BACK on I-13 and it is
   I-13b that has to earn the reversal, not this file.
 
-#### I-13c — the round-46 repair pass: an import stops crossing a trip boundary, `'loading'` becomes transient again, and a comment stops promising a reclaim it cannot deliver (QA round 46; §10 **A-62 Part 8 residue 4**)
+#### I-13c — the round-46 repair pass: an import stops crossing a trip boundary, `'loading'` becomes transient again, and three comments stop promising things the design refuses (QA round 46; §10 **A-62 Part 8 residue 4**, **A-65**, **A-66**)
+
+*Revision 46 status: **group 2 built at `a6c5d04`**; group 1 item 1 and group 3's two items are still
+owed, and all three are non-blocking documentation corrections. Group 3 was added at revision 46, when
+`ARCHITECTURE.md` **A-65** and **A-66** closed the arc's last two unruled questions.*
 
 *Revision 45, from QA round 46's confirmation pass over I-13 + I-13b (**SEND BACK** — 0 BLOCKERS, 3 MAJOR,
 4 MINOR). The key A-62 ruled survived every attack the round could construct, on Chromium and WebKit; what
@@ -4663,9 +4682,12 @@ zero-line diff. **It opens no view and adds no screen.***
 > the reasoning there *is* the evidence). Then `ARCHITECTURE.md` §10 **A-62 Part 8 residue 4** — and
 > **residue 4 alone**, not A-62 whole, because it changes no mechanism. §10.6 properties 3, 5 and 6 for
 > R46-2 and R46-3. `cairn/qa/r46-i13b.mjs` and `qa/r46-idb-keys.mjs` are the breaker's own instruments and
-> the sections named below go green **without the probes being edited**.
+> the sections named below go green **without the probes being edited**. **For group 3 (revision 46):
+> §10 A-65 Part 5 and A-66 Part 6, those two Parts alone** — each entry's other Parts are the argument
+> for a refusal, and a builder making a comment edit does not need them.
 
-- **Built.** Two groups: the architect's one item, then round 46's builder-routed findings.
+- **Built.** Three groups: the architect's one item, round 46's builder-routed findings, then the two
+  rulings that had been owed since rounds 45 and 46 *(group 3, added at revision 46)*.
 
   **1. A-62 Part 8 residue 4 — the comment in `deleteTrip` stops claiming a reclaim it cannot deliver
   (R46-4, MINOR). NON-BLOCKING.**
@@ -4703,20 +4725,75 @@ zero-line diff. **It opens no view and adds no screen.***
   citation in the shipped port, the in-memory double's flattened byte key disagreeing with the array key
   for an id `fromJSON` will accept, and a literal NUL byte making the increment's own ship-gate probe a
   binary file to git.
+
+  **3. A-65 and A-66 — the two rulings that had been owed, and both land as English (revision 46).
+  NON-BLOCKING, and neither opens a `.tsx` file, a type, a selector or a port.**
+
+  *This group was added at revision 46, after group 2 shipped at `a6c5d04`. Read
+  `ARCHITECTURE.md` §10 **A-65 Part 5** and **A-66 Part 6** — those two Parts alone are the brief; the
+  rest of each entry is the argument, and a builder does not need it to make the edit.*
+
+  1. **A-65 (QA R45-14, MINOR) — `removePhoto`'s docstring stops naming a future ruling that went the
+     other way.** `packages/client/src/store/store.ts`, `removePhoto`. The shipped disclosure is correct
+     about the **behaviour** and wrong about the **future**: it says *"The fix is a **deferred** byte
+     delete (hold the derivatives until the removal leaves the undo window), and that is not written here
+     because §10.3's cascade table rules the opposite … **Trigger:** that ruling."* The ruling exists and
+     it **refuses the deferred delete**. That clause comes out and is replaced by the four facts A-65
+     Part 3 rules: undo restores the record and not the photograph; the byte delete is synchronous **by
+     design**; the resulting `availability: 'missing'` with §10.6 property 3's offer to re-import is the
+     honest state, not a degraded one; and the deferral is refused, with a pointer to **A-65 Part 4**
+     rather than a re-argument in the docstring. **No sentence in that docstring may name a future ruling
+     that will change when the bytes go.**
+  2. **Five things A-65 does not get to do**, and they are the ruling rather than a preference: **no
+     change to `removePhoto`'s code**; **no deferral, queue, tombstone, trash can or timer anywhere in
+     the photo path**; **no `PhotoAsset` liveness field** (§10.1 point 4, refused a second time); **no
+     change to `orphanPhotoBytes`, `reclaimPhotoBytes`, `photosFor`, `PhotoSession` or `PhotoPort`**; and
+     **no edit to `qa/r46-i13b.mjs` §K or `qa/r45-i13.mjs` §K** — those two lines assert the refused
+     proposal and are re-cut **by the breaker** to assert A-65 Part 6's **T1**, which is round 46's own
+     stated precedent for a prior round's probe.
+  3. **A-66 (BUILD-NOTES KD-82, QA R46-1) — the abandoned-import comment points at a ruling instead of an
+     open question.** Same file, `importPhotos`: the two `break` comments say *"see KD-82 for what the
+     abandoned files do and do not report"* and *"The bytes stay under their own trip's key, where they
+     are that trip's to reclaim (KD-82)"*. KD-82 is a build note recording an **unruled** judgement; it is
+     now ruled, so both citations name **§10.6 A-66** as well, so that a reader lands on the decision
+     rather than on the question. **That is the entire code change for A-66 — a citation.**
+  4. **Four things A-66 does not get to do**: **no sixth arm on `PhotoImportFailure`** (it is closed at
+     five, and A-66 Part 8's **U5** is the checkable form of that); **no failure entry, of any reason, for
+     an abandoned file** — the report would land in the session state of the trip the user moved to, which
+     is R45-4's and R46-1's defect in the reporting layer; **no tenancy on `PhotoSession.failures` and no
+     new library-scoped `AppState` field** to give it somewhere honest to live; and **no `remove()` call
+     for the mid-flight file's bytes** — they stay under their own trip's key, bounded at one derivative
+     pair and swept by `removeTrip`, which A-66 Part 7 rules and discloses.
+  5. **Scheduling: this group blocks nothing.** Both items are documentation defects of the same class as
+     group 1 item 1 — a comment that says something untrue about the design. They are listed so the ship
+     gate has a line for them, and their absence is a tracked residue rather than a hold. **What is *not*
+     optional at the confirming round is the probe re-cut in item 2**, because a `FAIL` line asserting a
+     refused proposal measures nothing.
+
 - **User-visible outcome.** **None on screen** — there is still no photo surface. What changes is that a
   photograph imported while the user navigates away is no longer lost, and a trip opened twice in quick
   succession no longer shows a spinner that never resolves.
 - **Architecture / data model.** `ARCHITECTURE.md` §10 **A-62 Part 8 residue 4** and nothing else moved at
-  revision 45. **Four things a builder does not get to decide:** the five refusals in group 1 item 2; that
-  R46-1's fix narrows a window rather than closing the orphan class residue 4 names (so a builder does not
-  also owe a sweeper); `SCHEMA_VERSION`, `DB_VERSION`, `SUMMARY_VERSION` and core's export surface all
-  stay where they are; and **no dependency is added to any package** (A-58, unchanged).
+  revision 45; **A-65 and A-66** at revision 46, and they amend §10.1 point 1, §10.3's cascade row and
+  §10.6's `PhotoImportFailure` block **in place** and move nothing else. **Six things a builder does not
+  get to decide:** the five refusals in group 1 item 2; the five in group 3 item 2 and the four in group 3
+  item 4; that R46-1's fix narrows a window rather than closing the orphan class residue 4 names (so a
+  builder does not also owe a sweeper); that the byte delete in `removePhoto` is **synchronous and stays
+  synchronous** (A-65) and that `PhotoImportFailure` has **five arms and stays at five** (A-66);
+  `SCHEMA_VERSION`, `DB_VERSION`, `SUMMARY_VERSION` and core's export surface all stay where they are; and
+  **no dependency is added to any package** (A-58, unchanged).
 - **Verification.**
   - `[stated]` **The breaker's own probes, unedited.** `node --experimental-strip-types qa/r46-i13b.mjs`
     §D, §E, §F, §H, §I and §J go green **without the probe being edited**. **§G is the exception and it is
     the point**: residue 4 rules that the measured state is *documented*, not fixed, so §G asserting a
     reclaim that does not exist is a line the **breaker** re-cuts to assert the residue — it is not a
-    builder edit and it is not a defect in this pass. §K (R45-14) stays red; that ruling is still owed.
+    builder edit and it is not a defect in this pass. ~~§K (R45-14) stays red; that ruling is still
+    owed.~~ **Superseded at revision 46:** A-65 rules R45-14 and refuses the deferred delete, so **§K is
+    the second exception and it has the same shape as §G** — the line asserts `bytesBack === true`, which
+    is the proposal the ruling refuses, and the **breaker** inverts it to assert A-65 Part 6's **T1**
+    (record back, `read()` `null`, `{phase:'ready', missing:1}` after a fresh `refreshPhotoAvailability()`,
+    never `'empty'`, never a throw). Same for `qa/r45-i13.mjs` §K, which is that probe's one remaining
+    `FAIL`. **A builder edits neither.**
   - `[stated]` **R46-1, driven rather than reasoned about.** All three faces of the round's §D, with a
     slow `derive` and nothing else injected: trip-switch mid-import, the `{kind:'day'}` variant that
     produces `photo_attach_dangling`, and a delete mid-decode. Outcome clause: a fix that pins the record
@@ -4725,18 +4802,32 @@ zero-line diff. **It opens no view and adds no screen.***
     that the trip goes either way and that the bytes are not reclaimable by any shipped mechanism. This is
     checkable by reading and it is stated so the ship gate has a line for it, not because a test can
     assert English.
+  - `[stated]` **The two docstrings say what A-65 and A-66 say** *(revision 46, group 3)*. A reviewer
+    reading `removePhoto` learns that undo restores the record and not the photograph, that the byte
+    delete is synchronous **by design**, and that the deferral is **refused** — and finds **no** sentence
+    promising a future ruling that will change when the bytes go. A reviewer reading `importPhotos`' two
+    `break` comments is pointed at **A-66** and not only at an open build note. Checkable by reading,
+    stated so the gate has a line for it.
+  - `[stated]` **The two refusals are checkable, not merely written.** `PhotoImportFailure`'s declaration
+    has **exactly five** string-literal arms (A-66 **U5**), and the photo path contains **no** timer, no
+    pending-delete queue and no tombstone field (A-65 **T5**). Outcome clause: a sixth arm or a deferral
+    is an architect's decision taken by a builder, and both greps find it in one line.
   - `[stated]` **The fence:** `git diff --name-only` shows **zero** files under `cairn/docs/design/` and
     no `package.json`/lockfile movement.
-- **Dependencies / blockers.** I-13b (built, `70b9ee6`). **Nothing else** — orderable immediately, and it
-  blocks I-11. **It does not fire A-39 Part 11**: no store is added, no version moves, and the upgrade
+- **Dependencies / blockers.** I-13b (built, `70b9ee6`); group 2 built at **`a6c5d04`**. **Nothing else** —
+  orderable immediately, and it blocks I-11. **It does not fire A-39 Part 11**: no store is added, no version moves, and the upgrade
   writes no record.
 - **Ship gate.** Round 46's six builder-routed findings each red before and green after, recorded;
-  `qa/r46-i13b.mjs` green except §G (re-cut by the breaker) and §K (R45-14, still owed); `qa/r46-idb-keys.mjs`,
+  `qa/r46-i13b.mjs` green with **§G and §K re-cut by the breaker** (*revision 46 — §K is no longer an
+  owed ruling; A-65 ruled it and the line asserted the refused proposal*), and `qa/r45-i13.mjs` green
+  after the same re-cut to its §K; `qa/r46-idb-keys.mjs`,
   `qa/i13b-gate.mjs`, `qa/i7a-idb-rowkeys.mjs` and `qa/i13-photo-browser.mjs` green on **both** engines;
   `npm test`, `npm run typecheck` and the sample build green with **no `package.json` diff and no lockfile
   movement**. Then a **breaker round over I-13, I-13b and I-13c together** — rounds 45 and 46 both returned
-  SEND BACK and it is I-13c that has to earn the reversal. **Group 1 item 1 is not a gate condition**; it
-  is checked at the gate and reported, and its absence is a tracked residue rather than a hold.
+  SEND BACK and it is I-13c that has to earn the reversal. **Group 1 item 1 and both of group 3's items
+  are not gate conditions**; they are checked at the gate and reported, and their absence is a tracked
+  residue rather than a hold. **The probe re-cut is not in that category** — a `FAIL` line asserting a
+  proposal an architect has refused measures nothing, so the confirming round carries it.
 
 #### I-11 — The phase gate
 

@@ -1032,6 +1032,28 @@ name it. **What lands in code is a comment correction and nothing else** — no 
 selector, no rollback. `ROADMAP.md` revision 45 carries it as a **non-blocking** item in **I-13c**, the
 round-46 repair pass.
 
+**Revision 46, 2026-09-04.** **Two open questions closed, both by refusing to add a mechanism, and the two
+refusals are the same refusal.** The photo arc had two items that had been routed to me and never ruled —
+one since round 45, one raised by the round-46 fix-pass builder — and each asked whether a real but bounded
+gap earns new machinery. **A-65** (§10.1, §10.3, QA **R45-14**): undoing a photo removal restores the
+record and cannot restore the photograph, and the finding proposed a **deferred** byte delete so that undo
+would have something to restore. **Refused.** §4.2 rule 5 has always defined undo as *a snapshot restore
+over the immutable `Trip`* and §4.2 rule 4 says in as many words that *"undo changes the document, not what
+storage holds"* — so a photo is not the first record whose undo does not reach storage, it is the first
+whose completeness depends on storage, and what that asymmetry earns is **disclosure, not a grace period**.
+The window a deferred delete would key off does not survive a reload, is cleared by every reseed site in
+`store.ts`, and its reaper is A-62 Part 8 residue 2's unbuilt sweep — so the *small* fix imports the whole
+of the thing this section has now twice declined to build, in exchange for an undo that restores a
+photograph *sometimes*. **A-66** (§10.6, BUILD-NOTES **KD-82**, QA **R46-1**): an import batch abandoned
+because the user left the trip reports nothing, and the question was whether `PhotoImportFailure` earns a
+sixth arm. **Refused, and the reason is mechanical rather than a judgement about how rare the case is**:
+every one of the three paths that abandons a batch is a `set({...initialState(), …})` site, so a report
+appended after the break would land in the session state of the trip the user has just moved to — a
+per-file failure naming files by name, on a trip that never had anything to do with them, which is R45-4's
+and R46-1's defect moved into the reporting layer. **What lands in code across both rulings is one
+docstring correction and one comment pointer** — no type, no field, no selector, no port method, no timer.
+`ROADMAP.md` revision 46 carries them as **non-blocking** items in **I-13c**.
+
 **Phase 1 is §2 and §4. The next phase is §8.1–§8.4.** Everything else is the shape those must not
 foreclose. See `ROADMAP.md` for sequencing and `PRODUCT-VISION.md` for why this order and not another.
 **What the product looks like is `DESIGN.md`, not this document** — §9 says why, and a builder of a screen
@@ -1039,8 +1061,8 @@ reads that instead of entering §2 or §4.
 
 ## Read only your sections
 
-This document is **~340k tokens** (re-measured at **revision 45**, with `doc-section` — §8 grew 65k → 70k
-when A-56 landed in §8.4, 70k → 77k when A-59/A-60 joined it, 77k → 81k when A-60 gained its Part 6 and 81k → **82k** when A-38 Part 5's line was restated at revision 44, and §10 grew 13k → 16k when A-61 landed at revision 43, 16k → 25k when A-62/A-63/A-64 landed at revision 44 and 25k → **27k** when A-62 Part 8 gained its fourth residue at revision 45; the previous figure was ~271k at revision 36, with
+This document is **~350k tokens** (re-measured at **revision 46**, with `doc-section` — §8 grew 65k → 70k
+when A-56 landed in §8.4, 70k → 77k when A-59/A-60 joined it, 77k → 81k when A-60 gained its Part 6 and 81k → **82k** when A-38 Part 5's line was restated at revision 44, and §10 grew 13k → 16k when A-61 landed at revision 43, 16k → 25k when A-62/A-63/A-64 landed at revision 44, 25k → 27k when A-62 Part 8 gained its fourth residue at revision 45 and 27k → **36k** when A-65/A-66 landed at revision 46; the previous figure was ~271k at revision 36, with
 `cairn/tools/doc-section ARCHITECTURE` — §2 is ~123k of it and §8 ~65k, and §4 grew 13k → 18k when A-41/A-42 landed in §4.4, 18k → 25k when A-48 joined them, 25k → 32k when A-49/A-50 did, 32k → 42k when A-51/A-52 did, 42k → 49k when A-53 did and 49k → **59k** when A-54 did — the figure below is `doc-section`'s own, re-measured at revision 37; the per-section figures below were stale by a third before revision 11 and are
 re-measured, not estimated, whenever a revision lands). Nothing needs all of it, and a fresh agent that reads it whole starts a sixth
 of the way into its context before writing a line. Pull what you need:
@@ -1079,7 +1101,7 @@ supersedes, so reading it first is what tells you which of A-46 to skip** | 123k
 | 7 | Explicitly deferred | <1k | anyone about to build something not in the roadmap |
 | 8 | **The travel-history model** (revision 9) — trip lifecycle and past trips (§8.1), the feasibility/integrity rule class (§8.2), participants (§8.3), geography attribution, travel stats and the summary-row rule (§8.4); then the shapes the location, photo and social phases must land on (§8.5–§8.7) and what is refused (§8.8). **§8.10 is revision 10** — physical travel distance by mode and the four provenance bases that keep it honest; **it is not Phase 2 scope**, so a Phase 2 builder reads §8.1–§8.4 and stops. **Revision 11 amends §8.1, §8.2 and §8.4 by pointer only — the two rulings themselves live in §2.2 (A-10) and §2.7 (A-9), and a Phase 2 builder reads both; revision 12 amends §8.2 by pointer in the same way, and its four rulings live in §2.7 (A-11, A-12, A-13) and §2.14 (A-14)**. **A-26 is revision 20 and lives in §8.4** — the mixed-resolution country index, the withdrawal of the correctness floor's escalation mechanism, and the ruling that `null` is the right answer for a landform the dataset does not carry; **anyone touching `tools/gen-countries.mjs`, `geo/countryIndex.ts` or the attribution golden reads it first**, and it is what ROADMAP's I-5a builds; **A-27 is revision 21, sits directly under A-26 and is read *with* it, never instead of it** — it amends A-26 Part 4's block-quoted rule with a third clause (a filled code ships a **forgiveness entry** as well as a coverage entry), supersedes A-26 Part 5's two-residue list with three, lifts A-26 Part 6 item 3 for a docstring correction only, and is what ROADMAP's **I-5b** builds; **A-28 is revision 22, sits under A-27 and is read with both, never instead of them** — it supersedes A-27 Part 4's filter 2 (two arms, because the coverage index it compared against is mixed-resolution and answered generously) and A-27 Part 4's `overlaps` predicate (the vertex-mean probes come out), corrects A-27 Part 5's Macao sentence and every count in it, and is what ROADMAP's **I-5c** builds. **Anyone touching `tools/forgiveness.mjs` or the forgiveness pass reads A-28 first and A-27 second**; **A-29 is revision 23 and sits under A-28** — it is the only one of the four that is *not* about the index: it rules that a `City`'s **stated** `countryCode` fills a gap the coordinate cannot answer, never overrides one, and only through a gate ending in index membership, and it takes `SUMMARY_VERSION` to 3. **Anyone touching `derive/summary.ts` reads A-29 and §4.3's A-30 together** — A-29 changes what a row *says*, A-30 changes how it is *written*, and I-6a builds both; **A-31 is revision 24 and sits under A-29** — it is the `travelStats` specification (type, signature, algorithm, sort orders, residues), and it widens the row a second time with the **record census** clause 2's `unattributed` cannot be computed without, taking `SUMMARY_VERSION` to 4. **A builder of I-7 reads §8.4 clause 2, then A-31, and needs nothing else in this document except §2.10's list**; A-31 also rewrites ROADMAP exit criterion 6, so **anyone about to add a count to `TripSummaryRow` reads A-31 Part 6 first — widening that allow-list is an architect's ruling**; **A-33 and A-34 are revision 25 and sit under A-31** — **A-33 supersedes A-31 Part 6's two-half check entirely** (it grepped declarations while the danger is a *value*, and a persisted `countriesVisited` passed it), so read A-33 and treat Part 6 as the *principle* it block-quotes and nothing more; **A-34** adds `provisional` to `travelStats`' two row types and is the ruling that stops an active trip's unreached countries being printed as fact. **A builder of I-7a reads A-31, then A-33 and A-34, plus §2.1's A-32**; **A-36 and A-37 are revision 26 and sit under A-34** — **A-36 supersedes A-33 Part 3's 6b-1/6b-2/6b-4 split and Part 7 residue 2** (every `StoragePort` implementation is *executed* by the gate, including the web port, against a recording double; 6b-2 is demoted to a tripwire and its parameter grep withdrawn; 6b-4's Chromium read-back becomes a required recorded ship-gate condition), so **anyone touching a port implementation, `test/stats-storage.test.ts` or `ROW_KEYS` reads A-36 first and A-33 second**; **A-37** is the ruling that a stored summary row is not a validated document — two module-private read gates in `travelStats` (day numbers clamped into `IsoDate`'s domain, a stored country code read through `/^[A-Z]{2}$/`), and it is what makes A-32 Part 8 residue 3's bound and the composite key's docstring true rather than merely stated. **A builder of I-7b reads A-36 and A-37, plus §2.3's A-35**; **A-38 is revision 27 and sits under A-37** — it **widens A-36 Part 2's mechanism and Part 4's 6b-4 scope without touching A-36's sentence**: a port's coverage is its **write paths**, not its interface methods, so the recording double gains a **seed** (a pre-existing database, including a *legacy* record with no envelope version), 6b-1b becomes **five arms each with a stated starting state**, and 6b-4 gains a second seeded phase; **A-39 is revision 28, sits under A-38 and closes the arc** — it supersedes A-38 Part 7's *required property* sentence (which quantified over **faults** and so could never be discharged by a finite fixture list) and A-38 Part 3's arm **seeds**, replacing both with a claim quantified over the state `ensureReady()` can **read**: five axes derived line by line from the function, a **15-state pairwise covering set** in the same five arms, and — the part Jacob asked for — a **written boundary** saying what legitimately reopens this (a `SUMMARY_VERSION`/`SCHEMA_VERSION` bump, a new store, a new port, a fourth write path) and what does not (one more fault shape on an axis already covered, which is a **builder** finding against A-39 Part 5's table, not an architect's). **Anyone touching a port implementation, `recordingIdb`, `test/stats-storage.test.ts` or `qa/i7a-idb-rowkeys.mjs` reads A-39 first, A-38 second and A-36 third**; **A-44 is revision 30, sits at the end of §8.4 and is read with A-37 Part 2** — it is one paragraph plus a signature, and it says where `lifecycle`'s read gate goes (`packages/client`, once, beside `travelHistory`); **anyone rendering a stored summary row on a new surface reads it**; **A-56 is revision 40, sits at the very end of §8.4 and is the newest entry in the section** — the city entry gains `centre` and `firstDay`/`lastDay`, `SUMMARY_VERSION` goes to **5**, A-33 Part 2's `ROW_KEYS`/`ROW_PATHS` are widened, stop-level geometry is refused with its trigger, and A-31 Part 5 residue 1 is closed **for cities only**. **A builder of I-12 reads A-56, then A-31 Parts 2 and 4, then A-33 Part 2, then A-39 Part 11 item 1, and needs nothing else in this document except §2.10's list**; **A-59 and A-60 are revision 41, sit directly under A-56 and are read *with* it, never instead of it** — QA round 43 measured A-56 Part 7 clause 1's *read* of a stored city date as an anonymous throw that takes the whole library's statistics down with no selector naming the row (A-59: the read is gated, the fallback is clause 2's, the absorption is counted in a new `TravelStats.unreadableCityDates`, and a new `rowStatsReadable` selector plus a widened `TravelHistoryResult` make the row nameable), and its *clamp* as printing a specific single day for a city the traveller has not reached (A-60: a range disjoint from the clamp interval falls back to the trip's range, so no city line escapes the country line beside it — *"never more assertive than its country's"* was A-60 Part 2's own wording and is **superseded at revision 42** by Part 6.4, which states the property as escape rather than width). **A-59 and A-60 also carry the three in-place corrections R43-6 made to A-56's own prose** (Part 2's `firstDay` docstring, Part 6's fourth-fixture justification, Part 8 item 6's `gen-golden.mjs` line), none of which moves a fixture, a test or a clause. **A builder of I-12a reads A-59, then A-60, then A-56 Part 7, then §2.9 A-47 Part 3, and needs nothing else**; **A-60 Part 6 is revision 42** and closes QA R44-2, an ambiguity in A-60's own Part 2 — a `null` city day edge is a **value** and keeps A-56 clause 1's per-field fallback (the shipped behaviour is **upheld**; the literal pair-wide reading is refused, because it deletes a real observation to arrive at a less precise version of the same invention), while A-60's disjointness test is generalised to read **the edges the row supplied** rather than the substitutes standing in for the missing ones — which is what makes a lone `lastDay` before `a` stop printing a fully-invented single day. **Part 2's pseudocode and Part 2's closing claim are both superseded by Part 6's**, and **a builder of the I-12a repair pass builds from Part 6.3's block and nothing else in this ruling** | 81k | architect; the builder and breaker of the phase after Phase 1 (§8.1–§8.4 only). §8.10 is for the architect and for phases 4, 5 and 7. Read with `PRODUCT-VISION.md` |
 | 9 | **The design contract and the frontend tooling stack** (revision 38). §9.1 makes `docs/DESIGN.md` binding and says what is in it; §9.2 names the three fences a design pass may not cross; **A-55** is the eight-candidate tooling ruling, its Part 0 states where the dependency line actually is (`core`/`client` only — `apps/web` may take deps and takes none new), and its Part 4 is the tool hierarchy. **A builder of any web surface reads `DESIGN.md`, not this section**; this section is for the architect and for anyone about to add a frontend dependency | 4k | architect; anyone adding a frontend dependency |
-| 10 | **The photo foundation** (revision 40). §10.1 the record class and where the bytes are not; §10.2 import and the hand-rolled EXIF reader; §10.3 storage and the two new object stores; §10.4 the resolution discipline; §10.5 privacy and redaction; §10.6 the loading-state signals a consuming UI needs. **A-57** is the consolidated ruling and **A-58** is the dependency verdict. **A builder of I-13 reads §10 whole — it is self-contained — plus §2.8 (provenance), §2.10's list, `serialize/migrate.ts`'s own docstring, §8.6 and §8.4 A-39 Part 11.** It does **not** need the rest of §2 or §4. **A-61 is revision 43, sits at the end of the section and supersedes nothing in §10 except one clause of §10.1 point 1's own prose, corrected in place** — it is the ruling on BUILD-NOTES **KD-81** (ROADMAP I-13's 4 KB document-growth criterion against §10.1's measured 768 B record), it moves **no field**, and **a builder of I-13a reads A-61 Parts 5 and 7 and needs nothing else in this document**. **A-62, A-63 and A-64 are revision 44** — round 45's three architect-routed findings against I-13: the photo byte key gains its tenancy (`[tripId, photoId]`, `DB_VERSION` 4 → 5, `PhotoPort`'s signatures, R45-2 BLOCKER), `PhotoListing` gains an `'unreadable'` phase and a retry (R45-5), and A-57 Part 4's transition claim is withdrawn with `RefKind` unmoved (R45-6). They amend §10.2, §10.3 and §10.6 **in place**; §10.1's record class and A-58 do not move. **A builder of I-13b reads §10.2, §10.3, §10.6 and A-62/A-63/A-64, plus §8.4 A-38 Part 5 and A-39 Part 5 for the fixture re-cut**. **A-62 Part 8 gained a fourth residue at revision 45** (QA **R46-4**) — a failed byte cascade during `deleteTrip` does not block the delete, is not reported into `orphanPhotoBytes`, and is answered only by residue 2's unbuilt sweep, whose trigger is widened in place; **it changes no mechanism, and a builder of I-13c reads residue 4 alone** | 27k | builder and breaker of I-13; architect |
+| 10 | **The photo foundation** (revision 40). §10.1 the record class and where the bytes are not; §10.2 import and the hand-rolled EXIF reader; §10.3 storage and the two new object stores; §10.4 the resolution discipline; §10.5 privacy and redaction; §10.6 the loading-state signals a consuming UI needs. **A-57** is the consolidated ruling and **A-58** is the dependency verdict. **A builder of I-13 reads §10 whole — it is self-contained — plus §2.8 (provenance), §2.10's list, `serialize/migrate.ts`'s own docstring, §8.6 and §8.4 A-39 Part 11.** It does **not** need the rest of §2 or §4. **A-61 is revision 43, sits at the end of the section and supersedes nothing in §10 except one clause of §10.1 point 1's own prose, corrected in place** — it is the ruling on BUILD-NOTES **KD-81** (ROADMAP I-13's 4 KB document-growth criterion against §10.1's measured 768 B record), it moves **no field**, and **a builder of I-13a reads A-61 Parts 5 and 7 and needs nothing else in this document**. **A-62, A-63 and A-64 are revision 44** — round 45's three architect-routed findings against I-13: the photo byte key gains its tenancy (`[tripId, photoId]`, `DB_VERSION` 4 → 5, `PhotoPort`'s signatures, R45-2 BLOCKER), `PhotoListing` gains an `'unreadable'` phase and a retry (R45-5), and A-57 Part 4's transition claim is withdrawn with `RefKind` unmoved (R45-6). They amend §10.2, §10.3 and §10.6 **in place**; §10.1's record class and A-58 do not move. **A builder of I-13b reads §10.2, §10.3, §10.6 and A-62/A-63/A-64, plus §8.4 A-38 Part 5 and A-39 Part 5 for the fixture re-cut**. **A-62 Part 8 gained a fourth residue at revision 45** (QA **R46-4**) — a failed byte cascade during `deleteTrip` does not block the delete, is not reported into `orphanPhotoBytes`, and is answered only by residue 2's unbuilt sweep, whose trigger is widened in place; **it changes no mechanism, and a builder of I-13c reads residue 4 alone**. **A-65 and A-66 are revision 46 and close the two items that had been routed here and never ruled** — A-65 (QA **R45-14**) upholds §10.3's synchronous byte delete and rules that undo restores the **record** and not the photograph, refusing the deferred delete with its reasons, and it amends §10.1 point 1 and §10.3's cascade row **in place**; A-66 (BUILD-NOTES **KD-82**, QA **R46-1**) closes `PhotoImportFailure` at **exactly five arms** and rules that a batch abandoned by a trip transition is reported as nothing, and it amends §10.6's union block in place. **Neither moves a type, a field, a selector or a port method**, and **a builder of I-13c group 3 reads A-65 Part 5 and A-66 Part 6 and needs nothing else in this document** | 36k | builder and breaker of I-13; architect |
 
 *(§8's figure is measured with `doc-section`, not estimated. §8.1–§8.4 — the Phase 2 model — are roughly
 five sixths of it since revisions 20–27 put A-26…A-29, A-31, A-33, A-34, A-36, A-37 and A-38 in §8.4; a Phase 2 builder
@@ -15632,7 +15654,18 @@ fully-populated photo at `toJSON`'s default indent, 439 compact, measured at I-1
 figure and was the arithmetic behind a ROADMAP criterion that could not be met — A-61 Part 2) — so it rides
 the existing autosave, the existing undo history, the existing export and the
 existing §2.2a write fence, and attaching a photo is undoable for free because history is a `Trip` snapshot
-(§2.7 A-6a point 4's precedent). The **bytes** are in object stores of their own (§10.3). Base64 in the
+(§2.7 A-6a point 4's precedent).
+
+> **Scoped at revision 46 — QA R45-14 (MINOR), ruled as A-65.** *"Undoable for free"* is true of
+> `addPhoto` and is **not** the inverse claim about `removePhoto`. Undo is a snapshot restore over the
+> **document** (§4.2 rule 5; rule 4's own sentence is *"undo changes the document, not what storage
+> holds"*), so undoing a removal restores the record and **not the photograph** — the bytes went
+> synchronously with the removal and §10.3's cascade row is upheld. The resulting listing is
+> `availability: 'missing'` with §10.6 property 3's offer to re-import, which is the honest state and is
+> already what the store produces. A-65 refuses the deferred delete and says why; nothing on this record
+> moves.
+
+The **bytes** are in object stores of their own (§10.3). Base64 in the
 document would put megabytes into a JSON string that is rewritten on every keystroke's debounce, snapshotted
 fifty deep in history, and handed whole to `exportDoc`. That is not a tuning problem, it is a category error:
 `TripDoc` is `string`.
@@ -15832,7 +15865,7 @@ not about putting a token on everything.
 
 | Deleting | Also removes |
 |---|---|
-| a **photo** | both derivatives, in the same transaction as the document write that drops the asset — bytes **after** the document here, which is the inverse of import and for the same reason: the reachable-but-absent state is the safe one |
+| a **photo** | both derivatives, in the same transaction as the document write that drops the asset — bytes **after** the document here, which is the inverse of import and for the same reason: the reachable-but-absent state is the safe one. **Synchronously, and undo does not bring them back** — revision 46, **A-65**: the delete is not deferred, not queued and not held for an undo window, so `removePhoto` + undo restores the record with `availability: 'missing'`. A-65 Part 4 is the argument and A-65 Part 5 is the sentence a remove affordance owes the user |
 | a **stop** or a **day** | nothing automatically. Its photos' `attach` **falls back to `{kind:'trip'}`** rather than being deleted. A photograph is not a plan and deleting a plan may not destroy a memory of it. This is the one place the model deliberately loosens rather than cascades, and A-57 Part 9 residue 2 records it |
 | a **trip** | `docs`, `summaries`, `versions`, and **the whole `[tripId, …]` key range** of `photos` and `photoThumbs`, one transaction. **No document parse and no id list** — A-62 Part 4, and it is why the belt above the port (`store.ts`) can cascade for a trip it does not have open (QA R45-3) |
 
@@ -15958,6 +15991,15 @@ export type PhotoImport = {
   /** Per-file failures, kept until the user dismisses them. Never silently dropped. */
   failures: ReadonlyArray<{ name: string; reason: PhotoImportFailure }>;
 };
+/**
+ * **Exactly five arms, and it is closed at five** — revision 46, **A-66**. Every one of them is a fact
+ * about a FILE: this type cannot be decoded, the platform said no, this one is too big, the store was
+ * full, the write rejected. A sixth arm for a batch abandoned because the user left the trip
+ * (`'trip_changed'`, `'abandoned'`) is **refused**: it is a fact about the SESSION, true of every
+ * remaining file at once rather than of any file in particular, and every path that abandons a batch has
+ * already reset `PhotoSession` — so the report would render against the trip the user moved TO. A-66 is
+ * the ruling; widening this union is an architect's decision, checkable by A-66 Part 8's **U5**.
+ */
 export type PhotoImportFailure =
   | 'unsupported_type'     // the picker returned something we cannot decode
   | 'decode_failed'        // the platform said no. Truncated, corrupt, or a codec we lack
@@ -16941,3 +16983,377 @@ the same reason.
 `addPhoto`'s optional `provenance` or through `fromJSON` over a document no shipped build writes, its exit
 is `removePhoto`, and it renders `'suggested'` throughout — which is the honest badge. **Trigger:** Part 3's
 trigger, which is the same event.
+
+#### A-65 — undo restores the plan, not the photograph: the byte delete stays synchronous, and what is owed is a sentence rather than a grace period (revision 46, ROADMAP **I-13c**, QA **R45-14** MINOR)
+
+> **STATUS: RULED. §10.3's cascade row is UPHELD and the deferred delete is REFUSED.** No type, no field,
+> no selector, no port method, no `AppState` field, no timer, no third object store. `SCHEMA_VERSION` stays
+> **2**, `DB_VERSION` stays **5**, core's export surface does not move. What lands in code is **one
+> docstring**, in `removePhoto`, plus a surface obligation on an increment that does not exist yet.
+> **A-57 Part 9's six residues are unchanged; A-62's four are unchanged.** This ruling has been owed since
+> round 45 and its absence is mine.
+
+**Part 1 — the finding is real, both halves of it are measured, and the routing was right.**
+
+Round 45 measured it and round 46 re-derived it on the code as it stands rather than quoting the report,
+which is the right way to carry an open finding across a repair arc: import one photo, `removePhoto`,
+`undo()` — the record is back in `doc.photos`, `read(tripId, photoId, 'thumb')` returns `null`, and a
+**fresh** `refreshPhotoAvailability()` (not a stale in-session set) confirms `{phase: 'ready', missing: 1}`.
+So the document-level state change is reversed and the storage-level one is not.
+
+The finding's complaint was not that this is wrong. It was that **nothing disclosed it**: §10.1 point 1
+said *"attaching a photo is undoable for free because history is a `Trip` snapshot"* with no matching
+sentence about detaching one, §10.3's cascade row said *when* the bytes go without saying what that costs,
+and A-57 Part 9's six residues did not name it. That is a real gap in the record and this ruling closes it.
+The I-13b builder then declined to change when the bytes go, on the stated ground that §10.3 rules the
+opposite in as many words and changing it is an architect's decision. **That decline was correct** and this
+entry says so in writing, exactly as A-61's did for KD-81.
+
+**Part 2 — the precedent that settles it, and round 45 did not check it because it is one section over.**
+
+The finding was routed as though *"does undo restore a photo?"* were an open photo question. It is not: it
+is an instance of a rule this document has held since revision 3 and stated twice.
+
+**§4.2 rule 5:** *"Undo/redo is snapshot-based over the immutable `Trip`, limit 50 … The restored snapshot
+is byte-identical to the document it captured, `revision` included; it carries no authority over
+`savedVersion`."* **§4.2 rule 4, in the paragraph that makes R3-1 structurally unreachable:** *"neither is
+touched by the reducer, including by `undo`/`redo`: undo changes the document, not what storage holds."*
+
+That is the whole answer to *"what does undo promise?"* — **the document, and nothing else.** It has been
+carved out exactly once in nine revisions, by **A-5**, and the carve-out runs in the *opposite* direction:
+`resolutions[].retiredAt` is non-document bookkeeping that the ledger **re-asserts onto** a restored
+snapshot, so that undo does *less* than a byte-identical restore, not more — *"undo restores the plan. It
+does not restore the user's ignorance of what has already been retired."* One field, enforced by the shape
+of `reassertRetirements` rather than by discipline, and §4.2 rule 5 spells out field by field what may not
+move. **That is the standard a second carve-out has to clear**, and *"hold megabytes of derivatives on disk
+for an unbounded window"* does not resemble it.
+
+**So a photo is not the first record whose undo fails to reach storage. It is the first record whose
+completeness depends on storage** — `Day`, `Stop`, `Place`, `Booking` and `Conflict` are wholly in the
+document, so for them a snapshot restore *is* a complete restore, and the rule has never had to say what it
+excludes. `PhotoAsset` is half in the document and half in an object store, and it is the first record
+class to make the rule's silence visible. **That asymmetry is real and it earns something. What it earns is
+disclosure, not a mechanism**, and Parts 4 and 5 are the argument and the deliverable.
+
+**Part 3 — the ruling, in four clauses.**
+
+1. **§10.3's cascade row stands unchanged.** Removing a photo removes both derivatives, synchronously, in
+   the same step as the document write that drops the asset, bytes **after** the document. Not deferred,
+   not queued, not tombstoned, not held for an undo window, not held for "the next successful save."
+   I-13's own acceptance criterion asserted a synchronous delete and it was right to.
+2. **Undo over a `removePhoto` restores the record and does not restore the photograph.** That is the
+   ruled behaviour, it is what the shipped code already does, and it is honest: the resulting listing is
+   `{phase: 'ready', availability: 'missing', missing: 1}`, which §10.6 property 3 renders as *"this
+   photo's image is no longer stored on this device"* **with an offer to re-import**. Every field of the
+   record survives — caption, `capturedAt`, `at`, `metaSource`, `source`, both derivative descriptors,
+   `provenance` — so what the user gets back is the whole memory except the picture, and the picture is
+   still in their own library (A-57 Part 9 residue 1).
+3. **No `PhotoAsset` liveness field, no trash can, no grace period, no timer, no third store.** §10.1
+   point 4's *"there is no `PhotoAsset.status`. Liveness is not a document fact"* is upheld and this is the
+   second thing it refuses.
+4. **What is owed is written English**, in three places in code and docs and one obligation on the unbuilt
+   remove affordance. Part 5 is the list, it is exhaustive, and it is **non-blocking**.
+
+**Part 4 — why the deferred delete is refused, and it is not economy. Four reasons, in descending order of
+how decisive they are.**
+
+**(a) The undo window is not a thing a storage layer can key off, because it does not survive the two
+events most likely to follow a removal.** `history` is `{past: Trip[], future: Trip[]}` in `AppState`. It is
+**never persisted**, so a reload empties it — and it is **cleared wholesale by every reseed site in
+`store.ts`**, which is `store.ts`'s own stated rule: *"Clearing `history` here, once, for every reseed path,
+means there is nothing left to undo INTO the instant a document arrives."* `openTrip`, `closeTrip`,
+`deleteTrip` and `importDoc` are all such sites. So *"until the removal leaves the undo window"* names a
+condition that is unobservable from below the store, satisfiable by navigation rather than by elapsed time,
+and gone entirely on a refresh. A deferred delete keyed on it has exactly two implementations and both are
+worse than the synchronous one: either the reaper is the store, in which case **a reload strands the
+derivatives of every photograph the user removed in that session, permanently and unreported** — a
+standing leak of the exact bytes §10.5 calls sensitive — or the reaper is a timer, which is the same leak
+with a timer in front of it, because nothing re-arms a timer in a tab that has been closed.
+
+**(b) The stranded-derivative case has one recovery and this section has twice declined to build it.**
+A held-then-abandoned derivative is precisely *"a byte record no live tenancy reference covers"*, which is
+§6.3's invariant broken with no account of itself. It is not reachable by `orphanPhotoBytes` (A-47-shaped:
+it reports what a **session observed**, and the session that made the promise is gone) and not by
+`reclaimPhotoBytes` (its `live` guard is the active document's photo ids, and the record is *in* that
+document — the whole point of the undo — so it would refuse to reclaim). The only mechanism that answers is
+**A-62 Part 8 residue 2's key-range sweep**, deliberately unbuilt at revision 44 and re-refused at revision
+45. **So the "small" fix imports, as a hard requirement, the whole of the thing this section has declined
+to build twice** — and imports it to serve a case that is a mis-tap rather than a data-integrity failure.
+That inverts the ordering: residue 2's trigger is *"a measured accumulation"*, and this would build it
+against a hypothetical.
+
+**(c) It buys an undo that restores the photograph *sometimes*, which is worse than one that never does.**
+§10.3 measured the platform: Safari evicts script-created storage under overall-quota pressure, under
+system storage pressure, and under ITP's non-interaction rule. §10.2 built the whole `'missing'` design
+around that — *"a designed state, not an error path"*. A deferred delete would make undo's outcome depend
+on whether the eviction ran, whether the tab was reloaded, and whether the user had opened another trip
+since — three things they cannot see. §10.6's opening sentence exists to stop a surface having a state it
+can render and cannot explain, and *"undo brought the picture back that time and not this time"* is that
+state, with the added property that the failing case is the one where they cared.
+
+**(d) The counterweight is a re-pick, and it is measured rather than assumed.** What the user loses to this
+refusal: they must choose the file again from a library that still has it, into a record that still exists,
+using the affordance they used a minute ago. What they would lose to the mechanism: derivatives on disk
+they cannot see, cannot count and cannot delete, for photographs they explicitly removed. **The refusal
+costs one tap; the mechanism costs a permanent, unreported byte leak on the data §10.5 is written about.**
+
+*The one alternative worth a sentence, refused:* a **document-level** tombstone (`removePhoto` marks the
+record rather than dropping it, and a later "empty trash" deletes both). It is honest and it would work —
+and it is `PhotoAsset.status` under another name (§10.1 point 4), it puts a second liveness fact in the
+document that `validateTrip`, `redactForSample`, `copyStopInto`, `toJSON`/`fromJSON` and A-61's growth
+criterion all have to learn, and it makes *"deleting a photo"* a two-step operation in a product that has
+no photo surface at all yet. Not now, and the trigger is Part 7 residue 1's.
+
+**Part 5 — what lands, and it is exhaustive.**
+
+1. **`removePhoto`'s docstring**, `packages/client/src/store/store.ts`. The disclosure the I-13b builder
+   wrote is correct as far as the *behaviour* goes and is now **wrong about the future**: it says *"The fix
+   is a **deferred** byte delete (hold the derivatives until the removal leaves the undo window), and that
+   is not written here because §10.3's cascade table rules the opposite … **Trigger:** that ruling."* The
+   ruling exists and it went the other way, so that clause comes out. It is replaced by the four facts this
+   entry rules: undo restores the record and not the photograph; the byte delete is synchronous **by
+   design** and §10.3 says so; the resulting `'missing'` with its offer to re-import is the honest state
+   and not a degraded one; and the deferred delete is **refused**, with a pointer to A-65 Part 4 rather
+   than a re-argument. **No sentence in that docstring may name a future ruling that will change when the
+   bytes go.**
+2. **§10.1 point 1** — done at this revision, in place: *"undoable for free"* is scoped to `addPhoto`.
+3. **§10.3's cascade table row for a photo** — done at this revision, in place: the delete is synchronous
+   and undo does not bring the bytes back.
+4. **The surface obligation, for whoever builds the remove affordance** (I-14 or later, and it is stated
+   here because that builder is not in the room — A-63 Part 5 residue 2's reason). **A control that removes
+   a photo says, at the point of the action, that the stored image goes and does not come back.** This is
+   A-57 Part 9 residue 1's own standard — *"it must be said on the surface at import time, not buried"* —
+   applied at the other end of the record's life, and it is the root `CLAUDE.md` convention *"prompt for
+   actions rather than mentioning them"*. **A confirmation step is not mandated**; the sentence is. A
+   surface that offers *Remove* with no such sentence, on the strength of an undo control sitting in the
+   toolbar, is a surface that has promised something this ruling says it cannot deliver.
+
+**What explicitly does NOT land:** no change to `removePhoto`'s code, `PhotoPort.remove`, the reducer,
+`orphanPhotoBytes`, `reclaimPhotoBytes`, `photosFor`, `PhotoSession` or any test value. A builder who
+finds themselves editing a `.ts` file other than that one docstring has misread this ruling.
+
+**Part 6 — the injected-fault criteria, because §0.5 applies here too, and four of the five are *"still
+true"* criteria rather than fixes.**
+
+| | Fault | Required behaviour |
+|---|---|---|
+| **T1** | Import 1 photo, `removePhoto`, `undo()`, then a **fresh** `refreshPhotoAvailability()` | record back (`doc.photos.length === 1`); `read(tripId, id, 'thumb')` is `null`; listing is `{phase:'ready', missing:1}` with that item's `availability: 'missing'`. **Never `'empty'`, never `'unreadable'`, never a throw, never a `'ready'` item over bytes that are gone.** This is `qa/r46-i13b.mjs` §K and `qa/r45-i13.mjs` §K **inverted by the breaker** — see Part 8 |
+| **T2** | The same **without** the refresh, on the in-session availability set | still `missing: 1`. `removePhoto` drops the id from `state.photos.available` and undo does not put it back, which is correct: session state is not history's subject (§4.2 rule 5), and the session's answer agrees with a fresh read rather than contradicting it |
+| **T3** | `removePhoto` → `undo()` → `redo()` | the record is gone again; **`PhotoPort.remove` is called exactly once across the whole sequence** — `redo` is a pure snapshot restore in the reducer and issues no port call; no throw; no entry appears in `state.photos.orphans` |
+| **T4** | `removePhoto` whose `remove()` **rejects**, then `undo()`, then `reclaimPhotoBytes([id])` | the id is recorded in `orphans` by the `catch`, and after the undo `reclaimPhotoBytes` **refuses to delete it** (the restored record makes it live again) **and drops it from the report**, because a photograph the document references is not an orphan. The bytes are still there and the listing says `'ready'` |
+| **T5** | Source grep over the photo path | **no `setTimeout`, no timer, no pending-delete queue, no tombstone field**, and `removePhoto`'s docstring contains **no claim that a future ruling will defer the byte delete**. A-64 **S5**-shaped: the refusal is checkable, and a builder who adds a deferral has taken an architect's decision |
+
+**Part 7 — the residues, three, disclosed rather than left to be discovered.**
+
+1. **A mis-tap on *Remove* destroys the stored image and undo will not bring it back.** The record survives
+   whole and the original is in the user's own library, so the recovery is a re-pick — but it is a real cost
+   and Part 5 item 4's sentence is the whole of the mitigation, on a surface nobody has built.
+   **Trigger:** a report of a mis-tap losing a photograph that was **not** still in the user's library — at
+   which point the answer is a confirm step on the affordance, or A-57 Part 9 residue 1's opt-in
+   full-resolution retention with a visible storage cost, and **still not a deferred delete**, because (a)
+   through (d) do not weaken with use.
+2. **`PhotoAsset` is the first record class whose undo is partial, and nothing in the type system says so.**
+   The rule is stated here, for a photo. A second byte-carrying record class — a ticket blob held outside
+   the document, a native-side video — inherits the same asymmetry and should not have to re-derive this
+   argument. **Trigger:** the **second** record whose bytes live outside `TripDoc`, at which point §4.2 rule
+   5 gains one sentence stating the scope over the class, rather than this being ruled a third time for one
+   record.
+3. **`redo` after an undone `removePhoto` re-drops a record whose bytes are already gone**, so the pair
+   (`undo`, `redo`) is asymmetric in cost: the undo is free and the redo has nothing left to do at the byte
+   layer. Harmless, and T3 pins it so that a future builder does not "fix" it by making `redo` issue a
+   second `remove()`. **Trigger:** none realistic; recorded so the behaviour is a decision.
+
+**Part 8 — the two red probe lines, and whose job they are.**
+
+`qa/r46-i13b.mjs` §K and `qa/r45-i13.mjs` §K both assert `bytesBack === true`, i.e. they assert the
+**proposal** this ruling refuses. They have been honestly red since round 45 and they are the reason
+`qa/r45-i13.mjs` prints exactly one `FAIL`. Now that the ruling exists, **each line is re-cut to assert the
+ruled behaviour — T1 — and re-cutting it is the confirming breaker's job, not the builder's.** That is
+round 46's own precedent, stated in its report: *"maintaining a prior round's adversarial probes is this
+breaker's own job, not something to route"*, and it is exactly what round 46 did to six lines of
+`qa/r45-i13.mjs` after revision 44. It is the same shape as A-62 Part 8 residue 4's §G line, one section
+over. **The builder does not touch either probe.**
+
+#### A-66 — a batch the user walked away from is not a file that failed: `PhotoImportFailure` is closed at five arms (revision 46, ROADMAP **I-13c**, BUILD-NOTES **KD-82**, QA **R46-1**)
+
+> **STATUS: RULED. The union does not widen. Silent drop is the correct behaviour and this entry is why.**
+> No type, no field, no selector, no store method, no `AppState` field. `PhotoImport`, `photoImport`,
+> `PhotoSession` and `importPhotos`' shipped guards are all unchanged. **What lands in code is one comment
+> pointer.** A-62's compound key, A-63's phases and A-64's provenance ruling are untouched.
+
+**Part 1 — the question, and the builder was right to raise it rather than answer it.**
+
+Round 46's **R46-1** was a regression: an import spanning a trip transition filed the bytes under one trip
+and the record under another, and A-62's key turned that from a misfiling into a lost photograph. The
+round-46 fix-pass builder closed it with two guards in `importPhotos` — `isLiveTrip(tripId)` before the
+write and `state.doc?.id === tripId` before the dispatch — and the loop **`break`s** at the first file that
+finds either false. *Dropped, never retargeted*, which is `scheduleSave`'s rule for a late timer (R3-2) one
+subsystem over, and it is right.
+
+R46-1's stated fix also asked for *"a named failure that is not `storage_failed`"* for the abandoned files.
+The builder implemented the stop and **not** the report, and said why in **KD-82**: naming a sixth arm is a
+widening of a type this document enumerates as exactly five, which is sequencing rule 5's subject and an
+architect's call. **That is the correct call and this entry says so in writing.** It is the third time in
+this arc a builder has routed a spec question instead of quietly widening a ruled type (KD-81 → A-61,
+R45-14's decline → A-65), and it is the behaviour the pipeline is for.
+
+**Part 2 — the ruling.**
+
+1. **`PhotoImportFailure` stays at exactly five arms.** No `'trip_changed'`, no `'abandoned'`, no
+   `'cancelled'`. §10.6's union block carries the refusal in place as of this revision.
+2. **Files abandoned by a trip transition are reported as nothing**, and that is not *"silently dropped"* in
+   §10.6's sense. §10.6's *"never silently dropped"* is a rule about **failures** — a thing that went wrong
+   and has a name — and nothing went wrong here.
+3. **The progress fraction still settles.** `remaining` is subtracted from `pending`, so the batch reaches
+   zero rather than leaving a fraction in flight. This is the property §10.6's opening sentence actually
+   guarantees (*"a spinner that never resolves"*) and it holds on all three break paths.
+4. **The mid-flight file's derivatives stay where they are**, under `[tripId, photoId]` for the trip the
+   files were picked from. KD-82's second half is upheld; Part 7 is the argument and the disclosure.
+
+**Part 3 — the decisive reason, and it is mechanical rather than a judgement about how rare the case is.**
+
+**A report appended after the break would be rendered against the wrong trip.**
+
+`PhotoSession`'s own docstring states the rule: *"Every `set({...initialState(), …})` site in `store.ts`
+therefore lets this field reset rather than carrying it — the opposite of `rescan` and `openFailures`, and
+for the opposite reason."* That is deliberate, it is what keeps `available` from answering for the wrong
+trip, and it takes `failures`, `pending`, `total` and `orphans` with it.
+
+Now look at what causes the `break`. **Every one of the three paths is such a site, and the reset happens
+before the loop notices**: `openTrip` reseeds and then the next iteration finds `state.doc?.id !== tripId`;
+`closeTrip` reseeds and the same; `deleteTrip` reseeds and the next iteration finds `!isLiveTrip(tripId)`.
+So by the time there is something to report, `state.photos` belongs to **the trip the user moved to**, or
+to no trip at all. A `setPhotos({failures: [...]})` after the break would put `{name: 'IMG_0042.jpg',
+reason: 'trip_changed'}` into trip B's session — a per-file failure, naming files by name, on a trip that
+never had anything to do with those files.
+
+**That is not a smaller version of the honest report. It is R45-4 and R46-1 in the reporting layer.** R45-4
+was *"`'missing'` over photographs that never left"*; R46-1 was *"a record filed into a trip that never
+asked for it"*; this would be *"a failure attributed to a trip that never asked for it"*, and it is the
+exact class of defect this arc has now spent two rounds removing. **A sixth arm does not fix the case. It
+converts an absence into a misattribution**, which is worse, and it does so on the surface the user is
+looking at.
+
+*Could the report be scoped instead of dropped?* Only by giving `failures` a tenancy the way `available`
+has one, or by promoting it to a library-scoped fact that survives reseed the way `openFailures` does. Both
+are a new `AppState` shape, a new selector, and a new screen element, for a state the user reached by
+their own explicit navigation and whose remedy is one tap from the screen they would see it on. That is
+**A-62 Part 8 residue 4d's calculus verbatim** — *"more machinery than the risk carries"* — and it reaches
+the same answer.
+
+**Part 4 — the reason that would hold even if Part 3 were false: the union means one kind of thing.**
+
+Every one of the five arms is a fact about **a file**. `'unsupported_type'` — the picker returned something
+we cannot decode. `'decode_failed'` — the platform said no about *these bytes*. `'too_large'` — *this one*
+is over the ceiling. `'quota_exceeded'` and `'storage_failed'` — the write of *this file's* derivatives was
+refused, and they are two arms rather than one precisely because *"free up space"* and *"something went
+wrong"* are different sentences about the same file.
+
+*"You left the trip"* is a fact about the **session**. It is true of every remaining file at once and of no
+file in particular; the file is fine, its bytes are fine, and nothing about it was even attempted. Putting
+it in this union makes one type carry two kinds of fact, which is §10.1's own argument for naming
+`PhotoAttachRef` once — *"a second spelling of the same union is how two readers come to disagree"* — read
+from the other end: **one spelling for two kinds of fact is the same failure.** And §10.6 property 4,
+*"a failure is attributable … `failures` carries the file name, so '3 of 12 photos could not be added' can
+name which three and why"*, would become false in its own vocabulary: `{name: 'IMG_0042.jpg', reason:
+'trip_changed'}` attributes to a file something the file did not do.
+
+**Part 5 — what makes the drop honest, stated so this is a decision and not a shrug. Three things are
+true.**
+
+1. **Nothing failed, and the precedent is fifteen lines up in the same function.** `importPhotos` already
+   treats a `pickImages()` that returns `null` as *"a cancel. Not an error, not a failure, and it does not
+   clear an earlier batch's report."* Switching trips mid-decode is a cancel expressed by navigation rather
+   than by a button, and the store already has one rule for that shape.
+2. **No signal is left dishonest.** The fraction settles to zero (clause 3); the listing on the trip the
+   user left is whatever `openTrip` will read for it, `'ready'` over the photographs that did land; the
+   listing on the trip they moved to is that trip's own; `validateTrip` reports nothing, because no record
+   was written; `orphanPhotoBytes` reports nothing, because nothing was observed. **There is no state that
+   claims a photograph the trip does not have.** That is the standard §10.6 sets and it is met.
+3. **The outcome is self-evident and the remedy is the affordance they just used.** The user returns to
+   trip A and sees fewer photographs than they picked. The originals are untouched on their device
+   (A-57 Part 9 residue 1). Re-import is the same control. Nothing is unrecoverable and nothing is
+   mislabelled — which is precisely the boundary between *"a failure that must be named"* and *"an outcome
+   the user can read off the screen."*
+
+**Part 6 — what is owed instead, and it is a surface obligation rather than a data-layer signal.**
+
+A-62 Part 8 residue 4d set the standard in this section: *"§10.6's standard is that a signal the data layer
+emits is one a surface is obliged to render."* **The inverse is what applies here: a fact a surface can
+state without a signal does not earn one.** So:
+
+> **When the import surface is built (I-14 or later): an import in flight says so, on the trip it belongs
+> to, and says that leaving the trip stops it.** `photoImport(state).pending > 0` is the condition, the
+> selector already produces it and the fraction beside it, and the sentence needs no new state at all. It
+> **prevents** the case rather than reporting it afterwards, which is the strictly better trade, and it is
+> the same shape as A-57 Part 9 residue 1's *"must be said on the surface at import time"* and A-65 Part 5
+> item 4's sentence on the remove control.
+
+This is stated here rather than in `DESIGN.md` because the builder of that surface is not in the room, which
+is A-63 Part 5 residue 2's reason for the same move.
+
+**Part 7 — KD-82's second half, ruled: the mid-flight file's bytes stay, and here is exactly what that
+costs.**
+
+R46-1's stated fix also asked the builder to *"remove the bytes it just wrote"*. They did not, and the
+refusal is upheld. **When the loop breaks at the dispatch guard, exactly one file has written derivatives
+with no record** — every later file breaks before its `write` — so the cost is bounded at **one derivative
+pair per abandoned batch**, which at §10.4's fixed sizes is a 320 px thumbnail and a 1600 px display copy.
+Three reasons:
+
+1. **They are under their own trip's key and that trip still exists.** `[tripId, photoId]` is A-62's
+   tenancy, `removeTrip(tripId)` sweeps them whenever the trip is deleted, and on `apps/web` the
+   `StoragePort.delete` cascade repeats the same range delete in the transaction that drops the document.
+2. **A remove here is a second port call on the path that has just proved the store is being raced**, and
+   its own failure would want `orphans` — which Part 3 has just established is the wrong trip's session by
+   then. So the delete has the same reporting hole as the report, plus a new failure mode.
+3. **Simple mechanism over speculative complexity.** The synchronous cost is bounded and reclaimed; the
+   mechanism is an extra error path on a race.
+
+**And the disclosure, which is precise and is not covered by anything already written:** this orphan is
+outside **both** existing reclaim mechanisms and outside A-62 Part 8 residue 2's predicate as that residue
+currently states it. `orphanPhotoBytes` cannot see it (nothing observed it — the session was reset).
+`reclaimPhotoBytes` cannot reach it (its subject is the *active* trip and the user is elsewhere; and if
+they return, its `live` guard is right and the id simply is not in `orphans`). And residue 2's sweep is
+predicated on *"a `[tripId, …]` key range whose `tripId` has **no document**"* — which is false here,
+because trip A is alive and well. **So its only reaper is `removeTrip` when trip A is eventually deleted.**
+That is acceptable at one derivative pair, it is bounded, and it is §10.2's own asymmetry read forwards
+(*"orphaned bytes are invisible, bounded, and reclaimable"*) — but it means residue 2's predicate is
+**narrower than the orphan population**, and Part 9 residue 2 records that so the builder of that sweep
+widens it deliberately rather than discovering the gap.
+
+**Part 8 — the injected-fault criteria. Four of the five are *"still true"* criteria over the shipped
+guards; U5 is the checkable form of the refusal.**
+
+| | Fault | Required behaviour |
+|---|---|---|
+| **U1** | Slow `derive`; import **5** files into trip A; `openTrip(B)` after file 2 has landed | trip A holds **2** photos; trip B holds **0**; `photoImport(state).failures` is `[]` — on both trips, before and after switching back; **no `'storage_failed'` anywhere** |
+| **U2** | The same, inspecting the fraction on trip B | `{pending: 0, total: 0}` — an abandoned batch leaves **no fraction at all** on the trip it did not belong to, and none in flight on the trip it did |
+| **U3** | `deleteTrip(A)` mid-decode (R46-1 face 3) | no `failures` entry, no throw, no unhandled rejection; **no byte record written for any file that had not yet reached its `write`**; the user is not told `'storage_failed'` for a trip they deleted themselves |
+| **U4** | The mid-flight file, after a break at the dispatch guard | exactly **one** `[A, photoId]` pair in each byte store with no record in A's document; `orphanPhotoBytes(state)` is `[]` (it must not pretend to have observed it); `validateTrip(A)` reports **no** issue, because there is no record to dangle |
+| **U5** | `grep` over `PhotoImportFailure`'s declaration | **exactly five string-literal arms.** A sixth is an architect's ruling; this is A-64 **S5**-shaped so the deferral is checkable, and a builder who adds an arm has taken a decision that is not theirs |
+
+**Part 9 — the residues, two, and the trigger that would genuinely reopen this.**
+
+1. **A user who leaves a trip mid-import is told nothing, and must notice that fewer photographs arrived
+   than they picked.** Part 6's sentence is the whole mitigation and it lives on a surface nobody has
+   built, so today the mitigation is zero. **Trigger:** the first surface that renders `photoImport`
+   shipping **without** Part 6's sentence, or a real report of a user losing a batch this way — at which
+   point the answer is Part 6's sentence, not the sixth arm, because Part 3's misattribution does not get
+   better with evidence.
+2. **The mid-flight orphan sits outside residue 2's predicate as stated.** A-62 Part 8 residue 2's sweep
+   looks for a key range whose trip has no document; this orphan's trip has one. **Trigger:** residue 2's
+   sweep being built, at which point its predicate widens from *"a key range whose trip has no document"*
+   to *"a key with no record"* — which needs a port method that can enumerate a trip's stored keys
+   (`present(tripId, ids)` answers only about ids you already have) and is therefore a port change and a
+   design decision of its own, not something the sweep's builder absorbs quietly.
+
+**The trigger that reopens this ruling**, stated so it is a decision and not a wall: **a producer of
+abandoned files that is not a user navigation.** Every argument above rests on *"nothing failed; the person
+left"* — Part 5 item 1's cancel precedent, Part 4's session-versus-file distinction, Part 3's observation
+that the transition itself is what reset the report. A background or native import that abandons a batch
+for a reason the user did not cause (a Phase 5 native bridge dropping a task, an OS reclaiming the process
+mid-decode) breaks all three at once: nobody navigated, the fact is no longer a fact about the session the
+user is in, and there is no self-evident outcome to read off the screen. **That path's increment adds the
+arm, names it for what actually happened, and decides where its report lives — in one ruling, and not on
+the way to something else.**

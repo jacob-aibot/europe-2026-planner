@@ -19,8 +19,55 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
+> **🟡 THE LAST TWO PHOTO QUESTIONS ARE ANSWERED — BOTH BY SAYING NO — as of 2026-09-04. This block is
+> the newest.** Step 2d's photo half is **designed ✅ · built ✅ · verified ⚠️ · shippable ❌** — unchanged
+> from the block below, because nothing here adds or removes a capability. What changed is that **the
+> photo work has no open design questions left.**
+>
+> **First, the repair the block below asked for has landed.** Six of the seven problems from the last
+> testing round are fixed, including the one that mattered: moving around the app while photos are
+> processing no longer loses a photograph. The seventh was mine to decide and it is decided.
+>
+> **Two questions had been sitting unanswered — one of them since the round before — and both were the
+> same question in different clothes: should Cairn grow a new mechanism to cover a real but small gap?
+> Both answers are no, and both refusals are written down with their reasons rather than left as a
+> shrug.**
+>
+> **1. If you remove a photo and press undo, you get the entry back but not the picture. Should Cairn
+> hold deleted images in a bin so undo can restore them?** No. Undo in Cairn has always meant exactly
+> one thing — it rewinds your *trip*, and it has never rewound your *storage*. The window such a bin
+> would have to hold images for does not survive closing the tab, does not survive opening another trip,
+> and does not survive a refresh — so the bin either never gets emptied, leaving images of photographs
+> you deliberately deleted sitting on your device indefinitely (which is exactly the data Cairn is most
+> careful with), or it empties on a timer that nothing restarts. And an undo that restores the picture
+> *sometimes* is worse than one that never does, because you cannot tell which kind you are about to
+> get. What Cairn does today is the honest version: the entry comes back whole — caption, date, place —
+> and it says the image is no longer stored on this device and offers to add it again, while your
+> original is untouched in your own photo library. **What I have added is an instruction to whoever
+> eventually builds the Remove button: it has to say, at the moment you tap it, that the stored image
+> goes and does not come back.**
+>
+> **2. If you switch trips while photos are still processing, the rest of the batch quietly stops.
+> Should Cairn tell you?** No — and this one surprised me. The obvious fix is a new message: *"8 photos
+> were not added because you switched trips."* The problem is **where it would appear**. Switching trips
+> clears the photo notices for the trip you left, so that message would land on the trip you moved *to*,
+> naming files that have nothing to do with it — which is the same class of wrongness the last two
+> testing rounds were spent removing. And nothing actually failed: you cancelled by walking away, which
+> Cairn already treats as a cancel when you back out of the file picker. The right answer is one sentence
+> on the import screen when that screen exists — *"photos are still being added; leaving this trip will
+> stop it"* — which **prevents** the situation instead of reporting it afterwards, and that instruction
+> is now written down for the person who builds it.
+>
+> **Between them, these two decisions change three comments in the code and nothing else.** No new
+> setting, no new screen, no new state, no new stored data.
+>
+> **What happens next:** a confirmation testing round over the whole photo stretch at once. Two test
+> lines that were checking for the answer I have now refused get re-pointed at the answer I gave —
+> that is the tester's job, not the builder's. Detail: `cairn/docs/ARCHITECTURE.md` §10, entries
+> **A-65** and **A-66**.
+
 > **🔴 THE PHOTO REPAIRS LANDED AND HELD — BUT ONE OF THEM BROKE SOMETHING ELSE — as of 2026-09-04.
-> This block is the newest.** Step 2d's photo half is still
+> This block was the newest until the two rulings above.** Step 2d's photo half is still
 > **designed ✅ · built ✅ · verified ⚠️ · shippable ❌**, and it goes back one more time. The reason is
 > narrower than last time and it is worth reading, because most of the news is good.
 >
