@@ -633,3 +633,152 @@ test('the access Relationship has no participant field to read', () => {
   assert.equal(canView(principal, stuffed, '2026-03-01'), canView(principal, bare, '2026-03-01'));
   assert.equal(canView(principal, stuffed, '2026-03-01'), false);
 });
+
+// ------------------------------------------------ QA round 52 — the two doors
+/**
+ * **QA R52-2 and R52-3.** Both build functions are doors onto a stored document, and every
+ * caller that matters is `any`-shaped at its boundary — an action, a form, a JSON body (§2.1).
+ * `createTrip.ts`'s `assertDatePrecision` is the shipped remedy for exactly this, written after
+ * QA **P2-7** found *"a trip that writes itself into a state it cannot be opened from"*; these
+ * tests apply it to the two participant fields that have a closed set of legal values.
+ *
+ * The harm each one closes, measured at `0e556a0`: an out-of-enum `kind` made `openTrip` refuse
+ * the whole saved document, and an explicit `displayName: undefined` — which is legal TypeScript
+ * here, there is no `exactOptionalPropertyTypes` — made `validateTrip` throw and took the derived
+ * cache, and so every view of the trip, down with it.
+ */
+test('R52-3: addParticipant refuses a kind outside the enum, so it can never reach a document', () => {
+  const { trip, c } = tripWithDays();
+  for (const kind of ['owner', 'Self', 'self ', '', 7, null]) {
+    assert.throws(
+      () => addParticipant(trip, { displayName: 'Zoë', kind } as unknown as { displayName: string }, c),
+      /addParticipant: kind must be one of "self", "contact"/,
+      `kind ${JSON.stringify(kind)} was accepted`,
+    );
+  }
+});
+
+test('R52-3: updateParticipant refuses a kind outside the enum, present even with an undefined value', () => {
+  const { trip, c } = tripWithDays();
+  const added = addParticipant(trip, { displayName: 'Zoë' }, c);
+  const id = added.participants[0].id;
+  for (const kind of ['owner', 'Self', undefined, 7]) {
+    assert.throws(
+      () => updateParticipant(added, id, { kind } as unknown as Parameters<typeof updateParticipant>[2]),
+      /updateParticipant: kind must be one of "self", "contact"/,
+      `kind ${JSON.stringify(kind)} was accepted`,
+    );
+  }
+});
+
+test('R52-3: an out-of-enum kind never survives to a document that cannot be opened again', () => {
+  const { trip, c } = tripWithDays();
+  const t = (() => {
+    try {
+      return addParticipant(trip, { displayName: 'Zoë', kind: 'owner' } as unknown as { displayName: string }, c);
+    } catch {
+      return trip;
+    }
+  })();
+  assert.doesNotThrow(() => fromJSON(toJSON(t)), 'the trip wrote itself into a state it cannot be opened from');
+});
+
+test('R52-2: updateParticipant refuses an explicit displayName: undefined', () => {
+  const { trip, c } = tripWithDays();
+  const added = addParticipant(trip, { displayName: 'Zoë' }, c);
+  const id = added.participants[0].id;
+  for (const displayName of [undefined, null, 7, {}]) {
+    assert.throws(
+      () => updateParticipant(added, id, { displayName } as unknown as Parameters<typeof updateParticipant>[2]),
+      /updateParticipant: displayName must be a string/,
+      `displayName ${JSON.stringify(displayName)} was accepted`,
+    );
+  }
+  assert.equal(updateParticipant(added, id, { displayName: '' }).participants[0].displayName, '',
+    'an empty name is validateTrip\'s to report, not the door\'s to refuse');
+});
+
+test('R52-2: addParticipant refuses a displayName that is not a string', () => {
+  const { trip, c } = tripWithDays();
+  for (const displayName of [undefined, null, 7]) {
+    assert.throws(
+      () => addParticipant(trip, { displayName } as unknown as { displayName: string }, c),
+      /addParticipant: displayName must be a string/,
+      `displayName ${JSON.stringify(displayName)} was accepted`,
+    );
+  }
+});
+
+test('R52-2: validateTrip never throws over a participant built past the door, and reports it', () => {
+  const { trip } = tripWithDays();
+  const t = withParticipants(trip, [{ id: 'p1', displayName: undefined, kind: 'contact', userId: null } as unknown as Participant]);
+  let issues: Issue[] = [];
+  assert.doesNotThrow(() => { issues = validateTrip(t); }, 'validateTrip\'s own docstring says it never throws');
+  assert.equal(of(issues, 'participant_name_empty').length, 1);
+});
+
+test('R52-6: updateParticipant writes every field by name, so an unenumerated key cannot reach the record', () => {
+  const { trip, c } = tripWithDays();
+  const added = addParticipant(trip, { displayName: 'Zoë', note: 'her mother' }, c);
+  const id = added.participants[0].id;
+  const patched = updateParticipant(
+    added, id, { displayName: 'Zoë M.', hacked: 'yes', ownerId: 'u:mallory' } as unknown as Parameters<typeof updateParticipant>[2],
+  );
+  assert.deepEqual(patched.participants[0], { id, displayName: 'Zoë M.', kind: 'contact', userId: null, note: 'her mother' });
+});
+
+test('R52-6: a note is patchable, and an explicit undefined removes it rather than storing a hole', () => {
+  const { trip, c } = tripWithDays();
+  const added = addParticipant(trip, { displayName: 'Zoë', note: 'her mother' }, c);
+  const id = added.participants[0].id;
+  assert.equal(updateParticipant(added, id, { note: 'drove the second leg' }).participants[0].note, 'drove the second leg');
+  const cleared = updateParticipant(added, id, { note: undefined });
+  assert.equal('note' in cleared.participants[0], false, 'an undefined note left a key in the record');
+  assert.equal(toJSON(fromJSON(toJSON(cleared))), toJSON(cleared));
+  assert.throws(
+    () => updateParticipant(added, id, { note: {} } as unknown as Parameters<typeof updateParticipant>[2]),
+    /updateParticipant: note must be a string/,
+  );
+});
+
+// ------------------------------------------------ QA round 52 — what it says
+
+test('R52-4: a nameless participant in a duplicate pair is not described as a city', () => {
+  const { trip } = tripWithDays();
+  const t = withParticipants(trip, [person('p1', ''), person('p1', 'Zoë')]);
+  const hits = of(validateTrip(t), 'duplicate_participant_id');
+  assert.equal(hits.length, 1);
+  assert.doesNotMatch(hits[0].message, /city/i, `a person was described as a city: ${hits[0].message}`);
+  assert.match(hits[0].message, /someone with no name/);
+});
+
+test('R52-4: the duplicate-self message does not call a person a city either', () => {
+  const { trip } = tripWithDays();
+  const t = withParticipants(trip, [person('a', '  ', 'self'), person('b', 'Zoë', 'self')]);
+  const hits = of(validateTrip(t), 'duplicate_participant_id');
+  assert.equal(hits.length, 1);
+  assert.doesNotMatch(hits[0].message, /city/i, `a person was described as a city: ${hits[0].message}`);
+});
+
+/**
+ * **R52-7.** The comment above this check used to claim a suppression it did not implement
+ * (*"reported once, on the second row, not once per row after it"*). The behaviour — one issue
+ * per offending row, which is what the duplicate-id check above it does too — is the one that is
+ * kept, and this test is what the comment now describes.
+ */
+test('R52-7: three kind:"self" rows report one issue per offending row, not one in total', () => {
+  const { trip } = tripWithDays();
+  const t = withParticipants(trip, [person('a', 'A', 'self'), person('b', 'B', 'self'), person('c', 'C', 'self')]);
+  assert.equal(of(validateTrip(t), 'duplicate_participant_id').length, 2);
+  const threeIds = withParticipants(trip, [person('p', 'A'), person('p', 'B'), person('p', 'C')]);
+  assert.equal(of(validateTrip(threeIds), 'duplicate_participant_id').length, 2, 'the two checks disagree with each other');
+});
+
+test('R52-5: toJSON tolerates a Trip built before the participants field existed, as photos does', () => {
+  const { trip, c } = tripWithDays();
+  const legacy = { ...addParticipant(trip, { displayName: 'Zoë' }, c) } as unknown as Record<string, unknown>;
+  delete legacy.participants;
+  let doc = '';
+  assert.doesNotThrow(() => { doc = toJSON(legacy as unknown as Trip); });
+  assert.deepEqual((JSON.parse(doc) as { participants: unknown[] }).participants, []);
+});

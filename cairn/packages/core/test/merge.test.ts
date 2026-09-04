@@ -11,7 +11,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  addStop, createTrip, mergeTrips, removeStop, sequentialIds, setDayMeta, setTripMeta, updateStop,
+  addParticipant, addStop, createTrip, mergeTrips, removeParticipant, removeStop, sequentialIds,
+  setDayMeta, setTripMeta, updateParticipant, updateStop,
 } from '../src/index.ts';
 import type { BuildCtx, Trip } from '../src/index.ts';
 
@@ -215,4 +216,75 @@ test('a stop moved to another day locally is not duplicated by the merge', async
   const where = trip.days.filter((d) => d.stops.some((s) => s.id === 'stop-a')).map((d) => d.id);
   assert.deepEqual(where, ['2026-08-09'], 'stop-a exists in exactly one day');
   assert.equal(trip.pool.some((s) => s.id === 'stop-a'), false);
+});
+
+// ------------------------------------------------------- participants (QA R52-1)
+/**
+ * `Trip.participants` (§8.3, Phase 2 I-9) is a record array, and a record array that is not
+ * merged here is silently taken from `local` — QA **P2-3**'s finding, which the comment above
+ * `out.photos` predicts in advance and which I-9 then walked into. These three tests are the
+ * mechanical form of that comment: the other tab's addition, its edit and its deletion.
+ */
+function withZoe(): { b: Trip; zoe: string } {
+  const b = addParticipant(base(), { displayName: 'Zoë' }, ctx('b'));
+  return { b, zoe: b.participants[0].id };
+}
+
+test('R52-1: a participant added in the other tab survives the merge and is reported', () => {
+  const { b } = withZoe();
+  const local = addParticipant(b, { displayName: 'Jacob', kind: 'self' }, ctx('l'));
+  const remote = addParticipant(b, { displayName: 'Zoë\'s mother' }, ctx('r'));
+
+  const { trip, report } = mergeTrips(b, local, remote);
+  assert.deepEqual(
+    trip.participants.map((p) => p.displayName).sort(),
+    ['Jacob', 'Zoë', 'Zoë\'s mother'],
+    'the other tab\'s participant was discarded',
+  );
+  assert.deepEqual(
+    report.fromRemote.filter((n) => n.entity === 'participant'),
+    [{ entity: 'participant', id: 'rparticipant-1', field: 'added' }],
+  );
+});
+
+test('R52-1: the other tab\'s edit to an existing participant survives the merge', () => {
+  const { b, zoe } = withZoe();
+  const local = addParticipant(b, { displayName: 'Jacob', kind: 'self' }, ctx('l'));
+  const remote = updateParticipant(b, zoe, { note: 'drove the second leg' });
+
+  const { trip, report } = mergeTrips(b, local, remote);
+  assert.equal(trip.participants.find((p) => p.id === zoe)?.note, 'drove the second leg');
+  assert.deepEqual(report.fromRemote.filter((n) => n.entity === 'participant'), [{ entity: 'participant', id: zoe }]);
+});
+
+test('R52-1: a participant removed in the other tab stays removed after a merge', () => {
+  const { b, zoe } = withZoe();
+  const local = addParticipant(b, { displayName: 'Jacob', kind: 'self' }, ctx('l'));
+  const remote = removeParticipant(b, zoe);
+
+  const { trip, report } = mergeTrips(b, local, remote);
+  assert.equal(trip.participants.some((p) => p.id === zoe), false, 'the merge undid the other tab\'s deletion');
+  assert.deepEqual(
+    report.fromRemote.filter((n) => n.entity === 'participant'),
+    [{ entity: 'participant', id: zoe, field: 'deleted' }],
+  );
+});
+
+test('R52-1: both tabs renaming one participant is last-writer-wins AND reported, like every other record', () => {
+  const { b, zoe } = withZoe();
+  const local = updateParticipant(b, zoe, { displayName: 'MINE' });
+  const remote = updateParticipant(b, zoe, { displayName: 'THEIRS' });
+
+  const { trip, report } = mergeTrips(b, local, remote);
+  assert.equal(trip.participants.find((p) => p.id === zoe)?.displayName, 'MINE');
+  assert.deepEqual(report.overwritten.filter((n) => n.entity === 'participant'), [{ entity: 'participant', id: zoe }]);
+});
+
+test('R52-1: a Trip built before the field existed merges as an empty list, as photos does', () => {
+  const { b } = withZoe();
+  const stripped = { ...b } as unknown as Record<string, unknown>;
+  delete stripped.participants;
+  const legacy = stripped as unknown as Trip;
+  const { trip } = mergeTrips(legacy, legacy, legacy);
+  assert.deepEqual(trip.participants, []);
 });

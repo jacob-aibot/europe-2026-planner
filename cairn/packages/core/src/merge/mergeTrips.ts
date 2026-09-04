@@ -25,7 +25,7 @@
  * Pure: no clock, no ids, no IO. `revision` becomes `max(local, remote) + 1` so the next
  * revision guard compares against a value strictly ahead of both writers.
  */
-import type { Booking, ConflictResolution, Day, PhotoAsset, Place, Stop, Trip } from '../model/types.ts';
+import type { Booking, ConflictResolution, Day, Participant, PhotoAsset, Place, Stop, Trip } from '../model/types.ts';
 import type { StopId } from '../model/ids.ts';
 import { reindex } from '../build/stops.ts';
 
@@ -241,6 +241,14 @@ export function mergeTrips(base: Trip, local: Trip, remote: Trip): MergeResult {
   // from `local`, so the other tab's photo would be dropped with nothing reported — QA P2-3's
   // finding, one record class over. Merged by id like every other collection.
   out.photos = mergeById<PhotoAsset>('photo', (p) => p.id, base.photos ?? [], local.photos ?? [], remote.photos ?? [], report);
+  // §8.3, Phase 2 I-9 — QA **R52-1**, which is the paragraph above happening again one record
+  // class over: `participants` was added to `Trip` and not added here, so the other tab's people
+  // were taken from `local` and its additions, edits and deletions were discarded with an empty
+  // report over them. Merged by id like every other collection, with the `?? []` both sides that
+  // `photos` already has, for the Trip that predates the field.
+  out.participants = mergeById<Participant>(
+    'participant', (p) => p.id, base.participants ?? [], local.participants ?? [], remote.participants ?? [], report,
+  );
   out.revision = Math.max(local.revision, remote.revision) + 1;
 
   return { trip: out as unknown as Trip, report };

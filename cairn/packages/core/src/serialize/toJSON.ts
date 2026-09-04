@@ -252,7 +252,11 @@ export function toDoc(trip: Trip): Record<string, unknown> {
     // save on rather than only from the second. Written field by field, never `{...p}`, per
     // §2.14 **A-18** — a spread re-emits an unenumerated key a cast-built document carried, and
     // `userId` in particular must be re-emitted as the parser will read it back.
-    participants: trip.participants.map((p) =>
+    // The `?? []` is `photos`' above, for its reason and one more: three readers of this field
+    // shipped in one commit with two conventions, and this was the one that threw a bare
+    // `TypeError` at a cast-built or bridge-built `Trip` instead of writing a document
+    // (`validateTrip` uses `trip.participants ?? []`, QA **R52-5**).
+    participants: (trip.participants ?? []).map((p) =>
       omitUndef({ id: p.id, displayName: p.displayName, kind: p.kind, userId: p.userId ?? null, note: p.note }),
     ),
     revision: trip.revision,

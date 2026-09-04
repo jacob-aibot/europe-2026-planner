@@ -136,3 +136,52 @@ test('I-9: participants survive a save and reopen through the storage port', asy
   await reopened.openTrip(tripId);
   assert.deepEqual(reopened.getState().doc!.participants, expected);
 });
+
+// ------------------------------------------------ QA round 52, through the store
+/**
+ * **R52-2 and R52-3, measured where the breaker measured them.** The action boundary is
+ * JSON-shaped and untyped at runtime (§2.1), and at `0e556a0` two shapes got through it and
+ * cost the whole document: an out-of-enum `kind` made `openTrip` refuse the saved trip, and a
+ * `{ displayName: undefined }` patch — legal TypeScript, there is no `exactOptionalPropertyTypes`
+ * — made `validateTrip` throw inside `computeDerived`, so every view of the trip was down.
+ *
+ * Core refuses both at the build function now, which is the only place the state is still
+ * repairable, so the store's contract here is: the dispatch is **refused loudly**, the document
+ * is **unchanged**, and the trip is still openable and still derivable afterwards.
+ */
+test('R52-3: a dispatch carrying an out-of-enum participant kind is refused and leaves the document openable', async () => {
+  const p = ports();
+  const store = await storeWithTrip(p);
+  const tripId = store.getState().doc!.id;
+  assert.throws(
+    () => store.dispatch({
+      type: 'addParticipant',
+      participant: { displayName: 'Zoë', kind: 'owner' } as unknown as { displayName: string },
+    }),
+    /kind must be one of "self", "contact"/,
+  );
+  assert.deepEqual(store.getState().doc!.participants, [], 'the refused participant reached the document');
+
+  await store.flush();
+  const reopened = createStore({ ports: p });
+  await reopened.openTrip(tripId);
+  assert.equal(reopened.getState().doc!.id, tripId, 'the saved trip could not be opened again');
+});
+
+test('R52-2: a { displayName: undefined } patch is refused and the derived cache still computes', async () => {
+  const store = await storeWithTrip();
+  store.dispatch({ type: 'addParticipant', participant: { displayName: 'Zoë' } });
+  const id = store.getState().doc!.participants[0].id;
+  assert.throws(
+    () => store.dispatch({
+      type: 'updateParticipant',
+      participantId: id,
+      patch: { displayName: undefined } as { displayName?: string },
+    }),
+    /displayName must be a string/,
+  );
+  assert.equal(store.getState().doc!.participants[0].displayName, 'Zoë');
+  const derived = store.getDerived();
+  assert.ok(derived, 'the Issues panel — and so every view of this trip — is down');
+  assert.deepEqual(derived!.issues.filter((i) => i.code.includes('participant')), []);
+});

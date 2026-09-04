@@ -50,9 +50,34 @@ function cityLabel(trip: Trip, key: string): string | null {
   return name ? name : null;
 }
 
-/** A city named for a person, or a phrase saying it has no name. Pure. */
+/**
+ * A **city** named for a person, or a phrase saying it has no name. Pure.
+ *
+ * The fallback names the record class, so this helper belongs to cities and to nothing else —
+ * QA **R52-4**: the participants block reused it verbatim and rendered a nameless person as
+ * *"a city with no name"*. `personPhrase` below is its counterpart, and any third record class
+ * that needs one gets its own rather than borrowing either.
+ */
 function namePhrase(name: string): string {
   return name.trim() ? `"${name.trim()}"` : 'a city with no name';
+}
+
+/** A **person** named for a person, or a phrase saying they have no name (§8.3). Pure. */
+function personPhrase(name: string): string {
+  return name.trim() ? `"${name.trim()}"` : 'someone with no name';
+}
+
+/**
+ * A participant's name as a string, whatever the document carries. Pure.
+ *
+ * `Participant.displayName` is typed `string`, and this function exists for the population §2.9
+ * names: a `Trip` built past the type system. `validateTrip`'s own docstring is *"never throws"*,
+ * and an `undefined` here used to break that on `undefined.trim()` — taking `computeDerived`, and
+ * so every view of the trip, down with it (QA **R52-2**). A name that is not a string is no name,
+ * which is what `participant_name_empty` already reports.
+ */
+function participantName(p: Participant): string {
+  return typeof p.displayName === 'string' ? p.displayName : '';
 }
 
 /**
@@ -618,6 +643,7 @@ export function validateTrip(trip: Trip): Issue[] {
   const participantIdsSeen = new Map<string, string>();
   let selfSeen: Participant | null = null;
   for (const p of trip.participants ?? []) {
+    const displayName = participantName(p);
     const first = participantIdsSeen.get(p.id);
     if (first !== undefined) {
       // Structurally broken, not merely untidy: `updateParticipant` edits the first row and
@@ -627,13 +653,13 @@ export function validateTrip(trip: Trip): Issue[] {
         code: 'duplicate_participant_id',
         ref: tripRef,
         message:
-          `Two people on this trip — ${namePhrase(first)} and ${namePhrase(p.displayName)} — share one ` +
+          `Two people on this trip — ${personPhrase(first)} and ${personPhrase(displayName)} — share one ` +
           `record, so editing or removing either one affects both.`,
         params: { tripId: trip.id, participantId: p.id },
       });
-    } else participantIdsSeen.set(p.id, p.displayName);
+    } else participantIdsSeen.set(p.id, displayName);
 
-    if (!p.displayName.trim()) {
+    if (!displayName.trim()) {
       // §8.3 verbatim: a participant with no name renders as a ghost row and can never be
       // re-identified. A name in any script is a name — emptiness is the whole rule.
       push({
@@ -650,7 +676,13 @@ export function validateTrip(trip: Trip): Issue[] {
     // §8.3's third check, riding on the first's code and mechanism: `'self'` IS `trip.ownerId`,
     // so two `'self'` rows are two rows asserting one identity. **Zero is legal** — §8.3 says
     // "at most one", never "exactly one", and a trip whose owner has not recorded themselves is
-    // an ordinary trip. Reported once, on the second row, not once per row after it.
+    // an ordinary trip.
+    //
+    // **Reported once per offending row**, against the first `'self'` seen: three such rows are
+    // two issues, not one and not three, which is exactly what the duplicate-id check above does
+    // with three rows sharing an id. This sentence used to claim a suppression the code does not
+    // implement (QA **R52-7**), and a reader deduplicating against it would have changed working
+    // code; the behaviour is pinned by a test now rather than described by a comment alone.
     if (p.kind === 'self') {
       if (selfSeen !== null) {
         push({
@@ -658,8 +690,8 @@ export function validateTrip(trip: Trip): Issue[] {
           code: 'duplicate_participant_id',
           ref: tripRef,
           message:
-            `Two people on this trip — ${namePhrase(selfSeen.displayName)} and ` +
-            `${namePhrase(p.displayName)} — are both marked as you, and a trip has one owner.`,
+            `Two people on this trip — ${personPhrase(participantName(selfSeen))} and ` +
+            `${personPhrase(displayName)} — are both marked as you, and a trip has one owner.`,
           params: { tripId: trip.id, participantId: p.id, otherParticipantId: selfSeen.id, kind: 'self' },
         });
       } else selfSeen = p;
