@@ -11,7 +11,7 @@
  * only injections are **parking** (a `present`, a `derive` or a `remove` that has not answered
  * yet) and two named port failures where a criterion asks for one.
  */
-import { test } from 'node:test';
+import { settlingTest as test, watch } from './settled-invariant.ts';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
@@ -126,7 +126,7 @@ function mk(prefix = '', shared: { storage?: GatedStorage; photo?: GatedPhotos }
     clock: fixedClockPort(TODAY),
     ids: sequentialIdPort(prefix),
   } as Ports & { photo: GatedPhotos; storage: GatedStorage };
-  return { p, store: createStore({ ports: p }) };
+  return { p, store: watch(createStore({ ports: p })) };
 }
 
 const listing = (store: Store) => photosFor(store.getState(), { kind: 'trip' });
@@ -350,39 +350,32 @@ test('G12: a delete whose cascade rejects re-reads availability rather than repo
 // ---------------------------------------------------------------------------------------------
 
 /**
- * **G13 — R48-1 face 1.** Availability unknown (a `present()` that failed), a *Try again* in
- * flight, and an import lands underneath it. The read was issued **before** the new bytes
- * existed, so it must not land after them and report `'missing'` over them — and because the
- * import cannot write the answer itself (`available === null` means *never read*), it owes one.
+ * **G13 — R48-1 face 1.** Availability **unread** — an establishing `present()` still parked — and
+ * an import lands underneath it. The read was issued **before** the new bytes existed, so it must
+ * not land after them and report `'missing'` over them; and because the import cannot write the
+ * answer itself (`available === null` means *never read*), somebody still owes one.
  *
  * **Fault 1: put the `supersede` back inside R45-4's value guard** → the stale answer lands
  * mid-batch, `available` stops being `null`, the files behind it take R45-4's `if` branch and
- * build a set holding only themselves, the owed read is cancelled — and the file that went first
- * reads `'missing'` over bytes on disk, which is R45-4's own rendered defect. **The batch has to
- * span the stale answer for that to be visible**, which is why the release below is interleaved
- * and not `release(3)`. **Fault 2: drop the owed read** → nothing replaces what the supersede
- * invalidated and the listing never leaves `'unreadable'`.
+ * build a set holding only themselves — and the file that went first reads `'missing'` over bytes
+ * on disk, which is R45-4's own rendered defect. **The batch has to span the stale answer for that
+ * to be visible**, which is why the release below is interleaved and not `release(3)`.
+ * **Fault 2: make `settleAvailability` a no-op** → nothing replaces what the supersede
+ * invalidated and the listing never leaves `'loading'`.
  *
- * Three files, one owed read: the flag is what keeps the loop at one port call.
+ * **The fixture moved at I-13g (§4.2 A-69) and the move is the finding, not a tidy-up.** It used
+ * to park a *Try again* behind a `present()` that had **failed**, which left `availabilityError`
+ * set — and A-69 Part 4's predicate is false whenever `availabilityError !== null`, deliberately
+ * (*"the boundary repairs an absent answer and never a wrong one"*). So the owed read is no longer
+ * issued on that path. **BUILD-NOTES KD-84** carries it as an open finding for the architect, and
+ * `G13b` below pins what the store does there now.
+ *
+ * Three files, one owed read: the boundary is what keeps the batch at one port call.
  */
-test('G13: an import with availability unknown never reads `missing`, and owes exactly one read', async () => {
-  const { p, store, A } = await tripWithOnePhoto('g13');
-  await store.closeTrip();
+test('G13: an import with availability unread never reads `missing`, and owes exactly one read', async () => {
+  const { p, store } = await parkedRead('g13');
+  assert.equal(listing(store).phase, 'loading', 'INCONCLUSIVE: availability is not unread');
 
-  p.photo.slowPresent = true;
-  const opening = store.openTrip(A);
-  await tick(); await tick();
-  p.photo.presentGates.shift()!.fail(new Error('IndexedDB: UnknownError'));
-  await tick();
-  await opening;
-  assert.equal(listing(store).phase, 'unreadable', 'INCONCLUSIVE: availability is not unknown');
-
-  // The *Try again*, parked: issued before the bytes below exist.
-  const retry = store.refreshPhotoAvailability();
-  await tick();
-  assert.equal(p.photo.presentGates.length, 1, 'INCONCLUSIVE: the retry is not parked');
-
-  p.photo.slowPresent = false;
   const before = p.photo.presentCount;
   p.photo.next = [file('2.jpg'), file('3.jpg'), file('4.jpg')];
   const imp = store.importPhotos({ kind: 'trip' });
@@ -393,13 +386,13 @@ test('G13: an import with availability unknown never reads `missing`, and owes e
   // above. It knows nothing of any of these three photographs.
   await p.photo.presentGates.shift()!.run();
   await tick();
-  await retry;
 
   await p.photo.release(2);                       // the two behind it
   await imp;
+  await tick(); await tick();
   assert.equal(store.getState().doc!.photos.length, 4, 'INCONCLUSIVE: the batch did not land');
   assert.equal(p.photo.presentCount - before, 1,
-    'A-68 Part 5b: the owed read is once per BATCH, not once per file, and only when availability was unknown');
+    'A-69 Part 4: the owed read is once per BATCH, not once per file — the boundary, not a per-file await');
 
   const l = listing(store);
   assert.notEqual(l.phase, 'loading', '§10.6 property 5: the listing never reached a terminal state');
@@ -410,16 +403,116 @@ test('G13: an import with availability unknown never reads `missing`, and owes e
 });
 
 /**
- * **G14 — R48-1 face 2, which is §10 A-65 T1.** The same unknown availability, then
- * `removePhoto` and `undo`. A-65 rules that undo restores the **record** and never the
- * photograph, and requires the restored record to read **`'missing'`** — *"never `'empty'`,
- * never `'unreadable'`, never a throw"*.
+ * **G13b — the shape G13 used to have, pinned because A-69 changed its outcome.**
+ * **OPEN FINDING, BUILD-NOTES KD-84 — routed to the architect, not worked around here.**
  *
- * **Both faults above → red**: without the hoist nothing invalidates and nothing answers, so the
- * listing stays `'unreadable'` and the item's availability reads `'unknown'`.
+ * A `present()` that **failed**, a *Try again* parked behind it, and an import underneath. The
+ * *ordering* half of R48-1 face 1 still holds and is asserted below: the stale answer is
+ * invalidated by the byte write and never lands, so **no photograph on disk reads `'missing'`**.
+ *
+ * What A-69 changed is the *liveness* half. A-68 Part 5d ruled that this read is owed because
+ * *"the store changed the answer"* rather than because a read failed, so `availabilityOwed`
+ * discharged it and the listing became `'ready'`. A-69 Part 4's predicate is false whenever
+ * `availabilityError !== null`, so nothing is issued and the listing keeps the **previous
+ * failure's message** over a trip whose bytes have since changed. §10.6 property 6's *Try again*
+ * is the only exit, and taking it answers correctly — which is asserted last, so the state is
+ * pinned as *recoverable* rather than merely described.
+ */
+test('G13b: after a FAILED read, an import leaves `unreadable` standing — A-69 vs A-68 Part 5d', async () => {
+  const { p, store, A } = await tripWithOnePhoto('g13b');
+  await store.closeTrip();
+
+  p.photo.slowPresent = true;
+  const opening = store.openTrip(A);
+  await tick(); await tick();
+  p.photo.presentGates.shift()!.fail(new Error('IndexedDB: UnknownError'));
+  await tick();
+  await opening;
+  assert.equal(listing(store).phase, 'unreadable', 'INCONCLUSIVE: availability did not fail');
+
+  const retry = store.refreshPhotoAvailability();
+  await tick();
+  assert.equal(p.photo.presentGates.length, 1, 'INCONCLUSIVE: the retry is not parked');
+
+  p.photo.slowPresent = false;
+  const before = p.photo.presentCount;
+  p.photo.next = [file('2.jpg'), file('3.jpg'), file('4.jpg')];
+  const imp = store.importPhotos({ kind: 'trip' });
+  await tick();
+  await p.photo.release(1);
+  await p.photo.presentGates.shift()!.run();
+  await tick();
+  await retry;
+  await p.photo.release(2);
+  await imp;
+  await tick(); await tick();
+
+  assert.equal(store.getState().doc!.photos.length, 4, 'INCONCLUSIVE: the batch did not land');
+  assert.equal(store.getState().photos.available, null,
+    'A-68 Part 5a still holds: the stale answer was invalidated by the byte write and must not have landed');
+  assert.equal(p.photo.presentCount - before, 0,
+    'KD-84: A-69 Part 4\'s predicate is false while `availabilityError` is set, so the supersede\'s promise is not discharged here');
+  assert.equal(listing(store).phase, 'unreadable',
+    'KD-84: the listing keeps the PREVIOUS failure\'s message over a trip whose bytes have since changed');
+
+  // …and it is recoverable rather than terminal-wrong: §10.6 property 6's exit answers correctly.
+  await store.refreshPhotoAvailability();
+  const l = listing(store);
+  assert.equal(l.phase, 'ready');
+  assert.equal(l.missing, 0,
+    `a photograph whose bytes are on disk reads 'missing': ${JSON.stringify(l.items.map((i) => i.availability))}`);
+});
+
+/**
+ * **G14 — R48-1 face 2, which is §10 A-65 T1**, as corrected by §4.2 **A-69 Part 10 item 1**.
+ * Availability unread, then `removePhoto` and `undo`. A-65 rules that undo restores the **record**
+ * and never the photograph, and requires the restored record to read **`'missing'`** — *"never
+ * `'empty'`, never `'unreadable'`, never a throw"*.
+ *
+ * **A-69 Part 10 corrects this criterion to ONE mutation, and names it: make `settleAvailability`
+ * a no-op → `'loading'` forever → red.** R45-4's value-guard mutation does not redden this and
+ * never did (`removePhoto`'s supersede and the owed read's own claim sat in the same synchronous
+ * block); it reddens **G13** alone, where the write is an add rather than a delete.
+ *
+ * **The fixture moved with the criterion** — it used to park a `present()` that had **failed**,
+ * which sets `availabilityError` and makes A-69 Part 4's predicate false, so the corrected
+ * criterion's own stated fault (`'loading'` forever) could not be produced from it. `G14b` pins
+ * what that path does now; **BUILD-NOTES KD-84** carries it.
  */
 test('G14: removePhoto + undo reads `missing` even when availability was never read', async () => {
-  const { p, store, A } = await tripWithOnePhoto('g14');
+  const { p, store } = await parkedRead('g14');
+  const photoId = store.getState().doc!.photos[0]!.id;
+  assert.equal(listing(store).phase, 'loading', 'INCONCLUSIVE: availability is not unread');
+
+  await store.removePhoto(photoId);
+  assert.equal(p.photo.thumbs.size, 0, 'INCONCLUSIVE: the bytes were not removed');
+  // The establishing read, dropped by `removePhoto`'s supersede, settles behind itself (site S2).
+  p.photo.slowPresent = false;
+  while (p.photo.presentGates.length > 0) { await p.photo.presentGates.shift()!.run(); await tick(); }
+  await tick(); await tick();
+  store.undo();
+
+  const l = listing(store);
+  assert.equal(store.getState().doc!.photos.length, 1, 'INCONCLUSIVE: undo did not restore the record');
+  assert.equal(l.phase, 'ready', '§10 A-65 T1: never `empty`, never `unreadable`, never a throw');
+  assert.equal(l.items[0]?.availability, 'missing',
+    '§10 A-65 T1: a restored record read as though its bytes had come back');
+});
+
+/**
+ * **G14b — the shape G14 used to have. OPEN FINDING, BUILD-NOTES KD-84.**
+ *
+ * `removePhoto` + `undo` after a **failed** availability read. §10 **A-65 T1** requires the
+ * restored record to read `'missing'` and says **never `'unreadable'`**; under A-69 it reads
+ * `'unreadable'`, because the boundary's predicate is false while `availabilityError` is set and
+ * A-68 Part 5b's owed read — which used to answer here — is deleted.
+ *
+ * Pinned rather than hidden: this test goes red the moment the architect rules on KD-84, which is
+ * the intent. The recovery path is asserted last, so what is disclosed is *"one tap away"* rather
+ * than *"wrong forever"*.
+ */
+test('G14b: after a FAILED read, removePhoto + undo reads `unreadable` — A-69 vs §10 A-65 T1', async () => {
+  const { p, store, A } = await tripWithOnePhoto('g14b');
   const photoId = store.getState().doc!.photos[0]!.id;
   await store.closeTrip();
 
@@ -430,17 +523,20 @@ test('G14: removePhoto + undo reads `missing` even when availability was never r
   await tick();
   await opening;
   p.photo.slowPresent = false;
-  assert.equal(listing(store).phase, 'unreadable', 'INCONCLUSIVE: availability is not unknown');
+  assert.equal(listing(store).phase, 'unreadable', 'INCONCLUSIVE: availability did not fail');
 
   await store.removePhoto(photoId);
   assert.equal(p.photo.thumbs.size, 0, 'INCONCLUSIVE: the bytes were not removed');
   store.undo();
 
-  const l = listing(store);
   assert.equal(store.getState().doc!.photos.length, 1, 'INCONCLUSIVE: undo did not restore the record');
-  assert.equal(l.phase, 'ready', '§10 A-65 T1: never `empty`, never `unreadable`, never a throw');
-  assert.equal(l.items[0]?.availability, 'missing',
-    '§10 A-65 T1: a restored record read as though its bytes had come back');
+  assert.equal(listing(store).phase, 'unreadable',
+    'KD-84: §10 A-65 T1 says the restored record is `missing` and never `unreadable`; A-69 Part 4 leaves the stale failure standing');
+
+  await store.refreshPhotoAvailability();
+  const l = listing(store);
+  assert.equal(l.phase, 'ready', 'the state is at least recoverable — §10.6 property 6\'s exit');
+  assert.equal(l.items[0]?.availability, 'missing', '§10 A-65 T1, reached one tap later');
 });
 
 // ---------------------------------------------------------------------------------------------
@@ -620,7 +716,7 @@ const STORE_SRC = readFileSync(new URL('../src/store/store.ts', import.meta.url)
  * name the answer it owes is A-68 Part 3's defect, and this is the criterion that sees it — a
  * stray call site shows up as a count mismatch rather than shipping unnoticed.
  */
-test('G16: exactly one claim and eight supersedes on `photoAvailability`, one and seven on `browsing`', () => {
+test('G16: exactly one claim and eight supersedes on `photoAvailability`, one and eight on `browsing`', () => {
   const count = (re: RegExp) => (STORE_SRC.match(re) ?? []).length;
 
   assert.equal(count(/guard\.claim\('photoAvailability'\)/g), 1,
@@ -629,8 +725,8 @@ test('G16: exactly one claim and eight supersedes on `photoAvailability`, one an
     'A-68 Part 4: `browseTrip` is the ONLY claimer of `browsing`');
   assert.equal(count(/guard\.supersede\('photoAvailability'\)/g), 8,
     'A-68 Part 7: the six reseed installs, `importPhotos` and `removePhoto` — and nothing else');
-  assert.equal(count(/guard\.supersede\('browsing'\)/g), 7,
-    'A-68 Part 4: the six reseed installs and `closeBrowse` — and nothing else');
+  assert.equal(count(/guard\.supersede\('browsing'\)/g), 8,
+    'A-69 Part 8: the six reseed installs, `closeBrowse` and `deleteTrip`\'s non-active branch — and nothing else');
   assert.equal(count(/guard\.claim\('doc'\)/g), 1,
     'A-68 Part 4: `claimTransition` is the ONE place a live-document transition begins');
 
@@ -638,10 +734,15 @@ test('G16: exactly one claim and eight supersedes on `photoAvailability`, one an
   assert.equal([...STORE_SRC.matchAll(/(?<!function )claimTransition\(/g)].length, 2,
     'claimTransition call sites: flushForTransition\'s success exit and deleteTrip\'s rule-6c branch');
 
-  // The two sites A-68 Part 4.2 items 1 and 2 deliberately leave alone. A builder "completing the
-  // set" here reintroduces R48-2 at a new site, so the shape is pinned rather than described.
-  assert.match(STORE_SRC, /\n {12}set\(\{ \.\.\.state, library, openFailures \}\);\n {10}\}/,
-    'A-68 Part 4.2 item 1: `deleteTrip`\'s non-active install replaces neither slot and takes NO supersede');
+  // A-68 Part 4.2 item 1, **narrowed by A-69 Part 8 and not withdrawn**: `deleteTrip`'s non-active
+  // install still takes NO `photoAvailability` supersede — a builder "completing the set" there
+  // reintroduces R48-2 — and now takes an unconditional `browsing` one with a conditional write
+  // (QA R49-4). The shape is pinned rather than described.
+  assert.match(STORE_SRC,
+    /\n {12}guard\.supersede\('browsing'\);\n {12}set\(\{ \.\.\.state, library, openFailures,\n {14}browsing: state\.browsing\?\.id === id \? null : state\.browsing \}\);\n {10}\}/,
+    'A-69 Part 8: `deleteTrip`\'s non-active install supersedes `browsing` unconditionally and clears only the deleted trip\'s pane');
+  assert.doesNotMatch(STORE_SRC, /\n {12}guard\.supersede\('photoAvailability'\);\n {12}set\(\{ \.\.\.state, library, openFailures/,
+    'A-68 Part 4.2 item 1: a `photoAvailability` supersede on `deleteTrip`\'s non-active branch is still FORBIDDEN');
   assert.equal(count(/reseed:\s*true/g), 7,
     'six transitions plus `writeAndSettle`\'s merge install — which is A-68 Part 4.2 item 2\'s odd one out and takes no supersede');
 });

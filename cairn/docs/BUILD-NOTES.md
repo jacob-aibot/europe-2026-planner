@@ -1,5 +1,38 @@
 # Cairn — build notes, Phase 1 (and Phase 2 in progress)
 
+> **Addendum — ROADMAP `I-13g`: the enumeration is the defect — a settling boundary replaces the
+> table of exits (§4.2 **A-69**, architect revision 50, `3de0251`). Closes QA **R49-1**, **R49-4**
+> and **R49-5**.**
+> Builds on `106bbd3`/`4398de5`. **One source file, three test files and this document:
+> `packages/client/src/store/store.ts`, a new `packages/client/test/settling.test.ts`, a new
+> `packages/client/test/settled-invariant.ts`, `packages/client/test/liveness.test.ts`, one import
+> line in `packages/client/test/generation.test.ts`, and `docs/BUILD-NOTES.md` §1/§2.**
+> `generation.ts` is **byte-identical**. No `.tsx`, no `qa/`, no `cairn/docs/design/`, no
+> dependency, no lockfile movement, no version movement.
+>
+> | | |
+> |---|---|
+> | **What runs, and the exact commands** | `cd cairn && npm run typecheck` → **clean on both projects, exit 0** (`pretypecheck` regenerated the sample; no `package.json` or lockfile diff). `npm run test:tap` → **1426 tests, 1426 pass, 0 fail, 0 skipped, 0 cancelled** (1404 → 1426: 20 in the new `settling.test.ts`, plus `liveness.test.ts` 28 → 30 with `G13b`/`G14b`). `node --test packages/client/test/settling.test.ts` → **20/20**; `…/liveness.test.ts` → **30/30**; `…/generation.test.ts` → **17/17**. |
+> | **Group 1 — the settling boundary (A-69 Part 4)** | `availabilityUnanswered()` and `settleAvailability()` are **verbatim A-69 Part 4**, both `observe` terms included and not tidied. **Site S1**: `settling<T extends object>(api: T): T` is defined immediately above the return and `createStore` ends `return settling({ … });` — the object literal is otherwise unchanged, `fn.apply(out, args)` (not `api`) so `this.dispatch`/`this.openTrip` compose through the boundary, synchronous methods pass through untouched, and both promise arms settle. **Site S2**: see **KD-85** — A-69's printed placement is unreachable, and it ships as `readPhotoAvailability`'s own `finally` around a new `readAvailabilityOnce`. |
+> | **Group 2 — the type fence (A-69 Part 5)** | `setPhotos`' parameter is `Partial<Omit<PhotoSession, 'tripId' \| 'available' \| 'availabilityError'>>`; `AvailabilityAnswer`'s three arms and `setAvailability` are added; `readPhotoAvailability`'s four branches and both optimistic writes go through it; the `default:` arm is `const exhaustive: never = answer;`. **Type aliases and a union only** — no enum, no namespace, no `declare` field (`cairn-constraints` §3, `erasableSyntaxOnly` clean). |
+> | **Group 3 — the deletions (A-69 Part 6)** | `availabilityOwed` appears **nowhere in the repository**, including in prose: both declarations, both `else` branches and both `if (availabilityOwed && guard.current('doc', g)) …` discharge lines are gone, and the comments that named the identifier were rewritten rather than left dangling. **The four things that stay, verified by grep and by fault:** eight `supersede('photoAvailability')` (both byte-write sites among them), R45-4's value guards nested inside them, `removePhoto`'s `observe('doc')` + whole-tail gate, and `deleteTrip`'s `if (wasActive) await readPhotoAvailability(state.doc)` on the rejecting cascade — the last of which is separately re-measured red under its own fault (**G12**). |
+> | **Group 4 — R49-4 (A-69 Part 8)** | `deleteTrip`'s **non**-active install is `guard.supersede('browsing'); set({ ...state, library, openFailures, browsing: state.browsing?.id === id ? null : state.browsing });` — unconditional supersede, conditional write, with A-69 Part 8's disclosed cost written beside it. **No `supersede('photoAvailability')` was added to that branch** and `liveness.test.ts` G16 now asserts its absence as well as the new shape. |
+> | **Group 5 — the comments (non-blocking)** | `readPhotoAvailability`'s A-68 Part 3 paragraph now describes the boundary and A-69 Part 3's standing rule; the long comment above each deleted discharge line went with the line; `claimTransition`'s one-slot explanation is untouched. Nothing else in the file's prose moved. |
+> | **The invariant, asserted structurally rather than per exit** | `packages/client/test/settled-invariant.ts` — **one helper, wired as a wrapper**: `settlingTest` replaces `node:test`'s `test` in `generation.test.ts`, `liveness.test.ts` and `settling.test.ts`, and `watch()` inside each file's `mk` registers every store the fixture builds. Every test in all three files asserts *"`doc === null` ∨ `available !== null` ∨ `availabilityError !== null`, and no listing left `'loading'`"* on the way out, **with no opt-outs used** — the `settles: false` escape exists and nothing needed it. A test added below any of those fixtures is covered without anyone remembering to cover it, which is A-69 Part 3's shape rather than a list. |
+> | **G18 — R49-1, all of it** | A nine-row table driven from A-68 Part 4.1's demoted rows 3, 4, 5, 6, 7, 8, 11 and 12 (both branches), each run **mid-batch**: availability parked, two files importing, the exit fired inside file 2's `derive`. Every one reaches a terminal state, keeps its own throw/return, and §2.9 A-47's chip is asserted intact on row 5. **Fault: `settleAvailability` a no-op → eight reds** (not nine — **KD-86**), plus `G19`, all four `G20`s, `G13` and `G14`. |
+> | **G18/S2 — the criterion A-69 does not publish, and it is why KD-85 exists** | Every `readPhotoAvailability` in this store is awaited by the method that issued it, so an ordinary dropped read is caught by that method's S1. The one read with **no method behind it** is the read the boundary itself issued. Built in five steps and asserted; **fault: delete S2 → red**, and it is the *only* test that reddens. Without this criterion S1-without-S2 ships green. |
+> | **G19** | Two overlapping owing batches ended by one `openTrip('no-such-id')`: both settle and **exactly one** extra `present()` is issued in total. Same fault → red. |
+> | **G20 — R49-5** | A subscriber that throws **once** on the installing emit, in `openTrip`, `createTrip`, `adoptTrip` and `importDoc`. All four: the document is installed, the original error propagates **unchanged** (`assert.rejects(..., /subscriber exploded/)`), and the listing is terminal — with `presentCount` asserted to have **risen** on the two whose document has photographs. **Fault: drop `settling`'s rejection arm → four reds.** |
+> | **G21 — the typecheck** | `setPhotos({ available: new Set<string>() })` inserted in `setAvailability` → `npm run typecheck` fails with `store.ts(453,17): error TS2353: Object literal may only specify known properties, and 'available' does not exist in type 'Partial<Omit<PhotoSession, "tripId" \| "available" \| "availabilityError">>'` — **naming `available`**, exactly as A-69 Part 12 requires. Reverted; typecheck clean. The greppable half is `settling.test.ts`'s G21 (see **KD-83** for why the published count of three is a count of writing functions and the token count is six). |
+> | **G22 — R49-4** | `browseTrip(B)` then `deleteTrip(B)` non-active → `browsing === null`, library row gone. **Control**: `browseTrip(B)` then `deleteTrip(C)` → pane intact. **Fault: restore `set({ ...state, library, openFailures })` → the pane survives → red**, and G16 and G24 go red with it. |
+> | **G23 — the cost bound** | After a successful `openTrip` of a trip with photographs, importing three files issues **zero** extra `present()` calls — measured with `presentCount`, not argued. A-69's stated fault does not reproduce; the two that do are recorded in **KD-86** and both were run. |
+> | **G24 — the closed lists** | `createStore` has exactly one `return` of its literal and it is `return settling({`; zero bare `return {` at that indent; `settleAvailability()` at its two sites (three tokens — **KD-83**), with S1's **two arms** and S2's `finally` each pinned by shape; `availabilityOwed` **zero**; `supersede('photoAvailability')` **eight**; `claim('photoAvailability')` **one**; `supersede('browsing')` **eight** (seven → eight is A-69 Part 8). |
+> | **G25 — A-67's nine and A-68's eight, re-run** | All green in the full suite. **G12** (the one A-69 flags first) re-measured red under its own fault — drop Part 6's `catch` read → `'ready'` over gone bytes. **G13** re-measured red under both of its faults. **G14 as corrected by A-69 Part 10** — one mutation, `settleAvailability` → no-op → `'loading'` forever → red. **G17 as corrected** — the supersede deleted before `closeTrip`'s **document-less** reseed → red. **G16's counts moved by exactly one** (`supersede('browsing')` 7 → 8) and its pinned `deleteTrip` shape was restated over A-69 Part 8's block, with a new `doesNotMatch` keeping A-68 Part 4.2 item 1's prohibition. |
+> | **The probes, run and not edited** | `qa/r45-i13.mjs`, `qa/r46-i13b.mjs`, `qa/r47-i13c.mjs` and `qa/r48-i13d.mjs` — **0 FAIL each**, and `r47-i13c.mjs` is ALL CLEAR end to end. `qa/r49-i13e.mjs` **15 → 8** `FAIL` lines. **All twelve behavioural findings close**: seven R49-1 exits, R49-1's second shape, three R49-5 subscriber cases, and R49-4. The eight that remain are **not behavioural**: five assert the *source shape* of machinery A-69 deletes or changes by ruling (`availabilityOwed`'s seven mentions, the identical discharge at both byte sites, `readPhotoAvailability`'s claim as the discharge, seven `supersede('browsing')`, and the non-active `deleteTrip` install's do-nothing comment), and three are R49-2/R49-3a/R49-3c — findings about A-68's *text*, which A-69 Parts 9 and 10 corrected in `ARCHITECTURE.md` and which the probe asserts against the original wording. **No `qa/` file was touched**; both sets are the breaker's re-cut. |
+> | **The fence** | `git diff --name-only` → `cairn/docs/BUILD-NOTES.md`, `cairn/packages/client/src/store/store.ts`, `cairn/packages/client/test/generation.test.ts`, `cairn/packages/client/test/liveness.test.ts`, plus two new untracked files under `cairn/packages/client/test/`. **Zero `.tsx`, zero `qa/`, zero `cairn/docs/design/`, `generation.ts` unchanged**, no `packages/core` change, no dependency, no version movement. A-69 Parts 9 and 10 are read and **not implemented** — architect work already done in `3de0251`. |
+> | **Not verified** | **Nothing rendered** — no browser probe, no `.tsx` opened, deliberately. The Playwright probes were not re-run; this increment touches no port, no key and no surface. **`qa/r49-i13e.mjs`'s eight remaining `FAIL` lines were not made green**, for the reason in the probes row — five of them require re-cutting a breaker-owned file and three are about ARCHITECTURE text. |
+> | **Objection — three, and the first is the one that matters** | **KD-84**: A-69's boundary does not discharge a supersede's promise while `availabilityError` is set, so **A-68 G13 and G14 change outcome and §10 A-65 T1's *"never `unreadable`"* is now false on one path**. Implemented as ruled, fixtures moved to the state A-69 Part 10's own corrected fault describes, and the old path pinned by two new tests (`G13b`, `G14b`) that name the entry and go red when the architect rules. **KD-85**: A-69 Part 4's printed S2 is unreachable; the semantics ship, the placement could not. **KD-83** and **KD-86**: four published counts and two published faults do not match the build, all four/two corrected in the criteria and reported rather than papered over. |
+
 > **Addendum — ROADMAP `I-13e`: a claim is a promise to answer — the generation guard's wiring at
 > its own call sites (§4.2 **A-68**, architect revision 49, `2af16df`). Folds in QA **R48-4**.**
 > Builds on `d03eac8`. **Two source-adjacent files and this document: `packages/client/src/store/store.ts`,
@@ -3841,12 +3874,172 @@ from the finding on the removal too. Both halves, because both are decisions rat
 Both are visible to the tester rather than argued away: `qa/r46-i13b.mjs` §D asserts exactly this
 byte placement, and the abandoned-file report is asserted only as *"not `storage_failed`"*.
 
+### KD-83 — A-69 Part 12's published grep counts are counts of SITES, not of tokens, and two of them do not match the source
+
+**Where:** `packages/client/src/store/store.ts` · `packages/client/test/settling.test.ts`
+(**G21**, **G24**) · ARCHITECTURE §4.2 **A-69** Part 12 · ROADMAP **I-13g**.
+
+A-69 Part 12 makes two counts load-bearing — Part 11's proof *"depends on three greppable facts"*
+and G24's outcome clause says *"a changed count is a finding against A-69 routed to the
+architect."* Both are published as token counts and both are off, because the ruling is counting
+**call sites** in the human sense while a grep counts occurrences:
+
+| A-69 says | The source has | Why |
+|---|---|---|
+| `setAvailability(` at **exactly three** call sites, *"all inside `readPhotoAvailability`, `importPhotos` and `removePhoto`"* | **six** occurrences, in exactly those three functions | Part 5's own body says *"`readPhotoAvailability`'s four branches become the three arms"* — that function alone calls it four times. The **three** is the number of writing functions (and of union arms), not of tokens |
+| `settleAvailability(` at **exactly two** call sites, *"the wrapper, and `readPhotoAvailability`'s tail"* | **three** occurrences, at those two sites | S1 is one site with **two arms**, and A-69 Part 4's own printed code has `await settleAvailability();` in both. Dropping the rejection arm is G20's injected fault, so both arms are load-bearing |
+
+**Implemented as A-69 specifies and the criteria pin both numbers**, with the ruling's number
+asserted in the form that actually holds: the three writing functions and the two settling sites
+are each pinned by shape (`G21`'s `setAvailability({ kind: 'ready', tripId: state.doc.id,
+available })` × 2, `G24`'s two-arm regex over the wrapper and the `finally`-outside regex over the
+tail), so a fourth writer or a dropped arm is still a red line. **No code was changed to make a
+count come out** — that would have been the wrong repair, since the counts are correct about the
+design and only wrong about the arithmetic. Routed as a text correction to A-69 Part 12.
+
+### KD-84 — A-69's boundary does not discharge a supersede's promise while `availabilityError` is set, and §10 A-65 T1 is the casualty
+
+**Where:** `packages/client/src/store/store.ts` (`availabilityUnanswered`) ·
+`packages/client/test/liveness.test.ts` (**G13**, **G13b**, **G14**, **G14b**) · ARCHITECTURE
+§4.2 **A-69** Parts 4, 6 and 10 · §10 **A-65 T1** · §4.2 **A-68** Part 5d.
+
+**This is the one thing in I-13g I could not implement as ruled and leave every shipped criterion
+green, and it is a design question rather than a coding one, so it is disclosed rather than
+patched.**
+
+A-69 Part 4's predicate has five conjuncts, and the third is `state.photos.availabilityError ===
+null`. Part 4 and Part 6 item 3 both defend it on purpose — *"the boundary repairs an **absent**
+answer and never a wrong one"*, and *"a failed read writes `availabilityError`, which makes the
+predicate false"*, which is how A-63 Part 3's ban on automatic retries is honoured. That is correct
+for **G12**'s scenario, where the stale answer is a non-null `available` set. It is **not** the
+same case as a stale `availabilityError`, and A-68 Part 5b's deleted mechanism did cover it:
+
+> A byte write or a byte delete **supersedes** `photoAvailability` unconditionally (A-68 Part 5a,
+> which A-69 Part 6 item 2 explicitly keeps). With `availabilityError` set, that supersede
+> invalidates the only read that could have answered, and **nothing replaces it** — the boundary
+> declines, because the invariant *"`doc === null` ∨ `available !== null` ∨ `availabilityError !==
+> null`"* is already satisfied by the **previous failure's** message.
+
+Two shipped criteria change outcome, and both were green at `3de0251`:
+
+- **A-68 G13** (`liveness.test.ts`). A failed `present()`, a *Try again* parked, three files
+  imported underneath it. Was: one owed read, listing `'ready'`, `missing: 0`. Now: **zero** reads
+  and the listing keeps the old `'IndexedDB: UnknownError'` over a trip that has three more
+  photographs than the message describes. *Ordering is unaffected* — the stale answer is still
+  invalidated and still never lands, which is the half of R48-1 face 1 that matters most.
+- **A-68 G14** (`liveness.test.ts`), which is **§10 A-65 T1**. `removePhoto` + `undo` after a
+  failed read. A-65 T1 requires the restored record to read `'missing'` and says in as many words
+  **never `'unreadable'`**; under A-69 it reads `'unreadable'`. **A-69 regresses a ruled criterion
+  of §10.**
+
+A-69 Part 10 item 1 is itself evidence the fixture was not re-derived: its corrected **G14** states
+the fault as *"make `settleAvailability` a no-op → **`'loading'` forever** → red"*, and `'loading'`
+is only reachable from a fixture where `availabilityError` is **null**. The corrected criterion and
+the old fixture cannot both be right.
+
+**What shipped**, in the order a reviewer should check it:
+
+1. **The predicate is verbatim A-69 Part 4.** Not narrowed, not widened, no fourth conjunct, no
+   `availabilityError` clearing anywhere. The ruling is implemented.
+2. **G13 and G14 keep their names and their faults and move their fixtures** to an *unread*
+   (parked) availability read, which is the state A-69 Part 10's corrected mutation describes and
+   which both criteria still measure exactly as before — G13's stale answer still lands mid-batch
+   and must not report `'missing'` over bytes on disk; G14's restored record still reads
+   `'missing'`; the single named mutation (`settleAvailability` → no-op) reddens both.
+3. **G13b and G14b are new and pin the failed-read path as it now behaves**, each naming this
+   entry, each asserting the ordering half still holds, and each asserting that
+   `refreshPhotoAvailability()` recovers — so what is disclosed is *"one tap away"*, not *"wrong
+   forever"*. **They go red the moment the architect rules, which is the intent.**
+
+**The question for the architect**, stated once. A-68 Part 5d's distinction — *"A-63 forbids the
+store re-running a read **because the read failed**; this runs because **the store changed the
+answer**"* — survives A-69 unrefuted; A-69 removes the mechanism that acted on it without saying
+the distinction was wrong. If it still holds, `availabilityUnanswered` needs a second, narrower
+disjunct (an answer whose ticket the store's own byte write superseded is *absent*, not *wrong*),
+and that is a Part 4 amendment — not a builder's call (sequencing rule 5). If it does not hold,
+**§10 A-65 T1's *"never `'unreadable'`"* needs amending instead**, because one of the two is
+currently false.
+
+### KD-85 — A-69 Part 4's site S2, transcribed literally, is unreachable from every path it exists for
+
+**Where:** `packages/client/src/store/store.ts` (`readPhotoAvailability` /
+`readAvailabilityOnce`) · `packages/client/test/settling.test.ts` (**G18/S2**, **G24**) ·
+ARCHITECTURE §4.2 **A-69** Part 4 · ROADMAP **I-13g** group 1 item 3.
+
+A-69 Part 4 prints site S2 as a statement placed **after** `readPhotoAvailability`'s
+`try`/`finally`, with the comment *"it is OUTSIDE the `finally` so the release has already
+happened"*, and ROADMAP makes it a build item: *"`await settleAvailability();` as the last
+statement of `readPhotoAvailability`, **after** its `try`/`finally`, unconditional."*
+
+**In that position it is dead code on all four of the paths it was written for.** Every drop path
+in that function is `if (!guard.current('photoAvailability', t)) return;` — a `return` **inside**
+the `try`. A `return` inside a `try` runs the `finally` and then leaves the function; it does not
+continue to a statement below the block. So the line runs only on the two paths where the read
+**wrote** an answer (making the predicate false) and on the `catch` path (which writes
+`availabilityError`, also making it false). **The one line A-69 says is *"the only thing left"*
+when a read is dropped never executes when a read is dropped.**
+
+Measured, not reasoned: with S2 in its printed position, deleting it changed **no** test outcome —
+`G18/S2` (the criterion built specifically to isolate it) was **red with the line present**. With
+S2 as a `finally`, deleting it reddens `G18/S2` and nothing else. That is the difference between a
+mechanism and a comment.
+
+**What shipped.** `readPhotoAvailability` becomes two functions and nothing else moves:
+
+```ts
+  async function readPhotoAvailability(doc: Trip | null): Promise<void> {
+    try {
+      await readAvailabilityOnce(doc);      // the claim, the four branches, the release
+    } finally {
+      await settleAvailability();           // A-69 Part 4, site S2
+    }
+  }
+```
+
+Every property A-69 states for S2 is preserved and is now true rather than intended: it runs
+**after the claim has been released** (the release is `readAvailabilityOnce`'s own `finally`, one
+frame down, so this read is no longer the one `observe` sees), it is **unconditional**, and it now
+covers a `throw` out of the read as well — which S1's own rejection arm shows is the right default.
+**A `finally` is the construct A-69 Part 2 option 3 chose the whole mechanism for**, on the ground
+that it is *"the only construct in the language that all control flow must pass through"*; S2 is
+that argument applied to itself.
+
+**Routed to the architect as a text correction to A-69 Part 4** — the ruling's semantics are
+implemented exactly; only the printed placement changes, and it had to.
+
+### KD-86 — two of A-69 Part 12's eight injected faults do not reproduce as printed
+
+**Where:** `packages/client/test/settling.test.ts` (**G18**, **G23**) · ARCHITECTURE §4.2 **A-69**
+Part 12 · ROADMAP **I-13g** ship gate. Same class as A-69 Part 10's own three corrections, and
+disclosed for the same reason.
+
+1. **G18's *"make `settleAvailability` a no-op → nine reds"* measures eight.** The ninth exit is
+   A-68 Part 4.1 **row 12b** — `deleteTrip` of the **ACTIVE** trip whose cascade rejects — and it
+   stays green under that fault because **A-68 Part 6's `catch` read answers it directly**, which is
+   the mechanism A-69 Part 6 item 4 explicitly keeps. Eight reds, one green-for-a-named-reason, and
+   the green one is separately red under its own fault (drop Part 6's `catch` read → G12 red,
+   measured). The criterion is sound; the count is one high.
+2. **G23's *"move the settle inside the import loop → three extra reads → red"* is a no-op.**
+   `settleAvailability` is predicate-guarded, and on G23's own ordinary path the predicate is false
+   throughout — which is A-69 Part 4's own cost argument (*"After any successful `openTrip` … the
+   predicate is false, so ordinary use pays zero"*). The two statements cannot both be true. **The
+   fault that does reproduce** is an *unguarded* per-file read in the loop
+   (`await readPhotoAvailability(state.doc)` under the observe terms alone) → **exactly three extra
+   `present()` calls → red**, which is the cost the criterion is defending against. A second,
+   sharper fault also reddens it: **delete the `state.photos.available === null` conjunct from
+   `availabilityUnanswered`** — the boundary then repairs a *present* answer, which A-69 Part 6 item
+   3 forbids, and it does not terminate (both suites hang), which is the termination argument in
+   Part 4 being load-bearing rather than decorative.
+
+Neither is a code change. Both are criterion-precision notes, reported rather than papered over,
+and both faults are recorded here in the form that actually reproduces so the gate can be re-run.
+
 ## 2. How to run it
 
 ```bash
 cd cairn
 npm install
-npm test          # 1404 tests as of I-13e. Plain node, no browser, no network.
+npm test          # 1426 tests as of I-13g. Plain node, no browser, no network.
                   # (387 from Phase 1 until R44-4, then 1239 until R45-17, then 1332 through the
                   #  round-45 fix pass, 1348 at I-13b, 1359 at the round-46 fix pass, 1376 at
                   #  I-13d; re-measured each time by running

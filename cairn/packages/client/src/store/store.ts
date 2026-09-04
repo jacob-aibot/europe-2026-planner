@@ -413,9 +413,65 @@ export function createStore(opts: StoreOptions) {
 
   // ---- photos (§10.2, §10.3, §10.6) --------------------------------------------------------
 
-  /** Patches the session-scoped photo block through `set`, so subscribers see every step. */
-  function setPhotos(patch: Partial<PhotoSession>) {
+  /**
+   * Patches the session-scoped photo block through `set`, so subscribers see every step —
+   * **but never the availability triple** (§4.2 **A-69** Part 5).
+   *
+   * `tripId`, `available` and `availabilityError` are one fact in three fields (**A-63**) and are
+   * written by `setAvailability` alone. Writing `available` here fails to compile, which is the
+   * criterion: A-69 Part 12 **G21** is a `npm run typecheck` transcript and not a test.
+   */
+  function setPhotos(patch: Partial<Omit<PhotoSession, 'tripId' | 'available' | 'availabilityError'>>) {
     set({ ...state, photos: { ...state.photos, ...patch } });
+  }
+
+  /**
+   * §10.6's answers, as a closed set — **§4.2 A-69 Part 5**.
+   *
+   * There are three and there have been three since **A-63**; making that a union rather than a
+   * convention is what stops a fourth from being written by accident, and stops `available` being
+   * written without saying what `availabilityError` now is.
+   */
+  type AvailabilityAnswer =
+    | { kind: 'ready'; tripId: string; available: ReadonlySet<string> }
+    | { kind: 'unreadable'; tripId: string; message: string }
+    | { kind: 'cleared' };   // no active document: §10.6 has no listing to report
+
+  /**
+   * **The ONE place the availability triple is written** — A-69 Part 5. The R3-3 pattern, one
+   * field over.
+   *
+   * A-69 Part 2's asymmetry, which is the sentence this function exists for: *the exits of this
+   * store are an open set that grows every time somebody adds a `return` or a `throw`; the
+   * writers of `photos.available` are a closed set that the type system and one grep can both
+   * see.* The fence closes the **incremental** writers; the six whole-`AppState` reseeds still
+   * install the triple as part of `...initialState()`, and that is precisely the case
+   * `settleAvailability`'s boundary exists for (A-69 Part 5's last paragraph — neither mechanism
+   * alone is the ruling).
+   */
+  function setAvailability(answer: AvailabilityAnswer): void {
+    switch (answer.kind) {
+      case 'ready':
+        // Copied into a set this store owns: the port's return value is `ReadonlySet` by type and
+        // by nothing else, and a port that hands back its own live collection would let a later
+        // write mutate state a subscriber is already holding (QA R43-1's shape, one port over).
+        set({ ...state, photos: { ...state.photos, tripId: answer.tripId,
+          available: new Set(answer.available), availabilityError: null } });
+        return;
+      case 'unreadable':
+        set({ ...state, photos: { ...state.photos, tripId: answer.tripId,
+          available: null, availabilityError: answer.message } });
+        return;
+      case 'cleared':
+        set({ ...state, photos: { ...state.photos, tripId: null,
+          available: null, availabilityError: null } });
+        return;
+      default: {
+        // A-69 Part 5. A fourth answer is a COMPILE error here, and the error is the criterion.
+        const exhaustive: never = answer;
+        return exhaustive;
+      }
+    }
   }
 
   /**
@@ -444,15 +500,23 @@ export function createStore(opts: StoreOptions) {
    * is the NEWEST one, ordered by TIME and not by trip** (§4.2 rule **6d**, **A-67**; QA
    * **R46-3**, then **R47-2**).
    *
-   * **That second clause is A-68 Part 3 and it is new** (QA **R48-2**). A-67 put a `return` in
-   * front of all four branches, which made the sentence above false: a read whose ticket had been
-   * invalidated wrote nothing at all, and if the thing that invalidated it installed no document
-   * and issued no replacement read, nothing ever answered. The property is restored by the
-   * **pairing rule** rather than by the branches — *a bump of a slot's sequence is a promise to
-   * replace the answer it invalidated.* A-68 Part 7 enumerates the ten bumps in this file and the
-   * answer each one names, and the invariant they add up to is directly testable: **when
-   * everything has settled, either `state.doc === null`, or `photos.available !== null`, or
-   * `photos.availabilityError !== null`.**
+   * **That second clause is A-68 Part 3, and A-69 changed what makes it true** (QA **R48-2**, then
+   * **R49-1** and **R49-5**). A-67 put a `return` in front of all four branches, which made the
+   * sentence above false: a read whose ticket had been invalidated wrote nothing at all, and if
+   * the thing that invalidated it installed no document and issued no replacement read, nothing
+   * ever answered. A-68 restored the property with a **pairing rule** — *a bump of a slot's
+   * sequence is a promise to replace the answer it invalidated* — discharged at a list of named
+   * sites, and that list was wrong within one round, for the third round running.
+   *
+   * **§4.2 A-69 Part 3 is the standing rule that replaced it:** *no correctness argument in this
+   * store may rest on an exhaustive enumeration of control-flow exits.* The promise is now
+   * discharged at a **boundary every path must pass through** — `settling(...)` around this
+   * store's returned literal (site S1, which sees a `throw` as well as a `return`) and this
+   * function's own tail after its `finally` (site S2, for a read dropped by a bump whose owner has
+   * already returned). The invariant is unchanged and is directly testable: **when everything has
+   * settled, either `state.doc === null`, or `photos.available !== null`, or
+   * `photos.availabilityError !== null`.** A-68 Part 4.1's table still describes what each exit
+   * does; it is no longer why the listing settles.
    *
    * R46-3 asked *"is this answer for the trip that is open?"* and that is the wrong question
    * asked of the right subject. It covered two overlapping opens of two *different* trips and
@@ -476,28 +540,60 @@ export function createStore(opts: StoreOptions) {
    * asked about.
    */
   async function readPhotoAvailability(doc: Trip | null): Promise<void> {
+    try {
+      await readAvailabilityOnce(doc);
+    } finally {
+      // **§4.2 A-69 Part 4, site S2.** The release has already happened — it is
+      // `readAvailabilityOnce`'s own `finally`, one frame down — so this read is no longer the one
+      // `observe` sees, which is A-69's stated requirement for this line. Unconditional: when this
+      // read wrote an answer the predicate is false and this costs five comparisons. When it was
+      // **DROPPED** — by a bump whose owner has already returned, so no S1 is coming — this is the
+      // only thing left, and it is why S1 alone is not enough (A-69: *landing S1 without S2 leaves
+      // R49-1's shape reachable*).
+      //
+      // **The split into two functions is the whole reason this line runs at all — BUILD-NOTES
+      // KD-85.** A-69 Part 4 prints S2 as a statement *after* the `try`/`finally` in one function.
+      // All four of that function's drop paths are `return`s **inside** the `try`, and a `return`
+      // inside a `try` runs the `finally` and then leaves the function: it never reaches a
+      // statement below the block. Transcribed literally, S2 is dead code on exactly the paths it
+      // exists for, and reachable only where it is useless. A `finally` is the construct A-69 Part
+      // 2 option 3 chose *because* all control flow passes through it, so the fix is to make S2 one
+      // — the semantics A-69 states are unchanged, the placement is not.
+      //
+      // **Termination is an argument, not a bound.** This only issues a replacement when the read
+      // it follows was dropped, and a read is only dropped by a bump taken *after* it claimed.
+      // Bumps are produced by gestures, one per gesture, so each replacement consumes a bump that
+      // has already happened; no loop runs without new gestures arriving. No artificial bound
+      // ships, for the same reason A-67 Part 3 item 4 ships no wraparound handling.
+      await settleAvailability();
+    }
+  }
+
+  /**
+   * One availability read, claim to release — the body A-69 Part 4's S2 wraps. Split out for the
+   * reachability reason recorded at S2 above and in **BUILD-NOTES KD-85**, and for no other: every
+   * line below is A-67 Part 6's and A-68's, unmoved.
+   */
+  async function readAvailabilityOnce(doc: Trip | null): Promise<void> {
     // A-67 Part 6: claimed on line 1, before every branch, and released in a `finally` that
     // covers every exit. A read is a replacement of this slot, so it claims rather than observes.
     const t = guard.claim('photoAvailability');
     try {
       if (!doc) {
         if (!guard.current('photoAvailability', t)) return;
-        setPhotos({ tripId: null, available: null, availabilityError: null });
+        setAvailability({ kind: 'cleared' });
         return;
       }
       const ids = doc.photos.map((p) => p.id);
       if (!ports.photo || ids.length === 0) {
         if (!guard.current('photoAvailability', t)) return;
-        setPhotos({ tripId: doc.id, available: new Set<string>(), availabilityError: null });
+        setAvailability({ kind: 'ready', tripId: doc.id, available: new Set<string>() });
         return;
       }
       try {
         const present = await ports.photo.present(doc.id, ids);
         if (!guard.current('photoAvailability', t)) return;
-        // Copied into a set this store owns: the port's return value is `ReadonlySet` by type and
-        // by nothing else, and a port that hands back its own live collection would let a later
-        // write mutate state a subscriber is already holding (QA R43-1's shape, one port over).
-        setPhotos({ tripId: doc.id, available: new Set(present), availabilityError: null });
+        setAvailability({ kind: 'ready', tripId: doc.id, available: present });
       } catch (err) {
         // The same drop, on the failing branch: an `'unreadable'` stamped over a newer answer is
         // the same wrong answer as a `'ready'` one, and it is terminal — §10.6 property 6's
@@ -507,15 +603,53 @@ export function createStore(opts: StoreOptions) {
         // The port's own words, recorded once — `travelHistory`'s `{ok:false, message}` shape one
         // subject over. It carries no photo id, no caption and no coordinate (§6.1 rule 1), and
         // nothing logs it.
-        setPhotos({
+        setAvailability({
+          kind: 'unreadable',
           tripId: doc.id,
-          available: null,
-          availabilityError: (err as Error | null)?.message || 'the photo store could not be read',
+          message: (err as Error | null)?.message || 'the photo store could not be read',
         });
       }
     } finally {
       guard.release('photoAvailability');
     }
+  }
+
+  /**
+   * §10.6 property 5 as a question about right now — **§4.2 A-69 Part 4**. True exactly when this
+   * store is showing a listing that nothing is going to answer: a document is open, no answer has
+   * been written, no read is in flight to write one, and no transition window is open that owes
+   * one.
+   *
+   * `observe(slot) !== null` is A-67 Part 3's own busy test, read for the one thing it is good at:
+   * while a claim is open somebody is already responsible, so `observe` answers `null` and this
+   * predicate is false. `observe('doc')` covers the synchronous span between a transition's
+   * `supersede` and the read it issues after its release — a span with no `await` in it, so
+   * nothing can resume inside it (A-67 Part 3's run-to-completion assumption, used here and
+   * nowhere new).
+   *
+   * **The two `observe` terms are load-bearing and are not defensive checks to be tidied**
+   * (ROADMAP I-13g): they are what stop the boundary issuing a read while somebody is already
+   * responsible for one, which is the whole of A-69 Part 12's **G19** and **G23**.
+   */
+  function availabilityUnanswered(): boolean {
+    return state.doc !== null
+      && state.photos.available === null
+      && state.photos.availabilityError === null
+      && guard.observe('photoAvailability') !== null
+      && guard.observe('doc') !== null;
+  }
+
+  /**
+   * The repair. At most one `present()`, and only when the alternative is a permanent spinner.
+   *
+   * **It repairs an ABSENT answer and never a wrong one** (A-69 Part 6 item 3). A stale-but-present
+   * answer — `deleteTrip`'s G12 scenario, where `available` is a non-null set over bytes that are
+   * now gone — makes this predicate false, and staleness has one mechanism and it is the
+   * `supersede` at the write. This is also why it is not the automatic retry A-63 Part 3 forbids:
+   * a failed read writes `availabilityError`, which makes the predicate false.
+   */
+  async function settleAvailability(): Promise<void> {
+    if (availabilityUnanswered()) await readPhotoAvailability(state.doc);
   }
 
   /*
@@ -1171,7 +1305,44 @@ export function createStore(opts: StoreOptions) {
     return run;
   }
 
-  return {
+  /**
+   * **§4.2 A-69 Part 4, site S1 — the settling boundary.**
+   *
+   * Every async method of this store settles §10.6 property 5 on the way out — on success **and on
+   * a throw**. It is a wrapper rather than a line in each method **because a line in each method is
+   * an enumeration** (A-69 Part 3), and this arc has been wrong about such an enumeration three
+   * rounds running: an exception in particular escapes any list of *returned* outcomes, which is
+   * QA **R49-5** (a subscriber throwing from inside `emit()` during a transition that DOES install
+   * a document). A method added to the literal below is covered without anyone remembering to
+   * cover it.
+   *
+   * Synchronous methods are passed through untouched: they cannot `await` a repair, and none of
+   * them writes the availability triple — which is not a promise, it is Part 5's type fence.
+   *
+   * `export type Store = ReturnType<typeof createStore>` is unchanged by this: `settling` is the
+   * identity in the type system.
+   */
+  function settling<T extends object>(api: T): T {
+    const out: Record<string, unknown> = {};
+    for (const key of Object.keys(api)) {
+      const value = (api as Record<string, unknown>)[key];
+      if (typeof value !== 'function') { out[key] = value; continue; }
+      const fn = value as (...args: unknown[]) => unknown;
+      out[key] = function (...args: unknown[]): unknown {
+        // `out` and not `api`, so a method calling `this.openTrip`/`this.dispatch` goes through
+        // the wrapper too and the boundary composes rather than being escapable from inside.
+        const result = fn.apply(out, args);
+        if (!(result instanceof Promise)) return result;
+        return result.then(
+          async (v) => { await settleAvailability(); return v; },
+          async (e) => { await settleAvailability(); throw e; },
+        );
+      };
+    }
+    return out as T;
+  }
+
+  return settling({
     /** The current state. Treat as immutable. */
     getState(): AppState {
       return state;
@@ -1691,15 +1862,33 @@ export function createStore(opts: StoreOptions) {
             cache = null;
             set({ ...initialState(), library, rescan: state.rescan, openFailures }, { reseed: true });
           } else {
-            // **A-68 Part 4.2 item 1 — this branch deliberately gets NOTHING, and a builder who
-            // "completes the set" here has introduced R48-2 at a new site.** It spreads `...state`
-            // and replaces neither `photos` nor `browsing`, so there is nothing to invalidate; and
-            // `ports.photo.removeTrip(id)` above is a key-range delete over *another* trip's key
-            // space (§10 **A-62**), so it cannot change what `present()` would answer for the trip
-            // that is open. A-67 Part 4's second-half rule is satisfied by doing nothing, and
-            // R48-2's face 1 closes **correctly** rather than by compensation: the in-flight read
-            // was never stale, so it must be allowed to land.
-            set({ ...state, library, openFailures });
+            // **A-68 Part 4.2 item 1 still holds for `photoAvailability` and a builder may NOT add
+            // a supersede for it here** — narrowed by §4.2 **A-69** Part 8, not withdrawn. This
+            // branch replaces no availability answer, and `ports.photo.removeTrip(id)` above is a
+            // key-range delete over *another* trip's key space (§10 **A-62**), so it cannot change
+            // what `present()` would answer for the trip that is open. R48-2's face 1 closes
+            // **correctly** rather than by compensation: the in-flight read was never stale, so it
+            // must be allowed to land.
+            //
+            // **`browsing` is different, and this is A-69 Part 8 (QA R49-4).** A pane is a
+            // read-only view of a document that has just been destroyed, and §2.14's
+            // `copyStopInto` copies stops OUT of it — so without this a user can copy from a trip
+            // with no row, no record and no bytes, which is `BRIEF.md`'s *"deletion and export as a
+            // designed cascade"* with a hole in it. The supersede is **UNCONDITIONAL** because a
+            // `browseTrip(id)` whose `load` already resolved would otherwise install its pane one
+            // statement after the delete; the write is **conditional** because only the deleted
+            // trip's pane is stale.
+            //
+            // The disclosed cost, in A-67 Part 5's own terms: the unconditional supersede drops a
+            // concurrent browse of an *unrelated* trip — the pane does not open and the user taps
+            // again. Same shape as A-67 Part 5's deliberate false positive, and cheaper: a browse
+            // is a free gesture to repeat and `browsing === null` is terminal (A-68 Part 3
+            // consequence 2), so dropping it creates no liveness obligation. **A-68 Part 4.3's
+            // removal of the `browsing` claim from the six transitions is not reversed** — this is
+            // one `supersede` on one gesture that genuinely destroys a document.
+            guard.supersede('browsing');
+            set({ ...state, library, openFailures,
+              browsing: state.browsing?.id === id ? null : state.browsing });
           }
         });
       } catch (err) {
@@ -1808,10 +1997,6 @@ export function createStore(opts: StoreOptions) {
         total: (joining ? state.photos.total : 0) + picked.length,
       });
       let remaining = picked.length;
-      // **A-68 Part 5b.** A supersede that cannot write the answer OWES one, and the flag — not an
-      // `await` inside the loop — is what keeps that at **one** port read per batch rather than
-      // one per file.
-      let availabilityOwed = false;
 
       for (const f of picked) {
         const fail = (reason: PhotoImportFailure) => {
@@ -1933,16 +2118,21 @@ export function createStore(opts: StoreOptions) {
               // one statement up with no `await` since, so `state.doc` is still the document these
               // bytes were written for. A synchronous replacement has no window: invalidate, then
               // write.
+              //
+              // **The `else` branch that used to raise A-68 Part 5b's owed flag here is DELETED** — §4.2
+              // **A-69** Part 6 item 1. A supersede that cannot write the answer still owes one;
+              // what changed is *where the debt is paid*. It was paid at a hand-written discharge
+              // line below, gated on the **`doc`** slot — the slot every one of A-68 Part 4.1's
+              // nine stranding exits bumps — so seven of the nine were re-opened by the fix for the
+              // other half of the same finding (QA **R49-1**). It is now paid at A-69's settling
+              // boundary, which no exit can miss and which no list has to contain. **The
+              // `supersede` above and R45-4's value guard below are untouched: they are *ordering*,
+              // a different obligation, and removing either re-opens R48-1.**
               guard.supersede('photoAvailability');
               if (state.photos.available !== null && state.photos.tripId === state.doc.id) {
                 const available = new Set(state.photos.available);
                 available.add(id);
-                setPhotos({ available });
-                availabilityOwed = false;
-              } else {
-                // **A-68 Part 3: a supersede that cannot write the answer OWES one.** Discharged
-                // once, after the loop — never here, or the batch costs a port round trip per file.
-                availabilityOwed = true;
+                setAvailability({ kind: 'ready', tripId: state.doc.id, available });
               }
             }
           }
@@ -1958,17 +2148,14 @@ export function createStore(opts: StoreOptions) {
       // Settle THIS batch and no other: a flat `pending: 0` would report a concurrent batch as
       // finished (R45-11). `remaining` is 0 unless the loop above was cut short.
       if (remaining > 0) setPhotos({ pending: Math.max(0, state.photos.pending - remaining) });
-      // **A-68 Part 3's pairing rule, discharged** — after the settle above, so the fraction
-      // reaches `0/0` first. Guarded on the ticket because a batch that ended on a transition owes
-      // nothing: that transition superseded this slot itself and issued its own read.
-      //
-      // **This is not the automatic retry A-63 Part 3 forbids** (A-68 Part 5d). A-63 forbids the
-      // store re-running a read *because the read failed*; this runs because **the store changed
-      // the answer** — it wrote bytes and then invalidated the only answer it had. Once per batch,
-      // never in a loop, and only when availability was unknown going in, which after any
-      // successful `openTrip`/`createTrip`/`adoptTrip`/`importDoc` it is not. §10.6 property 2's
-      // *"once per trip open"* is unmoved: this is a write recording itself.
-      if (availabilityOwed && guard.current('doc', g)) await readPhotoAvailability(state.doc);
+      // **There is no discharge line here any more** — §4.2 **A-69** Part 6 item 1. A-68's
+      // owed-flag discharge — a `guard.current('doc', g)`-gated `await readPhotoAvailability(...)`
+      // — is deleted rather than left beside the boundary: its gate was on the `doc` slot, which
+      // every non-installing exit bumps, so it did not fire after exactly the exits it was written
+      // for (QA **R49-1**). This method settles on the way out through `settling(...)` — on this
+      // return and on every throw — and a read this batch dropped settles behind itself at
+      // `readPhotoAvailability`'s own tail. Neither costs anything on the ordinary path, which is
+      // A-69 Part 12's **G23**.
       return state;
     },
 
@@ -2054,7 +2241,6 @@ export function createStore(opts: StoreOptions) {
       // **that** trip's read: R48-2 committed from a new site by R48-1's own fix.
       const g = guard.observe('doc');
       if (!ports.photo) return state;
-      let availabilityOwed = false;
       try {
         await ports.photo.remove(tripId, photoId);
         // **The whole tail is the subject's**, and a transition landing in the `remove` above takes
@@ -2076,11 +2262,15 @@ export function createStore(opts: StoreOptions) {
           // the document has not been replaced, and `photos.tripId` is `null` only when
           // `available` is `null` too, because `readPhotoAvailability` writes the pair together. A
           // conjunct that can never change an outcome is a third answer to R45-4's question.
+          //
+          // **The `else` that used to raise A-68 Part 5b's owed flag is DELETED** — §4.2 **A-69** Part 6 item 1, the
+          // same deletion as `importPhotos`'. The debt is real and is paid at the settling
+          // boundary instead of at a discharge line gated on the wrong slot (QA **R49-1**).
           if (state.photos.available !== null) {
             const available = new Set(state.photos.available);
             available.delete(photoId);
-            setPhotos({ available });
-          } else availabilityOwed = true;
+            setAvailability({ kind: 'ready', tripId: state.doc.id, available });
+          }
           setPhotos({ orphans: state.photos.orphans.filter((id) => id !== photoId) });
         }
       } catch {
@@ -2094,9 +2284,10 @@ export function createStore(opts: StoreOptions) {
           });
         }
       }
-      // A-68 Part 3's pairing rule, discharged — the same one-read-per-operation discipline as
-      // `importPhotos`', and for the same reason it is not A-63's forbidden retry (Part 5d).
-      if (availabilityOwed && guard.current('doc', g)) await readPhotoAvailability(state.doc);
+      // **No discharge line** — §4.2 **A-69** Part 6 item 1, deleted with `importPhotos`'. The
+      // `observe('doc')` above and the `guard.current('doc', g)` gate over the whole tail **stay**
+      // (A-68 Part 5c): they stop this operation writing into *another* trip's session, which the
+      // boundary does not do and is not asked to.
       return state;
     },
 
@@ -2310,5 +2501,5 @@ export function createStore(opts: StoreOptions) {
     isDirty(): boolean {
       return dirty();
     },
-  };
+  });
 }

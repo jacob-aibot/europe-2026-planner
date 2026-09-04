@@ -12,7 +12,7 @@
  * `storage.load` that has not returned yet. No fault, no failing port, except where a test says
  * so.
  */
-import { test } from 'node:test';
+import { settlingTest as test, watch } from './settled-invariant.ts';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 
@@ -117,7 +117,7 @@ function mk(prefix = '', shared: { storage?: GatedStorage; photo?: GatedPhotos; 
     clock: fixedClockPort(TODAY),
     ids: sequentialIdPort(prefix),
   } as Ports & { photo: GatedPhotos; storage: GatedStorage };
-  const store = createStore({ ports: p, ...(shared.debounceMs !== undefined ? { debounceMs: shared.debounceMs } : {}) });
+  const store = watch(createStore({ ports: p, ...(shared.debounceMs !== undefined ? { debounceMs: shared.debounceMs } : {}) }));
   return { p, store };
 }
 
