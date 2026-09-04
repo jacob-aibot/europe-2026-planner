@@ -992,6 +992,30 @@ fixture, golden, port, selector, export symbol or schema version moves**, `ROADM
 the criterion text plus a test-and-comment-only **I-13a**, and **R44-3 stays open** — A-61 Part 8 residue 3
 says what a third instance of this class would earn.
 
+**Revision 44, 2026-09-04.** **Three of round 45's photo findings were design defects and all three were
+mine.** QA round 45 broke I-13 (SEND BACK, 2 BLOCKERS / 4 MAJOR / 12 MINOR) and routed three here, plus one
+wording correction. **A-62 (QA R45-2, BLOCKER)** — §10.3 keyed the photo byte stores by bare `PhotoId`,
+which silently promoted a document-scoped id to a device-wide one and contradicted §6.2 rule 1, the rule
+§10.5 point 3 cites approvingly four subsections later; restoring your own backup then put two trips over
+one key space and deleting the restored copy destroyed the original's photographs, measured three of three.
+The key becomes **`[tripId, photoId]`**, `PhotoPort`'s four byte methods take the owning `TripId` and gain
+`removeTrip`, `DB_VERSION` goes 4 → **5** with a delete-and-recreate arm, and the one-line
+`importDoc` patch is refused **as the answer** because the invariant it restores is not checkable through
+any layer. **A-63 (QA R45-5, MAJOR)** — §10.6's `PhotoListing.phase` had three values and a failed
+availability read had to be reported as `'loading'`, which is the *"spinner that never resolves"* §10.6's
+own opening sentence forbids; `phase` gains `'unreadable'`, `availability` gains `'unknown'`, the listing
+gains `message`, and the store gains `refreshPhotoAvailability()` — the retry is **in scope**, because a
+terminal error state with no exit is the same defect one card to the right. **A-64 (QA R45-6, MAJOR)** —
+A-57 Part 4's claim that *"`acceptCandidate`/`rejectCandidate` then work on photos unchanged"* is false and
+was false when written; the three reasons for carrying the `Provenance` **field** all survive, A-61 Part 3
+is untouched, and `RefKind` does **not** gain a `'photo'` arm in Phase 2 — the trigger is the first path
+that produces a `{source:'system'}` photo, because "reject" has no meaning for a photograph until Phase 6
+decides whether a candidate owns bytes. **And §8.4 A-38 Part 5's checkable line is restated (QA R45-18)**:
+it said *"confined to the constructor"*, which is true of **seeding** and was never a rule about test
+instruments, and it falsified a correct read-only accessor the A-39 pass had disclosed. **No `PhotoAsset`
+field moves, `SCHEMA_VERSION` stays 2, A-61's two criteria and their numbers stand, and A-58's
+no-dependency verdict is untouched.** `ROADMAP.md` revision 44 carries all of it as **I-13b**.
+
 **Phase 1 is §2 and §4. The next phase is §8.1–§8.4.** Everything else is the shape those must not
 foreclose. See `ROADMAP.md` for sequencing and `PRODUCT-VISION.md` for why this order and not another.
 **What the product looks like is `DESIGN.md`, not this document** — §9 says why, and a builder of a screen
@@ -999,8 +1023,8 @@ reads that instead of entering §2 or §4.
 
 ## Read only your sections
 
-This document is **~327k tokens** (re-measured at **revision 43**, with `doc-section` — §8 grew 65k → 70k
-when A-56 landed in §8.4, 70k → 77k when A-59/A-60 joined it and 77k → **81k** when A-60 gained its Part 6, and §10 grew 13k → **16k** when A-61 landed at revision 43; the previous figure was ~271k at revision 36, with
+This document is **~338k tokens** (re-measured at **revision 44**, with `doc-section` — §8 grew 65k → 70k
+when A-56 landed in §8.4, 70k → 77k when A-59/A-60 joined it, 77k → 81k when A-60 gained its Part 6 and 81k → **82k** when A-38 Part 5's line was restated at revision 44, and §10 grew 13k → 16k when A-61 landed at revision 43 and 16k → **25k** when A-62/A-63/A-64 landed at revision 44; the previous figure was ~271k at revision 36, with
 `cairn/tools/doc-section ARCHITECTURE` — §2 is ~123k of it and §8 ~65k, and §4 grew 13k → 18k when A-41/A-42 landed in §4.4, 18k → 25k when A-48 joined them, 25k → 32k when A-49/A-50 did, 32k → 42k when A-51/A-52 did, 42k → 49k when A-53 did and 49k → **59k** when A-54 did — the figure below is `doc-section`'s own, re-measured at revision 37; the per-section figures below were stale by a third before revision 11 and are
 re-measured, not estimated, whenever a revision lands). Nothing needs all of it, and a fresh agent that reads it whole starts a sixth
 of the way into its context before writing a line. Pull what you need:
@@ -1039,7 +1063,7 @@ supersedes, so reading it first is what tells you which of A-46 to skip** | 123k
 | 7 | Explicitly deferred | <1k | anyone about to build something not in the roadmap |
 | 8 | **The travel-history model** (revision 9) — trip lifecycle and past trips (§8.1), the feasibility/integrity rule class (§8.2), participants (§8.3), geography attribution, travel stats and the summary-row rule (§8.4); then the shapes the location, photo and social phases must land on (§8.5–§8.7) and what is refused (§8.8). **§8.10 is revision 10** — physical travel distance by mode and the four provenance bases that keep it honest; **it is not Phase 2 scope**, so a Phase 2 builder reads §8.1–§8.4 and stops. **Revision 11 amends §8.1, §8.2 and §8.4 by pointer only — the two rulings themselves live in §2.2 (A-10) and §2.7 (A-9), and a Phase 2 builder reads both; revision 12 amends §8.2 by pointer in the same way, and its four rulings live in §2.7 (A-11, A-12, A-13) and §2.14 (A-14)**. **A-26 is revision 20 and lives in §8.4** — the mixed-resolution country index, the withdrawal of the correctness floor's escalation mechanism, and the ruling that `null` is the right answer for a landform the dataset does not carry; **anyone touching `tools/gen-countries.mjs`, `geo/countryIndex.ts` or the attribution golden reads it first**, and it is what ROADMAP's I-5a builds; **A-27 is revision 21, sits directly under A-26 and is read *with* it, never instead of it** — it amends A-26 Part 4's block-quoted rule with a third clause (a filled code ships a **forgiveness entry** as well as a coverage entry), supersedes A-26 Part 5's two-residue list with three, lifts A-26 Part 6 item 3 for a docstring correction only, and is what ROADMAP's **I-5b** builds; **A-28 is revision 22, sits under A-27 and is read with both, never instead of them** — it supersedes A-27 Part 4's filter 2 (two arms, because the coverage index it compared against is mixed-resolution and answered generously) and A-27 Part 4's `overlaps` predicate (the vertex-mean probes come out), corrects A-27 Part 5's Macao sentence and every count in it, and is what ROADMAP's **I-5c** builds. **Anyone touching `tools/forgiveness.mjs` or the forgiveness pass reads A-28 first and A-27 second**; **A-29 is revision 23 and sits under A-28** — it is the only one of the four that is *not* about the index: it rules that a `City`'s **stated** `countryCode` fills a gap the coordinate cannot answer, never overrides one, and only through a gate ending in index membership, and it takes `SUMMARY_VERSION` to 3. **Anyone touching `derive/summary.ts` reads A-29 and §4.3's A-30 together** — A-29 changes what a row *says*, A-30 changes how it is *written*, and I-6a builds both; **A-31 is revision 24 and sits under A-29** — it is the `travelStats` specification (type, signature, algorithm, sort orders, residues), and it widens the row a second time with the **record census** clause 2's `unattributed` cannot be computed without, taking `SUMMARY_VERSION` to 4. **A builder of I-7 reads §8.4 clause 2, then A-31, and needs nothing else in this document except §2.10's list**; A-31 also rewrites ROADMAP exit criterion 6, so **anyone about to add a count to `TripSummaryRow` reads A-31 Part 6 first — widening that allow-list is an architect's ruling**; **A-33 and A-34 are revision 25 and sit under A-31** — **A-33 supersedes A-31 Part 6's two-half check entirely** (it grepped declarations while the danger is a *value*, and a persisted `countriesVisited` passed it), so read A-33 and treat Part 6 as the *principle* it block-quotes and nothing more; **A-34** adds `provisional` to `travelStats`' two row types and is the ruling that stops an active trip's unreached countries being printed as fact. **A builder of I-7a reads A-31, then A-33 and A-34, plus §2.1's A-32**; **A-36 and A-37 are revision 26 and sit under A-34** — **A-36 supersedes A-33 Part 3's 6b-1/6b-2/6b-4 split and Part 7 residue 2** (every `StoragePort` implementation is *executed* by the gate, including the web port, against a recording double; 6b-2 is demoted to a tripwire and its parameter grep withdrawn; 6b-4's Chromium read-back becomes a required recorded ship-gate condition), so **anyone touching a port implementation, `test/stats-storage.test.ts` or `ROW_KEYS` reads A-36 first and A-33 second**; **A-37** is the ruling that a stored summary row is not a validated document — two module-private read gates in `travelStats` (day numbers clamped into `IsoDate`'s domain, a stored country code read through `/^[A-Z]{2}$/`), and it is what makes A-32 Part 8 residue 3's bound and the composite key's docstring true rather than merely stated. **A builder of I-7b reads A-36 and A-37, plus §2.3's A-35**; **A-38 is revision 27 and sits under A-37** — it **widens A-36 Part 2's mechanism and Part 4's 6b-4 scope without touching A-36's sentence**: a port's coverage is its **write paths**, not its interface methods, so the recording double gains a **seed** (a pre-existing database, including a *legacy* record with no envelope version), 6b-1b becomes **five arms each with a stated starting state**, and 6b-4 gains a second seeded phase; **A-39 is revision 28, sits under A-38 and closes the arc** — it supersedes A-38 Part 7's *required property* sentence (which quantified over **faults** and so could never be discharged by a finite fixture list) and A-38 Part 3's arm **seeds**, replacing both with a claim quantified over the state `ensureReady()` can **read**: five axes derived line by line from the function, a **15-state pairwise covering set** in the same five arms, and — the part Jacob asked for — a **written boundary** saying what legitimately reopens this (a `SUMMARY_VERSION`/`SCHEMA_VERSION` bump, a new store, a new port, a fourth write path) and what does not (one more fault shape on an axis already covered, which is a **builder** finding against A-39 Part 5's table, not an architect's). **Anyone touching a port implementation, `recordingIdb`, `test/stats-storage.test.ts` or `qa/i7a-idb-rowkeys.mjs` reads A-39 first, A-38 second and A-36 third**; **A-44 is revision 30, sits at the end of §8.4 and is read with A-37 Part 2** — it is one paragraph plus a signature, and it says where `lifecycle`'s read gate goes (`packages/client`, once, beside `travelHistory`); **anyone rendering a stored summary row on a new surface reads it**; **A-56 is revision 40, sits at the very end of §8.4 and is the newest entry in the section** — the city entry gains `centre` and `firstDay`/`lastDay`, `SUMMARY_VERSION` goes to **5**, A-33 Part 2's `ROW_KEYS`/`ROW_PATHS` are widened, stop-level geometry is refused with its trigger, and A-31 Part 5 residue 1 is closed **for cities only**. **A builder of I-12 reads A-56, then A-31 Parts 2 and 4, then A-33 Part 2, then A-39 Part 11 item 1, and needs nothing else in this document except §2.10's list**; **A-59 and A-60 are revision 41, sit directly under A-56 and are read *with* it, never instead of it** — QA round 43 measured A-56 Part 7 clause 1's *read* of a stored city date as an anonymous throw that takes the whole library's statistics down with no selector naming the row (A-59: the read is gated, the fallback is clause 2's, the absorption is counted in a new `TravelStats.unreadableCityDates`, and a new `rowStatsReadable` selector plus a widened `TravelHistoryResult` make the row nameable), and its *clamp* as printing a specific single day for a city the traveller has not reached (A-60: a range disjoint from the clamp interval falls back to the trip's range, so no city line escapes the country line beside it — *"never more assertive than its country's"* was A-60 Part 2's own wording and is **superseded at revision 42** by Part 6.4, which states the property as escape rather than width). **A-59 and A-60 also carry the three in-place corrections R43-6 made to A-56's own prose** (Part 2's `firstDay` docstring, Part 6's fourth-fixture justification, Part 8 item 6's `gen-golden.mjs` line), none of which moves a fixture, a test or a clause. **A builder of I-12a reads A-59, then A-60, then A-56 Part 7, then §2.9 A-47 Part 3, and needs nothing else**; **A-60 Part 6 is revision 42** and closes QA R44-2, an ambiguity in A-60's own Part 2 — a `null` city day edge is a **value** and keeps A-56 clause 1's per-field fallback (the shipped behaviour is **upheld**; the literal pair-wide reading is refused, because it deletes a real observation to arrive at a less precise version of the same invention), while A-60's disjointness test is generalised to read **the edges the row supplied** rather than the substitutes standing in for the missing ones — which is what makes a lone `lastDay` before `a` stop printing a fully-invented single day. **Part 2's pseudocode and Part 2's closing claim are both superseded by Part 6's**, and **a builder of the I-12a repair pass builds from Part 6.3's block and nothing else in this ruling** | 81k | architect; the builder and breaker of the phase after Phase 1 (§8.1–§8.4 only). §8.10 is for the architect and for phases 4, 5 and 7. Read with `PRODUCT-VISION.md` |
 | 9 | **The design contract and the frontend tooling stack** (revision 38). §9.1 makes `docs/DESIGN.md` binding and says what is in it; §9.2 names the three fences a design pass may not cross; **A-55** is the eight-candidate tooling ruling, its Part 0 states where the dependency line actually is (`core`/`client` only — `apps/web` may take deps and takes none new), and its Part 4 is the tool hierarchy. **A builder of any web surface reads `DESIGN.md`, not this section**; this section is for the architect and for anyone about to add a frontend dependency | 4k | architect; anyone adding a frontend dependency |
-| 10 | **The photo foundation** (revision 40). §10.1 the record class and where the bytes are not; §10.2 import and the hand-rolled EXIF reader; §10.3 storage and the two new object stores; §10.4 the resolution discipline; §10.5 privacy and redaction; §10.6 the loading-state signals a consuming UI needs. **A-57** is the consolidated ruling and **A-58** is the dependency verdict. **A builder of I-13 reads §10 whole — it is self-contained — plus §2.8 (provenance), §2.10's list, `serialize/migrate.ts`'s own docstring, §8.6 and §8.4 A-39 Part 11.** It does **not** need the rest of §2 or §4. **A-61 is revision 43, sits at the end of the section and supersedes nothing in §10 except one clause of §10.1 point 1's own prose, corrected in place** — it is the ruling on BUILD-NOTES **KD-81** (ROADMAP I-13's 4 KB document-growth criterion against §10.1's measured 768 B record), it moves **no field**, and **a builder of I-13a reads A-61 Parts 5 and 7 and needs nothing else in this document** | 16k | builder and breaker of I-13; architect |
+| 10 | **The photo foundation** (revision 40). §10.1 the record class and where the bytes are not; §10.2 import and the hand-rolled EXIF reader; §10.3 storage and the two new object stores; §10.4 the resolution discipline; §10.5 privacy and redaction; §10.6 the loading-state signals a consuming UI needs. **A-57** is the consolidated ruling and **A-58** is the dependency verdict. **A builder of I-13 reads §10 whole — it is self-contained — plus §2.8 (provenance), §2.10's list, `serialize/migrate.ts`'s own docstring, §8.6 and §8.4 A-39 Part 11.** It does **not** need the rest of §2 or §4. **A-61 is revision 43, sits at the end of the section and supersedes nothing in §10 except one clause of §10.1 point 1's own prose, corrected in place** — it is the ruling on BUILD-NOTES **KD-81** (ROADMAP I-13's 4 KB document-growth criterion against §10.1's measured 768 B record), it moves **no field**, and **a builder of I-13a reads A-61 Parts 5 and 7 and needs nothing else in this document**. **A-62, A-63 and A-64 are revision 44** — round 45's three architect-routed findings against I-13: the photo byte key gains its tenancy (`[tripId, photoId]`, `DB_VERSION` 4 → 5, `PhotoPort`'s signatures, R45-2 BLOCKER), `PhotoListing` gains an `'unreadable'` phase and a retry (R45-5), and A-57 Part 4's transition claim is withdrawn with `RefKind` unmoved (R45-6). They amend §10.2, §10.3 and §10.6 **in place**; §10.1's record class and A-58 do not move. **A builder of I-13b reads §10.2, §10.3, §10.6 and A-62/A-63/A-64, plus §8.4 A-38 Part 5 and A-39 Part 5 for the fixture re-cut** | 25k | builder and breaker of I-13; architect |
 
 *(§8's figure is measured with `doc-section`, not estimated. §8.1–§8.4 — the Phase 2 model — are roughly
 five sixths of it since revisions 20–27 put A-26…A-29, A-31, A-33, A-34, A-36, A-37 and A-38 in §8.4; a Phase 2 builder
@@ -1106,11 +1130,14 @@ crosses a section boundary. Otherwise this table is the contract.
    granularity at which the document's own claim is true** — a trip says *"I was in Vienna, Aug 8–10"*, it
    does not say *"I stood at these 112 points"* — and below that line the answer is clause 4's and has been
    since revision 9: open the document. §8.4 **A-56**.
-9. **A photo in Cairn is a derivative, never an original, and the bytes are never inside the document.**
-   Added at revision 40. The trip document holds a reference and metadata; two re-encoded sizes live in
-   object stores of their own; the original file is not stored at all and its EXIF block does not survive
-   import. That is §6.6's redaction-on-generation rule obtained **by construction** rather than by
-   remembering — a canvas re-encode has no metadata left to leak. §10, **A-57**.
+9. **A photo in Cairn is a derivative, never an original, the bytes are never inside the document, and the
+   key those bytes live under names the trip that owns them.** Added at revision 40; the last clause added
+   at revision 44. The trip document holds a reference and metadata; two re-encoded sizes live in
+   object stores of their own, keyed `[tripId, photoId]`; the original file is not stored at all and its
+   EXIF block does not survive import. That is §6.6's redaction-on-generation rule obtained **by
+   construction** rather than by remembering — a canvas re-encode has no metadata left to leak — and
+   §6.2 rule 1's tenancy-in-the-key rule obtained the same way, which is what revision 40 got wrong and
+   revision 44 corrects. §10, **A-57**, **A-62**.
 
 ---
 
@@ -10772,7 +10799,11 @@ Designed now because retrofitting it is the worst migration in this product.
 
 1. **Every table carries a tenancy column** — non-null `trip_id`, or `user_id` for user-scoped rows. There
    is no table without one. Object storage keys are prefixed `trip/{tripId}/…` so a blob's owner is
-   recoverable from its key alone.
+   recoverable from its key alone. **This rule reaches on-device storage too, and revision 44 is where that
+   was learned the expensive way**: §10.3's photo byte stores shipped keyed by bare `PhotoId`, restoring a
+   backup put two trips over one key space, and deleting the restored copy destroyed the original's
+   photographs (QA R45-2). The local key is now `[tripId, photoId]` — the same decomposition, so Phase 3
+   maps one onto the other rather than inventing an owner. §10.3, **A-62**.
 2. **RLS is `ENABLE` + `FORCE` on every table, default-deny, with an explicit policy per operation.** The
    API connects as a role **without** `BYPASSRLS`. There is no service-role key in any client bundle, and no
    "internal" endpoint that skips policy evaluation.
@@ -13537,9 +13568,32 @@ port under test. What A-33 refused was a component that would *decide* things �
 enforcement, migration, quota. A recorder pre-loaded with a value decides nothing; the **test** states the
 fixture and the recorder is still only a tape.
 
-The line is checkable and a reviewer should check it: **the diff to `recordingIdb()` is additive-only,
-confined to the constructor, and contains no `if` that reads a stored value.** A diff that fails that
-description has crossed into the forbidden territory and is an architect's question, not a builder's.
+The line is checkable and a reviewer should check it: **the diff to `recordingIdb()` is additive-only, adds
+no member to the IndexedDB surface the double hands back, and contains no branch that reads a stored
+value.** A diff that fails that description has crossed into the forbidden territory and is an architect's
+question, not a builder's.
+
+> **Corrected at revision 44 — QA R45-18, and the code was right while this line was wrong.** This
+> sentence read *"additive-only, **confined to the constructor**, and contains no `if` that reads a stored
+> value."* The A-39 covering-set pass (`497c116`) added `_names: () => [...stores.keys()].sort()` to the
+> recorder and disclosed it as a deviation, judging that it did not violate this Part; **the breaker agreed
+> on the substance and found the letter falsified**, because `_names` is a returned accessor rather than a
+> constructor statement. Both readings are right, and the fault is the line's. Part 5's actual principle is
+> the boxed sentence above — *state, never behaviour that depends on state* — and a sorted list of store
+> names has no branch, no stored value and no decision in it; `_summaries` and `_store` at `:574–576` are
+> already accessors of exactly that class, and `_store` is `at()`, which **mints a store by asking for
+> it** — which is the whole reason a non-minting `_names()` had to exist for A-57 Part 8's *"the two stores
+> did not exist before `onupgradeneeded` and do after"* to be assertable at all.
+>
+> **The restated line is checkable in three clauses**, each readable off a diff: (a) **additive-only** — no
+> existing line changes; (b) **no new member on the IndexedDB surface** — that is the object `open()`'s
+> `req.result` yields and the objects `transaction()`/`objectStore()` yield, which is everything the port
+> under test can legitimately touch; (c) **no branch — `if`, `?:`, `&&`/`||` or loop — whose condition
+> reads a value that was stored through that surface.** A `_`-prefixed read-only accessor on the
+> **recorder's own** return object is permitted by name: it is not on `IDBFactory`, and no shipped port may
+> call one, which is itself grep-checkable over `apps/web/src/ports/*.ts`. *"Confined to the constructor"*
+> stays true of **seeding**, which is what Part 4 says and where the sentence came from; it was never a
+> rule about test instruments, and stating it as one is how a correct change came to need a waiver.
 
 **Part 6 — 6b-4: its status does not change, its scope does, and it is not made redundant.**
 
@@ -15605,14 +15659,29 @@ export interface PhotoPort {
     thumb: { bytes: Uint8Array; w: number; h: number };
     display: { bytes: Uint8Array; w: number; h: number };
   } | null>;
-  /** Bytes for one derivative, or `null` if the record is gone. §10.3, §10.6. */
-  read(id: PhotoId, size: 'thumb' | 'display'): Promise<Uint8Array | null>;
-  /** Writes both derivatives under one id, in one atomic step. §10.3. */
-  write(id: PhotoId, thumb: Uint8Array, display: Uint8Array): Promise<void>;
+  /**
+   * Bytes for one derivative, or `null` if the record is gone. §10.3, §10.6.
+   *
+   * **Every byte method takes the owning `TripId` first** — A-62, revision 44. A `PhotoId` names
+   * a record inside one document, exactly as a `DayId` and a `StopId` do; it does not name a row
+   * in a device-wide key space, and it never did. §10.3's key is `[tripId, photoId]`.
+   */
+  read(tripId: TripId, id: PhotoId, size: 'thumb' | 'display'): Promise<Uint8Array | null>;
+  /** Writes both derivatives under one key, in one atomic step. §10.3. */
+  write(tripId: TripId, id: PhotoId, thumb: Uint8Array, display: Uint8Array): Promise<void>;
   /** Removes both. Idempotent. */
-  remove(id: PhotoId): Promise<void>;
-  /** Which of these ids have bytes. One call, not N — §10.6's availability read. */
-  present(ids: readonly PhotoId[]): Promise<ReadonlySet<PhotoId>>;
+  remove(tripId: TripId, id: PhotoId): Promise<void>;
+  /** Which of these ids have bytes, **within this trip**. One call, not N — §10.6's availability read. */
+  present(tripId: TripId, ids: readonly PhotoId[]): Promise<ReadonlySet<PhotoId>>;
+  /**
+   * Every byte record belonging to one trip, removed in one step — §10.3's third cascade row.
+   *
+   * It takes **no id list**, and that is the point (A-62 Part 4): with tenancy in the key the
+   * cascade is a key-range delete, so a caller does not have to parse a document to learn what to
+   * delete and cannot get the list wrong for a trip it does not have open. Idempotent; a trip
+   * with no photos is a no-op, not an error.
+   */
+  removeTrip(tripId: TripId): Promise<void>;
 }
 ```
 
@@ -15680,7 +15749,7 @@ honest hole.
 2. Per file, in order: `readExif(bytes)` (pure, core) → `derive(bytes, type)` (port, async).
 3. `derive` returns `null` ⇒ **no asset is created**. The file is reported as a failure in session state
    (§10.6) with its name and a reason, and the next file is processed. One bad file does not fail an import.
-4. `write(id, thumb, display)` — **bytes first**.
+4. `write(tripId, id, thumb, display)` — **bytes first**, under the active trip's id.
 5. `dispatch(addPhoto(...))` — the document second, through the ordinary reducer → autosave → `saveIfVersion`
    chain. Nothing about the photo path bypasses the fence, and nothing about it is a new write path to the
    document.
@@ -15699,9 +15768,20 @@ silently delete"*, applied on-device.
 
 ### 10.3 Storage
 
-**Same database, two new object stores.** `apps/web/src/ports/storage.ts` goes `DB_VERSION` 3 → **4** and
-`onupgradeneeded` creates `photos` and `photoThumbs`, keyed by `PhotoId`, each holding a bare
-**`ArrayBuffer`**.
+**Same database, two new object stores.** `apps/web/src/ports/storage.ts` goes `DB_VERSION` 3 → 4 → **5** and
+`onupgradeneeded` creates `photos` and `photoThumbs`, each holding a bare **`ArrayBuffer`** under the
+compound key **`[tripId, photoId]`**.
+
+> **Corrected at revision 44 — QA R45-2 (BLOCKER), ruled as A-62.** This paragraph said *"keyed by
+> `PhotoId`"* and `DB_VERSION` **4**, and the section argued three things about these stores — same
+> database, separate from `docs`, `ArrayBuffer` not `Blob` — while arguing **nothing at all** about the key
+> shape. It was the simplest thing to write, it silently promoted `PhotoId` from a document-scoped id (like
+> `DayId` and `StopId`) to a device-wide one, and it contradicted §6.2 rule 1, which this section's own
+> §10.5 point 3 cites approvingly. `importDoc` re-mints a colliding **trip** id and not the photo ids
+> inside it, so restoring your own backup produced two live trips over one byte-key space and deleting the
+> restored copy destroyed the original's photographs — measured, three of three. **The key gains the
+> tenancy; `PhotoId` goes back to meaning what every other id in this model means.** A-62 is the ruling and
+> carries the migration.
 
 **Why the same database and not a second one.** §6.3's invariant is *"no row and no blob without a live
 tenancy reference."* Deleting a trip must remove its documents, its summary row, its fence **and** its photo
@@ -15738,7 +15818,7 @@ not about putting a token on everything.
 |---|---|
 | a **photo** | both derivatives, in the same transaction as the document write that drops the asset — bytes **after** the document here, which is the inverse of import and for the same reason: the reachable-but-absent state is the safe one |
 | a **stop** or a **day** | nothing automatically. Its photos' `attach` **falls back to `{kind:'trip'}`** rather than being deleted. A photograph is not a plan and deleting a plan may not destroy a memory of it. This is the one place the model deliberately loosens rather than cascades, and A-57 Part 9 residue 2 records it |
-| a **trip** | `docs`, `summaries`, `versions`, `photos` and `photoThumbs` for every one of its assets, one transaction |
+| a **trip** | `docs`, `summaries`, `versions`, and **the whole `[tripId, …]` key range** of `photos` and `photoThumbs`, one transaction. **No document parse and no id list** — A-62 Part 4, and it is why the belt above the port (`store.ts`) can cascade for a trip it does not have open (QA R45-3) |
 
 **Quota, measured rather than assumed.** *(Verified 2026-09-03, [WebKit — Updates to Storage
 Policy](https://webkit.org/blog/14403/updates-to-storage-policy/), fetched and read in full.)* Since Safari
@@ -15873,21 +15953,36 @@ export function photoImport(state: Pick<AppState, 'photos'>): PhotoImport;
 /** What a surface renders for one attachment point. Pure. */
 export type PhotoListing = {
   /**
-   * `'loading'` — availability has not been read yet for this trip. `'empty'` — read, and
-   * there are none. `'ready'` — read, and there is at least one.
+   * `'loading'` — no availability answer for this trip yet. `'empty'` — answered, and there
+   * are none. `'ready'` — answered, and there is at least one. `'unreadable'` — the read was
+   * attempted and it FAILED, which is a fourth thing and not a slower `'loading'` (A-63).
    *
    * `'empty'` and `'loading'` are DIFFERENT and a surface that collapses them shows
    * "no photos yet" to someone whose photos are one tick away. This is A-31 Part 4's
-   * "no places yet" sentence, on a second subject.
+   * "no places yet" sentence, on a second subject. `'unreadable'` and `'loading'` are
+   * different for the stronger reason: `'loading'` is transient by contract and
+   * `'unreadable'` is terminal, so collapsing them is the unresolving spinner this
+   * section's opening sentence forbids.
    */
-  phase: 'loading' | 'empty' | 'ready';
+  phase: 'loading' | 'empty' | 'ready' | 'unreadable';
   items: ReadonlyArray<{
     asset: PhotoAsset;
-    /** `'missing'` is EXPECTED, not an error: eviction, or a restored export. §10.2. */
-    availability: 'ready' | 'missing';
+    /**
+     * `'missing'` is EXPECTED, not an error: eviction, or a restored export. §10.2.
+     * `'unknown'` is the `'unreadable'` phase's only value — we did not learn whether this
+     * photo's bytes are there, and saying `'missing'` instead invites the user to re-import
+     * photographs that never left (QA R45-4).
+     */
+    availability: 'ready' | 'missing' | 'unknown';
   }>;
   /** How many of `items` are `'missing'`, so a surface can say so once instead of N times. */
   missing: number;
+  /**
+   * The port's own words for why the read failed. Non-null on `'unreadable'` and **null on
+   * every other phase** — `travelHistory`'s `{ok:false, message}` shape (§8.4 A-46/A-59), one
+   * subject over. It carries no photo id, no caption and no coordinate (§6.1 rule 1).
+   */
+  message: string | null;
 };
 export function photosFor(state: AppState, ref: PhotoAttachRef): PhotoListing;
 
@@ -15895,18 +15990,28 @@ export function photosFor(state: AppState, ref: PhotoAttachRef): PhotoListing;
 export function orphanPhotoBytes(state: Pick<AppState, 'photos'>): readonly PhotoId[];
 ```
 
-**Four properties a consuming surface can rely on, and they are the contract:**
+**Six properties a consuming surface can rely on, and they are the contract:**
 
 1. **Aspect ratio is known before bytes are.** `asset.thumb.w/h` is on the record, so a skeleton is the
    right shape and nothing reflows. §10.4.
 2. **`'loading'` and `'empty'` are never the same value.** Availability for a trip is read **once**, on
-   open, through `present(ids)` — one port call, not one per photo — into session state.
+   open, through `present(tripId, ids)` — one port call, not one per photo — into session state.
 3. **`'missing'` is a sentence, not a broken image.** The asset is still there, still has its caption, its
    date and its place; only the bytes are gone. A surface says *"this photo's image is no longer stored on
    this device"* and offers re-import, and it never renders a `null` object URL.
 4. **A failure is attributable.** `failures` carries the **file name**, so *"3 of 12 photos could not be
    added"* can name which three and why. A count with no names is the *"a count is not a result"* failure
    ROADMAP sequencing rule 5 forbids.
+5. **`'loading'` always terminates, and a failed read is a fourth state rather than a permanent first one.**
+   *(Revision 44, QA R45-5, A-63.)* Exactly one of `'empty'`, `'ready'` or `'unreadable'` follows every
+   `'loading'`, for every trip, including a trip with no photos and a host with no photo port. So a surface
+   built on `phase` alone can always reach a terminal state, which is what property 5's absence cost:
+   §10.6's opening sentence names *"a spinner that never resolves"* as the thing this section exists to
+   prevent, and the union it shipped could not express the case that produces one.
+6. **An `'unreadable'` listing carries an action, not just a diagnosis.** The store exposes
+   `refreshPhotoAvailability()`, so *"we could not check whether these images are still on this device"*
+   comes with **Try again**. A terminal error state with no exit is the unresolving spinner moved one card
+   to the right — A-63 Part 3.
 
 **`packages/client` never holds photo bytes.** It holds ids, metadata and availability. Bytes go from the
 port to the view and back, which keeps the store's memory bounded, keeps `cairn-constraints` §5 trivially
@@ -15982,8 +16087,19 @@ wrong on three counts:
    the expensive migration this project has now refused four times.
 2. **The root `CLAUDE.md` convention is not conditional on the source.** *"Never present a suggestion as the
    user's own plan"* has to be expressible for a photo or Phase 6's suggestion queue has nowhere to record
-   that a match was **ours**. `acceptCandidate`/`rejectCandidate` then work on photos unchanged.
+   that a match was **ours**. ~~`acceptCandidate`/`rejectCandidate` then work on photos unchanged.~~
 3. **The `origin` block is where an imported photo's story goes** if it ever has one.
+
+> **Corrected at revision 44 — QA R45-6 (MAJOR), ruled as A-64. The struck sentence is false and was
+> false when it was written.** `RefKind` is `'trip' | 'day' | 'stop' | 'place' | 'booking'`, `mapRef` has
+> no photo branch, and A-57 Part 6's own file list does not name `build/candidates.ts` — so the builder
+> built what was specified and the false claim is mine. **The three reasons above are reasons for the
+> FIELD and they all still hold**: `displayStatus({source:'system', state:'candidate'})` returns
+> `'suggested'` for a photo today, unchanged and verified by round 45's own guard, and A-61 Part 3's
+> refusal to trim the block is untouched. What does not hold is the claim about the two **transitions**,
+> which asserted a mechanism rather than a field. **A-64 rules that `RefKind` does not gain a `'photo'`
+> arm in Phase 2**, states the trigger that earns one, and fixes the two error messages this sentence
+> caused to be written pointing at functions that throw.
 
 A photo the user picked and attached is `{source: 'user', state: 'accepted', confidence: 'confirmed'}` and
 `displayStatus` returns `'own'`. That is the whole of the common case, and it costs one existing type.
@@ -16020,7 +16136,7 @@ build refuses the document loudly — which is the correct outcome, and the one 
 | `packages/client/src/store/` | the import saga's session state (`state.photos`), the three actions, availability read on trip open |
 | `packages/client/src/selectors/` | `photoImport`, `photosFor`, `orphanPhotoBytes` — §10.6 |
 | `apps/web/src/ports/photo.ts` | `pickImages`, `derive` — §10.2, §10.4 |
-| `apps/web/src/ports/storage.ts` | `DB_VERSION` 3 → 4; `photos` + `photoThumbs`; `read`/`write`/`remove`/`present`; the trip-delete cascade |
+| `apps/web/src/ports/storage.ts` | `DB_VERSION` 3 → 4; `photos` + `photoThumbs`; `read`/`write`/`remove`/`present`; the trip-delete cascade. *(**Revision 44, A-62**: `DB_VERSION` 4 → **5**, the two stores are keyed `[tripId, photoId]`, the four methods take the owning `TripId` and `removeTrip` joins them, and the cascade becomes a key-range delete. This row is I-13's list and is left as it was built; A-62 is what I-13b implements.)* |
 | `tools/redact.mjs` | `photos: []` in `redactForSample`; the §6.6 test asserts it |
 | `fixtures/` | a small committed corpus of real JPEG headers for the `readExif` golden — **headers, not photographs**, and no coordinate in the golden's output |
 
@@ -16356,3 +16472,363 @@ instead of raising it. `ROADMAP.md` carries this as **I-13a**, it touches
    R44-3 into this ruling — it is about how a criterion may be *written*, and this one is about a specific
    number being wrong — but if a third lands, the answer is a pass over *"How a criterion is written"*
    itself rather than a third individual correction. **Trigger:** a third instance.
+
+#### A-62 — a photo's bytes are keyed by the trip that owns them: `PhotoId` goes back to being a document-scoped id (revision 44, ROADMAP **I-13b**, QA **R45-2** BLOCKER)
+
+> **STATUS: RULED. §10.3's key shape changes; §10.1's record does not move by one field.** `SCHEMA_VERSION`
+> stays **2**. No `PhotoAsset` field is added, dropped, renamed or made optional; `toJSON`/`fromJSON` are
+> untouched; A-61's two criteria and their measured numbers are untouched. What moves is the **storage
+> key** and the four port signatures that name it. **A-57 Parts 1–5, 7 and 9 and the whole of A-58 are
+> unchanged**; A-57 Part 6's file list gains no file it did not already name.
+
+**Part 1 — the defect, and why the routing was right to send it here rather than to `importDoc`.**
+
+Round 45 measured it: three photographs, restored from the user's own backup, deleted from the restored
+copy, gone from the trip that was never touched. `importDoc` mints a fresh **trip** id on a storage
+collision — *"the injected `IdFactory` is deterministic … keep minting until it does not"* — and mints
+nothing else, so `trip-1` and `trip-2` both reference `photo-1`, `photo-2`, `photo-3` and the byte store
+holds one copy of each. Three shipped operations then reach across the trip boundary: `deleteTrip` on the
+restored copy (both cascades, the store's and the port's, name the shared ids), `removePhoto` in either
+trip, and `reclaimPhotoBytes`, whose *"refuses any id that a live asset still references"* guard reads
+`state.doc.photos` — the **active** trip only.
+
+The one-line builder fix is to re-mint photo ids in `importDoc` alongside the trip id. **I am refusing it as
+the answer, and the reason is not that it fails to fix the measured case — it does.** It leaves standing an
+invariant that is *unenforceable with the port shape that produced it*:
+
+> *A `PhotoId` names bytes belonging to exactly one trip.*
+
+That invariant is stated nowhere in §10, is not checked by `validateTrip` (R45-15), and is **not checkable
+at all** through `PhotoPort`. A trip-id collision is detectable — `storage.load(id)` answers it, which is
+exactly how `importDoc` repairs one. A photo-id collision is not: the byte stores do not know which trip
+owns a key, and a photo record legitimately has no bytes (`'missing'` is a designed state, §10.2), so
+"is this id already in use somewhere?" has no answer any layer can give. **An invariant no layer can
+check is a rule that will be broken again by the next path that writes a photo record** — a merge, a
+"move this photo to my other trip" affordance, a native bridge, a hand-edited file — and none of those
+paths goes through `importDoc`.
+
+**Part 2 — what §10.3 actually argued, which is the evidence that the key shape was under-examined.**
+
+§10.3 gives three reasons and none of them is about the key: *why the same database* (transactions do not
+span databases, so a trip delete stays atomic), *why separate stores and not a field on `docs`* (access
+pattern), *why `ArrayBuffer` and not `Blob`* (port consistency; a marked WebKit risk). The breaker
+reconstructs a fourth reason charitably — bare keys make `read`/`write`/`remove`/`present` simple and let
+`present` be one `getAllKeys()` — and that reconstruction is more generous than the record supports: **the
+key shape is not argued in §10.3 at all.** It was the simplest thing to write, and it silently promoted
+`PhotoId` from a **document-scoped** id, which is what `DayId`, `StopId`, `PlaceId` and `BookingId` all
+are and what `validateTrip`'s per-document census is built to police, to a **device-wide** one, which
+nothing in this system has ever had except `TripId`. §6.2 rule 1 had already decided the same question the
+other way for the server — *"an object key is `trip/{tripId}/photo/{photoId}`, so a blob's owner is
+recoverable from its key alone"* — and §10.5 point 3 cites that sentence approvingly **four subsections
+later**, in the same ruling that departed from it.
+
+**So the correction is not "patch the import path". It is "the key was wrong."**
+
+**Part 3 — the ruling.**
+
+1. **The byte stores are keyed by the compound key `[tripId, photoId]`.** `photos` and `photoThumbs` keep
+   their names, their contents (a bare `ArrayBuffer`) and their database. Tenancy is recoverable from the
+   key alone, which is §6.2 rule 1's own words, applied on-device — one key shape for the local store and
+   the eventual object store, not two.
+2. **`PhotoId` reverts to a document-scoped id.** It must be unique within its `Trip` and nowhere wider.
+   R45-15's `validateTrip` census arm (`claim('photo', p.id, 'trip')`) is therefore the **complete** check
+   rather than half of one, and it stays routed to the builder as filed.
+3. **`importDoc` re-mints nothing new, and its diff for this finding is zero lines.** A restored copy's
+   photo records keep their own ids because they are the document's own facts and rewriting them buys
+   nothing once tenancy is in the key. This is deliberate and it is the §0.6-adjacent half of the ruling:
+   **one mechanism, in the place that makes the property structural**, not a second mechanism in a caller
+   that has to remember. *(What the restored copy gets is what it always should have got: its photos read
+   `'missing'`, because §7 has always said an export carries metadata without bytes.)*
+4. **The four `PhotoPort` byte methods take the owning `TripId` first**, and a fifth is added:
+   `removeTrip(tripId)`. §10.2's interface block is the shape.
+
+**Part 4 — what the compound key buys beyond the finding, because two of these are open findings of their
+own and the ruling closes them structurally.**
+
+- **The trip-delete cascade needs no id list and no document parse.** `removeTrip` is a key-range delete
+  over `[tripId, …]`. That is what makes `store.ts`'s belt — QA **R45-3**, *"the cascade only fires for the
+  trip that happens to be open"* — correct for **every** trip rather than for the open one, without the
+  store loading a second document to find out what to delete. The narrow R45-3 fix (read the doomed ids
+  from `ports.storage.load(id)`) is superseded by this and should be deleted when this lands; see the
+  ROADMAP note, which says so in both directions so the two passes do not fight.
+- **`reclaimPhotoBytes`'s guard becomes sound.** Its `live` set is the active document's photo ids and its
+  subject is now the active trip's key range, so the two agree by construction. An orphan recorded while
+  trip B was open can no longer be reclaimed against trip A.
+- **Phase 3 gains nothing to reconcile.** §10.5 point 3's `trip/{tripId}/photo/{photoId}` is the same
+  decomposition the local key already has, so sync maps one to the other rather than inventing an owner.
+
+**Part 5 — the platform facts, verified rather than remembered, because a compound key is a platform claim.**
+
+*(Searched 2026-09-04. `w3c.github.io`, `www.w3.org` and MDN are all blocked by this environment's egress
+proxy, so this is a search-result verification of the kind §10.4 and A-58 already mark, **not** a spec page
+read end to end. The builder's own executable check is in Part 7 and it is the one that settles it.)*
+
+1. **An array is a valid IndexedDB key** when every item is itself a valid key, and the spec defines a
+   single strict total order across all key types: **number < date < string < binary < array**.
+2. **Two arrays compare item by item**, so `[t, a] < [t, b]` iff `a < b`, and a shorter array that is a
+   prefix of a longer one sorts first.
+3. **Therefore `IDBKeyRange.bound([tripId], [tripId, []])` is exactly the trip's own records** — the upper
+   bound `[tripId, []]` is greater than `[tripId, <any string>]` because an array outranks a string, and
+   the lower bound `[tripId]` is below all of them. This is the documented array-prefix idiom (it is the
+   shape the Chromium `IDBKeyRange.forPrefix` discussion proposes for schemas that use arrays for *key
+   structure* rather than as primitive key values).
+
+`present(tripId, ids)` is therefore still **one** port call: one `getAllKeys` over that range, intersected
+with `ids`. §10.6 property 2's *"one call, not one per photo"* is unaffected.
+
+**Part 6 — the migration, and why it drops bytes rather than re-keying them.**
+
+`DB_VERSION` goes **4 → 5**. The 4 → 5 arm **deletes and recreates** `photos` and `photoThumbs`. It is the
+whole migration and it writes no record.
+
+*Why not re-key.* Re-keying means learning each bare key's owner, and the byte store does not know it — the
+only source is `docs`, so the upgrade would have to walk every stored document, parse it, build an
+`id → tripId` map and rewrite the byte stores from it, **inside `onupgradeneeded`**. That is A-39 Part 11
+item 7 (*"`onupgradeneeded` gains a body that writes records"*), which A-38 Part 6 puts **beyond the
+double's reach by construction** and hands to `qa/i7a-idb-rowkeys.mjs` alone, and which A-39 says *"the
+recorder gaining `request.transaction` remains an architect's ruling."* That is a large, browser-only,
+document-parsing migration.
+
+*What it would buy, measured against what it costs.* The only bytes that can exist under a bare key were
+written by the build under send-back. That build **cannot open any document written by the previous
+release** (R45-1: `SCHEMA_VERSION` went to 2 and `migrateDoc` has zero production callers), so it has
+never been a release anyone's data passed through; the only databases at `DB_VERSION` 4 are QA probes and
+a developer's own browser. And the outcome for a photo whose bytes are dropped is **not data loss with no
+account of itself**: the record survives whole — caption, date, coordinate, dimensions — and §10.2's
+`availability: 'missing'` is *"a designed state, not an error path"*, rendered as §10.6 property 3's
+sentence with an offer to re-import. **Delete-and-recreate is honest, is inside the double's reach
+(`deleteObjectStore` is already on the recorder's surface), and does not open A-39 item 7.**
+
+*What it does NOT fire, stated so nobody re-derives a table for nothing.* **A-39 Part 11 item 4 does not
+fire** — no object store is added; the two stores already exist and only their key shape moves. **Item 7
+does not fire** — the upgrade writes no record. **Item 2 does not fire** — `SCHEMA_VERSION` does not move.
+What *is* owed is a fixture re-cut: the Axis B and Axis O seed records added at `497c116` are keyed by bare
+`PhotoId` and must be re-keyed, and that is builder work against A-39 Part 5's table with the table as its
+own oracle — A-39 Part 11's *"not a legitimate reason"* clause, read forwards.
+
+**Part 7 — the injected-fault criteria, because §0.5 applies to this rule as it applied to A-57's.**
+
+| | Fault | Required behaviour |
+|---|---|---|
+| **Q1** | The finding itself: import 3 photos into trip A, export, `importDoc` the export, delete the restored copy | trip A's listing is `missing: 0` of 3, and both byte stores still hold three `[A, …]` pairs. **This is `qa/r45-i13.mjs` §C going green without the probe being edited** |
+| **Q2** | The same, through `removePhoto` on the restored copy | trip A's own copy of that photo is untouched |
+| **Q3** | `removeTrip` given a `tripId` with **no** photo records | resolves, deletes nothing, throws nothing |
+| **Q4** | Two trips each holding a photo with the **same** `PhotoId` (a hand-built state, which is now legal) | `present`, `read`, `remove` and `removeTrip` each answer for their own trip only, in both directions |
+| **Q5** | A `tripId` that is a **prefix** of another (`'t'` and `'t2'`) | `removeTrip('t')` leaves every `['t2', …]` record — the range bound is not a string prefix and must not behave like one |
+| **Q6** | A seeded `DB_VERSION` **4** database holding bare-keyed byte records, opened by the port | both stores are empty afterwards; `docs`, `summaries` and `versions` are **byte-identical** to their seeded values; the affected trip's listing reads `'ready'` with `missing: N`, never a throw and never `'empty'` |
+| **Q7** | A fresh database (`oldVersion` 0) | both stores are created once, at version 5, with no delete attempted on a store that does not exist |
+| **Q8** | The real browser, both engines: write two trips' bytes, range-read each | exactly its own records, in **Chromium and WebKit** (`/opt/pw-browsers/webkit-2215`, which R45-7 established is installed). This is the assertion that makes Part 5 a measurement instead of a search result |
+
+**Part 8 — the residues, three.**
+
+1. **Byte records written by the send-back build are dropped by the 4 → 5 upgrade.** Part 6 is the argument;
+   the visible consequence is `'missing'` on a record that keeps everything except its image. **Trigger:**
+   evidence that a database at `DB_VERSION` 4 holds photographs someone cannot re-import — at which point
+   the answer is the document-walking re-key, with A-39 item 7's full cost, and not a quieter version of it.
+2. **`orphanPhotoBytes` is still session-observed, not swept.** The compound key now makes a true sweep
+   *possible* (a key range whose `tripId` has no document), and it is deliberately not built: §10.6's
+   `orphans` is A-47-shaped — *"the fact is written when a real failure happens"* — and §6.3's *"a nightly
+   sweeper fails loudly, it does not silently delete"* still governs. **Trigger:** a measured accumulation,
+   at which point the affordance is *"reclaim N stored images no trip uses"* with a count the user can see,
+   and never an automatic delete.
+3. **`PhotoPort` grew a parameter on four methods and one new method, and `apps/mobile` does not exist
+   yet.** The signature is the one the native port will also want (SQLite's natural key here is
+   `(trip_id, photo_id)` too), so this is a residue only in the sense that it is a port surface fixed
+   before its second implementation exists. **Trigger:** Phase 5's port, which A-39 Part 11 item 5 already
+   sends through its own arms.
+
+#### A-63 — `PhotoListing` gains a fourth phase, because a data layer that cannot say *"the read failed"* forces a surface to lie (revision 44, ROADMAP **I-13b**, QA **R45-5** MAJOR)
+
+> **STATUS: RULED. §10.6's `phase` union widens by one member, `availability` by one, and the listing gains
+> a `message`. The store gains one method.** Nothing in §10.1–§10.5 moves. No document field, no schema
+> version, no golden, no export symbol of `packages/core`.
+
+**Part 1 — the finding is real and it is mine, not the builder's.**
+
+`readPhotoAvailability` is careful: a rejected `present()` leaves `available` at `null`, and its own comment
+says *"a failed read is `'loading'`, not `'empty'`"* — which was the right call **given the union it had**.
+`photosFor` then maps `available === null` onto `'loading'`, and §10.6 gave `phase` three values, so there
+is no fourth thing to say. The recovery that exists (close the trip, re-open it, the read re-runs) is
+invisible to the selector layer, and there is no `retryPhotoAvailability` on the store. **§10.6's opening
+sentence names the failure this produces** — *"a spinner that never resolves"* — and the union underneath it
+could not express the case that produces one. The breaker's summary is exact: *"a builder writing I-14
+against it would have to fake one."*
+
+**Part 2 — the shape, and it follows this project's existing idiom rather than inventing one.**
+
+Two idioms already exist for *"a read that can fail"*, and they are for different jobs. `travelHistory`
+returns a **discriminated union on `ok`** with `{message, rowId, unreadableRows}` on the failure branch —
+that is for a call whose success value and failure value share no shape. `rowStatsReadable` returns a
+**boolean refusal** — that is for a predicate. `PhotoListing` is neither: its success and failure branches
+share almost everything, because **the assets are document facts and are known either way**; only their
+byte availability is unknown. So the discriminant that already exists is widened rather than a second one
+added on top of it:
+
+- **`phase` gains `'unreadable'`.** Read attempted, read failed. `'loading'` keeps its exact meaning — *no
+  answer yet* — and gains a guarantee it did not have: it is **transient by contract**, and exactly one of
+  `'empty' | 'ready' | 'unreadable'` follows it.
+- **`items` is populated on `'unreadable'`**, and each item's `availability` is the new third value
+  `'unknown'`. This is the half that matters most, and R45-4 is the evidence: reporting an unchecked photo
+  as `'missing'` triggers §10.6 property 3's *"this photo's image is no longer stored on this device"* over
+  photographs that are on disk. `'unknown'` renders as *"we could not check whether these images are still
+  on this device"* — one sentence, over the whole listing, beside a **Try again**.
+- **`missing` is `0` on `'unreadable'`**, by its own definition (*how many of `items` are `'missing'`* —
+  none is known to be). No `unknown` counter is added: on that branch it is `items.length` and a second
+  spelling of a derivable number is how two readers come to disagree (§10.1's own words about
+  `PhotoAttachRef`).
+- **`message: string | null`** carries the port's own error text on `'unreadable'` and is `null` on every
+  other phase. It is `travelHistory`'s `{ok:false, message}` and A-47's `openFailures.message` one subject
+  over, including their disclosure: *it may exceed what a shipped surface reads today — it is the fact,
+  recorded once.* It carries no photo id, no caption and no coordinate (§6.1 rule 1).
+
+Underneath, `PhotoSession` must be able to hold three answers where it holds two. The store's shape is the
+builder's, subject to one constraint that is the whole finding: **`available: null` may not mean two
+things.** Whether that is a tagged `{read:'pending'|'ok'|'failed'}` or a sibling `availabilityError` is an
+implementation choice; a `null` set that means *"unread"* on Monday and *"failed"* on Tuesday is not.
+
+**Part 3 — the retry is in scope for this increment, and here is why it is not deferrable.**
+
+The breaker asks whether a retry method is needed now or can wait. **It is needed now**, and the argument is
+the ruling's own standard rather than convenience:
+
+1. **A terminal error state with no exit is the unresolving spinner moved one card to the right.** §10.6
+   exists to stop a surface from having a state it can render and cannot resolve. `'unreadable'` without a
+   retry is exactly that state, dressed better.
+2. **The section already holds itself to this standard on the neighbouring case.** Property 3 does not stop
+   at *"say `'missing'`"* — it says *"and offers re-import"*. A signal whose only honest render is a
+   dead end is the *"a count is not a result"* failure ROADMAP sequencing rule 5 forbids, one level up.
+3. **It is five lines and the function already exists.** `refreshPhotoAvailability()` is
+   `readPhotoAvailability(state.doc)` exposed on the store — `refreshLibrary`/`refreshSummary`'s naming
+   idiom, which is why it is not called `retry…`. Deferring it costs a second pass over the same file to
+   save nothing.
+
+Two things it explicitly does **not** get, so a builder does not invent them: **no automatic retry** (a
+read that failed once because IndexedDB is unavailable will fail again, and a loop is not honesty), and
+**no in-flight flag**. During a retry the listing keeps the previous `'unreadable'` answer until the new one
+lands — no flicker back through `'loading'` — and the busy state of the button belongs to the surface that
+owns the button.
+
+**Part 4 — the injected-fault criteria.**
+
+| | Fault | Required behaviour |
+|---|---|---|
+| **R1** | `present()` rejects; open a trip with 2 photos | `phase: 'unreadable'`, `items.length === 2`, both `availability: 'unknown'`, `missing: 0`, `message` non-null. **`qa/r45-i13.mjs` §F green without the probe being edited** |
+| **R2** | The same, then `refreshPhotoAvailability()` with the port healthy | `phase: 'ready'`, availabilities resolve, `message: null` |
+| **R3** | The same, then `refreshPhotoAvailability()` with the port **still** failing | still `'unreadable'`, still 2 items, no throw, no unhandled rejection |
+| **R4** | `present()` rejects, then one photo is imported successfully (R45-4's exact sequence) | **no item reads `'missing'`**; the listing is `'unreadable'` or, if the store re-reads on import, `'ready'` with `missing: 0`. It is never `'ready'` with a `'missing'` over bytes on disk |
+| **R5** | A trip with **no** photos, and a host with **no** photo port | `'empty'` in both, never `'loading'` and never `'unreadable'` — property 5's terminal guarantee, on the two paths that skip the port |
+| **R6** | Grep: `message` reaching a log line, a golden or `cli.ts` | zero, and it shares §10.5's coordinate assertion rather than getting a second one |
+
+**Part 5 — the residues, two.**
+
+1. **A-57 Part 9 residue 5 is unchanged and is not what this fixes.** Bytes evicted *while* a trip is open
+   still read `'ready'` until the next open; `'unreadable'` is about a read that **failed**, not a read
+   that went stale. The render path's `read() === null` is still the mitigation for the stale case.
+   **Trigger:** unchanged — a measured occurrence.
+2. **`'unknown'` has no surface yet.** I-14 is unscheduled, so the first honest render of the new state is
+   written by someone who is not in the room. That is precisely why the signal ships first — and it is why
+   Part 2 fixes the *sentence* the state must produce, not only the value.
+
+#### A-64 — a photo carries the `Provenance` **field** and not, in this phase, its transitions: A-57 Part 4's second reason is corrected (revision 44, ROADMAP **I-13b**, QA **R45-6** MAJOR)
+
+> **STATUS: RULED. `RefKind` does not move. `PhotoAsset.provenance` does not move.** Two error messages are
+> corrected and one sentence of A-57 is struck. No type, no export surface, no schema version and no test
+> value changes. **A-61 Part 3's refusal to trim `Provenance` off the record is untouched and this ruling
+> depends on it holding.**
+
+**Part 1 — what is actually broken, and it is a claim rather than a capability.**
+
+A-57 Part 4 gave three reasons for putting the full `Provenance` block on `PhotoAsset` and appended one
+sentence to the second: *"`acceptCandidate`/`rejectCandidate` then work on photos unchanged."* They do not.
+`RefKind` is `'trip' | 'day' | 'stop' | 'place' | 'booking'`, so `{kind:'photo'}` does not typecheck;
+`mapRef` has arms for `day`, `stop` and `booking` and throws for anything else; and the throw's message is
+hard-coded to `acceptCandidate:` so `rejectCandidate` reports the wrong function's name. Meanwhile
+`updatePhoto`'s patch allowlist refuses `provenance` with *"use acceptCandidate / rejectCandidate"* —
+pointing the caller at two functions that throw for a photo. **A-57 Part 6's file list does not name
+`build/candidates.ts`, so the builder built exactly what was specified. The false sentence is the ruling's.**
+
+**Part 2 — the three reasons for the field all survive the sentence being wrong, and that is the substantive
+finding.**
+
+Reason 1 is *"Phase 6 requires the candidate state … retrofitting provenance onto a record class after a
+user has five hundred of them is the expensive migration this project has now refused four times."* That is
+an argument about **carrying the field**, and it is untouched: a `{source:'system', state:'candidate'}`
+photo round-trips through `toJSON`/`fromJSON` today and `displayStatus` returns `'suggested'` for it —
+round 45's own INCONCLUSIVE guard passed on exactly that. Reason 2's first sentence — the root `CLAUDE.md`
+convention must be **expressible** for a photo — is likewise about the field, and is satisfied. Reason 3
+(`origin`) is a field. **Only the appended clause about the two transitions was ever about a mechanism, and
+only it is withdrawn.** A-61 Part 3 refused to trim the 150-byte block on reason 1's strength; that refusal
+stands unweakened, because reason 1 never depended on the transitions existing.
+
+**Part 3 — the ruling: `RefKind` does not gain a `'photo'` arm in Phase 2.**
+
+Three reasons, and the third is the one that makes this a deferral with a named trigger rather than a
+shrug:
+
+1. **There is no producer.** Nothing in any shipped path mints a photo with `{source:'system'}`.
+   `importPhotos` stamps `userProvenance`. The only future producer is Phase 6's `suggestPhotoStops`, which
+   A-57 Part 2 explicitly left in Phase 6 along with library enumeration and `getLocationAsync`. Shipping
+   an accept/reject transition now would ship a mechanism with no caller, no surface and no test population
+   — which is the inverse of A-57 Part 2's own argument for shipping the record class early (*a suggestion
+   queue needs something to suggest into*: the record is the thing that must exist first; the transition is
+   the thing that must exist **with** the queue).
+2. **The state is not a trap, and that matters to the severity.** A candidate photo is badged `'suggested'`
+   by `displayStatus`, is editable in every other respect, and is removable by `removePhoto`. It cannot be
+   silently promoted to the user's own — which is the direction the root `CLAUDE.md` convention actually
+   cares about. Pre-Phase-6 behaviour is conservative on the side the convention protects.
+3. **"Reject" does not yet have a meaning for a photo, and inventing one now would be designing against an
+   imagined shape.** For a `Day`, a `Stop` or a `Booking`, `rejectCandidate` *keeps the record*, badged, so
+   it can be seen and undone — affordable, because those records are a few hundred bytes. A rejected
+   **photo** is a record whose derivatives are megabytes, and whether it even has derivatives depends on a
+   Phase 6 decision nobody has taken: does `suggestPhotoStops` write a thumbnail and a display copy for
+   every candidate it proposes, or does it propose from the library index and derive only on acceptance?
+   The second is much the likelier — §6.1's *"Photo library index … **nothing** reaches the server, in every
+   phase"* and A-58 Part 4's *"Phase 6 gets metadata from `expo-media-library`"* both point at it — and
+   under it, "reject" means *drop a proposal that owns no bytes*, which is a different operation from
+   *"keep the row, badge it"*. **Specifying it before that decision exists is exactly what A-57 Part 3
+   refused for `place` attachment**: a scoping decision with a named trigger beats a guess with a type
+   signature.
+
+**Trigger, stated so this is a decision and not a wall:** *the first code path that produces a
+`{source:'system'}` `PhotoAsset`.* That path's increment adds the `RefKind` arm, the `mapRef` branch and
+the reject semantics **together**, in one ruling, having by then answered whether a candidate photo owns
+bytes. Because `RefKind` is on core's export surface (§2.10), widening it is an architect's ruling either
+way, so this cannot be done by accident on the way to something else.
+
+**Part 4 — what changes now, and it is three strings and no behaviour.**
+
+1. **`mapRef`'s throw names the calling function.** `acceptCandidate: unsupported ref kind photo` is
+   emitted from `rejectCandidate` too. One parameter; it is a plain bug and it is the builder's.
+2. **`mapRef`'s message for `'photo'` says what is true.** Not *"unsupported ref kind"*, which reads as an
+   omission, but the A-57 Part 3 shape: a photo's provenance has **no transition in this phase**, the
+   trigger is Phase 6's first `{source:'system'}` producer, and this ruling is where the reason lives.
+   *(There is no `'photo'` `RefKind` to match on, so this is the default arm's wording plus a named
+   exception for the string `'photo'` — a message, not a type.)*
+3. **`updatePhoto`'s `FORBIDDEN_PHOTO_PATCH_KEYS` message stops pointing at two functions that throw.** The
+   refusal itself is **correct and stays** — `provenance` is not patchable, for the reason the docstring
+   already gives: *"turns a system suggestion into the user's own plan — the one convention the root
+   `CLAUDE.md` calls absolute."* Only the *"use acceptCandidate / rejectCandidate"* remedy is false, and it
+   is replaced by the same sentence as (2).
+
+**And one thing that explicitly does not change:** `addPhoto` keeps accepting any `Provenance` through
+`PhotoInit.provenance`. Locking it to `userProvenance` would make the candidate state unreachable — and
+therefore make Phase 6's first increment a change to core's **build** surface, which is precisely the
+retrofit A-57 Part 4 reason 1 carried the field to avoid. `fromJSON` must round-trip a candidate photo for
+the same reason.
+
+**Part 5 — the injected-fault criteria.**
+
+| | Fault | Required behaviour |
+|---|---|---|
+| **S1** | `rejectCandidate(trip, {kind:'booking', id:'nope'}, …)` and the same with an unsupported kind | the message names **`rejectCandidate`**, never `acceptCandidate` |
+| **S2** | A ref whose `kind` is the string `'photo'`, reaching `mapRef` from either function | the throw names this ruling and the trigger, not *"unsupported ref kind"* alone |
+| **S3** | `updatePhoto(trip, id, {provenance})` | still throws; the message no longer names `acceptCandidate`/`rejectCandidate` |
+| **S4** | `addPhoto` with `{source:'system', state:'candidate'}`, then `toJSON` → `fromJSON` | round-trips byte-identical; `displayStatus` reads `'suggested'` on both sides |
+| **S5** | `grep -n "'photo'" packages/core/src/model/types.ts` against `RefKind` | **no match** — the deferral is checkable, and a builder who adds the arm has taken an architect's decision |
+
+**Part 6 — the residue, one.**
+
+**A photo minted `{source:'system'}` today is un-acceptable until Phase 6.** It is reachable only through
+`addPhoto`'s optional `provenance` or through `fromJSON` over a document no shipped build writes, its exit
+is `removePhoto`, and it renders `'suggested'` throughout — which is the honest badge. **Trigger:** Part 3's
+trigger, which is the same event.

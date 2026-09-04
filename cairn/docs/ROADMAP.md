@@ -630,7 +630,7 @@ are. What moves earlier is the record class those things suggest **into** — th
 
 **I-12 and I-13 are numbered above the gate and sequenced below it.** Sequencing rule 7 forbids renumbering
 forty cross-references for a tidy sequence, so the numbers are labels: the order is
-I-0 … I-10, **I-12, I-12a, I-13, I-13a**, then **I-11, the gate**, which now depends on all of them.
+I-0 … I-10, **I-12, I-12a, I-13, I-13a, I-13b**, then **I-11, the gate**, which now depends on all of them.
 
 *(**I-12a** is revision 41, from QA round 43's breaker pass over I-12 — `ARCHITECTURE.md` §8.4 **A-59** and
 **A-60**. Two narrow gaps in what `travelStats` does with the fields I-12 added: an unreadable stored city
@@ -681,6 +681,26 @@ rule 5, and the defect is mine. **The record does not move by one field**; the c
 below, and **I-13a** — a test-and-comment pass over `packages/core/test/photos.test.ts`, no source file, no
 assertion value changed — carries what is still owed. Phase 2's scope, boundaries, sequence and gates are
 otherwise untouched; no version moves, no runtime symbol is added, no `.tsx` file is opened.
+
+**Revision 44, 2026-09-04.** **One increment added — `I-13b`, the round-45 repair pass — and nothing
+re-scoped.** QA round 45 broke I-13 and returned **SEND BACK**: 2 BLOCKERS, 4 MAJOR, 12 MINOR. Three
+findings were design defects and all three were mine, ruled at `ARCHITECTURE.md` revision 44 as **A-62**
+(R45-2: the photo byte stores were keyed by bare `PhotoId`, so restoring your own backup put two trips over
+one key space and deleting the restored copy destroyed the original's photographs — the key becomes
+`[tripId, photoId]`, `PhotoPort`'s byte methods take the owning `TripId` and gain `removeTrip`, and
+`DB_VERSION` goes 4 → **5**), **A-63** (R45-5: `PhotoListing` could not say *"the availability read
+failed"*, which forces the unresolving spinner §10.6 opens by forbidding — `phase` gains `'unreadable'`,
+`availability` gains `'unknown'`, the listing gains `message`, and the store gains
+`refreshPhotoAvailability()`) and **A-64** (R45-6: A-57 Part 4's claim that the provenance transitions work
+on photos is false; the field stays, `RefKind` does **not** gain a `'photo'` arm, and three error messages
+stop pointing at functions that throw). A fourth, **R45-18**, is a wording correction to §8.4 A-38 Part 5's
+checkable line and needs no code. **`I-13b` carries every code consequence of the three rulings** and the
+builder-routed findings that overlap them; the remaining builder-routed findings of round 45 (R45-1 the
+other BLOCKER, R45-3, R45-4 and the MINORs) are ordinary repair work against `QA-FINDINGS.md` round 45 and
+are listed under I-13b's *Built* so nothing in the round is unowned. **I-13 stays SEND BACK until I-13b
+lands.** Phase 2's scope, boundaries and order are otherwise untouched: no phase moves, `SCHEMA_VERSION`
+stays 2, `SUMMARY_VERSION` stays 5, no `PhotoAsset` field moves and A-58's no-dependency verdict is
+unchanged.
 
 > **Phase numbers changed once, here.** Every heading below carries its old number, and every "Phase N"
 > written in `ARCHITECTURE.md` §1–§7, `BUILD-NOTES.md` or `QA-FINDINGS.md` before revision 9 means the
@@ -1574,10 +1594,10 @@ caption/order) from the cell, and **at most 3 extent panes can exist planet-wide
 unchanged; A-53 adds **I18**, two criteria and a docstring. **I-8i is gated on Jacob's approval of A-51 and
 on nothing else — the design is closed and no further architect round is owed** |
 | **2c — participants** | `Trip.participants`, three build functions, the participants editor, *"people you have travelled with"* on the profile | you can say the trip was with your girlfriend and her family, and it grants them nothing | Not started; gated on 2b |
-| **2d — the memory data layer** *(revision 40)* | **I-12**: `TripSummaryCity` gains `centre` + `firstDay`/`lastDay`, `SUMMARY_VERSION` → 5, `TravelStatsCity` gains dates (§8.4 **A-56**). **I-13**: the `PhotoAsset` record class, multi-file import, two byte stores, a pure EXIF reader, the two-derivative resolution rule, the loading-state selectors (**§10**, **A-57**, **A-58**). **I-12a** *(revision 41, QA round 43; amended at revision 42 by QA round 44)*: an unreadable stored city date stops taking the whole library's statistics down anonymously, and a city range the clock erased stops printing as a specific day (§8.4 **A-59**, **A-60**). **I-12a is SEND BACK at round 44** — a repair pass is owed for R44-1, and revision 42 folds §8.4 **A-60 Part 6** (R44-2) into it as item 5. **I-13 is built (`1820813`) and not yet broken**; its builder's KD-81 is ruled at revision 43 as §10 **A-61** — the 4 KB document-growth criterion was mine and wrong, the `PhotoAsset` record does not move by one field, and **I-13a** is the one-file test-and-comment pass that closes it | a past trip stops being a list of country codes — it knows *where in* each country and *when* — and a photograph can be attached to a day of it at all, which it could not before. Both are exercisable end to end with `node --test` and the CLI, on a machine with no browser | **In progress** *(status corrected at revision 43 — this cell still read "Not started" after three increments had landed)*: I-12 SHIP (`8b50889`), I-12a **SEND BACK** and owed a repair pass, I-13 **built** (`1820813`) and not yet broken, **I-13a queued**. **Gated on 2b's *data layer*, which shipped (`REVIEW.md` "2b (data layer)", SHIP, `69e44d4`) — not on 2b's surfaces and not on 2c.** Orderable before or after 2c. **Opens no `.tsx` file** |
+| **2d — the memory data layer** *(revision 40)* | **I-12**: `TripSummaryCity` gains `centre` + `firstDay`/`lastDay`, `SUMMARY_VERSION` → 5, `TravelStatsCity` gains dates (§8.4 **A-56**). **I-13**: the `PhotoAsset` record class, multi-file import, two byte stores, a pure EXIF reader, the two-derivative resolution rule, the loading-state selectors (**§10**, **A-57**, **A-58**). **I-12a** *(revision 41, QA round 43; amended at revision 42 by QA round 44)*: an unreadable stored city date stops taking the whole library's statistics down anonymously, and a city range the clock erased stops printing as a specific day (§8.4 **A-59**, **A-60**). **I-12a is SEND BACK at round 44** — a repair pass is owed for R44-1, and revision 42 folds §8.4 **A-60 Part 6** (R44-2) into it as item 5. **I-13 is SEND BACK at round 45**; its builder's KD-81 is ruled at revision 43 as §10 **A-61** — the 4 KB document-growth criterion was mine and wrong, the `PhotoAsset` record does not move by one field, and **I-13a** is the one-file test-and-comment pass that closes it. **I-13b** *(revision 44, QA round 45)*: the photo byte stores get their tenancy in the key so restoring a backup cannot destroy the original trip's photographs, a failed availability read becomes a state a surface can name and retry, and A-57 Part 4's false claim about provenance transitions is withdrawn (§10 **A-62**, **A-63**, **A-64**) | a past trip stops being a list of country codes — it knows *where in* each country and *when* — and a photograph can be attached to a day of it at all, which it could not before. Both are exercisable end to end with `node --test` and the CLI, on a machine with no browser | **In progress** *(status corrected at revision 43 — this cell still read "Not started" after three increments had landed; re-stated at revision 44)*: I-12 SHIP (`8b50889`), I-12a **SEND BACK** and owed a repair pass, I-13 **SEND BACK at round 45** (`497c116`) and owed **I-13b**, **I-13a queued**. **Gated on 2b's *data layer*, which shipped (`REVIEW.md` "2b (data layer)", SHIP, `69e44d4`) — not on 2b's surfaces and not on 2c.** Orderable before or after 2c. **Opens no `.tsx` file** |
 
 **Mapped onto the increment sequence below** (revision 10): **2a = I-1 → I-4**, **2b = I-5 → I-8**,
-**2c = I-9 → I-10**, **2d = I-12 → I-12a → I-13 → I-13a** *(revision 40; I-12a added at revision 41, I-13a at revision 43)*, with **I-0** before all of them and **I-11** the
+**2c = I-9 → I-10**, **2d = I-12 → I-12a → I-13 → I-13a → I-13b** *(revision 40; I-12a added at revision 41, I-13a at revision 43, I-13b at revision 44)*, with **I-0** before all of them and **I-11** the
 gate — which is now numbered below two increments it waits for; sequencing rule 7 is why the labels are not
 renumbered. Each of the three steps is
 genuinely shippable at its own increment — the phase can stop after I-4 or I-8 and still have delivered
@@ -4369,7 +4389,18 @@ fields A-56 added, plus one docstring correction. **It opens no view and adds no
 
 #### I-13 — the photo foundation: a record class, bytes that are not in the document, and no new dependency (§10, A-57, A-58)
 
-> **Status: BUILT at `1820813`, not yet broken.** One criterion below was **replaced at revision 43** — the
+> **Status: SEND BACK at QA round 45** (`master` @ `497c116`; 2 BLOCKERS, 4 MAJOR, 12 MINOR —
+> `QA-FINDINGS.md` round 45). **The repair pass is `I-13b`, below**, and this increment is not shippable
+> until it lands. Three of the findings were design defects and are ruled at `ARCHITECTURE.md` revision 44
+> as **A-62**, **A-63** and **A-64**; two clauses of this increment's *Built* line are superseded by them
+> and are struck in place below. **What round 45 could NOT break is worth recording here rather than only
+> in the findings**: `readExif` survived 200,000 hostile inputs with 0 throws, 0 out-of-range coordinates
+> and a 0.68 ms worst call; §10.5's privacy mechanism holds (no metadata in a stored derivative, no photo
+> in the sample build, no photo on the copy path); and A-61's arithmetic re-derived at 748.2 B/photo
+> against a stated 768 and a ceiling of 1,024. **None of the findings is a photograph reaching somewhere it
+> should not.**
+
+> **Status (superseded): BUILT at `1820813`, not yet broken.** One criterion below was **replaced at revision 43** — the
 > builder's **KD-81** measured I-13's original *"20 photos within 4 KB"* against `ARCHITECTURE.md` §10.1's
 > own field list and found it short by 2–4×. Ruled as §10 **A-61**: the figure was mine and wrong, the
 > record does not move by one field, and the two `[stated]` bullets in *Verification* are what replaced it.
@@ -4380,9 +4411,10 @@ fields A-56 added, plus one docstring correction. **It opens no view and adds no
   `migrateDoc` case; `packages/core/src/photo/exif.ts` — a pure, total, bounded JPEG/TIFF-EXIF reader;
   `build/photos.ts` (`addPhoto`, `removePhoto`, `updatePhoto`); serializer and validator support;
   `PhotoPort` and `memoryPhotos()`; the import saga and its session state; `photoImport`, `photosFor` and
-  `orphanPhotoBytes`; `apps/web/src/ports/photo.ts` (picker + canvas derive) and `DB_VERSION` 3 → 4 with the
-  `photos` and `photoThumbs` stores and the trip-delete cascade; `redactForSample` dropping `photos`; and a
-  committed corpus of **JPEG headers, not photographs**, for the `readExif` golden.
+  `orphanPhotoBytes`; `apps/web/src/ports/photo.ts` (picker + canvas derive) and ~~`DB_VERSION` 3 → 4 with the
+  `photos` and `photoThumbs` stores~~ *(revision 44: `DB_VERSION` 3 → 4 → **5**, and the two stores are
+  keyed `[tripId, photoId]` — A-62; I-13b)* and the trip-delete cascade; `redactForSample` dropping
+  `photos`; and a committed corpus of **JPEG headers, not photographs**, for the `readExif` golden.
 - **User-visible outcome.** **None on screen** — the model and its guards land first, exactly as I-9's do,
   and no surface is scheduled while the visual direction is unselected. On the CLI: `cli.ts photos <file>`
   reports what a JPEG's metadata actually says, which is the fastest way to see A-58's central fact for
@@ -4422,6 +4454,10 @@ fields A-56 added, plus one docstring correction. **It opens no view and adds no
     photo's bytes — assert it holds ids and metadata only.
   - `[stated]` **The cascade:** deleting a trip with 5 photos leaves **zero** records in `photos` and
     `photoThumbs`; deleting a **day** leaves its photos present with `attach.kind === 'trip'`.
+    *(Revision 44, QA R45-3: this was met only for the trip that happened to be **open**, because the
+    criterion did not say which trip. **I-13b restates it** — the deletion is asserted for a trip that is
+    a library row and not the active document, which is the case a criterion has to name because it is the
+    one a passing test can miss.)*
   - `[stated]` **Resolution, measured, not asserted:** import a 4000 × 3000 JPEG and assert the stored
     `thumb` is ≤ 320 px on its long edge and the stored `display` ≤ 1600 px, that both decode, and that
     `thumb.bytes` is **at least 20× smaller** than the source. §10.4 exists to be measured.
@@ -4479,6 +4515,124 @@ from.)*
   increment so it cannot be silently dropped, not because it deserves a session of its own. **Route: builder
   only** (`cairn/CLAUDE.md`'s delegation table, row 1 — behaviour is unchanged).
 
+#### I-13b — the photo repair pass: bytes get an owner, a failed read gets a name, and a false claim about provenance is withdrawn (§10 **A-62**, **A-63**, **A-64**; QA round 45)
+
+*Revision 44, from QA round 45's breaker pass over I-13 (**SEND BACK** — 2 BLOCKERS, 4 MAJOR, 12 MINOR).
+This does **not** reopen A-57's record class or A-58's dependency verdict: no `PhotoAsset` field moves,
+`SCHEMA_VERSION` stays 2, A-61's two criteria and their measured numbers stand, and `package.json` and the
+lockfile keep a zero-line diff. **It opens no view and adds no screen.** Three rulings plus the round's
+builder-routed findings, worked as one pass because they are the same three files.*
+
+> **Read order for the builder.** `ARCHITECTURE.md` §10.2, §10.3 and §10.6 (all three amended in place at
+> revision 44) plus **A-62**, **A-63** and **A-64** whole; §8.4 **A-38** Part 5 and **A-39** Part 5 for the
+> fixture re-cut; `QA-FINDINGS.md` round 45 for the findings not named in a ruling. `cairn/qa/r45-i13.mjs`
+> is the breaker's own instrument and **the sections named below must go green without the probe being
+> edited** — §C, §D, §E, §F and §G all assert the contract this pass delivers, not the one it replaces, so
+> R44-3's failure mode does not apply to them.
+
+- **Built.** Four groups. The first three are the rulings; the fourth is the round's remaining
+  builder-routed work, listed here so nothing in round 45 is unowned.
+
+  **1. A-62 — the byte key gains its tenancy (R45-2, BLOCKER).**
+  1. `PhotoPort`'s `read`/`write`/`remove`/`present` take the owning `TripId` **first**, and the interface
+     gains `removeTrip(tripId)`. `packages/client/src/ports/types.ts`, `memory.ts`, every call site in
+     `store/store.ts`, and `apps/web/src/ports/storage.ts`.
+  2. `photos` and `photoThumbs` are keyed **`[tripId, photoId]`**. `present` is still **one** call —
+     `getAllKeys(IDBKeyRange.bound([tripId], [tripId, []]))`, intersected with the id list.
+  3. `DB_VERSION` 4 → **5**, whose upgrade arm **deletes and recreates** both stores and writes no record.
+     A-62 Part 6 is the argument, including why the document-walking re-key is refused (it is A-39 Part 11
+     item 7, which is out of the double's reach by construction).
+  4. The trip-delete cascade becomes `removeTrip` on both halves. **This supersedes the narrow R45-3 fix**
+     (reading the doomed ids from `ports.storage.load(id)`): if that landed first it is **deleted here**,
+     and `apps/web`'s `photoIdsOf` goes with it — a key-range delete needs no document parse. If it has not
+     landed, it is not written.
+  5. `reclaimPhotoBytes` passes the active trip's id; its `live` guard is unchanged and becomes sound.
+  6. **`importDoc` is not touched.** A-62 Part 3 clause 3 — a restored copy keeps its photo ids on purpose,
+     and a second mechanism in a caller is what the key shape now makes unnecessary.
+  7. **R45-15's `validateTrip` arm** (`claim('photo', p.id, 'trip')`) — if it has not already landed with
+     the round's other builder-routed fixes, it lands here, because **A-62 is what makes the per-document
+     census the *complete* uniqueness check rather than half of one**, and that sentence belongs beside it.
+
+  **2. A-63 — a failed availability read can be said out loud (R45-5, MAJOR).**
+  1. `PhotoListing.phase` gains `'unreadable'`; `items[].availability` gains `'unknown'`; the listing gains
+     `message: string | null`, non-null on that phase only.
+  2. `PhotoSession` stops using `available: null` for two different facts. The shape is the builder's; the
+     constraint is that *"not read yet"* and *"read, and it failed"* are distinguishable.
+  3. `store.refreshPhotoAvailability()` — five lines over the existing `readPhotoAvailability`. **No
+     automatic retry and no in-flight flag** (A-63 Part 3).
+
+  **3. A-64 — the provenance claim is withdrawn, and three strings stop lying (R45-6, MAJOR).**
+  1. **`RefKind` does not change.** `grep "'photo'"` against it must find nothing — S5.
+  2. `mapRef`'s throw names the **calling** function instead of hard-coding `acceptCandidate:`.
+  3. `mapRef`'s message for a `'photo'` ref, and `updatePhoto`'s `FORBIDDEN_PHOTO_PATCH_KEYS` message for
+     `provenance`, both stop pointing at two functions that throw and say what A-64 Part 3 rules: no
+     transition in this phase, the trigger, and where the reason lives. The refusal itself stays.
+
+  **4. Round 45's remaining builder-routed findings**, worked in the same pass because they are the same
+  files: **R45-1 (BLOCKER)** — `migrateDoc` has zero production callers, so every document and every backup
+  written by the previous release is refused; the narrow fix is inside `fromJSON`, and **whatever lands
+  needs a test that opens a document written by the previous release rather than one hand-built at the
+  current version**. **R45-4** (the import saga's `?? []` collapsing *"not read"* into *"read, and empty"*)
+  and **R45-3** (see group 1 item 4) if they have not already landed. **R45-8/R45-9/R45-10** (`exif.ts`:
+  a bad sub-IFD pointer discarding a date that read; the scan running past EOI; `capturedAt.time` unranged
+  — A-58 Part 6 clause 2's threshold is met and the breaker explicitly does **not** ask for the verdict to
+  be reversed, so these are three one-line fixes and not a dependency question). **R45-11**, **R45-12**,
+  **R45-13**, **R45-14**, **R45-16**, **R45-17** and **R45-7**'s BUILD-NOTES correction, per
+  `QA-FINDINGS.md` round 45's routing column.
+- **User-visible outcome.** **None on screen** — there is still no photo surface. What changes for Jacob is
+  that restoring his own backup stops destroying the photographs in the trip he restored it beside, and
+  that every trip he already has opens again.
+- **Architecture / data model.** `ARCHITECTURE.md` §10.2, §10.3, §10.6 and A-62/A-63/A-64. **Five things a
+  builder does not get to decide:** `SCHEMA_VERSION` stays **2** (this pass changes storage keys, not the
+  document); no `PhotoAsset` field is added, dropped or renamed; **`RefKind` does not gain a `'photo'`
+  arm** — widening core's export surface is an architect's ruling and A-64 states the trigger; **no
+  document-walking migration in `onupgradeneeded`** (A-62 Part 6); and **no dependency is added to any
+  package** (A-58, unchanged).
+- **Verification.** A-62 Part 7's **Q1–Q8**, A-63 Part 4's **R1–R6** and A-64 Part 5's **S1–S5**, each red
+  before the fix and green after, each recorded. Plus:
+  - `[stated]` **The breaker's own probe, unedited.** `node --experimental-strip-types qa/r45-i13.mjs`
+    §C (3 FAIL), §D (2), §E (1), §F (1) and §G (3) all go green **without the probe being edited**, because
+    every one of those ten lines asserts the contract this pass delivers. Outcome clause: a line that
+    cannot be made green without editing it is a ruling this pass has misread, and it routes back rather
+    than being edited.
+  - `[stated]` **The cascade, for the trip that is NOT open.** Create trip A with 5 photos, create trip B,
+    then delete A while B is the active document: **zero** `[A, …]` records in either store, on the
+    in-memory port and on the web port, and `orphanPhotoBytes` is `[]` rather than silently empty. This is
+    I-13's own cascade criterion with the case it failed to name (R45-3) written into it.
+  - `[stated]` **The upgrade, driven rather than reasoned about.** A seeded `DB_VERSION` **4** database
+    holding bare-keyed byte records is opened by the port: both stores are empty afterwards and `docs`,
+    `summaries` and `versions` are **byte-identical** to their seeded values — a new arm on A-38 Part 3's
+    list, whose starting state is stated like every other arm's. Outcome clause: a migration that touches a
+    document is A-39 Part 11 item 7 and is not what was ruled.
+  - `[stated]` **The compound key in a real browser, both engines.** `qa/i7a-idb-rowkeys.mjs` gains a phase
+    that writes two trips' byte records and range-reads each, asserting it gets exactly its own — run on
+    **Chromium and WebKit** (`PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers`, which R45-7 established is
+    installed). Outcome clause: A-62 Part 5's key-ordering facts are search-result verifications until this
+    runs, and this is what makes them measurements.
+  - `[stated]` **The previous release's document opens.** A document written by a build at `598cd7f` —
+    minted from that revision, not hand-built at the current one — opens, restores through `importDoc`, and
+    does not appear in `rescan.unreadable`. `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node qa/r3-upcast.mjs`
+    reaches *"Add a stop"*. Outcome clause: a test that hand-builds a v1 document at the current version is
+    the test that was already green while nobody's data could be opened.
+  - `[stated]` **The fence:** `git diff --name-only` shows **zero** files under `apps/web/src/views/`, zero
+    under `cairn/docs/design/`, and no `package.json`/lockfile movement.
+  - §2.10's export total **re-counted in this pass** and written into §2.10 and criterion E in the same
+    commit if it moves (§8.9's rule). It should not move: A-62 changes port signatures, not core's surface.
+- **Dependencies / blockers.** I-13 (built, `1820813`). **Nothing else** — it is orderable immediately and
+  it blocks I-11. **It does not fire A-39 Part 11.** Item 4 does not fire (no object store is added — two
+  existing stores change key shape); item 7 does not fire (the upgrade writes no record); item 2 does not
+  fire (`SCHEMA_VERSION` does not move). What is owed is a **fixture re-cut**: the Axis B and Axis O seed
+  records added at `497c116` are keyed by bare `PhotoId` and must be re-keyed, which is builder work
+  against A-39 Part 5's table with the table as its own oracle — A-39 Part 11's *"not a legitimate reason"*
+  clause, read forwards. **Route: builder + breaker, mandatory** — `cairn/CLAUDE.md`'s delegation table row
+  3 (`mapRef`/`updatePhoto` are provenance-transition files) and row 4 (a port surface and the reducer).
+- **Ship gate.** Q1–Q8, R1–R6 and S1–S5 recorded with their measured results; `qa/r45-i13.mjs` §C–§G green
+  unedited; `qa/i7a-idb-rowkeys.mjs` green on **both** engines with its new phase and its faults recorded
+  per phase (A-36 Part 4's standing condition, unchanged); `qa/r3-upcast.mjs` green; `npm test`,
+  `npm run typecheck` and the sample build green with **no `package.json` diff and no lockfile movement**.
+  Then a **breaker round over I-13 and I-13b together** — round 45 returned SEND BACK on I-13 and it is
+  I-13b that has to earn the reversal, not this file.
+
 #### I-11 — The phase gate
 
 - **Built.** Nothing new. The full chain: a breaker round over the whole phase, then the manager's
@@ -4492,8 +4646,10 @@ from.)*
   this is the pass that clears it.
 - **Verification.** All exit criteria below, each re-derived; the whole Phase 1 suite unchanged; the
   attack list for this phase run end to end.
-- **Dependencies / blockers.** I-0 through I-10, **and I-12, I-12a, I-13 and I-13a** (revision 40, step 2d —
-  numbered above this increment and sequenced below it; I-12a added at revision 41, I-13a at revision 43).
+- **Dependencies / blockers.** I-0 through I-10, **and I-12, I-12a, I-13, I-13a and I-13b** (revision 40,
+  step 2d — numbered above this increment and sequenced below it; I-12a added at revision 41, I-13a at
+  revision 43, **I-13b at revision 44 — it is the repair pass for round 45's SEND BACK on I-13 and the
+  phase cannot be gated with it unbuilt**).
   **I-13a is a one-file test-and-comment pass** and may land inside any earlier commit that opens
   `photos.test.ts`; it is named here so that it cannot reach the gate unbuilt.
 - **Ship gate.** A manager verdict of **SHIP**. Nothing else counts as the phase being done.

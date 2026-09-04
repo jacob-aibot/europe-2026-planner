@@ -19,8 +19,62 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
-> **🔴 PHOTOS HAVE NOW BEEN ATTACKED, AND THEY DO NOT SHIP YET — as of 2026-09-04. This block is
-> the newest.** It supersedes one line in the block below: step 2d's photo half is now
+> **🟠 THE THREE PHOTO DECISIONS ARE MADE, AND THE REPAIR WORK IS WRITTEN DOWN — as of 2026-09-04. This
+> block is the newest.** It does not change the status the block below reports: step 2d's photo half is
+> still **designed ✅ · built ✅ · verified ⚠️ · shippable ❌**. What changes is that the three questions
+> the tester sent to me are answered, so what is left is a builder's job rather than an open question.
+> It is one pass, called **I-13b**.
+>
+> **1. How photo files are named, so they cannot be shared between two trips.** This is the stopper
+> where restoring your own backup and then deleting the copy destroyed the photographs in the trip you
+> kept. The obvious fix is to give the restored copy's photos new identities on the way in. **I am not
+> doing that, and the reason is worth a sentence:** it fixes the one path we found and leaves the
+> underlying rule — *"no two trips may ever use the same photo identity"* — as something nothing in Cairn
+> can actually check. There is no way to ask *"is this photo identity already in use somewhere?"*,
+> because a photo file legitimately might not be stored at all. **So the file's name gets the trip in
+> it.** A photo file is now filed under *trip + photo*, not photo alone — which is exactly how the
+> eventual server was always going to store them, and which is what the design already said four
+> paragraphs away from the place it got it wrong. After this, one trip physically cannot reach another
+> trip's photographs: not from a backup restore, not from a delete, not from any future feature anyone
+> writes. It also fixes the smaller finding about deleting a trip you do not have open, for free,
+> because deleting a trip's photos stops needing a list of them.
+>
+> **The cost, stated plainly:** any photo files already stored by the version under test are dropped by
+> this change rather than renamed. Renaming them would mean reading every trip file during a database
+> upgrade, which is the most fragile thing you can do in a browser database. And a dropped file is not a
+> silent loss — the photo entry survives with its caption, date and place, and Cairn already says *"this
+> photo's image is no longer stored on this device"* and offers to re-import it. **This can only affect
+> photographs added by the build that is currently sent back**, which — because of the other stopper — is
+> a build none of your existing trips can even open.
+>
+> **2. Does a screen need a fourth loading state? Yes.** Right now, if Cairn fails to check which photos
+> are stored, the only thing it can report is *"still loading"* — forever. That is the exact dishonest
+> state the design opens by forbidding, and it is my fault for giving the data layer three words where
+> it needed four. It gets a fourth: *could not check*. A photo whose status was never read now says so,
+> rather than being reported as missing — and, this is the part I would have been tempted to defer, **it
+> comes with a Try again.** An error state you cannot get out of is the never-ending spinner wearing a
+> different hat.
+>
+> **3. Should a photo be acceptable or rejectable yet? No — and my claim that it already was is
+> withdrawn.** I wrote that Cairn's existing accept/reject machinery *"then works on photos unchanged."*
+> It never did: there is no photo case in it at all, and two error messages point at functions that
+> throw. **The bookkeeping field stays on every photo**, and all three reasons I gave for putting it
+> there hold — a photo Cairn suggests already displays as *suggested*, and adding that field later, once
+> you have five hundred photos, is the expensive migration this project keeps refusing. What does not
+> hold is the claim about the two buttons. **Accepting and rejecting a photo arrives with the feature
+> that suggests photos, in Phase 6, because "reject" does not yet have a meaning**: for a booking it
+> means *keep the row, mark it rejected*; for a photograph it depends on whether a suggested photo has
+> already had copies made of it, which is a Phase 6 decision nobody has taken. Guessing now would bake
+> in an answer to a question we have not asked. Three misleading error messages are corrected in the
+> meantime.
+>
+> **What happens next:** one builder pass, **I-13b**, carrying those three plus everything else round 45
+> found — including the first stopper, which is the serious one and has nothing to do with photos — then
+> a fresh adversarial round over I-13 and I-13b together. Detail: `cairn/docs/ARCHITECTURE.md` §10
+> **A-62**, **A-63** and **A-64**, and `ROADMAP.md` **I-13b**.
+
+> **🔴 PHOTOS HAVE NOW BEEN ATTACKED, AND THEY DO NOT SHIP YET — as of 2026-09-04.** It supersedes one
+> line in the block below: step 2d's photo half is now
 > **designed ✅ · built ✅ · verified ⚠️ · shippable ❌**. *Verified* is a warning rather than a
 > cross because the tester ran the full adversarial pass and it found things — two of them serious
 > enough to stop the work here.
