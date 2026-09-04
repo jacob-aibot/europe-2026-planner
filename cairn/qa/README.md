@@ -3383,3 +3383,81 @@ Not re-run this round, deliberately: `qa/r46-idb-keys.mjs`, `qa/i7a-idb-rowkeys.
 `qa/i13b-gate.mjs`, `qa/i13-photo-browser.mjs`. The I-13d range touches **no `apps/web` file at
 all** — two source files moved, both in `packages/client` — so a browser run would re-confirm a
 number with no reason to doubt it.
+
+## Round 49 (2026-09-04, `master` @ `4398de5`) — the I-13e confirmation pass (§4.2 **A-68**, the wiring at A-67's own call sites)
+
+One new probe and two control scripts, all bare Node, plus the **re-cut A-68 Part 9 rules breaker
+work** — which turned out to be **four** lines in `qa/r47-i13c.mjs`, not three.
+Verdict: **SEND BACK — 0 BLOCKERS, 1 MAJOR (R49-1), 4 MINOR (R49-2 … R49-5).**
+
+```bash
+node --experimental-strip-types qa/r49-i13e.mjs            # from cairn/; 16 FAIL, 5 ids
+R49_ONLY=B node --experimental-strip-types qa/r49-i13e.mjs # just the MAJOR
+   # A  the fences over d03eac8..HEAD: zero .tsx, zero qa/-by-the-builder, zero dependency
+   #    movement, docs/design/ untouched, nothing outside cairn/, `generation.ts` a ZERO-line
+   #    diff (A-68's own STATUS), exactly three files moved under packages/ and all in
+   #    packages/client, and the privacy greps over all 198 added production lines (43 outside
+   #    comments) — console/fetch/storage/clock/random/mailbox/coordinate/setTimeout/DOM, zero.
+   # B  **R49-1, MAJOR — 7 FAIL.** A-68 Part 5b discharges `importPhotos`' owed availability
+   #    read under `guard.current('doc', g)` — the DOC slot — and the nine exits Part 4 exists
+   #    to fix all bump exactly that slot while installing nothing and reading nothing. Seven
+   #    of the nine measured: the still-open trip settles at `available: null`,
+   #    `availabilityError: null`, `phase: 'loading'`. A-63's unresolving spinner, again.
+   #    Two controls in the same section: the identical import with NO interloper reaches a
+   #    terminal state, and the interloper alone (the builder's own gesture) is green.
+   # C  the liveness invariant BEYOND the builder's 13-gesture table. C1-C4, C6, C7 hold
+   #    (Part 6's read, an installing transition, closeTrip, a four-link chain, removePhoto's
+   #    gated tail, a second store instance). **C5** is R49-1 with two overlapping batches.
+   #    **C8 is R49-5, 3 FAIL** — the ELEVENTH exit: an INSTALLING transition whose reseeding
+   #    `set` throws out of `emit()`, so the document is installed and the read that would
+   #    have answered is never reached. Pre-existing on both sides of A-67.
+   # D  the two deliberate no-op sites, ATTACKED. Both genuinely need nothing: the non-active
+   #    delete must let the in-flight read LAND (A-62's disjoint key ranges), and `doMerge`
+   #    issues an unconditional read after the merge install. **D3a is R49-4, 1 FAIL** — a
+   #    browse pane survives the delete of the trip it shows (pre-existing; D3b shows the
+   #    RACING order is clean, so A-68 Part 4.3 is not the cause).
+   # E  the tenth site (A-68 Part 6), both branches, both orders. The catch re-reads only when
+   #    `wasActive`, reports `missing` rather than `ready` over bytes `removeTrip` took, and
+   #    rethrows; the happy path issues no extra `present()`.
+   # F  G14's and G17's disclosed mutant mismatches, VERIFIED against A-68's text and the
+   #    shipped source. Both explanations are mechanically sound.
+   # G  `removePhoto`'s `guard.observe('doc')` and the asymmetry with `importPhotos`. Real,
+   #    correctly implemented, and three races against it all hold.
+   # H  G16 re-derived from the sources, including the two do-nothing shapes.
+   # I  A-68 Part 9's PREDICATE applied by grep across every qa/ probe, then confirmed by
+   #    running them — which is how the fourth moving assertion was found.
+   # J  **R49-2 (1 FAIL) and R49-3 (3 FAIL).** Part 9's enumeration, and three stated mutants
+   #    that do not reproduce as worded.
+```
+
+Two control scripts, each in throwaway worktrees; neither touches the working tree:
+
+```bash
+bash qa/r49-recut-vacuity.sh                     # the REQUIRED vacuity controls for the four re-cuts
+M2_STEP5_ONLY=1 bash qa/r49-recut-vacuity.sh     # R49-3c: Part 9's own M2 wording, measured green
+bash qa/r49-controls.sh                          # C1: R49-1 at d03eac8 (the bare gesture flipped
+                                                 #     red -> green; the composite one did not)
+                                                 # C2: R49-5 at HEAD, d03eac8 and 4430e34 — identical
+```
+
+**Four assertions in `qa/r47-i13c.mjs` were re-cut by this round**, on A-68 Part 9's own predicate
+rather than its list: §B `:210` and §C `:263` (clause (i) — a count of derivative pairs stranded by
+a guard that fired *after* `ports.photo.write`), §B `:231` (clause (ii) — the `A → B → A` return
+trip), **and §K's U4**, which Part 9 explicitly declares green and which is clause (i) verbatim.
+`qa/r49-recut-vacuity.sh` watches all four RED first, each reporting the old expected value.
+
+**Two prior probes were repaired rather than re-run, and that is R49-2.** `qa/r47-i13c.mjs` had
+been dying at §D with an uncaught error since `4316167` — A-67 Part 6 made the `dispatch` that §D
+face 1 performs inside a transition window **throw** — so §E…§N had not executed for two rounds,
+which is why §K's U4 was recorded as green three times. §D face 1 now catches the refusal and its
+assertion is widened to R47-1's actual contract. `qa/r48-i13d.mjs` §E hung once R48-1 was fixed
+(the owed read parks in the gated `present`); its two lines are re-cut to assert the **closed**
+behaviour, its §A file census is widened for the I-13e range, and R48-3's second message drops the
+`@throws` half, which A-68 Part 8 closed. **`qa/r45-i13.mjs`, `qa/r46-i13b.mjs` and
+`qa/r47-i13c.mjs` are now all green end to end; `qa/r48-i13d.mjs` reports exactly 3 FAIL, all
+R48-3, which is correctly still open and routed to I-13f.**
+
+Not re-run this round, deliberately: `qa/r46-idb-keys.mjs`, `qa/i7a-idb-rowkeys.mjs`,
+`qa/i13b-gate.mjs`, `qa/i13-photo-browser.mjs`, `qa/r3-upcast.mjs`. The I-13e range touches **no
+`apps/web` file at all** — three files moved, all in `packages/client` — so a browser run would
+re-confirm a number with no reason to doubt it.

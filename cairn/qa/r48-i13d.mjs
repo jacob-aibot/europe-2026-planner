@@ -157,10 +157,14 @@ if (run('A')) {
     names.filter((n) => !n.startsWith('cairn/')));
   ok(git('status', '--porcelain', '--', 'europe-2026-itinerary.html', 'docs/', 'tickets/').trim() === '',
     'the live planner, `docs/` and `tickets/` are clean in the working tree');
+  // **Widened at round 49**: with `R48_HEAD` left at its default the range now also spans I-13e,
+  // which adds `test/liveness.test.ts` (A-68 Part 7's invariant). The claim this line makes — the
+  // whole photo arc stays inside `packages/client` — is unchanged; only the census grew.
   ok(names.filter((n) => n.startsWith('cairn/packages/') || n.startsWith('cairn/apps/')).join() ===
      ['cairn/packages/client/src/store/generation.ts', 'cairn/packages/client/src/store/store.ts',
-      'cairn/packages/client/test/generation.test.ts', 'cairn/packages/client/test/photos.test.ts'].join(),
-    'exactly four source/test files moved, all in `packages/client` — `packages/core` and `apps/web` are untouched',
+      'cairn/packages/client/test/generation.test.ts', 'cairn/packages/client/test/liveness.test.ts',
+      'cairn/packages/client/test/photos.test.ts'].join(),
+    'exactly five source/test files moved, all in `packages/client` — `packages/core` and `apps/web` are untouched',
     names.filter((n) => n.startsWith('cairn/packages/') || n.startsWith('cairn/apps/')));
 
   const added = git('diff', `${BASE}..${HEAD_}`, '--', 'cairn/packages/client/src', 'cairn/cli.ts', 'cairn/apps/web/src')
@@ -440,12 +444,13 @@ if (run('D')) {
 // --------------------------------------------------------------------------- §E
 
 if (run('E')) {
-  head('§E — **R48-1, MAJOR**: A-67 Part 4\'s invalidation rule is applied CONDITIONALLY');
-  note('`store.ts:1832` and `:1940` both wrap `guard.supersede(\'photoAvailability\')` inside');
-  note('R45-4\'s `state.photos.available !== null` guard. A-67 Part 7 row 5 says in as many words');
-  note('that that guard answers a DIFFERENT question — *"a fact about the value, not about the');
-  note('ordering"* — and then the ordering call is placed inside it. With `available === null` a');
-  note('byte `write` or `remove` no longer invalidates an in-flight read.');
+  head('§E — R48-1\'s two faces, RE-CUT AT ROUND 49 to assert the fix (A-68 Part 5)');
+  note('**Re-cut, not re-run.** A-68 Part 5 hoisted both `supersede(\'photoAvailability\')` calls out of');
+  note('R45-4\'s value guard and gave each an owed read, so this section\'s two lines now assert the');
+  note('CLOSED behaviour rather than the open finding. The adversarial pressure is unchanged and the');
+  note('ordering is still the worst one available: the OLDER answer is released LAST in both faces, so');
+  note('a re-nested supersede would let it land and both lines would go red again. The owed read adds');
+  note('one parked `present()` per face, which is why the gates are drained newest-first.');
   {
     // Face 1 — an import lands while a "Try again" read is in flight. The read was issued before
     // the bytes existed; it lands after them and reports the new photograph as `missing`.
@@ -468,14 +473,16 @@ if (run('E')) {
     const retry = store.refreshPhotoAvailability();          // the user taps *Try again* while it decodes
     await tick();
     await p.photo.release(1);
+    await tick(); await tick();                              // the owed read reaches its gate
+    await p.photo.presentGates.pop().run();                  // A-68 Part 5b's owed read answers
     await inflight;                                          // bytes written, record dispatched
-    await p.photo.presentGates.shift().run();                // the older answer lands last
+    await p.photo.presentGates.shift().run();                // the older answer lands last — and is DROPPED
     await retry;
     p.photo.slowPresent = false;
     const s = store.getState();
     const onDisk = (await p.photo.read(A, 'e1photo-2', 'thumb')) !== null;
     ok(!(onDisk && shape(listing(store)).items.includes('e1photo-2:missing')),
-      'FINDING R48-1: a photograph whose bytes are on disk reads `missing` — §10.6 property 3\'s "no longer stored on this device" over a file that is stored on this device. R45-4\'s defect through a fourth door, and A-67 Part 4\'s own rule is the one that closes it',
+      'R48-1 face 1 CLOSED (re-cut at round 49): an import that races a *Try again* with availability unknown does not read `missing` over bytes that are on disk — the hoisted supersede drops the older answer and the owed read replaces it (A-68 Part 5a/5b)',
       { listing: shape(listing(store)), available: [...(s.photos.available ?? [])], bytesOnDisk: onDisk, byteKeys: keys(p.photo) });
   }
   {
@@ -493,13 +500,18 @@ if (run('E')) {
     await bad;
     const retry = store.refreshPhotoAvailability();
     await tick();
-    await store.removePhoto('e2photo-1');
-    await p.photo.presentGates.shift().run();
+    const rm = store.removePhoto('e2photo-1');
+    await tick(); await tick();
+    // A-68 Part 5c's owed read needs NO port call here: the record it removed was the trip's only
+    // photograph, so `readPhotoAvailability` takes its `ids.length === 0` branch and writes an
+    // empty set synchronously. That is the answer the supersede owed.
+    await rm;
+    await p.photo.presentGates.shift().run();                // the older answer lands last — and is DROPPED
     await retry;
     p.photo.slowPresent = false;
     store.undo();                                            // A-65: the record comes back, the bytes do not
-    ok(keys(p.photo).length === 0 && !shape(listing(store)).items.includes('e2photo-1:ready'),
-      'FINDING R48-1: after `removePhoto` + `undo` the listing reads `ready` over bytes that are gone — A-65 **T1** requires `missing`, "never `empty`, never `unreadable`, never a throw", and never `ready`',
+    ok(keys(p.photo).length === 0 && shape(listing(store)).items.includes('e2photo-1:missing'),
+      'R48-1 face 2 CLOSED (re-cut at round 49): after `removePhoto` + `undo` with availability unknown the restored record reads **`missing`** — §10 A-65 **T1**, over bytes that really are gone',
       { listing: shape(listing(store)), byteKeys: keys(p.photo), available: [...(store.getState().photos.available ?? [])] });
   }
 }
@@ -594,7 +606,7 @@ if (run('G')) {
       'FINDING R48-3: `undo()` throws `TRANSITION_IN_PROGRESS_MESSAGE` while a DIFFERENT trip is being deleted and the open trip is fully interactive — `App.tsx:233-244` binds Ctrl/Cmd+Z to `store.undo()` on `window`, uncaught and with no window check, so residue 4\'s *"unreachable from today\'s apps/web"* is false',
       { outcome, activeTripStillOpen: live, title: store.getState().doc?.title });
     ok(!/A trip is being opened or closed/.test(outcome.removePhoto),
-      'FINDING R48-3: `removePhoto` gains the same throw, and its `@throws` list does not mention it',
+      'FINDING R48-3 (message re-cut at round 49): `removePhoto` throws the same refusal. **The `@throws` half is CLOSED** — A-68 Part 8 routed it to I-13e and the builder landed it — so this line now carries only the open half: the throw itself, which A-68 Part 8 rules correct and hands to I-13f\'s `.tsx` catch',
       { removePhoto: outcome.removePhoto });
     await p.storage.delGates.shift()();
     p.storage.slowDelete = false;

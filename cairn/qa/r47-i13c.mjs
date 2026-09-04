@@ -207,13 +207,29 @@ head('§B — R46-1\'s fix ATTACKED: a third trip mid-decode, and the return tri
   ok(store.getState().photos.failures.length === 0,
     'A-66: the abandoned files are reported as nothing — no `storage_failed`, no sixth arm',
     store.getState().photos.failures);
-  ok(keys(p.photo).length === 1,
-    'A-66 Part 7: the loop stops at the FIRST file that fails a guard, so one derivative pair is stranded and no more',
-    keys(p.photo));
+  // **RE-CUT AT ROUND 49 — §4.2 A-68 Part 9, whose predicate clause (i) names this line.** It used
+  // to require `keys(p.photo).length === 1` — *one* stranded derivative pair. That count was the
+  // OLD guard's collateral: `isLiveTrip(tripId)` fired AFTER `ports.photo.write`, so the file the
+  // transition landed on had already created its byte pair before it was refused. A-67's step-4
+  // `guard.current('doc', g)` fires BEFORE the write, so the abandoned file writes nothing at all
+  // and A-66 **Part 10** item 2 states the new bound. Asserted over **both** derivative stores,
+  // for A-67 Part 7a's own stated reason: one `ports.photo.write` fills thumb and display, and
+  // checking one alone is how a half-write goes unseen. Vacuity control: `bash qa/r49-recut-vacuity.sh`
+  // watches this line RED against the mutant that restores `isLiveTrip`, where it reports
+  // `["<A>/photo-1"]` — the old assertion's exact expected value.
+  ok(keys(p.photo).length === 0 && [...p.photo.displays.keys()].length === 0,
+    'A-66 Part 10 item 2 (re-cut at round 49): the guard precedes the `write`, so the abandoned file strands NO derivative pair — neither thumb nor display',
+    { thumbs: keys(p.photo), displays: [...p.photo.displays.keys()].map((k) => k.replace(NUL, '/')) });
 
-  // Face 2 — A -> B -> A. `state.doc?.id !== tripId` is false again by the time the decode
-  // lands, so the guard passes. It should: the bytes and the record agree, on the trip the
-  // files were picked from, and the attach ref still resolves.
+  // Face 2 — A -> B -> A, the return trip. **RE-CUT AT ROUND 49 — A-68 Part 9, predicate clause
+  // (ii).** Round 47 measured that the batch *completed into A* and asserted it as correct. It was
+  // the right outcome produced by the wrong mechanism: `state.doc?.id !== tripId` passed on the
+  // return because id-identity is true of two different document *instances* — which is R47-1 face
+  // 3 in one sentence, the same false positive that on `A -> A` silently lost three photographs of
+  // four while reporting `failures: []`. A-67 chose generation identity, and this assertion is the
+  // bill: the intermediate transition ends the batch and the return trip does not revive it.
+  // What replaces it is strictly better as a STATE — a stopped batch, not a half-lost one — and
+  // A-67 Part 11 residue 3 (widened by A-68 Part 9) discloses the cost.
   const [q, s2] = mk('q');
   for (const t of ['A', 'B']) await s2.createTrip({ title: t, startDate: '2026-08-07', endDate: '2026-08-09' });
   await s2.flush();
@@ -228,11 +244,17 @@ head('§B — R46-1\'s fix ATTACKED: a third trip mid-decode, and the return tri
   await imp2;
   await s2.flush();
   const dA = await stored(q, qA); const dB = await stored(q, qB);
-  ok(dA.photos.length === 2 && dB.photos.length === 0 && keys(q.photo).every((k) => k.startsWith(`${qA}/`)),
-    'A → B → A: the batch completes into the trip it was picked from, and nothing reaches B',
-    { A: dA.photos.map((x) => x.id), B: dB.photos.map((x) => x.id), keys: keys(q.photo) });
+  ok(dA.photos.length === 0 && dB.photos.length === 0
+     && keys(q.photo).length === 0 && [...q.photo.displays.keys()].length === 0
+     && s2.getState().photos.failures.length === 0
+     && s2.getState().photos.pending === 0 && s2.getState().photos.total === 0,
+    'A → B → A (re-cut at round 49): the intermediate transition STOPS the batch and the return trip does not revive it — zero records anywhere, zero bytes, `failures: []`, 0/0 (A-67 Part 11 residue 3, widened by A-68 Part 9)',
+    { A: dA.photos.map((x) => x.id), B: dB.photos.map((x) => x.id), thumbs: keys(q.photo),
+      displays: [...q.photo.displays.keys()].map((k) => k.replace(NUL, '/')),
+      failures: s2.getState().photos.failures,
+      fraction: `${s2.getState().photos.pending}/${s2.getState().photos.total}` });
   ok(core.validateTrip(dA).length === 0,
-    'and the `{kind:\'day\'}` attach still resolves — no `photo_attach_dangling` on the return trip',
+    'and the document A validates clean — a stopped batch leaves no `photo_attach_dangling` for the `{kind:\'day\'}` ref it never filed',
     core.validateTrip(dA).map((i) => i.code));
 }
 
@@ -260,7 +282,16 @@ head('§C — the abort\'s unwind: files that already landed stay attached to th
     { inMemoryBeforeTheSwitch: inMemory, storedAfter: dA.photos.map((x) => x.id) });
   ok((await stored(p, B)).photos.length === 0, 'trip B holds none of them');
   const orphans = keys(p.photo).filter((k) => !dA.photos.some((x) => k === `${A}/${x.id}`));
-  ok(orphans.length === 1, 'A-66 **U4**: exactly one stranded derivative pair, under A\'s own key', orphans);
+  const dOrphans = [...p.photo.displays.keys()].map((k) => k.replace(NUL, '/'))
+    .filter((k) => !dA.photos.some((x) => k === `${A}/${x.id}`));
+  // **RE-CUT AT ROUND 49 — A-68 Part 9, predicate clause (i), the same inversion one section over.**
+  // **U4's contract is unchanged and unedited** — *"the store never claims to have observed a
+  // stranded pair it cannot name"*, asserted below and green on both sides of A-67. Only the COUNT
+  // of pairs the old guard created moves, from one to none, because the generation check fires
+  // before `ports.photo.write` instead of after it (A-66 Part 10 item 2).
+  ok(orphans.length === 0 && dOrphans.length === 0,
+    'A-66 **U4** (re-cut at round 49): the abandoned files strand NO derivative pair at all — neither thumb nor display',
+    { thumbs: orphans, displays: dOrphans });
   const st = store.getState();
   ok(st.photos.pending === 0 && st.photos.total === 0 && st.photos.failures.length === 0,
     'A-66 **U2**: the abandoned batch leaves no fraction and no failure on the trip it did not belong to',
@@ -289,7 +320,16 @@ head('§D — **R47-1, MAJOR**: the window between `flushForTransition()` and th
   const open = store.openTrip(B);
   await tick(); await tick();
   const parked = p.storage.loadGate !== null;
-  store.dispatch({ type: 'setTripMeta', patch: { title: 'EDITED IN THE WINDOW' } });
+  // **RE-CUT AT ROUND 49.** A-67 Part 6 made this `dispatch` THROW inside a transition window —
+  // `TRANSITION_IN_PROGRESS_MESSAGE`, the fence R48-3 is filed against. Round 47 wrote this line
+  // when the dispatch merely returned, so from `4316167` onwards the probe **died here with an
+  // uncaught error and §E…§N never ran at all** (QA R49-2). The throw is caught and recorded, and
+  // the assertion below is widened to R47-1's actual contract, which holds on both sides of A-67:
+  // an edit dispatched into the window is preserved **or refused loudly** — never silently
+  // discarded with `persistence.status: 'idle'` over it, which is what R47-1 measured.
+  let refused = null;
+  try { store.dispatch({ type: 'setTripMeta', patch: { title: 'EDITED IN THE WINDOW' } }); }
+  catch (e) { refused = e?.message ?? String(e); }
   const inMemory = store.getState().doc?.title;
   p.storage.slowLoad = false;
   await p.storage.loadGate();
@@ -297,9 +337,9 @@ head('§D — **R47-1, MAJOR**: the window between `flushForTransition()` and th
   await sleep(D * 4);
   await store.flush();
   const afterA = await stored(p, A);
-  ok(!parked || afterA.title === 'EDITED IN THE WINDOW',
-    'FINDING R47-1 face 1: an edit dispatched after `flushForTransition()` returned survives the transition',
-    { parkedInsideStorageLoad: parked, inMemoryTitleAtTheTime: inMemory, titleInStorageAfter: afterA.title,
+  ok(!parked || afterA.title === 'EDITED IN THE WINDOW' || refused !== null,
+    'FINDING R47-1 face 1 (re-cut at round 49): an edit dispatched after `flushForTransition()` returned is preserved OR refused loudly — never silently discarded',
+    { parkedInsideStorageLoad: parked, refusedWith: refused, inMemoryTitleAtTheTime: inMemory, titleInStorageAfter: afterA.title,
       persistenceStatus: store.getState().persistence.status });
   note('§4.2 rule 6a is *"a pending write is never outlived by its document"*, and R5-1 already');
   note('established that *"a flush is not a moment — it is an `await` long enough for the user to');
@@ -744,7 +784,14 @@ head('§K — **A-66 U1 … U5**');
     keys(p.photo));
   ok(store.getState().library.length === 0 && store.getState().doc === null, 'and the trip really went');
 
-  // U4 — the mid-flight file after a break at the DISPATCH guard: one pair in EACH store.
+  // U4 — the mid-flight file after a break at the DISPATCH guard.
+  //
+  // **RE-CUT AT ROUND 49 — A-68 Part 9's predicate, clause (i), applied to a line the ruling's own
+  // enumeration does not name (QA R49-2).** This is the FOURTH assertion of that class, not the
+  // third: A-67 Part 7a named one, round 48 named three (§B, §C and this one), and A-68 Part 9
+  // "corrected" the addresses to §B `:210` / §C `:263` and declared §K green. §K was not green —
+  // it had never been RUN, because §D's `dispatch` began throwing when A-67 landed and killed the
+  // probe there. The predicate finds it; three consecutive enumerations did not.
   const [q, s2] = mk('q');
   for (const t of ['A', 'B']) await s2.createTrip({ title: t, startDate: '2026-08-07', endDate: '2026-08-09' });
   await s2.flush();
@@ -758,8 +805,8 @@ head('§K — **A-66 U1 … U5**');
   await imp2;
   await s2.flush();
   const dA = await stored(q, qA);
-  ok(q.photo.thumbs.size === 1 && q.photo.displays.size === 1 && dA.photos.length === 0,
-    'A-66 **U4**: exactly one `[A, photoId]` pair in EACH byte store, with no record in A\'s document',
+  ok(q.photo.thumbs.size === 0 && q.photo.displays.size === 0 && dA.photos.length === 0,
+    'A-66 **U4** (re-cut at round 49): the guard precedes the `write`, so NO `[A, photoId]` pair is stranded in either byte store, and no record lands in A (A-66 Part 10 item 2)',
     { thumbs: q.photo.thumbs.size, displays: q.photo.displays.size, recordsInA: dA.photos.map((x) => x.id) });
   ok(client.orphanPhotoBytes(s2.getState()).length === 0 && core.validateTrip(dA).length === 0,
     'and `orphanPhotoBytes` claims nothing while `validateTrip(A)` reports nothing — there is no record to dangle',

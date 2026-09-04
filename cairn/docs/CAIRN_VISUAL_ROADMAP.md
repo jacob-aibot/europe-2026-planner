@@ -19,7 +19,49 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
-> **🟠 THE REPAIR PASS IS BUILT — as of 2026-09-04. This block is the newest.** Step 2d's photo
+> **🟠 THE SIXTH ADVERSARIAL ROUND IS DONE, AND IT SENDS ONE THING BACK — as of 2026-09-04. This
+> block is the newest.** Step 2d's photo half stays **designed ✅ · built ✅ · verified ⚠️ ·
+> shippable ❌**. Six rounds in, the foundation is very close, but it is **not** shippable yet:
+> the tester found **one serious problem and four small ones**, and the serious one is the same
+> symptom this repair pass was written to remove, reached by a different route.
+>
+> **What held, and it is most of it.** Everything the repair pass set out to do, it did. Deleting a
+> *different* trip, tapping a damaged trip, opening a trip that is gone, importing a broken backup —
+> none of those leave the trip you still have open with a spinner that never stops, and the tester
+> tried all nine of them plus two more. A trip deletion that fails **after** the pictures are gone
+> correctly re-asks. Removing a photograph while a trip switch is in flight touches nothing
+> belonging to the trip you moved to. The two places the design deliberately says *"do nothing
+> here"* were attacked from both sides and genuinely need nothing. **1404 automated checks pass**
+> and the type check is clean.
+>
+> **The one serious problem, in plain English.** When Cairn saves a picture it has to re-ask *"which
+> of this trip's pictures are actually on the disk?"* — and it correctly promises to ask. But it
+> only keeps that promise if you have not touched anything else in the meantime. Import two
+> photographs, and while the second one is still being resized, tap *delete* on some **other** trip
+> (or tap a trip that turns out to be damaged, or restore a broken backup) — and the question never
+> gets asked. The trip you are still looking at is left with a photo list that loads forever. Seven
+> different everyday taps produce it. Nothing is lost — the pictures are on the disk, the trip is
+> intact, and closing and re-opening the trip fixes it — but the whole point of this repair pass was
+> that a loading spinner always stops.
+>
+> **The four small ones.** Three are wording, not code: three of the design note's own "prove the
+> test can fail" recipes do not actually work as written, and the builder had already flagged two of
+> them honestly rather than fudging them. One is a real (older) rough edge: a browse-another-trip
+> panel stays open after you delete the trip it is showing. And one is a testing-hygiene problem
+> worth naming — one of the older test scripts had been quietly stopping a third of the way through
+> since three rounds ago, so a whole section of it had been reported as passing without ever having
+> run. That is fixed, and it is how the tester found a fourth old test line that needed re-cutting
+> when the design note said there were three.
+>
+> **Still nothing on your phone changes.** There is no photo screen yet — which is exactly why these
+> are being fixed now rather than after one exists.
+>
+> **What happens next:** a designer ruling on the one serious problem and the four small ones, then
+> a repair pass, then a seventh confirmation round. **Nothing here is shippable until a manager
+> verdict.** Two named items stay deliberately owed: the two-line `.tsx` catch for Ctrl/Cmd+Z (it
+> lands with the first screen work), and a browse panel that outlives its trip.
+
+> **🟠 THE REPAIR PASS IS BUILT — as of 2026-09-04. This block was the newest until the block above.** Step 2d's photo
 > half stays **designed ✅ · built ✅ · verified ⚠️ · shippable ❌**. The repair pass described in
 > the block below (**I-13e**) is now **written and tested** (`106bbd3`) — all four groups, and the
 > promise *"throwing an answer away is a promise to replace it"* is now in the code rather than
@@ -42,7 +84,8 @@ update to this file added that instruction).
 > (I-13 + I-13b + I-13c + I-13d + I-13e together), then a manager verdict. **Nothing here is
 > shippable until both.** Two named items are deliberately still owed and are written down rather
 > than dropped: the two-line `.tsx` catch for Ctrl/Cmd+Z (it lands with the first screen work), and
-> three old test lines that the round-49 tester re-cuts.
+> three old test lines that the round-49 tester re-cuts. *(Round 49 found a **fourth**, and it is in
+> the block above.)*
 
 > **🟠 BOTH SERIOUS PROBLEMS ARE RULED, AND THE ANSWER IS ONE SENTENCE THE LAST DESIGN WAS
 > MISSING — as of 2026-09-04. This block was the newest until the block above.** Step 2d's photo half stays **designed ✅ ·
