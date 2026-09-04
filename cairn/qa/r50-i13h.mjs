@@ -603,11 +603,38 @@ if (run('E')) {
   const [sa0, sa1] = bodyRange('cairn/packages/client/src/store/store.ts', 'function setAvailability(answer: AvailabilityAnswer)');
   const [is0, is1] = bodyRange('cairn/packages/client/src/store/reducer.ts', 'export function initialState()');
   note(`\`setAvailability\` body is store.ts:${sa0}-${sa1}; \`initialState\` is reducer.ts:${is0}-${is1}`);
+  // **RE-CUT AT ROUND 51** (BUILD-NOTES KD-95 item 3). `^setAvailability\(` recognised a call only
+  // when the whole argument started on the call's own line. §4.2 **A-71** Part 4c merges
+  // `readAvailabilityOnce`'s two branches into ONE call over a ternary whose `'ready'` arm is on
+  // the *next* line, so a site that goes through the fence read as `**UNCLASSIFIED**` — a probe
+  // failing for the shape of the argument rather than for where it is written. The class E1 exists
+  // to allow is *"an argument to a `setAvailability(` call"*, so the span of every such call is
+  // computed by balancing parentheses and a hit inside one is inside the fence, however the
+  // argument is laid out. **This is strictly narrower than a line-range allowance**: a write that is
+  // not lexically inside a `setAvailability(...)` argument list still reads UNCLASSIFIED.
+  const callSpans = (file) => {
+    const t = readFileSync(resolve(ROOT, file), 'utf8');
+    const code = t.split('\n').map((l) => l.replace(/^(\s*)\/\/.*$/, '$1')).join('\n');
+    const spans = [];
+    for (const m of code.matchAll(/(?<!function )setAvailability\(/g)) {
+      let d = 1;
+      let i = m.index + m[0].length;
+      for (; i < code.length && d > 0; i++) {
+        if (code[i] === '(') d++;
+        else if (code[i] === ')') d--;
+      }
+      spans.push([code.slice(0, m.index).split('\n').length, code.slice(0, i).split('\n').length]);
+    }
+    return spans;
+  };
+  const fenceSpans = { 'cairn/packages/client/src/store/store.ts': callSpans('cairn/packages/client/src/store/store.ts') };
+  note(`\`setAvailability(\` call spans in store.ts: ${JSON.stringify(fenceSpans['cairn/packages/client/src/store/store.ts'])}`);
   const classify = (h) => {
     const [f, n] = [h.slice(0, h.indexOf(':')), Number(h.slice(h.indexOf(':') + 1, h.indexOf('  ')))];
     const body = h.slice(h.indexOf('  ') + 2).trim();
     if (/^(\||readonly )?\s*(available|availabilityError)\??: (ReadonlySet<string> \| null|string \| null)|kind: 'ready'; tripId: string; available: ReadonlySet<string>/.test(body)) return 'declaration';
     if (/^setAvailability\(/.test(body)) return 'through the fence';
+    if ((fenceSpans[f] ?? []).some(([a, b]) => n >= a && n <= b)) return 'through the fence (a later line of the same call)';
     if (f.endsWith('store/store.ts') && n >= sa0 && n <= sa1) return 'setAvailability body';
     if (f.endsWith('store/reducer.ts') && n >= is0 && n <= is1) return 'initialState reseed';
     return null;
@@ -619,10 +646,41 @@ if (run('E')) {
 
   // E2 — the escape hatch a `Partial<Omit<…>>` parameter does NOT close: excess-property checking
   // only fires on object LITERALS. A `setPhotos(someVariable)` would compile with `available` on it.
-  const setPhotosCalls = [...src.matchAll(/setPhotos\(([^)]*)/g)].map((m) => m[1].trim().slice(0, 40));
-  ok(setPhotosCalls.every((a) => a.startsWith('{') || a.startsWith('patch:')),
-    'E2: every `setPhotos(` call passes an object **literal** — a variable argument would slip past excess-property checking and the fence with it', setPhotosCalls);
-  ok(!/setPhotos\([^)]*as (any|unknown|Partial)/.test(src) && !/as unknown as PhotoSession/.test(src),
+  //
+  // **RE-CUT AT ROUND 51** (BUILD-NOTES **KD-94**, judgement re-derived rather than taken).
+  // §10 **A-66 Part 11** adds `setBatch` — `(patch: Parameters<typeof setPhotos>[0]) => { if
+  // (!guard.current('doc', g)) return; setPhotos(patch); }` — which is the file's **one**
+  // `setPhotos(` call taking a variable, and the round-50 form of this line read that as the fence
+  // breaking. It is not: `patch` **is** `setPhotos`' own parameter type, so a `setBatch({available:
+  // …})` call site fails to compile exactly as `setPhotos({available: …})` does. Verified by
+  // compiling it, not by reading it — adding `available: new Set<string>()` to `importPhotos`'
+  // opening `setBatch({…})` yields `TS2353: 'available' does not exist in type
+  // 'Partial<Omit<PhotoSession, "tripId" | "available" | "availabilityError">>'`. So the property
+  // is re-cut in two halves: **every `setPhotos(` argument is a literal EXCEPT the one hop inside a
+  // wrapper whose parameter carries the fence's own type**, and **every call to that wrapper passes
+  // a literal**. Comments are stripped first — the round-50 form counted a `setPhotos(` inside a
+  // block comment as a call site.
+  const codeOnly = src.split('\n').map((l) => l.replace(/^(\s*)(\/\/|\*|\/\*).*$/, '$1')).join('\n');
+  const argOf = (text, from) => {
+    let d = 1;
+    let i = from;
+    for (; i < text.length && d > 0; i++) { if (text[i] === '(') d++; else if (text[i] === ')') d--; }
+    return text.slice(from, i - 1).trim();
+  };
+  const setPhotosCalls = [...codeOnly.matchAll(/(?<!function )setPhotos\(/g)].map((m) => argOf(codeOnly, m.index + m[0].length));
+  const nonLiteral = setPhotosCalls.filter((a) => !a.startsWith('{'));
+  ok(nonLiteral.length === 1 && nonLiteral[0] === 'patch',
+    'E2: exactly one `setPhotos(` call passes something other than an object **literal**, and it is `setBatch`\'s wrapper hop — every other argument is a literal, so excess-property checking fires on it',
+    { calls: setPhotosCalls.map((a) => a.slice(0, 40)), nonLiteral });
+  ok(/const setBatch = \(patch: Parameters<typeof setPhotos>\[0\]\): void => \{\s*\n\s*if \(!guard\.current\('doc', g\)\) return;\s*\n\s*setPhotos\(patch\);/.test(src),
+    'E2: and that wrapper\'s parameter IS `setPhotos`\' parameter type (`Parameters<typeof setPhotos>[0]`), so the fence is re-imposed at every one of its call sites — the unchecked hop is the one whose argument has already been checked (KD-94)',
+    src.match(/const setBatch = [^\n]*/g));
+  const setBatchCalls = [...codeOnly.matchAll(/(?<!const )setBatch\(/g)].map((m) => argOf(codeOnly, m.index + m[0].length));
+  ok(setBatchCalls.length === 4 && setBatchCalls.every((a) => a.startsWith('{')),
+    'E2: and all four `setBatch(` call sites — A-66 Part 11 requires exactly the four session writes `importPhotos` makes — pass object literals, so a fifth writer or a variable argument is a red line',
+    setBatchCalls.map((a) => a.replace(/\s+/g, ' ').slice(0, 50)));
+  ok(!/setPhotos\([^)]*as (any|unknown|Partial)/.test(src) && !/as unknown as PhotoSession/.test(src)
+     && !/setBatch\([^)]*as (any|unknown|Partial)/.test(src),
     'E2: and no call launders its argument through an assertion');
 
   // E3 — the OTHER way into the triple: a whole-state `set` outside the six reseeds.
@@ -866,6 +924,14 @@ if (run('H')) {
   note(`a literal grep over \`packages/client/src\` finds ${setA} × \`setAvailability(\` and ${setl} × \`settleAvailability(\``);
   ok(setA === 6,
     'H1: A-70 Part 7 item 3 publishes *"a literal `grep -c \'setAvailability(\'` over `packages/client/src` returns **six**"* — measured', setA);
+  note('**H1 went from RED to GREEN at I-13i without anybody fixing it, and it is a hazard rather');
+  note('than a relief** (round 51, **R51-6**). R50-1 filed the published **six** as one short of the');
+  note('literal **seven**; revision 52 applied that correction — and the SAME revision\'s §4.2 A-71');
+  note('Part 4c merged `readAvailabilityOnce`\'s two branches into one call. So the literal now');
+  note('returns **six** again, the corrected **7** is wrong, and the correction table\'s calls-only');
+  note('row (**6**, labelled *"what `settling.test.ts` asserts"*) disagrees with the shipped test,');
+  note('which asserts **5** after KD-92\'s re-cut. This line quotes the number as A-70 ORIGINALLY');
+  note('published it, which is why it reads green; `qa/r51-i13i.mjs` §H4 runs the corrected table.');
   ok(setl === 3,
     'H2: A-70 Part 7 item 3 publishes *"a literal `grep -c \'settleAvailability(\'` returns **three**"* — measured', setl);
   note('The shipped tests (`settling.test.ts` G21/G24) assert 6 and 3 with a `(?<!function )` lookbehind,');
@@ -888,7 +954,7 @@ if (run('I')) {
   ok(r483.length === 3 && r483.every((l) => /App\.tsx|keydown handler|removePhoto/.test(l)),
     'I1: three of them are R48-3 and every one names `apps/web/src/App.tsx` — the queued I-13f work, correctly attributed and not a new defect', r483.map((l) => l.slice(0, 70)));
   ok(census.length === 0,
-    'I2: and §A\'s file census is no longer among them — the I-13g/I-13h range grew it from five files to seven, BUILD-NOTES\' *"3 FAIL lines, all in §G"* did not count it, and this round re-cut the constant (R50-4)',
+    'I2: and §A\'s file census is no longer among them — the range grew it from five files to seven at I-13g/I-13h and to eight at the round-50 fix pass + I-13i, and it was re-cut at round 50 (R50-4) and again at round 51',
     census.map((l) => l.slice(0, 60)));
   ok(failLines.length === 3, 'I3: three and no more — nothing else in the I-13d probe regressed under A-69/A-70', failLines.length);
   ok(/-- r48-i13d\.mjs COMPLETE/.test(out),
@@ -909,16 +975,31 @@ if (run('J')) {
 
   // J1 — the source census. Every `setPhotos(` call that sits AFTER an `await` in a method that
   // captured a `doc` observation, and whether it is inside a `current('doc', g)` gate.
+  //
+  // **RE-CUT AT ROUND 51 — all three lines asserted the shape of the OPEN finding, and all three
+  // findings are now closed** (`37cf4f0` for R50-3, §10 **A-66 Part 11** for R50-2). Left as they
+  // were, two of them passed *vacuously* — the closing-settlement line's own anchor
+  // (`if (remaining > 0) setPhotos(`) stopped matching when the write moved to `setBatch`, so
+  // `lastIndexOf` returned −1 and the regex was run against a single space — and the third went red
+  // for the fix rather than for a defect. **A probe that reads its own silence as a pass is R49-2 in
+  // the probe layer**; each line now asserts the mechanism that replaced what it was watching, and
+  // carries the old expectation in its message so an empty set is never read as a measurement.
   const imp = src.slice(src.indexOf('async importPhotos('), src.indexOf('dismissPhotoFailures(): AppState'));
-  const failFn = imp.slice(imp.indexOf('const fail = (reason'), imp.indexOf('try {'));
-  ok(!/guard\.current\('doc', g\)/.test(failFn),
-    'J1: `importPhotos`\' `fail()` helper writes `photos.failures` with **no** `current(\'doc\', g)` gate — recorded, and J2/J3 measure what it costs');
-  const tailSet = imp.slice(imp.lastIndexOf('if (remaining > 0) setPhotos('));
-  ok(!/guard\.current/.test(tailSet.slice(0, 200)),
-    'J1: and the batch\'s closing `setPhotos({ pending })` is ungated too', tailSet.slice(0, 120));
+  const failFn = imp.slice(imp.indexOf('const fail = (reason'), imp.indexOf('};', imp.indexOf('const fail = (reason')));
+  ok(/setBatch\(\{ failures:/.test(failFn) && !/setPhotos\(/.test(failFn),
+    'J1 (re-cut): `importPhotos`\' `fail()` helper writes `photos.failures` through **`setBatch`** — which is `setPhotos` gated on `current(\'doc\', g)` (§10 A-66 Part 11). It used to call `setPhotos` directly with no gate at all, which is what J2 measured',
+    failFn.replace(/\s+/g, ' ').slice(0, 140));
+  const tailSet = imp.slice(imp.lastIndexOf('} finally {'));
+  ok(/if \(remaining > 0\) setBatch\(\{ pending:/.test(tailSet) && /\} finally \{/.test(tailSet),
+    'J1 (re-cut): and the batch\'s closing settlement is now in the loop\'s `finally` and goes through `setBatch` too — it used to be an ungated `setPhotos({ pending })` below the loop, which is what J3 measured (A-71 Part 4d + A-66 Part 11)',
+    tailSet.replace(/\s+/g, ' ').slice(0, 160));
+  ok(/const setBatch = \(patch[^\n]*\n\s*if \(!guard\.current\('doc', g\)\) return;/.test(imp),
+    'J1 (re-cut): and `setBatch` is the gate itself — one writer, checked once, so a fifth `setPhotos` added to this loop next year inherits the rule (A-66 Part 11\'s *"a gate here and not at each caller"*)',
+    imp.match(/const setBatch = [^\n]*\n[^\n]*/g));
   const rec = src.slice(src.indexOf('async reclaimPhotoBytes('), src.indexOf('async exportActive('));
-  ok(!/guard\.(observe|current)\('doc'/.test(rec),
-    'J1: `reclaimPhotoBytes` takes **no** `doc` observation at all, and its `setPhotos({ orphans })` is after an `await ports.photo.remove`');
+  ok(/const g = guard\.observe\('doc'\);/.test(rec) && /if \(guard\.current\('doc', g\)\) setPhotos\(\{ orphans: kept \}\);/.test(rec),
+    'J1 (re-cut): `reclaimPhotoBytes` now takes a `doc` observation and gates its `setPhotos({ orphans })` on it — **R50-3 is CLOSED** at `37cf4f0`. It had neither, and that is what J4 measured',
+    rec.match(/guard\.(observe|current)\('doc'[^\n]*/g));
 
   // J2 — DRIVEN. A file that fails to decode, with the transition landing inside its `derive`.
   {
@@ -936,7 +1017,7 @@ if (run('J')) {
     const st = store.getState();
     ok(st.doc?.id === B, 'J2 setup: the user is on B', st.doc?.id);
     ok(st.photos.failures.length === 0,
-      'J2: **FINDING R50-2** — a file picked in trip A that fails to decode after the user moves to B is reported against **B**: §10 A-66 Part 3 says *"nothing is reported at all"* and `importPhotos`\' own comment at the write guard says so twice',
+      'J2 (re-cut at round 51): **R50-2 is CLOSED** — a file picked in trip A that fails to decode after the user moves to B is reported **nowhere**, which is §10 A-66 Part 3\'s *"nothing is reported at all"* and Part 11\'s `setBatch`. It used to land on B by name',
       { reportedAgainstB: st.photos.failures, tripOnScreen: st.doc?.id });
   }
 
@@ -967,7 +1048,7 @@ if (run('J')) {
     offJ3();
     note(`J3: B's import spinner reported \`pending: 0\` with files still to land: ${zeroWhileFilesRemain}`);
     ok(pendingAfter >= pendingBefore - 1,
-      'J3: **FINDING R50-2** — trip A\'s abandoned batch subtracts its own remaining file count from **trip B\'s** progress fraction',
+      'J3 (re-cut at round 51): **R50-2 is CLOSED** — trip A\'s abandoned batch no longer subtracts its remaining file count from **trip B\'s** progress fraction (§10 A-66 Part 11 U7). It used to take four off a four-file batch of B\'s that had landed nothing',
       { pendingBefore, pendingAfter, delta: pendingAfter - pendingBefore });
     ok(store.getState().photos.pending === 0, 'J3: both fractions do reach zero in the end', store.getState().photos.pending);
   }
@@ -993,7 +1074,7 @@ if (run('J')) {
     const st = store.getState();
     ok(st.doc?.id === B, 'J4 setup: the user is on B', st.doc?.id);
     ok(st.photos.orphans.length === 0,
-      'J4: **FINDING R50-3** — a failed reclaim of trip A\'s orphan is reported against trip B, because `reclaimPhotoBytes` has no `doc` observation and its `setPhotos({ orphans })` follows an `await`. A-68 Part 5c gated `removePhoto`\'s tail for exactly this; this method was never gated',
+      'J4 (re-cut at round 51): **R50-3 is CLOSED** at `37cf4f0` — a failed reclaim of trip A\'s orphan is no longer reported against trip B, because `reclaimPhotoBytes` gained the `doc` observation and the `current(\'doc\', g)` gate A-68 Part 5c already gave `removePhoto`\'s tail',
       { orphansShownOnB: st.photos.orphans, tripOnScreen: st.doc?.id });
   }
 

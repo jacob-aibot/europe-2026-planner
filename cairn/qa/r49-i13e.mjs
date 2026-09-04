@@ -744,7 +744,18 @@ if (run('F')) {
   // still nested inside it (R45-4), and the LIVENESS half is discharged nowhere in this method —
   // it is discharged at the boundary, which is why the corrected G14 mutates `settleAvailability`
   // and not the supersede.
-  const tail = rp.slice(rp.indexOf('await ports.photo.remove('));
+  // **RE-CUT AT ROUND 51 — the ANCHOR moved, the property did not** (BUILD-NOTES KD-95 item 2).
+  // §4.2 **A-71** Part 4c row 2 replaces the literal `await ports.photo.remove(tripId, photoId);`
+  // with `await attempt(() => photo.remove(tripId, photoId))`, so this slice's anchor found nothing
+  // and `slice(-1)` handed the regex a single space — a probe measuring the shape of code that no
+  // longer exists, which is R49-2's own class one level down. The anchor is now **the byte delete,
+  // however it is spelled**: the port method and its two arguments, which is the fact the tail is
+  // defined relative to. Both spellings match, so this line reads the same at `43d0d20` and here.
+  const removeAt = rp.search(/await (?:attempt\(\(\) => )?(?:ports\.)?photo\.remove\(tripId, photoId\)/);
+  ok(removeAt >= 0,
+    'INCONCLUSIVE unless `removePhoto`\'s byte delete is found at all — the tail below is defined relative to it',
+    rp.match(/photo\.remove\([^\n]*/g));
+  const tail = removeAt < 0 ? '' : rp.slice(removeAt);
   ok(/guard\.supersede\('photoAvailability'\);\n(?: *\/\/[^\n]*\n)* *if \(state\.photos\.available !== null\) \{/.test(tail),
     'F1 (re-cut, A-69 Part 6 item 2): `removePhoto`\'s supersede is still hoisted OUT of R45-4\'s value guard, with that guard kept verbatim and nested inside — removing either re-opens R48-1',
     tail.slice(tail.indexOf("guard.supersede('photoAvailability')"), tail.indexOf("guard.supersede('photoAvailability')") + 90));
@@ -798,8 +809,27 @@ if (run('G')) {
     'G1a: `importPhotos` — no `await` between the step-5 `current(\'doc\', g)` check and its supersede',
     win.match(/await [^\n]*/g));
   const rp = src.slice(src.indexOf('async removePhoto(photoId: string)'), src.indexOf('async reclaimPhotoBytes'));
-  ok(/const g = guard\.observe\('doc'\);/.test(rp) && /await ports\.photo\.remove\(tripId, photoId\);[\s\S]{0,600}if \(guard\.current\('doc', g\)\) \{/.test(rp),
-    'G1b: `removePhoto` — `observe(\'doc\')` before the `await`, and the whole tail re-checks `current` after it');
+  // **RE-CUT AT ROUND 51, same reason as F1's** (BUILD-NOTES KD-95 item 2): A-71 Part 4c row 2
+  // replaced the byte delete's literal, so the second half of this conjunction was greping for text
+  // that no longer exists. The two PROPERTIES are unchanged and are both asserted below — the
+  // observation is taken before the delete, and **every** write after the delete is behind a
+  // re-check of `current`. The second is now checked exhaustively rather than by one adjacency: the
+  // post-delete slice is required to contain a `current('doc', g)` gate and to contain **no**
+  // `setPhotos(`/`setAvailability(` outside one, which is strictly more than the old `[\s\S]{0,600}`
+  // window and is what makes A-71's two-armed `if (r.ok) … else …` shape legible to this line.
+  const rpTailAt = rp.search(/await (?:attempt\(\(\) => )?(?:ports\.)?photo\.remove\(tripId, photoId\)/);
+  const rpTail = rpTailAt < 0 ? '' : rp.slice(rpTailAt);
+  const gatedArms = (rpTail.match(/if \(guard\.current\('doc', g\)\) \{/g) ?? []).length;
+  const writeSites = (rpTail.match(/(?<!\/\/[^\n]*)(setPhotos|setAvailability)\(/g) ?? []).length;
+  ok(/const g = guard\.observe\('doc'\);/.test(rp) && rpTailAt >= 0 && gatedArms >= 1,
+    'G1b: `removePhoto` — `observe(\'doc\')` before the byte delete, and the tail after it re-checks `current`',
+    { observe: /const g = guard\.observe\('doc'\);/.test(rp), deleteFound: rpTailAt >= 0, gatedArms });
+  // Every write in the tail must be inside one of those gates. Measured by deleting each gated
+  // block's body and asserting nothing writing is left over.
+  const ungated = rpTail.replace(/if \(guard\.current\('doc', g\)\) \{[\s\S]*?\n {8}\}/g, '');
+  ok(!/(setPhotos|setAvailability)\(/.test(ungated.split('\n').filter((l) => !/^\s*(\/\/|\*)/.test(l)).join('\n')),
+    'G1b: and NO `setPhotos(`/`setAvailability(` in that tail sits outside a `current(\'doc\', g)` gate — both arms of A-71\'s classifier are covered, not just the success one',
+    { writeSitesInTail: writeSites, leftOutside: ungated.match(/(setPhotos|setAvailability)\([^\n]*/g) });
   ok(!/if \(guard\.current\('doc', g\)\) \{\s*\n[\s\S]{0,3000}?guard\.supersede\('photoAvailability'\);/.test(imp),
     'G1c: and `importPhotos`\' supersede is NOT nested in a second `current` check — the asymmetry is real, not a copy-paste');
 

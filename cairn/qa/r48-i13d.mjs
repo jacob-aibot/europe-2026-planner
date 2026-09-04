@@ -157,18 +157,23 @@ if (run('A')) {
     names.filter((n) => !n.startsWith('cairn/')));
   ok(git('status', '--porcelain', '--', 'europe-2026-itinerary.html', 'docs/', 'tickets/').trim() === '',
     'the live planner, `docs/` and `tickets/` are clean in the working tree');
-  // **Widened at round 49**, and again at **round 50**: with `R48_HEAD` left at its default the
-  // range now also spans I-13e (`test/liveness.test.ts`, A-68 Part 7's invariant), I-13g
-  // (`test/settling.test.ts` and `test/settled-invariant.ts`, A-69's boundary) and I-13h (A-70).
+  // **Widened at round 49**, again at **round 50**, and again at **round 51**: with `R48_HEAD` left
+  // at its default the range now also spans I-13e (`test/liveness.test.ts`, A-68 Part 7's
+  // invariant), I-13g (`test/settling.test.ts` and `test/settled-invariant.ts`, A-69's boundary),
+  // I-13h (A-70), the round-50 fix pass (`test/photos.test.ts`, R50-3) and I-13i
+  // (`test/subscriber-error.test.ts`, A-71's brand + A-66 Part 11's `setBatch`).
   // The claim this line makes — **the whole photo arc stays inside `packages/client`, and neither
-  // `packages/core` nor `apps/web` is touched by any of it** — is unchanged across all four
+  // `packages/core` nor `apps/web` is touched by any of it** — is unchanged across all six
   // increments; only the census grew, so the constant is re-cut rather than the claim weakened.
+  // **The number is deliberately not in the message** (R50-4): a census that names its claim
+  // survives the next increment, a census that names its count does not.
   ok(names.filter((n) => n.startsWith('cairn/packages/') || n.startsWith('cairn/apps/')).join() ===
      ['cairn/packages/client/src/store/generation.ts', 'cairn/packages/client/src/store/store.ts',
       'cairn/packages/client/test/generation.test.ts', 'cairn/packages/client/test/liveness.test.ts',
       'cairn/packages/client/test/photos.test.ts', 'cairn/packages/client/test/settled-invariant.ts',
-      'cairn/packages/client/test/settling.test.ts'].join(),
-    'exactly seven source/test files moved across I-13d…I-13h, all in `packages/client` — `packages/core` and `apps/web` are untouched',
+      'cairn/packages/client/test/settling.test.ts',
+      'cairn/packages/client/test/subscriber-error.test.ts'].join(),
+    'the whole photo arc stays inside `packages/client` across I-13d…I-13i — `packages/core` and `apps/web` are untouched, and no file outside that one package moved',
     names.filter((n) => n.startsWith('cairn/packages/') || n.startsWith('cairn/apps/')));
 
   const added = git('diff', `${BASE}..${HEAD_}`, '--', 'cairn/packages/client/src', 'cairn/cli.ts', 'cairn/apps/web/src')
@@ -455,6 +460,12 @@ if (run('E')) {
   note('ordering is still the worst one available: the OLDER answer is released LAST in both faces, so');
   note('a re-nested supersede would let it land and both lines would go red again. The owed read adds');
   note('one parked `present()` per face, which is why the gates are drained newest-first.');
+  note('**Re-timed at round 51 (BUILD-NOTES KD-95 item 1, diagnosis re-derived rather than taken).**');
+  note('§4.2 A-71\'s `attempt()` adds one promise hop per classified port call, so the owed read is now');
+  note('issued one microtask LATER than it was — the face-1 drain used to find its gate parked and now');
+  note('finds the array empty for exactly one hop. Measured at `8d69ff1` and at HEAD side by side: same');
+  note('three `present()` calls, same final listing, same bytes; only the hop at which gate 3 appears');
+  note('moves. So the wait is on the GATE and no longer on a tick count — `gate()` below.');
   {
     // Face 1 — an import lands while a "Try again" read is in flight. The read was issued before
     // the bytes existed; it lands after them and reports the new photograph as `missing`.
@@ -477,10 +488,19 @@ if (run('E')) {
     const retry = store.refreshPhotoAvailability();          // the user taps *Try again* while it decodes
     await tick();
     await p.photo.release(1);
-    await tick(); await tick();                              // the owed read reaches its gate
-    await p.photo.presentGates.pop().run();                  // A-68 Part 5b's owed read answers
+    // **Wait for the gate, not for a fixed number of ticks** (round 51). `pick` keeps the ordering
+    // this face exists to apply — newest gate first, then the one left behind — and a gate that
+    // never arrives is an explicit INCONCLUSIVE rather than a `TypeError` on `undefined.run()`.
+    const gate = async (pick, why) => {
+      for (let k = 0; k < 200 && p.photo.presentGates.length === 0; k++) await tick();
+      const g = pick(p.photo.presentGates);
+      ok(g !== undefined, `INCONCLUSIVE unless a parked \`present()\` gate arrives for: ${why}`,
+        { parked: p.photo.presentGates.length });
+      if (g) { await g.run(); await tick(); }
+    };
+    await gate((gs) => gs.pop(), 'A-68 Part 5b\'s owed read answers');
     await inflight;                                          // bytes written, record dispatched
-    await p.photo.presentGates.shift().run();                // the older answer lands last — and is DROPPED
+    await gate((gs) => gs.shift(), 'the older answer lands last — and is DROPPED');
     await retry;
     p.photo.slowPresent = false;
     const s = store.getState();
@@ -510,7 +530,12 @@ if (run('E')) {
     // photograph, so `readPhotoAvailability` takes its `ids.length === 0` branch and writes an
     // empty set synchronously. That is the answer the supersede owed.
     await rm;
-    await p.photo.presentGates.shift().run();                // the older answer lands last — and is DROPPED
+    // Same round-51 re-timing as face 1: wait for the gate rather than for a tick count, so a hop
+    // added anywhere under this call is INCONCLUSIVE and not a `TypeError`.
+    for (let k = 0; k < 200 && p.photo.presentGates.length === 0; k++) await tick();
+    const g2 = p.photo.presentGates.shift();                 // the older answer lands last — and is DROPPED
+    ok(g2 !== undefined, 'INCONCLUSIVE unless the older `present()` answer is still parked in face 2');
+    if (g2) await g2.run();
     await retry;
     p.photo.slowPresent = false;
     store.undo();                                            // A-65: the record comes back, the bytes do not

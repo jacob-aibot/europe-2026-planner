@@ -19,8 +19,53 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
+> **🟢 THE FIX IS BUILT, AND THE TESTER COULD NOT BREAK IT — as of 2026-09-04. This block is the
+> newest.** Step 2d's photo half stays **designed ✅ · built ✅ · verified ✅ · shippable ❌**.
+> **I-13i is built** and it survived a full adversarial round: **0 blockers, 0 major problems.**
+>
+> **The one-sentence version.** All five of the false statements the block below describes are
+> gone — including the one that mattered most, *"couldn't save"* over a trip that is safely in
+> storage — and the tester spent a round trying to get any of them back and could not.
+>
+> **What was actually tried, so "could not break it" means something.** The invisible mark Cairn
+> now puts on a crash was attacked on every axis the tester could think of: a storage error whose
+> wording is *character-for-character identical* to a crash's (still correctly blamed on storage,
+> because the mark is on the object and not on the words); six different kinds of thing a screen
+> could throw, including nothing at all; a crash inside a crash; two copies of Cairn sharing one
+> browser database, where one copy's mark must not fool the other; and a search of the whole store
+> for any place that could quietly swap one error for another in transit — there is none.
+>
+> **And the one that decides whether your work is safe was driven the way you would actually hit
+> it**: not through a test hook but through the real save-a-few-seconds-after-you-stop-typing
+> timer, with the screen crashing on the *"Saved"* badge, and with a second save queued behind the
+> broken one. Every time: Cairn says **saved**, the fence has moved, and **the tester read the bytes
+> back out of storage to check the trip really is there** rather than trusting the label. A second
+> save afterwards still works — one crash does not poison the queue. The same through a genuine
+> two-window edit conflict and its merge.
+>
+> **The mid-import fix, checked the same way.** Leaving a trip while photos are importing no longer
+> puts that trip's report or its progress bar on the next trip's screen — on **all five** ways an
+> import can fail, including the two the design's own new tests do not cover.
+>
+> **Six small things were found, and every one of them is a wrong sentence or a wrong number in a
+> document rather than a bug in the app.** Three are in the design ruling itself: a check written to
+> prove the fix matters does not do what it says it does (the fix does matter, but for a narrower
+> reason than the ruling claims); a promise that a certain rare mix-up "fails safely" turns out to
+> leave *"Saving…"* on screen forever instead — unreachable in the shipped app, but the sentence is
+> wrong; and the ruling names a function that has never existed in Cairn. Two more are counts
+> published in documents that were stale by the time they were published, one of them stale because
+> of the very change it shipped alongside. The last is a pre-existing gap: there is one way to leave
+> a photo import — the screen crashing on the very first thing the import draws — where the progress
+> bar is left running forever. It is older than this work and the tester proved that by running the
+> same test against last week's code.
+>
+> **Still nothing on your phone changes.** There is still no photo screen — that is **I-13f**.
+>
+> **What happens next:** the six small corrections (five for the designer, one for the builder);
+> then **I-13f**, the actual photo screen; then a manager verdict on the whole photo stretch.
+
 > **🔵 THE APP HAS BEEN BLAMING YOUR DATA FOR ITS OWN CRASHES, IN FIVE PLACES — as of 2026-09-04.
-> This block is the newest.** Step 2d's photo half stays **designed ✅ · built ✅ · verified ✅ ·
+> This block was the newest until the block above.** Step 2d's photo half stays **designed ✅ · built ✅ · verified ✅ ·
 > shippable ❌**. **Nothing new is built yet** — this is a design ruling, and the repair pass it
 > queues is **I-13i**.
 >

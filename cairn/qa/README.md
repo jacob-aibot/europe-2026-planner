@@ -3469,7 +3469,8 @@ enumeration) and **A-70** (the predicate that asks the slot rather than the fiel
 `43d0d20..e051306`. One probe, three companions, run from `cairn/`:
 
 ```bash
-node --experimental-strip-types qa/r50-i13h.mjs   # 11 sections; 8 FAIL, 4 ids, 109 ok
+node --experimental-strip-types qa/r50-i13h.mjs   # 11 sections; 8 FAIL, 4 ids, 109 ok at e051306
+                                                  # (1 FAIL after round 51 — see that section)
 R50_ONLY=J,K node --experimental-strip-types qa/r50-i13h.mjs   # just the two MAJORs
 bash qa/r50-recut-vacuity.sh                      # the REQUIRED vacuity controls for the re-cuts
 bash qa/r50-controls.sh                           # R50-2/R50-3/R50-5 measured identical at 43d0d20
@@ -3524,3 +3525,71 @@ Not re-run this round, deliberately: `qa/r46-idb-keys.mjs`, `qa/i7a-idb-rowkeys.
 `qa/i13b-gate.mjs`, `qa/i13-photo-browser.mjs`, `qa/r3-upcast.mjs`. The I-13g/I-13h range touches
 **no `apps/web` file at all** — six files moved, all in `packages/client` — so a browser run would
 re-confirm a number with no reason to doubt it.
+
+---
+
+**Round 51** is the confirmation pass over §4.2 **A-71** (*an emit is foreign code — a `catch` that
+names a failure may not enclose one*) and §10 **A-66 Part 11** (*one gated writer*), over
+`e051306..032a4cb` — the round-50 fix pass (`37cf4f0`), architect revision 52 (`8d69ff1`) and the
+I-13i build (`032a4cb`). One probe, two companions, run from `cairn/`:
+
+```bash
+node --experimental-strip-types qa/r51-i13i.mjs   # 8 sections; 7 FAIL, 6 ids
+R51_ONLY=B,C node --experimental-strip-types qa/r51-i13i.mjs   # the brand and the write fence
+bash qa/r51-recut-vacuity.sh                      # the REQUIRED vacuity controls for the re-cuts
+bash qa/r51-controls.sh                           # R51-4 measured identical at 8d69ff1
+```
+
+   # A  the fences over `e051306..HEAD`: zero `.tsx`, zero dependency movement, everything that
+   #    moved under `packages/` is in `packages/client`, `generation.ts` byte-identical, and the
+   #    privacy greps over every added production line. ALL CLEAR.
+   # B  **the brand attacked as a mechanism.** `WeakSet` identity vs. a same-message error; a
+   #    re-wrap between `emit` and `attempt` (there is none — `writeAndSettle` has no `catch`);
+   #    six non-object throws; a NESTED emit; two stores over one storage; and the brand's
+   #    unobservability. One FAIL: **R51-2**, the false-positive direction.
+   # C  **the three write-fence sites**, which KD-93 shows are the only ones where the brand is
+   #    consulted: a REAL debounced autosave, a second write queued behind a poisoned one, a real
+   #    two-tab merge conflict, `doMerge`'s write-it-back branch, and G36's genuine-failure
+   #    control beside each. ALL CLEAR — the save's true state reaches the UI layer every time.
+   # D  **`setBatch`'s completeness.** Four `setBatch(`, one `setPhotos(` (the wrapper's own hop),
+   #    one `setAvailability(` with no `await` between it and the `doc` check. No fifth writer.
+   #    Driven: the `unsupported_type` arm U6 does not cover, and U7 with the decode-failure arm.
+   # E  **A-71 Part 6 re-derived in worktrees.** G35 run as printed (**R51-1**, confirming KD-93),
+   #    the sharper control, and the whole criterion set against the pre-A-71 store — 10 of 11 red
+   #    there, G36 green, which is what makes every green here mean something.
+   # F  the `catch` census by brace-balancing (8, matching the published 13 → 8), the `try` bodies
+   #    A-71 Part 5 items 3 and 4 keep, and residue 2 driven. One FAIL: **R51-3**, `saveAs`.
+   # G  **R51-4** — A-71 Part 4d's *"the fraction settles on EVERY exit"* and the one exit its
+   #    `finally` sits below. G3 is the control (RED at `8d69ff1`, GREEN here: the `finally` is
+   #    load-bearing); G4 checks the write-failure `continue`'s arithmetic in all three positions.
+   # H  the numbers this pass publishes, run rather than read: 1441/0, the probe FAIL counts
+   #    (**R51-5**) and A-70 Part 7 item 3's revision-52 correction table (**R51-6**).
+
+**Six assertions across three probes were re-cut by this round** (BUILD-NOTES **KD-95**), and each
+one is a probe that had stopped measuring what it names:
+
+| probe | what moved | re-cut to |
+|---|---|---|
+| `r48-i13d.mjs` §E faces 1–2 | `attempt()` adds one promise hop per classified port call, so the owed read's gate is parked one microtask later; the drain's two bare ticks were one short and `presentGates.shift()` threw | **wait for the gate**, not for a tick count, with an explicit INCONCLUSIVE if none arrives. Diagnosis re-derived side by side at `8d69ff1` and HEAD: same 3 `present()` calls, same final listing, same bytes — only the hop moves |
+| `r48-i13d.mjs` §A | the census grew to eight files (`photos.test.ts`, `subscriber-error.test.ts`) | the constant widens and the **message names the claim rather than the count** (R50-4's rule) |
+| `r49-i13e.mjs` **F1**, **G1b** | both anchored on the literal `await ports.photo.remove(tripId, photoId);`, which A-71 Part 4c row 2 replaced — `indexOf` returned −1 and F1 was running its regex against a single space | re-anchored on **the byte delete however it is spelled**; G1b widened from one adjacency to *"no `setPhotos`/`setAvailability` in the tail sits outside a `current('doc', g)` gate"*, which covers both arms of the new classifier shape |
+| `r50-i13h.mjs` **E1** | `^setAvailability\(` matched a call only when its whole argument began on the call's own line; A-71 Part 4c's merged ternary spans three | the **span** of every `setAvailability(` call, by balancing parentheses |
+| `r50-i13h.mjs` **E2** | `setBatch`'s `setPhotos(patch)` is the file's one variable-argument call (**KD-94**) | *"exactly one non-literal, and it is the wrapper hop"* + the wrapper's parameter type + **all four `setBatch(` call sites pass literals**. KD-94's judgement was verified by **compiling** `setBatch({available: …})`, which fails with `TS2353` exactly as `setPhotos` does |
+| `r50-i13h.mjs` **J1** ×3 | all three asserted the SHAPE of R50-2/R50-3 while both were open; two passed **vacuously** after the fix (the closing-settlement anchor stopped matching, so the regex ran against a single space) and the third went red for the fix | each asserts the mechanism that replaced it — `fail()` through `setBatch`, the settlement in the `finally`, `setBatch` as the gate, and `reclaimPhotoBytes`' observation |
+
+`bash qa/r51-recut-vacuity.sh` plants the fault each re-cut line exists to catch, in eight
+throwaway worktrees, and reports **ALL CONTROLS SOUND (10)**. It distinguishes **ABSENT** from
+**GREEN** for round 50's reason. C7/C8 run the re-timed §E at `8d69ff1` and at HEAD and require it
+green at both — the re-timing must not change what the section measures.
+
+**After the re-cuts: `qa/r45-i13.mjs`, `qa/r46-i13b.mjs`, `qa/r47-i13c.mjs` and `qa/r49-i13e.mjs`
+are green end to end; `qa/r48-i13d.mjs` reports exactly 3, all R48-3, all routed to I-13f;
+`qa/r50-i13h.mjs` reports exactly 1, which is H2 — R50-1's second published count, still owed.**
+All four now print A-69 Part 9's terminal marker, and so does `r51-i13i.mjs`.
+
+Not re-run this round, deliberately: `qa/r46-idb-keys.mjs`, `qa/i7a-idb-rowkeys.mjs`,
+`qa/i13b-gate.mjs`, `qa/i13-photo-browser.mjs`, `qa/r3-upcast.mjs`. The I-13i range touches **no
+`apps/web` file at all** — one production file moved, `packages/client/src/store/store.ts` — so a
+browser run would re-confirm a number with no reason to doubt it. **A-71 Part 7 residue 4 stands
+unmeasured**: face 4 has still not been driven against `apps/web`'s IndexedDB storage port, and §C
+drives it against the memory port only.

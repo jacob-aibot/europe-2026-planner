@@ -15,6 +15,10 @@ adding, moving or trusting one.
 
 ## Document cost map
 
+**Three rows re-measured at QA round 51 (2026-09-04)** — `QA-FINDINGS` 313k → **318k** with round 51,
+`CAIRN_VISUAL_ROADMAP` 55k → **57k** with its newest block, and `BUILD-NOTES` 209k → **216k** with
+I-13i's addendum (KD-91…KD-95); the other three did not move (`ARCHITECTURE` is 411k, `ROADMAP` 152k,
+`REVIEW` 52k).
 **Two rows re-measured at revision 52 (2026-09-04)** — `ARCHITECTURE` 399k → **411k** with §4.2's **A-71**
 (§4 alone 102k → **109k**) and §10's **A-66 Part 11** (§10 38k → **40k**), plus A-70 Part 7 item 3's
 corrected counts; and `ROADMAP` 147k → **152k** with **I-13i** and the revision-52 ledger entry (Phase 2
@@ -87,12 +91,12 @@ whole is a decision to spend a quarter of a context window; `doc-section` exists
 | `PRODUCT-VISION.md` | ~10k tok | you're the architect and the question is *why this order* | Appendix A is Jacob's words verbatim — quote it, don't paraphrase it |
 | `ARCHITECTURE.md` | **~411k tok** | **never.** Not even for a broad design revision — read sections | `cairn/tools/doc-section ARCHITECTURE <sections>`; run it bare to list every section with its size, and see the table at the top of the doc for who needs what. §2 is 124k, §8 is **82k** (revision 41: A-59/A-60 joined §8.4; revision 42: A-60 gained Part 6; revision 44: A-38 Part 5's checkable line restated), **§4 is 109k** — revision 47 put **A-67** (the store's generation guard) at the end of §4.2, 59k → 69k, revision 48 gave it **Part 7a**, 69k → 71k, revision 49 put **A-68** (~11k) directly under it, 71k → 82k, revision 50 put **A-69** (~12k, the settling boundary that ends the enumeration) under *that*, 82k → 93k, revision 51 put **A-70** (~7k, the predicate that asks the slot rather than the field) under *that*, 93k → 102k, and revision 52 put **A-71** (~8k, the brand that stops a `catch` blaming the data for a broken view) under *that*, 102k → **109k**; they are the five entries in §4 that are *not* about the map, and **A-71 is read alone** — it is not part of the generation-guard family — so a builder of I-13i reads **A-71 whole** plus §10 A-66 Part 11, and needs none of §4.4; **§10 (photos) is 40k and self-contained** — revision 40 built it, revision 43 added A-61, revision 44 added **A-62/A-63/A-64** (16k → 25k), revision 45 added A-62 Part 8's fourth residue (25k → 27k), revision 46 added **A-65/A-66** (27k → 36k), revision 47 added A-66's **Part 10** (36k → 37k), revision 51 added A-65 T1's scope sentence (37k → 38k) and revision 52 added A-66's **Part 11** (~2k, 38k → **40k**) |
 | `ROADMAP.md` | **~152k tok** | **never** | `cairn/tools/doc-section ROADMAP "Phase N" "Sequencing rules"` (matches heading text as well as number — see the tool's `--help`). Phase 2 alone is **~109k**; grep for your increment |
-| `BUILD-NOTES.md` | **~209k tok** | **never** | `cairn/tools/doc-section BUILD-NOTES <sections>`; check the Status note at the top before trusting §4/§5's numbers |
-| `QA-FINDINGS.md` | **~313k tok** | **never** — it is the largest document in the repo | the Status note at the top + the specific finding(s) you were routed |
+| `BUILD-NOTES.md` | **~216k tok** | **never** | `cairn/tools/doc-section BUILD-NOTES <sections>`; check the Status note at the top before trusting §4/§5's numbers |
+| `QA-FINDINGS.md` | **~318k tok** | **never** — it is the largest document in the repo | the Status note at the top + the specific finding(s) you were routed |
 | `REVIEW.md` | ~52k tok | you're the builder/breaker acting on its routing table — and then only the current verdict | the Status note at the top tells you whether it's even current; the verdict table names which entries are closed |
 | `docs/HISTORY.md`, `cairn/docs/archive/*` | — | a finding or a comment cites it by name | never by default |
 | `europe-2026-itinerary.html` | ~44k tok | you're auditing render paths end to end (say so) | `node cairn/tools/extract-legacy.mjs`, or grep — see `cairn-constraints` §1 |
-| `CAIRN_VISUAL_ROADMAP.md` (+ its `.html` twin) | ~55k tok | never — read the **newest block only**, which supersedes the ones below it | not a contract doc; skip it for a routine builder/breaker task, and see below for when to *update* it |
+| `CAIRN_VISUAL_ROADMAP.md` (+ its `.html` twin) | ~57k tok | never — read the **newest block only**, which supersedes the ones below it | not a contract doc; skip it for a routine builder/breaker task, and see below for when to *update* it |
 
 ## Delegation — when a change needs which stage
 
