@@ -74,8 +74,10 @@ const VERSIONS = 'versions';
  * (number < date < string < binary < array); and two arrays compare item by item. So
  * `IDBKeyRange.bound([tripId], [tripId, []])` is exactly one trip's records — the upper bound
  * outranks every `[tripId, <string>]` because an array outranks a string. That is a search-result
- * verification in A-62 Part 5 and a **measurement** in `qa/i7a-idb-rowkeys.mjs` phase 5, which
- * runs it on Chromium and WebKit.
+ * verification in A-62 Part 5; `qa/i7a-idb-rowkeys.mjs` **phase 4** measures the CONSEQUENCE on
+ * Chromium and WebKit (that bound is exactly one trip's records, and reaches no other trip's),
+ * and `qa/r46-idb-keys.mjs` §A asks the engine for the ORDERING itself through `indexedDB.cmp`
+ * (QA R46-5 — the citation used to name a phase 5 that does not exist).
  *
  * **Why separate stores and not a field on the `docs` record.** The `docs` record is rewritten by
  * every `saveIfVersion`; a 3 MB derivative sitting in it would be re-serialised and re-written on

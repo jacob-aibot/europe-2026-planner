@@ -71,6 +71,30 @@ function datePrecision(v: unknown, path: string): DatePrecision {
   return v as DatePrecision;
 }
 /**
+ * A **trip id**, refused if it carries U+0000 — QA **R46-6**.
+ *
+ * Ids are opaque (§2.1) and this refuses one character rather than imposing a shape: no
+ * alphabet, no length, no case. The character is the one that cannot be carried through a
+ * flattened compound key. §10.3 keys photo bytes by `[tripId, photoId]`, and a store that
+ * cannot hold an array key — `packages/client`'s in-memory `PhotoPort`, and any future port
+ * whose backing store is a string map — has to flatten it with a separator no id contains.
+ * `IdFactory` mints no NUL, but `fromJSON` does not take its ids from `IdFactory`: it takes
+ * them from a file, and `store.importDoc` calls it on a backup the user can hand-edit. So the
+ * one value that can forge a tenancy collision is refused where every document passes.
+ *
+ * **Only the trip id.** It is the tenancy half of that key, and the half a collision is
+ * dangerous in — a `photoId` carrying the separator is still exactly its own trip's record,
+ * in the engine (`qa/r46-idb-keys.mjs` §C) and in the double. Widening this to every id in the
+ * document would be a migration risk with no defect behind it.
+ */
+function tripId(v: unknown, path: string): string {
+  const s = str(v, path);
+  if (s.includes('\u0000')) {
+    throw new TripParseError('a trip id may not contain the character U+0000', path);
+  }
+  return s;
+}
+/**
  * A date field, refused unless it is a real calendar date — A-45.
  *
  * A-20: *"`fromJSON` decides whether a document IS a `Trip`; `validateTrip` decides whether a
@@ -490,7 +514,8 @@ export function fromJSON(input: string | unknown): Trip {
   const o = obj(migrateDoc(obj(raw, '$')), '$');
   const party = obj(o.party, '$.party');
   return {
-    id: str(o.id, '$.id'),
+    // R46-6: a trip id is refused for one character, U+0000 — see `tripId`.
+    id: tripId(o.id, '$.id'),
     title: str(o.title, '$.title'),
     // §2.14 rule 1 refuses a document whose owner is "neither the local user … nor absent",
     // so ABSENT is an allowed input class and the parser may not refuse it before the

@@ -1,5 +1,33 @@
 # Cairn — build notes, Phase 1 (and Phase 2 in progress)
 
+> **Addendum — QA round 46's builder-routed findings: the import saga gains the other half of its
+> tenancy check, and three smaller repairs (`docs/QA-FINDINGS.md` round 46 — **R46-1**, **R46-2**,
+> **R46-3**, **R46-5**, **R46-6**, **R46-7**).**
+> Not an increment: the six findings round 46 routed to the builder from the I-13b confirmation
+> pass. **R46-4 is NOT here** — it is routed design → architect (a fourth residue on A-62 Part 8)
+> and its implementation half waits on that ruling. Builds on `7cb5965`.
+>
+> | | |
+> |---|---|
+> | **What runs, and the exact commands** | `cd cairn && npm run typecheck` — **clean on both projects, exit 0**. `npm run test:tap` → **1359 pass / 0 fail / 0 skipped / 0 cancelled** (1348 before; **+11**). `node --experimental-strip-types qa/r46-i13b.mjs` → **2 FAIL, down from 16**, and both are out of scope by routing: **R46-4** (architect) and **R45-14** (architect, still correctly open). `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node --experimental-strip-types qa/r46-idb-keys.mjs` → **ALL OK** on **chromium** and on **webkit**. `qa/i13b-gate.mjs` → **ALL OK**. `qa/i7a-idb-rowkeys.mjs` → **ALL OK**, four phases. |
+> | **R46-1 (MAJOR, the regression) — a batch belongs to one trip, and now both ends check it** | A-62's captured `tripId` pinned the BYTES to the trip the files were picked from; `state.doc` is live, so the RECORD was pinned to whatever trip was open when the decode finished. Two guards in `importPhotos`, both after the decode and both against `tripId`: **before the write**, `isLiveTrip(tripId)` — a trip that has been deleted can never reference, reclaim or report a byte record, so nothing more is written; **before the dispatch**, `state.doc?.id === tripId` — the loop stops rather than filing the record into a trip that never asked for it. `break` leaves `remaining` counting the abandoned files, so R45-11's progress fraction still settles honestly. **Dropped, never retargeted** — `scheduleSave`'s rule for a late timer (R3-2) and `doMerge`'s own `state.doc !== doc`, one subsystem over. All three of the breaker's faces are closed: no record in the other trip, no `photo_attach_dangling`, no bytes outliving a deleted trip and no false `storage_failed`. **KD-82** records what this deliberately does not do. |
+> | **R46-2 (MAJOR) — the merge path gets `importDoc`'s line** | `doMerge` replaces `state.doc` with a document that can hold photo records this session never asked `present()` about, against an availability set `openTrip` read minutes ago — R45-4's defect on the one path the fix pass did not cover. One `await readPhotoAvailability(state.doc)` after the chained write, outside the chain exactly as `importDoc`'s is. |
+> | **R46-3 (MAJOR) — `'loading'` is transient again** | `readPhotoAvailability` now stamps only when `state.doc?.id` is still the document it read for, on **both** the success and the failure branch. Two overlapping `openTrip` calls used to let the earlier trip's answer land last and stamp `photos.tripId` with a trip that was no longer open, which `photosFor` renders as `'loading'` for ever — and §10.6 property 6 attaches **Try again** to `'unreadable'`, not to `'loading'`. Whichever open sets `state.doc` last also issues the read that stamps, so the last one to resolve wins by construction rather than by luck. |
+> | **R46-5 (MINOR) — the citation resolves** | `apps/web/src/ports/storage.ts` cited a `qa/i7a-idb-rowkeys.mjs` *phase 5* that does not exist. It now cites **phase 4** (which measures the consequence) and `qa/r46-idb-keys.mjs` §A (which measures the ordering itself with `indexedDB.cmp`, on both engines); the probe's own header stops describing a phase it does not run. **A test now checks the class rather than the instance**: `test/qa-probes.test.ts` resolves every probe phase a shipped source cites. |
+> | **R46-6 (MINOR) — the double models the array key, and `fromJSON` constrains the id** | Both halves, because the breaker's §I asserts both. `photoByteKey` now **escapes** both halves (`\u0000` escapes itself and the separator), so an unescaped separator in a flat key is always the boundary — which is what an array key gives for free. A `tripId` of `'t' + NUL + 'photo-1'` is no longer swept by `removeTrip('t')`, matching `IDBKeyRange.bound(['t'], ['t', []])` on both engines, while a `photoId` carrying the separator is still its own trip's record. And `fromJSON` refuses a **trip id** containing U+0000 at `$.id` — the tenancy half of that key, taken from a file `importDoc` will parse for anyone who hand-edits a backup. Deliberately **only** the trip id: no alphabet, no length, no shape, and no other id class touched. |
+> | **R46-7 (MINOR) — five probes stop being binary files** | The literal NUL in `qa/i13b-gate.mjs` is now `\u0000`, the identical value with a reviewable diff. Four more probes had the same defect and are fixed with it (`i5c-sweep`, `i6a-gate`, `r30-rowgates`, `r34-a44`) — the guard is a property, not a file. **Each was run before and after and its output compared: byte-identical** (the one difference is `i5c-sweep`'s own wall-clock timing line). `test/qa-probes.test.ts` fails if any `qa/` probe grows one again. |
+> | **What I could not verify** | **Nothing rendered.** This pass opens no `.tsx` and R46-1's user-visible face is established at the store layer, exactly as round 46 established it. **The narrow window inside `deleteTrip`'s own link**: `isLiveTrip` reads this store's state, so an import resuming *between* the cascade's `removeTrip` and its library `set` can still write one derivative pair for a trip that is going away. Closing it would put the byte write on the save chain, which the dispatch → autosave → `chainOntoSaving` path cannot nest into. It is one orphan pair on a race inside a race, it is the same shape as R46-4, and it is disclosed rather than hidden. **iOS, a real `QuotaExceededError`, `navigator.storage.persist()` on the phone** — all three still unmeasurable here, unchanged from I-13b. |
+> | **The fence** | `git diff --name-only` — **zero** `.tsx`, zero under `cairn/docs/design/`, zero `package.json`/lockfile movement, nothing outside `cairn/`. The root planner is untouched: `git status --porcelain -- europe-2026-itinerary.html docs/ tickets/` is empty and its md5 is still **`7c69df3208ef91c8be0fb59a56443188`**. `SCHEMA_VERSION` is still **2**, core's runtime export surface is still **83**, and `PhotoImportFailure` still has exactly its five ruled arms. `ARCHITECTURE.md` and `ROADMAP.md` are untouched by this pass — a concurrent architect pass owns them. |
+>
+> **One objection, and it is R46-1's report rather than its fix.** The finding asks for *"a named
+> failure that is not `storage_failed`"* for the abandoned files. §10.6 enumerates
+> `PhotoImportFailure` as five arms in the document, so naming a sixth is a widening of a ruled
+> type and an architect's call (sequencing rule 5) — I have implemented the stop and reported
+> nothing, which is honest (nothing failed; the user left the trip) and is less than the finding
+> wants. **KD-82** carries it with what closing it would cost: one arm on the union and one
+> sentence in §10.6.
+
+
 > **Addendum — ROADMAP `I-13b`: the photo repair pass. `[tripId, photoId]` byte keys (§10 A-62),
 > a fourth `PhotoListing` phase (A-63), and A-57 Part 4's withdrawn provenance claim (A-64).**
 > Not an increment: the code side of architect revision 44 (`61b4836`), plus the three round-45
@@ -3679,14 +3707,42 @@ fail (b) by four orders of magnitude, which is the failure the criterion was wri
 §10.1 drops fields. This is not the builder's call (sequencing rule 5), and both readings are
 honest — I have implemented the record class and reported the number.
 
+### KD-82 — an import abandoned by a trip transition reports nothing, because §10.6's failure vocabulary has no arm for it
+
+**Where:** `packages/client/src/store/store.ts` (`importPhotos`, the two R46-1 guards) ·
+ARCHITECTURE **§10.6** (`PhotoImportFailure`) · QA round 46 **R46-1**.
+
+R46-1's stated fix is *"stop the batch, remove the bytes it just wrote, and report a named failure
+that is not `storage_failed`."* This pass implements the stop and **not** the report, and diverges
+from the finding on the removal too. Both halves, because both are decisions rather than oversights:
+
+- **No new failure reason.** §10.6 enumerates `PhotoImportFailure` as five arms, in the document,
+  and naming a sixth (`'trip_changed'`) is a widening of a ruled type — an architect's call, not a
+  builder's (sequencing rule 5). So the abandoned files are counted out of `pending` and reported
+  as nothing. That is not *"silently dropped"* in §10.6's sense — nothing failed; the user left the
+  trip — but it is less than the finding asked for, and a surface currently has no way to say *"the
+  other 8 photographs were not added because you switched trips."* **What it would take:** one arm
+  on the union and one sentence in §10.6.
+- **The bytes of the file that was mid-flight stay under their own trip's key**, rather than being
+  removed. They belong to that trip: it still exists (the deleted case never writes them at all),
+  its `[tripId, photoId]` range still covers them, and `removeTrip` sweeps them whenever it is
+  deleted. Removing them would need a second port call on an error path that has just proved the
+  store is being raced. The cost is one derivative pair that no record references and — because
+  `orphans` is session state read against the *active* trip — that this session cannot report
+  either. That is A-62 Part 8 residue 2's sweeper, on a third path, and it is the same shape the
+  architect is ruling for R46-4.
+
+Both are visible to the tester rather than argued away: `qa/r46-i13b.mjs` §D asserts exactly this
+byte placement, and the abandoned-file report is asserted only as *"not `storage_failed`"*.
+
 ## 2. How to run it
 
 ```bash
 cd cairn
 npm install
-npm test          # 1348 tests as of I-13b. Plain node, no browser, no network.
+npm test          # 1359 tests as of the round-46 fix pass. Plain node, no browser, no network.
                   # (387 from Phase 1 until R44-4, then 1239 until R45-17, then 1332 through the
-                  #  round-45 fix pass; re-measured each time by running
+                  #  round-45 fix pass, then 1348 at I-13b; re-measured each time by running
                   #  `npm run test:tap | grep '^# pass'`, never quoted.)
 npm run typecheck # generates the sample first (see F-3 below), then both TS projects
 npm run cli -- trip           # headline counts and city ranges

@@ -298,6 +298,26 @@ test('fromJSON accepts an explicitly null ownerId the same way JSON expresses ab
   assert.equal(trip.ownerId, '');
 });
 
+/**
+ * **QA R46-6.** §10.3's byte key is `[tripId, photoId]`, and every device store that cannot hold
+ * an array key has to flatten it. `importDoc` calls `fromJSON` on a file the user can hand-edit,
+ * so *"nothing in this system mints a NUL"* is a claim about `IdFactory` and not about the input:
+ * a trip id carrying U+0000 is the one value that can forge a collision in a flattened key.
+ * Refused at the parser, which is the only layer every document passes through.
+ */
+test('fromJSON refuses a trip id carrying U+0000 — R46-6', () => {
+  assert.throws(
+    () => fromJSON(mutated((d) => { d.id = `t\u0000photo-1`; })),
+    (e: Error) => {
+      assert.equal(e.name, 'TripParseError');
+      assert.match((e as TripParseError).path, /^\$\.id$/);
+      return true;
+    },
+  );
+  // …and an ordinary id is untouched: this refuses one character, not a shape.
+  assert.equal(fromJSON(mutated((d) => { d.id = 'trip-with-ünïcode-and-3'; })).id, 'trip-with-ünïcode-and-3');
+});
+
 test('fromJSON still rejects a non-string ownerId — absent is allowed, garbage is not', () => {
   assert.throws(
     () => fromJSON(mutated((d) => { d.ownerId = 42; })),

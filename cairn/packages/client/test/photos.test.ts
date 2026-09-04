@@ -16,6 +16,7 @@ import {
   createStore, initialState, memoryStorage, memoryFile, memoryPhotos,
   fixedClockPort, sequentialIdPort, immediateScheduler,
   photoImport, photosFor, orphanPhotoBytes, PHOTO_MAX_INPUT_BYTES, photoByteKey,
+  core,
 } from '../src/index.ts';
 import type { MemoryPhotos, Ports } from '../src/index.ts';
 
@@ -800,4 +801,232 @@ test('R45-13: dismissPhotoFailures clears the report and nothing else', async ()
   // Idempotent, and safe with nothing to dismiss.
   store.dismissPhotoFailures();
   assert.deepEqual(photoImport(store.getState()).failures, []);
+});
+
+// ---------------------------------------------------------------------------------------------
+// QA round 46. R46-1, R46-2 and R46-3 are three crossings of a trip boundary that the byte key
+// cannot police: an import that spans a trip transition, a merge that takes in another tab's
+// records, and two overlapping opens.
+// ---------------------------------------------------------------------------------------------
+
+const tick = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Makes `derive` take real wall-clock time.
+ *
+ * Not a contrivance: `pickImages` is a modal and the app is frozen behind it, but `derive` is
+ * `createImageBitmap` plus §10.4's halving loop over a batch, and the library, the brand button
+ * and every other trip stay live for those seconds. It is the ONLY injection these tests make —
+ * no fault, no failing port.
+ */
+function slowDerive(photo: MemoryPhotos, ms: number): void {
+  const real = photo.derive.bind(photo);
+  photo.derive = async (bytes: Uint8Array, type: string) => {
+    await tick(ms);
+    return real(bytes, type);
+  };
+}
+
+/** Two saved trips, `A` then `B`, with `A` open and nothing imported yet. */
+async function twoTrips(p = ports()) {
+  const store = createStore({ ports: p });
+  await store.createTrip({ ...TRIP_INIT, title: 'A' });
+  await store.flush();
+  const A = store.getState().doc!.id;
+  await store.createTrip({ ...TRIP_INIT, title: 'B', startDate: '2026-09-01', endDate: '2026-09-02' });
+  await store.flush();
+  const B = store.getState().doc!.id;
+  await store.openTrip(A);
+  return { store, p, A, B };
+}
+
+/**
+ * **R46-1, MAJOR — a regression `70b9ee6` introduced.** `importPhotos` captures the owning
+ * `TripId` before its first `await` (A-62's own line, and it is right) and then dispatches
+ * `addPhoto` into `state.doc`, which is live. Switch trips while the batch decodes and the bytes
+ * are filed under trip A while the record lands in trip B — where it reads `'ready'` for the rest
+ * of the session over a `read()` that returns `null`, and `'missing'` after a re-open.
+ */
+test('R46-1: a trip switch mid-decode does not file the record in the trip the user switched to', async () => {
+  const { store, p, A, B } = await twoTrips();
+  slowDerive(p.photo, 40);
+  p.photo.next = [file('holiday.jpg')];
+
+  const inflight = store.importPhotos({ kind: 'trip' });
+  await tick(5);
+  await store.openTrip(B); // "back to all trips", then the other trip
+  await inflight;
+  await store.flush();
+
+  assert.equal(store.getState().doc!.id, B, 'INCONCLUSIVE: the trip switch did not happen');
+  assert.deepEqual(store.getState().doc!.photos, [],
+    'the record landed in trip B while its bytes were keyed to trip A — a photograph nothing can read');
+  assert.deepEqual([...p.photo.thumbs.keys()], [photoByteKey(A, 'photo-1')],
+    'the bytes belong to the trip the files were picked from, and stay there');
+  assert.equal(photosFor(store.getState(), { kind: 'trip' }).phase, 'empty',
+    'trip B reports a photograph it does not have');
+  // R45-11's honest fraction survives the abandoned batch: a stopped import still settles.
+  assert.equal(photoImport(store.getState()).pending, 0, 'the progress fraction never settled');
+});
+
+/**
+ * **R46-1, face 2.** The attach ref is captured with the call, so a `{kind:'day'}` import that
+ * spans a switch points at a day the landing trip does not have — a document the store's own
+ * validator calls invalid.
+ */
+test('R46-1: an import that spans a trip switch never writes a document validateTrip calls invalid', async () => {
+  const { store, p, B } = await twoTrips();
+  const dayA = store.getState().doc!.days[0].id;
+  slowDerive(p.photo, 40);
+  p.photo.next = [file('day.jpg')];
+
+  const inflight = store.importPhotos({ kind: 'day', dayId: dayA });
+  await tick(5);
+  await store.openTrip(B);
+  await inflight;
+  await store.flush();
+
+  const codes = core.validateTrip(store.getState().doc!).map((i) => i.code);
+  assert.ok(!codes.includes('photo_attach_dangling'),
+    `the store wrote a document its own validator refuses: ${JSON.stringify(codes)}`);
+});
+
+/**
+ * **R46-1, face 3.** `deleteTrip`'s cascade runs, and then the byte write lands behind it: a blob
+ * with no document, no library row and no orphan report — §6.3's *"no row and no blob without a
+ * live tenancy reference"* broken by a race rather than by a missing cascade. The user is told
+ * `storage_failed`, which is untrue; storage worked, the trip went away.
+ */
+test('R46-1: deleting a trip mid-import strands no bytes and is not reported as a storage failure', async () => {
+  const p = ports();
+  const store = await storeWithTrip(p);
+  await store.flush();
+  const A = store.getState().doc!.id;
+  slowDerive(p.photo, 40);
+  p.photo.next = [file('del.jpg')];
+
+  const inflight = store.importPhotos({ kind: 'trip' });
+  await tick(5);
+  await store.deleteTrip(A);
+  await inflight;
+
+  assert.equal(p.photo.thumbs.size, 0, `bytes outlived their trip: ${JSON.stringify([...p.photo.thumbs.keys()])}`);
+  assert.equal(p.photo.displays.size, 0);
+  assert.ok(photoImport(store.getState()).failures.every((f) => f.reason !== 'storage_failed'),
+    `a trip transition was reported as a storage failure: ${JSON.stringify(photoImport(store.getState()).failures)}`);
+});
+
+/**
+ * **R46-2, MAJOR.** `doMerge` replaces `state.doc` with a document that can hold photo records
+ * this session has never asked `present()` about, while `state.photos.available` is whatever
+ * `openTrip` read minutes ago. §10.6 property 3's *"this photo's image is no longer stored on
+ * this device"* then fires over bytes that are on disk under the trip's own key. `importDoc`
+ * gained exactly this line at `70b9ee6`; `doMerge` is the same shape and did not.
+ */
+test('R46-2: a merge that takes in the other tab\'s photo does not report it missing', async () => {
+  const storage = memoryStorage();
+  const photo = memoryPhotos();
+  const shared = (prefix: string) => ({
+    storage, file: memoryFile(), photo,
+    clock: fixedClockPort(TODAY), ids: sequentialIdPort(prefix), scheduler: immediateScheduler(),
+  });
+  const tabA = createStore({ ports: shared('a') });
+  const tabB = createStore({ ports: shared('b') });
+
+  await tabA.createTrip(TRIP_INIT);
+  await tabA.flush();
+  const id = tabA.getState().doc!.id;
+  await tabB.openTrip(id);
+  photo.next = [file('b1.jpg')];
+  await tabB.importPhotos({ kind: 'trip' }); // the other tab adds a photograph and saves it
+  await tabB.flush();
+
+  tabA.dispatch({ type: 'setDayMeta', dayId: tabA.getState().doc!.days[0].id, patch: { title: 'MINE' } });
+  await tabA.flush();
+  assert.equal(tabA.getState().persistence.status, 'conflict', 'INCONCLUSIVE: this tab is not in conflict');
+
+  await tabA.mergeWithStored();
+  const l = photosFor(tabA.getState(), { kind: 'trip' });
+  assert.equal(l.items.length, 1, 'INCONCLUSIVE: the merge did not take in the other tab\'s photo record');
+  assert.equal(l.missing, 0,
+    `a photograph on disk was reported gone after a merge: ${JSON.stringify(l.items.map((i) => i.availability))}`);
+});
+
+/**
+ * **R46-3, MAJOR.** `'loading'` is transient *by contract* — §10.6 property 5, and the one
+ * guarantee A-63 added. Two overlapping `openTrip` calls with nothing injected but an ordinary
+ * latency difference let the EARLIER trip's answer land LAST, stamping `photos.tripId` with a
+ * trip that is no longer open. `photosFor` then returns `'loading'` for ever, and property 6
+ * attaches **Try again** to `'unreadable'`, not to `'loading'`.
+ */
+test('R46-3: two overlapping opens leave availability stamped for the trip that is actually open', async () => {
+  const p = ports();
+  const store = createStore({ ports: p });
+  await store.createTrip({ ...TRIP_INIT, title: 'A' });
+  p.photo.next = [file('a.jpg')];
+  await store.importPhotos({ kind: 'trip' });
+  await store.flush();
+  const A = store.getState().doc!.id;
+  await store.createTrip({ ...TRIP_INIT, title: 'B', startDate: '2026-09-01', endDate: '2026-09-02' });
+  p.photo.next = [file('b.jpg')];
+  await store.importPhotos({ kind: 'trip' });
+  await store.flush();
+  const B = store.getState().doc!.id;
+  await store.closeTrip();
+
+  // An ordinary latency difference between two reads. Nothing else is injected.
+  const real = p.photo.present.bind(p.photo);
+  const lag: Record<string, number> = { [A]: 40, [B]: 0 };
+  p.photo.present = async (t: string, ids: readonly string[]) => {
+    const r = await real(t, ids);
+    await tick(lag[t] ?? 0);
+    return r;
+  };
+
+  await Promise.allSettled([store.openTrip(A), store.openTrip(B)]); // tap trip A, then trip B
+  await tick(120);
+
+  const s = store.getState();
+  assert.equal(s.photos.tripId, s.doc!.id,
+    'availability was stamped for a trip that is not the open one, so the listing cannot leave `loading`');
+  assert.notEqual(photosFor(s, { kind: 'trip' }).phase, 'loading',
+    '§10.6 property 5: exactly one of `empty`/`ready`/`unreadable` follows every `loading`');
+});
+
+/**
+ * **R46-6, MINOR.** The double flattens §10.3's `[tripId, photoId]` into one string, and a
+ * `tripId` carrying the separator forges a key that `removeTrip` sweeps while
+ * `IDBKeyRange.bound([t], [t, []])` does not (`qa/r46-idb-keys.mjs` §B measures the engine, on
+ * both). A double that is *less* safe than production can hide the next tenancy bug, and this is
+ * the double the whole photo subsystem is tested against.
+ */
+test('R46-6: a trip id carrying the double\'s separator is not swept by another trip\'s removeTrip', async () => {
+  const port = memoryPhotos();
+  const b = (n: number) => new Uint8Array([n]);
+  const forged = `t\u0000photo-1`;
+  await port.write('t', 'photo-1', b(1), b(1));
+  await port.write(forged, 'x', b(2), b(2));
+
+  await port.removeTrip('t');
+
+  assert.equal(port.thumbs.size, 1, `removeTrip("t") reached outside its own trip: ${port.thumbs.size} records left`);
+  assert.equal(await port.read('t', 'photo-1', 'thumb'), null);
+  assert.deepEqual(await port.read(forged, 'x', 'thumb'), b(2),
+    'a neighbouring trip lost its bytes to a flattening collision');
+});
+
+/** The other half of the same key: a `photoId` carrying the separator IS its own trip's record. */
+test('R46-6: a photo id carrying the separator is still swept by its own trip\'s removeTrip', async () => {
+  const port = memoryPhotos();
+  const b = (n: number) => new Uint8Array([n]);
+  const odd = `p\u0000q`;
+  await port.write('t', odd, b(1), b(1));
+  await port.write('t2', 'photo-1', b(2), b(2));
+
+  assert.deepEqual(await port.read('t', odd, 'thumb'), b(1), 'the record cannot be read back');
+  await port.removeTrip('t');
+
+  assert.equal(await port.read('t', odd, 'thumb'), null,
+    'a photo id holding the separator escaped its own trip\'s range delete');
+  assert.equal(port.thumbs.size, 1);
 });

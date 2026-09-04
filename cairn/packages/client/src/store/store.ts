@@ -398,7 +398,19 @@ export function createStore(opts: StoreOptions) {
    * makes that failure honest at the one moment it is visible.
    *
    * Every branch writes an answer, which is what makes property 5's *"exactly one terminal state
-   * follows every `'loading'`"* true by construction rather than by inspection.
+   * follows every `'loading'`"* true by construction rather than by inspection — **and the
+   * answer is only ever stamped for the document the store still holds** (QA **R46-3**). Two
+   * overlapping `openTrip` calls are one tap on trip A and then one on trip B, and an ordinary
+   * latency difference between their two `present()` reads is enough to land the earlier trip's
+   * answer last. Stamping it wrote `photos.tripId` for a trip that was no longer open, and
+   * `photosFor` returns `'loading'` for exactly that mismatch — permanently, with §10.6 property
+   * 6's **Try again** attached to `'unreadable'` rather than to `'loading'`. That is the
+   * unresolving spinner this section opens by forbidding, reached by a double tap.
+   *
+   * **The guard is a drop, never a retarget** — `scheduleSave`'s rule for a late timer (QA R3-2),
+   * one subsystem over. Whichever open sets `state.doc` last also issues the read that stamps,
+   * so the answer the store keeps is that trip's own, and the losing read is discarded rather
+   * than re-aimed at a document it never asked about.
    */
   async function readPhotoAvailability(doc: Trip | null): Promise<void> {
     if (!doc) {
@@ -412,11 +424,15 @@ export function createStore(opts: StoreOptions) {
     }
     try {
       const present = await ports.photo.present(doc.id, ids);
+      if (state.doc?.id !== doc.id) return;
       // Copied into a set this store owns: the port's return value is `ReadonlySet` by type and
       // by nothing else, and a port that hands back its own live collection would let a later
       // write mutate state a subscriber is already holding (QA R43-1's shape, one port over).
       setPhotos({ tripId: doc.id, available: new Set(present), availabilityError: null });
     } catch (err) {
+      // The same drop, on the failing branch: an `'unreadable'` stamped for a trip that is no
+      // longer open is the same wrong answer as a `'ready'` one, and it is terminal.
+      if (state.doc?.id !== doc.id) return;
       // The port's own words, recorded once — `travelHistory`'s `{ok:false, message}` shape one
       // subject over. It carries no photo id, no caption and no coordinate (§6.1 rule 1), and
       // nothing logs it.
@@ -436,6 +452,19 @@ export function createStore(opts: StoreOptions) {
    * delete and no caller can get the list wrong for a trip it does not have open. A-62 Part 4
    * says so in both directions so the two passes do not fight.
    */
+
+  /**
+   * True while this store still holds a trip under `id` — open, or a row in the library.
+   *
+   * The question an in-flight batch has to ask before it writes anything else for a trip it
+   * captured seconds ago (QA **R46-1**): a trip that has been deleted can never reference,
+   * reclaim or even report a byte record, so writing one for it is a guaranteed orphan.
+   * `state.library` and `state.activeTripId` are both this store's own state and both are
+   * updated by `deleteTrip`'s link, so the answer needs no port read and cannot itself await.
+   */
+  function isLiveTrip(id: string): boolean {
+    return state.activeTripId === id || state.library.some((r) => r.id === id);
+  }
 
   /** `err.name` is the platform's own word for a full disk. Everything else is `'storage_failed'`. */
   function writeFailureReason(err: unknown): PhotoImportFailure {
@@ -855,6 +884,18 @@ export function createStore(opts: StoreOptions) {
         });
       }
     });
+    // §10.6 property 2, and it is **R45-4's defect on the path the fix pass did not cover** (QA
+    // **R46-2**). A merge replaces `state.doc` with a document that can hold photo records this
+    // session has never asked `present()` about — the other tab imported them — while
+    // `state.photos.available` is whatever `openTrip` read minutes ago. Every taken-in record
+    // then reads `'missing'`, which §10.6 property 3 renders as *"this photo's image is no longer
+    // stored on this device"* over bytes that are on disk under this trip's own key. `importDoc`
+    // gained exactly this line for exactly this reason; this is the same shape.
+    //
+    // Outside the chain, like `importDoc`'s: it is a read of a different port and must not sit
+    // in front of another write. On the branches that changed nothing it re-reads an answer the
+    // store already had, which costs one `present()` and cannot be wrong.
+    await readPhotoAvailability(state.doc);
     return state;
   }
 
@@ -1396,6 +1437,14 @@ export function createStore(opts: StoreOptions) {
      * exists. It comes from the injected `IdPort` like every other id — no `crypto.randomUUID`,
      * no `Math.random` (`cairn-constraints` §4).
      *
+     * **A batch belongs to ONE trip, and steps 4 and 5 each check that it still does** (QA
+     * **R46-1**). `tripId` is captured before the first `await` and is the only trip this batch
+     * may write to — bytes *or* record. Between the picker returning and a file's decode
+     * finishing the user can open another trip, close this one, or delete it, so the loop stops
+     * at the first file that finds `tripId` no longer live (step 4) or no longer the open
+     * document (step 5). It stops rather than retargeting, and see KD-82 for what the abandoned
+     * files do and do not report.
+     *
      * **Re-entrancy, and it is QA R45-11's subject.** `importPhotos` takes no guard — a double-tap
      * on an import control starts two of these — so nothing here may be batch-local state written
      * over session state. `failures` accumulates onto `state.photos.failures` one at a time and
@@ -1449,6 +1498,13 @@ export function createStore(opts: StoreOptions) {
             const derived = await ports.photo.derive(f.bytes, f.type);
             if (derived === null) fail('decode_failed');
             else {
+              // **The trip this batch belongs to is gone** — QA **R46-1**, face 3. `deleteTrip`'s
+              // cascade has already run, so a byte record written now has no document, no library
+              // row and nothing that can ever name it: §6.3's *"no row and no blob without a live
+              // tenancy reference"*, broken by a race rather than by a missing cascade. The batch
+              // stops here, before the write, and the user is not told `'storage_failed'` for a
+              // trip they deleted themselves (KD-82).
+              if (!isLiveTrip(tripId)) break;
               const id = ports.ids.newId('photo');
               try {
                 await ports.photo.write(tripId, id, derived.thumb.bytes, derived.display.bytes);
@@ -1457,6 +1513,25 @@ export function createStore(opts: StoreOptions) {
                 fail(writeFailureReason(err));
                 throw new Error('handled');
               }
+              // **The other half of the invariant `tripId` is captured for** — QA **R46-1**, and
+              // it is the finding itself. `tripId` pins the BYTES to the trip the user picked
+              // from; `state.doc` is live, so without this the RECORD is pinned to whatever trip
+              // is open when the decode finishes — and `derive` is seconds of canvas work during
+              // which the library and every other trip stay interactive. The two used to be
+              // allowed to disagree: the bytes landed under `[A, photo-1]`, the record landed in
+              // B, B's listing read `'ready'` over a `read()` that returns `null` and `'missing'`
+              // after a re-open, and a `{kind:'day'}` attach made `validateTrip` report
+              // `photo_attach_dangling` — the store writing a document its own validator refuses.
+              // A-62 is what made that fatal instead of cosmetic: with tenancy in the key, a
+              // mismatch is a lost photograph rather than a misfiled one.
+              //
+              // Stopping is the only correct answer, and it is `scheduleSave`'s rule for a late
+              // timer (QA R3-2) one subsystem over: **dropped, never retargeted.** §4.2 rule 1
+              // holds exactly one document in memory, so the record cannot be filed into trip A
+              // from here, and filing it into trip B would be writing a photograph into a trip
+              // that was never asked for it. The bytes stay under their own trip's key, where
+              // they are that trip's to reclaim (KD-82).
+              if (state.doc?.id !== tripId) break;
               this.dispatch({
                 type: 'addPhoto',
                 photo: {

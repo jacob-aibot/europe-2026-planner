@@ -170,13 +170,30 @@ export function memoryFile(): MemoryFile {
 /**
  * §10.3's compound key `[tripId, photoId]`, flattened into one string so a `Map` can hold it.
  *
- * A `Map` compares keys by identity, so an array key would make every lookup miss. The
- * separator is `\u0000` because it cannot occur in an id minted by `IdFactory` and cannot be
- * typed into one — a `tripId` ending in the separator is the only way to forge a collision, and
- * nothing in this system mints one.
+ * A `Map` compares keys by identity, so an array key would make every lookup miss. The separator
+ * is `\u0000` because it cannot be typed into an id and `IdFactory` does not mint one.
+ *
+ * **Both halves are escaped, and that is what makes this flattening a MODEL of the array key**
+ * (QA **R46-6**). The separator's safety used to rest on *"nothing in this system mints one"* —
+ * true of `IdFactory`, false of `fromJSON`, which takes the id from a file the user can
+ * hand-edit. A `tripId` of `'t' + NUL + 'photo-1'` flattened to the same key as trip `'t'`'s
+ * photo `'photo-1'`, so `removeTrip('t')` swept a record belonging to another trip — where
+ * `IDBKeyRange.bound(['t'], ['t', []])` does not, on either engine (`qa/r46-idb-keys.mjs` §B).
+ * A double that is *less* safe than production is a double that can hide the next tenancy bug,
+ * and this is the double the whole photo subsystem is tested against.
+ *
+ * `\u0001` escapes itself and the separator, so an unescaped `\u0000` in a flat key is always
+ * the boundary between the two halves and never a character from either — which is what an array
+ * key gives for free. An id containing neither (every id this system mints, and every id
+ * `fromJSON` now accepts) flattens to `tripId + NUL + photoId`, unchanged.
  */
 export function photoByteKey(tripId: TripId, id: PhotoId): string {
-  return `${tripId}\u0000${id}`;
+  return `${escapeKeyPart(tripId)}\u0000${escapeKeyPart(id)}`;
+}
+
+/** One half of a flattened key. The escape character first, or escaping it would eat its own. */
+function escapeKeyPart(part: string): string {
+  return part.replaceAll('\u0001', '\u0001\u0001').replaceAll('\u0000', '\u0001\u0000');
 }
 
 /**
@@ -193,7 +210,7 @@ export function photoByteKey(tripId: TripId, id: PhotoId): string {
 class PhotoByteMap extends Map<string, Uint8Array> {
   /** Every compound key whose photo half is `id`. Empty for a key that is already compound. */
   #matching(id: string): string[] {
-    const suffix = `\u0000${id}`;
+    const suffix = `\u0000${escapeKeyPart(id)}`;
     const out: string[] = [];
     for (const k of super.keys()) if (k.endsWith(suffix)) out.push(k);
     return out;
@@ -358,7 +375,7 @@ export function memoryPhotos(): MemoryPhotos {
      * (**Q5**).
      */
     async removeTrip(tripId: TripId): Promise<void> {
-      const prefix = `${tripId}\u0000`;
+      const prefix = `${escapeKeyPart(tripId)}\u0000`;
       for (const map of [port.thumbs, port.displays]) {
         for (const k of [...map.keys()]) {
           if (String(k).startsWith(prefix)) Map.prototype.delete.call(map, k);

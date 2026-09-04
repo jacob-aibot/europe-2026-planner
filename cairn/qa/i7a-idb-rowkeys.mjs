@@ -84,9 +84,11 @@ import { stripTypeScriptTypes } from 'node:module';
 import pw from '/opt/node22/lib/node_modules/playwright/index.js';
 
 /**
- * **§10 A-62 Part 7 Q8 (revision 44): the engine is a flag now.** Phase 5 asserts IndexedDB's
- * array-key ORDERING — the fact `IDBKeyRange.bound([tripId], [tripId, []])` rests on — and a
- * platform claim measured on one engine is measured on one engine. WebKit is installed here
+ * **§10 A-62 Part 7 Q8 (revision 44): the engine is a flag now.** Phase 4 asserts the consequence
+ * of IndexedDB's array-key ordering — that `IDBKeyRange.bound([tripId], [tripId, []])` is exactly
+ * one trip's records — and a platform claim measured on one engine is measured on one engine.
+ * (QA R46-5: this header used to name a *phase 5* that does not exist, and `apps/web`'s port cited
+ * it. The ordering itself is measured directly, with `indexedDB.cmp`, in `qa/r46-idb-keys.mjs` §A.) WebKit is installed here
  * (`/opt/pw-browsers/webkit-2215`, established by QA R45-7), so both are runnable:
  *
  *   PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node --experimental-strip-types qa/i7a-idb-rowkeys.mjs
