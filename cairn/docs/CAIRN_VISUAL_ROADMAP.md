@@ -19,8 +19,50 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
+> **🟠 THE FIX FOR BOTH PROBLEMS IS DESIGNED, AND IT IS ONE FIX RATHER THAN TWO — as of
+> 2026-09-04. This block is the newest.** Step 2d's photo half stays **designed ✅ · built ✅ ·
+> verified ⚠️ · shippable ❌** — nothing is built yet, so nothing has moved. What is new is that the two
+> problems in the block below turned out to have **one** cause, that cause has now been found four rounds
+> running wearing four different disguises, and this pass rules the whole shape of it instead of patching
+> the fourth disguise.
+>
+> **What the four rounds kept finding.** Cairn keeps checking the right thing at the wrong moment. It asks
+> *"is this still the trip I started with?"*, gets a truthful yes, and then acts on that answer a moment
+> later — when it is no longer true. A trip's name cannot tell two versions of the same trip apart, and it
+> cannot tell an older answer from a newer one at all. Every round's fix was correct for the case it was
+> written for and blind to the case next door.
+>
+> **The fix, in one sentence.** Cairn already saves your work before it switches trips. From now on that
+> save hands back a **numbered receipt** instead of a plain yes. Anything in the middle of a slow job —
+> decoding a photograph, checking which pictures are still on the device — holds a receipt, and checks
+> that its number is still current **at the instant it writes**, not at the instant it started. An old
+> number means the world moved on, so the work is dropped rather than written into a trip that is about to
+> be thrown away. Three things get numbered: the open trip, a trip you are browsing read-only, and the
+> photo-availability check.
+>
+> **What that changes for you.** Tapping your own trip again while photographs are importing no longer
+> loses them — the import stops, and everything it had already added is kept and saved. **Nothing is
+> decoded, written to disk and then discarded.** Cairn can no longer say *"this photo's image is no longer
+> stored on this device"* about a photograph that is, and a successful **Try again** can no longer be
+> undone by the failed check that came before it. A long-standing wart nobody had filed goes with them:
+> tapping two trips in quick succession can no longer leave the **first** one open.
+>
+> **Two things I turned down, and one I am handing to a later pass.** The testing round proposed moving
+> the save to a later point in the switch; I worked it through and it would have created a worse bug —
+> Cairn would end up holding an older copy of the trip than the one on disk, and would then start refusing
+> to save with no other window to blame. And the two narrow guards from the last two rounds are being
+> **removed**, not stacked underneath the new one: a weaker check sitting beside a stronger one is exactly
+> how last round's readers came to believe the case was closed. Handed on: tapping your trip from the Map
+> or Profile screen when that trip is **already open** should not count as switching trips at all — that
+> is a change to the screen code, which this pass deliberately does not touch.
+>
+> **What happens next:** one builder pass — **I-13d** — then one more confirmation round over the whole
+> photo arc. Nothing here is shippable until both are done. Detail: `cairn/docs/ARCHITECTURE.md` §4.2
+> **A-67** (the ruling and the two refusals), §10 **A-66 Part 10** (the one earlier claim it corrects), and
+> `ROADMAP.md` **I-13d** (what gets built, and the nine checks it has to pass).
+
 > **🔴 THE PHOTO WORK GOES BACK ONE MORE TIME — AND THIS TIME THE CAUSE IS NOT IN THE PHOTO CODE — as
-> of 2026-09-04. This block is the newest.** Step 2d's photo half stays **designed ✅ · built ✅ ·
+> of 2026-09-04. This block was the newest until the block above.** Step 2d's photo half stays **designed ✅ · built ✅ ·
 > verified ⚠️ · shippable ❌**. Two problems, both real, both small to fix, neither of them created by
 > the repair work below.
 >
