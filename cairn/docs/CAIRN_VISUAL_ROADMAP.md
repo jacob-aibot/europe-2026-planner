@@ -19,8 +19,33 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
+> **🟠 THE REPAIR PASS IS BUILT — as of 2026-09-04. This block is the newest.** Step 2d's photo
+> half stays **designed ✅ · built ✅ · verified ⚠️ · shippable ❌**. The repair pass described in
+> the block below (**I-13e**) is now **written and tested** (`106bbd3`) — all four groups, and the
+> promise *"throwing an answer away is a promise to replace it"* is now in the code rather than
+> only in the design note.
+>
+> **What actually changed underneath.** A photo listing always stops loading: deleting a *different*
+> trip, tapping a trip whose file is damaged, opening a trip that is no longer there, or importing a
+> broken backup no longer leaves the trip you still have open with a spinner that never resolves —
+> and that is now true for **all nine** of those cases, not the three that were found. A photograph
+> whose picture is on the disk never says *"no longer stored on this device"*, even when Cairn had
+> not managed to read the disk yet. And a trip deletion that fails **after** the pictures are gone
+> now re-asks instead of claiming they are still there. **1404 automated checks pass**, and every
+> one of the eight new ship-gate criteria was watched failing first, on purpose, before the fix
+> went in.
+>
+> **Still nothing on your phone changes.** There is no photo screen yet — that is the point of
+> fixing these now, before one is built on top of them.
+>
+> **What happens next:** the sixth adversarial round, over the whole photo foundation
+> (I-13 + I-13b + I-13c + I-13d + I-13e together), then a manager verdict. **Nothing here is
+> shippable until both.** Two named items are deliberately still owed and are written down rather
+> than dropped: the two-line `.tsx` catch for Ctrl/Cmd+Z (it lands with the first screen work), and
+> three old test lines that the round-49 tester re-cuts.
+
 > **🟠 BOTH SERIOUS PROBLEMS ARE RULED, AND THE ANSWER IS ONE SENTENCE THE LAST DESIGN WAS
-> MISSING — as of 2026-09-04. This block is the newest.** Step 2d's photo half stays **designed ✅ ·
+> MISSING — as of 2026-09-04. This block was the newest until the block above.** Step 2d's photo half stays **designed ✅ ·
 > built ✅ · verified ⚠️ · shippable ❌** — nothing is built in this pass, so nothing moves. What is
 > new is that the two serious problems in the block below are **decided**, and they turned out to be
 > two halves of one omission rather than two bugs.
