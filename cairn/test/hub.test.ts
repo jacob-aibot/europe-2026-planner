@@ -157,6 +157,28 @@ test('the rendered page escapes state text rather than pasting it into the DOM',
   assert.ok(page.includes('&quot;accept&quot;'), 'state text reached the page unescaped');
 });
 
+/**
+ * The fragment is what gets published to a web host (which supplies its own document
+ * skeleton). It is a SLICE of the same render, never a second copy — a fragment that lags the
+ * page it came from would be exactly the drift this board exists to prevent.
+ */
+test('the publishable fragment carries no document wrapper', () => {
+  const frag = readFileSync(resolve(ROOT, 'docs', 'HUB.fragment.html'), 'utf8');
+  assert.match(frag.trimStart(), /^<title>/, 'the fragment should open with its title');
+  for (const tag of [/<!doctype/i, /<html[\s>]/i, /<head>/i, /<body[\s>]/i]) {
+    assert.doesNotMatch(frag, tag, `the fragment must not contain ${tag}`);
+  }
+});
+
+test('the fragment and the standalone page render the same board', () => {
+  const frag = readFileSync(resolve(ROOT, 'docs', 'HUB.fragment.html'), 'utf8').trimEnd();
+  const page = readFileSync(resolve(ROOT, 'docs', 'HUB.html'), 'utf8');
+  // Everything from <title> to the final </div> must appear in the page verbatim, modulo the
+  // </head><body> seam the wrapper injects.
+  const rejoined = frag.replace('<div class="wrap">', '</head>\n<body>\n<div class="wrap">');
+  assert.ok(page.includes(rejoined), 'the fragment has drifted from the standalone page');
+});
+
 test('--text renders the whole board without a browser', () => {
   const out = run('--text');
   assert.match(out, /^CAIRN|STALE|NOT on master/m);

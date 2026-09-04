@@ -1,0 +1,232 @@
+<title>Cairn — where we are</title>
+<style>
+:root{
+  --bg:#fbfaf8; --panel:#fff; --ink:#1a1a19; --dim:#6b6a66; --line:#e5e2dc;
+  --ship:#1d7a4c; --back:#b3261e; --warn:#b0862a; --accent:#1f5f8b;
+  --ship-bg:#eaf5ee; --back-bg:#fdecea; --warn-bg:#fdf6e7;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#16161a; --panel:#1e1e23; --ink:#eceae6; --dim:#9d9b95; --line:#33323a;
+  --ship:#5cc98c; --back:#ff8a80; --warn:#e0b455; --accent:#7fb5dd;
+  --ship-bg:#17301f; --back-bg:#341b1a; --warn-bg:#332a15;
+}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:16px/1.55 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  -webkit-text-size-adjust:100%}
+.wrap{max-width:56rem;margin:0 auto;padding:1.25rem 1rem 4rem}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.86em;
+  background:color-mix(in srgb,var(--ink) 7%,transparent);padding:.1em .35em;border-radius:4px}
+h1{font-size:1.5rem;margin:.2rem 0 .1rem;letter-spacing:-.01em}
+h2{font-size:.78rem;text-transform:uppercase;letter-spacing:.09em;color:var(--dim);
+  margin:2.4rem 0 .7rem;font-weight:600}
+h3{font-size:1rem;margin:0 0 .4rem}
+.sub{color:var(--dim);font-size:.9rem;margin:0 0 1.4rem}
+.banner{border-radius:9px;padding:.7rem .9rem;margin:.5rem 0;font-size:.9rem;border:1px solid}
+.banner.bad{background:var(--back-bg);border-color:color-mix(in srgb,var(--back) 40%,transparent)}
+.banner.ok{background:var(--ship-bg);border-color:color-mix(in srgb,var(--ship) 35%,transparent)}
+.banner.anchor{background:var(--panel);border-color:var(--line);color:var(--dim)}
+.banner.anchor code{color:var(--ink)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:1rem 1.1rem}
+
+/* phase stepper */
+ol.stepper{list-style:none;display:flex;gap:.3rem;padding:0;margin:0;overflow-x:auto}
+ol.stepper li{flex:1 1 0;min-width:5.4rem;text-align:center}
+.pip{display:grid;place-items:center;width:1.85rem;height:1.85rem;margin:0 auto .4rem;
+  border-radius:50%;border:2px solid var(--line);font-size:.82rem;font-weight:650;color:var(--dim)}
+.stepper .done .pip{background:var(--ship);border-color:var(--ship);color:#fff}
+.stepper .active .pip{border-color:var(--accent);color:var(--accent);
+  box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 18%,transparent)}
+.pname{display:block;font-size:.7rem;line-height:1.3;color:var(--dim)}
+.stepper .active .pname{color:var(--ink);font-weight:600}
+
+/* now */
+.now{border-left:4px solid var(--warn);background:var(--warn-bg)}
+.now .kicker{font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;color:var(--dim)}
+.now h3{font-size:1.12rem;margin:.3rem 0 .5rem;line-height:1.35}
+.counts{display:flex;gap:.45rem;flex-wrap:wrap;margin:.6rem 0}
+.count{font-size:.8rem;padding:.16rem .55rem;border-radius:20px;border:1px solid var(--line);background:var(--panel)}
+.count.b{color:var(--back);border-color:color-mix(in srgb,var(--back) 45%,transparent)}
+ol.pipe{list-style:none;display:flex;gap:.45rem;padding:0;margin:.7rem 0 0;flex-wrap:wrap;
+  font-size:.82rem;color:var(--dim)}
+ol.pipe .on{color:var(--ink);font-weight:700;background:var(--panel);
+  border:1px solid var(--accent);border-radius:20px;padding:.05rem .6rem}
+ol.pipe .arr{opacity:.45}
+
+/* steps table */
+table{width:100%;border-collapse:collapse;font-size:.88rem}
+th{text-align:left;font-weight:600;vertical-align:top}
+td,th{padding:.6rem .5rem;border-top:1px solid var(--line)}
+.sname{font-weight:400;color:var(--dim);font-size:.82rem}
+.chip{display:inline-block;font-size:.74rem;padding:.1rem .45rem;border-radius:20px;
+  border:1px solid var(--line);white-space:nowrap;margin:.1rem .1rem 0 0}
+.chip.y{color:var(--ship)} .chip.p{color:var(--warn)} .chip.n{color:var(--dim);opacity:.75}
+.verdict{font-weight:700;font-size:.76rem}
+.verdict.ship{color:var(--ship)} .verdict.back{color:var(--back)}
+.note{color:var(--dim);font-size:.83rem}
+tr.shipped th code{color:var(--ship)}
+
+/* rounds */
+ol.rounds{list-style:none;display:flex;gap:.35rem;align-items:flex-end;padding:0;margin:0;
+  height:6.5rem;overflow-x:auto}
+ol.rounds li{flex:1 0 1.7rem;display:flex;flex-direction:column;justify-content:flex-end;
+  align-items:center;height:100%}
+.bar{width:100%;border-radius:3px 3px 0 0;min-height:4px}
+.bar.ship{background:var(--ship)} .bar.back{background:var(--back);opacity:.85}
+.rn{font-size:.62rem;color:var(--dim);margin-top:.25rem}
+.legend{font-size:.78rem;color:var(--dim);margin:.6rem 0 0}
+
+/* decisions */
+.decision{border:1px solid color-mix(in srgb,var(--warn) 40%,transparent);background:var(--warn-bg);
+  border-radius:10px;padding:.9rem 1rem;margin-bottom:.8rem}
+.decision p{margin:.35rem 0;font-size:.89rem}
+.decision ol{margin:.5rem 0 .3rem;padding-left:1.2rem;font-size:.87rem}
+.decision li{margin:.15rem 0}
+.meta{color:var(--dim);font-size:.8rem}
+ul.owed{padding-left:1.1rem;font-size:.88rem} ul.owed li{margin:.3rem 0}
+footer{margin-top:2.5rem;padding-top:1rem;border-top:1px solid var(--line);
+  color:var(--dim);font-size:.8rem}
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+@media (max-width:36rem){
+  .pname{display:none}
+  ol.stepper li{min-width:0}
+  /* the step table stops being a table: three tight columns at 390px is unreadable */
+  table.steps,table.steps tbody,table.steps tr,table.steps th,table.steps td{display:block;width:auto}
+  table.steps tr{border-top:1px solid var(--line);padding:.75rem 0}
+  table.steps tr:first-child{border-top:0}
+  table.steps th,table.steps td{border:0;padding:.15rem 0}
+  table.steps .triad{margin:.35rem 0}
+  table.docs{min-width:34rem}
+}
+</style>
+<div class="wrap">
+
+<h1>Cairn — where we are</h1>
+<p class="sub">Generated from <code>cairn/docs/STATE.json</code> by <code>npm run hub</code>. Do not edit this file by hand.</p>
+
+<div class="banner anchor"><strong>This board describes <code>68e478e</code></strong>,
+       written 2026-09-04. It is only as current as its last update —
+       run <code>node cairn/tools/gen-hub.mjs --check</code> to confirm, or
+       <code>npm run hub</code> to rebuild it.</div>
+
+<h2>The seven phases</h2>
+<ol class="stepper">
+<li class="done"><span class="pip">✓</span><span class="pname">the core engine and a working multi-trip planner</span></li>
+<li class="active"><span class="pip">2</span><span class="pname">travel history: past trips, the lifetime map, and who you went with</span></li>
+<li class="todo"><span class="pip">3</span><span class="pname">server, accounts, the social graph, and share links</span></li>
+<li class="todo"><span class="pip">4</span><span class="pname">mailbox ingestion</span></li>
+<li class="todo"><span class="pip">5</span><span class="pname">the native app, the live path, and observed travel</span></li>
+<li class="todo"><span class="pip">6</span><span class="pname">photos</span></li>
+<li class="todo"><span class="pip">7</span><span class="pname">discovery through the network, the recap, and polish</span></li>
+</ol>
+
+<h2>Right now</h2>
+<div class="panel now">
+  <div class="kicker">Phase 2 · step 2d · increment I-13e · QA round 49</div>
+  <h3>A photo listing can still load forever - the same symptom this repair pass was written to remove, reached by a different route.</h3>
+  <p>Import two photographs, and while the second is still resizing, delete some OTHER trip (or tap a damaged trip, or restore a broken backup). The trip you are still looking at is left with a photo list that loads forever. Nothing is lost - the pictures are on disk and re-opening the trip fixes it.</p>
+  <div class="counts">
+    <span class="count ">0 blockers</span>
+    <span class="count">1 major</span>
+    <span class="count">4 minor</span>
+    <span class="count b">round 49: SEND BACK</span>
+  </div>
+  <p><strong>Next:</strong> An architect ruling on R49-1 and the four MINORs, then a repair pass, then a seventh confirmation round.</p>
+  <p class="meta">Nothing on your phone changes yet — there is no photo screen, which is why this is being fixed now rather than after one exists.</p>
+  <ol class="pipe"><li class="on">architect</li><li class="arr">→</li><li class="">builder</li><li class="arr">→</li><li class="">breaker</li><li class="arr">→</li><li class="">manager</li></ol>
+</div>
+
+<h2>Phase 2 — travel history: past trips, the lifetime map, and who you went with</h2>
+<div class="panel">
+<table class="steps">
+<tbody>
+<tr class="shipped">
+      <th><code>2a</code><br><span class="sname">past trips and the lifecycle</span></th>
+      <td class="triad"><span class="chip y">✅ built</span> <span class="chip y">✅ verified</span> <span class="chip y">✅ shippable</span></td>
+      <td class="note"><span class="verdict ship">SHIP</span> <code>67f5588</code> Verified over rounds 12-21. Seven routed items, none blocking.</td>
+    </tr>
+<tr class="partial">
+      <th><code>2b</code><br><span class="sname">the lifetime map and travel identity</span></th>
+      <td class="triad"><span class="chip y">✅ built</span> <span class="chip y">✅ verified</span> <span class="chip p">⚠️ shippable</span></td>
+      <td class="note"><span class="verdict ship">SHIP</span> <code>69e44d4</code> <em>(data layer only)</em> The data layer shipped (I-5 through I-7b). I-8b - the Map and Profile screens - is NOT started: its UI is paused pending a new native-iOS design process, not blocked on anything technical.</td>
+    </tr>
+<tr class="idle">
+      <th><code>2c</code><br><span class="sname">participants</span></th>
+      <td class="triad"><span class="chip n">❌ built</span> <span class="chip n">❌ verified</span> <span class="chip n">❌ shippable</span></td>
+      <td class="note">Not started; gated on 2b.</td>
+    </tr>
+<tr class="partial">
+      <th><code>2d</code><br><span class="sname">the memory data layer</span></th>
+      <td class="triad"><span class="chip y">✅ built</span> <span class="chip n">❌ verified</span> <span class="chip n">❌ shippable</span></td>
+      <td class="note">I-12 shipped. The photo half (I-13 -&gt; I-13e) has been sent back six consecutive rounds. Opens no .tsx file.</td>
+    </tr>
+</tbody>
+</table>
+</div>
+
+<h2>Adversarial rounds — last 10</h2>
+<div class="panel">
+<ol class="rounds">
+<li title="Round 40 · I-8f + I-8j · SHIP · 0B 0M 3m"><span class="bar ship" style="height:12%"></span><span class="rn">40</span></li>
+<li title="Round 41 · I-8b · SEND BACK · 0B 3M 14m"><span class="bar back" style="height:77%"></span><span class="rn">41</span></li>
+<li title="Round 42 · I-8b · SHIP · 0B 0M 3m"><span class="bar ship" style="height:12%"></span><span class="rn">42</span></li>
+<li title="Round 43 · I-12 · SHIP · 0B 0M 6m"><span class="bar ship" style="height:23%"></span><span class="rn">43</span></li>
+<li title="Round 44 · I-12a · SEND BACK · 0B 1M 3m"><span class="bar back" style="height:19%"></span><span class="rn">44</span></li>
+<li title="Round 45 · I-13 · SEND BACK · 2B 4M 12m"><span class="bar back" style="height:100%"></span><span class="rn">45</span></li>
+<li title="Round 46 · I-13b · SEND BACK · 0B 3M 4m"><span class="bar back" style="height:38%"></span><span class="rn">46</span></li>
+<li title="Round 47 · I-13c · SEND BACK · 0B 2M 1m"><span class="bar back" style="height:19%"></span><span class="rn">47</span></li>
+<li title="Round 48 · I-13d · SEND BACK · 0B 2M 3m"><span class="bar back" style="height:27%"></span><span class="rn">48</span></li>
+<li title="Round 49 · I-13e · SEND BACK · 0B 1M 4m"><span class="bar back" style="height:23%"></span><span class="rn">49</span></li>
+</ol>
+<p class="legend">Bar height is finding severity (blockers×3 + major×2 + minor). Green shipped, red sent back.
+38 earlier rounds are not shown: Rounds 2-39 predate the explicit VERDICT line in QA-FINDINGS.md; their outcomes are recorded in prose only and are deliberately not restated here rather than guessed.</p>
+</div>
+
+<h2>⚠️ Waiting on you — 2</h2>
+<article class="decision">
+      <h3>What should happen to a trip file with no owner in it?</h3>
+      <p>If someone exports a trip and sends it to you, the app correctly refuses it. But if that file carries no owner at all, the app adopts the whole thing as yours - and 91 of the activities inside stay quietly stamped with the other person's name, with nothing on screen saying so. Nothing leaks and nothing breaks; the app would just be telling you a trip is yours when it isn't.</p>
+      <ol><li>Refuse anything that isn't provably yours</li><li>Accept it, but visibly badge the whole trip as imported from someone else</li><li>Leave it until real accounts exist in Phase 3</li></ol>
+      <p class="meta">Blocks friend sharing and public share links. Open since 2026-08-28.</p>
+    </article>
+<article class="decision">
+      <h3>Do you want an &quot;accept&quot; control?</h3>
+      <p>Copying an activity from one of your trips into another leaves it permanently badged &quot;from a friend&quot; - there's no button that says &quot;yes, this is mine now.&quot; That's the safe default, but it's the kind of thing you'd notice the first time you used it. Cheap to add now; otherwise it ships with the Phase 3 accounts work.</p>
+      <ol><li>Add it now</li><li>Let it ship with Phase 3 accounts</li></ol>
+      <p class="meta">Blocks nothing. Open since Phase 1.</p>
+    </article>
+
+<h2>Deliberately owed</h2>
+<div class="panel"><ul class="owed">
+<li><strong>The two-line .tsx catch for Ctrl/Cmd+Z</strong> <span class="meta">I-13f — Lands with the first screen work. Queued, nobody owned it.</span></li>
+<li><strong>A browse-another-trip panel outlives the trip it is showing</strong> <span class="meta">browse-panel — Older rough edge, deliberately owed.</span></li>
+</ul></div>
+
+<h2>Health</h2>
+<div class="panel">
+<p><strong>1404</strong> automated tests passing · typecheck <strong>clean</strong> · measured at <code>68e478e</code></p>
+<p class="meta">Re-measured at I-13e. 1376 -&gt; 1404 with the new liveness.test.ts.</p>
+</div>
+
+<h2>Where to read more</h2>
+<div class="panel scroll">
+<table class="docs">
+<thead><tr><th>Document</th><th>Size</th><th>Read</th><th>How</th></tr></thead>
+<tbody>
+<tr><th><code>BRIEF.md</code></th><td>~3k tok</td><td>always - it's the contract</td><td>—</td></tr>
+<tr><th><code>ARCHITECTURE.md</code></th><td>~376k tok</td><td>never whole</td><td><code>cairn/tools/doc-section ARCHITECTURE &lt;sections&gt;</code></td></tr>
+<tr><th><code>ROADMAP.md</code></th><td>~137k tok</td><td>never whole</td><td><code>cairn/tools/doc-section ROADMAP &quot;Phase 2&quot;</code></td></tr>
+<tr><th><code>QA-FINDINGS.md</code></th><td>~305k tok</td><td>never whole</td><td><code>the Status note at the top + the findings you were routed</code></td></tr>
+<tr><th><code>BUILD-NOTES.md</code></th><td>~199k tok</td><td>never whole</td><td><code>cairn/tools/doc-section BUILD-NOTES &lt;sections&gt;</code></td></tr>
+<tr><th><code>REVIEW.md</code></th><td>~52k tok</td><td>the current verdict only</td><td><code>the Status note at the top says whether it's current</code></td></tr>
+<tr><th><code>CAIRN_VISUAL_ROADMAP.md</code></th><td>~52k tok</td><td>narrative archive</td><td><code>the newest block only - this hub replaced it as the status board</code></td></tr>
+</tbody>
+</table>
+</div>
+
+<footer>
+State written 2026-09-04 against <code>68e478e</code>.
+Terminal view: <code>node cairn/tools/gen-hub.mjs --text</code>.
+</footer>
+
+</div>

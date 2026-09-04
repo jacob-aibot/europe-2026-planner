@@ -105,6 +105,12 @@ purpose; `cairn/tools/gen-hub.mjs` renders it to `cairn/docs/HUB.html`, which is
 - the project's scope changes (a phase added, cut, or reordered);
 - a decision lands on Jacob's plate, or one of his is answered (`decisions[]`).
 
+`npm run hub` writes **two** files from one render: `docs/HUB.html` (standalone — open it by
+double-clicking, no server) and `docs/HUB.fragment.html` (the same body with no document wrapper,
+for publishing to a web host that supplies its own). They cannot drift: the fragment is a slice of
+the page, and `test/hub.test.ts` fails if the page stops containing it. If the board is published
+somewhere, re-publish the fragment in the same pass and record the URL in `STATE.json`.
+
 That is ~15 lines of JSON, and `test/hub.test.ts` will fail the build if the result is incoherent —
 a step marked shippable that nothing verified, a gap in the round history, a `now` that points at a
 phase not marked in progress. **The board also reports its own staleness**: `gen-hub.mjs` compares

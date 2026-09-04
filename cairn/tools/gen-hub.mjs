@@ -13,7 +13,7 @@
  *
  * Reads nothing at the repo root: the read-only boundary against the live planner is not touched.
  *
- *   node tools/gen-hub.mjs          # write docs/HUB.html
+ *   node tools/gen-hub.mjs          # write docs/HUB.html + docs/HUB.fragment.html
  *   node tools/gen-hub.mjs --text   # print the same state to stdout, ~20 lines
  *   node tools/gen-hub.mjs --check  # exit 1 if the board is stale (for CI or a hook)
  */
@@ -25,6 +25,7 @@ import { dirname, resolve } from 'node:path';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const STATE = resolve(HERE, '..', 'docs', 'STATE.json');
 const OUT = resolve(HERE, '..', 'docs', 'HUB.html');
+const FRAGMENT = resolve(HERE, '..', 'docs', 'HUB.fragment.html'); // the publishable payload — no document wrapper
 
 const state = JSON.parse(readFileSync(STATE, 'utf8'));
 
@@ -106,7 +107,7 @@ function text() {
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-function html() {
+function fragment() {
   const maxSeverity = Math.max(...state.rounds.map(severity), 1);
 
   // The page is a PURE FUNCTION OF STATE.json — no HEAD sha, no drift count, nothing that
@@ -165,12 +166,7 @@ function html() {
     .map((d) => `<tr><th><code>${esc(d.file)}</code></th><td>${esc(d.size)}</td><td>${esc(d.read)}</td><td>${d.how ? `<code>${esc(d.how)}</code>` : '—'}</td></tr>`)
     .join('\n');
 
-  return `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Cairn — where we are</title>
+  return `<title>Cairn — where we are</title>
 <style>
 :root{
   --bg:#fbfaf8; --panel:#fff; --ink:#1a1a19; --dim:#6b6a66; --line:#e5e2dc;
@@ -271,8 +267,6 @@ footer{margin-top:2.5rem;padding-top:1rem;border-top:1px solid var(--line);
   table.docs{min-width:34rem}
 }
 </style>
-</head>
-<body>
 <div class="wrap">
 
 <h1>Cairn — where we are</h1>
@@ -349,6 +343,22 @@ Terminal view: <code>node cairn/tools/gen-hub.mjs --text</code>.
 </footer>
 
 </div>
+`;
+}
+
+/**
+ * The standalone file, for `cairn/docs/HUB.html` — opened by double-clicking, with no server.
+ * A publishing host supplies its own document skeleton, so `fragment()` is what gets published;
+ * this is
+ * the same body in a document wrapper, never a second copy of it.
+ */
+function html() {
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+${fragment().trimEnd().replace('<div class="wrap">', '</head>\n<body>\n<div class="wrap">')}
 </body>
 </html>
 `;
@@ -366,6 +376,9 @@ if (argv.includes('--text')) {
   }
   console.log('Board is current.');
 } else {
+  // Both outputs, always — a fragment that lags the page it was sliced from is the drift
+  // this whole board exists to prevent.
   writeFileSync(OUT, html());
-  console.log(`wrote ${OUT}${stale ? `  (STALE: ${behind} commit(s) behind)` : ''}`);
+  writeFileSync(FRAGMENT, fragment());
+  console.log(`wrote ${OUT}\nwrote ${FRAGMENT}${stale ? `  (STALE: ${behind} commit(s) behind)` : ''}`);
 }
