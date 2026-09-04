@@ -1081,6 +1081,26 @@ strands **nothing**. The union stays at five arms (`U5` unaffected); what widens
 sentence. `ROADMAP.md` revision 47 carries the implementation as **I-13d**, which opens no `.tsx`, adds no
 dependency, and moves no `SCHEMA_VERSION`, `DB_VERSION`, `SUMMARY_VERSION` or core export.
 
+**Revision 48, 2026-09-04.** **One sentence of revision 47 was too strong, the I-13d builder found it by
+refusing to resolve it, and this revision narrows it rather than weakening the fix.** A-67 Part 7 claimed
+that *every* test written for R46-1 and R46-3 stays exactly as it is; ROADMAP I-13d's ship gate **G3**
+requires **zero** stranded derivative pairs when a transition lands during `derive`, because the new
+step-4 guard fires **before** `ports.photo.write` where the deleted `isLiveTrip(tripId)` fired after it.
+Two existing artifacts assert the old guard's byte-write side effect — one stranded pair rather than none
+— so **the R46-1 assertion's expected value *is* G3's mutant's expected red output**, and the two claims
+are mutually exclusive for the identical scenario. **G3 is correct and Part 7's blanket claim is what
+moves.** New **Part 7a** (§4.2) narrows it in place: no test asserting a **final state** moves — which
+trip a record lands in, a listing's phase, `pending`/`total`/`failures`, readability — and the **one**
+assertion pinning the old guard's collateral orphan is updated, because the new mechanism causes those
+bytes never to be written at all. Part 7a also rules the **process** question the builder raised, against
+this arc's own precedent (round 44's `qa/r43-a56.mjs`, round 46's `qa/r45-i13.mjs`, A-65 Part 8's
+`qa/r46-i13b.mjs` §K): `packages/client/test/photos.test.ts:864` is a **builder** correction;
+`qa/r46-i13b.mjs:259` is a **breaker** re-cut, flagged for the confirming round with a vacuity control,
+and its single `FAIL` at the I-13d gate is a disclosed expected result rather than a ship condition.
+**No mechanism, slot, call site, type, field, selector, port method or criterion moves**, `SCHEMA_VERSION`
+stays 2, `DB_VERSION` stays 5, `SUMMARY_VERSION` stays 5, and §10 **A-66 Part 10** is unchanged — it
+already stated the behaviour Part 7's sentence failed to notice.
+
 **Phase 1 is §2 and §4. The next phase is §8.1–§8.4.** Everything else is the shape those must not
 foreclose. See `ROADMAP.md` for sequencing and `PRODUCT-VISION.md` for why this order and not another.
 **What the product looks like is `DESIGN.md`, not this document** — §9 says why, and a builder of a screen
@@ -1088,8 +1108,10 @@ reads that instead of entering §2 or §4.
 
 ## Read only your sections
 
-This document is **~361k tokens** (re-measured at **revision 47**, with `doc-section` — **§4 grew 59k →
-69k when A-67 landed in §4.2 and §10 grew 36k → 37k when A-66 gained its Part 10**; the figures below are
+This document is **~364k tokens** (re-measured at **revision 48**, with `doc-section` — **§4 grew 69k →
+71k when A-67 gained its Part 7a**; nothing else moved and §10 is still 37k. Revision 47's own note
+follows and is unedited — this document was **~361k tokens** then, with **§4 grown 59k →
+69k when A-67 landed in §4.2 and §10 36k → 37k when A-66 gained its Part 10**; the figures below are
 otherwise revision 46's and §2 and §8 did not move. Revision 46's own note follows and is unedited —
 §8 grew 65k → 70k
 when A-56 landed in §8.4, 70k → 77k when A-59/A-60 joined it, 77k → 81k when A-60 gained its Part 6 and 81k → **82k** when A-38 Part 5's line was restated at revision 44, and §10 grew 13k → 16k when A-61 landed at revision 43, 16k → 25k when A-62/A-63/A-64 landed at revision 44, 25k → 27k when A-62 Part 8 gained its fourth residue at revision 45 and 27k → **36k** when A-65/A-66 landed at revision 46; the previous figure was ~271k at revision 36, with
@@ -1125,7 +1147,7 @@ rendering a stored summary row on the Trips list, adding an export path, or abou
 outside core reads A-47, then A-46, then A-45, then §8.4 A-44 — A-47 names which of A-46's sentences it
 supersedes, so reading it first is what tells you which of A-46 to skip** | 123k | builder, breaker |
 | 3 | Module boundaries | <1k | builder |
-| 4 | **The Phase 1 client.** §4.2 rule 6 (a pending write is never outlived by its document) is new in revision 3 — QA R3-2; rule 6a′ and the `savedDoc` predicate are revision 4 — QA R4-1; **rule 6a″ (the flush bound and its exits) and rule 6c's "delete goes on the chain" are revision 5** — QA R6-1/R6-2/R7-3; **rule 5's retirement carve-out is revision 6** — QA R8-1, read with §2.7; **rule 4a is revision 8** — QA R11-1, read with §2.2a A-7; **§4.3's A-30 is revision 23** — the `refreshSummary` port method, the fence's meaning stated once, and the rescan's uniform per-row link — and **anyone touching `runRescan`, `StoragePort` or a port implementation reads it first**, with §8.4 clause 3 beside it; **§4.4's A-40 is revision 29** — the lifetime map is a plain component over a pure `packages/client` frame function, not a second `MapPort`, and **anyone building or reviewing `WorldMap.tsx` reads it first** (it is ~3k and self-contained; the trip map's port is unchanged and needs no re-reading); **§4.4's A-41 and A-42 are revision 30 and are read *with* A-40, never instead of it** — A-41 is the atlas frame (geographic clustering, one primary pane and up to two insets, padding, and the **W3** renderer clause) and it amends A-40 clause 2 and withdraws A-40 Part 7 residue 1's diagnosis; A-42 withdraws A-40 clause 2's min-span *claim* and rules that no second constant is created. **A builder of I-8d reads A-40 Parts 3–5, then A-41 and A-42, and needs nothing else in this document except §2.10's list**; **§4.4's A-48 is revision 33, sits directly under A-42 and is read *with* A-41, never instead of it** — QA round 36 measured A-41's own C2 and C3 as wrong (a key point that lands in the ocean, and a partition that depends on the alphabet), and A-48 supersedes **C2**, **C3** and Part 8 residues 1′ and 4 in place, withdraws C4's margin claim, adds **C9** (paint order) and one pane field (`aspect`), and changes the semantics of core's `clusterPoints` to connected components. **A builder of I-8g reads A-48 first — it names which of A-41's clauses to skip — then A-41's C1/C5/C6/C7/C8 and Parts 4–7, then A-40 Parts 3–5**; **§4.4's A-49 and A-50 are revision 34, sit directly under A-48 and are read *with* A-41 and A-48, never instead of them** — QA round 37 measured A-48's own C8 as the clause A-48 forgot (the key point moved onto the country and the *extent* did not), and A-49 supersedes **C8**, **C7**'s cap and A-41's I1/I2/I3/I5 in place, withdraws A-48 C9 consequence 2's chip-list sentence as false, adds `countryParts` to core, a `'detached'` pane, a `codes` array on the frame and invariants **I11–I15**; A-50 completes A-48 Part 6 for the *tall* direction in one CSS declaration. **A builder of I-8h reads A-49 and A-50 first — A-49 names which of A-41's and A-48's clauses it supersedes — then A-48's C2′/C3′/C9 and Part 6, then A-41's C1/C5/C6/C7 and Parts 4–7, and needs nothing else in this document except §2.10's list**; **§4.4's A-51 and A-52 are revision 35, sit directly under A-50, and are the entry point to the whole atlas-frame family — read A-51 first and it names which of A-41/A-48/A-49 to skip** — A-51 reopened the framing abstraction itself at Jacob's instruction (QA **R38-2**, MAJOR) and **supersedes A-41's C5/C6/C7, A-49's C7′/C8′/C8″ and the `role` field in place**: the frame is **one pane per connected component of country parts**, equally weighted, ordered by weight rather than framed by it, and its Part 7 is the **consolidated** I1…I17 list that replaces three rounds of *"restated by"* pointers. A-52 is one paragraph beside it (a ring the index carries is a ring the frame draws). **A-51 is RULED AND HELD FOR JACOB'S APPROVAL — no builder pass may be dispatched against it until he has ruled**; until then A-41…A-50 are what is shipped. **§4.4's A-53 is revision 36, sits directly under A-52, and supersedes nothing** — it is the pane-*membership* contract Jacob asked for before approving A-51 (membership is country geometry because an ISO code is the only geographic evidence the record carries; standing is `home`; priority is order; disclosure is the caption), and it adds **I18**, the ≤ 3-extent-panes-planet-wide bound, and the d3-geo/Turf prior-art ruling. **A builder of I-8i reads A-51, then A-52, then A-53 Parts 4 and 8, then A-41 C1 + Part 4, A-48 C2′/C3′/C4′/C9 + Part 6, A-49 Part 2, A-50 and A-40 Parts 2–5, and needs nothing else in this document except §2.10's list**; **§4.4's A-54 is revision 37, sits under A-53 and is the newest entry in the family — it supersedes A-51 **G7** in full, A-51 **G5**'s third key and A-52's **clause 1**, widens L3's exception, adds **I19**, and corrects five published numbers, so **anyone reading A-51 for the layout, the pane order or the ring filter reads A-54 first and it names what to skip**. **A builder of I-8j reads A-54, then A-51 G5/G7 and Part 8, then A-50 and A-40 Parts 2–5, and needs nothing else**; **§4.2's A-67 is revision 47 and is the newest entry in the section — it is the only one that is *not* about the map, and it sits at the end of §4.2 rather than in §4.4** — the store's **generation guard**, ruling QA **R47-1** and **R47-2** as one defect: `flushForTransition` returns a **ticket** instead of a boolean, three guarded slots order every asynchronous install, and **R46-1's and R46-3's shipped point-fixes are deleted rather than layered under** (Part 7 rules each site). It adds new rule **6d** to §4.2 and amends §10 **A-66 Part 7** by pointer. **A builder of I-13d reads A-67 Parts 3–7 and 10, plus §4.2 rule 6 whole and §10 A-66 Part 10, and needs nothing else in this document** — it is ~10k and self-contained, and it needs none of §4.4 | 69k | builder |
+| 4 | **The Phase 1 client.** §4.2 rule 6 (a pending write is never outlived by its document) is new in revision 3 — QA R3-2; rule 6a′ and the `savedDoc` predicate are revision 4 — QA R4-1; **rule 6a″ (the flush bound and its exits) and rule 6c's "delete goes on the chain" are revision 5** — QA R6-1/R6-2/R7-3; **rule 5's retirement carve-out is revision 6** — QA R8-1, read with §2.7; **rule 4a is revision 8** — QA R11-1, read with §2.2a A-7; **§4.3's A-30 is revision 23** — the `refreshSummary` port method, the fence's meaning stated once, and the rescan's uniform per-row link — and **anyone touching `runRescan`, `StoragePort` or a port implementation reads it first**, with §8.4 clause 3 beside it; **§4.4's A-40 is revision 29** — the lifetime map is a plain component over a pure `packages/client` frame function, not a second `MapPort`, and **anyone building or reviewing `WorldMap.tsx` reads it first** (it is ~3k and self-contained; the trip map's port is unchanged and needs no re-reading); **§4.4's A-41 and A-42 are revision 30 and are read *with* A-40, never instead of it** — A-41 is the atlas frame (geographic clustering, one primary pane and up to two insets, padding, and the **W3** renderer clause) and it amends A-40 clause 2 and withdraws A-40 Part 7 residue 1's diagnosis; A-42 withdraws A-40 clause 2's min-span *claim* and rules that no second constant is created. **A builder of I-8d reads A-40 Parts 3–5, then A-41 and A-42, and needs nothing else in this document except §2.10's list**; **§4.4's A-48 is revision 33, sits directly under A-42 and is read *with* A-41, never instead of it** — QA round 36 measured A-41's own C2 and C3 as wrong (a key point that lands in the ocean, and a partition that depends on the alphabet), and A-48 supersedes **C2**, **C3** and Part 8 residues 1′ and 4 in place, withdraws C4's margin claim, adds **C9** (paint order) and one pane field (`aspect`), and changes the semantics of core's `clusterPoints` to connected components. **A builder of I-8g reads A-48 first — it names which of A-41's clauses to skip — then A-41's C1/C5/C6/C7/C8 and Parts 4–7, then A-40 Parts 3–5**; **§4.4's A-49 and A-50 are revision 34, sit directly under A-48 and are read *with* A-41 and A-48, never instead of them** — QA round 37 measured A-48's own C8 as the clause A-48 forgot (the key point moved onto the country and the *extent* did not), and A-49 supersedes **C8**, **C7**'s cap and A-41's I1/I2/I3/I5 in place, withdraws A-48 C9 consequence 2's chip-list sentence as false, adds `countryParts` to core, a `'detached'` pane, a `codes` array on the frame and invariants **I11–I15**; A-50 completes A-48 Part 6 for the *tall* direction in one CSS declaration. **A builder of I-8h reads A-49 and A-50 first — A-49 names which of A-41's and A-48's clauses it supersedes — then A-48's C2′/C3′/C9 and Part 6, then A-41's C1/C5/C6/C7 and Parts 4–7, and needs nothing else in this document except §2.10's list**; **§4.4's A-51 and A-52 are revision 35, sit directly under A-50, and are the entry point to the whole atlas-frame family — read A-51 first and it names which of A-41/A-48/A-49 to skip** — A-51 reopened the framing abstraction itself at Jacob's instruction (QA **R38-2**, MAJOR) and **supersedes A-41's C5/C6/C7, A-49's C7′/C8′/C8″ and the `role` field in place**: the frame is **one pane per connected component of country parts**, equally weighted, ordered by weight rather than framed by it, and its Part 7 is the **consolidated** I1…I17 list that replaces three rounds of *"restated by"* pointers. A-52 is one paragraph beside it (a ring the index carries is a ring the frame draws). **A-51 is RULED AND HELD FOR JACOB'S APPROVAL — no builder pass may be dispatched against it until he has ruled**; until then A-41…A-50 are what is shipped. **§4.4's A-53 is revision 36, sits directly under A-52, and supersedes nothing** — it is the pane-*membership* contract Jacob asked for before approving A-51 (membership is country geometry because an ISO code is the only geographic evidence the record carries; standing is `home`; priority is order; disclosure is the caption), and it adds **I18**, the ≤ 3-extent-panes-planet-wide bound, and the d3-geo/Turf prior-art ruling. **A builder of I-8i reads A-51, then A-52, then A-53 Parts 4 and 8, then A-41 C1 + Part 4, A-48 C2′/C3′/C4′/C9 + Part 6, A-49 Part 2, A-50 and A-40 Parts 2–5, and needs nothing else in this document except §2.10's list**; **§4.4's A-54 is revision 37, sits under A-53 and is the newest entry in the family — it supersedes A-51 **G7** in full, A-51 **G5**'s third key and A-52's **clause 1**, widens L3's exception, adds **I19**, and corrects five published numbers, so **anyone reading A-51 for the layout, the pane order or the ring filter reads A-54 first and it names what to skip**. **A builder of I-8j reads A-54, then A-51 G5/G7 and Part 8, then A-50 and A-40 Parts 2–5, and needs nothing else**; **§4.2's A-67 is revision 47 and is the newest entry in the section — it is the only one that is *not* about the map, and it sits at the end of §4.2 rather than in §4.4** — the store's **generation guard**, ruling QA **R47-1** and **R47-2** as one defect: `flushForTransition` returns a **ticket** instead of a boolean, three guarded slots order every asynchronous install, and **R46-1's and R46-3's shipped point-fixes are deleted rather than layered under** (Part 7 rules each site). It adds new rule **6d** to §4.2 and amends §10 **A-66 Part 7** by pointer. **A builder of I-13d reads A-67 Parts 3–7 and 10, plus §4.2 rule 6 whole and §10 A-66 Part 10, and needs nothing else in this document** — it is ~12k and self-contained, and it needs none of §4.4. **A-67 gained a Part 7a at revision 48** (the I-13d builder's report against `4316167`): Part 7's *"every existing R46-1/R46-3 test stays exactly as it is"* was too strong by one assertion and contradicted ROADMAP **G3**, so it is narrowed to **final-state** assertions and the one assertion pinning the old guard's byte-write side effect is corrected. **Anyone reading Part 7 reads Part 7a with it**; Part 7a also rules who touches `qa/` (**breaker**) versus `packages/client/test/` (**builder**). **No mechanism, slot, call site or criterion moves** | 71k | builder |
 | 5 | The four hard subsystems | 2k | breaker; builder from Phase 3 on |
 | 6 | Privacy, authorization, deletion cascade. **§6.6 is the build-artifact threshold; the copy threshold is §2.14 A-15 + A-18 (revisions 13 and 14) and they differ deliberately, in two named places — read them together or neither** | 4k | breaker, manager; builder for §6.2 |
 | 7 | Explicitly deferred | <1k | anyone about to build something not in the roadmap |
@@ -8122,6 +8144,10 @@ Six rules, each of which exists because of a specific failure:
 > guards and R46-3's `state.doc?.id !== doc.id` guards are DELETED** — see Part 7. No `AppState` field, no
 > selector, no port method, no persisted value, no type in `packages/core`, no `SCHEMA_VERSION`/
 > `DB_VERSION`/`SUMMARY_VERSION` movement, and **no `.tsx`**.
+>
+> **Amended at revision 48 by Part 7a**, which narrows Part 7's *"every existing test stays exactly as it
+> is"* to final-state assertions only. **Anyone reading Part 7 reads Part 7a with it.** Nothing else in
+> this entry moves — no mechanism, no slot, no call site, no criterion.
 
 **Part 1 — the two findings are one defect, and it is not in the photo code.**
 
@@ -8405,10 +8431,93 @@ came to believe the case was closed.
 | `doMerge`'s `if (state.doc !== doc)` inside its `chainOntoSaving` link (R11-1) | **kept, unchanged, and it is the precedent** | Reference identity on the document, checked inside the link with no await before the act. It is already what this ruling generalises, which is why a merge is **not** a transition and claims nothing: a dispatch landing inside a merge causes the *merge* to yield, and the edit survives. |
 
 **How the builder proves the subsumption rather than asserting it: the existing tests are not deleted.**
-Every test written for R46-1 and R46-3 stays exactly as it is, and must be green with the point-fixes
-removed and the generation guard in. A test that only passes because of a guard being deleted is a test
-measuring the guard instead of the behaviour, and it is the builder's job to report that rather than to
-adjust it.
+~~Every test written for R46-1 and R46-3 stays exactly as it is, and must be green with the point-fixes
+removed and the generation guard in.~~ *(**Narrowed at revision 48** — the blanket form was wrong by
+exactly one assertion and **Part 7a** replaces this sentence. The corrected claim: **every test written for
+R46-1 and R46-3 that asserts a FINAL STATE stays exactly as it is** — which trip a record lands in, what
+phase a listing reports, what `pending`/`total`/`failures` settle to, and whether a byte pair is readable
+by the trip that holds it. **The one assertion that moves is the one that pins the OLD guard's byte-write
+side effect**, and it moves because the new mechanism writes fewer bytes, not more.)* A test that only
+passes because of a guard being deleted is a test measuring the guard instead of the behaviour, and it is
+the builder's job to report that rather than to adjust it. **The I-13d builder did exactly that at
+`4316167` and this Part is the answer.**
+
+**Part 7a — the one existing assertion that moves, and it moves because the fix landed (revision 48; the
+I-13d builder's report against `4316167`, and ROADMAP **G3**).**
+
+**The contradiction, in one sentence.** Part 7's blanket *"stays exactly as it is"* and ROADMAP I-13d's
+ship-gate criterion **G3** (*"zero stranded derivative pairs: the break precedes the byte `write`.
+Mutation: restore `isLiveTrip(tripId)` at the step-4 guard → one pair stranded → red"*) make **opposite**
+predictions about the identical scenario — a trip transition landing during `derive`. They cannot both
+hold, because **the R46-1 test's expected value is literally the G3 mutant's expected red output.**
+
+**The mechanics, confirmed against the shipped code and not inferred.** In `importPhotos`,
+`if (!guard.current('doc', g)) break;` is the statement **immediately before**
+`await ports.photo.write(tripId, id, derived.thumb.bytes, derived.display.bytes)` — the step-4 guard fires
+**before** the write, where the deleted `isLiveTrip(tripId)` fired **after** it. So under a transition that
+lands inside the decode, the abandoned file's byte pair is **never created**. This is not "written and then
+swept": there is no write, no cleanup, no window. Both artifacts below observe `[]` where they were written
+to observe one key, and that empty array is the whole of the difference.
+
+**The ruling. G3 is correct and Part 7's blanket claim is narrowed, in that order and not the other.**
+
+1. **Fewer photographs lost is the outcome this ruling exists to produce.** §10 **A-66 Part 10** item 2
+   already says it in as many words — *"the common case now strands nothing at all… Part 7's orphan is no
+   longer produced by the case Part 7 was written about"* — and A-67 Part 7's own `isLiveTrip` row says
+   *"it fires **before the decode's `write`** rather than after it."* The architecture has asserted the new
+   behaviour in two places since revision 47. The only thing that did not get updated was the sentence
+   claiming no test would notice.
+2. **A test that pins a defect's collateral damage is not protecting a contract.** The old assertion's
+   subject is *where the orphan went*, and an orphan that is not produced has nowhere to go. The contract
+   R46-1 was written to protect is **"the record does not land in the trip the user switched to, and no
+   listing reports `'ready'` over bytes another trip holds"** — and every assertion of *that* in both
+   artifacts is green under A-67, unedited. Only the collateral clause moves.
+3. **So the narrowed claim, stated so nobody re-derives it:** *no existing test asserting a **final state**
+   moves — which trip a record lands in, a listing's phase, `pending`/`total`/`failures`, readability. The
+   one existing assertion pinning the **old guard's byte-write side effect** — that exactly **one**
+   derivative pair gets stranded rather than **zero** — **must be updated**, because the new mechanism
+   makes those bytes never get written at all. That is a strictly better outcome and not a regression the
+   old assertion should be allowed to protect.* **Its inversion is the proof that A-67 landed**, which is
+   what G3 is for, and it is the only assertion in this repository with that property.
+4. **Nothing else in Part 7 moves.** Every row of Part 7's table stands, the four kept guards stay kept,
+   and the deletions are the deletions. **No other test, in `packages/client/test/` or in `qa/`, changes
+   for this** — a builder who finds a second one has found something this ruling did not, and reports it
+   rather than editing it.
+
+**The exact corrections owed, one per artifact, and they are the same single observable.**
+
+| Artifact | Now asserts | Must assert | Whose hand |
+|---|---|---|---|
+| `packages/client/test/photos.test.ts:864` (test *"R46-1: a trip switch mid-decode does not file the record in the trip the user switched to"*) | `deepEqual([...p.photo.thumbs.keys()], [photoByteKey(A, 'photo-1')])`, described as *"the bytes belong to the trip the files were picked from, and stay there"* | `deepEqual([...p.photo.thumbs.keys()], [])`, described as **"no bytes are written at all for a file whose decode outlives the trip it was picked from — the guard precedes the `write` (A-67 Part 7a, ROADMAP G3)"**. **`display`'s key set is asserted empty beside it**, since the same `write` call produces both and an assertion over one store only is how a half-write goes unseen. The test's other four assertions do not move | **builder** |
+| `qa/r46-i13b.mjs:259` (§D face 1) | `landedIn === A && keys(p).join() === \`${A}/photo-1\`` | the same inversion — the record still does not land in B, and `keys(p)` is **empty**. Its `FINDING R46-1` string gains the reason, so a reader does not read the empty set as the probe failing to observe anything | **breaker** — see below |
+
+**The process question, ruled: `qa/` is the breaker's, and a builder does not touch it even when the
+correction is one line and obvious.** This is settled convention in this arc and revision 48 does not
+invent it, it applies it:
+
+- **Round 44.** The I-12a builder left `qa/r43-a56.mjs` §E/§F/§M red rather than re-cut them, and wrote the
+  reason down: *"editing an adversarial probe so it reports my own fix as green is the move that must not
+  be made quietly by the person fixing it."* That was correct then and is the same move now.
+- **Revision 44 → round 46.** Six lines of `qa/r45-i13.mjs` asserted round 45's *proposed* fixes rather than
+  revision 44's chosen ones. The I-13b builder refused the edit (zero-line diff) and **round 46's breaker**
+  re-cut all six, watching each red at the pre-fix commit first.
+- **Revision 46 → round 47.** **A-65 Part 8** names `qa/r46-i13b.mjs` §K and `qa/r45-i13.mjs` §K and says
+  the re-cut is *"the confirming breaker's job, not the builder's"*; round 47's breaker did those plus §G,
+  each with a vacuity control.
+
+So: **`packages/client/test/photos.test.ts:864` is builder work** — it is the suite's own test of the
+suite's own behaviour, and the builder who changed the behaviour owns the assertion that measures it.
+**`qa/r46-i13b.mjs:259` is breaker work** and is **flagged for the next breaker pass** (the round that
+confirms I-13d), not queued for a builder. Two consequences a reader needs:
+
+1. **`qa/r46-i13b.mjs` printing one `FAIL` at the I-13d gate is an expected, disclosed result and not a
+   ship condition** — ROADMAP I-13d's *"the two probes green unedited"* line is narrowed by revision 48 to
+   exclude this one line, and only this one. A `FAIL` on **any other** line of either probe is still a
+   regression and still blocks.
+2. **The re-cut carries a vacuity control**, as round 47's did: the inverted line must be watched **red**
+   against a build with `isLiveTrip(tripId)` restored at the step-4 guard, which is G3's own mutant. An
+   assertion that `keys(p)` is empty passes trivially against a probe that never imported anything, and
+   the control is what separates the two.
 
 **Part 8 — what deliberately gets no guard, named so a builder does not add one.**
 
@@ -8463,7 +8572,7 @@ red before and green after.**
 |---|---|---|
 | **G1** | Park `openTrip`'s `storage.load`; `dispatch({type:'setTripMeta', …})` inside the window — R47-1 face 1 with no photographs in it | The dispatch **throws** `TRANSITION_IN_PROGRESS_MESSAGE`; `state.doc` is untouched; after the transition settles, memory and storage agree on the title and `persistence.status` is `'idle'` honestly. **Mutation: remove `dispatch`'s window guard → the edit is accepted and then lost, and `qa/r4-switch.mjs` §9's standing assertion fails → red.** |
 | **G2** | Slow `derive`; import **4** files into trip A; `openTrip('A')` — the **same** trip — after file 1 has landed. R47-1 face 3, measured | Every file that reached its dispatch is in the document **and in storage**; the batch stops at the first file whose decode completes on or after the re-open; **no file is decoded, written and then lost**; `failures` is `[]`; `pending`/`total` settle to `0/0`. **Mutation: restore `state.doc?.id !== tripId` in place of the ticket check → three of four lost, `failures: []`, `pending: 0` → red.** This is round 47's own measurement, inverted. |
-| **G3** | The same, with the re-open landing during `derive` rather than during `write` | **Zero** stranded derivative pairs: the break precedes the byte `write`. **Mutation: restore `isLiveTrip(tripId)` at the step-4 guard → one pair stranded → red.** |
+| **G3** | The same, with the re-open landing during `derive` rather than during `write` | **Zero** stranded derivative pairs: the break precedes the byte `write`. **Mutation: restore `isLiveTrip(tripId)` at the step-4 guard → one pair stranded → red.** **This criterion is correct and Part 7's blanket "no test moves" was not — see Part 7a (revision 48) for the one existing assertion G3 costs, and which hand corrects it.** |
 | **G4** | Two `openTrip('A')` calls whose `present()` resolve out of order — R47-2 face 1 | The **later** call's answer is the one stamped; a photograph whose bytes are on disk never reads `'missing'`. **Mutation: restore `state.doc?.id !== doc.id` → red.** |
 | **G5** | `refreshPhotoAvailability()` in flight; `doMerge` completes and issues its own read; the older read resolves last — R47-2 face 2, which is R46-2's own end state on R46-2's own fix | The merge's answer wins: `{phase:'ready', missing:0}` over bytes that are on disk. **Same mutation → red.** |
 | **G6** | Two *Try again* taps, the first failing and the second succeeding, resolving out of order — R47-2 face 3 | The terminal state is the successful one and never reverts to `{phase:'unreadable'}`. §10.6 property 6's *"an `'unreadable'` listing carries an action"* is not defeated by the action working. **Same mutation → red.** |
