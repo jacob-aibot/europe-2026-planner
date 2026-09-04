@@ -19,8 +19,58 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
+> **🟢 THE STORE MECHANISM IS SOUND AND THE EIGHT-ROUND ARC IS CLOSED — as of 2026-09-04. This
+> block is the newest.** Step 2d's photo half moves to **designed ✅ · built ✅ · verified ✅ ·
+> shippable ❌**. **I-13h is built and the design behind it survived its final adversarial round.**
+> **I-13 is still not shippable**, and the honest reason is below rather than buried: the *mechanism*
+> is done, but the breaker found two real defects in the code sitting next to it, and one queued
+> piece of screen work (**I-13f**) has never been started.
+>
+> **The headline, plainly.** For eight rounds in a row, every fix to the way Cairn keeps track of
+> *"which of this trip's pictures are actually on the disk"* was found incomplete within one round.
+> **This round it was not.** The tester attacked the new single-door design as a mechanism rather
+> than as a checklist: they proved by inspection at runtime that **every one of the store's 29
+> operations** really does go through the door — including ones nobody has written yet — ran **376
+> different sequences** of five and eight user gestures each against a deliberately broken picture
+> store, and could not produce a single case where Cairn is left showing a spinner that never
+> resolves, an error that belongs to an older question, or *"this picture isn't on your device"* over
+> a picture that is. The eaten *Try again* from the last round is genuinely fixed, and the tester
+> reproduced the exact race the designer described before confirming it. **This part of Cairn can be
+> considered finished.**
+>
+> **What the tester found instead — two things, both older than this work.** They were in the code
+> before any of these eight rounds started, and the tester proved that by running the same tests
+> against last week's version and getting identical results.
+>
+> 1. **Cairn can tell you your photo store is broken when it isn't.** If the part of the app that
+>    *draws* your photographs crashes — an ordinary bug — Cairn mistakes that crash for the picture
+>    store failing, and shows you *"couldn't read your photos"* with a **Try again** that can never
+>    work, over photographs that are all safely on your device. The crash itself vanishes silently,
+>    so nothing is logged and no developer is told. That is a screen telling you something false
+>    about your own data, so it is the more serious of the two.
+> 2. **Leaving a trip while photographs are importing puts that trip's report on the next trip's
+>    screen.** Pick some files in Vienna, tap through to Prague while they are still being processed,
+>    and if one of them cannot be read you now see *"holiday.jpg — couldn't be decoded"* on
+>    **Prague's** screen, along with a progress bar that thinks it is further along than it is. The
+>    design note for this area says in as many words that this must never happen and refuses a
+>    related feature specifically to avoid it — so the note is right and the code does not match it.
+>    Nothing is lost or deleted: the tester checked that the misfiled report cannot cause the wrong
+>    photographs to be removed, because each trip's pictures are stored under its own key.
+>
+> Plus three small ones: a smaller version of the same misfiling in the "clean up leftover files"
+> path, two published "count these words in the source" numbers that are each one off, and a test
+> script whose file list had gone stale.
+>
+> **Still nothing on your phone changes.** There is still no photo screen — that is **I-13f**, and it
+> is the piece that has been queued the longest.
+>
+> **What happens next:** a repair pass for the two real defects (both are the designer's call, not a
+> quick patch), then **I-13f** — the actual photo screen — and then a manager verdict on the whole
+> photo stretch. **The underlying machinery no longer needs another round; the two findings above
+> and I-13f do.**
+
 > **🟠 THE BUILDER FOUND A CONTRADICTION IN THE DESIGN AND SAID SO INSTEAD OF PICKING A SIDE — as
-> of 2026-09-04. This block is the newest.** Step 2d's photo half stays **designed ✅ · built ✅ ·
+> of 2026-09-04. This block was the newest until the block above.** Step 2d's photo half stays **designed ✅ · built ✅ ·
 > verified ⚠️ · shippable ❌**. **I-13 stays sent back and is not shippable.** **I-13g is built.**
 > The next pass is **I-13h**, and it is the smallest in the whole stretch: one condition, one bookmark
 > and one one-line accessor.

@@ -36,8 +36,19 @@
  *      has been dying at §D since `4316167`. And three of Part 10's stated mutants do not
  *      reproduce as worded (G14, G17 and Part 9's own vacuity mutant for `:231`).
  *
- * Findings: **R49-1** MAJOR (§B ×7, §C5) · **R49-2** MINOR (§J) · **R49-3** MINOR (§J ×3) ·
- * **R49-4** MINOR (§D3a) · **R49-5** MINOR (§C8 ×3). 13 `FAIL` lines, 5 ids.
+ * Findings as first cut: **R49-1** MAJOR (§B ×7, §C5) · **R49-2** MINOR (§J) · **R49-3** MINOR
+ * (§J ×3) · **R49-4** MINOR (§D3a) · **R49-5** MINOR (§C8 ×3). 13 `FAIL` lines, 5 ids.
+ *
+ * **RE-CUT AT ROUND 50 (`e051306`), nine lines, and the probe is now ALL CLEAR.** §4.2 **A-69**
+ * (revision 50) and **A-70** (revision 51) ruled on all five. Five of the nine asserted the
+ * SOURCE SHAPE of machinery A-69 Part 6 item 1 **deleted** — `availabilityOwed`, both `doc`-slot
+ * discharge lines, the seven-`supersede('browsing')` count, and the non-active `deleteTrip`
+ * install's do-nothing comment — and each is re-cut to the mechanism that replaced it (the two
+ * settling sites, the eighth supersede, A-69 Part 8's pane clear), so an empty set is never read
+ * as a probe that observed nothing. Four asserted the ABSENCE of a sentence from A-68's own text;
+ * this document corrects by amendment banner plus a later entry rather than by silent edit, so
+ * they are re-cut to assert that the banner and A-69 Parts 9/10 carry the correction.
+ * `bash qa/r50-recut-vacuity.sh` watches every one of the nine RED first.
  * Companions: `bash qa/r49-recut-vacuity.sh` (the vacuity controls for the four re-cut lines) and
  * `bash qa/r49-controls.sh` (C1: R49-1 at `d03eac8`; C2: R49-5 at three commits).
  */
@@ -723,18 +734,34 @@ if (run('F')) {
   // `removePhoto` + `undo`, because on the `available === null` path the supersede and the owed
   // read's own `claim` are in the same synchronous block. Check the premise in the SHIPPED code.
   const rp = src.slice(src.indexOf('async removePhoto(photoId: string)'), src.indexOf('async reclaimPhotoBytes'));
+  // **RE-CUT AT ROUND 50 — the machinery this pair measured is GONE.** §4.2 **A-69** Part 6 item 1
+  // DELETES `availabilityOwed` and both discharge lines; A-69 Part 3 is why (*"no correctness
+  // argument in the store may rest on an exhaustive enumeration of control-flow exits"*). The
+  // premise round 49 checked — *"the supersede and the owed read's `claim` are one statement
+  // apart"* — is no longer a fact about this file, so asserting it would be asserting the shape of
+  // deleted code. What replaces it is the fact G14's corrected criterion now rests on: the
+  // supersede is still there and unconditional (A-69 Part 6 item 2, *ordering*), the value guard is
+  // still nested inside it (R45-4), and the LIVENESS half is discharged nowhere in this method —
+  // it is discharged at the boundary, which is why the corrected G14 mutates `settleAvailability`
+  // and not the supersede.
   const tail = rp.slice(rp.indexOf('await ports.photo.remove('));
-  ok(!/\bawait\b/.test(tail.slice(tail.indexOf('\n'), tail.indexOf('if (availabilityOwed'))),
-    'F1: there is NO `await` between `ports.photo.remove` resolving and `removePhoto`\'s owed-read discharge',
-    tail.slice(tail.indexOf('\n'), tail.indexOf('if (availabilityOwed')).match(/await [^\n]*/g));
-  ok(/if \(availabilityOwed && guard\.current\('doc', g\)\) await readPhotoAvailability\(state\.doc\);/.test(rp),
-    'F1: and the discharge is `readPhotoAvailability`, whose own `claim` bumps the slot synchronously');
+  ok(/guard\.supersede\('photoAvailability'\);\n(?: *\/\/[^\n]*\n)* *if \(state\.photos\.available !== null\) \{/.test(tail),
+    'F1 (re-cut, A-69 Part 6 item 2): `removePhoto`\'s supersede is still hoisted OUT of R45-4\'s value guard, with that guard kept verbatim and nested inside — removing either re-opens R48-1',
+    tail.slice(tail.indexOf("guard.supersede('photoAvailability')"), tail.indexOf("guard.supersede('photoAvailability')") + 90));
+  ok(!/availabilityOwed/.test(rp) && !/await readPhotoAvailability\(/.test(rp),
+    'F1 (re-cut, A-69 Part 6 item 1): and there is NO owed flag and NO discharge line left in `removePhoto` — the liveness half is paid at the boundary, which is what makes the corrected G14 mutate `settleAvailability` instead',
+    rp.match(/availabilityOwed[^\n]*|await readPhotoAvailability\([^\n]*/g));
   note('So on the `available === null` path the supersede is bump N and the claim is bump N+1, one');
   note('statement apart with no interleaving point — a mutant that deletes the supersede leaves the');
   note('claim doing the same invalidation. **The builder\'s explanation is mechanically correct.** The');
   note('imprecision is A-68 G14\'s own *"both mutations above → red"*, not the code and not the test.');
-  ok(/\*\*G14\*\*[\s\S]{0,400}Both mutations above → red/.test(a68),
-    'F1: A-68 G14 does say "Both mutations above → red" — the criterion is what needs the correction');
+  // **RE-CUT AT ROUND 50.** Round 49 asserted that A-68's G14 still *carried* the wrong wording,
+  // which was the finding. A-69 Part 10 item 1 ruled on it, so the current contract is that the
+  // CORRECTION exists and names the fault that actually reproduces.
+  const a69 = arch.slice(arch.indexOf('#### A-69 —'), arch.indexOf('#### A-70 —'));
+  ok(/\*\*G14's \*"Both mutations above → red"\* is false and becomes one mutation\.\*\*/.test(a69)
+     && /\*\*Mutation: make\s*\n?\s*`settleAvailability` a no-op\*\*/.test(a69),
+    'F1 (re-cut): A-69 Part 10 item 1 CORRECTS G14 — the reproducing fault is *"make `settleAvailability` a no-op"*, and R45-4\'s value-guard mutation reddens G13 alone (QA R49-3a, ruled)');
 
   // F2 — G17. The builder says deleting a reseed supersede cannot redden G4…G7 because every
   // INSTALLING transition issues a read whose claim is newer. Check that A-68 says so itself, and
@@ -842,7 +869,11 @@ if (run('H')) {
   ok(cnt(/guard\.claim\('browsing'\)/g) === 1, 'exactly one `claim(\'browsing\')` — `browseTrip`', cnt(/guard\.claim\('browsing'\)/g));
   ok(cnt(/guard\.claim\('doc'\)/g) === 1, 'exactly one `claim(\'doc\')` — `claimTransition`', cnt(/guard\.claim\('doc'\)/g));
   ok(cnt(/guard\.supersede\('photoAvailability'\)/g) === 8, 'exactly eight `supersede(\'photoAvailability\')`', cnt(/guard\.supersede\('photoAvailability'\)/g));
-  ok(cnt(/guard\.supersede\('browsing'\)/g) === 7, 'exactly seven `supersede(\'browsing\')`', cnt(/guard\.supersede\('browsing'\)/g));
+  // **RE-CUT AT ROUND 50: seven → eight.** §4.2 **A-69** Part 8 (QA R49-4) adds one, on
+  // `deleteTrip`'s NON-active install, and it is unconditional there on purpose.
+  ok(cnt(/guard\.supersede\('browsing'\)/g) === 8,
+    'exactly eight `supersede(\'browsing\')` — the six reseeds, `closeBrowse`, and A-69 Part 8\'s new one on `deleteTrip`\'s non-active branch',
+    cnt(/guard\.supersede\('browsing'\)/g));
   ok(cnt(/claimTransition\(\)/g) === 3, 'exactly two `claimTransition()` CALL sites plus its declaration (A-67 G8)', cnt(/claimTransition\(\)/g));
   ok(cnt(/\{ reseed: true \}/g) + cnt(/\n\s*\{ reseed: true \},/g) >= 6, 'at least the six reseed transitions plus the merge');
   // Comment lines are stripped first: two of the three are NAMED in the comments that record their
@@ -851,14 +882,31 @@ if (run('H')) {
   ok(!/isLiveTrip\(/.test(exec) && !/state\.doc\?\.id !== tripId/.test(exec) && !/state\.doc\?\.id !== doc\.id/.test(exec),
     'the three deleted point-fixes are gone from every EXECUTABLE line, not layered under (A-67 Part 7)',
     exec.match(/isLiveTrip\(|state\.doc\?\.id !== (tripId|doc\.id)/g));
-  ok(/A-68 Part 4\.2 item 1 — this branch deliberately gets NOTHING/.test(src),
-    'the non-active `deleteTrip` install carries its do-nothing reason in writing');
+  // **RE-CUT AT ROUND 50.** The branch no longer gets nothing: A-69 Part 8 gives it a `browsing`
+  // supersede and a conditional pane clear, while A-68 Part 4.2 item 1 is *narrowed rather than
+  // withdrawn* for `photoAvailability`. Both halves are now the contract, so both are asserted.
+  ok(/A-68 Part 4\.2 item 1 still holds for `photoAvailability` and a builder may NOT add/.test(src),
+    'the non-active `deleteTrip` install still carries its do-nothing reason for `photoAvailability` in writing (A-68 Part 4.2 item 1, narrowed by A-69 Part 8)');
+  ok(/guard\.supersede\('browsing'\);\n\s*set\(\{ \.\.\.state, library, openFailures,\n\s*browsing: state\.browsing\?\.id === id \? null : state\.browsing \}\);/.test(src),
+    'A-69 Part 8 (QA R49-4): and it now clears a pane over the trip it just destroyed — unconditional supersede, conditional write',
+    /guard\.supersede\('browsing'\);[\s\S]{0,200}/.exec(src.slice(src.indexOf('A-69 Part 8 (QA R49-4)')))?.[0]);
   ok(/A-68 Part 4\.2 item 2 — this install deliberately gets NO supersede/.test(src),
     'the merge install carries its do-nothing reason in writing');
-  ok(cnt(/availabilityOwed/g) === 7, '`availabilityOwed`: 7 mentions — 4 in `importPhotos`, 3 in `removePhoto`', cnt(/availabilityOwed/g));
-  ok(cnt(/if \(availabilityOwed && guard\.current\('doc', g\)\) await readPhotoAvailability\(state\.doc\);/g) === 2,
-    'A-68 Part 5b: the owed-read discharge is written IDENTICALLY at both byte-write sites — including its `doc`-slot guard',
-    cnt(/if \(availabilityOwed && guard\.current\('doc', g\)\) await readPhotoAvailability\(state\.doc\);/g));
+  // **RE-CUT AT ROUND 50: 7 → 0, and 2 → 0.** A-69 Part 6 item 1 deletes the flag and both
+  // discharge lines; A-70 Part 6 **G24** publishes the zero. The two lines below are what the
+  // boundary replaced them with, so an empty set here is never read as a probe that measured
+  // nothing: S1 is the wrapped return, S2 is the read's own `finally`, and the wrapper must settle
+  // on **both** arms (A-69 Part 12 G20's own injected fault is dropping the rejection arm).
+  ok(cnt(/availabilityOwed/g) === 0,
+    '`availabilityOwed` is DELETED, not left beside the boundary (A-69 Part 6 item 1) — 7 mentions at `4398de5`, 0 now',
+    cnt(/availabilityOwed/g));
+  ok(cnt(/if \(availabilityOwed && guard\.current\('doc', g\)\) await readPhotoAvailability\(state\.doc\);/g) === 0
+     && /\n {2}return settling\(\{/.test(src) && cnt(/\n {2}return \{/g) === 0,
+    'A-68 Part 5b\'s `doc`-slot discharge is gone from BOTH byte-write sites, and `createStore` returns `settling(` and nothing else — the debt moved from two hand-written lines to one wrapper (A-69 Part 4 site S1)',
+    { discharges: cnt(/if \(availabilityOwed && guard\.current\('doc', g\)\) await readPhotoAvailability\(state\.doc\);/g), bareReturns: cnt(/\n {2}return \{/g) });
+  ok(/async \(v\) => \{ await settleAvailability\(\); return v; \},\n\s*async \(e\) => \{ await settleAvailability\(\); throw e; \},/.test(src)
+     && /\} finally \{\n(?:[^\n]*\n)*? {6}await settleAvailability\(\);\n {4}\}\n {2}\}/.test(src),
+    'and both settling sites are present in their ruled shapes — S1 on the resolution AND rejection arms (A-69 Part 12 G20), S2 as `readPhotoAvailability`\'s own `finally` (BUILD-NOTES KD-85, A-70 G30)');
   ok(/@throws \{Error\} `TRANSITION_IN_PROGRESS_MESSAGE`/.test(src.slice(src.indexOf('async removePhoto') - 2500, src.indexOf('async removePhoto'))),
     'A-68 Part 8: `removePhoto`\'s `@throws` now names `TRANSITION_IN_PROGRESS_MESSAGE`');
 }
@@ -896,10 +944,20 @@ if (run('J')) {
   const arch = readFileSync(resolve(CAIRN, 'docs/ARCHITECTURE.md'), 'utf8');
   const a68 = arch.slice(arch.indexOf('#### A-68 —'), arch.indexOf('### 4.3 Ports'));
 
-  // R49-2 — the count. Part 9 says three, and names §K as green. Four move, and §K is one of them.
-  ok(!/\*\*§K is green and unedited\*\*|§K is green/.test(a68),
-    'FINDING R49-2: A-68 Part 9 says *"`:263` (**§C**, not §K — §K is green)"*. §K\'s **U4** is the FOURTH assertion matching Part 9\'s own clause (i), and this round re-cut it',
-    (/§K is green/.exec(a68) ?? [])[0]);
+  const a69 = arch.slice(arch.indexOf('#### A-69 —'), arch.indexOf('#### A-70 —'));
+
+  // **RE-CUT AT ROUND 50.** R49-2 was routed to the architect and A-69 Part 9 ruled on it. The
+  // stale sentence is left standing inside A-68 on purpose — this document's convention is an
+  // amendment banner plus a later entry, not a silent edit (A-62 Part 8, A-64, A-42 are the
+  // precedents) — so the CURRENT contract is not *"A-68 no longer says it"* but *"A-68 carries the
+  // banner and A-69 Part 9 carries the correction"*. Asserting the absence would now be asserting
+  // against the house style rather than against a defect.
+  ok(/Part 9's \*"§K is green"\* is \*\*false\*\* and corrected/.test(a68),
+    'R49-2 (re-cut): A-68\'s revision-50 amendment banner declares Part 9\'s *"§K is green"* false, so a reader of Part 9 cannot reach it without the correction',
+    (/§K is green[^\n]{0,60}/.exec(a68) ?? [])[0]);
+  ok(/\*\*Round 48's R48-5 naming of §K was correct\.\*\*/.test(a69)
+     && /a `qa\/` probe's silence is not evidence unless the probe says it finished/.test(a69),
+    'R49-2 (re-cut): and A-69 Part 9 rules it — R48-5 was right, and it adds the standing requirement that a probe print a terminal marker, which is why this file now prints one');
   note('Why three rounds of enumeration missed it: `qa/r47-i13c.mjs` §D face 1 dispatches INSIDE a');
   note('transition window, and A-67 Part 6 made that `dispatch` THROW. From `4316167` the probe died');
   note('there with an uncaught error, so §E…§N never executed — including §K. Both round 48 and A-68');
@@ -908,13 +966,17 @@ if (run('J')) {
 
   // R49-3 — Part 10's stated mutants. Three of them do not reproduce as worded. The builder
   // disclosed two (G14, G17); Part 9's own vacuity mutant for `:231` is the third and is new.
-  ok(!/\*\*G14\*\*[\s\S]{0,500}Both mutations above → red/.test(a68),
-    'FINDING R49-3a: A-68 **G14**\'s *"Both mutations above → red"* is false — on the `available === null` path `removePhoto`\'s supersede and the owed read\'s own `claim` are one statement apart, so mutation 1 changes nothing (§F1 verifies the builder\'s explanation is sound)');
+  // **RE-CUT AT ROUND 50**, same reason: A-69 Part 10 item 1 is the ruling on R49-3a.
+  ok(/\*\*G14's \*"Both mutations above → red"\* is false and becomes one mutation\.\*\*/.test(a69)
+     && /R45-4's value-guard mutation does \*\*not\*\*\s*\n?\s*redden this criterion and never did/.test(a69),
+    'R49-3a (re-cut): A-69 Part 10 item 1 corrects G14 to the one mutation that reproduces, and says in as many words that R45-4\'s value-guard mutation reddens G13 alone');
   ok(!/the mutation that proves the replacement carries them is \*\*deleting the `supersede` before a reseed install\*\* → an older read lands over a newer trip's state → red/.test(a68),
     'FINDING R49-3b: A-68 **G17**\'s stated mutant does not redden G4…G7 — Part 4.2 item 3\'s own last sentence says why, and G17 has to be measured at a DOCUMENT-LESS reseed (§F2)');
-  ok(!/against the mutant that\s*\n?restores `state\.doc\?\.id !== tripId` at step 5 \(for `:231`\)/.test(a68.replace(/\s+/g, ' ')) &&
-     !/restores `state\.doc\?\.id !== tripId` at step 5 \(for `:231`\)/.test(a68.replace(/\s+/g, ' ')),
-    'FINDING R49-3c: A-68 Part 9\'s own vacuity mutant for `:231` — *"restores `state.doc?.id !== tripId` at step 5"* — does not reproduce. A-67 replaced BOTH of R46-1\'s guards and the step-4 one fires first, so the batch is already stopped. `bash qa/r49-recut-vacuity.sh` uses the pair; `M2_STEP5_ONLY=1` shows Part 9\'s wording green');
+  // **RE-CUT AT ROUND 50**, same reason: A-69 Part 10 item 3 is the ruling on R49-3c, and it
+  // adopts this round's own control script as the corrected wording.
+  ok(/\*\*Corrected:\*\* \*the control restores\s*\n?\*\*both\*\* guards — `isLiveTrip\(tripId\)` at step 4 and `state\.doc\?\.id !== tripId` at step 5/.test(a69)
+     && /`M2_STEP5_ONLY=1` is retained as the control/.test(a69),
+    'R49-3c (re-cut): A-69 Part 10 item 3 corrects Part 9\'s `:231` mutant to the PAIR of guards, and keeps `M2_STEP5_ONLY=1` as the control showing the original wording green');
   note('All three are criterion-precision defects in a ruling whose CODE is correct. They are one row');
   note('together because they are one habit: a mutant stated from the shape of the fix rather than');
   note('measured against the build. Two of the three were disclosed by the builder rather than papered');
@@ -922,4 +984,7 @@ if (run('J')) {
 }
 
 console.log(`\n${fails === 0 ? 'ALL CLEAR' : `${fails} FAIL line(s)`}`);
+// **A-69 Part 9's standing requirement**: a probe's silence is not evidence unless the probe says
+// it finished. A run without the line below is INCOMPLETE and is never reported as a FAIL count.
+console.log('-- r49-i13e.mjs COMPLETE (ran through §J) --');
 process.exit(0);

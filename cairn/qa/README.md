@@ -3461,3 +3461,66 @@ Not re-run this round, deliberately: `qa/r46-idb-keys.mjs`, `qa/i7a-idb-rowkeys.
 `qa/i13b-gate.mjs`, `qa/i13-photo-browser.mjs`, `qa/r3-upcast.mjs`. The I-13e range touches **no
 `apps/web` file at all** — three files moved, all in `packages/client` — so a browser run would
 re-confirm a number with no reason to doubt it.
+
+---
+
+**Round 50** is the confirmation pass over §4.2 **A-69** (the settling boundary that replaces the
+enumeration) and **A-70** (the predicate that asks the slot rather than the field), over
+`43d0d20..e051306`. One probe, three companions, run from `cairn/`:
+
+```bash
+node --experimental-strip-types qa/r50-i13h.mjs   # 11 sections; 8 FAIL, 4 ids, 109 ok
+R50_ONLY=J,K node --experimental-strip-types qa/r50-i13h.mjs   # just the two MAJORs
+bash qa/r50-recut-vacuity.sh                      # the REQUIRED vacuity controls for the re-cuts
+bash qa/r50-controls.sh                           # R50-2/R50-3/R50-5 measured identical at 43d0d20
+```
+
+   # A  the fences over `43d0d20..HEAD`: zero `.tsx`, zero dependency movement, six files under
+   #    `packages/`, `generation.ts` gaining exactly two executable lines, the privacy greps.
+   # B  **site S1 attacked as a MECHANISM.** Every one of the store's 29 own keys proved to be
+   #    `settling`'s wrapper by runtime source identity; the symbol/prototype census; the
+   #    non-native-thenable hole; `this`-rebinding; and A-69 Part 4's sync-method claim from both
+   #    sides. ALL CLEAR — S1 is total.
+   # C  **A-70's eaten retry**, six concurrent orderings, plus the freshness oracle.  ALL CLEAR.
+   # D  **KD-89 measured per emitted state**, with its three escalations tried. Benign — no
+   #    finding, and §D explains why in a way the disclosure does not.
+   # E  the type fence classified across 89 non-test source files. ALL CLEAR.
+   # F  256 five-gesture chains + 120 random eight-gesture chains under three oracles; the
+   #    two-store fixture; the unstamped merge reseed. ALL CLEAR.
+   # G  termination and cost: 0 extra reads on the ordinary path, exactly 20 for 20 gestures
+   #    against a dead port, and a subscriber that re-enters `importPhotos` cannot spin it.
+   # H  **R50-1, 2 FAIL** — A-70 Part 7 item 3's published literal grep counts are 6 and 3; the
+   #    commands return 7 and 4. The shipped tests are right; the ruling's arithmetic is not.
+   # I  `qa/r48-i13d.mjs`'s FAIL lines, attributed. Three, all R48-3, all `App.tsx` → I-13f.
+   # J  **R50-2 (2 FAIL) and R50-3 (1 FAIL)** — the session block A-69 Part 5 does NOT fence.
+   #    An abandoned import batch's `decode_failed` report and remaining count land in the trip
+   #    the user moved to; `reclaimPhotoBytes` has no `doc` observation at all.
+   # K  R49-5's throwing subscriber on the installing transitions (fixed — S1's rejection arm),
+   #    G12's stale-but-present answer from both sides, and **R50-5, 3 FAIL** — a subscriber's
+   #    exception recorded as the photo port's failure message, swallowed, with a *Try again*
+   #    that cannot work.
+
+`qa/r50-mutate.py` holds the four source mutants `r50-recut-vacuity.sh` injects — one module
+rather than four nested heredocs, because a heredoc inside a heredoc is how a control script
+quietly stops running the mutant it claims to run.
+
+**Nine assertions in `qa/r49-i13e.mjs` and one in `qa/r48-i13d.mjs` were re-cut by this round**, in
+two classes. **Five** asserted the source shape of machinery A-69 Part 6 item 1 **deleted**
+(`availabilityOwed` ×7, the two `doc`-slot discharge lines, `supersede('browsing')` at seven, the
+non-active `deleteTrip` install's do-nothing comment) and are re-cut to the mechanism that replaced
+each. **Four** asserted the absence of a sentence from A-68's own text; this document corrects by
+amendment banner plus a later entry rather than by silent edit, so they are re-cut to assert that
+A-68's revision-50 banner and A-69 Parts 9/10 carry the corrections. `qa/r48-i13d.mjs` §A's file
+census widens five → seven for I-13g/I-13h (**R50-4**). `bash qa/r50-recut-vacuity.sh` watches every
+one of them RED first and reports **ALL CONTROLS SOUND**; it distinguishes **ABSENT** from **GREEN**,
+because a control that reads a probe's silence as a pass is R49-2 in the control layer.
+
+**Three probes now print A-69 Part 9's terminal marker** — `r48-i13d.mjs`, `r49-i13e.mjs` and
+`r50-i13h.mjs`. A run that does not print it is **incomplete** and is never reported as a `FAIL`
+count. **`qa/r45-i13.mjs`, `qa/r46-i13b.mjs`, `qa/r47-i13c.mjs` and `qa/r49-i13e.mjs` are all green
+end to end; `qa/r48-i13d.mjs` reports exactly 3, all R48-3, all routed to I-13f.**
+
+Not re-run this round, deliberately: `qa/r46-idb-keys.mjs`, `qa/i7a-idb-rowkeys.mjs`,
+`qa/i13b-gate.mjs`, `qa/i13-photo-browser.mjs`, `qa/r3-upcast.mjs`. The I-13g/I-13h range touches
+**no `apps/web` file at all** — six files moved, all in `packages/client` — so a browser run would
+re-confirm a number with no reason to doubt it.

@@ -157,14 +157,18 @@ if (run('A')) {
     names.filter((n) => !n.startsWith('cairn/')));
   ok(git('status', '--porcelain', '--', 'europe-2026-itinerary.html', 'docs/', 'tickets/').trim() === '',
     'the live planner, `docs/` and `tickets/` are clean in the working tree');
-  // **Widened at round 49**: with `R48_HEAD` left at its default the range now also spans I-13e,
-  // which adds `test/liveness.test.ts` (A-68 Part 7's invariant). The claim this line makes — the
-  // whole photo arc stays inside `packages/client` — is unchanged; only the census grew.
+  // **Widened at round 49**, and again at **round 50**: with `R48_HEAD` left at its default the
+  // range now also spans I-13e (`test/liveness.test.ts`, A-68 Part 7's invariant), I-13g
+  // (`test/settling.test.ts` and `test/settled-invariant.ts`, A-69's boundary) and I-13h (A-70).
+  // The claim this line makes — **the whole photo arc stays inside `packages/client`, and neither
+  // `packages/core` nor `apps/web` is touched by any of it** — is unchanged across all four
+  // increments; only the census grew, so the constant is re-cut rather than the claim weakened.
   ok(names.filter((n) => n.startsWith('cairn/packages/') || n.startsWith('cairn/apps/')).join() ===
      ['cairn/packages/client/src/store/generation.ts', 'cairn/packages/client/src/store/store.ts',
       'cairn/packages/client/test/generation.test.ts', 'cairn/packages/client/test/liveness.test.ts',
-      'cairn/packages/client/test/photos.test.ts'].join(),
-    'exactly five source/test files moved, all in `packages/client` — `packages/core` and `apps/web` are untouched',
+      'cairn/packages/client/test/photos.test.ts', 'cairn/packages/client/test/settled-invariant.ts',
+      'cairn/packages/client/test/settling.test.ts'].join(),
+    'exactly seven source/test files moved across I-13d…I-13h, all in `packages/client` — `packages/core` and `apps/web` are untouched',
     names.filter((n) => n.startsWith('cairn/packages/') || n.startsWith('cairn/apps/')));
 
   const added = git('diff', `${BASE}..${HEAD_}`, '--', 'cairn/packages/client/src', 'cairn/cli.ts', 'cairn/apps/web/src')
@@ -736,3 +740,6 @@ console.log('');
 console.log(fails === 0
   ? 'ALL OK — each line carries its finding id; see docs/QA-FINDINGS.md round 48'
   : `${fails} FAIL(S) — each carries its finding id; see docs/QA-FINDINGS.md round 48`);
+// **A-69 Part 9's standing requirement** (added at round 50): a probe's silence is not evidence
+// unless the probe says it finished. A run without the line below is INCOMPLETE, never a count.
+console.log('-- r48-i13d.mjs COMPLETE (ran through §J) --');
