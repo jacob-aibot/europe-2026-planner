@@ -21,10 +21,10 @@ import { readFileSync } from 'node:fs';
 import {
   addParticipant, updateParticipant, removeParticipant,
   createTrip, ensureDays, addStop, copyStopInto, fromJSON, toJSON, validateTrip, sequentialIds,
-  can, canView, migrateDoc,
+  can, canView, migrateDoc, importLegacyDays,
   TripParseError,
 } from '../src/index.ts';
-import type { BuildCtx, Issue, Participant, Trip } from '../src/index.ts';
+import type { BuildCtx, Issue, LegacyConstants, Participant, Trip } from '../src/index.ts';
 
 const ctx = (): BuildCtx => ({ ids: sequentialIds(), now: '2026-03-01', actorUserId: 'local:self' });
 
@@ -54,6 +54,93 @@ const person = (id: string, displayName: string, kind: 'self' | 'contact' = 'con
 test('a new trip carries an empty participants array', () => {
   const { trip } = tripWithDays();
   assert.deepEqual(trip.participants, []);
+});
+
+/**
+ * A legacy constant block with something for every derivation to find: two day `sub`
+ * lines naming people, a stop `note` naming another, an `OPTIONAL` section note, a
+ * `CITY_PLACES` note and a `cityStops` entry. The richness is the point — see the test
+ * below, which is vacuous against a fixture with no person-shaped string in it.
+ */
+function legacyConstants(): LegacyConstants {
+  return {
+    DAYS: [
+      {
+        id: '08-07', dow: 'Fri', d: 7, city: 'wien', cities: ['wien'],
+        title: 'Vienna, arrival', sub: 'Zoë and her mother meet us at the flat',
+        stops: [
+          {
+            t: '09:00', n: 'Arrive Wien Hbf', cat: 'transit', lat: 48.1852, lng: 16.3765,
+            note: 'met by the host', move: { mode: 'train', mins: 240, label: 'Railjet' },
+          },
+          {
+            t: '13:00', n: 'Schönbrunn', cat: 'sight', lat: 48.1845, lng: 16.3122,
+            note: 'booked for two', cost: '€24', ticket: true,
+            book: { l: 'Palace ticket ↗', u: 'https://gyg.me/x' },
+          },
+        ],
+      },
+      {
+        id: '08-08', dow: 'Sat', d: 8, city: 'wien', cities: ['wien'],
+        title: 'Vienna, day two', sub: 'coffee with the family',
+        stops: [{
+          t: '10:00', n: 'Café Central', cat: 'food', lat: 48.2101, lng: 16.3656,
+          note: 'her father recommended it',
+        }],
+      },
+    ],
+    OPTIONAL: {
+      wien: {
+        title: 'If there is time', note: 'suggested by the group',
+        stops: [{ n: 'Belvedere', cat: 'sight', lat: 48.1915, lng: 16.3809, sug: true }],
+      },
+    },
+    CITY_PLACES: { wien: [{ n: 'Schönbrunn', cat: 'sight', lat: 48.1845, lng: 16.3122, note: 'the palace' }] },
+    CITY_META: { wien: { name: 'Vienna', flag: '🇦🇹', color: '#c00' } },
+    CITY_ORDER: ['wien'],
+    CITY_RANGE: { wien: 'Aug 7–8' },
+    cityStops: [{ name: 'Vienna', tab: 'wien', lat: 48.2082, lng: 16.3738, note: 'the base' }],
+  };
+}
+
+/**
+ * **A-74 Part 6 K1** — ARCHITECTURE revision 55's only criterion, built as ROADMAP **I-9b**.
+ *
+ * A-74 rules that a participant `kind` outside `PARTICIPANT_KINDS` can never reach
+ * `validateTrip`, so there is **no new `Issue` code**. That answer rests entirely on Part 2's
+ * eight-row producer census being **closed**, and seven of those rungs already carry a test:
+ * `createTrip`'s is the test directly above this one, the parser's is *"fromJSON rejects an
+ * unknown participant kind"*, the two build doors are R52-3's, `removeParticipant`'s and
+ * `copyStopInto`'s are *"a participant crossed the copy boundary"*, and `mergeTrips`' argument
+ * is structural. **The legacy importer's is the rung nothing stood on.**
+ *
+ * The fault this catches, stated: `import/legacyDays.ts` deriving a participant from a legacy
+ * field — a day's `sub`, a stop `note`, a `cityStops` name — instead of emitting the literal
+ * `participants: []`. Such an importer is a producer of a `Participant` **other than the
+ * parser**, which is precisely the condition A-74 Part 4's rule says would earn a
+ * `validateTrip` code; the day it becomes true, A-74 is wrong and **nothing else in the suite
+ * would say so**. It would also be the system asserting who Jacob travelled with, which the
+ * comment beside that literal already refuses.
+ */
+test('A-74 K1: importLegacyDays emits participants: [] — the legacy importer is not a participant producer', () => {
+  const legacy = legacyConstants();
+  const { trip } = importLegacyDays(legacy, {
+    ids: sequentialIds(), year: 2026, now: '2026-03-01', tripId: 'trip-legacy',
+  });
+
+  // Guards, not assertions: this test is vacuous against a fixture an importer could find
+  // no person in, and a fixture that imported nothing at all would pass it for free.
+  assert.equal(trip.days.length, 2, 'INCONCLUSIVE: the legacy fixture imported no days');
+  assert.ok(
+    legacy.DAYS.every((d) => d.sub.length > 0) && legacy.cityStops.length > 0
+      && legacy.DAYS.some((d) => d.stops.some((s) => (s.note ?? '').length > 0)),
+    'INCONCLUSIVE: the fixture carries no legacy string a participant could be derived from',
+  );
+
+  assert.deepEqual(
+    trip.participants, [],
+    'importLegacyDays minted a participant — A-74 Part 2 census rung 2 is open and the ruling no longer holds',
+  );
 });
 
 // -------------------------------------------------------------- addParticipant

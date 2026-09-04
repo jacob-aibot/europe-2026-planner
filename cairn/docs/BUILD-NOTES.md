@@ -1,5 +1,23 @@
 # Cairn — build notes, Phase 1 (and Phase 2 in progress)
 
+> **Addendum — ROADMAP `I-9b` (one test) + QA round 53's `R53-2` (the stale published count).**
+> Builds on `e77cded` (QA round 53, SHIP). **The smallest pass in this document.** No field, no type,
+> no port, no selector, no action, **no `src` change at all**, so §2.10's export count stays **86**,
+> `SCHEMA_VERSION`/`DB_VERSION`/`SUMMARY_VERSION` do not move and §8.9's re-count rule does not fire.
+> **Edited, two files:** `packages/core/test/participants.test.ts` and this document. **Zero `src`,
+> zero `.tsx`, zero `qa/`, zero `docs/design/`, zero `ARCHITECTURE.md`/`ROADMAP.md`, zero new
+> dependency.** R53-1 (the `describeMerge` wording) and R53-3 (the `qa/` point-value pins) are routed
+> elsewhere and were not touched.
+>
+> | | |
+> |---|---|
+> | **What runs, and the exact commands** | `cd cairn && npm run test:tap` → **1525 tests, 1525 pass, 0 fail, 0 skipped, 0 cancelled**. Baseline **measured on this tree before the change**, same command at `e77cded` → **1524 pass / 0 fail**, so **+1 test**, which is what I-9b's ship gate requires. `cd cairn && npm run typecheck` → **clean on both projects, exit 0** (it runs `npm run sample` first, so `redact.mjs` and `gen-sample.mjs` execute and the sample is regenerated at v3). |
+> | **I-9b — the census rung nothing stood on** | One test in `packages/core/test/participants.test.ts`, placed directly under `createTrip`'s rung so the two literal-emitting producers of A-74 Part 2's census sit together: *"A-74 K1: importLegacyDays emits participants: [] — the legacy importer is not a participant producer"*. It runs `importLegacyDays` over a **synthetic** `LegacyConstants` (a local `legacyConstants()` helper, not the Europe 2026 fixture — no root-planner read, no golden coupling) that is deliberately full of person-shaped strings: two day `sub` lines naming people, three stop `note`s, an `OPTIONAL` section note, a `CITY_PLACES` note and a `cityStops` entry. Two `INCONCLUSIVE` guards precede the assertion, because a fixture that imported nothing, or that held no string a participant could be derived from, would pass it for free. |
+> | **K1, run rather than asserted** | A-74 Part 6's **K1** is the only criterion and it is an injected fault, so it was run as one. `import/legacyDays.ts`'s `participants: []` was replaced with `legacy.cityStops.length ? [{ id: 'p-legacy', displayName: legacy.cityStops[0].name, kind: 'contact', userId: null }] : []` — a participant derived from a legacy field — and the **whole suite** was run against it: **1525 tests, 1524 pass, 1 fail**, and the single failure is `not ok 983 - A-74 K1: importLegacyDays emits participants: []…`. That is K1 exactly: the new test reddens and **nothing else in the suite does**, which is the claim A-74 Part 6 makes about why the pin was worth writing — the goldens, the sample, the CLI tests and the round-trip tests all stayed green while the legacy importer minted a person out of a city name. The injection was then reverted (`git diff --stat` shows `packages/core/src` untouched) and the suite re-run green at 1525. |
+> | **R53-2 — the published count, fifth occurrence** | §2's `npm test` line now reads **1525 tests as of I-9b**, re-measured with `npm run test:tap` on this tree rather than copied from the finding (the finding quoted 1524, which was the *pre-change* number and is now the baseline row of the ledger). The parenthetical ledger gains the two rungs it was missing — **1505 at I-9a, 1524 at the round-52 repair pass** — and names R49-2/R50-4/R51-5/R53-2 as the same finding recurring, with the only fix that holds stated in one sentence: **re-measure that line in the same commit that adds a test.** This pass does that; the count and the test landed together. |
+> | **What I could NOT verify** | **Nothing rendered and no browser** — I-10 is deferred and there is still no participants surface. **No `qa/` probe was run**, including `qa/r45-i13.mjs`, whose `FINDING R45-17` line is R53-2's stated repro: this pass is fenced out of `qa/`, and running it is not the same as editing it, but the six probes R53-3 names are known-red for reasons routed to the breaker, so a run of them would have reported numbers this pass has no mandate to act on. The R53-2 correction is verified against the **suite's own output**, which is the same source the probe reads. |
+> | **Objection to the design** | **None.** A-74 Part 6's K1 is a criterion that can be executed rather than argued about, and executing it found the thing it was written to find. One note for the architect, not an objection: **the injected-fault run is the only evidence that the pin is load-bearing**, and it is evidence that lives in this document rather than in the repo — nothing re-runs it. If that matters, the durable form is a `qa/` probe that performs the injection in a scratch copy, which is the breaker's file and not this pass's. |
+
 > **Addendum — QA round 52's repair pass: R52-1 … R52-7, the seven findings against I-9
 > (participants in core).**
 > Builds on `17da01a` (I-9a). **A builder fix pass, not a new capability** — no field, no type, no
@@ -4557,13 +4575,16 @@ that the tree would otherwise be dirty on the next typecheck, and an ignored fil
 ```bash
 cd cairn
 npm install
-npm test          # 1505 tests as of I-9a. Plain node, no browser, no network.
+npm test          # 1525 tests as of I-9b. Plain node, no browser, no network.
                   # (387 from Phase 1 until R44-4, then 1239 until R45-17, then 1332 through the
                   #  round-45 fix pass, 1348 at I-13b, 1359 at the round-46 fix pass, 1376 at
-                  #  I-13d, 1430 at the round-50 fix pass; re-measured each time by running
+                  #  I-13d, 1430 at the round-50 fix pass, 1505 at I-9a, 1524 at the round-52
+                  #  repair pass; re-measured each time by running
                   #  `npm run test:tap | grep '^# pass'`, never quoted. QA R48-4 is this line
                   #  going stale one increment after R45-17 closed it — re-measure it, do not
-                  #  copy it forward.)
+                  #  copy it forward. R49-2, R50-4, R51-5 and R53-2 are the same finding again,
+                  #  four more times: the number goes stale in the commit that adds a test, so
+                  #  the only fix that holds is to re-measure THIS line in THAT commit.)
 npm run typecheck # generates the sample first (see F-3 below), then both TS projects
 npm run cli -- trip           # headline counts and city ranges
 npm run cli -- day 2026-08-13 # one day: stops, legs, costs, badges
