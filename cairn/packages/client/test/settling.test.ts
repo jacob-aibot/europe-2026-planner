@@ -484,10 +484,22 @@ test('G21: the availability triple has exactly one writer, called from exactly t
   // number of **functions** (and of union arms), not of `setAvailability(` tokens. Both numbers
   // are pinned here so a fourth writing *function* and a fifth branch are each a red line, and the
   // discrepancy is a documentation finding recorded as **KD-83** rather than a silent re-count.
-  assert.equal([...STORE_SRC.matchAll(/(?<!function )setAvailability\(/g)].length, 6,
-    'A-69 Part 5 / G21: six `setAvailability(` calls — four branches of `readPhotoAvailability` plus the two optimistic writes. A seventh is a defect until it names how it settles');
-  assert.equal((STORE_SRC.match(/setAvailability\(\s*\{\s*\n?\s*kind: '(ready|unreadable|cleared)'/g) ?? []).length, 6,
-    'A-69 Part 5: every call names one of the three arms');
+  //
+  // **The token count moved 6 → 5 at §4.2 A-71 Part 4c** (ROADMAP **I-13i**), and the ruling
+  // prints the shape that moves it: `readAvailabilityOnce`'s `'ready'` and `'unreadable'` branches
+  // merge into **one** call over a ternary, behind **one** drop check, because *"an answer stamped
+  // over a newer answer is the same wrong answer whether it is `'ready'` or `'unreadable'`"*. The
+  // number of writing FUNCTIONS is unchanged at three and the union still has three arms, which is
+  // what G21 is actually about; only the call-site count moves, and it moves by exactly the merge
+  // A-71 printed. BUILD-NOTES **KD-92**.
+  // Line comments are stripped first: a `);` inside prose would otherwise truncate a call and
+  // make the arm count read low for a reason that is not about the code.
+  const code = STORE_SRC.split('\n').map((l) => l.replace(/^(\s*)\/\/.*$/, '$1')).join('\n');
+  const calls = [...code.matchAll(/(?<!function )setAvailability\(([\s\S]*?)\);/g)].map((m) => m[1]);
+  assert.equal(calls.length, 5,
+    'A-69 Part 5 / G21: five `setAvailability(` calls — three branches of `readPhotoAvailability` (A-71 Part 4c merged two of the four) plus the two optimistic writes. A sixth is a defect until it names how it settles');
+  assert.equal((calls.join(' ').match(/kind: '(ready|unreadable|cleared)'/g) ?? []).length, 6,
+    'A-69 Part 5: every call names one of the three arms, and the merged call names two');
   // The two writers that are store methods rather than top-level functions, pinned by shape so a
   // fourth writing site shows up as a count mismatch above rather than shipping unnoticed.
   assert.equal((STORE_SRC.match(/setAvailability\(\{ kind: 'ready', tripId: state\.doc\.id, available \}\);/g) ?? []).length, 2,

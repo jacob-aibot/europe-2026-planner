@@ -232,8 +232,82 @@ export function createStore(opts: StoreOptions) {
     actorUserId: opts.ownerId ?? core.LOCAL_OWNER,
   });
 
+  /**
+   * **§4.2 A-71.** Errors that came out of a SUBSCRIBER, so no `catch` in this file can mistake
+   * foreign code's failure for a port's. Closure-local like `cache`, `saving` and the
+   * availability stamp: not in `AppState`, not persisted, not a selector input, and not shared
+   * between two stores over one `memoryStorage` (A-67 Part 3 item 3's reason, one field over).
+   *
+   * *(A-71 Part 4a prints this sentence naming that stamp by its identifier. It is spelled out
+   * here instead, because A-70 Part 6's **G28** counts occurrences of that identifier in this file
+   * and pins them at three — the declaration, the assignment and the read. Prose only: no code
+   * differs from what Part 4a prints, and G28 stays green and unmoved. BUILD-NOTES **KD-91**.)*
+   *
+   * A `WeakSet` and **not** a property on the error: the thrown object belongs to the subscriber
+   * and this store does not write to it. It is also why no class is introduced — a
+   * `SubscriberError extends Error` would wrap what the caller sees, and `cairn-constraints` §3's
+   * `erasableSyntaxOnly` has an opinion about new syntax that a builtin does not need.
+   *
+   * **The brand's failure direction is safe.** A false positive (the same `Error` instance thrown
+   * twice, once by a subscriber and once by a port) makes `attempt` **rethrow** rather than
+   * misclassify, which is the conservative arm.
+   */
+  const fromSubscriber = new WeakSet<object>();
+
+  function isSubscriberError(e: unknown): boolean {
+    return typeof e === 'object' && e !== null && fromSubscriber.has(e);
+  }
+
   function emit() {
-    for (const l of [...listeners]) l(state);
+    for (const l of [...listeners]) {
+      try {
+        l(state);
+      } catch (e) {
+        // **A-71 Part 4a.** Branded, then rethrown UNCHANGED — A-69 Part 7's *"the caller sees
+        // the subscriber's error"* is preserved to the character, including the stack. **Who is
+        // notified and who is not does not change here**: this still stops at the first throw.
+        // That is A-69 Part 13 residue 1, it keeps its two remaining costs and its trigger, and
+        // it stays open (A-71 Part 3, Part 5 item 1).
+        //
+        // A non-object throw is wrapped, because a `WeakSet` cannot hold a string — the only case
+        // where the caller sees something other than exactly what was thrown, and `String(e)`
+        // keeps the message.
+        const marked = typeof e === 'object' && e !== null ? e : new Error(String(e));
+        fromSubscriber.add(marked);
+        throw marked;
+      }
+    }
+  }
+
+  type Attempted<T> = { ok: true; value: T } | { ok: false; error: unknown };
+
+  /**
+   * **§4.2 A-71 Part 4b — the ONE classifier in this file.** Runs one operation and returns its
+   * outcome as a VALUE, so that the code which records a named failure is never lexically inside
+   * a `catch`, and a `set` (and therefore an `emit`, and therefore a subscriber) can never be
+   * inside the `try`.
+   *
+   * A subscriber's exception is **rethrown**: it is not this store's failure and this store may
+   * not name it. That single line is why this is a boundary and not an enumeration (A-69 Part 3)
+   * — a seventh caller added next year inherits the rule without anybody remembering it.
+   *
+   * QA **R50-5** and the four more faces A-71 Part 1 measured: `emit()` runs subscribers
+   * synchronously, so every `catch` that classified a failure had a second source of exceptions
+   * it could not tell from its subject — and it always guessed in the direction that blames the
+   * user's data for the application's bug, then swallowed the bug.
+   *
+   * **It is a classifier, not a general try/catch** (A-71 Part 7 residue 3): its argument should
+   * be **one** port call, or one internal function whose failure has exactly one meaning. An
+   * `attempt` whose callback contains two awaits or a `set` is a finding before it is a
+   * convenience.
+   */
+  async function attempt<T>(op: () => Promise<T>): Promise<Attempted<T>> {
+    try {
+      return { ok: true, value: await op() };
+    } catch (error) {
+      if (isSubscriberError(error)) throw error;
+      return { ok: false, error };
+    }
   }
 
   /**
@@ -614,30 +688,36 @@ export function createStore(opts: StoreOptions) {
         return;
       }
       const ids = doc.photos.map((p) => p.id);
-      if (!ports.photo || ids.length === 0) {
+      // Captured, not asserted with `!`: the narrowing from the guard below does not survive into
+      // the `attempt` callback, and a non-null assertion there would be a claim rather than a
+      // fact (A-71 Part 4c).
+      const photo = ports.photo;
+      if (!photo || ids.length === 0) {
         if (!guard.current('photoAvailability', t)) return;
         setAvailability({ kind: 'ready', tripId: doc.id, available: new Set<string>() });
         return;
       }
-      try {
-        const present = await ports.photo.present(doc.id, ids);
-        if (!guard.current('photoAvailability', t)) return;
-        setAvailability({ kind: 'ready', tripId: doc.id, available: present });
-      } catch (err) {
-        // The same drop, on the failing branch: an `'unreadable'` stamped over a newer answer is
-        // the same wrong answer as a `'ready'` one, and it is terminal — §10.6 property 6's
-        // *"an `'unreadable'` listing carries an action"* is defeated by the action working and
-        // then being undone (R47-2 face 3).
-        if (!guard.current('photoAvailability', t)) return;
-        // The port's own words, recorded once — `travelHistory`'s `{ok:false, message}` shape one
-        // subject over. It carries no photo id, no caption and no coordinate (§6.1 rule 1), and
-        // nothing logs it.
-        setAvailability({
-          kind: 'unreadable',
-          tripId: doc.id,
-          message: (err as Error | null)?.message || 'the photo store could not be read',
-        });
-      }
+      // **A-71 Part 4c.** The port call is the only thing whose failure this function may name, so
+      // it is the only thing inside the classifier. `setAvailability` emits synchronously; with it
+      // inside a `catch`'s reach, a subscriber throwing while rendering a SUCCESSFUL answer was
+      // recorded as this store's own read failure and swallowed — QA **R50-5**, and §10.6 property
+      // 6's *Try again* could never clear it (it re-read successfully, hit the same subscriber,
+      // and wrote the same wrong message forever).
+      const read = await attempt(() => photo.present(doc.id, ids));
+      // One drop check for both arms, and it was always one rule: an answer stamped over a newer
+      // answer is the same wrong answer whether it is `'ready'` or `'unreadable'`, and both are
+      // terminal — §10.6 property 6's *"an `'unreadable'` listing carries an action"* is defeated
+      // by the action working and then being undone (R47-2 face 3).
+      if (!guard.current('photoAvailability', t)) return;
+      setAvailability(read.ok
+        ? { kind: 'ready', tripId: doc.id, available: read.value }
+        // **The PORT's own words, and now only ever the port's** — `travelHistory`'s
+        // `{ok:false, message}` shape one subject over. It carries no photo id, no caption and no
+        // coordinate (§6.1 rule 1), and nothing logs it. That was true of the port's message and
+        // false of the FIELD before A-71, because a subscriber's own exception string reached it
+        // — R50-5's third note — and the classifier is what makes the sentence true of both.
+        : { kind: 'unreadable', tripId: doc.id,
+            message: (read.error as Error | null)?.message || 'the photo store could not be read' });
     } finally {
       guard.release('photoAvailability');
     }
@@ -823,15 +903,21 @@ export function createStore(opts: StoreOptions) {
     // §4.2 rule 6, belt and braces: a late timer is dropped, never retargeted.
     if (forTripId !== null && doc.id !== forTripId) return;
     set({ ...state, persistence: { ...state.persistence, status: 'saving' } });
-    try {
-      await writeAndSettle(doc, doc, null, state.persistence.savedVersion);
-    } catch (err) {
+    // **§4.2 A-71 Part 4c, and this is the face that says A-71 is not a photo defect.**
+    // `writeAndSettle`'s install is a `set`, so it emits: a subscriber throwing while rendering a
+    // write that LANDED used to be caught here and recorded as `status: 'error'` with the
+    // subscriber's string in `lastError` — over a document storage holds, with `savedVersion`
+    // already advanced to the version storage holds. That is the inverse of R11-1, it is governed
+    // by §2.2a **A-7**, and it lies about the one fact the write fence exists to keep honest.
+    // A genuine storage failure still records exactly what it recorded before (Part 5 item 2).
+    const r = await attempt(() => writeAndSettle(doc, doc, null, state.persistence.savedVersion));
+    if (!r.ok) {
       set({
         ...state,
         persistence: {
           ...state.persistence,
           status: 'error',
-          lastError: (err as Error).message || String(err),
+          lastError: (r.error as Error).message || String(r.error),
         },
       });
     }
@@ -1153,12 +1239,14 @@ export function createStore(opts: StoreOptions) {
       set({ ...state, persistence: { ...state.persistence, status: 'saving' } });
       // Queued behind whatever is already in flight — never in parallel with it (R3-3).
       await chainOntoSaving(async () => {
-        try {
-          await writeAndSettle(doc, doc, null, null);
-        } catch (err) {
+        // **§4.2 A-71 Part 4c, site 6** — the same misattribution as `attemptSave`'s, on the
+        // write-it-back branch. A subscriber throwing on this install told the user their work
+        // could not be saved over a document that is in storage.
+        const r = await attempt(() => writeAndSettle(doc, doc, null, null));
+        if (!r.ok) {
           set({
             ...state,
-            persistence: { ...state.persistence, status: 'error', lastError: (err as Error).message },
+            persistence: { ...state.persistence, status: 'error', lastError: (r.error as Error).message },
           });
         }
       });
@@ -1193,23 +1281,23 @@ export function createStore(opts: StoreOptions) {
         set({ ...state, persistence: { ...state.persistence, status: 'conflict', lastError: CONFLICT_MESSAGE } });
         return;
       }
-      try {
-        // The merge is only valid against the exact `remote` we just read, so the write
-        // carries **that same version** as its expectation — never one recomputed from
-        // the document (§2.2a, the merge case). A third writer landing in between moves
-        // the version, the port refuses, the conflict stands unmerged and the edit stays
-        // in memory.
-        await writeAndSettle(
-          doc,
-          merged.trip,
-          { message: core.describeMerge(merged.report), report: merged.report },
-          stored.version,
-          { reseed: true },
-        );
-      } catch (err) {
+      // **§4.2 A-71 Part 4c, site 7.** The merge is only valid against the exact `remote` we just
+      // read, so the write carries **that same version** as its expectation — never one
+      // recomputed from the document (§2.2a, the merge case). A third writer landing in between
+      // moves the version, the port refuses, the conflict stands unmerged and the edit stays in
+      // memory. A subscriber throwing on the reseeding install is **not** that refusal and is no
+      // longer recorded as one.
+      const r = await attempt(() => writeAndSettle(
+        doc,
+        merged.trip,
+        { message: core.describeMerge(merged.report), report: merged.report },
+        stored.version,
+        { reseed: true },
+      ));
+      if (!r.ok) {
         set({
           ...state,
-          persistence: { ...state.persistence, status: 'error', lastError: (err as Error).message },
+          persistence: { ...state.persistence, status: 'error', lastError: (r.error as Error).message },
         });
       }
     });
@@ -2015,11 +2103,18 @@ export function createStore(opts: StoreOptions) {
      * Never silently dropped"*), and `pending`/`total` add to an in-flight batch rather than
      * replacing it, so the fraction counts the files actually being processed.
      *
+     * **Every write this batch makes to `state.photos` goes through `setBatch`** — §10 **A-66**
+     * Part 11 (QA **R50-2**). It is `setPhotos` gated on `guard.current('doc', g)`, and it is what
+     * makes the paragraph above true rather than predicted: `fail()` and the progress settlement
+     * both write after an `await`, so without it a file picked in trip A was reported by name on
+     * trip B, and an abandoned batch subtracted its remaining count from B's own fraction.
+     *
      * @throws {Error} if there is no active trip — a programmer error, per §2.1.
      */
     async importPhotos(attach: PhotoAttachRef = { kind: 'trip' }): Promise<AppState> {
       if (!state.doc) throw new Error('importPhotos: no active trip');
-      if (!ports.photo) return state;
+      const photo = ports.photo;
+      if (!photo) return state;
       // Captured before the first `await`: every byte written by this batch belongs to the trip
       // the user was looking at when they picked the files, and §10.3's key now says so. A
       // `state.doc.id` read after an await could name a different trip (§4.2 rule 6's shape, one
@@ -2032,29 +2127,69 @@ export function createStore(opts: StoreOptions) {
       // install, so it is unrepresentable rather than merely discouraged (A-67 Part 3 item 2).
       const g = guard.observe('doc');
       if (g === null) return state;
-      const picked = await ports.photo.pickImages();
+      /**
+       * **The ONE place this batch writes its own session state** — §10 **A-66** Part 11 (QA
+       * **R50-2**), and it is A-69 Part 5's fence shape one subsystem over. `PhotoSession` resets
+       * at every reseed, so after a transition `state.photos` belongs to the trip the user moved
+       * to: a write from here would put this batch's report, or this batch's remaining count,
+       * into a trip that never had these files. Measured before the gate: a decode that failed in
+       * trip A named `holiday.jpg` on trip B, and an abandoned four-file batch of A's took four
+       * off B's own in-flight fraction, leaving B's spinner reading *"done"* with four files
+       * still to come.
+       *
+       * **Dropped, never retargeted** — `scheduleSave`'s rule for a late timer (QA R3-2), the same
+       * answer `removePhoto`'s tail and `reclaimPhotoBytes` already give (A-68 Part 5c). The file
+       * genuinely failed, so Part 5 item 1's *"nothing failed"* does not apply; it is dropped
+       * anyway because there is nowhere correct to put it, and giving `failures` a tenancy is the
+       * machinery A-66 Part 3 already priced and refused.
+       *
+       * **A gate here and not at each caller**: the callers are an open set that grows every time
+       * somebody adds a `setPhotos` to this loop, which is §4.2 **A-69** Part 3's defect in
+       * miniature.
+       *
+       * It gates on the **document**, not on the batch, so it does not and should not separate two
+       * batches of the *same* trip — R45-11's subject, unchanged.
+       *
+       * *(This is the one `setPhotos(` call in the file whose argument is a **variable** rather
+       * than a fresh object literal, so excess-property checking does not fire **here**. The A-69
+       * Part 5 fence is not weakened: `patch` is already of `setPhotos`' own parameter type, so
+       * every `setBatch` call site is checked exactly as a `setPhotos` call site was. Disclosed
+       * because `qa/r50-i13h.mjs` **E2** asserts the literal-argument property by grep — BUILD-NOTES
+       * **KD-94**.)*
+       */
+      const setBatch = (patch: Parameters<typeof setPhotos>[0]): void => {
+        if (!guard.current('doc', g)) return;
+        setPhotos(patch);
+      };
+      const picked = await photo.pickImages();
       // A cancel. Not an error, not a failure, and it does not clear an earlier batch's report.
       if (picked === null || picked.length === 0) return state;
       // The picker is a modal and the app is frozen behind it — but not on every host, and the
       // fraction must not move for a batch that can no longer land anything.
+      //
+      // **This explicit check STAYS** (§10 A-66 Part 11): it aborts the whole batch rather than
+      // gating one write, which is strictly more, and `setBatch`'s check one statement later is
+      // then trivially true.
       if (!guard.current('doc', g)) return state;
 
       // An idle store starts a fresh fraction; a store with a batch in flight joins it. Read
       // after the `await` above, because that is where the other batch can have started.
       const joining = state.photos.pending > 0;
-      setPhotos({
+      setBatch({
         pending: state.photos.pending + picked.length,
         total: (joining ? state.photos.total : 0) + picked.length,
       });
       let remaining = picked.length;
 
-      for (const f of picked) {
-        const fail = (reason: PhotoImportFailure) => {
-          // Appended to what the SESSION holds, never to a batch-local array: two overlapping
-          // imports must not write over each other's reports (R45-11).
-          setPhotos({ failures: [...state.photos.failures, { name: f.name, reason }] });
-        };
-        try {
+      try {
+        for (const f of picked) {
+          const fail = (reason: PhotoImportFailure) => {
+            // Appended to what the SESSION holds, never to a batch-local array: two overlapping
+            // imports must not write over each other's reports (R45-11). Through `setBatch`, so a
+            // report for a file picked in this trip can never land on the trip the user moved to
+            // (§10 **A-66** Part 11, QA **R50-2**).
+            setBatch({ failures: [...state.photos.failures, { name: f.name, reason }] });
+          };
           // Refused BEFORE the decode, both of them: a ceiling enforced after `createImageBitmap`
           // has already allocated the bitmap is not a ceiling.
           //
@@ -2068,9 +2203,16 @@ export function createStore(opts: StoreOptions) {
           else {
             // Pure, in core, and it never throws for any byte sequence (§10.2 rule 1).
             const meta = core.readExif(f.bytes);
-            const derived = await ports.photo.derive(f.bytes, f.type);
-            if (derived === null) fail('decode_failed');
+            // **§4.2 A-71 Part 4c, site 3.** The two outcomes this store may name are the port's
+            // and are separated here rather than by a `catch` around the whole file: `!ok` is an
+            // unexpected throw out of the port (`'storage_failed'`), `value === null` is §10.2
+            // rule 1's contract (`'decode_failed'`). Neither can any longer be a subscriber's
+            // exception, which is what the deleted per-file `catch` was reporting by file name.
+            const d = await attempt(() => photo.derive(f.bytes, f.type));
+            if (!d.ok) fail('storage_failed');
+            else if (d.value === null) fail('decode_failed');
             else {
+              const derived = d.value;
               // **The document this batch belongs to is gone** — QA **R46-1** face 3, then
               // **R47-1**. `deleteTrip`'s cascade may already have run, so a byte record written
               // now can have no document, no library row and nothing that can ever name it:
@@ -2089,13 +2231,16 @@ export function createStore(opts: StoreOptions) {
               // breaking here costs **zero** stranded bytes.
               if (!guard.current('doc', g)) break;
               const id = ports.ids.newId('photo');
-              try {
-                await ports.photo.write(tripId, id, derived.thumb.bytes, derived.display.bytes);
-              } catch (err) {
-                // P9: no asset is created, no orphaned byte record, no partial document write.
-                fail(writeFailureReason(err));
-                throw new Error('handled');
-              }
+              // **§4.2 A-71 Part 4c, site 4.** P9: no asset is created, no orphaned byte record,
+              // no partial document write — and `writeFailureReason` still maps
+              // `QuotaExceededError` to `'quota_exceeded'` and everything else to
+              // `'storage_failed'`, unchanged (Part 5 item 2). The `'handled'` sentinel and the
+              // per-file `catch` that existed to read it are both **deleted** (Part 4d): with
+              // `derive` and `write` classified, no awaited port call is left inside the loop
+              // body, so a `catch` there recording `'storage_failed'` **about the user's file**
+              // is a lie in every case that can reach it.
+              const w = await attempt(() => photo.write(tripId, id, derived.thumb.bytes, derived.display.bytes));
+              if (!w.ok) { fail(writeFailureReason(w.error)); continue; }
               // **The other half of the invariant `tripId` is captured for** — QA **R46-1**, and
               // it is the finding itself. `tripId` pins the BYTES to the trip the user picked
               // from; `state.doc` is live, so without this the RECORD is pinned to whatever trip
@@ -2186,18 +2331,23 @@ export function createStore(opts: StoreOptions) {
               }
             }
           }
-        } catch (err) {
-          // `'handled'` is the write failure above, already recorded by name. Anything else is
-          // an unexpected throw from the port, and it is reported rather than swallowed — a
-          // silent failure is the one thing §10.6 exists to stop.
-          if ((err as Error)?.message !== 'handled') fail('storage_failed');
+          remaining--;
+          setBatch({ pending: Math.max(0, state.photos.pending - 1) });
         }
-        remaining--;
-        setPhotos({ pending: Math.max(0, state.photos.pending - 1) });
+      } finally {
+        // **§4.2 A-71 Part 4d — group 3a.** Settle THIS batch and no other (R45-11) on EVERY exit,
+        // including a throw out of the loop: a flat `pending: 0` would report a concurrent batch
+        // as finished, and `remaining` is 0 unless the loop was cut short. The deleted per-file
+        // `catch` was keeping the fraction settling **by accident**; this keeps it settling on
+        // purpose. **A `finally`, not a statement below the block**, for KD-85's exact reason:
+        // `break` and a propagating throw both leave the loop, and a statement below it runs on
+        // neither.
+        //
+        // Through `setBatch` — §10 **A-66** Part 11's second half, and the one a user notices
+        // first: an abandoned four-file batch of trip A's used to subtract four from trip B's own
+        // in-flight fraction, leaving B's spinner reading *"done"* with four files still to come.
+        if (remaining > 0) setBatch({ pending: Math.max(0, state.photos.pending - remaining) });
       }
-      // Settle THIS batch and no other: a flat `pending: 0` would report a concurrent batch as
-      // finished (R45-11). `remaining` is 0 unless the loop above was cut short.
-      if (remaining > 0) setPhotos({ pending: Math.max(0, state.photos.pending - remaining) });
       // **There is no discharge line here any more** — §4.2 **A-69** Part 6 item 1. A-68's
       // owed-flag discharge — a `guard.current('doc', g)`-gated `await readPhotoAvailability(...)`
       // — is deleted rather than left beside the boundary: its gate was on the `doc` slot, which
@@ -2290,9 +2440,15 @@ export function createStore(opts: StoreOptions) {
       // hoisted out of that guard it would fire against the trip the user moved to and drop
       // **that** trip's read: R48-2 committed from a new site by R48-1's own fix.
       const g = guard.observe('doc');
-      if (!ports.photo) return state;
-      try {
-        await ports.photo.remove(tripId, photoId);
+      const photo = ports.photo;
+      if (!photo) return state;
+      // **§4.2 A-71 Part 4c, site 2.** The byte delete is the only thing whose failure this method
+      // may name, so it is the only thing inside the classifier. The tail below emits — a
+      // subscriber throwing while rendering a remove that SUCCEEDED was recorded as *"the record
+      // is gone and the bytes are not"* over bytes that are gone, and the user was offered a
+      // reclaim for a photograph nobody could reclaim.
+      const r = await attempt(() => photo.remove(tripId, photoId));
+      if (r.ok) {
         // **The whole tail is the subject's**, and a transition landing in the `remove` above takes
         // it away: `state.photos` has already been reseeded for another trip, so an availability
         // write here would edit that trip's set and an orphan appended here would be reported
@@ -2323,9 +2479,10 @@ export function createStore(opts: StoreOptions) {
           }
           setPhotos({ orphans: state.photos.orphans.filter((id) => id !== photoId) });
         }
-      } catch {
+      } else {
         // The record is gone and the bytes are not. Observed, recorded, never swept — and reported
-        // against the trip it happened to, or not at all.
+        // against the trip it happened to, or not at all. Unchanged to the character: only what
+        // can reach this arm has narrowed (Part 5 item 2).
         if (guard.current('doc', g)) {
           setPhotos({
             orphans: state.photos.orphans.includes(photoId)
