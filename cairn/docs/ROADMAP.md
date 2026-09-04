@@ -901,6 +901,40 @@ I-11's full chain plus `I-13f`'s two `.tsx` lines — which were never scheduled
 the first increment that opens `App.tsx`, and are not a claim about the store mechanism's soundness.**
 **No code, no `.tsx`, no `qa/`, no test, no dependency, no version movement.**
 
+**Revision 54, 2026-09-04.** **No increment added, no increment re-scoped, one bullet rewritten — `I-11`'s
+*Dependencies / blockers* — and the sentence revision 53 closed on is withdrawn.** The gate was about to be
+dispatched, so I-11's dependency chain was checked increment by increment **against `git log` on `master`
+rather than against this document's own status cells**, which is the check that has never been run on it.
+Two results.
+
+**One is a naming gap and it is the small half.** `I-13i` — built at `032a4cb`, ruled at architecture
+revision 52 as §4.2 **A-71** and §10 **A-66 Part 11**, confirmed at QA round 51 — **was not on I-11's
+dependency list**, which stopped at I-13h. It is now named, with the same *why-it-gates* clause the
+I-13e/I-13g/I-13h entries carry: A-71 Part 1 measured five shipped surfaces stating a false fact about the
+user's own data, one of them **a write that landed with the fence advanced, reported as
+`persistence.status: 'error'`** — a phase gated with that unbuilt would be certifying a phase that lies
+about whether the traveller's work is saved. **`I-13f` stays off the list and that is deliberate, not an
+oversight** — two `.tsx` lines, a ship condition of the first increment that opens `App.tsx`, and no such
+increment exists in Phase 2 because *Explicitly not in Phase 2* refuses any photo screen while the visual
+direction is unsettled. The revision-49 framing of it is unchanged and still correct.
+
+**The other is why this revision exists. Four of the dependencies I-11 already named are NOT BUILT**, and
+three separate places in this repository were saying otherwise. **`I-9` and `I-10` — the whole of step 2c —
+are not started**: no `Participant` type, no `build/participants.ts`, no `Participants.tsx`, and **two of
+this phase's exit criteria cannot be run without them**. **`I-12a` item 5 (§8.4 A-60 Part 6) is not
+built** — the repair pass it was owed by landed *before* revision 42 wrote the item, and `travelStats.ts`
+still tests disjointness on the `??` substitutes rather than on the supplied edges. **`I-13a` is not
+built** — the *"may land inside any earlier commit that opens `photos.test.ts`"* clause was written so it
+could not be dropped and is exactly what dropped it: two commits opened that file afterwards, neither
+carried it, and BUILD-NOTES **KD-81**, which I-13a closes, is still open and still routed to me.
+**Revision 53's closing sentence — *"what remains before Phase 2's gate is I-11's full chain plus I-13f's
+two `.tsx` lines"* — is therefore false and is withdrawn**, along with the same claim in the 2d status cell
+and in `CAIRN_VISUAL_ROADMAP.md`'s two newest blocks, which additionally call I-13f *"the actual photo
+screen"*, which it has never been. **I-11's dependency bullet is now the authoritative list and says so.**
+**No code, no `.tsx`, no `qa/`, no `cairn/docs/design/`, no test, no dependency, no version movement — and
+no criterion changed**; what changed is that the gate can no longer be ordered against an unbuilt chain,
+which is stated as a precondition on I-11's *Ship gate* rather than left to be discovered by the breaker.
+
 > **Phase numbers changed once, here.** Every heading below carries its old number, and every "Phase N"
 > written in `ARCHITECTURE.md` §1–§7, `BUILD-NOTES.md` or `QA-FINDINGS.md` before revision 9 means the
 > *named* phase it described: "Phase 2" = accounts/server (**now 3**), "Phase 3" = ingest (**now 4**),
@@ -5963,7 +5997,7 @@ disclosed as *unreachable* for two revisions and is reachable today.*
   this is the pass that clears it.
 - **Verification.** All exit criteria below, each re-derived; the whole Phase 1 suite unchanged; the
   attack list for this phase run end to end.
-- **Dependencies / blockers.** I-0 through I-10, **and I-12, I-12a, I-13, I-13a, I-13b, I-13c, I-13d, I-13e, I-13g and I-13h** (revision 40,
+- **Dependencies / blockers.** I-0 through I-10, **and I-12, I-12a, I-13, I-13a, I-13b, I-13c, I-13d, I-13e, I-13g, I-13h and I-13i** (revision 40,
   step 2d — numbered above this increment and sequenced below it; I-12a added at revision 41, I-13a at
   revision 43, **I-13b at revision 44 — it is the repair pass for round 45's SEND BACK on I-13 and the
   phase cannot be gated with it unbuilt**, and **I-13c at revision 45, the repair pass for round 46's
@@ -5975,10 +6009,78 @@ disclosed as *unreachable* for two revisions and is reachable today.*
   gated with it unbuilt either**, and **I-13h at revision 51 — one disjunct, one stamp and one read-only
   accessor, where §4.2 A-70 narrows A-69's predicate so that a byte write after a failed read still
   discharges its promise and §10 A-65 T1 is true again on every path; it is the smallest of the seven and
-  the phase cannot be gated with §10 A-65 T1 regressed**).
+  the phase cannot be gated with §10 A-65 T1 regressed**, and **I-13i at revision 52 — the eighth and the
+  only one that is not about the generation guard: one brand on `emit`, one classifier `attempt`, seven
+  `catch` blocks deleted, where §4.2 A-71 stops a `catch` recording a *subscriber's* exception as its own
+  subject's failure and §10 A-66 Part 11 puts `setBatch` between the import loop and `state.photos`. **The
+  phase cannot be gated with §4.2 A-71 unbuilt**, and the reason is the same class as I-13h's: A-71 Part 1
+  measured **five shipped surfaces stating a false fact about the user's own data** — a photo store that
+  reads fine reported unreadable with a *Try again* that can never clear, bytes that were deleted listed as
+  orphans, a photograph that landed named as `'storage_failed'`, and **a write that landed with the fence
+  advanced reported as `persistence.status: 'error'`** — so a gate run with it unbuilt would be certifying
+  a phase that lies about whether the traveller's work is saved**).
+
   **I-13a is a one-file test-and-comment pass** and may land inside any earlier commit that opens
   `photos.test.ts`; it is named here so that it cannot reach the gate unbuilt.
-- **Ship gate.** A manager verdict of **SHIP**. Nothing else counts as the phase being done.
+
+  ***Measured at revision 54, against `git log` on `master` rather than against this document's own status
+  cells, immediately before the gate was to be dispatched. Four of the dependencies named above are NOT
+  BUILT, and the full chain may not be ordered until they are.*** This bullet is the authoritative list;
+  where the 2d status cell above, the revision-53 ledger entry or `CAIRN_VISUAL_ROADMAP.md` says the only
+  thing standing between here and the gate is I-11's own chain, **they are wrong and are superseded here**.
+
+  - ***`I-9` and `I-10` — the whole of step 2c — are not started.*** The step table's own 2c cell says
+    *"Not started; gated on 2b"* and it is the cell that is right: there is no `Participant` type in
+    `packages/core/src/model/types.ts`, no `packages/core/src/build/participants.ts`, no
+    `duplicate_participant_id` or `participant_name_empty` in `validateTrip.ts`, and no `Participants.tsx`
+    under `apps/web/src/views/`. **Two of this phase's own exit criteria cannot be run at all without
+    them** — *"Participation grants nothing, asserted mechanically"* (the §6.2 access conformance set run
+    twice, with and without participants, diffing to nothing) and the round-trip/undo parity clause over
+    `Trip.participants` — and a criterion that cannot be run is not a criterion that passed. The revision-40
+    note above is still true that 2d is *"orderable before or after 2c"*; it never made 2c optional, and
+    **I-11 is below both**.
+  - ***`I-12a` item 5 (§8.4 A-60 Part 6) is not built.*** The entry has said *"owed by the repair pass, not
+    yet built"* since revision 42 and it is still accurate — but the repair pass it was owed by
+    (`74a2762`) **landed before revision 42 wrote the item** (`598cd7f`), so nothing has carried it since.
+    `packages/core/src/derive/travelStats.ts` still computes `rawA`/`rawB` from the `??` substitutes and
+    tests disjointness on them; A-60 Part 6.3 requires the **supplied** edges (`obsA`/`obsB` first,
+    `rawA`/`rawB` last) and there is no `obsA` in the file. 6.2's owed test — the one that distinguishes the
+    per-field `??` from the pair-wide reading — does not exist either, which is why the fork stayed live.
+    The measurable consequence is still the one the entry states: a `null` `firstDay` beside a readable
+    `lastDay` strictly before `a` prints `[a, a]`, a single day the traveller is provably elsewhere.
+  - ***`I-13a` is not built, and the ride-along clause above is what hid it.*** Two commits opened
+    `packages/core/test/photos.test.ts` after revision 43 created the increment — `b24b14c` (round 45's fix
+    pass) and `70b9ee6` (I-13b) — and **neither carried it**. In the file as shipped, the size case reports
+    the measured delta and the per-photo figure **only inside an assertion message, which speaks when it
+    fails**; the 128-character bound still has no fixture-scoped comment and no pointer to A-61 Part 8
+    residue 1; and **BUILD-NOTES `KD-81` is still open and still marked *"Routed to the architect"***, which
+    I-13a's own *Verification* bullet says it closes. The clause stays as written — I-13a is genuinely
+    orderable anywhere after I-13 — but it is a **debt this bullet is now tracking**, not a likelihood.
+
+  **Everything else on this list is built, verified commit by commit at revision 54, with its round's fix
+  pass where one exists:** I-12 (`8b50889`), I-13 (`1820813`, ship gate `497c116`), I-13b (`70b9ee6`),
+  I-13c (group 2 `a6c5d04`, group 3 `c440170`), I-13d (`4316167` + `ae62326`), I-13e (`106bbd3`), I-13g
+  (`ae075db`), I-13h (`e051306`) and I-13i (`032a4cb`, confirmed at `119d336`, fix pass `de190bb`); I-12a's
+  first four items are built at `b574dc5` with round 44's fix pass at `74a2762`. **Every commit hash this
+  entry and the 2d cell cite resolves on `master` to the change it is cited for.**
+
+  **`I-13f` is correctly absent from this list and does not block this gate**, and the revision-49 framing
+  still holds unchanged: it is **two lines in `apps/web/src/App.tsx`**, it is a **ship condition of the
+  first increment that opens that file**, and it is **not a claim about the store mechanism's soundness**.
+  No such increment exists in this phase — *Explicitly not in Phase 2* refuses **"any photo screen at
+  all"** while the visual direction is unsettled — so Phase 2 ships with A-68 Part 8's uncaught listener
+  error and A-67 Part 11 residue 3's redundant `openTrip` **disclosed and ruled non-urgent**, which is a
+  stated deferral rather than an unbuilt dependency. **`CAIRN_VISUAL_ROADMAP.md`'s two newest blocks call
+  I-13f *"the actual photo screen"* and say it is what stands between here and shippable; that is wrong on
+  both halves** — I-13f is not a screen, and what actually stands there is the four unbuilt increments
+  above. Correcting it is part of the board rebuild this increment's *Architecture / data model* bullet
+  already owns.
+- **Ship gate.** A manager verdict of **SHIP**. Nothing else counts as the phase being done. **And one
+  precondition on ordering the chain at all**, added at revision 54 because it was nearly missed: the
+  breaker round is *over the whole phase*, so **every increment named in the bullet above is built first**.
+  Dispatching it against four unbuilt dependencies does not produce a SEND BACK with findings — it produces
+  a round that reports two exit criteria as un-runnable, which costs a full adversarial pass and decides
+  nothing.
 
 ### Exit criteria — the Phase 2 ship gate
 
