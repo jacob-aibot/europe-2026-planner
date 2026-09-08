@@ -1434,6 +1434,38 @@ writing the thing (an overload set; a carrier more than 12 hops deep).** **No `I
 movement, no export-count movement (§2.10 stays at 86), no `.tsx`, no `qa/`, no new dependency.**
 `ROADMAP.md` revision 63 carries the ledger entry and **I-18**.
 
+**Revision 61, 2026-09-08.** **`I-18` was built verbatim and round 58 falsified the ruling it was built
+from — specifically, revision 60's own closure claim, which said there were *"exactly three ways"* a sixth
+finding could be legitimate and was wrong within one round.** There is a fourth way and it has three
+faces: **`Carries` could descend through exactly two type constructors** — a bare object type's own keys
+and a call signature's return type — while `packages/core/src` holds **106 optional properties** and **six
+discriminated unions of object types**, and spells an absent object `X | null` throughout (**R58-1**,
+MAJOR). Nine carrier forms with **no cast, no `any`, one call signature each and the door two hops down**
+left `npm run typecheck` at exit 0; three of them, injected into `derive/lifecycle.ts`, wrote documents
+`fromJSON` refuses. The sharpest proof is revision 60's own ship gate: N9 written `autofix?(t, c): Trip`
+reddens the census, and `autofix?: { fix(t, c): Trip }` — the same feature, one field-shape sideways —
+does not. **§2.1 A-80 rules it, and `ROADMAP` I-19 builds it.** The repair is the breaker's measured
+two-line change — `Members` walks `NonNullable<T[K]>`, and `Carries` **distributes** over unions instead
+of bracket-guarding them — **adopted after independent verification**, with one refinement of mine: an
+`abstract new` arm in the walk, which closes **R58-2**'s construct signature *as a carrier that must be
+split* rather than promoting it into `DOORS`. Three mechanisms are isolated and one is corrected: `-?`
+strips the optional modifier from a mapped type's **result** and not `| undefined` from the source `T[K]`;
+`keyof` a union is the **intersection** of its members' keys; and `Set`/`Iterable` are **not a third root
+cause** but the second reached through `IteratorResult`'s union — which is why one fix closes all of them.
+**Two documentation drifts in revision 60's own evidence are corrected** (**R58-5**): the census names
+**eleven** exports at N9, not ten — `RULES`, the array holding the rules, and it is **correct**, because a
+container of carriers is a carrier; and the *"Carriers caught"* row's `Map<string, door>` was caught **by
+accident** through `get(): V | undefined` while `Map<string, {run: door}>` was missed, so the row
+overstated its evidence. **A-79 Part 9's async claim is narrowed** to a door promise the runner awaits
+(**R58-4**), and **`--noErrorTruncation` is required** or the census names two exports and `… 8 more …`
+(**R58-3**). **What changes beyond the code is the shape of the closure claim.** Revision 60's numbered
+list of exceptions is **withdrawn, not extended to four** — a numbered list is this arc's own defect
+wearing its last disguise — and replaced by a claim about **coverage of TypeScript's own type
+constructors**, a set closed by the language rather than by this codebase, **checked by a standing
+`DESCENT_CENSUS` in the compiler instead of asserted in a paragraph**. **No `IssueCode`, no version
+movement, no export-count movement (§2.10 stays at 86), no `.tsx`, no `qa/`, no new dependency.**
+`ROADMAP.md` revision 64 carries the ledger entry and **I-19**.
+
 **Phase 1 is §2 and §4. The next phase is §8.1–§8.4.** Everything else is the shape those must not
 foreclose. See `ROADMAP.md` for sequencing and `PRODUCT-VISION.md` for why this order and not another.
 **What the product looks like is `DESIGN.md`, not this document** — §9 says why, and a builder of a screen
@@ -1441,7 +1473,12 @@ reads that instead of entering §2 or §4.
 
 ## Read only your sections
 
-This document is **~469k tokens** (re-measured at **revision 60**, with `doc-section` — **§2 grew 151k →
+This document is **~480k tokens** (re-measured at **revision 61**, with `doc-section` — **§2 grew 159k →
+168k** with §2.1's **A-80** and A-79's six amendment banners; §4, §8 and §10 did not move). **A-80 is ~9k,
+and A-79 Parts 3, 4, 5, 9, 10 and 11 plus A-80 whole is the read for a builder of ROADMAP I-19** — that
+builder opens neither §4, §8 nor §10, reads no other A-entry at all, and does **not** need A-78: every
+part of A-79 that I-19 touches carries A-80's amendment banner in place. Revision 60's own note follows,
+and the figure in it is superseded by the one above: the document was ~469k (**§2 grew 151k →
 159k** with §2.1's **A-79** and A-78's five amendment banners; §4, §8 and §10 did not move). **A-79 is
 ~8k, and A-78 Parts 1, 2, 7, 9 and 10 plus A-79 whole is the read for a builder of ROADMAP I-18** — that
 builder opens neither §4, §8 nor §10, and reads neither A-76 nor A-77 except A-77 Part 2's refusal, which
@@ -1561,9 +1598,24 @@ export, through a property or a call signature's return type, at any depth** —
 never told about (a `Map`, a class returned from a factory, a function with a door hung off it), states the
 **normal form** a door must take, makes `NON_DOORS` hold only **live** excuses so R57-2's substitution
 attack reddens the compiler (**R57-2**), and restates **Invariant R** over collection arrays and insertion
-as well as records (**R57-3**). It moves no version, no `IssueCode` and **no export count**. **Anyone
-adding a build function reads A-78 Parts 1–2 and then A-79 Parts 3–4; a builder of ROADMAP `I-18` reads
-A-78 Parts 1, 2, 7, 9 and 10 and then A-79 whole, and needs nothing else in this document** | 159k | builder, breaker |
+as well as records (**R57-3**). It moves no version, no `IssueCode` and **no export count**. ~~**Anyone
+adding a build function reads A-78 Parts 1–2 and then A-79 Parts 3–4**~~ **A-80 is revision 61, sits
+directly under A-79 and is the newest entry in this section — read it before A-79's Parts 3, 4, 5, 9, 10
+or 11, each of which carries its banner.** QA round 58 upheld A-79's subject, its refusal of an arm per
+carrier, its `NON_DOORS` liveness (attacked four fresh ways, unbroken) and its 12-hop bound, and falsified
+its **closure claim**: A-79 said a sixth finding could only be an overload set, a >12-hop nesting or a
+cast, and there was a fourth way with three faces — **`Carries` descended through only two type
+constructors**, while the model is written in **106 optional properties**, **six discriminated unions** and
+`X | null` throughout (**R58-1**, MAJOR). A-80 adopts the breaker's measured two-line repair —
+`NonNullable<T[K]>` in `Members`, and `Carries` **distributes** over unions instead of bracket-guarding
+them — refines it with an `abstract new` arm that closes **R58-2**, corrects two drifts in A-79's own
+evidence (**R58-5**: the census names **eleven**, and `Map<string, door>` was caught by accident),
+narrows A-79 Part 9's async claim (**R58-4**), and **withdraws the numbered-exceptions closure format
+entirely** in favour of a **coverage claim over TypeScript's own type constructors, checked by a standing
+`DESCENT_CENSUS`**. It moves no version, no `IssueCode` and **no export count**. **Anyone adding a build
+function reads A-79 Part 4's normal form as amended by A-80 Part 7; a builder of ROADMAP `I-19` reads A-80
+whole plus A-79 Parts 3, 5, 10 and 11 for what it supersedes, and needs nothing else in this document — in
+particular it needs no part of A-78** | 168k | builder, breaker |
 | 3 | Module boundaries | <1k | builder |
 | 4 | **The Phase 1 client.** §4.2 rule 6 (a pending write is never outlived by its document) is new in revision 3 — QA R3-2; rule 6a′ and the `savedDoc` predicate are revision 4 — QA R4-1; **rule 6a″ (the flush bound and its exits) and rule 6c's "delete goes on the chain" are revision 5** — QA R6-1/R6-2/R7-3; **rule 5's retirement carve-out is revision 6** — QA R8-1, read with §2.7; **rule 4a is revision 8** — QA R11-1, read with §2.2a A-7; **§4.3's A-30 is revision 23** — the `refreshSummary` port method, the fence's meaning stated once, and the rescan's uniform per-row link — and **anyone touching `runRescan`, `StoragePort` or a port implementation reads it first**, with §8.4 clause 3 beside it; **§4.4's A-40 is revision 29** — the lifetime map is a plain component over a pure `packages/client` frame function, not a second `MapPort`, and **anyone building or reviewing `WorldMap.tsx` reads it first** (it is ~3k and self-contained; the trip map's port is unchanged and needs no re-reading); **§4.4's A-41 and A-42 are revision 30 and are read *with* A-40, never instead of it** — A-41 is the atlas frame (geographic clustering, one primary pane and up to two insets, padding, and the **W3** renderer clause) and it amends A-40 clause 2 and withdraws A-40 Part 7 residue 1's diagnosis; A-42 withdraws A-40 clause 2's min-span *claim* and rules that no second constant is created. **A builder of I-8d reads A-40 Parts 3–5, then A-41 and A-42, and needs nothing else in this document except §2.10's list**; **§4.4's A-48 is revision 33, sits directly under A-42 and is read *with* A-41, never instead of it** — QA round 36 measured A-41's own C2 and C3 as wrong (a key point that lands in the ocean, and a partition that depends on the alphabet), and A-48 supersedes **C2**, **C3** and Part 8 residues 1′ and 4 in place, withdraws C4's margin claim, adds **C9** (paint order) and one pane field (`aspect`), and changes the semantics of core's `clusterPoints` to connected components. **A builder of I-8g reads A-48 first — it names which of A-41's clauses to skip — then A-41's C1/C5/C6/C7/C8 and Parts 4–7, then A-40 Parts 3–5**; **§4.4's A-49 and A-50 are revision 34, sit directly under A-48 and are read *with* A-41 and A-48, never instead of them** — QA round 37 measured A-48's own C8 as the clause A-48 forgot (the key point moved onto the country and the *extent* did not), and A-49 supersedes **C8**, **C7**'s cap and A-41's I1/I2/I3/I5 in place, withdraws A-48 C9 consequence 2's chip-list sentence as false, adds `countryParts` to core, a `'detached'` pane, a `codes` array on the frame and invariants **I11–I15**; A-50 completes A-48 Part 6 for the *tall* direction in one CSS declaration. **A builder of I-8h reads A-49 and A-50 first — A-49 names which of A-41's and A-48's clauses it supersedes — then A-48's C2′/C3′/C9 and Part 6, then A-41's C1/C5/C6/C7 and Parts 4–7, and needs nothing else in this document except §2.10's list**; **§4.4's A-51 and A-52 are revision 35, sit directly under A-50, and are the entry point to the whole atlas-frame family — read A-51 first and it names which of A-41/A-48/A-49 to skip** — A-51 reopened the framing abstraction itself at Jacob's instruction (QA **R38-2**, MAJOR) and **supersedes A-41's C5/C6/C7, A-49's C7′/C8′/C8″ and the `role` field in place**: the frame is **one pane per connected component of country parts**, equally weighted, ordered by weight rather than framed by it, and its Part 7 is the **consolidated** I1…I17 list that replaces three rounds of *"restated by"* pointers. A-52 is one paragraph beside it (a ring the index carries is a ring the frame draws). **A-51 is RULED AND HELD FOR JACOB'S APPROVAL — no builder pass may be dispatched against it until he has ruled**; until then A-41…A-50 are what is shipped. **§4.4's A-53 is revision 36, sits directly under A-52, and supersedes nothing** — it is the pane-*membership* contract Jacob asked for before approving A-51 (membership is country geometry because an ISO code is the only geographic evidence the record carries; standing is `home`; priority is order; disclosure is the caption), and it adds **I18**, the ≤ 3-extent-panes-planet-wide bound, and the d3-geo/Turf prior-art ruling. **A builder of I-8i reads A-51, then A-52, then A-53 Parts 4 and 8, then A-41 C1 + Part 4, A-48 C2′/C3′/C4′/C9 + Part 6, A-49 Part 2, A-50 and A-40 Parts 2–5, and needs nothing else in this document except §2.10's list**; **§4.4's A-54 is revision 37, sits under A-53 and is the newest entry in the family — it supersedes A-51 **G7** in full, A-51 **G5**'s third key and A-52's **clause 1**, widens L3's exception, adds **I19**, and corrects five published numbers, so **anyone reading A-51 for the layout, the pane order or the ring filter reads A-54 first and it names what to skip**. **A builder of I-8j reads A-54, then A-51 G5/G7 and Part 8, then A-50 and A-40 Parts 2–5, and needs nothing else**; **§4.2's A-67 is revision 47 and is the newest entry in the section — it is the only one that is *not* about the map, and it sits at the end of §4.2 rather than in §4.4** — the store's **generation guard**, ruling QA **R47-1** and **R47-2** as one defect: `flushForTransition` returns a **ticket** instead of a boolean, three guarded slots order every asynchronous install, and **R46-1's and R46-3's shipped point-fixes are deleted rather than layered under** (Part 7 rules each site). It adds new rule **6d** to §4.2 and amends §10 **A-66 Part 7** by pointer. **A builder of I-13d reads A-67 Parts 3–7 and 10, plus §4.2 rule 6 whole and §10 A-66 Part 10, and needs nothing else in this document** — it is ~12k and self-contained, and it needs none of §4.4. **A-67 gained a Part 7a at revision 48** (the I-13d builder's report against `4316167`): Part 7's *"every existing R46-1/R46-3 test stays exactly as it is"* was too strong by one assertion and contradicted ROADMAP **G3**, so it is narrowed to **final-state** assertions and the one assertion pinning the old guard's byte-write side effect is corrected. **Anyone reading Part 7 reads Part 7a with it**; Part 7a also rules who touches `qa/` (**breaker**) versus `packages/client/test/` (**builder**). **No mechanism, slot, call site or criterion moves**. **A-68 is revision 49 and sits directly under A-67 — read the two together, always, and A-68 first if you are implementing anything from A-67 Parts 4, 5, 6, 7a or 11.** Round 48 attacked A-67's mechanism and could not break it; both of its MAJORs are at A-67's **call sites**, and A-68 rules them as one missing sentence — *a bump of a slot's sequence is a promise to replace the answer it invalidated*. It moves Part 5's three-slot claim to a **one**-slot claim (the reseed supersedes the other two), hoists Part 6's two byte-write supersedes **out of** R45-4's value guard and gives them the read they owe, corrects Part 7a item 4 and Part 11 residue 4, and **changes `generation.ts` not at all**. **A builder of I-13e reads A-68 whole (~11k) plus A-67 Parts 3–7 for context, and needs nothing else in this document.** **A-69 is revision 50 and sits directly under A-68 — it is now the newest entry in §4 and the FIRST one to read in this family.** QA round 49 found A-68's own fix re-opened seven of the nine exits it closed, because Part 5b discharged the owed read under the **`doc`** slot's ticket — the slot those nine exits all bump (**R49-1**) — and found an **eleventh** exit that installs its document and still answers nothing, which no enumeration of *non*-installing exits could contain (**R49-5**). A-69 rules the **class**: **no correctness argument in the store may rest on an enumeration of control-flow exits** (Part 3). §10.6 property 5 becomes a predicate repaired at two non-opt-in sites — a wrapper over `createStore`'s whole returned literal and `readPhotoAvailability`'s own tail — `availabilityOwed` is **deleted**, `setAvailability` becomes the sole typed writer of the availability triple, and A-68 Part 4.1's and Part 7's tables are demoted to documentation. It also fixes **R49-4** (a browse pane outliving its deleted trip, with `copyStopInto` reading it) and corrects three of A-68's published mutants and its *"§K is green"* claim. **A builder of I-13g reads A-69 whole (~12k), then A-68 Parts 4.2, 5a and 5c and A-67 Part 3, and needs nothing else in this document** — and reads A-68's and A-67's amendment banners, which name every line of theirs that no longer holds. **A-70 is revision 51, sits directly under A-69, and is now the FIRST entry to read in this family** — it is short (~7k) and it is the only one that changes `generation.ts`. The I-13g builder implemented A-69's predicate verbatim, could not keep two shipped criteria green with it, and routed the contradiction rather than resolving it (BUILD-NOTES **KD-84**): A-69's `availabilityError === null` conjunct also declines to discharge a **byte write's** `supersede` after an earlier failed read, which leaves a stale failure message over changed bytes and regresses §10 **A-65 T1**. A-70 **upholds A-65 T1 unamended and narrows the predicate**, replacing the conjunct with a second disjunct over the **slot's sequence** — the record of the obligation rather than a consequence of it (Part 3, rule 6d's fourth half) — stamped at `setAvailability`, the one writer A-69's own type fence closed. It also corrects **three text defects in A-69** in place: site **S2**'s printed placement was unreachable (KD-85), **G18**'s nine reds are eight and **G23**'s fault is a no-op (KD-86), and **G21**/**G24**'s counts are of functions and sites rather than of tokens (KD-83). **A builder of I-13h reads A-70 whole and needs nothing else in this document except A-69 Parts 4, 5 and 6 for the code it keeps.** **A-71 is revision 52, sits directly under A-70, and is the newest entry in §4 — it is also the only one in this family that is not about the generation guard at all, so it is read on its own rather than after the other four.** QA round 50 closed the A-67…A-70 arc (the boundary and the stamp survived every attack) and filed **R50-5** beside it: `emit()` runs subscribers **synchronously**, so a subscriber throwing while rendering a **successful** answer throws from inside whatever `try` the store was holding, and the `catch` records the view's exception as its own subject's failure and swallows it. A-71 measured **five faces in two subsystems** — a successful `present()` read as *"could not be read"*, deleted bytes read as an orphan, a photograph that landed read as `'storage_failed'` by name, and a **write that landed with the fence advanced** read as `persistence.status: 'error'` — and rules the class rather than the site, because five narrowed `try`s is A-69 Part 3's forbidden enumeration: `emit` **brands** what a subscriber throws and one classifier, **`attempt`**, rethrows a branded error and returns everything else as a value, deleting **seven** `catch` blocks. It amends **A-69 Part 7** and narrows **Part 13 residue 1** to two costs; `emit`'s stop-at-the-first behaviour, A-67's guard, A-68's wiring, A-69's boundary and A-70's stamp are all untouched. **A builder of I-13i reads A-71 whole (~10k) and §10 A-66 Part 11 (~2k), plus A-69 Part 7 and Part 13 residue 1 for what it amends, and needs nothing else in this document.** **A-71 and A-70 both carry revision-53 amendment banners (QA round 51) and the banners are read first**: the mechanism shipped clean and survived the confirmation round, and every correction is to this document's own text — G35's control names the tests it actually reddens (R51-1), Part 4a no longer calls a false-positive brand *"conservative"* (R51-2), the method this entry called **`saveAs`** is named as what exists, `doMerge`'s two chained writes (R51-3), Part 4d's *"every exit"* is scoped to the exits the `finally` reaches with the remaining one filed as residue 6 (R51-4), and **A-70 Part 7 item 3 is no longer a table of measured counts but the *count rule* that forbids them** (R51-6, after the same row was wrong in three consecutive revisions). **Anybody about to write a number into this document reads that rule first.** | 114k | builder |
 | 5 | The four hard subsystems | 2k | breaker; builder from Phase 3 on |
@@ -3126,6 +3178,21 @@ Read A-79 Part 7.]**
 
 #### A-79 — a door is a module-level function, and the census refuses any export that can hide one (revision 60, QA **R57-1/R57-2**, MAJOR; **R57-3** rides along, **R57-4/5/6** routed)
 
+> **AMENDED AT REVISION 61 BY A-80, THE LAST ENTRY IN THIS SECTION — READ A-79 FIRST AND A-80 SECOND, AND
+> NEVER A-80 INSTEAD OF THIS.** Round 58 upheld everything in this ruling except the reach of its
+> **predicate** and the truth of its **closure claim**. What A-80 changes, and nothing else: **Part 3's
+> `Members`/`Carries` block** (it descends through two type constructors and the model is written mostly in
+> the ones it cannot — optional properties, unions, discriminated unions, `Set`/`Iterable`; **R58-1**,
+> MAJOR); **Part 4's normal form** (silent about construct signatures, **R58-2**); **Part 5's *"Carriers
+> caught"* row** (`Map<string, door>` is caught by accident and `Map<string, {run: door}>` is missed —
+> the row overstated its evidence, **R58-5b**); **Part 10's N9** (the census names **eleven** exports, not
+> ten — `RULES` too, correctly, **R58-5a**); **Part 9's async claim** (the widening reaches an awaited door
+> promise and not a detached continuation, **R58-4**); and **Part 11's closure claim, which is WITHDRAWN**
+> — it said *"there are exactly three ways"* and round 58 found a fourth in one round. Everything else here
+> stands: the subject, the refusal of an arm per carrier, the brand analysis, the name-keyed argument,
+> `NON_DOORS` liveness (attacked four fresh ways and unbroken), Invariant R at its widened width, and the
+> 12-hop bound.
+
 > **RULED. It amends A-78 Parts 1, 2, 7, 9 and 10, and it upholds A-78's scope argument entire.** That is
 > the first thing to say. Round 57 attacked the census's **subject** with everything it had — a new file, a
 > new directory, a door appended to the generated `geo/countries.gen.ts`, a re-export into the tree from
@@ -3212,6 +3279,17 @@ work here, for one concrete reason:
 
 **Part 3 — the ruling: one structural predicate, asked of the export's type.**
 
+> **[SUPERSEDED IN ITS CODE BLOCK AND ITS DETAIL 1 AT REVISION 61 BY A-80 PART 2 (QA R58-1, MAJOR).** The
+> question below — *is a `Trip`-producing callable reachable from this export?* — is right and is kept. The
+> **walk** below answers it for only two type constructors: a bare object type's own keys, and a call
+> signature's return type. An **optional property** holding a carrier is missed (`-?` strips the optional
+> modifier from the mapped **result**, not `| undefined` from the source `T[K]`), and so is **every union**
+> (`keyof` a union is the *intersection* of its members' keys, and a union with a non-object member matches
+> neither arm) — which is `{…} | null`, `{…} | undefined`, all six discriminated unions in the model, and
+> `Set`/`Iterable`/`Generator` through `IteratorResult`. **Detail 1's bracket is the direct cause**: it
+> protects `false` and loses `true`. A-80 Part 2 carries the replacement block and A-80 Part 1 the three
+> mechanisms. **Read the block below as the record of what was ruled and what it missed; build A-80's.]**
+
 Not *"which declaration forms may a door take"* but ***"is a `Trip`-producing callable reachable from this
 export at all?"*** At the type level a class method, a static method, an object-literal method, an arrow
 property and a getter are **the same thing** — a property whose type has a call signature — and a
@@ -3287,6 +3365,11 @@ That is not the weaker answer; it is the only one the mechanism can support, and
 > set. A design that wants one of those splits it: the door is a module-level function, and the carrier
 > calls it.*
 
+> **[AMENDED AT REVISION 61 BY A-80 PART 7 (QA R58-2) — the list above is silent about **constructors and
+> construct signatures**, so `new (t: Trip, r: ConflictResolution) => Trip` was neither stated nor
+> detected. A-80's normal form adds them, and A-80 Part 2's `abstract new` arm detects them, naming the
+> export. Read A-80 Part 7's version of this quote.]**
+
 This sits directly beside A-78 Part 2's wrapper prohibition — *a door returns a `Trip` directly* — and the
 two together are the whole of what a door may be: **one exported function, one call signature, one `Trip`
 out.** A-78 Part 2's rule is *stated and not detected*; this one is **stated and detected**, everywhere
@@ -3301,8 +3384,8 @@ entry was written:
 |---|---|
 | **False positives over the shipped tree** | `AllHidden` is **`never`** across all **54** modules of `packages/core/src`. In particular the ten `Rule` objects are **not** flagged — `run(ctx): Conflict[]` carries no door — and neither is `sequentialIds`, a function that returns a function, nor `toDoc`, which returns `Record<string, unknown>` |
 | **Cost** | `npx tsc -p tsconfig.json --noEmit` on the real project: **5.31 s without the line, 5.12 s with it** — inside run-to-run noise. `node --test packages/core/test/storable.test.ts` still runs, because the whole thing is erased |
-| **Carriers caught** | class method; static method; object-literal method; `Record<string, (t: Trip) => Trip>`; getter; higher-order return; **`Map<string, door>`**; **a class returned from a factory**; **a function with a door as a property**; `Promise<Trip>` behind a method; `Trip \| null` behind a getter; a door nested three objects deep |
-| **The non-hypothetical case** | adding `autofix?(t: Trip, c: Conflict): Trip` to the `Rule` **type** reddens `npm run typecheck` naming `overlap`, `legacyFlag` and the other eight rules by export name |
+| **Carriers caught** ~~**`Map<string, door>`**~~ **[CORRECTED AT REVISION 61 BY A-80 PART 7 — `Map<string, door>` was caught INCIDENTALLY, through `get(): V \| undefined` and `IsDoor`'s distribution over that union, and `Map<string, {run: door}>` was NOT caught. This row overstated its evidence. Under A-80 both are caught, for the reason this row claimed. A showcase row must name the descent by which the case is caught.]** | class method; static method; object-literal method; `Record<string, (t: Trip) => Trip>`; getter; higher-order return; **`Map<string, door>`**; **a class returned from a factory**; **a function with a door as a property**; `Promise<Trip>` behind a method; `Trip \| null` behind a getter; a door nested three objects deep |
+| **The non-hypothetical case** **[CORRECTED AT REVISION 61 BY A-80 PART 6 — the census names ELEVEN, not ten: the eleventh is `RULES`, the `Rule[]` in `conflict/detect.ts`, and it is CORRECT — a container of carriers is a carrier. And the message truncates at two names unless `--noErrorTruncation` is set (R58-3).]** | adding `autofix?(t: Trip, c: Conflict): Trip` to the `Rule` **type** reddens `npm run typecheck` naming `overlap`, `legacyFlag` and the other eight rules by export name |
 | **R57-1's own harm driver** | a `TripArchiver` class appended to `derive/lifecycle.ts` reddens `npm run typecheck`. This is the standing criterion, Part 9 fault **N8** |
 | **The depth bound** | at `D = 6` a door is found through 6 property hops and missed at 7; the shipped bound is **12**, and 12 costs nothing measurable over 6. The deepest carrier this codebase could plausibly hold is 2 (`Record<RuleId, Rule>` → method) |
 
@@ -3457,6 +3540,14 @@ a mechanism that names the door in the synchronous case and not the asynchronous
 inside a `try` whose `catch` reports the door by name, exactly as the synchronous path does. Noticed but
 not filed by the breaker; ruled here because it is one line in the same function.
 
+> **[NARROWED AT REVISION 61 BY A-80 PART 8 (QA R58-4).** The `go` widening is real. The second half —
+> *the runner now names the door instead of an unhandled rejection taking the file down* — was measured at
+> both `9b4d358` and `77ef3ba` and is **not a delta**: the awaited-rejection case named the door before
+> I-18 too, and the **detached-continuation** case is byte-identical at both commits. **The widening
+> reaches a door promise the runner awaits and cannot reach a continuation nobody awaits — nothing can.**
+> A-80 Part 8 states it at that width and makes the detached continuation a residue with a trigger (*the
+> first async door*; zero exist).]**
+
 **Not ruled, and named so nobody looks for it:** `packages/client`'s `reducer.ts:290` dispatches a core
 door **by string name** off an untyped `coreFn: string`. The census does not pin that string, and a typo
 throws loudly at the dispatch with all 24 names currently doors. It is an observation, the breaker filed
@@ -3467,7 +3558,7 @@ it as one, and it becomes a finding only if a door name ever stops being a compi
 | | Fault | Required behaviour |
 |---|---|---|
 | **N8** | Append a class with a `Trip`-returning method to `derive/lifecycle.ts` — R57-1's own harm driver | **`npm run typecheck` fails**, and the message **names the export** |
-| **N9** | Add `autofix?(t: Trip, c: Conflict): Trip` to the `Rule` type in `conflict/rules/types.ts` | the hidden-door census fails, **naming all ten rule exports**. This is the non-hypothetical case and it is the criterion that A-79 reaches real code |
+| **N9** **[CORRECTED AT REVISION 61 — ELEVEN names, and N9 ALONE IS NOT ENOUGH: see A-80 Part 9's N11]** | Add `autofix?(t: Trip, c: Conflict): Trip` to the `Rule` type in `conflict/rules/types.ts` | the hidden-door census fails, **naming all ten rule exports and `RULES`, the array that holds them — eleven, under `--noErrorTruncation`**. This is the non-hypothetical case and it is the criterion that A-79 reaches real code. **It passed at revision 60 only because of the spelling: the same feature written `autofix?: { fix(t, c): Trip }` left typecheck at exit 0 (R58-1), so A-80 adds N11 as its twin and neither is sufficient alone** |
 | **N10** | Evict `fromJSON` from `NON_DOORS` and put a real door's name in its slot, removing it from `DOORS` and deleting its behavioural rows — R57-2's substitution, verbatim | **`DOOR_CENSUS` fails**, because the evicted entry was live. Adding a *second* name without evicting anything fires the count assertion instead |
 
 **A-78's N1–N7 and A-77's N1–N5 are all carried unchanged and still required**, in particular A-78 N6 (a
@@ -3475,6 +3566,19 @@ door's name moved into `NON_DOORS` reddens the behavioural census) — N10 is th
 not reach, not a replacement for it.
 
 **Part 11 — is *this* the close? The claim, in a form round 58 can check.**
+
+> **[WITHDRAWN AT REVISION 61 BY A-80 PART 10 (QA R58-1, MAJOR). THE CLAIM BELOW IS FALSE AND ITS FORMAT
+> IS THE MISTAKE.]** Round 58 did exactly what this Part asked and the answer was *no*. It exhibited nine
+> `Trip`-producing callables reachable from a censused export that `Carries` does not see — **none** of
+> them an overload set, a >12-hop nesting or a cast; all ordinary TypeScript, no `any`, one call signature
+> each, the door two hops down; three of them driven to **UNOPENABLE** documents in `derive/lifecycle.ts`
+> with `npm run typecheck` green. A **fourth** way existed and it was the two type constructors the walk
+> could descend through. **The list below is not extended to four.** A numbered list of exceptions is the
+> last disguise of this arc's own defect — *a guarantee quantified over everything, implemented as an
+> enumeration of something narrower* — and it has now been wrong within one round, four times. **A-80 Part
+> 10 replaces it with a claim about COVERAGE of the type system's own constructors, checked by a standing
+> `DESCENT_CENSUS` rather than by a paragraph.** Read the three items below as the record of what was
+> claimed; A-80 Part 10 says what is now believed and how to falsify it.
 
 This is the fifth round on one class. A-78 Part 10 asked that a fifth finding be classified honestly rather
 than counted, and R57-1 met that bar: it is a fifth face, and it went inward rather than outward, which the
@@ -3513,6 +3617,386 @@ caller half is widened by Part 8** to arrays and insertion, keeping A-78 Part 7'
 and they are Part 11's items 1, 2 and 3 above — the overload set, the depth bound, and the cast. Item 3 is
 permanent; items 1 and 2 have triggers a builder meets while writing the thing, because unlike a hidden
 carrier they are shapes a person chooses deliberately.
+
+> **[SUPERSEDED AT REVISION 61 BY A-80 PART 11.** The three residues above survive in substance, but they
+> are no longer *the* list: A-80 reframes them as things that are **not descents** (a cast — nothing to
+> descend into; a budget — one number; an incomplete row — the overload set's last signature), adds a
+> ruled non-descent (**parameter positions**) and a new one (**the detached continuation**), and puts the
+> boundaries into `DESCENT_CENSUS` where the compiler holds them.]**
+
+#### A-80 — the predicate descends every type constructor, and the closure claim is about coverage rather than a list of exceptions (revision 61, QA **R58-1**, MAJOR; **R58-2** and **R58-5** ride along, **R58-3/R58-4** routed)
+
+> **RULED, and the first thing to say is that A-79 Part 11's closure claim was FALSE and this entry
+> withdraws it.** It said a sixth finding was legitimate *"only if"* it were an overload set, a >12-hop
+> nesting or a cast, and *"there are exactly three ways for that"*. Round 58 found a fourth way with three
+> faces, none of them on that list, all of them ordinary TypeScript, and all of them live idiom in this
+> codebase: `Carries` could descend through exactly **two** type constructors — a bare object type's own
+> keys, and a call signature's return type — while `packages/core/src` holds **106 optional properties**
+> and **six discriminated unions of object types**, and spells an absent object `X | null` throughout
+> (**R58-1**). The proof that this is shipped-code reach and not a curiosity is A-79's own ship gate: N9
+> written `autofix?(t, c): Trip` reddens the census, and N9 written `autofix?: { fix(t, c): Trip }` — the
+> same feature, one field-shape sideways, still two hops — leaves `npm run typecheck` at exit 0. **A-79's
+> criterion for reaching real code was accidentally testing the one spelling that worked.** The breaker
+> did not stop at the finding: `qa/r58-fix-probe.sh` measures a two-line repair. **That repair is adopted,
+> with one refinement that also closes R58-2**, and it is verified in this entry rather than taken on
+> report. What changes beyond the code is the *shape of the closure claim*: A-79's numbered list of
+> exceptions is **withdrawn, not extended**, and replaced by a claim about **coverage of TypeScript's own
+> type constructors** — checked by the compiler in a standing **descent census**, not asserted in a
+> paragraph. It moves no version, no `IssueCode` and **no export count** (§2.10 stays at **86**).
+> `ROADMAP` **I-19** builds it.
+
+**Part 0 — what round 58 falsified, and the honest name for it.**
+
+Six rounds, one class: *a guarantee quantified over "every door", implemented as an enumeration of
+something narrower.* A-78 Part 10 tracked four faces, each a scope level **out**. A-79 Part 0 named a
+fifth that went **inward** — the enumeration had moved from the census's subject into its *predicate*,
+which enumerated declaration forms — and replaced the predicate with a recursive structural walk.
+
+The walk is real and it works. What A-79 did not notice is that it had turned *an enumeration of forms*
+into ***an enumeration of descents***. `Carries` reads:
+
+```ts
+[T] extends [(...a: never[]) => infer R]
+  ? (Carries<Awaited<R>, Down[D]> extends true ? true : Members<T, Down[D]>)
+  : [T] extends [object] ? Members<T, Down[D]> : false;
+```
+
+Two arms. TypeScript has more constructors than two. **That is the sixth face, and it is the same
+meta-shape one level further in again.** A-79 Part 11 then wrote the list of exceptions down with
+triggers, in good faith, and the list was wrong within one round — which is the fourth time in this arc a
+longer list has been wrong within a round. **The lesson this round is being asked to learn is not "add a
+fourth exception". It is that a numbered list of exceptions is the wrong artefact**, and Parts 4 and 10
+of this entry replace it with something the compiler holds.
+
+**Part 1 — the three mechanisms, isolated. Re-derived here rather than taken from the finding, and one of
+them is refined.**
+
+The breaker filed three root causes. I re-measured each at the type level, standalone (TypeScript
+**5.9.3**, `--strict --target es2022 --lib es2022`), because a ruling that patches symptoms and misstates
+the mechanism is how this arc keeps producing rounds.
+
+**(a) The optional property. `-?` strips the modifier from the mapped type's RESULT; it does not strip
+`| undefined` from the source `T[K]`.** This is subtler than "optional properties are unions", and the
+distinction is exactly where `Members` breaks. TypeScript's undefined-removal for `-?` is applied to the
+**instantiated template**, and `Members`'s template is not `T[K]` — it is `Carries<T[K], D>`. So the
+conditional inside `Carries` has already been evaluated against `T[K] | undefined` by the time the
+removal happens, and the removal then applies to a `true`/`false` literal, where it does nothing.
+Measured:
+
+```ts
+type Wrap<X> = [X] extends [object] ? 'obj' : 'not-obj';
+type M1<T> = { [K in keyof T]-?: T[K]       }[keyof T];  // {a?: {run: door}} -> { run: door }
+type M2<T> = { [K in keyof T]-?: Wrap<T[K]> }[keyof T];  // {a?: {run: door}} -> 'not-obj'   <-- the defect
+```
+
+`M1` is `Required`'s own body and behaves as everyone expects. `M2` is `Members`'s shape and does not.
+This is why `{a: {run: door}}` and `Required<{a?: {run: door}}>` were caught and `{a?: {run: door}}` was
+not — the miss is the indexed access, not the nesting. The breaker's statement of (a) is exact, and it is
+the single most useful sentence in round 58.
+
+**(b) The union, and why A-79's own bracket caused it.** A-79 Part 3 detail 1 required `[T] extends
+[object]` *"because distribution turns a union-typed export into a union of verdicts and quietly loses
+`false`"*. That reasoning is correct about `false` and silent about `true`. Not distributing means a union
+reaches `keyof`, and **`keyof (A | B)` is the *intersection* of the members' keys** — measured: `keyof
+({a: door} | {b: string})` is `never`, while `keyof ({a: door} | {a: string})` is `'a'`. A discriminated
+union of object types therefore has no walkable key at all. And a union with any non-object member matches
+neither `[T] extends [(...a) => R]` nor `[T] extends [object]` and falls straight to `false`, which is why
+`{run: door} | undefined` and `{run: door} | null` were invisible. **The bracket was protecting the wrong
+half of a boolean**: the correct quantifier over a union is **existential** — a door is reachable from
+`A | B` if it is reachable from `A` *or* from `B` — and the bracket implemented something that is neither
+`∀` nor `∃`.
+
+**(c) The standard library — and here I refine the finding.** The breaker attributes `Set<door>`,
+`Iterable<door>` and their relatives to `Iterator<T, TReturn = any>` putting an `any` on the walk. That is
+right for `Iterable`/`AsyncIterable` and **only half right for `Set`**, and the difference is worth having
+in writing because it decides whether one fix or two are needed. Measured against this repo's own lib:
+
+| type | `next()`'s return | `['value']` |
+|---|---|---|
+| `Iterable<door>` | `IteratorResult<door, any>` | **`any`** — `Iterator<T, TReturn = any>`'s default |
+| `Set<door>` | `IteratorResult<door, undefined>` | **`door \| undefined`** — `SetIterator` pins `TReturn`, so there is no `any` at all |
+
+Two different erasures. But they are **the same defect**, because both are produced by (b): `IteratorResult`
+is a **union** — `IteratorYieldResult<T> | IteratorReturnResult<TReturn>` — and reading `['value']` off the
+un-distributed union is what merges the door with `TReturn`. Distribute, and the yield member's `value` is
+exactly `door` in both cases. **This is the load-bearing fact for the ruling: (c) is not a third root cause
+needing its own arm. It is (b) reached through `lib.es2015.iterable.d.ts`, and (b)'s fix closes it.** I
+verified this by measurement, not by inference — `Set<door>`, `ReadonlySet<door>`, `Iterable<door>`,
+`AsyncIterable<door>`, `Generator<door>` and `AsyncGenerator<{run: door}>` all redden under the two-line
+repair and their doorless twins all stay green (Part 5).
+
+**Part 2 — the ruling on the repair: the breaker's two lines, adopted verbatim, plus one arm that closes
+R58-2.**
+
+I verified the two-line patch against the actual predicate before adopting it, ran the breaker's own probe,
+and then ran an independent sweep of **fifty-one rows the probe does not contain** — twenty-nine carrier
+shapes and twenty-two doorless twins (Part 5). **It
+is correct, and the reason it is correct is that it changes the *quantifier*, not the *list*.** The shipped
+predicate becomes:
+
+```ts
+type Down = [never, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+
+type Members<T, D extends number> =
+  true extends { [K in keyof T]-?: Carries<NonNullable<T[K]>, D> }[keyof T] ? true : false;
+
+/** The door test applied to a type a callable PRODUCES, rather than to the callable itself. Reuses
+ *  A-78 Part 2's `Exclude<Awaited<R>, null | undefined>` order, which A-78 ruled load-bearing. */
+type ProducesTrip<R> = IsExact<Exclude<Awaited<R>, null | undefined>, Trip>;
+
+/** Is a DOOR reachable from `T`? Asked of every member of a union, and answered `true` if ANY says so. */
+type Carries<T, D extends number = 12> =
+  [D] extends [never] ? false :
+    IsDoor<T> extends true ? true :
+      true extends (T extends unknown ? CarriesOne<T, D> : never) ? true : false;
+
+/** One non-union type. The three constructors a type can hold another type on its OUTPUT side. */
+type CarriesOne<T, D extends number> =
+  [T] extends [(...a: never[]) => infer R]
+    ? (Carries<Awaited<R>, Down[D]> extends true ? true : Members<T, Down[D]>)
+    : [T] extends [abstract new (...a: never[]) => infer I]
+      ? (ProducesTrip<I> extends true ? true
+        : Carries<I, Down[D]> extends true ? true : Members<T, Down[D]>)
+      : [T] extends [object] ? Members<T, Down[D]> : false;
+```
+
+Four things are load-bearing, and each is a correction of an A-79 detail rather than an addition to it:
+
+1. **`NonNullable<T[K]>` in `Members`.** Mechanism (a). It is not "handle optionals" — it is *read the
+   source type the way the mapped type's own `-?` reads its result*. A required property is unaffected,
+   which is why it introduces no false positive.
+2. **`Carries` distributes and `true extends` collapses the union of verdicts.** Mechanism (b). **A-79
+   Part 3 detail 1's concern is preserved and not discarded**: `Carries` still returns exactly `true` or
+   exactly `false`, never `boolean`, so `Hides<T> extends true` cannot lose a `true`. What changes is that
+   the union is answered existentially instead of being refused for not being an object. **The brackets
+   stay inside `CarriesOne`**, where `T` is already a single member and they cost nothing, and they still
+   guard `never` and the `[D] extends [never]` base case.
+3. **Distribution consumes no depth; `CarriesOne` decrements before every recursion.** The 12-hop bound is
+   therefore unchanged in meaning and still measured (A-79 Part 5), and a self-referential doorless type
+   still terminates — verified, the shipped tree typechecks at exit 0 with `model/types.ts`'s recursive
+   shapes in it.
+4. **The `abstract new` arm is mine, not the breaker's, and it is what closes R58-2** — see Part 7. It is
+   written `abstract new` so it matches both `class` constructors and bare construct-signature types, and
+   `ProducesTrip<I>` is tested **before** the members walk so that a construct signature producing a `Trip`
+   is reported as a **hidden carrier that must be split**, not silently promoted into `DOORS`.
+
+**Point 4's alternative was measured and rejected**, and the measurement is why. Adding the construct arm
+to `TripishReturn` instead — one line, and the obvious place — also makes `new (t: Trip, r) => Trip` redden.
+But it reddens **`DOOR_CENSUS`**, not `HIDDEN_DOOR_CENSUS`: the export is then *classified as a door*, and
+`Type 'true' is not assignable to type 'false'` names nothing, while a builder's repair is to add it to
+`DOORS`, where the behavioural runner would call it without `new`. Measured: with the `TripishReturn` arm
+the row is RED **with no name in the message**; with the `CarriesOne` arm it is RED reading *"do not exempt
+it: r58ctor"*. **A construct signature is not a door — the normal form says a door is a module-level
+function — so it must fail as a carrier.** That is the refinement, and it is the only place I depart from
+the probe.
+
+**Part 3 — why this is not the enumeration this arc keeps refusing, stated as the distinction rather than
+as a denial.**
+
+A-79 said the same thing about itself and was wrong within a round, so the claim needs a test rather than
+a restatement. Here it is: **an enumeration is open-ended when the set it ranges over is chosen by this
+codebase, and closed when the set is fixed by the language.**
+
+- *Declaration forms* (A-78's `IsDoor` arms) — open. A builder invents the eighth by writing code.
+- *Carrier shapes* (the arm-per-carrier A-79 Part 1 refused) — open. Same reason.
+- *Type constructors* — **closed**. A TypeScript type holds other types in exactly these places:
+  union members, intersection members, properties (required, optional, readonly, getter, symbol-keyed),
+  index signatures, array/tuple elements, call-signature returns, construct-signature instances, and
+  parameters. That set is fixed by `TypeFlags`/`ResolvedType` in the compiler, not by this repository. It
+  does not grow when someone writes a class.
+
+`CarriesOne` has three arms, and they are not three of an unbounded set: they are **the whole output side**
+of that closed list — arrays, tuples, index signatures, mapped types and intersections are all *object
+types with members*, and a union is handled by the quantifier above them. The one entry on the closed list
+the walk deliberately does not descend is **parameters**, ruled in Part 10.
+
+**Part 4 — the descent census: a coverage claim is checked by the compiler or it is a paragraph.**
+
+This is the part that is meant to stop round 7, and it exists because *A-79's closure claim was prose*.
+`Carries`'s guarantee is now a claim about covering a closed set. A closed set can be enumerated **in a
+test**, where an enumeration is a measurement and not a mechanism — and where being incomplete costs a row,
+not a hidden door, because the predicate is still structural and may well catch a constructor the table
+forgot.
+
+Every row is one constructor with a **positive** fixture (a door behind it → `true`) and a **negative**
+twin (the same shape with no door → `false`), so a row cannot pass by the predicate becoming vacuous:
+
+```ts
+type Door = (t: Trip, r: ConflictResolution) => Trip;
+
+/** `never` if the constructor is covered; the label if the positive fixture is missed OR the negative
+ *  fixture false-positives. */
+type Descent<Label extends string, Pos, Neg> =
+  Carries<Pos> extends true ? (Carries<Neg> extends false ? never : Label) : Label;
+
+type UNCOVERED = DESCENTS[number];
+const DESCENT_CENSUS: [UNCOVERED] extends [never] ? true :
+  `A-80: the predicate no longer descends through this type constructor: ${UNCOVERED}` = true;
+```
+
+with `DESCENTS` a tuple of `Descent<…>` rows covering, at minimum: **property (required, optional,
+optional-nested, readonly/getter, symbol-keyed), string and symbol index signatures, array, readonly
+array, tuple, union with a non-object member, union with `null`, discriminated union, intersection,
+call-signature return, call-signature return behind `Promise`, a call signature's own properties
+(`Object.assign(fn, {door})`), construct-signature instance, construct signature producing `Trip`,
+`Promise`, `Iterable`, `AsyncIterable`, `Generator`, `Set`, `ReadonlySet`, `Map` with a door value, `Map`
+with a *carrier* value, `WeakMap`, `Record`, `Partial`, `Readonly`, `Pick`, and a recursive type.**
+`I-19` carries the full row list.
+
+**Two rows are asserted `false` deliberately, so the walk's boundaries are measured rather than described:**
+a **parameter position** (`(cb: Door) => void`) and an **overload set whose last signature is not `Trip`**.
+Both are ruled non-descents (Part 10). Writing them into the same table means that if TypeScript's
+behaviour ever changes under us, the file reddens and someone reads this entry, instead of a residue
+paragraph quietly becoming untrue.
+
+**Part 5 — the measurements. Mine, not the finding's, and the sweep is deliberately not the probe's.**
+
+Verified at `0429d80` in a detached worktree, patched with Part 2's block, each row a full
+`npx tsc -p tsconfig.json --noEmit --noErrorTruncation` against the real tree with the carrier appended to
+`derive/lifecycle.ts`:
+
+| | measured |
+|---|---|
+| **The breaker's own probe, re-run** | `bash qa/r58-fix-probe.sh` → typecheck **exit 0** on the shipped tree, `storable.test.ts` **107 pass / 0 fail**, all four filed families RED and named, the non-door union control GREEN. Reproduced, not taken on report |
+| **Twenty-nine positive rows the probe does not contain, all RED and all naming the export** | `WeakMap<object,{run:door}>`, `ReadonlyMap<string,door>`, `Generator<door>`, `AsyncIterable<door>`, `AsyncGenerator<{run:door}>`, `Promise<{run:door}>`, `readonly door[]`, `[string, door]`, `Partial<{run:door}>`, `Readonly<{run:door}>`, `{[k:string]: door}`, `Pick<…>`, `Exclude<… \| number, number>`, `{x:string} & {run:door}`, a **recursive** type with an optional door, `Awaited<Promise<{run:door}>>`, a **getter behind an optional property**, `{d?: door \| null}`, `Iterable<door>`, `ReadonlySet<door>`, **`Map<string,{run:door}>`**, **`Map<string,{autofix?:{fix:door}}>`**, `Map<string,door>`, `{go(t: Trip): Promise<Trip>} \| undefined`, `{autofix?: door}`, `({run: door} \| {why: string})[]`, `Record<string,{a?:{run:door}}>` and `{x:string} & {y?:{run:door}}` — with the construct signature and the N9 field-shape counted in their own rows below |
+| **The two the finding turns on** | **`Map<string, {run: door}>`** — R58-5(b)'s exact counter-example to A-79 Part 5 — is **RED**. **N9 written `autofix?: {fix(t,c): Trip}`** — the shape that made A-79's ship gate accidental — is **RED**, naming the export |
+| **Twenty-two negative controls, all GREEN** | the doorless twin of every container above: `WeakMap<object,{n:number}>`, `ReadonlyMap<string,string>`, `Generator<string>`, `AsyncIterable<number>`, `Promise<{n:number}>`, `readonly string[]`, `[string,number]`, `Partial<{run:()=>void}>`, `{[k:string]:string}`, `Set<string>`, `Iterable<string>`, `Map<string,{n:number}>`, a doorless discriminated union, a doorless recursive type, a doorless construct signature, a plain doorless class, a getter returning `string` behind an optional, `{run: (t: Trip) => string[]} \| undefined`, `{go(t: Trip): Promise<string[]>} \| null`, `{list: readonly Trip[]} \| undefined`, and `{d?: (t: Trip) => Trip[]}` (a **wrapper** return, which is A-78 Part 2's job and not this one's) |
+| **False positives over the shipped tree** | `npx tsc -p tsconfig.json --noEmit` **exit 0** — `AllHidden` is still `never` across all 54 modules, with the ten `Rule` objects, `sequentialIds` and `toDoc` all unflagged. `node --test packages/core/test/storable.test.ts` **107 pass / 0 fail** |
+| **The whole ship gate, patched** | `npm run typecheck` **exit 0 on both projects, 9.2 s** (round 58 measured **13.3 s** unpatched, so there is no cost regression to argue about), and `npm run test:tap` **1637 tests / 1637 pass / 0 fail / 0 skipped / 0 cancelled** — the same figure round 58 measured at `77ef3ba`. **The repair changes no test and moves no message pin**, which is the property `I-19` must preserve |
+| **Cost** | core-project typecheck **5.55 s** with Part 2's block including the construct arm, against the builder's measured **5.30–5.42 s** unpatched and the breaker's **5.53 s** for the two-line form. Inside the same band; the construct arm is free |
+| **The construct arm, measured both ways** | `new (t: Trip, r) => Trip` → **RED naming `r58ctor`** under the `CarriesOne` arm; **RED naming nothing** (`DOOR_CENSUS`) under the `TripishReturn` arm. `abstract new () => {archive: door}` → RED. A construct signature with no door and a plain doorless class → both **GREEN** |
+| **The three mechanisms, standalone** | Part 1's `M1`/`M2`, `keyof` over a shared-key vs disjoint-key union, and the `IteratorResult` table — each compiled on its own at TypeScript 5.9.3, so the ruling's account of *why* is measured and not inferred |
+
+**Part 6 — R58-5(a): `RULES` is a correct flag and A-79 Part 10's prediction was wrong.**
+
+A-79 Part 10's N9 says the census fails *"naming all ten rule exports"* and A-79 Part 5 says *"naming
+`overlap`, `legacyFlag` and the other eight"*. The census names **eleven**. The eleventh is **`RULES`**,
+the `Rule[]` in `conflict/detect.ts`.
+
+**Ruled: the census is right and the prediction was wrong.** A container of carriers is a carrier — that is
+this document's own reasoning from A-79 Part 5, whose depth-bound row names `Record<RuleId, Rule>` as
+*"the deepest carrier this codebase could plausibly hold"* for exactly this reason, and it would be incoherent to accept it for a `Record` and refuse it for an array.
+`RULES` needs no exemption, no workaround and no separate fix; it stops being flagged the moment `Rule`
+stops carrying a door. **The correction is to the prediction, not to the mechanism**: A-79 Part 5's row and
+Part 10's N9 both now read *"naming all ten rule exports **and `RULES`, the array that holds them** —
+eleven names"*, and `I-19` carries that into the fault list. The cost of the drift was one round's breaker
+meeting an unpredicted name, and it is worth recording that **the breaker assessed it independently and
+adjudicated it correctly before filing it as documentation drift.** That is the right way for this to go.
+
+Round 58 also found (**R58-3**) that `npm run typecheck` prints only *two* of those names and `… 8 more …`,
+because `tsc` truncates long union types by default and neither the script nor `tsconfig.json` sets
+`--noErrorTruncation`. **A-79 Part 6's whole justification for the template-literal census line is that it
+names every offending export, and under the shipped command it does not.** That is a real defect in a
+mechanism this ruling depends on more heavily than A-79 did, since the descent census names constructors
+the same way. `"noErrorTruncation": true` goes into `tsconfig.json` in `I-19`; the routing stays the
+builder's.
+
+**Part 7 — R58-5(b) and R58-2: the `Map` claim corrected, and the construct signature closed rather than
+excepted.**
+
+**(b) A-79 Part 5's *"Carriers caught"* row overstated its evidence, and the correction matters more than
+it looks.** `Map<string, door>` was listed as proof the predicate is structural rather than enumerated. It
+was caught **incidentally**: the door is reachable only through `get(key): V | undefined`, and `IsDoor`
+happens to distribute over that union. `Map<string, {run: door}>` — one hop further, a carrier instead of
+a bare door, and the *closer* analogue of the `Record<RuleId, Rule>` the same table calls *"the deepest
+carrier this codebase could plausibly hold"* — was **not** caught. **The row is corrected to say so**: at
+revision 60 the predicate caught `Map<string, door>` by accident and missed `Map<string, {run: door}>`;
+under Part 2 both are caught, and caught for the reason the row originally claimed. The general lesson is
+recorded because it is the one that generalises: ***a carrier caught by accident is evidence of nothing,
+and A-79 presented one as evidence of structure.*** A showcase row in a ruling must say by which descent
+the case is caught, or it is a story.
+
+**(a) R58-2, the construct signature, is closed in code and not written down as a fourth exception.** The
+breaker rated it MINOR on plausibility — a constructor returning a `Trip` is not an idiom here — and offered
+the architect the choice of *one clause in the normal-form rule* or *an `abstract new`-aware arm*. **Both,
+and the arm first.** A clause alone would be *stated and not detected*, which is the shape that has now
+produced six rounds; and leaving it out would make this entry's coverage claim carry an exception on the
+day it is written, which is precisely the failure being corrected. It is three lines, it costs nothing
+measurable, and it is verified in Part 5. A-79 Part 4's normal form is amended to name it:
+
+> **Normal form (revision 61).** *A function in `packages/core/src` that produces an edited `Trip` is a
+> **module-level exported function with a single call signature**. It is not a method, not a static
+> method, not a getter, not a property of an exported object, not a closure returned by another function,
+> **not a constructor or a construct signature**, and not an overload set. A design that wants one of
+> those splits it: the door is a module-level function, and the carrier calls it.*
+
+**Part 8 — R58-4, and the one sentence it asked the architect for.**
+
+Round 58 measured that A-79 Part 9's async widening is **half a delta**. The `go` type widening to
+`Trip | Promise<Trip>` is real. The claim that the runner now names the door *"instead of an unhandled
+rejection taking the file down"* is not: the awaited-rejection case named the door **before** I-18 too, and
+the detached-continuation case is byte-identical at `9b4d358` and `77ef3ba` — one `unhandledRejection`, no
+named row. **Ruled, and stated at its true width:**
+
+> **A-79 Part 9's widening reaches a door promise the runner awaits. It does not reach a continuation
+> nobody awaits, and nothing can — `catch` requires something to catch.** A door that mutates after an
+> `await` in a detached continuation still takes the file down unnamed. That is an inherent limit of the
+> harness, not a defect in it, and it is a **residue with a trigger**: the first `async` door under
+> `packages/core/src`, at which point the answer is a `process.on('unhandledRejection')` handler in the
+> test file that names the door currently under test, or a ruled decision that async doors are refused.
+> **Zero async doors exist today.**
+
+The BUILD-NOTES row is the builder's to correct (**R58-4**), in `I-19`.
+
+**Part 9 — the injected-fault criteria (§0.5). A-79's N8–N10 are carried, N9's expected output is
+corrected, and three are added.**
+
+| | Fault | Required behaviour |
+|---|---|---|
+| **N9 (corrected)** | Add `autofix?(t: Trip, c: Conflict): Trip` to the `Rule` type | the hidden-door census fails naming **eleven** exports — the ten rules **and `RULES`** (Part 6). Requires `--noErrorTruncation`, or the message truncates at two |
+| **N11** | The same feature **one field-shape sideways**: `autofix?: { fix(t: Trip, c: Conflict): Trip }` on the `Rule` type | the census fails, naming the same eleven. **This is the criterion that would have caught R58-1**, and it is the reason N9 alone is not enough: N9 and N11 are the same feature and only N9 reddened at revision 60 |
+| **N12** | `export const hook: { archive: Door } \| undefined` and `export type H = {kind:'a'; run: Door} \| {kind:'n'; why: string}` appended to `derive/lifecycle.ts` | both redden, each **naming the export**. The union family, at the top level |
+| **N13** | Delete one `Descent<…>` row's positive fixture, or break one arm of `CarriesOne` | **`DESCENT_CENSUS` fails naming the constructor label.** The descent census must be non-vacuous: a census that only ever passes measures nothing, which is the failure §0.5 exists to prevent |
+
+**A-79's N8 and N10, A-78's N1–N7 and A-77's N1–N5 are all carried unchanged and still required.**
+
+**Part 10 — the closure claim, reframed. This is the part that is deliberately not a numbered list.**
+
+A-79 Part 11 said *"there are exactly three ways"* and named them. It was falsified in one round. **The
+enumerated-exceptions format is itself the arc's core mistake wearing its last disguise**, so this entry
+does not extend the list to four. It makes a different kind of claim:
+
+> **The claim.** `Carries` descends through **every place a TypeScript type holds another type on its
+> output side**: union members, intersection members, properties (required, optional, readonly, getter,
+> symbol-keyed), index signatures, array and tuple elements, a call signature's return type (awaited), and
+> a construct signature's instance type — with mapped types, `Record`, `Partial`, `Readonly`, `Pick`,
+> `Promise`, `Set`, `Map`, `WeakMap`, `Iterable`, `Generator` and their relatives reduced to those by the
+> compiler before the predicate sees them. **That list is closed by the language and not by this
+> codebase**, and **it is checked by `DESCENT_CENSUS`, not by this paragraph.**
+
+**What a seventh finding on this class must now look like**, stated so it can be met rather than argued
+with: *either* a place a TypeScript type holds another type on its output side that `DESCENT_CENSUS` has no
+row for, *or* a row whose positive fixture passes while a structurally equivalent shipped shape is missed —
+**which is R58-1's own move, and the reason N11 exists.** A finding of the second kind is a defect in the
+fixture, and the fixture is a line of code, so it can be fixed without a ruling.
+
+**Three things are outside the claim, and none of them is a descent:**
+
+- **What the types do not say.** A cast, `any`, `unknown`. There is nothing to descend into. A-77 Part 10
+  residue 1's family and **permanent**.
+- **A budget, not a list.** The 12-hop bound is one number in one place; the deepest carrier this codebase
+  can plausibly hold is 2, and the shipped bound is 12. **Trigger:** any export nesting a callable more
+  than 12 hops below itself; the answer is to raise the number.
+- **A descent the walk deliberately does not make.** A **parameter** position. `keyof` a bare function type
+  is `never` — measured — so a callable the export *accepts* is unreachable, and that is a ruling: a door
+  passed in as an argument belongs to the caller, and flagging it would flag every higher-order function in
+  the library. **Asserted `false` in `DESCENT_CENSUS` so it is a measured boundary, not an oversight.**
+
+**And one descent the walk makes incompletely, which is the honest home for the overload set.** A call
+signature's return type is a constructor the walk *does* cover; `infer R` resolves to the **last**
+signature, so it covers one signature of N. That is not an exception to the coverage claim, it is an
+**incomplete row within it** — it is asserted `false` in `DESCENT_CENSUS` (Part 4) so the incompleteness is
+measured, and it is refused by the Part 7 normal form. **Zero overload sets exist under `packages/core/src`
+today**, re-verified by round 58 across all 54 files. **Trigger:** the first one.
+
+**Part 11 — residues.**
+
+A-79's are carried with three changes. **Its Part 11 closure claim is withdrawn** and replaced by Part 10.
+**Its Part 10 N9 row is corrected** (Part 6) **and its Part 5 `Map` row** (Part 7). **Its Part 9 async claim is
+narrowed** to a door promise the runner awaits, with a new residue for the detached continuation and a
+trigger of *the first async door* (Part 8). New residues, all with triggers and none of them a carrier
+shape: the **detached continuation**; the **parameter position** (ruled, not missed); the **overload set**
+(an incomplete row, trigger *the first one*); the **12-hop budget**; and the **cast**, which is permanent.
 
 ### 2.2 Entities
 

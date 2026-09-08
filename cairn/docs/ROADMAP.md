@@ -1221,6 +1221,70 @@ changes no shipped behaviour and blocks nothing.
   legitimate only if it exhibits a `Trip`-producing callable reachable from a censused export that
   `Carries` does not see** — and outside those three there is no such thing.
 
+**Revision 64, 2026-09-08.** **`I-18` is built (`77ef3ba`) and QA round 58 sent it back by doing exactly
+what revision 63's last bullet asked — and the answer was *no*.** The bullet said a sixth finding was
+legitimate *"only if"* it were an overload set, a >12-hop nesting or a cast. Round 58 exhibited **nine**
+`Trip`-producing callables reachable from a censused export that `Carries` does not see, **none** of them
+any of the three: no cast, no `any`, one call signature each, the door **two** hops down, every line fully
+typed. Three of them, injected into `derive/lifecycle.ts`, leave `npm run typecheck` green and
+`storable.test.ts` at 107 pass while writing documents `fromJSON` refuses — **UNOPENABLE, three for
+three**. The fourth way is that **`Carries` can descend through exactly two type constructors** — a bare
+object type's own keys, and a call signature's return type — and this model is written mostly in the ones
+it cannot: **106 optional properties**, **six discriminated unions of object types**, and `X | null` as
+the house spelling for an absent object (**R58-1**, MAJOR). `ARCHITECTURE.md` revision 61's §2.1 **A-80**
+rules it and **`I-19` is queued** as its whole code consequence. There is no live instance today, exactly
+as R56-1 and R57-1 had none, so `I-19` changes no shipped behaviour and blocks nothing.
+
+- **The sharpest evidence is `I-18`'s own ship gate, and it is worth stating plainly.** Criterion **N9** —
+  add `autofix?(t: Trip, c: Conflict): Trip` to the `Rule` type — reddens the census correctly. **The same
+  feature written `autofix?: { fix(t, c): Trip }` leaves `npm run typecheck` at exit 0.** One field-shape
+  sideways, still two hops, still ten shipped `Rule` objects carrying a `Trip`-producing callable. **The
+  criterion A-79 called *"the criterion that A-79 reaches real code"* was accidentally testing the one
+  spelling that happened to work.** `I-19` adds the twin as **N11**, and neither is sufficient alone.
+- **The repair is the breaker's, adopted after independent verification rather than on report.** Two
+  lines: `Members` walks `NonNullable<T[K]>`, and `Carries` **distributes** over a union and collapses the
+  verdicts with `true extends`, instead of bracket-guarding. **It adds no carrier form to any list** — it
+  changes the *quantifier* over a union from "refuse it" to "any member". The architect re-ran
+  `qa/r58-fix-probe.sh`, then swept **twenty-nine further carrier shapes the probe does not contain and
+  twenty-two doorless twins**: all twenty-nine RED and named, all twenty-two GREEN, shipped tree at
+  typecheck **exit 0**,
+  `npm run test:tap` **1637 pass / 0 fail**, both projects typechecking in **9.2 s** against round 58's
+  13.3 s unpatched.
+- **One refinement is the architect's and it closes R58-2 rather than excepting it.** An `abstract new`
+  arm in the walk, so a construct signature that produces a `Trip` fails as a **carrier that must be
+  split** — naming the export — instead of being promoted into `DOORS`, where the behavioural runner would
+  call it without `new`. Both placements were measured; the alternative (`TripishReturn`) reddens with **no
+  name in the message**. A-79 Part 4's normal form is amended to say *not a constructor or a construct
+  signature*, so it is stated **and** detected.
+- **Three type-system mechanisms, isolated — and one of the finding's is corrected.** `-?` strips the
+  optional **modifier** from a mapped type's result and not `| undefined` from the source `T[K]`; `keyof`
+  a union is the **intersection** of its members' keys; and `Set`/`Iterable` are **not** a third root
+  cause but the second reached through `IteratorResult`'s union (`Set<door>` has no `any` in it at all
+  under this repo's lib — its `['value']` is `door | undefined`). One fix, not three.
+- **Two documentation drifts in A-79's own evidence are corrected (R58-5), and one of them matters more
+  than it looks.** The census names **eleven** exports at N9, not ten — the eleventh is `RULES`, and it is
+  **correct**: a container of carriers is a carrier, which is this document's own reasoning for
+  `Record<RuleId, Rule>`. And A-79 Part 5's *"Carriers caught"* row listed `Map<string, door>` as proof the
+  predicate is structural; it was caught **by accident**, through `get(): V | undefined`, while
+  `Map<string, {run: door}>` was missed. **A showcase row must name the descent by which its case is
+  caught, or it is a story.**
+- **The closure claim is WITHDRAWN, not extended to four.** This is the substance of the revision.
+  Enumerating exceptions is this arc's own defect in its last disguise, and it has now been wrong within
+  one round four times. A-80 Part 10 makes a different kind of claim — **`Carries` descends through every
+  place a TypeScript type holds another type on its output side** (union members, intersection members,
+  properties including optional/readonly/getter/symbol-keyed, index signatures, array and tuple elements,
+  a call signature's awaited return, a construct signature's instance) — **a set closed by the language
+  rather than by this codebase**, and **checked by a standing `DESCENT_CENSUS` in the compiler instead of
+  asserted in a paragraph**. A seventh finding must exhibit an output-side place with no row, or a row
+  whose fixture passes while an equivalent shipped shape is missed — which is R58-1's own move, and is why
+  N11 exists.
+- **R58-3 and R58-4 ride inside `I-19` as one line each.** `"noErrorTruncation": true` in `tsconfig.json`,
+  without which the census names two exports and `… 8 more …` — which defeats A-79 Part 6's entire
+  justification for the template-literal form, and this ruling leans on that form harder. And the
+  `BUILD-NOTES.md` R57-6 row is corrected: the `go` widening is real, the *"instead of an unhandled
+  rejection taking the file down"* half is **not a delta** and the detached-continuation case is
+  byte-identical before and after `I-18`.
+
 > **Phase numbers changed once, here.** Every heading below carries its old number, and every "Phase N"
 > written in `ARCHITECTURE.md` §1–§7, `BUILD-NOTES.md` or `QA-FINDINGS.md` before revision 9 means the
 > *named* phase it described: "Phase 2" = accounts/server (**now 3**), "Phase 3" = ingest (**now 4**),
@@ -5319,6 +5383,142 @@ riders in parts 6 and 7 are documentation.
   `docs/design/`, no `package.json`, no lockfile. **Route: builder + breaker, mandatory.**
   `cairn/CLAUDE.md`'s delegation table fires on *a change to a core invariant*, and this is the fifth round
   on one class — the breaker pass is what the arc is for.
+
+#### I-19 — the predicate descends every type constructor, and the closure claim becomes a compiler-checked coverage census (revision 64, QA **R58-1**, MAJOR; **R58-2/R58-5** ride along, **R58-3/R58-4** ride along as one line each)
+
+**The whole code consequence of `ARCHITECTURE.md` revision 61's §2.1 **A-80**. Read A-80 whole, then A-79
+Parts 3, 5, 10 and 11 for what it supersedes, and nothing else in `ARCHITECTURE.md`.** Do **not** read §2
+whole, §4, §8 or §10; do **not** read A-76, A-77 or **A-78** — every part of A-79 that this increment
+touches carries A-80's amendment banner in place, and A-80 restates what it needs. Like `I-15`…`I-18` this
+is a **cross-cutting core fix**, not a 2c increment.
+
+**`I-18` stays exactly as written above.** It is built (`77ef3ba`), round 58 confirmed the builder
+implemented A-79 Part 3 **character-for-character** as required, and confirmed the census's subject,
+`NON_DOORS` liveness, the 12-hop bound and the zero-overload-set residue against fresh attacks. **What is
+wrong is the ruling's predicate, not its implementation.** **Do not edit I-18's entry to describe I-19** —
+the record of what was built and what it missed is the point.
+
+**Why it exists, in one measurement.** `export const overlap: Rule = {…}` with `autofix?(t, c): Trip` on
+the `Rule` type reddens `npm run typecheck` naming eleven exports. **The same feature written `autofix?: {
+fix(t, c): Trip }` leaves it at exit 0.** Same file, same feature, same two hops, no cast and no `any`.
+Nine such shapes were measured; three of them, appended to `derive/lifecycle.ts`, write documents
+`fromJSON` refuses at `$.resolutions[0].state`. Nothing is unguarded today — the defect is in the
+guarantee — so **no shipped behaviour changes at all** and every part below is a type, a census or a
+docstring.
+
+- **Built, in seven parts, in this order. Parts 1–3 are the predicate and must be green before anything
+  else moves.**
+  1. **`packages/core/test/storable.test.ts`: the repaired walk**, A-80 Part 2's block **verbatim** —
+     `Members` with `NonNullable<T[K]>`, `Carries` distributing via `true extends (T extends unknown ?
+     CarriesOne<T, D> : never)`, the new `CarriesOne` with its **three** arms, and `ProducesTrip`.
+     **Four things are load-bearing and A-80 Part 2 says why each is:** `NonNullable` reads the *source*
+     indexed access the way `-?` reads the mapped *result*; the distribution is **existential** and still
+     collapses to exactly `true` or exactly `false`, so A-79 Part 3 detail 1's concern is preserved and not
+     discarded; **distribution consumes no depth** and `CarriesOne` decrements before every recursion, so
+     the 12-hop bound keeps its meaning; and the `abstract new` arm tests `ProducesTrip<I>` **before** the
+     members walk, so a construct signature that produces a `Trip` fails as a **hidden carrier that must be
+     split**, naming the export, and is **not** promoted into `DOORS`. **Do not put the construct arm on
+     `TripishReturn` instead** — A-80 Part 2 measured that placement and it reddens `DOOR_CENSUS` with no
+     name in the message.
+  2. **The `DESCENT_CENSUS`**, A-80 Part 4. A tuple `DESCENTS` of `Descent<Label, Pos, Neg>` rows, one per
+     type constructor, each with a door-bearing positive fixture and a **doorless negative twin**, and a
+     template-literal assertion that names the failing label. **The rows, at minimum — the labels are this
+     entry's and a builder may not silently drop one:**
+     `property-required`, `property-optional`, `property-optional-nested`, `property-readonly-getter`,
+     `property-symbol-key`, `index-signature-string`, `index-signature-symbol`, `array`, `readonly-array`,
+     `tuple`, `union-non-object-member` (`{run: Door} | undefined`), `union-null`, `discriminated-union`,
+     `intersection`, `call-signature-return`, `call-signature-return-promise`, `call-signature-own-property`
+     (the `Object.assign(fn, {door})` shape), `construct-signature-instance`,
+     `construct-signature-produces-trip`, `promise`, `iterable`, `async-iterable`, `generator`, `set`,
+     `readonly-set`, `map-door-value`, **`map-carrier-value`** (R58-5(b)'s exact counter-example),
+     `weakmap`, `record`, `partial`, `readonly-mapped`, `pick`, `recursive-type`.
+     **Plus two rows asserted `false` deliberately**, so the walk's boundaries are measured rather than
+     described: **`parameter-position`** (`(cb: Door) => void`) and
+     **`overload-set-last-signature-not-trip`**. A-80 Part 10 rules both.
+     The exact spelling of the assertion may be adapted if `tsc` requires it; **any adaptation is recorded
+     in BUILD-NOTES with the reason**, and the row list may only grow.
+  3. **`tsconfig.json` gains `"noErrorTruncation": true`** (**R58-3**), one line. Without it the census
+     names two exports and `… 8 more …`, which defeats A-79 Part 6's entire justification for the
+     template-literal form — and this increment leans on that form harder, because `DESCENT_CENSUS` names
+     constructors the same way. **Re-measure both projects' typecheck after adding it**; a `tsc` that
+     prints more is not a `tsc` that is slower, but the number is published as a measurement either way.
+  4. **A-79 Part 4's normal form is replaced in the file** with A-80 Part 7's version — the one that names
+     **constructors and construct signatures** — quoted not paraphrased, in the same place beside A-78
+     Part 2's wrapper prohibition.
+  5. **The docstrings above `Members`, `Carries` and `HIDDEN_DOOR_CENSUS` are rewritten** to A-80 Parts 1
+     and 2. In particular A-79 Part 3 detail 1's *"the bracketed form suppresses distribution, which
+     otherwise … quietly loses `false`"* is **wrong as the whole story** and is the sentence that produced
+     R58-1; the replacement states both halves — the collapse keeps `false` from being lost, and the
+     distribution keeps `true` from being lost.
+  6. **`docs/BUILD-NOTES.md`'s R57-6 row is corrected** (**R58-4**). The `go` widening is real and stays.
+     The claim that the runner now names the door *"instead of an unhandled rejection taking the file
+     down"* is **not a delta** — both cases were measured byte-identical at `9b4d358` and `77ef3ba`. The
+     row becomes what A-80 Part 8 rules: the widening reaches **a door promise the runner awaits**, and a
+     **detached continuation** is an inherent limit with a trigger (*the first async door*; zero exist).
+  7. **A-80's fault list is written into the file's header** beside the existing criteria, so the next
+     builder meets N11, N12 and N13 where the mechanism is.
+- **Not built, and named so nobody adds it.** **No arm per carrier** — A-79 Part 1's refusal stands and
+  A-80 Part 3 says why the three `CarriesOne` arms are not one. **No brand on `Trip`** — A-79 Part 2
+  measured why it cannot work here. **No change to `IsDoor` or `TripishReturn`** — the construct arm goes
+  in `CarriesOne`, deliberately, and A-80 Part 2 point 4 measured both placements. **No `Object.freeze` in
+  any `src` file.** **No exclusion list at any granularity.** **No raising or lowering of `Down`.** **No
+  new `IssueCode`, no version movement, no `.tsx`, no `docs/design/`, no `qa/` edit, no new dependency.**
+- **User-visible outcome.** **None.** Every part is a type, a census, a docstring or a compiler flag.
+- **Architecture / data model.** Nothing moves. No field, no record class, no port, no selector, no
+  screen. §2.10's surface does not move — re-count it with criterion E's command and confirm **86**, per
+  §4.2 **A-70 Part 7 item 3**.
+- **Verification — A-80 Part 9's N11, N12 and N13, plus A-79's N8–N10 with N9 corrected, plus A-78's N1–N7
+  and A-77's N1–N5, all carried. Run every one red-before-green; a criterion asserted rather than run is
+  not discharged.**
+  - **N9 (corrected):** `autofix?(t: Trip, c: Conflict): Trip` on the `Rule` type → the census fails
+    naming **eleven** exports — the ten rules **and `RULES`**. `RULES` is **correct and needs no
+    exemption** (A-80 Part 6). Requires part 3's `noErrorTruncation` or the message truncates at two.
+  - **N11:** the same feature one field-shape sideways — `autofix?: { fix(t: Trip, c: Conflict): Trip }` →
+    **the census fails naming the same eleven.** This is the criterion that would have caught R58-1, and
+    **N9 and N11 are both required**: at `77ef3ba` N9 was red and N11 was green.
+  - **N12:** `export const hook: { archive: Door } | undefined` and
+    `export type H = {kind:'a'; run: Door} | {kind:'n'; why: string}` appended to `derive/lifecycle.ts` →
+    **both redden, each naming the export.**
+  - **N13:** delete one `Descent<…>` row's positive fixture, or break one arm of `CarriesOne` →
+    **`DESCENT_CENSUS` fails naming that constructor's label.** Run it for **at least three different
+    rows**, one of which must be `union-non-object-member`. A census that only ever passes measures
+    nothing.
+  - **The construct-signature pair:** `export const c: new (t: Trip, r: ConflictResolution) => Trip` →
+    **RED naming `c`**, at `HIDDEN_DOOR_CENSUS` and **not** at `DOOR_CENSUS` (**R58-2**). And
+    `abstract new () => { archive: Door }` → RED naming the export.
+  - **The negative controls, which must stay green** — a red here is a false positive and a defect in this
+    increment: the shipped `Rule` type (ten objects with `run(ctx): Conflict[]`), `sequentialIds`, `toDoc`,
+    `legalFlag`/`overlap` as they stand, **and every `Neg` fixture in `DESCENTS`**. Additionally, the
+    twelve doorless twins A-80 Part 5 lists, appended to `derive/lifecycle.ts` one at a time.
+  - **`AllHidden` is still `never` over the shipped tree** — `npx tsc -p tsconfig.json --noEmit` exit 0,
+    re-derived and not assumed, because the whole risk of widening a predicate is that it starts flagging
+    correct code.
+  - **A-79's N8 and N10 still required**, and A-78's N1 in particular (the plain `export function`
+    control, which must stay RED — a harness that stops catching the easy case is not measuring anything).
+  - **Cost, measured and published as a measurement rather than as a design count.** `npm run typecheck`
+    on the core project, three runs, with and without part 2's `DESCENT_CENSUS`. The builder's `I-18`
+    baseline is **5.30–5.42 s**; the architect measured **5.55 s** for part 1 alone and round 58 measured
+    **5.53 s** for the two-line form. **If the core project exceeds 7.0 s with the descent census in, that
+    is a finding to report, not rows to trim silently** — the answer would be to lower `Down`'s bound, and
+    that is a ruling, not a convenience. Both projects together were **9.2 s** patched against round 58's
+    **13.3 s** unpatched, so a regression here would be surprising.
+  - **Regression.** `npm run test:tap` reports **1637 tests at `77ef3ba`**, re-measured by the round-58
+    breaker and re-measured again by the architect **with part 1's patch applied — still 1637 pass / 0
+    fail**. **No message pin should move and no test should change.** A pin that moves is a defect in this
+    increment, not a test to edit.
+- **Dependencies / blockers.** **`I-18`, which is built and on `master` (`77ef3ba`).** It blocks nothing,
+  and nothing waits on it.
+- **Ship gate.** `npm test` green; `npm run typecheck` exit 0 on **both** projects; `npm run web:build`
+  succeeds; the export count re-measured and **86**; **N11, N12, N13, the corrected N9, the
+  construct-signature pair, A-79's N8/N10 and every negative control run red-before-green and recorded with
+  their measured output**; the two deliberately-`false` descent rows recorded as measured; the typecheck
+  cost recorded. **Files touched: `packages/core/test/storable.test.ts`, `cairn/tsconfig.json` (one line)
+  and `docs/BUILD-NOTES.md` (one row corrected, plus this increment's addendum). Nothing else** — no `src`
+  file at all, no `.tsx`, no `qa/`, no `docs/design/`, no `package.json`, no lockfile. **Route: builder +
+  breaker, mandatory.** `cairn/CLAUDE.md`'s delegation table fires on *a change to a core invariant*, and
+  this is the sixth round on one class — the breaker pass is what the arc is for. **The breaker's brief is
+  A-80 Part 10**: find an output-side place a TypeScript type holds another type that `DESCENT_CENSUS` has
+  no row for, or a row whose fixture passes while a structurally equivalent shipped shape is missed.
 
 #### I-10 — The participants editor, the profile grouping, and the access double-run — **DEFERRED at revision 55; 2c ships without it**
 
