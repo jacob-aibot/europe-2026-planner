@@ -1160,6 +1160,67 @@ exports today, so `I-17` changes no shipped behaviour and blocks nothing.
   left to widen to.** A fifth finding on this class should be classified against A-78 Part 10's four named
   *different* classes before it is counted as a fifth face.
 
+**Revision 63, 2026-09-08.** **`I-17` is built (`c677162`) and QA round 57 sent it back — and this time
+the half that held is the half the previous round's ruling was actually about.** Every attack on the
+census's **subject** failed: a new file, a new directory, a door appended to the generated
+`geo/countries.gen.ts`, a re-export into the tree from `packages/client`, a re-export from outside the tree
+entirely, an alias through the barrel, a shadowing second `addStop`. **A-78 Part 10's scope argument stands
+unamended**, which is worth recording because four rounds of findings make it easy to read this as a fifth
+failure of the same thing and it is not one. What round 57 broke is the census's **predicate**: `IsDoor`
+matched only a module member that is itself a callable function value, so a `Trip`-producing class method,
+static method, object-literal method, `Record` arrow, getter, higher-order return or overload set was
+invisible **inside a censused file, in a censused directory** (**R57-1**) — and A-78's own `NON_DOORS`
+residue was defeated by **substitution** rather than the *"fourth name"* it named, because two of its three
+entries excuse nothing (**R57-2**). `ARCHITECTURE.md` revision 60's §2.1 **A-79** rules both, and **`I-18`
+is queued** as their whole code consequence. Neither has a live instance: every `Trip`-returning signature
+in `packages/core/src` today is an ordinary `function` declaration, grep-verified over 35 hits, so `I-18`
+changes no shipped behaviour and blocks nothing.
+
+- **The fix is deliberately not an arm per carrier.** *"Widen `IsDoor` with a second arm for methods"* is
+  A-77 Part 2 option 1 with carriers instead of rows, and the next carrier is not on the list. A-79 asks
+  **one recursive structural question** instead — *is a `Trip`-producing callable reachable from this
+  export, through a property or a call signature's return type, at any depth?* — which is why it closes a
+  `Map` of doors, a class returned from a factory and a function with a door hung off it as a property,
+  **none of which it was told about**. It was prototyped against the real tree and `tsc` before the ruling
+  was written: **zero false positives across all 54 modules, no measurable typecheck cost**, and adding an
+  autofix to the `Rule` type reddens `npm run typecheck` naming all ten shipped conflict rules.
+- **The one alternative that would have been genuinely different was checked and refused in writing.**
+  Branding `Trip` nominally so only `commit` and `fromJSON` can mint one is defeated by object spread —
+  every door builds `{...trip, …}` and a phantom brand rides along for free — and the version spread does
+  not defeat makes `Trip` a class instance and rewrites §2.2's whole model layer. **A-79 Part 2 records it
+  so the next architect does not re-derive it.**
+- **`NON_DOORS`'s legitimacy is re-ruled as *liveness*, not as a count** (A-79 Part 7). Every entry must be
+  a name `IsDoor` actually classifies, which makes eviction redden the compiler and therefore makes
+  substitution impossible; the list becomes **one** name with its defining module beside it, the two
+  wrapper producers move to a line asserting they are **not** doors, and the trigger becomes **the second
+  name**. Measured: R57-2's exact substitution now fails at `DOOR_CENSUS`.
+- **R57-3 rides along as one docstring and no code.** Invariant R was stated over records and silent about
+  the collection arrays that hold them, so `t.bookings.push(unparsedRecord)` violated nothing it said.
+  A-79 Part 8 restates it at the width `commit`'s soundness actually requires — *a committed document is
+  not written to outside a door* — and states why **no change to `commit` could close it**: `commit` trusts
+  everything reachable from `before`, so a caller that has written into `before` has already falsified the
+  premise.
+- **R57-4 is ruled as a STANDING fix, not a fourth re-measurement.** The same stale test count in
+  `BUILD-NOTES.md` §2 has now been filed four times (R44-4, R45-17, R57-4). §4.2 **A-70 Part 7 item 3**
+  already forbids it — *a contract document states design counts and never the value a grep returns over
+  source* — so **the number is deleted, not corrected**, and the property that replaces it (*BUILD-NOTES
+  publishes no test count*) cannot go stale. A script that auto-derived the number was considered and
+  refused: it would make the number right and leave the rule broken. `qa/r47-i13c.mjs` and
+  `qa/r51-i13i.mjs` §H1 assert the old property and are the **breaker's** to re-cut in round 58; a red line
+  there after `I-18` is expected.
+- **R57-5 and R57-6 are confirmed as routed and ride inside `I-18`** rather than as separate tickets, since
+  both are in the file parts 1–4 rewrite anyway. **R57-6 is widened by one sentence**: the row type is
+  widened *and* the runner's `await` moves inside a `try` that names the door, because a mechanism that
+  names the door synchronously and not asynchronously is this arc's own shape in miniature.
+- **The closure claim is restated over BOTH halves, and it names what a sixth finding would have to be.**
+  After `I-18` neither the subject nor the predicate is an enumeration. Three residues remain and all three
+  are written down with triggers: **an overload set** whose last signature is not `Trip` (TypeScript
+  resolves `infer R` to the last signature; refused by A-79 Part 4's normal-form rule; zero exist today),
+  **a carrier nested more than 12 hops deep** (a number in one place, not a list; the deepest plausible
+  carrier here is 2), and **a cast** (permanent, A-77 Part 10 residue 1's family). **A sixth finding is
+  legitimate only if it exhibits a `Trip`-producing callable reachable from a censused export that
+  `Carries` does not see** — and outside those three there is no such thing.
+
 > **Phase numbers changed once, here.** Every heading below carries its old number, and every "Phase N"
 > written in `ARCHITECTURE.md` §1–§7, `BUILD-NOTES.md` or `QA-FINDINGS.md` before revision 9 means the
 > *named* phase it described: "Phase 2" = accounts/server (**now 3**), "Phase 3" = ingest (**now 4**),
@@ -5133,6 +5194,131 @@ unaccounted `Trip`-returning exports — so **no shipped behaviour changes excep
   `docs/design/`, no `package.json`, no lockfile. **Route: builder + breaker, mandatory.**
   `cairn/CLAUDE.md`'s delegation table fires twice over — it changes a core invariant and it touches the
   provenance transitions.
+
+#### I-18 — the census asks whether a door is *reachable*, not how it is *declared* (revision 63, QA **R57-1/R57-2**, MAJOR; **R57-3/4/5/6** ride along)
+
+**The whole code consequence of `ARCHITECTURE.md` revision 60's §2.1 **A-79**. Read A-78 Parts 1, 2, 7, 9
+and 10, then A-79 whole, and nothing else in `ARCHITECTURE.md`.** Do **not** read §2 whole, §4, §8 or §10;
+do **not** read A-76; and read of A-77 only the sentence A-79 Part 1 quotes. Like `I-15`, `I-16` and `I-17`
+this is a **cross-cutting core fix**, not a 2c increment.
+
+**`I-17` stays exactly as written above.** It is built (`c677162`), round 57 proved its *subject* closed
+against seven separate scope attacks, and its mechanism is upheld entire. `I-18` supersedes only its part 2
+(the expected set and `NON_DOORS`) and amends parts 1, 4 and 9. **Do not edit I-17's entry to describe
+I-18** — the record of what was built and what it missed is the point.
+
+**Why it exists, in one measurement.** `export function archiveTrip(…): Trip` in `derive/lifecycle.ts` is
+caught. The **same function moved one declaration form sideways** — `class TripArchiver { archive(t: Trip,
+r: ConflictResolution): Trip }`, in the same file — leaves `npm run typecheck` at **exit 0** and
+`node --test packages/core/test/storable.test.ts` at **105 pass / 0 fail**, while
+`new TripArchiver().archive(t, {state:'bogus'})` writes a document `fromJSON` refuses at
+`$.resolutions[0].state`. Six more forms behave the same way, and one of them —
+`export const overlap: Rule = { … }` — is the idiom **all ten conflict rules already use**. Nothing is
+unguarded today; the defect is in the guarantee, so **no shipped behaviour changes at all** and the two
+riders in parts 6 and 7 are documentation.
+
+- **Built, in eight parts, in this order. Parts 1–4 are the census and must be green before anything else
+  moves.**
+  1. **`packages/core/test/storable.test.ts`: the hidden-door predicate**, A-79 Part 3's block verbatim —
+     `Down`, `Members`, `Carries`, `Hides`, `HiddenOf`, `HiddenIn`, `AllHidden`. **Three things are
+     load-bearing and A-79 Part 3 says why each is:** `[T] extends [object]` and `[D] extends [never]` in
+     brackets (distribution loses `false`); a **callable's properties are walked as well as its return
+     type** (`Object.assign(fn, {door})` is otherwise an eighth form); and `Awaited<R>` reused from A-78
+     Part 2's classifier rather than re-derived.
+  2. **A third census line, `HIDDEN_DOOR_CENSUS`**, mapped over the same `CENSUS` array, failing
+     `npm run typecheck` rather than a test — and written in A-79 Part 3's **template-literal** form so the
+     error **names the offending exports**. A-78's `DOOR_CENSUS` and `ILLEGAL_SHAPE_CENSUS` are **not**
+     retrofitted to that form in this increment (A-79 Part 6 says why).
+  3. **`NON_DOORS` becomes a one-entry list of live excuses** (A-79 Part 7): `importLegacyDays` and
+     `mergeTrips` **leave it**, `fromJSON` stays and gains a `module` field, and the `satisfies` shape
+     becomes `{ name: string; module: string; why: string }`. Add `NON_DOORS_ARE_LIVE` (every entry's name
+     is in `AllDoors`, or the compiler names the inert entry) and `WRAPPER_PRODUCERS_ARE_NOT_DOORS` (an
+     `IsExact<… , false>` over `importLegacyDays` and `mergeTrips`, which is **strictly more** than the
+     inert entries said). Re-pin the count assertion to **1**, with A-78's residue sentence carried across
+     and corrected to *the second name*.
+  4. **Half 3's identity walk also checks the `module` field**: the single function object a `NON_DOORS`
+     name resolves to must be the one the stated `module` path exports. This is what makes each entry
+     individually checkable rather than merely counted.
+  5. **The normal-form rule is written where the mechanism is** — A-79 Part 4's block quote, quoted not
+     paraphrased, beside A-78 Part 2's wrapper prohibition in the same file, so the two read as one rule:
+     *one exported module-level function, one call signature, one `Trip` out*.
+  6. **Invariant R is replaced in `packages/core/src/build/commit.ts`'s header** with A-79 Part 8's block
+     quote, quoted not paraphrased (**R57-3**). **No code changes in `commit.ts`** — A-79 Part 8 states why
+     no change to `commit` could close it, and that reasoning is part of what the docstring carries.
+  7. **`storable.test.ts`'s header docstring is rewritten** to the shipped equation and to this increment's
+     four census lines (**R57-5**). The sentence *"its expected set is `DOORS ∪ CENSUS_MECHANISM ∪
+     NON_DOORS[].name`"* is **wrong as written** — KD-106 measured it uncompilable — and it is the first
+     thing a reader of that file meets.
+  8. **`FrozenRow.go` becomes `(frozen: Trip, c: BuildCtx) => Trip | Promise<Trip>`** (**R57-6**), **and
+     the runner's `await` moves inside a `try` whose `catch` names the door** — A-79 Part 9's one-sentence
+     widening, so an async door that mutates in a detached continuation names itself instead of taking the
+     file down with an unhandled rejection.
+- **And one line outside `packages/core`.** **`docs/BUILD-NOTES.md` §2's published test count is DELETED,
+  not corrected** (**R57-4**, A-79 Part 9). The line becomes the command with no figure beside it. This is
+  the fourth round this one number has been filed and §4.2 **A-70 Part 7 item 3** already forbids it: *a
+  contract document states design counts and never the value a grep returns over source.* **Do not add a
+  script that re-derives it** — that makes the number right and leaves the rule broken.
+- **Not built, and named so nobody adds it.** **No second arm on `IsDoor`** for methods, getters or
+  higher-order returns — A-79 Part 1 refuses the enumeration and the whole increment is the alternative.
+  **No brand on `Trip`** — A-79 Part 2 measured why it cannot work here. **No `Object.freeze` in `commit`
+  or any `src` file**, unchanged from A-78 Part 7. **No exclusion list** at any granularity. **No change to
+  `import/legacyDays.ts` or `merge/mergeTrips.ts`.** **No `qa/` edits** — `qa/r47-i13c.mjs` and
+  `qa/r51-i13i.mjs` §H1 will go red on the deleted count and that is **expected**; flag them in BUILD-NOTES
+  and leave them, they are the breaker's (§4.2 A-67 Part 7a). **No new `IssueCode`, no version movement,
+  no `.tsx`, no `docs/design/`, no new dependency.**
+- **User-visible outcome.** **None.** Every part is a census, a docstring or a type. That is the point: the
+  door set is now closed by a structural question about reachability rather than by which syntax a builder
+  happened to use.
+- **Architecture / data model.** Nothing moves. No field, no record class, no port, no selector, no screen.
+  §2.10's surface does not move — re-count it with criterion E's command and confirm **86**, per §4.2
+  **A-70 Part 7 item 3**.
+- **Verification — A-79 Part 10's three new faults, plus A-78's seven and A-77's five, all carried. Run
+  every one red-before-green; a criterion asserted rather than run is not discharged.**
+  - **N8:** append `export class TripArchiver { archive(t: Trip, r: ConflictResolution): Trip { … } }` to
+    `derive/lifecycle.ts` → **`npm run typecheck` fails and the message names `TripArchiver`.** This is
+    R57-1's own harm driver as a standing criterion.
+  - **N9:** add `autofix?(t: Trip, c: Conflict): Trip` to the `Rule` type in `conflict/rules/types.ts` →
+    the hidden-door census fails **naming all ten rule exports** (`overlap`, `legacyFlag`, …). This is the
+    criterion that A-79 reaches shipped code and not only injected code.
+  - **N10:** evict `fromJSON` from `NON_DOORS`, move `addPlace` out of `DOORS` into its slot, delete
+    `addPlace`'s two behavioural rows → **`DOOR_CENSUS` fails.** This is R57-2's substitution verbatim.
+    Separately, *adding* a second `NON_DOORS` name without evicting anything → the **count** assertion
+    fires. Both halves are required.
+  - **The five other carrier forms, each injected into `derive/lifecycle.ts` and each run through a full
+    `tsc`:** a static method, an object-literal method, a `Record<string, (t: Trip …) => Trip>`, a getter
+    returning a door, and a higher-order function returning a door → **all five redden.** Plus the three
+    A-79 Part 5 measured that the ruling was never told about — a `Map<string, door>`, a class returned
+    from a factory, and a function with a door as a property — which are what distinguish a structural
+    predicate from a longer list.
+  - **The two negative controls, which must stay green:** the shipped `Rule` type (ten objects with
+    `run(ctx): Conflict[]`) and `sequentialIds` (a function returning a function). A red here is a false
+    positive and a defect in this increment.
+  - **The residue, asserted as a residue rather than left silent:** an overload set whose last signature is
+    not `Trip` is **not** caught — record it in BUILD-NOTES as measured, beside A-79 Part 11 residue 1, so
+    the next round reads a known limit rather than filing a sixth face.
+  - **A-78's N1–N7 and A-77's N1–N5 still required**, in particular A-78 N1 (the plain `export function`
+    control, which must stay RED — a harness that stops catching the easy case is not measuring anything)
+    and A-77 N5's sixteen door × field cases.
+  - **Cost, measured and published as a measurement rather than as a design count.** `npm run typecheck`
+    with and without the third census line, three runs each. The architect measured **5.31 s → 5.12 s** in
+    a scratch copy at revision 60 — inside noise; **if the builder measures a real regression above 1 s,
+    that is a finding and not a number to write down**, and the answer is to lower `Down`'s bound.
+  - **Regression.** `npm run test:tap` reports **1635 tests at `c677162`**, re-measured by the round-57
+    breaker rather than taken on report. **No message pin should move** — this increment changes no
+    refusal, no path and no verdict. **A pin that moves is a defect in this increment, not a test to
+    edit.** The one test that changes by ruling is `NON_DOORS.length === 3` → `=== 1`, and its message
+    changes with it.
+- **Dependencies / blockers.** **`I-17`, which is built and on `master` (`c677162`).** It blocks nothing,
+  and nothing waits on it.
+- **Ship gate.** `npm test` green; `npm run typecheck` exit 0 on **both** projects; `npm run web:build`
+  succeeds; the export count re-measured and **86**; **all three new faults plus the five carrier forms,
+  the three unanticipated carriers and the two negative controls run red-before-green and recorded with
+  their measured output**; the overload residue recorded as measured; the typecheck cost recorded. **Files
+  touched: `packages/core/test/storable.test.ts`, `packages/core/src/build/commit.ts` (docstring only) and
+  `docs/BUILD-NOTES.md` (one line deleted). Nothing else** — no other `src` file, no `.tsx`, no `qa/`, no
+  `docs/design/`, no `package.json`, no lockfile. **Route: builder + breaker, mandatory.**
+  `cairn/CLAUDE.md`'s delegation table fires on *a change to a core invariant*, and this is the fifth round
+  on one class — the breaker pass is what the arc is for.
 
 #### I-10 — The participants editor, the profile grouping, and the access double-run — **DEFERRED at revision 55; 2c ships without it**
 
