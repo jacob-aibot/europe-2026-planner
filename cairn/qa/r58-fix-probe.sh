@@ -1,4 +1,11 @@
 #!/usr/bin/env bash
+# SUPERSEDED AT ROUND 59, AND IT NO LONGER RUNS. The repair this probe measured SHIPPED in I-19
+# (`386c459`), so the `old_members`/`old_carries` anchors below — the A-79 predicate — are gone
+# from `storable.test.ts` and the `assert` on line ~30 now always raises. Kept as the record of
+# what round 58 measured. **The living successor is `qa/r59-nonnullable.sh`**, which asks the
+# question that matters now: is the SHIPPED repair's `NonNullable` half load-bearing at all?
+# (Round 59 also removed this file's `git checkout --` restore — see R59-5.)
+#
 # QA round 58 — is R58-1 CHEAPLY closable, and does closing it false-positive on the shipped tree?
 #
 # NOT a fix. The breaker does not fix product code; this exists so the architect's ruling on R58-1
@@ -19,8 +26,16 @@ set -u
 cd "$(dirname "$0")/.." || exit 1
 STOR=packages/core/test/storable.test.ts
 LIFE=packages/core/src/derive/lifecycle.ts
-restore() { git checkout -- "$STOR" "$LIFE" 2>/dev/null; }
-trap restore EXIT
+# --- round 59 process fix (R59-5). This probe used to restore with `git checkout --`, which
+# --- silently reverts ANY uncommitted work in the target files, not just this probe's own edits.
+# --- It destroyed the I-19 builder's in-progress work once. It now snapshots the targets at
+# --- startup and restores those exact bytes, so running it on a dirty tree is safe.
+__R59_BACKUP=$(mktemp -d -t qa-restore.XXXXXX) || exit 1
+__r59_snapshot() { for f in "$@"; do mkdir -p "$__R59_BACKUP/$(dirname "$f")"; cp "$f" "$__R59_BACKUP/$f"; done; }
+__r59_restore()  { for f in "$@"; do cp "$__R59_BACKUP/$f" "$f"; done; }
+__r59_snapshot "$STOR" "$LIFE"
+restore() { __r59_restore "$STOR" "$LIFE"; }
+trap 'restore; rm -rf "$__R59_BACKUP"' EXIT
 restore
 
 python3 - "$STOR" <<'PY'
@@ -68,11 +83,11 @@ const r58mk = (trip: Trip, r: ConflictResolution): Trip =>
   ({ ...trip, resolutions: [...trip.resolutions, r], revision: trip.revision + 1 });'
 row() {
   local id="$1" body="$2"
-  git checkout -- "$LIFE" 2>/dev/null
+  __r59_restore "$LIFE"
   { printf '\n%s\n' "$HEADER"; printf '%s\n' "$body"; } >> "$LIFE"
   npx tsc -p tsconfig.json --noEmit >/tmp/r58fix.$$ 2>&1
   local c=$?
-  git checkout -- "$LIFE" 2>/dev/null
+  __r59_restore "$LIFE"
   printf '   %-34s %s %s\n' "$id" "$([ $c -ne 0 ] && echo RED || echo 'GREEN <- still invisible')" \
     "$(grep -o 'do not exempt it: [A-Za-z0-9]*' /tmp/r58fix.$$ | head -1)"
 }

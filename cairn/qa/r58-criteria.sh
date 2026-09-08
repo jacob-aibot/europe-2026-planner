@@ -16,8 +16,16 @@ cd "$(dirname "$0")/.." || exit 1
 LIFE=packages/core/src/derive/lifecycle.ts
 RULET=packages/core/src/conflict/rules/types.ts
 STOR=packages/core/test/storable.test.ts
-restore() { git checkout -- "$LIFE" "$RULET" "$STOR" 2>/dev/null; }
-trap restore EXIT
+# --- round 59 process fix (R59-5). This probe used to restore with `git checkout --`, which
+# --- silently reverts ANY uncommitted work in the target files, not just this probe's own edits.
+# --- It destroyed the I-19 builder's in-progress work once. It now snapshots the targets at
+# --- startup and restores those exact bytes, so running it on a dirty tree is safe.
+__R59_BACKUP=$(mktemp -d -t qa-restore.XXXXXX) || exit 1
+__r59_snapshot() { for f in "$@"; do mkdir -p "$__R59_BACKUP/$(dirname "$f")"; cp "$f" "$__R59_BACKUP/$f"; done; }
+__r59_restore()  { for f in "$@"; do cp "$__R59_BACKUP/$f" "$f"; done; }
+__r59_snapshot "$LIFE" "$RULET" "$STOR"
+restore() { __r59_restore "$LIFE" "$RULET" "$STOR"; }
+trap 'restore; rm -rf "$__R59_BACKUP"' EXIT
 restore
 
 tsc_verdict() { npx tsc -p tsconfig.json --noEmit >"/tmp/r58c.$$" 2>&1; echo $?; }

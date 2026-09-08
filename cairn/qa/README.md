@@ -3992,8 +3992,11 @@ bash qa/r58-recut-vacuity.sh   # the control for this round's two re-cuts (~20 s
 
 Every shell probe injects into `packages/core/src` (and `r58-criteria.sh`/`r58-fix-probe.sh` into
 `packages/core/test/storable.test.ts`, `r58-recut-vacuity.sh` into `docs/BUILD-NOTES.md`) and
-**restores every file in an `EXIT` trap**, printing `git status --porcelain` at the end. Run them on
-a clean tree or the trap will revert your work with them.
+**restores every file in an `EXIT` trap**, printing `git status --porcelain` at the end. ~~Run them
+on a clean tree or the trap will revert your work with them.~~ **Corrected at round 59 (R59-5): all
+six now restore from a byte-exact snapshot taken at startup instead of `git checkout --`, so a dirty
+tree is safe.** `r58-fix-probe.sh` no longer runs at all — see the round-59 section at the end of
+this file.
 
 **`r58-carriers.sh` — the round's finding, R58-1.** A-79 Part 11 claims a sixth finding needs a
 `Trip`-producing callable `Carries` cannot see and that *"there are exactly three ways for that"*.
@@ -4036,3 +4039,73 @@ regression. `r47-i13c.mjs`'s check also moves out from behind `--fast` (it does 
 run) and the probe is back to **ALL CLEAR**; `r51-i13i.mjs` goes **8 FAIL → 7**, `COMPLETE`, the seven
 being the still-open R51-1…R51-6 records. `r58-recut-vacuity.sh` is their control: plant
 `# 1637 tests as of I-18` back on that line and both go RED naming it.
+
+---
+
+**Round 59** is the mandatory adversarial pass over **I-19 / §2.1 A-80** (*the predicate descends
+every type constructor, and the closure claim becomes a compiler-checked coverage census*) — the
+**sixth** round on one class, run against **A-80 Part 10's own statement of what a seventh finding
+must look like** rather than freelancing. Five probes, six files, from `cairn/`:
+
+```bash
+cd cairn
+node qa/r59-oracle.mjs         # 151 shapes x 3 predicates, in ONE tsc program (~3 s) — the sweep
+node qa/r59-oracle.mjs --all   # ... printing every row, not only the interesting ones
+bash qa/r59-descent.sh         # 16 full `tsc` runs (~90 s) — R59-1, R59-2, R59-3 on the real tree
+bash qa/r59-harm.sh            # 1 `tsc` + the suite + the harm driver (~40 s) — R59-1's harm
+bash qa/r59-nonnullable.sh     # 4 `tsc` runs (~30 s) — is `NonNullable<T[K]>` load-bearing? R59-4
+bash qa/r59-vacuity.sh         # 5 `tsc` runs (~35 s) — DESCENT_CENSUS non-vacuity + KD-109
+```
+
+**`r59-oracle.mjs` is the new instrument and it is the reusable one.** Every previous round on this
+arc paid a full `npx tsc` (~5.5 s) per shape, which caps a round at a couple of dozen shapes. This
+loads the TypeScript compiler **as a library**, puts the predicate and ~150 candidate shapes in one
+in-memory program, and asks the checker to resolve `Carries<Shape>` for each — **151 shapes in under
+3 seconds**. It evaluates **three** predicates side by side: the shipped one, the shipped one with
+`NonNullable<T[K]>` removed from `Members` (R59-4), and a **candidate repair** (R59-1/R59-2), so a
+proposed ruling can be measured before it is written. Exit 1 if any row's verdict is wrong. It is
+**not** a substitute for the `tsc` probes and does not pretend to be: the predicate is a verbatim
+copy and `Trip` is a local stand-in, so **every gap it finds is re-run through `r59-descent.sh`
+against the real censuses and the real tree before it is filed.** Reach for it first on any future
+round about `Carries`, `IsDoor`, `DESCENT_CENSUS` or the door normal form.
+
+**`r59-descent.sh` — the round's findings, on the shipped tree.** §A: rows 0-1 are controls and are
+**RED** (a plain `export function`; A-80's own N12 union carrier), so the harness is honest. Rows
+3-8 are **GREEN — invisible**: the door as a **union member** rather than one hop below one, inside
+a property, an array, a `Record`, a `Map`, and behind a discriminant — including **`Rule.autofix?:
+Door | Inert`, which is N9/N11's own feature a third field-shape sideways** (R59-1). Row 9 is the
+negative control and stays GREEN. **Row 2 is RED and the line number is the point**: `(769,7)` is
+`ILLEGAL_SHAPE_CENSUS`, not `(1047,7)` — the top-level case is caught by accident, by a census aimed
+at something else, and the catch does not survive one hop of nesting. §B: a type with **both** a call
+signature and a construct signature never reaches the `abstract new` arm I-19 added (R59-2). §C: the
+`Trip | Day` return A-78 Part 2 forbids is caught at module level and **invisible one hop down**
+(R59-3).
+
+**`r59-harm.sh` + `r59-harm.mjs` — R59-1's harm at R56-1's own bar.** Three union-member carriers in
+one censused file: `npm run typecheck` **GREEN**, `storable.test.ts` **107 pass / 0 fail**, and all
+three hidden doors write a document `fromJSON` refuses at `$.resolutions[0].state` —
+**UNOPENABLE ×3**.
+
+**`r59-nonnullable.sh` — the I-19 builder's own disclosed objection, re-derived rather than taken on
+report.** Reverts `Members` to bare `Carries<T[K], D>` (one token) and measures four things: all 35
+`DESCENT_CENSUS` rows **still green**, the shipped tree **exit 0**, `storable.test.ts` **107 pass /
+0 fail**, and **N11 still RED naming the same eleven**. Confirmed: `NonNullable<T[K]>` is not
+load-bearing, and the census cannot fail when half the stated mechanism is deleted (**R59-4**).
+
+**`r59-vacuity.sh` — N13, on rows and mutations the builder did not use.** Break `readonly-set`'s
+positive fixture → RED naming exactly that row. Poison `index-signature-symbol`'s **doorless twin**
+→ RED naming exactly that row (the second failure direction). Collapse `Members` to `false` → RED
+naming **thirty** labels. Force `parameter-position` to start descending → RED, and the message that
+prints is **KD-109's adapted sentence**, which reads truthfully in that direction — this is the probe
+behind the round's *"KD-109 is correct and sufficient"* assessment. Control (no mutation) → GREEN.
+
+**Round 59 also fixed a process hazard in six round-58 probes (R59-5).** `r58-fix-probe.sh`,
+`r58-carriers.sh`, `r58-criteria.sh`, `r58-harm.sh`, `r58-recut-vacuity.sh` and `r58-async.sh` all
+restored their targets with **`git checkout -- <file>`**, which reverts *any* uncommitted content in
+those files, not only the probe's own edits — it destroyed the I-19 builder's in-progress work once,
+and `r58-async.sh` did it against the **live** tree and not only its throwaway worktree. **All six
+now snapshot their targets at startup and restore those exact bytes**, so running them on a dirty
+tree is safe. **Every new probe in `qa/` must do the same; do not add another `git checkout --`
+restore.** Separately, `r58-fix-probe.sh` **no longer runs at all** — the repair it measured shipped
+in `386c459`, so its `Members`/`Carries` anchors no longer exist and its `assert` raises on every
+invocation. It carries a SUPERSEDED banner; its living successor is `r59-nonnullable.sh`.

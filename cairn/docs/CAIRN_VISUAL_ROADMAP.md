@@ -19,9 +19,77 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
-> **🟧 THE CHECK NOW RECOGNISES A DOOR IN ANY SHAPE — BUT IT CANNOT LOOK INSIDE THE TWO BOXES
-> THIS ENGINE PACKS THINGS IN. As of 2026-09-08, this block is the newest and it supersedes every
+> **🟧 THE CHECK CAN NOW OPEN EVERY KIND OF BOX — BUT IT STILL MISSES THE DOOR THAT IS SITTING
+> IN PLAIN SIGHT NEXT TO ONE. As of 2026-09-08, this block is the newest and it supersedes every
 > block below it, including the tester's previous report.** Nothing on your phone changes.
+>
+> **What was built, and it is the best answer this problem has had.** Last round the standing check
+> could only step through two kinds of container, and this engine writes most of its data in the
+> ones it could not — "either this shape or that shape", and "this part is optional". All of that
+> is now fixed: the check steps through **every kind of container the language has**. More
+> importantly, the designer stopped *promising* completeness in a paragraph and started **proving
+> it with a table**: 35 rows, one per kind of container, each with a matching decoy that has no door
+> in it, all checked by the compiler on every build. If any row ever stops working the build fails
+> **and names the row**. That is a genuinely better kind of answer than the five before it, and it
+> is the reason this round could be sharper than any before it — you cannot disagree with a
+> paragraph in two seconds, and you can disagree with a table.
+>
+> **The tester confirmed all of it, independently.** All 35 rows behave. All four of last round's
+> invisible doors are now caught, each naming the offender. The new "constructor-style door" check
+> works, and it survived five variations nobody had tried — an abstract class with a factory, a
+> factory that hands back an object whose *method* is the door, a generic constructor, a
+> constructor that takes nothing trip-related, a class with private fields. **1,637** automated
+> checks pass; nothing you can see changes.
+>
+> **What sends it back is one step further in than last round, and it is the same shape.** The
+> check now walks *into* "either this shape or that shape" — but when it gets there it forgets to
+> ask the one question it is for. If a thing is **either a door or some other function**, the check
+> adds the two answers together, gets "either a trip or nothing", decides that is not a trip, and
+> the door vanishes. The door is not hidden behind anything. It is **one of the two options**. And
+> the reason the new table cannot catch it is that all three of its "either/or" rows put the door
+> one layer *underneath* the option rather than *as* the option — so all three pass while the real
+> shape walks straight through. **The sharpest version is the same one as the last two rounds**:
+> the designer's own headline test — *"the day a conflict rule gains a fix-this-for-me button, ten
+> unguarded doors appear"* — is caught when the button is written one way, caught when it is written
+> a second way, and **invisible when it is written a third**. The tester reproduced the full harm:
+> three such doors, every automated check green, and three trips saved that can never be opened
+> again.
+>
+> **Two more of the same kind.** A thing that is *both* a function and a constructor never reaches
+> the brand-new constructor check, because the check tries one description at a time and stops at
+> the first that fits. And the older rule *"a function may not hand back two different things"* is
+> still only checked at the engine's front door — move the same function one layer inside an object
+> and it is invisible, which is exactly the gap that was fixed for doors two rounds ago and never
+> fixed here.
+>
+> **And half of the fix does nothing — the builder said so and the tester confirmed it.** The
+> designer's repair had two parts. Delete one of them entirely and **all 35 rows still pass**, the
+> build still succeeds, and the test that this round was built around still fires correctly. The
+> tester proved it is not a coincidence but a fact about how the two parts overlap, across 151
+> different shapes. That matters less for the one redundant line than for what it says about the
+> table: **a table that cannot tell a complete fix from half a fix also cannot tell a complete
+> search from an incomplete one** — which is what the finding above turns out to be.
+>
+> **Nothing is broken today**, exactly as the last three rounds: no such door exists anywhere in the
+> engine right now, and this is a finding about the **promise**, not about your trips. The repair is
+> measured rather than guessed — **one clause**, which closes both of the first two problems, keeps
+> all 35 rows exactly as they are, and flags nothing innocent across 151 shapes.
+>
+> **Four smaller things**, all minor: six of the tester's own scripts used a git command that
+> silently threw away someone else's unsaved work — it did exactly that to the builder once, so the
+> tester rewrote all six and one that no longer ran at all; one sentence in the design document
+> about what the search deliberately skips, which the tester measured as not quite true; and one
+> missing sentence telling the next builder which command actually runs the new table.
+>
+> **What happens next.** The tester's verdict is **send back to the designer** — the sixth round on
+> this one problem. The honest reading has not changed and it is not a bad one: every round's answer
+> has been genuinely better than the last, and this round's is the first that can be **disproved in
+> one command** rather than argued about. **Zero blockers.** The manager's **SHIP / SEND BACK**
+> decision for the whole of Phase 2 still comes next.
+
+> **🟧 THE CHECK NOW RECOGNISES A DOOR IN ANY SHAPE — BUT IT CANNOT LOOK INSIDE THE TWO BOXES
+> THIS ENGINE PACKS THINGS IN. As of 2026-09-08, this block was the newest until the block above
+> it — the two boxes it names are now opened, and the block above says what replaced the problem.** Nothing on your phone changes.
 >
 > **What was built, and it is a better kind of answer than the four before it.** Last round the
 > standing check only recognised a door written as a plain standalone function, so the same door

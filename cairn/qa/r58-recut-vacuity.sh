@@ -12,8 +12,16 @@
 set -u
 cd "$(dirname "$0")/.." || exit 1
 BN=docs/BUILD-NOTES.md
-restore() { git checkout -- "$BN" 2>/dev/null; }
-trap restore EXIT
+# --- round 59 process fix (R59-5). This probe used to restore with `git checkout --`, which
+# --- silently reverts ANY uncommitted work in the target files, not just this probe's own edits.
+# --- It destroyed the I-19 builder's in-progress work once. It now snapshots the targets at
+# --- startup and restores those exact bytes, so running it on a dirty tree is safe.
+__R59_BACKUP=$(mktemp -d -t qa-restore.XXXXXX) || exit 1
+__r59_snapshot() { for f in "$@"; do mkdir -p "$__R59_BACKUP/$(dirname "$f")"; cp "$f" "$__R59_BACKUP/$f"; done; }
+__r59_restore()  { for f in "$@"; do cp "$__R59_BACKUP/$f" "$f"; done; }
+__r59_snapshot "$BN"
+restore() { __r59_restore "$BN"; }
+trap 'restore; rm -rf "$__R59_BACKUP"' EXIT
 restore
 
 echo "== control A: on the shipped tree, both re-cuts are GREEN =="

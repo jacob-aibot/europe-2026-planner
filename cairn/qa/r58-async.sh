@@ -19,6 +19,18 @@ ROOT=$(git rev-parse --show-toplevel)
 WT=/tmp/r58-wt-$$
 T=packages/core/src/conflict/resolve.ts
 
+# --- round 59 process fix (R59-5). `measure` was called with "$ROOT/cairn" — the LIVE tree, not
+# --- only the throwaway worktree — and restored with `git checkout --`, which silently reverts any
+# --- uncommitted work in `$T`, not just this probe's own edits. It now restores byte-exact bytes
+# --- snapshotted at startup, so running it on a dirty tree is safe.
+__R59_BACKUP=$(mktemp -d -t qa-restore.XXXXXX) || exit 1
+cp "$ROOT/cairn/$T" "$__R59_BACKUP/live"
+__r59_restore() {  # $1 = tree root (a cairn/ dir)
+  if [ "$1" = "$ROOT/cairn" ]; then cp "$__R59_BACKUP/live" "$1/$T";
+  else (cd "$1" && git checkout -- "$T" 2>/dev/null); fi
+}
+trap 'cp "$__R59_BACKUP/live" "$ROOT/cairn/$T"; rm -rf "$__R59_BACKUP"' EXIT
+
 inject() {  # $1 = tree root (a cairn/ dir), $2 = extra statement
   python3 - "$1/$T" "$2" <<'PY'
 import sys
@@ -32,10 +44,10 @@ PY
 }
 
 measure() {  # $1 = label, $2 = tree root, $3 = extra statement
-  (cd "$2" && git checkout -- "$T" 2>/dev/null)
+  __r59_restore "$2"
   inject "$2" "$3"
   local out; out=$(cd "$2" && node --test packages/core/test/storable.test.ts 2>&1)
-  (cd "$2" && git checkout -- "$T" 2>/dev/null)
+  __r59_restore "$2"
   local named; named=$(printf '%s' "$out" | grep -cE "^not ok .*reassertRetirements")
   local filedown; filedown=$(printf '%s' "$out" | grep -cE "^not ok .*storable\.test\.ts$")
   local unhandled; unhandled=$(printf '%s' "$out" | grep -c "unhandledRejection")
