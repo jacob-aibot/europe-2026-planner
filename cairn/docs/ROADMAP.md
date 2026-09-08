@@ -1115,6 +1115,51 @@ nothing.
 written; **R54-8** was the breaker's and is repaired in round 54's own commit. **No phase, step, gate or
 dependency moves; `I-11`'s verdict is the manager's and this revision does not pre-empt it.**
 
+**Revision 62, 2026-09-08.** **`I-16` is built (`97f1fc1`) and QA round 56 sent it back — but not for the
+reason the two rounds before it did.** The breaker's own verdict is that **the mechanism holds**: the
+identity diff refused all sixteen door × field cases (round 55 measured thirteen unopenable), survived 22
+adversarial resolution shapes at the eighth record class with zero unopenable documents, and closed R55-5's
+TOCTOU window in both directions. **What is still short is door DISCOVERY** — A-77 deleted the enumeration
+of *what a door writes* and left an enumeration of *where doors live*: `CENSUSED_BUILD_FILES` plus
+`EXTRA_DOOR_FILES`, twelve names and one. A `Trip`-returning export appended to `derive/lifecycle.ts` — an
+existing file, ordinary syntax, no new directory — left `npm run typecheck` at exit 0 and
+`storable.test.ts` at 62 pass / 0 fail while writing a document `fromJSON` refuses (**R56-1**), and the
+classifier's exact `Trip` return type made `Trip | null` and `Promise<Trip>` invisible (**R56-2**).
+`ARCHITECTURE.md` revision 59's §2.1 **A-78** rules both structurally — **the census reads
+`packages/core/src` whole** — and **`I-17` is queued** as its whole code consequence. Neither finding has a
+live instance: a whole-tree census over all 42 modules reports **zero** unaccounted `Trip`-returning
+exports today, so `I-17` changes no shipped behaviour and blocks nothing.
+
+- **`I-16` stays exactly as written above.** It is built, its nine parts are in the tree and its mechanism
+  is upheld entire; `I-17` supersedes only its part 9 (the censuses) and amends parts 6 and 7. **Do not
+  edit I-16's entry to describe I-17** — the record of what was built and what it missed is the point.
+- **R56-4 and R56-6 are the builder's and were routed directly**, in parallel with this revision:
+  `commitList` re-reading `after` through `slice()` after testing `after[i]` (R55-5's class inside
+  `commit`'s own code), and `DAY_META_PATCH_KEYS` being a hand-maintained second copy of `DayMetaPatch`'s
+  `Pick`. **Neither is in `I-17`** and neither needed a ruling.
+- **Four findings ride along inside `I-17` because each is one mechanism and not a guard**: **R56-3**
+  (`isIsoDate` deleted at both trip doors — A-77's stated reason for keeping it is false against the code,
+  and both doors commit the envelope *before* minting days, so nothing but a duplicate is lost),
+  **R56-5/KD-104** (`TripMetaPatch` joins the patch-allowlist family; a present-but-`undefined`
+  `datePrecision` silently reset a user's stated precision to `'exact'`), **R56-7** (`provenance` leaves
+  `DayMetaPatch` — days and stops now answer the same way about the one convention the root `CLAUDE.md`
+  calls absolute) and **R56-10** (Invariant R written down, with the door half enforced by a frozen-input
+  test).
+- **R56-9 is a documentation correction and no code changes.** A-77 Part 9's *"they allocate nothing"* is
+  false — `addStop` measures 0.22 ms at 2,000 stops and 3.13 ms at 20,000 — and A-78 Part 6 replaces the
+  sentence with the measured bound. **No budget is exceeded**, and the obvious per-day optimisation is
+  refused in writing because it would re-parse every moved stop. A trigger is stated (any door above 10 ms
+  inside A-35's cap).
+- **R56-8 is deferred, and the deferral is confirmed rather than inherited** (A-78 Part 8): nothing
+  pattern-matches a door name, so a copied stop's refusal naming `addStop` is diagnostic only. The
+  question — *may a delegating door raise under its own name?* — is stated with its trigger, Phase 3.
+- **R56-1/R56-2's fix is claimed as the structural close of this class, and A-78 Part 10 states the claim
+  in a form that can be checked.** This is the fourth round on *the census missed something*; after `I-17`
+  what remains hand-written is one list of module paths checked against a recursive read of the directory
+  it describes, and one list of three producers checked by the compiler. **There is no enclosing scope
+  left to widen to.** A fifth finding on this class should be classified against A-78 Part 10's four named
+  *different* classes before it is counted as a fifth face.
+
 > **Phase numbers changed once, here.** Every heading below carries its old number, and every "Phase N"
 > written in `ARCHITECTURE.md` §1–§7, `BUILD-NOTES.md` or `QA-FINDINGS.md` before revision 9 means the
 > *named* phase it described: "Phase 2" = accounts/server (**now 3**), "Phase 3" = ingest (**now 4**),
@@ -4969,6 +5014,125 @@ twice, so it is deleted rather than corrected a third time.**
   `qa/`, no `docs/design/`, no `package.json`, no lockfile. **Route: builder + breaker, mandatory.**
   `cairn/CLAUDE.md`'s delegation table fires twice over — it changes a core invariant and it opens
   `copyStop.ts` and the provenance transitions, both on the security-sensitive list.
+
+#### I-17 — the census reads the tree (revision 62, QA **R56-1/R56-2**, MAJOR; **R56-3/5/7/9/10** ride along)
+
+**The whole code consequence of `ARCHITECTURE.md` revision 59's §2.1 **A-78**. Read A-77 Part 6, then A-78
+whole, and nothing else in `ARCHITECTURE.md`** — A-78 is self-contained and quotes what it needs. Do **not**
+read §2 whole, §4, §8 or §10, and do **not** read A-76 at all. Like `I-15` and `I-16` this is a
+**cross-cutting core fix**, not a 2c increment.
+
+**Why it exists, in one measurement.** `I-16` shipped A-77's mechanism and round 56 could not break it —
+sixteen door × field cases refused at the door, 22 adversarial resolution shapes with zero unopenable
+documents, the TOCTOU window closed in both directions. **What it could break is how the system decides
+which functions are doors.** `export function archiveTrip(trip: Trip, r: ConflictResolution): Trip`
+appended to `packages/core/src/derive/lifecycle.ts` — an existing file, ordinary syntax, no new directory —
+leaves `npx tsc -p tsconfig.json --noEmit` at **exit 0** and `node --test
+packages/core/test/storable.test.ts` at **62 pass / 0 fail**, while `archiveTrip(t, {state:'bogus', …})`
+returns a document `fromJSON` refuses at `$.resolutions[0].state`. **The door census enumerates FILES.
+This increment deletes the last list.** Nothing is unguarded today — a whole-tree census reports zero
+unaccounted `Trip`-returning exports — so **no shipped behaviour changes except the four riders in parts
+5–8**.
+
+- **Built, in nine parts, in this order. Parts 1–4 are the census and must be green before any `src` file
+  moves.**
+  1. **`packages/core/test/storable.test.ts`: one `CENSUS` array replaces both file lists.** A namespace
+     import per `.ts` file under `packages/core/src` — **53 today, with no exclusions**, including
+     `index.ts`, `model/types.ts`, `conflict/rules/types.ts` and `geo/countries.gen.ts` — paired with its
+     path relative to `src`, `as const`, exactly A-78 Part 1's block. **`CENSUSED_BUILD_FILES` and
+     `EXTRA_DOOR_FILES` are deleted outright.**
+  2. **The type-level door census is mapped over `CENSUS`** (`NamesIn`/`DoorsOf`, A-78 Part 1 half 1), and
+     its expected set becomes `DOORS ∪ CENSUS_MECHANISM ∪ NON_DOORS[].name` — the three named producers
+     stop being an assertion and become part of the equation, because their modules are now censused. A
+     **union** over the array, not an intersection of namespaces.
+  3. **The module census becomes a recursive `readdirSync` walk** of `packages/core/src` (A-78 Part 1
+     half 2), asserting (a) the set of `.ts` files equals `CENSUS`'s paths, with the failure message A-78
+     writes verbatim — including *"do not add an exclusion list"* — and (b) there is no `.d.ts` and no
+     non-`.ts` file under `src`.
+  4. **Two new census lines:** the **illegal-shape** line (`IsExact<AllIllegal, never>`, A-78 Part 2) and
+     the **name-uniqueness** runtime check (for every name in the three lists, the number of distinct
+     function objects across all censused namespaces is exactly one — A-78 Part 1 half 3). The behavioural
+     census is unchanged except that an entry whose namespace member is `===` one already covered needs no
+     second row.
+  5. **The classifier is widened** to A-78 Part 2's exact types: `TripishReturn` =
+     `Exclude<Awaited<R>, null | undefined>`, `IsDoor` = `IsExact<TripishReturn<F>, Trip>`. **The order of
+     `Exclude` and `Awaited` is load-bearing** — the other order silently drops `Promise<Trip | null>`.
+     No current door is reclassified and the expected set does not move; if it moves, this part has a
+     defect.
+  6. **Delete `isIsoDate` at both trip doors** (`createTrip.ts:89` and `:194`, A-78 Part 3), and the
+     `import` with them if it becomes unused in that file. **`isIsoDate` itself is not touched** — it is on
+     §2.10's surface and seven other modules call it, `fromJSON` included. **Both doors' `endDate <
+     startDate` checks stay** (ordering is a property the parser deliberately does not have).
+  7. **`setTripMeta` gains `assertPatchable(patch)`** on `setDayMeta`'s model (A-78 Part 4), refusing
+     **(a)** any key outside `TripMetaPatch`'s `Pick` and **(b)** any key of `TripMetaPatch` present with
+     the value `undefined`. The existing `cities` `Array.isArray` check **stays**.
+  8. **`provenance` comes out of `DayMetaPatch`'s `Pick` and out of `DAY_META_PATCH_KEYS`, and joins
+     `FORBIDDEN_DAY_META_PATCH_KEYS`** with `updateStop`'s reason verbatim (A-78 Part 5). Both must move
+     together — R56-6's type-level assertion (*the constant is exactly `keyof DayMetaPatch`*) is what
+     catches it if only one does, and it must still hold after this part.
+  9. **Invariant R is written into `commit.ts`'s header docstring** (A-78 Part 7's block quote, quoted not
+     paraphrased), and the census gains the **frozen-input test**: for every door, deep-freeze the `before`
+     document, call the door with a legal argument, assert it does not throw. **No freeze in production
+     code** — A-78 Part 7 refuses that with its reasons and its trigger.
+- **Not built, and named so nobody adds it.** **No `Object.freeze` in `commit` or any `src` file** — the
+  frozen-input test is a *test*. **No exclusion list of any kind in the census**, at any granularity: a
+  file that reddens the module census is classified, not excused. **No per-field guard** anywhere, and no
+  new guard in `build/` — after part 6 the directory contains exactly **one** guard that is not the parser
+  (`assertBuiltAttach`), and adding a second is an architect's ruling. **No qualified (`path#name`) door
+  names** — half 3's identity check is what closes shadowing, and qualifying would double `DOORS` to carry
+  `index.ts`'s re-exports. **No new `IssueCode`, no version movement** (`SCHEMA_VERSION`, `DB_VERSION`,
+  `SUMMARY_VERSION`), **no `.tsx`, no `qa/`** (the breaker's), **no `docs/design/`, no new dependency.**
+  `import/legacyDays.ts` and `merge/mergeTrips.ts` stay untouched — producers, A-77 Part 10 residue 3.
+- **User-visible outcome.** Two small ones, and they are the point of the riders: a mistyped trip date is
+  refused by the parser's own message (*"expected a real calendar date in YYYY-MM-DD (at `$.startDate`)"*)
+  rather than by a duplicate guard, and `setTripMeta({datePrecision: undefined})` is **refused** instead of
+  silently resetting a user's stated `'month'` precision to `'exact'`. Everything else is invisible: the
+  door set is now closed by a directory walk rather than by a list of files.
+- **Architecture / data model.** One type narrows: `DayMetaPatch` loses `provenance`. No field, no record
+  class, no port, no selector, no screen. §2.10's surface does not move — re-count it with criterion E's
+  command and confirm **86**, per §4.2 **A-70 Part 7 item 3**.
+- **Verification — A-78 Part 9's seven injected faults, plus A-77 Part 8's five carried unchanged. Run
+  every one red-before-green; a criterion asserted rather than run is not discharged.**
+  - **N1:** append `export function archiveTrip(trip: Trip, r: ConflictResolution): Trip` to
+    `derive/lifecycle.ts` → **`npm run typecheck` fails.** This is R56-1's exact repro as a standing
+    criterion.
+  - **N2:** add a `Trip`-returning export in a **new file in a new directory** (e.g. `sync/apply.ts`) →
+    the **module census** goes red naming the file.
+  - **N3:** change one door's return type to `Trip | null` and another's to `async … : Promise<Trip>` →
+    **both stay doors**, census green, behavioural rows still fire. This is R56-2.
+  - **N4:** add `export function wrapped(t: Trip): Trip | Day` → the **illegal-shape** line fails.
+  - **N5:** add a second `export function addStop(t: Trip): Trip` in another module → **name-uniqueness**
+    goes red naming both modules.
+  - **N6:** move a door's name from `DOORS` into `NON_DOORS` → the **behavioural** census goes red.
+  - **N7:** make one door mutate rather than replace (`trip.days[0].title = 'x'`) → the **frozen-input**
+    test throws `TypeError` and names the door.
+  - **A-77 Part 8's N1–N5 still required**, in particular the sixteen door × field cases (REFUSED AT DOOR,
+    sixteen times) and *delete a door's `commit` call* → behavioural row red, type census green.
+  - **The rider criteria, each run rather than reasoned about:** `createTrip({startDate:'2026-13-45'})` is
+    refused **naming `$.startDate`** and not A-35's span-cap message; `setTripMeta(t, {datePrecision:
+    undefined})` on a `'month'` trip **throws** and the trip still reads `'month'`; `setDayMeta(t, dayId,
+    {provenance: …})` **throws** with `updateStop`'s reason; and the three A-77 Part 9 cost figures are
+    **re-measured and recorded in BUILD-NOTES** with the two new ones A-78 Part 6 states (`addStop` at
+    2,000 and at 20,000 stops).
+  - **Regression.** `npm run test:tap` reports **1592 tests at `97f1fc1`**, re-measured by the round-56
+    breaker rather than taken on report. **Message pins will move at exactly two places** — `createTrip`'s
+    and `setTripMeta`'s calendar-date message, which becomes the storability refusal (part 6). **A pin
+    whose door, path or refusal *verdict* changes is a defect in this increment, not a test to edit**, and
+    `packages/core/test/storable.test.ts:1031` (*"isIsoDate is KEPT at both trip doors"*) is a test whose
+    **ruling** changed and which is therefore rewritten, not deleted. `qa/` probes that pin the old message
+    are the **breaker's** to re-cut: **flag them in BUILD-NOTES, do not edit them.**
+- **Dependencies / blockers.** **I-16, which is built and on `master` (`97f1fc1`)**, and the two builder
+  fixes R56-4/R56-6 if they land first (they touch `commit.ts` and `days.ts` and do not conflict with any
+  part here except part 8's neighbourhood in `days.ts`). It blocks nothing.
+- **Ship gate.** `npm test` green; `npm run typecheck` exit 0 on both projects; `npm run web:build`
+  succeeds; the export count re-measured and **86**; **all seven new faults plus A-77's five run
+  red-before-green and recorded with their measured output**; the five cost figures recorded. **Files
+  touched: `packages/core/test/storable.test.ts`, `packages/core/src/build/createTrip.ts`,
+  `packages/core/src/build/days.ts`, `packages/core/src/build/commit.ts` (docstring only) and whichever
+  `packages/core/test/*.ts` pin the two moved messages. Nothing else** — no `.tsx`, no `qa/`, no
+  `docs/design/`, no `package.json`, no lockfile. **Route: builder + breaker, mandatory.**
+  `cairn/CLAUDE.md`'s delegation table fires twice over — it changes a core invariant and it touches the
+  provenance transitions.
 
 #### I-10 — The participants editor, the profile grouping, and the access double-run — **DEFERRED at revision 55; 2c ships without it**
 
