@@ -1,8 +1,85 @@
 /**
+ * §2.1 **A-79** — *a door is a module-level function, and the census refuses any export that can
+ * hide one.* ROADMAP **I-18**, from QA **R57-1/R57-2** (MAJOR) with **R57-3/4/5/6** riding along.
+ * It sits on top of §2.1 **A-78** — *the census reads the tree, not a list of files* — whose
+ * **subject** round 57 attacked with everything it had (a new file, a new directory, a door in the
+ * generated `countries.gen.ts`, re-exports from inside and outside the tree, a barrel alias, a
+ * shadowing second `addStop`) and could not break. A-78's scope argument is upheld entire.
+ *
+ * **What A-79 replaced: the PREDICATE, not the subject.** `IsDoor<F>` begins
+ * `F extends (...a: never[]) => infer R`, which matches only a module member that is **itself a
+ * directly-callable function value**. So a `Trip`-producing **class method, static method,
+ * object-literal method, arrow behind a `Record`, getter, or closure returned by a higher-order
+ * function** was invisible *inside a censused file, in a censused directory, on the whitest part of
+ * the tree*. `class TripArchiver { archive(t: Trip, r: ConflictResolution): Trip }` appended to
+ * `derive/lifecycle.ts` left `npm run typecheck` at exit 0 and this file at 105 pass / 0 fail while
+ * writing a document `fromJSON` refuses at `$.resolutions[0].state` (**R57-1**). And
+ * `export const overlap: Rule = { … }` is that object-literal shape in **ten shipped files**.
+ *
+ * **A second arm on `IsDoor` is refused** (A-79 Part 1): that enumerates the ways a function can be
+ * *carried*, and the next carrier — a `Map<string, door>`, a class returned from a factory, a
+ * function with a door hung off it as a property — is not on the list. Four rounds of this class
+ * have each ended with a longer list being wrong within a round. What ships instead is **one
+ * recursive structural question**, asked of the export's type:
+ *
+ * > **Is a `Trip`-producing callable reachable from this export at all — through a property, or
+ * > through a call signature's return type, at any depth?**
+ *
+ * At the type level a class method, a static method, an object-literal method, an arrow property
+ * and a getter are *the same thing*: a property whose type has a call signature. `Carries` was
+ * never told about a `Map`, a factory-returned class, a function with a property, `Promise<Trip>`
+ * behind a method, or a door nested three objects deep, and it catches all of them (A-79 Part 5).
+ *
+ * **The census is name-keyed by necessity**, which is why A-79 *refuses the carrier* rather than
+ * guarding it: a door needs a `DOORS` entry, a behavioural row, a frozen-input row, a place in the
+ * uniqueness walk, and a name to print in the refusal a user reads. A method or a closure has no
+ * module-level name and can receive none of those. Hence the **normal form** quoted beside
+ * `HIDDEN_DOOR_CENSUS` below.
+ *
+ * **There is one `CENSUS` array** — every `.ts` file under `packages/core/src`, with **no
+ * exclusions** — read by five halves that fail at different times:
+ *
+ *   1. **The type-level door census** maps `DoorsOf` over `CENSUS`. Its expected set is, exactly
+ *      as the code below writes it and **not** as A-78 Part 1 half 1 wrote it,
+ *      `DOORS ∪ CENSUS_MECHANISM ∪ (NON_DOORS[].name & AllDoors)` — the intersection, because
+ *      `mergeTrips` and `importLegacyDays` return `{trip, …}` wrappers that `IsDoor` never
+ *      classified, so the ruling's `DOORS ∪ CENSUS_MECHANISM ∪ NON_DOORS[].name` is **uncompilable
+ *      on a healthy tree** (KD-106 measured it). It fails `npm run typecheck`, not a test.
+ *   2. **The hidden-door census** (A-79 Part 3) maps `Hides` over the same array: an export that is
+ *      **not itself a door** and from which a door is **reachable** fails `npm run typecheck`, in a
+ *      template-literal form that **names the offending exports**.
+ *   3. **The module census** is a **recursive** `readdirSync` walk of `packages/core/src`, and it
+ *      sees the one thing a type-level assertion cannot: a **new file**, in any directory,
+ *      including one nobody has created yet.
+ *   4. **Name uniqueness and `NON_DOORS`'s stated module are checked at runtime**, by function
+ *      *identity* over the same namespace objects — the shadowing hole a name-keyed census cannot
+ *      see. Not by qualifying names.
+ *   5. **The behavioural census** is unchanged: one hostile value per door, driven by `DOORS`.
+ *
+ * **`NON_DOORS` holds only excuses the census actually spends** (A-79 Part 7, **R57-2**). Before
+ * this increment two of its three entries were inert — they excused nothing, so evicting one was
+ * free, and a real door's name could be substituted into the slot with `typecheck` at exit 0 and
+ * this file green. `NON_DOORS_ARE_LIVE` makes every entry compiler-checked, so the list can grow
+ * and cannot shrink unobserved; the two wrapper producers **leave** and become
+ * `WRAPPER_PRODUCERS_ARE_NOT_DOORS`, which is strictly more than their entries said.
+ *
+ * Plus **Invariant R**'s door half (A-78 Part 7, restated at its true width by A-79 Part 8): a
+ * frozen-input test, driven by `DOORS`, that proves no door mutates a record — or a collection
+ * array — in place. There is **no `Object.freeze` in `src`** — the ruling refuses that, with its
+ * reasons and its trigger.
+ *
+ * **The residue, named rather than left silent** (A-79 Part 11 residue 1): an **overload set** whose
+ * *last* signature does not return `Trip` is **not** caught, because `infer R` resolves to the last
+ * signature and enumerating an overload set's signatures needs a bounded-arity pattern — which
+ * would be an enumeration, of arity, and the sixth face of this exact class. It is refused by the
+ * normal-form rule instead, and **zero overload sets exist under `packages/core/src` today**.
+ * **Trigger: the first one.** The other two residues are the 12-hop depth bound and a cast
+ * (`unknown`/`any` returned where a `Trip` is meant), which is permanent.
+ *
+ * ---
+ *
  * §2.1 **A-78** — *the census reads the tree, not a list of files.* ROADMAP **I-17**, from QA
- * **R56-1/R56-2** (MAJOR) with **R56-3/5/7/10** riding along. It sits on top of §2.1 **A-77** —
- * *a door does not say what it wrote; the document says what changed* — whose mechanism round 56
- * attacked hardest and could not break, and which is upheld entire.
+ * **R56-1/R56-2** (MAJOR) with **R56-3/5/7/10** riding along.
  *
  * **What A-78 replaced.** A-77 deleted the enumeration of *what a door writes* and left an
  * enumeration of *where doors live*: `CENSUSED_BUILD_FILES` (twelve names, checked against a
@@ -12,22 +89,7 @@
  * `npm run typecheck` at exit 0 and this file at 62 pass / 0 fail while writing a document
  * `fromJSON` refuses at `$.resolutions[0].state` (**R56-1**). And the classifier matched an
  * *exact* `Trip` return type, so `Trip | null` and `Promise<Trip>` were not doors (**R56-2**).
- *
- * **Both lists are deleted.** There is now **one** `CENSUS` array — every `.ts` file under
- * `packages/core/src`, with **no exclusions** — read by four halves that fail at different times:
- *
- *   1. **The type-level door census** maps `DoorsOf` over `CENSUS` and its expected set is
- *      `DOORS ∪ CENSUS_MECHANISM ∪ NON_DOORS[].name`. It fails `npm run typecheck`, not a test.
- *   2. **The module census** is a **recursive** `readdirSync` walk of `packages/core/src`, and it
- *      sees the one thing a type-level assertion cannot: a **new file**, in any directory,
- *      including one nobody has created yet.
- *   3. **Name uniqueness is checked at runtime**, by function *identity* over the same namespace
- *      objects — the shadowing hole a name-keyed census cannot see. Not by qualifying names.
- *   4. **The behavioural census** is unchanged: one hostile value per door, driven by `DOORS`.
- *
- * Plus **Invariant R**'s door half (A-78 Part 7): a frozen-input test, driven by `DOORS`, that
- * proves no door mutates a record in place. There is **no `Object.freeze` in `src`** — the ruling
- * refuses that, with its reasons and its trigger.
+ * Both file lists are **deleted**; the classifier's three legal return shapes are `IsDoor` below.
  *
  * ---
  *
@@ -471,24 +533,46 @@ const DOORS = [
 const CENSUS_MECHANISM = ['commit'] as const;
 
 /**
- * **A-78 Part 1 half 1 / Part 6.3 — the three `Trip`-returning exports that are NOT doors.**
+ * **A-79 Part 7 (QA R57-2) — the `Trip`-returning exports inside the censused set that are NOT
+ * doors. It is ONE entry, and every entry is LIVE.**
  *
- * A-77 asserted these three separately, because their modules were outside the census. They are
- * now *inside* it, so they stop being an assertion and become **part of the equation**: they
- * appear on the expected side of `DOOR_CENSUS` or `npm run typecheck` fails.
+ * A-78 shipped three names and named this list *"the one remaining place a human judgement can
+ * hide a door"*, with a residue whose trigger was **the fourth name**. **That trigger could never
+ * fire**, and KD-106 is why. The shipped equation subtracts `NON_DOORS[].name & AllDoors`, and
+ * `importLegacyDays` and `mergeTrips` return `{trip, …}` wrappers `IsDoor` never classified — so
+ * two of the three entries **excused nothing**. An entry that excuses nothing is a **free slot**:
+ * evict it, put a real door's name in its place, delete the two behavioural rows `DOORS` was
+ * driving, and the list is still three names with `typecheck` at exit 0 and this file green.
+ * Delete that door's `commit` call and it writes an unopenable document with **no census half
+ * firing**. Round 57's breaker drove all three steps.
+ *
+ * **The defect was not the count. It was that the list contained entries the compiler could not
+ * see**, so removing one cost nothing. Four clauses answer it:
+ *
+ *   1. **Liveness is compiler-checked** — `NON_DOORS_ARE_LIVE` below requires every name here to be
+ *      one `IsDoor` actually classifies as a door, and names the inert entry if one is not.
+ *   2. **Eviction therefore reddens `DOOR_CENSUS`**, which is what kills substitution: removing a
+ *      live entry drops a name from the expected set that `AllDoors` still contains. The list can
+ *      grow; it cannot shrink unobserved.
+ *   3. **The count is re-pinned to the live count**, and the trigger is now **the SECOND name**.
+ *   4. **Each entry carries its own individually-checkable fact**, not just prose: `module`, which
+ *      half 3's identity walk resolves. An entry cannot be re-pointed at a different function
+ *      without a second field being wrong.
  *
  * The rule for what may go here is unchanged and narrow: **a whole-document producer — a function
  * that constructs a document rather than editing one, so there is no `before` to diff against.**
- * A-78 Part 10 names this list as **the one remaining place a human judgement can hide a door**,
- * and its residue's trigger is *the fourth name*: a fourth producer is an architect's ruling, and
- * the question it must answer is whether producers should get the whole-document check A-77 Part
- * 10 residue 3 defers — not whether this particular function may be excused.
+ * A **second** name is an architect's ruling, and the question it must answer is whether producers
+ * should get the whole-document check A-77 Part 10 residue 3 defers — not whether this particular
+ * function may be excused.
  */
 const NON_DOORS = [
-  { name: 'fromJSON', why: 'it IS the parse' },
-  { name: 'importLegacyDays', why: 'a producer — it builds a document rather than editing one, so there is no `before` to diff against (A-77 Part 10 residue 3)' },
-  { name: 'mergeTrips', why: 'a producer, for importLegacyDays\' reason' },
-] as const satisfies ReadonlyArray<{ name: string; why: string }>;
+  {
+    name: 'fromJSON',
+    module: 'serialize/fromJSON.ts',
+    why: 'it IS the parse — there is no `before` to diff against, and the document it returns is by '
+      + 'construction one `fromJSON` accepts',
+  },
+] as const satisfies ReadonlyArray<{ name: string; module: string; why: string }>;
 
 type IsExact<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false;
 
@@ -558,6 +642,14 @@ const DOOR_CENSUS: IsExact<
  * These two are also the only wrapper returns in `packages/core/src`, and A-78 Part 2's
  * prohibition does not reach them: it binds *"a function … that produces an **edited** `Trip`"*,
  * and a producer constructs a document rather than editing one (A-77 Part 6.3, Part 10 residue 3).
+ *
+ * **A-79 Part 7 (R57-2) closed the hole that correction left open.** Subtracting the intersection
+ * is right, but it made the two wrapper producers **inert entries the compiler could not see**, so
+ * evicting one was free and a real door could be substituted into the slot. They have now **left
+ * `NON_DOORS`** — see `WRAPPER_PRODUCERS_ARE_NOT_DOORS`, which asserts the property they were being
+ * trusted for instead of excusing them for it — and `NON_DOORS_ARE_LIVE` forbids a future inert
+ * entry. The intersection stays, because it is the shape the compiler can compute; what changed is
+ * that it can no longer be empty for any entry.
  */
 type ExcusedProducers = (typeof NON_DOORS)[number]['name'] & AllDoors;
 
@@ -583,23 +675,179 @@ type ExcusedProducers = (typeof NON_DOORS)[number]['name'] & AllDoors;
  */
 const ILLEGAL_SHAPE_CENSUS: IsExact<AllIllegal, never> = true;
 
+// ---------------------------------------------------------------------------------------------
+// A-79 Part 3 (QA **R57-1**) — the HIDDEN-DOOR census. The THIRD census line, mapped over the same
+// `CENSUS` array, failing `npm run typecheck` rather than a test.
+//
+// `IsDoor` above matches only a module member that is ITSELF a directly-callable function value.
+// A `Trip`-producing class method, static method, object-literal method, `Record` arrow, getter or
+// higher-order return is invisible to it — and `export const overlap: Rule = { … }` is the
+// object-literal shape TEN shipped files already use.
+//
+// **A second arm on `IsDoor` is refused** (A-79 Part 1): that enumerates the ways a function can be
+// CARRIED, and the next carrier is not on the list. The question below is structural instead —
+// *is a `Trip`-producing callable reachable from this export, through a property or through a call
+// signature's return type, at ANY depth?* — and it therefore catches carriers it was never told
+// about: a `Map<string, door>`, a class returned from a factory, a function with a door hung off it
+// as a property, `Promise<Trip>` behind a method, a door nested three objects deep (A-79 Part 5).
+// ---------------------------------------------------------------------------------------------
+
+/** Decrement, and the depth bound. 12 hops, measured — A-79 Part 5: a door is found through 6
+ * property hops and missed at 7 when the bound is 6; 12 costs nothing measurable over 6, and the
+ * deepest carrier this codebase could plausibly hold is 2 (`Record<RuleId, Rule>` → method). */
+type Down = [never, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+
+type Members<T, D extends number> =
+  true extends { [K in keyof T]-?: Carries<T[K], D> }[keyof T] ? true : false;
+
+/**
+ * Is a DOOR reachable from `T` — through a property, or through a call signature's return type?
+ *
+ * Three details are load-bearing and A-79 Part 3 says each was wrong in a draft before it was
+ * right:
+ *
+ *   1. **`[T] extends [object]` and `[D] extends [never]`, in brackets.** The bracketed form
+ *      suppresses distribution, which otherwise turns a union-typed export into a union of
+ *      verdicts and quietly loses `false`.
+ *   2. **A callable's PROPERTIES are walked as well as its return type.** `keyof` a bare function
+ *      type is `never` — verified, so there is no `call`/`apply`/`bind` noise to filter — but
+ *      `keyof` a function with a door hung off it is exactly that door's key. Without this clause,
+ *      `Object.assign(fn, {door})` is an eighth form.
+ *   3. **`Awaited<R>`, so `Promise<Trip>` behind a method is a door.** The classifier A-78 Part 2
+ *      widened is REUSED (`IsDoor`, whose `Exclude<Awaited<R>, null | undefined>` argument order
+ *      A-78 already ruled load-bearing) rather than re-derived, so `Trip | null` behind a getter is
+ *      caught by the same rule that catches it at a module-level function.
+ */
+type Carries<T, D extends number = 12> =
+  [D] extends [never] ? false :
+    IsDoor<T> extends true ? true :
+      [T] extends [(...a: never[]) => infer R]
+        ? (Carries<Awaited<R>, Down[D]> extends true ? true : Members<T, Down[D]>)
+        : [T] extends [object] ? Members<T, Down[D]> : false;
+
+/** A HIDDEN door: this export is not itself a door, and something under it is. */
+type Hides<T> = IsDoor<T> extends true ? false : Carries<T>;
+
+type HiddenOf<M> = { [K in keyof M]-?: Hides<M[K]> extends true ? K : never }[keyof M];
+type HiddenIn<E> = E extends readonly [string, infer M] ? HiddenOf<M> & string : never;
+type AllHidden = HiddenIn<(typeof CENSUS)[number]>;
+
+/**
+ * **This line is A-79.** It is written in the **template-literal** form deliberately: A-78's
+ * `DOOR_CENSUS` fails as `Type 'true' is not assignable to type 'false'`, which tells a builder
+ * that *something* is wrong and not *what*. This one fails naming **every offending export**.
+ * A-78's two census lines are **not** retrofitted to this form in this increment (A-79 Part 6:
+ * they are correct as they stand, and changing three census lines at once in the round that is
+ * trying to close this arc is the risk A-78 Part 7 declined for the same reason).
+ *
+ * **A-79 does not find a hidden door and guard it. It REFUSES THE CARRIER**, and that is the only
+ * answer the mechanism can support rather than the weaker one. **The census is name-keyed by
+ * necessity**: a door needs a `DOORS` entry, a behavioural row firing a hostile value at it, a
+ * frozen-input row, a place in half 3's uniqueness walk, and a name to print in the refusal a user
+ * reads on screen. A door that is a method on an object, or a closure a factory returns, has **no
+ * module-level name and can receive none of those** — finding it would not let us guard it. So the
+ * rule is to require the shape that CAN be guarded, and it is quoted here, beside A-78 Part 2's
+ * wrapper prohibition above, because the two are one rule:
+ *
+ * > **Normal form.** *A function in `packages/core/src` that produces an edited `Trip` is a
+ * > **module-level exported function with a single call signature**. It is not a method, not a
+ * > static method, not a getter, not a property of an exported object, not a closure returned by
+ * > another function, and not an overload set. A design that wants one of those splits it: the
+ * > door is a module-level function, and the carrier calls it.*
+ *
+ * With A-78 Part 2's *a door returns a `Trip` directly*, that is the whole of what a door may be:
+ * **one exported function, one call signature, one `Trip` out.** A-78 Part 2's half is *stated and
+ * not detected*; this half is **stated and detected**, everywhere except the overload case — see
+ * the residue in this file's header, whose trigger is the first overload set under
+ * `packages/core/src` and of which there are **zero** today.
+ */
+const HIDDEN_DOOR_CENSUS: [AllHidden] extends [never] ? true :
+  `A-79: a Trip-producing function is reachable through this export but is not a module-level
+   function — split it out; do not exempt it: ${AllHidden}` = true;
+
+/**
+ * **A-79 Part 7 clause 1 — `NON_DOORS` liveness, checked by the compiler.**
+ *
+ * Every name in `NON_DOORS` must be one `IsDoor` actually classifies as a door. An **inert** entry
+ * — one the census never spends, so evicting it is free — makes this line fail and **names itself**
+ * in the error. This is what kills R57-2's substitution attack: because every entry is live,
+ * removing one drops a name from the expected set that `AllDoors` still contains, and `DOOR_CENSUS`
+ * fails. The list can grow; **it cannot shrink unobserved.**
+ */
+const NON_DOORS_ARE_LIVE: (typeof NON_DOORS)[number]['name'] extends AllDoors
+  ? true
+  : ['A-79 Part 7: this NON_DOORS entry excuses nothing and is a free slot',
+    Exclude<(typeof NON_DOORS)[number]['name'], AllDoors>] = true;
+
+/**
+ * **A-79 Part 7 — what is NOT lost when the two wrapper producers leave the list.**
+ *
+ * `importLegacyDays` and `mergeTrips` were `NON_DOORS` entries under A-78. They return
+ * `{trip, …}` wrappers, so `IsDoor` classified neither as a door and neither ever needed excusing;
+ * their presence was A-78 Part 1's own uncompilable equation showing through, which KD-106
+ * corrected in the code and not in the list. Their **documentation** was worth something and their
+ * **inertness** was not, so they move to a line that asserts the property they were being trusted
+ * for. This is **strictly more** than they had: an inert `NON_DOORS` entry said nothing, and this
+ * fires the day a producer's return shape changes.
+ *
+ * A-77 Part 10 residue 3's two whole-document producers, asserted NOT to be doors rather than
+ * excused as if they were. If either ever returns a `Trip` directly, this reddens and it must be
+ * classified.
+ */
+const WRAPPER_PRODUCERS_ARE_NOT_DOORS:
+IsExact<IsDoor<typeof ImportLegacyDays.importLegacyDays> | IsDoor<typeof MergeTripsMod.mergeTrips>, false> = true;
+
+/**
+ * **A-79 Part 5's no-false-positive measurement, pinned as a standing line rather than left as a
+ * number in a ruling.** `AllHidden` being `never` over the shipped tree already says this, but it
+ * says it about 54 modules at once and would keep saying it if these three stopped being the
+ * reason. These are the shapes a **too-eager** predicate flags, and a red here is a **false
+ * positive and a defect in this increment**, not a door:
+ *
+ *   - **the `Rule` objects as they actually ship** — ten object literals whose only method is
+ *     `run(ctx): Conflict[]`. An object literal with a method is exactly the carrier A-79 exists to
+ *     catch; what makes these legal is that the method returns `Conflict[]` and not a `Trip`. This
+ *     is the control for N9, which adds `autofix?(t, c): Trip` to the same type and must redden;
+ *   - **`sequentialIds`** — a function that *returns a function*. Higher-order is the carrier shape
+ *     of A-79 Part 5 row 6; what makes this one legal is that the returned callable produces a
+ *     `string`;
+ *   - **`toDoc`** — it returns `Record<string, unknown>`, which A-78 Part 2 already recorded as the
+ *     shape a looser classifier flags as carrying a `Trip`.
+ */
+const NEGATIVE_CONTROLS: IsExact<
+  | Hides<typeof RuleOverlap.overlap>
+  | Hides<typeof RuleLegacyFlag.legacyFlag>
+  | Hides<typeof ModelIds.sequentialIds>
+  | Hides<typeof SerializeToJSON.toDoc>,
+  false
+> = true;
+
 test('A-78 Part 1: the type-level door census holds (it is `npm run typecheck` that enforces it)', () => {
   assert.equal(DOOR_CENSUS, true);
   assert.equal(ILLEGAL_SHAPE_CENSUS, true);
   assert.equal(new Set(DOORS).size, DOORS.length, 'a door is named twice');
 });
 
-test('A-78 Part 1: the three named non-doors are producers, not doors', () => {
+test('A-79 Part 3: the hidden-door census holds (it is `npm run typecheck` that enforces it)', () => {
+  assert.equal(HIDDEN_DOOR_CENSUS, true);
+  assert.equal(WRAPPER_PRODUCERS_ARE_NOT_DOORS, true);
+  assert.equal(NEGATIVE_CONTROLS, true);
+});
+
+test('A-79 Part 7: NON_DOORS is one LIVE excuse, and the trigger is the SECOND name', () => {
+  assert.equal(NON_DOORS_ARE_LIVE, true);
   for (const n of NON_DOORS) {
     assert.ok(!(DOORS as readonly string[]).includes(n.name), `${n.name} is listed as a door: ${n.why}`);
     assert.ok(n.why.length > 10);
+    assert.ok(n.module.endsWith('.ts'), `${n.name}: \`module\` must be a path under packages/core/src`);
   }
   assert.equal(
-    NON_DOORS.length, 3,
-    'A-78 Part 10\'s residue: NON_DOORS is the one remaining place a human judgement can hide a ' +
-    'door, and its trigger is THE FOURTH NAME. A fourth producer is an architect\'s ruling — the ' +
-    'question it must answer is whether producers get the whole-document check A-77 Part 10 ' +
-    'residue 3 defers, not whether this particular function may be excused.',
+    NON_DOORS.length, 1,
+    'A-79 Part 7 supersedes A-78 Part 10\'s residue: NON_DOORS is the one remaining place a human ' +
+    'judgement can hide a door, every entry is now LIVE (so eviction reddens the compiler rather ' +
+    'than freeing a slot), and its trigger is THE SECOND NAME. A second producer is an ' +
+    'architect\'s ruling — the question it must answer is whether producers get the whole-document ' +
+    'check A-77 Part 10 residue 3 defers, not whether this particular function may be excused.',
   );
 });
 
@@ -682,6 +930,45 @@ test('A-78 Part 1 half 3: every censused name resolves to exactly one function o
     'a name is defined twice under `packages/core/src`. If it ever fires on an innocent collision ' +
     'the answer is to RENAME THE INNOCENT FUNCTION, not to exempt it: a door\'s name is how a ' +
     'refusal reads on screen, and two of them in one library is a defect in its own right.',
+  );
+});
+
+/**
+ * **A-79 Part 7 clause 4** — half 3's identity walk, applied to `NON_DOORS`'s `module` field. This
+ * is what makes each entry **individually checkable** rather than merely counted: the single
+ * function object a `NON_DOORS` name resolves to must be the one the stated `module` path exports.
+ * An entry cannot be silently re-pointed at a different function — *"each entry has a reason"*
+ * stops meaning *"each entry has a sentence"*.
+ */
+test('A-79 Part 7: every NON_DOORS entry\'s `module` exports the very function its name resolves to', () => {
+  const problems: string[] = [];
+  for (const entry of NON_DOORS) {
+    const stated = CENSUS.find(([path]) => path === entry.module);
+    if (!stated) {
+      problems.push(`${entry.name}: module \`${entry.module}\` is not a censused path`);
+      continue;
+    }
+    const declared = (stated[1] as Record<string, unknown>)[entry.name];
+    if (typeof declared !== 'function') {
+      problems.push(`${entry.name}: \`${entry.module}\` exports no function called \`${entry.name}\``);
+      continue;
+    }
+    const elsewhere = CENSUS
+      .filter(([, ns]) => typeof (ns as Record<string, unknown>)[entry.name] === 'function')
+      .filter(([, ns]) => (ns as Record<string, unknown>)[entry.name] !== declared)
+      .map(([path]) => path);
+    if (elsewhere.length > 0) {
+      problems.push(
+        `${entry.name}: \`${entry.module}\` exports one function object and ${elsewhere.join(', ')} `
+        + 'export a different one under the same name',
+      );
+    }
+  }
+  assert.deepEqual(
+    problems, [],
+    'a NON_DOORS entry names a module that does not define it. The `module` field is the SECOND ' +
+    'checkable fact each entry carries (A-79 Part 7 clause 4): an entry re-pointed at a different ' +
+    'function makes it wrong, which is what an excuse written only in prose could not do.',
   );
 });
 
@@ -1035,7 +1322,16 @@ type FrozenRow = {
   door: string;
   /** The `before` document. The test deep-freezes THIS and hands it to `go`. */
   before: () => Trip;
-  go: (frozen: Trip, c: BuildCtx) => Trip;
+  /**
+   * **A-79 Part 9 (QA R57-6).** `Trip | Promise<Trip>`, not `Trip`. KD-107 widened the two
+   * **runners** for `Promise<Trip>` and did not widen this **row type**, so making a real door
+   * async reddened the census itself — `Type 'Promise<Trip>' is missing the following properties
+   * from type 'Trip'` — and the first async door would have had to edit the mechanism that exists
+   * to accommodate it. A-78 Part 2's whole argument for widening now rather than later is that
+   * *"the cost of deferring is that the first async door ships unguarded and nothing says so"*, and
+   * the widening stopped one type short of it.
+   */
+  go: (frozen: Trip, c: BuildCtx) => Trip | Promise<Trip>;
 };
 
 const PLACEMENT = { kind: 'scheduled', dayId: '2026-03-01', time: '10:00', order: 0 } as const;
@@ -1163,11 +1459,15 @@ for (const row of FROZEN) {
   test(`A-78 Part 7 (Invariant R): ${row.door} replaces rather than rewrites — a frozen \`before\` is enough`, async () => {
     const frozen = deepFreeze(row.before());
     let thrown: unknown = null;
+    // **A-79 Part 9 (R57-6).** The `await` is INSIDE the `try`, and the `catch` NAMES THE DOOR.
+    // Round 57 found an async door mutating in a continuation after its first `await` took the
+    // whole test file down with an unhandled rejection instead of naming anything — a mechanism
+    // that names the door in the synchronous case and not the asynchronous one, which is this
+    // arc's own shape in miniature. A rejection is now this row's failure, reported like a throw.
     try {
-      const out: unknown = row.go(frozen, ctx(`frozen-${row.door}`));
-      if (isThenable(out)) await out;
+      await row.go(frozen, ctx(`frozen-${row.door}`));
     } catch (err) {
-      thrown = err;
+      thrown = new Error(`${row.door}: ${(err as Error)?.message ?? String(err)}`, { cause: err });
     }
     assert.equal(
       thrown, null,

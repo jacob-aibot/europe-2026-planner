@@ -1,24 +1,47 @@
 /**
- * §2.1 **A-78** Part 7 (revision 59, QA **R56-10**; ROADMAP **I-17**) — *the premise this whole
- * mechanism rests on, stated, because an unstated premise is how this arc has stayed alive.*
+ * §2.1 **A-79** Part 8 (revision 60, QA **R57-3**; ROADMAP **I-18**), restating §2.1 **A-78**
+ * Part 7 (revision 59, QA **R56-10**; ROADMAP **I-17**) at the width its soundness actually
+ * requires — *the premise this whole mechanism rests on, stated, because an unstated premise is
+ * how this arc has stayed alive.*
  *
  * A-77 Part 3's induction below (*every record object in a committed document has already been
  * parsed once*) has a premise nobody wrote down, and round 56 demonstrated its violation at three
  * record classes: **a committed record mutated in place is skipped by identity forever**, so
  * `t.bookings[0].kind = 'teleport'` followed by any later door produces an unopenable document
- * with no refusal anywhere. No shipped path does this — grep-verified over `packages/core/src` and
- * `packages/client/src`, and no door in `build/` or `conflict/` mutates rather than replaces;
- * every one operates on a `slice()`. The premise is:
+ * with no refusal anywhere. Round 57 then demonstrated that A-78's wording of it was **too narrow
+ * to cover its own mechanics** (**R57-3**): stated over *records*, it says nothing about a `Trip`'s
+ * own **collection arrays**, so `t.bookings.push(unparsedRecord)` violates nothing it says — and
+ * `commitList` reads `aligned = before.bookings`, which **is** `after.bookings` for any door that
+ * does not touch that collection, so `aligned[i] === r` at **every** index including the appended
+ * one. The record is treated as already-parsed permanently, and the next door writes a document
+ * `fromJSON` refuses with no refusal anywhere. The same one level in at `day.stops`.
  *
- * > **Invariant R — records are replaced, never rewritten.** A record in a committed `Trip` (a
- * > `City`, `Place`, `Day`, `Stop`, `Booking`, `PhotoAsset`, `Participant` or
- * > `ConflictResolution`, and any object nested inside one) is **immutable in practice**. Code
- * > that changes a record produces a **new object** (`{...r, field: v}`) and puts it in a new
- * > collection array; it never assigns through a reference into a record the document already
- * > holds. This is what makes `commit`'s identity diff sound: an in-place write is invisible to
- * > it, permanently, and the document becomes unopenable with no refusal at any door. It binds
- * > **every** writer, not only doors — `packages/client`, `apps/web`, a Phase 3 ingest worker and
- * > a Phase 5 native bridge included.
+ * No shipped path does either — grep-verified over `packages/core/src` and `packages/client/src`,
+ * and no door in `build/` or `conflict/` mutates rather than replaces; every one operates on a
+ * `slice()`. The premise, at its true width:
+ *
+ * > **Invariant R — a committed document is not written to outside a door.** A `Trip` that has
+ * > come back from `commit` (or from `fromJSON`) is **immutable in practice**, and that binds
+ * > three things, not one: its **records** (a `City`, `Place`, `Day`, `Stop`, `Booking`,
+ * > `PhotoAsset`, `Participant` or `ConflictResolution`, and any object nested inside one), the
+ * > **collection arrays that hold them** (`cities`, `places`, `days`, each day's `stops`, `pool`,
+ * > `bookings`, `photos`, `participants`, `resolutions`), and the **envelope** itself. Code that
+ * > changes a record produces a new object (`{...r, field: v}`); code that changes a collection
+ * > produces a new array; **no record enters a committed document except through a door that
+ * > commits it.** This is what makes `commit`'s identity diff sound: `commit` trusts everything
+ * > reachable from `before`, so an in-place write — to a record, to an array, or by inserting an
+ * > unparsed record into either — is invisible to it permanently, and the document becomes
+ * > unopenable with no refusal at any door. It binds **every** writer, not only doors —
+ * > `packages/client`, `apps/web`, a Phase 3 ingest worker and a Phase 5 native bridge included.
+ *
+ * **No change to `commit` can close the caller half, and that is A-79 Part 8's substance rather
+ * than a shortcut.** `commit` diffs `after` against `before` and trusts `before` **entire** — the
+ * aligned test and the lazy identity set are both built from it. A caller that has written into
+ * `before` has already falsified the premise, and dropping the aligned test would not help: the
+ * appended record is in `before.bookings` too, so the identity set contains it. The only
+ * mechanisms that would catch it are the two A-78 Part 7 refused with its reasons — a production
+ * deep-freeze, or deep-`readonly` model types — and its trigger for revisiting them is unchanged.
+ * **I-18 therefore changes this docstring and no code in this file.**
  *
  * **Enforcement, and how far it reaches.** A-78 Part 7 considered three options and took the
  * third. **There is deliberately no `Object.freeze` in this function or in any `src` file**: a
@@ -32,7 +55,10 @@
  * calls every door in `DOORS` with a legal argument, and asserts it does not throw — a door that
  * mutates rather than replaces throws `TypeError` in strict mode (every module here is ESM) and
  * the test names it. That is a mechanical proof of the half the repository controls, at **zero
- * production cost and with no behaviour change**. The **caller** half stays a written invariant,
+ * production cost and with no behaviour change** — and it already reaches Invariant R at its
+ * restated width, because that freeze is **deep over arrays as well as records**, so a door that
+ * *pushed* into a committed collection would throw and be named (round 57 confirmed that
+ * directly). The **caller** half stays a written invariant,
  * reviewed: in Phase 1 the only caller is `packages/client`'s `applyAction`, a single choke point,
  * and A-77 Part 3 rule 5 already guarantees the document holds no object the caller passed in.
  *
