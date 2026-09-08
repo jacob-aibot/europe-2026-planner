@@ -8,7 +8,6 @@
 import type { City, DatePrecision, Trip, TripMeta } from '../model/types.ts';
 import type { CityKey, Currency, IdFactory, IsoDate, UserId } from '../model/ids.ts';
 import { LOCAL_OWNER, SCHEMA_VERSION } from '../model/types.ts';
-import { isIsoDate } from '../model/ids.ts';
 import { ensureDays } from './days.ts';
 import { commit } from './commit.ts';
 
@@ -32,11 +31,20 @@ export type BuildCtx = {
  * the parser tolerate as *absent*: measured, and disclosed as **KD-104** (see also **KD-101** for
  * `null`, which is why the default below is written `=== undefined` and not `??`).
  *
- * **The two guards that remain in `build/` are named in A-77 Part 4 so nobody deletes them as
- * second opinions**, and one of them is below: `isIsoDate` at both trip doors, which is *stricter
- * than the parser on purpose* — `fromJSON`'s `isoDate` takes the shape, `2026-13-45` matches it,
- * rolls through `Date.UTC` and yields a trip starting 2027-02-14 (F-11, BUILD-NOTES KD-12). The
- * other is `photos.ts`'s `assertBuiltAttach`.
+ * **`isIsoDate` was here too, at both trip doors, and §2.1 A-78 Part 3 DELETES it** (QA R56-3).
+ * A-77 kept it as *"stricter than the parser on purpose"* and that reason is **false against the
+ * code**: §2.9 **A-45** made `isIsoDate` `fromJSON`'s *own* date check, the two predicates agree
+ * on 19/19 values, and there is no value at which the door is stricter. The ordering defence —
+ * the ground `assertBuiltAttach` survives on — is empty here, because **both doors commit the
+ * envelope before minting days**, so `parseTripEnvelope` refuses a calendar-invalid date at
+ * `$.startDate` before A-35's span cap can print its misleading *"this trip would cover N days"*.
+ * `isIsoDate` **itself** is untouched: it is on §2.10's surface and seven other modules call it.
+ *
+ * **After A-78 Part 3 `build/` contains exactly ONE guard that is not the parser** —
+ * `photos.ts`'s `assertBuiltAttach` — and adding a second is an architect's ruling. The two
+ * checks that remain in this file are not guards of that kind: `endDate < startDate` is a
+ * property the parser deliberately does not have, and `setTripMeta`'s `cities` `Array.isArray`
+ * is the one shape `commit`'s per-collection walk cannot see.
  */
 
 export type CityInit = {
@@ -83,18 +91,15 @@ export type TripInit = {
  *         is a *person's* mistype, so its message is written to be read on screen.
  */
 export function createTrip(init: TripInit, ctx: BuildCtx): Trip {
-  // The calendar, not the shape: `2026-13-45` matches /^\d{4}-\d{2}-\d{2}$/ and rolls over
-  // through Date.UTC into a 2-day trip starting 2027-02-14 that validates clean (F-11).
-  // `fromJSON` is NOT guarded the same way — BUILD-NOTES §1, KD-12.
-  if (!isIsoDate(init.startDate) || !isIsoDate(init.endDate)) {
-    throw new Error(
-      `createTrip: startDate and endDate must be real calendar dates in YYYY-MM-DD, got ` +
-        `${JSON.stringify(init.startDate)} and ${JSON.stringify(init.endDate)}`,
-    );
-  }
-  if (init.endDate < init.startDate) {
-    throw new Error(`createTrip: endDate ${init.endDate} precedes startDate ${init.startDate}`);
-  }
+  // §2.1 **A-78** Part 3 (QA R56-3): the `isIsoDate` guard that was here is **DELETED**. §2.9
+  // A-45 made `isIsoDate` `fromJSON`'s own date check, so this was R16-2's *one property, two
+  // guards* — and the ordering defence is empty, because `commit('createTrip', null, base)` below
+  // runs BEFORE `ensureDays`, so `parseTripEnvelope` refuses `2026-13-45` at `$.startDate` before
+  // A-35's span cap can print *"this trip would cover 258 days"*. The `endDate < startDate` check
+  // stays — ordering is a property the parser deliberately does not have — but it moves BELOW the
+  // commit (**BUILD-NOTES KD-108**), because a `<` between two strings one of which is not a date
+  // answers a question nobody asked: `'2026-03-02' < '2026-13-45'` is true, so a mistyped MONTH
+  // used to be reported as a reversed range. Parse first, ordering second, A-35's span cap third.
   const cities: City[] = (init.cities ?? []).map((c, i) => ({
     // §2.2 A-10. `??` and not `||`: an explicit key is honoured verbatim, and `''` is a key
     // the document already carries — minting over it would silently orphan every
@@ -155,6 +160,11 @@ export function createTrip(init: TripInit, ctx: BuildCtx): Trip {
   // the invariant (*every record in it has been parsed once*), so it is a legal `before` for the
   // second call and the day skeleton is the only thing that pass has to look at.
   const checked = commit('createTrip', null, base);
+  // A-78 Part 3: ordering, after the parse and before `ensureDays`' span cap. `commit` is pure, so
+  // running it first costs one O(1) `parseTripEnvelope` and buys the right message every time.
+  if (checked.endDate < checked.startDate) {
+    throw new Error(`createTrip: endDate ${checked.endDate} precedes startDate ${checked.startDate}`);
+  }
   return commit('createTrip', checked, ensureDays(checked, ctx));
 }
 
@@ -167,6 +177,54 @@ export type TripMetaPatch = Partial<
 >;
 
 /**
+ * Exactly `TripMetaPatch`'s `Pick`, at runtime — §2.1 **A-78** Part 4 (QA **R56-5** /
+ * BUILD-NOTES **KD-104**), on `setDayMeta`'s model (A-77 Part 5) and `updateStop`'s before it.
+ *
+ * **`Record<keyof TripMetaPatch, true>` is the pin** (R56-6's shape, applied here): a field added
+ * to the `Pick` above and not to this constant fails `npm run typecheck` in `src`, on the commit
+ * that writes it, and an undeclared key here fails the same way.
+ *
+ * The lookup is `hasOwnProperty`, never `in`: `in` would make `toString` a patchable key.
+ */
+const TRIP_META_PATCH_KEYS: Record<keyof TripMetaPatch, true> = {
+  title: true, startDate: true, endDate: true, datePrecision: true, homeCurrency: true,
+  homeBase: true, party: true, cities: true, ownerId: true, meta: true,
+};
+
+/**
+ * §2.1 **A-78** Part 4. Refuses two things:
+ *
+ *   **(a)** any key outside `TripMetaPatch`'s `Pick`;
+ *   **(b)** any key of `TripMetaPatch` that is **present** with the value `undefined`.
+ *
+ * Clause (b) is stated separately precisely because the parser is tolerant here and correctly so.
+ * `parseTripEnvelope` carries `fromJSON`'s tolerances verbatim — absent `ownerId` is `''`, absent
+ * `datePrecision` is `'exact'`, absent `homeBase` is `null` — and those are right for a *document*
+ * (an older file; a field that did not exist yet) and wrong for a *patch*, where a key's presence
+ * is the caller saying *set this field to this value*. Deleting `assertDatePrecision` (A-77) left
+ * exactly this hole: `setTripMeta(t, {datePrecision: undefined})` on a `'month'` trip silently
+ * wrote `'exact'` — a precision **the user chose**, changed with no refusal and no notice. **Every
+ * field with a parser tolerance is a hole of this shape**, which is why this is a family rule and
+ * not a guard for one field. **A caller that means *leave this field alone* omits the key.**
+ *
+ * @throws {Error} on either shape — programmer error per §2.1, not a domain problem.
+ */
+function assertPatchable(patch: object): void {
+  for (const k of Object.keys(patch)) {
+    if (!Object.prototype.hasOwnProperty.call(TRIP_META_PATCH_KEYS, k)) {
+      throw new Error(`setTripMeta: "${k}" may not be patched — it is not a field of TripMetaPatch`);
+    }
+    if ((patch as Record<string, unknown>)[k] === undefined) {
+      throw new Error(
+        `setTripMeta: "${k}" may not be patched to \`undefined\` — the parser tolerates an ABSENT ` +
+          'field and would write its default over the value you have; omit the key to leave the ' +
+          'field alone',
+      );
+    }
+  }
+}
+
+/**
  * Patches trip-level metadata. Changing the date range re-runs `ensureDays`, so days can
  * never drift out of density (§2.3). Pure.
  *
@@ -176,33 +234,37 @@ export type TripMetaPatch = Partial<
  * O(1) `parseTripEnvelope`, and every `City` the patch carries through `parseCity` — without this
  * function saying that it writes cities.
  *
- * @throws {Error} if the patch would put `endDate` before `startDate`, if it carries a trip scalar
+ * §2.1 **A-78** Part 4: it opens with `assertPatchable`, which refuses a key outside
+ * `TripMetaPatch` and a key of `TripMetaPatch` present with the value `undefined`.
+ *
+ * @throws {Error} if the patch carries a key outside `TripMetaPatch` or one present with
+ *         `undefined`, if it would put `endDate` before `startDate`, if it carries a trip scalar
  *         or a `City` `fromJSON` would refuse, or if the resulting range is wider than
  *         `ensureDays`' ten-year span cap (§2.3 **A-35**) — programmer error per §2.1, and the
  *         last is the one a person can cause by mistyping a year.
  */
 export function setTripMeta(trip: Trip, patch: TripMetaPatch, ctx: BuildCtx): Trip {
+  assertPatchable(patch);
   if (Object.prototype.hasOwnProperty.call(patch, 'cities')) {
-    // The key's PRESENCE, not its truthiness: `{cities: undefined}` spreads `cities` away
-    // entirely, and `commit` walks a collection rather than parsing the `Trip` whole, so a missing
-    // array is the one shape the diff cannot see. It is refused here, where the caller is.
+    // **This check STAYS** (A-78 Part 4): `assertPatchable` above now subsumes
+    // `{cities: undefined}` — that key's PRESENCE used to spread `cities` away entirely — but the
+    // `Array.isArray` half still refuses a NON-ARRAY `cities`, which is the one shape `commit`'s
+    // per-collection walk cannot see: it walks a collection rather than parsing the `Trip` whole.
     if (!Array.isArray(patch.cities)) {
       throw new Error(`setTripMeta: cities must be an array, got ${JSON.stringify(patch.cities) ?? String(patch.cities)}`);
     }
   }
   const next: Trip = { ...trip, ...patch, revision: trip.revision + 1 };
-  if (!isIsoDate(next.startDate) || !isIsoDate(next.endDate)) {
-    throw new Error(
-      `setTripMeta: startDate and endDate must be real calendar dates in YYYY-MM-DD, got ` +
-        `${JSON.stringify(next.startDate)} and ${JSON.stringify(next.endDate)}`,
-    );
-  }
-  if (next.endDate < next.startDate) {
-    throw new Error(`setTripMeta: endDate ${next.endDate} precedes startDate ${next.startDate}`);
-  }
+  // §2.1 **A-78** Part 3 (QA R56-3): `isIsoDate` deleted here too, for `createTrip`'s reason —
+  // `commit('setTripMeta', trip, next)` below runs before the conditional `ensureDays`.
+  //
   // `createTrip`'s note: `ensureDays` is a door and commits on its own behalf, so the patch is
   // committed here first or a bad `title` is refused by a function the caller never called.
   const checked = commit('setTripMeta', trip, next);
+  // A-78 Part 3: ordering, after the parse, for `createTrip`'s reason.
+  if (checked.endDate < checked.startDate) {
+    throw new Error(`setTripMeta: endDate ${checked.endDate} precedes startDate ${checked.startDate}`);
+  }
   if (patch.startDate || patch.endDate) {
     return commit('setTripMeta', checked, ensureDays(checked, ctx, /*alreadyBumped*/ true));
   }

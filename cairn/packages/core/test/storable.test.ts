@@ -1,4 +1,36 @@
 /**
+ * §2.1 **A-78** — *the census reads the tree, not a list of files.* ROADMAP **I-17**, from QA
+ * **R56-1/R56-2** (MAJOR) with **R56-3/5/7/10** riding along. It sits on top of §2.1 **A-77** —
+ * *a door does not say what it wrote; the document says what changed* — whose mechanism round 56
+ * attacked hardest and could not break, and which is upheld entire.
+ *
+ * **What A-78 replaced.** A-77 deleted the enumeration of *what a door writes* and left an
+ * enumeration of *where doors live*: `CENSUSED_BUILD_FILES` (twelve names, checked against a
+ * `readdirSync` of `build/`) plus `EXTRA_DOOR_FILES` (one name, checked only for existence).
+ * `export function archiveTrip(trip: Trip, r: ConflictResolution): Trip` appended to
+ * `derive/lifecycle.ts` — an existing file, ordinary syntax, no new directory — left
+ * `npm run typecheck` at exit 0 and this file at 62 pass / 0 fail while writing a document
+ * `fromJSON` refuses at `$.resolutions[0].state` (**R56-1**). And the classifier matched an
+ * *exact* `Trip` return type, so `Trip | null` and `Promise<Trip>` were not doors (**R56-2**).
+ *
+ * **Both lists are deleted.** There is now **one** `CENSUS` array — every `.ts` file under
+ * `packages/core/src`, with **no exclusions** — read by four halves that fail at different times:
+ *
+ *   1. **The type-level door census** maps `DoorsOf` over `CENSUS` and its expected set is
+ *      `DOORS ∪ CENSUS_MECHANISM ∪ NON_DOORS[].name`. It fails `npm run typecheck`, not a test.
+ *   2. **The module census** is a **recursive** `readdirSync` walk of `packages/core/src`, and it
+ *      sees the one thing a type-level assertion cannot: a **new file**, in any directory,
+ *      including one nobody has created yet.
+ *   3. **Name uniqueness is checked at runtime**, by function *identity* over the same namespace
+ *      objects — the shadowing hole a name-keyed census cannot see. Not by qualifying names.
+ *   4. **The behavioural census** is unchanged: one hostile value per door, driven by `DOORS`.
+ *
+ * Plus **Invariant R**'s door half (A-78 Part 7): a frozen-input test, driven by `DOORS`, that
+ * proves no door mutates a record in place. There is **no `Object.freeze` in `src`** — the ruling
+ * refuses that, with its reasons and its trigger.
+ *
+ * ---
+ *
  * §2.1 **A-77** — *a door does not say what it wrote; the document says what changed.*
  * ROADMAP **I-16**, from QA **R55-1/2/3/4/5/7**.
  *
@@ -29,7 +61,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readdirSync, existsSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
@@ -42,10 +74,12 @@ import type {
 } from '../src/model/types.ts';
 import { sequentialIds } from '../src/model/ids.ts';
 
-// The censused modules. Half 1 (the type-level door census) intersects exactly these namespaces;
-// half 2 asserts that this list is the directory. A new file in `build/` reddens half 2 on the
-// commit that adds it, whatever is in the file; a new `Trip`-returning export in any file already
-// here reddens `npm run typecheck` on the commit that adds it, however it is declared.
+// §2.1 **A-78** Part 1 — ONE namespace import per `.ts` file under `packages/core/src`, with **no
+// exclusions**: `index.ts`, the two type-only `types.ts` modules and the 375 kB generated
+// `geo/countries.gen.ts` are all here, because an exclusion is where the last three rounds of this
+// class lived. The `CENSUS` array below pairs each with its path, and both halves read that one
+// array.
+import * as AccessPredicates from '../src/access/predicates.ts';
 import * as Bookings from '../src/build/bookings.ts';
 import * as Candidates from '../src/build/candidates.ts';
 import * as CommitMod from '../src/build/commit.ts';
@@ -58,13 +92,52 @@ import * as PoolMod from '../src/build/pool.ts';
 import * as RedactMod from '../src/build/redactText.ts';
 import * as StopsMod from '../src/build/stops.ts';
 import * as StorableMod from '../src/build/storable.ts';
+import * as ConflictDetect from '../src/conflict/detect.ts';
+import * as ConflictId from '../src/conflict/id.ts';
 import * as ResolveMod from '../src/conflict/resolve.ts';
+import * as RuleBookingVsPlan from '../src/conflict/rules/bookingVsPlan.ts';
+import * as RuleDuplicateBooking from '../src/conflict/rules/duplicateBooking.ts';
+import * as RuleGeoOutlier from '../src/conflict/rules/geoOutlier.ts';
+import * as RuleImpossibleTransfer from '../src/conflict/rules/impossibleTransfer.ts';
+import * as RuleLegacyFlag from '../src/conflict/rules/legacyFlag.ts';
+import * as RuleMissingLodging from '../src/conflict/rules/missingLodging.ts';
+import * as RuleOverlap from '../src/conflict/rules/overlap.ts';
+import * as RuleSupersededBooking from '../src/conflict/rules/supersededBooking.ts';
+import * as RuleTypes from '../src/conflict/rules/types.ts';
+import * as RuleUnbookedTicketed from '../src/conflict/rules/unbookedTicketed.ts';
+import * as RuleUnverifiedReference from '../src/conflict/rules/unverifiedReference.ts';
+import * as DeriveCluster from '../src/derive/cluster.ts';
+import * as DeriveCost from '../src/derive/cost.ts';
+import * as DeriveCountry from '../src/derive/country.ts';
+import * as DeriveDisplay from '../src/derive/display.ts';
+import * as DeriveGeo from '../src/derive/geo.ts';
+import * as DeriveGeoCheck from '../src/derive/geoCheck.ts';
+import * as DeriveLegs from '../src/derive/legs.ts';
+import * as DeriveLifecycle from '../src/derive/lifecycle.ts';
+import * as DeriveSummary from '../src/derive/summary.ts';
+import * as DeriveTravelStats from '../src/derive/travelStats.ts';
+import * as GeoCountriesGen from '../src/geo/countries.gen.ts';
+import * as GeoCountryIndex from '../src/geo/countryIndex.ts';
+import * as ImportLegacyDays from '../src/import/legacyDays.ts';
+import * as IndexBarrel from '../src/index.ts';
+import * as MergeTripsMod from '../src/merge/mergeTrips.ts';
+import * as ModelCityName from '../src/model/cityName.ts';
+import * as ModelIds from '../src/model/ids.ts';
+import * as ModelMoney from '../src/model/money.ts';
+import * as ModelOpeningHours from '../src/model/openingHours.ts';
+import * as ModelProvenance from '../src/model/provenance.ts';
+import * as ModelTypes from '../src/model/types.ts';
+import * as PhotoExif from '../src/photo/exif.ts';
+import * as SerializeFromJSON from '../src/serialize/fromJSON.ts';
+import * as SerializeMigrate from '../src/serialize/migrate.ts';
+import * as SerializeParseError from '../src/serialize/parseError.ts';
+import * as SerializeToJSON from '../src/serialize/toJSON.ts';
+import * as ValidateTrip from '../src/validate/validateTrip.ts';
 
 import type { BuildCtx } from '../src/build/createTrip.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SRC = resolve(HERE, '..', 'src');
-const BUILD_DIR = resolve(SRC, 'build');
 
 const ctx = (seed = 's'): BuildCtx => ({ ids: sequentialIds(seed), now: '2026-03-01', actorUserId: 'local:self' });
 
@@ -285,7 +358,80 @@ test('A-77 Part 3.8: StorableMap has a `resolution` arm', () => {
 });
 
 // ---------------------------------------------------------------------------------------------
-// A-77 Part 6.1 — the DOOR CENSUS, at the type level. It fails `npm run typecheck`, not a test.
+// A-78 Part 1 — the CENSUS. One array, every `.ts` file under `packages/core/src`, no exclusions.
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * EVERY module under `packages/core/src`, by path relative to it, paired with its namespace.
+ * **ONE list, read by all three census halves**: the type census maps over it, the module census
+ * compares its paths against a *recursive* read of the directory, and the name-uniqueness check
+ * walks its namespace objects. **THERE ARE NO EXCLUDED FILES** — an exclusion is where the last
+ * three rounds of this class lived, and A-78 Part 1 says so in as many words.
+ *
+ * `index.ts` is censused like everything else. It re-exports the doors, so the same names arrive
+ * twice — harmless, because both halves work on *names* and the barrel's names are the same
+ * names; the identity check below is what makes that safe rather than merely convenient.
+ */
+const CENSUS = [
+  ['access/predicates.ts', AccessPredicates],
+  ['build/bookings.ts', Bookings],
+  ['build/candidates.ts', Candidates],
+  ['build/commit.ts', CommitMod],
+  ['build/copyStop.ts', CopyStopMod],
+  ['build/createTrip.ts', CreateTripMod],
+  ['build/days.ts', DaysMod],
+  ['build/participants.ts', ParticipantsMod],
+  ['build/photos.ts', PhotosMod],
+  ['build/pool.ts', PoolMod],
+  ['build/redactText.ts', RedactMod],
+  ['build/stops.ts', StopsMod],
+  ['build/storable.ts', StorableMod],
+  ['conflict/detect.ts', ConflictDetect],
+  ['conflict/id.ts', ConflictId],
+  ['conflict/resolve.ts', ResolveMod],
+  ['conflict/rules/bookingVsPlan.ts', RuleBookingVsPlan],
+  ['conflict/rules/duplicateBooking.ts', RuleDuplicateBooking],
+  ['conflict/rules/geoOutlier.ts', RuleGeoOutlier],
+  ['conflict/rules/impossibleTransfer.ts', RuleImpossibleTransfer],
+  ['conflict/rules/legacyFlag.ts', RuleLegacyFlag],
+  ['conflict/rules/missingLodging.ts', RuleMissingLodging],
+  ['conflict/rules/overlap.ts', RuleOverlap],
+  ['conflict/rules/supersededBooking.ts', RuleSupersededBooking],
+  ['conflict/rules/types.ts', RuleTypes],
+  ['conflict/rules/unbookedTicketed.ts', RuleUnbookedTicketed],
+  ['conflict/rules/unverifiedReference.ts', RuleUnverifiedReference],
+  ['derive/cluster.ts', DeriveCluster],
+  ['derive/cost.ts', DeriveCost],
+  ['derive/country.ts', DeriveCountry],
+  ['derive/display.ts', DeriveDisplay],
+  ['derive/geo.ts', DeriveGeo],
+  ['derive/geoCheck.ts', DeriveGeoCheck],
+  ['derive/legs.ts', DeriveLegs],
+  ['derive/lifecycle.ts', DeriveLifecycle],
+  ['derive/summary.ts', DeriveSummary],
+  ['derive/travelStats.ts', DeriveTravelStats],
+  ['geo/countries.gen.ts', GeoCountriesGen],
+  ['geo/countryIndex.ts', GeoCountryIndex],
+  ['import/legacyDays.ts', ImportLegacyDays],
+  ['index.ts', IndexBarrel],
+  ['merge/mergeTrips.ts', MergeTripsMod],
+  ['model/cityName.ts', ModelCityName],
+  ['model/ids.ts', ModelIds],
+  ['model/money.ts', ModelMoney],
+  ['model/openingHours.ts', ModelOpeningHours],
+  ['model/provenance.ts', ModelProvenance],
+  ['model/types.ts', ModelTypes],
+  ['photo/exif.ts', PhotoExif],
+  ['serialize/fromJSON.ts', SerializeFromJSON],
+  ['serialize/migrate.ts', SerializeMigrate],
+  ['serialize/parseError.ts', SerializeParseError],
+  ['serialize/toJSON.ts', SerializeToJSON],
+  ['validate/validateTrip.ts', ValidateTrip],
+] as const;
+
+// ---------------------------------------------------------------------------------------------
+// A-78 Part 1 half 1 / Part 2 — the DOOR CENSUS, at the type level, MAPPED over `CENSUS`.
+// It fails `npm run typecheck`, not a test.
 // ---------------------------------------------------------------------------------------------
 
 /**
@@ -324,83 +470,226 @@ const DOORS = [
  */
 const CENSUS_MECHANISM = ['commit'] as const;
 
-type IsExact<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false;
-type ReturnsTrip<F> = F extends (...a: never[]) => infer R
-  ? ([Trip] extends [R] ? ([R] extends [Trip] ? true : false) : false)
-  : false;
-type DoorsOf<M> = { [K in keyof M]-?: ReturnsTrip<M[K]> extends true ? K : never }[keyof M];
-
-type Censused =
-  typeof Bookings & typeof Candidates & typeof CommitMod & typeof CopyStopMod &
-  typeof CreateTripMod & typeof DaysMod & typeof ParticipantsMod & typeof PhotosMod &
-  typeof PoolMod & typeof RedactMod & typeof StopsMod & typeof StorableMod & typeof ResolveMod;
-
 /**
- * **This line is the census.** A new `Trip`-returning export in any censused file — written
- * `export function`, `export const … = () =>`, `function d(){}; export { d }` or
- * `export default function` — makes `IsExact` `false` and `npm run typecheck` fails on the commit
- * that adds it. That is R55-4's repro run as a standing criterion, and it is the claim A-76 Part 6
- * made and could not support.
+ * **A-78 Part 1 half 1 / Part 6.3 — the three `Trip`-returning exports that are NOT doors.**
+ *
+ * A-77 asserted these three separately, because their modules were outside the census. They are
+ * now *inside* it, so they stop being an assertion and become **part of the equation**: they
+ * appear on the expected side of `DOOR_CENSUS` or `npm run typecheck` fails.
+ *
+ * The rule for what may go here is unchanged and narrow: **a whole-document producer — a function
+ * that constructs a document rather than editing one, so there is no `before` to diff against.**
+ * A-78 Part 10 names this list as **the one remaining place a human judgement can hide a door**,
+ * and its residue's trigger is *the fourth name*: a fourth producer is an architect's ruling, and
+ * the question it must answer is whether producers should get the whole-document check A-77 Part
+ * 10 residue 3 defers — not whether this particular function may be excused.
  */
-const DOOR_CENSUS: IsExact<DoorsOf<Censused>, (typeof DOORS)[number] | (typeof CENSUS_MECHANISM)[number]> = true;
-
-test('A-77 Part 6.1: the type-level door census holds (it is `npm run typecheck` that enforces it)', () => {
-  assert.equal(DOOR_CENSUS, true);
-  assert.equal(new Set(DOORS).size, DOORS.length, 'a door is named twice');
-});
-
-// ---------------------------------------------------------------------------------------------
-// A-77 Part 6.2 — the MODULE census, a runtime directory read. It sees the one thing a type-level
-// assertion cannot: a new FILE.
-// ---------------------------------------------------------------------------------------------
-
-/** Exactly the modules the census above imports from `packages/core/src/build/`. */
-const CENSUSED_BUILD_FILES = [
-  'bookings.ts', 'candidates.ts', 'commit.ts', 'copyStop.ts', 'createTrip.ts', 'days.ts',
-  'participants.ts', 'photos.ts', 'pool.ts', 'redactText.ts', 'stops.ts', 'storable.ts',
-] as const;
-
-/** Door files outside `build/`, named explicitly. A-76's census could not see this one (R55-new). */
-const EXTRA_DOOR_FILES = ['conflict/resolve.ts'] as const;
-
-test('A-77 Part 6.2: build/ holds exactly the modules the door census imports', () => {
-  const onDisk = readdirSync(BUILD_DIR).filter((f) => f.endsWith('.ts')).sort();
-  assert.deepEqual(
-    onDisk,
-    [...CENSUSED_BUILD_FILES].sort(),
-    'a file in packages/core/src/build/ is not imported by the type-level door census above. ' +
-      'Add it to CENSUSED_BUILD_FILES and to `Censused`, or the compiler cannot see its doors.',
-  );
-});
-
-test('A-77 Part 6.2: every explicitly-named extra door file still exists', () => {
-  for (const f of EXTRA_DOOR_FILES) {
-    assert.ok(existsSync(resolve(SRC, f)), `${f} is named as a door file and is not on disk`);
-  }
-});
-
-// ---------------------------------------------------------------------------------------------
-// A-77 Part 6.3 — the three `Trip`-returning exports that are NOT doors. Three names, each a
-// whole-document constructor, replacing A-76's 26 free-text exemptions.
-// ---------------------------------------------------------------------------------------------
-
-const NON_DOORS: ReadonlyArray<{ name: string; why: string }> = [
+const NON_DOORS = [
   { name: 'fromJSON', why: 'it IS the parse' },
   { name: 'importLegacyDays', why: 'a producer — it builds a document rather than editing one, so there is no `before` to diff against (A-77 Part 10 residue 3)' },
   { name: 'mergeTrips', why: 'a producer, for importLegacyDays\' reason' },
-];
+] as const satisfies ReadonlyArray<{ name: string; why: string }>;
 
-test('A-77 Part 6.3: the three named non-doors are not in DOORS', () => {
+type IsExact<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false;
+
+/**
+ * **A-78 Part 2 — the classifier, three legal return shapes.**
+ *
+ * The return type a door may have, normalised: one `Promise` unwrapped, `null`/`undefined`
+ * removed. `Exclude<Awaited<R>, null | undefined>` and **not**
+ * `Awaited<Exclude<R, null | undefined>>` — **the order is load-bearing**, and the wrong one
+ * silently drops `Promise<Trip | null>`.
+ */
+type TripishReturn<F> = F extends (...a: never[]) => infer R ? Exclude<Awaited<R>, null | undefined> : never;
+
+/** A DOOR: its return type is `Trip`, `Trip | null`, `Promise<Trip>` or `Promise<Trip | null>`. */
+type IsDoor<F> = IsExact<TripishReturn<F>, Trip>;
+
+/** A REFUSED SHAPE: the return type carries `Trip` as a union member but is not a door. */
+type HasTripMember<R> = true extends (R extends unknown ? IsExact<R, Trip> : never) ? true : false;
+type IsIllegal<F> = IsDoor<F> extends true ? false : HasTripMember<TripishReturn<F>>;
+
+type DoorsOf<M> = { [K in keyof M]-?: IsDoor<M[K]> extends true ? K : never }[keyof M];
+type IllegalOf<M> = { [K in keyof M]-?: IsIllegal<M[K]> extends true ? K : never }[keyof M];
+
+/** A **union** over `CENSUS`, not an intersection of namespaces: an intersection makes a name
+ * exported by two modules into an intersection of two function types, which is a classification
+ * hazard for no benefit. */
+type NamesIn<E> = E extends readonly [string, infer M] ? DoorsOf<M> & string : never;
+type IllegalIn<E> = E extends readonly [string, infer M] ? IllegalOf<M> & string : never;
+
+type AllDoors = NamesIn<(typeof CENSUS)[number]>;
+type AllIllegal = IllegalIn<(typeof CENSUS)[number]>;
+
+/**
+ * **This line is the census.** A new `Trip`-returning export **anywhere under
+ * `packages/core/src`** — written `export function`, `export const … = () =>`,
+ * `function d(){}; export { d }` or `export default function`, returning `Trip`, `Trip | null`,
+ * `Promise<Trip>` or `Promise<Trip | null>` — makes `IsExact` `false` and `npm run typecheck`
+ * fails on the commit that adds it. `archiveTrip` in `derive/lifecycle.ts` (R56-1's exact repro)
+ * is caught here, because that module is in `CENSUS` and its namespace is mapped.
+ */
+const DOOR_CENSUS: IsExact<
+  AllDoors,
+  (typeof DOORS)[number] | (typeof CENSUS_MECHANISM)[number] | ExcusedProducers
+> = true;
+
+/**
+ * **A-78 Part 1 half 1, corrected against the code — BUILD-NOTES KD-106.**
+ *
+ * The ruling writes the expected set as `DOORS ∪ CENSUS_MECHANISM ∪ NON_DOORS[].name` on the
+ * stated ground that *"`fromJSON`, `importLegacyDays` and `mergeTrips` return `Trip` and their
+ * modules are now censused, so they must appear on the right-hand side or the census fails"*.
+ * **That is true of `fromJSON` and false of the other two, measured:**
+ * `mergeTrips(base, local, remote): MergeResult` where `MergeResult = {trip, report}`
+ * (`merge/mergeTrips.ts:42,207`) and `importLegacyDays(legacy, opts): ImportResult` where
+ * `ImportResult = {trip, issues, cityRangeCheck, unmatchedNames}` (`import/legacyDays.ts:74,147`).
+ * Both are **wrapper returns**, so `IsDoor` classifies neither as a door and neither needs
+ * excusing; written literally, the ruling's equation makes `AllDoors` a strict subset of the
+ * expected set and `npm run typecheck` fails on a healthy tree.
+ *
+ * The excuse is therefore taken **as far as it is owed and no further**: a `NON_DOORS` name is
+ * subtracted from the census only where the classifier actually put it there. Nothing is weakened
+ * — the intersection is computed by the compiler, not judged — and the two properties the ruling
+ * wanted from this line are both kept: a producer that *is* `Trip`-returning (`fromJSON`) is on
+ * the expected side or the census fails, and a name in `NON_DOORS` that is exported by no censused
+ * module is caught by half 3's identity check below.
+ *
+ * These two are also the only wrapper returns in `packages/core/src`, and A-78 Part 2's
+ * prohibition does not reach them: it binds *"a function … that produces an **edited** `Trip`"*,
+ * and a producer constructs a document rather than editing one (A-77 Part 6.3, Part 10 residue 3).
+ */
+type ExcusedProducers = (typeof NON_DOORS)[number]['name'] & AllDoors;
+
+/**
+ * **A-78 Part 2's second census line.** A function returning `Trip | Day` is neither a door nor a
+ * non-door; it is a **return shape core does not permit**, and it fails the build saying so rather
+ * than being classified.
+ *
+ * The one shape this cannot detect is a `Trip` reached through a **wrapper** — `{trip, issues}`, a
+ * tuple, a class instance — which would need an arbitrary-depth search that flags half the library.
+ * A-78 Part 2 forbids it **by rule** instead, and the rule is quoted here so it is read where the
+ * mechanism is:
+ *
+ * > **A function in `packages/core/src` that produces an edited `Trip` returns it directly.** The
+ * > legal return types are `Trip`, `Trip | null`, and a `Promise` of either. A door may not return
+ * > a `Trip` inside a record, a tuple, a generator or any other container. A function that
+ * > genuinely needs to return a trip *and* something else is **two functions**: a door, and a
+ * > reader over the document it returned.
+ *
+ * **Trigger:** the first increment that wants a wrapper return — most plausibly a Phase 3 ingest
+ * worker returning a trip plus a report. It is an **architect's** ruling and not a builder's
+ * convenience: the answer is either *split it* (expected) or a census extension ruled in writing.
+ */
+const ILLEGAL_SHAPE_CENSUS: IsExact<AllIllegal, never> = true;
+
+test('A-78 Part 1: the type-level door census holds (it is `npm run typecheck` that enforces it)', () => {
+  assert.equal(DOOR_CENSUS, true);
+  assert.equal(ILLEGAL_SHAPE_CENSUS, true);
+  assert.equal(new Set(DOORS).size, DOORS.length, 'a door is named twice');
+});
+
+test('A-78 Part 1: the three named non-doors are producers, not doors', () => {
   for (const n of NON_DOORS) {
     assert.ok(!(DOORS as readonly string[]).includes(n.name), `${n.name} is listed as a door: ${n.why}`);
     assert.ok(n.why.length > 10);
   }
-  assert.equal(NON_DOORS.length, 3, 'A-77 Part 6.3 names three producers and no more');
+  assert.equal(
+    NON_DOORS.length, 3,
+    'A-78 Part 10\'s residue: NON_DOORS is the one remaining place a human judgement can hide a ' +
+    'door, and its trigger is THE FOURTH NAME. A fourth producer is an architect\'s ruling — the ' +
+    'question it must answer is whether producers get the whole-document check A-77 Part 10 ' +
+    'residue 3 defers, not whether this particular function may be excused.',
+  );
 });
 
 // ---------------------------------------------------------------------------------------------
-// A-77 Part 6.4 — the BEHAVIOURAL census. One hostile value per door, driven by `DOORS`.
-// This is what reddens if a door is listed and its `commit` call is deleted (fault N1).
+// A-78 Part 1 half 2 — the MODULE census, a RECURSIVE directory read of `packages/core/src`.
+// It sees the one thing a type-level assertion cannot: a new FILE, in any directory, including
+// one nobody has created yet. `CENSUSED_BUILD_FILES` and `EXTRA_DOOR_FILES` are DELETED.
+// ---------------------------------------------------------------------------------------------
+
+function walk(dir: string, prefix = ''): string[] {
+  const out: string[] = [];
+  for (const e of readdirSync(dir, { withFileTypes: true })) {
+    const rel = prefix ? `${prefix}/${e.name}` : e.name;
+    if (e.isDirectory()) out.push(...walk(resolve(dir, e.name), rel));
+    else out.push(rel);
+  }
+  return out.sort();
+}
+
+test('A-78 Part 1: every `.ts` file under packages/core/src is censused, and every censused path is on disk', () => {
+  const onDisk = walk(SRC).filter((f) => f.endsWith('.ts')).sort();
+  const censused = CENSUS.map(([p]) => p).slice().sort();
+  assert.deepEqual(
+    onDisk,
+    censused,
+    'a file is under `packages/core/src` and is not censused: add a namespace import and a ' +
+    '`CENSUS` row. If `npm run typecheck` then fails, that file exports a function returning a ' +
+    '`Trip` and you must classify it — a door (add it to `DOORS` and give it a behavioural row), ' +
+    'the mechanism, or a whole-document producer with a reason. DO NOT ADD AN EXCLUSION LIST.',
+  );
+});
+
+test('A-78 Part 1: there is nothing else under packages/core/src — no `.d.ts`, no non-`.ts` file', () => {
+  // A `.d.ts` cannot be namespace-imported the way `CENSUS` requires and could declare a door over
+  // a JS implementation; core is zero-dependency and has neither today.
+  const strays = walk(SRC).filter((f) => !f.endsWith('.ts') || f.endsWith('.d.ts'));
+  assert.deepEqual(
+    strays, [],
+    'a file under `packages/core/src` is not a namespace-importable `.ts` module. An architect ' +
+    'rules on this file; do not exclude it.',
+  );
+});
+
+// ---------------------------------------------------------------------------------------------
+// A-78 Part 1 half 3 — a door's name is UNIQUE across `packages/core/src`, checked at RUNTIME by
+// function IDENTITY. Half 1 works on names, so a *second* door named `addStop` in another module
+// would collapse into the union and stay invisible — the shadowing hole, and precisely the next
+// face a breaker would try.
+//
+// It is closed **without qualifying every name**, which A-78 refuses because qualifying would
+// double `DOORS` to carry `index.ts`'s re-exports. A re-export gives the SAME OBJECT, so
+// `index.ts` costs nothing; a second definition gives two, and this reddens naming both modules.
+// ---------------------------------------------------------------------------------------------
+
+test('A-78 Part 1 half 3: every censused name resolves to exactly one function object', () => {
+  const names = [
+    ...DOORS,
+    ...CENSUS_MECHANISM,
+    ...NON_DOORS.map((n) => n.name),
+  ] as readonly string[];
+  const problems: string[] = [];
+  for (const name of names) {
+    const objects = new Map<unknown, string[]>();
+    for (const [path, ns] of CENSUS) {
+      const member = (ns as Record<string, unknown>)[name];
+      if (typeof member !== 'function') continue;
+      const seen = objects.get(member);
+      if (seen) seen.push(path);
+      else objects.set(member, [path]);
+    }
+    if (objects.size === 0) {
+      problems.push(`${name}: named in DOORS/CENSUS_MECHANISM/NON_DOORS and exported by no censused module`);
+    } else if (objects.size !== 1) {
+      const where = [...objects.values()].map((paths) => paths.join(' + ')).join(' AND ');
+      problems.push(`${name}: ${objects.size} distinct function objects — ${where}`);
+    }
+  }
+  assert.deepEqual(
+    problems, [],
+    'a name is defined twice under `packages/core/src`. If it ever fires on an innocent collision ' +
+    'the answer is to RENAME THE INNOCENT FUNCTION, not to exempt it: a door\'s name is how a ' +
+    'refusal reads on screen, and two of them in one library is a defect in its own right.',
+  );
+});
+
+// ---------------------------------------------------------------------------------------------
+// A-78 Part 1 half 4 (was A-77 Part 6.4) — the BEHAVIOURAL census, UNCHANGED. One hostile value
+// per door, driven by `DOORS`. This is what reddens if a door is listed and its `commit` call is
+// deleted (A-77 fault N1), and it is what reddens if a door's name is moved into `NON_DOORS`
+// (A-78 fault N6).
 // ---------------------------------------------------------------------------------------------
 
 type HostileRow = {
@@ -680,11 +969,23 @@ test('A-77 Part 6.4: the behavioural census covers every door, exactly once', ()
   assert.deepEqual(HOSTILE.map((r) => r.door).sort(), [...DOORS].sort());
 });
 
+/**
+ * **A-78 Part 2's widening reaches the runner, not only the classifier** (BUILD-NOTES KD-107).
+ * The classifier now admits `Promise<Trip>`, and a synchronous `try`/`catch` cannot see a rejected
+ * promise: an async door's refusal would read as *"the door ACCEPTED a value `fromJSON` refuses"*,
+ * which is the wrong sentence about the wrong fact. Every door is synchronous today, so this
+ * changes nothing that runs — it is what stops A-78 Part 9's **N3** from being half-true.
+ */
+function isThenable(v: unknown): v is PromiseLike<unknown> {
+  return typeof (v as { then?: unknown } | null)?.then === 'function';
+}
+
 for (const row of HOSTILE) {
-  test(`A-77 Part 6.4: ${row.door} refuses a ${row.noun} the parser refuses (${row.path})`, () => {
+  test(`A-77 Part 6.4: ${row.door} refuses a ${row.noun} the parser refuses (${row.path})`, async () => {
     let thrown: unknown = null;
     try {
-      row.hostile();
+      const out = row.hostile();
+      if (isThenable(out)) await out;
     } catch (err) {
       thrown = err;
     }
@@ -699,6 +1000,182 @@ for (const row of HOSTILE) {
     assert.ok(msg.startsWith(`${row.where}: this ${row.noun} cannot be stored`), msg);
     assert.ok(msg.includes(row.path), `refusal does not carry the parser's path ${row.path}: ${msg}`);
     assert.ok(msg.includes('cannot be re-opened'), msg);
+  });
+}
+
+// ---------------------------------------------------------------------------------------------
+// A-78 Part 7 (QA **R56-10**) — **Invariant R**, the door half, enforced mechanically.
+//
+// > **Invariant R — records are replaced, never rewritten.** A record in a committed `Trip` is
+// > immutable in practice. Code that changes a record produces a NEW object (`{...r, field: v}`)
+// > and puts it in a new collection array; it never assigns through a reference into a record the
+// > document already holds. **This is what makes `commit`'s identity diff sound**: an in-place
+// > write is invisible to it, permanently, and the document becomes unopenable with no refusal at
+// > any door.
+//
+// The premise was unstated until A-78, and the breaker demonstrated its violation at three record
+// classes. It is now written into `commit.ts`'s header docstring, and this is the half the
+// repository controls, proved rather than asserted: **for every door, deep-freeze the `before`
+// document, call the door with a LEGAL argument, and assert it does not throw.** A door that
+// mutates rather than replaces throws `TypeError` in strict mode (every module here is ESM).
+//
+// **There is no `Object.freeze` in `src`** — A-78 Part 7 refuses that, with its reasons and its
+// trigger, and this is deliberately a test-time freeze. The CALLER half stays a written invariant.
+// ---------------------------------------------------------------------------------------------
+
+function deepFreeze<T>(value: T): T {
+  if (value === null || typeof value !== 'object' || Object.isFrozen(value)) return value;
+  Object.freeze(value);
+  for (const v of Object.values(value as Record<string, unknown>)) deepFreeze(v);
+  return value;
+}
+
+type FrozenRow = {
+  /** The door. Must be one of `DOORS`, and every door must have a row. */
+  door: string;
+  /** The `before` document. The test deep-freezes THIS and hands it to `go`. */
+  before: () => Trip;
+  go: (frozen: Trip, c: BuildCtx) => Trip;
+};
+
+const PLACEMENT = { kind: 'scheduled', dayId: '2026-03-01', time: '10:00', order: 0 } as const;
+
+const FROZEN: readonly FrozenRow[] = [
+  { door: 'upsertBooking', before: () => baseTrip().trip, go: (t) => Bookings.upsertBooking(t, GOOD_BOOKING) },
+  {
+    door: 'supersedeBooking',
+    before: () => Bookings.upsertBooking(Bookings.upsertBooking(baseTrip().trip, GOOD_BOOKING), { ...GOOD_BOOKING, id: 'bk-2' }),
+    go: (t) => Bookings.supersedeBooking(t, 'bk-1', 'bk-2'),
+  },
+  {
+    door: 'linkBooking',
+    before: () => Bookings.upsertBooking(tripWithStop().trip, GOOD_BOOKING),
+    go: (t) => Bookings.linkBooking(t, 'stop-1', 'bk-1'),
+  },
+  {
+    door: 'acceptCandidate', before: () => tripWithStop().trip,
+    go: (t) => Candidates.acceptCandidate(t, { kind: 'stop', id: 'stop-1' }, 'local:self', '2026-03-02'),
+  },
+  {
+    door: 'rejectCandidate', before: () => tripWithStop().trip,
+    go: (t) => Candidates.rejectCandidate(t, { kind: 'stop', id: 'stop-1' }, 'local:self', '2026-03-02'),
+  },
+  {
+    // The `before` document here is the TARGET. The source is an argument, not the document being
+    // edited, so it is not what this criterion freezes.
+    door: 'copyStopInto', before: () => baseTrip().trip,
+    go: (t, c) => {
+      const { trip: src, stopId } = foreignTrip((x) => x);
+      return CopyStopMod.copyStopInto(t, { trip: src, stopId }, PLACEMENT,
+        { ids: c.ids, today: '2026-03-01', actorUserId: 'local:self' });
+    },
+  },
+  {
+    // `createTrip`'s `before` is `null` — the base case. What it must not mutate is the caller's
+    // `init`, so that is what is frozen for this row.
+    door: 'createTrip', before: () => baseTrip().trip,
+    go: (_t, c) => CreateTripMod.createTrip(deepFreeze({
+      id: 'trip-frozen', title: 'Frozen', startDate: '2026-03-01', endDate: '2026-03-03',
+      cities: [{ key: 'wien', name: 'Vienna', countryCode: 'AT', centre: { lat: 48.21, lng: 16.37 } }],
+    }), c),
+  },
+  { door: 'setTripMeta', before: () => baseTrip().trip, go: (t, c) => CreateTripMod.setTripMeta(t, { title: 'Renamed' }, c) },
+  { door: 'ensureDays', before: () => baseTrip().trip, go: (t, c) => DaysMod.ensureDays(t, c) },
+  { door: 'setDayMeta', before: () => baseTrip().trip, go: (t) => DaysMod.setDayMeta(t, '2026-03-01', { title: 'Arrival' }) },
+  {
+    door: 'addParticipant', before: () => baseTrip().trip,
+    go: (t, c) => ParticipantsMod.addParticipant(t, { displayName: 'Marta', kind: 'contact' }, c),
+  },
+  {
+    door: 'updateParticipant',
+    before: () => { const { trip, c } = baseTrip(); return ParticipantsMod.addParticipant(trip, { displayName: 'Marta' }, c); },
+    go: (t) => ParticipantsMod.updateParticipant(t, t.participants[0].id, { displayName: 'Marta B' }),
+  },
+  {
+    door: 'removeParticipant',
+    before: () => { const { trip, c } = baseTrip(); return ParticipantsMod.addParticipant(trip, { displayName: 'Marta' }, c); },
+    go: (t) => ParticipantsMod.removeParticipant(t, t.participants[0].id),
+  },
+  {
+    door: 'addPhoto', before: () => baseTrip().trip,
+    go: (t, c) => PhotosMod.addPhoto(t, { thumb: GOOD_DERIVATIVE, display: GOOD_DERIVATIVE }, c),
+  },
+  {
+    door: 'updatePhoto',
+    before: () => { const { trip, c } = baseTrip(); return PhotosMod.addPhoto(trip, { id: 'ph-1', thumb: GOOD_DERIVATIVE, display: GOOD_DERIVATIVE }, c); },
+    go: (t) => PhotosMod.updatePhoto(t, 'ph-1', { caption: 'A caption' }),
+  },
+  {
+    door: 'removePhoto',
+    before: () => { const { trip, c } = baseTrip(); return PhotosMod.addPhoto(trip, { id: 'ph-1', thumb: GOOD_DERIVATIVE, display: GOOD_DERIVATIVE }, c); },
+    go: (t) => PhotosMod.removePhoto(t, 'ph-1'),
+  },
+  {
+    // Something must actually dangle, or the door returns the trip by reference and proves nothing.
+    door: 'reattachDanglingPhotos',
+    before: () => {
+      const { trip, c, stopId } = tripWithStop();
+      const withPhoto = PhotosMod.addPhoto(trip, { id: 'ph-1', attach: { kind: 'stop', stopId }, thumb: GOOD_DERIVATIVE, display: GOOD_DERIVATIVE }, c);
+      return { ...withPhoto, days: withPhoto.days.map((d) => ({ ...d, stops: [] })) };
+    },
+    go: (t) => PhotosMod.reattachDanglingPhotos(t),
+  },
+  { door: 'returnToPool', before: () => tripWithStop().trip, go: (t) => PoolMod.returnToPool(t, 'stop-1', 'wien') },
+  {
+    door: 'scheduleFromPool',
+    before: () => StopsMod.moveStop(tripWithStop().trip, 'stop-1', { kind: 'pool', cityKey: 'wien' }),
+    go: (t) => PoolMod.scheduleFromPool(t, 'stop-1', { dayId: '2026-03-01', time: '10:00', order: 0 }),
+  },
+  {
+    door: 'addStop', before: () => baseTrip().trip,
+    go: (t, c) => StopsMod.addStop(t, PLACEMENT, { name: 'Prater', category: 'sight' }, c),
+  },
+  { door: 'updateStop', before: () => tripWithStop().trip, go: (t) => StopsMod.updateStop(t, 'stop-1', { name: 'Belvedere Palace' }) },
+  { door: 'removeStop', before: () => tripWithStop().trip, go: (t) => StopsMod.removeStop(t, 'stop-1') },
+  { door: 'moveStop', before: () => tripWithStop().trip, go: (t) => StopsMod.moveStop(t, 'stop-1', { kind: 'pool', cityKey: 'wien' }) },
+  {
+    door: 'reorderStop',
+    before: () => {
+      const { trip, c } = tripWithStop();
+      return StopsMod.addStop(trip, { kind: 'scheduled', dayId: '2026-03-01', time: '12:00', order: 1 },
+        { id: 'stop-2', name: 'Prater', category: 'sight' }, c);
+    },
+    go: (t) => StopsMod.reorderStop(t, 'stop-1', 1),
+  },
+  { door: 'addPlace', before: () => baseTrip().trip, go: (t) => StopsMod.addPlace(t, GOOD_PLACE) },
+  {
+    door: 'resolveConflict', before: () => baseTrip().trip,
+    go: (t) => ResolveMod.resolveConflict(t, { conflictId: 'c-1', state: 'dismissed', by: 'local:self', at: '2026-03-01' }),
+  },
+  { door: 'syncResolutions', before: () => tripWithResolution(), go: (t) => ResolveMod.syncResolutions(t, '2026-03-02') },
+  {
+    door: 'reassertRetirements', before: () => tripWithResolution(),
+    go: (t) => ResolveMod.reassertRetirements(t, new Map([['c-1', '2026-03-02']])),
+  },
+  { door: 'unresolveConflict', before: () => tripWithResolution(), go: (t) => ResolveMod.unresolveConflict(t, 'c-1') },
+];
+
+test('A-78 Part 7: the frozen-input census covers every door, exactly once', () => {
+  assert.deepEqual(FROZEN.map((r) => r.door).sort(), [...DOORS].sort());
+});
+
+for (const row of FROZEN) {
+  test(`A-78 Part 7 (Invariant R): ${row.door} replaces rather than rewrites — a frozen \`before\` is enough`, async () => {
+    const frozen = deepFreeze(row.before());
+    let thrown: unknown = null;
+    try {
+      const out: unknown = row.go(frozen, ctx(`frozen-${row.door}`));
+      if (isThenable(out)) await out;
+    } catch (err) {
+      thrown = err;
+    }
+    assert.equal(
+      thrown, null,
+      `${row.door} threw on a deep-frozen \`before\` document: ${(thrown as Error)?.message}. ` +
+      'Invariant R — records are REPLACED, never rewritten. An in-place write is invisible to ' +
+      "`commit`'s identity diff, permanently, and the document becomes unopenable with no " +
+      'refusal at any door.',
+    );
   });
 }
 
@@ -835,7 +1312,9 @@ test('A-77 Part 5: a `stops` key carrying an ALREADY-VALID stop from another day
  */
 const EVERY_DAY_META_KEY: Required<DaysMod.DayMetaPatch> = {
   primaryCity: 'wien', cities: ['wien'], title: 'Arrival', subtitle: 'Landing',
-  legacyFlag: true, tzId: 'Europe/Vienna', provenance: GOOD_PROVENANCE,
+  legacyFlag: true, tzId: 'Europe/Vienna',
+  // `provenance` was here and A-78 Part 5 takes it out of the `Pick`. Both halves move together:
+  // if only the constant moved, this literal would fail `npm run typecheck` for a missing key.
 };
 
 test('A-77 Part 5 (R56-6): every key of DayMetaPatch is accepted — the type and the allowlist cannot drift', () => {
@@ -866,6 +1345,136 @@ test('A-77 Part 5 (R56-6): a key inherited from Object.prototype is not a patcha
       'where its reason belongs',
     );
   }
+});
+
+// ---------------------------------------------------------------------------------------------
+// A-78 Part 4 (QA **R56-5** / BUILD-NOTES **KD-104**) — `TripMetaPatch` joins the patch-allowlist
+// family. Deleting `assertDatePrecision` was right and it left a real regression, and it is a
+// change of **verdict** rather than of message: `setTripMeta(t, {datePrecision: undefined})` on a
+// `'month'` trip silently wrote `'exact'`.
+//
+// **Why the family and not a guard for one field.** `parseTripEnvelope` carries `fromJSON`'s
+// TOLERANCES verbatim, by design — absent `ownerId` is `''`, absent `datePrecision` is `'exact'`,
+// absent `homeBase` is `null`. Those are right for a *document* (an older file; a field that did
+// not exist yet) and wrong for a *patch*, where a key's PRESENCE is the caller saying *set this
+// field to this value* and `undefined` is not a value any of these fields may hold. **Every field
+// with a parser tolerance is a hole of exactly this shape**; `datePrecision` is the one a breaker
+// reached first.
+// ---------------------------------------------------------------------------------------------
+
+/** Every key of `TripMetaPatch`, typed so a field added to the `Pick` fails `npm run typecheck`
+ * here until the fixture carries it — R56-6's pin, applied to the second patch door. */
+const EVERY_TRIP_META_KEY: Required<CreateTripMod.TripMetaPatch> = {
+  title: 'Renamed', startDate: '2026-03-01', endDate: '2026-03-04', datePrecision: 'month',
+  homeCurrency: 'GBP', homeBase: null, party: { adults: 2, children: 1 }, cities: [],
+  ownerId: 'local:self', meta: { k: 1 },
+};
+
+test('A-78 Part 4 (R56-5): setTripMeta refuses a present-but-undefined key of TripMetaPatch', () => {
+  const { trip, c } = baseTrip();
+  const month = CreateTripMod.setTripMeta(trip, { datePrecision: 'month' }, c);
+  assert.equal(month.datePrecision, 'month');
+  assert.throws(
+    () => CreateTripMod.setTripMeta(month, { datePrecision: undefined }, c),
+    /setTripMeta: "datePrecision" may not be patched to `undefined`/,
+    'a present-but-undefined datePrecision silently reset a precision the USER chose',
+  );
+  // …and the trip still reads what the user said.
+  assert.equal(month.datePrecision, 'month');
+
+  // The family, not the field: every key of `TripMetaPatch` gets the same answer, because every
+  // one of them either has a parser tolerance or is a field `undefined` cannot be.
+  for (const k of Object.keys(EVERY_TRIP_META_KEY)) {
+    assert.throws(
+      () => CreateTripMod.setTripMeta(month, { [k]: undefined } as CreateTripMod.TripMetaPatch, c),
+      new RegExp(`setTripMeta: "${k}" may not be patched to \`undefined\``),
+      `"${k}" was accepted with an explicit undefined — a caller that means *leave this field ` +
+      'alone* omits the key',
+    );
+  }
+});
+
+test('A-78 Part 4 (R56-5): setTripMeta refuses any key outside TripMetaPatch\'s Pick', () => {
+  const { trip, c } = baseTrip();
+  for (const key of ['days', 'stops', 'id', 'revision', 'schemaVersion', 'photos', 'somethingNobodyDeclared']) {
+    assert.throws(
+      () => CreateTripMod.setTripMeta(trip, { [key]: 'x' } as unknown as CreateTripMod.TripMetaPatch, c),
+      new RegExp(`setTripMeta: "${key}" may not be patched — it is not a field of TripMetaPatch$`),
+      `${key} was accepted on a TripMetaPatch`,
+    );
+  }
+});
+
+test('A-78 Part 4 (R56-5): a key inherited from Object.prototype is not a patchable key here either', () => {
+  const { trip, c } = baseTrip();
+  for (const key of ['toString', 'constructor', 'hasOwnProperty', '__proto__']) {
+    assert.throws(
+      () => CreateTripMod.setTripMeta(trip, Object.defineProperty({}, key, {
+        value: 'x', enumerable: true, configurable: true, writable: true,
+      }) as CreateTripMod.TripMetaPatch, c),
+      new RegExp(`setTripMeta: "${key}" may not be patched — it is not a field of TripMetaPatch$`),
+      `${key} was accepted on a TripMetaPatch`,
+    );
+  }
+});
+
+test('A-78 Part 4 (R56-5): every key of TripMetaPatch is still ACCEPTED with a real value', () => {
+  const { trip, c } = baseTrip();
+  assert.doesNotThrow(() => CreateTripMod.setTripMeta(trip, EVERY_TRIP_META_KEY, c));
+  for (const [k, v] of Object.entries(EVERY_TRIP_META_KEY)) {
+    assert.doesNotThrow(
+      () => CreateTripMod.setTripMeta(trip, { [k]: v } as CreateTripMod.TripMetaPatch, c),
+      `"${k}" is a key of TripMetaPatch and setTripMeta refused it — the allowlist has drifted ` +
+      'from the type',
+    );
+  }
+});
+
+test('A-78 Part 4: the `cities` Array.isArray check STAYS — it is the one shape commit cannot see', () => {
+  const { trip, c } = baseTrip();
+  assert.throws(
+    () => CreateTripMod.setTripMeta(trip, { cities: 'not an array' as unknown as Trip['cities'] }, c),
+    /setTripMeta: cities must be an array/,
+    'commit walks a COLLECTION; a non-array in the slot is the one shape the per-collection walk ' +
+    'cannot see',
+  );
+  // `{cities: undefined}` is subsumed by the new rule and answers with it, not with this one.
+  assert.throws(
+    () => CreateTripMod.setTripMeta(trip, { cities: undefined }, c),
+    /setTripMeta: "cities" may not be patched to `undefined`/,
+  );
+});
+
+// ---------------------------------------------------------------------------------------------
+// A-78 Part 5 (QA **R56-7**) — `provenance` leaves `DayMetaPatch`.
+//
+// `setDayMeta`'s allowlist permitted `provenance` because `DayMetaPatch`'s `Pick` named it, while
+// `updateStop`'s `FORBIDDEN_PATCH_KEYS` forbids it by name. Two doors, one field, opposite
+// answers. **The stop's answer is the right one and the day follows it**: provenance records *who
+// said so*, and a caller that can rewrite it can launder a suggestion into the user's own plan —
+// the one convention the root `CLAUDE.md` calls absolute. `Sidebar.tsx` renders
+// `displayStatus(day.provenance)` exactly as `DayTimeline.tsx` renders it for a stop, so a
+// rewritable day provenance is a VISIBLE false claim about who planned the day.
+// ---------------------------------------------------------------------------------------------
+
+test('A-78 Part 5 (R56-7): setDayMeta refuses `provenance`, with updateStop\'s reason verbatim', () => {
+  const { trip, stopId } = tripWithStop();
+  assert.throws(
+    () => DaysMod.setDayMeta(trip, '2026-03-01', { provenance: GOOD_PROVENANCE } as unknown as DaysMod.DayMetaPatch),
+    /setDayMeta: "provenance" may not be patched — use acceptCandidate \/ rejectCandidate$/,
+  );
+  // The two doors now read the same. This is the sentence being matched against.
+  assert.throws(
+    () => StopsMod.updateStop(trip, stopId, { provenance: GOOD_PROVENANCE } as never),
+    /updateStop: "provenance" may not be patched — use acceptCandidate \/ rejectCandidate$/,
+  );
+});
+
+test('A-78 Part 5 (R56-7): a Day\'s provenance is written by blankDay and importLegacyDays and by nothing a caller can reach', () => {
+  const { trip } = baseTrip();
+  const before = trip.days[0].provenance;
+  const after = DaysMod.setDayMeta(trip, '2026-03-01', { title: 'Arrival' });
+  assert.deepEqual(after.days[0].provenance, before);
 });
 
 // ---------------------------------------------------------------------------------------------
@@ -1069,11 +1678,80 @@ test('A-77 Part 4: assertDatePrecision is DELETED, and the refusal it made is th
   assert.doesNotThrow(() => CreateTripMod.setTripMeta(trip, { datePrecision: 'month' }, c));
 });
 
-test('A-77 Part 4: isIsoDate is KEPT at both trip doors — the calendar is a property the parser has, and the door\'s message is a person\'s', () => {
+/**
+ * **A-78 Part 3 (QA R56-3) — this test's RULING changed, so the test is rewritten, not deleted.**
+ *
+ * A-77 Part 4 kept `isIsoDate` at both trip doors and gave a reason that is **false against the
+ * code**: §2.9 **A-45** had already made `isIsoDate` the parser's *own* date check
+ * (`fromJSON.ts`'s `isoDate` calls it), the two predicates return identical verdicts on all 19
+ * values round 56 drove through both, and there is no value at which the door is stricter than the
+ * document. That is R16-2's *one property, two guards*, and A-77 deleted `assertDatePrecision` one
+ * table row above for exactly this reason.
+ *
+ * The only reason the measurement left open was **ordering** — the ground `assertBuiltAttach`
+ * survives on — and it is empty: **both doors commit the envelope BEFORE minting days.**
+ * `createTrip` runs `commit('createTrip', null, base)` and only then `ensureDays`; `setTripMeta`
+ * runs `commit('setTripMeta', trip, next)` and only then the conditional `ensureDays`. So a
+ * calendar-invalid date is refused by `parseTripEnvelope` at `$.startDate` **before** A-35's span
+ * cap can produce its misleading *"this trip would cover N days"* message.
+ *
+ * **Both call sites are deleted.** `isIsoDate` itself is untouched — it is on §2.10's surface and
+ * seven other modules call it, `fromJSON` included.
+ */
+test('A-78 Part 3 (R56-3): isIsoDate is DELETED at both trip doors, and the refusal is the parser\'s own', () => {
+  for (const bad of ['2026-13-45', '2026-02-30', '2026-00-10', '2026-04-31', '2026-02-29']) {
+    assert.throws(
+      () => CreateTripMod.createTrip({ title: 'x', startDate: bad, endDate: '2026-03-02', cities: [] }, ctx()),
+      (err: unknown) => {
+        const msg = (err as Error).message;
+        assert.ok(
+          msg.startsWith('createTrip: this trip cannot be stored — '),
+          `the refusal is not the storability refusal: ${msg}`,
+        );
+        assert.ok(msg.includes('expected a real calendar date in YYYY-MM-DD'), msg);
+        assert.ok(msg.includes('$.startDate'), `the refusal does not name the field: ${msg}`);
+        // A-35's span cap must NOT be what fires: `2026-13-45` rolls through Date.UTC into
+        // 2027-02-14, and the misleading message is *"this trip would cover N days"*.
+        assert.ok(!msg.includes('would cover'), `A-35's span cap pre-empted the parser: ${msg}`);
+        return true;
+      },
+      `createTrip accepted ${bad}`,
+    );
+  }
+  const { trip, c } = baseTrip();
   assert.throws(
-    () => CreateTripMod.createTrip({ title: 'x', startDate: '2026-13-45', endDate: '2026-03-02', cities: [] }, ctx()),
-    /createTrip: startDate and endDate must be real calendar dates/,
+    () => CreateTripMod.setTripMeta(trip, { endDate: '2026-13-45' }, c),
+    (err: unknown) => {
+      const msg = (err as Error).message;
+      assert.ok(msg.startsWith('setTripMeta: this trip cannot be stored — '), msg);
+      assert.ok(msg.includes('expected a real calendar date in YYYY-MM-DD'), msg);
+      assert.ok(msg.includes('$.endDate'), msg);
+      return true;
+    },
   );
+  // The doors keep NO second date opinion — not merely a weaker one. `isIsoDate` is CALLED
+  // nowhere in this file any more (the docstrings still name it, which is why this matches a call
+  // and not the word), and `build/` is left with exactly one guard that is not the parser.
+  const source = readFileSync(resolve(SRC, 'build/createTrip.ts'), 'utf8');
+  assert.equal(
+    /isIsoDate\s*\(/.test(source), false,
+    'createTrip.ts still calls a date predicate of its own — A-78 Part 3 deletes both call sites',
+  );
+});
+
+test('A-78 Part 3: both doors\' `endDate < startDate` check STAYS — ordering is a property the parser deliberately does not have', () => {
+  const { trip, c } = baseTrip();
+  assert.throws(
+    () => CreateTripMod.createTrip({ title: 'x', startDate: '2026-03-05', endDate: '2026-03-02', cities: [] }, ctx()),
+    /createTrip: endDate 2026-03-02 precedes startDate 2026-03-05/,
+  );
+  assert.throws(
+    () => CreateTripMod.setTripMeta(trip, { endDate: '2026-02-01' }, c),
+    /setTripMeta: endDate 2026-02-01 precedes startDate 2026-03-01/,
+  );
+  // …and the reversed document itself OPENS. `validateTrip` is what reports it (§2.9).
+  const reversed = { ...trip, startDate: '2026-03-03', endDate: '2026-03-01' };
+  assert.doesNotThrow(() => fromJSON(toJSON(reversed as Trip)));
 });
 
 test('A-77 Part 4: assertBuiltAttach is KEPT, and still runs BEFORE commit', () => {
@@ -1120,3 +1798,4 @@ test('A-77 residue 1: a committed document round-trips through toJSON/fromJSON u
   );
   assert.deepEqual(fromJSON(toJSON(edited)), edited);
 });
+

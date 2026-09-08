@@ -1,4 +1,47 @@
 /**
+ * §2.1 **A-78** Part 7 (revision 59, QA **R56-10**; ROADMAP **I-17**) — *the premise this whole
+ * mechanism rests on, stated, because an unstated premise is how this arc has stayed alive.*
+ *
+ * A-77 Part 3's induction below (*every record object in a committed document has already been
+ * parsed once*) has a premise nobody wrote down, and round 56 demonstrated its violation at three
+ * record classes: **a committed record mutated in place is skipped by identity forever**, so
+ * `t.bookings[0].kind = 'teleport'` followed by any later door produces an unopenable document
+ * with no refusal anywhere. No shipped path does this — grep-verified over `packages/core/src` and
+ * `packages/client/src`, and no door in `build/` or `conflict/` mutates rather than replaces;
+ * every one operates on a `slice()`. The premise is:
+ *
+ * > **Invariant R — records are replaced, never rewritten.** A record in a committed `Trip` (a
+ * > `City`, `Place`, `Day`, `Stop`, `Booking`, `PhotoAsset`, `Participant` or
+ * > `ConflictResolution`, and any object nested inside one) is **immutable in practice**. Code
+ * > that changes a record produces a **new object** (`{...r, field: v}`) and puts it in a new
+ * > collection array; it never assigns through a reference into a record the document already
+ * > holds. This is what makes `commit`'s identity diff sound: an in-place write is invisible to
+ * > it, permanently, and the document becomes unopenable with no refusal at any door. It binds
+ * > **every** writer, not only doors — `packages/client`, `apps/web`, a Phase 3 ingest worker and
+ * > a Phase 5 native bridge included.
+ *
+ * **Enforcement, and how far it reaches.** A-78 Part 7 considered three options and took the
+ * third. **There is deliberately no `Object.freeze` in this function or in any `src` file**: a
+ * *shallow* freeze does not cover nested records (`Stop.cost`, `Place.hours`) and so does not
+ * enforce the invariant it claims; a *deep* freeze reaches the `meta` bags A-77 Part 10 residue 2
+ * passes through by reference, which is a behaviour change outside that ruling's scope; and it
+ * converts a silent bug into a thrown `TypeError` on paths no current code exercises. Deep-`readonly`
+ * model types were refused too — they touch every type in §2.2 and still do not bind an
+ * `any`-shaped caller. What ships instead is the **door half, enforced mechanically at test time**:
+ * `packages/core/test/storable.test.ts`'s frozen-input census deep-freezes the `before` document,
+ * calls every door in `DOORS` with a legal argument, and asserts it does not throw — a door that
+ * mutates rather than replaces throws `TypeError` in strict mode (every module here is ESM) and
+ * the test names it. That is a mechanical proof of the half the repository controls, at **zero
+ * production cost and with no behaviour change**. The **caller** half stays a written invariant,
+ * reviewed: in Phase 1 the only caller is `packages/client`'s `applyAction`, a single choke point,
+ * and A-77 Part 3 rule 5 already guarantees the document holds no object the caller passed in.
+ *
+ * **Trigger for revisiting the production freeze:** the first writer of a `Trip` outside
+ * `packages/core` and `packages/client` — the Phase 3 ingest worker or the Phase 5 native bridge,
+ * both promised by the brief. At that point the caller half stops being reviewable.
+ *
+ * ---
+ *
  * §2.1 **A-77** — *a door does not say what it wrote; the document says what changed.*
  * (Revision 58, QA **R55-1/2/3/5** and the architect's own `resolveConflict` finding; ROADMAP
  * **I-16**.)

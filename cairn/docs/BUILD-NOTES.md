@@ -1,5 +1,40 @@
 # Cairn — build notes, Phase 1 (and Phase 2 in progress)
 
+> **Addendum — ROADMAP `I-17`: the census reads the tree (`ARCHITECTURE.md` revision 59 §2.1
+> **A-78**; QA **R56-1/R56-2** MAJOR, with **R56-3/5/7/10** riding along).** Builds on `ba6f1e9`.
+> A-77's mechanism is upheld entire — round 56 attacked it hardest and it held — and what is
+> replaced is **door discovery**: `CENSUSED_BUILD_FILES` (twelve names) and `EXTRA_DOOR_FILES`
+> (one) are **deleted** and the census reads `packages/core/src` **whole**, with **no exclusions at
+> any granularity**. **Edited, 5 files:** `packages/core/test/storable.test.ts`,
+> `packages/core/src/build/{createTrip,days}.ts`, `packages/core/src/build/commit.ts` (docstring
+> only), this document. **Zero `.tsx`, zero `qa/`, zero `docs/design/`, zero
+> `ARCHITECTURE.md`/`ROADMAP.md`, zero `package.json`, zero lockfile, zero new dependency, zero
+> `Object.freeze` in any `src` file.** One type narrows (`DayMetaPatch` loses `provenance`); no
+> field, no record class, no port, no selector, no screen; `SCHEMA_VERSION`, `DB_VERSION`,
+> `SUMMARY_VERSION` and §2.10's surface do not move — the surface was **re-counted by running the
+> command** and is **86**.
+>
+> | | |
+> |---|---|
+> | **What runs, and the exact commands** | `cd cairn && npm run test:tap` → **1635 tests, 1635 pass, 0 fail, 0 skipped, 0 cancelled**. Baseline re-measured on this tree **before** the change, same command at `ba6f1e9` → **1596 pass / 0 fail** (ROADMAP quotes 1592 at `97f1fc1`; R56-4/R56-6 added four), so **+39 tests**; no pre-existing test was deleted and none was weakened. `cd cairn && npm run typecheck` → **clean on both projects, exit 0**. `cd cairn && npm run web:build` → **succeeds**. Export re-count, run rather than quoted: `node --experimental-strip-types -e "import('./packages/core/src/index.ts').then(m => console.log(Object.keys(m).length))"` → **86**. The census file alone: `node --test packages/core/test/storable.test.ts` → **105 pass / 0 fail** (was 66). |
+> | **Part 1 — one `CENSUS` array, 54 rows, no exclusions** | A namespace import per `.ts` file under `packages/core/src` paired with its path, `as const`, including `index.ts`, `model/types.ts`, `conflict/rules/types.ts` and the 375 kB generated `geo/countries.gen.ts`. **A-78 says 53 and the tree has 54** — `find packages/core/src -name '*.ts' \| wc -l` → **54**, and the ruling's own Part 0 says *"all 42 modules"* two paragraphs earlier, so the number is a stale count rather than a missing file. Nothing rests on it: the count is not written down anywhere in the code, and half 2 checks the list against the disk on every run. The import cost is invisible — the census file runs in **0.36 s** wall and every one of these modules was already loaded by the suite. |
+> | **Part 2 — the type census, mapped, and the expected set** | `NamesIn`/`DoorsOf` mapped over `CENSUS` as a **union**, not an intersection of namespaces. Expected = `DOORS ∪ CENSUS_MECHANISM ∪ (NON_DOORS[].name ∩ AllDoors)`. **That last intersection is a correction and it is measured: two of the ruling's three named producers do not return a `Trip` at all** — `mergeTrips: MergeResult` and `importLegacyDays: ImportResult` are wrapper returns — so the equation written literally fails `npm run typecheck` on a healthy tree. **KD-106**, §1, with the diagnostic output and the two clauses the architect owes. |
+> | **Part 3 — the module census, recursive** | `walk()` exactly as A-78 prints it, with two assertions: the `.ts` set equals `CENSUS`'s paths (failure message verbatim, including **"DO NOT ADD AN EXCLUSION LIST"**), and there is **no `.d.ts` and no non-`.ts` file** under `src` (*"an architect rules on this file; do not exclude it"*). |
+> | **Part 4 — name uniqueness, at runtime, by identity** | For every name in `DOORS`, `CENSUS_MECHANISM` and `NON_DOORS`: collect `ns[name]` from every censused module where it is a function; the number of **distinct function objects** must be **1**. A re-export gives the same object, so `index.ts` costs nothing — confirmed by fault N5's own output, which names `build/stops.ts + index.ts` on one side. **No qualified names**, per the ruling. It also catches a name that is exported by **no** censused module, which is what closes the `NON_DOORS`-name-that-does-not-exist case KD-106 leaves open. |
+> | **Part 5 — the classifier, exactly as printed** | `TripishReturn` = `Exclude<Awaited<R>, null \| undefined>`, `IsDoor` = `IsExact<TripishReturn<F>, Trip>`, `HasTripMember`, `IsIllegal`, plus the second census line `IsExact<AllIllegal, never>`. **No door is reclassified and the expected set does not move** — the whole-tree census was green on the first `tsc` run after the array landed, before any `src` file moved. The wrapper prohibition is quoted **verbatim** into the file beside the illegal-shape line, with its trigger. |
+> | **Part 6 — `isIsoDate` deleted at both trip doors (R56-3)** | Both call sites and the `import` are gone; `isIsoDate` itself is untouched and still has seven callers. `build/` now holds **exactly one** guard that is not the parser (`assertBuiltAttach`), stated in the file. **One consequence I had to rule on and disclosed rather than smoothed: KD-108** — the `endDate < startDate` check moved **below** the commit in both doors, because `'2026-03-02' < '2026-13-45'` is true, so a mistyped month was answered by the ordering message rather than by the ruling's own sentence. Four of `build.test.ts:110`'s five endDate rows would otherwise have changed **verdict**. |
+> | **Part 7 — `setTripMeta` gains `assertPatchable` (R56-5 / KD-104)** | `TRIP_META_PATCH_KEYS: Record<keyof TripMetaPatch, true>` — R56-6's pin applied to the second patch door, so a field added to the `Pick` and not to the constant fails `npm run typecheck` **in `src`**. Refuses **(a)** any key outside the `Pick` and **(b)** any key of it present with `undefined`, over `Object.keys` with `hasOwnProperty` (so `toString` is not patchable). The `cities` `Array.isArray` check **stays** and its comment now says which half of it survives. Driven rather than reasoned about: `setTripMeta(t, {datePrecision: undefined})` on a `'month'` trip **throws** and the trip still reads `'month'`; all ten keys are refused with `undefined` and all ten still accepted with a real value. |
+> | **Part 8 — `provenance` leaves `DayMetaPatch` (R56-7)** | Out of the `Pick`, out of `DAY_META_PATCH_KEYS`, into `FORBIDDEN_DAY_META_PATCH_KEYS` with `updateStop`'s reason **verbatim** (`use acceptCandidate / rejectCandidate`), and both doors are asserted against the same sentence in one test. R56-6's type-level pin held it honest: moving only one half failed `npm run typecheck` (`Required<DayMetaPatch>` in the test fixture), which is what that pin is for. |
+> | **Part 9 — Invariant R (R56-10)** | The ruling's block quote is in `commit.ts`'s header **quoted, not paraphrased**, with the three enforcement options, why the production freeze is refused, and its trigger. The census gains **29 frozen-input rows, one per door**, driven by `DOORS` with a *"covers every door, exactly once"* assertion beside it. **All 29 pass on the shipped tree — no door mutates.** The freeze is `deepFreeze` in the **test**; there is no `Object.freeze` anywhere in `src` (grep-verified: the only match under `packages/core/src` is the sentence in `commit.ts` saying there is none). |
+> | **A-78 Part 9's seven faults — every one run, red-before / green-after, with its measured output** | **N1** `archiveTrip` appended to `derive/lifecycle.ts` (R56-1's exact repro): `npm run typecheck` → `storable.test.ts(532,7): error TS2322: Type 'true' is not assignable to type 'false'`; exit 0 after restore. **N2** `sync/apply.ts`, a new file in a new directory: module census red, `+ 'sync/apply.ts'`, **and `tsc` stays exit 0** — *"before typecheck is consulted"*, exactly as ruled. **N3** `unresolveConflict → Trip \| null`, `reassertRetirements → async … Promise<Trip>`: **both census lines green, both behavioural rows still fire, both frozen rows still fire**; red-before established by reverting `IsDoor` to A-77's exact-`Trip` matcher against the same two doors → **two** errors, `(532,7)` and `(584,7)`. **N4** `export function wrapped(t: Trip): Trip \| Day`: **only** `(584,7)` — the illegal-shape line — fails; `DOOR_CENSUS` stays green, so the function is refused as a shape rather than classified. **N5** a second `addStop` in `derive/lifecycle.ts`: typecheck **green** (the name collapses into the union — the shadowing hole), runtime half 3 red with `addStop: 2 distinct function objects — build/stops.ts + index.ts AND derive/lifecycle.ts`. **N6** `addPlace` moved from `DOORS` into `NON_DOORS` with a plausible reason: **three** tests red (the behavioural census, the frozen-input census, and the fourth-name trigger) — and run again as a *determined* maintainer who also deletes both rows, the **fourth-name trigger still fires alone**, printing A-78 Part 10's residue verbatim. **N7** `setDayMeta` mutating `trip.days[0].title`: the frozen-input row for `setDayMeta` throws `TypeError: Cannot assign to read only property 'title'` and **names the door**. |
+> | **A-77 Part 8's five faults, carried and re-run** | **N1** delete `upsertBooking`'s `commit` call → its behavioural row red (plus three more), **type census green** — the two halves still do different jobs. **N2** a `Trip`-returning export in each of `export function`, `export const … = () =>`, `function d(){}; export { d }` and `export default function` → `npm run typecheck` fails **all four**, and this run injected them into `derive/lifecycle.ts`, a file A-77's census could not see at all. **N3** a new file in `build/` → module census red naming `build/archive.ts`. **N4** `addStop` restored to its pre-A-76 body → `node qa/r54-integration.mjs` reproduces the loss: `fails=4`, `M8b can the stored document be parsed? — NO — $.days[0].stops[1].category`, `M8c openTrip after a reload — refuses`; **`fails=0` after restore**. **N5** the sixteen door × field cases → the standing in-suite test is green, and the breaker's own oracle `qa/r55-a76.mjs` §F1 reports `ok ZERO build doors write a document that cannot be opened again`. |
+> | **Round 56's own repro, re-derived end to end** | `export function archiveTrip(trip: Trip, r: ConflictResolution): Trip` appended to `derive/lifecycle.ts` — the exact injection that left `tsc` at exit 0 and this file at 62 pass / 0 fail. **Now caught by the type-level census**, which is the half that can see it: the module census correctly stays green because no file was added, and that division of labour is the ruling's (N1 is the type half; N2 is the module half). **There is no runtime check that could catch it** — runtime cannot read a return type — and A-78's N1 asks only for `npm run typecheck`. |
+> | **The five cost figures, measured on this tree** | `setDayMeta` on the reference trip (16 days, 112 stops, 31 pool, 95 places), 200 reps after warm-up: **0.020 ms** (budget **2 ms**). `updateStop`, same: **0.049 ms** (budget **2 ms**). `createTrip` over A-35's 3,653-day cap: **11.0 ms** (budget **1 s**). `setTripMeta` with a range change on that trip: **2.56 ms** (budget **1 s**). A-78 Part 6's two new ones: `addStop` at **2,000 stops = 0.267 ms** and at **20,000 stops = 3.063 ms**, against the ruling's own 0.22 and 3.13 — same shape, same order, and **the 10 ms reopening trigger is not tripped**. No budget exceeded and no exemption added. |
+> | **`qa/` — run, not edited (the directory is the breaker's), and what moved** | Every `.mjs` probe was run before and after; **three abort that did not before**. `qa/r56-a77.mjs` aborts at line 451 on `setTripMeta(t, {datePrecision: undefined})`, which is the probe that **measured R56-5 as a defect** — the verdict changed by ruling, so it is the breaker's to re-cut. `qa/r47-i13c.mjs` and `qa/r51-i13i.mjs` shell out to `npm run test:tap` and were **already** reporting a stale `FAIL SCHEMA_VERSION is still 2 -> 3`; they now abort because the suite grew. **None of the three is a behaviour regression and none is mine to edit.** `qa/r54-integration.mjs` and `qa/r55-a76.mjs` are both green (`fails=0`). |
+> | **Message pins — exactly the two the ROADMAP predicts, and no others** | `storable.test.ts`'s *"isIsoDate is KEPT at both trip doors"* is a test whose **ruling** changed, and it is **rewritten, not deleted** — it now drives five calendar-invalid dates through `createTrip` and one through `setTripMeta` and asserts the parser's own sentence, the field path, and that A-35's *"would cover"* did **not** pre-empt it. `packages/core/test/build.test.ts:110` (`/YYYY-MM-DD/`) and `packages/core/test/lifecycle.test.ts:80` (`/date/i`) **still pass unedited**, which is what KD-108 buys. No pin's door, path or refusal **verdict** moved. |
+> | **What I did NOT verify** | **No rendered check and no browser run** — this increment opens no `.tsx` and `apps/web`'s only relation to it is `PastTripForm.tsx`'s `{datePrecision: precision}` dispatch, which A-78 Part 4 says can never be `undefined` (`useState<DatePrecision>('month')`) and which I confirmed by reading, not by clicking. **The caller half of Invariant R is not enforced** — that is the ruling's own decision (option 3), and it stays a written invariant with a Phase 3 trigger. **`qa/` was run, never edited.** |
+> | **Objections to the design** | **Three, all small, all disclosed as KD entries above; none to the mechanism, which is right.** **(1) KD-106 is the real one** — two of the three named producers return wrappers, so Part 1 half 1's equation does not compile as printed, and the fix has to decide *how much* of `NON_DOORS` to subtract. I made that decision mechanical rather than editorial, but the ruling should say which it wants. **(2) KD-107:** the classifier was widened and the runner was not, so N3's *"each behavioural row still fires"* was measurably false for the async arm until I widened it too. **(3) KD-108:** Part 3 says the ordering checks *"stay"* and does not say *where*, and where turns out to decide whether the ruling's own quoted message is the one a caller sees. **On Part 10's claim** — that there is no enclosing scope left to widen to — I have nothing to add against it from inside `packages/core`: after this pass what is hand-written is one list of 54 paths checked against a recursive read of the directory it describes, one list of three producers checked by the compiler and by a runtime identity check, and one classifier. The place I would look next is Part 10's **own** class 1 (`packages/client`), because `applyAction` is a `Trip`-shaped choke point the census's root does not cover, and class 3's caller half, which is written down and not enforced. |
+>
 > **Addendum — QA round 56 fix pass: `R56-4` (`commit`'s own reads are not once-per-slot) and
 > `R56-6` (`DAY_META_PATCH_KEYS` is an unpinned second copy of `DayMetaPatch`).** Builds on
 > `680930c`. Both routed **implementation → builder**; the round's two MAJORs (R56-1, R56-2) and
@@ -4886,6 +4921,104 @@ written. The accurate version is: **`commit` allocates one array per collection 
 index-aligned test — one `Set` over that collection's records in `before`.** Everything else in
 A-78 Part 6's bound, including both measured figures and the refusal to build the set per day,
 stands and is confirmed by the table above.
+
+### KD-106 — two of A-78 Part 1's three named non-doors do not return a `Trip` at all, so the census equation is taken as far as it is owed and no further (measured; architect to correct Part 1 half 1)
+
+`packages/core/test/storable.test.ts`, the `ExcusedProducers` type
+
+A-78 Part 1 half 1 writes the type census's expected set as
+`DOORS ∪ CENSUS_MECHANISM ∪ NON_DOORS[].name`, on this stated ground:
+
+> **A-77 Part 6.3's three non-doors stop being an assertion and become part of the equation.**
+> `fromJSON`, `importLegacyDays` and `mergeTrips` **return `Trip`** and their modules are now
+> censused, so they must appear on the right-hand side or the census fails.
+
+**Measured, that is true of `fromJSON` and false of the other two.** Both return a **wrapper**:
+
+| function | signature | site |
+|---|---|---|
+| `fromJSON` | `(input: string \| unknown): Trip` | `serialize/fromJSON.ts:646` |
+| `mergeTrips` | `(base, local, remote): MergeResult` where `MergeResult = { trip: Trip; report: MergeReport }` | `merge/mergeTrips.ts:42,207` |
+| `importLegacyDays` | `(legacy, opts): ImportResult` where `ImportResult = { trip: Trip; issues: Issue[]; … }` | `import/legacyDays.ts:74,147` |
+
+So `IsDoor` classifies neither producer as a door, neither needs excusing, and **written literally
+the ruling's equation makes `AllDoors` a strict subset of the expected set and `npm run typecheck`
+fails on a healthy tree** — verified by driving it: `error TS2322: Type 'true' is not assignable to
+type 'false'` at the census line, and a diagnostic
+`Exclude<Expected, AllDoors>` that reports exactly `"mergeTrips" | "importLegacyDays"`.
+
+**What I did:** the `NON_DOORS` contribution is `(typeof NON_DOORS)[number]['name'] & AllDoors` —
+the excuse is taken where the classifier actually put the name and nowhere else. **The
+intersection is computed by the compiler, not judged**, so no human decides which of the three is
+subtracted; and both properties the ruling wanted from that line survive. A producer that *is*
+`Trip`-returning (`fromJSON` today) must appear on the expected side or the census fails, and a
+`NON_DOORS` name exported by no censused module is caught by half 3's identity check, which
+reports `named in DOORS/CENSUS_MECHANISM/NON_DOORS and exported by no censused module`.
+
+**For the architect, two clauses.** (1) Part 1 half 1's sentence needs *"`fromJSON` returns a
+`Trip`; the two producers return it inside a wrapper, and are subtracted only where the classifier
+put them"*. (2) These two are the **only** wrapper returns in `packages/core/src`, and Part 2's
+prohibition does **not** reach them as written — it binds *"a function … that produces an
+**edited** `Trip`"*, and a producer constructs a document rather than editing one. That is
+consistent, but it means the ruling's *"one shape refused by rule"* and its *"whole-document
+producer"* category are the same two functions seen from two sides, and only one of the two
+paragraphs says so.
+
+### KD-107 — the behavioural and frozen-input censuses now `await` a thenable, because A-78 Part 2's widening otherwise stops at the classifier (builder extension, architect to bless or refuse)
+
+`packages/core/test/storable.test.ts`, `isThenable`
+
+A-78 Part 2 widens the classifier so *"the first async door does not ship unguarded and nothing
+says so"*. The **runner** was not widened with it: a synchronous `try`/`catch` cannot see a
+rejected promise, so an async door's refusal reads as *"the door ACCEPTED a value `fromJSON`
+refuses"* — the wrong sentence about the wrong fact, and a **red for a false reason**.
+
+**Measured, and this is why the change exists.** Running Part 9's **N3** (`unresolveConflict` →
+`Trip | null`, `reassertRetirements` → `async … : Promise<Trip>`) against the unwidened runner:
+
+```
+not ok 44 - A-77 Part 6.4: reassertRetirements refuses a resolution the parser refuses ($.by)
+```
+
+which is the criterion *"each behavioural row still fires"* failing on a door that is in fact still
+guarded. With the runner widened, N3 is **105 pass / 0 fail** and the census lines are green.
+
+**Every door is synchronous today, so this changes nothing that runs.** It is four lines in a test
+file, `if (isThenable(out)) await out`, in the two `DOORS`-driven censuses. It is recorded here
+because it is a change A-78 did not ask for, and because the general form is worth a clause in the
+ruling: **a census widened at the classifier is widened at the runner in the same pass, or the
+widening is half-done.**
+
+### KD-108 — both trip doors' `endDate < startDate` check moved BELOW the commit, because a `<` between two strings one of which is not a date answers a question nobody asked (disclosed consequence of A-78 Part 3, architect to bless)
+
+`packages/core/src/build/createTrip.ts`
+
+A-78 Part 3 deletes `isIsoDate` at both trip doors and states what the caller then sees:
+
+> `createTrip: this trip cannot be stored — expected a real calendar date in YYYY-MM-DD (at
+> $.startDate). Saving it would produce a document that cannot be re-opened.`
+
+**With the ordering check left where it was, that outcome does not hold for the common mistype.**
+`'2026-13-45'` is lexically **greater** than an ordinary `endDate`, so
+`createTrip({startDate: '2026-13-45', endDate: '2026-03-02'})` fell into
+`createTrip: endDate 2026-03-02 precedes startDate 2026-13-45` — a sentence about ordering, over a
+value that is not a date, printed instead of the ruling's own.
+
+It is not a cosmetic point, and the pins say so. `packages/core/test/build.test.ts:110` drives five
+calendar-invalid dates through **both** ends of the range and asserts `/YYYY-MM-DD/`; with the
+ordering check first, **four of the five** endDate rows would have been answered by the ordering
+message instead, and that pin's *verdict* would have moved — which ROADMAP I-17 calls *"a defect in
+this increment, not a test to edit"*.
+
+**What I did:** in both doors the check now reads the **committed** envelope, so the order is
+**parse → ordering → A-35's span cap**. `commit` is pure, so the cost is one O(1)
+`parseTripEnvelope` on a path that was about to throw anyway. Both refusal messages are byte-identical
+to before, both still name their own door, and a reversed-but-valid range is still refused by the
+door and still **opens** as a document (`validateTrip`'s to report — pinned).
+
+**For the architect:** Part 3 says the two checks *"stay"* and does not say where. If *where* is
+part of the ruling, this is the clause it needs; if the parse-first order is simply right, it is one
+sentence in Part 3 so the next person does not restore it.
 
 
 ## 2. How to run it

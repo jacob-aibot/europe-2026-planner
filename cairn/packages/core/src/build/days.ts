@@ -114,7 +114,23 @@ export function ensureDays(trip: Trip, ctx: BuildCtx, alreadyBumped = false): Tr
   }));
 }
 
-export type DayMetaPatch = Partial<Pick<Day, 'primaryCity' | 'cities' | 'title' | 'subtitle' | 'provenance' | 'legacyFlag' | 'tzId'>>;
+/**
+ * §2.1 **A-78** Part 5 (QA **R56-7**): **`provenance` is out of this `Pick`.** A-77's allowlist
+ * permitted it because this type named it, while `updateStop`'s `FORBIDDEN_PATCH_KEYS` forbids it
+ * by name — two doors, one field, opposite answers. **The stop's answer is the right one and the
+ * day follows it.** Provenance records *who said so*; it is not editorial metadata, and a caller
+ * that can rewrite it can launder a suggestion into the user's own plan — the one convention the
+ * root `CLAUDE.md` calls absolute (§2.8, and A-18 before it). Nothing about a `Day` makes it
+ * different: `Sidebar.tsx` renders `displayStatus(day.provenance)` exactly as `DayTimeline.tsx`
+ * renders it for a stop, so a rewritable day provenance is a **visible** false claim about who
+ * planned the day.
+ *
+ * A `Day`'s provenance is written by `blankDay` (which `ensureDays` owns) and by
+ * `importLegacyDays`, and by nothing a caller can reach. **Trigger:** the first increment that
+ * needs a *suggested day* to be accepted. The answer then is a **door** (`acceptDay`, beside
+ * `acceptCandidate`/`rejectCandidate`), never a patch key.
+ */
+export type DayMetaPatch = Partial<Pick<Day, 'primaryCity' | 'cities' | 'title' | 'subtitle' | 'legacyFlag' | 'tzId'>>;
 
 /**
  * Exactly `DayMetaPatch`'s `Pick`, at runtime — §2.1 **A-77** Part 5, on `updateStop`'s,
@@ -145,21 +161,27 @@ export type DayMetaPatch = Partial<Pick<Day, 'primaryCity' | 'cities' | 'title' 
  * The lookup below is `hasOwnProperty`, never `in`: `in` would make `toString` a patchable key.
  */
 const DAY_META_PATCH_KEYS: Record<keyof DayMetaPatch, true> = {
-  primaryCity: true, cities: true, title: true, subtitle: true, provenance: true,
+  primaryCity: true, cities: true, title: true, subtitle: true,
   legacyFlag: true, tzId: true,
 };
 
 /**
- * The three A-77 Part 5 names explicitly, because all three are **identity** and none is the
- * caller's to rewrite here — `stops` is the record list (`addStop`/`moveStop`/`removeStop` own
- * it), and `id`/`date` are what makes a day that day (`ensureDays` owns both, and §2.3 requires
+ * The A-77 Part 5 names explicitly, because each is **identity** and none is the caller's to
+ * rewrite here — `stops` is the record list (`addStop`/`moveStop`/`removeStop` own it), and
+ * `id`/`date` are what makes a day that day (`ensureDays` owns both, and §2.3 requires
  * `Day.id === Day.date`). Every other undeclared key is refused too; these get their own sentence.
+ *
+ * **§2.1 A-78 Part 5 (QA R56-7) adds `provenance`, with `updateStop`'s reason verbatim so that the
+ * two doors read the same.** It must move out of `DayMetaPatch`'s `Pick` and into here together:
+ * R56-6's type-level assertion (*the constant above is exactly `keyof DayMetaPatch`*) is what
+ * catches it if only one happens.
  */
 const FORBIDDEN_DAY_META_PATCH_KEYS: Record<string, string> = {
   stops: 'a day\'s stops are addStop / moveStop / removeStop\'s, and a stop that already exists ' +
     'elsewhere in the document would parse perfectly and duplicate an id',
   id: 'a day id is immutable and must equal its date (§2.3)',
   date: 'a day\'s date is the trip range\'s, and moving one is ensureDays\' (§2.3)',
+  provenance: 'use acceptCandidate / rejectCandidate',
 };
 
 /** @throws {Error} on any key outside `DayMetaPatch`, present even with an `undefined` value. */
