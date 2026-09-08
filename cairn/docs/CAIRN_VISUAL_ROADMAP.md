@@ -19,6 +19,57 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
+> **🟧 THE LOCK MECHANISM IS BUILT — AND THE TESTER FOUND THE LIST OF DOORS IS STILL SHORT.
+> As of 2026-09-08, this block is the newest and it supersedes every block below it, including the
+> designer's answer immediately below, which it partly corrects.** Nothing on your phone changes.
+>
+> **What was built.** Exactly what the designer ruled: every place that writes something into a
+> trip now hands what it just wrote to the reader that opens saved trips, and refuses on the spot
+> if the reader would not take it. It is one small file. Three old locks that said the same thing
+> the reader already says were deleted; two that say something the reader genuinely does not know
+> were kept. All 1,556 automated checks pass, nothing was weakened, and the ten specific ways a
+> trip could previously be broken are now all refused.
+>
+> **What the tester found, and it is the same shape of problem one level up.** The designer refused
+> to write a list of eight doors, on the grounds that hand-written lists of "the places that need a
+> check" have been wrong every time in this project — and then wrote a list of **where to call the
+> new mechanism**. That list is short too. Driving every door and every field through the same
+> measurement the last round used, **thirteen combinations still save a trip that can never be
+> opened again**:
+>
+> - **The day-editing door.** It checks the day it is about to write, but deliberately looks past
+>   the day's list of stops — for a good reason, so that one pre-existing bad stop cannot make a
+>   day's *title* uneditable. But nothing stops a caller smuggling a whole list of stops in through
+>   that same door, and the check then looks straight past exactly the thing that was smuggled. The
+>   tester drove this through the real app: two weeks of planning saved and verified, one edit, the
+>   app says **Saved** — and the trip can never be opened again. **This is the same loss the last
+>   round reported, reproduced after the fix that was written to stop it.**
+> - **Two doors marked "safe, nothing a caller says reaches the trip" that do not match the code.**
+>   Accepting a suggestion writes the *date* the caller passed in; creating a trip writes the
+>   caller's *today* into every day it mints. Both land in the file, and neither is checked.
+> - **The trip's own top-level fields** — its title, its currency, its owner, its party size, its
+>   notes. The ruling says these keep their own separate locks. Two of the eight have one. Six do
+>   not, and five of those six produce the same unopenable file.
+>
+> **Also found.** One of the two standing checks meant to make it impossible to add a new door
+> without accounting for it can be walked past three different ways — the tester added a new door
+> in each of them and the check stayed green. And a shortcut the builder honestly flagged turns out
+> to be genuinely exploitable rather than theoretical: two doors keep the caller's own object
+> rather than a copy, so a caller can pass the check and then change the value afterwards.
+>
+> **What is *not* wrong.** The mechanism itself is right and the tester says so plainly — every
+> door it is wired into refuses everything it should, the three deleted locks are genuinely
+> covered, the two kept locks are untouched, and the door that copies a stop from a friend's trip
+> is now checked twice and in the correct order. Seven of the tester's own older scripts had to be
+> corrected, **five of them because they had been quietly building broken trips for months and the
+> new mechanism is what caught it.** That is the mechanism earning its place.
+>
+> **What happens next.** The tester's verdict on this piece is **send back** — not to redo it, but
+> to finish the list. The three gaps go to the designer, because they are the ruling's list rather
+> than the builder's work. The manager's **SHIP / SEND BACK** decision for the whole of Phase 2
+> still comes next, and the honest framing for it is that the "unopenable trip" problem is
+> **narrowed, not closed**.
+
 > **🟦 THE DESIGNER HAS ANSWERED THE PHASE GATE — as of 2026-09-08. This block is the newest and
 > it supersedes every block below it, including the one immediately below, which is the tester's
 > report that this answers.** The tester's round found nine things; **six came to the designer and

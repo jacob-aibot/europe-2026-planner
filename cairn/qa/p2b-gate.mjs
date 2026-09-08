@@ -68,7 +68,11 @@ function loudTrip(start, end, opts = {}) {
   const d0 = t.days[0].id;
   const at = (lat, lng) => ({ kind: 'inline', at: { lat, lng } });
   // integrity: a user-set legacy flag
-  t = core.setDayMeta(t, d0, { legacyFlag: 'Check this day' });
+  // RE-CUT AT ROUND 55 (I-15 / §2.1 A-76): `Day.legacyFlag` is `boolean?` and the rule only reads
+  // its truthiness (`conflict/rules/legacyFlag.ts:21`). The string was round 54 census #6's exact
+  // shape — accepted silently before A-76, and a document that could never have been re-opened —
+  // and `setDayMeta` now refuses it, which aborted this probe. The flag's INTENT is unchanged.
+  t = core.setDayMeta(t, d0, { legacyFlag: true });
   // feasibility: two overlapping timed stops on day 0
   t = core.addStop(t, { kind: 'scheduled', dayId: d0, time: '12:00', order: 0 }, { name: 'Lunch', category: 'food', durationMins: 120, place: at(35.68, 139.77) }, c);
   t = core.addStop(t, { kind: 'scheduled', dayId: d0, time: '12:30', order: 1 }, { name: 'Museum', category: 'sight', durationMins: 60, place: at(35.69, 139.78) }, c);
@@ -81,7 +85,10 @@ function loudTrip(start, end, opts = {}) {
     t,
     { kind: 'scheduled', dayId: t.days[1].id, time: '10:00', order: 0 },
     { name: 'Ghibli Museum', category: 'sight', place: at(35.696, 139.57),
-      cost: { display: '€10', c: [10, 10] }, links: [{ label: 'Tickets', url: 'https://example.test/t' }] },
+      // RE-CUT AT ROUND 55: `Link` is `{label, href}` and `CostEstimate` is `{amounts, display}` —
+      // both were the wrong shape and both were accepted silently before A-76.
+      cost: { amounts: [{ lo: 10, hi: 10, currency: 'EUR', basis: 'per_person' }], display: '€10' },
+      links: [{ label: 'Tickets', href: 'https://example.test/t' }] },
     c,
   );
   return t;
@@ -175,10 +182,10 @@ line('§1.5 ruling 1 asymmetry: one non-past subject keeps the whole finding');
   let t = core.createTrip({ title: 'Mixed', startDate: '2026-08-20', endDate: '2026-09-05', cities: [{ key: 'a', name: 'A', order: 0 }] }, c);
   for (const d of t.days) t = core.setDayMeta(t, d.id, { primaryCity: 'a', cities: ['a'] });
   const futureDay = t.days.find((d) => d.date === '2026-09-01');
-  t = core.addStop(t, { kind: 'scheduled', dayId: futureDay.id, time: '09:00', order: 0 }, { name: 'Flight', category: 'travel' }, c);
+  t = core.addStop(t, { kind: 'scheduled', dayId: futureDay.id, time: '09:00', order: 0 }, { name: 'Flight', category: 'transit' }, c);
   const stopId = t.days.find((d) => d.id === futureDay.id).stops[0].id;
   t = core.upsertBooking(t, {
-    id: 'bk2', tripId: t.id, kind: 'transport', operator: 'BA', reference: 'BA863',
+    id: 'bk2', tripId: t.id, kind: 'flight', operator: 'BA', reference: 'BA863',
     startsAt: { date: '2026-08-22', time: '09:00' }, price: null, party: null, status: 'active', ticket: null,
     provenance: { source: 'user', state: 'accepted', confidence: 'confirmed', addedAt: '2026-01-01', acceptedAt: '2026-01-01', actorUserId: core.LOCAL_OWNER },
   });

@@ -177,11 +177,16 @@ head('A  updateParticipant — every escape shape');
 
   // R52-3, RE-CUT AT ROUND 53. This used to be a bare call and it is now a throw, which is
   // exactly what the finding asked for — so the probe wraps it instead of aborting on it.
+  // RE-CUT AT ROUND 55 (I-15 / §2.1 A-76): `assertParticipantKind` is DELETED and the refusal
+  // now comes from `parseParticipant` through `assertStorable`, so the message moved. The refusal
+  // itself did not — every value in R52-3's list is still refused, which round 55's
+  // `qa/r55-a76.mjs` §B asserts value by value. What is pinned here is the door, the path and the
+  // legal values, not one sentence of one guard.
   const eKind = threw(() => core.updateParticipant(t, id, { kind: 'owner' }));
   ok('R52-3: updateParticipant refuses a kind outside PARTICIPANT_KINDS',
-    eKind !== null && /kind must be one of/.test(String(eKind.message)), String(eKind));
+    eKind !== null && /cannot be stored/.test(String(eKind.message)) && /\$\.kind/.test(String(eKind.message)), String(eKind));
   ok('R52-3: and the refusal names the legal values, so the caller can fix it',
-    eKind !== null && /"self"/.test(String(eKind.message)) && /"contact"/.test(String(eKind.message)),
+    eKind !== null && /self/.test(String(eKind.message)) && /contact/.test(String(eKind.message)),
     String(eKind && eKind.message));
   const eKindU = threw(() => core.updateParticipant(t, id, { kind: undefined }));
   ok('R52-3: a patch that HAS the key with an undefined value is refused too (key presence)',
@@ -197,9 +202,11 @@ head('B  the type-legal corruption chain, now refused at the door');
   // TypeScript (there is no exactOptionalPropertyTypes in cairn/tsconfig.json), so this is a
   // fully type-checked caller, not a cast. R52-2, RE-CUT AT ROUND 53: it is now a throw.
   const [t0, id] = withOne();
+  // RE-CUT AT ROUND 55: `assertDisplayName` is deleted; `str()` in `parseParticipant` is the same
+  // property and A-76 Part 4 subsumes it. The refusal is unchanged; the message is A-76's.
   const eName = threw(() => core.updateParticipant(t0, id, { displayName: undefined }));
   ok('R52-2: { displayName: undefined } is refused at the door',
-    eName !== null && /displayName must be a string/.test(String(eName.message)), String(eName));
+    eName !== null && /cannot be stored/.test(String(eName.message)) && /\$\.displayName/.test(String(eName.message)), String(eName));
   ok('R52-2: addParticipant has the same guard (the sibling door)',
     threw(() => core.addParticipant(trip(), { displayName: undefined }, CTX())) !== null,
     'addParticipant accepted a non-string displayName');
@@ -1048,9 +1055,14 @@ head('O  round 53 — assertParticipantKind\'s coverage: is there another door?'
     /participants:\s*\[\]/.test(src('import/legacyDays.ts')));
   ok('A-74 rung 3: fromJSON reads kind through oneOf(PARTICIPANT_KINDS)',
     /oneOf\(o\.kind,\s*PARTICIPANT_KINDS/.test(src('serialize/fromJSON.ts')));
-  ok('A-74 rung 4: both build doors call assertParticipantKind',
-    (src('build/participants.ts').match(/assertParticipantKind\(/g) ?? []).length === 3,
-    String((src('build/participants.ts').match(/assertParticipantKind\(/g) ?? []).length));
+  // RE-CUT AT ROUND 55: §2.1 **A-76** deleted `assertParticipantKind` and fired A-74 Part 7's own
+  // trigger — the rung is now `assertStorable`, which asks `parseParticipant` (rung 3) rather than
+  // keeping a second copy of the member list. The rung is the same rung; the mechanism moved, and
+  // pinning the deleted name is what reddened here.
+  ok('A-74 rung 4: both build doors hand the record to the parser (A-76 replaces the guard)',
+    (src('build/participants.ts').match(/assertStorable\(/g) ?? []).length === 2
+      && !/assertParticipantKind\(/.test(src('build/participants.ts')),
+    String((src('build/participants.ts').match(/assertStorable\(/g) ?? []).length));
   ok('A-74 rung 5: removeParticipant only filters — it mints nothing',
     /participants:\s*trip\.participants\.filter/.test(src('build/participants.ts')));
   ok('A-74 rung 6: copyStop names no participant at all', !/participants/.test(src('build/copyStop.ts')));
@@ -1140,10 +1152,13 @@ head('Q  round 53 — R52-6\'s exact adversarial patches');
   ok('R52-6: and the document still round-trips after the removal',
     threw(() => core.fromJSON(core.toJSON(removed))) === null);
 
+  // RE-CUT AT ROUND 55: `assertNote` is deleted and `o.note !== undefined ? str(...)` in
+  // `parseParticipant` is the same property (A-76 Part 4), including the `undefined` asymmetry
+  // above. Every value below still throws; the message is A-76's and the path is `$.note`.
   for (const v of [{}, [], 7, null, true, Object.create(null)]) {
     const e = threw(() => core.updateParticipant(t, id, { note: v }));
     ok(`R52-6: { note: ${JSON.stringify(v) ?? String(v)} } THROWS, as claimed`,
-      e !== null && /note must be a string/.test(String(e.message)), String(e));
+      e !== null && /cannot be stored/.test(String(e.message)) && /\$\.note/.test(String(e.message)), String(e));
   }
   ok('R52-6: a legal note still writes', core.updateParticipant(t, id, { note: 'ok' }).participants[0].note === 'ok');
   ok('R52-6: an ABSENT note key leaves the existing note alone',

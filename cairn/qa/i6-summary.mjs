@@ -130,7 +130,11 @@ head('3 — KD-55: homeBase excluded, including the case where it is the only si
   t = core.addStop(
     t,
     { kind: 'pool', cityKey: 'vienna' },
-    { title: 'Zagreb Cathedral', place: { kind: 'inline', at: CITY.zagreb.centre } },
+    // RE-CUT AT ROUND 55 (I-15 / §2.1 A-76): `StopInit` has `name`, not `title`, and `category` is
+    // required — this stop was being built with BOTH `name` and `category` undefined, which is
+    // round 54 census #4's exact shape. `addStop` now refuses it and aborted this probe; the stop
+    // it means to build is unchanged.
+    { name: 'Zagreb Cathedral', category: 'sight', place: { kind: 'inline', at: CITY.zagreb.centre } },
     CTX,
   );
   const s = core.tripSummary(t, IDX);
@@ -174,7 +178,7 @@ head('5 — real-trip shapes');
   // A stop with NO coordinates at all (inline link with no `at`, no placeId).
   let t = trip({ cities: [CITY.vienna] });
   const dayId = t.days[0].id;
-  t = core.addStop(t, { kind: 'scheduled', dayId, time: null, order: 0 }, { title: 'A stop with no location', place: { kind: 'none' } }, CTX);
+  t = core.addStop(t, { kind: 'scheduled', dayId, time: null, order: 0 }, { name: 'A stop with no location', category: 'sight', place: { kind: 'none' } }, CTX);
   let s = null, err = null;
   try { s = core.tripSummary(t, IDX); } catch (e) { err = e; }
   ok(err === null, 'a stop with no place does not crash tripSummary', err && err.message);
@@ -191,7 +195,14 @@ head('5 — real-trip shapes');
 }
 {
   // NaN — the shape a bad parse produces.
-  const t = trip({ cities: [{ key: 'nan', name: 'NaN', countryCode: 'XX', centre: { lat: NaN, lng: NaN } }] });
+  //
+  // RE-CUT AT ROUND 55 (I-15 / §2.1 A-76): `createTrip` now hands each minted `City` to
+  // `parseCity`, which requires `centre.lat`/`centre.lng` as FINITE numbers, so the door refuses
+  // `NaN` and this probe aborted here. The population is now a cast — which is what it always
+  // was: A-76 Part 5's own `createTrip` row calls this hole one the round-54 census did not name.
+  // The subject of this section is `tripSummary`, not the door, so it is planted rather than built.
+  const t0 = trip({ cities: [{ key: 'nan', name: 'NaN', countryCode: 'XX', centre: { lat: 0, lng: 0 } }] });
+  const t = { ...t0, cities: t0.cities.map((c) => ({ ...c, centre: { lat: NaN, lng: NaN } })) };
   let s = null, err = null;
   try { s = core.tripSummary(t, IDX); } catch (e) { err = e; }
   ok(err === null, 'NaN coordinates do not crash', err && err.message);
@@ -230,11 +241,17 @@ head('7 — §8.4 A-29: a city\'s STATED country, gated (round 26 R26-5, closed)
   // A-29 admits the stated code as a GAP-FILLER only, behind a four-step gate whose last step
   // is *the shipped index must carry the code*.
   const HVAR = { lat: 43.1729, lng: 16.4413 };
-  const at = (countryCode, centre = HVAR) =>
-    core.tripSummary(
-      trip({ cities: [{ key: 'c', name: 'Stated', countryCode, centre }] }),
-      core.COUNTRY_INDEX,
-    ).cities[0];
+  // RE-CUT AT ROUND 55 (I-15 / §2.1 A-76): `createTrip` now hands each minted `City` to
+  // `parseCity`, which reads `countryCode` through `str()`. The hostile shapes this section is
+  // ABOUT (`null`, `undefined`, `42`, `{}`, `['HR']`) are therefore refused at the door and the
+  // probe aborted on the first of them. The subject here is A-29's stated-code gate inside
+  // `tripSummary`, not the build door, so the city is minted valid and the stated code is planted
+  // by cast — which is the only population that shape has after A-76.
+  const at = (countryCode, centre = HVAR) => {
+    const t0 = trip({ cities: [{ key: 'c', name: 'Stated', countryCode: 'XX', centre }] });
+    const t = { ...t0, cities: t0.cities.map((c) => ({ ...c, countryCode })) };
+    return core.tripSummary(t, core.COUNTRY_INDEX).cities[0];
+  };
 
   ok(core.countryOf(HVAR, core.COUNTRY_INDEX) === null,
     'precondition: the shipped index still cannot attribute Hvar Town');

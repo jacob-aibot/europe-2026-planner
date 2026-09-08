@@ -803,8 +803,18 @@ section('M — the last build door with no runtime shape guard: `upsertBooking`'
   note('M2  toJSON on the resulting document', serErr ? `THROWS: ${serErr.message}` : 'ok');
   const flushErr = await threwAsync(() => s.flush());
   note('M2a flush()', flushErr ? `THROWS: ${flushErr.message}` : `does not throw; persistence = ${s.getState().persistence.status}`);
-  ok('M2b flush degrades rather than collapsing — status is reported, not thrown',
-    flushErr === null && s.getState().persistence.status === 'error', s.getState().persistence.status);
+  // RE-CUT AT ROUND 55 (I-15 / §2.1 A-76). This row encoded the PRE-FIX world: `M1` used to
+  // fail, the unserialisable booking reached the document, and the most this probe could ask for
+  // was that `flush()` reported `'error'` rather than throwing. `upsertBooking` now refuses the
+  // record at the door (A-76 Part 5's row covers the missing-`startsAt` case explicitly), so the
+  // document is clean and `'idle'` is the truthful answer. The old assertion is kept as the
+  // branch that fires if the door ever stops refusing — the finding, not the fix, is what this
+  // probe is for.
+  ok('M2b flush degrades rather than collapsing — and after A-76 there is nothing to degrade',
+    dispatchErr !== null
+      ? flushErr === null && s.getState().persistence.status === 'idle'
+      : flushErr === null && s.getState().persistence.status === 'error',
+    { doorRefused: dispatchErr !== null, status: s.getState().persistence.status });
   eq('M3  the user’s earlier work is still in storage, byte-identical', p.storage.docs.get(id), goodBytes);
   const derr = threw(() => client.computeDerived(s.getState().doc, TODAY));
   ok('M3a computeDerived survives — no view goes down (unlike R52-2’s class)', derr === null, derr?.message);
@@ -871,25 +881,39 @@ section('M — the last build door with no runtime shape guard: `upsertBooking`'
   const day8 = s8.getState().doc.days[0].id;
   s8.dispatch({ type: 'addStop', placement: { kind: 'scheduled', dayId: day8, time: '09:00', order: 0 }, stop: { name: 'Two weeks of planning', category: 'sight' } });
   await s8.flush();
-  s8.dispatch({ type: 'addStop', placement: { kind: 'scheduled', dayId: day8, time: '10:00', order: 1 }, stop: { name: 'One bad category', category: 'transport' } });
+  // RE-CUT AT ROUND 55 (I-15 / §2.1 A-76). The bad `addStop` this section needs in order to
+  // MEASURE the loss is now refused at the door, so the bare dispatch threw and aborted the whole
+  // probe. It is wrapped, and the section keeps both halves: the refusal is asserted where it
+  // happens, and every measurement below it still runs — so this stays the standing regression
+  // for A-76's harm rather than becoming a row that only ever passed once.
+  const badDispatch = threw(() => s8.dispatch({ type: 'addStop', placement: { kind: 'scheduled', dayId: day8, time: '10:00', order: 1 }, stop: { name: 'One bad category', category: 'transport' } }));
+  ok('M8- the door refuses the bad edit before the store ever sees it (A-76, the whole point)',
+    badDispatch !== null, 'the dispatch was accepted; everything below measures the loss it caused');
   await s8.flush();
   note('M8  what the user is told after the write', s8.getState().persistence.status);
-  ok('M8a the user is NOT told "saved" over a trip that can no longer be opened',
-    s8.getState().persistence.status !== 'idle',
-    `persistence.status is '${s8.getState().persistence.status}' while the stored bytes no longer parse`);
   const stored8 = p8.storage.docs.get(id8);
   const reparse = threw(() => core.fromJSON(stored8));
+  ok('M8a the user is NOT told "saved" over a trip that can no longer be opened',
+    !(s8.getState().persistence.status === 'idle' && reparse !== null),
+    `persistence.status is '${s8.getState().persistence.status}' while the stored bytes no longer parse`);
   note('M8b can the stored document be parsed?', reparse ? `NO — ${reparse.path}` : 'yes');
   await s8.closeTrip();
   const openErr = await threwAsync(() => s8.openTrip(id8));
   note('M8c openTrip after a reload', openErr ? `refuses: ${openErr.message.slice(0, 90)}` : 'opens');
-  ok('M8d the whole trip — including the earlier work — is now unreachable',
+  ok('M8d the whole trip — including the earlier work — is still reachable',
     openErr === null, openErr ? 'the trip cannot be opened; the only recovery is the A-46 rescue export' : undefined);
-  const rescue = await s8.exportStoredDoc(id8);
-  ok('M8e the A-46 rescue export still hands back the raw bytes', typeof rescue === 'string' && rescue.length > 0, rescue?.length);
+  // RE-CUT AT ROUND 55: `openTrip` now SUCCEEDS, so `id8` is the active trip and A-46's rescue
+  // path correctly refuses it (`use exportActive()`). Which of the two exports applies is decided
+  // by whether the document opened — the claim being kept is *"the bytes are always retrievable"*.
+  const rescue = openErr === null ? await s8.exportActive() : await s8.exportStoredDoc(id8);
+  ok('M8e the bytes are retrievable either way — A-46\'s rescue path, or the ordinary export',
+    typeof rescue === 'string' && rescue.length > 0, rescue?.length);
   await s8.refreshLibrary();
   const fails8 = s8.getState().openFailures ?? [];
   ok('M8f the library names the row rather than hiding it', fails8.length > 0 || s8.getState().library.length > 0, { openFailures: fails8.length, library: s8.getState().library.length });
+  note('M9  A-76 closes this door and NOT the class — round 55 reproduces the same loss end to end',
+    'setDayMeta’s `stops: []` elision, acceptCandidate’s `at`, ensureDays’ `ctx.now` and six ' +
+    'trip-level scalars: see R55-1/R55-2/R55-3 and `qa/r55-a76.mjs` §F/§G');
 }
 
 console.log(`\nCOMPLETE  fails=${fails} gaps=${gaps} notes=${notes}`);

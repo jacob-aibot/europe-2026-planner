@@ -148,10 +148,20 @@ const castWithHours = (hours, prefix = 'ch') => {
 
 /** `{accepted}` or `{name, path, message}` — the parser's verdict on one `hours` value. */
 const parserVerdict = (hours, prefix = 'pv') => {
-  try { reparse(sourceWithPlace({ hours }, prefix)); return { accepted: true }; }
+  try { reparse(castWithHours(hours, prefix)); return { accepted: true }; }
   catch (e) { return { accepted: false, name: e.constructor.name, path: e.path, message: e.message }; }
 };
 
+/**
+ * RE-CUT AT ROUND 55 (I-15 / §2.1 **A-76**). Every hostile `hours` shape below used to be planted
+ * through `addPlace`, which now hands the `Place` to `parsePlace` and refuses 22 of the 35 —
+ * `parserVerdict` returned the DOOR's plain `Error` instead of the parser's `TripParseError`, and
+ * §4.1's `validateTrip` loop aborted the whole probe. They are planted by **cast** now
+ * (`castWithHours`), which is the population `place_hours_malformed` actually has after A-76:
+ * A-76 Part 5's `addPlace` row says so in as many words — *"`import/legacyDays.ts` builds its
+ * `Trip` literal and calls no build door"*. The claims are unchanged; only how the shape gets
+ * into the document is.
+ */
 /* ================================================= §1 A-18 in depth ============ */
 
 line('§1.1 A-18 — the `display` predicate at its edges');
@@ -302,7 +312,7 @@ line('§1.4 A-18 — a `weeklyForCopy` entry is dropped whole when ONE of its tw
   const hostile = ['PIN 0754', '170000', 'https://vendor.test/x', 'YZGDTS', 'conf 5814731574'];
   const badWeekly = { weekly: [{ day: 1, open: '09:00', close: '17:00' }, { day: 2, open: '09:00', close: '170000' }] };
   let parseErr = null;
-  try { reparse(sourceWithPlace({ hours: badWeekly }, 'wkp')); } catch (e) { parseErr = e; }
+  try { reparse(castWithHours(badWeekly, 'wkp')); } catch (e) { parseErr = e; }
   ok('A-20: fromJSON refuses the hostile entry at the exact path, rather than accepting it',
     parseErr?.name === 'TripParseError' && parseErr.path === '$.places[0].hours.weekly[1].close',
     `${parseErr?.name}@${parseErr?.path}`);
@@ -700,14 +710,14 @@ line('§4.1 the new IssueCode — ceiling, determinism and wiring');
     (() => {
       try {
         for (const h of [{}, 'x', 7, [], null, { weekly: 'x' }, { weekly: [7] }, { weekly: [{ day: 1 }] }]) {
-          core.validateTrip(sourceWithPlace({ hours: h }, 'z' + String(h)));
+          core.validateTrip(castWithHours(h, 'z' + String(h)));
         }
         return true;
       } catch { return false; }
     })(), '');
 
   // The Issue contract: level, ref kind, params, and a message with no opaque CityKey in it.
-  const bad = sourceWithPlace({ hours: 'mon-fri' }, 'w1');
+  const bad = castWithHours('mon-fri', 'w1');
   const one = core.validateTrip(bad).find((i) => i.code === 'place_hours_malformed');
   ok('it is a `warn`, as §2.9 requires of a "shaped oddly" finding', one?.level === 'warn', JSON.stringify(one));
   ok('...carries a resolvable `{kind:"place"}` ref', one?.ref?.kind === 'place' && bad.places.some((p) => p.id === one.ref.id), JSON.stringify(one?.ref));
@@ -715,10 +725,10 @@ line('§4.1 the new IssueCode — ceiling, determinism and wiring');
     typeof one?.message === 'string' && one.message.includes('Habyt Vienna') && !one.message.includes(one.ref.id),
     one?.message);
   ok('...exactly one per malformed place, not one per weekly entry',
-    core.validateTrip(sourceWithPlace({ hours: { weekly: [7, 7, 7, 7] } }, 'w2'))
+    core.validateTrip(castWithHours({ weekly: [7, 7, 7, 7] }, 'w2'))
       .filter((i) => i.code === 'place_hours_malformed').length === 1, '');
   ok('...and a well-formed `hours` produces none',
-    core.validateTrip(sourceWithPlace({ hours: { weekly: [{ day: 1, open: '09:00', close: '17:00' }], note: 'ring the bell' } }, 'w3'))
+    core.validateTrip(castWithHours({ weekly: [{ day: 1, open: '09:00', close: '17:00' }], note: 'ring the bell' }, 'w3'))
       .filter((i) => i.code === 'place_hours_malformed').length === 0, '');
 
   // Wiring: nothing in the repo switches exhaustively on IssueCode, so an unratified code

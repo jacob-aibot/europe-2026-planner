@@ -3772,3 +3772,39 @@ probes, not six: `r45-i13` 3, `r46-i13b` ALL OK, `r47-i13c` 1, `r48-i13d` 6, `r4
 against a surface that is 86. Still routed to the next I-13 pass and deliberately not re-cut
 here. `r30-upcast.mjs` and `r46-idb-keys.mjs` need real IndexedDB and abort under bare Node by
 design — they are browser probes without a `playwright`/`chromium` literal to filter on.
+
+---
+
+**Round 55** is the mandatory adversarial pass over **I-15** / §2.1 **A-76** (*a build door asks
+the parser what a record may hold*), at `6687118`. One new probe, run from `cairn/`:
+
+```bash
+node --experimental-strip-types qa/r55-a76.mjs   # 8 sections; 9 FAIL at 6687118, all findings
+bash qa/r55-recut.sh                             # the seven re-cut probes, each from its own cwd
+```
+
+**`r55-a76.mjs` — sections.** **A** **KD-100**, `kind: null` refused vs `kind: undefined`
+defaulted at both participant doors · **B** the three **deleted** guards re-attacked with the
+exact value lists R52-2/R52-3/R52-6 were written for (44 calls, zero survivors — the refusals are
+subsumed, only the message moved) · **C** the two **kept** guards, including that the parser still
+*accepts* a place-attached photo (so `assertBuiltAttach` is proved to be the opposite property and
+not a second copy) and that the deferral is the message when both would fire · **D**
+`copyStopInto`'s double guard — the place check catches what `addStop` structurally cannot, the
+stop check names the right door, the place refusal comes first, and a refused copy leaves the
+recipient byte-identical · **E** the two standing censuses: **three export forms that evade the
+directory census** (`export const`, `export {}`, `export default`, injected into `build/pool.ts`
+and restored in a `finally`), and the per-door/per-field gap the behavioural census cannot see ·
+**F** the **eleventh-door hunt** — 26 door × field cases driven door → `toJSON` → `fromJSON` in
+round 54 §M6's shape; 7 controls REFUSED, **13 still UNOPENABLE** · **G** the worst of them
+through the **real store**, which is round 54 §M8 verbatim · **H** the TOCTOU window, exploitable
+three ways with no async gap.
+
+**The seven re-cuts (R55-6).** `r54-integration` (M2b, §M8, M8e — the two the builder disclosed
+plus one more), `r54-gate` (§C's `links`/`cost` fixture — **it was aborting and reporting
+`fails=0`**), `r52-participants` (ten message/grep pins on guards A-76 deleted),
+`r16-copy-depth` (hostile `hours` now planted by cast, since `addPlace` refuses 22 of the 35),
+`r21-closure` (N4's `basis:'total'` typo), `i6-summary` (`title:`/`category`, a `NaN` centre and
+A-29's stated-code helper, the last two now planted by cast) and `p2b-gate` (five invalid literals
+in one probe). **`p2b-gate.mjs` reads `packages/core/src` relatively and must be run from
+`cairn/`, not from `cairn/qa`** — that is why its abort was invisible to a `qa/`-relative sweep,
+and `r55-recut.sh` runs it from the right place.

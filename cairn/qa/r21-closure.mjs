@@ -550,7 +550,12 @@ line('§7 the fresh attack — 22 document shapes no row of the fifteen builds')
     ['N1  target city name folds to ""', () => ({ source: sourceTrip(), target: cities([{ key: TGT_CITY, name: '   ', order: 0 }]), placement: SCHEDULED })],
     ['N2  source place `hours.weekly` is a string (R15-2 shape)', () => ({ source: patchPlace(sourceTrip(), { hours: { weekly: 'mon-fri', note: 'x' } }), target: targetTrip(), placement: SCHEDULED })],
     ['N3  three weekly entries, the middle one malformed', () => ({ source: patchPlace(sourceTrip(), { hours: { weekly: [{ day: 1, open: '09:00', close: '17:00' }, { day: 2, open: 'nope', close: '17:00' }, { day: 3, open: '08:00', close: '12:00' }] } }), target: targetTrip(), placement: SCHEDULED })],
-    ['N4  cost.display null, no cost.note, no arrival.label', () => ({ source: patchStop(sourceTrip(), { cost: { amounts: [{ lo: 5, hi: 5, currency: 'EUR', basis: 'total' }], display: null }, arrival: { mode: 'walk', mins: 4 } }), target: targetTrip(), placement: SCHEDULED })],
+    // RE-CUT AT ROUND 55 (I-15 / §2.1 A-76): `basis: 'total'` was never a `MoneyBasis`
+    // (`per_person | per_party`) — an incidental typo in this scenario, whose subject is
+    // `cost.display: null`. Pre-A-76 `copyStopInto` copied it silently; it now hands the copied
+    // `Stop` to `parseStop` and refuses at `$.cost.amounts[0].basis`, which is the door working.
+    // The scenario keeps its subject and loses the typo.
+    ['N4  cost.display null, no cost.note, no arrival.label', () => ({ source: patchStop(sourceTrip(), { cost: { amounts: [{ lo: 5, hi: 5, currency: 'EUR', basis: 'per_party' }], display: null }, arrival: { mode: 'walk', mins: 4 } }), target: targetTrip(), placement: SCHEDULED })],
     ['N5  pool placement, NO hint', () => ({ source: sourceTrip(), target: targetTrip(), placement: { kind: 'pool', cityKey: TGT_CITY } })],
     ['N6  pool placement, hint with `order` undefined', () => ({ source: sourceTrip(), target: targetTrip(), placement: { kind: 'pool', cityKey: TGT_CITY, hint: { dayId: '2026-08-08', time: '11:00' } } })],
     ['N7  three same-named target cities, TWO tied at the lowest order', () => ({ source: sourceTrip(), target: cities([{ key: TGT_CITY, name: 'Vienna', order: 5 }, { key: 'b', name: 'Vienna', order: 3 }, { key: 'c', name: 'Vienna', order: 3 }]), placement: SCHEDULED })],

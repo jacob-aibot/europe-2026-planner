@@ -314,8 +314,14 @@ section('C — EC-3: a past trip is silent, and its injected fault');
       name: 'A ticketed thing',
       category: 'sight',
       flags: ['ticketed'],
-      cost: { display: '€20', amount: 20, currency: 'EUR', basis: 'per_person' },
-      links: [{ label: 'Book', url: 'https://example.test/book' }],
+      // RE-CUT AT ROUND 55 (I-15 / §2.1 A-76). Both of these were the WRONG SHAPE and had been
+      // since round 54: `Link` is `{label, href}` (not `url`) and `CostEstimate` is
+      // `{amounts: Money[], display}` (not a flat `{amount, currency, basis}`). Pre-A-76 the door
+      // took them silently and this probe was building a stop that could never have been saved;
+      // `addStop` now refuses at `$.links[0].href`, which aborted the whole gate probe. The fix is
+      // the probe's — this is A-76 catching a real defect in the QA fixture, not a regression.
+      cost: { amounts: [{ lo: 20, hi: 20, currency: 'EUR', basis: 'per_person' }], display: '€20' },
+      links: [{ label: 'Book', href: 'https://example.test/book' }],
     }, ctx2);
     const f2 = core.detectConflicts(withStop, { today: TODAY });
     const feas = ['impossible_transfer', 'overlap', 'missing_lodging', 'unbooked_ticketed', 'booking_vs_plan'];
