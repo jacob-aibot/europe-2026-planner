@@ -19,6 +19,56 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
+> **🟧 THE DOORS ARE CLOSED — BUT THE LIST OF *WHERE THE DOORS ARE* IS STILL WRITTEN BY HAND.
+> As of 2026-09-08, this block is the newest and it supersedes every block below it, including the
+> tester's previous report and the designer's answer to it.** Nothing on your phone changes.
+>
+> **What was built, and this time it is the right shape.** The designer stopped asking each writing
+> place to declare what it wrote. Instead, every place that writes into a trip now hands over
+> **the trip it started from and the trip it produced**, and one new piece of code works out what
+> actually changed — by comparing the two — and checks exactly those pieces against the reader that
+> opens saved trips. There is no list of doors, no list of fields and no list of exceptions. A door
+> that writes something nobody thought of is covered automatically, because the thing it wrote is
+> new. All **1,592** automated checks pass.
+>
+> **The tester attacked it hard, and the mechanism held.** All sixteen ways a trip could previously
+> be saved-but-never-reopened are now refused at the door — sixteen out of sixteen, where the last
+> round measured thirteen still broken. Twenty-two different bad values at the newly-covered kind of
+> record: all refused or harmless, none breaks a file. The shortcut the last round found genuinely
+> exploitable is now closed at every door, in both directions. The day-editing door's smuggling hole
+> is closed twice over. Editing a trip is still fast — the largest trip the system allows is well
+> inside every speed budget. **And the loss the tester reproduced end-to-end two rounds running no
+> longer reproduces at all.**
+>
+> **What sends it back is one level up again, and it is the same shape as last time.** The ruling's
+> own promise is that *the only thing still written by hand is which functions are doors, and that
+> is not prose — the compiler works it out.* It does not, quite. Two hand-written lists are still
+> behind that promise:
+>
+> - **The check only looks in one folder** (plus one extra file, named by hand — the exact file the
+>   *previous* round's check could not see). The tester added an ordinary new door to a file in a
+>   different folder: every automated check stayed green, and the door happily saved a trip that can
+>   never be opened again. **That is last round's failure, repeated one level out.**
+> - **The compiler only counts a door if it returns a trip and nothing else.** A door written to
+>   return "a trip, or nothing", or one written to return a trip *later* — which is exactly the shape
+>   the email-scanning work in a future phase will need — is not counted at all.
+>
+> **Neither is broken today.** The tester checked every one of the 42 pieces of the engine and there
+> is no unaccounted door in the code right now. Both are about the *guarantee* rather than the code
+> — and the guarantee is the whole point of doing this a third time.
+>
+> **Eight smaller things**, all minor, all written up with a way to reproduce each: one place where
+> the new code reads the same slot twice and could store the value it did not check; a stated reason
+> for keeping one old lock that the code no longer supports; a patch that silently resets "I only
+> know the month" back to "exact"; a speed claim that does not hold on very large trips (still inside
+> budget); and four smaller notes.
+>
+> **What happens next.** The tester's verdict is **send back to the designer** — not to redo the
+> mechanism, which is right, but to widen where the standing check looks. **Zero blockers.** The
+> manager's **SHIP / SEND BACK** decision for the whole of Phase 2 still comes next, and the honest
+> framing is now much better than last round's: the "unopenable trip" problem is **closed for every
+> door that exists**, and what remains open is the promise that a door added tomorrow inherits it.
+
 > **🟧 THE LOCK MECHANISM IS BUILT — AND THE TESTER FOUND THE LIST OF DOORS IS STILL SHORT.
 > As of 2026-09-08, this block is the newest and it supersedes every block below it, including the
 > designer's answer immediately below, which it partly corrects.** Nothing on your phone changes.

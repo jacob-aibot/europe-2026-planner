@@ -3808,3 +3808,84 @@ A-29's stated-code helper, the last two now planted by cast) and `p2b-gate` (fiv
 in one probe). **`p2b-gate.mjs` reads `packages/core/src` relatively and must be run from
 `cairn/`, not from `cairn/qa`** — that is why its abort was invisible to a `qa/`-relative sweep,
 and `r55-recut.sh` runs it from the right place.
+
+---
+
+**Round 56** is the mandatory adversarial pass over **I-16** / §2.1 **A-77** (*a door does not say
+what it wrote; the document says what changed*), at `97f1fc1`. Two new probes, plus the six
+re-cut sections of `r55-a76.mjs` the builder flagged and could not touch himself.
+
+```bash
+cd cairn
+node --experimental-strip-types qa/r56-a77.mjs   # 10 sections; 5 FAIL, 5 gap at 97f1fc1
+bash qa/r56-census.sh                            # 14 rows, one full `tsc` each (~10 min)
+```
+
+Both end in a `COMPLETE` marker. **A run without that line is INCOMPLETE and its counts may not
+be quoted.** `r56-a77.mjs` adds a `gap` channel (a routed, open design question — never a FAIL),
+which `r55-a76.mjs` now has too.
+
+**`r56-a77.mjs` — sections.** The claim under attack is not *"the sixteen cases are fixed"* —
+`r55-a76.mjs` §F already measures that and it is green. It is the **structural** claim.
+**A** the induction's unstated premise: a record already in the committed document, **mutated in
+place**, is skipped by identity forever and produces an unopenable document at three record
+classes (**R56-10**), with the control that the same value in a *new* object is refused, and a
+grep result recording that no shipped path does it · **B** the harm a `(t: Trip) => Trip | null`
+door would write, which the classifier cannot see (**R56-2**) · **C** 22 adversarial
+`ResolutionInit` shapes at the eighth record class — 19 refused, 3 accepted-and-reopenable, 0
+unopenable — plus the message contract (door, noun, `$.state`, locator, plain `Error`),
+substitution, and the other three `conflict/` doors' same-reference contracts. **Its base fixture
+carries no `note` key on purpose**: round 55's `note: null` would have refused every row for the
+fixture's own reason · **D** TOCTOU re-derived independently — a flip-on-second-read getter at
+two doors with bad-on-the-first-read controls, then post-return mutation at five record classes ·
+**E** `commit`'s own reads: `commitList` reads `after[i]` and then `after.slice()`, so a flip at
+read 3 lands an unparseable record (**R56-4**) · **F** the eight-collection walk against the eight
+array-valued fields of `Trip`, the nesting depth of every id-bearing list in the reference
+document, and the walk order read off the source · **G** `setDayMeta`'s allowlist at eight
+smuggling shapes plus the two `Object.keys` cannot see (harmless **by symmetry**, asserted rather
+than assumed), a symbol key, and the allowlist-vs-`Pick` drift (**R56-6**, **R56-7**) · **H** the
+envelope — key-set preservation, no minted `meta`, `schemaVersion`, and **KD-101/KD-104 measured**
+(**R56-5**) · **I** the three cost budgets re-measured independently plus the worst case the
+builder did not run: cost per edit against *total* stops (**R56-9**) · **J** the two kept guards,
+`assertBuiltAttach`'s ordering, `isIsoDate` vs the parser over 19 values (**R56-3**), and
+`assertStorable`'s two call sites.
+
+**`r56-census.sh` — what it is for.** A-77 Part 6 replaced A-76's source-text collector with a
+type-level census the compiler enforces plus a runtime directory read, so **the syntax half is no
+longer a test** and cannot be measured from Node. This script injects a door fourteen ways and
+runs a full `tsc -p tsconfig.json --noEmit` **and** `storable.test.ts` for each. Rows: criterion
+**N2**'s four syntaxes (all red), **five more round 56 adds** — a renamed re-export from another
+file, an overload pair, a typed `const` with an untyped arrow, an anonymous `export default`
+arrow, and a generic passthrough `<T extends Trip>(t: T): T` (all red) — criterion **N3**'s new
+file in `build/` (module census red), the **four rows that stay green** (**R56-1**: a door in
+`derive/lifecycle.ts` and a door in a new `mutate/` directory; **R56-2**: `Trip | null` and
+`Promise<Trip>` inside a censused file), and a clean-tree vacuity control. It **refuses to run on
+a dirty `packages/core`** and restores every file in a trap, so a failed run can never be mistaken
+for a source edit.
+
+**The `r55-a76.mjs` re-cut (six sections).** Each was re-cut to what A-77 actually specifies, each
+carries a vacuity control, and none was edited merely to go green:
+
+- **§C1** — `assertDatePrecision` is deleted, so the guard's own message no longer exists. It now
+  asserts the **refusal** that survives: six values still refused, at `$.datePrecision`, with
+  *"cannot be stored"*, as a plain `Error`, plus all three legal values accepted. `undefined` — the
+  one value that changed **verdict** — is a `gap` (R56-5 / KD-104), not a FAIL.
+- **§D3** — KD-102. It asserts the refusal, its parser path and its locator; the door **name** moved
+  from `copyStopInto` to `addStop` and is a `gap` (R56-8).
+- **§E1/§E1a** — the source-text collector is gone. What is kept is the half that is still a test:
+  a new **file** in `build/` reddens the module census. The syntax half is delegated to
+  `r56-census.sh`, and R56-1/R56-2 are recorded as `gap`s.
+- **§H1a/§H3** — A-77 Part 3 rule 5 rules the **opposite** of what round 55 asserted: the getter is
+  read once and the value it returned is what is stored. Both now assert the stored value is the
+  read value, each with a bad-on-the-first-read control.
+- **§H2** — **inverted.** It asserted `doc.bookings[0] === shared`, i.e. that the door stores the
+  caller's own object. That assertion *is* the R55-5 defect, and A-77 substitutes.
+
+`r55-a76.mjs` now runs to **`COMPLETE fails=0 gaps=5 notes=37`**, and its `census()` helper returns
+the produced document so §H can assert *what* was stored rather than only that it opened.
+
+**Not re-cut, not re-run, and why.** I-16 touches no `apps/web` file, no store method, no photo
+path and no map, so no browser probe was run. `qa/r54-integration.mjs` **was** run and now reports
+`fails=0` — §M8/§M9 were the record of R54-1's harm and it no longer reproduces. `qa/r54-gate.mjs`
+completes with its **same three** known criterion-as-written failures (Vatican 4c, duplicate
+participant id, generated geometry), all pre-existing and all documented in round 54.

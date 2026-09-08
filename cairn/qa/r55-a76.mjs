@@ -9,7 +9,28 @@
  * including the ones nobody enumerated, and at every field added later."* This probe attacks that
  * claim rather than re-confirming the eight.
  *
- * A `FAIL` line is a finding. `note` records a measurement. The run always ends with `COMPLETE`.
+ * A `FAIL` line is a finding. `gap` is a routed, open design question. `note` records a
+ * measurement. The run always ends with `COMPLETE`.
+ *
+ * **RE-CUT AT QA ROUND 56 (`97f1fc1`, I-16 / §2.1 A-77).** A-77 supersedes parts of A-76, and six
+ * sections of this file encoded A-76's world. Each was re-cut to what A-77 actually specifies, and
+ * each carries a vacuity control so the new green is not the assertion being weakened:
+ *
+ *   §C1  `assertDatePrecision` is DELETED (A-77 Part 4). The property that survives is that the
+ *        door still refuses a bad `datePrecision` — now through `parseTripEnvelope`, at
+ *        `$.datePrecision`, with *"cannot be stored"*. `undefined` is the one value that changed
+ *        verdict and it is a `gap` (R56-5 / KD-104), not a FAIL.
+ *   §D3  KD-102: `copyStopInto`'s own stop guard is deleted, so the stop refusal now names
+ *        `addStop`. The refusal, its path and the harm it prevents are unchanged; only the
+ *        attribution moved, and that is a `gap` (R56-8), not a FAIL.
+ *   §E1  the source-text collector A-76 Part 6 owned no longer exists. What survives here is the
+ *        MODULE census (a new FILE in `build/`), which is cheap; the syntax half is the
+ *        compiler's now and is measured in `qa/r56-census.sh`, with R56-1 and R56-2.
+ *   §H1a/§H3  A-77 Part 3 rule 5 rules the OPPOSITE of what round 55 asserted: the getter is read
+ *        ONCE and the value it returned is what is stored, so `clean` is correct and the check is
+ *        that the STORED value is the READ value.
+ *   §H2  round 55 asserted `doc.bookings[0] === shared` — *"the door stores the caller's own
+ *        object"*. That assertion IS the R55-5 defect; A-77 substitutes, so it is now inverted.
  *
  * Section index
  *   A  **KD-100** — `kind: null` vs `kind: undefined` at `addParticipant`/`updateParticipant`
@@ -25,7 +46,7 @@
  */
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, rmSync } from 'node:fs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CAIRN = resolve(HERE, '..');
@@ -38,6 +59,9 @@ const ok = (l, c, d) => {
 };
 const eq = (l, a, b) => { const x = JSON.stringify(a), y = JSON.stringify(b); ok(l, x === y, x === y ? undefined : `got ${x} want ${y}`); };
 const note = (l, d) => { notes++; console.log(`note ${l}${d === undefined ? '' : ` — ${typeof d === 'string' ? d : JSON.stringify(d)}`}`); };
+/** A routed, open design question — never a FAIL. Added in the round-56 re-cut. */
+let gaps = 0;
+const gap = (l, d) => { gaps++; console.log(`gap  ${l}${d === undefined ? '' : ` — ${typeof d === 'string' ? d : JSON.stringify(d)}`}`); };
 const section = (n) => console.log(`\n=== ${n} ===`);
 const threw = (fn) => { try { fn(); return null; } catch (e) { return e; } };
 const threwAsync = async (fn) => { try { await fn(); return null; } catch (e) { return e; } };
@@ -79,7 +103,8 @@ function census(label, fn) {
   if (serErr) return { label, verdict: 'UNSERIALISABLE', detail: serErr.message.slice(0, 50) };
   const parseErr = threw(() => core.fromJSON(bytes));
   if (parseErr) return { label, verdict: 'UNOPENABLE', detail: parseErr.path ?? parseErr.message.slice(0, 50) };
-  return { label, verdict: 'clean', detail: '' };
+  // `doc` added in the round-56 re-cut: §H now asserts WHAT was stored, not only that it opened.
+  return { label, verdict: 'clean', detail: '', doc };
 }
 
 // =============================================================================================
@@ -151,16 +176,29 @@ section('B — the three DELETED guards, attacked with the inputs they were buil
 section('C — the two KEPT guards: identical refusals, and the ordering claim');
 // =============================================================================================
 {
-  const t = mk();
-  for (const v of ['fortnight', '', 7, null, undefined, {}, 'EXACT']) {
+  // RE-CUT AT ROUND 56. `assertDatePrecision` is deleted (A-77 Part 4: its premise was cost, and
+  // `parseTripEnvelope` is O(1) and asks exactly the parser). The property that must survive is
+  // the REFUSAL, not the guard's own sentence — so this asserts the refusal, its path and its
+  // shape, and pins the message that replaced it.
+  const t = mk({ datePrecision: 'month' });
+  for (const v of ['fortnight', '', 7, null, {}, 'EXACT']) {
     const e = threw(() => core.setTripMeta(t, { datePrecision: v }, CTX()));
-    ok(`C1  assertDatePrecision still refuses ${JSON.stringify(v) ?? 'undefined'}`,
-      e !== null && /datePrecision must be one of/.test(String(e.message)), String(e?.message).slice(0, 90));
+    ok(`C1  a bad datePrecision is still refused at the door: ${JSON.stringify(v) ?? 'undefined'}`,
+      e !== null && /cannot be stored/.test(String(e.message)) && /\$\.datePrecision/.test(String(e.message)),
+      String(e?.message).slice(0, 100));
   }
   ok('C1a ...and every legal value still passes',
     ['exact', 'month', 'year'].every((v) => threw(() => core.setTripMeta(t, { datePrecision: v }, CTX())) === null));
-  ok('C1b createTrip keeps the same guard',
-    threw(() => core.createTrip({ title: 'x', startDate: '2026-08-07', endDate: '2026-08-08', datePrecision: 'fortnight', cities: [] }, CTX())) !== null);
+  ok('C1b createTrip keeps the same refusal',
+    /cannot be stored/.test(String(threw(() => core.createTrip({ title: 'x', startDate: '2026-08-07', endDate: '2026-08-08', datePrecision: 'fortnight', cities: [] }, CTX()))?.message)));
+  ok('C1c the refusal is a plain Error, never a TripParseError (A-76 Part 3\'s hard prohibition)',
+    !(threw(() => core.setTripMeta(t, { datePrecision: 'fortnight' }, CTX())) instanceof core.TripParseError));
+  // The seventh value of round 55's list, which changed verdict rather than message.
+  const undef = threw(() => core.setTripMeta(t, { datePrecision: undefined }, CTX()));
+  note('C1d setTripMeta({datePrecision: undefined}) on a month trip',
+    undef ? `REFUSED: ${String(undef.message).slice(0, 60)}` : `accepted → ${core.setTripMeta(t, { datePrecision: undefined }, CTX()).datePrecision}`);
+  gap('C1e a present-but-undefined patch key silently resets a stated precision',
+    'KD-104 / R56-5. No document becomes unopenable; the user\'s "I only know the month" becomes "exact" with no refusal and no notice, and the three other patch doors refuse a present-but-undefined key. The fix is TripMetaPatch joining the patch-allowlist family, which is a ruling');
 
   const D = { w: 10, h: 10, bytes: 100 };
   const ePlace = threw(() => core.addPhoto(t, { attach: { kind: 'place', placeId: 'p1' }, thumb: D, display: D }, CTX()));
@@ -218,9 +256,16 @@ section('D — copyStopInto\'s double guard: necessity and order');
   // The STOP check, which `addStop` would also have caught — it exists so the refusal names the
   // door the caller actually called.
   const eStop = threw(() => copy(friend(poisonStop('category', 'transport'))));
-  ok('D3  an invalid STOP is refused and the message names copyStopInto, not addStop',
-    eStop !== null && /copyStopInto: this stop/.test(String(eStop?.message)) && !/addStop/.test(String(eStop?.message)),
+  // RE-CUT AT ROUND 56 (KD-102). A-77 deletes `copyStopInto`'s own stop guard, so the refusal is
+  // raised by `addStop`'s own `commit`. What must hold is the REFUSAL and the harm it prevents;
+  // the door NAME is the part that moved.
+  ok('D3  an invalid STOP copied from a friend is still refused, at the parser\'s own path',
+    eStop !== null && /this stop cannot be stored/.test(String(eStop?.message)) && /\$\.category/.test(String(eStop?.message)),
     String(eStop?.message).slice(0, 110));
+  ok('D3a the refusal still carries a locator naming where in the document it sat',
+    /\(days\[\d+\]\.stops\[\d+\]\)/.test(String(eStop?.message)), String(eStop?.message).slice(-40));
+  gap('D3b the refusal names `addStop`, a door the caller never called',
+    'KD-102 / R56-8. `copyStopInto` delegates to `addStop`, which is itself a door and commits first. `apps/web/src/views/BrowsePane.tsx:28` renders this message verbatim, so it is user-visible — but nothing pattern-matches the door name, so the consequence is diagnostic, not functional. Same open question at reorderStop / returnToPool / scheduleFromPool');
   // Ordering: both poisoned at once. The place is minted first, so the place must be the message.
   const both = threw(() => copy(friend((t) => poisonStop('category', 'transport')(poisonPlace('category', 'transport')(t)))));
   ok('D4  when both are poisoned the PLACE refusal comes first (it is minted first)',
@@ -239,31 +284,34 @@ section('D — copyStopInto\'s double guard: necessity and order');
 section('E — the two standing censuses: what still gets past them');
 // =============================================================================================
 {
-  // E1 — the directory census collects `/^export\s+(?:async\s+)?function\s+(\w+)/`. Three other
-  // ways to export a build door from the same directory are invisible to it. This is A-76 Part 6
-  // item 1's claim — *"a new build function ... reddens it on the commit that adds it"* — and
-  // Part 7 M3's criterion.
-  const POOL = resolve(CAIRN, 'packages/core/src/build/pool.ts');
-  const original = readFileSync(POOL, 'utf8');
-  const FORMS = {
-    'export const arrow': '\nexport const arrowDoor = (trip: Trip): Trip => trip;\n',
-    'export { name } list': '\nfunction listedDoor(trip: Trip): Trip { return trip; }\nexport { listedDoor };\n',
-    'export default function': '\nexport default function defaultDoor(trip: Trip): Trip { return trip; }\n',
-  };
-  const evaded = [];
+  // RE-CUT AT ROUND 56. A-76's source-text collector — the `/^export\s+function/` regex round 55
+  // evaded three ways — **no longer exists**: A-77 Part 6 replaces it with a type-level census the
+  // COMPILER enforces plus a runtime MODULE census that reads the directory. So the syntax half is
+  // not a test any more and is not measurable here; it is `npm run typecheck`, driven in
+  // `qa/r56-census.sh` over nine declaration syntaxes (round 55's three, the builder's four and
+  // five more), all of which go red.
+  //
+  // What IS still a test, and is what this section keeps: the MODULE census, i.e. a new FILE.
+  const { spawnSync } = await import('node:child_process');
+  const censusGreen = () => /\n# fail 0\n/.test(
+    spawnSync(process.execPath, ['--test', 'packages/core/test/storable.test.ts'], { cwd: CAIRN, encoding: 'utf8' }).stdout,
+  );
+  ok('E1  CONTROL: with nothing injected the module census is green', censusGreen());
+  const NEWFILE = resolve(CAIRN, 'packages/core/src/build/__r55_sneaky.ts');
+  let greenWithNewFile = null;
   try {
-    for (const [name, src] of Object.entries(FORMS)) {
-      writeFileSync(POOL, original + `\n// r55 fault injection\n${src}`);
-      const { spawnSync } = await import('node:child_process');
-      const r = spawnSync(process.execPath, ['--test', 'packages/core/test/storable.test.ts'], { cwd: CAIRN, encoding: 'utf8' });
-      const green = /\n# fail 0\n/.test(r.stdout);
-      if (green) evaded.push(name);
-      note(`E1  new exported build door as \`${name}\``, green ? 'census stays GREEN — evaded' : 'census goes RED');
-    }
+    writeFileSync(NEWFILE, 'import type { Trip } from "../model/types.ts";\nexport function sneakyDoor(t: Trip): Trip { return t; }\n');
+    greenWithNewFile = censusGreen();
   } finally {
-    writeFileSync(POOL, original);
+    rmSync(NEWFILE, { force: true });
   }
-  eq('E1a A-76 Part 6.1: EVERY form of a new exported build door reddens the directory census', evaded, []);
+  ok('E1a a NEW FILE in packages/core/src/build/ reddens the module census (A-77 Part 6.2 / N3)',
+    greenWithNewFile === false, 'the module census stayed green');
+  note('E1b the syntax half is the compiler\'s now', 'bash qa/r56-census.sh — 14 rows, one full typecheck each');
+  gap('E1c the census still enumerates FILES by hand',
+    'R56-1. Half 2 reads build/*.ts plus EXTRA_DOOR_FILES = [conflict/resolve.ts]; a door in any other file under packages/core/src is invisible to BOTH halves, which is the conflict/resolve.ts failure that decided A-77 Part 2, one level up');
+  gap('E1d the classifier is an EXACT return type',
+    'R56-2. `(t: Trip) => Trip | null` and `async (t: Trip) => Promise<Trip>` are not doors to `ReturnsTrip`, and a Phase 3 ingest worker is async by construction');
 
   // E2 — the behavioural census is one hostile value per DOOR. A door whose `assertStorable`
   // call is present but does not cover one of the fields it writes is invisible to it. Part 5's
@@ -390,16 +438,26 @@ section('H — the TOCTOU window the builder disclosed: exploitable, or theoreti
     startsAt: { date: '2026-08-07', time: null }, price: null, party: null, status: 'active', ticket: null,
     provenance: { source: 'user', state: 'accepted', confidence: 'confirmed', addedAt: TODAY, acceptedAt: TODAY, actorUserId: 'local:self' },
   };
+  // RE-CUT AT ROUND 56. Round 55 asserted `REFUSED` for a flip-on-second-read getter and
+  // `doc.bookings[0] === shared` for a shared reference. A-77 Part 3 rule 5 rules the other way on
+  // both: the parser rebuilds the record field by field, the getter is read ONCE, and `commit`
+  // stores the parser's object. So the property to assert is *the stored value is the value that
+  // was read*, and *the document does not hold the caller's object at all*.
   let n = 0;
   const getterBooking = { ...GOOD_BOOKING, get kind() { return n++ === 0 ? 'train' : 'spaceship'; } };
   const r1 = census('upsertBooking, flip-on-second-read getter', () => core.upsertBooking(mk(), getterBooking));
-  note('H1  a getter that passes the parse and stores something else', `${r1.verdict} ${r1.detail}`);
-  ok('H1a a value the parser refused cannot be stored, however it is read', r1.verdict === 'REFUSED',
-    'assertStorable validated one value and the door stored another');
+  note('H1  a getter that flips after the parse', `${r1.verdict} ${r1.detail ?? ''}`);
+  ok('H1a the stored value is the value the parser READ, not a later read', r1.verdict === 'clean' && r1.doc.bookings[0].kind === 'train',
+    `${r1.verdict} ${r1.verdict === 'clean' ? r1.doc.bookings[0].kind : (r1.detail ?? '')}`);
+  let n2 = 0;
+  const badFirst = { ...GOOD_BOOKING, id: 'b1x', get kind() { return n2++ === 0 ? 'spaceship' : 'train'; } };
+  ok('H1b CONTROL: bad on the FIRST read is still refused, so H1a is not vacuous',
+    census('bad first', () => core.upsertBooking(mk(), badFirst)).verdict === 'REFUSED');
 
   const shared = { ...GOOD_BOOKING, id: 'b2' };
   const doc = core.upsertBooking(mk(), shared);
-  ok('H2  upsertBooking stores the caller\'s own object by reference', doc.bookings[0] === shared);
+  ok('H2  upsertBooking does NOT store the caller\'s own object — R55-5\'s defect, inverted',
+    doc.bookings[0] !== shared);
   shared.kind = 'spaceship';                       // the form the user is still editing
   const r2 = census('upsertBooking, caller mutates after the check', () => doc);
   ok('H2a mutating the caller\'s object afterwards cannot corrupt the document', r2.verdict === 'clean',
@@ -408,11 +466,20 @@ section('H — the TOCTOU window the builder disclosed: exploitable, or theoreti
   let m = 0;
   const getterPlace = { id: 'pl-1', cityKey: 'v', name: 'X', at: null, get category() { return m++ === 0 ? 'sight' : 'transport'; } };
   const r3 = census('addPlace, flip-on-second-read getter', () => buildStops.addPlace(mk(), getterPlace));
-  ok('H3  addPlace has the same window', r3.verdict === 'REFUSED', `${r3.verdict} at ${r3.detail}`);
+  ok('H3  addPlace stores what the parser read, and does not hold the caller\'s object',
+    r3.verdict === 'clean' && r3.doc.places[r3.doc.places.length - 1].category === 'sight'
+      && r3.doc.places[r3.doc.places.length - 1] !== getterPlace,
+    `${r3.verdict} ${r3.detail ?? ''}`);
+  let m2 = 0;
+  const badPlace = { id: 'pl-2', cityKey: 'v', name: 'X', at: null, get category() { return m2++ === 0 ? 'transport' : 'sight'; } };
+  ok('H3a CONTROL: addPlace still refuses bad-on-the-first-read',
+    census('bad first place', () => buildStops.addPlace(mk(), badPlace)).verdict === 'REFUSED');
+  gap('H3b commit\'s own reads are not once-per-slot',
+    'R56-4. `commitList` reads `after[i]` for the aligned test and then `after.slice()` for its output — two reads of every index it did not parse. Reproduced in qa/r56-a77.mjs §E');
   note('H4  the doors that are NOT exposed build a fresh record field by field',
     'addStop/updateStop/moveStop/addPhoto/updatePhoto/addParticipant/updateParticipant/copyStopInto');
 }
 
-console.log(`\nCOMPLETE  fails=${fails} notes=${notes}`);
+console.log(`\nCOMPLETE  fails=${fails} gaps=${gaps} notes=${notes}`);
 if (failLines.length) console.log('FAILING:\n  ' + failLines.join('\n  '));
 process.exitCode = fails ? 1 : 0;
