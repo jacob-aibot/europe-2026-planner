@@ -1047,6 +1047,46 @@ no `qa/`, no `cairn/docs/design/`, no `ARCHITECTURE.md` — this is a status cor
 The historical sub-bullets are kept and converted to discharge notes rather than deleted, so the record of
 when each gap was found and when it closed survives the correction.
 
+**Revision 60, 2026-09-08.** **The Phase 2 phase gate ran (QA round 54) and routed six items here. One is
+an increment; four are this document's own criteria being wrong; one is a deferral finally given a home.**
+
+- **`I-15` is queued** — the whole code consequence of `ARCHITECTURE.md` revision 57's §2.1 **A-76**
+  (**R54-1**, MAJOR). Eight build doors accepted a value `fromJSON` refuses, so the store saved a document
+  it could never re-open **while reporting *Saved***, and the trip — including all prior work — became
+  unreachable. The ruling is a mechanism rather than eight guards: a door hands the record it wrote to
+  `fromJSON`'s own per-record parser. It moves no version, no `IssueCode` and **no export count**, and it
+  blocks nothing — `I-11` has already run and this is its output.
+- **Exit criterion 4c is corrected (R54-5)**, and it confirms BUILD-NOTES **KD-52**, open since I-5a and
+  never closed. *"Vatican City returns `IT` at every scale"* is false about the shipped artefact — 480
+  swept cells return `{"IT":476,"VA":4}` — and the criterion now pins **both** answers. The residue is
+  unrepaired and its trigger is unchanged; only the description moved, which is what KD-52 said in as many
+  words was owed. §8.4 **A-27 Part 6 residue 1** carries the same correction.
+- **Exit criterion 10 is corrected (R54-4)** and this is the one worth reading twice: it asserted a
+  `fromJSON` refusal that a **later** ruling — §8.3 **A-73**, adversarially confirmed at round 53's SHIP —
+  **deliberately removed**. An older criterion and a newer ruling disagreed and the criterion lost, because
+  A-73's reasoning is §2.9's standing rule that a document carrying a problem must **open**. The parser
+  refusal is **not** reintroduced. *(The process point: a ruling that changes what a parser does must sweep
+  this document's criteria in the same revision. A-73 did not, and a gate had to discover it.)*
+- **Exit criterion 14 is corrected (R54-6).** It stated no exclusion and was red on
+  `fixtures/golden/forgiveness-drops.json` — 1,110 pairs of generated Natural Earth ring geometry carrying
+  **no trip data at all**. The exclusion is written as a **property with its own injected fault** rather
+  than as a filename, because a criterion that names a file to skip is one commit from naming three.
+- **Criterion E's own block quote is corrected (R54-7)** — it said **75** where the criterion two
+  paragraphs above says **86**. 86 is right, re-derived by running the count. The block quote no longer
+  restates the number at all: this is the **R28-8** class recurring for the fifth time in this document
+  family, inside the very entry that fixed it the first time, and §4.2 **A-70 Part 7 item 3**'s count rule
+  says the second copy is the one that goes stale.
+- **A-2 / QA P2-8 is placed, not ruled (R54-9).** Routed to the architect since round 12, carried by nine
+  status notes as *"still open"*, and homeless in a contract document — it lived only in `REVIEW.md`, which
+  is a verdict record. `ARCHITECTURE.md` §7 now carries it with its trigger, and **Phase 3's entry
+  conditions in this document name it**, so the trigger has something to fire against. It is a **scope
+  rule, not an open defect**, its status is unchanged, and no phase verdict lifts it.
+
+**Not carried here, and named so nobody looks for them:** **R54-2** and **R54-3** are implementation
+(a widened step chooser, a looped matrix) and are the builder's against criteria that are already correctly
+written; **R54-8** was the breaker's and is repaired in round 54's own commit. **No phase, step, gate or
+dependency moves; `I-11`'s verdict is the manager's and this revision does not pre-empt it.**
+
 > **Phase numbers changed once, here.** Every heading below carries its old number, and every "Phase N"
 > written in `ARCHITECTURE.md` §1–§7, `BUILD-NOTES.md` or `QA-FINDINGS.md` before revision 9 means the
 > *named* phase it described: "Phase 2" = accounts/server (**now 3**), "Phase 3" = ingest (**now 4**),
@@ -1551,7 +1591,18 @@ not decoration.
   document is the number a future session re-derives *from*. The rule stands unchanged: the count is
   obtained by **counting** — `node --experimental-strip-types -e "import('./packages/core/src/index.ts').then(m
   => console.log(Object.keys(m).length))"` — and never by quoting this line, §2.10's prose, or §8.9. Nine
-  `qa/` scripts carry the same stale pin and are I-7a's to fix.)* Rewritten in revision 5, because the criterion as met was
+  `qa/` scripts carry the same stale pin and are I-7a's to fix.)*
+  *(**Revision 60, QA R54-7 — the R28-8 class recurring, fifth time in this document family, and this time
+  it recurred INSIDE the entry that fixed it.** The block quote below said **75** while the criterion two
+  paragraphs above it said **86**, so a reader who implemented the mechanism implemented the wrong number.
+  **86 is correct** and was re-derived at revision 60 by running the command — `node
+  --experimental-strip-types -e "import('./packages/core/src/index.ts').then(m =>
+  console.log(Object.keys(m).length))"` from `cairn/` — which printed **86**, matching §2.10, `index.ts`'s
+  docstring and `surface.test.ts`'s `THE_LIST`. The block quote is corrected. **The lesson this entry
+  already stated is now stated about itself:** a contract document may state a **design** count and must
+  never carry the same count twice, because the second copy is the one that goes stale — §4.2 **A-70 Part 7
+  item 3**'s count rule. The block quote no longer restates a number the criterion above it owns; it points
+  at it.)* Rewritten in revision 5, because the criterion as met was
   satisfied by construction: the test asserted equality against the **union** of `SECTION_2_10` (50) and
   `BEYOND_2_10` (60), which is 110 = 110 for any 110 exports, and QA found 42 of the 60 per-symbol
   justifications did not hold (R2-12, KD-19). So, mechanically:
@@ -1560,8 +1611,11 @@ not decoration.
   > second list, of the identifier `BEYOND_2_10`, and of the string `INTERNAL` — a symbol the test itself
   > calls internal is a symbol that is not exported. The assertion is
   > `setEquals(Object.keys(runtimeExportsOf(index)), THE_LIST)` in both directions, and `THE_LIST` is §2.10's
-  > list transcribed, **75 entries**. Type-only exports are excluded from the set by construction (they do
-  > not exist at runtime) and the criterion says so rather than leaving a tester to discover it.
+  > list transcribed — **exactly as many entries as the criterion above this block states, and this block
+  > deliberately does not restate the number** (revision 60, R54-7: the second copy is the one that goes
+  > stale). The count is obtained by **counting**, with the command in the criterion above, and never by
+  > quoting a document. Type-only exports are excluded from the set by construction
+  > (they do not exist at runtime) and the criterion says so rather than leaving a tester to discover it.
   >
   > **Plus the two ceilings that stop the list drifting back:** (1) grep `packages/client/src`,
   > `apps/web/src`, `cli.ts`, `fixtures/` and `tools/` for any import from a `packages/core/src/**` path
@@ -4709,6 +4763,77 @@ A-10, §2.9 or §4 for this; A-75 quotes what it needs from them.
   picking it up at the next adversarial pass — it is a string family and an optional type field, not an
   `access/`-class path, so the delegation table's mandatory-breaker row does not fire.
 
+#### I-15 — A build door asks the parser what a record may hold (revision 60, QA **R54-1**, MAJOR)
+
+**The whole code consequence of `ARCHITECTURE.md` revision 57's §2.1 **A-76**. Read A-76 Parts 3–7 and
+nothing else in `ARCHITECTURE.md`** — it is self-contained and quotes what it needs from §2.9, §2.14 and
+§4.2. In particular do **not** read §2 whole, §8.3 or §10 for this. *(It takes the number **I-15** and not
+I-14 because I-14 is reserved and deliberately unwritten — the photo surface. Like `I-9c`, this is not a 2c
+increment: it is a **cross-cutting core fix** that took a number in this series only because the Phase 2
+phase gate found it while attacking everything at once.)*
+
+**Why it exists, in one measurement.** Eight build doors accept a value `fromJSON` refuses. The store then
+writes that document to storage and reports `persistence.status: 'idle'` — the state the UI renders as
+**Saved** — over bytes it can never open again. Driven end to end by the round-54 breaker through the real
+store: a trip with real prior work, one `addStop` with `category:'transport'`, `flush()` → *Saved*, then
+`closeTrip` + `openTrip` **refuses the whole document**. Everything the user did before that edit is
+unreachable except through §2.9 A-46's rescue export, which hands back bytes the app cannot read.
+
+- **Built, in five parts, in this order.**
+  1. **`serialize/fromJSON.ts`: add `export` to seven existing declarations** — `parseStop`, `parseDay`,
+     `parseCity`, `parsePlace`, `parseBooking`, `parsePhoto`, `parseParticipant`. Nothing else in that file
+     moves; **none of the seven reaches `index.ts`**.
+  2. **New file `packages/core/src/build/storable.ts`**, module-internal, ~80 lines: `assertStorable(where,
+     kind, record)`, per A-76 Part 3. It catches `TripParseError` and rethrows a **plain `Error`** carrying
+     the door name, the parser's message and the parser's path — **never a `TripParseError`**, which would
+     put a live document into `store.ts`'s unopenable-row path and is A-76 Part 3's one hard prohibition.
+  3. **Call it from every *checked* row of A-76 Part 5's table**, in `build/stops.ts`, `days.ts`,
+     `bookings.ts`, `photos.ts`, `participants.ts`, `createTrip.ts` and `copyStop.ts`. The table is the
+     contract, including its **elisions** (`setDayMeta` checks the merged `Day` with `stops: []`) and its
+     **exempt** rows with their reasons.
+  4. **Delete `assertParticipantKind`, `assertDisplayName` and `assertNote`** from `build/participants.ts`
+     — R16-2 second guards, subsumed by `parseParticipant` (A-76 Part 4). **Keep `assertDatePrecision`**
+     (a trip-level scalar, no record class to ask) and **keep `assertBuiltAttach`** (a §10.1 deferral the
+     parser accepts by design). Replace `createTrip.ts`'s private `DATE_PRECISIONS` copy with the one
+     `model/types.ts` already exports — §2.9 **A-20**, one import.
+  5. **New file `packages/core/test/storable.test.ts`**: A-76 Part 6's two standing censuses.
+- **Not built, and named so nobody adds it.** **No new `IssueCode`** — §2.9's list does not move, and
+  §8.3 **A-74 Part 4**'s rule is why: a cast is not a producer, so this is a throw and never an `Issue`.
+  **No enum table in `build/`** and no per-field guard beyond the two kept above — A-76 Part 2 refuses
+  both in writing, and a builder who writes eight `assert*` functions has built the option this ruling
+  declined. **No `.tsx`**: `StopEditor.tsx`'s typed `StopCategory[]` constant is correct and `tsc` already
+  catches divergence there; do not touch it. **No `qa/`** — that directory is the breaker's — and no
+  `docs/design/`. **No new dependency**, hand-rolled as everything in `serialize/` is.
+- **User-visible outcome.** None today, and that is honest: no shipped surface can reach the defect (A-76
+  Part 1). What changes is that the *next* `any`-shaped caller — the ingest worker §5.1 forbids from
+  routing around the acceptance gate, a Phase 5 native bridge, a hand-written action — meets a refusal it
+  can show instead of a trip it has silently destroyed.
+- **Architecture / data model.** No field, no type, no port, no selector, no screen.
+  `SCHEMA_VERSION`, `DB_VERSION` and `SUMMARY_VERSION` do not move. **§2.10's export surface does not
+  move** — re-count it with the command in criterion E and confirm **it is unchanged**, per §8.9's re-count
+  rule and §4.2 **A-70 Part 7 item 3**; if it moved, one of the seven parsers reached `index.ts` and that
+  is a defect in this increment.
+- **Verification — A-76 Part 7's three injected faults, and they are the criteria.** **M1:** delete the
+  `assertStorable` call from any one checked door → that door's behavioural-census row goes red **and the
+  directory census stays green**. **M2:** restore `addStop` to its pre-A-76 body and run
+  `node --experimental-strip-types qa/r54-integration.mjs` §M8 → the save-then-reopen loss reproduces.
+  **M3:** add an exported function to any file in `packages/core/src/build/` without touching the test →
+  the **directory census** goes red and names it. Run all three red-before-green; a criterion asserted
+  rather than run is not discharged. **Plus one regression check the ruling does not state and this
+  increment owes:** `npm run test:tap` reports **1525 tests before this increment**; a *pre-existing* test
+  that reddens is a finding about A-76, not a test to edit — bring it back rather than adapting it.
+- **Dependencies / blockers.** **None, and it blocks nothing.** It does not block `I-11`; `I-11` has
+  already run and R54-1 is its output. Independent of `I-9c`, which is also queued and unbuilt and touches
+  only `merge/mergeTrips.ts`.
+- **Ship gate.** `npm test` green; `npm run typecheck` exit 0 on both projects; `npm run web:build`
+  succeeds; the export count re-measured and unchanged; the three faults each run red-before-green and
+  **recorded with their measured output**, not asserted. **Files touched: `packages/core/src/build/*.ts`,
+  `packages/core/src/serialize/fromJSON.ts`, `packages/core/src/model/types.ts` (if the member lists are
+  hoisted), and `packages/core/test/`. Nothing else** — no `.tsx`, no `qa/`, no `docs/design/`, no
+  `package.json`, no lockfile. **Route: builder + breaker, mandatory.** `cairn/CLAUDE.md`'s delegation
+  table fires twice — it changes a core invariant and it opens `copyStop.ts`, which is on the
+  security-sensitive list — so this does not go to a builder alone.
+
 #### I-10 — The participants editor, the profile grouping, and the access double-run — **DEFERRED at revision 55; 2c ships without it**
 
 > **Status: DEFERRED, by Jacob's decision of 2026-09-04.** Asked directly whether to **(a)** defer I-10 and
@@ -6513,6 +6638,17 @@ disclosed as *unreachable* for two revisions and is reachable today.*
   whether any Phase 2 exit criterion in fact needs a rendered participant surface. **Revision 55's answer is
   that none does; a round that finds one has found a defect in this ruling and it is architect-routed.**
 
+  ***Revision 60 — the gate RAN (QA round 54, `7dad457`) and this bullet is now history rather than a
+  precondition.*** It reported **0 BLOCKERS, 3 MAJOR, 6 MINOR**, and both deferrals were certified as
+  disclosed, exactly as the paragraph above expected. Three items came back to this document and **none of
+  them re-opens this bullet**: **`I-15`** is queued and unbuilt (§2.1 **A-76** / R54-1) and is a
+  cross-cutting core fix rather than a gate dependency; **R54-2** and **R54-3** are builder work against
+  criteria 12 and 9 as already written. Four criteria were **corrected in place** at this revision (4c, 10,
+  14 and E's block quote) — each is marked where it stands, and **a criterion this revision corrected is
+  re-derived by the next round rather than taken from round 54's measurement of the old wording**.
+  `I-9c` remains queued, unbuilt and blocking nothing. **The SHIP / SEND BACK verdict is the manager's and
+  nothing in this revision anticipates it.**
+
 ### Exit criteria — the Phase 2 ship gate
 
 Tagged per **How a criterion is written**. The first two are ceilings on Phase 1 and are the ones that fail
@@ -6558,7 +6694,17 @@ first.
     never its neighbour. **Two injected faults:** drop `LI` from the fill and Vaduz returns `AT`; restore
     ISO-ascending order and Vaduz returns `AT`, Singapore returns `MY` and Hong Kong returns `CN` — three
     named tests red in each case. **One known-wrong answer is pinned rather than fixed:** Vatican City
-    returns `IT` at every scale, with A-26 Part 5's reason in the test's own text `[stated]`
+    returns **`IT` at St Peter's Basilica, at St Peter's Square and at the museum entrance — and `VA` on
+    the ~108 m × 122 m Natural Earth sliver, which is in the index and answers itself** — with the reason
+    in the test's own text and **both** answers pinned as named cases, not one `[stated]`
+    *(**Revision 60, QA R54-5**, confirming BUILD-NOTES **KD-52**, open since I-5a. This criterion said
+    *"Vatican City returns `IT` at every scale"*, which is **false about the shipped artefact** and always
+    was: round 54 swept **480 cells** of the Vatican and got `{"IT":476,"VA":4}`. The residue is real, is
+    unrepaired, and its trigger — Natural Earth shipping a real `VA` polygon — is unchanged; what was wrong
+    was the **description**, which KD-52 said in as many words was the architect's sentence to correct.
+    §8.4 **A-27 Part 6 residue 1** carries the same correction at `ARCHITECTURE.md` revision 57. Note what
+    this does **not** license: a criterion may not be satisfied by choosing a coordinate that makes its own
+    sentence true, which is the trap KD-52 records declining, and is why the correction pins both answers.)*
     *(Revision 21: **"every ISO code" is a count of distinct codes, not of entries.** A-27 lets one code own
     more than one entry, so a test asserting `countries.length === <number of countries>` is asserting the
     wrong thing and must be split — `new Set(countries.map((c) => c.code)).size` for the semantic claim, a
@@ -6707,8 +6853,19 @@ first.
   there is any server that could get it wrong `[stated]`
 - **Round-trip and undo parity hold over the new fields.** `toJSON(fromJSON(toJSON(trip)))` is
   byte-identical with participants and `datePrecision` present; `fromJSON` rejects
-  `datePrecision:'fortnight'` and a participant with a duplicate id; undo/redo restores participants
-  exactly, at depth 50 `[stated]`
+  `datePrecision:'fortnight'`; **a document carrying a duplicate participant id OPENS, and `validateTrip`
+  reports `duplicate_participant_id` on it** — assert both halves, in that order; undo/redo restores
+  participants exactly, at depth 50 `[stated]`
+  *(**Revision 60, QA R54-4.** This criterion said `fromJSON` **rejects** *"a participant with a duplicate
+  id"*, and `ARCHITECTURE.md` revision 54's §8.3 **A-73** — written after it, and adversarially confirmed
+  at QA round 53's SHIP verdict — **deliberately removed that refusal**, giving `duplicate_participant_id`
+  one home in `validateTrip`. So the criterion could not pass as written and the gate had to read it as
+  superseded, which is exactly the state a ship gate must never be in. **The parser refusal is not
+  reintroduced**: A-73's reasoning is §2.9's standing rule — a document that already carries a problem must
+  **open**, so the user can see it and act — and a parser that refuses it leaves the user with an
+  unopenable trip and no way to repair the thing the refusal was about. The criterion is corrected to the
+  shipped design, and it now asserts the **open** as well as the report, because "the parser accepts it" is
+  the half that A-73 changed and the half a future reader is most likely to re-break.)*
 - **Every new action maps 1:1 onto a core build function and the reducer holds no domain logic** — §4.2
   rule 1, re-asserted because this is the first phase since Phase 1 to add actions `[stated]`
 - **NO SILENT LOSS is unchanged and extended to the new write paths**: the 200-step dirty walk still holds
@@ -6723,11 +6880,30 @@ first.
   add `cities[].dayCount` to the minted row and every one of the three goes red — a count that could have
   been derived does not get to be stored, which is A-31 Part 6's rule with a value-shaped check behind it
   `[stated]`
-- **No coordinate leaves the device's own storage.** Grep `fixtures/golden/*.json`, every emitted asset
-  under `apps/web/dist/`, and the full output of every `cli.ts` command for a coordinate-shaped float pair:
-  expect **zero**. Two new fields can violate this — `TripSummaryCity.centre` and `PhotoAsset.at` — and
-  they share one assertion rather than having one each. **Injected fault:** print `centre` from
-  `cli.ts stats` and the grep goes red `[stated]`
+- **No coordinate leaves the device's own storage.** Grep **every `fixtures/golden/*.json` that carries
+  trip data**, every emitted asset under `apps/web/dist/`, and the full output of every `cli.ts` command
+  for a coordinate-shaped float pair: expect **zero**. Two new fields can violate this —
+  `TripSummaryCity.centre` and `PhotoAsset.at` — and they share one assertion rather than having one each.
+  **Injected fault:** print `centre` from `cli.ts stats` and the grep goes red `[stated]`
+  - **The one exclusion, and it is earned rather than granted:** `fixtures/golden/forgiveness-drops.json`
+    is **generated Natural Earth admin-0 ring geometry and nothing else** — the rings criterion 4e's own
+    injected faults need in order to run. It is excluded from the grep, **and the exclusion is asserted,
+    not asserted-by-omission**: the file must carry `$generatedBy: "cairn/tools/gen-countries.mjs"`, must
+    carry **no `$source`** (every trip-data golden does), and must contain **zero** occurrences of any trip
+    id, stop id, place id, day date, title or note. A golden that wants this exclusion has to satisfy that
+    test; a golden that is simply large does not get it. **Second injected fault, required:** paste one
+    `{"lat":…,"lng":…}` pair from the reference trip into `forgiveness-drops.json` and the exclusion's own
+    assertion goes red — otherwise the exclusion is a hole rather than a boundary `[stated]`
+    *(**Revision 60, QA R54-6.** The criterion stated no exclusion and was therefore **red on an artefact
+    that carries no trip data at all** — 1,110 coordinate-shaped pairs of ring geometry, none of them about
+    a person or a place anyone went. Round 54 ran the criterion's **intent** over the eleven trip-data
+    goldens and it is green, and ran the criterion's **letter** and it is red, which is a defect in the
+    sentence and not in the product. What is corrected is the sentence's subject: this criterion is about
+    *a coordinate a user's device recorded*, never about a bundled dataset — the whole country index is
+    geometry, shipped deliberately, and §8.4 clause 1's *"on-device, from a bundled dataset, never by a
+    network geocoder"* is the reason it is. The exclusion is written as a **property with its own fault**
+    rather than as a filename, because a criterion that names a file to skip is one commit away from being
+    a criterion that names three.)*
 - **The photo subsystem is exercisable, and refusable, with no browser.** A-57 Part 7's **P1–P13** all run
   under `node --test` against `memoryPhotos()`, each is recorded with its measured result, and each was red
   before its fix. **Ceiling:** `npm test` and `npm run typecheck` are green with **no `package.json` diff
@@ -6885,7 +7061,19 @@ and linking a participant **still grants nothing**; a grant is a second row the 
 
 **Independently useful:** Jacob's trips stop living in one browser, and his friends can see them.
 
-Entry: Phase 2 shipped, with a manager verdict of SHIP.
+Entry: Phase 2 shipped, with a manager verdict of SHIP — **and `A-2` / QA `P2-8` ruled by the architect
+before the first line of share, friend or public-share-link code, and before anything reopens `importDoc`'s
+ownership check.** *(Added at revision 60, QA **R54-9**, which re-measured it at the Phase 2 gate and found
+it unchanged: with `"ownerId":"user:marta"` present the file is refused with `ForeignDocumentError`;
+**delete that one key and the same file is adopted whole as `local:self`**, carrying stops whose
+`provenance.actorUserId` is still `user:marta`, with `validateTrip` reporting **0** ownership issues. It has
+been routed to the architect since QA round 12, nine status notes have carried it as *"still open"*, and
+until revision 57 it had **no home in a contract document at all** — only `REVIEW.md`'s routing table, which
+is a verdict record. `ARCHITECTURE.md` **§7** now states it with its trigger, and this line is that trigger.
+It is a **scope rule, not an open defect** — nothing before this phase creates a second person whose
+document could arrive — and it is placed here rather than ruled now because `BRIEF.md`'s settled sentence,
+*"`importDoc` … refuses a document owned by someone else, **visibly**"*, can only be made true by a design
+that knows what an account is.)*
 
 **Exit criteria**, tagged per **How a criterion is written**:
 

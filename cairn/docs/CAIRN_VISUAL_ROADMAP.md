@@ -19,8 +19,56 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
+> **🟦 THE DESIGNER HAS ANSWERED THE PHASE GATE — as of 2026-09-08. This block is the newest and
+> it supersedes every block below it, including the one immediately below, which is the tester's
+> report that this answers.** The tester's round found nine things; **six came to the designer and
+> all six are now settled.** Nothing on your phone changes and no code has been written yet.
+>
+> **The missing locks (the tester's item 1) — answered, and not the way it was expected to be.**
+> The obvious fix was to add eight locks, one per door, matching the three that already exist.
+> **That was refused, in writing.** The reason is a lesson this project already learned the
+> expensive way somewhere else: a hand-written list of "the places that need a check" has been
+> wrong every single time it has been written here, and writing the list out again just moves the
+> next mistake later. Sure enough, in the course of ruling on it I found **two more** unlocked
+> doors the tester's list of eight did not name — so a fix built to that list would have shipped
+> with holes in it and nothing to notice.
+>
+> **What was ruled instead.** Cairn already has exactly one place that knows, completely and
+> correctly, what a trip file is allowed to contain: **the reader that opens a saved trip.** It
+> has to know, or it could not refuse a bad file. So from now on, every place that writes
+> something into a trip **hands what it just wrote to that same reader and asks "could you open
+> this?"** — and refuses on the spot if the answer is no. One mechanism, in one small file,
+> instead of eight locks. It covers every field, including the ones nobody thought to list, and
+> it covers fields added years from now, **because there is no list**. Three of the existing locks
+> turn out to say exactly what the reader already says and are **deleted**; two say something the
+> reader genuinely does not know and are kept, with the reason written down. And two standing
+> checks make sure a *new* door added later cannot quietly skip the mechanism — one of them fails
+> the moment anyone adds a new writing function without accounting for it.
+>
+> **The four sentences that were written down wrong (the tester's item 3) — all four corrected.**
+> The one asking for a refusal that a later decision deliberately removed now describes the
+> decision that actually shipped, and says why the old behaviour is not coming back. Vatican City
+> now reads the way the map data actually behaves — Italy where anyone would stand, itself on a
+> patch about a hundred metres across — with **both** answers pinned so nobody can make the
+> sentence true by picking a convenient spot. The no-coordinates rule now says what it always
+> meant — *no coordinate from your device* — and excuses the one file that is map outlines, but
+> only by a test that file has to pass, not by naming it. And the stale count is corrected to the
+> right one, with the duplicate removed entirely so it cannot go stale a sixth time.
+>
+> **One long-standing question finally given a home.** Since the very first round of Phase 2
+> testing there has been an open design question: if someone sends you a trip file and deletes the
+> line saying who owns it, Cairn currently adopts it as yours without comment. It has been
+> re-measured five times and never ruled, because it genuinely cannot be answered until there are
+> accounts. It is now written into the contract as a **named condition on Phase 3** — the phase
+> that adds accounts and sharing cannot start until it is answered. It was previously only in a
+> review note, which is how five rounds could keep listing it without anyone placing it.
+>
+> **What happens next, unchanged:** the manager reviews the whole phase and returns **SHIP** or
+> **SEND BACK**. The lock mechanism above is written up and queued for a builder; it blocks
+> nothing, because the gate has already run.
+
 > **🟩 THE WHOLE OF PHASE 2 HAS NOW BEEN ATTACKED AS ONE THING, AND IT HELD — as of 2026-09-08.
-> This block is the newest, and it supersedes every "what is still owed" list below it.** The
+> This block is the tester's report; the block above it is the designer's answer to it.** The
 > **phase gate's adversarial round** has run: not one more increment, but a single pass over
 > everything Phase 2 built, checking each of the phase's own sign-off conditions by *running* it
 > rather than by reading what a previous round wrote down. **The decision itself is not made
