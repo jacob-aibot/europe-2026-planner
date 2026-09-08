@@ -11,6 +11,12 @@
     "allowImportingTsExtensions": true,
     "rewriteRelativeImportExtensions": true,
     "noEmit": true,
+    // A-80 Part 6 (QA R58-3). `HIDDEN_DOOR_CENSUS` and `DESCENT_CENSUS` in
+    // `packages/core/test/storable.test.ts` are template-literal types whose whole purpose is to
+    // NAME every offending export or type constructor. Without this, `tsc` truncates the union and
+    // prints two names and `… 8 more …`, which defeats A-79 Part 6's entire justification for that
+    // form. Do not remove it without reading A-80 Part 6.
+    "noErrorTruncation": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "types": ["node"]

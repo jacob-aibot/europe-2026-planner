@@ -1,6 +1,68 @@
 /**
+ * §2.1 **A-80** — *the predicate descends every type constructor, and the closure claim is about
+ * coverage rather than a list of exceptions.* ROADMAP **I-19**, from QA **R58-1** (MAJOR) with
+ * **R58-2/R58-5** riding along and **R58-3/R58-4** as one line each. **Read this before A-79
+ * below**, which it amends in four places and whose closure claim it withdraws.
+ *
+ * **What A-80 replaced: the predicate's REACH, not its shape.** A-79's structural walk is right and
+ * it works. What A-79 did not notice is that it had turned *an enumeration of declaration forms*
+ * into ***an enumeration of descents***: `Carries` descended through exactly **two** type
+ * constructors — a bare object type's own keys, and a call signature's return type — while
+ * `packages/core/src` holds **106 optional properties** and **six discriminated unions of object
+ * types**, and spells an absent object `X | null` throughout. Round 58 exhibited **nine**
+ * `Trip`-producing callables reachable from a censused export that the walk could not see, none of
+ * them a cast, an `any`, an overload set or a deep nesting; three of them, appended to
+ * `derive/lifecycle.ts`, left `npm run typecheck` at exit 0 while writing documents `fromJSON`
+ * refuses (**R58-1**). The proof it is shipped-code reach and not a curiosity is A-79's own ship
+ * gate: N9 written `autofix?(t, c): Trip` reddens the census, and **the same feature one field-shape
+ * sideways — `autofix?: { fix(t, c): Trip }` — left it at exit 0.**
+ *
+ * **Three type-system mechanisms, one fix** (A-80 Part 1): `-?` strips the optional MODIFIER from a
+ * mapped type's RESULT and not `| undefined` from the source `T[K]`; `keyof` a union is the
+ * INTERSECTION of its members' keys, so a discriminated union has no walkable key and a union with a
+ * non-object member matches no arm at all; and `Set`/`Iterable` are **not** a third cause but the
+ * second reached through `IteratorResult`'s union. Two lines answer all three — `Members` walks
+ * `NonNullable<T[K]>`, and `Carries` **distributes** over a union and collapses the verdicts with
+ * `true extends` instead of bracket-guarding it — plus one architect's arm, `abstract new` in
+ * `CarriesOne`, which closes **R58-2** by failing a `Trip`-producing construct signature as a
+ * **carrier that must be split** rather than promoting it into `DOORS`.
+ *
+ * **The closure claim is WITHDRAWN, not extended to four** (A-80 Part 10). A numbered list of
+ * exceptions has now been wrong within one round four times; enumerating them is this arc's own
+ * defect in its last disguise. What replaces it is a claim about **coverage of a closed set** —
+ * *`Carries` descends through every place a TypeScript type holds another type on its output side*
+ * — and it is **checked by `DESCENT_CENSUS` below, in the compiler, not asserted in a paragraph.**
+ * **A seventh finding must exhibit an output-side place with no row, or a row whose fixture passes
+ * while a structurally equivalent shipped shape is missed** — which is R58-1's own move, and is why
+ * N11 exists.
+ *
+ * **The injected faults this file's mechanism must survive** (A-80 Part 9, beside A-79's N8/N10,
+ * A-78's N1–N7 and A-77's N1–N5, all carried unchanged). They are written here so the next builder
+ * meets them where the mechanism is:
+ *
+ *   - **N9 (corrected):** `autofix?(t: Trip, c: Conflict): Trip` on the `Rule` type → the hidden-door
+ *     census fails naming **eleven** exports — the ten rules **and `RULES`**, the array that holds
+ *     them. `RULES` is **correct and needs no exemption**: a container of carriers is a carrier
+ *     (A-80 Part 6, correcting A-79 Part 10's prediction of ten). Requires `noErrorTruncation`, or
+ *     the message truncates at two.
+ *   - **N11:** the same feature one field-shape sideways — `autofix?: { fix(t: Trip, c: Conflict):
+ *     Trip }` → the census fails naming the same eleven. **This is the criterion that would have
+ *     caught R58-1**, and N9 alone is not sufficient: at `77ef3ba` N9 was red and N11 was green.
+ *   - **N12:** `export const hook: { archive: Door } | undefined` and
+ *     `export type H = {kind:'a'; run: Door} | {kind:'n'; why: string}` → both redden, each naming
+ *     the export. The union family, at the TOP level of an export rather than nested in a property.
+ *   - **N13:** delete one `Descent<…>` row's positive fixture, or break one arm of `CarriesOne` →
+ *     `DESCENT_CENSUS` fails naming that constructor's label. **A census that only ever passes
+ *     measures nothing.**
+ *   - **The construct-signature pair (R58-2):** `export const c: new (t: Trip, r) => Trip` → RED
+ *     naming `c`, at `HIDDEN_DOOR_CENSUS` and **not** at `DOOR_CENSUS`.
+ *
+ * ---
+ *
  * §2.1 **A-79** — *a door is a module-level function, and the census refuses any export that can
  * hide one.* ROADMAP **I-18**, from QA **R57-1/R57-2** (MAJOR) with **R57-3/4/5/6** riding along.
+ * **Amended by A-80 above in four places: its predicate (Part 3), its `Map` evidence (Part 5), its
+ * async claim (Part 9) and its closure claim (Part 11, withdrawn).**
  * It sits on top of §2.1 **A-78** — *the census reads the tree, not a list of files* — whose
  * **subject** round 57 attacked with everything it had (a new file, a new directory, a door in the
  * generated `countries.gen.ts`, re-exports from inside and outside the tree, a barrel alias, a
@@ -22,13 +84,24 @@
  * have each ended with a longer list being wrong within a round. What ships instead is **one
  * recursive structural question**, asked of the export's type:
  *
- * > **Is a `Trip`-producing callable reachable from this export at all — through a property, or
- * > through a call signature's return type, at any depth?**
+ * > **Is a `Trip`-producing callable reachable from this export at all — through any place a
+ * > TypeScript type holds another type on its output side, at any depth?**
+ *
+ * *(A-79 wrote that question as "through a property, or through a call signature's return type",
+ * and those were the only two constructors it descended. **A-80 widened it to the closed set**, and
+ * `DESCENT_CENSUS` below is what holds the coverage.)*
  *
  * At the type level a class method, a static method, an object-literal method, an arrow property
  * and a getter are *the same thing*: a property whose type has a call signature. `Carries` was
  * never told about a `Map`, a factory-returned class, a function with a property, `Promise<Trip>`
- * behind a method, or a door nested three objects deep, and it catches all of them (A-79 Part 5).
+ * behind a method, or a door nested three objects deep, and it catches all of them. **One of A-79
+ * Part 5's showcase rows was wrong about WHY, and A-80 Part 7 corrects it:** `Map<string, door>` was
+ * caught **incidentally**, through `get(key): V | undefined`, while `Map<string, {run: door}>` — the
+ * closer analogue of the `Record<RuleId, Rule>` the same table called *"the deepest carrier this
+ * codebase could plausibly hold"* — was **missed**. Under A-80 both are caught, and caught for the
+ * reason the row claimed. ***A carrier caught by accident is evidence of nothing***, and a showcase
+ * row must name the descent by which its case is caught or it is a story — which is why every
+ * `DESCENTS` row below carries a **doorless twin** rather than a claim.
  *
  * **The census is name-keyed by necessity**, which is why A-79 *refuses the carrier* rather than
  * guarding it: a door needs a `DOORS` entry, a behavioural row, a frozen-input row, a place in the
@@ -68,13 +141,33 @@
  * array — in place. There is **no `Object.freeze` in `src`** — the ruling refuses that, with its
  * reasons and its trigger.
  *
- * **The residue, named rather than left silent** (A-79 Part 11 residue 1): an **overload set** whose
- * *last* signature does not return `Trip` is **not** caught, because `infer R` resolves to the last
- * signature and enumerating an overload set's signatures needs a bounded-arity pattern — which
- * would be an enumeration, of arity, and the sixth face of this exact class. It is refused by the
- * normal-form rule instead, and **zero overload sets exist under `packages/core/src` today**.
- * **Trigger: the first one.** The other two residues are the 12-hop depth bound and a cast
- * (`unknown`/`any` returned where a `Trip` is meant), which is permanent.
+ * **The residues, as A-80 Part 11 leaves them — and note that A-79's *"there are exactly three ways"*
+ * framing is GONE, not lengthened.** None of these is a carrier shape, and none of them is a place a
+ * type holds another type on its output side, which is why they are not exceptions to the coverage
+ * claim above:
+ *
+ *   - **An overload set** whose *last* signature does not return `Trip` is not caught, because
+ *     `infer R` resolves to the last signature. **A-80 Part 10 reframes this as an INCOMPLETE ROW
+ *     inside the claim rather than an exception outside it** — a call signature's return is a
+ *     constructor the walk *does* cover, and it covers one signature of N — so it is asserted
+ *     `false` in `DESCENT_CENSUS` where the incompleteness is measured, and refused by the normal
+ *     form. **Zero exist under `packages/core/src` today. Trigger: the first one.**
+ *   - **A parameter position.** `keyof` a bare function type is `never`, so a callable an export
+ *     *accepts* is unreachable — and that is a **ruling**, not a miss: a door passed in as an
+ *     argument belongs to the caller, and flagging it would flag every higher-order function in the
+ *     library. Asserted `false` in `DESCENT_CENSUS` so it is a measured boundary.
+ *   - **A budget, not a list:** the 12-hop bound is one number in one place. The deepest carrier this
+ *     codebase can plausibly hold is 2. **Trigger:** an export nesting a callable more than 12 hops
+ *     down; the answer is to raise the number.
+ *   - **A cast** — `any`, `unknown`, a lie about a return type. There is nothing to descend into.
+ *     **Permanent.**
+ *   - **A detached continuation** (A-80 Part 8, correcting A-79 Part 9): the behavioural runner's
+ *     `await` reaches a door promise it awaits, and reaches nothing nobody awaits — `catch` requires
+ *     something to catch. An `async` door that mutates after an `await` in a continuation the runner
+ *     never sees still takes the file down unnamed. That is an inherent limit of the harness, not a
+ *     defect in it. **Trigger: the first `async` door under `packages/core/src`; zero exist today**,
+ *     at which point the answer is a `process.on('unhandledRejection')` handler here that names the
+ *     door currently under test, or a ruled decision that async doors are refused.
  *
  * ---
  *
@@ -132,7 +225,7 @@ import { toJSON } from '../src/serialize/toJSON.ts';
 import { assertStorable } from '../src/build/storable.ts';
 import { SCHEMA_VERSION } from '../src/model/types.ts';
 import type {
-  Booking, Day, Participant, PhotoAsset, Place, Stop, Trip,
+  Booking, ConflictResolution, Day, Participant, PhotoAsset, Place, Stop, Trip,
 } from '../src/model/types.ts';
 import { sequentialIds } from '../src/model/ids.ts';
 
@@ -697,33 +790,216 @@ const ILLEGAL_SHAPE_CENSUS: IsExact<AllIllegal, never> = true;
  * deepest carrier this codebase could plausibly hold is 2 (`Record<RuleId, Rule>` → method). */
 type Down = [never, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
+/**
+ * The members of `T`, walked through **`NonNullable<T[K]>`** (A-80 Part 2 point 1).
+ *
+ * **This is not "handle optional properties". It is *read the source type the way the mapped type's
+ * own `-?` reads its result*.** `-?` strips the optional MODIFIER from the mapped type's result; it
+ * does not strip `| undefined` from the source indexed access `T[K]`. TypeScript's
+ * undefined-removal for `-?` applies to the instantiated template, and this template is not `T[K]`
+ * — it is `Carries<T[K], D>` — so the conditional inside `Carries` has already been evaluated
+ * against `T[K] | undefined` by the time the removal happens, and the removal then applies to a
+ * `true`/`false` literal, where it does nothing. Measured (A-80 Part 1(a)):
+ *
+ * ```ts
+ * type Wrap<X> = [X] extends [object] ? 'obj' : 'not-obj';
+ * type M1<T> = { [K in keyof T]-?: T[K]       }[keyof T];  // {a?: {run: door}} -> {run: door}
+ * type M2<T> = { [K in keyof T]-?: Wrap<T[K]> }[keyof T];  // {a?: {run: door}} -> 'not-obj'  <- the defect
+ * ```
+ *
+ * `M1` is `Required`'s own body; `M2` was this line's shape, and it is why `{a: {run: door}}` was
+ * caught while `{a?: {run: door}}` was not. **A required property is unaffected, which is why
+ * `NonNullable` introduces no false positive.**
+ */
 type Members<T, D extends number> =
-  true extends { [K in keyof T]-?: Carries<T[K], D> }[keyof T] ? true : false;
+  true extends { [K in keyof T]-?: Carries<NonNullable<T[K]>, D> }[keyof T] ? true : false;
+
+/** The door test applied to a type a callable PRODUCES, rather than to the callable itself. Reuses
+ *  A-78 Part 2's `Exclude<Awaited<R>, null | undefined>` order, which A-78 ruled load-bearing. */
+type ProducesTrip<R> = IsExact<Exclude<Awaited<R>, null | undefined>, Trip>;
 
 /**
- * Is a DOOR reachable from `T` — through a property, or through a call signature's return type?
+ * Is a DOOR reachable from `T`? **Asked of every member of a union, and answered `true` if ANY
+ * member says so** (A-80 Part 2 point 2).
  *
- * Three details are load-bearing and A-79 Part 3 says each was wrong in a draft before it was
- * right:
+ * **A-79 Part 3 detail 1 said the bracketed `[T] extends [object]` form was needed because
+ * *"distribution turns a union-typed export into a union of verdicts and quietly loses `false`"*.
+ * That was correct about `false` and silent about `true`, and the silence is what produced R58-1.**
+ * Both halves are stated here because only both together are the whole story:
  *
- *   1. **`[T] extends [object]` and `[D] extends [never]`, in brackets.** The bracketed form
- *      suppresses distribution, which otherwise turns a union-typed export into a union of
- *      verdicts and quietly loses `false`.
- *   2. **A callable's PROPERTIES are walked as well as its return type.** `keyof` a bare function
- *      type is `never` — verified, so there is no `call`/`apply`/`bind` noise to filter — but
- *      `keyof` a function with a door hung off it is exactly that door's key. Without this clause,
- *      `Object.assign(fn, {door})` is an eighth form.
- *   3. **`Awaited<R>`, so `Promise<Trip>` behind a method is a door.** The classifier A-78 Part 2
- *      widened is REUSED (`IsDoor`, whose `Exclude<Awaited<R>, null | undefined>` argument order
- *      A-78 already ruled load-bearing) rather than re-derived, so `Trip | null` behind a getter is
- *      caught by the same rule that catches it at a module-level function.
+ *   - **The collapse keeps `false` from being lost.** `true extends (…)` reduces the union of
+ *     verdicts to exactly `true` or exactly `false` — never `boolean` — so `Hides<T> extends true`
+ *     still cannot silently swallow a verdict. A-79's concern is *preserved*, not discarded.
+ *   - **The distribution keeps `true` from being lost.** Not distributing meant a union reached
+ *     `keyof`, and **`keyof (A | B)` is the INTERSECTION of the members' keys** — measured, `keyof
+ *     ({a: door} | {b: string})` is `never` — so a discriminated union of object types had no
+ *     walkable key at all; and a union with any non-object member matched neither arm and fell
+ *     straight to `false`, which is why `{run: door} | undefined` and `{run: door} | null` were
+ *     invisible while this repository spells an absent object `X | null` throughout.
+ *
+ * The correct quantifier over a union is **existential**: a door is reachable from `A | B` if it is
+ * reachable from `A` *or* from `B`. The brackets stay inside `CarriesOne`, where `T` is already a
+ * single member and they cost nothing, and they still guard `never` and the depth base case.
+ * **Distribution consumes no depth** — `CarriesOne` decrements before every recursion — so the
+ * 12-hop bound keeps exactly the meaning A-79 Part 5 measured for it.
  */
 type Carries<T, D extends number = 12> =
   [D] extends [never] ? false :
     IsDoor<T> extends true ? true :
-      [T] extends [(...a: never[]) => infer R]
-        ? (Carries<Awaited<R>, Down[D]> extends true ? true : Members<T, Down[D]>)
-        : [T] extends [object] ? Members<T, Down[D]> : false;
+      true extends (T extends unknown ? CarriesOne<T, D> : never) ? true : false;
+
+/**
+ * One non-union type. **The three constructors a type can hold another type on its OUTPUT side**
+ * (A-80 Part 3) — and they are not three of an unbounded set. Arrays, tuples, index signatures,
+ * mapped types and intersections are all *object types with members*; a union is handled by the
+ * quantifier above; `Promise`, `Set`, `Map`, `Iterable` and their relatives are reduced to these by
+ * the compiler before the predicate sees them. **That list is closed by the language and not by this
+ * codebase**, which is the distinction A-80 Part 3 draws between this and the arm-per-carrier A-79
+ * Part 1 refused: a builder invents an eighth *declaration form* by writing code, and invents no
+ * eighth *type constructor* by writing anything.
+ *
+ * Three details are load-bearing:
+ *
+ *   1. **A callable's PROPERTIES are walked as well as its return type.** `keyof` a bare function
+ *      type is `never` — verified, so there is no `call`/`apply`/`bind` noise to filter — but
+ *      `keyof` a function with a door hung off it is exactly that door's key. Without this clause,
+ *      `Object.assign(fn, {door})` is another form.
+ *   2. **`Awaited<R>`, so `Promise<Trip>` behind a method is a door.** The classifier A-78 Part 2
+ *      widened is REUSED (`IsDoor`, whose `Exclude<Awaited<R>, null | undefined>` argument order
+ *      A-78 already ruled load-bearing) rather than re-derived, so `Trip | null` behind a getter is
+ *      caught by the same rule that catches it at a module-level function.
+ *   3. **The `abstract new` arm, and `ProducesTrip<I>` tested BEFORE the members walk** (A-80 Part 2
+ *      point 4, closing R58-2). `abstract new` matches both `class` constructors and bare
+ *      construct-signature types. A construct signature that produces a `Trip` therefore fails
+ *      **here**, as a *hidden carrier that must be split*, naming the export — and is **not**
+ *      promoted into `DOORS`, where the behavioural runner would call it without `new`. **The arm
+ *      does not go on `TripishReturn`**: A-80 Part 2 measured that placement and it reddens
+ *      `DOOR_CENSUS` with **no name in the message**, while a builder's repair would be to add the
+ *      constructor to `DOORS`. A construct signature is not a door — the normal form quoted beside
+ *      `HIDDEN_DOOR_CENSUS` says a door is a module-level function — so it must fail as a carrier.
+ */
+type CarriesOne<T, D extends number> =
+  [T] extends [(...a: never[]) => infer R]
+    ? (Carries<Awaited<R>, Down[D]> extends true ? true : Members<T, Down[D]>)
+    : [T] extends [abstract new (...a: never[]) => infer I]
+      ? (ProducesTrip<I> extends true ? true
+        : Carries<I, Down[D]> extends true ? true : Members<T, Down[D]>)
+      : [T] extends [object] ? Members<T, Down[D]> : false;
+
+// ---------------------------------------------------------------------------------------------
+// A-80 Part 4 (QA **R58-1**) — the DESCENT CENSUS. *A coverage claim is checked by the compiler or
+// it is a paragraph.*
+//
+// A-79 Part 11 wrote its closure claim as a numbered list of exceptions and it was falsified in one
+// round. A-80 Part 10 withdraws that format and claims **coverage of a closed set** instead:
+// `Carries` descends through every place a TypeScript type holds another type on its OUTPUT side —
+// union members, intersection members, properties (required, optional, readonly, getter,
+// symbol-keyed), index signatures, array and tuple elements, a call signature's awaited return type,
+// and a construct signature's instance type. **That set is closed by the language and not by this
+// codebase**, and the rows below are what checks it. An enumeration here is a MEASUREMENT and not a
+// mechanism: the predicate is structural, so a row this table forgets is very likely still caught,
+// and a missing row costs a row rather than a hidden door.
+//
+// Every row is one constructor with a **positive** fixture (a door behind it) and a **doorless
+// negative twin**, so a row cannot pass by the predicate becoming vacuous — `Carries<Neg>` must be
+// `false` or the row names itself too.
+//
+// **Two rows are asserted `false` deliberately** (A-80 Part 10), so the walk's boundaries are
+// MEASURED rather than described: a **parameter position**, which is a ruled non-descent (a door
+// passed in as an argument belongs to the caller, and flagging it would flag every higher-order
+// function in the library), and an **overload set whose last signature is not `Trip`**, which is not
+// an exception to the coverage claim but **an incomplete row inside it** — `infer R` resolves to the
+// last signature, so the walk covers one signature of N. Both are in this table rather than in a
+// residue paragraph so that if TypeScript's behaviour changes under us the file reddens and somebody
+// reads A-80, instead of a paragraph quietly becoming untrue.
+// ---------------------------------------------------------------------------------------------
+
+/** The door shape every positive fixture below hides, and the doorless twin every negative one
+ *  does. `Doorless` is a *function*, not a scalar — a negative twin that removed the callable as
+ *  well as the `Trip` would pass whether the descent worked or not. */
+type Door = (t: Trip, r: ConflictResolution) => Trip;
+type Doorless = (t: Trip, r: ConflictResolution) => string[];
+
+declare const DESCENT_SYM: unique symbol;
+
+type RecursiveWithDoor = { readonly next?: RecursiveWithDoor; readonly run?: Door };
+type RecursiveDoorless = { readonly next?: RecursiveDoorless; readonly run?: Doorless };
+
+/** `never` if the constructor is covered; the label if the positive fixture is missed OR the
+ *  negative fixture false-positives. A-80 Part 4, verbatim. */
+type Descent<Label extends string, Pos, Neg> =
+  Carries<Pos> extends true ? (Carries<Neg> extends false ? never : Label) : Label;
+
+/** A place the walk deliberately does NOT descend (A-80 Part 10). `never` while that holds; the
+ *  label the day it starts descending — which is a finding, not a fix. */
+type NonDescent<Label extends string, T> = Carries<T> extends false ? never : Label;
+
+type DESCENTS = [
+  // — properties, in every modifier and key form the language has —
+  Descent<'property-required', { run: Door }, { run: Doorless }>,
+  Descent<'property-optional', { run?: Door }, { run?: Doorless }>,
+  Descent<'property-optional-nested', { a?: { b?: { run: Door } } }, { a?: { b?: { run: Doorless } } }>,
+  Descent<'property-readonly-getter', { readonly a?: { get run(): Door } }, { readonly a?: { get run(): Doorless } }>,
+  Descent<'property-symbol-key', { [DESCENT_SYM]: Door }, { [DESCENT_SYM]: Doorless }>,
+  Descent<'index-signature-string', { [k: string]: Door }, { [k: string]: Doorless }>,
+  Descent<'index-signature-symbol', { [k: symbol]: Door }, { [k: symbol]: Doorless }>,
+  // — indexed containers —
+  Descent<'array', Door[], Doorless[]>,
+  Descent<'readonly-array', readonly Door[], readonly Doorless[]>,
+  Descent<'tuple', [string, Door], [string, number]>,
+  // — the quantifier over a union, which is what R58-1 was —
+  Descent<'union-non-object-member', { run: Door } | undefined, { run: Doorless } | undefined>,
+  Descent<'union-null', { run: Door } | null, { run: Doorless } | null>,
+  Descent<'discriminated-union',
+    { kind: 'a'; run: Door } | { kind: 'n'; why: string },
+    { kind: 'a'; run: Doorless } | { kind: 'n'; why: string }>,
+  Descent<'intersection', { x: string } & { run: Door }, { x: string } & { run: Doorless }>,
+  // — callables, on their output side —
+  Descent<'call-signature-return', () => Door, () => Doorless>,
+  Descent<'call-signature-return-promise', () => Promise<{ run: Door }>, () => Promise<{ run: Doorless }>>,
+  Descent<'call-signature-own-property', (() => string) & { run: Door }, (() => string) & { run: Doorless }>,
+  Descent<'construct-signature-instance', new () => { archive: Door }, new () => { archive: Doorless }>,
+  Descent<'construct-signature-produces-trip',
+    new (t: Trip, r: ConflictResolution) => Trip,
+    new (t: Trip, r: ConflictResolution) => string[]>,
+  // — the standard library, reduced to the constructors above before the predicate sees it —
+  Descent<'promise', Promise<{ run: Door }>, Promise<{ run: Doorless }>>,
+  Descent<'iterable', Iterable<Door>, Iterable<Doorless>>,
+  Descent<'async-iterable', AsyncIterable<Door>, AsyncIterable<Doorless>>,
+  Descent<'generator', Generator<Door>, Generator<Doorless>>,
+  Descent<'set', Set<Door>, Set<Doorless>>,
+  Descent<'readonly-set', ReadonlySet<Door>, ReadonlySet<Doorless>>,
+  Descent<'map-door-value', Map<string, Door>, Map<string, Doorless>>,
+  Descent<'map-carrier-value', Map<string, { run: Door }>, Map<string, { run: Doorless }>>,
+  Descent<'weakmap', WeakMap<object, { run: Door }>, WeakMap<object, { run: Doorless }>>,
+  // — mapped types —
+  Descent<'record', Record<string, { a?: { run: Door } }>, Record<string, { a?: { run: Doorless } }>>,
+  Descent<'partial', Partial<{ run: Door }>, Partial<{ run: Doorless }>>,
+  Descent<'readonly-mapped', Readonly<{ run: Door }>, Readonly<{ run: Doorless }>>,
+  Descent<'pick', Pick<{ run: Door; x: string }, 'run'>, Pick<{ run: Doorless; x: string }, 'run'>>,
+  Descent<'recursive-type', RecursiveWithDoor, RecursiveDoorless>,
+  // — and the two boundaries, asserted `false` on purpose (A-80 Part 10) —
+  NonDescent<'parameter-position', (cb: Door) => void>,
+  NonDescent<'overload-set-last-signature-not-trip',
+    { (t: Trip, r: ConflictResolution): Trip; (t: Trip): string }>,
+];
+
+type UNCOVERED = DESCENTS[number];
+
+/**
+ * **This line is A-80 Part 10's closure claim**, in the only form this arc has left that is worth
+ * anything: held by the compiler rather than by a paragraph.
+ *
+ * **The message is adapted from A-80 Part 4's block by one clause, and the reason is recorded as
+ * KD-109:** the block's sentence names one failure direction (*"no longer descends"*), and the
+ * two `NonDescent` rows fail in the opposite one (a ruled non-descent has STARTED descending). A
+ * census that prints a false sentence about its own failure is the shape six rounds of this arc
+ * exist to remove, so the clause names both directions. Nothing else about the block moves.
+ */
+const DESCENT_CENSUS: [UNCOVERED] extends [never] ? true :
+  `A-80: this type constructor no longer behaves as the coverage claim says — the predicate has
+   stopped descending it, its doorless twin now false-positives, or a ruled NON-descent has started
+   descending: ${UNCOVERED}` = true;
 
 /** A HIDDEN door: this export is not itself a door, and something under it is. */
 type Hides<T> = IsDoor<T> extends true ? false : Carries<T>;
@@ -749,17 +1025,24 @@ type AllHidden = HiddenIn<(typeof CENSUS)[number]>;
  * rule is to require the shape that CAN be guarded, and it is quoted here, beside A-78 Part 2's
  * wrapper prohibition above, because the two are one rule:
  *
- * > **Normal form.** *A function in `packages/core/src` that produces an edited `Trip` is a
- * > **module-level exported function with a single call signature**. It is not a method, not a
- * > static method, not a getter, not a property of an exported object, not a closure returned by
- * > another function, and not an overload set. A design that wants one of those splits it: the
- * > door is a module-level function, and the carrier calls it.*
+ * > **Normal form (revision 61).** *A function in `packages/core/src` that produces an edited
+ * > `Trip` is a **module-level exported function with a single call signature**. It is not a
+ * > method, not a static method, not a getter, not a property of an exported object, not a closure
+ * > returned by another function, **not a constructor or a construct signature**, and not an
+ * > overload set. A design that wants one of those splits it: the door is a module-level function,
+ * > and the carrier calls it.*
+ *
+ * **A-80 Part 7 added the constructor clause, and it is stated AND detected** — which is why it
+ * lands in the same pass as the `abstract new` arm in `CarriesOne`. A clause alone would be *stated
+ * and not detected*, and that is the shape which has now produced six rounds.
  *
  * With A-78 Part 2's *a door returns a `Trip` directly*, that is the whole of what a door may be:
  * **one exported function, one call signature, one `Trip` out.** A-78 Part 2's half is *stated and
- * not detected*; this half is **stated and detected**, everywhere except the overload case — see
- * the residue in this file's header, whose trigger is the first overload set under
- * `packages/core/src` and of which there are **zero** today.
+ * not detected*; this half is **stated and detected**, everywhere except the overload case — which
+ * A-80 Part 10 reframes as **an incomplete row inside the coverage claim rather than an exception
+ * outside it**, asserts `false` in `DESCENT_CENSUS` above so the incompleteness is measured, and
+ * gives the trigger *the first overload set under `packages/core/src`* — of which there are **zero**
+ * today.
  */
 const HIDDEN_DOOR_CENSUS: [AllHidden] extends [never] ? true :
   `A-79: a Trip-producing function is reachable through this export but is not a module-level
@@ -830,6 +1113,10 @@ test('A-78 Part 1: the type-level door census holds (it is `npm run typecheck` t
 
 test('A-79 Part 3: the hidden-door census holds (it is `npm run typecheck` that enforces it)', () => {
   assert.equal(HIDDEN_DOOR_CENSUS, true);
+  // A-80 Part 4's descent census rides in this test rather than in a new one **on purpose**:
+  // `I-19`'s ship gate pins the suite at 1637 and says no test may change, and this census — like
+  // `DOOR_CENSUS` — is enforced by `npm run typecheck` and not by a runtime assertion.
+  assert.equal(DESCENT_CENSUS, true);
   assert.equal(WRAPPER_PRODUCERS_ARE_NOT_DOORS, true);
   assert.equal(NEGATIVE_CONTROLS, true);
 });
