@@ -1349,6 +1349,34 @@ re-measured over 480 cells, which is the sentence KD-52 said was the architect's
 trigger, because a scope rule that lives only in `REVIEW.md` is a scope rule with no home in a contract
 document, which is what let nine status notes carry it as *"still open"* and never place it.
 
+**Revision 58, 2026-09-08.** **A-76 fixed the enumeration problem and then recreated it one level up, and
+QA round 55 measured that in the same shape the photo-store arc took eight rounds to close.** A-76 replaced
+eight per-field guards with one mechanism and then wrote a **table** of which door checks which record with
+which fields elided, plus 26 free-text exemption reasons. Round 55 found **thirteen** door × field cases the
+table still leaves writing bytes that can never be re-opened, and **two exemption reasons the code
+disproves**; writing this ruling I found **three more**, at `resolveConflict` — a door in `conflict/`, a
+directory the census cannot see, writing an **eighth** record class the mechanism's type map does not have.
+**A-77** (§2.1, QA **R55-1/2/3/5**, MAJOR) is the ruling and it **deletes the enumeration rather than
+correcting it for a third time**: a door no longer declares what it wrote, it returns through
+`commit(where, before, after)`, and `commit` **computes** which records are new by object identity and hands
+each one to `fromJSON`'s own parser. There is no table, no elision, no exemption and no reason column — the
+judgement *"does this door read a caller value into a record field?"*, which was wrong twice, is deleted, not
+re-made. Three consequences beyond the thirteen: the trip's own scalars become a parseable unit
+(`parseTripEnvelope`, O(1)), so R55-3's six unguarded scalars close with **zero** new guards and A-76's one
+efficiency exception, `assertDatePrecision`, loses its premise and is deleted; `assertStorable` **returns the
+parsed record** and `commit` stores it, which closes R55-5's three exploitable TOCTOU repros at every door
+rather than the two they used; and the door census stops reading source text — *"returns a `Trip`"* is a
+fact the **compiler** has for every export in every declaration syntax, which is R55-4's hole closed by
+replacement rather than by a wider regex. `setDayMeta` also gains the runtime patch-key allowlist the other
+three patch doors have, for the half of R55-1 that `commit` does **not** subsume (a smuggled `stops` key can
+carry a perfectly parseable stop that already exists on another day). **No `IssueCode`, no
+`SCHEMA_VERSION`/`SUMMARY_VERSION`/`DB_VERSION` movement, no export-count movement (§2.10 stays at 86), no
+`.tsx`, no `qa/`, no new dependency.** `ROADMAP.md` revision 61 carries the ledger entry and **I-16**.
+Riding along: **KD-100** — A-76 Part 4's `assertParticipantKind` row is corrected in place, because `??`
+coalesces `null` and the deleted guard did not (the shipped code is right; the ruling's reason was not) —
+and **R55-7**, a documentation correction that keeps `place_hours_malformed` and names its remaining
+population exactly (A-77 Part 10 residue 3).
+
 **Phase 1 is §2 and §4. The next phase is §8.1–§8.4.** Everything else is the shape those must not
 foreclose. See `ROADMAP.md` for sequencing and `PRODUCT-VISION.md` for why this order and not another.
 **What the product looks like is `DESIGN.md`, not this document** — §9 says why, and a builder of a screen
@@ -1356,7 +1384,12 @@ reads that instead of entering §2 or §4.
 
 ## Read only your sections
 
-This document is **~428k tokens** (re-measured at **revision 55**, with `doc-section` — **§8 grew 88k →
+This document is **~449k tokens** (re-measured at **revision 58**, with `doc-section` — **§2 grew 133k →
+141k** with §2.1's **A-77**, and **§8 grew 91k → 92k** with the one revision-58 note beside §2.9's A-20;
+§4 and §10 did not move). **A-77 is ~9k and, with A-76 Part 3 in front of it, is the whole read for a
+builder of ROADMAP I-16** — that builder opens neither §4, §8 nor §10, and does not read A-76 Parts 4–6,
+which A-77 supersedes. Revision 55's own note follows, and the figure in it is superseded by the one above:
+the document was ~428k (re-measured with `doc-section` — **§8 grew 88k →
 90k** with §8.3's **A-74**; nothing else moved, and §2 is 125k, §4 is 114k, §10 is 40k). **A-74 is ~3k and
 Parts 5–6 are the whole read for a builder of ROADMAP I-9b**, plus §8.3's banner; it needs none of §2, §4 or
 §10. Revision 54's own note follows: the document was ~424k, with **§8 grown 82k →
@@ -1429,9 +1462,17 @@ it could never re-open while reporting *Saved*, and the whole trip became unreac
 **mechanism, not eight guards**: every door that writes a record hands it to `fromJSON`'s own per-record
 parser, three redundant per-field guards are deleted, two that say something the parser cannot are kept,
 and a standing census over `packages/core/src/build/` closes the door set. It moves no version, no
-`IssueCode` and **no export count**. **Anyone adding a build function, a field to a record class, or an
-enum to the model reads A-76 Part 5's table first**, and a builder of ROADMAP **I-15** reads A-76 Parts 3–7
-and needs nothing else in this document | 133k | builder, breaker |
+`IssueCode` and **no export count**. **A-77 is revision 58, sits directly under A-76, and is read *with*
+it, never instead of it** — QA round 55 measured **thirteen** door × field cases A-76 Part 5's table still
+leaves unguarded and **two exemption reasons the code disproves**, and the architect found **three more** at
+`resolveConflict`, a door in `conflict/` that census cannot see. A-77 upholds A-76 Part 3's mechanism and
+**deletes the table**: a door returns through `commit(where, before, after)`, which finds the records the
+door wrote **by object identity** and parses those; the trip's own scalars become a parseable unit
+(`parseTripEnvelope`), `assertDatePrecision` goes with them, `assertStorable` **returns** the parsed record
+so the door stores what was validated (the TOCTOU close), the door census becomes a **type-level** one the
+compiler computes, and `setDayMeta` gains the patch-key allowlist it never had. It moves no version, no
+`IssueCode` and **no export count**. **Anyone adding a build function reads A-77 Part 6; a builder of
+ROADMAP `I-16` reads A-76 Part 3 and then A-77 whole, and needs nothing else in this document** | 141k | builder, breaker |
 | 3 | Module boundaries | <1k | builder |
 | 4 | **The Phase 1 client.** §4.2 rule 6 (a pending write is never outlived by its document) is new in revision 3 — QA R3-2; rule 6a′ and the `savedDoc` predicate are revision 4 — QA R4-1; **rule 6a″ (the flush bound and its exits) and rule 6c's "delete goes on the chain" are revision 5** — QA R6-1/R6-2/R7-3; **rule 5's retirement carve-out is revision 6** — QA R8-1, read with §2.7; **rule 4a is revision 8** — QA R11-1, read with §2.2a A-7; **§4.3's A-30 is revision 23** — the `refreshSummary` port method, the fence's meaning stated once, and the rescan's uniform per-row link — and **anyone touching `runRescan`, `StoragePort` or a port implementation reads it first**, with §8.4 clause 3 beside it; **§4.4's A-40 is revision 29** — the lifetime map is a plain component over a pure `packages/client` frame function, not a second `MapPort`, and **anyone building or reviewing `WorldMap.tsx` reads it first** (it is ~3k and self-contained; the trip map's port is unchanged and needs no re-reading); **§4.4's A-41 and A-42 are revision 30 and are read *with* A-40, never instead of it** — A-41 is the atlas frame (geographic clustering, one primary pane and up to two insets, padding, and the **W3** renderer clause) and it amends A-40 clause 2 and withdraws A-40 Part 7 residue 1's diagnosis; A-42 withdraws A-40 clause 2's min-span *claim* and rules that no second constant is created. **A builder of I-8d reads A-40 Parts 3–5, then A-41 and A-42, and needs nothing else in this document except §2.10's list**; **§4.4's A-48 is revision 33, sits directly under A-42 and is read *with* A-41, never instead of it** — QA round 36 measured A-41's own C2 and C3 as wrong (a key point that lands in the ocean, and a partition that depends on the alphabet), and A-48 supersedes **C2**, **C3** and Part 8 residues 1′ and 4 in place, withdraws C4's margin claim, adds **C9** (paint order) and one pane field (`aspect`), and changes the semantics of core's `clusterPoints` to connected components. **A builder of I-8g reads A-48 first — it names which of A-41's clauses to skip — then A-41's C1/C5/C6/C7/C8 and Parts 4–7, then A-40 Parts 3–5**; **§4.4's A-49 and A-50 are revision 34, sit directly under A-48 and are read *with* A-41 and A-48, never instead of them** — QA round 37 measured A-48's own C8 as the clause A-48 forgot (the key point moved onto the country and the *extent* did not), and A-49 supersedes **C8**, **C7**'s cap and A-41's I1/I2/I3/I5 in place, withdraws A-48 C9 consequence 2's chip-list sentence as false, adds `countryParts` to core, a `'detached'` pane, a `codes` array on the frame and invariants **I11–I15**; A-50 completes A-48 Part 6 for the *tall* direction in one CSS declaration. **A builder of I-8h reads A-49 and A-50 first — A-49 names which of A-41's and A-48's clauses it supersedes — then A-48's C2′/C3′/C9 and Part 6, then A-41's C1/C5/C6/C7 and Parts 4–7, and needs nothing else in this document except §2.10's list**; **§4.4's A-51 and A-52 are revision 35, sit directly under A-50, and are the entry point to the whole atlas-frame family — read A-51 first and it names which of A-41/A-48/A-49 to skip** — A-51 reopened the framing abstraction itself at Jacob's instruction (QA **R38-2**, MAJOR) and **supersedes A-41's C5/C6/C7, A-49's C7′/C8′/C8″ and the `role` field in place**: the frame is **one pane per connected component of country parts**, equally weighted, ordered by weight rather than framed by it, and its Part 7 is the **consolidated** I1…I17 list that replaces three rounds of *"restated by"* pointers. A-52 is one paragraph beside it (a ring the index carries is a ring the frame draws). **A-51 is RULED AND HELD FOR JACOB'S APPROVAL — no builder pass may be dispatched against it until he has ruled**; until then A-41…A-50 are what is shipped. **§4.4's A-53 is revision 36, sits directly under A-52, and supersedes nothing** — it is the pane-*membership* contract Jacob asked for before approving A-51 (membership is country geometry because an ISO code is the only geographic evidence the record carries; standing is `home`; priority is order; disclosure is the caption), and it adds **I18**, the ≤ 3-extent-panes-planet-wide bound, and the d3-geo/Turf prior-art ruling. **A builder of I-8i reads A-51, then A-52, then A-53 Parts 4 and 8, then A-41 C1 + Part 4, A-48 C2′/C3′/C4′/C9 + Part 6, A-49 Part 2, A-50 and A-40 Parts 2–5, and needs nothing else in this document except §2.10's list**; **§4.4's A-54 is revision 37, sits under A-53 and is the newest entry in the family — it supersedes A-51 **G7** in full, A-51 **G5**'s third key and A-52's **clause 1**, widens L3's exception, adds **I19**, and corrects five published numbers, so **anyone reading A-51 for the layout, the pane order or the ring filter reads A-54 first and it names what to skip**. **A builder of I-8j reads A-54, then A-51 G5/G7 and Part 8, then A-50 and A-40 Parts 2–5, and needs nothing else**; **§4.2's A-67 is revision 47 and is the newest entry in the section — it is the only one that is *not* about the map, and it sits at the end of §4.2 rather than in §4.4** — the store's **generation guard**, ruling QA **R47-1** and **R47-2** as one defect: `flushForTransition` returns a **ticket** instead of a boolean, three guarded slots order every asynchronous install, and **R46-1's and R46-3's shipped point-fixes are deleted rather than layered under** (Part 7 rules each site). It adds new rule **6d** to §4.2 and amends §10 **A-66 Part 7** by pointer. **A builder of I-13d reads A-67 Parts 3–7 and 10, plus §4.2 rule 6 whole and §10 A-66 Part 10, and needs nothing else in this document** — it is ~12k and self-contained, and it needs none of §4.4. **A-67 gained a Part 7a at revision 48** (the I-13d builder's report against `4316167`): Part 7's *"every existing R46-1/R46-3 test stays exactly as it is"* was too strong by one assertion and contradicted ROADMAP **G3**, so it is narrowed to **final-state** assertions and the one assertion pinning the old guard's byte-write side effect is corrected. **Anyone reading Part 7 reads Part 7a with it**; Part 7a also rules who touches `qa/` (**breaker**) versus `packages/client/test/` (**builder**). **No mechanism, slot, call site or criterion moves**. **A-68 is revision 49 and sits directly under A-67 — read the two together, always, and A-68 first if you are implementing anything from A-67 Parts 4, 5, 6, 7a or 11.** Round 48 attacked A-67's mechanism and could not break it; both of its MAJORs are at A-67's **call sites**, and A-68 rules them as one missing sentence — *a bump of a slot's sequence is a promise to replace the answer it invalidated*. It moves Part 5's three-slot claim to a **one**-slot claim (the reseed supersedes the other two), hoists Part 6's two byte-write supersedes **out of** R45-4's value guard and gives them the read they owe, corrects Part 7a item 4 and Part 11 residue 4, and **changes `generation.ts` not at all**. **A builder of I-13e reads A-68 whole (~11k) plus A-67 Parts 3–7 for context, and needs nothing else in this document.** **A-69 is revision 50 and sits directly under A-68 — it is now the newest entry in §4 and the FIRST one to read in this family.** QA round 49 found A-68's own fix re-opened seven of the nine exits it closed, because Part 5b discharged the owed read under the **`doc`** slot's ticket — the slot those nine exits all bump (**R49-1**) — and found an **eleventh** exit that installs its document and still answers nothing, which no enumeration of *non*-installing exits could contain (**R49-5**). A-69 rules the **class**: **no correctness argument in the store may rest on an enumeration of control-flow exits** (Part 3). §10.6 property 5 becomes a predicate repaired at two non-opt-in sites — a wrapper over `createStore`'s whole returned literal and `readPhotoAvailability`'s own tail — `availabilityOwed` is **deleted**, `setAvailability` becomes the sole typed writer of the availability triple, and A-68 Part 4.1's and Part 7's tables are demoted to documentation. It also fixes **R49-4** (a browse pane outliving its deleted trip, with `copyStopInto` reading it) and corrects three of A-68's published mutants and its *"§K is green"* claim. **A builder of I-13g reads A-69 whole (~12k), then A-68 Parts 4.2, 5a and 5c and A-67 Part 3, and needs nothing else in this document** — and reads A-68's and A-67's amendment banners, which name every line of theirs that no longer holds. **A-70 is revision 51, sits directly under A-69, and is now the FIRST entry to read in this family** — it is short (~7k) and it is the only one that changes `generation.ts`. The I-13g builder implemented A-69's predicate verbatim, could not keep two shipped criteria green with it, and routed the contradiction rather than resolving it (BUILD-NOTES **KD-84**): A-69's `availabilityError === null` conjunct also declines to discharge a **byte write's** `supersede` after an earlier failed read, which leaves a stale failure message over changed bytes and regresses §10 **A-65 T1**. A-70 **upholds A-65 T1 unamended and narrows the predicate**, replacing the conjunct with a second disjunct over the **slot's sequence** — the record of the obligation rather than a consequence of it (Part 3, rule 6d's fourth half) — stamped at `setAvailability`, the one writer A-69's own type fence closed. It also corrects **three text defects in A-69** in place: site **S2**'s printed placement was unreachable (KD-85), **G18**'s nine reds are eight and **G23**'s fault is a no-op (KD-86), and **G21**/**G24**'s counts are of functions and sites rather than of tokens (KD-83). **A builder of I-13h reads A-70 whole and needs nothing else in this document except A-69 Parts 4, 5 and 6 for the code it keeps.** **A-71 is revision 52, sits directly under A-70, and is the newest entry in §4 — it is also the only one in this family that is not about the generation guard at all, so it is read on its own rather than after the other four.** QA round 50 closed the A-67…A-70 arc (the boundary and the stamp survived every attack) and filed **R50-5** beside it: `emit()` runs subscribers **synchronously**, so a subscriber throwing while rendering a **successful** answer throws from inside whatever `try` the store was holding, and the `catch` records the view's exception as its own subject's failure and swallows it. A-71 measured **five faces in two subsystems** — a successful `present()` read as *"could not be read"*, deleted bytes read as an orphan, a photograph that landed read as `'storage_failed'` by name, and a **write that landed with the fence advanced** read as `persistence.status: 'error'` — and rules the class rather than the site, because five narrowed `try`s is A-69 Part 3's forbidden enumeration: `emit` **brands** what a subscriber throws and one classifier, **`attempt`**, rethrows a branded error and returns everything else as a value, deleting **seven** `catch` blocks. It amends **A-69 Part 7** and narrows **Part 13 residue 1** to two costs; `emit`'s stop-at-the-first behaviour, A-67's guard, A-68's wiring, A-69's boundary and A-70's stamp are all untouched. **A builder of I-13i reads A-71 whole (~10k) and §10 A-66 Part 11 (~2k), plus A-69 Part 7 and Part 13 residue 1 for what it amends, and needs nothing else in this document.** **A-71 and A-70 both carry revision-53 amendment banners (QA round 51) and the banners are read first**: the mechanism shipped clean and survived the confirmation round, and every correction is to this document's own text — G35's control names the tests it actually reddens (R51-1), Part 4a no longer calls a false-positive brand *"conservative"* (R51-2), the method this entry called **`saveAs`** is named as what exists, `doMerge`'s two chained writes (R51-3), Part 4d's *"every exit"* is scoped to the exits the `finally` reaches with the remaining one filed as residue 6 (R51-4), and **A-70 Part 7 item 3 is no longer a table of measured counts but the *count rule* that forbids them** (R51-6, after the same row was wrong in three consecutive revisions). **Anybody about to write a number into this document reads that rule first.** | 114k | builder |
 | 5 | The four hard subsystems | 2k | breaker; builder from Phase 3 on |
@@ -1670,8 +1711,14 @@ This section is the builder's contract. Where it says MUST, the tester will chec
 - **A build door may not write a record `fromJSON` would refuse, and it does not decide that for itself:
   it asks the parser.** Stated for the first time in revision 57 — **A-76**, at the end of this section.
   The patch allowlist above is about *identity and provenance* and is unaffected; A-76 is about whether the
-  resulting record is a document the user can open again. **Anyone adding a build function, a field to a
-  record class, or an enum to the model reads A-76 Part 5's table first.**
+  resulting record is a document the user can open again. ~~**Anyone adding a build function, a field to a
+  record class, or an enum to the model reads A-76 Part 5's table first.**~~ **Revision 58: there is no
+  table any more.** A-76 Part 5 is superseded by **A-77**, which is the last entry in this section and is
+  read *after* A-76 and never instead of it: a door returns its trip through `commit`, and `commit` finds
+  the records the door wrote by object identity rather than being told. **Anyone adding a build function
+  reads A-77 Part 6 (a door is an export that returns a `Trip`, and the compiler counts them); anyone
+  adding a field to a record class or an enum to the model needs neither, which is the point.** The patch
+  allowlist above still applies to every patch door, `setDayMeta` included — A-77 Part 5.
 
 #### A-32 — the civil calendar under `IsoDate`: `Date.UTC` may not appear in a date helper, and a year below 1000 is a real year (revision 25, QA R28-1, BLOCKER)
 
@@ -1949,6 +1996,18 @@ red. Three faults, three named tests, no overlap — and the determinism grep ov
 
 #### A-76 — a build door asks the parser what a record may hold; it does not keep a second opinion (revision 57, QA **R54-1**, MAJOR)
 
+> **AMENDED AT REVISION 58 BY A-77, BELOW — READ A-77 FIRST AND THIS SECOND, NEVER INSTEAD OF IT.**
+> **Part 3's mechanism is upheld entire and is still the answer.** What is superseded is everything that
+> *declares where to call it*: **Part 4**'s `assertDatePrecision` row (the efficiency exception loses its
+> premise and the guard is deleted), **Part 5**'s whole table (24 checked rows, their elisions and their 26
+> exemption reasons — two of which QA round 55 proved false against the code), and **Part 6**'s two censuses
+> (the `export function` regex is not widened; the classifier becomes a return type the compiler computes).
+> A-77 also corrects **Part 4**'s `assertParticipantKind` row in place for KD-100, and supersedes **Part 2**'s
+> sentence *"a trip-level scalar is not a record class and keeps its own guard"*, which is the sentence
+> R55-3's eight unguarded scalars came out of. Parts 1, 2 (options 1–4), 3, 7 and 8 stand as written and
+> A-77 quotes them rather than repeating them. **A builder builds A-77; nothing below is a contract any
+> more except Part 3.**
+
 > **RULED, and it is a mechanism rather than eight guards.** Every build function that writes a record runs
 > that record through **`fromJSON`'s own per-record parser** before it returns, so *what a door accepts* and
 > *what the parser accepts* are the same set by construction — at every field, including the ones nobody
@@ -2083,7 +2142,7 @@ property and stays.
 
 | Guard | Verdict | Reason |
 |---|---|---|
-| `build/participants.ts` `assertParticipantKind` | **deleted** | `parseParticipant`'s `oneOf(o.kind, PARTICIPANT_KINDS, …)` is the same property. The refusal does not weaken: `addParticipant` writes `kind: init.kind ?? 'contact'`, so the built record carries exactly the value the guard used to check |
+| `build/participants.ts` `assertParticipantKind` | **deleted** | `parseParticipant`'s `oneOf(o.kind, PARTICIPANT_KINDS, …)` is the same property. The refusal does not weaken — ~~`addParticipant` writes `kind: init.kind ?? 'contact'`, so the built record carries exactly the value the guard used to check~~ **(corrected at revision 58, BUILD-NOTES KD-100: that clause is false for `null`.** `??` coalesces `null` as well as `undefined`, and the deleted guard ran for `null`, so the literal implementation would have turned a refusal into a silent write of the default. The shipped code is `kind: init.kind === undefined ? 'contact' : init.kind`, which is correct and is what this row should always have said: **absent and `undefined` mean *take the default* for an `init`; `null` is a value the caller supplied, so it reaches the record and the parser refuses it at `$.kind`.**) |
 | `build/participants.ts` `assertDisplayName` | **deleted** | `str(o.displayName, …)` is the same property, `undefined` included |
 | `build/participants.ts` `assertNote` | **deleted** | `o.note !== undefined ? str(…)` is the same property, and it has the same asymmetry — `undefined` means *no note* on both sides |
 | `build/createTrip.ts` `assertDatePrecision` | **KEPT** | `datePrecision` is a **trip-level scalar**, not a record class. There is no per-record parser to ask, and asking `parseTrip` would be Part 2 option 3's O(document) cost on `setTripMeta`. Its private `DATE_PRECISIONS` copy is replaced by the one `model/types.ts` already exports — A-20, and it costs one import |
@@ -2091,6 +2150,13 @@ property and stays.
 | `FORBIDDEN_PATCH_KEYS` / `FORBIDDEN_PHOTO_PATCH_KEYS` / `FORBIDDEN_PARTICIPANT_PATCH_KEYS`, and `assertPatchable` in all three files | **KEPT, untouched** | They are about **identity and provenance** — *may this caller rewrite this field at all* — which is §2.1's patch-allowlist rule and has nothing to do with whether the result parses. A patched `provenance` parses perfectly and is still forbidden |
 
 **Part 5 — the table a builder implements, and it is the contract.**
+
+> **SUPERSEDED IN FULL AT REVISION 58 BY A-77 (QA R55-1/R55-2/R55-3).** This table is **no longer the
+> contract** and is kept only as the record of what was enumerated and what the enumeration missed:
+> thirteen door × field cases measured by round 55 (`setDayMeta`'s elision, two exempt rows whose stated
+> reason the code disproves, eight trip-level scalars), plus three the architect found at
+> `resolveConflict`, which is a door in a directory this table does not cover. **A builder implements
+> A-77's `commit`, which has no table.** Do not add a row here.
 
 *The door checks the record it writes, at its own record class, with the child record arrays it does not
 write elided.* The elision is what stops a door refusing an edit because of data it did not write.
@@ -2115,6 +2181,13 @@ write elided.* The elision is what stops a door refusing an edit because of data
 | `acceptCandidate`, `rejectCandidate` | — | — | **exempt**: they write a `Provenance` core constructs from its own literals |
 
 **Part 6 — closing the set of doors, which is the part that makes this different from eight guards.**
+
+> **SUPERSEDED AT REVISION 58 BY A-77 PART 6 (QA R55-4).** The directory census's collector is
+> `/^export\s+(?:async\s+)?function\s+(\w+)/gm`, and round 55 kept it **green** while injecting a new
+> unguarded door as `export const`, as `export { d }` and as `export default function`. *"Structurally
+> impossible rather than merely currently absent"* was false for three of the four declaration syntaxes,
+> and **the regex is not widened** — A-77 replaces the source-text collector with a type-level census the
+> compiler computes, plus a directory read that sees new files. The behavioural census (item 2) survives.
 
 A mechanism that must be *remembered* at each new door is A-69's failure mode with a smaller diff. Two
 standing tests close it, and they are **§2.14 A-23**'s census mechanism one subsystem over.
@@ -2154,6 +2227,297 @@ standing tests close it, and they are **§2.14 A-23**'s census mechanism one sub
    parser types loosely. Bounded: every field of every record class goes through `str`, `numOf`, `oneOf`,
    `obj` or `arr`, so the surface is `Place.hours`, which `parseOpeningHours` reads. **Trigger:** the first
    record field the parser accepts without reading, which today there is none of.
+
+#### A-77 — a door does not say what it wrote; the document says what changed (revision 58, QA **R55-1/2/3**, MAJOR; **R55-4/5/7** and **KD-100** ride along)
+
+> **RULED, and it supersedes A-76 Parts 4, 5 and 6 while upholding A-76 Part 3's mechanism entire.** A-76
+> replaced eight per-field guards with one mechanism (`assertStorable`) and then **enumerated where to call
+> it, on which record, with which fields elided** — a table of 24 rows plus 26 stated exemption reasons.
+> Round 55 measured **thirteen** door × field cases that table still leaves writing an unopenable document,
+> and proved **two** of its exemption reasons false against the code. Writing this ruling I found **three
+> more**, at a door in a directory the table does not cover at all (`conflict/resolve.ts`'s
+> `resolveConflict`). That is the second consecutive round in which an enumeration in this arc was
+> incomplete, and the third time in this repository (§4.2 **A-69**) that the answer *"enumerate again, more
+> carefully"* has been wrong. **So the enumeration is deleted rather than corrected.** The door no longer
+> declares which record it wrote: `commit(where, before, after)` **computes** it, by object identity,
+> against the document the door was handed, and parses exactly the records that are new. It adds no `Issue`,
+> no dependency, no `SCHEMA_VERSION` movement and no export: §2.10 stays at **86**. `ROADMAP` **I-16**
+> builds it.
+
+**Part 1 — what is actually broken, measured rather than argued.**
+
+Round 55 drove 26 door × field cases through door → `toJSON` → `fromJSON`. A-76's own ten fields are
+refused at the door — *the mechanism works everywhere the table points it*. Thirteen more still produce
+bytes that can never be re-opened, in three groups, and I re-ran each of the three before ruling:
+
+| group | cases | what the table says | what the code does |
+|---|---|---|---|
+| **R55-1** `setDayMeta · stops` | 1 | *"checks the merged `Day`, with `stops: []`"* | `DayMetaPatch` is a compile-time `Pick`; `setDayMeta` has **no runtime key allowlist**, so `{...day, ...patch}` takes a `stops` key straight off an `any`-shaped patch, and the elision then **substitutes the injected list away before `parseDay` can see it**. The elision is not masking the `stops` field; it is masking the only field on that record the door can be made to write. R54-1's harm reproduces through a shipped action |
+| **R55-2** two false exemptions | 4 | `acceptCandidate`/`rejectCandidate` *"write a `Provenance` core constructs from its own literals"*; `ensureDays`/`blankDay` *"read no caller value into a record field"* | `accept(p, at, actor)` writes the **caller's** `at` into `provenance.acceptedAt`; `blankDay(date, city, ctx.now)` writes the **caller's** `ctx.now` into `provenance.addedAt`. Verified: `acceptCandidate(…, at: 42)` → unopenable at `$.days[0].stops[0].provenance.acceptedAt`; `createTrip(init, {…now: 42})` → unopenable at `$.days[0].provenance.addedAt`. `rejectCandidate` is safe **by accident** (`reject()` writes `acceptedAt: null` whatever it is passed) |
+| **R55-3** trip-level scalars | 8 | A-76 Part 2: *"a trip-level scalar is not a record class and keeps its own guard"* | Implemented for **one** scalar. `setTripMeta`'s `{...trip, ...patch}` and `createTrip`'s literal write `title`, `homeCurrency`, `ownerId`, `party`, `meta` and `homeBase` with no check of any kind. Verified: `createTrip({title: 42, …})` → unopenable at `$.title`. Five are unopenable; `homeBase` degrades to unserialisable |
+| **mine, new** `resolveConflict` | 3 | nothing — the door is in `conflict/`, and A-76 Part 6's census reads `packages/core/src/build/*.ts` | `resolveConflict(trip, resolution)` pushes the caller's `ResolutionInit` into `trip.resolutions` unchecked. Verified, all three unopenable: `state:'bogus'` → `$.resolutions[0].state`; `by: 42` → `$.resolutions[0].by`; `note: {}` → `$.resolutions[0].note`. `ConflictResolution` is the **eighth record class**, and A-76's `StorableMap` has seven arms |
+
+**Sixteen, then, and the last three are what decide this ruling.** The first thirteen are a table that is
+short. The last three are a table that is short *and scoped to the wrong directory* — a door that writes a
+caller's record into the document, in a file A-76's census structurally cannot see, at a record class its
+type map does not have. A third patch pass would have fixed thirteen and shipped those three.
+
+**Part 2 — the judgment: why not another table patch, and which structure.**
+
+Four shapes were available. The choice is not close, and the reasoning is the one QA stated for me: *"A-76
+replaced eight guards with one mechanism and then enumerated where to call it."*
+
+1. **Patch A-76 Part 5's table again** — add the missing rows, correct the two exemptions, add a `resolution`
+   arm and a `conflict/` clause. *Refused, and this is the option worth refusing in writing, because it is
+   the cheap one and it is what the routing offers first.* It has now been wrong twice, at two different
+   levels, and each time the person writing it was reading the code carefully. **Nothing about the third
+   attempt is different in kind from the first two**, and the honest statement of the risk is arithmetic:
+   the table's correctness is a conjunction over 24 doors × 8 record classes × every field, restated in
+   prose, maintained by hand, with 26 free-text exemption reasons two of which were already false. §4.2
+   **A-69** ruled this exact class here: *"enumerating harder is not the answer; the enumeration was never
+   the reliable part."* A-76 quoted that sentence and then built an enumeration.
+2. **Parse the whole `Trip` at a single choke point — `packages/client`'s `applyAction`.** *Refused, and it
+   is the option the routing suggests, so it gets the full reason.* `applyAction(doc, action, ctx)` is a
+   genuine choke point and holds both `before` and `after`, but: **(a)** it is in `packages/client`, and
+   core's doors have four other callers today — `cli.ts`, `import/legacyDays.ts`, `packages/core/test`,
+   `fixtures/` — plus the two the brief promises (a Phase 3 ingest worker, a Phase 5 native bridge). A
+   boundary that the *library* does not enforce is not a boundary; it is a convention of one consumer.
+   **(b)** It would put `commit` on §2.10's public surface, which is a cost this arc has been protecting for
+   nine revisions. **(c)** A whole-document parse there **punishes an edit for data it did not write** —
+   which is the exact reason A-76's `setDayMeta` elision exists, generalised to every door: one pre-existing
+   bad record would make the whole document uneditable, and such documents demonstrably exist in memory
+   (`importLegacyDays`, Part 10 residue 3). **(d)** It is O(document) on the path a keystroke takes, which
+   is A-76 Part 2 option 3's cost objection unchanged. **And the decisive point: if it diffs to avoid (c)
+   and (d), it is this ruling's `commit` in the wrong package.**
+3. **Six new scalar guards for R55-3, plus rows for the rest.** *Refused.* It is option 1 with more code.
+   Six individually-named guards for six fields of one record is the enumeration at its most literal, and
+   A-76 Part 2(b) already called a second copy of a member list the defect A-20 treats.
+4. **Delete the declaration and derive it: the door hands `commit` the document it started from and the
+   document it produced, and `commit` parses every record that is not, by object identity, one the door was
+   handed.** **Chosen.** It needs no table, no per-door record class, no elision, no exemption and no reason
+   string. Its cost is linear in **what the door actually wrote**, which is the tightest bound any check
+   that reads the written record can have. It closes R55-1, R55-2, R55-3, R55-5 and the `resolveConflict`
+   case **with one mechanism and no case analysis**, and — the property that matters most given this arc's
+   history — **a door that writes a record nobody thought of is covered, because the record is new.**
+
+**The rule, stated so that the next door, the next field and the next record class need no ruling:**
+
+> A build function that returns a `Trip` returns it **through `commit`**, handing over both the trip it was
+> given and the trip it produced. `commit` finds every record in the produced document that is not, by
+> object identity, a record of the given document, hands each one to **the same per-record parse function
+> `fromJSON` uses for that record class**, and substitutes the parser's return value for it. It does not
+> know what any door writes, it holds no list of fields, and it has no exemptions: a door that changed
+> nothing pays nothing, because nothing is new. The one thing that is still declared by hand is **which
+> functions are doors**, and that is not prose — it is *"returns a `Trip`"*, which the compiler computes.
+
+**Part 3 — the mechanism.**
+
+One module-internal function, `packages/core/src/build/commit.ts`:
+
+```ts
+// NOT on §2.10's surface. Module-internal, exactly as `assertStorable` and `reindex` are.
+export function commit(where: string, before: Trip | null, after: Trip): Trip
+```
+
+**The invariant it maintains, and it is an induction:** *every record object in a committed document has
+already been parsed once — by `fromJSON` when the document was opened, or by the `commit` of the door that
+first put it there.* So a record that is still the same object needs no second parse, and the only records
+that can carry an unparsed value are the ones this door just built. `before === null` is the base case
+(`createTrip`), where every record is new.
+
+1. **The trip envelope, unconditionally.** `parseTripEnvelope(after, '$')` — A-76 Part 2's *"a trip-level
+   scalar keeps its own guard"* is **withdrawn and replaced**: the trip's own scalars *are* a parseable unit,
+   they are simply one `fromJSON` never factored out. Part 4 below extracts it. It is **O(1)** — eleven
+   fields, two of them two-key objects — so it runs on every commit with no diff at all, and R55-3's eight
+   fields close without a single named guard.
+2. **Each record collection, in this fixed order** — `cities`, `places`, `days` (each day's own fields, then
+   its `stops`), `pool`, `bookings`, `photos`, `participants`, `resolutions`. The order is the refusal
+   precedence and is stated so it is deterministic; it preserves A-76's *"the place refusal comes first"* for
+   `copyStopInto`, which is what `qa/r55-a76.mjs` §D pins.
+3. **Per record, two identity tests before any parse:**
+   ```
+   if (before !== null && before[C][i] === r) keep r;              // unchanged in place
+   else if (before !== null && identitySetOf(C).has(r)) keep r;    // moved, not rewritten
+   else out[i] = assertStorable(where, kind, r, `${C}[${i}]`);     // new: parse and SUBSTITUTE
+   ```
+   The identity `Set` for a collection is built **at most once per commit and only if some record fails the
+   index-aligned test** — for the common edit (one record changed) it is never built. For stops the set is
+   one set over `before`'s day stops **and** `before.pool`, because a stop that moves between them is the
+   same already-parsed object and must not be re-parsed for having moved.
+4. **A day is parsed with `stops: []` and its stops are parsed individually.** A-76's elision survives — it
+   was always the right shape — but it is now **structural rather than declared**: the day's own fields come
+   from the day, the stops come from the stop rule above, and there is no patch key that can put anything
+   into the elided slot without becoming a new stop object that rule 3 parses. That is R55-1's harm closed
+   by construction rather than by a clause.
+5. **Substitution, not assertion — this is R55-5.** `assertStorable` returns the parsed record and `commit`
+   stores **the parser's return value**, so no caller-supplied object survives into the document. Every
+   parser in `fromJSON` rebuilds its record field by field, by name and by value, all the way down
+   (`parseOpeningHours` included), so the flip-on-second-read getter is read once and the value it returned
+   is what is stored, and a caller that keeps a reference to the object it passed to `upsertBooking` is
+   holding an object the document no longer contains. Part 10 residue 2 states the one field this does not
+   cover.
+6. **`commit` always returns a new `Trip` object, and that is deliberate rather than an oversight.** Every
+   envelope field is substituted, `party` and `homeBase` included, because *not* substituting them is
+   exactly R55-5's hole left open at two more fields — a caller that keeps the `party` object it handed
+   `setTripMeta` could mutate it afterwards into a document that cannot be opened. The cost is two small
+   allocations on a path that allocates a new `Trip` anyway. **The "same reference when nothing changed"
+   contract is unaffected**: `syncResolutions` and `reassertRetirements` promise it, and both take that
+   decision — and return — **before** reaching `commit`. A door calls `commit` only on a trip it built.
+7. **`assertStorable` keeps everything else A-76 Part 3 gave it** and changes in exactly two ways: its
+   return type becomes `StorableOf<K>`, and it gains a fourth parameter, a locator, appended to the message
+   after the existing sentence — `` `${where}: this ${kind} cannot be stored — ${parser message}. Saving it
+   would produce a document that cannot be re-opened. (days[3].stops[0])` ``. The parser is still called at
+   path `'$'`, so every existing message pin (`$.category`, `$.kind`, the door name) survives unchanged.
+   **It still throws a plain `Error` and never a `TripParseError`** — A-76 Part 3's one hard prohibition is
+   untouched and is why that type still means *this stored document is unopenable*.
+8. **`StorableMap` gains an eighth arm, `resolution` → `parseResolution`**, and `conflict/resolve.ts`'s four
+   `Trip`-returning functions become doors. `fromJSON.ts` exports one more parser; **none of the eight
+   reaches `index.ts`** and the surface stays at 86, re-counted with the command per §4.2 A-70 Part 7 item 3
+   and not quoted from here.
+
+**Part 4 — the trip envelope, and the last hand-written scalar guard.**
+
+`serialize/fromJSON.ts` builds the trip's own scalars inline. Extract them, unchanged, into an exported
+`parseTripEnvelope(o: Obj, path: string)` that `fromJSON` then calls — a **pure refactor**, asserted by the
+existing round-trip goldens: `id`, `title`, `ownerId`, `startDate`, `endDate`, `datePrecision`,
+`homeCurrency`, `homeBase`, `party`, `revision`, `meta`. It carries `fromJSON`'s own tolerances verbatim
+(absent `ownerId` is `''`, absent `datePrecision` is `'exact'`, absent `homeBase` is `null`) because it *is*
+`fromJSON`'s code, moved.
+
+It adds **one** check `fromJSON` does not have, and the check is stricter in the direction §2.9 already
+argues for: `schemaVersion` must equal `SCHEMA_VERSION`. `fromJSON` accepts older versions because
+`migrateDoc` runs in front of it; a **door** may only ever produce a current-version document, and one that
+does not is a bug that would otherwise reach storage silently.
+
+Two consequences for A-76 Part 4's table, and they are the whole of what changes there:
+
+| Guard | A-76 | A-77 | Reason |
+|---|---|---|---|
+| `createTrip.ts` `assertDatePrecision` | KEPT | **deleted** | A-76 kept it as its **one efficiency exception** — *"there is no per-record parser to ask, and asking `parseTrip` would be Part 2 option 3's O(document) cost."* `parseTripEnvelope` is O(1) and asks exactly the parser, so the exception has no premise left. It is now R16-2's *one property, two guards* and comes out on A-76's own test |
+| `createTrip.ts`/`setTripMeta`'s `isIsoDate` | (not ruled) | **KEPT, and now stated** | It is **stricter than the parser on purpose**: `fromJSON`'s `isoDate` takes the shape, and `2026-13-45` matches it, rolls through `Date.UTC` and yields a trip starting 2027-02-14 (F-11, BUILD-NOTES KD-12). The calendar check is a different property, so it stays — the same test that keeps `assertBuiltAttach` |
+| `photos.ts` `assertBuiltAttach` | KEPT | **KEPT, unchanged** | §10.1's deferral. The parser accepts a place-attached photo by design; the door refuses it. Still runs **before** `commit`, so the deferral is the message the caller sees |
+| `FORBIDDEN_*_PATCH_KEYS` / `assertPatchable` | KEPT | **KEPT, and one is added** | They are about *identity and provenance* — *may this caller rewrite this field at all* — which is orthogonal to whether the result parses. **`setDayMeta` gains the one it never had** (Part 5) |
+
+**After this ruling `packages/core/src/build/` contains exactly two guards that are not the parser**
+(`assertBuiltAttach`, `isIsoDate`), each because it asserts a property the parser deliberately does not, and
+each named here so a future reader does not delete them as second opinions.
+
+**Part 5 — `setDayMeta`'s missing allowlist, which `commit` does *not* subsume.**
+
+R55-1 has two harms and `commit` closes only one of them. A `stops` key smuggled onto an `any`-shaped
+`DayMetaPatch` can also carry a stop that **already exists on another day** — a perfectly parseable record,
+so no parse refuses it — and the document then reports `duplicate_id` and `scheduled_stop_has_no_day` on an
+edit the user never made. That is §2.1's patch-allowlist property, not A-77's storability property, and
+`setDayMeta` is the one patch door that never got it while `updateStop`, `updatePhoto` and `updateParticipant`
+all carry one (R52-6's pattern). **Ruled: `setDayMeta` gets `FORBIDDEN_DAY_META_PATCH_KEYS` on those three
+doors' model**, refusing every key outside `DayMetaPatch`'s `Pick` — `stops`, `id` and `date` explicitly
+among them, because all three are identity and none is the caller's to rewrite here.
+
+**Part 6 — closing the door set, and why R55-4's regex is not widened.**
+
+A-76 Part 6.1 claimed a new unguarded door was *"structurally impossible rather than merely currently
+absent"*. It was not: the census collects `/^export\s+(?:async\s+)?function\s+(\w+)/gm`, and round 55 kept it
+green while injecting a door as `export const`, as `export { d }` and as `export default function`.
+**Widening the regex to four regexes is refused for this ruling's own reason** — it is an enumeration of
+declaration syntaxes, and TypeScript has more of them than anyone will list (`export const {a} = …`,
+`export * from`, a `defineProperty` on the namespace). **The census stops reading source text and reads the
+export surface**, in two halves that fail at different times:
+
+1. **The door census is a type-level assertion and it fails `npm run typecheck`, not a test.** A door is
+   *an exported function whose return type is `Trip`* — a fact the compiler already has for every export of
+   a module, in every declaration syntax there is:
+   ```ts
+   type IsExact<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false;
+   type DoorsOf<M> = { [K in keyof M]-?: M[K] extends (...a: never[]) => Trip ? K : never }[keyof M];
+   const _census: IsExact<DoorsOf<typeof Stops & typeof Days & …>, (typeof DOORS)[number]> = true;
+   ```
+   A new `Trip`-returning export in any file the census imports, written any way at all, makes `typecheck`
+   fail on the commit that adds it. **There is no reason column** — the classifier is a return type, not a
+   judgement about whether a function *"reads a caller value into a record field"*, which is the judgement
+   that was wrong twice (R55-2).
+2. **The module census is a runtime directory read** and closes the one thing a type-level assertion cannot
+   see: a **new file**. It reads `packages/core/src/build/*.ts` plus the explicitly-named extra door files
+   (`conflict/resolve.ts` today) from disk and asserts that set equals the set of modules half 1 imports.
+   A new file in `build/` reddens it on the commit that adds it, whatever is in the file.
+3. **Three `Trip`-returning exports are not doors, and they are named here rather than reasoned about
+   per-function**: `fromJSON` (it *is* the parse), `importLegacyDays` and `mergeTrips` (**producers** — they
+   build a document rather than edit one, so there is no `before` to diff against). Producers are Part 10
+   residue 3, with a trigger. Three names, each a whole-document constructor, replacing A-76's 26 free-text
+   exemptions.
+4. **The behavioural census stays**, one hostile value per door, driven by `DOORS`. It is what reddens if a
+   door is listed and its `commit` call is deleted, and it now covers the doors A-76 exempted.
+
+**Part 7 — the findings, and which are subsumed rather than fixed.**
+
+| Finding | Ruling |
+|---|---|
+| **R55-1** MAJOR | **Split.** The unopenable-document half is **subsumed** by Part 3 rule 4 — a smuggled `stops` list is new objects and is parsed. The duplicate-record half is **not**, and Part 5 rules the allowlist `setDayMeta` never had. Both are needed; neither is sufficient |
+| **R55-2** MAJOR | **Subsumed, and the category is deleted.** Both exemption reasons are false — verified. Neither is corrected, because `commit` has no exemptions: `acceptCandidate`'s new `Provenance` and `blankDay`'s minted days are new objects and are parsed like anything else. `rejectCandidate`'s accidental safety stops being load-bearing |
+| **R55-3** MAJOR | **Subsumed by Part 4.** Not six guards and not one: **zero**. The trip's own scalars become a parseable unit, `parseTripEnvelope` runs on every commit at O(1), and A-76 Part 2's *"a trip-level scalar keeps its own guard"* is withdrawn as the sentence that produced this hole |
+| **R55-4** MINOR | **Architect half ruled in Part 6, and the wording is not merely corrected — the mechanism is replaced.** *"Every `export function` name"* becomes *"every export whose type returns `Trip`"*, checked by the compiler, plus a directory read for new files. **The builder half changes: do not widen the regex** — the collector goes away with the test that owned it |
+| **R55-5** MINOR | **Subsumed by Part 3 rule 5**, and closed for every door rather than for the two the repros used. `assertStorable` returns the parsed record; `commit` stores it. Residue 2 below states the one field this does not reach |
+| **R55-6** MINOR | Breaker-owned, done in `1d23b2c`. Nothing owed here. Note that **five of the seven re-cut probes were invalid fixtures A-76 caught**, which is evidence for the mechanism and is why Part 3 keeps it whole |
+| **R55-7** MINOR | **Documentation correction, and the code stays.** A-76 Part 5's `addPlace` row (*"`place_hours_malformed` keeps its whole population"*) reads as if a live, savable population survived; it does not, and the row is superseded with the rest of that table. §2.9 **A-20**'s ratification is **unamended and still correct** — it already says the population is *"a document built in memory past the type system"*. What is added is the one fact A-20 could not have: that population is now **exactly `importLegacyDays`**, and `importLegacyDays` is a **producer**, which A-74 Part 4 distinguishes from a cast — so the code has a real producer and is not vacuous. It is not removed, and Part 10 residue 3 carries the trigger that would make it live again |
+| **KD-100** doc debt | **Ruled, in one clause, and A-76 Part 4's participant row is corrected in place.** Its stated reason — *"`addParticipant` writes `kind: init.kind ?? 'contact'`, so the built record carries exactly the value the guard used to check"* — is false for `null`: `??` coalesces `null`, the deleted `assertParticipantKind` did not, and the literal implementation would have turned a refusal into a silent write of the default. **The shipped code is correct** (`init.kind === undefined ? 'contact' : init.kind`), the breaker verified it, and the ruling text owed the distinction: *absent and `undefined` mean take the default for an `init`; `null` is a value the caller supplied and reaches the record, where the parser refuses it at `$.kind`* |
+| **mine, new** | `resolveConflict` × 3 fields, ruled in Part 3 rule 8: `ConflictResolution` is the eighth record class and `conflict/resolve.ts` holds four doors. **A-76's census could not have found this**, which is the fact that decided Part 2 |
+
+**Part 8 — the injected-fault criteria (§0.5). Five, one per load-bearing claim.**
+
+| | Fault | Required behaviour |
+|---|---|---|
+| **N1** | Delete the `commit` call from any one door | that door's row in the behavioural census goes red; the **type-level door census stays green** — the two halves do different jobs, which is why there are two |
+| **N2** | Add an exported `Trip`-returning function to any file the census imports, in **each** of `export function`, `export const … = () =>`, `function d(){}; export { d }` and `export default function` | **`npm run typecheck` fails, all four times.** This is R55-4's repro, run as a criterion, and it is the claim A-76 Part 6 made and could not support |
+| **N3** | Add a new file to `packages/core/src/build/` with one exported door | the **module census** goes red naming the file |
+| **N4** | Restore `addStop` to its pre-A-76 body and run `qa/r54-integration.mjs` §M8 | the save-then-reopen loss reproduces. Carried unchanged from A-76 M2: it is the criterion for the **harm**, and it is the breaker's existing probe |
+| **N5** | For each of the sixteen door × field cases in Part 1 (including the three `resolveConflict` rows), drive door → `toJSON` → `fromJSON` | **REFUSED AT DOOR, sixteen times.** `qa/r55-a76.mjs` §F is the oracle and already exists; this is the criterion that the class is closed and not narrowed a second time |
+
+**Part 9 — the cost, which is the one thing this ruling can get wrong.**
+
+`commit` is O(1) for the envelope, plus one pointer comparison per record in the collections a door touched,
+plus one parse per record the door actually wrote. The pointer comparisons are the only new per-edit cost
+that scales with the document, they allocate nothing, and they are strictly below what the client already
+pays per revision. **The builder measures three numbers and records them in BUILD-NOTES** rather than
+reasoning about them:
+
+- one `setDayMeta` and one `updateStop` on the reference trip — **budget 2 ms each**;
+- `createTrip` over A-35's ten-year cap (3,653 minted days) — **budget 1 s**, and this is the worst case in
+  the system because it is the largest number of records any single door mints;
+- `setTripMeta` with a range change on a 3,653-day trip — same budget, **and it needs a one-line change to
+  earn it**: `ensureDays` currently rebuilds every day as `{...d, id: d.date}`, which destroys the identity
+  of days it did not change. It must reuse `d` when `d.id === d.date`, so the diff sees only the days it
+  actually minted. That change is required by this ruling, not optional.
+
+**If a budget is exceeded the answer is not an exemption.** The trigger is: report it as a finding against
+this Part, with the measurement — an exemption is how Part 1's sixteen cases exist.
+
+**Part 10 — the residues, four, each with its trigger.**
+
+1. **Agreement, not strictness** — carried unchanged from A-76 Part 8 residue 1. If `fromJSON` is loosened
+   for a field, every door loosens with it, silently. The doors are not a second validator and must not
+   become one; **`commit` checks storability, never validity** — §2.9's `Issue` rules are untouched, and a
+   dense-day or duplicate-id question is still `validateTrip`'s. **Trigger:** none; stated so it is not
+   later filed as a defect.
+2. **Substitution reaches every field the parser rebuilds, and the parser passes `meta` bags through by
+   reference.** `obj()` returns the object it was given, so `Trip.meta` and `City.meta` are validated but
+   not rebuilt, and a caller holding one can still mutate it after the door returned. Bounded: both are
+   `unknown`-typed bags core never reads, and a mutation inside one cannot make the document unopenable —
+   only `obj()` stands over them and it accepts any object. **Trigger:** the first `meta` field the parser
+   reads *into* rather than through, or the first core code path that reads a `meta` value.
+3. **Producers are not doors, and `importLegacyDays` can still build a `Trip` that cannot be saved.** It
+   constructs a document rather than editing one, so there is no `before`; A-77 does not cover it, and the
+   in-memory trip it returns is exactly `place_hours_malformed`'s remaining population (R55-7). The right
+   check for a producer is the whole-document one A-76 Part 2 option 3 refused **for doors** — it is
+   affordable here, because an import runs once and not per keystroke. **Not built now**, because the answer
+   is not obviously *refuse*: §2.14's `placeForCopy` **sanitises** a friend's malformed `hours` rather than
+   refusing the copy, and a legacy import that throws leaves the user with no way in at all. **Trigger:** the
+   first increment that makes an imported legacy trip savable, or the first report of a legacy import that
+   silently produced an unopenable document; whichever comes first, the decision is *sanitise or refuse*, and
+   it is an architect's.
+4. **A record's unknown keys do not survive `commit`.** The parser rebuilds by name, so a property nobody
+   declared is dropped at the door instead of at `toJSON`. This is a strengthening — the in-memory document
+   now equals the document a reopen would produce — but if any code depends on an undeclared property of a
+   record, this ruling finds it, and that dependency is the defect. **Trigger:** the first such dependency;
+   it is a finding, not a licence to stop substituting.
 
 ### 2.2 Entities
 
@@ -4391,6 +4755,17 @@ exact and is not what its current comment says:
 > out-of-union `StopPlacement`), and `validateTrip` is where this design puts that class. (c) It is the
 > injected-fault criterion for the shared predicate below (§0.5): the fault is a cast-built document, the
 > output is exactly one `warn` per malformed place.
+
+*(**Revision 58, QA R55-7 — the ratification is unamended and the code stays; one fact is added.** Round 55
+measured, over 35 shapes both ways, that every `hours` shape producing this issue is one `fromJSON` refuses
+and every shape it accepts produces none — and since §2.1 **A-76**, `addPlace` refuses them at the door too.
+So the population named above is now **exactly one producer**: `import/legacyDays.ts`, which builds its
+`Trip` literal and calls no build door. That is a **producer** and not a cast, which is the distinction
+§8.3 **A-74 Part 4** makes and is why this code is not vacuous and is not removed — reason (a) above,
+*"the only warning ahead of a real harm"*, is the whole of its remaining job. What such a document cannot
+do is be **saved and re-opened**, so the harm it warns about is currently reachable only through an export.
+§2.1 **A-77 Part 10 residue 3** carries the trigger — the first increment that makes an imported legacy trip
+savable decides *sanitise or refuse*, and that decision is an architect's.)*
 
 Its comment in `validate/validateTrip.ts` currently asserts that the parser's cast is **deliberate** and
 cites A-10 for it. That sentence is now false and is replaced by this ruling; it was a builder's honest
@@ -14933,7 +15308,9 @@ and the remaining seventeen `oneOf` fields are decided by a builder rather than 
 > `assertDisplayName` and `assertNote`** — the guards R52-3 built and this ruling cites — as R16-2 second
 > guards, subsumed by `parseParticipant`. **Nothing else in A-74 moves**: Parts 1–4 stand entire, the
 > census stands, and Part 4's rule about `Issue` codes is untouched and is the half of the line A-76 does
-> not cross.
+> not cross. **(Revision 58: A-76's own Parts 4, 5 and 6 are superseded by §2.1 A-77 — the mechanism is
+> upheld and the table that said where to call it is deleted. Follow this pointer to A-76 Part 3, then to
+> A-77.)**
 
 The *unopenable-after-save* shape KD-99 describes is real and it is general, not participants': a `Trip`
 obtained past the type system, holding an out-of-enum value in **any** of the eighteen `oneOf` fields,

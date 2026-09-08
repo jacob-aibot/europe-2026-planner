@@ -1082,6 +1082,34 @@ an increment; four are this document's own criteria being wrong; one is a deferr
   conditions in this document name it**, so the trigger has something to fire against. It is a **scope
   rule, not an open defect**, its status is unchanged, and no phase verdict lifts it.
 
+**Revision 61, 2026-09-08.** **`I-15` is built (`6687118`) and QA round 55 sent it back: the mechanism works
+everywhere its table points it, and the table is short.** Thirteen door × field cases still write a document
+that can never be opened again; two of A-76's stated exemptions are false against the code; and the
+architect found three more at `resolveConflict`, a door in a directory A-76's census cannot see. **This is
+the enumeration failure recurring one level up inside the ruling that was written to end it**, which is the
+shape §4.2 A-69 named and the photo-store arc took eight rounds to close. `ARCHITECTURE.md` revision 58's
+§2.1 **A-77** rules it structurally rather than patching the table a third time, and **`I-16` is queued** as
+its whole code consequence: a door returns through `commit(where, before, after)`, which finds the records
+the door wrote **by object identity** and hands each to `fromJSON`'s own parser — no table, no elision, no
+exemption, no reason column. It moves no version, no `IssueCode` and **no export count**, and it blocks
+nothing.
+
+- **`I-15` stays exactly as written above.** It is built and its parts 1–5 are all still in the tree; `I-16`
+  supersedes its part 3 (the table) and its part 5 (the censuses) and keeps the rest. **Do not edit I-15's
+  entry to describe I-16** — the record of what was built and what it missed is the point.
+- **R55-4's builder half changed when the architect ruled.** Round 55 routed *"widen the collector to
+  `export const`/`export {}`/`export default`"* to a builder. **A-77 refuses the widening** — four regexes
+  for four syntaxes is this arc's own defect in miniature — and replaces the source-text collector with a
+  type-level census the compiler computes. The work is in `I-16` part 9; there is no separate ticket.
+- **R55-6 is the breaker's and is done** in round 55's own commit (`1d23b2c`) — seven re-cut probes, four of
+  which had been **aborting**, one of them `qa/r54-gate.mjs`, the phase-gate probe reporting a false green.
+  **Five of the seven were invalid fixtures A-76 correctly caught**, which is recorded as a point in the
+  increment's favour and is why A-77 keeps the mechanism whole.
+- **R55-7 and KD-100 are documentation and ride along in `ARCHITECTURE.md` revision 58** — the
+  `place_hours_malformed` population is named exactly (§2.9 A-20's revision-58 note; the code stays), and
+  A-76 Part 4's `assertParticipantKind` row is corrected for the `null` case the shipped code already gets
+  right. **Neither is builder work and neither is in `I-16`.**
+
 **Not carried here, and named so nobody looks for them:** **R54-2** and **R54-3** are implementation
 (a widened step chooser, a looped matrix) and are the builder's against criteria that are already correctly
 written; **R54-8** was the breaker's and is repaired in round 54's own commit. **No phase, step, gate or
@@ -4834,6 +4862,114 @@ unreachable except through §2.9 A-46's rescue export, which hands back bytes th
   table fires twice — it changes a core invariant and it opens `copyStop.ts`, which is on the
   security-sensitive list — so this does not go to a builder alone.
 
+#### I-16 — the door stops declaring what it wrote (revision 61, QA **R55-1/2/3/4/5/7**, MAJOR)
+
+**The whole code consequence of `ARCHITECTURE.md` revision 58's §2.1 **A-77**. Read A-76 Part 3, then A-77
+whole, and nothing else in `ARCHITECTURE.md`** — A-77 is self-contained and quotes what it needs. In
+particular do **not** read §2 whole, §4, §8 or §10, and **do not read A-76 Parts 4, 5 or 6**: A-77
+supersedes all three, and Part 5's table is the thing this increment deletes. Like `I-15` and `I-9c` this
+is a **cross-cutting core fix**, not a 2c increment.
+
+**Why it exists, in one measurement.** `I-15` shipped A-76's mechanism and it works everywhere A-76's table
+points it — and the table is short. Round 55 measured **thirteen** door × field cases that still write a
+document which can never be opened again, and **two** of A-76's stated exemption reasons that the code
+disproves. The architect found **three more** at `resolveConflict`, which A-76's census cannot see because
+it lives in `conflict/` and writes an eighth record class. **Sixteen. The enumeration has now been wrong
+twice, so it is deleted rather than corrected a third time.**
+
+- **Built, in eight parts, in this order. The order matters: 1–3 are refactors that must be green before
+  any door moves.**
+  1. **`serialize/fromJSON.ts` — extract `parseTripEnvelope(o, path)`**, exported, holding exactly the
+     trip-level scalars `fromJSON` builds inline today (`id`, `title`, `ownerId`, `startDate`, `endDate`,
+     `datePrecision`, `homeCurrency`, `homeBase`, `party`, `revision`, `meta`), with `fromJSON` calling it.
+     **A pure refactor** — every tolerance moves verbatim (absent `ownerId` → `''`, absent `datePrecision`
+     → `'exact'`, absent `homeBase` → `null`), and the round-trip goldens are what prove it. It adds
+     **one** check `fromJSON` does not have: `schemaVersion` must equal `SCHEMA_VERSION` (A-77 Part 4 —
+     `migrateDoc` runs in front of `fromJSON`; a *door* may only ever produce a current-version document).
+  2. **Export `parseResolution`** from the same file. **None of the nine exported parsers reaches
+     `index.ts`** — the surface stays at 86, and if it moves this increment has a defect.
+  3. **`build/storable.ts`: `assertStorable` returns `StorableOf<K>`** (the parser's value, A-77 Part 3
+     rule 5) and takes a fourth argument, a locator string appended to the message in parentheses after
+     the existing final sentence. The parser is still called at path `'$'`, so `$.category`, the door name
+     and *"cannot be stored"* all survive as substrings — **no existing message pin may be edited to make
+     this pass**. `StorableMap` gains a `resolution` arm.
+  4. **New file `packages/core/src/build/commit.ts`**, module-internal, `commit(where, before, after)`,
+     built exactly to A-77 Part 3's seven numbered rules: the envelope unconditionally; the eight
+     collections in the stated order; per record, index-aligned identity, then a lazily-built identity
+     `Set`, then parse-and-substitute; a day parsed with `stops: []` with its stops parsed individually
+     against one set spanning `before`'s day stops **and** pool; `after` returned by reference when
+     nothing moved.
+  5. **Every door returns through it.** Every exported function in `packages/core/src/build/*.ts` **and
+     `packages/core/src/conflict/resolve.ts`** whose return type is `Trip`. **Delete the twelve direct
+     `assertStorable` calls at doors** — `commit` subsumes every one, including `copyStopInto`'s two and
+     `setDayMeta`'s elision. `assertStorable` keeps exactly one caller: `commit`.
+  6. **Delete `assertDatePrecision`** (A-77 Part 4: its premise was cost, and `parseTripEnvelope` is
+     O(1)). **Keep `isIsoDate` at both trip doors and `assertBuiltAttach` at both photo doors** — they are
+     the two guards that assert a property the parser deliberately does not, and A-77 Part 4 names them so
+     nobody deletes them as second opinions. `assertBuiltAttach` still runs **before** `commit`.
+  7. **`setDayMeta` gains `FORBIDDEN_DAY_META_PATCH_KEYS`** on `updateStop`/`updatePhoto`/`updateParticipant`'s
+     model (A-77 Part 5), refusing every key outside `DayMetaPatch` — `stops`, `id` and `date` among them.
+     This is the half of R55-1 `commit` does **not** subsume and it is not optional.
+  8. **`ensureDays` preserves day identity** — reuse `d` instead of `{...d, id: d.date}` when
+     `d.id === d.date` (A-77 Part 9). Without it, every range change re-parses every day.
+  9. **`packages/core/test/storable.test.ts` is rewritten** to A-77 Part 6: a **type-level** door census
+     that fails `npm run typecheck`, a runtime **module** census that reads the directory, the three
+     named non-doors (`fromJSON`, `importLegacyDays`, `mergeTrips`), and the behavioural census driven by
+     `DOORS`. **Delete `EXEMPT_TABLE` and `EXEMPT_UNTABLED` outright** — 26 free-text reasons, two of them
+     false, replaced by a return type.
+- **Not built, and named so nobody adds it.** **Do not widen the `export function` regex** — R55-4's
+  builder half changed when the architect ruled; the collector goes away with the test that owned it.
+  **No new `IssueCode`**, and `place_hours_malformed` is **not** removed (A-77 Part 7's R55-7 row, and
+  §2.9 A-20's revision-58 note). **No whole-document parse anywhere** — not at a door, not in
+  `applyAction`, not in `store.ts`; A-77 Part 2 option 2 refuses it with four reasons. **No per-field
+  guard of any kind** — a builder who writes six scalar guards has built the option A-77 Part 2 option 3
+  declined. **No `.tsx`, no `qa/`** (that directory is the breaker's), **no `docs/design/`, no new
+  dependency, no version movement** (`SCHEMA_VERSION`, `DB_VERSION`, `SUMMARY_VERSION` all unmoved).
+  **`import/legacyDays.ts` and `merge/mergeTrips.ts` are not touched** — they are producers, A-77 Part 10
+  residue 3, deferred with a trigger.
+- **User-visible outcome.** None today, and that is the same honest answer `I-15` gave. What changes is
+  that the door set is now closed by the compiler rather than by a table, so the *next* record class, the
+  next field and the next `any`-shaped caller inherit the check instead of needing a ruling.
+- **Architecture / data model.** No field, no type, no port, no selector, no screen. §2.10's surface does
+  not move — re-count it with criterion E's command and confirm **86**, per §8.9's re-count rule and §4.2
+  **A-70 Part 7 item 3**.
+- **Verification — A-77 Part 8's five injected faults, and they are the criteria. Run all five
+  red-before-green; a criterion asserted rather than run is not discharged.**
+  - **N1:** delete the `commit` call from any one door → that door's behavioural row goes red, **the
+    type-level census stays green**.
+  - **N2:** add an exported `Trip`-returning function to a censused file in **each** of four syntaxes
+    (`export function`, `export const … = () =>`, `function d(){}; export { d }`, `export default
+    function`) → **`npm run typecheck` fails all four times.** This is round 55's own repro run as a
+    criterion, and it is the claim A-76 Part 6 made and could not support.
+  - **N3:** add a new file to `packages/core/src/build/` with one exported door → the **module** census
+    goes red and names the file.
+  - **N4:** restore `addStop` to its pre-A-76 body and run `node --experimental-strip-types
+    qa/r54-integration.mjs` §M8 → the save-then-reopen loss reproduces.
+  - **N5, and it is the criterion that this class is closed rather than narrowed again:** drive **all
+    sixteen** door × field cases of A-77 Part 1 through door → `toJSON` → `fromJSON` and get **REFUSED AT
+    DOOR sixteen times** — the thirteen `qa/r55-a76.mjs` §F measures plus `resolveConflict`'s
+    `state`/`by`/`note`. The breaker's probe is the oracle; **re-derive the same result in
+    `packages/core/test`** so it is a standing test and not a one-off run.
+  - **The three cost numbers of A-77 Part 9, measured and recorded in BUILD-NOTES**, not reasoned about:
+    one `setDayMeta` and one `updateStop` on the reference trip (**budget 2 ms each**); `createTrip` over
+    the 3,653-day cap (**budget 1 s**); `setTripMeta` with a range change on the same trip (**budget 1 s**,
+    and it needs part 8 to earn it). **A budget exceeded is a finding against A-77 Part 9, not a licence
+    to add an exemption** — that is how Part 1's sixteen cases came to exist.
+  - **Regression.** `npm run test:tap` reports **1556 tests at `6687118`**, re-measured by the round-55
+    breaker rather than taken on report. Message pins **will** move where the locator is appended; a pin
+    whose *door*, *path* or *refusal* changes is a defect in this increment, not a test to edit. A
+    pre-existing test that reddens is a finding, not an edit.
+- **Dependencies / blockers.** **I-15, which is built and on `master` (`6687118`).** It blocks nothing and
+  is independent of `I-9c`.
+- **Ship gate.** `npm test` green; `npm run typecheck` exit 0 on both projects; `npm run web:build`
+  succeeds; the export count re-measured and **86**; all five faults run red-before-green and **recorded
+  with their measured output**; the three cost figures recorded. **Files touched:
+  `packages/core/src/build/*.ts`, `packages/core/src/conflict/resolve.ts`,
+  `packages/core/src/serialize/fromJSON.ts`, and `packages/core/test/`. Nothing else** — no `.tsx`, no
+  `qa/`, no `docs/design/`, no `package.json`, no lockfile. **Route: builder + breaker, mandatory.**
+  `cairn/CLAUDE.md`'s delegation table fires twice over — it changes a core invariant and it opens
+  `copyStop.ts` and the provenance transitions, both on the security-sensitive list.
+
 #### I-10 — The participants editor, the profile grouping, and the access double-run — **DEFERRED at revision 55; 2c ships without it**
 
 > **Status: DEFERRED, by Jacob's decision of 2026-09-04.** Asked directly whether to **(a)** defer I-10 and
@@ -6648,6 +6784,14 @@ disclosed as *unreachable* for two revisions and is reachable today.*
   re-derived by the next round rather than taken from round 54's measurement of the old wording**.
   `I-9c` remains queued, unbuilt and blocking nothing. **The SHIP / SEND BACK verdict is the manager's and
   nothing in this revision anticipates it.**
+
+  ***Revision 61 — `I-15` is built (`6687118`) and QA round 55 sent it back; `I-16` is queued in its
+  place.*** Round 55's verdict is that R54-1 is **narrowed, not closed**: sixteen door × field cases still
+  write an unopenable document, one of them through a shipped `setDayMeta` dispatch. `ARCHITECTURE.md`
+  revision 58's **A-77** rules it and **`I-16`** builds it. **This still does not re-open this bullet** —
+  it is the same cross-cutting core fix one round on, not a gate dependency — but a manager weighing the
+  gate should know that **R54-1 is open** and that the reachable producer is unchanged (a caller behind a
+  cast; no shipped surface and no hostile file reaches it).
 
 ### Exit criteria — the Phase 2 ship gate
 
