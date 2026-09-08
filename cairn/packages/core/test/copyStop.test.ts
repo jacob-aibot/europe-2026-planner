@@ -2329,9 +2329,16 @@ test('A-22 R18-5: `original.at.lat`/`.lng` are read exactly twice, independent o
       });
     }
 
+    // The counts are taken across `copyAcross` alone, because the SETUP now reads the accessor
+    // too: §2.1 **A-76** (revision 57) makes `addPlace` hand its `Place` to `parsePlace`, which
+    // reads `at.lat`/`at.lng` once each when the source row is built. That read belongs to
+    // `addPlace`, not to the copy, and A-22's ceiling is a claim about the copy. The numbers
+    // below and the property they pin are unchanged.
+    const latBefore = at.reads();
+    const lngBefore = lng.reads();
     const after = copyAcross(target, source, `a22i${n}`);
-    assert.equal(at.reads(), 2, `A-22 Part 2: \`at.lat\` must be read twice with ${n} candidate rows — once by the probe, once by placeForCopy`);
-    assert.equal(lng.reads(), 2, `A-22 Part 2: \`at.lng\` must be read twice with ${n} candidate rows`);
+    assert.equal(at.reads() - latBefore, 2, `A-22 Part 2: \`at.lat\` must be read twice with ${n} candidate rows — once by the probe, once by placeForCopy`);
+    assert.equal(lng.reads() - lngBefore, 2, `A-22 Part 2: \`at.lng\` must be read twice with ${n} candidate rows`);
     assert.deepEqual(
       after.places.at(-1)!.at, BELVEDERE,
       'the written row must carry the pair `placeForCopy` read, never a hybrid',

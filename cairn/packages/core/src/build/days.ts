@@ -11,6 +11,7 @@ import type { CityKey, DayId, IsoDate } from '../model/ids.ts';
 import { addDays, dayNumber } from '../derive/summary.ts';
 import { userProvenance } from '../model/provenance.ts';
 import { reattachDanglingPhotos } from './photos.ts';
+import { assertStorable } from './storable.ts';
 import type { BuildCtx } from './createTrip.ts';
 
 /**
@@ -24,7 +25,12 @@ import type { BuildCtx } from './createTrip.ts';
  */
 const MAX_TRIP_SPAN_DAYS = 3653;
 
-/** A blank day. Pure. */
+/**
+ * A blank day. Pure.
+ *
+ * **Exempt from §2.1 A-76's door check, by Part 5's table**: it writes literals and a
+ * `userProvenance`, and reads no caller value into a record field.
+ */
 export function blankDay(date: IsoDate, primaryCity: CityKey | 'transit', at: IsoDate): Day {
   return {
     id: date,
@@ -44,6 +50,10 @@ export function blankDay(date: IsoDate, primaryCity: CityKey | 'transit', at: Is
  * Existing days are preserved by date. A day that falls outside the range is dropped if it
  * is empty; if it still holds stops the trip's range is WIDENED to keep it rather than
  * silently destroying content. Pure.
+ *
+ * **Exempt from §2.1 A-76's door check, by Part 5's table**: it re-arranges days it was handed and
+ * reads no caller value into a record field. `MAX_TRIP_SPAN_DAYS` below is A-35's span cap, which
+ * is a different property and stays.
  *
  * @param alreadyBumped internal — set when the caller has already incremented `revision`.
  */
@@ -98,7 +108,14 @@ export type DayMetaPatch = Partial<Pick<Day, 'primaryCity' | 'cities' | 'title' 
  * Patches a day's editorial fields. `cities` always ends up containing `primaryCity`
  * (an invariant `validateTrip` also checks). Pure.
  *
- * @throws {Error} if `dayId` is not in the trip — a programmer error, not a domain problem.
+ * §2.1 **A-76**: the merged `Day` is handed to `parseDay` — round 54's census #6 (`legacyFlag`)
+ * and every other editorial field with it — **with `stops: []` substituted**. That elision is
+ * Part 5's and it is load-bearing: `DayMetaPatch` is a `Pick` that cannot carry `stops`, so
+ * parsing the real list would let one pre-existing bad stop make the day's title uneditable —
+ * punishing an edit for data it did not write.
+ *
+ * @throws {Error} if `dayId` is not in the trip, or if the merged day is one `fromJSON` would
+ *         refuse — programmer error, not a domain problem.
  */
 export function setDayMeta(trip: Trip, dayId: DayId, patch: DayMetaPatch): Trip {
   const idx = trip.days.findIndex((d) => d.id === dayId);
@@ -107,6 +124,7 @@ export function setDayMeta(trip: Trip, dayId: DayId, patch: DayMetaPatch): Trip 
   const merged: Day = { ...day, ...patch };
   const primary = merged.primaryCity;
   if (!merged.cities.includes(primary)) merged.cities = [primary, ...merged.cities];
+  assertStorable('setDayMeta', 'day', { ...merged, stops: [] });
   const days = trip.days.slice();
   days[idx] = merged;
   return { ...trip, days, revision: trip.revision + 1 };

@@ -89,6 +89,9 @@ export function requireActor(fn: string, actorUserId: UserId | null | undefined)
 
 /**
  * Marks a day, stop or booking as the user's own. Pure.
+ *
+ * **Exempt from §2.1 A-76's door check, by Part 5's table**: it writes a `Provenance` core
+ * constructs from its own literals. No caller value reaches a record field.
  * @throws {TypeError} if `actorUserId` is missing (`null`, `undefined` or `''`) — §2.14.
  * @throws {Error} if the ref does not resolve, or its kind cannot carry provenance.
  */
@@ -99,6 +102,8 @@ export function acceptCandidate(trip: Trip, ref: Ref, actorUserId: UserId, at: I
 
 /**
  * Marks a day, stop or booking rejected. It stays in the document, badged. Pure.
+ *
+ * **Exempt from §2.1 A-76's door check, by Part 5's table**: `acceptCandidate`'s reason.
  * @throws {TypeError} if `actorUserId` is missing (`null`, `undefined` or `''`) — §2.14.
  * @throws {Error} if the ref does not resolve.
  */

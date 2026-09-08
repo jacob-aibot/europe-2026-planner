@@ -739,7 +739,7 @@ test('R52-3: addParticipant refuses a kind outside the enum, so it can never rea
   for (const kind of ['owner', 'Self', 'self ', '', 7, null]) {
     assert.throws(
       () => addParticipant(trip, { displayName: 'Zoë', kind } as unknown as { displayName: string }, c),
-      /addParticipant: kind must be one of "self", "contact"/,
+      /addParticipant: this participant cannot be stored — .+ \(at \$\.kind\)/,
       `kind ${JSON.stringify(kind)} was accepted`,
     );
   }
@@ -752,7 +752,7 @@ test('R52-3: updateParticipant refuses a kind outside the enum, present even wit
   for (const kind of ['owner', 'Self', undefined, 7]) {
     assert.throws(
       () => updateParticipant(added, id, { kind } as unknown as Parameters<typeof updateParticipant>[2]),
-      /updateParticipant: kind must be one of "self", "contact"/,
+      /updateParticipant: this participant cannot be stored — .+ \(at \$\.kind\)/,
       `kind ${JSON.stringify(kind)} was accepted`,
     );
   }
@@ -777,7 +777,7 @@ test('R52-2: updateParticipant refuses an explicit displayName: undefined', () =
   for (const displayName of [undefined, null, 7, {}]) {
     assert.throws(
       () => updateParticipant(added, id, { displayName } as unknown as Parameters<typeof updateParticipant>[2]),
-      /updateParticipant: displayName must be a string/,
+      /updateParticipant: this participant cannot be stored — expected a string \(at \$\.displayName\)/,
       `displayName ${JSON.stringify(displayName)} was accepted`,
     );
   }
@@ -790,7 +790,7 @@ test('R52-2: addParticipant refuses a displayName that is not a string', () => {
   for (const displayName of [undefined, null, 7]) {
     assert.throws(
       () => addParticipant(trip, { displayName } as unknown as { displayName: string }, c),
-      /addParticipant: displayName must be a string/,
+      /addParticipant: this participant cannot be stored — expected a string \(at \$\.displayName\)/,
       `displayName ${JSON.stringify(displayName)} was accepted`,
     );
   }
@@ -824,7 +824,7 @@ test('R52-6: a note is patchable, and an explicit undefined removes it rather th
   assert.equal(toJSON(fromJSON(toJSON(cleared))), toJSON(cleared));
   assert.throws(
     () => updateParticipant(added, id, { note: {} } as unknown as Parameters<typeof updateParticipant>[2]),
-    /updateParticipant: note must be a string/,
+    /updateParticipant: this participant cannot be stored — expected a string \(at \$\.note\)/,
   );
 });
 

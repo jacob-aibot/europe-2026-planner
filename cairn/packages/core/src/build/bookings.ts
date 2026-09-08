@@ -8,13 +8,23 @@
 import type { Booking, Stop, Trip } from '../model/types.ts';
 import type { BookingId, StopId } from '../model/ids.ts';
 import { findStop } from './stops.ts';
+import { assertStorable } from './storable.ts';
 
 /**
  * Inserts or replaces a booking by id. Pure.
- * @throws {Error} if the booking has no id.
+ *
+ * §2.1 **A-76**: the `Booking` goes to `parseBooking` — `fromJSON`'s own — before it is committed.
+ * That is round 54's census #7 (`kind`) and #8 (`status`), **and** the ninth case the census
+ * excluded: a booking with no `startsAt` used to be a document `toJSON` could not serialise at
+ * all, and is now a refusal at the door.
+ *
+ * @throws {Error} if the booking has no id, or is one `fromJSON` would refuse — programmer error
+ *         per §2.1, and the difference between a refusal here and a saved document that can never
+ *         be opened again.
  */
 export function upsertBooking(trip: Trip, booking: Booking): Trip {
   if (!booking.id) throw new Error('upsertBooking: booking.id is required');
+  assertStorable('upsertBooking', 'booking', booking);
   const i = trip.bookings.findIndex((b) => b.id === booking.id);
   const bookings = trip.bookings.slice();
   if (i < 0) bookings.push(booking);
@@ -25,6 +35,10 @@ export function upsertBooking(trip: Trip, booking: Booking): Trip {
 /**
  * Records that `newId` supersedes `oldId` — the Smartwings reissue case.
  * Both bookings stay in the trip; the older one is marked, never deleted. Pure.
+ *
+ * **Exempt from §2.1 A-76's door check, by Part 5's table**: it writes a field of a booking that is
+ * already in the trip, from a value core itself chose (`'superseded'`, and an id checked for
+ * existence). No caller value reaches a record field.
  * @throws {Error} if either booking is missing.
  */
 export function supersedeBooking(trip: Trip, oldId: BookingId, newId: BookingId): Trip {
@@ -39,6 +53,9 @@ export function supersedeBooking(trip: Trip, oldId: BookingId, newId: BookingId)
 
 /**
  * Links a stop to a booking (or clears the link with `null`). Pure.
+ *
+ * **Exempt from §2.1 A-76's door check, by Part 5's table**: `supersedeBooking`'s reason — the id
+ * it writes is checked for existence in the trip first.
  * @throws {Error} if the stop or the booking does not exist.
  */
 export function linkBooking(trip: Trip, stopId: StopId, bookingId: BookingId | null): Trip {

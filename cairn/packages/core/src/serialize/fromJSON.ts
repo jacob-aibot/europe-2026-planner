@@ -4,6 +4,15 @@
  *
  * Every failure carries the JSON path that caused it, because "invalid trip" with no path
  * is useless when a document has 112 stops.
+ *
+ * **Seven per-record parsers are `export`ed — §2.1 A-76, revision 57.** `parseStop`, `parseDay`,
+ * `parseCity`, `parsePlace`, `parseBooking`, `parsePhoto` and `parseParticipant` are read by
+ * `build/storable.ts`'s `assertStorable`, so a build door asks *this* file what a record class may
+ * hold instead of keeping a second opinion about it. **None of them reaches `index.ts`** — they are
+ * module-internal to `packages/core`, exactly as `build/stops.ts`'s `reindex` is, and §2.10's
+ * surface does not move. Adding `export` to seven existing declarations is the whole of A-76's
+ * change to this file: no parser's body, signature or message moves, because *agreement with the
+ * parser is the invariant* and a parser edited "for the doors" would break that on the spot.
  */
 import type {
   Booking, City, CostEstimate, DatePrecision, Day, Money, OpeningHours, Participant, PhotoAsset,
@@ -255,7 +264,7 @@ function parseLinks(v: unknown, path: string) {
   });
 }
 
-function parseStop(v: unknown, path: string): Stop {
+export function parseStop(v: unknown, path: string): Stop {
   const o = obj(v, path);
   const links = parseLinks(o.links, `${path}.links`);
   const ticket = parseTicket(o.ticket, `${path}.ticket`);
@@ -289,7 +298,7 @@ function parseStop(v: unknown, path: string): Stop {
   };
 }
 
-function parseDay(v: unknown, path: string): Day {
+export function parseDay(v: unknown, path: string): Day {
   const o = obj(v, path);
   const legacyFlag = boolOpt(o.legacyFlag, `${path}.legacyFlag`);
   return {
@@ -306,7 +315,7 @@ function parseDay(v: unknown, path: string): Day {
   };
 }
 
-function parseCity(v: unknown, path: string): City {
+export function parseCity(v: unknown, path: string): City {
   const o = obj(v, path);
   const centre = obj(o.centre, `${path}.centre`);
   const meta = o.meta === undefined ? undefined : obj(o.meta, `${path}.meta`);
@@ -361,7 +370,7 @@ function parseOpeningHours(v: unknown, path: string): OpeningHours {
   };
 }
 
-function parsePlace(v: unknown, path: string): Place {
+export function parsePlace(v: unknown, path: string): Place {
   const o = obj(v, path);
   const at = o.at === null || o.at === undefined ? null : obj(o.at, `${path}.at`);
   const links = parseLinks(o.links, `${path}.links`);
@@ -377,7 +386,7 @@ function parsePlace(v: unknown, path: string): Place {
   };
 }
 
-function parseBooking(v: unknown, path: string): Booking {
+export function parseBooking(v: unknown, path: string): Booking {
   const o = obj(v, path);
   const route = o.route === undefined ? undefined : obj(o.route, `${path}.route`);
   const startsAt = obj(o.startsAt, `${path}.startsAt`);
@@ -443,7 +452,7 @@ function parseWH(v: unknown, path: string): { w: number; h: number } | null {
   return { w: numOf(o.w, `${path}.w`), h: numOf(o.h, `${path}.h`) };
 }
 
-function parsePhoto(v: unknown, path: string): PhotoAsset {
+export function parsePhoto(v: unknown, path: string): PhotoAsset {
   const o = obj(v, path);
   const capturedAt = o.capturedAt === null || o.capturedAt === undefined ? null : obj(o.capturedAt, `${path}.capturedAt`);
   const at = o.at === null || o.at === undefined ? null : obj(o.at, `${path}.at`);
@@ -479,7 +488,7 @@ function parsePhoto(v: unknown, path: string): PhotoAsset {
  * one record over: the union carries the arm so adding it is a build change and not a schema
  * one, and `build/participants.ts` is where the deferral is enforced.
  */
-function parseParticipant(v: unknown, path: string): Participant {
+export function parseParticipant(v: unknown, path: string): Participant {
   const o = obj(v, path);
   return {
     id: str(o.id, `${path}.id`),

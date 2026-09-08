@@ -19,6 +19,7 @@ import { attribution } from '../derive/display.ts';
 import type { BuildCtx } from './createTrip.ts';
 import { userProvenance } from '../model/provenance.ts';
 import { reattachDanglingPhotos } from './photos.ts';
+import { assertStorable } from './storable.ts';
 
 /** §2.4 ordering: by time ascending, untimed last, ties broken by `order`. Pure. */
 export function compareStops(a: Stop, b: Stop): number {
@@ -76,7 +77,13 @@ export type StopInit = {
   ticket?: Stop['ticket'];
 };
 
-/** Builds a `Stop` from a loose init object. Pure apart from consuming one id. */
+/**
+ * Builds a `Stop` from a loose init object. Pure apart from consuming one id.
+ *
+ * **Exempt from §2.1 A-76's door check, by Part 5's table**: it returns a `Stop` rather than a
+ * `Trip`, and every caller of it is a door in that table which checks the stop it gets back. A
+ * check here would be the same check twice.
+ */
 export function makeStop(init: StopInit, placement: StopPlacement, ctx: BuildCtx): Stop {
   return {
     id: init.id ?? ctx.ids.newId('stop'),
@@ -101,11 +108,20 @@ export function makeStop(init: StopInit, placement: StopPlacement, ctx: BuildCtx
  * Adds a stop at a placement. A scheduled stop lands at `placement.order` if it is a valid
  * index, otherwise sorted by time (the live app's `insertStopSorted`). Pure.
  *
- * @throws {Error} if the target day does not exist.
+ * §2.1 **A-76**: the `Stop` this builds is handed to `parseStop` — `fromJSON`'s own — at its
+ * **final** placement, before the trip is returned. That covers round 54's census #1–#4
+ * (`category`, `travelRole`, `place.kind`, a non-string `name`) **and** the `StopPlacement`
+ * argument, which `parsePlacement` reads and which no census named. It is not four checks; it is
+ * the parser, so a fifth field added to `Stop` inherits it.
+ *
+ * @throws {Error} if the target day does not exist, or if the stop is one `fromJSON` would refuse
+ *         — programmer error per §2.1, and the difference between a refusal here and a saved
+ *         document that can never be opened again.
  */
 export function addStop(trip: Trip, placement: StopPlacement, init: StopInit, ctx: BuildCtx): Trip {
   if (placement.kind === 'pool') {
     const stop = makeStop(init, placement, ctx);
+    assertStorable('addStop', 'stop', stop);
     return { ...trip, pool: [...trip.pool, stop], revision: trip.revision + 1 };
   }
   const dayId = placement.dayId;
@@ -117,7 +133,11 @@ export function addStop(trip: Trip, placement: StopPlacement, init: StopInit, ct
         : insertionIndex(day.stops, placement.time);
     const stops = day.stops.slice();
     stops.splice(at, 0, stop);
-    return { ...day, stops: reindex(stops, dayId) };
+    // AFTER `reindex`, because `placement.order` is rewritten there and the record that has to
+    // parse is the one that will be stored, not the one the caller handed in.
+    const reindexed = reindex(stops, dayId);
+    assertStorable('addStop', 'stop', reindexed[at]);
+    return { ...day, stops: reindexed };
   });
   return { ...next, revision: trip.revision + 1 };
 }
@@ -157,8 +177,12 @@ function assertPatchable(patch: object): void {
  * Patches a stop wherever it lives (a day or the pool). Passing `time` retimes a scheduled
  * stop without moving it — use `moveStop` to change position. Pure.
  *
- * @throws {Error} if no stop with that id exists, or if the patch carries `id`,
- *         `placement` or `provenance` — programmer error per §2.1.
+ * §2.1 **A-76**: the **patched** `Stop` is handed to `parseStop` before it is committed, which is
+ * round 54's census #5 and every other field of `Stop` in the same move.
+ *
+ * @throws {Error} if no stop with that id exists, if the patch carries `id`,
+ *         `placement` or `provenance`, or if the patched stop is one `fromJSON` would refuse —
+ *         all programmer error per §2.1.
  */
 export function updateStop(trip: Trip, stopId: StopId, patch: StopPatch): Trip {
   assertPatchable(patch);
@@ -178,14 +202,18 @@ export function updateStop(trip: Trip, stopId: StopId, patch: StopPatch): Trip {
     const placement: StopPlacement =
       time !== undefined && s.placement.kind === 'scheduled' ? { ...s.placement, time } : s.placement;
     const stops = day.stops.slice();
-    stops[i] = { ...s, ...rest, placement };
+    const patched: Stop = { ...s, ...rest, placement };
+    assertStorable('updateStop', 'stop', patched);
+    stops[i] = patched;
     return { ...day, stops };
   });
   if (found) return pruneOrphanedCopyPlace({ ...trip, days, revision: trip.revision + 1 }, before);
   const pi = trip.pool.findIndex((s) => s.id === stopId);
   if (pi < 0) throw new Error(`updateStop: no such stop ${stopId}`);
   const pool = trip.pool.slice();
-  pool[pi] = { ...pool[pi], ...rest };
+  const patchedPooled: Stop = { ...pool[pi], ...rest };
+  assertStorable('updateStop', 'stop', patchedPooled);
+  pool[pi] = patchedPooled;
   return pruneOrphanedCopyPlace({ ...trip, pool, revision: trip.revision + 1 }, before);
 }
 
@@ -273,7 +301,14 @@ export function findStop(trip: Trip, stopId: StopId): Stop | null {
  * The stop's identity, provenance, cost, booking link and arrival override are carried
  * across unchanged; only `placement` moves. Pure.
  *
- * @throws {Error} if the stop or the target day does not exist.
+ * §2.1 **A-76**: the moved `Stop` is handed to `parseStop` before it is committed. The value under
+ * test here is the `placement` **argument** — `parsePlacement` reads `kind` through `oneOf`,
+ * `cityKey`/`dayId` through `str` and `order` through `numOf` — which is one of the two fields the
+ * round-54 census did not name and which the architect found while writing the ruling.
+ * `reorderStop` delegates here and needs no call of its own.
+ *
+ * @throws {Error} if the stop or the target day does not exist, or if the placement is one
+ *         `fromJSON` would refuse — programmer error per §2.1.
  */
 export function moveStop(trip: Trip, stopId: StopId, placement: StopPlacement): Trip {
   const stop = findStop(trip, stopId);
@@ -290,7 +325,9 @@ export function moveStop(trip: Trip, stopId: StopId, placement: StopPlacement): 
   let pool = trip.pool.filter((s) => s.id !== stopId);
 
   if (placement.kind === 'pool') {
-    pool = [...pool, { ...stop, placement }];
+    const moved: Stop = { ...stop, placement };
+    assertStorable('moveStop', 'stop', moved);
+    pool = [...pool, moved];
   } else {
     const di = days.findIndex((d) => d.id === placement.dayId);
     const day = days[di];
@@ -300,8 +337,11 @@ export function moveStop(trip: Trip, stopId: StopId, placement: StopPlacement): 
         : insertionIndex(day.stops, placement.time);
     const stops = day.stops.slice();
     stops.splice(at, 0, { ...stop, placement });
+    // AFTER `reindex`, for `addStop`'s reason: `placement.order` is rewritten there.
+    const reindexed = reindex(stops, day.id);
+    assertStorable('moveStop', 'stop', reindexed[at]);
     days = days.slice();
-    days[di] = { ...day, stops: reindex(stops, day.id) };
+    days[di] = { ...day, stops: reindexed };
   }
   return { ...trip, days, pool, revision: trip.revision + 1 };
 }
@@ -318,8 +358,17 @@ export function reorderStop(trip: Trip, stopId: StopId, delta: number): Trip {
   return moveStop(trip, stopId, { kind: 'scheduled', dayId: day.id, time: stop.placement.time, order: to });
 }
 
-/** Adds a place to the trip's pin superset. Pure. */
+/**
+ * Adds a place to the trip's pin superset. Pure.
+ *
+ * §2.1 **A-76**: the `Place` goes to `parsePlace`, **`hours` included** — so
+ * `validateTrip`'s `place_hours_malformed` keeps its whole population, because
+ * `import/legacyDays.ts` builds its `Trip` literal and calls no build door.
+ *
+ * @throws {Error} if the place is one `fromJSON` would refuse — programmer error per §2.1.
+ */
 export function addPlace(trip: Trip, place: Place): Trip {
+  assertStorable('addPlace', 'place', place);
   return { ...trip, places: [...trip.places, place], revision: trip.revision + 1 };
 }
 

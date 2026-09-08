@@ -1,5 +1,36 @@
 # Cairn — build notes, Phase 1 (and Phase 2 in progress)
 
+> **Addendum — ROADMAP `I-15`: a build door asks the parser what a record may hold (§2.1 **A-76**,
+> QA **R54-1**).** Builds on `fd07340` (ARCHITECTURE revision 57 / ROADMAP 60). **The last known
+> finding from the Phase 2 phase-gate round.** No field, no type, no port, no selector, no screen;
+> `SCHEMA_VERSION`, `DB_VERSION` and `SUMMARY_VERSION` do not move, and §2.10's export surface was
+> **re-counted by running the command** and is **unchanged at 86** — none of the seven newly-exported
+> parsers reaches `index.ts`. **Edited, 13 files + 2 new:** `packages/core/src/build/{stops,days,
+> bookings,photos,participants,createTrip,copyStop,candidates}.ts`,
+> `packages/core/src/serialize/fromJSON.ts`, `packages/core/test/{participants,copyStop}.test.ts`,
+> `packages/client/test/participants.test.ts`, this document; **new**
+> `packages/core/src/build/storable.ts` and `packages/core/test/storable.test.ts`. **Zero `.tsx`,
+> zero `qa/`, zero `docs/design/`, zero `ARCHITECTURE.md`/`ROADMAP.md`, zero `package.json`, zero
+> lockfile, zero new dependency.**
+>
+> | | |
+> |---|---|
+> | **What runs, and the exact commands** | `cd cairn && npm run test:tap` → **1556 tests, 1556 pass, 0 fail, 0 skipped, 0 cancelled**. Baseline measured on this tree before the change, same command at `fd07340` → **1530 pass / 0 fail**, so **+26 tests**, all of them the new `storable.test.ts`; no pre-existing test was deleted and none was weakened (see the two rows on the six that changed). `cd cairn && npm run typecheck` → **clean on both projects, exit 0**. `cd cairn && npm run web:build` → **succeeds**. Export re-count, run rather than quoted: `node --experimental-strip-types -e "import('./packages/core/src/index.ts').then(m => console.log(Object.keys(m).length))"` → **86**. The new file alone: `node --test packages/core/test/storable.test.ts` → **26 pass / 0 fail**. |
+> | **Part 1 — the seven parsers** | `serialize/fromJSON.ts` gains `export` on `parseStop`, `parseDay`, `parseCity`, `parsePlace`, `parseBooking`, `parsePhoto`, `parseParticipant`. **No parser body, signature or message moved** — agreement with the parser is the invariant, so a parser edited "for the doors" would break it on the spot. One paragraph was added to the file header saying why the seven are exported and that none of them reaches `index.ts`. |
+> | **Part 2 — the mechanism** | New `packages/core/src/build/storable.ts`, module-internal, ~115 lines with its docstring: `assertStorable<K>(where, kind, record)`, a `StorableKind`/`StorableOf` pair and a `kind → parser` map. Nothing in `build/` knows a **field** exists. It catches `TripParseError` and rethrows a **plain `Error`** — `` `${where}: this ${kind} cannot be stored — ` `` + the parser's own message and path + *"Saving it would produce a document that cannot be re-opened."* Anything that is **not** a `TripParseError` (a throwing getter, a `RangeError` from a cycle) travels untouched. **It never rethrows a `TripParseError`**, which is Part 3's one hard prohibition, and `storable.test.ts` asserts that at every door as well as directly. |
+> | **Part 3 — the doors, exactly A-76 Part 5's table** | **Checked (11 rows, 14 doors):** `addStop` (`stop`, after `reindex`, so the record checked is the record stored), `updateStop` (`stop`, both the day and the pool branch), `moveStop` (`stop`, both branches; `reorderStop` delegates and has no call of its own), `setDayMeta` (`day`, **with `stops: []`** — the elision), `addPlace` (`place`, `hours` included), `upsertBooking` (`booking`), `addPhoto`/`updatePhoto` (`photo`, **after** `assertBuiltAttach`), `addParticipant`/`updateParticipant` (`participant`), `createTrip` (each minted `city`), `setTripMeta` (each `city` in `patch.cities`, on **key presence**), `copyStopInto` (`place` at mint, and `stop` before `addStop`). **Exempt (5 rows, 10 doors):** `makeStop`; `ensureDays`/`blankDay`; `supersedeBooking`/`linkBooking`; `removePhoto`/`removeStop`/`removeParticipant`; `acceptCandidate`/`rejectCandidate` — each now carries its stated reason as a docstring line in its own file **and** as a string in the census test. |
+> | **Why `copyStopInto` checks the stop even though `addStop` does** | The refusal has to name **this** door: the caller called `copyStopInto`, the offending value came out of the friend's document, and `addStop:` in the message sends whoever reads it to the wrong file. It re-derives the record with `makeStop(init, placed, …)`, which consumes **no id** because `init.id` is already the one drawn above, so it is a pure re-derivation and not a second draw. Deleting either of `copyStopInto`'s two calls reddens its own behavioural-census row, which is what A-76 Part 7 M1 asks of a checked door. |
+> | **Part 4 — deleted, and kept** | **Deleted:** `assertParticipantKind`, `assertDisplayName`, `assertNote`, all from `build/participants.ts`, plus its `PARTICIPANT_KINDS` import. A tombstone paragraph replaces them naming all three and which parser subsumed each; `storable.test.ts` greps the file with comments stripped so the tombstone is a record and not a survival. `createTrip.ts`'s private `DATE_PRECISIONS` copy is gone and the list is now the one `model/types.ts` exports (one import — §2.9 A-20). **Kept, untouched in body:** `assertDatePrecision` (docstring gains why it is the efficiency exception) and `assertBuiltAttach` (docstring gains why it is the one door legitimately *stricter* than the parser). **`FORBIDDEN_*_PATCH_KEYS` and all three `assertPatchable`s are untouched** — identity and provenance, a different property. |
+> | **Part 5 — the two standing censuses** | New `packages/core/test/storable.test.ts`, 26 tests. **The directory census** reads `packages/core/src/build/*.ts` from disk, collects every `export function` name with `/^export\s+(?:async\s+)?function\s+(\w+)/gm`, and asserts set equality **in both directions** against the checked rows ∪ the exempt rows; a third test asserts every exempt row carries a non-empty reason. **The behavioural census** fires one hostile value per checked cell (12 calls) and asserts each throws a plain `Error`, **not** a `TripParseError`, naming the door and carrying the parser's path. Six further tests cover `assertStorable` directly, the two kept guards, the three deleted ones, the `setDayMeta` elision (a day holding a pre-existing unparseable stop stays editable), and Part 8 residue 1's *agreement, not strictness* (a legal edit at every checked door still succeeds). |
+> | **A-76 Part 7 M1 — run, red then green** | Deleted `assertStorable('upsertBooking', 'booking', booking)` from `build/bookings.ts` and re-ran `node --test packages/core/test/storable.test.ts`: **24 pass / 2 fail** — `not ok 9 — A-76 Part 6.2: upsertBooking refuses a booking the parser refuses ($.kind)` and its `startsAt` sibling — while **all three directory-census tests stayed green** (`ok 1`, `ok 2`, `ok 3`), which is Part 7 M1's required behaviour verbatim: the two tests do different jobs. Restored → **26 pass / 0 fail**. |
+> | **A-76 Part 7 M2 — run, red then green** | Restored `addStop` to its pre-A-76 body (both branches) and ran the breaker's own probe, `node --experimental-strip-types qa/r54-integration.mjs`. §M8 reproduces the loss exactly: `note M8 what the user is told after the write — idle`; `FAIL M8a the user is NOT told "saved" over a trip that can no longer be opened — persistence.status is 'idle' while the stored bytes no longer parse`; `note M8b can the stored document be parsed? — NO — $.days[0].stops[1].category`; `note M8c openTrip after a reload — refuses`; `FAIL M8d the whole trip — including the earlier work — is now unreachable`. §M7 also went red with all four `addStop` fields named. Restored → §M6 reports **all twelve** censused fields *"REFUSED at the door"* and `ok M7 ZERO build doors write a document that cannot be opened again`. |
+> | **A-76 Part 7 M3 — run, red then green** | Appended `export function untabledDoor(trip: Trip): Trip { return trip; }` to `build/pool.ts` and did not touch the test: **24 pass / 2 fail**, and the directory census **names it** — *"A-76 Part 5's table does not classify these exported build functions: untabledDoor. A new build door must either call assertStorable or be listed exempt with its reason."* Reverted → **26 pass / 0 fail**. This is the criterion for the claim that the door set is closed, and it is the only load-bearing claim in the ruling that is not enforced by construction. |
+> | **The one place I did not implement A-76 literally, and why** | **KD-100**, §1. A-76 Part 4 justifies deleting `assertParticipantKind` with *"`addParticipant` writes `kind: init.kind ?? 'contact'`, so the built record carries exactly the value the guard used to check."* That is true for `undefined` and **false for `null`**: `??` coalesces both, the deleted guard ran for `null`, and the literal implementation would have turned a refusal into a silent write of `'contact'` — a narrowing the ruling says does not happen, covered by a shipped I-9 test. The default is now `init.kind === undefined ? 'contact' : init.kind`, so a caller's `null` reaches the record and `parseParticipant` refuses it at `$.kind`. **One operator; no guard, no member list, no second copy.** The architect owes one clause in that row. |
+> | **Six pre-existing tests changed, none weakened, and what each change was** | Five refusal-message regexes in `packages/core/test/participants.test.ts` and two in `packages/client/test/participants.test.ts` (7 assertions across 6 tests): the refusals still fire on **every** value in every case list, but the message is now A-76's, because A-76 **deleted the functions that produced the old one**. The `kind` regexes read `/…cannot be stored — .+ \(at \$\.kind\)/` rather than pinning one parser sentence, because `oneOf` reports *"expected a string"* for `kind: 7` and *"expected one of …"* for `kind: 'owner'` — both are the same door refusing at the same path. **No case was dropped from any list and no assertion was removed.** The seventh change is `copyStop.test.ts`'s A-22 R18-5 read-count test: it now measures the accessor's reads **across `copyAcross` alone** (`at.reads() - latBefore`) instead of from construction, because the *setup*'s own `addPlace` now reads `at.lat`/`at.lng` once each through `parsePlace`. **The pinned numbers (2 and 2, at N = 0/1/3) and the property are unchanged**; what moved is which function the third read belongs to. |
+> | **The read-once interaction, disclosed rather than hidden** | A-76's mechanism adds exactly one read of every field of every record a checked door writes. For a door that stores the caller's **own object** by reference (`addPlace`, `upsertBooking`), that is a TOCTOU window §2.14 **A-21**/**A-22** would recognise: a hostile accessor could pass the parse and store a different value, because `assertStorable` returns `void` and the door stores `record`, not the parser's rebuilt copy. **This is A-76 as specified** (Part 3 fixes the signature at `: void`) and the record it protects is the *document*, which the parser reads once more at `toJSON` time anyway; but it is worth an architect's eye, because storing the parser's return value instead would close it for free and would be a one-line change inside `storable.ts` with no change at any door. Not done here: it is outside the ruling. |
+> | **What I could NOT verify** | **Nothing rendered and no browser.** No `.tsx` was opened (I-15 forbids it) and there is no surface that can reach the defect (A-76 Part 1), so there is nothing to render. **`qa/r54-integration.mjs` was run but not edited** (this pass is fenced out of `qa/`), and **two of its rows now encode the pre-fix world and should be re-cut by the breaker**: `M2b` (*"flush degrades rather than collapsing"*, expects `persistence.status === 'error'`) now fails **because `M1` passes** — the bad booking is refused at the door, so the document is clean and `flush()` reports `'idle'`, which is A-76 Part 5's stated outcome for the missing-`startsAt` case; and **§M8 now throws uncaught at `qa/r54-integration.mjs:874`**, because the `addStop` dispatch it needs to *succeed* in order to measure the loss is now refused, so the probe aborts before printing its summary. Both are the probe recording a defect that no longer exists, not a regression — but neither is mine to fix. `qa/r54-gate.mjs` was **not** run. |
+> | **Objection to the design** | **None to the mechanism** — it is the right answer and the reasoning in Part 2 is correct on its own terms. Two notes. **(1)** A-76 Part 6 says the directory census asserts equality against *"the union of Part 5's checked rows and its exempt rows"*, but Part 5's table names **24** of `build/`'s **39** exported functions. The remaining fifteen (`compareStops`, `insertionIndex`, `reindex`, `findStop`, `cityOfStop`, `findDay`, `stopsForBooking`, `requireActor`, `pickDay`, `poolFor`, `returnToPool`, `scheduleFromPool`, `redactText`, `redactionHits`, and `assertStorable` itself) are classified in the test under **Part 2's own stated rule** — *"a build function that writes no record field is exempt and says so in the census"* — in a separately-labelled `EXEMPT_UNTABLED` list, each with its reason, so the extension is visible rather than folded into the table's own rows. Without it the census cannot be set equality in both directions at all. The architect may want those fifteen (or the rule that classifies them) written into Part 5. **(2)** KD-100, above. |
+
 > **Addendum — QA round 54's `R54-2` and `R54-3`: the two exit criteria that had no mechanism.**
 > Builds on `7dad457` (QA round 54, the Phase 2 phase gate). **A test-only pass.** Both findings are
 > the same class — a Phase 2 exit criterion whose stated verification does not exist in the suite,
@@ -4592,16 +4623,65 @@ that the tree would otherwise be dirty on the next typecheck, and an ignored fil
 **For the architect:** the fix is one sentence in A-72 Part 5 item 6 and one in ROADMAP I-9a —
 *"regenerated, not committed; it is `.gitignore`d under §2.11"*. No code changes either way.
 
+### KD-99 — a `kind` cast past the type system reaches an unopenable-after-save document with no `Issue` naming why (design tension, architect)
+
+*Registered here at **I-15**, not written here. This id was assigned by **I-9**'s own addendum at the
+top of this file and cited there in full, but no `### KD-99` heading was ever added to this section,
+so `test/disclosure.test.ts`'s contiguity check ran on 1…98 and any source comment citing `KD-99`
+would have been reported dangling. The text below is I-9's, quoted; nothing about the claim is new.*
+
+> With both doors guarded, a `kind` outside `PARTICIPANT_KINDS` can now only reach a `Trip` past the
+> type system (a cast, a native bridge) — and for **that** document `validateTrip` still says
+> nothing, while `fromJSON` refuses it, so it is unopenable-after-save with no issue naming why.
+> Every other field with this shape has the same gap (`Stop.category`, `DatePrecision`), so fixing
+> it for participants alone would be inconsistent, and a new `Issue` code widens §2.9's list, which
+> is an architect's call under the delegation table.
+
+**Status at I-15:** §8.3 **A-74** answered the *`Issue`* half — a cast is not a producer, so no code
+is earned — and §2.1 **A-76** answered the *door* half for every record class at once. What survives
+is only the last clause: a document a cast built and something else saved still opens to a refusal
+rather than to an `Issue`. That is A-76 Part 8 residue 1's *"A-76 is no substitute for §2.9's own
+rules about what a document may say"*, and it stays the architect's.
+
+### KD-100 — `addParticipant` writes `kind` with `=== undefined` rather than `??`, because A-76 Part 4's stated reason for deleting `assertParticipantKind` is false for `null` (builder-repaired, architect to confirm)
+
+`packages/core/src/build/participants.ts`
+
+A-76 Part 4's table justifies deleting `assertParticipantKind` like this:
+
+> *"The refusal does not weaken: `addParticipant` writes `kind: init.kind ?? 'contact'`, so the built
+> record carries exactly the value the guard used to check."*
+
+**That is true for `undefined` and false for `null`.** `??` coalesces both, while the deleted guard
+ran for `null` (`null !== undefined`) and refused it. Implemented literally, A-76 would have turned
+`addParticipant(trip, {displayName:'Zoë', kind: null})` from a throw into a silent write of
+`'contact'` — a real narrowing of a refusal the ruling says does not narrow, and one
+`packages/core/test/participants.test.ts` already covers (`kind` case list `['owner','Self','self
+','',7,null]`, shipped at I-9 and green since).
+
+**What I did:** wrote the default as `init.kind === undefined ? 'contact' : init.kind`. Absent and
+`undefined` still mean *take the default* for an init; a caller-supplied `null` now reaches the
+record and `parseParticipant` refuses it at `$.kind`. **No guard, no member list, no second copy of
+anything** — one operator, and the mechanism does the refusing, which is the shape A-76 asked for.
+The pre-existing test is green unedited in its case list; only its message regex moved, because the
+message A-76 mandates is a different message.
+
+**For the architect:** the fix is one word in A-76 Part 4's `assertParticipantKind` row —
+*"`init.kind === undefined ? 'contact' : init.kind`, because `??` would coalesce a caller's `null`
+into the default and the deleted guard refused it"*. No ruling changes; the row's verdict
+(**deleted**) stands.
+
 ## 2. How to run it
 
 ```bash
 cd cairn
 npm install
-npm test          # 1530 tests as of the round-54 R54-2/R54-3 pass. Plain node, no browser, no network.
+npm test          # 1556 tests as of I-15. Plain node, no browser, no network.
                   # (387 from Phase 1 until R44-4, then 1239 until R45-17, then 1332 through the
                   #  round-45 fix pass, 1348 at I-13b, 1359 at the round-46 fix pass, 1376 at
                   #  I-13d, 1430 at the round-50 fix pass, 1505 at I-9a, 1524 at the round-52
-                  #  repair pass, 1525 at I-9b; re-measured each time by running
+                  #  repair pass, 1525 at I-9b, 1530 at the round-54 R54-2/R54-3 pass;
+                  #  re-measured each time by running
                   #  `npm run test:tap | grep '^# pass'`, never quoted. QA R48-4 is this line
                   #  going stale one increment after R45-17 closed it — re-measure it, do not
                   #  copy it forward. R49-2, R50-4, R51-5 and R53-2 are the same finding again,

@@ -158,7 +158,7 @@ test('R52-3: a dispatch carrying an out-of-enum participant kind is refused and 
       type: 'addParticipant',
       participant: { displayName: 'Zoë', kind: 'owner' } as unknown as { displayName: string },
     }),
-    /kind must be one of "self", "contact"/,
+    /addParticipant: this participant cannot be stored — expected one of self\|contact/,
   );
   assert.deepEqual(store.getState().doc!.participants, [], 'the refused participant reached the document');
 
@@ -178,7 +178,7 @@ test('R52-2: a { displayName: undefined } patch is refused and the derived cache
       participantId: id,
       patch: { displayName: undefined } as { displayName?: string },
     }),
-    /displayName must be a string/,
+    /updateParticipant: this participant cannot be stored — expected a string \(at \$\.displayName\)/,
   );
   assert.equal(store.getState().doc!.participants[0].displayName, 'Zoë');
   const derived = store.getDerived();

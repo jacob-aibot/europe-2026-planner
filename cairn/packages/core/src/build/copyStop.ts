@@ -104,8 +104,9 @@ import type {
   ProvenanceConfidence, Stop, StopPlacement, Trip,
 } from '../model/types.ts';
 import type { IdFactory, IsoDate, PlaceId, StopId, TripId, UserId } from '../model/ids.ts';
-import { addStop } from './stops.ts';
+import { addStop, makeStop } from './stops.ts';
 import type { StopInit } from './stops.ts';
+import { assertStorable } from './storable.ts';
 import { REDACTED, redactText } from './redactText.ts';
 import { requireActor } from './candidates.ts';
 import { normalizeCityName } from '../model/cityName.ts';
@@ -644,6 +645,12 @@ export function copyStopInto(
           // A-15: built field by field, never spread. §6.6 applies to a `Place` that crosses a
           // person boundary exactly as it applies to the stop beside it.
           const copy = placeForCopy(original, targetKey, ids.newId('place'));
+          // §2.1 **A-76**, Part 5's `copyStopInto` row. This is the one door whose input is
+          // **another person's document** — §2.14's whole subject — and it had no check at all.
+          // Every field of `copy` is read off a record this build did not write, so a friend's
+          // `category`, `name`, `at` or `hours` outside what `parsePlace` accepts used to become
+          // the recipient's unopenable document.
+          assertStorable('copyStopInto', 'place', copy);
           withPlace = { ...target, places: [...target.places, copy] };
           place = { kind: 'place', placeId: copy.id };
         }
@@ -700,6 +707,12 @@ export function copyStopInto(
     // no `ticket`: §6.6, a ticket is an access credential
   };
 
+  // §2.1 **A-76**, Part 5's `copyStopInto` row, second record class. `addStop` checks the stop it
+  // writes, but the refusal has to name **this** door: the caller called `copyStopInto`, the
+  // offending value came out of the friend's document, and `addStop:` in the message would send
+  // whoever reads it to the wrong file. `makeStop` consumes no id here — `init.id` is already the
+  // one drawn above — so this is a pure re-derivation of the record `addStop` is about to build.
+  assertStorable('copyStopInto', 'stop', makeStop(init, placed, { ids, now: today, actorUserId }));
   // `addStop` bumps the revision once, which is the whole operation.
   // A-22 Part 1(b): the ids factory, the date and the actor are the values this function already
   // validated or already used — never a second read of `ctx`.

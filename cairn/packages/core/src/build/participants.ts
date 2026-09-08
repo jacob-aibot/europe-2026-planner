@@ -18,59 +18,28 @@
  * functions anyway: the id comes from the injected factory and nothing else.
  */
 import type { Participant, ParticipantKind, Trip } from '../model/types.ts';
-import { PARTICIPANT_KINDS } from '../model/types.ts';
 import type { ParticipantId } from '../model/ids.ts';
 import type { BuildCtx } from './createTrip.ts';
+import { assertStorable } from './storable.ts';
 
 /**
- * §2.1's rule for an enum-valued field, at the two doors that write one — `createTrip.ts`'s
- * `assertDatePrecision` one record class over, and for its reason verbatim: *"every caller that
- * matters is `any`-shaped at its boundary (an action, a form, a JSON body)"*.
+ * **This file used to carry three per-field guards — `assertParticipantKind`, `assertDisplayName`
+ * and `assertNote` — and §2.1 A-76 Part 4 deletes all three.** They were R16-2's *one property,
+ * two guards*: `parseParticipant` already asserts each of them, field for field, including
+ * `assertNote`'s asymmetry (`o.note !== undefined ? str(…)`, so `undefined` means *no note* on
+ * both sides) and `assertDisplayName`'s `undefined` case. `assertStorable` below asks the parser,
+ * so the refusals do not weaken — they widen to every field of `Participant`, including the ones
+ * nobody enumerated and the ones added later.
  *
- * `fromJSON` refuses a `kind` outside `PARTICIPANT_KINDS` at `$.participants[n].kind`, so a
- * document carrying one **serializes but cannot be parsed back** — the whole trip, not the one
- * field, becomes unopenable (QA **P2-7**'s harm, found here again as **R52-3**). Refusing at the
- * door is the only place the state is still repairable. Throws on programmer error, per §2.1.
- */
-function assertParticipantKind(where: string, value: unknown): void {
-  if (typeof value !== 'string' || !(PARTICIPANT_KINDS as readonly string[]).includes(value)) {
-    throw new Error(
-      `${where}: kind must be one of ${PARTICIPANT_KINDS.map((k) => `"${k}"`).join(', ')}, got ` +
-        `${JSON.stringify(value) ?? String(value)}`,
-    );
-  }
-}
-
-/**
- * `displayName` is a participant's **only** human identity (§8.3) and it is a required stored
- * field, so there is no absent state for it to take. An `undefined` is type-legal at this door —
- * `cairn/tsconfig.json` has no `exactOptionalPropertyTypes`, so `{ displayName: undefined }`
- * type-checks clean — and it used to make `validateTrip` throw on `undefined.trim()`, taking the
- * derived cache and every view of the trip with it, and then make the saved document unopenable
- * because `toJSON` omits the key and `fromJSON` requires it (QA **R52-2**).
+ * Everything those three docstrings said about *why* the refusal has to be here is upheld and is
+ * A-76's own reasoning: `fromJSON` refuses these values at `$.participants[n]`, a document
+ * carrying one **serializes but cannot be parsed back**, and the door is the only place the state
+ * is still repairable (QA **P2-7**, **R52-2**, **R52-3**). What A-76 refuses is the *shape* — one
+ * guard per field, kept in step by hand.
  *
- * Emptiness is **not** refused here: `''` is `validateTrip`'s `participant_name_empty` to report,
- * per §2.9's standing rule that a document carrying a problem must open. Throws, per §2.1.
+ * `''` is still **not** refused: it is `validateTrip`'s `participant_name_empty` to report, per
+ * §2.9's standing rule that a document carrying a problem must open, and `str()` accepts it.
  */
-function assertDisplayName(where: string, value: unknown): void {
-  if (typeof value !== 'string') {
-    throw new Error(
-      `${where}: displayName must be a string, got ${JSON.stringify(value) ?? String(value)}`,
-    );
-  }
-}
-
-/**
- * `note` is optional, so `undefined` is a legal value for it and means *no note* — the one
- * asymmetry with `displayName` above, and it is the difference between a field with an absent
- * state and one without. Anything else is refused for `kind`'s reason: `fromJSON` requires a
- * string at `$.participants[n].note`, so a `{}` written here is another unopenable trip.
- */
-function assertNote(where: string, value: unknown): void {
-  if (value !== undefined && typeof value !== 'string') {
-    throw new Error(`${where}: note must be a string, got ${JSON.stringify(value) ?? String(value)}`);
-  }
-}
 
 /**
  * What a caller may supply when adding a participant.
@@ -105,20 +74,27 @@ export type ParticipantInit = {
  *         R52-3).
  */
 export function addParticipant(trip: Trip, init: ParticipantInit, ctx: BuildCtx): Trip {
-  assertDisplayName('addParticipant', init.displayName);
-  // Absent and `undefined` both mean "take the default" for an INIT, where a patch's `undefined`
-  // means "write nothing here" and is refused — the value is checked, not the key's presence.
-  if (init.kind !== undefined) assertParticipantKind('addParticipant', init.kind);
-  assertNote('addParticipant', init.note);
   const participant: Participant = {
     id: ctx.ids.newId('participant'),
     displayName: init.displayName,
-    kind: init.kind ?? 'contact',
+    // **`=== undefined`, not `??`** — and it is A-76 Part 4's own claim made true rather than a
+    // preference. That row says *"the refusal does not weaken: `addParticipant` writes
+    // `kind: init.kind ?? 'contact'`, so the built record carries exactly the value the guard used
+    // to check."* For `null` it did not: `??` coalesces `null` as well as `undefined`, so the
+    // deleted `assertParticipantKind` (which ran for `null`, since `null !== undefined`) refused
+    // `kind: null` while `??` would silently write `'contact'`. Absent and `undefined` still mean
+    // *take the default* for an INIT; `null` is a value the caller supplied, so it reaches the
+    // record and `parseParticipant` refuses it at `$.kind`. One operator, no member list, no
+    // second guard. BUILD-NOTES §1 **KD-100** has the measurement and what the architect owes.
+    kind: init.kind === undefined ? 'contact' : init.kind,
     // §8.3: permanently `null` in this phase, and not readable from `init` at all. This is the
     // enforcement of "until that person has an account AND the user links them".
     userId: null,
     ...(init.note !== undefined ? { note: init.note } : {}),
   };
+  // §2.1 A-76. `kind: init.kind ?? 'contact'` means the record carries exactly the value the
+  // deleted `assertParticipantKind` used to check, so the refusal does not weaken — Part 4's row.
+  assertStorable('addParticipant', 'participant', participant);
   return { ...trip, participants: [...trip.participants, participant], revision: trip.revision + 1 };
 }
 
@@ -181,16 +157,13 @@ function assertPatchable(patch: object): void {
 export function updateParticipant(trip: Trip, participantId: ParticipantId, patch: ParticipantPatch): Trip {
   assertPatchable(patch);
   const has = (k: string): boolean => Object.prototype.hasOwnProperty.call(patch, k);
-  if (has('displayName')) assertDisplayName('updateParticipant', patch.displayName);
-  if (has('kind')) assertParticipantKind('updateParticipant', patch.kind);
-  if (has('note')) assertNote('updateParticipant', patch.note);
 
   const i = trip.participants.findIndex((p) => p.id === participantId);
   if (i < 0) throw new Error(`updateParticipant: no such participant ${participantId}`);
   const prev = trip.participants[i];
   const note = has('note') ? patch.note : prev.note;
   const participants = trip.participants.slice();
-  participants[i] = {
+  const patched: Participant = {
     // `id` and `userId` are the record's, never the patch's — `assertPatchable` refuses both on
     // key presence and neither is readable here either.
     id: prev.id,
@@ -199,11 +172,18 @@ export function updateParticipant(trip: Trip, participantId: ParticipantId, patc
     userId: prev.userId,
     ...(note !== undefined ? { note } : {}),
   };
+  // §2.1 A-76. A key's PRESENCE still decides whether it is written, so `{ note: undefined }`
+  // removes a note and `{ displayName: undefined }` is refused — by `str()` in `parseParticipant`
+  // rather than by a guard in this file, which is the whole of the change.
+  assertStorable('updateParticipant', 'participant', patched);
+  participants[i] = patched;
   return { ...trip, participants, revision: trip.revision + 1 };
 }
 
 /**
  * Removes a participant. Pure.
+ *
+ * **Exempt from §2.1 A-76's door check, by Part 5's table**: it removes.
  *
  * **Nothing cascades**, and that is the whole of §8.3's *"deletion … comes for free"*: no stop,
  * day, place, booking or photo refers to a participant in this phase (participants on a *stop*

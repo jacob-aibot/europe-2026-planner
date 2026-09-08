@@ -7,9 +7,10 @@
  */
 import type { City, DatePrecision, Trip, TripMeta } from '../model/types.ts';
 import type { CityKey, Currency, IdFactory, IsoDate, UserId } from '../model/ids.ts';
-import { LOCAL_OWNER, SCHEMA_VERSION } from '../model/types.ts';
+import { DATE_PRECISIONS, LOCAL_OWNER, SCHEMA_VERSION } from '../model/types.ts';
 import { isIsoDate } from '../model/ids.ts';
 import { ensureDays } from './days.ts';
+import { assertStorable } from './storable.ts';
 
 export type BuildCtx = {
   ids: IdFactory;
@@ -18,8 +19,6 @@ export type BuildCtx = {
   actorUserId?: UserId | null;
 };
 
-const DATE_PRECISIONS: readonly string[] = ['exact', 'month', 'year'];
-
 /**
  * §2.1: *"every `*Patch` type is enforced at runtime by an explicit key allowlist, not by
  * TypeScript"* — and the same holds for an enum-valued field, because the action and JSON
@@ -27,9 +26,15 @@ const DATE_PRECISIONS: readonly string[] = ['exact', 'month', 'year'];
  * members (`$.datePrecision`); without this, `setTripMeta` accepted them, and the resulting
  * document **serializes but cannot be parsed back** — a trip that writes itself into a state
  * it cannot be opened from (QA P2-7). Throws on programmer error, per §2.1.
+ *
+ * **KEPT by §2.1 A-76 Part 4**, and it is the ruling's one *efficiency* exception rather than a
+ * property exception. `datePrecision` is a **trip-level scalar**, not a record class: there is no
+ * per-record parser to ask, and asking `parseTrip` per edit would be A-76 Part 2 option 3's
+ * O(document) cost on the path a keystroke takes. Its private `DATE_PRECISIONS` copy is gone — the
+ * list is the one `model/types.ts` already exports (§2.9 **A-20**, and it costs one import).
  */
 function assertDatePrecision(where: string, value: unknown): void {
-  if (typeof value !== 'string' || !DATE_PRECISIONS.includes(value)) {
+  if (typeof value !== 'string' || !(DATE_PRECISIONS as readonly string[]).includes(value)) {
     throw new Error(
       `${where}: datePrecision must be one of ${DATE_PRECISIONS.map((p) => `"${p}"`).join(', ')}, got ` +
         `${JSON.stringify(value) ?? String(value)}`,
@@ -106,6 +111,11 @@ export function createTrip(init: TripInit, ctx: BuildCtx): Trip {
     order: c.order ?? i,
     ...(c.meta ? { meta: c.meta } : {}),
   }));
+  // §2.1 **A-76**, Part 5's `createTrip` row: each `City` this mints goes to `parseCity` —
+  // `fromJSON`'s own — which requires `centre.lat`/`centre.lng` as finite numbers and `name`,
+  // `countryCode` and `key` as strings. The trip's own scalars keep `assertDatePrecision` and
+  // `isIsoDate` above; `days` is `ensureDays`', which Part 5 exempts.
+  for (const c of cities) assertStorable('createTrip', 'city', c);
   const base: Trip = {
     id: init.id ?? ctx.ids.newId('trip'),
     title: init.title,
@@ -147,16 +157,30 @@ export type TripMetaPatch = Partial<
  * Patches trip-level metadata. Changing the date range re-runs `ensureDays`, so days can
  * never drift out of density (§2.3). Pure.
  *
+ * §2.1 **A-76**, Part 5's `setTripMeta` row — *"this closes a hole the round-54 census did not
+ * name"*: `TripMetaPatch` carries `cities`, and `parseCity` requires `centre.lat`/`centre.lng` as
+ * finite numbers. Each `City` in the patch is checked when the key is present.
+ *
  * @throws {Error} if the patch would put `endDate` before `startDate`, if it carries a
- *         `datePrecision` outside `'exact' | 'month' | 'year'`, or if the resulting range is
- *         wider than `ensureDays`' ten-year span cap (§2.3 **A-35**) — programmer error per
- *         §2.1, and the third is the one a person can cause by mistyping a year.
+ *         `datePrecision` outside `'exact' | 'month' | 'year'`, if it carries a `City` `fromJSON`
+ *         would refuse, or if the resulting range is wider than `ensureDays`' ten-year span cap
+ *         (§2.3 **A-35**) — programmer error per §2.1, and the last is the one a person can cause
+ *         by mistyping a year.
  */
 export function setTripMeta(trip: Trip, patch: TripMetaPatch, ctx: BuildCtx): Trip {
   // The key's PRESENCE is what is checked, not its truthiness: `{datePrecision: undefined}`
   // spreads the field away entirely and is as unreadable a document as `'fortnight'` is.
   if (Object.prototype.hasOwnProperty.call(patch, 'datePrecision')) {
     assertDatePrecision('setTripMeta', patch.datePrecision);
+  }
+  if (Object.prototype.hasOwnProperty.call(patch, 'cities')) {
+    // The key's presence again: `{cities: undefined}` spreads `cities` away and is refused by
+    // `arr()` the moment the trip is next parsed, so it is refused here instead.
+    const patched: readonly City[] = patch.cities as readonly City[];
+    if (!Array.isArray(patched)) {
+      throw new Error(`setTripMeta: cities must be an array, got ${JSON.stringify(patch.cities) ?? String(patch.cities)}`);
+    }
+    for (const c of patched) assertStorable('setTripMeta', 'city', c);
   }
   const next: Trip = { ...trip, ...patch, revision: trip.revision + 1 };
   if (!isIsoDate(next.startDate) || !isIsoDate(next.endDate)) {

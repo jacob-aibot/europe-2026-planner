@@ -9,6 +9,7 @@
 import type { LatLng, PhotoAsset, PhotoAttachRef, PhotoDerivative, Provenance, Trip } from '../model/types.ts';
 import type { ClockTime, IsoDate, PhotoId } from '../model/ids.ts';
 import { userProvenance } from '../model/provenance.ts';
+import { assertStorable } from './storable.ts';
 import type { BuildCtx } from './createTrip.ts';
 
 export type PhotoInit = {
@@ -37,6 +38,14 @@ export type PhotoInit = {
  * Refused here — as a throw, because §2.1 makes an unbuilt capability a programmer error rather
  * than a domain problem — so the deferral cannot be defeated by a caller who read the union and
  * not the ruling.
+ *
+ * **KEPT by §2.1 A-76 Part 4, necessarily, and it is the one guard in `build/` that is *not* a
+ * second opinion.** A-76 deletes a door guard that asserts the same property the parser asserts;
+ * this one asserts the **opposite** property. `parseAttach` **accepts** `kind:'place'` by design —
+ * the union carries all four arms so that adding `place` is a build change and not a schema
+ * change, and `fromJSON` round-trips a `place` attachment on purpose. So this is a deferral rather
+ * than a shape, it is the one place a build door is legitimately stricter than the parser, and it
+ * runs **first** in both doors below so the deferral's message is the one the caller sees.
  */
 function assertBuiltAttach(where: string, attach: PhotoAttachRef): void {
   if (attach.kind === 'place') {
@@ -48,7 +57,15 @@ function assertBuiltAttach(where: string, attach: PhotoAttachRef): void {
   }
 }
 
-/** Adds a photo. `attach` defaults to the trip — §8.6's honest "somewhere on this trip". Pure. */
+/**
+ * Adds a photo. `attach` defaults to the trip — §8.6's honest "somewhere on this trip". Pure.
+ *
+ * §2.1 **A-76**: the built `PhotoAsset` goes to `parsePhoto` before it is committed, after
+ * `assertBuiltAttach` has had its say.
+ *
+ * @throws {Error} if it attaches to a place (A-57 Part 3), or if the photo is one `fromJSON` would
+ *         refuse — programmer error per §2.1.
+ */
 export function addPhoto(trip: Trip, init: PhotoInit, ctx: BuildCtx): Trip {
   const attach: PhotoAttachRef = init.attach ?? { kind: 'trip' };
   assertBuiltAttach('addPhoto', attach);
@@ -72,6 +89,7 @@ export function addPhoto(trip: Trip, init: PhotoInit, ctx: BuildCtx): Trip {
     // was carried to avoid. `fromJSON` round-trips a candidate photo for the same reason.
     provenance: init.provenance ?? userProvenance(ctx.now, ctx.actorUserId ?? null),
   };
+  assertStorable('addPhoto', 'photo', photo);
   return { ...trip, photos: [...trip.photos, photo], revision: trip.revision + 1 };
 }
 
@@ -130,8 +148,11 @@ function assertPatchable(patch: object): void {
 /**
  * Patches a photo's caption, coordinate, capture time or attachment. Pure.
  *
- * @throws {Error} if no photo with that id exists, if the patch carries a forbidden key, or if
- *         it attaches to a place (A-57 Part 3) — all three programmer error, per §2.1.
+ * §2.1 **A-76**: the patched `PhotoAsset` goes to `parsePhoto` before it is committed.
+ *
+ * @throws {Error} if no photo with that id exists, if the patch carries a forbidden key, if it
+ *         attaches to a place (A-57 Part 3), or if the patched photo is one `fromJSON` would
+ *         refuse — all programmer error, per §2.1.
  */
 export function updatePhoto(trip: Trip, photoId: PhotoId, patch: PhotoPatch): Trip {
   assertPatchable(patch);
@@ -139,12 +160,15 @@ export function updatePhoto(trip: Trip, photoId: PhotoId, patch: PhotoPatch): Tr
   const i = trip.photos.findIndex((p) => p.id === photoId);
   if (i < 0) throw new Error(`updatePhoto: no such photo ${photoId}`);
   const photos = trip.photos.slice();
-  photos[i] = { ...photos[i], ...patch };
+  const patched: PhotoAsset = { ...photos[i], ...patch };
+  assertStorable('updatePhoto', 'photo', patched);
+  photos[i] = patched;
   return { ...trip, photos, revision: trip.revision + 1 };
 }
 
 /**
- * Removes a photo's record. Pure. **The bytes are the caller's second step**, in that order:
+ * Removes a photo's record. Pure. **Exempt from §2.1 A-76's door check, by Part 5's table**: it
+ * removes. **The bytes are the caller's second step**, in that order:
  * §10.3's table puts the document write first for a delete, which is the inverse of import,
  * *"and for the same reason: the reachable-but-absent state is the safe one."*
  *
@@ -170,6 +194,9 @@ export function removePhoto(trip: Trip, photoId: PhotoId): Trip {
  *
  * `validateTrip`'s `photo_attach_dangling` is the other half and is not made redundant by this:
  * it reports the documents that never went through either action.
+ *
+ * **Exempt from §2.1 A-76's door check, by Part 5's table**: it rewrites `attach` to the literal
+ * `{kind:'trip'}` and reads no caller value into a record field.
  */
 export function reattachDanglingPhotos(trip: Trip): Trip {
   if (trip.photos.length === 0) return trip;
