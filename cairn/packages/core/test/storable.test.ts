@@ -819,12 +819,53 @@ test('A-77 Part 5: a `stops` key carrying an ALREADY-VALID stop from another day
   );
 });
 
-test('A-77 Part 5: every legal DayMetaPatch key still passes', () => {
+/**
+ * **QA R56-6 — the type and the runtime allowlist, pinned.** `DAY_META_PATCH_KEYS` was a
+ * hand-maintained second copy of `DayMetaPatch`'s `Pick` with nothing holding the two together: a
+ * field added to the type and not to the constant makes a legal patch silently refused, and
+ * nothing catches it. The pin is in two halves, and this is the second:
+ *
+ *   1. `days.ts` types the constant as `Record<keyof DayMetaPatch, true>` — the same
+ *      compile-time shape `readOnce.test.ts`'s four `CENSUS_*_FIELDS` maps use — so a field added
+ *      to `DayMetaPatch` and not to the constant fails `npm run typecheck` **in `src`**, on the
+ *      commit that adds it.
+ *   2. This literal is typed `Required<DayMetaPatch>`, so the same field fails `npm run typecheck`
+ *      **here** until the fixture carries it — and the assertion below then drives it through the
+ *      real door, which is what makes the constant's agreement a *behaviour* and not a type.
+ */
+const EVERY_DAY_META_KEY: Required<DaysMod.DayMetaPatch> = {
+  primaryCity: 'wien', cities: ['wien'], title: 'Arrival', subtitle: 'Landing',
+  legacyFlag: true, tzId: 'Europe/Vienna', provenance: GOOD_PROVENANCE,
+};
+
+test('A-77 Part 5 (R56-6): every key of DayMetaPatch is accepted — the type and the allowlist cannot drift', () => {
   const { trip } = baseTrip();
-  assert.doesNotThrow(() => DaysMod.setDayMeta(trip, '2026-03-01', {
-    primaryCity: 'wien', cities: ['wien'], title: 'Arrival', subtitle: 'Landing',
-    legacyFlag: true, tzId: 'Europe/Vienna', provenance: GOOD_PROVENANCE,
-  }));
+  assert.doesNotThrow(() => DaysMod.setDayMeta(trip, '2026-03-01', EVERY_DAY_META_KEY));
+  // Key by key, so a drift names the field rather than failing on the whole patch.
+  for (const [k, v] of Object.entries(EVERY_DAY_META_KEY)) {
+    assert.doesNotThrow(
+      () => DaysMod.setDayMeta(trip, '2026-03-01', { [k]: v } as DaysMod.DayMetaPatch),
+      `"${k}" is a key of DayMetaPatch and setDayMeta refused it — the allowlist has drifted from the type`,
+    );
+  }
+});
+
+test('A-77 Part 5 (R56-6): a key inherited from Object.prototype is not a patchable key', () => {
+  // The allowlist is an OWN-property lookup, not `in`: `{toString: …}` names a key every object
+  // has and none of them is a field of `DayMetaPatch`.
+  const { trip } = baseTrip();
+  for (const key of ['toString', 'constructor', 'hasOwnProperty', '__proto__']) {
+    assert.throws(
+      () => DaysMod.setDayMeta(trip, '2026-03-01', Object.defineProperty({}, key, {
+        value: undefined, enumerable: true, configurable: true, writable: true,
+      }) as DaysMod.DayMetaPatch),
+      // Not anchored at the front: `assert.throws` matches a RegExp against `String(err)`, which
+      // carries the `Error: ` prefix. The tail is the part that matters here.
+      new RegExp(`setDayMeta: "${key}" may not be patched — it is not a field of DayMetaPatch$`),
+      `${key} was accepted on a DayMetaPatch, or its refusal printed a value off Object.prototype ` +
+      'where its reason belongs',
+    );
+  }
 });
 
 // ---------------------------------------------------------------------------------------------
@@ -888,6 +929,99 @@ test('A-77 Part 3.6 (R55-5): `party` and `homeBase` are substituted too', () => 
   (party as { adults: unknown }).adults = 'two';
   assert.equal(next.party.adults, 2);
   assert.doesNotThrow(() => fromJSON(toJSON(next)));
+});
+
+// ---------------------------------------------------------------------------------------------
+// QA **R56-4** — rule 5's TOCTOU one level UP: the collection ARRAY, not the record in it.
+//
+// Rule 5 made the RECORD read-once. The array holding it was not. `commitList` read `after[i]`
+// for the aligned test and then built its output with `after.slice()` — a SECOND read of every
+// slot it had not parsed — and when it parsed nothing at all it returned the array it was handed
+// **by reference**, so every later read of that array (`toJSON`'s, the next door's) was a third.
+// With an accessor on the slot, the value that was tested is then not the value that is stored:
+// the breaker's flip-read sweep produced an UNOPENABLE document at flip 3.
+//
+// `commitList` and `commitDays` now read each slot exactly once and **accumulate what they read**
+// into the array they return, so the collection in the committed document holds the values that
+// were tested and no accessor the caller controls.
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * The breaker's own oracle (`qa/r56-a77.mjs`'s `census`): call the door, serialise what it
+ * returned, try to open it again. `REFUSED` is the mechanism working. **`UNOPENABLE` is the
+ * defect class** — it saved, and it can never be opened again.
+ */
+function census(run: () => Trip): 'REFUSED' | 'UNSERIALISABLE' | 'UNOPENABLE' | 'clean' {
+  let doc: Trip;
+  try { doc = run(); } catch { return 'REFUSED'; }
+  let bytes: string;
+  try { bytes = toJSON(doc); } catch { return 'UNSERIALISABLE'; }
+  try { fromJSON(bytes); } catch { return 'UNOPENABLE'; }
+  return 'clean';
+}
+
+/** An array whose slot `i` yields `flipped` on the `flipAt`-th read and `stable` on every other. */
+function flipRead<T>(rows: readonly T[], i: number, flipAt: number, stable: T, flipped: T): T[] {
+  const out = rows.slice();
+  let reads = 0;
+  Object.defineProperty(out, String(i), {
+    configurable: true, enumerable: true,
+    get(): T { return ++reads === flipAt ? flipped : stable; },
+  });
+  return out;
+}
+
+test('A-77 Part 3.5 (R56-4): a collection slot that flips on a LATER read cannot poison the document', () => {
+  const { trip, c } = baseTrip();
+  const base = Bookings.upsertBooking(
+    Bookings.upsertBooking(trip, GOOD_BOOKING),
+    { ...GOOD_BOOKING, id: 'bk-2', kind: 'bus' },
+  );
+  const good1 = base.bookings[1];
+  const evil = { ...good1, kind: 'teleport' as Booking['kind'] };
+
+  const bad: string[] = [];
+  for (let flipAt = 1; flipAt <= 5; flipAt++) {
+    const hostile = flipRead(base.bookings, 1, flipAt, good1, evil);
+    const verdict = census(() =>
+      CreateTripMod.setTripMeta({ ...base, bookings: hostile }, { title: `r${flipAt}` }, c));
+    if (verdict === 'UNOPENABLE' || verdict === 'UNSERIALISABLE') bad.push(`flip ${flipAt}: ${verdict}`);
+  }
+  assert.deepEqual(
+    bad, [],
+    'a read of a collection slot other than the tested one reached the document — the value that ' +
+    'was checked is not the value that was stored (R56-4, R55-5\'s class inside commit itself)',
+  );
+});
+
+test('A-77 Part 3.5 (R56-4): the same holds for the DAYS array, whose slots commitDays reads', () => {
+  const { trip } = baseTrip();
+  const good1 = trip.days[1];
+  const evil = { ...good1, title: 42 as unknown as string };
+
+  const bad: string[] = [];
+  for (let flipAt = 1; flipAt <= 5; flipAt++) {
+    const hostile = flipRead(trip.days, 1, flipAt, good1, evil);
+    const verdict = census(() => StopsMod.addPlace({ ...trip, days: hostile }, GOOD_PLACE));
+    if (verdict === 'UNOPENABLE' || verdict === 'UNSERIALISABLE') bad.push(`flip ${flipAt}: ${verdict}`);
+  }
+  assert.deepEqual(bad, [], 'commitDays stored a read of a day slot other than the one it tested');
+});
+
+test('A-77 Part 3.5 (R56-4): commit accumulates — a committed collection is never the array the door handed it', () => {
+  const { trip, c } = baseTrip();
+  const base = Bookings.upsertBooking(trip, GOOD_BOOKING);
+  const next = CreateTripMod.setTripMeta(base, { title: 'Renamed' }, c);
+  assert.notEqual(
+    next.bookings, base.bookings,
+    'commit returned the array it was handed, so a later read of a slot is not the read that was tested',
+  );
+  assert.notEqual(next.days, base.days, 'the same, for the days array commitDays builds');
+  // Accumulation is not re-parsing: every unchanged record keeps its identity, which is what
+  // A-77 Part 9's budget is bought with.
+  assert.equal(next.bookings[0], base.bookings[0]);
+  for (let i = 0; i < base.days.length; i++) assert.equal(next.days[i], base.days[i]);
+  assert.deepEqual(next.bookings, base.bookings);
 });
 
 test('A-77 Part 10 residue 4: an undeclared key on a record does not survive the door', () => {

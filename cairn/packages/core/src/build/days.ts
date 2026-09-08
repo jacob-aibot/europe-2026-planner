@@ -133,10 +133,21 @@ export type DayMetaPatch = Partial<Pick<Day, 'primaryCity' | 'cities' | 'title' 
  * that is what A-77 Part 5 requires (*"refusing every key outside `DayMetaPatch`'s `Pick`"*): a
  * forbidden-key list would have to be re-enumerated every time `Day` gains a field, which is the
  * shape this whole ruling deletes.
+ *
+ * **`Record<keyof DayMetaPatch, true>` is the pin, and it is not decoration** (QA **R56-6**). Shipped
+ * as a `readonly string[]` this was a hand-maintained SECOND COPY of the `Pick` above with nothing
+ * holding the two together: a field added to `DayMetaPatch` and not to this list makes a legal
+ * patch silently refused, and today's agreement was the only thing keeping it honest. The type
+ * names both directions — a missing key and an undeclared one each fail `npm run typecheck` on the
+ * commit that writes them — and it is the shape `readOnce.test.ts`'s four `CENSUS_*_FIELDS` maps
+ * already use for exactly this problem, rather than a new mechanism.
+ *
+ * The lookup below is `hasOwnProperty`, never `in`: `in` would make `toString` a patchable key.
  */
-const DAY_META_PATCH_KEYS: readonly string[] = [
-  'primaryCity', 'cities', 'title', 'subtitle', 'provenance', 'legacyFlag', 'tzId',
-];
+const DAY_META_PATCH_KEYS: Record<keyof DayMetaPatch, true> = {
+  primaryCity: true, cities: true, title: true, subtitle: true, provenance: true,
+  legacyFlag: true, tzId: true,
+};
 
 /**
  * The three A-77 Part 5 names explicitly, because all three are **identity** and none is the
@@ -154,10 +165,15 @@ const FORBIDDEN_DAY_META_PATCH_KEYS: Record<string, string> = {
 /** @throws {Error} on any key outside `DayMetaPatch`, present even with an `undefined` value. */
 function assertPatchable(patch: object): void {
   for (const k of Object.keys(patch)) {
-    if (DAY_META_PATCH_KEYS.includes(k)) continue;
+    if (Object.prototype.hasOwnProperty.call(DAY_META_PATCH_KEYS, k)) continue;
+    // Own-property on BOTH lookups, for the same reason: `FORBIDDEN_DAY_META_PATCH_KEYS['toString']`
+    // reaches `Object.prototype.toString`, which is truthy, so `??` never fires and the refusal
+    // prints a native function where its reason should be.
+    const why = Object.prototype.hasOwnProperty.call(FORBIDDEN_DAY_META_PATCH_KEYS, k)
+      ? FORBIDDEN_DAY_META_PATCH_KEYS[k]
+      : 'it is not a field of DayMetaPatch';
     throw new Error(
-      `setDayMeta: "${k}" may not be patched — ` +
-        (FORBIDDEN_DAY_META_PATCH_KEYS[k] ?? 'it is not a field of DayMetaPatch'),
+      `setDayMeta: "${k}" may not be patched — ` + why,
     );
   }
 }

@@ -73,14 +73,28 @@ function lazySet(source: () => Iterable<unknown>): LazySet {
  * A-77 Part 3 rule 3, for one collection.
  *
  * ```
+ * const r = after[i];                  // the ONE read of this slot, ever
+ * out[i] = r;
  * if (aligned[i] === r)      keep r;   // unchanged in place — one pointer comparison
  * else if (identity.has(r))  keep r;   // moved, not rewritten
  * else out[i] = assertStorable(...);   // new: PARSE, and SUBSTITUTE what the parser built
  * ```
  *
  * `identity === null` means *there is no `before`* (`createTrip`), so every record is new.
- * Returns `after` **by reference** when nothing moved, so an untouched collection allocates
- * nothing.
+ *
+ * **Rule 5 applies to the ARRAY, not only to the record in it** (QA **R56-4**). This function used
+ * to read `after[i]` for the aligned test and then build its output with `after.slice()` — a second
+ * read of every slot it had not parsed — and, when it parsed nothing, to return `after` itself **by
+ * reference**, leaving every later read of that array (`toJSON`'s, the next door's) a third. Against
+ * an accessor on a slot, the value tested is then not the value stored, and the breaker's flip-read
+ * sweep produced an UNOPENABLE document at flip 3. So each slot is read **once**, into `r`, and the
+ * value read is **accumulated into the array this returns**: what the committed document holds is
+ * what was tested, in a plain array, with no accessor the caller controls left in it.
+ *
+ * The cost is one array per collection per commit, where an untouched collection used to allocate
+ * nothing (**KD-105**). It is bounded by the walk this function already does — one slot, one
+ * comparison, one store — and it re-parses **nothing**: an unchanged record is stored by identity,
+ * which is what A-77 Part 9's budget is actually bought with.
  */
 function commitList<K extends StorableKind>(
   where: string,
@@ -90,20 +104,20 @@ function commitList<K extends StorableKind>(
   identity: LazySet | null,
   after: StorableOf<K>[],
 ): StorableOf<K>[] {
-  let out: StorableOf<K>[] | null = null;
+  const out: StorableOf<K>[] = new Array(after.length) as StorableOf<K>[];
   let known: ReadonlySet<unknown> | null = null;
   for (let i = 0; i < after.length; i++) {
+    // The one read. Everything below tests `r`, stores `r`, and never touches `after[i]` again.
     const r = after[i];
+    out[i] = r;
     if (aligned !== null && aligned[i] === r) continue;
     if (identity !== null) {
       if (known === null) known = identity();
       if (known.has(r)) continue;
     }
-    const parsed = assertStorable(where, kind, r, `${label}[${i}]`);
-    if (out === null) out = after.slice();
-    out[i] = parsed;
+    out[i] = assertStorable(where, kind, r, `${label}[${i}]`);
   }
-  return out ?? after;
+  return out;
 }
 
 /**
@@ -219,28 +233,38 @@ export function commit(where: string, before: Trip | null, after: Trip): Trip {
  * data it did not write. What changes is that it is now **structural rather than declared**: the
  * day's own fields come from the day, the stops come from rule 3, and there is no patch key that
  * can put anything into the elided slot without becoming a new stop object rule 3 parses.
+ *
+ * Read-once and accumulating, for `commitList`'s reason and by the same construction (QA
+ * **R56-4**): one read of `after.days[i]`, one read of `aligned[i]`, and the output array is built
+ * from what was read rather than from a second pass over the caller's.
  */
 function commitDays(where: string, before: Trip | null, after: Trip, stopIdentity: LazySet | null): Day[] {
   const aligned = before === null ? null : before.days;
   const dayIdentity = before === null ? null : lazySet(() => (before as Trip).days);
-  let out: Day[] | null = null;
+  const source = after.days;
+  const out: Day[] = new Array(source.length) as Day[];
   let known: ReadonlySet<unknown> | null = null;
 
-  for (let i = 0; i < after.days.length; i++) {
-    const d = after.days[i];
-    if (aligned !== null && aligned[i] === d) continue;
+  for (let i = 0; i < source.length; i++) {
+    const d = source[i];
+    out[i] = d;
+    // One read of the day that stood at this index before, used for both the alignment test and
+    // the stop list it aligns against.
+    const a = aligned === null ? undefined : aligned[i];
+    if (a !== undefined && a === d) continue;
     if (dayIdentity !== null) {
       if (known === null) known = dayIdentity();
       if (known.has(d)) continue;
     }
+    // Taken BEFORE the spread below, so the list rule 3 walks is the first read of the field and
+    // the spread's (whose value the explicit `stops: []` discards) is the second.
+    const dStops = d.stops;
     // The day itself is new. Its own fields go to `parseDay` with the stop list elided …
     const parsedDay = assertStorable(where, 'day', { ...d, stops: [] }, `days[${i}]`);
     // … and its stops go through rule 3, index-aligned against whatever day stood at this index
     // before, then against the one set spanning `before`'s day stops and pool.
-    const alignedStops = aligned !== null && aligned[i] !== undefined ? aligned[i].stops : null;
-    const stops = commitList(where, 'stop', `days[${i}].stops`, alignedStops, stopIdentity, d.stops);
-    if (out === null) out = after.days.slice();
+    const stops = commitList(where, 'stop', `days[${i}].stops`, a === undefined ? null : a.stops, stopIdentity, dStops);
     out[i] = { ...parsedDay, stops };
   }
-  return out ?? after.days;
+  return out;
 }

@@ -1,5 +1,29 @@
 # Cairn — build notes, Phase 1 (and Phase 2 in progress)
 
+> **Addendum — QA round 56 fix pass: `R56-4` (`commit`'s own reads are not once-per-slot) and
+> `R56-6` (`DAY_META_PATCH_KEYS` is an unpinned second copy of `DayMetaPatch`).** Builds on
+> `680930c`. Both routed **implementation → builder**; the round's two MAJORs (R56-1, R56-2) and
+> its other MINORs are the architect's and are **not** touched here. **Edited, 4 files:**
+> `packages/core/src/build/{commit,days}.ts`, `packages/core/test/storable.test.ts`, this document.
+> **Zero `.tsx`, zero `qa/`, zero `docs/design/`, zero `ARCHITECTURE.md`/`ROADMAP.md`, zero
+> `package.json`, zero lockfile, zero new dependency.** No field, no type, no port, no selector, no
+> screen; `SCHEMA_VERSION`, `DB_VERSION`, `SUMMARY_VERSION` and §2.10's 86-symbol surface do not move.
+>
+> | | |
+> |---|---|
+> | **What runs, and the exact commands** | `cd cairn && npm run test:tap` → **1596 tests, 1596 pass, 0 fail, 0 skipped, 0 cancelled**. Baseline at `680930c` was **1592 pass / 0 fail**, so **+4 net** (five tests added, one unpinned test replaced by a pinned one); no test was deleted and none was weakened. `cd cairn && npm run typecheck` → **clean on both projects, exit 0**. The two changed test files alone: `node --test packages/core/test/storable.test.ts` → **66 pass / 0 fail** (was 62). |
+> | **R56-4, the mechanism as it actually is** | The finding names `after.slice()`, and the slice is real, but the repro's UNOPENABLE at flip 3 comes from the **other** end of the same sentence: when `commitList` parsed nothing it returned `after` **by reference**, so the committed document held the caller's array with the accessor still on it, and the third read (`toJSON`'s) was the one that stored `teleport`. Traced read by read before fixing anything: read 1 is `after[i]`, read 2 is `aligned[i]` (the same array, because `setTripMeta`'s `before` *is* the document the caller handed in), read 3 is `toJSON`'s `map`. |
+> | **R56-4, the fix** | `commitList` and `commitDays` now read each slot **exactly once**, into `r` / `d`, store that value into the output array immediately, and test **that value**; the output array is `new Array(after.length)` filled from what was read, and it is **always** what is returned. Nothing reads `after[i]` twice and nothing the caller can install survives into the committed collection. `commitDays` additionally hoists `aligned[i]` into one local used for both the alignment test and the stop list it aligns against (it was read twice), and takes `d.stops` **before** the `{...d, stops: []}` spread, so the list rule 3 walks is the first read of the field and the spread's discarded read is the second. |
+> | **R56-4, what it costs, disclosed not smoothed** | **KD-105**, §1, with the before/after curve. One array per collection per commit where an untouched collection used to allocate nothing; measured at 0 / 2,000 / 10,000 / 20,000 stops the difference is inside the harness noise and **no budget moves**. It supersedes the I-16 addendum's Part 4 clause *"each collection array returned by reference when nothing in it moved"* — that clause was the defect — and it costs **A-78 Part 6**'s brand-new *"a door that rewrites a record in place at a known index pays none"* one clause, which KD-105 writes out for the architect. The two landed in the same working directory in the same hour; nothing else in that bound moves. |
+> | **R56-4, red then green** | Three new tests in `storable.test.ts`, all watched red first on the unfixed tree: the breaker's own flip-read sweep 1…5 over a **bookings** slot through `setTripMeta` (`flip 3: UNOPENABLE`), the same sweep over a **days** slot through `addPlace` (`flip 3: UNOPENABLE`), and *"a committed collection is never the array the door handed it"*, which also pins that unchanged records still keep their identity. Green after. The breaker's own §E is green too: `ok E1 commit reads each collection slot ONCE` (was `FAIL … unopenable at flipAt=3`), with §E1a's control still firing. |
+> | **R56-6, the pattern I matched** | Not `satisfies`, and not a fourth hand-written list: `readOnce.test.ts`'s four `CENSUS_*_FIELDS` maps are this codebase's existing answer to *"a runtime list that must equal a type's keys"*, and they are `Record<keyof T, true>`. `DAY_META_PATCH_KEYS` is now `Record<keyof DayMetaPatch, true>`, which pins **both** directions — a key of the type missing from the constant is `TS2741`, a key in the constant that is not a field of the type is `TS2353` — and `updateStop`'s / `updatePhoto`'s / `updateParticipant`'s `FORBIDDEN_*` lists are untouched, because those are **forbidden** lists derived from no type and have nothing to drift against. |
+> | **R56-6, red then green** | A type-level pin cannot be watched red by a test, so it was watched red by **driving the drift**: `'date'` added to `DayMetaPatch`'s `Pick` on the unfixed tree → `npm run typecheck` reports **one** error and it is in the *test*, none in `src`; with the fix → `packages/core/src/build/days.ts(147,7): error TS2741: Property 'date' is missing`. The reverse drift (`stops: true` added to the constant) → `TS2353`. Both reverted; typecheck clean. |
+> | **R56-6, the runtime half** | The existing *"every legal DayMetaPatch key still passes"* test was itself a third unpinned copy of the seven keys. Its fixture is now typed `Required<DayMetaPatch>`, so a new field on the type reds `npm run typecheck` **in the test** until the fixture carries it and then reds the assertion until the allowlist does too, and it now drives each key through the door individually so a drift names the field. |
+> | **One defect found while fixing R56-6, and fixed** | The allowlist lookup was `Array.includes`; a `Record` lookup with `in` would have made `toString` a patchable key, so it is `Object.prototype.hasOwnProperty.call`. The **reason** lookup one line down had that bug already: `FORBIDDEN_DAY_META_PATCH_KEYS['toString']` reaches `Object.prototype.toString`, which is truthy, so `?? 'it is not a field of DayMetaPatch'` never fired and the refusal printed a native function where its reason belongs. Both lookups are own-property now, pinned by a new test over `toString` / `constructor` / `hasOwnProperty` / `__proto__` that asserts the **whole** message. Watched red on the unfixed tree. |
+> | **`qa/r56-a77.mjs` — run, not edited (the directory is the breaker's), and what moved** | **§E1 green** (was the R56-4 FAIL) and §E1a's control still fires. **§G5 is now red and it is the probe encoding the defect it reported**: it greps `days.ts` for `DAY_META_PATCH_KEYS: readonly string[] = [ … ]`, which no longer exists, so `listed` comes back empty. Its own §G5a says *"nothing pins them together"* — that is what changed, and the compiler now enforces what the grep was approximating. **Not mine to fix; the breaker should re-cut §G5** (against `Record<keyof DayMetaPatch, true>`, or delete it in favour of the typecheck). §G1–§G4 all still green, §I3a still red **identically before and after** (that is R56-9, the identity `Set`, and it is the architect's). |
+> | **What I could NOT verify** | **Nothing rendered and no browser** — no `.tsx` was opened and neither finding reaches a surface. I did not re-run `npm run web:build` (no `apps/web` file changed and `packages/core`'s public surface is unmoved), and I did not re-run the other `qa/` probes: only `qa/r56-a77.mjs` was executed. The allocation cost in KD-105 is measured at up to 20,000 stops on this machine only. |
+> | **Objection to the design** | **One, and it is small.** A-77 Part 3's induction (*"every record object in a committed document has already been parsed once"*) is stated over **records**, and **A-78 Part 7's new Invariant R** — *records are replaced, never rewritten* — is stated over records too. R56-4 is the same claim one level up, over the **arrays that hold them**, and it is stated nowhere: that is why *"return `after` by reference"* read as an optimisation rather than as a hole, and why closing it costs an allocation the ruling did not budget for. Invariant R wants one more clause — *a committed collection is an array `commit` or `fromJSON` built, and no writer hands a door a `Trip` whose collection it still controls* — or the next person restores the fast path in good faith. A sentence, not code, so I did not write it. |
+
 > **Addendum — ROADMAP `I-16`: a door does not say what it wrote; the document says what changed
 > (§2.1 **A-77**, QA **R55-1/2/3/4/5/7** + the architect's own `resolveConflict` finding).** Builds on
 > `2295b4d` (ARCHITECTURE revision 58 / ROADMAP 61). **The second attempt at this class of bug:**
@@ -4825,6 +4849,43 @@ the fix is **not** a guard — it is `TripMetaPatch` joining the patch-allowlist
 `FORBIDDEN`/allowlist constant on `setTripMeta` that refuses a *present key with an `undefined`
 value* for every field of the patch at once. That is one mechanism, not six, and it is the shape
 Part 5 already chose for `setDayMeta`. It is a ruling, so I did not take it.
+
+
+### KD-105 — `commit` now allocates one array per collection per commit, where an untouched collection used to allocate nothing (disclosed consequence of the R56-4 fix, architect to restate A-77 Part 9's sentence)
+
+`packages/core/src/build/commit.ts`, measured
+
+QA **R56-4**'s flip-read repro is closed by making `commitList` / `commitDays` read each slot
+**once** and **accumulate what they read into the array they return**. That costs the fast path
+A-77 Part 9 describes as *"returns `after` by reference when nothing moved, so an untouched
+collection allocates nothing"* — which was also the hole: returning the caller's array by reference
+left every accessor on it live in the committed document, and it was the third read of a slot
+(`toJSON`'s), not the second, that produced the UNOPENABLE document at flip 3.
+
+**Measured, `qa/r56-a77.mjs` §I3, same tree, same command, `addStop` ms/edit:**
+
+| total stops | before this fix | after |
+|---|---|---|
+| 0 | 0.078 | 0.054 – 0.071 |
+| 2,000 | 0.231 | 0.237 – 0.274 |
+| 10,000 | 1.555 | 1.469 – 1.591 |
+| 20,000 | 3.980 | 3.059 – 3.110 |
+
+Three runs after the fix, one before; the difference is inside the noise of the harness and **no
+budget moves** (§I3a's `FAIL` is **R56-9**'s finding and is red identically before and after — it is
+the lazily-built identity `Set`, not this allocation). Nothing is re-parsed that was not re-parsed
+before: an unchanged record is stored **by identity**, which is what Part 9's budget is actually
+bought with.
+
+**For the architect, and it is one clause:** this landed in the same working directory as
+**A-78 Part 6**, which corrects A-77 Part 9's *"they allocate nothing"* in place. Its replacement
+bound says *"a door that rewrites a record in place at a known index pays none"* — which is exactly
+the allocation this fix removes, so the new sentence is one clause short on the commit it was
+written. The accurate version is: **`commit` allocates one array per collection per commit
+(unconditionally, since R56-4), plus — for each collection in which some slot fails the
+index-aligned test — one `Set` over that collection's records in `before`.** Everything else in
+A-78 Part 6's bound, including both measured figures and the refusal to build the set per day,
+stands and is confirmed by the table above.
 
 
 ## 2. How to run it
