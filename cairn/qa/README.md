@@ -3889,3 +3889,85 @@ path and no map, so no browser probe was run. `qa/r54-integration.mjs` **was** r
 `fails=0` — §M8/§M9 were the record of R54-1's harm and it no longer reproduces. `qa/r54-gate.mjs`
 completes with its **same three** known criterion-as-written failures (Vatican 4c, duplicate
 participant id, generated geometry), all pre-existing and all documented in round 54.
+
+---
+
+**Round 57** is the mandatory adversarial pass over **I-17** / §2.1 **A-78** (*the census reads the
+tree, not a list of files*), at `c677162` — the fourth round on one class, after an explicit
+architect claim of structural closure. Five new probes, plus the three re-cuts the builder flagged
+and could not touch himself.
+
+```bash
+cd cairn
+node --experimental-strip-types qa/r57-a78.mjs   # §F–§I, no compiler needed; 0 FAIL, 2 gap
+bash qa/r57-doorforms.sh                         # 8 full `tsc` runs (~1 min) — the round's finding
+bash qa/r57-nondoors.sh                          # 3 `tsc` + 3 suite runs (~3 min)
+bash qa/r57-kd106.sh                             # 6 full `tsc` runs (~1 min)
+bash qa/r57-async.sh                             # 4 `tsc` + 4 census runs (~1 min)
+```
+
+Every shell probe injects into `packages/core/src` (and `r57-nondoors.sh` into
+`packages/core/test/storable.test.ts`) and **restores every file in an `EXIT` trap**, printing
+`git status --porcelain` at the end so a failed run can never be mistaken for a source edit. Run
+them on a clean `packages/core` or the trap will revert your work with them.
+
+**`r57-doorforms.sh` — the round's finding, R57-1.** A-78 Part 1 half 1 claims a door is caught
+*"in any declaration syntax"*. `IsDoor<F>` begins `F extends (...a: never[]) => infer R`, which
+matches only a module member that is itself a directly-callable function value. §A appends one
+`Trip`-producing form at a time to `derive/lifecycle.ts` and runs a full
+`npx tsc -p tsconfig.json --noEmit`: **row 0 is fault N1 verbatim and is RED** (the harness is not
+lying); rows 1–7 — class method, static method, object-literal method, arrow behind a
+`Record<string, (t: Trip …) => Trip>`, getter returning a door, higher-order function returning a
+door, and an **overload set** — are all **GREEN**. §A2 does the same against the generated
+`geo/countries.gen.ts` (**RED** — no generated-code blind spot). §B is fault N2's control (the
+module census still names a new file in a new directory). §C drives R56-1's own harm through the
+class-method form via `r57-harm.mjs`: typecheck green, `storable.test.ts` 105 pass / 0 fail,
+document **UNOPENABLE** at `$.resolutions[0].state`.
+
+**`r57-nondoors.sh` — R57-2.** A-78 Part 10's last residue is *"`NON_DOORS` … **Trigger:** the
+fourth name"*. §A is fault N6 as ruled (a fourth name) and reddens. §B is N6 by **substitution** —
+evict `mergeTrips`, which KD-106's intersection made inert, and put a real door in its slot — and
+everything stays green. §C then deletes the hidden door's own `commit` call and drives the harm
+(`r57-nondoors-harm.mjs`): **UNOPENABLE**, with no census half firing.
+
+**`r57-kd106.sh` — KD-106 and the wrapper residue.** A **third** wrapper-returning producer
+(`{trip, issues}`) and its tuple form are both correctly classified as not-doors with no false red;
+`Trip | Day` (fault N4) reddens the illegal-shape line alone; a re-export of a `Trip`-returning
+function **into** the census from `packages/client` and from `qa/r57-outside-door.ts` (outside the
+tree entirely) both redden the door census — that smuggling face is **closed**. §C measures the
+residue A-78 Part 2 states rather than detects: the wrapper smuggles an unvalidated booking out and
+the document is **UNOPENABLE** with both census lines green.
+
+**`r57-async.sh` — is the `Promise<Trip>` widening safe or only permissive?** It turns
+`reassertRetirements` genuinely async. Row A: both census lines stay green (the only typecheck
+errors are its callers). Row B: an async door that mutates before returning is caught by the
+frozen-input census, **which names the door**. Row C: an async door mutating in a **detached
+continuation** takes the whole test file down with an unhandled rejection instead of naming the
+door — noticed, but not named; recorded as a note, not filed.
+
+**`r57-a78.mjs` — everything that needs no compiler.** §F the **array**-identity gap (**R57-3**) —
+a record appended to a committed collection array is never parsed, at `bookings` and at
+`day.stops` — plus the over-validation direction, which is clean (re-boxing and reordering re-parse
+nothing, and `commit` still hands back a new array) · §G **KD-108** verified independently, both
+doors, both directions, plus its blast radius computed by walking the tree (the *bind-a-commit,
+then-check* shape exists at exactly the two doors KD-108 names) · §H the riders R56-3 / R56-5 /
+R56-7 re-derived · §I `cairn-constraints` §2/§4/§5 and every *"zero X"* claim in I-17's own
+addendum, run rather than quoted, with comments and string literals **stripped** before each grep
+so a rule about code is not satisfied by prose about the rule.
+
+**The three re-cuts.** **`r56-a77.mjs`** — the abort the builder flagged at line 451 was one of
+**six** stale assertions and **four** stale `gap`s, every one of which changed verdict *by ruling*.
+All are re-cut to assert the new behaviour with the ruling named in place: §A1–A3 become `gap`s
+carrying A-78 Part 7's accepted caller-half residue, **§A5 is new** and is R57-3's array arm, §B1a
+asserts the widened classifier and the load-bearing `Exclude`/`Awaited` order, §G4/G5 lose
+`provenance` and gain its refusal plus R56-6's type pin, §H5 asserts `assertPatchable` over all ten
+keys in both directions, §I3a asserts A-78 Part 6's **corrected** bound and its 10 ms reopening
+trigger, §J2d asserts `isIsoDate`'s deletion and KD-108's ordering. Now `COMPLETE fails=0 gaps=4`.
+**`r47-i13c.mjs`** — `SCHEMA_VERSION === 2` was genuine staleness (A-72 moved it to 3 deliberately)
+and is re-cut; the BUILD-NOTES count line **points at something real** and is left red (**R57-4**).
+**`r51-i13i.mjs`** — `R51_HEAD` defaulted to `HEAD`, so three diff-scoped sections were measuring
+`I-17`'s diff and reporting it as an A-71 scope violation; pinned to `032a4cb`, the commit the round
+was cut against, with the env override kept. Frozen sibling-probe counts become notes (A-69 Part 9's
+terminal marker stays the assertion), the `8 → 3 FAIL` line is re-cut to the corrected `8 → 4`, and
+the `1441` pin becomes the property R44-4 and R45-17 both filed. 13 FAIL → **8**, six of which are
+the still-open R51-1…R51-6 records.

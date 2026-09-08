@@ -116,22 +116,48 @@ section('A — the induction\'s unstated premise: a committed record, mutated in
   // the document holds.
   t.bookings[0].kind = 'teleport';
   const r = census('A1', () => core.setTripMeta(t, { title: 'renamed' }));
-  ok('A1  a booking mutated in place, then ANY door: the mutation is caught', r.verdict !== 'UNOPENABLE',
-    `${r.verdict} ${r.detail ?? ''}`);
+  // **RE-CUT BY QA ROUND 57.** This was a FAIL; §2.1 **A-78** Part 7 (revision 59) RULED it and
+  // deliberately did not close it. What ships is: the premise stated as **Invariant R** (*records
+  // are replaced, never rewritten*) in `commit.ts`'s header, the DOOR half proved mechanically by
+  // a frozen-input census over every door, and the CALLER half left as a written invariant with a
+  // Phase 3 trigger (option 1, a production deep-freeze, is refused with its reasons). So the
+  // behaviour below is the ruling's own accepted residue and belongs on the `gap` channel, not the
+  // `FAIL` one — it is re-asserted here so that a future round which closes the caller half sees
+  // this line change, and so that the residue is measured rather than remembered.
+  if (r.verdict === 'UNOPENABLE') {
+    gap('A1  a booking mutated in place, then ANY door: still UNOPENABLE — A-78 Part 7\'s caller half', r.detail);
+  } else {
+    ok('A1  the caller half of Invariant R is now enforced somewhere', true, r.verdict);
+  }
   note('A1a what the oracle says', `${r.verdict} — ${r.detail ?? ''}`);
 
   let t2 = core.addStop(mk(), sched(mk()), { name: 'Belvedere', category: 'sight' }, CTX());
   t2 = core.addStop(t2, { kind: 'scheduled', dayId: '2026-08-07', time: null, order: 0 }, { name: 'B', category: 'sight' }, CTX());
   t2.days[0].stops[0].category = 'nonsense';
   const r2 = census('A2', () => core.setDayMeta(t2, '2026-08-08', { title: 'x' }));
-  ok('A2  a stop mutated in place, then an edit on ANOTHER day', r2.verdict !== 'UNOPENABLE',
-    `${r2.verdict} ${r2.detail ?? ''}`);
+  if (r2.verdict === 'UNOPENABLE') gap('A2  a stop mutated in place, then an edit on ANOTHER day — same residue', r2.detail);
+  else ok('A2  the caller half of Invariant R is now enforced at `day.stops`', true, r2.verdict);
 
   // The same shape one level up: the day itself.
   const t3 = core.addStop(mk(), sched(mk()), { name: 'S', category: 'sight' }, CTX());
   t3.days[0].primaryCity = 42;
   const r3 = census('A3', () => core.setTripMeta(t3, { title: 'y' }));
-  ok('A3  a day mutated in place, then setTripMeta', r3.verdict !== 'UNOPENABLE', `${r3.verdict} ${r3.detail ?? ''}`);
+  if (r3.verdict === 'UNOPENABLE') gap('A3  a day mutated in place, then setTripMeta — same residue', r3.detail);
+  else ok('A3  the caller half of Invariant R is now enforced at `days`', true, r3.verdict);
+
+  // **ADDED BY QA ROUND 57 (R57-3).** The ARRAY arm of the same premise, which Invariant R's text
+  // does NOT cover: its record list is City/Place/Day/Stop/Booking/PhotoAsset/Participant/
+  // ConflictResolution "and any object nested inside one", and a `Trip`'s own collection arrays are
+  // not records. Nothing is mutated here — an unparsed record object is APPENDED to a committed
+  // array, and `commitList`'s index-aligned test then reads `aligned === after` and skips it.
+  const t5 = core.upsertBooking(mk(), bk());
+  t5.bookings.push(bk({ id: 'bk-2', kind: 'teleport' }));
+  const r5 = census('A5', () => core.setTripMeta(t5, { title: 'z' }));
+  if (r5.verdict === 'UNOPENABLE') {
+    gap('A5  a record APPENDED to a committed array is never parsed — Invariant R is silent on arrays (R57-3)', r5.detail);
+  } else {
+    ok('A5  the array arm of Invariant R is enforced', true, r5.verdict);
+  }
 
   // Vacuity control: the SAME poisoned value written as a NEW object IS caught. If this fails the
   // three above prove nothing.
@@ -164,9 +190,21 @@ section('B — the classifier\'s scope: which functions the compiler counts as d
   // Not a FAIL: this door is not in the tree. It is the harm a censused file WOULD ship, and the
   // census result itself is `r56-census.sh`'s, run against tsc.
   note('B1  the harm a `(t: Trip) => Trip | null` door would write', `${r.verdict} — ${r.detail ?? ''}`);
-  gap('B1a the classifier cannot see that signature',
-    'ReturnsTrip is an EXACT match both ways, so `Trip | null` and `Promise<Trip>` are not doors — and a Phase 3 ingest worker is async by construction. R56-2');
-  note('B1b the census result itself', 'bash qa/r56-census.sh — 12 injected doors, 4 evade `npm run typecheck` AND the module census');
+  // **RE-CUT BY QA ROUND 57.** R56-2 was ruled and built: §2.1 **A-78** Part 2 widens the
+  // classifier to `IsDoor<F> = IsExact<Exclude<Awaited<R>, null | undefined>, Trip>`, so `Trip`,
+  // `Trip | null`, `Promise<Trip>` and `Promise<Trip | null>` are all doors, and `Trip | Day` is
+  // refused MECHANICALLY by a second census line. The gap becomes the source assertion that the
+  // widening is really there, in the order the ruling says is load-bearing.
+  const censusRaw = readFileSync(resolve(CAIRN, 'packages/core/test/storable.test.ts'), 'utf8');
+  // Comments stripped: the docstring PRINTS the wrong order as the thing not to write.
+  const censusSrc = censusRaw.replace(/\/\*[\s\S]*?\*\//g, ' ').split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n');
+  ok('B1a the classifier admits `Trip | null` and a `Promise` of either (R56-2 closed)',
+    /Exclude<Awaited<R>, null \| undefined>/.test(censusSrc) && /IsDoor<F> = IsExact<TripishReturn<F>, Trip>/.test(censusSrc));
+  ok('B1a2 ...in the order A-78 Part 2 calls load-bearing, not `Awaited<Exclude<…>>`',
+    !/Awaited<Exclude</.test(censusSrc));
+  ok('B1a3 ...and the illegal-shape line refuses a `Trip | Day` union mechanically',
+    /const ILLEGAL_SHAPE_CENSUS: IsExact<AllIllegal, never> = true/.test(censusSrc));
+  note('B1b the census result itself', 'bash qa/r57-doorforms.sh and qa/r57-kd106.sh — the four rows that evaded at 97f1fc1 all redden now; SEVEN NEW declaration forms do not (R57-1)');
   // CONTROL: written `(t: Trip) => Trip`, the identical body IS a door and IS caught by the
   // compiler — so R56-2 is about the signature and nothing else.
   ok('B1c CONTROL: the same body returning `Trip` is refused when routed through commit',
@@ -399,18 +437,35 @@ section('G — setDayMeta\'s new allowlist, attacked with every key-smuggling sh
   ok('G3  a symbol-keyed patch key cannot reach a parsed field', rs.verdict === 'clean' && rs.doc.days[1].stops.length === 0, rs.verdict);
 
   // CONTROL: the legal keys still work, so G1 is not vacuously green.
+  // **RE-CUT BY QA ROUND 57**, at both lines, for one ruling: §2.1 **A-78** Part 5 (R56-7) takes
+  // `provenance` OUT of `DayMetaPatch`'s `Pick` and out of `DAY_META_PATCH_KEYS`, and puts it into
+  // `FORBIDDEN_DAY_META_PATCH_KEYS` with `updateStop`'s reason verbatim — *"provenance turns a
+  // system suggestion into the user's own plan"*. So the control's key list loses `provenance`, and
+  // gains the assertion that it is now REFUSED with the stop door's own sentence.
   ok('G4  CONTROL: every legal DayMetaPatch key is still accepted',
     threw(() => core.setDayMeta(t, '2026-08-08', {
-      primaryCity: 'v', cities: ['v'], title: 'A', subtitle: 'B', legacyFlag: true, tzId: 'Europe/Vienna', provenance: PROV,
+      primaryCity: 'v', cities: ['v'], title: 'A', subtitle: 'B', legacyFlag: true, tzId: 'Europe/Vienna',
     })) === null);
-  // The runtime allowlist is a SECOND COPY of `DayMetaPatch`'s Pick, hand-maintained.
+  const provE = threw(() => core.setDayMeta(t, '2026-08-08', { provenance: PROV }));
+  ok('G4a ...and `provenance` is now refused, with updateStop\'s reason verbatim (A-78 Part 5)',
+    provE !== null && /acceptCandidate/.test(provE.message) && /rejectCandidate/.test(provE.message),
+    provE ? provE.message.slice(0, 100) : 'ACCEPTED');
+  // The runtime allowlist WAS a hand-maintained second copy of the `Pick`; R56-6's fix pinned it to
+  // the type (`Record<keyof DayMetaPatch, true>`), so the compiler now holds the two together and
+  // this line reads the new shape rather than the old array literal.
   const daysSrc = readFileSync(resolve(CAIRN, 'packages/core/src/build/days.ts'), 'utf8');
   const pick = (daysSrc.match(/DayMetaPatch = Partial<Pick<Day, ([^>]*)>>/) || [])[1] || '';
   const picked = [...pick.matchAll(/'(\w+)'/g)].map((m) => m[1]).sort();
-  const listed = [...(daysSrc.match(/DAY_META_PATCH_KEYS: readonly string\[\] = \[([^\]]*)\]/s) || ['', ''])[1].matchAll(/'(\w+)'/g)].map((m) => m[1]).sort();
+  const listedBlock = (daysSrc.match(/DAY_META_PATCH_KEYS: Record<keyof DayMetaPatch, true> = \{([^}]*)\}/s) || ['', ''])[1];
+  const listed = [...listedBlock.matchAll(/(\w+):\s*true/g)].map((m) => m[1]).sort();
   ok('G5  the runtime allowlist and the compile-time Pick agree TODAY', JSON.stringify(picked) === JSON.stringify(listed), { picked, listed });
-  gap('G5a nothing pins them together', 'a field added to DayMetaPatch and not to DAY_META_PATCH_KEYS is silently unpatchable — R56-6');
-  gap('G5b `provenance` is patchable on a Day', 'updateStop forbids it by name (§5.1, "never present a suggestion as the user\'s own plan"); setDayMeta allows it because DayMetaPatch picks it — R56-7');
+  ok('G5a ...and `provenance` is in neither', !picked.includes('provenance') && !listed.includes('provenance'), { picked, listed });
+  // **RE-CUT BY QA ROUND 57** — both gaps were ruled and built. R56-6's fix (commit `ba6f1e9`)
+  // pins the constant to the type; R56-7 / A-78 Part 5 takes `provenance` out of the `Pick`.
+  ok('G5a the constant is pinned to the type, so the two cannot drift (R56-6 closed)',
+    /DAY_META_PATCH_KEYS: Record<keyof DayMetaPatch, true>/.test(daysSrc));
+  ok('G5b `provenance` is forbidden on a Day patch by name, as it is on a stop (R56-7 closed)',
+    /FORBIDDEN_DAY_META_PATCH_KEYS[\s\S]{0,400}provenance/.test(daysSrc));
 }
 
 // =================================================================================================
@@ -448,14 +503,38 @@ section('H — the envelope: shape, schemaVersion, and KD-101 / KD-104 measured'
   // KD-104, measured rather than argued: what a `*Patch` key present with `undefined` now does.
   const monthTrip = mk({ datePrecision: 'month' });
   ok('H5  the base trip really is month-precision', monthTrip.datePrecision === 'month');
-  const patched = core.setTripMeta(monthTrip, { datePrecision: undefined });
-  note('H5a setTripMeta({datePrecision: undefined}) on a month trip', patched.datePrecision);
-  gap('H5b a stated precision is silently reset to the default',
-    'no document becomes unopenable, but the user\'s "I only know the month" becomes "exact" with no refusal and no notice. Every other patch door refuses a present-but-undefined key — R56-5');
-  for (const [label, key] of [['ownerId', 'ownerId'], ['homeBase', 'homeBase'], ['title', 'title'], ['party', 'party'], ['homeCurrency', 'homeCurrency']]) {
-    const r = census(label, () => core.setTripMeta(monthTrip, { [key]: undefined }));
-    note(`H5c setTripMeta({${label}: undefined})`, r.verdict === 'clean' ? `accepted → ${JSON.stringify(r.doc[key])}` : r.verdict);
-  }
+  // **RE-CUT BY QA ROUND 57.** These three lines are the ones that MEASURED R56-5, and their
+  // verdict has changed by ruling rather than by regression: §2.1 **A-78** Part 4 (revision 59,
+  // ROADMAP I-17) gives `setTripMeta` an `assertPatchable` on `setDayMeta`'s model, refusing (a) a
+  // key outside `TripMetaPatch`'s `Pick` and (b) any key of it PRESENT with the value `undefined`.
+  // So the old `gap` is gone and what replaces it asserts the NEW correct behaviour — including
+  // the half the old lines only `note`d, which is that the tolerance hole was never about
+  // `datePrecision` alone but about every field with a parser default.
+  const undef = threw(() => core.setTripMeta(monthTrip, { datePrecision: undefined }));
+  ok('H5a setTripMeta({datePrecision: undefined}) is REFUSED (was: silently wrote `exact`)', undef !== null,
+    'R56-5 has regressed — a stated precision is being reset with no refusal and no notice');
+  ok('H5b ...with A-78 Part 4 clause (b)\'s reason, and it is a plain Error',
+    undef !== null && undef instanceof Error && !(undef instanceof core.TripParseError)
+      && /may not be patched to `undefined`/.test(undef.message) && /omit the key/.test(undef.message),
+    undef && undef.message.slice(0, 110));
+  ok('H5b2 ...and the trip the caller still holds reads `month`', monthTrip.datePrecision === 'month');
+  // Clause (b) is a FAMILY rule, not a guard for one field: every field with a parser tolerance is
+  // a hole of the same shape. All ten keys of the `Pick`, both directions.
+  const TEN = ['title', 'startDate', 'endDate', 'datePrecision', 'homeCurrency', 'homeBase', 'party', 'cities', 'ownerId', 'meta'];
+  const accepted = TEN.filter((k) => threw(() => core.setTripMeta(monthTrip, { [k]: undefined })) === null);
+  ok('H5c all ten TripMetaPatch keys are refused when present with `undefined`', accepted.length === 0, accepted);
+  // Clause (a), and the vacuity control that a REAL value still goes through.
+  const outside = threw(() => core.setTripMeta(monthTrip, { revision: 99 }));
+  ok('H5d a key outside the `Pick` is refused by name', outside !== null && /not a field of TripMetaPatch/.test(outside.message),
+    outside && outside.message.slice(0, 90));
+  ok('H5e control — a real value is still accepted at every one of the ten keys',
+    core.setTripMeta(monthTrip, { datePrecision: 'exact' }).datePrecision === 'exact'
+      && core.setTripMeta(monthTrip, { title: 'Renamed' }).title === 'Renamed');
+  // The `cities` `Array.isArray` half A-78 Part 4 keeps: the one shape `commit`'s per-collection
+  // walk cannot see, because it walks a collection rather than parsing the `Trip` whole.
+  const nonArray = threw(() => core.setTripMeta(monthTrip, { cities: 'nope' }));
+  ok('H5f the `cities` Array.isArray check survives beside the new allowlist',
+    nonArray !== null && /must be an array/.test(nonArray.message), nonArray && nonArray.message.slice(0, 80));
 }
 
 // =================================================================================================
@@ -496,8 +575,16 @@ section('I — cost, measured independently, plus the worst case the builder did
   const first = curve[1], last = curve[curve.length - 1];
   const growth = last.addStop / Math.max(first.addStop, 1e-9);
   const stopRatio = last.stops / Math.max(first.stops, 1);
-  ok('I3a addStop is linear in what the door WROTE, not in the whole document', growth < stopRatio / 2,
+  // **RE-CUT BY QA ROUND 57.** This line asserted A-77 Part 9's sentence, which §2.1 **A-78**
+  // Part 6 (R56-9) has since STRUCK: *"the pointer comparisons … allocate nothing"* is false and
+  // the ruling replaces it with a measured bound rather than rebuilding the mechanism —
+  // *"a door that appends to a collection pays one allocation linear in that collection"*, with a
+  // stated **reopening trigger** of any door above **10 ms** on a document inside A-35's cap. So
+  // what is asserted is the bound that now stands, and the trigger, instead of the withdrawn claim.
+  note('I3a addStop IS linear in the collection, per A-78 Part 6\'s corrected bound',
     `${stopRatio.toFixed(0)}× the stops → ${growth.toFixed(1)}× the time`);
+  ok('I3a2 and A-78 Part 6\'s reopening trigger is NOT tripped: no door above 10 ms inside A-35\'s cap',
+    last.addStop < 10 && last.setDayMeta < 10, curve);
   ok('I3b setDayMeta (which mints no stop, so builds no identity Set) really is flat',
     last.setDayMeta < first.setDayMeta * 4, curve.map((x) => x.setDayMeta));
   note('I3c root cause', 'commit.ts:152 lazySet spans every day stop AND the pool; commitList calls it the first time any slot fails the index-aligned test, which an append at a day\'s tail always does');
@@ -543,8 +630,19 @@ section('J — the two kept guards, their ordering, and assertStorable\'s single
     if (guard !== parses) disagree.push(v);
   }
   note('J2c isIsoDate vs the parser over 19 values', disagree.length === 0 ? 'identical verdicts, 19/19' : JSON.stringify(disagree));
-  gap('J2d A-77 Part 4\'s reason for KEEPING isIsoDate is false against the code',
-    '§2.9 A-45 made the parser calendar-checking at all five date sites; measured, the two predicates agree on every value, and ensureDays refuses a calendar-invalid range through `commit` with or without the guard. By A-77\'s own R16-2 test this is one property with two guards — R56-3');
+  // **RE-CUT BY QA ROUND 57.** R56-3 was ruled and built: §2.1 **A-78** Part 3 DELETES `isIsoDate`
+  // at both trip doors (`isIsoDate` itself is untouched and still has seven callers). What the gap
+  // becomes is the assertion that the deletion happened AND that the caller now reads the parser's
+  // own sentence — including KD-108's ordering, which is what makes that sentence the one that wins.
+  const ctSrc = readFileSync(resolve(CAIRN, 'packages/core/src/build/createTrip.ts'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, ' ').split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n');
+  ok('J2d `isIsoDate` is deleted at both trip doors and the import with it (R56-3 closed)', !/isIsoDate/.test(ctSrc));
+  ok('J2d2 ...and a mistyped month is answered by the PARSER, naming `$.startDate`',
+    roll !== null && /expected a real calendar date in YYYY-MM-DD/.test(roll.message) && roll.message.includes('$.startDate'),
+    roll && roll.message.slice(0, 110));
+  ok('J2d3 ...with neither A-35\'s span cap nor the ordering check pre-empting it (KD-108)',
+    roll !== null && !/would cover/.test(roll.message) && !/precedes startDate/.test(roll.message),
+    roll && roll.message.slice(0, 110));
 
   // A-77 Part 4: after this ruling `build/` holds exactly TWO guards that are not the parser.
   const files = ['bookings', 'candidates', 'commit', 'copyStop', 'createTrip', 'days', 'participants', 'photos', 'pool', 'redactText', 'stops', 'storable'];

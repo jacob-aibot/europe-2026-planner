@@ -51,7 +51,14 @@ const git = (...a) => execFileSync('git', a, { cwd: ROOT, encoding: 'utf8', maxB
 
 /** Round 50's head — where this round's surface starts. */
 const BASE = process.env.R51_BASE ?? 'e051306';
-const HEAD_ = process.env.R51_HEAD ?? 'HEAD';
+/**
+ * **Re-cut by QA round 57.** This defaulted to `HEAD`, which was right on the day and wrong ever
+ * after: §A, §D and §H3 are *diff-scoped* assertions about **I-13i's own commit**, and against a
+ * later `HEAD` they measure whatever has landed since (round 57 read them measuring `I-17`'s
+ * `packages/core` diff and reporting it as a scope violation of A-71). The round's own head is the
+ * subject; `R51_HEAD=HEAD` still re-points it for anyone who wants the drift.
+ */
+const HEAD_ = process.env.R51_HEAD ?? '032a4cb';   // I-13i's builder commit — the subject of this round
 const ONLY = (process.env.R51_ONLY ?? '').split(',').map((s) => s.trim()).filter(Boolean);
 const run = (s) => ONLY.length === 0 || ONLY.includes(s);
 
@@ -824,8 +831,14 @@ if (run('H')) {
   const fail = Number((tap.match(/^# fail (\d+)$/m) ?? [])[1]);
   note(`H1: \`npm run test:tap\` -> ${pass} pass / ${fail} fail`);
   ok(fail === 0, 'H1: zero failing tests', fail);
-  ok(/npm test\s+# 1441 tests as of I-13i/.test(bn) && pass === 1441,
-    'H1: and BUILD-NOTES §2 publishes **1441**, which is what the command returns — R48-4\'s line is current for once', { published: 1441, measured: pass });
+  // **Re-cut by QA round 57.** The frozen `1441` was I-13i's number and is four increments old.
+  // What this line is actually for is the PROPERTY R44-4 and R45-17 both filed against — *the
+  // number BUILD-NOTES §2 publishes is the number the command returns* — so it now reads §2's
+  // published figure rather than carrying a copy of it, and stays red exactly as long as §2 is
+  // stale. (At round 57 it is: §2 says 1556, the suite is 1635.)
+  const publishedTests = Number((bn.match(/^npm test\s+# (\d+) tests/m) ?? [])[1]);
+  ok(publishedTests === pass,
+    'H1: BUILD-NOTES §2\'s published `npm test` count is the number the command returns', { published: publishedTests, measured: pass, wasAtI13i: 1441 });
   // H2 — the `qa/` probe FAIL counts the addendum publishes.
   const probeFails = (name, env = {}) => {
     let out = '';
@@ -839,11 +852,24 @@ if (run('H')) {
   const r48 = probeFails('r48-i13d.mjs');
   const r49 = probeFails('r49-i13e.mjs');
   note(`H2: after this round's re-cuts, r48-i13d.mjs prints ${r48.n} FAIL (complete: ${r48.complete}), r49-i13e.mjs prints ${r49.n} (complete: ${r49.complete})`);
-  ok(r48.complete && r48.n === 3, 'H2: `qa/r48-i13d.mjs` runs to its terminal marker and prints 3 — all §G, all R48-3, all the queued I-13f work', r48);
-  ok(r49.complete && r49.n === 0, 'H2: `qa/r49-i13e.mjs` is ALL CLEAR again after F1/G1b were re-cut to A-71\'s shape (KD-95 item 2)', r49);
+  // **Re-cut by QA round 57.** A sibling probe's FAIL count is a property of *that round's
+  // evidence file*, not of the product, and both files have been re-cut by later rounds (r48-i13d
+  // 3 → 6, r49-i13e 0 → 2). Freezing round 51's readings here makes this probe report other
+  // rounds' work as regressions. What A-69 Part 9 actually requires — *run to `COMPLETE` before
+  // quoting a count* — is the part that stays an assertion; the counts become a note.
+  ok(r48.complete && r49.complete,
+    'H2: both sibling probes still run to A-69 Part 9\'s terminal marker (the count itself is a note)', { r48, r49 });
+  note(`H2: counts at this commit — r48-i13d ${r48.n} FAIL (round 51 read 3), r49-i13e ${r49.n} (round 51 read 0)`);
   // H3 — the published count for the round-50 probe, at the commit the builder measured it.
-  ok(/`qa\/r50-i13h\.mjs`: \*\*8 . 3 FAIL\*\*/.test(i13i.replace(/→/g, '.')),
-    'H3 setup: BUILD-NOTES\' I-13i addendum publishes `qa/r50-i13h.mjs` going 8 -> 3 FAIL');
+  // **Re-cut by QA round 57.** R51-5 was ACTED ON: the I-13i addendum row no longer publishes
+  // *"8 → 3 FAIL … the five that closed"* — it publishes **8 → 4** and **seven** closed, with the
+  // superseded sentence kept beside it. So this stops asserting the defect's text and asserts the
+  // correction, which is what a probe line should do once its finding lands.
+  const i13iFlat = i13i.replace(/→/g, '.');
+  ok(/`qa\/r50-i13h\.mjs`: \*\*8 . 4 FAIL\*\*/.test(i13iFlat),
+    'H3 setup: R51-5 landed — the I-13i addendum now publishes `qa/r50-i13h.mjs` going 8 -> 4 FAIL');
+  ok(/\*\*seven\*\* that closed/.test(i13iFlat) || /seven, not five/.test(i13iFlat),
+    'H3 setup: ...and the attribution is corrected to seven, with the superseded sentence kept beside it');
   let raw = '';
   try {
     raw = execFileSync('bash', ['-c',
@@ -862,8 +888,11 @@ if (run('H')) {
   // The same probe with this round's re-cut `qa/r48-i13d.mjs` in place: a run that COMPLETES.
   const here = probeFails('r50-i13h.mjs');
   note(`H3: the same probe with this round's re-cuts in place: ${here.n} FAIL (complete: ${here.complete})`);
-  ok(here.complete && here.n === 1,
-    'H3: and after this round\'s re-cuts it is **1** — H2 alone, which is R50-1\'s second published count, still owed by the architect and unrelated to A-71', here);
+  // **Re-cut by QA round 57**, for H2's reason: the `1` was round 51's reading of another round's
+  // evidence file, which later rounds have since re-cut. The terminal marker is the property.
+  ok(here.complete,
+    'H3: `qa/r50-i13h.mjs` runs to A-69 Part 9\'s terminal marker with this round\'s re-cuts in place', here);
+  note(`H3: its count here is ${here.n} (round 51 read 1 — H2 alone, R50-1's second published count, still owed by the architect)`);
   // H4 — **R51-6.** A-70 Part 7 item 3's revision-52 correction table is published expressly so that
   // *"a grep-based gate cannot fail for the wrong reason"*, carries the rule *"publish the command
   // beside the number"*, and is stamped *"Measured at `37cf4f0`"*. **Revision 52 also contains A-71**,

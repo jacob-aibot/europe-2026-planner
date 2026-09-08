@@ -19,6 +19,63 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
+> **🟧 THE CHECK NOW SEARCHES THE WHOLE ENGINE — AND STILL ONLY RECOGNISES ONE *SHAPE* OF DOOR.
+> As of 2026-09-08, this block is the newest and it supersedes every block below it, including the
+> tester's previous report.** Nothing on your phone changes.
+>
+> **What was built, and the part of it that worked is the bigger part.** Last round the standing
+> check looked in **one folder plus one file named by hand**. It now reads **the whole engine** —
+> every one of the 54 source files, with no exclusions — and the list of files is itself checked
+> against the folder on every test run, so it cannot quietly fall behind. Four smaller things rode
+> along: a duplicated date check was deleted so a mistyped date now gets the *reader's* own clear
+> message; a patch that silently reset "I only know the month" back to "exact" is now refused;
+> "who planned this day" can no longer be rewritten by an ordinary edit (it never could be for a
+> *stop* — the day now matches); and the rule the whole mechanism rests on — *changing something
+> makes a new copy, it never edits the old one in place* — is written down for the first time and
+> proved by a test that freezes a trip solid and checks every door still works. All **1,635**
+> automated checks pass.
+>
+> **The tester tried to widen the search and could not.** A door in a brand-new file: caught. In a
+> brand-new folder: caught. In the machine-generated country data: caught. Borrowed in from the
+> phone-app half of the code, or from outside the engine entirely: **caught** — that was the
+> smuggling route this round was sent to find, and it is closed. A second door with the same name
+> as an existing one: caught. **The search area really is closed now**, and that was the designer's
+> main claim.
+>
+> **What sends it back is that the search area is closed and the *recognition* is not.** The check
+> recognises a door by asking the compiler *"does this return a trip?"* — but it only ever asks
+> that of a plain, standalone function. The tester wrote the same door **seven other ordinary
+> ways** — as a method on a class, as a method on a plain object, as something handed back by
+> another function, and four more — and **every one of them was invisible**, in a file the check
+> reads, in a folder it reads. One of them is written with the exact same keyword the designer's
+> own test case uses. And **two of these are not hypothetical**: the ten "conflict rules" in the
+> engine are already written in one of the invisible shapes today, so the day one of them gains a
+> "fix this for me" button, it is an unguarded door and nothing says so. The tester reproduced the
+> full harm: a trip saved, and never openable again, with every automated check green.
+>
+> **The other one worth knowing.** The designer left exactly one place where a person's judgement
+> can still hide a door — a three-name list of "these aren't doors, they're something else" — and
+> guarded it by making a **fourth** name set off an alarm. The tester got a door in there **without
+> the list ever reaching four**, by removing a name that turned out to be doing nothing, and then
+> broke that door's safety check with nothing going red anywhere.
+>
+> **Nothing is broken today.** Every door that exists in the engine right now is written in the
+> plain shape the check does recognise — the tester checked every one of the 35 places in the
+> engine that hand back a trip. Both findings are
+> about the **promise**, not about your trips.
+>
+> **Four smaller things**, all minor, each with a way to reproduce it: a published test count that
+> is 79 behind; a comment at the top of the check that describes an equation the code below it
+> deliberately does not use; a half-finished piece of future-proofing for a feature the email-
+> scanning phase will need; and the rule about "never edit in place" being written for the
+> *records* but not for the *lists* that hold them — which the tester showed still loses a trip.
+>
+> **What happens next.** The tester's verdict is **send back to the designer** — for the fourth
+> time on this one problem, and the honest reading is that the designer's argument (*"there is no
+> wider place left to look"*) is **right**, and that the next face of the problem went **inward**
+> rather than outward. **Zero blockers.** The manager's **SHIP / SEND BACK** decision for the whole
+> of Phase 2 still comes next.
+
 > **🟧 THE DOORS ARE CLOSED — BUT THE LIST OF *WHERE THE DOORS ARE* IS STILL WRITTEN BY HAND.
 > As of 2026-09-08, this block is the newest and it supersedes every block below it, including the
 > tester's previous report and the designer's answer to it.** Nothing on your phone changes.

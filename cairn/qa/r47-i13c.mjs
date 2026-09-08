@@ -163,7 +163,13 @@ head('§A — the fences over `7cb5965..HEAD`, and the numbers BUILD-NOTES publi
   // Core's runtime export surface has not moved: A-65 and A-66 both rule "no new anything".
   const exportCount = Object.keys(core).filter((k) => typeof core[k] !== 'undefined').length;
   note(`core's runtime export surface: ${exportCount}`);
-  ok(core.SCHEMA_VERSION === 2, '`SCHEMA_VERSION` is still 2 — A-65 and A-66 move no schema', core.SCHEMA_VERSION);
+  // **Re-cut by QA round 57.** This line pinned `SCHEMA_VERSION === 2` on A-65/A-66's *"no new
+  // anything"*, which was right when it was written. §8.3 **A-72** (revision 54, ROADMAP I-9a) then
+  // moved the schema to **3** deliberately, because `participants` became records. The pin was
+  // measuring a number that had been superseded by a ruling, not a regression — so it now pins the
+  // ruled value, and the property this section actually cares about (*this increment moves no
+  // schema*) is expressed as "whatever the model says, the golden fixtures agree".
+  ok(core.SCHEMA_VERSION === 3, '`SCHEMA_VERSION` is 3 — A-72 moved it for `participants`; A-65/A-66 moved nothing', core.SCHEMA_VERSION);
 
   if (process.argv.includes('--fast')) {
     note('suite measurement skipped (--fast). `npm run test:tap | grep \'^# pass\'` is the check.');
