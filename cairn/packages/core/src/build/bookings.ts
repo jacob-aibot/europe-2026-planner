@@ -8,15 +8,16 @@
 import type { Booking, Stop, Trip } from '../model/types.ts';
 import type { BookingId, StopId } from '../model/ids.ts';
 import { findStop } from './stops.ts';
-import { assertStorable } from './storable.ts';
+import { commit } from './commit.ts';
 
 /**
  * Inserts or replaces a booking by id. Pure.
  *
- * §2.1 **A-76**: the `Booking` goes to `parseBooking` — `fromJSON`'s own — before it is committed.
- * That is round 54's census #7 (`kind`) and #8 (`status`), **and** the ninth case the census
- * excluded: a booking with no `startsAt` used to be a document `toJSON` could not serialise at
- * all, and is now a refusal at the door.
+ * §2.1 **A-77**: it returns through `commit`, which sees a new record in `bookings` and hands it to
+ * `parseBooking`. That is round 54's census #7 (`kind`) and #8 (`status`), the ninth case the
+ * census excluded (no `startsAt` — a document `toJSON` could not serialise at all), and R55-5: the
+ * booking the document holds afterwards is **the parser's**, so a caller that keeps a reference to
+ * the object it passed in is holding an object the document no longer contains.
  *
  * @throws {Error} if the booking has no id, or is one `fromJSON` would refuse — programmer error
  *         per §2.1, and the difference between a refusal here and a saved document that can never
@@ -24,22 +25,22 @@ import { assertStorable } from './storable.ts';
  */
 export function upsertBooking(trip: Trip, booking: Booking): Trip {
   if (!booking.id) throw new Error('upsertBooking: booking.id is required');
-  assertStorable('upsertBooking', 'booking', booking);
   const i = trip.bookings.findIndex((b) => b.id === booking.id);
   const bookings = trip.bookings.slice();
   if (i < 0) bookings.push(booking);
   else bookings[i] = booking;
-  return { ...trip, bookings, revision: trip.revision + 1 };
+  return commit('upsertBooking', trip, { ...trip, bookings, revision: trip.revision + 1 });
 }
 
 /**
  * Records that `newId` supersedes `oldId` — the Smartwings reissue case.
  * Both bookings stay in the trip; the older one is marked, never deleted. Pure.
  *
- * **Exempt from §2.1 A-76's door check, by Part 5's table**: it writes a field of a booking that is
- * already in the trip, from a value core itself chose (`'superseded'`, and an id checked for
- * existence). No caller value reaches a record field.
- * @throws {Error} if either booking is missing.
+ * §2.1 **A-77**: A-76 exempted this door — *"it writes a field of a booking already in the trip,
+ * from a value core itself chose"* — and `commit` has no exemptions. It rewrites two bookings into
+ * **new objects**, so both are parsed, and the door says nothing about it.
+ * @throws {Error} if either booking is missing, or if a rewritten booking is one `fromJSON` would
+ *         refuse — programmer error per §2.1.
  */
 export function supersedeBooking(trip: Trip, oldId: BookingId, newId: BookingId): Trip {
   const oldB = trip.bookings.find((b) => b.id === oldId);
@@ -48,15 +49,16 @@ export function supersedeBooking(trip: Trip, oldId: BookingId, newId: BookingId)
   const bookings = trip.bookings.map((b) =>
     b.id === oldId ? { ...b, status: 'superseded' as const } : b.id === newId ? { ...b, supersedesId: oldId } : b,
   );
-  return { ...trip, bookings, revision: trip.revision + 1 };
+  return commit('supersedeBooking', trip, { ...trip, bookings, revision: trip.revision + 1 });
 }
 
 /**
  * Links a stop to a booking (or clears the link with `null`). Pure.
  *
- * **Exempt from §2.1 A-76's door check, by Part 5's table**: `supersedeBooking`'s reason — the id
- * it writes is checked for existence in the trip first.
- * @throws {Error} if the stop or the booking does not exist.
+ * §2.1 **A-77**: A-76 exempted this door too. It rewrites the stop it links into a new object, so
+ * `commit` parses it — no exemption, no reason, no row.
+ * @throws {Error} if the stop or the booking does not exist, or if the rewritten stop is one
+ *         `fromJSON` would refuse — programmer error per §2.1.
  */
 export function linkBooking(trip: Trip, stopId: StopId, bookingId: BookingId | null): Trip {
   if (!findStop(trip, stopId)) throw new Error(`linkBooking: no such stop ${stopId}`);
@@ -68,7 +70,7 @@ export function linkBooking(trip: Trip, stopId: StopId, bookingId: BookingId | n
     stops: d.stops.map((s) => (s.id === stopId ? { ...s, bookingId } : s)),
   }));
   const pool = trip.pool.map((s) => (s.id === stopId ? { ...s, bookingId } : s));
-  return { ...trip, days, pool, revision: trip.revision + 1 };
+  return commit('linkBooking', trip, { ...trip, days, pool, revision: trip.revision + 1 });
 }
 
 /** Every stop linked to a booking. Pure. */

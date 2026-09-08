@@ -9,7 +9,7 @@
 import type { LatLng, PhotoAsset, PhotoAttachRef, PhotoDerivative, Provenance, Trip } from '../model/types.ts';
 import type { ClockTime, IsoDate, PhotoId } from '../model/ids.ts';
 import { userProvenance } from '../model/provenance.ts';
-import { assertStorable } from './storable.ts';
+import { commit } from './commit.ts';
 import type { BuildCtx } from './createTrip.ts';
 
 export type PhotoInit = {
@@ -39,13 +39,16 @@ export type PhotoInit = {
  * than a domain problem — so the deferral cannot be defeated by a caller who read the union and
  * not the ruling.
  *
- * **KEPT by §2.1 A-76 Part 4, necessarily, and it is the one guard in `build/` that is *not* a
- * second opinion.** A-76 deletes a door guard that asserts the same property the parser asserts;
+ * **KEPT by §2.1 A-77 Part 4** (as by A-76 Part 4 before it), and it is one of the **two** guards
+ * left in `build/` that are not the parser — the other is `createTrip.ts`'s `isIsoDate`. Both are
+ * named in the ruling so a future reader does not delete them as second opinions. A-76 deletes a
+ * door guard that asserts the same property the parser asserts;
  * this one asserts the **opposite** property. `parseAttach` **accepts** `kind:'place'` by design —
  * the union carries all four arms so that adding `place` is a build change and not a schema
  * change, and `fromJSON` round-trips a `place` attachment on purpose. So this is a deferral rather
  * than a shape, it is the one place a build door is legitimately stricter than the parser, and it
- * runs **first** in both doors below so the deferral's message is the one the caller sees.
+ * runs **before `commit`** in both doors below so the deferral's message is the one the caller
+ * sees rather than a storability refusal about some other field.
  */
 function assertBuiltAttach(where: string, attach: PhotoAttachRef): void {
   if (attach.kind === 'place') {
@@ -60,8 +63,8 @@ function assertBuiltAttach(where: string, attach: PhotoAttachRef): void {
 /**
  * Adds a photo. `attach` defaults to the trip — §8.6's honest "somewhere on this trip". Pure.
  *
- * §2.1 **A-76**: the built `PhotoAsset` goes to `parsePhoto` before it is committed, after
- * `assertBuiltAttach` has had its say.
+ * §2.1 **A-77**: it returns through `commit`, which sees a new record in `photos` and hands it to
+ * `parsePhoto` — after `assertBuiltAttach` has had its say.
  *
  * @throws {Error} if it attaches to a place (A-57 Part 3), or if the photo is one `fromJSON` would
  *         refuse — programmer error per §2.1.
@@ -89,8 +92,7 @@ export function addPhoto(trip: Trip, init: PhotoInit, ctx: BuildCtx): Trip {
     // was carried to avoid. `fromJSON` round-trips a candidate photo for the same reason.
     provenance: init.provenance ?? userProvenance(ctx.now, ctx.actorUserId ?? null),
   };
-  assertStorable('addPhoto', 'photo', photo);
-  return { ...trip, photos: [...trip.photos, photo], revision: trip.revision + 1 };
+  return commit('addPhoto', trip, { ...trip, photos: [...trip.photos, photo], revision: trip.revision + 1 });
 }
 
 export type PhotoPatch = {
@@ -148,7 +150,8 @@ function assertPatchable(patch: object): void {
 /**
  * Patches a photo's caption, coordinate, capture time or attachment. Pure.
  *
- * §2.1 **A-76**: the patched `PhotoAsset` goes to `parsePhoto` before it is committed.
+ * §2.1 **A-77**: it returns through `commit`, which hands the patched `PhotoAsset` to `parsePhoto`
+ * and stores what the parser built.
  *
  * @throws {Error} if no photo with that id exists, if the patch carries a forbidden key, if it
  *         attaches to a place (A-57 Part 3), or if the patched photo is one `fromJSON` would
@@ -160,15 +163,14 @@ export function updatePhoto(trip: Trip, photoId: PhotoId, patch: PhotoPatch): Tr
   const i = trip.photos.findIndex((p) => p.id === photoId);
   if (i < 0) throw new Error(`updatePhoto: no such photo ${photoId}`);
   const photos = trip.photos.slice();
-  const patched: PhotoAsset = { ...photos[i], ...patch };
-  assertStorable('updatePhoto', 'photo', patched);
-  photos[i] = patched;
-  return { ...trip, photos, revision: trip.revision + 1 };
+  photos[i] = { ...photos[i], ...patch };
+  return commit('updatePhoto', trip, { ...trip, photos, revision: trip.revision + 1 });
 }
 
 /**
- * Removes a photo's record. Pure. **Exempt from §2.1 A-76's door check, by Part 5's table**: it
- * removes. **The bytes are the caller's second step**, in that order:
+ * Removes a photo's record. Pure. It returns through `commit` like every other door (§2.1
+ * **A-77**); A-76 exempted it and `commit` has no exemptions.
+ * **The bytes are the caller's second step**, in that order:
  * §10.3's table puts the document write first for a delete, which is the inverse of import,
  * *"and for the same reason: the reachable-but-absent state is the safe one."*
  *
@@ -176,7 +178,8 @@ export function updatePhoto(trip: Trip, photoId: PhotoId, patch: PhotoPatch): Tr
  */
 export function removePhoto(trip: Trip, photoId: PhotoId): Trip {
   if (!trip.photos.some((p) => p.id === photoId)) throw new Error(`removePhoto: no such photo ${photoId}`);
-  return { ...trip, photos: trip.photos.filter((p) => p.id !== photoId), revision: trip.revision + 1 };
+  return commit('removePhoto', trip,
+    { ...trip, photos: trip.photos.filter((p) => p.id !== photoId), revision: trip.revision + 1 });
 }
 
 /**
@@ -195,8 +198,12 @@ export function removePhoto(trip: Trip, photoId: PhotoId): Trip {
  * `validateTrip`'s `photo_attach_dangling` is the other half and is not made redundant by this:
  * it reports the documents that never went through either action.
  *
- * **Exempt from §2.1 A-76's door check, by Part 5's table**: it rewrites `attach` to the literal
- * `{kind:'trip'}` and reads no caller value into a record field.
+ * §2.1 **A-77**: it is a door — it returns a `Trip` — so it returns through `commit`, which parses
+ * every `PhotoAsset` it rewrote. A-76 exempted it as *"it rewrites `attach` to the literal
+ * `{kind:'trip'}`"*, and `commit` has no exemptions: the rewritten record is a new object.
+ * **The same-reference contract is unaffected** — the `changed === false` return below happens
+ * before `commit` is reached, so the common path still allocates nothing and the client's derived
+ * cache (keyed on document identity, §4.2 rule 3) is not invalidated.
  */
 export function reattachDanglingPhotos(trip: Trip): Trip {
   if (trip.photos.length === 0) return trip;
@@ -218,5 +225,5 @@ export function reattachDanglingPhotos(trip: Trip): Trip {
     changed = true;
     return { ...p, attach: { kind: 'trip' as const } };
   });
-  return changed ? { ...trip, photos } : trip;
+  return changed ? commit('reattachDanglingPhotos', trip, { ...trip, photos }) : trip;
 }

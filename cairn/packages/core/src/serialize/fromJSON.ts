@@ -31,6 +31,16 @@ export { TripParseError };
 
 type Obj = Record<string, unknown>;
 
+/**
+ * A `Trip` with its eight record collections removed — everything `parseTripEnvelope` below owns.
+ * A **type**, so it does not count against §2.10's 86 runtime symbols, and it is not re-exported
+ * from `index.ts` either.
+ */
+export type TripEnvelope = Omit<
+  Trip,
+  'cities' | 'days' | 'pool' | 'places' | 'bookings' | 'photos' | 'participants' | 'resolutions'
+>;
+
 function obj(v: unknown, path: string): Obj {
   if (typeof v !== 'object' || v === null || Array.isArray(v)) throw new TripParseError('expected an object', path);
   return v as Obj;
@@ -522,7 +532,14 @@ function parseParticipants(v: unknown, path: string): Participant[] {
   return arr(v, path).map((p, i) => parseParticipant(p, `${path}[${i}]`));
 }
 
-function parseResolution(v: unknown, path: string): ConflictResolution {
+/**
+ * §2.1 **A-77** Part 3 rule 8 — the **eighth** record class, and the one A-76's census could not
+ * see: `conflict/resolve.ts`'s `resolveConflict` writes a caller's `ResolutionInit` straight into
+ * `trip.resolutions`, and `state`, `by` and `note` each produced a document that could never be
+ * re-opened. Exported for `build/storable.ts`, exactly as the seven above it are, and **not from
+ * `index.ts`** — §2.10's surface does not move.
+ */
+export function parseResolution(v: unknown, path: string): ConflictResolution {
   const o = obj(v, path);
   return {
     conflictId: str(o.conflictId, `${path}.conflictId`),
@@ -532,6 +549,78 @@ function parseResolution(v: unknown, path: string): ConflictResolution {
     ...(o.note !== undefined ? { note: str(o.note, `${path}.note`) } : {}),
     // Absent means a document written before §2.7's retirement rule — a live resolution.
     retiredAt: o.retiredAt === undefined || o.retiredAt === null ? null : str(o.retiredAt, `${path}.retiredAt`),
+  };
+}
+
+/**
+ * The trip's own scalars, as a **parseable unit** — §2.1 **A-77** Part 4.
+ *
+ * A-76 Part 2 said *"a trip-level scalar is not a record class and keeps its own guard"*, and that
+ * sentence is what R55-3's **eight** unguarded fields came out of: `createTrip` and `setTripMeta`
+ * wrote `title`, `homeCurrency`, `ownerId`, `party`, `meta` and `homeBase` with no check of any
+ * kind, and `createTrip({title: 42, …})` produced a document unopenable at `$.title`. A-77
+ * withdraws the sentence: the trip's scalars *are* a parseable unit — they are simply one
+ * `fromJSON` never factored out. This is that factoring, and it is a **pure refactor**: every line
+ * below was `fromJSON`'s, moved, with its tolerances verbatim (absent `ownerId` is `''`, absent
+ * `datePrecision` is `'exact'`, absent `homeBase` is `null`). The round-trip goldens are what
+ * prove it.
+ *
+ * It is **O(1)** — eleven fields, two of them two-key objects — which is why `build/commit.ts`
+ * can run it on every commit with no diff at all, and why `createTrip.ts`'s `assertDatePrecision`
+ * loses its premise (A-76 kept that guard as its one *efficiency* exception) and is deleted.
+ *
+ * It adds **one** check `fromJSON` does not have, and it can never fire through `fromJSON`:
+ * `schemaVersion` must equal `SCHEMA_VERSION`. `fromJSON` accepts older versions because
+ * `migrateDoc` runs in front of it and hands on a current-version object; a **door** may only ever
+ * produce a current-version document, and one that does not is a bug that would otherwise reach
+ * storage silently.
+ *
+ * Exported for `build/commit.ts` and **not from `index.ts`** — §2.10's surface does not move.
+ *
+ * Pure. @throws {TripParseError} always with the JSON path, like every other parser here.
+ */
+export function parseTripEnvelope(v: unknown, path: string): TripEnvelope {
+  const o = obj(v, path);
+  if (o.schemaVersion !== SCHEMA_VERSION) {
+    throw new TripParseError(
+      `expected schemaVersion ${SCHEMA_VERSION}, got ${JSON.stringify(o.schemaVersion) ?? String(o.schemaVersion)}`,
+      `${path}.schemaVersion`,
+    );
+  }
+  const party = obj(o.party, `${path}.party`);
+  return {
+    // R46-6: a trip id is refused for one character, U+0000 — see `tripId`.
+    id: tripId(o.id, `${path}.id`),
+    title: str(o.title, `${path}.title`),
+    // §2.14 rule 1 refuses a document whose owner is "neither the local user … nor absent",
+    // so ABSENT is an allowed input class and the parser may not refuse it before the
+    // ownership check can run (QA `qa/r2-import.mjs`). The parser does not invent an owner
+    // either: it cannot know who is signed in, and stamping `LOCAL_OWNER` on an ownerless
+    // file inside a pure function would make it the local user's silently. Absence is carried
+    // as `''`, which `validateTrip` already reports as `owner_missing`; `store.importDoc` —
+    // the layer that knows the local user — is where absence becomes ownership. BUILD-NOTES
+    // KD-40 records the reasoning; `store.ts`'s `importDoc` is the other half.
+    ownerId: o.ownerId === undefined || o.ownerId === null ? '' : str(o.ownerId, `${path}.ownerId`),
+    startDate: isoDate(o.startDate, `${path}.startDate`),
+    endDate: isoDate(o.endDate, `${path}.endDate`),
+    datePrecision: datePrecision(o.datePrecision, `${path}.datePrecision`),
+    homeCurrency: str(o.homeCurrency, `${path}.homeCurrency`),
+    // Absent means a document written before §2.13. `null` is a legal value, not a defect.
+    homeBase:
+      o.homeBase === null || o.homeBase === undefined
+        ? null
+        : (() => {
+            const h = obj(o.homeBase, `${path}.homeBase`);
+            const at = obj(h.at, `${path}.homeBase.at`);
+            return {
+              name: str(h.name, `${path}.homeBase.name`),
+              at: { lat: numOf(at.lat, `${path}.homeBase.at.lat`), lng: numOf(at.lng, `${path}.homeBase.at.lng`) },
+            };
+          })(),
+    party: { adults: numOf(party.adults, `${path}.party.adults`), children: numOf(party.children, `${path}.party.children`) },
+    revision: numOf(o.revision, `${path}.revision`),
+    schemaVersion: SCHEMA_VERSION,
+    ...(o.meta !== undefined ? { meta: obj(o.meta, `${path}.meta`) } : {}),
   };
 }
 
@@ -566,37 +655,12 @@ export function fromJSON(input: string | unknown): Trip {
   // Throws `TripParseError` at `$.schemaVersion` for a missing version, a version from the
   // future, and a version too old to have a path — all three of which used to be one message.
   const o = obj(migrateDoc(obj(raw, '$')), '$');
-  const party = obj(o.party, '$.party');
   return {
-    // R46-6: a trip id is refused for one character, U+0000 — see `tripId`.
-    id: tripId(o.id, '$.id'),
-    title: str(o.title, '$.title'),
-    // §2.14 rule 1 refuses a document whose owner is "neither the local user … nor absent",
-    // so ABSENT is an allowed input class and the parser may not refuse it before the
-    // ownership check can run (QA `qa/r2-import.mjs`). The parser does not invent an owner
-    // either: it cannot know who is signed in, and stamping `LOCAL_OWNER` on an ownerless
-    // file inside a pure function would make it the local user's silently. Absence is carried
-    // as `''`, which `validateTrip` already reports as `owner_missing`; `store.importDoc` —
-    // the layer that knows the local user — is where absence becomes ownership. BUILD-NOTES
-    // KD-40 records the reasoning; `store.ts`'s `importDoc` is the other half.
-    ownerId: o.ownerId === undefined || o.ownerId === null ? '' : str(o.ownerId, '$.ownerId'),
-    startDate: isoDate(o.startDate, '$.startDate'),
-    endDate: isoDate(o.endDate, '$.endDate'),
-    datePrecision: datePrecision(o.datePrecision, '$.datePrecision'),
-    homeCurrency: str(o.homeCurrency, '$.homeCurrency'),
-    // Absent means a document written before §2.13. `null` is a legal value, not a defect.
-    homeBase:
-      o.homeBase === null || o.homeBase === undefined
-        ? null
-        : (() => {
-            const h = obj(o.homeBase, '$.homeBase');
-            const at = obj(h.at, '$.homeBase.at');
-            return {
-              name: str(h.name, '$.homeBase.name'),
-              at: { lat: numOf(at.lat, '$.homeBase.at.lat'), lng: numOf(at.lng, '$.homeBase.at.lng') },
-            };
-          })(),
-    party: { adults: numOf(party.adults, '$.party.adults'), children: numOf(party.children, '$.party.children') },
+    // §2.1 **A-77** Part 4: the trip's own eleven scalars are one parseable unit and live in
+    // `parseTripEnvelope` above. Every tolerance moved verbatim; nothing about what `fromJSON`
+    // accepts changed, and the round-trip goldens are what prove it. `migrateDoc` has already run,
+    // so the envelope's `schemaVersion` check cannot fire on this path.
+    ...parseTripEnvelope(o, '$'),
     cities: arr(o.cities, '$.cities').map((c, i) => parseCity(c, `$.cities[${i}]`)),
     days: arr(o.days, '$.days').map((d, i) => parseDay(d, `$.days[${i}]`)),
     pool: arr(o.pool, '$.pool').map((s, i) => parseStop(s, `$.pool[${i}]`)),
@@ -618,9 +682,6 @@ export function fromJSON(input: string | unknown): Trip {
     // (A-73 — see `parseParticipants`).
     participants: o.participants === undefined ? [] : parseParticipants(o.participants, '$.participants'),
     resolutions: arr(o.resolutions, '$.resolutions').map((r, i) => parseResolution(r, `$.resolutions[${i}]`)),
-    revision: numOf(o.revision, '$.revision'),
-    schemaVersion: SCHEMA_VERSION,
-    ...(o.meta !== undefined ? { meta: obj(o.meta, '$.meta') } : {}),
   };
 }
 

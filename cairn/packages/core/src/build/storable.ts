@@ -41,16 +41,23 @@
  * is to move the seven parsers into `serialize/parseRecords.ts` and have both files import it —
  * **not** to copy a parser into `build/`.
  */
-import type { Booking, City, Day, Participant, PhotoAsset, Place, Stop } from '../model/types.ts';
+import type {
+  Booking, City, ConflictResolution, Day, Participant, PhotoAsset, Place, Stop,
+} from '../model/types.ts';
 import {
-  parseBooking, parseCity, parseDay, parseParticipant, parsePhoto, parsePlace, parseStop,
+  parseBooking, parseCity, parseDay, parseParticipant, parsePhoto, parsePlace, parseResolution,
+  parseStop,
 } from '../serialize/fromJSON.ts';
 import { TripParseError } from '../serialize/parseError.ts';
 
 /**
- * The record classes a build door can write. One arm per exported parser; adding an eighth record
- * class to `Trip` adds an arm here and a row to A-76 Part 5's table, and `test/storable.test.ts`'s
- * directory census is what makes forgetting the second one visible.
+ * The record classes a build door can write. One arm per exported parser; adding a **ninth**
+ * record class to `Trip` adds an arm here and a collection to `build/commit.ts`'s walk.
+ *
+ * **`resolution` is the eighth, and it is why A-77 exists** (Part 3 rule 8). A-76's map had seven
+ * arms and its census read `packages/core/src/build/*.ts`, so `conflict/resolve.ts`'s
+ * `resolveConflict` — a door in another directory, writing an eighth record class — was invisible
+ * to both. That is the case a table could not have found, and the reason the table is deleted.
  */
 type StorableMap = {
   stop: Stop;
@@ -60,6 +67,7 @@ type StorableMap = {
   booking: Booking;
   photo: PhotoAsset;
   participant: Participant;
+  resolution: ConflictResolution;
 };
 
 export type StorableKind = keyof StorableMap;
@@ -71,7 +79,7 @@ export type StorableOf<K extends StorableKind> = StorableMap[K];
  * point — A-76 Part 2 option 2 (one shared `field → allowed values` table) was refused precisely
  * because it re-declares in `build/` what `fromJSON` already declares.
  */
-const PARSERS: { [K in StorableKind]: (v: unknown, path: string) => unknown } = {
+const PARSERS: { [K in StorableKind]: (v: unknown, path: string) => StorableMap[K] } = {
   stop: parseStop,
   day: parseDay,
   city: parseCity,
@@ -79,36 +87,71 @@ const PARSERS: { [K in StorableKind]: (v: unknown, path: string) => unknown } = 
   booking: parseBooking,
   photo: parsePhoto,
   participant: parseParticipant,
+  resolution: parseResolution,
 };
 
 /**
- * Asserts that `record` is something this system could store and read back. Pure.
+ * The refusal, built once — shared by `assertStorable` below and by `build/commit.ts`'s
+ * unconditional envelope parse, which asks `parseTripEnvelope` rather than a per-record parser and
+ * would otherwise carry a second copy of this sentence.
+ *
+ * It is a **plain** `Error`, always, and never a `TripParseError`. That distinction is A-76 Part
+ * 3's one hard prohibition and it is not cosmetic: `TripParseError` means *this stored document is
+ * unopenable* to `store.ts` and to §2.9 **A-47**'s `noteOpenFailure`, so raising one from a build
+ * door would put a live, healthy document into the unreadable-row path and would be a lie about
+ * where the value came from. This is a problem caught **before** anything is stored. A plain
+ * `Error` is §2.1's programmer-error channel.
+ */
+export function storableRefusal(where: string, noun: string, err: TripParseError, locator: string): Error {
+  return new Error(
+    `${where}: this ${noun} cannot be stored — ${err.message}. ` +
+      `Saving it would produce a document that cannot be re-opened. (${locator})`,
+  );
+}
+
+/**
+ * Parses `record` with `fromJSON`'s own parser for its class and **returns what the parser
+ * built** — refusing, with the door's name, anything this system could not store and read back.
+ * Pure.
+ *
+ * **It returns rather than asserting, and that is §2.1 A-77 Part 3 rule 5 — QA R55-5.** A void
+ * assertion validates one object and then lets the door commit *the caller's* object, so a getter
+ * that flips on its second read, or a caller that mutates the object it passed in after the door
+ * returned, still lands an unopenable record in the document. Every parser in `fromJSON` rebuilds
+ * its record field by field, by name and by value, all the way down (`parseOpeningHours`
+ * included), so the value that was **read** is the value that is **stored** — and
+ * `build/commit.ts` substitutes it. `Trip.meta` and `City.meta` are the one exception and A-77
+ * Part 10 residue 2 states it: `obj()` returns the bag it was given.
+ *
+ * `build/commit.ts` is its **only** caller. A door does not call it directly any more — a door
+ * that names the record class it wrote is the enumeration A-77 deletes.
  *
  * @param where the calling build function's name, so the refusal names the door that raised it
  *              rather than a function the caller never called.
  * @param kind  the record class, which selects `fromJSON`'s parser for it.
  * @param record the record the door has just built, checked **before the door commits it**.
+ * @param locator where in the produced document the record sits (`days[3].stops[0]`), appended to
+ *              the message in parentheses. The parser is still called at `'$'`, so `$.category`
+ *              and every other existing message pin survives unchanged; the locator is the second
+ *              fact `commit` has and a door did not — *which* of the records it wrote is bad.
  *
- * @throws {Error} — a **plain** `Error`, always, and never a `TripParseError`. That distinction is
- *   A-76 Part 3's one hard prohibition and it is not cosmetic: `TripParseError` means *this stored
- *   document is unopenable* to `store.ts` and to §2.9 **A-47**'s `noteOpenFailure`, so raising one
- *   from a build door would put a live, healthy document into the unreadable-row path and would be
- *   a lie about where the value came from. This is a problem caught **before** anything is stored.
- *   A plain `Error` is §2.1's programmer-error channel and is what every other door guard throws.
+ * @throws {Error} — a **plain** `Error`, never a `TripParseError`; see `storableRefusal`.
  */
-export function assertStorable<K extends StorableKind>(where: string, kind: K, record: StorableOf<K>): void {
+export function assertStorable<K extends StorableKind>(
+  where: string,
+  kind: K,
+  record: StorableOf<K>,
+  locator: string,
+): StorableOf<K> {
   try {
     // Rooted at the record — the path in the message is `$.category`, not `$.days[3].stops[7]
-    // .category`, because the door knows which record it just wrote and the index would be a
-    // second, guessed fact about a document that does not exist yet.
-    PARSERS[kind](record, '$');
+    // .category`, because the record's own path is what the door's reader needs and the position
+    // in the document is the locator's job.
+    return PARSERS[kind](record, '$') as StorableOf<K>;
   } catch (err) {
     // Anything that is not the parser's own refusal is someone else's bug and travels untouched:
-    // a getter that throws, a `RangeError` from a cyclic structure (Part 8 residue 3).
+    // a getter that throws, a `RangeError` from a cyclic structure (A-76 Part 8 residue 3).
     if (!(err instanceof TripParseError)) throw err;
-    throw new Error(
-      `${where}: this ${kind} cannot be stored — ${err.message}. ` +
-        'Saving it would produce a document that cannot be re-opened.',
-    );
+    throw storableRefusal(where, kind, err, locator);
   }
 }

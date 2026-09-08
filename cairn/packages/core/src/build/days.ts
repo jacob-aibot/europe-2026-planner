@@ -11,7 +11,7 @@ import type { CityKey, DayId, IsoDate } from '../model/ids.ts';
 import { addDays, dayNumber } from '../derive/summary.ts';
 import { userProvenance } from '../model/provenance.ts';
 import { reattachDanglingPhotos } from './photos.ts';
-import { assertStorable } from './storable.ts';
+import { commit } from './commit.ts';
 import type { BuildCtx } from './createTrip.ts';
 
 /**
@@ -28,8 +28,12 @@ const MAX_TRIP_SPAN_DAYS = 3653;
 /**
  * A blank day. Pure.
  *
- * **Exempt from §2.1 A-76's door check, by Part 5's table**: it writes literals and a
- * `userProvenance`, and reads no caller value into a record field.
+ * **Not a door** — §2.1 **A-77** Part 6.1: it returns a `Day`, not a `Trip`. A-76 exempted it with
+ * the reason *"reads no caller value into a record field"* and **QA R55-2 proved that reason
+ * false**: `blankDay(date, city, ctx.now)` writes the CALLER's `ctx.now` into `provenance.addedAt`,
+ * and `createTrip(init, {…now: 42})` produced a document unopenable at
+ * `$.days[0].provenance.addedAt`. A-77 needs no reason at all — the days this mints are new
+ * objects, and `ensureDays`' `commit` parses every one of them.
  */
 export function blankDay(date: IsoDate, primaryCity: CityKey | 'transit', at: IsoDate): Day {
   return {
@@ -51,15 +55,23 @@ export function blankDay(date: IsoDate, primaryCity: CityKey | 'transit', at: Is
  * is empty; if it still holds stops the trip's range is WIDENED to keep it rather than
  * silently destroying content. Pure.
  *
- * **Exempt from §2.1 A-76's door check, by Part 5's table**: it re-arranges days it was handed and
- * reads no caller value into a record field. `MAX_TRIP_SPAN_DAYS` below is A-35's span cap, which
- * is a different property and stays.
+ * **A door** (§2.1 **A-77** Part 6.1 — it returns a `Trip`), and A-76's exemption of it was one of
+ * the two reasons QA R55-2 disproved. It returns through `commit`, which parses exactly the days
+ * this minted. `MAX_TRIP_SPAN_DAYS` below is A-35's span cap, a different property, and stays.
+ *
+ * **Day identity is preserved** (A-77 Part 9): a day whose `id` already equals its `date` is
+ * reused rather than rebuilt as `{...d, id: d.date}`. Without that, every range change destroys
+ * the identity of every day it did not change and `commit` re-parses the whole skeleton — which is
+ * what the `setTripMeta`-over-3,653-days budget is bought with. It is required by the ruling, not
+ * an optimisation.
  *
  * @param alreadyBumped internal — set when the caller has already incremented `revision`.
  */
 export function ensureDays(trip: Trip, ctx: BuildCtx, alreadyBumped = false): Trip {
   const byDate = new Map<IsoDate, Day>();
-  for (const d of trip.days) byDate.set(d.date, { ...d, id: d.date });
+  // A-77 Part 9: reuse `d` when its id is already right. `{...d, id: d.date}` unconditionally
+  // would mint a new object for every day of the trip and make `commit` re-parse all of them.
+  for (const d of trip.days) byDate.set(d.date, d.id === d.date ? d : { ...d, id: d.date });
 
   let start = trip.startDate;
   let end = trip.endDate;
@@ -93,41 +105,88 @@ export function ensureDays(trip: Trip, ctx: BuildCtx, alreadyBumped = false): Tr
   // outside the range is dropped above). A photo pointing at a dropped day falls back to
   // `{kind:'trip'}` rather than being deleted — A-57 Part 9 residue 2. It does not bump
   // `revision` a second time, and it returns the trip by reference when nothing dangles.
-  return reattachDanglingPhotos({
+  return commit('ensureDays', trip, reattachDanglingPhotos({
     ...trip,
     startDate: start,
     endDate: end,
     days,
     revision: alreadyBumped ? trip.revision : trip.revision + 1,
-  });
+  }));
 }
 
 export type DayMetaPatch = Partial<Pick<Day, 'primaryCity' | 'cities' | 'title' | 'subtitle' | 'provenance' | 'legacyFlag' | 'tzId'>>;
 
 /**
+ * Exactly `DayMetaPatch`'s `Pick`, at runtime — §2.1 **A-77** Part 5, on `updateStop`'s,
+ * `updatePhoto`'s and `updateParticipant`'s model (QA **R52-6**'s pattern).
+ *
+ * **This is the half of R55-1 that `commit` does NOT subsume, and it is not optional.** A `stops`
+ * key smuggled onto an `any`-shaped patch has two harms. The first — a stop the parser refuses —
+ * `commit` closes by construction, because the smuggled record is a new object the identity diff
+ * parses. The second it cannot: the key can carry a stop that **already exists on another day**,
+ * a perfectly parseable record and the *same object* the document already holds, so no parse
+ * refuses it and the document then reports `duplicate_id` and `scheduled_stop_has_no_day` on an
+ * edit the user never made. That is §2.1's **patch-allowlist** property — *may this caller rewrite
+ * this field at all* — which is orthogonal to whether the result parses.
+ *
+ * `setDayMeta` is the one patch door that never had one. It is stated as an ALLOWLIST because
+ * that is what A-77 Part 5 requires (*"refusing every key outside `DayMetaPatch`'s `Pick`"*): a
+ * forbidden-key list would have to be re-enumerated every time `Day` gains a field, which is the
+ * shape this whole ruling deletes.
+ */
+const DAY_META_PATCH_KEYS: readonly string[] = [
+  'primaryCity', 'cities', 'title', 'subtitle', 'provenance', 'legacyFlag', 'tzId',
+];
+
+/**
+ * The three A-77 Part 5 names explicitly, because all three are **identity** and none is the
+ * caller's to rewrite here — `stops` is the record list (`addStop`/`moveStop`/`removeStop` own
+ * it), and `id`/`date` are what makes a day that day (`ensureDays` owns both, and §2.3 requires
+ * `Day.id === Day.date`). Every other undeclared key is refused too; these get their own sentence.
+ */
+const FORBIDDEN_DAY_META_PATCH_KEYS: Record<string, string> = {
+  stops: 'a day\'s stops are addStop / moveStop / removeStop\'s, and a stop that already exists ' +
+    'elsewhere in the document would parse perfectly and duplicate an id',
+  id: 'a day id is immutable and must equal its date (§2.3)',
+  date: 'a day\'s date is the trip range\'s, and moving one is ensureDays\' (§2.3)',
+};
+
+/** @throws {Error} on any key outside `DayMetaPatch`, present even with an `undefined` value. */
+function assertPatchable(patch: object): void {
+  for (const k of Object.keys(patch)) {
+    if (DAY_META_PATCH_KEYS.includes(k)) continue;
+    throw new Error(
+      `setDayMeta: "${k}" may not be patched — ` +
+        (FORBIDDEN_DAY_META_PATCH_KEYS[k] ?? 'it is not a field of DayMetaPatch'),
+    );
+  }
+}
+
+/**
  * Patches a day's editorial fields. `cities` always ends up containing `primaryCity`
  * (an invariant `validateTrip` also checks). Pure.
  *
- * §2.1 **A-76**: the merged `Day` is handed to `parseDay` — round 54's census #6 (`legacyFlag`)
- * and every other editorial field with it — **with `stops: []` substituted**. That elision is
- * Part 5's and it is load-bearing: `DayMetaPatch` is a `Pick` that cannot carry `stops`, so
- * parsing the real list would let one pre-existing bad stop make the day's title uneditable —
- * punishing an edit for data it did not write.
+ * §2.1 **A-77**: it returns through `commit`, which parses the merged `Day` with `stops: []` and
+ * its stops individually. That elision is now **structural**: the day's own fields come from the
+ * day and the stops come from the identity diff, so one pre-existing bad stop cannot make the
+ * day's title uneditable — an edit is never punished for data it did not write — and nothing a
+ * patch smuggles into the `stops` slot can avoid being a new object the diff parses.
  *
- * @throws {Error} if `dayId` is not in the trip, or if the merged day is one `fromJSON` would
- *         refuse — programmer error, not a domain problem.
+ * @throws {Error} if `dayId` is not in the trip, if the patch carries a key outside
+ *         `DayMetaPatch`, or if the merged day is one `fromJSON` would refuse — all programmer
+ *         error, not a domain problem.
  */
 export function setDayMeta(trip: Trip, dayId: DayId, patch: DayMetaPatch): Trip {
+  assertPatchable(patch);
   const idx = trip.days.findIndex((d) => d.id === dayId);
   if (idx < 0) throw new Error(`setDayMeta: no such day ${dayId}`);
   const day = trip.days[idx];
   const merged: Day = { ...day, ...patch };
   const primary = merged.primaryCity;
   if (!merged.cities.includes(primary)) merged.cities = [primary, ...merged.cities];
-  assertStorable('setDayMeta', 'day', { ...merged, stops: [] });
   const days = trip.days.slice();
   days[idx] = merged;
-  return { ...trip, days, revision: trip.revision + 1 };
+  return commit('setDayMeta', trip, { ...trip, days, revision: trip.revision + 1 });
 }
 
 /** Looks up a day. Pure; returns null rather than throwing. */

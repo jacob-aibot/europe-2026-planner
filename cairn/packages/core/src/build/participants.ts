@@ -20,14 +20,14 @@
 import type { Participant, ParticipantKind, Trip } from '../model/types.ts';
 import type { ParticipantId } from '../model/ids.ts';
 import type { BuildCtx } from './createTrip.ts';
-import { assertStorable } from './storable.ts';
+import { commit } from './commit.ts';
 
 /**
  * **This file used to carry three per-field guards — `assertParticipantKind`, `assertDisplayName`
  * and `assertNote` — and §2.1 A-76 Part 4 deletes all three.** They were R16-2's *one property,
  * two guards*: `parseParticipant` already asserts each of them, field for field, including
  * `assertNote`'s asymmetry (`o.note !== undefined ? str(…)`, so `undefined` means *no note* on
- * both sides) and `assertDisplayName`'s `undefined` case. `assertStorable` below asks the parser,
+ * both sides) and `assertDisplayName`'s `undefined` case. `commit` asks the parser (A-77),
  * so the refusals do not weaken — they widen to every field of `Participant`, including the ones
  * nobody enumerated and the ones added later.
  *
@@ -92,10 +92,10 @@ export function addParticipant(trip: Trip, init: ParticipantInit, ctx: BuildCtx)
     userId: null,
     ...(init.note !== undefined ? { note: init.note } : {}),
   };
-  // §2.1 A-76. `kind: init.kind ?? 'contact'` means the record carries exactly the value the
-  // deleted `assertParticipantKind` used to check, so the refusal does not weaken — Part 4's row.
-  assertStorable('addParticipant', 'participant', participant);
-  return { ...trip, participants: [...trip.participants, participant], revision: trip.revision + 1 };
+  // §2.1 A-77: the new `Participant` is a new object, so `commit` hands it to `parseParticipant`
+  // and stores what the parser built. Nothing here names the record class.
+  return commit('addParticipant', trip,
+    { ...trip, participants: [...trip.participants, participant], revision: trip.revision + 1 });
 }
 
 export type ParticipantPatch = {
@@ -172,18 +172,19 @@ export function updateParticipant(trip: Trip, participantId: ParticipantId, patc
     userId: prev.userId,
     ...(note !== undefined ? { note } : {}),
   };
-  // §2.1 A-76. A key's PRESENCE still decides whether it is written, so `{ note: undefined }`
-  // removes a note and `{ displayName: undefined }` is refused — by `str()` in `parseParticipant`
-  // rather than by a guard in this file, which is the whole of the change.
-  assertStorable('updateParticipant', 'participant', patched);
+  // §2.1 A-77. A key's PRESENCE still decides whether it is written, so `{ note: undefined }`
+  // removes a note and `{ displayName: undefined }` is refused — by `str()` in `parseParticipant`,
+  // reached through `commit`, rather than by a guard in this file.
   participants[i] = patched;
-  return { ...trip, participants, revision: trip.revision + 1 };
+  return commit('updateParticipant', trip, { ...trip, participants, revision: trip.revision + 1 });
 }
 
 /**
  * Removes a participant. Pure.
  *
- * **Exempt from §2.1 A-76's door check, by Part 5's table**: it removes.
+ * §2.1 **A-77**: it returns through `commit` like every other door. A-76 exempted it — *"it
+ * removes"* — and `commit` has no exemptions; a removal that changed nothing pays nothing, because
+ * nothing is new.
  *
  * **Nothing cascades**, and that is the whole of §8.3's *"deletion … comes for free"*: no stop,
  * day, place, booking or photo refers to a participant in this phase (participants on a *stop*
@@ -197,9 +198,9 @@ export function removeParticipant(trip: Trip, participantId: ParticipantId): Tri
   if (!trip.participants.some((p) => p.id === participantId)) {
     throw new Error(`removeParticipant: no such participant ${participantId}`);
   }
-  return {
+  return commit('removeParticipant', trip, {
     ...trip,
     participants: trip.participants.filter((p) => p.id !== participantId),
     revision: trip.revision + 1,
-  };
+  });
 }

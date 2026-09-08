@@ -10,6 +10,7 @@ import type { Day, Stop, Trip } from '../model/types.ts';
 import type { CityKey, ClockTime, DayId, StopId } from '../model/ids.ts';
 import { TRANSIT_CITY_KEY } from '../model/ids.ts';
 import { findStop, moveStop } from './stops.ts';
+import { commit } from './commit.ts';
 
 /** Category → the default time the live app used when a pool item had no hint. */
 export const CAT_DEFAULT_TIME: Record<string, ClockTime> = {
@@ -67,11 +68,15 @@ export function returnToPool(trip: Trip, stopId: StopId, cityKey?: CityKey): Tri
   const day = trip.days.find((d) => d.id === dayId);
   const order = day ? day.stops.findIndex((s) => s.id === stopId) : stop.placement.order;
   const city = cityKey ?? poolCityFor(trip, day);
-  return moveStop(trip, stopId, {
+  // §2.1 A-77: a door returns through `commit`, delegation included. `moveStop`'s own commit is
+  // what raises a refusal about the stop it rewrote; this one is the boundary check for the
+  // document THIS function produced, and it costs one pointer comparison per record when
+  // `moveStop` has already substituted everything that moved.
+  return commit('returnToPool', trip, moveStop(trip, stopId, {
     kind: 'pool',
     cityKey: city,
     hint: { dayId, time: stop.placement.time ?? '', order: order < 0 ? 0 : order },
-  });
+  }));
 }
 
 export type ScheduleHint = { dayId?: DayId; time?: ClockTime; order?: number };
@@ -92,7 +97,9 @@ export function scheduleFromPool(trip: Trip, stopId: StopId, hint?: ScheduleHint
   if (!trip.days.some((d) => d.id === dayId)) throw new Error(`scheduleFromPool: no such day ${dayId}`);
   const time = hint?.time ?? stored?.time ?? CAT_DEFAULT_TIME[stop.category] ?? '12:00';
   const order = hint?.order ?? stored?.order ?? -1;
-  return moveStop(trip, stopId, { kind: 'scheduled', dayId, time: time || null, order });
+  // §2.1 A-77 — `returnToPool`'s note.
+  return commit('scheduleFromPool', trip,
+    moveStop(trip, stopId, { kind: 'scheduled', dayId, time: time || null, order }));
 }
 
 /** Every pooled stop for a city, in insertion order. Pure. */

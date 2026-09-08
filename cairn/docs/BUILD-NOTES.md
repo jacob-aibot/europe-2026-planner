@@ -1,5 +1,45 @@
 # Cairn — build notes, Phase 1 (and Phase 2 in progress)
 
+> **Addendum — ROADMAP `I-16`: a door does not say what it wrote; the document says what changed
+> (§2.1 **A-77**, QA **R55-1/2/3/4/5/7** + the architect's own `resolveConflict` finding).** Builds on
+> `2295b4d` (ARCHITECTURE revision 58 / ROADMAP 61). **The second attempt at this class of bug:**
+> I-15 shipped A-76's mechanism and then enumerated where to call it, and round 55 measured sixteen
+> door × field cases the enumeration missed. A-77 deletes the enumeration. No field, no type, no
+> port, no selector, no screen; `SCHEMA_VERSION`, `DB_VERSION` and `SUMMARY_VERSION` do not move, and
+> §2.10's export surface was **re-counted by running the command** and is **unchanged at 86** — none
+> of the nine newly-exported parsers reaches `index.ts`. **Edited, 15 files + 1 new:**
+> `packages/core/src/build/{stops,days,bookings,photos,participants,createTrip,copyStop,candidates,
+> pool,storable}.ts`, `packages/core/src/conflict/resolve.ts`,
+> `packages/core/src/serialize/fromJSON.ts`, `packages/core/test/{storable,copyStop}.test.ts`, this
+> document; **new** `packages/core/src/build/commit.ts`. **Zero `.tsx`, zero `qa/`, zero
+> `docs/design/`, zero `ARCHITECTURE.md`/`ROADMAP.md`, zero `package.json`, zero lockfile, zero new
+> dependency**, and `import/legacyDays.ts` and `merge/mergeTrips.ts` are untouched (A-77 Part 10
+> residue 3 — they are producers, deferred with a trigger).
+>
+> | | |
+> |---|---|
+> | **What runs, and the exact commands** | `cd cairn && npm run test:tap` → **1592 tests, 1592 pass, 0 fail, 0 skipped, 0 cancelled**. Baseline re-measured on this tree **before** the change, same command at `2295b4d` → **1556 pass / 0 fail**, so **+36 tests**; no pre-existing test was deleted and none was weakened. `cd cairn && npm run typecheck` → **clean on both projects, exit 0**. `cd cairn && npm run web:build` → **succeeds**. Export re-count, run rather than quoted: `node --experimental-strip-types -e "import('./packages/core/src/index.ts').then(m => console.log(Object.keys(m).length))"` → **86**. The rewritten file alone: `node --test packages/core/test/storable.test.ts` → **62 pass / 0 fail**. |
+> | **Part 1 — `parseTripEnvelope`** | `serialize/fromJSON.ts` gains an exported `parseTripEnvelope(v, path)` holding the eleven trip-level scalars `fromJSON` built inline (`id`, `title`, `ownerId`, `startDate`, `endDate`, `datePrecision`, `homeCurrency`, `homeBase`, `party`, `revision`, `meta`), plus a `TripEnvelope` **type** (`Omit<Trip, …the eight collections>`), and `fromJSON` now spreads its result. A pure refactor — every tolerance moved verbatim (absent `ownerId` → `''`, absent `datePrecision` → `'exact'`, absent `homeBase` → `null`) — and the round-trip goldens are what prove it (`test/*.test.ts`, 273 pass). It adds **one** check `fromJSON` did not have and which can never fire through `fromJSON`, because `migrateDoc` runs in front: `schemaVersion` must equal `SCHEMA_VERSION`. |
+> | **Part 2 — `parseResolution`** | Exported from the same file, unchanged in body. **Nine parsers are now exported from `fromJSON.ts` and none reaches `index.ts`** — re-measured, 86. |
+> | **Part 3 — `assertStorable` returns** | Signature is now `assertStorable<K>(where, kind, record, locator): StorableOf<K>` — it **returns the parser's value** (A-77 Part 3 rule 5, R55-5) and appends the locator in parentheses after the existing final sentence. `$.category`, the door name and *"cannot be stored"* all survive as substrings and **no existing message pin was edited to make it pass**. `StorableMap` gains the eighth arm, `resolution`. A `storableRefusal(where, noun, err, locator)` helper is factored out so `commit`'s envelope parse — which asks `parseTripEnvelope`, not a per-record parser — does not carry a second copy of the sentence. **`assertStorable` has exactly one caller: `commit`.** |
+> | **Part 4 — `build/commit.ts`** | New, module-internal, `commit(where, before, after)`, built to Part 3's seven rules: the **envelope unconditionally**; the eight collections in the stated order (`cities`, `places`, `days` → day fields then stops, `pool`, `bookings`, `photos`, `participants`, `resolutions`); per record, index-aligned identity, then a **lazily-built** identity `Set` (built at most once per commit and only if some record fails the aligned test), then parse-and-**substitute**; a day parsed with `stops: []` with its stops parsed individually against **one set spanning `before`'s day stops and its pool**; each collection array returned **by reference** when nothing in it moved. `before === null` is the base case. It throws a plain `Error`, never a `TripParseError`. |
+> | **Part 5 — every door returns through it** | **29 doors**, which is every exported function in `packages/core/src/build/*.ts` **and** `packages/core/src/conflict/resolve.ts` whose return type is `Trip`. **All 17 direct `assertStorable` call sites are deleted** (across the 13 doors that had one — the twelve ROADMAP part 5 names plus `copyStopInto`), `copyStopInto`'s two and `setDayMeta`'s elision included. The *"same reference when nothing changed"* contract of `syncResolutions`, `reassertRetirements`, `reattachDanglingPhotos` and `reorderStop` is unaffected — all four take that decision and return **before** reaching `commit`. |
+> | **Three doors commit an intermediate document, and why** | `createTrip`, `setTripMeta` and `copyStopInto` each call `commit` twice, because each delegates to another **door** and a door commits on its own behalf. Without the first call, `createTrip({title: 42, …})` is refused by **`ensureDays`** — a function the caller never called — and `copyStopInto`'s place refusal loses its precedence to `addStop`'s stop refusal, which is the order A-77 Part 3 rule 2 explicitly says the ruling preserves (`qa/r55-a76.mjs` §D2 and §D4, both green). The trip `commit` returns satisfies the induction (*every record in it has been parsed once*), so it is a legal `before` for the second call and the second call is a pointer sweep. **This is still `commit` and still a boundary check** — no door names a record class. |
+> | **Part 6 — `assertDatePrecision` deleted; `isIsoDate` and `assertBuiltAttach` kept** | The guard and its `DATE_PRECISIONS` import are gone from `createTrip.ts`, replaced by a tombstone paragraph naming what replaced it and naming the two guards that stay. `isIsoDate` is untouched at both trip doors and `assertBuiltAttach` is untouched at both photo doors and still runs **before** `commit` (pinned: `addPhoto` with a `place` attach **and** a non-string caption reports the deferral, not the storability refusal). Two deletion consequences are disclosed and measured rather than smoothed over: **KD-101** (`null`) and **KD-104** (`undefined`). |
+> | **Part 7 — `setDayMeta`'s allowlist** | `FORBIDDEN_DAY_META_PATCH_KEYS` on `updateStop`/`updatePhoto`/`updateParticipant`'s model. Stated as an **allowlist** (`DAY_META_PATCH_KEYS`, exactly `DayMetaPatch`'s `Pick`) with the three keys A-77 Part 5 names explicitly — `stops`, `id`, `date` — carrying their own sentence, because a forbidden-key list would have to be re-enumerated every time `Day` gains a field, which is the shape this ruling deletes. It closes the half of R55-1 `commit` cannot: a `stops` key carrying a stop that **already exists on another day** is a parseable record *and the same object the document holds*, so the identity diff finds nothing new — pinned as its own test. |
+> | **Part 8 — `ensureDays` preserves day identity** | `byDate.set(d.date, d.id === d.date ? d : { ...d, id: d.date })`. Measured, it is worth **2.6×** on the range-change budget (9.17 ms → 3.49 ms over 3,653 days) and it is what makes `ensureDays` on an unchanged range return days that are the *same objects*, which the client's document-identity derived cache (§4.2 rule 3) depends on. |
+> | **Part 9 — `storable.test.ts` rewritten** | 62 tests, and `EXEMPT_TABLE` and `EXEMPT_UNTABLED` are **deleted outright** — 26 free-text reasons, two of them false, replaced by a return type. **The door census is a type-level assertion that fails `npm run typecheck`, not a test** (`IsExact<DoorsOf<Censused>, (typeof DOORS)[number] \| 'commit'>`, over the intersection of all thirteen censused module namespaces). **The module census is a runtime directory read** asserting `build/`'s file list equals the modules half 1 imports, plus an existence check on the explicitly-named extra door file (`conflict/resolve.ts`). **The three named non-doors** (`fromJSON`, `importLegacyDays`, `mergeTrips`) are asserted absent from `DOORS`, each with its reason. **The behavioural census** fires one hostile value at each of the **29** doors and asserts a plain `Error` naming the door, the record noun, the parser's path and the *cannot be re-opened* sentence — with a test that the row set **equals** `DOORS`, so a door added without a hostile value reddens. Plus N5's sixteen as a standing test, R55-5's three TOCTOU repros, residue 4, the elision, the moved-stop rule, both kept guards and *agreement, not strictness*. |
+> | **One deviation in the type-level census, and it is a tightening** | A-77 Part 6.1's printed `DoorsOf` uses `M[K] extends (…a: never[]) => Trip`, and that classifier is **too loose in practice**: `assertStorable`'s generic signature satisfies it (instantiating `K` at `never` makes `StorableOf<K>` `never`, and `never` is assignable to `Trip`), so the census counted the mechanism's own helper as a door. It is written as an **exact** return-type match instead — `[Trip] extends [R] && [R] extends [Trip]` — which is what *"a door is an exported function whose return type is `Trip`"* actually says. Verified both directions before and after: the union is exactly `DOORS ∪ {commit}`. |
+> | **N1 — run, red then green** | Deleted `commit('upsertBooking', …)` from `build/bookings.ts`. `node --test packages/core/test/storable.test.ts` → **58 pass / 4 fail**: `not ok 26 — upsertBooking refuses a booking the parser refuses ($.kind)` plus the three R55-5 rows that route through that door. `npx tsc -p tsconfig.json --noEmit` → **exit 0, the type-level census stayed green**, which is N1's required behaviour verbatim: the two halves do different jobs. Restored → **62 pass / 0 fail**. |
+> | **N2 — run, red four times, and it is round 55's own repro** | Appended a `Trip`-returning export to `build/pool.ts` in **each** of the four syntaxes and ran `npm run typecheck` each time. **All four fail**, at the same line, with `error TS2322: Type 'true' is not assignable to type 'false'` — `export function sneakyDoor(t: Trip): Trip {…}`, `export const sneakyDoor = (t: Trip): Trip => t`, `function sneakyDoor(…){…}; export { sneakyDoor }`, `export default function sneakyDoor(…){…}`. Three of those four kept A-76's regex census **green** in round 55 (`qa/r55-a76.mjs` §E1 still reports them *"evaded"*, because that section probes the source-text collector A-77 deletes). Reverted → typecheck clean. |
+> | **N3 — run, red then green** | Added `packages/core/src/build/sneaky.ts` with one exported door. The **module** census goes red and **names the file** (`+ 'sneaky.ts'` in the diff) with the message *"a file in packages/core/src/build/ is not imported by the type-level door census above."* Removed → **62 pass / 0 fail**. |
+> | **N4 — run, red then green** | Restored `addStop` to its pre-A-76 body (both branches) and ran the breaker's own probe, `node --experimental-strip-types qa/r54-integration.mjs`. §M8 reproduces the loss exactly: `FAIL M8- the door refuses the bad edit before the store ever sees it`; `note M8 what the user is told after the write — idle`; `FAIL M8a the user is NOT told "saved" over a trip that can no longer be opened`; `note M8b can the stored document be parsed? — NO — $.days[0].stops[1].category`; `note M8c openTrip after a reload — refuses`; `FAIL M8d the whole trip — including the earlier work — is still reachable`. Restored → §M8 green, zero `FAIL` lines in the whole probe. |
+> | **N5 — run, red then green, and it is the criterion that the class is closed** | All **sixteen** door × field cases of A-77 Part 1 driven door → `toJSON` → `fromJSON`, against a `git worktree` at `2295b4d` and against this tree, same harness. **Before: refused 0/16, UNOPENABLE 16** — `$.days[0].stops[0].category`, `…provenance.acceptedAt` ×2, `…provenance.addedAt` ×2, `$.title` ×2, `$.homeCurrency` ×2, `$.ownerId`, `$.party.adults` ×2, `$.meta`, `$.resolutions[0].{state,by,note}`. **After: REFUSED AT DOOR 16/16, unopenable 0.** Re-derived as a standing test in `packages/core/test/storable.test.ts`, which asserts the survivor list is empty and prints the harm for any survivor. The breaker's own oracle agrees: `qa/r55-a76.mjs` §F1 is now **green** — *"ZERO build doors write a document that cannot be opened again"*, *"this pass finds 0 still standing after the fix"* (it found 13 in round 55). |
+> | **The three cost budgets, measured** | On the reference trip (16 days, 112 stops, 31 pool, 95 places), 200 reps after a warm-up: **one `setDayMeta` = 0.019 ms** and **one `updateStop` = 0.050 ms** (budget **2 ms** each). **`createTrip` over A-35's 3,653-day cap = 14.9 ms** (budget **1 s**). **`setTripMeta` with a range change on the same 3,653-day trip = 2.6 ms** (budget **1 s**) — and with Part 8's identity preservation reverted it is **9.2 ms**, so part 8 earns 2.6× as the ruling says it must. **No budget is exceeded and no exemption was added.** |
+> | **`qa/r55-a76.mjs` — run, not edited (the directory is the breaker's), and what moved** | **Green and load-bearing:** §F1 (0 unopenable, was 13), all of §G (the store-level blast radius), §D1/§D2/§D4/§D5 (the place refusal still comes first and still names `copyStopInto`), §H2a. **Red, and each is the probe encoding A-76's world:** §C1 (7 rows — the `assertDatePrecision` message no longer exists because A-77 deletes the guard; six of the seven values are still refused at `$.datePrecision`, the seventh is **KD-104**); §D3 (**KD-102**); §E1a (the source-text collector A-77 Part 6 replaces — N2 is the replacement's own result); §H1a and §H3 (both expected `REFUSED` for a flip-on-second-read getter, and A-77 Part 3 rule 5 rules the other way: the getter is read **once** and the value it returned is what is stored, so the verdict is `clean` and the document opens — pinned as its own test); §H2 (it asserts `doc.bookings[0] === shared`, i.e. that the door stores the caller's own object — **that is the defect R55-5 reported, and it is now false**). **None of these is mine to fix**, and the breaker should re-cut them. |
+> | **What I could NOT verify** | **Nothing rendered and no browser.** No `.tsx` was opened (I-16 forbids it) and there is no surface that reaches this defect, so there is nothing to render. `qa/r54-gate.mjs` and `qa/r55-a76.mjs` were **run but not edited**; `qa/i7a-idb-rowkeys.mjs` was **not run** (no browser, and `ROW_KEYS` is untouched by this increment). I did not measure `commit`'s cost against a document larger than the 3,653-day trip, which is the largest any door can mint. |
+> | **Objections to the design** | **None to the mechanism** — it is the right answer and Part 2's refusal of the other three shapes is correct. Four notes, all disclosed as KD entries above. **(1) KD-102 is the real one and it is an architect's call:** A-77 Part 3 rule 2 says the collection order *"preserves the place refusal comes first for `copyStopInto`, which `qa/r55-a76.mjs` §D pins"*, but the collection order alone cannot, because `addStop` commits before `copyStopInto` reaches its return. I bought the precedence with an intermediate commit and paid for it by losing §D3's *"names `copyStopInto`, not `addStop`"*. The general question — **should a door that delegates to another door be able to raise the refusal under its own name?** — now has four instances (`copyStopInto`, `reorderStop`, `returnToPool`, `scheduleFromPool`) and no ruling. **(2) KD-101 is KD-100 verbatim, one record over**, which is twice; the `init`-default rule (*absent and `undefined` take the default; `null` is a caller's value and must reach the record*) is worth one sentence in §2.1 rather than a third KD entry. **(3) KD-104:** deleting `assertDatePrecision` costs the *patch-allowlist* refusal for `{datePrecision: undefined}`, which is a different property from storability and is not something a guard should be re-added for; the shape that would close it is `TripMetaPatch` joining the patch-allowlist family, which is Part 5's own move one door over. **(4)** A-77 Part 6.1's printed `DoorsOf` does not compile to the classifier it describes — see the deviation row above. |
+
 > **Addendum — ROADMAP `I-15`: a build door asks the parser what a record may hold (§2.1 **A-76**,
 > QA **R54-1**).** Builds on `fd07340` (ARCHITECTURE revision 57 / ROADMAP 60). **The last known
 > finding from the Phase 2 phase-gate round.** No field, no type, no port, no selector, no screen;
@@ -4670,6 +4710,122 @@ message A-76 mandates is a different message.
 *"`init.kind === undefined ? 'contact' : init.kind`, because `??` would coalesce a caller's `null`
 into the default and the deleted guard refused it"*. No ruling changes; the row's verdict
 (**deleted**) stands.
+
+### KD-101 — `createTrip` writes `datePrecision` with `=== undefined` rather than `??`, for KD-100's reason one record over (builder-repaired, architect to confirm)
+
+`packages/core/src/build/createTrip.ts`
+
+A-77 Part 4 deletes `assertDatePrecision` because *"`parseTripEnvelope` is O(1) and asks exactly the
+parser, so the exception has no premise left"*. That is true for every value **except `null`**:
+`createTrip` wrote `datePrecision: init.datePrecision ?? 'exact'`, `??` coalesces `null` as well as
+`undefined`, and the deleted guard ran for `null` (`typeof null !== 'string'`). Implemented
+literally, A-77 would have turned `createTrip({…, datePrecision: null})` from a throw into a silent
+write of `'exact'` — and `packages/core/test/datePrecision.test.ts`'s *"QA P2-7: createTrip refuses
+the same values at the same boundary"* covers exactly that case list (`['fortnight','',42,null]`),
+so it went red on the literal implementation and is green on this one.
+
+**What I did:** `init.datePrecision === undefined ? 'exact' : init.datePrecision`. This is **KD-100
+verbatim, one record over**, which is the second time the same `??` reading has hidden the same
+narrowing — the general rule is *for an `init`, absent and `undefined` mean take the default;
+`null` is a value the caller supplied and must reach the record, where the parser refuses it*. No
+guard, no member list; one operator.
+
+**For the architect:** worth one sentence in A-77 Part 4's `assertDatePrecision` row, or better, one
+sentence in §2.1 about `init` defaults generally, since this is now two records and the third will
+be found by a breaker rather than by a builder.
+
+### KD-102 — a bad STOP copied from a friend is now refused by `addStop`, not by `copyStopInto`, so `qa/r55-a76.mjs` §D3 moves (disclosed consequence of A-77, architect to rule)
+
+`packages/core/src/build/copyStop.ts`
+
+A-76 Part 5 gave `copyStopInto` **two** direct `assertStorable` calls, and the second existed only so
+the message would name the right door: *"`addStop` checks the stop it writes, but the refusal has to
+name **this** door — `addStop:` in the message would send whoever reads it to the wrong file."*
+`qa/r55-a76.mjs` §D3 pins that (`/copyStopInto: this stop/` **and** `!/addStop/`).
+
+ROADMAP I-16 part 5 says to **delete both** — *"`commit` subsumes every one, including
+`copyStopInto`'s two"* — and `assertStorable` keeps exactly one caller. With both gone,
+`copyStopInto` delegates the stop to `addStop`, `addStop` is itself a door and commits on its own
+behalf, and its `commit` raises first. So the refusal for a bad **stop** now reads
+`addStop: this stop cannot be stored — … (days[0].stops[0])`. **§D3 goes red on the door name.** The
+refusal itself, its path, and the harm it prevents are unchanged; §D5 (a refused copy leaves the
+recipient's document byte-identical) is unchanged and still green.
+
+**§D2 and §D4 are green and are kept deliberately.** A-77 Part 3 rule 2 states the collection order
+*"preserves A-76's 'the place refusal comes first' for `copyStopInto`, which `qa/r55-a76.mjs` §D
+pins"* — but the collection order alone does **not** achieve that, because `addStop`'s own `commit`
+runs before `copyStopInto` reaches its return and would raise a *stop* refusal first. So
+`copyStopInto` commits the place-bearing intermediate document at the moment the `Place` is minted,
+which is where its `assertStorable` call used to be. That is still `commit` and still a boundary
+check — the door hands over the document it was given and the document it produced, and says
+nothing about which record class it wrote — and it is what makes the ruling's stated precedence
+true.
+
+**For the architect, one question:** is the outer door's name worth keeping for the stop half? The
+only ways to keep it are (a) re-deriving the record at `copyStopInto` purely so it can be named,
+which is a door declaring what it wrote and is exactly what A-77 deletes, or (b) letting a door pass
+its own name to a door it delegates to, which is a signature change on §2.10's surface. I took
+neither and disclosed the consequence instead. The same question applies to `reorderStop`,
+`returnToPool` and `scheduleFromPool`, whose refusals have always named `moveStop` and still do.
+
+### KD-103 — a caller-supplied accessor no longer survives a door into the document, so `copyStop.test.ts`'s A-22 read-count probe installs it after the door (disclosed consequence of A-77 Part 3 rule 5)
+
+`packages/core/test/copyStop.test.ts`
+
+A-77 Part 3 rule 5 makes `commit` store **the parser's return value**, so no caller-supplied object
+survives into the document. `packages/core/test/copyStop.test.ts`'s *"A-22 R18-5: `original.at.lat`/
+`.lng` are read exactly twice"* built its source trip by handing `addPlace` a `LatLng` carrying
+counting getters — and after A-77 that object is discarded at the door, so the copy read it **zero**
+times and the test went red at `0 !== 2`.
+
+**What I did:** the accessor is now installed on `source.places[0].at` — the row the source document
+actually holds — after `addPlace` has put it there. **The assertion, its two expected counts, the
+`n ∈ {0,1,3}` sweep and the hybrid-pair check are unchanged**; only where the probe is attached
+moved, from an object the document no longer contains to the object it does. A-22's ceiling is a
+claim about what the *copy* reads out of the source document, and that is what is still measured.
+
+**This is the general shape of A-77 Part 10 residue 4 at the test boundary**: any test that reaches
+into a document through an object it handed a door is now reaching into an object the door threw
+away. This was the only one in the suite; a breaker writing a new read-count probe needs to know it.
+
+
+### KD-104 — deleting `assertDatePrecision` turns `setTripMeta(t, {datePrecision: undefined})` from a throw into a silent reset to `'exact'`, and `qa/r55-a76.mjs` §C1's seventh row moves with it (disclosed consequence of A-77 Part 4, architect to rule)
+
+`packages/core/src/build/createTrip.ts`, measured
+
+A-77 Part 4 deletes `assertDatePrecision` on the ground that `parseTripEnvelope` asserts the same
+property. For six of the seven values `qa/r55-a76.mjs` §C1 fires it does — `'fortnight'`, `''`, `7`,
+`null`, `{}`, `'EXACT'` are all still refused, at `$.datePrecision`, with a different message. The
+seventh, **`undefined`, is not**, and the reason is A-77 Part 10 residue 1 working as specified:
+*agreement with the parser is the invariant, not strictness*, and §8.1 makes the parser
+**absence-tolerant** for this field (`datePrecision(undefined) → 'exact'`). Measured, pre → post:
+
+| patch | at `2295b4d` | at I-16 |
+|---|---|---|
+| `{datePrecision: undefined}` on a `'month'` trip | **throws** | accepted; the trip becomes `'exact'`; reopens |
+| `{ownerId: undefined}` | accepted; the field is left `undefined`; reopens | accepted; normalised to `''`; reopens |
+| `{homeBase: undefined}` | accepted; the field is left `undefined`; reopens | accepted; normalised to `null`; reopens |
+| `{title: undefined}` / `{party: …}` / `{homeCurrency: …}` | unguarded, **unopenable** | **refused** at the door |
+
+**No document becomes unopenable** — that is the property A-77 exists for and it holds in every row.
+What changed is that a spread-away *absence-tolerant* scalar is now **normalised** by `commit`'s
+substitution instead of being refused (`datePrecision`) or carried as `undefined` (`ownerId`,
+`homeBase`, both of which were already accepted before this increment and now hold the value a
+reopen would produce, which is a strengthening).
+
+**I did not add a guard**, because ROADMAP I-16's *not built* list is explicit — *"no per-field guard
+of any kind — a builder who writes six scalar guards has built the option A-77 Part 2 option 3
+declined"* — and because the refusal that was lost is the *patch-allowlist* property (§2.1: a
+`*Patch` key present with `undefined` is programmer error), not the storability property. The three
+patch doors that own that property (`updateStop`, `updatePhoto`, `updateParticipant`) still have it,
+and `setDayMeta` gains it in this increment (A-77 Part 5).
+
+**For the architect:** if `{datePrecision: undefined}` silently downgrading a `'month'` trip matters,
+the fix is **not** a guard — it is `TripMetaPatch` joining the patch-allowlist family, i.e. a
+`FORBIDDEN`/allowlist constant on `setTripMeta` that refuses a *present key with an `undefined`
+value* for every field of the patch at once. That is one mechanism, not six, and it is the shape
+Part 5 already chose for `setDayMeta`. It is a ruling, so I did not take it.
+
 
 ## 2. How to run it
 

@@ -2308,11 +2308,17 @@ test('A-22 R18-5: `original.at.lat`/`.lng` are read exactly twice, independent o
   // N = 0/1/3 → lat 1/2/4, lng 1/1/1.
   for (const n of [0, 1, 3]) {
     const t = mintedTrip('trip-src', 'user:marta', `a22f${n}`, [{ name: 'Vienna', centre: VIENNA }]);
-    const at = withAccessor({} as unknown as LatLng, 'lat', [BELVEDERE.lat]);
-    const lng = withAccessor(at.value, 'lng', [BELVEDERE.lng]);
     let source = addPlace(t, {
-      id: 'p-src', cityKey: t.cities[0].key, name: 'Belvedere', at: at.value, category: 'sight',
+      id: 'p-src', cityKey: t.cities[0].key, name: 'Belvedere', at: { ...BELVEDERE }, category: 'sight',
     });
+    // The accessor is installed on the row the SOURCE DOCUMENT holds, after the door that put it
+    // there — §2.1 **A-77** Part 3 rule 5 (BUILD-NOTES §1 **KD-103**). `commit` substitutes the
+    // parser's record for the caller's object, so a `LatLng` handed to `addPlace` no longer
+    // survives into the document at all and an accessor installed before that door would be read
+    // zero times by the copy. A-22's ceiling is a claim about what the COPY reads out of the
+    // source document, which is exactly this row, so the property and its numbers are unchanged.
+    const at = withAccessor(source.places[0].at as unknown as LatLng, 'lat', [BELVEDERE.lat]);
+    const lng = withAccessor(at.value, 'lng', [BELVEDERE.lng]);
     source = addStop(
       source, { kind: 'scheduled', dayId: '2026-08-08', time: '10:00', order: 0 },
       { id: 's-src', name: 'Belvedere', category: 'sight', place: { kind: 'place', placeId: 'p-src' } },
@@ -2329,11 +2335,9 @@ test('A-22 R18-5: `original.at.lat`/`.lng` are read exactly twice, independent o
       });
     }
 
-    // The counts are taken across `copyAcross` alone, because the SETUP now reads the accessor
-    // too: §2.1 **A-76** (revision 57) makes `addPlace` hand its `Place` to `parsePlace`, which
-    // reads `at.lat`/`at.lng` once each when the source row is built. That read belongs to
-    // `addPlace`, not to the copy, and A-22's ceiling is a claim about the copy. The numbers
-    // below and the property they pin are unchanged.
+    // The counts are still taken across `copyAcross` alone: `addStop` above walks the source
+    // document through its own `commit`, which is a read that belongs to `addStop` and not to the
+    // copy. A-22's ceiling is a claim about the copy. The numbers below are unchanged.
     const latBefore = at.reads();
     const lngBefore = lng.reads();
     const after = copyAcross(target, source, `a22i${n}`);

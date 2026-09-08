@@ -8,6 +8,7 @@
 import type { Provenance, Ref, Trip } from '../model/types.ts';
 import type { IsoDate, UserId } from '../model/ids.ts';
 import { accept, reject } from '../model/provenance.ts';
+import { commit } from './commit.ts';
 
 type ProvFn = (p: Provenance) => Provenance;
 
@@ -42,7 +43,7 @@ function mapRef(trip: Trip, ref: Ref, f: ProvFn, caller: string): Trip {
     let hit = false;
     const days = trip.days.map((d) => (d.id === ref.id ? ((hit = true), fn(d)) : d));
     if (!hit) throw new Error(`no such day ${ref.id}`);
-    return { ...trip, days, revision: trip.revision + 1 };
+    return commit(caller, trip, { ...trip, days, revision: trip.revision + 1 });
   }
   if (ref.kind === 'stop') {
     let hit = false;
@@ -52,13 +53,13 @@ function mapRef(trip: Trip, ref: Ref, f: ProvFn, caller: string): Trip {
     }));
     const pool = trip.pool.map((s) => (s.id === ref.id ? ((hit = true), fn(s)) : s));
     if (!hit) throw new Error(`no such stop ${ref.id}`);
-    return { ...trip, days, pool, revision: trip.revision + 1 };
+    return commit(caller, trip, { ...trip, days, pool, revision: trip.revision + 1 });
   }
   if (ref.kind === 'booking') {
     let hit = false;
     const bookings = trip.bookings.map((b) => (b.id === ref.id ? ((hit = true), fn(b)) : b));
     if (!hit) throw new Error(`no such booking ${ref.id}`);
-    return { ...trip, bookings, revision: trip.revision + 1 };
+    return commit(caller, trip, { ...trip, bookings, revision: trip.revision + 1 });
   }
   if ((ref.kind as string) === 'photo') throw new Error(`${caller}: ${PHOTO_REFUSAL}`);
   throw new Error(`${caller}: unsupported ref kind ${ref.kind}`);
@@ -90,8 +91,11 @@ export function requireActor(fn: string, actorUserId: UserId | null | undefined)
 /**
  * Marks a day, stop or booking as the user's own. Pure.
  *
- * **Exempt from §2.1 A-76's door check, by Part 5's table**: it writes a `Provenance` core
- * constructs from its own literals. No caller value reaches a record field.
+ * §2.1 **A-77**: A-76 exempted this door with the reason *"it writes a `Provenance` core constructs
+ * from its own literals"*, and **QA R55-2 proved that reason false**: `accept(p, at, actor)` writes
+ * the CALLER's `at` into `provenance.acceptedAt`, and `acceptCandidate(…, at: 42)` produced a
+ * document unopenable at `$.days[0].stops[0].provenance.acceptedAt`. It returns through `commit`
+ * now, which needs no reason: the record it rewrote is a new object, so it is parsed.
  * @throws {TypeError} if `actorUserId` is missing (`null`, `undefined` or `''`) — §2.14.
  * @throws {Error} if the ref does not resolve, or its kind cannot carry provenance.
  */
@@ -103,7 +107,9 @@ export function acceptCandidate(trip: Trip, ref: Ref, actorUserId: UserId, at: I
 /**
  * Marks a day, stop or booking rejected. It stays in the document, badged. Pure.
  *
- * **Exempt from §2.1 A-76's door check, by Part 5's table**: `acceptCandidate`'s reason.
+ * §2.1 **A-77**: `acceptCandidate`'s note, and R55-2's other half — this door was safe **by
+ * accident** (`reject()` writes `acceptedAt: null` whatever it is passed), which stopped being
+ * load-bearing the moment `commit` covered it on purpose.
  * @throws {TypeError} if `actorUserId` is missing (`null`, `undefined` or `''`) — §2.14.
  * @throws {Error} if the ref does not resolve.
  */

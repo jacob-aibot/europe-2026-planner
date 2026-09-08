@@ -106,7 +106,7 @@ import type {
 import type { IdFactory, IsoDate, PlaceId, StopId, TripId, UserId } from '../model/ids.ts';
 import { addStop, makeStop } from './stops.ts';
 import type { StopInit } from './stops.ts';
-import { assertStorable } from './storable.ts';
+import { commit } from './commit.ts';
 import { REDACTED, redactText } from './redactText.ts';
 import { requireActor } from './candidates.ts';
 import { normalizeCityName } from '../model/cityName.ts';
@@ -645,13 +645,19 @@ export function copyStopInto(
           // A-15: built field by field, never spread. §6.6 applies to a `Place` that crosses a
           // person boundary exactly as it applies to the stop beside it.
           const copy = placeForCopy(original, targetKey, ids.newId('place'));
-          // §2.1 **A-76**, Part 5's `copyStopInto` row. This is the one door whose input is
-          // **another person's document** — §2.14's whole subject — and it had no check at all.
-          // Every field of `copy` is read off a record this build did not write, so a friend's
-          // `category`, `name`, `at` or `hours` outside what `parsePlace` accepts used to become
-          // the recipient's unopenable document.
-          assertStorable('copyStopInto', 'place', copy);
-          withPlace = { ...target, places: [...target.places, copy] };
+          // §2.1 **A-77**. This is the one door whose input is **another person's document** —
+          // §2.14's whole subject — and every field of `copy` is read off a record this build did
+          // not write, so a friend's `category`, `name`, `at` or `hours` outside what `parsePlace`
+          // accepts would become the recipient's unopenable document.
+          //
+          // **`commit` runs HERE, on the intermediate document, and not only at the return.** The
+          // refusal precedence A-77 Part 3 rule 2 states — *"the place refusal comes first"*, which
+          // `qa/r55-a76.mjs` §D pins — is a fact about this door and not only about the collection
+          // order, because `addStop` below commits on its own behalf before this function ever
+          // reaches its own return. Committing the place at the moment it is minted is what keeps
+          // the order the ruling states. It is still `commit`, not a per-record guard: the
+          // document says what changed, and what changed here is one new `Place`.
+          withPlace = commit('copyStopInto', target, { ...target, places: [...target.places, copy] });
           place = { kind: 'place', placeId: copy.id };
         }
       }
@@ -707,14 +713,15 @@ export function copyStopInto(
     // no `ticket`: §6.6, a ticket is an access credential
   };
 
-  // §2.1 **A-76**, Part 5's `copyStopInto` row, second record class. `addStop` checks the stop it
-  // writes, but the refusal has to name **this** door: the caller called `copyStopInto`, the
-  // offending value came out of the friend's document, and `addStop:` in the message would send
-  // whoever reads it to the wrong file. `makeStop` consumes no id here — `init.id` is already the
-  // one drawn above — so this is a pure re-derivation of the record `addStop` is about to build.
-  assertStorable('copyStopInto', 'stop', makeStop(init, placed, { ids, now: today, actorUserId }));
-  // `addStop` bumps the revision once, which is the whole operation.
+  // §2.1 **A-77**. `addStop` bumps the revision once, which is the whole operation, and its own
+  // `commit` is what parses the stop this door caused it to write — so the refusal for a STOP now
+  // names `addStop`, not `copyStopInto`. **That is a disclosed consequence of deleting the
+  // enumeration — BUILD-NOTES §1 KD-102**: A-76 re-derived the record here purely so the message
+  // would name this door, and re-deriving a record in order to name it is a door declaring what it
+  // wrote. The PLACE half, which `addStop` structurally cannot see, is committed above and still
+  // names this door, which is the refusal precedence A-77 Part 3 rule 2 states.
+  //
   // A-22 Part 1(b): the ids factory, the date and the actor are the values this function already
   // validated or already used — never a second read of `ctx`.
-  return addStop(withPlace, placed, init, { ids, now: today, actorUserId });
+  return commit('copyStopInto', target, addStop(withPlace, placed, init, { ids, now: today, actorUserId }));
 }

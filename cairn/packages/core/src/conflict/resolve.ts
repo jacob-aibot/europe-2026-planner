@@ -11,13 +11,28 @@ import { isIsoDate } from '../model/ids.ts';
 // §2.7 A-9 point 4: `resolve.ts` may import `detect.ts`. There is no cycle — `detect.ts`
 // imports `model/`, `derive/summary.ts` and `rules/` only, and `index.ts` imports both.
 import { detectUngatedChecked } from './detect.ts';
+// §2.1 **A-77** Part 3 rule 8. `conflict/resolve.ts` holds FOUR doors and writes the eighth record
+// class, `ConflictResolution` — and A-76's census, which read `packages/core/src/build/*.ts` and
+// held a seven-arm type map, could not see either fact. That is the case that decided A-77 Part 2:
+// a table can be short, and a table scoped to the wrong directory is short in a way nobody in it
+// can notice. The import direction `conflict/ → build/` does not cycle: `build/commit.ts` imports
+// `model/`, `serialize/` and `build/storable.ts` only.
+import { commit } from '../build/commit.ts';
 
 /** `retiredAt` is set by `syncResolutions`, never by a caller, so it is optional here. */
 export type ResolutionInit = Omit<ConflictResolution, 'retiredAt'> & { retiredAt?: IsoDate | null };
 
 /**
  * Records (or replaces) the resolution for one conflict id. Pure.
- * @throws {Error} if the resolution has no `conflictId`.
+ *
+ * §2.1 **A-77**: it returns through `commit`, which sees a new record in `resolutions` and hands it
+ * to `parseResolution` — `fromJSON`'s own. This door pushed the caller's `ResolutionInit` into the
+ * document unchecked, and `state:'bogus'`, `by: 42` and `note: {}` each produced a document that
+ * could never be re-opened (verified at `$.resolutions[0].state`, `.by` and `.note`).
+ *
+ * @throws {Error} if the resolution has no `conflictId`, or is one `fromJSON` would refuse —
+ *         programmer error per §2.1, and the difference between a refusal here and a saved
+ *         document that can never be opened again.
  */
 export function resolveConflict(trip: Trip, resolution: ResolutionInit): Trip {
   if (!resolution.conflictId) throw new Error('resolveConflict: conflictId is required');
@@ -26,7 +41,7 @@ export function resolveConflict(trip: Trip, resolution: ResolutionInit): Trip {
   // on 12 Aug; it has come back" detail line.
   const resolutions = trip.resolutions.filter((r) => r.conflictId !== resolution.conflictId || r.retiredAt);
   resolutions.push({ ...resolution, retiredAt: resolution.retiredAt ?? null });
-  return { ...trip, resolutions, revision: trip.revision + 1 };
+  return commit('resolveConflict', trip, { ...trip, resolutions, revision: trip.revision + 1 });
 }
 
 /**
@@ -84,7 +99,10 @@ export function syncResolutions(trip: Trip, at: IsoDate): Trip {
     return { ...r, retiredAt: at };
   });
   if (!changed) return trip;
-  return { ...trip, resolutions, revision: trip.revision + 1 };
+  // §2.1 A-77. The same-reference returns above happen BEFORE `commit` is reached, so this
+  // function's *"returns the trip unchanged when nothing was retired"* contract is unaffected —
+  // A-77 Part 3 rule 6 names it. A row that WAS stamped is a new object and is parsed.
+  return commit('syncResolutions', trip, { ...trip, resolutions, revision: trip.revision + 1 });
 }
 
 /**
@@ -129,14 +147,15 @@ export function reassertRetirements(trip: Trip, retired: ReadonlyMap<ConflictId,
     return { ...r, retiredAt: at };
   });
   if (!changed) return trip;
-  return { ...trip, resolutions, revision: trip.revision + 1 };
+  // §2.1 A-77 — `syncResolutions`' note. The same-reference contract is taken before `commit`.
+  return commit('reassertRetirements', trip, { ...trip, resolutions, revision: trip.revision + 1 });
 }
 
 /** Drops a stored resolution, putting the conflict back to unresolved. Pure. */
 export function unresolveConflict(trip: Trip, conflictId: ConflictId): Trip {
-  return {
+  return commit('unresolveConflict', trip, {
     ...trip,
     resolutions: trip.resolutions.filter((r) => r.conflictId !== conflictId),
     revision: trip.revision + 1,
-  };
+  });
 }
