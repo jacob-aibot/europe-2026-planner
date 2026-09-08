@@ -831,14 +831,18 @@ if (run('H')) {
   const fail = Number((tap.match(/^# fail (\d+)$/m) ?? [])[1]);
   note(`H1: \`npm run test:tap\` -> ${pass} pass / ${fail} fail`);
   ok(fail === 0, 'H1: zero failing tests', fail);
-  // **Re-cut by QA round 57.** The frozen `1441` was I-13i's number and is four increments old.
-  // What this line is actually for is the PROPERTY R44-4 and R45-17 both filed against — *the
-  // number BUILD-NOTES §2 publishes is the number the command returns* — so it now reads §2's
-  // published figure rather than carrying a copy of it, and stays red exactly as long as §2 is
-  // stale. (At round 57 it is: §2 says 1556, the suite is 1635.)
-  const publishedTests = Number((bn.match(/^npm test\s+# (\d+) tests/m) ?? [])[1]);
-  ok(publishedTests === pass,
-    'H1: BUILD-NOTES §2\'s published `npm test` count is the number the command returns', { published: publishedTests, measured: pass, wasAtI13i: 1441 });
+  // **Re-cut by QA round 57**, then again by **QA round 58**. Round 57 replaced the frozen `1441`
+  // with *§2's published figure equals the measured count*, which was the property R44-4 and
+  // R45-17 filed against — and it stayed red, because §2's figure went stale a fifth time.
+  // ROADMAP **I-18** / §2.1 **A-79 Part 9** ruled the figure **deleted rather than corrected**
+  // (§4.2 A-70 Part 7 item 3), and named this line as round 58's re-cut. The property is now the
+  // one that cannot go stale: **§2 publishes no test count at all.** A figure restored to that
+  // line — even a correct one — is the regression, and this reddens on the commit that adds it.
+  const sec2 = bn.slice(bn.indexOf('## 2. How to run it'), bn.indexOf('## 3.'));
+  const restored = (sec2.match(/^\s*npm (?:test|run test:tap)[^\n]*?#[^\n]*?\b(\d{3,})\s+tests?\b/m) ?? [])[1] ?? null;
+  ok(restored === null,
+    'H1: BUILD-NOTES §2 publishes NO `npm test` count — A-79 Part 9 deleted it rather than correcting it a fifth time (R44-4 / R45-17 / R53-2 / R57-4 are the same finding recurring)',
+    { publishedInSection2: restored, measured: pass, wasAtI13i: 1441, wasAtR57: 1556 });
   // H2 — the `qa/` probe FAIL counts the addendum publishes.
   const probeFails = (name, env = {}) => {
     let out = '';

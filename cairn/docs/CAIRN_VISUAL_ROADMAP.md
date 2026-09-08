@@ -19,9 +19,59 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
+> **🟧 THE CHECK NOW RECOGNISES A DOOR IN ANY SHAPE — BUT IT CANNOT LOOK INSIDE THE TWO BOXES
+> THIS ENGINE PACKS THINGS IN. As of 2026-09-08, this block is the newest and it supersedes every
+> block below it, including the tester's previous report.** Nothing on your phone changes.
+>
+> **What was built, and it is a better kind of answer than the four before it.** Last round the
+> standing check only recognised a door written as a plain standalone function, so the same door
+> written as a method — or handed back by another function, or hung off an object — was invisible.
+> The designer refused to write a longer list of shapes and asked **one structural question**
+> instead: *can you get from this exported thing to something that hands back a trip, through any
+> property or any return value, however deep?* That catches eleven ways of hiding a door, including
+> three nobody wrote it for. The list of "these aren't doors" is now down to **one** entry and the
+> compiler checks that entry is doing real work, so last round's trick — free up a slot by removing
+> a name that was doing nothing — no longer works. **1,637** automated checks pass, and nothing you
+> can see changes.
+>
+> **The tester re-ran the designer's own three test cases in shapes the builder had not used, and
+> all three passed.** The one-entry list held against four different attacks, including a real door
+> that *renames itself* to borrow the entry's excuse — caught twice. The check is not asleep in any
+> corner of the engine: a hidden door planted in the machine-generated country data, in the front
+> door file and in an ordinary file all set it off, each naming the offender.
+>
+> **What sends it back is what the question cannot walk through.** The check can step through two
+> kinds of box: a plain object, and a function's return value. This engine writes most of its data
+> in the two it *cannot* step through — **"either this shape or that shape"** (used six times in the
+> model: a ticket, a place link, a photo's attachment…) and **"this part is optional"** (used 106
+> times). Put a door behind either and it is invisible: the tester wrote nine such doors, none of
+> them exotic, none of them any of the three exceptions the designer said were the only ones left,
+> and **all nine were invisible** — with the full harm reproduced, a trip saved and never openable
+> again while every automated check stayed green. The sharpest version: the designer's own headline
+> test case — *"the day a conflict rule gains a fix-this-for-me button, ten unguarded doors appear"*
+> — is caught when that button is written one way and **invisible** when the same button is written
+> one word differently.
+>
+> **Nothing is broken today**, exactly as last round: every door in the engine right now is written
+> in the plain shape, and this is a finding about the **promise**, not about your trips. And the
+> repair looks cheap — the tester measured a **two-line** change that closes all of it, adds no new
+> list of shapes, flags nothing innocent, and costs no measurable time.
+>
+> **Four smaller things**, all minor: a "constructor"-style door that even the two-line repair would
+> not catch; the check's error message naming only two of the eleven offenders it found, because the
+> compiler truncates long messages by default; a claim in the build notes about async doors that
+> measures identical before and after the change; and two sentences in the design document whose own
+> printed evidence is one name short.
+>
+> **What happens next.** The tester's verdict is **send back to the designer** — the fifth round on
+> this one problem, and the honest reading is that each round's answer has been genuinely better
+> than the last: the *place to look* is closed, the *shapes of door* are closed, and what is left is
+> the *kinds of container the search can walk through*. **Zero blockers.** The manager's **SHIP /
+> SEND BACK** decision for the whole of Phase 2 still comes next.
+
 > **🟧 THE CHECK NOW SEARCHES THE WHOLE ENGINE — AND STILL ONLY RECOGNISES ONE *SHAPE* OF DOOR.
-> As of 2026-09-08, this block is the newest and it supersedes every block below it, including the
-> tester's previous report.** Nothing on your phone changes.
+> As of 2026-09-08, this block was the newest until the block above it.** Nothing on your phone
+> changes.
 >
 > **What was built, and the part of it that worked is the bigger part.** Last round the standing
 > check looked in **one folder plus one file named by hand**. It now reads **the whole engine** —

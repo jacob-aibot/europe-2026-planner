@@ -171,16 +171,37 @@ head('§A — the fences over `7cb5965..HEAD`, and the numbers BUILD-NOTES publi
   // schema*) is expressed as "whatever the model says, the golden fixtures agree".
   ok(core.SCHEMA_VERSION === 3, '`SCHEMA_VERSION` is 3 — A-72 moved it for `participants`; A-65/A-66 moved nothing', core.SCHEMA_VERSION);
 
+  {
+    // **Re-cut by QA round 58 (ROADMAP I-18 / §2.1 A-79 Part 9).** This line used to assert
+    // *the number §2 publishes equals the number the command returns*, and it was RED for four
+    // rounds running — R44-4, R45-17, R53-2, R57-4 — because the number goes stale in the commit
+    // that adds a test. A-79 Part 9 ruled the number **deleted, not corrected a fifth time**
+    // (§4.2 A-70 Part 7 item 3: *a contract document states design counts and never the value a
+    // grep returns over source*), and the property that replaces it cannot go stale:
+    //
+    //   > **`BUILD-NOTES.md` publishes no test count.** The command is published; what it prints
+    //   > is what it prints.
+    //
+    // So the assertion inverts: §2 must carry NO figure. A restored figure — right or wrong — is
+    // the regression now, and this goes red on the commit that restores one. It no longer sits
+    // behind `--fast`, because it does not need the suite to run: the document is the subject.
+    // `qa/r58-recut-vacuity.sh` is its control (plant a figure, this must redden).
+    const bn = readFileSync(resolve(CAIRN, 'docs/BUILD-NOTES.md'), 'utf8');
+    const sec2 = bn.slice(bn.indexOf('## 2. How to run it'), bn.indexOf('## 3.'));
+    const restored = /^\s*npm (?:test|run test:tap)[^\n]*?#[^\n]*?\b(\d{3,})\s+tests?\b/m.exec(sec2)?.[1] ?? null;
+    ok(restored === null,
+      'BUILD-NOTES §2 publishes NO `npm test` count (A-79 Part 9 — deleted, not corrected; a figure back on that line is the regression)',
+      { publishedInSection2: restored });
+  }
+
   if (process.argv.includes('--fast')) {
     note('suite measurement skipped (--fast). `npm run test:tap | grep \'^# pass\'` is the check.');
   } else {
     const tap = execFileSync('npm', ['run', '--silent', 'test:tap'], { cwd: CAIRN, encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 });
     const pass = /^# pass (\d+)$/m.exec(tap)?.[1] ?? null;
     const fail = /^# fail (\d+)$/m.exec(tap)?.[1] ?? null;
-    const bn = readFileSync(resolve(CAIRN, 'docs/BUILD-NOTES.md'), 'utf8');
-    const statedIn2 = /^npm test\s+# (\d+) tests/m.exec(bn)?.[1] ?? null;
     ok(fail === '0', 'the suite is green', { pass, fail });
-    ok(statedIn2 === pass, 'BUILD-NOTES §2\'s published `npm test` count matches the suite', { statedInSection2: statedIn2, measured: pass });
+    note(`the suite measures ${pass} pass / ${fail} fail — the number lives here, not in BUILD-NOTES`);
   }
 }
 

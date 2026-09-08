@@ -3971,3 +3971,68 @@ was cut against, with the env override kept. Frozen sibling-probe counts become 
 terminal marker stays the assertion), the `8 → 3 FAIL` line is re-cut to the corrected `8 → 4`, and
 the `1441` pin becomes the property R44-4 and R45-17 both filed. 13 FAIL → **8**, six of which are
 the still-open R51-1…R51-6 records.
+
+---
+
+**Round 58** is the mandatory adversarial pass over **I-18** / §2.1 **A-79** (*a door is a
+module-level function, and the census refuses any export that can hide one*), at `77ef3ba` — the
+fifth round on one class, run against A-79 Part 11's **three named exceptions** (an overload set, a
+carrier more than 12 hops deep, a cast) rather than freelancing. Six new probes, plus the two
+re-cuts A-79 Part 9 assigned to this round.
+
+```bash
+cd cairn
+bash qa/r58-carriers.sh        # 16 full `tsc` runs (~2 min) — the round's finding, R58-1
+bash qa/r58-harm.sh            # 1 `tsc` + 1 census + the harm driver (~30 s)
+bash qa/r58-criteria.sh        # N8/N9/N10 re-derived + 2 NON_DOORS attacks; 6 `tsc` runs (~1 min)
+bash qa/r58-async.sh           # R57-6's second half as a DELTA, at 77ef3ba and 9b4d358 (~1 min)
+bash qa/r58-fix-probe.sh       # is R58-1 cheaply closable, and does closing it false-positive?
+bash qa/r58-recut-vacuity.sh   # the control for this round's two re-cuts (~20 s)
+```
+
+Every shell probe injects into `packages/core/src` (and `r58-criteria.sh`/`r58-fix-probe.sh` into
+`packages/core/test/storable.test.ts`, `r58-recut-vacuity.sh` into `docs/BUILD-NOTES.md`) and
+**restores every file in an `EXIT` trap**, printing `git status --porcelain` at the end. Run them on
+a clean tree or the trap will revert your work with them.
+
+**`r58-carriers.sh` — the round's finding, R58-1.** A-79 Part 11 claims a sixth finding needs a
+`Trip`-producing callable `Carries` cannot see and that *"there are exactly three ways for that"*.
+§A injects one carrier at a time into `derive/lifecycle.ts` and runs a full `tsc`: rows 0–1 (plain
+function, object-literal method) are **RED**, so the harness is honest, and rows 2–10 are **GREEN**
+— a union carrier (`| undefined`, `| null`), a **discriminated union**, an **optional nested
+carrier**, `Set<door>`, `Iterable<door>`, **N9 written as a union instead of an optional method**, a
+`Promise<Trip>` door behind a union, and a **construct signature** (R58-2). None is an overload set,
+none nests deeper than two hops, none contains a cast. Two negative controls stay GREEN. §B pins the
+depth bound (12 RED / 13 GREEN), §C confirms the overload residue is still open, and §D scans all 54
+`.ts` files for a live overload set and finds **zero**.
+
+**`r58-harm.sh` + `r58-harm.mjs` — R58-1's harm at R56-1's own bar.** Three carriers in one censused
+file: `npm run typecheck` **GREEN**, `storable.test.ts` **107 pass / 0 fail**, and all three hidden
+doors write a document `fromJSON` refuses at `$.resolutions[0].state` — **UNOPENABLE ×3**.
+
+**`r58-criteria.sh` — the three injected-fault criteria, re-derived in shapes the builder did not
+write**, plus `NON_DOORS` attacks that are not round 57's substitution. §A N8 as `TripReviser`; §B
+N9 as an arrow property (RED, names the rules); **§B2 the same criterion one field-shape sideways
+(`autofix?: { fix: … }`) — GREEN**, which is R58-1 in shipped code; §C N10 substituting `addStop`;
+§D a real door **adopting the excused name** `fromJSON` (typecheck green, caught twice at runtime by
+half 3 and by the `module` check); §E an inert entry (`toDoc`), which reddens naming itself.
+
+**`r58-async.sh` — R57-6's second half, measured as a delta.** Runs the awaited-rejection case and
+round 57's **detached-continuation** case at `77ef3ba` and at `9b4d358` in a throwaway worktree. The
+awaited case names the door at **both** commits; the detached case is **byte-identical** at both
+(file-level `not ok`, one `unhandledRejection`). **R58-4.**
+
+**`r58-fix-probe.sh` — not a fix; a measurement the ruling on R58-1 turns on.** Patches two lines in
+a scratch copy (`Members` walks `NonNullable<T[K]>`; `Carries` distributes over unions instead of
+bracket-guarding), adds **no** carrier form to any list, and reports: typecheck **exit 0** on the
+shipped tree, `storable.test.ts` **107 pass / 0 fail**, 5.53 s, and all four filed carrier families
+now RED and named with the negative control still GREEN.
+
+**The two re-cuts.** A-79 Part 9 deleted BUILD-NOTES §2's published test count rather than correcting
+it a fifth time, and named `qa/r47-i13c.mjs` and `qa/r51-i13i.mjs` §H1 — both of which asserted *the
+published number equals the measured count* — as round 58's. Both now assert the property that
+replaces it: **§2 publishes no test count at all**, read out of §2 itself, so a restored figure is the
+regression. `r47-i13c.mjs`'s check also moves out from behind `--fast` (it does not need the suite to
+run) and the probe is back to **ALL CLEAR**; `r51-i13i.mjs` goes **8 FAIL → 7**, `COMPLETE`, the seven
+being the still-open R51-1…R51-6 records. `r58-recut-vacuity.sh` is their control: plant
+`# 1637 tests as of I-18` back on that line and both go RED naming it.

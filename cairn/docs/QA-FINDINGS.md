@@ -1,4 +1,184 @@
-# Cairn — QA findings, Phase 1 **rounds 2–11** and Phase 2 **rounds 12 (2a), 13 (I-3a / I-4a), 14 (A-11…A-14), 15 (A-15…A-17), 16 (A-18 / A-19), 17 (A-20 / R16-1), 18 (A-21 / A-21a), 19 (A-22 / A-23), 20 (A-24 / R19-1 / R19-2 / KD-50), 21 (A-25 — the closure round), 22 (I-5 / I-5a — A-26's mixed-resolution country index), 23 (I-5b — A-27's forgiveness entry), 24 (I-5c — A-28's second arm for filter 2), 25 (the I-5 closure round), 26 (I-6 — the widened `TripSummaryRow` and the `SUMMARY_VERSION` rescan), 27 (I-6a — A-29's stated-country gate and A-30's `refreshSummary`) 28 (I-7 — `travelStats` and the row's record census), 29 (I-7a — A-32's civil calendar, A-33's exit criterion 6, A-34's `provisional`) 30 (I-7b — A-35's span cap, A-36's executed port gate, A-37's row read gates) 31 (A-38 — the seeded double and `ensureReady`'s upcast) 32 (A-39 — the finite covering set and the boundary that closes the arc), 33 (I-8a — the tab shell, the world map, the token layer and the signal-collision fix), 34 (I-8c — A-45's calendar gate, A-44's lifecycle read gate, BLD-3's way out) 35 (I-8e — A-46's unreadable row, its rescue export, and R34-1's ordering fix) 36 (I-8d — A-41's atlas frame and A-42's withdrawn min-span claim; I-8d's first adversarial round) 37 (I-8g — A-48's `countryKeyPoint`, the connected-components partition, C9's paint order and the pane's `aspect`) 38 (I-8h — A-49's `countryParts`, C8′'s extent, C8″'s detached pane and A-50's symmetric pane box) 39 (I-8i — A-51's one-pane-per-cluster frame, A-52's ring filter and A-53's home/extent panes + I18) 40 (I-8f + I-8j together — A-47's `openFailures`/`rowUnopenable`, and A-54's G7′/G7″ layout, D/I19 ring guard and G5′ tie-break) 41 (I-8b — the Profile, the mobile-first shell, and `DESIGN.md` §5/§6's first rendered acceptance standard) 42 (I-8b's repair pass — the mandatory re-breaker over round 41's 3 MAJOR / 14 MINOR, `DESIGN.md` revision 2 §6.2's refusal-equivalence criterion, and the vacuous fault harness) and **43 (I-12 — A-56's `cities[].centre` + `firstDay`/`lastDay`, `SUMMARY_VERSION` 4 → 5, and `TravelStatsCity`'s city dates) 44 (I-12a — A-59's counted city-date fallback and nameable row, A-60's clamp-artefact fix) 45 (I-13 — the photo foundation: §10's record class, EXIF reader, byte stores and loading-state selectors, A-57/A-58/A-61) and **46 (I-13b — the confirmation round over the whole photo repair arc: A-62's `[tripId, photoId]` byte key, A-63's fourth `PhotoListing` phase, A-64's withdrawn provenance claim) 47 (I-13c — the confirmation round over the round-46 repair pass and revisions 45/46: A-62 Part 8 residue 4, A-65's refused deferred delete, A-66's five-armed failure union) 48 (I-13d — the confirmation round over §4.2 **A-67**, the store's generation guard, and revision 48's **Part 7a**) 49 (I-13e — the confirmation round over §4.2 **A-68**, the wiring at A-67's own call sites, and the required re-cut of `qa/r47-i13c.mjs`) 50 (I-13g + I-13h — the confirmation round over §4.2 **A-69**'s settling boundary and **A-70**'s sequence-stamped predicate, the required re-cut of `qa/r49-i13e.mjs`, and the close of the A-67…A-70 arc) 51 (I-13i — the confirmation round over §4.2 **A-71**'s subscriber-exception brand and one classifier, §10 **A-66 Part 11**'s `setBatch`, and the required re-cut of six assertions across three `qa/` probes)**** **52 (I-9 — participants in core: `Trip.participants`, the three build functions, the two validation codes, and the *participation grants nothing* invariant)** **53 (the confirmation-breaker pass over the participants arc)** **54 (I-11 — the PHASE 2 PHASE GATE: every exit criterion re-derived, the phase attack list run end to end, one cross-cutting scenario over everything the phase built, and the whole `qa/` board re-run)** and **55 (I-15 — the mandatory adversarial pass over §2.1 **A-76**, *a build door asks the parser what a record may hold*: KD-100, the TOCTOU window, the two standing censuses, and the hunt for the eleventh unguarded door)** and **56 (I-16 — the mandatory adversarial pass over §2.1 **A-77**, *a door does not say what it wrote; the document says what changed*: the identity diff itself, the eighth record class, the replaced door census, and the third attempt at one class of bug)** and **57 (I-17 — the mandatory adversarial pass over §2.1 **A-78**, *the census reads the tree, not a list of files*: the fourth round on one class after an explicit claim of structural closure, and the fifth face, which went inward)**
+# Cairn — QA findings, Phase 1 **rounds 2–11** and Phase 2 **rounds 12 (2a), 13 (I-3a / I-4a), 14 (A-11…A-14), 15 (A-15…A-17), 16 (A-18 / A-19), 17 (A-20 / R16-1), 18 (A-21 / A-21a), 19 (A-22 / A-23), 20 (A-24 / R19-1 / R19-2 / KD-50), 21 (A-25 — the closure round), 22 (I-5 / I-5a — A-26's mixed-resolution country index), 23 (I-5b — A-27's forgiveness entry), 24 (I-5c — A-28's second arm for filter 2), 25 (the I-5 closure round), 26 (I-6 — the widened `TripSummaryRow` and the `SUMMARY_VERSION` rescan), 27 (I-6a — A-29's stated-country gate and A-30's `refreshSummary`) 28 (I-7 — `travelStats` and the row's record census), 29 (I-7a — A-32's civil calendar, A-33's exit criterion 6, A-34's `provisional`) 30 (I-7b — A-35's span cap, A-36's executed port gate, A-37's row read gates) 31 (A-38 — the seeded double and `ensureReady`'s upcast) 32 (A-39 — the finite covering set and the boundary that closes the arc), 33 (I-8a — the tab shell, the world map, the token layer and the signal-collision fix), 34 (I-8c — A-45's calendar gate, A-44's lifecycle read gate, BLD-3's way out) 35 (I-8e — A-46's unreadable row, its rescue export, and R34-1's ordering fix) 36 (I-8d — A-41's atlas frame and A-42's withdrawn min-span claim; I-8d's first adversarial round) 37 (I-8g — A-48's `countryKeyPoint`, the connected-components partition, C9's paint order and the pane's `aspect`) 38 (I-8h — A-49's `countryParts`, C8′'s extent, C8″'s detached pane and A-50's symmetric pane box) 39 (I-8i — A-51's one-pane-per-cluster frame, A-52's ring filter and A-53's home/extent panes + I18) 40 (I-8f + I-8j together — A-47's `openFailures`/`rowUnopenable`, and A-54's G7′/G7″ layout, D/I19 ring guard and G5′ tie-break) 41 (I-8b — the Profile, the mobile-first shell, and `DESIGN.md` §5/§6's first rendered acceptance standard) 42 (I-8b's repair pass — the mandatory re-breaker over round 41's 3 MAJOR / 14 MINOR, `DESIGN.md` revision 2 §6.2's refusal-equivalence criterion, and the vacuous fault harness) and **43 (I-12 — A-56's `cities[].centre` + `firstDay`/`lastDay`, `SUMMARY_VERSION` 4 → 5, and `TravelStatsCity`'s city dates) 44 (I-12a — A-59's counted city-date fallback and nameable row, A-60's clamp-artefact fix) 45 (I-13 — the photo foundation: §10's record class, EXIF reader, byte stores and loading-state selectors, A-57/A-58/A-61) and **46 (I-13b — the confirmation round over the whole photo repair arc: A-62's `[tripId, photoId]` byte key, A-63's fourth `PhotoListing` phase, A-64's withdrawn provenance claim) 47 (I-13c — the confirmation round over the round-46 repair pass and revisions 45/46: A-62 Part 8 residue 4, A-65's refused deferred delete, A-66's five-armed failure union) 48 (I-13d — the confirmation round over §4.2 **A-67**, the store's generation guard, and revision 48's **Part 7a**) 49 (I-13e — the confirmation round over §4.2 **A-68**, the wiring at A-67's own call sites, and the required re-cut of `qa/r47-i13c.mjs`) 50 (I-13g + I-13h — the confirmation round over §4.2 **A-69**'s settling boundary and **A-70**'s sequence-stamped predicate, the required re-cut of `qa/r49-i13e.mjs`, and the close of the A-67…A-70 arc) 51 (I-13i — the confirmation round over §4.2 **A-71**'s subscriber-exception brand and one classifier, §10 **A-66 Part 11**'s `setBatch`, and the required re-cut of six assertions across three `qa/` probes)**** **52 (I-9 — participants in core: `Trip.participants`, the three build functions, the two validation codes, and the *participation grants nothing* invariant)** **53 (the confirmation-breaker pass over the participants arc)** **54 (I-11 — the PHASE 2 PHASE GATE: every exit criterion re-derived, the phase attack list run end to end, one cross-cutting scenario over everything the phase built, and the whole `qa/` board re-run)** and **55 (I-15 — the mandatory adversarial pass over §2.1 **A-76**, *a build door asks the parser what a record may hold*: KD-100, the TOCTOU window, the two standing censuses, and the hunt for the eleventh unguarded door)** and **56 (I-16 — the mandatory adversarial pass over §2.1 **A-77**, *a door does not say what it wrote; the document says what changed*: the identity diff itself, the eighth record class, the replaced door census, and the third attempt at one class of bug)** and **57 (I-17 — the mandatory adversarial pass over §2.1 **A-78**, *the census reads the tree, not a list of files*: the fourth round on one class after an explicit claim of structural closure, and the fifth face, which went inward)** and **58 (I-18 — the mandatory adversarial pass over §2.1 **A-79**, *the census asks whether a door is reachable, not how it is declared*: the fifth round on one class, run against A-79 Part 11's three named exceptions, and the sixth face — the type constructors the walk cannot descend through)**
+
+> **Status (as of `master` @ `77ef3ba`, independently verified 2026-09-08 — round 58, the
+> **mandatory adversarial pass** over ROADMAP **I-18** / `ARCHITECTURE.md` revision 60 §2.1
+> **A-79** (*a door is a module-level function, and the census refuses any export that can hide
+> one*). Routed as mandatory because it changes a core invariant. Six new probes (seven files) —
+> `qa/r58-carriers.sh`, `qa/r58-harm.sh` + `qa/r58-harm.mjs`, `qa/r58-criteria.sh`,
+> `qa/r58-async.sh`, `qa/r58-fix-probe.sh`, `qa/r58-recut-vacuity.sh` — plus the **two re-cut
+> probes** A-79 Part 9 named as this round's (`qa/r47-i13c.mjs`, `qa/r51-i13i.mjs` §H1). **Zero
+> `src`, zero `.tsx`, zero `docs/design/`, zero new dependency; every injection restored, working
+> tree clean after every probe.**
+>
+> **ASSESSMENT — SEND BACK, to the ARCHITECT. 0 BLOCKERS, 1 MAJOR, 4 MINOR.**
+>
+> **What is fixed, and the mechanism is a genuinely better kind of answer than the four before
+> it.** Everything I-18 claims to have built is built and behaves. The recursive predicate is not a
+> syntax enumeration — I re-derived N8 in a shape the builder did not write (`TripReviser`, a class
+> method) and it reddens **naming the export**; N9 as an *arrow property* on the `Rule` type
+> reddens naming all ten rule exports plus `RULES`; N10 by substitution with a **different** door
+> from the builder's (`addStop`, not `addPlace`) reddens `DOOR_CENSUS` at compile time **and**
+> fires the runtime entry-not-a-door test. `NON_DOORS`'s liveness mechanism held against four
+> attacks that are not round 57's: an inert entry (`toDoc`) reddens **naming itself**; a real door
+> **adopting the excused name** (`export function fromJSON(t: Trip): Trip` in `derive/lifecycle.ts`)
+> is caught twice by half 3's identity walk and by the `module` check; eviction reddens; addition
+> fires the count. The census's *subject* is still not vacuous anywhere — a carrier injected into
+> the **generated** `geo/countries.gen.ts`, into the barrel `index.ts` and into `model/ids.ts` all
+> redden, each naming the export. The 12-hop bound is real and correctly placed (12 hops RED, 13
+> GREEN). The overload residue is exactly as documented and **not live**: **zero** overload sets
+> and zero bodiless signatures under `packages/core/src`, over all 54 `.ts` files. Regression:
+> `npm run test:tap` → **1637 pass / 0 fail / 0 skipped / 0 cancelled**, `npm run typecheck` → exit
+> 0 on both projects, `npm run web:build` → succeeds, export surface re-counted by running the
+> command → **86**. `git show --stat 77ef3ba` → **3 files**; the `commit.ts` diff is **100 % comment
+> lines** (every added and removed line is a `*`/`//` line — "docstring only" re-derived, not read);
+> zero `.tsx`, zero `qa/`, zero `docs/design/`, zero `package.json`, zero lockfile, no added import
+> and no `Date.now`/`Math.random`/`new Date(`/DOM reference anywhere in the diff.
+>
+> **What sends it back is that A-79 Part 11's closure claim is false as written, and the
+> counter-example is not one of the three exceptions it names.** The claim is:
+>
+> > *"A sixth finding on this class is legitimate only if it exhibits a `Trip`-producing callable
+> > reachable from a censused export that `Carries` does not see, and there are exactly three ways
+> > for that: an overload set whose last signature does not return `Trip`, a carrier nested more
+> > than 12 hops deep, and a cast (permanent, by construction)."*
+>
+> There is a fourth way, it has **three** faces, and none of them is an overload set, a >12-hop
+> nesting or a cast: **`Carries` can descend through exactly two type constructors — a bare object
+> type's own keys, and a call signature's return type — and the shipped model is written mostly in
+> the two it cannot descend through** (**R58-1**, MAJOR). A union with any non-object member
+> (`{…} | null`, `{…} | undefined`), a union of object types with disjoint keys (a discriminated
+> union — `keyof` a union is the *intersection* of its members' keys), and an **optional property**
+> holding a carrier (`-?` strips the optional modifier from the mapped *result*; it does not strip
+> `| undefined` from the source indexed access `T[K]`) are each invisible, at the top level and at
+> every depth. The harm is R57-1's, at R57-1's own bar, driven and not argued. There is no live
+> instance today, exactly as R57-1 and R56-1 had none.
+>
+> | | |
+> |---|---|
+> | **Does it even run, from clean?** | BUILD-NOTES' I-18 addendum commands, literally, from a clean checkout. `npm run test:tap` → **1637 tests / 1637 pass / 0 fail / 0 skipped / 0 cancelled**. `npm run typecheck` → **exit 0**, both projects, 13.3 s wall for the pair. `npm run web:build` → **succeeds** (one pre-existing rolldown chunk-size warning, unrelated). `node --test packages/core/test/storable.test.ts` → **107 pass / 0 fail**. Export re-count by running the command → **86**. Every "zero X" claim in the addendum re-derived from `git show`, not read. |
+> | **R58-1 — nine carrier forms, each a full `tsc` against the real tree** | `bash qa/r58-carriers.sh`. Row 0 (plain `export function`) and row 1 (object-literal method) are **RED**, so the harness is not lying. Rows 2–10 are **GREEN — invisible**: `{archive} \| undefined`, `{archive} \| null`, a discriminated union `{kind:'archive'; run} \| {kind:'none'; reason}`, an **optional nested carrier** `{archiver?: {archive}}`, `Set<door>`, `Iterable<door>`, **N9 written as a union instead of an optional method**, a `Promise<Trip>` door behind a union, and a **construct signature** `new (t: Trip, r: ConflictResolution) => Trip`. Two negative controls stay GREEN (a non-door union; a non-door optional nested object), so the rows are not measuring "any union reddens". |
+> | **R58-1's harm, at R56-1's / R57-1's bar** | `bash qa/r58-harm.sh` injects three of those carriers into `derive/lifecycle.ts` — a censused file, a censused directory, ordinary TypeScript, **no cast, no `any`, no overload set, nesting depth 2** — and measures: `npm run typecheck` **GREEN (all three census lines blind)**, `storable.test.ts` **107 pass / 0 fail**, and all three hidden doors return a document `fromJSON` refuses at `$.resolutions[0].state`: **UNOPENABLE ×3**. |
+> | **The root causes, isolated rather than described** | Three one-line facts, each measured at the type level. **(a)** `{a?: {run: door}}` is missed while `{a: {run: door}}` and `Required<{a?: {run: door}}>` are caught — so the miss is `T[K]`'s implicit `\| undefined`, not the nesting. **(b)** `keyof ({a: door} \| {b: string})` is `never`, while `{a: door} \| {a: string}` (shared key) is caught — so the miss is `keyof` a union being the intersection. **(c)** `Iterable<door>` is missed while a hand-typed iterator with no `any` is caught — the standard library's `Iterator<T, TReturn = any>` puts an `any` on the walk and `Carries` stops there; this is why `Set<door>` and `ReadonlySet<door>` are invisible while `door[]` and `Record<string, door>` are not. |
+> | **A-79 Part 5's own showcase, re-measured** | `Map<string, door>` is caught **by accident**, not structurally: the door is reachable only through `get(key): V \| undefined`, and `IsDoor` happens to distribute over that union. Change the payload from a door to a *carrier* and it collapses — **`Map<string, {run: door}>` is GREEN at one hop**. The ruling names `Record<RuleId, Rule>` as *"the deepest carrier this codebase could plausibly hold"*; the same table written `Map<RuleId, Rule>` is invisible. |
+> | **Is R58-1 cheaply closable, and does closing it false-positive?** | Measured rather than guessed, because that is what the ruling on it turns on. `bash qa/r58-fix-probe.sh` patches **two lines** in a scratch copy — `Members` walks `NonNullable<T[K]>`, and `Carries` distributes (`true extends (T extends unknown ? … : never)`) instead of bracket-guarding — and **adds no carrier form to any list**. Result: `npm run typecheck` **exit 0** on the shipped tree (no false positive over all 54 modules), `storable.test.ts` **107 pass / 0 fail**, core-project typecheck **5.53 s** (the builder measured 5.30–5.42 s unpatched), and all four filed carrier families now **RED and named** — union, discriminated union, optional nested, `Set<door>` — with the non-door union control still GREEN. The construct-signature face is **not** closed by it and needs its own arm or its own rule (**R58-2**). |
+> | **N8 / N9 / N10 re-derived in shapes the builder did not write** | `bash qa/r58-criteria.sh`. **N8**: `class TripReviser { revise(t, r): Trip }` → RED, `do not exempt it: TripReviser`. **N9**: `autofix` as an **arrow property** → RED. **N9 one field-shape sideways** (`autofix?: { fix: (t, c) => Trip }`) → **GREEN**, which is R58-1 in shipped code: the criterion A-79 calls *"the criterion that A-79 reaches real code"* escapes under a one-word change to the same field. **N10**: substitution with `addStop` → `DOOR_CENSUS` RED at `storable.test.ts(616,7)` plus one runtime failure. |
+> | **`NON_DOORS`, attacked four ways that are not round 57's** | An **inert** entry (`toDoc`, which returns `Record<string, unknown>`) → RED, `excuses nothing and is a free slot`, two `TS2322`s. A **real door adopting the excused name** — `export function fromJSON(trip: Trip): Trip` appended to `derive/lifecycle.ts`, which the name-keyed excuse would otherwise cover — leaves typecheck GREEN but is caught **twice** at runtime: `fromJSON: 2 distinct function objects — derive/lifecycle.ts AND index.ts + serialize/fromJSON.ts`, and the `module` check's own message. Eviction reddens; a second name fires the count. **I could not get an illegitimate entry past it**, because liveness is `name extends AllDoors` and the only way to satisfy it is to *be* a door the classifier sees. |
+> | **The two `qa/` re-cuts (A-79 Part 9 named them as this round's)** | Both re-cut to the property that replaces the deleted number — ***`BUILD-NOTES.md` §2 publishes no test count*** — reading §2 itself rather than carrying a copy of any figure, so a restored figure (right or wrong) is now the regression. **`qa/r47-i13c.mjs`**: the check also moves **out** from behind `--fast`, because it does not need the suite to run; the probe is back to **ALL CLEAR**. **`qa/r51-i13i.mjs` §H1**: **8 FAIL → 7**, `COMPLETE`, and the seven remaining are the still-open R51-1…R51-6 records. **Neither re-cut is vacuous**: `bash qa/r58-recut-vacuity.sh` plants `# 1637 tests as of I-18` back on that line and both go RED naming it. |
+> | **What I attacked and could NOT break** | The 12-hop bound (12 RED / 13 GREEN, and the deepest property chain the shipped model can hold is well inside it). The overload residue (still GREEN, and **zero** overload sets exist under `packages/core/src` — scanned all 54 files for both a repeated `function NAME(` and a bodiless signature — so it is theoretical, not live, exactly as documented). Per-module vacuity (generated file, barrel, ordinary module: all RED). A doorless self-referential type walks and terminates with no *"excessively deep"* error. Tuples, arrays, `Record`, index signatures, symbol keys, `unique symbol` keys, intersections, recursive types **with** a door, `Promise` of a carrier, higher-order returns, `Object.assign(fn,{door})`, `WeakMap` values, a branded door type, a generic function returning `Trip` — **all caught**. The negative controls (`overlap`, `legacyFlag`, `sequentialIds`, `toDoc`) hold, and adding a door under any of them reddens. |
+> | **What I did NOT do** | **No browser run** — this increment opens no `.tsx` and renders nothing. I did not re-run `qa/r57-doorforms.sh`, `qa/r57-nondoors.sh` or `qa/r57-kd106.sh` to re-confirm rows I-18 was built to close and I have no reason to doubt; that budget went to nine carrier forms nobody has tried. I did not re-measure the typecheck **cost** three times — the builder's 5.30/5.41/5.42 vs 5.22/5.27/5.44 is inside noise and my own single measurements (5.53 s patched, 13.3 s for both projects) agree with it. I did not re-derive the sixteen door × field cases or A-77's N1–N5: they are standing in-suite tests and the suite is green. The `cast` residue (A-79 Part 11 item 3) is **untestable by construction** and I did not pretend otherwise. **I did not re-attack the product surface** — permissions, mailbox ingestion, location traces, real-trip data shapes — because this increment changes **zero runtime lines** (the whole `src` diff is comment lines) and rounds 54 and 57 own that ground; re-running it would have bought a re-confirmation instead of the nine carrier forms. |
+>
+> **Doc-cost rows re-measured with this commit, for `cairn/CLAUDE.md`'s map** (the breaker
+> measures; the next revision records): `QA-FINDINGS` 356k → **362k**. `ARCHITECTURE` **469k**,
+> `ROADMAP` **182k** and `BUILD-NOTES` **251k** did not move; `CAIRN_VISUAL_ROADMAP` 66k →
+> **67k** with this round's block (and its `.html` twin in the same pass); `REVIEW` **52k**.
+>
+> **Round 58's findings. Five in all: 0 BLOCKERS, 1 MAJOR, 4 MINOR.**
+>
+> **R58-1 gets the reasoning rather than a row, because the round was asked one question and this
+> is the answer to it.** MAJOR · **design defect → ARCHITECT** ·
+> `packages/core/test/storable.test.ts:700` (`Members`) and `:721` (`Carries`) ·
+> repro `bash qa/r58-carriers.sh` then `bash qa/r58-harm.sh`.
+>
+> A-79 Part 11 sets the bar: a sixth finding is legitimate *only* if it exhibits **a `Trip`-producing
+> callable reachable from a censused export that `Carries` does not see**, and *"there are exactly
+> three ways for that"* — an overload set whose last signature is not `Trip`, a carrier more than 12
+> hops deep, and a cast. Nine forms meet the first half of that bar and **none of them is any of the
+> three**. They contain no overload set (measured: `tsc` sees one call signature in each), they nest
+> the door **two** hops below the export, and they contain **no cast, no `any`, no `unknown`** — every
+> injected line is fully typed and the door itself is written `(t: Trip, r: ConflictResolution) => Trip`.
+> Nor is it one of A-78 Part 10's four *different* classes: the door is inside `packages/core/src`
+> (not class 1), returns `Trip` directly rather than in a wrapper (not class 2), mutates nothing
+> (not class 3), and the parser agrees with itself throughout (not class 4).
+>
+> **What it is, is the same class one more level in.** Part 0 said the fifth face went *inward* —
+> the subject was the whole package, and the enumeration had moved into the **predicate**, which
+> enumerated declaration forms. A-79 replaced that with a structural walk, and the walk is
+> `Members<T> = true extends { [K in keyof T]-?: Carries<T[K], D> }[keyof T]`, guarded by
+> `[T] extends [object]`. So the guarantee — *a `Trip`-producing callable reachable from this
+> export* — is implemented as an enumeration of **the type constructors the walk knows how to
+> descend through**: a bare object type's own keys, and a call signature's return type. That is two
+> constructors, and TypeScript has more. It is the arc's own shape, one level further in: **an
+> enumeration of forms became an enumeration of descents.**
+>
+> The three faces, each measured against the real tree with a full `npx tsc -p tsconfig.json
+> --noEmit`, are:
+>
+> ```
+> ok   0-control-plain-fn                 census=RED     <- A-78 fault N1, verbatim
+> ok   1-control-object-literal           census=RED     <- A-79's own showcase carrier
+> GAP  2-union-carrier-or-undefined       census=GREEN   <- { archive } | undefined
+> GAP  3-union-carrier-or-null            census=GREEN   <- { archive } | null
+> GAP  4-discriminated-union-carrier      census=GREEN   <- {kind:'archive'; run} | {kind:'none'}
+> GAP  5-optional-nested-carrier          census=GREEN   <- { archiver?: { archive } }
+> GAP  6-set-of-doors                     census=GREEN   <- Set<door>
+> GAP  7-iterable-of-doors                census=GREEN   <- Iterable<door>
+> GAP  8-N9-as-a-union-not-a-method       census=GREEN   <- A-79's own non-hypothetical criterion
+> GAP  9-door-behind-a-Promise-union      census=GREEN
+> GAP  10-construct-signature-door        census=GREEN   <- new (t: Trip, …) => Trip  [R58-2]
+> ok   11-neg-control-non-door-union      census=GREEN
+> ok   12-neg-control-optional-nested     census=GREEN
+> ```
+>
+> **Why the bracket that fixes one direction breaks the other.** A-79 Part 3 detail 1 makes
+> `[T] extends [object]` and `[D] extends [never]` bracketed *"because distribution turns a
+> union-typed export into a union of verdicts and quietly loses `false`"*. That reasoning is right
+> about `false` and silent about `true`: not distributing means a union is walked through
+> `keyof (A | B)`, which is the **intersection** of A's and B's keys — `never` for a discriminated
+> union — and means a union with a non-object member matches neither `[T] extends [(...a) => R]`
+> nor `[T] extends [object]` and falls straight to `false`. The optional-property face is the same
+> hole reached from inside: `-?` removes the optional **modifier** from the mapped result, and the
+> source indexed access `T[K]` still carries `| undefined`, so every optional property is a union
+> before `Carries` ever sees it. Both are confirmed by their controls: `{a: {run: door}}` and
+> `Required<{a?: {run: door}}>` are caught; `{a: door} | {a: string}` (a **shared** key) is caught.
+>
+> **This is not an exotic shape in this codebase, which is what separates it from a curiosity.**
+> `packages/core/src` holds **106** optional properties and **six** discriminated unions of object
+> types (`PlaceLink`, `StopPlacement`, `Ticket`, `PhotoAttachRef`, `access/predicates.ts`'s
+> `Principal`, `model/openingHours.ts`'s `WeeklyRead`) — the model's house idiom for *"one of these
+> shapes"* is precisely the shape `Carries` cannot descend through, and `X | null` is how the model
+> spells an absent object (`homeBase`, `cost`, `Stop.place`…). The non-hypothetical proof is A-79's
+> own N9: adding `autofix?(t, c): Trip` to the `Rule` **type** correctly reddens naming all ten rule
+> exports, and adding `autofix?: { fix(t, c): Trip }` — the same feature, one field-shape sideways —
+> leaves `npm run typecheck` at **exit 0**. Ten shipped `Rule` objects would then carry a
+> `Trip`-producing callable with no census firing.
+>
+> **The harm is driven, not argued** (`qa/r58-harm.sh` + `qa/r58-harm.mjs`). Three carriers appended
+> to `derive/lifecycle.ts`: `npm run typecheck` **GREEN**, `storable.test.ts` **107 pass / 0 fail**,
+> and each hidden door returns a document `fromJSON` refuses at `$.resolutions[0].state` —
+> **UNOPENABLE**, three for three. Everything the user did before that edit is unreachable except
+> through §2.9 A-46's rescue export.
+>
+> **Severity MAJOR and not BLOCKER, on R56-1's and R57-1's own reasoning, re-derived rather than
+> inherited:** there is no live instance. `AllHidden` is `never` over all 54 modules today and I
+> could not find an exported union or optional-property carrier in `packages/core/src` that holds a
+> callable at all. The defect is in the **guarantee**, and the guarantee is the whole point of the
+> increment — the census now says *"a `Trip`-producing callable cannot hide behind any carrier"*
+> and it means *"…behind any carrier whose type is a bare object or a function."*
+>
+> **The routing is the architect's and not the builder's**, because the builder built A-79 Part 3
+> **verbatim**, which is exactly what ROADMAP I-18 part 1 required — the block is character-for-
+> character the ruling's. What is wrong is the ruling's predicate, not its implementation. And the
+> answer is cheap: `qa/r58-fix-probe.sh` measures a **two-line** change (`NonNullable<T[K]>` in
+> `Members`; distribute in `Carries`) that closes all four families, keeps the shipped tree at
+> typecheck exit 0 and 107 pass / 0 fail, costs 5.53 s against the builder's 5.30–5.42 s baseline,
+> and **adds no carrier form to any list** — so it is not the enumeration this arc keeps refusing.
+> Whether that is the right shape of answer, and whether a construct signature counts as a callable
+> for this purpose (**R58-2**), are architect questions; that it is available at this price is a
+> measurement.
+>
+> | id | sev | file:line | defect | repro | routing |
+> |---|---|---|---|---|---|
+> | **R58-2** | MINOR | `packages/core/test/storable.test.ts:721` | `Carries` walks **call** signatures only, so a **construct** signature that produces a `Trip` (`new (t: Trip, r: ConflictResolution) => Trip`) is invisible — `keyof` a construct-signature-only type is `never`, so `Members` sees nothing either. Not an overload set, not >12 hops, not a cast; a different root cause from R58-1 and **not** closed by R58-1's two-line fix. Low plausibility (a constructor returning a `Trip` is not an idiom here), which is why it is MINOR and not folded into R58-1 — but A-79 Part 4's normal form does not mention constructors either, so it is neither detected nor stated. | `bash qa/r58-carriers.sh` row 10 | design → **architect** (one clause in the normal-form rule, or an `abstract new`-aware arm) |
+> | **R58-3** | MINOR | `packages/core/test/storable.test.ts:764`; `cairn/package.json:15` | A-79 Part 6's entire justification for the template-literal census line is that it *"fails naming every offending export"* where `DOOR_CENSUS` says only `true is not assignable to false`. Under the shipped command it does not: `npm run typecheck` prints **two** names and `... 8 more ...` for N9, because `tsc` truncates long union types by default. The eleven names appear only under `--noErrorTruncation`, which neither the script nor `tsconfig.json` sets. | `bash qa/r58-criteria.sh` §B, or `npx tsc -p tsconfig.json --noEmit` vs `… --noErrorTruncation` with `autofix` added to `Rule` | implementation → **builder** (`"noErrorTruncation": true` in `tsconfig.json`, one line) |
+> | **R58-4** | MINOR | `docs/BUILD-NOTES.md:35` (the R57-6 row) | The addendum claims an async door mutating *"in a continuation after its first `await`"* now produces **one named failing row** *"instead of an unhandled rejection taking the file down"* — the phrase after "instead of" is round 57's **detached-continuation** case, and that case is **byte-identical before and after I-18**: at both `9b4d358` and `77ef3ba` it is `not ok 1 - packages/core/test/storable.test.ts`, one `unhandledRejection`, no named row. The awaited-rejection case names the door at **both** commits too (the pre-I-18 runner already awaited a thenable inside its `try` and its assertion message already carried `${row.door}`). The `go` type widening is real; the second half of the claim is not a delta. Nothing is broken — the residue is inherent, since nothing can `catch` a continuation nobody awaits — but a reader of BUILD-NOTES would believe round 57's limit was closed. | `bash qa/r58-async.sh` (runs both cases at both commits in a throwaway worktree) | implementation/doc → **builder** (correct the row); one sentence to the **architect** that A-79 Part 9's widening reaches a rejected door promise and not a detached continuation |
+> | **R58-5** | MINOR | `ARCHITECTURE.md` §2.1 A-79 Part 5 (the *"Carriers caught"* row) and Part 10 (N9) | Two documentation drifts in the ruling's own evidence, both confirmed by running it. **(a)** N9's expected output is *"naming `overlap`, `legacyFlag` and the other eight"* — the census names **eleven**, the eleventh being `RULES`, the `Rule[]` in `conflict/detect.ts`. **Assessed independently and it is CORRECT, not a false positive**: an array of carriers is a carrier, `RULES` needs no separate fix (it stops being flagged the moment `Rule` stops carrying a door), it requires no exemption and no workaround, and it disappears with the underlying repair. The cost is only that a breaker checking N9 against the ruling meets an unpredicted name. **(b)** The *"Carriers caught"* row lists `Map<string, door>` as evidence the predicate is structural rather than enumerated; it is caught **incidentally**, through `get(): V \| undefined` and `IsDoor`'s distribution over that union, and `Map<string, {run: door}>` — one hop, a carrier instead of a bare door — is **not** caught. The row overstates what was measured. | `bash qa/r58-criteria.sh` §B (eleven names, `--noErrorTruncation`); `qa/r58-fix-probe.sh`'s unpatched baseline for the `Map` claim | doc → **architect** (both are one sentence in A-79) |
+>
+> **The overload residue, confirmed as documented and confirmed NOT live** (not a finding, recorded
+> so the next round does not re-derive it): an overload set whose last signature is not `Trip`
+> leaves `npm run typecheck` at exit 0 — measured, `qa/r58-carriers.sh` §C — and `qa/r58-carriers.sh`
+> §D scans all **54** `.ts` files under `packages/core/src` for a repeated `function NAME(` and for
+> a bodiless signature and finds **zero**. A-79 Part 11 residue 1 is accurate as written, and its
+> trigger has not fired.
 
 > **Status (as of `master` @ `c677162`, independently verified 2026-09-08 — round 57, the
 > **mandatory adversarial pass** over ROADMAP **I-17** / `ARCHITECTURE.md` revision 59 §2.1
