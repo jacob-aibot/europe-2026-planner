@@ -368,11 +368,25 @@ function seededRandom(seed: number): () => number {
   };
 }
 
-test('200-step deterministic walk: isDirty() agrees with the stored bytes at every step', async () => {
-  // ROADMAP F: "assert at EVERY step: store.isDirty() === (core.toJSON(state.doc) !== <the
-  // bytes the port currently holds for that id>). Ceiling: zero disagreements across 200
-  // steps, not 'agreement at the end'."
-  const seed = Number(process.env.CAIRN_WALK_SEED ?? 20260826);
+/**
+ * ROADMAP F: "assert at EVERY step: store.isDirty() === (core.toJSON(state.doc) !== <the bytes
+ * the port currently holds for that id>). Ceiling: zero disagreements across 200 steps, not
+ * 'agreement at the end'."
+ *
+ * **Phase 2 exit criterion 12 extends the same walk**: *"NO SILENT LOSS is unchanged and
+ * extended to the new write paths: the 200-step dirty walk still holds with participant edits
+ * in the step chooser."* QA round 54 **R54-2**: the chooser dispatched `setDayMeta` and nothing
+ * else, so the clause was a claim with no mechanism behind it. The three participant actions
+ * are now arms of the *same* edit band — they replace part of `setDayMeta`'s share rather than
+ * being added beside it, so the undo / redo / flush / debounce / close-reopen frequencies that
+ * the original walk was tuned around do not move.
+ *
+ * `updateParticipant` and `removeParticipant` throw on an id that is not in the document, and
+ * `undo()` can take one out from under a later step, so both arms read the id out of the live
+ * document at the moment they fire and fall back to `addParticipant` on an empty list. A walk
+ * that threw would report a defect it had manufactured itself.
+ */
+async function noSilentLossWalk(seed: number): Promise<Record<string, number>> {
   const rand = seededRandom(seed);
   const storage = memoryStorage();
   const sched = manualScheduler();
@@ -402,6 +416,9 @@ test('200-step deterministic walk: isDirty() agrees with the stored bytes at eve
   check(0, 'start');
 
   let n = 0;
+  const dispatched: Record<string, number> = {
+    setDayMeta: 0, addParticipant: 0, updateParticipant: 0, removeParticipant: 0,
+  };
   for (let step = 1; step <= 200; step++) {
     const roll = rand();
     if (store.getState().doc === null) {
@@ -410,9 +427,31 @@ test('200-step deterministic walk: isDirty() agrees with the stored bytes at eve
       continue;
     }
     if (roll < 0.42) {
-      const dayId = dayIds[Math.floor(rand() * dayIds.length)];
-      store.dispatch({ type: 'setDayMeta', dayId, patch: { title: `T${++n}` } } as Action);
-      check(step, 'dispatch');
+      // One edit, chosen from the record classes the store can mutate: a day's meta and the
+      // three participant actions (§4.2 rule 1 — each is one action onto one core function).
+      const pick = rand();
+      const people = (store.getState().doc as core.Trip).participants;
+      n++;
+      if (pick < 0.5) {
+        const dayId = dayIds[Math.floor(rand() * dayIds.length)];
+        store.dispatch({ type: 'setDayMeta', dayId, patch: { title: `T${n}` } } as Action);
+        dispatched.setDayMeta++;
+        check(step, 'dispatch setDayMeta');
+      } else if (pick < 0.72 || people.length === 0) {
+        store.dispatch({ type: 'addParticipant', participant: { displayName: `P${n}` } } as Action);
+        dispatched.addParticipant++;
+        check(step, 'dispatch addParticipant');
+      } else if (pick < 0.87) {
+        const who = people[Math.floor(rand() * people.length)].id;
+        store.dispatch({ type: 'updateParticipant', participantId: who, patch: { displayName: `P${n}` } } as Action);
+        dispatched.updateParticipant++;
+        check(step, 'dispatch updateParticipant');
+      } else {
+        const who = people[Math.floor(rand() * people.length)].id;
+        store.dispatch({ type: 'removeParticipant', participantId: who } as Action);
+        dispatched.removeParticipant++;
+        check(step, 'dispatch removeParticipant');
+      }
     } else if (roll < 0.6) {
       store.undo();
       check(step, 'undo');
@@ -436,7 +475,31 @@ test('200-step deterministic walk: isDirty() agrees with the stored bytes at eve
 
   // The walk must actually have been dirty somewhere, or it proved nothing.
   assert.ok(n > 20, `seed ${seed}: the walk dispatched only ${n} edits`);
-});
+  // And it must have been dirty in every record class the criterion names, or the extension is
+  // back to being a claim: R54-2 is precisely a chooser that stopped covering what it says it
+  // covers, and a run where a participant arm never fired would pass without exercising one.
+  for (const [what, count] of Object.entries(dispatched)) {
+    assert.ok(count > 0, `seed ${seed}: the chooser never dispatched ${what} — the walk stopped covering it`);
+  }
+  return dispatched;
+}
+
+/**
+ * The default seed is the one ROADMAP F's walk has always run, kept so a failure replays
+ * exactly as before; the other two are the seeds QA round 54 ran the criterion at by hand.
+ * `CAIRN_WALK_SEED` still pins a single seed for replaying one failure.
+ */
+const WALK_SEEDS = process.env.CAIRN_WALK_SEED ? [Number(process.env.CAIRN_WALK_SEED)] : [20260826, 54001, 99991];
+
+for (const seed of WALK_SEEDS) {
+  test(`200-step deterministic walk, seed ${seed}: isDirty() agrees with the stored bytes at every step`, async () => {
+    const dispatched = await noSilentLossWalk(seed);
+    assert.ok(
+      dispatched.addParticipant + dispatched.updateParticipant + dispatched.removeParticipant > 10,
+      `seed ${seed}: only ${JSON.stringify(dispatched)} — the participant half of the walk is too thin to prove anything`,
+    );
+  });
+}
 
 // ---------------------------------------------------------------------------
 // Mechanical checks (ROADMAP F, "How a criterion is written" rule 1).
