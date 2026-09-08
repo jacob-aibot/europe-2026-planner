@@ -3700,3 +3700,75 @@ run to its own terminal marker. Most of the movement is two constants this range
 than about each probe's own range; the live ones are R48-3's three and R50-1's second count.
 `BUILD-NOTES` §2's published `npm test` count is **1505** against a suite of **1524** —
 **R53-2**, detected independently by `r45-i13` (R45-17), `r47-i13c` and `r51-i13i` (H1).
+
+---
+
+## Round 54 — the Phase 2 **phase gate** (ROADMAP `I-11`)
+
+Two new probes and two repairs. Neither probe is an increment probe: together they are the
+executable form of ROADMAP's *"Exit criteria — the Phase 2 ship gate"* section, plus the
+cross-cutting scenario a single-increment round structurally cannot run.
+
+```bash
+cd cairn
+node --experimental-strip-types qa/r54-gate.mjs         # 16 sections, one per exit criterion
+node --experimental-strip-types qa/r54-integration.mjs  # 13 sections, everything at once
+```
+
+Both end in a `COMPLETE fails=… gaps=… notes=…` marker. **A run without that line is
+INCOMPLETE and its counts may not be quoted.** At `651ab03` they report **6** and **4**
+respectively, and every one of the ten is written up as R54-1 … R54-9 in `../docs/QA-FINDINGS.md`.
+Six of the ten are the **criterion** being wrong rather than the code (R54-4 … R54-7); read the
+finding before assuming a probe is broken.
+
+**`r54-gate.mjs` — sections.** **A** EC-1, Phase 1's carried numbers re-derived from the
+functions (2 blockers, 0/112, 0/94, 112/112, 92/94, and §2.13's permitted misses read out of
+`geoCheck.test.ts` rather than transcribed) · **B** EC-2 at both clock boundaries, with
+`detectUngated` as the injected fault · **C** EC-3, the silent past trip and its fault · **D**
+EC-4's four parts, including a **7,914-cell sweep** over every forgiveness bounding box against
+the same index with the forgiveness entries removed, and both of criterion 4c's injected faults
+run · **E** EC-5, the byte budget measured off disk and the rings re-counted · **F** EC-6
+(a′/b′/b″/b‴/c) · **G** EC-7 at both edges plus `setTripMeta` and `ensureDays` · **I** EC-9, the
+§6.2 conformance **double-run** the criterion asks for and nothing shipped implements (13
+principals × 5 relationships × 5 operations, twice, diff 0 — **R54-3**) · **J** EC-10, including
+the clause A-73 refuted (**R54-4**) · **K** EC-11 · **L** EC-12, the shipped walk at three seeds
+· **M** EC-13, 24 leaves / 14 keys / 8 count fields with A-33's own leaf semantics and classifier
+· **N** EC-14, goldens + CLI + a freshly built `dist/` · **O** EC-15, P1–P13 located by owner ·
+**P** criterion E, counted (86) with `THE_LIST` set-compared both ways, the deep-import ceiling,
+the six pinned secrets and `cli export`'s path fence.
+
+**`r54-integration.mjs` — sections.** One trip carrying 16 days, 6 cities, a midnight-crossing
+stop, a stop with no coordinates, a stop on a landform with no polygon at any scale, a pool stop,
+two bookings sharing a reference from two emails, four imported photos and three participants —
+built through the **real store**. **B/C/D/E** participants against `detectConflicts`, `geoCheck`,
+`validateTrip`, `tripSummary`, `travelStats`, the redaction pipeline and every CLI command ·
+**F** undo/redo across five record classes at depth 50, plus over-undo and over-redo · **G** two
+tabs editing four record classes each, then one merge, checked against what **storage** holds ·
+**H** export → re-import, including the still-open A-2 / P2-8 adoption case · **I** EC-8's rescan
+with a second live store idle throughout (revision 23's cost half) · **J** EC-12 **as the
+criterion actually words it** — 3 seeds × 200 steps × 6 record classes (**R54-2**) · **K** the
+photo store mechanism under combined load, and **the new attack**: a subscriber that throws at
+the *n*-th `emit` for n = 1…8, so the exception lands between the byte write and the document
+install · **L** the ROADMAP attack list's structural cases · **M** the build-door census
+(**R54-1**) and its blast radius driven through the real store.
+
+**Two repairs, both discharging the standing whole-board obligation.**
+
+- **`r11-recheck.mjs:243` — the 2a gate's carried B-1, closed.** `withCopy({kind:'pool'})` passed
+  no `cityKey`, §2.3 **A-19** correctly refused it, and the probe **aborted**, silently losing 9
+  of its 21 assertions — owed *"before 2b's first breaker round"* and still open at the phase
+  gate. It now names the trip's one city and **runs to `0 FAIL`, all 21 assertions**.
+- **`i8d-frame.mjs:52` — a new abort.** It printed `p.role`, a pane field §4.4 **A-51** removed,
+  and threw a `TypeError` at §B, losing every section below. It now runs to its own terminal
+  marker and reports **11 FAIL** — all of them round 36's expectations against A-41 clauses that
+  **A-51/A-54 superseded**, in the same way `r34-render.mjs` §G's are superseded. Read the
+  round-36 note before treating any of the eleven as live.
+
+**The whole board, at `651ab03`.** All 167 files walked; **84 run headless, 83 need a browser and
+were not run in this round.** Apart from the two aborts above, the `FAIL` lines are each round's
+own record. The **R53-3** stale-pin class moved again with I-9b's `+1` test and is now **seven**
+probes, not six: `r45-i13` 3, `r46-i13b` ALL OK, `r47-i13c` 1, `r48-i13d` 6, `r49-i13e` 3,
+`r50-i13h` 7, `r51-i13i` 16, **plus `r30-span`**, which pins `Object.keys(core).length === 76`
+against a surface that is 86. Still routed to the next I-13 pass and deliberately not re-cut
+here. `r30-upcast.mjs` and `r46-idb-keys.mjs` need real IndexedDB and abort under bare Node by
+design — they are browser probes without a `playwright`/`chromium` literal to filter on.

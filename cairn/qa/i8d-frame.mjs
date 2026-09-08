@@ -49,7 +49,10 @@ head('B  PANES — A-41 C5/C6/C7');
 for (const p of frame.panes) {
   const b = p.bounds;
   console.log(
-    `  ${p.id.padEnd(8)} role=${p.role.padEnd(5)} weight=${p.weight} codes=[${p.codes.join(',')}]\n` +
+    // §4.4 **A-51** removed the `role` field from a pane (one pane per connected component,
+    // ordered by weight rather than framed by it). Reading it threw a TypeError and aborted
+    // this probe at §B, losing every section below — found at the round-54 phase gate.
+    `  ${String(p.id).padEnd(8)} role=${String(p.role ?? '—').padEnd(5)} weight=${p.weight} codes=[${(p.codes ?? []).join(',')}]\n` +
     `           bounds  N ${b.north.toFixed(4)}  S ${b.south.toFixed(4)}  E ${b.east.toFixed(4)}  W ${b.west.toFixed(4)}` +
     `  span ${(b.east - b.west).toFixed(4)}° × ${(b.north - b.south).toFixed(4)}°  clamped=${b.clamped}\n` +
     `           viewBox "${p.viewBox}"`,

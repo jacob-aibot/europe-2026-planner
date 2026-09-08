@@ -240,7 +240,11 @@ function withCopy(placement) {
 
 // 2.3 — the copied stop is in the POOL
 {
-  const { trip, copiedStop, copiedPlaceId } = withCopy({ kind: 'pool' });
+  // QA **B-1**, carried from the 2a gate and discharged at the round-54 phase gate: this call
+  // passed `{ kind: 'pool' }` with no `cityKey`, which §2.3 **A-19** correctly refuses — so the
+  // probe ABORTED here and silently lost 9 of its 21 assertions for seven commits. The trip's
+  // one city is `vienna` (`baseTrip` above); naming it is what the placement always meant.
+  const { trip, copiedStop, copiedPlaceId } = withCopy({ kind: 'pool', cityKey: 'vienna' });
   ok('2.3a precondition: the copy is pooled', trip.pool.some((s) => s.id === copiedStop.id));
   const after = core.updateStop(trip, copiedStop.id, { place: { kind: 'inline', at: VIENNA } });
   ok('2.3b editing a POOLED copy\'s coordinates prunes its orphaned place too',

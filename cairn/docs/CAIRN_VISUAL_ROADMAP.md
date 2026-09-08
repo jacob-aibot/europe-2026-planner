@@ -19,8 +19,91 @@ update to this file added that instruction).
 > new-number mapping at its top) and `ARCHITECTURE.md` §8 (the model).
 
 
+> **🟩 THE WHOLE OF PHASE 2 HAS NOW BEEN ATTACKED AS ONE THING, AND IT HELD — as of 2026-09-08.
+> This block is the newest, and it supersedes every "what is still owed" list below it.** The
+> **phase gate's adversarial round** has run: not one more increment, but a single pass over
+> everything Phase 2 built, checking each of the phase's own sign-off conditions by *running* it
+> rather than by reading what a previous round wrote down. **The decision itself is not made
+> here** — that is the manager's, and it comes next. This is what the tester found.
+>
+> **First, the thing that was owed is no longer owed.** The block below says three things still
+> stood between here and the Phase 2 sign-off: the people-on-a-trip data, one small statistics
+> fix, and one pass over the photo tests. **All three are built and on the main branch.** Nothing
+> is left unbuilt that the sign-off depends on. Two pieces are still *deliberately* parked and
+> both are written down with the reason: the **screen** for adding people to a trip (waiting for
+> the new look, your call on 2026-09-04), and two defensive lines inside an existing file that
+> ride along with the next piece of screen work. Neither is a defect and neither blocks the
+> sign-off.
+>
+> **What the tester did that no previous round could.** Every round until now attacked one piece
+> at a time. This one built **one trip carrying everything at once** — sixteen days, six cities, a
+> flight that crosses midnight, a stop with no coordinates, an island the world map genuinely has
+> no data for, two copies of the same booking arriving from two different emails, four imported
+> photographs, and three people including one with no name — and then edited it in two tabs at the
+> same time, merged them, saved it, exported it, and read it back. **Everything survived.** Both
+> tabs' people, both tabs' stops, both tabs' photographs; the trip reads the same; the app tells
+> you what it decided rather than quietly picking a side.
+>
+> **And the negative promise held everywhere it was tested.** *Being named on a trip grants that
+> person nothing* — the tester ran the full permission table **325 ways, twice, once with people
+> on every trip and once with none**, and the two runs were identical, cell for cell. Adding two
+> hundred people to a trip changes not one conflict, not one map answer, not one number on the
+> library card. No person's name reaches the library card, the statistics, the shared sample, or
+> any command-line output.
+>
+> **What was found: nothing that loses your data, three things worth fixing, six small ones.**
+> Plain English:
+>
+> 1. **The most serious one is a door that is missing a lock.** Cairn checks a handful of the
+>    places where a bad value could get into a trip, and refuses it on the spot — those checks
+>    were added in earlier rounds and they work. **Eight similar places have no such check.** If a
+>    future piece of code ever passed one of them a value it shouldn't, Cairn would save the trip,
+>    say *Saved*, and then be unable to open that trip ever again — including everything you did
+>    before the bad value. **It cannot happen from anything on your screen today** — the tester
+>    tried, and every route through the app is closed — and a *file* carrying such a value is
+>    refused at the door. So this is a lock missing from an inside door, not an open front door.
+>    It goes to the designer, because whether those eight get locks is the same question that was
+>    already answered for the three that have them.
+> 2. **Two of the sign-off conditions are true but nothing checks them automatically.** The tester
+>    ran both by hand this round and both passed — the permission table above, and a 200-step
+>    random walk that hammers a trip with people, photographs, bookings, stops and undo/redo and
+>    checks after **every single step** that what Cairn says about "unsaved changes" matches what
+>    is actually on disk. Zero disagreements, at three different random seeds. What is missing is
+>    the automatic version, so the next person does not have to remember.
+> 3. **Four of the sign-off conditions are written down wrong.** Not the code — the conditions
+>    themselves. One asks for a refusal that a later decision deliberately removed. One says
+>    Vatican City always reads as Italy, and the map data actually carries a tiny patch of the
+>    Vatican that reads as itself (known since the map was built, never written up). One says a
+>    particular folder must contain no coordinates, but one file in it is *map outlines* and always
+>    was. One quotes an old count next to the correct one. All four are sentences for the designer
+>    to correct.
+> 4. **Two of the tester's own scripts had stopped halfway through** and were silently skipping
+>    their own checks — one of them for eight rounds. **Both are fixed in this pass**, and one of
+>    them now runs all twenty-one of its checks and passes every one.
+>
+> **What the tester tried hardest to break and could not.** The photo machinery, which has taken
+> eight repair rounds to get right, was given a brand-new attack it had never faced: make the
+> screen crash *in the middle* of importing photographs, at each of eight different moments, so
+> the crash lands between writing the image and writing the record. **Every time**: nothing was
+> mislabelled as failed, no orphaned image was left behind, Cairn's own "unsaved changes" answer
+> stayed correct, and the next save reconciled everything. The two-tab merge, the map data, the
+> statistics, the export, the redaction that keeps your real trip out of the public sample — all
+> held.
+>
+> **What was not checked, stated rather than glossed:** nothing was run in a real browser this
+> round, so the one condition that requires one (reading the library card back out of the
+> browser's own database) is a **declared gap**, exactly as that condition says it must be. There
+> is still no screen for photos and no screen for people, so there was nothing rendered to look at.
+>
+> **Still nothing on your phone changes.**
+>
+> **What happens next:** the manager reviews this round and the whole phase, and returns **SHIP**
+> or **SEND BACK** on Phase 2 as a whole.
+
+---
+
 > **✅ THE "WHO WAS ON THE TRIP" DATA IS FIXED, RE-ATTACKED AND CLEARED — as of 2026-09-04. This
-> block is the newest.** Step **2c (participants)** becomes **designed ✅ · built ✅ · verified ✅ ·
+> block was the newest until the block above.** Step **2c (participants)** becomes **designed ✅ · built ✅ · verified ✅ ·
 > shippable ✅**. All three problems in the block below are closed, the two known design questions
 > under them are ruled and built, and a second adversarial round went at the fixes and could not
 > break them.
