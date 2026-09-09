@@ -1461,8 +1461,10 @@ and `I-23` gains two parts.**
   agreement. It rides `I-23`, which rewrites the payload anyway.
 - **The bump has a price and it is written down where the next bumper will read it.** Round 61 re-derived
   A-39 Part 11's covering set as `|S| × |D| = 7 × 4 = 28` — minimal and **tight**. `SCHEMA_VERSION` 4 → 5
-  takes it to **35 rows**, and the general law (*every bump adds `|S|` rows, and the increment that bumps
-  owns them*) goes into the `SCHEMA_VERSION` docstring, not into a document nobody opens.
+  takes it to ~~**35 rows**~~ **40 rows** (*revision 69, **R62-3**: this increment moves `SUMMARY_VERSION`
+  as well, so `|S|` goes to 8 and the bound is `8 × 5`*), and the general law (*a `SCHEMA_VERSION` bump
+  adds `|S|` rows, a `SUMMARY_VERSION` bump adds `|D|` rows, and an increment that bumps both owns the new
+  product*) goes into the two version docstrings, not into a document nobody opens.
 - **Ordering, and the reason for it: wrong beats missing.** `I-22a` closes the hole that puts a **false**
   country on a real person's map. `I-23` closes the hole that puts **no** country on it — Fort-de-France,
   Basse-Terre, Dzaoudzi and St.-Benoît attribute to nothing today, and Saint-Georges attributes to Brazil,
@@ -1471,6 +1473,56 @@ and `I-23` gains two parts.**
 - **Routing.** `I-22a` builder + breaker **MANDATORY** — a schema migration **and** a second amendment to
   a shipped precedence rule. `I-22b` builder, breaker optional — two files and a return type. `I-23`
   unchanged: mandatory.
+
+**Revision 69, 2026-09-09.** **QA round 62 could not break what `I-22a` was built to do, and found the
+same class of defect one field over — twice.** The staleness rule held over all **7,342** shipped rows
+(0 refused, 0 stale, 0 mis-attributed through `toJSON`→`JSON`→`fromJSON`; `-0` cannot flip liveness;
+`NaN`/`±Infinity` refused at both centres; no core path quantises a coordinate), the door census was
+**run** rather than reasoned about, and the migration ladder is clean on every committed fixture.
+**The exact-float design is measured sound and is not re-opened.** What broke is A-84's *reach*:
+`ARCHITECTURE.md` revision 66's §8.4 **A-85** rules it and **`I-24` builds it**.
+
+- **A pick could be stale at birth (R62-2, MAJOR).** `CityInit.centre` and `CityInit.pick` are independent
+  optionals, so `createTrip({cities:[{name:'Geneva', pick: cityPickFromRow(row)}]})` — **the exact call
+  the picker UI will make** — stored a well-formed pick on a city with no centre: inert on the day it was
+  written, attributing nothing, with no default, no `Issue` and no refusal. A-84 Part 3 clause 4 made the
+  mint take a **row** so a pick would carry a real coordinate, and then let the coordinate be dropped one
+  field over. **A-85 Part 2: an absent `centre` beside a pick means the point the pick names**; an
+  explicit `centre` — `null` included — is honoured verbatim, because in the *stored document* the
+  born-stale case and the erase case are the same two fields and only the door can tell them apart.
+- **`TravelStats.seen.places` was a lower bound published as a count (R62-1, MAJOR).** No stored row
+  carries a total place count, so `seen.places === located.places` by construction and `seen − located`
+  for places is **0 always** — precisely the number `seen` was added to make derivable. Measured on the
+  reference trip, which holds **95** place records: `records seen … places 94`. **A-85 Part 3:
+  `TripSummaryRow` gains `placeCount`, `SUMMARY_VERSION` 7 → 8, `ROW_KEYS` 14 → 15** — the first
+  top-level widening of the row since A-33, and A-33 Part 2 reserves it to `ARCHITECTURE.md`, which is
+  where it is now made. Deleting the field instead was weighed and refused: one class missing out of a
+  three-class census is worse to publish than the number.
+- **Four MINORs ruled rather than queued as notes.** The covering table is **40**, not 35 — the same Part
+  that bumped `SCHEMA_VERSION` also bumped `SUMMARY_VERSION`, so `|S|` is 8 and the bound is `8 × 5`; the
+  law is restated over **both** constants (**R62-3**, corrected in place in both documents). `I-22a`'s
+  criterion **N6** asked for a door message no correct implementation can emit and for a word the API it
+  tests requires — **a criterion may assert where a rule lives and may not assert which words a file does
+  not contain** (**R62-4**, rewritten in place). The 3 → 4 rung's `{0,0}`-plus-pick case discards nothing
+  a person picked, because a live pick at the origin cannot be minted from a corpus with no row within a
+  whole degree of it (**R62-5**, out of scope with the measurement as the reason, and `I-23` gains the
+  assertion that keeps it true after the dataset swap). And `pick.centre` earns the range check `Stop` and
+  `Place` already have — **the existing `lat_lng_out_of_range`, no new code** (**R62-8**).
+- **Ordering: `I-22b` → `I-24` → `I-23`, and `I-24` unblocks a criterion `I-23` already carries.**
+  `I-23`'s parent-translation criterion drives `cityPickFromRow` **through `createTrip`** and expects
+  `{FR, picked}`; before `I-24` Part 1 that call reports `{null, null}` for every row, so the criterion is
+  unbuildable as written. `I-22b` shares no file with either and may ship whenever.
+- **The picker UI is fenced, not blocked.** Nothing here stops a picker being designed, and a picker that
+  passes `centre` explicitly is correct today. **No pick-writing surface may land before `I-24`**, because
+  the API's shortest correct-looking call is the one that stores an inert record — and the visual
+  direction is unresolved, so `.tsx` remains out of scope in every queued increment.
+- **Routing.** `I-24` builder + breaker **MANDATORY** — a `SUMMARY_VERSION` bump over stored documents,
+  the first top-level `ROW_KEYS` widening since A-33, **and** a change to what a shipped build door
+  writes. `I-23` unchanged: mandatory. `I-22b` unchanged: builder, breaker optional.
+- **Two round-62 MINORs are builder fixes and ride inside `I-24` rather than taking tickets**: the dead
+  `Array.isArray` guard in `travelStats` (**R62-6** — the guarded value is bound once and both readers use
+  it) and the undisclosed fourth `qa/r60-invariant.mjs` edit (**R62-7** — the code is right; it is a
+  disclosure finding and has no diff).
 
 > **Phase numbers changed once, here.** Every heading below carries its old number, and every "Phase N"
 > written in `ARCHITECTURE.md` §1–§7, `BUILD-NOTES.md` or `QA-FINDINGS.md` before revision 9 means the
@@ -1499,9 +1551,9 @@ trips has a travel history.
 
 ## How a criterion is written
 
-Six rules. They apply to every phase in this document, and a criterion that breaks one is a defect routed
-to me, not to whoever failed to meet it. **Rule 6 is revision 53's and it is the newest**; the other five
-are unchanged.
+Seven rules. They apply to every phase in this document, and a criterion that breaks one is a defect
+routed to me, not to whoever failed to meet it. **Rule 7 is revision 69's and it is the newest**; rule 6 is
+revision 53's; the other five are unchanged.
 
 **1. Every count carries an outcome clause.** A number is satisfiable while the thing misbehaves. *"12
 blockers"* was true and meant nothing. The clause names what must be true of each counted item, and for
@@ -1547,6 +1599,18 @@ belongs in `BUILD-NOTES.md` or the test, and may appear in a contract document o
 against a fixed commit**, with no criterion depending on it. **The evidence is four rounds on one row**:
 KD-83, R50-1, and R51-6 — where the correction published to stop the drift was itself made wrong, in the
 same revision, by the other ruling in that revision.
+
+**7. A criterion may assert where a rule LIVES, and may not assert which words a file does not contain**
+(revision 69, §8.4 **A-85** Part 7, QA **R62-4**). `I-22a`'s N6 asked two doors to produce a message naming
+`$.cities[0].pick.rowId` *"without either function containing the word `pick`"*. Measured, neither half is
+achievable by a **correct** implementation: `commit` parses per record, so a door's message names the field
+and the record and only `fromJSON` produces the composite path; and `createTrip` must contain the word
+`pick` because `CityInit.pick` is what the ruling tells it to accept. **A word-absence clause tests the
+spelling of an API the ruling itself mandates** — it is unfalsifiable by a correct implementation and it
+fails on the day the API is named correctly. The property such a criterion is reaching for is *"this rule
+is implemented in exactly one place"*, and that is greppable over the **implementation** (the pattern, the
+refusal, the constant), which is the form to write. This is rule 5's family — a criterion the design has
+already made unsatisfiable — narrowed to the shape that keeps recurring.
 
 ---
 
@@ -6241,8 +6305,11 @@ anyway. A builder who finds themselves regenerating the gazetteer has left the i
   than a number that undercounts them whenever two trips share a city name.
 - **Architecture / data model.** `City.placeId` → `City.pick: CityPick | null`; `SCHEMA_VERSION`
   **4 → 5**; `SUMMARY_VERSION` **6 → 7**; `TravelStats` gains `seen`; **§2.10 goes 87 → 88**
-  (`cityPickFromRow`) and the subpath stays at one symbol. `A-39` Part 11's covering table goes **28 → 35**
-  rows and this increment owns them. No port, no selector, no conflict rule, no screen, no dataset.
+  (`cityPickFromRow`) and the subpath stays at one symbol. `A-39` Part 11's covering table goes **28 → ~~35~~
+  40** rows and this increment owns them — *corrected at revision 69 (**R62-3**, `ARCHITECTURE.md` §8.4
+  **A-85** Part 6): this increment moves `SUMMARY_VERSION` too, so `|S|` is **8**, `|D|` is **5**, and the
+  bound is `8 × 5 = 40`. The builder implemented the criterion's formula and the shipped table is 40,
+  minimal, every `S × D` pair exactly once. Nothing built is wrong; the number in the prose was.* No port, no selector, no conflict rule, no screen, no dataset.
 - **Verification.** Tagged per **How a criterion is written**. Every injected fault is run
   **red-before-green** and its measured output recorded; a criterion asserted rather than run is not
   discharged. The coordinates below are the shipped gazetteer's own and the builder re-derives them:
@@ -6271,9 +6338,19 @@ anyway. A builder who finds themselves regenerating the gazetteer has left the i
     `'hu'`, `' HU '`, `'HUN'`, `''`, `3`; and `pick` itself a **string** rather than an object. It
     **accepts** exactly two shapes: `pick: null`, and one well-formed object. **No other outcome.**
     **N5, injected:** delete the `rowId` pattern → `':'` opens and the ceiling fails naming the path.
-  - **Every build door is behind the parser** `[stated]`: `createTrip({cities:[{name:'X', pick:<the `':'`
-    pick>}]})` and `setTripMeta(trip, {cities:[<the same>]})` **both throw**, naming
-    `$.cities[0].pick.rowId`, **without either function containing the word `pick`**. That is A-77's
+  - **Every build door is behind the parser** `[stated]` — ***rewritten at revision 69 (**R62-4**,
+    `ARCHITECTURE.md` §8.4 **A-85** Part 7). The original wording asked for a door message naming
+    `$.cities[0].pick.rowId` "without either function containing the word `pick`", and measurement says
+    neither half is achievable by a correct implementation: `commit` parses **per record**, so a door's
+    message is `pick.rowId` plus `(cities[0])` and only `fromJSON` produces the composite path; and
+    `createTrip` must contain the word `pick` because `CityInit.pick` is what A-84 Part 3 tells it to
+    accept. A criterion may assert where a rule LIVES and may not assert which words a file does not
+    contain. This is the property the original was about, and it is what the builder asserted and the
+    breaker verified three ways:*** `createTrip({cities:[{name:'X', pick:<the `':'` pick>}]})` and
+    `setTripMeta(trip, {cities:[<the same>]})` **both throw**; each message carries **`pick.rowId`** and
+    identifies the city (**`(cities[0])`**); `fromJSON` on the same document gives the full
+    **`$.cities[0].pick.rowId`**; and **neither `createTrip.ts`, `commit.ts` nor `storable.ts` names
+    `rowId` in code** — the shape rule lives in exactly one place. That is A-77's
     boundary doing the work and the criterion asserts it rather than assuming it. **N6, injected:** return
     `next` from `setTripMeta` without `commit` → the door accepts the malformed pick and this fails.
   - **The mint takes a row, end to end** `[stated]`: `cityPickFromRow(searchGazetteer('geneva',
@@ -6373,6 +6450,173 @@ the case A-83 Part 8 claimed was already handled.
   screen. It is the first `apps/web` touch in four increments and it is deliberately the smallest one
   that can exist.
 
+#### I-24 — a pick lands on the point it names, the place census gains its denominator, and the pick's coordinate is range-checked (revision 69, `ARCHITECTURE.md` revision 66's §8.4 **A-85**, QA **R62-2**/**R62-1** MAJOR; **R62-5**, **R62-6**, **R62-8** ride along)
+
+**Read §8.4 A-85 whole — it is ~5k and it is the entry point. Then A-84 Parts 3, 4 and 7 with their
+revision-66 banners, and A-33 Part 2 with its.** Nothing else. Do **not** read A-84 Parts 1, 2, 5, 6, 9
+or 10 — Parts 5 and 6 are `I-23`'s and the rest are shipped and untouched. Do **not** read A-83, §2 whole,
+§4 or §10. **Do not re-open the exact-float staleness rule**: round 62 attacked it over all 7,342 shipped
+rows and could not break it, and A-85 does not revisit it.
+
+**Why it exists.** `I-22a` closed the hole that let a shipped door *change* a pick's country. Round 62
+measured the same class one field over and found two:
+
+1. **A pick can be stale at birth.** `createTrip({cities:[{name:'Geneva', pick: cityPickFromRow(row)}]})`
+   — the shortest call a picker writes, and the call the picker UI will make — stores a well-formed pick
+   on a city with `centre: null`. Reproduced: stored pick `{"rowId":"ne:j64n0x","centre":{"lat":46.21,
+   "lng":6.14},"countryCode":"CH"}`, stored centre `null`, `tripSummary` `{null, null}`, `countryCodes`
+   `[]`, `validateTrip` 0 issues. **Stale the instant it is made, attributing nothing, forever, with no
+   default, no `Issue` and no refusal.** A-84 Part 3 clause 2 refuses `pick.centre: null` because *"a pick
+   without a coordinate is not a pick"*; the same value one level up was accepted (**R62-2**, MAJOR).
+2. **`TravelStats.seen.places` is a lower bound published as a count.** `TripSummaryRow` carries no total
+   place count, so `seen.places === located.places` by construction and `seen − located` for places is
+   **0 always** — the exact number `seen` was added to make derivable. Measured through the shipped CLI on
+   the reference trip, which holds **95** place records: `records seen … places 94`. The caveat lives only
+   in a source comment (**R62-1**, MAJOR).
+
+**What it is NOT.** **No `.tsx`, no `apps/web` file of any kind** — the picker is not built here and the
+visual direction is unresolved. **No corpus change**: `geo/gazetteer.gen.ts`, `tools/gen-gazetteer.mjs`
+and every `fixtures/golden/gazetteer-*.json` are untouched, and a builder regenerating the gazetteer has
+left the increment. **No `SCHEMA_VERSION` movement** — no record shape changes. **No new export**: §2.10
+stays at **88**. **No new `IssueCode`.**
+
+- **Built, in four parts, in this order. Part 1 is the smallest and closes the MAJOR that blocks the
+  picker.**
+  1. **A pick lands on its own point** (`build/createTrip.ts`, A-85 Part 2). A `CityInit` that carries a
+     `pick` and **does not carry a `centre` key** is stood on a **copy** of `pick.centre` — a fresh
+     `LatLng`, never the pick's own object. A `CityInit` that carries `centre` is honoured **verbatim**,
+     `null` included, because an explicit `centre: null` beside a pick is A-84 Part 3 clause 3's erase
+     case and the pick is kept and inert by that clause. **The test is presence, not `??`** — `'centre' in
+     c` / `!== undefined` — and the docstring says why, because `??` is what makes the two cases one.
+     `CityInit.pick`'s docstring gains the obligation on any future door that accepts a `CityInit`,
+     beside the mint rule it already carries. **`setTripMeta` is not touched**: its patch takes `City[]`,
+     whose `centre` is required, so a caller there has to write `centre: null` out loud.
+  2. **The place census gains its denominator** (`derive/summary.ts`, `derive/travelStats.ts`, `cli.ts`,
+     A-85 Part 3). `TripSummaryRow` gains **`placeCount: number`** — `trip.places.length`, minted beside
+     `cityCount`/`dayCount`/`stopCount`/`poolCount`. `seen.places` becomes
+     `Math.max(countOf(row.placeCount), locatedPlaces)`, the same clamp its two neighbours carry.
+     **`SUMMARY_VERSION` 7 → 8**, riding the existing generic rescan — no version literal anywhere.
+     `TravelStats.seen`'s *"`places` is a LOWER BOUND"* paragraph and `cli.ts`'s matching comment are
+     **deleted**, because they stop being true. `ROW_KEYS` **14 → 15** and `ROW_PATHS` **+1** in
+     `test/stats-storage.test.ts`: **that widening is A-33 Part 2's architect's ruling and A-85 Part 3
+     makes it** — the builder is discharging it, not deciding it.
+  3. **The coordinate is range-checked** (`validate/validateTrip.ts`, A-85 Part 4). The **existing**
+     `lat_lng_out_of_range` gains two subjects: `City.centre` **when non-null**, and `City.pick.centre`.
+     `level: 'error'`, the city named in the message, `params` carrying `cityKey`, `lat` and `lng`.
+     **`City.centre: null` is legal and is not an issue** — the `Place` arm's *"has no coordinates at
+     all"* branch may **not** be copied, or every typed city in the library reddens. No new code, no new
+     severity, no change to `tripSummary`.
+  4. **The covering table, and the three riders.** A-39 Part 11's table goes **40 → 45** (`|S|` 8 → 9 with
+     the `SUMMARY_VERSION` bump, `|D|` unchanged at 5), every `S × D` pair exactly once, and **this
+     increment owns the five new rows** — A-85 Part 6's law, which also goes into the `SUMMARY_VERSION`
+     docstring beside the one `I-22a` put in `SCHEMA_VERSION`'s. Riders: the 3 → 4 rung's docstring
+     records in one sentence why a `{0,0}` centre carrying a pick discards nothing a person picked
+     (**R62-5**, A-85 Part 5 — either the pick was already stale, or it is a fabricated pick no shipped
+     row can mint, because no row lies within a whole degree of the origin); `travelStats.ts:476`'s
+     `Array.isArray(row.cities)` guard stops being dead code — **the guarded value is bound once and both
+     the count and the `for` loop read it**, per A-37 Part 3's *a stored row is not a validated document*
+     (**R62-6**); and **R62-7 is recorded and has no diff** — the fourth `qa/r60-invariant.mjs` edit was
+     correct and is a disclosure finding, not a code one.
+- **Not built, and named so nobody adds it.** **No `.tsx`, no `apps/web`, no picker, no form.** **No
+  parser change** — `fromJSON` still accepts `{centre: null, pick: {…}}`, because in a stored document
+  the born-stale case and the erase case are the same two fields and refusing would refuse a legal user
+  action (A-85 Part 2 clause 2). **No `Issue` for a stale pick** (A-84 Part 4 item 2, unchanged). **No
+  new `IssueCode`.** **No `unlocated` field beside `seen`.** **No `SCHEMA_VERSION` bump and no migration
+  rung** — a stored row gaining a field is `SUMMARY_VERSION`'s business, and a row minted before gen-8
+  reports today's honest answer until the rescan reaches it. **No `docs/design/`, no lockfile, no new
+  dependency, no generated data.**
+- **User-visible outcome.** Picking *Geneva* out of the gazetteer and creating the trip puts Geneva on the
+  map **at Geneva**, with **Switzerland** on the lifetime map — instead of a city with no location and no
+  country that nothing tells you about. A library of typed cities can, for the first time, say how many
+  **place** records have no coordinate at all rather than reporting zero. And a coordinate outside the
+  legal range on a city or on its pick is reported by `validateTrip` exactly as it already is on a stop
+  or a place.
+- **Architecture / data model.** `TripSummaryRow` gains **`placeCount`**; `SUMMARY_VERSION` **7 → 8**;
+  `ROW_KEYS` **14 → 15**, `ROW_PATHS` **+1**; A-39 Part 11's covering table **40 → 45**;
+  `lat_lng_out_of_range` gains two subjects. **No record shape moves, `SCHEMA_VERSION` does not move, and
+  §2.10 stays at 88.** No port method, no selector, no conflict rule, no screen, no dataset.
+- **Verification.** Tagged per **How a criterion is written**. Every injected fault is run
+  **red-before-green** and its measured output recorded; a criterion asserted rather than run is not
+  discharged. The coordinates are the shipped gazetteer's own and the builder re-derives them: Geneva
+  `ne:j64n0x` at `{46.21, 6.14}` with `CH`, where `countryOf` says **`FR`**.
+  - **The pick lands on its point, and this is the criterion the increment exists for** `[stated]`:
+    `createTrip({cities:[{name:'Geneva', pick: cityPickFromRow(searchGazetteer('geneva', GAZETTEER)[0])}]})`
+    stores `centre` **`{46.21, 6.14}`**, and `tripSummary` reports **`{CH, picked}`** with `countryCodes`
+    containing **`CH`** and not `FR`. The stored `centre` is **not the same object** as `pick.centre`
+    (`assert.notEqual` by identity, `deepEqual` by value). **N1, injected:** restore `centre: c.centre ??
+    null` → the assertion fails naming `null`, which is R62-2 exactly, and it must be run.
+  - **An explicit `centre` is honoured verbatim, `null` included** `[stated]`: the same call with
+    `centre: null` **written out** stores `null`, keeps the pick, and reports **`{null, null}`** — the
+    erase case, unchanged from `I-22a`; and with `centre: {48.2082, 16.3738}` written out stores exactly
+    that and reports **`{AT, coordinate}`**, the pick stale and kept. **N2, injected:** default from the
+    pick whenever `c.centre` is falsy (`??` → `||`-style collapse of absent and `null`) → the erase arm
+    fails naming `{46.21, 6.14}`. **This is the pair the ruling turns on and both arms must be run.**
+  - **The place census reports what there was** `[stated]`: over the committed reference trip,
+    `travelStats` reports `seen.places` **95** against `located.places` **94** — `seen − located` is
+    **1**, the one place with no coordinate — and `seen.cities`/`seen.stops` are **unchanged** at 6 and
+    143. For every class, **`unattributed ≤ located ≤ seen`**. **N3, injected:** mint `placeCount` as
+    `locatedPlaces` → the assertion fails with 94 against 95.
+  - **A row minted before gen-8 degrades honestly** `[stated]`: a stored row carrying no `placeCount` key
+    reports `seen.places === located.places` and **does not throw**; after `refreshSummary`'s generic
+    rescan brings it to `summaryVersion` 8 it reports 95. **N4, injected:** read `row.placeCount` without
+    `countOf` → the stale-row arm fails on `undefined`.
+  - **The row's key set is pinned and the widening is deliberate** `[stated]`: `ROW_KEYS` is **15** keys,
+    the runtime key set of a minted row equals it exactly, and `ROW_PATHS` gains **`placeCount`** and
+    nothing else. **N5, injected:** mint `placeCount` without adding it to `ROW_KEYS` → `tsc` fails in
+    `test/`, which is the earliest this can fail, **and** the runtime key-set assertion fails.
+  - **The browser gate, which A-36 Part 4 makes an obligation because `ROW_KEYS` moved** `[stated]`:
+    `qa/i7a-idb-rowkeys.mjs` is extended so the seeded row carries `placeCount`, run under Chromium, and
+    **the measured result is recorded in BUILD-NOTES** — `ALL OK` with axis D reading `SCHEMA_VERSION 5`
+    and axis S reading `SUMMARY_VERSION 8`. **If it cannot be run, that is disclosed as a gap and not
+    called a pass** (A-36 Part 4's own words), and it is a **stop-and-report** condition rather than a
+    silent omission.
+  - **The coordinate range check, on both new subjects** `[stated]`: a city at `{lat: 91.5, lng: 500.25}`
+    carrying a pick at the same point reports **two** `lat_lng_out_of_range` issues at `level: 'error'`,
+    one naming the city's centre and one naming the pick, each with `cityKey` in `params`; and the whole
+    committed reference trip reports **zero** of them. A city with `centre: null` reports **none**.
+    **N6, injected:** copy the `Place` arm's `at === null` branch onto `City.centre` → the reference trip
+    reddens, naming a typed city. **N7, injected:** check only `City.centre` → the pick arm fails.
+  - **A-39 Part 11's table grows and is still minimal** `[stated]`: the covering set is re-derived from
+    the table; `|S|` is **9** and `|D|` is **5**; **every `S × D` pair appears exactly once — 45 rows, no
+    more**; and the new Axis S generation is **shape-faithful** (a gen-8 row differs from gen-7 by the
+    `placeCount` **key**, not by a number), which is A-39 Part 4's sub-ruling and the thing a
+    version-only aged fixture would break. **N8, injected:** age the new fixture by setting
+    `summaryVersion: 8` without adding the key → the shape-faithfulness assertion fails.
+  - **Negative controls, which must stay green** — a red here is a defect in this increment: the reference
+    trip's `countryCodes`, `countries.json`, `country-holes.json`, `forgiveness-drops.json`,
+    `gazetteer-probes.json` and `gazetteer-disagreements.json` are **byte-for-byte unchanged**;
+    `SCHEMA_VERSION` is **5**, asserted by name; the export count is **88** and the subpath set equality
+    is **1**; `git show --stat` contains **no** `geo/gazetteer.gen.ts`, **no** `tools/gen-gazetteer.mjs`
+    and **no** `.tsx`; A-29's four-step gate has no changed clause; A-84 Part 3 clause 3's staleness rule
+    is unchanged and `packages/core/test/cityPick.test.ts` is **green unedited**.
+  - **Regression** `[stated]`: `npm run test:tap` green with the new tests added. **`travel-stats.json`
+    moves — `summaryVersion` 7 → 8 and `seen.places` 94 → 95 — and that is the only golden that moves;
+    every other test that moves because `SUMMARY_VERSION` moved is listed in the report with the reason,
+    and any other test that needs editing is a finding, not an edit.** `npm run golden` leaves the tree
+    clean on a second run.
+- **Dependencies / blockers.** **`I-22a`, built, on `master` and through QA round 62.** Nothing else.
+  **`I-23` waits on this** — its own criterion *"`cityPickFromRow` over each of those rows, through
+  `createTrip` and `tripSummary`, reports `{FR, picked}`, `{NO, picked}` and `{null, null}`"* is
+  **unbuildable before Part 1** and correct after it. `I-22b` shares no file with this increment and may
+  ship before or after.
+- **Ship gate.** `npm test` green; `npm run typecheck` exit 0 on **both** projects; `npm run web:build`
+  succeeds and the main-chunk figure is recorded against `I-22a`'s; the export count re-measured and
+  **88**; the subpath set equality at **1**; **N1–N8 each run red-before-green with their measured output
+  recorded**; `qa/i7a-idb-rowkeys.mjs` run in Chromium and its result recorded, or its absence disclosed.
+  **Files touched: `packages/core/src/build/createTrip.ts`, `packages/core/src/derive/summary.ts`,
+  `packages/core/src/derive/travelStats.ts`, `packages/core/src/validate/validateTrip.ts`,
+  `packages/core/src/serialize/migrate.ts` (one docstring), `cli.ts`, `test/stats-storage.test.ts`, `fixtures/golden/travel-stats.json`
+  (regenerated, never hand-edited), `packages/core/test/` as the new assertions require,
+  `qa/i7a-idb-rowkeys.mjs` (the seeded row's new key — the ONE named `qa/` exception, and it exists
+  because A-36 Part 4 obliges the run), and `docs/BUILD-NOTES.md`. Nothing else** — no `.tsx`, no
+  `apps/web`, no `packages/client/src`, no other `qa/` file, no `docs/design/`, no lockfile, no new
+  dependency, no generated data other than the one regenerated golden.
+- **Route: builder + breaker, MANDATORY**, then the manager. A `SUMMARY_VERSION` bump over stored
+  documents, the first top-level `ROW_KEYS` widening since A-33, and a change to what a shipped build door
+  writes — any one of the three earns the round. **Three stop-and-report conditions:** a golden other than
+  `travel-stats.json` moving; the browser probe not runnable (disclose, do not call it a pass); and the
+  export count landing anywhere but 88.
+
 #### I-23 — the gazetteer's filter becomes notability, the corpus is sharded, and a search fetches one shard (revision 67, `ARCHITECTURE.md` revision 64's §8.4 **A-83** Parts 1–7 and 10–11; **amended at revision 68** with parts 3a and 3b from revision 65's **A-84** Parts 5 and 6, QA **R61-3**)
 
 **Read §8.4 A-83 Parts 1–7 and 10–11. Then A-82 Parts 2, 3, 4, 9 and 10 — the generator standard, the fold,
@@ -6463,8 +6707,10 @@ record: it is generated data, never persisted in a document, and parts 3a and 3b
   **both** Óbidos, Leiria, Portugal and Óbidos, Pará, Brazil, each with a label a person can choose
   between. Every command still prints the CC BY attribution.
 - **Architecture / data model.** `packages/core/src/geo/` gains a `gazetteer/` directory of generated JSON
-  and one generated `.ts` shard map; `gazetteer.gen.ts` is **deleted**. §2.10 stays at **87** and the
-  subpath stays at **one** symbol, renamed. `packages/core/test/storable.test.ts`'s `CENSUS` gains
+  and one generated `.ts` shard map; `gazetteer.gen.ts` is **deleted**. §2.10 stays at **88** and the
+  subpath stays at **one** symbol, renamed. *(Revision 69: **88**, not the 87 written at revision 67 —
+  `I-22a` added `cityPickFromRow` after this entry was written, and this increment adds no symbol and
+  removes none. A ship gate quoting 87 is a criterion no correct implementation can meet.)* `packages/core/test/storable.test.ts`'s `CENSUS` gains
   **one** row (`geo/gazetteerShards.gen.ts`) and loses one (`geo/gazetteer.gen.ts`) — the census walks
   `.ts` and does not see JSON, and if it reddens for any other reason, **STOP and report**.
 - **Verification.** Tagged per **How a criterion is written**. Every injected fault is run
@@ -6527,6 +6773,12 @@ record: it is generated data, never persisted in a document, and parts 3a and 3b
     **zero** carry `?` or `U+FFFD`; **zero** carry `|` or a newline; and the counts the generator reports
     for each are the counts the goldens carry. **N7, injected:** disable the bare-name refusal → the
     assertion fails naming a row.
+    **And one more ceiling, added at revision 69** (`ARCHITECTURE.md` §8.4 **A-85** Part 5) `[stated]`:
+    **zero** shipped rows have a centre of exactly `{lat: 0, lng: 0}`. The migration ladder treats that
+    point as a fabrication and nulls it, and A-85 Part 5 rules the resulting pick case out of scope **on
+    the measured ground that no row lies within a whole degree of the origin** — a fact of the old corpus
+    that this increment replaces wholesale, so it is asserted here rather than assumed. A row at the
+    origin is a **stop-and-report**, not a filter to add quietly.
   - **Distinct labels** `[stated]`: over a named query whose top rows collide today, **every label in the
     returned window is distinct**. **N8, injected:** delete the disambiguation → the assertion fails
     naming the duplicated label.
@@ -6556,13 +6808,18 @@ record: it is generated data, never persisted in a document, and parts 3a and 3b
 - **Dependencies / blockers.** **`I-22` and `I-22a`, both built, shipped and through their adversarial
   rounds** — `indexSays`' predecessor, the source-prefixed row id and, above all, **`City.pick`** come
   from them, and without a pick that is read whole and invalidated when it goes stale this increment's
-  disagreeing rows have nowhere safe to land. Nothing else: `download.geonames.org` is
+  disagreeing rows have nowhere safe to land. **And `I-24`, added at revision 69**: this increment's own
+  parent-translation criterion below drives `cityPickFromRow` **through `createTrip`** and expects
+  `{FR, picked}` / `{NO, picked}` / `{null, null}`, which is **unachievable before `I-24` Part 1** — a
+  pick handed to `createTrip` without a `centre` today lands on a city with no coordinate and reports
+  `{null, null}` for every one of the three (**R62-2**; `ARCHITECTURE.md` §8.4 **A-85** Part 2). Nothing
+  else: `download.geonames.org` is
   reachable through this environment's proxy and was fetched on 2026-09-09, and part 3a's
   `ne_10m_admin_0_countries.geojson` was fetched from the pinned GitHub mirror on the same day and its
   sha256 matched `gen-countries.mjs`'s recorded pin.
 - **Ship gate.** `npm test` green; `npm run typecheck` exit 0 on **both** projects (the door and illegal
-  censuses green over the changed tree); the export count re-measured and **87**; the subpath set equality
-  at **1**; **N1–N10 each run red-before-green with their measured output recorded**; the generator run
+  censuses green over the changed tree); the export count re-measured and **88** (revision 69 — see
+  *Architecture / data model* above); the subpath set equality at **1**; **N1–N10 each run red-before-green with their measured output recorded**; the generator run
   twice byte-identical and `--audit-only` recorded; `qa/r60-coverage.mjs` re-run **unmodified** and both
   rates recorded, with the control at **100 %**; `npm run web:build` run and the main-chunk figure
   recorded. **Files touched: `tools/gen-gazetteer.mjs`, `packages/core/src/geo/gazetteer.ts`,
@@ -9080,3 +9337,11 @@ built.
    10 added three deliverable lines and **no new phase**. This is the roadmap form of principle 10: the base product must be valuable before the
    automatic, social and gamified layers exist, and every one of those layers is only as good as the
    history underneath it.
+9. **A surface does not land before the door it will call is safe to call the short way** (revision 69,
+   §8.4 **A-85** Part 2, QA **R62-2**). The picker is the worked example: `createTrip({cities:[{name,
+   pick}]})` — the shortest call a picker writes and the one it will actually write — stored a pick that
+   could never attribute anything, silently and forever. A surface built on that API would have shipped
+   the defect as a feature, and every bug report would have named the screen. **Before a surface for a
+   capability is scheduled, the door it drives is exercised through its own shortest correct-looking call
+   and the result is the one the user meant** — which is a `packages/core` increment, not a UI one, and it
+   is why `I-24` is queued ahead of any pick-writing screen.

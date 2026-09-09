@@ -1619,11 +1619,18 @@ reads that instead of entering §2 or §4.
 
 ## Read only your sections
 
-This document is **~523k tokens** (re-measured at **revision 65** — **§8 grew 115k → 124k** with §8.4's
-**A-84** and the amendment banners it puts on A-83, A-82 and A-29; §2, §4 and §10 did not move). **A-84 is
-~7k and it is the first thing anyone reads about a picked city** — A-83 Part 8 must never be read without
-it. **A-83 is ~13k and it is the first thing anyone reads about the gazetteer** — it names what of A-82 to
-skip.
+This document is **~530k tokens** (re-measured at **revision 66** — **§8 grew 124k → 130k** with §8.4's
+**A-85**, the four amendment banners it puts on A-84 and the two pointer banners it puts on A-39 Part 11
+and A-33 Part 2; §2, §4 and §10 did not move). **A-85 is ~5k and it is now the first thing anyone reads
+about a picked city** — it is read before A-84, and A-84 is read before A-83 Part 8, which is never read
+alone. **A-84 is ~8k with its banners**; **A-83 is ~13k and it is the first thing anyone reads about the
+gazetteer** — it names what of A-82 to skip. **A builder of ROADMAP `I-24` reads A-85 whole, then A-84
+Parts 3, 4 and 7 and A-33 Part 2, each with its revision-66 banner, and nothing else** — not A-83, not
+A-84 Parts 1, 2, 5, 6, 9 or 10, not §2 whole, not §4, not §10.
+Revision 65's own note follows, and the figures in it are superseded by the ones above: the document was
+~523k (**§8 grew 115k → 124k** with §8.4's **A-84** and the amendment banners it puts on A-83, A-82 and
+A-29). **A-84 is ~7k and it was the first thing anyone read about a picked city** — A-83 Part 8 must never
+be read without it.
 Revision 62's own note follows, and the figure in it is superseded by the one above: the document was ~486k
 (re-measured at **revision 62** — **§2 grew 168k → 175k** with §2.1's
 **A-81** and A-80's four amendment banners; §4, §8 and §10 did not move). **A-81 is ~5k, and A-81 whole plus
@@ -18906,6 +18913,12 @@ to an eight-entry list. F4 walks past it by choosing a name. The fix is to stop 
 > widened, and widening it is an architect's ruling, because a field on the row is a field in storage and
 > `SUMMARY_VERSION` has to move with it (clause 3).
 
+**This ruling has been exercised twice and its list is not the one transcribed below.** §8.4 **A-56**
+Part 6 and **A-83** Part 8 both widened *inside* `cities[]` (`ROW_PATHS` 20 → 24 → 25, `ROW_KEYS`
+unmoved), and §8.4 **A-85** Part 3 makes the first **top-level** widening since this ruling —
+`placeCount`, `ROW_KEYS` 14 → 15 — with `SUMMARY_VERSION` 7 → 8 beside it, exactly as clause 3 requires.
+The source of truth for both lists is `test/stats-storage.test.ts`, not this paragraph.
+
 Three assertions, and the first two are the A-25 idiom (a compile-time key-set map beside a runtime key-set
 assertion) applied one section over:
 
@@ -20223,14 +20236,22 @@ fixtures — because a fault that would be caught anyway proves nothing about th
 
 **Part 11 — the boundary. What reopens this, and what does not.**
 
+> **⚠ Items 1 and 2's ARITHMETIC is superseded — read §8.4 A-84 Part 8 and A-85 Part 6 first.** The
+> absorption ended when `SCHEMA_VERSION` reached 5: the table is the pairwise product `|S| × |D|`, where
+> `|S| = SUMMARY_VERSION + 1` and `|D|` is the schema generations the table names. **It is 40 rows today**
+> (`|S| = 8`, `|D| = 5`), and A-85 Part 3's `SUMMARY_VERSION` 7 → 8 takes it to **45**. A `SCHEMA_VERSION`
+> bump adds `|S|` rows, a `SUMMARY_VERSION` bump adds `|D|` rows, and the increment that bumps owns them.
+> The *rule* — that each bump is a legitimate reason to revisit, and the only one — stands unchanged.
+
 **Legitimate reasons to revisit — each is a new increment, not a reopening of this one:**
 
-1. **`SUMMARY_VERSION` is bumped.** Axis S gains a state; the ledger gains an entry; the table goes 15 → 18
-   (three C-values against the new generation). Part 6's pin 1 fails the moment the constant moves, so this
+1. **`SUMMARY_VERSION` is bumped.** Axis S gains a state; the ledger gains an entry; ~~the table goes
+   15 → 18 (three C-values against the new generation)~~ **the table grows by `|D|` rows** (A-85 Part 6).
+   Part 6's pin 1 fails the moment the constant moves, so this
    cannot be forgotten and does not depend on anyone remembering.
-2. **`SCHEMA_VERSION` is bumped.** Axis D stops being degenerate. Note the cost is **zero new rows**: a
+2. **`SCHEMA_VERSION` is bumped.** Axis D stops being degenerate. ~~Note the cost is **zero new rows**: a
    domain-2 factor is absorbed into 15 (15 ≥ 2×5 and 15 ≥ 2×3), so D is assigned across the existing table
-   exactly as V is.
+   exactly as V is.~~ **The absorption ENDED at A-84 Part 8: the cost is `|S|` rows** (A-85 Part 6).
 3. **`DatePrecision` (or `countrySource`) gains a member.** Axis C's enum folding no longer covers, and C
    gains a state → 20 rows.
 4. **A new object store is added to the port's database.** A genuinely new axis; Part 3's table is re-derived.
@@ -22458,6 +22479,14 @@ against A-82 Part 3's own twelve pairs.** Six are green — `lower→sub→NFD�
 
 #### A-84 — a pick is a record, not a pointer: the country is read off the pick, a pick that no longer describes the city is inert, and an undrawable code is translated from the data rather than from a sentence (revision 65, QA **R61-1**/**R61-2**/**R61-3**, MAJOR; **R61-6**, **R61-10**, **R61-12** ride along)
 
+> **⚠ Amended at revision 66 by A-85, which is READ FIRST.** Round 62 attacked this ruling's central
+> mechanism — the exact-float staleness rule — over all **7,342** shipped rows and **could not break it**;
+> that design is measured sound and is **not** re-opened. What A-85 amends is this ruling's *reach*:
+> **Part 3**'s two independent `CityInit` optionals (a pick can be stale at birth), **Part 4 item 2**
+> (the pick's coordinate earns the range check the model already has), **Part 7 item 1**
+> (`seen.places` had no denominator), and **Part 8**'s arithmetic (**40**, not 35). Parts 1, 2, 5, 6, 9
+> and 10 stand untouched. Each amended Part carries its own banner below.
+
 **A-83 Part 8 was ruled six hours before the round that measured it, and the measurement says its central
 mechanism does not do what the ruling says it does.** That is the process working, and this ruling amends
 A-83 in place rather than leaving a contradiction standing.
@@ -22523,6 +22552,13 @@ carried a single record that a partial write cannot compose and a moved coordina
 ---
 
 **Part 3 — the ruling. `City.placeId` becomes `City.pick`, and the country is read off the pick.**
+
+> **⚠ Amended at revision 66 by A-85 Part 2 (QA R62-2, MAJOR).** Clause 4 made the mint take a **row** so
+> that a pick would carry a real coordinate, and then let the coordinate be dropped on the way into the
+> record: `CityInit.centre` and `CityInit.pick` are independent optionals, so
+> `createTrip({cities:[{name, pick}]})` — the shortest call a picker writes — stores a well-formed pick on
+> a city with **no centre**, stale at birth by clause 3 and attributing nothing forever. **A-85 Part 2:
+> an absent `centre` beside a pick means the point the pick names.** Clauses 1, 2 and 3 stand verbatim.
 
 ```ts
 /** What a human PICKED out of the gazetteer, recorded whole. §8.4 A-84. */
@@ -22614,6 +22650,12 @@ needed a new shape anyway; it takes a name that is not already taken.
 ---
 
 **Part 4 — what a pick still does not do.**
+
+> **⚠ Item 2 amended at revision 66 by A-85 Part 4 (QA R62-8).** Its two refusals stand — a malformed pick
+> is a parse refusal, a stale pick is not an integrity error — but *"no `validateTrip` rule"* was read one
+> case too wide: a city and a pick at `{lat: 91.5, lng: 500.25}` reported `{CH, picked}` with **zero**
+> issues, where a `Stop` or a `Place` at that point is an `error`. **No NEW code: the existing
+> `lat_lng_out_of_range` gains `City.centre` (when non-null) and `pick.centre`.** Items 1, 3 and 4 stand.
 
 1. **No auto-match**, ever. A-82 Part 6 stands and clause 4 above is now the enforcement.
 2. **No `IssueCode` and no `validateTrip` rule.** A malformed pick is a parse refusal (A-74 Part 4's
@@ -22720,6 +22762,13 @@ It rides `I-23`, which rewrites the payload anyway; nothing in `I-22a` touches t
 
 **Part 7 — the three riders, ruled rather than left open.**
 
+> **⚠ Item 1 completed at revision 66 by A-85 Part 3 (QA R62-1, MAJOR).** `seen` shipped with a column its
+> own row cannot fill: `TripSummaryRow` carries no total place count, so `seen.places === located.places`
+> by construction and `seen − located` for places is **0 always** — the exact number `seen` was added to
+> make derivable. **`TripSummaryRow` gains `placeCount`, `SUMMARY_VERSION` goes 7 → 8**, and the
+> *"lower bound"* disclosure comes out. Items 2 and 3 stand; A-85 Part 5 rules the one case item 3 left
+> ambiguous.
+
 1. **R61-6 — the census prose, and the count that is owed.** The builder was right and `ROADMAP`'s prose
    was wrong: counting an **un**located city as *unattributed* breaks `TravelStats.unattributed`'s own
    *"never greater than `located`"* invariant the moment every city in a trip is typed. The `[stated]`
@@ -22783,10 +22832,15 @@ round 61 verified end to end.
 **The price of the schema bump, and it is now a real one.** Round 61 re-derived A-39 Part 11's covering set
 from the table rather than from the report: `|S| = 7`, `|D| = 4`, **28 rows, every `S × D` pair exactly
 once — the lower bound `|S| × |D|` is achieved and the set is minimal and TIGHT.** This bump takes `|D|` to
-**5** and the table to **35 rows**, and it can no longer be absorbed. **The rule, which belongs in the
-`SCHEMA_VERSION` docstring in `model/types.ts` from this increment onward because that docstring is what a
-bumper actually reads: every `SCHEMA_VERSION` bump adds `|S|` rows to A-39 Part 11's covering table, and
-the increment that bumps it owns those rows.**
+**5** and the table to ~~**35 rows**~~ **40 rows** — *corrected at revision 66 by A-85 Part 6 (QA R62-3):
+this same Part moves `SUMMARY_VERSION` 6 → 7 and therefore adds `gen-7` to Axis S, so `|S|` is **8** and
+the bound is `8 × 5 = 40`. `35` held `|S|` at 7 and is an arithmetic slip in this ruling; the shipped
+table is 40, minimal, every `S × D` pair exactly once* — and it can no longer be absorbed. **The rule,
+which belongs in the `SCHEMA_VERSION` docstring in `model/types.ts` from this increment onward because
+that docstring is what a bumper actually reads: every `SCHEMA_VERSION` bump adds `|S|` rows to A-39
+Part 11's covering table, and the increment that bumps it owns those rows** — *widened at revision 66 by
+A-85 Part 6 to both constants: a `SUMMARY_VERSION` bump adds `|D|` rows, and an increment that bumps both
+owns the new product `|S| × |D|`.*
 
 ---
 
@@ -22812,7 +22866,7 @@ the increment that bumps it owns those rows.**
 | A-29 Part 8 residue 2 (*territory codes are never admitted*) | **FIRED and ruled**: still never admitted; **translated at generation time** instead (Part 5) |
 | A-29 Part 8 residues 1 and 3 | **stand**, and Part 10 residue 1 is the pick-shaped case of residue 1 |
 | A-31's `TravelStats` | **gains `seen`** (Part 7 item 1); no other field moves and no version moves |
-| A-39 Part 11 | **unchanged as a rule; its table grows 28 → 35** with Part 8's bump, and Part 8 states the general law |
+| A-39 Part 11 | **unchanged as a rule; its table grows 28 → ~~35~~ 40** with Part 8's bump (**A-85 Part 6**, R62-3 — `|S| = 8`, `|D| = 5`), and Part 8 states the general law, widened to both constants by A-85 Part 6 |
 
 ---
 
@@ -22838,6 +22892,276 @@ the increment that bumps it owns those rows.**
    `rowId` prefix becomes `gn:`. Under Part 3 that costs **nothing** — the pick is self-contained and
    still records exactly what the user accepted — and it is recorded here so that the absence of a data
    migration at `I-23` is a decision rather than an omission.
+
+#### A-85 — a pick is minted **onto** the point it names, a census may not publish a number whose denominator it does not hold, and the pick's coordinate earns the range check the model already has (revision 66, QA **R62-2**/**R62-1**, MAJOR; **R62-3**, **R62-4**, **R62-5**, **R62-8** ride along)
+
+**A-84 closed the slip that let a shipped door *change* a pick's country. Round 62 measured the slip one
+field over: a shipped door can *create* a pick that never attributes anything at all.** The mechanism
+A-84 built is sound — the breaker attacked the exact-float staleness rule over all **7,342** shipped rows
+and could not break it, and that design is **not re-opened here**. What is amended is A-84's own **reach**
+— three clauses that reasoned about the pick's *fields* and not about the pick's *neighbour*, one census
+column with no denominator, and one number.
+
+---
+
+**Part 1 — the two measurements, and what each one falsifies.**
+
+Both reproduced independently on this machine on 2026-09-09 against the shipped tree at `ad703dc`.
+
+**1. A pick can be stale at birth (R62-2, MAJOR).** `CityInit.centre` and `CityInit.pick` are independent
+optionals, so the *shortest call a picker writes* stores a well-formed pick on a city with no coordinate:
+
+```
+createTrip({cities: [{name: 'Geneva', pick: cityPickFromRow(genevaRow)}]}, ctx)
+  stored centre : null
+  stored pick   : {"rowId":"ne:j64n0x","centre":{"lat":46.21,"lng":6.14},"countryCode":"CH"}
+  tripSummary   : {countryCode: null, countrySource: null}      countryCodes: []
+  validateTrip  : 0 issues
+```
+
+A-84 Part 3 clause 2 refuses `pick.centre: null` on the ground that *"a pick without a coordinate is not
+a pick"*; **the same value one level up is accepted, silently, and is inert forever.** Clause 4 made the
+mint take a **row** precisely so that a pick would carry a real coordinate — and then let the coordinate
+be dropped on the way into the record. This is the product path: the picker UI is the whole point of the
+gazetteer capability, and this is the call it makes.
+
+**2. `TravelStats.seen.places` is a lower bound published as a count (R62-1, MAJOR).** `TripSummaryRow`
+carries `cityCount`, `dayCount`, `stopCount` and `poolCount` and **no total place count**, so
+`seen.places === located.places` by construction and `seen − located` for places is **0 always** — precisely the
+number `seen` was added (A-84 Part 7 item 1, R61-6) to make derivable. Through the shipped CLI on the
+reference trip, which holds **95** place records:
+
+```
+  records seen cities 6 · places 94 · stops 143
+  located      cities 6 · places 94 · stops 132
+```
+
+Cities are exact (`cities[]` is on the row, record by record) and stops are exact
+(`stopCount + poolCount`). **Places is the only class of the three whose denominator is missing**, and the
+caveat exists only in a source comment: the printed line carries none. A-84 Part 7 item 1 shipped a field
+one of whose three columns its own row cannot fill.
+
+---
+
+**Part 2 — R62-2 ruled: the absence of a `centre` beside a pick means the point the pick names.**
+
+> **A `CityInit` that carries a `pick` and does **not** carry a `centre` key is stood on
+> `pick.centre` — a fresh `LatLng`, copied, not aliased. A `CityInit` that carries `centre`
+> is honoured verbatim, `null` included.**
+
+Four things this is, each of which is why it is this and not something else.
+
+1. **It is not a fabrication, and that distinction is A-82 Part 7's own.** `{0, 0}` was *"a value nobody
+   measured, wearing the shape of one"*. `pick.centre` is the coordinate of the row the user chose, copied
+   off that row by `cityPickFromRow`, carried in the record the caller is handing us **in the same call**.
+   Standing the city on it invents nothing; it declines to throw away the one coordinate in the argument.
+2. **It cannot be a parser rule, and this is the clause that decides the shape.** The obvious answer —
+   *"`fromJSON` refuses a `pick` on a city with no `centre`"* — is wrong, because it would refuse a
+   **legal, shipped user action**: clearing a picked city's coordinate is exactly A-84 Part 3 clause 3's
+   case, the pick is **kept and inert** by that clause's own reasoning (*"deleting it silently is the
+   larger loss"*), and `I-22a`'s criterion asserts the resulting `{null, null}`. In the *stored document*
+   the born-stale case and the erased case are the same two fields; the distinction exists only at the
+   door, where a key can be **absent** rather than `null`. So the rule goes where the distinction is.
+3. **It cannot be an `Issue`, for the same reason.** A-84 Part 4 item 2 stands: a stale pick is a city
+   whose owner moved it, not a broken document, and `validateTrip` cannot tell the two apart.
+4. **It is one line at one door, and the door set is closed by the type rather than by memory.**
+   `setTripMeta`'s patch takes `City[]`, whose `centre` is **required** — a caller there has to *write*
+   `centre: null`, which is the erase case stated out loud, not a slip. Measured: `createTrip` and
+   `import/legacyDays.ts` are the only two sites in `packages/core/src` that construct a `City`, and
+   `createTrip` is the only consumer of `CityInit` anywhere in the repository. **The obligation on any
+   future door that accepts a `CityInit` is stated in `CityInit.pick`'s own docstring**, beside the mint
+   rule it already carries, because that docstring is what such a builder reads.
+
+**What it fixes, stated as the outcome:** the call in Part 1 stores `centre: {46.21, 6.14}`, the pick is
+live, and the city reports `{CH, picked}` — which is what the person who clicked *Geneva* meant, and what
+`I-23`'s own already-written criterion (*"`cityPickFromRow` over each of those rows, through `createTrip`
+and `tripSummary`, reports `{FR, picked}`, `{NO, picked}` and `{null, null}`"*) requires in order to be
+true at all. **`I-23`'s criterion is unbuildable before this ruling and correct after it**, which is the
+sequencing consequence and it is written in `ROADMAP.md` rather than inferred.
+
+**The picker UI is not blocked; it is fenced.** Nothing here stops a picker being designed, and a picker
+that passes `centre` explicitly is correct today. What may not happen is a pick-writing surface landing
+**before** this rule ships, because the API's shortest correct-looking call is the one that stores an
+inert record. `ROADMAP.md` states that as a sequencing rule, not as a hope.
+
+---
+
+**Part 3 — R62-1 ruled: `TripSummaryRow` gains `placeCount`, and `seen` becomes total.**
+
+> **`TripSummaryRow.placeCount: number` — the trip's total `Place` records, `trip.places.length`,
+> minted beside `cityCount`/`dayCount`/`stopCount`/`poolCount` where it always belonged.
+> `seen.places` becomes `Math.max(countOf(row.placeCount), locatedPlaces)` — the same clamp its two
+> neighbours already carry — and `TravelStats.seen`'s *"lower bound"* disclosure is DELETED because it
+> stops being true. `SUMMARY_VERSION` **7 → 8**.**
+
+**Why the field and not the deletion.** The alternative the breaker names — *"or `seen.places` must not
+exist"* — was weighed and refused. `TravelRecordCensus` is one type used by `seen`, `located` and
+`unattributed`; dropping one class out of one of the three either forks the type or leaves
+`unattributed ≤ located ≤ seen` true for two classes and undefined for the third, which is a worse thing
+to publish than the number itself. And the row is *already* a per-class count of everything else it
+holds: `placeCount` is not a new kind of field, it is the missing member of a set of four.
+
+**The price, paid rather than absorbed** — and it is exactly the price A-33 Part 2 says an architect must
+pay in writing rather than let a builder discover:
+
+- **`ROW_KEYS` 14 → 15 and `ROW_PATHS` +1.** This is the widening A-33 Part 2 reserves to this document,
+  and it is hereby made. It is the first top-level widening of the row since A-33; `I-12` and `I-22`
+  both widened *inside* `cities[]` deliberately to avoid it, and there is no inside to hide this one in.
+- **`SUMMARY_VERSION` 7 → 8**, because a field on the row is a field in storage. It rides the existing
+  generic rescan (`(row.summaryVersion ?? 0) < core.SUMMARY_VERSION`, no version literal anywhere), which
+  rounds 61 and 62 both verified end to end. A row minted before gen-8 carries no `placeCount`, so
+  `countOf` reads 0, the clamp holds it at `located`, and the row reports today's honest answer until the
+  rescan reaches it — the same degradation `stopCount` already has and for the same reason.
+- **A-36 Part 4's obligation fires.** `ROW_KEYS` moves, so `qa/i7a-idb-rowkeys.mjs` is **run in a
+  browser** with the result recorded in BUILD-NOTES, or its absence disclosed as a gap and not called a
+  pass. Round 61 extended that probe for `centre: null`; the new leaf needs the same treatment.
+- **A-39 Part 11's covering table 40 → 45.** Part 6 below states the arithmetic.
+
+**What does not move:** no export (`§2.10` stays at **88**), no record shape, no `SCHEMA_VERSION`, no
+`Trip` field, no migration rung. `TravelStats` is still derived and never stored (A-34;
+`test/stats-storage.test.ts` 6b-5 pins it), so `seen` still moves no version *of its own* — the bump is
+the **row's**, and it is the row that gained the field.
+
+---
+
+**Part 4 — R62-8 ruled: the existing code widens to both city coordinates. No new `IssueCode`.**
+
+Measured: a city at `{lat: 91.5, lng: 500.25}` with a pick at the same impossible point reports
+`{CH, picked}` with **zero** `validateTrip` issues, while a `Stop` or a `Place` at that point is an
+`error`-level `lat_lng_out_of_range`.
+
+> **`lat_lng_out_of_range` extends to `City.centre` (when non-null) and to `City.pick.centre`**, at
+> `level: 'error'`, with the city named and `params` carrying `cityKey`, `lat` and `lng`. **No new
+> code, no new severity, no new mechanism** — the model has exactly one answer for *"this coordinate
+> is not a coordinate"* and it acquires two more subjects.
+
+Three notes a builder needs and would otherwise get wrong:
+
+1. **`City.centre: null` is legal and is NOT an issue.** The `Place` arm reports `at === null` as
+   *"has no coordinates at all"*; a city's absent coordinate is A-82 Part 7's honest hole and the
+   whole point of `I-22`. Copying the `Place` arm wholesale would redden every typed city in the
+   library.
+2. **A-84 Part 4 item 2 is amended, not withdrawn.** It refused a `validateTrip` rule for two cases and
+   both refusals stand: a **malformed** pick is a parse refusal, and a **stale** pick is not an integrity
+   error. An out-of-range coordinate is neither — it is `|lat| > 90`, which `validateTrip`'s own comment calls
+   *"genuine structural invalidity"* and which is already an error for the other two coordinate fields in
+   the model.
+3. **This changes no attribution.** `tripSummary` is untouched; an impossible point that is drawable
+   still reports `{CH, picked}`, and it now does so beside an `error` that says the document is broken.
+   Reporting is `validateTrip`'s job and precedence is `summary.ts`'s, and this ruling does not blur them.
+
+---
+
+**Part 5 — R62-5 ruled: the 3 → 4 rung's case is out of scope, and the measurement is the reason.**
+
+The case: a hand-written v3 document whose city sits at `{0, 0}` and carries a `pick` (an unknown key
+riding `v3ToV4`'s spread) arrives at v5 with `centre: null`, the pick kept and inert, and
+`nulledOriginCentres` counting the centre but nothing counting the pick.
+
+**A-84 Part 7 item 3's rule stands verbatim and this case does not fire it.** *"A rung that rewrites or
+discards a value a person typed or picked owes the user a record"* — and here nothing a person picked is
+discarded, by measurement rather than by assertion:
+
+- if `pick.centre` **is not** `{0, 0}`, the pick was **already stale** at v3 and is exactly as stale at
+  v5; the rung invalidated nothing, because there was nothing left to invalidate;
+- if `pick.centre` **is** `{0, 0}`, the pick cannot have come from `cityPickFromRow`: round 61 measured
+  that **no shipped gazetteer row lies within a whole degree of the origin** (nearest: São Tomé
+  `0.3334, 6.7333`, Port-Gentil `-0.72, 8.78`). A live pick at the origin is a **fabricated** record in a
+  hand-written document — A-83's *"provenance, not authentication"* boundary, which A-84 Part 3's closing
+  paragraph re-states and which this ruling does not re-open.
+
+**Two cheap things are owed and are queued**: the 3 → 4 rung's docstring records this in one sentence, so
+the next reader does not re-derive it; and **`I-23` gains a `[stated]` assertion that no shipped row's
+centre is exactly `{0, 0}`**, because `I-23` regenerates the corpus from a different source and the
+argument above rests on that fact. **Trigger that reopens this:** a shipped row at the origin, or the
+first migration rung that can discard a pick whose liveness is not decidable from the corpus.
+
+---
+
+**Part 6 — R62-3 ruled: the covering table is 40 today and 45 after Part 3, and the law is restated over
+both constants.**
+
+A-84 Part 8 re-derived round 61's `|S| = 7, |D| = 4, 28` correctly and then took `|D|` to 5 while holding
+`|S|` at 7, **in the same Part that moves `SUMMARY_VERSION` 6 → 7** and therefore adds `gen-7` to Axis S's
+ledger. `|S| = 8`; the pairwise bound is `8 × 5 = **40**`. The builder implemented the criterion's
+*formula* and the shipped table is 40 rows, minimal, every `S × D` pair exactly once
+(`grep -c '^  { n: ' test/stats-storage.test.ts` → **40**). **`35` is an arithmetic slip in the ruling and
+is corrected in place in both documents.** Nothing shipped is wrong.
+
+> **The law, restated so the next bumper cannot repeat the slip — and it belongs in the
+> `SCHEMA_VERSION` *and* `SUMMARY_VERSION` docstrings, because those are what a bumper reads:**
+> A-39 Part 11's table is the pairwise product `|S| × |D|`, where `|S| = SUMMARY_VERSION + 1`
+> (one per shipped generation, plus the no-field floor, plus `gen-future`) and
+> `|D| = ` the schema generations the table names. **A `SCHEMA_VERSION` bump adds `|S|` rows; a
+> `SUMMARY_VERSION` bump adds `|D|` rows; an increment that bumps both owns the new product.**
+> The increment that bumps writes the rows.
+
+Applied to Part 3: `SUMMARY_VERSION` 7 → 8 takes `|S|` to **9**, `|D|` stays **5**, and the table goes
+**40 → 45**. A-39 Part 11 item 1 already names this trigger; what it did not carry is the arithmetic, and
+now it does.
+
+---
+
+**Part 7 — R62-4 ruled: the criterion's wording is the defect, and the general rule that prevents the
+next one.**
+
+`I-22a`'s criterion N6 asked both doors to emit a message naming `$.cities[0].pick.rowId` *"without either
+function containing the word `pick`"*. Measured, **neither half is achievable and both are the shipped
+A-77 mechanism working correctly**: `commit` hands each written record to a **per-record** parser, so a
+door's message is `pick.rowId` **plus** `(cities[0])` and never the composite path — only `fromJSON`,
+which parses the document, produces `$.cities[0].pick.rowId` — and `createTrip` must contain the word
+`pick` because `CityInit.pick` is what A-84 Part 3 tells it to accept. The builder's substitute asserts
+the property the criterion is *about* — the shape rule lives in exactly one place — and the breaker
+verified it three ways. **The criterion is rewritten in place** (`ROADMAP.md`, `I-22a`), to: both doors
+throw; each message carries `pick.rowId` **and** identifies the city; `fromJSON` gives the full path; and
+**neither `createTrip.ts`, `commit.ts` nor `storable.ts` names `rowId` in code**.
+
+> **The general rule, and it belongs beside *How a criterion is written*: a criterion may assert where a
+> rule LIVES, and may not assert which words a file does not contain.** A word-absence criterion tests
+> the spelling of an API the ruling itself mandates; it is unfalsifiable by a correct implementation and
+> it fails on the day the API is named correctly. The property *"this rule is implemented in exactly one
+> place"* is greppable over the **implementation** (`rowId`, the pattern, the refusal), and that is the
+> form to write.
+
+---
+
+**Part 8 — what this supersedes, clause by clause.**
+
+| clause | status |
+|---|---|
+| A-84 Part 3 clause 4 (the mint takes a row) | **stands**, and Part 2 above closes the gap between holding a row and *standing the city on it* |
+| A-84 Part 3, `CityInit.centre` and `CityInit.pick` as independent inputs | **AMENDED** by Part 2: an absent `centre` beside a pick is the pick's point |
+| A-84 Part 3 clauses 1, 2 and 3 (the precedence, the whole-or-nothing parse, the exact-float staleness rule) | **stand verbatim.** Round 62 attacked clause 3 over all 7,342 shipped rows and could not break it; the exact-float design is **measured sound and is not re-opened** |
+| A-84 Part 4 item 2 (*no `IssueCode` and no `validateTrip` rule*) | **AMENDED** by Part 4: no **new** code; the existing `lat_lng_out_of_range` gains `City.centre` and `pick.centre`. Its two refusals — malformed, stale — stand |
+| A-84 Part 4 items 1, 3 and 4 | **stand verbatim** |
+| A-84 Part 7 item 1 (`TravelStats.seen`) | **COMPLETED** by Part 3: the row gains the denominator, `seen.places` stops being a lower bound, and the disclosure comes out |
+| A-84 Part 7 item 3 (what a migration owes) | **stands verbatim**; Part 5 rules that the 3 → 4 rung's `{0,0}`-plus-pick case does not fire it, and says why by measurement |
+| A-84 Part 8, *"the table to **35 rows**"* | **CORRECTED to 40** (Part 6), in this document and in `ROADMAP.md` |
+| A-84 Part 8, *"every `SCHEMA_VERSION` bump adds `\|S\|` rows"* | **WIDENED** by Part 6 to both constants and to the product |
+| A-84 Parts 1, 2, 5, 6, 9, 10 | **stand, untouched.** Parts 5 and 6 are `I-23`'s and are not moved by this ruling |
+| A-33 Part 2 (widening `ROW_KEYS`/`ROW_PATHS` is an architect's ruling) | **stands, and is DISCHARGED here** for `placeCount` (Part 3) |
+| A-39 Part 11 | **unchanged as a rule**; its table is **40** today and **45** after Part 3, and Part 6 states the law over both constants |
+| A-82 Part 6 / A-83 Part 8's *"provenance, not authentication"* | **stand**, and Part 5 rests on them |
+| §2.10's export surface | **does not move. 88.** This ruling adds no symbol |
+
+---
+
+**Part 9 — residues, each with what would fire it.**
+
+1. **A born-stale pick is still expressible in a hand-written document.** `{centre: null, pick: {…}}`
+   opens, and by Part 2 clause 2 it must. **Trigger:** the first surface that renders a city's provenance
+   — A-84 Part 10 residue 1's surface, which is the same one that owes the *"this pick no longer describes
+   this city"* notice; a born-stale pick is that notice's second case and needs no new machinery.
+2. **`placeCount` is a count and not a census.** It says how many `Place` records the trip holds, not how
+   many are unlocated *and unattributed*; `unattributed.places` is still bounded by `located`. **Trigger:**
+   a surface that wants *"n places have no coordinate"* broken down by city or by cause.
+3. **A city's coordinate still has no `geoCheck` notice.** Part 4 gives `City.centre` the *impossible*
+   test and not the *implausible* one — a city 400 km from every stop under it is silent. **Trigger:**
+   A-29 Part 8 residue 1's, unchanged; it is the same surface.
+4. **The pick's coordinate is range-checked and never distance-checked.** A pick whose centre is a legal
+   coordinate on the wrong continent from the city's other content is only visible through staleness, and
+   staleness compares it to `City.centre` alone. **Trigger:** the first report of a pick that attributes a
+   plausible-but-wrong country from a corpus row, which is `I-23`'s `indexSays: 'differs'` surface.
 
 ### 8.5 Observed travel — the shape Phase 5 must be able to land on
 
