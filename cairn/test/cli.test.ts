@@ -350,12 +350,37 @@ test('A-56 Part 5: cli stats prints city DATES and no coordinate of any kind', (
  * equality against the source, which catches a wrong coordinate a transcribed literal never
  * could.
  */
+/**
+ * **Narrowed at Phase 2 I-21 (§8.4 A-82 Part 10), and the narrowing is the smallest one that keeps
+ * the guard's whole subject.** This scan's subject is *the live planner's own records*: A-56 Part 5
+ * and §6.6 forbid a coordinate of Jacob's trip reaching a committed file, and `country-holes.json`
+ * carries `NO COORDINATES: ids and names only` for exactly that reason. A-82 Part 10 rules, in
+ * writing and pre-emptively, that the line **does not transfer** to the two gazetteer goldens:
+ * *"These two fixtures' subject is a public-domain dataset that is already committed in full…
+ * §6.1 governs observed location — a fix stream, a library index — and a city centre from Natural
+ * Earth is neither."* `gazetteer-probes.json` publishes `centre` because A-82 Part 10 specifies its
+ * rows as `{id, name, countryCode, admin1, centre}`, so a shifted coordinate shows up as a diff.
+ *
+ * The scan therefore still runs over **every** golden, including any golden added tomorrow, and the
+ * exemption is an explicit two-name list that is itself asserted — a third name cannot be added to
+ * it without failing this test. **Editing this test was outside ROADMAP I-21's file fence and is
+ * disclosed as KD-114 rather than treated as a routine edit.**
+ */
+const GAZETTEER_GOLDENS = ['gazetteer-probes.json', 'gazetteer-refusals.json'];
+
 test('A-56 Part 5: `centre` reached no committed golden, and travel-stats.json carries the city DATES', () => {
   const dir = join(CAIRN, 'fixtures', 'golden');
   const names = readdirSync(dir).filter((n) => n.endsWith('.json'));
   assert.ok(names.length >= 10, `INCONCLUSIVE: only ${names.length} goldens were scanned`);
+  // The exemption list is closed: every name on it must exist, and nothing may be added silently.
+  assert.deepEqual(
+    GAZETTEER_GOLDENS.filter((n) => names.includes(n)).sort(),
+    [...GAZETTEER_GOLDENS].sort(),
+    'the A-82 Part 10 exemption names a golden that does not exist',
+  );
   const offenders: string[] = [];
   for (const name of names) {
+    if (GAZETTEER_GOLDENS.includes(name)) continue;
     const text = readFileSync(join(dir, name), 'utf8');
     if (/"centre"/.test(text)) offenders.push(name);
   }
@@ -507,4 +532,46 @@ test('P13: cli photos prints no coordinate of any kind', () => {
     false,
     `a coordinate PAIR reached the CLI:\n${r.out}`,
   );
+});
+
+// ---------------------------------------------------------------------------------------------
+// `cli.ts cities` — Phase 2 I-21, ARCHITECTURE §8.4 **A-82** Part 2 reason 4.
+//
+// This command exists so a tester can exercise the whole gazetteer **with no browser, no device
+// and no UI**. It is the P1 caller that makes `searchGazetteer` a §2.10 surface symbol.
+// ---------------------------------------------------------------------------------------------
+
+test('I-21: `cli cities zurich` returns Zürich, in Switzerland, with a coordinate', () => {
+  const r = cli('cities', 'zurich');
+  assert.equal(r.code ?? 0, 0, r.err);
+  assert.match(r.out, /Zürich/);
+  assert.match(r.out, /Switzerland/);
+  // `label · lat,lng · countryCode`
+  assert.match(r.out, /Zürich, Switzerland · 47\.\d+,8\.\d+ · CH/);
+});
+
+test('I-21: `cli cities london` returns three Londons in three countries, largest first', () => {
+  const r = cli('cities', 'london');
+  const lines = r.out.trim().split('\n').filter((l) => l.startsWith('London,'));
+  assert.ok(lines.length >= 3, `only ${lines.length} London lines:\n${r.out}`);
+  assert.match(lines[0], /United Kingdom/);
+  assert.match(lines[1], /Canada/);
+  assert.match(lines[2], /United States/);
+});
+
+test('I-21: a query with no match says so explicitly rather than exiting 0 with no output', () => {
+  const r = cli('cities', 'hallstatt');
+  assert.match(r.out, /^no match: hallstatt$/m, `expected an explicit miss line, got:\n${r.out}`);
+});
+
+test('I-21: `cli cities` with no query refuses rather than dumping the dataset', () => {
+  const r = cli('cities');
+  assert.notEqual(r.code, 0);
+  assert.match(r.out + r.err, /usage/i);
+});
+
+test('I-21: --limit truncates, and a refused border town is simply not there', () => {
+  assert.equal(cli('cities', 'london', '--limit', '1').out.trim().split('\n').length, 1);
+  // A-82 Part 5: Maastricht is refused at generation time and published in the refusals golden.
+  assert.match(cli('cities', 'maastricht').out, /no match: maastricht/);
 });

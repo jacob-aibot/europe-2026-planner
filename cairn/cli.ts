@@ -7,6 +7,8 @@
  *   node cli.ts cost                 per-day and whole-trip roll-ups
  *   node cli.ts validate             validateTrip issues
  *   node cli.ts stats                lifetime travel statistics, derived (§8.4 A-31)
+ *   node cli.ts cities "<query>" [--limit N]
+ *                                    search the bundled offline city gazetteer (§8.4 A-82)
  *   node cli.ts photos a.jpg …       what each file's EXIF block actually says (§10.2, A-58)
  *   node cli.ts import               the legacy import report
  *   node cli.ts export [file] [--force]
@@ -408,13 +410,65 @@ function cmdPhotos() {
   }
 }
 
-const commands: Record<string, () => void> = {
+/**
+ * The bundled offline city gazetteer, on the command line — ARCHITECTURE §8.4 **A-82**, Phase 2
+ * **I-21**. This is the P1 caller that makes `searchGazetteer` a §2.10 surface symbol, and A-82
+ * Part 2 reason 4 is why it exists at all: *"`cli.ts` gets a `cities` command in the same
+ * increment, which is what lets a tester exercise this with no browser, no device and no UI."*
+ *
+ * **`GAZETTEER` is reached by the bare subpath `@cairn/core/gazetteer`, dynamically, and never by
+ * module path.** That is the whole boundary A-82 Part 9 draws: the dataset is ~380 kB and nothing
+ * on a document's write path needs it, so it is a **second declared entry point** rather than a
+ * symbol on the index. Importing it here by module path would be a ceiling (1) violation; importing
+ * it statically at the top of this file would make every other `cli.ts` command pay for it.
+ *
+ * **A miss prints `no match: <query>` and is not silence.** An empty successful exit is how a
+ * search feature lies about its coverage, and A-82 Part 1 measurement 3 measured that the misses
+ * are the *routine* case — Hvar, Hallstatt, Positano, Interlaken are all absent from this layer.
+ *
+ * **Every line carries the label `searchGazetteer` computed**, never a bare name: 196 folded names
+ * in the shipped rows are carried by more than one row and three of them are called London
+ * (A-82 Part 4).
+ *
+ * **Picking is not implemented here and that is deliberate.** A-82 Part 6 forbids matching a typed
+ * name to a row without a human choosing it — this command prints candidates, and nothing in this
+ * repository turns the top hit into a `City`.
+ */
+async function cmdCities() {
+  const query = argv.slice(1).find((a) => !a.startsWith('--'));
+  if (query === undefined || query.trim() === '') {
+    out('usage: node cli.ts cities "<query>" [--limit N]');
+    out('Searches the bundled offline gazetteer (Natural Earth populated places, §8.4 A-82).');
+    process.exitCode = 2;
+    return;
+  }
+  const rawLimit = flag('limit');
+  const limit = rawLimit === null || rawLimit === '' ? 20 : Number(rawLimit);
+  if (!Number.isInteger(limit) || limit < 1) {
+    out(`--limit must be a positive whole number, got ${JSON.stringify(rawLimit)}`);
+    process.exitCode = 2;
+    return;
+  }
+
+  const { GAZETTEER } = await import('@cairn/core/gazetteer');
+  const hits = core.searchGazetteer(query, GAZETTEER, { limit });
+  if (hits.length === 0) {
+    out(`no match: ${query}`);
+    return;
+  }
+  for (const h of hits) {
+    out(`${h.label} · ${h.centre.lat},${h.centre.lng} · ${h.countryCode || '—'}`);
+  }
+}
+
+const commands: Record<string, () => void | Promise<void>> = {
   trip: cmdTrip,
   day: cmdDay,
   conflicts: cmdConflicts,
   cost: cmdCost,
   validate: cmdValidate,
   stats: cmdStats,
+  cities: cmdCities,
   import: cmdImport,
   export: cmdExport,
   photos: cmdPhotos,
@@ -424,4 +478,11 @@ const run = commands[cmd];
 if (!run) {
   out(`unknown command "${cmd}". Try: ${Object.keys(commands).join(' | ')}`);
   process.exitCode = 1;
-} else run();
+} else {
+  // `cities` is the one async command (A-82 Part 9's dynamic import). A rejection here must exit
+  // non-zero rather than becoming an unhandled rejection warning on a zero exit code.
+  void Promise.resolve(run()).catch((err: unknown) => {
+    out(String(err instanceof Error ? err.message : err));
+    process.exitCode = 1;
+  });
+}

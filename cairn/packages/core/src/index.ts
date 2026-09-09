@@ -118,6 +118,25 @@ export { countryOf, countryKeyPoint, countryParts } from './derive/country.ts';
 export type { CountryPart } from './derive/country.ts';
 export { COUNTRY_INDEX } from './geo/countries.gen.ts';
 export type { CountryIndex, CountryEntry, CountryEntryInit, CountryRing, CountryBox } from './geo/countryIndex.ts';
+// `searchGazetteer` joins at Phase 2 I-21 under §8.4 **A-82** Part 9 — 86 → 87. P2 (that ruling
+// names it) and P1 (`cli.ts cities` calls it). It is `countryOf(at, index)`'s shape verbatim:
+// pure, dataset injected, testable against a hand-built fixture.
+//
+// **`GAZETTEER` is deliberately NOT here, and this line is the boundary that keeps it out.**
+// Unlike `COUNTRY_INDEX` — which `tripSummary` needs inside every document write, so A-27 Part 9
+// accepted it in the main chunk — nothing on the write path needs the gazetteer; it is touched
+// only while a human is typing a city name. So the ~300 kB is reached through a **second declared
+// entry point**, `@cairn/core/gazetteer`, dynamically imported, and `index.ts` must not import
+// `geo/gazetteer.gen.ts` directly or transitively. `packages/core/test/gazetteer.test.ts` asserts
+// that reachability rather than trusting it: adding `export { GAZETTEER } from
+// './geo/gazetteer.gen.ts'` here would silently cost every user the whole dataset.
+//
+// `foldPlaceName` and `decodeGazetteer` stay internal for group 1's reason, which is
+// `countryIndex`/`decodeCountryIndex`'s reason verbatim — *a caller needs to pass a dataset, not
+// to mint one* — and `foldPlaceName` additionally must not be reachable because it is **not**
+// `normalizeCityName` and a caller that can reach both will use the wrong one (A-82 Part 3).
+export { searchGazetteer } from './geo/gazetteer.ts';
+export type { Gazetteer, GazetteerRow, GazetteerHit, GazetteerSearchOptions } from './geo/gazetteer.ts';
 // `lifecycle` joins in revision 10 under P2: §8.1 names it, and §8.9 is the documentation
 // change §2.10's own rule requires before a symbol may reach this file.
 export { lifecycle } from './derive/lifecycle.ts';

@@ -1,0 +1,597 @@
+{
+  "$generatedBy": "cairn/tools/gen-gazetteer.mjs",
+  "$source": "nvkelso/natural-earth-vector@v5.1.2/geojson/ne_10m_populated_places.geojson",
+  "$sourceSha256": "9b8e3de09048ef00dfc70357dbb9fa324493f214b5e0ae4daf1aa79a8d10116b",
+  "$what": "Every row of the pinned populated-places layer that ARCHITECTURE §8.4 A-82 Part 5's consistency invariant REFUSED: the row states an ISO country code, and countryOf(row.centre, COUNTRY_INDEX) returns a DIFFERENT one. Every one is a border town the shipped index draws on the wrong side of a frontier, and shipping it would put the city in the wrong country on a user's lifetime map. They are named here rather than dropped silently. ROADMAP I-22 is what would restore them. statedCountry is the source's ISO_A2; derivedCountry is what countryOf says.",
+  "total": 98,
+  "refused": [
+    {
+      "id": "j647ov",
+      "name": "28 de Noviembre",
+      "statedCountry": "AR",
+      "derivedCountry": "CL"
+    },
+    {
+      "id": "j64ggj",
+      "name": "Agartala",
+      "statedCountry": "IN",
+      "derivedCountry": "BD"
+    },
+    {
+      "id": "j64akv",
+      "name": "Al Qunaytirah",
+      "statedCountry": "SY",
+      "derivedCountry": "IL"
+    },
+    {
+      "id": "j64n7h",
+      "name": "Alofi",
+      "statedCountry": "NZ",
+      "derivedCountry": "NU"
+    },
+    {
+      "id": "j64eaz",
+      "name": "Arauca",
+      "statedCountry": "CO",
+      "derivedCountry": "VE"
+    },
+    {
+      "id": "j63zkv",
+      "name": "Arlon",
+      "statedCountry": "BE",
+      "derivedCountry": "LU"
+    },
+    {
+      "id": "j640xv",
+      "name": "Artigas",
+      "statedCountry": "UY",
+      "derivedCountry": "BR"
+    },
+    {
+      "id": "j64a5h",
+      "name": "Beitbridge",
+      "statedCountry": "ZW",
+      "derivedCountry": "ZA"
+    },
+    {
+      "id": "j64bfz",
+      "name": "Birganj",
+      "statedCountry": "NP",
+      "derivedCountry": "IN"
+    },
+    {
+      "id": "j64awx",
+      "name": "Birni Nkonni",
+      "statedCountry": "NE",
+      "derivedCountry": "NG"
+    },
+    {
+      "id": "j64mmp",
+      "name": "Brazzaville",
+      "statedCountry": "CG",
+      "derivedCountry": "CD"
+    },
+    {
+      "id": "j63wu5",
+      "name": "Butha-Buthe",
+      "statedCountry": "LS",
+      "derivedCountry": "ZA"
+    },
+    {
+      "id": "j64mkf",
+      "name": "Cayenne",
+      "statedCountry": "GF",
+      "derivedCountry": "FR"
+    },
+    {
+      "id": "j64j4p",
+      "name": "Chaman",
+      "statedCountry": "PK",
+      "derivedCountry": "AF"
+    },
+    {
+      "id": "j64htj",
+      "name": "Chitado",
+      "statedCountry": "AO",
+      "derivedCountry": "NA"
+    },
+    {
+      "id": "j64kvf",
+      "name": "Cobija",
+      "statedCountry": "BO",
+      "derivedCountry": "BR"
+    },
+    {
+      "id": "j63xpz",
+      "name": "Comendador",
+      "statedCountry": "DO",
+      "derivedCountry": "HT"
+    },
+    {
+      "id": "j64avt",
+      "name": "Cyangugu",
+      "statedCountry": "RW",
+      "derivedCountry": "CD"
+    },
+    {
+      "id": "j63xnz",
+      "name": "Dajabón",
+      "statedCountry": "DO",
+      "derivedCountry": "HT"
+    },
+    {
+      "id": "j647xj",
+      "name": "Doctor Pedro P. Peña",
+      "statedCountry": "AR",
+      "derivedCountry": "PY"
+    },
+    {
+      "id": "j64doj",
+      "name": "Dundalk",
+      "statedCountry": "IE",
+      "derivedCountry": "GB"
+    },
+    {
+      "id": "j648sz",
+      "name": "Eagle Pass",
+      "statedCountry": "US",
+      "derivedCountry": "MX"
+    },
+    {
+      "id": "j63yr3",
+      "name": "Ersekë",
+      "statedCountry": "AL",
+      "derivedCountry": "GR"
+    },
+    {
+      "id": "j63t1z",
+      "name": "Fray Bentos",
+      "statedCountry": "UY",
+      "derivedCountry": "AR"
+    },
+    {
+      "id": "j64n0x",
+      "name": "Geneva",
+      "statedCountry": "CH",
+      "derivedCountry": "FR"
+    },
+    {
+      "id": "j64ks1",
+      "name": "Ghadamis",
+      "statedCountry": "LY",
+      "derivedCountry": "DZ"
+    },
+    {
+      "id": "j64j0d",
+      "name": "Gibraltar",
+      "statedCountry": "GI",
+      "derivedCountry": "ES"
+    },
+    {
+      "id": "j64avn",
+      "name": "Gisenyi",
+      "statedCountry": "RW",
+      "derivedCountry": "CD"
+    },
+    {
+      "id": "j64a6f",
+      "name": "Golela",
+      "statedCountry": "SZ",
+      "derivedCountry": "ZA"
+    },
+    {
+      "id": "j64cgd",
+      "name": "Gornyak",
+      "statedCountry": "RU",
+      "derivedCountry": "KZ"
+    },
+    {
+      "id": "j63wpj",
+      "name": "Grevenmacher",
+      "statedCountry": "LU",
+      "derivedCountry": "DE"
+    },
+    {
+      "id": "j64fth",
+      "name": "Impfondo",
+      "statedCountry": "CG",
+      "derivedCountry": "CD"
+    },
+    {
+      "id": "j64l8p",
+      "name": "International Falls",
+      "statedCountry": "US",
+      "derivedCountry": "CA"
+    },
+    {
+      "id": "j64fdl",
+      "name": "Iracoubo",
+      "statedCountry": "GF",
+      "derivedCountry": "FR"
+    },
+    {
+      "id": "j649oh",
+      "name": "Izmayil",
+      "statedCountry": "UA",
+      "derivedCountry": "RO"
+    },
+    {
+      "id": "j64kxf",
+      "name": "Jaguarão",
+      "statedCountry": "BR",
+      "derivedCountry": "UY"
+    },
+    {
+      "id": "j64msj",
+      "name": "Jerusalem",
+      "statedCountry": "IL",
+      "derivedCountry": "PS"
+    },
+    {
+      "id": "j63xpf",
+      "name": "Jimaní",
+      "statedCountry": "DO",
+      "derivedCountry": "HT"
+    },
+    {
+      "id": "j64hoz",
+      "name": "Kapan",
+      "statedCountry": "AZ",
+      "derivedCountry": "AM"
+    },
+    {
+      "id": "j64bdt",
+      "name": "Kasur",
+      "statedCountry": "PK",
+      "derivedCountry": "IN"
+    },
+    {
+      "id": "j63zqb",
+      "name": "Kayanza",
+      "statedCountry": "BI",
+      "derivedCountry": "RW"
+    },
+    {
+      "id": "j64lfj",
+      "name": "Kaédi",
+      "statedCountry": "SN",
+      "derivedCountry": "MR"
+    },
+    {
+      "id": "j6444x",
+      "name": "Khujayli",
+      "statedCountry": "UZ",
+      "derivedCountry": "TM"
+    },
+    {
+      "id": "j64bmn",
+      "name": "Komatipoort",
+      "statedCountry": "ZA",
+      "derivedCountry": "MZ"
+    },
+    {
+      "id": "j64kpl",
+      "name": "Kourou",
+      "statedCountry": "GF",
+      "derivedCountry": "FR"
+    },
+    {
+      "id": "j64ldd",
+      "name": "Livingstone",
+      "statedCountry": "ZM",
+      "derivedCountry": "ZW"
+    },
+    {
+      "id": "j64j41",
+      "name": "Longyearbyen",
+      "statedCountry": "SJ",
+      "derivedCountry": "NO"
+    },
+    {
+      "id": "j64fan",
+      "name": "Luanza",
+      "statedCountry": "CD",
+      "derivedCountry": "ZM"
+    },
+    {
+      "id": "j64hu1",
+      "name": "Luau",
+      "statedCountry": "AO",
+      "derivedCountry": "CD"
+    },
+    {
+      "id": "j649hh",
+      "name": "Lugano",
+      "statedCountry": "CH",
+      "derivedCountry": "IT"
+    },
+    {
+      "id": "j63vld",
+      "name": "Maastricht",
+      "statedCountry": "NL",
+      "derivedCountry": "BE"
+    },
+    {
+      "id": "j64e35",
+      "name": "Macará",
+      "statedCountry": "EC",
+      "derivedCountry": "PE"
+    },
+    {
+      "id": "j63uu1",
+      "name": "Mae Hong Son",
+      "statedCountry": "TH",
+      "derivedCountry": "MM"
+    },
+    {
+      "id": "j64bwd",
+      "name": "Mandera",
+      "statedCountry": "SO",
+      "derivedCountry": "ET"
+    },
+    {
+      "id": "j64lm5",
+      "name": "Matamoros",
+      "statedCountry": "MX",
+      "derivedCountry": "US"
+    },
+    {
+      "id": "j64ftp",
+      "name": "Moloundou",
+      "statedCountry": "CG",
+      "derivedCountry": "CM"
+    },
+    {
+      "id": "j64eeb",
+      "name": "Mongomo",
+      "statedCountry": "GQ",
+      "derivedCountry": "GA"
+    },
+    {
+      "id": "j64kjz",
+      "name": "Moyale",
+      "statedCountry": "KE",
+      "derivedCountry": "ET"
+    },
+    {
+      "id": "j64alf",
+      "name": "Moyo",
+      "statedCountry": "UG",
+      "derivedCountry": "SS"
+    },
+    {
+      "id": "j64dl7",
+      "name": "Mucusso",
+      "statedCountry": "AO",
+      "derivedCountry": "NA"
+    },
+    {
+      "id": "j63yav",
+      "name": "Muineachan",
+      "statedCountry": "IE",
+      "derivedCountry": "GB"
+    },
+    {
+      "id": "j63xh1",
+      "name": "Mulanje",
+      "statedCountry": "MW",
+      "derivedCountry": "MZ"
+    },
+    {
+      "id": "j64jzv",
+      "name": "Mutare",
+      "statedCountry": "ZW",
+      "derivedCountry": "MZ"
+    },
+    {
+      "id": "j649z3",
+      "name": "Nakhon Phanom",
+      "statedCountry": "TH",
+      "derivedCountry": "LA"
+    },
+    {
+      "id": "j64eop",
+      "name": "Narva",
+      "statedCountry": "EE",
+      "derivedCountry": "RU"
+    },
+    {
+      "id": "j64bfv",
+      "name": "Nepalganj",
+      "statedCountry": "NP",
+      "derivedCountry": "IN"
+    },
+    {
+      "id": "j6497l",
+      "name": "Niagara Falls",
+      "statedCountry": "US",
+      "derivedCountry": "CA"
+    },
+    {
+      "id": "j64bx7",
+      "name": "Nikel",
+      "statedCountry": "RU",
+      "derivedCountry": "NO"
+    },
+    {
+      "id": "j64kbf",
+      "name": "Nimule",
+      "statedCountry": "SS",
+      "derivedCountry": "UG"
+    },
+    {
+      "id": "j63xg5",
+      "name": "Nsanje",
+      "statedCountry": "MW",
+      "derivedCountry": "MZ"
+    },
+    {
+      "id": "j64b1z",
+      "name": "Nuevo Rocafuerte",
+      "statedCountry": "PE",
+      "derivedCountry": "EC"
+    },
+    {
+      "id": "j644nb",
+      "name": "Nusaybin",
+      "statedCountry": "TR",
+      "derivedCountry": "SY"
+    },
+    {
+      "id": "j64djv",
+      "name": "Oranjemund",
+      "statedCountry": "NA",
+      "derivedCountry": "ZA"
+    },
+    {
+      "id": "j64i2x",
+      "name": "Passau",
+      "statedCountry": "DE",
+      "derivedCountry": "AT"
+    },
+    {
+      "id": "j6475b",
+      "name": "Ponta Porã",
+      "statedCountry": "BR",
+      "derivedCountry": "PY"
+    },
+    {
+      "id": "j64mpv",
+      "name": "Posadas",
+      "statedCountry": "AR",
+      "derivedCountry": "PY"
+    },
+    {
+      "id": "j64kwv",
+      "name": "Principe da Beira",
+      "statedCountry": "BR",
+      "derivedCountry": "BO"
+    },
+    {
+      "id": "j64lbt",
+      "name": "Puerto Ayacucho",
+      "statedCountry": "VE",
+      "derivedCountry": "CO"
+    },
+    {
+      "id": "j64ebv",
+      "name": "Puerto Carreño",
+      "statedCountry": "CO",
+      "derivedCountry": "VE"
+    },
+    {
+      "id": "j64g81",
+      "name": "Qasr-e Shirin",
+      "statedCountry": "IR",
+      "derivedCountry": "IQ"
+    },
+    {
+      "id": "j646r3",
+      "name": "Roura",
+      "statedCountry": "GF",
+      "derivedCountry": "FR"
+    },
+    {
+      "id": "j64dob",
+      "name": "Saint-Georges",
+      "statedCountry": "GF",
+      "derivedCountry": "BR"
+    },
+    {
+      "id": "j64fdh",
+      "name": "Saint-Laurent-du-Maroni",
+      "statedCountry": "GF",
+      "derivedCountry": "FR"
+    },
+    {
+      "id": "j64khd",
+      "name": "Saint-Louis",
+      "statedCountry": "MR",
+      "derivedCountry": "SN"
+    },
+    {
+      "id": "j64egj",
+      "name": "Salum",
+      "statedCountry": "EG",
+      "derivedCountry": "LY"
+    },
+    {
+      "id": "j64lbz",
+      "name": "Sault Ste. Marie",
+      "statedCountry": "US",
+      "derivedCountry": "CA"
+    },
+    {
+      "id": "j64jet",
+      "name": "Savannakhet",
+      "statedCountry": "LA",
+      "derivedCountry": "TH"
+    },
+    {
+      "id": "j64a47",
+      "name": "Sesheke",
+      "statedCountry": "ZM",
+      "derivedCountry": "NA"
+    },
+    {
+      "id": "j646r7",
+      "name": "Sinnamary",
+      "statedCountry": "GF",
+      "derivedCountry": "FR"
+    },
+    {
+      "id": "j64ln7",
+      "name": "Sinuiju",
+      "statedCountry": "KP",
+      "derivedCountry": "CN"
+    },
+    {
+      "id": "j64e6d",
+      "name": "Sixaola",
+      "statedCountry": "CR",
+      "derivedCountry": "PA"
+    },
+    {
+      "id": "j64by3",
+      "name": "Svetogorsk",
+      "statedCountry": "RU",
+      "derivedCountry": "FI"
+    },
+    {
+      "id": "j64j0v",
+      "name": "Termiz",
+      "statedCountry": "UZ",
+      "derivedCountry": "AF"
+    },
+    {
+      "id": "j640k1",
+      "name": "Tulcán",
+      "statedCountry": "EC",
+      "derivedCountry": "CO"
+    },
+    {
+      "id": "j64ant",
+      "name": "Tunduma",
+      "statedCountry": "TZ",
+      "derivedCountry": "ZM"
+    },
+    {
+      "id": "j64hvx",
+      "name": "Villazón",
+      "statedCountry": "BO",
+      "derivedCountry": "AR"
+    },
+    {
+      "id": "j64k25",
+      "name": "Windsor",
+      "statedCountry": "CA",
+      "derivedCountry": "US"
+    },
+    {
+      "id": "j64ecl",
+      "name": "Zongo",
+      "statedCountry": "CD",
+      "derivedCountry": "CF"
+    }
+  ]
+}

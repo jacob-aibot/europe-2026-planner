@@ -343,7 +343,7 @@ test('A-20 assertion 5: the clock-shape regex appears exactly once in packages/c
   assert.match(matches[0], /^model\/openingHours\.ts:/);
 });
 
-test('A-20 assertion 6: isOpeningHours is NOT on the public surface (§2.10 is 86, and none of them is this)', async () => {
+test('A-20 assertion 6: isOpeningHours is NOT on the public surface (§2.10 is 87, and none of them is this)', async () => {
   const core = await import('../src/index.ts');
   // 71 at revision 19; 73 since Phase 2 I-5 added `countryOf` and `COUNTRY_INDEX` under §8.4
   // clause 1; 74 since Phase 2 I-6 added `SUMMARY_VERSION` under §8.4 clause 3; 75 since
@@ -360,10 +360,15 @@ test('A-20 assertion 6: isOpeningHours is NOT on the public surface (§2.10 is 8
   // **86 since Phase 2 I-9 added `addParticipant`, `updateParticipant` and `removeParticipant`
   // under §8.3/§8.9** — one build function per action, which is what §4.2 rule 1 needs from the
   // reducer's side.
+  // **87 since Phase 2 I-21 added `searchGazetteer` under §8.4 A-82 Part 9** (**KD-114** — one of
+  // three §2.10 count pins outside `surface.test.ts` that I-21's file fence did not name) — the city-gazetteer
+  // search, `countryOf(at, index)`'s shape verbatim. `GAZETTEER` itself is NOT part of this count:
+  // it is a second declared entry point, `@cairn/core/gazetteer`, because the dataset is not on
+  // any write path and must stay out of every consumer's main chunk.
   // The assertion
   // this test exists for is the loop below — the size is the tripwire that says a widening
   // happened at all, and it is re-derived by counting, never quoted.
-  assert.equal(Object.keys(core).length, 86);
+  assert.equal(Object.keys(core).length, 87);
   for (const name of ['isClockTime', 'readWeeklyEntry', 'isOpeningHours']) {
     assert.equal(name in core, false, `${name} widened §2.10's surface`);
   }

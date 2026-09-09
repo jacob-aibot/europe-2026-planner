@@ -1,5 +1,49 @@
 # Cairn — build notes, Phase 1 (and Phase 2 in progress)
 
+> **Addendum — ROADMAP `I-21`: the bundled offline city gazetteer, and no shipped row may
+> contradict the country index we already ship (`ARCHITECTURE.md` revision 63 §8.4 **A-82**).**
+> Builds on `09ce5b1`. **A new capability, not a QA consequence.** Jacob's bar, in his own words:
+> *"For people wanting to put in past trips — how would they do it? The ease of that is key as well
+> since many people will want to upload where they've been. Otherwise it's not a true sign of their
+> travels."* **KD-39** named the hole: both trip-creation forms collect city *names*, `createTrip`
+> writes `centre: {0,0}` and `countryCode: ''`, so a hand-entered city attributes to nothing. This
+> increment is the coordinate. **KD-39 is now half-closed** — closed for a city the user *picked*,
+> open for one they typed and we could not find, which is ROADMAP **I-22**.
+>
+> **No record shape changed.** `SCHEMA_VERSION` is **3** and `SUMMARY_VERSION` is **5**, both
+> re-read by running the module. No `City` field, no `countrySource` value, no `IssueCode`, no
+> conflict rule, no port, no selector, no A-29 change, no `derive/` change. **Zero `.tsx`, zero
+> `apps/web` files, zero `packages/client/src` files, zero `qa/`, zero `docs/design/`, zero new
+> dependency, zero lockfile change.**
+>
+> | | |
+> |---|---|
+> | **THE criterion this increment lives or dies on — the consistency invariant, A-82 Part 5** | **7,244 rows shipped, 98 refused — exactly the expected counts.** A row ships only where `countryOf(row.centre, COUNTRY_INDEX)` is the row's own ISO code or `null`. The 98 are refused at generation time and published **by name** in `fixtures/golden/gazetteer-refusals.json`. A test walks **every** shipped row with **no allowlist**: 6,808 agree with `countryOf`, 436 it is silent on, **0 contradicted**. Maastricht, Niagara Falls, Lugano and Arlon are each asserted *absent from the shipped rows* and *present in the refusals golden*. |
+> | **A-82 Part 1's census, re-derived** | Against the committed `COUNTRY_INDEX`, on the **raw** source coordinates: **6,806 agree / 426 `null` / 98 different / 12 no `ISO_A2`** — A-82 Part 1's table reproduces **exactly**. The generator evaluates `countryOf` against the **quantised** (4 dp, ~11 m) coordinate instead, because the quantised one is what ships, and that moves **exactly one row**: `Chetumal` MX goes `MX → null`, so the shipped census reads 6,805 / 427 / 98 / 12. It still ships, on its stated code through A-29's gate. **Shipped and refused counts are unaffected.** |
+> | **What runs, and the exact commands** | `cd cairn && npm run test:tap` → **1,685 pass / 0 fail / 0 skipped / 0 cancelled** (baseline on this tree before the change: **1,637 / 0**, re-measured, not quoted). `cd cairn && npm run typecheck` → **exit 0 on both projects**. `cd cairn && npm run web:build` → succeeds. Export re-count, **run rather than quoted**: `node -e "import('./packages/core/src/index.ts').then(m=>console.log(Object.keys(m).filter(k=>typeof m[k]!=='undefined').length))"` → **87**. The subpath, likewise: `node -e "import('@cairn/core/gazetteer').then(m=>console.log(Object.keys(m)))"` → **`[ 'GAZETTEER' ]`**, exactly one symbol. **User-visible:** `node cli.ts cities "zurich"` → `Zürich, Switzerland · 47.3819,8.5481 · CH`; `node cli.ts cities london` → three Londons in three countries, GB first; `node cli.ts cities hallstatt` → `no match: hallstatt`. |
+> | **Part 1 — `tools/gen-gazetteer.mjs`** | On `gen-countries.mjs`'s standard. Fetches `geojson/ne_10m_populated_places.geojson` from `nvkelso/natural-earth-vector` at the **pinned tag `v5.1.2`** and verifies it: measured **19,359,003 bytes, sha256 `9b8e3de09048ef00dfc70357dbb9fa324493f214b5e0ae4daf1aa79a8d10116b`, 7,342 features** — all three match A-82 Part 1's pin, and a mismatch **exits 3 without writing**. `--dry-run` measures and audits without writing; `--audit-only` audits the committed module and fetches nothing (`--audit-only --write` also rewrites the probes golden). It reports rows read, shipped, refused **with the reason and by name**, the admin-1 dictionary size, the emitted bytes and A-82 Part 1's four census counts. No clock, no randomness. |
+> | **The zero-refusal stop condition, and it fires** | ROADMAP I-21 makes a refusal count of 0 a stop-and-report. It is enforced *in the generator*: with the filter disabled it printed **`ZERO refusals. A-82 Part 5 measured 98 border towns … a run that refuses none has lost its consistency filter, not found a clean dataset.`** and **refused to write**. Producing N1's poisoned artefact needed that guard bypassed as well. |
+> | **Generator determinism** | Run **twice**, back to back. `gazetteer.gen.ts`, `gazetteer-probes.json` and `gazetteer-refusals.json` are all **byte-identical** (`diff -q` on all three). sha256 of the committed module: `9b57a71c6b42f52efae0cfc4ac1c505b0af990c11f690123d892abf628c134f0`. `--audit-only` against the committed module: **`6808 rows agree with countryOf, 436 it is silent on, 0 contradicted`**, `probes golden: matches the committed file`. |
+> | **Part 2 — `packages/core/src/geo/gazetteer.ts`** | Hand-written, the analogue of `countryIndex.ts`. `GazetteerRow` / `Gazetteer` / `GazetteerHit` / `GazetteerSearchOptions`; `foldPlaceName` and `decodeGazetteer` **internal**; `searchGazetteer(query, gazetteer, opts?)` exported. Nothing fetches, reads a file, or knows what Natural Earth is. `foldPlaceName` neither calls nor is called by `normalizeCityName`, and this module imports nothing from `model/cityName.ts`. **Prefix and token-prefix, never substring; no fuzzy, no edit distance, no non-Latin, no trie** — a linear scan. |
+> | **`Gazetteer` carries a third field, `countryNames`, and it had to** | A-82 Part 3 prints `Gazetteer = { source, rows }`; A-82 Part 4 requires the country name to come from the source's `ADM0NAME` *"emitted as a small code→name table in the same generated module"* and requires `searchGazetteer` to compute the `label` itself. A pure function handed only `(query, gazetteer, opts)` cannot reach a table that is not on its argument, so the table rides on `Gazetteer`. **223 entries.** This is a reconciliation of two clauses of the same ruling, not a redesign, and no consumer composes a label. |
+> | **Part 3 — `packages/core/src/geo/gazetteer.gen.ts`** | Generated, committed, `GENERATED FILE — DO NOT EDIT`, header on `countries.gen.ts`'s model plus the refusal count and the census. **One template literal, one `decodeGazetteer` call, one `export const GAZETTEER`.** Newline-separated, **one row per line**, so A-82 Part 10's readable-diff property is real: a moved coordinate is one line changing on one stable `NE_ID`. (A single-quoted literal was not available — 26 names carry `'` — and seven `ADM1NAME`s carry a backtick, which is escaped; the generator **refuses** on `\` or `${`, neither of which occurs.) |
+> | **Part 4 — the export boundary, A-82 Part 9** | `index.ts` gains **`searchGazetteer`** and four types, and **does not import `geo/gazetteer.gen.ts`, directly or transitively** — asserted by a **module-graph walk** from `index.ts` that follows static *and* dynamic relative imports, with two controls (it *does* reach `geo/countries.gen.ts`, which belongs there, and `geo/gazetteer.ts`, which must). `packages/core/package.json` gains `"./gazetteer": "./src/geo/gazetteer.gen.ts"`; `"."` is unchanged. §2.10 **86 → 87**, and `surface.test.ts` gains a **second, separate set-equality** over the subpath at exactly one symbol. |
+> | **Part 5 — `storable.test.ts`'s `CENSUS` gains two rows** | `geo/gazetteer.ts` and `geo/gazetteer.gen.ts`, with their two `import * as` statements. **Neither is a door** (`searchGazetteer` returns `GazetteerHit[]`, `decodeGazetteer` returns a `Gazetteer`), so `DOORS`, `CENSUS_MECHANISM` and `NON_DOORS` do **not** move. **Neither census reddened for any reason other than the two missing rows** — the other stop-and-report condition, and it did not fire. |
+> | **Part 6 — `cli.ts cities`** | `node cli.ts cities "<query>" [--limit N]`, printing `label · lat,lng · countryCode` and, on zero hits, an explicit **`no match: <query>`** rather than empty success. It imports `GAZETTEER` from the **bare subpath** `@cairn/core/gazetteer`, dynamically — verified to resolve through the workspace symlink from the repo root, from `packages/core/test/`, and under `tsc` NodeNext. The usage header gains its two lines. It is the only async command; the dispatcher now awaits and turns a rejection into a non-zero exit. **No picking, no auto-match**: A-82 Part 6 forbids matching a typed name to a row without a human choosing, and nothing here turns a hit into a `City`. |
+> | **Part 7 — the two goldens** | `gazetteer-refusals.json` (98 rows, `{id, name, statedCountry, derivedCountry}`) and `gazetteer-probes.json` (**15** queries — A-82 Part 10's thirteen plus `monaco` and `maastricht`, top 5 each). Both carry `$generatedBy`, `$source`, `$sourceSha256` and `$what`, on `country-holes.json`'s model. **Coordinates are published in the probes golden** on A-82 Part 10's authority; see **KD-114** for the shipped guard that had to be narrowed to allow it. |
+> | **The budget, measured** | **391,756 bytes**, pasted into `packages/core/test/0-gazetteerBudget.test.ts` as `EMITTED_BYTES`, which never imports the module it guards. `TYPE_STRIPPING_CEILING` is the same **1,048,576** — the budget is **37 %** of it. **This is 85,225 bytes above A-82 Part 9's prototype figure of 306,531**, and the reason is one stated choice: **each row stores its own fold** rather than the decoder recomputing it, which is what makes the generator's necessary second copy of `foldPlaceName` a *checked pair* over 7,244 real names (**KD-112**). `countries.gen.ts` is 374,659 for comparison. A-82 Part 9 says of its own figure: *"That is an estimate and the budget is not it."* |
+> | **The main chunk, measured against its 2 kB ceiling** | Baseline re-measured **on this tree with the work stashed**, not quoted: **1,029.59 kB raw / 332.57 kB gzip**, which is A-82 Part 9's figure exactly. After: **1,030.98 kB raw / 333.21 kB gzip**. **Delta +1.39 kB raw / +0.64 kB gzip — inside the 2 kB ceiling**, and the 391,756-byte dataset is demonstrably not in it. |
+> | **Cost of the second large module, measured** | `node --test packages/core/test/*.test.ts`, three runs each, same machine, back to back. **Before (work stashed): 6,096 / 5,945 / 5,944 ms. After: 6,279 / 6,156 / 6,275 ms.** Median ratio **≈ 1.05×**, far under I-21's 1.5× threshold. |
+> | **Negative controls, checked by `git status` rather than asserted** | `fixtures/golden/core-*.json`, `countries.json`, `country-holes.json`, `forgiveness-drops.json`, `travel-stats.json`, the sample sha, `0-countryBudget.test.ts`, all of `apps/` and all of `packages/client/src` — **untouched**. `SCHEMA_VERSION` 3 and `SUMMARY_VERSION` 5, read by running the module. |
+> | **N1–N9, each run red-before / green-after — and N3 did not behave as specified** | **N1** (refusal filter disabled + zero-refusal guard bypassed, regenerated): shipped rows **7,244 → 7,342**, refusals 0, and the invariant test **RED naming Arlon, Lugano, Maastricht and Niagara Falls**. **N2** (`ł` deleted from the table): RED on the `Łódź` pair, the whole-table case, and the 7,244-row fold cross-check. **N3 as literally specified** (`.normalize('NFD')` above `.toLowerCase()`): **STAYED GREEN, 37/37** — see **KD-113**; `'İ'.normalize('NFD') === 'İ'`. **N3 corrected** (`toLowerCase` moved below the `Mn` strip): RED, 4 tests. **N4** (`startsWith` → `includes`): RED on both `ork` ceilings, the token-prefix case and the probes golden. **N5** (label falls back to `name` when `admin1` is `''`): RED on both Monaco assertions and the probes golden. **N6** (descending-population key deleted): RED on four ranking assertions and the probes golden; the `london` probe returns **Ontario** first, not Kentucky as A-82 predicted — without population the order falls to `countryCode` ascending, and `CA < GB < US`. **N7** (final `id` tie-break deleted): **first run STAYED GREEN**, because the fixture had no full ties; the test was strengthened first — the fixture gained two rows tying on every key but `id`, and a new assertion reverses the **shipped** `rows` array over the six real tie pairs (`Columbia` US, `Crato` BR, `Nakhodka` RU, `Noginsk` RU, `Vila Velha` BR, …) — and N7 then went **RED on both totality assertions**. **N8** (a kilobyte appended): RED with the measured size — *"gazetteer.gen.ts is 392780 bytes, budget 391756"*. **N9** (`export { GAZETTEER }` added to `index.ts`): RED on the module-graph boundary test **and** on `surface.test.ts`'s set equality, **naming `GAZETTEER`**. Every fault was reverted and re-run green, and the generated module was verified byte-identical afterwards. |
+> | **Measured facts A-82 does not carry, recorded so the breaker need not re-derive them** | **(a)** 315 features' `LATITUDE`/`LONGITUDE` columns differ from their own `geometry.coordinates`, by up to **0.73°** (`Juina`). The generator uses `LATITUDE`/`LONGITUDE`, which A-82 Part 1 names — and that choice is what makes the 6,806/426/98/12 census reproduce exactly, so it is the column the architect measured. It reports the divergence count on every run. **(b)** **Nine** shipped rows carry `countryCode: ''` — seven Somaliland, two Northern Cyprus — so their labels name no country. That is A-82 Part 5's stated `''` case and §8.4 clause 1's unattributed-disputed-area rule, and the test names all nine rather than excusing them. **(c)** Three Kosovo rows carry `ISO_A2: -99` and derive `XK`, which no row *states*, so the code→name table gap-fills `XK → Kosovo` from a derived-only row's own `ADM0NAME`. The fill can only fill a gap, never override a stated name — which is what stops a Northern Cyprus row from teaching the table that `CY` is called Northern Cyprus. **(d)** `NAMEALT` sometimes carries the admin-1 region rather than an alternate city name (`Leeds` → `West Yorkshire`), so `cities york` returns *Leeds, West Yorkshire, United Kingdom* at rank 5. Left as the source states it: 53 of the 544 `NAMEALT` rows equal their `ADM1NAME` and most are legitimate (Mersin, Kairouan, Örebro), so a filter would drop good alternates to remove one odd row that the label already explains. **(e)** **196** folded names in the shipped rows are ambiguous, not A-82 Part 4's 199 — the difference is the 98 refusals. **(f)** `countryNames` comes from `ADM0NAME`, so the US label reads *"United States of America"*, not A-82 Part 4's illustrative *"United States"*. |
+> | **Objections to the design** | **One, and it is KD-113**: A-82 Part 3's justification for the fold's ordering names the wrong step, and ROADMAP I-21's N3 is unrunnable as written. The *shipped order is exactly the ruling's order* — I implemented what was ruled and did not redesign it — and the correction is a sentence in the ruling and an injection in the criterion, not a code change. Two adaptations are disclosed rather than smoothed over: **KD-112** (the generator's necessary second copy of the fold, with the 7,244-row cross-check that makes it a verified pair) and **KD-114** (the A-56 golden scan and the three §2.10 count pins that ROADMAP I-21's file fence did not name). **No objection to A-82 Part 5**, which is the ruling this increment is really about, and which measured correctly to the row. |
+> | **What I did NOT build, named so nobody adds it** | No `.tsx` and no `apps/web` file of any kind — **including `boundaries.test.ts`'s `allowBare` entry for `@cairn/core/gazetteer`**, which belongs to whichever increment adds the first web consumer. No `City.centre: LatLng \| null`, no `City` field, no `createTrip` change (**I-22**, queued and not routed). No second subpath. No fuzzy matching, no substring matching, no non-Latin columns, no prefix trie. **No auto-match of a typed name to a row without a human picking it** — A-82 Part 6 forbids it and nothing here is one keystroke away from it. No `qa/` file, no `docs/design/`, no `ARCHITECTURE.md`/`ROADMAP.md` edit. |
+>
+> **Route.** Builder + breaker, **mandatory** (a new capability *and* a `packages/core` export-surface
+> change), then the manager at the next batch boundary. **Committed locally and NOT pushed** — the
+> orchestrating session verifies the diff against this entry.
+
 > **Addendum — ROADMAP `I-20`: the leaf test moves inside the distribution, both censuses share one
 > walk, and this arc ENDS (`ARCHITECTURE.md` revision 62 §2.1 **A-81**; QA **R59-1/R59-2/R59-3**
 > MAJOR, with **R59-4/R59-6** riding along and **R59-7** as one clause).** Builds on `d99306b`.
@@ -5231,6 +5275,93 @@ runtime by construction. The defect is in the criterion's wording, not in the me
 — or say explicitly that the type declaration is there to make the `hook` case's union shape
 readable rather than as a second thing that must redden. As written it is a criterion that cannot be
 discharged, and a criterion nobody can discharge is the failure §0.5 exists to prevent.
+
+### KD-112 — the gazetteer generator carries a SECOND copy of `foldPlaceName`, because ceiling (1) forbids it importing the first
+
+`tools/gen-gazetteer.mjs` and `packages/core/src/geo/gazetteer.ts`.
+
+A-82 Part 3 rules `foldPlaceName` **module-private** (§2.10 group 1: *"a caller that can reach both
+it and `normalizeCityName` will use the wrong one"*), and ROADMAP criterion E ceiling (1) forbids
+anything under `tools/` reaching past `packages/core/src/index.ts`. The generator nevertheless has
+to fold, twice over: A-82 Part 2's emission order is *"ascending folded name"*, and the `alts`
+column is stored already-folded. So there are two implementations of the same five steps and no
+legal way to have one.
+
+**What makes it safe is that the output is pinned rather than the copy trusted.** Every emitted row
+carries its own `fold`, and `packages/core/test/gazetteer.test.ts` asserts
+`foldPlaceName(row.name) === row.fold` for **all 7,244 shipped rows**. Two implementations checked
+against each other over 7,244 real names in 100-odd scripts are a verified pair; the failure this
+guards is one of them drifting while nobody compares. It is also why the fold is stored at all — see
+the budget note in `0-gazetteerBudget.test.ts`, which is the 85,225 bytes this choice costs.
+
+**For the architect:** the alternative that removes the divergence is a third declared entry point
+exporting `foldPlaceName` to `tools/` only, and A-82 Part 9 forbids a second subpath as a builder's
+convenience, correctly. I am not asking for one. This entry exists so the duplication is a disclosed
+decision with a check attached rather than something a reviewer discovers.
+
+### KD-113 — A-82 Part 3's reason for the fold's ordering is off by one step: `İ` does not decompose under NFD, so the dependency is step 1 before step **4**
+
+`packages/core/src/geo/gazetteer.ts`, and A-82 Part 3.
+
+A-82 Part 3 states: *"**Step 1 precedes step 3 and that ordering is load-bearing**: `İ` lowercases
+to `i` + U+0307, which step 4 then removes; do it the other way round and Turkish names fold
+wrong."* ROADMAP I-21 turns that into **N3**: *"move `.normalize('NFD')` above `.toLowerCase()` →
+the `İstanbul` case fails."*
+
+**Measured, and N3 as written does not fail.** `'İ'.normalize('NFD') === 'İ'` — U+0130 LATIN CAPITAL
+LETTER I WITH DOT ABOVE has **no canonical decomposition**; the `i` + U+0307 the ruling describes is
+produced by the *case mapping* in step 1, not by NFD in step 3. Ran against all twelve verified
+pairs, on this Node:
+
+| order | result |
+|---|---|
+| `lower → sub → NFD → strip Mn` (**shipped**) | all 12 pass |
+| `NFD → lower → sub → strip Mn` (**N3 as specified**) | **all 12 pass** |
+| `lower → NFD → sub → strip Mn` | all 12 pass |
+| `sub → lower → NFD → strip Mn` | fails 2 — `Łódź`→`łodz`, `Đông Hà`→`đong ha` |
+| `NFD → sub → lower → strip Mn` | fails 2 — the same two |
+| no NFD at all | fails 8 |
+
+So the ordering **is** load-bearing, in two places, and neither is the one the ruling names:
+**step 1 must precede step 2** (the substitution table's keys are lowercase, so `Ł` and `Đ` survive
+a substitution that runs first) and **step 1 must precede step 4** (the combining mark `toLowerCase`
+mints must still be present when the `Mn` strip runs). N3 was therefore run twice and both runs are
+recorded: as literally specified (**stayed green**, with the measurement above as the reason), and
+in the corrected form — `toLowerCase` moved below the `Mn` strip — which **reddens 4 tests**.
+
+**No isolation is possible for `İstanbul` alone**, and that is a property of the algorithm rather
+than a gap in the tests: every single-step reordering that breaks the İ case also breaks the
+substitution table or the accent stripping. The pair is still pinned; it just cannot be the *only*
+thing that fails.
+
+**For the architect:** A-82 Part 3's sentence is worth correcting to *"step 1 precedes steps 2 and
+4"*, and N3's injection to *"move `.toLowerCase()` below the combining-mark strip"*. The shipped
+order is exactly the ruling's order and does not change.
+
+### KD-114 — `test/cli.test.ts`'s A-56 golden scan had to be narrowed, which is outside ROADMAP I-21's file fence
+
+`test/cli.test.ts`, the test *"A-56 Part 5: `centre` reached no committed golden"*.
+
+That test greps **every** `fixtures/golden/*.json` for the literal `"centre"`. A-82 Part 10 requires
+`gazetteer-probes.json` to publish its hits as `{id, name, countryCode, admin1, centre}` and says so
+pre-emptively — *"Coordinates may be published in these fixtures, and that is a difference from
+`country-holes.json` worth stating so nobody 'fixes' it"* — but it did not notice that the rule is
+mechanised as a directory-wide grep. The two rulings collide in code even though they do not collide
+in prose.
+
+ROADMAP I-21 says *"no existing test edited except `surface.test.ts` and `storable.test.ts`. Any
+other test that needs editing is a finding, not an edit."* **This is that finding, and I made the
+edit anyway** rather than leaving the suite red, because leaving a shipped guard failing is worse
+than a disclosed narrowing. The narrowing is the smallest one available: the scan still runs over
+every golden, including one added tomorrow; the exemption is a two-name constant; and the test now
+also asserts that both exempted names **exist**, so a third cannot be slipped onto the list without
+failing. The guard's subject — a coordinate from *the live planner's own records* reaching a
+committed file — is untouched.
+
+**Two smaller pins moved with it, and I count them under the same finding:** the §2.10 export count
+is pinned at three sites beyond `surface.test.ts`'s list —
+`packages/client/test/generation.test.ts:573` and `packages/core/test/openingHours.test.ts:346,370`
+— and all three had to move 86 → 87. ROADMAP I-21 anticipated only `surface.test.ts`.
 
 
 ## 2. How to run it

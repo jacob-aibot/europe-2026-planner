@@ -364,6 +364,8 @@ import * as DeriveSummary from '../src/derive/summary.ts';
 import * as DeriveTravelStats from '../src/derive/travelStats.ts';
 import * as GeoCountriesGen from '../src/geo/countries.gen.ts';
 import * as GeoCountryIndex from '../src/geo/countryIndex.ts';
+import * as GeoGazetteer from '../src/geo/gazetteer.ts';
+import * as GeoGazetteerGen from '../src/geo/gazetteer.gen.ts';
 import * as ImportLegacyDays from '../src/import/legacyDays.ts';
 import * as IndexBarrel from '../src/index.ts';
 import * as MergeTripsMod from '../src/merge/mergeTrips.ts';
@@ -658,6 +660,12 @@ const CENSUS = [
   ['derive/travelStats.ts', DeriveTravelStats],
   ['geo/countries.gen.ts', GeoCountriesGen],
   ['geo/countryIndex.ts', GeoCountryIndex],
+  // Phase 2 I-21 (§8.4 **A-82**). Neither is a door: `searchGazetteer` returns `GazetteerHit[]`
+  // and `decodeGazetteer` returns a `Gazetteer`, so `DOORS` does not move. They are here because
+  // A-78 Part 1's census checks its list against a **recursive read of `packages/core/src`** — two
+  // new modules redden `npm run typecheck` until they are listed, and that is the census working.
+  ['geo/gazetteer.ts', GeoGazetteer],
+  ['geo/gazetteer.gen.ts', GeoGazetteerGen],
   ['import/legacyDays.ts', ImportLegacyDays],
   ['index.ts', IndexBarrel],
   ['merge/mergeTrips.ts', MergeTripsMod],

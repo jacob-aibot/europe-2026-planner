@@ -567,7 +567,11 @@ test('G9: nothing leaked into AppState, history, toJSON, core or the export surf
       assert.ok(!text.includes(needle), `\`${needle}\` reached packages/core/src/${name} — core has no store`);
     }
   }
-  assert.equal(Object.keys(core).length, 86, 'core\'s runtime export surface moved');
+  // 87 since Phase 2 I-21 added `searchGazetteer` under §8.4 A-82 Part 9 (**KD-114** — this is
+  // one of three §2.10 count pins outside `surface.test.ts` that I-21's file fence did not name). `GAZETTEER` is NOT on
+  // this surface — it is the `@cairn/core/gazetteer` subpath, asserted separately in
+  // `packages/core/test/surface.test.ts`, because the dataset is not on the write path.
+  assert.equal(Object.keys(core).length, 87, 'core\'s runtime export surface moved');
 });
 
 // ---------------------------------------------------------------------------------------------
