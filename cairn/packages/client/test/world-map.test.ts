@@ -83,6 +83,9 @@ function statsOf(
     // §8.4 **A-59** Part 3. A hand-built `TravelStats` must carry every field of the type, so
     // this fixture is what fails if the field is added and a reader is left reading `undefined`.
     unreadableCityDates: 0,
+    // §8.4 **A-86** Part 4, and the same reason one line up: the fixture is what fails if a
+    // `TravelStats` field is added and a reader is left reading `undefined`.
+    unreadableCityLists: 0,
   };
 }
 

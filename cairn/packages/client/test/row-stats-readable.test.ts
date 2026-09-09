@@ -255,3 +255,54 @@ test('A-59 Part 4: `unreadableRows` is computed only on the failure branch', () 
   if (!res.ok) return;
   assert.equal('unreadableRows' in res, false, 'the success branch grew a field it does not have');
 });
+
+// ---------------------------------------------------------------------------
+// **ROADMAP I-25 Part 1 — §8.4 A-86 Part 4 item 2 (QA R63-9): the two predicates over one fact
+// agree BY CONSTRUCTION, and that is asserted rather than written in a comment.**
+//
+// `rowStatsReadable` draws a three-way line over a stored `cities`: `undefined`/`null` are
+// readable (a row minted before generation 3 carries no such key), an array is walked, and
+// anything else present is unreadable. `core.travelStats`' `unreadableCityLists` counts exactly
+// the third case. Two predicates over one fact that agree only in prose is how R28-5 happened,
+// so the table below is the pin.
+// ---------------------------------------------------------------------------
+
+/** A-86 Part 4's own eight values, in its own order. */
+const STORED_CITIES: Array<[label: string, value: unknown]> = [
+  ['undefined', undefined],
+  ['null', null],
+  ['[]', []],
+  ['a well-formed array', [city('Vienna', '2026-03-02', '2026-03-05')]],
+  ["'nope'", 'nope'],
+  ['{}', {}],
+  ['0', 0],
+  ['NaN', NaN],
+];
+
+test('I-25 Part 1 (A-86 Part 4 item 2): `unreadableCityLists` increments on exactly the values `rowStatsReadable` calls unreadable', () => {
+  for (const [label, value] of STORED_CITIES) {
+    // The DATES are held readable deliberately: `rowStatsReadable` answers two questions and
+    // this assertion is about one of them. A row with a bad `startDate` would be `false` for a
+    // reason `unreadableCityLists` is not about — and would throw before the walk reached it.
+    const r = { ...row({ id: `t-${label}`, startDate: '2026-03-01', endDate: '2026-03-20' }), cities: value } as unknown as TripSummaryRow;
+    assert.equal(rowDatesReadable(r), true, `${label}: the fixture's own dates are not readable`);
+    const readable = rowStatsReadable(r);
+    const counted = core.travelStats([r], TODAY).unreadableCityLists;
+    assert.equal(counted, readable ? 0 : 1,
+      `cities = ${label}: rowStatsReadable says ${readable}, core counted ${counted} — the two ` +
+        'predicates over one fact have drifted (A-86 Part 4 item 2)');
+  }
+});
+
+test('I-25 Part 1: the corrupt row is now sayable end to end — `ok: true`, and the count names how many', () => {
+  // The exact shape R63-9 measured: since `I-24` Part 4's guard, `travelHistory` returns
+  // `ok: true` with no banner and no named row, so `rowStatsReadable` — which does know — is
+  // never asked. The guard is not reopened; the census now carries the fact instead.
+  const good = healthy();
+  const corrupt = { ...healthy(), id: 't-corrupt', cities: 'AT,HR,CZ' } as unknown as TripSummaryRow;
+  assert.equal(rowStatsReadable(corrupt), false, 'the client predicate stopped naming it');
+  const res = travelHistory({ library: [good, corrupt] }, TODAY);
+  assert.equal(res.ok, true, 'the guard was reverted — one corrupt row took the library down again');
+  if (!res.ok) return;
+  assert.equal(res.stats.unreadableCityLists, 1, 'the absorption is still silent — R63-9 exactly');
+});

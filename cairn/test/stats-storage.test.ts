@@ -418,6 +418,25 @@ test('A-59 Part 3: `unreadableCityDates` is not count-shaped, so the allow-list 
   assert.equal('packages/core/src/derive/travelStats.ts::unreadableCityDates' in SOURCE_ALLOW, false);
 });
 
+/**
+ * §8.4 **A-86** Part 4 item 4 (ROADMAP **I-25**) — the sibling assertion, beside the one above
+ * and for its reason. `unreadableCityLists` ends in `Lists`, which matches neither `PLURAL` nor
+ * `SHAPE`, so `countShaped` is **false** and `SOURCE_ALLOW` gains no entry.
+ *
+ * **Asserted rather than assumed, and the assertion is the tripwire.** A later rename to
+ * something ending in `Cities` turns the classifier true, and this file's source walk then fails
+ * loudly — instead of quietly requiring a **tenth** `ROW_COUNT_FIELDS` entry and the architect's
+ * ruling A-33 Part 2 reserves for one.
+ */
+test('A-86 Part 4: `unreadableCityLists` is not count-shaped, so the allow-list stays as it is', () => {
+  assert.equal(countShaped('unreadableCityLists'), false);
+  // Not blindness: the same classifier catches the count-shaped rename this guards against.
+  assert.equal(countShaped('unreadableCities'), true,
+    'the classifier no longer catches the rename this assertion exists to catch');
+  assert.equal('packages/core/src/derive/travelStats.ts::unreadableCityLists' in SOURCE_ALLOW, false);
+  assert.equal(ROW_COUNT_FIELDS.length, 9, 'a tenth stored count arrived without A-33 Part 2\'s ruling');
+});
+
 // ===========================================================================
 // (6b-1) The rows a REAL PORT actually holds, read back after a real write.
 //
@@ -3588,4 +3607,98 @@ test('tripwire: every root resolves to a real directory with sources in it', () 
     byRoot.set(root, (byRoot.get(root) ?? 0) + 1);
   }
   for (const r of ROOTS) assert.ok((byRoot.get(r) ?? 0) > 0, `${r} contributed no source files`);
+});
+
+// ===========================================================================
+// (7) **§8.4 A-86 Part 6 — a tripwire on a MEASUREMENT, not on behaviour.**
+//
+// `lat_lng_out_of_range` is the first `IssueCode` that puts a **`trip`**-kinded `Issue` into the
+// same array as day- and stop-kinded ones (A-85 Part 4). Round 63 asked what that renders as and
+// answered it two-sidedly from source: **no file under `apps/web/src` reads `Issue` at all**, and
+// **the one generic issue selector — `packages/client/src/selectors/index.ts::issuesForRef` — has
+// no caller anywhere in the repository.** There is therefore no rendered consequence to check.
+//
+// One latent defect was measured while answering it: `issuesForRef` filters on `i.ref.id === id`
+// and **ignores `ref.kind`**, while its two neighbours `conflictsForDay` and `conflictsForStop`
+// both check it. Ids are document-scoped, so a `DayId` and a `StopId` are not guaranteed distinct
+// across kinds.
+//
+// **The signature is deliberately NOT changed here** — designing a filter for a surface whose
+// direction is unresolved is how an API gets built for nobody. What is armed instead is the
+// measurement the answer rests on. The day a first caller appears, this goes red and names A-86
+// Part 6, which forces `ref.kind` into the signature **at that moment** rather than after the
+// caller has shipped.
+//
+// **It asserts what the source CONTAINS, never what it lacks** (ROADMAP *How a criterion is
+// written* rule 7): the assertion is *"exactly one occurrence, and it is the declaration"*.
+// ===========================================================================
+
+/** The two trees a caller of a `packages/client` selector could live in. */
+const SELECTOR_CONSUMER_ROOTS = ['packages/client/src', 'apps/web/src'];
+
+/**
+ * Every occurrence of a bare identifier in one source, comments and strings left in place except
+ * comments — a `// see issuesForRef` must not read as a call, and the prose above this function
+ * would otherwise arm the tripwire against itself.
+ */
+function occurrencesOf(name: string, src: string): number {
+  const re = new RegExp(`\\b${name}\\b`, 'g');
+  return [...stripComments(src).matchAll(re)].length;
+}
+
+/**
+ * The walk, as a pure function of its input, so the negative control can hand it a **scratch**
+ * copy with a call site in it rather than editing a shipped file.
+ */
+function selectorOccurrences(
+  name: string,
+  files: ReadonlyArray<{ path: string; src: string }>,
+): Array<{ path: string; count: number }> {
+  return files
+    .map((f) => ({ path: f.path, count: occurrencesOf(name, f.src) }))
+    .filter((f) => f.count > 0);
+}
+
+function selectorConsumerSources(): Array<{ path: string; src: string }> {
+  return sourceFiles()
+    .filter((f) => SELECTOR_CONSUMER_ROOTS.some((r) => rel(f).startsWith(`${r}/`)))
+    .map((f) => ({ path: rel(f), src: readFileSync(f, 'utf8') }));
+}
+
+test('A-86 Part 6 tripwire: `issuesForRef` has exactly one occurrence — its own declaration — and no caller', () => {
+  const files = selectorConsumerSources();
+  assert.ok(files.length > 0, 'the walk read no files; the roots moved and it is measuring nothing');
+  const found = selectorOccurrences('issuesForRef', files);
+  assert.deepEqual(
+    found,
+    [{ path: 'packages/client/src/selectors/index.ts', count: 1 }],
+    'A FIRST CALLER OF `issuesForRef` HAS APPEARED. Read ARCHITECTURE §8.4 A-86 Part 6 before ' +
+      'going further: the selector filters on `i.ref.id === id` and IGNORES `ref.kind`, while ' +
+      '`conflictsForDay` and `conflictsForStop` both check it. Ids are document-scoped, and ' +
+      '`lat_lng_out_of_range` now puts a `trip`-kinded Issue into the same array as day- and ' +
+      'stop-kinded ones — so this selector can hand a surface an issue about a different record. ' +
+      'A-86 Part 6 arms this assertion precisely so `ref.kind` goes into the signature at the ' +
+      'moment a caller exists, not after it has shipped.',
+  );
+  // And the one occurrence is the DECLARATION, not a call that happens to be alone in its file.
+  const decl = files.find((f) => f.path === 'packages/client/src/selectors/index.ts');
+  assert.ok(decl && /export function issuesForRef\(/.test(decl.src),
+    'the single occurrence is no longer the declaration');
+});
+
+test('A-86 Part 6 tripwire: the walk is live — a scratch caller reddens it', () => {
+  // The negative control, run every time rather than once by hand: without it the assertion
+  // above could stop measuring (a moved root, a broken regex) and pass forever on an empty set.
+  const scratch = [
+    ...selectorConsumerSources(),
+    { path: 'apps/web/src/views/Scratch.tsx', src: 'const issues = issuesForRef(derived, day.id);' },
+  ];
+  const found = selectorOccurrences('issuesForRef', scratch);
+  assert.equal(found.length, 2, 'the walk did not see a call site in its own input');
+  assert.deepEqual(found.map((f) => f.path).sort(), [
+    'apps/web/src/views/Scratch.tsx',
+    'packages/client/src/selectors/index.ts',
+  ]);
+  // A comment is not a caller: the prose in this very file names the symbol repeatedly.
+  assert.equal(occurrencesOf('issuesForRef', '// issuesForRef is mentioned here\nconst x = 1;'), 0);
 });

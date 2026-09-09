@@ -163,11 +163,35 @@ export function createTrip(init: TripInit, ctx: BuildCtx): Trip {
     // reports `{null, null}`. In the stored document they are the same two fields — only a door
     // can tell them apart, so the rule lives at the door.
     //
-    // **`!== undefined`, not `'centre' in c`, and A-85 Part 2 permits either spelling** (ROADMAP
-    // I-24 Part 1 writes both). It is `!== undefined` because that is this door's own settled
-    // convention for an INIT, stated four fields down for `datePrecision` and recorded as
-    // BUILD-NOTES **KD-101**: absent and `undefined` mean *take the default*, and `null` is a
-    // value the caller supplied. A spread that leaves `centre: undefined` behind is not an erase.
+    // **The presence test is `c.centre !== undefined`. There is ONE spelling and this is it —
+    // §8.4 A-86 Part 1 (QA R63-7, ROADMAP I-25 Part 2).** A-85 Part 2's *"does not carry a
+    // `centre` key"* read as `'centre' in c`, and I-24 Part 1 wrote the rule both ways; the two
+    // differ on exactly one input, `{name, centre: undefined, pick}`, which `in` refuses at
+    // `$.cities[0].centre` and `!== undefined` defaults. A-86 Part 1 rules `!== undefined`, and
+    // `'centre' in c` may not be reintroduced, for three reasons:
+    //
+    //   - **the declared type cannot tell the two apart, so the door may not.** `CityInit.centre`
+    //     is optional and this project does not set `exactOptionalPropertyTypes`, so `{name,
+    //     pick}` and `{name, centre: undefined, pick}` are the SAME type — and a door whose
+    //     behaviour splits on a distinction its own signature does not carry is a door whose
+    //     contract cannot be read off the contract;
+    //   - **`in` refuses a call that type-checks and is correct.** `{...defaults, ...patch}`
+    //     leaves `centre: undefined` behind whenever `patch` carries no centre — the ordinary
+    //     shape of a form's submit handler, which is the caller the picker will be;
+    //   - **it is already this door's settled convention**, stated four fields down for
+    //     `datePrecision` and recorded as BUILD-NOTES **KD-101**: absent and `undefined` mean
+    //     *take the default*, and `null` is a value the caller supplied. A second convention on
+    //     a neighbouring field of the same object is how the next reader gets it wrong.
+    //
+    // **This is a read of the PROPERTY, not of the own-property table — A-86 Part 2, and it is
+    // written here so nobody adds a guard.** An INHERITED `centre` (`Object.create({centre:
+    // null})`) is the caller's value and is honoured exactly as a written one: the `null` erases,
+    // the pick is kept and inert, and nothing is minted onto a point the caller did not confirm.
+    // **`hasOwnProperty` may not be introduced at this door.** The parser one line later reads
+    // the chain, so an own-key guard above a chain read is R63-1's shape exactly — the quality of
+    // an answer depending on *where* a key lives rather than on *what* it says — and it would
+    // have to be applied to all five of `centre`, `pick`, `order`, `meta` and `key` rather than
+    // to one.
     //
     // **The pick's coordinate is NOT read here — QA R63-1 (MAJOR) and R63-2.** This expression
     // used to be `c.pick ? {lat: c.pick.centre.lat, lng: c.pick.centre.lng} : null`, which put a
@@ -195,11 +219,17 @@ export function createTrip(init: TripInit, ctx: BuildCtx): Trip {
   // Which cities the caller wrote a `centre` for, captured beside the map above because it is the
   // INIT that holds the distinction and the stored document does not (A-85 Part 2 clause 2).
   //
-  // **`!== undefined`, not `'centre' in c`, and A-85 Part 2 permits either spelling** (ROADMAP
-  // I-24 Part 1 writes both). It is `!== undefined` because that is this door's own settled
-  // convention for an INIT, stated further down for `datePrecision` and recorded as BUILD-NOTES
-  // **KD-101**: absent and `undefined` mean *take the default*, and `null` is a value the caller
-  // supplied. A spread that leaves `centre: undefined` behind is not an erase.
+  // **The presence test is `c.centre !== undefined`, one spelling — §8.4 A-86 Part 1 (QA R63-7),
+  // and it is the SAME expression the map above uses, deliberately.** `'centre' in c` is refused:
+  // the declared type cannot separate `{name, pick}` from `{name, centre: undefined, pick}` (no
+  // `exactOptionalPropertyTypes`), `in` would refuse a `{...defaults, ...patch}` call that type-
+  // checks and is correct, and `!== undefined` is this door's settled convention for an INIT —
+  // stated further down for `datePrecision` and recorded as BUILD-NOTES **KD-101**: absent and
+  // `undefined` mean *take the default*, and `null` is a value the caller supplied.
+  //
+  // **A-86 Part 2: this reads the property, not the own-property table.** An inherited `centre`
+  // is honoured exactly as a written one, and `hasOwnProperty` may not be introduced here — an
+  // own-key guard above the parser's chain read is R63-1's shape recurring.
   const wroteCentre: boolean[] = (init.cities ?? []).map((c) => c.centre !== undefined);
   const base: Trip = {
     id: init.id ?? ctx.ids.newId('trip'),
@@ -261,7 +291,8 @@ export function createTrip(init: TripInit, ctx: BuildCtx): Trip {
 }
 
 /**
- * §8.4 **A-85 Part 2**: a city whose init carried a `pick` and **no `centre` key** stands on the
+ * §8.4 **A-85 Part 2**, as amended by **A-86 Part 1**: a city whose init carried a `pick` and
+ * whose `centre` is **`undefined`** — the key absent, or written as `undefined` — stands on the
  * point the pick names — a **copy** of `pick.centre`, never the pick's own object, because
  * aliasing would let a later in-place edit of `City.centre` silently move the one value A-84
  * Part 3 clause 3's staleness test compares against.
@@ -278,9 +309,10 @@ export function createTrip(init: TripInit, ctx: BuildCtx): Trip {
  * Pure. Returns `trip` **by reference** when no city stands on a pick, so the common case mints no
  * object and `commit` has nothing to re-parse.
  *
- * @param wroteCentre index-aligned with `trip.cities`: did the *init* carry a `centre` key? A
- *        written `centre` is honoured verbatim, `null` included — that is A-84 Part 3 clause 3's
- *        erase case, and it is a distinction only a door can see.
+ * @param wroteCentre index-aligned with `trip.cities`: was the *init*'s `centre` anything other
+ *        than `undefined`? (A-86 Part 1's one spelling; an INHERITED `centre` counts, A-86
+ *        Part 2.) Such a `centre` is honoured verbatim, `null` included — that is A-84 Part 3
+ *        clause 3's erase case, and it is a distinction only a door can see.
  */
 function standOnPicks(trip: Trip, wroteCentre: readonly boolean[]): Trip {
   let moved = false;

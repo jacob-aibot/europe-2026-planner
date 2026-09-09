@@ -276,6 +276,15 @@ function cmdStats() {
   // trip's own range — and a silently absorbed value is A-37 Part 5 residue 2's mistake
   // repeated. Same conditional idiom as `unnamedCities` above, one line over, deliberately.
   if (s.unreadableCityDates) out(`  cities with unreadable stored dates: ${s.unreadableCityDates}`);
+  // §8.4 **A-86** Part 4 (QA **R63-9**, ROADMAP I-25). Third instance of the same idiom, one
+  // line further down, deliberately. A stored `cities` that is present and not an array
+  // contributes no cities at all — I-24 Part 4's guard, which is correct and stays — and
+  // before this line **nothing anywhere said so**: `travelHistory` returns `ok: true` with no
+  // banner and no named row, and `rowStatsReadable`, which does name such a row, is consulted
+  // only on the catch branch the guard made unreachable. This is the one surface that exists
+  // today, so the absorption becomes visible here rather than waiting on `Library.tsx` and the
+  // unresolved visual direction (A-59 Part 5, still unscheduled).
+  if (s.unreadableCityLists) out(`  trips whose stored city list could not be read: ${s.unreadableCityLists}`);
 }
 
 /**

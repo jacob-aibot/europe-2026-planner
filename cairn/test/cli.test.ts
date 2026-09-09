@@ -602,3 +602,57 @@ test('I-22: `cli cities` finds Geneva, Jerusalem and Brazzaville, each marked as
   assert.match(vienna, /^Vienna, Wien, Austria · /m);
   assert.equal(/disagrees/.test(vienna), false, 'every line carries the marker, so the marker says nothing');
 });
+
+/**
+ * **ROADMAP I-25 Part 1 — §8.4 A-86 Part 4 item 1 (QA R63-9): the absorption is visible on the
+ * one surface that exists today.**
+ *
+ * `unreadableCityLists` is printed by `cli.ts stats` on the **existing conditional idiom** —
+ * the one `unnamedCities` and `unreadableCityDates` already use — so a library that quietly
+ * lost a trip's cities says so with no `.tsx` and no wait on the unresolved visual direction.
+ *
+ * **The positive arm is not reachable through the shipped command, and this is how it is run
+ * anyway.** `cmdStats` mints its library from one document (the reference trip, or `--file`),
+ * and `tripSummary` always produces a real `cities` array — so no invocation of `cairn stats`
+ * can produce a non-zero count. That has been true of `unnamedCities`' line since I-7 and of
+ * `unreadableCityDates`' since I-12a; `qa/r44-a59.mjs` recorded it as unreachable and asserted
+ * the silent arm only. Here the **shipped line's own source text** is lifted out of `cli.ts`
+ * and executed against both a zero and a non-zero `TravelStats`, so the printed sentence, the
+ * conditional and the field name are all the ones that ship. The end-to-end run below is the
+ * silent arm, unchanged in kind.
+ */
+const STATS_LINES = () => {
+  const src = readFileSync(join(CAIRN, 'cli.ts'), 'utf8');
+  return [...src.matchAll(/^\s*if \(s\.(\w+)\) out\((`[^`]*`)\);$/gm)].map((m) => ({
+    field: m[1],
+    body: `if (s.${m[1]}) out(${m[2]});`,
+  }));
+};
+
+test('I-25 Part 1 (A-86 Part 4 item 1): `cli.ts stats` prints the absorbed-row count on the existing conditional idiom', () => {
+  const lines = STATS_LINES();
+  assert.deepEqual(
+    lines.map((l) => l.field),
+    ['unnamedCities', 'unreadableCityDates', 'unreadableCityLists'],
+    'the three conditional count lines are no longer the same idiom, in the same place',
+  );
+  const line = lines.find((l) => l.field === 'unreadableCityLists');
+  assert.ok(line, 'cli.ts stats does not print `unreadableCityLists` at all');
+  // The shipped text, executed. Not a copy of it.
+  const run = new Function('s', 'out', line.body) as (s: unknown, out: (t: string) => void) => void;
+  const printed: string[] = [];
+  run({ unreadableCityLists: 1 }, (t) => printed.push(t));
+  assert.deepEqual(printed, ['  trips whose stored city list could not be read: 1']);
+  printed.length = 0;
+  run({ unreadableCityLists: 0 }, (t) => printed.push(t));
+  assert.deepEqual(printed, [], 'the line printed at zero — the conditional idiom was dropped');
+});
+
+test('I-25 Part 1: over the reference library `cli stats` prints no such line at all', () => {
+  const r = cli('stats', '--today', '2026-08-24');
+  assert.equal(r.code ?? 0, 0, r.err);
+  assert.equal(/stored city list/.test(r.out), false, r.out);
+  // …and the two lines beside it stay silent too, which is what makes the assertion above a
+  // statement about a clean library rather than about a regex that matches nothing.
+  assert.equal(/no usable name|unreadable stored dates/.test(r.out), false, r.out);
+});

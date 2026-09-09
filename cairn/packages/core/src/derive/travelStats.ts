@@ -152,6 +152,30 @@ export type TravelStats = {
    * (A-34's precedent for `provisional`), and `test/stats-storage.test.ts`'s 6b-5 pins that.
    */
   unreadableCityDates: number;
+  /**
+   * §8.4 **A-86** Part 4 (QA **R63-9**). Library rows whose STORED `cities` was **present and
+   * not an array**, so the row contributed **no** cities to the census at all. Counted **per
+   * row**: a row says *"these are my cities"* once, and a single unreadable answer is one
+   * absorption however many entries it was meant to hold.
+   *
+   * **`undefined` and `null` are values, not defects, and are NOT counted** — a row minted
+   * before summary generation 3 carries no `cities` key, and contributing none is its correct
+   * answer. That three-way split is exactly the one `packages/client`'s `rowStatsReadable`
+   * already draws, and the two are pinned against each other by an assertion rather than by
+   * this sentence (`packages/client/test/row-stats-readable.test.ts`).
+   *
+   * **Why a count and not the throw it replaced.** `I-24` Part 4's `Array.isArray` guard is
+   * right and is not reopened: A-59 Part 2's line is *a stored value that gates the record's
+   * participation throws; a stored value the record has a documented fallback for takes the
+   * fallback*, and `cities` has one. What the guard traded is a **loud** failure for a
+   * **silent** one — `travelHistory` now returns `ok: true` with no banner and no named row —
+   * and A-59 Part 3 already ruled that class: a silently absorbed value is A-37 Part 5 residue
+   * 2's mistake repeated, which is why the count is a field.
+   *
+   * **`SUMMARY_VERSION` does not move for it.** `TravelStats` is derived and never stored
+   * (A-34's precedent for `provisional`), and `test/stats-storage.test.ts`'s 6b-5 pins that.
+   */
+  unreadableCityLists: number;
 };
 
 /**
@@ -205,6 +229,22 @@ const isMintedCode = (v: unknown): v is CountryCode => typeof v === 'string' && 
  * validated document: a hand-edited one can carry `'12'`, `-1`, `1.5` or `NaN`. Every one of
  * those is **one answer** — *this row does not say how many records it had* — and contributes
  * `0`, which the `Math.max` at the accumulation site then floors at the row's own `located`.
+ *
+ * **§8.4 A-86 Part 5 (QA R63-6) — recorded residue: a stored count is BELIEVED. It is floored
+ * at zero and at the row's own `located`, and it is capped by nothing** — a row hand-edited to
+ * `placeCount: 4000` publishes `seen.places` 4000 for a document holding 95, and `1e21`
+ * publishes `1e+21`. **No ceiling is added, and the reason is that there is nothing to derive
+ * one from**: for places the row *is* the denominator (unlike `cities[]`, which the row carries
+ * record by record), so a cap would be A-82 Part 7's *"a value nobody measured, wearing the
+ * shape of one"* applied to a bound. `stopCount + poolCount` has had the identical property
+ * since generation 1. **First trigger to reopen, and it is the one that will actually fire: the
+ * first surface that renders `seen − located` as a SENTENCE** — *"n places have no coordinate"*
+ * — rather than as two numbers side by side, which is a claim about the user's own data that a
+ * corrupt row can make arbitrarily large; that surface owes the recompute affordance beside it
+ * (A-59 Part 5). **Second: the first time a stored count drives a decision rather than a
+ * display** — a filter, a sort, a threshold, a streak — at which point the decision defines a
+ * bound and one stops being arbitrary. `cli.ts stats` prints the two numbers on separate lines
+ * and is a developer surface, so neither has fired.
  */
 const countOf = (v: unknown): number =>
   typeof v === 'number' && Number.isInteger(v) && v >= 0 ? v : 0;
@@ -415,6 +455,10 @@ export function travelStats(summaries: readonly TripSummaryRow[], today: IsoDate
   // check below: an entry that folds to `''` produces no city row and therefore falls back to
   // nothing. It is already counted, once, in `unnamedCities`.
   let unreadableCityDates = 0;
+  // **A-86** Part 4 (QA **R63-9**). Incremented where the `Array.isArray` fallback fires, below,
+  // and nowhere else: one row, one count. It is accumulated in this walk — over the TRAVELLED
+  // rows — because a lifetime number may not be moved by a trip nobody has taken (A-31 Part 3).
+  let unreadableCityLists = 0;
   let seenCities = 0;
   let seenStops = 0;
   let locatedCities = 0;
@@ -488,7 +532,20 @@ export function travelStats(summaries: readonly TripSummaryRow[], today: IsoDate
     // threw one line later and the guard could never be the thing that answered. The guarded
     // value is now bound **once** and both readers use it — A-37 Part 3's *a stored row is not a
     // validated document*, applied to the whole read rather than to half of it.
-    const rowCities: readonly TripSummaryCity[] = Array.isArray(row.cities) ? row.cities : [];
+    //
+    // **§8.4 A-86 Part 4, ROADMAP I-25 (QA R63-9).** The guard above is correct and stays; what
+    // it owed is a **count**. A row whose stored `cities` is present and not an array
+    // contributes nothing, and before this line nothing anywhere said so — `travelHistory`
+    // returned `ok: true` and `rowStatsReadable`, which does name such a row, is asked only on
+    // the catch branch the guard made unreachable. Three-way, deliberately: `undefined` and
+    // `null` are **values** (a row minted before generation 3 carries no `cities` key at all,
+    // and contributing none is its correct answer), everything else present is a defect. The
+    // same split `rowStatsReadable` draws, and pinned against it by an assertion.
+    const storedCities: unknown = row.cities;
+    const rowCities: readonly TripSummaryCity[] = Array.isArray(storedCities) ? storedCities : [];
+    if (storedCities !== undefined && storedCities !== null && !Array.isArray(storedCities)) {
+      unreadableCityLists++;
+    }
     seenCities += rowCities.length;
     for (const c of rowCities) {
       const located = isLocatedCentre((c as { centre?: unknown }).centre);
@@ -663,5 +720,6 @@ export function travelStats(summaries: readonly TripSummaryRow[], today: IsoDate
     },
     unnamedCities,
     unreadableCityDates,
+    unreadableCityLists,
   };
 }

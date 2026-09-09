@@ -1696,3 +1696,107 @@ test('I-24 Part 4 (QA R62-6): the `cities` shape guard is LIVE — a row whose `
     assert.equal(s.seen.places, 95);
   }
 });
+
+// ---------------------------------------------------------------------------
+// **ROADMAP I-25 Part 1 — §8.4 A-86 Part 4 (QA R63-9): the row the census absorbs is
+// COUNTED.**
+//
+// `I-24` Part 4's `Array.isArray` guard is correct and is not reopened: A-59 Part 2 already
+// ruled the direction — *a stored value that gates the record's participation throws; a stored
+// value the record has a documented fallback for takes the fallback* — and `cities` has a
+// documented fallback (a row that does not say which cities it holds contributes none).
+//
+// What the guard traded is a LOUD failure for a SILENT one. Before it, a row whose stored
+// `cities` was a string threw out of `travelStats`, was caught by `travelHistory`, and was
+// **named** through `rowStatsReadable`; after it, `travelHistory` returns `ok: true` with no
+// banner and no named row, and the lifetime census is quietly missing a trip's cities.
+// `unreadableCityLists` is the count that makes the absorption sayable — `unreadableCityDates`'
+// idiom, third instance, deliberately the same shape.
+// ---------------------------------------------------------------------------
+
+/** A well-formed row, so nothing under test is reading a second broken field. */
+function healthyRow(id: string): TripSummaryRow {
+  return row({
+    id, startDate: '2024-05-10', endDate: '2024-05-20', countryCodes: ['FR' as CountryCode],
+    cities: [
+      city('Paris', 'FR' as CountryCode, { first: '2024-05-12', last: '2024-05-14' }),
+      city('Lyon', 'FR' as CountryCode, { first: '2024-05-15', last: '2024-05-16' }),
+    ],
+  });
+}
+
+test('I-25 Part 1 (A-86 Part 4, QA R63-9): a row whose stored `cities` is a string is COUNTED, not silently absorbed', () => {
+  const good = healthyRow('t-good');
+  const corrupt = { ...healthyRow('t-corrupt'), cities: 'nope' } as unknown as TripSummaryRow;
+  const s = travelStats([good, corrupt], TODAY);
+  assert.equal(s.unreadableCityLists, 1, 'the absorbed row was not counted — R63-9 exactly');
+  // The census is still short by that row's cities, and it now says so. Both halves matter:
+  // the count is not a repair, it is the sentence the surface was missing.
+  assert.equal(s.seen.cities, 2, 'the healthy row\'s two cities, and only those');
+  assert.equal(s.located.cities, 2);
+  assert.deepEqual(s.cities.map((c) => c.name).sort(), ['Lyon', 'Paris']);
+  assert.equal(s.trips.completed, 2, 'the corrupt row is still a trip — one broken field is not a broken row');
+});
+
+test('I-25 Part 1: `undefined` and `null` are VALUES, not defects, and are NOT counted', () => {
+  // A row minted before generation 3 carries no `cities` key at all, and contributing none is
+  // its correct answer. Counting it would put a stale-but-fine row under a sentence about
+  // corruption — the arm that makes the three-way split load-bearing (A-34 Part 4: a one-sided
+  // test on a classifier is a classifier that will be inverted).
+  const absent = { ...healthyRow('gen2') } as Partial<TripSummaryRow>;
+  delete absent.cities;
+  const nulled = { ...healthyRow('nulled'), cities: null } as unknown as TripSummaryRow;
+  for (const r of [absent as unknown as TripSummaryRow, nulled]) {
+    const s = travelStats([r], TODAY);
+    assert.equal(s.unreadableCityLists, 0, `${r.id}: a value was counted as a defect`);
+    assert.equal(s.seen.cities, 0, `${r.id}: the fallback itself moved`);
+  }
+  assert.equal(travelStats([absent as unknown as TripSummaryRow, nulled], TODAY).unreadableCityLists, 0);
+});
+
+test('I-25 Part 1: the count is PER ROW — every non-array shape counts exactly one', () => {
+  for (const junk of ['nope', 42, {}, 0, NaN, true] as unknown[]) {
+    const broken = { ...healthyRow('t1'), cities: junk } as unknown as TripSummaryRow;
+    assert.equal(travelStats([broken], TODAY).unreadableCityLists, 1,
+      `cities ${String(junk)} was not counted`);
+  }
+  // An EMPTY array is an array: the row said which cities it holds and the answer was none.
+  const empty = { ...healthyRow('t1'), cities: [] } as unknown as TripSummaryRow;
+  assert.equal(travelStats([empty], TODAY).unreadableCityLists, 0, 'an empty list is an answer');
+  // Two corrupt rows are two counts; a corrupt row holding "many" cities is still one.
+  const two = travelStats([
+    { ...healthyRow('a'), cities: 'x' } as unknown as TripSummaryRow,
+    { ...healthyRow('b'), cities: { 0: 'x', length: 1 } } as unknown as TripSummaryRow,
+  ], TODAY);
+  assert.equal(two.unreadableCityLists, 2, 'the count is per ROW');
+});
+
+test('I-25 Part 1: the reference library reports 0, and the field is present on an empty library', () => {
+  const { trip } = europe2026();
+  assert.equal(travelStats([tripSummary(trip, COUNTRY_INDEX)], AFTER_THE_TRIP).unreadableCityLists, 0);
+  assert.equal(travelStats([], TODAY).unreadableCityLists, 0, 'the field is absent on an empty library');
+});
+
+test('I-25 Part 1: only TRAVELLED rows are walked, so a planned corrupt row contributes no count', () => {
+  // The population rule is A-31 Part 3's and this field does not widen it: `travelStats`
+  // derives the lifetime map from travelled rows only, and a count of absorptions over rows
+  // that contribute nothing would be a number about a trip the user has not taken.
+  const planned = { ...healthyRow('future'), startDate: '2027-01-01' as IsoDate, endDate: '2027-01-09' as IsoDate, cities: 'nope' } as unknown as TripSummaryRow;
+  const s = travelStats([planned], TODAY);
+  assert.equal(s.trips.planned, 1);
+  assert.equal(s.unreadableCityLists, 0, 'a planned trip contributed to a lifetime number');
+});
+
+test('I-25 Part 1: `unreadableCityLists` and `unreadableCityDates` are independent counters', () => {
+  const dateCorrupt = healthyRow('dates');
+  (dateCorrupt.cities[0] as { firstDay: unknown }).firstDay = 'not-a-date';
+  const listCorrupt = { ...healthyRow('lists'), cities: 'nope' } as unknown as TripSummaryRow;
+  const s = travelStats([dateCorrupt, listCorrupt], TODAY);
+  assert.equal(s.unreadableCityDates, 1);
+  assert.equal(s.unreadableCityLists, 1);
+  // A row whose whole list is unreadable has no ENTRIES to read dates out of, so it can never
+  // contribute to the date count. Stated because the two are one line apart in the walk.
+  const onlyList = travelStats([listCorrupt], TODAY);
+  assert.equal(onlyList.unreadableCityDates, 0);
+  assert.equal(onlyList.unreadableCityLists, 1);
+});

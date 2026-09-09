@@ -1,5 +1,33 @@
 # Cairn — build notes, Phase 1 (and Phase 2 in progress)
 
+> **Addendum — ROADMAP `I-25`: a row the census absorbs is counted, and the number nothing bounds
+> is written down (`ARCHITECTURE.md` revision 67 §8.4 **A-86**; QA **R63-9**, with **R63-6** and
+> **R63-7** riding along).** Builds on `ca450fd`. **Two product-code files**
+> (`packages/core/src/derive/travelStats.ts`, `cli.ts`), **one comments-only**
+> (`packages/core/src/build/createTrip.ts`), four test files, one regenerated golden, and this
+> document. **Zero `.tsx`, zero `apps/web/`, zero `packages/client/src/`, zero `docs/design/`,
+> zero `qa/`, zero corpus file, zero new dependency, zero lockfile.** `SCHEMA_VERSION` **5**,
+> `SUMMARY_VERSION` **8**, `ROW_KEYS` **15**, `ROW_COUNT_FIELDS` **9**, §2.10 **88** — none move,
+> each asserted by name rather than argued.
+>
+> | | |
+> |---|---|
+> | **What runs, and the exact commands** | From `cairn/`: `npm run test:tap` → **1,754 pass / 0 fail** (baseline on this tree before the change: **1,741 / 0**; the +13 are this increment's). `npm run typecheck` → **exit 0 on both projects**. `npm run cli -- stats --today 2026-08-24` → the reference library, and **no** `stored city list` line. `npm run golden` → moves **`fixtures/golden/travel-stats.json` and nothing else**, and a second run leaves the tree unchanged. `npm run web:build` → **1,034.81 kB raw / 334.45 kB gzip** against I-24's 1,034.54 / 334.33 (+0.27 kB raw, +0.12 kB gzip — the one new `if` reaches the bundle through `travelStats.ts`). |
+> | **Part 1 — the count (`travelStats.ts`, `cli.ts`)** | `TravelStats` gains **`unreadableCityLists: number`** — library rows whose stored `cities` was **present and not an array**, counted **per row**, incremented in the same walk where `I-24` Part 4's `Array.isArray` fallback fires. **`undefined` and `null` are values, not defects, and are not counted.** The guard is **not** reopened. `cli.ts stats` prints `trips whose stored city list could not be read: N` on the existing conditional idiom, one line below `unreadableCityDates`, and prints nothing at 0. |
+> | **Demonstrated concretely, not asserted** | Over `{good, corrupt}` where `corrupt.cities = 'AT,HR,CZ'`: `travelStats` **returns** (does not throw), `seen.cities` **6** (the healthy row's, and only those), `unreadableCityLists` **1**, `travelHistory` **`ok: true`**, `rowStatsReadable(corrupt)` **false** — the two now reconcile through the count. A row with **no `cities` key** and a row with `cities: null` each contribute **0**; the committed reference library reports **0**. |
+> | **The two predicates are pinned against each other** | `packages/client/test/row-stats-readable.test.ts` walks A-86 Part 4's own eight values — `undefined`, `null`, `[]`, a well-formed array, `'nope'`, `{}`, `0`, `NaN` — on rows whose **dates are readable**, and asserts `unreadableCityLists` increments on exactly the values `rowStatsReadable` calls unreadable. Not a comment: an assertion. |
+> | **`SOURCE_ALLOW` — asserted, not assumed** | `countShaped('unreadableCityLists')` is **false** (`Lists` matches neither `PLURAL` nor `SHAPE`), `SOURCE_ALLOW` gains **no** entry, and `ROW_COUNT_FIELDS` stays at **nine** — all three asserted in `test/stats-storage.test.ts` beside the existing `unreadableCityDates` assertion. The negative control is in the same test: `countShaped('unreadableCities')` is **true**, so the negative is a property of the name and not of a filter that eats nothing. |
+> | **Part 2 — R63-7, comments only (`createTrip.ts`)** | Both sites saying A-85 Part 2 *"permits either spelling"* now say the opposite: **`c.centre !== undefined`, one spelling**, with A-86 Part 1's three reasons one line each, and A-86 Part 2's rule that an **inherited** `centre` is honoured as written and **`hasOwnProperty` may not be introduced** (R63-1's shape recurring). `standOnPicks`' docstring and its `@param wroteCentre` line, which still said *"no `centre` key"* / *"carry a `centre` key"*, are corrected to the amended wording. **No behaviour changed, no assertion moved**; `cityPick.test.ts` and `pickCentre.test.ts` are green **unedited**. |
+> | **Part 3 — the two residues, written where they are read** | `countOf`'s docstring gains A-86 Part 5's residue: a stored count is **believed** — floored at zero and at the row's own `located`, **capped by nothing** — with both triggers named and the note that neither has fired (`cli.ts stats` prints the two numbers on separate lines and is a developer surface). And `test/stats-storage.test.ts` gains the **`issuesForRef` tripwire**: exactly one occurrence across `packages/client/src` and `apps/web/src`, and it is the declaration. |
+> | **The tripwire is live, and that is measured two ways** | It has its own in-test negative control (a **scratch** copy of the walk's input with a call site added → the walk sees two occurrences), and I also ran it red against a **real** added caller in `packages/client/src/selectors/index.ts`: `not ok — A FIRST CALLER OF issuesForRef HAS APPEARED …` naming A-86 Part 6 and the kind-ignoring filter. The file was restored; `git status` on `packages/client/src/` is clean. |
+> | **N1–N5, each run red-before-green with its output** | **N1** drop the increment → 5 tests red across three files, the count reads **0** while the census is still short. **N2** count anything non-array → `cities = undefined: rowStatsReadable says true, core counted 1` and `gen2: a value was counted as a defect`. **N3** treat `null` as a defect → the eight-value table disagrees at exactly one row and names it: `cities = null: rowStatsReadable says true, core counted 1`. **N4** print unconditionally → both CLI arms red, including the reference-library one. **N5** rename to `unreadableCities` → `countShaped` turns true and the `SOURCE_ALLOW` source walk fails with *"a count of countries, cities, trips or days was declared outside `TripSummaryRow`"* — A-33 Part 2's tripwire shown live. |
+> | **R63-8 — no code, and the two numbers re-measured** | The criterion correction is the architect's and is in `ROADMAP.md`. Measured on this tree: the committed reference trip reports `lat_lng_out_of_range` with `ref.kind === 'trip'` = **0**, and its **total** count of that code = **1** — the `place`-kinded *Windsor Great Park / Long Walk* record. `pickCentre.test.ts` is green **unedited**, as I-25's negative control requires. |
+> | **R63-6 — recorded, no code beyond the docstring** | No ceiling on any stored count. A-86 Part 5's reasoning is written into `countOf` where a builder tempted to add one will read it. |
+> | **`qa/i7a-idb-rowkeys.mjs` was NOT re-run, and owes nothing** | `ROW_KEYS` does not move (15), so A-36 Part 4's obligation does not fire. Said rather than left to be read as an omission. |
+> | **`qa/r63-i24.mjs` — 0 FAIL / 3 GAP before AND after, and this is not a null result** | I ran it, did not edit it, and the count cannot move: both `gap()` calls are **unconditional prints**, not measurements. What moved is the fact behind two of them. Re-measured with the script's own construction: `unreadableCityLists` **1** where its §J note says *"contributes 0 and says so nowhere"*, and its §A `placeCount: 4000` GAP is now the residue `countOf`'s docstring records. **The breaker owns whether those two GAP sentences should now read differently.** |
+> | **Two things I could not do as written** | The CLI criterion's positive arm is unreachable through the shipped command — **KD-116**, with how it was discharged. And A-86 Part 8 residue 2 is **wrong as measured** — a `cities` array holding a non-object entry *throws* rather than contributing an unlocated record — **KD-117**. |
+> | **Objection to the design — none.** | A-86 Part 4 is one field, one walk, one printed line, and it is A-59 Part 3's idiom applied a third time. I implemented it exactly as written and reopened neither the guard nor the spelling. |
+
 > **Addendum — QA round 63's four builder-routed findings (R63-1 MAJOR, R63-2, R63-3, R63-4).**
 > Builds on `82c7afb`. One product-code file (`packages/core/src/build/createTrip.ts`), four test
 > files, no doc but this one. **Zero `.tsx`, zero `apps/web/`, zero `packages/client/src/`, zero
@@ -5577,6 +5605,72 @@ it stopped being true. The consequence above is reversed: on the reference trip
 needs when the next census column has no denominator on the row.
 
 
+
+### KD-116 — `I-25`'s CLI criterion has no reachable positive arm, so the shipped line's own source text is lifted out and executed instead (measurement note, architect to correct the criterion)
+
+`cli.ts`, `cmdStats`; `test/cli.test.ts`, the two `I-25 Part 1` tests.
+
+`I-25`'s criterion reads: *"`cli.ts stats` over that library prints `trips whose stored city list
+could not be read: 1`, and over the reference library prints no such line at all."* The second half
+runs end to end. **The first half cannot be run at all through the shipped command**, and the reason
+is structural rather than incidental: `cmdStats` mints its library from **one document** — the
+reference trip, or `--file` — and `tripSummary` always emits a real `cities` array, so no invocation
+of `cairn stats` can produce a non-zero `unreadableCityLists`. Producing one would need a new CLI
+capability (a stored-library source, or a fault-injection flag), which `I-25` names in its *Not
+built* list.
+
+This is not new to this field. `unnamedCities`' line has been in the same position since I-7 and
+`unreadableCityDates`' since I-12a, and `qa/r44-a59.mjs` recorded it in as many words —
+*"That line's POSITIVE branch is unreachable from `cli stats` … Recorded."* — then asserted the
+silent arm only.
+
+**What I did instead, rather than assert a printed sentence I never printed:** `test/cli.test.ts`
+reads `cli.ts`, extracts the three `if (s.<field>) out(\`…\`)` lines by regex, asserts they are
+exactly `unnamedCities`, `unreadableCityDates`, `unreadableCityLists` in that order — which is the
+*"existing conditional idiom"* half of the criterion, mechanised — and then **executes the
+`unreadableCityLists` line's own source text** against `{unreadableCityLists: 1}` and
+`{unreadableCityLists: 0}`, asserting the exact printed string and the exact silence. The sentence,
+the conditional and the field name under test are the ones that ship, not a copy; the seam is that
+the `out` sink and the `TravelStats` are stubs. **Injected fault N4 (print unconditionally) reddens
+both arms**, so the conditional is genuinely under test.
+
+**For the architect:** the criterion is failed by a correct implementation, which is *How a criterion
+is written* rule 5's family. Either it is rewritten to the two arms that exist, or a later increment
+gives the CLI a library it did not mint — and that is a capability decision, not a test one.
+
+### KD-117 — §8.4 A-86 Part 8 residue 2 is wrong as measured: a `cities` array holding a non-object entry THROWS, it does not contribute an unlocated record (measurement note, no code change, architect to correct the residue)
+
+`packages/core/src/derive/travelStats.ts`, the `for (const c of rowCities)` walk.
+
+A-86 Part 8 residue 2 reads: *"`unreadableCityLists` counts the list, not the entries. A row whose
+`cities` **is** an array but contains a string contributes that entry as unlocated and is counted by
+nothing."* The first sentence is exactly right and is what I built. **The second is a description of
+a behaviour this code does not have.** Measured on this tree, over the reference row with one entry
+replaced:
+
+```
+cities: ['x'] → TypeError: Cannot read properties of undefined (reading 'normalize')
+cities: [42]  → TypeError: Cannot read properties of undefined (reading 'normalize')
+cities: [null]→ TypeError: Cannot read properties of null (reading 'centre')
+```
+
+The throw is out of `normalizeCityName(c.name)` and `isLocatedCentre(c.centre)` — a `TypeError` with
+no row id, no path and no city, which `travelHistory`'s `catch` absorbs into the anonymous refusal
+the whole A-44 → A-46 → A-47 lineage exists to prevent. So the per-entry case is not *quieter* than
+the per-list one was; it is **louder and less nameable**, and it is the fault class A-59 Part 2 ruled
+on for dates one field over.
+
+**I did not fix it**, and I want that to be a decision rather than an omission: `I-25`'s *Not built*
+list says **no per-entry city-corruption count (A-86 Part 8 residue 2)**, and the fix is not a count
+— it is a read gate on `TripSummaryCity`, which is A-59 Part 2's shape and therefore an architect's
+ruling, not a builder's. The residue's **trigger** as written (*"the first measurement that a
+per-entry corruption is reachable in shipped storage"*) is also not the right trigger for a throw:
+`rowStatsReadable` already returns `false` for such a row, so the client predicate and core still
+disagree here — one names it, the other dies on it — which is precisely the R28-5 shape A-86 Part 4
+item 2 pins everywhere else.
+
+My one test that reached this shape (`cities: ['ok']` in the per-row table) was **removed** rather
+than left asserting a throw, because asserting it would pin behaviour A-86 does not rule.
 
 ## 2. How to run it
 
