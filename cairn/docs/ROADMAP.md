@@ -1285,6 +1285,46 @@ as R56-1 and R57-1 had none, so `I-19` changes no shipped behaviour and blocks n
   rejection taking the file down"* half is **not a delta** and the detached-continuation case is
   byte-identical before and after `I-18`.
 
+**Revision 65, 2026-09-09.** **`I-19` is built (`386c459`), QA round 59 sent it back with the same defect
+wearing three more shapes — and this revision is the last one in this arc.** All three MAJORs are one
+placement error: **the leaf test is asked once, of a whole type, above the distribution, while the thing
+that distributes never asks it.** A door that **is** a union member is invisible at every depth (**R59-1** —
+`autofix?: Door | Inert` is N9's own feature a third field-shape sideways, and it leaves `npm run typecheck`
+at exit 0 while three such carriers write documents `fromJSON` refuses); `CarriesOne`'s arms are ordered and
+exclusive, so a callable-**and**-constructable type never reaches the third (**R59-2**); and
+`ILLEGAL_SHAPE_CENSUS` has no walk at all, so a `Trip | Day` return is caught at module level and invisible
+one hop down (**R59-3**). `ARCHITECTURE.md` revision 62's §2.1 **A-81** rules all three and **`I-20` is
+queued** as its whole code consequence. **There is no live instance** — round 59 re-scanned all 54 files and
+found no union of function types anywhere in `packages/core/src` — so `I-20` changes no shipped behaviour
+and blocks nothing.
+
+- **The repair is the breaker's own measured candidate, adopted whole**: ask the leaf test **inside** the
+  distribution, and ask all three arms **independently** instead of first-match-wins. They measured it
+  across **151 shapes**: all 14 R59-1 shapes and both R59-2 shapes go `true`, **all 35 `DESCENT_CENSUS` rows
+  stay exactly as they are**, the 12/13 depth boundary is unmoved, **zero false positives**.
+- **One generalisation is the architect's, and it closes R59-3 without a second mechanism.** The walk takes
+  a **tag** — `'door'` or `'illegal'` — so `ILLEGAL_SHAPE_CENSUS` gets reach by *sharing* the walk instead
+  of getting a copy that can drift. **A duplicated recursive predicate is this arc's own failure with a
+  fresh face.** The illegal census also moves to the template-literal form so it names the export.
+- **`NonNullable<T[K]>` is DELETED, and the I-19 builder's disclosed objection is upheld** (**R59-4**). It
+  is redundant **by construction** — `IsDoor` and `CarriesOne` both distribute and both answer `false` on
+  `null`/`undefined` — and by measurement: zero differing rows out of 151, all 35 census rows still green
+  with it reverted. A-80 Part 2's *"four things are load-bearing"* is **three**.
+- **Five census rows, and one refusal.** `DESCENTS` goes 35 → 40 to pin the three defects. The breaker's
+  proposed general rule — *two fixtures per constructor, one at the position and one below it* — is
+  **refused** as an open-ended commitment that doubles the table and its `tsc` bill to cover corners that
+  have produced zero live defects in six rounds.
+- **THE CLASS IS CLOSED (A-81 Part 8), by Jacob's direction, and the closure claims no completeness.**
+  Seven rounds on one mechanism; every finding since round 58 has been latent. After `I-20`, no round is
+  dispatched on this census on the strength of a type-system corner alone: a future finding must name an
+  export that exists in `packages/core/src` **today**. A further corner is **recorded as residue**. The one
+  trigger that reopens it is the bug the arc exists to prevent — **an unopenable document in the wild** —
+  and it has never once been observed.
+- **`I-20` is routed BUILDER-ONLY, deliberately, and A-81 Part 8 is the authority.** It touches one test
+  file, the fix is already measured by the breaker, and the mandatory-breaker rule is being spent nowhere
+  else in this arc. **R59-7 rides inside it** as one comment line (N13's header entry names the command that
+  can see it). **R59-5 was fixed by the breaker in round 59 and needs nothing here.**
+
 > **Phase numbers changed once, here.** Every heading below carries its old number, and every "Phase N"
 > written in `ARCHITECTURE.md` §1–§7, `BUILD-NOTES.md` or `QA-FINDINGS.md` before revision 9 means the
 > *named* phase it described: "Phase 2" = accounts/server (**now 3**), "Phase 3" = ingest (**now 4**),
@@ -5519,6 +5559,126 @@ docstring.
   this is the sixth round on one class — the breaker pass is what the arc is for. **The breaker's brief is
   A-80 Part 10**: find an output-side place a TypeScript type holds another type that `DESCENT_CENSUS` has
   no row for, or a row whose fixture passes while a structurally equivalent shipped shape is missed.
+
+#### I-20 — the leaf test moves inside the distribution, both censuses share one walk, and the arc ends (revision 65, QA **R59-1/R59-2/R59-3**, MAJOR; **R59-4/R59-6** ride along)
+
+**The whole code consequence of `ARCHITECTURE.md` revision 62's §2.1 **A-81**, and the LAST increment in
+this arc. Read A-81 whole, then A-80 Parts 2, 4, 7, 9 and 10 for what it amends, and nothing else in
+`ARCHITECTURE.md`.** Do **not** read §2 whole, §4, §8 or §10; do **not** read A-76, A-77, A-78 or A-79.
+**Read A-81 Part 8 first if you are tempted to widen this increment** — the class is closed to adversarial
+search and this entry is scoped to the fix that is already measured, nothing more.
+
+**`I-19` stays exactly as written above.** It is built (`386c459`), round 59 confirmed A-80 Part 2's block
+was implemented **character-for-character**, confirmed `DESCENT_CENSUS` is non-vacuous on rows and mutations
+the builder never used, and confirmed the `abstract new` arm against five variations. **What is wrong is
+where the ruling put the leaf test, not how the builder wrote it.** **Do not edit I-19's entry to describe
+I-20.**
+
+**Why it exists, in one measurement.** `autofix?(t, c): Trip` on the `Rule` type reddens the census naming
+eleven. `autofix?: { fix(t, c): Trip }` reddens it naming eleven. **`autofix?: Door | Inert` — the same
+feature, a third field-shape sideways, with the door as a plain union member — leaves `npm run typecheck` at
+exit 0**, and three such carriers injected into `derive/lifecycle.ts` write documents `fromJSON` refuses.
+**Nothing is unguarded today** — round 59 re-scanned all 54 files and there is no union of function types
+anywhere in `packages/core/src` — so **no shipped behaviour changes at all** and every part below is a type,
+a census row or a docstring.
+
+- **Built, in six parts, in this order. Parts 1–2 are the predicate and must be green before anything else
+  moves.**
+  1. **`packages/core/test/storable.test.ts`: the repaired walk**, A-81 Part 2's block **verbatim** —
+     `Leaf<Tag, T>`, `Members` walking bare `T[K]`, `Carries` asking `Leaf` **inside** the distribution,
+     `CallSide`/`CtorSide` as separate aliases that answer `false` rather than falling through, and
+     `CarriesOne` asking all three arms disjunctively. **Three things are load-bearing and A-81 Part 2 says
+     why each is:** the leaf test is evaluated with `T` bound to one union member; the three arms are
+     independent, which is the whole of R59-2's fix; and `NonNullable<T[K]>` is **deleted**, because the
+     distribution does its job (A-81 Part 1 — it is redundant by construction, not merely unmeasured).
+     **Do not keep `IsDoor<T>` above the distribution as well** — it is dead weight, and A-81 Part 2 point 1
+     says so. **Do not touch `IsDoor`, `IsIllegal`, `TripishReturn`, `ProducesTrip` or `Down`.**
+  2. **`ILLEGAL_SHAPE_CENSUS` gains reach through the same walk** (A-81 Part 3): `IllegalOf` maps
+     `Carries<'illegal', M[K]>`, `Hides` becomes `Carries<'door', T>`, and the census line moves to the
+     **template-literal** form so it names the offending exports instead of failing namelessly.
+     **Do not write a second copy of the walk with `IsIllegal` at the bottom** — A-81 Part 3 refuses it by
+     name, and the reason is this arc's own history.
+     **MEASURE THIS BEFORE ANYTHING ELSE: `ILLEGAL_SHAPE_CENSUS` must be GREEN over the unmodified tree.**
+     The only union-with-`Trip` in `packages/core/src` today is `derive/cost.ts`'s `RollUpScope`, and it
+     appears only in parameter position. **If it reddens, STOP and report it — that is a live finding, and
+     it is not exempted, not narrowed and not silenced.**
+  3. **Five `DESCENT_CENSUS` rows added, 35 → 40** (A-81 Part 4's table, labels exactly as ruled):
+     `union-member-is-door`, `union-member-is-door-nested`, `call-and-construct`, `illegal-nested-method`,
+     `illegal-optional-method`. The last two are written through an `IllegalReach<Label, Pos, Neg>` row alias
+     — the same shape as `Descent` with the tag changed — and join the **same** `DESCENTS` tuple and the
+     **same** census line. **The existing 35 rows do not change**: not their labels, not their fixtures, not
+     their order. **Do not add a sixth row**, and do not implement the general two-fixtures-per-constructor
+     rule — A-81 Part 4 refuses it as open-ended.
+  4. **The docstrings above `Members`, `Carries`, `CarriesOne`, `ILLEGAL_SHAPE_CENSUS` and
+     `HIDDEN_DOOR_CENSUS` are rewritten** to A-81 Parts 1–3. In particular A-80's *"Asked of every member of
+     a union, and answered `true` if ANY member says so"* was **false of the door test** and is the sentence
+     that produced R59-1; it becomes true only under part 1, and the replacement says which layer asks
+     what. The `NonNullable` docstring block goes with the token.
+  5. **A-80 Part 10's parameter-position residue sentence is corrected in the file** (**R59-6**), to A-81
+     Part 6's wording: the walk never *descends into* a parameter position, and the one case where a
+     parameter's type is reached is `Awaited` resolving a thenable's `then` callback — correctly. **The
+     `parameter-position` row keeps its `false` and its fixture.**
+  6. **The header's fault list gains N14 and N15**, and — **R59-7, the round-59 MINOR routed straight to the
+     builder** — **N13's header line gains one clause naming the command**: *"fails `npm run typecheck`;
+     `npm test` cannot see it."* The only sentence that says so today is 1,060 lines below the fault list,
+     beside the assertion. A builder who discharges N13 with `npm test` sees 1637 green and has measured
+     nothing.
+- **Not built, and named so nobody adds it.** **No second copy of the walk** (A-81 Part 3). **No sixth
+  census row and no two-fixtures-per-constructor rule** (A-81 Part 4). **No arm per carrier** (A-79 Part 1's
+  refusal still stands). **No change to `IsDoor`, `IsIllegal`, `TripishReturn`, `ProducesTrip`, `Down` or
+  the 12-hop bound.** **No new probe under `qa/`** — round 59's are the breaker's instruments and are
+  read-only here. **No new `IssueCode`, no version movement, no `src` file, no `.tsx`, no `docs/design/`,
+  no `package.json`, no lockfile, no new dependency.**
+- **User-visible outcome.** **None.** Every part is a type, a census row or a docstring.
+- **Architecture / data model.** Nothing moves. No field, no record class, no port, no selector, no screen.
+  §2.10's surface does not move — re-count it with criterion E's command and confirm **86**, per §4.2
+  **A-70 Part 7 item 3**.
+- **Verification — A-81 Part 7's N14 and N15, plus A-80's N9/N11/N12/N13, A-79's N8/N10, A-78's N1–N7 and
+  A-77's N1–N5, all carried. Run every one red-before-green; a criterion asserted rather than run is not
+  discharged.**
+  - **N14:** `autofix?: Door | Inert` on the `Rule` type → `HIDDEN_DOOR_CENSUS` fails naming the same
+    **eleven**. This is R59-1's shape. **N9, N11 and N14 are all required and none is sufficient alone.**
+  - **N15:** `autofix?: (t: Trip, c: Conflict) => Trip | Day` on the `Rule` type → **`ILLEGAL_SHAPE_CENSUS`**
+    fails **naming the eleven** — not `HIDDEN_DOOR_CENSUS`, and not namelessly. Also the test of part 2's
+    template-literal form.
+  - **The R59-2 pair:** `export const c: { (): string; new (): { archive: Door } }` appended to
+    `derive/lifecycle.ts` → **RED naming `c`**, and `{ (): string; new (t: Trip, r: ConflictResolution):
+    Trip }` → **RED naming `c`**. Both are GREEN at `386c459`; that is the criterion.
+  - **The R59-3 pair:** the `Trip | Day` method **one hop down** on an exported object literal, and the same
+    signature as a `Rule.autofix?` → **both RED at `ILLEGAL_SHAPE_CENSUS`, naming the export.** Both are
+    GREEN at `386c459`.
+  - **N13:** delete a `Descent<…>` row's positive fixture, or break one arm of `CarriesOne` →
+    `DESCENT_CENSUS` fails naming that label. **At least three rows, at least one of them from part 3's five
+    new rows.** A new row that cannot fail measures nothing.
+  - **The negative controls, which must stay green** — a red here is a false positive and a defect in this
+    increment: the shipped `Rule` type, `sequentialIds`, `toDoc`, `legacyFlag`/`overlap` as they stand,
+    **every `Neg` fixture in `DESCENTS`** (including the two new `'illegal'` twins, one of which is a
+    **door** and must answer `false` to the illegal leaf), and the doorless twins A-80 Part 5 lists.
+  - **`AllHidden` AND `AllIllegal` are still `never` over the shipped tree** — `npx tsc -p tsconfig.json
+    --noEmit` exit 0, re-derived and not assumed. Part 2's stop-and-report condition lives here.
+  - **Cost, measured and published as a measurement.** `npm run typecheck` on the core project, three runs.
+    Baselines: the `I-19` builder measured **5.19–5.41 s**, round 59 measured **5.54–5.79 s** shipped. The
+    tagged walk traverses the same members twice and the arms no longer short-circuit, so a rise is
+    expected. **`I-19`'s 7.0 s budget stands. Over it is a finding to report, not rows to trim silently** —
+    the answer would be to lower `Down`'s bound, and that is a ruling.
+  - **Regression.** `npm run test:tap` → **1637 pass / 0 fail / 0 skipped / 0 cancelled**. **No message pin
+    moves and no test changes.** A pin that moves is a defect in this increment, not a test to edit.
+- **Dependencies / blockers.** **`I-19`, built and on `master` (`386c459`).** It blocks nothing and nothing
+  waits on it.
+- **Ship gate.** `npm test` green; `npm run typecheck` exit 0 on **both** projects; `npm run web:build`
+  succeeds; the export count re-measured and **86**; **N14, N15, the R59-2 pair, the R59-3 pair, N13 on
+  three rows and every negative control run red-before-green and recorded with their measured output**; the
+  two deliberately-`false` descent rows recorded as still `false`; the typecheck cost recorded. **Files
+  touched: `packages/core/test/storable.test.ts` and `docs/BUILD-NOTES.md` (this increment's addendum).
+  Nothing else** — no `src` file, no `.tsx`, no `qa/`, no `docs/design/`, no `tsconfig.json`, no
+  `package.json`, no lockfile.
+- **Route: builder only, then the manager.** **This is the exception to the mandatory-breaker rule and A-81
+  Part 8 is the authority for it.** The fix is the breaker's own candidate, already measured by them across
+  151 shapes with all 35 census rows unmoved and zero false positives; the increment touches one test file;
+  and **Jacob has directed that this class be closed.** The builder's own red-before-green criteria are the
+  verification. **If any negative control reddens, or `ILLEGAL_SHAPE_CENSUS` reddens over the unmodified
+  tree, that is a live defect and it goes back to the architect immediately** — that, and only that,
+  reopens this arc.
 
 #### I-10 — The participants editor, the profile grouping, and the access double-run — **DEFERRED at revision 55; 2c ships without it**
 
