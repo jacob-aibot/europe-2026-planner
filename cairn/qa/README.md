@@ -4350,3 +4350,77 @@ change: `:117`'s docstring said *"Fourteen keys"* over a fifteen-entry `ROW_KEYS
 `:519`'s assertion message said the covering table is *"40 rows (8 x 5)"* where it is now **45
 (9 × 5)**. The builder disclosed the second and declined to touch it; the first was undisclosed.
 Re-run afterwards under Chromium: **`ALL OK [engine: chromium]`**.
+
+---
+
+**Round 64** is the confirming adversarial pass ROADMAP `I-25` says `2b54c67` already owed, run
+over **two commits as one subject**: round 63's four builder-routed fixes (`2b54c67`) and **I-25**
+(`fcac762`) / §8.4 **A-86** — *the door and the census after round 63*. Two probes, run from
+`cairn/`:
+
+```bash
+node --experimental-strip-types qa/r64-census.mjs   # 8 sections; 56 ok, 9 FAIL at fcac762
+bash qa/r64-mutants.sh                              # 11 mutants in a throwaway git worktree
+```
+
+`r64-census.mjs`'s `FAIL` lines are the findings, not a broken probe. **§H's four** are
+**R64-1** (the round's headline): `createTrip` reads `CityInit.centre` **three** times and
+`init.cities` **twice**, so a getter-backed init still mints a pick **stale at birth** —
+`{centre: null, pick: live}`, `{null, null}` — which is R62-2's own state through the door
+`2b54c67` fixed to prevent it, and A-86 Part 2's trigger names the fix it did not apply
+(*bind the value once*). **§A's three** are **R64-2**: KD-117's blast radius — a `cities` **array**
+with a corrupt entry throws a raw engine `TypeError` out of `travelStats` and takes the whole
+library's travel history down, and the one shape whose entry **is** an object with a non-string
+`name` passes `rowStatsReadable`, so `travelHistory` reports `rowId: null, unreadableRows: []`
+and **nothing names the row**. **§C's two** are **R64-3**: the count is accumulated in the
+**travelled** walk, so a *planned* row with a corrupt `cities` is `rowStatsReadable` false and
+counts 0 — the pin the increment asserts is narrower than the sentence describing it.
+
+The sections, and what each is for:
+
+- **§A** KD-117 end to end: eight entry shapes, each with what `travelStats` does, what
+  `rowStatsReadable` says and what `travelHistory` reports — plus whether a caller can tell *"no
+  history"* from *"history threw"*, and what one JSON round trip does to a `cities` hole.
+- **§B** the count's boundary over **sixteen** present-and-not-an-array values, including every
+  falsy one a `!v` guard would have eaten (`''`, `0`, `NaN`, `false`), a boxed `String`, two
+  array-likes, a `Set`, a function, a `Symbol` and a `bigint`; a `Proxy` **over** an array
+  (walked, correctly); a `length` getter that throws; a row-level getter that throws; and a
+  `cities` that changes between reads (bound once — `I-24` Part 4's property, which held).
+- **§C** the pin between core's counter and `rowStatsReadable`, asked at both lifecycles.
+- **§D** the store's real path: a corrupt row seeded into `memoryStorage` with its document,
+  through `createStore` + `refreshLibrary`, and **there is no repair path** for a corrupt row
+  already at the current generation (`summaryScan` triggers on version alone) — **R64-5**.
+- **§E** `countShaped` and `SOURCE_ALLOW`, with the four regexes and the function **lifted out of
+  the shipped test file** and run over nine names.
+- **§F** `I-24`'s exit re-derived under the two **corrected** criteria: R63-7's four `centre`
+  cases plus both inherited ones, and R63-8's **two** numbers (`ref.kind === 'trip'` **0**, total
+  **1**).
+- **§G** the standing constraints over the two commits' surface, comments stripped — the naive
+  grep for `document.`/`React` in `packages/client/src` hits five files and every hit is prose.
+- **§H** the door's read count — **R64-1**.
+
+**`r64-mutants.sh` is the answer to the two claims that are about a TEST rather than about the
+product**, and it is the one to reach for whenever a test's liveness is the thing in question.
+Each mutant is applied in a throwaway `git worktree` at the commit under test; it copies
+`node_modules` and **aborts** unless `@cairn/core` resolves inside the worktree, because a
+symlinked `node_modules` silently audits the live tree (round 61 paid for that once). M1–M4 are
+KD-116: **M1 is GREEN** — an early `return` above the three conditional `cli.ts stats` lines
+makes all three unreachable and `test/cli.test.ts` stays 43/0 — which is **R64-4**, while M3
+(sentence changed) and M4 (wrong field) are RED, so the source-lift technique is sound and the
+pairing is what has the hole. M5–M10 are A-86 Part 6's `issuesForRef` tripwire and it **is
+live**: a real caller, a `.tsx` caller under `apps/web/src`, a renamed symbol and a moved
+declaring file all redden it. Its only escapes are a caller in a non-`.ts(x)` file (M9) and a
+dynamic property access (M10), both outside a bare-identifier walk's stated scope.
+
+**`qa/r63-i24.mjs` changed in this round and its counts did not (R64-6).** Its three `gap()`
+calls were **unconditional prints**, so the GAP count could not move when the fact behind it did
+— and two had gone stale at `I-25`. `gap()` is now `gap(cond, msg, closedMsg)`: each prints the
+GAP only while its condition holds and an `ok` line otherwise. §J's note now reports
+`unreadableCityLists` beside `seen.cities` instead of saying the absorption *"says so nowhere"*,
+and §D's `placeCount: 4000` line says it is a **ruled** residue (A-86 Part 5) rather than an open
+question. **No assertion was weakened**; it still runs **0 FAIL / 3 GAP**, now for a reason the
+file can lose.
+
+Neither round-64 probe writes to the repo: `r64-census.mjs` builds every fixture in memory, uses
+`memoryStorage()`, and reads `fixtures/` only; `r64-mutants.sh` works exclusively inside a
+`git worktree` it creates and removes, and never touches the live tree.

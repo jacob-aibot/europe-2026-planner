@@ -36,7 +36,18 @@ const { loadEurope2026 } = await import(pathToFileURL(join(CAIRN, 'fixtures/load
 let fails = 0, gaps = 0;
 const ok = (c, m, x) => { if (c) console.log(`  ok   ${m}`); else { fails++; console.log(`  FAIL ${m}${x === undefined ? '' : `  — ${x}`}`); } };
 const note = (m) => console.log(`  note ${m}`);
-const gap = (m) => { gaps++; console.log(`  GAP  ${m}`); };
+/**
+ * A design question routed rather than asserted — and it is CONDITIONAL, since QA round 64.
+ * Every `gap()` here used to be an unconditional print, so the count could not move when the
+ * fact behind it moved: two of the three were still printing at `fcac762` after `I-25` had
+ * changed what they said. `gap(cond, m, closed)` prints the GAP only while `cond` holds and
+ * prints `closed` as an `ok` line otherwise, so the probe measures the gap instead of
+ * remembering it. (R64-6.)
+ */
+const gap = (cond, m, closed) => {
+  if (cond) { gaps++; console.log(`  GAP  ${m}`); }
+  else console.log(`  ok   ${closed ?? 'the gap this section recorded is closed'}`);
+};
 const head = (s) => console.log(`\n== ${s}`);
 const J = (v) => JSON.stringify(v);
 const src = (p) => readFileSync(join(CAIRN, p), 'utf8');
@@ -287,7 +298,14 @@ head('D — `placeCount` end to end: the rescan, a v7 row read by a v8 build, ho
   ok(worst === null, '14 hostile `placeCount` values: `seen.places` stays a non-negative integer ≥ located, no throw', worst);
   note(`for reference, placeCount 1e21 → seen.places ${core.travelStats([{ ...fresh, placeCount: 1e21 }], '2026-12-31').seen.places} (a stored count is believed, exactly as \`stopCount\` is)`);
   const big = core.travelStats([{ ...fresh, placeCount: 4000 }], '2026-12-31');
-  gap(`a hand-edited row publishes \`seen.places\` ${big.seen.places} where the document holds ${fresh.placeCount} — the A-37 Part 3 idiom believes the row, and \`seen\` is now the only census column a corrupt row can INFLATE without bound (\`cities\` is record-by-record, stops shares the property)`);
+  // **Updated at QA round 64.** This is no longer an open question: §8.4 **A-86** Part 5 RULES
+  // it as a recorded residue with two triggers and no ceiling, and `countOf`'s docstring now
+  // carries the reasoning where a builder tempted to add a cap will read it. It stays a GAP
+  // because the *behaviour* is unchanged and the residue is live — the condition below is what
+  // says so, and the day a ceiling lands this line turns into an `ok`.
+  gap(big.seen.places === 4000,
+    `a hand-edited row publishes \`seen.places\` ${big.seen.places} where the document holds ${fresh.placeCount} — RULED as a residue by A-86 Part 5 (no ceiling: for places the row IS the denominator, so a cap would be a number nobody measured), recorded in \`countOf\`'s docstring with its two triggers, neither of which has fired`,
+    `a stored \`placeCount\` of 4000 no longer publishes 4000 (got ${big.seen.places}) — A-86 Part 5's residue has been closed and this line should be re-derived`);
 
   // D3. The invariant, over a hostile library rather than over one trip.
   const lib = [
@@ -358,8 +376,14 @@ head('E — the range check on both new subjects');
   ok(issues.every((i) => i.level === 'error' && i.params.cityKey === t.cities[0].key && typeof i.params.lat === 'number'),
     'each carries level error, `cityKey`, `lat` and `lng`', J(issues.map((i) => i.params)));
   ok(issues.every((i) => i.ref.kind === 'trip'), 'the ref is the trip — a city has no RefKind', J(issues.map((i) => i.ref)));
-  gap('a `lat_lng_out_of_range` issue whose `ref.kind` is `trip` is new: every previous one named a stop or a place. Any consumer that resolves this code\'s ref to a record now has a case it has never seen — measured below over the shipped consumers.');
   const consumers = execSync(`grep -rn "lat_lng_out_of_range" ${JSON.stringify(join(CAIRN, 'packages/client/src'))} ${JSON.stringify(join(CAIRN, 'apps/web/src'))} || true`, { encoding: 'utf8' }).trim();
+  // **Updated at QA round 64.** §8.4 A-86 Part 6 answers the rendered half two-sidedly (nothing
+  // under `apps/web/src` reads `Issue`; `issuesForRef` has no caller) and `I-25` arms a tripwire
+  // on the second measurement. What is still open is `issuesForRef`'s kind-ignoring filter, and
+  // it is open exactly while that selector has no caller — so the condition is the measurement.
+  gap(consumers === '',
+    'a `lat_lng_out_of_range` issue whose `ref.kind` is `trip` is new: every previous one named a stop or a place, and `issuesForRef` filters on `i.ref.id` alone. A-86 Part 6 records the latent defect and `I-25` arms a tripwire (`test/stats-storage.test.ts`, section 7) that reddens the day a first caller appears — it is armed, not fixed',
+    'a consumer of `lat_lng_out_of_range` now exists outside core — A-86 Part 6\'s trigger has fired and the kind must go into `issuesForRef`\'s signature');
   note(`consumers of the code outside core: ${consumers === '' ? 'none' : consumers.replace(new RegExp(CAIRN + '/', 'g'), '')}`);
 
   // Boundaries, one at a time. `inRange` is inclusive; the values a real device produces sit on
@@ -549,11 +573,25 @@ head('J — R62-6: the guard is live, and what a live guard costs');
   const corrupt = { ...good, id: 'corrupt', cities: 'AT,HR,CZ' };
   const s = caught(() => core.travelStats([good, corrupt], '2026-12-31'));
   ok(s.err === undefined, 'a row whose `cities` is a string no longer throws — the guard answers', s.err && s.err.message);
-  if (!s.err) note(`the census over {good, corrupt} reports seen.cities ${s.value.seen.cities} — the corrupt row contributes 0 and says so nowhere`);
+  // **Updated at QA round 64 (R64-6).** *"contributes 0 and says so nowhere"* stopped being true
+  // at `I-25`: `TravelStats.unreadableCityLists` counts the absorbed row and `cli.ts stats`
+  // prints it. The note now reports both numbers rather than the sentence that went stale.
+  if (!s.err) note(`the census over {good, corrupt} reports seen.cities ${s.value.seen.cities} — the corrupt row contributes 0, and since I-25 it says so: unreadableCityLists ${s.value.unreadableCityLists}`);
   const hist = client.travelHistory({ library: [good, corrupt] }, '2026-12-31');
   ok(hist.ok === true, '`travelHistory` returns ok — no banner, no named row');
   ok(client.rowStatsReadable(corrupt) === false, '…while `rowStatsReadable` says that row is NOT readable');
-  gap('the two now disagree, and nothing reconciles them: `rowStatsReadable` is consulted ONLY inside `travelHistory`\'s `catch` (selectors/index.ts:291) and has no other consumer in `packages/client/src` or `apps/web/src`, so after R62-6 a row with a non-array `cities` is silently absent from the lifetime census with no surface anywhere naming it. Louder before, quieter and wronger now — A-59 Part 5\'s *recompute* affordance is the thing that would close it.');
+  // **Updated at QA round 64 (R64-6).** `I-25` closed the half of this that was about the count:
+  // the two predicates are reconciled through `TravelStats.unreadableCityLists`, which `cli.ts
+  // stats` prints. What is still open is the half A-59 Part 5 owns — no CLIENT surface names the
+  // row, because `rowStatsReadable` is still consulted only inside `travelHistory`'s `catch`
+  // (`selectors/index.ts:291`) and the success branch carries no `unreadableRows`. The condition
+  // below is that measurement, so the day a second consumer appears this turns into an `ok`.
+  const counted = !s.err && s.value.unreadableCityLists === 1;
+  ok(counted, 'I-25: the absorbed row IS counted now — `unreadableCityLists` reconciles the two predicates', s.err ? s.err.message : `got ${s.value.unreadableCityLists}`);
+  const consumersOfPredicate = execSync(`grep -rln "rowStatsReadable" ${JSON.stringify(join(CAIRN, 'packages/client/src'))} ${JSON.stringify(join(CAIRN, 'apps/web/src'))} || true`, { encoding: 'utf8' }).trim().split('\n').filter(Boolean);
+  gap(hist.ok === true && consumersOfPredicate.length === 1,
+    `the COUNT is closed and the NAME is not: \`travelHistory\` still returns ok:true with no banner and no named row, and \`rowStatsReadable\` still has exactly one consumer (${consumersOfPredicate.map((f) => f.replace(CAIRN + '/', '')).join(', ')}) — inside the \`catch\` this guard made unreachable. A-59 Part 5's *recompute* affordance is the thing that would close it, and it is unscheduled by ruling`,
+    'a second consumer of `rowStatsReadable` exists, or `travelHistory` now refuses — A-59 Part 5\'s treatment has landed and this line should be re-derived');
 }
 
 console.log(`\nCOMPLETE — ${fails} FAIL, ${gaps} GAP`);
