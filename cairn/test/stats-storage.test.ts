@@ -67,8 +67,8 @@ import { dirname, relative, resolve, sep } from 'node:path';
 // static import into a tsconfig that deliberately excludes that project. It prints an
 // `ExperimentalWarning`, which is noise in `node --test` and not a failure.
 import { stripTypeScriptTypes } from 'node:module';
-import { COUNTRY_INDEX, SCHEMA_VERSION, SUMMARY_VERSION, tripSummary, createTrip, addPhoto, addStop, migrateDoc, sequentialIds, toJSON, fromJSON } from '../packages/core/src/index.ts';
-import type { BuildCtx, Trip, TripSummaryRow } from '../packages/core/src/index.ts';
+import { COUNTRY_INDEX, SCHEMA_VERSION, SUMMARY_VERSION, tripSummary, travelStats, createTrip, addPhoto, addStop, migrateDoc, sequentialIds, toJSON, fromJSON } from '../packages/core/src/index.ts';
+import type { BuildCtx, IsoDate, Trip, TravelStats, TripSummaryCity, TripSummaryRow } from '../packages/core/src/index.ts';
 // §2.10's "tests do not create surface": `addPlace` is an internal, imported by module path
 // exactly as `packages/core/test/readOnce.test.ts` already imports it. Axis C's `attribution
 // .places` cell cannot be reached without a `Place` that carries an `at`, and there is no
@@ -440,6 +440,378 @@ test('A-86 Part 4: `unreadableCityLists` is not count-shaped, so the allow-list 
     'the classifier no longer catches the rename this assertion exists to catch');
   assert.equal('packages/core/src/derive/travelStats.ts::unreadableCityLists' in SOURCE_ALLOW, false);
   assert.equal(ROW_COUNT_FIELDS.length, 9, 'a tenth stored count arrived without A-33 Part 2\'s ruling');
+});
+
+/**
+ * §8.4 **A-87** Part 4 (ROADMAP **I-26**) — third sibling, same reason. `absorbed` is a **list**
+ * and not a count: it carries no `DOMAIN` noun and no counting suffix, so `countShaped` is
+ * `false` and `SOURCE_ALLOW` gains no entry. Nothing that is stored moves for it either —
+ * `TravelStats` is derived and never stored (**A-34**, pinned mechanically by 6b-5 below).
+ */
+test('A-87 Part 4: `absorbed` is not count-shaped, so the allow-list stays as it is', () => {
+  assert.equal(countShaped('absorbed'), false);
+  assert.equal('packages/core/src/derive/travelStats.ts::absorbed' in SOURCE_ALLOW, false);
+  // Not blindness: a count-shaped name in the same neighbourhood IS caught.
+  assert.equal(countShaped('absorbedCities'), true);
+  // And the identity A-33 Part 2 reserves to the architect still holds at nine.
+  assert.deepEqual(
+    ROW_PATHS.filter((p) => countShaped(p.split('.').pop() as string)).sort(),
+    [...ROW_COUNT_FIELDS].sort(),
+  );
+});
+
+test('I-26: no version constant moved, and each is asserted BY NAME', () => {
+  assert.equal(SCHEMA_VERSION, 5);
+  assert.equal(SUMMARY_VERSION, 8);
+  assert.equal(Object.keys(ROW_KEYS).length, 15);
+  assert.equal(Object.keys(CITY_KEY_RECORD).length, 7);
+});
+
+// ===========================================================================
+// (I-26) **The entry-gate covering table — ARCHITECTURE §8.4 A-87 Part 7.**
+//
+// This is the increment's **closure claim**, and it is deliberately a claim about **coverage**
+// rather than a list of exceptions. A-80 Part 10's lesson, one model layer down: a closure claim
+// shaped as *"a further finding could only be X, Y or Z"* is the format this project has now
+// falsified four times.
+//
+// > The row axis is **`ROW_KEYS`** (`Record<keyof TripSummaryRow, true>`, **15**) and the city
+// > axis is its new sibling **`CITY_KEY_RECORD`** (`Record<keyof TripSummaryCity, true>`, **7**).
+// > Both are exhaustive **by type**, so a field added to either record **breaks the build** until
+// > the table has a row for it — the same mechanism A-33 Part 2 already reserves to the
+// > architect, which is why this is a coverage claim and not a list.
+//
+// Each key is crossed with a fixed hostile shape set, and in every cell `travelStats` **returns**
+// and every published number satisfies `Number.isFinite`. **A cell with no stated expectation is
+// a hole** and the completeness check below is what makes that true rather than hoped for.
+//
+// **What a round-65 finding on this class must look like** (A-87 Part 7): (a) a cell whose
+// measured behaviour differs from its stated expectation; (b) a stored record class reachable
+// from the derive path that the table does not cover; or (c) a derive-path function other than
+// `travelStats` that reads a stored record. **A sixth hostile shape of a field the table already
+// covers is not a finding against the ruling** — it is a finding against the table's shape set,
+// exactly as A-39 Part 11 draws that line.
+//
+// **One population this deliberately does not cover, said rather than left to be inferred.** A
+// stored value reached through a **hostile accessor** — a `Proxy` whose `length` getter throws —
+// still throws, and QA round 64 §B measured both. It is not reachable: storage returns plain data
+// from structured clone or `JSON.parse`, neither of which can carry an accessor. Over the
+// reachable population the throw list is exhaustive at **two**.
+//
+// **Three outcomes, not two, and the third is disclosed rather than smuggled.** A-87 Part 7 names
+// *absorbed* and *inert*; `startDate` and `endDate` are neither — they **throw**, which is A-37
+// Part 2's grandfathered throw standing verbatim (A-87 Part 9's own first row). It is a stated
+// expectation, so it is not a hole, and it is not a sixth shape.
+//
+// `inert` is read as *"no absorption"* — the classifier's negative. The stronger reading, *every
+// output equal to the healthy row's*, is asserted separately over exactly the population A-87
+// Part 7 needs it for: **the six row keys and the two city keys the derivation does not read**.
+// It cannot be asserted for a read field's value arm, because taking a documented fallback is
+// what a value arm DOES — `cities: null` contributes no cities, and that is the ruling working.
+// ===========================================================================
+
+/**
+ * **Compile-time, and it is the point.** A field added to `TripSummaryCity` without a line here
+ * is a `tsc` error, so the covering table's city denominator cannot silently fall behind the
+ * type. `ROW_KEYS` above is the row half and has worked this way since A-33 Part 2.
+ */
+const CITY_KEY_RECORD: Record<keyof TripSummaryCity, true> = {
+  key: true,
+  name: true,
+  countryCode: true,
+  countrySource: true,
+  centre: true,
+  firstDay: true,
+  lastDay: true,
+};
+
+/** A cell's stated expectation. `{ absorbed }` names the PATH, which is half of what is claimed. */
+type Outcome = 'inert' | 'throws' | { absorbed: string };
+
+/** The fixed hostile shape set A-87 Part 7 names. */
+const SHAPES: Array<[label: string, value: unknown]> = [
+  ['undefined', undefined],
+  ['null', null],
+  ['a number', 42],
+  ['a string', 'x'],
+  ['a plain object', {}],
+  ['an array', []],
+  ['a boolean', true],
+];
+
+/** …plus, for the two containers, a non-object entry. A string is already in the set above. */
+const CONTAINER_SHAPES: Array<[label: string, value: unknown]> = [
+  ...SHAPES,
+  ['an array holding a non-object entry', [42]],
+];
+
+const ABSENT = 'undefined';
+const NULLED = 'null';
+const NUM = 'a number';
+const STR = 'a string';
+const OBJ = 'a plain object';
+const ARR = 'an array';
+const BOOL = 'a boolean';
+const ENTRY = 'an array holding a non-object entry';
+
+/** Every shape of one key mapped to the same outcome — for the keys nothing reads. */
+const all = (o: Outcome, shapes = SHAPES): Record<string, Outcome> =>
+  Object.fromEntries(shapes.map(([label]) => [label, o]));
+
+/**
+ * The ROW axis. Denominated by `ROW_KEYS`' own type, so a sixteenth field fails to compile here.
+ *
+ * The baseline is a row with **empty collections and zero counts**, which is what lets the value
+ * arms (`undefined`, `null`) be genuinely inert rather than merely uncounted: `cities: null` and
+ * `cities: []` are the same answer — *this row does not say which cities it holds* — and that
+ * identity is the ruling's own justification for the uniform null arm (A-87 Part 3 rule 5).
+ */
+const ROW_TABLE: Record<keyof TripSummaryRow, Record<string, Outcome>> = {
+  // Read, but not gated: `id` is the absorption's own subject and the duplicate key.
+  id: all('inert'),
+  // The six the derivation does not read — the CONTROL half of this table (A-87 Part 3).
+  title: all('inert'),
+  datePrecision: all('inert'),
+  cityCount: all('inert'),
+  dayCount: all('inert'),
+  revision: all('inert'),
+  summaryVersion: all('inert'),
+  // **A-37 Part 2's grandfathered throw, standing verbatim.** These two decide whether the row is
+  // classified at all and there is nothing to degrade to, so inventing a lifecycle for them is a
+  // lie. A-87 Part 7 states this is now the WHOLE throw list over the reachable population.
+  startDate: all('throws'),
+  endDate: all('throws'),
+  // Already gated by `countOf` before this ruling (A-84 Part 7 item 1 / A-85 Part 3): a stored
+  // count is read as a count or as nothing, and the reader does not own them, so they absorb
+  // nothing. A-86 Part 5's *no ceiling* is untouched.
+  placeCount: all('inert'),
+  stopCount: all('inert'),
+  poolCount: all('inert'),
+  countryCodes: {
+    [ABSENT]: 'inert',
+    [NULLED]: 'inert',
+    [NUM]: { absorbed: 'countryCodes' },
+    [STR]: { absorbed: 'countryCodes' },
+    [OBJ]: { absorbed: 'countryCodes' },
+    [ARR]: 'inert',
+    [BOOL]: { absorbed: 'countryCodes' },
+    [ENTRY]: { absorbed: 'countryCodes[0]' },
+  },
+  cities: {
+    [ABSENT]: 'inert',
+    [NULLED]: 'inert',
+    [NUM]: { absorbed: 'cities' },
+    [STR]: { absorbed: 'cities' },
+    [OBJ]: { absorbed: 'cities' },
+    [ARR]: 'inert',
+    [BOOL]: { absorbed: 'cities' },
+    [ENTRY]: { absorbed: 'cities[0]' },
+  },
+  attribution: {
+    [ABSENT]: 'inert',
+    [NULLED]: 'inert',
+    [NUM]: { absorbed: 'attribution' },
+    [STR]: { absorbed: 'attribution' },
+    // A plain object carrying neither census is the same answer as no `attribution` at all — a
+    // row minted before SUMMARY_VERSION 4 (A-31 Part 3). A `{places: {}}`, where the census IS
+    // present and carries neither of its declared numbers, absorbs; that cell is
+    // `packages/core/test/absorption.test.ts`' own, because it is not a shape of this set.
+    [OBJ]: 'inert',
+    [ARR]: { absorbed: 'attribution' },
+    [BOOL]: { absorbed: 'attribution' },
+  },
+};
+
+/** The CITY axis, applied to the one healthy entry of the baseline row. */
+const CITY_TABLE: Record<keyof TripSummaryCity, Record<string, Outcome>> = {
+  // The two the derivation does not read. Asserted INERT, which is what covers them BEFORE
+  // anything reads them: the day a derivation starts reading one, this cell's expectation
+  // changes and the test demands the gate.
+  key: all('inert'),
+  countrySource: all('inert'),
+  name: {
+    [ABSENT]: 'inert',
+    [NULLED]: 'inert',
+    [NUM]: { absorbed: 'cities[0].name' },
+    [STR]: 'inert',
+    [OBJ]: { absorbed: 'cities[0].name' },
+    [ARR]: { absorbed: 'cities[0].name' },
+    [BOOL]: { absorbed: 'cities[0].name' },
+  },
+  countryCode: {
+    [ABSENT]: 'inert',
+    [NULLED]: 'inert',
+    [NUM]: { absorbed: 'cities[0].countryCode' },
+    [STR]: { absorbed: 'cities[0].countryCode' },
+    [OBJ]: { absorbed: 'cities[0].countryCode' },
+    [ARR]: { absorbed: 'cities[0].countryCode' },
+    [BOOL]: { absorbed: 'cities[0].countryCode' },
+  },
+  centre: {
+    [ABSENT]: 'inert',
+    [NULLED]: 'inert',
+    [NUM]: { absorbed: 'cities[0].centre' },
+    [STR]: { absorbed: 'cities[0].centre' },
+    [OBJ]: { absorbed: 'cities[0].centre' },
+    [ARR]: { absorbed: 'cities[0].centre' },
+    [BOOL]: { absorbed: 'cities[0].centre' },
+  },
+  // The pair is ENTRY-scoped (A-59 Part 2), so the path is the entry and never the field.
+  firstDay: {
+    [ABSENT]: 'inert',
+    [NULLED]: 'inert',
+    [NUM]: { absorbed: 'cities[0]' },
+    [STR]: { absorbed: 'cities[0]' },
+    [OBJ]: { absorbed: 'cities[0]' },
+    [ARR]: { absorbed: 'cities[0]' },
+    [BOOL]: { absorbed: 'cities[0]' },
+  },
+  lastDay: {
+    [ABSENT]: 'inert',
+    [NULLED]: 'inert',
+    [NUM]: { absorbed: 'cities[0]' },
+    [STR]: { absorbed: 'cities[0]' },
+    [OBJ]: { absorbed: 'cities[0]' },
+    [ARR]: { absorbed: 'cities[0]' },
+    [BOOL]: { absorbed: 'cities[0]' },
+  },
+};
+
+/** The six row keys and two city keys the derivation does not read — A-87 Part 3's control half. */
+const UNREAD_ROW_KEYS = ['title', 'datePrecision', 'cityCount', 'dayCount', 'revision', 'summaryVersion'];
+const UNREAD_CITY_KEYS = ['key', 'countrySource'];
+
+const COVER_TODAY = '2026-06-15' as IsoDate;
+
+/** A completed row with empty collections and zero counts. */
+function baseRow(): TripSummaryRow {
+  return {
+    id: 'cover', title: 'Cover', startDate: '2026-01-01' as IsoDate, endDate: '2026-01-05' as IsoDate,
+    datePrecision: 'exact', cityCount: 0, dayCount: 0, placeCount: 0, stopCount: 0, poolCount: 0,
+    revision: 1, countryCodes: [], cities: [],
+    attribution: { places: { located: 0, attributed: 0 }, stops: { located: 0, attributed: 0 } },
+    summaryVersion: SUMMARY_VERSION,
+  };
+}
+
+/** The same row carrying exactly one entirely healthy city. */
+function baseCityRow(): TripSummaryRow {
+  return {
+    ...baseRow(),
+    cityCount: 1,
+    cities: [{
+      key: 'city-1' as TripSummaryCity['key'],
+      name: 'Vienna',
+      countryCode: 'AT' as TripSummaryCity['countryCode'],
+      countrySource: 'coordinate',
+      centre: { lat: 48.2082, lng: 16.3738 },
+      firstDay: '2026-01-02' as IsoDate,
+      lastDay: '2026-01-03' as IsoDate,
+    }],
+  };
+}
+
+/** Every number a `TravelStats` publishes, as `path → value`. */
+function statNumbers(value: unknown, path = ''): Array<[string, number]> {
+  if (typeof value === 'number') return [[path, value]];
+  if (Array.isArray(value)) return value.flatMap((v, i) => statNumbers(v, `${path}[${i}]`));
+  if (value && typeof value === 'object') {
+    return Object.entries(value).flatMap(([k, v]) => statNumbers(v, path ? `${path}.${k}` : k));
+  }
+  return [];
+}
+
+function checkCell(label: string, r: TripSummaryRow, expected: Outcome, healthy: TravelStats | null): void {
+  if (expected === 'throws') {
+    assert.throws(() => travelStats([r], COVER_TODAY), `${label}: expected A-37 Part 2's grandfathered throw`);
+    return;
+  }
+  let s: TravelStats;
+  try {
+    s = travelStats([r], COVER_TODAY);
+  } catch (e) {
+    assert.fail(`${label}: travelStats THREW — ${(e as Error).message}. A-87 Part 7's throw list is two.`);
+  }
+  for (const [p, n] of statNumbers(s)) {
+    assert.ok(Number.isFinite(n), `${label}: published a non-finite number at ${p} — ${String(n)}`);
+  }
+  if (expected === 'inert') {
+    assert.deepEqual(s.absorbed, [], `${label}: absorbed something the table calls inert`);
+    if (healthy) {
+      assert.deepEqual(s, healthy,
+        `${label}: a key the derivation does not read changed an output — it now needs a gate (A-87 Part 3)`);
+    }
+    return;
+  }
+  assert.deepEqual(s.absorbed, [{ rowId: r.id, path: expected.absorbed, kind: s.absorbed[0]?.kind }],
+    `${label}: expected exactly one absorption at ${expected.absorbed}, got ${JSON.stringify(s.absorbed)}`);
+}
+
+test('I-26 (A-87 Part 7): the covering table is COMPLETE — every key of both records, every shape, no holes', () => {
+  for (const key of Object.keys(ROW_KEYS)) {
+    const cells = ROW_TABLE[key as keyof TripSummaryRow];
+    assert.ok(cells, `no covering-table row for TripSummaryRow.${key} — a hole`);
+    const shapes = key === 'cities' || key === 'countryCodes' ? CONTAINER_SHAPES : SHAPES;
+    assert.deepEqual(Object.keys(cells).sort(), shapes.map(([l]) => l).sort(),
+      `TripSummaryRow.${key}: a cell with no stated expectation is a hole (A-87 Part 7)`);
+  }
+  for (const key of Object.keys(CITY_KEY_RECORD)) {
+    const cells = CITY_TABLE[key as keyof TripSummaryCity];
+    assert.ok(cells, `no covering-table row for TripSummaryCity.${key} — a hole`);
+    assert.deepEqual(Object.keys(cells).sort(), SHAPES.map(([l]) => l).sort(),
+      `TripSummaryCity.${key}: a cell with no stated expectation is a hole (A-87 Part 7)`);
+  }
+  // The denominators are the compiler's, and they are stated so a widening is visible in a diff.
+  assert.equal(Object.keys(ROW_TABLE).length, 15);
+  assert.equal(Object.keys(CITY_TABLE).length, 7);
+});
+
+test('I-26 (A-87 Part 7): every ROW cell measures what the table says — 15 keys × the hostile shape set', () => {
+  const healthy = travelStats([baseRow()], COVER_TODAY);
+  assert.deepEqual(healthy.absorbed, [], 'the baseline row is not healthy, so the table proves nothing');
+  for (const key of Object.keys(ROW_KEYS) as Array<keyof TripSummaryRow>) {
+    const cells = ROW_TABLE[key];
+    const shapes = key === 'cities' || key === 'countryCodes' ? CONTAINER_SHAPES : SHAPES;
+    for (const [shapeLabel, value] of shapes) {
+      const r = { ...baseRow(), [key]: value } as unknown as TripSummaryRow;
+      checkCell(`row.${key} = ${shapeLabel}`, r, cells[shapeLabel],
+        UNREAD_ROW_KEYS.includes(key) ? healthy : null);
+    }
+  }
+});
+
+test('I-26 (A-87 Part 7): every CITY cell measures what the table says — 7 keys × the hostile shape set', () => {
+  const healthy = travelStats([baseCityRow()], COVER_TODAY);
+  assert.deepEqual(healthy.absorbed, [], 'the baseline city is not healthy, so the table proves nothing');
+  assert.equal(healthy.cities.length, 1, 'the baseline city produced no city row');
+  for (const key of Object.keys(CITY_KEY_RECORD) as Array<keyof TripSummaryCity>) {
+    const cells = CITY_TABLE[key];
+    for (const [shapeLabel, value] of SHAPES) {
+      const base = baseCityRow();
+      const r = { ...base, cities: [{ ...base.cities[0], [key]: value }] } as unknown as TripSummaryRow;
+      checkCell(`cities[0].${key} = ${shapeLabel}`, r, cells[shapeLabel],
+        UNREAD_CITY_KEYS.includes(key) ? healthy : null);
+    }
+  }
+});
+
+/**
+ * **N6, injected:** make `key`'s cell absorb — i.e. state `{ absorbed: 'cities[0].key' }` in
+ * `CITY_TABLE` — and the inert arm reddens on a missing absorption, which is what proves the
+ * table's two outcomes are distinguishable and that neither is vacuous.
+ *
+ * The arm below is that proof run in the safe direction: a cell the table calls *absorbed* is
+ * measurably not inert, and a cell it calls *inert* is measurably not absorbed.
+ */
+test('I-26 (A-87 Part 7): the table\'s two outcomes are distinguishable — neither is vacuous', () => {
+  const base = baseCityRow();
+  const inert = { ...base, cities: [{ ...base.cities[0], key: 42 }] } as unknown as TripSummaryRow;
+  const absorbing = { ...base, cities: [{ ...base.cities[0], name: 42 }] } as unknown as TripSummaryRow;
+  assert.equal(travelStats([inert], COVER_TODAY).absorbed.length, 0);
+  assert.equal(travelStats([absorbing], COVER_TODAY).absorbed.length, 1);
+  // …and the inert one is inert in the STRONG sense, which is what covers `key` before anything
+  // reads it: the whole output is the healthy row's.
+  assert.deepEqual(travelStats([inert], COVER_TODAY), travelStats([base], COVER_TODAY));
 });
 
 // ===========================================================================

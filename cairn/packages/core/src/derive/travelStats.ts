@@ -17,7 +17,7 @@
  * Zero dependencies, no ambient clock: `today` is injected, exactly as `lifecycle`'s is.
  */
 import type { CountryCode, IsoDate } from '../model/ids.ts';
-import type { TripSummaryCity, TripSummaryRow } from './summary.ts';
+import type { AttributionCensus, TripSummaryRow } from './summary.ts';
 import { dayNumber, fromDayNumber } from './summary.ts';
 import { lifecycle } from './lifecycle.ts';
 // By module path, exactly as `normalizeCityName` below is: `isIsoDate` is already on §2.10's
@@ -103,6 +103,36 @@ export type TravelStatsCity = {
  */
 export type TravelRecordCensus = { cities: number; places: number; stops: number };
 
+/**
+ * One stored value the derivation could not read — §8.4 **A-87** Part 4.
+ *
+ * **This is what makes a row nameable on the SUCCESS path.** Before it, a row was nameable only
+ * if something threw: `travelHistory`'s `rowId`/`unreadableRows` are computed inside its own
+ * `catch`, so the moment a fault was *absorbed* rather than fatal — which is the direction A-59
+ * Part 2 and A-86 Part 4 correctly pushed every one of these — nothing anywhere said which row it
+ * was on. Attribution stops being a property of the failure path.
+ *
+ * A new gate adds a **row to this list**, never a field to `TravelStats`, and that is the
+ * property that closes the class (A-86 Part 8 residue 1's own trigger, fired).
+ */
+export type TravelStatsAbsorption = {
+  /** The library row it was found on — `TripSummaryRow.id`, whatever the row's lifecycle. */
+  rowId: string;
+  /**
+   * Where on the row, as a path: `cities`, `cities[3]`, `cities[3].name`, `countryCodes[1]`,
+   * `attribution.places.located`. Stable enough for a surface to print; **never parsed by core**.
+   */
+  path: string;
+  /**
+   * The level the value failed at. `list` — a container that is not an array; `entry` — a list
+   * member that is not an object; `field` — one stored scalar of a record; `date` — the
+   * entry-scoped `firstDay`/`lastDay` pair (A-59 Part 2's *one end unreadable makes the pair
+   * unusable*, which is why it is one absorption at the entry and never two); `census` — the
+   * `attribution` subtree.
+   */
+  kind: 'list' | 'entry' | 'field' | 'date' | 'census';
+};
+
 export type TravelStats = {
   countries: TravelStatsCountry[];
   cities: TravelStatsCity[];
@@ -135,14 +165,60 @@ export type TravelStats = {
   located: TravelRecordCensus;
   /** The honest hole, on screen. Never greater than `located`, per class. */
   unattributed: TravelRecordCensus;
-  /** Cities whose name folds to `''` — counted, never merged into a blank row. */
+  /**
+   * **Every stored value the derivation could not read, over the WHOLE library** — §8.4 **A-87**
+   * Part 4. In the canonical row order this function already computes (`startDate`, then `id`),
+   * and within a row in the order the reader visits its fields; deterministic for the same reason
+   * every other output here is.
+   *
+   * **Lifecycle-blind, and that is A-87 Part 5's ruling rather than an oversight.** A-31 Part 3's
+   * travelled-only rule governs the **lifetime map** and its argument is about *inflation* — a
+   * country you have not been to is not on the map of everywhere you have been. An absorption is
+   * not inflatable by planning: a corrupt `planned` row is corrupt **today**, its repair is
+   * available today, and it will be travelled later carrying the same corruption. So absorptions
+   * accumulate over every row the library holds, while every count that is about **travel** —
+   * `countries`, `cities`, `daysTravelled`, `seen`, `located`, `unattributed`, `unnamedCities` —
+   * stays travelled-only.
+   *
+   * **A new gate adds a row here, never a field to this type.** `unreadableCityDates` and
+   * `unreadableCityLists` below are computed **from this list at one site**, so they cannot drift
+   * from it; A-86 Part 8 residue 1's *"all three fold in"* is deliberately not applied literally
+   * (A-87 Part 4), and `unnamedCities` does not fold in at all because it is a **census** fact and
+   * not a storage one.
+   *
+   * **Residue (A-87 Part 4):** the two scalars have no reader `absorbed` could not serve.
+   * **Trigger:** the first surface that reads `absorbed` — at that moment they have no consumer
+   * and they go. **Residue (A-87 Part 10 item 1):** this list is bounded by what the user stored
+   * and by nothing else. **Trigger:** the first surface that renders the list rather than a count,
+   * which caps its own display and says it is capping.
+   */
+  absorbed: readonly TravelStatsAbsorption[];
+  /**
+   * Cities whose name folds to `''` — counted, never merged into a blank row.
+   *
+   * **§8.4 A-87 Part 3 rule 3 widens the population by one clause:** the stored `name` folded to
+   * `''`, **or was not a string at all**. An unreadable `name` is a *field* gate and not an entry
+   * gate, so it behaves exactly as a name folding to `''` already does — the entry still counts in
+   * `seen.cities`, still counts in `located`/`unattributed` if its centre is readable, produces no
+   * city row, and lands here. The absorption itself is on `absorbed`.
+   *
+   * **Travelled-only, and it is the control that proves A-87 Part 5 is a line and not a
+   * convenience.** This counts what the **census** lost; `absorbed` records what the **storage**
+   * cannot say. A planned row's cities are never folded, so nothing about them was dropped from
+   * the census and there is nothing here to count.
+   */
   unnamedCities: number;
   /**
-   * §8.4 **A-59**. City entries whose STORED `firstDay`/`lastDay` was present and unreadable, so
-   * the entry fell back to its trip's range. Counted **per entry**, not per field: the maximum
-   * is one per `cities[]` entry across the whole library. `null` and absent are values, not
-   * defects, and are NOT counted — a version-4 row the rescan has not reached carries neither
-   * key, and A-56 Part 7 clause 2 is its correct answer.
+   * §8.4 **A-59**. City entries whose STORED `firstDay`/`lastDay` was present and unreadable,
+   * and, where the row is travelled, the entry took the trip's range. Counted **per entry**, not
+   * per field: the maximum is one per `cities[]` entry across the whole library. `null` and absent
+   * are values, not defects, and are NOT counted — a version-4 row the rescan has not reached
+   * carries neither key, and A-56 Part 7 clause 2 is its correct answer.
+   *
+   * **A view of `absorbed`, computed at one site** (§8.4 **A-87** Part 4): the number of `date`
+   * absorptions. Computed rather than counted, it cannot drift from the channel. Its consequence
+   * clause is scoped rather than stated flatly because absorption is now lifecycle-blind (A-87
+   * Part 5) — on a *planned* row nothing falls back, and the old sentence would be false.
    *
    * This is `unnamedCities`' own idiom, one field over, and for its stated reason: skipping it
    * without counting would be silent loss, which is why the count is a field. A-37 Part 5
@@ -153,26 +229,25 @@ export type TravelStats = {
    */
   unreadableCityDates: number;
   /**
-   * §8.4 **A-86** Part 4 (QA **R63-9**). **Travelled** library rows — `active` or `completed`,
-   * the same population every other city number here is drawn from — whose STORED `cities` was
-   * **present and not an array**, so the row contributed **no** cities to the census at all.
-   * Counted **per row**: a row says *"these are my cities"* once, and a single unreadable answer
-   * is one absorption however many entries it was meant to hold.
+   * §8.4 **A-86** Part 4 (QA **R63-9**). **Library** rows whose STORED `cities` was **present and
+   * not an array**, so the row contributed **no** cities to the census at all. Counted **per
+   * row**: a row says *"these are my cities"* once, and a single unreadable answer is one
+   * absorption however many entries it was meant to hold.
    *
-   * **`Travelled`, not *"library"*, and QA R64-3 is why the word is here.** The count is
-   * accumulated inside the travelled walk, because A-31 Part 3's rule is that a lifetime number
-   * may not be moved by a trip nobody has taken — so a **planned** row whose `cities` is corrupt
-   * counts **0**, and nothing was absorbed to count: its cities are never read. The pin below is
-   * therefore over travelled rows, and `packages/client/test/row-stats-readable.test.ts` asserts
-   * the planned boundary explicitly rather than leaving the two predicates to disagree where no
-   * fixture looks. Whether a planned row's corruption deserves a number of its own is A-59
-   * Part 5's surface question and an architect's.
+   * **`Library`, not *"travelled"* — §8.4 A-87 Part 5 (QA R64-3 §C2/§C3) changed this word and it
+   * is the one behaviour change on this field.** The count used to be accumulated inside the
+   * travelled walk on A-31 Part 3's authority, so the same corrupt row was reported when the trip
+   * was `completed` and silent when it was `planned` — which is exactly the non-uniformity this
+   * walk's own `attribution` comment already condemns about QA R28-3. A-31 Part 3 governs the
+   * lifetime map and never governed absorption. It is now the number of distinct rows carrying a
+   * `list` absorption at path `cities` on `absorbed` above, computed **at one site**.
    *
    * **`undefined` and `null` are values, not defects, and are NOT counted** — a row minted
    * before summary generation 3 carries no `cities` key, and contributing none is its correct
    * answer. That three-way split is exactly the one `packages/client`'s `rowStatsReadable`
-   * already draws, and the two are pinned against each other by an assertion rather than by
-   * this sentence (`packages/client/test/row-stats-readable.test.ts`).
+   * already draws — **and since A-87 Part 6 the predicate IS one call to this function**, so the
+   * agreement A-86 Part 4 item 2 had to buy with an assertion is now an identity and the
+   * assertion beside it is a tripwire (`packages/client/test/row-stats-readable.test.ts`).
    *
    * **Why a count and not the throw it replaced.** `I-24` Part 4's `Array.isArray` guard is
    * right and is not reopened: A-59 Part 2's line is *a stored value that gates the record's
@@ -297,6 +372,227 @@ const isLocatedCentre = (v: unknown): boolean => {
  */
 const isUnreadableDay = (v: unknown): boolean => v !== null && v !== undefined && !isIsoDate(v);
 
+// ---------------------------------------------------------------------------
+// §8.4 **A-87** — the derive-path read rule, and the ONE reader that discharges it.
+//
+// > A function on the derive path that reads a **stored** record reads each field it uses
+// > through a gate that is **total over `unknown`**, and reads it **exactly once**. A gate is
+// > three-way: absent or `null` is a **value** (the documented fallback applies and nothing is
+// > counted); the declared shape is the value; anything else present is a **defect** taking the
+// > **same** documented fallback and **reported**. A container fails at its own level and takes
+// > everything below it with it, reported once at that level. **No derive-path expression may
+// > dereference a stored field that has not been through its gate — and a method call is a
+// > dereference** (`.normalize`, `.replace`, `for…of`). The obligation is discharged **per record
+// > class, at one reader**, never per call site.
+//
+// `readRow` below is that reader. It runs once per row over the **whole library**, returns the
+// gated values the folds need plus the absorptions it made, and **the folds read only its
+// output** — which is what makes *"read exactly once"* structural rather than counted: a consumer
+// that reads the reader's output cannot re-read the stored field.
+//
+// Five things a builder does not get to decide (A-87 Part 3), all of them here:
+//   1. One absorption per failing value, at the level the value failed. `seen.cities` is
+//      unchanged — it stays the length of the stored array, absorbed entries included, because
+//      an unreadable entry is still a record the row carries (A-85 Part 3).
+//   2. The date pair is entry-scoped (A-59 Part 2's *one end unreadable makes the pair
+//      unusable*): one `date` absorption per entry, never two.
+//   3. `name` is a FIELD gate, not an entry gate — a reader that kills the entry on `name` and
+//      degrades it on `centre` is A-86 Part 1 reason 3's second convention on a neighbouring
+//      field of one object.
+//   4. `attribution` is gated at all three levels and its numbers go through `countOf`, so a
+//      `'5'`, a `NaN` and a `-1` are all 0 and none of them can reach an output. A-86 Part 5's
+//      *no ceiling* stands: `countOf` floors and does not cap, and nothing here adds a cap.
+//   5. The value arm is `undefined` **and** `null`, uniformly, on every field. `countryCodes:
+//      null` therefore stops throwing and starts contributing nothing, uncounted — the one
+//      behaviour change here that is not a repair. A field whose `null` is a defect beside a
+//      field whose `null` is a value is the second convention A-86 Part 1 reason 3 refused, and
+//      the observable outcome of `countryCodes: null` is identical to `countryCodes: []`, a row
+//      that legitimately visited nowhere. **Residue:** a `null` on a field no generation ever
+//      wrote `null` to is absorbed and reported by nothing. **Trigger:** a measurement that a
+//      shipped write path can produce one — at which point it is a write-side defect, not a gate.
+//
+// **`key` and `countrySource` get no gate**, because no derivation reads them. That is safe
+// because `test/stats-storage.test.ts`' covering table **asserts** them inert: the day a
+// derivation starts reading one, its cell's expectation changes and the test demands the gate.
+// ---------------------------------------------------------------------------
+
+/** A plain object — not `null`, not an array. The shape every stored record claims to be. */
+const isPlainObject = (v: unknown): v is Record<string, unknown> =>
+  typeof v === 'object' && v !== null && !Array.isArray(v);
+
+/** `countOf`'s own predicate, split out so the gate can tell *"not a count"* from *"zero"*. */
+const isCount = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v) && v >= 0;
+
+/** One city entry, after the gate. Every field is the declared shape or its documented fallback. */
+type GatedCity = {
+  /** The raw display name, or `''` where the stored one was unusable. */
+  name: string;
+  /** `normalizeCityName(name)`; `''` means *"no usable name"* and produces no city row. */
+  nameKey: string;
+  countryCode: CountryCode | null;
+  /** A-83 Part 8: a centre that is not a coordinate — for any reason — is unlocated. */
+  located: boolean;
+  /** The edges the entry SUPPLIED. Unreadable is `null`, exactly as absent is (A-59 Part 2). */
+  firstDay: IsoDate | null;
+  lastDay: IsoDate | null;
+};
+
+/** One library row, after the gate. */
+type GatedRow = {
+  row: TripSummaryRow;
+  /** The length of the stored `cities` array — A-85 Part 3's *total records the row carries*. */
+  cityRecords: number;
+  cities: GatedCity[];
+  countryCodes: CountryCode[];
+  /** `null` where the row carries no census for that class — A-31 Part 3's own answer. */
+  places: AttributionCensus | null;
+  stops: AttributionCensus | null;
+};
+
+/**
+ * `attribution.places` / `attribution.stops`, gated at its own level and then per number.
+ *
+ * A census that does not carry both of its declared numbers **is not a census**, so it fails at
+ * its own level and takes its two fields with it — one absorption at `attribution.places`, and
+ * the documented fallback is A-31 Part 3's *"a row minted before `SUMMARY_VERSION` 4 carries no
+ * census and contributes none"*. A census that carries them reads each through `countOf`, so a
+ * garbage number is one absorption at `attribution.places.located` and reads `0`.
+ */
+function readCensus(
+  value: unknown,
+  path: string,
+  absorb: (path: string, kind: TravelStatsAbsorption['kind']) => void,
+): AttributionCensus | null {
+  if (value === undefined || value === null) return null;
+  if (!isPlainObject(value)) {
+    absorb(path, 'census');
+    return null;
+  }
+  const rawLocated = value.located;
+  const rawAttributed = value.attributed;
+  if (rawLocated === undefined || rawLocated === null || rawAttributed === undefined || rawAttributed === null) {
+    absorb(path, 'census');
+    return null;
+  }
+  let located = 0;
+  let attributed = 0;
+  if (isCount(rawLocated)) located = rawLocated;
+  else absorb(`${path}.located`, 'census');
+  if (isCount(rawAttributed)) attributed = rawAttributed;
+  else absorb(`${path}.attributed`, 'census');
+  return { located, attributed };
+}
+
+/**
+ * The reader. Pure apart from appending to the `absorbed` list it is handed, module-private, and
+ * the **only** place any of these nine stored fields is read.
+ *
+ * Field order is the order absorptions are reported in for one row: `cities` and its entries,
+ * then `countryCodes`, then `attribution`.
+ */
+function readRow(row: TripSummaryRow, absorbed: TravelStatsAbsorption[]): GatedRow {
+  const rowId = row.id;
+  const absorb = (path: string, kind: TravelStatsAbsorption['kind']): void => {
+    absorbed.push({ rowId, path, kind });
+  };
+
+  // --- `cities` -----------------------------------------------------------
+  // The list, then each entry, then each entry's five read fields. A list that is not an array
+  // fails at its own level: the entries are not there to fail. **QA R62-6 / I-24 Part 4's
+  // `Array.isArray` guard is not reopened** — what it owed was the report, which is here now.
+  const storedCities: unknown = row.cities;
+  const cities: GatedCity[] = [];
+  let cityRecords = 0;
+  if (storedCities !== undefined && storedCities !== null) {
+    if (!Array.isArray(storedCities)) {
+      absorb('cities', 'list');
+    } else {
+      cityRecords = storedCities.length;
+      for (let i = 0; i < storedCities.length; i++) {
+        const entry: unknown = storedCities[i];
+        // Tested exactly as `rowStatsReadable` tests it, which is what keeps A-87 Part 6's
+        // identity an identity. An array IS an object here, deliberately: it then fails on its
+        // fields, one level down, rather than on two conventions at once.
+        if (entry === null || typeof entry !== 'object') {
+          absorb(`cities[${i}]`, 'entry');
+          continue;
+        }
+        const c = entry as Record<string, unknown>;
+        // `name` — a FIELD gate (rule 3). Unreadable behaves exactly as a fold to `''`.
+        let name = '';
+        let nameKey = '';
+        const rawName = c.name;
+        if (typeof rawName === 'string') {
+          name = rawName;
+          nameKey = normalizeCityName(rawName);
+        } else if (rawName !== undefined && rawName !== null) {
+          absorb(`cities[${i}].name`, 'field');
+        }
+        // `countryCode` — A-37 Part 3's `isMintedCode`, now three-way. A `'--'` (which collided
+        // with the composite key's sentinel), a `''`, an `'A|'`, an `'hr'` or a `42` is null AND
+        // reported; absent and `null` are null and are not.
+        let countryCode: CountryCode | null = null;
+        const rawCode = c.countryCode;
+        if (isMintedCode(rawCode)) countryCode = rawCode;
+        else if (rawCode !== undefined && rawCode !== null) absorb(`cities[${i}].countryCode`, 'field');
+        // `centre` — A-83 Part 8 stands verbatim (`null` is *unlocated*, first-class); this adds
+        // the third arm, present-and-not-a-coordinate, which is a defect and not a value.
+        const rawCentre = c.centre;
+        let located = false;
+        if (isLocatedCentre(rawCentre)) located = true;
+        else if (rawCentre !== undefined && rawCentre !== null) absorb(`cities[${i}].centre`, 'field');
+        // The date PAIR — A-59 Part 2, entry-scoped, at most one absorption per entry. Gated for
+        // every entry, including one whose name folded away: the absorption is a fact about the
+        // stored value, not about whether a consumer went on to use it.
+        const unreadableDays = isUnreadableDay(c.firstDay) || isUnreadableDay(c.lastDay);
+        if (unreadableDays) absorb(`cities[${i}]`, 'date');
+        cities.push({
+          name,
+          nameKey,
+          countryCode,
+          located,
+          firstDay: unreadableDays ? null : ((c.firstDay as IsoDate | null | undefined) ?? null),
+          lastDay: unreadableDays ? null : ((c.lastDay as IsoDate | null | undefined) ?? null),
+        });
+      }
+    }
+  }
+
+  // --- `countryCodes` -----------------------------------------------------
+  // The container gate is the one nothing had: a string is **iterable**, so the unguarded
+  // `for…of` read its CHARACTERS, every one failed `isMintedCode`, and the row's whole country
+  // list vanished in silence (A-87 Part 1 shape 4). The entry gate is A-37 Part 3's read 2,
+  // which now reports rather than skipping silently — A-31 Part 5 residue 2, discharged.
+  const storedCodes: unknown = row.countryCodes;
+  const countryCodes: CountryCode[] = [];
+  if (storedCodes !== undefined && storedCodes !== null) {
+    if (!Array.isArray(storedCodes)) {
+      absorb('countryCodes', 'list');
+    } else {
+      for (let i = 0; i < storedCodes.length; i++) {
+        const code: unknown = storedCodes[i];
+        if (isMintedCode(code)) countryCodes.push(code);
+        else absorb(`countryCodes[${i}]`, 'field');
+      }
+    }
+  }
+
+  // --- `attribution` ------------------------------------------------------
+  const storedAttribution: unknown = row.attribution;
+  let places: AttributionCensus | null = null;
+  let stops: AttributionCensus | null = null;
+  if (storedAttribution !== undefined && storedAttribution !== null) {
+    if (!isPlainObject(storedAttribution)) {
+      absorb('attribution', 'census');
+    } else {
+      places = readCensus(storedAttribution.places, 'attribution.places', absorb);
+      stops = readCensus(storedAttribution.stops, 'attribution.stops', absorb);
+    }
+  }
+
+  return { row, cityRecords, cities, countryCodes, places, stops };
+}
+
 /**
  * Everywhere the traveller has actually been, derived from the library's summary rows. Pure.
  *
@@ -337,12 +633,23 @@ const isUnreadableDay = (v: unknown): boolean => v !== null && v !== undefined &
  * bug — `refreshLibrary()` installs the stored rows and the rescan brings them current
  * *afterwards*, so the library legitimately holds a stale row in between.
  *
+ * **Every stored field this function reads passes a gate, once** — §8.4 **A-87**. The gate is
+ * three-way (absent/`null` is a value, the declared shape is the value, anything else present is
+ * a defect taking the same documented fallback and reported on `absorbed`), it is discharged in
+ * **one** module-private reader rather than per call site, and **a method call is a
+ * dereference**: `.normalize`, `.replace` and `for…of` are the shapes QA round 64 found this
+ * class through, all of them a stored value dereferenced before anything asked what it was.
+ *
  * @throws {Error} programmer error only — a duplicate row id, or a malformed **trip** date
- *         (`startDate`/`endDate`, A-37 Part 2's grandfathered throw). **Two, and the list is
- *         exhaustive** (A-31 Part 4). A malformed `cities[].firstDay`/`lastDay` used to be a
- *         third and is not: §8.4 **A-59** Part 2 makes it take clause 2's fallback and counts
- *         it in `unreadableCityDates`, because one corrupt city date in one row was taking the
- *         whole library's statistics down anonymously (QA R43-2).
+ *         (`startDate`/`endDate`, A-37 Part 2's grandfathered throw, which stands: those two
+ *         fields decide whether the row is classified at all and there is nothing to degrade
+ *         to). **Two, and the list is exhaustive over the REACHABLE population** — plain data,
+ *         which is what structured clone and `JSON.parse` return. The qualifier is A-87 Part 7's
+ *         and it is not a hedge: a value reached through a **hostile accessor** — a `Proxy` whose
+ *         `length` getter throws — still throws, and no storage port can produce one. The
+ *         covering table in `test/stats-storage.test.ts` is what says the list is exhaustive,
+ *         over `Record<keyof TripSummaryRow, true>` and `Record<keyof TripSummaryCity, true>`,
+ *         so a field added to either breaks the build until the table covers it.
  */
 export function travelStats(summaries: readonly TripSummaryRow[], today: IsoDate): TravelStats {
   // **A-37 Part 2**, site 1 of 3. Every day number this function lets reach an output is
@@ -373,12 +680,24 @@ export function travelStats(summaries: readonly TripSummaryRow[], today: IsoDate
     return x.id < y.id ? -1 : x.id > y.id ? 1 : 0;
   });
 
+  // 2a. **§8.4 A-87 Parts 2 and 3 — the gate, run ONCE per row over the WHOLE library, before
+  //     anything computes with a stored value.** Every absorption this makes lands on
+  //     `absorbed`, in canonical row order because `rows` is already in it, and the folds below
+  //     read `gated` and never the row. **Lifecycle-blind on purpose** (Part 5): a corrupt
+  //     `planned` row is corrupt today, and the walk's own `attribution` comment already
+  //     condemns the alternative — *"this used to throw non-uniformly, because only travelled
+  //     rows are walked, so the same stale row was fatal when the trip was `completed` and
+  //     silent when it was `planned`."*
+  const absorbed: TravelStatsAbsorption[] = [];
+  const gatedRows = rows.map((row) => readRow(row, absorbed));
+
   // 3. `trips` — over EVERY row, using the existing `lifecycle` and not a second implementation
   //    of trip state (sequencing rule 1). `TripSummaryRow` structurally satisfies `DatedTrip`.
   const trips = { planned: 0, active: 0, completed: 0 };
   // 4. The travelled set: `active` or `completed`, with the clamped interval each contributes.
-  const travelled: Array<{ row: TripSummaryRow; a: number; b: number; done: boolean }> = [];
-  for (const row of rows) {
+  const travelled: Array<{ g: GatedRow; row: TripSummaryRow; a: number; b: number; done: boolean }> = [];
+  for (const g of gatedRows) {
+    const row = g.row;
     // **A-37 Part 2, deliberately NOT clamped**: `lifecycle` decides how a row is CLASSIFIED,
     // which is a different function's contract, and clamping inside it would make an
     // out-of-domain row report as `active` forever.
@@ -390,7 +709,7 @@ export function travelStats(summaries: readonly TripSummaryRow[], today: IsoDate
     const rawB = inDomain(stage === 'active' ? Math.min(dayNumber(row.endDate), todayNum) : dayNumber(row.endDate));
     // `done` is A-34's evidence, carried once per row rather than re-derived per country and
     // per city: `lifecycle` is called exactly here, and the folds below only read this flag.
-    travelled.push({ row, a, b: Math.max(a, rawB), done: stage === 'completed' });
+    travelled.push({ g, row, a, b: Math.max(a, rawB), done: stage === 'completed' });
   }
 
   // 5. `daysTravelled` — the size of the UNION of the intervals, by sort-and-sweep. Sweep and
@@ -412,13 +731,14 @@ export function travelStats(summaries: readonly TripSummaryRow[], today: IsoDate
   // 6. `countries` — first/last visit are the TRIP's range, not the country's (residue 1): the
   //    row carries no per-country dates and cannot without carrying the day→city edges.
   const countryMap = new Map<CountryCode, TravelStatsCountry & { firstNum: number; lastNum: number }>();
-  for (const { row, a, b, done } of travelled) {
-    for (const code of row.countryCodes) {
-      // **A-37 Part 3**, read 2 of 2. An entry that is not a minted code is SKIPPED:
-      // `TravelStatsCountry.code` is what I-8 looks up in the index to fill a country, and a
-      // code the index cannot contain has no honest rendering. Skipped silently — there is no
-      // `unreadableCodes` counter, and that is Part 5 residue 2.
-      if (!isMintedCode(code)) continue;
+  for (const { g, row, a, b, done } of travelled) {
+    // **§8.4 A-87 Part 2.** The reader has already gated the container and every entry, so this
+    // is a walk over minted codes and re-reading `row.countryCodes` here would be the
+    // second read the rule forbids. A non-minted entry is SKIPPED — `TravelStatsCountry.code` is
+    // what I-8 looks up in the index and a code the index cannot contain has no honest rendering
+    // — and it is now **reported** on `absorbed`, which discharges A-31 Part 5 residue 2's
+    // *"there is no `unreadableCodes` counter"*.
+    for (const code of g.countryCodes) {
       const hit = countryMap.get(code);
       if (!hit) {
         countryMap.set(code, {
@@ -460,15 +780,9 @@ export function travelStats(summaries: readonly TripSummaryRow[], today: IsoDate
   //    per-trip (§2.2 A-10), so two trips to Tokyo carry two of them and only the name can join
   //    them; the country is in the key because the same name in two countries must be two rows.
   const cityMap = new Map<string, TravelStatsCity & { firstNum: number; lastNum: number }>();
+  // **A-87 Part 5's control.** A CENSUS fact: it counts what the fold lost, so it is accumulated
+  // in the travelled walk and stays travelled-only, unlike the two absorption views below.
   let unnamedCities = 0;
-  // **A-59** Part 3. Incremented where the city's dates are read, which is after the unnamed
-  // check below: an entry that folds to `''` produces no city row and therefore falls back to
-  // nothing. It is already counted, once, in `unnamedCities`.
-  let unreadableCityDates = 0;
-  // **A-86** Part 4 (QA **R63-9**). Incremented where the `Array.isArray` fallback fires, below,
-  // and nowhere else: one row, one count. It is accumulated in this walk — over the TRAVELLED
-  // rows — because a lifetime number may not be moved by a trip nobody has taken (A-31 Part 3).
-  let unreadableCityLists = 0;
   let seenCities = 0;
   let seenStops = 0;
   let locatedCities = 0;
@@ -478,7 +792,7 @@ export function travelStats(summaries: readonly TripSummaryRow[], today: IsoDate
   let unattributedPlaces = 0;
   let locatedStops = 0;
   let unattributedStops = 0;
-  for (const { row, a, b, done } of travelled) {
+  for (const { g, row, a, b, done } of travelled) {
     // **QA R28-3.** A row minted before `SUMMARY_VERSION` 4 carries no `attribution`, and this
     // used to throw — non-uniformly, because only travelled rows are walked, so the same stale
     // row was fatal when the trip was `completed` and silent when it was `planned`. It is not a
@@ -497,23 +811,27 @@ export function travelStats(summaries: readonly TripSummaryRow[], today: IsoDate
     // generation 8 — which has no such key — contributes 0 and is floored at its own `located`
     // below, and a hand-edited `'95'`, `-1` or `NaN` does the same.
     const placeRecords = countOf(row.placeCount);
+    //
+    // **§8.4 A-87 Part 3 rule 4.** The census is read through the gate above and never here: a
+    // row whose `attribution` is present and hostile used to publish `NaN` for `seen.places`,
+    // `located.places` **and** `unattributed.places` — for the whole library, not the row — and a
+    // stored `located: '5'` published `"05"` by string concatenation. Both numbers now come
+    // through `countOf`, so a `'5'`, a `NaN` and a `-1` are all `0` and none of them can reach an
+    // output. A-86 Part 5's *no ceiling* is untouched: `countOf` floors and does not cap.
     let rowLocatedStops = 0;
     let rowLocatedPlaces = 0;
-    const census = row.attribution;
-    if (census) {
-      if (census.places) {
-        rowLocatedPlaces = census.places.located;
-        locatedPlaces += census.places.located;
-        // **QA R28-4**, A-31 Part 2's clamp, applied per row rather than to the total: a row out
-        // of storage with `attributed > located` (hand-edited, half-migrated) would otherwise
-        // make `unattributed` negative, or pay for another row's genuine hole.
-        unattributedPlaces += Math.max(0, census.places.located - census.places.attributed);
-      }
-      if (census.stops) {
-        rowLocatedStops = census.stops.located;
-        locatedStops += census.stops.located;
-        unattributedStops += Math.max(0, census.stops.located - census.stops.attributed);
-      }
+    if (g.places) {
+      rowLocatedPlaces = g.places.located;
+      locatedPlaces += g.places.located;
+      // **QA R28-4**, A-31 Part 2's clamp, applied per row rather than to the total: a row out
+      // of storage with `attributed > located` (hand-edited, half-migrated) would otherwise
+      // make `unattributed` negative, or pay for another row's genuine hole.
+      unattributedPlaces += Math.max(0, g.places.located - g.places.attributed);
+    }
+    if (g.stops) {
+      rowLocatedStops = g.stops.located;
+      locatedStops += g.stops.located;
+      unattributedStops += Math.max(0, g.stops.located - g.stops.attributed);
     }
     seenStops += Math.max(stopRecords, rowLocatedStops);
     seenPlaces += Math.max(placeRecords, rowLocatedPlaces);
@@ -537,42 +855,31 @@ export function travelStats(summaries: readonly TripSummaryRow[], today: IsoDate
     // is (§8.4 clause 3's rescan is what closes the gap, and it runs before anything claims the
     // lifetime map is complete).
     //
-    // **QA R62-6, ROADMAP I-24 Part 4.** The `Array.isArray` guard was dead code: it stood beside
-    // an unguarded `for…of` over the same expression, so a row whose `cities` was not an array
-    // threw one line later and the guard could never be the thing that answered. The guarded
-    // value is now bound **once** and both readers use it — A-37 Part 3's *a stored row is not a
-    // validated document*, applied to the whole read rather than to half of it.
+    // **QA R62-6, ROADMAP I-24 Part 4, and §8.4 A-87 Parts 2 and 3.** The `Array.isArray` guard
+    // is not reopened and is no longer *here*: the whole read — the list, each entry, and each
+    // entry's five fields — happens once, in `readRow` above, and this fold reads only its
+    // output. That is what makes *"read exactly once"* structural: a consumer that reads the
+    // reader's output **cannot** re-read the stored field. What the guard owed (A-86 Part 4) was
+    // the report, and the report is `absorbed`.
     //
-    // **§8.4 A-86 Part 4, ROADMAP I-25 (QA R63-9).** The guard above is correct and stays; what
-    // it owed is a **count**. A row whose stored `cities` is present and not an array
-    // contributes nothing, and before this line nothing anywhere said so — `travelHistory`
-    // returned `ok: true` and `rowStatsReadable`, which does name such a row, is asked only on
-    // the catch branch the guard made unreachable. Three-way, deliberately: `undefined` and
-    // `null` are **values** (a row minted before generation 3 carries no `cities` key at all,
-    // and contributing none is its correct answer), everything else present is a defect. The
-    // same split `rowStatsReadable` draws, and pinned against it by an assertion.
-    const storedCities: unknown = row.cities;
-    const rowCities: readonly TripSummaryCity[] = Array.isArray(storedCities) ? storedCities : [];
-    if (storedCities !== undefined && storedCities !== null && !Array.isArray(storedCities)) {
-      unreadableCityLists++;
-    }
-    seenCities += rowCities.length;
-    for (const c of rowCities) {
-      const located = isLocatedCentre((c as { centre?: unknown }).centre);
+    // **`seen.cities` is the length of the STORED array, absorbed entries included** (A-87 Part 3
+    // rule 1): `seen` is A-85 Part 3's *total records the row carries*, an unreadable entry is
+    // still a record the row carries, and `located <= seen` holds a fortiori because an absorbed
+    // entry cannot be located.
+    seenCities += g.cityRecords;
+    for (const c of g.cities) {
+      // **§8.4 A-83 Part 8: a city with no `centre` is UNLOCATED.** `{lat: 0, lng: 0}` was never
+      // a measurement, so a record with no coordinate is neither located nor unattributed — not
+      // in the denominator, therefore not in the numerator, which is what keeps `unattributed`
+      // *"never greater than `located`, per class"* by construction.
+      const located = c.located;
       if (located) locatedCities++;
-      // **QA R28-5.** `null` and `undefined` are ONE answer, read once, here. The two used to
-      // disagree — `=== null` decided this count while `?? NO_COUNTRY` decided the group key —
-      // so an `undefined` code was grouped as unattributed without being counted as one, and
-      // came back out as `undefined`, which `JSON.stringify` silently drops.
-      //
-      // **§8.4 A-37 Part 3**, read 1 of 2, and it is still exactly ONE read deciding the count,
-      // the group key and the emitted value together. `?? null` was a check on *presence*; a
-      // row is not a document, so this is a check on *shape*. A `'--'` (which collided with the
-      // composite key's sentinel), `''` (grouped as unattributed without being counted as one),
-      // `'A|'` (which made two different rows one), `'hr'` or a `42` is **null**.
-      const countryCode = isMintedCode(c.countryCode) ? c.countryCode : null;
+      // **QA R28-5.** `null` and `undefined` are ONE answer — decided once, in the reader, so
+      // the count, the group key and the emitted value cannot disagree the way they once did
+      // (`=== null` decided the count while `?? NO_COUNTRY` decided the key).
+      const countryCode = c.countryCode;
       if (located && countryCode === null) unattributedCities++;
-      const nameKey = normalizeCityName(c.name);
+      const nameKey = c.nameKey;
       // A name that folds to `''` is **not an identity** (§2.14 A-14 assertion 5). Grouping on
       // it would put every blank city in every trip into one row labelled with nothing; skipping
       // it without counting would be silent loss, which is why the count is a field.
@@ -599,10 +906,9 @@ export function travelStats(summaries: readonly TripSummaryRow[], today: IsoDate
       // Trigger 2, **A-59** Part 2. **One unreadable end makes the PAIR unusable**: not one end
       // clamped and the other invented. `tripSummary` sets both or neither, so a half-corrupt
       // pair is hand-edited storage and a range with one known end has an invented width. The
-      // absorption is counted (Part 3) — a silently absorbed value is A-37 Part 5 residue 2's
-      // mistake repeated.
-      const unreadableDays = isUnreadableDay(c.firstDay) || isUnreadableDay(c.lastDay);
-      if (unreadableDays) unreadableCityDates++;
+      // gate and the absorption are the reader's (A-87 Part 3 rule 2, entry-scoped, one per
+      // entry) — by the time an edge is read here it is an `IsoDate` or it is `null`, and
+      // `unreadableCityDates` is derived from `absorbed` below rather than incremented here.
       // **§8.4 A-60 Part 6.3** — and the ORDER below is the fix, not a rearrangement. Part 6.7
       // residue 3 names the defect it repairs, and it generalises: *decide what the row supplied
       // before computing with it.* A-60 was stated in prose about *"a range"* and then written as
@@ -616,8 +922,8 @@ export function travelStats(summaries: readonly TripSummaryRow[], today: IsoDate
       // fallback would have printed — and pays for it by deleting the one real observation on
       // the end the row did supply. **Corrupted evidence poisons its pair; absent evidence does
       // not**, which is why A-59's `unreadableDays` is pair-wide here and `??` is per-field.
-      const obsA: IsoDate | null = unreadableDays ? null : (c.firstDay ?? null);
-      const obsB: IsoDate | null = unreadableDays ? null : (c.lastDay ?? null);
+      const obsA: IsoDate | null = c.firstDay;
+      const obsB: IsoDate | null = c.lastDay;
       // **A-37 Part 2**, sites 4 and 5. `inDomain` for the same reason `startDate` gets it: a
       // stored row is not a validated document and these two strings were never revalidated.
       // After A-59's gate every value reaching `dayNumber` here is `isIsoDate`-valid and the
@@ -708,6 +1014,17 @@ export function travelStats(summaries: readonly TripSummaryRow[], today: IsoDate
       lastVisit: c.lastVisit,
     }));
 
+  // **§8.4 A-87 Part 4 — the two scalars are VIEWS of `absorbed`, computed at ONE site.**
+  // A-86 Part 8 residue 1's *"all three fold into it"* is deliberately not applied literally:
+  // these two are what three shipped assertions pin core against `packages/client` with, and
+  // deleting them to replace them with a filter reddens two live `qa/` probes and three test
+  // files for zero change in information. Computed rather than counted, they cannot drift from
+  // the channel — which is the property that makes keeping them cost nothing.
+  const unreadableCityLists = new Set(
+    absorbed.filter((x) => x.kind === 'list' && x.path === 'cities').map((x) => x.rowId),
+  ).size;
+  const unreadableCityDates = absorbed.filter((x) => x.kind === 'date').length;
+
   return {
     countries,
     cities,
@@ -728,6 +1045,7 @@ export function travelStats(summaries: readonly TripSummaryRow[], today: IsoDate
       places: unattributedPlaces,
       stops: unattributedStops,
     },
+    absorbed,
     unnamedCities,
     unreadableCityDates,
     unreadableCityLists,

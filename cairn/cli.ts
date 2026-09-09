@@ -269,6 +269,8 @@ function cmdStats() {
     `  could not place  cities ${s.unattributed.cities} · places ${s.unattributed.places} · ` +
       `stops ${s.unattributed.stops}`,
   );
+  // §8.4 **A-87** Part 3 rule 3 widens this population by one clause and the line is already
+  // true for it as written: the stored `name` folded to `''`, **or was not a string at all**.
   if (s.unnamedCities) out(`  cities with no usable name: ${s.unnamedCities}`);
   // §8.4 **A-59** Part 3. The absorption is visible on the one surface that exists: a stored
   // `cities[].firstDay`/`lastDay` that is present and unreadable no longer takes the whole
@@ -285,6 +287,30 @@ function cmdStats() {
   // today, so the absorption becomes visible here rather than waiting on `Library.tsx` and the
   // unresolved visual direction (A-59 Part 5, still unscheduled).
   if (s.unreadableCityLists) out(`  trips whose stored city list could not be read: ${s.unreadableCityLists}`);
+  // §8.4 **A-87** Part 4 (QA **R64-2**, ROADMAP I-26). **The two sentences above stay verbatim;
+  // this block is data-driven and replaces the habit of adding a fourth.** A new gate adds a row
+  // to `absorbed`, never a field to `TravelStats` and never a line here, so a gate cannot be
+  // added and forgotten on the one surface that exists.
+  //
+  // **This is the line that names the row on the SUCCESS path.** At `e1e1973` a row was nameable
+  // only if something threw — `travelHistory`'s `rowId`/`unreadableRows` are computed inside its
+  // own `catch` — so the moment a fault was absorbed rather than fatal, nothing anywhere said
+  // which row it was on. No `.tsx` and no wait on the unresolved visual direction: the rendered
+  // Trips-list treatment is still A-59 Part 5's and still triggers on `Library.tsx`.
+  //
+  // **A-87 Part 8 item 4 (R64-4's criterion):** a criterion that pins a shipped line pins its
+  // EXECUTION, not its text. This block prints for a library that carries an absorption, so the
+  // end-to-end arm asserting a PRESENCE in the captured output exists by construction and an
+  // early `return` above it reddens that arm rather than sailing past an absence check.
+  const byRow = new Map<string, string[]>();
+  for (const a of s.absorbed) {
+    const paths = byRow.get(a.rowId);
+    if (!paths) byRow.set(a.rowId, [a.path]);
+    else if (!paths.includes(a.path)) paths.push(a.path);
+  }
+  for (const [rowId, paths] of byRow) {
+    out(`  trip ${rowId}: unreadable stored values at ${paths.join(', ')}`);
+  }
 }
 
 /**

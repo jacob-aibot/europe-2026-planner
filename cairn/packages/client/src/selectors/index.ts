@@ -365,15 +365,33 @@ export function rowDatesReadable(row: { startDate: string; endDate: string }): b
 }
 
 /**
- * Does every date-shaped field THIS ROW carries read as an `IsoDate`? ARCHITECTURE §8.4
- * **A-59** Part 4, ROADMAP Phase 2 **I-12a**.
+ * Does **every stored value this row carries** read as its declared shape? ARCHITECTURE §8.4
+ * **A-59** Part 4, **widened in place by A-87 Part 6**, ROADMAP Phase 2 **I-12a** and **I-26**.
  *
- * `startDate`, `endDate`, and each `cities[].firstDay`/`lastDay` where present and non-null —
- * `2 + 2N` fields, which is the point: the count grows with the row, so it is asked in ONE
- * place and no surface re-derives it. `core.isIsoDate` and nothing else (A-46 Part 2's rule).
+ * **The subject changed at I-26 and the name deliberately did not.** A-59 Part 7 residue 1 asked
+ * whether this should become `rowUsable` the first time a derivation computed with a non-date row
+ * field; the trigger fired at `I-22` and nobody noticed (`travelStats` has computed with `centre`
+ * since A-83 Part 8 and with `countryCode` since A-37 Part 3). The answer is **no rename and no
+ * sibling**: this is the predicate for **stats**, `rowDatesReadable` beside it is the one that is
+ * about dates, and a rename would move a shipped selector, three test files and two `qa/` probes
+ * to say what the name already says.
  *
- * `false` means *"this row's own stored dates are not all dates."* It does NOT mean the
- * document will not open, and it may never be rendered as that — see `rowUnopenable`.
+ * **Its body is one call to `core.travelStats`, and that is the point of the ruling.** This
+ * function used to re-derive core's own three-way `cities` split in `packages/client` — a second
+ * implementation of a core function, which sequencing rule 1 forbids and which A-86 Part 4 item 2
+ * had to buy an assertion to hold together. Expressed this way **the pin is an identity**:
+ * `rowStatsReadable(row) === false` **iff** `travelStats([row], row.startDate).absorbed` is
+ * non-empty, and the shipped assertion stays only as a tripwire on something that cannot drift.
+ *
+ * **What widened, stated so it is checkable** (A-87 Part 6): `false` now for a row whose
+ * `countryCodes` is unreadable, whose `attribution` is unreadable, or whose city entry carries an
+ * unreadable `name`, `countryCode` or `centre` — six shapes it called healthy at `e1e1973`. Still
+ * `true` for `cities`/`countryCodes`/`attribution` absent or `null` (absent and `null` are
+ * **values**, A-87 Part 3 rule 5), and for a hostile `key` or `countrySource`, which nothing
+ * reads.
+ *
+ * `false` means *"this row's own stored values do not all read as their declared shape."* It does
+ * NOT mean the document will not open, and it may never be rendered as that — see `rowUnopenable`.
  *
  * **This is F-E, a fifth fact, not a fourth instance of F-A…F-D** (A-46 Part 1's table). QA
  * **R43-2** measured all three shipped facts calling a row with a corrupt `cities[].firstDay`
@@ -395,43 +413,42 @@ export function rowDatesReadable(row: { startDate: string; endDate: string }): b
  *     that lies about it. The affordance F-E implies is **recompute**, not rescue (A-59 Part 5,
  *     which is fixed as vocabulary and deliberately not built here).
  *
- * It covers **dates, not the row** (residue 1): a `centre.lat` of `"x"` is not caught here,
- * because nothing computes with `centre` yet. And it is **stricter than the throw it names**
- * (residue 2): `isIsoDate` rejects a calendar-invalid `'2026-02-30'` that `travelStats` would
- * have normalised to `'2026-03-02'` — the same choice A-46 Part 2 made for the trip's own two.
+ * It covered **dates, not the row** — A-59 Part 7 residue 1, **fired and discharged** by A-87
+ * Part 6: a `centre.lat` of `"x"` **is** caught now, because `travelStats` computes with `centre`.
+ * It stays **stricter than the throw it names** (residue 2): `isIsoDate` rejects a
+ * calendar-invalid `'2026-02-30'` that `travelStats` would have normalised to `'2026-03-02'` —
+ * the same choice A-46 Part 2 made for the trip's own two, and the gate inside `travelStats` is
+ * `core.isIsoDate` there too, so the two cannot part company.
  *
  * Pure, total, never throws, opens nothing.
  *
  * **Total means total over a STORED row, which is not a validated document** (A-37 Part 2) — QA
- * **R44-1**. This shipped walking `row.cities` unguarded, and a **version-1** row carries no
- * `cities` key at all: `SUMMARY_VERSION`'s own ledger says `cities` arrives at version **2**, and
- * a library mid-rescan legitimately holds one. Because `travelHistory` calls this from inside its
- * own `catch`, the `TypeError` came out of the one boundary that exists to absorb throws. Three
- * shapes are separated here, deliberately:
+ * **R44-1**, and totality is now inherited from the reader rather than hand-rolled here. A
+ * **version-1** row carries no `cities` and no `countryCodes` key at all (`SUMMARY_VERSION`'s own
+ * ledger has `cities` arriving at version 2), a library mid-rescan legitimately holds one, and
+ * absent is a **value** on every gated field.
  *
- *   - **`cities` absent or `null`** — *"no cities recorded"*, and `true` is the honest answer to
- *     *"does every date-shaped field THIS ROW carries read as an `IsoDate`"* when it carries none.
- *     `false` would put a stale-but-fine version-1 row under a sentence about corruption, which
- *     A-59 Part 4's naming semantics do not cover (Part 7 residue 1: dates, not the row).
- *   - **`cities` present but not a list** — no version ever produced it, nothing can be read from
- *     it, and it is `false`. A string is *iterable*, so the unguarded loop walked its characters
- *     and called a garbage row readable: the same missing guard with the quieter symptom.
- *   - **an entry that is not an object** — likewise `false`, for the same reason and not by
- *     throwing over it.
+ * **Residue (A-87 Part 10 item 3):** this now costs one `travelStats` call per row. Cheap on
+ * today's rows and reached only on a failure branch. **Trigger:** the first surface that calls it
+ * per card on every render — at which point it is **memoised in the selector layer**, not
+ * re-implemented.
  */
 export function rowStatsReadable(row: core.TripSummaryRow): boolean {
   if (!rowDatesReadable(row)) return false;
-  const cities: unknown = row.cities;
-  if (cities === undefined || cities === null) return true;
-  if (!Array.isArray(cities)) return false;
-  for (const c of cities as readonly core.TripSummaryCity[]) {
-    if (c === null || typeof c !== 'object') return false;
-    // `null` and absent are **values, not defects** — a version-4 row the rescan has not
-    // reached carries neither key, and A-56 Part 7 clause 2 is its correct answer.
-    if (c.firstDay !== null && c.firstDay !== undefined && !core.isIsoDate(c.firstDay)) return false;
-    if (c.lastDay !== null && c.lastDay !== undefined && !core.isIsoDate(c.lastDay)) return false;
+  try {
+    // **§8.4 A-87 Part 6.** One call, and the three-way split this function used to re-derive is
+    // gone rather than widened.
+    //
+    // `row.startDate` is the clock and it is not an invention: `rowDatesReadable` has already
+    // established it is an `IsoDate` at this line, absorption does not depend on `today` (A-87
+    // Part 5 — it is lifecycle-blind), and `travelStats` over ONE row cannot report a duplicate
+    // id. The call is total over plain data; the `catch` is A-71's discipline rather than a hope,
+    // and it is what covers the population A-87 Part 7 names as unreachable (a hostile accessor,
+    // which no storage port can return).
+    return core.travelStats([row], row.startDate).absorbed.length === 0;
+  } catch {
+    return false;
   }
-  return true;
 }
 
 /**

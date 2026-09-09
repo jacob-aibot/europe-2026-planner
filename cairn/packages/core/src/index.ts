@@ -164,7 +164,10 @@ export type { TripSummaryRow, TripSummaryCity, AttributionCensus } from './deriv
 // injected `today` — never a document, never storage — which is §4.2's "exactly ONE trip in
 // memory at a time" surviving the one screen that would want forty.
 export { travelStats } from './derive/travelStats.ts';
-export type { TravelStats, TravelStatsCountry, TravelStatsCity, TravelRecordCensus } from './derive/travelStats.ts';
+// `TravelStatsAbsorption` joins as a **type** at §8.4 A-87 Part 4 (ROADMAP I-26): it is the shape
+// of `TravelStats.absorbed`, so a caller that reads the channel needs to be able to name it.
+// Types are erased, so `Object.keys(core).length` does not move for it — 88 before and after.
+export type { TravelStats, TravelStatsAbsorption, TravelStatsCountry, TravelStatsCity, TravelRecordCensus } from './derive/travelStats.ts';
 
 // ---- conflict (6) ------------------------------------------------------------
 // `reassertRetirements` joins in revision 6 (§2.7 A-5, QA R8-1): the retirement ledger lives

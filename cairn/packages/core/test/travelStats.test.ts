@@ -1777,14 +1777,25 @@ test('I-25 Part 1: the reference library reports 0, and the field is present on 
   assert.equal(travelStats([], TODAY).unreadableCityLists, 0, 'the field is absent on an empty library');
 });
 
-test('I-25 Part 1: only TRAVELLED rows are walked, so a planned corrupt row contributes no count', () => {
-  // The population rule is A-31 Part 3's and this field does not widen it: `travelStats`
-  // derives the lifetime map from travelled rows only, and a count of absorptions over rows
-  // that contribute nothing would be a number about a trip the user has not taken.
+test('I-25 Part 1 → I-26 (A-87 Part 5): a corrupt PLANNED row IS counted — absorption is lifecycle-blind', () => {
+  // **This assertion's answer moved at I-26 and the change is the architect's** (QA R64-3 §C2).
+  // A-31 Part 3 governs the lifetime map and its argument is about inflation; an absorption is
+  // not inflatable by planning. A corrupt planned row is corrupt today and it will be travelled
+  // later carrying the same corruption — and the shipped alternative reported the same row when
+  // it was `completed` and stayed silent when it was `planned`, which is exactly the
+  // non-uniformity this walk's own `attribution` comment condemns about QA R28-3.
   const planned = { ...healthyRow('future'), startDate: '2027-01-01' as IsoDate, endDate: '2027-01-09' as IsoDate, cities: 'nope' } as unknown as TripSummaryRow;
   const s = travelStats([planned], TODAY);
   assert.equal(s.trips.planned, 1);
-  assert.equal(s.unreadableCityLists, 0, 'a planned trip contributed to a lifetime number');
+  assert.equal(s.unreadableCityLists, 1, 'the planned row\'s absorption is invisible again');
+  assert.deepEqual(s.absorbed, [{ rowId: 'future', path: 'cities', kind: 'list' }]);
+  // The census half is the control and it did NOT move: a planned trip contributes no country,
+  // no city, no day and nothing to either census (A-31 Part 3, verbatim).
+  assert.equal(s.seen.cities, 0);
+  assert.equal(s.located.cities, 0);
+  assert.equal(s.countries.length, 0);
+  assert.equal(s.daysTravelled, 0);
+  assert.equal(s.unnamedCities, 0);
 });
 
 test('I-25 Part 1: `unreadableCityLists` and `unreadableCityDates` are independent counters', () => {

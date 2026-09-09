@@ -35,6 +35,7 @@
           "places": 0,
           "stops": 0
         },
+        "absorbed": [],
         "unnamedCities": 0,
         "unreadableCityDates": 0,
         "unreadableCityLists": 0
@@ -198,6 +199,7 @@
           "places": 3,
           "stops": 4
         },
+        "absorbed": [],
         "unnamedCities": 0,
         "unreadableCityDates": 0,
         "unreadableCityLists": 0

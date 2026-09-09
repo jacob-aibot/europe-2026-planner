@@ -694,7 +694,15 @@ function cmdStatsBody(): string {
   const body = src.slice(open + 1, end);
   // The brace walk is naive about braces inside strings, so it says what it thinks it found:
   // an imbalance shows up here rather than as a confusing syntax error two steps later.
-  assert.match(body.trimEnd().split('\n').pop() ?? '', /^\s*if \(s\.unreadableCityLists\) out\(/,
+  //
+  // **§8.4 A-87 Part 4 (ROADMAP I-26) moved the last statement**: below the three conditional
+  // sentences there is now one data-driven loop over `absorbed`, so the sentinel is its two
+  // closing lines rather than the third `if`. The `${…}` interpolations inside the template
+  // literal are brace-balanced, so the walk itself is unaffected.
+  const tail = body.trimEnd().split('\n');
+  assert.match(tail.at(-2) ?? '', /out\(`\s*trip \$\{rowId\}: unreadable stored values at /,
+    'the lifted body does not end at the line it is supposed to end at — the brace walk slipped');
+  assert.match(tail.at(-1) ?? '', /^\s*\}$/,
     'the lifted body does not end at the line it is supposed to end at — the brace walk slipped');
   return body;
 }
@@ -752,4 +760,70 @@ test('I-25 Part 1 (QA R64-4): the shipped `cmdStats` body PRINTS the line — an
   assert.equal(clean.some((l) => /stored city list/.test(l)), false, clean.join('\n'));
   // …and it printed SOMETHING, so "no such line" is a statement about a working command.
   assert.ok(clean.some((l) => /^travel statistics as of /.test(l)), clean.join('\n'));
+});
+
+/**
+ * **ROADMAP I-26 Part 4 — §8.4 A-87 Part 4: the per-row line, and A-87 Part 8 item 4 is why it
+ * has two arms.**
+ *
+ * *A criterion that pins a shipped line pins its EXECUTION, not its text — every source-lift
+ * assertion is paired with an end-to-end arm asserting a PRESENCE in the output.* This block is
+ * written to satisfy that by construction: it prints for a library that carries an absorption, so
+ * the presence arm exists, and R64-4's mutant M1 (an early `return` above the block) reddens it
+ * rather than sailing past an absence check.
+ *
+ * The block is **data-driven** — one line per row holding absorptions, printed by a loop over
+ * `absorbed` — so a new gate adds a row to the channel and cannot be added and forgotten on the
+ * one surface that exists. That is the whole reason it is a loop and not a fourth `if`.
+ */
+test('I-26 Part 4 (A-87 Part 4): the shipped `cmdStats` body PRINTS the per-row absorbed line, with the id and the path', async () => {
+  const travelled = core.createTrip(
+    { title: 'Vienna', startDate: '2019-04-01', endDate: '2019-04-09', cities: [{ name: 'Vienna' }] },
+    { ids: core.sequentialIds('i26-'), now: '2019-04-01' },
+  );
+  const base = core.tripSummary(travelled, core.COUNTRY_INDEX);
+  // Two absorptions on ONE row, at two different paths: the line has to name both, which is what
+  // separates a loop over `absorbed` from a fourth conditional sentence.
+  const corrupt = {
+    ...base,
+    cities: [{ ...base.cities[0], name: 42 }],
+    countryCodes: 'AT',
+  };
+  const stubCore = {
+    COUNTRY_INDEX: core.COUNTRY_INDEX,
+    tripSummary: () => corrupt,
+    travelStats: core.travelStats,
+  };
+  const printed: string[] = [];
+  const dir = mkdtempSync(join(CAIRN, 'cmdstats-lift-'));
+  try {
+    const file = join(dir, 'lifted-cmd-stats.ts');
+    writeFileSync(file, `export function cmdStats(core, trip, today, todayIsValid, out) {\n${cmdStatsBody()}\n}\n`);
+    const mod = await import(pathToFileURL(file).href) as {
+      cmdStats: (
+        c: unknown, t: unknown, today: string, valid: () => boolean, out: (s: string) => void,
+      ) => void;
+    };
+    mod.cmdStats(stubCore, travelled, '2026-06-15', () => true, (s) => printed.push(s));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+  assert.ok(
+    printed.includes(`  trip ${corrupt.id}: unreadable stored values at cities[0].name, countryCodes`),
+    'the shipped per-row line did not print — it is unreachable, renamed or rewritten:\n' + printed.join('\n'),
+  );
+  // The two existing sentences are untouched by the new block: neither fires here, because
+  // neither of these two faults is a `cities` list or a city date.
+  assert.equal(printed.some((l) => /stored city list|unreadable stored dates/.test(l)), false, printed.join('\n'));
+  // …and `unnamedCities`' sentence DOES fire, because an unreadable `name` behaves exactly as a
+  // name folding to `''` (A-87 Part 3 rule 3) and the line is already true for it as written.
+  assert.ok(printed.includes('  cities with no usable name: 1'), printed.join('\n'));
+});
+
+test('I-26 Part 4: over the reference library `cli stats` prints no absorbed line at all', () => {
+  const r = cli('stats', '--today', '2026-08-24');
+  assert.equal(r.code ?? 0, 0, r.err);
+  assert.equal(/unreadable stored values/.test(r.out), false, r.out);
+  // …over a command that printed something, so "no such line" is about a clean library.
+  assert.match(r.out, /^travel statistics as of 2026-08-24/m);
 });

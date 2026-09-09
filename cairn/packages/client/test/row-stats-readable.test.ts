@@ -138,13 +138,21 @@ test('R44-1: a version-1 row carries no `cities` key at all, and the predicate s
   assert.equal(rowStatsReadable(v1), true, 'a version-1 row is not a date suspect');
 });
 
-test('R44-1: a version-1 row does not take `travelHistory`\'s refusal boundary down with it', () => {
+/**
+ * **§8.4 A-87 Part 3 rule 5, ROADMAP I-26 — this arm moved, and it is the increment's one
+ * behaviour change that is not a repair.** A version-1 row carries no `countryCodes` key, and at
+ * `e1e1973` that was a raw `TypeError: row.countryCodes is not iterable` out of `travelStats`,
+ * taking the whole library's travel history down — A-87 Part 1 shape 3, on the population this
+ * fixture exists for. Absent and `null` are **values** on every gated field now, so the row
+ * contributes nothing, absorbs nothing, and the library comes back `ok: true`.
+ */
+test('R44-1 → I-26: a version-1 row is a VALUE on every gated field — `ok: true`, nothing absorbed', () => {
   const v1 = versionOneRow({ id: 't-v1', startDate: '2019-04-01', endDate: '2019-04-09' });
   const res = travelHistory({ library: [v1] }, TODAY);
-  assert.equal(res.ok, false, 'INCONCLUSIVE: `travelStats` no longer refuses a version-1 row');
-  if (res.ok) return;
-  assert.equal(res.rowId, null, 'a version-1 row was named as a date suspect');
-  assert.deepEqual(res.unreadableRows, []);
+  assert.equal(res.ok, true, 'a stale-but-fine version-1 row still refuses the whole library');
+  if (!res.ok) return;
+  assert.deepEqual(res.stats.absorbed, [], 'a missing key is a value, not a defect (A-87 Part 3 rule 5)');
+  assert.equal(rowStatsReadable(v1), true);
 });
 
 test('R44-1: a `cities` that is not a list is a defect, not a walkable value', () => {
@@ -159,14 +167,32 @@ test('R44-1: a `cities` that is not a list is a defect, not a walkable value', (
   assert.equal(rowStatsReadable(nulled), true, 'absent and null both mean "no cities recorded"');
 });
 
-test('R44-1: a malformed `cities` ENTRY is named rather than thrown over', () => {
-  const r = healthy();
-  (r as { cities: unknown }).cities = [null];
-  assert.equal(rowStatsReadable(r), false);
-  const res = travelHistory({ library: [r] }, TODAY);
-  assert.equal(res.ok, false, 'INCONCLUSIVE: `travelStats` no longer refuses a null city entry');
-  if (res.ok) return;
-  assert.equal(res.rowId, 'ok', 'the single suspect row was not named');
+/**
+ * **§8.4 A-87 Part 4, ROADMAP I-26 (QA R64-2) — the row is named on the SUCCESS path.** At
+ * `e1e1973` a `cities` entry that is not an object threw a raw engine `TypeError` into
+ * `travelHistory`'s catch, where `rowStatsReadable` named it; the *other* half of the same
+ * population — an entry whose `name` is not a string — threw identically and `rowStatsReadable`
+ * called it **readable**, so `rowId` was `null` and `unreadableRows` was `[]` and **nothing named
+ * the row**. Naming stops being a property of the failure path: both are absorbed, `ok: true`,
+ * and `absorbed` carries the id *and* the path.
+ */
+test('R44-1 → I-26: a malformed `cities` ENTRY is named without a throw, and so is a malformed `name`', () => {
+  const entry = healthy();
+  (entry as { cities: unknown }).cities = [null];
+  assert.equal(rowStatsReadable(entry), false);
+  const res = travelHistory({ library: [entry] }, TODAY);
+  assert.equal(res.ok, true, 'one corrupt entry still takes the whole library down');
+  if (!res.ok) return;
+  assert.deepEqual(res.stats.absorbed, [{ rowId: 'ok', path: 'cities[0]', kind: 'entry' }]);
+
+  // R64-2's second shape: readable at `e1e1973`, and nothing anywhere could name it.
+  const named = healthy();
+  (named.cities[0] as { name: unknown }).name = 42;
+  assert.equal(rowStatsReadable(named), false, 'R64-2: `rowStatsReadable` called a garbage row healthy');
+  const second = travelHistory({ library: [named] }, TODAY);
+  assert.equal(second.ok, true);
+  if (!second.ok) return;
+  assert.deepEqual(second.stats.absorbed, [{ rowId: 'ok', path: 'cities[0].name', kind: 'field' }]);
 });
 
 test('A-59 residue 2: the predicate is `core.isIsoDate`, so a CALENDAR-invalid city date fails it', () => {
@@ -312,35 +338,125 @@ test('I-25 Part 1: the corrupt row is now sayable end to end — `ok: true`, and
 });
 
 /**
- * **QA R64-3 (MINOR): the pin above is narrower than *"library rows"*, and this arm is the
- * boundary rather than a second copy of the rule.**
+ * **§8.4 A-87 Part 5 (QA R64-3 §C2/§C3), ROADMAP I-26 — this arm's ANSWER changed, and the
+ * change is the architect's.** It used to record a measured disagreement: `unreadableCityLists`
+ * was accumulated inside the travelled walk on A-31 Part 3's authority, so a corrupt **planned**
+ * row was `rowStatsReadable === false` and counted **0**.
  *
- * `unreadableCityLists` is accumulated inside `travelStats`' **travelled** walk — `active` or
- * `completed` — because A-31 Part 3's rule is that a lifetime number may not be moved by a trip
- * nobody has taken. `rowStatsReadable` has no lifecycle at all: it asks *"does every date-shaped
- * field this row carries read as an `IsoDate`, and is its `cities` walkable"*, of any row. So on
- * a **planned** row with a corrupt `cities` the two answers differ — `false` and `0` — and the
- * eight-value table above cannot see it, because all eight of its fixtures are travelled.
- *
- * **The behaviour is not changed here and this arm does not assert that it should be.** A planned
- * row's cities are never read, so nothing was absorbed and there is nothing to count; whether a
- * planned row's corruption deserves its own number is A-59 Part 5's surface question and an
- * architect's, not a builder's. What this arm buys is that the disagreement is **measured and
- * named** — if the walk ever moves, this goes red and says which side moved.
+ * A-31 Part 3 governs the **lifetime map** and its argument is about *inflation*; an absorption is
+ * not inflatable by planning. A corrupt planned row is corrupt today, its repair is available
+ * today, and it will be travelled later carrying the same corruption — and the shipped
+ * alternative is the exact non-uniformity `travelStats.ts`' own `attribution` comment condemns
+ * about QA R28-3. **`unnamedCities` is the control**: it stays travelled-only, because it counts
+ * what the census lost rather than what the storage cannot say.
  */
-test('I-25 Part 1 (QA R64-3): the pin is over TRAVELLED rows — a PLANNED corrupt row is `false` and counts 0', () => {
+test('I-26 (A-87 Part 5): absorption is lifecycle-blind — a corrupt PLANNED row is `false` and counts 1', () => {
   const planned = { ...row({ id: 't-planned', startDate: '2027-03-01', endDate: '2027-03-20' }), cities: 'nope' } as unknown as TripSummaryRow;
   assert.equal(rowLifecycle(planned, TODAY), 'planned', 'the fixture is not planned, so it proves nothing');
   assert.equal(rowStatsReadable(planned), false, '`rowStatsReadable` has no lifecycle and never had one');
-  assert.equal(
-    core.travelStats([planned], TODAY).unreadableCityLists, 0,
-    'the count moved for a trip nobody has taken (A-31 Part 3) — or the walk changed and the ' +
-      'docstring on `TravelStats.unreadableCityLists` now over-claims in the other direction',
-  );
-  // The same row, travelled, IS counted — which is what makes the line above a statement about
-  // the lifecycle and not about the value.
+  assert.equal(core.travelStats([planned], TODAY).unreadableCityLists, 1, 'QA R64-3 §C2');
   const travelled = { ...planned, id: 't-travelled', startDate: '2019-04-01', endDate: '2019-04-09' } as unknown as TripSummaryRow;
   assert.equal(core.travelStats([travelled], TODAY).unreadableCityLists, 1);
-  // And a library holding both counts exactly the travelled one.
-  assert.equal(core.travelStats([planned, travelled], TODAY).unreadableCityLists, 1);
+  // A library holding one of each counts BOTH — R64-3 §C3, which measured 1.
+  const both = core.travelStats([planned, travelled], TODAY);
+  assert.equal(both.unreadableCityLists, 2);
+  assert.deepEqual(both.absorbed.map((x) => x.rowId).sort(), ['t-planned', 't-travelled']);
+  // …and the census half of the same library is untouched: a planned row contributes no city.
+  assert.equal(both.seen.cities, 0);
+  assert.equal(both.unnamedCities, 0);
+});
+
+// ---------------------------------------------------------------------------
+// **ROADMAP I-26 Part 3 — §8.4 A-87 Part 6: the predicate and the counter are ONE
+// implementation, so the pin above is an IDENTITY rather than an assertion.**
+//
+// `rowStatsReadable`'s body is now `core.travelStats([row], row.startDate).absorbed.length === 0`
+// behind the existing `rowDatesReadable` guard. A-59 Part 7 residue 1 asked whether the predicate
+// should become `rowUsable`; the answer is **no rename, no sibling** — the second implementation
+// it has always been is *deleted* rather than widened, which is what sequencing rule 1 requires.
+//
+// **N5, injected:** re-inline the three-way `cities` split in `packages/client` and the assertion
+// that must redden is this identity, not a fixture table.
+// ---------------------------------------------------------------------------
+
+/** The six shapes A-87 Part 6 widens the predicate to — every one of them `true` at `e1e1973`. */
+const WIDENED: Array<[label: string, patch: (r: TripSummaryRow) => void]> = [
+  ['countryCodes: 42', (r) => { (r as { countryCodes: unknown }).countryCodes = 42; }],
+  ["countryCodes: 'AT'", (r) => { (r as { countryCodes: unknown }).countryCodes = 'AT'; }],
+  ['attribution: 42', (r) => { (r as { attribution: unknown }).attribution = 42; }],
+  ['cities[0].name: 42', (r) => { (r.cities[0] as { name: unknown }).name = 42; }],
+  ["cities[0].countryCode: 'hr'", (r) => { (r.cities[0] as { countryCode: unknown }).countryCode = 'hr'; }],
+  ['cities[0].centre: "x"', (r) => { (r.cities[0] as { centre: unknown }).centre = 'x'; }],
+];
+
+test('I-26 Part 3 (A-87 Part 6): `rowStatsReadable` is FALSE iff `travelStats` absorbed something — an identity', () => {
+  const rows: Array<[string, TripSummaryRow]> = [];
+  for (const [label, value] of STORED_CITIES) {
+    const r = { ...row({ id: `id-${label}`, startDate: '2026-03-01', endDate: '2026-03-20' }), cities: value } as unknown as TripSummaryRow;
+    rows.push([`cities = ${label}`, r]);
+  }
+  for (const [label, patch] of WIDENED) {
+    const r = healthy();
+    (r as { id: string }).id = `id-${label}`;
+    patch(r);
+    rows.push([label, r]);
+  }
+  for (const [label, r] of rows) {
+    // The DATES are held readable deliberately: the predicate answers two questions and this
+    // assertion is about one of them.
+    assert.equal(rowDatesReadable(r), true, `${label}: the fixture's own dates are not readable`);
+    const readable = rowStatsReadable(r);
+    const absorbed = core.travelStats([r], r.startDate).absorbed;
+    assert.equal(readable, absorbed.length === 0,
+      `${label}: rowStatsReadable says ${readable}, core absorbed ${JSON.stringify(absorbed)} — the ` +
+        'predicate has grown a second implementation again (A-87 Part 6)');
+  }
+});
+
+test('I-26 Part 3 (A-87 Part 6): the six widened shapes were all `true` at `e1e1973` and are `false` now', () => {
+  for (const [label, patch] of WIDENED) {
+    const r = healthy();
+    patch(r);
+    assert.equal(rowStatsReadable(r), false, `${label}: still called healthy`);
+  }
+  // …and the three A-87 Part 6 names as still TRUE stay true: absent/`null` containers, and a
+  // hostile value in a field no derivation reads.
+  for (const [label, patch] of [
+    ['cities: null', (r: TripSummaryRow) => { (r as { cities: unknown }).cities = null; }],
+    ['countryCodes: null', (r: TripSummaryRow) => { (r as { countryCodes: unknown }).countryCodes = null; }],
+    ['attribution: null', (r: TripSummaryRow) => { (r as { attribution: unknown }).attribution = null; }],
+    // `as Record<string, unknown>` rather than `as { key: … }`: `cityKey.test.ts`' A-10 ship gate
+    // greps for a `cities:` init that also assigns a `key`, and an inline type annotation naming
+    // that field trips it. Nothing here mints a `CityKey`.
+    ['a hostile `cities[0].key` — nothing reads it', (r: TripSummaryRow) => { (r.cities[0] as unknown as Record<string, unknown>).key = 42; }],
+    ['a hostile `cities[0].countrySource` — nothing reads it', (r: TripSummaryRow) => { (r.cities[0] as { countrySource: unknown }).countrySource = 42; }],
+  ] as Array<[string, (r: TripSummaryRow) => void]>) {
+    const r = healthy();
+    patch(r);
+    assert.equal(rowStatsReadable(r), true, `${label}: a value or an unread field was called a defect`);
+  }
+});
+
+test('I-26 Part 3: `rowStatsReadable` is still TOTAL — a row whose own dates are garbage is `false`, not a throw', () => {
+  const bad = { ...healthy(), startDate: 'nope' } as unknown as TripSummaryRow;
+  assert.equal(rowStatsReadable(bad), false);
+  assert.equal(rowDatesReadable(bad), false, 'the guard above the call is what answers, not the catch');
+});
+
+test('I-26 (A-87 Part 4): `travelHistory` returns `ok: true` for all five measured shapes', () => {
+  const cityish = { key: 'c1', name: 'Vienna', countryCode: 'AT', countrySource: 'stated', centre: null, firstDay: null, lastDay: null };
+  const shapes: Array<[string, Record<string, unknown>, string]> = [
+    ["cities: ['Vienna']", { cities: ['Vienna'] }, 'cities[0]'],
+    ['cities: [null]', { cities: [null] }, 'cities[0]'],
+    ['cities: [{…, name: 42}]', { cities: [{ ...cityish, name: 42 }] }, 'cities[0].name'],
+    ['countryCodes: 42', { countryCodes: 42 }, 'countryCodes'],
+    ['attribution: {places: {}}', { attribution: { places: {} } }, 'attribution.places'],
+  ];
+  for (const [label, patch, path] of shapes) {
+    const r = { ...healthy(), ...patch } as unknown as TripSummaryRow;
+    const res = travelHistory({ library: [r] }, TODAY);
+    assert.equal(res.ok, true, `${label}: took the whole library's travel history down`);
+    if (!res.ok) continue;
+    assert.deepEqual(res.stats.absorbed.map((x) => [x.rowId, x.path]), [['ok', path]], label);
+  }
 });

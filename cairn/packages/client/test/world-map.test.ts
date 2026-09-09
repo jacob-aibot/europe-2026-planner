@@ -79,6 +79,10 @@ function statsOf(
     seen: { cities: 0, places: 0, stops: 0 },
     located: { cities: 0, places: 0, stops: 0 },
     unattributed: { cities: 0, places: 0, stops: 0 },
+    // §8.4 **A-87** Part 4. A hand-built `TravelStats` must carry every field of the type, and
+    // this is the one that stops being a scalar the next gate would have added: an empty channel
+    // is the honest answer for a fixture with no stored row behind it.
+    absorbed: [],
     unnamedCities: 0,
     // §8.4 **A-59** Part 3. A hand-built `TravelStats` must carry every field of the type, so
     // this fixture is what fails if the field is added and a reader is left reading `undefined`.
