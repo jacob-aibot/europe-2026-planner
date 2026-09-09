@@ -1528,6 +1528,52 @@ shape of a measurement, and it is *not* the same thing as A-26 Part 1's honest `
 **ROADMAP I-22**, and **KD-39 is half-closed** until it ships. `ROADMAP.md` revision 66 carries the ledger
 entry, **I-21** and **I-22**.
 
+**Revision 64, 2026-09-09.** **The gazetteer's filter was on the wrong axis, and QA round 60 put a number
+on it: 21.5 %.** Measured against a 171-destination corpus — 72 famous villages, 23 islands, 26 park
+gateways and 50 large cities as a control — revision 63's shipped gazetteer answers **100 %** of the
+control and **21.5 %** of the travel set; `hallstatt`, `positano`, `zermatt`, `sintra` and `geneva` return
+`no match` and `obidos` returns Óbidos **Brazil** (**R60-1**, MAJOR). The cause is a design mistake, not a
+bug: `ne_10m_populated_places` is a **cartographic** layer that selects by administrative rank and
+`POP_MAX`, and travel destinations are selected by **notability** — Hallstatt has 779 residents, a million
+visitors a year, and alternate names in **27 languages**. **§8.4 A-83** rules it and `ROADMAP` **I-22** and
+**I-23** build it. Jacob's direction, verbatim, on the three questions this was put to him with: *"Do 1. 2
+is two heavy. Do as you suggest for 3"* — **swap the dataset; ~1 MB gzipped is too heavy; fold the refusals
+and the migration into one increment.** **The curve was measured rather than a threshold picked blind, and
+it is published in A-83 Part 1 so the choice is his**: eleven points from `l>=12` (71.9 %, 3.0 MB) to every
+Wikipedia-linked feature (95.0 %, 20.9 MB). The point adopted is **`languages ≥ 4` or `wikipedia and
+population ≥ 1,000`** — **149,097 rows, 90.1 % travel coverage, control still 50/50**. **Two measurements
+decided the shape.** (1) **A Wikipedia link buys coverage per byte about three times better than a lower
+language threshold**, because the residual misses are famous in exactly one language — Te Anau, Skukuza,
+La Fortuna. (2) **Sharding changes which number matters.** The corpus ships as **JSON behind the existing
+dynamic import** — which is what stops the 1 MiB type-stripping ceiling binding, verified on Node v22.22.2
+and on this repository's own Vite 8.2.2 — split adaptively into **945 documents while any exceeds 96 KiB**,
+one per token prefix, and a search fetches **exactly one**: **~20 kB gzipped, 44 kB worst case, against
+today's 197 kB chunk fetched in full.** **Coverage goes up fourfold and the bytes a session actually
+fetches go down.** Also ruled: the **fold stops being shipped** and is recomputed on decode, with KD-112's
+checked-pair guarantee moved into the generator and a test rather than into the payload; **population ships
+as a coarse bucket**; **4 dp is the floor and does not move** without re-running round 60's border test.
+**The consistency invariant is restated, not weakened** (**R60-2**, MAJOR): its subject widens from *"no
+shipped row may contradict the index"* to *"no shipped row may **silently** contradict it"*, so the 2,512
+disagreeing rows — Geneva, Jerusalem, Brazzaville among them — **ship carrying the disagreement**, and the
+zero-exception check over every agreeing row is unmoved. That needs **`City.placeId: string | null`**, the
+gazetteer row a human **picked**, which is the exact provenance **A-29 Part 3 item 3** said was missing; so
+**A-29 gains its first amendment and only one clause** — a picked row's country outranks `countryOf`, a
+typed one never does — and **`City.centre` becomes `LatLng | null`** at last, because `{0,0}` is a
+fabrication wearing the shape of a measurement. `SCHEMA_VERSION` **3 → 4**, `SUMMARY_VERSION` **5 → 6**,
+**§2.10 stays at 87** and the subpath stays at **one** symbol, renamed `GAZETTEER` → `loadGazetteerFor`.
+Round 60's seven MINORs are ruled with it: **the `İ` pair pins nothing about the fold's ordering** — all 24
+permutations were run, six are green, and what the twelve pairs actually pin is *lowercase before the
+substitution table* and *the mark strip after NFD* (**R60-3**, and KD-113's premise that U+0130 has no
+canonical decomposition is **false**); **no shipped row may render as a bare name or carry an unreadable
+one**, both enforced at generation (**R60-4**, **R60-9**); **labels are distinct within a result set**,
+measured at 23 of 171 corpus queries today (**R60-9**); the round-trip check compares **structures, not two
+strings** (**R60-5**); `limit` is validated (**R60-6**); Part 3's printed `Gazetteer` type is corrected to
+the three fields the code has (**R60-7**); and the golden-scan exemption narrows to **one** name
+(**R60-8**). The licence becomes **CC BY 4.0** — this repository's first attribution obligation — and the
+attribution **rides on the data**: it is `Gazetteer.source`, `cli.ts cities` prints it, and any surface
+rendering a hit must render it. **No `.tsx`, no `apps/web` file, no `qa/` file, no `docs/design/`.**
+`ROADMAP.md` revision 67 carries the ledger entry, the rewritten **I-22** and **I-23**.
+
 **Phase 1 is §2 and §4. The next phase is §8.1–§8.4.** Everything else is the shape those must not
 foreclose. See `ROADMAP.md` for sequencing and `PRODUCT-VISION.md` for why this order and not another.
 **What the product looks like is `DESIGN.md`, not this document** — §9 says why, and a builder of a screen
@@ -1535,7 +1581,11 @@ reads that instead of entering §2 or §4.
 
 ## Read only your sections
 
-This document is **~486k tokens** (re-measured at **revision 62** — **§2 grew 168k → 175k** with §2.1's
+This document is **~513k tokens** (re-measured at **revision 64** — **§8 grew 101k → 115k** with §8.4's
+**A-83** and the amendment banners it puts on A-82, A-56 and A-29; §2, §4 and §10 did not move). **A-83 is
+~13k and it is the first thing anyone reads about the gazetteer** — it names what of A-82 to skip.
+Revision 62's own note follows, and the figure in it is superseded by the one above: the document was ~486k
+(re-measured at **revision 62** — **§2 grew 168k → 175k** with §2.1's
 **A-81** and A-80's four amendment banners; §4, §8 and §10 did not move). **A-81 is ~5k, and A-81 whole plus
 A-80 Parts 2, 4, 7, 9 and 10 is the read for a builder of ROADMAP I-20** — that builder opens neither §4,
 §8 nor §10, reads no other A-entry at all, and reads **A-81 Part 8 before deciding this arc needs anything
@@ -1703,7 +1753,7 @@ this document** | 175k | builder, breaker |
 | 5 | The four hard subsystems | 2k | breaker; builder from Phase 3 on |
 | 6 | Privacy, authorization, deletion cascade. **§6.6 is the build-artifact threshold; the copy threshold is §2.14 A-15 + A-18 (revisions 13 and 14) and they differ deliberately, in two named places — read them together or neither** | 4k | breaker, manager; builder for §6.2 |
 | 7 | Explicitly deferred | <1k | anyone about to build something not in the roadmap |
-| 8 | **The travel-history model** (revision 9) — trip lifecycle and past trips (§8.1), the feasibility/integrity rule class (§8.2), participants (§8.3), geography attribution, travel stats and the summary-row rule (§8.4); then the shapes the location, photo and social phases must land on (§8.5–§8.7) and what is refused (§8.8). **§8.10 is revision 10** — physical travel distance by mode and the four provenance bases that keep it honest; **it is not Phase 2 scope**, so a Phase 2 builder reads §8.1–§8.4 and stops. **Revision 11 amends §8.1, §8.2 and §8.4 by pointer only — the two rulings themselves live in §2.2 (A-10) and §2.7 (A-9), and a Phase 2 builder reads both; revision 12 amends §8.2 by pointer in the same way, and its four rulings live in §2.7 (A-11, A-12, A-13) and §2.14 (A-14)**. **A-26 is revision 20 and lives in §8.4** — the mixed-resolution country index, the withdrawal of the correctness floor's escalation mechanism, and the ruling that `null` is the right answer for a landform the dataset does not carry; **anyone touching `tools/gen-countries.mjs`, `geo/countryIndex.ts` or the attribution golden reads it first**, and it is what ROADMAP's I-5a builds; **A-27 is revision 21, sits directly under A-26 and is read *with* it, never instead of it** — it amends A-26 Part 4's block-quoted rule with a third clause (a filled code ships a **forgiveness entry** as well as a coverage entry), supersedes A-26 Part 5's two-residue list with three, lifts A-26 Part 6 item 3 for a docstring correction only, and is what ROADMAP's **I-5b** builds; **A-28 is revision 22, sits under A-27 and is read with both, never instead of them** — it supersedes A-27 Part 4's filter 2 (two arms, because the coverage index it compared against is mixed-resolution and answered generously) and A-27 Part 4's `overlaps` predicate (the vertex-mean probes come out), corrects A-27 Part 5's Macao sentence and every count in it, and is what ROADMAP's **I-5c** builds. **Anyone touching `tools/forgiveness.mjs` or the forgiveness pass reads A-28 first and A-27 second**; **A-29 is revision 23 and sits under A-28** — it is the only one of the four that is *not* about the index: it rules that a `City`'s **stated** `countryCode` fills a gap the coordinate cannot answer, never overrides one, and only through a gate ending in index membership, and it takes `SUMMARY_VERSION` to 3. **Anyone touching `derive/summary.ts` reads A-29 and §4.3's A-30 together** — A-29 changes what a row *says*, A-30 changes how it is *written*, and I-6a builds both; **A-31 is revision 24 and sits under A-29** — it is the `travelStats` specification (type, signature, algorithm, sort orders, residues), and it widens the row a second time with the **record census** clause 2's `unattributed` cannot be computed without, taking `SUMMARY_VERSION` to 4. **A builder of I-7 reads §8.4 clause 2, then A-31, and needs nothing else in this document except §2.10's list**; A-31 also rewrites ROADMAP exit criterion 6, so **anyone about to add a count to `TripSummaryRow` reads A-31 Part 6 first — widening that allow-list is an architect's ruling**; **A-33 and A-34 are revision 25 and sit under A-31** — **A-33 supersedes A-31 Part 6's two-half check entirely** (it grepped declarations while the danger is a *value*, and a persisted `countriesVisited` passed it), so read A-33 and treat Part 6 as the *principle* it block-quotes and nothing more; **A-34** adds `provisional` to `travelStats`' two row types and is the ruling that stops an active trip's unreached countries being printed as fact. **A builder of I-7a reads A-31, then A-33 and A-34, plus §2.1's A-32**; **A-36 and A-37 are revision 26 and sit under A-34** — **A-36 supersedes A-33 Part 3's 6b-1/6b-2/6b-4 split and Part 7 residue 2** (every `StoragePort` implementation is *executed* by the gate, including the web port, against a recording double; 6b-2 is demoted to a tripwire and its parameter grep withdrawn; 6b-4's Chromium read-back becomes a required recorded ship-gate condition), so **anyone touching a port implementation, `test/stats-storage.test.ts` or `ROW_KEYS` reads A-36 first and A-33 second**; **A-37** is the ruling that a stored summary row is not a validated document — two module-private read gates in `travelStats` (day numbers clamped into `IsoDate`'s domain, a stored country code read through `/^[A-Z]{2}$/`), and it is what makes A-32 Part 8 residue 3's bound and the composite key's docstring true rather than merely stated. **A builder of I-7b reads A-36 and A-37, plus §2.3's A-35**; **A-38 is revision 27 and sits under A-37** — it **widens A-36 Part 2's mechanism and Part 4's 6b-4 scope without touching A-36's sentence**: a port's coverage is its **write paths**, not its interface methods, so the recording double gains a **seed** (a pre-existing database, including a *legacy* record with no envelope version), 6b-1b becomes **five arms each with a stated starting state**, and 6b-4 gains a second seeded phase; **A-39 is revision 28, sits under A-38 and closes the arc** — it supersedes A-38 Part 7's *required property* sentence (which quantified over **faults** and so could never be discharged by a finite fixture list) and A-38 Part 3's arm **seeds**, replacing both with a claim quantified over the state `ensureReady()` can **read**: five axes derived line by line from the function, a **15-state pairwise covering set** in the same five arms, and — the part Jacob asked for — a **written boundary** saying what legitimately reopens this (a `SUMMARY_VERSION`/`SCHEMA_VERSION` bump, a new store, a new port, a fourth write path) and what does not (one more fault shape on an axis already covered, which is a **builder** finding against A-39 Part 5's table, not an architect's). **Anyone touching a port implementation, `recordingIdb`, `test/stats-storage.test.ts` or `qa/i7a-idb-rowkeys.mjs` reads A-39 first, A-38 second and A-36 third**; **A-44 is revision 30, sits at the end of §8.4 and is read with A-37 Part 2** — it is one paragraph plus a signature, and it says where `lifecycle`'s read gate goes (`packages/client`, once, beside `travelHistory`); **anyone rendering a stored summary row on a new surface reads it**; **A-56 is revision 40, sits at the very end of §8.4 and is the newest entry in the section** — the city entry gains `centre` and `firstDay`/`lastDay`, `SUMMARY_VERSION` goes to **5**, A-33 Part 2's `ROW_KEYS`/`ROW_PATHS` are widened, stop-level geometry is refused with its trigger, and A-31 Part 5 residue 1 is closed **for cities only**. **A builder of I-12 reads A-56, then A-31 Parts 2 and 4, then A-33 Part 2, then A-39 Part 11 item 1, and needs nothing else in this document except §2.10's list**; **A-59 and A-60 are revision 41, sit directly under A-56 and are read *with* it, never instead of it** — QA round 43 measured A-56 Part 7 clause 1's *read* of a stored city date as an anonymous throw that takes the whole library's statistics down with no selector naming the row (A-59: the read is gated, the fallback is clause 2's, the absorption is counted in a new `TravelStats.unreadableCityDates`, and a new `rowStatsReadable` selector plus a widened `TravelHistoryResult` make the row nameable), and its *clamp* as printing a specific single day for a city the traveller has not reached (A-60: a range disjoint from the clamp interval falls back to the trip's range, so no city line escapes the country line beside it — *"never more assertive than its country's"* was A-60 Part 2's own wording and is **superseded at revision 42** by Part 6.4, which states the property as escape rather than width). **A-59 and A-60 also carry the three in-place corrections R43-6 made to A-56's own prose** (Part 2's `firstDay` docstring, Part 6's fourth-fixture justification, Part 8 item 6's `gen-golden.mjs` line), none of which moves a fixture, a test or a clause. **A builder of I-12a reads A-59, then A-60, then A-56 Part 7, then §2.9 A-47 Part 3, and needs nothing else**; **A-60 Part 6 is revision 42** and closes QA R44-2, an ambiguity in A-60's own Part 2 — a `null` city day edge is a **value** and keeps A-56 clause 1's per-field fallback (the shipped behaviour is **upheld**; the literal pair-wide reading is refused, because it deletes a real observation to arrive at a less precise version of the same invention), while A-60's disjointness test is generalised to read **the edges the row supplied** rather than the substitutes standing in for the missing ones — which is what makes a lone `lastDay` before `a` stop printing a fully-invented single day. **Part 2's pseudocode and Part 2's closing claim are both superseded by Part 6's**, and **a builder of the I-12a repair pass builds from Part 6.3's block and nothing else in this ruling**. **A-72 and A-73 are revision 54 and are the first rulings to land in §8.3** — they close the two objections the I-9 builder disclosed rather than resolved: **A-72** takes `SCHEMA_VERSION` to **3** (`participants` is records; `migrateDoc` becomes a ladder; `migrate.ts`'s rule is restated in three clauses so the next record class needs no ruling) and fires **A-39 Part 11 item 2** a second time, which is why §8.4's Axis D paragraph carries a bracketed amendment; **A-73** gives `duplicate_participant_id` **one home, `validateTrip`**, takes the parser refusal out and leaves **A-20 unamended**. **Neither moves a field, a type, a port, a selector or a screen**, and **a builder of ROADMAP I-9a reads A-72 Parts 5–7 and A-73 Parts 6–7 and needs nothing else in this document**; **A-74 is revision 55, sits under A-73 and closes the arc** — it answers BUILD-NOTES **KD-99** by reading the code rather than by ruling on a trade-off: a participant `kind` outside `PARTICIPANT_KINDS` **can never reach `validateTrip`**, because `parseParticipant` has refused it through `oneOf` since I-9, so there is **no new `Issue` code and no `src` change**. Its lasting content is Part 2's **eight-row producer census** for `Trip.participants` and Part 4's rule — *an enum-constrained field earns a `validateTrip` code when some producer of a `Trip` other than the parser can put a value outside the enum into it; a cast is not a producer* — which is what separates this case from §2.9 **A-45 Part 3**'s `invalid_calendar_date` and decides the remaining seventeen `oneOf` fields without a ruling. **Anyone tempted to add a validation code for a field the parser already refuses reads A-74 Part 4 first**; a builder of ROADMAP **I-9b** reads A-74 Parts 5–6 and nothing else. **Two revision-57 corrections land in this section and neither is a new entry** (QA round 54): **A-74 Part 7's residue carries an amendment banner** — its trigger fired at eight doors, and its stated answer (*"another door guard in `build/`"*) is **superseded by §2.1 A-76**, which refuses the enumeration and replaces it with a mechanism; A-74 Parts 1–4 stand entire. And **§8.4 A-27 Part 6 residue 1's *"Vatican City is `IT` at every scale"* is corrected in place** to what KD-52 measured and R54-5 re-measured over 480 cells (`IT` 476, `VA` 4): the sliver is in the index and answers itself; the residue is unrepaired and its trigger is unchanged | 91k | architect; the builder and breaker of the phase after Phase 1 (§8.1–§8.4 only). §8.10 is for the architect and for phases 4, 5 and 7. Read with `PRODUCT-VISION.md` |
+| 8 | **The travel-history model** (revision 9) — trip lifecycle and past trips (§8.1), the feasibility/integrity rule class (§8.2), participants (§8.3), geography attribution, travel stats and the summary-row rule (§8.4); then the shapes the location, photo and social phases must land on (§8.5–§8.7) and what is refused (§8.8). **§8.10 is revision 10** — physical travel distance by mode and the four provenance bases that keep it honest; **it is not Phase 2 scope**, so a Phase 2 builder reads §8.1–§8.4 and stops. **Revision 11 amends §8.1, §8.2 and §8.4 by pointer only — the two rulings themselves live in §2.2 (A-10) and §2.7 (A-9), and a Phase 2 builder reads both; revision 12 amends §8.2 by pointer in the same way, and its four rulings live in §2.7 (A-11, A-12, A-13) and §2.14 (A-14)**. **A-26 is revision 20 and lives in §8.4** — the mixed-resolution country index, the withdrawal of the correctness floor's escalation mechanism, and the ruling that `null` is the right answer for a landform the dataset does not carry; **anyone touching `tools/gen-countries.mjs`, `geo/countryIndex.ts` or the attribution golden reads it first**, and it is what ROADMAP's I-5a builds; **A-27 is revision 21, sits directly under A-26 and is read *with* it, never instead of it** — it amends A-26 Part 4's block-quoted rule with a third clause (a filled code ships a **forgiveness entry** as well as a coverage entry), supersedes A-26 Part 5's two-residue list with three, lifts A-26 Part 6 item 3 for a docstring correction only, and is what ROADMAP's **I-5b** builds; **A-28 is revision 22, sits under A-27 and is read with both, never instead of them** — it supersedes A-27 Part 4's filter 2 (two arms, because the coverage index it compared against is mixed-resolution and answered generously) and A-27 Part 4's `overlaps` predicate (the vertex-mean probes come out), corrects A-27 Part 5's Macao sentence and every count in it, and is what ROADMAP's **I-5c** builds. **Anyone touching `tools/forgiveness.mjs` or the forgiveness pass reads A-28 first and A-27 second**; **A-29 is revision 23 and sits under A-28** — it is the only one of the four that is *not* about the index: it rules that a `City`'s **stated** `countryCode` fills a gap the coordinate cannot answer, never overrides one, and only through a gate ending in index membership, and it takes `SUMMARY_VERSION` to 3. **Anyone touching `derive/summary.ts` reads A-29 and §4.3's A-30 together** — A-29 changes what a row *says*, A-30 changes how it is *written*, and I-6a builds both; **A-31 is revision 24 and sits under A-29** — it is the `travelStats` specification (type, signature, algorithm, sort orders, residues), and it widens the row a second time with the **record census** clause 2's `unattributed` cannot be computed without, taking `SUMMARY_VERSION` to 4. **A builder of I-7 reads §8.4 clause 2, then A-31, and needs nothing else in this document except §2.10's list**; A-31 also rewrites ROADMAP exit criterion 6, so **anyone about to add a count to `TripSummaryRow` reads A-31 Part 6 first — widening that allow-list is an architect's ruling**; **A-33 and A-34 are revision 25 and sit under A-31** — **A-33 supersedes A-31 Part 6's two-half check entirely** (it grepped declarations while the danger is a *value*, and a persisted `countriesVisited` passed it), so read A-33 and treat Part 6 as the *principle* it block-quotes and nothing more; **A-34** adds `provisional` to `travelStats`' two row types and is the ruling that stops an active trip's unreached countries being printed as fact. **A builder of I-7a reads A-31, then A-33 and A-34, plus §2.1's A-32**; **A-36 and A-37 are revision 26 and sit under A-34** — **A-36 supersedes A-33 Part 3's 6b-1/6b-2/6b-4 split and Part 7 residue 2** (every `StoragePort` implementation is *executed* by the gate, including the web port, against a recording double; 6b-2 is demoted to a tripwire and its parameter grep withdrawn; 6b-4's Chromium read-back becomes a required recorded ship-gate condition), so **anyone touching a port implementation, `test/stats-storage.test.ts` or `ROW_KEYS` reads A-36 first and A-33 second**; **A-37** is the ruling that a stored summary row is not a validated document — two module-private read gates in `travelStats` (day numbers clamped into `IsoDate`'s domain, a stored country code read through `/^[A-Z]{2}$/`), and it is what makes A-32 Part 8 residue 3's bound and the composite key's docstring true rather than merely stated. **A builder of I-7b reads A-36 and A-37, plus §2.3's A-35**; **A-38 is revision 27 and sits under A-37** — it **widens A-36 Part 2's mechanism and Part 4's 6b-4 scope without touching A-36's sentence**: a port's coverage is its **write paths**, not its interface methods, so the recording double gains a **seed** (a pre-existing database, including a *legacy* record with no envelope version), 6b-1b becomes **five arms each with a stated starting state**, and 6b-4 gains a second seeded phase; **A-39 is revision 28, sits under A-38 and closes the arc** — it supersedes A-38 Part 7's *required property* sentence (which quantified over **faults** and so could never be discharged by a finite fixture list) and A-38 Part 3's arm **seeds**, replacing both with a claim quantified over the state `ensureReady()` can **read**: five axes derived line by line from the function, a **15-state pairwise covering set** in the same five arms, and — the part Jacob asked for — a **written boundary** saying what legitimately reopens this (a `SUMMARY_VERSION`/`SCHEMA_VERSION` bump, a new store, a new port, a fourth write path) and what does not (one more fault shape on an axis already covered, which is a **builder** finding against A-39 Part 5's table, not an architect's). **Anyone touching a port implementation, `recordingIdb`, `test/stats-storage.test.ts` or `qa/i7a-idb-rowkeys.mjs` reads A-39 first, A-38 second and A-36 third**; **A-44 is revision 30, sits at the end of §8.4 and is read with A-37 Part 2** — it is one paragraph plus a signature, and it says where `lifecycle`'s read gate goes (`packages/client`, once, beside `travelHistory`); **anyone rendering a stored summary row on a new surface reads it**; **A-56 is revision 40, sits at the very end of §8.4 and is the newest entry in the section** — the city entry gains `centre` and `firstDay`/`lastDay`, `SUMMARY_VERSION` goes to **5**, A-33 Part 2's `ROW_KEYS`/`ROW_PATHS` are widened, stop-level geometry is refused with its trigger, and A-31 Part 5 residue 1 is closed **for cities only**. **A builder of I-12 reads A-56, then A-31 Parts 2 and 4, then A-33 Part 2, then A-39 Part 11 item 1, and needs nothing else in this document except §2.10's list**; **A-59 and A-60 are revision 41, sit directly under A-56 and are read *with* it, never instead of it** — QA round 43 measured A-56 Part 7 clause 1's *read* of a stored city date as an anonymous throw that takes the whole library's statistics down with no selector naming the row (A-59: the read is gated, the fallback is clause 2's, the absorption is counted in a new `TravelStats.unreadableCityDates`, and a new `rowStatsReadable` selector plus a widened `TravelHistoryResult` make the row nameable), and its *clamp* as printing a specific single day for a city the traveller has not reached (A-60: a range disjoint from the clamp interval falls back to the trip's range, so no city line escapes the country line beside it — *"never more assertive than its country's"* was A-60 Part 2's own wording and is **superseded at revision 42** by Part 6.4, which states the property as escape rather than width). **A-59 and A-60 also carry the three in-place corrections R43-6 made to A-56's own prose** (Part 2's `firstDay` docstring, Part 6's fourth-fixture justification, Part 8 item 6's `gen-golden.mjs` line), none of which moves a fixture, a test or a clause. **A builder of I-12a reads A-59, then A-60, then A-56 Part 7, then §2.9 A-47 Part 3, and needs nothing else**; **A-60 Part 6 is revision 42** and closes QA R44-2, an ambiguity in A-60's own Part 2 — a `null` city day edge is a **value** and keeps A-56 clause 1's per-field fallback (the shipped behaviour is **upheld**; the literal pair-wide reading is refused, because it deletes a real observation to arrive at a less precise version of the same invention), while A-60's disjointness test is generalised to read **the edges the row supplied** rather than the substitutes standing in for the missing ones — which is what makes a lone `lastDay` before `a` stop printing a fully-invented single day. **Part 2's pseudocode and Part 2's closing claim are both superseded by Part 6's**, and **a builder of the I-12a repair pass builds from Part 6.3's block and nothing else in this ruling**. **A-72 and A-73 are revision 54 and are the first rulings to land in §8.3** — they close the two objections the I-9 builder disclosed rather than resolved: **A-72** takes `SCHEMA_VERSION` to **3** (`participants` is records; `migrateDoc` becomes a ladder; `migrate.ts`'s rule is restated in three clauses so the next record class needs no ruling) and fires **A-39 Part 11 item 2** a second time, which is why §8.4's Axis D paragraph carries a bracketed amendment; **A-73** gives `duplicate_participant_id` **one home, `validateTrip`**, takes the parser refusal out and leaves **A-20 unamended**. **Neither moves a field, a type, a port, a selector or a screen**, and **a builder of ROADMAP I-9a reads A-72 Parts 5–7 and A-73 Parts 6–7 and needs nothing else in this document**; **A-74 is revision 55, sits under A-73 and closes the arc** — it answers BUILD-NOTES **KD-99** by reading the code rather than by ruling on a trade-off: a participant `kind` outside `PARTICIPANT_KINDS` **can never reach `validateTrip`**, because `parseParticipant` has refused it through `oneOf` since I-9, so there is **no new `Issue` code and no `src` change**. Its lasting content is Part 2's **eight-row producer census** for `Trip.participants` and Part 4's rule — *an enum-constrained field earns a `validateTrip` code when some producer of a `Trip` other than the parser can put a value outside the enum into it; a cast is not a producer* — which is what separates this case from §2.9 **A-45 Part 3**'s `invalid_calendar_date` and decides the remaining seventeen `oneOf` fields without a ruling. **Anyone tempted to add a validation code for a field the parser already refuses reads A-74 Part 4 first**; a builder of ROADMAP **I-9b** reads A-74 Parts 5–6 and nothing else. **Two revision-57 corrections land in this section and neither is a new entry** (QA round 54): **A-74 Part 7's residue carries an amendment banner** — its trigger fired at eight doors, and its stated answer (*"another door guard in `build/`"*) is **superseded by §2.1 A-76**, which refuses the enumeration and replaces it with a mechanism; A-74 Parts 1–4 stand entire. And **§8.4 A-27 Part 6 residue 1's *"Vatican City is `IT` at every scale"* is corrected in place** to what KD-52 measured and R54-5 re-measured over 480 cells (`IT` 476, `VA` 4): the sliver is in the index and answers itself; the residue is unrepaired and its trigger is unchanged. **A-82 is revision 63 and A-83 is revision 64; they sit at the end of §8.4, they are the offline city gazetteer, and A-83 IS THE ENTRY POINT — it carries an amendment banner naming every clause of A-82 that no longer holds and a clause-by-clause table in its Part 12.** A-82 is the bundled dataset, the fold, the match rule, the label rule, the total order, *a pick is the user's own* and the bundle boundary; **A-83 is what QA round 60's measured 21.5 % travel hit rate forced** — notability rather than population as the filter, GeoNames under CC BY 4.0, the corpus sharded into JSON documents behind the dynamic import so a search fetches ~20 kB rather than everything, the consistency invariant restated so 2,512 disagreeing rows (Geneva, Jerusalem, Brazzaville) ship carrying their disagreement, **`City.centre: LatLng | null` and `City.placeId`**, and **A-29's first amendment**. **A builder of I-22 reads A-83 Parts 8 and 9, then A-29 Part 3 and A-56; a builder of I-23 reads A-83 Parts 1–7 and 10–11, then A-82 Parts 2–4 and 9–10, and neither needs anything else in this document except §2.10's list** | 115k | architect; the builder and breaker of the phase after Phase 1 (§8.1–§8.4 only). §8.10 is for the architect and for phases 4, 5 and 7. Read with `PRODUCT-VISION.md` |
 | 9 | **The design contract and the frontend tooling stack** (revision 38). §9.1 makes `docs/DESIGN.md` binding and says what is in it; §9.2 names the three fences a design pass may not cross; **A-55** is the eight-candidate tooling ruling, its Part 0 states where the dependency line actually is (`core`/`client` only — `apps/web` may take deps and takes none new), and its Part 4 is the tool hierarchy. **A builder of any web surface reads `DESIGN.md`, not this section**; this section is for the architect and for anyone about to add a frontend dependency | 4k | architect; anyone adding a frontend dependency |
 | 10 | **The photo foundation** (revision 40). §10.1 the record class and where the bytes are not; §10.2 import and the hand-rolled EXIF reader; §10.3 storage and the two new object stores; §10.4 the resolution discipline; §10.5 privacy and redaction; §10.6 the loading-state signals a consuming UI needs. **A-57** is the consolidated ruling and **A-58** is the dependency verdict. **A builder of I-13 reads §10 whole — it is self-contained — plus §2.8 (provenance), §2.10's list, `serialize/migrate.ts`'s own docstring, §8.6 and §8.4 A-39 Part 11.** It does **not** need the rest of §2 or §4. **A-61 is revision 43, sits at the end of the section and supersedes nothing in §10 except one clause of §10.1 point 1's own prose, corrected in place** — it is the ruling on BUILD-NOTES **KD-81** (ROADMAP I-13's 4 KB document-growth criterion against §10.1's measured 768 B record), it moves **no field**, and **a builder of I-13a reads A-61 Parts 5 and 7 and needs nothing else in this document**. **A-62, A-63 and A-64 are revision 44** — round 45's three architect-routed findings against I-13: the photo byte key gains its tenancy (`[tripId, photoId]`, `DB_VERSION` 4 → 5, `PhotoPort`'s signatures, R45-2 BLOCKER), `PhotoListing` gains an `'unreadable'` phase and a retry (R45-5), and A-57 Part 4's transition claim is withdrawn with `RefKind` unmoved (R45-6). They amend §10.2, §10.3 and §10.6 **in place**; §10.1's record class and A-58 do not move. **A builder of I-13b reads §10.2, §10.3, §10.6 and A-62/A-63/A-64, plus §8.4 A-38 Part 5 and A-39 Part 5 for the fixture re-cut**. **A-62 Part 8 gained a fourth residue at revision 45** (QA **R46-4**) — a failed byte cascade during `deleteTrip` does not block the delete, is not reported into `orphanPhotoBytes`, and is answered only by residue 2's unbuilt sweep, whose trigger is widened in place; **it changes no mechanism, and a builder of I-13c reads residue 4 alone**. **A-65 and A-66 are revision 46 and close the two items that had been routed here and never ruled** — A-65 (QA **R45-14**) upholds §10.3's synchronous byte delete and rules that undo restores the **record** and not the photograph, refusing the deferred delete with its reasons, and it amends §10.1 point 1 and §10.3's cascade row **in place**; A-66 (BUILD-NOTES **KD-82**, QA **R46-1**) closes `PhotoImportFailure` at **exactly five arms** and rules that a batch abandoned by a trip transition is reported as nothing, and it amends §10.6's union block in place. **Neither moves a type, a field, a selector or a port method**, and **a builder of I-13c group 3 reads A-65 Part 5 and A-66 Part 6 and needs nothing else in this document**. **A-66 gained a Part 10 at revision 47 (QA R47-1) and it is read FIRST** — Part 7's *"bounded at one derivative pair"* was true of `importPhotos`' loop and false of the system, Part 5 item 3's premise is narrowed and Part 6's owed sentence is widened; the union still does not widen and `U5` still holds. **The mechanism Part 10 depends on is §4.2 A-67, and the two are read together or neither**. **A-65 Part 6's T1 gains a scope sentence at revision 51 and gains nothing else** — §4.2 **A-70** upheld T1 **unamended** against a §4.2 criterion that had contradicted it (BUILD-NOTES **KD-84**), and the sentence records that T1's prohibition holds on **both** availability fixtures, unread and previously-failed. **No row of §10 moves and nothing in §10 is a builder's work at revision 51**. **A-66 gained a Part 11 at revision 52 (QA R50-2) and, like Part 10, it is read FIRST by anyone reading Part 3** — Part 3's misattribution argument was written about a *hypothetical* sixth arm and is true of `'decode_failed'` and `'storage_failed'` **as shipped**, because `fail()` and the batch's progress settlement write into `state.photos` after an `await` with no gate: a file picked in trip A is reported by name on trip B, and an abandoned four-file batch subtracts four from B's own in-flight fraction. **The union still does not widen, `U5` still holds and Part 3's conclusion stands** — what changes is that Part 3 becomes a property one gated writer (`setBatch`) enforces, Part 6's surface sentence gains a clause, and Part 8 gains **U6**/**U7**, written so the shipped code fails them. **It is read with §4.2 A-71**, which moves the batch's closing settlement into a `finally` in the same increment (**I-13i**); the two meet at that one line and nowhere else. **Revision 54 adds one banner and no content**: **A-57 Part 5 is upheld and is no longer the whole rule** — §8.3's **A-72** generalises it (*a new array of records on `TripDoc` always earns a bump; a new scalar with a total default does not*) and takes `SCHEMA_VERSION` to **3**, so anyone reading Part 5 to decide a **new** field reads A-72 Part 4 instead. No row of §10 moves | 40k | builder and breaker of I-13; architect |
 
@@ -9329,11 +9379,14 @@ reason, which is `countryIndex`/`decodeCountryIndex`'s reason verbatim — *a ca
 not to mint one* — and `foldPlaceName` additionally must not be reachable because it is **not**
 `normalizeCityName` and a caller that can reach both will use the wrong one (A-82 Part 3). **`GAZETTEER` is
 NOT on this list and is not part of the 87.** Unlike `COUNTRY_INDEX`, the gazetteer is **not on the write
-path** (A-27 Part 9 is the contrast), so its ~319 kB is reached by dynamic import through a **declared
+path** (A-27 Part 9 is the contrast), so its bytes are reached by dynamic import through a **declared
 subpath**, `@cairn/core/gazetteer`, in `packages/core/package.json`'s `exports` map. That subpath is a
-**door, not a reach-in**: ceiling (1) still forbids importing `geo/gazetteer.gen.ts` by module path, the
+**door, not a reach-in**: ceiling (1) still forbids importing the generated data by module path, the
 subpath carries **exactly one runtime symbol** and is asserted by its own set equality in
-`surface.test.ts`, and `boundaries.test.ts` allows the bare specifier for `apps/web` and nowhere else. A
+`surface.test.ts`, and `boundaries.test.ts` allows the bare specifier for `apps/web` and nowhere else.
+**At revision 64 (§8.4 A-83 Part 7) that one symbol is renamed `GAZETTEER` → `loadGazetteerFor(query)`,
+because the corpus is sharded and a search loads one shard rather than the whole of it. The count is still
+one, `searchGazetteer` is still pure and synchronous, and §2.10 is still 87.** A
 second subpath is an architect's ruling, not a builder's convenience. `Gazetteer`, `GazetteerRow` and
 `GazetteerHit` are **types** and are not part of the count.
 
@@ -18191,6 +18244,24 @@ fix is prose.
 > where it is silent, this gate admits the row's code and every such code passes step 4 by construction.
 > **`countrySource` gains no value here and `SUMMARY_VERSION` does not move.** A-82 Part 5 has the
 > measurement (98 border towns) and the reason inverting Part 3 item 3 was refused.
+>
+> **Revision 64 amendment, and it is the FIRST clause of this ruling anything has ever moved. Read A-83
+> Part 8 with Part 3 below, always.** Round 60 measured that the refused set opens **Brazzaville, Geneva
+> and Jerusalem**, so refusing them is the wrong remedy for a disagreement between two sources. A-83 lets
+> those rows ship, and to do it, **`City` gains `placeId: string | null` — the gazetteer row a human
+> PICKED** — and the precedence gains one clause and only one:
+>
+> - **`placeId !== null` ⇒ the row's country outranks `countryOf`.** `countrySource: 'picked'`.
+> - **`placeId === null` ⇒ this ruling stands verbatim.** `countryOf` first; the stated code only in its
+>   silence, through the four-step gate below, unchanged.
+>
+> **This is not the inversion Part 3 item 3 refuses, and the difference is the field.** Item 3's stated
+> reason is that *"`derive/summary.ts` cannot tell a gazetteer-supplied `countryCode` from a hand-typed
+> one, because `City` carries no provenance for it"* — **`placeId` is exactly that provenance**, it is
+> written only by a human's pick (A-82 Part 6's fence, now load-bearing), and a mistyped `HU` on a typed
+> Vienna still loses to `countryOf`, forever. `centre` also becomes `LatLng | null`, so step 0 of the gate
+> is *there is no coordinate attribution to be had*. `SUMMARY_VERSION` moves **5 → 6** and
+> `countrySource` gains its third value.
 
 A-26, A-27 and A-28 are three rulings about **the index**. This one is not about the index at all, and that
 is the reason the defect survived three adversarial rounds on the same paragraph: `City.countryCode` is not
@@ -20214,6 +20285,14 @@ clause of A-29, A-34, A-36 or A-37, and it does not touch §4.4 — A-40 → A-5
 >   something measurably false. All three are corrected **in place** below, marked as corrections. No
 >   fixture, test, field, version or clause moves for them — they were wrong *reasons* for right things.
 >
+> **Amended again at revision 64 by §8.4 A-83 Part 8, and this one moves a type.** This ruling widened
+> `TripSummaryCity` with `centre: LatLng` on the stated ground that *"a `City.centre` is non-nullable, so
+> the city census is already derivable"*. **That ground is withdrawn**: `City.centre` becomes
+> `LatLng | null` because `{0, 0}` is a fabrication wearing the shape of a measurement (A-82 Part 7, built
+> at last), so **`TripSummaryCity.centre` becomes `LatLng | null` too**, `SUMMARY_VERSION` moves 5 → 6, and
+> **every frame that reads a city centre skips a null one rather than drawing it at 0°N 0°E — which is what
+> they do today.** Nothing else in A-56 moves.
+>
 > Parts 1, 3, 4, 5 and 9 are untouched, and **`SUMMARY_VERSION` does not move again** for any of it.
 >
 > **Extended once more at revision 42 (QA R44-2) — A-60 Part 6, and it is a clarification of A-60 rather
@@ -21058,6 +21137,20 @@ That is the whole diff, and everything about it is what Part 6 claims:
 
 #### A-82 — a bundled gazetteer gives a typed city a real coordinate, no shipped row may contradict the index we already ship, and a picked city is the user's own (revision 63, Jacob's product direction 2026-09-09, BUILD-NOTES **KD-39**)
 
+> **Revision 64 amendment banner — READ **A-83** FIRST, IT NAMES EVERY CLAUSE OF THIS RULING THAT NO
+> LONGER HOLDS.** QA round 60 measured this capability against a 171-destination corpus and it answers
+> **21.5 %** of the travel set against **100 %** of the large-city control (**R60-1**, MAJOR), because
+> `ne_10m_populated_places` selects by administrative rank and population and travel destinations are
+> selected by **notability** — *the filter was on the wrong axis*. Round 60 also measured that the 98 rows
+> Part 5 refuses open **Brazzaville, Geneva and Jerusalem** rather than the four small border towns Part 5
+> publishes (**R60-2**, MAJOR). **A-83 supersedes Part 1 measurement 3, Part 3's ordering rationale, Part
+> 5's cost statement and its first "does not do", and Part 11 item 3 (which it FIRES); it closes Part 12
+> residues 1, 2 and 3; and it corrects Part 3's printed type and Part 5's four published names in place
+> below.** **A-83 Part 12 is the clause-by-clause table and it is the only place that list exists.**
+> Everything not named there — the pick-is-the-acceptance rule and its fence, the total order, the
+> generator standard, the bundle boundary, the determinism goldens — **stands unamended and round 60
+> verified it.**
+
 Jacob asked the question this ruling answers, and the bar is in his own words:
 
 > *"For people wanting to put in past trips - how would they do it? The ease of that is key as well since
@@ -21124,7 +21217,11 @@ Part 3's area-ascending emission order are exactly what make the **settlement's 
 where the country's own ring is drawn. **The disagreement class is border towns and nothing else.**
 
 **Measurement 3 — coverage is thin at exactly the places a traveller remembers, and no affordable dataset
-fixes that.** Against the 7,342-row layer: `Split`, `Dubrovnik`, `Kyoto`, `Cusco`, `Siem Reap`, `Chiang Mai`
+fixes that.** ~~*The second half of that sentence.*~~ **SUPERSEDED AT REVISION 64 by A-83 Part 1: it is
+true of a population filter and false of a notability filter. Measured, GeoNames' own alternate-name
+language count reaches Hallstatt (779 residents, 27 languages), Positano, Zermatt and Sintra at a corpus
+size the representation can carry. The first half — that the miss is the routine case — was right, and
+round 60 put the number on it.** Against the 7,342-row layer: `Split`, `Dubrovnik`, `Kyoto`, `Cusco`, `Siem Reap`, `Chiang Mai`
 and `Banff` are present; **`Hvar`, `Vis`, `Interlaken`, `Positano`, `Hallstatt`, `Hakone`, `Cinque Terre`,
 `Ubud` and `Kotor` are absent.** GeoNames `cities15000` (34,135 rows) still misses all of Hvar, Vis,
 Interlaken, Positano, Hallstatt and Kotor; `cities5000` (69,700 rows) reaches Interlaken, Hakone and Kotor
@@ -21212,7 +21309,12 @@ type GazetteerRow = {
   readonly centre: LatLng;
   readonly id: string;            // the source's stable row id (NE_ID), base-36
 };
-type Gazetteer = { readonly source: string; readonly rows: readonly GazetteerRow[] };
+type Gazetteer = {              // CORRECTED AT REVISION 64 — R60-7. The shipped type has THREE fields
+  readonly source: string;      // and this printed one had two. The widening is SOUND, not a defect:
+  readonly countryNames: Readonly<Record<string, string>>;  // Part 4 puts the code→name table in the
+  readonly rows: readonly GazetteerRow[];                   // generated module and Part 9 forbids
+};                              // gazetteer.ts importing it, so a pure function has exactly one place
+                                // to be handed it. A-83 Part 4 adds a fourth field, `shard`.
 ```
 
 **The fold, stated as an ordered algorithm, because a paraphrase of it is not implementable.**
@@ -21239,10 +21341,17 @@ glyph**, and those are the letters that make this feature fail silently:
 Verified on 2026-09-09 against this exact sequence: `Zürich`→`zurich`, `São Paulo`→`sao paulo`,
 `Łódź`→`lodz`, `Malmö`→`malmo`, `Tromsø`→`tromso`, `Bærum`→`baerum`, `Ağrı`→`agri`,
 `İstanbul`→`istanbul`, `Đông Hà`→`dong ha`, `Bắc Kạn`→`bac kan`, `Nukuʻalofa`→`nukualofa`,
-`Ciudad Juárez`→`ciudad juarez`. **Step 1 precedes step 3 and that ordering is load-bearing**: `İ`
+`Ciudad Juárez`→`ciudad juarez`. ~~**Step 1 precedes step 3 and that ordering is load-bearing**: `İ`
 lowercases to `i` + U+0307, which step 4 then removes; do it the other way round and Turkish names fold
 wrong. **Steps 2–4 are not commutative either** — `ø` must be substituted before NFD, not after, because
-NFD leaves it alone and step 4 has nothing to strip.
+NFD leaves it alone and step 4 has nothing to strip.~~ **WITHDRAWN AT REVISION 64 — R60-3, and A-83 Part
+10 is the replacement.** All 24 orderings of steps 1–4 were run against the twelve pairs above: six are
+green, `NFD` may precede `toLowerCase`, and `ø` may be substituted *after* NFD. What the pairs actually
+pin is **`toLowerCase` before the substitution table** (the keys are lowercase — `Łódź`, `Đông Hà`) and
+**the combining-mark strip after NFD**, plus the presence of both NFD and the table. **`İstanbul` pins
+nothing about the ordering: it reddens in no permutation where six other pairs are already red.** Do not
+cite it as evidence for an ordering claim, and do not write KD-113's replacement claim here either — A-83
+Part 10 measures why it is the first dependency in a different costume.
 
 **`foldPlaceName` is NOT `normalizeCityName` and neither may be implemented in terms of the other.**
 `normalizeCityName` (§2.2 A-10, §2.14 A-14) is an **identity** key: it decides whether two trips are about
@@ -21344,15 +21453,24 @@ The ruling instead makes the disagreement impossible at the source:
 > one of those codes passes step 4 by construction, because it came from the same country family the
 > index is built from. **`countrySource` gains no value and `SUMMARY_VERSION` does not move.**
 
-What this costs, stated plainly rather than buried: **98 real cities become unfindable**, Maastricht,
-Niagara Falls, Lugano and Arlon among them. That is 1.3 % of the layer, it is published by name rather
+What this costs, stated plainly rather than buried: **98 real cities become unfindable**, ~~Maastricht,
+Niagara Falls, Lugano and Arlon among them~~ **— and CORRECTED AT REVISION 64 (R60-2): those are the four
+smallest interesting ones. Ranked by population the refused set opens `Brazzaville` (a national capital,
+1.36 M), `Geneva` (1.24 M) and `Jerusalem` (a national capital, 1.03 M); 19 are above 100,000 and 37 above
+50,000. And in two cases the refusal is a SUBSTITUTION rather than an absence — `windsor` offers Windsor,
+Nova Scotia with nothing to say that Windsor, Ontario was withheld. A-83 Part 8 is the remedy and it does
+not weaken the invariant: the disagreeing rows ship carrying the disagreement, published by name, and only
+where a `City.placeId` lets the summary tell a picked pair from a typed field.** That is 1.3 % of the
+layer, it is published by name rather
 than silently dropped, and it is the doctrine this section already runs on — §8.4 clause 1: *"a system
 that guesses a country is a system whose lifetime map is quietly wrong, and a wrong map is worse than an
 honest hole."* Applied here it reads: **we do not ship a row we would then have to contradict.** Part 12
 records what it would take to restore them, which is a `City` field and a schema migration, and it is
 deliberately not in this increment.
 
-**Three things this does not do.** It does not add a field to `City`. It does not touch `homeBase`
+**Three things this does not do.** ~~It does not add a field to `City`.~~ **SUPERSEDED AT REVISION 64 —
+A-83 Part 8 adds two (`centre: LatLng | null` and `placeId`), for a measured reason, and reconciles them
+with §0.6 and with A-29 in place. The other two stand.** It does not touch `homeBase`
 (KD-55, re-affirmed a third time). It does not make the union additive — a gazetteer row attributes the
 city that carries it and nothing else, exactly as A-29 Part 4 item 1 already rules for `Place` and `Stop`.
 
@@ -21546,9 +21664,13 @@ reproducible only on the machine that first ran it is not reproducible.
 2. **Non-Latin-script queries.** Deferred; the source's twenty language-name columns exist and are not
    shipped. **Trigger:** `BRIEF.md`'s own — strangers arrive, or a user asks for it. It is a generator
    change and a budget re-measure, not a redesign.
-3. **A larger gazetteer (GeoNames `cities5000`/`cities15000`).** Deferred, and now with a measured price
+3. ~~**A larger gazetteer (GeoNames `cities5000`/`cities15000`).** Deferred, and now with a measured price
    (Part 1 measurements 3–5). **Trigger:** misses observed against real use, *and* an answer to the
-   1 MiB ceiling and to CC-BY attribution. It is the second thing to try, not the first.
+   1 MiB ceiling and to CC-BY attribution. It is the second thing to try, not the first.~~ **FIRED AT
+   REVISION 64.** Round 60 measured the misses (21.5 %); **A-83** is the ruling, it answers the 1 MiB
+   ceiling with a representation change (JSON behind the dynamic import, sharded) and the CC-BY
+   obligation with an attribution that rides on the data rather than in a comment. It is not
+   `cities5000`: a population-filtered dump is the same axis error one notch down.
 4. **Live geocoding.** Stays in reserve for **Phase 3**, when a backend exists to hold a key and proxy it,
    and when usage data shows whether coverage is a real problem. §8.4 clause 1's privacy argument does not
    expire; a Phase 3 proxy is what would let it be honoured while a network is involved.
@@ -21565,6 +21687,9 @@ reproducible only on the machine that first ran it is not reproducible.
 
 **Part 12 — residues, each with what would fire it.**
 
+**Residues 1, 2 and 3 are CLOSED at revision 64 by A-83 Part 8 and A-83 Part 1. They are kept here
+because the reasoning in them is what A-83 builds on, and residue 4 is still open.**
+
 1. **The 98 refused border towns.** Restoring them needs a way for `derive/summary.ts` to know that a
    city's coordinate and its country code came from the *same* source, which is a field on `City` — the
    gazetteer row id is the natural one, since it is already carried — plus a third `countrySource` value
@@ -21578,6 +21703,635 @@ reproducible only on the machine that first ran it is not reproducible.
    measurement 3 before ruling on dataset size.
 4. **The admin-1 names are the source's own and are not localised** — `Splitsko-Dalmatinska`, `Wien`,
    `Attiki`. They disambiguate correctly and read oddly. **Trigger:** the same as residue 2 of Part 11.
+
+#### A-83 — the gazetteer's filter moves from population to notability, the corpus is sharded so *bytes fetched* replaces *bytes shipped*, and a picked row's country outranks a coarse ring (revision 64, QA **R60-1**/**R60-2**, MAJOR; **R60-3**…**R60-9** ride along; Jacob's product direction 2026-09-09)
+
+**A-82 was ruled without the number that decides it, and round 60 measured it.** Against a 171-destination
+corpus — 72 famous small towns, 23 island and beach destinations, 26 national-park gateways and 50 ordinary
+large cities as a control — the shipped gazetteer answers **100 %** of the control and **21.5 %** of the
+travel set. `hallstatt`, `positano`, `zermatt`, `sintra` and `geneva` return `no match`; `obidos` returns
+Óbidos **Brazil**. A-82 Part 11 item 3 deferred the larger dataset behind the trigger *"misses observed
+against real use"*; that trigger has fired, with a number, and this ruling is what it fires into.
+
+**The root cause is a design mistake and not a bug, and naming it correctly is what makes the fix
+tractable.** `ne_10m_populated_places` is a **cartographic** layer: it selects by administrative rank and
+by `POP_MAX`, which is what belongs on an atlas. Travel destinations are selected by **notability**.
+Hallstatt has 779 residents and roughly a million visitors a year; a same-sized village in Iowa has 779
+residents. **The filter was on the wrong axis**, and no amount of lowering a population threshold fixes an
+axis error — it only buys the Iowa village first.
+
+Jacob's decision, put to him with the three questions this ruling had to answer, verbatim: *"Do 1. 2 is two
+heavy. Do as you suggest for 3"* — **swap the dataset**, **~1 MB gzipped is too heavy**, and **fold the 98
+refusals in with I-22 as one increment**. What follows is the design, written against measurements taken on
+2026-09-09 rather than against an argument.
+
+**What round 60 verified and this ruling does not touch.** The consistency invariant's *machinery* (Part 8
+restates its *statement*, and the restatement is a widening of subject, not a weakening of the check); the
+normalisation contract — `foldPlaceName` is not `normalizeCityName`, the five ordered steps, the
+substitution table — with the two corrections in Part 10; **prefix and token-prefix, never substring, no
+fuzzy**; the **total** ranking order; `searchGazetteer` computing its own `label` so that no consumer
+renders a bare ambiguous name; the generator standard (`--dry-run`, `--audit-only`, checksum refusal,
+byte-reproducible) and determinism; and **`countryNames` as a third `Gazetteer` field, which round 60 ruled
+SOUND** — Part 9 of A-82 forbids `gazetteer.ts` importing the generated module, so a pure function has
+exactly one place to be handed the table, and it is A-82 Part 3's *printed type* that is wrong, not the
+code (**R60-7**).
+
+---
+
+**Part 1 — the curve, published so the choice is the product owner's rather than mine.**
+
+Everything in this part was measured on **2026-09-09**, on this machine, against the GeoNames dumps pinned
+in Part 2 and against the **committed** `COUNTRY_INDEX`, and scored with **round 60's own corpus**
+(`qa/r60-coverage.mjs`, reused rather than re-invented) under **round 60's own strict rule**: a HIT is a
+returned row whose fold or English alternate **equals** the query *and* whose country code is the country
+the place is actually in. It is history against a fixed commit in the count rule's sense (ROADMAP *How a
+criterion is written* rule 6): the numbers exist to justify the ruling, the builder re-derives them, and
+the ones that must not drift live in a test or a golden, never in this paragraph.
+
+Each row is a **notability threshold**. All of them use the same representation (Part 5) and the same
+adaptive sharding (Part 6, 96 KiB budget). `l>=N` means *the feature carries alternate names in at least N
+distinct languages*; `w&pN` means *or it carries a Wikipedia link and a population of at least N*. Every
+row also admits any class-P feature over 20,000 people, so that the control set cannot be lost to the dial.
+
+| selection | rows | shards | disk raw | disk gz | fetch/search gz (mean · p95 · max) | village | island | park | **travel** | control |
+|---|---|---|---|---|---|---|---|---|---|---|
+| *shipped today (`ne_10m_populated_places`)* | 7,244 | 1 | 0.37 MB | 0.19 MB | 197 kB, all of it, once | 5/72 | 5/23 | 16/26 | **21.5 %** | 50/50 |
+| `l>=12` | 56,117 | 362 | 3.04 MB | 1.54 MB | 18 · 36 · 43 kB | 54/72 | 18/23 | 15/26 | **71.9 %** | 50/50 |
+| `l>=8` | 74,287 | 419 | 4.06 MB | 2.03 MB | 22 · 47 · 48 kB | 59/72 | 18/23 | 19/26 | **79.3 %** | 50/50 |
+| `l>=6` | 87,485 | 603 | 4.81 MB | 2.40 MB | 17 · 36 · 38 kB | 60/72 | 18/23 | 20/26 | **81.0 %** | 50/50 |
+| `l>=4` | 105,961 | 616 | 5.86 MB | 2.89 MB | 21 · 43 · 44 kB | 61/72 | 18/23 | 23/26 | **84.3 %** | 50/50 |
+| `l>=3` | 166,624 | 1,029 | 8.94 MB | 4.26 MB | 20 · 43 · 46 kB | 64/72 | 18/23 | 23/26 | **86.8 %** | 50/50 |
+| **`l>=4 or w&p1000`** | **149,097** | **945** | **8.25 MB** | **4.06 MB** | **20 · 41 · 44 kB** | **67/72** | **18/23** | **24/26** | **90.1 %** | **50/50** |
+| `l>=4 or w&p200` | 180,305 | 1,225 | 9.88 MB | 4.83 MB | 19 · 43 · 46 kB | 69/72 | 18/23 | 25/26 | **92.6 %** | 50/50 |
+| `l>=4 or w&(p200 or island)` | 188,665 | 1,309 | 10.64 MB | 5.17 MB | 19 · 41 · 46 kB | 69/72 | 20/23 | 25/26 | **94.2 %** | 50/50 |
+| `l>=2` | 298,936 | 2,217 | 15.54 MB | 7.24 MB | 15 · 35 · 43 kB | 66/72 | 18/23 | 24/26 | **89.3 %** | 50/50 |
+| `wiki or l>=4` (every Wikipedia-linked feature) | 385,005 | 2,641 | 20.89 MB | 9.75 MB | 15 · 38 · 45 kB | 69/72 | 20/23 | 26/26 | **95.0 %** | 50/50 |
+
+**Three things this table says, and they are the whole argument.**
+
+1. **Notability works, and it works at exactly the place population fails.** Hallstatt carries alternate
+   names in **27** languages at a population of 779; Positano 26 at 2,334; Zermatt 26 at 6,629; Sintra 50;
+   Óbidos (Portugal) 26; Chamonix 24. Those are the rows a cartographic layer drops and a traveller types.
+2. **A Wikipedia link is a better byte-for-coverage buy than a lower language threshold**, and this is the
+   measurement that changed my recommendation. To reach ~89 % on the language dial alone costs
+   **15.54 MB** (`l>=2`); the hybrid reaches **90.1 % for 8.25 MB**. The reason is legible: the residual
+   misses at `l>=4` are Anglophone-traveller destinations that are famous in *one* language — Te Anau,
+   Skukuza, La Fortuna, Pai, Monteverde — and a Wikipedia link is precisely the signal that finds them.
+3. **Once the corpus is sharded, dataset size stops being the number that matters.** Read the
+   fetch-per-search column down the table: it does not grow. It is held at **~20 kB mean and under 50 kB
+   worst case** across a 5× range of dataset size, because the shard budget bounds it and nothing else
+   does. The number the product owner declined — *~1 MB gzipped, always loaded* — is not a number this
+   design has. What it has instead is **8.25 MB on disk that nobody downloads** and **~20 kB per search
+   that everybody does**, against today's **197 kB gzipped chunk fetched in full the first time anyone
+   types a letter** (`gzip -9` over the committed 391,756-byte module: 201,757 bytes). **The per-session cost goes down while coverage goes up more than fourfold.**
+
+> **The recommended point is `l>=4 or (wikipedia and population ≥ 1,000)`, and this ruling adopts it:
+> 149,097 rows in 945 shards, 8.25 MB raw / 4.06 MB gzipped committed, ~20 kB gzipped fetched per
+> search (44 kB worst case over the corpus), a travel hit rate of 90.1 % against round 60's 21.5 %, and
+> the control set still perfect at 50/50.**
+
+**Why that point and not the one above it.** `l>=4 or w&(p200 or island)` reaches 94.2 % for 2.4 MB more,
+and it is a defensible choice — but its extra island term admits ~5,000 Spanish-named uninhabited islets
+(`Isla …`), which is why its largest shard blows through the budget and needs deeper splitting, and the
+coverage it buys is 5 destinations of 121. **The curve is published above so that a different answer is a
+decision and not an override**: moving the dial is one constant in the generator and a re-run of
+`qa/r60-coverage.mjs`, and Part 13 residue 1 says so.
+
+**Why not lower still.** Below `l>=8` the village bucket collapses (54/72) while the disk saving is under
+2 MB, and below `l>=12` the park gateways fall to 15/26 — which is the shape of the same axis error,
+one notch down.
+
+---
+
+**Part 2 — the dataset, the pin GeoNames does not have, and the licence obligation this repository has
+never carried before.**
+
+> **The gazetteer becomes GeoNames — `allCountries` for the features, `alternateNamesV2` for the
+> notability signal and the English alternate, `admin1CodesASCII` for the region names and `countryInfo`
+> for the country names — fetched by the committed generator, verified by sha256, and emitted into
+> committed generated data. Nothing in the shipped product fetches anything, in this phase or any
+> other.**
+
+**Measured 2026-09-09 through this environment's proxy** (`download.geonames.org` answers; A-82's note that
+`naturalearthdata.com` returns `CONNECT tunnel failed, response 403` is unchanged and unrelated):
+
+| file | bytes | sha256 | `Last-Modified` |
+|---|---|---|---|
+| `allCountries.zip` | 421,188,852 | `8f5ac3347ebb11b9b0ae06f541c89aa2a317d503b1ecb3d6e0cfbbdab39670bd` | Wed, 09 Sep 2026 01:49:04 GMT |
+| `alternateNamesV2.zip` | 204,010,583 | `8458f088fe1582c095963e31fff1ea1edd0e955eb1b66b7f012bf65b13d9382a` | Wed, 09 Sep 2026 01:54:00 GMT |
+| `admin1CodesASCII.txt` | 151,536 | `590651498043f674accda2b7f46d21286cda0e290b02f8561c5005eee9a5448c` | — |
+| `countryInfo.txt` | 31,678 | `93bafc525813f22e4711ff9ed6d626343094ce48c26388dc7c49189b3d7d5512` | — |
+
+`allCountries.txt` is 13,464,089 features; `alternateNamesV2.txt` is 19,157,584 rows.
+
+**A-82 measurement 5 was right and it does not block this: GeoNames has no pinnable ref.** The dumps are
+regenerated daily — both `Last-Modified` values above are *today* — so the checksum pin cannot mean what
+`v5.1.2` means for the country index. **The ruling is that the pin still exists and its meaning changes**:
+
+> **The generator pins each source file by sha256 *and* by the fetch date, both recorded in the generated
+> header. A fetch that does not match is REPORTED and the run REFUSES TO WRITE — exactly as A-82 Part 2
+> requires — and re-pinning is a deliberate, reviewed act: a human updates the constants, re-runs, and
+> reads the diff in the goldens, which are what make the change legible.** Reproducibility of the
+> *artefact* is preserved in full and is what actually matters: the generated data is committed,
+> `--audit-only` fetches nothing and audits the committed bytes, and every test runs against those bytes.
+> Reproducibility of the *build from source* is bounded by GeoNames' own release discipline, and that is
+> stated here rather than discovered by whoever re-runs the generator next month.
+
+**The licence is CC BY 4.0 and it is the first attribution obligation in this repository.** Verified
+2026-09-09 from the dump's own `readme.txt`: *"This work is licensed under a Creative Commons Attribution
+4.0 License … The Data is provided 'as is' without warranty or any representation of accuracy, timeliness
+or completeness."* Two consequences, both binding:
+
+1. **The attribution rides on the data, not on a comment.** The generated `meta` document carries a
+   `$source` string containing the attribution text and the licence URL; `Gazetteer.source` is that string;
+   and **any surface that renders a hit must render the attribution**. `cli.ts cities` prints it once per
+   run, which is what makes the obligation testable before a screen exists.
+2. **The "as is, no representation of accuracy" clause is ours to honour, not to repeat.** It is the
+   reason Part 8 keeps a disagreement between two sources *visible* instead of resolving it silently, and
+   the reason `population` is still never rendered as a fact (A-82 Part 4, unchanged).
+
+**The upstream swap stays a build-time data change**, exactly as A-82 Part 2 promised. Everything
+downstream sees `Gazetteer` and a `GazetteerRow`; nothing downstream knows the word *GeoNames*.
+
+---
+
+**Part 3 — the selection rule, stated so a builder can implement it and a breaker can attack it.**
+
+> **A feature is a candidate if its GeoNames feature class is `P`, or its feature code is `ISL` or `ISLS`.
+> A candidate is SELECTED if it clears any of three independent gates:**
+>
+> 1. **`languages ≥ 4`** — the count of *distinct ISO-639 language codes* under which
+>    `alternateNamesV2` carries a name for that feature. Rows whose `isolanguage` column is not a language
+>    code (`link`, `wkdt`, `iata`, `post`, `abbr`, …) do not count, and a (feature, language) pair counts
+>    once however many spellings it has.
+> 2. **a Wikipedia link and `population ≥ 1,000`** — a Wikipedia link is an `alternateNamesV2` row whose
+>    `isolanguage` is `link` and whose value names `wikipedia.org`.
+> 3. **feature class `P` and `population ≥ 20,000`** — the floor that guarantees the control set can never
+>    be lost to a dial. It is not the selection rule; it is the guard rail under it.
+
+**Why the feature-class restriction and not "everything notable".** Measured over the corpus: of the rows
+that answer a corpus query, **only islands (`T/ISL`) and a single ancient site contribute outside class
+`P`**. `T/MT` (mountains) contributes **4,276 rows and zero answers** at `l>=4`; `H/LK`, `S/CSTL`, `L/PRK`,
+`T/MTS` and `T/CAPE` each contribute zero. The principle behind the measurement is the one that keeps this
+honest: **a `City` record is a settlement or an island you can say you went to.** A mountain is not a city
+and putting Mont Blanc in a city picker is how a picker stops being trusted.
+
+**Why a `?`-free, `�`-free, delimiter-free corpus is a shipping condition and not a hope** — see
+Part 9. Measured over the selected set: **0** rows carry `�` or `?` in the name or the region, and
+**0** carry the payload's own two delimiters. R60-9's 37 mojibake rows were an artefact of Natural Earth's
+`ADM1NAME`; the region names now come from `admin1CodesASCII.txt` and the class is gone. Part 9 keeps the
+guard anyway, because a guard that only fires on the dataset that motivated it is a guard that will be
+deleted.
+
+---
+
+**Part 4 — what a row carries, and the three things it stops carrying.**
+
+```ts
+type GazetteerRow = {
+  readonly name: string;          // display form, the source's own spelling: 'Zürich', 'São Paulo'
+  readonly fold: string;          // foldPlaceName(name) — COMPUTED ON DECODE, not shipped
+  readonly alts: readonly string[]; // at most one: the folded English name, when it folds differently
+  readonly countryCode: CountryCode | '';
+  readonly admin1: string;        // resolved from the shard's dictionary on decode; '' when none
+  readonly population: number;    // a coarse bucket, decoded to a number. Ranking only, never rendered
+  readonly centre: LatLng;        // 4 dp
+  readonly id: string;            // '<source>:<row>' — 'gn:3067696'. The prefix lives in the meta document
+  readonly indexAgrees: boolean;  // false ⇔ countryOf(centre) is non-null and differs. Part 8
+};
+type Gazetteer = {
+  readonly source: string;        // the attribution string, Part 2
+  readonly shard: string | null;  // the prefix this document answers for; null for a whole corpus
+  readonly countryNames: Readonly<Record<string, string>>;
+  readonly rows: readonly GazetteerRow[];
+};
+```
+
+**Three levers were evaluated against measurement and two of them are adopted.**
+
+- **Stop shipping the fold. ADOPTED.** KD-112 spent ~12 bytes a row storing each row's fold so that the
+  generator's second copy of the algorithm was a *checked pair*, and round 60 confirmed the checking is
+  real. **You do not have to ship a value to verify it.** The fold is recomputed by `decodeGazetteer` with
+  `foldPlaceName` — the one implementation — and the check moves to where checks belong: the generator
+  asserts `foldPlaceName(name) === itsOwnFold` for **every** row at generation time, and a test asserts it
+  over the shipped rows by decoding them. **The guarantee is unchanged and the bytes are gone.**
+- **Coarse population bucket. ADOPTED.** `population` is a ranking input and A-82 Part 4 already forbids
+  rendering it. It ships as `min(35, floor(log2(pop)))` in one base-36 character and decodes to `2^b`.
+  The comparator's fourth key becomes *descending bucket*; keys 5–7 (`fold`, `countryCode`, `id`) already
+  make the order total, so **the order stays total and a regeneration still cannot reshuffle a list.**
+  Measured over the corpus: **no correct hit falls below rank 5** at the recommended point.
+- **Intern `admin1` behind a code table. ALREADY DONE — REJECTED as new work, and the scoping note's
+  premise is wrong.** `tools/gen-gazetteer.mjs` **already** emits an admin-1 dictionary and a base-36
+  index per row (`pack()`, the `admin1At` map), exactly as `countryNames` interns country names. The only
+  open question was *where the dictionary lives once the corpus is sharded*, and it was measured both
+  ways: **per-shard** dictionaries make each shard a self-describing document answerable in one fetch and
+  cost **~1.0 MB more on disk**; **one global dictionary** in the meta document costs a **23 kB
+  session-once fetch** and creates one skew hazard between two documents. **Taken: global**, because the
+  disk saving is real and the skew hazard is closed by a check rather than by a duplicate — both
+  documents carry the same `$sourceSha256` and the loader refuses a pair that disagrees. Measured at the
+  recommended point: **3,665 distinct region names and 251 country codes, 23 kB gzipped**, fetched once
+  per session.
+- **Compact coordinate encoding. REJECTED as new work, and the floor is held.** The shipped format is
+  already base-36 tenth-thousandths (~11 bytes for the pair, not the ~14 the scoping note assumed); a
+  fixed-width packing saves 2–3 bytes a row against a new decoder to keep correct. **4 dp is the floor and
+  it does not move**: round 60's border test is what stands between us and a city in the wrong country —
+  of 7,342 rows exactly one changed its derived country under 4 dp rounding and it changed to `null`, with
+  **zero** rows crossing into a different country in either direction. **Anything coarser than 4 dp
+  requires that test to be re-run first, and this ruling does not run it.**
+
+---
+
+**Part 5 — the representation, and why the 1 MiB ceiling stops binding.**
+
+> **The corpus ships as JSON, one document per shard, under
+> `packages/core/src/geo/gazetteer/`, reached by dynamic `import()` from a single generated
+> module `packages/core/src/geo/gazetteerShards.gen.ts` that maps a shard key to
+> `() => import('./gazetteer/<key>.json', { with: { type: 'json' } })`.**
+
+- A shard document is `{"v":1,"k":"<key>","r":["<row>", …]}` — one packed string per row, fields separated
+  by `|` in the order of the type in Part 4, and nothing else.
+- The meta document `packages/core/src/geo/gazetteer/meta.json` carries `$source` (the attribution),
+  `$sourceSha256`, `$fetched`, the row-id prefix, the **admin-1 dictionary**, the **code→country-name
+  table** and the **split manifest**. It is fetched once per session, it is the only document `cli.ts`
+  needs to print the attribution, and **the loader refuses a shard whose `$sourceSha256` does not match
+  it** — which is the whole of the skew hazard the global dictionary buys.
+
+**Why this is the representation change that unlocks the size, stated precisely.** The
+`0-gazetteerBudget.test.ts` ceiling of **1,048,576 bytes** is a limit on `.ts` source handed to Node's type
+stripper by `node --test packages/core`. **It does not bind a `.json` file, because a `.json` file is not
+TypeScript** — and it does not bind the shards for a second, independent reason: **no shard is large.**
+Both mechanisms were verified on this machine on 2026-09-09 rather than assumed:
+
+- **Node v22.22.2**, no flags: a type-stripped `.ts` module holding `() => import('./g/ha.json', { with: {
+  type: 'json' } })` resolves and returns the parsed document.
+- **Vite 8.2.2** — this repository's own version — builds that same module and emits **one lazy chunk per
+  shard**, which is the behaviour the whole design rests on.
+
+**The ceiling does not disappear; it moves and it gets a companion.** `0-gazetteerBudget.test.ts` keeps its
+1,048,576-byte ceiling and applies it to **every generated `.ts` file** in the family (the shard map is
+~70 bytes × the shard count, so it has room to spare), and gains **two new ceilings that are the ones that
+now matter**:
+
+1. **No single shard document may exceed 96 KiB raw** — this is the bound that keeps a search cheap, and
+   it is the generator's own splitting rule made into an assertion.
+2. **The total committed size of `packages/core/src/geo/gazetteer/` may not exceed a stated figure**, which
+   is the generator's own reported total, pasted, not rounded and not chosen — `0-countryBudget.test.ts`'s
+   two rules, unchanged: it **never imports what it guards** (`statSync` only) and the number is measured.
+
+**The main-chunk boundary of A-82 Part 9 is unchanged and is now easier to hold, not harder.** Nothing on
+the write path touches the gazetteer; `packages/core/src/index.ts` must still not reach the generated
+family, directly or transitively; the **2 kB** main-chunk ceiling stands.
+
+---
+
+**Part 6 — sharding, the token-prefix complication, and the ruling on it.**
+
+The complication is real and it is the one the scoping note names: **token-prefix matching means `york`
+must find *New York***, so a row must be reachable under every one of its tokens' shards, which costs
+duplication or an index.
+
+> **Ruling: duplication, bounded by measurement, and no index.** A row is written into the shard of
+> **every distinct token** of its folded name and of its folded English alternate. A query is answered from
+> **exactly one shard**, chosen by the query's **first folded token**. That is complete: if the folded
+> query is a prefix of the whole folded name it is a prefix of its first token, and if it is a prefix of an
+> interior token it is a single token itself — either way the row is in the shard the query resolves to.
+>
+> **Shard keys are prefixes of tokens, and the split is adaptive rather than fixed-width.** A shard starts
+> as one character. **While a shard's packed payload exceeds 96 KiB it is split** into the shards of the
+> next character, with a terminal `<prefix>$` shard holding the rows whose token *is* the prefix. The set
+> of split prefixes is the manifest, and it is a few hundred bytes.
+
+**Measured at the recommended point:** 149,097 rows become **206,683 emitted rows** — a duplication factor
+of **1.386** — across **945 shard documents**, 8.25 MB raw / 4.06 MB gzipped. **Per search: 20 kB gzipped
+mean, 41 kB at p95, 44 kB worst case over the corpus.**
+
+**Why fixed-width sharding was rejected.** One character gives 40-odd files and a largest shard measured
+between **600 kB and 1.3 MB raw (300–600 kB gzipped)** across the thresholds on the curve — the number
+Jacob already declined, arriving through a different door.
+Two characters bounds the shard but produces ~800 files *and* a hard failure mode: measured, an
+`isla` prefix at one of the wider selections reaches **306 kB** because Spanish island names all begin the
+same way, and a fixed width has no answer to that. **The budget is the invariant; the width is whatever the
+budget requires**, and stating it that way is what makes the largest shard a number the test can assert
+rather than a property of the alphabet.
+
+**Why no separate index, and no cross-shard reference.** Storing each row's body once in a "primary" shard
+and a reference in the token shards would save ~2.3 MB of disk and cost a **second round trip on the query
+that needed it** — `york` would fetch `yo`, discover *New York* lives in `ne`, and fetch again. A search box
+that is sometimes one fetch and sometimes two is a search box with a latency cliff exactly on the
+generosity that A-82 Part 3 bought deliberately. **One search, one shard, and the duplication is the
+price**; it is 38.6 %, it is measured, and it is on disk rather than on the wire.
+
+**The one-character-query case, ruled rather than left to a UI.** A shard key is at least one character, so
+a one-character query resolves to a shard, and that shard may be a split prefix — in which case the correct
+answer is the terminal `<prefix>$` shard plus every shard beneath it, which is a fetch of everything under
+that letter. **This design refuses that.** `loadGazetteerFor` returns `null` for a folded query shorter than
+**two** characters, `searchGazetteer` over a `null` gazetteer is not a call anyone makes, and **the
+consumer's contract is "keep typing"**, not "no match" — the distinction matters because A-82's rule is
+that *a miss is a miss and the product says so*, and "I have not looked yet" is not a miss.
+
+---
+
+**Part 7 — the loading contract: how the data gets to a pure function without making it impure.**
+
+> **`@cairn/core/gazetteer` keeps carrying exactly one runtime symbol and its name changes from
+> `GAZETTEER` to `loadGazetteerFor(query: string): Promise<Gazetteer | null>`.** It resolves the query's
+> shard, dynamic-imports the meta document (once) and that one shard, decodes both, and returns a
+> `Gazetteer` whose `shard` field names the prefix it answers for. **`searchGazetteer(query, gazetteer,
+> opts?)` does not change: it stays pure, synchronous, index-injected and on `index.ts`.**
+
+The subpath's set-equality assertion in `surface.test.ts` stays at **exactly one symbol** and §2.10 stays at
+**87**. `decodeGazetteer` and `foldPlaceName` stay module-private for group 1's reason, unchanged.
+
+**The pairing is checked, not hoped.** A consumer that fetches the wrong shard would get a silently short
+answer, which is the same failure class as a wrong country on a map: quiet and wrong.
+
+> **`searchGazetteer` throws a named programmer error (§2.1) when `gazetteer.shard` is non-null and the
+> query's first folded token does not begin with it** — or, for a terminal `<prefix>$` shard, does not
+> equal the prefix. A `Gazetteer` with `shard: null` is a whole corpus and is always accepted, which is what
+> keeps a hand-built five-row test fixture working unchanged.
+
+**`opts.limit` is validated** (**R60-6**): `Number.isInteger(limit)` beside the existing `limit <= 0`, so
+`{limit: NaN}` is a programmer error and not a silent `[]` — the one failure mode A-82's *"a miss is a miss
+and the product says so"* rule cares about.
+
+---
+
+**Part 8 — the consistency invariant, restated rather than weakened; and the two `City` fields that let
+Geneva ship. This is the ruling the product owner asked for as one increment.**
+
+**What round 60 measured.** The 98 rows A-82 Part 5 refused are published as *"border towns, without
+exception"* and priced at four small names — Maastricht, Niagara Falls, Lugano, Arlon. Ranked by
+population the set actually opens **Brazzaville (a national capital, 1.36 M), Geneva (1.24 M), Jerusalem
+(a national capital, 1.03 M)**; **19 are above 100,000** and two are national capitals. And in two cases
+the refusal is not an absence but a **substitution**: a user who spent a week in Windsor, Ontario types
+`windsor`, is offered *Windsor, Nova Scotia*, and nothing tells them the one they meant was withheld.
+
+**A-82 Part 5's cost statement is corrected in place**, and Part 12 below records the correction. **The
+invariant is not.**
+
+> **The consistency invariant, restated. Its subject widens; its check does not weaken.**
+>
+> **No shipped row may *silently* contradict the country index.** A row whose derived country and stated
+> country are both non-null and differ ships **only** with `indexAgrees: false` recorded on the row,
+> published by name with both answers in `fixtures/golden/gazetteer-disagreements.json`, and counted in the
+> generated header. **A row that would contradict the index without carrying that record is still
+> REFUSED.** For every shipped row with `indexAgrees: true`, `countryOf(row.centre, COUNTRY_INDEX)` is
+> either the row's own code or `null` — **zero exceptions, no allowlist**, which is round 60's own test,
+> unmoved and still the criterion this feature lives or dies on.
+>
+> **And a second shipping condition, which A-29 step 4 already implies and the old dataset never
+> exercised:** a row's country code must be one the shipped index can **draw**. Measured at the
+> recommended point, **157 rows** carry a code the index folds into a parent — `YT`, `GP`, `RE`, `MQ`,
+> `SJ`, `GF`, `BQ`, `CC`, `TK`, `AN`, `BV`, `CX`. Those rows ship with the **derived** parent code
+> instead, which is A-29 step 4's own stated reasoning (*"the coordinate attribution already returns the
+> parent and is the better answer"*) applied at generation time rather than at read time.
+
+**Measured at the recommended point: 2,512 rows ship with `indexAgrees: false`** — among them Geneva,
+Jerusalem, Brazzaville, Maastricht, Niagara Falls, Lugano, Arlon, Chamonix-Mont-Blanc, Livingstone,
+Puerto Iguazú, Ciudad Juárez and Sevastopol. **Óbidos, Portugal ships beside Óbidos, Pará with a distinct
+label**, so round 60's `obidos → Brazil` finding is closed by coverage rather than by a special case.
+
+**The two `City` fields, and they are one increment because neither is worth much alone.**
+
+```ts
+type City = {
+  // …
+  /** Where the city is. `null` when nobody located it — an honest hole, not 0°N 0°E. */
+  readonly centre: LatLng | null;
+  /** The gazetteer row the user PICKED, '<source>:<row>'. `null` for a city they typed. */
+  readonly placeId: string | null;
+};
+```
+
+> **The precedence rule, and it is the only clause of A-29 this ruling touches.**
+>
+> 1. `centre === null` ⇒ **no coordinate attribution**. The city is unattributed unless clause 3 speaks.
+> 2. `placeId !== null` ⇒ the pair (`centre`, `countryCode`) came from **one shipped gazetteer row**, and
+>    the row's code is the answer. **It outranks `countryOf`.** `countrySource: 'picked'`, the third value
+>    A-82 Part 12 residue 1 anticipated.
+> 3. `placeId === null` ⇒ **A-29 stands verbatim and unamended.** `countryOf(centre)` first; only in its
+>    silence is the stated code admitted through A-29's four-step gate, as `countrySource: 'stated'`.
+
+**Which source wins when the two disagree, said plainly: the gazetteer wins, and only for a picked city.**
+Two reasons, in the order that decides it.
+
+1. **The disagreement has a measured direction and it is not symmetric.** A-26 Part 2 chose the base scale
+   because *"it is the most forgiving of the error that dominates this dataset's use"*, not because it is
+   accurate, and a coarse ring bulges outward — so the polygon is wrong about a town two kilometres from a
+   frontier and the gazetteer is right. Round 60 re-derived the quantisation half of this independently:
+   **zero rows cross into a different country under 4 dp rounding, in either direction.** We are not
+   choosing between two equally good answers; we are declining to let a drawing overrule a location.
+2. **This is not the drift A-29 exists to prevent, and the difference is a field.** A-29 Part 3 item 3
+   refused *"the stated code wins"* for one stated reason: *"`derive/summary.ts` cannot tell a
+   gazetteer-supplied `countryCode` from a hand-typed one, because `City` carries no provenance for it —
+   so 'the stated code wins' is also 'a mistyped `HU` on Vienna puts Hungary on the lifetime map
+   permanently.'* **`placeId` is exactly that missing provenance.** With it, `summary.ts` can tell, and the
+   mistyped `HU` on a typed Vienna still loses to `countryOf` under clause 3, forever. **A-29's reasoning
+   is upheld and its conclusion is unchanged everywhere the reasoning applies.**
+
+**Reconciled with §0.6, honestly.** §0.6 says *a fact about a resource is only valid at the moment, and in
+the place, the resource itself stated it* — derive rather than store. Three clauses:
+
+- **What is stored is evidence, not a conclusion.** `placeId` is a record of **what the user picked**, and
+  no derivation can recover it — the pick happened once and left no other trace. `TripSummaryCity.countryCode`
+  is still **derived on every read**, from two stored statements, and is still never persisted.
+- **The country on a picked row is not our derivation being cached.** It is the **source's own statement**,
+  exactly as `City.countryCode` is the **user's** own statement under A-29. What `placeId` adds is *which
+  stater it was* — which is the one thing §0.6 actually needs to know to decide whether a stored value may
+  be trusted.
+- **The honest cost, stated so nobody discovers it.** A future regeneration may move or drop a row, and an
+  existing `City` will keep the country it was picked with. **That is correct under §0.6, not a bug**: the
+  stored fact is a fact about the pick, valid at the moment and in the place the user made it. Nothing
+  silently changes under the user, which is the outcome §0.6 exists to protect.
+- **`placeId` is provenance, not authentication.** A user who hand-edits their own document to invent a
+  `placeId` puts a country on **their own** map. That is the same trust boundary §2.1 already draws
+  between programmer error and user error, and it is not widened here.
+
+**`City.centre: LatLng | null` — A-82 Part 7's ruling, unchanged and now built.** `{0,0}` is *"a value
+nobody measured, wearing the shape of one"*; it attributes to `null` only because the Atlantic is empty,
+and A-56 widened `TripSummaryCity` with a non-nullable `centre` on the stated ground that *"a `City.centre`
+is non-nullable"*. **That ground is withdrawn**: `TripSummaryCity.centre` becomes `LatLng | null`,
+`travelStats`' `located` / `unattributed.cities` census counts a null centre as unlocated, and **every map
+frame skips a city with no centre rather than drawing it at 0°N 0°E**, which is what they do today.
+
+**Version movement.** `SCHEMA_VERSION` **3 → 4** — `centre` changes type, which is a migration and not a
+new scalar with a total default, so A-72's "no bump" arm does not apply. `SUMMARY_VERSION` **5 → 6** —
+`countrySource` gains a value and `TripSummaryCity.centre` gains `null`.
+
+---
+
+**Part 9 — the label, which is the one surface A-82 made load-bearing.**
+
+Three defects, one rule each, and two of them are shipping conditions rather than runtime fallbacks —
+because a fallback that fires is a row that should not have been emitted.
+
+1. **No shipped row may render as a bare name (R60-4).** Nine shipped rows today carry `countryCode: ''`
+   **and** `admin1: ''`, so `labelFor` renders the name alone, and I-21's criterion *"every returned hit's
+   label contains a country name"* is literally unmet. **Ruling: the generator REFUSES a row that would
+   render as a bare name, and publishes the count.** Measured at the recommended point that is **10 rows**
+   — `Woody Island`, `Southwest Cay`, `Loaita Island`, `Channel Islands`, `Lesser Antilles`, `Virgin
+   Islands`, `French West Indies` and three more: disputed South China Sea islets and island *groups* with
+   no country, no region and no traveller. Refusing them costs nothing real and makes the criterion true
+   rather than aspirational. **The criterion is also corrected**, because "contains a country name" was
+   always slightly wrong: *every hit's label carries at least one geographic qualifier after the name, and
+   no shipped row can render as a name alone.* `labelFor`'s docstring describing a
+   `'Hargeysa, Woqooyi Galbeed, SO'` fallback describes a case that cannot occur and goes with it.
+2. **No shipped row may carry an unreadable name or region (R60-9).** 37 shipped rows today carry a
+   mojibake `admin1` that goes straight into the label — `"Bắc Kạn, Ðông B?c, Vietnam"`, committed in the
+   probes golden. **Ruling: the generator REFUSES any row whose name, region or alternate contains
+   `�` or `?`, and publishes the count.** Measured on the new sources: **0**. The guard stays anyway;
+   a guard that only fires on the dataset that motivated it is a guard the next person deletes.
+3. **Labels are distinct within one result set.** `bandar lampung` returns two rows with the identical
+   label today; measured at the recommended point, **803 labels are carried by more than one row, and 23
+   of the corpus's 171 queries return a top-20 containing two identical labels.** A list a user cannot
+   choose from is the exact failure A-82 Part 4 exists to prevent. **Ruling: when two or more hits in the
+   returned window would render the same label, every member of that group gains ` (lat, lng)` at 2 dp.**
+   Population may not be used — A-82 Part 4 forbids rendering it — and the coordinate is the only other
+   fact we actually have. It costs nothing when there is no collision, it is total, and it is testable.
+
+---
+
+**Part 10 — what actually pins the fold's ordering, measured over all 24 permutations (R60-3).**
+
+`packages/core/src/geo/gazetteer.ts:132-134` asserts, in shipped source, that *"U+0130 has no canonical
+decomposition"*. **That is false.** Measured on this runtime on 2026-09-09:
+`String.fromCodePoint(0x0130).normalize('NFD')` is **`U+0049 U+0307`**, and so is its NFKD; Unicode's own
+mapping is `0130 ; 0049 0307`. **Do not write that sentence into this document.** The builder is right that
+the conclusion holds, and right for the opposite reason.
+
+**Rather than replace one unverified ordering claim with another, all 24 orderings of steps 1–4 were run
+against A-82 Part 3's own twelve pairs.** Six are green — `lower→sub→NFD→strip` (the shipped one),
+`lower→NFD→sub→strip`, `lower→NFD→strip→sub`, `NFD→lower→sub→strip`, `NFD→lower→strip→sub` and
+`NFD→strip→lower→sub`. What the twelve pairs pin is therefore exactly two dependencies and two presences:
+
+| pinned | discriminating pairs |
+|---|---|
+| **`toLowerCase` before the substitution table** — the table's keys are lowercase, so `Ł` and `Đ` survive a substitution that runs first | `Łódź`, `Đông Hà` — and **only** these two |
+| **the combining-mark strip after `normalize('NFD')`**, never before | `Zürich`, `São Paulo`, `Łódź`, `Ağrı`, `Đông Hà`, `Bắc Kạn`, `Ciudad Juárez` |
+| **`normalize('NFD')` present at all** | 8 of the 12 redden without it |
+| **the substitution table present at all** | `Łódź`, `Tromsø`, `Bærum`, `Ağrı`, `Đông Hà`, `Nukuʻalofa` |
+
+**Three claims are withdrawn, each because a green permutation disproves it.**
+
+- **A-82 Part 3's *"Step 1 precedes step 3 and that ordering is load-bearing"* is WITHDRAWN.**
+  `NFD→lower→sub→strip` folds all twelve correctly. `NFD`'s position relative to `toLowerCase` is pinned by
+  nothing.
+- **A-82 Part 3's *"`ø` must be substituted before NFD"* is WITHDRAWN.** `lower→NFD→sub→strip` folds
+  `Tromsø` correctly. What the `ø` row shows is that the table is needed **at all** — which is a different
+  and true claim, and it belongs where Part 3 already makes it.
+- **KD-113's replacement claim, *"step 1 before step 4"*, is WITHDRAWN.** Its own fault permutation
+  (`sub→NFD→strip→lower`) reddens `Łódź` and `Đông Hà` and leaves `İstanbul` **green** — it is dependency
+  one in a different costume, exactly as round 60 says.
+
+> **`İstanbul` pins nothing about the ordering.** Measured: it reddens in no permutation where six other
+> pairs are already red. **Keep the pair** — it proves the Turkish dotted capital folds correctly at all,
+> which is a regression worth owning — and **stop citing it as evidence for an ordering claim**, in this
+> document, in `gazetteer.ts`'s docstring and in ROADMAP's **N3**.
+
+**ROADMAP's N3 is replaced by two faults with measured outcomes**, and they are ceilings (rule 4):
+**N3a** — move `.toLowerCase()` below the substitution step ⇒ **exactly `Łódź` and `Đông Hà` fail, and
+`İstanbul` passes**. **N3b** — delete `.normalize('NFD')` ⇒ **exactly eight of the twelve fail**.
+
+---
+
+**Part 11 — the generator, and the four corrections that ride along.**
+
+`tools/gen-gazetteer.mjs` keeps every rule A-82 Part 2 gave it and gains four.
+
+- **The round-trip check compares structures, not strings (R60-5).** A-82's `roundTrip` compares the
+  emitted literal to `pack(built)` — two strings — so a `|` inside a name would shift every field of that
+  row and round-trip clean. **The generator now parses what it wrote and compares it field by field to
+  what it built.** The template-literal hazards (`\`, `${`, a backtick) disappear with the template
+  literal: `JSON.stringify` escapes them. The payload's **own two delimiters do not**, so `|` and any
+  newline in a name, region or alternate are **refused** — measured on the new sources: **0** occurrences.
+- **A refusal count of zero is still a failure**, for each of the three refusal classes (contradiction
+  without a record, bare name, unreadable name). The filter that never fires is the filter that was
+  deleted — except where this ruling has *measured* zero, in which case the assertion is that the count is
+  **exactly** the published figure, which is the same guard written as a ceiling.
+- **The goldens.** `gazetteer-refusals.json` becomes **`gazetteer-disagreements.json`** and changes job: it
+  publishes every row where the two sources differ, with **both** answers, as `{id, name, statedCountry,
+  derivedCountry}` — and those rows now **ship**, which is the whole of Part 8. `gazetteer-probes.json` is
+  unchanged in kind and gains the corpus's own hard cases. Both carry `$generatedBy`, `$source`,
+  `$sourceSha256`, `$fetched` and `$what`.
+- **`test/cli.test.ts`'s A-56 scan exemption is exactly one name (R60-8).** `gazetteer-disagreements.json`
+  carries no `centre` by design, so it must not be exempted from a guard it never trips. The exemption is
+  `gazetteer-probes.json` alone, and it is paired with the positive assertion round 60 asked for: **every
+  `centre` published in an exempt golden matches a shipped gazetteer row.**
+
+---
+
+**Part 12 — what this supersedes in A-82, clause by clause, so nothing has to be inferred.**
+
+| A-82 | status |
+|---|---|
+| Part 1 measurements 1–2 | **stand** (they are about the old dataset and the micro-states, and both readings hold) |
+| Part 1 measurement 3 (*"no affordable dataset fixes that"*) | **superseded by Part 1 above.** It was true of a population filter and false of a notability filter |
+| Part 1 measurement 4 (*"the bigger files do not fit the representation"*) | **stands as history, and Part 5 changes the representation** |
+| Part 1 measurement 5 (GeoNames has no pinnable ref) | **stands**, and Part 2 rules what the pin means instead |
+| Part 2 (dataset, placement, generator standard) | **placement and standard stand; the dataset is replaced by Part 2 above** |
+| Part 3's printed `Gazetteer` type | **corrected in place**: it has three fields and the third is `countryNames` (**R60-7**). Part 4 above adds `shard` |
+| Part 3's ordering rationale (`İ`, `ø`) | **superseded by Part 10** |
+| Part 3's *"a linear scan and no prefix tree"* | **stands, and the scale it was ruled at is now the shard, not the corpus** — measured, 219 rows in the average shard and **2,320 in the largest**, against the ~7,000 the rule was ruled at |
+| Part 4 (label rule, total order, population never rendered) | **stands**, with Part 9's distinctness rule added and the fourth key now a bucket |
+| Part 5's invariant | **restated by Part 8. Its check is unmoved** |
+| Part 5's cost statement (*"98 … Maastricht, Niagara Falls, Lugano and Arlon"*) | **corrected in place**: the set opens Brazzaville, Geneva and Jerusalem, 19 are above 100,000, two are national capitals, and two refusals are substitutions rather than absences |
+| Part 5's *"Three things this does not do"* | **the first is superseded** — it now adds two fields to `City` (Part 8). `homeBase` (KD-55) and the non-additive union are **untouched** |
+| Part 6 (the pick is the acceptance; auto-match FORBIDDEN) | **stands, entirely and emphatically.** `placeId` is written **only** by a human's pick, and Part 8's precedence makes that fence load-bearing rather than decorative |
+| Part 7 (`City.centre: LatLng \| null`) | **upheld and built** by Part 8 |
+| Part 8 (KD-38's city→day fill is separate) | **stands** |
+| Part 9 (bundle boundary, budget, ceiling) | **boundary and 2 kB ceiling stand; the ceiling's subject moves** per Part 5. §2.10 stays at **87** and the subpath stays at **one** symbol, renamed |
+| Part 10 (determinism, the two goldens, coordinates may be published) | **stands**, with Part 11's changes to the goldens |
+| Part 11 item 3 (a larger gazetteer, deferred) | **FIRED. This is that ruling** |
+| Part 11 items 1, 2, 4, 5 (fuzzy, non-Latin, live geocoding, photo EXIF) | **stand, with Part 13** |
+| Part 12 residues 1 and 2 (the refused rows, `City.centre`) | **both closed by Part 8** |
+| Part 12 residue 3 (*"re-derive measurement 3 before ruling on dataset size"*) | **discharged**: round 60's corpus is that re-derivation and Part 1 is the ruling |
+| Part 12 residue 4 (admin-1 names are the source's own and read oddly) | **stands, and *unreadable* is now refused** (Part 9) |
+
+---
+
+**Part 13 — deferred, with the trigger that reopens each.**
+
+1. **A higher point on the curve.** The table in Part 1 is the menu and the dial is one constant in the
+   generator. **Trigger:** Jacob asks for it, or a second corpus measures below 90 %. Moving it costs a
+   regeneration, a budget re-measure and a re-run of `qa/r60-coverage.mjs` — no design change.
+2. **Fuzzy / typo-tolerant matching.** Still deferred, still on A-82's trigger: a measured corpus of real
+   queries that miss. Coverage was the reason misses looked like typos; it is not any more.
+3. **Non-Latin-script queries.** Still deferred — and the ingredients are now on disk, since
+   `alternateNamesV2` carries every script. **Trigger:** `BRIEF.md`'s own. It is a generator arm, a shard
+   family and a budget re-measure, not a redesign.
+4. **Live geocoding.** Phase 3, unchanged. §8.4 clause 1's privacy argument does not expire.
+5. **Photo EXIF GPS as the named successor.** Phase 6, unchanged, and still better than all of the above
+   because it produces a measured record rather than a remembered one. **Typing does not become obsolete
+   when it arrives** — a 2009 trip has no geotagged photographs.
+6. **Restoring the *substitution* case.** A refused row that a user reports (Windsor, Ontario is the
+   worked example) is now findable, so the substitution failure is closed by coverage. What is **not**
+   built is any way to tell a user that a row was withheld; nothing is withheld any more except the 10
+   nameless islets and the unreadable rows, and there is nothing useful to say about those.
+
+---
+
+**Part 14 — residues, each with what would fire it.**
+
+1. **The corpus is one breaker's list of 171 destinations, not a corpus of Cairn users.** It is a far
+   better oracle than A-82 had and it is still not usage data. **Trigger:** real usage. When it exists,
+   re-derive Part 1's curve before moving the dial.
+2. **Twelve destinations still miss at the recommended point** and they are named so they are not
+   rediscovered: Flåm, Geiranger, Miyajima, Sa Pa, Monteverde, Thira, Boracay, Gili Trawangan, Nusa
+   Penida, Tulum, Skukuza and Franz Josef. **Two of them — Monteverde (Costa Rica) and Boracay — are
+   absent from GeoNames as settlements under those names at all**, so no dial reaches them; the rest are
+   one row of the curve away. **Trigger:** residue 1.
+3. **945 generated JSON documents is a lot of files**, and this ruling accepts that cost in exchange for a
+   bounded fetch. If it becomes a review or build burden, the answer is a larger shard budget — 131 files
+   at a 384 KiB budget, measured — at the cost of a ~190 kB worst-case fetch. **Trigger:** a measured
+   build-time or review-time cost, not an aesthetic objection.
+4. **`indexAgrees` is shipped and no consumer reads it yet.** It exists so that a disagreement between two
+   sources is *visible* rather than absorbed, which is this document's own doctrine, and it costs one
+   character on 1.7 % of rows. **Trigger:** the first surface that wants to say *"our map draws this on the
+   other side of the border"*.
+5. **The English alternate is the only alternate.** Measured, **5,129 rows** carry one, it is what makes
+   `seville` find *Sevilla*, and shipping three alternates instead of one costs 75 % more disk for one
+   further destination. A user typing `firenze` or `wien` is served by GeoNames' own `name` column being
+   the English one; a user typing a name in a third language is not. **Trigger:** deferred item 3.
 
 ### 8.5 Observed travel — the shape Phase 5 must be able to land on
 

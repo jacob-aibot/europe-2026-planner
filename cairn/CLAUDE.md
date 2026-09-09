@@ -15,6 +15,20 @@ adding, moving or trusting one.
 
 ## Document cost map
 
+**Every row re-measured at revision 64/67 (2026-09-09)** — `ARCHITECTURE` 498k → **514k** with §8.4's
+**A-83** and the amendment banners it puts on A-82, A-56 and A-29 (§8 alone 101k → **115k**; §2, §4 and
+§10 did not move) and `ROADMAP` 196k → **203k** with the rewritten **I-22**, the new **I-23**, `I-21`'s
+banner and the revision-67 ledger entry (Phase 2 alone 141k → **147k** as `doc-section` reports it).
+**A-83 is ~13k and it is the entry point to the gazetteer family — it names every clause of A-82 that no
+longer holds.** **A builder of `I-22` reads A-83 Parts 8 and 9, then A-29 Parts 2–4, A-82 Part 7 and
+A-56's revision-64 banner; a builder of `I-23` reads A-83 Parts 1–7 and 10–11, then A-82 Parts 2, 3, 4, 9
+and 10.** Neither opens §2 whole, §4 or §10, and neither reads any part of A-76…A-81. This revision is a
+**QA consequence** — round 60 measured `I-21`'s travel hit rate at **21.5 %** against a 100 % control, and
+the filter was on the wrong axis — and both increments are routed **builder + breaker, mandatory**.
+**Three rows moved with earlier commits rather than with this revision, and are recorded here because the
+command now returns a different figure from the one last written down**: `QA-FINDINGS` 370k → **376k**
+with round 60, `BUILD-NOTES` 264k → **270k**, and `CAIRN_VISUAL_ROADMAP` 68k → **70k**. `REVIEW` is
+unmoved at **52k**.
 **Every row re-measured at revision 63/66 (2026-09-09)** — `ARCHITECTURE` 486k → **498k** with §8.4's
 **A-82** and its three pointer banners (§8 alone 92k → **101k**; §2 is **174k**, which is A-82's one §2.10
 paragraph inside rounding; §4 and §10 did not move) and `ROADMAP` 190k → **196k** with **I-21**, **I-22**
