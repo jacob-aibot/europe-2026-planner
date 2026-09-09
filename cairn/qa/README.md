@@ -4222,3 +4222,67 @@ I-22's builder disclosed.
 
 None of the four writes to the repo; the two generator runs and the N6 injections were done in
 throwaway `git worktree`s, never in the live tree.
+
+**Round 62** is the adversarial pass over **I-22a** / §8.4 **A-84** — *a pick is a record, the
+country is read off it, and a stale pick is inert*. One probe, run from `cairn/`:
+
+```bash
+node --experimental-strip-types qa/r62-pick.mjs   # 12 sections; 108 ok, 2 FAIL, 3 GAP at bd0c25e
+```
+
+Its two `FAIL` lines are **one finding, R62-1**, and they are the finding rather than a broken
+probe: `travelStats.seen.places` is `located.places` by construction, so §G measures 1 where a
+trip holds 3 place records, and §J measures **94** where the shipped reference trip holds **95**
+and the shipped `cli.ts stats` prints that number. Its three `GAP` lines are **R62-2** (§C, twice —
+a pick minted by `cityPickFromRow` and handed to `createTrip` or `setTripMeta` without the matching
+`centre` is stale at birth and nothing warns) and **R62-5** (§F2 — the 3 → 4 rung rewrites a `{0,0}`
+centre out from under a pick that rode the spread, and nothing counts the pick that stopped
+attributing).
+
+The sections, and what each is for:
+
+- **§A** is the round's most expensive assertion and the one that says the staleness rule holds:
+  for **all 7,342 shipped rows**, mint the pick, stand a city on the row's own centre, put the
+  document through `toJSON` → `JSON` → `fromJSON`, and assert the pick is still **live** and still
+  attributes. It also re-decodes `PACKED` a second time and compares every centre with `Object.is`,
+  which is the *"a pick minted from a row whose centre is then re-decoded"* case answered by
+  measurement rather than by argument.
+- **§B** the float claims one at a time: `-0` (the only double `JSON.stringify` does not
+  round-trip, and it cannot flip liveness either way), a 13-dp pair (the *"4 dp"* half of A-84's
+  justification is unenforced and does not need to be), `NaN`/`±Infinity` refused at both centres,
+  and a grep census showing no core write path quantises a coordinate.
+- **§C** the stale-at-birth pick — **R62-2**.
+- **§D** `parseCityPick` past the builder's own 22 refusals: every `rowId` quantifier boundary,
+  a boxed `String`, `__proto__` inside the pick and inside its centre, extra keys dropped, and
+  the un-range-checked pick centre that attributes from `{lat: 91.5, lng: 500.25}` (**R62-8**).
+- **§E** the door census run rather than reasoned about, and **N6's substitute assertion measured
+  three ways** (**R62-4**).
+- **§F** the ladder over all three committed `fixtures/legacy/` documents, plus a v4 carrying both
+  a `placeId` and a `pick`, a doc stamped 5 that never ran the rung, and **R62-5**.
+- **§G/§J** `travelStats.seen` — **R62-1**, and the dead `Array.isArray` guard (**R62-6**).
+- **§I** `mergeTrips` in both orientations: `cities` merges **whole** through `pick3`, so a
+  three-way merge cannot pair one side's centre with the other side's pick.
+- **§L** the person boundary and the email path: `copyStopInto` across owners carries **0 cities**
+  and no `rowId`; `build/candidates.ts` names no city and no pick at all; `packages/core/src` logs
+  nothing and fetches nothing.
+- **§H/§K** the standing constraints (no ambient clock or randomness, no runtime dep, no DOM in
+  `packages/client/src`) and a hand census of every `Trip`-returning export.
+
+**`qa/r61-serial-rescan.mjs` now prints 8 FAILs and none of them is a live defect** — do not
+re-derive them. §A and §B assert `placeId`'s parser behaviour and `placeId` no longer exists;
+§C seeds a stored `placeId`, which the 4 → 5 rung correctly **drops**, so the re-derived row
+reports `{FR, coordinate}` where the probe expects `{CH, picked}`. What it still measures and what
+still passes is the part that matters: the row **is** brought to `SUMMARY_VERSION` 7, the stale
+title **is** replaced from the document, the fabricated `{0,0}` **is** gone, the trigger is still
+the single generic `< core.SUMMARY_VERSION` comparison with no version literal, and a row already
+at the current version is left alone. `qa/r18-readonce.mjs` likewise prints one FAIL — its
+round-18-era `76` export pin against today's **88** — which is historical drift, not a defect.
+
+`qa/i7a-idb-rowkeys.mjs:506-513`'s axis-D comment was corrected in this round (**R61-7**'s third
+stale comment, owed to the breaker because `qa/` is the breaker's surface): it claimed the axis was
+*"covered at zero new rows (15 >= 3x5 and 15 >= 3x3)"*, and the table has not been 15 rows since
+`I-12` while **A-84 Part 8 ended the absorption entirely**. The comment now says what the probe
+actually does — seed a **sample** of axis D, {floor, previous, current} — and names
+`test/stats-storage.test.ts`'s 40 rows as the cover. **No assertion and no behaviour changed.**
+
+`r62-pick.mjs` writes nothing: every fixture is built in memory and `fixtures/` is read only.

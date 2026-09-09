@@ -504,8 +504,13 @@ head('axis D: the document-generation assignment across the existing table');
       '"domain 1" measurement is superseded by A-72',
     SCHEMA_VERSION);
   ok(new Set(Object.values(gens)).size === 3,
-    'axis D: the table seeds three DISTINCT document generations, so the axis is covered at ' +
-      'zero new rows (A-39 Part 11 item 2: 15 >= 3x5 and 15 >= 3x3)',
+    'axis D: this browser probe seeds three DISTINCT document generations — {floor, previous, ' +
+      'CURRENT}. It is a SAMPLE of axis D, not a cover of it: §8.4 A-84 Part 8 ENDED the ' +
+      'absorption, and a SCHEMA_VERSION bump now costs |S| rows in A-39 Part 11\'s covering ' +
+      'table, which is `test/stats-storage.test.ts`\'s 40 rows (8 x 5) and not this probe\'s ' +
+      'three cells (QA R61-7, third stale comment: the old text said "covered at zero new rows ' +
+      '(15 >= 3x5 and 15 >= 3x3)" — the table has not been 15 rows since I-12 and absorption is ' +
+      'over)',
     gens);
   ok(Object.values(gens).includes(SCHEMA_VERSION)
     && Object.values(gens).includes(SCHEMA_VERSION - 1)
