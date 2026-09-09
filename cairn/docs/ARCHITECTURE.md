@@ -1574,6 +1574,44 @@ attribution **rides on the data**: it is `Gazetteer.source`, `cli.ts cities` pri
 rendering a hit must render it. **No `.tsx`, no `apps/web` file, no `qa/` file, no `docs/design/`.**
 `ROADMAP.md` revision 67 carries the ledger entry, the rewritten **I-22** and **I-23**.
 
+**Revision 65, 2026-09-09.** **QA round 61 measured A-83 Part 8's central mechanism and it does not do
+what Part 8 says it does — which is the pipeline working, and this revision corrects A-83 in place rather
+than leaving a contradiction standing.** Part 8 says a picked city's pair *"came from one shipped
+gazetteer row"* and that *"the row's code is the answer"*; `derive/summary.ts` tests `placeId !== null`
+and then reads the city's **own stated `countryCode`**, and **never looks a row up** (**R61-1**/**R61-2**,
+MAJOR). Re-measured narrower than the report: the acceptance gate already refuses `''`, `':'`, `'x'` and a
+4 kB string, so what is reachable is a well-formed, **drawable, wrong** code — 239 of them, `HU` on Vienna
+among them, which is A-29 Part 3 item 3's own worked example arriving through the field introduced to
+prevent it — and `setTripMeta(trip, {cities})` reaches it with **no hand-editing**, turning `{CH, picked}`
+into `{HU, picked}` in one call. **§8.4 A-84** rules it. **Looking the row up is refused twice over**:
+there is nowhere on the derive path or in the pure parsers to reach a corpus that is lazy and, at `I-23`,
+sharded across ~945 documents — and, more decisively, **re-resolving an id on every read is the design in
+which a regeneration silently changes a user's map**, which A-83's own §0.6 clause already rules against.
+So the pick is **recorded whole**: `placeId` becomes **`pick: {rowId, centre, countryCode}`**, the country
+is read **off the pick and never off `City.countryCode`**, a pick whose `centre` no longer equals the
+city's is **inert** (the invalidation clause A-83 never had), a malformed or partial pick is a **parse
+refusal at every build door**, and the mint is one pure function taking a **row** — `cityPickFromRow` —
+which turns A-82 Part 6's *auto-match FORBIDDEN* from a prohibition into a signature. **What stops a
+forged pick is stated plainly and is unchanged: nothing, and nothing should — but an accident can no
+longer forge one.** `SCHEMA_VERSION` **4 → 5**, `SUMMARY_VERSION` **6 → 7**, **§2.10 87 → 88**, and the
+bump's price is written down where the next bumper reads it: A-39 Part 11's covering table is tight at
+`4 × 7 = 28` and goes to **35**. **R61-3 is ruled with it and it was bigger than reported**: 7 codes on 23
+rows, not 6 on 14, and A-29 step 4's stated reason — *"the coordinate attribution already answers the
+parent"* — is **false for six of the eight codes it names** (`GP RE MQ YT TK BQ` attribute to **nothing**;
+`GF` attributes to **`BR`** at Saint-Georges). The parent is instead **taken from the dataset the country
+index is cut from** — the containing feature's `ISO_A2_EH` in the pinned 10m admin-0 layer, measured:
+France for all four island departments, Norway for Svalbard, **no ISO code at all** for Somaliland and
+Northern Cyprus, which therefore ship `countryCode: null` rather than being refused, because **Cairn does
+not adjudicate a sovereignty its own map cannot draw**. `indexAgrees` becomes **`indexSays: 'agrees' |
+'differs' | 'silent'`** — all 436 rows the index is silent about ship today claiming it agrees. Three
+riders: `TravelStats` gains **`seen`**, because no count of unlocated records was derivable at all
+(**R61-6**); **`MapBounds.centre` becomes `LatLng | null`**, because `apps/web` fits the `{0,0}` centre it
+returns today and opens a day map on the Gulf of Guinea at street zoom, and that one line is the only
+reader of the field (**R61-10**); and a migration rung **owes the user
+a record when it discards something a person typed or picked, and not when it deletes a fabrication**
+(**R61-12**). `ROADMAP.md` revision 68 carries the ledger entry, **I-22a**, **I-22b** and the changes to
+**I-23**.
+
 **Phase 1 is §2 and §4. The next phase is §8.1–§8.4.** Everything else is the shape those must not
 foreclose. See `ROADMAP.md` for sequencing and `PRODUCT-VISION.md` for why this order and not another.
 **What the product looks like is `DESIGN.md`, not this document** — §9 says why, and a builder of a screen
@@ -1581,9 +1619,11 @@ reads that instead of entering §2 or §4.
 
 ## Read only your sections
 
-This document is **~513k tokens** (re-measured at **revision 64** — **§8 grew 101k → 115k** with §8.4's
-**A-83** and the amendment banners it puts on A-82, A-56 and A-29; §2, §4 and §10 did not move). **A-83 is
-~13k and it is the first thing anyone reads about the gazetteer** — it names what of A-82 to skip.
+This document is **~523k tokens** (re-measured at **revision 65** — **§8 grew 115k → 124k** with §8.4's
+**A-84** and the amendment banners it puts on A-83, A-82 and A-29; §2, §4 and §10 did not move). **A-84 is
+~7k and it is the first thing anyone reads about a picked city** — A-83 Part 8 must never be read without
+it. **A-83 is ~13k and it is the first thing anyone reads about the gazetteer** — it names what of A-82 to
+skip.
 Revision 62's own note follows, and the figure in it is superseded by the one above: the document was ~486k
 (re-measured at **revision 62** — **§2 grew 168k → 175k** with §2.1's
 **A-81** and A-80's four amendment banners; §4, §8 and §10 did not move). **A-81 is ~5k, and A-81 whole plus
@@ -9350,7 +9390,11 @@ Part 2), **79 → 83 at Phase 2 I-13** (`addPhoto`, `removePhoto`, `updatePhoto`
 §10.2, **A-57** Part 6) and **83 → 86 at Phase 2 I-9** (`addParticipant`, `updateParticipant`,
 `removeParticipant`, §8.3 and §8.9), **and 86 → 87 at Phase 2 I-21** (`searchGazetteer`, §8.4 **A-82**
 Part 9 — which also adds this section's first **second entry point**, `@cairn/core/gazetteer`, carrying
-exactly one runtime symbol that is *not* counted here), each for a stated reason.**
+exactly one runtime symbol that is *not* counted here) **and 87 → 88 at Phase 2 I-22a**
+(`cityPickFromRow`, §8.4 **A-84** Part 3 clause 4 — a **P2** join today and a **P1** join the moment a
+pick surface exists; it is on the surface because it is the only legal way to mint a `CityPick`, and a
+mint that is not reachable from outside `packages/core` is a fence nobody can obey), each for a stated
+reason.**
 
 **The photo four and the participant three, and one correction they carry.** *(The photo four joined
 `index.ts` and `surface.test.ts` at I-13 and this block was not updated in that commit, so §2.10's prose
@@ -18255,6 +18299,27 @@ fix is prose.
 > - **`placeId === null` ⇒ this ruling stands verbatim.** `countryOf` first; the stated code only in its
 >   silence, through the four-step gate below, unchanged.
 >
+> **Revision 65 amendment, and it is a correction to the amendment above rather than to this ruling.**
+> QA round 61 measured that `summary.ts` never looks a row up — the picked arm reads the city's **own
+> stated `countryCode`**, so a well-formed, drawable, wrong code plus any non-null `placeId` reported
+> `{that code, 'picked'}`, and **Part 3 item 3's own "mistyped `HU` on Vienna" landed on the lifetime
+> map through the field introduced to prevent it** (**R61-1**/**R61-2**, MAJOR). **A-84** replaces
+> `placeId` with **`pick: {rowId, centre, countryCode}`** and the clause becomes:
+>
+> - **`pick !== null`, `city.centre` equal to `pick.centre`, and `pick.countryCode` drawable ⇒
+>   `pick.countryCode` wins.** `countrySource: 'picked'`. **This ruling's own `countryCode` field is not
+>   read on that path at all**, so no write to it can change a picked attribution.
+> - **`pick === null`, or the pick is stale, or its code is null or undrawable ⇒ this ruling stands
+>   verbatim**, including for a city that carries a pick it no longer describes.
+>
+> **Part 8 residue 2 is also ruled** — A-84 Part 5. Its trigger (*"a dataset that carries the code"*)
+> fired: the gazetteer carries `RE GF GP MQ YT SJ` on 14 rows and no code at all on 9. The eight codes
+> are still never *admitted*; they are **translated to a drawable parent at generation time**. And step
+> 4's stated reason — *"the coordinate attribution already answers the parent"* — is **withdrawn as
+> measured false for six of the eight**: `GP`, `RE`, `MQ`, `YT`, `TK` and `BQ` attribute to `null` at
+> their own settlement points, and `GF` attributes to **`BR`** at Saint-Georges. The refusal is right;
+> the reason was not.
+>
 > **This is not the inversion Part 3 item 3 refuses, and the difference is the field.** Item 3's stated
 > reason is that *"`derive/summary.ts` cannot tell a gazetteer-supplied `countryCode` from a hand-typed
 > one, because `City` carries no provenance for it"* — **`placeId` is exactly that provenance**, it is
@@ -21150,6 +21215,14 @@ That is the whole diff, and everything about it is what Part 6 claims:
 > Everything not named there — the pick-is-the-acceptance rule and its fence, the total order, the
 > generator standard, the bundle boundary, the determinism goldens — **stands unamended and round 60
 > verified it.**
+>
+> **Revision 65 rider: Part 6's fence stops being a prohibition and becomes a shape.** A-84 Part 3
+> clause 4 puts the mint behind one pure function, `cityPickFromRow(row: GazetteerRow)`, which takes a
+> **row** and not a query — so a caller that does not hold a row cannot write a pick, and *auto-match
+> FORBIDDEN* is enforced by the signature rather than by everyone remembering it. §2.10 goes **87 →
+> 88** for it. **Part 4's `GazetteerRow.countryCode` gains `null` and loses `''`** (A-84 Part 5), and
+> **`indexAgrees: boolean` becomes `indexSays: 'agrees' | 'differs' | 'silent'`** (A-84 Part 6), because
+> all 436 rows the index is silent about ship today claiming it agrees.
 
 Jacob asked the question this ruling answers, and the bar is in his own words:
 
@@ -21706,6 +21779,23 @@ because the reasoning in them is what A-83 builds on, and residue 4 is still ope
 
 #### A-83 — the gazetteer's filter moves from population to notability, the corpus is sharded so *bytes fetched* replaces *bytes shipped*, and a picked row's country outranks a coarse ring (revision 64, QA **R60-1**/**R60-2**, MAJOR; **R60-3**…**R60-9** ride along; Jacob's product direction 2026-09-09)
 
+> **Revision 65 amendment banner — Part 8's central mechanism does not do what Part 8 says it does.
+> READ **A-84** WITH PART 8, ALWAYS.** QA round 61 measured that `derive/summary.ts` **never looks a
+> gazetteer row up**: it tests `c.placeId !== null` and then hands the city's **own stored
+> `countryCode`** to A-29's acceptance gate, so a well-formed, drawable, **wrong** code on a city
+> carrying any non-null `placeId` reports `{that code, 'picked'}` and outranks `countryOf`
+> (**R61-1**/**R61-2**, MAJOR) — and `setTripMeta(trip, {cities: […]})` reaches it with no
+> hand-editing, which is A-29 Part 3 item 3's own *"mistyped `HU` on Vienna"* arriving through the
+> field introduced to prevent it. **A-84 rules it**: `placeId` becomes **`pick: CityPick | null`**, the
+> country is read **off the pick and never off `City.countryCode`**, a pick whose `centre` no longer
+> equals the city's is **inert**, and `SCHEMA_VERSION` goes **4 → 5**. Round 61 also measured that the
+> second shipping condition below rests on a false sentence (**R61-3**, MAJOR — for six of the eight
+> codes A-29 step 4 names, the coordinate attribution answers **nothing**, not the parent) and that
+> Part 8's *"every map frame skips a null centre — which is what they do today"* is true only
+> **vacuously** (**R61-10**). **A-84 Part 9 is the clause-by-clause table.** Everything not named
+> there — Parts 1–7 and 9–14, the curve, the sharding, the invariant's restatement, `City.centre:
+> LatLng | null` — **stands, and round 61 verified the migration that built it byte for byte.**
+
 **A-82 was ruled without the number that decides it, and round 60 measured it.** Against a 171-destination
 corpus — 72 famous small towns, 23 island and beach destinations, 26 national-park gateways and 50 ordinary
 large cities as a control — the shipped gazetteer answers **100 %** of the control and **21.5 %** of the
@@ -22085,6 +22175,14 @@ invariant is not.**
 > `SJ`, `GF`, `BQ`, `CC`, `TK`, `AN`, `BV`, `CX`. Those rows ship with the **derived** parent code
 > instead, which is A-29 step 4's own stated reasoning (*"the coordinate attribution already returns the
 > parent and is the better answer"*) applied at generation time rather than at read time.
+>
+> **Revision 65, R61-3: that sentence is FALSE for six of the eight codes and the mechanism is replaced
+> — A-84 Part 5.** Measured against the committed corpus and index: `GF` → `FR` and `SJ` → `NO` (the
+> sentence holds), but `GP`, `RE`, `MQ`, `YT`, `TK` and `BQ` attribute to **`null`** at their own
+> settlement points, so *"the derived parent"* is not a value that exists to be substituted. The parent
+> is instead taken from the **dataset the country index is cut from** — the containing feature's
+> `ISO_A2_EH` in the pinned `ne_10m_admin_0_countries.geojson` — and a row whose containing feature has
+> no ISO code (Somaliland, Northern Cyprus) ships `countryCode: null` rather than being refused.
 
 **Measured at the recommended point: 2,512 rows ship with `indexAgrees: false`** — among them Geneva,
 Jerusalem, Brazzaville, Maastricht, Niagara Falls, Lugano, Arlon, Chamonix-Mont-Blanc, Livingstone,
@@ -22103,12 +22201,21 @@ type City = {
 };
 ```
 
+> **Revision 65: `placeId` is REPLACED by `pick: CityPick | null` — A-84 Part 3.** A bare id is a
+> string a partial write can leave behind while the fields it was paired with move underneath it, and
+> nothing on the derive path can resolve it. The pick is recorded whole — `{rowId, centre,
+> countryCode}` — and the country is read off it.
+
 > **The precedence rule, and it is the only clause of A-29 this ruling touches.**
 >
 > 1. `centre === null` ⇒ **no coordinate attribution**. The city is unattributed unless clause 3 speaks.
-> 2. `placeId !== null` ⇒ the pair (`centre`, `countryCode`) came from **one shipped gazetteer row**, and
->    the row's code is the answer. **It outranks `countryOf`.** `countrySource: 'picked'`, the third value
->    A-82 Part 12 residue 1 anticipated.
+> 2. ~~`placeId !== null` ⇒ the pair (`centre`, `countryCode`) came from **one shipped gazetteer row**, and
+>    the row's code is the answer.~~ **REPLACED at revision 65 by A-84 Part 3 clause 1**, because nothing
+>    in `packages/core` can check the antecedent and the shipped code did not try: `pick !== null`, the
+>    pick is **live** (`city.centre` equals `pick.centre` exactly), and `pick.countryCode` is non-null and
+>    drawable ⇒ **`pick.countryCode`** is the answer and it outranks `countryOf`. `countrySource:
+>    'picked'`, the third value A-82 Part 12 residue 1 anticipated. **The city's own `countryCode` is not
+>    consulted on this path at all.**
 > 3. `placeId === null` ⇒ **A-29 stands verbatim and unamended.** `countryOf(centre)` first; only in its
 >    silence is the stated code admitted through A-29's four-step gate, as `countrySource: 'stated'`.
 
@@ -22125,7 +22232,11 @@ Two reasons, in the order that decides it.
    refused *"the stated code wins"* for one stated reason: *"`derive/summary.ts` cannot tell a
    gazetteer-supplied `countryCode` from a hand-typed one, because `City` carries no provenance for it —
    so 'the stated code wins' is also 'a mistyped `HU` on Vienna puts Hungary on the lifetime map
-   permanently.'* **`placeId` is exactly that missing provenance.** With it, `summary.ts` can tell, and the
+   permanently.'* **`placeId` is exactly that missing provenance** — *and revision 65 corrects this in place: a bare
+`placeId` is **not**, because nothing pairs it with anything and the shipped code read the city's own
+typed field beside it. **`CityPick` is** (A-84 Part 3): it carries the row's own code, so `summary.ts`
+tells the two apart by reading a different field rather than by reading the same field under a flag.*
+With it, `summary.ts` can tell, and the
    mistyped `HU` on a typed Vienna still loses to `countryOf` under clause 3, forever. **A-29's reasoning
    is upheld and its conclusion is unchanged everywhere the reasoning applies.**
 
@@ -22145,16 +22256,28 @@ the place, the resource itself stated it* — derive rather than store. Three cl
   silently changes under the user, which is the outcome §0.6 exists to protect.
 - **`placeId` is provenance, not authentication.** A user who hand-edits their own document to invent a
   `placeId` puts a country on **their own** map. That is the same trust boundary §2.1 already draws
-  between programmer error and user error, and it is not widened here.
+  between programmer error and user error, and it is not widened here. *(**Revision 65**: this stands
+  for the **hand-edit** and is not withdrawn. What it did not cover, and what round 61 measured, is a
+  **shipped API door** composing a false pair out of two independent fields with no hand-editing at all
+  — a claim by the document's owner is out of scope; a slip by `setTripMeta` is a bug. A-84 Part 3
+  closes the slip and leaves the claim exactly where this bullet leaves it.)*
 
 **`City.centre: LatLng | null` — A-82 Part 7's ruling, unchanged and now built.** `{0,0}` is *"a value
 nobody measured, wearing the shape of one"*; it attributes to `null` only because the Atlantic is empty,
 and A-56 widened `TripSummaryCity` with a non-nullable `centre` on the stated ground that *"a `City.centre`
 is non-nullable"*. **That ground is withdrawn**: `TripSummaryCity.centre` becomes `LatLng | null`,
 `travelStats`' `located` / `unattributed.cities` census counts a null centre as unlocated, and **every map
-frame skips a city with no centre rather than drawing it at 0°N 0°E**, which is what they do today.
+frame skips a city with no centre rather than drawing it at 0°N 0°E**, ~~which is what they do today~~
+— *revision 65, **R61-10**: true only **vacuously**. No `.tsx` reads `City.centre` at all, and one type
+over, `mapBounds([])` hands back `centre: {lat: 0, lng: 0}` with `empty: true` and `apps/web`'s map port
+fits it, so a trip with no located stop opens on the Gulf of Guinea at street zoom. **A-84 Part 7 item 2
+rules it**: `MapBounds.centre` becomes `LatLng | null`, because a flag a caller must remember to read is
+the same shape as `{0,0}` — a value that looks like an answer — and that one `setView` is the only reader
+of the field in the whole client.*
 
-**Version movement.** `SCHEMA_VERSION` **3 → 4** — `centre` changes type, which is a migration and not a
+**Version movement.** *(**Revision 65**: A-84 Part 8 takes `SCHEMA_VERSION` **4 → 5** and
+`SUMMARY_VERSION` **6 → 7** on top of what follows, and prices the A-39 Part 11 table it grows.)*
+`SCHEMA_VERSION` **3 → 4** — `centre` changes type, which is a migration and not a
 new scalar with a total default, so A-72's "no bump" arm does not apply. `SUMMARY_VERSION` **5 → 6** —
 `countrySource` gains a value and `TripSummaryCity.centre` gains `null`.
 
@@ -22332,6 +22455,389 @@ against A-82 Part 3's own twelve pairs.** Six are green — `lower→sub→NFD�
    `seville` find *Sevilla*, and shipping three alternates instead of one costs 75 % more disk for one
    further destination. A user typing `firenze` or `wien` is served by GeoNames' own `name` column being
    the English one; a user typing a name in a third language is not. **Trigger:** deferred item 3.
+
+#### A-84 — a pick is a record, not a pointer: the country is read off the pick, a pick that no longer describes the city is inert, and an undrawable code is translated from the data rather than from a sentence (revision 65, QA **R61-1**/**R61-2**/**R61-3**, MAJOR; **R61-6**, **R61-10**, **R61-12** ride along)
+
+**A-83 Part 8 was ruled six hours before the round that measured it, and the measurement says its central
+mechanism does not do what the ruling says it does.** That is the process working, and this ruling amends
+A-83 in place rather than leaving a contradiction standing.
+
+---
+
+**Part 1 — what round 61 measured, and which sentence is the wrong one.**
+
+A-83 Part 8 clause 2 says the pair (`centre`, `countryCode`) *"came from **one shipped gazetteer row**"*
+and that *"the row's code is the answer"*. `packages/core/src/derive/summary.ts:459` tests
+`c.placeId !== null` and then hands the city's **own stored `countryCode` string** to
+`acceptStatedCountry`. **It never looks a row up.** No code in `packages/core` does, and none can — the
+corpus is behind a lazy subpath, off the write path, and at `I-23` it is ~945 documents fetched one at a
+time. **The sentence is the thing that is wrong**, and a ruling whose safety argument rests on a check no
+layer performs is a design defect, not an implementation one.
+
+**The blast radius, re-measured rather than repeated.** Round 61's report says any non-null `placeId`
+string makes the arm fire on any code; that overstates it and the narrower fact is the one to rule on.
+`acceptStatedCountry` (`summary.ts:207`) refuses a non-string, refuses anything not matching
+`/^[A-Za-z]{2}$/`, and then requires membership in the shipped index's **239** drawable codes — so `''`,
+`'   '`, `':'`, `'x'`, `'null'` and a 4 kB string are all refused and fall through to clause 3 already.
+**What remains is the whole of the defect and it is enough:**
+
+> a city carrying **any** non-null `placeId` and a well-formed, drawable, **wrong** country code reports
+> `{that code, countrySource: 'picked'}`, outranks `countryOf`, and puts that country on the lifetime
+> map's `countryCodes`. **239 wrong answers are reachable, and `HU` on a Vienna coordinate — A-29 Part 3
+> item 3's own worked example — is one of them.**
+
+**And a shipped door reaches it with no hand-editing.** `setTripMeta(trip, {cities: […]})` turned
+`{CH, picked}` into `{HU, picked}` in one call, and the same door moved a picked Geneva's `centre` to
+Vienna's coordinate and the summary still reported `{CH, picked}` at 48.2082, 16.3738. There is no
+invalidation rule anywhere for *"the pick no longer describes this city"*, and A-82 Part 6's fence is a
+rule about who may **write** `placeId`, not about what happens to it afterwards.
+
+**The distinction that decides how much of A-83 survives: the threat is the slip, not the adversary.**
+A-83's *"provenance, not authentication — their own map"* stance is right and is **not** withdrawn. It
+answers the hand-edit. It does not answer a **shipped API door composing a false pair out of two fields
+that move independently**, and that is what was measured. A person editing their own JSON is making a
+claim; `setTripMeta` writing one half of a pair is a bug.
+
+---
+
+**Part 2 — why *"just resolve the `placeId`"* has nowhere to stand, and why it would be the wrong design
+even if it did.**
+
+Two reasons, and the second is the one that decides it.
+
+1. **There is no free place to do the lookup.** `summary.ts` is on the derive path; `fromJSON`'s parsers
+   are pure and synchronous and are what `commit`/`assertStorable` validate every record through (A-77…
+   A-81). The corpus is ~434 kB today and ~8 MB sharded at `I-23`, reached by dynamic `import()` behind a
+   lazy subpath, precisely so that A-82 Part 9's **2 kB main-chunk ceiling** holds. Teaching either the
+   derive path or the parsers to resolve a row would either pull the corpus into the main chunk or make a
+   parser asynchronous. **Both are refused, and neither refusal is new.**
+2. **Resolving at read time contradicts A-83's own §0.6 clause.** A-83 Part 8 already ruled, and it is
+   right: *"A future regeneration may move or drop a row, and an existing `City` will keep the country it
+   was picked with. That is correct under §0.6 — the stored fact is a fact about the pick."* **An id that
+   is re-resolved on every read is exactly the design in which a regeneration silently changes a user's
+   map.** Storing the answer the user accepted is not caching our derivation; re-deriving it later is.
+
+So the fix is **not** to look the row up. It is to **carry the row's own answer**, and to make the thing
+carried a single record that a partial write cannot compose and a moved coordinate cannot outlive.
+
+---
+
+**Part 3 — the ruling. `City.placeId` becomes `City.pick`, and the country is read off the pick.**
+
+```ts
+/** What a human PICKED out of the gazetteer, recorded whole. §8.4 A-84. */
+type CityPick = {
+  /** The row's id, `'<source>:<row>'` — `'ne:j64n0x'`, `'gn:2661552'`. Shape-checked, never resolved. */
+  readonly rowId: string;
+  /** The row's OWN centre, copied at pick time. This field is what makes a pick invalidatable. */
+  readonly centre: LatLng;
+  /** The row's OWN country code, copied at pick time. `null` when the source states none. */
+  readonly countryCode: CountryCode | null;
+};
+
+type City = {
+  // …
+  readonly centre: LatLng | null;
+  readonly pick: CityPick | null;      // replaces `placeId: string | null`
+};
+```
+
+**Four clauses.**
+
+1. **The country is read off the pick and never off `City.countryCode`.** A-83 Part 8's precedence
+   clause 2 becomes: `pick !== null` **and** the pick is live (clause 3) **and** `pick.countryCode` is
+   non-null **and** the shipped index can draw it ⇒ **`pick.countryCode`**, `countrySource: 'picked'`,
+   outranking `countryOf` for A-83's own unchanged reason (a coarse ring bulges outward; the gazetteer is
+   right about a town two kilometres from a frontier). Otherwise the city falls to clause 3 — **A-29 Part
+   3 verbatim**. `City.countryCode` is not consulted on the picked path **at all, ever**, which is the
+   sentence R61-2 says the code does not implement. Now it implements one that is true.
+   *The drawability test stays* — a pick is still not allowed to name a country the lifetime map cannot
+   fill (A-29 step 4) — and after `I-23`'s Part 5 work it can never fire on a genuine pick, because every
+   shipped row will carry a drawable code or none.
+2. **The pick is one value: `parseCityPick` accepts it whole or refuses it whole.** In `fromJSON`, at
+   `$.cities[i].pick`, with a named reason per §2.1:
+   - `null`, or an object; **absent reads as `null`** only through the migration rung, not through the
+     parser (`centre`'s own layering, unchanged);
+   - `rowId`: a string matching `/^[a-z]{2,8}:[A-Za-z0-9_-]{1,32}$/`. This is the shape rule A-83 never
+     wrote. It refuses `''`, `'   '`, `':'`, `'x'`, `'null'` and the 4 kB string **as parse errors** —
+     they stop being values that fall through, and start being documents that do not open;
+   - `centre`: a `LatLng` through `parseCentre`, **never `null`** — a pick without a coordinate is not a
+     pick, and clause 3 needs it;
+   - `countryCode`: `null`, or a string matching `/^[A-Z]{2}$/` — **uppercase exactly**. A-29's
+     trim-and-uppercase forgiveness is deliberately refused here: a pick is *copied off a row*, not typed,
+     so `' hu '` in a pick is evidence the value was typed and the record is not what it claims to be.
+   **This runs at every build door and not just at the storage boundary**, because it runs in the parser
+   and A-77…A-81 put every door behind the parser. A `City` with a malformed pick is precisely the invalid
+   record that arc was built to refuse, and it is refused there rather than in a new place.
+3. **A pick describes a POINT, and a pick that no longer describes this city is inert.** The pick
+   attributes only while `city.centre` is non-null and **exactly equal** to `pick.centre`
+   (`lat === lat && lng === lng`). Otherwise the pick is **stale**: it is **kept** — it is the user's own
+   record of what they did, and deleting it silently is the larger loss — it attributes **nothing**, and
+   the city falls to clause 3 exactly as a typed city does. **`countrySource` gains no fourth value: a
+   stale pick is not a source.**
+   *Why an equality at derive time rather than a rule on the doors.* A door rule is a rule every future
+   door has to remember; A-77…A-81 spent six adversarial rounds establishing that the eleventh door is
+   always the one nobody remembered. An equality is a property no door can forget. **Exact equality is
+   safe**: both values are 4 dp decimals, JSON round-trips them unchanged (round 61 asserted a whole
+   document pair-by-pair), and the migration ladder never rewrites a located coordinate.
+4. **The mint is one pure function and it takes a ROW, not a string.**
+   `cityPickFromRow(row: GazetteerRow): CityPick` on `packages/core/src/index.ts` — pure, synchronous, no
+   corpus, no network, no id factory. **A caller that does not hold a row cannot call it**, which turns
+   A-82 Part 6's *"auto-match FORBIDDEN"* from a prohibition everyone must remember into a shape the
+   signature enforces. **§2.10 goes 87 → 88** and the `gazetteer` subpath stays at exactly one symbol.
+
+**What stops a forged pick — stated plainly, because A-83's answer no longer covers the question.**
+
+Nothing stops a hand-edited document from carrying a fabricated pick, and **nothing should**: it is the
+user's own document, their own map, and the trust boundary is the one §2.1 already draws. Round 61
+measured the containment that matters — `copyStopInto` carries neither a source city's `centre` nor its
+pick into a recipient and mints no city, so a fabricated pick cannot cross a person boundary. What changes
+is that **an accident can no longer forge one**:
+
+- writing `countryCode` on a picked city is now **inert** — the `setTripMeta` reproduction goes
+  `{CH, picked}` → `{CH, picked}`;
+- writing `centre` makes the pick **stale** — the moved-Geneva reproduction goes `{CH, picked} at Vienna`
+  → `{AT, coordinate}`;
+- a malformed, partial or half-typed pick is **refused by the parser**, at a named JSON path, at every
+  door.
+
+To forge a picked country a person must now write one object stating the row, the point and the country
+**together**. That is a claim, not a slip, and a claim by the document's owner about their own map is what
+A-83 already accepts and this ruling does not re-open. **The slip is closed; the claim was always out of
+scope and is still out of scope.**
+
+**Why the rename, beyond the shape.** `City.placeId` collides with `Place.id` and with
+`StopPlaceRef.placeId`, which mean *a `Place` inside this trip* — three fields, one name, two meanings, in
+a codebase where `validateTrip` already resolves `stop.place.placeId` against `trip.places`. The record
+needed a new shape anyway; it takes a name that is not already taken.
+
+---
+
+**Part 4 — what a pick still does not do.**
+
+1. **No auto-match**, ever. A-82 Part 6 stands and clause 4 above is now the enforcement.
+2. **No `IssueCode` and no `validateTrip` rule.** A malformed pick is a parse refusal (A-74 Part 4's
+   reasoning, unchanged); a **stale** pick is not an integrity error — it is a city whose user moved it —
+   and threading the country index into `validateTrip` for a notice is the change A-29 residue 1 declined
+   for a heavier reason than this one. Part 10 residue 1 carries it.
+3. **No change to `City.countryCode`'s shape, meaning or governance.** It is still the user's own
+   statement, still `string`, still defaulting to `''`, and A-29 Part 3 governs it verbatim — for typed
+   cities, for cities whose pick is stale, and for cities whose pick states no country.
+4. **No surfacing of the pick.** Nothing renders it in this ruling.
+
+---
+
+**Part 5 — R61-3: an undrawable code, and the sentence that justified refusing it is measurably false.**
+
+Measured on this machine on 2026-09-09 against the committed `gazetteer.gen.ts` and the committed
+`COUNTRY_INDEX` — history against a fixed commit (*How a criterion is written*, rule 6); the builder
+re-derives it and no criterion depends on these figures:
+
+| stated code | shipped rows | `countryOf(row.centre, COUNTRY_INDEX)` |
+|---|---|---|
+| `GF` | 7 | `FR` × 6, **`BR`** × 1 — Saint-Georges, on the Oyapock |
+| `SJ` | 1 | `NO` |
+| `GP` | 2 | `null`, `null` |
+| `RE` | 2 | `null`, `null` |
+| `MQ` | 1 | `null` |
+| `YT` | 1 | `null` |
+| `''` | 9 | `null` × 9 — 7 Somaliland towns, 2 in Northern Cyprus |
+
+`acceptStatedCountry`'s docstring, and A-29 Part 3 step 4's argument, hold that refusing these codes is
+affordable because *"the coordinate attribution already answers the parent and is the better answer."*
+**For six of the eight codes that sentence names, the coordinate answers nothing at all** — `GP`, `RE`,
+`MQ`, `YT`, `TK`, `BQ` — and for `GF` it answers **`BR`** at Saint-Georges: a French commune attributed to
+Brazil. **The refusal is right and the stated reason is withdrawn.** It happens to be true at Cayenne and
+Longyearbyen and nowhere else on this list.
+
+**Why the index does not draw them — measured, not assumed.** `COUNTRY_INDEX` carries `FR` from the
+**1:110m base**, at which Martinique, Guadeloupe, Mayotte and Réunion are not drawn at all; A-26 Part 4's
+fill adds only codes the base **omits**, and `FR` is not one, so no finer ring for France ever enters the
+index. Point-in-polygon against the pinned `ne_10m_admin_0_countries.geojson` — sha256
+`239eec57ac17f100a11e2536cffc56752c318b50ae765b0918ff7aab4ce8f255`, the exact bytes
+`tools/gen-countries.mjs` already pins and downloads:
+
+- Fort-de-France, Basse-Terre, Dzaoudzi and St.-Benoît each fall inside the **France** feature
+  (`ISO_A2_EH = FR`, `SOV_A3 = FR1`); Longyearbyen falls inside **Norway**;
+- Hargeisa and Berbera fall inside **Somaliland** and Famagusta inside **Northern Cyprus**, both carrying
+  `ISO_A2_EH = -99`; Kyrenia falls inside no feature at all.
+
+**So the parent is a fact the dataset the index is cut from already states, and it is not a fact anybody
+has to type.** `ISO_A2_EH` is the column `gen-countries.mjs` already treats as *the* code column, for the
+stated reason that it is *"the one Natural Earth fills in for the de-facto entities that `ISO_A2` leaves as
+`-99`"* — France's own `ISO_A2` at 10m is literally `-99`.
+
+> **Ruling. A shipped gazetteer row's country code is resolved, at generation time, to a code the shipped
+> index can DRAW — from the dataset the index is cut from — or it ships as `null`.** For every row whose
+> stated code is not one `COUNTRY_INDEX` draws, the empty code included, the generator:
+>
+> 1. locates the row's centre in `ne_10m_admin_0_countries.geojson` at the pinned tag;
+> 2. if the containing feature's `ISO_A2_EH` is a code the index draws, ships the row **with that code**
+>    and publishes the substitution in `fixtures/golden/gazetteer-parents.json` as
+>    `{id, name, statedCode, shippedCode}`;
+> 3. otherwise ships the row with **`countryCode: null`**, counted and published in the same golden with
+>    `shippedCode: null`.
+>
+> **`GazetteerRow.countryCode` becomes `CountryCode | null` and `''` stops being one of its values.**
+> A row is never refused for this: Hargeisa is the capital of Somaliland and Famagusta is a real city, and
+> a corpus that drops them rather than say nothing has traded a hole for a bigger one. Its `admin1` and
+> its name still label it, and A-83 Part 9's bare-name refusal is what guarantees the label survives.
+
+**Consequences, named so they are outcomes rather than surprises.** Picking Fort-de-France, Basse-Terre,
+Dzaoudzi or St.-Benoît reports **`{FR, picked}`**; Longyearbyen **`{NO, picked}`**; **Saint-Georges reports
+`{FR, picked}` rather than the coordinate's `BR`** — the picked arm outranking a coarse ring, doing exactly
+the job A-83 Part 8 gave it, on a case that is wrong today. Picking Hargeisa reports **`{null, null}`**:
+no country from any source, honestly, and **Cairn does not adjudicate a sovereignty its own map cannot
+draw.** A traveller to Martinique gets **France** on their lifetime map, which is the answer this product
+can fill and the same answer A-29 step 4 was always reaching for.
+
+**What this deliberately does NOT do: `COUNTRY_INDEX` does not move.** Teaching the index France's overseas
+departments would fix `Place` and `Stop` attribution there too and is the more complete answer. It re-opens
+A-26's base-scale choice, A-27's fill and forgiveness filters, A-28's two comparisons and the country
+budget — four rulings and three adversarial rounds — for a payoff bounded by measurement: **436 of 7,342
+shipped gazetteer rows (5.9 %) sit where `countryOf` is silent**, and the share of *places* that do is
+unmeasured. **Deferred, Part 10 residue 2, with the trigger that reopens it.**
+
+---
+
+**Part 6 — `indexAgrees` states something it never checked.**
+
+Measured: **all 436 rows for which `countryOf(row.centre)` is `null` ship `indexAgrees: true`**, and
+`cli.ts cities` renders the absence of its marker as agreement. A-83 Part 8's invariant is *"agrees **or is
+silent**"*; the row records that disjunction as if it were its first arm, and 15 of the 23 rows Part 5 is
+about are among them.
+
+> **Ruling: the field becomes tri-state — `indexSays: 'agrees' | 'differs' | 'silent'`.** One packed
+> character, the width it already costs. The published census becomes the triple (`agrees` / `differs` /
+> `silent`); the CLI's disagreement marker fires on **`'differs'` only**; and the restated consistency
+> invariant gains one sentence: **silence is not agreement.** A-83 Part 14 residue 4's future surface —
+> *"our map draws this on the other side of the border"* — needs the distinction, and a field that cannot
+> make it is a field that surface would have had to re-derive.
+
+It rides `I-23`, which rewrites the payload anyway; nothing in `I-22a` touches the corpus.
+
+---
+
+**Part 7 — the three riders, ruled rather than left open.**
+
+1. **R61-6 — the census prose, and the count that is owed.** The builder was right and `ROADMAP`'s prose
+   was wrong: counting an **un**located city as *unattributed* breaks `TravelStats.unattributed`'s own
+   *"never greater than `located`"* invariant the moment every city in a trip is typed. The `[stated]`
+   criterion is what shipped and it is correct; **the prose line is corrected in `ROADMAP.md`.**
+   **The count it was reaching for is genuinely owed and does not exist**: no count of unlocated records
+   is derivable from `TravelStats` at all, because `cities` groups by `nameKey` across trips, so two trips
+   each holding an unlocated Paris subtract to **1** where there are **2** records.
+   > **`TravelStats` gains `seen: TravelRecordCensus`** — what there was, per record class, counted as
+   > **records** — so `unlocated = seen − located` per class, and `located ≤ seen` is the type's own
+   > invariant beside `unattributed ≤ located`. **`seen`, not `unlocated`**: two stored counts that can
+   > disagree is the defect, not the fix. **No version moves for it** — `TravelStats` is derived and never
+   > stored (A-34's precedent, already load-bearing for `provisional` and `unnamedCities`, and
+   > `test/stats-storage.test.ts`'s 6b-5 pins it).
+2. **R61-10 — the parenthetical that is not true, and the fabrication one type over.** A-83 Part 8's
+   *"every map frame skips a city with no centre … which is what they do today"* is true **vacuously**:
+   no `.tsx` reads `City.centre` at all. Meanwhile `derive/cluster.ts`'s `mapBounds([])` returns
+   `centre: {lat: 0, lng: 0}` with `empty: true` and a docstring saying callers must not fit it, and
+   `apps/web/src/ports/map.ts` calls `setView([0, 0], 12)` on exactly that box — **so a trip with no
+   located stop opens its day map on the Gulf of Guinea at street zoom.** That is A-82 Part 7's
+   fabrication in a different type.
+   > **Ruling: `MapBounds.centre` becomes `LatLng | null`, `null` exactly when `empty` is true.** A flag
+   > a caller must remember to read is the same shape as `{0,0}` — a value that looks like an answer —
+   > and **the centre is the field that got fitted**. A centre of no points is precisely A-82 Part 7's
+   > *"a value nobody measured, wearing the shape of one"*. The box's other fields are already guarded:
+   > `paneFrame` reads `empty` first and paints `WHOLE_WORLD`, and a `0 0 0 0` viewBox has no area.
+   > Measured: **`apps/web/src/ports/map.ts:48` is the only reader of `MapBounds.centre` in
+   > `packages/client` and `apps/web` combined**, so the compiler names the one site that was wrong and
+   > no other, and the port's honest behaviour for an empty box is to **not touch the view at all**.
+   >
+   > **`mapBounds` is deliberately NOT made to return `null`**, and the alternative is recorded because
+   > it is the obvious one: `worldMap.ts` calls `mapBounds([])` on purpose to give its empty pane a box
+   > (I7), so a nullable return pushes nullability into `WorldMapPane.bounds` and through A-51's and
+   > A-54's pane types and their tests — a large ripple to correct one line. **`empty: true` stays**, and
+   > it stays honest, because `paneFrame` is a legitimate reader of it.
+3. **R61-12 — what a migration owes the user.** `migrateDocWithReport`'s conversion count has no non-test
+   caller, so a user whose stored coordinate was rewritten is never told. **Ruled: not owed here**, and
+   the rule is stated so the next rung does not need a ruling:
+   > **A rung that rewrites or discards a value a person typed or picked owes the user a record. A rung
+   > that deletes a fabrication does not.** The 3 → 4 rung deletes `{0, 0}` — a value no shipped writer
+   > ever produced from a person's input — so a notice would be a notice about a value the user never
+   > entered. **The 4 → 5 rung of Part 8 is the first that could discard a picked value**, and its
+   > criterion asserts the discarded count is **zero** over every committed fixture, which is what makes
+   > this ruling checkable rather than assumed.
+
+---
+
+**Part 8 — version movement, and the price, written where the next bump will read it.**
+
+**`SCHEMA_VERSION` 4 → 5.** `City.placeId: string | null` becomes `City.pick: CityPick | null` — a type
+change, so A-72's *"a new scalar with a total default"* arm does not apply. **The 4 → 5 rung drops
+`placeId` and writes `pick: null`, and counts what it dropped.** It may **not** promote a `placeId` into a
+pick: composing `{rowId: placeId, centre: city.centre, countryCode: city.countryCode}` would mint a
+*verified* record out of exactly the three unverified fields this ruling exists to stop being read as one,
+and would re-create R61-1 inside the migration. Rounds 60 and 61 both walked the callers and **no product
+surface has ever written a non-null `placeId`**, so the count is zero on every document that exists.
+
+**`SUMMARY_VERSION` 6 → 7.** The picked derivation changes. It rides the existing generic rescan —
+`(row.summaryVersion ?? 0) < core.SUMMARY_VERSION` at `store.ts:72`, no version literal anywhere — which
+round 61 verified end to end.
+
+**The price of the schema bump, and it is now a real one.** Round 61 re-derived A-39 Part 11's covering set
+from the table rather than from the report: `|S| = 7`, `|D| = 4`, **28 rows, every `S × D` pair exactly
+once — the lower bound `|S| × |D|` is achieved and the set is minimal and TIGHT.** This bump takes `|D|` to
+**5** and the table to **35 rows**, and it can no longer be absorbed. **The rule, which belongs in the
+`SCHEMA_VERSION` docstring in `model/types.ts` from this increment onward because that docstring is what a
+bumper actually reads: every `SCHEMA_VERSION` bump adds `|S|` rows to A-39 Part 11's covering table, and
+the increment that bumps it owns those rows.**
+
+---
+
+**Part 9 — what this supersedes, clause by clause, so nothing has to be inferred.**
+
+| clause | status |
+|---|---|
+| A-83 Part 8, `City.placeId: string \| null` | **REPLACED** by `City.pick: CityPick \| null` (Part 3) |
+| A-83 Part 8 precedence clause 2 (*"the row's code is the answer"*) | **REPLACED** by Part 3 clause 1 — the pick's code is the answer, read off the pick, and the city's own `countryCode` is not consulted on that path |
+| A-83 Part 8 precedence clauses 1 and 3 | **stand verbatim** |
+| A-83 Part 8, *"`placeId` is exactly that missing provenance"* | **corrected in place**: a bare id is not; `CityPick` is |
+| A-83 Part 8, *"provenance, not authentication"* | **stands for the hand-edit** and is explicitly widened by Part 3's closing paragraph to say what it never covered — a shipped door composing a pair |
+| A-83 Part 8, the second shipping condition (*"the derived parent code"*) | **mechanism REPLACED** by Part 5; the intent is unchanged |
+| A-83 Part 8, *"every map frame skips a null centre — which is what they do today"* | **false as stated**; Part 7 item 2 rules it |
+| A-83 Part 8, `SCHEMA_VERSION` 3 → 4 / `SUMMARY_VERSION` 5 → 6 | **stand as shipped**; Part 8 adds 4 → 5 and 6 → 7 on top |
+| A-83 Part 4's `GazetteerRow.countryCode: CountryCode \| ''` | **becomes `CountryCode \| null`** (Part 5) |
+| A-83 Part 4's `indexAgrees: boolean` | **becomes `indexSays: 'agrees' \| 'differs' \| 'silent'`** (Part 6) |
+| A-83 Parts 1–7, 9–14 (the curve, the dataset, sharding, the loader, the labels, the fold, the generator) | **stand, untouched** |
+| A-82 Part 6 (*the pick is the acceptance; auto-match FORBIDDEN*) | **stands, and Part 3 clause 4 makes it a signature rather than a prohibition** |
+| A-82 Part 7 (`City.centre: LatLng \| null`) | **stands and is built**; Part 7 item 2 extends its reasoning to `mapBounds` |
+| A-29 Parts 1–7 | **stand verbatim.** The picked path no longer reads the field A-29 governs, so A-29's subject is unchanged and its gate is unchanged |
+| A-29 Part 3 step 4's stated reason (*"the coordinate already answers the parent"*) | **WITHDRAWN as measured false for six of the eight codes** (Part 5). The step itself stands |
+| A-29 Part 8 residue 2 (*territory codes are never admitted*) | **FIRED and ruled**: still never admitted; **translated at generation time** instead (Part 5) |
+| A-29 Part 8 residues 1 and 3 | **stand**, and Part 10 residue 1 is the pick-shaped case of residue 1 |
+| A-31's `TravelStats` | **gains `seen`** (Part 7 item 1); no other field moves and no version moves |
+| A-39 Part 11 | **unchanged as a rule; its table grows 28 → 35** with Part 8's bump, and Part 8 states the general law |
+
+---
+
+**Part 10 — residues, each with what would fire it.**
+
+1. **A stale pick is invisible.** Nothing tells a user that the pick they made no longer describes the
+   city they moved; the country simply changes back to whatever the coordinate says. **Trigger:** the
+   first surface that renders a city's provenance — the same surface A-83 Part 14 residue 4 names for
+   `indexSays`, and the same increment that A-29 residue 1 says owes the `geoCheck` warning.
+2. **The index still does not draw the French overseas departments** (Part 5), so a `Place` or a `Stop`
+   pinned in Martinique attributes to nothing even though a picked *city* there now attributes to `FR`.
+   **Trigger:** a measured count of **places** — not gazetteer rows — falling where `countryOf` is silent,
+   or the first user report. The fix is an A-26/A-27 change and is priced in Part 5.
+3. **The pick does not carry the label the user accepted.** A-82 Part 6's argument is that *the pick is
+   the acceptance*, and what was accepted on screen was a rendered label; the record carries the three
+   facts that attribute and not the sentence that persuaded. **Trigger:** the first surface that wants to
+   show what was accepted, or a *"this row has moved since you picked it"* check.
+4. **A `rowId` naming a row that never existed is indistinguishable from one naming a row a regeneration
+   dropped.** Both are simply picks, and by Part 2 that is the intended behaviour rather than a gap.
+   **Trigger:** a corpus-aware audit in `tools/`, which is where a check that may load 8 MB belongs — never
+   on a read path.
+5. **`ne:` picks will outlive the `ne:` corpus.** `I-23` replaces the dataset wholesale and every shipped
+   `rowId` prefix becomes `gn:`. Under Part 3 that costs **nothing** — the pick is self-contained and
+   still records exactly what the user accepted — and it is recorded here so that the absence of a data
+   migration at `I-23` is a decision rather than an omission.
 
 ### 8.5 Observed travel — the shape Phase 5 must be able to land on
 
